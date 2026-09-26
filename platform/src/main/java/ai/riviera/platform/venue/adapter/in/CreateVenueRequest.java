@@ -7,21 +7,12 @@ import ai.riviera.platform.venue.domain.SalesClose;
 import ai.riviera.platform.venue.application.NewVenueCommand;
 
 /**
- * The {@code POST /api/venues} request body (U7). A transport DTO of wire primitives;
- * {@link #toCommand()} maps it onto the typed {@link NewVenueCommand}, which validates ranges /
- * tokens / ISO currency; the beach code is parsed to the catalogue by {@link BeachCode}. The project has no {@code spring-boot-starter-validation}, so presence
- * and shape are checked explicitly here and any bad input surfaces as {@link IllegalArgumentException}
- * (the controller maps it to {@code 400}).
- *
- * <p>Defaults at the slice: {@code payoutCurrency} defaults to {@code EUR} (per-venue ISO-4217,
- * decided at U7); {@code bookingCutoff} defaults to {@code 18:00} {@code Europe/Tirane}
- * (invariant #4); {@code salesClose} is optional — absent defaults to {@code 16:00}
- * ({@link SalesClose#DEFAULT}, via the command), present it must be one of the three fixed values.
- *
- * <p>{@code commissionBps} survives as a component solely to be refused: the platform sets the
- * commission (stamped server-side, adjusted only via the admin surface), so a body carrying any
- * value is rejected {@code 400} rather than silently overridden — a client must never believe it
- * chose a rate.
+ * The {@code POST /api/venues} body: {@link #toCommand()} maps it onto {@link NewVenueCommand}
+ * (range, token, ISO-currency checks) via {@link BeachCode}. No bean validation: any bad input
+ * is an {@link IllegalArgumentException}, the controller's {@code 400}. Defaults: payout
+ * {@code EUR}, {@code bookingCutoff} {@code 18:00} {@code Europe/Tirane} (invariant #4), absent
+ * {@code salesClose} → {@link SalesClose#DEFAULT}. Any {@code commissionBps} is a {@code 400},
+ * never silently ignored: the platform sets the rate, and a client must never think it chose one.
  */
 record CreateVenueRequest(String name, String beach, String description,
 		String bookingMode, Integer commissionBps, String payoutCurrency, String bookingCutoff,

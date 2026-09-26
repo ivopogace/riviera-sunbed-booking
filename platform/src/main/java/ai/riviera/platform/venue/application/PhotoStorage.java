@@ -8,25 +8,18 @@ import ai.riviera.platform.venue.vocabulary.PhotoSlot;
 import ai.riviera.platform.venue.vocabulary.VenueId;
 
 /**
- * The module-internal <strong>outbound</strong> port for where venue photo bytes live — the
- * swappable storage seam (ADR-0008). It is the project's storage-agnostic boundary: the {@code venue}
- * application layer depends on this interface, not on {@code bytea} or S3. The default
- * {@code JdbcPhotoStorage} adapter keeps the resized variants in Postgres {@code bytea} (atomic with
- * their metadata — no orphaned blob); a future object-store adapter is the documented one-swap
- * scale-out path, chosen only past the flip threshold in ADR-0008.
- *
- * <p>Not part of the module's {@code api/} — only {@code venue}'s own application layer depends on it
- * (invariant #11), mirroring {@code payment}'s {@code PaymentGateway}. Image validation / EXIF-strip /
- * resize is <em>not</em> here — that is the pure {@code PhotoProcessor}; this port only persists,
- * serves, and deletes the already-processed variants.
+ * The module-internal outbound port for where venue photo bytes live — the swappable storage seam
+ * (ADR-0008). The default {@code JdbcPhotoStorage} keeps the resized variants in {@code bytea},
+ * atomic with their metadata (no orphaned blob); an object-store adapter is the one-swap scale-out
+ * path past ADR-0008's flip threshold. Not in {@code api/} (invariant #11). Validation, EXIF-strip
+ * and resize are {@code PhotoProcessor}'s; this port only persists, serves and deletes variants.
  */
 public interface PhotoStorage {
 
 	/**
-	 * Persist {@code photo}'s variants for {@code (venueId, slot)}, replacing any existing photo in
-	 * that slot <strong>atomically</strong> (a slot-row upsert whose row lock also serializes
-	 * concurrent replaces — last writer wins — then a variant swap, in one transaction) — at most
-	 * one photo per slot (enforced in the DB by {@code UNIQUE(venue_id, slot)} too).
+	 * Persist {@code photo}'s variants for {@code (venueId, slot)}, atomically replacing the slot's
+	 * photo in one transaction: the slot-row upsert's lock serializes concurrent replaces (last writer
+	 * wins), then the variants swap. At most one photo per slot ({@code UNIQUE(venue_id, slot)}).
 	 */
 	void replace(VenueId venueId, PhotoSlot slot, ProcessedPhoto photo);
 
@@ -45,11 +38,9 @@ public interface PhotoStorage {
 	Optional<StoredBytes> loadBytes(VenueId venueId, ContentHash hash);
 
 	/**
-	 * Whether {@code (venueId, hash)} still names a stored variant — the <strong>blob-free</strong>
-	 * question the conditional-GET path asks (#508). An index probe on
-	 * {@code venue_photo_variant_serving_idx}; it never selects the {@code bytea} column, so a
-	 * revalidation stays off the blob path even when every view revalidates. Answering this from the
-	 * URL alone is what let a taken-down photo keep revalidating as {@code 304} indefinitely.
+	 * Whether {@code (venueId, hash)} still names a stored variant — the conditional-GET path's
+	 * blob-free question: an index probe on {@code venue_photo_variant_serving_idx}, never the
+	 * {@code bytea}. Answered from the URL alone, a taken-down photo would revalidate as {@code 304}.
 	 */
 	boolean exists(VenueId venueId, ContentHash hash);
 

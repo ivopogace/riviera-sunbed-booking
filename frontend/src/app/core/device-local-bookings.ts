@@ -5,21 +5,12 @@ import { readJson, writeJson } from '../shared/safe-storage';
 const STORAGE_KEY = 'riviera.bookings.v1';
 
 /**
- * Device-local registry of the guest's booking codes. A guest has no
- * account, so a booking's unguessable bearer code (invariant #7) is the only key to it — this
- * service is the on-device memory of which codes belong to this browser. It is not
- * the *only* source the "My bookings" list draws on: a signed-in customer's account-linked
- * bookings come from `GET /api/me/bookings`. It stays authoritative for guest bookings, which are
- * never back-linked to an account by email (design D-6, a permanent non-goal).
- *
- * <p>It stores <strong>only the codes</strong>, never a display snapshot: the "My bookings" list
- * re-fetches the truth per code from `GET /api/bookings/{code}`, so there is nothing to go stale
- * and nothing but the low-sensitivity bearer code is persisted. Codes are treated as secrets —
- * this service never logs them. Newest-first order: a freshly remembered code leads the list.
- *
- * <p>Storage access goes through the shared {@link readJson}/{@link writeJson} guard,
- * so a blocked (`private mode`, quota) or malformed `localStorage` degrades to session-only memory,
- * never an error.
+ * Device-local registry of the guest's booking codes: a guest has no account, so the bearer code
+ * (invariant #7, never logged) is the only key to a booking. Stores only codes, never a snapshot —
+ * "My bookings" re-fetches each from `GET /api/bookings/{code}`. Authoritative for guest bookings,
+ * never back-linked to an account (D-6); signed-in ones come from `GET /api/me/bookings`.
+ * Newest first. Storage goes through {@link readJson}/{@link writeJson}, so a blocked or malformed
+ * `localStorage` degrades to session-only memory, never an error.
  */
 @Service()
 export class DeviceLocalBookings {
@@ -42,11 +33,9 @@ export class DeviceLocalBookings {
   }
 
   /**
-   * Explicitly forget a code — for a user-initiated removal. Nothing calls this today: the list
-   * does **not** call it on a `404` (the code is the guest's only key, invariant #7, and a 404 can
-   * be transient, so the list hides the row but keeps the code — a recovered booking reappears on
-   * the next load), and the signed-in merge never evicts a device code either. The same
-   * reasoning is why this list is deliberately left uncapped and unpruned.
+   * Forget a code (user-initiated removal only; no caller today). Never on a `404` or in the
+   * signed-in merge: the code is the guest's only key (#7) and a 404 can be transient, so the list
+   * hides the row but keeps the code — which is also why the list is uncapped and unpruned.
    */
   forget(code: string): void {
     this.current.update((codes) => codes.filter((c) => c !== code));

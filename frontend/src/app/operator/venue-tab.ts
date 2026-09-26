@@ -154,18 +154,12 @@ const EMPTY_SLOTS: Readonly<Record<PhotoSlotKey, SlotUi>> = {
 };
 
 /**
- * The Venue &amp; commodities tab — the operator's venue-details form
- * (name/beach/description, booking mode, evening-before cutoff), the commodities amenity
- * toggle-chip row over the fixed catalogue, and the three photo slots with real upload / replace /
- * delete (pick = upload = replace, previewed from the returned PREVIEW variant URL).
- *
- * <p>Loads the owner-scoped profile (`GET /api/venues/{id}/profile`) — which carries the read-only
- * <strong>commission</strong> (shown as a %) and <strong>payout currency</strong> the tourist read
- * must never expose — and seeds the form. Save PATCHes the widened, owner-asserted profile write
- * (invariant #13); commission + payout currency are read-only and never sent (invariant #9). A save
- * failure shows operator-facing copy and drops a lost session (401). Always porcelain (console
- * shell); glass via {@link CardGlass}. Editing booking mode flips the venue's tourist booking flow
- * (Instant vs Request) — the reserve path reads the mode live.
+ * The Venue &amp; commodities tab: the venue-details form (name/beach/description, booking mode,
+ * evening-before cutoff), the amenity toggle-chip row over the fixed catalogue, and the three photo
+ * slots (pick = upload = replace, previewed from the returned PREVIEW variant URL). Seeds from the
+ * owner-scoped profile, which carries the read-only commission and payout currency the tourist read
+ * must never expose; Save PATCHes the owner-asserted write (invariant #13), never sending those
+ * two (invariant #9). Booking mode flips the tourist booking flow: the reserve path reads it live.
  */
 @Component({
   selector: 'app-venue-tab',
@@ -359,10 +353,9 @@ export class VenueTab {
   }
 
   /**
-   * Save the venue's editable profile: validate the form (Signal Forms marks touched + blocks an
-   * invalid submit), parse the distance (blank ⇒ null; else a positive integer), then PATCH the
-   * widened profile write. Commission + payout currency are never sent (read-only). A 401 drops the
-   * lost session so the shell re-gates; other failures show operator-facing copy.
+   * Save the editable profile: validate (Signal Forms marks touched + blocks an invalid submit),
+   * parse the distance (blank ⇒ null, else a positive integer), then PATCH. Commission + payout
+   * currency are never sent; a 401 drops the lost session, other failures show operator copy.
    */
   protected onSave(): void {
     const venueId = this.venueId();
@@ -622,10 +615,9 @@ export class VenueTab {
   }
 
   /**
-   * A file was picked for a slot: upload it (the server replaces the slot, so pick = upload
-   * = replace) and show the returned PREVIEW variant. Validation is server-side — the processor's
-   * magic-byte/size/dimension rejections come back as displayable codes; the client never
-   * second-guesses the bytes. A 401 drops the lost session, like the profile save.
+   * Upload a picked file (the server replaces the slot: pick = upload = replace) and show the
+   * returned PREVIEW variant. Validation is server-side (rejections come back as displayable codes;
+   * the client never second-guesses the bytes); a 401 drops the lost session.
    */
   protected async onPhotoPicked(slot: PhotoSlotKey, input: HTMLInputElement): Promise<void> {
     const file = input.files?.[0];
@@ -710,10 +702,9 @@ export class VenueTab {
   }
 
   /**
-   * Recover from a `409 STALE_WRITE`: re-load the latest server profile — re-seeding every
-   * field and the version — and clear the conflict banner. The preserve-edits UX is deliberate: a 409
-   * itself never touches the form (so the operator keeps their work); only this explicit Reload
-   * discards it in favour of the current server state, from which they re-apply and Save.
+   * Recover from a `409 STALE_WRITE`: re-load the server profile (re-seeding every field and the
+   * version) and clear the conflict banner. A 409 itself never touches the form, so the operator
+   * keeps their edits; only this explicit Reload discards them for the current server state.
    */
   protected reloadAfterStale(): void {
     const venueId = this.venueId();

@@ -26,11 +26,9 @@ const MAP_PREFIX = '/map/';
 const PMTILES_SCHEME = 'pmtiles://';
 
 /**
- * Make one of the shipped style's same-origin paths absolute on the map origin (ADR-0022): the
- * API origin where the SPA is served elsewhere (development, the mocked e2e), the page's own in
- * production. `/map/…` and `pmtiles:///map/…` are rewritten; anything else passes through — the
- * committed style never names a host, and MapLibre validates a style's sprite URL as absolute
- * before any request hook runs, so the rewrite happens on the loaded style itself.
+ * Make `/map/…` and `pmtiles:///map/…` absolute on the map origin (ADR-0022); anything else passes
+ * through. Applied to the loaded style itself: MapLibre validates a sprite URL as absolute before
+ * any request hook runs.
  */
 export function absoluteMapUrl(url: string, origin: string): string {
   if (url.startsWith(MAP_PREFIX)) {
@@ -180,13 +178,9 @@ class MapLibreHandle implements MapHandle {
   }
 
   /**
-   * The rendered imagery, read back through a 2D scratch canvas rather than `gl.readPixels`:
-   * `drawImage` hands back rows the right way up with alpha already un-premultiplied, which is
-   * what a sampler wants, and the WebGL flip and premultiplication are not this file's business.
-   *
-   * <p>`null` rather than a blank raster whenever the read cannot be trusted: a map built without
-   * {@link MapEngineOptions.readableImagery} has had its drawing buffer cleared by the compositor,
-   * and a map with no box yet has nothing to read.
+   * The rendered imagery via a 2D scratch canvas (upright, un-premultiplied rows), not
+   * `gl.readPixels`. `null` when the read can't be trusted: no box yet, or built without
+   * {@link MapEngineOptions.readableImagery} (the compositor has cleared the drawing buffer).
    */
   readImagery(): MapImagery | null {
     const canvas = this.map.getCanvas();
@@ -244,11 +238,9 @@ class MapLibreHandle implements MapHandle {
 }
 
 /**
- * The constructor object MapLibre is built with, as a value so the one thing a jsdom spec can
- * judge about a WebGL renderer — which options it is asked for — is judgeable: above all
- * `canvasContextAttributes.preserveDrawingBuffer`, set for the pin placer's map alone. Keeping it
- * costs memory and a compositing step on every frame of every map that has it, and only a map
- * that reads its own pixels back needs it.
+ * MapLibre's constructor options as a value, so a jsdom spec can judge them — above all
+ * `preserveDrawingBuffer`, set only for a map that reads its pixels back (the pin placer): it costs
+ * memory and a compositing step on every frame.
  */
 export function mapConstructorOptions(
   host: HTMLElement,

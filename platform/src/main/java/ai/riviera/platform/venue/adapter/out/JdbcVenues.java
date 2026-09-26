@@ -50,18 +50,12 @@ import ai.riviera.platform.venue.application.Venues;
 import ai.riviera.platform.venue.spi.SalesWindow;
 
 /**
- * JDBC adapter implementing the {@link Venues} write port and the {@link CommissionRateStore}
- * (invariant #1 — no JPA). Explicit text-block SQL via {@link JdbcClient} with named params;
- * package-private, so callers depend on the port, not this class (invariant #11). Inserts use
- * {@code RETURNING id} to surface the identity PK. Rating/reviews/refund-policy columns take their
- * DB defaults on insert (a new venue has none).
- *
- * <p>One adapter serves both ports because both write the {@code venue} row: the ports are split by
- * the conversation their callers are having (an owner editing their venue vs the platform setting a
- * commercial term), not by table, and {@link #updateLiveRate} and {@link #updateVenueProfile} write
- * columns of the same row. {@link VenueRatings} joins them on the same argument: the recompute writes
- * two more columns of that row, and the aggregate it stores is a third such conversation — the
- * platform's, on {@code review}'s behalf.
+ * JDBC adapter for the {@link Venues}, {@link CommissionRateStore} and {@link VenueRatings} ports
+ * (invariant #1): text-block SQL via {@link JdbcClient} with named params, package-private so
+ * callers depend on the ports (invariant #11). Inserts return the identity PK via
+ * {@code RETURNING id}; rating/reviews/refund-policy columns take their DB defaults. One adapter
+ * for all three, as each writes columns of the one {@code venue} row (e.g. {@link #updateLiveRate},
+ * {@link #updateVenueProfile}). Rationale: RESPONSIBILITIES.md §venue.
  */
 @Repository
 class JdbcVenues implements Venues, CommissionRateStore, VenueRatings {
@@ -84,10 +78,8 @@ class JdbcVenues implements Venues, CommissionRateStore, VenueRatings {
 	private static final String COL_LATITUDE = "latitude";
 	private static final String COL_LONGITUDE = "longitude";
 	/**
-	 * The date a venue's first rate change pins its previous rate at. It predates the
-	 * platform, so once a venue has changed rate every service date it could have sold on is covered,
-	 * and the "latest rate at or before this date" read can never fall through to the live rate for a
-	 * day already sold.
+	 * The date a venue's first rate change pins its previous rate at: it predates the platform, so
+	 * the "latest rate at or before D" read never falls through to the live rate for a sold day.
 	 */
 	private static final LocalDate EPOCH_FLOOR = LocalDate.of(1970, 1, 1);
 	/** The console slot grid is one thumbnail per slot; PREVIEW carries no retina tier to choose from. */

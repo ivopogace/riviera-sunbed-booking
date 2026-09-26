@@ -10,19 +10,12 @@ import { fitInWindow } from './camera-fit';
 import { FOOT_ROW_PX, HALF_MAP_BAND_PX } from './sheet-geometry';
 
 /**
- * The **map poster**: the still the venue sheet opens on instead of a live map — one JPEG per
- * catalogue region and beach, per width bucket and device pixel ratio, rendered from the same
- * self-hosted extract the live map draws (`frontend/scripts/render-map-posters.mjs`, ADR-0022)
- * and shipped as a static file under `/posters/` — never `/map/**`, whose request count the first
- * paint holds at zero. The renderer bundles this module, so the camera it draws and the camera
- * the pins are projected through are one computation over one committed input.
- *
- * <p>A poster's camera is slice 1's fit over the catalogue's own geometry — a region's beach
- * centres, a beach's centre — into the pin window between the header and the foot row above the
- * sheet's half rest, in a pane the bucket's `fitWidth` wide and the poster's own height tall. The
- * runtime venues are not knowable when the poster is drawn, so the page checks that every pin and
- * the tourist's dot land inside the window ({@link posterFrames}) and goes live from the first
- * paint when one does not.
+ * The **map poster**: the still the venue sheet opens on instead of a live map, one JPEG per
+ * catalogue region and beach, width bucket and DPR (`frontend/scripts/render-map-posters.mjs`,
+ * ADR-0022), served under `/posters/`, never `/map/**` (Rationale: RESPONSIBILITIES.md §Platform
+ * edge). The renderer bundles this module, so the poster camera and the pin projection are one
+ * computation. Runtime venues aren't knowable at render time, so the page checks every pin and the
+ * tourist's dot land in the pin window ({@link posterFrames}) and goes live at first paint if not.
  */
 
 /** The shipped tourist header the ground runs under: measured at 73 at every width the sheet spans. */

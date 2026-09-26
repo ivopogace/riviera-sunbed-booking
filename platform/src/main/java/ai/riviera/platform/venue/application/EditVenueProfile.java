@@ -4,22 +4,12 @@ import ai.riviera.platform.operator.vocabulary.OperatorId;
 import ai.riviera.platform.venue.vocabulary.VenueId;
 
 /**
- * Driving (inbound) port for editing a venue's profile fields —
- * name/beach/description, booking mode, booking cutoff, the amenity set, and
- * distance-to-water. Commission and payout currency are read-only for operators and are never part
- * of this write. Internal to the {@code venue} module (REST-only caller), so it lives in
- * {@code application}, not {@code api/} (invariant #11), exactly like {@link EditBeachMap}.
- *
- * <p>Venue-scoped: the implementation verifies {@code operator} owns {@code venueId} before any
- * write (invariant #13, BOLA), throwing {@code NotVenueOwnerException} (→ 403) on a mismatch. The
- * edit REPLACES the whole profile (the form re-sends every field, and clears the distance when
- * absent).
- *
- * <p>Optimistic concurrency: the caller passes the {@code expectedVersion} it loaded with the
- * profile; the write is conditional on it. A {@link ProfileUpdateOutcome} of {@code NO_SUCH_VENUE}
- * maps to 404 when the venue does not exist, and {@code STALE_WRITE} to 409 when another writer has
- * bumped the version since the load — so a stale tab cannot silently clobber
- * {@code booking_mode}/{@code booking_cutoff}.
+ * Driving port for the owner's profile edit, a full replace of {@link VenueProfileCommand}'s fields
+ * (an absent distance or location clears it); commission and payout currency are never part of it.
+ * Module-internal (REST-only caller), so in {@code application}, not {@code api/} (invariant #11).
+ * The implementation asserts ownership first ({@code NotVenueOwnerException} → 403, invariant #13),
+ * then writes only if {@code expectedVersion} still matches: {@link ProfileUpdateOutcome}
+ * {@code NO_SUCH_VENUE} → 404, {@code STALE_WRITE} → 409, so a stale tab never silently clobbers.
  */
 public interface EditVenueProfile {
 

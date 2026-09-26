@@ -6,20 +6,12 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.boot.context.properties.bind.DefaultValue;
 
 /**
- * The proof-of-work challenge's tunables, bound from {@code riviera.altcha.*}; the shipped values
- * and their rationale live in {@code application.properties} and {@code RESPONSIBILITIES.md}
- * § {@code challenge}. The sweep cadence is consumed only by the {@code @Scheduled} placeholders on
- * {@code adapter.in.ChallengeRegistrySweep}, not here.
- *
- * @param enabled    the kill switch: off, the fenced routes admit requests without a solution and
- *                   the challenge endpoint answers {@code 204} so the SPA hides the widget
- * @param cost       PBKDF2 iterations per attempt — the difficulty; bounded by {@link #MIN_COST} and
- *                   {@link #MAX_COST}
+ * Proof-of-work tunables, {@code riviera.altcha.*}. Rationale: RESPONSIBILITIES.md §Platform edge.
+ * @param enabled    kill switch: off, fenced routes admit unsolved requests and the endpoint 204s
+ * @param cost       PBKDF2 iterations per attempt, bounded by {@link #MIN_COST}..{@link #MAX_COST}
  * @param expiry     how long a challenge stays solvable and acceptable after it is issued
- * @param clockSkew  how long a used challenge's registry row outlives its expiry, so an instance
- *                   whose clock lags cannot be replayed against
- * @param hmacSecret the challenge-signing secret ({@code RIVIERA_ALTCHA_HMAC_SECRET}); blank means
- *                   a random boot-time key, valid for this process alone
+ * @param clockSkew  how long a used registry row outlives its expiry, against lagging-clock replay
+ * @param hmacSecret signing secret ({@code RIVIERA_ALTCHA_HMAC_SECRET}); blank: random per-boot key
  */
 @ConfigurationProperties("riviera.altcha")
 public record AltchaProperties(

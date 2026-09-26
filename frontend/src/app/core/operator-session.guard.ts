@@ -4,19 +4,9 @@ import { CanActivateFn, Router } from '@angular/router';
 import { OperatorAuth } from './operator-auth';
 
 /**
- * Gate for every operator surface: `/operator` (incl. its create state),
- * `/operator/:venueId/**`, the venue-not-found page and the operator password page. A signed-in
- * operator passes; anyone else
- * is redirected to the unified auth page with the operator audience preselected and a `returnUrl`
- * back to where they were headed.
- *
- * It **awaits `whenReady()` before deciding** — the whole reason this is async. The session restore
- * (`GET /api/auth/me`) is in flight on every fresh page load, and `signedIn()` reads `false` until it
- * lands; deciding early would bounce a signed-in operator to sign-in on every reload.
- * This replaces the per-page "Checking your session…" cards the console and venue editor used to
- * render for the same reason.
- *
- * Returns a `UrlTree` rather than `false` + an imperative `navigate`, per the Angular router guide.
+ * Gate for every operator surface: a signed-in operator passes, anyone else goes to sign-in with
+ * the operator audience and a `returnUrl`. Awaits `whenReady()` first — `signedIn()` reads `false`
+ * until the `GET /api/auth/me` restore lands, so deciding early bounces operators on every reload.
  */
 export const operatorSessionGuard: CanActivateFn = async (_route, state) => {
   // inject() must run before the first await — the injection context is synchronous.

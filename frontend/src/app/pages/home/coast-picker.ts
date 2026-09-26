@@ -133,21 +133,12 @@ export function coastIndex(cards: readonly VenueCard[]): readonly PickerRegion[]
 }
 
 /**
- * The coast picker: the whole coast as a CHOOSER, never as the page. A sheet with a 150 px map
- * ribbon down its left edge — the whole coast fitted tall, one dot per beach of the index — and
- * beside it the coast index: every region and every beach that has a venue, its count and its
- * from-price, as 44 px rows, each beach row tied to its dot by a leader, Near me at the head.
- * There is no `Whole coast`, because the coast is not a state on any screen: a region is the
- * widest frame a phone can hold. From `lg` the same panel is a popover under the anchor it is
- * mounted in.
- *
- * <p>The ribbon is a second riviera map, so a second WebGL context: it exists exactly as long as
- * this component does, which is why the `@if` stays outside it — created with the choice,
- * destroyed with it (and that is also what lets it take focus on the way in, WCAG 2.4.3; focus
- * back out is the caller's, via `focusMover()`). The ribbon is a picture: `aria-hidden`, no
- * pointer, the index beside it is the accessible structure. The dots and the leaders are this
- * component's own overlay, projected through the map's handle as the pin layer's are, and re-laid
- * whenever the rows scroll, the box resizes or the camera moves.
+ * The coast picker: the whole coast as a chooser, never the page (no `Whole coast`: a region is the
+ * widest frame). An `aria-hidden` 150 px map ribbon, one dot per beach, beside the coast index
+ * (regions and beaches with a venue, count, from-price, 44 px rows, leaders to the dots, Near me
+ * first); from `lg` a popover under its anchor. Re-lays on scroll/resize/camera. The ribbon is a
+ * second WebGL context, so the `@if` stays outside: tied to the choice, it takes focus in (WCAG
+ * 2.4.3; out is the caller's `focusMover()`). Rationale: RESPONSIBILITIES.md §Frontend.
  */
 @Component({
   selector: 'app-coast-picker',

@@ -27,10 +27,9 @@ const LAND_FILL = { r: 236, g: 238, b: 204 } as const;
  * a real DOM surface — it mounts the caller's marker elements and positions them — so a spec or an
  * e2e can see and measure a pin, and click the map the way a person does.
  *
- * <p>Its geometry is the real thing in miniature: Web Mercator around its own camera, so a zoom
- * really doubles every offset and a point projects where a real engine would put it. That is what
- * lets an overlay's crowding, its fit and its press-through be proven here, in jsdom and in the
- * mocked e2e, with no WebGL. In jsdom the surface has no box, so the camera's centre is its corner.
+ * <p>Real Web Mercator around its own camera, so a zoom doubles every offset and a point projects
+ * where a real engine would put it — enough to prove an overlay's crowding, fit and press-through
+ * with no WebGL. In jsdom the surface has no box, so the camera's centre is its corner.
  */
 export class FakeMapHandle implements MapHandle {
   private current: MapView;
@@ -134,18 +133,9 @@ export class FakeMapHandle implements MapHandle {
   }
 
   /**
-   * The imagery a fake map "draws": water west of the coast meridian it was given, land east of
-   * it, painted in the style's own fills at the camera the fake is currently at.
-   *
-   * <p>`null` on both of the real adapter's terms, not just the fixture's. A map built WITHOUT
-   * {@link MapEngineOptions.readableImagery} reads back nothing here exactly as MapLibre reads
-   * back nothing without its drawing buffer — so a consumer that forgets the flag fails under the
-   * fake too, instead of passing every spec and going blank against a real engine. A fake given no
-   * coast draws nothing either, which is what leaves every spec that does not care about the sea
-   * untouched by this.
-   *
-   * <p>Straight, because a straight coast is enough to prove a rule that only ever asks "water or
-   * land, at this pixel?" — and it is the same coast the e2e fixture archive carries.
+   * Water west of the given coast meridian, land east, in the style's fills at the current camera.
+   * `null` with no coast, or without {@link MapEngineOptions.readableImagery}, as MapLibre without
+   * its drawing buffer — so a consumer that forgets the flag fails under the fake too.
    */
   readImagery(): MapImagery | null {
     if (this.coastLng === undefined || this.options.readableImagery !== true) {
@@ -219,10 +209,9 @@ export class FakeMapHandle implements MapHandle {
   }
 
   /**
-   * A real click on the fake surface becomes a map click at the position under the pointer, so an
-   * e2e drops a pin with a genuine gesture and it lands where the click was. Held inside
-   * `maxBounds` as a real engine's fence would hold its camera: in a document with no layout the
-   * box is a point, so an offset that would otherwise run off the map still lands on it.
+   * A real click on the surface becomes a map click at the position under the pointer, so an e2e
+   * drops a pin with a genuine gesture. Clamped to `maxBounds` like a real engine's fence: with no
+   * layout the box is a point, so an offset that would run off the map still lands on it.
    */
   private reportClick(event: MouseEvent): void {
     if (this.isDestroyed) {

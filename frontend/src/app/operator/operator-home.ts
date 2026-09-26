@@ -23,21 +23,12 @@ import { TouchTarget } from '../shared/touch-target';
 import { VenueCreateCard } from './venue-create-card';
 
 /**
- * `/operator` — where a signed-in operator lands when the destination isn't already known.
- * It resolves the owned-venue count and then forwards (1 → straight into that console), renders the
- * picker (2+), or renders the create-venue card inline: the **zero state** for an operator
- * with no venue yet, and the deliberate **`?create=1`** state ("Add another venue", reachable from
- * the picker and the console's venue switcher) for one who already owns some. The decision table itself is
- * {@link landingRouteFor}, shared with the auth page so the two can't drift; the create param is
- * read reactively because the router reuses this instance when only the query string changes
- * (picker → create and back).
- *
- * A **failed** read renders a retry rather than the zero state: treating "couldn't load" as "owns
- * nothing" would push an established operator into venue creation on a network blip.
- *
- * Behind {@code operatorSessionGuard}, so this component never renders for a signed-out visitor and
- * needs no session state of its own. Wears the console shell like the rest of the operator surface
- * (`data.console` on its route), which pins the operator's console theme — porcelain or dark — on it.
+ * `/operator`, the signed-in operator's landing: forwards to the one owned console, renders the
+ * picker (2+), or the create-venue card (zero venues, or `?create=1` "Add another venue"). The
+ * decision table is {@link landingRouteFor}, shared with the auth page so the two can't drift;
+ * `create` is read reactively because the router reuses this instance on a query-only change.
+ * A **failed** read renders a retry, never the zero state, so a network blip can't push an
+ * established operator into venue creation. Behind {@code operatorSessionGuard}; no session state.
  */
 @Component({
   selector: 'app-operator-home',

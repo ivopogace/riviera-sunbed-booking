@@ -11,21 +11,12 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 import org.springframework.web.servlet.resource.PathResourceResolver;
 
 /**
- * Serves the bundled Angular single-page app. The built SPA is baked into
- * {@code classpath:/static/} by the Docker image's Node stage ({@code platform/Dockerfile});
- * Spring serves its hashed assets directly and falls back to {@code index.html} for
- * client-side routes (deep links like {@code /operator/1}) so a browser refresh boots the
- * app instead of hard-404ing. Backend paths are excluded from the fallback — an unmapped
- * {@code /api/**} or {@code /actuator/**} request stays a 404/401, never the SPA shell.
- *
- * <p>Same-origin hosting is the whole point: with the SPA and {@code /api/**} on one origin,
- * the S1 session + CSRF cookies are first-party, so {@code SameSite=Lax} and the
- * {@code .spa()} cookie-to-header echo work with <strong>no auth-model change</strong>. The
- * public-shell authorization lives in {@link SecurityConfig}'s SPA filter chain; this class
- * only maps request paths to static resources.
- *
- * <p>An app-wide web concern, so it lives in the root package next to {@link SecurityConfig}
- * and {@link WebCorsConfig} — not inside a domain module (invariant #11).
+ * Serves the Angular SPA baked into {@code classpath:/static/} by the image's Node stage: hashed
+ * assets directly, and {@code index.html} for client-side routes so a deep-link refresh boots the
+ * app instead of 404ing. An unmapped {@code /api/**} or {@code /actuator/**} request stays a
+ * 404/401, never the shell. Same-origin hosting keeps the session and CSRF cookies first-party
+ * (ADR-0004); the public-shell authorization is {@link SecurityConfig}'s SPA filter chain, and this
+ * class only maps request paths to static resources.
  */
 @Component
 class SpaWebConfig implements WebMvcConfigurer {

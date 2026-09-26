@@ -32,20 +32,12 @@ import ai.riviera.platform.venue.vocabulary.PhotoSlot;
 import ai.riviera.platform.venue.vocabulary.VenueId;
 
 /**
- * Venue photo endpoints — a separate driving adapter from {@code VenueAdminController} so the
- * <strong>public</strong> serving GET sits apart from the authenticated writes. The writes are
- * <strong>venue-scoped</strong>: the controller resolves the principal to an {@link OperatorId} and
- * hands it to {@link VenuePhotos}, which asserts ownership before acting (invariant #13); a mismatch
- * is {@code 403} via {@code ApiErrorHandler}. Errors are RFC-7807 {@link ProblemDetail}.
- *
- * <p>Upload is <strong>POST</strong> (not PUT): multipart parsing is reliable on POST across servlet
- * containers, and a slot upload is an idempotent replace regardless. The serving GET is
- * content-addressed by the variant hash and returned with a strong {@code ETag} under a
- * <strong>revalidating</strong> cache directive (ADR-0008): the client still
- * stores and reuses the bytes via {@code 304}, so the DB is read ≈once per image, but every cache —
- * including a shared one we do not control — has to ask before serving again, so a takedown takes
- * effect instead of outliving the removal. The {@code 304} short-circuit is therefore gated on the
- * variant still existing, which is a blob-free index probe, not a byte read.
+ * Venue photo endpoints: the public content-hash serving GET, apart from the authenticated,
+ * venue-scoped writes, where {@link VenuePhotos} asserts ownership of the principal's
+ * {@link OperatorId} first (invariant #13, {@code 403}). Errors are RFC-7807 {@link ProblemDetail}.
+ * Upload is POST (multipart is reliable on POST) and an idempotent slot replace. Serving sends a
+ * strong {@code ETag} under a revalidating directive, and a {@code 304} only while the variant
+ * still exists (a blob-free probe), so a takedown reaches shared caches. Rationale: ADR-0008.
  */
 @RestController
 @RequestMapping("/api/venues")

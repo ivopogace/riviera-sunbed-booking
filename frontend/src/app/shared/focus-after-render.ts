@@ -1,19 +1,9 @@
 import { afterNextRender, ElementRef, inject, Injector } from '@angular/core';
 
 /**
- * Build a `(testId, fallbackTestId?) => void` that moves keyboard focus onto the calling component's
- * own `[data-testid="…"]` element once the next render has committed.
- *
- * <p>Confirm-before-destroy surfaces destroy the element just activated, stranding focus on `<body>`
- * unless it is moved deliberately (WCAG 2.4.3). The target rarely exists yet when the transition is
- * decided, so the lookup runs in `earlyRead` and the `focus()` in `write`.
- *
- * <p>Focus always lands somewhere — primary, else `fallbackTestId`, else the component host — and
- * whatever it lands on is made focusable first, so a landmark missing its own `tabindex="-1"` cannot
- * silently swallow the move. Must be called from an injection context, like `parentVenueId(route)`.
- *
- * <p>`preventScroll` for a landing spot inside a scroller: focusing it would otherwise scroll it
- * into view, undoing the transition that moved focus in the first place.
+ * Build a `(testId, fallbackTestId?) => void` that, after the next render, focuses the component's
+ * `[data-testid]` element (else fallback, else host), made focusable first. Injection context only;
+ * `preventScroll` keeps a scroller from undoing it. Rationale: RESPONSIBILITIES.md §Frontend.
  */
 export function focusMover(options?: {
   readonly preventScroll?: boolean;

@@ -3,20 +3,12 @@ package ai.riviera.platform.venue.adapter.in;
 import ai.riviera.platform.venue.application.CommissionRateCommand;
 
 /**
- * The {@code PUT /api/admin/venues/{venueId}/commission} request body. A transport DTO
- * of one wire primitive; {@link #toCommand()} maps it onto the typed {@link CommissionRateCommand},
- * whose compact constructor enforces the 0..10000 basis-point range. The project has no
- * {@code spring-boot-starter-validation}, so presence is checked explicitly here and the
- * controller runs the conversion through {@code InvalidApiRequestException.parsing} so a bad value is a
- * {@code 400 INVALID_REQUEST} rather than a logged 500.
- *
- * <p>{@code Integer} rather than {@code int} on purpose: an absent field must be distinguishable from
- * an explicit {@code 0}, which is a legitimate rate (a venue the platform takes nothing from). A
- * primitive would silently read a missing field as zero commission.
- *
- * <p>It carries <strong>no effective date</strong>: the schedule is forward-only and the date is
- * computed server-side, so a request cannot backdate a rate (invariant #9). Nor does it carry a
- * version token — a rate is a scalar the admin sets outright, not a loaded form that could be stale.
+ * The {@code PUT /api/admin/venues/{venueId}/commission} body; {@link #toCommand()} maps it onto
+ * {@link CommissionRateCommand} (0..10000 bps). No bean validation: the controller runs it through
+ * {@code InvalidApiRequestException.parsing}, so a bad value is {@code 400 INVALID_REQUEST}, not a
+ * 500. {@code Integer}, not {@code int}: a missing field must not read as {@code 0}, a legitimate
+ * rate. No effective date (computed server-side, forward-only, so no backdating — invariant #9) and
+ * no version token (the admin sets the scalar outright). Rationale: RESPONSIBILITIES.md §venue.
  */
 record SetCommissionRequest(Integer commissionBps) {
 

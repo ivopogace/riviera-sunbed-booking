@@ -25,20 +25,12 @@ import { PayoutStatement } from './payout-statement';
 import { RainIcon } from '../shared/rain-icon';
 
 /**
- * The Payouts tab — the operator console's payout ledger. Renders the
- * venue's accruals, reversals and fees (per-entry date, a `#<bookingId>` reference, gross /
- * commission / net), an "Owed to you" hero, and a period-total row; everything but an accrual shows
- * as a negative row with a reason chip. The weather-refund action + the statement modal live alongside (phase 2).
- *
- * <p><strong>Renders and triggers; the backend decides and moves the money.</strong> Every amount is
- * integer minor units (invariant #5) rendered via {@link formatMoney}; the owed figure is the server's
- * {@link PayoutLedgerView#netOwedMinor}, <em>never</em> a client re-computation (invariant #9). The
- * ledger read is owner-asserted server-side (invariant #13) — a 403 maps to owner copy, a 401 drops the
- * session. The ledger carries only `bookingId`: <strong>no booking code</strong> (a bearer credential,
- * invariant #7) and <strong>no guest identity</strong> (the `payout` module holds none — need-to-know,
- * invariant #11); the console renders a non-credential reference. Reads `:venueId` from the parent route
- * via {@link parentVenueId} (child routes don't inherit it), like its sibling tabs;
- * always porcelain (inherited from the console shell); glass via {@link CardGlass}.
+ * The Payouts tab: the venue's payout ledger (every non-accrual a negative row with a reason chip),
+ * the "Owed to you" hero, a period total, the weather-refund action and the statement modal.
+ * Renders and triggers; the backend decides and moves the money: the owed figure is the server's
+ * {@link PayoutLedgerView#netOwedMinor}, never re-computed (invariant #9); amounts are minor units
+ * (#5). Owner-asserted read (#13: 403 → owner copy, 401 drops the session); the ledger carries
+ * only `bookingId`, no booking code (#7) or guest identity (#11).
  */
 @Component({
   selector: 'app-payouts-tab',
@@ -72,7 +64,7 @@ export class PayoutsTab {
   /** The load-error message (owner / session / generic), or undefined when the read succeeded. */
   protected readonly loadErrorMsg = signal<string | undefined>(undefined);
 
-  /** The in-flight skeleton's placeholder ledger rows — enough to read as a table (#744). */
+  /** The in-flight skeleton's placeholder ledger rows — enough to read as a table. */
   protected readonly skeletonRows = [1, 2, 3, 4] as const;
 
   /** The washed-out day a weather refund targets (ISO YYYY-MM-DD); defaults to today Europe/Tirane

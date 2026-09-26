@@ -11,24 +11,12 @@ export interface SegmentedOption<T extends string> {
 }
 
 /**
- * A reusable single-choice segmented control with full WAI-ARIA radiogroup semantics.
- * Two visual variants over one behaviour:
- *
- * - `pill` — the compact tab strip (label only), used for the sign-in audience switch.
- * - `card` — the taller side-by-side option cards with a blurb and a selected-state tick, used for
- *   the "I want to" role picker in register mode.
- *
- * Keyboard follows the radiogroup pattern rather than the button-list default: **roving tabindex**
- * (exactly one stop in the page's tab order — the checked option), arrows move the selection *and*
- * the focus, wrapping at both ends, with `Home`/`End` jumping to the extremes. Any other key is left
- * to the browser, so `Tab` still leaves the group. That is why this is a component and not two
- * hand-rolled button rows: the keyboard contract is the part that is easy to get subtly wrong, and
- * it is pinned once in `segmented-control.spec.ts` instead of per consumer.
- *
- * Styling is Tailwind on the host of each option (no `@apply` — sharing happens here, at the
- * component layer). Colours come from the `--riv-*` card/pill/option tokens so the control is
- * theme-agnostic (the dark theme inverts them); the card variant's selected accent tint is the one
- * literal, and every ink/fill pair is composited in the consumer's `*.contrast.spec.ts`.
+ * Single-choice segmented control with WAI-ARIA radiogroup semantics, in two variants: `pill`
+ * (compact label strip; the sign-in audience switch) and `card` (option cards with blurb and tick;
+ * register mode's role picker). Keyboard is the radiogroup pattern, pinned in
+ * `segmented-control.spec.ts`: roving tabindex (one tab stop, the checked option); arrows move
+ * selection and focus, wrapping; `Home`/`End` jump to the ends; other keys, `Tab` included, go to
+ * the browser. Colours are `--riv-*` tokens, composited in the consumer's `*.contrast.spec.ts`.
  */
 @Component({
   imports: [TouchTarget],

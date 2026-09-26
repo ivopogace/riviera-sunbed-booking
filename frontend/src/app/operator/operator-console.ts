@@ -14,18 +14,11 @@ import { PendingRequestsStore } from './pending-requests-store';
 
 /**
  * The venue console's page at `/operator/:venueId`: the stats strip, the pending-approval banner
- * and the tab outlet, hosting each tab as a child route. Its chrome — the section row with the
- * venue switcher and the account chip, the six-tab rail with the live Requests badge, the footer
- * and the porcelain pin — is the console shell's (`console-shell.ts`), which the app shell wears
- * for every route carrying `data.console`; this component publishes nothing to it. What it does
- * own is the per-venue seeding: the shared venue-map snapshot the strip's Free-today tile reads
- * (the shell reads the same snapshot for the venue name, so the two cost one request) and the
- * Requests badge count (`PendingRequestsStore`, which the shell renders and the Requests tab keeps
- * live).
- *
- * <p>It carries <strong>no sign-in gate</strong>: {@code operatorSessionGuard} owns
- * that, and because the guard awaits the session restore before deciding, the console needs no
- * "Checking your session…" state of its own either — it only ever renders for a signed-in operator.
+ * and the tab outlet hosting each tab as a child route. Its chrome (venue switcher, tab rail,
+ * footer) is `console-shell.ts`'s; this component publishes nothing to it and owns only the
+ * per-venue seeding: the shared venue-map snapshot (strip and shell share one request)
+ * and the Requests badge count (`PendingRequestsStore`). No sign-in gate or session-restore state:
+ * {@code operatorSessionGuard} awaits the restore, so this only renders for a signed-in operator.
  */
 @Component({
   selector: 'app-operator-console',

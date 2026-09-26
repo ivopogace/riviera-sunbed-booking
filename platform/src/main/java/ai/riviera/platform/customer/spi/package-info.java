@@ -1,20 +1,10 @@
 /**
- * <strong>Driven (service-provider) surface</strong> of the {@code customer} module (invariant #11) —
- * interfaces customer <em>needs another module to implement</em>, as opposed to {@code customer.api},
- * which holds the inbound ports other modules <em>call</em>.
- *
- * <p>This is the cross-module form of dependency inversion: a driven port whose adapter lives in a
- * sibling module is promoted to its own named interface so the implementor can depend on it without
- * reaching into customer's internals — and so the boundary stays acyclic. (A driven port implemented
- * by customer's <em>own</em> adapter would stay internal in {@code application}, not here.)
- *
- * <p>Holds {@link GuestBookingHistory}, implemented by the {@code booking} module so the retention sweep
- * can ask "does this guest still have a recent booking?" without customer depending on
- * booking — which would cycle, since {@code booking} already depends on {@code customer::api} — and
- * {@link ReviewErasure}, implemented by {@code booking} too, so erasure and the sweep can have the subject's
- * reviews tombstoned without customer knowing a booking or a review. Same shape as
- * {@code venue.spi.BookingPresence}. Grant {@code customer::spi} only to the implementing module;
- * callers that merely use customer use {@code customer::api}.
+ * <strong>Driven (service-provider) surface</strong> of the {@code customer} module
+ * (invariant #11): interfaces it <em>needs another module to implement</em> (inbound ports are in
+ * {@code customer.api}). {@link GuestBookingHistory} (the retention sweep's booking-recency fact)
+ * and {@link ReviewErasure} (tombstoning a subject's reviews) are implemented by {@code booking}; a
+ * direct call would cycle, as {@code booking} depends on {@code customer::api}. Grant
+ * {@code customer::spi} only to the implementing module. Rationale: RESPONSIBILITIES.md §customer.
  */
 @org.springframework.modulith.NamedInterface("spi")
 package ai.riviera.platform.customer.spi;

@@ -18,19 +18,12 @@ const CLS = {
 } as const;
 
 /**
- * Confirmation screen shown after a successful booking. Renders
- * the "You're booked." glass card — the booking code (a bearer credential, invariant #7, confined
- * to this surface and the `/booking/:code` link) and a summary from {@link BookingService}'s last
- * confirmation. On a cold load with no confirmation in memory (e.g. a hard refresh) it shows a
- * "start over" message rather than a blank screen. No Guest row — the server confirmation carries
- * no guest name (the dialog's Review step shows it, where the form knows it).
- *
- * <p>When the server reports `emailWithheld` (the address is on the do-not-mail list, so the
- * confirmation mail was suppressed), the "We've also emailed it to you" half of the code note is
- * dropped and a save-your-code notice takes its place. The claim and the send decision come from the
- * same backend fact, so this surface cannot promise a mail that was never sent. No live region: the
- * notice is present at first render, and a live region only announces content that mutates after it
- * is already in the DOM.
+ * The "You're booked." screen: the booking code (a bearer credential, invariant #7, confined to
+ * this surface and the `/booking/:code` link) and a summary of {@link BookingService}'s last
+ * confirmation; a cold load with none in memory shows "start over". No Guest row — the confirmation
+ * carries no guest name. On `emailWithheld` (address suppressed) the "We've also emailed it" half
+ * gives way to a save-your-code notice, from the same backend fact as the send decision. No live
+ * region: the notice is present at first render, and a live region announces only later mutations.
  */
 @Component({
   selector: 'app-booking-confirmation',

@@ -1,17 +1,9 @@
 import { Component, Type } from '@angular/core';
 
 /**
- * The console's glyph set — one component per venue and admin destination, plus More, `Your
- * venues`, `Admin console` and Search — drawn for the phone rail (`console-shell.ts`), its More
- * sheet, the ⌘K palette (`console-palette.ts`) and the palette's trigger, on the `clock-icon.ts` contract (`riviera-tailwind` ICON-1..6): inline SVG in `currentColor`, so
- * the slot's ink cascades in; sized by presentation attributes, which any call-site class outranks
- * (`[&_svg]:size-[21px]` on the slot); a `display: contents` host, so the svg is what the slot's
- * flex column lays out; `aria-hidden` at the host and the svg, because the slot's label carries the
- * meaning. One component per glyph rather than a `name` switch: a shared glyph takes no variant
- * (ICON-2), and a destination descriptor names its glyph by class, picked with `NgComponentOutlet`.
- *
- * <p>Geometry is 24-unit, 1.9 stroke, rounded caps — one weight across the set so the rail reads as
- * one family. `CONSOLE_GLYPHS` is the whole set, which is what `console-glyphs.spec.ts` sweeps.
+ * The console's glyphs (rail, More sheet, ⌘K palette and its trigger) on the `riviera-tailwind`
+ * ICON-1..6 contract; one component per glyph (ICON-2), named by class for `NgComponentOutlet`.
+ * 24-unit, 1.9 stroke, rounded caps: one weight. `CONSOLE_GLYPHS` is the set the spec sweeps.
  */
 
 const HOST = { 'aria-hidden': 'true', class: 'contents' } as const;

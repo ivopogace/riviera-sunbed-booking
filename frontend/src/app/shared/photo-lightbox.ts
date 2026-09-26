@@ -16,22 +16,12 @@ import { PhotoView } from './venue-views';
 import { CrossIcon } from './cross-icon';
 
 /**
- * A modal, larger-scale view of a venue's photos, opened by tapping a thumbnail in either the
- * gallery grid or the single-photo band. Delegates the crossfade/stepping to {@link PhotoSlideshow}
- * (own controls, seeded at the tapped photo via `startIndex`, letterboxed via `contain` rather than
- * the bands' crop — this box is roomier and closer to square, so a portrait photo fits whole) and
- * adds the modal's own chrome: a close button, a dismissing backdrop, Escape, and a focus trap — the
- * sixth modal in this shape, alongside the booking dialog, find-booking, the payout statement, the
- * availability calendar and the console's jump palette (`shared/focus-trap.ts`).
- *
- * The caller owns returning focus to the thumbnail that opened it (RV-FE-9) — this component only
- * emits {@link dismissed}.
- *
- * <p>Arrow keys are bound HERE as well as on the slideshow: focus opens on the close button, which
- * is the slideshow's SIBLING, so a keydown there never reaches it, and the dialog is the region the
- * tourist is actually in. Focus ON the slideshow's own controls is the other half, and the
- * slideshow keeps that case to itself — `PhotoSlideshow.onArrow` stops the event rather than let
- * both handlers step it.
+ * Modal viewer of a venue's photos, opened from a gallery-grid or single-photo-band thumbnail:
+ * {@link PhotoSlideshow} (own controls, seeded via `startIndex`, letterboxed via `contain`) plus a
+ * close button, dismissing backdrop, Escape and a focus trap (`shared/focus-trap.ts`). The caller
+ * returns focus to the opening thumbnail (RV-FE-9); this only emits {@link dismissed}. Arrows are
+ * bound here too — focus opens on the close button, the slideshow's sibling, whose keydown it never
+ * sees; `PhotoSlideshow.onArrow` stops propagation so one press never steps twice.
  */
 @Component({
   selector: 'app-photo-lightbox',

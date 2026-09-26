@@ -3,17 +3,11 @@ package ai.riviera.platform.shared;
 import java.time.Duration;
 
 /**
- * What a press of an admin outbox-resubmit lever did — the typed outcome shared by every lever over
- * the Event Publication Registry (the mail outbox, the refund outbox), because all three
- * answers are properties of {@link ResubmissionThrottle}'s guard, not of any one module's outbox. A
- * value, not an exception: all three are expected flows an operator acts on
- * ({@code riviera-java-conventions} §6), and the two refusals are the once-only guarantee made
- * visible — the caller is told <em>why</em> nothing was resubmitted and when to try again, instead of
- * receiving a success that quietly re-drove nothing.
- *
- * <p>Kernel admission: the sibling of {@link ResubmissionThrottle}, admitted with it — one
- * outcome vocabulary keeps the two levers' wire {@code outcome} tokens from drifting into two
- * spellings, the {@code MailKind} argument one level up.
+ * What a press of an admin outbox-resubmit lever did, shared by every lever over the Event
+ * Publication Registry: all three answers are properties of {@link ResubmissionThrottle}'s guard,
+ * and one vocabulary keeps the levers' wire {@code outcome} tokens from drifting. A value, not an
+ * exception: a refusal tells the caller why nothing was resubmitted and when to retry, instead of a
+ * success that re-drove nothing. Admission: RESPONSIBILITIES.md §shared.
  */
 public sealed interface ResubmissionOutcome {
 
@@ -64,16 +58,12 @@ public sealed interface ResubmissionOutcome {
 	}
 
 	/**
-	 * A resubmission ran recently enough that its re-driven work may still be in flight, so this one
-	 * did nothing.
+	 * A resubmission ran recently enough that its re-driven work may still be in flight, so this
+	 * one did nothing.
 	 *
-	 * <p>The work itself is safe either way — the registry's per-publication claim skips one whose
-	 * previous resubmission is still draining, and the money-path lever's gateway refuses to create a
-	 * refund it already holds besides —
-	 * so this refusal is about the <em>sweep</em>: during a relay or gateway outage every re-driven
-	 * attempt fails fast and is immediately eligible again, and without the window a held-down button
-	 * becomes a retry storm against the dependency that is already struggling, each press reporting a
-	 * success that moved nothing.
+	 * <p>The work is safe either way (the registry's per-publication claim and the refund gateway
+	 * both refuse duplicates); the window bounds the <em>sweep</em>: in an outage every re-driven
+	 * attempt fails fast and is eligible again, so a held-down button would become a retry storm.
 	 */
 	record CoolingDown(Duration remaining) implements ResubmissionOutcome {
 	}

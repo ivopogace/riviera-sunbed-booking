@@ -14,22 +14,12 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 
 /**
- * The proof-of-work fence on the public writes that cost the platform money or inventory
- * (ADR-0016): a fenced {@code POST} must carry a solved challenge in {@link #HEADER}, verified
- * and claimed once by {@link ProofOfWorkChallenges} before the controller runs. Registered after
- * {@code RateLimitFilter} and {@code CsrfFilter}: the cheap checks go first, a {@code 429} wins
- * when both would fail, a refused solution still spent its rate-limit token, and the registry claim
- * — the one write — is the last thing before the controller.
- *
- * <p>Running ahead of the controller is also what keeps forgot-password non-enumerating: the fence
- * never sees the email, so a refusal is identical for a registered and an unregistered one and no
- * mail decision has been made. On booking create it is what keeps invariant #2 untouched: a refused
- * create returns here, so no availability claim, booking or PaymentIntent is ever attempted.
- *
- * <p>Every refusal is a {@code 400} with a stable code, hand-mirrored in
- * {@link SecurityProblemResponses} because this runs before MVC dispatch. Deliberately not a
- * {@code 403}: the rate limiter refunds a {@code 403} on the budgets that guard authenticated work.
- * The header value is never logged.
+ * The proof-of-work fence (ADR-0016): a fenced {@code POST} must carry a solved challenge in
+ * {@link #HEADER}, verified and claimed once by {@link ProofOfWorkChallenges}. Registered after
+ * {@code RateLimitFilter} and {@code CsrfFilter} so the registry claim is the last step before the
+ * controller. Refusals are {@code 400}, never {@code 403} (the rate limiter refunds a {@code 403}),
+ * hand-mirrored in {@link SecurityProblemResponses} as this runs before MVC dispatch. The header
+ * value is never logged. Rationale: RESPONSIBILITIES.md §Platform edge (settled).
  */
 final class ChallengeVerificationFilter extends OncePerRequestFilter {
 

@@ -1,21 +1,12 @@
 package ai.riviera.platform.operator.vocabulary;
 
 /**
- * The edge's authentication view of an operator account (invariant #11 — a value record on the
- * published surface). Carries just what a Spring Security {@code UserDetailsService} needs to build a
- * principal: the {@code username}, the stored <strong>opaque credential hash</strong>, and the
- * account's lifecycle {@code status} — the edge derives its may-authenticate set from the token; the
- * module never decides who signs in. The hash is treated as an opaque blob by the
- * {@code operator} module — it neither encodes nor verifies it (that is the edge's job,
- * RV-BE-11); {@code passwordHash} is {@code null} for an account with no login provisioned yet.
- *
- * <p>Deliberately does <em>not</em> expose the {@link OperatorId}: authentication (this view) and
- * ownership resolution ({@link OperatorDirectory#operatorFor}) are separate phases, so the login
- * machinery never needs the technical id.
- *
- * <p>{@code admin} is the platform-admin authority flag (S6): the edge grants {@code ROLE_ADMIN}
- * (on top of {@code ROLE_OPERATOR}) when it is set, gating the role-based {@code /api/admin/**} approval
- * surface. The module stores it as an opaque account flag; the edge does the Spring Security mapping.
+ * The edge's authentication view of an operator account (invariant #11): what a Spring Security
+ * {@code UserDetailsService} needs: {@code username}, the <strong>opaque credential hash</strong>
+ * ({@code null} until a login is provisioned; the module never encodes or verifies it, RV-BE-11),
+ * and {@code status}, from which the edge derives its may-authenticate set. No {@link OperatorId}:
+ * login never needs it (ownership is {@code OperatorDirectory#operatorFor}'s phase). {@code admin}
+ * is the platform-admin flag the edge maps to {@code ROLE_ADMIN}, gating {@code /api/admin/**}.
  */
 public record OperatorCredential(String username, String passwordHash, OperatorStatus status, boolean admin) {
 }

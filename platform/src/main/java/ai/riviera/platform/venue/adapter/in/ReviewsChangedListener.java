@@ -8,22 +8,12 @@ import ai.riviera.platform.venue.application.RecomputeVenueRating;
 import ai.riviera.platform.venue.vocabulary.VenueId;
 
 /**
- * The {@code venue} module's reaction to its review set moving — a driving adapter listening for the
- * {@code ReviewsChanged} fact the {@code review} module announces (invariant #11: collaboration by
- * published event, never a call into {@code review}'s internals). It refreshes the venue's own
- * {@code rating_tenths}/{@code reviews_count}; {@code venue} stays the sole writer of its table.
- *
- * <p><strong>Asynchronous</strong> {@code @ApplicationModuleListener} (= {@code @Async} +
- * {@code @Transactional} + {@code @TransactionalEventListener(AFTER_COMMIT)}): the publication is
- * persisted by the Event Publication Registry when the submit's transaction commits, then this runs
- * after commit in its own transaction. A recompute failure therefore never rolls back a recorded
- * review, and an incomplete publication is re-submitted (at-least-once). Because delivery is
- * at-least-once, the recompute is <strong>idempotent</strong>: it re-reads the venue's whole review
- * set and overwrites, so a redelivered event lands on the same numbers.
- *
- * <p>Nothing is taken from the event but the venue id — the aggregate is re-read through
- * {@code review::api}, the same discipline {@code BookingConfirmedPayoutListener} applies to the
- * commission rate. DB-only work, so it runs on the shared executor.
+ * Refreshes the venue's {@code rating_tenths}/{@code reviews_count} on {@code review}'s
+ * {@code ReviewsChanged} event (invariant #11). {@code @ApplicationModuleListener}: runs after the
+ * review commits, in its own transaction, so a failure never rolls back a review; delivery is
+ * at-least-once, so the recompute is idempotent — it re-reads the whole review set through
+ * {@code review::api} and overwrites, taking only the venue id from the event.
+ * Rationale: RESPONSIBILITIES.md §venue.
  */
 @Component
 class ReviewsChangedListener {

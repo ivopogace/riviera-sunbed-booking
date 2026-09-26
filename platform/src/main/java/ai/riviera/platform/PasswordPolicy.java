@@ -6,18 +6,12 @@ import java.nio.charset.StandardCharsets;
 import java.util.Locale;
 
 /**
- * The one password policy every edge surface that accepts a new password enforces — tourist and
- * operator register, reset, set, and both self-service changes — plus the bootstrap credential's
- * length rule. A stateless static helper — no bean, no Spring Security type — so the same rule
- * applies without threading a collaborator through each constructor.
- *
- * <p>Policy (design D-8): {@value #MIN_LENGTH} characters to {@value #MAX_BYTES} bytes (bcrypt's input
- * cap), leading and trailing spaces significant, no composition rules; and the password may not
- * contain, case-insensitively, the service name or the account's own name (the email local part for
- * a tourist, the username for an operator). A length violation throws
- * {@link InvalidApiRequestException} ({@code 400 INVALID_REQUEST}); a blocklist hit throws
- * {@link BlockedPasswordException} ({@code 400 PASSWORD_CONTAINS_BLOCKED_TERM}) so a client can say
- * which rule failed. Length is checked first. Rationale: {@code RESPONSIBILITIES.md} § Platform edge.
+ * The one policy every edge surface accepting a new password enforces (register, reset, set, both
+ * self-service changes), plus the bootstrap credential's length rule: {@value #MIN_LENGTH}
+ * characters to {@value #MAX_BYTES} bytes (bcrypt's input cap), leading and trailing spaces
+ * significant, no composition rules, and neither the service name nor the account's own name,
+ * case-insensitively. Length is checked first ({@link InvalidApiRequestException}); a blocklist hit
+ * throws {@link BlockedPasswordException}. Rationale: RESPONSIBILITIES.md §Platform edge.
  */
 final class PasswordPolicy {
 
@@ -31,11 +25,9 @@ final class PasswordPolicy {
 	}
 
 	/**
-	 * Whether a current-password field was supplied at all — the one definition shared by both self-service
-	 * change endpoints, so the operator and customer twins cannot drift on what "supplied" means.
-	 * The test is <em>empty</em>, never blank: the policy forbids a stored password under
-	 * {@value #MIN_LENGTH} characters so {@code ""} can never be a real one, while leading and
-	 * trailing spaces are significant and must survive.
+	 * Whether a current-password field was supplied, as both self-service changes define it. Empty,
+	 * never blank: {@code ""} is under {@value #MIN_LENGTH} characters so never a real password,
+	 * while leading and trailing spaces are significant and must survive.
 	 */
 	static boolean isSupplied(String password) {
 		return password != null && !password.isEmpty();

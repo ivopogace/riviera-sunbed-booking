@@ -145,9 +145,8 @@ class JdbcOperators implements Operators {
 
 	/**
 	 * Both decided states ({@code ACTIVE} + {@code SUSPENDED}), so a suspended operator stays visible
-	 * and reinstatable — listing only ACTIVE would make suspension a one-way door. {@code contact_email}
-	 * is NULL for a directly-provisioned account (the bootstrap admin); {@link OperatorAccount} and the
-	 * console both treat it as optional.
+	 * and reinstatable. {@code contact_email} is NULL for a directly-provisioned account (the
+	 * bootstrap admin); {@link OperatorAccount} and the console both treat it as optional.
 	 */
 	@Override
 	public List<OperatorAccount> accounts() {
@@ -195,12 +194,9 @@ class JdbcOperators implements Operators {
 	}
 
 	/**
-	 * Move a PENDING operator to {@code target}, reporting the row it wrote. The conditional
-	 * {@code WHERE status = PENDING} is the single source of truth, so two concurrent approvals cannot
-	 * both win; {@code RETURNING} hands the winner the stored contact email and username in the same
-	 * statement, which is what lets {@code activate}'s caller mail an approved operator — and
-	 * {@code rejectPending}'s caller revoke a rejected one's sessions — without a second read and
-	 * without the loser being able to act at all.
+	 * Move a PENDING operator to {@code target}; present iff this call won. The status guard means
+	 * two concurrent approvals cannot both win, and {@code RETURNING} hands only the winner the
+	 * contact email + username in the same statement. Rationale: RESPONSIBILITIES.md §operator.
 	 */
 	private Optional<TransitionedRow> transitionFromPending(OperatorId operatorId, OperatorStatus target) {
 		return jdbc.sql("""
@@ -235,11 +231,9 @@ class JdbcOperators implements Operators {
 	}
 
 	/**
-	 * Move an operator between two statuses, returning its username on a hit. The {@code WHERE status =
-	 * :expected} guard is the single source of truth — two concurrent suspends cannot both win — and
-	 * {@code RETURNING username} hands the edge the principal name to revoke in the same statement, so
-	 * no window opens between the status write and the read of who was suspended. A miss is classified
-	 * by an existence read to distinguish "wrong status" from "no such operator".
+	 * Move an operator {@code from} → {@code to}, returning its username on a hit. The status guard
+	 * stops two concurrent suspends both winning; {@code RETURNING username} names whom to revoke
+	 * in the same statement. An existence read classifies a miss (wrong status vs no operator).
 	 */
 	private OperatorLifecycleOutcome transition(OperatorId operatorId, OperatorStatus from, OperatorStatus to) {
 		return jdbc.sql("""

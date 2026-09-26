@@ -12,19 +12,12 @@ import ai.riviera.platform.booking.vocabulary.CancellationWindow;
 import ai.riviera.platform.venue.vocabulary.SeasonClosure;
 
 /**
- * Names the service day's boundaries (invariant #4), all reasoned in {@code Europe/Tirane}
- * (invariant #6) from an injected UTC {@link Clock} — never the JVM default zone, never
- * {@code LocalDateTime.now()}: {@link #salesCloseAt}, when online sales for a date close, on the
- * day itself (venue-controlled); {@link #freeCancellationEndsAt}, the evening-before
- * boundary that now serves cancellation only; {@link #serviceDayOpensAt}, midnight opening the
- * stay, past which cancellation is refused outright (invariant #10); and {@link #serviceDayEndsAt},
- * the next midnight, the pay deadline's outer bound. Rationale: {@code RESPONSIBILITIES.md}
- * §{@code booking}.
- *
- * <p>Lives at the {@code application} root, beside {@code Bookings}: the module-wide day-boundary
- * authority, consulted by the reserve, request, view, refund and cancel slices alike. Not exported:
- * {@code application} is not a {@code @NamedInterface}, so Modulith still keeps it inside the
- * {@code booking} module (invariant #11).
+ * The module-wide day-boundary authority (invariant #4), in {@code Europe/Tirane} from an injected
+ * UTC {@link Clock}, never the JVM zone (invariant #6): {@link #salesCloseAt}, online sales close
+ * on the day itself; {@link #freeCancellationEndsAt}, the evening-before cancellation boundary;
+ * {@link #serviceDayOpensAt}, midnight, past which cancellation is refused (invariant #10); and
+ * {@link #serviceDayEndsAt}, the pay deadline's outer bound. {@code public} but not exported
+ * ({@code application} is no {@code @NamedInterface}). Rationale: RESPONSIBILITIES.md §booking.
  */
 @Component
 public class BookingCutoff {
@@ -131,13 +124,9 @@ public class BookingCutoff {
 	}
 
 	/**
-	 * The most recent service day already ended at {@code now}, for a sweep that selects rows by
-	 * {@code booking_date} rather than asking per booking.
-	 *
-	 * <p><strong>Static, and that is the contract:</strong> it is a pure projection of the caller's
-	 * own instant onto the Tirane civil day, so a sweep bounds every arm of one run against one
-	 * reading. An instance method here would read as clock-backed like the two-argument
-	 * {@code isBookable} and {@code cancellationWindow} overloads, and silently is not.
+	 * The last service day ended at {@code now}, for a sweep selecting by {@code booking_date}.
+	 * Static by contract: a pure projection of the caller's instant, so a sweep bounds every arm of
+	 * one run against one reading; an instance method would read as clock-backed.
 	 */
 	public static LocalDate lastEndedServiceDay(java.time.Instant now) {
 		return LocalDate.ofInstant(now, TIRANE).minusDays(1);

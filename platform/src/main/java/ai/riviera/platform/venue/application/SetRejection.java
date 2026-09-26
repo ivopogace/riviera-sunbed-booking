@@ -17,33 +17,25 @@ public enum SetRejection {
 	/** No set on the venue carries the given row label (the reprice and the rename share it). */
 	NO_SUCH_ROW,
 	/**
-	 * The venue's {@code set_version} was bumped by another writer (a concurrent reprice or replace) since
-	 * the tab loaded the map, so the conditional write is rejected rather than clobbering what is stored
-	 * (optimistic-concurrency loss). The token-guarded writes reach it — the reprice, the rename and
-	 * the batch apply; the per-set {@code addSet}/{@code editSet}/{@code removeSet} paths never do.
-	 * Maps to 409 {@code STALE_WRITE}.
+	 * Another writer bumped the venue's {@code set_version} since the tab loaded the map (optimistic
+	 * concurrency). Reached by the token-guarded writes — reprice, rename, batch apply — never by the
+	 * per-set {@code addSet}/{@code editSet}/{@code removeSet}. Maps to 409 {@code STALE_WRITE}.
 	 */
 	STALE_WRITE,
 	/**
-	 * Someone is still owed the set, so the requested layout write is refused (invariant #2): a hold
-	 * dated today or later, or a non-terminal booking. A <em>remove</em> asks on every call, an
-	 * <em>edit</em> only when it would reposition the set (price, tier and pool are never refused);
-	 * finished bookings refuse neither — they make a removal retire the set instead of deleting it
-	 * (ADR-0019). The per-set counterpart of {@code ReplaceLayoutOutcome.SetsInUse}, which names every
-	 * set a bulk save may not remove. Maps to 409 {@code SET_IN_USE}.
+	 * Someone is still owed the set — a hold dated today or later, or a non-terminal booking — so a
+	 * remove, or an edit that would reposition it, is refused (invariant #2); price, tier and pool
+	 * never are. Finished bookings refuse neither; they make a removal retire the set (ADR-0019).
 	 */
 	SET_IN_USE,
-	/** Another set already occupies the target {@code (grid_x, grid_y)} cell (invariant #12). */
+	/** Another set already occupies the target {@code (grid_x, grid_y)} cell. */
 	CELL_TAKEN,
 	/** Another set already occupies the target {@code (row_label, position_no)} slot. */
 	DUPLICATE_POSITION,
 	/**
-	 * Another row on the venue already carries the label a rename asks for, so the rename is refused
-	 * (rename-only). Broader than {@link #DUPLICATE_POSITION} on purpose: two rows can share a label
-	 * with no {@code (row_label, position_no)} pair colliding, which the database accepts — but the
-	 * tourist map, the price rail and the pricing tab all group sets by label, so the two physical
-	 * rows would silently read as one. Renaming a row to the label it already carries is a permitted
-	 * no-op, not a collision. Maps to 409 {@code ROW_NAME_TAKEN}.
+	 * Another row on the venue already carries the label a rename asks for. Broader than
+	 * {@link #DUPLICATE_POSITION}: the DB accepts two rows sharing a label, but the tourist map, price
+	 * rail and pricing tab group by label and would merge them. Renaming to its own label is a no-op.
 	 */
 	ROW_NAME_TAKEN
 }
