@@ -195,59 +195,12 @@ const CLS = {
 } as const;
 
 /**
- * The one shell every operator and admin route wears, mounted by the app shell (`app.html`) in
- * place of the tourist header whenever the active route carries `data.console`
- * ({@link ConsoleSection}). Its **section row** — the only sticky chrome, about 46px — holds the
- * brand (to `/operator`), the venue switcher (`operator-venue-switch.ts`), which IS the
- * venue-console section and is current-marked on `/operator/:venueId/*`, `Admin` as a section
- * link for admins (current on `/admin/*`; from `sm` up only — below it the More sheet's
- * `Admin console` row is the phone's route between consoles), and the account chip
- * (`operator-account-chip.ts`) or, signed out, the operator `Sign in` carrying the page as
- * `returnUrl`, and — from `sm` up, for anyone the palette renders for — the search glyph that opens
- * the ⌘K palette (`shared/console-palette.ts`), the accelerator over everything the row and rail
- * offer: this console's sections, the owned venues on the open tab, the other console, the account
- * page. The shell computes those rows ({@link ConsoleShell#paletteRows}) and mounts the palette once,
- * for any signed-in operator and, on admin routes, only past the admin gate — so a plain page has
- * it with no rail — as a sibling of the header, never inside it, whose
- * `backdrop-filter` would pin the `fixed` dialog to the row. Under the row sits the active section's rail: the venue console's six tabs with the
- * live Requests badge, or the admin console's tabs (`admin-console-tabs.ts`) — the latter only past
- * the admin gate (restored, signed in, admin), so a signed-out visitor on an admin URL is never
- * told which admin surfaces exist. Both rows draw the same marker one level apart
- * (`shared/tab-rail.ts`'s `TAB_RAIL_MARKER`), so section and tab read as one structure. The rail,
- * and the page under it, scroll with the page.
- *
- * <p><strong>Below `sm` the text rail gives way to the phone rail</strong> — CSS decides, both are
- * in the DOM: four equal slots of glyph over label, the first three destinations of the console's
- * table (Daily · Requests · Beach map, Operators · Email · Refunds) and a **More** button. Whenever
- * the current page is one of the secondaries, that slot wears the page's glyph, label and
- * `aria-current="page"` — the current page is never hidden inside a closed menu, which is what
- * answered the objection to an overflow menu — and otherwise reads `More`. It opens a bottom
- * sheet of the secondaries grouped as the desktop rail's dividers group them, plus the
- * cross-console row. The button's accessible name therefore follows the route. Escape, the
- * backdrop and a chosen row close the sheet onto the More button; a navigation that ends with it
- * open (Back, Forward) closes it too, and if a row held focus, focus lands on the More button once
- * the new page has rendered — or on the app shell's `<main>` when the destination has no phone rail.
- *
- * <p>Everything it renders it reads from the router and root singletons, so the routed page
- * publishes nothing: the venue id comes off the route chain (the app shell's walk hands it over),
- * the venue name through the `ConsoleVenueMap` snapshot the console's stats strip shares (so the
- * header's read costs no extra request; a superseded venue's late read is discarded by the epoch
- * guard — every console action is venue-scoped, so the row never names a venue the console is not
- * on), the badge from
- * `PendingRequestsStore`, the gate from `OperatorAuth`. `Your venue` stands in while the name read
- * is pending or failed.
- *
- * <p><strong>Below `sm` the row slides away on scroll-down past 64px and returns on scroll-up</strong>
- * — a phone keeps its viewport for the page; the `translate` is the whole mechanism, so `motion-reduce:`
- * removes the transition and the row simply appears. The signal only changes at a direction flip,
- * so a scroll frame with no change re-renders nothing.
- *
- * <p><strong>Sign-out is the shell's teardown</strong> (the chip only emits it): focus is parked on
- * the app shell's `<main>` before the chip unmounts (WCAG 2.4.3), the session is signed out, the
- * two console stores that outlive the console are dropped so the next operator on this device
- * inherits neither, and the app leaves for the operator sign-in — the guarded operator routes would
- * bounce anyway. The `contents` host keeps the app shell's flex column as the sticky header's
- * containing block.
+ * Operator/admin chrome for `data.console` routes ({@link ConsoleSection}), replacing the tourist
+ * header. Mount the ⌘K palette beside the header, never inside: its `backdrop-filter` pins a
+ * `fixed` dialog to the row. Admin rail and palette render only past the admin gate.
+ * Below `sm` the phone rail replaces the text rail; a current page under More lends that slot its
+ * glyph, label and `aria-current`. Sign-out parks focus on `<main>` before the chip unmounts
+ * (WCAG 2.4.3) and resets the console stores. The `contents` host keeps sticky's containing block.
  */
 @Component({
   selector: 'app-console-shell',

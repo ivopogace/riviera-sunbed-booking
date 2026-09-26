@@ -17,25 +17,12 @@ import ai.riviera.platform.operator.vocabulary.OperatorCredential;
 import jakarta.servlet.http.HttpServletRequest;
 
 /**
- * The signed-in operator's own credential surface: change your own password, proving the current one.
- * The tourist twin is {@link MyAccountController}.
- *
- * <p><strong>Why not under {@code /api/me/**}.</strong> That namespace is a method-agnostic
- * {@code hasRole(CUSTOMER)} rule, and {@link SecurityConfig} states outright that adding a non-customer
- * endpoint under it makes the rule wrong. This endpoint instead joins the other two operator-credential
- * surfaces ({@code login}, {@code register}) under {@code /api/auth/operator/**}, with its own
- * {@code OPERATOR} matcher and its own rate-limit budget.
- *
- * <p><strong>The bootstrap admin is deliberately refused.</strong> Its credential is env-managed:
- * {@link OperatorCredentialInitializer} re-stamps {@code RIVIERA_OPERATOR_PASSWORD} on every boot and
- * reads any difference as a genuine rotation, so a self-service change would be silently reverted at
- * the next deploy — and would revoke the admin's own session on the way. Its rotation path stays
- * "change the variable and restart". The guard keys on {@code riviera.operator.username},
- * <strong>not</strong> on {@link OperatorCredential#admin()}: a second admin approved through
- * {@code /api/admin/operators} is an admin but is not env-managed, and must keep self-service.
- *
- * <p>Platform-edge machinery (RV-BE-11): the {@code operator} module stores an opaque hash and never
- * encodes, verifies, or invalidates a session — all three happen here.
+ * The signed-in operator's own credential surface: change your own password, proving the current one
+ * (tourist twin: {@link MyAccountController}). Lives under {@code /api/auth/operator/**} with its own rate
+ * budget, never under {@link SecurityConfig}'s customer-only {@code /api/me/**} rule. The env-managed
+ * bootstrap admin is refused, keyed on {@code riviera.operator.username}, <strong>not</strong>
+ * {@link OperatorCredential#admin()}: an approved second admin keeps self-service. Hashing, verifying and
+ * session revocation stay at this edge (RV-BE-11). Rationale: docs/runbooks/operator-credential-provisioning.md.
  */
 @RestController
 class OperatorAccountController {
@@ -61,14 +48,9 @@ class OperatorAccountController {
 	}
 
 	/**
-	 * Wire DTO for an operator password change. Both fields are required in practice — unlike the customer
-	 * DTO, whose {@code currentPassword} is optional for an SSO-only account, because operators have no SSO
-	 * and therefore always have a password to prove. Only {@code newPassword} is enforced
-	 * <em>here</em> (§6b centralized-explicit style) → an absent or blank one is a malformed body,
-	 * {@code 400 INVALID_REQUEST}, whose length message reads correctly for an empty value. A missing
-	 * {@code currentPassword} is a <strong>different</strong> fault and {@link #changePassword} answers it
-	 * with its own code (#345): throwing here funnelled both into one code, so a caller with a perfectly good
-	 * new password was told to choose a different length.
+	 * Wire DTO for an operator password change. Only {@code newPassword} is enforced here (absent or empty →
+	 * {@code 400 INVALID_REQUEST}); a missing {@code currentPassword} is a different fault that
+	 * {@link #changePassword} answers with its own code — checking it here would collapse the two codes.
 	 */
 	record ChangePasswordRequest(String currentPassword, String newPassword) {
 		ChangePasswordRequest {
@@ -79,42 +61,9 @@ class OperatorAccountController {
 	}
 
 	/**
-	 * Change the signed-in operator's own password, evicting every <em>other</em> session the old credential
-	 * authorized and retiring the calling session's id. An omitted current password is
-	 * {@code 400 MISSING_CURRENT_PASSWORD} and a supplied-but-wrong one {@code 400 INVALID_CURRENT_PASSWORD}
-	 * (#345 — one code for both told a caller its fine new password was the wrong length); a new
-	 * password outside the length rule is {@code 400 INVALID_REQUEST} and one containing the username or
-	 * the service name {@code 400 PASSWORD_CONTAINS_BLOCKED_TERM}; the env-managed bootstrap admin is
-	 * {@code 409 BOOTSTRAP_CREDENTIAL_MANAGED}; a non-{@code ACTIVE} account is {@code 409 ACCOUNT_NOT_ACTIVE}.
-	 *
-	 * <p><strong>The missing-current check outranks the policy check</strong>, matching the order the page
-	 * validates its own fields in; it reads no stored credential, so the "policy before the credential
-	 * lookup" ordering the #342 review pinned is untouched. {@link MyAccountController#setPassword} resolves
-	 * the same doubly-invalid request the other way, because there the check cannot precede the lookup —
-	 * the rationale lives on that method, and both are pinned so neither flips unnoticed.
-	 *
-	 * <p><strong>The three success-path effects are ordered, not transactional</strong> (#344). The credential
-	 * write and the session deletes belong to different owners — a module's own transaction and Spring
-	 * Session's repository — so a {@code @Transactional} here would look atomic without being atomic, and
-	 * would push the edge's transaction boundary into module internals (RV-BE-11). Ordering achieves the
-	 * property that was actually wanted, and achieves it whatever those boundaries turn out to be: a
-	 * <strong>revoke</strong> failure — the transient class this fixes — now leaves either nothing done, or
-	 * other sessions signed out with the password unchanged, and the operator's natural retry recovers from
-	 * both. Written the other way round (as #326 shipped it) that same failure raised {@code 500}
-	 * <em>after</em> the hash had rotated, so the retry drew {@code INVALID_CURRENT_PASSWORD} and the other
-	 * device stayed live.
-	 *
-	 * <p><strong>What the ordering does not buy.</strong> A failure <em>after</em> the write still reports an
-	 * error with the password already changed — including Spring Session's save of the rotated id, which runs
-	 * in the filter after this method returns and so is outside any ordering decided here. Only a shared
-	 * transaction could close that, and there is none to share; the runbook therefore tells an operator to
-	 * try the NEW password before concluding a failed change was lost.
-	 *
-	 * <p><strong>The residual race.</strong> Between the revoke and the write, someone already holding the
-	 * old password could sign in and keep that session. The window is one credential UPDATE — the bcrypt
-	 * encode is hoisted above the revoke deliberately, since at ~80ms it would otherwise dominate it. That
-	 * is accepted as strictly smaller than the defect it replaces: a permanently un-revoked session paired
-	 * with an error message saying nothing happened.
+	 * Revoke every <em>other</em> session, write the new hash, rotate this session's id — ordered, not
+	 * transactional (no shared transaction exists): revoke first so its failure leaves the password unchanged,
+	 * accepting a one-UPDATE old-password sign-in window. Codes: docs/runbooks/operator-credential-provisioning.md.
 	 */
 	@PostMapping(CHANGE_PASSWORD_PATH)
 	ResponseEntity<?> changePassword(@RequestBody ChangePasswordRequest request, Authentication authentication) {
@@ -149,10 +98,9 @@ class OperatorAccountController {
 	}
 
 	/**
-	 * Verify the submitted current password against the <strong>stored hash</strong>. Never encode the
-	 * input and compare hashes: bcrypt re-salts, so that comparison is always false and would reject every
-	 * correct password. The same defect shipped twice before — #128 rotate-detection and the S8
-	 * set-password — which is why it is spelled out here rather than left to the reader.
+	 * Verify the submitted password against the <strong>stored hash</strong>. Never encode the input and
+	 * compare hashes: bcrypt re-salts, so that is always false and rejects every correct password (a defect
+	 * that has shipped twice).
 	 */
 	private boolean currentPasswordMatches(ChangePasswordRequest request, OperatorCredential credential) {
 		return credential.passwordHash() != null

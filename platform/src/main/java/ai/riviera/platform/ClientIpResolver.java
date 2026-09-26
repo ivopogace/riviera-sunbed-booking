@@ -13,52 +13,12 @@ import org.springframework.security.util.matcher.InetAddressMatchers;
 import jakarta.servlet.http.HttpServletRequest;
 
 /**
- * Resolves the client IP used as the per-IP rate-limit key. The backend runs behind a proxy, so the
- * originating client address arrives in a forwarding header rather than as the direct socket address —
- * but those headers are entirely client-supplied, so honouring one blindly lets a caller rotate a
- * forged value and mint a fresh bucket per request (ADR-0006 risk R-2).
- *
- * <p><strong>The deployed topology is not the obvious one</strong>, and the difference is what the
- * client-IP header below exists for: the real chain is <em>client → CDN edge → Render → app</em>, so
- * the hop Render appends is a public edge address that varies per request. Read
- * {@code docs/runbooks/rate-limit-client-ip.md} before changing anything here — it carries the
- * measurements, including why the CDN's ranges must stay in the trust list, and the end-to-end probe
- * that is the only check no unit or slice test can replace.
- *
- * <p><strong>Trust model.</strong> The resolver is constructed with a list of trusted-proxy CIDRs
- * ({@code riviera.ratelimit.trusted-proxies}) and the name of an edge-supplied client-IP header
- * ({@code riviera.ratelimit.client-ip-header}), and resolves in this order:
- * <ol>
- * <li>if the socket peer is <em>not</em> a trusted proxy, every forwarding header is ignored and the
- * socket address is the key — a direct client cannot talk its way out of its own bucket;</li>
- * <li>otherwise, if the configured client-IP header carries exactly one IP literal, that is the key.
- * A CDN generates this header from the connection it terminated rather than appending to a
- * client-supplied copy, so behind a trusted peer it is unforgeable and needs no chain walk. It
- * removes the walk, <em>not</em> the trust list — the peer must still be classified;</li>
- * <li>otherwise walk {@code X-Forwarded-For} right-to-left and key on the first <em>untrusted</em>
- * hop — correct wherever the app sits directly behind an appending proxy, and the reason a non-CDN
- * deployment needs no configuration change;</li>
- * <li>if nothing usable is found, fall back to the socket address.</li>
- * </ol>
- * The header is all-or-nothing on purpose: repeated or non-literal values are discarded rather than
- * guessed at, because taking the first of several would let a client-supplied copy become the key.
- * Each way of losing the preferred path warns once per process, so a topology change that silently
- * demotes resolution to the walk leaves a trace instead of needing a log-<em>absence</em> deduction.
- *
- * <p>A hop that is not an IP literal ({@code unknown}, a hostname, garbage) can never be proven
- * trusted, so it is treated as a client value; it is validated with {@link InetAddress#ofLiteral}
- * first so a hostile hop can never trigger a DNS lookup.
- *
- * <p>An empty trusted-proxy list means "trust no proxy" — the socket address is always the key and the
- * client-IP header is never read. The shipped default trusts loopback, the RFC1918 ranges, link-local
- * and their IPv6 equivalents, which is right for an app directly behind a private proxy hop.
- * <strong>It is not sufficient on the deployed topology</strong>, where the peer is a public CDN
- * address; there the list is widened per environment via the property
- * ({@code docs/deploy/cd-pipeline.md}).
- *
- * <p>The headers are partly user-controlled, so the returned value is stripped of control characters
- * and the Unicode line/paragraph separators before it can reach a logger — log-forging and
- * terminal-escape injection. The value is only ever a map key and, at most, a {@code debug} log field.
+ * The per-IP rate-limit key. Forwarding headers are client-supplied: believed blindly, a forged value mints a
+ * fresh bucket per request (ADR-0006 R-2). An untrusted socket peer is keyed on itself, every header ignored;
+ * behind a trusted peer the configured client-IP header wins if it is exactly one IP literal (repeated or
+ * non-literal is discarded, never guessed), else the first untrusted {@code X-Forwarded-For} hop walking
+ * right-to-left, else the peer. Unparseable hops are never trusted and never resolved via DNS; the key is
+ * stripped of control chars (log forging). Read docs/runbooks/rate-limit-client-ip.md before changing this.
  */
 final class ClientIpResolver {
 
@@ -137,12 +97,9 @@ final class ClientIpResolver {
 	}
 
 	/**
-	 * A configured client-IP header arriving from an <em>untrusted</em> peer is the fingerprint of the
-	 * trusted-proxy list no longer covering the upstream edge's ranges. The header is still ignored —
-	 * that is the bypass closure and is invariant-critical — but the warning names the likely cause on
-	 * the first affected request rather than leaving it to be deduced from a missing log line.
-	 * Interpolates only the header <em>name</em>, never its value, which is attacker-influenced whenever
-	 * this fires.
+	 * A client-IP header from an <em>untrusted</em> peer stays ignored (the bypass closure) but warns once: it
+	 * fingerprints a trusted-proxy list that is missing the edge's ranges. Interpolates only the header
+	 * <em>name</em>, never its attacker-influenced value.
 	 */
 	private void warnOnClientIpHeaderFromUntrustedPeer(HttpServletRequest request) {
 		if (clientIpHeader.isEmpty() || request.getHeader(clientIpHeader) == null) {
@@ -178,13 +135,10 @@ final class ClientIpResolver {
 	}
 
 	/**
-	 * One trusted-proxy CIDR, guarded by address family. The guard is ours to keep: Spring Security
-	 * 7.1's {@code IpInetAddressMatcher} compares the raw address bytes <em>without</em> checking that
-	 * both are the same length, so a 4-byte IPv4 candidate walked against a 16-byte IPv6 range either
-	 * matches across families by accident (any {@code 252.x} against {@code fc00::/7}) or indexes past
-	 * the end of the shorter array (any {@code 0.x.y.z} against {@code ::1/128}, an
-	 * {@code ArrayIndexOutOfBoundsException}). Every candidate here is attacker-supplied, so both
-	 * outcomes are reachable from the internet — the length check must happen before the delegate runs.
+	 * One trusted-proxy CIDR, guarded by address family — keep the guard: Spring Security 7.1's
+	 * {@code IpInetAddressMatcher} compares raw bytes without a length check, so an attacker-supplied IPv4
+	 * candidate against an IPv6 range matches by accident ({@code 252.x} vs {@code fc00::/7}) or throws
+	 * {@code ArrayIndexOutOfBoundsException} ({@code 0.x.y.z} vs {@code ::1/128}).
 	 *
 	 * @param addressLength byte length of the CIDR's network address: 4 for IPv4, 16 for IPv6
 	 */

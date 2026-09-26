@@ -19,36 +19,12 @@ import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 import org.springframework.stereotype.Component;
 
 /**
- * Production {@link MailDispatcher}: a small bounded in-memory pool that takes the SMTP round-trip off
- * the request thread, closing the timing account-enumeration oracle the real {@code SmtpMailer} opened on
- * the known-email branch of {@code register} / {@code forgot-password}.
- *
- * <p><strong>Its own pool, and bounded.</strong> Boot's shared {@code applicationTaskExecutor} carries
- * the payment→booking and booking→payout listeners, so a degraded relay sharing it could back up the
- * money path. Bounded for the complementary reason: a saturated dispatcher <em>drops</em> the send rather
- * than queueing without limit or — far worse — falling back to running it on the caller's thread, which
- * would re-open the very oracle this class exists to close. Why this vehicle drops where the registry
- * vehicle sheds, what each {@code reason} tag means, why every drop is logged rather than throttled per
- * episode, and what {@link ObservabilityMetrics#MAIL_RECOVERY_DROPPED} may be read as ("never ran", never
- * "refused"): {@code RESPONSIBILITIES.md} §{@code notification} and
- * {@code docs/runbooks/observability.md}.
- *
- * <p><strong>One drainer thread, and core == max on purpose.</strong> A {@code ThreadPoolExecutor} grows
- * past its core size only once the queue is <em>full</em>, so a larger max with this queue would add no
- * headroom until 100 sends were already backed up — an inviting number to "tune" and a misleading one to
- * read. Recovery mail is a handful of sends a day; a serial drain behind a 100-deep buffer is the whole
- * requirement.
- *
- * <p><strong>Everything that runs on this thread must be bounded</strong>, because one serial drainer
- * means one wedged task stalls the queue and then silently drops sends once the slots fill. Two things
- * run here, not one: the SMTP round-trip, whose connect/read/write timeouts are finite, and the
- * suppression-list read, whose {@code queryTimeout} is scoped to that one lookup in
- * {@code JdbcEmailSuppressions} — never set globally, where it would also bound {@code availability}'s
- * {@code INSERT … ON CONFLICT} claim, whose loser waits on the winner's index tuple lock (invariant #2).
- *
- * <p>The submitting request's logging context rides along through the shared {@link MdcTaskDecorator}, so
- * a failed send stays traceable to the request whose user is still waiting. Package-private (RV-BE-11);
- * pinned by {@code AsyncMailDispatcherTest}.
+ * Production {@link MailDispatcher}: its own bounded pool (never the shared money-path executor) taking the
+ * SMTP round-trip off the request thread to close the account-enumeration timing oracle. Saturated, it
+ * <em>drops</em> the send — never runs it on the caller's thread. One drainer, core == max on purpose: a
+ * bigger max adds no headroom until the queue is full. So everything run here must be bounded: SMTP timeouts,
+ * and the suppression read's adapter-scoped {@code queryTimeout} (never global: invariant #2). Rationale and
+ * {@code reason} tags: RESPONSIBILITIES.md §notification.
  */
 @Component
 class AsyncMailDispatcher implements MailDispatcher, DisposableBean {
@@ -135,18 +111,9 @@ class AsyncMailDispatcher implements MailDispatcher, DisposableBean {
 	}
 
 	/**
-	 * Account for a send that will never be delivered. Nothing here may throw or run the task: this runs on
-	 * the caller's request thread, whose response the send may not influence (D-8). Neither line carries the
-	 * address or the link (invariant #7); the correlation id rides the MDC, and the kind names which flow
-	 * was lost — never whose mail, which is the most that can be said without breaking that invariant.
-	 *
-	 * <p><strong>The cause is read after the rejection, and that race is one-directional.</strong>
-	 * {@code execute} throws before this can ask why, so a saturation rejection coinciding with a concurrent
-	 * {@code destroy()} is attributed to the shutdown; the converse cannot happen, {@code shutdown()}
-	 * latching its flag permanently. The error is therefore always <em>under</em>-reporting saturation while
-	 * a pod goes away — a deploy cannot manufacture a {@link #REASON_SATURATED} increment. Do not "fix" it
-	 * by reading the flag before {@code execute}: that costs a read on every send and is equally racy, since
-	 * no JDK primitive makes reject-and-classify atomic.
+	 * Count and log a rejected send. Runs on the caller's thread, so it must never throw or run the task (D-8);
+	 * no address or link in the line (invariant #7). A rejection racing {@code destroy()} reads as shutdown,
+	 * never saturation — do not "fix" by checking the flag before {@code execute}: equally racy.
 	 */
 	private void recordDrop(MailKind kind, TaskRejectedException cause) {
 		if (executor.getThreadPoolExecutor().isShutdown()) {
@@ -167,19 +134,9 @@ class AsyncMailDispatcher implements MailDispatcher, DisposableBean {
 	}
 
 	/**
-	 * Account for every send the drain window did not reach. {@code shutdown()} above has already awaited
-	 * that window and given up, so anything still queued is a mail nobody will send and nothing else will
-	 * see: {@code execute} returned normally, the task never ran, and this vehicle keeps no durable copy,
-	 * so {@code riviera.outbox.pending} has nothing to carry either.
-	 *
-	 * <p><strong>Draining is what makes the count true, and it is not an interrupt.</strong> The pool is
-	 * still <em>running</em> here — awaiting termination timed out, it did not stop the threads — so a send
-	 * merely counted and left in place could still execute, and the counter would then report a loss that
-	 * did not happen. {@code drainTo} makes the count and the loss the same event while touching only the
-	 * queue. Racing the drainer is harmless in both directions: a {@code BlockingQueue} hands each task to
-	 * exactly one of {@code poll} and {@code drainTo}, so it is run <em>xor</em> counted, never both and
-	 * never neither. The send caught <em>running</em> is deliberately not counted — it may already have
-	 * handed the message to the relay, the ambiguity that made giving up the right call.
+	 * Count every send still queued when the drain window expired. Use {@code drainTo}, not a peek: the pool is
+	 * still running, so each task is run <em>xor</em> counted. The send caught running is not counted — it may
+	 * already have reached the relay.
 	 */
 	private void accountForAbandonedSends() {
 		List<Runnable> abandoned = new ArrayList<>();
@@ -188,16 +145,9 @@ class AsyncMailDispatcher implements MailDispatcher, DisposableBean {
 	}
 
 	/**
-	 * One line per loss, under the abandoned send's <em>own</em> context: this runs on the thread closing
-	 * the application context, which has no request of its own to name. Invariant #7 keeps the address and
-	 * the link out of the line, so the borrowed correlation id and the kind are all that identify it.
-	 *
-	 * <p>The kind is read back through two wrappers: {@link MdcTaskDecorator}'s carrier, applied by the pool
-	 * inside {@code execute}, around the {@link KindedSend} this class queued. {@link #dispatch} is the only
-	 * path onto this queue and the executor is private here, so the unmatched branch is a defect in a future
-	 * edit rather than a reachable state. It is reported as one instead of being swallowed, and deliberately
-	 * invents <strong>no</strong> tag value for the case: a documented vocabulary gaining a member that
-	 * means "we lost track" is how the next runbook sentence becomes false.
+	 * Count and log one loss under the queued send's <em>own</em> MDC context (this shutdown thread has none),
+	 * never the address or link (invariant #7). A task that is not a {@link KindedSend} is a defect, reported
+	 * as such — never invent a {@code reason} tag value for it.
 	 */
 	private void recordAbandonment(Runnable queued) {
 		if (!(MdcTaskDecorator.payloadOf(queued) instanceof KindedSend(MailKind kind, Runnable ignored))) {

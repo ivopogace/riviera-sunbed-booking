@@ -14,43 +14,12 @@ import { PhotoView } from './venue-views';
 const SWIPE_THRESHOLD_PX = 40;
 
 /**
- * A crossfading photo slideshow: a filled slide stack with a dot rail, prev/next stepping, arrow
- * keys and touch swipe, wrapping at either end. The host fills its nearest positioned ancestor, so
- * consumers drop it into any photo band; with no photos it renders nothing.
- *
- * <p>Two control placements, because a control nested inside a link is invalid HTML and an axe
- * failure. With `ownControls` (the beach-map banner, the lightbox) it renders its own step buttons,
- * its dot rail as an APG slide picker, and the live region announcing the position — so never place
- * that mode inside a link or an `aria-hidden` subtree. Without it (the Discover card, whose whole
- * card is an `<a>`) the dots stay inert `<span>`s, the host drives {@link prev}/{@link next} from
- * buttons outside the link, and the host mounts {@link positionLabel} in its own live region.
- *
- * <p>Only slides the tourist has reached are in the DOM: an `opacity-0` slide stacked over the
- * visible one still intersects the viewport, so `NgOptimizedImage`'s lazy loading would not spare
- * one byte. Neighbours are warmed from the current slide's `load`, and only once stepping has
- * begun, which is what holds an idle Discover grid to one request per card. The first step
- * therefore crossfades to an image still arriving.
- *
- * <p>The chrome carries its OWN backing rather than a host's scrim: it paints above that scrim and
- * an uploaded photo can be any colour. Alphas proven at 3:1 in `photo-slideshow.contrast.spec.ts`.
- * The current slide is marked by a wider PILL, not a brighter dot — the inactive dot must clear 3:1
- * against its rail and the active one against the inactive, and two such steps do not fit between
- * the rail and white, so WCAG 1.4.11's state cue is carried by shape.
- *
- * <p>Picker geometry, to re-derive if any of it moves: each dot is a 44 px control with the dot
- * painted inside it, so dot centres sit 44 px apart and the widest dot is the 18 px active pill —
- * the strip spans 13…(44n − 13) and the rail's pill is that plus 7 × 5 px of padding, held at the
- * widest case so the rail cannot resize mid-step. At most three photos exist (`PhotoSlot`).
- *
- * <p>The dot rail sits AFTER the step buttons in the template: both take `z-10`, so DOM order is
- * the tie-break, and any overlap on a short band must fall to the dots — a step button's chip is
- * opaque where its padding is not. The position live region stays mounted for the component's whole
- * life rather than inside the branch it announces; the shape and why the alternative reads as
- * silence are `shared/load-announcer.ts`.
- *
- * <p>`testId` prefixes the hooks: `{testId}-img` (first slide), `{testId}-slide-img` (rest),
- * `{testId}-dots`, and with own controls `{testId}-prev`/`{testId}-next`, `{testId}-dot-{i}` and
- * `{testId}-position`. `name` gives the control labels their subject.
+ * Wrapping crossfade slideshow (dots, prev/next, arrows, swipe) filling its positioned ancestor.
+ * `ownControls` adds step buttons, an APG dot picker and a position live region — never inside a
+ * link or `aria-hidden` tree; otherwise the host drives {@link prev}/{@link next} and announces
+ * {@link positionLabel} itself. Only reached slides mount: lazy loading can't skip an `opacity-0`
+ * slide. Chrome has its own 3:1 backing; the active dot is a wider pill (shape is the state cue).
+ * Picker: 44 px dots, 18 px pill, 13 px rail inset; it follows the step buttons so it wins overlaps.
  */
 @Component({
   selector: 'app-photo-slideshow',
@@ -102,7 +71,7 @@ const SWIPE_THRESHOLD_PX = 40;
           [label]="'Next photo, ' + name()"
           (stepped)="next()"
         />
-        <!-- The APG carousel's slide picker; its geometry is derived in the class doc. -->
+        <!-- The APG carousel's slide picker; its geometry is in the class doc. -->
         <div
           class="absolute right-[7px] bottom-0 z-10 flex items-center"
           [attr.data-testid]="testId() + '-dots'"
@@ -161,15 +130,9 @@ export class PhotoSlideshow {
   readonly ownControls = input(false, { transform: booleanAttribute });
 
   /**
-   * What share of the viewport a slide occupies, for the `srcset` fallback. Left unset it becomes
-   * `100vw`, which over-states every band narrower than the page and makes the browser fetch the
-   * widest candidate, so a host in a grid or a breakout column passes its own — a letterboxing one
-   * takes it from `CONTAIN_SIZES` in `shared/photo-url.ts`, which holds the rules any value must
-   * satisfy.
-   *
-   * <p>Only the fallback: the directive prefixes `auto,` on a lazy image, and a browser honouring
-   * `sizes="auto"` measures the laid-out box instead. Must be constant for a given instance —
-   * `assertNoPostInitInputChange` covers `sizes`.
+   * The `srcset` fallback `sizes`; unset means `100vw`, which fetches the widest candidate, so a
+   * narrower host passes its own (letterboxing hosts: `CONTAIN_SIZES` in `shared/photo-url.ts`).
+   * Constant per instance: `NgOptimizedImage` throws on a post-init change.
    */
   readonly sizes = input<string>();
 
@@ -178,14 +141,9 @@ export class PhotoSlideshow {
   readonly contain = input(false, { transform: booleanAttribute });
 
   /**
-   * Mark the first slide as the page's LCP image (`fetchpriority=high`, eager, a preload link) —
-   * angular.dev's image guide asks for exactly one such image per page, and warns in the console
-   * when the LCP element is not it. The beach-map banner sets it; the Discover grid deliberately
-   * does not (24 competing preloads is the harm the attribute exists to prevent) and neither does
-   * the lightbox, which only ever opens over an already-painted page.
-   *
-   * <p>Must be constant for a given instance: `NgOptimizedImage` throws on a post-init `priority`
-   * change (`assertNoPostInitInputChange`). Every call site sets it statically.
+   * Mark the first slide as the page's LCP image (`fetchpriority=high`, preload) — at most one per
+   * page, so only the beach-map banner sets it, never a grid of cards or the lightbox.
+   * Constant per instance: `NgOptimizedImage` throws on a post-init change.
    */
   readonly priority = input(false, { transform: booleanAttribute });
 
@@ -194,13 +152,8 @@ export class PhotoSlideshow {
   readonly startIndex = input(0);
 
   /**
-   * The photo list's CONTENT, as the reset key for everything below.
-   *
-   * <p>Keying on the `photos` input itself would key on array IDENTITY, and `pages/home`'s card
-   * views are rebuilt inside a `computed()` — every re-derivation of the venue list handed the
-   * component a fresh array holding the same URLs and snapped every card back to slide 1
-   * mid-browse. Joining the baseline URLs is enough: they are content-addressed, so a list whose
-   * URLs all match in order IS the same slideshow, candidates included.
+   * Reset key for the signals below: the content-addressed baseline URLs, not array identity —
+   * hosts rebuild the array in a `computed()`, which would snap every card back to slide 1.
    */
   private readonly photosKey = computed(() =>
     this.photos()
@@ -286,13 +239,9 @@ export class PhotoSlideshow {
   }
 
   /**
-   * ArrowLeft/ArrowRight step the band whenever focus is inside it (WCAG 2.1.1).
-   *
-   * <p>`stopPropagation` is load-bearing, not tidiness: a host may bind the same keys on an
-   * ancestor to catch focus that never reaches us — {@link PhotoLightbox} does, because the
-   * dialog opens focus on a close button that is our SIBLING. Our own step buttons and dot
-   * picker are our DESCENDANTS, so without this an arrow pressed on one bubbles into that
-   * ancestor handler too and advances two slides for one keypress.
+   * ArrowLeft/ArrowRight step the band whenever focus is inside it (WCAG 2.1.1). `stopPropagation`
+   * is load-bearing: {@link PhotoLightbox} binds the same keys on an ancestor, so without it one
+   * keypress on our buttons would step twice.
    */
   protected onArrow(event: Event, delta: 1 | -1): void {
     if (this.photos().length < 2) {
@@ -305,14 +254,9 @@ export class PhotoSlideshow {
   }
 
   /**
-   * Begin a gesture.
-   *
-   * <p>`isPrimary` is consulted ONLY to break the tie when a gesture is already in flight: a
-   * non-primary pointer there is a genuine second finger, so the gesture is dropped rather than
-   * one finger's release measured against the other's origin. Any other press starts fresh, which
-   * is what keeps a `pointerup` the browser never delivered (and never cancelled) from swallowing
-   * the next real swipe — and what keeps the band working if `isPrimary` is not populated at all,
-   * rather than silently refusing to swipe.
+   * Begin a gesture. `isPrimary` only breaks a tie with a gesture in flight (a second finger drops
+   * it); any other press starts fresh, so a lost `pointerup` or an unpopulated `isPrimary` never
+   * blocks the next swipe.
    */
   protected onPointerDown(event: PointerEvent): void {
     this.swipeConsumedClick = false;
