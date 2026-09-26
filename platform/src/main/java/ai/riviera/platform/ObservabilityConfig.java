@@ -36,25 +36,9 @@ class ObservabilityConfig {
 	}
 
 	/**
-	 * The outbox-backlog gauge (signal 1). Under {@code completion-mode=archive} the live
-	 * {@code event_publication} table holds only <em>incomplete</em> publications (completed ones move
-	 * to {@code event_publication_archive}), so a non-zero count is undelivered work — a listener that
-	 * keeps failing, or an outbox draining slower than it fills. Read-only {@code count(*)} evaluated at
-	 * scrape time; the registry table is framework infra owned by no module (invariant #2's
-	 * {@code set_availability} sole-writer rule is untouched).
-	 *
-	 * <p><strong>"Evaluated at scrape time" is the whole reason this read is bounded (#395).</strong>
-	 * Micrometer invokes the supplier on whichever thread reads the gauge, and one of those readers is
-	 * {@code MoneyPathAlertCheck} on the scheduler thread — so what reads like pure registry access is a
-	 * {@code count(*)} against the one table a stuck registry listener bloats. Both the issue and that
-	 * class's own Javadoc claimed it "adds no query of its own"; it does, and an unbounded one would pin
-	 * the money-path alarm to a lock wait. The other reader is an {@code /actuator/prometheus} scrape,
-	 * on a request thread, where the same bound is equally welcome.
-	 *
-	 * <p>On timeout the gauge reports {@code NaN} rather than propagating — Micrometer swallows a
-	 * supplier failure by design — so that tick's alert evaluation sees no backlog and the next one
-	 * retries five minutes later. That is the accepted trade: a missed alert evaluation is recoverable,
-	 * a pinned thread and connection are not.
+	 * Outbox-backlog gauge: under {@code completion-mode=archive}, {@code event_publication} holds only incomplete
+	 * publications, so non-zero is undelivered work. The {@code count(*)} runs on the reader's thread — including
+	 * {@code MoneyPathAlertCheck}'s scheduler — so it is bounded; a timeout reads {@code NaN} and the next tick retries.
 	 */
 	@Bean
 	MeterBinder outboxBacklogMetric(DataSource dataSource, ScheduledQueryTimeout queryTimeout) {
@@ -66,15 +50,9 @@ class ObservabilityConfig {
 	}
 
 	/**
-	 * A {@link JdbcClient} with a finite {@code queryTimeout}, scoped to this one gauge — the #386
-	 * idiom ({@code JdbcEmailSuppressions#boundedClient}), applied to scheduled work by #395. Scoped
-	 * rather than global on purpose: {@code spring.jdbc.template.query-timeout} would bound every
-	 * statement in the application, including the {@code INSERT … ON CONFLICT (set_id, booking_date)}
-	 * claim whose loser waits on the winner's index tuple lock — turning invariant #2's serialization
-	 * point into a source of spurious aborts under exactly the contention it exists for.
-	 * {@code ScheduledWorkArchitectureTest} fails the build if that global is ever set. The value
-	 * itself is range-checked by {@link ScheduledQueryTimeout}, which is where the "0 means no limit"
-	 * trap is written down.
+	 * A {@link JdbcClient} with a finite {@code queryTimeout} ({@link ScheduledQueryTimeout}), scoped to this gauge. Never set
+	 * the global {@code spring.jdbc.template.query-timeout}: it would bound the invariant #2 claim, whose loser waits on the
+	 * winner's lock, into spurious aborts ({@code ScheduledWorkArchitectureTest} fails the build on it).
 	 */
 	private static JdbcClient boundedClient(DataSource dataSource, int queryTimeoutSeconds) {
 		JdbcTemplate bounded = new JdbcTemplate(dataSource);

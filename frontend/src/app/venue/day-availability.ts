@@ -15,21 +15,9 @@ export type DayAvailabilityState = (typeof DAY_AVAILABILITY_STATES)[number];
 const LOW_FRACTION = 0.25;
 
 /**
- * The opaque fill each state wears, in the `map-tile.ts` shape and for the same reason: one home
- * for what a day looks like, so no second hand-copied set of tokens can drift from it.
- *
- * <p>Each entry carries its own focus-ring utility rather than the base class carrying one: two
- * competing `outline-color` utilities on one element resolve by stylesheet order rather than class
- * order, so one ring per fill, on the fill's own class, is the only arrangement that is
- * deterministic. The ring is the calendar's own accent and not the `@layer base` ring's
- * `--riv-accent-ink`: that value coincides with the chosen day's ring in both palettes, and a
- * focused chosen cell must not wear one colour twice.
- *
- * <p>The fills are **opaque, not translucent** — deliberately, and in both palettes. A calendar
- * day composited over a theme-dependent glass would need its contrast proved once per theme and
- * once per surface; an opaque fill makes the proof a plain ink/fill pair, so theming the palette
- * doubled the pairs and nothing else (`availability-calendar.contrast.spec.ts`). The values live in
- * `tailwind.css`, one set per palette; their test-side mirror is `src/testing/calendar-tints.ts`.
+ * Each state's opaque fill (each contrast proof a plain ink/fill pair per palette; mirror
+ * `src/testing/calendar-tints.ts`) with its own focus ring, as two `outline-color` classes resolve
+ * by stylesheet order. Ring not `--riv-accent-ink`: docs/design/colour-literal-token-audit.md.
  */
 export const DAY_TINT_CLASS: Record<DayAvailabilityState, string> = {
   free: 'bg-riv-calendar-free-fill focus-visible:outline-riv-calendar-accent',
@@ -39,37 +27,24 @@ export const DAY_TINT_CLASS: Record<DayAvailabilityState, string> = {
 };
 
 /**
- * The chosen day's mark: an inset ring over whatever tint the day already wears, never a fill
- * replacing it. Availability and selection are orthogonal facts, and an inverted fill destroys the
- * first to show the second — it takes the tint away, and with it the capacity bar, from the one day
- * the tourist is most likely to be weighing.
- *
- * <p>A composed class rather than an `aria-selected:` Tailwind variant, because `aria-selected` is
- * not permitted on `role="button"` (axe `aria-allowed-attr`): the grid states the selection on the
- * `gridcell` that owns it, so the button has nothing to key a variant off. It uses `box-shadow`
- * rather than a border so the ring costs no layout, and leaves `outline` to the focus ring.
+ * The chosen day's mark: an inset ring over the day's tint, never a fill hiding its availability.
+ * Not an `aria-selected:` variant — that attribute is not allowed on `role="button"` (axe
+ * `aria-allowed-attr`); `box-shadow` costs no layout and leaves `outline` to the focus ring.
  */
 export const DAY_SELECTED_CLASS =
   'shadow-[inset_0_0_0_2px_var(--riv-calendar-selected-ring)] font-bold';
 
 /**
- * The phrases a day speaks when it has no integers to speak. A day that HAS readable counts says
- * them instead — a tint word is a summary, and #761 asks for the exact numbers.
- *
- * <p>There is deliberately no per-state legend here: the popover renders no key, because the tint
- * is reinforcement rather than the carrier (the capacity bar is a length and the accessible name
- * carries the integers), so a key would be a table mapping colours to meanings that nothing needs.
+ * Phrases for a day with no integers to speak; a day with readable counts speaks the exact numbers.
+ * No per-state legend: the tint only reinforces the capacity bar and the accessible name.
  */
 const NO_SETS_FREE = 'no sets free';
 const AVAILABILITY_UNKNOWN = 'availability unknown';
 const NOT_BOOKABLE = 'not bookable';
 
 /**
- * How busy `day` is, or `unknown` when it cannot be read as a share of the venue's sets.
- *
- * <p>It fails **closed**: a venue with no sets, a negative count, or a `free` above `total` all
- * resolve to `unknown` rather than to the inviting tint. A day the client cannot understand must
- * never look like an offer — the counts are a snapshot and only the claim decides (invariant #2).
+ * How busy `day` is. Fails closed to `unknown` (no sets, a negative count, `free` above `total`):
+ * an unreadable day must never look like an offer; only the claim decides (invariant #2).
  */
 export function dayAvailabilityState(day: DailyAvailability | undefined): DayAvailabilityState {
   if (!isReadable(day)) {
@@ -91,16 +66,9 @@ export function freeFraction(day: DailyAvailability | undefined): number {
 }
 
 /**
- * What a screen reader says for one day cell: the civil day, its availability in words, and
- * whether it is the day the map is showing.
- *
- * <p>A selectable day with readable counts speaks the **exact integers** ("12 of 30 sets free"),
- * never the tint's summary word. A day that cannot be booked speaks that instead of a count — the
- * endpoint answers past days, but a free/total figure on a day nobody can book reads as an offer.
- *
- * <p>Selection is spoken here rather than left to the `gridcell`'s `aria-selected`, because the
- * button is what takes focus and assistive tech reports the state of the focused object — a
- * selection parked on an ancestor that never receives focus is never heard.
+ * A day cell's screen-reader name: civil date plus exact integers ("12 of 30 sets free"), or "not
+ * bookable" for an unselectable day. Selection is spoken here, not via the `gridcell`'s
+ * `aria-selected`: assistive tech reports the focused button, and the gridcell never takes focus.
  */
 export function dayAccessibleName(
   isoDate: string,
@@ -121,13 +89,9 @@ export function dayAccessibleName(
 }
 
 /**
- * Whether `day`'s counts are a share of a real set inventory, and so safe to paint.
- *
- * <p>The integer checks come before the range ones because `>=` and `<=` coerce: `null` and
- * `"0"` both satisfy `free >= 0 && free <= total`, and a `null` free would then paint the amber
- * "few left" fill and speak "null of 30 sets free" on a sold-out day. Today's server sends
- * `int`s, so this is a contract the wire cannot currently break — which is exactly why the
- * guard has to state it rather than rely on it.
+ * Whether `day`'s counts are a share of a real set inventory, and so safe to paint. The integer
+ * checks must precede the range checks: `>=`/`<=` coerce, so a `null` free would pass and paint
+ * "few left" on a sold-out day.
  */
 function isReadable(day: DailyAvailability | undefined): day is DailyAvailability {
   return (

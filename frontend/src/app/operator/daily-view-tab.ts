@@ -78,10 +78,9 @@ interface ArrivalChip {
 }
 
 /**
- * The arrivals badge per settled status; a still-expected `CONFIRMED` row shows none. Only the
- * wording and the test hook are local — the modifier is read from `STATUS_META`, the one map that
- * owns the status→modifier vocabulary, so a rename there cannot silently drop this chip to the
- * neutral fallback fill.
+ * The arrivals badge per settled status; a still-expected `CONFIRMED` row shows none. The modifier
+ * is read from `STATUS_META` (the one status→modifier map), so a rename there can't silently drop
+ * this chip to the neutral fallback.
  */
 const ARRIVAL_CHIPS: Partial<Record<BookingStatus, ArrivalChip>> = {
   COMPLETED: {
@@ -104,34 +103,12 @@ interface CheckInNotice {
 }
 
 /**
- * The Daily view tab — the operator console's restyle of the staff
- * daily-operations surface: a sea-facing availability grid (tap a FREE set to mark a walk-in, tap a
- * `STAFF_MARKED` set to release; an online-booked set is locked), a Europe/Tirane date picker, and
- * an Arrivals card listing the day's bookings — confirmed, checked-in and no-show — with their
- * booking-code chips.
- *
- * <p>A restyle only — <strong>no change to the availability invariants</strong>. It is the second
- * driving adapter onto the existing owner-asserted staff mark/release writes (invariant #13):
- * `availability` stays the single writer per `(set, date)` (invariant #2) and the online/walk-in
- * pools stay separate (invariant #3). Tile classification comes from the owner availability-states
- * read — `BOOKED_ONLINE` covers any online hold, paid or not, so an unpaid hold renders locked,
- * never as a phantom walk-in. Tap state is optimistic-but-reconciled — the tile flips immediately, the
- * write is sent, then the map + bookings + states are re-read so server truth replaces the guess (the
- * server release deletes only a `STAFF_MARKED` row, so a mis-tap on an online-held tile is
- * a safe no-op). Reads `:venueId` from the parent route via {@link parentVenueId} (child routes don't
- * inherit it), the same as {@link import('./pricing-tab').PricingTab}. Wears the
- * console theme (porcelain or dark, pinned on the app shell's host); glass via {@link CardGlass}; the shared sea-facing
- * chrome via {@link BeachMapCanvas}. Tile state is conveyed by an accessible name, not colour alone
- * (WCAG AA); codes are bearer credentials (invariant #7), shown for arrival verification, never logged.
- *
- * <p>The one write beyond the mark/release path is the on-today kill switch: "close today's
- * online sales now" flips the venue's STANDING sales-close setting to 00:01 (invariant #4)
- * through {@link OperatorConsoleService#closeOnlineSalesNow}'s profile GET→PATCH — no per-day
- * override — behind an inline two-step confirm; either outcome re-reads the day so the header
- * reconciles with the map read's {@code salesOpen} verdict.
- *
- * <p>The Request-to-Book queue is deliberately out of scope — it is the Requests tab's job. This
- * tab does daily-ops only.
+ * The Daily view tab: sea-facing availability grid (tap FREE → walk-in mark, tap `STAFF_MARKED` →
+ * release; `BOOKED_ONLINE`, unpaid holds included, is locked), Europe/Tirane date picker, and the
+ * day's Arrivals with booking codes (invariant #7: shown for verification, never logged). Tile
+ * state is an accessible name, not colour alone. Taps are optimistic, then map + bookings + states
+ * are re-read so server truth wins. "Close today's online sales" sets the STANDING sales-close to
+ * 00:01 (invariant #4; {@link OperatorConsoleService#closeOnlineSalesNow}), no per-day override.
  */
 @Component({
   selector: 'app-daily-view-tab',
@@ -448,10 +425,9 @@ export class DailyViewTab {
   }
 
   /**
-   * Close today's online sales via the STANDING setting (the service's GET→PATCH; invariant #4) —
-   * no per-day override exists. Either outcome re-reads the day so the header's button state
-   * reconciles with the map read's `salesOpen` verdict; a lost `STALE_WRITE` race says try again
-   * rather than auto-retrying (the operator should see what changed first).
+   * Close today's online sales via the STANDING setting (invariant #4; no per-day override). Either
+   * outcome re-reads the day so the header reconciles with the map's `salesOpen`; a lost `STALE_WRITE`
+   * race says try again rather than auto-retrying, so the operator sees what changed first.
    */
   protected onConfirmCloseSales(): void {
     const venueId = this.venueId();

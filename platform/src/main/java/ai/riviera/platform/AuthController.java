@@ -23,27 +23,12 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 
 /**
- * Session login + registration + current-principal endpoints (design D-1/D-2/D-8).
- * A principal signs in ONCE here and rides the resulting {@code SESSION} cookie; logout is the framework
- * {@code LogoutFilter} configured in {@link SecurityConfig} (not a handler here). Platform-edge login
- * machinery — the {@code operator}/{@code customer} modules only supply credentials/identity via their
- * {@code api/} ports (RV-BE-11, pinned by {@code OperatorAuthPlacementTests} / {@code CustomerAuthPlacementTests}).
- *
- * <p><strong>Controller-based on purpose</strong> (a grill-gate re-decision): driving the
- * framework {@link AuthenticationManager} from a controller keeps D-1's "no custom token filters"
- * intact <em>and</em> routes a failed login through the single {@link ApiErrorHandler} advice —
- * so the 401 lands on the RFC-7807 contract instead of a filter's bare status.
- *
- * <p><strong>Two principal types, two managers</strong> (D-2). The paths are principal-typed
- * ({@code /api/auth/operator/login}, {@code /api/auth/customer/login|register}); each login drives its
- * OWN {@link AuthenticationManager} (operator: S1's auto-configured bean; customer: the explicit
- * {@code customerAuthenticationManager}) so a credential in one namespace can never authenticate as the
- * other (AC-5). {@code /me} and {@code /logout} are principal-agnostic — {@code /me} derives the
- * {@code principalType} from the authenticated authorities.
- *
- * <p>Session fixation (D-1): a login arriving with a live session rotates its id before the
- * authenticated context is saved, so a pre-login id an attacker may have planted never becomes an
- * authenticated session. Pinned by {@code AuthSessionIT.sessionIdRotatesOnLogin}.
+ * Session login, registration and {@code /me}: edge login machinery; the {@code operator}/{@code customer} modules
+ * supply only identity through their {@code api/} ports. Logout is the {@code LogoutFilter} in {@link SecurityConfig}.
+ * A controller drives each {@link AuthenticationManager} so a failed login reaches {@link ApiErrorHandler} as an RFC-7807
+ * {@code 401}. Two principal types, each with its OWN manager, so a credential in one namespace never authenticates as
+ * the other; a login rotates any existing session id before saving the context (fixation). Auth endpoints are
+ * non-enumerating and constant-time: RESPONSIBILITIES.md §Platform edge (settled).
  */
 @RestController
 class AuthController {
@@ -56,11 +41,9 @@ class AuthController {
 	private static final String ADMIN_ROLE_AUTHORITY = "ROLE_ADMIN";
 
 	/**
-	 * A throwaway {@code {bcrypt}} hash computed ONCE at construction from a fixed non-secret string
-	 * (never a literal in source — so it is not an exposed credential), used solely to burn an
-	 * equivalent bcrypt verify on the already-registered branch of {@link #register} so a fresh vs. a
-	 * taken email take the same time (closes the timing-enumeration oracle, D-8). It authenticates
-	 * nothing; its cost matches the delegating encoder's default because the encoder produced it.
+	 * A {@code {bcrypt}} hash of a fixed non-secret string, computed once (never a literal hash in source); it
+	 * authenticates nothing — {@link #register} burns a verify against it on the already-registered branch so a fresh and a
+	 * taken email take the same time (D-8).
 	 */
 	private final String timingEqualizerHash;
 
@@ -136,15 +119,11 @@ class AuthController {
 	}
 
 	/**
-	 * The signed-in principal as the FE sees it (login/register responses and {@code /me} share it).
-	 * {@code emailVerified} is the customer's soft email-verification state for the "please
-	 * verify" nudge; {@code null} for an operator principal (not a customer concept). A fresh registration
-	 * is always {@code false}, and the neutral already-registered branch also reports {@code false} so the
-	 * response stays byte-identical (non-enumeration, D-8). {@code admin} is {@code true} for a
-	 * platform-admin operator ({@code ROLE_ADMIN}), so the FE can reveal the approval surface; always
-	 * {@code false} for a customer. {@code operatorStatus} is the operator's lifecycle token
-	 * ({@code PENDING} or {@code ACTIVE} — no other status can hold a session), so the console can show
-	 * a pending-approval notice; {@code null} for a customer principal.
+	 * The signed-in principal as the FE sees it (login, register and {@code /me}). {@code emailVerified}: the customer's
+	 * soft verification state, {@code null} for an operator; register always reports {@code false}, fresh or taken, so the
+	 * body stays byte-identical (non-enumeration). {@code admin}: {@code ROLE_ADMIN}, reveals the approval surface; always
+	 * {@code false} for a customer. {@code operatorStatus}: {@code PENDING} or {@code ACTIVE} (no other status holds a
+	 * session), for the pending-approval notice; {@code null} for a customer.
 	 */
 	record PrincipalResponse(String username, String principalType, Boolean emailVerified, boolean admin,
 			String operatorStatus) {
@@ -162,13 +141,9 @@ class AuthController {
 	}
 
 	/**
-	 * Register an operator account. Unlike the customer register, a fresh registration does
-	 * <strong>NOT</strong> sign the operator in: the account is created {@code PENDING} and cannot
-	 * authenticate until a platform admin approves it (design D-5). Both a fresh username and an
-	 * already-taken one return the SAME {@code 202} body and NEVER a session (non-enumeration, D-8); only
-	 * the fresh branch writes the PENDING row. Password policy is enforced BEFORE any write; a violation
-	 * is {@code 400 INVALID_REQUEST} (length) or {@code 400 PASSWORD_CONTAINS_BLOCKED_TERM} (the username
-	 * or the service name in the password).
+	 * Register an operator as {@code PENDING}, never signing it in (it waits for admin approval). A fresh and a taken
+	 * username get the same {@code 202} body and no session (non-enumeration); {@link PasswordPolicy} runs before any write
+	 * (its codes: RESPONSIBILITIES.md §Platform edge (settled)).
 	 */
 	@PostMapping("/api/auth/operator/register")
 	ResponseEntity<OperatorRegistrationResponse> operatorRegister(
@@ -198,12 +173,9 @@ class AuthController {
 	}
 
 	/**
-	 * Register a customer account. Fresh email → the account is created and the caller is
-	 * auto-signed-in (a session is established, AC-3). An already-registered email → the response is
-	 * <strong>byte-identical</strong> but NO session is established (non-enumeration, design D-8; the
-	 * only residual signal is the presence of the {@code SESSION} cookie — an accepted trade-off).
-	 * Password policy is enforced BEFORE any write; a violation is {@code 400 INVALID_REQUEST} (length) or
-	 * {@code 400 PASSWORD_CONTAINS_BLOCKED_TERM} (the email's local part or the service name in the password).
+	 * Register a customer, auto-signed-in on a fresh email; a taken email gets a byte-identical {@code 201} but no session
+	 * (non-enumeration) — the {@code SESSION} cookie's presence is the one accepted residual signal. {@link PasswordPolicy}
+	 * runs before any write.
 	 */
 	@PostMapping("/api/auth/customer/register")
 	ResponseEntity<PrincipalResponse> register(@RequestBody CustomerCredentials registration,
@@ -238,10 +210,9 @@ class AuthController {
 	}
 
 	/**
-	 * The FE's reload-restore read: who does this session belong to? Anonymous requests never get
-	 * here — the entry point answers {@code 401 UNAUTHENTICATED} (the signed-out signal the FE
-	 * treats as state, not error). The {@code principalType} is derived from the authorities so the
-	 * one endpoint serves both principal types.
+	 * The FE's reload-restore read for both principal types ({@code principalType} derived from the authorities).
+	 * Anonymous requests never get here: the entry point answers {@code 401 UNAUTHENTICATED}, which the FE treats as
+	 * signed-out state, not an error.
 	 */
 	@GetMapping("/api/auth/me")
 	PrincipalResponse me(Authentication authentication) {

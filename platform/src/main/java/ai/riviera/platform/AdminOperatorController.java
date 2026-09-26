@@ -24,48 +24,12 @@ import ai.riviera.platform.operator.vocabulary.OperatorStatus;
 import ai.riviera.platform.operator.vocabulary.PendingOperator;
 
 /**
- * The platform-admin surface for the operator account lifecycle: approving self-registrations (#115, S6,
- * design D-5) and suspending / reinstating existing accounts (#128). Driving adapter depending only on
- * the {@code operator} module's {@link OperatorLifecycle} port (invariant #11); every state transition
- * lives in the operator application service, so no adapter can bypass one.
- *
- * <p><strong>Role-gated, not venue-scoped.</strong> These endpoints live under {@code /api/admin/**} and
- * are gated to the {@code ADMIN} role in {@link SecurityConfig} — a platform-wide admin action, exempt
- * from the per-venue authorization of invariant #13 (an operator does not <em>own</em> a registration).
- * A plain {@code OPERATOR} reaching them is {@code 403}. Errors are the one RFC-7807 contract built by
- * {@link ApiProblem} (issue #97): a not-pending id → {@code 409 NOT_PENDING}, a wrong-status transition →
- * {@code 409 WRONG_STATUS}, an unknown id → {@code 404 NO_SUCH_OPERATOR}; success is {@code 204}.
- *
- * <p><strong>Suspension and rejection revoke sessions here, at the edge (#128).</strong> Without it
- * the operator's existing cookie would keep authenticating every non-venue-scoped role-gated surface
- * until it expired — and, since a PENDING operator holds a working console session, a rejected
- * one's cookie would keep the whole console alive too.
- *
- * <p><strong>The revoke brackets the transition</strong> (#357): once <em>before</em> it, keyed by
- * {@link OperatorLifecycle#usernameInStatus}, and once <em>after</em> it, keyed by the username the
- * outcome carries. Before, because the two effects are not atomic and cannot be — the status write is
- * the module's transaction, the session deletes are Spring Session's, so a {@code @Transactional} here
- * would look atomic without being atomic (#344 D-1). Revoking only afterwards, as #128 shipped, meant a
- * transient revoke failure committed the suspension, raised {@code 500}, and left the suspended
- * operator working: the admin's retry is refused {@code 409 WRONG_STATUS} and revokes nothing, so
- * nothing ever closes those sessions. After, because revoking only first would leave a window in which
- * the account is still ACTIVE — a sign-in landing there would survive the suspension with no admin
- * recovery path.
- *
- * <p><strong>What the bracket costs.</strong> #128 could promise that a rolled-back transition never
- * signs out a still-ACTIVE operator, because nothing was revoked until the status had committed; the
- * pre-revoke gives that up — a {@code suspend} refused after it (raced by a second admin, or reinstated
- * in between) leaves that operator signed out while still ACTIVE. That is over-revocation, a
- * convenience cost the operator recovers from by signing in again, and it is the price of removing
- * the under-revocation this fixes: a failed revoke that left a SUSPENDED account's sessions alive with
- * no admin action able to close them. Under-revocation is not eliminated outright — a failed
- * <em>trailing</em> revoke still leaves whatever the window produced — but it is bounded to sessions
- * created inside a single request rather than every session the account had.
- *
- * <p><strong>An admin may not suspend itself.</strong> That guard needs to know who is calling —
- * authentication context, i.e. edge knowledge the module deliberately does not have — so it lives here,
- * ahead of the port call, and answers {@code 409 CANNOT_SUSPEND_SELF}. It stops the platform locking
- * itself out of its own admin surface with one click.
+ * Platform-admin operator lifecycle — approve/reject registrations, suspend/reinstate accounts — through the
+ * {@link OperatorLifecycle} port only (invariant #11). {@code ADMIN}-gated in {@link SecurityConfig}, not venue-scoped
+ * (exempt from #13); errors are {@link ApiProblem} bodies, success {@code 204}. Suspend and reject revoke sessions on
+ * both sides of the transition: before it ({@link OperatorLifecycle#usernameInStatus}), so a failed revoke cannot commit
+ * a suspension that leaves sessions alive, and after it, for sign-ins inside the window; signing out an operator whose
+ * suspend is then refused is the accepted cost. Rationale: RESPONSIBILITIES.md §Platform edge (settled).
  */
 @RestController
 @RequestMapping("/api/admin/operators")
@@ -98,11 +62,8 @@ class AdminOperatorController {
 	}
 
 	/**
-	 * Approve a registration and, if that is what actually happened, tell the operator by email.
-	 * The mail is deliberately <em>after</em> the transition and gated on its outcome: the address
-	 * arrives on {@link ApprovalOutcome.Approved} straight from the guarded {@code UPDATE}, so a second
-	 * admin racing the same registration is handed none and cannot send a duplicate. Unlike the
-	 * suspension bracket below, nothing here is ordered around a revoke — approval revokes nothing.
+	 * Approve, then mail the operator only on {@link ApprovalOutcome.Approved}: its address comes from the guarded
+	 * {@code UPDATE}, so an admin losing the race receives none and cannot send a duplicate.
 	 */
 	@PostMapping("/{operatorId}/approve")
 	ResponseEntity<?> approve(@PathVariable long operatorId) {

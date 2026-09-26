@@ -13,52 +13,12 @@ import ai.riviera.platform.payment.api.RefundPort;
 import ai.riviera.platform.payment.vocabulary.RefundResult;
 
 /**
- * Issues the cancellation refund <strong>after</strong> the cancel transaction commits (U6) — a
- * booking-module driving adapter reacting to its own module's {@link BookingCancelled} fact. This
- * keeps the money-moving Stripe call out of the cancel transaction (no row lock held across a network
- * round-trip, no money/state divergence on a post-refund commit failure) while still driving the
- * refund through {@code payment::api} ({@code booking → payment}, no cycle — invariant #11).
- *
- * <p><strong>Asynchronous and registry-backed, at-least-once:</strong> a redelivery never
- * double-refunds, because the gateway asks what refunds it already holds before creating one
- * (invariant #8/#10; {@code RESPONSIBILITIES.md} §{@code payment}). That, rather than the
- * idempotency key, is what makes the retry safe at the distances this listener actually replays
- * over — the next start's republish can be days out, well past the key's lifetime. On a gateway
- * {@link RefundResult.Failed} it <strong>throws</strong> so the Event Publication Registry retains the
- * publication and re-submits it (loud over silent for money — the same posture as the payout
- * accrual). No refund is issued when nothing is owed.
- *
- * <p><strong>Why the annotations are spelled out rather than composed (#404).</strong>
- * {@code @ApplicationModuleListener} is the obvious way to write this, and it expands to exactly
- * {@code @Async} + {@code @Transactional(REQUIRES_NEW)} + {@code @TransactionalEventListener}. Both of
- * the first two were wrong here, for the same underlying reason — this listener makes a blocking
- * gateway round-trip, up to 25s against a degraded gateway:
- *
- * <ul>
- *   <li>The bare {@code @Async} is Boot's shared {@code applicationTaskExecutor}, the eight-thread pool
- *       behind an unbounded queue that also carries {@link PaymentEventListener} (payment → confirm,
- *       invariant #8) and {@code payout}'s accrual/reversal listeners (invariant #9). Naming
- *       {@link RefundExecutorConfig#REFUND_EXECUTOR} moves the round-trip behind a bulkhead. It is not a
- *       per-cancellation trickle that makes this matter: {@code WeatherRefundService} cancels an entire
- *       venue-day in one transaction (invariant #10's admin weather exception), so one admin action
- *       dispatches that many refunds at once.</li>
- *   <li>The transaction is <strong>dropped</strong>, not merely re-scoped. It bought nothing this method
- *       needs — every write beneath it is a single guarded statement, so there is nothing a rollback
- *       could undo — while pinning one of ten pooled connections
- *       for the length of the round-trip, on a pool shared with every HTTP request thread. Isolating the
- *       threads without releasing the connection would have left the spine starving on the scarcer
- *       resource.</li>
- * </ul>
- *
- * <p>The class, method name and parameter type are deliberately unchanged, so the registry's
- * {@code listener_id} is byte-identical and no Flyway rewrite is owed (invariant #12).
- * {@code RefundBulkheadIT} pins all four properties — the money path unblocked, no transaction, no
- * bound connection, and the unchanged id — against a real registry.
- *
- * <p><strong>Staying transaction-free is load-bearing, not merely cheaper.</strong> The refund path
- * records its attempt before asking the gateway, and a transaction here would hide that write for
- * exactly the window it exists to cover. The no-transaction property is pinned by
- * {@code RefundBulkheadIT} above; {@code RefundAttemptVisibilityIT} pins what depends on it.
+ * Issues the cancellation refund via {@link RefundPort} after the cancel transaction commits
+ * (invariants #10, #11); nothing is refunded when nothing is owed. Throws on {@link RefundResult.Failed}
+ * so the registry retains and re-drives the publication; a redelivery never double-refunds (§payment).
+ * Runs on the refund bulkhead and deliberately outside any transaction — load-bearing, see
+ * {@code RESPONSIBILITIES.md} §booking. Renaming the class, {@code on} or its parameter type changes
+ * the registry {@code listener_id} and orphans outstanding publications.
  */
 @Component
 class BookingRefundListener {

@@ -137,22 +137,12 @@ function draftForNewCell(gridY: number): SetDraft {
 }
 
 /**
- * The per-set beach-map editor — one set at a time, by id, beside the bulk paint surface. Both
- * work on a venue that has started trading: the bulk `PUT …/beach-map` saves a diff and refuses
- * only a removal of a set someone is still owed, and the per-set endpoints and the batch apply are
- * how an operator reaches one set or a swept selection. Price, tier and pool are never refused, on
- * any set; only a move or a remove asks the server's claim question.
- *
- * <p>It renders the <strong>server's</strong> sets by id rather than a painted grid, because the
- * endpoints address a set by `setId` and a painted cell has no identity. Clicking a cell selects it;
- * the panel edits tier, pool and price and saves one `PATCH` carrying the whole set body (a partial
- * body is rejected `400`).
- *
- * <p><strong>Nothing is applied optimistically.</strong> The server's claim guard refuses a
- * reposition of a set someone is still owed, and no read predicts it, so a refusal must leave the map
- * exactly as the server still has it: the grid re-renders only from the parent's re-read, which
- * {@link changed} asks for. Selection and draft are `linkedSignal`s over {@link sets}, so that
- * re-read re-seeds them instead of stranding an edit whose basis has moved.
+ * The per-set beach-map editor: edits one server set by `setId` (a painted cell has no identity) or
+ * a swept batch, beside the bulk paint surface; both work on a trading venue. Price, tier and pool
+ * are never refused; only a move or remove asks the server's claim question. A single-set save is
+ * one `PATCH` with the whole set body (a partial body is `400`). Nothing is optimistic: the grid
+ * re-renders only from the parent's re-read ({@link changed}), and selection and draft are
+ * `linkedSignal`s over {@link sets} so a re-read re-seeds them instead of stranding a stale edit.
  */
 @Component({
   selector: 'app-set-editor',
@@ -263,11 +253,9 @@ export class SetEditor {
   });
 
   /**
-   * The batch-selected set ids from a drag sweep (#714) — mutually exclusive with
-   * {@link selection}; either every `onCell` tap or a new sweep clears the other. The same
-   * "account for previous state" `linkedSignal` shape as {@link selection}: a re-read that drops
-   * one of the selected ids (another tab removed it) empties the whole sweep rather than leaving
-   * it half-valid, since the batch panel's "N sets" count would otherwise silently go stale.
+   * The drag-swept set ids, mutually exclusive with {@link selection} (a tap or a new sweep clears
+   * the other). A re-read that drops any swept id empties the whole sweep, so the batch panel's
+   * "N sets" count never goes stale.
    */
   protected readonly sweepIds = linkedSignal<readonly SetView[], ReadonlySet<number> | null>({
     source: this.sets,
@@ -331,10 +319,9 @@ export class SetEditor {
   protected readonly batchErrorCode = signal<SetBatchErrorCode | undefined>(undefined);
 
   /**
-   * Where the inspector last stood, kept even after {@link selection} collapses. `selection` can
-   * drop to `null` on its own — a re-read that no longer carries the picked set, e.g. from another
-   * tab or operator — with no `closeSelection()` call to carry the focus move, so the constructor's
-   * effect below uses this to reclaim focus a silent collapse would otherwise strand on `<body>`.
+   * Where the inspector last stood, kept after {@link selection} collapses. A re-read can drop the
+   * selection with no `closeSelection()` to move focus; the constructor's effect uses this to
+   * reclaim focus stranded on `<body>`.
    */
   private readonly lastCoords = signal<{ gridX: number; gridY: number } | undefined>(undefined);
 
@@ -351,10 +338,10 @@ export class SetEditor {
   private sweepLastKey = '';
   /** True once {@link sweptCoords} has grown past the starting cell — the click/drag fork. */
   private sweepDidDrag = false;
-  /** Set when a committed sweep's release lands back on its own starting cell, so the click that
-   *  follows doesn't also single-select that tile. A release on any OTHER cell fires no click at
-   *  all (mousedown/mouseup on different elements never synthesize one), so this is never armed
-   *  for the ordinary cross-cell drag. */
+  /**
+   * Set when a committed sweep's release lands back on its starting cell, so the click that follows
+   * doesn't single-select that tile. A cross-cell release fires no click, so it is never armed then.
+   */
   private suppressNextClick = false;
 
   /** afterRenderEffect, not effect: the DOM read below must run after the panel is actually gone. */
@@ -455,10 +442,9 @@ export class SetEditor {
   protected readonly canAddCol = computed(() => this.colCount() < MAX_COLS);
 
   /**
-   * The rendered grid on the shared canvas's row contract: one entry per position, carrying its set
-   * (if any), state and AT label. Every row is a zone of its own (`zoneStart: true`) — the bulk
-   * editor's posture, so the tab's two modes keep one row rhythm — chipped with the price of the
-   * row's first set (a live per-set reprice updates the chip in place; rows never reflow).
+   * The rendered grid on the shared canvas's row contract: one entry per position with its set, state
+   * and AT label. Every row is its own zone (the bulk editor's rhythm), chipped with its first set's
+   * price; a per-set reprice updates the chip in place and rows never reflow.
    */
   protected readonly rows = computed<readonly SetRow[]>(() => {
     const bySlot = new Map(this.sets().map((s) => [slot(s.gridX, s.gridY), s]));
@@ -504,11 +490,8 @@ export class SetEditor {
   });
 
   /**
-   * Whether a Move is really armed: a set must still be selected for one to mean anything. Deriving
-   * it rather than trusting the flag is what keeps the arm from outliving its subject — the flag's
-   * own Cancel button lives inside the selected-set panel, so an arm left standing after the
-   * selection collapses (a removal, most obviously) would disable every occupied cell and route
-   * every empty one into a move with nothing to move: a silently inert grid with no way out.
+   * Whether a Move is really armed: the flag AND a still-selected set. The flag alone would outlive a
+   * collapsed selection (its Cancel lives in the gone panel), leaving an inert grid with no way out.
    */
   protected readonly armed = computed(() => this.moving() && this.selectedSet() !== undefined);
 
@@ -556,10 +539,9 @@ export class SetEditor {
   ];
 
   /**
-   * A grid cell was activated. While a move is armed an empty cell is the destination; otherwise a
-   * cell selects its set, opens the docked inspector, or offers to add one where there is none.
-   * Re-clicking the already-selected tile is a no-op — it re-affirms the selection, the way it always
-   * has (growing the grid and re-tapping a just-picked cell is a routine flow, not a request to close).
+   * A grid cell was activated: while a move is armed an empty cell is the destination; otherwise it
+   * selects its set, opens the inspector, or offers an add. Re-clicking the selected tile is a
+   * no-op, never a close.
    */
   protected onCell(gridX: number, gridY: number, setId: number | null): void {
     if (this.suppressNextClick) {
@@ -622,10 +604,9 @@ export class SetEditor {
   }
 
   /**
-   * The gesture's end (`document:mouseup`, so an off-tile release still lands it). A single-cell
-   * "drag" is really just a click and is left entirely to {@link onCell}; only a genuine multi-cell
-   * drag commits a sweep. Suppression is armed only when the release lands back on the starting
-   * cell — the one case a click actually follows; any other release fires no click at all.
+   * The gesture's end (`document:mouseup`, so an off-tile release still lands). A single-cell "drag"
+   * is left to {@link onCell}; only a multi-cell drag commits a sweep, and click suppression is armed
+   * only when the release lands back on the starting cell (the one case a click follows).
    */
   protected onSweepEnd(): void {
     if (this.sweeping && this.sweepDidDrag) {
@@ -689,12 +670,9 @@ export class SetEditor {
   });
 
   /**
-   * Apply the batch draft's touched fields to every swept set in one `PATCH …/sets` — the swept ids
-   * and only the touched fields, `expectedVersion`-guarded; an untouched field is absent from the
-   * body, so the server leaves each set's own value alone. Booked sets go along like any other:
-   * price, tier and pool are never refused. A touched-but-empty price is a no-op for that field,
-   * matching the single-set panel's "cleared field reads as no change" convention — not a validation
-   * error.
+   * Apply the batch draft's touched fields to every swept set in one `expectedVersion`-guarded
+   * `PATCH …/sets`; untouched fields are absent so each set keeps its own. Booked sets are included
+   * (price, tier, pool are never refused); a touched-but-empty price means no change, not an error.
    */
   protected async applyBatch(): Promise<void> {
     const venueId = this.venueId();
@@ -811,10 +789,9 @@ export class SetEditor {
   }
 
   /**
-   * Escape closes the docked inspector — the keyboard counterpart to {@link closeInspector}. Bound on
-   * the component host, not `document`, so it only fires while focus is inside this surface (the
-   * `find-booking.ts` precedent for a scoped dismiss key). A move or a remove-confirmation in progress
-   * is cancelled first, since either would otherwise silently survive the close.
+   * Escape closes the docked inspector ({@link closeInspector}); bound on the host, so it fires only
+   * while focus is inside this surface. An in-progress move or remove confirmation is cancelled
+   * first so neither survives the close.
    */
   protected onEscape(): void {
     if (this.sweepIds() !== null) {
@@ -858,10 +835,8 @@ export class SetEditor {
   }
 
   /**
-   * Focus one grid tile once the next render has committed. The shared `focusMover()` targets a
-   * fixed `data-testid` landmark; this targets a specific tile chosen at runtime, so it repeats that
-   * utility's `afterNextRender`-based idiom directly rather than forcing a per-instance testid onto
-   * every cell (which every bulk selector in the specs/e2e assumes share one `data-testid`).
+   * Focus one grid tile after the next render: `focusMover()`'s `afterNextRender` idiom, by
+   * coordinates, because every cell shares `data-testid="set-cell"` (specs and e2e rely on that).
    */
   private focusCell(gridX: number, gridY: number): void {
     afterNextRender(
@@ -877,10 +852,9 @@ export class SetEditor {
   }
 
   /**
-   * Scroll the page (only the page — never `scrollIntoView`, which would also nudge the map's own
-   * internal overflow-hidden viewport and risk clipping an unrelated row) so one grid tile clears
-   * its own `scroll-margin-bottom` (the mobile bottom sheet's height). The read-only counterpart to
-   * {@link focusCell}, called instead of it wherever the tile itself, not the panel, must stay visible.
+   * Scroll the page so one tile clears its `scroll-margin-bottom` (the mobile sheet's height) — never
+   * `scrollIntoView`, which also nudges the map's overflow-hidden viewport. Used instead of
+   * {@link focusCell} where the tile, not the panel, must stay visible.
    */
   private scrollCellIntoView(gridX: number, gridY: number): void {
     afterNextRender(
@@ -906,11 +880,9 @@ export class SetEditor {
   }
 
   /**
-   * A safety net for a selection that collapses on its own — {@link selection}'s `linkedSignal`
-   * drops it to `null` the moment a re-read no longer carries the picked set, with no
-   * {@link closeSelection} call to move focus along. If that left focus outside this component's own
-   * host (the panel it was in is already gone), redirect it to the last tile the inspector was open
-   * for; a user-driven close already parked focus on that tile, so this is then a no-op.
+   * Safety net when {@link selection} collapses on its own (a re-read drops it; no
+   * {@link closeSelection} runs): if focus has left this host, move it to the last inspected tile
+   * (WCAG 2.4.3). A no-op after a user-driven close, which already parked focus there.
    */
   private reclaimStrandedFocus(): void {
     const coords = this.lastCoords();
@@ -1028,10 +1000,9 @@ export class SetEditor {
   }
 
   /**
-   * Open the remove confirmation, or close it, moving focus with the surface. Each transition
-   * destroys the element that was just activated, which strands keyboard/AT focus on `<body>` unless
-   * it is moved deliberately (WCAG 2.4.3). Focus INTO the confirmation is {@link ConfirmPanel}'s
-   * own doing; only the way back out is this component's, since the panel is gone by then.
+   * Open or close the remove confirmation, moving focus with it (WCAG 2.4.3: each swap destroys the
+   * activated control). Focus into the confirmation is {@link ConfirmPanel}'s doing; the way back
+   * out is this component's.
    */
   protected askRemove(): void {
     if (this.selectedLock() !== undefined) {
@@ -1090,10 +1061,8 @@ export class SetEditor {
   }
 
   /**
-   * The refusal copy for `SET_IN_USE`: every arm is refused only while someone is still owed the
-   * spot, so all three read as a claim that will lapse. A move or save names the fields that always
-   * remain editable — price, tier and pool; a remove says what will happen once the claim has
-   * passed, because a set with finished bookings then leaves the map and keeps its history.
+   * The `SET_IN_USE` refusal copy, each arm read as a claim that will lapse: move/save name what stays
+   * editable (price, tier, pool); remove says the set can go once the claim passes, history kept.
    */
   private inUseMessage(): string {
     switch (this.attempted()) {
@@ -1109,10 +1078,9 @@ export class SetEditor {
   }
 
   /**
-   * Run one per-set write: on success run {@link onApplied} and announce {@link changed} so the
-   * parent re-reads (the ONLY way this grid changes); on failure surface the code and leave the map
-   * untouched. The follow-up rides the success path rather than a resolved promise the caller awaits,
-   * so it lands in the same turn as the announcement — and never at all for a superseded write.
+   * Run one per-set write: on success run {@link onApplied} and announce {@link changed} so the parent
+   * re-reads (the ONLY way this grid changes); on failure surface the code, map untouched. The
+   * follow-up rides the success path, so a superseded write never runs it.
    */
   private async write<T>(
     attempted: SetWrite,

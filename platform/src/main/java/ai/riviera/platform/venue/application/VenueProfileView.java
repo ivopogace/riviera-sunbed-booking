@@ -9,41 +9,12 @@ import ai.riviera.platform.venue.vocabulary.SeasonClosure;
 import ai.riviera.platform.venue.vocabulary.VenueLocation;
 
 /**
- * The operator's own view of a venue's admin profile — everything the console's
- * Venue &amp; commodities tab needs to render its form: the editable core
- * (name, the beach as its catalogue code, description, booking mode, booking cutoff, sales close, amenities,
- * distance-to-water, location, maximum stay) plus
- * the two <strong>read-only</strong> display fields, {@code commissionBps} (shown as a %; the
- * platform's cut, invariant #9) and {@code payoutCurrency} (standing provisional). Returned by the
- * {@link ViewVenueProfile} driving port after the owner check (invariant #13).
- *
- * <p>This is deliberately NOT the public tourist {@code VenueMapView}: it carries commission +
- * payout currency, which must never reach the anonymous read (that is why the read endpoint is
- * gated to the owning operator, not permitted like {@code GET /api/venues/*}).
- *
- * <p>{@code version} is the row's optimistic-concurrency token: the tab loads it here and
- * echoes it back on the next profile {@code PATCH}, so a stale write is rejected with 409 rather
- * than clobbering {@code bookingMode}/{@code bookingCutoff}. Read-only for the operator — the write
- * never sets it directly; the conditional {@code UPDATE} bumps it.
- *
- * <p>{@code photos} carries every {@code PhotoSlot} in declaration order with its preview URL
- * ({@code null} = empty slot) — always all three slots, so the tab renders a stable grid.
- *
- * <p>{@code salesClose} is the per-venue on-day sales-close time, owner-editable via the profile
- * {@code PATCH}. The read model keeps {@code LocalTime} — it only displays; the write path
- * speaks the three-value {@code SalesClose} choice.
- *
- * <p>{@code seasonClosure} is the stored closed-for-season state and {@code closedForSeason} the
- * verdict at read time (a closure whose reopen day has arrived reads open) — the tab keys on the
- * verdict and never compares a date with a clock. Written through {@code CloseForSeason}, never the
- * profile {@code PATCH}.
- *
- * <p>{@code location} is the venue's pin on the riviera map, {@code null} when it has none — set
- * and cleared through the profile {@code PATCH} like any other editable field.
- *
- * <p>{@code maxStayDays} is the longest stay the venue takes, in days, {@code null} for any length
- * this season; owner-editable through the profile {@code PATCH}, and the bound the reserve path
- * enforces.
+ * The owner's venue profile for the console form, returned by {@link ViewVenueProfile} after the owner
+ * check (invariant #13). Carries {@code commissionBps} and {@code payoutCurrency}, read-only here and never
+ * to reach the anonymous tourist read. {@code version} is the optimistic-concurrency token the profile
+ * {@code PATCH} echoes (stale → 409). {@code photos} is always all three slots ({@code null} URL = empty).
+ * The tab keys on the {@code closedForSeason} verdict, never the stored {@code seasonClosure} (written via
+ * {@code CloseForSeason}). Nullable: {@code location}, {@code maxStayDays} (any length).
  */
 public record VenueProfileView(String name, String beach, String description,
 		BookingMode bookingMode, LocalTime bookingCutoff, LocalTime salesClose, int commissionBps,

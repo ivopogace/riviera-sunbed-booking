@@ -17,36 +17,12 @@ import ai.riviera.platform.venue.vocabulary.SetId;
 import ai.riviera.platform.venue.api.SetBookingFacts;
 
 /**
- * The staff tap-to-mark write path (U8) — the second writer onto {@code set_availability}
- * (invariant #2), package-private behind {@link StaffAvailability}. Explicit SQL via
- * {@link JdbcClient}, no JPA (invariant #1).
- *
- * <p><strong>Per-venue authorization (invariant #13):</strong> a set id is globally
- * unique, so the owning venue is resolved from {@code setId} via {@link SetBookingFacts#setBookingInfo}
- * (venue's {@code api/} port, not its tables — invariant #11) and the operator is checked against
- * <em>that</em> venue via {@link VenueOwnership#assertOwns} — never the decorative path
- * {@code venueId}, which an operator could otherwise spoof to reach a set they don't own. A set that
- * does not exist can carry no ownership, so it resolves to {@code NO_SUCH_SET} (mark) /
- * {@code NOT_MARKED} (release) before the check; this reveals only set existence, never another
- * venue's data.
- *
- * <p><strong>Mark</strong> in one transaction: resolve the set (→ {@code NO_SUCH_SET} if unknown),
- * assert ownership, reject a date before today in {@code Europe/Tirane} (invariant #6 — reasoned via
- * the injected UTC {@link Clock}, never the JVM zone), take the same locked claim-time read the
- * online claim takes ({@link SetBookingFacts#poolForClaim} — empty for a retired set, so
- * {@code NO_SUCH_SET}; the pool itself is ignored, marks are pool-agnostic), then an atomic
- * {@code INSERT ... ON CONFLICT (set_id, booking_date) DO NOTHING}. Rows-affected decides the winner
- * ({@code 1} = {@code MARKED}, {@code 0} = {@code ALREADY_TAKEN}) — the same single-statement
- * concurrency primitive the online claim uses against the {@code UNIQUE} index, so a staff mark
- * racing an online claim for one {@code (set, date)} cannot both win.
- *
- * <p>Unlike the online claim this is <strong>pool-agnostic</strong>: any free set may
- * be marked, including an online-pool one — marking it is exactly what removes it from the online
- * pool for the day.
- *
- * <p><strong>Release</strong> resolves + asserts ownership, then a single guarded {@code DELETE} of a
- * {@code STAFF_MARKED} row only; an online {@code BOOKED_ONLINE} row is never deleted (invariant #2).
- * 0 rows ⇒ {@code NOT_MARKED}.
+ * Staff tap-to-mark writes, the second writer of {@code set_availability} (invariant #2). Ownership (#13) is
+ * checked against the venue resolved from {@code setId} ({@link SetBookingFacts#setBookingInfo}), never the
+ * spoofable path {@code venueId}. Mark takes {@link SetBookingFacts#poolForClaim} (retired → {@code NO_SUCH_SET};
+ * pool ignored), refuses a past Europe/Tirane date (#6), then {@code INSERT … ON CONFLICT DO NOTHING} — the
+ * online claim's primitive, so a mark and a claim cannot both win. Release deletes only a {@code STAFF_MARKED}
+ * row, never {@code BOOKED_ONLINE}.
  */
 @Service
 class StaffAvailabilityService implements StaffAvailability {

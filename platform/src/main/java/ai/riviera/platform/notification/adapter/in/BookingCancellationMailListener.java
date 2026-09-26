@@ -22,43 +22,12 @@ import ai.riviera.platform.notification.application.TransactionalMailService;
 import ai.riviera.platform.shared.ObservabilityMetrics;
 
 /**
- * Mails the tourist a record of a cancelled booking and the refund that goes with it.
- *
- * <p><strong>One listener covers every cancellation channel, and that is the design rather than a
- * convenience.</strong> Both paths that cancel a booking — the tourist's self-service cancel
- * ({@code RefundReason.POLICY}) and the operator-triggered weather refund ({@code WEATHER}, which
- * cancels a venue's whole date) — publish this one event. Subscribing to the fact rather than to
- * either caller means a third channel is covered the day it lands, with nothing to remember.
- *
- * <p>The refund rides the payload, not a recomputation: {@code refundMinor} and {@code currency} are
- * the <strong>server-computed</strong> decision the event carries (invariant #10) in integer minor
- * units (invariant #5). Recomputing here would put a second opinion about money in a module that owns
- * none. <strong>Zero is a decision too</strong> — a cancellation after the invariant-#4 cutoff refunds
- * nothing, and the mail says so in words.
- *
- * <p><strong>It reports a decision, not a settlement.</strong> The event fires when the booking is
- * cancelled; the money is returned afterwards by {@code booking}'s own listener via {@code payment}'s
- * {@code RefundPort}, which can fail ({@link ObservabilityMetrics#REFUNDS_FAILED}). The copy is written
- * to that limit; closing the gap would need a refund-settled fact no module publishes today.
- *
- * <p><strong>Asynchronous and after-commit</strong>, on the mail bulkhead —
- * {@code MailListenerExecutorArchitectureTest} requires that shape of every listener here, and the
- * reasoning is argued once on {@link BookingConfirmationMailListener} and applies unchanged, as does
- * the at-least-once contract and the propagate-on-transport-failure rule. The cancellation transaction
- * has already committed by the time this runs, so no mail outcome can touch the cancellation, the
- * availability release (invariant #2), or the refund.
- *
- * <p><strong>Only a venue-caused cancellation carries a way back.</strong> A booking the venue's own
- * remodel ended is mailed a rebook link ({@link RebookLinks}). Reason alone cannot say so: a guest
- * who takes the free exit a move earned them is refunded under {@code VENUE_CHANGE} too, and only
- * the commit receipt tells the two apart ({@code BookingNotificationFacts#endedByRemodel}). The link
- * is also what lets the transports tell them apart in the copy.
- *
- * <p><strong>Giving up is counted under this flow's own name</strong> —
- * {@link ObservabilityMetrics#MAIL_CANCELLATION_ABANDONED}, not the confirmation's. The two ride the
- * same vehicle and share the same three reasons but are not the same event and <strong>must not be
- * summed</strong>: one leaves a paying tourist without an arrival code, this one leaves a cancelled
- * tourist without a record of money owed back.
+ * Mails the tourist a record of a cancelled booking and its refund — one listener for every
+ * cancellation channel. Renders the server-computed refund off the payload (invariants #10, #5); zero
+ * is a decision too. It reports the decision, not a settlement: the refund may still fail
+ * ({@link ObservabilityMetrics#REFUNDS_FAILED}). Only a remodel-ended booking gets a {@link RebookLinks}
+ * link, and {@code VENUE_CHANGE} alone cannot say so. Async after-commit on the mail bulkhead, no
+ * {@code @Transactional}, at-least-once. Rationale: RESPONSIBILITIES.md §notification, ADR-0011.
  */
 @Component
 class BookingCancellationMailListener {
@@ -99,12 +68,8 @@ class BookingCancellationMailListener {
 	}
 
 	/**
-	 * Account for a cancellation mail this listener will never send. The counter is what an alert can
-	 * watch — nothing else moves — and the line is the only per-loss record, which is why it carries
-	 * the booking and set ids: they say <em>which</em> booking lost its mail, and therefore which
-	 * refund an operator should confirm actually moved. Ids and the reason only — never the arrival
-	 * code (invariant #7), never the address. The correlation id of the cancelling request rides the
-	 * MDC (#410).
+	 * Counts and logs a mail that will never be sent — the only trace, as the publication completes. Log
+	 * ids and the reason only; never the code (invariant #7) or the address.
 	 */
 	private void abandon(MissingBookingFact fact, BookingCancelled event) {
 		meters.counter(ObservabilityMetrics.MAIL_CANCELLATION_ABANDONED,

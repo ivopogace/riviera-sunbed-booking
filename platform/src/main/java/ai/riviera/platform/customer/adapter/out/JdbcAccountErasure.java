@@ -17,22 +17,11 @@ import ai.riviera.platform.customer.vocabulary.CustomerAccountId;
 import ai.riviera.platform.customer.vocabulary.CustomerId;
 
 /**
- * JDBC adapter for the {@code customer} module's {@link AccountErasureStore} port (ADR-0007
- * {@code adapter/out}). Explicit SQL via {@link JdbcClient} in text blocks, named params,
- * package-private (invariant #1, mirroring {@code JdbcCustomerAccounts} / {@code JdbcCustomerDirectory}).
- *
- * <p>Every scrub is an {@code UPDATE … WHERE erased_at IS NULL} (idempotent + tombstone-in-place, never a
- * hard delete of a row a retained booking references) except the transient child rows, which are deleted.
- * The tombstone email is {@code 'erased+' || id || '@erased.invalid'} — deterministic and unique per row
- * (so it never collides with the {@code email} UNIQUE constraint), on the reserved {@code .invalid} TLD
- * (RFC 2606) so it can never route. Name/phone become the fixed {@code 'ERASED'} placeholder.
- *
- * <p>Since Slice 2 the same adapter also serves the automated retention sweep: the candidate read
- * applies the two gates {@code customer} can evaluate on its own tables (row age, and no live
- * {@code customer_account} claiming the email), and the by-id scrub reuses the identical guest tombstone —
- * shared as {@link #GUEST_TOMBSTONE} so request-erasure and retention-erasure cannot drift apart. The
- * by-email scrubs answer the ids they tombstoned ({@code RETURNING id}), which is how the service knows
- * whose reviews to reach next. All of it is {@code SELECT}/{@code UPDATE} over existing columns.
+ * JDBC adapter for {@link AccountErasureStore} (invariant #1). Every scrub is an idempotent tombstone-in-place
+ * {@code UPDATE … WHERE erased_at IS NULL}, never a hard delete of a row a retained booking references
+ * (ADR-0010); only transient child rows are deleted. The tombstone email is unique per row and unroutable
+ * ({@code .invalid}, RFC 2606). Request erasure and the retention sweep share {@link #GUEST_TOMBSTONE}; the
+ * by-email scrubs return the ids they tombstoned so the service can reach those subjects' reviews.
  */
 @Repository
 class JdbcAccountErasure implements AccountErasureStore {
@@ -68,23 +57,9 @@ class JdbcAccountErasure implements AccountErasureStore {
 	}
 
 	/**
-	 * A {@link JdbcClient} of this adapter's own with a finite {@code queryTimeout}, used by
-	 * {@link #expiredGuestCandidates} and nothing else — the {@code JdbcEmailSuppressions#boundedClient}
-	 * idiom applied to scheduled work.
-	 *
-	 * <p>This read opens the retention sweep, and it is the widest of the three scheduled candidate
-	 * queries: it scans {@code customer} with a correlated {@code NOT EXISTS} against
-	 * {@code customer_account}, so it has two tables' worth of ways to wait. Postgres's default
-	 * statement timeout is infinite, so without this an unbounded wait would hold the sweep's thread
-	 * and its pooled connection for the life of the process.
-	 *
-	 * <p>The scrub itself stays on the shared unbounded client, deliberately: erasure writes are the
-	 * same guarded {@code UPDATE … WHERE erased_at IS NULL} the request-thread right-to-erasure path
-	 * uses (ADR-0010), and a half-applied retention batch is worth less than a slow one. A bound here
-	 * costs the run, which the next tick repeats — the sweep is batch-limited and idempotent by
-	 * construction. And it is scoped rather than global for the reason
-	 * {@code ScheduledWorkArchitectureTest} now enforces: {@code spring.jdbc.template.query-timeout}
-	 * would also bound {@code availability}'s claim (invariant #2).
+	 * A finite-{@code queryTimeout} client for {@link #expiredGuestCandidates} alone (Postgres's default is
+	 * infinite); scrubs stay on the shared client. Never set {@code spring.jdbc.template.query-timeout} globally:
+	 * it would bound {@code availability}'s claim (invariant #2), as {@code ScheduledWorkArchitectureTest} enforces.
 	 */
 	private static JdbcClient boundedClient(DataSource dataSource, int queryTimeoutSeconds) {
 		JdbcTemplate bounded = new JdbcTemplate(dataSource);

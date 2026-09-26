@@ -112,35 +112,12 @@ const CLS = {
 } as const;
 
 /**
- * View a booking by its code and cancel it. Loads the
- * booking and its <strong>server-computed</strong> refund terms (invariant #10) via
- * {@link BookingService}, renders the glass detail card — a unified status chip for the whole status
- * union, the dashed booking-code card, the detail rows, and status banners — and, when the booking
- * is cancellable, offers a two-step cancel (a confirm prompt stating the refund) so the action is
- * deliberate and accessible. The refund amount is never computed or sent by the client; money is
- * rendered from integer minor units via {@link formatMoney} (invariant #5); status is conveyed in
- * text, not colour alone (WCAG AA).
- *
- * <p>Request-to-Book status panels: `PENDING_REQUEST` shows the venue's response
- * deadline and offers a two-step **Withdraw request** — the same confirm-then-act idiom as
- * cancel, but with no refund to state, because a pending request was never charged; the server's
- * `withdrawable` flag gates it, never a status check here;
- * `AWAITING_PAYMENT` with open-intent credentials offers "Pay now" (primes
- * {@link BookingService#beginPayment} and routes to `/booking/pay` — the same flow as the 202
- * create path, so confirmation still only ever comes from the verified webhook, invariant #8);
- * `DECLINED`/`EXPIRED`/`WITHDRAWN` explain the terminal, no-charge outcome, and `CANCELLED` explains
- * the one terminal outcome that may have moved money — which of the cancellations happened, and
- * whether anything was refunded.
- *
- * <p>Styling is Tailwind-only (the component's SCSS is retired). The recipes live in the
- * module-local {@link CLS} map rather than inline so the shared *bases* stay single-sourced — the
- * banner shell across six banners, the row across five rows, the button chrome across six buttons —
- * which the retired SCSS shared through selectors. Many individual `CLS` entries are then used once;
- * they sit there to name the variant beside its siblings, not because each one repeats.
- * Conflicting utilities are never concatenated onto one element: two competing `border-*` or
- * `text-*` utilities resolve by **stylesheet order, not class order**, so each variant spells out
- * its own colour rather than overriding a base — which is why `bannerPending` and
- * `btnOutlineDanger` are whole recipes and not a base plus an override.
+ * View a booking by its code and cancel it in two steps, stating the server-computed refund (the
+ * client never computes or sends it, invariant #10; money via {@link formatMoney}, invariant #5).
+ * Withdraw is gated on the server's `withdrawable` flag, never a status check; "Pay now" primes
+ * {@link BookingService#beginPayment}; confirmation comes only from the webhook (invariant #8).
+ * Recipes live in {@link CLS}; each variant spells out its own colours, because competing
+ * `border-*`/`text-*` utilities resolve by stylesheet order, not class order.
  */
 @Component({
   selector: 'app-booking-view',
@@ -645,10 +622,9 @@ export class BookingView {
   }
 
   /**
-   * @param isRefresh a reload triggered by a completed cancellation (not the initial load). A
-   *   refresh that fails must NOT flip the page to the not-found/failed card — that would discard
-   *   the just-issued cancellation confirmation (the refund the server already actioned). The
-   *   stale-but-cancelled detail plus the live result region stay on screen instead.
+   * @param isRefresh a reload after a completed cancellation. If it fails, do NOT flip to the
+   *   not-found/failed card — that discards the cancellation confirmation; the stale detail and
+   *   the live result region stay on screen.
    */
   private load(isRefresh = false): void {
     // Initial load consumes a matching find-a-booking prefetch instead of a second GET.
@@ -837,10 +813,8 @@ export class BookingView {
   }
 
   /**
-   * Who cancelled, for the arriving guest's panel. `POLICY` and `VENUE_CHANGE` are the guest's own
-   * act — the latter the free exit after the venue moved their spot; a weather cancellation is the
-   * venue's, and an unknown or absent reason (a row predating the column, the reserved `CONFLICT`)
-   * attributes it to nobody rather than guessing.
+   * Who cancelled, for the guest's panel: `POLICY`/`VENUE_CHANGE` are the guest's own act,
+   * `WEATHER` the venue's; an unknown or absent reason (e.g. reserved `CONFLICT`) blames nobody.
    */
   protected cancelledOpener(b: BookingDetail): string {
     switch (b.cancelReason) {
@@ -895,10 +869,8 @@ export class BookingView {
   }
 
   /**
-   * Whether to present the booking as a non-refundable last-minute booking (#795): CLOSED-born and
-   * still live. FREE/LATE-born bookings whose window has since closed keep rendering nothing here
-   * (parity with the old blank state); a cancelled or spent booking has nothing to disclose — and
-   * neither does a PENDING_REQUEST, whose withdraw affordance would contradict the note.
+   * Whether to show the non-refundable last-minute note: CLOSED-born and still live. Never for a
+   * PENDING_REQUEST (its withdraw affordance would contradict it) or a cancelled or spent booking.
    */
   protected showLastMinuteNote(b: BookingDetail): boolean {
     const live = b.status === 'CONFIRMED' || b.status === 'AWAITING_PAYMENT';

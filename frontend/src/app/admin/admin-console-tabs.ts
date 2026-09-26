@@ -17,14 +17,9 @@ import { TAB_RAIL_MATCH, TabRail, TabRailDivider, TabRailTab } from '../shared/t
 import { TouchTarget } from '../shared/touch-target';
 
 /**
- * The console's canonical tab order as GROUPS — the strip's information architecture is an
- * order with hairline dividers at the group boundaries, not a layout (see {@link AdminConsoleTabs}).
- *
- * <p>Grouped by what the admin does, in the order the platform needs them: the console home
- * (accounts), then the two outbox re-drive levers (Email and Refunds share `OutboxLever`), then
- * moderation, then the money the platform sets and pays, then the records — erasure, and Audit last
- * because it is the record of all of the above. One slot is still reserved for a tab that does
- * not exist yet — <strong>Payouts</strong>, at slot 3.
+ * The console's canonical tab order as GROUPS, a hairline divider at each boundary (see
+ * {@link AdminConsoleTabs}): accounts, outbox re-drive levers, moderation, money, records (Audit
+ * last). `Payouts` is a reserved slot for a tab that does not ship yet.
  */
 export const ADMIN_CONSOLE_TAB_GROUPS = [
   ['Operators'],
@@ -35,11 +30,8 @@ export const ADMIN_CONSOLE_TAB_GROUPS = [
 ] as const;
 
 /**
- * The canonical tab order, flat — {@link ADMIN_CONSOLE_TAB_GROUPS} in sequence.
- *
- * <p>This is the contract, not a snapshot: `admin-console-tabs.spec.ts` pins that the rendered tabs
- * are a <em>subsequence</em> of it, so adding a tab in its slot needs no spec edit while appending
- * one out of slot fails.
+ * The canonical tab order, flat. A contract, not a snapshot: `admin-console-tabs.spec.ts` pins the
+ * rendered tabs as a subsequence: a tab added in its slot passes, one appended out of slot fails.
  */
 export const ADMIN_CONSOLE_TAB_ORDER = ADMIN_CONSOLE_TAB_GROUPS.flat();
 
@@ -128,33 +120,12 @@ interface TabRow {
 }
 
 /**
- * The platform-admin console's tab rail: underlined text tabs on one shared hairline
- * (`shared/tab-rail.ts`), grouped by dividers at {@link ADMIN_CONSOLE_TAB_GROUPS}' boundaries, in
- * {@link ADMIN_CONSOLE_TAB_ORDER}.
- *
- * <p><strong>Routed tabs, not local state.</strong> Each tab is its own child route of
- * {@code AdminConsole}, so it is deep-linkable, back-button-correct, and only the tab you opened is
- * downloaded — the operator console's own shape, which `riviera-frontend` § Routing names as the
- * one to follow for a tabbed sub-app. Mounted once by the shell and kept alive across tab
- * switches, so its scroll position is never lost or reset.
- *
- * <p><strong>Scrolls, doesn't wrap, from `sm` up.</strong> A single scrolling row, matching the
- * operator console's own rail so the two navs behave the same; no edge mask — the cut-off tab at
- * the edge is the overflow cue. The active tab scrolls into view on load and on every switch, which
- * is the rail tab's own mechanism. Below `sm` the shell hides this rail and renders the phone rail
- * instead — Operators · Email · Refunds and a More slot that carries the current secondary's label
- * and `aria-current`, so a collapsed menu never strands the current page (the objection that once
- * ruled an overflow menu out). `e2e/admin-console-tabs.e2e.ts` pins both shapes.
- *
- * <p><strong>Which tabs exist is a backend question.</strong> This rail lists what ships. Privacy
- * is scoped to GDPR data-subject erasure and Photos is content moderation — a different job, which
- * is why both exist rather than one.
- *
- * <p>Rendered by the console shell (`console-shell.ts`) under its section row, only past the admin
- * gate, so a signed-out visitor is never told which admin surfaces exist; the shell's 1120px box
- * gives the rail its width, the rail carries the row's own `px-6` inset. The active tab carries
- * `aria-current="page"`, which is what carries the marker to assistive tech rather than to sighted
- * users alone.
+ * The admin console's tab rail (`shared/tab-rail.ts`) in {@link ADMIN_CONSOLE_TAB_ORDER}. Each tab
+ * is a child route of {@code AdminConsole}; the shell mounts the rail once, only past the admin
+ * gate, so a signed-out visitor never learns which admin surfaces exist. From `sm` up it scrolls,
+ * never wraps, with the active tab scrolled into view; below `sm` the shell renders the phone rail
+ * instead, its More slot carrying the current tab's label and `aria-current`
+ * (`e2e/admin-console-tabs.e2e.ts` pins both).
  */
 @Component({
   selector: 'app-admin-console-tabs',

@@ -5,37 +5,11 @@ import java.time.Period;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
 /**
- * Externalized configuration for the guest-contact retention sweep, bound from
- * {@code customer.retention.*}.
- *
- * <p>{@code window} is a {@link Period} — <strong>not</strong> a {@code Duration} — because retention
- * periods are expressed in years ({@code P10Y}) and ISO-8601 durations have no year or month unit. The
- * shipped default is deliberately inert: ten years is longer than any plausible statutory period, and
- * the job ships disabled, so nothing is erased until counsel sets a real window and ops opts in.
- *
- * <p>{@code enabled}, {@code sweep-interval} and {@code initial-delay} are deliberately <em>absent</em>
- * from this record: they have no programmatic reader — {@code @ConditionalOnProperty} and the
- * {@code @Scheduled} placeholders consume them directly.
- *
- * <p><strong>Why the window check is {@code isNegative()} — any negative component — rather than a
- * net-duration comparison.</strong> A {@link Period} carries independent years/months/days and no
- * reference date, so a mixed-sign period has no fixed sign: {@code P1M-40D} reports
- * {@code toTotalMonths() == 1}, which reads positive, yet subtracting it moves the cutoff
- * <em>forward</em> — the future-dated cutoff this guard exists to stop, and one any net-duration test
- * would admit. Rejecting every negative component is the only check that cannot be fooled; the cost is
- * that a chronologically-harmless oddity like {@code P2Y-1M} is refused too, which is the right trade
- * when the erasure it guards is irreversible (ADR-0010, pseudonymize-in-place).
- *
- * <p>The guards sit <strong>below</strong> the null-defaulting on purpose: unset config binds both
- * components as {@code null}, so a guard written above the defaults would reject the shipped
- * configuration. There is no ceiling on {@code window} by design — a longer window scrubs <em>less</em>,
- * the safe direction. A compact constructor rather than {@code @Validated} + {@code @Min}: Boot
- * validates {@code @ConfigurationProperties} only with a JSR-303 implementation on the classpath, and
- * there is none by deliberate choice, so an annotation here would validate nothing.
- *
- * @param window    how far back a booking must reach to keep a guest contact; default {@code P10Y},
- *                  must be a positive {@link Period}
- * @param batchSize the most contacts one sweep may scrub; default 500, bounded by {@link #MAX_BATCH_SIZE}
+ * Retention sweep config ({@code customer.retention.*}), checked at boot below the null-defaulting.
+ * {@code window}: a {@link Period} (a Duration has no years), default {@code P10Y}, no ceiling (longer scrubs
+ * less), and no zero or negative component — a mixed-sign {@code P1M-40D} moves the cutoff forward, and
+ * erasure is irreversible (ADR-0010). {@code batchSize}: default 500, 1 to {@link #MAX_BATCH_SIZE}. No
+ * {@code @Validated}: no JSR-303 provider is on the classpath. Ranges: docs/runbooks/data-erasure.md.
  */
 @ConfigurationProperties("customer.retention")
 public record CustomerRetentionProperties(Period window, Integer batchSize) {
@@ -44,10 +18,8 @@ public record CustomerRetentionProperties(Period window, Integer batchSize) {
 	private static final int DEFAULT_BATCH_SIZE = 500;
 
 	/**
-	 * 20× the shipped 500 — ≈40 000 contacts/day at the shipped cadence, and comfortably under
-	 * PostgreSQL's 65 535 bind-parameter ceiling on the candidate {@code IN (:guests)} list. The sweep is
-	 * {@code @Transactional} and locks one row per candidate, so the batch <em>is</em> the transaction
-	 * bound this record promises; past this it stops being one.
+	 * The sweep is one {@code @Transactional} batch locking a row per candidate, so this is its transaction
+	 * bound; also well under PostgreSQL's 65 535 bind parameters on {@code IN (:guests)}.
 	 */
 	static final int MAX_BATCH_SIZE = 10_000;
 

@@ -18,48 +18,12 @@ import ai.riviera.platform.notification.application.TransactionalMailService;
 import ai.riviera.platform.shared.ObservabilityMetrics;
 
 /**
- * Mails the tourist that their accepted request must now be paid for, and by when — the thing that
- * today reaches them only if they happen to reload the app, and whose
- * absence quietly costs them the slot.
- *
- * <p><strong>It is the only one of the booking mails that is not a record of something
- * settled.</strong> The confirmation and the cancellation report a decision already made; this one
- * asks for an action inside a window. That difference is what the copy, the counter and the retry
- * posture are all shaped by — a late confirmation is still useful, a payment-due mail delivered
- * after {@code payBy} is not.
- *
- * <p><strong>Whether the mail is warranted was decided upstream, deliberately.</strong> This
- * listener does not ask whether money is owed; {@code booking} answers that by only publishing
- * {@link BookingPaymentDue} on the accept branch where it is (the event's Javadoc enumerates the
- * three). Re-deciding it here would mean reading the booking's status after the fact, which races
- * the very transitions that make the answer differ — the default-profile stub confirms
- * <em>synchronously</em>, so a status read on this pool could land on either side of it.
- *
- * <p>Everything the mail renders is either on the payload or resolved through
- * {@link BookingMailFactsService}, the same three-port assembly its sibling listeners use. The
- * deadline is emphatically the former: {@code payBy} is the server-derived instant the abandoned
- * sweep enforces, and recomputing it here would put a second opinion about the guest's window in a
- * module that owns neither the clock nor the configuration behind it. The arrival code comes from
- * {@code booking.api} rather than the payload (invariant #7 — the registry persists payloads as
- * text), and the pay link is built from it at send time by {@link BookingLinks}.
- *
- * <p><strong>Asynchronous and after-commit</strong>, on the mail bulkhead — the shape
- * {@code MailListenerExecutorArchitectureTest} requires of every listener here, argued once on
- * {@link BookingConfirmationMailListener} and applying unchanged. The accept transaction and the
- * PaymentIntent are both long done by the time this runs, so no mail outcome can touch either.
- *
- * <p>Idempotency is the Event Publication Registry's, whole, exactly as its siblings: the
- * publication completes only on a normal return, only NULL-{@code completion_date} rows are
- * resubmitted, and a transport failure propagates on purpose so the send is retried. The retry
- * matters more here than anywhere else on this vehicle — the mail is the guest's only warning, and
- * a relay blip that cost it would cost them the booking.
- *
- * <p><strong>Giving up is counted under this flow's own name</strong> —
- * {@link ObservabilityMetrics#MAIL_PAYMENT_DUE_ABANDONED}, never summed with the other two. The
- * method returns normally, so the registry completes the publication and
- * {@code riviera.outbox.pending} never moves; the counter and its line are the only trace. Unlike
- * its siblings the loss is also <em>predictive</em> — the sweep will release the set at
- * {@code payBy}, so the errand is useful only before then.
+ * Mails the tourist that their accepted request must be paid by {@code payBy} — useless after it,
+ * when the sweep releases the set. Decides nothing: {@code booking} publishes {@link BookingPaymentDue}
+ * only where money is owed (re-reading status here races the stub's synchronous confirm), and
+ * {@code payBy} rides the payload; the code is resolved at send time, never carried (invariant #7).
+ * Async after-commit on the mail bulkhead, no {@code @Transactional}; at-least-once, so a transport
+ * failure propagates. Rationale: RESPONSIBILITIES.md §notification, ADR-0011.
  */
 @Component
 class RequestPaymentDueMailListener {
@@ -93,12 +57,8 @@ class RequestPaymentDueMailListener {
 	}
 
 	/**
-	 * Account for a payment-due mail this listener will never send. The counter is what an alert can
-	 * watch — nothing else moves — and the line is the only per-loss record, which is why it carries
-	 * the booking id and the deadline: together they say <em>which</em> booking lost its warning and
-	 * how long there is to reach the guest another way before the sweep releases the set. Ids, the
-	 * deadline and the reason only — never the arrival code (invariant #7), never the pay link that
-	 * embeds it, never the address. The correlation id of the accepting request rides the MDC.
+	 * Counts and logs a mail that will never be sent — the only trace, as the publication completes. Log
+	 * ids, the reason and {@code payBy} only; never the code (invariant #7), the pay link or the address.
 	 */
 	private void abandon(MissingBookingFact fact, BookingPaymentDue event) {
 		meters.counter(ObservabilityMetrics.MAIL_PAYMENT_DUE_ABANDONED,

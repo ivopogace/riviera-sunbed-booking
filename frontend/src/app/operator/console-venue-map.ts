@@ -5,49 +5,19 @@ import { VenueMapView } from '../shared/venue-views';
 import { VenueService } from '../venue/venue.service';
 
 /**
- * How long a snapshot may be reused, measured from when it **settles** — never from when the request
- * left, or a read slower than this would look expired while still in flight and a second concurrent
- * GET would go out for the same key. Long enough to coalesce the console-open burst (the shell and
- * its lazily-routed tab mount milliseconds apart), short enough that returning to a tab later is the
- * fresh read it was before this cache existed (a tab is destroyed and recreated on every navigation,
- * so its activation was the only refresh Pricing and Requests ever had).
+ * Snapshot reuse window, timed from when the read SETTLES (timed from send, a slow read would
+ * expire in flight and a second GET would go out). Long enough to coalesce the console-open
+ * burst, short enough that returning to a tab later is a fresh read.
  */
 const SNAPSHOT_TTL_MS = 30_000;
 
 /**
- * The operator console's shared `(venue, date)` beach-map snapshot. The console shell reads the
- * map for its header's venue name, the console page for the stats strip's Free-today tile, and two
- * of the tabs rendered inside that page wanted the byte-identical read — so opening the console on
- * Requests or Pricing fired `GET /api/venues/{id}?date=` several times, each transferring every set
- * position and running the server's per-date availability query. This coalesces those asks into
- * one request.
- *
- * <p><strong>Opt-in per call site, deliberately not a transparent cache inside `VenueService`.</strong>
- * Four `getVenueMap` callers want a shared snapshot (the console shell, the console page,
- * {@code RequestsTab}, {@code PricingTab}); the other two want server truth and keep calling
- * {@link VenueService} directly — {@code DailyViewTab} (its post-tap-to-mark reconcile must never
- * render a set the operator just marked as still free) and the tourist beach map (a different
- * feature). {@code LayoutEditor} reads the owner-asserted beach map through the console service
- * instead, for the same reason: it seeds its grid from the server and re-reads to escape a write
- * conflict. A transparent layer would have staled all of them silently, and freshness is the harder
- * property to get back.
- *
- * <p><strong>Bounded, single slot.</strong> Every consumer asks for the same key within one console
- * session, so one entry is enough — and a changed key (venue switch, midnight date rollover) evicts
- * the previous snapshot outright rather than parking it in a map with an eviction policy to get
- * wrong. {@link SNAPSHOT_TTL_MS} bounds how long that entry survives, so this stays a coalescing
- * window rather than a session-lifetime cache that would hide another device's edits until the next
- * write.
- *
- * <p><strong>Invalidation is the sharp edge.</strong> {@link reset} is called on sign-out and after
- * every successful write to the map — a layout save, a row reprice, a row rename, and each per-set
- * add / edit / move / remove — or the tabs would render retired sets and stale prices. It is also called *before*
- * the two `409 STALE_WRITE` recovery reads: serving that read from the snapshot whose `setVersion`
- * lost the race would make the conflict unrecoverable.
- *
- * <p>Lives in `operator/` rather than `core/` for the reason {@code PendingRequestsStore} does: both
- * consumers are the same feature (the shell + its tabs), so this is intra-feature shared state, not a
- * cross-cutting singleton (`riviera-frontend`).
+ * The operator console's shared `(venue, date)` beach-map snapshot: one request for the shell's,
+ * console page's, {@code RequestsTab}'s and {@code PricingTab}'s identical venue-map read. Opt-in
+ * per call site, never inside {@link VenueService}: {@code DailyViewTab}, {@code LayoutEditor} and
+ * the tourist map need server truth. One slot; a changed key evicts it. Call {@link reset} on
+ * sign-out, after every successful map write (layout, reprice, rename, per-set add/edit/move/remove)
+ * and BEFORE a `409 STALE_WRITE` recovery read, or tabs render stale sets and the conflict sticks.
  */
 @Service()
 export class ConsoleVenueMap {
@@ -60,10 +30,9 @@ export class ConsoleVenueMap {
   private generation = 0;
 
   /**
-   * The venue map for `(venueId, date)`, shared with every other caller asking for the same key
-   * within {@link SNAPSHOT_TTL_MS}. Concurrent callers join one in-flight request; a later caller
-   * replays the settled snapshot. A failed read is never retained, so the caller's own error handling
-   * still runs and the next ask goes back to the server.
+   * The venue map for `(venueId, date)`, shared within {@link SNAPSHOT_TTL_MS}: concurrent callers
+   * join one in-flight request, later ones replay the settled snapshot. A failed read is never
+   * retained, so the caller's error handling runs and the next ask refetches.
    */
   load(venueId: number, date: string): Observable<VenueMapView> {
     const key = `${venueId}@${date}`;

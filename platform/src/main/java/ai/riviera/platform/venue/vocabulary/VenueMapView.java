@@ -4,53 +4,12 @@ import java.time.LocalDate;
 import java.util.List;
 
 /**
- * The venue + its beach map, as the tourist read screen needs it (U1). {@code ratingTenths}
- * is the display rating ×10 (e.g. 48 → 4.8) — an integer, never a float. {@code fromPrice}
- * is the cheapest set's price across the map. {@code sets} are ordered for rendering.
- *
- * <p>{@code beach} is the venue's catalogue code ({@link Beach}) and {@code region} the code of the
- * region that beach derives to — both wire codes, labelled by the client.
- *
- * <p>{@code amenities} are this venue's amenities in canonical catalogue order ({@link Amenity}),
- * possibly empty; the beach-map header renders the full row. {@code distanceToWaterM} is the
- * optional distance to the water in metres, or {@code null} when not stated.
- *
- * <p>{@code setVersion} is the layout's optimistic-concurrency stamp: the {@code venue.set_version}
- * counter the operator's layout + pricing tabs load here and echo back on the next beach-map replace /
- * per-row reprice, so a stale write is rejected with 409 rather than clobbering another writer's layout
- * or prices. It is <strong>date-independent</strong> (a property of the static map, not the availability
- * overlay) and separate from the profile {@code version}; tourists ignore it.
- *
- * <p>{@code coverPhoto} is the cover slot's card + banner {@link PhotoView}s, or {@code null}
- * when no cover photo is uploaded — the map banner then renders its gradient fallback.
- *
- * <p>{@code photos} is the venue page's photos: one banner-sized {@link PhotoView} per occupied
- * photo slot, in {@link PhotoSlot} order (cover, sunbeds, bar), possibly empty. Each carries every
- * stored density so the browser picks per rendered box — the single-photo band and the gallery grid
- * both read this list. Uploads predating the uniform per-slot surfaces serve their best available variant (CARD,
- * then PREVIEW) instead, so a venue's slideshow never loses a photo to the rollout.
- *
- * <p>{@code lightboxPhotos} is the same slot order for the modal viewer, taken from the
- * {@code LIGHTBOX} surface where one is stored and falling back to the same chain otherwise — a
- * photo uploaded before that surface existed cannot gain one (ADR-0008), so it shows what the band
- * shows. A separate list precisely so a 2200px-wide candidate is never offered to the band or the
- * grid, whose {@code sizes} would take it.
- *
- * <p>{@code salesOpen} is whether online sales for the selected date are open right now —
- * booking's sales-window verdict (invariant #4), the on-day sales close and the season closure
- * together, computed per request; display only, the reserve path enforces the fence independently.
- * {@code closedForSeason} is whether the season closure is in effect right now and
- * {@code reopensOn} its reopen day while it is, else {@code null}; the page stays browsable either way.
- *
- * <p>{@code salesClose} is the venue's own sales-close setting as {@code HH:mm} — one of
- * {@code 00:01}, {@code 16:00}, {@code 23:59}. A display-copy key only: clients branch wording on
- * the value and never compare it with a clock; {@code salesOpen} stays the open/closed verdict.
- *
- * <p>{@code location} is the venue's riviera-map pin, or {@code null} when it has none.
- *
- * <p>{@code maxStayDays} is the longest stay the venue takes, in days, or {@code null} for any
- * length this season — the calendar's last-day ceiling and the rule it states; the reserve path
- * enforces it.
+ * The venue + its beach map for the tourist read. {@code ratingTenths} is rating ×10, never a float;
+ * {@code beach}/{@code region} are wire codes; nullable: distance, cover, {@code reopensOn}, location,
+ * {@code maxStayDays} (null = any length). {@code setVersion} is the layout's optimistic-concurrency
+ * stamp (stale write → 409), date-independent and separate from the profile {@code version}.
+ * {@code lightboxPhotos} stays apart from {@code photos} so a 2200px candidate never reaches the band (ADR-0008).
+ * {@code salesOpen} (#4) and {@code salesClose} ({@code HH:mm} copy key, never compared with a clock) are display only.
  */
 public record VenueMapView(long id, String name, String beach, String region,
 		String description, int ratingTenths, int reviewsCount, String bookingMode,

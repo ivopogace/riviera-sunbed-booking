@@ -12,41 +12,12 @@ import org.springframework.stereotype.Component;
 import ai.riviera.platform.booking.application.refund.RefundOutbox;
 
 /**
- * The {@link RefundOutbox} over Spring Modulith's Event Publication Registry — the driven
- * adapter that knows the registry exists, so nothing inside the hexagon has to.
- *
- * <p><strong>Scope is an allowlist of exact listener ids, and that is the load-bearing decision.</strong>
- * {@code RegistryMailOutbox} scopes by module package prefix, which is safe there because every
- * listener in {@code notification} is a mail listener. This module also hosts
- * {@code PaymentEventListener} — the payment → confirm spine (invariant #8), whose cancel branch
- * releases availability (invariant #2) — so the {@code ai.riviera.platform.booking.} prefix would let
- * a button labelled "refund" replay payment-confirmation work. Exact equality deliberately loses the
- * "future listeners covered automatically" property: a listener joins this allowlist on purpose, with
- * review. The two that have are exactly the two on the refund bulkhead
- * ({@code RefundListenerExecutorArchitectureTest}'s population): both make a gateway call the pool can
- * shed, and a shed one is invisible to the admin until the next restart's republish unless it is in
- * scope here. {@code RefundOutboxScopeTest} pins both constants against ids derived from the class
- * literals, and {@code RefundBulkheadIT} pins that derivation against what the running registry
- * actually writes (two levels).
- *
- * <p><strong>Why the {@code Predicate} overload and not {@code ResubmissionOptions}.</strong> The
- * options object delegates to a query reaching {@code STATUS = 'FAILED'} rows (plus legacy NULLs) — a
- * listener that <em>threw</em>. A refund the bulkhead <em>shed</em> never ran, so nothing
- * marked it failed and it sits at {@code PUBLISHED}; the {@code Predicate} overload routes to
- * {@code processIncompletePublications}, which reads <em>incomplete</em> and covers both. Same trap,
- * same answer as {@code RegistryMailOutbox} — restated because the shed row is one of the three cases
- * this adapter exists to clear.
- *
- * <p><strong>The registry, not this adapter, is what makes a re-drive once-only</strong> — the v2
- * repository's {@code markResubmitted} claim ({@code UPDATE … WHERE ID = ? AND STATUS !=
- * 'RESUBMITTED'}) skips a publication whose previous resubmission is still in flight, durably and
- * across instances. The count returned is therefore a match count; {@link RefundOutbox} says what
- * that means for the caller.
- *
- * <p><strong>Fail-closed on an unattributable publication.</strong> One that is not a
- * {@link TargetEventPublication} cannot name its listener and is excluded: excluding a refund costs a
- * wait for the restart republish, while including an unknown publication could replay the payment
- * spine or a ledger accrual.
+ * The {@link RefundOutbox} over the Event Publication Registry, scoped to an exact-id allowlist of the
+ * two refund-bulkhead listeners: the {@code booking} package prefix would also replay
+ * {@code PaymentEventListener}'s payment → confirm spine ({@code RESPONSIBILITIES.md} §booking). Uses the
+ * {@code Predicate} resubmission overload because {@code ResubmissionOptions} misses a shed publication
+ * (§notification); the registry's {@code markResubmitted} makes a re-drive once-only. Fail-closed: a
+ * publication that is not a {@link TargetEventPublication} cannot name its listener and is excluded.
  */
 @Component
 class RegistryRefundOutbox implements RefundOutbox {

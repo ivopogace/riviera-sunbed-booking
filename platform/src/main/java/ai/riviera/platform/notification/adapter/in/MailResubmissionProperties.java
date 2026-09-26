@@ -4,40 +4,12 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.boot.context.properties.bind.DefaultValue;
 
 /**
- * The cooldown behind the ADMIN resubmit lever, externalised so the window can be matched to a
- * real relay's drain rate without a deploy — the same shape as the {@code RegistryMailProperties}
- * argument, applied to a knob whose right value is likewise unknowable until real traffic runs
- * through it.
- *
- * <p><strong>The value that ships lives in {@code application.properties}, not here.</strong> The
- * {@code @DefaultValue} is a backstop for a context bound without that file; deployment reads the
- * {@code ${RIVIERA_MAIL_RESUBMIT_COOLDOWN_MS:…}} placeholder, and that placeholder is also the only
- * reason a readable env-var name works at all — the relaxed-binding form of
- * {@code riviera.notification.mail-resubmission.cooldown-ms} would be
- * {@code RIVIERA_NOTIFICATION_MAILRESUBMISSION_COOLDOWNMS}.
- *
- * <p><strong>Both bounds matter, and the lower one is the load-shaped half.</strong> A non-positive
- * cooldown boots cleanly and reduces the throttle to the single-flight lock alone, which does not
- * outlive one call. During a relay outage every send fails fast and the registry marks it failed, so
- * the whole scope is eligible again within milliseconds and a held-down button becomes a re-send storm
- * against the relay that is already struggling. The floor is deliberately above one second: anything
- * shorter cannot outlive even a healthy relay round-trip, so it would satisfy a "positive" check while
- * throttling nothing.
- *
- * <p>The ceiling bounds the typo from the other side. An oversized value does not fail — it just
- * refuses every press for hours, so the lever an admin reaches for during an incident reports
- * {@code COOLING_DOWN} and nothing else, which reads as a broken button rather than as a
- * misconfiguration. Twenty-four minutes is already far past any plausible tuning — the shipped window
- * is one minute, and the whole point of the issue is to shorten a retry horizon that used to be "the
- * next deploy", not to lengthen it.
- *
- * <p>Validated in the compact constructor rather than with {@code @Validated} + {@code @Min}: Boot
- * validates {@code @ConfigurationProperties} only with a JSR-303 implementation on the classpath, and
- * this project deliberately declined {@code spring-boot-starter-validation} in favour of explicit
- * checks in records ({@code riviera-java-conventions} §2/§6b). An annotation here would bind and
- * validate nothing.
- *
- * @param cooldownMs how long an accepted resubmission refuses the next one
+ * Cooldown in milliseconds of the ADMIN mail-resubmit lever. The shipped value and its
+ * {@code RIVIERA_MAIL_RESUBMIT_COOLDOWN_MS} override live in {@code application.properties};
+ * {@code @DefaultValue} is only a backstop. Bounded [{@link #MIN_COOLDOWN_MS},
+ * {@link #MAX_COOLDOWN_MS}] in the compact constructor ({@code @Min} would validate nothing — no
+ * validation starter): too short and a held-down button storms a failing relay with re-sends; too long
+ * and the lever answers {@code COOLING_DOWN} through the whole incident.
  */
 @ConfigurationProperties("riviera.notification.mail-resubmission")
 record MailResubmissionProperties(@DefaultValue("60000") int cooldownMs) {
