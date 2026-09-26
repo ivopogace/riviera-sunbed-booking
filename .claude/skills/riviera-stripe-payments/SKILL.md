@@ -12,7 +12,7 @@ description: >-
 **Locked (ADR-0002):** collect all tourist payments via Stripe into the German entity; pay
 venues manually in weekly BKT batches minus commission. **No Stripe Connect** — `Account`,
 `Transfer`, `application_fee`, `on_behalf_of`, destination charges cannot reach Albanian
-venues. If a task wants them, stop and surface it as an open question. ADR-0009 (deferred)
+venues. If a task wants them, stop and surface it as an open question. ADR-0009 (Proposed)
 would re-decide the gateway; this model stays authoritative until that work starts. Do NOT load
 `stripe:connect-recommend`; ignore Connect sections of `stripe:stripe-best-practices`.
 
@@ -21,22 +21,22 @@ would re-decide the gateway; this model stays authoritative until that work star
 - `payment` exposes the `api/` port `CheckoutPort` (`PaymentOutcome pay(BookingRef, Money)`);
   the Stripe SDK sits behind the internal `PaymentGateway` port (`payment.application`,
   implemented by `adapter/out/StripePaymentGateway`). The domain never touches Stripe types.
-- Confirm only on the signature-verified `payment_intent.succeeded` /
-  `checkout.session.completed` webhook (#8); the redirect is never a confirmation.
+- Confirm only on the signature-verified `payment_intent.succeeded` webhook (#8); the redirect
+  is never a confirmation.
 - Idempotency key from `BookingId` + operation on charge/refund; webhook handlers dedupe on
   the Stripe event id and no-op when already applied.
-- Money per #5, converted at the Stripe boundary only. Persist `payment_intent`, `charge`
-  and refund ids; never card data.
+- Money per #5, converted at the Stripe boundary only. Persist the PaymentIntent and
+  refund ids; never card data.
 
 ## Booking-mode money timing
 
-- **Instant Book:** `ReserveSetService` claims the `(set, date)` row (#2) and inserts
+- **Instant Book:** `ReserveSetService` claims every `(set, date)` row of the stay (#2) and inserts
   `AWAITING_PAYMENT` before the Stripe call; `StripePaymentGateway` creates an
   immediate-capture PaymentIntent (`setAutomaticPaymentMethods(enabled=true)`); webhook →
   `CONFIRMED`.
-- **Request-to-Book:** no charge and no PaymentIntent at request time; the row is soft-held
-  pending (released on decline, timeout, or guest withdraw). On accept → `AWAITING_PAYMENT`
-  and a fresh PaymentIntent; identical to Instant Book from there.
+- **Request-to-Book:** no charge and no PaymentIntent at request time; the set is claimed the same
+  way (#2) and stored `PENDING_REQUEST` (released on decline, timeout, or guest withdraw). On accept
+  → `AWAITING_PAYMENT` and a fresh PaymentIntent; identical to Instant Book from there.
 - Windows: accept deadline = `booking.request.expiry-window`, capped at D's sales close; pay
   window = `booking.request.pay-window` from `accepted_at`, capped at the end of the service day
   (#4, `RESPONSIBILITIES.md` §`booking`). `ExpireRequestsService` +
@@ -46,16 +46,16 @@ would re-decide the gateway; this model stays authoritative until that work star
 
 ## Refunds and payout
 
-- Refund eligibility/amount server-side (#10); the weather refund is an explicit admin action
-  for a venue+date.
+- Refund eligibility/amount server-side (#10); the weather refund is an explicit action
+  by the venue's operator for a venue+date.
 - A refund reverses the ledger accrual (#9); a venue-caused one (`reason == VENUE_CHANGE`) also
   charges a flat fee. Payout = `Σ amounts − commission − fees`, exactly-once per booking and
   entry type. **Direction is the entry type:** amounts are non-negative, only `ACCRUAL` adds;
   pin every new ledger sum with a `FEE` row. A `FEE` has no gross and no commission and is the
   one type the net CHECK exempts (ADR-0021).
-- Settlement is out-of-app: a weekly per-venue report; the founder pays via BKT and marks the
-  batch settled. The ledger records EUR net plus the venue's currency preference (EUR vs ALL);
-  conversion happens outside the app.
+- Settlement is out-of-app: a weekly per-venue report; the founder pays via BKT and marks the batch
+  settled. The ledger and batch record the EUR collection currency; the venue's preference is
+  `venue.payout_currency` (EUR vs ALL, provisional), converted outside the app.
 
 ## Boundaries
 

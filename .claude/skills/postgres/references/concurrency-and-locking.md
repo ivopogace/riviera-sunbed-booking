@@ -21,11 +21,11 @@ commit;
 ```
 
 ```sql
--- CORRECT: charge first (idempotency key, ADR-0002), THEN a millisecond txn
--- application: gateway.charge(..., idempotencyKey)  // outside any txn
+-- CORRECT: the reserve commits AWAITING_PAYMENT, the gateway call runs outside any txn
+-- (idempotency key, ADR-0002), and the verified webhook's listener confirms in a millisecond txn
 begin;
   update booking
-     set status = 'CONFIRMED', payment_id = :pid
+     set status = 'CONFIRMED', confirmed_at = :at
    where id = :id and status = 'AWAITING_PAYMENT';   -- guarded, idempotent
 commit;
 ```
@@ -52,10 +52,11 @@ contention (e.g. transitioning a row's state). For claiming a not-yet-existing s
 
 ## 3. `FOR UPDATE SKIP LOCKED` — worker queues / outbox
 
-When multiple workers pull from a table (future use here: payout-batch jobs, a domain-event
-outbox, refund/retry queues), plain `FOR UPDATE` serializes them — each worker waits for the
-previous. `SKIP LOCKED` lets each worker grab the next *unlocked* row, so they run in
-parallel without ever double-claiming a job (documented ~10× worker throughput).
+When multiple workers pull from a table (future use here: payout-batch jobs), plain `FOR UPDATE`
+serializes them — each worker waits for the previous. `SKIP LOCKED` lets each worker grab the next
+*unlocked* row, so they run in parallel without ever double-claiming a job (documented ~10× worker
+throughput). Never in the no-show sweep: it reads a short batch as drained, so a skipped row would
+be stranded (`NoShowSweepService`).
 
 ```sql
 update job
@@ -108,9 +109,10 @@ row2→row1) and wait on each other forever.
 - **Observe:** enable `log_lock_waits`, tune `deadlock_timeout`; deadlock counts surface in
   `pg_stat_database`.
 
-Our single-row `INSERT … ON CONFLICT` claim has **no** deadlock surface. The rule bites when a
-slice writes **multiple** rows in one transaction (e.g. releasing several sets, a batch payout
-posting) — order those writes by a stable key.
+A stay claims one `set_availability` row per day in one transaction, in ascending date order
+(`StaySpan#eachDay`) — keep that order. The rule bites whenever a slice writes **multiple** rows in
+one transaction (e.g. releasing several sets, a batch payout posting): order those writes by a
+stable key.
 
 ---
 

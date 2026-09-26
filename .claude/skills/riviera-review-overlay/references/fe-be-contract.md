@@ -25,7 +25,7 @@ guarantee stops two bookings for one set; also check the *same user* double-clic
 create a duplicate booking or charge.
 
 ### RV-CT-5. Error contract — Major for a 500 or non-ProblemDetail body; Minor for a missing friendly message
-Business errors are `ProblemDetail` (`application/problem+json`) with a stable `code`
-(`409 SET_TAKEN`, `BOOKING_CLOSED`, `NOT_ONLINE_POOL`), built by `ApiProblem` + `ApiErrorHandler`
-(`riviera-java-conventions/references/error-contract.md`); a new rejection ships its own `code`;
-the FE maps each `code` to a message and, for `SET_TAKEN`, refreshes the map (RV-FE-2).
+Business errors are `ProblemDetail` (`application/problem+json`) with a stable `code` (`409
+SET_TAKEN`, `BOOKING_CLOSED`, `SET_NOT_BOOKABLE_ONLINE`), built by `ApiProblem` + `ApiErrorHandler`
+(`riviera-java-conventions/references/error-contract.md`); a new rejection ships its own `code`; the
+FE maps each `code` to a message and, for `SET_TAKEN`, refreshes the map (RV-FE-2).

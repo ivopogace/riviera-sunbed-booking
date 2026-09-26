@@ -25,7 +25,8 @@ if [ "$(git rev-parse --is-shallow-repository)" = true ]; then git fetch --unsha
 A history claim made on the shallow graph is not evidence: re-run the trace after deepening
 before you report a cause, name an introducing commit, or write one into an issue or PR.
 
-The `scripts/check-*.mjs` guards exit 2 on a shallow clone.
+The diff-scoped guards (`--diff`), `check-comment-only.mjs` and `check-review-range.mjs` exit 2
+on a shallow clone; `--files`/`--all`/`--hook` runs do not check.
 
 **Remote-tracking refs are frozen** at container start: `origin/main` does not follow `main`.
 Fetch what you diff against (`git fetch --no-tags origin <ref>`); for the review gate the

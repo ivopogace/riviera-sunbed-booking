@@ -33,7 +33,9 @@ occupies this grid cell."*), never a consequence, a remedy or UI navigation.
 ## `ApiErrorHandler` (root package)
 
 The single `@RestControllerAdvice`, extending `ResponseEntityExceptionHandler`:
-`shared.InvalidApiRequestException` → `400 INVALID_REQUEST`; `DuplicateKeyException` →
+`shared.InvalidApiRequestException` → `400 INVALID_REQUEST`; `BlockedPasswordException` →
+`400 PASSWORD_CONTAINS_BLOCKED_TERM`; `AuthenticationException` → `401 INVALID_CREDENTIALS`
+(one body for every cause — telling them apart is account enumeration); `DuplicateKeyException` →
 `409 CONFLICT` (unique-constraint race backstop); `NotVenueOwnerException` /
 `AccessDeniedException` → `403`. Raw `IllegalArgumentException` and non-duplicate
 `DataIntegrityViolationException` are deliberately unmapped — they are server bugs and reach
@@ -46,9 +48,9 @@ MVC dispatch).
 
 - Validation: presence/shape/format at the edge (`toCommand()`); domain invariants in the value
   object's constructor and the application service; no HTTP status in the domain.
-- Status map: availability/uniqueness conflict `409`; not-bookable/cutoff `422`; unknown id
-  `404`; malformed body `400`; ownership `403`; rate limit `429`. Framework errors: `400` →
-  `INVALID_REQUEST`, `413` → `PAYLOAD_TOO_LARGE` (pinned literally — the base handler is
+- Status map: availability/uniqueness conflict `409`; not-bookable/cutoff `422`; unknown id `404`;
+  malformed body `400`; bad credentials `401`; ownership `403`; rate limit `429`. Framework errors:
+  `400` → `INVALID_REQUEST`, `413` → `PAYLOAD_TOO_LARGE` (pinned literally — the base handler is
   `final` and the 413 constant name is unstable), otherwise the HTTP status name
   (`ApiErrorHandlerTest`).
 - `instance` is `about:blank` by construction (Spring would auto-fill the request URI, which

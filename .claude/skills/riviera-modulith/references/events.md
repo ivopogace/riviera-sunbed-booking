@@ -21,7 +21,9 @@ because it can change while the event sits in the registry.
 
 Publish from the application service via `ApplicationEventPublisher` after the state change,
 inside the transaction. Listen with `@ApplicationModuleListener` in the subscriber's
-`adapter/in`. Listeners must be idempotent (dedupe on `BookingId`): the registry re-delivers.
+`adapter/in`, or, for a listener that must drain on its own bounded executor (the mail and refund
+bulkheads), `@Async("<executor>")` + `@TransactionalEventListener`. Listeners must be idempotent
+(dedupe on `BookingId`): the registry re-delivers an outstanding publication on restart.
 
 Default to async. A plain `@EventListener` runs in the publisher's transaction and a throw
 rolls the publisher back — only when the producer must fail if the consumer can't apply and an

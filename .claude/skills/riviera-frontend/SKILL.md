@@ -23,7 +23,7 @@ Owns the *where*. Technique: `angular-developer` + the angular-cli MCP (`get_bes
 | `environments/` (sibling of `app/`) | `apiBaseUrl` + public config; any stratum may read it | — |
 
 Two features needing the same thing → promote it: pure → `shared/`, stateful/HTTP → `core/`.
-An adapter that does its own I/O (`shared/map-engine.ts` fetching MapLibre tiles) is still
+An adapter that does its own I/O (`shared/maplibre-map-engine.ts` fetching MapLibre tiles) is still
 `shared/`-admissible; "no HTTP" means no `HttpClient`/API state.
 
 **Frozen cross-feature edges** (RV-FE-8: a *new* edge is Major, Blocker if `shared/`- or
@@ -87,8 +87,9 @@ but a plain `useClass` and no flag. Unit specs override the token directly.
   wears the console theme (porcelain or dark, never `riviera`) via `app.ts`'s host binding
   reading `core/console-theme.ts` (`ConsoleTheme`, storage key `riviera-console-theme`, no OS
   follow); it never touches `ThemeService`.
-- The **theme** registry is two places only: a CSS block in `tailwind.css` + a row in
-  `core/theme.ts` (`THEME_OPTIONS` — id, name, swatch, light; the switcher's, not a token's).
+- The **theme** registry is three places: a CSS block in `tailwind.css`, a row in
+  `core/theme.ts` (`THEME_OPTIONS` — id, name, swatch, light; the switcher's, not a token's) and
+  the id allow-list in `index.html`'s pre-paint seed, which resets any id it does not list.
   A **token** is `tailwind.css` alone: a declaration per theme block plus a `@theme inline`
   mapping (→ `bg-riv-…`/`text-riv-…`), and nothing in `core/theme.ts`.
 - Consuming tokens is `riviera-tailwind`'s call. Reduced-motion guards live in the same

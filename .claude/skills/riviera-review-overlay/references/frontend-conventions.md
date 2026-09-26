@@ -52,8 +52,8 @@ spec is never parked where CI can't run it. Specs are `*.e2e.ts` (not `*.spec.ts
 (`riviera-local-debug`).
 
 ### RV-FE-8. No new cross-feature import — Major; **Blocker** for `shared/ →` or `core/ → feature/`
-Feature folders are the direct children of `frontend/src/app` other than `core/`, `shared/`,
-`pages/`, `environments/`. Pre-existing edges are frozen in `riviera-frontend`'s table; a
+Feature folders are the direct children of `frontend/src/app` other than `core/`, `shared/`
+and `pages/`. Pre-existing edges are frozen in `riviera-frontend`'s table; a
 moved/consolidated edge is fine; a new one is argued in the plan, never slipped in on
 precedent. Verify:
 

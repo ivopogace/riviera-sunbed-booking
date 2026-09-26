@@ -78,7 +78,7 @@ Resolved entries move under `### Resolved` with outcome + SHA.
 > Mandatory if the feature touches `booking`, `availability` or the beach map; otherwise
 > `N/A — does not affect availability` and why.
 
-- **Write paths to `availability(set_id, booking_date)`:** <every channel in scope>
+- **Write paths to `set_availability(set_id, booking_date)`:** <every channel in scope>
 - **Uniqueness guarantee:** <the DB constraint>
 - **Concurrency strategy:** <`SELECT … FOR UPDATE` | `INSERT … ON CONFLICT DO NOTHING` | other, and why>
 - **Pool rule (#3):** <…>
@@ -181,7 +181,8 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 > ```
 >
 > Accepts repo-relative paths, sibling extensions, brace sets, `a.ts|.html`, directories, globs.
-> Exempts the plan doc and lockfiles. A file you never intend to commit goes behind an ignore rule.
+> Exempts plan docs and `package-lock.json`. A file you never intend to commit goes behind an ignore
+> rule.
 
 - `<path>` — <responsibility>
 

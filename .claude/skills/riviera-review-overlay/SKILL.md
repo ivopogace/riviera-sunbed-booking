@@ -35,8 +35,8 @@ session would act differently (`riviera-java-conventions` §6c). **Minor** findi
 multi-line inline comment; an issue/PR number in an added skill line, added inline comment or
 touched doc comment; prose that narrates the diff or records history. A touched doc comment over
 §6d's budget is **Major** (the guard gates it, new or edited), and so is a touched
-`RESPONSIBILITIES.md` bullet or paragraph over 8 lines; a trim that lowered the total
-needs the committed `check-doc-budget.mjs --update` baseline. Run
+`RESPONSIBILITIES.md` bullet or paragraph over 8 lines; the `check-doc-budget.mjs` baseline
+is 0, so no block may stay over budget. Run
 `node scripts/check-inline-comments.mjs --diff origin/main` (also a hook and a CI job) for the
 mechanical half; it does not cover `#`/SQL `--` comments or a one-liner that shouldn't exist.
 Don't reflow untouched comments.
@@ -87,10 +87,11 @@ skill's step 3 over docs that stated the old position.
 ## Verification
 
 Command set: CLAUDE.md §Commands. Modulith verification is
-`./gradlew test --tests "*ModularityTests*"`; `npm test` has no `--browsers` flag.
+`./gradlew test --tests "*ModularityTests*"`; `npm test` runs Vitest in jsdom; never pass `--browsers`
+(browser mode is not installed).
 
-Red flag: `gradlew.bat` "flipped CRLF→LF" — `*.bat text eol=crlf` in `.gitattributes` stores
-the blob LF; only a wrong working-tree EOL is a finding.
+Red flag: `gradlew.bat` "flipped CRLF→LF" — `*.bat text eol=crlf` in `platform/.gitattributes`
+stores the blob LF; only a wrong working-tree EOL is a finding.
 
 ## Output
 

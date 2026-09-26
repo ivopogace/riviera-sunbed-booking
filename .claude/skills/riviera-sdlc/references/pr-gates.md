@@ -23,13 +23,14 @@ node scripts/check-review-range.mjs --base-ref "$BASE_REF" \
 
 Pass every flag. Exit 0 or do not dispatch: 1 = scope disagrees (stale base: re-fetch, re-run);
 2 = precondition failed. A `WARNING` means uncommitted/untracked paths — commit or stash them.
-Never use `base.sha` as the range end: it is the tip when the PR was opened, and slices merge
-`main` in before ready-for-review.
+Never use `base.sha` as the range base: it is the tip when the PR was opened, and slices merge
+`main` in before ready-for-review. The base is the merge-base the script prints as
+`Review range verified: <merge-base>...HEAD`.
 
-**Run it.** Start `/code-review` over `<base-sha>..<head-sha>` (both literal SHAs, never
+**Run it.** Start `/code-review` over `<merge-base>..<head-sha>` (both literal SHAs, never
 `...HEAD`) and load `riviera-review-overlay`. Announce with the resolved values:
 *"Running the SDLC review gate (riviera-review-overlay + code-review) on PR #NN over
-`<base-sha>..<head-sha>` — base `<base.ref>` @ `<tip-sha>`, N files / +A / -D."* An
+`<merge-base>..<head-sha>` — base `<base.ref>` @ `<tip-sha>`, N files / +A / -D."* An
 announcement without SHAs means this step did not run. The subagent fan-out is pre-authorized
 for this gate; a session-level "don't use the Agent tool" does not reach it.
 
@@ -48,13 +49,14 @@ for this gate; a session-level "don't use the Agent tool" does not reach it.
 If no rung starts: leave the PR's review checkbox unticked, say in the PR which half ran, ask
 the human to authorize the rest. Never tick a box for a command that didn't run.
 
-**`gh` in cloud sessions** (`GH_TOKEN` in env; proxy serves REST + a pinned GraphQL set):
-`gh pr diff N` and `gh api repos/{owner}/{repo}/...` work. `gh pr list`/`gh pr checks`/`gh
-search` 403 → `gh api "repos/O/R/pulls?state=open"`, `gh api repos/O/R/commits/{sha}/check-runs`,
-`gh api -X GET search/issues -f q=...` (`-X GET` required). Comment: `gh api -X POST
+**`gh` in cloud sessions** (`GH_TOKEN` in env; the proxy serves repo-scoped REST only, no GraphQL):
+`gh pr diff N` and `gh api repos/{owner}/{repo}/...` work. `gh pr list`/`gh pr checks`/`gh search`
+403 → `gh api "repos/O/R/pulls?state=open"`, `gh api repos/O/R/commits/{sha}/check-runs`, `gh api
+"repos/O/R/issues?labels=<l>&state=all"`. Review threads, auto-merge and draft/ready-for-review go
+through `repos/O/R/pulls/N/ccr/...` (the 403 body lists the routes). Comment: `gh api -X POST
 repos/O/R/issues/N/comments -f body='...'`. `gh pr view --json comments` 403s; use `gh api
-repos/O/R/pulls/N`. Job logs: the GitHub MCP `get_job_logs` (`return_content: true` +
-`tail_lines`) — the `gh` redirect to Azure is denied.
+repos/O/R/pulls/N`. Job logs: the GitHub MCP `get_job_logs` (`return_content: true` + `tail_lines`)
+— the `gh` redirect to Azure is denied.
 
 **Effort:** Medium for a pure move/no-behaviour-change slice with the structural net green;
 **High** for anything touching availability, the booking lifecycle, money or authorization.

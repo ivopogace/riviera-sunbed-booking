@@ -75,9 +75,8 @@ No issue numbers, no decision history ("it began…", "widened by…", "delibera
 Relocate load-bearing rationale (`Rationale: RESPONSIBILITIES.md §booking`); keep the one-line
 warning at the point of use; keep invariant references. Budget: 6 text lines per type (a file
 or package header counts as one), 3 per member. Every doc comment the diff touches gates on it,
-judged whole — editing one line of an old long block means trimming the block.
-`scripts/check-doc-budget.mjs` locks the tree's total in — after a trim, `--update` and commit
-the baseline. The rationale a pointer sends to `RESPONSIBILITIES.md` keeps a budget there too: 8
+judged whole. `scripts/check-doc-budget.mjs` holds the tree at 0 lines over budget, so any growth
+fails CI. The rationale a pointer sends to `RESPONSIBILITIES.md` keeps a budget there too: 8
 lines per bullet or paragraph, gated and ratcheted the same way. Why the change was
 made goes in the PR description, not the Javadoc. The frontend twin: `frontend/.claude/CLAUDE.md`.
 
