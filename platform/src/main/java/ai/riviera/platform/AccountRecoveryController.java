@@ -85,9 +85,9 @@ class AccountRecoveryController {
 	}
 
 	/**
-	 * Redeem a reset token and set the new password; {@code 400} on a {@link PasswordPolicy} breach or a
-	 * bad token. {@link PrincipalSessionRevoker#revokeAll} runs before and after the write; keep the
-	 * bcrypt encode above the first one, or its ~80ms widens the window the old password still works in.
+	 * Redeem a reset token, set the new password; {@code 400} on a {@link PasswordPolicy} breach or bad
+	 * token. {@link PrincipalSessionRevoker#revokeAll} runs before and after the write; keep the bcrypt
+	 * encode above the first, or its ~80ms widens the gap: {@code RESPONSIBILITIES.md} §Platform edge.
 	 */
 	@PostMapping(RESET_PASSWORD_PATH)
 	ResponseEntity<?> resetPassword(@RequestBody ResetPasswordRequest request) {

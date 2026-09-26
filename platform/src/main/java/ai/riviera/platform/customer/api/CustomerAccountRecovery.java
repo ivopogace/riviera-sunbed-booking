@@ -30,9 +30,9 @@ public interface CustomerAccountRecovery {
 	ResetPasswordOutcome resetPassword(String tokenHash, String newPasswordHash);
 
 	/**
-	 * The email of the account a reset token unlocks, by exactly {@link #resetPassword}'s claim
-	 * predicate but consuming nothing; empty for any token that write would reject. Lets the edge
-	 * revoke sessions <em>before</em> the reset writes, so a failed revoke leaves the link usable.
+	 * The email of the account a reset token unlocks, by {@link #resetPassword}'s claim predicate but
+	 * consuming nothing; empty for any token that write would reject. The edge revokes first, so a
+	 * failed revoke leaves the link usable: {@code RESPONSIBILITIES.md} §Platform edge.
 	 */
 	Optional<String> emailForResetToken(String tokenHash);
 

@@ -36,7 +36,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  */
 class MailOutboxScopeTest {
 
-	/** The money-path listeners AC-2 exists to protect — invariant #9 and, through the refund, #8. */
+	/** The money-path listeners AC-2 exists to protect — the ledger (#9), the refund, and the confirm (#8). */
 	private static final String PAYOUT_ACCRUAL_LISTENER_ID = "ai.riviera.platform.payout.adapter.in."
 			+ "BookingConfirmedPayoutListener.on(ai.riviera.platform.booking.events.BookingConfirmed)";
 
@@ -59,8 +59,8 @@ class MailOutboxScopeTest {
 	 * The prefix scope's payoff, claimed by {@link RegistryMailOutbox}'s Javadoc when only one listener
 	 * existed: "new listeners are in scope the day they land, without anyone remembering to add
 	 * them." This is the first chance to check that rather than trust it — and the check matters
-	 * precisely because {@code BookingCancelled} is the fan-out below, where a stuck refund (invariant
-	 * #8) and a stuck reversal (#9) sit under the same event as this mail.
+	 * precisely because {@code BookingCancelled} is the fan-out below, where a stuck refund and a stuck
+	 * reversal (#9) sit under the same event as this mail.
 	 */
 	@Test
 	@DisplayName("the cancellation-mail publication is in scope")

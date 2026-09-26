@@ -8,10 +8,10 @@ import { PhotoView } from './venue-views';
 /**
  * The venue page's wide photo lead, only for 2+ photos (the caller keeps the single-photo band for
  * 0 or 1): a cover tile beside up to two side tiles, across the beach map's 1100px breakout. Tiles
- * letterbox, never crop: `object-contain` over a blurred CSS-background copy (a second
- * `NgOptimizedImage` warns on a duplicate `ngSrc`), hence {@link CONTAIN_SIZES}; Chromium sizes the
- * lazy side tiles by `auto`. Each tile is a labelled button emitting {@link opened} with its index,
- * to seed a {@link PhotoLightbox}, so its `<img>` stays `alt=""`.
+ * letterbox, never crop (`RESPONSIBILITIES.md` §Frontend): `object-contain` over a blurred
+ * CSS-background copy (a second `NgOptimizedImage` warns on a duplicate `ngSrc`), hence
+ * {@link CONTAIN_SIZES}. Each tile is a labelled button emitting {@link opened} with its index, to
+ * seed a {@link PhotoLightbox}, so its `<img>` stays `alt=""`.
  */
 @Component({
   selector: 'app-photo-gallery-grid',

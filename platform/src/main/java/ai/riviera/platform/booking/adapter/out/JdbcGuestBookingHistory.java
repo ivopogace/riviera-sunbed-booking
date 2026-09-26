@@ -35,9 +35,9 @@ class JdbcGuestBookingHistory implements GuestBookingHistory {
 	}
 
 	/**
-	 * The adapter's only client, bounded outright: its sole caller is the retention sweep. Scoped here,
-	 * never {@code spring.jdbc.template.query-timeout}: that global would also bound the
-	 * {@code availability} claim (invariant #2), and {@code ScheduledWorkArchitectureTest} fails on it.
+	 * The only client, bounded: the retention sweep is its sole caller ({@code RESPONSIBILITIES.md}
+	 * §booking). Scoped here, never {@code spring.jdbc.template.query-timeout}: that global would also
+	 * bound the {@code availability} claim (invariant #2, {@code ScheduledWorkArchitectureTest}).
 	 */
 	private static JdbcClient boundedClient(DataSource dataSource, int queryTimeoutSeconds) {
 		JdbcTemplate bounded = new JdbcTemplate(dataSource);

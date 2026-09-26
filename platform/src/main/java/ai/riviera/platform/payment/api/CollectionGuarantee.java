@@ -6,7 +6,7 @@ package ai.riviera.platform.payment.api;
  * confirms (invariant #8); no under the default-profile stub, which confirms having collected nothing.
  * The withheld-confirmation-mail flag is disclosed only on {@code true}, or it becomes a free
  * suppression oracle; ask this port, never a profile string. Rationale:
- * {@code RESPONSIBILITIES.md} §booking.
+ * {@code RESPONSIBILITIES.md} §booking (the gate) and §payment (why a port of its own).
  */
 public interface CollectionGuarantee {
 

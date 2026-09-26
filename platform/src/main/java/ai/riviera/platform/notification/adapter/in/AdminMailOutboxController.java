@@ -15,9 +15,9 @@ import ai.riviera.platform.shared.ResubmissionOutcome;
  * ADMIN surface over the mail outbox: what the Event Publication Registry still owes this module,
  * and the lever that re-drives it now, via {@link MailResubmission}. Role-gated in
  * {@code SecurityConfig} (invariant #13's {@code /api/admin/**} exemption): {@code OPERATOR} or
- * {@code CUSTOMER} is {@code 403}, anonymous {@code 401}. Every outcome is {@code 200}: the refusals
- * are expected flows carrying how long until the lever accepts, which a bare {@code 409} could not.
- * Counts and an outcome token only; never an address, arrival code or registry payload (invariant #7).
+ * {@code CUSTOMER} is {@code 403}, anonymous {@code 401}. Every outcome is {@code 200}: a refusal
+ * carries how long until the lever accepts, which a bare {@code 409} could not. Counts and an outcome
+ * token only (invariant #7). Placement and shape: {@code RESPONSIBILITIES.md} §notification.
  */
 @RestController
 @RequestMapping("/api/admin/mail-outbox")

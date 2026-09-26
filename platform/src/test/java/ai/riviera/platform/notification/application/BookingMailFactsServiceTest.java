@@ -99,10 +99,10 @@ class BookingMailFactsServiceTest {
 	}
 
 	/**
-	 * The tag values are the metric vocabulary both abandon counters are read through, and the
-	 * observability runbook tells an on-call reader to filter on them by name. Changing one breaks a
-	 * dashboard rather than renaming a constant — the {@code MailKind} argument, applied to
-	 * the dimension those two counters do <em>not</em> share.
+	 * The tag values are the metric vocabulary all six registry-listener abandon counters are read
+	 * through, and the observability runbook tells an on-call reader to filter on them by name. Changing
+	 * one breaks a dashboard rather than renaming a constant — {@code MailKindTest}'s argument, applied
+	 * to the {@code reason} dimension instead of {@code kind}.
 	 */
 	@Test
 	void theReasonVocabularyIsTheShippedOne() {

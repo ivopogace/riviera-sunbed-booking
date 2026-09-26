@@ -32,7 +32,7 @@ export abstract class StripePaymentGateway {
 /**
  * Validate the configured Stripe key before it reaches Stripe.js. An empty key fails loudly
  * instead of rendering a broken element; a secret key (`sk_…`) is refused outright — it must never
- * be shipped to the browser (invariant #8), and accepting one would only fail opaquely later.
+ * be shipped to the browser, and accepting one would only fail opaquely later.
  */
 export function assertPublishableKey(key: string): void {
   if (!key) {
@@ -51,7 +51,7 @@ export function assertPublishableKey(key: string): void {
  * never as a side effect of the app booting (the tourist surfaces make no third-party request,
  * ADR-0022) — mounts a Payment Element bound to the booking's PaymentIntent `clientSecret`, and
  * confirms the card with `redirect: 'if_required'`. Uses the **publishable** key from {@link environment} (a `pk_…`,
- * which is safe in the client bundle — the secret key never reaches the browser, invariant #8).
+ * which is safe in the client bundle — the secret key never reaches the browser).
  */
 @Injectable()
 export class StripeJsPaymentGateway extends StripePaymentGateway {

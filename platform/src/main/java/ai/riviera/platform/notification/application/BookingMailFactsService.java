@@ -16,10 +16,10 @@ import ai.riviera.platform.venue.vocabulary.SetId;
 /**
  * Resolves a booking mail's facts through three owners' ports: {@code booking} (code, customer
  * id), {@code venue} (venue name, set label), {@code customer} (address); in {@code application},
- * not beside the listeners (ADR-0007). The reads short-circuit in this order on purpose: the
- * outcome names the <em>first</em> missing fact, which the caller's counter tags to point at one
- * module, and the contact read needs the booking's customer id. No transaction: callers are
- * after-commit listeners, and one would pin a connection across their SMTP send.
+ * not beside the listeners (ADR-0007), never a published port. The reads short-circuit in this
+ * order: the outcome names the <em>first</em> missing fact, which the caller's counter tags. No
+ * transaction: callers are after-commit listeners, and one would pin a connection across their SMTP
+ * send. Rationale: {@code RESPONSIBILITIES.md} §notification.
  */
 @Service
 public class BookingMailFactsService {

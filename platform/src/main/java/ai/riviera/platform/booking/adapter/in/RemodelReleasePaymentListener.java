@@ -17,12 +17,12 @@ import org.springframework.stereotype.Component;
 import org.springframework.transaction.event.TransactionalEventListener;
 
 /**
- * Voids the PaymentIntent of a booking a remodel released, after the commit; no money moves
- * (ADR-0002). The abandoned-payment sweep reads only {@code AWAITING_PAYMENT}, so nothing else would
- * reach it and the guest could still pay. Acts only on {@link RefundReason#VENUE_CHANGE} returning
- * nothing, a shape only a release has. {@code RefundListenerExecutorArchitectureTest} holds the
- * bulkhead shape: {@code Failed} throws so the publication is retried; {@code NotCancellable} (the
- * guest paid first) is counted and logged for a manual refund, never retried.
+ * Voids the PaymentIntent of a booking a remodel released, after commit, moving no money (ADR-0002):
+ * the abandoned-payment sweep reads only {@code AWAITING_PAYMENT}, so nothing else would reach it
+ * and the guest could still pay. Acts only on {@link RefundReason#VENUE_CHANGE} returning nothing,
+ * the release's shape. Bulkhead ({@code RefundListenerExecutorArchitectureTest}): {@code Failed}
+ * throws to be retried; {@code NotCancellable} (the guest paid first) is counted and logged for a
+ * manual refund, never retried. Rationale: {@code RESPONSIBILITIES.md} §booking.
  */
 @Component
 class RemodelReleasePaymentListener {

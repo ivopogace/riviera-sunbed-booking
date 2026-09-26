@@ -14,7 +14,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * Enforces the collect-only payment model (ADR-0002 / invariant #8, AC-7): the {@code payment}
+ * Enforces the collect-only payment model (ADR-0002, AC-7): the {@code payment}
  * module must never use <strong>Stripe Connect</strong>. Connect cannot pay out to Albanian
  * venues — the platform collects everything and pays venues manually via BKT — so any
  * connected-account / destination-charge / application-fee usage is a structural error this

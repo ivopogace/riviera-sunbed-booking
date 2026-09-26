@@ -94,8 +94,8 @@ None of these says anything about the business.
   on the port (`VenuePhotoModeration:40–42`), not a rule about venues.
 - **Boot-time configuration validation** — `VenueCreationProperties:25` (`null` ⇒ fail the boot
   loudly, because a primitive would silently bind `0` and every new venue would earn nothing).
-- **Defensive copies** — `VenueProfileCommand:41`, `LayoutCommand:29`.
-- **Fail-loud on the impossible** — `PhotoProcessor:112–114`, which throws if the JPEG the class
+- **Defensive copies** — `VenueProfileCommand`'s compact constructor, `LayoutCommand:29`.
+- **Fail-loud on the impossible** — `PhotoProcessor.render`, which throws if the JPEG the class
   itself just encoded has no readable header.
 
 ### DB-DELEGATED — 13 sites
@@ -120,7 +120,7 @@ constraint; the Java only interprets the miss.
   `UPDATE … WHERE venue_id = :venue AND row_label = :rowLabel` (`JdbcVenues:301, 324`).
 - `VenueAdminService:232` — `!labels.contains(command.rowLabel())` over
   `SELECT DISTINCT row_label` (`JdbcVenues:312`).
-- `VenueCommissionService:64` — `updated.ifPresent(...)`, over
+- `VenueCommissionService.setCommission` — `updated.ifPresent(...)`, over
   `UPDATE venue … RETURNING` (`JdbcVenues:158–159`): the `RETURNING` miss *is* "no such venue", so a
   404 schedules nothing and leaves no orphan row.
 
@@ -166,9 +166,9 @@ Twenty-one sites. "Home?" asks whether a named rule-holder already states it.
 | V15 | A set price is integer minor units and never negative (#5) | `SetCommand:32–34` **and** `RowPriceCommand:20–22` | ❌ **duplicated inline**; see §C |
 | V16 | A set is in exactly one of two pools (#3); a set is one of two tiers | `SetCommand:17–18, 26–31` | ❌ private `Set<String>` literals; the pool token is re-declared in two other modules |
 | V17 | Grid coordinates and position numbers are 1-based | `SetCommand:23–25, 36–38` | ❌ inline |
-| V18 | An upload is bounded by bytes, pixel dimensions and megapixels, and must be a real JPEG/PNG/WebP | `PhotoProcessor:64–78` | ✅ `PhotoProcessor`, bound configuration, `PhotoProcessorTest` |
+| V18 | An upload is bounded by bytes, pixel dimensions and megapixels, and must be a real JPEG/PNG/WebP | `PhotoProcessor.process` | ✅ `PhotoProcessor`, bound configuration, `PhotoProcessorTest` |
 | V19 | A hidden venue has no review list | `ListVenueReviewsService:34` | ✅ `operator.api.VenueVisibility` — the parent note's R3, called from a second module |
-| V20 | A rate change takes effect from today's service date, and the superseded rate is pinned at the floor first (#9) | `VenueCommissionService:59–66`, `currentServiceDate:69–71` | **Partial** — no named holder; the ordering is the service's, defended in 12 lines of Javadoc and pinned by `VenueCommissionServiceTest` |
+| V20 | A rate change takes effect from today's service date, and the superseded rate is pinned at the floor first (#9) | `VenueCommissionService.setCommission`, `.currentServiceDate` | **Partial** — no named holder; the ordering is the service's, defended in 6 lines of Javadoc and pinned by `VenueCommissionServiceTest` |
 | V21 | A new venue's commission is stamped from platform configuration, never client input | `OnboardVenueService:37` + `VenueCreationProperties` | ✅ `VenueCreationProperties` |
 
 **Score: 13 of 21 rules have a named home; 8 do not** — against `booking`'s 8 of 21. Two of the
@@ -268,7 +268,7 @@ Neither is new; both change a figure the parent note recorded.
 
 ### The pool token is stated in **three** modules, not two
 
-§E/D4 recorded two: `ReserveSetService:48` and `JdbcAvailabilityClaim:37`, each with its own
+§E/D4 recorded two: `ReserveSetService:48` and `JdbcAvailabilityClaim.claim`, each with its own
 `private static final String ONLINE_POOL = "ONLINE"`. The third is in the module that **owns** the
 concept:
 

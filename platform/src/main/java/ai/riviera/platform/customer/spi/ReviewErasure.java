@@ -11,7 +11,7 @@ import ai.riviera.platform.customer.vocabulary.CustomerId;
  * <em>inside</em> their transaction, so a scrubbed contact and a still-named review never commit apart
  * (ADR-0010). Driven port (invariant #11) implemented by {@code booking}, which alone can resolve a
  * subject to bookings and reach {@code review}; {@code customer} imports neither, as with
- * {@link GuestBookingHistory}. The review keeps its star: without its texts it identifies nobody.
+ * {@link GuestBookingHistory}. The review keeps its star: {@code RESPONSIBILITIES.md} §review.
  */
 public interface ReviewErasure {
 

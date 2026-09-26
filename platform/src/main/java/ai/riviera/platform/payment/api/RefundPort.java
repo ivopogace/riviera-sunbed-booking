@@ -5,19 +5,13 @@ import ai.riviera.platform.payment.vocabulary.Money;
 import ai.riviera.platform.payment.vocabulary.RefundResult;
 
 /**
- * The {@code payment} module's <strong>inbound</strong> published port for issuing a refund (U6) —
- * the seam the {@code booking} module calls when it cancels a booking. Distinct from
- * {@link CheckoutPort} (collection): both are driving ports {@code booking} calls, keeping the
- * dependency direction {@code booking → payment::api} (so a {@code BookingCancelled} event consumed
- * by {@code payment} — which would cycle — is not needed; invariant #11).
+ * The {@code payment} module's <strong>inbound</strong> port for refunding one booking, called by
+ * {@code booking} when it cancels; a {@code BookingCancelled} listener in {@code payment} instead
+ * would cycle (invariant #11). Collect-only, <strong>no Stripe Connect</strong> (ADR-0002). The
+ * {@code amount} is decided server-side by {@code booking} (invariant #10), never by the client.
  *
- * <p>Collect-only — <strong>no Stripe Connect</strong> (ADR-0002 / invariant #8). The refund is
- * server-initiated through the outbound {@code PaymentGateway}, and a retried cancel never
- * double-refunds however late the retry lands: the gateway is asked what refunds it already holds
- * before it is asked to make one. The booking-derived idempotency key remains the in-window half of
- * that guarantee, not the whole of it — rationale: {@code RESPONSIBILITIES.md} §{@code payment}. The
- * {@code amount} is computed server-side by {@code booking} from the cancellation policy (invariant
- * #10) — never supplied by the client.
+ * <p>At most one refund per booking, however late a retry lands: the gateway is asked what it holds
+ * before creating one (idempotency keys expire). Rationale: {@code RESPONSIBILITIES.md} §payment.
  */
 public interface RefundPort {
 

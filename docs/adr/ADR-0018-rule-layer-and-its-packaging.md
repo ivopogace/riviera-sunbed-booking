@@ -57,10 +57,10 @@ it is one of three things:
   (`booking/domain/RefundPolicy.java:34–40`), the pay and expiry windows of
   `RequestWindows` (`booking/application/request/RequestWindows.java:20`).
 - **A calculation** — anything deriving money or a rating. `CommissionSplit.of`
-  (`payout/domain/CommissionSplit.java:17–20`), `PayoutLedgerEntry.accrual`/`reversalOf`
-  (`payout/domain/PayoutLedgerEntry.java:39–64`), `RefundPolicy.refundMinor`,
+  (`payout/domain/CommissionSplit.java`), `PayoutLedgerEntry.accrual`/`reversalOf`
+  (`payout/domain/PayoutLedgerEntry.java`), `RefundPolicy.refundMinor`,
   `AggregateRating`. Where a calculation divides, the rounding direction is written down at the
-  division (`PayoutLedgerEntry.java:35`, `:54`; invariant #5).
+  division (the docs of `CommissionSplit.of` and `PayoutLedgerEntry.reversalOf`; invariant #5).
 - **A lifecycle** — what may follow what. `ReviewGate.stateOf` is the model
   (`review/domain/ReviewGate.java:30–42`): one ordered statement of the fences, called by every
   path that asks, "so a stay that trips two fences at once is told the same thing whichever surface
@@ -72,7 +72,7 @@ used.** Nine of the thirteen homeless rules in `2026-09-04-where-the-business-ru
 one caller and fail clause (b) of that note's four-part benchmark (§D). Extracting them would be
 ceremony, and in at least one case a trap the codebase has already refused by name —
 `BookingStatus.canStillBeHonoured()` is "deliberately narrow and narrowly named … a
-general-sounding predicate would be a trap" (`booking/domain/BookingStatus.java:36–41`). Naming a
+general-sounding predicate would be a trap" (`booking/domain/BookingStatus.java`). Naming a
 rule is not free: a name that reads more general than the rule is worse than an inline condition.
 
 ### 2. Purity decides the package; both packages are the rule layer
@@ -87,7 +87,7 @@ rule is not free: a name that reads more general than the rule is worse than an 
   `booking/application/cancel/CancellationPolicy.java:30–40`), `RequestWindows`,
   `RetentionWindow`, `RefundResubmissionWindow` (plain records the adapter binds from
   configuration, "so the inner hexagon stays framework-light",
-  `customer/application/RetentionWindow.java:10–12`).
+  `customer/application/RetentionWindow.java`, type Javadoc).
 
 **Both are the rule layer. The split is packaging, not status.** The evidence that they are one
 layer is the test tree: `RefundPolicyTest`, `CommissionSplitTest`, `ReviewGateTest`,
@@ -115,9 +115,9 @@ written *against* the constraint rather than in place of it:
 
 | Invariant | Constraint | The code written against it |
 |---|---|---|
-| #2 — at most one party per `(set, date)` | `set_availability_uniq UNIQUE (set_id, booking_date)` (`V4__availability.sql:32`) | `INSERT … ON CONFLICT (set_id, booking_date) DO NOTHING` (`availability/adapter/out/JdbcAvailabilityClaim.java:58–67`) |
+| #2 — at most one party per `(set, date)` | `set_availability_uniq UNIQUE (set_id, booking_date)` (`V4__availability.sql:32`) | `INSERT … ON CONFLICT (set_id, booking_date) DO NOTHING` (`availability/adapter/out/JdbcAvailabilityClaim.java`, `claim`) |
 | #9 — a booking accrues once, a refund reverses it once | `payout_once_per_booking UNIQUE (booking_id, entry_type)` (`V9__payout_ledger.sql:33`) | the at-least-once `BookingConfirmed` listener, idempotent on that constraint |
-| #7 — a booking code is unique | `booking_code_uniq UNIQUE (code)` (`V5__booking_and_customer.sql:43`) | `INSERT … ON CONFLICT (code) DO NOTHING` (`booking/adapter/out/JdbcBookings.java:143`) with bounded regeneration above it (`ReserveSetService.java:128–134`) |
+| #7 — a booking code is unique | `booking_code_uniq UNIQUE (code)` (`V5__booking_and_customer.sql:43`) | `INSERT … ON CONFLICT (code) DO NOTHING` (`booking/adapter/out/JdbcBookings.java`, `insert`) with bounded regeneration above it (`ReserveSetService.insertWithUniqueCode`) |
 
 **A Java class asserting one of these would be a weaker restatement**: it would hold only for rows
 this application writes, and only when every writer remembers to call it. That is why
@@ -194,10 +194,10 @@ should describe them that way:
 
 - `PayoutLedgerEntry` — `record PayoutLedgerEntry(VenueId, long bookingId, EntryType, long
   grossMinor, long commissionMinor, long netMinor, String currency, RefundReason)`
-  (`payout/domain/PayoutLedgerEntry.java:20–21`), append-only, with `accrual()`, `reversalOf()` and
+  (`payout/domain/PayoutLedgerEntry.java`), append-only, with `accrual()`, `reversalOf()` and
   `fee()` factories and a canonical constructor that re-checks the amount invariants the DB also
-  enforces (`:23–33`). Its own Javadoc calls it "A value object: immutable, transparent, and the home
-  of the commission arithmetic" (`:7–9`).
+  enforces. Its own Javadoc calls it "One payout-ledger entry for a booking … and the home of its
+  commission arithmetic" (type Javadoc).
 - `PayoutBatch` — `record PayoutBatch(Long id, VenueId, PeriodKey, long totalNetMinor, String
   currency, BatchStatus)` (`payout/domain/PayoutBatch.java:15–16`), one row per `(venue, period)`,
   `id` null before persistence. Its Javadoc line "Aggregate root: one row per `(venue, period)`"
@@ -231,7 +231,8 @@ is an application service by any reading.
 codebase's own benchmark, derived from `review/domain/` in that note's §D, has "two or more callers
 that must agree" as clause (b), and `CommissionSplit`'s Javadoc states the same reason for its
 existence ("used by both … so the arithmetic is written once and never diverges",
-`payout/domain/CommissionSplit.java:8–10`). Applying the benchmark consistently means leaving them.
+`payout/domain/CommissionSplit.java`, type Javadoc). Applying the benchmark consistently means
+leaving them.
 
 **A rule-placement section in `RESPONSIBILITIES.md` instead of an ADR (rejected).** The vocabulary
 correction in §5 and §6 changes what other documents say and needs a dated decision to cite;

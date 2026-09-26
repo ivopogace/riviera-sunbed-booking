@@ -31,12 +31,12 @@ import {
 } from './operator-console.model';
 
 /**
- * The layout editor's remodel `alertdialog`: every claim a save would disturb, in five groups, as
- * the server answered (the commit re-derives it). A staff hold or `displaced` offers Back alone.
- * Save arms on refunds only once count and reason are typed (else `409 REFUND_NOT_CONFIRMED`).
- * Fields keep the fixed warn skin, never a themed one (`riviera-tailwind`: tokenise a skin whole).
- * <strong>Keep the `@if` outside</strong>: it focuses its first control on mount (WCAG 2.4.3); the
- * caller's `focusMover()` moves focus back out. Bookings ride by id, never code (invariant #7).
+ * The layout editor's remodel `alertdialog`, a sibling of `shared/confirm-panel.ts`, not a variant
+ * (`RESPONSIBILITIES.md` §Frontend): every claim a save would disturb, in five groups, as the server
+ * answered. A staff hold or `displaced` offers Back alone. Save arms on refunds only once count and
+ * reason are typed (else `409 REFUND_NOT_CONFIRMED`). Fields keep the fixed warn skin, never a
+ * themed one (`riviera-tailwind`). <strong>Keep the `@if` outside</strong>: it focuses its first
+ * control on mount (WCAG 2.4.3); `focusMover()` moves it back out. Bookings by id, never code (#7).
  */
 @Component({
   selector: 'app-remodel-preview-panel',

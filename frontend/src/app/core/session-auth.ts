@@ -83,8 +83,8 @@ export abstract class SessionAuth {
 
   /**
    * Resolves once the startup `/me` restore is done and {@link signedIn} is trustworthy. Await it
-   * before branching on the session (a guard mid-restore bounces a signed-in user to sign-in on
-   * reload) or firing a write on load (the `XSRF-TOKEN` cookie isn't bootstrapped yet → `403`).
+   * before branching on the session (a guard mid-restore bounces a signed-in user on reload) or
+   * firing a write on load (no `XSRF-TOKEN` yet → `403`; `RESPONSIBILITIES.md` §Frontend).
    */
   whenReady(): Promise<void> {
     return this.restoreOnStartup;
@@ -96,8 +96,8 @@ export abstract class SessionAuth {
   }
 
   /**
-   * Invalidate the server session; local state clears either way, but the result says whether the
-   * server confirmed it (a `401` counts). Other failures (often a stale XSRF `403`) re-bootstrap
+   * Invalidate the server session; local state clears either way (`RESPONSIBILITIES.md` §Frontend),
+   * but the result says whether the server confirmed it (a `401` counts). Other failures re-bootstrap
    * CSRF via `/me` and retry once, then return `may-persist` and record a {@link SignOutNotice}.
    */
   async signOut(): Promise<SignOutResult> {

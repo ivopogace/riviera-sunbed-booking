@@ -34,9 +34,9 @@ import ai.riviera.platform.venue.api.SetBookingFacts;
  * The committed <em>reserve</em> phase: validate the set (online pool, invariant #3; season closure,
  * then the first day's sales close, invariant #4; maximum stay), claim every {@code (set, date)}
  * (invariant #2), resolve the guest and insert the booking, in <strong>one transaction that commits
- * before any payment call</strong>, so no row lock is held across the Stripe round-trip. The claims
- * join this transaction ({@code REQUIRED}), so a failure before the insert rolls them back with it.
- * A single internal collaborator of {@code CreateBookingService}, not a published seam.
+ * before any payment call</strong>, so no row lock spans the Stripe round-trip. The claims join it
+ * ({@code REQUIRED}): a failure before the insert rolls them back. Only {@code CreateBookingService}
+ * calls it; not a published seam. Rationale: {@code RESPONSIBILITIES.md} §booking.
  */
 @Service
 class ReserveSetService {

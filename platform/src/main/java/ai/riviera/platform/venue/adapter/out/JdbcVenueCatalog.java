@@ -112,7 +112,7 @@ class JdbcVenueCatalog implements VenueCatalog, VenueRates {
 
 	@Override
 	public Optional<VenueMapView> findVenueMap(VenueId id, StaySpan stay) {
-		// The #693 fence: a venue without an ACTIVE owner is absent, not partially rendered.
+		// The tourist-visibility fence: a venue without an ACTIVE owner is absent, not partially rendered.
 		if (!visibility.isVisible(new VenueRef(id.value()))) {
 			return Optional.empty();
 		}
@@ -377,8 +377,8 @@ class JdbcVenueCatalog implements VenueCatalog, VenueRates {
 
 	/**
 	 * A tourist slideshow: one photo per occupied slot in {@link PhotoSlot} order, each slot's first
-	 * surface present in {@code preference}. The chosen surface brings only its own densities, which
-	 * keeps one list's widest candidate out of another's.
+	 * surface present in {@code preference}; the surface brings only its own densities. Which list each
+	 * surface reads, and why the order needs an {@code EnumMap}: {@code RESPONSIBILITIES.md} §venue.
 	 */
 	private static List<PhotoView> slideshowOf(Map<PhotoSlot, Map<PhotoSurface, PhotoView>> slots,
 			List<PhotoSurface> preference) {
@@ -501,7 +501,7 @@ class JdbcVenueCatalog implements VenueCatalog, VenueRates {
 		if (to.isBefore(from)) {
 			throw new IllegalArgumentException("availabilityBetween: 'to' precedes 'from'");
 		}
-		// The #693 fence is fail-closed for an unowned venue, and a nonexistent one is always unowned.
+		// The tourist-visibility fence is fail-closed for an unowned venue, and a nonexistent one is always unowned.
 		if (!visibility.isVisible(new VenueRef(id.value()))) {
 			return Optional.empty();
 		}

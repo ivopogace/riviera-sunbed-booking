@@ -96,6 +96,13 @@ the commission rate over time. The standing rules:
   paths. The anonymous content-hash photo read is unfenced.
 - **Venue photos** (ADR-0008): per-slot upload/replace/delete, processing, `bytea` storage
   behind the module-internal `PhotoStorage` port, and the public content-hash serving read.
+- **Each tourist photo surface reads its own slideshow list.** A slideshow is one photo per
+  occupied slot, in `PhotoSlot` order (cover, sunbeds, bar), taking each slot's first stored surface
+  from a per-list preference: `CARD` first for the Discover card (the list read's `photos`),
+  `BANNER` for the beach-map band (the map read's `photos`), `LIGHTBOX` for the modal viewer
+  (`lightboxPhotos`). A chosen surface brings only its own densities, so one list's widest
+  candidate never reaches another. The slot order is the `EnumMap`'s iteration order:
+  `JdbcVenueCatalog` builds each venue's slot map as an `EnumMap`, and any other map loses it.
 - **Photo moderation is ownership-free by design** (ADR-0013). Read and takedown sit on
   their own `VenuePhotoModeration` port so the ownership-asserting `VenuePhotos` contract
   stays uniformly `assertOwns`-first. The `ADMIN` role gate on
@@ -232,6 +239,16 @@ the commission rate over time. The standing rules:
   column, and schedules the new rate from the **current** service date (`Europe/Tirane`),
   so no past service date reprices and no ledger entry is touched (invariant #9). The
   owner's profile PATCH cannot write the rate — a venue does not set its own commission.
+- **A commission change schedules from today, never tomorrow.** Today still sells until the
+  venue's sales close (invariant #4), so a booking confirmed after the change accrues at the new
+  live rate (`commissionBps`, the read behind every accrual); a schedule starting later would leave
+  today's takings (`commissionBpsOn`, the read behind the console's per-day split) reporting a rate
+  today's new accruals do not carry.
+- **The admin commission write does not blur a venue's existence.** Photo moderation answers an
+  unknown venue exactly as an empty slot; `PUT /api/admin/venues/{venueId}/commission` answers
+  `404 NO_SUCH_VENUE`, because its caller is the platform admin, whose venue list there is complete
+  (tourist-hidden venues included), and an admin correcting a rate needs a mistyped or stale id to
+  fail loudly.
 - **The per-venue sales-close setting** (`sales_close`, invariant #4): a fixed-vocabulary
   wall-clock time (`00:01`/`16:00`/`23:59`, `Europe/Tirane`) naming when a venue's online
   sales for a date close, on the date itself. `SetBookingFacts#setBookingInfo` carries it
@@ -390,6 +407,11 @@ exactly as it would against any other claim (invariant #2).
   window and the refund are the first day's on the whole amount, one decision (invariant #10);
   `BookingConfirmed`, `BookingCancelled` and `BookingMoved` carry `lastDate` so the mails name the
   days.
+- **The reserve commits before any payment call, and that does not weaken invariant #2.**
+  `ReserveSetService` claims, inserts the `AWAITING_PAYMENT` booking and commits; only then does
+  `CreateBookingService` call `CheckoutPort#pay`, so no row lock is held across the gateway
+  round-trip. The double-booking guard is `UNIQUE (set_id, booking_date)` plus the atomic
+  `INSERT … ON CONFLICT DO NOTHING` claim, which holds however long or short the lock is held.
 - **Attendance is a per-day record, and I am the sole writer of `booking_day`.** One row per
   service day of a stay, written by the schema the moment a `booking` row becomes `CONFIRMED`
   (trigger `booking_day_on_confirm`, V60; V61 widened it to every day from `booking_date` to
@@ -432,6 +454,12 @@ exactly as it would against any other claim (invariant #2).
   restating it (`ViewBookingServiceTest` and `CancelBookingServiceTest` hold each answer, status
   by status, to the literal `BookingTransitionTest` holds the row to); the `{NO_SHOW, COMPLETED} →
   WindowClosed` split ahead of the refusal chooses the copy for a spent day, not who may cancel.
+- **The retention probe reads `booking` on a bounded client.** `customer.spi.GuestBookingHistory`
+  (`JdbcGuestBookingHistory`) is the retention sweep's second entry read: the sweep asks `customer`
+  for candidates, then asks me which still have a retention basis, both before it writes anything.
+  Bounding only the first would let the sweep wedge on the second, because a lock on `booking` that
+  stalls my own sweeps stalls this read too. The sweep is its only caller, so the adapter's only
+  client is bounded, by its own scoped timeout, never the global one (invariant #2).
 - **The lifecycle is stated once and enforced in SQL.** `domain/BookingTransition` is the
   transition table — which statuses each of the eleven transitions may act on, what it writes,
   and `successorsOf(status)` for "what may follow this?". It generates no SQL: the guarded
@@ -465,6 +493,12 @@ exactly as it would against any other claim (invariant #2).
   never release; refunding cannot reuse `BookingCancelled` (a never-confirmed booking has
   no `ACCRUAL`, so `payout`'s listener would defer forever). The residual is a
   sub-sweep-interval race the guest opts into and pays for with the full stay.
+- **Verified payment events apply idempotently, as the second layer.** `PaymentEventListener`
+  applies `PaymentConfirmed` / `PaymentCanceled` after the webhook commits, and the registry
+  re-delivers an outstanding publication, so delivery is at-least-once. `payment`'s
+  `stripe_webhook_event` event-id dedup is the first idempotency layer and sees only Stripe's
+  re-deliveries; my guarded `AWAITING_PAYMENT` transitions are the second, so a replay moves no row,
+  releases no claim twice and publishes nothing.
 - **Pre-reserve cancellation terms and the window at birth.** `CancellationPolicy` — the
   single home of the window rule — answers the public read
   `GET /api/bookings/cancellation-terms` (`QuoteCancellationTerms`) and classifies
@@ -495,6 +529,11 @@ exactly as it would against any other claim (invariant #2).
 - **The code-gated view reports an outstanding refund** — decided by me, not yet accepted
   by the gateway — asked lazily through `payment.api.RefundStatusLookup`, so the panel
   says "being processed" rather than "in transit" while the refund sits in the outbox.
+- **No cancellation refunds inside its own transaction.** The transaction decides the refund and
+  carries it on `BookingCancelled` (`refundMinor`); `BookingRefundListener` alone calls
+  `payment.api.RefundPort`, after commit. A refund issued inside would split money from state
+  whenever the commit failed after Stripe had accepted it, and its gateway round-trip would hold
+  the booking row lock the guarded transition took for the length of the call.
 - **The refund listener drains on my own bounded executor** (`riviera.booking.refund.*`,
   validated at boot), never Boot's shared `applicationTaskExecutor`, and runs **outside a
   transaction**: the refund path records its attempt before the gateway call, and a
@@ -520,6 +559,12 @@ exactly as it would against any other claim (invariant #2).
   gate is two-part: the booking must be `CONFIRMED` **and** `payment.api.CollectionGuarantee`
   must say this deployment's gateway collects before confirming (the in-process stub does
   not, so the flag is inert there — otherwise it would be a free suppression oracle).
+- **The mail-status gate short-circuits before the port is asked.** The `202` create hands the
+  booking code out before the card is collected, so answering `emailWithheld` for an unsettled
+  booking would make the code-gated view a suppression oracle for any address a checkout can be
+  started with. `ViewBookingService#mayDiscloseMailStatus` asks `payment.api.CollectionGuarantee`,
+  never a profile string, so the gate stays a checkable property of the payment model and still
+  holds when a third gateway is wired.
 - **The remodel classification is keyed on the claim, then split by status.** `RemodelClaims#classify`
   (published for the platform edge, ADR-0020) asserts venue ownership, reads every booking a guest
   may still turn up on across the sets a layout save would remove or renumber, and decides each in
@@ -578,6 +623,10 @@ exactly as it would against any other claim (invariant #2).
   shape only a release has — `VENUE_CHANGE` returning nothing — and calls `payment.api.CancelPaymentPort`.
   A transient gateway failure throws so the publication is retried; a payment that already succeeded
   is logged for a manual refund, because nothing there can be undone automatically.
+- **The intent void acts on the release shape alone.** Every other `BookingCancelled` — the guest
+  cancel, the weather refund, the remodel refund, a moved guest's free exit — ends a booking that
+  collected, so `RemodelReleasePaymentListener` could only get `NotCancellable` back for it; acting
+  on those would put a gateway round-trip on every guest cancellation for nothing.
 - **A moved booking's free exit is a refund-tier override, never a window change.** The exit runs
   until `min(service day opens, max(12:00 Europe/Tirane the day before, moved_at + 24h))`
   (`BookingCutoff#freeExitEndsAt`); `CancellationPolicy#quote` reads it and, while it is open, answers
@@ -620,6 +669,12 @@ payment state from **signature-verified Stripe webhooks** (never the client). Co
 only. Publish the read side of the refund conversation (`payment.api.RefundStatusLookup`):
 `NO_COLLECTION` / `OUTSTANDING` / `ACCEPTED`, answered from this module's own row, with
 "no row" meaning the wired gateway never collected, never that a refund failed.
+
+**`CollectionGuarantee` is its own role port, never a `CheckoutPort` method.** Its caller collects
+nothing: it asks what `CONFIRMED` attests to in this deployment, a property of the wired gateway
+rather than a step of checkout. The answers live beside the gateways they describe, bound to the
+same profiles (`ProfiledCollectionGuarantee`), and `PaymentGatewayContractCoverageArchitectureTest`
+fails a gateway whose profile has no answer, so a new gateway cannot arrive unclassified.
 
 **One PaymentIntent may collect for several bookings.** A stay is a group of bookings paid
 once (design D6/D8), so `payment` holds the intent — id, secret, total, currency, lifecycle
@@ -800,6 +855,13 @@ that on its own: `BookingCancelled` carries no instant to resolve a rate against
 would still read "as of now". Closing it would mean widening a registry-persisted event payload, which
 the fee does not justify. Accepted and documented: ADR-0021 §7 and its amendment.
 
+**The console's daily takings approximate the ledger, by construction.** `DailyTakingsService`
+splits a service date's gross at the one rate `venue` scheduled for that date
+(`VenueRates#commissionBpsOn`), while each ledger entry fixed its commission per booking, at
+accrual, from the live rate. The two agree closely but not exactly; what the read guarantees is
+that a past date's figure never changes (invariant #9). A rate change schedules from the current
+service date (§`venue`), so today's figure follows the live rate today's new accruals apply.
+
 **Not My Job:**
 - Actually moving money to venues → settled **manually via BKT**; I record what is owed
 - Collecting money from tourists → **`payment`**
@@ -929,6 +991,13 @@ log are the module's two pieces of owned state.
   listener off one list.
 - The registry pool's size and queue depth are `riviera.notification.registry-mail.*`
   properties (defaults `2`/`200`, validated at boot on both ends).
+- **Every invalid registry-pool bound boots clean, so both are checked at both ends.** Spring's
+  `ThreadPoolTaskExecutor` makes a `SynchronousQueue` of any capacity `<= 0` (`0` reads as
+  "unbounded" and means "capacity zero") and a lazily allocated `LinkedBlockingQueue` of any
+  positive one, so an absurd capacity restores the unbounded queue this bulkhead removes. Core
+  threads are lazy too: an oversized pool fails later, as `OutOfMemoryError: unable to create
+  native thread` on the commit thread the shed handler keeps exceptions off. The ceilings in
+  `RegistryMailProperties` bound the typo, not the operator.
 - Both pools' shutdown drain window is **derived** from
   `riviera.notification.mail.socket-timeout-ms`, which every
   `spring.mail.properties.mail.smtp.*` timeout also interpolates; the arithmetic lives in
@@ -961,6 +1030,10 @@ invariant #7):
   system, a data-integrity fault when not), `MAIL_PAYMENT_DUE_ABANDONED` (the only
   **predictive** loss — the sweep releases the set at the mailed deadline), and
   `MAIL_REQUEST_DECLINED_ABANDONED` / `MAIL_REQUEST_EXPIRED_ABANDONED`.
+- **The abandon tag names the first missing fact.** `BookingMailFactsService` reads `booking`,
+  then `venue`, then `customer` and stops at the first that answers nothing, because the tag is
+  what points an operator at one module: reporting the last instead would read as a `customer`
+  fault whenever `booking` was at fault. The contact read also needs the booking's customer id.
 
 **Owned flows and surfaces:**
 
@@ -980,6 +1053,10 @@ invariant #7):
   retired from-set still has its label), the code resolved inside this module (invariant #7),
   abandoned under `MAIL_MOVE_ABANDONED` with the shared `reason` vocabulary. The withdraw leg
   mails nothing.
+- **The payment-due mail carries the deadline and the amount, and names no spot.** The amount is
+  the one fixed when the request was made; the accept never changes it. The guest chose the spot
+  and already has it on screen and in the booking, and the one thing this mail is for is the
+  deadline.
 - The **operator-approval notice**, on the recovery vehicle (`kind="operator-approved"`):
   no bearer credential, but edge-orchestrated from an admin request rather than driven by
   a domain fact — which is why "recovery" in `MAIL_RECOVERY_*` names the *vehicle* and
@@ -1014,6 +1091,14 @@ invariant #7):
   guarantee; `ResubmissionOptions` reaches only `FAILED` publications, never a **shed**
   send (which never ran). The single-flight + cooldown throttles the *sweep*, not the
   duplicate guard.
+- **Both outbox levers are module adapters that answer counts, never publications.**
+  `AdminMailOutboxController` and `booking`'s `AdminRefundOutboxController` each live in their
+  module's `adapter/in`, never at the composition root, which would need a new published `api` port
+  for one same-module consumer. Every outcome is a `200` with a typed token; anything thrown becomes
+  RFC 7807 through the single `ApiErrorHandler`, never a per-controller `@ExceptionHandler`
+  (`ErrorContractArchitectureTests`). A per-publication listing is a non-goal, because the
+  serialized events are where booking ids live: the bodies carry counts and an outcome token, never
+  an address, a code or a payload (invariant #7).
 - The published surface is exactly **`notification::api`**, two role-split ports.
   `MailSender`: fire-and-forget, never throws, runs off the caller's thread,
   suppression-enforced; a send influences **neither the triggering response's status nor
@@ -1024,6 +1109,9 @@ invariant #7):
   **no module depends on `notification`**. The module also *implements* one port it does
   not own — `booking.spi.ConfirmationMailDelivery` — the inverted edge; the dependency is
   still `notification → booking`.
+- **`BookingMailFactsService` is an `application` service, never a `notification.api` port.** It
+  has one implementation and no caller outside this module, so a published port would be a
+  hypothetical seam.
 - The **booking-confirmation delivery log** (`booking_confirmation_mail_attempt`): one row
   per attempt, carrying what triggered it (`AUTOMATIC` / `ADMIN_RESEND`) and its outcome
   (sent / withheld-suppressed / transport-failed / abandoned), plus the ADMIN surface over
@@ -1044,6 +1132,12 @@ invariant #7):
   claim says nothing was charged; without it, the guest cancelled and the shipped free-exit
   wording stands. A remodel-declined request keeps `RequestDeclinedMail` unchanged — no
   call-to-action, by the 2026-08-01 product decision.
+- **Every booking mail links the code-gated view, `<base>/booking/<code>`, never `/booking/pay`.**
+  The view works cold from an inbox: for an `AWAITING_PAYMENT` booking with an open intent it
+  offers "Pay now" and hands on to the pay screen, and past the deadline it shows the expired
+  booking rather than a 404, while `/booking/pay` resumes in-memory hand-off state and dead-ends
+  from an inbox. `BookingLinks` builds the link in this module because the edge cannot: registry
+  listeners raise these mails inside the hexagon, with no request in hand.
 
 **Not My Job:**
 - Deciding **when** to send, minting/hashing recovery tokens, building the **tokenized**
@@ -1120,6 +1214,10 @@ The standing rules:
   counting; the admin list and the author's read-back see it nameless (the frontend's
   "A guest" fallback). It is not frozen for its author: the booking code stays the
   authorization and the window the window.
+- **The star stays because it is not the subject's to take back.** Stripped of its display name
+  and comment a review identifies nobody, and the score it gave is the venue's, earned by a
+  delivered stay; erasure (`customer.spi.ReviewErasure`) blanks the texts and leaves the aggregate
+  standing.
 - **A takedown is a reversible soft flag, and it is mine.** `review.hidden_at` (`NULL` =
   visible) is the moderation state ADR-0013 needs; the platform admin's `ReviewModeration`
   port — internal, its only caller my own `AdminReviewController` under `/api/admin/**` —
@@ -1243,6 +1341,12 @@ actor (a username snapshot, deliberately no FK), method, path, outcome status, U
 grounds the caller hands me; serve the newest-first read the console's Audit tab renders. Append-only:
 no updates, no deletes.
 
+**The trail records what a principal did past the gate, never who knocked.** The fence sits after
+`AuthorizationFilter`, so an anonymous `401`, a CSRF `403` and a wrong-role `403` are refused
+upstream and leave no row. An application-level `4xx` does leave one, because a failed destructive
+attempt is signal; an exception unwinding past the handler advice is recorded as the `500` it
+becomes.
+
 **Not my job:** which requests are audited and when in the chain, the `X-Audit-Reason` header and its
 sanitizer, the ADMIN role gate — all the root's fence (§ *Platform edge*); deciding *whether* an admin
 action was justified, and retention (a named #507 Phase-1 non-goal — I keep rows indefinitely).
@@ -1250,6 +1354,9 @@ action was justified, and retention (a named #507 Phase-1 non-goal — I keep ro
 Only writer (and reader) of `admin_audit_record` (machine-checked). Publishes `api.AdminAuditLog` and
 `vocabulary.AdminAuditEntry`, nothing else; the root reaches `api` alone, because the fence appends
 primitives.
+
+**I know no domain type and depend on nothing, not even `shared`** (`allowedDependencies = {}`): a
+mechanism that knew a domain type would be a domain module in disguise.
 
 **A lost row never fails the action it records** (logged at ERROR instead) — the accepted Phase-1
 risk behind the fence's broad `catch`: the append happens *after* the action, so it cannot un-do
@@ -1366,6 +1473,81 @@ The **map posters** — the stills the venue sheet opens on — are rendered fro
 phone's first paint makes no `/map/**` request; they are regenerated with the extract by the same
 runbook, and `map-poster-set.spec.ts` holds the set complete under its budget.
 
+**A password reset revokes the account's sessions before and after its write.** The two cannot be
+atomic: the password write is `customer`'s transaction, the session deletes are Spring Session's.
+Revoking only after would let a transient revoke failure answer `500` with the token already spent:
+the emailed link then reads "invalid or expired" and the attacker's session stays alive. So the edge
+names the account first through `CustomerAccountRecovery#emailForResetToken`, which consumes
+nothing, and revokes; revoking again after the write closes the window in which the old password
+still signs in. The bcrypt encode runs above the first revoke, or its ~80 ms would dominate that
+window.
+
+**The money-path alert check shares the sweeps' single-instance posture.** `MoneyPathAlertCheck` is
+a lockless `@Scheduled` job, so a second instance would run its own copy and the outbox-backlog
+alert, read from the shared database, would fire once per instance. It takes ShedLock (or an
+equivalent) with the sweeps when the platform scales out: `docs/deploy/production-hardening.md`'s
+scale-out preconditions name only the two lockless sweeps (`AbandonedBookingScheduler`,
+`RequestSweepScheduler`), so this job joins that list then.
+
+**The bootstrap credential is stamped by an edge runner, and only that one.**
+`OperatorCredentialInitializer` is an `ApplicationRunner` at the edge, not domain logic: it runs
+only in the full application context (a `@WebMvcTest` slice does not component-scan it) and touches
+only the bootstrap admin. Every other operator self-registers through
+`operator.api.OperatorRegistration` (`PENDING` until an admin approves) and changes its own password
+through `OperatorProvisioning#setPassword`; none is provisioned here.
+
+## Frontend (the SPA, not a module)
+
+The Angular SPA's standing rules and their reasons, for the choices whose TSDoc points here. Folder
+and import structure stay with the `riviera-frontend` skill and styling with `riviera-tailwind`;
+this section holds only the reasons a later edit could otherwise undo.
+
+- **Tourist menus stay above every Discover layer.** Discover's riviera map paints to every edge
+  and the route withholds the footer, so the menus' Privacy and Terms rows
+  (`shared/legal-menu-rows.ts`) are the only way to those pages there. The phone sheet is `z-40`;
+  the header's popovers sit in its `z-20` stacking context, above `desk-frame`'s `z-[1]`. Under a
+  covering layer a control reads as visible, enabled and stable while every click on it times out.
+  Page modals outrank the menu on purpose — the coast picker's backdrop is `z-[30]`, a booking
+  dialog `z-60` — because a modal is dismissed before the chrome is used.
+- **The legal rows open a new tab, so they neither close their menu nor take `routerLinkActive`.**
+  Routing away from `booking/pay` would unmount a mounted Payment Element. A `target="_blank"` link
+  never navigates the opener, so there is no focus to move and the menu is where the guest left it
+  on return; and a document read in another tab is not this tab's current page, the position
+  `shared/legal-footer.ts` and `booking/legal-consent.ts` take on the same two routes.
+- **Venue photo tiles letterbox, never crop.** A tall portrait cover stays whole in the lightbox and
+  the single-photo band, so a cropped gallery tile (`shared/photo-gallery-grid.ts`) would disagree
+  with both. Behind the `object-contain` photo sits a blurred, scaled copy of it as a plain CSS
+  background, so the letterbox bars take the photo's own edge colour; the photo gradient under both
+  stays the pre-paint and no-photo fallback.
+- **The gallery lead takes the 1100px breakout, and its `sizes` follow the painted photo.** From
+  1280px it spans the same 1100px breakout as the venue header and the beach map, never the page's
+  780px shell, and only once a venue has two photos or more. Because the tiles letterbox, `sizes`
+  come from `CONTAIN_SIZES`. The side tiles are lazy, so Chromium resolves their `auto` prefix
+  against the tile box and the authored value reaches only engines without `auto`; the eager hero's
+  reaches every engine.
+- **Sign-out clears local state whether or not the server confirms.** A UI stuck signed in is worse
+  than a stale cookie, so `SessionAuth#signOut` always drops the principal and reports whether the
+  server session is provably gone. An unconfirmed one records a `SignOutNotice` the shell shows,
+  because on a shared device the next visitor would otherwise be silently restored into it.
+- **A write fired on page load awaits `whenReady()` first.** `.spa()` issues the `XSRF-TOKEN`
+  cookie on the first API response, which on a cold browser is the startup `GET /api/auth/me`. The
+  verify-email landing posts its token on load; without the wait it races that restore to a `403`
+  and shows a valid token as invalid.
+- **The desktop panel's venue row is flat.** No card edge and no shadow: page, panel and card as
+  three nested rounded surfaces read as a template (`pages/home/venue-row.ts`).
+- **The selected row names the booking mode only when it is the exception.** `Request to Book` is
+  the fact a tourist needs and `Instant Book` on most rows is noise; if most venues ever
+  become request-mode the rule inverts, because what gets named is the exception, never one value.
+- **`operator/remodel-preview-panel.ts` is a sibling of `shared/confirm-panel.ts`, not a variant.**
+  It owns lists (five groups of claims and the sets that stay on the map) and its refund fields,
+  where the confirm panel is a warning, a toned button and Cancel with no projected content. Both
+  wear the same amber warn skin.
+- **The withheld-email notice is one component, in `booking/`.** Both surfaces that show it
+  (`booking-confirmation`, `booking-pay`'s done panel) are booking's, and `riviera-frontend`
+  promotes to `shared/` only when two features need a thing. It is one component, never the same
+  markup twice, because the copy is the product decision: two copies drift, one surface quietly
+  promising a mail that was never sent, while both duplicated tests stay green.
+
 ## Invariants, long form
 
 `CLAUDE.md` states each cross-cutting invariant in one sentence; this is the long form, with
@@ -1416,9 +1598,10 @@ the mechanism and the edge cases. The numbering is `CLAUDE.md`'s and never chang
 7. **Booking codes are unguessable bearer credentials.** ≥ 8 random base32 chars, never
    sequential, treated like a secret in logs.
 8. **Stripe webhooks are the source of truth for payment state — not the client.** Never
-   confirm a booking from a client-side redirect; reconcile from signature-verified
-   webhooks; idempotency keys on charge/refund creation; collection-only, no Stripe Connect
-   (`riviera-stripe-payments`).
+   confirm a booking from a client-side redirect; reconcile payment state only from
+   signature-verified webhooks (§`payment`). Idempotency keys on charge and refund creation, and
+   collect-only with no Stripe Connect, are separate rules (ADR-0002, `riviera-stripe-payments`),
+   not this invariant.
 9. **The payout ledger is auditable and idempotent.** A booking contributes to a venue's
    payout exactly once; refunds reverse it; a refund the venue's own change caused also charges
    it a fee. Payout = Σ(booking amounts) − commission (rate stored per venue, effective-dated,

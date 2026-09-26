@@ -12,12 +12,12 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
 /**
- * Scheduled self-check of the three money-path signals: one structured {@code ERROR} line per crossed
- * threshold, the single-instance alert route ({@code docs/runbooks/observability.md}). Reads the
- * {@link MeterRegistry}, but {@link #outboxBacklog()}'s gauge runs {@link ObservabilityConfig}'s
- * bounded query on this thread ({@code NaN} on timeout), so the job keeps a thread of its own
- * ({@code docs/deploy/production-hardening.md}). {@code @Profile("stripe")}: the money path is live
- * only there. Lines carry counts and thresholds, never a booking code or PII (invariant #7).
+ * Scheduled self-check of the three money-path signals, one structured {@code ERROR} line per crossed
+ * threshold ({@code docs/runbooks/observability.md}); single-instance and lockless, like the sweeps
+ * ({@code RESPONSIBILITIES.md} §Platform edge). {@link #outboxBacklog()}'s gauge runs
+ * {@link ObservabilityConfig}'s bounded query on this thread ({@code NaN} on timeout), so the job
+ * keeps a thread of its own ({@code docs/deploy/production-hardening.md}); {@code stripe} only, where
+ * the money path is live. Lines carry counts and thresholds, never a booking code or PII (#7).
  */
 @Component
 @Profile("stripe")

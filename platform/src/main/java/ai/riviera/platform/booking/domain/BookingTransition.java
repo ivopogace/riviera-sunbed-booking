@@ -40,7 +40,10 @@ public enum BookingTransition {
 	/** The guest cancels under the policy (invariant #10) — {@code CONFIRMED} only. */
 	CANCEL_BY_GUEST(BookingStatus.CONFIRMED, BookingStatus.CANCELLED),
 
-	/** Staff scan the code at the venue on the stay's last service day (its only service day, until ranges exist). */
+	/**
+	 * The check-in that resolves a stay: the one on its last service day. On an earlier day, check-in
+	 * stamps only that {@code booking_day} attended, and the booking stays {@code CONFIRMED}.
+	 */
 	CHECK_IN(BookingStatus.CONFIRMED, BookingStatus.COMPLETED),
 
 	/** Every service day passed and none was attended; the no-show sweep resolves it. */

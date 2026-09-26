@@ -4,10 +4,10 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.boot.context.properties.bind.DefaultValue;
 
 /**
- * Bounds of the registry-mail bulkhead ({@link RegistryMailExecutorConfig}). Keep the
- * {@code ${RIVIERA_REGISTRY_MAIL_*:…}} lines in {@code application.properties}: without them the env
- * override silently stops binding ({@code RegistryMailPropertiesTest}). Every invalid value boots clean,
- * so the compact constructor checks both ends; {@code @Validated} would check nothing (no JSR-303).
+ * {@link RegistryMailExecutorConfig}'s bounds. Every invalid value boots clean, so the constructor
+ * checks both ends ({@code RESPONSIBILITIES.md} §notification); {@code @Validated} would check
+ * nothing (no JSR-303). Keep the {@code ${RIVIERA_REGISTRY_MAIL_*:…}} lines in
+ * {@code application.properties} or env overrides stop binding ({@code RegistryMailPropertiesTest}).
  *
  * @param poolSize core <em>and</em> max threads, equal: a pool grows past core only on a full queue
  * @param queueCapacity sends that may back up before the pool sheds to the Event Publication Registry

@@ -33,8 +33,10 @@ Closes #<!-- issue --> · Plan: `docs/plans/<slug>.md`
 - [ ] **#6 Time** — store UTC `Instant`; reason/cut off in `Europe/Tirane`; `TIMESTAMPTZ`,
   `booking_date` as `DATE`. *(or N/A)*
 - [ ] **#7 Booking codes** — unguessable, non-sequential, never logged in clear. *(or N/A)*
-- [ ] **#8 Payments** — confirm only on a signature-verified Stripe webhook (never the
-  client redirect); idempotency keys; collect-only, no Connect. *(or N/A)*
+- [ ] **#8 Webhook truth** — confirm only on a signature-verified Stripe webhook, never the
+  client redirect. *(or N/A)*
+- [ ] **Payments (ADR-0002, `riviera-stripe-payments`)** — idempotency keys on charge/refund;
+  collect-only, no Stripe Connect. *(or N/A)*
 - [ ] **#9 Payout ledger** — exactly-once accrual, reversal on refund; auditable. *(or N/A)*
 - [ ] **#10 Refunds** — policy computed server-side. *(or N/A)*
 - [ ] **#11 Modulith boundaries** — cross-module only via `api/` ports or id-based events;

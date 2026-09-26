@@ -13,11 +13,11 @@ import ai.riviera.platform.operator.vocabulary.OperatorCredential;
 
 /**
  * Boot-time provisioning of the bootstrap admin's credential from {@code RIVIERA_OPERATOR_PASSWORD}
- * ({@link RivieraOperatorProperties#password}): encoded at the edge by the {@link PasswordEncoder},
- * re-stamped via {@link OperatorProvisioning#setPassword} on every boot (idempotent), so a new value
- * and a restart rotate it. Blank or outside {@link PasswordPolicy}'s length rule: not stamped, one
- * WARN that never prints the value, never a boot failure. Touches only the bootstrap account.
- * Runbook: {@code docs/runbooks/operator-credential-provisioning.md}.
+ * ({@link RivieraOperatorProperties#password}), encoded by the {@link PasswordEncoder} and re-stamped
+ * via {@link OperatorProvisioning#setPassword} on every boot (idempotent): a new value and a restart
+ * rotate it. Blank or outside {@link PasswordPolicy}'s length rule: not stamped, one WARN without the
+ * value, never a boot failure. Touches only the bootstrap account: {@code RESPONSIBILITIES.md}
+ * §Platform edge. Runbook: {@code docs/runbooks/operator-credential-provisioning.md}.
  */
 @Component
 class OperatorCredentialInitializer implements ApplicationRunner {

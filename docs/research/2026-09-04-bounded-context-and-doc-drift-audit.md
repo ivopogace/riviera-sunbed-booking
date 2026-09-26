@@ -222,7 +222,7 @@ The port is deep: two methods hiding the pool check (#3), the row lock, the atom
 four-way outcome.
 
 ```java
-// availability/adapter/out/JdbcAvailabilityClaim.java:58–67
+// availability/adapter/out/JdbcAvailabilityClaim.java, claim
 INSERT INTO set_availability (set_id, booking_date, state)
 VALUES (:setId, :bookingDate, 'BOOKED_ONLINE')
 ON CONFLICT (set_id, booking_date) DO NOTHING

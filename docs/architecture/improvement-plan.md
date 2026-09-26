@@ -11,8 +11,8 @@
 
 The inspection found the architecture disciplined and the hard parts done correctly — an acyclic
 Modulith with deny-by-default `allowedDependencies`, the atomic `INSERT … ON CONFLICT` claim
-(invariant #2), webhook-as-truth payments with idempotency keys (invariant #8), a Flyway-owned
-Event Publication Registry, fitness-tested boundaries — and seven gaps:
+(invariant #2), webhook-as-truth payments (invariant #8) with idempotency keys (ADR-0002), a
+Flyway-owned Event Publication Registry, fitness-tested boundaries — and seven gaps:
 
 | Gap found | Outcome |
 |---|---|

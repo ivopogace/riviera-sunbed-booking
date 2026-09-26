@@ -12,18 +12,12 @@ import ai.riviera.platform.booking.application.refund.RefundResubmission;
 import ai.riviera.platform.shared.ResubmissionOutcome;
 
 /**
- * The platform-admin surface for the refund outbox (#454): what the Event Publication Registry still
- * owes the cancellation-refund listener, and the lever that re-drives it without waiting for the next
- * deploy. Driving adapter depending only on the module's {@link RefundResubmission} driving port —
- * mirrors {@code AdminMailOutboxController} (#405), whose javadoc carries the shared reasoning:
- * role-gated not venue-scoped (the {@code /api/admin/**} invariant-#13 exemption), hosted in the
- * module not at the composition root (#391), every outcome {@code 200} with a typed token
- * ({@code riviera-java-conventions} §6), and no per-controller {@code @ExceptionHandler}.
- *
- * <p><strong>What the responses deliberately do not carry</strong> (invariant #7): no booking id, no
- * booking code, no registry payload — counts and an outcome token only. The outstanding publications'
- * serialized events are exactly where booking ids live, which is why a per-publication listing is a
- * non-goal of #454 as it was of #405.
+ * ADMIN surface over the refund outbox: what the Event Publication Registry still owes the refund
+ * bulkhead's two listeners, and the lever that re-drives it now, via {@link RefundResubmission}. The
+ * twin of {@code AdminMailOutboxController}: role-gated under {@code /api/admin/**} (invariant #13's
+ * exemption), hosted in this module, every outcome {@code 200} with a typed token, and counts only,
+ * never a booking id, code or payload (invariant #7). Rationale: {@code RESPONSIBILITIES.md}
+ * §notification (both outbox levers) and §booking (which listeners it reaches).
  */
 @RestController
 @RequestMapping("/api/admin/refund-outbox")

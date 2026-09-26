@@ -16,9 +16,9 @@ import ai.riviera.platform.payment.events.PaymentConfirmed;
 /**
  * Applies {@code payment}'s webhook-verified events (invariant #8) to bookings, by event because a
  * back-call would cycle (invariant #11): {@link PaymentConfirmed} confirms an {@code AWAITING_PAYMENT}
- * booking; {@link PaymentCanceled} cancels it and, only if it transitioned, releases its
- * {@code (set, date)} claim (invariant #2). Each runs after the webhook commits, in its own
- * transaction; a throw leaves the publication outstanding until restart, so both stay idempotent.
+ * booking; {@link PaymentCanceled} cancels it and, only if it transitioned, releases its claim (#2).
+ * Each runs after the webhook commits, in its own transaction; a throw leaves the publication
+ * outstanding until restart, so both stay idempotent ({@code RESPONSIBILITIES.md} §booking).
  * Renaming the class or a handler changes its registry {@code listener_id} and orphans stored rows.
  */
 @Component

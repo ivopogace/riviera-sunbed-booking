@@ -208,11 +208,9 @@ export class PayoutsTab {
   }
 
   /**
-   * Issue the per-date weather refund. The server cancels + fully refunds every CONFIRMED booking for
-   * the day (invariant #10), executes the refund via the Stripe webhook path (invariant #8) and posts
-   * the payout reversal (invariant #9) — this only triggers it and re-renders. The reversal is posted by
-   * an AFTER_COMMIT listener, so after the outcome lands the ledger is re-read to pull it in
-   * (eventually consistent).
+   * Issue the per-date weather refund: the server cancels and fully refunds the day's bookings
+   * (invariant #10) and posts the payout reversals (invariant #9) after commit, so once the outcome
+   * lands the ledger is re-read to pull them in. This only triggers it and re-renders.
    */
   protected onConfirmWeather(): void {
     const venueId = this.venueId();

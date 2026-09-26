@@ -6,6 +6,7 @@ import { Component } from '@angular/core';
  * mail that was never sent. The fill is a solid composite, not a translucent tint, so the contrast
  * spec and Sonar (`css:S7924`) compute the real ratio. No live region: it enters the DOM with its
  * container and a region announces only later mutations; `booking-pay` folds it into its own.
+ * Kept in `booking/`, not `shared/`: `RESPONSIBILITIES.md` §Frontend.
  */
 @Component({
   selector: 'app-withheld-email-notice',

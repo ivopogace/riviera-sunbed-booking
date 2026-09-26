@@ -14,10 +14,10 @@ const SKINS: Record<LegalMenuVariant, string> = {
 /**
  * Privacy and Terms as menu rows, for tourist routes like Discover whose edge-to-edge map withholds
  * the footer; every route keeps one of the two (`app.ts`'s `TouristRouteData`), and the sheet and
- * popovers must stay above every Discover layer. They open a new tab, never route (on `booking/pay`
- * routing unmounts the Payment Element), so they neither close their menu nor take
- * `routerLinkActive`. Call sites put them last in an `mt-1` group: `toggleMenu` focuses the first
- * row, and a hairline would owe a measured ratio (`docs/design/non-text-contrast.md` rule 2a).
+ * popovers must stay above every Discover layer. They open a new tab, never route, so they neither
+ * close their menu nor take `routerLinkActive` (`RESPONSIBILITIES.md` §Frontend). Call sites put
+ * them last in an `mt-1` group: `toggleMenu` focuses the first row, and a hairline would owe a
+ * measured ratio (`docs/design/non-text-contrast.md` rule 2a).
  */
 @Component({
   selector: 'app-legal-menu-rows',

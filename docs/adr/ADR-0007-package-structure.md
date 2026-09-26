@@ -219,17 +219,18 @@ exist while `venue.vocabulary.SetId` crosses four modules with one spelling. **T
 records mark exactly the bidirectional edges**, and nothing else:
 
 - `venue` grants nothing to `availability`, `booking` or `notification` and depends on none of them,
-  so the edge is one-way and they import `SetId` directly
-  (`availability/package-info.java:18`, `booking/package-info.java:26`,
-  `notification/package-info.java:39–40`).
+  so the edge is one-way and they import `SetId` directly (the `allowedDependencies` of
+  `availability/package-info.java`, `booking/package-info.java` and
+  `notification/package-info.java`).
 - `venue` **does** depend on `operator` and `review` — `operator::api` for `assertOwns` (invariant
   #13) and `review::events` for the `ReviewsChanged` rating recompute
-  (`venue/package-info.java:22`). Each of those two therefore cannot name `venue`'s types without
-  closing a Modulith cycle, so each publishes its own `VenueRef`
-  (`operator/package-info.java:16–20`; `operator/vocabulary/VenueRef.java:7–14`).
-- `booking` depends on `review::spi`/`review::api` (`booking/package-info.java:26`) while `review`
-  implements nothing outbound (`allowedDependencies = { "shared" }`,
-  `review/package-info.java:30`), so `review` publishes its own `BookingRef` for the same reason.
+  (`venue/package-info.java`, `allowedDependencies`). Each of those two therefore cannot name
+  `venue`'s types without closing a Modulith cycle, so each publishes its own `VenueRef`
+  (`operator/package-info.java`, `allowedDependencies = {}`; `operator/vocabulary/VenueRef.java`,
+  type Javadoc).
+- `booking` depends on `review::spi`/`review::api` (`booking/package-info.java`,
+  `allowedDependencies`) while `review` implements nothing outbound (`allowedDependencies = { "shared" }`,
+  `review/package-info.java`), so `review` publishes its own `BookingRef` for the same reason.
 
 The asymmetry is a rule, not grant history: a module copies an id **iff** the module that owns the
 id already depends on it. No code change follows — recorded so the question is not re-derived.

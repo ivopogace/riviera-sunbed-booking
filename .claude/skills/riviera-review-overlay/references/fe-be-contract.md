@@ -20,7 +20,7 @@ across FE and BE: nothing but the verified webhook sets CONFIRMED. Pair with RV-
 
 ### RV-CT-4. Double-submit / idempotency — Major
 Booking creation guarded against double submit: FE locks the submit in flight; backend dedupes
-via the availability claim (#2) and the Stripe idempotency key (#8). The single-winner
+via the availability claim (#2) and the Stripe idempotency key (ADR-0002). The single-winner
 guarantee stops two bookings for one set; also check the *same user* double-clicking can't
 create a duplicate booking or charge.
 

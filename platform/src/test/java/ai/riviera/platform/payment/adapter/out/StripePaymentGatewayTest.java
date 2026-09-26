@@ -46,8 +46,8 @@ import static org.mockito.Mockito.when;
  * Unit test of the Stripe collection adapter (issue #8, AC-1/AC-10) with a mocked
  * {@link StripeClient} — no live Stripe call. Pins the boundary contract: the PaymentIntent is
  * created with the amount in <strong>integer minor units</strong> and lowercase ISO currency
- * (invariant #5), an <strong>idempotency key derived from the booking id</strong> (invariant
- * #8), and the booking id in metadata; the record is persisted and a {@link PaymentOutcome.Pending}
+ * (invariant #5), an <strong>idempotency key derived from the booking id</strong> (ADR-0002),
+ * and the booking id in metadata; the record is persisted and a {@link PaymentOutcome.Pending}
  * carrying the client secret is returned; a Stripe failure maps to {@code Failed} (narrow catch,
  * never throws to the caller). In the adapter's own package so the package-private class is the
  * test surface.
@@ -135,7 +135,7 @@ class StripePaymentGatewayTest {
 		assertEquals("42", params.getValue().getMetadata().get("bookingRef"),
 				"booking id travels in metadata for correlation");
 		assertEquals("booking-42-pi", options.getValue().getIdempotencyKey(),
-				"idempotency key is derived from the booking id (invariant #8)");
+				"idempotency key is derived from the booking id (ADR-0002)");
 
 		verify(payments).register(new NewPayment(new BookingRef(42L), "pi_abc", 4500L, "EUR", "pi_abc_secret_xyz"));
 	}
@@ -196,7 +196,7 @@ class StripePaymentGatewayTest {
 		ArgumentCaptor<RequestOptions> options = ArgumentCaptor.forClass(RequestOptions.class);
 		verify(intents, times(2)).create(any(PaymentIntentCreateParams.class), options.capture());
 		options.getAllValues().forEach(o -> assertEquals("booking-42-pi", o.getIdempotencyKey(),
-				"both attempts carry the booking-derived idempotency key (issue #66 recovery, invariant #8)"));
+				"both attempts carry the booking-derived idempotency key (lost-response recovery, ADR-0002)"));
 
 		// The recovered intent is now recorded — never left orphaned-and-untracked at Stripe.
 		verify(payments).register(new NewPayment(new BookingRef(42L), "pi_recovered", 4500L, "EUR", "pi_recovered_secret"));
@@ -247,7 +247,7 @@ class StripePaymentGatewayTest {
 		assertEquals(INTENT, params.getValue().getPaymentIntent(), "refund targets the booking's PaymentIntent");
 		assertEquals(2250L, params.getValue().getAmount(), "amount is integer minor units (invariant #5)");
 		assertEquals("booking-42-refund", options.getValue().getIdempotencyKey(),
-				"refund idempotency key is derived from the booking id (invariant #8/#10)");
+				"refund idempotency key is derived from the booking id (ADR-0002, invariant #10)");
 		verify(fixture.payments()).markRefunded(BOOKING, 2250L, "re_xyz");
 		assertEquals(0.0, fixture.adoptedCount(), "a freshly created refund is not an adoption");
 	}

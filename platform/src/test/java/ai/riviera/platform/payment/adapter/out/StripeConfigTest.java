@@ -13,7 +13,7 @@ import com.stripe.StripeClient;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 /**
- * Verifies the Stripe credentials are sourced from configuration (AC-9 / invariant #8) — never
+ * Verifies the Stripe credentials are sourced from configuration (AC-9) — never
  * hard-coded — and default to empty when unset (the default/stub profile, where Stripe is
  * dormant). Binds {@link StripeProperties} from a property source via {@link Binder}; no Spring
  * context, no network. The same {@code stripe.*} keys are wired from {@code STRIPE_API_KEY} /

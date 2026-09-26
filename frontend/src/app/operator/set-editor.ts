@@ -325,7 +325,7 @@ export class SetEditor {
    */
   private readonly lastCoords = signal<{ gridX: number; gridY: number } | undefined>(undefined);
 
-  // --- drag-sweep gesture (#714; imperative, not rendered — mirrors LayoutEditor's own drag-paint) ---
+  // --- drag-sweep gesture (imperative, not rendered — mirrors LayoutEditor's own drag-paint) ---
 
   /** True from a primary-button press on a cell until the matching `document:mouseup`. */
   private sweeping = false;
@@ -564,7 +564,7 @@ export class SetEditor {
     this.moving.set(false);
     this.sweepIds.set(null); // a single tap always supersedes any standing batch sweep (AC-6)
     if (opening) {
-      // The mobile bottom sheet can cover the lower viewport — keep the tapped tile above it (#715).
+      // The mobile bottom sheet can cover the lower viewport — keep the tapped tile above it.
       this.scrollCellIntoView(gridX, gridY);
       // A brand-new inspector appeared — move focus into it so AT users notice its arrival.
       this.focusAfterRender('set-panel');
@@ -633,7 +633,7 @@ export class SetEditor {
     this.sweepIds.set(ids);
     this.batchUpdated.set(null);
     this.batchErrorCode.set(undefined);
-    // Keep the swept anchor above the mobile bottom sheet too (#715), same reasoning as onCell.
+    // Keep the swept anchor above the mobile bottom sheet too, same reasoning as onCell.
     this.scrollCellIntoView(swept[0].gridX, swept[0].gridY);
     this.focusAfterRender('batch-panel');
   }
