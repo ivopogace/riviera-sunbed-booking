@@ -49,7 +49,7 @@ public interface Operators {
 	/** Every operator awaiting admin approval (status PENDING), oldest first. */
 	List<PendingOperator> pendingOperators();
 
-	/** Every operator that can currently authenticate (status ACTIVE), by username. */
+	/** Every decided operator (status ACTIVE or SUSPENDED), by username, for the admin console. */
 	List<OperatorAccount> accounts();
 
 	/**
