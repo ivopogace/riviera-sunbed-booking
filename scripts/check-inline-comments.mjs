@@ -275,21 +275,27 @@ function balancedEnd(text, start) {
   let c = start;
   while (c < text.length) {
     const ch = text[c];
-    if (ch === '/' && (text[c + 1] === '/' || text[c + 1] === '*')) {
-      const close = text[c + 1] === '/' ? '\n' : '*/';
-      const end = text.indexOf(close, c + 2);
-      c = end === -1 ? text.length : end + close.length - 1;
-    } else if (ch === '"' || ch === "'" || ch === '`') {
-      c++;
-      while (c < text.length && text[c] !== ch) c += text[c] === '\\' ? 2 : 1;
-    } else if ('([{'.includes(ch)) {
-      depth++;
-    } else if (')]}'.includes(ch) && --depth === 0) {
-      return c + 1;
-    }
+    if (ch === '/' && (text[c + 1] === '/' || text[c + 1] === '*')) c = commentEnd(text, c);
+    else if (ch === '"' || ch === "'" || ch === '`') c = stringEnd(text, c);
+    else if ('([{'.includes(ch)) depth++;
+    else if (')]}'.includes(ch) && --depth === 0) return c + 1;
     c++;
   }
   return text.length;
+}
+
+/** The index of the last character of the `//` or `/* … *\/` comment that opens at `c`. */
+function commentEnd(text, c) {
+  const close = text[c + 1] === '/' ? '\n' : '*/';
+  const end = text.indexOf(close, c + 2);
+  return end === -1 ? text.length : end + close.length - 1;
+}
+
+/** The index of the quote that closes the string literal opening at `c`, stepping over escapes. */
+function stringEnd(text, c) {
+  let i = c + 1;
+  while (i < text.length && text[i] !== text[c]) i += text[i] === '\\' ? 2 : 1;
+  return i;
 }
 
 function range(from, to) {
