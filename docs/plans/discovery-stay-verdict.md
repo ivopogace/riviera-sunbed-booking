@@ -153,8 +153,8 @@ The `GET /api/venues` mapping moves from `venue/adapter/in/VenueReadController` 
 | R-4 | `ResponsibilitiesArchitectureTests` rule 1: `set_availability` named outside `availability` | Low | High | `itinerary` has no SQL at all; its adapter is a controller only | me | open |
 | R-5 | Jackson `@JsonUnwrapped` on a record component may not flatten the summary | Med | Low | Spike in phase 1c; fallback is an explicit `DiscoveryVenueView` record mirroring `VenueSummaryView`'s 17 fields with a static `of(summary, verdict)` | me | closed — `booking/adapter/in/AwaitingPaymentView` already unwraps a record component on the wire |
 | R-6 | Calendar promotion breaks the venue page (focus, counts, ceiling) | Med | Med | `git mv`, the 729-line spec moves with it and stays green; `availability-calendar.e2e.ts` untouched | me | closed — the moved spec (50) and `venue-map.spec.ts` green in phase 2a |
-| R-7 | Contrast: a hollow pin over map imagery | Med | Med | Hollow = inverse token pair (`--riv-solid-btn-fill` ring + ink on the pin's own fill), never transparent; `venue-pin-layer.contrast.spec.ts` measures both variants per theme | me | open |
-| R-8 | Fading can't-host cards drops the name under 3:1 (`venue-row.ts` rule) | High if faded | Med | The issue's "faded" is rendered as the existing dusk skin (`saturate-0`) plus the verdict line; no opacity on text | me | open |
+| R-7 | Contrast: a hollow pin over map imagery | Med | Med | Hollow = a dashed 2px ring in the pin's ink on the pin's own fill (the beach map's taken-tile idiom), never transparent; `venue-pin-layer.contrast.spec.ts` holds the ring to 3:1 resting and at dusk | me | closed in phase 2e |
+| R-8 | Fading can't-host cards drops the name under 3:1 (`venue-row.ts` rule) | High if faded | Med | The issue's "faded" is rendered as the existing dusk skin (`saturate-0`) plus the verdict line; no opacity on text | me | closed in phase 2d |
 | R-9 | Timezone: the span's days are Europe/Tirane civil days (#6) | Low | Med | `StaySpan` is `LocalDate`s; the default first day is `todayInTirane()` off the UTC `Clock`, as before | me | open |
 | R-10 | BOLA (#13) | None | — | Public tourist read; no venue-scoped write; nothing owner-asserted is exposed (`SetBookingFacts` answers ids only; hold type never leaves `availability`) | me | n/a |
 | R-11 | Sonar duplication between the moved `listVenues` and its new home | Low | Low | The mapping is deleted from `VenueReadController`, not copied | me | closed in phase 1c |
@@ -267,9 +267,9 @@ N/A — no payment in scope. Prices on the list stay per day (`fromPrice`), unch
 
 ## Execution status
 
-**Stage pointer:** `implement (phase 2e)`
+**Stage pointer:** `implement (phase 2f)`
 
-**Next action:** `venue-pin-layer.spec.ts` red: a can't-host pin carries `data-cant-host`.
+**Next action:** write `e2e/discovery-stay.e2e.ts` and run it with the mocked config.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -282,7 +282,7 @@ N/A — no payment in scope. Prices on the list stay per day (`fromPrice`), unch
 | 2b — service param + wire types + card mapping | ✅ | phase 2b commit |
 | 2c — "Several days…" chip, page calendar, `?lastDate`, links | ✅ | phase 2c commit |
 | 2d — verdict line, dusk, ordering | ✅ | phase 2d commit |
-| 2e — hollow pins + contrast spec | | |
+| 2e — hollow pins + contrast spec | ✅ | phase 2e commit |
 | 2f — mocked e2e | | |
 | 3 — substrate docs + close-out | | |
 

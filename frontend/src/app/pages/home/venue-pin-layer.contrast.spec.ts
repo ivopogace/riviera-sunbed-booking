@@ -1,4 +1,11 @@
-import { AA_NORMAL, contrastRatio, Rgb, desaturate, rgbToHex } from '../../../testing/contrast';
+import {
+  AA_LARGE,
+  AA_NORMAL,
+  contrastRatio,
+  Rgb,
+  desaturate,
+  rgbToHex,
+} from '../../../testing/contrast';
 import { SOLID_BTN_FILL, SOLID_BTN_HOVER, SOLID_BTN_INK } from '../../../testing/glass-tokens';
 
 /** The dusk face's paint: `testing/contrast`'s matrix, as the hex pair `contrastRatio` takes. */
@@ -41,5 +48,17 @@ describe('venue pin layer contrast', () => {
     expect(
       contrastRatio(desaturated(SOLID_BTN_FILL), desaturated(SOLID_BTN_INK)),
     ).toBeGreaterThanOrEqual(AA_NORMAL);
+  });
+
+  /**
+   * A pin for a stay the venue can't host keeps the pair and changes shape: a dashed ring in the
+   * ink on the resting fill (WCAG 1.4.1, the shape is the proof). The ring is a non-text edge that
+   * identifies the state, so it is held to 3:1, and to the same ratio desaturated at dusk.
+   */
+  it('the can’t-host ring clears the non-text minimum on the fill, and desaturated at dusk', () => {
+    expect(contrastRatio(ink, rgbToHex(SOLID_BTN_FILL))).toBeGreaterThanOrEqual(AA_LARGE);
+    expect(
+      contrastRatio(desaturated(SOLID_BTN_INK), desaturated(SOLID_BTN_HOVER)),
+    ).toBeGreaterThanOrEqual(AA_LARGE);
   });
 });

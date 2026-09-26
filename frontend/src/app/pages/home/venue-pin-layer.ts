@@ -55,6 +55,8 @@ interface Place {
   readonly next: PlacedPin;
   /** Every member's sales for the chosen day have closed: the face greys, the price is struck. */
   readonly dusk: boolean;
+  /** No member can host the chosen stay: the pill hollows as a lone pin would. */
+  readonly cantHost: boolean;
   readonly placement: PillPlacement;
 }
 
@@ -119,6 +121,12 @@ const PLACE_CLASSES =
 
 /** The list answering the map: the same fill a pointer over the pin itself would give it. */
 const HOVER_CLASSES = 'data-hover:bg-riv-solid-btn-hover';
+
+/**
+ * A stay the venue, or every venue in the crowd, can't host: the same pair, a different shape —
+ * a dashed ring in the ink (WCAG 1.4.1), the way a taken tile's dash reads on the beach map.
+ */
+const CANT_HOST_CLASSES = 'data-cant-host:border-dashed data-cant-host:border-riv-solid-btn-ink';
 
 /**
  * The rest of a crowd: real 44 px buttons at the crowd's spot, invisible until focused, when each
@@ -337,9 +345,9 @@ export class VenuePinLayer {
   protected slotClass(slot: Slot): string {
     switch (slot.kind) {
       case 'lone':
-        return `${LONE_CLASSES} ${DUSK_CLASSES} ${HOVER_CLASSES} ${slot.member.pin.card.priceLabel ? LONE_BADGE_CLASSES : LONE_DOT_CLASSES}`;
+        return `${LONE_CLASSES} ${DUSK_CLASSES} ${CANT_HOST_CLASSES} ${HOVER_CLASSES} ${slot.member.pin.card.priceLabel ? LONE_BADGE_CLASSES : LONE_DOT_CLASSES}`;
       case 'place':
-        return `${PLACE_CLASSES} ${DUSK_CLASSES} ${HOVER_CLASSES} ${slot.place.placement.compact ? 'pl-[6px]' : 'pl-[13px]'}`;
+        return `${PLACE_CLASSES} ${DUSK_CLASSES} ${CANT_HOST_CLASSES} ${HOVER_CLASSES} ${slot.place.placement.compact ? 'pl-[6px]' : 'pl-[13px]'}`;
       default:
         return MEMBER_CLASSES;
     }
@@ -352,6 +360,11 @@ export class VenuePinLayer {
    */
   protected dusk({ kind, place, member }: Slot): boolean {
     return kind === 'lone' ? member.pin.card.salesClosed : kind === 'place' && place.dusk;
+  }
+
+  /** Whether this face can't host the chosen stay: its own venue, or every venue in its crowd. */
+  protected cantHost({ kind, place, member }: Slot): boolean {
+    return kind === 'lone' ? !member.pin.card.canHost : kind === 'place' && place.cantHost;
   }
 
   /** The face drawn for the highlighted venue: its own pin, or the pill its crowd is drawn as. */
@@ -418,6 +431,7 @@ export class VenuePinLayer {
     return {
       crowd,
       dusk: crowd.members.every((member) => member.pin.card.salesClosed),
+      cantHost: crowd.members.every((member) => !member.pin.card.canHost),
       name: placeName(beaches.map(beachLabel)),
       from: lowestFromPrice(crowd.members.map((member) => member.pin.card)),
       beach: beaches.length === 1 ? beaches[0] : null,
@@ -460,15 +474,17 @@ function faceKind(place: Place, member: PlacedPin): 'place' | 'member' {
 }
 
 function loneLabel(member: PlacedPin): string {
-  const { name, priceLabel } = member.pin.card;
-  return priceLabel ? `${name}, from ${priceLabel}` : name;
+  const { name, priceLabel, canHost, stayLabel } = member.pin.card;
+  const base = priceLabel ? `${name}, from ${priceLabel}` : name;
+  return canHost || stayLabel === null ? base : `${base}; ${stayLabel}`;
 }
 
 function placeLabel(place: Place): string {
   const count = `${place.crowd.members.length} venues at ${place.name}`;
   const from = place.from ? `, from ${place.from}` : '';
+  const stay = place.cantHost ? '; none can host your stay' : '';
   if (!place.here) {
-    return `${count}${from}; press to zoom to them`;
+    return `${count}${from}${stay}; press to zoom to them`;
   }
   if (place.current) {
     return `${place.current.pin.card.name}, ${place.index + 1} of ${count}; press again for ${place.next.pin.card.name}`;

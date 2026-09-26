@@ -414,6 +414,46 @@ describe('VenuePinLayer', () => {
     });
   });
 
+  describe('a stay the venue can’t host', () => {
+    const LABEL = 'Can’t host 4 days · up to 2 days in a row';
+    function cannot(pin: VenuePin): VenuePin {
+      return {
+        ...pin,
+        card: {
+          ...pin.card,
+          stay: { verdict: 'CANNOT_HOST', sameSetCount: 0, longestRunDays: 2, maxStayDays: null },
+          canHost: false,
+          stayLabel: LABEL,
+        },
+      };
+    }
+
+    it('hollows a lone pin and says why in its name', async () => {
+      await render([cannot(AURORA)]);
+      const [pin] = buttons('map-venue-pin');
+      expect(pin.hasAttribute('data-cant-host')).toBe(true);
+      expect(pin.getAttribute('aria-label')).toBe(`Aurora Bay, from €30; ${LABEL}`);
+      expect(pin.className).toContain('data-cant-host:border-dashed');
+    });
+
+    it('leaves a lone pin that hosts, or a one-day pin, filled', async () => {
+      await render([AURORA]);
+      const [pin] = buttons('map-venue-pin');
+      expect(pin.hasAttribute('data-cant-host')).toBe(false);
+      expect(pin.getAttribute('aria-label')).toBe('Aurora Bay, from €30');
+    });
+
+    it('hollows a crowd only when no member can host', async () => {
+      await render([cannot(MIRAMAR), LORI]);
+      expect(buttons('map-place-pill')[0].hasAttribute('data-cant-host')).toBe(false);
+
+      await render([cannot(MIRAMAR), cannot(LORI)]);
+      const [pill] = buttons('map-place-pill');
+      expect(pill.hasAttribute('data-cant-host')).toBe(true);
+      expect(pill.getAttribute('aria-label')).toContain('; none can host your stay');
+    });
+  });
+
   describe('the row the pointer is on', () => {
     function light(id: string | null): void {
       fixture.componentRef.setInput('highlighted', id);
