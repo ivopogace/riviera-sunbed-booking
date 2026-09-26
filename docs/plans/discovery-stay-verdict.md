@@ -27,7 +27,7 @@ module name `itinerary`, the module's own controller serves `GET /api/venues`, v
 pure domain rule over taken days, the calendar is promoted to `shared/`) · `riviera-plan-doc`
 (forced the parity ledger for the moved mapping, the seam per AC, the cost-measurement phase) ·
 `tdd` (one seam per phase: domain rule → application service → HTTP → UI) ·
-`riviera-review-overlay` (runs at ready-for-review) · `riviera-docs-freshness` (runs at
+`riviera-review-overlay` (ran with the `code-review` plugin over `f8fa31be..0b4d13a4`, effort high; five findings F-2, F-5..F-9 fixed on the branch, the review comment on PR #1250) · `riviera-docs-freshness` (runs at
 close-out over the merge range) · `grilling` (surfaced the 62-day technical ceiling, the dusk-not-fade
 contrast rule, the venue page's `See other beaches` links carrying `date` only) ·
 `riviera-local-debug` (unshallowed the clone, scoped test commands, JDK at `/opt/jdk-25`) ·
@@ -268,9 +268,9 @@ N/A — no payment in scope. Prices on the list stay per day (`fromPrice`), unch
 
 ## Execution status
 
-**Stage pointer:** `CI gate — draft PR #1250`
+**Stage pointer:** `review gate run on PR #1250 — Sonar gate + merge close-out pending`
 
-**Next action:** CI green on the pushed head → merge `origin/main` in → ready for review → review gate (`references/pr-gates.md` §1).
+**Next action:** CI green on `f0e175e1` → Sonar list for the head → merge close-out (`references/pr-gates.md` §3).
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -298,6 +298,10 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 | F-3 | Review gate (history + prior-PR reviewers) | `formatStay`'s TSDoc was orphaned onto the new `formatStayChip`, leaving `formatStay` undocumented | fixed: each doc above its own function |
 | F-4 | Review gate (history + prior-PR reviewers) | `WebSliceStubs`' review-list Javadoc landed on the new `stayVerdicts` stub | fixed: the stub has its own line, the review-list doc is back on its bean |
 | F-5 | Review gate (prior-PR reviewer, RV-PROC-2 c) | `SetBookingFacts`' Javadoc named `booking` and `availability` as its consumers; `itinerary` is the third | fixed: the doc names all three |
+| F-6 | Review gate (RV-PROC-1) | *Skills consulted* omitted `domain-modeling`, required for a new module and for editing `CONTEXT.md` | fixed: skill loaded, the glossary entry trimmed to the term, the line extended |
+| F-7 | Review gate (RV-PROC-2 c) | `docs/architecture/domain-model.md` said "three of the twelve" with four modules listed, and "twelve modules" on line 8 | fixed: four of the thirteen, thirteen modules |
+| F-8 | Review gate (comment guidance, RV-STYLE-1) | the row's and the sheet card's dusk comments named only the sales-closed trigger after the binding gained `!canHost` | fixed: both say dusk covers a stay the venue can't host |
+| F-9 | Review gate (nit, score 50) | the moved `stay-rule.ts` imported `plural` via `../shared/` | fixed: `./plural` |
 
 ### Cost measurement (AC-3)
 
@@ -492,4 +496,4 @@ The 150 ms switch threshold in R-1 is not approached, so the SQL-aggregate fallb
 - [ ] Execution status at HEAD matches reality; no finding row left `open` without a decision.
 - [ ] Risk register has no stale `open` rows; Open Questions empty or deferred with an issue #.
 - [ ] Close-out written in THIS PR's last code-touching commit, citing `merged via PR #NN`.
-- [ ] The review gate ran in full (ladder in `riviera-sdlc` `references/pr-gates.md` §1 plus the overlay); if blocked, stated in the PR with the box unticked.
+- [x] The review gate ran in full (ladder in `riviera-sdlc` `references/pr-gates.md` §1 plus the overlay); if blocked, stated in the PR with the box unticked.
