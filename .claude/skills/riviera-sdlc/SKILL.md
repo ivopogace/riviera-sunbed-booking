@@ -55,8 +55,7 @@ doc's Execution status is the state store, not the map.
 | The session's first `./gradlew`/`npm test`, or a local build failure | `riviera-local-debug` |
 | Always | `riviera-plan-doc` (plan) · `tdd` (build) · `riviera-review-overlay` (review) · `riviera-docs-freshness` (close-out) |
 
-1. **Detect** what the slice touches from the repo, not memory (an empty search is not
-   absence — `CLAUDE.md` § Searching the codebase). `area:*` labels are only a hint.
+1. **Detect** what the slice touches from the repo, not memory. `area:*` labels are only a hint.
 2. **Load + announce** each triggered skill before authoring that part. Writing first is
    RV-PROC-1.
 3. **Record** each skill and what it changed in the plan doc's **Skills consulted** line.

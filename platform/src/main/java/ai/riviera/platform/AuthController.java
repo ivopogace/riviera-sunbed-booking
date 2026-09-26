@@ -141,7 +141,7 @@ class AuthController {
 	}
 
 	/**
-	 * Register an operator as {@code PENDING}, never signing it in (it waits for admin approval). A fresh and a taken
+	 * Register an operator as {@code PENDING}, never signing it in (the client signs in next). A fresh and a taken
 	 * username get the same {@code 202} body and no session (non-enumeration); {@link PasswordPolicy} runs before any write
 	 * (its codes: RESPONSIBILITIES.md §Platform edge (settled)).
 	 */
@@ -159,7 +159,7 @@ class AuthController {
 		// outcome distinction never surfaces (the response is byte-identical) so it is deliberately unused.
 		operatorRegistration.register(username, passwordEncoder.encode(registration.password()),
 				registration.contactEmail().trim());
-		// No session either branch — a PENDING operator cannot sign in until approved. Byte-identical body.
+		// No session either branch; the client signs in next, as a PENDING operator may. Byte-identical body.
 		return ResponseEntity.status(HttpStatus.ACCEPTED).body(new OperatorRegistrationResponse("PENDING"));
 	}
 

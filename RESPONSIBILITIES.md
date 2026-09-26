@@ -546,11 +546,12 @@ transaction, on the request path too, a timeout fails the whole erasure, and a s
 ## `operator`
 **Job:** Own operator accounts — the admin-driven lifecycle (`PENDING`→`ACTIVE`/`REJECTED`,
 `ACTIVE`⇄`SUSPENDED`) with its admin work queues, and the `is_admin` flag (set on the seeded
-bootstrap `operator`, which owns no venues: `docs/runbooks/operator-credential-provisioning.md`) —
-and the operator↔venue ownership mapping (creator-owns-on-create, in the venue insert's
-transaction). I answer *does this operator own this venue?* (invariant #13), *its username, if in
-the expected status* (`usernameInStatus`: the edge revokes sessions **before** a revoking
-transition commits) and *does this venue have an `ACTIVE` owner?* (`VenueVisibility`).
+bootstrap `operator`, which owns only the venues backfilled to it, the Miramar seed:
+`docs/runbooks/operator-credential-provisioning.md`) — and the operator↔venue ownership mapping
+(creator-owns-on-create, in the venue insert's transaction). I answer *does this operator own this
+venue?* (invariant #13), *its username, if in the expected status* (`usernameInStatus`: the edge
+revokes sessions **before** a revoking transition commits) and *does this venue have an `ACTIVE`
+owner?* (`VenueVisibility`).
 
 **The `ACTIVE` predicate is three explicit sets, each at its owner:** the edge's may-authenticate
 set and `OperatorDirectory`'s may-operate set are `ACTIVE`+`PENDING` (approval gates tourist
@@ -978,8 +979,8 @@ The mechanism and edge cases behind `CLAUDE.md`'s one-line invariants; its numbe
     caller's figure. Full refund until the venue's evening-before `booking_cutoff` (default `18:00`
     `Europe/Tirane`, owner-editable; not #4's sales close), then the venue's late share (none or
     partial); from service-day open (00:00 `Europe/Tirane`) a guest cancel is refused, not
-    refunded. Outside the tiers, deliberately: the **weather exception** (manual, admin-triggered,
-    full) and a **moved booking's free exit** — in full under `VENUE_CHANGE` until
+    refunded. Outside the tiers, deliberately: the **weather exception** (manual, triggered by the
+    venue's operator, full) and a **moved booking's free exit** — in full under `VENUE_CHANGE` until
     `BookingCutoff#freeExitEndsAt`, whatever `LATE` would answer; it never reopens `CLOSED`, as
     that deadline is capped at service-day open (§`booking`, ADR-0020).
 11. **Spring Modulith boundaries are hexagonal and id-based** (ADR-0007). Cross-module access is an

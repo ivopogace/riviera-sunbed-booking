@@ -82,7 +82,7 @@ aggregate-root classes: `domain/` holds rules, state is in tables, lifecycles ar
 |---|---|---|
 | `venue` | profile, beach map (sets, pools, positions), pricing, booking mode, sales-close, maximum stay, season closure, map pin, photos + moderation, commission-rate schedule | `venue`, `set_position`, `venue_amenity`, `venue_photo(_variant)`, `venue_commission_rate` |
 | `availability` | the per-`(set, date)` source of truth | `set_availability` |
-| `booking` | bookings + codes, lifecycle + sweeps, per-day attendance + stay outcome, request accept/decline, cancellation policy, driving refunds via `payment.api.RefundPort`, remodel claim classification + receipt | `booking`, `booking_day`, `remodel_receipt(_move/_outcome)` |
+| `booking` | bookings + codes, lifecycle + sweeps, per-day attendance + stay outcome, request accept/decline, cancellation policy, driving refunds via `payment.api.RefundPort`, remodel claim classification + receipt | `booking`, `booking_day`, `remodel_receipt(_move/_outcome/_kept)` |
 | `payment` | Stripe collection, PaymentIntents (one may collect for several bookings), per-booking refunds, webhooks | `payment`, `payment_booking`, `stripe_webhook_event` |
 | `payout` | venue payout ledger, manual BKT batches, platform settings (venue-change fee) | `payout_ledger_entry`, `payout_batch`, `platform_setting` |
 | `customer` | guest contact, customer account (sign-in, SSO, verification, password), GDPR erasure + retention sweep, canonical email form | `customer`, `customer_account`, `customer_sso_identity`, `customer_account_token` |
@@ -97,8 +97,8 @@ root on modules, nothing on the root.
 
 **Collaboration:** events for state changes, `api/` ports for queries. Synchronous ports: the
 availability claim, erasure's reach into reviews, the remodel gate + claim settlement. Events:
-`PaymentConfirmed`/`PaymentCanceled` → `booking`; `BookingConfirmed`/`BookingCancelled` →
-`payout`, `notification`, and `booking`'s own refund + intent-void listeners;
+`PaymentConfirmed`/`PaymentCanceled` → `booking`; `BookingConfirmed` → `payout`, `notification`;
+`BookingCancelled` → those two plus `booking`'s own refund + intent-void listeners;
 `BookingPaymentDue`/`BookingRequestDeclined`/`BookingRequestExpired`/`BookingMoved` →
 `notification`; `ReviewsChanged` → `venue`.
 
@@ -145,10 +145,6 @@ Tracker + labels: `docs/agents/`. Glossary: `CONTEXT.md`. Decisions: `docs/adr/`
 `docs/architecture/improvement-plan.md`.
 
 ## Searching the codebase
-
-**An empty search result is not evidence of absence.** `platform/.gitignore` ignores `out/`,
-which is also every `adapter/out` package. Confirm a negative with
-`git ls-files '*/adapter/out/*.java'`.
 
 `docs/plans/` holds in-flight work only; merged plans are deleted at the next close-out
 (`riviera-docs-freshness` § *Plan-doc retirement*). Nothing durable cites a plan path. Recover

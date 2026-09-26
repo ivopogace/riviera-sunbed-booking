@@ -8,7 +8,8 @@ model in `docs/architecture/domain-model.md`.
 ## Supply (venue side)
 
 - **Venue** — a beach club / bar / hotel that owns sunbeds on its stretch of beach
-  and publishes availability. Has a booking mode, a commission rate, and payout details.
+  and publishes availability. Has a booking mode, a commission rate, and a payout currency (its
+  bank details are not stored).
 - **Amenities** — a venue's facilities, shown as tags on the discovery card and the beach-map
   page. A **fixed platform catalogue** (Beach bar, Restaurant, Cafe, Free parking, Showers, WiFi,
   Water sports, Pet friendly, Snack shack, Snorkelling, Quiet bay); a venue holds an
@@ -18,8 +19,8 @@ model in `docs/architecture/domain-model.md`.
 - **Venue photo** — venue profile media: one image per photo slot, uploaded by the venue's
   operator, validated server-side (JPEG/PNG/WebP, ≤25 MB, real-bytes magic check, decompression-bomb
   guard), EXIF-stripped, and persisted only as its resized variants (the full-res upload is
-  discarded — ADR-0008). Every occupied slot is tourist-surfaced on both the Discover card and
-  the venue page; the **cover** leads both.
+  discarded — ADR-0008). Every occupied slot is tourist-surfaced on the venue sheet's card and on
+  the venue page; the **cover** leads both, and the **venue panel**'s row shows the cover alone.
 - **Photo slot** — one of a venue's three fixed photo positions: `COVER` (what leads every
   tourist surface), `SUNBEDS`, `BAR` (the ones after it — and, as always, visible to the
   venue's own operator and to a platform admin moderating them). At most one photo
@@ -41,11 +42,12 @@ model in `docs/architecture/domain-model.md`.
   is sized for (`CARD`, `BANNER`, `LIGHTBOX`, `PREVIEW`) **and** its pixel density. `CARD` and
   `BANNER` carry a second rendition at twice the density, which the browser chooses between;
   `LIGHTBOX` and the operator preview carry one each — the lightbox's near-square box already is a
-  high-density size. Each is a fit-within-resized progressive JPEG served by its **content hash**
-  at a public URL (`/api/venues/{venueId}/photos/{hash}`); a replace mints new hashes → new URLs,
-  and a removed variant stops being served rather than outliving its removal in caches. A photo
-  uploaded before a surface or a density existed keeps the renditions it was given: the full-res
-  original is discarded at upload, so nothing can be re-derived from it.
+  high-density size. A double-density or lightbox rendition that would be larger than the upload
+  is never made, so a small photo may lack them. Each is a fit-within-resized JPEG served by its
+  **content hash** at a public URL (`/api/venues/{venueId}/photos/{hash}`); a replace mints new
+  hashes → new URLs, and a removed variant stops being served rather than outliving its removal in
+  caches. A photo uploaded before a surface or a density existed keeps the renditions it was
+  given: the full-res original is discarded at upload, so nothing can be re-derived from it.
 - **Venue visibility** — whether tourists can discover and book a venue: a venue is
   **visible iff its owning operator is `ACTIVE`** — derived, never a flag. Hidden
   means absent from the tourist list, 404 on the map and availability-calendar reads, and both
@@ -53,13 +55,13 @@ model in `docs/architecture/domain-model.md`.
   an unowned venue is hidden (fail-closed). Bookings sold while visible keep working.
 - **Closed for season** — a venue-level state its operator sets: the venue is **visible and
   unsellable** — still listed, badged "Closed for season" (with its reopen day when one is set)
-  after every open venue; its page, photos, reviews, map and calendar stay browsable with every
-  date unavailable, and an online reserve is refused — until the reopen day starts in
-  `Europe/Tirane` or the operator reopens by hand. With the **advance-sales opt-in** (off by
-  default) dates on or after the reopen day sell while the venue is still shut. Distinct from
-  **Venue visibility**, which is derived from the operator's status and hides the venue; closing is
-  a stored choice, touches no booking, hold or request, and leaves the staff daily view and walk-in
-  marks working.
+  after the open venues on its beach, unless Near me sorts the list nearest first; its page, photos,
+  reviews, map and calendar stay browsable with every date unavailable, and an online reserve is
+  refused — until the reopen day starts in `Europe/Tirane` or the operator reopens by hand. With the
+  **advance-sales opt-in** (off by default) dates on or after the reopen day sell while the venue is
+  still shut. Distinct from **Venue visibility**, which is derived from the operator's status and
+  hides the venue; closing is a stored choice, touches no booking, hold or request, and leaves the
+  staff daily view and walk-in marks working.
 - **Beach catalogue** — the fixed platform list of every named beach on the Albanian coast, north to
   south, each in its **region** (Shkodër, Lezhë, Durrës, Fier, Vlorë, Himarë, Sarandë). A venue sits on
   exactly one catalogue beach, chosen by its operator from the list, never typed; its region is
@@ -182,8 +184,9 @@ model in `docs/architecture/domain-model.md`.
   authorises it by typing how many refunds the preview named and why; both go on the **commit
   receipt**. An unpaid booking in the same position is **released** — mailed the same way, link and
   all — and a pending request is **declined**, which keeps the mail a decline has always sent and no
-  link. Neither collected anything, so neither returns money and the payout ledger is untouched. Distinct from the **weather refund**, which is the admin's answer to a storm,
-  and from the guest's own **free exit**, which is the same reason from the other side.
+  link. Neither collected anything, so neither returns money and the payout ledger is untouched.
+  Distinct from the **weather refund**, which is the venue operator's answer to a storm, and from
+  the guest's own **free exit**, which is the same reason from the other side.
 - **Moved booking** — a booking a saved remodel re-seated on another set for the same date: its code,
   price and date are unchanged, the guest is mailed the new spot, and the booking carries when it
   moved and opens a **free exit**.
@@ -201,7 +204,7 @@ model in `docs/architecture/domain-model.md`.
   *new* bookings: a set can change pool at any time, and its existing bookings stay on their
   dates.
 - **Walk-in** — a guest who takes a set in person, without an app booking. Staff
-  mark walk-in sets taken in the app.
+  mark the set taken in the app — any free set, whatever its pool.
 
 ## Booking & availability
 
@@ -219,12 +222,12 @@ model in `docs/architecture/domain-model.md`.
 - **Booking** — a tourist's reservation of a specific set for a span of one or more dates,
   with a status, a price paid, a booking code, and a cancellation deadline.
 - **Booking status** — the lifecycle state of a booking. Canonical set (mirrored 1:1
-  by the `booking.status` CHECK constraint, V19 — keep enum and SQL in lockstep):
+  by the `booking.status` CHECK constraint, V37 — keep enum and SQL in lockstep):
   `PENDING_REQUEST`, `AWAITING_PAYMENT`, `CONFIRMED`, `CANCELLED`, `COMPLETED`,
   `NO_SHOW`, `DECLINED`, `EXPIRED` (Request-to-Book), `WITHDRAWN` (the guest's own
   retraction of a pending request).
 - **Pending request / soft-hold** — a Request-to-Book booking awaiting the venue's
-  decision (`PENDING_REQUEST`): it claims the same `availability(set, date)` row as any
+  decision (`PENDING_REQUEST`): it claims the same `set_availability (set, date)` row as any
   online booking (invariant #2) — the soft-hold — but no PaymentIntent exists and no card
   is charged until the venue accepts (payment-request-on-accept). It ends in one of three
   ways, one per party who can end it: the venue **declines** (`DECLINED`), nobody answers by
@@ -241,7 +244,8 @@ model in `docs/architecture/domain-model.md`.
 - **Booking code** — the unguessable bearer credential staff verify on arrival.
 - **Span** — the service days a booking covers, `booking_date` (the first) to `last_date` (the
   last), inclusive; a one-day booking is a one-day span, and every day of it is its own
-  `(set, date)` claim, so ending a booking frees every day. The remodel move re-seats every day.
+  `(set, date)` claim, so a booking that is cancelled, declined, expired, withdrawn or released
+  frees every day (a stay outcome keeps them). The remodel move re-seats every day.
 - **Stay** — a booking of several consecutive days on one set, made once: one code, one payment
   for the per-day price × the days, one confirmation naming the days, one cancellation. Offered
   at Instant venues; at most 62 days. Its claim is all or nothing: a day that loses gives back the
@@ -264,7 +268,7 @@ model in `docs/architecture/domain-model.md`.
   had passed (`NO_SHOW`), written by the scheduled sweep; the same sweep marks each unattended
   service day of a still-live stay as missed. Terminal: not cancellable and not check-in-able. It
   is **not** a refund — the guest paid and the venue held the set, so every money read that counts
-  a delivered stay counts a no-show too. The one exception is the admin **weather refund**, which
+  a delivered stay counts a no-show too. The one exception is the venue's **weather refund**, which
   reaches a no-show on purpose: on a washed-out day those are the guests who stayed home because
   of the storm.
 - **Sales close** — the moment a venue's online sales for a date close, on the date
@@ -276,19 +280,19 @@ model in `docs/architecture/domain-model.md`.
   a longer span (`STAY_TOO_LONG`) before any claim, and the venue's calendar refuses a later last
   day and states the rule.
 - **Cutoff** — the evening-before wall-clock boundary (default 18:00, `Europe/Tirane`,
-  per-venue configurable). Governs free cancellation only — it no longer gates whether
-  a booking can be created; that is sales close's job.
+  per-venue configurable). Governs free cancellation only — it never gates whether a
+  booking can be created; that is sales close's job.
 - **Booking mode** — how a venue accepts bookings: **Instant Book** (auto-confirm)
   or **Request-to-Book** (venue accepts/declines first).
 
 ## Money
 
 - **Commission** — the platform's per-booking cut; rate stored per venue, in exact-integer basis
-  points. Two readings of "the rate", and which one applies depends on the question:
-  the **live rate** governs every *decision* made from now on (an accrual, a refund computation),
-  while the **rate schedule** records which service dates a rate applied to, for figures that
-  describe days already sold. Only the platform admin may change it — a venue does not set its own
-  commission.
+  points. Two readings of "the rate", and which one applies depends on the question: the **live
+  rate** governs every *decision* made from now on (an accrual; a reversal mirrors the accrual it
+  backs out), while the **rate schedule** records which service dates a rate applied to, for figures
+  that describe days already sold. Only the platform admin may change it — a venue does not set its
+  own commission.
 - **Rate schedule** — the per-venue record of which commission rate applied to bookings served on
   which dates. A change is **forward-only**: it pins the rate it supersedes and takes effect for
   reporting from the current service date (`Europe/Tirane`), so today's takings answer the same
@@ -311,13 +315,15 @@ model in `docs/architecture/domain-model.md`.
   change applies to every fee charged after it, and fees already charged keep what they were
   charged at.
 - **Platform setting** — a value the platform sets for itself, where every other setting belongs to
-  one venue. Only the platform admin reads or changes one, every change is recorded with its
-  grounds, and a change is **forward-only**: it governs what is decided from then on and never
-  rewrites what is already recorded. Today there is exactly one — the venue-change **fee**.
+  one venue. Only the platform admin changes one (a venue sees the fee only as quoted, on the
+  remodel preview); every change is recorded, with its grounds when the admin gives any, and a
+  change is **forward-only**: it governs what is decided from then on and never rewrites what is
+  already recorded. Today there is exactly one — the venue-change **fee**.
 - **Payout batch** — a period's worth of ledger entries settled together, paid to
   the venue manually via BKT.
 - **Refund** — money returned to a tourist, by reason: policy, weather, venue change (a remodel
-  that ended the booking, or the **free exit** of a **moved booking**), or conflict.
+  that ended the booking, or the **free exit** of a **moved booking**), or conflict (reserved;
+  nothing produces it yet).
 - **Refund progress** — how far a decided refund has actually travelled: **decided**
   (the cancellation fixed an amount the platform owes), **accepted** (the payment
   gateway has acknowledged it will return the money), **settled** (it has reached the
@@ -347,16 +353,18 @@ model in `docs/architecture/domain-model.md`.
 
 ## Demand (tourist side)
 
-- **Tourist / Customer** — the person booking a set. Guest checkout (email only) is
-  allowed; an **account** is optional.
-- **Customer account** — a registered tourist identity (email + opaque credential hash) for
-  register / sign-in via a server-side session. Deliberately **separate** from the
-  guest-checkout contact row (no foreign key): registering never auto-claims a guest email's
-  past bookings — back-linking guest bookings is a **permanent non-goal**. The account's credential hash is stored by `customer`; all login machinery lives at
-  the platform edge (RV-BE-11).
+- **Tourist / Customer** — the person booking a set. Guest checkout (no account; email, name
+  and phone) is allowed; an **account** is optional.
+- **Customer account** — a registered tourist identity (email + an opaque credential hash, none
+  for an SSO-only account) for register / sign-in via a server-side session. Deliberately
+  **separate** from the guest-checkout contact row (no foreign key): registering never auto-claims
+  a guest email's past bookings — back-linking guest bookings is a **permanent non-goal**. The
+  account's credential hash is stored by `customer`; all login machinery lives at the platform
+  edge (RV-BE-11).
 - **Email verification** — a soft, non-blocking signal that a customer account's email was
   proven owned (`email_verified`). Set by visiting a tokenized link mailed at
-  registration, or granted automatically for SSO-created accounts (provider-verified).
+  registration, or granted automatically when SSO creates or links the account
+  (provider-verified).
   Informational in v1 — it gates no sign-in or booking.
 - **Recovery token** — a single-use, expiring, **hashed** bearer credential mailed to an
   account's email for one of two purposes: **verify-email** or **reset-password**
@@ -377,10 +385,12 @@ model in `docs/architecture/domain-model.md`.
   retention period (tax/accounting) that **overrides** erasure for those rows; it is why erasure
   pseudonymizes rather than deletes, and why the payout ledger (which holds no PII) stays auditable
   (invariant #9).
-- **Retention basis** — the fact that makes it lawful to still hold a guest's contact details: a
-  booking of theirs dated on or after the retention cutoff. Any status counts (a cancelled or no-show
-  booking still produced a financial record). When no basis remains, the contact must go — the
-  storage-limitation duty (GDPR Art 5(1)(e)), the mirror image of the statutory-retention exception.
+- **Retention basis** — a fact that makes it lawful to still hold a guest's contact details: a
+  booking of theirs whose last day is on or after the retention cutoff (any status counts — a
+  cancelled or no-show booking still produced a financial record), contact details given at a
+  checkout within the window, or a live account on the same email. When no basis remains, the
+  contact must go — the storage-limitation duty (GDPR Art 5(1)(e)), the mirror image of the
+  statutory-retention exception.
 - **Retention window** — how far back a retention basis may reach; configuration, not a constant, and a
   **legal** determination rather than an engineering one. The cutoff is *today in `Europe/Tirane`* minus
   the window (invariant #6).
@@ -415,9 +425,10 @@ model in `docs/architecture/domain-model.md`.
 - **Stay month** — the month and year of the stay a review is about, the only precision the public
   ever sees: a month places a stay in a season, a day would place a guest at the venue.
 - **Review takedown** — the **platform admin's** reversible removal of a review from public view:
-  the review leaves the venue page's list and the aggregate rating the moment it is hidden, and
-  returns to both when un-hidden. A takedown is a flag, never a deletion, and is recorded in the
-  admin audit trail. Publish-first: nothing is moderated before it is shown.
+  the review leaves the venue page's list the moment it is hidden and the aggregate rating as soon
+  as the rating is recomputed after it, and returns to both when un-hidden. A takedown is a flag,
+  never a deletion, and is recorded in the admin audit trail. Publish-first: nothing is moderated
+  before it is shown.
 - **Hidden review** — a review under a takedown, as its author sees it on their booking page: still
   readable, marked as removed from public view, and frozen — it can no longer be changed or removed
   by its author, whatever the review window says, until it is un-hidden.
@@ -435,7 +446,8 @@ model in `docs/architecture/domain-model.md`.
 ## Transactional mail
 
 - **Suppression list** — the platform's do-not-mail record: the addresses no transactional mail
-  may go to, because they hard-bounced or their recipient complained. It is a **durable
+  may go to, because they hard-bounced, their recipient complained, or an admin suppressed them by
+  hand. It is a **durable
   deliverability record, not a cache** — entries are never deleted, and deliberately survive a
   tourist's **erasure** (ADR-0012), so someone who objected and later re-books with the same
   address stays protected. Stored non-identifiably (a peppered hash plus the bare domain), so
@@ -468,14 +480,16 @@ model in `docs/architecture/domain-model.md`.
   can book its venues), never console access. Rejection locks the account out and ends any live
   session it holds. `SUSPENDED` and `REJECTED` accounts cannot sign in.
 - **Bootstrap operator** — the seeded `operator` account, which is the platform admin
-  (`is_admin`): it owns no venues and approves operator self-registrations via the ADMIN-gated
-  `/api/admin/operators`. Unlocked by `RIVIERA_OPERATOR_PASSWORD`. Every operator is strictly
-  per-venue, owning what it creates (creator-owns-on-create).
+  (`is_admin`): it owns only the venues seeded before per-venue ownership (the Miramar seed) and
+  approves operator self-registrations via the ADMIN-gated `/api/admin/operators`. Unlocked by
+  `RIVIERA_OPERATOR_PASSWORD`. Every operator is strictly per-venue, owning what it creates
+  (creator-owns-on-create).
 - **Suspension / operator reinstatement** — an admin putting an `ACTIVE` operator account out of
-  action (`SUSPENDED`) and later returning it to `ACTIVE`. Either transition kills that operator's
-  live sessions immediately, so a suspension takes effect now rather than at their next sign-in —
-  and flips their venues' **venue visibility** (hidden while suspended, shown again
-  on reinstatement; bookings already sold keep working either way).
+  action (`SUSPENDED`) and later returning it to `ACTIVE`. Suspension kills that operator's live
+  sessions immediately, so it takes effect now rather than at their next sign-in; reinstatement
+  restores the account without reviving any session. Either one flips their venues' **venue
+  visibility** (hidden while suspended, shown again on reinstatement; bookings already sold keep
+  working either way).
   An admin cannot suspend itself. Distinct from **reinstatement** in *Transactional mail* above,
   which lifts a suppressed email address and has nothing to do with sign-in.
 
