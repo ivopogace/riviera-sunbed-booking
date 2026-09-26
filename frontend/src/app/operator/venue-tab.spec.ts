@@ -684,6 +684,87 @@ describe('VenueTab (#177)', () => {
     expect(byId('photo-error-bar').textContent?.toLowerCase()).toContain('session');
   });
 
+  /** Switch to venue 2 mid-request, and load it, so the old request's answer lands on venue 2. */
+  function switchToSecondVenue(): void {
+    params$.next(convertToParamMap({ venueId: '2' }));
+    fixture.detectChanges();
+    http
+      .expectOne((r) => r.method === 'GET' && r.url.includes('/api/venues/2/profile'))
+      .flush({ ...PROFILE, name: 'Second Venue', version: 9 });
+    fixture.detectChanges();
+  }
+
+  async function settle(): Promise<void> {
+    await fixture.whenStable();
+    fixture.detectChanges();
+  }
+
+  it('keeps venue 2’s slot untouched when a venue-1 upload lands after the switch', async () => {
+    render();
+    pickFile('sunbeds', JPEG());
+    await fixture.whenStable();
+    const post = http.expectOne(
+      (r) => r.method === 'POST' && r.url.endsWith('/api/venues/1/photos/sunbeds'),
+    );
+
+    switchToSecondVenue();
+    post.flush({
+      slot: 'sunbeds',
+      variants: [{ surface: 'preview', url: '/api/venues/1/photos/dd04', width: 480, height: 360 }],
+    });
+    await settle();
+
+    expect(host.querySelector('[data-testid="photo-preview-sunbeds"]')).toBeNull();
+    expect(byId('photo-pick-sunbeds').textContent).toContain('Add photo');
+  });
+
+  it('shows no slot error on venue 2 when a venue-1 upload fails after the switch', async () => {
+    render();
+    pickFile('sunbeds', JPEG());
+    await fixture.whenStable();
+    const post = http.expectOne(
+      (r) => r.method === 'POST' && r.url.endsWith('/api/venues/1/photos/sunbeds'),
+    );
+
+    switchToSecondVenue();
+    post.flush({ code: 'UNSUPPORTED_FORMAT' }, { status: 400, statusText: 'Bad Request' });
+    await settle();
+
+    expect(host.querySelector('[data-testid="photo-error-sunbeds"]')).toBeNull();
+  });
+
+  it('keeps venue 2’s photo when a venue-1 removal lands after the switch', async () => {
+    render();
+    byId('photo-remove-cover').click();
+    await fixture.whenStable();
+    const del = http.expectOne(
+      (r) => r.method === 'DELETE' && r.url.endsWith('/api/venues/1/photos/cover'),
+    );
+
+    switchToSecondVenue();
+    del.flush(null);
+    await settle();
+
+    expect((byId('photo-preview-cover') as HTMLImageElement).getAttribute('src')).toBe(
+      `${API}/api/venues/1/photos/cc03`,
+    );
+  });
+
+  it('shows no slot error on venue 2 when a venue-1 removal fails after the switch', async () => {
+    render();
+    byId('photo-remove-cover').click();
+    await fixture.whenStable();
+    const del = http.expectOne(
+      (r) => r.method === 'DELETE' && r.url.endsWith('/api/venues/1/photos/cover'),
+    );
+
+    switchToSecondVenue();
+    del.flush({ code: 'UNAUTHENTICATED' }, { status: 401, statusText: 'Unauthorized' });
+    await settle();
+
+    expect(host.querySelector('[data-testid="photo-error-cover"]')).toBeNull();
+  });
+
   // ---- closed for season: the owner-asserted state transition beside the profile form
 
   const CLOSED_PROFILE: VenueProfileView = {
@@ -877,6 +958,49 @@ describe('VenueTab (#177)', () => {
     host = fixture.nativeElement as HTMLElement;
 
     expect((byId('venue-name') as HTMLInputElement).value).toBe('Second Venue');
+  });
+
+  it('ignores the old venue’s late profile failure after a venue switch', () => {
+    configure();
+    params$.next(convertToParamMap({ venueId: '2' }));
+    fixture.detectChanges();
+
+    http
+      .expectOne((r) => r.method === 'GET' && r.url.includes('/api/venues/2/profile'))
+      .flush({ ...PROFILE, name: 'Second Venue', version: 9 });
+    http
+      .expectOne((r) => r.method === 'GET' && r.url.includes('/api/venues/1/profile'))
+      .flush(null, { status: 500, statusText: 'Server Error' });
+    fixture.detectChanges();
+    host = fixture.nativeElement as HTMLElement;
+
+    expect(host.querySelector('[data-testid="venue-load-error"]')).toBeNull();
+    expect((byId('venue-name') as HTMLInputElement).value).toBe('Second Venue');
+  });
+
+  it('shows no Saved notice on venue 2 for a venue-1 save that lands after the switch', async () => {
+    render();
+    await save();
+    const patch = http.expectOne((r) => r.method === 'PATCH' && r.url.endsWith('/api/venues/1'));
+
+    switchToSecondVenue();
+    patch.flush(null);
+    await settle();
+
+    expect(host.querySelector('[data-testid="venue-saved"]')).toBeNull();
+    expect((byId('venue-name') as HTMLInputElement).value).toBe('Second Venue');
+  });
+
+  it('shows no save error on venue 2 for a venue-1 save that fails after the switch', async () => {
+    render();
+    await save();
+    const patch = http.expectOne((r) => r.method === 'PATCH' && r.url.endsWith('/api/venues/1'));
+
+    switchToSecondVenue();
+    patch.flush({ code: 'NOT_VENUE_OWNER' }, { status: 403, statusText: 'Forbidden' });
+    await settle();
+
+    expect(host.querySelector('[data-testid="venue-error"]')).toBeNull();
   });
 
   it('sends the pin the placer holds with the rest of the profile (#1099)', async () => {

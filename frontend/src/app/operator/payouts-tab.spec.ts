@@ -543,6 +543,44 @@ describe('PayoutsTab (#173) — ledger', () => {
     expect(rows()[0].textContent).toContain('#77');
   });
 
+  it('ignores the old venue’s late ledger failure after a venue switch', () => {
+    configure();
+    params$.next(convertToParamMap({ venueId: '2' }));
+    fixture.detectChanges();
+
+    http
+      .expectOne((r) => r.method === 'GET' && r.url.endsWith('/api/venues/2/payout-ledger'))
+      .flush(ledger({ venueId: 2, netOwedMinor: 10000, entries: [entry({ bookingId: 77 })] }));
+    http
+      .expectOne((r) => r.method === 'GET' && r.url.endsWith('/api/venues/1/payout-ledger'))
+      .flush(null, { status: 500, statusText: 'Server Error' });
+    fixture.detectChanges();
+    host = fixture.nativeElement as HTMLElement;
+
+    expect(byId('payouts-load-error')).toBeNull();
+    expect(rows()[0].textContent).toContain('#77');
+  });
+
+  it('reports no venue-1 weather refund failure against venue 2 after a switch', () => {
+    render(ledger());
+    byId('weather-trigger')!.click();
+    fixture.detectChanges();
+    byId('weather-confirm-btn')!.click();
+    fixture.detectChanges();
+    const post = expectWeatherPost();
+
+    params$.next(convertToParamMap({ venueId: '2' }));
+    fixture.detectChanges();
+    http
+      .expectOne((r) => r.method === 'GET' && r.url.endsWith('/api/venues/2/payout-ledger'))
+      .flush(ledger({ venueId: 2, netOwedMinor: 10000, entries: [entry({ bookingId: 77 })] }));
+    post.flush({ code: 'NOT_VENUE_OWNER' }, { status: 403, statusText: 'Forbidden' });
+    fixture.detectChanges();
+
+    expect(byId('payouts-notice')).toBeNull();
+    expect(rows()[0].textContent).toContain('#77');
+  });
+
   // ---- The confirm surface's focus legs: each transition destroys the focused control (WCAG 2.4.3) ----
 
   async function settle(): Promise<void> {
