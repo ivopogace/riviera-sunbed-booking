@@ -59,7 +59,7 @@ The schema-design guidance aligns with choices already locked here — keep it i
 
 - **`TIMESTAMPTZ`, never `TIMESTAMP`** — matches invariant #6 (store UTC instants).
 - **`CHECK (col IN (…))` over native `ENUM`** — ideal for the JDBC-only stack; store
-  status/state columns (`booking_status`, `availability_state`, `pool`, …) as `TEXT`
+  status/state columns (`booking.status`, `set_availability.state`, `set_position.pool`, …) as `TEXT`
   + a `CHECK`, not a Postgres enum type.
 - **Money is `BIGINT` minor units** (invariant #5) — never `NUMERIC`/float for amounts.
 - **Index every foreign-key column** (Postgres does not auto-create these).

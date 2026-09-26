@@ -27,7 +27,7 @@ PR's counts (`riviera-sdlc` `references/pr-gates.md` §1).
 | `CONTEXT.md` | glossary terms, canonical value sets, flows |
 | `RESPONSIBILITIES.md` | Job / Not-My-Job lists, shipped-state notes, invariant long form, platform-edge rules |
 | `docs/adr/*` | decision + consequences (a re-decision needs an amendment note, never silent contradiction) |
-| `docs/plans/*` | only the current slice's plan exists; merged ones are deleted, never audited |
+| `docs/plans/*` | the current slice's plan, plus merged ones awaiting the next close-out's retirement — never audited |
 | `docs/design/*` (`colour-literal-token-audit.md`, `non-text-contrast.md`, `README.md`) | ledger rows still open for a shipped family; a family table citing a spec that doesn't measure what it claims |
 | `.claude/skills/riviera-*/SKILL.md` + `references/*.md` | file/class/endpoint names, example tables, worked examples a fitness function now rejects |
 | `docs/agents/*`, `README.md`, `CONTRIBUTING.md` | run recipes, label sets, env vars |

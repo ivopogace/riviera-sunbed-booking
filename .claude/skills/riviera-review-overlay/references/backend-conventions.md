@@ -4,7 +4,7 @@ Gate → follow-up → default severity. Ids are not sequential — never renumb
 numbers: `CLAUDE.md`.
 
 ### RV-BE-1. Availability single source of truth (#2) — **Blocker**
-Any write to `availability(set_id, booking_date)`: unique constraint present; the reservation
+Any write to `set_availability(set_id, booking_date)`: unique constraint present; the reservation
 uses `SELECT … FOR UPDATE` or `INSERT … ON CONFLICT DO NOTHING` (0 rows = taken); no
 check-then-insert; loser gets `409 SET_TAKEN`, not a 500; a concurrent-reservation test exists
 (Major if missing). Online booking and staff tap-to-mark share the same guarded write.
@@ -74,16 +74,16 @@ emitted from several call sites carries one string (`MISSING_CURRENT_PASSWORD`,
 stays true of the broadest arm. Authority: `riviera-java-conventions/references/error-contract.md`.
 
 ### RV-BE-11. Responsibility placement (`RESPONSIBILITIES.md`) — Major
-Whenever behaviour is added or moved: each file's logic serves its module's **Job** and is not
-on its **Not My Job** list; diff the plan's Module-ownership table against the code. The tells
-no rule catches: refund/cancellation policy in `payment` (executor; `booking` decides);
-commission/payout arithmetic in `venue` or `booking` (`payout` computes); `customer` growing a
-login subsystem (edge concern); `operator` sitting in every request path. Blocker when the
-misplacement also breaks a Blocker invariant.
+Whenever behaviour is added or moved: each file's logic serves its module's **Job** and is not on
+its **Not My Job** list; diff the plan's Module-ownership table against the code. The tells no rule
+catches: refund/cancellation policy in `payment` (executor; `booking` decides); commission/payout
+arithmetic in `venue` or `booking` (`payout` computes); `customer` growing login machinery beyond
+the Spring Security imports `CustomerAuthPlacementTests` bans (edge concern); `operator` sitting in
+every request path. Blocker when the misplacement also breaks a Blocker invariant.
 
 ### RV-BE-12. Package shape (ADR-0007) — Major
-On any package add/move, `PackageShapeArchitectureTests` must be green; eyes go to an
-`in`/`out` split under `application/`, a serviceless module with an empty `application/` or
+On any package add/move, `PackageShapeArchitectureTests` must be green (it rejects an
+`application/in|out` split); eyes go to a serviceless module with an empty `application/` or
 `domain/` (or a module with a service still in the thin shape), and use-case slicing outside
 `booking`. `vocabulary` and `events` are allowed — flagging them is a false finding.
 
@@ -102,11 +102,13 @@ Java invariant stands in for a constraint enforcing #2, #7 or #9.
 
 ### RV-BE-15. Pool and cutoff server-side (#3, #4) — Major
 Online-pool restriction and the sales-close cutoff rejected on the server, not only in the UI;
-cutoff time + zone from config, never a literal.
+the cutoff from the venue's `sales_close` through `BookingCutoff`, the zone the named
+`Europe/Tirane` constant — never a literal time or the JVM default.
 
 ### RV-BE-16. Refund policy server-side (#10) — Major
-Refund eligibility/amount from booking state + policy; client never supplies the amount;
-weather refund is an explicit admin action; thresholds not duplicated (Minor).
+Refund eligibility/amount from booking state + policy; client never supplies the amount; weather
+refund is an explicit action by the venue's operator (owner-asserted, RV-BE-9); thresholds not
+duplicated (Minor).
 
 ### RV-BE-13. No injection — **Blocker**
 SQL via bound params only; user-controlled text logged only with `\r\n` neutralized (Major);

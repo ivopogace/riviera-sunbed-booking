@@ -18,10 +18,9 @@ Seven rules:
   counts as a type. Production source only: `platform/src/main/java` and `frontend/src`, not
   `*.spec.ts`, `*.fixtures.ts`, `*.mocks.ts` or `frontend/src/testing/`.
 - **`docbudget-touched`** (gates) — the same, for an older block the diff edited: a touched doc
-  comment is judged whole, so the edit carries the trim. Expect it on most feature PRs while the
-  backlog lasts — replayed over thirty merged PRs it fired on 144 edited blocks against 40 new
-  ones. `scripts/check-doc-budget.mjs` (standing-tree, CI) locks each trim in: the total lines
-  over budget may only fall, and `--update` commits a lower baseline (never a higher one).
+  comment is judged whole, so the edit carries the trim. `scripts/check-doc-budget.mjs`
+  (standing-tree, CI) holds the tree at its baseline, now 0 lines over budget: the total may only
+  fall, and `--update` never raises it.
   `--report` lists the heaviest areas and files.
 - **`respbudget`** / **`respbudget-touched`** (gate) — the same budget for `RESPONSIBILITIES.md`,
   where rationale moved out of the code lands: each block is at most 8 non-blank lines. A block is
