@@ -51,6 +51,8 @@ const SETTLE_QUIET_MS = 160;
  * moving the sheet this long means the gesture is over. Generous: a reader is not a stale finger.
  */
 const STALE_TOUCH_MS = 6_000;
+/** How long a `go` glide that has not moved yet holds the sheet unsettled, waiting for its first frame. */
+const GLIDE_START_MS = 1_000;
 
 /**
  * The Discover sheet over the map, resting at half (opens here), peek or full. Two scroll-snap
@@ -195,6 +197,8 @@ export class DiscoverSheet {
         samples: { readonly y: number; readonly t: number }[];
       }
     | undefined;
+  /** Where the last `go` glide set out from, and when, until the sheet settles. */
+  private glide: { readonly from: number; readonly at: number } | undefined;
   private quietTimer: number | undefined;
   private staleTouchTimer: number | undefined;
   private readonly moveFocus = focusMover({ preventScroll: true });
@@ -328,11 +332,30 @@ export class DiscoverSheet {
     }
     this.quietTimer = window?.setTimeout(() => {
       this.quietTimer = undefined;
+      if (this.glideNotStarted()) {
+        this.keepRolling();
+        return;
+      }
+      this.glide = undefined;
       this.rolling.set(false);
       if (this.drag?.owned !== true) {
         this.snap(true);
       }
     }, SETTLE_QUIET_MS);
+  }
+
+  /**
+   * A `go` glide the browser has not begun: the quiet window can lapse before its first frame when
+   * the main thread stalls, and settling then re-rests at the old detent and cancels the glide.
+   * Bounded by {@link GLIDE_START_MS}, so a scroller that cannot move still settles.
+   */
+  private glideNotStarted(): boolean {
+    const glide = this.glide;
+    return (
+      glide !== undefined &&
+      this.scroller()?.nativeElement.scrollTop === glide.from &&
+      performance.now() - glide.at < GLIDE_START_MS
+    );
   }
 
   protected onScroll(): void {
@@ -467,6 +490,8 @@ export class DiscoverSheet {
     if (this.opened()) {
       this.restTarget = want;
     }
+    const from = scroller.scrollTop;
+    this.glide = from === want ? undefined : { from, at: performance.now() };
     scrollScroller(scroller, want);
     this.onScroll();
   }

@@ -1166,3 +1166,30 @@ test.describe('Discover sheet — accessibility', () => {
     });
   }
 });
+
+test.describe('Discover sheet — a stalled main thread', () => {
+  test.beforeEach(async ({ page }) => {
+    await page.addInitScript(() => {
+      (window as unknown as { __RIVIERA_FAKE_MAP__?: boolean }).__RIVIERA_FAKE_MAP__ = true;
+    });
+    await mockApi(page);
+  });
+
+  test('still carries a grabber tap to full when the page is busy past the quiet window', async ({
+    page,
+  }) => {
+    await openSheet(page, PHONE);
+    await settle(page);
+
+    await page.getByTestId('sheet-grabber').click();
+    // Busy past the 160 ms quiet window before the glide's first frame: it used to settle back at half.
+    await page.evaluate(() => {
+      const end = performance.now() + 400;
+      while (performance.now() < end) {
+        // spin
+      }
+    });
+
+    await expectDetent(page, 'full');
+  });
+});
