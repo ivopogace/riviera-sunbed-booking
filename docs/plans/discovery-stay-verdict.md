@@ -266,14 +266,14 @@ N/A — no payment in scope. Prices on the list stay per day (`fromPrice`), unch
 
 ## Execution status
 
-**Stage pointer:** `plan committed — implement (phase 1a)`
+**Stage pointer:** `implement (phase 1b)`
 
-**Next action:** write `StayFitTest` red in `itinerary/domain`.
+**Next action:** write `StayVerdictsIT` red over the two new ports.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — plan doc + branch | ✅ | |
-| 1a — `itinerary/domain` stay-fit rule | | |
+| 1a — `itinerary/domain` stay-fit rule | ✅ | phase 1a commit |
 | 1b — ports + `StayVerdicts` service + module + structural net | | |
 | 1c — `DiscoveryListController` takes over `GET /api/venues` | | |
 | 1d — cost measurement | | |
