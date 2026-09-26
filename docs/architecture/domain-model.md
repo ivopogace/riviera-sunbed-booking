@@ -27,7 +27,8 @@ owns. **Solid arrows = domain events** (state changes). **Dotted arrows = `api/`
 (reads). Modules never import each other's internals — only `api/` ports or events (invariant #11).
 
 The other **three of the twelve** modules are not drawn because they collaborate with nobody:
-`shared` (the OPEN kernel of edge types) and the two closed ADR-0017 mechanisms, `challenge`
+`shared` (the OPEN kernel of edge types), the closed read model `itinerary` (no table; the stay
+verdict per venue over `venue::api` + `availability::api`, improvement plan B4) and the two closed ADR-0017 mechanisms, `challenge`
 (proof of work, owns `challenge_registry`) and `audit` (the admin audit trail, owns
 `admin_audit_record`). Both are reached from the platform edge through a port; no domain module
 knows either exists.

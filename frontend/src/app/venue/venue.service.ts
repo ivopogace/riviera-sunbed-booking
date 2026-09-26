@@ -29,10 +29,9 @@ export class VenueService {
   private readonly http = inject(HttpClient);
 
   /**
-   * The venues matching `filter` for the ISO `YYYY-MM-DD` day `date`, or for the stay `date` to
-   * `lastDate` (a one-day read sends no last day and gets no verdict); each `availability` count is
-   * the authoritative `set_availability` state for the first day (invariant #2). Empty/omitted
-   * filter dimensions are not sent, so the server lists all venues.
+   * The venues matching `filter` for the ISO day `date`, or for the stay `date` to `lastDate` (a
+   * one-day read sends no last day and gets no verdict); `availability` is the first day's
+   * authoritative `set_availability` count (#2). Omitted filter dimensions are not sent.
    */
   listVenues(
     filter: VenueListFilter,

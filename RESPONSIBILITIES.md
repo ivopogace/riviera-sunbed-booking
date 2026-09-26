@@ -208,7 +208,8 @@ close, the maximum stay, the season closure, and the commission rate over time. 
 **Job:** Own the single source-of-truth state per `(set, date)` — free / booked-online /
 staff-marked — as that table's **only writer**, claiming atomically so a set is never double-sold
 (invariant #2). I answer state through `venue::spi` (`SetAvailabilityLookup`) and `venue` composes:
-how many sets are held, never how many exist; hold type only to owner-asserted reads. A remodel
+how many sets are held, never how many exist; hold type only to owner-asserted reads. The taken
+days per set are also `api.SetAvailabilityFacts`, the `itinerary` read model's read, spi-free. A remodel
 move is my ordinary writes in `venue`'s commit transaction — every day claimed on the new set before
 any is released on the old, never a swap of my own — so a racing reserve wins or loses as usual.
 
@@ -745,6 +746,29 @@ per booking), who may leave, change or remove it and until when, and the score a
 - Judging a review for takedown → the **platform admin** (publish-first; no queue, no reporting)
 - *That* a subject's reviews are erased, or which bookings are theirs → **`customer`** and
   **`booking`**; I blank my rows for the booking refs I am handed
+
+## `itinerary`
+
+The **stay read model** (design D7/D11, improvement plan B4): a closed full module with no table
+and no published surface, granted `venue::api`, `venue::vocabulary`, `availability::api` and
+`shared` — never `venue::spi`, which stays `availability`'s alone. It reads each venue's online
+sets and maximum stay in batch (`venue.api.SetBookingFacts#stayFactsOf`), the taken days per set
+(`availability.api.SetAvailabilityFacts#takenDaysBetween`), and `domain.StayFit` turns the grid
+into one verdict per venue.
+
+- **Its `adapter/in` serves `GET /api/venues`**, composing `VenueCatalog`'s visibility-fenced list
+  with a `stay` verdict when `lastDate` names a range; the one-day shape is unchanged.
+  `VenueApiRoleSplitTests` admits it as `VenueCatalog`'s second consumer: the composed browse read
+  is what B4 moves here.
+
+**Job:** say, for a span, which venues can host a stay — one online set free for every day within
+the venue's maximum stay (`SAME_SET`, with how many sets) — and why not (`CANNOT_HOST`, with the
+longest single-set run and the maximum). A snapshot, never a hold (invariant #2): the reserve path
+still claims each `(set, date)`. Later the per-venue itinerary search (D7) and its move budget.
+
+**Not my job:** which sets exist, their pools and prices → **`venue`**; the `(set, date)` rows →
+**`availability`**; whether a date still sells → **`booking`**; visibility → `VenueCatalog` fences
+the list before I am asked, and `SetBookingFacts` answers only for the ids that list returned.
 
 ## `shared` (not a bounded context)
 

@@ -3,7 +3,8 @@
 Status: **sliced under epic #1096; D2 (per-day attendance) landed in PR #1211; D3 and D5 (the
 span on the row, every terminal transition releasing it, the weather refund naming stays) landed
 with #1201; D10 (the venue maximum stay) landed with #1204; D8's `payment` side (one intent for
-several bookings, refunded per booking) landed with #1207; the rest is not yet built.** Decisions below were made at the refine stage (2026-09-12/13) against `main` @
+several bookings, refunded per booking) landed with #1207; D11 (the discovery verdict per venue)
+and the D7 module `itinerary` landed with #1206; the rest is not yet built.** Decisions below were made at the refine stage (2026-09-12/13) against `main` @
 `5bceef00`, grounded in four verification passes over the reserve path, the sweeps, the money paths
 and the beach map. Each is a one-paragraph re-decision if reality disagrees. The per-module
 contracts these decisions settle belong in `RESPONSIBILITIES.md` once a slice lands; the glossary

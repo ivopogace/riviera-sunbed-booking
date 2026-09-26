@@ -108,7 +108,7 @@ const PALETTE_LITERALS = [
   'bg-white',
 ];
 
-const CALENDAR_SOURCES = ['venue/availability-calendar.html', 'venue/day-availability.ts'];
+const CALENDAR_SOURCES = ['shared/availability-calendar.html', 'shared/day-availability.ts'];
 
 describe('Availability calendar contrast (WCAG AA) — venue/day-availability.ts', () => {
   describe.each(CALENDAR_PALETTES)(
@@ -225,7 +225,7 @@ describe('Availability calendar contrast (WCAG AA) — venue/day-availability.ts
 
   describe('the popover chrome', () => {
     it('retires the pinned ramp and consumes the popover family', () => {
-      const worn = classTokens(read('venue/availability-calendar.html'));
+      const worn = classTokens(read('shared/availability-calendar.html'));
 
       for (const utility of WORN_UTILITIES) {
         expect(worn, `the template wears ${utility}`).toContain(utility);

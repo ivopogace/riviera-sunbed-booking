@@ -254,6 +254,11 @@ model in `docs/architecture/domain-model.md`.
   tap names which. Never bookable for the stay as picked.
 - **Longest free run** — the most consecutive days of a stay one set is free for; offered as a
   shorter stay on that spot, and, when no set is free for every day, the venue's longest offer.
+- **Stay verdict** — what the discovery page says of each venue for a chosen stay: **same set**
+  (one online set free for every day, within the venue's maximum stay, with how many such sets)
+  or **can't host** (with the longest free run, or the maximum when that is the reason). A
+  snapshot off the same `(set, date)` rows as the map, never a hold; a venue that can't host is
+  shown desaturated after its beach's hosts, and its pin wears a dashed ring.
 - **Service day** — one day of a stay, held as its own attendance record from the moment the
   booking confirms: unresolved until it is **attended** (staff checked the guest in
   that day) or **missed** (the day passed with no check-in), never both — one per day of the

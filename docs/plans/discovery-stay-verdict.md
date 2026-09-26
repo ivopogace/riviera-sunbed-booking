@@ -267,9 +267,9 @@ N/A — no payment in scope. Prices on the list stay per day (`fromPrice`), unch
 
 ## Execution status
 
-**Stage pointer:** `implement (phase 3)`
+**Stage pointer:** `CI gate — draft PR #1250`
 
-**Next action:** substrate docs (`CLAUDE.md` row, `RESPONSIBILITIES.md` § itinerary, `CONTEXT.md`, design status), then the file-structure guard.
+**Next action:** CI green on the pushed head → merge `origin/main` in → ready for review → review gate (`references/pr-gates.md` §1).
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -284,7 +284,7 @@ N/A — no payment in scope. Prices on the list stay per day (`fromPrice`), unch
 | 2d — verdict line, dusk, ordering | ✅ | phase 2d commit |
 | 2e — hollow pins + contrast spec | ✅ | phase 2e commit |
 | 2f — mocked e2e | ✅ | phase 2f commit |
-| 3 — substrate docs + close-out | | |
+| 3 — substrate docs + close-out | ⏳ | docs commit; close-out at merge |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -316,7 +316,8 @@ The 150 ms switch threshold in R-1 is not approached, so the SQL-aggregate fallb
 - `platform/src/main/java/ai/riviera/platform/itinerary/package-info.java` — `@ApplicationModule`, least-privilege grants
 - `platform/src/main/java/ai/riviera/platform/itinerary/domain/StayFit.java` — pure rule: per-set fit and the venue verdict off taken days
 - `platform/src/main/java/ai/riviera/platform/itinerary/domain/StayVerdict.java` — the verdict value (`Fit`, counts)
-- `platform/src/main/java/ai/riviera/platform/itinerary/application/StayVerdicts.java` — `@Service`: list ids → venue facts → taken days → verdicts
+- `platform/src/main/java/ai/riviera/platform/itinerary/application/StayVerdicts.java` — the coast verdict port (interface; the web slice stubs it)
+- `platform/src/main/java/ai/riviera/platform/itinerary/application/StayVerdictsService.java` — `@Service`: venue facts → taken days → `StayFit` per venue
 - `platform/src/main/java/ai/riviera/platform/itinerary/adapter/in/DiscoveryListController.java` — `GET /api/venues`
 - `platform/src/main/java/ai/riviera/platform/itinerary/adapter/in/DiscoveryVenueView.java` — summary + `stay` wire record
 - `platform/src/main/java/ai/riviera/platform/itinerary/adapter/in/StayVerdictView.java` — wire record
@@ -331,23 +332,29 @@ The 150 ms switch threshold in R-1 is not approached, so the SQL-aggregate fallb
 - `platform/src/test/java/ai/riviera/platform/itinerary/application/StayVerdictsIT.java`
 - `platform/src/test/java/ai/riviera/platform/itinerary/application/CoastVerdictCostIT.java`
 - `platform/src/test/java/ai/riviera/platform/itinerary/DiscoveryListControllerIT.java`
-- `platform/src/test/java/ai/riviera/platform/venue/IsolationBeaches.java` — beaches reserved for the new ITs, if the census needs extending
+- `platform/src/test/java/ai/riviera/platform/venue/IsolationBeaches.java` — beaches reserved for the new ITs
+- `platform/src/test/java/ai/riviera/platform/VenueApiRoleSplitTests.java` — admits `itinerary` as `VenueCatalog`'s second consumer (R-13)
+- `platform/src/test/java/ai/riviera/platform/WebSliceStubs.java` — `StayVerdicts` stub for the web slice
+- `platform/src/test/java/ai/riviera/platform/booking/application/reserve/CreateBookingServiceTest.java` — its `SetBookingFacts` double gains `stayFactsOf`
+- `platform/src/test/java/ai/riviera/retirefixture/venue/adapter/out/FixtureSetFacts.java` — same
 - `frontend/src/app/shared/availability-calendar.{ts,html,spec.ts,contrast.spec.ts}` — moved from `venue/`
 - `frontend/src/app/shared/day-availability.{ts,spec.ts}` — moved
 - `frontend/src/app/shared/stay-rule.{ts,spec.ts}` — moved
 - `frontend/src/app/shared/venue-views.ts` — `StayVerdictView`, `VenueSummary.stay`
-- `frontend/src/app/shared/booking-date-label.ts` — `formatStay` reuse only (no change expected)
+- `frontend/src/app/shared/booking-date-label.{ts,spec.ts}` — `formatStayChip` for the day chip
 - `frontend/src/app/venue/venue.service.{ts,spec.ts}` — `lastDate` param
 - `frontend/src/app/venue/venue-map.{ts,html,spec.ts}` — calendar rebinding, links carry `lastDate`
-- `frontend/src/app/venue/partly-free-sheet.ts` — import path only if it used `stay-runs`/`stay-rule` (verify)
 - `frontend/src/app/pages/home/discover-head.{ts,spec.ts}` — "Several days…" chip, `stayPressed`, range word
 - `frontend/src/app/pages/home/home.{ts,html,spec.ts}` — range state, calendar, request, links, verdict line
 - `frontend/src/app/pages/home/venue-card.ts` — verdict fields
-- `frontend/src/app/pages/home/venue-row.{html,spec.ts}` — verdict line, dusk, link
+- `frontend/src/app/pages/home/stay-label.{ts,spec.ts}` — the verdict as the card says it
+- `frontend/src/app/pages/home/pin-crowding.spec.ts` — its card builder gains the verdict fields
+- `frontend/src/testing/venue-cards.ts` — the shared card fixture gains the verdict fields
+- `frontend/src/app/pages/home/venue-row.{ts,html,spec.ts}` — verdict line, dusk, `lastDate` input and link
 - `frontend/src/app/pages/home/place-groups.{ts,spec.ts}` — hosts-first partition
 - `frontend/src/app/pages/home/venue-pin-layer.{ts,html,spec.ts,contrast.spec.ts}` — hollow variant
 - `frontend/e2e/discovery-stay.e2e.ts` — new mocked spec
-- `frontend/e2e/support/tourist.mocks.ts` — a range-aware venue mock helper if the shared mock needs it
+- `frontend/e2e/range-booking.e2e.ts` — the other-beaches links now carry `lastDate`
 - `CLAUDE.md` — module table row for `itinerary`
 - `RESPONSIBILITIES.md` — § `itinerary`; `availability` and `venue` port lists
 - `CONTEXT.md` — glossary: *Stay verdict*
@@ -458,8 +465,8 @@ The 150 ms switch threshold in R-1 is not approached, so the SQL-aggregate fallb
 
 ## Acceptance-criteria verification (final)
 
-- [ ] **AC-1..AC-5:** scoped Gradle runs listed per phase. Verified at commit `<sha>`.
-- [ ] **AC-6..AC-10:** `npm test`, `npm run lint`, `npm run format:check`, the mocked e2e files above. Verified at commit `<sha>`.
+- [x] **AC-1..AC-5:** scoped Gradle runs listed per phase (structural net, `StayVerdictsIT` 2/0 skipped, `DiscoveryListControllerIT` 4/0 skipped, `VenueListControllerIT` 14 untouched, `CoastVerdictCostIT`). Verified at commit `126a8c71`.
+- [x] **AC-6..AC-10:** `ng test` 3834 green, `npm run lint`, `npm run format:check`, `npm run build` (initial bundle 629.24 kB against main's 629.02 kB, the budget warning predates the branch), mocked e2e `discovery-stay` (3) + `range-booking` (6). Verified at commit `a18e6c36` plus the contrast-spec path fix in the docs commit.
 
 ## Self-review checklist
 
