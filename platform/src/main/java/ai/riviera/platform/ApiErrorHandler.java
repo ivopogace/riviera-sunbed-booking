@@ -21,42 +21,12 @@ import org.springframework.web.servlet.mvc.method.annotation.ResponseEntityExcep
 import ai.riviera.platform.operator.vocabulary.NotVenueOwnerException;
 
 /**
- * The one {@code @RestControllerAdvice} owning exception-to-wire mapping: every
- * thrown failure becomes an RFC-7807 {@link ProblemDetail} with a stable {@code code} via
- * {@link ApiProblem}. Per-controller {@code @ExceptionHandler}s are forbidden
- * ({@code ErrorContractArchitectureTests}); controllers map their own <em>typed outcomes</em>
- * with the same factory. Extends {@link ResponseEntityExceptionHandler} so framework-raised
- * errors (unreadable body, type mismatch, missing param, 405/406/415) carry the same shape —
- * {@link #handleExceptionInternal} stamps their {@code code}.
- *
- * <p>Mapping, centrally defined (invariant references per {@code CLAUDE.md}):
- * <ul>
- *   <li>{@link NotVenueOwnerException} — operator does not own the target venue (invariant #13,
- *       BOLA/OWASP API #1) → {@code 403 NOT_VENUE_OWNER}. The body never echoes operator/venue ids.</li>
- *   <li>{@link AccessDeniedException} — thrown by {@link CurrentOperator} when the principal maps
- *       to no active operator → {@code 403 ACCESS_DENIED}. Intentionally broad: any authorization
- *       denial reaching MVC dispatch gets the one uniform {@code 403} shape; role-gate denials in
- *       the security filter chain never reach this advice, so 401/403 filter behavior is untouched.</li>
- *   <li>{@link InvalidApiRequestException} — typed edge validation: request-DTO
- *       {@code toCommand()} conversion, bad enum / period tokens, the password policy →
- *       {@code 400 INVALID_REQUEST}. The detail is generic on purpose: an exception message may echo
- *       internals or user input, and validation style is centralized-explicit per the §6b decision
- *       ({@code riviera-java-conventions}).</li>
- *   <li>{@link BlockedPasswordException} — the password policy's blocklist (the service name or the
- *       account's own name) → {@code 400 PASSWORD_CONTAINS_BLOCKED_TERM}, distinct from the length
- *       rule so the client can name the rule that failed.</li>
- *   <li>{@link DuplicateKeyException} — a unique constraint beat a pre-check in a race
- *       (e.g. the V2/V12 layout UNIQUE) → {@code 409 CONFLICT}, not 500: the constraint is the
- *       correctness guarantee (invariant #12). Logged at WARN so the race stays diagnosable.</li>
- * </ul>
- *
- * <p><strong>Deliberately unmapped</strong>: a raw
- * {@link IllegalArgumentException} and a non-duplicate
- * {@link org.springframework.dao.DataIntegrityViolationException} signal server-side defects — a
- * domain invariant tripping on stored data, a schema/FK/NOT-NULL bug — and propagate to the
- * framework's logged 500. Mapping them here blamed the caller (an unlogged 400/409) and hid the bug
- * from 5xx monitoring; edge code that validates request input throws (or wraps into) the typed
- * exception instead.
+ * The single {@code @RestControllerAdvice}: every failure becomes an RFC-7807 {@link ProblemDetail} with a
+ * stable {@code code} via {@link ApiProblem}; {@code detail} states the condition, never a remedy, and never
+ * echoes an exception message, ids or a booking code (invariant #7). Per-controller {@code @ExceptionHandler}s
+ * are forbidden. {@link NotVenueOwnerException} (invariant #13) and {@link CurrentOperator}'s denial → 403.
+ * Raw {@link IllegalArgumentException} is deliberately unmapped: a server bug, left to the logged 500.
+ * Full mapping: {@code .claude/skills/riviera-java-conventions/references/error-contract.md}.
  */
 @RestControllerAdvice
 public class ApiErrorHandler extends ResponseEntityExceptionHandler {
@@ -78,12 +48,9 @@ public class ApiErrorHandler extends ResponseEntityExceptionHandler {
 	}
 
 	/**
-	 * A failed session login: {@code AuthController} drives the
-	 * {@code AuthenticationManager} from MVC, so — unlike the old filter-chain Basic — its
-	 * failures DO reach this advice. One deliberately indistinguishable body for every cause
-	 * (wrong password, unknown username, suspended account): distinguishing them is account
-	 * enumeration (design D-8). Filter-chain 401s (no/expired session) stay with the entry
-	 * point in {@code SecurityConfig}.
+	 * A failed session login ({@code AuthController} drives the {@code AuthenticationManager} from MVC). One
+	 * indistinguishable body for every cause — distinguishing them is account enumeration. Filter-chain 401s
+	 * stay with the entry point in {@code SecurityConfig}.
 	 */
 	@ExceptionHandler(AuthenticationException.class)
 	ProblemDetail onAuthenticationFailure(AuthenticationException e) {
@@ -126,14 +93,9 @@ public class ApiErrorHandler extends ResponseEntityExceptionHandler {
 	}
 
 	/**
-	 * Framework-raised errors: client-input faults share {@code INVALID_REQUEST}; the rest carry
-	 * the HTTP status name ({@code METHOD_NOT_ALLOWED}, {@code NOT_ACCEPTABLE}, …) — derived, so
-	 * stable, and documented in §6b as part of the contract's vocabulary.
-	 *
-	 * <p>413 is pinned literally: the multipart max-size backstop is handled by the
-	 * {@code ResponseEntityExceptionHandler} base class (its handler is {@code final}, so declaring
-	 * our own would be an ambiguous duplicate), and its {@code HttpStatus} constant name is mid-rename
-	 * across framework versions — the wire code must not drift with it.
+	 * Framework-raised errors: client-input faults share {@code INVALID_REQUEST}, the rest carry the HTTP
+	 * status name. 413 is pinned literally: the base class's handler is {@code final} and the {@code HttpStatus}
+	 * constant is mid-rename across versions, so the wire code must not drift with it.
 	 */
 	private static String defaultCode(HttpStatusCode statusCode) {
 		if (statusCode.equals(HttpStatus.BAD_REQUEST)) {

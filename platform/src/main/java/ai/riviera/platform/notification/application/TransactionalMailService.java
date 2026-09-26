@@ -13,33 +13,12 @@ import ai.riviera.platform.notification.api.MailSender;
 import ai.riviera.platform.shared.ObservabilityMetrics;
 
 /**
- * The module's send chokepoint: every transactional mail — both vehicles — leaves through this
- * service, so the cross-cutting send rules live in exactly one place instead of at each call site.
- *
- * <p><strong>The two vehicles have opposite postures, and each is load-bearing.</strong> Sends on the
- * published {@link MailSender} port (the recovery pair plus the operator-approval notice) are
- * best-effort and asynchronous: handed to the {@link MailDispatcher} with the failure catch
- * <em>inside</em> the dispatched task, so neither the triggering response's status (D-8
- * non-enumeration) nor its latency (the timing oracle) can reflect the outcome, and a rejected
- * dispatch is equally invisible. The booking mails, all module-internal and driven by registry
- * listeners, are the reverse: synchronous on the listener's thread with transport failures
- * <em>propagating</em>, because the throw is what keeps the publication outstanding for the
- * at-least-once retry. Public only for {@code adapter/in}; none is on the published port.
- *
- * <p><strong>Suppression</strong> — the module's defining invariant, <em>no send to a suppressed
- * address</em> — is enforced here for both vehicles, per send attempt, so a registry retry honours the
- * newest state. A suppressed skip completes normally on either: a throw would park the publication in
- * a permanent retry loop. The recovery-side check runs <em>inside</em> the dispatched task — a
- * suppression SELECT on the caller's thread would widen the very timing oracle the dispatcher closes —
- * and carries the one deliberate carve-out, {@link #isSuppressedOrFailOpen}.
- *
- * <p>Swallowing on the recovery vehicle is required (D-8) but never silent: every loss is counted under
- * {@link ObservabilityMetrics#MAIL_RECOVERY_FAILED}, split by {@code reason} because a transport failure
- * means the relay and a suppression-lookup failure means the database, and one counter for both would
- * point whoever reads it at the wrong system. The registry vehicle deliberately gets no equivalent —
- * its failure propagates, so {@code riviera.outbox.pending} already accounts for it and a second series
- * would count one failure twice. Full accounting rationale: {@code RESPONSIBILITIES.md}
- * §{@code notification} and {@code docs/runbooks/observability.md}.
+ * The module's send chokepoint (ADR-0011): every mail leaves here, on one of two opposite vehicles.
+ * {@link MailSender} sends run on the {@link MailDispatcher}, failures caught <em>inside</em> the task so
+ * neither response status nor latency reveals the outcome (D-8); each loss is counted under
+ * {@link ObservabilityMetrics#MAIL_RECOVERY_FAILED}. Booking mails run on the listener's thread and let a
+ * transport failure propagate, keeping the publication outstanding for retry. No send to a suppressed
+ * address, checked per attempt; a skip completes normally. Rationale: RESPONSIBILITIES.md §notification.
  */
 @Service
 public class TransactionalMailService implements MailSender {
@@ -50,11 +29,8 @@ public class TransactionalMailService implements MailSender {
 	static final String REASON_TAG = "reason";
 
 	/**
-	 * The send attempt itself failed. Usually the relay — refused, unreachable, an SMTP 5xx — but the
-	 * tag is applied to <em>any</em> exception escaping the send, so a defect in the mail path (a
-	 * template-rendering fault, a malformed link) shares the bucket. Deliberately so: the only tag that
-	 * would separate them is the exception class, whose cardinality is unbounded by construction. The
-	 * discrimination lives in the {@code WARN} line beside each increment, which carries the class name.
+	 * Any exception escaping the send — usually the relay, but a template or link defect shares the bucket.
+	 * The exception class would be an unbounded tag; the {@code WARN} line beside each increment carries it.
 	 */
 	static final String REASON_TRANSPORT = "transport";
 
@@ -91,12 +67,8 @@ public class TransactionalMailService implements MailSender {
 	}
 
 	/**
-	 * Deliver the booking confirmation now, on the caller's thread; a transport failure propagates.
-	 *
-	 * <p><strong>Reports which of the two things it did.</strong> The skip and the send both complete
-	 * normally — they must — so without this value neither the caller nor the Event Publication Registry
-	 * could tell a delivery from a deliberate withholding. That is what makes a registry-derived delivery
-	 * history impossible to record honestly, and this return value is the alternative's foundation.
+	 * Deliver the booking confirmation now, on the caller's thread; a transport failure propagates. Send and
+	 * suppressed skip both complete normally, so the outcome is the delivery log's only way to tell them apart.
 	 */
 	public ConfirmationSendOutcome sendBookingConfirmation(String toEmail, BookingConfirmationMail confirmation) {
 		if (suppressions.isSuppressed(toEmail)) {
@@ -184,16 +156,9 @@ public class TransactionalMailService implements MailSender {
 	}
 
 	/**
-	 * Account for a recovery mail that will never arrive. Runs on the dispatcher's pooled thread and must
-	 * not throw from there: the caller's response is long gone (D-8), so an exception here would only kill
-	 * the drainer that carries every other send.
-	 *
-	 * <p>One line per loss, because this vehicle keeps no durable copy of the payload — the line is the
-	 * only per-loss artefact there is. It stays {@code WARN} where the dispatcher's saturation escalates
-	 * to {@code ERROR}: a relay outage fails <em>every</em> send for its duration, so escalating each
-	 * would flood {@code ERROR} exactly when someone is reading it. Alert on the counter; read the log for
-	 * detail. The line carries the kind, the cause and the exception's simple name — never the address and
-	 * never the link, a single-use bearer credential (invariant #7).
+	 * Count and log a recovery mail that will never arrive; runs on the drainer, so it must not throw. One
+	 * {@code WARN} per loss (not {@code ERROR}: an outage fails every send — alert on the counter), never the
+	 * address or the link, a bearer credential (invariant #7).
 	 */
 	private void recordLoss(MailKind kind, String reason, RuntimeException cause) {
 		meters.counter(ObservabilityMetrics.MAIL_RECOVERY_FAILED, MailKind.TAG, kind.tagValue(), REASON_TAG, reason)
@@ -203,24 +168,9 @@ public class TransactionalMailService implements MailSender {
 	}
 
 	/**
-	 * The suppression state for a recovery send, <strong>failing open</strong> when the lookup itself
-	 * cannot be completed (the one carve-out in ADR-0011 decision 7).
-	 *
-	 * <p>Sending anyway is the better trade on this vehicle: the suppression list stays empty until the
-	 * provider bounce feed lands, a user-requested reset to a suppressed address is the most harmless send
-	 * available, and D-8 makes the HTTP response identical either way — so a dropped reset is a dead end
-	 * the user gets no signal about and cannot distinguish from success.
-	 *
-	 * <p><strong>Transient failures only</strong>, deliberately narrower than {@code DataAccessException}.
-	 * That trade is argued for a blip — a wedged, timed-out or briefly unavailable read. A structurally
-	 * broken lookup (a revoked grant, schema drift, a typo'd column after a refactor) is not one: failing
-	 * open on it would mail <em>every</em> suppressed address indefinitely. Those propagate to the caller,
-	 * which drops the mail and records it under {@link #REASON_SUPPRESSION_LOOKUP}, so a database fault
-	 * stays legible as one rather than as the relay fault it is not.
-	 *
-	 * <p>Deliberately <strong>not</strong> shared with any registry-vehicle send: there the throw is
-	 * load-bearing, keeping the publication outstanding so the at-least-once contract retries against a
-	 * healthy database instead of burning the delivery on a blip.
+	 * Suppression state for a recovery send, <strong>failing open</strong> on a <em>transient</em> lookup
+	 * failure only; structural faults propagate and drop as {@link #REASON_SUPPRESSION_LOOKUP}. Never use it
+	 * on the registry vehicle, where the throw buys the retry. Rationale: ADR-0011 decision 7.
 	 */
 	private boolean isSuppressedOrFailOpen(MailKind kind, String toEmail) {
 		try {

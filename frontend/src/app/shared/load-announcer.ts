@@ -1,55 +1,11 @@
 import { Component, computed, input } from '@angular/core';
 
 /**
- * The one announcement a loading surface makes to assistive tech, as a region that **outlives the
- * transition it announces**.
- *
- * <p>A live region generally announces only content that MUTATES after the region is already in
- * the DOM. A container that enters the DOM already holding its "Loading…" line and is removed
- * wholesale when the content lands does the opposite, so the line reads as silence — and a spec
- * that asserts the text passes either way.
- * angular.dev says the same thing about `@defer`: screen readers "may not announce changes when the
- * deferred content loads", and the fix is a live region that wraps the transition. Its example puts
- * the region around the content with `aria-atomic`; that shape suits a small profile card, not a
- * venue grid, so this takes the sibling form `booking/booking-pay.ts`'s `pay-status` region already
- * uses: one persistent `sr-only` `<output>`, mounted OUTSIDE the caller's loading branch, whose text
- * is all that changes. `<output>` is the house element for a live region — its implicit ARIA role is
- * already `status`, so nothing here writes that role unless the region cannot be an `<output>`: its
- * content is not phrasing content, or it reports standing state rather than the result of an action.
- *
- * <p>**Mount it outside the `@if`.** Inside, it is the very bug it exists to fix, and nothing in
- * jsdom would tell you — which is why each adopting surface's spec asserts element identity across
- * the transition rather than the presence of text.
- *
- * <p>`ready` is the call site saying it reached its **loaded** branch — not merely that it stopped
- * loading. The difference is the whole reason this input has the polarity it does. The alternative,
- * a `failed` flag, is fail-OPEN: it makes silence conditional on remembering every non-success
- * exit — a 404, a partial read, a signed-out visitor — and any exit nobody thought to bind
- * announces "…loaded." over a panel saying the opposite. `ready` inverts that: an exit nobody
- * described is silent, and silence is the recoverable failure; a lie is not.
- *
- * <p>Announcing the failure **itself** is deliberately not this component's job. That belongs to
- * the call site's failure branch, as `role="alert"`: inserting an alert is the one case a live
- * region is announced reliably *without* a prior mutation. This component's contract on that side
- * is only that it must never *contradict* such a panel, which is what `ready` buys. Whether a
- * given call site's failure branch announces at all is a separate question, with its own checklist
- * in the review overlay's RV-FE-10 — never assume it does.
- *
- * <p>`loading` wins over `ready` if a call site somehow asserts both: in flight is the safer read of
- * a contradiction.
- *
- * <p>`readyLabel` is a static sentence, never a live count: a count re-announces on every later
- * mutation (a date change, an accepted request), and the surfaces that have a count already have a
- * region speaking it. Discover leaves `readyLabel` empty for exactly that reason — its results-count
- * region sits above the `@if` chain and already announces the outcome. One source per sentence.
- *
- * <p>What this does not claim: that the FIRST "Loading…" is spoken. A surface mounts already
- * loading, so that text is present at insertion like before. Re-loads (a filter change, a retry)
- * do announce it, and the loading→loaded transition — the half that tells a user the wait is over —
- * announces in every case.
- *
- * <p>Host is `display: contents` and the region is `sr-only` (absolutely positioned), so mounting
- * it costs no layout: it becomes neither a flex item nor a grid item wherever a call site puts it.
+ * A loading surface's one live region. **Mount it outside the `@if`**: a region inserted already
+ * holding its text reads as silence, and jsdom won't tell you — specs assert element identity
+ * across the transition. `ready` is true only in the loaded branch, so an unbound exit stays silent
+ * rather than saying "…loaded." over an error; the failure is the call site's `role="alert"`.
+ * `loading` wins over `ready`; the first "Loading…" at mount is not spoken. Rules: RV-FE-10.
  */
 @Component({
   selector: 'app-load-announcer',

@@ -17,46 +17,12 @@ import { VenueCommissionView } from './admin.model';
 import { TouchTarget } from '../shared/touch-target';
 
 /**
- * The admin console's Commissions tab — the surface that makes the admin rate write
- * usable. Until this tab a rate was settable only at venue creation: the owner's profile `PATCH`
- * treats it as display-only on purpose (a venue does not set its own commission), so a rate
- * typed wrong at onboarding was permanent for everyone, admin included.
- *
- * <p><strong>One card per venue, at every width.</strong> A five-column table collapsing to one
- * labelled card per row at 360px was the starting shape — but two of those columns (owner, last-changed)
- * have no wire source: the backend deliberately returns no owner, and exposes no read of the rate
- * schedule. A three-column table is thinner than the card it would collapse into, so the card is
- * drawn at every width instead, which also lets the editor expand in place without a `colspan` row.
- *
- * <p><strong>The write splices, it does not re-fetch.</strong> `PUT …/commission` answers the same
- * object shape as one list element, so the response replaces its row and the list read happens once
- * per visit. It is a plain `HttpClient.put`: `httpResource` models a reactive read, and the guide's
- * own tip is to <em>"avoid using httpResource for mutations like POST or PUT"</em>
- * (angular.dev/guide/http/http-resource — <em>Using httpResource</em>).
- *
- * <p><strong>Percent in, basis points out.</strong> The editor takes a percentage because that is how
- * a commercial deal is described, and renders the exact integer it will store as the admin types —
- * rounding to the storage grain is allowed to happen, it is not allowed to happen unseen, and the
- * wire only ever carries the integer (invariant #5).
- *
- * <p><strong>What the explainer may and may not claim.</strong> The guarantee is that <em>a past
- * service date never re-prices</em>. It is deliberately narrower than "the operator's takings agree
- * with the ledger": the ledger prices each <em>booking</em> when it accrues, while the takings apply
- * one rate to a whole service date, so a booking confirmed before a change but served after it sits
- * in the ledger at the old rate while the takings show the new one. The copy says that rather than
- * promising exactness. Separately, the <em>live</em> rate moves immediately — which is why the list
- * shows the new number at once — and <em>reporting</em> follows from today (`Europe/Tirane`),
- * the commission schedule's own effective-dating rule (`VenueCommissionService`, unchanged here):
- * today's takings answer the same rate the next accrual applies.
- *
- * <p>The change is armed in place before it is sent — the console's recurring confirm-in-place shape,
- * where the editor itself is the confirmation: it names the venue, states when the change takes
- * effect, shows was-and-will-be, and collects optional grounds that ride `X-Audit-Reason` into the
- * platform's admin audit trail (recorded at the edge with no instrumentation here).
- *
- * <p>Like every admin tab, the surrounding {@code AdminConsole} shell self-gates on
- * {@link OperatorAuth} for UX while the backend `/api/admin/**` role gate does the enforcing; this
- * component only ever renders once both have passed.
+ * Admin Commissions tab: the only place a venue's rate changes after creation (the owner's PATCH
+ * cannot). One card per venue at every width; a save splices the `PUT` answer into its row.
+ * Percent in, integer bps out — the editor shows the bps it will store (invariant #5). Copy may
+ * only promise that a past service date never re-prices: the live rate moves at once, reporting
+ * follows from today (`Europe/Tirane`), ledger and takings may differ (RESPONSIBILITIES.md § venue).
+ * The optional reason rides `X-Audit-Reason` into the edge's admin audit trail.
  */
 @Component({
   selector: 'app-admin-commissions',
@@ -347,13 +313,8 @@ export class AdminCommissions {
   protected readonly editingId = signal<number | undefined>(undefined);
   protected readonly draftPercent = signal('');
   protected readonly reason = signal('');
-  /**
-   * The editor's two error kinds, deliberately separate. `percentError` is a verdict about the value
-   * in the rate field — decided here, before anything is sent — so it is rendered as a field error the
-   * input names through `[appFieldErrorFor]`, carrying `aria-invalid` because the admin must retype to
-   * fix it. `saveError` reports a failed write: the typed value is fine, nothing needs retyping, so it
-   * stays an alert-only action banner beside the buttons that produced it.
-   */
+  /** A verdict on the typed value: a field error (`[appFieldErrorFor]`, `aria-invalid`). A failed
+   *  write goes to `saveError`, an alert-only banner, since nothing needs retyping. */
   protected readonly percentError = signal('');
   protected readonly saveError = signal('');
   protected readonly loading = signal(false);
@@ -380,12 +341,8 @@ export class AdminCommissions {
     return formatCommissionPercent(bps);
   }
 
-  /**
-   * Open the editor on a venue and put focus in the rate field. Opening, dismissing and saving each
-   * destroy the control that was just activated, which strands keyboard/AT focus on `<body>` unless
-   * it is moved deliberately (WCAG 2.4.3 — the recurring stranded-focus class). The field is
-   * seeded with the venue's current rate so a small correction is an edit, not a re-type.
-   */
+  /** Open the editor seeded with the current rate and focus its field: opening, dismissing and
+   *  saving each destroy the activated control, so focus must be moved (WCAG 2.4.3). */
   protected startEdit(venue: VenueCommissionView): void {
     this.editingId.set(venue.venueId);
     this.draftPercent.set(commissionBpsToPercentInput(venue.commissionBps));
@@ -411,16 +368,9 @@ export class AdminCommissions {
     this.reason.set((event.target as HTMLInputElement).value);
   }
 
-  /**
-   * Send the typed rate, then splice the answer into the row. Two refusals never reach the network:
-   * a percent that is not a rate in 0..100, and a rate the venue already has — the latter because the
-   * schedule is forward-only, so a no-op save would still supersede the current row and record an
-   * audit entry for a change that did not happen.
-   *
-   * <p>A failure keeps the editor open holding what was typed, so a retry costs no re-typing, and
-   * `NO_SUCH_VENUE` is reported as its own outcome: the backend chose not to blur venue existence on
-   * this surface, so a stale or mistyped id must read as "gone", not as something a retry would fix.
-   */
+  /** Send the typed rate and splice the answer in. An invalid or unchanged rate never reaches the
+   *  network (a no-op save would still supersede the schedule and audit a non-change). A failure
+   *  keeps the editor open; `NO_SUCH_VENUE` reads as gone, not retryable. */
   protected async saveRate(venue: VenueCommissionView): Promise<void> {
     const commissionBps = this.draftBps();
     if (commissionBps === null) {
@@ -457,13 +407,8 @@ export class AdminCommissions {
     }
   }
 
-  /**
-   * Re-read the list after a failed load, then put focus where the retried content landed. Pressing
-   * Retry unmounts the button itself — `loading` swaps the branch — so without a deliberate move
-   * focus falls back to `<body>` (WCAG 2.4.3, the same class as the editor's transitions). The
-   * initial load deliberately does NOT go through here: nothing was activated, so there is no focus
-   * to restore, and stealing it on page load would be its own bug.
-   */
+  /** Re-read, then focus where the content landed — Retry unmounts itself (WCAG 2.4.3). The
+   *  initial load must not route here: nothing was activated, so moving focus would steal it. */
   protected async retry(): Promise<void> {
     await this.loadVenues();
     this.focusAfterRender(this.retryLandingTestId());
