@@ -795,6 +795,12 @@ class WebSliceStubs {
 					LocalDate date) {
 				return List.of();
 			}
+
+			@Override
+			public Map<VenueId, ai.riviera.platform.venue.vocabulary.VenueStayFacts> stayFactsOf(
+					Collection<VenueId> venueIds) {
+				return Map.of();
+			}
 		};
 	}
 
@@ -1060,6 +1066,12 @@ class WebSliceStubs {
 	@Bean
 	ViewVenueProfile viewVenueProfile() {
 		return (_, _) -> Optional.empty();
+	}
+
+	/** The discovery list's stay verdicts behind {@code GET /api/venues?lastDate=} — inert: no venue answers. */
+	@Bean
+	ai.riviera.platform.itinerary.application.StayVerdicts stayVerdicts() {
+		return (_, _) -> Map.of();
 	}
 
 	/** The public review list behind {@code GET /api/venues/{id}/reviews} — inert: no venue is visible. */

@@ -6,14 +6,14 @@
     [attr.data-venue-pin]="card.id"
     [attr.data-selected]="isSelected(card) ? '' : null"
   >
-    <!-- A venue whose sales for today have closed wears dusk: desaturated, never faded — a faded row put its name under 3:1. -->
+    <!-- A venue whose sales for today have closed, or that can't host the chosen stay, wears dusk: desaturated, never faded — a faded row put its name under 3:1. -->
     <a
       class="card flex h-full flex-col overflow-hidden rounded-[28px] no-underline shadow-[0_12px_40px_rgba(7,42,58,0.26),inset_0_1px_0_rgba(255,255,255,0.8)] backdrop-blur-[26px] backdrop-saturate-[1.7] motion-safe:[transition:transform_0.2s_ease,box-shadow_0.2s_ease,border-color_0.2s_ease] group-hover/card:border-riv-card-hover-border group-hover/card:shadow-riv-card-hover motion-safe:group-hover/card:[transform:translateY(-5px)] focus-visible:shadow-[0_0_0_7px_color-mix(in_srgb,var(--riv-accent-ink)_90%,transparent)] focus-visible:outline-[3px] focus-visible:outline-offset-2 focus-visible:outline-white"
       appCardGlass
       data-testid="venue-card"
-      [class.saturate-0]="card.salesClosed"
+      [class.saturate-0]="card.salesClosed || !card.canHost"
       [routerLink]="['/venues', card.id]"
-      [queryParams]="{ date: selectedDate() }"
+      [queryParams]="venueLink()"
       [attr.aria-label]="card.ariaLabel"
       [attr.aria-current]="isSelected(card) ? 'true' : null"
     >
@@ -115,12 +115,20 @@
           } @else {
             <span class="price text-[14px] text-riv-card-ink-soft">No sets yet</span>
           }
-          <span
-            class="availability text-[12.5px] text-riv-card-ink-soft"
-            data-testid="card-availability"
-          >
-            <app-sets-free [free]="card.free" [total]="card.total" />
-          </span>
+          @if (card.stayLabel; as stay) {
+            <span
+              class="availability text-[12.5px] text-riv-card-ink-soft"
+              data-testid="card-stay"
+              >{{ stay }}</span
+            >
+          } @else {
+            <span
+              class="availability text-[12.5px] text-riv-card-ink-soft"
+              data-testid="card-availability"
+            >
+              <app-sets-free [free]="card.free" [total]="card.total" />
+            </span>
+          }
         </span>
       </span>
     </a>
@@ -328,12 +336,14 @@
       [spelled]="wideSheet()"
       [today]="minDate"
       [date]="selectedDate()"
+      [lastDate]="selectedLastDate()"
       [railsShown]="railsShown()"
       [note]="note()"
       [pickerOpen]="pickerOpen()"
       (placePressed)="openPicker()"
       (beachPicked)="onBeachPicked($event)"
       (dayPicked)="onDayPicked($event)"
+      (stayPressed)="openStayPicker()"
       (noteDismissed)="dismissNote()"
       (railOpened)="onRailOpened()"
     />
@@ -436,12 +446,14 @@
         [spelled]="panelSpelled()"
         [today]="minDate"
         [date]="selectedDate()"
+        [lastDate]="selectedLastDate()"
         [railsShown]="true"
         [note]="note()"
         [pickerOpen]="pickerOpen()"
         (placePressed)="openPicker()"
         (beachPicked)="onBeachPicked($event)"
         (dayPicked)="onDayPicked($event)"
+        (stayPressed)="openStayPicker()"
         (noteDismissed)="dismissNote()"
         (railOpened)="onRailOpened()"
       >
@@ -507,6 +519,7 @@
                     <app-venue-row
                       [card]="card"
                       [date]="selectedDate()"
+                      [lastDate]="selectedLastDate()"
                       [selected]="isSelected(card)"
                       (pointed)="onRowPointed(card, $event)"
                     />
@@ -596,4 +609,16 @@
       {{ title() }}: {{ subtitle() }}
     }
   </output>
+}
+
+<!-- Page level, outside the sheet and the desk panel: their glass backdrop-filters would contain a fixed child. -->
+@if (stayPickerOpen()) {
+  <app-availability-calendar
+    [selectedDate]="selectedDate()"
+    [selectedLastDate]="selectedLastDate()"
+    [minDate]="minDate"
+    [rangeAllowed]="true"
+    (chosen)="onStayPicked($event)"
+    (dismissed)="closeStayPicker()"
+  />
 }

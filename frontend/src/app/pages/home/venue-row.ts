@@ -11,9 +11,9 @@ import { StarIcon } from '../../shared/star-icon';
 /**
  * One desktop-panel venue: the phone sheet's card as a flat row, which IS the pin's preview
  * (`RESPONSIBILITIES.md` §Frontend). Its hairline and track use the page ink, not the card family
- * (a dark line on riviera's dark panel). Dusk (invariant #4): desaturate, never fade (a fade drops
- * the name under 3:1); the chip takes the price's slot and carries the state beyond colour
- * (WCAG 1.4.1). Every arm of a slot costs the same height (92 px, 121 px selected), or the panel's
+ * (a dark line on riviera's dark panel). Dusk — sales closed (invariant #4) or a stay the venue
+ * can't host: desaturate, never fade (a fade drops the name under 3:1); the chip or the stay line
+ * carries the state beyond colour (WCAG 1.4.1). Every arm of a slot costs the same height (92 px, 121 px selected), or the panel's
  * rhythm tracks state. Only the selected row expands, inside the anchor's outlined text column.
  */
 @Component({
@@ -28,6 +28,8 @@ export class VenueRow {
   readonly selected = input(false);
   /** The date the panel is showing, carried into the beach map the row links to. */
   readonly date = input('');
+  /** The stay's last day when the panel shows one; empty or equal to {@link date} for one day. */
+  readonly lastDate = input('');
   /**
    * The pointer, or the keyboard, has come to this row or left it — the map answers by lighting
    * the venue's pin. Focus is in it for parity: a keyboard walking the list lights the same pins
@@ -35,6 +37,12 @@ export class VenueRow {
    */
   readonly pointed = output<boolean>();
 
+  /** The query the row's link carries: the day, or the stay's first and last day. */
+  protected readonly link = computed(() =>
+    this.lastDate() !== '' && this.lastDate() !== this.date()
+      ? { date: this.date(), lastDate: this.lastDate() }
+      : { date: this.date() },
+  );
   protected readonly cover = computed(() => this.card().photos[0] ?? null);
   protected readonly srcset = computed(() => {
     const cover = this.cover();

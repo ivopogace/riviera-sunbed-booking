@@ -74,7 +74,7 @@ to Render from `main`. Line endings pinned LF by `.gitattributes`.
 ## Modules (Spring Modulith)
 
 Each at `ai.riviera.platform.<module>`, hexagonal layout (#11). **Read the module's § in
-`RESPONSIBILITIES.md` before changing it.** One bounded context, twelve modules, no
+`RESPONSIBILITIES.md` before changing it.** One bounded context, thirteen modules, no
 aggregate-root classes: `domain/` holds rules, state is in tables, lifecycles are guarded SQL
 (ADR-0018).
 
@@ -89,6 +89,7 @@ aggregate-root classes: `domain/` holds rules, state is in tables, lifecycles ar
 | `operator` | operator accounts, operator↔venue ownership (#13), admin lifecycle + `is_admin`, tourist-visibility answer | `operator`, `operator_venue` |
 | `review` | one review per booking, eligibility + window, aggregate rating, admin takedown, erasure tombstone; a leaf (ADR-0015) | `review` |
 | `notification` | transactional mail, hashed suppression list, delivery log + admin resend | `email_suppression`, `booking_confirmation_mail_attempt` |
+| `itinerary` | the stay read model (D7/D11): the whole-coast verdict per venue for a span, served on `GET /api/venues`; later the per-venue itinerary search | nothing — a read model over `venue::api` + `availability::api` |
 
 Plus `shared` (OPEN kernel of edge types like `ApiProblem`, `CurrentOperator`; admission by
 ownership, never reuse) and two closed non-context modules with `allowedDependencies = {}`:

@@ -39,9 +39,9 @@ import {
 import { routeIdParam } from '../shared/parent-venue-id';
 import { spotLabel, tierSentenceLabel } from '../shared/set-label';
 import { PhotoView, SetView, VenueMapView } from '../shared/venue-views';
-import { AvailabilityCalendar, MAX_STAY_DAYS } from './availability-calendar';
+import { AvailabilityCalendar, CountsLoader, MAX_STAY_DAYS } from '../shared/availability-calendar';
 import { PartlyFreeSheet } from './partly-free-sheet';
-import { stayRule } from './stay-rule';
+import { stayRule } from '../shared/stay-rule';
 import { SetRun, freeDaysOf, longestRunAcross } from './stay-runs';
 import { VenueReviews } from './venue-reviews';
 import { VenueService } from './venue.service';
@@ -176,6 +176,17 @@ export class VenueMap {
   private readonly moveFocus = focusMover();
 
   protected readonly venue = signal<VenueMapView | undefined>(undefined);
+  /** What the way back to other beaches carries: the day, or the stay's first and last day. */
+  protected readonly otherBeachesLink = computed(() =>
+    this.selectedLastDate() !== this.selectedDate()
+      ? { date: this.selectedDate(), lastDate: this.selectedLastDate() }
+      : { date: this.selectedDate() },
+  );
+  /** The picker's count read, keyed on this venue so a route change re-keys the calendar's months. */
+  protected readonly countsLoader = computed<CountsLoader | null>(() => {
+    const id = this.venueId();
+    return id === undefined ? null : (from, to) => this.venues.availabilityCalendar(id, from, to);
+  });
   protected readonly failed = signal(false);
   /** 404: the venue does not exist or is not tourist-visible — no retry can succeed. */
   protected readonly notFound = signal(false);

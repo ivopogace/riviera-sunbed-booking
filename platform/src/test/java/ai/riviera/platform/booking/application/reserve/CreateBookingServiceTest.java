@@ -983,6 +983,12 @@ class CreateBookingServiceTest {
 				java.time.LocalDate date) {
 			return List.of();
 		}
+
+		@Override
+		public Map<VenueId, ai.riviera.platform.venue.vocabulary.VenueStayFacts> stayFactsOf(
+				Collection<VenueId> venueIds) {
+			return Map.of();
+		}
 	}
 
 	/**

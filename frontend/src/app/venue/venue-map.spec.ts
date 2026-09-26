@@ -1856,7 +1856,7 @@ describe('VenueMap — date carried from the discovery page (#294)', () => {
         dom()
           .querySelector<HTMLAnchorElement>('[data-testid="stay-too-long-others"]')!
           .getAttribute('href'),
-      ).toBe(`/?date=${first}`);
+      ).toBe(`/?date=${first}&lastDate=${last}`);
 
       dom().querySelector<HTMLButtonElement>('[data-testid="stay-too-long-change"]')!.click();
       fixture.detectChanges();
@@ -1878,7 +1878,7 @@ describe('VenueMap — date carried from the discovery page (#294)', () => {
         dom()
           .querySelector<HTMLAnchorElement>('[data-testid="no-cover-others"]')!
           .getAttribute('href'),
-      ).toBe(`/?date=${first}`);
+      ).toBe(`/?date=${first}&lastDate=${last}`);
     });
 
     it('opens the sheet from a partly-free tile, and shortening re-reads the map and opens the dialog on that set', async () => {

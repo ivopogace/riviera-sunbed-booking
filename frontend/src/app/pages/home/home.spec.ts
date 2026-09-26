@@ -420,10 +420,14 @@ describe('Home (venue discovery)', () => {
     listRequest().flush(listed());
     await fixture.whenStable();
 
-    // The rail's last day: within the seven it offers, and never today.
+    // The rail's last day: within the seven it offers (the stay chip after them is not a day), never today.
     el().querySelector<HTMLButtonElement>('[data-testid="head-day"]')!.click();
     await fixture.whenStable();
-    const days = [...el().querySelectorAll<HTMLButtonElement>('[aria-label="Day"] button')];
+    const days = [
+      ...el().querySelectorAll<HTMLButtonElement>(
+        '[aria-label="Day"] button:not([data-testid="head-stay"])',
+      ),
+    ];
     const future = defaultBookingDate(
       new Date(Date.now() + (days.length - 1) * 24 * 60 * 60 * 1000),
     );
@@ -1697,5 +1701,209 @@ describe('Home (the riviera map sheet — what `/` renders)', () => {
       expect(anchor.classList.contains('relative')).toBe(true);
       expect(anchor.querySelector('app-coast-picker')).not.toBeNull();
     });
+  });
+});
+
+/**
+ * A stay on the discovery page: the route's `?date` and `?lastDate` seed it, the coast is asked for
+ * the range, and every card carries the server's verdict — the stay line in place of the free
+ * count, the accessible name saying the same, dusk on a venue that cannot host.
+ */
+describe('Home (a stay)', () => {
+  let httpMock: HttpTestingController;
+
+  /** Three Himarë venues: one hosts on two sets, one can't (three days in a row), one caps stays at 2. */
+  function stayVenues(): VenueSummary[] {
+    const [, aurora] = venues();
+    return [
+      {
+        ...aurora,
+        id: 11,
+        name: 'Aurora Bay',
+        beach: 'DHERMI',
+        region: 'HIMARE',
+        availability: { free: 5, total: 10 },
+        stay: { verdict: 'SAME_SET', sameSetCount: 2, longestRunDays: 4, maxStayDays: null },
+      },
+      {
+        ...aurora,
+        id: 12,
+        name: 'Borsh Cove',
+        beach: 'DHERMI',
+        region: 'HIMARE',
+        availability: { free: 3, total: 10 },
+        stay: { verdict: 'CANNOT_HOST', sameSetCount: 0, longestRunDays: 3, maxStayDays: null },
+      },
+      {
+        ...aurora,
+        id: 13,
+        name: 'Capped Sands',
+        beach: 'DHERMI',
+        region: 'HIMARE',
+        availability: { free: 9, total: 10 },
+        stay: { verdict: 'CANNOT_HOST', sameSetCount: 1, longestRunDays: 4, maxStayDays: 2 },
+      },
+    ];
+  }
+
+  function render(query: Record<string, string>): ComponentFixture<Home> {
+    TestBed.resetTestingModule();
+    TestBed.configureTestingModule({
+      imports: [Home],
+      providers: [
+        provideHttpClient(),
+        provideHttpClientTesting(),
+        provideRouter([]),
+        { provide: ActivatedRoute, useValue: routeOf(query) },
+        { provide: MapEngine, useValue: new FakeMapEngine() },
+        { provide: GeolocationGateway, useValue: new FakeGeolocationGateway() },
+      ],
+    });
+    httpMock = TestBed.inject(HttpTestingController);
+    const fixture = TestBed.createComponent(Home);
+    fixture.detectChanges();
+    return fixture;
+  }
+
+  function listRequest(): TestRequest {
+    return httpMock.expectOne((r) => r.url === `${environment.apiBaseUrl}/api/venues`);
+  }
+
+  function el(fixture: ComponentFixture<Home>): HTMLElement {
+    return fixture.nativeElement as HTMLElement;
+  }
+
+  function card(fixture: ComponentFixture<Home>, name: string): HTMLElement {
+    return [...el(fixture).querySelectorAll<HTMLElement>('[data-testid="venue-card"]')].find((a) =>
+      a.getAttribute('aria-label')?.startsWith(name),
+    )!;
+  }
+
+  function text(node: Element | null | undefined): string {
+    return node?.textContent?.replace(/\s+/g, ' ').trim() ?? '';
+  }
+
+  afterEach(() => httpMock.verify());
+
+  it('seeds the stay from ?date and ?lastDate and asks the coast for it', () => {
+    render({ date: '2027-07-04', lastDate: '2027-07-07' });
+
+    const req = listRequest();
+    expect(req.request.params.get('date')).toBe('2027-07-04');
+    expect(req.request.params.get('lastDate')).toBe('2027-07-07');
+    req.flush(stayVenues());
+  });
+
+  it.each([
+    ['2027-07-03', 'a last day before the first'],
+    ['not-a-date', 'a malformed last day'],
+    ['2027-09-05', 'a last day past the 62-day ceiling'],
+  ])('collapses %s (%s) to the first day alone', (lastDate) => {
+    render({ date: '2027-07-04', lastDate });
+
+    const req = listRequest();
+    expect(req.request.params.get('date')).toBe('2027-07-04');
+    expect(req.request.params.has('lastDate')).toBe(false);
+    req.flush([]);
+  });
+
+  it('maps each venue’s verdict onto its card: the stay line, the name, dusk on one that can’t host', async () => {
+    const fixture = render({ date: '2027-07-04', lastDate: '2027-07-07' });
+    listRequest().flush(stayVenues());
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    const aurora = card(fixture, 'Aurora Bay');
+    expect(text(aurora.querySelector('[data-testid="card-stay"]'))).toBe(
+      'Same set all 4 days · 2 sets',
+    );
+    expect(aurora.querySelector('[data-testid="card-availability"]')).toBeNull();
+    expect(aurora.getAttribute('aria-label')).toContain('Same set all 4 days, 2 sets');
+    expect(aurora.getAttribute('aria-label')).toContain('4 Jul');
+    expect(aurora.getAttribute('aria-label')).toContain('7 Jul 2027 · 4 days');
+    expect(aurora.classList.contains('saturate-0')).toBe(false);
+
+    const borsh = card(fixture, 'Borsh Cove');
+    expect(text(borsh.querySelector('[data-testid="card-stay"]'))).toBe(
+      'Can’t host 4 days · up to 3 days in a row',
+    );
+    expect(borsh.getAttribute('aria-label')).toContain('Can’t host 4 days, up to 3 days in a row');
+    expect(borsh.classList.contains('saturate-0')).toBe(true);
+
+    const capped = card(fixture, 'Capped Sands');
+    expect(text(capped.querySelector('[data-testid="card-stay"]'))).toBe(
+      'Stays of up to 2 days here',
+    );
+    expect(capped.classList.contains('saturate-0')).toBe(true);
+  });
+
+  it('carries the stay into every venue link, and a single day carries the day alone', async () => {
+    const fixture = render({ date: '2027-07-04', lastDate: '2027-07-07' });
+    listRequest().flush(stayVenues());
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    expect(card(fixture, 'Aurora Bay').getAttribute('href')).toBe(
+      '/venues/11?date=2027-07-04&lastDate=2027-07-07',
+    );
+
+    const oneDay = render({ date: '2027-07-04' });
+    listRequest().flush(stayVenues());
+    oneDay.detectChanges();
+    await oneDay.whenStable();
+    oneDay.detectChanges();
+    expect(card(oneDay, 'Aurora Bay').getAttribute('href')).toBe('/venues/11?date=2027-07-04');
+  });
+
+  it('opens the stay picker from the head, re-reads the coast for the picked days, and hands focus back', async () => {
+    const fixture = render({ date: '2027-07-04' });
+    listRequest().flush(stayVenues());
+    fixture.detectChanges();
+    await fixture.whenStable();
+    await whenSheetOpened(fixture);
+    fixture.detectChanges();
+
+    el(fixture).querySelector<HTMLButtonElement>('[data-testid="head-day"]')!.click();
+    fixture.detectChanges();
+    el(fixture).querySelector<HTMLButtonElement>('[data-testid="head-stay"]')!.click();
+    fixture.detectChanges();
+    const picker = el(fixture).querySelector<HTMLElement>('[data-testid="availability-calendar"]')!;
+    expect(picker).not.toBeNull();
+    httpMock.expectNone((r) => r.url.includes('/availability-calendar'));
+
+    picker.querySelector<HTMLButtonElement>('[data-testid="calendar-mode-stay"]')!.click();
+    fixture.detectChanges();
+    picker.querySelector<HTMLButtonElement>('button[data-date="2027-07-10"]')!.click();
+    fixture.detectChanges();
+    picker.querySelector<HTMLButtonElement>('button[data-date="2027-07-12"]')!.click();
+    fixture.detectChanges();
+
+    const req = listRequest();
+    expect(req.request.params.get('date')).toBe('2027-07-10');
+    expect(req.request.params.get('lastDate')).toBe('2027-07-12');
+    req.flush(stayVenues());
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+    expect(el(fixture).querySelector('[data-testid="availability-calendar"]')).toBeNull();
+    expect(text(el(fixture).querySelector('[data-testid="head-day"]'))).toBe(
+      '10 – 12 Jul · 3 days',
+    );
+    expect(document.activeElement?.getAttribute('data-testid')).toBe('head-day');
+  });
+
+  it('keeps the one-day card exactly: the free count, no stay line, no dusk from a verdict', async () => {
+    const fixture = render({ date: '2027-07-04' });
+    listRequest().flush(stayVenues().map((venue) => ({ ...venue, stay: null })));
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    const aurora = card(fixture, 'Aurora Bay');
+    expect(aurora.querySelector('[data-testid="card-stay"]')).toBeNull();
+    expect(text(aurora.querySelector('[data-testid="card-availability"]'))).toBe('5 of 10 free');
+    expect(card(fixture, 'Borsh Cove').classList.contains('saturate-0')).toBe(false);
   });
 });

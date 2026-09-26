@@ -1,7 +1,7 @@
 import { Amenity } from '../../shared/amenities';
 import { BeachCode } from '../../shared/beaches';
 import { MoneyView } from '../../shared/money';
-import { PhotoView, VenueLocation } from '../../shared/venue-views';
+import { PhotoView, StayVerdictView, VenueLocation } from '../../shared/venue-views';
 
 /**
  * A discovery card's ready-to-render view: every per-venue display value the template needs,
@@ -46,6 +46,12 @@ export interface VenueCard {
   readonly reopensOn: string | null;
   /** The venue's riviera-map pin, or `null` when it has none — it then draws no pin. */
   readonly location: VenueLocation | null;
+  /** The server's verdict for the chosen stay, or `null` on a one-day page. */
+  readonly stay: StayVerdictView | null;
+  /** False only for a chosen stay this venue cannot host: the card wears dusk and sinks in its group. */
+  readonly canHost: boolean;
+  /** The stay line in the free count's slot (`shared/stay-label.ts`), or `null` on a one-day page. */
+  readonly stayLabel: string | null;
   /** The single accessible name carrying every card fact (nothing conveyed by layout alone). */
   readonly ariaLabel: string;
 }

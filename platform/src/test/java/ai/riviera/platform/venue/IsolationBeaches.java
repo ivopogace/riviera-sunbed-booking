@@ -17,6 +17,10 @@ public final class IsolationBeaches {
 	/** {@code SeasonClosureCatalogIT}: its four fixtures sort against each other and nothing else. */
 	public static final String SEASON_CLOSURE_IT_BEACH = "VELIPOJE";
 
+	/** The itinerary module's ITs: one beach for the verdict fixtures, one for the peak-shape cost read. */
+	public static final String STAY_VERDICT_IT_BEACH = "DIVJAKE";
+	public static final String STAY_COST_IT_BEACH = "SEMAN";
+
 	private IsolationBeaches() {
 	}
 }

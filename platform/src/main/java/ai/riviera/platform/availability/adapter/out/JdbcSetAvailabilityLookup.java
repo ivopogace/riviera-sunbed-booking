@@ -12,19 +12,20 @@ import java.util.stream.Collectors;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Repository;
 
+import ai.riviera.platform.availability.api.SetAvailabilityFacts;
 import ai.riviera.platform.venue.vocabulary.SetId;
 import ai.riviera.platform.venue.spi.SetAvailabilityLookup;
 
 /**
- * JDBC adapter answering the {@code venue.spi} port {@link SetAvailabilityLookup} from the
- * {@code set_availability} source of truth (invariant #2), which {@code availability} owns; map
- * assembly stays in {@code venue}, which never imports {@code availability}. A row's existence
- * means taken, whatever its {@code state}, so {@code takenOn} does not filter on it;
- * {@code statesOn} adds the state token for the owner-asserted operator read. Every predicate rides
- * the {@code UNIQUE(set_id, booking_date)} index. Rationale: RESPONSIBILITIES.md §availability.
+ * JDBC adapter answering the {@code venue.spi} port {@link SetAvailabilityLookup} and the published
+ * {@link SetAvailabilityFacts} read from the {@code set_availability} source of truth (invariant #2),
+ * which {@code availability} owns; map assembly stays in {@code venue}. A row's existence means
+ * taken, whatever its {@code state}, so {@code takenOn} does not filter on it; {@code statesOn} adds
+ * the state token for the owner-asserted operator read. Every predicate rides the
+ * {@code UNIQUE(set_id, booking_date)} index. Rationale: RESPONSIBILITIES.md §availability.
  */
 @Repository
-class JdbcSetAvailabilityLookup implements SetAvailabilityLookup {
+class JdbcSetAvailabilityLookup implements SetAvailabilityLookup, SetAvailabilityFacts {
 
 	private static final String SET_ID = "set_id";
 	private static final String BOOKING_DATE = "booking_date";

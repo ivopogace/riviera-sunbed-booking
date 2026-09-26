@@ -7,7 +7,7 @@ import {
   freeFraction,
 } from './day-availability';
 import { CALENDAR_PALETTE, CALENDAR_TOKENS, fillUtility } from '../../testing/calendar-tints';
-import { DailyAvailability } from '../shared/venue-views';
+import { DailyAvailability } from './venue-views';
 
 /**
  * Pins the calendar day's vocabulary: which tint a day's counts resolve to, and what a screen

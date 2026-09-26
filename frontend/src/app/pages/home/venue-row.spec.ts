@@ -192,4 +192,45 @@ describe('VenueRow', () => {
     expect(byTestId(withPhoto, 'row-photo-empty')).toBeNull();
     expect(byTestId(withPhoto, 'row-photo')!.getAttribute('src')).not.toBe('');
   });
+
+  describe('a stay', () => {
+    it('shows the stay line in the free count’s slot, and wears dusk when the venue can’t host', () => {
+      const hosts = render(
+        venueCard({
+          ...PALASA,
+          stay: { verdict: 'SAME_SET', sameSetCount: 2, longestRunDays: 4, maxStayDays: null },
+          canHost: true,
+          stayLabel: 'Same set all 4 days · 2 sets',
+        }),
+      );
+      expect(text(byTestId(hosts, 'row-stay'))).toBe('Same set all 4 days · 2 sets');
+      expect(byTestId(hosts, 'row-availability')).toBeNull();
+      expect(byTestId(hosts, 'venue-row')!.classList.contains('saturate-0')).toBe(false);
+
+      const cannot = render(
+        venueCard({
+          ...PALASA,
+          stay: { verdict: 'CANNOT_HOST', sameSetCount: 0, longestRunDays: 2, maxStayDays: null },
+          canHost: false,
+          stayLabel: 'Can’t host 4 days · up to 2 days in a row',
+        }),
+      );
+      expect(text(byTestId(cannot, 'row-stay'))).toBe('Can’t host 4 days · up to 2 days in a row');
+      expect(byTestId(cannot, 'venue-row')!.classList.contains('saturate-0')).toBe(true);
+    });
+
+    it('links the beach map with the stay when the panel shows one', () => {
+      TestBed.resetTestingModule();
+      TestBed.configureTestingModule({ imports: [VenueRow], providers: [provideRouter([])] });
+      fixture = TestBed.createComponent(VenueRow);
+      fixture.componentRef.setInput('card', PALASA);
+      fixture.componentRef.setInput('date', '2026-07-03');
+      fixture.componentRef.setInput('lastDate', '2026-07-06');
+      fixture.detectChanges();
+      const host = fixture.nativeElement as HTMLElement;
+      expect(byTestId(host, 'venue-row')!.getAttribute('href')).toBe(
+        '/venues/3?date=2026-07-03&lastDate=2026-07-06',
+      );
+    });
+  });
 });

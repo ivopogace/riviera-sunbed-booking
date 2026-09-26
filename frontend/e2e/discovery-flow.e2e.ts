@@ -191,7 +191,10 @@ test('the date chosen on discovery carries into the venue map (#294)', async ({ 
 
   // The rail's last day: never today, so seeing it on the map proves the carry, not a fallback.
   await page.getByTestId('head-day').click();
-  await page.locator('[role="group"][aria-label="Day"] button').last().click();
+  await page
+    .locator('[role="group"][aria-label="Day"] button:not([data-testid="head-stay"])')
+    .last()
+    .click();
   await expect(page.getByTestId('head-day')).not.toHaveText(/Today/);
   const chosen = await linkDate();
   expect(chosen).not.toBe(today);

@@ -34,6 +34,9 @@ function card(
     closedForSeason: false,
     reopensOn: null,
     location: lng === null || lat === null ? null : { longitude: lng, latitude: lat },
+    stay: null,
+    canHost: true,
+    stayLabel: null,
     ariaLabel: '',
   };
 }
@@ -85,5 +88,34 @@ describe('place groups (the located state)', () => {
       'Palasë',
     );
     expect(placeTitle({ region: 'HIMARE', beach: '', here: null, groups: near })).toBe('Himarë');
+  });
+
+  describe('a stay', () => {
+    it('sinks the venues that can’t host after their beach group’s hosts, keeping each side’s order', () => {
+      const hosts = { ...card(1, 'DHERMI', 'Himarë', 19.6, 40.15), canHost: false };
+      const cards = [
+        hosts,
+        card(2, 'DHERMI', 'Himarë', 19.61, 40.15),
+        { ...card(3, 'DHERMI', 'Himarë', 19.62, 40.15), canHost: false },
+        card(4, 'DHERMI', 'Himarë', 19.63, 40.15),
+        card(5, 'PALASE', 'Himarë', 19.6, 40.17),
+      ];
+
+      const groups = groupByBeach(cards, null);
+
+      expect(groups.map((group) => group.cards.map((c) => c.id))).toEqual([[5], [2, 4, 1, 3]]);
+    });
+
+    it('keeps the located nearest-first order inside each side too', () => {
+      const cards = [
+        { ...card(1, 'DHERMI', 'Himarë', 19.6, 40.15), canHost: false },
+        card(2, 'DHERMI', 'Himarë', 19.7, 40.15),
+        card(3, 'DHERMI', 'Himarë', 19.65, 40.15),
+      ];
+
+      const groups = groupByBeach(cards, { lng: 19.6, lat: 40.15 });
+
+      expect(groups[0].cards.map((c) => c.id)).toEqual([3, 2, 1]);
+    });
   });
 });

@@ -46,8 +46,9 @@ Hands off: Java idioms → `riviera-java-conventions`; seams → `codebase-desig
 ## Module layout (ADR-0007)
 
 **THIN iff no application service** (the `api/` port is implemented directly by a JDBC
-adapter); otherwise FULL. All nine domain modules and `challenge` are full; `audit` is thin
-plus a driving `adapter/in` (its admin controller). `challenge` is full minus `domain/`.
+adapter); otherwise FULL. All nine domain modules, the `itinerary` read model and `challenge` are
+full; `audit` is thin plus a driving `adapter/in` (its admin controller). `challenge` is full minus
+`domain/`.
 `shared` is neither: `@ApplicationModule(type = OPEN)`, flat classes at the module root, no
 published surface, no layers.
 

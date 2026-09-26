@@ -31,7 +31,8 @@ denial tests), A2 (per-operator credentials, secrets as deploy-environment varia
 (actuator, graceful shutdown).
 
 **B — Architecture refinement.** B1 (`VenueCatalog` role split) and B2 (published-surface split)
-shipped. B3 and B4 are standing triggers (below).
+shipped; B4 fired with the multi-day stays epic as the `itinerary` module (#1206), the spi collapse
+still pending. B3 is a standing trigger (below).
 
 **C — Enforcement.** All five landed as fitness tests: C1 `PublishedSurfacePlacementArchitectureTests`,
 C2 `VenueApiRoleSplitTests`, C3 the cross-venue denial matrix, C4 `ResponsibilitiesArchitectureTests`
@@ -80,7 +81,10 @@ of that cut; it belongs to B4. Chart the extraction through the normal SDLC (`to
 
 **B4 — a read-model module** if the dated read side grows more overlays (pricing seasons, weather
 holds, promotions): a query module depending on `venue::api` and `availability::api` that owns the
-composed browse/map views, collapsing the `venue::spi` inversion. Over-engineering until then.
+composed browse/map views, collapsing the `venue::spi` inversion. Fired for the stay verdict
+(#1206): `itinerary` owns the discovery list read over a new `availability::api` read port; the
+per-venue map read and the `venue::spi` inversion stay where they are until a further overlay
+makes the collapse worth its migration.
 
 **Scale-out** — the moment a second instance is on the table: ShedLock on every sweep and
 rate-limit state in a shared store (Redis) first; the concrete failure modes are in

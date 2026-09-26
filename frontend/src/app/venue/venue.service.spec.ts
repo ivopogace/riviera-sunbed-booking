@@ -63,6 +63,35 @@ describe('VenueService', () => {
     });
   });
 
+  describe('listVenues', () => {
+    it('asks for one day with only the date param', () => {
+      service.listVenues({}, '2026-07-03').subscribe();
+
+      const request = httpMock.expectOne((req) => req.url.endsWith('/api/venues'));
+      expect(request.request.params.get('date')).toBe('2026-07-03');
+      expect(request.request.params.has('lastDate')).toBe(false);
+      request.flush([]);
+    });
+
+    it('carries the last day for a stay, and the filters beside it', () => {
+      service.listVenues({ region: 'HIMARE' }, '2026-07-03', '2026-07-07').subscribe();
+
+      const request = httpMock.expectOne((req) => req.url.endsWith('/api/venues'));
+      expect(request.request.params.get('date')).toBe('2026-07-03');
+      expect(request.request.params.get('lastDate')).toBe('2026-07-07');
+      expect(request.request.params.get('region')).toBe('HIMARE');
+      request.flush([]);
+    });
+
+    it('sends no last day when it equals the first', () => {
+      service.listVenues({}, '2026-07-03', '2026-07-03').subscribe();
+
+      const request = httpMock.expectOne((req) => req.url.endsWith('/api/venues'));
+      expect(request.request.params.has('lastDate')).toBe(false);
+      request.flush([]);
+    });
+  });
+
   describe('getVenueMap', () => {
     it('asks for one day with only the date param', () => {
       service.getVenueMap(7, '2026-07-03').subscribe();

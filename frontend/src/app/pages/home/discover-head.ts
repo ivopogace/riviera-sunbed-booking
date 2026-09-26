@@ -11,7 +11,7 @@ import {
 } from '@angular/core';
 
 import { addDays } from '../../shared/booking-date';
-import { formatBookingDate } from '../../shared/booking-date-label';
+import { formatBookingDate, formatStayChip } from '../../shared/booking-date-label';
 import { focusMover } from '../../shared/focus-after-render';
 import { LocateIcon } from '../../shared/locate-icon';
 import { TouchTarget } from '../../shared/touch-target';
@@ -146,12 +146,22 @@ const COUNT =
               type="button"
               appTouchTarget
               [class]="CHIP"
-              [attr.aria-current]="day.date === date() ? 'true' : null"
+              [attr.aria-current]="!stay() && day.date === date() ? 'true' : null"
               (click)="pickDay(day.date)"
             >
               {{ day.label }}
             </button>
           }
+          <button
+            type="button"
+            appTouchTarget
+            data-testid="head-stay"
+            [class]="CHIP"
+            [attr.aria-current]="stay() ? 'true' : null"
+            (click)="pickStay()"
+          >
+            Several days…
+          </button>
         </div>
       } @else if (beachesOpen()) {
         <div [class]="RAIL" [animate.leave]="RAIL_LEAVE" role="group" aria-label="Beach">
@@ -225,8 +235,10 @@ export class DiscoverHead {
   readonly spelled = input(false);
   /** Today in Europe/Tirane, ISO — the page's clock, never this component's. */
   readonly today = input.required<string>();
-  /** The day the list is counted for, ISO. */
+  /** The day the list is counted for, ISO; a stay's first day. */
   readonly date = input.required<string>();
+  /** A stay's last day, ISO; absent or equal to {@link date} for one day. */
+  readonly lastDate = input<string | undefined>(undefined);
   /** The rails have room to open: false at peek, where the head is the one row. */
   readonly railsShown = input(true);
   /** The Near me answer standing in the rail slot, or `null`. */
@@ -237,6 +249,8 @@ export class DiscoverHead {
   readonly placePressed = output<void>();
   readonly beachPicked = output<string>();
   readonly dayPicked = output<string>();
+  /** The stay chip was pressed: the page opens its range picker. */
+  readonly stayPressed = output<void>();
   readonly noteDismissed = output<void>();
   /** A rail was asked for: at peek the page raises the sheet so the rail has room. */
   readonly railOpened = output<void>();
@@ -267,7 +281,14 @@ export class DiscoverHead {
       return { date, label: this.dayLabel(date) };
     }),
   );
-  protected readonly dayWord = computed(() => this.dayLabel(this.date()));
+  /** Whether the list is counted for a stay of several days. */
+  protected readonly stay = computed(() => {
+    const last = this.lastDate();
+    return last !== undefined && last !== this.date();
+  });
+  protected readonly dayWord = computed(() =>
+    this.stay() ? formatStayChip(this.date(), this.lastDate()!) : this.dayLabel(this.date()),
+  );
 
   /** Today, Tomorrow, then the weekday and day — the way a tourist says it. */
   private dayLabel(date: string): string {
@@ -335,6 +356,12 @@ export class DiscoverHead {
     this.dayPicked.emit(date);
     this.dayOpen.set(false);
     this.moveFocus('head-day');
+  }
+
+  /** The picker the page opens takes focus itself, so the rail just closes. */
+  protected pickStay(): void {
+    this.stayPressed.emit();
+    this.dayOpen.set(false);
   }
 
   protected pickBeach(code: string): void {

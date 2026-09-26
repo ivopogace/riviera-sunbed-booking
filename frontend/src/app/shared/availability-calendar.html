@@ -150,26 +150,28 @@
     </div>
   }
 
-  @if (countsFailed()) {
-    <p
-      class="mt-2 text-[11.5px] leading-[1.4] text-riv-pop-ink-soft"
-      data-testid="calendar-counts-failed"
-      role="alert"
-    >
-      How busy each day is could not be loaded — you can still pick any day.
-    </p>
-  } @else {
-    <p class="mt-2 text-[11.5px] leading-[1.4] text-riv-pop-ink-soft">
-      The bar under each day is how many sets were free when this was read — a picture of the day,
-      not a hold. A set is yours only once you book it.
-    </p>
-  }
+  @if (countsShown()) {
+    @if (countsFailed()) {
+      <p
+        class="mt-2 text-[11.5px] leading-[1.4] text-riv-pop-ink-soft"
+        data-testid="calendar-counts-failed"
+        role="alert"
+      >
+        How busy each day is could not be loaded — you can still pick any day.
+      </p>
+    } @else {
+      <p class="mt-2 text-[11.5px] leading-[1.4] text-riv-pop-ink-soft">
+        The bar under each day is how many sets were free when this was read — a picture of the day,
+        not a hold. A set is yours only once you book it.
+      </p>
+    }
 
-  <!-- Outside every branch on purpose: a live region must outlive the transition it announces (#741). -->
-  <app-load-announcer
-    [loading]="countsLoading()"
-    [ready]="!countsFailed()"
-    loadingLabel="Loading how busy each day is…"
-    [readyLabel]="monthLabel() + ' availability loaded.'"
-  />
+    <!-- Outside the failed/ready branches on purpose: a live region must outlive the transition it announces. -->
+    <app-load-announcer
+      [loading]="countsLoading()"
+      [ready]="!countsFailed()"
+      loadingLabel="Loading how busy each day is…"
+      [readyLabel]="monthLabel() + ' availability loaded.'"
+    />
+  }
 </dialog>

@@ -231,7 +231,10 @@ test('offers the longest one-spot run when no set covers the stay, and shortenin
   const banner = page.getByTestId('no-cover');
   await expect(banner).toContainText('No single spot is free for all 3 days');
   await expect(page.getByTestId('no-cover-run')).toContainText('spot 1');
-  await expect(page.getByTestId('no-cover-others')).toHaveAttribute('href', `/?date=${FIRST}`);
+  await expect(page.getByTestId('no-cover-others')).toHaveAttribute(
+    'href',
+    `/?date=${FIRST}&lastDate=${LAST}`,
+  );
   await expectNoSeriousAxeViolations(page, 'no set covers the stay');
 
   await page.getByTestId('no-cover-shorten').click();
@@ -272,7 +275,10 @@ test("refuses a stay past the venue's maximum and offers new dates, never a plan
   await expect(panel).toContainText('Stays of up to 2 days at this venue.');
   await expect(page.getByTestId('no-cover')).toHaveCount(0);
   await expect(page.locator('.set-tile button')).toHaveCount(0);
-  await expect(page.getByTestId('stay-too-long-others')).toHaveAttribute('href', `/?date=${FIRST}`);
+  await expect(page.getByTestId('stay-too-long-others')).toHaveAttribute(
+    'href',
+    `/?date=${FIRST}&lastDate=${LAST}`,
+  );
   await expectNoSeriousAxeViolations(page, 'a stay longer than the venue takes');
 
   await page.getByTestId('stay-too-long-change').click();

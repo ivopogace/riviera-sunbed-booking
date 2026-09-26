@@ -3,7 +3,9 @@ package ai.riviera.platform.venue.adapter.out;
 import java.time.Clock;
 import java.time.LocalDate;
 import java.time.LocalTime;
+import java.util.ArrayList;
 import java.util.Collection;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -26,6 +28,7 @@ import ai.riviera.platform.venue.vocabulary.SetPlacement;
 import ai.riviera.platform.venue.vocabulary.SetSpot;
 import ai.riviera.platform.venue.vocabulary.Tier;
 import ai.riviera.platform.venue.vocabulary.VenueId;
+import ai.riviera.platform.venue.vocabulary.VenueStayFacts;
 
 /**
  * JDBC adapter implementing the {@link SetBookingFacts} port directly (invariant #1, no JPA; a
@@ -144,6 +147,36 @@ class JdbcSetBookingFacts implements SetBookingFacts {
 				.param(VENUE_PARAM, venueId.value())
 				.query(JdbcSetBookingFacts::mapSetSpot)
 				.list();
+	}
+
+	@Override
+	public Map<VenueId, VenueStayFacts> stayFactsOf(Collection<VenueId> venueIds) {
+		if (venueIds.isEmpty()) {
+			return Map.of(); // no IN-list — avoid an empty "IN ()" and a needless round-trip
+		}
+		List<Long> ids = venueIds.stream().map(VenueId::value).toList();
+		Map<VenueId, Integer> maxima = new LinkedHashMap<>();
+		Map<VenueId, List<SetId>> online = new LinkedHashMap<>();
+		jdbc.sql("""
+				SELECT v.id AS venue_id, v.max_stay_days, sp.id AS set_id
+				FROM venue v
+				LEFT JOIN active_set_position sp ON sp.venue_id = v.id AND sp.pool = :pool
+				WHERE v.id IN (:ids)
+				ORDER BY v.id, sp.id
+				""")
+				.param("ids", ids)
+				.param("pool", Pool.ONLINE.name())
+				.query(rs -> {
+					VenueId venue = new VenueId(rs.getLong(COL_VENUE_ID));
+					maxima.put(venue, rs.getObject("max_stay_days", Integer.class));
+					List<SetId> sets = online.computeIfAbsent(venue, id -> new ArrayList<>());
+					long setId = rs.getLong("set_id");
+					if (!rs.wasNull()) {
+						sets.add(new SetId(setId));
+					}
+				});
+		return maxima.entrySet().stream().collect(Collectors.toUnmodifiableMap(Map.Entry::getKey,
+				entry -> new VenueStayFacts(List.copyOf(online.get(entry.getKey())), entry.getValue())));
 	}
 
 	@Override
