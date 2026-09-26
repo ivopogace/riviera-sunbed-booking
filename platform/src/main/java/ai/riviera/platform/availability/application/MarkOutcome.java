@@ -14,7 +14,7 @@ public enum MarkOutcome {
 	/** The {@code (set, date)} was already held — by an online booking or another staff mark. */
 	ALREADY_TAKEN,
 
-	/** No set has the given id. */
+	/** No live set with the given id is on the venue — a missing, retired or foreign set answers alike. */
 	NO_SUCH_SET,
 
 	/** The date is before today in {@code Europe/Tirane} — staff act on today and beyond (invariant #4/#6). */

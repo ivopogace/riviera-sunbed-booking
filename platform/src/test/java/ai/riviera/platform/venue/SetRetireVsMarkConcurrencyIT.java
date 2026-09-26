@@ -108,7 +108,7 @@ class SetRetireVsMarkConcurrencyIT {
 		Outcomes<MarkOutcome, ChangeOutcome> outcomes = race(
 				() -> {
 					start(gate, ordering, Ordering.MARK_FIRST);
-					return staff.mark(owner, new SetId(setId), DAY);
+					return staff.mark(owner, venue, new SetId(setId), DAY);
 				},
 				() -> {
 					start(gate, ordering, Ordering.RETIRE_FIRST);
