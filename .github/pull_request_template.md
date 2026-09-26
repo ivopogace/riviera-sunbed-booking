@@ -20,7 +20,7 @@ Closes #<!-- issue -->
 
 <!-- Only the CLAUDE.md invariants this diff can break, each with how it holds and the test that
      pins it — e.g. "#2: the stay claims every (set, date) with ON CONFLICT DO NOTHING;
-     ConcurrentReservationIT.twoStays". Write "none" when none apply. -->
+     ConcurrentReservationIT.exactlyOneWins". Write "none" when none apply. -->
 
 ## Gates
 

@@ -365,7 +365,7 @@ test('check-inline-comments --hook answers a PostToolUse payload with advisory J
   });
 });
 
-/** A TSDoc block whose third line cites a PR — the tell sits on a line the diff will not touch. */
+/** A TSDoc block whose third line cites a PR, on a line the diff will not touch. */
 const TSDOC_WITH_ISSUE = [
   '/**',
   ' * Splices the rate write response back into the list this component holds.',
@@ -983,8 +983,8 @@ test('check-cloud-node-pin exits 2 with usage when given an argument', () => {
  * proves it fixed is each guard's own report, and they reach the base through argv shapes and
  * fixture shapes that have nothing in common — a positional base here, `--diff` there; a file list
  * for one rule, a modified file's code for another. A single case over `check-inline-comments`
- * would leave the other four wired on faith. Hence the table: one row per guard, carrying the
- * fixture its rule needs, and six loops over it.
+ * would leave the others wired on faith. Hence the table: one row per guard, carrying the fixture
+ * its rule needs, and a loop over it per case.
  *
  * `publish()` gives the repository a real `origin` on the filesystem, which is what lets a case
  * distinguish "fetched and corrected itself" from "read a ref someone pointed by hand" — the two

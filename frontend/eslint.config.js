@@ -9,24 +9,36 @@ const preferOutputOverStatusRole = require('./eslint-rules/prefer-output-over-st
 // Every feature folder under src/app/; a new one joins this list.
 const FEATURES = ['admin', 'auth', 'booking', 'operator', 'venue'];
 
+const FROZEN_CLOCK = {
+  selector: "CallExpression[callee.object.name='vi'][callee.property.name='useRealTimers']",
+  message:
+    'Restore the frozen clock with freezeClock() from src/testing/freeze-clock; vi.useRealTimers() unfakes Date and leaves every later test in the file on the machine calendar (ADR-0014).',
+};
+
 /**
  * RV-FE-8's import direction (`riviera-frontend` § Folder taxonomy): `files` may not import from the
- * `banned` app folders. `except` is a frozen edge: the one module of a banned folder it may import.
+ * `banned` app folders, statically or through `import()`. `except` is a frozen edge: the one module
+ * of a banned folder it may import. A block's `no-restricted-syntax` replaces the `src/**` one, so it
+ * repeats {@link FROZEN_CLOCK}.
  */
 function importBoundary(files, banned, { except, ignores = [] } = {}) {
   const lookahead = (folder) => (except?.folder === folder ? `(?!${except.module}$)` : '');
+  const bans = banned.map((folder) => ({
+    regex: `^(?:\\.\\./)+${folder}/${lookahead(folder)}`,
+    message: `RV-FE-8: this folder may not import ${folder}/. Promote the shared need (pure → shared/, stateful or HTTP → core/); see riviera-frontend § Folder taxonomy.`,
+  }));
   return {
     files,
     ignores: ['**/*.spec.ts', ...ignores],
     rules: {
-      'no-restricted-imports': [
+      'no-restricted-imports': ['error', { patterns: bans }],
+      'no-restricted-syntax': [
         'error',
-        {
-          patterns: banned.map((folder) => ({
-            regex: `^(?:\\.\\./)+${folder}/${lookahead(folder)}`,
-            message: `RV-FE-8: this folder may not import ${folder}/. Promote the shared need (pure → shared/, stateful or HTTP → core/); see riviera-frontend § Folder taxonomy.`,
-          })),
-        },
+        FROZEN_CLOCK,
+        ...bans.map(({ regex, message }) => ({
+          selector: `ImportExpression[source.value=/${regex.replaceAll('/', '\\/')}/]`,
+          message,
+        })),
       ],
     },
   };
@@ -91,14 +103,7 @@ module.exports = defineConfig([
   {
     files: ['src/**/*.ts'],
     rules: {
-      'no-restricted-syntax': [
-        'error',
-        {
-          selector: "CallExpression[callee.object.name='vi'][callee.property.name='useRealTimers']",
-          message:
-            'Restore the frozen clock with freezeClock() from src/testing/freeze-clock; vi.useRealTimers() unfakes Date and leaves every later test in the file on the machine calendar (ADR-0014).',
-        },
-      ],
+      'no-restricted-syntax': ['error', FROZEN_CLOCK],
     },
   },
   {

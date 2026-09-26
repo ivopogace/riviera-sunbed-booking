@@ -99,7 +99,7 @@ We build in thin **vertical slices** — one path through every layer
 | **Plan** | A plan doc in `docs/plans/<slug>.md` with testable acceptance criteria, a risk register, and — if booking/availability is touched — exactly how invariant #2 is upheld. | `riviera-plan-doc` |
 | **Slice** | Break the plan into independently-grabbable vertical slices. | `to-issues` |
 | **Build** | Test-first, red→green, one behavior at a time, at seams agreed before the first test. Refactoring belongs to Review, not the loop. | `tdd` |
-| **Review** | The 13 invariants become checkable gates; availability & payment-source are Blockers. The Sonar merge bar: **no new bug, vulnerability or unreviewed hotspot, ≥80% new-code coverage**; code smells and duplication are judged, and a false positive is marked in SonarCloud with a rationale. | `riviera-review-overlay` |
+| **Review** | The numbered invariants in `CLAUDE.md` become checkable gates; availability & payment-source are Blockers. The Sonar merge bar: **no new bug, vulnerability or unreviewed hotspot, ≥80% new-code coverage**; code smells and duplication are judged, and a false positive is marked in SonarCloud with a rationale. | `riviera-review-overlay` |
 
 Keep it right-sized: a small fix doesn't need a plan doc. A feature that touches
 booking, availability, or money does.

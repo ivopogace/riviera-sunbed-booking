@@ -26,7 +26,7 @@ Two features needing the same thing → promote it: pure → `shared/`, stateful
 An adapter that does its own I/O (`shared/maplibre-map-engine.ts` fetching MapLibre tiles) is still
 `shared/`-admissible; "no HTTP" means no `HttpClient`/API state.
 
-The import direction is linted (`no-restricted-imports` in `frontend/eslint.config.js`).
+The import direction is linted, `import()` included (`importBoundary` in `frontend/eslint.config.js`).
 **Frozen cross-feature edges** are its named exceptions (RV-FE-8: a *new* edge is Major, Blocker
 if `shared/`- or `core/`-directed); shrink this table and the config together:
 

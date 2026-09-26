@@ -122,7 +122,7 @@ move the port). The classification rule is mechanical, so the cost is ~zero for 
 - `api`/`spi`/`vocabulary`/`events` are `@NamedInterface` and top-level (not nested under
   `application`).
 - The **semantic** half (a policy/decision/calculation landing in the wrong module) is review-only
-  — RV-BE-11 + the plan-time Module-ownership table.
+  — RV-BE-11 + the plan's Modulith section.
 
 **Revisit → a uniform lean shape if:** several more thin modules appear, so the thin/full call
 starts firing on real ambiguity; or the team grows past "seniors who hold the rule in their head"

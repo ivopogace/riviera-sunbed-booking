@@ -51,8 +51,8 @@ spec is never parked where CI can't run it. Specs are `*.e2e.ts` (not `*.spec.ts
 `npm run lint`. Cloud: never `playwright install` (`riviera-local-debug`).
 
 ### RV-FE-8. No new cross-feature import — Major; **Blocker** for `shared/ →` or `core/ → feature/`
-`npm run lint` enforces the folder taxonomy (`no-restricted-imports` blocks in
-`frontend/eslint.config.js`), with the frozen edges from `riviera-frontend`'s table as named
+`npm run lint` enforces the folder taxonomy for static and `import()` imports (`importBoundary`
+blocks in `frontend/eslint.config.js`), with the frozen edges from `riviera-frontend`'s table as named
 exceptions. Review catches only a diff that widens that config: a new edge is argued in the plan,
 never slipped in on precedent. Promote shared needs: pure → `shared/`, stateful/HTTP → `core/`.
 

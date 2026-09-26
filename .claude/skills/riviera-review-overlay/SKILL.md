@@ -53,11 +53,12 @@ CI runs `prettier --check src e2e eslint-rules`; never hand-flag formatting ther
 ## RV-PROC-2 — substrate claims match the tree
 
 Fires when the diff touches `.claude/skills/**`, `CLAUDE.md`, `frontend/.claude/CLAUDE.md`,
-`CONTEXT.md`, `RESPONSIBILITIES.md`, `docs/adr/**` or `docs/agents/**`, and whenever a PR or
-review round claims a fix. Open every path, class, method and command a changed line names, and
-every citation of anything the diff renamed, moved or deleted: a present-tense claim the tree
-does not bear out is **Major** (a claimed fix that is not in the tree included); historical
-narrative is not a finding.
+`CONTEXT.md`, `RESPONSIBILITIES.md`, `docs/adr/**` or `docs/agents/**`, whenever a PR or review
+round claims a fix, and when the diff adds or tightens a structural test: then grep the whole
+substrate, files the diff never opened included, for an example the tightened rule now rejects.
+Open every path, class, method and command a changed line names, and every citation of anything
+the diff renamed, moved or deleted: a present-tense claim the tree does not bear out is **Major**
+(a claimed fix that is not in the tree included); historical narrative is not a finding.
 
 ## Verification
 
