@@ -128,6 +128,48 @@ describe('DiscoverSheet', () => {
     expect(sheet().detent()).toBe('half');
   });
 
+  describe('a glide a stalled main thread has not begun', () => {
+    beforeEach(() => {
+      // The glide is asked for but no frame has moved the scroller yet.
+      scrollable.scrollTo = function stalled(options: ScrollToOptions) {
+        asked.push(options.top ?? 0);
+      };
+    });
+
+    it('stays unsettled past the quiet window, then settles where the glide lands', async () => {
+      const tops = sheet().tops();
+      vi.useFakeTimers();
+      try {
+        byTestId('sheet-grabber')!.click();
+        vi.advanceTimersByTime(400);
+        expect(sheet().settled()).toBe(false);
+        expect(scroller().style.scrollSnapType).toBe('none');
+
+        scroller().scrollTop = tops.peek - tops.full;
+        scroller().dispatchEvent(new Event('scroll'));
+        vi.advanceTimersByTime(400);
+      } finally {
+        freezeClock();
+      }
+      await settle();
+      expect(sheet().settled()).toBe(true);
+      expect(sheet().detent()).toBe('full');
+    });
+
+    it('settles anyway once the glide has had its second to start', async () => {
+      vi.useFakeTimers();
+      try {
+        byTestId('sheet-grabber')!.click();
+        vi.advanceTimersByTime(1_200);
+      } finally {
+        freezeClock();
+      }
+      await settle();
+      expect(sheet().settled()).toBe(true);
+      expect(scroller().style.scrollSnapType).toBe('');
+    });
+  });
+
   it('reports opened before a spec drives it, so the tap that follows stands', async () => {
     expect(sheet().opened()).toBe(true);
 
