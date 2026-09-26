@@ -292,7 +292,7 @@ export class DailyViewTab {
   /** Sets grouped into rows (read order preserved), on the shared canvas's row contract. */
   protected readonly rows = computed<readonly DailyRow[]>(() => {
     const rows = groupSetsByRow(this.venue()?.sets ?? []);
-    // A mixed-price row renders its min–max span, never just the first set's price (#689).
+    // A mixed-price row renders its min–max span, never just the first set's price.
     const prices = rows.map((r) => formatMoneyRange(r.sets.map((s) => s.price)));
     return rows.map((row, i) => ({
       code: row.label,
@@ -364,12 +364,12 @@ export class DailyViewTab {
     write.subscribe({
       next: () => {
         if (this.epoch === epoch) {
-          this.reconcile(set.id); // skip if a venue switch superseded this write (#180)
+          this.reconcile(set.id); // skip if a venue switch superseded this write
         }
       },
       error: (e: unknown) => {
         if (this.epoch !== epoch) {
-          return; // a venue switch superseded this write (#180)
+          return; // a venue switch superseded this write
         }
         if (marking) {
           const reason = markErrorOf(e);
@@ -439,7 +439,7 @@ export class DailyViewTab {
     this.console.closeOnlineSalesNow(venueId).subscribe({
       next: () => {
         if (this.epoch !== epoch) {
-          return; // a venue switch superseded this write's UI state (#180)
+          return; // a venue switch superseded this write's UI state
         }
         this.closeSalesBusy.set(false);
         this.closeSalesConfirm.set(false);
@@ -451,7 +451,7 @@ export class DailyViewTab {
       },
       error: (e: unknown) => {
         if (this.epoch !== epoch) {
-          return; // a venue switch superseded this write's UI state (#180)
+          return; // a venue switch superseded this write's UI state
         }
         this.closeSalesBusy.set(false);
         this.closeSalesConfirm.set(false);

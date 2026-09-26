@@ -80,7 +80,7 @@ class ReserveSetService {
 			return new ReserveOutcome.Rejected(BookingOutcome.Rejected.NO_SUCH_SET);
 		}
 		SetBookingInfo set = found.get();
-		// A hidden venue's set books like one that does not exist (#693), refused before any claim.
+		// A hidden venue's set books like one that does not exist, refused before any claim.
 		if (!visibility.isVisible(new VenueRef(set.venueId().value()))) {
 			return new ReserveOutcome.Rejected(BookingOutcome.Rejected.NO_SUCH_SET);
 		}

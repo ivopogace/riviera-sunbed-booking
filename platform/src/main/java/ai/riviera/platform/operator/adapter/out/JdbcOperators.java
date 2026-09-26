@@ -102,7 +102,7 @@ class JdbcOperators implements Operators {
 	public OperatorRegistrationOutcome insertPending(String username, String passwordHash, String contactEmail) {
 		// ON CONFLICT DO NOTHING → non-enumerating + idempotent (D-8): a taken username writes nothing
 		// and RETURNING yields no row (empty → AlreadyRegistered), and an existing hash is never
-		// overwritten. Status PENDING + is_admin FALSE — a self-registered operator cannot log in until
+		// overwritten. Status PENDING + is_admin FALSE — it may sign in, its venues unlisted until
 		// an admin approves it, and is never an admin. PENDING is bound, not inlined (invariant #6a).
 		return jdbc.sql("""
 				INSERT INTO operator (username, status, is_admin, password_hash, contact_email)

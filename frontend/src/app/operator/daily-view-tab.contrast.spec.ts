@@ -112,7 +112,7 @@ describe('DailyViewTab porcelain contrast (WCAG AA, #175)', () => {
   });
 
   it('the close-sales confirm copy (--riv-warn-ink) meets AA over its own --riv-warn-fill (#794, #881)', () => {
-    // Rendered via shared/confirm-panel since #881 — the same pairing #879 proved at 6.86:1.
+    // Rendered via shared/confirm-panel: the warn-token-skin spec proves this pair at 6.86:1.
     expect(contrastRatio(rgbToHex(WARN_INK), rgbToHex(WARN_FILL))).toBeGreaterThanOrEqual(
       AA_NORMAL,
     );

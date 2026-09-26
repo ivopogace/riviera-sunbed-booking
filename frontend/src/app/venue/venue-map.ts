@@ -473,7 +473,7 @@ export class VenueMap {
         // The teardown takes the header, and with it the trigger — close without chasing it.
         this.pickerOpen.set(false);
         this.lightboxIndex.set(undefined);
-        // 404 is a distinct state: the venue is gone or hidden (#693); retrying cannot succeed.
+        // 404 is a distinct state: the venue is gone or hidden; retrying cannot succeed.
         if (error instanceof HttpErrorResponse && error.status === 404) {
           this.notFound.set(true);
           if (toreDownMap) {

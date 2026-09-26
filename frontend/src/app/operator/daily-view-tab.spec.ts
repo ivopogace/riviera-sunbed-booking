@@ -1,5 +1,9 @@
 import { provideHttpClient } from '@angular/common/http';
-import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
+import {
+  HttpTestingController,
+  provideHttpClientTesting,
+  TestRequest,
+} from '@angular/common/http/testing';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { ActivatedRoute, convertToParamMap, ParamMap, provideRouter } from '@angular/router';
 import { BehaviorSubject } from 'rxjs';
@@ -139,7 +143,7 @@ describe('DailyViewTab (#175)', () => {
     const arrivals = loading.querySelector('[data-testid="daily-skeleton-arrivals"]')!;
     // Four rows from the tab's own constant — not from the map's grid geometry, which is unrelated.
     expect(arrivals.querySelectorAll('.animate-pulse[class*="h-[42px]"]')).toHaveLength(4);
-    // The sentence the skeleton replaces; a mirrored shape says it without a reflow (#744).
+    // The sentence the skeleton replaces; a mirrored shape says it without a reflow.
     expect(loading.textContent).not.toContain('Loading the daily view');
 
     flushLoad(SEED, BOOKINGS, STATES);
@@ -544,7 +548,7 @@ describe('DailyViewTab (#175)', () => {
   it('reloads and clears optimistic overrides when the date changes', () => {
     render();
     const date = byId('daily-date') as HTMLInputElement;
-    // A week out: never equals the preloaded today (#791), so the reload actually fires.
+    // A week out: never equals the preloaded today, so the reload actually fires.
     date.value = defaultBookingDate(new Date(Date.now() + 7 * 24 * 60 * 60 * 1000));
     date.dispatchEvent(new Event('change'));
     fixture.detectChanges();
@@ -817,7 +821,7 @@ describe('DailyViewTab (#175)', () => {
     expect(host.querySelector('[data-testid="daily-map-empty"]')).toBeNull();
   });
 
-  // ---- The one-tap "close today's online sales now" kill switch (#794) ----
+  // ---- The one-tap "close today's online sales now" kill switch ----
 
   const PROFILE = {
     name: 'Miramar',
@@ -1017,6 +1021,88 @@ describe('DailyViewTab (#175)', () => {
 
     expect(host.querySelector('[data-testid="daily-close-sales-confirm-panel"]')).toBeNull();
     expect(document.activeElement).toBe(byId('daily-notice'));
+  });
+
+  // ---- A venue-1 write that settles after an in-place switch to venue 2 ----
+
+  /** Switch in place to venue 2 and settle its load: one FREE set, no notice. */
+  function switchToVenue2(): void {
+    params$.next(convertToParamMap({ venueId: '2' }));
+    fixture.detectChanges();
+    http.expectOne((r) => r.method === 'GET' && r.url.includes('/api/venues/2/bookings')).flush([]);
+    http
+      .expectOne((r) => r.method === 'GET' && r.url.includes('/api/venues/2/availability'))
+      .flush([]);
+    http
+      .expectOne(
+        (r) =>
+          r.method === 'GET' &&
+          r.url.includes('/api/venues/2') &&
+          !r.url.includes('/bookings') &&
+          !r.url.includes('/availability'),
+      )
+      .flush({
+        id: 2,
+        name: 'W',
+        beach: 'DHERMI',
+        region: 'HIMARE',
+        sets: [seat(9, 'A', 1, 'STANDARD', 'ONLINE', 'FREE')],
+      });
+    fixture.detectChanges();
+  }
+
+  /** Nothing of the superseded write landed on venue 2: no notice, no re-read, its grid intact. */
+  function expectVenue2Untouched(): void {
+    fixture.detectChanges();
+    expect(host.querySelector('[data-testid="daily-notice"]')).toBeNull();
+    http.expectNone((r) => r.method === 'GET' && r.url.includes('/api/venues/2'));
+    expect(host.querySelectorAll('[data-set-id]')).toHaveLength(1);
+    expect(tile(9).getAttribute('data-state')).toBe('FREE');
+  }
+
+  it('reports no venue-1 mark failure against venue 2 after a switch', () => {
+    render();
+    (tile(1) as HTMLButtonElement).click();
+    fixture.detectChanges();
+    const post = http.expectOne(
+      (r) => r.method === 'POST' && r.url.includes('/api/venues/1/sets/1/availability'),
+    );
+
+    switchToVenue2();
+    post.flush({ code: 'NOT_VENUE_OWNER' }, { status: 403, statusText: 'Forbidden' });
+
+    expectVenue2Untouched();
+  });
+
+  /** Confirm close-sales on venue 1 and serve its profile read; returns the in-flight PATCH. */
+  function confirmCloseSalesOnVenue1(): TestRequest {
+    render();
+    byId('daily-close-sales').click();
+    fixture.detectChanges();
+    byId('daily-close-sales-confirm').click();
+    fixture.detectChanges();
+    http
+      .expectOne((r) => r.method === 'GET' && r.url.endsWith('/api/venues/1/profile'))
+      .flush(PROFILE);
+    return http.expectOne((r) => r.method === 'PATCH' && r.url.endsWith('/api/venues/1'));
+  }
+
+  it('reports no venue-1 close-sales success against venue 2 after a switch', () => {
+    const patch = confirmCloseSalesOnVenue1();
+
+    switchToVenue2();
+    patch.flush(null, { status: 204, statusText: 'No Content' });
+
+    expectVenue2Untouched();
+  });
+
+  it('reports no venue-1 close-sales failure against venue 2 after a switch', () => {
+    const patch = confirmCloseSalesOnVenue1();
+
+    switchToVenue2();
+    patch.flush({ code: 'STALE_WRITE' }, { status: 409, statusText: 'Conflict' });
+
+    expectVenue2Untouched();
   });
 });
 

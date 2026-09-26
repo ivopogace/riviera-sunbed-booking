@@ -146,7 +146,7 @@ describe('BookingService', () => {
     const req = httpMock.expectOne(`${environment.apiBaseUrl}/api/bookings`);
     req.flush(AWAITING, { status: 202, statusText: 'Accepted' });
 
-    // The service stamps the (absent) checkout quote as an explicit null (#795).
+    // The service stamps the (absent) checkout quote as an explicit null.
     const stamped = { ...AWAITING, cancellationTerms: null };
     expect(received).toEqual({ kind: 'awaiting', awaiting: stamped });
     expect(service.lastAwaitingPayment()).toEqual(stamped);

@@ -134,7 +134,7 @@ describe('MapTile appearance (#701)', () => {
     expect(mapTileState(set({ pool: 'WALK_IN' }))).toBe('walkin');
     // A premium walk-in still reads walk-in — unbookable must never lose to a tier tint.
     expect(mapTileState(set({ pool: 'WALK_IN', tier: 'PREMIUM' }))).toBe('walkin');
-    // …and the ghost wins over both (#672).
+    // …and the ghost wins over both.
     expect(mapTileState(set({ availability: 'TAKEN' }))).toBe('taken');
     expect(mapTileState(set({ availability: 'TAKEN', pool: 'WALK_IN' }))).toBe('taken');
     expect(mapTileState(set({ availability: 'TAKEN', tier: 'PREMIUM' }))).toBe('taken');

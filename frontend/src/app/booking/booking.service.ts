@@ -102,7 +102,7 @@ export class BookingService {
               this.handoff.set({ kind: 'requested', requested });
               return { kind: 'requested', requested };
             }
-            // The checkout's quoted terms ride the hand-off so the pay page repeats them (#795).
+            // The checkout's quoted terms ride the hand-off so the pay page repeats them.
             const awaiting = {
               ...(response.body as AwaitingPayment),
               cancellationTerms: termsAtCheckout ?? null,

@@ -196,7 +196,7 @@ export class BeachMapCanvas {
    *  A 54px minimum (the mobile cap), not the full cap: that would push a 14-column desktop venue
    *  into a pan. Only a label wider than 54px still shifts the grid. */
   protected readonly railColumnClass = computed(() => {
-    // A fill button needs the 44px floor in both axes, not just the chip's min-w-6 (#713).
+    // A fill button needs the 44px floor in both axes, not just the chip's min-w-6.
     if (this.rowRailInteractive()) {
       return 'min-w-11';
     }
@@ -413,7 +413,7 @@ export class BeachMapCanvas {
     this.panPointerDown = false;
   }
 
-  // --- two-finger touch pan at 100% zoom (#713; the mouse pan stays mouse-only, unchanged) ---
+  // --- two-finger touch pan at 100% zoom (the mouse pan stays mouse-only) ---
 
   /** Two touch points' midpoint — the pan gesture's reference, so either finger lifting alone
    *  doesn't jump the anchor. */
@@ -462,7 +462,7 @@ export class BeachMapCanvas {
     this.panPointerDown = false;
   }
 
-  // --- fill-rail drag-sweep (#713; imperative, not rendered) ---
+  // --- fill-rail drag-sweep (imperative, not rendered) ---
 
   /** True while a primary-button press is down on a row-rail or column-header button. */
   private railSweeping = false;

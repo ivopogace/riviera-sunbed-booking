@@ -8,8 +8,7 @@
  * value before Angular boots (drift-pinned by theme-boot.spec.ts). Components consume tokens,
  * never palette literals; a palette change is one block here + one row in core/theme.ts. The set
  * is three: porcelain (light, the default and the base block below), riviera (the branded dark
- * teal), and dark (neutral slate, the OS-dark default) — widened from the original fixed-at-two
- * decision (#143) by the theme restructure.
+ * teal), and dark (neutral slate, the OS-dark default).
  *
  * The `@theme inline` block registers the tokens with Tailwind, so components consume them as
  * first-class utilities (`text-riv-ink`, `bg-riv-card-glass`, `font-riv`, …). It maps utility
@@ -226,7 +225,7 @@
   --riv-cta-grad: linear-gradient(180deg, #0c7288, #0a5f74);
   --riv-bar-grad: linear-gradient(90deg, #2bb8d4, #0e8aa8);
 
-  /** The CTA button's white hairline bevel (#853, class R) — 16 positions across auth/, booking/
+  /** The CTA button's white hairline bevel (class R) — 16 positions across auth/, booking/
       and shared/, on --riv-cta-grad above and on booking-dialog's #31798a close button.
 
       Do NOT reach for --riv-inset-fill, whose value it equals: that is a FILL, and it resolves
@@ -238,14 +237,14 @@
       Theme-invariant BY DESIGN, the --riv-solid-btn-* call: a fixed surface pins what is painted on
       it. Declared ONCE, no dark override. Non-text chrome (WCAG 1.4.11) at 2.08-2.48:1 over its own
       fills — decorative, and measured rather than assumed exempt. WHICH layer carries the
-      affordance boundary against the host card swaps by theme (#876): the fill in the light themes,
+      affordance boundary against the host card swaps by theme: the fill in the light themes,
       3.80-7.24:1 against the card glass, and THIS hairline in the dark, 5.52-6.77:1. The fill's
       2.23-3.16:1 there is a pairing with a surface it does not touch — this hairline sits between
       them. Rule 1 of docs/design/non-text-contrast.md.
       Proof: shared/cta-border-token.contrast.spec.ts (the declaration guard, the measured exemption
       and the themed-alternative bound) + e2e/cta-border-token-skin.e2e.ts (the computed border under
       a forced dark document theme, and that the element tracks the token rather than a literal of
-      the same value). Rationale: docs/design/colour-literal-token-audit.md class R, issue #853. */
+      the same value). Rationale: docs/design/colour-literal-token-audit.md § Class R. */
   --riv-cta-border: rgba(255, 255, 255, 0.4);
 
   /** Card surfaces (consumed by the glass panels/cards). Declared in
@@ -290,7 +289,7 @@
       `/opacity` modifier compiles to color-mix() and changes the computed value. AA-proven by
       admin-console.contrast.spec.ts. Rationale: docs/design/colour-literal-token-audit.md.
       --riv-danger-action-border is the Erase button's affordance boundary and is held to WCAG
-      1.4.11 (>=3:1 against the panel fill, all porcelain stops) — issue #834. --riv-danger-border
+      1.4.11 (>=3:1 against the panel fill, all porcelain stops). --riv-danger-border
       is a decorative container edge (the fill + heading already carry the panel's meaning) and is
       deliberately NOT held to that floor. */
   --riv-danger-ink: #8f2c22;
@@ -328,19 +327,17 @@
       at 1.52:1, against the 6.17:1 and 8.45:1 the fixed inks below reach. The same call, and the
       same failure, as --riv-form-error-* below (1.54:1).
 
-      The ink landed at #835 over fills that were still literals; #851 completes the family. Order
-      matters only for reading: fill and hover are the surfaces, the two inks sit on them, and the
-      two borders are non-text chrome (WCAG 1.4.11), carried here so the skin has ONE home. Those
-      borders are measured, not assumed exempt: 1.06:1 (neutral) and 1.90:1 (danger) over the fill,
-      neither clearing 3:1 — and the fill itself is only 1.02:1 against the card glass, so no layer
-      of this skin abuts its host at 3:1 in the light themes. Decorative under
+      Order matters only for reading: fill and hover are the surfaces, the two inks sit on them,
+      and the two borders are non-text chrome (WCAG 1.4.11), carried here so the skin has ONE home.
+      Those borders are measured, not assumed exempt: 1.06:1 (neutral) and 1.90:1 (danger) over the
+      fill, neither clearing 3:1 — and the fill itself is only 1.02:1 against the card glass, so no
+      layer of this skin abuts its host at 3:1 in the light themes. Decorative under
       docs/design/non-text-contrast.md rule 2: the two inks above carry the identity at 6.17:1 and
-      8.45:1. Same finding as --riv-accent-* above (~1.5:1); #851 carries the values across
-      unchanged.
+      8.45:1. Same finding as --riv-accent-* above (~1.5:1).
       Proof: solid-btn-tokens.contrast.spec.ts (the four AA pairs, the themed-ink bounds, and the
       single-declaration guard that is the only thing able to see a dark override) +
       solid-btn-token-skin.e2e.ts (the computed skin under a forced dark document theme).
-      Rationale: issues #835 + #851. */
+      Rationale: docs/design/colour-literal-token-audit.md § Class F. */
   --riv-solid-btn-ink: #0a4f5e;
   --riv-solid-btn-fill: #f4f6f7;
   --riv-solid-btn-hover: #e7ebec;
@@ -360,12 +357,13 @@
       to each other and move together; giving either a dark override reintroduces exactly that
       drift. Proof: form-error-tokens.contrast.spec.ts (the AA pair, the failing themed-ink bound,
       and the single-declaration guard) + form-error-token-skin.e2e.ts (the computed skin under a
-      forced dark document theme). Rationale: issue #850. */
+      forced dark document theme).
+      Rationale: docs/design/colour-literal-token-audit.md § Class F. */
   --riv-form-error-fill: #f6e8e7;
   --riv-form-error-ink: #a3160e;
 
-  /** The ten solid button/badge fills that carry FIXED WHITE INK (#854), across operator/ and the
-      two shared/ components. Grouped by FORM, not by value — three literals since #881, one job.
+  /** The ten solid button/badge fills that carry FIXED WHITE INK, across operator/ and the
+      two shared/ components. Grouped by FORM, not by value — three literals, one job.
 
       Theme-invariant BY DESIGN, for the reverse of --riv-solid-btn-* and --riv-form-error- above:
       there a fixed fill pinned its inks; here the INK is fixed (`text-white`, which cannot theme),
@@ -374,26 +372,24 @@
 
       Neither coincidental token is the answer, and both coincide exactly: --riv-error-ink IS
       #a3160e but is an INK and themes to #ffa9a1 (white on it, 1.84:1); --riv-pop-accent IS #0a6e85
-      but is the popover accent (#848) and themes to #7cd7e8 (1.65:1). No ink token: `text-white`
+      but is the popover accent and themes to #7cd7e8 (1.65:1). No ink token: `text-white`
       already cannot theme.
 
-      ONE brand teal (#861): -action and -brand had no role between them and merged onto #0a6e85.
-      #0a5f74 is retired as a FILL only — it still paints both --riv-cta-grad stops and the editor
-      selection rings. Its three booking/ ink positions became tokens at #858
-      (--riv-medallion-positive-ink ×2, --riv-step-active-ink), so the value survives there through
-      a declaration rather than a literal; the shared/ amenity ink went the same way. Do not re-darken this fill to #0a5f74: it sits
-      1.016:1 from -brand-hover, which erases the hover.
+      ONE brand teal: -action and -brand have no role between them, so both are #0a6e85.
+      #0a5f74 is not a FILL in this family — it paints the --riv-cta-grad end stop and the editor
+      selection rings, and as an ink it is reached through declarations
+      (--riv-medallion-positive-ink, --riv-step-active-ink, --riv-amenity-water-ink), never a
+      literal. Do not re-darken this fill to #0a5f74: it sits 1.016:1 from -brand-hover, which
+      erases the hover.
 
-      A fourth member, -warn (#881): the console's close-sales and weather-refund confirm buttons'
-      darkened amber, `#9a6410`, was left as a class-T literal by #879's own non-goals (that slice
-      only merged the amber TINT/fill/ink family, not this button fill) until `shared/confirm-panel`
-      adopted both surfaces and needed a tone matching them. Same shape as -brand/-danger — a solid
-      button fill under the family's fixed white ink — so it joins here rather than starting a new
-      family; role beats value, same call the family itself has made twice already.
+      A fourth member, -warn: `#9a6410`, the darkened amber of the console's close-sales and
+      weather-refund confirm buttons, the `warn` tone `shared/confirm-panel` gives both surfaces.
+      It is NOT the --riv-warn-* family below, which is the amber TINT/fill/ink advisory skin, not a
+      button fill. Same shape as -brand/-danger — a solid button fill under the family's fixed
+      white ink — so it belongs here rather than in a new family; role beats value.
       Proof: shared/solid-fill-tokens.contrast.spec.ts + solid-fill-token-skin.e2e.ts.
-      Rationale: the solid-fill teal merge, then the solid-fill token family, then
-      the console confirm-panel parity slice
-      (issue #881). */
+      Rationale: docs/design/colour-literal-token-audit.md § Class R (the family and its one brand
+      teal) and § Class T (-warn). */
   --riv-solid-fill-brand: #0a6e85;
   --riv-solid-fill-brand-hover: #0a5e72;
   --riv-solid-fill-danger: #a3160e;
@@ -492,17 +488,18 @@
       a tint follows the ink. */
   --riv-console-scrim: #061e28;
 
-  /** The console's SELECTION chrome (class O, #852): the set-editor's selected tier button and
-      armed-move panel, the layout editor's active tool. A fill and its boundary, migrated as one
+  /** The console's SELECTION chrome (class O): the set-editor's selected tier button and
+      armed-move panel, the layout editor's active tool. A fill and its boundary, tokenised as one
       because both live in the same selected/unselected class ternary — tokenising the fill alone
-      would leave a named utility beside a hex literal in one expression (#858's rule).
+      would leave a named utility beside a hex literal in one expression, and a class ternary is
+      tokenised whole.
 
       Its own pair, NOT a reuse of --riv-accent-fill/--riv-accent-strong, which carry exactly these
       two values. That family is the TOURIST accent tint — the info panel's edge, the segmented
       control's selected chip, the pay spinner's track — and `@theme inline` resolves a utility at
       the point of use, so reusing it would route the console's selection state through the
       variable the tourist tint family owns, with nothing scoping the two apart. Role before value:
-      the same fork #848, #858 and #864 each resolved this way.
+      the same fork the two --riv-console-*-ink tokens and the fixed-fill state skins resolve.
 
       --riv-select-edge also appears WITHOUT a modifier (the selected tier's 1.5px border), which is
       why it is a plain base colour rather than a pre-composed tint: rule B's form serves both. */
@@ -520,57 +517,47 @@
       fork, same answer, as the two --riv-console-*-ink tokens. */
   --riv-alert-tint: #a3160e;
 
-  /** The AMBER WARN family (#879) -- one skin for every amber advisory surface in the tree:
-      shared/confirm-panel's `alertdialog` (used by set-editor/layout-editor from the start, and --
-      since #881 -- by the console's Daily-view close-sales and Payouts weather-refund confirms too,
-      which used to hand-roll their own copy of this same skin), the Daily-view trigger button that
-      opens the first of those, the two legal pages' standing draft banner, and
+  /** The AMBER WARN family -- one skin for every amber advisory surface in the tree:
+      shared/confirm-panel's `alertdialog` (set-editor, layout-editor, and the console's Daily-view
+      close-sales and Payouts weather-refund confirms), the Daily-view trigger button that opens
+      the first of those, the two legal pages' standing draft banner, and
       booking/withheld-email-notice.
 
-      THREE families collapsed here, and one deliberately did not. --riv-warn-edge/-tint (class O,
-      #852) painted the console's two confirm panels at #d9861a/#f0aa2e; --riv-confirm-warn-* (class
-      O, #852) painted the shared component doing the SAME JOB in different markup;
-      --riv-notice-banner-* (class F-4, #868) painted the standing banners at #fcf0d9/#8a5410. The
-      first two were one role in two paints -- the console panels are hand-rolled twins of
-      confirm-panel -- and the third joined them because an amber advisory is one treatment
-      whichever surface carries it. --riv-premium-edge stayed OUT: it is a beach-map TIER identity
-      over a gold gradient, not a warning, and role beats value (the fork #848, #858 and #864 each
-      resolved the same way).
+      ONE role across three markups: the console's confirm panels, shared/confirm-panel doing the
+      SAME JOB, and the standing notice banners are one amber advisory treatment whichever surface
+      carries it, so they share this skin rather than a token family each. --riv-premium-edge
+      stays OUT: it is a beach-map TIER identity over a gold gradient, not a warning, and role
+      beats value (the same fork the --riv-console-*-ink tokens and the fixed-fill state skins
+      resolve).
 
-      These values rather than the notice banner's because they are the higher-contrast pair --
-      6.86:1 against 5.54:1 -- so every surface the merge moved, moved the safe way, and
-      confirm-panel itself did not move at all.
+      These values rather than the #fcf0d9/#8a5410 amber pair because they are the
+      higher-contrast pair -- 6.86:1 against 5.54:1.
 
-      THEME-INVARIANT, and note that the ARGUMENT changed hands. As a class-O token this rested on
-      "every consumer is a child of operator-console, whose host pins porcelain, so a dark branch is
-      unreachable". That ground is now FALSE -- the legal pages and the withheld-email notice are
-      tourist surfaces rendering under all three document themes. What holds instead is #868's, and
-      it is the stronger claim: the fill is FIXED, so a themed ink over it drifts
+      THEME-INVARIANT because the fill is FIXED, so a themed ink over it drifts
       (--riv-error-ink/--riv-danger-ink both resolve #ffa9a1 in dark, 1.63:1 over this fill). A
       fixed fill pins every ink on it, whichever theme the page is in. Declared ONCE, no dark
-      override.
+      override. Do NOT rest this on "every consumer sits inside operator-console": the legal pages
+      and the withheld-email notice are tourist surfaces rendering under all three document themes.
 
       Proof: shared/warn-token-skin.contrast.spec.ts (the AA pair, the beats-what-it-replaced
       comparison, the failing themed-ink bound, the retired-name sweep and the single-declaration
       guard that is the only thing able to see a later dark override) +
       e2e/warn-token-skin.e2e.ts (the computed skin under a forced dark document theme).
-      Rationale: docs/design/colour-literal-token-audit.md § Class O, issue #879. */
+      Rationale: docs/design/colour-literal-token-audit.md § Class O. */
   --riv-warn-edge: #e0a03a;
   --riv-warn-fill: #fff4e0;
   --riv-warn-ink: #7a4a08;
 
-  /** The Requests tab's ACCEPTED medallion (class O, #852). One base colour in three roles on one
+  /** The Requests tab's ACCEPTED medallion (class O). One base colour in three roles on one
       element -- border, fill and ink -- so it is one token and one expression: tokenising the two
       tinted positions and leaving the ink a literal would split an element's own colour in half. */
   --riv-positive-tint: #0e6e46;
 
-  /** The beach-map PREMIUM cell (class O, #852): its boundary, and the fill that boundary sits on.
+  /** The beach-map PREMIUM cell (class O): its boundary, and the fill that boundary sits on.
       The gradient is an image token because it is BYTE-IDENTICAL at both consumers -- the cell
       variant and the layout editor's tool swatch, which the code calls its mirror -- and one
-      declaration is the only thing that keeps a mirror mirroring. (#852 concluded its walk-in
-      sibling could NOT be one, because "those three gradients differ by alpha per site". #879
-      overturned that -- the difference per site was the bug, not the reason -- and the next block
-      is the resulting --riv-walkin-hatch.) */
+      declaration is the only thing that keeps a mirror mirroring. Its walk-in sibling is one too
+      (--riv-walkin-hatch, below): a per-site alpha difference is drift, not a reason. */
   --riv-premium-edge: #b47814;
   --riv-premium-grad: linear-gradient(180deg, #ffe3a3, #f4c05a);
   /** The numeral over the premium gradient — its own token because the card ink cannot serve
@@ -582,19 +569,17 @@
       white ink in every theme, one image token so no frame rebuilds it Declared once. */
   --riv-sea-grad: linear-gradient(180deg, #0e7a89, #0c6675);
 
-  /** The beach-map WALK-IN cell's hatch (#879). An image token for the same reason
-      --riv-premium-grad is one -- one declaration is the only thing that keeps a mirror mirroring
-      -- and #852 was wrong to conclude its walk-in sibling could not be one. That call rested on
-      "those three gradients differ by alpha per site", which was true and was the bug: the three
-      renderings of ONE thing were 30%/12% (the cell), 35%/12% (the layout editor's tool swatch,
-      under a comment calling it a mirror of the cell) and 28%/10% (the Daily view's tile and its
-      legend key). Rule B had no reason to notice -- each site was internally consistent, and the
-      drift only reads as drift once the three sit in one place.
+  /** The beach-map WALK-IN cell's hatch. An image token for the same reason --riv-premium-grad
+      is one -- one declaration is the only thing that keeps a mirror mirroring -- and ONE token
+      for the three renderings of one thing: the cell, the layout editor's tool swatch (a mirror of
+      the cell) and the Daily view's tile and its legend key. Differing alphas per site are drift
+      to fix, never a reason for per-site gradients: rule B cannot see it, because each site is
+      internally consistent, and the drift only reads as drift once the three sit in one place.
 
-      30%/10% are the ladder's values (#879): the dense band rounds down from 30/35/28, the light
-      one from 12/12/10. Proof: shared/class-o-tint-tokens.contrast.spec.ts (one declaration, and no
-      source rebuilding it inline) + the per-surface AA specs that composite over its darker band
-      (operator/daily-view-tab.contrast.spec.ts, operator/set-editor.contrast.spec.ts). */
+      30%/10% are the ladder's values: the dense band rounds down from the sites' 30/35/28, the
+      light one from 12/12/10. Proof: shared/class-o-tint-tokens.contrast.spec.ts (one declaration,
+      and no source rebuilding it inline) + the per-surface AA specs that composite over its darker
+      band (operator/daily-view-tab.contrast.spec.ts, operator/set-editor.contrast.spec.ts). */
   --riv-walkin-hatch: repeating-linear-gradient(
     45deg,
     color-mix(in oklab, var(--riv-console-tint) 30%, transparent) 0 3px,
@@ -654,12 +639,12 @@
   --riv-medallion-negative-ink: #a3372a;
   --riv-medallion-negative-border: #eecdc4;
 
-  /** The AMENITY CHIP's two variants (#858, class F-3) — shared/amenity-chip.ts's neutral amenity
+  /** The AMENITY CHIP's two variants (class F-3) — shared/amenity-chip.ts's neutral amenity
       tag and its accent "Xm to water" tag. Six positions, one component, one `computed()` ternary.
 
-      The ONLY positions #858 migrates that carry accessible text, and so the only ones owing an AA
-      assertion: 8.37:1 (tag) and 6.00:1 (water). Every other position in the slice is an
-      aria-hidden glyph.
+      The ONLY fixed-fill state-skin positions that carry accessible text, and so the only ones
+      owing an AA assertion: 8.37:1 (tag) and 6.00:1 (water). Every medallion and step-badge
+      position is an aria-hidden glyph.
 
       Theme-invariant BY DESIGN — the fills are fixed and `shared/` mounts this directive from hosts
       of DIFFERING themes (the light Discover card and the dark glass map header), which is exactly
@@ -667,21 +652,21 @@
       water fill, and --riv-card-ink resolves #f2f7fa at 1.04:1 over the tag fill. Neither is a
       hypothetical: the directive already renders in both places today.
 
-      BOTH variants, or neither. #858 enumerated only the water ink, but the two variants are the
-      same three roles in the same ternary, so migrating one would leave a named utility beside a hex
-      literal in one expression — the mis-cut the ticket exists to undo. This also retires the
-      audit's class-S row for this component: a two-variant tag is not the nine-state palette design
-      pass class S defers, it is class F's shape exactly.
+      BOTH variants, or neither: the two variants are the same three roles in the same ternary, so
+      tokenising one would leave a named utility beside a hex literal in one expression. Class F,
+      not class S: a two-variant tag is not the nine-state palette design pass class S defers, it is
+      class F's shape exactly.
 
       Named --riv-amenity-*, NOT --riv-chip-*: that prefix is already the shell chip's
-      (--riv-chip-bg, --riv-chip-border), and one hyphen apart is not a distinction — #864's own
-      naming argument. The borders are non-text chrome (WCAG 1.4.11), measured at 1.15:1 and 1.17:1
-      over their own fills — the same finding as --riv-solid-btn-*, decorative under
-      docs/design/non-text-contrast.md rule 2 (each tag's own label carries it).
+      (--riv-chip-bg, --riv-chip-border), and one hyphen apart is not a distinction — the same
+      naming argument as --riv-console-negative-ink's. The borders are non-text chrome (WCAG
+      1.4.11), measured at 1.15:1 and 1.17:1 over their own fills — the same finding as
+      --riv-solid-btn-*, decorative under docs/design/non-text-contrast.md rule 2 (each tag's own
+      label carries it).
       Proof: shared/fixed-fill-token-skins.contrast.spec.ts (the AA pairs, the themed-ink bounds and
       the single-declaration guard) + shared/amenities.contrast.spec.ts (the same pairs against the
       rendered chip, via testing/chip-fills.ts) + e2e/fixed-fill-state-skins.e2e.ts.
-      Rationale: issue #858. */
+      Rationale: docs/design/colour-literal-token-audit.md § Class F. */
   --riv-amenity-tag-ink: #2f4a54;
   --riv-amenity-tag-fill: #eef2f4;
   --riv-amenity-tag-border: #dbe4e7;
@@ -689,7 +674,7 @@
   --riv-amenity-water-fill: #d7eef4;
   --riv-amenity-water-border: #b9e0ea;
 
-  /** The booking dialog's STEP BADGE (#858, class F-3) — the decorative aria-hidden numeral in the
+  /** The booking dialog's STEP BADGE (class F-3) — the decorative aria-hidden numeral in the
       teal dialog header, active and idle. One `[class]` ternary, two states.
 
       TWO tokens for two states, not four, and the asymmetry is the design rather than an oversight:
@@ -704,12 +689,12 @@
       5.11:1 idle — a floor these values happen to clear, not a bar they are held to, since the badge
       is aria-hidden and the sibling `.step-label` carries the step's meaning.
 
-      This is the ONE file where a value the slice migrates as an ink is also painted in a role the
-      slice does not own: the header gradient's `#0a5f74` stop, which duplicates --riv-cta-grad and
-      is that token's question, not this one's. The guard matches roles rather than bare values here
-      for exactly that reason.
+      This is the ONE file where a value these tokens carry as an ink is also painted in a role they
+      do not own: the header gradient's `#0a5f74` stop, which duplicates --riv-cta-grad and is that
+      token's question, not this one's. The guard matches roles rather than bare values here for
+      exactly that reason.
       Proof: shared/fixed-fill-token-skins.contrast.spec.ts + e2e/fixed-fill-state-skins.e2e.ts.
-      Rationale: issue #858. */
+      Rationale: docs/design/colour-literal-token-audit.md § Class F. */
   --riv-step-active-ink: #0a5f74;
   --riv-step-idle-fill: #2c7789;
 
@@ -759,10 +744,10 @@
       --riv-danger-action-border, not decorative chrome like --riv-danger-border, and is
       held to the same WCAG 1.4.11 >=3:1 floor. It is --riv-back-ink tinted, at whatever
       alpha clears 3:1 against --riv-wash-hover in THIS theme (light: 0.6; not one shared
-      formula, the same per-theme tuning --riv-danger-action-border got at #834/#837).
+      formula, the same per-theme tuning as --riv-danger-action-border).
       Pre-composed rgba, like --riv-danger-*: a Tailwind `/opacity` modifier compiles to
       color-mix() and changes the computed value. Proof: booking-dialog.contrast.spec.ts's
-      "hover border marks the boundary at 3:1" test — issue #839. */
+      "hover border marks the boundary at 3:1" test. */
   --riv-wash-fill: rgba(255, 255, 255, 0.5);
   --riv-wash-border: rgba(255, 255, 255, 0.7);
   --riv-wash-hover: rgba(255, 255, 255, 0.75);
@@ -794,12 +779,12 @@
   --riv-map-chip-fill: rgba(255, 255, 255, 0.8);
   --riv-map-chip-border: #cfe3df;
   --riv-map-frame-border: rgba(12, 42, 51, 0.25);
-  /** The Fit/100% zoom toggle's pair (#870, class F): per-theme, like the rail/chip pairs above —
+  /** The Fit/100% zoom toggle's pair (class F): per-theme, like the rail/chip pairs above —
       not theme-invariant, because it is this WASH that themes, not a fixed fill. AA proof:
       shared/beach-map-canvas.contrast.spec.ts, over both wash families. The idle ink coincides
       with --riv-map-rail-ink in both themes — a different role (a toggle state, not a row-label
       chip), so its own token rather than the coincidental one, per colour-literal-token-audit.md
-      class R. Rationale: docs/design/colour-literal-token-audit.md, issue #870. */
+      class R. Rationale: docs/design/colour-literal-token-audit.md § Class F. */
   --riv-map-zoom-selected-fill: rgba(255, 255, 255, 0.8);
   --riv-map-zoom-selected-border: #0e7a89;
   --riv-map-zoom-selected-ink: #0a2a33;
@@ -845,7 +830,7 @@
       composites against the themed --riv-photo-grad beneath it and reads pale green. Declared
       once, no dark override: an opaque fill takes no colour from what it covers, so it needs none.
       Proof: shared/sun-token.contrast.spec.ts + e2e/sun-token.e2e.ts.
-      Rationale: docs/design/colour-literal-token-audit.md, issue #882. */
+      Rationale: docs/design/colour-literal-token-audit.md § The inline image gradients. */
   --riv-sun-grad: radial-gradient(
     circle at 38% 30%,
     #fff6da 0%,
@@ -853,23 +838,23 @@
     #f6b23f 76%,
     #e89a26 100%
   );
-  /** Slideshow chrome over an ARBITRARY uploaded photo (#704). The step chips and the dot rail
+  /** Slideshow chrome over an ARBITRARY uploaded photo. The step chips and the dot rail
       sit above the scrim, so they cannot borrow its backing — they carry their own, and both are
       proven at 3:1 (WCAG 1.4.11) over the worst case any photo can present (pure white AND pure
       black) by shared/photo-slideshow.contrast.spec.ts. --riv-photo-chrome backs the dot rail
       (a white dot on a pure-white photo is 1:1 without it); --riv-photo-chrome-edge draws the
-      step chip's boundary, which the earlier white --riv-card-border could not do over a light
-      photo. Theme-invariant on purpose: a photo is not themed. */
+      step chip's boundary, which the white --riv-card-border cannot do over a light photo.
+      Theme-invariant on purpose: a photo is not themed. */
   --riv-photo-chrome: rgba(13, 40, 40, 0.7);
   --riv-photo-chrome-edge: rgba(12, 42, 51, 0.6);
   /** 0.85 (design: 0.7): the chip backs the accent ink over ANY cover photo — a dark
       photo under a 0.7 white glass leaves the accent below AA; 0.85 clears it even over black.
-      Named for the Discover mode chip, which no longer wears it: #705 gave the mode chip an
-      opaque fill (shared/semantic-chip.ts), which needs no backing at all. The token stays for
-      the slideshow step chips on both hosts, which is now its whole population — rename it only
-      together with those call sites and its test-side mirror, testing/glass-tokens.ts, which is
-      where the value is copied (shared/photo-slideshow.contrast.spec.ts imports it from there,
-      and is the one spec left doing so). */
+      Named for the Discover mode chip, which does not wear it: the mode chip has an opaque fill
+      (shared/semantic-chip.ts), which needs no backing at all. The slideshow step chips on both
+      hosts are the token's whole population — rename it only together with those call sites and
+      its test-side mirror, testing/glass-tokens.ts, which is where the value is copied
+      (shared/photo-slideshow.contrast.spec.ts imports it from there, and is the one spec that
+      does so). */
   --riv-mode-chip-glass: rgba(255, 255, 255, 0.85);
 
   /** booking-view's status-banner prose. Theme-invariant: all six banner fills are fixed, so a
@@ -1015,7 +1000,7 @@
   --riv-wash-border: rgba(255, 255, 255, 0.28);
   --riv-wash-hover: rgba(255, 255, 255, 0.16);
   --riv-panel-wash-hover: rgba(255, 255, 255, 0.16);
-  /* This theme's own --riv-back-ink (#b7dfe9), tuned to clear 3:1 here — issue #839. */
+  /* This theme's own --riv-back-ink (#b7dfe9), tuned to clear 3:1 here. */
   --riv-wash-hover-border: rgba(183, 223, 233, 0.55);
   --riv-inset-fill: rgba(255, 255, 255, 0.08);
   --riv-dialog-glass: rgba(16, 26, 46, 0.94);

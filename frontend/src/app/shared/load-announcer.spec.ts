@@ -32,7 +32,7 @@ describe('LoadAnnouncer', () => {
   }
 
   it('keeps the SAME element across loading → loaded, so the text is a mutation of a region already in the DOM', () => {
-    // Identity across the transition is the mechanism — and all jsdom can prove (#741).
+    // Identity across the transition is the mechanism — and all jsdom can prove.
     const { fixture, cmp, region, spoken } = mount();
     const whileLoading = region();
     expect(spoken(whileLoading)).toBe('Loading venues…');
@@ -46,7 +46,7 @@ describe('LoadAnnouncer', () => {
   });
 
   it('says nothing on any exit the call site did not call ready — "not loading" is not "loaded"', () => {
-    // Fail-safe: an exit nobody described is silent, not a lie (the three #741's review caught).
+    // Fail-safe: an exit nobody described is silent, not a lie.
     const { fixture, cmp, region, spoken } = mount();
 
     cmp.loading.set(false);

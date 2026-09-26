@@ -230,7 +230,7 @@ export class RequestsTab {
     call.subscribe({
       next: (decision) => {
         if (this.epoch !== epoch) {
-          return; // a venue switch superseded this decision's UI state (#180)
+          return; // a venue switch superseded this decision's UI state
         }
         this.stopDeciding(bookingId);
         this.closeDeclineConfirm(bookingId);
@@ -243,7 +243,7 @@ export class RequestsTab {
       },
       error: (e: unknown) => {
         if (this.epoch === epoch) {
-          this.onDecisionError(bookingId, action, e); // skip if a venue switch superseded it (#180)
+          this.onDecisionError(bookingId, action, e); // skip if a venue switch superseded it
         }
       },
     });
@@ -318,7 +318,7 @@ export class RequestsTab {
     this.venueMap.load(venueId, todayBookingDate(new Date())).subscribe({
       next: (v) => {
         if (this.epoch === epoch) {
-          this.venue.set(v); // a superseded venue's labels never dress the new venue's queue (#180)
+          this.venue.set(v); // a superseded venue's labels never dress the new venue's queue
         }
       },
       error: () => {
@@ -350,7 +350,7 @@ export class RequestsTab {
     this.console.pendingRequests(venueId).subscribe({
       next: (r) => {
         if (this.epoch !== epoch) {
-          return; // a venue switch superseded this read — never seed the new venue's queue/badge (#180)
+          return; // a venue switch superseded this read — never seed the new venue's queue/badge
         }
         const landing = this.landingIfFocusLeaves(r);
         this.requests.set(r);
@@ -365,7 +365,7 @@ export class RequestsTab {
       },
       error: (e: unknown) => {
         if (this.epoch !== epoch) {
-          return; // a venue switch superseded this read (#180)
+          return; // a venue switch superseded this read
         }
         if (initial) {
           this.loadError.set(true);

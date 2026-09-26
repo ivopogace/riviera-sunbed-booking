@@ -46,10 +46,10 @@ describe('SemanticChip', () => {
   });
 
   it('the fill is opaque, so no cover photo can reach the ink', () => {
-    // The Discover mode chip sits over an arbitrary uploaded photo. An rgba fill would put that photo back into the contrast argument the opaque fill exists to end (#705).
+    // The Discover mode chip sits over an arbitrary uploaded photo. An rgba fill would put that photo back into the contrast argument the opaque fill exists to end.
     const backgrounds = [...chip().classList].filter((name) => name.startsWith('bg-'));
     expect(backgrounds).toEqual([FILL_CLASS]);
-    // Since #854 the class names a token, so opacity could arrive two ways: a `/60` modifier on the utility, or an rgba value behind it. Both are shut, and the token's own value is pinned to tailwind.css by solid-fill-tokens.contrast.spec.ts.
+    // The class names a token, so opacity could arrive two ways: a `/60` modifier on the utility, or an rgba value behind it. Both are shut, and the token's own value is pinned to tailwind.css by solid-fill-tokens.contrast.spec.ts.
     expect(FILL_CLASS).not.toContain('/');
     expect(SEMANTIC_CHIP.fill).toMatch(/^#[0-9a-f]{6}$/);
   });
@@ -61,7 +61,7 @@ describe('SemanticChip', () => {
   });
 
   it('carries no geometry, so each call site keeps its own box', () => {
-    // The call sites differ in padding, font size and positioning (enumerated in the directive); the directive owning any of them would move a box and break the no-layout-shift criterion of #705.
+    // The call sites differ in padding, font size and positioning (enumerated in the directive); the directive owning any of them would move a box and break the chip's no-layout-shift criterion.
     const emitted = [...chip().classList];
     expect(emitted).not.toContain('inline-flex');
     expect(emitted.filter((name) => /^(p|m)[xytrbl]?-/.test(name))).toEqual([]);

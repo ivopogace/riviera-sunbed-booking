@@ -56,7 +56,7 @@ class RegistryMailExecutorConfig {
 		pool.setQueueCapacity(props.queueCapacity());
 		pool.setThreadNamePrefix(THREAD_NAME_PREFIX);
 		pool.setRejectedExecutionHandler(saturation);
-		// Composed, never replaced: the pool has one decorator slot and two decorators need it (#410).
+		// Composed, never replaced: the pool has one decorator slot and two decorators need it.
 		pool.setTaskDecorator(new CompositeTaskDecorator(List.of(saturation, new MdcTaskDecorator())));
 		// One socket operation's grace for sends already in flight; whatever does not finish stays outstanding.
 		pool.setWaitForTasksToCompleteOnShutdown(true);

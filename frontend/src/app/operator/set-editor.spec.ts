@@ -252,7 +252,7 @@ describe('SetEditor (#600)', () => {
         n.textContent?.trim(),
       );
 
-    // The bulk editor’s posture (#674 F-2): every row is its own zone, chipped per row.
+    // The bulk editor’s posture: every row is its own zone, chipped per row.
     expect(prices()).toEqual(['€35', '€20']);
 
     click(byId('set-add-row'));
@@ -944,7 +944,7 @@ describe('SetEditor (#600)', () => {
     render([], false);
 
     const loading = byId('set-loading');
-    // It used to be the live region itself — born holding its text, so never announced (#741).
+    // Not the live region: a region born holding its text is never announced.
     expect(loading.getAttribute('aria-live')).toBeNull();
     expect(loading.getAttribute('aria-hidden')).toBe('true');
     expect(byId('set-skeleton').getAttribute('aria-hidden')).toBe('true');
@@ -989,7 +989,7 @@ describe('SetEditor (#600)', () => {
     expect(byId('set-panel-empty').textContent).toContain('Pick a set on the map');
   });
 
-  // ---- Batch select (#714) ----
+  // ---- Batch select ----
 
   /**
    * Mimics a real browser's own gesture: mousedown → mouseenter → mouseup. A genuine cross-cell

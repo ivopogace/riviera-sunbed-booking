@@ -315,7 +315,7 @@ describe('VenueMap', () => {
     expect(loading.querySelector('[data-testid="map-skeleton-header"]')).not.toBeNull();
     expect(loading.querySelector('[data-testid="map-skeleton-overview"]')).not.toBeNull();
     expect(loading.querySelectorAll('[data-testid="map-skeleton-tile"]').length).toBeGreaterThan(0);
-    // The sentence the skeleton replaces; a mirrored shape says it without a reflow (#744).
+    // The sentence the skeleton replaces; a mirrored shape says it without a reflow.
     expect(loading.textContent).not.toContain('Loading the beach map');
 
     flushVenue();
@@ -412,7 +412,7 @@ describe('VenueMap', () => {
     await settle();
 
     const sun = el().querySelector('[data-testid="map-banner-empty"]')!;
-    // #704's every-stop-opaque rule moved to the token, covering all three consumers at once.
+    // The every-stop-opaque rule lives in the token, covering all three consumers at once.
     expect(sun.className).toContain('bg-(image:--riv-sun-grad)');
     expect(sun.className).toContain('min-[1024px]:size-[96px]');
   });
@@ -664,7 +664,7 @@ describe('VenueMap', () => {
   it('marks the premium front row and the taken sets distinctly', async () => {
     flushVenue();
     await settle();
-    // A taken front-row set is a ghost, not a premium tile: the 6 split 4 + 2 (#701).
+    // A taken front-row set is a ghost, not a premium tile: the 6 split 4 + 2.
     expect(el().querySelectorAll('.set-tile.premium').length).toBe(4);
     expect(el().querySelectorAll('.set-tile.taken').length).toBe(6); // 18 of 24 free
   });
@@ -812,7 +812,7 @@ describe('VenueMap', () => {
     await settle();
 
     const header = el().querySelector('header')!;
-    // The same two platform claims as the Discover card, wearing the same pill — that parity is the point of #705.
+    // The same two platform claims as the Discover card, wearing the same pill — that parity is the point.
     const semantic = [...header.querySelectorAll('.semantic-chip')].map((chip) =>
       chip.textContent?.trim(),
     );
@@ -839,7 +839,7 @@ describe('VenueMap', () => {
     expect(inner.classList.contains('max-w-12')).toBe(true);
     expect(inner.classList.contains('sm:max-w-[96px]')).toBe(true);
     expect(inner.textContent?.trim()).toBe('Front row · Sea view');
-    // Below the cap the rail still reserves what the skeleton drew, so a short-labelled venue does not slide either (#749).
+    // Below the cap the rail still reserves what the skeleton drew, so a short-labelled venue does not slide either.
     const column = inner.closest('[data-testid="row-code"]')!.parentElement!.parentElement!;
     expect(column.classList.contains('min-w-[54px]')).toBe(true);
   });
@@ -952,7 +952,7 @@ describe('VenueMap', () => {
     await settle();
     // A opens the map (no gap), B opens the €35 zone, C continues it, D opens the €25 zone.
     const zoneGaps = [false, true, false, true];
-    // The gap sits on the canvas-owned row wrapper around each projected ul.set-row (#672 slice 2).
+    // The gap sits on the canvas-owned row wrapper around each projected ul.set-row.
     const tileRows = [...el().querySelectorAll('[data-map-row]')];
     expect(tileRows.length).toBe(4);
     expect(tileRows.map((r) => r.classList.contains('mt-3'))).toEqual(zoneGaps);
@@ -1106,7 +1106,7 @@ describe('VenueMap', () => {
     expect(noteText(note)).toBe(
       'Book any day, today included — online sales for today close at 4 PM at this venue.',
     );
-    // The reviewable NBSP entity (#734 F-7): "4 PM" is one unbreakable token.
+    // The reviewable NBSP entity: "4 PM" is one unbreakable token.
     expect(note.textContent).toContain('4\u00a0PM');
     expect(note.querySelector('svg')?.getAttribute('aria-hidden')).toBe('true');
     // Class pin (jsdom computes no Tailwind): the map keeps the bare header-glass ink.
@@ -1132,7 +1132,7 @@ describe('VenueMap', () => {
     fixture.detectChanges();
     const advanceOnly = 'This venue sells in advance only — book for tomorrow onward.';
     expect(noteText(el().querySelector('[data-testid="sales-close-note"]')!)).toBe(advanceOnly);
-    // Today is closed for a 00:01 venue — the #793 alert coexists with the standing note.
+    // Today is closed for a 00:01 venue — the sales-closed alert coexists with the standing note.
     expect(el().querySelector('[data-testid="map-sales-closed"]')).not.toBeNull();
 
     // Tomorrow: the note keeps the same wording and the map is bookable (regression, AC-3).

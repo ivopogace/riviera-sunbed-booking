@@ -153,7 +153,7 @@ class RespondToRequestService implements RespondToRequest {
 	 */
 	private void announcePaymentDue(AcceptedRequest accepted) {
 		try {
-			// Birth-keyed disclosure (#795): classified from created_at, never the accept instant.
+			// Birth-keyed disclosure: classified from created_at, never the accept instant.
 			var birth = cancellationPolicy.windowAtBirth(accepted.setId(), accepted.bookingDate(),
 					accepted.createdAt());
 			paymentDue.announce(new BookingPaymentDue(new BookingId(accepted.bookingId()),
