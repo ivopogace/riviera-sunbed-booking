@@ -12,6 +12,7 @@ import ai.riviera.platform.venue.vocabulary.SetBookingInfo;
 import ai.riviera.platform.venue.vocabulary.SetId;
 import ai.riviera.platform.venue.vocabulary.SetSpot;
 import ai.riviera.platform.venue.vocabulary.VenueId;
+import ai.riviera.platform.venue.vocabulary.VenueStayFacts;
 
 /**
  * The exempt port's adapter: it implements {@link SetBookingFacts} and reads the bare table, because
@@ -54,5 +55,10 @@ final class FixtureSetFacts implements SetBookingFacts {
 	@Override
 	public List<SetSpot> freeOnlineSetsOn(VenueId venueId, LocalDate date) {
 		return List.of();
+	}
+
+	@Override
+	public Map<VenueId, VenueStayFacts> stayFactsOf(Collection<VenueId> venueIds) {
+		return Map.of();
 	}
 }

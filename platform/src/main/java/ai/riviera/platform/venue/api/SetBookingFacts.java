@@ -11,6 +11,7 @@ import ai.riviera.platform.venue.vocabulary.SetBookingInfo;
 import ai.riviera.platform.venue.vocabulary.SetId;
 import ai.riviera.platform.venue.vocabulary.SetSpot;
 import ai.riviera.platform.venue.vocabulary.VenueId;
+import ai.riviera.platform.venue.vocabulary.VenueStayFacts;
 
 /**
  * The {@code venue} module's published set-facts port (invariant #11) for {@code booking} and
@@ -47,6 +48,13 @@ public interface SetBookingFacts {
 	 * active map: a retired set is not a spot.
 	 */
 	List<SetSpot> activeSetsOf(VenueId venueId);
+
+	/**
+	 * Batch of each venue's active online sets and maximum stay in one query, keyed by id; unknown ids
+	 * are absent, empty in gives empty out. No default implementation on purpose: a defaulted per-venue
+	 * loop would be a coast-wide N+1.
+	 */
+	Map<VenueId, VenueStayFacts> stayFactsOf(Collection<VenueId> venueIds);
 
 	/**
 	 * The venue's active {@code ONLINE}-pool sets with no availability row on {@code date} — the

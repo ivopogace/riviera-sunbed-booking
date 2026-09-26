@@ -151,7 +151,7 @@ The `GET /api/venues` mapping moves from `venue/adapter/in/VenueReadController` 
 | R-2 | Cycle: `venue` must not depend on `itinerary` | Low | High | `itinerary` calls `venue::api`; nothing in `venue` imports `itinerary`; `ModularityTests` fails a cycle | me | open |
 | R-3 | `venue::spi` grant leaks to the new module | Low | High | The new read is `availability.api.SetAvailabilityFacts`; `itinerary` never lists `venue::spi` | me | open |
 | R-4 | `ResponsibilitiesArchitectureTests` rule 1: `set_availability` named outside `availability` | Low | High | `itinerary` has no SQL at all; its adapter is a controller only | me | open |
-| R-5 | Jackson `@JsonUnwrapped` on a record component may not flatten the summary | Med | Low | Spike in phase 1c; fallback is an explicit `DiscoveryVenueView` record mirroring `VenueSummaryView`'s 17 fields with a static `of(summary, verdict)` | me | open |
+| R-5 | Jackson `@JsonUnwrapped` on a record component may not flatten the summary | Med | Low | Spike in phase 1c; fallback is an explicit `DiscoveryVenueView` record mirroring `VenueSummaryView`'s 17 fields with a static `of(summary, verdict)` | me | closed — `booking/adapter/in/AwaitingPaymentView` already unwraps a record component on the wire |
 | R-6 | Calendar promotion breaks the venue page (focus, counts, ceiling) | Med | Med | `git mv`, the 729-line spec moves with it and stays green; `availability-calendar.e2e.ts` untouched | me | open |
 | R-7 | Contrast: a hollow pin over map imagery | Med | Med | Hollow = inverse token pair (`--riv-solid-btn-fill` ring + ink on the pin's own fill), never transparent; `venue-pin-layer.contrast.spec.ts` measures both variants per theme | me | open |
 | R-8 | Fading can't-host cards drops the name under 3:1 (`venue-row.ts` rule) | High if faded | Med | The issue's "faded" is rendered as the existing dusk skin (`saturate-0`) plus the verdict line; no opacity on text | me | open |
@@ -159,6 +159,7 @@ The `GET /api/venues` mapping moves from `venue/adapter/in/VenueReadController` 
 | R-10 | BOLA (#13) | None | — | Public tourist read; no venue-scoped write; nothing owner-asserted is exposed (`SetBookingFacts` answers ids only; hold type never leaves `availability`) | me | n/a |
 | R-11 | Sonar duplication between the moved `listVenues` and its new home | Low | Low | The mapping is deleted from `VenueReadController`, not copied | me | open |
 | R-12 | Error contract: a new 400 detail | Low | Low | Reuses `InvalidApiRequestException.parsing(StaySpan.of)` exactly as the map read does; no new code | me | open |
+| R-13 | `VenueApiRoleSplitTests` forbids any class outside `venue` from depending on `VenueCatalog`, which the itinerary controller must call for the fenced list | Certain | Med | The rule's intent is "no sibling-facing method regrows on the tourist port"; the read model is the tourist-read composer B4 names, so the test admits `itinerary..` as a second consumer and its Javadoc says why. Stated in the PR | me | open |
 
 ## Open questions / Assumptions
 
@@ -266,15 +267,15 @@ N/A — no payment in scope. Prices on the list stay per day (`fromPrice`), unch
 
 ## Execution status
 
-**Stage pointer:** `implement (phase 1b)`
+**Stage pointer:** `implement (phase 1c)`
 
-**Next action:** write `StayVerdictsIT` red over the two new ports.
+**Next action:** write `DiscoveryListControllerIT` red, then move the list mapping.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — plan doc + branch | ✅ | |
 | 1a — `itinerary/domain` stay-fit rule | ✅ | phase 1a commit |
-| 1b — ports + `StayVerdicts` service + module + structural net | | |
+| 1b — ports + `StayVerdicts` service + module + structural net | ✅ | phase 1b commit |
 | 1c — `DiscoveryListController` takes over `GET /api/venues` | | |
 | 1d — cost measurement | | |
 | 2a — calendar promoted to `shared/` | | |
@@ -439,6 +440,7 @@ To be filled from `CoastVerdictCostIT`'s output before merge: shape, rows, media
 
 | Date | Trigger | Population (mechanism + how enumerated) | Search command | Sites found | Action |
 |---|---|---|---|---|---|
+| 2026-09-26 | `SetBookingFacts` gained `stayFactsOf` | every test double implementing the port | `grep -rln "implements SetBookingFacts\|new SetBookingFacts()" platform/src/test` (compile also lists them) | `WebSliceStubs`, `CreateBookingServiceTest.FakeCatalog`, `retirefixture…FixtureSetFacts` | each answers `Map.of()`; no `@ApplicationModuleTest` needs a stub, the adapters only grew |
 
 ---
 
