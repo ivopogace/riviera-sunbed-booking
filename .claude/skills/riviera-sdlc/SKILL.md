@@ -12,12 +12,6 @@ Stage procedures live in `references/`.
 
 ## The loop
 
-```
-refine → issue → plan → implement → CI gate → PR → review → sonar gate → merge
-                          ▲                                              │
-                          └──── findings re-enter (review AND sonar) ────┘
-```
-
 **Re-entry rule.** A fix that changes behaviour re-enters at Implement: test-first, CI green, and
 a re-review of the changed surface. A comment, naming or test-only fix needs only green CI.
 
