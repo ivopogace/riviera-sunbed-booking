@@ -5,16 +5,11 @@ import { BusyAction } from '../shared/busy-action';
 import { TouchTarget } from '../shared/touch-target';
 
 /**
- * The recover-and-reload banner for a `409 STALE_WRITE` optimistic-concurrency loss, shared
- * across the venue, layout and pricing tabs. The <em>banner</em> is shared; the per-surface
- * recovery semantics are not — the layout editor keeps
- * the painted grid, the pricing tab reverts the row — so consumers project their own message,
- * react to {@link reload}, and keep their own state. The host element IS the amber alert surface
- * (`role="alert"` + the container classes), so a consumer's `data-testid` and margin utility land
- * on the banner itself and existing spec hooks keep working. An optional `[bannerFooter]` slot
- * after the button hosts surface-specific follow-ups (the layout editor's reload-failed hint);
- * conditional footer content reaches it via `ngProjectAs="[bannerFooter]"` on an `ng-container`,
- * the documented alias for projecting `@if`-guarded content into a named slot.
+ * The recover-and-reload banner for a `409 STALE_WRITE` loss, shared by the venue, layout and
+ * pricing tabs. Recovery is per-surface: consumers project their message, react to {@link reload}
+ * and keep their own state. The host IS the `role="alert"` surface, so a consumer's `data-testid`
+ * and margin land on the banner. An optional `[bannerFooter]` slot follows the button;
+ * `@if`-guarded content reaches it only via `ngProjectAs="[bannerFooter]"` on an `ng-container`.
  */
 @Component({
   selector: 'app-stale-write-banner',

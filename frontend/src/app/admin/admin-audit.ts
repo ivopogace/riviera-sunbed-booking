@@ -15,18 +15,12 @@ import { formatMoment } from './admin-moment';
 import { AdminAuditEntryView } from './admin.model';
 
 /**
- * The admin console's Audit tab — the accountability record ADR-0013 requires: who did what,
- * to what, when, and (when offered) on what grounds, for every mutating `/api/admin/**` action that
- * reached past the security gate. Until this surface the trail was API/DB-readable only.
+ * The admin console's Audit tab — the ADR-0013 accountability record: who did what, to what, when
+ * and (when offered) on what grounds, for every mutating `/api/admin/**` action past the gate.
  *
- * <p><strong>A recent-actions view, deliberately.</strong> The backend serves the latest window,
- * newest first; there is no search, filter or paging at Phase 1 — an investigation needing more
- * queries the table. Failed attempts (4xx rows) render like successes with their status, because a
- * refused destructive attempt is exactly the kind of row an audit reader is looking for.
- *
- * <p>Like every admin tab, the surrounding {@code AdminConsole} shell self-gates on
- * {@link OperatorAuth} for UX while the backend `/api/admin/**` role gate does the enforcing; this
- * component only ever renders once both have passed.
+ * <p>A recent-actions view: newest first, no search, filter or paging. Failed attempts (4xx rows)
+ * render like successes with their status (Rationale: RESPONSIBILITIES.md §audit). The
+ * {@code AdminConsole} shell self-gates on {@link OperatorAuth} for UX; the backend enforces.
  */
 @Component({
   selector: 'app-admin-audit',
@@ -140,10 +134,8 @@ export class AdminAudit {
   }
 
   /**
-   * Retry from the error banner. A successful retry destroys the banner — and the Retry button the
-   * user just activated — so focus is parked on the card that replaces it (WCAG 2.4.3, the recurring
-   * stranded-focus class, same cure as the Photos tab's confirmation swaps). The
-   * initial automatic load never moves focus: only a user-initiated retry does.
+   * Retry from the error banner. Success destroys the banner and its Retry button, so focus is
+   * parked on the card that replaces it (WCAG 2.4.3); the initial automatic load never moves focus.
    */
   protected async retry(): Promise<void> {
     await this.load();

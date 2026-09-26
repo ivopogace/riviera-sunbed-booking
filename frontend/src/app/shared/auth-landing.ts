@@ -14,12 +14,9 @@ export interface LandingVenue {
 }
 
 /**
- * Validate a `returnUrl` before trusting it. It arrives from a query param, so it is
- * attacker-controllable: without this an emailed `/account/sign-in?returnUrl=https://evil.example`
- * would bounce the user to another origin *after* they authenticate — a textbook open redirect.
- *
- * Only an in-app absolute path is accepted: it must start with a single `/` and must not begin with
- * `//` or `/\`, both of which browsers resolve as protocol-relative URLs to another host.
+ * Validate an attacker-controllable `returnUrl` query param; trusting it raw is an open redirect
+ * after sign-in. Returns it only if an in-app absolute path (a single leading `/`, never `//` or
+ * `/\`, which browsers resolve as protocol-relative URLs to another host), else `undefined`.
  */
 export function safeReturnUrl(returnUrl: string | undefined): string | undefined {
   const candidate = returnUrl?.trim();
@@ -33,10 +30,9 @@ export function safeReturnUrl(returnUrl: string | undefined): string | undefined
 }
 
 /**
- * The route a signed-in **operator** lands on: an explicit (safe) `returnUrl` wins over everything —
- * it is the page they were trying to reach — otherwise the owned-venue count decides. Exactly one
- * venue skips the picker entirely; several render the picker at `/operator`; none also lands on
- * `/operator`, whose zero state renders the create-venue form inline.
+ * The route a signed-in **operator** lands on: a safe `returnUrl` wins; otherwise exactly one owned
+ * venue skips the picker (`/operator/{id}`), while several or none land on `/operator` (the picker,
+ * or the zero state's inline create-venue form).
  */
 export function landingRouteFor(
   venues: readonly LandingVenue[],

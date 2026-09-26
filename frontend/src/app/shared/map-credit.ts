@@ -16,18 +16,12 @@ export const FOOT_CREDIT_PLACEMENT = `left-3 ${FOOT_CREDIT_BOX}`;
 export const FOOT_CREDIT_PLACEMENT_SWAPPED = `right-3 ${FOOT_CREDIT_BOX}`;
 
 /**
- * The tiles' licence credits (OpenMapTiles CC-BY, OSM ODbL) — ADR-0022 decision 6 — as the pill
- * every map state carries, and the poster carries in the live map's place: "© OpenMapTiles ©
- * OpenStreetMap contributors", each name a link to its licence page, in the theme-invariant
- * solid-button pair because it sits on imagery. 13 px radius: a full pill on one line, still
- * rounded when it wraps.
- *
- * <p>It covers whatever sits under it, and stays that way: `pointer-events-none` would read a
- * press on the pill as a press on the map, which places a pin in the operator console. The
- * consumer places it (`placement`: position, padding and leading together, since two utilities
- * for one property resolve by stylesheet order) and may lift it (`bottom`); a consumer that hides
- * the map from assistive technology takes the links out of the tab order, since focusable
- * content inside `aria-hidden` is a stop on nothing.
+ * The tiles' licence credits (OpenMapTiles CC-BY, OSM ODbL; ADR-0022 decision 6) as the pill every
+ * map state, and the poster, carries, each name linking its licence; theme-invariant solid-button
+ * pair on imagery. Never `pointer-events-none`: a press through it would place an operator pin.
+ * The consumer sets `placement` (position, padding, leading together — split utilities resolve by
+ * stylesheet order), may lift it (`bottom`), and clears `linksFocusable` when it hides the map from
+ * assistive technology (focusable content inside `aria-hidden` is a stop on nothing).
  */
 @Component({
   selector: 'app-map-credit',

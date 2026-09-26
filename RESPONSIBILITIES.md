@@ -1605,6 +1605,13 @@ this section holds only the reasons a later edit could otherwise undo.
   cookie on the first API response, which on a cold browser is the startup `GET /api/auth/me`. The
   verify-email landing posts its token on load; without the wait it races that restore to a `403`
   and shows a valid token as invalid.
+- **The XSRF echo is hand-rolled** (`core/api-session.interceptor.ts`). Angular's
+  `withXsrfConfiguration` skips absolute URLs, and dev's `apiBaseUrl` is the absolute
+  `http://localhost:8080`: the `:4200` dev server calls the backend cross-origin, through the `dev`
+  profile's CORS allowlist and no proxy. `document.cookie` still yields `XSRF-TOKEN` there, because
+  a cookie is scoped to its host, never its port, and `:4200` and `:8080` are one site to
+  `SameSite=Lax`. Deployed, the backend serves the SPA same-origin (ADR-0004), so the cookie is
+  first-party outright.
 - **The desktop panel's venue row is flat.** No card edge and no shadow: page, panel and card as
   three nested rounded surfaces read as a template (`pages/home/venue-row.ts`).
 - **The selected row names the booking mode only when it is the exception.** `Request to Book` is
@@ -1633,6 +1640,16 @@ this section holds only the reasons a later edit could otherwise undo.
   Such a surface destroys the element just activated, stranding focus on `<body>` (WCAG 2.4.3). The
   target rarely exists yet when the transition is decided, so the lookup runs in `earlyRead` and the
   `focus()` in `write`.
+- **The venue console lands on the Daily view** (`VENUE_CONSOLE_LANDING_TAB`). It is what a
+  trading venue opens every day; the set-up tabs are deliberate destinations, reached from the rail
+  or deep-linked. A freshly created venue is the one exception: `operator/venue-create-card.ts`
+  sends it straight to `beach-map`, since it has no map to run a day on yet.
+- **The admin tabs load with a plain `HttpClient` call, never `httpResource`.** A tab fires its
+  first read from an `effect` once the session is confirmed (restore settled, `ROLE_ADMIN` present)
+  and owns its loading line, error card and Retry. `httpResource` fetches eagerly and throws on
+  `value()` in its error state, the opposite of that gated, error-carded shape. The moderation tabs
+  gate the venue list the same way (`admin/moderation-venue-picker.ts`); the action-only tabs read
+  nothing on open.
 
 ## Invariants, long form
 

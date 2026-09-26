@@ -40,16 +40,12 @@ interface PriceRow {
 }
 
 /**
- * The Pricing tab — one full-day EUR price input per beach-map <strong>row</strong>,
- * applied to every set in that row, with a live "projected full-day take if every online set sells" figure.
+ * The Pricing tab — one full-day EUR price input per beach-map <strong>row</strong>, applied to
+ * every set in that row, with a live projected full-day take summing only ONLINE-pool sets.
  *
- * <p>Reads the current layout from the shared public-map snapshot ({@code ConsoleVenueMap}) and groups
- * sets by row label. Committing a row's € input (on {@code change}) converts the euros to
- * <strong>integer minor units at the edge</strong> (invariant #5 — no float in state or on the wire) and
- * PUTs a non-destructive per-row reprice; the projection sums only ONLINE-pool sets. An empty/cleared
- * field is ignored (never a €0 reprice). The write is owner-asserted server-side (invariant #13); a
- * failure reverts only that row's optimistic price and shows operator-facing copy. Always porcelain
- * (inherited from the console shell); glass via {@link CardGlass}; money display via {@link formatMoney}.
+ * <p>Committing a row's € input (on {@code change}) converts to <strong>integer minor units at the
+ * edge</strong> (invariant #5) and PUTs a per-row reprice, owner-asserted server-side (#13). An
+ * empty/cleared field is ignored (never a €0 reprice); a failure reverts only that row's price.
  */
 @Component({
   selector: 'app-pricing-tab',
@@ -74,10 +70,9 @@ export class PricingTab {
   /** True when the initial venue read failed — shows an error (not a false "no sets" empty state). */
   protected readonly loadError = signal(false);
 
-  /** True while a reprice PUT is in flight. The single shared `set_version` token cannot admit two
-   *  concurrent reprices (the second would false-conflict), so a save serializes edits: the row inputs
-   *  go **`readonly`** — not `disabled`, which would blur the field the commit came from — and a
-   *  `change` that slips through anyway is ignored. Why: RV-FE-9 in `riviera-review-overlay`. */
+  /** True while a reprice PUT is in flight; serializes edits, as the one `set_version` token
+   *  would false-conflict a concurrent reprice. Inputs go `readonly`, never `disabled` (blurs the
+   *  committing field); a `change` that slips through is ignored. Why: RV-FE-9. */
   protected readonly saving = signal(false);
   /** The last row saved — sequential edits, per-row so a fail is scoped. Derived so it can never
    *  outlive the venue it names: every venue switch empties it. */
@@ -143,10 +138,9 @@ export class PricingTab {
   }
 
   /**
-   * Drop every venue-scoped row and flag, so nothing from the previous venue leaks into the next
-   * context — another venue, or no venue at all. `rows` is computed off `sets`, and the template's
-   * first branch renders whenever `rows` is non-empty, so leaving `sets` alone here would keep the
-   * previous venue's prices on screen under a URL that names no venue.
+   * Drop every venue-scoped row and flag, so nothing leaks into the next context (another venue,
+   * or none). `sets` must be cleared too: the template renders whenever `rows` (computed off
+   * `sets`) is non-empty, so stale prices would stay on screen under a URL that names no venue.
    */
   private clearVenueState(): void {
     this.epoch++;

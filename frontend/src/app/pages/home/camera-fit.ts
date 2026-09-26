@@ -3,14 +3,13 @@ import { RIVIERA_MAP_OPTIONS } from '../../shared/riviera-map-options';
 import { latPerPixel, mercatorY, WORLD_PX as TILE_PX } from '../../shared/web-mercator';
 
 /**
- * The riviera map's camera, derived from the pane and the result set rather than read from
- * `RIVIERA_MAP_OPTIONS` (whose fixed zoom was tuned for the shipped 430 × 560 pane; at any other
- * size the extra area is inland Albania). Web Mercator on both axes, then the tighter zoom.
+ * The riviera map's camera, derived from the pane and the result set, not `RIVIERA_MAP_OPTIONS`
+ * (whose fixed zoom suits only the shipped 430 × 560 pane; other sizes add inland Albania).
  *
  * <p>The world is `512 · 2^zoom` px across: `platform/map/style.json` declares no `tileSize` and
- * MapLibre defaults a vector source to 512 (256 asks for a zoom one level too tight). The fit is
- * capped at 14 because three venues 20 m apart would otherwise fit at the map's own ceiling,
- * which shows driveways and no sea — and the sea is the context the whole decision rests on.
+ * MapLibre defaults a vector source to 512 (256 asks for a zoom one level too tight). Web Mercator
+ * on both axes, then the tighter zoom. The fit is capped at 14: three venues 20 m apart would fit
+ * at the map's ceiling, showing driveways and no sea — the context the whole decision rests on.
  */
 /** The pins' own 44 px boxes and their pills, kept inside the frame — the default pad. */
 const PAD_PX = 76;
@@ -24,11 +23,9 @@ export interface PaneSize {
 }
 
 /**
- * The camera that shows every one of `at` inside a `width` × `height` box, clamped to the
- * map's own zoom range and to the zoom at which the box still fits inside `maxBounds` — the
- * ADR-0022 fence is only 2.2° wide, so a wider ask is re-clamped by the engine anyway. `null`
- * when there is nothing to fit or no room to fit it in. `pad` is what the marks drawn at `at`
- * need kept inside the frame: the pins' boxes by default, less for a ribbon of bare dots.
+ * The camera showing every one of `at` in a `width` × `height` box, clamped to the map's zoom
+ * range and to where the box still fits `maxBounds` (the 2.2°-wide ADR-0022 fence); `null` when
+ * nothing or no room to fit. `pad` keeps the marks at `at` in frame: pin boxes by default.
  */
 export function fitPins(
   at: readonly LngLat[],

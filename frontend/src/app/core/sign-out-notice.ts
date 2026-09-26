@@ -3,15 +3,13 @@ import { computed, Service, signal } from '@angular/core';
 import type { SessionAuth } from './session-auth';
 
 /**
- * Carries the one fact a failed sign-out has to surface: the server may still hold this
- * device's session. The shell renders it as a warning with a retry, and it lives in `core/` because
- * both principal types and several surfaces (the tourist shell, the operator console) sign out —
- * a feature folder would have to import another feature's state to share it.
+ * Carries the one fact a failed sign-out has to surface: the server may still hold this device's
+ * session. The shell renders it as a warning with a retry. It lives in `core/` because both
+ * principal types and several surfaces sign out (a feature folder would import another's state).
  *
- * <p>{@link SessionAuth} records into this itself on every sign-out, so no call site has to remember
- * to. That matters: the bug being fixed is precisely that a failure was silently dropped, and a
- * design where each caller opts in would reintroduce it the next time a surface adds a sign-out
- * button.
+ * {@link SessionAuth} records into this itself on every sign-out: never make it per-caller opt-in,
+ * or the next surface that adds a sign-out button silently drops a failure again.
+ * Rationale: RESPONSIBILITIES.md §Frontend.
  */
 @Service()
 export class SignOutNotice {

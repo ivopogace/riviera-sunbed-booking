@@ -30,14 +30,13 @@ const CLS = {
 } as const;
 
 /**
- * "Forgot password" request page (design D-8). A tourist enters their email and we ask the
- * backend to send a reset link. The confirmation is deliberately uniform — it never reveals whether the
- * email has an account (non-enumeration) — so a successful request always shows the same "if an account
- * exists…" message. Signal Forms drives the one field; the server is the authority.
+ * "Forgot password" request page (design D-8): a tourist enters their email and the backend sends a
+ * reset link. The confirmation is uniform — the same "if an account exists…" message whether or not
+ * the email has an account (non-enumeration). Signal Forms drives the one field; server decides.
  *
- * <p>The request is fenced by the proof-of-work challenge (ADR-0016), so the card hosts the shared
- * widget and waits for its solution before posting. A refusal names the reason and restarts the
- * widget; the fence sits ahead of the controller, so it reveals nothing about the email either.
+ * <p>Fenced by proof-of-work (ADR-0016): the card posts only with the shared widget's solution. A
+ * refusal names the reason and restarts the widget; the fence sits ahead of the controller, so it
+ * reveals nothing about the email either.
  */
 @Component({
   selector: 'app-forgot-password',

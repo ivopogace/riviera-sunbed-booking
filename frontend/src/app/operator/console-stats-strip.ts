@@ -13,13 +13,9 @@ import { OperatorConsoleService } from './operator-console.service';
  * the operator's venue today (Europe/Tirane, invariant #6): Free today `{free}/{total}`, Booked
  * online, Walk-ins marked, and Online takings today (gross + net after commission).
  *
- * <p>Each tile names its source: free/total come from the venue map the shell already loads (passed
- * in via {@link venue} — the console's shared snapshot), booked-online from the day's CONFIRMED
- * bookings, and walk-ins from the owner availability-states read — an exact `STAFF_MARKED` count, which
- * replaced the `taken − booked` remainder that transiently mislabeled an unpaid online hold as a
- * walk-in. Net-after-commission is computed server-side (invariant #9) and merely rendered via
- * {@link formatMoney} (invariant #5 — no money math on the client). All three reads are
- * best-effort: a failure leaves that tile at its zero/dash default and never poisons the others.
+ * <p>Sources: free/total from the shell's shared venue map ({@link venue}), booked-online from the
+ * day's CONFIRMED bookings, walk-ins as the exact `STAFF_MARKED` count. Net is server-side (#9),
+ * only formatted (#5). Reads are best-effort: a failure leaves that tile at its zero/dash default.
  */
 @Component({
   selector: 'app-console-stats-strip',
@@ -68,10 +64,9 @@ export class ConsoleStatsStrip {
   });
 
   /**
-   * The net-after-commission line under today's gross, or `undefined` until the takings read lands —
-   * which is what makes the tile omit the sub-caption element rather than render an empty one. The
-   * rate is a percent rendering of the server's basis points; the net itself is computed server-side
-   * (invariant #9) and merely formatted here.
+   * The net-after-commission line under today's gross, or `undefined` (tile omits the sub-caption)
+   * until the takings read lands. Rate is the server's basis points as a percent; the net is
+   * computed server-side (invariant #9) and only formatted here.
    */
   protected readonly netCaption = computed(() => {
     const takings = this.takings();

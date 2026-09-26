@@ -30,15 +30,11 @@ interface VenueDraft {
 }
 
 /**
- * The create-venue form inside the operator console surface — the retired
- * `/venue-admin` editor's one surviving job, restyled to Liquid Glass. Rendered by
- * `OperatorHome` for an operator with no venue (the zero state) and for the deliberate
- * `/operator?create=1` entry. On success it resets the cached owned-venues list (the
- * landing decision reads it) and navigates straight into the new venue's beach-map tab:
- * laying out the map is the operator's next real step, and creator-owns-on-create
- * means the console is immediately theirs. The server re-validates every field (invariants
- * #3/#5/#12). The commission is not an input: the platform stamps its default server-side, and
- * the card only discloses the served figure (`GET /api/venue-defaults`).
+ * The create-venue form in the operator console, rendered by `OperatorHome` for an operator with no
+ * venue and for the `/operator?create=1` entry. On success it resets the cached owned-venues list
+ * (the landing decision reads it) and navigates into the new venue's beach-map tab (the creator
+ * owns it). The server re-validates every field. The commission is not an input: the platform
+ * stamps its default server-side; the card only discloses the served `/api/venue-defaults` figure.
  */
 @Component({
   selector: 'app-venue-create-card',
@@ -64,10 +60,9 @@ export class VenueCreateCard {
   private readonly errorCode = signal<VenueAdminErrorCode | undefined>(undefined);
 
   /**
-   * The platform terms served by `GET /api/venue-defaults` — the commission the create will be
-   * stamped with, disclosed as an info line. Stays `undefined` (line hidden) when the read fails:
-   * the disclosure is informational and must neither block the form nor fall back to a hardcoded
-   * figure that could drift from the stamped rate.
+   * The platform terms from `GET /api/venue-defaults` — the commission the create will be stamped
+   * with. Stays `undefined` (line hidden) when the read fails: never block the form, and never fall
+   * back to a hardcoded figure that could drift from the stamped rate.
    */
   protected readonly platformDefaults = signal<VenueDefaults | undefined>(undefined);
   protected readonly commissionPercent = formatCommissionPercent;
@@ -125,10 +120,8 @@ export class VenueCreateCard {
   }
 
   /**
-   * Map a write failure to its message and, on a 401, drop the lost session: the
-   * server session can expire/invalidate mid-create, and without clearing local auth state the
-   * operator would keep retrying a dead session — the shared operator header flips to its sign-in
-   * link and the guarded create form hides.
+   * Map a write failure to its message and, on a 401, drop the lost session — otherwise the
+   * operator keeps retrying a dead session; the header flips to sign-in and the guarded form hides.
    */
   private failWrite(error: unknown): void {
     const code = venueAdminErrorOf(error);

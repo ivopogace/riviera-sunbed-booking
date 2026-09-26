@@ -22,14 +22,12 @@ export interface ModerationVenue {
 
 /**
  * The venue picker behind the console's moderation tabs (Photos, Reviews). Stateless: the session
- * cookie + CSRF header are added by {@link apiSessionInterceptor}.
+ * cookie + CSRF header are added by `apiSessionInterceptor`.
  *
- * <p>The list comes from the **admin** venue read (`GET /api/admin/venues`, the Commissions tab's
- * endpoint), not the public catalogue: the catalogue hides every venue whose owning operator is not
- * `ACTIVE` — exactly the venues a moderator must still reach. The admin read is platform-wide and
- * unfiltered. It carries each venue's `commissionBps`, but the same `ADMIN` role already reads that
- * figure on the Commissions tab, so nothing new is exposed — the pickers simply ignore the field. The
- * response is narrowed here rather than through another feature's service (RV-FE-8).
+ * <p>Reads the **admin** venue list (`GET /api/admin/venues`), never the public catalogue, which
+ * hides every venue whose operator is not `ACTIVE` — exactly those a moderator must reach. Its
+ * `commissionBps` is already ADMIN-readable on the Commissions tab, so nothing new is exposed.
+ * Narrowed here, not through another feature's service (RV-FE-8).
  */
 @Service()
 export class AdminVenuesService {

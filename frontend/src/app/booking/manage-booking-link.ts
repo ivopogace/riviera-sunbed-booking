@@ -15,10 +15,9 @@ export type ManageBookingLinkVariant = keyof typeof SKINS;
  * (`/booking/{code}`), skin (by {@link ManageBookingLinkVariant}) and the `manage-link` test id all
  * live here, and the `contents` host keeps the caller's card laying out the anchor itself.
  *
- * <p>Rendering the anchor in this template (rather than augmenting a caller-owned `<a>` by
- * attribute) is what lets `elements-content` see the link's content — the attribute form needed an
- * `allowList` entry in `eslint.config.js`. It became possible when #739 turned the pages'
- * page-scoped `.btn-primary`/`.link` rules into global utilities.
+ * <p>Rendering the anchor here (not augmenting a caller-owned `<a>` by attribute) lets
+ * `elements-content` see the link's content; the attribute form needed an `allowList` entry in
+ * `eslint.config.js`.
  */
 @Component({
   selector: 'app-manage-booking-link',

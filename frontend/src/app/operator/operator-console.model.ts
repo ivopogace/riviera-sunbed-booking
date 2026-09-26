@@ -103,12 +103,10 @@ export interface CreatedSet {
 
 /**
  * A known per-set write failure, mapped from the RFC-7807 `code` for operator-facing copy.
- * `SET_IN_USE` is the server's claim guard — a reposition or a removal of a set carrying a live hold
- * or a non-terminal booking; price, tier and pool are never refused, and a finished booking refuses
- * nothing (the removal retires the set instead of deleting it). It is the **ordinary** answer on a
- * trading venue rather than a fault. The owner's beach-map read ({@link OperatorBeachMap}) names the
- * same sets in advance, so the editor disables a move or a removal before it is tried; the server's
- * answer still decides, because a claim can land between the read and the write.
+ * `SET_IN_USE` is the claim guard, the **ordinary** answer on a trading venue: a move or removal of
+ * a set with a live hold or non-terminal booking (price, tier, pool never refused; a finished
+ * booking refuses nothing — removal retires the set). {@link OperatorBeachMap} names those sets in
+ * advance so the editor disables them, but the server's answer decides: a claim can land between.
  */
 export type SetWriteErrorCode =
   | 'SET_IN_USE'
@@ -278,9 +276,8 @@ export interface RemodelReceiptKept {
  * `200` of the commit itself, whose moves and kept lines also carry the amount: when it was
  * committed, every booking it moved, every claim it ended instead, every claim it kept where it
  * was, the operator's reason for the refunds and what they returned to guests. `refundedTotal` is
- * null when it refunded nobody, so a zero is never rendered as a refund, and `feeTotal` — what
- * those refunds cost the venue, at the rate charged then — is null with it. Bookings by id, never
- * by code.
+ * null when it refunded nobody (a zero is never rendered as a refund), and `feeTotal` — what those
+ * refunds cost the venue, at the rate charged then — is null with it. Bookings by id, never code.
  */
 export interface RemodelReceipt {
   readonly receiptId: number;
@@ -456,7 +453,7 @@ export type PayoutErrorCode = 'NOT_VENUE_OWNER' | 'UNAUTHORIZED' | 'UNKNOWN';
 /**
  * One rendered payout-ledger row — a **presentational** view model: all money already formatted from
  * integer minor units (invariant #5), a deduction carrying a negative net plus a reason label. Shared by
- * the ledger table and the statement modal ({@link PayoutStatement}) so the one row shape cannot drift
+ * the ledger table and the statement modal (`PayoutStatement`) so the one row shape cannot drift
  * between them. `ref` is the non-credential `#<bookingId>` reference (invariants #7/#11).
  */
 export interface LedgerRow {
@@ -513,7 +510,8 @@ export type RequestErrorCode =
 /**
  * A known staff walk-in **mark** failure, mapped from the RFC-7807 `code` for operator-facing copy.
  * `ALREADY_TAKEN` is the 409 — the set was just taken by the other channel; `DATE_IN_PAST` the 422
- * cutoff (invariant #4); `NOT_VENUE_OWNER` the cross-venue 403 (invariant #13).
+ * for a date before today in Europe/Tirane (invariant #6); `NOT_VENUE_OWNER` the cross-venue 403
+ * (invariant #13).
  */
 export type MarkErrorCode =
   | 'ALREADY_TAKEN'
@@ -533,12 +531,11 @@ export type ReleaseErrorCode = 'NOT_MARKED' | 'NOT_VENUE_OWNER' | 'UNAUTHORIZED'
 
 /**
  * A known layout-write failure, mapped from the RFC-7807 `code` for operator-facing copy. `STALE_WRITE`
- * is the 409 optimistic-concurrency loss — the layout was changed elsewhere since the tab loaded it, so
- * the editor keeps the operator's edits and offers a Reload, never a clobber. `SETS_IN_USE` is the 409
- * set-scoped refusal: the save would remove sets someone is still owed, named in the problem's `sets`
- * extension ({@link BlockedSet}), and nothing was written. `STALE_PREVIEW`, `REMODEL_REFUSED` and
- * `REFUND_NOT_CONFIRMED` are the commit's three 409s, each carrying the fresh picture in the
- * problem's `preview` extension — for the last, that picture's own `refunds` is the count owed.
+ * is the 409 optimistic-concurrency loss: the editor keeps the operator's edits, offers a Reload,
+ * never a clobber. `SETS_IN_USE` is the 409 refusal naming sets still owed in the problem's `sets`
+ * extension ({@link BlockedSet}); nothing was written. `STALE_PREVIEW`, `REMODEL_REFUSED` and
+ * `REFUND_NOT_CONFIRMED` are the commit's 409s, each with the fresh picture in the `preview`
+ * extension — for the last, that picture's own `refunds` is the count owed.
  */
 export type LayoutErrorCode =
   | 'SETS_IN_USE'
@@ -565,8 +562,8 @@ import type { SalesCloseTime, VenueLocation } from '../shared/venue-views';
  * The operator's own view of a venue's admin profile (`GET /api/venues/{id}/profile`): the editable core
  * plus the two read-only display fields, {@link commissionBps} (the platform's cut, invariant #9; the
  * form shows it as a %) and {@link payoutCurrency}. {@link bookingCutoff} is `"HH:mm"` in Europe/Tirane
- * (invariants #4/#6); {@link salesClose} is the three-value on-day close. Not the public tourist map
- * view — this carries commission, so its endpoint is operator-gated rather than the anonymous read.
+ * (invariants #10/#6); {@link salesClose} is the three-value on-day close. Not the public tourist
+ * map view — this carries commission, so its endpoint is operator-gated, not the anonymous read.
  */
 export interface VenueProfileView {
   readonly name: string;
@@ -586,7 +583,7 @@ export interface VenueProfileView {
   readonly photos: Readonly<Record<PhotoSlotKey, SlotPhotoView>>;
   /**
    * The venue's closed-for-season state. Read-only here — written through
-   * {@link OperatorConsoleService.closeForSeason} / `reopenForSeason`, never the profile PATCH.
+   * `OperatorConsoleService.closeForSeason` / `reopenForSeason`, never the profile PATCH.
    * Optional because test doubles and older payloads may omit it; absent reads open.
    */
   readonly seasonClosure?: SeasonClosureView;
@@ -672,11 +669,9 @@ export interface VenueProfileUpdate {
 }
 
 /**
- * The full-replace {@link VenueProfileUpdate} that would re-save `view` unchanged: every editable
- * field mapped faithfully (photos are not profile-write fields; `expectedVersion` echoes the view's
- * `version`). The daily view's close-sales write builds on it; the venue tab builds its own body
- * from the form, so what keeps the two in step is the {@link VenueProfileUpdate} type, which fails
- * to compile if either forgets a field.
+ * The full-replace {@link VenueProfileUpdate} that re-saves `view` unchanged (no photos;
+ * `expectedVersion` = `version`), for the daily close-sales write. The venue tab builds its own
+ * body; the shared type keeps the two in step by failing to compile on a forgotten field.
  */
 export function toProfileUpdate(view: VenueProfileView): VenueProfileUpdate {
   return {

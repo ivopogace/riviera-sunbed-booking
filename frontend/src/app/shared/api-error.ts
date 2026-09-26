@@ -11,10 +11,9 @@ interface ProblemBody {
 }
 
 /**
- * The stable error `code` of an HTTP failure, or `undefined` when the response carries
- * no ProblemDetail body (network failure, empty 401, non-JSON proxy error). The single
- * place the wire shape is parsed — the per-feature `…ErrorOf` mappers narrow the result
- * to their own displayable unions.
+ * The stable error `code` of an HTTP failure, or `undefined` when the response carries no
+ * ProblemDetail body (network failure, empty 401, non-JSON proxy error). The single place the wire
+ * shape is parsed; the per-feature `…ErrorOf` mappers narrow it to their own displayable unions.
  */
 export function problemCodeOf(error: HttpErrorResponse): string | undefined {
   return (error.error as ProblemBody | null)?.code;

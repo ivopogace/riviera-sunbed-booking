@@ -25,11 +25,9 @@ export interface MapEngineOptions {
    */
   readonly interactive?: boolean;
   /**
-   * Whether the engine must keep what it drew readable through {@link MapHandle.readImagery}.
-   * Off by default and set by one map only — the operator's pin placer, which has to find the
-   * shore under a dropped pin. A renderer keeps its drawing buffer to honour it, which costs
-   * memory and a compositing step on every frame, so a map that never reads itself back says
-   * nothing and pays nothing.
+   * Whether the engine keeps what it drew readable through {@link MapHandle.readImagery}; off by
+   * default. Honouring it keeps the drawing buffer, costing memory and a compositing step every
+   * frame, so set it only on a map that reads itself back (the operator's pin placer).
    */
   readonly readableImagery?: boolean;
 }
@@ -94,12 +92,9 @@ export interface MapHandle {
   /** The inverse of {@link MapHandle.project}: a spot on the map's own box back to a position. */
   unproject(point: ScreenPoint): LngLat;
   /**
-   * What the map is currently SHOWING, as pixels — the one question no camera or coordinate can
-   * answer, and what a consumer reasoning about the imagery itself (where the sea is) needs.
-   *
-   * <p>`null` whenever the engine cannot answer rather than a guess: a renderer that was not asked
-   * to keep its drawing buffer ({@link MapEngineOptions.readableImagery}), a map with no box yet,
-   * or a handle over a picture it does not own the pixels of.
+   * What the map is currently SHOWING, as pixels (where the sea is). `null`, never a guess, when
+   * the engine cannot answer: the buffer was not kept ({@link MapEngineOptions.readableImagery}),
+   * the map has no box yet, or the handle does not own the pixels of its picture.
    */
   readImagery(): MapImagery | null;
   /**

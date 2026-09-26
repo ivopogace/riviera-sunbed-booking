@@ -16,17 +16,11 @@ const CONFIRM_BUTTON: Record<ConfirmTone, string> = {
 
 /**
  * The operator console's confirm-before-destroy panel: an amber `alertdialog` card carrying a
- * warning, a toned confirm button and a Cancel. The admin console's confirmations are a different
- * surface — bare, reason-collecting, keyed per row — and use `ConfirmWithReason` instead.
- *
- * <p><strong>Keep the `@if` outside this component</strong>: it is created and destroyed with the
- * confirmation, which is what lets it focus its own confirm button on the way in (WCAG 2.4.3).
- * Focus back **out** is the caller's, via `focusMover()` — this component is gone by then.
- *
- * <p>Two components rather than one with a variant, because the confirm surfaces are two
- * families rather than one near-identical set; no projected content, because the panel must
- * own everything focusable inside it. `headline` is plain text too, for the same reason —
- * an optional bold lead sentence ahead of `message`, never markup.
+ * warning, a toned confirm button and a Cancel; the admin console's bare, reason-collecting
+ * confirmations use `ConfirmWithReason`. **Keep the `@if` outside this component**: created and
+ * destroyed with the confirmation, it focuses its own confirm button on the way in (WCAG 2.4.3);
+ * focus back out is the caller's, via `focusMover()`. No projected content, and `headline` (an
+ * optional bold lead ahead of `message`) is plain text: the panel must own everything focusable.
  */
 @Component({
   imports: [TouchTarget, BusyAction],

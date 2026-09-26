@@ -16,19 +16,11 @@ const AUDIT_REASON_HEADER = 'X-Audit-Reason';
 
 /**
  * HTTP client for the venue-caused refunds report — per venue, how many bookings a remodel refunded,
- * what they returned and what the venue paid in fees. Stateless: the session cookie + CSRF header are
- * added by {@link apiSessionInterceptor}, and the component holds the page state.
- *
- * <p>A plain `HttpClient.get` rather than `httpResource`: every sibling admin tab loads this way once
- * the session is confirmed, and `httpResource` fetches eagerly and throws on `value()` in the error
- * state (angular.dev/guide/http/http-resource), which is the opposite of the gated, error-carded
- * shape the admin shell wants.
- *
- * <p>ADMIN-gated by the backend (a non-admin operator gets 403). The report returns aggregates only
- * — never a booking id or code (invariant #7).
- *
- * <p>The fee write answers the fee as it now stands, so the caller splices the response instead of
- * re-reading.
+ * what they returned and what the venue paid in fees — and the venue-change fee. Stateless: the
+ * session cookie + CSRF header are added by `apiSessionInterceptor`. ADMIN-gated by the
+ * backend (non-admin → 403). The report returns aggregates only, never a booking id or code
+ * (invariant #7). The fee write answers the fee as it now stands, so the caller splices the
+ * response instead of re-reading. Rationale: RESPONSIBILITIES.md §Frontend.
  */
 @Service()
 export class AdminVenueChangesService {

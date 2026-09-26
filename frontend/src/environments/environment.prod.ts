@@ -1,9 +1,7 @@
 /**
- * Production (non-prod/demo deploy) environment. The Spring Boot backend serves this
- * app SAME-ORIGIN, so `apiBaseUrl` is '' — every call targets `/api/**` on the app's own origin,
- * which is what makes the session + CSRF cookies first-party (design D-7). The
- * Docker image's Node build stage rewrites this file to inject the public Stripe publishable key
- * (both values are public, never secrets). See platform/Dockerfile + docs/deploy/cd-pipeline.md.
+ * Production (non-prod/demo deploy): the backend serves this app SAME-ORIGIN, so `apiBaseUrl` is ''
+ * and the session + CSRF cookies are first-party (ADR-0004). The Docker build injects the Stripe
+ * publishable key (public, never a secret): platform/Dockerfile + docs/deploy/cd-pipeline.md.
  */
 export const environment = {
   production: true,

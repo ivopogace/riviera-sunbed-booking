@@ -116,16 +116,12 @@ export interface AdminAuditEntryView {
 
 /**
  * One venue's commission rate as the admin surface reads it; mirrors the backend
- * `AdminVenueCommissionsResponse.VenueCommission`.
+ * `AdminVenueCommissionsResponse.VenueCommission`. `PUT /api/admin/venues/{venueId}/commission`
+ * answers this same shape (one element), so the write's response is spliced into the held list.
  *
- * <p><strong>One type for two calls.</strong> `PUT /api/admin/venues/{venueId}/commission` answers
- * exactly this shape — one element, not a list — so the write's response is spliced into the list the
- * page already holds instead of triggering a second read.
- *
- * <p>`commissionBps` is the exact stored integer (1500 = 15.00%, invariant #5). The percent an admin
- * types is the console's rendering and never the contract's, so no rounding can enter through the
- * wire. No owner travels: which operator owns a venue is the `operator` module's answer and is not
- * what a rate decision turns on.
+ * <p>`commissionBps` is the exact stored integer (1500 = 15.00%, invariant #5); the typed percent
+ * is the console's rendering, never the contract's, so no rounding enters through the wire. No
+ * owner travels: a rate decision does not turn on which operator owns the venue.
  */
 export interface VenueCommissionView {
   readonly venueId: number;
@@ -161,9 +157,8 @@ export interface AdminVenuePhotosView {
  * the public sees plus the rows it never does: `comment` is `null` for a star-only review and
  * both `comment` and `displayName` are `null` once its author's erasure has tombstoned it (the
  * tab attributes such a row to "A guest"); `hiddenAt` is an ISO instant once an admin has hidden
- * the review and `null` while it is in
- * public view — visibility IS the null instant, so there is no boolean to keep in step.
- * `stayedIn` is an ISO year-month, never a day.
+ * the review and `null` while it is in public view — visibility IS the null instant, so there is
+ * no boolean to keep in step. `stayedIn` is an ISO year-month, never a day.
  */
 export interface AdminReviewEntryView {
   readonly id: number;

@@ -51,12 +51,10 @@ function isThemeId(value: string | null): value is ThemeId {
 
 /**
  * The runtime single writer of the document's `data-riv-theme` attribute (the `index.html`
- * pre-paint seed writes the same value once, before Angular boots — drift-pinned by
- * `theme-boot.spec.ts`). Resolution order on boot: stored choice → OS
- * `prefers-color-scheme: dark` (→ dark) → porcelain. `select` persists, so the choice
- * survives reloads; storage access is guarded — a blocked storage (private mode) degrades to
- * session-only theming, never an error. With no stored choice, a mid-session OS scheme flip is
- * followed live; a stored choice always wins.
+ * pre-paint seed writes the same value once before boot; drift-pinned by `theme-boot.spec.ts`).
+ * Boot order: stored choice → OS `prefers-color-scheme: dark` (→ dark) → porcelain. `select`
+ * persists; blocked storage (private mode) degrades to session-only theming, never an error.
+ * With no stored choice, a mid-session OS scheme flip is followed live; a stored choice wins.
  */
 @Service()
 export class ThemeService {

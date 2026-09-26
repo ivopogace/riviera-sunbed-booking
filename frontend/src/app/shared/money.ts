@@ -9,9 +9,8 @@ export interface MoneyView {
 }
 
 /**
- * Render integer minor units as a localized currency string (display only — money is never stored
- * or computed as a float, invariant #5). Pinned to a fixed Eurozone-English locale so output is
- * deterministic across deploy environments (a runtime-default locale would render "45 €" under
+ * Render integer minor units as a currency string (display only, invariant #5). Pinned to `en-IE`
+ * so output is deterministic across environments (a runtime-default locale renders "45 €" under
  * de/fr). Whole amounts drop the cents; fractional amounts show two decimals.
  */
 export function formatMoney(amount: MoneyView): string {
@@ -23,11 +22,9 @@ export function formatMoney(amount: MoneyView): string {
 }
 
 /**
- * Render one or more amounts as a single label: the one formatted price when every amount is
- * equal, else the min–max span ("€35–€45"). The span keeps a mixed-price row honest — no single
- * amount can represent it — while a uniform list renders exactly like {@link formatMoney}. Bounds
- * are chosen by integer minor-unit comparison (invariant #5) and each bound renders with its own
- * currency. The list must not be empty.
+ * Render amounts as one label: exactly {@link formatMoney} when every amount is equal, else the
+ * min–max span ("€35–€45"). Bounds are chosen by integer minor units (invariant #5), each rendered
+ * in its own currency. The list must not be empty.
  */
 export function formatMoneyRange(amounts: readonly MoneyView[]): string {
   let min = amounts[0];
@@ -42,10 +39,9 @@ export function formatMoneyRange(amounts: readonly MoneyView[]): string {
 }
 
 /**
- * Parse a euros input string to integer minor units (invariant #5 — the conversion at the edge), or
- * `null` when the input is empty or not a number. The caller MUST treat `null` as "no change", never
- * as €0 — a cleared field must not silently reprice to free. Negatives clamp to 0. This is the single
- * home for the euros↔minor boundary; new price inputs reuse it rather than re-deriving the rounding.
+ * Parse a euros input to integer minor units (invariant #5), or `null` when empty or not a number.
+ * The caller MUST treat `null` as "no change", never €0: a cleared field must not reprice to free.
+ * Negatives clamp to 0. The single euros↔minor boundary; new price inputs reuse its rounding.
  */
 export function eurosToMinorUnits(raw: string): number | null {
   const euros = Number.parseFloat(raw);

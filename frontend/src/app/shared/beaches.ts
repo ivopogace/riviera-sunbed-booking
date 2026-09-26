@@ -1,16 +1,12 @@
 import type { MapView } from './map-engine';
 
 /**
- * The fixed platform beach catalogue — the frontend mirror of the backend
- * `ai.riviera.platform.venue.vocabulary.Beach` enum, as `amenities.ts` mirrors `Amenity`. **Codes
- * travel the wire; labels are display-only**, spelled as the self-hosted map tiles draw the place
- * (OpenStreetMap's name, diacritics included), so the filter, the card, the place pill and the map
- * label all say the same word. Declaration order is the canonical display order: north to south,
- * the order a tourist reads the coast.
- *
- * Each entry also carries the riviera map's camera view for it — a hand-recorded centre and a
- * town-scale zoom — which is what lets the Discover filters move the map with no geocoding service
- * (ADR-0022). The backend never needs these, so they live only here.
+ * The fixed platform beach catalogue, the frontend mirror of the backend
+ * `ai.riviera.platform.venue.vocabulary.Beach` enum. **Codes travel the wire; labels are
+ * display-only**, spelled as the self-hosted map tiles draw the place (OpenStreetMap's name,
+ * diacritics included) so filter, card, place pill and map label agree. Declaration order is the
+ * display order, north to south. Each entry also carries its map camera view (hand-recorded centre,
+ * town-scale zoom) so Discover filters move the map with no geocoding (ADR-0022); frontend-only.
  */
 export type RegionCode = 'SHKODER' | 'LEZHE' | 'DURRES' | 'FIER' | 'VLORE' | 'HIMARE' | 'SARANDE';
 

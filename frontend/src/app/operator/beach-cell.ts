@@ -17,10 +17,9 @@ export const CELL_STATE_DESC: Record<CellState, string> = {
   gap: 'gap or aisle',
 };
 
-/** Per-state background, border and ink classes — the ink rides with the state because the premium
- *  gold pins its own (`--riv-premium-ink`) in both console themes; a gap carries no numeral, but a
- *  refused save can pin a lock glyph on it, so it states the card ink too. Geometry (size, radius)
- *  stays with the consumer. */
+/** Per-state background, border and ink classes; geometry stays with the consumer. Ink rides with
+ *  the state: premium gold pins `--riv-premium-ink` in both themes, and a gap still states the card
+ *  ink because a refused save can pin a lock glyph on it. */
 const CELL_CLASS: Record<CellState, string> = {
   premium: 'border-riv-premium-edge/40 bg-(image:--riv-premium-grad) text-riv-premium-ink',
   standard: 'border-riv-console-tint/15 bg-riv-console-inset/85 text-riv-card-ink',

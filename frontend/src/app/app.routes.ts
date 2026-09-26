@@ -9,12 +9,9 @@ import { venueIdGuard, VENUE_NOT_FOUND_PATH } from './core/venue-id.guard';
 import { VENUE_CONSOLE_LANDING_TAB } from './shared/console-destination';
 
 /**
- * The operator-console tab child routes — one per section, each deep-linkable. The active tab
- * comes from the router itself: each rail tab marks itself with `routerLinkActive` and scrolls
- * itself into view when it becomes current (`shared/tab-rail.ts`), so no route here carries a
- * section key of its own.
- * A child reads `:venueId` from the PARENT route (child routes don't inherit it under the
- * router's default `emptyOnly` strategy).
+ * Operator-console tab child routes, one deep-linkable route per section; the active tab is the
+ * router's (`shared/tab-rail.ts`), so no route carries a section key. A child reads `:venueId`
+ * from the PARENT route: under the default `emptyOnly` strategy children don't inherit it.
  */
 const consoleTabRoutes: Routes = [
   {
@@ -56,11 +53,9 @@ const consoleTabRoutes: Routes = [
 ];
 
 /**
- * The admin-console tab child routes. Operators lives at the console's own `''` path (it is the
- * console's index tab, not a sub-path like the operator console's `beach-map`); every other tab
- * is a literal segment. Each carries `data.adminTab` — the title, its `id`, the section's
- * max-width, the sign-in copy, and the three gate test ids — which {@link AdminConsole} reads to
- * render itself around whichever tab is active, with no per-tab branching of its own.
+ * Admin-console tab child routes; Operators is the index tab at `''`, the rest literal segments.
+ * Each carries `data.adminTab` (title, `id`, max-width, sign-in copy, three gate test ids), which
+ * {@link AdminConsole} reads to render around the active tab with no per-tab branching.
  */
 const adminTabRoutes: Routes = [
   {

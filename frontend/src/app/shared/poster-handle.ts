@@ -16,15 +16,12 @@ export interface PaneBox {
 }
 
 /**
- * A {@link MapHandle} over a still image: the poster the sheet opens on. The still is centred in
- * the pane horizontally and anchored to its top, so `project` is Web Mercator arithmetic around
- * the poster's own centre — the pane's middle across, the poster's middle down — and a pin lands
- * on the picture where the live map will put it once it takes over at {@link PosterHandle.liveView}.
- *
- * <p>A picture cannot move: `easeTo`, `zoomIn`, `zoomOut` and `setView` report the view wanted
- * through `onWanted` and change nothing, so the page can swap the live map in and replay the move.
- * Markers are held but never drawn, and the click and drag subscriptions never fire — the ground
- * button over the poster owns the tap.
+ * A {@link MapHandle} over a still image: the poster the sheet opens on, centred across the pane
+ * and anchored to its top. `project` is Web Mercator around the poster's own centre, so a pin lands
+ * where the live map puts it once it takes over at {@link PosterHandle.liveView}. A picture cannot
+ * move: `easeTo`, `zoomIn`, `zoomOut` and `setView` report the wanted view through `onWanted` and
+ * change nothing, so the page can swap the live map in and replay the move. Markers are held, never
+ * drawn; click and drag subscriptions never fire (the ground button over the poster owns the tap).
  */
 export class PosterHandle implements MapHandle {
   private readonly moveHandlers = new Set<() => void>();

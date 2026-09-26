@@ -14,11 +14,8 @@ import { TouchTarget } from './touch-target';
 
 /**
  * The admin console's confirm-before-destroy panel: a prompt, the optional grounds the audit trail
- * records (ADR-0013), and an outlined destructive action beside a way out. The operator console's
- * confirmations are a different surface — an amber card, no reason field — and use `ConfirmPanel`.
- *
- * <p>Deliberately **bare**: both callers already sit inside a row or slot card, so the host is only
- * `block w-full` and occupies exactly the flow position the markup it replaced did.
+ * records (ADR-0013), and an outlined destructive action beside a way out (the operator console's
+ * amber, reason-less ones are `ConfirmPanel`). Host is bare `block w-full`: callers own the card.
  *
  * <p><strong>Keep the `@if` outside</strong>: it is created and destroyed with the confirmation,
  * which is what lets it focus its own confirm button on the way in (WCAG 2.4.3). Focus back **out**
