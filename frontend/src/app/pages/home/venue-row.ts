@@ -11,9 +11,9 @@ import { StarIcon } from '../../shared/star-icon';
 /**
  * One desktop-panel venue: the phone sheet's card as a flat row, which IS the pin's preview
  * (`RESPONSIBILITIES.md` §Frontend). Its hairline and track use the page ink, not the card family
- * (a dark line on riviera's dark panel). Dusk (invariant #4): desaturate, never fade (a fade drops
- * the name under 3:1); the chip takes the price's slot and carries the state beyond colour
- * (WCAG 1.4.1). Every arm of a slot costs the same height (92 px, 121 px selected), or the panel's
+ * (a dark line on riviera's dark panel). Dusk — sales closed (invariant #4) or a stay the venue
+ * can't host: desaturate, never fade (a fade drops the name under 3:1); the chip or the stay line
+ * carries the state beyond colour (WCAG 1.4.1). Every arm of a slot costs the same height (92 px, 121 px selected), or the panel's
  * rhythm tracks state. Only the selected row expands, inside the anchor's outlined text column.
  */
 @Component({

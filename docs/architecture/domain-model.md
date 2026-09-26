@@ -5,7 +5,7 @@
 > `docs/superpowers/specs/2026-06-25-riviera-sunbed-booking-design.md` and the
 > invariants in `/CLAUDE.md` (referenced below as "invariant #N").
 >
-> **Vocabulary (ADR-0018).** The platform is **one bounded context** with twelve modules, and it
+> **Vocabulary (ADR-0018).** The platform is **one bounded context** with thirteen modules, and it
 > has no aggregate-root classes: `domain/` holds policies, calculations and value objects, and the
 > lifecycles live in guarded SQL. The diagrams below say what a thing *is* — a table row, a record,
 > an enum, a rule — rather than labelling it an aggregate.
