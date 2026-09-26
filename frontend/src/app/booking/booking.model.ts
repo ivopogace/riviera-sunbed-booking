@@ -72,7 +72,7 @@ export interface PaymentHandoff {
   readonly paymentIntentId: string;
   /**
    * The terms quoted at checkout, riding the hand-off so the pay page repeats the disclosure
-   * without a refetch (#795). Absent on the "Pay now" rebuild from a fetched detail — the
+   * without a refetch. Absent on the "Pay now" rebuild from a fetched detail — the
    * code-gated view already discloses the live truth there, and the note renders no claim.
    */
   readonly cancellationTerms?: CancellationTerms | null;
@@ -167,10 +167,9 @@ export interface BookingDetail {
    */
   readonly cancellationWindowAtBirth: CancellationWindow;
   /**
-   * What this stay's review section should show — the form, the guest's own verdict, a frozen one,
-   * or the reason there is none. The panel renders on this and never on `status`: a `COMPLETED`
-   * stay stops being reviewable without its status moving, and every one of those fences is the
-   * server's.
+   * What this stay's review section shows — the form, the guest's own verdict, a frozen one, or
+   * why there is none. Render on this, never on `status`: a `COMPLETED` stay stops being
+   * reviewable without its status moving, and every such fence is the server's.
    */
   readonly reviewPanel: ReviewPanel;
   /** The remodel move this booking went through, or null when the venue never moved it. */
@@ -246,14 +245,12 @@ export interface BookingPayment {
 }
 
 /**
- * Typed view of one row from `GET /api/me/bookings` — the signed-in "my bookings" list.
- * Mirrors the backend `MyBookingView`: a **subset** of {@link BookingDetail} (the refund *terms* +
- * payment credentials are loaded only on the code-gated detail view; `refundedAmount` is the one
- * refund fact the list carries, because without it a row cannot tell a cancellation that took money
- * from one that never did). Money as integer
- * minor units (invariant #5); date as ISO `LocalDate`; `requestExpiresAt` null for instant bookings.
- * `BookingDetail` is structurally a superset save for `movedAt`, which the detail carries inside
- * {@link BookingDetail#move}; the list-row builder reads either.
+ * One row of `GET /api/me/bookings` (the signed-in list), mirroring the backend `MyBookingView`: a
+ * **subset** of {@link BookingDetail} — refund *terms* and payment credentials load only on the
+ * code-gated detail; `refundedAmount` is the one refund fact carried, so a row can tell a
+ * cancellation that took money from one that never did. Money in integer minor units (invariant
+ * #5); date an ISO `LocalDate`; `requestExpiresAt` null for instant bookings. `movedAt` is flat
+ * here but inside {@link BookingDetail#move} on the detail; the list-row builder reads either.
  */
 export interface MyBookingSummary {
   readonly code: string;

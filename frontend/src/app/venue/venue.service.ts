@@ -29,10 +29,9 @@ export class VenueService {
   private readonly http = inject(HttpClient);
 
   /**
-   * The venues matching `filter` for a given day, as discovery summaries. `date` is an ISO
-   * `YYYY-MM-DD` string; each venue's `availability` count reflects the authoritative
-   * `set_availability` state for that date (invariant #2). Empty/omitted filter dimensions are
-   * not sent, so the server lists all venues.
+   * The venues matching `filter` for the ISO `YYYY-MM-DD` day `date`; each `availability` count is
+   * the authoritative `set_availability` state for that date (invariant #2). Empty/omitted filter
+   * dimensions are not sent, so the server lists all venues.
    */
   listVenues(filter: VenueListFilter, date: string): Observable<VenueSummary[]> {
     let params = new HttpParams().set('date', date);
@@ -76,14 +75,9 @@ export class VenueService {
   }
 
   /**
-   * Per-day free/total set counts for one venue across the inclusive window `[from, to]`, as the
-   * date picker's availability signal. Both bounds are ISO `YYYY-MM-DD` civil days in
-   * `Europe/Tirane` (invariant #6); the server answers one ascending entry per day, days nobody has
-   * touched included at `free === total`.
-   *
-   * <p>The server rejects an inverted window, and one wider than 62 days, with `400` — so a caller
-   * asks for a bounded range it chose, never an open one. Errors are left for the caller to branch
-   * on, like the reads above.
+   * Per-day free/total set counts over the inclusive ISO window `[from, to]` (`Europe/Tirane`
+   * days, #6): one ascending entry per day, untouched days at `free === total`. Pass a bounded
+   * range: the server `400`s an inverted window or one over 62 days; errors are the caller's.
    */
   availabilityCalendar(venueId: number, from: string, to: string): Observable<DailyAvailability[]> {
     return this.http.get<DailyAvailability[]>(

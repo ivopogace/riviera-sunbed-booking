@@ -1,13 +1,3 @@
 {
-  "frontend/(app)": 5,
-  "frontend/(src)": 7,
-  "frontend/admin": 20,
-  "frontend/auth": 6,
-  "frontend/booking": 20,
-  "frontend/core": 9,
-  "frontend/operator": 40,
-  "frontend/pages": 5,
-  "frontend/shared": 98,
-  "frontend/venue": 7,
   "RESPONSIBILITIES.md": 348
 }

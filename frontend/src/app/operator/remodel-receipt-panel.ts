@@ -19,8 +19,7 @@ import {
  * A remodel-commit receipt: when the layout was saved, every booking it moved — each with the spot
  * the guest was told before, the spot they hold now and the distance — every claim it ended
  * instead, with what was refunded and why, and every claim it kept where it was, with why its set
- * stayed. Shown right after a commit and again from the editor's
- * past remodels, so an operator can answer a guest who phones about a changed spot or a refund.
+ * stayed. Shown after a commit and from the editor's past remodels, to answer a phoning guest.
  * Bookings by id, never by code (invariant #7). The `@if` stays outside; focus in and out is the
  * caller's (`focusMover()` on the heading's test id).
  */

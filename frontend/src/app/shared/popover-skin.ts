@@ -9,10 +9,9 @@ import { IsActiveMatchOptions } from '@angular/router';
  * composes them with its own position and width, the `cls` idiom.
  */
 
-/** The near-opaque popover surface (account menu, theme picker, the phone sheet) — themed via the
- *  `--riv-pop-*` family: light in porcelain/riviera, slate in the dark theme. Position-free: the
- *  account and theme popovers are `absolute` under their trigger, the venue switcher's `fixed`
- *  under the console shell's header row, the sheet `fixed` above the tab bar. */
+/** The near-opaque popover surface (account menu, theme picker, phone sheet), themed via the
+ *  `--riv-pop-*` family (light in porcelain/riviera, slate in dark). Position-free: each consumer
+ *  places it (`absolute` under a trigger, `fixed` under a header row or above the tab bar). */
 export const POP_SKIN =
   'z-40 animate-[riv-pop_0.2s_ease] rounded-[18px] border border-riv-pop-border bg-riv-pop-surface text-riv-pop-ink shadow-riv-pop backdrop-blur-[28px] backdrop-saturate-[1.8] motion-reduce:animate-none';
 
@@ -26,9 +25,8 @@ export const CURRENT_POP_ROW =
   'aria-[current=page]:bg-riv-pop-hover aria-[current=page]:text-riv-pop-accent';
 
 /** The project ring on a popover or sheet row that is an `<a>`: `tailwind.css`'s `@layer base`
- *  rule paints `button:focus-visible` only, so a link row showed the user-agent ring beside a
- *  button row's 3px ink ring on the same surface. The values are the baseline's own — a
- *  button wearing the same skin repeats its ring, it does not change it (`riviera-tailwind` rule 6). */
+ *  rings `button:focus-visible` only, so a link row would show the user-agent ring. The values are
+ *  the baseline's own; a button wearing this skin repeats its ring (`riviera-tailwind` rule 6). */
 export const POP_ROW_RING =
   'focus-visible:outline-[3px] focus-visible:outline-offset-2 focus-visible:outline-riv-accent-ink';
 

@@ -1,17 +1,12 @@
 import { Directive } from '@angular/core';
 
 /**
- * The pulse of a placeholder block — the one part of a skeleton that must never be hand-copied.
+ * The pulse of a placeholder block: binds `animate-pulse` to `motion-reduce:animate-none`, so no
+ * hand-copied skeleton drops the guard a reduced-motion visitor needs. Never copy the pair.
  *
- * <p>`animate-pulse` and `motion-reduce:animate-none` are a pair: written out per element, the
- * guard is one omission away from an animation a reduced-motion visitor cannot switch off. Binding
- * them together is the whole reason this is a directive.
- *
- * <p>It carries no fill, no radius and no size — the call site owns all three. Fill especially:
- * a block's track colour depends on the surface under it (`--riv-card-track` on card glass,
- * `--riv-track-bg` on the ink-coloured panel glass), and a directive-set background would be
- * resolved against the call site's own by stylesheet order rather than class order — the same trap
- * that keeps `border-radius` out of the shared surface directives.
+ * No fill, radius or size — the call site owns all three. Never set a fill here: the track colour
+ * depends on the surface under it (`--riv-card-track` on card glass, `--riv-track-bg` on panel
+ * glass) and a directive's background resolves by stylesheet order (`riviera-tailwind` rule 3).
  */
 @Directive({
   selector: '[appSkeletonBlock]',

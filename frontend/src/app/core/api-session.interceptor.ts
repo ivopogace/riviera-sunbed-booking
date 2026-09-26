@@ -16,15 +16,9 @@ const XSRF_COOKIE = 'XSRF-TOKEN';
 const XSRF_HEADER = 'X-XSRF-TOKEN';
 
 /**
- * Session plumbing for every API call (design D-1 — replaces the Basic-auth
- * interceptor): `withCredentials` so the browser attaches the `HttpOnly` session cookie, and the
- * CSRF cookie-to-header echo (`XSRF-TOKEN` cookie → `X-XSRF-TOKEN` header) on mutating requests.
- * No `Authorization` header is ever set — the session cookie IS the credential.
- *
- * <p>Hand-rolled rather than Angular's `withXsrfConfiguration` because the built-in XSRF support
- * skips ABSOLUTE URLs entirely — and every call here goes through `environment.apiBaseUrl`, which
- * is absolute. Reading the cookie works cross-port on localhost (cookies are port-agnostic) and
- * same-site in deployed environments (design D-7).
+ * Session plumbing for our API: `withCredentials` (the `HttpOnly` session cookie IS the credential,
+ * never an `Authorization` header) and a hand-rolled `XSRF-TOKEN` → `X-XSRF-TOKEN` echo on writes
+ * (`withXsrfConfiguration` skips absolute URLs). Rationale: RESPONSIBILITIES.md §Frontend.
  */
 export const apiSessionInterceptor: HttpInterceptorFn = (req, next) => {
   if (!req.url.startsWith(API_PREFIX)) {

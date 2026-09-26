@@ -4,16 +4,12 @@ import { OperatorAuth } from '../core/operator-auth';
 import { AdminVenuesService, ModerationVenue } from './admin-venues.service';
 
 /**
- * The venue-picker half every moderation tab shares: the platform-wide venue list, loaded once the
- * admin session is confirmed; which venue is on screen; and the bookkeeping that keeps a venue's
- * reads honest across a switch — a generation counter that retires whatever load was in flight, and
- * the "still viewing" test an action's outcome must pass before it narrates under a venue's name.
- *
- * The staleness test is the counter, not the selected venue id, and the difference is not academic:
- * an id check calls a response current whenever its venue is on screen, so leaving a venue and coming
- * back re-requests it and the *older* of the two answers can land last and win. Only "is this the
- * newest request I issued" is monotonic. Abandoning a load also clears `loading`: deselecting back
- * to "Choose a venue…" issues no new request, so nothing else would ever turn the spinner off.
+ * The venue-picker half every moderation tab shares: the platform-wide venue list (loaded once the
+ * admin session is confirmed), the venue on screen, a generation counter that retires any load in
+ * flight, and the "still viewing" test an outcome must pass before narrating under a venue's name.
+ * Staleness is the counter, never the selected id: leaving a venue and returning re-requests it,
+ * and an id check lets the older answer land last and win. Abandoning a load also clears
+ * `loading`, as deselecting to "Choose a venue…" issues no request that would turn the spinner off.
  */
 export interface ModerationVenuePicker {
   readonly venues: Signal<readonly ModerationVenue[]>;

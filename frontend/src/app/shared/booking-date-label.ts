@@ -1,15 +1,10 @@
 /**
- * Render an ISO `LocalDate` (a booking date — no instant, no zone) as a friendly weekday/day/month
- * label. This is the ONE home of the app's civil-date formatter (the checkout screens, the beach
- * map, and Discover all use it). A booking date is a civil date, so it is parsed as **explicit UTC
- * midnight** and formatted with `timeZone: 'UTC'`: `new Date("2026-12-01")` alone would be UTC
- * midnight rendered in the viewer's zone and can roll back a day in negative-offset zones
- * (invariant #6). The locale is pinned like `shared/money.ts` so output is deterministic, and the
- * `Intl.DateTimeFormat` instances are module-level constants (constructing one per call — or per
- * change-detection pass — is needless allocation).
+ * Render an ISO `LocalDate` (a booking date: civil, no instant, no zone) as a weekday/day/month
+ * label; the app's ONE civil-date formatter. Parsed as **explicit UTC midnight** and formatted with
+ * `timeZone: 'UTC'`: rendered in the viewer's zone it can roll back a day in negative-offset zones
+ * (invariant #6). Locale pinned like `shared/money.ts`; `Intl.DateTimeFormat`s are module-level.
  *
- * @param opts.withYear include the year ("Tue 30 Jun 2026") — the map/Discover context; the
- *   checkout surfaces omit it ("Tue 1 Dec").
+ * @param opts.withYear include the year ("Tue 30 Jun 2026"), for map/Discover; checkout omits it.
  */
 import { daysBetween } from './booking-date';
 import { plural } from './plural';

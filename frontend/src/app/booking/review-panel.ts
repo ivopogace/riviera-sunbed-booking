@@ -85,18 +85,13 @@ function seedFor(panel: ReviewPanelState): ReviewFormModel {
 }
 
 /**
- * The booking page's review section: the rating form, the guest's own verdict with its edit and
- * delete affordances, a frozen or hidden verdict, and — for every stay that can carry none — the
- * reason why.
+ * The booking page's review section: the rating form, the guest's own verdict with edit and
+ * delete, a frozen or hidden verdict, or — for a stay that can carry none — the reason why.
  *
- * <p>It renders by exhaustive `@switch` over the server's review panel, never over the booking
- * status: every fence behind the panel is the review module's, and a stay stops being reviewable
- * without its status moving. The one place status is consulted is the not-yet-checked-in note,
- * which is an invitation and so only makes sense for a stay still ahead of the guest.
- *
- * <p>The panel holds no HTTP and no result copy: it emits what the guest asked for, and the parent
- * booking view sends it, re-reads, and narrates the outcome in its own live region — which has to
- * outlive this component, since a successful write is exactly what replaces the form.
+ * <p>Exhaustive `@switch` on the server's panel, never on status (a stay stops being reviewable
+ * without its status moving); status gates only the not-yet-checked-in note, an invitation. No
+ * HTTP or result copy: the parent sends, re-reads and narrates in its own live region, which must
+ * outlive this component since a successful write replaces the form.
  */
 @Component({
   imports: [
@@ -434,10 +429,9 @@ export class ReviewPanel {
   }
 
   /**
-   * The write this panel asked for has landed. The edit / confirm interaction is over at that
-   * point, so the mode closes here rather than waiting for the re-read — which the booking view
-   * deliberately lets fail without flipping the page, and which would otherwise leave a live
-   * "Yes, remove it" under a "review removed" line.
+   * The requested write landed: close edit / confirm mode now, not after the re-read — the booking
+   * view lets that fail without flipping the page, which would leave a live "Yes, remove it"
+   * under a "review removed" line.
    */
   settle(): void {
     this.editing.set(false);

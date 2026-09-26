@@ -5,17 +5,13 @@ import { trapFocusWithin } from '../shared/focus-trap';
 import { LedgerRow } from './operator-console.model';
 
 /**
- * The payout **statement** modal — a **display-only** view of the ledger for the manual
- * BKT batch (invariant #9: the ledger is the auditable record of what is owed). It formats the SAME
- * {@link LedgerRow}s the tab shows and the SERVER's total due ({@link owed}); it computes no money and
- * moves none. The bank beneficiary/IBAN/reference are shown as an <em>"assigned at settlement"</em>
- * placeholder — venue payout details aren't stored yet and the payout currency is provisional
- * (reconciliation #4). Actual settlement is the manual bank transfer, out of app.
+ * The payout **statement** modal — a **display-only** view of the ledger for the manual BKT batch
+ * (invariant #9). It formats the SAME {@link LedgerRow}s the tab shows and the SERVER's total due
+ * ({@link owed}); it computes no money and moves none. Bank details show an "assigned at
+ * settlement" placeholder: payout details aren't stored and the payout currency is provisional.
  *
- * <p>Accessible modal, mirroring {@code BookingDialog}: the host is the backdrop (click / ESC dismiss),
- * the panel is `role="dialog"` + `aria-modal`, focus moves in on open and is trapped (WCAG 2.4.3 /
- * 2.1.2, shared {@link trapFocusWithin}). On dismiss the parent must return focus to the trigger —
- * re-rendering it does not focus it.
+ * <p>Accessible modal: host = backdrop (click / ESC dismiss), panel `role="dialog"` + `aria-modal`,
+ * focus moved in and trapped. On dismiss the parent must return focus to the trigger itself.
  */
 @Component({
   selector: 'app-payout-statement',

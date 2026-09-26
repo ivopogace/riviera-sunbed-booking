@@ -1,8 +1,7 @@
 /**
- * Render an ISO year-month (`2026-07`, the form a review's stay travels in — never a day) as
- * "July 2026". Parsed as explicit UTC and formatted in UTC so no viewer zone can roll it into a
- * neighbouring month (invariant #6); the locale is pinned like `shared/money.ts`, and the formatter
- * is a module-level constant like `booking-date-label.ts`'s.
+ * Render an ISO year-month (`2026-07`, a review's stay — never a day) as "July 2026". Parsed and
+ * formatted in explicit UTC so no viewer zone rolls it into a neighbouring month (invariant #6);
+ * the locale is pinned like `shared/money.ts`.
  */
 const FMT = new Intl.DateTimeFormat('en-IE', { timeZone: 'UTC', month: 'long', year: 'numeric' });
 

@@ -1,13 +1,11 @@
 /**
- * Where the venue sheet rests over the riviera map, from the shipped chrome as measured at
- * runtime — the tab bar's rendered height (61 on a phone, 0 from `sm` where it is hidden) and
- * the header's (73). Nothing here is a viewport constant: a constant tab bar reserves 61 px on a
- * tablet that has none, and the sheet opens at full instead of half.
+ * Where the venue sheet rests over the riviera map, from the chrome measured at runtime: the tab
+ * bar's height (61 on a phone, 0 from `sm` where hidden) and the header's (73). No viewport
+ * constants: a constant tab bar reserves 61 px on a tablet that has none, opening full, not half.
  *
  * <p>The sheet is the last child of an outer scroll-snap scroller whose first child is a
  * transparent spacer over the map, so a rest is a `scrollTop`: 0 at peek, the spacer's height at
- * full. `detentAt` names the nearest rest for any position, which is what the page reads while a
- * flick is in flight.
+ * full. `detentAt` names the nearest rest for any position — what the page reads mid-flick.
  */
 
 /** The sheet's three resting heights: half opens; peek is the map; full is the list. */

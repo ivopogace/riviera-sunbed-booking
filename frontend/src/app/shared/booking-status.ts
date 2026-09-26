@@ -18,13 +18,11 @@ export type BookingStatus =
   | 'WITHDRAWN';
 
 /**
- * Presentation metadata per booking lifecycle status: the chip `label`,
- * its CSS-modifier `chip`, and whether the amount reads `Paid` (money has moved) or `Amount` (still
- * open / no charge). The single source of truth for all three, shared by the booking detail view
- * and the device-local "My bookings" list — extracted here when the list became the
- * 2nd chip consumer (rule of three). Keyed by the exhaustive {@link BookingStatus} union, so a new
- * status fails the build until it has a row here; {@link metaFor} still tolerates an unknown status
- * at runtime (FE deployed before a new backend state).
+ * Presentation metadata per booking lifecycle status: the chip `label`, its CSS-modifier `chip`,
+ * and whether the amount reads `Paid` (money has moved) or `Amount` (still open / no charge). The
+ * single source of truth, shared by the booking detail view and the device-local "My bookings".
+ * Keyed by the exhaustive {@link BookingStatus} union, so a new status fails the build until it has
+ * a row; {@link metaFor} still tolerates an unknown status at runtime (FE ahead of backend).
  */
 export interface StatusMeta {
   readonly label: string;
@@ -46,14 +44,9 @@ export const STATUS_META: Record<BookingStatus, StatusMeta> = {
 };
 
 /**
- * The label for the money figure: `Paid` once money has actually moved, `Amount` while the
- * request/payment is still open — or when a cancellation never took any.
- *
- * `STATUS_META` maps `CANCELLED` to `Paid` because status alone cannot tell the two cancellations
- * apart; a booking released by the abandoned-payment sweep was never charged, and labelling its
- * figure `Paid` states the opposite. Callers that hold the refund fact pass it, so the detail view
- * and the list answer identically — `undefined` keeps the status-only reading for callers that
- * genuinely have no such fact.
+ * The money figure's label: `Paid` once money moved, else `Amount`. Status alone can't tell a
+ * charged `CANCELLED` from one the abandoned-payment sweep released uncharged, so callers holding
+ * the refund fact pass it (`null` = never charged); `undefined` keeps the status-only reading.
  */
 export function amountLabelFor(
   status: string,

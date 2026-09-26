@@ -2,11 +2,9 @@ import { formatCivilDate } from '../shared/booking-date';
 import { SetLock } from './operator-console.model';
 
 /**
- * The one home of a locked set's reason, as the editor canvas and the set editor both say it: a
- * guest still coming names the booking ("booked Sat 12 Sep 2026"); with no live booking on the
- * set, a hold from today on can only be a staff walk-in mark ("held by staff …"), because an
- * online hold exists only while its booking is live. Short on purpose — the cell's `title`, its
- * accessible description and the refusal notice all carry it.
+ * A locked set's short reason, for canvas and set editor: "booked <date>" for a live booking, else
+ * "held by staff <date>" — an online hold exists only while its booking is live. Kept short: the
+ * cell's `title`, accessible description and refusal notice all carry it.
  */
 export function lockReason(lock: SetLock): string {
   if (lock.bookedOn !== null) {

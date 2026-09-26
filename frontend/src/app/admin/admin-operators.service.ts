@@ -13,7 +13,7 @@ const AUDIT_REASON_HEADER = 'X-Audit-Reason';
 
 /**
  * HTTP client for the platform-admin operator-approval surface. Stateless — the session
- * cookie + CSRF header are added by {@link apiSessionInterceptor}; the component holds the list state.
+ * cookie + CSRF header are added by `apiSessionInterceptor`; the component holds the list state.
  * Every call is gated to the ADMIN role by the backend (a non-admin operator gets 403).
  */
 @Service()
@@ -41,10 +41,9 @@ export class AdminOperatorsService {
   }
 
   /**
-   * Suspend an active operator → it cannot sign in, and its live sessions are revoked server-side.
-   * A non-blank `reason` rides the {@link AUDIT_REASON_HEADER} into the audit trail;
-   * header values must be Latin-1, so anything outside it becomes a space rather than an
-   * aborted request.
+   * Suspend an active operator → it cannot sign in; its live sessions are revoked server-side. A
+   * non-blank `reason` rides {@link AUDIT_REASON_HEADER} into the audit trail; header values must
+   * be Latin-1, so anything outside it becomes a space rather than an aborted request.
    */
   suspend(id: number, reason?: string): Promise<void> {
     const grounds = reason?.replace(/[^\x20-\x7e\xa0-\xff]/g, ' ').trim();

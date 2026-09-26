@@ -5,15 +5,12 @@ import { FieldErrorFor } from '../shared/field-error-for';
 import { TouchTarget } from '../shared/touch-target';
 
 /**
- * The venue's evening-before cutoff field, for every form that sets it — labelled by its one
- * remaining meaning, the free-cancellation deadline (invariant #10; the on-day sales close is its
- * own three-choice control). The label names the zone explicitly — the deadline is a wall-clock
- * time in `Europe/Tirane` (invariant #6), and an operator reading it in their own zone would set
- * the wrong hour.
+ * The venue's evening-before cutoff field, for every form that sets it — labelled as the
+ * free-cancellation deadline (invariant #10; the on-day sales close is its own control). The label
+ * names the zone: the deadline is `Europe/Tirane` wall-clock (invariant #6), and an operator
+ * reading it in their own zone would set the wrong hour.
  *
- * <p>Like the booking-mode field beside it, the component owns its `<label>` and hosts on
- * `display: contents`: forms place this field in different grids, so the field is shared and the
- * layout is not.
+ * <p>Owns its `<label>` and hosts on `display: contents`, so each form places it in its own grid.
  */
 @Component({
   selector: 'app-booking-cutoff-field',

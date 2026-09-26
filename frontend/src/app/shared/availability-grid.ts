@@ -35,11 +35,9 @@ export function groupSetsByRow(sets: readonly SetView[]): SetRow[] {
 }
 
 /**
- * Derive each set's effective tile state from the server's per-set state tokens and any
- * optimistic overrides (which win until a reconcile clears them). The states map is the single
- * classification authority: a set absent from it is `FREE`; a held one carries `BOOKED_ONLINE`
- * (any online hold — paid or not — renders locked) or `STAFF_MARKED`. This replaced the
- * taken−confirmed-bookings heuristic that mislabeled an unpaid online hold as a walk-in.
+ * Each set's effective tile state: optimistic overrides win until a reconcile clears them; else the
+ * server's states map is the sole classification authority (absent = `FREE`; any online hold, paid
+ * or not, is `BOOKED_ONLINE`, never inferred from confirmed bookings; or `STAFF_MARKED`).
  */
 export function deriveTileStates(
   sets: readonly SetView[],

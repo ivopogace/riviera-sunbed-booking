@@ -7,15 +7,11 @@ export type StepDirection = 'prev' | 'next';
 
 /**
  * One prev/next step control for a photo slideshow: a 44 px transparent hit box pinned to the
- * band's left or right edge, painting a 30 px glass chevron chip inside it. The chip's alphas are
- * proven at 3:1 over any photo in `photo-slideshow.contrast.spec.ts`.
- *
- * <p>Hosts on `class: 'contents'` so the wrapper leaves no box and the consumer's positioned band
- * lays out the `<button>` itself. `pointer-events-auto` is unconditional because the Discover card
- * parks its pair inside a `pointer-events-none` overlay — keeping the card link clickable between
- * them — and a `display: contents` host has no box to carry the re-enable.
- *
- * <p>The chip is `aria-hidden`; {@link label} is the whole accessible name, since "›" is not one.
+ * band's left or right edge, painting a 30 px glass chevron chip (alphas proven at 3:1 over any
+ * photo in `photo-slideshow.contrast.spec.ts`). Hosts on `class: 'contents'` so the consumer's
+ * band lays out the `<button>`; `pointer-events-auto` is unconditional because the Discover card
+ * parks its pair in a `pointer-events-none` overlay and a `contents` host has no box to re-enable.
+ * The chip is `aria-hidden`; {@link label} is the whole accessible name, since "›" is not one.
  */
 @Component({
   selector: 'app-photo-step-button',

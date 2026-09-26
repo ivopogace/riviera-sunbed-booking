@@ -8,13 +8,12 @@ export const STAR_FILL = '[&_svg]:fill-current';
 
 /**
  * The rating star — the one geometry behind the rating radiogroup (`star-rating.ts`), every
- * read-only row (`star-row.ts`) and each static rating mark beside a venue's score.
+ * read-only row (`star-row.ts`) and each static rating mark beside a venue's score. Otherwise
+ * zero API surface — `shared/clock-icon.ts` explains the shape.
  *
- * <p>An outline, with no `filled` input (ICON-2): a star counts when its call site binds
- * {@link STAR_FILL}. A filled and a hollow star are therefore the same path, filled or not, and
- * never two codepoints whose weights depend on the reader's fonts — the radiogroup's WCAG 1.4.1
- * claim (selection by shape, not colour alone) rests on that. Otherwise zero API surface —
- * `shared/clock-icon.ts` explains the shape.
+ * An outline with no `filled` input (ICON-2): a star counts when its call site binds
+ * {@link STAR_FILL}, so filled and hollow are one path, never two font-dependent codepoints —
+ * the radiogroup's WCAG 1.4.1 claim (selection by shape, not colour alone) rests on that.
  */
 @Component({
   selector: 'app-star-icon',

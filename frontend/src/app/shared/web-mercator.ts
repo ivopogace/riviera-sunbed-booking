@@ -1,10 +1,9 @@
 import type { LngLat, MapView, ScreenPoint } from './map-engine';
 
 /**
- * Web Mercator as every tile engine draws it: the world is one square, `512 · 2^zoom` CSS px across
- * (`platform/map/style.json` declares no `tileSize` and MapLibre defaults a vector source to 512),
- * with x growing east and y growing south. The fake engine, the camera fit and the poster's still
- * handle all project through these, so a point lands on the same pixel whichever of them is asked.
+ * Web Mercator as tile engines draw it: one square world `512 · 2^zoom` CSS px across (MapLibre's
+ * vector default; `platform/map/style.json` sets no `tileSize`), x east, y south. The fake engine,
+ * camera fit and poster still all project through these, so a point lands on one pixel in each.
  */
 export const WORLD_PX = 512;
 

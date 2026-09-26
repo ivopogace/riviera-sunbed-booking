@@ -1,14 +1,9 @@
 import type { MapEngineOptions } from './map-engine';
 
 /**
- * The riviera as the map opens: centred on the coast between Vlorë and Ksamil, at a zoom that
- * shows the whole stretch, and fenced to the extract — all of Albania, the same box as `BBOX` in
- * `scripts/build-riviera-map.sh` — so a tourist cannot pan off the tiles into blank sea. The style
- * is a same-origin path (ADR-0022); the real adapter prefixes it with the API origin where the SPA
- * is served elsewhere.
- *
- * <p>Its own module, free of Angular, so the poster renderer (`frontend/scripts/`) can bundle the
- * camera code that reads it.
+ * The riviera as the map opens: the coast Vlorë–Ksamil, fenced to the extract (all of Albania, the
+ * `BBOX` of `scripts/build-riviera-map.sh`) so a tourist cannot pan off the tiles. Free of Angular
+ * so the poster renderer (`frontend/scripts/`) can bundle it. Style path same-origin (ADR-0022).
  */
 export const RIVIERA_MAP_OPTIONS: MapEngineOptions = {
   styleUrl: '/map/style.json',

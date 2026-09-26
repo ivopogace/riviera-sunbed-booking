@@ -1,15 +1,13 @@
 import { Directive } from '@angular/core';
 
 /**
- * The project's 44 × 44 CSS px touch-target floor (WCAG 2.5.5), on a native control:
- * `<button appTouchTarget>`, `<a appTouchTarget>`, `<input appTouchTarget>`. Both axes — a control
- * tall enough but 20 px wide is as unhittable as a short one.
+ * The 44 × 44 CSS px touch-target floor (WCAG 2.5.5), both axes, on a native button, link or input.
  *
- * <p>It sets no `display`, because a directive utility and a consumer utility for the same property
- * resolve by stylesheet order, not class order. So on an `<a>` still `display: inline` this is a
- * silent no-op — pair it with `inline-flex items-center`. The proof is never the class list;
- * `frontend/e2e/touch-targets.e2e.ts` measures the rendered box. A genuinely exempt control carries
- * `data-touch-exempt="<reason>"` instead. Rationale: `riviera-tailwind`, the touch-target floor.
+ * It sets no `display` (a directive and a consumer utility for one property resolve by stylesheet
+ * order), so on a still-inline `<a>` it is a silent no-op: pair it with `inline-flex items-center`.
+ * The proof is never the class list; `frontend/e2e/touch-targets.e2e.ts` measures the rendered box.
+ * A genuinely exempt control carries `data-touch-exempt="<reason>"` instead.
+ * Rationale: `riviera-tailwind`, the touch-target floor.
  */
 @Directive({
   selector: '[appTouchTarget]',

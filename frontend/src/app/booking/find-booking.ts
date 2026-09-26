@@ -37,17 +37,13 @@ const CLS = {
 } as const;
 
 /**
- * "Find a booking" glass modal. A guest on a device that doesn't
- * hold their booking (no device-local entry, no email link) types their booking **code** — the
- * unguessable bearer credential (invariant #7) — and is taken to the existing `/booking/:code`
- * detail view. The modal performs the lookup itself (`BookingService.getByCode`) so an unknown /
- * rate-limited / failed code renders **inline without navigating**, reusing the same
- * server-rate-limited endpoint — no new lookup oracle. The code is never logged and only ever
- * appears in a URL via the existing `/booking/:code` deep link.
+ * "Find a booking" glass modal: a guest whose device holds no booking types its **code** (bearer
+ * credential, invariant #7) and lands on the `/booking/:code` view, the only URL it ever rides.
+ * The lookup (`BookingService.getByCode`) runs here so an unknown / rate-limited / failed code
+ * errors **inline without navigating** (same rate-limited endpoint, no new oracle). Never log it.
  *
- * <p>Accessible modal cloned from {@link BookingDialog}: `role="dialog"` + `aria-modal`, an
- * accessible name from the heading, a focus trap, autofocus into the input, and ESC / backdrop /
- * close-button dismiss (emitting {@link close}; the app shell restores focus to the trigger).
+ * <p>Modal a11y cloned from `BookingDialog`: dialog + `aria-modal`, heading name, focus trap,
+ * input autofocus, ESC / backdrop / close dismiss (emits {@link close}; the shell restores focus).
  */
 @Component({
   selector: 'app-find-booking',

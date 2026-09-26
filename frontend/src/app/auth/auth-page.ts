@@ -76,19 +76,12 @@ const FIELD_CLASS = 'w-full rounded-[14px] px-[13px] py-[11px] text-[16px] font-
 const LABEL_CLASS = 'text-[11px] font-bold tracking-[0.1em] uppercase text-riv-card-ink-faint';
 
 /**
- * The one audience-aware auth card — four flows on a single surface: tourist sign-in,
- * tourist register, operator sign-in, operator register. It replaces five scattered surfaces
- * (`auth/sign-in`, `auth/register`, `operator/operator-register`, and the inline sign-in cards the
- * operator console and venue editor used to render).
- *
- * **This is a presentation unification only.** D-2's backend separation is untouched: there are
- * still two principal types and two login endpoints, and the audience toggle picks the *client
- * service* ({@link CustomerAuth} vs {@link OperatorAuth}), never a shared credential endpoint. The
- * submit paths are separate and the password field is cleared whenever the audience switches, so a
- * tourist credential can never be posted to the operator endpoint.
- *
- * Audience, mode and `returnUrl` live in query params, so the state survives the full-page SSO
- * redirect and the retired routes can forward into the right tab.
+ * The one audience-aware auth card: tourist and operator sign-in and register on one surface. A
+ * presentation unification only — D-2's two principal types and two login endpoints stay; the
+ * audience toggle picks the *client service* ({@link CustomerAuth} vs {@link OperatorAuth}),
+ * never a shared endpoint. Submit paths stay separate and the password is cleared on every
+ * audience switch, so a tourist credential can never be posted to the operator endpoint. Audience,
+ * mode and `returnUrl` live in query params to survive the SSO redirect; retired routes forward.
  */
 @Component({
   selector: 'app-auth-page',

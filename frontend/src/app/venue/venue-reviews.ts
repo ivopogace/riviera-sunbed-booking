@@ -48,15 +48,13 @@ const CLS = {
 } as const;
 
 /**
- * The venue page's review section: past guests' listed reviews — stars, display name, the month
- * of their stay, their words — newest first, a page at a time behind "Show more reviews". The
- * header's aggregate is the score; this is the reading behind it, so a venue whose ratings all came
- * without a comment shows the score up there and a quiet empty state here.
+ * The venue page's review section: past guests' reviews (stars, display name, month of stay,
+ * words), newest first, a page at a time behind "Show more reviews". The header's aggregate is the
+ * score, so a venue whose ratings all came without a comment shows a quiet empty state here.
  *
- * <p>Pages append rather than replace, so the section owns its own fetch (the venue map's
- * epoch-guarded `subscribe` idiom) instead of a `resource`. When "Show more" delivers the last page
- * the control leaves, and when a retry replaces the failure line, so focus is moved onto the first
- * review just listed rather than left on `<body>` (WCAG 2.4.3).
+ * Pages append, so the section owns its fetch (the venue map's epoch-guarded `subscribe` idiom),
+ * not a `resource`. When the last page or a retry removes the pressed control, focus moves onto the
+ * first review just listed, not `<body>` (WCAG 2.4.3).
  */
 @Component({
   selector: 'app-venue-reviews',
