@@ -327,9 +327,8 @@ const ADVICE = {
   'TT-2':
     'TT-2: a data-touch-exempt with no reason. The reason string is the whole point of marking ' +
     'rather than assuming — an unexplained exemption is the drift the floor exists to stop. The ' +
-    'sanctioned classes are a control inside a sentence (2.5.5\'s own inline exception), a ' +
-    'third-party iframe, and a control that renders no box at all. Anything else that "cannot" ' +
-    'meet the floor is a layout to fix. See the riviera-tailwind skill, rule 4.',
+    'reason names one of the sanctioned classes listed in the riviera-tailwind skill, rule 4; ' +
+    'anything else that "cannot" meet the floor is a layout to fix.',
 };
 
 function report(violations) {

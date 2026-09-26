@@ -22,10 +22,12 @@ occupies this grid cell."*), never a consequence, a remedy or UI navigation.
   Enumerate by mechanism: `grep -rn "ApiProblem\." platform/src/main` unrolled through each
   controller's local `problem(...)`/`error(...)` helper, plus the hand-built JSON in
   `RateLimitFilter` and `SecurityProblemResponses` — a phrase grep misses all of those.
-- **One code, one string.** `MISSING_CURRENT_PASSWORD` (operator + customer),
-  `REQUEST_NOT_PENDING` (accept, decline, withdraw — may not say "already been decided"),
-  `STALE_WRITE` (reprice, rename, batch apply, replace share one `venue.set_version` token —
-  may not claim *prices* or *layout*). `CurrentPasswordDetailTwinTest` pins its pair live.
+- **One string per code and token.** `MISSING_CURRENT_PASSWORD` (operator + customer),
+  `REQUEST_NOT_PENDING` (accept, decline, withdraw — may not say "already been decided").
+  `STALE_WRITE` guards two tokens, two conditions, so it carries one string per token:
+  `venue.version` (the profile write, `STALE_PROFILE_DETAIL`) and `venue.set_version` (reprice,
+  rename, batch apply, replace and remodel share `STALE_SETS_DETAIL` — may not claim *prices*
+  or *layout*). `CurrentPasswordDetailTwinTest` pins its pair live.
 - **Not findings:** `UNSUPPORTED_FORMAT` (states what the server accepts),
   `BOOTSTRAP_CREDENTIAL_MANAGED`, `SET_NOT_BOOKABLE_ONLINE`, `RATE_LIMITED`'s *"Too many
   requests."* (any widening leaks which of four dimensions fired).

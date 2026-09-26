@@ -35,12 +35,14 @@ never renumber.
    (`shared/touch-target.ts`), both axes. It sets no `display`, so on an `<a>` pair it with
    `inline-flex items-center`. Proof is the rendered box:
    `frontend/e2e/touch-targets*.e2e.ts` measures `getBoundingClientRect()`. Exemptions are
-   `data-touch-exempt="<reason>"` on the control or an ancestor, four classes only: an inline
+   `data-touch-exempt="<reason>"` on the control or an ancestor, five classes only: an inline
    link in a sentence; third-party iframe content (Stripe Payment Element); a box-less control
-   whose visible proxy carries the target (`venue-tab.html`'s hidden file input); a control the
-   **maintainer** explicitly held to WCAG 2.5.8's 24 px (the ALTCHA checkbox) — never
-   self-granted; first try holding the box at the floor and painting smaller over it. Anything
-   else is a layout to fix. `scripts/check-touch-target.mjs` (hook + CI; `--files`/`--all`)
+   whose visible proxy carries the target (`venue-tab.html`'s hidden file input); a cue or
+   supplementary gesture handle whose action a full-size target also offers — the surrounding
+   drag surface, a close button (`discover-sheet.ts`'s grabber, `set-editor.html`'s swipe
+   handle); a control the **maintainer** explicitly held to WCAG 2.5.8's 24 px (the ALTCHA
+   checkbox) — never self-granted; first try holding the box at the floor and painting smaller
+   over it. Anything else is a layout to fix. `scripts/check-touch-target.mjs` (hook + CI; `--files`/`--all`)
    gates the declaration only and ignores `<a>`.
 5. **Idioms:** `text-[14px]` not `text-sm` (named sizes bundle line-height); arbitrary variants
    (`[&.active]:bg-riv-accent-chip-fill`), no plugins; first-party `scrollbar-none|thin|auto`,

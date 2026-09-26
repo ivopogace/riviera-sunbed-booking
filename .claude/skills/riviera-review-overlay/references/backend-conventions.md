@@ -69,9 +69,9 @@ both non-admin principal types, so a new one needs its `hasRole(ADMIN_ROLE)` mat
 ### RV-BE-10. Error contract (`riviera-java-conventions` §6b) — Minor (Major if the wire shape diverges)
 No bespoke `{"error": …}` body, no per-controller `@ExceptionHandler`. `detail` states the
 **condition**, never a remedy, consequence or UI navigation; no call site is exempt. A code
-emitted from several call sites carries one string (`MISSING_CURRENT_PASSWORD`,
-`REQUEST_NOT_PENDING`, `STALE_WRITE`; `CurrentPasswordDetailTwinTest` pins one pair) that
-stays true of the broadest arm. Authority: `riviera-java-conventions/references/error-contract.md`.
+emitted from several call sites carries one string per code and token
+(`MISSING_CURRENT_PASSWORD`, `REQUEST_NOT_PENDING`; `STALE_WRITE` has one per version token;
+`CurrentPasswordDetailTwinTest` pins one pair) that stays true of the broadest arm. Authority: `riviera-java-conventions/references/error-contract.md`.
 
 ### RV-BE-11. Responsibility placement (`RESPONSIBILITIES.md`) — Major
 Whenever behaviour is added or moved: each file's logic serves its module's **Job** and is not on
