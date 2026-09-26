@@ -222,301 +222,161 @@ any is released on the old, never a swap of my own — so a racing reserve wins 
 ## `booking`
 **Job:** Own bookings, booking codes, and the lifecycle. The standing rules:
 
-- **A booking is a span of service days: `booking_date` is the first, `last_date` the last,
-  inclusive.** Every existing row is a one-day booking (`last_date = booking_date`, V61), and so is
-  every insert that names no last day (trigger `booking_last_date_on_insert` — the one home of that
-  default, so a fixture or a hand insert stays one-day without saying so); `booking_span_check`
-  refuses a last day before the first, and `domain/ServiceDays` is its Java twin. **Every terminal
-  transition releases every day of the span** — the guest cancel, the four remodel legs, the three
-  request-termination legs, the abandoned-payment release the sweep and the canceled webhook share —
-  and the remodel move claims every day on the candidate before freeing every day on the old set.
-  Each guarded `UPDATE … RETURNING` yields the span with the set, and the winner walks it through
-  `availability`'s one-day `release`; `set_availability` carries no link to a booking, so a day a leg
-  forgot would be unrecoverable (invariant #2). `SpanReleaseIT` re-claims the whole span after each
-  leg. Reads that ask "who is booked on D" select by overlap (the staff daily list, the weather
-  refund); "still owed from D on" and the retention basis read `last_date`; daily takings still
-  land a stay's whole price on its first day, by decision, until the per-day share exists
-  (`docs/architecture/multi-day-stays.md` D4). **A reserve claims every day of the stay, all or
-  nothing:** `CreateBookingCommand` carries a last day (a `StaySpan`, at most 62 days); the season
-  closure must admit every day, the sales close is judged on the first (invariant #4); a
-  Request-to-Book venue refuses a stay of several days (`RANGE_NOT_OFFERED`) until it can answer
-  one request whole; a venue with a maximum stay refuses a longer span (`STAY_TOO_LONG`, read off
-  `SetBookingInfo#maxStayDays`, judged before any claim); then the reserve transaction claims one
-  `(set, date)` row per day through
-  `availability`'s one-day `claim`, and a day that loses gives back every day already won before
-  the `SET_TAKEN` answer, so a lost range holds nothing (`ConcurrentRangeReservationIT`). The
-  amount is the per-day price × the days, one PaymentIntent (invariant #5); the cancellation
-  window and the refund are the first day's on the whole amount, one decision (invariant #10);
-  `BookingConfirmed`, `BookingCancelled` and `BookingMoved` carry `lastDate` so the mails name the
-  days.
-- **The reserve commits before any payment call, and that does not weaken invariant #2.**
-  `ReserveSetService` claims, inserts the `AWAITING_PAYMENT` booking and commits; only then does
-  `CreateBookingService` call `CheckoutPort#pay`, so no row lock is held across the gateway
-  round-trip. The double-booking guard is `UNIQUE (set_id, booking_date)` plus the atomic
-  `INSERT … ON CONFLICT DO NOTHING` claim, which holds however long or short the lock is held.
-- **Attendance is a per-day record, and I am the sole writer of `booking_day`.** One row per
-  service day of a stay, written by the schema the moment a `booking` row becomes `CONFIRMED`
-  (trigger `booking_day_on_confirm`, V60; V61 widened it to every day from `booking_date` to
-  `last_date` — the one home of "written when the booking confirms", so no confirm statement and
-  no fixture can forget them). A service day is unresolved, attended (`attended_at`) or
-  missed (`missed_at`), never both (CHECK). `booking.status` stays the contract state machine;
-  `COMPLETED` / `NO_SHOW` are **stay outcomes** written once, when the last service day resolves:
-  `COMPLETED` if any service day was attended, else `NO_SHOW`. `completed_at` is the instant the
-  stay resolved `COMPLETED` — the review window's input — and a `NO_SHOW` stamps nothing on
-  `booking` (V41's stance: the service day is the fact, the sweep's clock is not). The outcome
-  rule is one SQL statement shared by check-in and the sweep (`JdbcBookings.RESOLVE_STAY_SQL`).
-  The fitness function is `ResponsibilitiesArchitectureTests` rule 9.
-- **Check-in** is the venue-scoped stamp on **today's** service-day row (`attended_at`, today in
-  `Europe/Tirane`) off the scanned or typed booking code — single-use per service day by the row
-  lock and the `attended_at IS NULL AND missed_at IS NULL` guard (a second scan on the same day
-  reads "already checked in"; a `CONFIRMED` stay whose service day today is attended answers the
-  same as a `COMPLETED` one), keyed on the code but authorized by venue ownership (invariants #13
-  and #7). When no later service day remains it resolves the stay in the same transaction. It
-  publishes **no** event: nothing accrues, nothing refunds, no mail.
-- **The no-show sweep** drains two backlogs, each in batches on the bounded client (500 rows, at
-  most 20 batches a run between them, each statement committing on its own, `FOR UPDATE` without
-  `SKIP LOCKED`, each backlog ending on its own short batch), so a run cut short resumes next
-  tick: it marks every service day before today (`Europe/Tirane`) that a `CONFIRMED` booking
-  neither attended nor missed as missed, then resolves every `CONFIRMED` booking whose last
-  service day has passed (oldest first, its stragglers marked in the same statement). Both
-  statements, like the check-in, lock the **booking row first** and its service-day rows after, so
-  a scan, a cancel and the sweep serialize on the stay and none can stamp a service day of a stay
-  another has just ended. The count it reports is bookings resolved. It writes **no availability
-  row**: freeing a past claim would make it re-claimable (invariant #2). Arrivals and daily
-  takings count `COMPLETED` **and `NO_SHOW`** beside `CONFIRMED`. The guest-cancel guard is
-  `CONFIRMED`-only; the admin **weather refund** admits `NO_SHOW` on its own `cancelForWeather`
-  transition, because the storm is known afterwards — the two share no port method, and each takes
-  its admitted statuses from its own row in `BookingTransition`, so that asymmetry cannot be
-  tidied away. The weather refund selects every booking whose span covers the date and refunds
-  the one-day ones in full as ever; a booking spanning several days is **never cancelled or
-  refunded there** — a partial refund of a live booking is what one reversal per booking
-  (invariant #9) cannot express — and is **named on the outcome** (count plus booking ids, never
-  codes, invariant #7) so the operator settles it by hand; the day's share is #1210's. The guest guard's two advisory readers — the code-gated view's `cancellable` and
-  the cancel service's `NotCancellable` refusal — read the same `CANCEL_BY_GUEST` row rather than
-  restating it (`ViewBookingServiceTest` and `CancelBookingServiceTest` hold each answer, status
-  by status, to the literal `BookingTransitionTest` holds the row to); the `{NO_SHOW, COMPLETED} →
-  WindowClosed` split ahead of the refusal chooses the copy for a spent day, not who may cancel.
-- **The retention probe reads `booking` on a bounded client.** `customer.spi.GuestBookingHistory`
-  (`JdbcGuestBookingHistory`) is the retention sweep's second entry read: the sweep asks `customer`
-  for candidates, then asks me which still have a retention basis, both before it writes anything.
-  Bounding only the first would let the sweep wedge on the second, because a lock on `booking` that
-  stalls my own sweeps stalls this read too. The sweep is its only caller, so the adapter's only
-  client is bounded, by its own scoped timeout, never the global one (invariant #2).
-- **The lifecycle is stated once and enforced in SQL.** `domain/BookingTransition` is the
-  transition table — which statuses each of the eleven transitions may act on, what it writes,
-  and `successorsOf(status)` for "what may follow this?". It generates no SQL: the guarded
-  `UPDATE … WHERE status = … RETURNING` statements in `JdbcBookings` stay the enforcing
-  statement, and `JdbcBookingTransitionTableIT` drives every transition against every status to
-  hold the two together. Read the table before adding a transition or widening a guard.
-- **`BookingCutoff` is the module-wide day-boundary authority** (`application/` root):
-  `salesCloseAt` (the venue's setting per date — gates creation and caps a pending
-  request's response deadline at `min(created + expiry-window, D at sales close)`;
-  also answers the tourist browse through `venue.spi.SalesWindow`, display-only — the
-  reserve path enforces independently), `closedForSeason` / `admitsDate` (the season closure's
-  arm of the same fence: a closure holds until its reopen day opens in `Europe/Tirane` or the
-  operator reopens, and admits a date on or after that day only with the advance-sales opt-in;
-  the four-argument `isBookable` composes both arms for the catalogue verdict, while the reserve
-  path asks them one at a time to name which refused — `VENUE_CLOSED`, then `BOOKING_CLOSED`),
-  `freeCancellationEndsAt` (the evening-before
-  boundary, cancellation-only), `serviceDayOpensAt` (midnight, the cancellation window's
-  outer fence) and `serviceDayEndsAt` (the next midnight, the pay deadline's outer bound).
-- **The pay path fences on the pay deadline having passed.** An accepted
-  `AWAITING_PAYMENT` booking's deadline is `min(accepted_at + pay-window, end of service
-  day)` — the instant the payment-due mail promises; a never-accepted one's is the end of
-  its service day, with the TTL (`AbandonedPaymentProperties`) the sweep's earlier
-  backstop, never a view fence. The abandoned sweep's `booking_date` arm reaps any
-  `AWAITING_PAYMENT` row whose service day has ended (the SQL is a pinned mirror of
-  `RequestWindows#payDeadline`; mail ≡ sweep is `RequestWindowsTest`'s contract), and the
-  code-gated view withholds the `clientSecret` past the same deadline.
-- **The confirm path is deliberately not fenced** (pinned by
-  `JdbcBookingsTransitionIT.confirmSucceedsAfterThePayDeadlineHasPassed`). A guest holding
-  a live `clientSecret` who pays past the deadline but before the next sweep still
-  confirms. Refusing without refunding would strand the money on a booking the sweep can
-  never release; refunding cannot reuse `BookingCancelled` (a never-confirmed booking has
-  no `ACCRUAL`, so `payout`'s listener would defer forever). The residual is a
-  sub-sweep-interval race the guest opts into and pays for with the full stay.
-- **Verified payment events apply idempotently, as the second layer.** `PaymentEventListener`
-  applies `PaymentConfirmed` / `PaymentCanceled` after the webhook commits, and the registry
-  re-delivers an outstanding publication, so delivery is at-least-once. `payment`'s
-  `stripe_webhook_event` event-id dedup is the first idempotency layer and sees only Stripe's
-  re-deliveries; my guarded `AWAITING_PAYMENT` transitions are the second, so a replay moves no row,
-  releases no claim twice and publishes nothing.
-- **Pre-reserve cancellation terms and the window at birth.** `CancellationPolicy` — the
-  single home of the window rule — answers the public read
-  `GET /api/bookings/cancellation-terms` (`QuoteCancellationTerms`) and classifies
-  `windowAtBirth` from `created_at`. Both publication sites stamp
-  `cancellationWindowAtBirth` + `lateCancelRefundBps` onto `BookingConfirmed` and
-  `BookingPaymentDue` — facts fixed at the moment, so a later cutoff edit cannot rewrite
-  a sent mail; a null window (older payloads) renders no disclosure. The code-gated view
-  and the admin-resend facts re-derive the field from the venue's *current* cutoff on each
-  read (bounded, documented drift; the stamped events stay the record).
-- **The reserve paths refuse a hidden venue's set** before any claim, via
-  `operator.api.VenueVisibility`, answering `NO_SUCH_SET`. No post-reserve leg (view,
-  cancel, check-in, sweeps) consults visibility. They refuse a date the venue's season closure
-  does not admit with `VENUE_CLOSED` — its own code, because the venue is deliberately visible —
-  before any claim, on both booking modes; the closure rides `SetBookingInfo`.
-- **The request lifecycle's three terminal legs** live on `RequestReleaseService`:
-  decline, the expiry sweep, and the guest's **withdraw**. Withdraw is authorized by the
-  booking **code** alone (the only request command with no ownership check) and guarded by
-  status alone, not deadline — so on an overdue row the **row lock**, not the predicates,
-  leaves exactly one transition and one release (`ConcurrentRequestTerminationIT`). It
-  publishes **no** event: nothing accrued and nothing was collected, and a
-  `refundMinor = 0` `BookingCancelled` would mail the guest a cancellation record for a
-  request they retracted.
-- **`BookingRequestDeclined` is published inside the transaction that settles the decline** —
-  `RequestReleaseService#decline` and the remodel commit's decline leg alike — so its Event
-  Publication Registry row commits atomically with the transition. `BookingPaymentDue` cannot be:
-  the accept branch's outcome is decided only after its transaction, by the gateway's answer.
-- **Notification-facts reads:** the arrival code + contact id
-  (`BookingNotificationFacts#notificationInfo`), the wider `#confirmationFacts` an admin
-  resend rebuilds a mail from, and `CustomerBookings` (which bookings one contact has,
-  a separate consumer role). Neither publishes the lifecycle enum: both answer
-  `everConfirmed` (from `confirmed_at`), which keeps `BookingStatus` internal.
-- **`CustomerBookings` answers a contact's 20 newest booked dates, each row naming a set.** An
-  unbounded read on a support surface is a hazard, and newest-first is what makes the cap safe. A
-  set id rather than a venue id, because the view resolves the name through
-  `venue.api.SetBookingFacts` — the read the confirmation mail itself uses — so no new venue-side
-  port is needed for a name.
-- **The code-gated view reports an outstanding refund** — decided by me, not yet accepted
-  by the gateway — asked lazily through `payment.api.RefundStatusLookup`, so the panel
-  says "being processed" rather than "in transit" while the refund sits in the outbox.
-- **No cancellation refunds inside its own transaction.** The transaction decides the refund and
-  carries it on `BookingCancelled` (`refundMinor`); `BookingRefundListener` alone calls
-  `payment.api.RefundPort`, after commit. A refund issued inside would split money from state
-  whenever the commit failed after Stripe had accepted it, and its gateway round-trip would hold
-  the booking row lock the guarded transition took for the length of the call.
-- **The refund listener drains on my own bounded executor** (`riviera.booking.refund.*`,
-  validated at boot), never Boot's shared `applicationTaskExecutor`, and runs **outside a
-  transaction**: the refund path records its attempt before the gateway call, and a
-  transaction would hide that write for exactly the window it covers (§`payment`). The
-  listener makes blocking gateway round-trips (≈25s worst case per call, up to three per
-  refund) and `WeatherRefundService` dispatches a whole venue-day in one transaction.
-  Saturation **sheds** to `ObservabilityMetrics.REFUNDS_SHED` and the publication stays
-  outstanding for the restart republish; the queue is sized so shedding is unreachable
-  for any plausible burst. Structural: `RefundListenerExecutorArchitectureTest`, scoped to
-  `booking` listeners reaching `payment::api` — today the refund listener and
-  `RemodelReleasePaymentListener`, which voids the uncollected intent of a booking a remodel
-  released, so `REFUNDS_SHED` counts both kinds of shed gateway call.
-- **A remodel-released booking that had in fact collected** is the one loss that void cannot
-  undo: the guest paid for a booking that no longer exists, so it counts to
-  `ObservabilityMetrics.REMODEL_RELEASE_COLLECTED` and is settled by hand. Nothing retries it —
-  there is no uncollected intent left to void.
-- **The ADMIN refund-outbox re-drive** (`GET`/`POST /api/admin/refund-outbox`) is scoped to an
-  **exact-id allowlist** — the two listeners on the refund bulkhead — never the `booking` package
-  prefix, which would sweep `PaymentEventListener`'s payment→confirm spine (`RefundOutboxScopeIT`
-  for what it leaves alone, `RefundOutboxScopeTest` for the ids).
-- **The refund re-drive refuses for a cooldown window, not just while a press runs**
-  (`RefundResubmissionWindow`). A mutex answers only the truly simultaneous press. Money is safe
-  either way — the gateway call is keyed `booking-<id>-refund` and the registry's
-  `markResubmitted` claim skips an in-flight publication — but the gateway is not: in an outage
-  each re-driven refund fails fast and is outstanding again, so without the window every press
-  re-asks the gateway for every refund and reports a success that settled nothing.
-- **The withheld-mail flag on a confirmed booking's read model** is asked through
-  `booking.spi.ConfirmationMailDelivery` by `CustomerId` — I never handle an address. The
-  gate is two-part: the booking must be `CONFIRMED` **and** `payment.api.CollectionGuarantee`
-  must say this deployment's gateway collects before confirming (the in-process stub does
-  not, so the flag is inert there — otherwise it would be a free suppression oracle).
-- **The mail-status gate short-circuits before the port is asked.** The `202` create hands the
-  booking code out before the card is collected, so answering `emailWithheld` for an unsettled
-  booking would make the code-gated view a suppression oracle for any address a checkout can be
-  started with. `ViewBookingService#mayDiscloseMailStatus` asks `payment.api.CollectionGuarantee`,
-  never a profile string, so the gate stays a checkable property of the payment model and still
-  holds when a third gateway is wired.
-- **The remodel classification is keyed on the claim, then split by status.** `RemodelClaims#classify`
-  (published for the platform edge, ADR-0020) asserts venue ownership, reads every booking a guest
-  may still turn up on across the sets a layout save would remove or renumber, and decides each in
-  `(service date, id)` order through two named rule holders (ADR-0018): `RemodelZones`
-  (`application/remodel`, clock-backed — the zone is the duration to
-  `BookingCutoff#serviceDayOpensAt` against the `riviera.booking.remodel.freeze-window` (24h) and
-  `refund-notice-floor` (96h) bounds, both inclusive on the nearer side; sales close plays no role)
-  and `MoveRanking` (`domain/`, pure — free on every day of the claim's span, online pool, same or
-  better tier; same row, then closest position, then closest row). A frozen claim blocks; a claim
-  with a candidate moves, and that candidate leaves the pool on every day of the span it took; a
-  move-only claim with none blocks; beyond the floor `CONFIRMED` refunds, `AWAITING_PAYMENT`
-  releases, `PENDING_REQUEST` declines. The answer carries outcome kinds, set references and
-  amounts — never a status and never a code (invariant #7). Advisory: read-only and unlocked, so the
-  commit re-derives it.
-- **The remodel commit settles every claim: moved, ended, or kept where it is.**
-  `RemodelClaims#commit` (published, ADR-0020) runs inside `venue`'s commit transaction as its
-  `RemodelGate`: it re-classifies the disturbed sets under the lock, checks the operator's
-  `PreviewToken` still **covers** the fresh picture — the token is a sorted set of per-pair digests
-  over `(booking id, outcome kind)`, so a fresh picture that is a strict subset of the previewed one
-  still matches, and a claim or an outcome the preview never showed is `Stale` — and then, in
-  `(service date, id)` order, applies each claim through the guarded transition its status already
-  has: a **move** claims the new `(set, date)` through `availability`, releases the old, stamps
-  `booking.moved_at` and publishes `BookingMoved`; a **refund** runs `cancelConfirmed` with the
-  booking's whole amount and reason `VENUE_CHANGE`; a **release** runs the `AWAITING_PAYMENT →
-  CANCELLED` transition the payment-canceled webhook and the TTL sweep share; a **decline** runs the
-  venue-scoped `PENDING_REQUEST → DECLINED` one. Each ending frees its `(set, date)` and publishes the
-  fact the platform already reacts to — `BookingCancelled` for the first two, `BookingRequestDeclined`
-  for the third — so the refund, the payout reversal and the mails drain after commit and nothing here
-  talks to Stripe. A released claim's `BookingCancelled` carries `refundMinor = 0`, which is what
-  mails the guest without moving money: no refund is issued and no reversal is posted for a booking
-  that never collected. A `Blocked` claim is **kept**: nothing of it changes — no row, no status, no
-  event — it gets a `remodel_receipt_kept` line with its `BlockReason`, and the edge hands its set to
-  `venue` as a kept set so the layout leaves it as stored. A claim that can move off a kept set still
-  moves as previewed: the operator painted that set away, and the preview showed the move.
-- **A commit that refunds guests is a deliberate second act.** It carries a `RefundConfirmation` — how
-  many refunds the operator read off the preview and why they are remodelling — and a count that does
-  not match the picture re-derived under the lock, or a blank reason, is `Unconfirmed` with the number
-  owed and writes nothing. Both land on the receipt beside the money.
-- **The receipt is mine.** `remodel_receipt` / `remodel_receipt_move` / `remodel_receipt_outcome` /
-  `remodel_receipt_kept` snapshot the old and new labels, the distance, one line per ended claim with
-  its amount, one line per kept claim with its reason, plus the operator's reason, so the moved
-  mail, the guest's view and the console still name the spot the guest was told after that set is
-  retired. `BookingPresence#hasBookings` counts a receipt's from- and
-  to-sets so a set a moved booking left retires rather than deletes; an ended claim needs no such arm,
-  because its booking keeps that `set_id` — which is why the outcome row records the set id without a
-  foreign key. `BookingNotificationFacts#endedByRemodel` reads the outcome lines alone — a kept
-  booking was not ended — and is the only thing that
-  tells a venue-caused cancellation from the guest's own free exit, since both are `VENUE_CHANGE`. The
-  receipts read (`ViewRemodelReceipts`, `GET /api/venues/{venueId}/remodels[/{receiptId}]`,
-  owner-asserted) is my own inbound adapter, not the root's. No undo: a move is reversed by another
-  remodel.
-- **A remodel-released booking's PaymentIntent is voided after the commit, never inside it.** The
-  release cancels an unpaid booking without moving money, but its intent stays collectable and the
-  abandoned-payment sweep only ever reads `AWAITING_PAYMENT` rows, so nothing would reach it again.
-  `RemodelReleasePaymentListener` runs on the refund bulkhead off `BookingCancelled`, keyed on the one
-  shape only a release has — `VENUE_CHANGE` returning nothing — and calls `payment.api.CancelPaymentPort`.
-  A transient gateway failure throws so the publication is retried; a payment that already succeeded
-  is logged for a manual refund, because nothing there can be undone automatically.
-- **The intent void acts on the release shape alone.** Every other `BookingCancelled` — the guest
-  cancel, the weather refund, the remodel refund, a moved guest's free exit — ends a booking that
-  collected, so `RemodelReleasePaymentListener` could only get `NotCancellable` back for it; acting
-  on those would put a gateway round-trip on every guest cancellation for nothing.
-- **A moved booking's free exit is a refund-tier override, never a window change.** The exit runs
-  until `min(service day opens, max(12:00 Europe/Tirane the day before, moved_at + 24h))`
-  (`BookingCutoff#freeExitEndsAt`); `CancellationPolicy#quote` reads it and, while it is open, answers
-  the full amount with reason `VENUE_CHANGE` — in `LATE` that lifts the tier, in `FREE` only the reason
-  changes, so the mail and the admin's venue-caused list still know why — and `CLOSED` is never
-  reopened: the guest can already be consuming the stay. The reason lands on the
-  booking and rides `BookingCancelled` into the ledger reversal and the cancellation mail. The
-  code-gated view carries the move (`BookingDetail#move`: old spot, distance, `movedAt`, the exit
-  deadline while open); `BookingNotificationFacts#moveFacts` hands the mail the same, from the receipt.
+- **A booking is a span: `booking_date` the first service day, `last_date` the last, inclusive.**
+  An insert naming no last day is one-day (trigger `booking_last_date_on_insert`);
+  `booking_span_check` (Java twin `domain/ServiceDays`) refuses a last day before the first. "Who is
+  booked on D" selects by overlap; "still owed from D on" and the retention basis read `last_date`.
+- **Every terminal transition releases every day of the span**, and a remodel move claims every day
+  on the candidate before freeing the old set; only the guarded `UPDATE … RETURNING`'s winner
+  releases. `set_availability` has no link to a booking, so a day a leg forgets is unrecoverable
+  (invariant #2); `SpanReleaseIT` re-claims the span after each leg.
+- **A reserve fences before any claim, on both booking modes:** a hidden venue's set
+  (`operator.api.VenueVisibility`) is `NO_SUCH_SET`, and no later leg consults visibility; a season
+  closure that does not admit every day is `VENUE_CLOSED` (the venue is deliberately visible); the
+  sales close is judged on the first day (invariant #4); a Request-to-Book venue refuses several
+  days (`RANGE_NOT_OFFERED`); a span over the venue's maximum stay is `STAY_TOO_LONG`.
+- **Then it claims every day, all or nothing:** a day that loses gives back every day won, then
+  answers `SET_TAKEN` (`ConcurrentRangeReservationIT`). One PaymentIntent for per-day price × days
+  (invariant #5); the cancellation window and refund are the first day's, on the whole amount
+  (invariant #10). The staff daily list and daily takings count `CONFIRMED`, `COMPLETED` and
+  `NO_SHOW` (a resolved stay still happened, its money kept); takings land a stay's whole price on
+  its first day, pending `docs/architecture/multi-day-stays.md` D4.
+- **The reserve commits before any payment call** (no row lock spans the gateway round-trip), and
+  that does not weaken invariant #2: the guard is `UNIQUE (set_id, booking_date)` plus the atomic
+  `INSERT … ON CONFLICT DO NOTHING` claim, which holds however long the lock is held.
+- **Attendance is per service day; I am the sole writer and reader of `booking_day`**
+  (`ResponsibilitiesArchitectureTests` rule 9 — other modules ask my ports). The schema writes the
+  rows when a booking becomes `CONFIRMED` (trigger `booking_day_on_confirm`), so no confirm
+  statement or fixture can forget them; a day is attended or missed, never both (CHECK).
+- **`booking.status` stays the contract state machine.** `COMPLETED` / `NO_SHOW` are stay outcomes,
+  written once when the last day resolves (`COMPLETED` if any day was attended) by one statement
+  shared by check-in and the sweep (`JdbcBookings.RESOLVE_STAY_SQL`). `completed_at`, the review
+  window's input, is when the stay resolved; a `NO_SHOW` stamps nothing (the day is the fact).
+- **Check-in** stamps **today's** (`Europe/Tirane`) service-day row off the code, authorized by
+  venue ownership (invariants #13, #7), single-use per day by the row lock and guard; on the last
+  day it resolves the stay too. It publishes **no** event: nothing accrues, refunds or mails.
+- **The no-show sweep** marks the past unresolved days of `CONFIRMED` stays missed, then resolves
+  every stay whose last day has passed, in batches that each commit alone. It writes **no
+  availability row**: freeing a past claim would make it re-claimable (invariant #2).
+- **Lock order: the booking row, then its service-day rows** — check-in and both sweep statements —
+  so a scan, a cancel and the sweep serialize on the stay. The sweep never uses `SKIP LOCKED`: a
+  short batch reads as drained, so a skipped contended row would be stranded.
+- **The guest cancel admits `CONFIRMED` only; the weather refund also `NO_SHOW`** (the storm is
+  known afterwards): separate port methods and `BookingTransition` rows, so the asymmetry cannot be
+  tidied away. The guest guard's readers (the view's `cancellable`, the cancel's `NotCancellable`)
+  read `CANCEL_BY_GUEST`, never restate it; `{NO_SHOW, COMPLETED} → WindowClosed` only picks copy.
+- **The weather refund never cancels a multi-day booking:** it refunds the one-day bookings covering
+  the date in full and names each longer one on the outcome (ids, never codes — invariant #7) for a
+  manual refund, since one reversal per booking (invariant #9) cannot express a partial refund.
+- **The retention probe (`JdbcGuestBookingHistory`) is bounded too** (§`customer`): bounding only
+  `customer`'s read would let the retention sweep (sole caller) wedge on a lock stalling my sweeps.
+- **The lifecycle is stated once, in `domain/BookingTransition`, and enforced by `JdbcBookings`'
+  guarded SQL** (`JdbcBookingTransitionTableIT`). Read it before adding a transition or a guard.
+- **`BookingCutoff` is the module-wide day-boundary authority.** Through `venue.spi.SalesWindow` it
+  also answers the tourist browse, display-only — the reserve enforces independently, asking the
+  season-closure and sales-close arms one at a time to name the refusal (`VENUE_CLOSED`, then
+  `BOOKING_CLOSED`). `freeCancellationEndsAt` is cancellation-only.
+- **Windows:** a request must be answered by `min(created + expiry-window, D's sales close)`; the
+  pay deadline is `min(accepted_at + pay-window, end of service day)`, or the day's end if never
+  accepted (the TTL, `AbandonedPaymentProperties`, is only the sweep's earlier backstop, never a
+  view fence). The payment-due mail promises it, the abandoned sweep's SQL mirrors it
+  (`RequestWindows#payDeadline`, `RequestWindowsTest`); the view hides the `clientSecret` past it.
+- **The confirm path is deliberately not fenced**
+  (`JdbcBookingsTransitionIT.confirmSucceedsAfterThePayDeadlineHasPassed`): a payment landing past
+  the deadline still confirms. Refusing without refunding strands the money on a booking no sweep
+  releases; refunding cannot reuse `BookingCancelled` (no `ACCRUAL`: `payout` would defer forever).
+  The residual is a sub-sweep-interval race the guest opts into and pays for in full.
+- **Payment events apply idempotently, as the second layer:** `payment`'s `stripe_webhook_event`
+  dedup misses the registry's re-deliveries to `PaymentEventListener`, so my guarded
+  `AWAITING_PAYMENT` transitions make a replay move no row, release nothing and publish nothing.
+- **Cancellation terms are stamped at birth.** `CancellationPolicy` is the single home of the window
+  rule; `cancellationWindowAtBirth` + `lateCancelRefundBps` ride `BookingConfirmed` and
+  `BookingPaymentDue` so a later cutoff edit cannot rewrite a sent mail (null: no disclosure). The
+  view and admin-resend facts re-derive from the *current* cutoff — bounded, documented drift.
+- **Request termination** (decline, expiry, withdraw) lives on `RequestReleaseService`. **Withdraw**
+  is authorized by the code alone (the only request command with no ownership check) and guarded by
+  status, not deadline, so on an overdue row the row lock leaves one transition and one release
+  (`ConcurrentRequestTerminationIT`). It publishes **no** event: a `refundMinor = 0`
+  `BookingCancelled` would mail a cancellation for a retracted request. `BookingRequestDeclined` is
+  published inside the deciding transaction; `BookingPaymentDue` cannot be.
+- **My read ports keep `BookingStatus` internal**: `BookingNotificationFacts#confirmationFacts` and
+  `CustomerBookings` answer `everConfirmed` (from `confirmed_at`). `CustomerBookings` caps at a
+  contact's 20 newest booked dates (unbounded is a support-surface hazard), each naming a set, not a
+  venue: the view resolves names through `venue.api.SetBookingFacts`, needing no new venue port.
+- **The code-gated view reports a refund I decided that the gateway has not yet accepted**, asked
+  lazily through `payment.api.RefundStatusLookup`, so the panel says "being processed" while it
+  sits in the outbox, never "in transit".
+- **No cancellation refunds inside its own transaction** — a failed commit after Stripe accepted
+  would split money from state, and the round-trip would hold the booking row lock. It carries the
+  refund on `BookingCancelled`; `BookingRefundListener` alone calls `payment.api.RefundPort`, after
+  commit and outside any transaction (never `REQUIRES_NEW`): the refund path records its attempt
+  before the gateway call, and a transaction would hide that write (§`payment`).
+- **Gateway-reaching listeners drain on my bounded executor** (`riviera.booking.refund.*`), never
+  Boot's shared `applicationTaskExecutor`, which carries the confirm and payout spine
+  (`RefundListenerExecutorArchitectureTest`). Sized for up to three blocking calls per refund (each
+  within the Stripe timeouts' 25s sum) and a weather refund's venue-day burst; saturation **sheds**
+  to `ObservabilityMetrics.REFUNDS_SHED` (never thrown or run on the caller), and the publication
+  stays outstanding for the restart republish.
+- **The ADMIN refund-outbox re-drive uses an exact-id allowlist** (`BookingRefundListener`,
+  `RemodelReleasePaymentListener`), never the `booking` package prefix, which would also replay
+  `PaymentEventListener`'s payment→confirm spine. It refuses for a cooldown window
+  (`RefundResubmissionWindow`), not just during a press: money is safe either way, but in an outage
+  every press would re-ask the gateway for every refund.
+- **The withheld-mail flag is a suppression oracle unless gated** (the `202` create hands out the
+  code before the card is collected): `ViewBookingService#mayDiscloseMailStatus` asks
+  `booking.spi.ConfirmationMailDelivery` (by `CustomerId`; I never see an address) only for a
+  `CONFIRMED` booking when `payment.api.CollectionGuarantee` says the gateway collects before
+  confirming — never a profile string.
+- **Remodel classification** (`RemodelClaims#classify`, ADR-0020) decides each live booking on the
+  disturbed sets in `(service date, id)` order: zone (`RemodelZones`), then a move candidate
+  (`MoveRanking`; a taken one leaves the pool on every day of the span), then status — `CONFIRMED`
+  refunds, `AWAITING_PAYMENT` releases, `PENDING_REQUEST` declines; a frozen claim, or a move-only
+  one without a candidate, blocks. Outcome kinds only, never a status or code (invariant #7);
+  advisory and unlocked, so the commit re-derives it.
+- **The remodel commit** (`RemodelClaims#commit`) runs in `venue`'s commit transaction behind its
+  `RemodelGate`: it re-classifies under the lock; the `PreviewToken` must **cover** the fresh
+  picture (an unpreviewed claim or kind is `Stale`), and refunds need the operator's matching
+  `RefundConfirmation` count and a reason (else `Unconfirmed`) — either writes nothing. Each claim
+  settles through its status's guarded transition; refunds, reversals and mails drain off events.
+- **The commit's legs:** a **move** claims the new rows, releases the old, stamps `moved_at`,
+  publishes `BookingMoved`; a **refund** is `cancelConfirmed` for the whole amount as
+  `VENUE_CHANGE`; a **release** is the unpaid `AWAITING_PAYMENT → CANCELLED`, whose
+  `refundMinor = 0` mails the guest, moving no money; a **decline** the venue-scoped one. A
+  `Blocked` claim is **kept** (a `remodel_receipt_kept` line with its `BlockReason`; `venue` leaves
+  the set as stored), yet a claim that can move off that set still moves. No undo: another remodel
+  reverses a move.
+- **The receipt is mine** (`remodel_receipt(_move/_outcome/_kept)`): label snapshots, distance,
+  amounts, reasons, so mails and views name the spot after its set retires.
+  `BookingPresence#hasBookings` counts a move's from- and to-sets, so a left set retires rather than
+  deletes; ended and kept lines need no FK (their booking keeps its `set_id`). The receipts read is
+  my own inbound adapter, not the root's. Only `BookingNotificationFacts#endedByRemodel` (outcome
+  lines) tells a venue-caused cancellation from a free exit, both being `VENUE_CHANGE`.
+- **A remodel-released booking's intent is voided after commit, never inside it:** the abandoned
+  sweep reads only `AWAITING_PAYMENT`, so nothing else reaches it. `RemodelReleasePaymentListener`
+  acts only on the release shape (`VENUE_CHANGE`, nothing refunded; every other cancel collected)
+  and throws on a transient failure. An intent that had collected cannot be undone: it counts to
+  `ObservabilityMetrics.REMODEL_RELEASE_COLLECTED` and is refunded by hand, never retried.
+- **A moved booking's free exit is a refund-tier override, never a window change:** until
+  `BookingCutoff#freeExitEndsAt`, `CancellationPolicy#quote` refunds in full as `VENUE_CHANGE`
+  (lifting `LATE`; in `FREE` only the reason changes, so mails and the admin's venue-caused list
+  know why). `CLOSED` is never reopened: the guest may already be consuming the stay.
 
 **Not My Job:**
 - Owning the `(set, date)` availability state → **`availability`** (I *ask* it to claim)
-- Talking to Stripe or moving money → **`payment`** (I call `payment.api.RefundPort` and
-  never learn which gateway is behind it)
-- Computing the payout or commission → **`payout`** (my `BookingConfirmed` *triggers*
-  accrual)
+- Talking to Stripe or moving money → **`payment`** (via `payment.api.RefundPort`; I never learn
+  which gateway is behind it)
+- Computing the payout or commission → **`payout`** (my `BookingConfirmed` *triggers* accrual)
 - The beach map, pricing, or pool rules → **`venue`**
-- Storing guest contact details → **`customer`**
-- The **retention window** or the contact scrub → **`customer`**. I answer only the *fact*
-  "does this guest have a booking on/after date D" via `customer.spi.GuestBookingHistory`.
-  Its twin, `customer.spi.ReviewErasure`, is the one *act* I perform for `customer`:
-  resolve the erased subject's guest / account ids to booking ids from my own table and
-  hand them to `review.api.ReviewTombstones` — I decide nothing about who is erased
-- **Review policy** — eligibility, the window, one-per-booking, the aggregate math →
-  **`review`** (ADR-0015). I answer only "was this stay checked in, and when" via
-  `review.spi.CompletedStays` (the presence of a `CompletedStay` **is** the completed
-  fact; I never expose `BookingStatus`). The **review panel** on my code-gated read is
-  mine to *carry* but not to *decide*: the verdict comes from `review.api.ReviewEligibility`.
-  The display-name suggestion beside it is mine — the first name off the contact I resolve
-  through `customer.api.CustomerLookup`, so `review` never learns the guest's identity
+- Guest contact details, the **retention window** and the contact scrub → **`customer`**. I answer
+  only the *fact* "does this guest have a booking on/after D" (`customer.spi.GuestBookingHistory`)
+  and perform one *act*, `customer.spi.ReviewErasure`: resolve the erased subject's ids to booking
+  ids for `review.api.ReviewTombstones` — I decide nothing about who is erased
+- **Review policy** → **`review`** (ADR-0015). I answer only "did this stay complete, and when" via
+  `review.spi.CompletedStays` (a `CompletedStay`'s presence **is** the fact, never `BookingStatus`).
+  My code-gated read carries the panel `review.api.ReviewEligibility` decides, and my own name
+  suggestion via `customer.api.CustomerLookup`, so `review` never learns the guest's identity
 - Authorizing which operator may view staff bookings → **`operator`**
-- Deciding whether a mail will be sent, or knowing any address → **`notification`** and
-  **`customer`**
+- Deciding whether a mail will be sent, or knowing any address → **`notification`**, **`customer`**
 
 ---
 
@@ -646,320 +506,187 @@ read competitors' figures and settle their batches. The report reads the ledger'
 ---
 
 ## `customer`
-**Job:** Own tourist identity — the guest-checkout contact AND the customer **account**
-(email + opaque credential hash) that backs register / sign-in. The account is a
-**separate identity** from the guest-contact row (no foreign key), so registration never
-auto-claims a guest email's past bookings; back-linking guest bookings is a **permanent
-non-goal**. Own **right-to-erasure**: scrub-in-place (tombstone) of the account +
-guest-contact PII and delete the transient SSO/token children, retaining the
-booking/payment/payout records under the **statutory-retention exception** (ADR-0010) —
-the edge authenticates the request and revokes sessions. Own the **retention policy**: the
-configured **retention window**, the decision of which guest contacts have no remaining
-**retention basis**, and the sweep that tombstones them — I ask `booking` for the recency
-*fact*, but the window and the scrub are mine. Both flows also reach the one PII-bearing
-row outside my tables — the **review** a subject wrote — through
-`customer.spi.ReviewErasure`, inside the same transaction: I decide *that* a subject's
-reviews are tombstoned and hand on the guest / account ids my by-email scrubs return;
-`booking` (which implements the port) resolves those to bookings and `review` blanks its
-own rows. I never learn a booking id. I also own the **canonical form of an email
-address** (`customer.vocabulary.Emails`) — the platform's one definition, used by my own
-services, the platform edge, and `notification` (the input contract of the suppression
-key's HMAC). It cannot live in `shared`: `shared` depends on `customer::api`.
+**Job:** Own tourist identity — the guest-checkout contact AND the customer **account** (email +
+opaque credential hash) behind register / sign-in. The two are **never linked** (no foreign key), so
+registration never auto-claims a guest email's past bookings; back-linking them is a **permanent
+non-goal** (design D-2, D-6). Own **right-to-erasure**: tombstone account + guest-contact PII in
+place, delete the transient SSO/token children, retain booking/payment/payout rows under the
+**statutory-retention exception** (ADR-0010); the edge authenticates and revokes sessions.
 
-The published `api/` ports: `SsoAccountProvisioning` resolves-or-creates the account
-behind an external `(provider, subject)` (find-or-create by verified email, auto-link;
-SSO-only accounts carry a null hash); `CustomerAccountRecovery` issues and redeems
-single-use hashed **email-verification** and **password-reset** tokens
-(`customer_account_token`), sets a password, reports the verified state, and answers
-*whose account does this still-redeemable reset token unlock?* **without consuming** it,
-so the edge can revoke that principal's sessions before the reset writes. Email
-verification is **soft/non-blocking**: it gates no sign-in or booking. No Spring Security
-type lives inside the module (`CustomerAuthPlacementTests`).
+Own the **retention policy** — the **retention window**, which guest contacts have no **retention
+basis** left, and the sweep that tombstones them; `booking` supplies only the recency *fact*. Both
+erasure flows reach a subject's **review** (the one PII row outside my tables) through
+`customer.spi.ReviewErasure`, in the same transaction: I decide *that* it is tombstoned and hand on
+the ids my scrubs return; `booking` resolves them, `review` blanks its rows. I never see booking ids.
 
-**Only the retention sweep's entry reads carry a query timeout.** Its candidate read and `booking`'s
-`GuestBookingHistory` probe run before anything is written, so a timeout there costs one tick. My
-scrubs, and `booking`'s `ReviewErasure` reads, stay on the shared, unbounded client: they run inside
-the erasure's one transaction, on the request path as well as the sweep's, where a timeout would
-fail the whole erasure (the transaction never commits half of one), and a slow erasure beats a
-failed one.
+Own the **canonical form of an email address** (`customer.vocabulary.Emails`), the platform's one
+definition, used by my services, the platform edge and `notification` (the input contract of the
+suppression key's HMAC). It cannot live in `shared`, which depends on `customer::api`.
+
+Email verification is **soft**: it gates no sign-in or booking. `CustomerAccountRecovery` names a
+reset token's account **without consuming** it, so the edge revokes that principal's sessions first.
+
+**Only the retention sweep's entry reads carry a query timeout** (its candidate read, `booking`'s
+`GuestBookingHistory` probe): they run before any write, so a timeout costs one tick. My scrubs and
+`booking`'s `ReviewErasure` reads stay on the shared, unbounded client — inside the erasure's one
+transaction, on the request path too, a timeout fails the whole erasure, and a slow one beats that.
 
 **Not My Job:**
-- Bookings → **`booking`**; payment → **`payment`**
-- Knowing whether a guest still has a recent booking → **`booking`** (I declare
-  `customer.spi.GuestBookingHistory` and it implements the fact — an inversion, because a
-  direct `customer → booking` call would cycle)
-- Resolving an erased subject to their bookings → **`booking`**; blanking a review's name
-  and comment → **`review`** (the same inversion via `customer.spi.ReviewErasure`)
-- Operator accounts or staff logins → **`operator`**
-- Marketing → out of scope
-- Encoding/verifying credentials + all login machinery (`UserDetailsService`, session, the
-  register/login/recovery endpoints, the OIDC redirect/token exchange, mail transport) →
-  the **platform edge** and **`notification`**; I own the identity and an opaque hash
+- Bookings → **`booking`**; payment → **`payment`**; operator accounts → **`operator`**; marketing
+  → out of scope
+- Whether a guest still has a recent booking, and resolving an erased subject to bookings →
+  **`booking`**; blanking a review → **`review`**. Both through `customer.spi` ports `booking`
+  implements — an inversion, because a direct `customer → booking` call would cycle
+- Encoding/verifying credentials and all login machinery (`UserDetailsService`, sessions, the auth
+  endpoints, the OIDC exchange, mail transport) → the **platform edge** and **`notification`**
+  (RV-BE-11, `CustomerAuthPlacementTests`); I store the identity and an opaque hash
 
 ---
 
 ## `operator`
-**Job:** Own operator accounts — their **admin-driven lifecycle state**
-(`PENDING`→`ACTIVE`/`REJECTED` on approval; `ACTIVE`⇄`SUSPENDED` on suspend/reinstate) and
-the `is_admin` platform-admin flag — and the **operator↔venue ownership mapping**
-(creator-owns-on-create: `POST /api/venues` writes the creator's row atomically with the
-insert). Answer for the rest of the system: *does this operator own this venue?*, *which
-operators are awaiting approval?*, *which accounts exist for an admin to act on?*
-(invariant #13), *what is the operator with this id called, if it is in the status the
-caller expects?* (`usernameInStatus`, so the edge can revoke its sessions **before** a
-session-revoking transition commits), and *does this venue have an `ACTIVE` owner?*
-(`VenueVisibility` — the one home of the rule *a venue is visible to tourists iff its
-owning operator is ACTIVE*; a venue with no ownership row answers no, fail-closed).
-`venue` fences its catalogue reads with it and `booking` its reserve path; sold-booking
-paths never consult it.
+**Job:** Own operator accounts — the admin-driven lifecycle (`PENDING`→`ACTIVE`/`REJECTED`,
+`ACTIVE`⇄`SUSPENDED`) with its admin work queues, and the `is_admin` flag (set on the seeded
+bootstrap `operator`, which owns no venues: `docs/runbooks/operator-credential-provisioning.md`) —
+and the operator↔venue ownership mapping (creator-owns-on-create, in the venue insert's
+transaction). I answer *does this operator own this venue?* (invariant #13), *its username, if in
+the expected status* (`usernameInStatus`: the edge revokes sessions **before** a revoking
+transition commits) and *does this venue have an `ACTIVE` owner?* (`VenueVisibility`).
 
-**The `ACTIVE` predicate is three explicit sets, each at its owner:** the edge's
-may-authenticate set (`ACTIVE`+`PENDING` — approval gates tourist visibility, not console
-access), ownership resolution's may-operate set (`ACTIVE`+`PENDING`, `OperatorDirectory` —
-a `PENDING` operator owns and works what it creates), and the tourist-visible set
-(`ACTIVE` only, `VenueVisibility`, deliberately not widened). `OperatorStatus` in
-`vocabulary/` is what lets each predicate live with its owner. A suspension **keeps** the
-operator's `operator_venue` rows (it is reversible) but hides the operator's venues from
-tourists until reinstatement. `ApprovalOutcome.Rejected` and `Changed` carry the username
-because a `PENDING` operator can hold a live session the edge must revoke; `Approved`
-carries the stored contact email, returned by the `RETURNING` clause of the very
-`WHERE status = PENDING` `UPDATE` that performs the transition, so an admin that loses a
-race receives no address and cannot act twice.
+**The `ACTIVE` predicate is three explicit sets, each at its owner:** the edge's may-authenticate
+set and `OperatorDirectory`'s may-operate set are `ACTIVE`+`PENDING` (approval gates tourist
+visibility, not console access); the tourist-visible set is `ACTIVE` only, deliberately, and
+`VenueVisibility` is its one home: no ownership row answers no (fail-closed); it fences `venue`'s
+catalogue reads and `booking`'s reserve, never a sold-booking path. A suspension **keeps** the
+`operator_venue` rows (reversible) but hides the venues until reinstatement.
 
-The seeded bootstrap `operator` account is the platform admin (`is_admin`, unlocked by
-`RIVIERA_OPERATOR_PASSWORD`); it owns no venues. See
-`docs/runbooks/operator-credential-provisioning.md`.
+**Each transition is a status-guarded `UPDATE … RETURNING`, so only the winner gets the facts:**
+`Approved` the contact email, `Rejected` and `Changed` the username (a `PENDING` operator can hold a
+live session to revoke). An admin that loses a race receives no address and cannot act twice.
 
 **Not My Job:**
-- Tourist identity → **`customer`**
-- The venue's own data — map, pricing, pools → **`venue`** (I own *who may act on* a venue)
-- *Performing* the authorization check at each endpoint → each venue-scoped module's
-  **application service** performs it by asking me
-- Bookings, payment, payout → their own modules
-- Encoding/verifying credentials + the register/login/approval and self-service
-  password-change endpoints + the `ROLE_ADMIN` mapping → the **platform edge**
-  (`UserDetailsService`, `AuthController`, `AdminOperatorController`,
-  `OperatorAccountController`); I store an opaque credential hash and an opaque `is_admin`
-  flag, never the login machinery or the role gate. No Spring Security type lives inside
-  the module (`OperatorAuthPlacementTests`)
-- **Invalidating live sessions** when an account loses the right to them (suspension,
-  rejection, credential rotation, a self-service password change) → the **platform edge**
-  (`PrincipalSessionRevoker`). I report *that* the transition happened and *whose* it was;
-  I never import `org.springframework.session`
-- **Telling an approved operator that its venues are now live** → the **platform edge**
-  (`OperatorApprovalMail`) driving **`notification`**. I import no mail type
+- Tourist identity → **`customer`**; venue data → **`venue`**; bookings, payment, payout → theirs
+- *Performing* the ownership check → each venue-scoped **application service**, by asking me
+- Login machinery (credential encoding/verifying, the auth, approval and password-change endpoints,
+  the `ROLE_ADMIN` mapping), **invalidating live sessions** on suspension, rejection, credential
+  rotation or password change (`PrincipalSessionRevoker`), and the "venues are live" mail
+  (`OperatorApprovalMail` → `notification`) → the **platform edge**. I store an opaque hash and
+  `is_admin` flag and report *that* and *whose* a transition happened; no Spring Security
+  (`OperatorAuthPlacementTests`), `org.springframework.session` or mail type lives in the module
 
 ---
 
 ## `notification`
-**Job:** Own transactional-mail **delivery**: the `Mailer` transports (recording mock vs
-real SMTP, profile-swapped, the mock prod-guarded) and the two delivery vehicles of
-ADR-0011 — the Event Publication Registry listener for **ids-only** payloads, the bounded
-in-memory dispatcher for **bearer-credential** ones. The suppression list and the delivery
-log are the module's two pieces of owned state.
+**Job:** Own transactional-mail **delivery**: the `Mailer` transports (recording mock vs real
+SMTP, profile-swapped; the mock and its e2e outbox read, `MockMailOutboxController`, never under
+`prod`) and ADR-0011's two delivery vehicles — the Event Publication Registry listener for
+**ids-only** payloads, the bounded in-memory dispatcher for **bearer-credential** ones. Owned
+state: the suppression list and the delivery log.
 
 **Executors and shutdown:**
 
-- Each vehicle drains on **its own bounded executor** — never Boot's shared
-  `applicationTaskExecutor`, which carries the payment→booking and booking→payout
-  listeners, so a degraded relay cannot starve the money spine. The registry listener
-  spells out `@Async("registryMailExecutor")` + `@TransactionalEventListener` instead of
-  `@ApplicationModuleListener`, and holds no transaction across the send — pinned by
-  `MailListenerExecutorArchitectureTest`, whose non-vacuity guard names every shipped
-  listener off one list.
-- The registry pool's size and queue depth are `riviera.notification.registry-mail.*`
-  properties (defaults `2`/`200`, validated at boot on both ends).
-- **Every invalid registry-pool bound boots clean, so both are checked at both ends.** Spring's
-  `ThreadPoolTaskExecutor` makes a `SynchronousQueue` of any capacity `<= 0` (`0` reads as
-  "unbounded" and means "capacity zero") and a lazily allocated `LinkedBlockingQueue` of any
-  positive one, so an absurd capacity restores the unbounded queue this bulkhead removes. Core
-  threads are lazy too: an oversized pool fails later, as `OutOfMemoryError: unable to create
-  native thread` on the commit thread the shed handler keeps exceptions off. The ceilings in
-  `RegistryMailProperties` bound the typo, not the operator.
-- Both pools' shutdown drain window is **derived** from
-  `riviera.notification.mail.socket-timeout-ms`, which every
-  `spring.mail.properties.mail.smtp.*` timeout also interpolates; the arithmetic lives in
-  `shared`'s `ShutdownBudget`. When the window expires both pools **give up rather than
-  interrupt** — an interrupt cannot tell a send that reached the relay from one that has
-  not.
-- Both pools carry the submitting request's MDC through the shared `MdcTaskDecorator`
-  (`WorkerContextArchitectureTest`), composed onto the registry pool via
-  `CompositeTaskDecorator` **beside** the shed policy that owns its decorator slot.
+- **Each vehicle drains on its own bounded executor, never Boot's shared
+  `applicationTaskExecutor`** (the payment→booking and booking→payout spine, which a degraded relay
+  must not starve). A registry listener spells `@Async("registryMailExecutor")` +
+  `@TransactionalEventListener`, never `@ApplicationModuleListener`, with no transaction across the
+  send (`MailListenerExecutorArchitectureTest`; a new listener joins its named list).
+- **Every invalid registry-pool bound boots clean** (lazy queue and threads fail later, at
+  runtime), so `RegistryMailProperties` checks both ends of `riviera.notification.registry-mail.*`.
+- **At shutdown both pools give up rather than interrupt**: an interrupt cannot tell a send that
+  reached the relay from one that has not. The drain window derives from
+  `riviera.notification.mail.socket-timeout-ms` (`MailTransportBudget`; its claim is summed in
+  `shared`'s `ShutdownBudget`), which every SMTP timeout also interpolates. Both pools carry the submitter's MDC (`MdcTaskDecorator`).
 
-**Loss accounting** (names in `shared`'s `ObservabilityMetrics`; no tag names the person —
-invariant #7):
+**Loss accounting** (names in `ObservabilityMetrics`; guide: `docs/runbooks/observability.md`; no
+tag names the person, invariant #7):
 
-- `MAIL_REGISTRY_SHED`: a shed registry send, one log line per saturation *episode*.
-- `MAIL_RECOVERY_DROPPED`: the dispatcher's mirror — **every** drop is logged, because this
-  vehicle has no durable record. A rejection during shutdown counts here
-  (`reason=shutdown`); `reason=abandoned` is a send accepted and still queued when the
-  drain window expired; the send caught **running** is excluded, being the one that may
-  have reached the relay. Read the name as *never ran*, not *refused*.
-- `MAIL_RECOVERY_FAILED`: the send this vehicle *accepts* and then cannot deliver — the
-  first mail counter to move in a relay outage. Tagged by `kind` and by `reason`
-  (`transport` / `suppression-lookup`).
-- Both recovery counters carry `kind` off one shared `MailKind` enum.
-- **The registry vehicle has no failure twin:** its transport failure propagates, the
-  publication stays outstanding, and `riviera.outbox.pending` accounts for it. That holds
-  only for failures that *throw* — a mail this module **abandons** for a missing fact
-  completes the publication by design, so each abandoning flow has its own flow-named
-  counter: `MAIL_CONFIRMATION_ABANDONED` and `MAIL_CANCELLATION_ABANDONED` (tagged
-  `no-booking`/`no-set`/`no-contact`, escalated per loss to `ERROR` — zero in a healthy
-  system, a data-integrity fault when not), `MAIL_PAYMENT_DUE_ABANDONED` (the only
-  **predictive** loss — the sweep releases the set at the mailed deadline), and
-  `MAIL_REQUEST_DECLINED_ABANDONED` / `MAIL_REQUEST_EXPIRED_ABANDONED`.
+- **The vehicles lose mail differently.** A shed registry send is deferred, not lost
+  (`MAIL_REGISTRY_SHED`). On the best-effort recovery vehicle, `MAIL_RECOVERY_DROPPED` counts a
+  send that **never ran** (`saturated` / `shutdown` / `abandoned`; not one caught *running* at
+  shutdown, which may have reached the relay) and `MAIL_RECOVERY_FAILED` one accepted but not
+  delivered (`transport` / `suppression-lookup`), both tagged `kind` off one `MailKind`. "Recovery"
+  names the *vehicle*, which also carries the `operator-approved` notice (ADR-0011 decision 5).
+- **The registry vehicle has no failure twin:** a thrown failure stays outstanding
+  (`riviera.outbox.pending`), but a mail **abandoned** for a missing fact completes its publication,
+  so each abandoning flow gets its own `MAIL_*_ABANDONED` counter (`ERROR` per loss; nonzero is a
+  data-integrity fault). Payment-due's is **predictive**: the sweep frees the set at the deadline.
 - **The abandon tag names the first missing fact.** `BookingMailFactsService` reads `booking`,
-  then `venue`, then `customer` and stops at the first that answers nothing, because the tag is
-  what points an operator at one module: reporting the last instead would read as a `customer`
-  fault whenever `booking` was at fault. The contact read also needs the booking's customer id.
+  `venue`, then `customer` and stops at the first gap, so the tag points at one module; the last
+  would blame `customer` whenever `booking` was at fault. It is an `application` service, never a
+  `notification.api` port: one implementation and no outside caller make a port a hypothetical seam.
 
 **Owned flows and surfaces:**
 
-- The **registry-borne booking mails**, all assembled from `booking`/`venue`/`customer`
-  published ports (ids only) by one module-internal resolver: the `BookingConfirmed`
-  confirmation — carrying the booking's `cancellationWindowAtBirth` + `lateCancelRefundBps`
-  off the event, **rendered, never decided** (CLOSED gets the non-refundable last-minute
-  line, LATE the past-free-cancellation line, FREE or null nothing); the `BookingCancelled`
-  cancellation/refund record — one listener covering every cancellation channel, rendering
-  the server-computed refund (invariant #10); the `BookingPaymentDue` notice, on the same
-  birth-window rules — `booking` publishes the fact only on the accept branch where money
-  is genuinely outstanding, so the listener decides nothing; and the
-  `BookingRequestDeclined` / `BookingRequestExpired` records — plain copy, no CTA; and the
-  `BookingMoved` "your spot changed" record — the new spot, the spot the guest was told before,
-  the distance and the free-exit deadline, all read through
-  `booking.api.BookingNotificationFacts#moveFacts` (answered from the commit receipt, so a
-  retired from-set still has its label), the code resolved inside this module (invariant #7),
-  abandoned under `MAIL_MOVE_ABANDONED` with the shared `reason` vocabulary. The withdraw leg
-  mails nothing.
-- **The move mail carries the arrival code** (`BookingMovedMail`), unchanged by the move: it is
-  the reference a guest with several bookings knows the booking by. Mailed, never logged
-  (invariant #7).
-- **The payment-due mail carries the deadline and the amount, and names no spot.** The amount is
-  the one fixed when the request was made; the accept never changes it. The guest chose the spot
-  and already has it on screen and in the booking, and the one thing this mail is for is the
-  deadline.
-- The **operator-approval notice**, on the recovery vehicle (`kind="operator-approved"`):
-  no bearer credential, but edge-orchestrated from an admin request rather than driven by
-  a domain fact — which is why "recovery" in `MAIL_RECOVERY_*` names the *vehicle* and
-  `kind` names the flow.
-- The **mock outbox read** — `GET /api/mock-mail/booking-mails?to=` in `adapter/in`, present only
-  where the recording `MockMailer` is (`!mailer & !smtp4dev`, so never under `prod`), operator-gated,
-  answering the booking kinds as facts a guest reads on the page anyway — never a code, never a
-  link, never a recovery kind. It exists for the local real-backend e2e run and resolves its mailer
-  lazily, so a test that swaps the `Mailer` bean still loads the web layer.
-- The **email-suppression list**, hashed/non-PII at rest (a `v1:`-tagged peppered-HMAC
-  `email_key` plus the cleartext `domain`, never the address; the pepper is env-managed,
-  fail-at-boot in prod), deliberately surviving erasure (ADR-0012). The defining invariant
-  — **no send to a suppressed address** — is enforced at the one send chokepoint
-  (`TransactionalMailService`) on both vehicles, with one carve-out: on the recovery
-  vehicle a *transient* failure of the lookup itself sends the mail rather than dropping
-  it (a dropped reset is indistinguishable from success to the user); the registry vehicle
-  propagates and retries. The lookup's `queryTimeout` is scoped to its own adapter — never
-  the global property, which would also bound `availability`'s claim (invariant #2). The
-  `domain` CHECK mirrors the Java writer exactly.
-- **Reinstatement is a flag, never a deletion**: the ADMIN-gated
-  `POST /api/admin/email-suppressions/reinstate` sets `reinstated_at` (`isSuppressed`
-  reads `email_key = ? AND reinstated_at IS NULL`), keeping `first_suppressed_at` and the
-  prior `reason`; a later bounce clears the flag through the ordinary upsert. A hard
-  `DELETE` on this table is a defect.
-- **A reinstate answers what the row was; nothing answers "is this address suppressed?".** Each
-  populated `ReinstateOutcome` carries the row's reason and timestamps, never the address or its
-  `domain`, so the one `POST` also answers the ops question "suppressed for what, since when?". A
-  standing lookup endpoint would be a new authenticated oracle for the suppression state — the
-  question the `emailWithheld` flag is gated never to answer before a collected payment.
-- The **mail-outbox re-drive**: ADMIN-gated `GET`/`POST /api/admin/mail-outbox` reports
-  what the registry still owes this module and re-drives it on demand. It is **scoped by
-  listener-id prefix to this module's own listeners, never by event type** —
-  `BookingConfirmed` fans out to `payout`'s accrual too, so an event-type predicate would
-  replay invariant-#9 ledger work from a button labelled "mail" (`MailOutboxScopeIT`).
-  The registry's v2 schema makes `markResubmitted` a real claim
-  (`… WHERE ID = ? AND STATUS != 'RESUBMITTED'`), so duplicate delivery is a database
-  guarantee; `ResubmissionOptions` reaches only `FAILED` publications, never a **shed**
-  send (which never ran). The single-flight + cooldown throttles the *sweep*, not the
-  duplicate guard.
-- **Both outbox levers are module adapters that answer counts, never publications.**
-  `AdminMailOutboxController` and `booking`'s `AdminRefundOutboxController` each live in their
-  module's `adapter/in`, never at the composition root, which would need a new published `api` port
-  for one same-module consumer. Every outcome is a `200` with a typed token; anything thrown becomes
-  RFC 7807 through the single `ApiErrorHandler`, never a per-controller `@ExceptionHandler`
-  (`ErrorContractArchitectureTests`). A per-publication listing is a non-goal, because the
-  serialized events are where booking ids live: the bodies carry counts and an outcome token, never
-  an address, a code or a payload (invariant #7).
-- The published surface is exactly **`notification::api`**, two role-split ports.
-  `MailSender`: fire-and-forget, never throws, runs off the caller's thread,
-  suppression-enforced; a send influences **neither the triggering response's status nor
-  its latency**, which the anonymous `forgot-password` flow depends on.
-  `MailDeliverability`: the synchronous read "would a mail to this address be withheld
-  right now?" — safe only where the caller already owns the address (its sole consumer is
-  the authenticated verification-resend). Both are consumed by the composition root alone;
-  **no module depends on `notification`**. The module also *implements* one port it does
-  not own — `booking.spi.ConfirmationMailDelivery` — the inverted edge; the dependency is
-  still `notification → booking`.
-- **`BookingMailFactsService` is an `application` service, never a `notification.api` port.** It
-  has one implementation and no caller outside this module, so a published port would be a
-  hypothetical seam.
-- The **booking-confirmation delivery log** (`booking_confirmation_mail_attempt`): one row
-  per attempt, carrying what triggered it (`AUTOMATIC` / `ADMIN_RESEND`) and its outcome
-  (sent / withheld-suppressed / transport-failed / abandoned), plus the ADMIN surface over
-  it — a per-address lookup and a one-click **resend** (`/api/admin/mail-deliveries`). The
-  log exists because the registry's `completion_date` records only that the listener
-  *returned*, which it equally does for a suppression skip and an abandonment. The resend
-  sends **synchronously through the chokepoint and publishes nothing**, so it re-drives no
-  other `BookingConfirmed` consumer (`AdminMailDeliveryIT`).
-
-- **A venue-caused cancellation carries a way back; nothing else does.** A booking a remodel
-  ended is mailed the venue's own map for the same day, or — when `venue`'s per-date sales
-  projection says that venue cannot sell it, closed for season or past its sales close — the
-  discovery list for that day (`RebookLinks`, `VenueCatalog#availabilityBetween`; an absent
-  answer degrades the same way a closed one does). The reason alone cannot mark such a
-  cancellation, because a guest who takes the free exit a move earned them is `VENUE_CHANGE`
-  too, so the listener asks `BookingNotificationFacts#endedByRemodel`. The link is also what
-  tells the two apart in the copy: with it, the venue had no free spot left and a released
-  claim says nothing was charged; without it, the guest cancelled and the shipped free-exit
-  wording stands. A remodel-declined request keeps `RequestDeclinedMail` unchanged — no
-  call-to-action, by the 2026-08-01 product decision.
-- **Every booking mail links the code-gated view, `<base>/booking/<code>`, never `/booking/pay`.**
-  The view works cold from an inbox: for an `AWAITING_PAYMENT` booking with an open intent it
-  offers "Pay now" and hands on to the pay screen, and past the deadline it shows the expired
-  booking rather than a 404, while `/booking/pay` resumes in-memory hand-off state and dead-ends
-  from an inbox. `BookingLinks` builds the link in this module because the edge cannot: registry
-  listeners raise these mails inside the hexagon, with no request in hand.
-- **The link origin reads the edge's variable under my own key.** `BookingLinkConfig` binds
-  `riviera.notification.booking-link.base-url` to `RIVIERA_RECOVERY_LINK_BASE_URL`: there is one
-  deployed origin (the backend serves the SPA same-origin), so a second variable could only ever be
-  set to the same value or, eventually, to a wrong one. The key is never `riviera.recovery.*`, which
-  belongs to the edge's recovery flows: reaching into another context's namespace is the coupling a
-  module-owned properties type exists to avoid.
+- The **registry-borne booking mails** — confirmation, cancellation (one listener for every
+  channel), payment-due, request declined / expired (plain record, no call-to-action; the guest's
+  own withdraw mails nothing) and moved — carry ids, never the code, and **decide nothing**: the
+  birth window and refund (invariant #10) are rendered (CLOSED the non-refundable line, LATE the
+  past-free-cancellation line, FREE or `null` nothing), and `booking` publishes payment-due only
+  where money is owed. The move mail carries the unchanged arrival code, the guest's reference.
+- **The payment-due mail carries the deadline and the request-time amount, and names no spot**:
+  the guest already has the spot on screen; the mail exists for the deadline.
+- The **email-suppression list**, hashed and surviving erasure (ADR-0012). **No send to a
+  suppressed address**, at the one chokepoint (`TransactionalMailService`), bar one carve-out
+  (ADR-0011 decision 7): on the recovery vehicle a *transient* lookup failure sends (a dropped reset
+  reads as success); the registry vehicle propagates and retries. The lookup's `queryTimeout` is
+  adapter-scoped, never global, which would bound `availability`'s claim too (invariant #2).
+- **Reinstatement is a flag (`reinstated_at`), never a deletion** (ADR-0012); a hard `DELETE` on
+  this table is a defect. The reinstate `POST` answers what the row was (`ReinstateOutcome`: reason
+  and timestamps, never the address or `domain`); nothing answers "is this address suppressed?" — a
+  standing lookup would be a new oracle for what `emailWithheld` is gated never to answer.
+- The **mail-outbox re-drive** (`AdminMailOutboxController`) is **scoped by listener-id prefix to
+  this module's listeners, never by event type**: `BookingConfirmed` also feeds `payout`'s accrual,
+  so an event-type predicate would replay invariant-#9 ledger work from a "mail" button
+  (`MailOutboxScopeIT`). Duplicate delivery is barred by the registry's `markResubmitted` claim;
+  the shared throttle paces the *sweep*, not the duplicate guard.
+- **Both outbox levers (this and `booking`'s `AdminRefundOutboxController`) live in their module's
+  `adapter/in`**, never at the composition root, which would need a published `api` port for one
+  same-module consumer. Each answers a `200` with counts and a typed token, never a publication:
+  serialized events carry booking ids (invariant #7).
+- **The published surface is exactly `notification::api`, two role-split ports consumed by the
+  composition root alone — no module depends on `notification`.** `MailSender` is fire-and-forget
+  and moves **neither the triggering response's status nor its latency** (the anonymous
+  `forgot-password` flow relies on it). `MailDeliverability` ("withheld now?") is safe only where
+  the caller owns the address; its sole consumer is the authenticated verification-resend. I also
+  *implement* `booking.spi.ConfirmationMailDelivery`; the dependency stays `notification → booking`.
+- The **booking-confirmation delivery log** (`booking_confirmation_mail_attempt`) and its ADMIN
+  lookup and **resend** exist because the registry's `completion_date` records only that the
+  listener *returned*, as on a suppression skip or an abandonment. The resend is **synchronous
+  through the chokepoint and publishes nothing**: no other `BookingConfirmed` consumer re-runs.
+- **A venue-caused cancellation carries a way back; nothing else does.** A remodel-ended booking
+  gets `RebookLinks`' link (the venue's map for that day, or the day's discovery list when
+  `SetBookingFacts#sellsOnlineOn` says no), which also picks the copy. `VENUE_CHANGE` alone cannot
+  mark it — a guest taking a move's free exit has it too — so the listener asks
+  `BookingNotificationFacts#endedByRemodel`. A remodel-declined request keeps its plain copy.
+- **Every booking mail links the code-gated view, `<base>/booking/<code>`, never `/booking/pay`**:
+  the view works cold from an inbox ("Pay now" on an open intent; an expired booking, not a 404),
+  while `/booking/pay` resumes in-memory hand-off state and dead-ends. `BookingLinks` builds it
+  here because registry listeners have no request in hand.
+- **The link origin is the edge's variable under my own key**: `RIVIERA_RECOVERY_LINK_BASE_URL`
+  binds `riviera.notification.booking-link.base-url` (one deployed origin; a second variable could
+  only drift), never a `riviera.recovery.*` key, which is the edge's namespace.
 
 **Not My Job:**
-- Deciding **when** to send, minting/hashing recovery tokens, building the **tokenized**
-  links → the **platform edge** (`CustomerRecovery`); for edge-triggered kinds I am handed
-  fully-formed messages. The line: a *credential-material* link — one whose token I would
-  have to mint, hash or time-bound — is the edge's; a link I merely *format* from a fact
-  already in my hand is mine (`BookingLinks` composes `<base>/booking/<code>` from the code
-  I read through `booking::api`; the code cannot ride the payload, invariant #7). Its two
-  **rebook** links carry no credential at all: `<base>/venues/<id>?date=…` and
-  `<base>/?date=…`
+- Deciding **when** to send, minting/hashing recovery tokens, building **tokenized** links → the
+  **platform edge** (`CustomerRecovery`), which hands me fully-formed messages. The line: a link
+  whose token I would mint, hash or time-bound is the edge's; one I *format* from a fact in hand is
+  mine (`BookingLinks`, from a code read through `booking::api`, never the payload — invariant #7)
 - The recovery-token lifecycle/store → **`customer`** (`CustomerAccountRecovery`)
-- Resolving an email address to a guest contact → **`customer`**
-  (`CustomerLookup#findByEmail`); *which bookings* a contact has → **`booking`**
-  (`CustomerBookings`). My delivery log stores a booking id and nothing else, so erasure
-  has no copy here to reach
-- The booking/venue/customer **facts** a mail renders → their owners, read via `api/`
-  ports at send time
-- Persisting a bearer-credential payload → nobody's job, ever: recovery mails ride the
-  in-memory dispatcher precisely so the raw token never lands in `event_publication`
-- The provider bounce/complaint **feed** into the suppression list → a follow-up slice
-  (needs provider setup); today nothing writes the list
+- Resolving an address to a guest contact → **`customer`** (`CustomerLookup#findByEmail`); *which
+  bookings* a contact has → **`booking`** (`CustomerBookings`). My delivery log stores a booking id
+  and nothing else, so erasure has no copy here to reach
+- The booking/venue/customer **facts** a mail renders → their owners, via `api/` ports at send time
+- Persisting a bearer-credential payload → nobody, ever: recovery mails ride the in-memory
+  dispatcher so a raw token never lands in `event_publication`
+- The bounce/complaint **feed** into the suppression list → unbuilt; nothing writes the list yet
 
-**The withheld-flag probe** (read before wiring the suppression list's first writer). The
-`emailWithheld` flag makes a populated list a paid suppression oracle: book with a victim's address,
-pay, read the flag, cancel before the evening-before cutoff for a full refund. Three facts bound it:
-nothing writes the table yet (reinstatement only lifts a row), so zero bits until the bounce or
-complaint feed, the residual's trigger; no rate-limit budget binds, a probe's real limiter (a
-payment, a claimed `(set, date)`) being far below any capacity sparing the pay poll (ADR-0006); and
-the flag can't ride only the post-payment hand-off: the code-gated read *is* it, the prober the
-payer. `CONFIRMED` **and** `payment.api.CollectionGuarantee` keep it inert unless collected first.
+**The withheld-flag probe** (read before wiring the suppression list's first writer). A populated
+list makes `emailWithheld` a paid suppression oracle: book with a victim's address, pay, read the
+flag, cancel before the evening-before cutoff for a full refund. Three facts bound it: nothing
+writes the table yet (reinstatement only lifts a row), so zero bits until the bounce or complaint
+feed, the residual's trigger; no rate-limit budget binds, a probe's real limiter (a payment, a
+claimed `(set, date)`) being far below any capacity sparing the pay poll (ADR-0006); and the flag
+can't ride only the post-payment hand-off: the code-gated read *is* it, the prober the payer.
+`CONFIRMED` **and** `payment.api.CollectionGuarantee` keep it inert unless collected first.
 
 ## `review`
 **Job:** Own a tourist's verdict on a delivered stay — the review (stars, comment, display name; one
