@@ -30,6 +30,7 @@ labels.
 | `area:frontend` | Angular frontend. |
 | `area:fullstack` | Cuts through both. |
 | `area:devops` | CI/CD, infra, tooling. |
+| `area:design` | Visual design: tokens, colour, component form (`docs/design/`). |
 | `foundational` | Enabling work others are blocked by (scaffolding, pipeline). |
 | `good first issue` | Gentle, well-scoped entry point for a new contributor. |
 

@@ -1,7 +1,9 @@
 # Testing (Modulith)
 
 DB-touching tests: `@SpringBootTest` + `@Import(TestcontainersConfiguration.class)` +
-`@EnabledIfDockerAvailable`.
+`@EnabledIfDockerAvailable`. ITs sharing a cached context share its container's database, so a
+literal a `UNIQUE` column holds (a refund id, a `BookingRef(99xx)`) is a key across those classes:
+keep it class-unique. A one-class run misses the collision; run the module's DB-backed ITs together.
 
 ## Structural tests
 
