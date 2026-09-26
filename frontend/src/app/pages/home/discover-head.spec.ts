@@ -147,6 +147,7 @@ describe('DiscoverHead', () => {
       'Fri, 19 Jun',
       'Sat, 20 Jun',
       'Sun, 21 Jun',
+      'Several days…',
     ]);
     expect(chips[0].getAttribute('aria-current')).toBe('true');
 
@@ -155,6 +156,42 @@ describe('DiscoverHead', () => {
     expect(picked).toHaveBeenCalledWith('2026-06-17');
     expect(rail('Day')).toBeNull();
     expect(day.getAttribute('aria-expanded')).toBe('false');
+  });
+
+  it('offers Several days as the rail’s last chip, which asks the page for the stay picker', () => {
+    render();
+    const pressed = vi.fn();
+    fixture.componentInstance.stayPressed.subscribe(pressed);
+    byTestId('head-day')!.click();
+    fixture.detectChanges();
+
+    const chips = [...rail('Day')!.querySelectorAll('button')];
+    expect(chips).toHaveLength(8);
+    expect(text(chips[7])).toBe('Several days…');
+    expect(chips[7].getAttribute('data-testid')).toBe('head-stay');
+    expect(chips[7].getAttribute('aria-current')).toBeNull();
+
+    chips[7].click();
+    fixture.detectChanges();
+    expect(pressed).toHaveBeenCalledTimes(1);
+    expect(rail('Day')).toBeNull();
+  });
+
+  it('names a stay on the day chip and lights the Several days chip, no single day current', () => {
+    render({ date: '2026-06-19', lastDate: '2026-06-22' });
+    expect(text(byTestId('head-day'))).toBe('19 – 22 Jun · 4 days');
+
+    byTestId('head-day')!.click();
+    fixture.detectChanges();
+    const chips = [...rail('Day')!.querySelectorAll('button')];
+    expect(chips.filter((chip) => chip.getAttribute('aria-current') === 'true').map(text)).toEqual([
+      'Several days…',
+    ]);
+
+    fixture.componentRef.setInput('date', '2026-06-29');
+    fixture.componentRef.setInput('lastDate', '2026-07-02');
+    fixture.detectChanges();
+    expect(text(byTestId('head-day'))).toBe('29 Jun – 2 Jul · 4 days');
   });
 
   it('opens the beach rail with All and the region’s beaches, and closes it on a pick', () => {

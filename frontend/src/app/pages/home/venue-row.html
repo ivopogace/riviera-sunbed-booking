@@ -2,7 +2,7 @@
   data-testid="venue-row"
   class="row flex items-center gap-3 border-b border-riv-ink-faint/20 px-2 py-[10px] no-underline last:border-b-0 group-last/row:border-b-0 motion-safe:[transition:background_0.12s_ease] hover:bg-riv-panel-wash-hover focus-visible:outline-offset-[-2px]"
   [routerLink]="['/venues', card().id]"
-  [queryParams]="{ date: date() }"
+  [queryParams]="link()"
   [class.saturate-0]="card().salesClosed"
   [attr.aria-label]="card().ariaLabel"
   [attr.aria-current]="selected() ? 'true' : null"

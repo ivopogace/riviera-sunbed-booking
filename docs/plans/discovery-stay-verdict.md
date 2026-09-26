@@ -267,9 +267,9 @@ N/A — no payment in scope. Prices on the list stay per day (`fromPrice`), unch
 
 ## Execution status
 
-**Stage pointer:** `implement (phase 2b)`
+**Stage pointer:** `implement (phase 2d)`
 
-**Next action:** `venue.service.spec.ts` red: "sends lastDate only for a stay".
+**Next action:** `place-groups.spec.ts` red: a venue that can't host sinks after its group's hosts.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -279,8 +279,8 @@ N/A — no payment in scope. Prices on the list stay per day (`fromPrice`), unch
 | 1c — `DiscoveryListController` takes over `GET /api/venues` | ✅ | phase 1c commit |
 | 1d — cost measurement | ✅ | phase 1d commit |
 | 2a — calendar promoted to `shared/` | ✅ | phase 2a commit |
-| 2b — service param + wire types + card mapping | | |
-| 2c — "Several days…" chip, page calendar, `?lastDate`, links | | |
+| 2b — service param + wire types + card mapping | ✅ | phase 2b commit |
+| 2c — "Several days…" chip, page calendar, `?lastDate`, links | ✅ | phase 2c commit |
 | 2d — verdict line, dusk, ordering | | |
 | 2e — hollow pins + contrast spec | | |
 | 2f — mocked e2e | | |

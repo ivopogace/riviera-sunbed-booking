@@ -176,6 +176,12 @@ export class VenueMap {
   private readonly moveFocus = focusMover();
 
   protected readonly venue = signal<VenueMapView | undefined>(undefined);
+  /** What the way back to other beaches carries: the day, or the stay's first and last day. */
+  protected readonly otherBeachesLink = computed(() =>
+    this.selectedLastDate() !== this.selectedDate()
+      ? { date: this.selectedDate(), lastDate: this.selectedLastDate() }
+      : { date: this.selectedDate() },
+  );
   /** The picker's count read, keyed on this venue so a route change re-keys the calendar's months. */
   protected readonly countsLoader = computed<CountsLoader | null>(() => {
     const id = this.venueId();

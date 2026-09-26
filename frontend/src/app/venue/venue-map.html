@@ -243,7 +243,7 @@
                   class="inline-flex items-center font-bold text-riv-accent-ink underline-offset-2 hover:underline"
                   data-testid="stay-too-long-others"
                   [routerLink]="['/']"
-                  [queryParams]="{ date: selectedDate() }"
+                  [queryParams]="otherBeachesLink()"
                   >See other beaches</a
                 >
               </div>
@@ -272,7 +272,7 @@
                     class="inline-flex items-center font-bold text-riv-accent-ink underline-offset-2 hover:underline"
                     data-testid="no-cover-others"
                     [routerLink]="['/']"
-                    [queryParams]="{ date: selectedDate() }"
+                    [queryParams]="otherBeachesLink()"
                     >See other beaches</a
                   >
                 </div>
@@ -282,7 +282,7 @@
                   class="mt-2 inline-flex items-center font-bold text-riv-accent-ink underline-offset-2 hover:underline"
                   data-testid="no-cover-others"
                   [routerLink]="['/']"
-                  [queryParams]="{ date: selectedDate() }"
+                  [queryParams]="otherBeachesLink()"
                   >See other beaches</a
                 >
               }

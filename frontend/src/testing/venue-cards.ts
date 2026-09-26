@@ -31,6 +31,9 @@ export function venueCard(
     closedForSeason: false,
     reopensOn: null,
     location: null,
+    stay: null,
+    canHost: true,
+    stayLabel: null,
     ariaLabel: `${overrides.name}, Ksamil · Sarandë`,
     ...overrides,
   };

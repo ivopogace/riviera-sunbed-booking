@@ -39,6 +39,9 @@ function card(overrides: Partial<VenueCard> & Pick<VenueCard, 'id' | 'name'>): V
     closedForSeason: false,
     reopensOn: null,
     location: null,
+    stay: null,
+    canHost: true,
+    stayLabel: null,
     ariaLabel: `${overrides.name}, …`,
     ...overrides,
   };

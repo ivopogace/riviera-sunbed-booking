@@ -40,7 +40,7 @@ import {
 } from '../../shared/map-credit';
 import { LngLat, MapEngineOptions, MapHandle, MapView } from '../../shared/map-engine';
 import { formatMoney } from '../../shared/money';
-import { formatBookingDate } from '../../shared/booking-date-label';
+import { formatStay } from '../../shared/booking-date-label';
 import { PanelGlass } from '../../shared/panel-glass';
 import { PosterHandle } from '../../shared/poster-handle';
 import { PhotoScrim } from '../../shared/photo-scrim';
@@ -60,7 +60,14 @@ import { ClosedForSeasonChip } from '../../shared/closed-for-season-chip';
 import { SalesClosedChip } from '../../shared/sales-closed-chip';
 import { SemanticChip } from '../../shared/semantic-chip';
 import { SetsFree } from '../../shared/sets-free';
-import { defaultBookingDate, formatDayMonth, isIsoDate } from '../../shared/booking-date';
+import {
+  DateRange,
+  daysBetween,
+  defaultBookingDate,
+  formatDayMonth,
+  isIsoDate,
+} from '../../shared/booking-date';
+import { AvailabilityCalendar, MAX_STAY_DAYS } from '../../shared/availability-calendar';
 import { TouchTarget } from '../../shared/touch-target';
 import { VenueSummary } from '../../shared/venue-views';
 import { VenueService } from '../../venue/venue.service';
@@ -78,6 +85,7 @@ import {
   rowDistance,
 } from './place-groups';
 import { FOOT_ROW_PX } from './sheet-geometry';
+import { stayLabel } from './stay-label';
 import { VenueCard } from './venue-card';
 import { VenuePinLayer } from './venue-pin-layer';
 import { VenueRow } from './venue-row';
@@ -161,6 +169,7 @@ function closedStateText(
 @Component({
   selector: 'app-home',
   imports: [
+    AvailabilityCalendar,
     NgTemplateOutlet,
     RouterLink,
     RetryButton,
@@ -231,6 +240,18 @@ export class Home {
    * constructor's subscription keeps date and counts in step.
    */
   protected readonly selectedDate = signal(this.minDate);
+  /** The stay's last day, equal to {@link selectedDate} on a one-day page; seeded from `?lastDate`. */
+  protected readonly selectedLastDate = signal(this.minDate);
+  /** Whether the page shows a stay of several days rather than one day. */
+  protected readonly stay = computed(() => this.selectedLastDate() !== this.selectedDate());
+  /** The query every venue link carries: the day, or the stay's first and last day. */
+  protected readonly venueLink = computed(() =>
+    this.stay()
+      ? { date: this.selectedDate(), lastDate: this.selectedLastDate() }
+      : { date: this.selectedDate() },
+  );
+  /** The stay picker the head's last day chip opens; a page-level modal, off the sheet. */
+  protected readonly stayPickerOpen = signal(false);
 
   /** True from Tailwind's `lg` up, followed live so a rotated tablet re-lays out. */
   protected readonly wide = signal(false);
@@ -598,15 +619,13 @@ export class Home {
 
   constructor() {
     this.followViewport();
-    this.selectedDate.set(this.routeDate(this.route.snapshot.queryParamMap));
+    this.setDays(this.routeDates(this.route.snapshot.queryParamMap));
     this.followSheet();
     this.followPanel();
     this.followMapChrome();
     this.loadInitial();
     this.route.queryParamMap.pipe(takeUntilDestroyed()).subscribe((params) => {
-      const date = this.routeDate(params);
-      if (date !== this.selectedDate()) {
-        this.selectedDate.set(date);
+      if (this.setDays(this.routeDates(params))) {
         this.reload();
       }
     });
@@ -894,11 +913,37 @@ export class Home {
   }
 
   protected onDayPicked(date: string): void {
-    if (date === this.selectedDate()) {
-      return;
+    if (this.setDays({ first: date, last: date })) {
+      this.reload();
     }
-    this.selectedDate.set(date);
-    this.reload();
+  }
+
+  protected openStayPicker(): void {
+    this.head()?.closeRails();
+    this.stayPickerOpen.set(true);
+  }
+
+  /** The picker closes under the focus it held, so focus goes back to the chip that opened it. */
+  protected closeStayPicker(): void {
+    this.stayPickerOpen.set(false);
+    this.focusAfterRender('head-day');
+  }
+
+  protected onStayPicked(days: DateRange): void {
+    this.closeStayPicker();
+    if (this.setDays(days)) {
+      this.reload();
+    }
+  }
+
+  /** Move the page to `days`; true when they differ from what it showed. */
+  private setDays(days: DateRange): boolean {
+    if (days.first === this.selectedDate() && days.last === this.selectedLastDate()) {
+      return false;
+    }
+    this.selectedDate.set(days.first);
+    this.selectedLastDate.set(days.last);
+    return true;
   }
 
   protected openPicker(): void {
@@ -1005,17 +1050,26 @@ export class Home {
     return this.selectedVenue() === String(card.id);
   }
 
-  /** The route-carried day: a well-formed `?date` on or after the floor, else the floor itself. */
-  private routeDate(params: ParamMap): string {
-    const raw = params.get('date') ?? '';
-    return isIsoDate(raw) && raw >= this.minDate ? raw : this.minDate;
+  /**
+   * The route-carried days: a well-formed `?date` on or after the floor, else the floor; a
+   * well-formed `?lastDate` on or after it within the stay ceiling, else the first day alone.
+   */
+  private routeDates(params: ParamMap): DateRange {
+    const rawFirst = params.get('date') ?? '';
+    const first = isIsoDate(rawFirst) && rawFirst >= this.minDate ? rawFirst : this.minDate;
+    const rawLast = params.get('lastDate') ?? '';
+    const last =
+      isIsoDate(rawLast) && rawLast >= first && daysBetween(first, rawLast) <= MAX_STAY_DAYS
+        ? rawLast
+        : first;
+    return { first, last };
   }
 
   /** First load: the whole coast for the current date, which the head then narrows inside. */
   private loadInitial(): void {
     this.lastLoad = () => this.loadInitial();
     const token = this.beginRequest();
-    this.venueService.listVenues({}, this.selectedDate()).subscribe({
+    this.venueService.listVenues({}, this.selectedDate(), this.selectedLastDate()).subscribe({
       next: (list) => {
         if (this.lastRequest !== token) {
           return;
@@ -1034,7 +1088,7 @@ export class Home {
   private reload(): void {
     this.lastLoad = () => this.reload();
     const token = this.beginRequest();
-    this.venueService.listVenues({}, this.selectedDate()).subscribe({
+    this.venueService.listVenues({}, this.selectedDate(), this.selectedLastDate()).subscribe({
       next: (list) => {
         if (this.lastRequest === token) {
           this.venues.set(list);
@@ -1052,7 +1106,7 @@ export class Home {
   private beginRequest(): string {
     this.venues.set(undefined);
     this.failed.set(false);
-    const token = this.selectedDate();
+    const token = `${this.selectedDate()}|${this.selectedLastDate()}`;
     this.lastRequest = token;
     return token;
   }
@@ -1067,9 +1121,9 @@ export class Home {
     this.focusAfterRender('head-place');
   }
 
-  /** The selected date rendered for display (e.g. "Tue 30 Jun 2026"). */
+  /** The selected days rendered for display: "Tue 30 Jun 2026", or a stay's first and last day. */
   protected dateLabel(): string {
-    return formatBookingDate(this.selectedDate(), { withYear: true });
+    return formatStay(this.selectedDate(), this.selectedLastDate(), { withYear: true });
   }
 
   /**
@@ -1102,9 +1156,18 @@ export class Home {
     const ratingText = rated ? `rated ${rating} out of 5` : 'no reviews yet';
     // The card body is aria-hidden, so the closed state must ride the accessible name too.
     const closedText = closedStateText(closedForSeason, reopensOn, salesClosed);
+    const stay = this.stay() ? (venue.stay ?? null) : null;
+    const stayText =
+      stay === null
+        ? null
+        : stayLabel(stay, daysBetween(this.selectedDate(), this.selectedLastDate()));
+    const daysText =
+      stayText === null
+        ? `${free} of ${total} sets free on ${dateLabel}`
+        : `${stayText.replaceAll(' · ', ', ')} for ${dateLabel}`;
     const ariaLabel =
       `${venue.name}, ${beachLabel(venue.beach)} · ${regionLabel(venue.region)}, ${ratingText}${price}, ` +
-      `${free} of ${total} sets free on ${dateLabel}${closedText}. ` +
+      `${daysText}${closedText}. ` +
       `${waterText}${amenitiesText}` +
       `View beach map.`;
 
@@ -1131,6 +1194,9 @@ export class Home {
       closedForSeason,
       reopensOn,
       location: venue.location ?? null,
+      stay,
+      canHost: stay?.verdict !== 'CANNOT_HOST',
+      stayLabel: stayText,
       ariaLabel,
     };
   }

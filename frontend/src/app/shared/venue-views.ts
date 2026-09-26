@@ -142,6 +142,21 @@ export interface VenueMapView {
  */
 export type SalesCloseTime = '00:01' | '16:00' | '23:59';
 
+/** Whether a venue can host a stay: one online set free for every day, or not. */
+export type StayFit = 'SAME_SET' | 'CANNOT_HOST';
+
+/**
+ * A venue's verdict for the chosen stay (mirrors the backend `StayVerdictView`): how many online
+ * sets are free on every day, the most days in a row one set is free for, and the venue's maximum
+ * stay (`null` for any length) — the two facts the card says why with.
+ */
+export interface StayVerdictView {
+  readonly verdict: StayFit;
+  readonly sameSetCount: number;
+  readonly longestRunDays: number;
+  readonly maxStayDays: number | null;
+}
+
 /**
  * A venue's set availability on a chosen day, as a count (mirrors the backend
  * `AvailabilitySummary`): `free` of `total` sets are not yet taken for the date.
@@ -232,6 +247,8 @@ export interface VenueSummary {
   readonly closedForSeason?: boolean;
   /** The reopen day (ISO `YYYY-MM-DD`, Europe/Tirane) while closed with one set; else `null`/absent. */
   readonly reopensOn?: string | null;
+  /** The venue's verdict for the stay the list was read for; absent on a one-day read. */
+  readonly stay?: StayVerdictView | null;
 }
 
 /**

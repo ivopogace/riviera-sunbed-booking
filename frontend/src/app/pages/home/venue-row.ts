@@ -28,6 +28,8 @@ export class VenueRow {
   readonly selected = input(false);
   /** The date the panel is showing, carried into the beach map the row links to. */
   readonly date = input('');
+  /** The stay's last day when the panel shows one; empty or equal to {@link date} for one day. */
+  readonly lastDate = input('');
   /**
    * The pointer, or the keyboard, has come to this row or left it — the map answers by lighting
    * the venue's pin. Focus is in it for parity: a keyboard walking the list lights the same pins
@@ -35,6 +37,12 @@ export class VenueRow {
    */
   readonly pointed = output<boolean>();
 
+  /** The query the row's link carries: the day, or the stay's first and last day. */
+  protected readonly link = computed(() =>
+    this.lastDate() !== '' && this.lastDate() !== this.date()
+      ? { date: this.date(), lastDate: this.lastDate() }
+      : { date: this.date() },
+  );
   protected readonly cover = computed(() => this.card().photos[0] ?? null);
   protected readonly srcset = computed(() => {
     const cover = this.cover();

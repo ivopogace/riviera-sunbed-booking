@@ -29,12 +29,20 @@ export class VenueService {
   private readonly http = inject(HttpClient);
 
   /**
-   * The venues matching `filter` for the ISO `YYYY-MM-DD` day `date`; each `availability` count is
-   * the authoritative `set_availability` state for that date (invariant #2). Empty/omitted filter
-   * dimensions are not sent, so the server lists all venues.
+   * The venues matching `filter` for the ISO `YYYY-MM-DD` day `date`, or for the stay `date` to
+   * `lastDate` (a one-day read sends no last day and gets no verdict); each `availability` count is
+   * the authoritative `set_availability` state for the first day (invariant #2). Empty/omitted
+   * filter dimensions are not sent, so the server lists all venues.
    */
-  listVenues(filter: VenueListFilter, date: string): Observable<VenueSummary[]> {
+  listVenues(
+    filter: VenueListFilter,
+    date: string,
+    lastDate: string = date,
+  ): Observable<VenueSummary[]> {
     let params = new HttpParams().set('date', date);
+    if (lastDate !== date) {
+      params = params.set('lastDate', lastDate);
+    }
     if (filter.beach) {
       params = params.set('beach', filter.beach);
     }

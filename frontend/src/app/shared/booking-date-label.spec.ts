@@ -1,4 +1,4 @@
-import { formatBookingDate, formatStay } from './booking-date-label';
+import { formatBookingDate, formatStay, formatStayChip } from './booking-date-label';
 
 describe('formatBookingDate', () => {
   it('renders an ISO LocalDate as a friendly weekday/day/month label', () => {
@@ -52,5 +52,19 @@ describe('formatStay', () => {
       /^Tue,? 30 Jun – Sat,? 4 Jul 2026 · 5 days$/,
     );
     expect(formatStay('2026-07-03', '2026-07-04')).toContain('· 2 days');
+  });
+});
+
+describe('formatStayChip', () => {
+  it('drops the weekdays and the first month inside one month', () => {
+    expect(formatStayChip('2026-06-19', '2026-06-22')).toBe('19 – 22 Jun · 4 days');
+  });
+
+  it('names both months across a month boundary', () => {
+    expect(formatStayChip('2026-06-29', '2026-07-02')).toBe('29 Jun – 2 Jul · 4 days');
+  });
+
+  it('renders one day exactly as the single date', () => {
+    expect(formatStayChip('2026-06-19', '2026-06-19')).toBe(formatBookingDate('2026-06-19'));
   });
 });
