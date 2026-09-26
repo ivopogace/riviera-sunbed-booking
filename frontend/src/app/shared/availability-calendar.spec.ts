@@ -1,13 +1,14 @@
-import { provideHttpClient } from '@angular/common/http';
+import { HttpClient, HttpParams, provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
-import { Component, signal } from '@angular/core';
+import { Component, inject, signal } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 
 import { environment } from '../../environments/environment';
 import { CALENDAR_TOKENS, fillUtility } from '../../testing/calendar-tints';
 import { uniformDays } from '../../testing/calendar-days';
-import { DateRange } from '../shared/booking-date';
-import { AvailabilityCalendar } from './availability-calendar';
+import { DateRange } from './booking-date';
+import { AvailabilityCalendar, CountsLoader } from './availability-calendar';
+import { DailyAvailability } from './venue-views';
 
 /**
  * The Vitest clock is frozen at Monday 2026-06-15 midday Europe/Tirane, so "today" (the floor)
@@ -19,7 +20,7 @@ const MIN_DATE = '2026-06-15';
   imports: [AvailabilityCalendar],
   template: `
     <app-availability-calendar
-      [venueId]="venueId()"
+      [loadCounts]="loadCounts()"
       [selectedDate]="selectedDate()"
       [selectedLastDate]="selectedLastDate()"
       [minDate]="minDate()"
@@ -31,7 +32,15 @@ const MIN_DATE = '2026-06-15';
   `,
 })
 class Host {
+  private readonly http = inject(HttpClient);
+  /** The venue page's read, keyed on the venue: the specs assert the request it fires. */
   readonly venueId = signal(7);
+  readonly loadCounts = signal<CountsLoader | null>((from, to) =>
+    this.http.get<DailyAvailability[]>(
+      `${environment.apiBaseUrl}/api/venues/${this.venueId()}/availability-calendar`,
+      { params: new HttpParams().set('from', from).set('to', to) },
+    ),
+  );
   readonly selectedDate = signal('2026-06-20');
   readonly selectedLastDate = signal<string | undefined>(undefined);
   readonly minDate = signal(MIN_DATE);
@@ -724,6 +733,47 @@ describe('AvailabilityCalendar', () => {
       );
 
       expect(host.dismissals).toBe(1);
+    });
+  });
+
+  describe('without a count loader', () => {
+    /** The host mounts with a loader; taking it away supersedes that first month's request. */
+    async function withoutLoader(): Promise<void> {
+      host.loadCounts.set(null);
+      fixture.detectChanges();
+      await fixture.whenStable();
+      httpMock.match((req) => req.url.includes('/availability-calendar'));
+    }
+
+    it('renders a bare picker: no request, every day from the floor selectable, no busy copy', async () => {
+      await withoutLoader();
+      control('calendar-next').click();
+      fixture.detectChanges();
+      await fixture.whenStable();
+      control('calendar-prev').click();
+      fixture.detectChanges();
+      await fixture.whenStable();
+
+      httpMock.expectNone((req) => req.url.includes('/availability-calendar'));
+      expect(dayButton('2026-06-14')!.getAttribute('aria-disabled')).toBe('true');
+      expect(dayButton('2026-06-21')!.getAttribute('aria-disabled')).toBeNull();
+      expect(barTrack('2026-06-21').className).toContain('invisible');
+      expect(dom().textContent).not.toContain('The bar under each day');
+      expect(dom().querySelector('app-load-announcer')).toBeNull();
+    });
+
+    it('still commits a stay from a first and a last tap', async () => {
+      host.rangeAllowed.set(true);
+      await withoutLoader();
+
+      control('calendar-mode-stay').click();
+      fixture.detectChanges();
+      dayButton('2026-06-20')!.click();
+      fixture.detectChanges();
+      dayButton('2026-06-23')!.click();
+      fixture.detectChanges();
+
+      expect(host.chosen).toEqual([{ first: '2026-06-20', last: '2026-06-23' }]);
     });
   });
 });

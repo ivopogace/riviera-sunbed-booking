@@ -152,7 +152,7 @@ The `GET /api/venues` mapping moves from `venue/adapter/in/VenueReadController` 
 | R-3 | `venue::spi` grant leaks to the new module | Low | High | The new read is `availability.api.SetAvailabilityFacts`; `itinerary` never lists `venue::spi` | me | open |
 | R-4 | `ResponsibilitiesArchitectureTests` rule 1: `set_availability` named outside `availability` | Low | High | `itinerary` has no SQL at all; its adapter is a controller only | me | open |
 | R-5 | Jackson `@JsonUnwrapped` on a record component may not flatten the summary | Med | Low | Spike in phase 1c; fallback is an explicit `DiscoveryVenueView` record mirroring `VenueSummaryView`'s 17 fields with a static `of(summary, verdict)` | me | closed — `booking/adapter/in/AwaitingPaymentView` already unwraps a record component on the wire |
-| R-6 | Calendar promotion breaks the venue page (focus, counts, ceiling) | Med | Med | `git mv`, the 729-line spec moves with it and stays green; `availability-calendar.e2e.ts` untouched | me | open |
+| R-6 | Calendar promotion breaks the venue page (focus, counts, ceiling) | Med | Med | `git mv`, the 729-line spec moves with it and stays green; `availability-calendar.e2e.ts` untouched | me | closed — the moved spec (50) and `venue-map.spec.ts` green in phase 2a |
 | R-7 | Contrast: a hollow pin over map imagery | Med | Med | Hollow = inverse token pair (`--riv-solid-btn-fill` ring + ink on the pin's own fill), never transparent; `venue-pin-layer.contrast.spec.ts` measures both variants per theme | me | open |
 | R-8 | Fading can't-host cards drops the name under 3:1 (`venue-row.ts` rule) | High if faded | Med | The issue's "faded" is rendered as the existing dusk skin (`saturate-0`) plus the verdict line; no opacity on text | me | open |
 | R-9 | Timezone: the span's days are Europe/Tirane civil days (#6) | Low | Med | `StaySpan` is `LocalDate`s; the default first day is `todayInTirane()` off the UTC `Clock`, as before | me | open |
@@ -267,9 +267,9 @@ N/A — no payment in scope. Prices on the list stay per day (`fromPrice`), unch
 
 ## Execution status
 
-**Stage pointer:** `implement (phase 2a)`
+**Stage pointer:** `implement (phase 2b)`
 
-**Next action:** promote the calendar to `shared/` with a `loadCounts` input (red: "renders without a loader").
+**Next action:** `venue.service.spec.ts` red: "sends lastDate only for a stay".
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -278,7 +278,7 @@ N/A — no payment in scope. Prices on the list stay per day (`fromPrice`), unch
 | 1b — ports + `StayVerdicts` service + module + structural net | ✅ | phase 1b commit |
 | 1c — `DiscoveryListController` takes over `GET /api/venues` | ✅ | phase 1c commit |
 | 1d — cost measurement | ✅ | phase 1d commit |
-| 2a — calendar promoted to `shared/` | | |
+| 2a — calendar promoted to `shared/` | ✅ | phase 2a commit |
 | 2b — service param + wire types + card mapping | | |
 | 2c — "Several days…" chip, page calendar, `?lastDate`, links | | |
 | 2d — verdict line, dusk, ordering | | |
@@ -451,6 +451,7 @@ The 150 ms switch threshold in R-1 is not approached, so the SQL-aggregate fallb
 
 | Date | Trigger | Population (mechanism + how enumerated) | Search command | Sites found | Action |
 |---|---|---|---|---|---|
+| 2026-09-26 | the calendar moved to `shared/` | every import of the three moved modules | `grep -rn "availability-calendar'\|day-availability'\|stay-rule'" frontend/src frontend/e2e` | `venue-map.ts` (2), the moved specs (3), `day-availability.ts` (1) | paths rewritten; `stay-runs` stays in `venue/` (only `venue/` imports it) |
 | 2026-09-26 | `SetBookingFacts` gained `stayFactsOf` | every test double implementing the port | `grep -rln "implements SetBookingFacts\|new SetBookingFacts()" platform/src/test` (compile also lists them) | `WebSliceStubs`, `CreateBookingServiceTest.FakeCatalog`, `retirefixture…FixtureSetFacts` | each answers `Map.of()`; no `@ApplicationModuleTest` needs a stub, the adapters only grew |
 
 ---

@@ -1,5 +1,5 @@
-import { DailyAvailability } from '../shared/venue-views';
-import { formatCivilDate } from '../shared/booking-date';
+import { DailyAvailability } from './venue-views';
+import { formatCivilDate } from './booking-date';
 
 /**
  * Every state a calendar day can be in, in legend order. {@link DayAvailabilityState} is derived

@@ -14,6 +14,7 @@ import {
 } from '@angular/core';
 
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { Observable } from 'rxjs';
 
 import {
   DateRange,
@@ -26,12 +27,12 @@ import {
   monthWeeks,
   startOfMonth,
   startOfWeek,
-} from '../shared/booking-date';
-import { DailyAvailability } from '../shared/venue-views';
-import { LoadAnnouncer } from '../shared/load-announcer';
-import { SegmentedControl, SegmentedOption } from '../shared/segmented-control';
-import { TouchTarget } from '../shared/touch-target';
-import { trapFocusWithin } from '../shared/focus-trap';
+} from './booking-date';
+import { DailyAvailability } from './venue-views';
+import { LoadAnnouncer } from './load-announcer';
+import { SegmentedControl, SegmentedOption } from './segmented-control';
+import { TouchTarget } from './touch-target';
+import { trapFocusWithin } from './focus-trap';
 import {
   DAY_SELECTED_CLASS,
   DAY_TINT_CLASS,
@@ -41,7 +42,6 @@ import {
   freeFraction,
 } from './day-availability';
 import { stayRule } from './stay-rule';
-import { VenueService } from './venue.service';
 
 /** One rendered day, or `undefined` for a grid position outside the visible month. */
 export interface CalendarCell {
@@ -60,6 +60,12 @@ export interface CalendarCell {
 
 /** One day at a time, or a stay of several days picked as a first and a last day. */
 export type StayMode = 'day' | 'stay';
+
+/**
+ * Reads one month's per-day counts over the inclusive ISO window `[from, to]` — the venue page
+ * hands in its venue's calendar read; a page with no venue hands in nothing and gets a bare picker.
+ */
+export type CountsLoader = (from: string, to: string) => Observable<DailyAvailability[]>;
 
 /**
  * The widest stay the picker offers, the server's own ceiling on a map read and a reserve (`StaySpan`
@@ -84,12 +90,12 @@ const WEEKDAYS: readonly { readonly short: string; readonly long: string }[] = [
 ];
 
 /**
- * The venue page's modal date picker, each day with its free/total set count — a **snapshot, never
- * a hold** (invariant #2): phrase nothing as bookable and gate no later step on it; `total` spans
- * both pools. Past days (this component's floor), `salesOpen: false` days and, in stay mode, days
- * past the stay ceiling can't be chosen: display only, the server decides (invariant #4). Focus,
- * not selection, drives the month: {@link focusedDate} is the roving stop, so an arrow across a
- * month and a PageDown are one operation with one refetch.
+ * The modal date picker, each day with its free/total set count when a {@link loadCounts} is given
+ * — a **snapshot, never a hold** (invariant #2): phrase nothing as bookable and gate no later step
+ * on it; `total` spans both pools. Past days (this component's floor), `salesOpen: false` days and,
+ * in stay mode, days past the stay ceiling can't be chosen: display only, the server decides
+ * (invariant #4). Focus, not selection, drives the month: {@link focusedDate} is the roving stop,
+ * so an arrow across a month and a PageDown are one operation with one refetch.
  */
 @Component({
   selector: 'app-availability-calendar',
@@ -103,7 +109,8 @@ const WEEKDAYS: readonly { readonly short: string; readonly long: string }[] = [
   },
 })
 export class AvailabilityCalendar {
-  readonly venueId = input.required<number>();
+  /** How the month's counts are read; `null` draws every day without a count, tint or bar. */
+  readonly loadCounts = input<CountsLoader | null>(null);
 
   /** The first day the map is currently showing — rendered as selected, and where the picker opens. */
   readonly selectedDate = input.required<string>();
@@ -167,7 +174,6 @@ export class AvailabilityCalendar {
     return last !== undefined && last !== this.selectedDate();
   }
 
-  private readonly venues = inject(VenueService);
   private readonly hostRef = inject<ElementRef<HTMLElement>>(ElementRef);
 
   /**
@@ -189,7 +195,9 @@ export class AvailabilityCalendar {
 
   private readonly counts = signal<ReadonlyMap<string, DailyAvailability>>(new Map());
   protected readonly countsFailed = signal(false);
-  protected readonly countsLoading = signal(true);
+  protected readonly countsLoading = signal(false);
+  /** Whether counts are part of this picker at all — the copy under the grid follows it. */
+  protected readonly countsShown = computed(() => this.loadCounts() !== null);
   private readonly destroyRef = inject(DestroyRef);
   private epoch = 0;
 
@@ -251,7 +259,7 @@ export class AvailabilityCalendar {
   });
 
   constructor() {
-    effect(() => this.fetchMonth(this.venueId(), this.visibleMonth()));
+    effect(() => this.fetchMonth(this.loadCounts(), this.visibleMonth()));
     afterRenderEffect({
       write: () => {
         this.focusRequest();
@@ -370,13 +378,16 @@ export class AvailabilityCalendar {
    * response is dropped (the `epoch` guard, as in `venue-map.ts`); counts and failure clear at
    * dispatch, so a slow month never shows the last one's numbers or a stale failure.
    */
-  private fetchMonth(venueId: number, month: string): void {
+  private fetchMonth(load: CountsLoader | null, month: string): void {
     const generation = ++this.epoch;
-    this.countsLoading.set(true);
     this.countsFailed.set(false);
     this.counts.set(new Map());
-    this.venues
-      .availabilityCalendar(venueId, month, endOfMonth(month))
+    if (load === null) {
+      this.countsLoading.set(false);
+      return;
+    }
+    this.countsLoading.set(true);
+    load(month, endOfMonth(month))
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: (days) => {

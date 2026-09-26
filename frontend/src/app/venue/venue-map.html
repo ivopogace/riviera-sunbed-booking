@@ -434,7 +434,7 @@
     <!-- Outside the glass header: its backdrop-filter would contain, and its overflow clip, a fixed child (#134). -->
     @if (pickerOpen()) {
       <app-availability-calendar
-        [venueId]="v.id"
+        [loadCounts]="countsLoader()"
         [selectedDate]="selectedDate()"
         [selectedLastDate]="selectedLastDate()"
         [minDate]="minDate()"
