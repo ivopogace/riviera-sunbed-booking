@@ -62,6 +62,10 @@ Provider landscape (researched 2026-07-22):
    event id; charge/refund idempotency keys stay derived from `BookingId` + operation.
    Refund eligibility/amounts stay server-computed (invariant #10) and are actioned via the
    Paysera refund API.
+
+   > **Note (2026-09-26):** #8 covers only "webhooks are the source of truth". Webhook-event
+   > idempotency and charge/refund idempotency keys are ADR-0002 / `riviera-stripe-payments`
+   > rules, and the gateway-neutral rewording must carry them there, not into #8.
 3. **Payout currency is EUR — resolving the CLAUDE.md provisional decision** (EUR vs ALL per
    venue). The ledger is already EUR-native end-to-end (invariant #5; `payout` stores EUR
    minor units, `JdbcPayoutLedger` is EUR-only), so **no FX ever enters the app**. Each venue
@@ -115,6 +119,9 @@ Provider landscape (researched 2026-07-22):
   payout-currency provisional decision from `CLAUDE.md` and re-word invariant #8 to
   gateway-neutral; rewrite the `riviera-stripe-payments` skill as the gateway-neutral payments
   skill with Paysera specifics.
+
+  > **Note (2026-09-26):** see the Note under Decision 2: the #8 rewording carries only the
+  > webhook-truth rule; the idempotency rules are not #8's.
 - A future implementer must **not**: confirm a booking from a redirect; reach for a
   split/sub-merchant product (re-open this ADR instead if a provider verifiably onboards
   Albanian sellers); introduce currency conversion anywhere in the app; or pay a venue

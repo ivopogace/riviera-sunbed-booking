@@ -37,7 +37,7 @@ public interface CustomerAccountRecovery {
 	Optional<String> emailForResetToken(String tokenHash);
 
 	/**
-	 * Set the account's password directly (authenticated set-password, closes S4 F-1). The edge authorizes
+	 * Set the account's password directly (authenticated set-password). The edge authorizes
 	 * the caller (own session) and, when the account already has a password, verifies the current one first;
 	 * this write is unconditional. Lets an SSO-only (password-less) account gain a local password.
 	 */
