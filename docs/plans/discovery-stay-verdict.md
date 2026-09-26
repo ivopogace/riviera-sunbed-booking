@@ -267,9 +267,9 @@ N/A — no payment in scope. Prices on the list stay per day (`fromPrice`), unch
 
 ## Execution status
 
-**Stage pointer:** `implement (phase 2f)`
+**Stage pointer:** `implement (phase 3)`
 
-**Next action:** write `e2e/discovery-stay.e2e.ts` and run it with the mocked config.
+**Next action:** substrate docs (`CLAUDE.md` row, `RESPONSIBILITIES.md` § itinerary, `CONTEXT.md`, design status), then the file-structure guard.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -283,7 +283,7 @@ N/A — no payment in scope. Prices on the list stay per day (`fromPrice`), unch
 | 2c — "Several days…" chip, page calendar, `?lastDate`, links | ✅ | phase 2c commit |
 | 2d — verdict line, dusk, ordering | ✅ | phase 2d commit |
 | 2e — hollow pins + contrast spec | ✅ | phase 2e commit |
-| 2f — mocked e2e | | |
+| 2f — mocked e2e | ✅ | phase 2f commit |
 | 3 — substrate docs + close-out | | |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
