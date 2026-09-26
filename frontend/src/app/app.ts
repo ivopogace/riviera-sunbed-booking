@@ -37,26 +37,16 @@ import { TouchTarget } from './shared/touch-target';
 
 const POP = `absolute ${POP_SKIN}`;
 
-/** The shell's root box, with and without the phone tab bar's clearance: the bar is 61px tall
- *  (60px tabs + the top border) and pads itself by the home-indicator inset, so the page pads by
- *  both — otherwise the last 61px of every page sit under the bar. Two literals, not a
- *  concatenation: Tailwind generates only classes it can read in the source. `text-riv-ink`
- *  re-resolves the ink under the console routes' theme pin — `body` resolves it once under
- *  the document theme, so an inheriting element would keep a dark theme's white ink there. */
+/** The shell root, with and without clearance for the phone tab bar (61px + home-indicator inset).
+ *  Two literals, not a concatenation: Tailwind generates only classes it can read in the source.
+ *  `text-riv-ink` re-resolves ink under the console theme pin; ink inherited from `body` would not. */
 const SHELL = 'relative flex min-h-screen flex-col text-riv-ink';
 const SHELL_WITH_TAB_BAR = `${SHELL} max-sm:pb-[calc(61px+env(safe-area-inset-bottom))]`;
 
 /**
- * A bottom tab. The current tab is a SHAPE cue in full ink — a 3px bar at the top edge and a
- * 1.5px ring round the icon pill — plus the full-ink label: no tint the token set offers clears
- * WCAG 1.4.11's 3:1 against the bar (the 0.12 accent fill measured 1.10–1.22:1, the 0.18 chip fill
- * 1.15–1.36:1), and full-vs-soft ink alone reads 1.22–2.54:1. `flex`, so `appTouchTarget`'s floor
- * is live on the two `<a>`s; `group`, so the pill's ring keys on the tab's `aria-current`. The
- * focus ring is inset (`EDGE_SLOT_RING`): the bar is edge-to-edge, so an outside ring lost its
- * right side past the viewport and its bottom side under the safe-area padding.
- * `touch-manipulation` drops the browser's native double-tap-to-zoom, which a fast second tap on
- * the phone's most repeatedly tapped control would otherwise fire instead of navigating; it keeps
- * pan and pinch-zoom, so WCAG 1.4.4 is untouched.
+ * A bottom tab; current = a full-ink SHAPE cue (top bar + icon-pill ring), as no token tint clears
+ * WCAG 1.4.11's 3:1 on the bar. `flex` keeps `appTouchTarget`'s floor live; the ring is inset for the
+ * edge-to-edge bar; `touch-manipulation` stops a fast second tap zooming, keeping pinch-zoom.
  */
 const TAB = `group relative flex h-[60px] cursor-pointer touch-manipulation flex-col items-center justify-center gap-[3px] text-[11px] font-semibold text-riv-ink-soft before:absolute before:top-0 before:h-[3px] before:w-9 before:rounded-b-full before:bg-current before:opacity-0 before:content-[''] aria-[current=page]:text-riv-ink aria-[current=page]:before:opacity-100 ${EDGE_SLOT_RING}`;
 
@@ -93,27 +83,12 @@ const CLS = {
 export type TouristSection = 'beaches' | 'bookings' | 'account';
 
 /**
- * The route data a tourist route may carry for the shell's phone chrome (`app.routes.ts`):
- * `section` places the route under a bottom tab; `tabBar: false` hides the bar altogether — the
- * payment page, where a thumb-reach exit under `Pay €45` was the objection that removed the
- * search-first header candidate. `footer: false` is for a route that paints to every edge of the
- * window, where the shared footer would be covered rather than read; Discover's riviera map is
- * the first. Read off the same root→leaf walk as the operator flags.
- *
- * <p>The two are not independent: below `sm` a `footer: false` route's only reach to Privacy and
- * Terms is the tab bar's menu sheet (`shared/legal-menu-rows.ts`), so such a route needs the
- * tourist chrome and must not also carry `tabBar: false`.
- *
- * <p>`wide: true` takes the 1080px cap off the header's inner wrapper and the footer's inner,
- * for a route that paints to the window's edges: the map's own panel starts at x 12, so a capped
- * header floats the brand 180px inside it at 1440 and 420px at 1920, reading as chrome for a
- * narrower page than the one under it. The cap is removed by Tailwind's bare boolean
- * `data-wide:` variant, which compiles to `&[data-wide]` — the attribute must therefore sit on
- * the SAME element as the utility, which is why the header wrapper and the footer inner each
- * bind it rather than inheriting one attribute from the shell root. (The ancestor form,
- * `in-data-wide:`, compiles under `:where()` and so only TIES `max-w-[1080px]` on specificity,
- * leaving stylesheet order to decide it.) Unlike `tabBar`/`footer`, where the restrictive value
- * wins, this is an opt-in: any route on the chain carrying it makes the shell wide.
+ * Route data for the shell's phone chrome (`app.routes.ts`), read off the root→leaf chain:
+ * `section` puts the route under a bottom tab; `tabBar: false` hides the bar; `footer: false` drops
+ * the footer on an edge-to-edge route — which then must keep the tab bar, whose menu sheet is its
+ * only phone reach to Privacy/Terms. `wide: true` (opt-in: any route on the chain) lifts the 1080px
+ * cap via bare `data-wide:`, compiling to `&[data-wide]` — bind the attribute on the SAME element
+ * as the utility; the ancestor form `in-data-wide:` only ties on specificity.
  */
 export interface TouristRouteData {
   section?: TouristSection;
@@ -160,10 +135,9 @@ function consoleOf(data: unknown): ConsoleSection | null {
 }
 
 /**
- * The Liquid Glass app shell: themed gradient background, the glass header (sticky from `sm` up,
- * scrolling away below it), the primary nav — inline in the header on desktop, a fixed three-tab
- * bottom bar below 640px, CSS decides and both live here — and the theme switcher. Every route
- * paints straight onto that background: `<main>` carries no surface of its own.
+ * The Liquid Glass app shell: gradient background, glass header (sticky from `sm` up), the primary
+ * nav (inline on desktop, a three-tab bottom bar below 640px; CSS decides) and the theme switcher.
+ * Every route paints straight onto the background: `<main>` carries no surface of its own.
  */
 @Component({
   selector: 'app-root',
@@ -194,15 +168,9 @@ export class App {
   /** Customer session state for the header: sign-in/register links ↔ signed-in + sign-out. */
   protected readonly customerAuth = inject(CustomerAuth);
   /**
-   * The "your sign-out may not have reached the server" warning. Rendered by the shell for
-   * BOTH principal types — `SessionAuth` records into it, so an operator signing out of the console
-   * raises the same banner without the console knowing about it.
-   *
-   * <p><strong>Deliberate styling deviation</strong> (`riviera-tailwind`: components consume
-   * `--riv-*` tokens, never palette literals): the banner is a fixed solid white/`#b3261e` bar in
-   * both themes rather than token-driven. It is a safety notice about a session that may still be
-   * open on a shared device, so legibility outranks theme harmony; solid also keeps it clear of the
-   * translucent-glass contrast rule. Measured 6.5:1, past AA.
+   * The "your sign-out may not have reached the server" warning, shown here for BOTH principal types.
+   * A deliberate exception to tokens: a solid white/`#b3261e` bar in every theme (6.5:1) — a
+   * shared-device safety notice outranks theme harmony and stays clear of the glass contrast rule.
    */
   protected readonly signOutNotice = inject(SignOutNotice);
   private readonly router = inject(Router);
@@ -211,13 +179,9 @@ export class App {
 
   protected readonly menuOpen = signal(false);
   /**
-   * The header popover: the account menu signed in (the tourist's entry point to
-   * `/account/password`), the menu of Create an account + Find a booking signed out.
-   *
-   * <p><strong>A disclosure, deliberately not an ARIA `menu`.</strong> `role="menu"`/`menuitem`
-   * would oblige roving `tabindex` + arrow-key navigation to be correct; the theme options were
-   * downgraded off the sibling ARIA radio pattern for exactly that reason. This is a button with
-   * `aria-expanded` revealing plain links — the same shape as `riv-theme-picker`.
+   * The header popover: the account menu signed in, Create an account + Find a booking signed out.
+   * A disclosure (a button with `aria-expanded` revealing plain links), not an ARIA `menu`, which
+   * would oblige roving `tabindex` + arrow-key navigation.
    */
   protected readonly accountOpen = signal(false);
   /** The "Find a booking" glass modal — a shell-level, nav-triggered overlay. */
@@ -243,20 +207,9 @@ export class App {
   protected readonly initial = computed(() => initialOf(this.address()));
 
   /**
-   * The active route's chrome flags, computed once per successful navigation from a SINGLE
-   * root→leaf walk: `console` (every operator/admin surface — the venue console, the admin
-   * console, the three plain operator pages — names its section, and the console shell replaces the
-   * tourist header, so an admin is never shown the customer session's "Sign in / Register" while
-   * signed in) with the `:venueId` beside it, and the tourist `section` / `tabBar` flags. A flag
-   * sits on a PARENT route and is not inherited into a child snapshot, so the leaf-most value on
-   * the chain wins. {@link PRE_NAVIGATION_CHROME} until the first navigation completes.
-   *
-   * <p>Keyed on `Router.lastSuccessfulNavigation()`; the `routerState` snapshot it walks is not a
-   * signal, and reading it here is safe because the router assigns `routerState` before it
-   * activates the routes (on `BeforeActivateRoutes`) and sets `lastSuccessfulNavigation` on the
-   * line before it emits `NavigationEnd`, so this computed observes the same settled state a
-   * `NavigationEnd` subscriber does. A skipped, cancelled or failed navigation sets neither, and
-   * leaves the chrome where it was.
+   * The active route's chrome flags from ONE root→leaf walk per successful navigation; a flag on a
+   * parent route is not inherited into child snapshots, so the walk takes the leaf-most value. Keyed
+   * on `lastSuccessfulNavigation()`, set once `routerState` has settled; a failed nav changes nothing.
    */
   private readonly routeChrome = computed((): RouteChrome => {
     if (this.router.lastSuccessfulNavigation() === null) {
@@ -307,11 +260,9 @@ export class App {
   private readonly authPageActive = isActive('/account/sign-in', this.router, EXACT_PATH);
 
   /**
-   * Which of the Sign in / Register pair is the current page, or neither. Both links target
-   * `/account/sign-in` and differ only in `mode=register`, which `routerLinkActive` cannot key on
-   * without also lighting Sign in under `?mode=register` (a subset match) or unlighting it under a
-   * `returnUrl` (an exact one) — so the pair reads the query param itself, off the same settled
-   * navigation {@link authPageActive} is computed from.
+   * Which of the Sign in / Register pair is current, or neither. Both target `/account/sign-in` and
+   * differ only in `mode=register`, which `routerLinkActive` can't key on without mis-lighting Sign
+   * in — so this reads the query param off the settled navigation.
    */
   protected readonly authLinkCurrent = computed((): 'signin' | 'register' | null => {
     if (!this.authPageActive()) {
@@ -340,37 +291,9 @@ export class App {
   );
 
   /**
-   * Wires the close-on-navigation rule: a navigation the user set off carries them away from the
-   * page they opened an overlay on — a found booking code navigates to `/booking/:code`, so the find
-   * modal must not linger over the detail view — and closes all four.
-   *
-   * <p>The ONE navigation that does not is the one already running when the overlay was opened.
-   * The header is interactive before the first route's lazily loaded chunk has activated
-   * (`provideRouter`'s default `enabledNonBlocking` initial navigation), so the `NavigationEnd`
-   * closing that window is not something the user did and must not shut a menu they just opened.
-   * That reasoning is about a navigation being ALREADY UNDER WAY, not about it being the first or
-   * about where it lands: a guest who opens the account menu while a nav link they clicked is still
-   * loading keeps it open onto the destination too, deliberately.
-   * Identity is the navigation id, not the url: a url comparison would also swallow a navigation
-   * the guest DID start from inside the overlay onto the page they deep-linked to, which supersedes
-   * the pending one under a new id and leaves {@link FindBooking} waiting on a close that never comes.
-   * That id is why this rule reads the event stream while the shell's other route state
-   * ({@link routeChrome}, {@link authLinkCurrent}) is computed from router signals: the skip
-   * compares the id of EACH `NavigationEnd` against the one recorded at open, a per-event fact
-   * that no router signal exposes.
-   *
-   * <p>The close performs no focus restore: the destination page takes focus, and restoring is only
-   * for an on-page dismiss.
-   *
-   * <p><strong>Precondition of the skip:</strong> a skipped navigation must not destroy the open
-   * overlay's markup or its trigger. The popovers render inside `app.html`'s
-   * `@if (shellChrome() === 'tourist')`, so a destination under the console shell would tear
-   * them out while their signals stayed true, stranding focus on `document.body`. No tourist-header
-   * link targets such a route today. Adding the first one means closing the popovers on the chrome
-   * switch, not relying on this rule. The sheet's trigger renders inside `@if (tabBar())`, and a
-   * destination that hides the bar (a deep link to the pay page, whose chunk was still loading when
-   * the sheet opened) IS reachable — so that case closes the sheet and lands focus on `<main>`
-   * instead of skipping.
+   * Closes every overlay on each `NavigationEnd` except the one already in flight when it opened
+   * (matched by id, not url — hence the event stream). A skipped nav must not tear out the overlay's
+   * markup: a first header link to a console route must close the popovers on that chrome switch.
    */
   constructor() {
     // The navigation an overlay was opened during is not the user leaving the page.
@@ -400,12 +323,8 @@ export class App {
   }
 
   /**
-   * Record the navigation already under way, if any, as a header control changes an overlay's
-   * state; `0` when the router is idle, an id no navigation carries (they start at 1).
-   *
-   * <p>The three toggles call this on the lowering half too, which is inert: navigation ids are
-   * monotonic per `Router`, so a value recorded while nothing is open can never equal a LATER
-   * `NavigationEnd`'s id, and the close it would skip is a no-op anyway.
+   * Record the navigation already under way as a header control changes an overlay's state; `0`
+   * when idle (ids start at 1). Inert on the closing half: ids are monotonic per `Router`.
    */
   private notePendingNavigation(): void {
     this.overlayNavId = this.router.currentNavigation()?.id ?? 0;

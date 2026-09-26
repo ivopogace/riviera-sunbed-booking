@@ -64,36 +64,12 @@ export class BeachMapRowDef<R extends BeachMapCanvasRow = BeachMapCanvasRow> {
 }
 
 /**
- * The shared beach-map canvas (#672): everything the tourist map, the layout editor, the
- * Daily view and the per-set editor repeat around their tiles — the {@link BeachGridFrame}
- * chrome, the sea→sand wash
- * on the vertical scroller, the aria-hidden row-code and per-zone price rails, the zone-gap
- * layout, and the pannable viewport (2D mouse drag + horizontal scroll snap + edge fade, the
- * horizontal chrome gated on actual overflow via `.pannable`). Three content slots ride along:
- * `canvasLegend` above the grid, `canvasFooter` below it, and `canvasEmpty` in place of both —
- * all optional, because their content is per-surface (the tile legend is tourist-only, #701).
- * The wash's colours are the `--riv-map-*` theme tokens (declared per theme in `tailwind.css` —
- * daylight in the light themes, night in dark), so projected content — the tourist legend band,
- * on `--riv-map-sea` — sits on the same ground the top tile row does without copying a literal.
- * A drag pans horizontally via
- * the viewport's `scrollLeft` and — whenever the wash scroller actually overflows — vertically
- * via its `scrollTop`; on a short map the vertical axis stays inert, so a sloppy tap never
- * loses its click. Tile rows are projected via
- * {@link BeachMapRowDef}, so each surface keeps its own tile vocabulary and interaction —
- * the canvas shares the chrome, never the behavior.
- *
- * <p>While {@link BeachMapCanvas#loading} the same chrome draws a placeholder: the rail chips carry
- * no text, and the pan hint and grab cursor are withheld — an `inert` skeleton can honour neither.
- * The decorative testids are renamed so a spec cannot query a placeholder as the real thing. The
- * measured `.pannable` edge fade stays: it reports a fact rather than inviting an action (#749).
- *
- * <p>A drag past the 6px threshold on either axis is a pan: the canvas swallows the one
- * pointer click that ends it (capture phase, consume-once) so a pan release never activates
- * a tile, while a keyboard activation (`detail === 0`) is never swallowed. A surface whose
- * mouse-drag gesture
- * means something else (the editor paints by drag) opts out via `dragPan` — native touch and
- * trackpad scrolling still work. The rails are aria-hidden by design: every surface's tile
- * accessible names already carry the row and (where it matters) the price.
+ * Shared beach-map chrome around each surface's projected {@link BeachMapRowDef} rows — frame,
+ * sea→sand wash (`--riv-map-*` tokens), aria-hidden rails (tile names carry row and price), and a
+ * pan viewport gated on real overflow; it shares chrome, never tile behaviour. A drag past 6px pans
+ * and swallows the one click ending it, never a keyboard click (`detail === 0`); vertical pan only
+ * while the wash overflows; `dragPan` off where drag paints. While `loading`, rails are blank, pan
+ * cues withheld, and decorative testids renamed so specs cannot mistake the skeleton for the map.
  */
 @Component({
   selector: 'app-beach-map-canvas',
@@ -134,46 +110,27 @@ export class BeachMapCanvas {
   readonly viewportLabel = input<string>('');
   /** Mouse drag-to-pan; a surface whose drag gesture is its own (paint) switches it off. */
   readonly dragPan = input<boolean>(true);
-  /** What the rail's chips are — and therefore how much width the rail reserves, in BOTH the
-   *  loading and the loaded state (#749). `letters` is a grid being painted (the two editor
-   *  surfaces): chips are one or two characters, so the rail reserves nothing beyond the chip's
-   *  own `min-w-6`. `labels` is the stored per-venue row name (#724): the rail reserves a
-   *  MINIMUM, so a longer name still widens it and renders whole — the operator rule. The
-   *  tourist map's `capped-labels` ellipsizes on top of that reservation (#724), which is what
-   *  makes its phone rail the one that cannot move at all. */
+  /** Rail chip vocabulary, which fixes the rail's reserved width in loading AND loaded states:
+   *  `letters` (editors) reserves nothing, `labels` a minimum a longer name still widens, and
+   *  `capped-labels` (tourist) also ellipsizes so the phone rail cannot move. */
   readonly railCodes = input<'letters' | 'labels' | 'capped-labels'>('letters');
-  /** What the price rail's chips are — and therefore how much width THAT rail reserves, in both
-   *  the loading and the loaded state (#751). `amounts` is a formatted amount or a min–max span
-   *  (every operator surface): the rail reserves nothing beyond the cell's own 52px floor, which
-   *  an amount fits at 41px. A span does not — `€125–€9,995` measures 96.58px — so this
-   *  vocabulary keeps a bounded residual **by choice**: reserving for the worst span would spend
-   *  40px of every operator grid on a chip that is 41px wide in the ordinary venue.
-   *  `capped-phrases` is a price plus what it buys (#702, narrowed by #724 — the tourist map
-   *  alone), where the qualifier makes the wide case the ordinary one: that rail reserves the
-   *  92px phone cap. Distinct from {@link railCodes} on purpose — the two rails' vocabularies are
-   *  separate questions, and the Daily view already answers them differently (whole labels, bare
-   *  amounts). */
+  /** Price-rail chip vocabulary, fixing its reserved width in both states: `amounts` (operator)
+   *  reserves nothing beyond the 52px floor — a min–max span may still widen it, by choice;
+   *  `capped-phrases` (tourist) reserves the 92px phone cap. Independent of {@link railCodes}. */
   readonly priceChips = input<'amounts' | 'capped-phrases'>('amounts');
-  /** Draw a placeholder grid, not a map: the rails reserve their columns but state nothing, and
-   *  every cue that invites a gesture is withheld (#749). A surface renders its skeleton THROUGH
-   *  the canvas to inherit `--riv-tile` and the frame geometry, which also inherits this chrome —
-   *  so the canvas, not the surface, is what has to know the difference. */
+  /** Draw a placeholder grid: rails reserve their columns but state nothing, and every gesture cue
+   *  is withheld. Surfaces render skeletons THROUGH the canvas to inherit `--riv-tile` and frame
+   *  geometry, so the canvas, not the surface, owns the difference. */
   readonly loading = input<boolean>(false);
   /**
-   * Size tiles to the viewport's actual width instead of the default viewport-relative clamp
-   * (#709) — the two operator editor surfaces (bulk paint + per-set) opt in, so a typical venue
-   * renders whole at desktop widths with no drag-panning; the tourist map and the Daily view keep
-   * the original clamp untouched. Tiles shrink as low as the {@link FIT_MIN_TILE_PX} touch-target
-   * floor before the grid genuinely overflows and panning resumes — same posture as the default
-   * mode, just measured instead of guessed from viewport width.
+   * Size tiles to the viewport's measured width (editor surfaces) instead of the default clamp;
+   * they shrink to the {@link FIT_MIN_TILE_PX} touch-target floor before the grid overflows and pans.
    */
   readonly fitWidth = input<boolean>(false);
 
   /**
-   * Turns the row-code rail (#713) from a decorative `aria-hidden` chip into a real,
-   * individually-labelled fill button per row — a whole-row accelerator for the layout
-   * editor's paint brushes. Off by default, so the tourist map, Daily view, and the
-   * per-set editor keep today's decorative rail byte-for-byte.
+   * Turns the decorative `aria-hidden` row rail into a labelled fill button per row — the layout
+   * editor's whole-row paint accelerator. Off by default: other surfaces keep the decorative rail.
    */
   readonly rowRailInteractive = input<boolean>(false);
   /** The accessible name for row {@code index}'s fill button — required whenever
@@ -194,10 +151,8 @@ export class BeachMapCanvas {
   /** Shows the Fit/100% pill pair (#713) — off by default, so no other consumer renders it. */
   readonly zoomControl = input<boolean>(false);
   /**
-   * Reserves this much top padding inside the pannable viewport (`overflow-y: hidden`), so a cell
-   * that visually lifts on selection — the per-set editor's `-translate-y-1` — has somewhere to go
-   * that isn't clipped. 0 by default: only the per-set editor's cells ever transform on select, so
-   * every other consumer keeps today's flush-to-the-top row A byte-for-byte.
+   * Top padding inside the pannable viewport (`overflow-y: hidden`) so a cell that lifts on select
+   * (the per-set editor's `-translate-y-1`) is not clipped. 0 by default.
    */
   readonly cellLiftHeadroomPx = input<number>(0);
   /** Fit is the existing measured-to-width sizing (#709, unchanged); 100% pins tiles to
@@ -205,10 +160,9 @@ export class BeachMapCanvas {
    *  instead of shrinking further. Internal: no consumer needs to read or drive this from outside. */
   protected readonly zoomMode = signal<'fit' | 'full'>('fit');
 
-  /** True while Space is held with a focusable control NOT focused, and 100% zoom is active — the
-   *  dedicated pan gesture (#713), independent of {@link dragPan}. Public so a consumer whose own
-   *  drag gesture means something else (the layout editor's paint) can suppress it while this is
-   *  true — {@link LayoutEditor}'s `paintCell` reads it via a `viewChild`. */
+  /** Space held (focus not on a control) while 100% zoom is active — a pan independent of
+   *  {@link dragPan}. A surface whose drag paints must suppress it while `panGestureActive` is true
+   *  ({@link LayoutEditor}'s `paintCell` reads it via a `viewChild`). */
   private readonly spaceHeld = signal(false);
   readonly panGestureActive = computed(
     () => this.zoomControl() && this.zoomMode() === 'full' && this.spaceHeld(),
@@ -238,24 +192,9 @@ export class BeachMapCanvas {
     this.spaceHeld.set(false);
   }
 
-  /**
-   * The rail's width, reserved rather than derived from whatever the read happened to return.
-   *
-   * <p>A content-derived rail is a horizontal version of the vertical jump the skeletons removed:
-   * the placeholder's chip is one width, the real label another, and the whole tile grid slides on
-   * load (measured at 24 → 63.14px, #749). Reserving in the loading state alone only reverses the
-   * direction — a venue whose rows are named `A` would then slide the grid LEFT — so the
-   * reservation belongs to the vocabulary, not to the loading flag, and applies in both states.
-   *
-   * <p><strong>A minimum, and 54px of one, because the rail is spending the tile grid's width.</strong>
-   * Reserving the #724 cap outright (102px from `sm`) would pin the rail at its worst case and end
-   * the slide entirely — but measured against the fits-whole guarantee it costs 39px the desktop
-   * map does not have: a 14-column venue clears its viewport by ~31px, and the cap-sized rail put
-   * it into a pan. 54px is the mobile cap (48px of text + the chip's 6px), which leaves ~13px of
-   * that margin, holds the phone rail exactly where it lands today, and cuts the slide from
-   * 39.14px to 9.14px everywhere else. The residual is a label wider than the reservation, which
-   * only a measurement of the loaded map could predict.
-   */
+  /** Rail width reserved by vocabulary in BOTH states — content-derived, the grid slides on load.
+   *  A 54px minimum (the mobile cap), not the full cap: that would push a 14-column desktop venue
+   *  into a pan. Only a label wider than 54px still shifts the grid. */
   protected readonly railColumnClass = computed(() => {
     // A fill button needs the 44px floor in both axes, not just the chip's min-w-6 (#713).
     if (this.rowRailInteractive()) {
@@ -264,23 +203,9 @@ export class BeachMapCanvas {
     return this.railCodes() === 'letters' ? '' : 'min-w-[54px]';
   });
 
-  /**
-   * The price rail's width, reserved on the same terms and for the same defect as
-   * {@link railColumnClass} — this is that defect's trailing-edge half.
-   *
-   * <p>A bare amount (40.97px) already fits the cell's `min-w-[52px]`, so what varies is only the
-   * qualifier or a four-digit price: the rail measures 52px while loading and up to its 92/128px
-   * cap once the read lands, and the tile viewport narrows from the right by the difference. No
-   * tile moves — the rail is at the trailing edge — but a map that showed six columns finishes
-   * showing five.
-   *
-   * <p><strong>92px, and a minimum, because the fits-whole guarantee is what pays for it.</strong>
-   * A 14-column venue at 1280 leaves this rail ~125.6px before that map has to pan, and 92px is
-   * the phone cap: so on a phone the rail cannot move at all (cap and reservation are one number),
-   * on a desktop the residual is at most `chip − 92`, and the venue that actually pays — bare
-   * amounts, 14 columns — keeps 34px of that margin. The cap itself is untouched; this sits under
-   * it as a floor.
-   */
+  /** The price rail's reservation, on {@link railColumnClass}'s terms: without it the viewport
+   *  narrows from the right on load. A 92px minimum = the phone cap, so the phone rail cannot move,
+   *  while a 14-column venue at 1280px still fits whole. */
   protected readonly priceColumnClass = computed(() =>
     this.priceChips() === 'amounts' ? '' : 'min-w-[92px]',
   );
@@ -337,23 +262,9 @@ export class BeachMapCanvas {
     this.zoomMode.set(mode);
   }
 
-  /**
-   * Scrollbar chrome for both scrollers — the horizontal pan viewport and the vertical wash. A
-   * drag-pan surface asks for no bar on each: the drag IS the affordance, and the hint below the map
-   * names it. A surface that opted out of drag-pan has no pointer gesture left, so both show a slim
-   * themed bar instead: without one, a plain mouse could only reach off-screen tiles through
-   * shift+wheel, which nothing on screen advertises.
-   *
-   * <p>Asks, not guarantees: `scrollbar-none` sets only `scrollbar-width`, so an engine without it
-   * (Safari before 18.2) paints its native bar on a drag-pan surface regardless.
-   *
-   * <p>Both axes, not just the pan viewport: the hint fires on either overflow, so a wash that
-   * scrolls behind a hidden bar would have it naming an affordance that surface does not have.
-   *
-   * <p>No `scrollbar-gutter`: the pan viewport is `overflow-y: hidden`, so a stable gutter reserves
-   * an inline-end strip for a vertical bar that can never appear — measured at 10px of grid width —
-   * and reserves nothing for the horizontal bar it was meant to stabilise.
-   */
+  /** Drag-pan surfaces hide both scrollbars (the drag and its hint are the affordance); others get a
+   *  slim themed bar, or mouse users could reach off-screen tiles only via shift+wheel. No
+   *  `scrollbar-gutter`: on the `overflow-y: hidden` viewport it wastes ~10px and stabilises nothing. */
   protected readonly scrollbarChrome = computed(() =>
     this.dragPan()
       ? 'scrollbar-none'
@@ -387,10 +298,8 @@ export class BeachMapCanvas {
   }
 
   /**
-   * A {@link fitWidth} surface's ideal tile size: the viewport's own width (independent of tile
-   * size — `flex-1 min-w-0` sizes it from its siblings, not its content, so this converges in one
-   * extra render rather than feeding back into itself) divided across {@link mapCols} tiles and
-   * their gaps, clamped to the fit range. `null` while {@link fitWidth} is off or unmeasured.
+   * Viewport width over {@link mapCols} tiles plus gaps, clamped to the fit range; converges in one
+   * extra render since `flex-1 min-w-0` sizes the viewport from its siblings, not its tiles.
    */
   private measureFittedTile(): number | null {
     if (!this.fitWidth()) {

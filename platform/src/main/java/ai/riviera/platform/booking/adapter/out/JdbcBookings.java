@@ -74,12 +74,9 @@ class JdbcBookings implements Bookings {
 	private static final String COL_CREATED_AT = "created_at";
 
 	/**
-	 * The one resolve statement, shared by check-in and the sweep so the outcome rule is written
-	 * once: a due stay's still-unresolved service days are marked missed, then its status becomes
-	 * {@code COMPLETED} if any service day was attended and {@code NO_SHOW} otherwise, {@code
-	 * completed_at} stamped only with {@code COMPLETED}. {@code %s} is the caller's due-set
-	 * predicate over {@code booking b}; the {@code FOR UPDATE} makes a concurrent resolve wait and
-	 * then match nothing.
+	 * The one outcome rule, shared by check-in and the sweep: mark a due stay's unresolved days
+	 * missed, then {@code COMPLETED} if any day was attended, else {@code NO_SHOW}. {@code %s} is the
+	 * caller's due-set predicate over {@code booking b}; {@code FOR UPDATE} makes a racing resolve no-op.
 	 */
 	private static final String RESOLVE_STAY_SQL = """
 			WITH due AS (
@@ -139,26 +136,9 @@ class JdbcBookings implements Bookings {
 	}
 
 	/**
-	 * A {@link JdbcClient} of this adapter's own with a finite {@code queryTimeout}, used by the
-	 * abandoned-payment, request-expiry and no-show sweeps and by nothing else — the
-	 * {@code JdbcEmailSuppressions#boundedClient} idiom applied to scheduled work.
-	 *
-	 * <p>Postgres's default statement timeout is infinite, so a wedged candidate read — a migration
-	 * holding {@code ACCESS EXCLUSIVE} on {@code booking} during a rolling deploy is the realistic
-	 * one — has no natural end. An unbounded sweep that never returns keeps its thread and its
-	 * pooled connection forever, and the abandoned-payment sweep going silent means expired
-	 * bookings keep their {@code (set, date)} claims: sets that stay unsellable, in the safe
-	 * direction, with no alarm. Bounded, the run fails, is logged, and the next tick five minutes
-	 * later retries — every sweep is idempotent and its per-row transitions are guarded, so a lost
-	 * run costs nothing.
-	 *
-	 * <p><strong>Why the sweeps and not this whole adapter.</strong> The rest of {@code Bookings}
-	 * is the request path, including the guarded {@code UPDATE … RETURNING} that releases a claim.
-	 * Those writes take row locks on {@code set_availability}, invariant #2's table, and bounding
-	 * them would be the reach #395 exists to avoid — the timeout stops at the reads that open a
-	 * scheduled run. For the same reason this is not {@code spring.jdbc.template.query-timeout},
-	 * which would bound every statement in the application including the claim itself; {@code
-	 * ScheduledWorkArchitectureTest} fails the build if that global is ever set.
+	 * A finite-{@code queryTimeout} client for the sweeps only, so a wedged read fails and retries next
+	 * tick instead of holding a thread and connection forever. Never widen it to request-path writes
+	 * (the claim, #2) nor set the global timeout ({@code ScheduledWorkArchitectureTest}).
 	 */
 	private static JdbcClient boundedClient(DataSource dataSource, int queryTimeoutSeconds) {
 		JdbcTemplate bounded = new JdbcTemplate(dataSource);
@@ -187,12 +167,9 @@ class JdbcBookings implements Bookings {
 	}
 
 	/**
-	 * The one creation INSERT both entry statuses share. {@code ON CONFLICT (code) DO NOTHING}
-	 * makes a code collision a no-op (empty result), NOT a thrown unique violation — so the
-	 * caller's regenerate-and-retry works WITHOUT aborting the surrounding transaction (a thrown
-	 * violation would poison it). FK/CHECK failures still throw, as they should. RETURNING yields
-	 * the id only on a real insert. {@code request_expires_at} binds NULL on the instant path —
-	 * only a pending request stores a deadline.
+	 * The one creation INSERT. {@code ON CONFLICT (code) DO NOTHING} makes a collision an empty
+	 * result, not a thrown violation that would poison the caller's transaction; FK/CHECK still throw.
+	 * {@code requestExpiresAt} is null on the instant path.
 	 */
 	private OptionalLong insert(NewBooking b, BookingStatus status, Instant requestExpiresAt) {
 		return jdbc.sql("""
@@ -400,11 +377,9 @@ class JdbcBookings implements Bookings {
 	}
 
 	/**
-	 * The {@code cancel_reason} token as a {@link RefundReason}, or {@code null} when it is absent
-	 * <em>or</em> not a constant this build knows. Tolerant on purpose: this mapper also serves the
-	 * account-scoped list, so a token added to the V14 CHECK ahead of the enum would otherwise
-	 * throw out of every row of {@code GET /api/me/bookings}, not just the one view that reads the
-	 * field. An unknown reason degrades to the same neutral copy an absent one gets.
+	 * The {@code cancel_reason} as a {@link RefundReason}, or {@code null} when absent <em>or</em>
+	 * unknown to this build — keep it tolerant: a token added to the CHECK ahead of the enum would
+	 * otherwise fail every row of {@code GET /api/me/bookings}.
 	 */
 	private static RefundReason refundReasonOf(String token) {
 		if (token == null) {
@@ -492,18 +467,9 @@ class JdbcBookings implements Bookings {
 	}
 
 	/**
-	 * The one cancellation write, guarded on {@code admitted}. {@code RETURNING} yields the facts
-	 * only on a real transition, so a double-cancel — or a status outside {@code admitted} — is a
-	 * 0-row {@code empty} no-op and the caller releases the set, refunds and publishes exactly
-	 * once. The reason (POLICY/WEATHER/VENUE_CHANGE) is the audit of why it happened (invariant
-	 * #10). Shared so the two entry points cannot drift in the columns they stamp or the facts they
-	 * return; only the admitted statuses and the reason differ, which is exactly what the
-	 * guest/admin split is about.
-	 *
-	 * <p>{@code admitted} is bound from the caller's row in {@link BookingTransition}, so the
-	 * guest/admin difference over {@code NO_SHOW} is stated once rather than as two list literals a
-	 * line apart. The statement itself is unchanged: still one {@code WHERE status = ANY
-	 * (:admitted)}.
+	 * The one cancellation write for both entry points, guarded on {@code admitted} (from {@link
+	 * BookingTransition}): a double-cancel or a status outside it is an {@code empty} no-op, so the
+	 * release, refund and event fire exactly once; {@code reason} is the audit of why (#10).
 	 */
 	private Optional<CancelledBooking> cancelReturningFacts(long bookingId, Instant cancelledAt,
 			long refundMinor, RefundReason reason, Set<BookingStatus> admitted) {
@@ -528,14 +494,9 @@ class JdbcBookings implements Bookings {
 	}
 
 	/**
-	 * Two statements in the caller's transaction: the guarded stamp on today's row, then {@link
-	 * #RESOLVE_STAY_SQL} for the stay when no later service day remains. The stamp takes the
-	 * booking row's lock first ({@code FOR UPDATE} on the stay, whose status it guards on), so a
-	 * concurrent cancel or weather refund and a scan still leave exactly one winner, as one {@code
-	 * UPDATE booking} did; the service-day row's lock then leaves one winner per service day. Lock
-	 * order — booking, today's service day, the stay's earlier service days — never crosses the
-	 * sweep's, which takes service days alone or a due stay (one with no service day left) first.
-	 * The resolve is skipped on a miss, so a lost race never touches the parent.
+	 * The guarded stamp on today's row, then {@link #RESOLVE_STAY_SQL} when no later day remains; a
+	 * miss skips the resolve. Lock order is a rule: booking row ({@code FOR UPDATE}), today's day, then
+	 * earlier days — the sweep's order (RESPONSIBILITIES.md §booking), so the two never deadlock.
 	 */
 	@Override
 	public Optional<CompletedCheckIn> completeConfirmed(String code, VenueId venueId,
@@ -579,21 +540,9 @@ class JdbcBookings implements Bookings {
 	}
 
 	/**
-	 * On {@code sweepJdbc}, not {@code jdbc}: this statement opens a scheduled run and is bounded.
-	 * Batched via a keyed CTE so a run cut off by that bound keeps the batches it committed: a
-	 * batch is {@code batchSize} live stays with a past service day still unresolved, and every
-	 * such service day of theirs is marked, so the count is at least the stays and "fewer than a
-	 * batch" still means drained.
-	 *
-	 * <p>{@code FOR UPDATE} <strong>without</strong> {@code SKIP LOCKED}, deliberately: skipping a
-	 * contended row would return a short batch, which the caller reads as "backlog drained" and
-	 * stops on — leaving that row unswept until a later run found it uncontended. The lock is the
-	 * stay's booking row, whose status the statement guards on, taken before its service-day rows:
-	 * the same order check-in and the resolve take, so a scan, a cancel and the sweep serialize on
-	 * the stay and none can stamp a service day of a stay another has just ended.
-	 *
-	 * <p>Ordered by {@code booking_date}, the partial sweep index's own order, so the batch walks
-	 * it instead of sorting the filtered set and drains the oldest backlog first.
+	 * Bounded ({@code sweepJdbc}), batched by stays in {@code booking_date} (sweep-index) order. Booking
+	 * row {@code FOR UPDATE} before its days, as check-in; never {@code SKIP LOCKED} — a short batch
+	 * reads as drained and would strand the contended row (RESPONSIBILITIES.md §booking).
 	 */
 	@Override
 	public int markPastServiceDaysMissed(LocalDate today, int batchSize) {
@@ -658,11 +607,9 @@ class JdbcBookings implements Bookings {
 	}
 
 	/**
-	 * Staff daily view (U8): a venue's settled bookings whose span covers one day, ordered by set —
-	 * {@code COMPLETED} and {@code NO_SHOW} ride along with {@code CONFIRMED}, so a past day lists who
-	 * was booked instead of nothing. Served by {@code booking_venue_id_idx} (V5); the overlap and
-	 * status predicates narrow the venue's rows. The code is selected for staff verification
-	 * (invariant #7) — returned to the operator-gated caller, never logged here.
+	 * Staff daily view: settled bookings covering one day, by set, served by {@code
+	 * booking_venue_id_idx}. The code is selected for staff verification (invariant #7) — returned
+	 * to the operator-gated caller, never logged here.
 	 */
 	@Override
 	public List<DailyBooking> findSettledForVenueOn(VenueId venueId, LocalDate date) {
@@ -685,11 +632,9 @@ class JdbcBookings implements Bookings {
 	}
 
 	/**
-	 * Weather refund (U9): every {@code CONFIRMED} booking, plus the {@code NO_SHOW}s the sweep made of
-	 * guests who stayed home, whose span covers the date — a stay mid-storm selects too, carrying its
-	 * span so the caller can tell it from a one-day booking. Served by {@code booking_venue_id_idx}
-	 * (V5); the overlap and status predicates narrow the venue's rows. The amount is the FULL refund
-	 * the caller stamps on a one-day booking via the guarded {@link #cancelForWeather}.
+	 * Weather refund candidates covering the date, served by {@code booking_venue_id_idx}; a stay is
+	 * selected too, its span telling it from a one-day booking. The amount is the FULL refund the
+	 * caller stamps on a one-day booking via {@link #cancelForWeather}.
 	 */
 	@Override
 	public List<RefundableBooking> findRefundableForWeather(VenueId venueId, LocalDate date) {

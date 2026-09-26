@@ -100,11 +100,9 @@ const REFUSALS_CARRYING_A_FRESH_PICTURE: ReadonlySet<string> = new Set([
 ]);
 
 /**
- * Where focus lands when a refused commit re-renders the dialog in place, destroying or disabling
- * the button that was pressed (WCAG 2.4.3, RV-FE-9). A committable picture that refunds arms Save
- * only once the count is retyped — and the count is exactly what changed — so the field the
- * operator must correct takes it; a picture with nothing to correct hands it to Save, and one that
- * lost its Save to Back — a held picture, or a displaced kept set the operator must paint back.
+ * Where focus lands when a refused commit re-renders the dialog, destroying the pressed button
+ * (WCAG 2.4.3): the count field on a refunding picture (its count changed), else Save, else Back
+ * (a held picture, or a displaced kept set the operator must paint back).
  */
 function freshPictureLandingSpot(fresh: RemodelPreview, displaced: boolean): string {
   if (displaced || !remodelPreviewIsCommittable(fresh)) {
@@ -143,35 +141,12 @@ const SWATCH_CLASS: Record<CellState, string> = {
 };
 
 /**
- * The Beach-map tab — one canvas, one tool rail, because the venue's own lifecycle decides which
- * of two editing surfaces can work.
- *
- * <p>Arming a paint brush on the rail shows <strong>the bulk paint grid</strong>: an R×C grid
- * generated in one action (row A faces the sea, auto-priced front-row premium), tier/pool/gap
- * painted per cell by click or drag, saved through one owner-asserted `PUT …/beach-map`. That write
- * is a diff by grid cell server-side: a kept cell updates in place under its own id, a new cell
- * inserts, an absent cell's set leaves the map — so it works on a venue that has sold. Only a set
- * someone is still owed (a {@link SetLock locked set}) may not leave: a save that would remove one
- * is refused `SETS_IN_USE` naming every such set, which this tab then marks with the lock decoration
- * and lists, so the operator can paint them back or regenerate a grid that includes them. Before
- * such a save the tab asks the owner-asserted dry run (`POST …/beach-map/preview`): a save that
- * drops a loaded set nobody holds proceeds, one that disturbs live claims opens
- * {@link RemodelPreviewPanel} — what a remodel would do to each, and the sets to keep — instead.
- *
- * <p>Arming Select shows <strong>{@link SetEditor}</strong>: the per-set U7 endpoints, which carry
- * the same set-scoped claim guards one set at a time. The rail opens armed
- * on whichever tool the venue needs — Select once it has saved sets, the default brush while it is
- * empty — and the operator can override that; a per-set write makes this tab re-read the map and
- * drop the shared console snapshot, since the other tabs would otherwise render a set that has left
- * the map. Select's own panel keeps its current placement — the docked-inspector merge is a later
- * slice, not this one.
- *
- * <p>Reads `:venueId` from the parent route (child routes don't inherit it). Cells are
- * real, individually-labelled `<button>`s so the grid is fully keyboard + AT operable (Enter/Space
- * paints with the active brush); drag-paint is the mouse affordance on top. Wears the console
- * theme (porcelain or dark, pinned on the app shell's host); glass via {@link CardGlass}; money via {@link formatMoney}
- * (invariant #5 — the default prices are integer minor-unit EUR constants, editable later in the
- * Pricing tab).
+ * The Beach-map tab: a paint brush shows the bulk grid (generate R×C, paint per cell, save via one
+ * `PUT …/beach-map` diffed by cell server-side — a locked set cannot leave, refused `SETS_IN_USE`;
+ * a save disturbing live claims opens {@link RemodelPreviewPanel} after the `…/preview` dry run).
+ * Select shows {@link SetEditor}; the rail opens on Select once sets exist. A per-set write
+ * re-reads the map and drops the shared console snapshot. Reads `:venueId` from the parent route;
+ * cells are real labelled `<button>`s so painting is keyboard/AT operable, drag on top.
  */
 @Component({
   selector: 'app-layout-editor',
@@ -344,19 +319,13 @@ export class LayoutEditor {
    *  token, so instead of a silent no-op the editor prompts a refresh (review finding). */
   protected readonly loadFailed = signal(false);
   /**
-   * True once a map read has SUCCEEDED for this venue — i.e. `loadedSets` is what the server holds
-   * rather than the empty default. {@link SetEditor} renders its skeleton until then, because a read
-   * that has not landed says nothing about how many sets a venue has. Deliberately NOT cleared by
-   * {@link onSetsChanged}'s re-read: that path keeps `loadedSets`, so the per-set surface must keep
-   * rendering them instead of flashing a skeleton over every write.
+   * True once a map read has SUCCEEDED, so `loadedSets` is real; {@link SetEditor} shows its
+   * skeleton until then. Not cleared by {@link onSetsChanged}'s re-read, so writes don't flash it.
    */
   protected readonly mapLoaded = signal(false);
   /**
-   * True while a map read is in flight. Generate is shut for exactly that long, because until the
-   * read lands `hasLayout()` is false for a venue that HAS a layout — and a regenerate then replaces
-   * it with no confirmation, which a later Save writes over the real one with a token the resolving
-   * read has quietly made valid. It covers both windows: the tab's own mount and
-   * {@link onSetsChanged}'s re-read.
+   * A map read is in flight (mount or {@link onSetsChanged}'s re-read). Generate stays shut: until it
+   * lands `hasLayout()` is false, and an unconfirmed regenerate would overwrite the real layout on Save.
    */
   protected readonly reading = signal(false);
 
@@ -378,10 +347,8 @@ export class LayoutEditor {
   protected readonly hasLayout = computed(() => this.grid().length > 0);
 
   /**
-   * The read failed with nothing ever loaded, so the tab holds no map at all. The per-set surface is
-   * not rendered in that state: it would read the empty `loadedSets` as "this venue has no sets yet"
-   * and offer to add the first one, over a venue whose sets are simply unknown. A LATER read failing
-   * is different — the surface keeps the sets it already has, and only the notice is new.
+   * No read has ever succeeded: the per-set surface is hidden, since it would read the empty
+   * `loadedSets` as "no sets yet" and offer to add the first. A LATER failure keeps the sets it has.
    */
   protected readonly mapUnavailable = computed(() => this.loadFailed() && !this.mapLoaded());
 
@@ -465,19 +432,15 @@ export class LayoutEditor {
   private epoch = 0;
 
   /**
-   * Prices of the sets loaded from the venue, keyed by `${gridX},${gridY}` — so a load→save round-trip
-   * preserves each set's existing price instead of resetting it to the tier default (the Pricing
-   * tab owns price editing). Newly generated cells have no entry and fall back to the tier
-   * default. Mutated only alongside a `grid.set(...)`, so the `displayRows` computed reads it
-   * consistently.
+   * Loaded sets' prices keyed by `${gridX},${gridY}`, so a load→save round-trip keeps each price
+   * instead of resetting to the tier default. Mutate only alongside a `grid.set(...)`, so
+   * `displayRows` reads it consistently.
    */
   private readonly priceByCoord = new Map<string, MoneyView>();
 
   /**
-   * The display rows on the shared canvas's contract. Every row is a zone of its own
-   * (`zoneStart: true`): painting a tier re-prices a row live, and price-derived zones would
-   * insert/remove zone gaps mid drag-gesture, shifting rows under the cursor — constant
-   * per-row chips also keep the editor's per-row price display.
+   * Every row is its own zone (`zoneStart: true`): price-derived zones would insert/remove gaps
+   * mid drag-paint as tiers re-price rows, shifting rows under the cursor.
    */
   protected readonly displayRows = computed<readonly LayoutRow[]>(() =>
     this.grid().map((row, y) => ({
@@ -545,12 +508,9 @@ export class LayoutEditor {
   }
 
   /**
-   * Drop every venue-scoped draft and flag — the bulk draft, the per-set reads, and the remodel
-   * preview/receipt — so nothing from the previous venue leaks into the next context, another venue
-   * or no venue at all. The remodel half matters beyond display: {@link commitRemodel} reads the
-   * venue fresh but the body from state, so a surviving `pendingRemodel` would post one venue's
-   * sets to another. The two rename notices are the deliberate omission — they derive from
-   * `venueId`, which every caller of this method changes.
+   * Drop every venue-scoped draft, read and remodel preview/receipt so nothing leaks into the next
+   * venue context — a surviving `pendingRemodel` would make {@link commitRemodel} post one venue's
+   * sets to another. The rename notices derive from `venueId`, so they need no reset.
    */
   private clearVenueState(): void {
     this.epoch++;
@@ -603,16 +563,9 @@ export class LayoutEditor {
   }
 
   /**
-   * A per-set write landed: drop the console's shared snapshot (the other tabs would serve a set this
-   * one just changed or removed), discard the bulk draft, and re-read the map — which re-seeds both
-   * {@link SetEditor}'s selection/draft and the bulk grid.
-   *
-   * <p><strong>Clearing the bulk draft is the load-bearing part.</strong> {@link seedFrom} refuses to
-   * overwrite a grid that already has content, so without this the bulk grid would stay frozen at the
-   * map as it was when the tab opened. Per-set writes do not bump `set_version`, so the token stays
-   * valid — and arming a brush would then offer a Save that the server accepts and that
-   * silently reverts the operator's own per-set edits. An unsaved paint is a draft; a per-set write is
-   * already committed, so the committed state wins.
+   * A per-set write landed: drop the shared console snapshot, discard the bulk draft and re-read.
+   * Discarding is load-bearing — {@link seedFrom} won't overwrite a non-empty grid and per-set writes
+   * keep `set_version` valid, so a stale grid's Save would silently revert the per-set edits.
    */
   protected onSetsChanged(): void {
     const venueId = this.venueId();
@@ -652,10 +605,8 @@ export class LayoutEditor {
   }
 
   /**
-   * Close the regenerate confirmation, replacing the grid or leaving it alone, and take focus back to
-   * Generate. Both transitions destroy the button that was just activated, which strands keyboard/AT
-   * focus on `<body>` unless it is moved deliberately (WCAG 2.4.3); Generate survives a regenerate,
-   * so it is where focus belongs either way. Focus INTO the confirmation is {@link ConfirmPanel}'s.
+   * Close the regenerate confirmation and move focus back to Generate — both outcomes destroy the
+   * pressed button, stranding focus on `<body>` (WCAG 2.4.3). Focus INTO it is {@link ConfirmPanel}'s.
    */
   protected confirmGenerate(): void {
     this.confirmRegen.set(false);
@@ -865,10 +816,8 @@ export class LayoutEditor {
   }
 
   /**
-   * Fill a whole row with the active brush in one gesture (#713) — the row-rail's fill button,
-   * generalizing {@link paintCell} from one cell to every cell in row `r`. Reachable only while a
-   * brush is armed: arming Select switches the tab to {@link SetEditor} entirely (S2), so the fill
-   * rail this drives is never even rendered while Select is armed.
+   * Fill row `r` with the active brush — the row-rail fill button's action, {@link paintCell} for a
+   * whole row. Only reachable with a brush armed; Select swaps in {@link SetEditor}.
    */
   protected fillRow(r: number): void {
     const tool = this.activeBrush();
@@ -1060,12 +1009,9 @@ export class LayoutEditor {
   }
 
   /**
-   * Save the previewed layout and settle its bookings: the body the dialog previewed, the token the
-   * preview answered and — on a picture that refunds guests — the count and reason the operator
-   * typed. A `200` shows the receipt in the dialog's place; `STALE_PREVIEW` and
-   * `REFUND_NOT_CONFIRMED` re-render the dialog with the server's fresh picture and its token as
-   * stale, `REMODEL_REFUSED` as a displaced kept set the operator must paint back; every other
-   * failure is the save's own.
+   * Save the previewed body with the preview's token (plus the retyped count and reason when it
+   * refunds). `200` shows the receipt; `STALE_PREVIEW`/`REFUND_NOT_CONFIRMED` re-render the fresh
+   * picture as stale, `REMODEL_REFUSED` as a displaced kept set; other failures are the save's own.
    */
   protected async commitRemodel(confirmation: RemodelConfirmation): Promise<void> {
     const venueId = this.venueId();
@@ -1289,12 +1235,9 @@ export class LayoutEditor {
   }
 
   /**
-   * Recover from a `409 STALE_WRITE`: re-fetch the latest server layout and — ONLY on a successful
-   * reload — discard the in-progress grid for it, re-seeding every cell, its prices, and the `setVersion`
-   * token, and clear the conflict banner. If the reload GET fails, the painted grid, the stale token, and
-   * the banner are all KEPT and a retry hint is shown — the operator never loses work to a failed reload
-   * (review finding). The 409 itself never touched the grid, so until a successful Reload the operator's
-   * work is intact.
+   * Recover from `409 STALE_WRITE`: re-fetch and, ONLY on success, replace grid, prices and
+   * `setVersion` and clear the banner. A failed reload keeps the painted grid, stale token and
+   * banner and shows a retry hint — the operator never loses work.
    */
   protected reloadAfterStale(): void {
     const venueId = this.venueId();
@@ -1370,10 +1313,9 @@ export class LayoutEditor {
   }
 
   /**
-   * Best-effort: seed the grid from the venue's current layout so the operator paints on it. An empty
-   * venue leaves the empty state, from which Generate builds a fresh grid. Always capture the
-   * optimistic-concurrency token (`setVersion`) so a later Save can echo it back; a failed read leaves
-   * the token null and sets loadFailed so Save surfaces a refresh prompt (never a silent no-op).
+   * Best-effort seed of the grid from the venue's layout (empty venue → empty state). Always capture
+   * `setVersion` for Save; a failed read leaves it null and sets `loadFailed`, so Save prompts a
+   * refresh rather than silently no-op.
    */
   private loadExisting(venueId: number): void {
     const epoch = this.epoch;
