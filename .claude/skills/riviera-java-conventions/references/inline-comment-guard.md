@@ -2,7 +2,7 @@
 
 Read when it fires or before touching its scope. Every gap below is deliberate — don't "fix" one.
 
-Five rules:
+Seven rules:
 
 - **`multiline`** (gates) — an added inline comment spans more than one line.
 - **`provenance`** (gates) — an issue/PR number in an added skill line, an added inline
@@ -23,6 +23,12 @@ Five rules:
   ones. `scripts/check-doc-budget.mjs` (standing-tree, CI) locks each trim in: the total lines
   over budget may only fall, and `--update` commits a lower baseline (never a higher one).
   `--report` lists the heaviest areas and files.
+- **`respbudget`** / **`respbudget-touched`** (gate) — the same budget for `RESPONSIBILITIES.md`,
+  where rationale moved out of the code lands: each block is at most 8 non-blank lines. A block is
+  one list item with every line up to the next item, or one paragraph; blank lines, headings,
+  table rows and fenced code end a block and count toward none. Judged whole when written or
+  touched, and ratcheted as its own area of the doc-budget baseline. No other markdown is
+  budgeted, and the provenance and history tells do not run on this file.
 
 Scope:
 

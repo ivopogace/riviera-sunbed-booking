@@ -6,7 +6,8 @@ holds the module table and the invariants in one sentence each; this file holds 
 invariants' long form, the settled platform-edge rules, and — for each module — what
 it owns and, more usefully, what it must **refuse to own**. When a boundary is ambiguous
 in a plan or review, this is the tie-breaker. Present-tense contracts only: the history
-behind a rule is on its issue, PR or ADR.
+behind a rule is on its issue, PR or ADR, and each bullet or paragraph keeps to 8 lines
+(`riviera-java-conventions` §6d; gated in CI, one rule per bullet).
 
 Modules: `venue`, `availability`, `booking`, `payment`, `payout`, `customer`,
 `operator`, `notification`, and `review`. Cross-module collaboration is **events for

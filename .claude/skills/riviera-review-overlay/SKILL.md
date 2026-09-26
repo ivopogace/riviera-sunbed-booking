@@ -34,7 +34,8 @@ Every added/touched line of prose (skill, Javadoc/TSDoc, inline comment) stays o
 session would act differently (`riviera-java-conventions` §6c). **Minor** findings: a
 multi-line inline comment; an issue/PR number in an added skill line, added inline comment or
 touched doc comment; prose that narrates the diff or records history. A touched doc comment over
-§6d's budget is **Major** (the guard gates it, new or edited); a trim that lowered the total
+§6d's budget is **Major** (the guard gates it, new or edited), and so is a touched
+`RESPONSIBILITIES.md` bullet or paragraph over 8 lines; a trim that lowered the total
 needs the committed `check-doc-budget.mjs --update` baseline. Run
 `node scripts/check-inline-comments.mjs --diff origin/main` (also a hook and a CI job) for the
 mechanical half; it does not cover `#`/SQL `--` comments or a one-liner that shouldn't exist.
