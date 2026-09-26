@@ -12,42 +12,18 @@ const SKINS: Record<ThemeMenuVariant, string> = {
   popover: POP_BUTTON,
 };
 
-/** The row is a disclosure trigger — toggled open and shut in quick succession — so it drops the
- *  browser's double-tap-to-zoom, as every other header disclosure trigger does (`app.ts`'s
- *  `accountChip`/`menuBtn`). Pan and pinch-zoom are untouched, so WCAG 1.4.4 is too. The options
- *  below it are tapped once and close the menu, so they keep the default. */
+/** A disclosure trigger toggled in quick succession, so it drops double-tap-to-zoom like the
+ *  other header triggers; pan and pinch-zoom stay (WCAG 1.4.4). Options, tapped once, keep the
+ *  default. */
 const ROW_TRIGGER = 'touch-manipulation';
 
 /**
- * The colour theme as a named menu row, with its value beside it, and the three options revealed
- * under it. The theme is a setting, so it is presented as one: a row that says what it is and what
- * it is currently set to, rather than an unlabelled colour circle in the header bar, which reads
- * as decoration.
- *
- * <p><strong>Root-level, not `shared/`</strong>, although it is `legal-menu-rows.ts`'s twin in
- * shape: it injects `core/theme.ts`, and `shared/` may import nothing app-internal
- * (`riviera-frontend` § Folder taxonomy). It sits beside `app.ts` for the same reason
- * `console-shell.ts` does — shell chrome that composes a `core/` singleton.
- *
- * <p><strong>A nested disclosure, deliberately not a second popover and not `role="menu"`.</strong>
- * Expanding in place keeps one open surface, so the account popover's backdrop and focus-return
- * still serve, and the "one header popover at a time" rule holds by construction rather than by
- * two toggles minding each other. `@angular/aria`'s Menu is scoped to "actions, commands and
- * context menus (not for form selection)" and its Listbox to "visible selection lists (not
- * dropdowns)", so neither covers a setting inside a popover; Angular Aria's own styling guidance
- * for a headless disclosure is to target `[aria-expanded]`, which is what this is. The options
- * stay pressed-state toggle buttons rather than ARIA radios, as they were in the header, because
- * the radio pattern would oblige roving `tabindex` + arrow keys to be correct (WCAG 4.1.2).
- *
- * <p>No focus choreography: collapsing leaves focus on the row, which is not destroyed, and
- * choosing an option raises {@link selected}, whose call site closes the menu and hands focus back
- * to that menu's trigger. Nothing lands on `document.body` (WCAG 2.4.3).
- *
- * <p>The row renders a label and a right-aligned value, never `Colour theme · Porcelain` as one
- * string: a middle-dot meta string is a templated tell. The swatch circle rides along
- * `aria-hidden` — the label and value carry the identity, so it is decoration under
- * `docs/design/non-text-contrast.md` rule 2a, measured in `app.contrast.spec.ts` rather than
- * assumed exempt.
+ * The colour theme as a named row with its current value, revealing three options beneath.
+ * Root-level, not `shared/`: it injects `core/theme.ts` (`riviera-frontend` § Folder taxonomy).
+ * A nested disclosure, not a second popover or `role="menu"`, so the account popover's backdrop and
+ * focus-return still serve; options are pressed-state toggles, not radios (no roving `tabindex`).
+ * Collapsing keeps focus on the row; {@link selected}'s call site returns focus to the menu trigger
+ * (WCAG 2.4.3). The `aria-hidden` swatch is decoration: `docs/design/non-text-contrast.md` rule 2a.
  */
 @Component({
   selector: 'app-theme-menu-rows',

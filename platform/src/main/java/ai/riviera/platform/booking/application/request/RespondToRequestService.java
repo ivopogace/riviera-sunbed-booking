@@ -26,31 +26,12 @@ import ai.riviera.platform.payment.vocabulary.PaymentOutcome;
 import ai.riviera.platform.venue.vocabulary.VenueId;
 
 /**
- * The venue's accept/decline decision on a pending request (issue #98). The ownership check is
- * the first act of both commands — in the application service, so no driving adapter can bypass
- * it (invariant #13).
- *
- * <p><strong>Accept = payment-request-on-accept</strong> (riviera-stripe-payments; NOT
- * auth-and-capture): the guarded {@code PENDING_REQUEST → AWAITING_PAYMENT} transition commits
- * first (its own atomic statement, stamping {@code accepted_at} — the guest pay-window clock),
- * then the PaymentIntent is created OUTSIDE any transaction (the same no-lock-across-Stripe
- * ordering as {@code CreateBookingService}, risk R-3). From {@code AWAITING_PAYMENT} onward the
- * flow is byte-for-byte the Instant spine: verified webhook → confirm → {@code BookingConfirmed}.
- * The transition's {@code request_expires_at > now} guard means an accept after the deadline
- * (or after bookings closed — the deadline is capped at the venue's sales close, invariant #4)
- * matches no row.
- *
- * <p><strong>Failure compensation:</strong> a failed (or thrown) PaymentIntent issuance reverts
- * the booking to {@code PENDING_REQUEST} rather than releasing the hold: the venue said yes, so
- * the operator retries; the Stripe idempotency key ({@code booking-<id>-pi}) makes the retry
- * replay-safe. No webhook can race the revert — only a REGISTERED intent is correlatable (a
- * double-timeout residual at Stripe stays unregistered and inert until the retry re-adopts it). A confirm failure on the stub path
- * compensates like the instant flow (release, rethrow).
- *
- * <p><strong>Decline</strong> delegates transition + hold release to {@link Bookings} and
- * {@code AvailabilityClaim} via the transactional {@link RequestReleaseService} seam, mirroring
- * {@code ClaimReleaseService} — a booking is never left {@code DECLINED} with its set claimed
- * (invariant #2). Package-private; the public seam is {@link RespondToRequest} (invariant #11).
+ * The venue's accept/decline on a pending request; both commands check ownership first
+ * (invariant #13 → 403). Accept commits the guarded {@code PENDING_REQUEST → AWAITING_PAYMENT}
+ * transition (stamps {@code accepted_at}; matches no row past the deadline, capped at sales close,
+ * invariant #4), then issues the PaymentIntent outside any transaction — no lock across Stripe. A
+ * failed issuance reverts to {@code PENDING_REQUEST} for a retry, replay-safe on {@code booking-<id>-pi}.
+ * Decline never leaves a {@code DECLINED} booking holding its set claimed (invariant #2).
  */
 @Service
 class RespondToRequestService implements RespondToRequest {
@@ -166,17 +147,9 @@ class RespondToRequestService implements RespondToRequest {
 	}
 
 	/**
-	 * Raise the "payment is now due, by {@code payBy}" fact (#373) for the one accept branch that owes
-	 * anything — {@link BookingPaymentDue} argues which and why the accept transaction cannot carry it.
-	 * The deadline comes off {@link RequestWindows}, whose other half is the abandoned sweep's cutoff,
-	 * so the mailed promise and the enforcement are one decision.
-	 *
-	 * <p><strong>A failure here may not fail the accept.</strong> By this point the transition has
-	 * committed and the PaymentIntent is registered: the venue said yes and the guest can pay. Throwing
-	 * would report that as an error and send the operator into a retry the guard answers
-	 * {@code NOT_PENDING} — a worse outcome than the mail this loses. So it is caught, and caught
-	 * loudly: the {@code WARN} names the booking (ids only, invariant #7), because with no publication
-	 * row written there is nothing for {@code riviera.outbox.pending} or the #405 re-drive to find.
+	 * Publishes {@link BookingPaymentDue} with the {@link RequestWindows#payDeadline} the sweep enforces.
+	 * Must never fail the accept (committed, intent registered): failures are caught and logged at WARN,
+	 * ids only (invariant #7) — no publication row exists for any re-drive to find.
 	 */
 	private void announcePaymentDue(AcceptedRequest accepted) {
 		try {

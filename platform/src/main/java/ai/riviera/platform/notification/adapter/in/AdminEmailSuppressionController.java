@@ -15,38 +15,12 @@ import ai.riviera.platform.notification.application.ReinstateSuppression;
 import ai.riviera.platform.shared.ApiProblem;
 
 /**
- * The platform-admin surface for lifting a suppression — the mirror of the {@code MANUAL}
- * suppression reason, and the one sanctioned exception to the never-deleted deliverability record
- * (still not a deletion; ADR-0012 as amended). Driving adapter depending only on the module's
- * {@link ReinstateSuppression} driving port.
- *
- * <p><strong>Role-gated, not venue-scoped.</strong> Under {@code /api/admin/**}, gated to
- * {@code ADMIN} in {@code SecurityConfig} — a platform-wide action, exempt from the per-venue
- * authorization of invariant #13, exactly like data-subject erasure and operator approval. A plain
- * {@code OPERATOR} or {@code CUSTOMER} reaching it is {@code 403}; anonymous is {@code 401}.
- *
- * <p><strong>Lives in the module, not at the composition root</strong> (the
- * {@code AdminPayoutBatchController} precedent). Hosting it at the root would have forced a new
- * published {@code notification::api} port for a single same-module consumer — a hypothetical seam,
- * and a second published surface where the module deliberately publishes exactly one
- * ({@code MailSender}).
- *
- * <p><strong>Why every outcome is {@code 200} and not a status code.</strong> All three are expected
- * flows an admin acts on, not errors ({@code riviera-java-conventions} §6), and the admin needs the
- * <em>facts</em> — what this was suppressed for, and since when — which a bare {@code 404} cannot
- * carry. That response is what lets the slice ship without a standing suppression-lookup endpoint:
- * the investigative half of the ops workflow is answered by the action itself. Errors are RFC-7807
- * {@link ProblemDetail} from the one {@link ApiProblem} factory; no per-controller
- * {@code @ExceptionHandler}.
- *
- * <p>Request validation is the shape check in {@link AddressShape} — extracted there when the
- * mail-delivery lookup needed the identical guard, so the two admin surfaces that take an address
- * cannot drift apart on what they accept.
- *
- * <p>Non-enumeration is deliberately <em>not</em> a concern here, unlike the anonymous auth surfaces
- * (D-8) or {@code AdminErasureController}'s always-{@code 204}: the caller is already an
- * authenticated platform admin, so telling them what they just acted on leaks nothing they could not
- * learn from the database itself.
+ * ADMIN reinstatement of a suppressed address: sets a flag, never a deletion (ADR-0012). Under
+ * {@code /api/admin/**} — ADMIN-gated in {@code SecurityConfig}, exempt from invariant #13, and every
+ * mutating call audited by the edge. Every outcome is {@code 200} carrying the suppression facts; a
+ * malformed body is an RFC-7807 {@link ProblemDetail} via {@link ApiProblem}, never a per-controller
+ * {@code @ExceptionHandler}. Address shape is {@link AddressShape}'s, shared with the mail-delivery
+ * lookup; non-enumeration is not a concern behind the admin gate.
  */
 @RestController
 @RequestMapping("/api/admin/email-suppressions")

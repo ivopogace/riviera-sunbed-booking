@@ -17,38 +17,12 @@ import ai.riviera.platform.venue.vocabulary.SetBookingInfo;
 import ai.riviera.platform.venue.vocabulary.MoneyView;
 
 /**
- * The Instant-Book use case (issue #6), now <strong>two-phase</strong> to keep the Stripe network
- * call out of the locked availability transaction:
- *
- * <ol>
- * <li><strong>Reserve (committed):</strong> {@link ReserveSetService#reserve} validates, claims the
- *     {@code (set, date)} (invariant #2), and inserts the {@code AWAITING_PAYMENT} booking in one
- *     transaction that <em>commits</em> — releasing the claim row lock.</li>
- * <li><strong>Collect (no transaction):</strong> {@link CheckoutPort#pay} is called here, after the
- *     commit, so a slow/failing Stripe never holds the lock (or a pooled connection) for its
- *     timeout.</li>
- * </ol>
- *
- * <p>Outcome mapping (invariant #8 unchanged — the webhook stays the source of truth):
- * <ul>
- * <li>{@code Succeeded} (in-process stub): confirm now via the {@link ConfirmBooking} seam (its own
- *     transaction; publishes {@code BookingConfirmed}) → {@code Confirmed}. A confirm failure here is
- *     compensated the same way as {@code Failed} (release the claim, then rethrow), since confirm runs
- *     after the reserve commit.</li>
- * <li>{@code Pending} (real Stripe): the booking stays {@code AWAITING_PAYMENT}; the verified
- *     webhook confirms it later, never the client → {@code AwaitingPayment}.</li>
- * <li>{@code Failed} (PI creation failed after commit): <strong>compensate</strong> — reuse
- *     {@link ReleaseAbandonedBooking} (guarded {@code AWAITING_PAYMENT → CANCELLED} + claim
- *     release) so the booking isn't left orphaned holding the set, then surface the failure. The
- *     TTL sweep is the backstop if this process dies before compensating.</li>
- * <li><strong>A raw throw from {@code pay} itself</strong> (e.g. the payment-row insert
- *     hitting a {@code DataAccessException} <em>after</em> Stripe created the intent, so no typed
- *     {@code Failed} is ever returned): compensate the same way as {@code Failed} (release the claim,
- *     then rethrow), then let the sweep — which now also expires no-collection rows — backstop a
- *     crash before this runs.</li>
- * </ul>
- *
- * <p>Package-private — the public seam is the {@link CreateBooking} port (invariant #11).
+ * Instant Book in two phases, so Stripe never runs inside the locked availability transaction:
+ * {@link ReserveSetService#reserve} validates (invariants #3, #4), claims every {@code (set, date)}
+ * (invariant #2) and commits the {@code AWAITING_PAYMENT} booking; only then is {@link CheckoutPort#pay}
+ * called, with no transaction. {@code Pending} waits for the verified webhook (invariant #8);
+ * {@code Failed}, a raw throw from {@code pay} or a failed stub confirm is compensated through
+ * {@link ReleaseAbandonedBooking} before surfacing — the TTL sweep backstops a crash.
  */
 @Service
 class CreateBookingService implements CreateBooking {

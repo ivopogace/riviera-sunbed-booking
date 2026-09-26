@@ -14,40 +14,12 @@ import { TouchTarget } from '../shared/touch-target';
 type ErasureStage = 'form' | 'confirm' | 'done';
 
 /**
- * The admin console's Privacy tab — the first UI for `POST /api/admin/erasure`, the
- * data-subject erasure endpoint that shipped long before any UI for it. It exists for the people who
- * cannot self-serve: a guest who never had an account, and an account holder who cannot reach their
- * own account page (which has its own erasure UI, for a different principal entirely).
- *
- * <p><strong>The `204` is the whole design.</strong> The endpoint answers `204 No Content` when a
- * subject was scrubbed, when they had already been scrubbed, and when the platform never held that
- * address — deliberately non-enumerating (design D-8). So this screen has no success/not-found
- * distinction to draw, no count to render, and no "no such person" branch: there is no such signal
- * on the wire, and manufacturing one would re-open the oracle the backend closes. The done panel
- * states that property to the admin outright, because a bare confirmation would otherwise be read as
- * "yes, they were in the system" — which is exactly the inference the `204` exists to prevent.
- *
- * <p><strong>Three stages, armed in place.</strong> Form → confirm → done, the console's recurring
- * confirm-in-place shape rather than a modal: nothing to focus-trap, and the confirmation names the
- * address it is about. The confirm step collects optional grounds that ride `X-Audit-Reason` into the
- * platform's admin audit trail (recorded at the edge — this surface adds no instrumentation of its own).
- *
- * <p><strong>Each stage swap moves focus deliberately.</strong> Every transition destroys the
- * control that was just activated, which strands keyboard/AT focus on `<body>` unless it is moved
- * (WCAG 2.4.3 — the recurring stranded-focus class). The two panels take focus themselves, as
- * labelled groups, so the swap is announced rather than silently replacing the page's content;
- * dismissal and "erase another" return focus to the control that produced them.
- *
- * <p><strong>What the aside may claim.</strong> ADR-0010's model is pseudonymize-in-place: contact
- * details are overwritten on the rows that hold them, and the bookings, payments and payout-ledger
- * entries under statutory retention stay exactly where they are, minus the person. The copy says
- * that — not "your data is deleted", which would be both wrong and a promise the platform cannot
- * keep while it is legally required to retain the financial record.
- *
- * <p>Like every admin tab, the surrounding {@code AdminConsole} shell self-gates on
- * {@code OperatorAuth} for UX while the backend `/api/admin/**` role gate does the enforcing; this
- * component only ever renders once both have passed — it has no data of its own to load, so it
- * carries no gate of its own either.
+ * The admin Privacy tab: data-subject erasure by email (`POST /api/admin/erasure`) for guests and
+ * account holders who cannot self-serve. The `204` is identical for scrubbed, already-scrubbed and
+ * never-known addresses, so never draw a found/not-found distinction — the done panel says so.
+ * Form → confirm → done in place; optional grounds ride `X-Audit-Reason` into the audit trail.
+ * Each stage swap moves focus (WCAG 2.4.3): panels take it as labelled groups, back-outs return it
+ * to their trigger. Copy says pseudonymized in place, never "deleted" (ADR-0010).
  */
 @Component({
   selector: 'app-admin-privacy',
@@ -275,11 +247,8 @@ export class AdminPrivacy {
   });
 
   /**
-   * Arm the confirmation, sending nothing. The field is trimmed into the model first, so a pasted
-   * address with stray whitespace is accepted and the admin sees the exact string that will be sent
-   * — the builtin validators read the raw value, and rejecting a paste for its padding would be
-   * friction with no safety behind it. The client check is a convenience either way: the server
-   * validates independently and its refusal has its own message.
+   * Arm the confirmation, sending nothing. The field is trimmed into the model first so a padded paste
+   * validates and the admin confirms the exact string sent; the server validates independently.
    */
   protected review(): void {
     this.model.update((current) => ({ email: current.email.trim() }));
@@ -306,14 +275,9 @@ export class AdminPrivacy {
   }
 
   /**
-   * Action the erasure. The whole confirmation is locked while the request is in flight — both
-   * buttons and the grounds field — so a second POST is impossible and grounds typed mid-flight
-   * cannot be silently discarded when the panel swaps.
-   *
-   * <p>A failure keeps the confirmation armed holding what was typed, so a retry costs no
-   * re-typing, and says plainly that nothing was erased. There is no third outcome to handle: the
-   * endpoint's only success is `204`, and it means the same thing whether or not the address was
-   * known.
+   * Send the erasure with the whole confirmation locked in flight (no second POST, no lost
+   * grounds). A failure stays armed with what was typed and says nothing was erased; success is
+   * only ever `204`.
    */
   protected async erase(): Promise<void> {
     const grounds = this.reason().trim();

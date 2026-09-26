@@ -6,44 +6,12 @@ import java.time.LocalDate;
 import ai.riviera.platform.booking.vocabulary.RefundReason;
 
 /**
- * Everything the cancellation/refund email renders — structured, not
- * pre-rendered, so each {@link Mailer} implementation decides its own presentation, exactly as
- * {@link BookingConfirmationMail} does.
- *
- * <p>{@code refundMinor} + {@code currency} are integer minor units + ISO 4217 (invariant #5),
- * carried straight off {@code BookingCancelled}. The number is the <strong>server-computed refund
- * decision</strong> ({@code CancellationPolicy.quote} for a tourist cancellation, the gross amount
- * for a weather refund — invariant #10, ADR-0005); nothing here recomputes it, and the display
- * amount is derived only at the transport. <strong>Zero is a real value</strong>, not a missing one:
- * a cancellation after the invariant-#4 cutoff refunds nothing, and the transports render that as
- * words rather than as {@code EUR 0.00}, which would read as a refund.
- *
- * <p><strong>It states a decision, not a settlement.</strong> The event fires when the booking is
- * cancelled; the money is returned afterwards by {@code booking}'s own {@code BookingCancelled}
- * listener through {@code payment}'s {@code RefundPort}, which can still fail
- * ({@code riviera.refunds.failed}). So the copy says the refund is on its way back, never that it
- * has arrived — a "your refund has settled" mail would need a fact no event carries today.
- *
- * <p>{@code reason} is {@code booking}'s published vocabulary rather than a local copy, so a fifth
- * constant becomes a compile error in the transports (which switch over it exhaustively) instead of
- * a silently blank line. It is what lets one event serve both cancellation channels while the tourist
- * still learns which happened — a weather cancellation is one they never asked for.
- *
- * <p>{@code bookingCode} is the arrival credential (invariant #7), carried as the booking's
- * reference so a tourist holding several knows which one this is. Mailing it is no new exposure —
- * the confirmation already sent it to this address, and the code unlocks nothing once the booking is
- * {@code CANCELLED} — but it must never be logged, and no transport reachable in production does.
- *
- * <p>{@code rebookLink} is the way back a <strong>venue-caused</strong> cancellation owes and no
- * other does: the venue's own map for the same day, or the discovery list for it when that venue
- * cannot sell the date ({@code RebookLinks}). It is {@code null} on every other cancellation, and
- * on the free exit a moved guest takes themselves — which is what tells the transports the two
- * {@link RefundReason#VENUE_CHANGE} shapes apart, since one is the venue's doing and the other the
- * guest's. It embeds no credential.
- *
- * <p>No spot ({@code rowLabel}/{@code positionNo}): the set is released, so it is not a fact this
- * reader needs. Unpublished module-internal value — public only for the module's own
- * {@code adapter} packages.
+ * Structured facts the cancellation/refund mail renders, like {@link BookingConfirmationMail}.
+ * {@code refundMinor} + {@code currency} are the server-computed refund decision (invariants #5, #10),
+ * not a settlement: the copy says the refund is on its way, never that it arrived; zero is real and
+ * renders as words, never {@code EUR 0.00}. {@code bookingCode} is a bearer credential (#7) — never log
+ * it. {@code rebookLink} is non-null only on a venue-caused (remodel) cancellation, which is what tells
+ * the two {@link RefundReason#VENUE_CHANGE} shapes apart; it embeds no credential.
  */
 public record BookingCancellationMail(String bookingCode, String venueName, LocalDate bookingDate,
 		LocalDate lastDate, long refundMinor, String currency, RefundReason reason, URI rebookLink) {

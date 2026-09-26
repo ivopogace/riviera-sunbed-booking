@@ -47,27 +47,12 @@ interface RequestRow {
 }
 
 /**
- * The Requests tab — the operator console's restyle of the
- * Request-to-Book pending queue. One card per open request (guest, set + tier, date, price, "Respond
- * by", and an amber clock time-left chip when urgent), a one-click **Accept — send to payment**, a
- * confirm-gated **Decline**, a dismissible **expired-race** notice when the sweep wins the race, and
- * an **all-caught-up** empty state.
- *
- * <p><strong>Restyle only — no request-lifecycle change.</strong> The response deadline, the
- * expiry sweep and the pay window are server-owned; accept only moves the guest into the pay window,
- * and CONFIRMED comes solely from the signature-verified Stripe webhook, never from this tab
- * (invariant #8). The queue is deliberately <strong>code-less</strong>: a pending request isn't
- * confirmed and the booking code is the guest's bearer credential, shown to staff only at arrival
- * (invariant #7). Every accept/decline is owner-asserted server-side (invariant #13); a 403/401 maps
- * to operator copy. Reads `:venueId` from the parent route via {@link parentVenueId} (child routes
- * don't inherit it), like the sibling console tabs. Always porcelain (inherited from
- * the console shell); cards via {@link CardGlass}. The shell's Requests badge stays in sync through the
- * shared {@link PendingRequestsStore}, which this tab writes after load and every action.
- *
- * <p>The queue is <strong>reconciled with server truth</strong> — re-read after every accept/decline
- * and on a low-frequency poll — so a request the expiry sweep expires (or another operator device handles)
- * leaves the list rather than lingering as a phantom card, and the urgency clock stays current on this
- * long-open working surface. The reconcile is read-only; it changes no request-lifecycle state.
+ * The Requests tab: one card per open Request-to-Book — one-click Accept (sends the guest to
+ * payment), confirm-gated Decline — plus expired-race and all-caught-up states. The lifecycle is
+ * server-owned: CONFIRMED comes only from the Stripe webhook (invariant #8), each decision is
+ * ownership-checked server-side (invariant #13). Code-less by design (invariant #7). The queue is
+ * re-read after every action and on a poll so swept or elsewhere-handled requests leave, and each
+ * load/action writes {@link PendingRequestsStore} to keep the shell's badge in sync.
  */
 @Component({
   selector: 'app-requests-tab',
@@ -227,11 +212,8 @@ export class RequestsTab {
   }
 
   /**
-   * Send the accept or decline and settle the card on the answer.
-   *
-   * <p>The decline confirm stays up for the whole round trip, and closes only when this settles:
-   * tearing it down here would destroy the button just pressed and strand focus (WCAG 2.4.3) for
-   * the entire in-flight window, and it is what makes the panel's own `[appBusy]` meaningful.
+   * Send the accept or decline and settle the card on the answer. The decline confirm stays up for
+   * the whole round trip: closing it early strands focus (WCAG 2.4.3) and voids its `[appBusy]`.
    */
   private decide(bookingId: number, action: 'accept' | 'decline'): void {
     const venueId = this.venueId();
@@ -307,13 +289,9 @@ export class RequestsTab {
   }
 
   /**
-   * The test id focus should land on once `bookingId` leaves the queue: the card below it, else the
-   * card above it, else `whenEmpty` — the queue is about to hold nothing to land on.
-   *
-   * <p>The neighbour rather than the notice at the top of the tab: this is a working queue an
-   * operator walks down, and angular.dev's a11y guidance is that the landing spot should leave the
-   * user able to move straight back into the content. The card's row, not its Accept button —
-   * Accept is a one-click, no-confirm money action.
+   * The test id focus lands on once `bookingId` leaves: the card below, else above, else `whenEmpty`.
+   * A neighbour, not the top notice, so the operator walks on down the queue; its row, never its
+   * Accept button (a one-click, no-confirm money action).
    */
   private landingAfterRemoving(bookingId: number, whenEmpty: string): string {
     const queue = this.requests();
@@ -402,14 +380,9 @@ export class RequestsTab {
   }
 
   /**
-   * Where focus has to go when a read is about to drop the row it is sitting in, or undefined when
-   * it is not sitting in one that leaves.
-   *
-   * <p>The decision legs cover rows the operator removed. This covers the ones nobody here removed:
-   * the queue is re-read on a 60s poll and after every action, so the expiry sweep or another
-   * operator's device can take the row focus is in, with no local action behind it. `@for` tracks
-   * by booking id, so a row that survives the read keeps its node and its focus — only a row that
-   * leaves strands it (WCAG 2.4.3). Lands on the nearest row that survives, else the empty state.
+   * Where focus goes when a re-read (poll or action) drops the row it sits in — the expiry sweep or
+   * another device took it — else undefined. `@for` tracks by booking id, so only a leaving row
+   * strands focus (WCAG 2.4.3); lands on the nearest surviving row, else the empty state.
    */
   private landingIfFocusLeaves(fresh: readonly PendingRequestItem[]): string | undefined {
     const focused = this.focusedRow();

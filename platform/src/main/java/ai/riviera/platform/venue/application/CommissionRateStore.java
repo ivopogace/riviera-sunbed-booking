@@ -7,75 +7,38 @@ import java.util.Optional;
 import ai.riviera.platform.venue.vocabulary.VenueId;
 
 /**
- * Outbound (driven) port: commission-rate storage — the venue's <strong>live</strong> rate and its
- * <strong>effective-dated schedule</strong>, plus the platform-wide read the admin list needs. Internal
- * to the module, implemented by its own {@code adapter.out} JDBC adapter, so it is not published in
- * {@code api/} (invariant #11).
- *
- * <p><strong>Why not three more methods on {@link Venues}.</strong> That is the broad venue write
- * store, and the rate is a different conversation with a different actor: a platform admin setting a
- * commercial term, not an owner editing their venue. Keeping them apart means a caller that only
- * administers rates cannot reach the beach-map writes.
- *
- * <p><strong>A rate change is three writes.</strong> {@link #ensureFloorRate} pins the rate being
- * superseded so past dates keep it; {@link #updateLiveRate} sets the rate every <em>decision</em> from
- * now on uses; {@link #schedule} records which <em>service dates</em> the new rate governs for
- * reporting. The last two carry the same bps and differ only in the dates they answer for. Nothing here
- * rewrites a past schedule row or a ledger entry — the schedule is forward-only, so history is never
- * repriced (invariant #9).
+ * Outbound port: the venue's live commission rate, its effective-dated schedule and the platform-wide
+ * admin read; kept apart from {@link Venues} so a rate-only caller cannot reach the layout writes.
+ * A rate change is three writes, in order: {@link #ensureFloorRate} pins the superseded rate for past
+ * dates, {@link #updateLiveRate} sets the rate decisions use, {@link #schedule} records the service dates
+ * it governs. Forward-only: no past schedule row or ledger entry is rewritten, so history never reprices (#9).
  */
 public interface CommissionRateStore {
 
 	/**
-	 * Pin the venue's <strong>current</strong> rate at the schedule's epoch floor, unless the venue
-	 * already has a floor row — in which case this does nothing. Called <em>first</em> in a rate
-	 * change, while {@code venue.commission_bps} still holds the rate being superseded, so that rate
-	 * becomes the answer for every service date up to the change. A venue that has never changed rate
-	 * has no rows at all, which the per-date read answers from the live column.
-	 *
-	 * <p><strong>This is what makes the per-date read total, and it lives here rather than at venue
-	 * creation on purpose.</strong> Seeding on create would make the guarantee depend on every insert
-	 * path cooperating, and they do not — the ITs insert venues with raw SQL, and nothing stops a future
-	 * import or a manual fix from doing the same. Pinning when the rate first changes needs no
-	 * cooperation from whoever created the venue.
-	 *
-	 * <p>A no-op for an unknown venue (it reads the rate from the venue row, and there is none), so a
-	 * failed write leaves no orphan schedule row behind.
+	 * Pin the current rate at the schedule's epoch floor unless a floor row exists; call first in a rate
+	 * change, while the live column still holds the superseded rate. Pinned here, not at venue creation, so
+	 * raw-SQL inserts need not cooperate; a no-op for an unknown venue (no orphan row).
 	 */
 	void ensureFloorRate(VenueId venueId);
 
 	/**
-	 * Record that {@code commissionBps} applies to the venue's bookings served on or after
-	 * {@code effectiveFrom} — a civil date in {@code Europe/Tirane} (invariant #6). Idempotent per
-	 * {@code (venue, effectiveFrom)}: a second write for the same date overwrites the rate rather than
-	 * erroring or duplicating, so two admins acting on the same day collapse onto one row carrying the
-	 * last value.
-	 *
-	 * <p>Called only with a date the service computed, never one a request supplied — and only after
-	 * {@link #ensureFloorRate}, or the dates before {@code effectiveFrom} would have no answer.
+	 * Record that {@code commissionBps} governs bookings served from {@code effectiveFrom} (Europe/Tirane,
+	 * invariant #6); idempotent per {@code (venue, effectiveFrom)}, last write wins. Only with a
+	 * service-computed date, never a request's, and only after {@link #ensureFloorRate}.
 	 */
 	void schedule(VenueId venueId, LocalDate effectiveFrom, int commissionBps);
 
 	/**
-	 * Overwrite the venue's live commission rate — the column {@code VenueRates#commissionBps} reads at
-	 * decision time — and return the venue as it now stands, or empty if no venue has this id, in which
-	 * case the caller reports not-found and schedules nothing. One statement
-	 * ({@code UPDATE … RETURNING}) rather than a write plus a re-read, so the returned view cannot
-	 * describe a row another writer changed in between.
-	 *
-	 * <p>Deliberately unconditional otherwise: unlike the venue profile write there is no
-	 * optimistic-concurrency token, because a rate is a single scalar an admin sets outright rather
-	 * than a loaded form that could be stale. Two admins racing therefore resolve last-writer-wins,
-	 * which is the honest outcome for "the commission is now X".
+	 * Overwrite the live rate {@code VenueRates#commissionBps} reads and return the venue as it now stands
+	 * (one {@code UPDATE … RETURNING}), or empty for an unknown venue — then schedule nothing. No concurrency
+	 * token: racing admins resolve last-writer-wins.
 	 */
 	Optional<VenueCommissionView> updateLiveRate(VenueId venueId, int commissionBps);
 
 	/**
-	 * Every venue with its live commission rate and payout currency, <strong>ordered by name then
-	 * id</strong> — the platform-admin read model. Deliberately platform-wide: no ownership filter and
-	 * no id set, which is why only an ADMIN-gated caller may reach it (invariant #13's
-	 * {@code /api/admin/**} exemption). Contrast {@code Venues#findSummaries}, whose ids the caller has
-	 * already reduced to what one operator owns.
+	 * Every venue with its live rate and payout currency, ordered by name then id. Platform-wide with no
+	 * ownership filter, so only an ADMIN-gated caller may reach it (invariant #13's {@code /api/admin/**} exemption).
 	 */
 	List<VenueCommissionView> findAll();
 }

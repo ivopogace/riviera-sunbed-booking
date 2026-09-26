@@ -6,46 +6,12 @@ import { AdminCommissionsService } from './admin-commissions.service';
 import { VenueCommissionView } from './admin.model';
 
 /**
- * The platform-admin console's stat strip — the four tiles the console shell's initial build never
- * got: the approval queue's depth, how many operators can sign in, how many are suspended, and
- * how many venues the platform carries. Every number comes from an ADMIN read that already ships;
- * this strip adds no endpoint.
- *
- * <p><strong>Where it renders, and why not everywhere.</strong> A single strip above the tab rail on
- * every screen needs one host to render it. Here the
- * console is eight independent lazy routes with no layout component, a shape the console's routing
- * decision chose deliberately and gave one revisit trigger: a <em>ninth</em> tab. So this strip
- * renders on the console <em>home</em> only, and <em>below</em> the tabs. Below, because with the strip on one page
- * only, putting it above would shift the pills down on `/admin` and back up on every other tab — the
- * control you just clicked would move. The day a layout component lands on that trigger, this strip
- * moves into it and becomes shell-wide for free; until then, eight copies each re-reading three
- * endpoints per navigation is the wrong trade.
- *
- * <p><strong>The mean rate is not the platform's take rate, and says so.</strong> Nothing on the wire
- * supports a booking-weighted average — the ledger's commission is per booking at accrual (invariant
- * #9), and no read exposes that per venue. What this renders is the unweighted mean of the venue
- * rates, which is a genuine <em>configuration</em> readout (spot an outlier; the Commissions tab is
- * one click above). An admin would nonetheless read a bare "avg commission" as the platform's
- * effective take, so the caption names the aggregation and the note under the strip states the limit
- * outright. The arithmetic is a rate, not money, so invariant #5 is not engaged — but the mean is
- * still rounded to whole basis points, the storage grain, and rendered through the one existing
- * {@link formatCommissionPercent}, never a second percent formatter.
- *
- * <p><strong>Dash and zero are different facts.</strong> The three operator counts arrive as inputs
- * from the page that already reads them (no duplicate fetch), left `undefined` until a read has
- * actually succeeded; the venue read is this strip's own and starts `undefined`. All four render "—"
- * in that state, so a failed read is never dressed up as a confident zero — and a failure in one
- * read dashes only its own tile, never the others.
- *
- * <p>The strip is deliberately inert: no tile links anywhere. The tabs sit directly above it, and a
- * navigating tile would add exactly the focus-management surface that has repeatedly cost console
- * surfaces review findings.
- *
- * <p><strong>The labels are terse because the fold is measured, not guessed.</strong> At 360px a tile
- * is ~136px of inner width, so an uppercase 11px label past roughly sixteen characters wraps — and a
- * wrap costs its whole two-tile row a line. Measured: restoring "Pending approvals" and "Active
- * operators" moves the first content heading down ~16px against a 740px fold, which the measured
- * 55px of headroom absorbs. `e2e/admin-console-stats.e2e.ts` holds that budget.
+ * The admin console home's four-tile stat strip, built from existing ADMIN reads (no new endpoint).
+ * Renders on `/admin` only and below the tabs, so the pills never shift between tabs; it moves into
+ * a shell layout if one lands. The Venues caption is the UNWEIGHTED mean of venue rates, not the
+ * platform's take (the note says so), rounded to whole bps via {@link formatCommissionPercent}.
+ * `undefined` renders "—", never 0, and a failed read dashes only its own tile. Tiles are inert (no
+ * links); labels stay short to avoid wrapping at 360px — `e2e/admin-console-stats.e2e.ts` holds it.
  */
 @Component({
   selector: 'app-admin-console-stats',

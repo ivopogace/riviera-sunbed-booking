@@ -127,23 +127,18 @@ export function pinWidth(badge: string | null): number {
 }
 
 /**
- * Whether two boxes on the map bury each other: their pills overlap — closer than half their
- * widths together across, and closer than a pin's height down. Any overlap counts: the buried pin
- * loses part of its face, and the tourist cannot tell which part is the honest one. Either side
- * may be a crowd's running anchor rather than a pin, which is what {@link crowdPins} tests.
+ * Whether two boxes bury each other: closer than half their widths together across and than a pin's
+ * height down. Any overlap counts, as a part-buried face misleads. Either side may be a crowd's
+ * running anchor ({@link crowdPins}).
  */
 export function crowds(a: PinBox, b: PinBox): boolean {
   return Math.abs(a.x - b.x) < (a.width + b.width) / 2 && Math.abs(a.y - b.y) < PIN_HEIGHT_PX;
 }
 
 /**
- * Group pins by where they currently land. One pass in feed order, each pin joining the first
- * crowd whose anchor it overlaps — deterministic, and stable while the camera holds still.
- *
- * <p>The anchor is the crowd's **running** mean and widest member, not its first: the crowd's pill
- * is drawn at the mean and occupies the widest member's width, so testing against the first member
- * would group by one box and draw another, and a pin that clears the first while sitting on the
- * drawn pill would be left to bury it.
+ * Group pins in feed order, each joining the first crowd whose anchor it overlaps (deterministic).
+ * The anchor is the crowd's running mean and widest member, not its first: the pill is drawn there,
+ * so testing the first member would let a pin bury the drawn pill.
  */
 export function crowdPins(
   pins: readonly VenuePin[],
@@ -186,11 +181,9 @@ export function crowdCentre(crowd: PinCrowd): LngLat {
 }
 
 /**
- * The smallest zoom at which no two members bury each other, with a little water between them —
- * Web Mercator scales every screen offset by `2^Δzoom`, so each pair names the zoom it needs and
- * the crowd needs the largest. Never below the current zoom; capped by the map's ceiling and, where
- * the box is known, by the zoom at which the crowd's span still fits inside the box's margin.
- * Coinciding members ask for the ceiling: no zoom separates them.
+ * The smallest zoom at which no two members bury each other, with a margin (offsets scale by
+ * `2^Δzoom`; the neediest pair wins). Never below `zoom`; capped at `maxZoom` and, given `box`,
+ * where the crowd's span still fits its margin. Coinciding members ask for the ceiling.
  */
 export function separationZoom(
   crowd: PinCrowd,
@@ -255,16 +248,9 @@ export function lowestFromPrice(cards: readonly VenueCard[]): string | null {
 }
 
 /**
- * Where each crowd's pill sits, largest crowd first: the nine spots in {@link SPOTS} order —
- * centred on its place, hung off its point right then left, then clear of it below and above, then
- * the four diagonals — taking the first that stays inside `space.window` (when it is known) and
- * clear of `space.noGo`, of every lone pin, and of every pill already placed.
- *
- * <p>Where the full pill fits nowhere the spots are tried again as a bare count disc, which at
- * 44 px is exactly twice {@link HANG_PX}: the three anchors collapse onto one box, so that second
- * pass is really the three rises. Where that fits nowhere either the pill keeps its layer
- * placement, centred and collapsed, rather than being moved somewhere it fits no better. A lone
- * pin is never moved; it occupies its centred box before any pill is placed.
+ * Place pills largest crowd first, at the first {@link SPOTS} spot inside `space.window`, clear of
+ * `space.noGo`, lone pins and placed pills; else as a bare count disc (twice {@link HANG_PX}); else
+ * centred and collapsed. A lone pin is never moved and is placed before any pill.
  */
 export function layoutPills(
   crowds: readonly PinCrowd[],
@@ -346,20 +332,9 @@ export function anchorLeft(x: number, width: number, anchor: PillAnchor): number
 }
 
 /**
- * Whether the map's foot row should change sides. A lone pin is never moved — that is the shipped
- * rule and the whole reason the pills clear the chrome rather than the other way round — so when
- * one sits under Near me or the credit it is the chrome that moves, both pieces together.
- *
- * <p>It swaps only when the pieces' CURRENT boxes are covered and their mirrored ones are not, so
- * a pin waiting on the far side holds everything still and one move always ends it: after a swap
- * the pieces stand where they were found free, so the next answer is `swapped` unchanged. The two
- * pieces differ in box, so the mirror is a real second chance rather than the same cover flipped
- * over.
- *
- * @param pieces the foot row's rendered boxes, in the pane's own coordinates
- * @param lonePins every lone pin's box, the ones that will not move
- * @param pane the box the pieces are mirrored inside
- * @param swapped whether the foot is currently on the swapped side
+ * Whether the foot row (Near me, the credit) should change sides — lone pins never move, so the
+ * chrome does. Swaps only when `pieces` are covered by `lonePins` and their mirrors in `pane` are
+ * not, so one move always ends it. All boxes are in the pane's own coordinates.
  */
 export function footSwap(
   pieces: readonly Rect[],

@@ -47,39 +47,18 @@ const LIST_PAD_BOTTOM_PX = 68;
  */
 const SETTLE_QUIET_MS = 160;
 /**
- * A touch keeps the element it started on, and an element destroyed mid-gesture takes its
- * `touchend` with it — off the tree, so neither the sheet nor the document hears it and the
- * finger flag sticks. Nothing having moved the sheet for this long means the gesture is over,
- * whatever the DOM believes; generous, because a tourist reading a row is not a stale finger.
+ * An element destroyed mid-gesture takes its `touchend` with it and the finger flag sticks; nothing
+ * moving the sheet this long means the gesture is over. Generous: a reader is not a stale finger.
  */
 const STALE_TOUCH_MS = 6_000;
 
 /**
- * The Discover venue sheet: the list as a sheet over the riviera map with three resting heights
- * — half (opens here), peek (the head alone above the tab bar) and full (the list, a 44 px sliver
- * of map kept under the header, a `Show map` pill at the foot that drops the sheet to peek).
- *
- * <p>It is **two CSS scroll-snap scrollers**. The OUTER holds a transparent spacer over the map
- * with the peek and half rests as zero-height `snap-always` targets, then the sheet itself,
- * exactly one snapport tall, snapping at full. The INNER is the list: a scroller at full,
- * `overflow: clip` below it. **A finger moves the sheet by its own drag** (`onDragMove`), because
- * iOS Safari will not touch-scroll the outer scroller, which is `pointer-events: none` so the map
- * keeps its gestures.
- *
- * <p>Below full the list cannot scroll, so a revealed row's lift is a translate, clamped as a
- * scroller clamps, and handed to the list's real `scrollTop` on arrival at full (and back on the
- * way down), so the rows never jump.
- *
- * <p>The shipped chrome is **measured at runtime, never a constant**: the tab bar's rendered
- * height (61 on a phone, 0 from `sm` where it is hidden) and the header's (73). The scrollers
- * render only once the chrome is measured, and the first rest is confirmed on the next frame,
- * because a rest taken at a layout with every rest at offset 0 is carried to full. A re-measure
- * never re-rests while the sheet is moving, though — a phone fires `resize` mid-gesture every
- * time its URL bar or on-screen keyboard moves, and the rest it asks for waits for `settled`
- * rather than scrolling the sheet out from under the finger.
- *
- * <p>The head goes in through `[sheetHead]`, the rows through the default slot; the page keeps
- * every word and every row, this component keeps the physics.
+ * The Discover sheet over the map, resting at half (opens here), peek or full. Two scroll-snap
+ * scrollers: the OUTER (a spacer with zero-height peek/half targets, then the sheet) and the INNER
+ * list, scrollable only at full. A finger drags the sheet (`onDragMove`): iOS Safari won't
+ * touch-scroll the `pointer-events: none` outer. Below full a row's lift is a clamped translate,
+ * handed to the list's `scrollTop` at full so rows never jump. Tab bar and header heights are
+ * measured at runtime, never constants; the page owns the words and rows, this the physics.
  */
 @Component({
   selector: 'app-discover-sheet',
@@ -220,11 +199,8 @@ export class DiscoverSheet {
   private staleTouchTimer: number | undefined;
   private readonly moveFocus = focusMover({ preventScroll: true });
   /**
-   * Nothing is moving the sheet: no finger on it, and no scroll still running under one. A
-   * mobile browser fires `resize` in the middle of both whenever its URL bar or the on-screen
-   * keyboard moves, and a rest taken then scrolls the sheet out from under the finger — or turns
-   * the Map pill's own glide straight back into full, which reads as a dead button. So the rest
-   * waits for this.
+   * No finger on the sheet and no scroll running. Mobile browsers fire `resize` mid-gesture (URL
+   * bar, keyboard); a rest then yanks the sheet from under the finger or undoes the Map pill glide.
    */
   readonly settled = computed(() => !this.touched() && !this.rolling());
 
@@ -282,16 +258,9 @@ export class DiscoverSheet {
   readonly opened = signal(false);
 
   /**
-   * Rest at an offset, cut, and confirm on the next frame that the rest held: a rest taken before
-   * the scroller's geometry has settled is carried elsewhere by the browser's own snapping, so it
-   * is retaken, a few frames at most.
-   *
-   * <p>Only the offset the sheet is resting for is still worth confirming: a re-measure starts a
-   * rest for a new one, and a rest it superseded retires rather than undo it.
-   *
-   * <p>It scrolls and then reads back where the scroller actually landed — the browser clamps a
-   * rest to the scrollable range — so its caller runs in `mixedReadWrite`, the phase for work
-   * whose read cannot be divided from its write, never in `write`.
+   * Rest at `want`, retaken next frame (up to `REST_ATTEMPTS`) while browser snapping carries it; a
+   * superseded rest retires. It reads back where the scroller clamped it, so its caller runs in
+   * `mixedReadWrite`, never `write`.
    */
   private rest(scroller: HTMLElement, want: number, attempt: number): void {
     this.restTarget = want;

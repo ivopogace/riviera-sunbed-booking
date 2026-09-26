@@ -18,16 +18,11 @@ import ai.riviera.platform.customer.vocabulary.CustomerAccountId;
 import jakarta.servlet.http.HttpServletRequest;
 
 /**
- * Authenticated customer account-management endpoints: set/change the signed-in customer's password,
- * and re-request a verification email. Under {@code /api/me/**}, which {@link SecurityConfig}'s
- * method-agnostic matcher gates to {@code ROLE_CUSTOMER} at the filter layer, session-principal-scoped
- * (BOLA-safe — no id in the path; the account is resolved from the session via
- * {@link CurrentCustomer}). Platform-edge machinery (RV-BE-11).
- *
- * <p><strong>Set password:</strong> an SSO-only account (no local password) sets its first password
- * freely — its SSO session is proof of a provider-verified email — while an account that already has a
- * password must supply the correct current one. Never a register-time UPSERT (a takeover vector); the
- * password is set only from within the account's own authenticated session.
+ * Signed-in customer account management under {@code /api/me/**}: set/change password, re-request verification.
+ * {@link SecurityConfig} gates it to {@code ROLE_CUSTOMER}; the account comes from the session via
+ * {@link CurrentCustomer}, never a path id (BOLA-safe). An SSO-only account sets its first password freely — its SSO
+ * session proves a provider-verified email — otherwise the current password is required. Never a register-time UPSERT
+ * (a takeover vector): a password is set only from the account's own authenticated session.
  */
 @RestController
 class MyAccountController {
@@ -63,22 +58,9 @@ class MyAccountController {
 	}
 
 	/**
-	 * Set or change the signed-in customer's password. SSO-only accounts (no stored credential) set their
-	 * first password with no current-password check; accounts that already have one must supply the
-	 * matching current password — omitted is {@code 400 MISSING_CURRENT_PASSWORD}, supplied-but-wrong is
-	 * {@code 400 INVALID_CURRENT_PASSWORD} (distinct codes: one for both would tell a caller a password it
-	 * never sent was incorrect). A new password outside the length rule is {@code 400 INVALID_REQUEST}; one
-	 * containing the email's local part or the service name is {@code 400 PASSWORD_CONTAINS_BLOCKED_TERM}.
-	 *
-	 * <p><strong>A doubly-invalid request resolves the opposite way to the operator twin</strong>, which
-	 * answers the omission first. That divergence is forced rather than chosen: whether a current password is
-	 * required here depends on whether the account <em>has</em> one, so the presence check cannot precede
-	 * {@code validate} without moving the credential read ahead of the policy check. Pinned by
-	 * {@code SetPasswordIT.aWeakNewPasswordOutranksAnOmittedCurrentOne}.
-	 *
-	 * <p>The success-path effects are <strong>ordered, not transactional</strong> — encode, revoke, write,
-	 * rotate. {@link OperatorAccountController#changePassword} carries the full rationale, including what
-	 * the ordering does <em>not</em> buy; this is its customer twin and must not drift from it.
+	 * Set/change the password. The new-password policy outranks a missing current password — the reverse of the operator
+	 * twin, forced because presence depends on the account having one. Success effects are ordered, not transactional:
+	 * rationale on {@link OperatorAccountController#changePassword}; keep the twins in step.
 	 */
 	@PostMapping(SET_PASSWORD_PATH)
 	ResponseEntity<?> setPassword(@RequestBody SetPasswordRequest request, Authentication authentication) {
@@ -110,20 +92,9 @@ class MyAccountController {
 	}
 
 	/**
-	 * Re-issue a verification email to the signed-in customer's own address. Always {@code 200}, carrying
-	 * whether that mail was withheld as suppressed — "Verification email sent" is false for an address on
-	 * the do-not-mail list.
-	 *
-	 * <p><strong>Why disclosing it here does not reopen D-8.</strong> This endpoint is
-	 * {@code ROLE_CUSTOMER}-gated and takes no address: it answers about {@code authentication.getName()},
-	 * the caller's own session principal, so there is no id to tamper with (BOLA-safe by shape) and no
-	 * account whose existence the answer could reveal — the caller is signed in to it. The anonymous
-	 * {@code forgot-password} flow keeps its deliberately hedged copy and its {@code 204}: branching
-	 * <em>that</em> on suppression would rebuild the enumeration oracle (D-8).
-	 *
-	 * <p>The send itself is unchanged — issued, dispatched off-thread, best-effort. The suppression read is
-	 * a <strong>separate call after it</strong>, so nothing about the answer can gate the send, and the
-	 * anonymous registration path that shares {@code sendVerificationEmail} pays nothing for it.
+	 * Re-send the caller's verification email; always {@code 200} with whether suppression withheld it — safe only because
+	 * the endpoint is session-scoped and takes no address. The anonymous forgot-password flow must never branch on
+	 * suppression (an enumeration oracle). The suppression read follows the send, so it can never gate it.
 	 */
 	@PostMapping(REQUEST_VERIFICATION_PATH)
 	ResponseEntity<VerificationRequestedView> requestVerification(Authentication authentication) {

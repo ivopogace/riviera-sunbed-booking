@@ -4,34 +4,12 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 /**
- * The platform-wide bound on a scheduled job's entry query, validated once at boot — the
- * established house pattern (a compact canonical constructor that throws), because there is no JSR-303
- * validator on this classpath and {@code @Min} would therefore validate nothing at all.
- *
- * <p><strong>The value it guards against looks harmless.</strong> {@code Statement#setQueryTimeout(0)}
- * means <em>no limit</em> to JDBC, and {@code JdbcTemplate} reads a negative as "leave the driver's
- * default alone" — so {@code riviera.scheduled.query-timeout-seconds=0}, which is what an operator
- * reaching for "unlimited" would write, would boot clean, log nothing, and restore in every adapter at
- * once the unbounded scheduled query this slice exists to remove. The ceiling is the sweep cadence
- * rather than an arbitrary large number: a bound longer than the interval between runs is still
- * holding when the next run is due, so past that it no longer bounds anything operationally.
- *
- * <p><strong>Why one guard and not one per adapter.</strong> The bounded clients each carried an
- * identical copy of this check for one commit, and Sonar's duplication gate failed the PR at 36.1% on
- * new code — the four copies of the constants plus the check were a large enough block to clone-match,
- * where the bare three-line {@code boundedClient} helpers had not been. De-duplicating by extracting a
- * shared helper was not available: the consumers span the composition root, {@code booking} and
- * {@code customer}, so their only common home is the {@code shared} kernel, whose admission rule
- * (CLAUDE.md) explicitly excludes "code used in more than one place". Validating a single
- * platform-wide knob at the platform edge is the honest reading anyway — it is one number owned by
- * {@code application.properties}, not per-adapter settings — and it loses nothing, because a
- * throw here fails the boot for every consumer of that number regardless of which bean was built first.
- *
- * <p>Consequence worth knowing: the module adapters still read the raw property via
- * {@code @Value} (they cannot depend on the root — nothing may, and
- * {@code CompositionRootDisciplineTests} now fails the build if one tries). They receive a value this bean has
- * vetted, and a context that somehow excluded this bean would fall back to the committed default
- * rather than an operator's typo.
+ * Platform-wide bound (seconds, 1–300) on a scheduled job's entry query, checked once at boot in the compact
+ * constructor — there is no JSR-303 validator, so {@code @Min} would validate nothing. The trap: JDBC reads {@code 0} as
+ * <em>no limit</em> and {@code JdbcTemplate} ignores a negative, so "unlimited" boots clean and unbounds every scheduled
+ * query. The ceiling is the 5-minute sweep cadence: a longer bound outlives the next run. Module adapters read the raw
+ * property via {@code @Value} (nothing may depend on the root); this bean's boot failure vets it for all of them.
+ * Never a global query timeout instead: it would bound the invariant #2 claim.
  */
 @Component
 record ScheduledQueryTimeout(@Value("${riviera.scheduled.query-timeout-seconds}") int seconds) {
@@ -41,10 +19,8 @@ record ScheduledQueryTimeout(@Value("${riviera.scheduled.query-timeout-seconds}"
 	private static final int MAX_SECONDS = 300;
 
 	/**
-	 * Compact, and the {@code @Value} sits on the record component rather than a constructor
-	 * parameter: a compact constructor declares no parameters to annotate, and {@code @Value} targets
-	 * {@code PARAMETER}, so javac propagates it from the component to the canonical constructor's
-	 * parameter, which is what Spring resolves.
+	 * Compact, with {@code @Value} on the record component: a compact constructor has no parameters to annotate, and
+	 * javac propagates the {@code PARAMETER}-targeted annotation to the canonical constructor Spring resolves.
 	 */
 	ScheduledQueryTimeout {
 		if (seconds < MIN_SECONDS || seconds > MAX_SECONDS) {

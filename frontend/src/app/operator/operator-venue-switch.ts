@@ -24,34 +24,12 @@ import { TouchTarget } from '../shared/touch-target';
 const NAME = 'min-w-0 max-w-full truncate text-[17px] font-bold tracking-[-0.01em] text-riv-ink';
 
 /**
- * The venue-console section of the console shell's section row, and — for an operator who owns
- * more than one venue — the control that changes venue. On the console (`venueId` given) it is the
- * venue's name at title weight; with two or more owned venues that name is a disclosure button
- * opening a popover headed `Your venues` that lists the owned venues (name over beach), marks the
- * current one `aria-current="page"`, links each row to the **same section** on the other venue
- * (`/operator/7/daily` → `/operator/9/daily`, the router then reuses the console instance and its
- * reactive `venueId` reload does the rest), and ends in `Add another venue`; with exactly one venue
- * the name is plain text — a label, not a control. Off the console (no `venueId`: the `/admin`
- * tabs, the `/operator` landing, the password page, the venue-not-found page) the slot reads
- * `Your venues`: the same
- * disclosure for two or more venues, its rows linking to `/operator/<id>` (the console's index
- * redirect picks the tab), and a plain link to `/operator` otherwise — the landing forwards a
- * one-venue operator straight into the console. Signed out it renders nothing.
- *
- * <p>It reads the session-scoped {@link OwnedVenues} store and is the shell's one trigger for
- * that read: only the `/operator` landing and the sign-in page's landing decision read it, so a
- * bookmark straight into a console would otherwise render a switcher with nothing to switch to.
- * The store dedupes and caches, so this costs no second request after the landing. A failed read
- * leaves the list unknown and the name plain — never an empty popover.
- *
- * <p>The disclosure is the account chip's, leg for leg (WCAG 2.4.3): Escape, the backdrop and a row
- * activation return focus to the name button; a navigation that ends elsewhere, or a click outside
- * the header, closes without moving it. The popover is `fixed`, which anchors it to the shell's
- * header row rather than to the name: the header's `backdrop-filter` makes it the containing block
- * for fixed descendants (the fact the chip's backdrop relies on too), so `top-full` puts the popover
- * under the header and `left` finds the centred row's content edge — at 344px a name-anchored 264px
- * popover overhangs the viewport, and the section slot between them is `relative` for its underline
- * marker.
+ * The console shell's venue slot and, for a multi-venue operator, the venue switch: a `Your venues`
+ * popover whose rows (current one `aria-current="page"`) link to the SAME section on the other
+ * venue; the router reuses the console, so per-venue state resets only via its `venueId` reload.
+ * One venue: a plain name; off the console: `Your venues`; signed out: nothing. It triggers the
+ * {@link OwnedVenues} read (a failure leaves the name plain). Focus legs match the account chip
+ * (WCAG 2.4.3); the `fixed` popover anchors to the header, whose `backdrop-filter` contains it.
  */
 @Component({
   selector: 'app-operator-venue-switch',

@@ -12,74 +12,32 @@ import ai.riviera.platform.venue.vocabulary.VenueMapView;
 import ai.riviera.platform.venue.vocabulary.VenueSummaryView;
 
 /**
- * The {@code venue} module's published <strong>tourist-read</strong> port (invariant #11)
- * — browsing venues and rendering a venue's beach map. A deep module: this small interface
- * hides the SQL join, the from-price computation, and the view assembly. Consumed only by
- * the module's own REST adapter since the role split (issue #94): set facts live on
- * {@link SetBookingFacts}, rate configuration on {@link VenueRates} — do not add
- * sibling-facing methods here ({@code VenueApiRoleSplitTests} enforces this).
- *
- * <p>All three reads fence tourist visibility: a venue whose owning operator is not
- * {@code ACTIVE} is absent from the list and empty on the map and calendar reads,
- * indistinguishable from a venue that does not exist (the rule's one home:
- * {@code operator.api.VenueVisibility}).
+ * The {@code venue} module's published tourist-read port (invariant #11): browsing venues and
+ * rendering a venue's beach map. Tourist reads only — set facts live on {@link SetBookingFacts},
+ * rates on {@link VenueRates}; add no sibling-facing method here ({@code VenueApiRoleSplitTests}).
+ * All three reads fence tourist visibility: a venue whose owner is not {@code ACTIVE} is absent or
+ * empty, indistinguishable from nonexistent. Rationale: RESPONSIBILITIES.md §venue.
  */
 public interface VenueCatalog {
 
 	/**
-	 * The venue and its beach map for the days of {@code stay}, or empty if no venue has that id.
-	 * Each set's {@code availability} reflects the authoritative {@code set_availability} state
-	 * (invariant #2): {@code FREE} on every day, {@code TAKEN} on every day, else
-	 * {@code PARTLY_FREE} with the taken days named. {@code salesOpen} is the first day's sales
-	 * verdict with every day admitted by the season closure (invariant #4).
-	 *
-	 * @param id   the venue
-	 * @param stay the days to render availability for, civil days in {@code Europe/Tirane}
-	 *             (invariant #6)
+	 * The venue and its map for {@code stay} (Tirane civil days, invariant #6), or empty if absent or hidden.
+	 * Each set is {@code FREE}, {@code TAKEN} or {@code PARTLY_FREE} off {@code set_availability} (#2);
+	 * {@code salesOpen} is the first day's sales verdict with the season closure applied (#4).
 	 */
 	Optional<VenueMapView> findVenueMap(VenueId id, StaySpan stay);
 
 	/**
-	 * The venues matching {@code filter}, as discovery summaries, for the tourist browse screen
-	 * (design §4.1 steps 1–2). Each summary carries the venue's "from" price (cheapest
-	 * set, integer minor units, invariant #5) and its free/total set count for {@code date},
-	 * sourced per-{@code (set, date)} from the authoritative availability table (invariant #2) —
-	 * the same overlay {@link #findVenueMap} uses, so the count never disagrees with the map.
-	 *
-	 * <p>Results are ordered <strong>open venues first, then rating descending, then name
-	 * ascending</strong> — a venue closed for the season stays listed, badged, after every open one.
-	 * A filter matching nothing yields an empty list, never {@code null}.
-	 *
-	 * @param filter the optional beach/region narrowing ({@link VenueFilter#of}); both-null lists all
-	 * @param date   the calendar day to count availability for, a {@code LocalDate} in
-	 *               {@code Europe/Tirane} (invariant #6)
+	 * Summaries matching {@code filter} (both-null lists all; never {@code null}), each with its from-price
+	 * (#5) and free/total count for {@code date} (Tirane, #6) off the same overlay as the map (#2).
+	 * Ordered open venues first, then rating descending, then name ascending.
 	 */
 	List<VenueSummaryView> listVenues(VenueFilter filter, LocalDate date);
 
 	/**
-	 * The venue's free/total set count for <em>each</em> day in {@code [from, to]} — the calendar
-	 * read behind picking a date — or empty if no venue has that id or its owner is not
-	 * {@code ACTIVE}. Every day in the inclusive window is present, ascending; a day nobody has
-	 * touched reads {@code free == total}.
-	 *
-	 * <p>Counts come from the same {@code set_availability} state {@link #findVenueMap} overlays
-	 * (invariant #2), so the calendar and the map cannot disagree about a day. Like the discovery
-	 * card's count, {@code total} spans both pools; the online-pool restriction (invariant #3)
-	 * applies later, at the map/claim.
-	 *
-	 * <p><strong>A snapshot, never a hold.</strong> A day reporting free capacity may be full by
-	 * the time a claim is attempted — the claim decides, not this read — and it answers past days
-	 * as readily as future ones: the counts report availability, not bookability. Bookability rides
-	 * beside them as each day's {@code salesOpen} verdict — the on-day sales close and the season
-	 * closure, the same projection the list and map carry — display only; the reserve path enforces
-	 * the fence (invariant #4) where it already does.
-	 *
-	 * @param id   the venue
-	 * @param from the first day, inclusive, a {@code LocalDate} in {@code Europe/Tirane}
-	 *             (invariant #6)
-	 * @param to   the last day, inclusive; must not precede {@code from} — an inverted window is a
-	 *             caller bug and throws {@link IllegalArgumentException}. Bounding the window is
-	 *             the caller's job; the REST edge caps it and rejects an inverted one as a 400.
+	 * Free/total per day of inclusive {@code [from, to]} (Europe/Tirane, #6), ascending and gap-filled, or
+	 * empty if absent or hidden; {@code total} spans both pools (#3 applies at the claim). A snapshot, never a
+	 * hold (#2). The caller bounds the window; an inverted one throws {@link IllegalArgumentException}.
 	 */
 	Optional<List<DailyAvailability>> availabilityBetween(VenueId id, LocalDate from, LocalDate to);
 }

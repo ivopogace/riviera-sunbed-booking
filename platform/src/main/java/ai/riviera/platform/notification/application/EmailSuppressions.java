@@ -3,24 +3,10 @@ package ai.riviera.platform.notification.application;
 import java.time.Instant;
 
 /**
- * The do-not-mail list — the module's first owned state, and the seam its defining invariant hangs
- * on: <strong>no send to a suppressed address</strong>, consulted by {@link TransactionalMailService}
- * on every send, on both delivery vehicles. Provider-agnostic: {@link #suppress} is the internal write
- * path the bounce/complaint feed will drive.
- *
- * <p><strong>Entries are never deleted</strong> — the table is a durable deliverability record, not a
- * cache. There is exactly <strong>one sanctioned exception, and it is still not a deletion</strong>:
- * {@link #reinstate} marks a row lifted rather than removing it, so the history survives and a later
- * bounce re-suppresses through the ordinary {@link #suppress} upsert. A hard {@code DELETE} anywhere
- * on this table remains a defect (ADR-0012).
- *
- * <p>Matching is on the <em>normalized</em> address — trimmed, lower-cased, the same canonical form
- * {@code customer} stores — applied by the adapter on both read and write, so a feed reporting
- * {@code Foo@Bar.com} still suppresses the checkout's {@code foo@bar.com}. The stored state is
- * <strong>non-PII</strong>: a peppered HMAC of the normalized address plus the cleartext domain, never
- * the address itself. That is invisible here — callers still pass raw addresses, and the entry
- * deliberately survives right-to-erasure. Unpublished application-internal port, implemented by
- * {@code adapter/out} (invariant #11); timestamps are caller-supplied UTC instants (invariant #6).
+ * The do-not-mail list: {@link TransactionalMailService} skips every send to a suppressed address, on
+ * both vehicles. Entries are never deleted — {@link #reinstate} flags a row, it does not remove it.
+ * Callers pass raw addresses; the adapter normalizes and stores only a peppered HMAC plus the domain,
+ * and the entry survives erasure (ADR-0012). Timestamps are UTC instants (invariant #6).
  */
 public interface EmailSuppressions {
 
@@ -28,41 +14,15 @@ public interface EmailSuppressions {
 	boolean isSuppressed(String email);
 
 	/**
-	 * Put the address on the do-not-mail list, or refresh it: a repeat suppression updates the reason
-	 * and {@code last_event_at} while keeping the original {@code first_suppressed_at}, and
-	 * <strong>clears any reinstatement</strong>, so a bounce after a lift re-suppresses through this one
-	 * path. A value with no {@code local@domain} shape is rejected with
-	 * {@link IllegalArgumentException} — entries are never deleted, so a junk write would persist
-	 * forever.
-	 *
-	 * <p><strong>This method's first production caller carries a security consequence.</strong> While
-	 * nothing writes the list, every {@link #isSuppressed} answer is {@code false} and the
-	 * {@code emailWithheld} flag on the code-gated booking read is a constant rather than a per-address
-	 * fact. Populating the list makes that flag a real, if expensive, suppression oracle: an attacker
-	 * books with a victim's address, pays, reads the flag, then cancels before the invariant-#4 cutoff
-	 * for a full refund. A second precondition must also hold, so this alone does not open it — the flag
-	 * stays inert wherever {@code payment.api.CollectionGuarantee} reports that the wired gateway does
-	 * not collect before confirming. Before wiring a writer, read {@code RESPONSIBILITIES.md}
-	 * §{@code notification} (<em>the withheld-flag probe</em>): it records why the probe is inert today
-	 * and why neither a rate-limit budget nor a narrower hand-off would close it.
+	 * Upsert keeping {@code first_suppressed_at} and clearing any reinstatement; a value without a
+	 * {@code local@domain} shape throws {@link IllegalArgumentException}. The first production writer arms
+	 * the withheld-flag probe — read RESPONSIBILITIES.md §notification before wiring one.
 	 */
 	void suppress(String email, SuppressionReason reason, Instant at);
 
 	/**
-	 * Lift the suppression on an address — <strong>the one sanctioned exception</strong> to the
-	 * never-deleted record, and still not a deletion: the row stays and gains a {@code reinstated_at}
-	 * instant, so {@code first_suppressed_at} and the prior {@code reason} survive, a later bounce
-	 * re-suppresses via {@link #suppress}, and a reinstatement loop remains visible to ops. Idempotent —
-	 * a repeat call reports the original lift without moving it.
-	 *
-	 * <p>Deliberately <strong>does not validate the address shape</strong>, unlike {@link #suppress}.
-	 * That guard exists because a junk <em>write</em> would persist forever; reinstating an address
-	 * that is not on the list writes nothing, so {@link ReinstateOutcome.NotSuppressed} is the honest
-	 * answer for junk input. Request-level validation belongs to the driving adapter.
-	 *
-	 * <p>This is an admin-initiated ops decision and never an automatic one — in particular it is not
-	 * an erasure side-effect: ADR-0012's posture that the entry survives right-to-erasure is
-	 * unchanged.
+	 * Admin-only lift: sets {@code reinstated_at}, never deletes, never an erasure side effect. Idempotent,
+	 * and does not validate shape — junk input answers {@link ReinstateOutcome.NotSuppressed}.
 	 */
 	ReinstateOutcome reinstate(String email, Instant at);
 }

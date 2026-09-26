@@ -42,41 +42,12 @@ import ai.riviera.platform.payment.adapter.out.StripeProperties;
 import ai.riviera.platform.payment.adapter.out.StripeRefundTag;
 
 /**
- * Stripe webhook endpoint — the <strong>source of truth</strong> for payment state (invariant
- * #8). A booking is confirmed (or its claim released) only from here, never from the client
- * redirect. The handler:
- *
- * <ol>
- *   <li><strong>verifies the signature</strong> on the <em>raw</em> body with the webhook
- *       secret ({@link Webhook#constructEvent}); a bad/absent signature is {@code 400} with no
- *       state change;</li>
- *   <li><strong>dedupes</strong> on the Stripe event id ({@link StripeWebhookEvents#firstSeen})
- *       — a re-delivered event is a {@code 200} no-op (idempotent);</li>
- *   <li>applies the outcome: {@code payment_intent.succeeded} → mark {@code SUCCEEDED} +
- *       publish {@link PaymentConfirmed} for every booking the intent collects for; {@code .canceled}
- *       → mark {@code CANCELED} + publish {@link PaymentCanceled} per booking likewise;
- *       {@code .payment_failed} → mark {@code FAILED} only (non-terminal in Stripe — the intent may
- *       be retried, so the claim is <em>not</em> released); a refund reported dead → un-record it on
- *       the booking it was for, so that guest is owed again rather than recorded as paid.</li>
- * </ol>
- *
- * <p>Every outcome goes through a <strong>guarded</strong> transition, never a read-then-write, so a
- * late or out-of-order delivery is a no-op rather than an overwrite and Stripe's lack of ordering
- * guarantees costs nothing. The three payment outcomes use {@code Payments#markStatus}, which moves
- * only an <em>open</em> record and publishes its event only when one moved. The refund un-record's
- * guard is the mirror image — it moves only a row that still records that refund, or one whose refund
- * this app has begun but not yet written down — and publishes nothing: no other module's state
- * depends on it.
- *
- * <p>The whole handler is one transaction: if it fails after the dedup insert, the transaction
- * (including that insert) rolls back and Stripe re-delivers — at-least-once without a broker. That
- * is what an unreadable payload leans on, for the types where losing the fact is the greater harm:
- * it raises {@link UnreadableWebhookEventException} rather than logging a warning and answering
- * {@code 200}, which would consume a verified fact Stripe would then never re-deliver. The
- * every-transition refund types are the deliberate exception, and fail open instead — see
- * {@link #advisoryRefund}.
- * The {@code booking} module reacts to the published events; this controller never imports
- * {@code booking} (invariant #11). The raw body, signature, and secret are never logged.
+ * Stripe webhook endpoint, the <strong>source of truth</strong> for payment state (invariant #8), never the
+ * client redirect. Verifies the signature on the <em>raw</em> body ({@link Webhook#constructEvent}; failure →
+ * {@code 400}, no state change); dedupes on the event id ({@link StripeWebhookEvents#firstSeen}); applies
+ * guarded transitions that publish {@link PaymentConfirmed}/{@link PaymentCanceled} only when a row moved.
+ * One transaction, so an unreadable event throws and Stripe re-delivers (advisory refund types fail open).
+ * Never log the raw body, signature or secret. Rationale: RESPONSIBILITIES.md §payment.
  */
 @RestController
 @RequestMapping("/api/payments/stripe")
@@ -142,10 +113,8 @@ class StripeWebhookController {
 	}
 
 	/**
-	 * A {@code 400} RFC-7807 problem for an unverifiable webhook — a <em>missing</em> or an
-	 * <em>invalid</em> signature, deliberately indistinguishable (invariant #8: no state change,
-	 * and no oracle telling an attacker which failure they hit). The standard error shape (#97),
-	 * not an ad-hoc string body.
+	 * The {@code 400} problem for a missing <em>or</em> invalid signature, deliberately indistinguishable so an
+	 * attacker gets no oracle for which failure they hit; nothing changes state.
 	 */
 	private static ResponseEntity<ProblemDetail> unverifiedSignature() {
 		return ApiProblem.response(HttpStatus.BAD_REQUEST, CODE_INVALID_SIGNATURE,
@@ -171,14 +140,8 @@ class StripeWebhookController {
 	}
 
 	/**
-	 * Apply what a refund lifecycle event says about a refund already on record.
-	 *
-	 * <p>Only a definitively dead refund acts — a {@code pending} one is where a refund normally
-	 * lives, and {@code succeeded} is the happy path this module already recorded. A dead one is
-	 * un-recorded, which is what puts the guest back to owed and lights the money-path counter, whose
-	 * meaning — a refund the platform owes could not be issued — is exactly this. Nothing re-drives it
-	 * automatically: an issuer rejection is not a transient error
-	 * ({@code RESPONSIBILITIES.md} §{@code payment}).
+	 * Un-records a definitively dead refund (pending and succeeded are ignored), putting the guest back to owed
+	 * and lighting the refund-failure counter. Nothing re-drives it automatically (RESPONSIBILITIES.md §payment).
 	 */
 	private void onRefundDied(Refund refund) {
 		if (!RefundLifecycle.returnedNoMoney(refund.getStatus())) {
@@ -196,11 +159,8 @@ class StripeWebhookController {
 	}
 
 	/**
-	 * Put the booking back to owed, whether or not its refund had been written down yet, and report
-	 * whether this delivery is the one that did it. The second arm covers the window before the
-	 * refund id is recorded, so the row is found through the booking the refund was for instead.
-	 *
-	 * <p>Rationale: {@code RESPONSIBILITIES.md} §{@code payment}.
+	 * Put the booking back to owed and report whether this delivery did it; the second arm matches by booking
+	 * for the window before the refund id is recorded (RESPONSIBILITIES.md §payment).
 	 */
 	private boolean markOwedAgain(Refund refund, Optional<BookingRef> booking) {
 		if (payments.markRefundFailed(refund.getId())) {
@@ -231,10 +191,9 @@ class StripeWebhookController {
 	}
 
 	/**
-	 * Whether the outcome moved the payment record. A terminal record does not move, and its event
-	 * is then <strong>not</strong> published: a late {@code canceled} must not ask {@code booking} to
-	 * release the claim of a booking whose payment went through (invariant #2), and a late
-	 * {@code succeeded} must not announce a confirmation for a refunded collection.
+	 * Whether the outcome moved the payment record. A terminal record does not, and then no event is published:
+	 * a late {@code canceled} must not release a paid booking's claim (invariant #2), nor a late
+	 * {@code succeeded} confirm a refunded collection.
 	 */
 	private boolean applied(String paymentIntentId, PaymentStatus status) {
 		boolean applied = payments.markStatus(paymentIntentId, status);
@@ -280,11 +239,9 @@ class StripeWebhookController {
 	}
 
 	/**
-	 * The refund of an every-transition type, if there is one — fail-<strong>open</strong>, unlike
-	 * {@link #requiredRefund}: these types fire for every refund on the account, so a permanent retry
-	 * loop would get this endpoint disabled and stop payment delivery with it.
-	 *
-	 * <p>Rationale: {@code RESPONSIBILITIES.md} §{@code payment}.
+	 * The refund of an every-transition type, if any — fail-<strong>open</strong>, unlike {@link #requiredRefund}:
+	 * these fire for every refund on the account, and a retry loop would get this endpoint disabled, payment
+	 * delivery with it. Rationale: RESPONSIBILITIES.md §payment.
 	 */
 	private Optional<Refund> advisoryRefund(Event event) {
 		Refund refund = refundOf(event).orElse(null);

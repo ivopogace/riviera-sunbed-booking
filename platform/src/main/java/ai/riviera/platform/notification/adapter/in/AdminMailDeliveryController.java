@@ -21,37 +21,12 @@ import ai.riviera.platform.notification.application.MailDeliveryLookup;
 import ai.riviera.platform.shared.ApiProblem;
 
 /**
- * The platform-admin mail-delivery surface: what happened to a tourist's booking-confirmation
- * mail, and the button that sends it again. Driving adapter depending only on the module's two driving
- * ports.
- *
- * <p><strong>Role-gated, not venue-scoped.</strong> Under {@code /api/admin/**}, gated to
- * {@code ADMIN} in {@code SecurityConfig} — platform-wide delivery state belonging to no venue, so it
- * carries the same invariant-#13 exemption as erasure, operator approval, suppression reinstatement and
- * the mail outbox. A plain {@code OPERATOR} or {@code CUSTOMER} is {@code 403}; anonymous is
- * {@code 401}.
- *
- * <p><strong>Lives in the module, not at the composition root</strong> — the
- * {@code AdminEmailSuppressionController} and {@code AdminMailOutboxController}
- * precedent, for the same reason: hosting it at the root would force a published
- * {@code notification::api} port for a single same-module consumer.
- *
- * <p><strong>Why the lookup is a {@code POST}.</strong> Its key is an email address, and a query string
- * or path segment would deposit that address in access logs, proxy logs and browser history. A
- * read-shaped {@code POST} is the standard trade for a PII-keyed lookup; the resend's path segment
- * carries the numeric booking id, which is not sensitive.
- *
- * <p><strong>Why every outcome is {@code 200}.</strong> Each is an expected flow an admin acts on
- * rather than an error ({@code riviera-java-conventions} §6) — including "no such booking" and "never
- * confirmed", where the admin needs to know <em>which</em> refusal it was to know what to do next. A
- * malformed request body is the one genuine {@code 400}, and it is RFC-7807 through the single
- * {@link ApiProblem} factory; anything thrown becomes a {@link ProblemDetail} through the
- * one {@code ApiErrorHandler}, never a per-controller {@code @ExceptionHandler}.
- *
- * <p><strong>What the responses deliberately never carry</strong> (invariant #7): no arrival code, and
- * no recipient address — the caller supplied the address, and the code is a bearer credential this view
- * has no reason to echo. An unknown address and a known address with no bookings answer identically, so
- * the surface is not an address oracle.
+ * ADMIN booking-confirmation delivery lookup and resend. Under {@code /api/admin/**} — ADMIN-gated in
+ * {@code SecurityConfig}, exempt from invariant #13, and every mutating call audited by the edge. The
+ * lookup is a {@code POST} so the address never lands in URLs or logs. Every outcome is {@code 200}; a
+ * malformed body is an RFC-7807 {@code 400} via {@link ApiProblem}, anything thrown a
+ * {@link ProblemDetail} via {@code ApiErrorHandler}. Responses never carry the booking code (#7) or the
+ * address, and an unknown address answers like one with no bookings — no address oracle.
  */
 @RestController
 @RequestMapping("/api/admin/mail-deliveries")
