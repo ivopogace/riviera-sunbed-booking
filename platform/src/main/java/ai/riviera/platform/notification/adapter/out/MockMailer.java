@@ -19,29 +19,12 @@ import ai.riviera.platform.notification.application.RequestDeclinedMail;
 import ai.riviera.platform.notification.application.RequestExpiredMail;
 
 /**
- * Default-profile ({@code @Profile("!mailer & !smtp4dev")}) recording {@link Mailer} that plays a cooperative mail
- * transport (S8, epic #108, design D-6; booking confirmations added in #371) — the same stub pattern as
- * {@code MockSsoGateway}. Instead of sending, it keeps each {@link SentEmail} in memory, so every message
- * kind is demoable end-to-end with zero external credentials and backend ITs can assert on what was sent
- * via {@link #lastTo}. Recovery messages additionally log their tokenized link (dev-only, see below);
- * a booking confirmation deliberately logs no arrival code — the tourist already has it in the app, so
- * the affordance would buy nothing and invariant #7 costs nothing to honour there. The
- * operator-approval notice (#375) logs its link too, but needs none of that argument: its link is the
- * public sign-in URL, so it is the one logged link here that is not a bearer credential.
- *
- * <p>{@code @Profile("!mailer & !smtp4dev")} so exactly one {@link Mailer} bean exists: the mock unless a
- * real-transport profile ({@code mailer}, or the local-dev {@code smtp4dev}) swaps in
- * {@link SmtpMailer}. {@link MockMailerProdGuard} additionally
- * forbids this mock from ever running under {@code prod}. The link carries a single-use bearer token
- * (invariant #7); logging it is a deliberate <em>dev-only</em> affordance — mock-only and prod-guarded, it
- * never runs in production.
- *
- * <p><strong>Public, unlike the other adapters (#382):</strong> the recording surface
- * ({@link #sent()} / {@link #lastTo} / {@link #clear()}) is the platform test suite's established
- * observation seam — ITs outside this package (the recovery flows, the confirmation IT) pull the
- * tokenized link or the recorded fields out of the "sent" outbox. No production caller exists:
- * Modulith walls the class off from every module, and the composition root talks only to
- * {@code notification.api}.
+ * Recording {@link Mailer}: keeps each {@link SentEmail} in memory instead of sending, so every kind
+ * is demoable without credentials. The profile keeps exactly one {@code Mailer} bean ({@link SmtpMailer}
+ * under {@code mailer}/{@code smtp4dev}); {@link MockMailerProdGuard} bars this one from {@code prod}:
+ * it logs recovery links, whose token is a bearer credential (invariant #7), as a dev-only affordance.
+ * Booking kinds log no code or link. Public only for ITs ({@link #sent()}, {@link #lastTo},
+ * {@link #clear()}): Modulith walls it off, and the root reaches only {@code notification::api}.
  */
 @Component
 @Profile("!mailer & !smtp4dev")

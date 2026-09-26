@@ -9,23 +9,12 @@ import ai.riviera.platform.booking.vocabulary.BookingId;
 import ai.riviera.platform.booking.vocabulary.RefundReason;
 
 /**
- * Published when a booking transitions to {@code CANCELLED} (U6) — the cancellation spine
- * fact other modules react to. The {@code payout} module consumes it and posts a REVERSAL sized to
- * the refund (ADR-0005); {@code availability} is freed and the refund issued <em>synchronously</em>
- * by {@code booking} (calling {@code availability::api} / {@code payment::api}) rather than via this
- * event, because those modules already sit downstream of {@code booking} and an event back to them
- * would cycle (invariant #11). {@code notification} is the second subscriber, mailing the
- * guest a record of the cancellation and its refund — a read-only consumer on the same fact, which is
- * why it changes nothing above: the money path is still {@code payout} plus {@code booking}'s own
- * refund listener.
- *
- * <p>Id-based, immutable payload (invariant #11): technical ids ({@link BookingId}, {@link VenueId},
- * {@link SetId}) plus the cancellation facts — the {@code bookingDate} ({@code Europe/Tirane},
- * invariant #6), the server-computed {@code refundMinor} in integer minor units + ISO
- * {@code currency} (invariants #5/#10), and the {@link RefundReason} (U9). {@code refundMinor} drives
- * the proportional reversal; {@code reason} is stamped on that reversal so the ledger stays auditable
- * (policy, weather, or the venue's own change — the value {@code payout} charges its fee on).
- * The original accrual is re-read by {@code payout}, not carried here.
+ * Published when a booking becomes {@code CANCELLED}. Id-based (invariant #11); days are in
+ * {@code Europe/Tirane} (#6); the server computes {@code refundMinor}, minor units + ISO currency
+ * (#5, #10). {@code payout} reverses in proportion to it, stamps {@code reason} (a
+ * {@code VENUE_CHANGE} adds a fee) and re-reads the accrual rather than carrying it here;
+ * {@code notification} mails the record; {@code booking}'s own listeners refund and void a released
+ * intent. {@code availability} and {@code payment} must never subscribe: an event back would cycle.
  */
 public record BookingCancelled(BookingId bookingId, VenueId venueId, SetId setId,
 		LocalDate bookingDate, long refundMinor, String currency, RefundReason reason, LocalDate lastDate) {

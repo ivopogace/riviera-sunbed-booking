@@ -9,30 +9,12 @@ import { VenueCard } from './venue-card';
 import { StarIcon } from '../../shared/star-icon';
 
 /**
- * One venue on the **desktop panel** — the flat list entry the panel renders where the phone's
- * sheet renders a card. Same record, same job (the row IS the pin's preview), different form: a
- * 72 px thumbnail, the name and price on one line, one facts line, a 72 px availability bar beside
- * its own number, and a hairline under it. No card edge, no shadow: three nested rounded surfaces
- * — page, panel, card — was the design's templated tell. The hairline and the track follow the
- * page ink rather than the card family, which riviera does not redeclare and which would leave a
- * dark line on its dark panel.
- *
- * <p>The facts line carries the **review count**, which only this surface has room for: a 4.6 from
- * 3 reviews is not a 4.6 from 300, and the phone's card fills that space with the distance chip.
- *
- * <p>A venue whose sales for the chosen day have closed (invariant #4) keeps its row but wears
- * **dusk**, as its card does on the sheet and its pin does on the map: desaturated, never faded —
- * a fade puts the name under 3:1 in every theme — and the **price gives way** to the chip, which
- * carries the state where colour alone would not (WCAG 1.4.1). The chip takes the price's own
- * slot, so the row costs 92 px closed or selling, 121 px selected. Every arm of a slot on those
- * lines must cost what the others do, or the panel's rhythm tracks each venue's state: the name
- * line holds a 24 px floor for the shorter chip, the `New` chip is held to the text beside it.
- *
- * <p>The **selected** row is the only one that expands, to its amenity chips and its booking mode,
- * and only when that mode is not the default — `Instant Book` on twenty rows of twenty-six is
- * noise, while `Request to Book` is the fact a tourist needs. If a venue population is ever mostly
- * request-mode the rule inverts: it is the exception that gets named, not one particular value.
- * The chips live inside the anchor's own text column, so the selected row's outline contains them.
+ * One desktop-panel venue: the phone sheet's card as a flat row, which IS the pin's preview. Its
+ * hairline and track use the page ink, not the card family (a dark line on riviera's dark panel).
+ * Dusk (invariant #4): desaturate, never fade (a fade drops the name under 3:1); the chip takes the
+ * price's slot and carries the state beyond colour (WCAG 1.4.1). Every arm of a slot costs the
+ * same height (92 px, 121 px selected), or the panel's rhythm tracks state. Only the selected row
+ * expands (amenities; the mode only if not Instant Book), inside the anchor's outlined text column.
  */
 @Component({
   selector: 'app-venue-row',

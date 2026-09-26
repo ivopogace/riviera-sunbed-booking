@@ -40,18 +40,12 @@ export function signInResultFor(error: unknown): SignInResult {
 }
 
 /**
- * Session-aware auth state for ONE principal type (the shared base of {@link OperatorAuth}
- * and {@link CustomerAuth}, extracted so the ~80 lines of restore/logout/session-state logic live
- * once). The browser holds NO credential: a subclass posts to its principal-typed login endpoint and
- * the backend answers with an `HttpOnly` session cookie the browser then attaches
- * ({@link apiSessionInterceptor} adds `withCredentials` + the CSRF header). On construction the
- * subclass restores from `GET /api/auth/me`, so a signed-in principal survives a page reload; a `401`
- * there just means "signed out" (expected state, not an error).
- *
- * <p><strong>Principal-type isolation:</strong> `/me` is polymorphic (it returns whichever
- * principal owns the session), so this base adopts a `/me` principal ONLY when its {@link principalType}
- * matches — an operator session never makes the customer service signed-in, and a customer session
- * never drives the operator console. Each subclass declares its own type.
+ * Session-aware auth state for ONE principal type, the shared base of {@link OperatorAuth} and
+ * {@link CustomerAuth}. The browser holds no credential: login gets an `HttpOnly` session cookie,
+ * and {@link apiSessionInterceptor} adds `withCredentials` + the CSRF header. The subclass restores
+ * from `GET /api/auth/me` on construction; a `401` there just means signed out. `/me` is
+ * polymorphic, so a principal is adopted ONLY when its {@link principalType} matches — an operator
+ * session never signs in the customer service, nor vice versa.
  */
 export abstract class SessionAuth {
   protected readonly http = inject(HttpClient);
@@ -62,10 +56,9 @@ export abstract class SessionAuth {
   /** True while the initial current-principal restore is in flight (surfaces can hold rendering). */
   readonly restoring = signal(true);
   /**
-   * True when the startup `GET /api/auth/me` restore ended in something other than a `401` — a
-   * transport/server failure this tab cannot tell apart from "signed out" on {@link signedIn} alone.
-   * A signed-out visitor and an unreachable backend must not render or announce identically
-   * (issue #745): a surface that needs the distinction reads this alongside `signedIn`.
+   * True when the startup `/me` restore failed with something other than a `401`, which
+   * {@link signedIn} alone can't tell from signed out. A surface that must not render or announce
+   * an unreachable backend as "signed out" reads this alongside `signedIn`.
    */
   readonly restoreFailed = signal(false);
   /** Whether a session of THIS principal type is established (as far as this tab knows). */
@@ -89,14 +82,9 @@ export abstract class SessionAuth {
   protected abstract readonly restoreOnStartup: Promise<void>;
 
   /**
-   * Resolves once the initial `GET /api/auth/me` restore has completed — i.e. once {@link signedIn}
-   * is trustworthy. **Anything that branches on the session must await this first**: a route guard
-   * that reads `signedIn()` while the restore is still in flight sees `false` and bounces a
-   * signed-in principal to sign-in on every page reload.
-   *
-   * Awaiting it also guarantees the CSRF cookie has been bootstrapped (`.spa()` issues `XSRF-TOKEN`
-   * on the first API response), so a page that fires a CSRF-protected write on load — the
-   * verify-email landing — doesn't race a cold browser to a 403.
+   * Resolves once the startup `/me` restore is done and {@link signedIn} is trustworthy. Await it
+   * before branching on the session (a guard mid-restore bounces a signed-in user to sign-in on
+   * reload) or firing a write on load (the `XSRF-TOKEN` cookie isn't bootstrapped yet → `403`).
    */
   whenReady(): Promise<void> {
     return this.restoreOnStartup;
@@ -108,15 +96,9 @@ export abstract class SessionAuth {
   }
 
   /**
-   * Invalidate the server session. Local state clears either way — a UI stuck in "signed in" is worse
-   * than a stale cookie — but the RESULT says whether the server actually confirmed it.
-   *
-   * A `401` counts as success: the server has no such session, which is exactly what sign-out wants.
-   * Anything else (network error, `5xx`, or the common `403` from a missing/stale XSRF cookie) may
-   * have left the `HttpOnly` SESSION cookie alive, so it re-bootstraps CSRF via `GET /api/auth/me`
-   * and retries **once**. Still failing, it returns `may-persist` and records a
-   * {@link SignOutNotice} the shell surfaces — the shared-device case, where the next visitor would
-   * otherwise be silently restored.
+   * Invalidate the server session; local state clears either way, but the result says whether the
+   * server confirmed it (a `401` counts). Other failures (often a stale XSRF `403`) re-bootstrap
+   * CSRF via `/me` and retry once, then return `may-persist` and record a {@link SignOutNotice}.
    */
   async signOut(): Promise<SignOutResult> {
     const result = await this.logoutWithOneRetry();

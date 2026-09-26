@@ -31,27 +31,12 @@ import {
 } from './operator-console.model';
 
 /**
- * The remodel preview: the `alertdialog` the layout editor opens instead of a save that disturbs a
- * set guests still hold, listing every affected claim in five groups — will move (with the
- * distance), will be refunded, will be released or declined, held by staff for a walk-in, will stay
- * put — and the sets that stay on the map. A picture free of staff holds is committable: Save
- * applies the layout, every move and every ending in one server transaction, keeps each blocked
- * claim's set exactly as stored, and each moved or ended guest is mailed. A picture with a staff
- * hold offers Back alone, since the save refuses it; so does a `displaced` one, the server's answer
- * when the painted layout gave a kept set's row and position to another set. A `stale`
- * picture is the server's fresh answer after a commit found the bookings had changed. A sibling of
- * `shared/confirm-panel.ts` rather than a variant of it, because this panel owns lists; it wears the
- * same amber warn skin.
- *
- * <p><strong>A picture that refunds guests arms Save only once the operator types the refund count
- * and a reason</strong> — the server refuses it otherwise (`409 REFUND_NOT_CONFIRMED`), and both
- * land on the receipt. Its two fields paint in the fixed warn family like everything else here: the
- * ground does not theme, so a themed field skin over it would drift in the dark console.
- *
- * <p><strong>Keep the `@if` outside this component</strong>: it focuses its first control on the way
- * in (WCAG 2.4.3) — the refund-count field when there is one to fill in, else the first button.
- * Focus back out is the caller's, via `focusMover()`. Bookings ride by id and never by code
- * (invariant #7).
+ * The layout editor's remodel `alertdialog`: every claim a save would disturb, in five groups, as
+ * the server answered (the commit re-derives it). A staff hold or `displaced` offers Back alone.
+ * Save arms on refunds only once count and reason are typed (else `409 REFUND_NOT_CONFIRMED`).
+ * Fields keep the fixed warn skin, never a themed one (`riviera-tailwind`: tokenise a skin whole).
+ * <strong>Keep the `@if` outside</strong>: it focuses its first control on mount (WCAG 2.4.3); the
+ * caller's `focusMover()` moves focus back out. Bookings ride by id, never code (invariant #7).
  */
 @Component({
   selector: 'app-remodel-preview-panel',
@@ -168,10 +153,9 @@ export class RemodelPreviewPanel {
   }
 
   /**
-   * Committable: "Row A · position 3 and Row A · position 2 stay on the map; the rest is saved as
-   * painted." Displaced: "Keep Row A · position 3 at its row and position to save." Held: "Keep
-   * Row A · position 2 on the map to save." — the held sets alone, since the save keeps a blocked
-   * claim's set itself.
+   * Committable: "Row A · position 3 stays on the map; the rest …". Displaced: "Keep Row A ·
+   * position 3 at its row and position to save." Held: "Keep Row A · position 2 on the map to
+   * save." — the held sets alone, since the save keeps a blocked claim's set itself.
    */
   protected keepSentence(): string {
     if (this.committable()) {

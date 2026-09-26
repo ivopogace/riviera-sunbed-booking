@@ -23,27 +23,12 @@ import ai.riviera.platform.review.vocabulary.ReviewRef;
 import ai.riviera.platform.review.vocabulary.VenueRef;
 
 /**
- * JDBC adapter over the {@code review} table (invariant #1: explicit SQL via {@link JdbcClient}, no
- * JPA). Package-private — only the {@link Reviews} port is visible outside this package.
- *
- * <p>The claim is a single atomic {@code INSERT ... ON CONFLICT (booking_id) DO NOTHING} against the
- * table's {@code review_once_per_booking} constraint, and the rows-affected count is the outcome:
- * {@code 1} recorded it, {@code 0} means another submit already holds this booking's slot. Because
- * the row's creation <em>is</em> the claim there is no read-then-write window between the two
- * (the {@code JdbcAvailabilityClaim} discipline).
- *
- * <p>The aggregate read is the counterpart: one grouped scan of a venue's rows, served by the
- * prefix of {@code review_venue_listing_idx}. It returns raw totals — the mean and its rounding stay
- * in the domain. The listing read seeks the same index newest-first and keeps a row only when it
- * carries a comment. Both are public reads, and both — and only they — carry the visibility
- * predicate {@code hidden_at IS NULL}: a hidden review counts for nothing on the venue page, while
- * its author's own read-back and the admin's moderation list still see it.
- *
- * <p>Edit and delete address the row by {@code booking_id} and answer with their rows-affected count
- * for the same reason: two amends racing each other resolve in the database, and the loser reads as
- * "no such review" rather than throwing. Hide and un-hide are the admin's twins by review id: each
- * is one conditional update that returns the venue only when the row actually flipped, so a repeat
- * is a no-op the caller can tell apart from a missing row.
+ * JDBC adapter over the {@code review} table (invariant #1). Races resolve in the database: the claim
+ * is one atomic {@code INSERT ... ON CONFLICT (booking_id) DO NOTHING} whose row count is the outcome
+ * (never read-then-write), edit and delete by {@code booking_id} lose a race as "no such review", and
+ * hide/un-hide return the venue only when the row flipped. Only the aggregate and listing reads carry
+ * {@code hidden_at IS NULL}; the mean and its rounding stay in the domain.
+ * Rationale: {@code RESPONSIBILITIES.md} §{@code review}.
  */
 @Repository
 class JdbcReviews implements Reviews {

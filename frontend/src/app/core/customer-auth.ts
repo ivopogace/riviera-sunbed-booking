@@ -28,10 +28,8 @@ import { SsoProviderId, SsoRedirect } from './sso-redirect';
 const ME_API = `${environment.apiBaseUrl}/api/me`;
 
 /**
- * Shown when a current password is required but none was supplied — the case the backend names
- * `MISSING_CURRENT_PASSWORD`. Distinct from "incorrect", which is what both change-password
- * endpoints used to say (or imply) for an empty field; one constant so the tourist and operator pages
- * cannot word the same server answer differently.
+ * Shown when a current password is required but none was supplied (`MISSING_CURRENT_PASSWORD`),
+ * distinct from "incorrect". One constant so the tourist and operator pages word it the same.
  */
 export const CURRENT_PASSWORD_REQUIRED_MESSAGE = 'Enter your current password.';
 
@@ -113,11 +111,9 @@ export class CustomerAuth extends SessionAuth {
   protected readonly restoreOnStartup = this.restore();
 
   /**
-   * Start "Continue with Google/Apple": a full-page navigation to the backend authorize
-   * endpoint. The OIDC Authorization Code + PKCE flow completes server-side and returns to the SPA with a
-   * session cookie — the same session as form login — so this deliberately leaves the SPA (via the
-   * {@link SsoRedirect} seam) rather than an {@code HttpClient} call; `restore()` then picks up the
-   * signed-in state on the return load.
+   * Start "Continue with Google/Apple": a full-page navigation (via {@link SsoRedirect}, not
+   * `HttpClient`) to the backend authorize endpoint. OIDC + PKCE completes server-side and returns
+   * with the form-login session cookie, which `restore()` picks up on the return load.
    */
   startSso(provider: SsoProviderId): void {
     this.ssoRedirect.go(`${AUTH_API}/sso/${provider}/authorize`);
@@ -138,18 +134,9 @@ export class CustomerAuth extends SessionAuth {
   }
 
   /**
-   * Register a customer account. The backend returns 201 for BOTH a fresh email (auto-signed-in, a
-   * session cookie set) and an already-registered one (identical body, NO session — non-enumeration,
-   * D-8), so we learn the outcome from `/me`. A fresh account SWITCHES the session to a different
-   * principal (signed out → the new email, or a live session → the new email), whereas a taken email
-   * leaves the session untouched. So we compare the pre/post principal IDENTITY, not just the
-   * signed-in boolean: `registered` iff `/me` now reports a signed-in principal whose email differs
-   * from before. The boolean alone misclassified a signed-in user registering a genuinely new,
-   * different account as `exists`.
-   *
-   * <p>`challenge` is the widget's solved proof-of-work payload, sent as the fence's header when
-   * present; the edge's three challenge codes come back as their own results so the page can restart
-   * the widget before the retry.
+   * Register a customer. A fresh and a taken email both answer `201` (D-8), so `/me` decides:
+   * `registered` iff the principal's email changed (identity, not `signedIn`: a signed-in user may
+   * register anew). Proof-of-work refusals return as their own results, to restart the widget.
    */
   async register(
     email: string,
@@ -179,12 +166,9 @@ export class CustomerAuth extends SessionAuth {
   }
 
   /**
-   * Request a password-reset link. The response is deliberately uniform (non-enumeration,
-   * D-8), so a success here means "if that email has an account, a link was sent" — never that it exists.
-   *
-   * <p>`challenge` is the widget's solved proof-of-work payload, sent as the fence's header when
-   * present. The fence runs before the controller, so its three codes say nothing about the email;
-   * every other failure still collapses to the one generic answer.
+   * Request a reset link. The answer is uniform (non-enumeration, D-8): `sent` never means the
+   * account exists. `challenge` is the proof-of-work header; the fence runs before the controller,
+   * so its three codes say nothing about the email, and every other failure collapses to `error`.
    */
   async forgotPassword(email: string, challenge?: string): Promise<ForgotPasswordResult> {
     try {
@@ -277,10 +261,9 @@ export class CustomerAuth extends SessionAuth {
   }
 
   /**
-   * Erase the signed-in customer's account + contact PII (right-to-erasure). The backend
-   * scrubs in place (the booking/payment/payout records are retained under statutory retention) and
-   * revokes every session, so on success we also clear local state via {@link signOut} — the tourist is
-   * signed out on this device too. Idempotent server-side; a transport failure is `'error'`.
+   * Right-to-erasure of the signed-in customer's account + contact PII. The backend scrubs in place
+   * (statutory records kept) and revokes every session, so success also runs {@link signOut}
+   * locally. Idempotent server-side; a transport failure is `'error'`.
    */
   async eraseAccount(): Promise<EraseAccountResult> {
     try {
@@ -293,12 +276,9 @@ export class CustomerAuth extends SessionAuth {
   }
 
   /**
-   * Re-request a verification email to the signed-in customer's own address.
-   *
-   * `'withheld'` means the backend accepted the request but the address is on the do-not-email list,
-   * so no message will leave — distinct from `'error'`, where the request itself failed and
-   * retrying may work. The distinction only exists on this authenticated endpoint; the anonymous
-   * forgot-password flow stays deliberately uninformative (D-8).
+   * Re-request a verification email to the signed-in customer's address. `'withheld'`: accepted,
+   * but the address is on the do-not-email list, so nothing is sent; `'error'`: the request failed.
+   * Only this authenticated endpoint tells them apart; forgot-password stays uninformative (D-8).
    */
   async requestVerification(): Promise<'sent' | 'withheld' | 'error'> {
     try {

@@ -5,26 +5,13 @@ import java.net.URI;
 import ai.riviera.platform.customer.vocabulary.SsoProvider;
 
 /**
- * Platform-edge port for the OIDC Authorization Code + PKCE dance with an external identity provider
- * (design D-3/D-4). This is <strong>authentication machinery</strong>, so it lives at the
- * application edge (the root package) alongside {@code SecurityConfig}/{@code AuthController}, never
- * inside a domain module (RV-BE-11) — the {@code customer} module only owns the resulting
- * account identity ({@code SsoAccountProvisioning}).
+ * Edge port for the OIDC Authorization Code + PKCE flow with an external identity provider (design
+ * D-3/D-4): login machinery stays at the edge, never in a module (RV-BE-11); {@code customer} owns only
+ * the resulting account identity. The code exchange runs server-side, so tokens never reach browser JS.
  *
- * <p>Two moves, both completed server-side so tokens never reach browser JS:
- * <ol>
- *   <li>{@link #authorizationRequest} — build the provider's authorize URL for a generated
- *       {@link SsoAuthorizationChallenge} (state + PKCE {@code code_challenge}); the edge 302-redirects
- *       the browser to it.</li>
- *   <li>{@link #exchangeCode} — swap the returned authorization {@code code} (+ the PKCE
- *       {@code code_verifier}) for a verified {@link ExternalIdentity}.</li>
- * </ol>
- *
- * <p>Exactly one implementation is active per profile (mirroring {@code StubPaymentGateway} vs
- * {@code StripePaymentGateway}): the default {@code MockSsoGateway} ({@code @Profile("!sso")}) plays a
- * cooperative IdP with canned identities; under {@code @Profile("sso")} the real per-provider adapters
- * (S5) throw {@link UnsupportedOperationException} until client credentials ship — activating the
- * real profile without S5 fails loudly, never silently falling back to the mock.
+ * <p>One implementation per profile: {@code MockSsoGateway} under {@code !sso}, kept out of prod by
+ * {@code MockSsoProdGuard}; under {@code sso} the real adapters throw
+ * {@link UnsupportedOperationException} until credentials ship, never falling back to the mock.
  */
 public interface SsoGateway {
 

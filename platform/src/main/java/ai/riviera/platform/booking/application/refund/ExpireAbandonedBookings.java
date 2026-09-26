@@ -14,31 +14,9 @@ import ai.riviera.platform.booking.application.request.RequestWindows;
 public interface ExpireAbandonedBookings {
 
 	/**
-	 * Expire every {@code AWAITING_PAYMENT} booking created more than {@code ttl} ago: cancel its
-	 * PaymentIntent (so Stripe stops retrying and the payment can no longer succeed), then cancel the
-	 * booking and release its set. A booking whose payment already {@code succeeded} is left for the
-	 * confirm webhook (invariant #8).
-	 *
-	 * <p>Two clocks: an <em>instant</em> booking is abandoned {@code ttl} after
-	 * creation (the guest was at the checkout screen); an <em>accepted request</em> is abandoned
-	 * only a pay window after {@code accepted_at} — never on the creation clock, which may be
-	 * hours older than the accept.
-	 *
-	 * <p>A third arm cuts across both: whichever clock applies, a booking whose <em>service day</em>
-	 * has ended is expired regardless of how much window is left — with the day over there is
-	 * nothing left to pay for (invariant #4). It is what makes the capped
-	 * {@code RequestWindows#payDeadline} enforceable — the raw-window cutoff alone would let an
-	 * accepted request hold its set past the day it was booked for.
-	 *
-	 * <p>The second clock arrives as the whole {@link RequestWindows} rather than a bare
-	 * {@code Duration} (#373): the cutoff it derives is the same instant the payment-due mail
-	 * promises the guest, and the record owns both directions of that arithmetic so the promise and
-	 * the enforcement cannot drift apart.
-	 *
-	 * @param ttl how long an instant booking may stay {@code AWAITING_PAYMENT} before it is considered abandoned
-	 * @param windows the Request-to-Book windows; only {@code payWindow} is read here, via
-	 *        {@link RequestWindows#acceptedBefore}
-	 * @return the number of bookings actually expired this run (for logging/observability)
+	 * Voids and releases each {@code AWAITING_PAYMENT} booking {@code ttl} after creation or, once
+	 * accepted, a pay window after acceptance (whole {@code windows}: the payment-due mail's instant),
+	 * and any whose service day ended (invariant #4); returns the count. A paid one is the webhook's (#8).
 	 */
 	int sweep(Duration ttl, RequestWindows windows);
 }

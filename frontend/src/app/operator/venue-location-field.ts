@@ -34,27 +34,12 @@ interface ShoreOffer {
 }
 
 /**
- * The venue's pin on the riviera map, placed by hand: tap the map to drop it, drag it to adjust,
- * Clear to unpin. The coordinates read back beside the map, never as an input — an operator places
- * a venue by looking at the coast, not by typing degrees.
- *
- * <p>Every pointer gesture has a keyboard twin, because typing coordinates is not offered (WCAG
- * 2.1.1): the map's own controls pan, zoom and — for an operator standing at their own venue —
- * centre on where they are, and <em>Place pin at map centre</em> then drops or moves the pin to
- * whatever the operator has centred. Neither button is ever `disabled` — the
- * one that clears would otherwise disable the control it was just pressed on, stranding focus
- * (WCAG 2.4.3) — so Clear carries `aria-disabled` and does nothing when there is no pin.
- *
- * <p>A pin dropped off the shoreline is OFFERED the shore, never moved to it: the drop
- * stores the operator's own point first, then the placer samples the map's own imagery, and what
- * it finds becomes a proposal with the distance it would travel and a press to decline. Some
- * venues really do sit back from the water, and the operator is the one standing there. The
- * style draws rivers and lakes in the sea's own fill, so an inland pin near one may be offered
- * its bank — which is also why the offer is an offer.
- *
- * <p>A small cousin of the layout editor: it owns no map of its own, only what the riviera-map
- * component reports through the engine seam. The pin saves with the rest of the profile, so this
- * field holds a value and nothing else — no HTTP, no version token.
+ * The venue's riviera-map pin, placed by hand (tap, drag, Clear); coordinates read back, never
+ * typed, so each gesture has a keyboard twin (WCAG 2.1.1): map controls + Place pin at map centre.
+ * Neither button is ever `disabled` (it would strand focus, WCAG 2.4.3); Clear is `aria-disabled`.
+ * An off-shore pin is OFFERED the shore, never moved: the operator's point stores first, and the
+ * style paints rivers and lakes as sea, so an inland pin may be offered a bank. A value only — it
+ * saves with the profile (no HTTP, no version token).
  */
 @Component({
   selector: 'app-venue-location-field',
@@ -154,14 +139,9 @@ export class VenueLocationField {
   protected readonly offer = signal<ShoreOffer | null>(null);
 
   /**
-   * The offer in words, empty when there is none — one sentence with one source: the persistent
-   * region above speaks it, the panel below shows it.
-   *
-   * <p>That region is mounted OUTSIDE the `@if` on purpose. A live region is announced for content
-   * that mutates while it is already in the DOM, so one that arrives holding its sentence reads as
-   * silence (RV-FE-10) — and nothing in jsdom or axe would say so, which is why
-   * `venue-location-field.spec.ts` asserts the element's identity across the transition rather
-   * than the presence of its text. The shown copy is `aria-hidden` so the sentence is not read twice.
+   * The offer in words, '' when none. Its live region stays OUTSIDE the `@if`: one mounted already
+   * holding text is silent (RV-FE-10), which jsdom and axe can't see (the spec pins element
+   * identity). The panel's copy is `aria-hidden`, so it is not read twice.
    */
   protected readonly offerSentence = computed(() => {
     const shore = this.offer();
@@ -216,12 +196,9 @@ export class VenueLocationField {
   }
 
   /**
-   * Where the shoreline is, from the pixels the map is showing: the pin's own spot on the box,
-   * the rule over a sampler reading that imagery, and the answer back out as a position.
-   *
-   * <p>`null` wherever the map cannot say — an engine that draws nothing readable, a frame with no
-   * water or no land, a pin already on the shore — and a move too small to survive the stored six
-   * decimals is one of those: proposing a point that reads back identical would be noise.
+   * The shoreline from the map's own pixels: project the pin, snap, unproject. `null` where the map
+   * can't say (unreadable engine, no water or land in frame, already on the shore) or the move does
+   * not survive the stored six decimals — an offer that reads back identical is noise.
    */
   private shoreNear(own: VenueLocation): ShoreOffer | null {
     const handle = this.map().handle();

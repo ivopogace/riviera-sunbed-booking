@@ -20,30 +20,12 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 
 /**
- * Records every mutating {@code /api/admin/**} action in the {@link AdminAuditLog} (required
- * by ADR-0013) — the fence over the {@code audit} module's mechanism (ADR-0017): actor, method, path, outcome status, and the optional sanitized
- * {@link AdminAuditReasons#HEADER} grounds. Blanket coverage by construction — a new admin surface
- * is audited the day it ships, with no per-controller instrumentation to forget.
- *
- * <p><strong>Positioned after {@code AuthorizationFilter}, inside the API security chain</strong>
- * ({@code SecurityConfig}), so only requests that passed authentication <em>and</em> authorization
- * reach it: the audit answers "what did an authenticated principal do past the gate", never "who
- * knocked" — anonymous 401s, CSRF 403s and wrong-role 403s are rejected upstream and leave no row.
- * The belt-and-braces principal check below keeps that contract even if the chain order drifts.
- * Recording happens <em>after</em> the action with its real outcome status (including
- * application-level 4xx — a failed destructive attempt is signal); an exception unwinding past the
- * handler advice is recorded as the 500 it becomes.
- *
- * <p><strong>The actor is whoever the namespace admitted</strong> — since #348 A4 tightened the last
- * carve-out ({@code /api/admin/payout-batches}, then OPERATOR-gated), every path in the namespace is
- * gated to the platform ADMIN, so the actor is that admin. The filter does not depend on this: it keys
- * on the path prefix and records whatever principal got past the gate, so a future surface admitted on
- * some other authority is audited the day it ships without touching this class.
- *
- * <p><strong>A failed audit insert never fails the admin action</strong> (logged at ERROR instead):
- * write-after cannot un-do the action it records, and the audited actions are themselves writes on
- * the same database, so an audit-lost-while-action-succeeded window needs a mid-request DB failure.
- * Rationale: {@code RESPONSIBILITIES.md} §{@code audit}.
+ * The edge's fence over {@code audit} (ADR-0013, ADR-0017): records every mutating {@code /api/admin/**}
+ * action in the {@link AdminAuditLog} (actor, method, path, status, sanitized
+ * {@link AdminAuditReasons#HEADER} grounds), keyed on the path prefix, so a new admin surface is audited
+ * the day it ships. After {@code AuthorizationFilter}, only principals past the gate leave a row (the
+ * principal check holds if the chain drifts), written after the action with its real status, a throw as
+ * 500. A failed write never fails the action, it logs ERROR: {@code RESPONSIBILITIES.md} §audit.
  */
 final class AdminAuditFilter extends OncePerRequestFilter {
 

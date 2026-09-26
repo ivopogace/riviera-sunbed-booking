@@ -26,16 +26,12 @@ import ai.riviera.platform.notification.application.RequestDeclinedMail;
 import ai.riviera.platform.notification.application.RequestExpiredMail;
 
 /**
- * Real SMTP {@link Mailer} (ADR-0011): delivers every message kind over the
- * configured relay via {@link JavaMailSender} — Scaleway TEM in deployment, any RFC-compliant relay by
- * config ({@code application-mailer.properties}; STARTTLS on 587, finite timeouts). Active under
- * {@code @Profile("mailer")} — where missing SMTP config fails at boot (unresolved placeholder), never on
- * first send — and under the local-dev {@code smtp4dev} profile, whose defaults target the local sink
- * ({@code application-smtp4dev.properties}). Messages are plain text with no tracking markup
- * (ADR-0011 §25-TDDDG posture). Neither bearer credential (invariant #7) is ever logged here — not the
- * tokenized link, not the arrival code — and untrusted text reaching a <em>header</em> is CRLF-stripped
- * ({@link #headerSafe}). Package-private driven adapter (invariant #11); pinned by
- * {@code SmtpMailerIT} + {@code MailerProfileWiringTest}.
+ * Real SMTP {@link Mailer} over {@link JavaMailSender} (ADR-0011): Scaleway TEM in deployment, any relay
+ * by config ({@code application-mailer.properties}). Under {@code mailer}, missing SMTP config fails at
+ * boot, never on first send; {@code smtp4dev} targets the local sink. Plain text, no tracking markup
+ * (ADR-0011). Never logs a bearer credential (tokenized link, arrival code; invariant #7), and
+ * CRLF-strips untrusted header text ({@link #headerSafe}). Pinned by {@code SmtpMailerIT} and
+ * {@code MailerProfileWiringTest}.
  */
 @Component
 @Profile("mailer | smtp4dev")
@@ -197,10 +193,9 @@ class SmtpMailer implements Mailer {
 	}
 
 	/**
-	 * Nothing refunded is said in words, never as {@code EUR 0.00} — a zero amount on a "Refund:" line
-	 * reads as a refund at a glance, which is the opposite of what happened (ADR-0005 tier
-	 * {@code NONE}, past the invariant-#4 cutoff). A released unpaid booking collected nothing at all,
-	 * so it says that instead of naming a cutoff it never reached.
+	 * Nothing refunded is said in words, never as {@code EUR 0.00}, which reads as a refund at a glance
+	 * (ADR-0005 tier {@code NONE}, past the invariant-#4 cutoff). A released unpaid booking says nothing
+	 * was charged instead of naming a cutoff it never reached.
 	 */
 	private static String refundLine(BookingCancellationMail cancellation) {
 		if (cancellation.refundMinor() > 0) {
@@ -259,10 +254,9 @@ class SmtpMailer implements Mailer {
 	}
 
 	/**
-	 * The born-past-free-cancellation disclosure (#795), appended to the confirmation and
-	 * payment-due bodies. One line per window, matching the checkout note: LATE stays cancellable
-	 * (invariant #10 — refused only at CLOSED), so only CLOSED may claim the booking can't be
-	 * cancelled; FREE or null (a pre-#795 payload — tolerated forever) renders nothing.
+	 * The born-past-free-cancellation line for the confirmation and payment-due bodies, matching the
+	 * checkout note. Only CLOSED may say the booking can't be cancelled: LATE stays cancellable
+	 * (invariant #10). FREE or null renders nothing; tolerate null forever (payloads lacking the field).
 	 */
 	private static String disclosureLine(CancellationWindow windowAtBirth, int lateCancelRefundBps) {
 		if (windowAtBirth == null || windowAtBirth == CancellationWindow.FREE) {
@@ -388,15 +382,9 @@ class SmtpMailer implements Mailer {
 	}
 
 	/**
-	 * Strip CR/LF from a value destined for a <em>header</em>. The venue name is operator-supplied and
-	 * validated only as non-blank, so it is untrusted text reaching a line-oriented sink — the CRLF class
-	 * {@code riviera-java-conventions} §10 names for logs.
-	 *
-	 * <p><strong>Defence in depth, not a live fix:</strong> {@code SmtpMailerIT}'s injection test passes
-	 * with and without this call, because Jakarta Mail already refuses to turn a newline in a subject into
-	 * a new header. The call keeps the guarantee <em>ours</em> rather than resting on library internals —
-	 * it would start mattering the moment this class moved to {@code MimeMessageHelper}, a raw header API,
-	 * or the provider's HTTP API (which ADR-0011 leaves open for v2). Bodies need no such treatment.
+	 * Strips CR/LF from operator-supplied text bound for a <em>header</em>. Keep it though Jakarta Mail
+	 * refuses a newline in a subject today ({@code SmtpMailerIT} passes either way): it starts mattering
+	 * under {@code MimeMessageHelper}, a raw header API or the provider's HTTP API. Bodies need none.
 	 */
 	private static String headerSafe(String value) {
 		return value.replaceAll("[\\r\\n]", " ");

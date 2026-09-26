@@ -25,27 +25,12 @@ import ai.riviera.platform.venue.vocabulary.VenueMapView;
 import ai.riviera.platform.venue.vocabulary.VenueSummaryView;
 
 /**
- * Public tourist read endpoints for venues (invariant #11 — depends only on this module's ports).
- * Two of them are the originals: the discovery <strong>list</strong>
- * ({@code GET /api/venues?beach=&region=&date=}) and a single venue + its beach
- * <strong>map</strong> ({@code GET /api/venues/{id}}, date-aware — 200 with the map, or 404 for an
- * unknown id).
- *
- * <p>A third read, {@code GET /api/venues/{id}/availability-calendar?from=&to=}, answers the same
- * availability question for a <em>window</em> of days at once, so a date picker can show which days
- * are worth choosing. Its path deliberately does not reuse the {@code /availability} segment, which
- * is the operator-only per-set state read.
- *
- * <p>A fourth, {@code GET /api/venues/{id}/reviews?cursor=}, pages through the venue's listed
- * reviews newest first; the cursor is the id of the last review the caller saw, and a page answers
- * the next one to pass back, or none.
- *
- * <p>The optional {@code date} query param selects the day whose availability the map reflects.
- * When omitted it defaults to <strong>today in {@code Europe/Tirane}</strong> (invariant #6) — the
- * earliest day a booking can still land on, now that a venue's sales window can run to the day
- * itself — computed from the injected UTC {@link Clock}, never the JVM default zone. The venue's
- * sales close (invariant #4) remains enforced server-side at booking time; this default is a
- * display convenience, not a booking guarantee.
+ * The public tourist venue reads, on this module's ports only (invariant #11): the discovery list,
+ * a venue's beach map, its availability calendar and its reviews; a hidden venue reads as unknown.
+ * A missing {@code date} or {@code from} is today in {@code Europe/Tirane} off the injected UTC
+ * {@link Clock}, never the JVM zone (invariant #6); it is a display default, and sales close
+ * (invariant #4) is enforced at booking. The calendar must not reuse the {@code /availability}
+ * segment, which is the operator-only per-set state read.
  */
 @RestController
 @RequestMapping("/api/venues")
@@ -70,10 +55,9 @@ class VenueReadController {
 	}
 
 	/**
-	 * Discovery list: the venues matching the optional {@code beach}/{@code region}
-	 * filters, as summaries with each venue's free/total set count for {@code date}. Always 200 with
-	 * a JSON array (empty when nothing matches) — a filter that hits no venue is not a 404. {@code date}
-	 * defaults to today in {@code Europe/Tirane} like the map read above.
+	 * The venues matching the optional {@code beach}/{@code region} filters, with free/total set
+	 * counts for {@code date} (default today in {@code Europe/Tirane}). Always 200: a filter hitting no
+	 * venue is an empty array, not a 404.
 	 */
 	@GetMapping
 	List<VenueSummaryView> listVenues(
@@ -101,15 +85,9 @@ class VenueReadController {
 	}
 
 	/**
-	 * Per-day free/total set counts across {@code [from, to]} — the calendar behind date choice.
-	 * Both bounds are optional: {@code from} defaults to today in {@code Europe/Tirane} like the
-	 * reads above, {@code to} to a fortnight from {@code from}. A window that is inverted or wider
-	 * than {@link #MAX_WINDOW_DAYS} days is rejected {@code 400} before the catalogue is asked.
-	 *
-	 * <p>The counts are a snapshot, not a hold, and past days are answered like any other: the
-	 * counts report availability, not bookability; each day's {@code salesOpen} carries the sales
-	 * verdict beside them, display only. The venue's sales close and season closure (invariant #4)
-	 * stay enforced at booking time.
+	 * Per-day free/total counts over {@code [from, to]}, {@code to} defaulting to a fortnight on; a
+	 * window inverted or over {@link #MAX_WINDOW_DAYS} days is {@code 400}. A snapshot, not a hold, past
+	 * days too; {@code salesOpen} is display only, and booking enforces invariant #4.
 	 */
 	@GetMapping("/{venueId}/availability-calendar")
 	ResponseEntity<List<DailyAvailabilityView>> availabilityCalendar(
@@ -131,10 +109,9 @@ class VenueReadController {
 	}
 
 	/**
-	 * One page of the venue's listed reviews, newest first. {@code cursor} is the {@code nextCursor}
-	 * a previous page answered; omitted, the page starts at the newest review. A cursor that cannot
-	 * name a review is rejected {@code 400} before the list is asked; a venue tourists cannot see is a
-	 * {@code 404}, exactly as the map read answers.
+	 * One page of listed reviews, newest first; {@code cursor} is a previous page's {@code nextCursor},
+	 * omitted for the first page. A cursor that cannot name a review is {@code 400} before the list is
+	 * asked; a venue tourists cannot see is {@code 404}, as on the map read.
 	 */
 	@GetMapping("/{venueId}/reviews")
 	ResponseEntity<VenueReviewsResponse> reviews(@PathVariable long venueId,

@@ -77,11 +77,9 @@ const NAME_FONT = { weight: 600, sizePx: 12.5 };
 const FROM_FONT = { weight: 800, sizePx: 11 };
 
 /**
- * The lone venue's pin: the theme-invariant solid-button skin the rest of the map chrome wears,
- * as a real control — it opens something, so it is a `<button>` and takes the focus ring. 44 px
- * tall and at least 44 px wide (WCAG 2.5.5 on both axes), growing with the price written on it.
- * The selected pin INVERTS the same fixed pair rather than reaching for the accent: it sits on
- * imagery, which never themes, so a theme-switching fill under a fixed ink would drift.
+ * The lone venue's pin: a real `<button>` (it opens something, so it takes the focus ring) in the
+ * theme-invariant solid-button skin, at least 44 px on both axes (WCAG 2.5.5). Selection INVERTS
+ * the fixed pair, not the accent: over imagery, which never themes, a themed fill would drift.
  */
 const LONE_CLASSES =
   'pointer-events-auto absolute inline-flex h-11 min-w-11 touch-manipulation items-center ' +
@@ -93,11 +91,9 @@ const LONE_CLASSES =
 const LONE_DOT_CLASSES = '[&_svg]:size-[21px]';
 
 /**
- * Dusk: this venue, or every venue in this crowd, has stopped selling for the chosen day
- * (invariant #4, rendered). Desaturation over the fixed hover fill with the price struck, and the
- * ink untouched — a faded button would drop the face under AA over imagery of unknown luminance,
- * and the strike keeps the state off colour alone. The `data-dusk:` fill outranks the resting one
- * by specificity, not by class order.
+ * Dusk: the venue, or every venue in the crowd, stopped selling for the chosen day (invariant #4).
+ * Desaturate and strike the price, never fade the ink (AA over imagery of unknown luminance; the
+ * strike keeps it off colour alone). `data-dusk:` outranks the resting fill by specificity.
  */
 const DUSK_CLASSES =
   'data-dusk:saturate-0 data-dusk:bg-riv-solid-btn-hover ' +
@@ -135,21 +131,12 @@ const MEMBER_CLASSES =
   'text-riv-solid-btn-fill opacity-0 focus-visible:z-[2] focus-visible:opacity-100';
 
 /**
- * The riviera map's venue pins, drawn as an ordinary Angular overlay in light DOM over the map's
- * box rather than as markers the engine holds: every pin is re-projected through the map port on
- * each camera move, and `@for … track` keeps one element per venue across every re-group, so the
- * focus a button holds survives a fit, a re-group and a narrowing of the list.
- *
- * <p>A venue on its own is production's priced pin. Venues whose pins would bury each other at the
- * current camera form a **crowd**, drawn as one **place pill** — the beach, the crowd's lowest
- * from-price and the count — whose press eases the camera to the smallest zoom that separates
- * them and, when they share one beach, reports it so the page can narrow the list. Where no zoom
- * separates them the pill inverts and its presses walk the crowd's previews one by one.
- *
- * <p>Keyboard parity: a crowd stays n real buttons in feed order, keyed by pin — the pill is the
- * face member's button (the open one while a preview is open, else the first) and the others are
- * invisible at the same spot until focused, each opening its own venue. The host passes pointer
- * events through to the map; only the buttons re-arm them. Vocabulary: `CONTEXT.md`.
+ * The riviera map's venue pins: a light-DOM overlay (not engine markers) re-projected through the
+ * map port on each camera move. `@for … track` keeps one element per venue, so a button's focus
+ * survives a fit, a re-group and a narrowing of the list. A crowd (`CONTEXT.md`, *Pin crowd*) stays
+ * n real buttons in feed order: the pill is the face member's (the open one, else the first), the
+ * rest invisible at the same spot until focused. The host passes pointer events through to the
+ * map; only the buttons re-arm them.
  */
 @Component({
   selector: 'app-venue-pin-layer',
@@ -205,10 +192,9 @@ export class VenuePinLayer {
   });
 
   /**
-   * The room the pills have, in the layer's own coordinates: the host measures the chrome and the
-   * window where it draws them — the viewport — and the layer's own origin is what turns the two
-   * spaces into one. On the phone the layer IS the viewport and the shift is zero; on the desktop
-   * it is the pane, inset from both.
+   * The pills' room in the layer's own coordinates: the host measures chrome and window in the
+   * viewport, and the layer's origin shifts them into its own space (zero on the phone, where the
+   * layer IS the viewport; the pane's inset on the desktop).
    */
   private readonly space = computed<PillSpace>(() => {
     const frame = this.frame();

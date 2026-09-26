@@ -18,28 +18,12 @@ import ai.riviera.platform.notification.application.TransactionalMailService;
 import ai.riviera.platform.shared.ObservabilityMetrics;
 
 /**
- * Mails the tourist a record that the venue declined their Request-to-Book — the outcome
- * that until now reached only a guest who happened to reload the code-gated view, leaving everyone
- * else waiting on a request already refused.
- *
- * <p><strong>Whether the mail is warranted was decided upstream</strong>, exactly as for the
- * payment-due kind: {@code booking} publishes {@code BookingRequestDeclined} only from the winning
- * decline leg, in the same transaction as the guarded transition, so a lost race or a withdraw
- * never reaches this class and no status re-read could do anything here but race the row.
- *
- * <p>Everything the mail renders is on the payload or resolved through
- * {@link BookingMailFactsService}, the shared three-port assembly; the arrival code comes through
- * {@code booking::api} and the status link is built from it at send time by {@link BookingLinks} —
- * never from the payload, which the registry persists as text (invariant #7). The copy is a plain
- * record by product decision: declined, nothing held, nothing charged, the link.
- *
- * <p><strong>Asynchronous and after-commit on the mail bulkhead</strong> — the shape
- * {@code MailListenerExecutorArchitectureTest} requires of every listener here. Idempotency is the
- * Event Publication Registry's, whole; a transport failure propagates on purpose so the send is
- * retried. Giving up on an unresolvable fact is counted under this flow's own name,
- * {@link ObservabilityMetrics#MAIL_REQUEST_DECLINED_ABANDONED} — per loss, {@code ERROR}, never
- * summed with its five siblings — and returns normally so the publication completes: none of the
- * three facts can appear later.
+ * Mails the tourist that the venue declined their Request-to-Book. {@code booking} publishes only from
+ * the winning decline leg, in the transition's transaction, so never re-read the status here. The code
+ * comes through {@code booking::api} and {@link BookingLinks} builds the link at send time, never from
+ * the payload the registry persists as text (invariant #7). Async after-commit on the mail bulkhead
+ * ({@code MailListenerExecutorArchitectureTest}); a transport failure propagates so the registry
+ * retries, while a missing fact is counted, logged at {@code ERROR} and completes the publication.
  */
 @Component
 class RequestDeclinedMailListener {

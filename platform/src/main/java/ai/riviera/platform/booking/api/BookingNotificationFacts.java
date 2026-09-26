@@ -8,61 +8,38 @@ import ai.riviera.platform.booking.vocabulary.BookingMoveFacts;
 import ai.riviera.platform.booking.vocabulary.BookingNotificationInfo;
 
 /**
- * The {@code booking} module's published <strong>notification-facts</strong> query port (invariant
- * #11) — the booking-relevant truths a consumer needs to tell the guest about one booking,
- * split by consumer role from {@link DailyTakings} so each caller depends
- * only on the surface it uses. Consumed by the platform edge, whose booking-confirmation mail
- * listener reacts to {@code BookingConfirmed}.
- *
- * <p>Synchronous query rather than a widened event payload, for two reasons that pull the same way:
- * the arrival code must not be persisted into the Event Publication Registry (invariant #7 — see
- * {@link BookingNotificationInfo}), and an async listener runs after commit, so re-loading current
- * state through an {@code api/} port is the documented pattern for anything the payload does not
- * carry.
- *
- * <p>Read-only: it selects two columns from {@code booking}, touches no availability state
- * (invariant #2) and writes nothing.
+ * The {@code booking} module's published notification-facts query port (invariant #11): what
+ * {@code notification} needs to tell a guest about one booking, split by consumer role from
+ * {@link DailyTakings}. A synchronous query, never a widened event payload: the arrival code must not
+ * be persisted in the Event Publication Registry (invariant #7), and an async listener runs after
+ * commit, so it re-loads current state here. Read-only; touches no availability state.
  */
 public interface BookingNotificationFacts {
 
 	/**
-	 * The arrival code and guest-contact id of the booking with this id, or empty if no booking has
-	 * it. Deliberately <strong>not</strong> filtered by status: the caller is reacting to a published
-	 * confirmation fact, and a booking cancelled between that fact and the (asynchronous) read must
-	 * still resolve rather than vanish.
+	 * The arrival code and guest-contact id of this booking, or empty if no booking has this id.
+	 * Unfiltered by status: a booking cancelled after the confirmation fact must still resolve.
 	 */
 	Optional<BookingNotificationInfo> notificationInfo(BookingId bookingId);
 
 	/**
-	 * Everything needed to rebuild this booking's confirmation mail without an event to read it from
-	 * — the admin resend's read. Empty if no booking has this id.
-	 *
-	 * <p>The same conversation as {@link #notificationInfo}, for the trigger that has no payload:
-	 * where the registry listener is handed the date, amount and currency by {@code BookingConfirmed},
-	 * a resend must ask the module that owns them. It does <strong>not</strong> supersede the narrower
-	 * read — the listener keeps taking those three off the event on purpose, so a later edit can never
-	 * rewrite the mail for a confirmation that already happened.
-	 *
-	 * <p>Also unfiltered by status, and for a sharper reason than above: whether a confirmation was
-	 * ever due is reported as {@link BookingConfirmationFacts#everConfirmed()} rather than by returning
-	 * empty, so the caller can refuse a never-confirmed booking with a reason instead of an absence.
+	 * What the admin resend rebuilds the confirmation mail from; empty if no booking has this id.
+	 * Unfiltered by status; {@link BookingConfirmationFacts#everConfirmed()} lets a refusal say why.
+	 * The first send keeps taking date and amount off the event, so an edit cannot rewrite it.
 	 */
 	Optional<BookingConfirmationFacts> confirmationFacts(BookingId bookingId);
 
 	/**
-	 * The latest remodel move of this booking — both spots as they were, the distance, when it moved
-	 * and the free-exit deadline — or empty when no remodel ever moved it. The "your spot changed"
-	 * mail's read: {@code BookingMoved} carries ids and days only, and the old label is a snapshot the
-	 * live set may no longer answer.
+	 * This booking's latest remodel move (both spots as they were, distance, when, exit deadline), or
+	 * empty if none. The moved mail reads it here: {@code BookingMoved} carries ids and days only, and
+	 * the old label is a receipt snapshot, since the live set may be renamed or retired.
 	 */
 	Optional<BookingMoveFacts> moveFacts(BookingId bookingId);
 
 	/**
-	 * Whether a venue's remodel ended this booking — refunded, released or declined it — rather than
-	 * the guest ending it themselves. The two reach a consumer as the same {@code BookingCancelled}
-	 * with reason {@code VENUE_CHANGE}, because a guest who takes the free exit a move earned them is
-	 * refunded on the venue's account too; only the commit receipt says which happened, and the
-	 * cancellation mail owes a way to book again in exactly the first case.
+	 * Whether a venue's remodel ended this booking (refund, release or decline), not the guest's free
+	 * exit: both arrive as {@code BookingCancelled} with {@code VENUE_CHANGE}, and only the commit
+	 * receipt tells them apart. The cancellation mail offers to book again only in the first case.
 	 */
 	boolean endedByRemodel(BookingId bookingId);
 }

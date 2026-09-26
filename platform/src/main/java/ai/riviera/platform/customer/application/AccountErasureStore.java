@@ -8,18 +8,12 @@ import ai.riviera.platform.customer.vocabulary.CustomerAccountId;
 import ai.riviera.platform.customer.vocabulary.CustomerId;
 
 /**
- * Driven (outbound) persistence port for the right-to-erasure scrub — internal to the module (not a
- * published named interface), implemented by {@code adapter/out}'s {@code JdbcAccountErasure}
- * (invariant #1 — JDBC only). Deliberately a single port spanning every PII-bearing {@code customer}
- * table ({@code customer}, {@code customer_account}, {@code customer_sso_identity},
- * {@code customer_account_token}), so "what erasure touches" in this module lives in exactly one
- * adapter; the one PII-bearing row outside it, the review, is reached through
- * {@link ai.riviera.platform.customer.spi.ReviewErasure} with the ids the by-email scrubs answer.
- *
- * <p>Every scrub is idempotent — it acts only on a live row ({@code erased_at IS NULL}) — and is
- * <strong>tombstone-in-place</strong>, never a hard delete of a row a retained booking references
- * (the {@code booking} FKs are {@code ON DELETE RESTRICT}). Emails reaching this port are already
- * normalized by {@link AccountErasureService}.
+ * Internal persistence port for erasure, implemented by {@code JdbcAccountErasure} (invariant #1). One
+ * port spans every PII-bearing {@code customer} table, so "what erasure touches" lives in one adapter;
+ * reviews are reached through {@link ai.riviera.platform.customer.spi.ReviewErasure} with the ids the
+ * by-email scrubs return. Every scrub acts only on a live row ({@code erased_at IS NULL}), so it is
+ * idempotent, and tombstones in place, never a hard delete (booking FKs are {@code ON DELETE RESTRICT};
+ * ADR-0010). Emails arrive already normalized by {@link AccountErasureService}.
  */
 public interface AccountErasureStore {
 
@@ -47,26 +41,16 @@ public interface AccountErasureStore {
 	List<CustomerId> eraseGuestByEmail(String normalizedEmail);
 
 	/**
-	 * Guest {@code customer} rows the automated retention sweep (Slice 2 of #101) may consider scrubbing:
-	 * live rows ({@code erased_at IS NULL}) last touched before {@code olderThan} whose email is <em>not</em>
-	 * claimed by a live {@code customer_account} — so a signed-up customer's contact is never a candidate.
-	 *
-	 * <p>These are the two gates this module can apply on its own tables; the third — whether the guest still
-	 * has a booking inside the window — is the {@code booking}-owned fact behind
-	 * {@code customer.spi.GuestBookingHistory}. The result is capped at {@code limit} and ordered by id, so a
-	 * run is bounded and the remainder is picked up by the next one.
-	 *
-	 * @param olderThan the retention cutoff as an instant — rows updated at or after it are still in window
-	 * @param limit     the batch cap
-	 * @return the candidate guest ids, oldest id first, at most {@code limit} of them
+	 * Retention-sweep candidates: live guest rows updated before {@code olderThan} whose email no live
+	 * {@code customer_account} claims, at most {@code limit}, ordered by id. Not the third gate: the
+	 * caller must still drop guests with a recent booking via {@code customer.spi.GuestBookingHistory}.
 	 */
 	List<CustomerId> expiredGuestCandidates(Instant olderThan, int limit);
 
 	/**
-	 * Tombstone one live guest {@code customer} row by id — the retention sweep's per-row scrub, identical in
-	 * effect to {@link #eraseGuestByEmail} but selecting by the candidate id it was just handed. Returns
-	 * {@code true} iff a live row was scrubbed; an already-tombstoned or absent row yields {@code false},
-	 * which is what makes a repeated or overlapping sweep a no-op.
+	 * Tombstone one live guest {@code customer} row by id, to the same effect as
+	 * {@link #eraseGuestByEmail}. {@code true} iff a live row was scrubbed; a tombstoned or absent row
+	 * yields {@code false}, which makes a repeated or overlapping sweep a no-op.
 	 */
 	boolean eraseGuestById(CustomerId guestId);
 }

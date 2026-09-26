@@ -21,32 +21,12 @@ import ai.riviera.platform.booking.domain.ServiceDays;
 import ai.riviera.platform.booking.vocabulary.CancellationWindow;
 
 /**
- * The cancel-a-booking use case (U6). In one transaction it loads the booking by code,
- * computes the refund <strong>server-side</strong> via the shared {@link CancellationPolicy}
- * (invariant #10), transitions {@code CONFIRMED → CANCELLED} (guarded), frees every {@code (set, date)}
- * of the span via {@link AvailabilityClaim#release} (invariant #2), and publishes {@link BookingCancelled}.
- *
- * <p>Which statuses the guest may cancel from is read from
- * {@link BookingTransition#CANCEL_BY_GUEST}, the row the guarded write binds, so the fence here and
- * the {@code UPDATE} cannot disagree. Ahead of that fence, a booking whose service day is over
- * answers {@link CancelOutcome.WindowClosed} whichever terminal status it carries — still
- * {@code CONFIRMED}, swept to {@code NO_SHOW}, or checked in to {@code COMPLETED}: all three mean the
- * same thing to the guest, and only that outcome renders the accurate "its date has already begun"
- * copy, where {@code NotCancellable} renders a generic please-try-again the guest can never satisfy.
- *
- * <p>A {@code CONFIRMED} booking would otherwise stay cancellable — and late-cancel-refundable — long
- * after the guest consumed the stay. The quote's {@link CancellationPolicy.RefundQuote#cancellationOpen}
- * is the end-of-life fence, checked before the transition so a spent day is never released and no
- * {@link BookingCancelled} is published for it. The operator's weather refund is deliberately
- * outside this fence: it is a full refund of the venue's own money for a storm that already happened.
- *
- * <p><strong>The refund is not issued here.</strong> Moving real money is a side effect that must not
- * sit inside this transaction (a post-refund commit failure would diverge money from state, and a
- * Stripe round-trip would hold the booking row lock). Instead {@code BookingCancelled} carries the
- * server-computed {@code refundMinor}, and a booking-module {@code @ApplicationModuleListener}
- * ({@code BookingRefundListener}) issues the idempotency-keyed refund <em>after commit</em>,
- * registry-backed and retryable — the same reliability posture as the {@code payout} reversal
- * (invariant #8/#9). Package-private behind the {@link CancelBooking} port (invariant #11).
+ * The guest cancel (U6), in one transaction: quote the refund server-side ({@link CancellationPolicy},
+ * invariant #10), guarded {@code CONFIRMED → CANCELLED}, free every {@code (set, date)} of the span
+ * (invariant #2), publish {@link BookingCancelled}. Never refund in here; {@code BookingRefundListener}
+ * refunds after commit. Who may cancel is {@link BookingTransition#CANCEL_BY_GUEST}, never restated;
+ * a spent day ({@code NO_SHOW}, {@code COMPLETED}, a closed quote window) answers {@code WindowClosed}
+ * before any write. Rationale: {@code RESPONSIBILITIES.md} §booking.
  */
 @Service
 class CancelBookingService implements CancelBooking {
@@ -115,11 +95,9 @@ class CancelBookingService implements CancelBooking {
 	}
 
 	/**
-	 * The tier to report for a cancellation that actually happened (ADR-0005): full in the
-	 * {@code FREE} window; after it, full when the free-exit override refunded everything, partial when
-	 * something is refunded, else none. Reads the window rather than a boolean derived from it, so
-	 * the temporal decision has one representation. {@code CLOSED} cannot reach here — the fence
-	 * returns above — hence the throw rather than a tier.
+	 * The tier reported for a cancellation that happened (ADR-0005): {@code FULL} in the {@code FREE}
+	 * window; in {@code LATE}, whatever the refund implies (the free exit refunds it all). {@code CLOSED}
+	 * is fenced out before the transition, so reaching it is a bug and throws.
 	 */
 	private static CancelOutcome.Tier tierFor(CancellationWindow window, long refundMinor, long amountMinor) {
 		return switch (window) {

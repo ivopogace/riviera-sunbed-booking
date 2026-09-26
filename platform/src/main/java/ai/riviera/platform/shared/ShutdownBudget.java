@@ -20,8 +20,8 @@ public final class ShutdownBudget {
 
 	/**
 	 * Each mail pool's share. Both {@code notification} pools — the registry executor and the recovery
-	 * dispatcher — claim this separately, because they are destroyed separately; the pair is what #410's
-	 * "20s across both" meant, restated as a per-pool claim so the platform can add it up.
+	 * dispatcher — claim this separately, because they are destroyed separately; together they
+	 * spend 20s, stated per pool so the platform can add it up.
 	 */
 	public static final int MAIL_POOL_CLAIM_MS = 10_000;
 

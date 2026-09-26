@@ -3,26 +3,12 @@ package ai.riviera.platform.notification.application;
 import java.net.URI;
 
 /**
- * Internal transport port for sending transactional email. <strong>This port is THE transport
- * seam</strong> — it grows message kinds and keeps exactly two implementations, and no module
- * outside {@code notification} ever touches mail (RV-BE-11). Exactly one implementation is active
- * per profile (mirroring {@code StubPaymentGateway} vs {@code StripePaymentGateway}, and
- * {@code MockSsoGateway} vs {@code RealSsoGateway}): the recording {@code MockMailer} under the
- * default profile, the real SMTP {@code SmtpMailer} under {@code mailer} (ADR-0011);
- * {@code MockMailerProdGuard} forbids the mock from running in production. Rationale:
- * {@code RESPONSIBILITIES.md} §{@code notification}.
- *
- * <p>Recovery messages carry a raw single-use token inside the emailed link and the booking kinds
- * carry the arrival code — the payment-due, the moved-booking and the two request-outcome kinds
- * additionally inside their links, which are therefore bearer URLs too — all bearer credentials
- * (invariant #7). The caller hands each here fully formed, so the mailer never touches the token
- * store, the account, or the booking. <strong>No
- * implementation reachable in production may log them</strong>: {@code SmtpMailer} logs neither, and
- * {@code MockMailer}'s deliberate dev-only echo of the recovery <em>link</em> is the documented
- * exception — mock-only, prod-guarded, and never extended to the arrival code. Unpublished
- * application-internal port, implemented by {@code adapter/out}; callers outside the module use
- * {@code notification.api.MailSender} — only {@link TransactionalMailService} talks to the
- * transport directly, so the chokepoint rules cannot be bypassed.
+ * The transport seam: it grows message kinds and keeps two implementations, one per profile —
+ * the recording {@code MockMailer} (default; {@code MockMailerProdGuard} keeps it out of prod)
+ * and {@code SmtpMailer} under {@code mailer}. Only {@link TransactionalMailService} calls it, so
+ * the suppression chokepoint cannot be bypassed. Codes, tokens and links built from them are bearer
+ * credentials (invariant #7): no prod-reachable implementation may log them; the mock's dev-only
+ * recovery-link echo never extends to a code. Rationale: {@code RESPONSIBILITIES.md} §notification.
  */
 public interface Mailer {
 
@@ -39,18 +25,16 @@ public interface Mailer {
 	void sendBookingConfirmation(String toEmail, BookingConfirmationMail confirmation);
 
 	/**
-	 * Send the cancellation/refund record: what was cancelled, why, and the server-computed
-	 * refund — or, when the cutoff has passed and nothing is returned, that none applies. Structured
-	 * like the confirmation, and for the same reason; the implementation decides how a zero refund and
-	 * each {@code RefundReason} read.
+	 * Send the cancellation/refund record: what was cancelled, why, and the server-computed refund,
+	 * or that none applies. The implementation decides how a zero refund and each
+	 * {@code RefundReason} read.
 	 */
 	void sendBookingCancellation(String toEmail, BookingCancellationMail cancellation);
 
 	/**
-	 * Send the "your request was accepted, payment is due by …" message: the deadline, the
-	 * amount, and the link to the code-gated view where the guest pays. Structured like the two
-	 * booking kinds above, and for the same reason — the implementation decides how a UTC instant
-	 * reads to a tourist (invariant #6: in {@code Europe/Tirane}).
+	 * Send the "your request was accepted, payment is due by …" message: the deadline, the amount,
+	 * and the code-gated pay link. The implementation renders the UTC deadline in
+	 * {@code Europe/Tirane} (invariant #6).
 	 */
 	void sendPaymentDue(String toEmail, PaymentDueMail paymentDue);
 

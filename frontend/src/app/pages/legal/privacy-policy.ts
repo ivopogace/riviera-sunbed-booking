@@ -3,24 +3,12 @@ import { Component } from '@angular/core';
 import { CardGlass } from '../../shared/card-glass';
 
 /**
- * The hosted privacy-policy document at `/legal/privacy` — the target of the
- * checkout agreement links and the footer link.
- *
- * <p><strong>Deliberately a DRAFT.</strong> The final text is a counsel-gated remainder still pending
- * (dual Albanian/GDPR framing, the real sh.p.k. controller and processor names). Until that
- * lands, this page must not read as a binding policy: it carries a prominent draft banner and
- * keeps every not-yet-real entity in [brackets] — both pinned by `privacy-policy.spec.ts`.
- * Swapping in the counsel text is a copy-only edit to this template.
- *
- * <p>What it states is grounded in shipped behavior, not aspiration: the guest-contact fields
- * the booking dialog collects, the self-service erasure + statutory-retention split (ADR-0010),
- * the automated retention sweep, the single strictly-necessary session cookie, and the
- * security-measures section — the self-hosted proof-of-work challenge on the public writes
- * (ADR-0016) and the length-plus-blocklist password rule. That section's three "nots" (no cookie,
- * no fingerprinting, nothing to a third party) are the properties the challenge was chosen for, so
- * they are asserted, not decorative — and the map section (ADR-0022): OpenStreetMap-based, served
- * by our own origin, nothing to a third party. Styled Tailwind-only on the shared card glass
- * (contrast: `legal-pages.contrast.spec.ts`).
+ * The privacy policy at `/legal/privacy` (checkout and footer links). A DRAFT until counsel's text
+ * lands: it must not read as binding, so it keeps a prominent draft banner and every
+ * not-yet-real entity in [brackets] (pinned by `privacy-policy.spec.ts`). Every claim is grounded
+ * in shipped behaviour — erasure vs retention (ADR-0010), the one session cookie, the challenge's
+ * no-cookie/no-fingerprint/no-third-party properties (ADR-0016), the self-hosted OSM map
+ * (ADR-0022) — so change it only with the behaviour. Contrast: `legal-pages.contrast.spec.ts`.
  */
 @Component({
   selector: 'app-privacy-policy',

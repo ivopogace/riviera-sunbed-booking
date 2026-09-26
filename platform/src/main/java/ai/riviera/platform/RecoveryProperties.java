@@ -21,7 +21,7 @@ record RecoveryProperties(
 
 	/**
 	 * Shared floor, above zero because the mail is the slow part: recovery sends leave the request thread
-	 * (#369) and travel through an SMTP relay (#368), so under a minute the token can be expired before
+	 * and travel through an SMTP relay, so under a minute the token can be expired before
 	 * the message is delivered — the born-expired failure with an extra step, and just as silent.
 	 */
 	static final Duration MIN_TOKEN_TTL = Duration.ofMinutes(1);

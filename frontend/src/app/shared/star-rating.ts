@@ -9,28 +9,12 @@ import { STAR_FILL, StarIcon } from './star-icon';
 const STARS = [1, 2, 3, 4, 5] as const;
 
 /**
- * A 1–5 star input with full WAI-ARIA radiogroup semantics, usable as a Signal Forms field.
- *
- * Implementing {@link FormValueControl} is what makes `[formField]="form.stars"` work: the `value`
- * model is two-way-bound by the `Field` directive, so this control only ever *displays* state and
- * proposes changes — validation lives in the form schema, never here. That also makes it a drop-in
- * field for the review panel's form, rather than a widget the panel has to wire by hand.
- *
- * Keyboard follows the radiogroup pattern rather than the button-list default, cloned from
- * {@link SegmentedControl}: **roving tabindex** (exactly one stop in the page's tab order — the
- * checked star, or the first when none is), arrows move the selection *and* the focus with wrapping,
- * and `Home`/`End` jump to the extremes. Any other key is left to the browser, so `Tab` still
- * leaves the group.
- *
- * Selection is conveyed by a filled star against the same star outlined — one {@link StarIcon}
- * geometry, filled by {@link STAR_FILL} — never by colour alone (WCAG 1.4.1), and each star carries its own accessible name ("4 stars"), so a screen-reader user hears what they are
- * choosing rather than a position. Styling is token-first Tailwind on the host of each star.
- *
- * The optional `invalid`/`errors` inputs are part of the `FormValueControl` contract — the
- * `Field` directive auto-wires them from the schema's `required` rule, no plumbing needed beyond
- * declaring them (angular.dev v22 Custom Controls guide). `submitAttempted` is this component's
- * own addition, mirroring the gate every sibling field on the review form already uses: the
- * error shows only once a submit has been tried, never on first render of an empty group.
+ * A 1–5 star input with WAI-ARIA radiogroup semantics, a Signal Forms {@link FormValueControl}: it
+ * shows state and proposes changes; validation stays in the form schema. Keyboard is the radiogroup
+ * pattern (as {@link SegmentedControl}): one roving tab stop (the checked star, else the first),
+ * arrows move selection and focus with wrap, `Home`/`End` jump, other keys stay the browser's.
+ * Selection is a filled vs outlined {@link StarIcon}, never colour alone (WCAG 1.4.1); each star
+ * names itself ("4 stars"). The error waits for `submitAttempted`, as on every sibling field.
  */
 @Component({
   imports: [FieldErrorFor, TouchTarget, StarIcon],

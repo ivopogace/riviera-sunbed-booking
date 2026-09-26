@@ -1,14 +1,12 @@
 package ai.riviera.platform.shared;
 
 /**
- * The names of the platform's operational metrics — the single source of truth shared by the
- * emitters and by whatever reads them. The {@code String} constants are inlined at compile time, so
- * referencing one creates no runtime dependency on this class (invariant #11).
- *
- * <p>The remit is metric <em>names</em>; the emitter owns the emission and its tag vocabularies.
- * <strong>Never sum two counters here</strong> — each names a distinct loss mode with a distinct
- * remedy. What each one means, its tags, and when to alert: {@code docs/runbooks/observability.md}.
- * Why the names live in the shared kernel at all: {@code RESPONSIBILITIES.md} §{@code shared}.
+ * The platform's operational metric names, the single source of truth for emitters and readers:
+ * dashboards and alerts key on these strings, so renaming one breaks them. The constants inline at
+ * compile time, so a reference adds no runtime dependency (invariant #11). Emitters own emission
+ * and tags. <strong>Never sum two counters here</strong>: each is a distinct loss mode with its own
+ * remedy. Meanings, tags, alerts: {@code docs/runbooks/observability.md}; why {@code shared}:
+ * {@code RESPONSIBILITIES.md} §{@code shared}.
  */
 public final class ObservabilityMetrics {
 
@@ -23,11 +21,9 @@ public final class ObservabilityMetrics {
 	public static final String REFUNDS_FAILED = "riviera.refunds.failed";
 
 	/**
-	 * Gauge: bookings whose refund the gateway would not issue and which are still owed the money.
-	 * Distinct refunds owed, where {@link #REFUNDS_FAILED} counts observations — one stuck refund
-	 * re-increments that counter on every resubmission but moves this gauge by one. Never sum the
-	 * two; read the counter for "something happened" and the gauge for "how many are outstanding".
-	 * It falls back as bookings are settled, so it is the one that should return to zero.
+	 * Gauge: bookings still owed a refund the gateway would not issue — a distinct count that returns
+	 * to zero as they settle, where {@link #REFUNDS_FAILED} counts observations (one per resubmission).
+	 * Never sum the two.
 	 */
 	public static final String REFUNDS_OWED = "riviera.refunds.owed";
 
@@ -35,27 +31,23 @@ public final class ObservabilityMetrics {
 	public static final String HTTP_SERVER_REQUESTS = "http.server.requests";
 
 	/**
-	 * Counter: work shed because the refund bulkhead's pool was saturated — a cancellation refund, or
-	 * the void of a remodel-released booking's uncollected intent, which shares that pool. Distinct
-	 * from {@link #REFUNDS_FAILED} — shed is a gateway call that was never made, and unlike a failure
-	 * it does not leave the process. Deferred, not lost: the event publication stays outstanding.
+	 * Counter: refund-bulkhead work shed at saturation — a cancellation refund or a remodel-release
+	 * void. Unlike {@link #REFUNDS_FAILED}, the gateway was never called. Deferred, not lost: the
+	 * event publication stays outstanding.
 	 */
 	public static final String REFUNDS_SHED = "riviera.refunds.shed";
 
 	/**
-	 * Counter: bookings a remodel released as unpaid whose payment had in fact already succeeded, so
-	 * the intent could not be voided. The guest has paid for a booking that no longer exists and is
-	 * owed a refund by hand — nothing retries it, because there is no uncollected intent left to void.
-	 * Distinct from {@link #REFUNDS_FAILED}, which counts refunds the platform did ask the gateway for.
+	 * Counter: bookings a remodel released as unpaid whose payment had already succeeded, so the void
+	 * failed. The guest is owed a refund by hand; nothing retries it. Distinct from
+	 * {@link #REFUNDS_FAILED}, which counts refunds the gateway was asked for.
 	 */
 	public static final String REMODEL_RELEASE_COLLECTED = "riviera.remodel.release.collected";
 
 	/**
-	 * Counter: refunds already present at the gateway and adopted instead of created again. An
-	 * increment means an earlier attempt moved the money but lost the response, so nothing was
-	 * recorded locally — the money is right and the record has just caught up. Distinct from
-	 * {@link #REFUNDS_FAILED}: nothing failed here. Chase a rising rate as a gateway-connectivity
-	 * signal, not a money one.
+	 * Counter: refunds found already at the gateway and adopted, not re-created: an earlier attempt
+	 * moved the money but lost the response. Nothing failed (not {@link #REFUNDS_FAILED}); a rising
+	 * rate is a gateway-connectivity signal, not a money one.
 	 */
 	public static final String REFUNDS_ADOPTED = "riviera.refunds.adopted";
 
@@ -66,26 +58,23 @@ public final class ObservabilityMetrics {
 	public static final String MAIL_REGISTRY_SHED = "riviera.mail.registry.shed";
 
 	/**
-	 * Counter: mails the bounded in-memory dispatcher never ran, and so never sent. Tags:
-	 * {@code kind} (which flow), {@code reason} (saturated / shutdown / abandoned). "Recovery" names
-	 * the vehicle, not the flow — it also carries the operator-approval notice. Nothing retries these:
-	 * the payload is a single-use bearer credential the registry may not persist (ADR-0011).
+	 * Counter: mails the in-memory dispatcher never ran. Tags {@code kind}, {@code reason} (saturated /
+	 * shutdown / abandoned); "recovery" names the vehicle, not the flow. Nothing retries these: the
+	 * payload is a single-use bearer credential the registry may not persist (ADR-0011).
 	 */
 	public static final String MAIL_RECOVERY_DROPPED = "riviera.mail.recovery.dropped";
 
 	/**
-	 * Counter: recovery mails the dispatcher accepted and then failed to deliver. The line against
-	 * {@link #MAIL_RECOVERY_DROPPED} is attempted versus never attempted. Tags: {@code kind},
-	 * {@code reason} (transport / suppression-lookup — a relay fault and a database fault, which page
-	 * different systems). Read this one first during a suspected relay outage.
+	 * Counter: recovery mails accepted, then not delivered: attempted, unlike those in
+	 * {@link #MAIL_RECOVERY_DROPPED}. Tags {@code kind}, {@code reason} (transport: a relay fault;
+	 * suppression-lookup: a database fault). Read this one first in a suspected relay outage.
 	 */
 	public static final String MAIL_RECOVERY_FAILED = "riviera.mail.recovery.failed";
 
 	/**
-	 * Counter: booking-confirmation mails the registry listener gave up on because a fact it needs did
-	 * not resolve. Tags: {@code reason} (no-booking / no-set / no-contact, naming the module to
-	 * investigate). Read an increment as a data-integrity fault, never a relay fault. Invisible to
-	 * {@link #OUTBOX_PENDING} by design — the listener returns normally, so the publication completes.
+	 * Counter: confirmation mails the registry listener abandoned on an unresolved fact; {@code reason}
+	 * (no-booking / no-set / no-contact) names the module to check. A data-integrity fault, never a
+	 * relay one; invisible to {@link #OUTBOX_PENDING}, as the publication completes.
 	 */
 	public static final String MAIL_CONFIRMATION_ABANDONED = "riviera.mail.confirmation.abandoned";
 

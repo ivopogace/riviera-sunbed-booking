@@ -15,18 +15,13 @@ import ai.riviera.platform.notification.api.MailDeliverability;
 import ai.riviera.platform.notification.api.MailSender;
 
 /**
- * Edge orchestrator for the account-recovery flows — the credential-material machinery that
- * must stay at the platform edge (RV-BE-11), keeping the controllers thin and the {@code customer}
- * module free of tokens/mail/crypto. It mints + hashes the raw token, drives the module's
- * {@link CustomerAccountRecovery} port with only the opaque digest, and hands the raw token to the
- * {@code notification} module's {@link MailSender} inside the emailed link — a fire-and-forget
- * port that runs the send off this thread, swallows transport failures and enforces suppression, so
- * the D-8 non-enumeration and timing-oracle guarantees hold behind that seam rather than here.
+ * Edge orchestrator for account recovery, keeping tokens, mail and crypto out of {@code customer}
+ * (RV-BE-11): mints and hashes the raw token, hands {@link CustomerAccountRecovery} only the digest,
+ * and mails the raw token in a link via {@link MailSender}, which sends off-thread, swallows failures
+ * and enforces suppression, so the D-8 non-enumeration and timing guarantees hold behind that seam.
  *
- * <p>The email links point at the SPA routes {@code /account/verify} and {@code /account/reset} on the
- * configured {@link RecoveryProperties#linkBaseUrl()} — the SPA renders the page and issues the actual
- * verify/reset {@code POST} (so an email scanner prefetching the link — a GET — never consumes the
- * single-use token, R-6). Package-private (invariant #11).
+ * <p>Links target the SPA routes {@code /account/verify} and {@code /account/reset}, which issue the
+ * {@code POST}: a mail scanner prefetching the link (a GET) must never consume the single-use token.
  */
 @Component
 class CustomerRecovery {
@@ -62,17 +57,9 @@ class CustomerRecovery {
 	}
 
 	/**
-	 * Whether a mail to this address would be withheld as suppressed, so a surface can stop claiming one
-	 * was sent.
-	 *
-	 * <p><strong>Deliberately not folded into {@link #sendVerificationEmail}.</strong> That method's other
-	 * caller is anonymous registration ({@code AuthController}, {@code permitAll}), where an extra
-	 * synchronous {@code email_suppression} SELECT on the request thread would widen exactly the D-8
-	 * latency gap #369 closed — for an answer registration discards. Keeping it a separate call means only
-	 * the endpoint allowed to disclose the fact pays for it, and the send is untouched on both paths.
-	 *
-	 * <p>Safe only where the caller already owns the address: the one consumer is the authenticated
-	 * resend, which asks about its own session principal.
+	 * Whether a mail to this address would be withheld as suppressed. Only for an address the caller
+	 * owns (the authenticated resend), as it discloses that. Keep it out of
+	 * {@link #sendVerificationEmail}: on anonymous registration the extra read reopens a D-8 timing gap.
 	 */
 	boolean isVerificationMailWithheld(String email) {
 		return deliverability.isWithheld(email);
@@ -105,14 +92,14 @@ class CustomerRecovery {
 		return recovery.emailForResetToken(tokens.hash(rawToken));
 	}
 
-	/** Set the account's already-encoded password directly (authenticated set-password, closes S4 F-1). */
+	/** Set the account's already-encoded password directly (the authenticated set-password). */
 	void setPassword(CustomerAccountId accountId, String encodedNewPassword) {
 		recovery.setPassword(accountId, encodedNewPassword);
 	}
 
 	/**
 	 * Whether the email's account is verified (the signed-in "please verify" nudge), or empty when no
-	 * account exists — one read per {@code /api/auth/me} restore instead of the old id-then-flag pair.
+	 * account exists — one read per {@code /api/auth/me} restore.
 	 */
 	Optional<Boolean> verifiedFor(String email) {
 		return recovery.emailVerifiedFor(email);

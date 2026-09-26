@@ -5,27 +5,12 @@ import java.time.LocalDate;
 import ai.riviera.platform.booking.vocabulary.CancellationWindow;
 
 /**
- * Everything the booking-confirmation email renders — structured, not
- * pre-rendered, so each {@link Mailer} implementation decides its own presentation: {@code SmtpMailer}
- * formats a plain-text body, {@code MockMailer} records the fields verbatim for ITs to assert on.
- *
- * <p>{@code bookingCode} is the tourist's venue-arrival credential (invariant #7): it must never be
- * logged, and it deliberately never enters an event payload (see
- * {@code booking.vocabulary.BookingNotificationInfo}). {@code amountMinor} + {@code currency} are
- * integer minor units + ISO 4217 (invariant #5) — formatting for display happens in the transport,
- * never by re-deriving a decimal amount anywhere else. {@code bookingDate} to {@code lastDate} are the
- * service days, inclusive, as {@code LocalDate}s in {@code Europe/Tirane} (invariant #6), carried
- * straight off {@code BookingConfirmed}; {@code amountMinor} is the stay's total.
- *
- * <p>{@code rowLabel} + {@code positionNo} are the beach-map spot, sourced from
- * {@code venue.api.SetBookingFacts}. Unpublished module-internal value — public only for the
- * module's own {@code adapter} packages (the listener assembles it, the transports render it).
- *
- * <p>{@code cancellationWindowAtBirth} + {@code lateCancelRefundBps} carry the born-past-free-
- * cancellation disclosure, carried straight off the event: {@code CLOSED} renders the
- * non-refundable last-minute line, {@code LATE} the past-free-cancellation line (the partial share
- * at bps &gt; 0, no-refund at 0 — a LATE-born booking stays cancellable, so only CLOSED may say it
- * can't be), and {@code FREE} or {@code null} (a pre-#795 payload — tolerated forever) nothing.
+ * What the booking-confirmation email renders, structured so each {@link Mailer} owns presentation.
+ * {@code bookingCode} is a bearer credential (invariant #7): never log it or put it in an event
+ * payload. {@code amountMinor} (the stay's total) + {@code currency} are minor units + ISO 4217 (#5),
+ * formatted only by the transport; the dates are inclusive {@code Europe/Tirane} service days (#6).
+ * The birth window is rendered, never decided: only CLOSED may say "can't cancel", and {@code null}
+ * (older payloads) renders like FREE, forever. Rules: {@code RESPONSIBILITIES.md} §notification.
  */
 public record BookingConfirmationMail(String bookingCode, String venueName, LocalDate bookingDate,
 		LocalDate lastDate, String rowLabel, int positionNo, long amountMinor, String currency,

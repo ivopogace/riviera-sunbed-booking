@@ -12,30 +12,12 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
 /**
- * The money-path alert route: a scheduled self-check that evaluates the three
- * money-path signals against their thresholds and emits a structured {@code ERROR} log line when one
- * trips — the deliberate single-instance alerting mechanism (an ERROR line is greppable and forwardable
- * by a Render log drain; the {@code /actuator/prometheus} → Grafana route is the documented upgrade,
- * see {@code docs/runbooks/observability.md}). It reads the signals from the {@link MeterRegistry}
- * (the gauge/counter/timer wired in {@link ObservabilityConfig} + Boot's {@code http.server.requests}),
- * which keeps it trivially testable.
- *
- * <p><strong>It does, however, issue one query — this Javadoc claimed otherwise until #395.</strong>
- * Two of the three signals are pure meter reads, but {@link #outboxBacklog()} calls {@code Gauge#value()},
- * and Micrometer evaluates a gauge's supplier <em>at read time, on the calling thread</em> — so
- * {@link ObservabilityConfig}'s {@code SELECT count(*) FROM event_publication} runs here, on the
- * scheduler. Before #395 that read was unbounded and every scheduled job shared one thread, which made
- * the money-path alarm not merely the victim of a stalled scheduler but a candidate for stalling it,
- * on the one table a stuck registry listener bloats. The read is now bounded
- * ({@code riviera.scheduled.query-timeout-seconds}) and this job has a thread of its own; on timeout the
- * gauge reports {@code NaN}, so that tick sees no backlog and the next one retries.
- *
- * <p>Gated {@code @Profile("stripe")} — the money path is only live there, and gating keeps this third
- * scheduler off the default-profile test suite (the {@code @EnableScheduling} the sweeps rely on is
- * itself stripe-gated). A long initial delay keeps it off the startup hot path. Alert lines carry only
- * counts + thresholds — never a booking code or PII (invariant #7). App-level concern in the root
- * package (like {@link RateLimitFilter}), not a Modulith module. Single-instance posture inherited from
- * the sweeps ({@code docs/deploy/production-hardening.md}); ShedLock only when scaling out (D3).
+ * Scheduled self-check of the three money-path signals: one structured {@code ERROR} line per crossed
+ * threshold, the single-instance alert route ({@code docs/runbooks/observability.md}). Reads the
+ * {@link MeterRegistry}, but {@link #outboxBacklog()}'s gauge runs {@link ObservabilityConfig}'s
+ * bounded query on this thread ({@code NaN} on timeout), so the job keeps a thread of its own
+ * ({@code docs/deploy/production-hardening.md}). {@code @Profile("stripe")}: the money path is live
+ * only there. Lines carry counts and thresholds, never a booking code or PII (invariant #7).
  */
 @Component
 @Profile("stripe")

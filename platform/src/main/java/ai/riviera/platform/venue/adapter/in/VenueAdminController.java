@@ -40,26 +40,12 @@ import ai.riviera.platform.venue.application.ViewDailyAvailability;
 import ai.riviera.platform.venue.application.ViewVenueProfile;
 
 /**
- * Operator endpoints for venue onboarding, beach-map editing and the owner's reads (U7). Driving
- * adapter — depends only on the {@code venue} module's {@link OnboardVenue} / {@link EditBeachMap} /
- * {@link EditVenueProfile} / {@link ViewVenueProfile} / {@link ViewDailyAvailability} /
- * {@link ViewBeachMap} ports (invariant #11) plus the edge {@link CurrentOperator} resolver. These are an authenticated
- * operator surface (session cookie, role {@code OPERATOR}, configured in {@code SecurityConfig}); the
- * public U1 read endpoint is a separate controller. Outcomes map to HTTP via exhaustive
- * {@code switch}: created→201 (+Location), applied→204 (the batch apply→200 with its count),
- * {@code NO_SUCH_*}→404,
- * {@code CELL_TAKEN}/{@code DUPLICATE_POSITION}→409, the bulk save's {@code SetsInUse}→409
- * {@code SETS_IN_USE} carrying the named sets; malformed→400 and the
- * constraint-race backstop ({@code DuplicateKeyException}→409 {@code CONFLICT},
- * invariant #12) map centrally in {@code ApiErrorHandler}. Errors are RFC-7807
- * {@link ProblemDetail} built by {@link ApiProblem}.
- *
- * <p>The per-set edits and the profile edit ({@code PATCH /api/venues/{venueId}} — amenities +
- * distance-to-water) are venue-scoped: the controller resolves the authenticated principal
- * to an {@link OperatorId} and hands it to {@link EditBeachMap} / {@link EditVenueProfile}, which
- * asserts ownership of {@code venueId} before acting (invariant #13); a mismatch is {@code 403} via
- * {@code ApiErrorHandler}. {@code create} takes no {@code venueId} — it resolves the authenticated
- * operator and the service records it as the new venue's owner (creator-owns-on-create).
+ * The operator's venue console (onboarding, beach-map and profile edits, the owner's reads) on the
+ * module's ports only (invariant #11), behind role {@code OPERATOR} in {@code SecurityConfig}. Each
+ * {@code venueId} call hands the resolved {@link OperatorId} to a port that asserts ownership
+ * before acting (invariant #13, {@code 403} via {@code ApiErrorHandler}); {@code create} records
+ * the creator as owner. Outcomes map to HTTP by exhaustive {@code switch}; malformed input (400)
+ * and the {@code DuplicateKeyException} race backstop (409) map centrally in {@code ApiErrorHandler}.
  */
 @RestController
 @RequestMapping("/api/venues")
@@ -139,12 +125,9 @@ class VenueAdminController {
 	}
 
 	/**
-	 * The owner's per-set availability states for one day — owner-scoped (invariant #13): the
-	 * service asserts ownership before answering, so a venue's hold pattern (online hold vs walk-in
-	 * mark) never leaks to a non-owner ({@code 403} via {@code ApiErrorHandler}). Gated to role
-	 * OPERATOR ABOVE the public {@code GET /api/venues/**} in {@code SecurityConfig}, like the
-	 * profile + takings reads. A free set is absent from the list; an owned-but-vanished venue is
-	 * {@code 404 NO_SUCH_VENUE} (the one coded 404 contract this controller already speaks).
+	 * The owner's per-set states for a day, a free set absent; ownership is asserted before existence
+	 * (invariant #13: {@code 403}, then {@code 404 NO_SUCH_VENUE}) so the hold pattern never leaks.
+	 * Keep its OPERATOR rule ABOVE the public {@code GET /api/venues/**} in {@code SecurityConfig}.
 	 */
 	@GetMapping("/{venueId}/availability")
 	ResponseEntity<?> dailyAvailability(Authentication authentication,
@@ -158,11 +141,9 @@ class VenueAdminController {
 	}
 
 	/**
-	 * The owner's beach map with its locked sets — owner-scoped (invariant #13): the service asserts
-	 * ownership before answering, so which sets a venue's guests hold never leaks to a non-owner
-	 * ({@code 403} via {@code ApiErrorHandler}). Gated to role OPERATOR ABOVE the public
-	 * {@code GET /api/venues/**} in {@code SecurityConfig}, beside the daily read. A free set has no
-	 * lock entry; a venue the map read answers nothing for is {@code 404 NO_SUCH_VENUE}.
+	 * The owner's beach map plus a lock entry per set a live claim pins; ownership is asserted before
+	 * existence (invariant #13, {@code 403}); a venue the map read misses is {@code 404 NO_SUCH_VENUE}.
+	 * Keep its OPERATOR rule ABOVE the public {@code GET /api/venues/**} in {@code SecurityConfig}.
 	 */
 	@GetMapping("/{venueId}/beach-map")
 	ResponseEntity<?> beachMap(Authentication authentication, @PathVariable long venueId) {

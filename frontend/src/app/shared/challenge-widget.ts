@@ -59,27 +59,12 @@ function loadWidget(): Promise<unknown> {
 }
 
 /**
- * The one proof-of-work control every fenced form hosts (ADR-0016): the bundled ALTCHA widget —
- * self-hosted, no third party, no cookie — fetching its challenge from the platform's own endpoint
- * and solving it in Web Workers as soon as the surrounding `<form>` receives focus. Owns everything
- * the forms must not drift on: the custom-element registration, the `auto` solve, the attribution
- * footer, re-solving on expiry, the assistive-tech status line, and the payload the host attaches
- * as the request header (`shared/challenge.ts`).
- *
- * <p>`enabled` is the platform's answer (`core/proof-of-work.ts`): `false` renders nothing, and a
- * host that sends no payload then is right to. `payload` is two-way — the widget's base64 solution
- * while one is verified, undefined otherwise. After the server refuses a submission for its
- * challenge the host calls {@link refresh}; before submitting it awaits {@link solved} so a fast
- * typist never posts ahead of the solve.
- *
- * <p>`CUSTOM_ELEMENTS_SCHEMA` is the one deviation from the house rules: `<altcha-widget>` is a
- * third-party element, not a component. The widget's `--altcha-*` variables are mapped from the
- * `--riv-*` tokens on the host, so it themes with the card it sits in, and the attribution link is
- * the sentence-inline exemption.
- *
- * <p>The checkbox is 24 px and carries a {@code data-touch-exempt} reason: it is held to WCAG
- * 2.5.8's AA minimum rather than the 44 px floor, which is `riviera-tailwind` rule 4's fourth
- * exemption class. The mocked e2e pins that size, because the sweep skips an exempt control.
+ * The one proof-of-work control every fenced form hosts (ADR-0016: self-hosted ALTCHA, solving on
+ * form focus and again on expiry). `enabled` false renders nothing; `payload` is the verified
+ * solution for the host's header (`shared/challenge.ts`), else undefined. The host awaits
+ * {@link solved} before submitting, so no post outruns the solve, and calls {@link refresh} after a
+ * server refusal. `CUSTOM_ELEMENTS_SCHEMA` is deliberate (third-party element), themed by `--riv-*`
+ * tokens. The 24 px checkbox is touch-exempt (`riviera-tailwind` rule 4); mocked e2e pins its size.
  */
 @Component({
   selector: 'app-challenge-widget',

@@ -9,29 +9,12 @@ import ai.riviera.platform.venue.vocabulary.Beach;
 import ai.riviera.platform.venue.vocabulary.VenueLocation;
 
 /**
- * The validated command to replace a venue's editable profile fields. It carries the
- * operator-editable core —
- * {@code name} (required text), {@code beach} (a catalogue {@link Beach}; its region is derived,
- * never an input), {@code description} (optional),
- * {@code bookingMode} ({@code INSTANT}|{@code REQUEST}), {@code bookingCutoff} (a
- * {@code Europe/Tirane} wall-clock {@code LocalTime}, invariant #4/#6), {@code salesClose} (the
- * required three-value {@link SalesClose} choice) — plus the amenity set (an order-insensitive
- * subset of the fixed {@link Amenity} catalogue) and the optional distance-to-water in metres
- * ({@code null} = not stated), the optional {@link VenueLocation} ({@code null} = no pin, so
- * the venue is absent from the riviera map and still in the list) and the optional
- * {@code maxStayDays} — the longest stay the venue takes, in days, {@code null} for any length this
- * season (the platform sets no maximum). The location's own bounds are enforced by its type, not
- * here.
- *
- * <p><strong>Commission and payout currency are intentionally NOT here.</strong> They are read-only
- * for operators (commission is the platform's cut — invariant #9; payout currency is a standing
- * provisional decision), so the write can never touch them: a crafted request has no field to set.
- *
- * <p>Catalogue membership is enforced by the {@link Amenity} and {@link Beach} types themselves (the
- * edge DTO parses codes), off-vocabulary sales closes by {@link SalesClose} likewise; the remaining
- * edge invariants are checked in the canonical constructor via {@link VenueFieldValidation}, shared
- * with {@link NewVenueCommand}. The amenity set is defensively copied so it is immutable and
- * order-insensitive.
+ * The validated full replace of a venue's operator-editable profile, so {@code null} clears an
+ * optional field: no distance stated, no map pin (off the riviera map, still listed), any stay
+ * length. Times are {@code Europe/Tirane} wall-clock (#4/#6); the beach's region is derived, never
+ * an input; amenities are copied to an immutable set. Commission (#9) and payout currency are
+ * deliberately absent, so a crafted request cannot write them. Catalogue, sales-close and location
+ * bounds are enforced by their own types, the rest via {@link VenueFieldValidation}.
  */
 public record VenueProfileCommand(String name, Beach beach, String description,
 		String bookingMode, LocalTime bookingCutoff, SalesClose salesClose, Set<Amenity> amenities,

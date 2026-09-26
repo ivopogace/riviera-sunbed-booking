@@ -14,27 +14,12 @@ import ai.riviera.platform.payment.events.PaymentCanceled;
 import ai.riviera.platform.payment.events.PaymentConfirmed;
 
 /**
- * The {@code booking} module's reaction to verified Stripe payment events (U4) — a driving
- * adapter listening for facts the {@code payment} module announces (invariant #11: collaboration
- * by published event, never a back-call into {@code booking}, which would cycle).
- *
- * <p><strong>Asynchronous</strong> {@code @ApplicationModuleListener} (= {@code @Async} +
- * {@code @Transactional} + {@code @TransactionalEventListener(AFTER_COMMIT)}): the publication is
- * persisted by the <em>Event Publication Registry</em> when the webhook transaction commits, then
- * this listener runs after commit in its <strong>own</strong> transaction. Durability no longer
- * depends on the webhook transaction rolling back — if this listener throws, the publication stays
- * incomplete in {@code event_publication} and is re-submitted (on restart, per
- * {@code spring.modulith.events.republish-outstanding-events-on-restart}); a normal completion is
- * archived (ARCHIVE mode). Because delivery is at-least-once, both handlers are
- * <strong>idempotent</strong> — the guarded transitions make a re-delivery a no-op, the second
- * idempotency layer behind the {@code stripe_webhook_event} event-id dedup (invariant #8).
- *
- * <ul>
- *   <li>{@link PaymentConfirmed} → {@code AWAITING_PAYMENT → CONFIRMED}.</li>
- *   <li>{@link PaymentCanceled} → {@code AWAITING_PAYMENT → CANCELLED} and release the
- *       {@code (set, date)} availability claim so the set is re-bookable (invariant #2) — only
- *       when the booking actually transitioned.</li>
- * </ul>
+ * Applies {@code payment}'s webhook-verified events (invariant #8) to bookings, by event because a
+ * back-call would cycle (invariant #11): {@link PaymentConfirmed} confirms an {@code AWAITING_PAYMENT}
+ * booking; {@link PaymentCanceled} cancels it and, only if it transitioned, releases its
+ * {@code (set, date)} claim (invariant #2). Each runs after the webhook commits, in its own
+ * transaction; a throw leaves the publication outstanding until restart, so both stay idempotent.
+ * Renaming the class or a handler changes its registry {@code listener_id} and orphans stored rows.
  */
 @Component
 class PaymentEventListener {

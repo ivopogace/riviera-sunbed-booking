@@ -8,22 +8,12 @@ import ai.riviera.platform.venue.vocabulary.MoneyView;
 import java.time.Instant;
 
 /**
- * The {@code 200} response body for {@code GET /api/bookings/{code}} (U6) — the booking summary plus
- * the server-computed cancellation terms the Angular app renders. Money travels as {@link MoneyView}
- * (integer minor units + ISO currency, invariant #5); the date as an ISO {@code LocalDate} string.
- * {@code refundedAmount} is {@code null} unless the booking is already cancelled.
- * {@code emailWithheld} is {@code true} only for a {@code CONFIRMED} booking whose
- * confirmation mail was suppressed — never before payment, so this code-gated view cannot be used as
- * a suppression oracle (D-8). {@code payWindowClosed} says the booking's pay deadline has passed,
- * so {@code payment} is {@code null} and no payment may still be taken (invariant #4).
- * {@code cancelReason} names which cancellation a cancelled booking went through
- * ({@code POLICY}/{@code WEATHER}/{@code CONFLICT}), and is {@code null} both for a live booking and
- * for one cancelled without ever being charged. {@code refundOutstanding} is {@code true} only while
- * a cancelled booking's refund is decided but not yet accepted by the gateway — the panel then says
- * the refund is being processed instead of on its way. {@code reviewPanel} is the server's own answer
- * to "what should this stay's review section show?" — the client renders on its {@code kind}, never
- * on {@code status}. {@code move} is present only for a booking a remodel re-seated. Mirrors the FE
- * {@code BookingDetail} type.
+ * The {@code 200} body of {@code GET /api/bookings/{code}}, mirroring the FE {@code BookingDetail};
+ * money as {@link MoneyView} (invariant #5). {@code refundedAmount} is null unless cancelled;
+ * {@code cancelReason} (a {@code RefundReason} name) is null while live or if cancelled uncharged.
+ * {@code payWindowClosed}: the pay deadline passed, so {@code payment} is null (invariant #4).
+ * {@code refundOutstanding}: refund decided, not yet gateway-accepted. {@code emailWithheld} is true
+ * only once {@code CONFIRMED}, else this code-gated view would be a suppression oracle.
  */
 record BookingDetailView(String code, String status, long venueId, String venueName, String rowLabel,
 		int positionNo, String bookingDate, String lastDate, MoneyView amount, boolean cancellable,
@@ -65,12 +55,11 @@ record BookingDetailView(String code, String status, long venueId, String venueN
 	}
 
 	/**
-	 * The panel flattened for the wire: one {@code kind} the client switches on, plus the fields that
-	 * kind carries. Built by an exhaustive {@code switch} over the sealed panel, so a new variant is
-	 * a compile error here rather than a silently absent {@code kind} in the browser.
+	 * The review panel flattened for the wire: one {@code kind} the client renders on, never on the
+	 * booking's {@code status}, plus the fields that kind carries. An exhaustive {@code switch} over
+	 * the sealed panel builds it, so a new variant is a compile error here, not a missing {@code kind}.
 	 *
-	 * <p>{@code nameSuggestion} rides only on {@code ELIGIBLE}: it exists to prefill the form and has
-	 * no meaning anywhere else.
+	 * <p>{@code nameSuggestion} rides only on {@code ELIGIBLE}: it exists to prefill the form.
 	 */
 	record ReviewPanelView(String kind, Instant windowClosesAt, OwnReviewView review,
 			String nameSuggestion) {

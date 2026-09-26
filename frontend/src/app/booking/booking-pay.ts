@@ -62,25 +62,12 @@ const CLS = {
 } as const;
 
 /**
- * Liquid Glass payment page for the `stripe` profile, reached on a
- * `202 AWAITING_PAYMENT` booking-create. It mounts the Stripe Payment Element on the booking's
- * `clientSecret`, confirms the card, then **polls `GET /api/bookings/{code}` for `CONFIRMED`** — the
- * booking is confirmed only by the signature-verified webhook (invariant #8), **never** from the
- * Stripe.js result. Restyle only: the state machine, poll, and every `data-testid` are unchanged.
- *
- * <p>When the confirming poll reports `emailWithheld` (the address is on the do-not-mail
- * list, so the confirmation mail was suppressed), the done panel adds a save-your-code notice and
- * the page's one persistent live region announces it. The notice deliberately gets no live region of
- * its own: it is created together with the done panel, and a region only announces content that
- * mutates after it is already in the DOM.
- *
- * <p>States: `mounting` → `ready` (card form) → on pay: `error` (declined/failed — retry in place,
- * the element stays mounted; one status re-check decides retryable vs terminal — see
- * {@link failCardStep}) or `processing` (polling, "Confirming your booking…") →
- * `confirmed` (backend said so) or `awaiting` (webhook hasn't landed within ~30s — "payment
- * received", never "confirmed"). A cold load with no hand-off shows `missing`. A terminal server
- * CANCELLED shows an honest failure (invariant #2/#8 — the drawn "someone just booked" pay state
- * isn't reproduced: the backend collapses race + decline into CANCELLED, which can't disambiguate).
+ * Stripe-profile payment page, reached on `202 AWAITING_PAYMENT`: mounts the Payment Element on
+ * `clientSecret`, confirms the card, then polls `GET /api/bookings/{code}` for `CONFIRMED` — only
+ * the webhook confirms (#8), never the Stripe.js result. States: `mounting` → `ready` → `error`
+ * (retry in place; {@link failCardStep}) or `processing` → `confirmed`, or `awaiting` after ~30 s
+ * ("payment received", never "confirmed"); no hand-off → `missing`; a terminal `CANCELLED` stays
+ * generic (race and decline look alike). Only the persistent live region announces `emailWithheld`.
  */
 @Component({
   selector: 'app-booking-pay',
@@ -374,7 +361,7 @@ export class BookingPay {
   protected readonly errorMessage = signal<string | undefined>(undefined);
   protected readonly paying = signal(false);
   /** A terminal failure — the poll saw a server-side CANCELLED, or the failure re-check
-   *  found the booking no longer payable: retrying the same PaymentIntent is futile, so the page
+   *  found the booking unpayable: retrying the same PaymentIntent is futile, so the page
    *  offers the booking-status link and "start over" instead of "Pay". */
   protected readonly terminalError = signal(false);
   /** The confirmed booking's mail was suppressed — read from the poll, never assumed. */
@@ -396,10 +383,9 @@ export class BookingPay {
   protected readonly showPayButton = computed(
     () => this.state() === 'ready' || (this.state() === 'error' && !this.terminalError()),
   );
-  /** The single announcement for the persistent live region — mutates as the state advances so a
-   *  screen reader hears each transition (loading → confirming → confirmed/awaiting). Reads two
-   *  signals; `computed` is lazy and memoized, so the order the poll writes them in is irrelevant —
-   *  no intermediate value is ever rendered. */
+  /** The one announcement for the persistent live region; it mutates with the state so a screen
+   *  reader hears each transition. `computed` is lazy, so the order the poll writes its two
+   *  signals in never renders an intermediate value. */
   protected readonly liveStatus = computed(() => {
     switch (this.state()) {
       case 'mounting':
@@ -460,12 +446,9 @@ export class BookingPay {
   }
 
   /**
-   * A card-step failure (mount or confirm) is only retryable while the booking is still payable:
-   * the pay-window sweep may have cancelled the intent while this page was open, and retrying a
-   * dead intent loops forever. So the error state re-reads the booking once — server truth,
-   * invariant #8 intact: the answer can only escalate to the terminal state (or adopt a booking the
-   * verified webhook already confirmed), never report a payment the backend hasn't. A failed
-   * re-check changes nothing — the retry-in-place state stays.
+   * A card-step failure (mount or confirm) is retryable only while the booking is payable: the
+   * pay-window sweep may have cancelled the intent, and retrying a dead one loops forever. So it
+   * re-reads the booking once: it may only go terminal or adopt a webhook-confirmed booking (#8).
    */
   private failCardStep(message: string): void {
     // One-way past the card step: a late failure must never write backwards over a newer state.

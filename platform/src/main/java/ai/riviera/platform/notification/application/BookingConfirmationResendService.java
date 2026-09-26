@@ -11,25 +11,11 @@ import ai.riviera.platform.booking.vocabulary.BookingConfirmationFacts;
 import ai.riviera.platform.booking.vocabulary.BookingId;
 
 /**
- * Resends one booking's confirmation mail and records the attempt (#380) — the same three-port
- * assembly the registry listener uses, driven by an admin instead of by a domain fact.
- *
- * <p><strong>Two refusals before anything is sent.</strong> An unknown id is the admin's mistake; a
- * booking that never reached {@code CONFIRMED} is a stronger reason to stop — the mail says "your
- * booking is confirmed", so sending it for an {@code AWAITING_PAYMENT} or expired request would tell
- * the tourist something untrue and invite them to a venue that is not holding a set for them. Both are
- * reported by name rather than as one generic failure, because the admin's next move differs.
- *
- * <p><strong>Nothing is published.</strong> That is what keeps a resend off every other
- * {@code BookingConfirmed} consumer — {@code payout}'s ledger accrual (invariant #9) and the refund
- * path (invariant #8) cannot run because no event exists, which is a structural guarantee rather than a
- * promise to be careful. It also means no registry row: this send is not retried, and the admin is told
- * so by the outcome.
- *
- * <p><strong>Date, amount and currency are re-read, deliberately.</strong> The listener takes them off
- * the event payload precisely so a later edit cannot rewrite the mail for a past confirmation; a resend
- * has no payload, so it reads the booking's own facts through {@code booking::api}. For a confirmed
- * booking those three are immutable, so the two paths agree.
+ * Resends one booking's confirmation mail for an admin and records the attempt. Refuses, each by name,
+ * an unknown id and a booking that never reached {@code CONFIRMED}: the mail would tell the tourist
+ * something untrue. Publishes nothing, so no other {@code BookingConfirmed} consumer ({@code payout}'s
+ * ledger accrual, invariant #9) re-runs and nothing retries a failed send. Date, amount and currency are
+ * re-read through {@code booking::api}, not taken off a payload; immutable once confirmed, they match.
  */
 @Service
 class BookingConfirmationResendService implements BookingConfirmationResend {
@@ -66,13 +52,9 @@ class BookingConfirmationResendService implements BookingConfirmationResend {
 	}
 
 	/**
-	 * Send, then record — and report a failure rather than throwing it.
-	 *
-	 * <p>The catch is deliberately as wide as the send: the admin pressed a button and is owed an
-	 * answer, so any failure of the send becomes an outcome instead of a {@code 500} that says nothing.
-	 * That is the opposite of the automatic path, where the throw is load-bearing (it keeps the
-	 * publication outstanding for the registry retry) — here there is no publication to keep, and the
-	 * retry is the admin pressing again.
+	 * Send, then record; any send failure becomes an outcome, never a {@code 500}. Unlike the registry
+	 * listener, whose throw keeps the publication outstanding for retry, there is nothing to keep here:
+	 * the retry is the admin pressing again.
 	 */
 	private ResendOutcome sendAndRecord(BookingId bookingId, BookingConfirmationFacts booking,
 			BookingMailFacts.Resolved resolved) {
@@ -98,8 +80,9 @@ class BookingConfirmationResendService implements BookingConfirmationResend {
 	}
 
 	/**
-	 * The #428 data-integrity fault, reached through the admin path. Recorded like any other attempt so
-	 * the history shows the press happened, and named in the outcome so the admin stops pressing.
+	 * The missing-booking-fact data-integrity fault, reached through the admin path. Recorded like any
+	 * other attempt so the history shows the press happened, and named in the outcome so the admin
+	 * stops pressing.
 	 */
 	private ResendOutcome abandon(BookingId bookingId, MissingBookingFact fact) {
 		attempts.recordAttempt(bookingId, MailAttemptSource.ADMIN_RESEND,

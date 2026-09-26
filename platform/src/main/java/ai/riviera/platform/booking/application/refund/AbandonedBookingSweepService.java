@@ -18,30 +18,12 @@ import ai.riviera.platform.payment.api.CancelPaymentPort;
 import ai.riviera.platform.payment.vocabulary.PaymentCancellation;
 
 /**
- * Expires {@code AWAITING_PAYMENT} bookings that can no longer be paid — past their TTL, past the
- * accepted request's pay window, or with their whole service day ended (invariant #4) — and frees
- * their sets, implementing {@link ExpireAbandonedBookings}. For each stale booking it:
- *
- * <ol>
- *   <li>cancels the Stripe PaymentIntent via {@link CancelPaymentPort} (collect-only — voids an
- *       uncollected intent, no money moves) so Stripe stops retrying and the payment can no longer
- *       succeed — the authoritative step done <strong>before</strong> any state change;</li>
- *   <li>on a {@link PaymentCancellation.Canceled} <em>or</em> {@link PaymentCancellation.NoCollection}
- *       outcome, runs the shared {@link ReleaseAbandonedBooking} (the same guarded transition + release
- *       the {@code payment_intent.canceled} webhook uses) — so the sweep and the webhook can never
- *       double-act.</li>
- * </ol>
- *
- * <p>A {@link PaymentCancellation.NoCollection} (no payment on record — a {@code pay()}
- * that threw after the reserve commit) is <strong>released</strong>: past the TTL the row is stranded,
- * not in-flight, so leaving it would hold the set forever (the abandoned sweep's whole purpose). A
- * {@link PaymentCancellation.NotCancellable} (the payment already {@code succeeded}) leaves the booking
- * untouched — the confirm webhook is the source of truth for a successful payment (invariant #8). A
- * {@link PaymentCancellation.Failed} (transient gateway error) is skipped and retried on the next run.
- * The Stripe call is outside any DB transaction (no
- * row lock held across the network round-trip); the transition + release are transactional inside
- * {@code ReleaseAbandonedBooking}. Package-private; only the {@code application.in} port is exposed
- * (invariant #11). Booking codes are never logged — ids only (invariant #7).
+ * Expires {@code AWAITING_PAYMENT} bookings past their pay deadline (the TTL, an accepted request's pay
+ * window, or the service day's end, invariant #4). Per booking it voids the PaymentIntent first, outside
+ * any transaction; on {@code Canceled} or {@code NoCollection} (stranded, else its set is held forever)
+ * it runs {@link ReleaseAbandonedBooking}, the webhook's guarded transition in its own transactional
+ * bean, so the two never double-act. {@code NotCancellable} is the confirm webhook's (invariant #8);
+ * {@code Failed} retries next run; rows fail alone. Logs ids, never codes (invariant #7).
  */
 @Service
 class AbandonedBookingSweepService implements ExpireAbandonedBookings {

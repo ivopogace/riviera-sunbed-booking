@@ -46,28 +46,12 @@ import { CrossIcon } from '../shared/cross-icon';
 const SET_INCLUDES = '2 loungers + umbrella · full day';
 
 /**
- * Two-step guest-checkout modal for booking one set.
- * Step 1 **Details** collects contact info (Signal Forms) with the date shown read-only — the map
- * owns the date now; step 2 **Review** shows the summary + total and the mode-specific
- * note, then submits through {@link BookingService}. Restyle only: the three shipped booking flows are
- * unchanged — a `201` emits {@link booked}, a `202 AWAITING_PAYMENT` emits {@link awaiting} (the
- * booking is NOT confirmed until the verified webhook, invariant #8), a `202 PENDING_REQUEST` emits
- * {@link requested}. Accessible modal: `role="dialog"` + `aria-modal`, a focus trap, ESC / backdrop
- * / close-button dismiss, and focus returns to the triggering tile (handled by the parent).
- *
- * <p>The create is fenced by the proof-of-work challenge (ADR-0016), so the Review step hosts the
- * shared widget and the submit waits for its solution. The solve does not wait for the pay button:
- * entering Review moves focus to the primary button, inside the same form the widget binds its
- * on-focus solve to, so the work overlaps the tourist reading the summary and terms. A refusal
- * names the reason and restarts the widget — a spent solution can never be retried — and reserves
- * nothing: the fence runs ahead of the controller, so availability is untouched (invariant #2).
- * Rationale for Review over Details: RESPONSIBILITIES.md § Platform edge.
- *
- * <p>The panel caps its height and hides its overflow, so `.dialog-body` scrolling is what keeps the
- * actions row reachable once Review outgrows a phone. That only holds while every element between
- * the two — the `<form>` included — is itself a shrinkable flex column: a plain block sizes to its
- * content, the body never becomes a scroll port, and the pay button is clipped away with no way to
- * reach it. `booking-flow.e2e.ts` measures both halves at a phone viewport.
+ * Two-step checkout modal for one set: Details (date read-only — the map owns it), then Review
+ * submits via {@link BookingService} and emits `booked`, `awaiting` (unconfirmed until the
+ * webhook, #8) or `requested`. a11y: `aria-modal`, focus trap, ESC/backdrop/close dismiss, and the
+ * parent returns focus to the tile. Proof of work (ADR-0016) fences the create, solving on Review
+ * (`RESPONSIBILITIES.md` §Platform edge); a refusal restarts the widget. Every element from panel
+ * to `.dialog-body`, `<form>` too, must be a shrinkable flex column or the pay button is cut off.
  */
 @Component({
   selector: 'app-booking-dialog',
@@ -433,7 +417,7 @@ export class BookingDialog implements OnInit {
   protected readonly challengePayload = signal<string | undefined>(undefined);
 
   /**
-   * This booking's server-quoted cancellation terms (#795). While loading or failed the template
+   * This booking's server-quoted cancellation terms. While loading or failed the template
    * renders no cancellation claim at all — never a false "free cancellation".
    */
   protected readonly terms = this.bookings.cancellationTerms(() => ({

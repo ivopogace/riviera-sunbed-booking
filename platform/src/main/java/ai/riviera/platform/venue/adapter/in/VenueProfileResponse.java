@@ -12,30 +12,12 @@ import ai.riviera.platform.venue.vocabulary.Amenity;
 import ai.riviera.platform.venue.vocabulary.VenueLocation;
 
 /**
- * The wire response for {@code GET /api/venues/{venueId}/profile}: the owner's venue-admin
- * profile, mapped from the application {@link VenueProfileView} to the shape the console form
- * consumes — booking mode + amenity codes as their token strings, the cutoff and the sales close as
- * {@code "HH:mm"} — so the round-trip to the profile {@code PATCH} is symmetric.
- *
- * <p>{@code commissionBps} and {@code payoutCurrency} are display-only on this surface: a venue does
- * not set its own commission, and the {@code PATCH} cannot reach the column (the platform admin
- * writes it through {@code PUT /api/admin/venues/{venueId}/commission}).
- *
- * <p>{@code version} is the row's optimistic-concurrency token: the tab echoes it back as
- * {@code expectedVersion} on the next {@code PATCH}, so a stale write is rejected with 409.
- *
- * <p>{@code photos} keys every slot (lower-case, matching the REST path vocabulary) to its
- * PREVIEW serving URL, {@code null} when empty — always all three keys, so the tab renders
- * a stable grid. Emptiness is the null URL; no separate boolean.
- *
- * <p>{@code seasonClosure} is read-only here too: it is written through
- * {@code PUT}/{@code DELETE …/season-closure}, never the {@code PATCH}.
- *
- * <p>{@code location} is the venue's riviera-map pin, {@code null} when it has none; the
- * {@code PATCH} takes the same shape back.
- *
- * <p>{@code maxStayDays} is the longest stay the venue takes, in days, {@code null} for any length
- * this season; the {@code PATCH} takes the same shape back, and a null lifts the maximum.
+ * The owner's {@code GET /api/venues/{venueId}/profile}, in the console form's shape (tokens as
+ * strings, times as {@code "HH:mm"}) so it round-trips to the profile {@code PATCH}; {@code version}
+ * returns as {@code expectedVersion}, a stale one 409. Display-only here: {@code commissionBps} and
+ * {@code payoutCurrency} (admin-written) and {@code seasonClosure} (its own endpoint).
+ * {@code photos} always keys all three lower-case slots to a PREVIEW URL, {@code null} when empty.
+ * A {@code null} {@code location} is no pin; a {@code null} {@code maxStayDays} is any length.
  */
 record VenueProfileResponse(String name, String beach, String description,
 		String bookingMode, String bookingCutoff, String salesClose, int commissionBps,

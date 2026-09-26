@@ -60,7 +60,7 @@ interface TileView {
   readonly set: SetView;
   readonly bookable: boolean;
   /** How the tile looks and what it announces — the appearance, the markers and the legend
-   *  swatches all resolve from this one value (a FREE walk-in set is `walkin`, #672). */
+   *  swatches all resolve from this one value (a FREE walk-in set is `walkin`). */
   readonly state: MapTileState;
   /** Accessible name for a non-interactive tile (`<li>`). */
   readonly name: string;
@@ -117,21 +117,9 @@ interface VenueHeader {
 }
 
 /**
- * Read-only visual beach map for one venue on a chosen day or stay. Renders the glass venue
- * header (with description + cutoff explainer), an availability summary for the days, and the
- * positioned, row-major set grid coloured by tier and availability. The map owns the selected
- * days: changing them re-fetches their availability and seeds the booking dialog's days, so
- * the two always agree. Reactive to in-place `:id`/`?date`/`?lastDate` route changes — the
- * router reuses the instance, so a change resets per-venue state and re-loads like a fresh
- * mount. Money is rendered from integer minor units; tile state is conveyed
- * by an accessible name, not colour alone (WCAG AA). The grid chrome — wash, rails, zone
- * layout, drag-pan with its click-vs-drag threshold — is the shared {@link BeachMapCanvas};
- * this component owns only the tourist vocabulary projected into it — the tile names and the
- * mode-aware footer, which states booking or request terms per the venue's own mode.
- *
- * Display parity only: availability truth stays server-side (invariant #2); only free
- * ONLINE-pool sets are bookable (invariant #3); the picker's `min` excludes today but the
- * server remains authoritative for the real cutoff (invariant #4).
+ * One venue's read-only beach map for a day or stay; it owns the days and seeds the dialog's. The
+ * router reuses it on `:id`/`?date`/`?lastDate` changes, so each resets and reloads. Display only:
+ * the server decides availability (#2) and cutoff (#4); only free ONLINE sets are bookable (#3).
  */
 @Component({
   selector: 'app-venue-map',
@@ -186,7 +174,7 @@ export class VenueMap {
 
   protected readonly venue = signal<VenueMapView | undefined>(undefined);
   protected readonly failed = signal(false);
-  /** 404: the venue does not exist or is not tourist-visible (#693) — no retry can succeed. */
+  /** 404: the venue does not exist or is not tourist-visible — no retry can succeed. */
   protected readonly notFound = signal(false);
 
   /**
@@ -294,10 +282,9 @@ export class VenueMap {
     return formatCivilDate(isoDate);
   }
 
-  /** Whether the selected date is today — keys the closed banner's copy. Reads a fresh clock
-   *  per recompute (each date change), not the mount-time floor, so a tab held across Tirane
-   *  midnight gets the today copy back on its next pick; a banner already on screen at the
-   *  rollover keeps its copy until then (the documented minDate residual class). */
+  /** Whether the selected date is today — keys the closed banner's copy. Reads a fresh clock per
+   *  recompute, not the mount-time floor, so a tab held past Tirane midnight is right on its next
+   *  pick; a banner already showing keeps its copy until then. */
   protected readonly closedForToday = computed(
     () => this.selectedDate() === defaultBookingDate(new Date()),
   );
@@ -340,11 +327,9 @@ export class VenueMap {
     };
   });
 
-  /** Sets grouped into rows (read order preserved), each coded by its stored `rowLabel` — the
-   *  one per-venue row identity (#724) — plus its rail-chip price label per
-   *  {@link rowPriceLabel}. Zones still compare the RENDERED label (#689), so the richer label
-   *  re-partitions them exactly where it should: a walk-in row priced like the online row above
-   *  it now opens a zone of its own instead of vanishing into it (#702). */
+  /** Sets grouped into rows in read order, coded by the stored `rowLabel`, with the
+   *  {@link rowPriceLabel} chip. A zone starts where the RENDERED label changes, so a walk-in row
+   *  priced like the online row above it opens its own zone. */
   protected readonly rows = computed<readonly MapRow[]>(() => {
     const byRow = new Map<string, SetView[]>();
     for (const set of this.venue()?.sets ?? []) {
@@ -555,10 +540,9 @@ export class VenueMap {
   }
 
   /**
-   * Close the calendar and hand focus back to the trigger (modal a11y, RV-FE-9) — the calendar's
-   * own contract: it dismisses, the opener restores. Via `focusMover`, whose `afterNextRender`
-   * write phase lands after the DOM has caught up, so the trigger announces the date it is now
-   * showing rather than the one it was showing when the click arrived.
+   * Close the calendar and hand focus back to the trigger (RV-FE-9): the calendar dismisses, the
+   * opener restores. Via `focusMover`, which lands after render, so the trigger announces the date
+   * it now shows, not the one it showed when the click arrived.
    */
   protected closePicker(): void {
     this.pickerOpen.set(false);

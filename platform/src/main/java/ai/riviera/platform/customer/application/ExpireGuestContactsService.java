@@ -17,26 +17,12 @@ import ai.riviera.platform.customer.spi.ReviewErasure;
 import ai.riviera.platform.customer.vocabulary.CustomerId;
 
 /**
- * The {@code customer} module's retention-sweep application service (Slice 2 of #101). Package-private
- * behind the internal {@link ExpireGuestContacts} port; constructor injection into {@code final} fields.
- *
- * <p>A guest contact is scrubbed only when <strong>all three</strong> gates agree it has no live basis:
- * the row itself is older than the window and no live {@code customer_account} claims its email (both
- * applied by the candidate query, in SQL), and no booking of that guest falls on or after the cutoff (the
- * dependency-inverted {@link GuestBookingHistory} fact, answered by {@code booking}). The window and the
- * decision are {@code customer}'s; {@code booking} holds no retention policy. The contacts a run scrubs
- * have their reviews tombstoned in the same transaction through {@link ReviewErasure}, one call per batch.
- *
- * <p>The cutoff is a civil date reasoned in {@code Europe/Tirane} from the injected UTC {@link Clock}
- * (invariant #6) — never the JVM default zone. The boundary is <em>inclusive-retain</em>: a booking exactly
- * on the cutoff still counts as a basis.
- *
- * <p>The run is bounded by {@link RetentionWindow#batchSize()} so a backlog can never produce an unbounded
- * transaction; the remainder is picked up by the next run. Each scrub is guarded on {@code erased_at IS
- * NULL}, so a repeated run — or an overlap with a Slice-1 erasure of the same row — is a no-op rather than
- * a double-erasure. Financial records are never touched (invariant #9). The completion is logged with
- * counts and the cutoff date only — never an email, name, phone, or booking code (invariant #7,
- * {@code riviera-java-conventions} §10).
+ * The retention sweep. A guest contact is scrubbed only when <strong>all three</strong> gates agree:
+ * row older than the window and email unclaimed by a live account (both in SQL), and no booking on or
+ * after the cutoff ({@link GuestBookingHistory}); its reviews are tombstoned in the same transaction via
+ * {@link ReviewErasure}. The cutoff is a {@code Europe/Tirane} date from the UTC {@link Clock} (#6),
+ * inclusive-retain. A run scrubs at most {@link RetentionWindow#batchSize()}, never touches financial
+ * rows (#9), and logs counts and the cutoff only (#7). Gates: {@code docs/runbooks/data-erasure.md}.
  */
 @Service
 class ExpireGuestContactsService implements ExpireGuestContacts {

@@ -1,30 +1,10 @@
 /**
- * The review module — the tourist's verdict on a delivered stay: the review record (stars,
- * comment and display name; one per booking), the eligibility and 60-day window policy, the
- * author's own submit/edit/delete lifecycle inside it, the aggregate rating math, and the public
- * page of listed (commented, visible) reviews a venue shows, and the tombstone a data subject's
- * erasure leaves on a review (name and comment gone, the star kept). The state is the
- * {@code review} table; the rules are {@code domain/}'s pure types, {@code ReviewGate} first.
- *
- * <p><strong>Leaf module, deny-by-default:</strong> {@code allowedDependencies = { "shared" }},
- * the {@code operator}/{@code customer} posture — everything points <em>into</em> this module.
- * The two facts it needs from elsewhere both arrive by inversion rather than by an outbound edge:
- * whether a booking was checked in comes through {@link ai.riviera.platform.review.spi.CompletedStays},
- * a driven port {@code booking} implements (the {@code customer.spi.GuestBookingHistory} precedent),
- * and the recomputed aggregate reaches {@code venue} as {@link ai.riviera.platform.review.events.ReviewsChanged},
- * whose listener queries back through {@link ai.riviera.platform.review.api.VenueRatingSummary}. Calling
- * {@code booking::api} directly would close the cycle {@code venue → review → booking → venue}, since
- * {@code booking} already depends on {@code venue}; a {@code BookingCompleted} event would close the same
- * one. Rationale: ADR-0015.
- *
- * <p>It publishes its own {@link ai.riviera.platform.review.vocabulary.VenueRef} and
- * {@link ai.riviera.platform.review.vocabulary.BookingRef} typed ids (invariant #11) for the same
- * reason {@code operator} does — reusing {@code venue}'s or {@code booking}'s id types would re-add
- * the edge the leaf posture exists to avoid.
- *
- * <p>Full-module layout (ADR-0007): {@code api} + {@code spi} + {@code vocabulary} + {@code events}
- * + {@code application} + {@code domain} + {@code adapter.in} + {@code adapter.out}. It never writes
- * the {@code venue} table — it computes the aggregate, {@code venue} stores it.
+ * The review module: a tourist's verdict on a delivered stay — one review per booking, its 60-day
+ * window, the author's edits, the aggregate rating, the public listing, and erasure's tombstone (name
+ * and comment blanked, star kept; ADR-0010). <strong>A leaf</strong> (ADR-0015): calling
+ * {@code booking}, hearing its events, or reusing its or {@code venue}'s id types closes a cycle
+ * (e.g. {@code venue → review → booking → venue}), so facts arrive via {@code spi.CompletedStays}
+ * and typed ids are its own (invariant #11). It computes the aggregate; {@code venue} stores it.
  */
 @org.springframework.modulith.ApplicationModule(
 	displayName = "Review",

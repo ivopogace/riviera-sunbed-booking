@@ -9,25 +9,12 @@ import ai.riviera.platform.booking.vocabulary.BookingId;
 import ai.riviera.platform.booking.vocabulary.CancellationWindow;
 
 /**
- * Published when a booking transitions to {@code CONFIRMED} — the write-side spine fact other
- * modules react to (U5, issue #9): {@code payout} accrues a ledger entry. Both confirm paths (the
- * synchronous stub and the async Stripe-webhook path) publish it from one internal seam
- * ({@code booking.application.reserve.ConfirmBooking}).
- *
- * <p>Id-based, immutable payload (invariant #11): technical ids ({@link BookingId}, {@link VenueId},
- * {@link SetId}) plus the booking facts fixed at confirmation — the {@code bookingDate} (a
- * {@code LocalDate} in {@code Europe/Tirane}, invariant #6) and the gross {@code amountMinor} — the stay's total — in
- * integer minor units + ISO {@code currency} (invariant #5), and {@code lastDate}, the last service
- * day ({@code null} on payloads serialized before it existed: read it through {@link #lastDay()}). No aggregates, no mutable config: the
- * commission rate is deliberately <em>not</em> carried here — {@code payout} re-reads it from
- * {@code venue::api} because it is mutable venue configuration, not a fact of this booking.
- *
- * <p>{@code cancellationWindowAtBirth} + {@code lateCancelRefundBps} are likewise facts fixed
- * at the moment, the {@code amountMinor} posture: the window the booking was <em>born</em> in and the
- * late share its disclosure promised — a sent mail's truth can't be rewritten by a later config edit,
- * which is why the bps here is not the mutable-rate exception above. {@code cancellationWindowAtBirth}
- * is {@code null} on payloads serialized before the fields existed; consumers render no disclosure
- * for null, forever.
+ * Published when a booking becomes {@code CONFIRMED}, only from {@code ConfirmBooking}, the one seam
+ * both confirm paths share; {@code payout} accrues on it, {@code notification} mails it. Id-based
+ * (invariant #11): days in {@code Europe/Tirane} (#6), {@code amountMinor} the stay's gross in minor
+ * units + ISO currency (#5). Never add the commission rate: {@code payout} re-reads that mutable venue
+ * config. The birth window and bps are frozen so a sent mail stays true; a null window (older
+ * payload) renders no disclosure. Rationale: {@code RESPONSIBILITIES.md} §booking.
  */
 public record BookingConfirmed(BookingId bookingId, VenueId venueId, SetId setId,
 		LocalDate bookingDate, long amountMinor, String currency,

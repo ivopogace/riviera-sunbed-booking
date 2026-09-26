@@ -18,26 +18,12 @@ import ai.riviera.platform.venue.vocabulary.VenueId;
 import ai.riviera.platform.venue.spi.BookingPresence;
 
 /**
- * JDBC adapter answering {@link BookingPresence} from the {@code booking} table — the {@code booking}
- * module owns that table, so the booking-presence probes live here while the layout writes they guard
- * stay in {@code venue}. Invariant #1: explicit SQL via {@link JdbcClient}, no JPA.
- *
- * <p>This is the implementing side of a dependency-inverted <strong>driven (SPI) port</strong>
- * (declared in {@code venue.spi}). The legal {@code booking → venue} edge (granted as {@code venue::api}
- * for {@link VenueId} and {@code venue::spi} for {@link BookingPresence}) lets us reference these here;
- * {@code venue} never imports {@code booking}, so {@code ModularityTests} stays cycle-free. The adapter
- * depends only on {@link JdbcClient}, so the Spring bean graph is acyclic too.
- *
- * <p>Three questions, four probes. {@code hasBookings} counts a booking of <strong>any</strong>
- * status including terminal, and a set a remodel receipt names as a booking's old or new spot,
- * because each pins its set via a FK ({@code booking.set_id}, {@code remodel_receipt_move.*_set_id})
- * — that is the retire-or-delete decision of every removal. {@code hasLiveBookings} and its batch
- * twin {@code nearestLiveBookings} count only bookings that can still be honoured — the edit, remove
- * and bulk-save guards, where finished history strands nobody. {@code liveBookingsFrom} counts what
- * a venue's guests are still owed from a day on — the close-for-season response; a stay that began
- * earlier and is still running on that day is owed its remaining days. Indexes:
- * {@code booking_venue_id_idx} serves the venue-scoped probe and {@code booking_set_date_idx}'s
- * leftmost prefix the set-scoped ones (both V5); no new index.
+ * Answers {@code venue}'s {@link BookingPresence} from the {@code booking} table this module owns
+ * (invariant #1: explicit {@link JdbcClient} SQL). {@code hasBookings} counts any status, and a set a
+ * remodel receipt names as a move's old or new spot, since each pins the set by FK: that decides
+ * retire-or-delete. The live probes count only {@link #LIVE_STATUSES}; {@code liveBookingsFrom} reads
+ * {@code last_date}, so a stay still running on the day is owed its remaining days. Served by
+ * {@code booking_venue_id_idx} and {@code booking_set_date_idx} (V5); no new index.
  */
 @Repository
 class JdbcBookingPresence implements BookingPresence {

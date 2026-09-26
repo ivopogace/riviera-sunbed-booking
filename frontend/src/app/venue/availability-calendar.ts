@@ -84,25 +84,12 @@ const WEEKDAYS: readonly { readonly short: string; readonly long: string }[] = [
 ];
 
 /**
- * The venue page's date picker: a modal calendar carrying each day's free/total set count, so a
- * tourist sees which days are worth choosing before the pick commits.
- *
- * <p>The counts are a **snapshot, never a hold** (invariant #2, and the `CONTEXT.md` glossary): a
- * day showing free capacity can be full by the time a set is claimed, and only the claim decides.
- * Nothing here is phrased as bookable or reserved, and no count gates a later step of the flow.
- * `total` spans both pools, so it answers "how busy is this day", not "how many can I book".
- *
- * <p>Every past day renders but cannot be chosen (invariant #4, display only — the server stays
- * authoritative for the real fence), and so does any day whose counts carry `salesOpen: false` —
- * today past the venue's sales close, or a day inside a season closure. The endpoint answers past
- * days because it reports availability, so the floor is this component's; the per-day verdict is the
- * server's. In stay mode, once a first day is tapped, a last day past the stay ceiling — the venue's
- * maximum where it has one, else {@link MAX_STAY_DAYS} — cannot be chosen either; the reserve path
- * enforces that rule too.
- *
- * <p>Focus, not selection, drives the visible month: {@link focusedDate} is the roving-tabindex
- * position and the month is computed from it, so an arrow key that crosses a month boundary and a
- * PageDown are the same operation with the same refetch.
+ * The venue page's modal date picker, each day with its free/total set count — a **snapshot, never
+ * a hold** (invariant #2): phrase nothing as bookable and gate no later step on it; `total` spans
+ * both pools. Past days (this component's floor), `salesOpen: false` days and, in stay mode, days
+ * past the stay ceiling can't be chosen: display only, the server decides (invariant #4). Focus,
+ * not selection, drives the month: {@link focusedDate} is the roving stop, so an arrow across a
+ * month and a PageDown are one operation with one refetch.
  */
 @Component({
   selector: 'app-availability-calendar',
@@ -184,12 +171,9 @@ export class AvailabilityCalendar {
   private readonly hostRef = inject<ElementRef<HTMLElement>>(ElementRef);
 
   /**
-   * The roving-tabindex position. Arrow keys move it; only Enter/Space/click commits a choice.
-   * It opens on the chosen day, or on the floor when that day is already past — a carried
-   * `?date=` is already clamped upstream, so this is the guard rather than the usual path. A
-   * chosen day the server marks unsellable keeps the position: the cell is disabled but stays the
-   * roving stop, so the arrow keys move from it — a season closure can leave no bookable day to
-   * fall to, and the month must not jump.
+   * The roving-tabindex position (arrows move it; only Enter/Space/click commits). Opens on the
+   * chosen day, else the floor if that is past; a chosen day the server marks unsellable stays the
+   * stop — a season closure may leave no bookable day to fall to, and the month must not jump.
    */
   private readonly focusedDate = linkedSignal(() => {
     const selected = this.selectedDate();
@@ -197,10 +181,9 @@ export class AvailabilityCalendar {
   });
 
   /**
-   * Bumped whenever focus should follow {@link focusedDate} into the grid. Month navigation by
-   * BUTTON deliberately does not bump it: the day cells re-render, but focus stays on the nav
-   * button so a second press steps a second month (the APG date-picker behaviour). Keyboard moves
-   * from inside the grid do bump it, because there the cell is where focus already was.
+   * Bumped whenever focus should follow {@link focusedDate} into the grid: by keyboard moves inside
+   * it, never by the month BUTTONS — focus stays on the button so a second press steps again (the
+   * APG date picker).
    */
   private readonly focusRequest = signal(1);
 
@@ -291,10 +274,9 @@ export class AvailabilityCalendar {
   }
 
   /**
-   * Roving-tabindex movement. The handler is bound on each cell rather than the grid, because a
-   * keydown on a non-focusable wrapper is an `interactive-supports-focus` violation
-   * (`shared/segmented-control.ts`). `Enter` and `Space` are deliberately absent: the cell is a real
-   * `<button>`, so they fire its click and reach {@link choose} natively.
+   * Roving-tabindex movement, bound per cell: a keydown on the non-focusable grid wrapper fails
+   * `interactive-supports-focus`. No `Enter`/`Space`: the cell is a real `<button>`, so they reach
+   * {@link choose} natively.
    */
   protected onDayKeydown(event: KeyboardEvent, iso: string): void {
     let next: string;
@@ -331,11 +313,9 @@ export class AvailabilityCalendar {
   }
 
   /**
-   * Move the roving position AND carry focus with it — the keyboard's move, not the buttons'.
-   *
-   * <p>Clamped to the earliest month the "Previous month" control will reach, so the two paths
-   * agree: a button that announces itself unavailable must not be contradicted by an arrow key
-   * that walks past it (and fires a request per month on the way).
+   * Move the roving position AND focus (the keyboard's move). Clamped to the earliest month
+   * "Previous month" reaches, so an arrow key never walks past a button that says it is unavailable
+   * (firing a request per month on the way).
    */
   private moveFocusTo(date: string): void {
     const floor = startOfMonth(this.minDate());
@@ -386,13 +366,9 @@ export class AvailabilityCalendar {
   }
 
   /**
-   * Read one month's counts. The window is the month's own inclusive bounds, so it is 31 days at
-   * most and the server's 62-day cap is out of reach however far the user navigates.
-   *
-   * <p>Each dispatch carries a generation, and a response from a superseded one is dropped — month
-   * navigation races exactly as the map's date changes do (`venue-map.ts`'s `epoch` guard). The
-   * previous month's counts and any previous failure are cleared at dispatch, so a slow month is
-   * never painted with the last one's numbers and a stale failure notice cannot outlive its month.
+   * Read one month's counts (≤ 31 days, inside the server's 62-day cap). A superseded dispatch's
+   * response is dropped (the `epoch` guard, as in `venue-map.ts`); counts and failure clear at
+   * dispatch, so a slow month never shows the last one's numbers or a stale failure.
    */
   private fetchMonth(venueId: number, month: string): void {
     const generation = ++this.epoch;

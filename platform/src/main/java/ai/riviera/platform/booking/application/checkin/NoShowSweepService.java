@@ -39,19 +39,9 @@ class NoShowSweepService implements MarkNoShows {
 	}
 
 	/**
-	 * Two backlogs, each swept in batches until it is drained or the shared per-run cap is hit,
-	 * whichever comes first: the past service days of live stays still unmarked, then the stays
-	 * whose last service day has passed. Each batch is its own statement and commits on its own, so
-	 * a run cut short by the bounded client's timeout — or by the cap — keeps every batch before it
-	 * and the next tick resumes from there. That is the whole reason this is not one unbounded
-	 * {@code UPDATE}: an all-or-nothing statement over a backlog bigger than the timeout would roll
-	 * back every run and never make progress.
-	 *
-	 * <p>"Fewer than a batch means drained" is only sound because each batch statement
-	 * <em>waits</em> for a contended row rather than skipping it: a skipped row would shorten the
-	 * batch and end the loop early, leaving it unswept until some later run happened to find it
-	 * uncontended. Each backlog reads its own statement's count, so a service day backlog larger
-	 * than a batch never ends the run on the stays' short batch, nor the other way round.
+	 * Drains past service days, then ended stays, in batches under one per-run cap; each batch commits
+	 * alone, so a run cut short resumes next tick. A short batch means drained only because batches wait
+	 * on locked rows: never add {@code SKIP LOCKED}. Rationale: {@code RESPONSIBILITIES.md} §booking.
 	 */
 	@Override
 	public int sweep() {
@@ -96,10 +86,8 @@ class NoShowSweepService implements MarkNoShows {
 	}
 
 	/**
-	 * In a {@code finally} because the interesting run is the one that throws: a batch cancelled by
-	 * the bounded client's timeout is the case batching exists for, and the batches already
-	 * committed before it are exactly the number an operator needs. Logged only when there is
-	 * something to say.
+	 * Called from a {@code finally}: a run the bounded client's timeout cuts short is the one worth
+	 * logging, with what it had already committed. Silent when nothing resolved.
 	 */
 	private static void logOutcome(int marked, boolean drained) {
 		if (marked == 0) {

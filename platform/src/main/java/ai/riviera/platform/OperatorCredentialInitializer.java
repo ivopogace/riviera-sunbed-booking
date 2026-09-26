@@ -12,21 +12,12 @@ import ai.riviera.platform.operator.api.OperatorProvisioning;
 import ai.riviera.platform.operator.vocabulary.OperatorCredential;
 
 /**
- * Boot-time provisioning of the bootstrap operator's credential — how the initial platform-admin
- * operator gets a login without committing a password. On startup, if {@code RIVIERA_OPERATOR_PASSWORD}
- * ({@link RivieraOperatorProperties#password}) is set, its value is encoded with the delegating
- * {@link PasswordEncoder} (all crypto stays at the edge) and stored on the seeded bootstrap operator
- * via {@link OperatorProvisioning#setPassword}. Setting the variable to a new value and restarting is
- * therefore the credential-<em>rotation</em> path for that account. When it is blank, the operator
- * write API is locked (no login) — logged at WARN, never with the value (invariant #7). A value outside
- * {@link PasswordPolicy}'s length rule is refused the same way: not stamped, one WARN without the value,
- * never a boot failure — the highest-privilege account is held to the floor every chosen password meets.
- *
- * <p>This is deliberately an edge {@link ApplicationRunner}, not domain logic: it runs only in the full
- * application context (a {@code @WebMvcTest} slice does not component-scan it) and only touches the
- * bootstrap account. Additional operators are provisioned through {@link OperatorProvisioning} directly
- * (a future admin console), not here. Idempotent: it re-stamps the same password on each boot (bcrypt
- * salts differ, the password still verifies) rather than tracking prior state.
+ * Boot-time provisioning of the bootstrap admin's credential from {@code RIVIERA_OPERATOR_PASSWORD}
+ * ({@link RivieraOperatorProperties#password}): encoded at the edge by the {@link PasswordEncoder},
+ * re-stamped via {@link OperatorProvisioning#setPassword} on every boot (idempotent), so a new value
+ * and a restart rotate it. Blank or outside {@link PasswordPolicy}'s length rule: not stamped, one
+ * WARN that never prints the value, never a boot failure. Touches only the bootstrap account.
+ * Runbook: {@code docs/runbooks/operator-credential-provisioning.md}.
  */
 @Component
 class OperatorCredentialInitializer implements ApplicationRunner {
@@ -81,12 +72,9 @@ class OperatorCredentialInitializer implements ApplicationRunner {
 	}
 
 	/**
-	 * Whether the configured password differs from the one currently stored — i.e. a real rotation
-	 * rather than this runner's ordinary every-boot re-stamp. Hash equality cannot answer this: bcrypt
-	 * re-salts, so re-encoding the same password yields a different hash every time, and revoking on
-	 * that would sign the admin out on every deploy. Comparing the raw configured password against the
-	 * stored hash does answer it. No stored hash yet (first ever boot) is not a rotation — there is no
-	 * prior session to invalidate.
+	 * Whether the configured password differs from the stored one: a real rotation, not the every-boot
+	 * re-stamp. Use {@code matches}, never hash equality: bcrypt re-salts, so equality would revoke the
+	 * admin's sessions on every deploy. No stored hash yet (first boot) is not a rotation.
 	 */
 	private boolean isGenuineRotation(String username, String password) {
 		return accounts.findByUsername(username)

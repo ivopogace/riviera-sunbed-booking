@@ -16,33 +16,12 @@ import ai.riviera.platform.venue.application.VenueCommissionAdministration;
 import ai.riviera.platform.venue.vocabulary.VenueId;
 
 /**
- * The platform-admin commission-rate surface — the list of every venue's rate and the
- * write that corrects one. Driving adapter depending only on the module's
- * {@link VenueCommissionAdministration} port; hosted in the module rather than at the composition root,
- * like the other module-owned admin surfaces.
- *
- * <p><strong>Why this surface has to exist.</strong> A venue's commission was settable only at
- * creation: the owner-asserted profile {@code PATCH} treats it as display-only, deliberately
- * (a venue does not set its own commission), and nothing else could write it, so a rate typed
- * wrong at onboarding was permanent. Widening the operator's {@code PATCH} would have been the wrong
- * fix; the authority to change a commercial term belongs to the platform, not the counterparty.
- *
- * <p><strong>Role-gated, not venue-scoped.</strong> An admin does not own a rate, so there is nothing
- * for object-level authorization to check, and the venue-scoped alternative would answer the admin
- * {@code 403 NOT_VENUE_OWNER} — refusing exactly the case this exists for. Living under
- * {@code /api/admin/**} takes the invariant-#13 exemption instead, and the {@code ADMIN} gate in
- * {@code SecurityConfig} is then the <strong>whole</strong> authorization: a plain {@code OPERATOR} is
- * {@code 403}, anonymous is {@code 401}.
- *
- * <p>Errors are the one RFC-7807 contract: an unknown venue is {@code 404 NO_SUCH_VENUE}, and a
- * missing or out-of-range rate is {@code 400 INVALID_REQUEST} via
- * {@link InvalidApiRequestException#parsing} at the conversion boundary — so the range guard yields a
- * 400 when a client trips it and would still yield a 500 if stored state ever did. Unlike the
- * photo-moderation twin this surface does not blur venue existence: the caller is the platform
- * admin, whose venue list here is deliberately complete (it includes venues the tourist reads
- * hide), and an admin correcting a rate needs a mistyped id to fail loudly. The audit record is
- * written at the edge for every mutating {@code /api/admin/**} action, so there is no
- * instrumentation here.
+ * The platform-admin commission-rate surface: every venue's rate, tourist-hidden venues included,
+ * and the write that corrects one. Role-gated, not venue-scoped: {@code /api/admin/**} is exempt
+ * from invariant #13, so the {@code ADMIN} gate in {@code SecurityConfig} is the whole authorization
+ * (a plain {@code OPERATOR} is 403); the edge audits each write. An unknown venue is an unblurred
+ * {@code 404 NO_SUCH_VENUE}; a bad rate is 400 via {@link InvalidApiRequestException#parsing}.
+ * Forward-only, and never the owner's {@code PATCH}: {@code RESPONSIBILITIES.md} §venue.
  */
 @RestController
 @RequestMapping("/api/admin/venues")

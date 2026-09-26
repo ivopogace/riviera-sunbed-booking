@@ -10,23 +10,12 @@ import ai.riviera.platform.customer.api.CustomerAccountDirectory;
 import ai.riviera.platform.customer.vocabulary.CustomerAccountId;
 
 /**
- * Edge glue that resolves the authenticated principal to its {@link CustomerAccountId} (S3) —
- * the customer-side sibling of {@link CurrentOperator}. Reading the Spring Security context is a
- * platform/edge concern (RV-BE-11), not {@code customer} domain: the module only maps an email to an id
- * via {@link CustomerAccountDirectory}. It lives in the {@code shared} kernel module, not at the composition
- * root: modules depend on it, so hosting it at the root would cycle back through them.
- *
- * <p>Two entry points for the two call sites (invariant #13 posture — authorization is by the session
- * principal, never a request-supplied id):
- * <ul>
- * <li>{@link #optional} for the <strong>guest-tolerant</strong> checkout path: a signed-in customer
- *     links the booking; an anonymous or operator principal simply gets empty (a guest booking).</li>
- * <li>{@link #require} for the <strong>customer-only</strong> my-bookings path: no customer principal
- *     is an {@link AccessDeniedException} (→ 403 via the root {@code ApiErrorHandler} advice).</li>
- * </ul>
- * A non-customer principal (anonymous, or an operator with {@code ROLE_OPERATOR}) never carries
- * {@code ROLE_CUSTOMER}, so it can never resolve to an account here — an operator session lists no
- * customer's bookings.
+ * Edge glue resolving the authenticated principal to its {@link CustomerAccountId}; the
+ * customer-side {@link CurrentOperator}. Authorization rests on the session principal, never a
+ * request-supplied id (the invariant #13 posture). Only a {@code ROLE_CUSTOMER} principal resolves,
+ * so an operator session lists no customer's bookings. Reading the security context is the edge's
+ * job (RV-BE-11); {@code customer} only maps an email to an id. Why {@code shared}, not the root:
+ * {@code RESPONSIBILITIES.md} §{@code shared}.
  */
 @Component
 public class CurrentCustomer {

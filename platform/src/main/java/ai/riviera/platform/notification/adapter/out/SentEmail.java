@@ -10,21 +10,11 @@ import ai.riviera.platform.notification.application.RequestDeclinedMail;
 import ai.riviera.platform.notification.application.RequestExpiredMail;
 
 /**
- * One email the {@link MockMailer} recorded instead of sending — enough for a developer/demo
- * to follow the flow and for backend ITs to complete a verify/reset journey by pulling the tokenized
- * {@link #link} out of the "sent" record, or to assert what a {@link #confirmation} or
- * {@link #cancellation} carried. Not used by the real {@link SmtpMailer}.
- *
- * <p>Exactly one of {@link #link} / {@link #confirmation} / {@link #cancellation} / {@link #paymentDue}
- * is populated, per {@link #kind}; use the {@link #recovery}, {@link #bookingConfirmation},
- * {@link #bookingCancellation} and {@link #paymentDue(String, PaymentDueMail)} factories rather than
- * the canonical constructor so no caller has to
- * remember which slot goes with which kind. The booking kinds deliberately do <em>not</em> share
- * a slot: an IT asserting on a confirmation must not silently match a cancellation, which is exactly
- * what a shared {@code Object} payload would allow — and #373's payment-due mail is the case that
- * makes the rule bite, since it carries the same code and venue as the confirmation for the same
- * booking and says the opposite thing about the money. Public alongside {@link MockMailer} (#382): it is
- * the value the mock's observation seam speaks to ITs outside this package.
+ * One email the {@link MockMailer} recorded instead of sending; ITs pull the tokenized {@link #link}
+ * out of it or assert on a booking payload. Exactly one slot is populated per {@link #kind}, so build it
+ * through the factories, never the canonical constructor. Booking kinds must not share a slot: a
+ * confirmation and a payment-due notice carry the same code and venue, and an IT asserting on one must
+ * never match the other. Public, like the mock, because ITs outside this package read it.
  */
 public record SentEmail(String toEmail, Kind kind, URI link, BookingConfirmationMail confirmation,
 		BookingCancellationMail cancellation, PaymentDueMail paymentDue,
@@ -49,10 +39,8 @@ public record SentEmail(String toEmail, Kind kind, URI link, BookingConfirmation
 	}
 
 	/**
-	 * The operator-approval notice, identified by its sign-in link. It shares the {@link #link} slot
-	 * with {@link #recovery} but deliberately not its factory: that link is a bearer credential and
-	 * this one is the ordinary sign-in URL, and one factory for both would erase the distinction the
-	 * mock's logging rules turn on.
+	 * The operator-approval notice. It shares the {@link #link} slot with {@link #recovery} but not its
+	 * factory: that link is a bearer credential, this one the public sign-in URL the mock may log.
 	 */
 	static SentEmail operatorApproved(String toEmail, URI signInLink) {
 		return new SentEmail(toEmail, Kind.OPERATOR_APPROVED, signInLink, null, null, null, null, null, null);
@@ -69,10 +57,8 @@ public record SentEmail(String toEmail, Kind kind, URI link, BookingConfirmation
 	}
 
 	/**
-	 * An accepted request's payment-due notice, identified by the details it renders. Its
-	 * {@code payLink} lives on the payload rather than in the shared {@link #link} slot, so an IT
-	 * reaching for a recovery link can never match it: that slot's occupants are followed blindly by
-	 * the recovery ITs, and this URL leads to a booking, not a token exchange.
+	 * An accepted request's payment-due notice. Its {@code payLink} rides the payload, never the
+	 * {@link #link} slot, which the recovery ITs follow blindly as a token exchange.
 	 */
 	static SentEmail paymentDue(String toEmail, PaymentDueMail paymentDue) {
 		return new SentEmail(toEmail, Kind.PAYMENT_DUE, null, null, null, paymentDue, null, null, null);

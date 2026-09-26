@@ -62,30 +62,12 @@ const CLS = {
 } as const;
 
 /**
- * The ⌘K / Ctrl-K jump palette of the console shell (`console-shell.ts`): a modal dialog named
- * `Go to` with a search field over everything reachable from here — the host hands it the rows
- * ({@link PaletteRow}: this console's sections with their hints and the Requests count, the owned
- * venues, the other console, `Change password`), and this component owns only the dialog. Typing
- * filters the rows by label, hint and group (case-insensitive substring); the first hit is
- * highlighted and Enter opens it; a query with no hit reads `Nothing matches.` — a status region
- * that is in the dialog from the start and only changes its text, so the change is announced — and
- * Enter does nothing, as it does before anything is typed. Escape, the backdrop, a row and a second chord close
- * it. The chords are document listeners of the palette's own, so they exist only while the host
- * renders it — a signed-out visitor on an admin URL has neither the dialog nor the listener.
- *
- * <p>Focus is moved on every leg (WCAG 2.4.3): open lands it on the field; every close hands it back
- * to the **opener** — the element the host passed to {@link toggle} (its search glyph), or the
- * element that held focus when the chord fired — and, when a navigation the palette drove has
- * unmounted that opener, to the app shell's `<main>`. A navigation that ends with the dialog open
- * (Back, Forward) closes it the same way. A row for the page the operator is on is a same-URL
- * navigation the router skips rather than ends, so it leaves no re-landing pending, and a
- * navigation the router skips, cancels or fails clears one — nothing is left to move focus on a
- * later, unrelated navigation. Tab is trapped inside the dialog (`focus-trap.ts`), so
- * the rows are reachable by keyboard without arrow-key roving.
- *
- * <p>Rendered by the host as a sibling of its header: the header's `backdrop-filter` would
- * otherwise be the `fixed` dialog's containing block and pin it to the header. `contents` host, so
- * the dialog and backdrop position against the viewport.
+ * The console shell's ⌘K / Ctrl-K `Go to` dialog over the host's {@link PaletteRow}s, filtered by
+ * label, hint and group; Enter opens the first hit. `Nothing matches.` is an `<output>` there from
+ * the start, so its text change is announced. The chords are its own document listeners, live only
+ * while the host renders it. Focus (WCAG 2.4.3): open lands on the field; every close, including a
+ * navigation ending while open, returns it to the opener, or `<main>` if that unmounted; Tab is
+ * trapped. Keep it a sibling of the header: its `backdrop-filter` would pin the `fixed` dialog.
  */
 @Component({
   selector: 'app-console-palette',
