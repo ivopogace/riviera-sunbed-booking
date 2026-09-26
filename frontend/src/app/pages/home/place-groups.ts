@@ -58,8 +58,9 @@ export function nearestRegion(here: LngLat, cards: readonly VenueCard[]): Region
 
 /**
  * The set grouped by beach — nearest first when located, the coast's north-to-south order
- * otherwise (the list arrives rating-sorted) — and each group's venues nearest first too. A
- * group with no pinned venue sorts last.
+ * otherwise (the list arrives rating-sorted) — and each group's venues nearest first too, the
+ * ones that can't host the chosen stay after the rest in the same order. A group with no pinned
+ * venue sorts last.
  */
 export function groupByBeach(cards: readonly VenueCard[], here: LngLat | null): BeachGroup[] {
   const byBeach = new Map<string, VenueCard[]>();
@@ -79,7 +80,8 @@ export function groupByBeach(cards: readonly VenueCard[], here: LngLat | null): 
           };
     const km = here === null || centre === null ? null : distanceKm(here, centre);
     const sorted = here === null ? on : [...on].sort((a, b) => kmOf(a, here) - kmOf(b, here));
-    return { code, label: beachLabel(code), cards: sorted, km } satisfies BeachGroup;
+    const cards = [...sorted.filter((c) => c.canHost), ...sorted.filter((c) => !c.canHost)];
+    return { code, label: beachLabel(code), cards, km } satisfies BeachGroup;
   });
   return here === null
     ? groups.sort((a, b) => coastIndex(a.code) - coastIndex(b.code))

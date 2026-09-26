@@ -3,7 +3,7 @@
   class="row flex items-center gap-3 border-b border-riv-ink-faint/20 px-2 py-[10px] no-underline last:border-b-0 group-last/row:border-b-0 motion-safe:[transition:background_0.12s_ease] hover:bg-riv-panel-wash-hover focus-visible:outline-offset-[-2px]"
   [routerLink]="['/venues', card().id]"
   [queryParams]="link()"
-  [class.saturate-0]="card().salesClosed"
+  [class.saturate-0]="card().salesClosed || !card().canHost"
   [attr.aria-label]="card().ariaLabel"
   [attr.aria-current]="selected() ? 'true' : null"
   (mouseenter)="pointed.emit(true)"
@@ -89,9 +89,13 @@
     </span>
 
     <span class="flex items-center gap-2 text-[12.5px] text-riv-ink-soft">
-      <span data-testid="row-availability"
-        ><app-sets-free [free]="card().free" [total]="card().total"
-      /></span>
+      @if (card().stayLabel; as stay) {
+        <span data-testid="row-stay">{{ stay }}</span>
+      } @else {
+        <span data-testid="row-availability"
+          ><app-sets-free [free]="card().free" [total]="card().total"
+        /></span>
+      }
       <span
         data-testid="row-avail-track"
         class="avail-track block h-1.5 w-[72px] shrink-0 overflow-hidden rounded-full bg-riv-ink-faint/15"

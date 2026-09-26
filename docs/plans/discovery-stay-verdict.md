@@ -267,9 +267,9 @@ N/A — no payment in scope. Prices on the list stay per day (`fromPrice`), unch
 
 ## Execution status
 
-**Stage pointer:** `implement (phase 2d)`
+**Stage pointer:** `implement (phase 2e)`
 
-**Next action:** `place-groups.spec.ts` red: a venue that can't host sinks after its group's hosts.
+**Next action:** `venue-pin-layer.spec.ts` red: a can't-host pin carries `data-cant-host`.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -281,7 +281,7 @@ N/A — no payment in scope. Prices on the list stay per day (`fromPrice`), unch
 | 2a — calendar promoted to `shared/` | ✅ | phase 2a commit |
 | 2b — service param + wire types + card mapping | ✅ | phase 2b commit |
 | 2c — "Several days…" chip, page calendar, `?lastDate`, links | ✅ | phase 2c commit |
-| 2d — verdict line, dusk, ordering | | |
+| 2d — verdict line, dusk, ordering | ✅ | phase 2d commit |
 | 2e — hollow pins + contrast spec | | |
 | 2f — mocked e2e | | |
 | 3 — substrate docs + close-out | | |

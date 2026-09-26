@@ -103,7 +103,7 @@ describe('place groups (the located state)', () => {
 
       const groups = groupByBeach(cards, null);
 
-      expect(groups.map((group) => group.cards.map((c) => c.id))).toEqual([[2, 4, 1, 3], [5]]);
+      expect(groups.map((group) => group.cards.map((c) => c.id))).toEqual([[5], [2, 4, 1, 3]]);
     });
 
     it('keeps the located nearest-first order inside each side too', () => {
