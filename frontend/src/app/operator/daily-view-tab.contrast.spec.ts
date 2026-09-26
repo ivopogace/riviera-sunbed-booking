@@ -47,7 +47,7 @@ import {
 // The FREE tile fill (`bg-riv-console-inset/85`, daily-view-tab.ts tileClass).
 const FREE_TILE_FILL = { color: WHITE, alpha: 0.85 };
 /** The locked tile's worst-case fill: `--riv-walkin-hatch`'s darker band, a `CARD_INK` tint. 0.30
- *  since #879 gave the hatch one declaration (this tile painted 0.28 of its own before). */
+ *  from the hatch's one declaration. */
 const LOCKED_STRIPE_FILL = { color: CARD_INK, alpha: 0.3 };
 // The close-sales trigger button: --riv-warn-edge/50 hairline on its own `bg-riv-console-inset/60` fill.
 const TRIGGER_EDGE_ALPHA = 0.5;
@@ -124,7 +124,7 @@ describe('DailyViewTab porcelain contrast (WCAG AA, #175)', () => {
 
   /**
    * The close-sales trigger's amber hairline, recorded under **rule 2** of
-   * `docs/design/non-text-contrast.md` (#879). Its edge does not clear 3:1 against its own fill and
+   * `docs/design/non-text-contrast.md`. Its edge does not clear 3:1 against its own fill and
    * does not need to: this is a filled control whose identity is carried by its own label, so
    * 1.4.11's "required to identify" does not reach the boundary. All three of rule 2's conditions,
    * demonstrated rather than asserted in prose:
@@ -138,9 +138,10 @@ describe('DailyViewTab porcelain contrast (WCAG AA, #175)', () => {
    *       fallback.
    * </ol>
    *
-   * <p>It became a recorded family because #879 moved the value (`#d9861a` -> `#e0a03a`, 1.65:1 ->
-   * 1.48:1 on this fill). The position was already sub-3:1 before the merge and carried no entry —
-   * so the ladder did not create this exemption, it found one that was never written down.
+   * <p>It became a recorded family because the `--riv-warn-*` merge moved the value (`#d9861a` ->
+   * `#e0a03a`, 1.65:1 -> 1.48:1 on this fill). The position was already sub-3:1 before the merge
+   * and carried no entry — so the ladder did not create this exemption, it found one that was never
+   * written down.
    */
   it('the close-sales trigger is identified by its label, not its edge (1.4.11 rule 2)', () => {
     for (const stop of PORCELAIN_STOPS) {

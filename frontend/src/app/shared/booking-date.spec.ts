@@ -98,7 +98,7 @@ describe('formatIsoDate', () => {
 });
 
 /**
- * Pins the month arithmetic the availability calendar's grid is built from (#761). Every
+ * Pins the month arithmetic the availability calendar's grid is built from. Every
  * function reads and writes the same UTC-anchored ISO civil day the rest of this module uses,
  * so the grid can never disagree with the date the map and the booking dialog are holding.
  */

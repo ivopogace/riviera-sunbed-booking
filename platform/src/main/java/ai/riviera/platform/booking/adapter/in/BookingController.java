@@ -31,7 +31,7 @@ import ai.riviera.platform.customer.vocabulary.CustomerAccountId;
 import ai.riviera.platform.venue.vocabulary.SetId;
 
 /**
- * Public tourist booking endpoint (U3), over {@link CreateBooking} (invariant #11). Maps the sealed
+ * Public tourist booking endpoint, over {@link CreateBooking} (invariant #11). Maps the sealed
  * {@link BookingOutcome} exhaustively: {@code Confirmed}→201, {@code SET_TAKEN}→409,
  * {@code NOT_ONLINE_POOL}/{@code BOOKING_CLOSED}/{@code VENUE_CLOSED}/{@code RANGE_NOT_OFFERED}/
  * {@code STAY_TOO_LONG}→422, {@code NO_SUCH_SET}→404; malformed input→400 via
@@ -81,7 +81,7 @@ class BookingController {
 	}
 
 	/**
-	 * View a booking by its code (U6). The code is the bearer credential (invariant #7) — knowing it
+	 * View a booking by its code. The code is the bearer credential (invariant #7) — knowing it
 	 * authorizes the view; it is never logged. Returns the summary + server-computed refund terms, or
 	 * {@code 404} for an unknown code.
 	 */
@@ -93,7 +93,7 @@ class BookingController {
 	}
 
 	/**
-	 * Cancel a booking by its code (U6); refund computed server-side (invariant #10), no body.
+	 * Cancel a booking by its code; refund computed server-side (invariant #10), no body.
 	 * {@code Cancelled}→200, {@code NotFound}→404, {@code NotCancellable}/{@code WindowClosed}→409
 	 * under distinct codes. The code is the bearer credential (invariant #7), never logged.
 	 */
@@ -133,7 +133,7 @@ class BookingController {
 
 	@PostMapping
 	ResponseEntity<?> create(@RequestBody CreateBookingRequest request, Authentication authentication) {
-		// Signed-in checkout links the booking to the customer's account (S3); a guest / anonymous
+		// Signed-in checkout links the booking to the customer's account; a guest / anonymous
 		// principal resolves to null → an unchanged guest booking (invariant #2/#4 flows untouched). The
 		// account id comes from the SESSION principal only, never the request body (BOLA-safe).
 		CustomerAccountId accountId = currentCustomer.optional(authentication).orElse(null);

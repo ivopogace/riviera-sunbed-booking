@@ -6,8 +6,7 @@ import { environment } from '../../environments/environment';
 
 /**
  * Our API's origin+path prefix, anchored (not a bare substring) so cookies/CSRF headers are only
- * ever attached to requests that really target our backend — the same anchoring rule the retired
- * Basic interceptor enforced for the credential header.
+ * ever attached to requests that really target our backend.
  */
 const API_PREFIX = `${environment.apiBaseUrl}/api/`;
 /** Methods CSRF protects — reads never need the token. */

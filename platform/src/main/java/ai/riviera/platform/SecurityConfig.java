@@ -91,7 +91,7 @@ class SecurityConfig {
 	/** The operator-only staff daily-bookings read. Order-sensitive — see the ordering rule below. */
 	private static final String STAFF_BOOKINGS_PATH = "/api/venues/*/bookings";
 
-	/** Staff check-in (#583): flips lifecycle state off a bearer code — operator-gated (invariant #7). */
+	/** Staff check-in: flips lifecycle state off a bearer code — operator-gated (invariant #7). */
 	private static final String BOOKING_CHECK_IN_PATH = "/api/venues/*/bookings/*/check-in";
 	/** The guest's one review on their own stay — POST / PUT / DELETE, all code-gated (invariant #7). */
 	private static final String BOOKING_REVIEW_PATH = "/api/bookings/*/review";
@@ -122,7 +122,7 @@ class SecurityConfig {
 	private static final String MY_VENUES_PATH = "/api/venues/mine";
 
 	/**
-	 * The operator create form's defaults read (issue #692) — the platform commission the create
+	 * The operator create form's defaults read — the platform commission the create
 	 * path stamps. Operator-gated: the platform's commercial terms are operator-facing, not public.
 	 */
 	private static final String VENUE_DEFAULTS_PATH = "/api/venue-defaults";

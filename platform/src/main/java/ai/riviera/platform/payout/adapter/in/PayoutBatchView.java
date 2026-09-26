@@ -3,7 +3,7 @@ package ai.riviera.platform.payout.adapter.in;
 import ai.riviera.platform.payout.domain.PayoutBatch;
 
 /**
- * The HTTP response for a payout batch (U9, issue #12): the BKT report row for a {@code (venue, period)}.
+ * The HTTP response for a payout batch: the BKT report row for a {@code (venue, period)}.
  * A thin wire DTO over {@link PayoutBatch} — exposes {@code venueId} as a plain {@code long} and the
  * enums/value objects as their tokens. {@code totalNetMinor} is the signed net owed in integer minor
  * units (invariant #5/#9).

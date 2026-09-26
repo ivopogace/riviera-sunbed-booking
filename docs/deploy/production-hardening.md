@@ -11,12 +11,12 @@ Related: [ADR-0004](../adr/0004-non-prod-hosting-render-neon-pages.md) (hosting)
 
 ## Actuator endpoints
 
-Only **`/actuator/health`** is web-exposed. The exposure allowlist is **explicit** — we do not
-rely on the framework default — so a dependency that ships its own endpoint cannot silently
-widen the surface:
+Only **`/actuator/health`** (public) and **`/actuator/prometheus`** (authenticated) are
+web-exposed. The exposure allowlist is **explicit** — we do not rely on the framework default —
+so a dependency that ships its own endpoint cannot silently widen the surface:
 
 ```properties
-management.endpoints.web.exposure.include=health
+management.endpoints.web.exposure.include=health,prometheus
 management.endpoint.health.show-details=when-authorized
 management.endpoint.health.roles=OPERATOR
 ```
@@ -26,10 +26,11 @@ Consequences, enforced by **two independent layers**:
 | Endpoint | Anonymous | Authenticated operator | Why |
 |---|---|---|---|
 | `GET /actuator/health` | `200 {"status":"UP"}` (no component details) | `200` **with** `components` (db/diskSpace/…) | Render health check + CD poll need it public; details `when-authorized` only |
+| `GET /actuator/prometheus` | `401` (security) | `200` scrape body | Metrics scrape (`docs/runbooks/observability.md`); never public |
 | `env`, `beans`, `mappings`, `configprops`, `heapdump`, `threaddump`, `loggers`, `metrics`, `modulith` | `401` (security) | `404` (not exposed) | Leak config / resolved secrets / bean wiring / internals — never reachable |
 
-- **Layer 1 — exposure allowlist:** a non-`health` endpoint has no HTTP handler → `404` even
-  for an authenticated operator. This is the primary control.
+- **Layer 1 — exposure allowlist:** an endpoint other than `health`/`prometheus` has no HTTP
+  handler → `404` even for an authenticated operator. This is the primary control.
 - **Layer 2 — `SecurityConfig`:** everything but `/actuator/health/**` requires authentication,
   so an anonymous call to any other actuator path is `401` (never a `200` body).
 

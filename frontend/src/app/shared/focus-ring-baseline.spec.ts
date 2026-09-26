@@ -5,7 +5,7 @@ import { AA_LARGE, contrastRatio } from '../../testing/contrast';
 import { baseLayerBlock, STYLESHEET } from '../../testing/stylesheet-tokens';
 
 /**
- * Guard for the focus-indicator baseline (#890): the `@layer base` rule in `src/tailwind.css`
+ * Guard for the focus-indicator baseline: the `@layer base` rule in `src/tailwind.css`
  * that paints the project's 3px `--riv-accent-ink` ring on every `<button>`'s `:focus-visible`.
  *
  * <p>Before it, the tree answered "what does a focused button look like" twice — 60 explicit

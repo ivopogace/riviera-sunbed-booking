@@ -6,7 +6,7 @@ import ai.riviera.platform.payout.application.DailyTakingsView;
 import ai.riviera.platform.venue.vocabulary.MoneyView;
 
 /**
- * Wire shape of the operator console's takings tile (#171, O2): {@code gross} and {@code net} as
+ * Wire shape of the operator console's takings tile: {@code gross} and {@code net} as
  * money ({@code minorUnits} + ISO {@code currency}, invariant #5 — the FE renders them, never
  * computes them), plus the {@code commissionBps} for the "after {pct} commission" label and the
  * {@code date} the figure is for. Reuses the published {@link MoneyView} (payout is granted

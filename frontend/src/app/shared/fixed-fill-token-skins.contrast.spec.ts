@@ -33,13 +33,14 @@ import { baseBlock, declarationsOf } from '../../testing/stylesheet-tokens';
  *
  * <p>All three are per-state skins whose fills are fixed literals on hosts that DO theme (none of
  * the nine sites sits on a pinned route — the one `data-riv-theme` host binding in the tree is the
- * app shell's, on the operator and admin console routes). So the #850 trap applies verbatim: a themed ink over a fill that
- * stays pale resolves light-on-light in the dark theme. Measured rather than assumed — see the
- * themed-alternative test, which keeps every bound in the tree so the reason survives the decision.
+ * app shell's, on the operator and admin console routes). So the class-F trap applies verbatim: a
+ * themed ink over a fill that stays pale resolves light-on-light in the dark theme. Measured rather
+ * than assumed — see the themed-alternative test, which keeps every bound in the tree so the reason
+ * survives the decision.
  *
  * <p><strong>How the families are cut.</strong> By FORM, never by value, and never across half a
  * per-state class ternary. `#0a5f74` paints a medallion ink, an amenity ink and a step-badge ink;
- * three roles on three surfaces, so three tokens — the fork #848 and #864 each settled. Conversely
+ * three roles on three surfaces, so three tokens — class R's role-before-value fork. Conversely
  * `booking-pay.ts`'s single `[class]` ternary carries the medallion's amber waiting state beside
  * its teal confirmed state, so tokenising one branch and leaving its sibling a literal would be a
  * worse artifact than either whole option.
@@ -102,9 +103,9 @@ const EXCLUSIVE_LITERALS: readonly RegExp[] = [/#d9f2f7/i, /#f7e8e4/i, /#eecdc4/
  * the asymmetry is the finding, not a shortcut. `#fcf0d9`/`#8a5410` also paints the amber NOTICE
  * BANNER (`withheld-email-notice` + the two legal pages): the medallion's exact pair on a different
  * form, with accessible text, which is its own class-F family and not this one. `#0a5f74` also
- * paints three `bg-` fills (#854/#861) and — inside `booking-dialog` itself — the
+ * paints three `bg-` fills (class R) and — inside `booking-dialog` itself — the
  * `--riv-cta-grad`-duplicating header gradient. A tree-wide sweep on either would demand a migration
- * this slice must not make, and a regex narrow enough to separate a medallion from a banner by
+ * this family must not make, and a regex narrow enough to separate a medallion from a banner by
  * class-string adjacency alone would break the first time a formatter reordered a utility.
  *
  * <p>So each migrated site names what must be **gone** from it and what must be **kept** in it.
@@ -152,18 +153,19 @@ const MIGRATED_SITES: readonly {
 ];
 
 /**
- * The homes of these same values that this slice deliberately leaves alone, each with the ticket
- * that owns it. Asserted POSITIVELY — the `OUT_OF_FAMILY` mechanism #851 invented and #864
- * narrowed: a sweep that only proves absence cannot prove it did not over-reach.
+ * The homes of these same values that this family deliberately leaves alone, each with the ticket
+ * that owns it. Asserted POSITIVELY — the `OUT_OF_FAMILY` mechanism the solid-btn and
+ * console-negative guards share: a sweep that only proves absence cannot prove it did not
+ * over-reach.
  *
- * <p>A row records a PAINT this slice must not have taken, not the notation that paint wears — so
+ * <p>A row records a PAINT this family must not have taken, not the notation that paint wears — so
  * a later slice tokenising one rewrites the row rather than deleting it. `payouts-tab`'s
- * `#a3372a` is the first: #852 moved the reason chip's `/opacity` tints onto
+ * `#a3372a` is the first: class O moved the reason chip's `/opacity` tints onto
  * `--riv-console-negative-ink`, the ink token already on that same element, so the value is still
- * painted there and #858 still did not reach it. Deleting the row instead would quietly narrow
- * what this list proves. Rewritten a second time by #879's alpha ladder (`/28` -> `/30`), which is
- * the same move again and the reason the rule is worth stating rather than re-deriving: the alpha
- * a paint wears is notation, and this row is about the paint.
+ * painted there and this family does not reach it. Deleting the row instead would quietly narrow
+ * what this list proves. Rewritten a second time by class O's alpha ladder (`/28` -> `/30`), which
+ * is the same move again and the reason the rule is worth stating rather than re-deriving: the
+ * alpha a paint wears is notation, and this row is about the paint.
  */
 const OUT_OF_FAMILY: readonly { readonly path: string; readonly literal: string }[] = [
   { path: 'shared/status-chip.ts', literal: '#8a5410' },

@@ -7,7 +7,7 @@ import ai.riviera.platform.payout.domain.PayoutBatch;
 import ai.riviera.platform.payout.domain.PeriodKey;
 
 /**
- * The weekly BKT payout-report use case (U9, issue #12) — the inbound port the operator-gated web
+ * The weekly BKT payout-report use case — the inbound port the operator-gated web
  * adapter calls to generate, read, and advance the per-venue payout batches for a settlement
  * {@link PeriodKey} (invariant #9). Settlement itself is manual via BKT (no Stripe Connect, ADR-0002);
  * this port produces the report the founder acts on. Internal to {@code payout} ({@code application.in}).

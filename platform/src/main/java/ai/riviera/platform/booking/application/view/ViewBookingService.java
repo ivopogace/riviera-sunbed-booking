@@ -22,7 +22,7 @@ import ai.riviera.platform.venue.vocabulary.MoneyView;
 import ai.riviera.platform.venue.vocabulary.SetBookingInfo;
 
 /**
- * The view-a-booking use case (U6): load the booking by code and assemble its display + the
+ * The view-a-booking use case: load the booking by code and assemble its display + the
  * server-computed cancellation terms (invariant #10). The refund-if-cancelled-now is computed by the
  * shared {@link CancellationPolicy} — the same rule the cancel use case applies, so the displayed and
  * actioned refunds can never diverge. Package-private behind the {@link ViewBooking} port (invariant

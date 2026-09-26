@@ -9,14 +9,14 @@ import java.util.Arrays;
  * wall-clock time on the day itself, {@code Europe/Tirane}. A choice among exactly three fixed
  * values — the times mirror the {@code venue_sales_close_check} tokens (V44), and this enum is
  * their single Java mirror: the write path speaks the choice, so an off-vocabulary time is
- * unrepresentable past {@link #fromTime}. Cross-module carriers deliberately keep
+ * unrepresentable past {@link #fromTime}. Cross-module carriers keep
  * {@link LocalTime} — the fence does time arithmetic; the three-ness is venue's write concern.
  */
 public enum SalesClose {
 
 	/** {@code 00:01} — the venue opts out of same-day online sales. */
 	DAY_START(LocalTime.of(0, 1)),
-	/** {@code 16:00} — mid-afternoon close, the epic-decided default. */
+	/** {@code 16:00} — mid-afternoon close, the default. */
 	MID_AFTERNOON(LocalTime.of(16, 0)),
 	/** {@code 23:59} — online sales stay open all day. */
 	DAY_END(LocalTime.of(23, 59));

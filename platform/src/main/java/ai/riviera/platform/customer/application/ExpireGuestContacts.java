@@ -13,7 +13,7 @@ public interface ExpireGuestContacts {
 
 	/**
 	 * Scrub up to one batch of expired guest contacts; idempotent, as every scrub is guarded on
-	 * {@code erased_at IS NULL}. Booking / payment / payout records are never touched (#9).
+	 * {@code erased_at IS NULL}. Booking / payment / payout records are never touched (#9, ADR-0010).
 	 * @return contacts tombstoned this run (0 if none); scrubbed reviews are logged, not counted
 	 */
 	int sweep();

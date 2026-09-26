@@ -29,8 +29,8 @@ import { baseBlock, declarationsOf, themeBlock } from '../../testing/stylesheet-
  * failure is invisible to any porcelain-only check — which is why it is measured here rather than
  * asserted.
  *
- * <p>The availability calendar was the fourth family here until #888 un-pinned its fill: it is a
- * `--riv-pop-*` consumer now, and its themed palette is guarded where it lives,
+ * <p>The availability calendar is not a family here: its fill themes — it is a
+ * `--riv-pop-*` consumer — and its themed palette is guarded where it lives,
  * `venue/availability-calendar.contrast.spec.ts`.
  *
  * <p>Lives in `shared/` because the population spans `booking/` and `operator/`, the same reason
@@ -211,7 +211,7 @@ describe('The T-3 re-cut — fixed-fill and role-mismatch ink families (#849)', 
 
     /**
      * The positive half. The sweep above asserts absences, which a mistyped path would satisfy
-     * vacuously — #852's emptied-guard lesson, now a standing shape rather than a habit.
+     * vacuously — the emptied-guard lesson, now a standing shape rather than a habit.
      */
     it.each(SITES)('%s paints its family', (path) => {
       expect(read(path), `${path} paints a re-cut family`).toMatch(

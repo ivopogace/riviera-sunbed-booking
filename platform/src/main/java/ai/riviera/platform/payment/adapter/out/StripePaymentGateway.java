@@ -53,7 +53,7 @@ class StripePaymentGateway implements PaymentGateway {
 	/** Non-PII fallback reason when a Stripe error carries no code (logged + returned to the caller). */
 	private static final String STRIPE_ERROR = "stripe_error";
 
-	// Stripe PaymentIntent statuses we branch on when cancelling (issue #51).
+	// Stripe PaymentIntent statuses we branch on when cancelling.
 	private static final String STATUS_SUCCEEDED = "succeeded";
 	private static final String STATUS_CANCELED = "canceled";
 

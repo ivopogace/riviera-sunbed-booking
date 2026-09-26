@@ -6,7 +6,7 @@ import java.util.List;
 import ai.riviera.platform.payout.application.VenueLedger;
 
 /**
- * The HTTP response for the per-venue payout ledger (U9, issue #12): the venue id, currency, total net
+ * The HTTP response for the per-venue payout ledger: the venue id, currency, total net
  * owed, and the ordered entries (each with its running net owed). A thin wire DTO over
  * {@link VenueLedger} — exposes {@code venueId} as a plain {@code long} and the enums as their tokens.
  * Money is integer minor units (invariant #5); {@code reason} is {@code null} on an ACCRUAL.

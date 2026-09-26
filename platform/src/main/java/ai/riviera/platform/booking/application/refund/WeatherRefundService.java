@@ -25,7 +25,7 @@ import ai.riviera.platform.operator.vocabulary.VenueRef;
 import ai.riviera.platform.venue.vocabulary.VenueId;
 
 /**
- * The admin weather refund (U9), owner-asserted (invariant #13), in one transaction: each one-day
+ * The admin weather refund, owner-asserted (invariant #13), in one transaction: each one-day
  * booking on {@code (venue, date)}, {@code CONFIRMED} or a swept {@code NO_SHOW}, is cancelled with a
  * full refund whatever the cutoff (invariant #10), its {@code (set, date)} freed (invariant #2) and
  * {@link BookingCancelled} published; a multi-day stay is only named on the outcome for a manual

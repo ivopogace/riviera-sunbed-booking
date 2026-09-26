@@ -28,10 +28,10 @@
  *
  * <p>Three ties are weaker than the rest, and saying so is cheaper than discovering it. The semantic
  * ink is Tailwind's named `text-white`, which cannot be interpolated from a hex, so its spec pins
- * the mirror with a literal equality instead. The semantic FILL is a named utility for the same
- * reason (#854), so {@link ChipFill.fillClass} carries the class and the hex is inherited from
- * `glass-tokens.ts` rather than restated — one link longer, but still unbroken. And no spec can see
- * a variant it never renders:
+ * the mirror with a literal equality instead. The semantic FILL is a named utility too
+ * (`--riv-solid-fill-brand`), so {@link ChipFill.fillClass} carries the class and the hex is
+ * inherited from `glass-tokens.ts` rather than restated — one link longer, but still unbroken. And
+ * no spec can see a variant it never renders:
  * `water` is the amenity chip's only axis and it is boolean, so a third variant means a new input —
  * rendering it in that spec is part of adding it, not a step this file can enforce.
  */
@@ -51,19 +51,19 @@ export interface ChipFill {
   readonly ink: string;
   readonly fill: string;
   /**
-   * The class the fill is painted through, when that is no longer derivable from {@link fill} by
+   * The class the fill is painted through, when that is not derivable from {@link fill} by
    * interpolation — i.e. once the recipe has been tokenised and paints a named utility instead of a
    * `bg-[#…]` arbitrary value. Absent means the recipe is still a literal and `bg-[${fill}]` is the
-   * class. Every recipe here is tokenised as of #858 — the amenity chips last, which also retired
+   * class. Every recipe here is tokenised — the amenity chips last, which also retired
    * their class-S row in the colour-literal audit: a two-variant tag is class F's shape, not a
    * per-state palette. The field stays optional for the next recipe added before its own migration.
    */
   readonly fillClass?: string;
   /**
    * The class the INK is painted through, on the same terms as {@link fillClass}: absent means the
-   * recipe is still a literal and `text-[${ink}]` is the class. Added at #858, when the amenity
-   * recipes became the first tokenised ones whose ink is not a static utility — `SEMANTIC_CHIP`'s
-   * is `text-white`, which needed no field.
+   * recipe is still a literal and `text-[${ink}]` is the class. Needed for the amenity
+   * recipes, the tokenised ones whose ink is not a static utility — `SEMANTIC_CHIP`'s
+   * is `text-white`, which needs no field.
    */
   readonly inkClass?: string;
 }
@@ -71,12 +71,12 @@ export interface ChipFill {
 /**
  * `shared/amenity-chip.ts` — what the VENUE says about itself.
  *
- * <p>Tokenised at #858 onto the theme-invariant `--riv-amenity-*` family, so the hexes are no longer
+ * <p>Tokenised onto the theme-invariant `--riv-amenity-*` family, so the hexes are not
  * tied to what renders by interpolation and are taken from the family mirror instead — the
  * `SEMANTIC_CHIP` precedent below. `shared/fixed-fill-token-skins.contrast.spec.ts` ties those
  * values to the declaration in `tailwind.css`, so the chain from here to the paint is unbroken.
  *
- * <p>These are the ONLY sites #858 migrated that carry accessible text, which is why the AA proof
+ * <p>These are the ONLY class F-3 sites that carry accessible text, which is why the AA proof
  * `shared/amenities.contrast.spec.ts` runs over them matters rather than being a formality.
  */
 export const DESCRIPTIVE_CHIPS: readonly ChipFill[] = [
@@ -99,7 +99,7 @@ export const DESCRIPTIVE_CHIPS: readonly ChipFill[] = [
 /**
  * `shared/semantic-chip.ts` — what the PLATFORM claims about how booking works.
  *
- * <p>Tokenised at #854: the fill is `--riv-solid-fill-brand`, so the hex is no longer tied to what
+ * <p>Tokenised: the fill is `--riv-solid-fill-brand`, so the hex is not tied to what
  * renders by interpolation. It is taken from the family mirror instead, which
  * `shared/solid-fill-tokens.contrast.spec.ts` ties to the declaration in `tailwind.css` — so the
  * chain from this value to the paint is unbroken, just one link longer than the amenity chips'.

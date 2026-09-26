@@ -1,7 +1,7 @@
 package ai.riviera.platform.customer.vocabulary;
 
 /**
- * The result of redeeming an email-verification token (S8, epic #108) — a closed, caller-mappable set
+ * The result of redeeming an email-verification token — a closed, caller-mappable set
  * (typed outcomes for expected flows, not exceptions; riviera-java-conventions). A sealed interface so
  * the edge {@code switch}es exhaustively. Invalid, expired, and already-used tokens all collapse to the
  * single {@link InvalidOrExpired} case — indistinguishable to the caller (non-enumeration, invariant #7

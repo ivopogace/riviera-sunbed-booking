@@ -73,7 +73,7 @@ describe('My bookings — solid-fill controls (WCAG AA, issue #139)', () => {
     );
   });
 
-  /** The alert (#745) wears --riv-form-error-* (#850), theme-invariant as a pair. */
+  /** The rows-failed alert wears --riv-form-error-*, theme-invariant as a pair. */
   it('the rows-failed alert ink meets AA on its solid fill', () => {
     expect(
       contrastRatio(rgbToHex(FORM_ERROR_INK), rgbToHex(FORM_ERROR_FILL)),

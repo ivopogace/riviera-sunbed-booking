@@ -26,8 +26,8 @@ import {
 import { baseBlock, declarationsOf, themeBlock } from '../../testing/stylesheet-tokens';
 
 /**
- * WCAG-AA contrast guard for the availability calendar (#761), and the stylesheet contract of its
- * themed day-cell palette (#888).
+ * WCAG-AA contrast guard for the availability calendar, and the stylesheet contract of its
+ * themed day-cell palette.
  *
  * <p>The day cells are proved as **plain pairs**, with no compositing: every tint, the two rings
  * and the capacity bar are OPAQUE (the `semantic-chip` treatment, mirrored in

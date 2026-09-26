@@ -78,7 +78,7 @@ const BANNERS: readonly [name: string, fill: string, eyebrow: string][] = [
   ['moved', '#ddf4f8', '#0a5e7a'],
 ];
 /**
- * Both are `--riv-banner-*-ink` tokens since #849, so they are read from the one mirror rather
+ * Both are `--riv-banner-*-ink` tokens, so they are read from the one mirror rather
  * than restated here — a hand-copied value goes green against a retune it never saw.
  */
 const BANNER_BODY = rgbToHex(BANNER_BODY_INK);

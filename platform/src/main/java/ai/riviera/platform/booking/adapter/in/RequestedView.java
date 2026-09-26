@@ -7,7 +7,7 @@ import com.fasterxml.jackson.annotation.JsonUnwrapped;
 import ai.riviera.platform.booking.application.reserve.BookingConfirmation;
 
 /**
- * The {@code 202 Accepted} response body for a Request-to-Book creation (issue #98): the shared
+ * The {@code 202 Accepted} response body for a Request-to-Book creation: the shared
  * {@link CreatedBookingView} summary (status {@code PENDING_REQUEST}) plus the venue-response
  * deadline, an ISO-8601 UTC instant (invariant #6). Deliberately <strong>no</strong>
  * {@code clientSecret}/{@code paymentIntentId} — no PaymentIntent is <em>on record</em> until the

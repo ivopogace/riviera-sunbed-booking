@@ -10,7 +10,7 @@ import ai.riviera.platform.venue.vocabulary.MoneyView;
 import ai.riviera.platform.venue.vocabulary.VenueId;
 
 /**
- * The booking-view screen (U6): cancellation terms server-computed (invariant #10), money in minor
+ * The booking-view screen: cancellation terms server-computed (invariant #10), money in minor
  * units (#5), pay deadline computed server-side in {@code Europe/Tirane} (#4, #6). {@code cancellable}
  * ({@code CONFIRMED}, window open) and {@code withdrawable} (a {@code PENDING_REQUEST} retraction, no
  * policy) are never both true; {@code payment} is set only while payable. {@code emailWithheld} is

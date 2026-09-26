@@ -6,7 +6,7 @@ import java.util.Optional;
 import ai.riviera.platform.venue.vocabulary.SetId;
 
 /**
- * Driving port for the pre-reserve terms read (#795): what a tourist would agree to by booking this
+ * Driving port for the pre-reserve terms read: what a tourist would agree to by booking this
  * set on this date, quoted before anything is reserved. Implemented by {@link CancellationPolicy}
  * (the single home of the window rule, invariant #10); the controller depends on this seam only —
  * the {@code CreateBooking} pattern (invariant #11).

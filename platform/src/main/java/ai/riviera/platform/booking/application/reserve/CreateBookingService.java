@@ -72,7 +72,7 @@ class CreateBookingService implements CreateBooking {
 	}
 
 	/**
-	 * Collect for an already-committed booking. Runs <strong>outside</strong> any transaction (R-3):
+	 * Collect for an already-committed booking. Runs <strong>outside</strong> any transaction:
 	 * the {@code (set, date)} claim is committed, so the Stripe PaymentIntent creation holds no row
 	 * lock. Logs ids/date only — never the booking code (invariant #7) or guest PII.
 	 */

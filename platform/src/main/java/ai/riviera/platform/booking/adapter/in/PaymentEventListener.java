@@ -41,7 +41,7 @@ class PaymentEventListener {
 	void on(PaymentConfirmed event) {
 		long bookingId = event.bookingRef().value();
 		// The confirm seam transitions and publishes BookingConfirmed iff it actually transitioned,
-		// so a re-delivery publishes nothing (idempotent — invariant #8 / #9).
+		// so a re-delivery publishes nothing and payout accrues once (invariant #9).
 		if (confirmBooking.confirmFromPayment(bookingId, clock.instant())) {
 			log.info("confirmed booking {} from verified payment {}", bookingId,
 					event.paymentIntentId());
@@ -55,7 +55,7 @@ class PaymentEventListener {
 	@ApplicationModuleListener
 	void on(PaymentCanceled event) {
 		long bookingId = event.bookingRef().value();
-		// Shared guarded transition + release (also driven by the abandoned-payment sweep, issue #51):
+		// Shared guarded transition + release (also driven by the abandoned-payment sweep):
 		// a re-delivery or a booking the sweep already expired is a benign no-op, never a double release.
 		if (releaseAbandonedBooking.release(new BookingId(bookingId))) {
 			log.info("cancelled booking {} and released its set after payment cancellation", bookingId);

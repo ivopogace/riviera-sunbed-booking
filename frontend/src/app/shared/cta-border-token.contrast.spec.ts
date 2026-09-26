@@ -18,7 +18,7 @@ import {
 import { baseBlock, declarationsOf } from '../../testing/stylesheet-tokens';
 
 /**
- * Guard for `--riv-cta-border` (#853, class R row 1 of the colour-literal audit) — the white
+ * Guard for `--riv-cta-border` (class R row 1 of the colour-literal audit) — the white
  * hairline bevel on the primary CTA button, worn at 16 positions across `auth/`, `booking/` and
  * `shared/`.
  *
@@ -27,8 +27,8 @@ import { baseBlock, declarationsOf } from '../../testing/stylesheet-tokens';
  * theme. Pointing a border at it would be the role confusion class R exists to name, and it would
  * move the dark-theme paint of every one of these buttons.
  *
- * <p><strong>Why theme-invariant, against the issue's own suggestion.</strong> #853 proposed
- * `--riv-card-border` as the precedent for "how such a border themes". It is not: that token
+ * <p><strong>Why theme-invariant, not modelled on `--riv-card-border`.</strong> That token looks
+ * like the precedent for "how such a border themes". It is not: that token
  * themes because the card glass UNDER it themes. Every surface here is fixed — `--riv-cta-grad`
  * is declared once in the base block and inherited by all three themes, and `booking-dialog`'s
  * close button sits on a `#31798a` literal. So the class-F rule applies in the usual direction:
@@ -37,15 +37,15 @@ import { baseBlock, declarationsOf } from '../../testing/stylesheet-tokens';
  *
  * <p><strong>Why the family includes the close button.</strong> Grouped by FORM, not by value or
  * by component — a white hairline bevel on a fixed teal action surface. Both grounds for
- * invariance are the same, so one token rather than two one-hyphen-apart names (#864's argument).
+ * invariance are the same, so one token rather than two one-hyphen-apart names.
  *
  * <p>What jsdom maths cannot see is a dark override added later — every ratio here would still
  * pass. So the declaration tests read `src/tailwind.css` as text via `testing/stylesheet-tokens`.
  * The proof where the cascade rather than a regex decides is `e2e/cta-border-token-skin.e2e.ts`.
  *
- * <p><strong>Scope widened at #876, past this one token.</strong> Two tests here are TREE-WIDE
+ * <p><strong>Scope wider than this one token.</strong> Two tests here are TREE-WIDE
  * governance for `docs/design/non-text-contrast.md` rather than guards on `--riv-cta-border`: one
- * sweeps every `#834` citation under `src` for a deferral to that closed issue, the other sweeps
+ * sweeps `src` for a comment deferring to the closed erasure-panel contrast issue, the other sweeps
  * for a `forced-color-adjust` opt-out, which is the precondition rule 3 rests on. They live here
  * because this file already owned the source-sweep machinery (`allSources`, extended to
  * `sweptSources`), so a reader who trips one of them is in the right file — but the failure will
@@ -65,8 +65,8 @@ const FIXED_FILLS = [
 
 /**
  * Every theme's card glass with the background stops it composites over — the hosts a CTA button
- * sits on. The light two are the population the #853 affordance test already used; #876 adds the
- * dark theme, whose numbers had lived only in prose until then.
+ * sits on. The light two are the population the affordance test uses; the dark theme is here too,
+ * so its numbers are asserted rather than left in prose.
  */
 const THEMED_CARD_GLASS = [
   ['porcelain', PORCELAIN_CARD_GLASS, PORCELAIN_STOPS],
@@ -101,10 +101,10 @@ const APP_ROOT = join(process.cwd(), 'src/app');
 const SRC_ROOT = join(process.cwd(), 'src');
 
 /**
- * The #834 citations that record what that issue actually completed — the erasure panel's Erase
- * button, raised to 3:1 by PR #837 — rather than deferring anything to it. Each is pinned by a
+ * The citations of the closed erasure-panel issue that record what it completed — the erasure
+ * panel's Erase button, raised to 3:1 — rather than deferring anything to it. Each is pinned by a
  * distinguishing phrase, not by filename, so a new deferral written into one of these files still
- * fails the guard (#876 risk R-2).
+ * fails the guard.
  */
 const HISTORICAL_834: readonly { path: string; phrase: string }[] = [
   { path: 'tailwind.css', phrase: '>=3:1 against the panel fill, all porcelain stops' },
@@ -118,7 +118,7 @@ const SELF = 'shared/cta-border-token.contrast.spec.ts';
 
 /**
  * Every source under `src/app` except this one — templates are inline `.ts` here, so both
- * extensions are swept, and specs are IN scope: #862 found stale token prose hiding in a spec file
+ * extensions are swept, and specs are IN scope: stale token prose has hidden in a spec file
  * that a `*.spec.ts`-excluding sweep could not see.
  */
 function allSources(): readonly string[] {
@@ -215,8 +215,8 @@ describe('--riv-cta-border — the CTA hairline (#853)', () => {
   });
 
   /**
-   * #876's correction, and the reason no palette change was needed. The ticket measured the CTA
-   * fill against the card glass and read 2.23-3.16:1 in the dark theme as a 1.4.11 failure — but
+   * Why no palette change is needed. Measured against the card glass, the CTA fill reads
+   * 2.23-3.16:1 in the dark theme, which looks like a 1.4.11 failure — but
    * the hairline sits BETWEEN those two, so that pairing is not an adjacency. Measured against the
    * colour each layer actually abuts, the boundary clears 3:1 in every theme, and WHICH layer
    * carries it swaps: the fill is a fixed mid-teal, so light glass makes the fill the contrasting
@@ -244,7 +244,7 @@ describe('--riv-cta-border — the CTA hairline (#853)', () => {
   });
 
   /**
-   * The number #876 reported, kept under assertion rather than deleted as wrong — it is real, and
+   * The fill-vs-glass number, kept under assertion rather than deleted as wrong — it is real, and
    * a future slice re-deriving it should find the pairing already named. What it is NOT is the
    * 1.4.11 comparison: the test above measures the adjacency.
    */
@@ -263,11 +263,10 @@ describe('--riv-cta-border — the CTA hairline (#853)', () => {
   });
 
   /**
-   * #876: the sub-3:1 chrome question had been deferred four times to #834, an issue scoped to the
-   * erasure panel that closed 2026-08-31 — so every deferral pointed at a closed issue. The rule
-   * now lives at docs/design/non-text-contrast.md, which cannot close. Citations recording what
-   * #834 actually completed are history and stay; each is named below, so a fresh deferral cannot
-   * be absorbed by appending a filename.
+   * The sub-3:1 chrome question belongs to docs/design/non-text-contrast.md, which cannot close —
+   * not to the erasure-panel issue this test sweeps for, which closed 2026-08-31 and so is a dead
+   * end for any deferral. Citations recording what that issue completed are history and stay; each
+   * is named in `HISTORICAL_834`, so a fresh deferral cannot be absorbed by appending a filename.
    */
   it('no token comment defers a live 1.4.11 question to the closed #834', () => {
     const offenders = citationsOf('#834').filter(

@@ -15,7 +15,7 @@ function removeMatchMedia(): void {
 }
 
 /**
- * A matchMedia fake with change-event support, for the #675 OS-follow cases. Returns a trigger
+ * A matchMedia fake with change-event support, for the OS-follow cases. Returns a trigger
  * that fires the captured `change` listener as if the OS dark preference flipped to `matches`.
  */
 function fakeMatchMediaWithEvents(prefersDark: boolean): (matches: boolean) => void {

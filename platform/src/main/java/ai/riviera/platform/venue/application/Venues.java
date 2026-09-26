@@ -13,7 +13,7 @@ import ai.riviera.platform.venue.vocabulary.SetPlacement;
 import ai.riviera.platform.venue.vocabulary.VenueId;
 
 /**
- * Outbound (driven) port: the venue write store (U7). Internal to the module — implemented by
+ * Outbound (driven) port: the venue write store. Internal to the module — implemented by
  * the module's own {@code adapter.out} JDBC adapter, so it is NOT published in {@code api/}
  * (invariant #11). Keeps the application service free of SQL; the adapter is the only place that
  * knows the tables. Existence/conflict probes let the service return a precise outcome; the DB

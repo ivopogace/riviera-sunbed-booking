@@ -131,8 +131,8 @@ describe('Accent token family contrast (WCAG AA, #835)', () => {
   });
 
   /**
-   * `--riv-accent-chip-border` is the family's fourth non-text boundary and the one nothing
-   * measured until #876 — the test above asserts `--riv-accent-strong`, the OPAQUE border the
+   * `--riv-accent-chip-border` is the family's fourth non-text boundary and the one measured
+   * only here — the test above asserts `--riv-accent-strong`, the OPAQUE border the
    * amenity chip wears, which is a different token on a different component. This 0.75-alpha
    * one is worn by `shared/segmented-control.ts`'s selected option, where it clears 3:1 against
    * neither adjacent colour in the light themes. Exempt under docs/design/non-text-contrast.md

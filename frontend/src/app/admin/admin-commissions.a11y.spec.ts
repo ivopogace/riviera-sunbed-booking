@@ -15,7 +15,7 @@ import { VenueCommissionView } from './admin.model';
  *
  * <p>Audited in three states — closed, editor open, and editor showing a validation error. The
  * error element is mounted only while the error exists, so its association with the rate field
- * lasts exactly as long as the error does (#826); the earlier always-mounted alert region is gone.
+ * lasts exactly as long as the error does.
  * The open and erroring states are where the extra semantics live, and they are what an admin
  * actually reads before moving a commercial term. Contrast is not measurable by axe under jsdom;
  * the e2e proves it against a real render.

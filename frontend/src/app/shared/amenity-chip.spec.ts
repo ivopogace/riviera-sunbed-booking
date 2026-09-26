@@ -9,7 +9,7 @@ const [NEUTRAL, WATER] = DESCRIPTIVE_CHIPS;
 /**
  * The classes a recipe renders through: its own `fillClass`/`inkClass` once tokenised, else the
  * interpolated hex. The `semantic-chip.spec.ts` idiom — the recipe stays the single source, so
- * #858's move onto `--riv-amenity-*` needed no assertion rewritten here.
+ * the move onto `--riv-amenity-*` needed no assertion rewritten here.
  */
 const fillClass = (chip: (typeof DESCRIPTIVE_CHIPS)[number]): string =>
   chip.fillClass ?? `bg-[${chip.fill}]`;

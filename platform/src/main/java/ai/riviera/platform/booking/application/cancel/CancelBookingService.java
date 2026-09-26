@@ -21,7 +21,7 @@ import ai.riviera.platform.booking.domain.ServiceDays;
 import ai.riviera.platform.booking.vocabulary.CancellationWindow;
 
 /**
- * The guest cancel (U6), in one transaction: quote the refund server-side ({@link CancellationPolicy},
+ * The guest cancel, in one transaction: quote the refund server-side ({@link CancellationPolicy},
  * invariant #10), guarded {@code CONFIRMED → CANCELLED}, free every {@code (set, date)} of the span
  * (invariant #2), publish {@link BookingCancelled}. Never refund in here; {@code BookingRefundListener}
  * refunds after commit. Who may cancel is {@link BookingTransition#CANCEL_BY_GUEST}, never restated;

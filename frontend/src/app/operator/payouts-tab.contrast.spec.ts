@@ -40,7 +40,7 @@ import {
  * <p>The weather confirm renders via `shared/confirm-panel`'s `warn` tone: the button
  * fill is the registered `--riv-solid-fill-warn` token (still the darkened amber `#9a6410` — white
  * passes AA where the design mock's `#d9861a`/`#f0aa2e` would not), and the confirm copy's ink is
- * the component's own `--riv-warn-ink` over `--riv-warn-fill`, the exact pairing #879 measured at
+ * the component's own `--riv-warn-ink` over `--riv-warn-fill`, the exact pairing measured at
  * 6.86:1. Values mirror the token registry; a token edit there re-passes here.
  */
 

@@ -14,7 +14,7 @@ import ai.riviera.platform.payment.vocabulary.PaymentOutcome;
 /**
  * Implements the inbound {@link CheckoutPort} by delegating to the outbound
  * {@link PaymentGateway} — the seam between "what booking asks for" (collect for this
- * booking) and "how it is collected" (stub now, Stripe in U4). Package-private; only the
+ * booking) and "how it is collected" (the stub, or Stripe under {@code stripe}). Package-private; only the
  * {@code api/} port is public (invariant #11). Constructor injection into a {@code final}
  * field (no Lombok, no field {@code @Autowired}).
  */

@@ -10,7 +10,7 @@ import ai.riviera.platform.venue.vocabulary.SetId;
 import ai.riviera.platform.venue.vocabulary.VenueId;
 
 /**
- * The booking row {@link Bookings#findByCode} loads for the view and cancel use cases (U6); a flat
+ * The booking row {@link Bookings#findByCode} loads for the view and cancel use cases; a flat
  * read DTO, money in integer minor units + ISO currency (invariant #5). {@code cancelledAt},
  * {@code refundMinor} and {@code cancelReason} are stamped together, only by a cancellation that
  * decided a refund: all null when it never charged; pre-V14 rows carry a refund with no reason. It

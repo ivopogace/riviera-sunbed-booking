@@ -15,7 +15,7 @@ public sealed interface BookingOutcome
 	}
 
 	/**
-	 * Request-to-Book (issue #98): the venue sells by request, so the booking was created
+	 * Request-to-Book: the venue sells by request, so the booking was created
 	 * {@code PENDING_REQUEST} — the {@code (set, date)} is soft-held (invariant #2), but no
 	 * PaymentIntent exists and no card is charged until the venue accepts. The controller maps
 	 * this to {@code 202}; {@code requestExpiresAt} is the venue-response deadline

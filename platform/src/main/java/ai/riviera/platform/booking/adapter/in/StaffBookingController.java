@@ -27,7 +27,7 @@ import ai.riviera.platform.operator.vocabulary.OperatorId;
 import ai.riviera.platform.venue.vocabulary.VenueId;
 
 /**
- * Operator endpoints for the staff daily view (U8): a venue's settled bookings for one day —
+ * Operator endpoints for the staff daily view: a venue's settled bookings for one day —
  * confirmed, checked-in and no-show, each with set, code and {@code status} — plus the check-in
  * POST. Depends only on the {@link ListDailyBookings} and {@link CheckInBooking} ports (#11).
  *

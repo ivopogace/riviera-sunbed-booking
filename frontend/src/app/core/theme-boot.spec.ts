@@ -7,7 +7,7 @@ import { TestBed } from '@angular/core/testing';
 import { ThemeService } from './theme';
 
 /**
- * The drift pin for the pre-paint theme seed (#675). `index.html` carries a tiny inline script
+ * The drift pin for the pre-paint theme seed. `index.html` carries a tiny inline script
  * that seeds `data-riv-theme` before first paint; `core/theme.ts` resolves the same value at
  * bootstrap. No shared constant is reachable from `index.html`, so this spec executes the REAL
  * inline script (extracted from `src/index.html`) and boots the REAL `ThemeService` against one
