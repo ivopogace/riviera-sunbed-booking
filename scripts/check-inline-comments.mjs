@@ -266,13 +266,20 @@ function declarationAfter(lines, region) {
   return rest.slice(c, end === -1 ? rest.length : end).trim();
 }
 
-/** The index just past the bracket that closes the one at `start`, skipping string literals. */
+/**
+ * The index just past the bracket that closes the one at `start`, skipping string literals and
+ * comments: an apostrophe in a `//` note inside `@Component({…})` must not open a string.
+ */
 function balancedEnd(text, start) {
   let depth = 0;
   let c = start;
   while (c < text.length) {
     const ch = text[c];
-    if (ch === '"' || ch === "'" || ch === '`') {
+    if (ch === '/' && (text[c + 1] === '/' || text[c + 1] === '*')) {
+      const close = text[c + 1] === '/' ? '\n' : '*/';
+      const end = text.indexOf(close, c + 2);
+      c = end === -1 ? text.length : end + close.length - 1;
+    } else if (ch === '"' || ch === "'" || ch === '`') {
       c++;
       while (c < text.length && text[c] !== ch) c += text[c] === '\\' ? 2 : 1;
     } else if ('([{'.includes(ch)) {

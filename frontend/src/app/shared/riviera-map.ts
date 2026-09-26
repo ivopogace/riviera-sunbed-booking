@@ -83,8 +83,11 @@ const HERE_CLASSES =
 
 /**
  * The **riviera map** (`CONTEXT.md`) over the injected `MapEngine`, filling the box its consumer
- * sizes, with its chrome (skip control, zoom, the licence-required credit) theme-invariant. E2e
- * waits on `data-status`. Draws only the placement pin; consumers overlay venue pins via `handle`.
+ * sizes, with theme-invariant chrome (the imagery never themes): a skip control, as the canvas is a
+ * focusable pan-and-zoom surface and the venue list stays the accessible path; zoom buttons at the
+ * touch floor; the credit the tiles' licences require. A `ribbon` keeps only the credit. E2e waits
+ * on `data-status`. It draws only the placement pin (`null` is none; a change moves it in place);
+ * Discover overlays venue pins through {@link RivieraMap.handle}, so nothing venue-shaped crosses.
  */
 @Component({
   selector: 'app-riviera-map',

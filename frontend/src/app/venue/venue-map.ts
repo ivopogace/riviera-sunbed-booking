@@ -117,9 +117,12 @@ interface VenueHeader {
 }
 
 /**
- * One venue's read-only beach map for a day or stay; it owns the days and seeds the dialog's. The
- * router reuses it on `:id`/`?date`/`?lastDate` changes, so each resets and reloads. Display only:
- * the server decides availability (#2) and cutoff (#4); only free ONLINE sets are bookable (#3).
+ * One venue's read-only beach map for a day or stay; it owns the days and seeds the dialog's, so
+ * the two agree. The router reuses it on `:id`/`?date`/`?lastDate` changes, so each resets
+ * per-venue state and reloads like a fresh mount. The grid chrome (wash, rails, zones, drag-pan) is
+ * the shared {@link BeachMapCanvas}; this owns the tourist vocabulary (tile names, the mode-aware
+ * footer), and tile state rides the accessible name, not colour alone. Display only: the server
+ * decides availability (#2) and cutoff (#4); only free ONLINE sets are bookable (#3).
  */
 @Component({
   selector: 'app-venue-map',
