@@ -175,7 +175,7 @@ credential needs a migration path; the rule applies where a password is chosen, 
 register, forgot-password and booking create additionally require a solved, single-use ALTCHA
 challenge — self-hosted,
 no third party, no cookie — verified at the edge against a Postgres registry (the mechanics:
-`RESPONSIBILITIES.md` § *Platform edge*). Login keeps the per-identity throttle and gets no challenge;
+`RESPONSIBILITIES.md` § *Platform edge*, § `challenge`). Login keeps the per-identity throttle and gets no challenge;
 an adaptive "challenge once the bucket runs low" is the recorded phase-two shape.
 
 ## Slices
