@@ -6,7 +6,7 @@ in-app. A two-sided marketplace: tourists are demand, venues are supply, the
 platform takes a commission per booking and pays venues out manually.
 
 > **Status: in active development.** The full stack is built and deployed — the
-> Spring Boot backend (`platform/`, nine Modulith modules) and the Angular
+> Spring Boot backend (`platform/`, thirteen Modulith modules) and the Angular
 > frontend (`frontend/`), served same-origin by the backend since #110 (Spring bundles
 > the SPA into its image) at [riviera-sunbed-booking.onrender.com](https://riviera-sunbed-booking.onrender.com).
 > Both Liquid Glass restyle epics are complete — tourist (#133) and operator console

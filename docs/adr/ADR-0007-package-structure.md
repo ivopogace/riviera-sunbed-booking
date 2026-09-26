@@ -41,7 +41,9 @@ the Modulith graph acyclic, not translations
 (`docs/research/2026-09-04-bounded-context-and-doc-drift-audit.md` §B). The wording below is
 corrected in place; the decision is untouched. ADR-0018 also states what "light tactical" means for
 this tree — `domain/` holds choices, calculations and lifecycles, and the aggregate-root labels in
-`CLAUDE.md` and `docs/architecture/domain-model.md` are dropped rather than built out.
+`CLAUDE.md` and `docs/architecture/domain-model.md` are dropped rather than built out. *Count
+updated 2026-09-26 (#1206 / PR #1250):* thirteen modules since the `itinerary` read model landed;
+the decision is unchanged.
 
 ---
 

@@ -16,7 +16,7 @@ How the domain-knowledge files are laid out, so `domain-modeling`, `tdd`,
 - `docs/architecture/improvement-plan.md` — the sequenced roadmap (epic #93).
 
 **No context map, and that is decided.** ADR-0018 §5 ruled the platform **one bounded
-context with twelve modules**, on the evidence that none of the four language tells fires
+context with thirteen modules**, on the evidence that none of the four language tells fires
 across any module pair: a *set* is the same set in `venue`, `availability`, `booking` and
 `notification`; a *booking* is the same booking in `booking`, `payment`, `payout` and
 `review`; money is EUR minor units everywhere. The duplicated id records (`VenueRef`,
@@ -25,7 +25,7 @@ that can fail or lose information, and the system's one genuine translation boun
 against Stripe, fenced inside `payment`.
 
 So there is deliberately **no root `CONTEXT-MAP.md` and no per-module `CONTEXT.md`** — one
-root glossary is the whole ubiquitous language, and splitting it would assert twelve
+root glossary is the whole ubiquitous language, and splitting it would assert thirteen
 languages the code does not speak. `domain-modeling`'s "if a `CONTEXT-MAP.md` exists at the
 root, the repo has multiple contexts" is generic guidance about a file this repo does not
 have; creating one to satisfy it inverts the decision.
