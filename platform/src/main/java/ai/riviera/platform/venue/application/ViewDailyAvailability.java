@@ -20,7 +20,7 @@ public interface ViewDailyAvailability {
 	/**
 	 * The held sets of the owner's venue on {@code date} (a {@code Europe/Tirane} day, invariant #6),
 	 * by set id, each with its token ({@code BOOKED_ONLINE} or {@code STAFF_MARKED}; a free set is
-	 * absent) — or empty if the venue no longer exists (after asserting ownership).
+	 * absent) — or empty if the venue does not exist (after asserting ownership).
 	 */
 	Optional<List<SetDayState>> statesFor(OperatorId operator, VenueId venueId, LocalDate date);
 }

@@ -194,8 +194,8 @@ class SmtpMailer implements Mailer {
 
 	/**
 	 * Nothing refunded is said in words, never as {@code EUR 0.00}, which reads as a refund at a glance
-	 * (ADR-0005 tier {@code NONE}, past the invariant-#4 cutoff). A released unpaid booking says nothing
-	 * was charged instead of naming a cutoff it never reached.
+	 * (ADR-0005 tier {@code NONE}, past the evening-before cutoff). A released unpaid booking says
+	 * nothing was charged instead of naming a cutoff it never reached.
 	 */
 	private static String refundLine(BookingCancellationMail cancellation) {
 		if (cancellation.refundMinor() > 0) {

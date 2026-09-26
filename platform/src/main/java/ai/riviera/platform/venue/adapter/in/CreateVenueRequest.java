@@ -10,7 +10,7 @@ import ai.riviera.platform.venue.application.NewVenueCommand;
  * The {@code POST /api/venues} body: {@link #toCommand()} maps it onto {@link NewVenueCommand}
  * (range, token, ISO-currency checks) via {@link BeachCode}. No bean validation: any bad input
  * is an {@link IllegalArgumentException}, the controller's {@code 400}. Defaults: payout
- * {@code EUR}, {@code bookingCutoff} {@code 18:00} {@code Europe/Tirane} (invariant #4), absent
+ * {@code EUR}, free-cancellation {@code bookingCutoff} {@code 18:00} {@code Europe/Tirane}, absent
  * {@code salesClose} → {@link SalesClose#DEFAULT}. Any {@code commissionBps} is a {@code 400},
  * never silently ignored: the platform sets the rate, and a client must never think it chose one.
  */

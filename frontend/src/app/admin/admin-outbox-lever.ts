@@ -4,8 +4,8 @@ import { OutboxStatusView, ResubmissionResultView } from './admin.model';
 
 /**
  * The client side of an admin outbox lever — a status read and a resubmit that resolves for every
- * typed outcome, refusals included. Implemented by {@link AdminMailOutboxService} and
- * {@link AdminRefundOutboxService}.
+ * typed outcome, refusals included. Implemented by `AdminMailOutboxService` and
+ * `AdminRefundOutboxService`.
  */
 export interface AdminOutboxPort {
   status(): Promise<OutboxStatusView>;

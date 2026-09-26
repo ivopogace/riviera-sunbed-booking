@@ -217,7 +217,7 @@ export class PayoutsTab {
     this.console.weatherRefund(venueId, date).subscribe({
       next: (result) => {
         if (this.epoch !== epoch) {
-          return; // a venue switch superseded this refund's UI state (#180); the switch reset the flags
+          return; // a venue switch superseded this refund's UI state; the switch reset the flags
         }
         this.refunding.set(false);
         this.weatherConfirm.set(false);
@@ -227,7 +227,7 @@ export class PayoutsTab {
       },
       error: (e: unknown) => {
         if (this.epoch !== epoch) {
-          return; // a venue switch superseded this refund's UI state (#180)
+          return; // a venue switch superseded this refund's UI state
         }
         this.refunding.set(false);
         this.weatherConfirm.set(false);
@@ -258,7 +258,7 @@ export class PayoutsTab {
     this.console.payoutLedger(venueId).subscribe({
       next: (l) => {
         if (this.epoch === epoch) {
-          this.ledger.set(l); // a superseded venue's ledger never overwrites the new one (#180)
+          this.ledger.set(l); // a superseded venue's ledger never overwrites the new one
         }
       },
       error: () => {
@@ -273,7 +273,7 @@ export class PayoutsTab {
     this.console.payoutLedger(venueId).subscribe({
       next: (l) => {
         if (this.epoch !== epoch) {
-          return; // a venue switch superseded this load (#180)
+          return; // a venue switch superseded this load
         }
         this.ledger.set(l);
         this.loadErrorMsg.set(undefined);
@@ -281,7 +281,7 @@ export class PayoutsTab {
       },
       error: (e: unknown) => {
         if (this.epoch !== epoch) {
-          return; // a venue switch superseded this load (#180)
+          return; // a venue switch superseded this load
         }
         const reason = payoutErrorOf(e);
         if (reason === 'UNAUTHORIZED') {

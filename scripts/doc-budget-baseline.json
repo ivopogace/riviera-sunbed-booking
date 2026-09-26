@@ -12,7 +12,7 @@
   "platform/(root)": 57,
   "platform/audit": 3,
   "platform/availability": 6,
-  "platform/booking": 143,
+  "platform/booking": 141,
   "platform/challenge": 4,
   "platform/customer": 39,
   "platform/notification": 49,
@@ -22,5 +22,5 @@
   "platform/review": 54,
   "platform/shared": 4,
   "platform/venue": 124,
-  "RESPONSIBILITIES.md": 352
+  "RESPONSIBILITIES.md": 348
 }

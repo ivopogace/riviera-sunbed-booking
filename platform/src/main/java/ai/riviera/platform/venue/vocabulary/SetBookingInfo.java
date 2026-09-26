@@ -4,11 +4,11 @@ import java.time.LocalTime;
 
 /**
  * The booking-relevant facts about one set, for {@code booking} via
- * {@link SetBookingFacts#setBookingInfo} so it never reads venue tables (invariant #11):
+ * {@code SetBookingFacts#setBookingInfo} so it never reads venue tables (invariant #11):
  * {@code pool} for the online-pool rule (#3), {@code price} (minor units, #5), {@code salesClose}
- * and {@code bookingCutoff} (wall-clock {@code Europe/Tirane}, #4) for the sale gate and free
- * cancellation, {@code bookingMode} ({@code INSTANT}/{@code REQUEST}), {@code seasonClosure} and
- * {@code maxStayDays} ({@code null}: any length) for the reserve fences, names for the summary.
+ * (the sale gate, #4) and {@code bookingCutoff} (free cancellation, #10), both wall-clock
+ * {@code Europe/Tirane}; {@code bookingMode}, {@code seasonClosure} and {@code maxStayDays}
+ * ({@code null}: any length) for the reserve fences; names for the summary.
  */
 public record SetBookingInfo(SetId setId, VenueId venueId, String venueName, String rowLabel,
 		int positionNo, Pool pool, MoneyView price, LocalTime bookingCutoff,

@@ -260,7 +260,7 @@ class JdbcOperators implements Operators {
 
 	@Override
 	public boolean ownsVenue(OperatorId operator, VenueRef venue) {
-		// Ownership is strictly the explicit operator_venue mapping (owns-all retired in #115). The
+		// Ownership is strictly the explicit operator_venue mapping. The
 		// lookup uses the operator_venue PK (venue_id) + the operator FK index, so it is an index probe.
 		return jdbc.sql("""
 				SELECT EXISTS (

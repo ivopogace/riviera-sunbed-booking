@@ -17,13 +17,13 @@ public interface VenueOwnership {
 
 	/**
 	 * Verify that {@code operator} owns {@code venue}; return normally if so, otherwise throw
-	 * {@link NotVenueOwnerException}.
+	 * {@code NotVenueOwnerException}.
 	 */
 	void assertOwns(OperatorId operator, VenueRef venue);
 
 	/**
-	 * The venues explicitly mapped to {@code operator}. With the owns-all bootstrap retired,
-	 * ownership is strictly this explicit mapping.
+	 * The venues explicitly mapped to {@code operator}; ownership is strictly this explicit
+	 * mapping.
 	 */
 	Set<VenueRef> ownedVenues(OperatorId operator);
 

@@ -23,7 +23,7 @@ const BTN =
  * each with its one moderation action. Hide goes behind an inline confirmation naming the review
  * and venue and collecting optional audit grounds, never saying "cannot be undone" (it reverses);
  * un-hide is one press. The server answers a bare `204`, so a row flips in place from the press and
- * the list never reflows. The {@code AdminConsole} shell self-gates on {@link OperatorAuth} for UX;
+ * the list never reflows. The {@code AdminConsole} shell self-gates on {@code OperatorAuth} for UX;
  * the backend `/api/admin/**` role gate enforces.
  */
 @Component({
