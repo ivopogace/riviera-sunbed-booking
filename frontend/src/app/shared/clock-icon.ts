@@ -1,27 +1,12 @@
 import { Component } from '@angular/core';
 
 /**
- * The clock: a time that is running out — the sales-close note in the beach-map header
- * (`venue/venue-map.html`) and the urgent time-left chip on the operator's request queue.
- *
- * <p>No pictorial mark in this app is an emoji or symbol-font character. One arrives at a weight,
- * size and colour the UI font never chose, and differs per platform (here, at this size on this
- * glass, the ⏰ emoji read as an error mark). Each is an inline-SVG component in `shared/` on this
- * file's contract; `pictorial-glyph-sweep.spec.ts` fails the build on a retired codepoint.
- * Characters doing typographic work in running text (`·`, `€`, `→`, the map zoom's `+`/`−`) stay.
- *
- * <p>A component rather than a directive — deliberately breaking the neighbouring `shared/` glyph
- * precedent (`appFailureIcon`, `appAmenityChip`). A directive can only add classes and attributes
- * to an element that already exists, so it cannot carry the circle and path geometry; deduplicating
- * real SVG geometry needs an inline template.
- *
- * <p>Zero API surface, because the cascade already gives each call site full control: `currentColor`
- * makes the stroke follow whatever ink the surrounding note sets, and the size is a **presentation
- * attribute**, which loses to every CSS rule — so a call site resizes with a plain class
- * (`[&_svg]:size-[15px]` — the descendant form, so it keeps matching however deeply the glyph is
- * wrapped) and needs no `input()`. The host is `display: contents` so the svg stays
- * the direct flex child of the note and each call site's own `gap-1`/`shrink-0` layout is untouched.
- * `aria-hidden` sits on the host **and** the svg: the note's sentence carries the meaning.
+ * The clock: a time running out (the beach-map header's sales-close note, the operator request
+ * queue's urgent time-left chip). The inline-SVG glyph contract, `riviera-tailwind` § Icons: a
+ * component, since a directive can't carry SVG geometry (ICON-1). Zero API surface: the stroke is
+ * `currentColor` and the size a presentation attribute, so a call site resizes with
+ * `[&_svg]:size-[…]`, no `input()` (ICON-2–4); a `contents` host keeps the svg the flex child;
+ * `aria-hidden` on host and svg, the note's sentence carries the meaning. Never an emoji (ICON-7).
  */
 @Component({
   selector: 'app-clock-icon',

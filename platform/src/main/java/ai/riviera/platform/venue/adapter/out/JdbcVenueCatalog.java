@@ -57,14 +57,11 @@ import ai.riviera.platform.venue.spi.SalesWindow;
 import ai.riviera.platform.venue.spi.SetAvailabilityLookup;
 
 /**
- * JDBC adapter implementing two of the role-split {@code venue::api} read ports —
- * {@link VenueCatalog}, {@link VenueRates} — directly (no intervening application service /
- * out-port — a single adapter is a hypothetical seam, not a real one). Explicit SQL via
- * {@link JdbcClient}, no JPA (invariant #1): one query loads the venue, a second loads its
- * active sets ordered for rendering, and from-price is the minimum set price. The third port,
- * {@code SetBookingFacts}, is {@link JdbcSetBookingFacts}: it must keep answering for a retired
- * set while every read here forgets one (ADR-0019), and the fitness function holding that line
- * exempts a class, so the two conversations are two classes.
+ * JDBC adapter implementing the {@link VenueCatalog} and {@link VenueRates} read ports directly, with
+ * no out-port between (one adapter is a hypothetical seam); explicit SQL, no JPA (invariant #1). The
+ * catalogue reads fence on tourist visibility and read sets only from {@code active_set_position}.
+ * {@code SetBookingFacts} must keep answering for a retired set, so it stays its own class,
+ * {@link JdbcSetBookingFacts}: the retired-set fitness function exempts a class (ADR-0019).
  */
 @Repository
 class JdbcVenueCatalog implements VenueCatalog, VenueRates {
@@ -115,7 +112,7 @@ class JdbcVenueCatalog implements VenueCatalog, VenueRates {
 
 	@Override
 	public Optional<VenueMapView> findVenueMap(VenueId id, StaySpan stay) {
-		// The #693 fence: a venue without an ACTIVE owner is absent, not partially rendered.
+		// The tourist-visibility fence: a venue without an ACTIVE owner is absent, not partially rendered.
 		if (!visibility.isVisible(new VenueRef(id.value()))) {
 			return Optional.empty();
 		}
@@ -306,7 +303,7 @@ class JdbcVenueCatalog implements VenueCatalog, VenueRates {
 	}
 
 	/**
-	 * The #693 fence for the list read: keep only venues with an {@code ACTIVE} owner, resolved in
+	 * The tourist-visibility fence for the list read: keep only venues with an {@code ACTIVE} owner, resolved in
 	 * one batch call before the per-venue follow-on reads.
 	 */
 	private List<SummaryRow> onlyVisible(List<SummaryRow> venues) {
@@ -318,12 +315,9 @@ class JdbcVenueCatalog implements VenueCatalog, VenueRates {
 	}
 
 	/**
-	 * Every stored photo rendition for the venues, in one blob-free query (only hashes and widths
-	 * travel; the {@code bytea} column is never selected here — ADR-0008), bucketed
-	 * venue → slot → surface with slots in {@link PhotoSlot} order. Each surface holds a
-	 * {@link PhotoView}: its densities collapsed into one baseline URL plus every candidate. Both
-	 * tourist photo views derive from this one read — {@link #coverOf} and {@link #slideshowOf} —
-	 * so they cannot drift.
+	 * Every photo rendition of the venues, venue → slot ({@link PhotoSlot} order) → surface, each a
+	 * {@link PhotoView} of its densities. Blob-free: never select the {@code bytea} column (ADR-0008).
+	 * {@link #coverOf} and {@link #slideshowOf} both derive from this one read, so they cannot drift.
 	 */
 	private Map<Long, Map<PhotoSlot, Map<PhotoSurface, PhotoView>>> photoVariantsByVenue(List<Long> venueIds) {
 		record VariantRow(long venueId, PhotoSlot slot, PhotoSurface surface, String hash, int width) {
@@ -367,13 +361,9 @@ class JdbcVenueCatalog implements VenueCatalog, VenueRates {
 	}
 
 	/**
-	 * The COVER slot's card + banner photos, or {@code null} without a COMPLETE pair: a cover
-	 * missing one of its CARD/BANNER surfaces (manual data fix, future surface-set change) must
-	 * read as "no cover" — otherwise the frontend's presence check passes and
-	 * {@code NgOptimizedImage} receives a null URL.
-	 *
-	 * <p>The pair is CARD and BANNER alone. A surface added later must not join it: every photo
-	 * stored before that surface existed would then read as no cover at all.
+	 * The COVER slot's CARD + BANNER pair, or {@code null} unless both exist (else the frontend's
+	 * presence check passes and {@code NgOptimizedImage} gets a null URL). Never add a later surface
+	 * to the pair: every photo stored before it would then read as no cover.
 	 */
 	private static CoverPhotoView coverOf(Map<PhotoSlot, Map<PhotoSurface, PhotoView>> slots) {
 		Map<PhotoSurface, PhotoView> cover = slots.getOrDefault(PhotoSlot.COVER, Map.of());
@@ -386,12 +376,9 @@ class JdbcVenueCatalog implements VenueCatalog, VenueRates {
 	}
 
 	/**
-	 * A tourist slideshow: one photo per occupied slot, in {@link PhotoSlot} order (the EnumMap's
-	 * iteration order — cover, sunbeds, bar), taking each slot's first present surface per
-	 * {@code preference} — the Discover card wants {@link #CARD_SLIDESHOW}, the beach-map band
-	 * {@link #BANNER_SLIDESHOW}, the modal viewer {@link #LIGHTBOX_SLIDESHOW}. The chosen surface
-	 * brings all of its densities with it, and only its own, which is what keeps one list's widest
-	 * candidate out of another's.
+	 * A tourist slideshow: one photo per occupied slot in {@link PhotoSlot} order, each slot's first
+	 * surface present in {@code preference}; the surface brings only its own densities. Which list each
+	 * surface reads, and why the order needs an {@code EnumMap}: {@code RESPONSIBILITIES.md} §venue.
 	 */
 	private static List<PhotoView> slideshowOf(Map<PhotoSlot, Map<PhotoSurface, PhotoView>> slots,
 			List<PhotoSurface> preference) {
@@ -434,11 +421,9 @@ class JdbcVenueCatalog implements VenueCatalog, VenueRates {
 	}
 
 	/**
-	 * The latest scheduled rate at or before the service date, falling back to the live rate when the
-	 * venue has no schedule at all — which means its rate has never changed, so the live rate IS what
-	 * applied (A7, #348). Driven off the {@code venue} row rather than the schedule, so an unknown
-	 * venue answers empty instead of a rate; the subquery rides the composite PK's leftmost prefix +
-	 * range, so it needs no index of its own.
+	 * The latest scheduled rate at or before {@code serviceDate}, else the live rate (no schedule means
+	 * the rate never changed); driven off the {@code venue} row, so an unknown venue is empty. The
+	 * subquery rides the composite PK's leftmost prefix + range, so it needs no index of its own.
 	 */
 	@Override
 	public OptionalInt commissionBpsOn(VenueId id, LocalDate serviceDate) {
@@ -516,7 +501,7 @@ class JdbcVenueCatalog implements VenueCatalog, VenueRates {
 		if (to.isBefore(from)) {
 			throw new IllegalArgumentException("availabilityBetween: 'to' precedes 'from'");
 		}
-		// The #693 fence is fail-closed for an unowned venue, and a nonexistent one is always unowned.
+		// The tourist-visibility fence is fail-closed for an unowned venue, and a nonexistent one is always unowned.
 		if (!visibility.isVisible(new VenueRef(id.value()))) {
 			return Optional.empty();
 		}

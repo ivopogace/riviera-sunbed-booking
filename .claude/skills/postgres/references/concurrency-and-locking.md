@@ -21,7 +21,7 @@ commit;
 ```
 
 ```sql
--- CORRECT: charge first (idempotency key, invariant #8), THEN a millisecond txn
+-- CORRECT: charge first (idempotency key, ADR-0002), THEN a millisecond txn
 -- application: gateway.charge(..., idempotencyKey)  // outside any txn
 begin;
   update booking

@@ -7,24 +7,12 @@ import java.util.Map;
 import java.util.Set;
 
 /**
- * The booking lifecycle as one table: every transition, the statuses it may act on, and the status
- * it writes. Nine states, eleven transitions — {@link #successorsOf} answers "what may follow
- * {@code AWAITING_PAYMENT}?" in one place, where the answer otherwise has to be assembled from the
- * guarded {@code UPDATE}s spread through {@code JdbcBookings}.
- *
- * <p>A table of <em>transitions</em> rather than of successors alone, because two of them write the
- * same status from different sources: {@link #CANCEL_BY_GUEST} reaches {@code CANCELLED} from
- * {@code CONFIRMED} only, while the admin's {@link #WEATHER_REFUND} also reaches it from
- * {@code NO_SHOW}. A plain successor map would flatten that difference away, and it is the one the
- * guest path must never lose.
- *
- * <p>This states the lifecycle; the guarded {@code UPDATE … WHERE status = …} statements enforce
- * it, and no SQL is generated from here. The two cancellation rows go further than stating: the
- * shared cancel statement binds its admitted statuses from {@link #CANCEL_BY_GUEST} and {@link
- * #WEATHER_REFUND}, so that one asymmetry cannot drift at all. Every other row is held to its
- * statement by {@code JdbcBookingTransitionTableIT}, which drives each transition against each
- * status, as {@code BookingMigrationIT.everyEnumStatusAccepted} holds {@link BookingStatus} to
- * {@code booking_status_check}.
+ * The booking lifecycle as one table: each transition, the statuses it admits, the status it writes;
+ * {@link #successorsOf} answers "what may follow?". Transitions, not bare successors: both
+ * {@link #CANCEL_BY_GUEST} ({@code CONFIRMED} only) and {@link #WEATHER_REFUND} (also {@code NO_SHOW})
+ * write {@code CANCELLED}, and the guest path must never gain {@code NO_SHOW}. Generates no SQL: the
+ * guarded {@code UPDATE … WHERE status = …} in {@code JdbcBookings} enforce it, the cancel statement
+ * binds those two rows' statuses, and {@code JdbcBookingTransitionTableIT} holds every other row.
  */
 public enum BookingTransition {
 
@@ -52,7 +40,10 @@ public enum BookingTransition {
 	/** The guest cancels under the policy (invariant #10) — {@code CONFIRMED} only. */
 	CANCEL_BY_GUEST(BookingStatus.CONFIRMED, BookingStatus.CANCELLED),
 
-	/** Staff scan the code at the venue on the stay's last service day (its only service day, until ranges exist). */
+	/**
+	 * The check-in that resolves a stay: the one on its last service day. On an earlier day, check-in
+	 * stamps only that {@code booking_day} attended, and the booking stays {@code CONFIRMED}.
+	 */
 	CHECK_IN(BookingStatus.CONFIRMED, BookingStatus.COMPLETED),
 
 	/** Every service day passed and none was attended; the no-show sweep resolves it. */

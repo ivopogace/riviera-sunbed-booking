@@ -15,20 +15,11 @@ import ai.riviera.platform.customer.spi.GuestBookingHistory;
 import ai.riviera.platform.customer.vocabulary.CustomerId;
 
 /**
- * JDBC adapter answering {@link GuestBookingHistory} from the {@code booking} table — the {@code booking}
- * module owns that table, so the "does this guest still have a recent booking?" probe lives here while the
- * retention window and the scrub it authorizes stay in {@code customer}. Invariant #1:
- * explicit SQL via {@link JdbcClient}, no JPA.
- *
- * <p>This is the implementing side of a dependency-inverted <strong>driven (SPI) port</strong> (declared in
- * {@code customer.spi}). The legal {@code booking → customer} edge (granted as {@code customer::vocabulary}
- * for {@link CustomerId} and {@code customer::spi} for {@link GuestBookingHistory}) lets us reference these
- * here; {@code customer} never imports {@code booking}, so {@code ModularityTests} stays cycle-free. The
- * adapter depends only on {@link JdbcClient}, so the Spring bean graph is acyclic too.
- *
- * <p>Any booking row — any status, incl. terminal — counts as a retention basis, so the query filters on
- * {@code customer_id} and the span's last day only: a stay that ends on or after the cutoff keeps its
- * guest. The predicate is served by the existing {@code booking_customer_id_idx} (V5); no new index.
+ * Answers {@code customer}'s {@link GuestBookingHistory} probe from the {@code booking} table this
+ * module owns; the retention window and the scrub stay in {@code customer}. Invariant #1: explicit
+ * {@link JdbcClient} SQL. Any booking of any status is a retention basis, so the query filters only on
+ * {@code customer_id} and the stay's last day: one ending on or after the cutoff keeps its guest.
+ * Served by {@code booking_customer_id_idx} (V5); no new index.
  */
 @Repository
 class JdbcGuestBookingHistory implements GuestBookingHistory {
@@ -44,22 +35,9 @@ class JdbcGuestBookingHistory implements GuestBookingHistory {
 	}
 
 	/**
-	 * This adapter's <em>only</em> client, bounded outright — unlike its sibling bounded
-	 * clients, which sit beside an unbounded one, because every call that reaches this port is
-	 * scheduled work: {@code ExpireGuestContactsService.sweep()} is {@code GuestBookingHistory}'s
-	 * sole consumer, and it is driven by {@code GuestContactRetentionScheduler}. There is no request
-	 * path here to leave unbounded.
-	 *
-	 * <p>It is the retention sweep's <strong>second</strong> entry read, and the one that is easy to
-	 * miss: the sweep asks {@code customer} for candidates and then asks {@code booking} whether each
-	 * still has a retention basis, both before it writes anything. Bounding only the first would have
-	 * left the sweep able to wedge on the second — and this one reads {@code booking}, the table the
-	 * other two sweeps also read, so a lock that stalls them stalls this too. Found by #395's
-	 * phase-1 generalization audit rather than by the issue, which named four jobs and four queries.
-	 *
-	 * <p>Scoped, never {@code spring.jdbc.template.query-timeout}: that global would also bound
-	 * {@code availability}'s claim (invariant #2), which {@code ScheduledWorkArchitectureTest} now
-	 * fails the build over.
+	 * The only client, bounded: the retention sweep is its sole caller ({@code RESPONSIBILITIES.md}
+	 * §booking). Scoped here, never {@code spring.jdbc.template.query-timeout}: that global would also
+	 * bound the {@code availability} claim (invariant #2, {@code ScheduledWorkArchitectureTest}).
 	 */
 	private static JdbcClient boundedClient(DataSource dataSource, int queryTimeoutSeconds) {
 		JdbcTemplate bounded = new JdbcTemplate(dataSource);

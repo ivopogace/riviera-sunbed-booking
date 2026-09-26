@@ -31,22 +31,12 @@ import ai.riviera.platform.venue.vocabulary.SetId;
 import ai.riviera.platform.venue.api.SetBookingFacts;
 
 /**
- * The committed <em>reserve</em> phase of Instant-Book: validate the set (online pool, invariant
- * #3; the venue's season closure, then its on-day sales close, invariant #4; then the venue's
- * maximum stay length, when it has one), claim the
- * {@code (set, date)} (the double-booking guard, invariant #2), resolve the guest, and insert the
- * {@code AWAITING_PAYMENT} booking — all in <strong>one transaction that commits before any payment
- * call</strong>, so the Stripe PaymentIntent is created <em>after</em> commit and the claim row lock is
- * never held across the network round-trip.
- *
- * <p><strong>Transaction:</strong> the availability claim (propagation {@code REQUIRED}) joins this
- * {@code @Transactional} method, so a failure between the claim and the insert rolls the claim back
- * too — a set is never held for a booking that wasn't created. Invariant #2 is upheld by the DB
- * {@code UNIQUE(set_id, booking_date)} + atomic {@code INSERT … ON CONFLICT} claim, which is
- * independent of how long the lock is held — so committing before payment does not weaken it.
- *
- * <p>Package-private, no interface — a single internal collaborator of {@code CreateBookingService}
- * (riviera-java-conventions: don't invent a port for one impl), not a published seam (invariant #11).
+ * The committed <em>reserve</em> phase: validate the set (online pool, invariant #3; season closure,
+ * then the first day's sales close, invariant #4; maximum stay), claim every {@code (set, date)}
+ * (invariant #2), resolve the guest and insert the booking, in <strong>one transaction that commits
+ * before any payment call</strong>, so no row lock spans the Stripe round-trip. The claims join it
+ * ({@code REQUIRED}): a failure before the insert rolls them back. Only {@code CreateBookingService}
+ * calls it; not a published seam. Rationale: {@code RESPONSIBILITIES.md} §booking.
  */
 @Service
 class ReserveSetService {
@@ -139,10 +129,9 @@ class ReserveSetService {
 	}
 
 	/**
-	 * Claim every day of the stay, one {@code (set, date)} row each (invariant #2). A day that is not
-	 * won ends the stay: the days already won are given back before the answer, so a lost range holds
-	 * nothing — a {@code Rejected} return commits this transaction, and a claim left behind would be a
-	 * row nothing can identify (RESPONSIBILITIES.md §booking).
+	 * Claims one {@code (set, date)} row per day of the stay (invariant #2), all or nothing: a day
+	 * that loses gives back every day already won, because a {@code Rejected} return commits and a
+	 * claim left behind would be a row nothing can identify.
 	 */
 	private ClaimOutcome claimEveryDay(SetId setId, StaySpan stay) {
 		List<LocalDate> won = new ArrayList<>();
@@ -162,10 +151,9 @@ class ReserveSetService {
 	}
 
 	/**
-	 * Insert the booking, regenerating the code on the astronomically-unlikely {@code UNIQUE(code)}
-	 * collision (invariant #7). The insert is an atomic {@code ON CONFLICT (code) DO NOTHING}, so a
-	 * collision returns empty (a normal retry signal) rather than throwing and poisoning the
-	 * transaction. Bounded retries.
+	 * Inserts the booking, regenerating the code on a {@code UNIQUE(code)} collision (invariant #7)
+	 * with bounded retries. The insert is {@code ON CONFLICT (code) DO NOTHING}: a collision must
+	 * return empty, never throw, or it poisons the transaction.
 	 */
 	private Inserted insertWithUniqueCode(SetBookingInfo set, CustomerId customerId,
 			CreateBookingCommand command, long amountMinor, Function<NewBooking, OptionalLong> insert) {

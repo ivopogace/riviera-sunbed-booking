@@ -4,31 +4,11 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.boot.context.properties.bind.DefaultValue;
 
 /**
- * The cooldown behind the ADMIN refund-resubmit lever, externalised so the window can be
- * matched to real gateway behaviour without a deploy — the {@code MailResubmissionProperties}
- * argument, for a knob whose right value is likewise unknowable until the {@code stripe} profile
- * takes real incident traffic.
- *
- * <p><strong>The value that ships lives in {@code application.properties}, not here.</strong> The
- * {@code @DefaultValue} is a backstop for a context bound without that file; deployment reads the
- * {@code ${RIVIERA_REFUND_RESUBMIT_COOLDOWN_MS:…}} placeholder, which is also the only reason a
- * readable env-var name works at all under relaxed binding.
- *
- * <p><strong>Both bounds matter, and the lower one is the load-shaped half.</strong> A non-positive
- * cooldown boots cleanly and reduces the throttle to the single-flight lock alone, which does not
- * outlive one call. During a gateway outage every re-driven refund fails fast and is immediately
- * outstanding again, so a held-down button becomes a retry storm against the gateway that is already
- * struggling — with the money safe (idempotency keys) but every press reporting success. The floor is
- * deliberately above one second: anything shorter cannot outlive even a healthy gateway round-trip.
- *
- * <p>The ceiling bounds the typo from the other side: an oversized value does not fail — it refuses
- * every press for hours, so the lever an admin reaches for during an incident answers
- * {@code COOLING_DOWN} and nothing else. The whole point of this lever is to shorten a retry horizon
- * that used to be "the next deploy", not to lengthen it.
- *
- * <p>Validated in the compact constructor rather than with {@code @Validated} + {@code @Min}: the
- * project declined {@code spring-boot-starter-validation} deliberately, so an annotation here would
- * bind and validate nothing.
+ * The ADMIN refund-resubmit lever's cooldown. It ships from {@code application.properties}, whose
+ * placeholder alone binds {@code RIVIERA_REFUND_RESUBMIT_COOLDOWN_MS}; {@code @DefaultValue} is a
+ * backstop. An out-of-bounds value fails the context: too short and a held-down button storms a
+ * struggling gateway, too long and the lever answers {@code COOLING_DOWN} all incident. Checked here,
+ * not by {@code @Min}: without {@code spring-boot-starter-validation} that would check nothing.
  *
  * @param cooldownMs how long an accepted resubmission refuses the next one
  */

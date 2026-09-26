@@ -4,18 +4,12 @@ import ai.riviera.platform.booking.vocabulary.RefundReason;
 import ai.riviera.platform.venue.vocabulary.VenueId;
 
 /**
- * One payout-ledger entry — what the platform owes a venue for a booking (invariant #9). A value
- * object: immutable, transparent, and the home of the commission arithmetic so the math lives with
- * the data it produces rather than scattered in an adapter.
- *
- * <p>Money is integer minor units + ISO currency (invariant #5); {@code net = gross − commission},
- * except on a {@code FEE}, which is charged against no booking amount and carries the whole charge as
- * its net. The canonical constructor guards the amount invariants the DB also enforces (defence in
- * depth) so a malformed entry can never be constructed in the first place — including the
- * {@code FEE} exemption, keyed on the entry type alone exactly as {@code payout_net_check} is.
- * Amounts are always non-negative magnitudes: direction lives in {@link EntryType}.
- * {@code reason} is {@code null} on an {@code ACCRUAL} and carries the {@link RefundReason} on a
- * {@code REVERSAL} (U9) and on a {@code FEE} so the ledger stays auditable.
+ * One payout-ledger entry for a booking (invariant #9), and the home of its commission arithmetic.
+ * Money is integer minor units + ISO currency (invariant #5). Amounts are non-negative magnitudes;
+ * direction lives in {@link EntryType}, never the sign. The constructor mirrors the DB's CHECKs,
+ * {@code net = gross − commission} included, with the same {@code FEE} exemption keyed on the type
+ * alone (as {@code payout_net_check} is). {@code reason} is {@code null} on an {@code ACCRUAL} and the
+ * {@link RefundReason} otherwise.
  */
 public record PayoutLedgerEntry(VenueId venueId, long bookingId, EntryType entryType,
 		long grossMinor, long commissionMinor, long netMinor, String currency, RefundReason reason) {
@@ -33,11 +27,9 @@ public record PayoutLedgerEntry(VenueId venueId, long bookingId, EntryType entry
 	}
 
 	/**
-	 * Build the {@code ACCRUAL} entry for a confirmed booking. Commission is exact integer minor
-	 * units, rounded <strong>down</strong> (invariant #5 — division happens here, so the direction
-	 * is written down): {@code commission = floorDiv(gross × bps, 10000)}; the venue keeps the
-	 * sub-cent remainder ({@code net = gross − commission}). {@code bps} is the venue's commission
-	 * rate in basis points (1500 = 15.00%), read from {@code venue::api} at accrual time.
+	 * The {@code ACCRUAL} for a confirmed booking, split by {@link CommissionSplit} (commission
+	 * rounded <strong>down</strong>, invariant #5) at {@code commissionBps}, the venue's live rate at
+	 * accrual time.
 	 */
 	public static PayoutLedgerEntry accrual(VenueId venueId, long bookingId, long grossMinor,
 			int commissionBps, String currency) {
@@ -47,16 +39,9 @@ public record PayoutLedgerEntry(VenueId venueId, long bookingId, EntryType entry
 	}
 
 	/**
-	 * Build the {@code REVERSAL} entry that backs out (part of) an {@code accrual} when a booking is
-	 * refunded (U6, ADR-0005). <strong>Proportional to the refund</strong>: the reversal's gross is
-	 * the {@code refundMinor}, and its commission is the same fraction of the accrual's commission —
-	 * {@code floorDiv(accrual.commission × refundMinor, accrual.gross)} — so a full refund
-	 * ({@code refundMinor == accrual.gross}) reverses the whole accrual and a partial refund reverses
-	 * the matching share. Stored as <strong>positive</strong> magnitudes (the V9 CHECK forbids
-	 * negatives); the sign is carried by {@link EntryType#REVERSAL} for the payout sum (invariant #9).
-	 * Rounds <strong>down</strong> like the accrual (invariant #5). Caller must not reverse a zero
-	 * refund (ADR-0005: no refund ⇒ no reversal). {@code reason} — whichever {@link RefundReason} the
-	 * cancellation carried — is recorded on the reversal for audit; it does not affect the arithmetic.
+	 * The {@code REVERSAL} mirroring the stored {@code accrual} pro rata to {@code refundMinor}:
+	 * commission {@code floorDiv(accrual.commission × refundMinor, accrual.gross)}, rounded down
+	 * (invariant #5); positive magnitudes (invariant #9). Never call it for a zero refund (ADR-0005).
 	 */
 	public static PayoutLedgerEntry reversalOf(PayoutLedgerEntry accrual, long refundMinor,
 			RefundReason reason) {
@@ -67,12 +52,9 @@ public record PayoutLedgerEntry(VenueId venueId, long bookingId, EntryType entry
 	}
 
 	/**
-	 * Build the {@code FEE} entry charged to a venue for a refund its own change caused.
-	 * A fee is charged against no booking amount and the platform takes no commission on it, so
-	 * {@code gross} and {@code commission} are both zero and {@code feeMinor} is the whole net — the
-	 * one shape {@code payout_net_check} exempts. Stored as a <strong>positive</strong> magnitude; the
-	 * sign is carried by {@link EntryType#FEE}, which every payout sum deducts (invariant #9). The
-	 * reason is {@link RefundReason#VENUE_CHANGE} by construction: it is the only one that earns a fee.
+	 * The {@code FEE} for a refund the venue's own change caused: zero gross and commission, and
+	 * {@code feeMinor} as the whole net (the shape {@code payout_net_check} exempts), a positive
+	 * magnitude every payout sum deducts (invariant #9). Its reason is always {@code VENUE_CHANGE}.
 	 */
 	public static PayoutLedgerEntry fee(VenueId venueId, long bookingId, long feeMinor, String currency) {
 		return new PayoutLedgerEntry(venueId, bookingId, EntryType.FEE, 0L, 0L, feeMinor, currency,

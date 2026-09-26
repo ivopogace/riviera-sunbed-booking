@@ -3,7 +3,7 @@
 End-to-end manual check of the **real** Stripe collection + **refund** path (U4 + U6), which CI only
 exercises with the in-process stub and a mocked `StripeClient`. Runs entirely in **Stripe test mode**
 (sandbox `Riviera sandbox`, `acct_1TmtV9Rc00mQRkNG`) — **no real money moves**. Collect-only, no
-Connect (ADR-0002 / invariant #8).
+Connect (ADR-0002).
 
 > The `riviera-local-debug` skill is deferred; until it lands this is the canonical recipe for the
 > `stripe` profile. The default (no-profile) run uses the stub gateway and needs none of this.

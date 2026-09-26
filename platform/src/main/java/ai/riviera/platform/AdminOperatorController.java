@@ -105,8 +105,8 @@ class AdminOperatorController {
 	}
 
 	/**
-	 * Suspend an operator, revoking its live sessions on <strong>both sides</strong> of the transition
-	 * (#357). The status-guarded pre-read is what makes the first revoke possible at all:
+	 * Suspend an operator, revoking its live sessions on <strong>both sides</strong> of the transition.
+	 * The status-guarded pre-read is what makes the first revoke possible at all:
 	 * {@code suspend} only names the principal in its outcome, i.e. after it has committed.
 	 */
 	@PostMapping("/{operatorId}/suspend")

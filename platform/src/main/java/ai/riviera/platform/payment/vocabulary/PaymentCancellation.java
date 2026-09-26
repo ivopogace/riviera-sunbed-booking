@@ -1,14 +1,13 @@
 package ai.riviera.platform.payment.vocabulary;
 
 /**
- * The result of cancelling a booking's PaymentIntent — a closed, caller-mappable set (typed
- * outcomes for expected flows, not exceptions). Used by the abandoned-payment TTL sweep (issue
- * #51): the sweep cancels the lingering PaymentIntent so Stripe stops retrying, then releases the
- * held {@code (set, date)} — but only when the cancel is authoritative.
+ * The result of cancelling a booking's PaymentIntent: a closed, caller-mappable set of typed
+ * outcomes, sealed so callers {@code switch} exhaustively. The abandoned-payment sweep cancels the
+ * lingering intent so Stripe stops retrying, then releases the held {@code (set, date)}, but only
+ * when the cancel is authoritative.
  *
- * <p>Collect-only — a cancel voids an <em>uncollected</em> PaymentIntent; it moves no money (no
- * Connect, no refund — ADR-0002 / invariant #8). A sealed interface so callers {@code switch}
- * exhaustively.
+ * <p>A cancel voids an <em>uncollected</em> PaymentIntent and moves no money: collect-only, no
+ * Connect, no refund (ADR-0002).
  */
 public sealed interface PaymentCancellation
 		permits PaymentCancellation.Canceled, PaymentCancellation.NotCancellable,
@@ -30,11 +29,9 @@ public sealed interface PaymentCancellation
 	}
 
 	/**
-	 * No collection is on record for this booking — there is no PaymentIntent to cancel (issue #125:
-	 * a {@code pay()} that threw after the reserve commit never registered one). Distinct from
-	 * {@link NotCancellable}: nothing succeeded, so a caller that also knows the booking is stale (past
-	 * its TTL) may safely release it — the abandoned-payment sweep's backstop for an otherwise
-	 * unrecoverable stranded row. Any inert orphan intent at the gateway auto-expires unpaid.
+	 * No PaymentIntent on record to cancel: a {@code pay()} that threw after the reserve commit never
+	 * registered one. Unlike {@link NotCancellable} nothing succeeded, so the sweep may release a stale
+	 * booking, else stranded for good; an orphan intent at the gateway auto-expires unpaid.
 	 */
 	record NoCollection() implements PaymentCancellation {
 	}

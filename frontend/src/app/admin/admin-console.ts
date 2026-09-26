@@ -32,25 +32,12 @@ const FALLBACK_TAB: AdminTabRouteData = {
 };
 
 /**
- * The admin console's page — the one persistent host for every `/admin/*` tab (Operators, Email,
- * Refunds, Photos, Reviews, Commissions, Venue changes, Privacy, Audit), each a child route. Owns what every tab
- * used to repeat identically: the per-tab title and the self-gate on {@link OperatorAuth}
- * (loading / signed-out / forbidden — UX only, the backend `/api/admin/**` role gate does the
- * actual enforcing), both read once per navigation from the active child's `data.adminTab`
- * rather than duplicated per page. Its chrome — the section row with `Admin` current, the tab
- * rail (`admin-console-tabs.ts`), the footer and the porcelain pin — is the console shell's
- * (`console-shell.ts`), which the app shell wears for every route carrying `data.console`.
- *
- * <p><strong>Why a persistent host, not per-page duplication.</strong> Before this, every
- * `/admin/*` route was its own top-level page, so the gate and title were rebuilt on every tab
- * click. A host wrapping child routes is the venue console's own shape, which `riviera-frontend`
- * § Routing names as the one to follow for a tabbed sub-app.
- *
- * <p>The gate stays here as an `@if` chain, not a route guard: unlike {@code operatorSessionGuard}
- * (which redirects), a signed-out visitor is allowed to LAND on any `/admin/*` URL — just not
- * shown what is behind it. The active child's `<router-outlet>` renders only past that gate, and
- * the shell applies the same gate to the rail, so a signed-out visitor is never told which admin
- * surfaces exist.
+ * The persistent host for every `/admin/*` tab, each a child route (`riviera-frontend` § Routing).
+ * Owns the tab title and the {@link OperatorAuth} self-gate, both read per navigation from the
+ * active child's `data.adminTab`; the gate is UX only, the `/api/admin/**` role gate enforces. The
+ * chrome (tab rail, footer, porcelain pin) is `console-shell.ts`'s. Keep the gate an `@if` chain,
+ * not a redirecting guard: a signed-out visitor may land on any `/admin/*` URL, but the outlet (and
+ * the shell's rail) render only past the gate, so they never learn which admin surfaces exist.
  */
 @Component({
   selector: 'app-admin-console',
@@ -90,13 +77,9 @@ export class AdminConsole {
   private readonly router = inject(Router);
 
   /**
-   * The active child's `data.adminTab`, or {@link FALLBACK_TAB}. Keyed on
-   * `Router.lastSuccessfulNavigation()`: the `route.snapshot` it walks is not a signal, and
-   * reading it here is safe because the router assigns the new router state (on
-   * `BeforeActivateRoutes`) before it activates the routes and sets `lastSuccessfulNavigation` on
-   * the line before it emits `NavigationEnd`, so each completed navigation (a tab switch that
-   * reuses this shell included) re-reads the same settled snapshot a `NavigationEnd` subscriber
-   * would. The fallback until the first navigation has completed.
+   * The active child's `data.adminTab`, or {@link FALLBACK_TAB} before the first navigation. Keyed
+   * on `Router.lastSuccessfulNavigation()` since `route.snapshot` is no signal; the router settles
+   * the snapshot before setting it, so each completed navigation (tab switches too) re-reads it.
    */
   protected readonly tab = computed(() =>
     this.router.lastSuccessfulNavigation() === null ? FALLBACK_TAB : this.activeTabData(),

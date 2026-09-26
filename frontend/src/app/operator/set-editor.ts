@@ -83,9 +83,9 @@ interface SweepRect {
 
 /**
  * The batch editor's draft: `null`/`''` means the operator has not touched that field, so it
- * is left off the apply entirely (invariant per #714: untouched fields keep each set's own
- * value). Distinct from {@link SetDraft}, whose fields are always fully seeded — a batch draft
- * starts, and can return to, "nothing chosen yet".
+ * is left off the apply entirely (untouched fields keep each set's own value). Distinct from
+ * {@link SetDraft}, whose fields are always fully seeded — a batch draft starts, and can return
+ * to, "nothing chosen yet".
  */
 interface BatchDraft {
   readonly tier: Tier | null;
@@ -294,7 +294,7 @@ export class SetEditor {
     return `${rows} · ${positions}`;
   });
 
-  /** What AT hears when the sweep changes size — empty while nothing is swept (#714). */
+  /** What AT hears when the sweep changes size — empty while nothing is swept. */
   protected readonly sweepAnnouncement = computed(() => {
     const count = this.sweptSets().length;
     if (count === 0) {
@@ -325,7 +325,7 @@ export class SetEditor {
    */
   private readonly lastCoords = signal<{ gridX: number; gridY: number } | undefined>(undefined);
 
-  // --- drag-sweep gesture (#714; imperative, not rendered — mirrors LayoutEditor's own drag-paint) ---
+  // --- drag-sweep gesture (imperative, not rendered — mirrors LayoutEditor's own drag-paint) ---
 
   /** True from a primary-button press on a cell until the matching `document:mouseup`. */
   private sweeping = false;
@@ -564,7 +564,7 @@ export class SetEditor {
     this.moving.set(false);
     this.sweepIds.set(null); // a single tap always supersedes any standing batch sweep (AC-6)
     if (opening) {
-      // The mobile bottom sheet can cover the lower viewport — keep the tapped tile above it (#715).
+      // The mobile bottom sheet can cover the lower viewport — keep the tapped tile above it.
       this.scrollCellIntoView(gridX, gridY);
       // A brand-new inspector appeared — move focus into it so AT users notice its arrival.
       this.focusAfterRender('set-panel');
@@ -572,7 +572,7 @@ export class SetEditor {
   }
 
   /**
-   * A cell's primary-button press: arms the drag-sweep gesture (#714) unless a move is armed or a
+   * A cell's primary-button press: arms the drag-sweep gesture unless a move is armed or a
    * remove confirmation is open, in which case a drag has no meaning and this is a no-op — the
    * subsequent `click` still drives {@link onCell}'s existing move/no-op handling.
    */
@@ -633,7 +633,7 @@ export class SetEditor {
     this.sweepIds.set(ids);
     this.batchUpdated.set(null);
     this.batchErrorCode.set(undefined);
-    // Keep the swept anchor above the mobile bottom sheet too (#715), same reasoning as onCell.
+    // Keep the swept anchor above the mobile bottom sheet too, same reasoning as onCell.
     this.scrollCellIntoView(swept[0].gridX, swept[0].gridY);
     this.focusAfterRender('batch-panel');
   }

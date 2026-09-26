@@ -9,26 +9,12 @@ import { MailAttemptView, MailDeliveryBookingView, MailResendResultView } from '
 import { TouchTarget } from '../shared/touch-target';
 
 /**
- * The admin console's per-booking mail-delivery card: what happened to a tourist's
- * booking-confirmation mail, and the button that sends it again.
- *
- * <p><strong>Searched by email address, not by arrival code.</strong> Anyone who can quote their code
- * can also quote the address they booked with; the reverse is false, and the address is what the mail
- * was sent to. The code itself is never rendered — it is the tourist's bearer credential (invariant #7)
- * and the endpoint does not return it.
- *
- * <p><strong>Every outcome is reported as an outcome</strong>, not as an error banner. A withheld send
- * (the address is suppressed) is the most useful answer this card gives — it is usually the reason the
- * original never arrived — and "never confirmed" tells the admin no mail was ever due. Only a rejected
- * request is an error.
- *
- * <p><strong>An empty history is not a blank.</strong> For a booking that was never confirmed the card
- * says no confirmation was due; for a confirmed one it says nothing was recorded — which is the honest
- * answer for a booking that predates the log.
- *
- * <p>Sits on the Email tab beside the outbox card rather than in a tab of its own: same concern,
- * and the two answer the support question from opposite ends — what is still owed, versus what happened
- * to one person's mail. Porcelain theme comes from the page host.
+ * The Email tab's per-booking card: what happened to a tourist's booking-confirmation mail, and a
+ * resend. Looked up by the booking's email address, never by arrival code: the code is a bearer
+ * credential (invariant #7), never rendered, and the endpoint does not return it. Every resend
+ * outcome, a suppressed withhold included, is reported as an answer; only a rejected request is an
+ * error. An empty history tells "never confirmed, none was due" from "confirmed, nothing recorded"
+ * (a booking older than the delivery log).
  */
 @Component({
   selector: 'app-admin-mail-delivery',
@@ -221,12 +207,9 @@ export class AdminMailDelivery {
   }
 
   /**
-   * Re-read after a resend so the new attempt appears. Keyed on the address that was *searched*, never
-   * on the live field: an admin who has started typing the next address must not have the results they
-   * just acted on replaced by someone else's, under a notice saying their mail was sent.
-   *
-   * A failure here must not overwrite the outcome notice — the resend still happened — so it drops the
-   * list rather than showing one that is now wrong.
+   * Re-read after a resend, keyed on the *searched* address, never the live field the admin may be
+   * retyping, so the results just acted on are not swapped for someone else's. A failure drops the
+   * list but keeps the outcome notice: the resend still happened.
    */
   private async refresh(): Promise<void> {
     try {

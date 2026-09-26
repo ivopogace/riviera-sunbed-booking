@@ -3,27 +3,13 @@ package ai.riviera.platform.payout.adapter.in;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
 /**
- * The seed for the stored venue-change fee, bound from
- * {@code riviera.payout.venue-change-fee-minor}. Integer minor units of the collection currency
- * (invariant #5) — EUR in v1, so the amount carries no currency of its own; a second collection
- * currency would give it one. Flat and platform-wide: no per-venue rate, no tier.
+ * The <strong>seed</strong> of the venue-change fee, and its fallback when the
+ * {@code platform_setting} row (the amount charged) is missing. EUR minor units (invariant #5), flat,
+ * platform-wide (ADR-0021). Checked here, not by {@code @Validated}: no JSR-303 implementation is on
+ * the classpath. Never negative: direction is the entry type (invariant #9).
  *
- * <p><strong>Not the amount charged.</strong> The {@code platform_setting} row is, and an admin
- * edits it; this value is what that row is seeded with and what a read falls back to when the row
- * is missing.
- *
- * <p>Validated in the compact constructor rather than with {@code @Validated}: no JSR-303
- * implementation is on the classpath, so an annotation would bind and validate nothing. A negative
- * fee would pay the venue for changing a guest's deal, and would put direction in the amount where
- * the ledger keeps it in the entry type.
- *
- * <p>Converted to the application-layer {@code VenueChangeFeeAmount} value by {@link PayoutFeeConfig}.
- * That record's own constructor enforces the upper bound the table shares, so a seed above it fails
- * the context at startup rather than at the first charge. Rationale and rejected alternatives:
- * ADR-0021.
- *
- * @param venueChangeFeeMinor default {@code 500} (5 EUR); never negative, and never above
- *        {@code VenueChangeFeeAmount.MAX_FEE_MINOR}
+ * @param venueChangeFeeMinor default {@code 500}; above {@code VenueChangeFeeAmount.MAX_FEE_MINOR}
+ *        it fails the context at startup, in {@link PayoutFeeConfig}
  */
 @ConfigurationProperties("riviera.payout")
 public record VenueChangeFeeProperties(Long venueChangeFeeMinor) {

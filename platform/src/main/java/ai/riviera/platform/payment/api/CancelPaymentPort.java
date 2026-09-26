@@ -4,22 +4,13 @@ import ai.riviera.platform.payment.vocabulary.BookingRef;
 import ai.riviera.platform.payment.vocabulary.PaymentCancellation;
 
 /**
- * The {@code payment} module's <strong>inbound</strong> published port for cancelling a booking's
- * PaymentIntent (issue #51) — the seam the {@code booking} module's abandoned-payment sweep calls
- * when a booking has lingered in {@code AWAITING_PAYMENT} past its TTL (a closed tab produces no
- * terminating webhook, so the PaymentIntent sits in {@code requires_payment_method} indefinitely).
+ * The {@code payment} module's <strong>inbound</strong> port (invariant #11) for voiding an unpaid
+ * booking's PaymentIntent, called by {@code booking}'s abandoned-payment sweep (a closed tab sends no
+ * terminating webhook) and its remodel release. Moves no money: collect-only, no Connect (ADR-0002).
  *
- * <p>Distinct from {@link CheckoutPort} (collection) and {@link RefundPort} (refund): all three are
- * driving ports {@code booking} calls, keeping the dependency direction {@code booking → payment::api}
- * (invariant #11). Cancelling voids an <strong>uncollected</strong> PaymentIntent — collect-only, no
- * Connect, no money moved (ADR-0002 / invariant #8).
- *
- * <p><strong>Idempotent.</strong> Cancelling an already-canceled PaymentIntent is a benign success;
- * a PaymentIntent that has already {@code succeeded} returns {@link PaymentCancellation.NotCancellable}
- * so the caller leaves the booking for the signature-verified confirm webhook (invariant #8); a booking
- * with no PaymentIntent on record returns {@link PaymentCancellation.NoCollection} (issue #125), which
- * the abandoned-payment sweep may release once the booking is also past its TTL. The cancel reads the
- * PaymentIntent's state from Stripe, never from the client.
+ * <p><strong>Idempotent</strong>: an already-canceled intent is a benign success. One that has
+ * {@code succeeded} is {@link PaymentCancellation.NotCancellable}: leave the booking to the
+ * signature-verified confirm webhook (invariant #8). Intent state comes from Stripe, not the client.
  */
 public interface CancelPaymentPort {
 

@@ -108,10 +108,11 @@ A contact is scrubbed only when **all three** agree it has no live basis. Any on
 |---|---|---|
 | 1 | the `customer` row itself is older than `customer.retention.window` (`updated_at` before the cutoff) | candidate SQL, `JdbcAccountErasure` |
 | 2 | no **live** `customer_account` (`erased_at IS NULL`) claims that email — a signed-up customer's contact is never swept | candidate SQL, same query |
-| 3 | the guest has **no booking dated on or after the cutoff**, any status (a cancelled or no-show booking still produced a financial record, so it still counts) | `customer.spi.GuestBookingHistory`, answered by the `booking` module |
+| 3 | the guest has **no booking whose last day (`booking.last_date`) falls on or after the cutoff**, any status (a cancelled or no-show booking still produced a financial record, so it still counts) | `customer.spi.GuestBookingHistory`, answered by the `booking` module |
 
-The boundary is **inclusive-retain**: a booking exactly *on* the cutoff date keeps the contact. A guest
-with no bookings at all is swept once its own row ages out — that is the abandoned-checkout cleanup case.
+The boundary is **inclusive-retain**: a booking whose last day is exactly *on* the cutoff date keeps the
+contact. A guest with no bookings at all is swept once its own row ages out — that is the
+abandoned-checkout cleanup case.
 
 ### Knobs
 
@@ -128,7 +129,7 @@ All under `customer.retention.*` in `application.properties`:
 > **The two ranges are enforced at boot** (#414) — a value outside them fails the context rather than
 > degrading quietly, so step 2 below cannot deploy a window the app will not honour. `P0D` is the one
 > to know about: it puts the cutoff at **today**, so the first sweep scrubs every guest contact with no
-> booking on or after today, irreversibly. A **mixed-sign** period is refused too (`P1M-40D` reads
+> booking ending on or after today, irreversibly. A **mixed-sign** period is refused too (`P1M-40D` reads
 > positive by total months yet moves the cutoff *forward*), so express the window plainly — `P2Y`,
 > `P10Y`. There is deliberately **no upper** bound on `window`: a longer window scrubs *less*, which is
 > the safe direction. `batch-size=0` is the mirror — it reaches `LIMIT 0`, so the sweep finds no
@@ -150,7 +151,7 @@ All under `customer.retention.*` in `application.properties`:
      AND NOT EXISTS (SELECT 1 FROM customer_account a WHERE a.email = c.email AND a.erased_at IS NULL)
      AND NOT EXISTS (SELECT 1 FROM booking b
                      WHERE b.customer_id = c.id
-                       AND b.booking_date >= (CURRENT_DATE - INTERVAL '10 years'));
+                       AND b.last_date >= (CURRENT_DATE - INTERVAL '10 years'));
    ```
 
    If that count surprises you, **stop** — the window is wrong. Erasure is irreversible.

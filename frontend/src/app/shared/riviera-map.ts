@@ -29,13 +29,9 @@ type MapStatus = 'booting' | 'ready' | 'unavailable';
 const PIN_ID = 'venue-location-pin';
 
 /**
- * The pin's own box: 44 px both axes, the floor a drag target needs, in the theme-invariant
- * solid-button skin the rest of the map chrome wears — it sits on imagery, which never themes.
- *
- * <p>The two markers can coincide — an operator pressing near-me while standing at their pinned
- * venue — and neither engine orders them, so the draggable one names a paint order rather than
- * inheriting DOM order: a dot over its middle would swallow the drag and pan the map instead. Both
- * stay far below the chrome column's `z-10`.
+ * The pin: 44 px both axes (a drag target's floor), in the theme-invariant solid-button skin (on
+ * imagery). `z-[2]` paints it over the you-are-here dot, which would swallow the drag where the
+ * two coincide, as neither engine orders markers; both stay below the chrome column's `z-10`.
  */
 const PIN_CLASSES =
   'inline-flex size-11 touch-manipulation items-center justify-center rounded-full ' +
@@ -77,33 +73,21 @@ export const NEAR_ME_MESSAGES: Record<NearMeProblem, string> = {
 };
 
 /**
- * The you-are-here dot: an ink disc inside a light ring, the shape every map uses for "you", so
- * it is not read as another venue pin beside the placer's. Same theme-invariant solid-button pair
- * as the rest of the chrome, and no touch floor — it is a graphic, not a control. It paints under
- * the pin (see {@link PIN_CLASSES}), which is the one a pointer has business reaching.
+ * The you-are-here dot: an ink disc in a light ring, every map's "you", not read as a venue pin.
+ * The theme-invariant solid-button pair; no touch floor (a graphic, not a control). It paints under
+ * the pin ({@link PIN_CLASSES}), the one a pointer must reach.
  */
 const HERE_CLASSES =
   'block size-5 rounded-full border-[3px] border-riv-solid-btn-fill bg-riv-solid-btn-ink ' +
   'shadow-[0_4px_12px_rgba(7,42,58,0.35)] z-[1]';
 
 /**
- * The **riviera map** — the geographic discovery map, as distinct from a venue's beach map.
- * Renders whatever engine is provided (`MapEngine`) into its canvas host and owns the chrome
- * around it: a skip control for keyboard and screen-reader users (the map canvas is a focusable
- * pan-and-zoom surface, and the venue list stays the fully accessible path), labelled zoom
- * buttons at the touch-target floor, and the permanent credit the tiles' licences require
- * (`MapCredit`) — or, as a `ribbon`, none of that chrome but the credit. Wears the theme-invariant solid-button skin: the imagery under it
- * never themes.
- *
- * <p>The host reports its state as `data-status` (`booting` → `ready` once the style has loaded,
- * or `unavailable` when the browser cannot render a map), which is what the e2e waits on. The
- * consumer sizes the host; the map fills it.
- *
- * <p>The one marker it draws is the operator's PLACEMENT pin: a null `pin` is no marker at all, a
- * changed pin moves the marker in place, and `mapClick`/`pinMoved` report positions so a placer
- * above the seam can own where the pin belongs without knowing which engine drew it. Discover's
- * venue pins are not the map's: the page draws them itself as an overlay over this box, projected
- * through the live {@link RivieraMap.handle}, so nothing venue-shaped crosses this seam.
+ * The **riviera map** (`CONTEXT.md`) over the injected `MapEngine`, filling the box its consumer
+ * sizes, with theme-invariant chrome (the imagery never themes): a skip control, as the canvas is a
+ * focusable pan-and-zoom surface and the venue list stays the accessible path; zoom buttons at the
+ * touch floor; the credit the tiles' licences require. A `ribbon` keeps only the credit. E2e waits
+ * on `data-status`. It draws only the placement pin (`null` is none; a change moves it in place);
+ * Discover overlays venue pins through {@link RivieraMap.handle}, so nothing venue-shaped crosses.
  */
 @Component({
   selector: 'app-riviera-map',
@@ -149,10 +133,9 @@ export class RivieraMap {
   /** The foot row has changed sides for a lone pin under it: the credit goes right (`footSwap`). */
   readonly footSwapped = input(false);
   /**
-   * A bare ribbon: the map as a picture, for a consumer that draws its own marks over it and
-   * hides the whole thing from assistive technology — no skip control, no control column, no
-   * unavailable notice (the consumer's own structure stands beside it), the credit at the foot
-   * at 10 px with its links out of the tab order, and the engine non-interactive.
+   * A bare ribbon: the map as a picture its consumer marks up and hides from assistive technology.
+   * No skip control, control column or unavailable notice; the credit at the foot at 10 px, links
+   * out of the tab order; the engine non-interactive.
    */
   readonly ribbon = input(false);
 
@@ -225,10 +208,9 @@ export class RivieraMap {
   }
 
   /**
-   * Every control this map currently draws over its imagery, in viewport coordinates — what a
-   * consumer overlaying its own marks has to keep them off. Measured on the call rather than
-   * watched: the consumer knows when its own geometry moved, and a control a browser has laid out
-   * to nothing (every one of them under jsdom) is left out rather than reported as a box at 0.
+   * The controls now drawn over the imagery, in viewport coordinates, for a consumer's overlay to
+   * avoid. Measured per call, not watched (the consumer knows when its geometry moved); a control
+   * laid out to nothing (every one under jsdom) is left out, not reported as a box at 0.
    */
   chromeBoxes(): readonly DOMRect[] {
     return [...this.host.nativeElement.querySelectorAll<HTMLElement>(CHROME_SELECTOR)]

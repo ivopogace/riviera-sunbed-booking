@@ -14,67 +14,49 @@ import ai.riviera.platform.venue.vocabulary.VenueId;
 public interface PayoutLedger {
 
 	/**
-	 * Record the ledger entry <strong>idempotently</strong>: an entry whose
-	 * {@code (booking_id, entry_type)} already exists is a no-op (invariant #9). This is the
-	 * exactly-once guarantee the async {@code BookingConfirmed} listener depends on — under the
-	 * Event Publication Registry's at-least-once redelivery, accruing the same booking twice must
-	 * not double-pay the venue. Implemented as {@code INSERT … ON CONFLICT DO NOTHING}.
+	 * Record an entry <strong>idempotently</strong> ({@code INSERT … ON CONFLICT DO NOTHING}): an
+	 * existing {@code (booking_id, entry_type)} is a no-op, so the registry's at-least-once redelivery
+	 * of {@code BookingConfirmed} never double-pays the venue (invariant #9).
 	 */
 	void accrue(PayoutLedgerEntry entry);
 
 	/**
-	 * The {@code ACCRUAL} entry for a booking, or empty if none exists yet — read by the cancellation
-	 * reversal (U6) to mirror the accrual proportionally (ADR-0005).
-	 *
-	 * <p><strong>Empty means "not yet", not "never"</strong> (corrected by #428's audit): a refund only
-	 * exists for a captured payment, so the accrual is always coming, and the two event publications are
-	 * independent enough that a cancellation can arrive first. The caller therefore <em>defers</em> —
-	 * {@code BookingCancelledPayoutListener} throws so its publication stays outstanding and the
-	 * reversal is retried — rather than treating empty as "nothing to reverse", which lost the reversal
-	 * and left the ledger overstating (invariant #9).
+	 * The booking's {@code ACCRUAL}, which a reversal mirrors proportionally. <strong>Empty means
+	 * "not yet", never "nothing to reverse"</strong>: the caller must defer (throw, so the publication
+	 * retries) or the ledger overstates what the venue is owed (ADR-0005, invariant #9).
 	 */
 	Optional<PayoutLedgerEntry> findAccrual(long bookingId);
 
 	/**
-	 * Record a {@code REVERSAL} entry <strong>idempotently</strong> (U6): an entry whose
-	 * {@code (booking_id, REVERSAL)} already exists is a no-op. Exactly-once under the registry's
-	 * at-least-once redelivery (invariant #9), the reversal sibling of {@link #accrue}. Implemented as
-	 * {@code INSERT … ON CONFLICT DO NOTHING}.
+	 * Record a {@code REVERSAL} <strong>idempotently</strong>, like {@link #accrue}: an existing
+	 * {@code (booking_id, REVERSAL)} is a no-op, so redelivery reverses exactly once (invariant #9).
 	 */
 	void reverse(PayoutLedgerEntry entry);
 
 	/**
-	 * Record a {@code FEE} entry <strong>idempotently</strong>: an entry whose
-	 * {@code (booking_id, FEE)} already exists is a no-op. Exactly-once under the registry's
-	 * at-least-once redelivery (invariant #9), the fee sibling of {@link #accrue} and {@link #reverse}.
-	 * Implemented as {@code INSERT … ON CONFLICT DO NOTHING}.
+	 * Record a {@code FEE} <strong>idempotently</strong>, like {@link #accrue}: an existing
+	 * {@code (booking_id, FEE)} is a no-op, so redelivery charges exactly once (invariant #9).
 	 */
 	void charge(PayoutLedgerEntry entry);
 
 	/**
-	 * Every ledger entry for {@code venueId} — accruals, reversals and fees — ordered by {@code created_at}
-	 * then {@code id} (oldest first), for the per-venue ledger read (U9). Read-only; the
-	 * running net owed is computed by the caller from this ordered list. Empty when the venue has no
+	 * Every entry for {@code venueId}, of every type, oldest first ({@code created_at}, then
+	 * {@code id}); the caller folds the running net owed in this order. Empty when the venue has no
 	 * entries yet.
 	 */
 	List<LedgerEntryRow> entriesForVenue(VenueId venueId);
 
 	/**
-	 * The signed net owed per venue for {@code period} — {@code Σ(ACCRUAL.net) − Σ(REVERSAL.net) −
-	 * Σ(FEE.net)} grouped by venue over the entries whose {@code period_key} matches (the U9 BKT
-	 * report). One {@link VenuePeriodTotal} per venue that has any entry in the period; a venue whose
-	 * entries net to zero still appears (it had activity). Empty when no entry falls in the period.
-	 * Money is integer minor units (invariant #5); the total may be negative.
+	 * Per venue with any entry in {@code period}: {@code Σ ACCRUAL.net − Σ REVERSAL.net − Σ FEE.net}
+	 * in minor units (invariant #5), possibly negative; a venue netting to zero still appears. Empty
+	 * when no entry falls in the period.
 	 */
 	List<VenuePeriodTotal> netTotalsForPeriod(PeriodKey period);
 
 	/**
-	 * Every venue with at least one venue-caused refund, with its refund count, what those refunds
-	 * returned to guests and what it paid in fees — the admin's abuse guard. Keyed on
-	 * {@code reason = 'VENUE_CHANGE'}, so a policy or weather refund never appears. The two amounts
-	 * are aggregated separately by entry type and must not be added: the refunded total is the
-	 * {@code REVERSAL}s' gross, the fee total the {@code FEE}s' net. Money is integer minor units
-	 * (invariant #5). Empty when no venue-caused refund has been posted.
+	 * Per venue with a {@code reason = 'VENUE_CHANGE'} refund: the count, the {@code REVERSAL}s' gross
+	 * and the {@code FEE}s' net in minor units (invariant #5), separate aggregates never to be added.
+	 * Empty when no venue-caused refund has been posted.
 	 */
 	List<VenueChangeRefundTotal> venueChangeTotals();
 }

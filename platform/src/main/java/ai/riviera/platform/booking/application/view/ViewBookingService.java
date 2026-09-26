@@ -71,21 +71,9 @@ class ViewBookingService implements ViewBooking {
 	}
 
 	/**
-	 * The D-8 gate on {@code emailWithheld}: a short-circuit, not a filter on the answer — the
-	 * port must not be <em>consulted</em> before the booking is settled, because the {@code 202} create
-	 * hands the code out before the card is collected, and answering then would turn this code-gated
-	 * view into a suppression oracle for any address a checkout can be started with.
-	 *
-	 * <p>Deliberately its own predicate rather than reusing {@code cancellable}, which no longer tests
-	 * the same thing at all — {@code cancellable} now also requires the cancellation window to be open,
-	 * so a delivered booking is uncancellable while its mail status stays disclosable. Pinned by
-	 * {@code ViewBookingServiceTest}'s no-interaction cases.
-	 *
-	 * <p><strong>Status alone is not enough</strong>, which the review gate caught: it means
-	 * "post-payment" only where the wired gateway actually collects before confirming. Under the
-	 * in-process stub {@code CONFIRMED} is reached having taken no money, so the flag would be free to
-	 * probe; {@code payment.api.CollectionGuarantee} is asked rather than a profile string, so the gate
-	 * is a checkable property of the payment model and survives a third gateway.
+	 * Gates {@code emailWithheld}: the port must not even be asked until money was provably collected
+	 * ({@code CONFIRMED} under a collecting gateway), or this code-gated view is a suppression oracle.
+	 * Its own predicate, not {@code cancellable}'s. Rationale: {@code RESPONSIBILITIES.md} §booking.
 	 */
 	private boolean mayDiscloseMailStatus(BookingRecord b) {
 		return b.status() == BookingStatus.CONFIRMED && collection.provenBeforeConfirmation();
@@ -137,10 +125,8 @@ class ViewBookingService implements ViewBooking {
 	}
 
 	/**
-	 * The display name to prefill the review form with: the first whitespace-separated token of the
-	 * contact's name, which is the only "first name" this system stores. {@code null} for any panel
-	 * but the form, and whenever the contact is gone (erasure, ADR-0010) — the form then simply
-	 * starts empty.
+	 * The review form's prefilled display name: the first token of the contact's name, the only "first
+	 * name" stored. {@code null} for any other panel, or once the contact is erased (ADR-0010).
 	 */
 	private String nameSuggestionFor(ReviewPanel panel, BookingRecord b) {
 		if (!(panel instanceof ReviewPanel.Eligible)) {

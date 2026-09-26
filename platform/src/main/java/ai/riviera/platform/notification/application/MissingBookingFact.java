@@ -3,26 +3,12 @@ package ai.riviera.platform.notification.application;
 import ai.riviera.platform.shared.ObservabilityMetrics;
 
 /**
- * Which of the three facts a booking mail needs did not resolve — the {@code reason} dimension both
- * registry-listener abandon counters are read through
- * ({@link ObservabilityMetrics#MAIL_CONFIRMATION_ABANDONED},
- * {@link ObservabilityMetrics#MAIL_CANCELLATION_ABANDONED} and
- * {@link ObservabilityMetrics#MAIL_PAYMENT_DUE_ABANDONED}).
- *
- * <p><strong>One type rather than three string constants per listener</strong> — the {@code MailKind}
- * argument (#442) applied to the dimension those counters do <em>not</em> share. There the two
- * loss counters were raised from two classes and could not name a flow at all; here they are raised
- * from three listeners that each already knew the vocabulary, and the failure a shared type forecloses
- * is the same one: {@code no-set} on one series and {@code no_set} on the other, with the runbook's
- * "start at the module in the table" instruction matching one of them.
- *
- * <p>The three implicate three different modules, which is the whole reason the tag exists — an
- * operator acts on <em>which module to investigate</em>, not on the fact that something was missing.
- * Read any increment as a data-integrity fault rather than a relay one: all three rows are
- * FK-protected and never hard-deleted (erasure tombstones in place), so none is reachable through
- * any application path.
- *
- * <p>Module-internal: no reason ever crosses the module edge.
+ * Which of a booking mail's three facts did not resolve: the {@code reason} tag shared by every
+ * registry-listener abandon counter (e.g. {@link ObservabilityMetrics#MAIL_CONFIRMATION_ABANDONED}),
+ * one enum so no series drifts in spelling. The listener then returns normally, so the publication
+ * completes and nothing retries the mail. Each value names the module to investigate; an increment
+ * is a data-integrity fault, not a relay one (the rows are FK-protected, never hard-deleted).
+ * Runbook: {@code docs/runbooks/observability.md}.
  */
 public enum MissingBookingFact {
 

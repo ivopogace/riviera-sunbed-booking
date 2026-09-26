@@ -5,15 +5,13 @@ import ai.riviera.platform.payment.vocabulary.Money;
 import ai.riviera.platform.payment.vocabulary.PaymentOutcome;
 
 /**
- * The {@code payment} module's <strong>inbound</strong> published port (invariant #11) — the
- * one seam the {@code booking} module calls to collect for a booking. Deliberately distinct
- * from the module's <strong>outbound</strong> {@code PaymentGateway} (the driven Stripe/stub
- * SDK seam): one is driving, one is driven (riviera-stripe-payments).
+ * The {@code payment} module's <strong>inbound</strong> published port (invariant #11): the one
+ * seam {@code booking} calls to collect for a booking. Distinct from the <strong>outbound</strong>
+ * {@code PaymentGateway}, the driven Stripe/stub seam (riviera-stripe-payments). Collect-only,
+ * <strong>no Stripe Connect</strong>: venues are paid manually via BKT (ADR-0002).
  *
- * <p>Collect-only — <strong>no Stripe Connect</strong> (the platform collects everything and
- * pays venues manually via BKT; invariant #8). In U3 this is backed by a stub that succeeds
- * synchronously; U4 swaps the outbound gateway for Stripe and moves success onto a
- * signature-verified webhook without changing this port's shape.
+ * <p>The default-profile stub succeeds synchronously; under {@code stripe}, only a signature-verified
+ * webhook confirms the booking (invariant #8), never the client.
  */
 public interface CheckoutPort {
 

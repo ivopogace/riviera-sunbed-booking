@@ -93,7 +93,7 @@ class StripePaymentGateway implements PaymentGateway {
 						.build())
 				.build();
 		RequestOptions options = RequestOptions.builder()
-				.setIdempotencyKey(idempotencyKey(booking))                  // derived from booking id (#8)
+				.setIdempotencyKey(idempotencyKey(booking))                  // derived from booking id (ADR-0002)
 				.build();
 		try {
 			PaymentIntent intent = withLostResponseReplay(booking, "PaymentIntent",
@@ -103,7 +103,7 @@ class StripePaymentGateway implements PaymentGateway {
 			return new PaymentOutcome.Pending(intent.getClientSecret(), intent.getId());
 		}
 		catch (StripeException e) {
-			// Code only — never the message, the key, or any PII (invariant #8 / log discipline).
+			// Code only — never the message, the key, or any PII (log discipline).
 			log.warn("Stripe PaymentIntent creation failed for booking {}: code={}",
 					booking.value(), e.getCode());
 			return new PaymentOutcome.Failed(e.getCode() == null ? STRIPE_ERROR : e.getCode());
@@ -140,7 +140,7 @@ class StripePaymentGateway implements PaymentGateway {
 					.putMetadata(StripeRefundTag.KEY, StripeRefundTag.of(booking))
 					.build();
 			RequestOptions options = RequestOptions.builder()
-					.setIdempotencyKey(refundIdempotencyKey(booking))        // derived from booking id (#8)
+					.setIdempotencyKey(refundIdempotencyKey(booking))        // derived from booking id (ADR-0002)
 					.build();
 			Refund refund = withLostResponseReplay(booking, "refund",
 					() -> stripe.v1().refunds().create(params, options));
@@ -159,7 +159,7 @@ class StripePaymentGateway implements PaymentGateway {
 			return new RefundResult.Refunded(refund.getId());
 		}
 		catch (StripeException e) {
-			// Code only — never the message, the key, or any PII (invariant #8 / log discipline).
+			// Code only — never the message, the key, or any PII (log discipline).
 			log.warn("Stripe refund failed for booking {}: code={}", booking.value(), e.getCode());
 			return new RefundResult.Failed(e.getCode() == null ? STRIPE_ERROR : e.getCode());
 		}
@@ -303,14 +303,14 @@ class StripePaymentGateway implements PaymentGateway {
 			return new PaymentCancellation.Canceled();
 		}
 		catch (StripeException e) {
-			// Code only — never the message, the key, or any PII (invariant #8 / log discipline).
+			// Code only — never the message, the key, or any PII (log discipline).
 			log.warn("Stripe PaymentIntent cancel failed for booking {}: code={}",
 					booking.value(), e.getCode());
 			return new PaymentCancellation.Failed(e.getCode() == null ? STRIPE_ERROR : e.getCode());
 		}
 	}
 
-	/** One PaymentIntent per booking: a stable key so a retried create reuses the same intent (#8). */
+	/** One PaymentIntent per booking: a stable key so a retried create reuses the same intent (ADR-0002). */
 	private static String idempotencyKey(BookingRef booking) {
 		return "booking-" + booking.value() + "-pi";
 	}
@@ -318,7 +318,7 @@ class StripePaymentGateway implements PaymentGateway {
 	/**
 	 * One refund per booking: a stable key so a replay <em>inside</em> Stripe's key window returns
 	 * the original refund. Beyond that window the key is pruned and {@link #refund}'s existence read
-	 * is what prevents a second one (invariant #8/#10).
+	 * is what prevents a second one (ADR-0002; invariant #10).
 	 */
 	private static String refundIdempotencyKey(BookingRef booking) {
 		return "booking-" + booking.value() + "-refund";

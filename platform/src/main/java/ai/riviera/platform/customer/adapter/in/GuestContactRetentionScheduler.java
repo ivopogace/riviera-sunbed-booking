@@ -7,25 +7,13 @@ import org.springframework.stereotype.Component;
 import ai.riviera.platform.customer.application.ExpireGuestContacts;
 
 /**
- * Periodically runs the guest-contact retention sweep — the {@code customer} module's own
- * driving adapter, sibling of {@code booking}'s {@code RequestSweepScheduler} / {@code
- * AbandonedBookingScheduler}.
+ * Periodically runs the guest-contact retention sweep (knobs: {@code docs/runbooks/data-erasure.md}).
  *
- * <p><strong>Gated on {@code customer.retention.enabled}, and therefore absent by default.</strong> That
- * condition does double duty. It is the ops safety switch: retention erasure is irreversible (a tombstone
- * has no undo), so nothing may sweep until the window has been set per counsel and ops deliberately opts in
- * (R-2/R-6). And it keeps the bean out of every default-profile test context — {@code @EnableScheduling} is
- * global in this application, so an unconditional {@code @Scheduled} would fire during the full suite and
- * could perturb the booking sweeps' timing windows. A bean that does not exist
- * cannot fire. Pinned by {@code GuestContactRetentionSchedulerConfigTest}.
- *
- * <p>{@code fixedDelay} so runs never overlap on this instance; multi-instance safety needs no distributed
- * lock — every contact scrub is a guarded {@code UPDATE … WHERE id = :id AND erased_at IS NULL} (and the
- * review tombstone it carries matches only a row still holding a name or comment), so at most one
- * runner can tombstone a given row and a concurrent run is a no-op. Lockless-on-one-instance is the
- * documented deployment posture (improvement-plan D1/D3). The default cadence is deliberately slack: a
- * retention window is measured in years, so nothing is gained by sweeping often, and {@code initial-delay}
- * keeps it off the startup hot path.
+ * <p><strong>Absent unless {@code customer.retention.enabled=true}</strong>; keep it so: erasure is
+ * irreversible, so nothing sweeps until counsel sets the window and ops opts in; and
+ * {@code @EnableScheduling} is global, so an unconditional bean would fire in the test suite (pinned by
+ * {@code GuestContactRetentionSchedulerConfigTest}). {@code fixedDelay} never overlaps on one instance;
+ * across instances no lock is needed, since every scrub is guarded on {@code erased_at IS NULL}.
  */
 @Component
 @ConditionalOnProperty(name = "customer.retention.enabled", havingValue = "true")

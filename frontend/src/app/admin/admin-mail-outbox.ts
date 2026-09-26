@@ -10,33 +10,12 @@ import { OutboxLever } from './admin-outbox-lever';
 import { TouchTarget } from '../shared/touch-target';
 
 /**
- * The admin console's Email tab: what the Event Publication Registry still owes — confirmation
- * mails whose send failed — and the lever that re-drives them without waiting for a deploy.
- *
- * <p><strong>The count is shown before the button is pressed</strong>, which is why a status read
- * exists that was never asked for: a lever with no number is one an admin presses hopefully. It
- * is a count of publications, never of recipients — this surface cannot show an address or an arrival
- * code, because the endpoint does not return them (invariant #7).
- *
- * <p><strong>A refusal is reported as a refusal, not as a failure.</strong> The backend answers
- * {@code 200} for all three outcomes, so `COOLING_DOWN` and `ALREADY_RUNNING` land here as ordinary
- * results — "nothing was swept, try again in N seconds" — rather than as the error banner a rejected
- * promise would produce. Conflating the two would teach an admin to distrust a working button.
- *
- * <p>The button is not disabled while cooling down: the remaining window is a server fact that goes
- * stale the moment it is rendered, and a button disabled by a stale number is indistinguishable from
- * a broken one. It disables only for the round-trip it is actually making.
- *
- * <p>Those press semantics are shared with the Refunds tab and live in {@link OutboxLever};
- * this component keeps the auth self-gate, the template, and the mail-specific copy.
- *
- * <p>The page also carries a second card, {@link AdminMailDelivery}: the outbox above answers
- * "what does the registry still owe us", that one answers "what happened to this tourist's mail" —
- * the same concern from opposite ends, which is why it is a card here rather than a tab of its own.
- *
- * <p>Like every admin tab, the surrounding {@code AdminConsole} shell self-gates on
- * {@link OperatorAuth} for UX while the backend `/api/admin/**` role gate does the enforcing; this
- * component only ever renders once both have passed.
+ * The Email tab: how many confirmation mails the Event Publication Registry still owes, shown
+ * before the press, and the lever that re-drives them without a deploy; press semantics (a refusal
+ * is a `200` answer, not an error) live in {@link OutboxLever}. It counts publications, never
+ * showing an address or arrival code (invariant #7). Never disable the button for a cooldown: the
+ * remaining window is stale once rendered, so it goes busy only for its own round-trip. It also
+ * hosts {@link AdminMailDelivery}, the same concern from the other end.
  */
 @Component({
   selector: 'app-admin-mail-outbox',

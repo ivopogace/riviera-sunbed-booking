@@ -14,24 +14,12 @@ import ai.riviera.platform.operator.vocabulary.OperatorCredential;
 import ai.riviera.platform.operator.vocabulary.OperatorStatus;
 
 /**
- * The platform edge's Spring Security {@link UserDetailsService}: resolves a session-login username
- * to a per-operator principal backed by the DB, replacing the single shared in-memory {@code operator}
- * user. Authentication is an edge concern (RV-BE-11), so this — and all encoding/verifying — lives in
- * the application root, not the {@code operator} module: it reads the module's stored credential via
- * {@link OperatorAccounts} (the module owns the opaque hash; the edge verifies it against the
- * delegating {@code PasswordEncoder}) and hands a {@link UserDetails} to {@code DaoAuthenticationProvider}.
- *
- * <p>Every operator carries the {@code OPERATOR} role (the per-<em>venue</em> authorization is
- * object-level — resolved from the principal to an {@link ai.riviera.platform.operator.vocabulary.OperatorId}
- * and enforced in the application services, invariant #13 — not role-level). A platform-<strong>admin</strong>
- * account ({@code is_admin}) additionally carries {@code ADMIN}, which gates the role-based
- * {@code /api/admin/**} operator-approval surface (invariant #13's admin exemption); it keeps
- * {@code OPERATOR} too, so an admin that also owns venues still reaches the operator console. An
- * account outside the may-authenticate set ({@code ACTIVE} or {@code PENDING} — approval gates
- * tourist visibility, not console access) is built {@code disabled}, so the provider rejects it in
- * its pre-authentication check <em>before</em> the password is examined (no existence/timing
- * oracle); an account with no provisioned credential (null hash) or an unknown username is a
- * {@link UsernameNotFoundException}.
+ * The edge's {@link UserDetailsService} (login machinery stays out of {@code operator}, RV-BE-11):
+ * hands {@code DaoAuthenticationProvider} the stored hash, read via {@link OperatorAccounts}. Every
+ * operator gets {@code OPERATOR} (per-venue checks stay object-level, invariant #13); {@code is_admin}
+ * adds {@code ADMIN} for {@code /api/admin/**}. A status outside {@link #MAY_AUTHENTICATE} is built
+ * {@code disabled}: refused, but only after the password check still runs (Spring's default; keep it),
+ * so it costs one bcrypt like any failure. A null hash or unknown name: {@link UsernameNotFoundException}.
  */
 @NullMarked
 class OperatorUserDetailsService implements UserDetailsService {

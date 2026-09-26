@@ -16,15 +16,13 @@ import ai.riviera.platform.customer.vocabulary.ResetPasswordOutcome;
 import ai.riviera.platform.customer.vocabulary.VerifyEmailOutcome;
 
 /**
- * Public customer account-recovery endpoints (design D-6/D-8): request a password reset,
- * redeem a reset token, and redeem an email-verification token. Anonymous by definition (the token is
- * the bearer credential, invariant #7) — permitted in {@link SecurityConfig} and behind the
- * {@code RateLimitFilter} recovery budget. Platform-edge login machinery (RV-BE-11): the {@code customer}
- * module only stores the opaque token digest and flips state via its {@code api/} port.
+ * Public customer account-recovery endpoints (design D-6/D-8): request a reset, redeem a reset
+ * token, redeem a verification token. Anonymous (the token is the bearer credential, invariant #7),
+ * permitted in {@link SecurityConfig} behind the {@code RateLimitFilter} recovery budget. Login
+ * machinery stays at the edge (RV-BE-11): {@code customer} only stores the token digest.
  *
- * <p><strong>Non-enumeration (D-8):</strong> {@code forgot-password} returns the SAME {@code 204} whether
- * or not the email has an account; invalid, expired, and already-used tokens all return the same generic
- * {@code 400 INVALID_OR_EXPIRED_TOKEN}. Every 4xx rides the centralized RFC-7807 contract.
+ * <p><strong>Non-enumerating:</strong> {@code forgot-password} is the same {@code 204} whether or not
+ * the email has an account; any bad, expired or used token is one {@code 400 INVALID_OR_EXPIRED_TOKEN}.
  */
 @RestController
 class AccountRecoveryController {
@@ -87,27 +85,9 @@ class AccountRecoveryController {
 	}
 
 	/**
-	 * Redeem a reset token and set the new password. Every session for that account is invalidated (AC-3),
-	 * so an attacker's live session cannot outlive the old password. A password outside the length rule
-	 * is {@code 400 INVALID_REQUEST}; one containing the account's email local part or the service name is
-	 * {@code 400 PASSWORD_CONTAINS_BLOCKED_TERM} (the account is named from the token without consuming
-	 * it); a bad/expired/used token is {@code 400 INVALID_OR_EXPIRED_TOKEN}.
-	 *
-	 * <p><strong>The revoke brackets the write</strong> (#357). <em>Before</em>, because the two effects are
-	 * not atomic and cannot be — the password write is the {@code customer} module's transaction, the
-	 * session deletes are Spring Session's, so a {@code @Transactional} here would look atomic without
-	 * being atomic (#344 D-1). Revoking only afterwards, as S8 shipped, meant a transient revoke failure
-	 * returned {@code 500} with the token already spent: the customer retries the emailed link, is told it
-	 * is invalid or expired, and the session the reset existed to kill is still alive. Revoke-first is only
-	 * possible because {@link CustomerRecovery#emailForResetToken} names the account without consuming the
-	 * token; if it names nobody, the redemption below rejects the token anyway and nothing was revoked.
-	 *
-	 * <p><em>And after</em>, because revoking only first would leave a window in which the OLD password
-	 * still works — the credential an attacker holds in exactly the scenario this endpoint recovers from —
-	 * so a sign-in landing there would survive the reset. The bcrypt encode is hoisted above the revoke to
-	 * keep that window to a single write (#344 F-4: at ~80ms the encode would otherwise dominate it). What
-	 * no ordering removes is a failure in the trailing revoke, which still reports an error with the
-	 * password already changed — by then every session that existed when the request started is gone.
+	 * Redeem a reset token, set the new password; {@code 400} on a {@link PasswordPolicy} breach or bad
+	 * token. {@link PrincipalSessionRevoker#revokeAll} runs before and after the write; keep the bcrypt
+	 * encode above the first, or its ~80ms widens the gap: {@code RESPONSIBILITIES.md} §Platform edge.
 	 */
 	@PostMapping(RESET_PASSWORD_PATH)
 	ResponseEntity<?> resetPassword(@RequestBody ResetPasswordRequest request) {

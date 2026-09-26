@@ -3,14 +3,9 @@ import { toSignal } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, ParamMap } from '@angular/router';
 
 /**
- * The positive-integer id carried by a route's `:<param>` segment as a signal, or a signal of
- * `undefined` when the route is absent or the segment is missing / not a positive integer.
- *
- * <p>Reactive: the router REUSES a component instance when only the param changes (an
- * in-app `/operator/1/…` → `/operator/2/…` navigation), so a constructor snapshot read would pin
- * the component to the old venue. The signal tracks `paramMap`, mirroring the `booking-view`
- * `paramMap` reload. Must be called in an injection context (a field initializer or
- * constructor). Works for any param name (e.g. the tourist map's `:id`).
+ * A route's `:<param>` positive-integer id as a signal, `undefined` when the route is absent or the
+ * segment missing or malformed. Tracks `paramMap`, as the router reuses the component on a
+ * param-only navigation (a snapshot would pin the old id); call in an injection context.
  */
 export function routeIdParam(
   route: ActivatedRoute | null,
@@ -24,16 +19,9 @@ export function routeIdParam(
 }
 
 /**
- * {@link routeIdParam} for the operator console's `:venueId`, **required**. The console page reads
- * its OWN route; console tab child routes read the PARENT route via {@link parentVenueId} — child
- * routes do not inherit the param under the router's default `emptyOnly` strategy. (The app shell
- * takes the id off its route walk with {@link idParam}, which stays optional: most routes name no
- * venue.)
- *
- * <p>Required because the route decides: `venueIdGuard` (`core/venue-id.guard.ts`) redirects a
- * malformed `/operator/:venueId` to the venue-not-found page before anything under it activates.
- * A console component reading no valid id is therefore a routing bug — it throws, rather than
- * returning `undefined` for an arm no operator can reach (ADR-0023).
+ * {@link routeIdParam} for the console's `:venueId`, required: `venueIdGuard` redirects a malformed
+ * id first, so a missing one is a routing bug and throws (ADR-0023). Tab child routes read the
+ * parent's via {@link parentVenueId}: under the default `emptyOnly` they don't inherit the param.
  */
 export function venueIdParam(route: ActivatedRoute | null): Signal<number> {
   const id = routeIdParam(route, 'venueId');

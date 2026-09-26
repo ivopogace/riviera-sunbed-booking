@@ -18,28 +18,11 @@ interface AdminVenueCommissionsResponse {
 }
 
 /**
- * HTTP client for the admin console's venue-commission surface, against the two ADMIN-gated
- * endpoints it wraps. Stateless: the session cookie + CSRF header are added by
- * {@link apiSessionInterceptor}, and the component holds the page state.
- *
- * <p>Two consumers: the Commissions tab, which reads and writes, and the console home's
- * stat strip, which only calls {@link venues} for the venue count and the mean of their rates. The
- * strip deliberately reuses this client rather than adding a second one for the same endpoint.</p>
- *
- * <p><strong>One type and one parse for both calls.</strong> The write answers the same object shape
- * as one list element, which is what lets the caller splice the response into the list it already
- * holds rather than re-reading. Both paths go through {@link toVenueCommission}, so a spliced row and
- * a listed row cannot diverge in shape — and an added wire field is dropped here rather than leaking
- * into the page as an untyped extra.
- *
- * <p><strong>The write is a plain `put`, deliberately.</strong> `httpResource` models a reactive read;
- * the guide's own tip is to <em>"avoid using httpResource for mutations like POST or PUT. Instead,
- * prefer directly using the underlying HttpClient APIs"</em>
- * (angular.dev/guide/http/http-resource — <em>Using httpResource</em>).
- *
- * <p>Unlike the photo-moderation twin, this surface does not blur venue existence: an unknown id
- * answers `404 NO_SUCH_VENUE` and the caller reports it distinctly, because an admin correcting a
- * rate needs a mistyped or stale id to fail loudly.
+ * Stateless HTTP client for the ADMIN-gated venue-commission endpoints, used by the Commissions tab
+ * and, for {@link venues} only, the console home's stat strip. Both calls parse through
+ * {@link toVenueCommission}, so the write's answer splices into the held list without a re-read and
+ * cannot diverge from a listed row. The write stays a plain `put`: Angular's guide reserves
+ * `httpResource` for reads (angular.dev/guide/http/http-resource).
  */
 @Service()
 export class AdminCommissionsService {
@@ -56,12 +39,9 @@ export class AdminCommissionsService {
   }
 
   /**
-   * Move one venue's rate, answering the venue as it now stands. The request carries basis points
-   * only — never a percent — and no effective date: the schedule is forward-only and computed
-   * server-side, so a caller cannot backdate a rate (invariant #9).
-   *
-   * <p>A non-blank `reason` rides the {@link AUDIT_REASON_HEADER} into the audit trail; header
-   * values must be Latin-1, so anything outside it becomes a space rather than an aborted request.
+   * Move one venue's rate, answering the venue as it now stands. Sends basis points, never a date:
+   * the schedule is forward-only and server-computed (invariant #9). A non-blank `reason` rides
+   * {@link AUDIT_REASON_HEADER}; non-Latin-1 characters become spaces, not an aborted request.
    */
   setCommission(
     venueId: number,
@@ -82,11 +62,9 @@ export class AdminCommissionsService {
 }
 
 /**
- * Map a rate-write failure to a {@link CommissionWriteError}. Kept beside the calls, mirroring
- * `venueProfileErrorOf`, so the page never handles an `HttpErrorResponse` itself. `NO_SUCH_VENUE`
- * earns its own value because this endpoint deliberately does not blur venue existence: a stale or
- * mistyped id must read as "that venue is gone", not as the generic failure a retry would be
- * sensible against.
+ * Map a rate-write failure to a {@link CommissionWriteError}, so the page never handles an
+ * `HttpErrorResponse`. `NO_SUCH_VENUE` stays distinct: this endpoint does not blur venue existence,
+ * so a stale or mistyped id reads as "that venue is gone", not as a failure worth retrying.
  */
 export function commissionWriteErrorOf(error: unknown): CommissionWriteError {
   if (!(error instanceof HttpErrorResponse)) {

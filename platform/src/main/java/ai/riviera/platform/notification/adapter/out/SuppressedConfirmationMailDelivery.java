@@ -10,28 +10,12 @@ import ai.riviera.platform.customer.vocabulary.CustomerId;
 import ai.riviera.platform.notification.application.EmailSuppressions;
 
 /**
- * Answers {@code booking}'s {@link ConfirmationMailDelivery} port from this module's own state:
- * resolve the customer's address through {@code customer}'s published lookup, then consult
- * the do-not-mail list — the same pair {@code BookingConfirmationMailListener} drives through the
- * send chokepoint, so on the healthy path the surface's claim and the send decision agree by
- * construction.
- *
- * <p><strong>They can still disagree on the unhealthy path, and that is the accepted trade.</strong>
- * The send path <em>propagates</em> a failed suppression lookup so the Event Publication Registry
- * keeps the publication outstanding and re-evaluates on retry; this path <em>degrades</em> to "not
- * withheld". So during a database blip the page may say nothing while the later retry correctly
- * skips the send — a missing notice, never a false one. The asymmetry is deliberate: there the
- * throw protects a mail, here it would break the page carrying the guest's only copy of the booking
- * code.
- *
- * <p><strong>A fault barrier, by contract.</strong> {@link ConfirmationMailDelivery} promises never
- * to throw for an operational failure, so this catches {@code RuntimeException} rather than the
- * narrower {@code DataAccessException} the convention would prefer — the reachable throwers are not
- * all data-access ({@code keyOf}'s missing-HMAC {@code IllegalStateException}, a contact record that
- * fails its own validation), and the caller in {@code CreateBookingService} runs <em>after</em> the
- * booking is confirmed and the payment collected, where a throw is uncompensatable and costs the
- * guest the code. Bounded by this module's own {@code queryTimeout}, so a wedged read aborts
- * rather than hanging the response.
+ * Answers {@code booking}'s {@link ConfirmationMailDelivery} port with the send chokepoint's pair: the
+ * address via {@code customer}'s lookup, then the do-not-mail list. A fault barrier by the port's
+ * contract: it catches {@code RuntimeException}, not just {@code DataAccessException} ({@code keyOf}'s
+ * missing-HMAC throw is not data-access), since the caller runs after payment is collected and a throw
+ * would cost the guest the code. It degrades to "not withheld" where the send path propagates and
+ * retries, so a failing lookup may hide the notice, never show a false one.
  */
 @Component
 class SuppressedConfirmationMailDelivery implements ConfirmationMailDelivery {

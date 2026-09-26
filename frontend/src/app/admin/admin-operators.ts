@@ -12,23 +12,11 @@ import { OperatorAccountView, PendingOperatorView } from './admin.model';
 import { TouchTarget } from '../shared/touch-target';
 
 /**
- * The platform-admin operator surface: the approval queue (design D-5) and the account list
- * with suspend/reinstate. Every action <strong>reconciles both lists from the server</strong>
- * (re-fetch, never a local-only row removal) so a concurrently-decided or already-gone row simply
- * settles to the truth.
- *
- * <p>Suspension is destructive and easy to misclick, so it takes a deliberate second step: the row's
- * Suspend button becomes an inline `Suspend <username>?` confirmation in place — no modal, so nothing
- * to focus-trap and no context switch away from the row being acted on. The confirmation also
- * collects optional grounds, which ride the `X-Audit-Reason` header into the platform's admin
- * audit trail. Suspended accounts stay in the list (badged) with a Reinstate action, so
- * suspension is never a one-way door.
- *
- * <p>The signed-in admin's own row offers no Suspend at all: the server refuses a self-suspend with
- * {@code 409 CANNOT_SUSPEND_SELF} and that refusal is the real authority — this just avoids offering
- * an action that cannot succeed. Likewise the surrounding {@code AdminConsole} shell self-gates on
- * {@link OperatorAuth} for UX while the backend `/api/admin/**` role gate does the actual enforcing,
- * so this component only ever renders once both have passed.
+ * The admin operator surface: the approval queue and the account list with suspend/reinstate.
+ * Every action re-fetches both lists (never a local-only row removal), so a concurrently decided
+ * or vanished row settles to the server's truth. Suspend confirms inline, in place (no modal to
+ * focus-trap), collecting optional `X-Audit-Reason` grounds; suspended accounts stay listed with
+ * Reinstate. The admin's own row offers no Suspend; the server's `409 CANNOT_SUSPEND_SELF` rules.
  */
 @Component({
   selector: 'app-admin-operators',
@@ -302,11 +290,9 @@ export class AdminOperators {
   }
 
   /**
-   * Arm the confirmation, or dismiss it, moving focus with the surface. Each destroys the element
-   * that was just activated, which strands keyboard/AT focus on `<body>` unless it is moved
-   * deliberately (WCAG 2.4.3 — the recurring stranded-focus class). Focus INTO the confirmation is
-   * {@link ConfirmWithReason}'s own doing; dismissing returns it to Suspend. The third transition —
-   * parking focus once the action settles — is {@link act}'s, since it spans all four row actions.
+   * Arm the confirmation. Arming and dismissing each destroy the pressed control, so focus moves
+   * (WCAG 2.4.3): into the panel via {@link ConfirmWithReason}, back to Suspend on dismiss, and to
+   * the notice via {@link act} once any row action settles.
    */
   protected askToSuspend(id: number): void {
     this.confirmingId.set(id);
@@ -335,10 +321,9 @@ export class AdminOperators {
   }
 
   /**
-   * Run a decision, then RECONCILE the queue from the server (never a local-only card removal), and
-   * land the admin on the notice — which the reconcile makes necessary, since it destroys whatever
-   * focus was on. The name is read **before** the action, because the reconcile removes the row
-   * holding it. Why the notice rather than the row: RV-FE-9 in `riviera-review-overlay`.
+   * Run one decision at a time, reconcile both lists from the server, then focus the notice, since
+   * the reconcile destroys whatever held focus (why the notice: RV-FE-9, `riviera-review-overlay`).
+   * The name is read **before** the action, because the reconcile removes its row.
    */
   private async act(id: number, action: () => Promise<void>, outcome: string): Promise<void> {
     if (this.actingId() !== undefined) {

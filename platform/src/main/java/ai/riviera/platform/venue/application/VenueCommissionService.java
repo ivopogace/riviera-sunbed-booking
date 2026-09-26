@@ -12,28 +12,12 @@ import org.springframework.transaction.annotation.Transactional;
 import ai.riviera.platform.venue.vocabulary.VenueId;
 
 /**
- * The platform-admin commission-rate use cases (A7, epic #348). Package-private — the public seam is
- * the {@link VenueCommissionAdministration} port (invariant #11).
- *
- * <p><strong>A rate change is three writes in one transaction, and the order carries the
- * invariant.</strong> First it pins the rate being superseded at the schedule's floor — which must
- * happen while the live column still holds it — so every service date before the change keeps the rate
- * it was sold at. Then it overwrites the live rate, which is what {@code VenueRates#commissionBps}
- * answers and therefore what the next accrual applies. Then it schedules the new rate from the current
- * service date, which is what {@code VenueRates#commissionBpsOn} answers and therefore how the console
- * splits a day's takings. The last two carry the same value and differ only in which dates it governs;
- * one {@code @Transactional} boundary means they cannot be left disagreeing.
- *
- * <p><strong>Why the schedule starts today.</strong> Same-day sales stay open until the venue's sales
- * close (invariant #4), so a booking confirmed after the change accrues at the new live rate; starting
- * the schedule any later would leave today's takings reporting a rate its new accruals no longer
- * carry. Dates already past keep the rate they were sold at — that is the invariant-#9 half of the
- * change, and it is structural: nothing here writes a past schedule row or touches a ledger entry.
- * Rationale history: {@code RESPONSIBILITIES.md} §{@code venue}.
- *
- * <p>There is <strong>no ownership check</strong> and that is the design (see the port): an admin owns
- * no venue, so the {@code ADMIN} role gate in {@code SecurityConfig} is the whole authorization. The
- * audit trail is the platform-wide {@code /api/admin/**} record (#507) — no instrumentation here.
+ * Admin commission-rate use cases behind {@link VenueCommissionAdministration} (#11). A change is
+ * three writes in one transaction, in this order: pin the superseded rate at the schedule's floor
+ * while the live column still holds it; move the live rate; schedule the new rate from the current
+ * service date, since today still sells (#4). Forward-only: no past date reprices, no ledger entry
+ * is touched (#9). No ownership check: the {@code ADMIN} role gate is the whole authorization, and
+ * the edge's {@code /api/admin/**} audit covers it. Rationale: {@code RESPONSIBILITIES.md} §venue.
  */
 @Service
 class VenueCommissionService implements VenueCommissionAdministration {

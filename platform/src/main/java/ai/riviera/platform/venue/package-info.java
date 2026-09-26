@@ -1,21 +1,10 @@
 /**
- * The venue module — venue profiles, the beach map / layout, set positions,
- * online-vs-walk-in pool assignment, pricing, and booking mode (Instant / Request).
- * The state is the {@code venue} and {@code set_position} tables: a venue's beach map is its
- * <em>active</em> set rows — the {@code active_set_position} view; a set that carries booking history
- * is retired, never deleted (ADR-0019) — and the commission rate is effective-dated in
- * {@code venue_commission_rate}.
- *
- * <p>Full-module layout (ADR-0007): it owns application services
- * ({@code BeachMapEditService}, {@code VenueAdminService}), so it takes the full template — {@code api} + {@code spi}
- * + {@code vocabulary} + {@code application} + {@code adapter.in} + {@code adapter.out} + a one-type
- * {@code domain} ({@code SalesClose}). It is the one module that owns <strong>cross-module dependency inversions</strong>:
- * the driven ports declared in {@code venue.spi} (inventory: that package's Javadoc) are
- * implemented by {@code availability} and {@code booking} — each of which lists
- * {@code venue::spi} — so venue's reads and write guards can consult live availability,
- * booking presence, and the sales-window verdict without venue depending on those modules.
- * Cross-module access is via this module's {@code api/} port (inbound) or its
- * {@code spi/} driven ports (inverted) — never a reach into its internals.
+ * The venue module: profiles, the beach map (set positions, online-vs-walk-in pools), pricing and
+ * booking mode, in the {@code venue} and {@code set_position} tables; the commission rate is
+ * effective-dated in {@code venue_commission_rate}. The map is the <em>active</em> set rows (the
+ * {@code active_set_position} view): a set with booking history is retired, never deleted (ADR-0019).
+ * Full ADR-0007 layout. Others call its {@code api}; {@code availability} and {@code booking}
+ * implement its {@code spi} (each granted {@code venue::spi}), so venue never depends on them (#11).
  */
 @org.springframework.modulith.ApplicationModule(
     displayName = "Venue",

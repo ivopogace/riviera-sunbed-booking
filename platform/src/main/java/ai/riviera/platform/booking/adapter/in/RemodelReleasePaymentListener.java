@@ -17,29 +17,12 @@ import org.springframework.stereotype.Component;
 import org.springframework.transaction.event.TransactionalEventListener;
 
 /**
- * Voids the PaymentIntent of a booking a remodel released, <strong>after</strong> the commit
- * transaction. An unpaid claim on a set the venue removed is cancelled without money changing hands,
- * but its intent is still collectable — the abandoned-payment sweep only ever reads
- * {@code AWAITING_PAYMENT} rows, so nothing else would reach it again and the guest could still pay
- * for a booking that no longer exists. Cancelling voids an uncollected intent and moves no money
- * (collect-only, ADR-0002 / invariant #8).
- *
- * <p><strong>Which cancellations it acts on.</strong> A {@link RefundReason#VENUE_CHANGE} that
- * returns nothing is exactly a remodel-released unpaid claim: the venue-caused refund and the moved
- * guest's free exit both return the whole amount, and every other reason belongs to a booking that
- * collected. Acting on the rest would put a gateway round-trip on the guest cancel path for an
- * answer that can only be {@code NotCancellable}.
- *
- * <p><strong>The shape is the bulkhead's</strong>, required of every {@code booking} listener that
- * reaches {@code payment.api} ({@code RefundListenerExecutorArchitectureTest}) and argued on
- * {@link BookingRefundListener}: the named executor keeps a degraded gateway off the money-path
- * spine, and {@code @TransactionalEventListener} leaves an {@code event_publication} row so a
- * transient failure is retried. That is why {@link PaymentCancellation.Failed} throws.
- * {@link PaymentCancellation.NotCancellable} means the guest paid between the commit and this call:
- * nothing here can undo that, so it is counted under
- * {@link ObservabilityMetrics#REMODEL_RELEASE_COLLECTED} and logged for a manual refund rather than
- * retried forever. The counter is what an alert can watch — the line is the only per-loss record, and
- * a retry could not help: there is no uncollected intent left to void.
+ * Voids the PaymentIntent of a booking a remodel released, after commit, moving no money (ADR-0002):
+ * the abandoned-payment sweep reads only {@code AWAITING_PAYMENT}, so nothing else would reach it
+ * and the guest could still pay. Acts only on {@link RefundReason#VENUE_CHANGE} returning nothing,
+ * the release's shape. Bulkhead ({@code RefundListenerExecutorArchitectureTest}): {@code Failed}
+ * throws to be retried; {@code NotCancellable} (the guest paid first) is counted and logged for a
+ * manual refund, never retried. Rationale: {@code RESPONSIBILITIES.md} §booking.
  */
 @Component
 class RemodelReleasePaymentListener {

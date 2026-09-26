@@ -10,32 +10,12 @@ import ai.riviera.platform.venue.vocabulary.SetId;
 import ai.riviera.platform.venue.vocabulary.VenueId;
 
 /**
- * A booking row loaded by {@link Bookings#findByCode} — the persisted facts the view and cancel use
- * cases (U6) need: identity + lifecycle {@code status}, the {@code (venue, set)} ids, the span
- * ({@code bookingDate} the first service day, {@code lastDate} the last), the gross
- * {@code amountMinor} paid (integer minor units + ISO currency, invariant #5), and the cancellation
- * audit ({@code cancelledAt} / {@code refundMinor} / {@code cancelReason}). A flat read DTO, not the
- * aggregate.
- *
- * <p><strong>All three stay {@code null} on a cancellation that never charged</strong>, not merely
- * until the booking is cancelled: the abandoned-payment release flips the status alone, so a swept
- * booking is {@code CANCELLED} with no {@code cancelledAt}, no refund and no reason. Only a
- * cancellation that took a refund decision stamps the three together — which is what lets a null
- * reason be read as "never charged", except on rows cancelled before the column existed (V14), which
- * carry a refund with no reason.
- *
- * <p>{@code customerId} is the guest-contact link ({@code booking.customer_id}, NOT NULL since V5).
- * The view carries the id only — never the contact itself, which belongs to {@code customer} — so a
- * confirmed booking can ask {@code booking.spi.ConfirmationMailDelivery} whether its confirmation
- * mail was withheld without this module ever handling an address.
- *
- * <p>{@code acceptedAt} is the accept clock of a Request-to-Book row ({@code null} until — or
- * unless — the venue accepts): it feeds the view's pay deadline,
- * {@code min(acceptedAt + pay-window, end of service day)} (invariant #4), the same instant the
- * payment-due mail promises.
- *
- * <p>{@code movedAt} is the instant a remodel re-seated the booking ({@code null} unless one did):
- * the free-exit override reads its deadline off it; where the booking came from is the receipt's.
+ * The booking row {@link Bookings#findByCode} loads for the view and cancel use cases (U6); a flat
+ * read DTO, money in integer minor units + ISO currency (invariant #5). {@code cancelledAt},
+ * {@code refundMinor} and {@code cancelReason} are stamped together, only by a cancellation that
+ * decided a refund: all null when it never charged; pre-V14 rows carry a refund with no reason. It
+ * holds the {@code customerId}, never the contact. {@code acceptedAt} (null until accepted) feeds the
+ * pay deadline (invariant #4); {@code movedAt} (null unless moved) feeds the free-exit deadline.
  */
 public record BookingRecord(long id, String code, BookingStatus status, VenueId venueId, SetId setId,
 		CustomerId customerId, LocalDate bookingDate, LocalDate lastDate, long amountMinor, String currency,

@@ -6,26 +6,12 @@ import { TouchTarget } from './touch-target';
 import { PhotoView } from './venue-views';
 
 /**
- * The venue detail page's wide photo lead: a large cover tile beside up to two smaller
- * supporting tiles, filling the beach map's 1100px breakout instead of the identity card's
- * narrower 780px shell, whose width split is otherwise unbridged between the header and the
- * map. Only worth it once a venue actually has more than one photo — with 0 or 1, the caller
- * keeps the existing single-photo band inside the header, so this component is never asked to
- * render fewer than 2 photos.
- *
- * Each tile letterboxes rather than crops (`object-contain` over a blurred, scaled copy of the
- * same photo) — an odd-aspect upload (a tall portrait cover shot) stayed whole in the lightbox and
- * the single-photo band already; a cropped hero/tile disagreed with both. The blurred copy is a
- * plain CSS background (not a second `NgOptimizedImage`, which warns on a duplicate `ngSrc`) so the
- * letterbox bars pick up the photo's own edge colour instead of the flat placeholder gradient,
- * which still backs the button underneath as the pre-paint/no-photo fallback. Each tile is a
- * labelled button — tapping one emits {@link opened} with that photo's index, so the caller can
- * mount a {@link PhotoLightbox} seeded at the tapped photo; the image itself stays `alt=""` since
- * the button's own label already names the action.
- *
- * <p>Letterboxing is also why each tile takes its `sizes` from {@link CONTAIN_SIZES}. The side
- * tiles are lazy, so Chromium resolves their `auto` prefix against the tile box instead and the
- * authored value reaches only engines without it; the eager hero's reaches every engine.
+ * The venue page's wide photo lead, only for 2+ photos (the caller keeps the single-photo band for
+ * 0 or 1): a cover tile beside up to two side tiles, across the beach map's 1100px breakout. Tiles
+ * letterbox, never crop (`RESPONSIBILITIES.md` §Frontend): `object-contain` over a blurred
+ * CSS-background copy (a second `NgOptimizedImage` warns on a duplicate `ngSrc`), hence
+ * {@link CONTAIN_SIZES}. Each tile is a labelled button emitting {@link opened} with its index, to
+ * seed a {@link PhotoLightbox}, so its `<img>` stays `alt=""`.
  */
 @Component({
   selector: 'app-photo-gallery-grid',

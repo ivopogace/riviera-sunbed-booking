@@ -13,33 +13,12 @@ import ai.riviera.platform.venue.vocabulary.VenueLocation;
 import ai.riviera.platform.venue.application.VenueProfileCommand;
 
 /**
- * The request body for editing a venue's profile ({@code PATCH /api/venues/{venueId}}). It carries
- * the operator-editable fields —
- * {@code name}, {@code beach} (a catalogue code; the region is derived from it, never sent),
- * {@code description}, {@code bookingMode}
- * ({@code INSTANT}|{@code REQUEST}), {@code bookingCutoff} ({@code "HH:mm"} in {@code Europe/Tirane}),
- * {@code salesClose} (required; exactly {@code "00:01"}|{@code "16:00"}|{@code "23:59"}),
- * the full amenity set (codes from the fixed {@link Amenity} catalogue), the optional
- * distance-to-water in metres, the optional {@code location} — the venue's riviera-map pin as
- * {@code {latitude, longitude}}, or {@code null} for no pin — and the optional {@code maxStayDays},
- * the longest stay the venue takes ({@code null} = any length this season). <strong>Commission and
- * payout currency are read-only and absent</strong> — the write cannot touch them.
- *
- * <p>{@link #toCommand()} parses the beach code ({@link BeachCode}), each amenity code to {@link Amenity}, the cutoff to a
- * {@link LocalTime}, and the sales close to a {@link SalesClose}; a bad/null amenity code, a
- * malformed time, or an off-vocabulary sales close is an {@link IllegalArgumentException}
- * → {@code 400 INVALID_REQUEST} (the one error contract, §6b). The remaining edge invariants
- * (required text, known mode, positive distance) are delegated to {@link VenueProfileCommand}.
- *
- * <p><strong>The edit REPLACES the profile</strong> (the form always re-sends every field), so a
- * null/absent {@code amenities} clears them, a null {@code distanceToWaterM} clears the distance,
- * a null {@code location} unpins the venue from the riviera map, and a null {@code maxStayDays}
- * lifts the maximum.
- *
- * <p>{@code expectedVersion} is the required optimistic-concurrency token — the {@code version}
- * the tab loaded with the profile. It is typed {@link Long} (not primitive) so an absent field is
- * {@code null}, not a silent {@code 0}: {@link ExpectedVersion#require(Long)} rejects the null with a
- * {@code 400} rather than letting it match a fresh venue and re-open the last-write-wins hole.
+ * The body of {@code PATCH /api/venues/{venueId}}, which REPLACES the profile: a null or absent
+ * {@code amenities}, {@code distanceToWaterM}, {@code location} or {@code maxStayDays} clears it;
+ * commission and payout currency are absent. {@code bookingCutoff} is {@code "HH:mm"} in
+ * {@code Europe/Tirane}; {@code salesClose} is required: 00:01, 16:00 or 23:59. {@link #toCommand()}
+ * throws IAE on bad input, for the caller to wrap as a 400. {@code expectedVersion} stays a boxed
+ * {@link Long}, so an absent token is a 400, never a silent 0.
  */
 record UpdateVenueProfileRequest(String name, String beach, String description,
 		String bookingMode, String bookingCutoff, String salesClose, List<String> amenities,

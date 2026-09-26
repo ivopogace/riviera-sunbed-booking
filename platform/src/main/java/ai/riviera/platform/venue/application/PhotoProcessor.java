@@ -27,22 +27,12 @@ import ai.riviera.platform.venue.vocabulary.PhotoSurface;
 import net.coobird.thumbnailator.Thumbnails;
 
 /**
- * Turns a raw operator upload into the capped, EXIF-stripped JPEG renditions every slot carries —
- * one per {@link PhotoSurface} at scale 1 — {@code LIGHTBOX}'s conditionally — plus a scale-2 retina
- * rendition for {@code CARD} and {@code BANNER}. The pure image pipeline (no I/O, no DB,
- * deterministic): validate (size → magic bytes → a
- * <em>header-only</em> dimension guard against decompression bombs) → decode with EXIF orientation
- * applied → downscale per rendition (fit-within, so the whole image is stored; the frontend's
- * {@code object-fit} then crops it on the Discover card and letterboxes it everywhere else)
- * → re-encode as quality JPEG, which drops all source metadata incl. GPS EXIF (ADR-0008 /
- * privacy).
- *
- * <p>A rendition that came out larger than its own source is discarded rather than stored wherever
- * the surface can afford to be absent, so a small upload simply publishes fewer candidates; the
- * {@code CARD}, {@code BANNER} and {@code PREVIEW} baselines always render. A deep module behind one
- * method; the only thing that varies across a seam is where the bytes then live
- * ({@link PhotoStorage}), not this. Package-private; the service depends on it directly (one impl —
- * a hypothetical seam, riviera-java-conventions §4).
+ * Turns a raw operator upload into capped, EXIF-stripped JPEG renditions (ADR-0008): one per
+ * {@link PhotoSurface} at scale 1, plus scale 2 for {@code CARD} and {@code BANNER}. Pure: no I/O,
+ * no DB. Checks run size → magic bytes → a <em>header-only</em> dimension guard, refusing a
+ * decompression bomb before any full decode; re-encoding drops all source metadata, GPS included.
+ * An upscaled retina or {@code LIGHTBOX} rendition is discarded; the other baselines always render.
+ * Fit-within, so the whole image is stored and the frontend's {@code object-fit} crops it.
  */
 @Component
 class PhotoProcessor {
@@ -155,13 +145,9 @@ class PhotoProcessor {
 	}
 
 	/**
-	 * Whether a rendition carries no more pixels than the upload it came from — fit-within enlarges a
-	 * source smaller than the box in both axes, and a blurred upscale is bytes for nothing.
-	 *
-	 * <p>Compared by AREA, not by axis: a rotation preserves area, so this holds whatever orientation
-	 * the camera recorded. The raw header dimensions are pre-rotation while
-	 * {@code useExifOrientation} resizes the rotated raster, so an axis-wise test would read a
-	 * portrait phone shot against the wrong bound.
+	 * Whether a rendition has no more pixels than the upload; fit-within enlarges a smaller source.
+	 * Compared by area, not axis: header dimensions are pre-rotation but {@code useExifOrientation}
+	 * resizes the rotated raster, so an axis-wise test would misjudge a portrait phone shot.
 	 */
 	private static boolean isNotUpscaled(StoredVariant rendition, long sourcePixels) {
 		return (long) rendition.width() * rendition.height() <= sourcePixels;

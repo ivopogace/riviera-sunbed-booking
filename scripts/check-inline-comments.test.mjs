@@ -655,6 +655,31 @@ test('docbudget reads an Angular component through its multi-line decorator as a
   assert.deepEqual(judgeBudget(TS_COMPONENT, lines), []);
 });
 
+test('docbudget skips comments inside a decorator, so an apostrophe there opens no string', () => {
+  const component = (note) => [
+    "import { Component } from '@angular/core';",
+    '',
+    '/**',
+    ...Array.from({ length: 6 }, (_, k) => ` * Contract line ${k + 1}.`),
+    ' */',
+    '@Component({',
+    note,
+    "  host: { class: 'block' },",
+    '  template: `<p>probe</p>`,',
+    '})',
+    'export class Probe {}',
+  ];
+  const withSeventh = (lines) => [...lines.slice(0, 3), ' * One more.', ...lines.slice(3)];
+
+  for (const note of ["  // The map's own corners would round the imagery.", "  /* the canvas's host */"]) {
+    assert.deepEqual(judgeBudget(TS_COMPONENT, component(note)), []);
+    assert.deepEqual(
+      judgeBudget(TS_COMPONENT, withSeventh(component(note))).map(({ rule, text }) => ({ rule, text })),
+      [{ rule: 'docbudget', text: 'type doc is 7 lines, budget 6: export class Probe {}' }],
+    );
+  }
+});
+
 test('docbudget treats a package-info doc and a detached doc as headers with the type budget', () => {
   const packageInfo = [
     '/**',

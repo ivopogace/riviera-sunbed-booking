@@ -14,23 +14,12 @@ import ai.riviera.platform.venue.vocabulary.SetId;
 import ai.riviera.platform.venue.api.SetBookingFacts;
 
 /**
- * JDBC adapter implementing {@link AvailabilityClaim} directly (no intervening application
- * service / out-port — a single adapter is a hypothetical seam, not a real one; mirrors
- * {@code JdbcVenueCatalog}). Invariant #1: explicit SQL via {@link JdbcClient}, no JPA.
- *
- * <p>The claim is two steps in one transaction:
- * <ol>
- *   <li>look up the set's pool through {@link SetBookingFacts} (venue's {@code api/} port, not
- *       its tables — invariant #11). The pool is mutable layout data — a per-set edit can move a
- *       set between pools — so the read takes a row lock and the port is named for that
- *       contract; an unlocked read would let a flip land between the check and the claim.</li>
- *   <li>an atomic {@code INSERT ... ON CONFLICT (set_id, booking_date) DO NOTHING} against
- *       the {@code UNIQUE} constraint. Rows-affected decides the winner: {@code 1} =
- *       {@code CLAIMED}, {@code 0} = a concurrent/earlier claim already holds it
- *       ({@code ALREADY_TAKEN}). This single statement is the entire concurrency primitive
- *       (invariant #2) — no {@code SELECT ... FOR UPDATE} needed because the row's creation
- *       is the claim.</li>
- * </ol>
+ * {@link AvailabilityClaim} over {@link JdbcClient} (invariant #1): one transaction, two steps. First
+ * the set's pool through {@link SetBookingFacts} (invariant #11) as a <em>locking</em> read: the pool
+ * is mutable layout, and an unlocked read lets a pool flip land between check and claim (#3). Then
+ * {@code INSERT … ON CONFLICT (set_id, booking_date) DO NOTHING}: 1 row is {@code CLAIMED}, 0 is
+ * {@code ALREADY_TAKEN}. That statement is the whole concurrency primitive (invariant #2); no
+ * {@code SELECT … FOR UPDATE} is needed, because creating the row is the claim.
  */
 @Repository
 class JdbcAvailabilityClaim implements AvailabilityClaim {

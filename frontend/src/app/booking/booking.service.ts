@@ -23,20 +23,12 @@ import {
 } from './booking.model';
 
 /**
- * Creates bookings against the booking API (`POST /api/bookings`) and holds the most recent
- * hand-off so the confirmation / payment routes can render after navigation. Single
- * responsibility: typed access to the booking write API + the last-result hand-off.
- *
- * <p>The create call discriminates on the HTTP status and body: `201` → the booking is already
- * `CONFIRMED` (stub/Instant profile); `202` with `AWAITING_PAYMENT` → the card must be collected
- * via Stripe (stripe profile); `202` with `PENDING_REQUEST` → a REQUEST-mode venue must accept
- * first. One source signal holds the latest outcome — at most one hand-off
- * can exist at a time *structurally*, so the confirmation screen never renders an unpaid
- * booking as "Paid" (invariant #8); the three per-outcome accessors are `computed` projections.
- *
- * <p>Every successful create — confirmed, awaiting-payment, or requested — remembers its booking
- * code in {@link DeviceLocalBookings} so the guest's device-local "My bookings" list can
- * find it later by code (invariant #7: the code is the only key; there is no guest list endpoint).
+ * Typed booking-API access plus the latest create/pay hand-off, which the confirmation, payment
+ * and requested routes render after navigation. A create's `201` is `CONFIRMED`; a `202` is
+ * `AWAITING_PAYMENT` (collect the card) or `PENDING_REQUEST` (the venue must accept). One source
+ * signal holds the outcome, so at most one hand-off exists and an unpaid booking never renders as
+ * "Paid" (#8). Every successful create remembers its code in {@link DeviceLocalBookings}: the
+ * guest's only key to find it again (#7 — there is no guest list endpoint).
  */
 @Service()
 export class BookingService {
@@ -66,11 +58,9 @@ export class BookingService {
   private readonly prefetched = signal<BookingDetail | undefined>(undefined);
 
   /**
-   * The pre-reserve terms for booking `setId` on `date` (`GET /api/bookings/cancellation-terms`),
-   * as an `httpResource` so the dialog re-quotes reactively when its `(setId, date)` pair changes.
-   * A factory rather than a shared resource: each dialog owns its lifecycle, created in the
-   * caller's injection context; `httpResource` goes through the HTTP stack, so `api-session`
-   * and its sibling interceptors apply (a bare `resource()` + `fetch` would bypass them).
+   * Pre-reserve terms for `setId` on `date`, as an `httpResource` that re-quotes when the pair
+   * changes. A per-dialog factory, run in the caller's injection context; keep it on the HTTP
+   * stack (not `resource()` + `fetch`) so `api-session` and its sibling interceptors apply.
    */
   cancellationTerms(
     params: () => { setId: number; date: string } | undefined,
@@ -141,20 +131,18 @@ export class BookingService {
   }
 
   /**
-   * Prime the booking-view route with a detail the caller already fetched, so a find-a-booking
-   * lookup opens `/booking/{code}` without a second `GET /api/bookings/{code}` —
-   * two GETs per success could 429 near the rate-limit ceiling and drop a valid code on the
-   * generic error. Mirrors {@link beginPayment}: hand off what we have across the navigation.
+   * Prime `/booking/{code}` with a detail the caller already fetched: a second `GET` per lookup
+   * could 429 near the rate-limit ceiling and drop a valid code on the generic error. Mirrors
+   * {@link beginPayment}.
    */
   primeDetail(detail: BookingDetail): void {
     this.prefetched.set(detail);
   }
 
   /**
-   * Consume a primed detail for {@link BookingView}'s initial load — but only when it matches the
-   * route code (never serve one booking's detail for another) and only once (one-shot: a later
-   * deep-link/refresh on the same code re-fetches fresh). A mismatch leaves the primed detail
-   * intact and returns `undefined`, so the view falls back to a fetch.
+   * Consume the primed detail for {@link BookingView}'s first load, only when it matches the route
+   * code (never serve one booking's detail for another) and only once (a refresh re-fetches). A
+   * mismatch leaves it primed and returns `undefined`, so the view fetches.
    */
   takePrefetched(code: string): BookingDetail | undefined {
     const detail = this.prefetched();
@@ -234,10 +222,9 @@ type LastHandoff =
   | { kind: 'requested'; requested: RequestedBooking };
 
 /**
- * Map an HTTP failure (RFC-7807 body) to a stable, displayable booking error code — or, when the
- * proof-of-work fence refused the create, to that rejection. The fence's three codes share the
- * `400` that `INVALID_REQUEST` uses, so only the `code` tells them apart, and a caller that
- * conflated them would answer a spent challenge with "check the form".
+ * Map an HTTP failure (RFC-7807 body) to a displayable booking error code, or to the proof-of-work
+ * fence's rejection. Its three codes share `INVALID_REQUEST`'s `400`, so only `code` tells them
+ * apart — conflating them answers a spent challenge with "check the form".
  */
 export function bookingErrorOf(error: unknown): BookingErrorCode | ChallengeRejection {
   if (error instanceof HttpErrorResponse) {

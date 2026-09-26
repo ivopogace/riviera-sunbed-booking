@@ -8,37 +8,18 @@ import org.springframework.web.util.UriComponentsBuilder;
 import ai.riviera.platform.venue.vocabulary.VenueId;
 
 /**
- * Builds the links a booking mail points at: the code-gated booking view,
- * {@code <base>/booking/<code>}, and the two a guest whose booking the venue cancelled needs to book
- * again — that venue's map for a day ({@code <base>/venues/<id>?date=…}) and the discovery list for
- * it ({@code <base>/?date=…}). Which of the two a mail carries is {@link RebookLinks}' decision.
- *
- * <p><strong>Why this module may build a link at all, given RV-BE-11.</strong> That rule keeps
- * <em>credential-material machinery</em> — minting a token, hashing it, deciding its TTL — at the
- * platform edge, and this mints nothing: it formats a booking code the module already reads through
- * {@code booking.api} in order to render it into the mail body. The edge cannot build this one
- * anyway, because the booking mails are raised by registry listeners inside the hexagon rather
- * than by an edge flow with a request in hand.
- *
- * <p><strong>Why {@code /booking/<code>} and not {@code /booking/pay}.</strong> The pay screen
- * resumes from hand-off state the code-gated view puts in memory; entered cold from an inbox it has
- * nothing to resume and is a dead end. The code-gated view is the entry point that works from
- * anywhere — it fetches the booking, and for an {@code AWAITING_PAYMENT} one with an open intent it
- * offers "Pay now" and navigates on. A link that works after the deadline is also better copy than
- * one that 404s: the guest sees the expired booking rather than a broken page.
- *
- * <p>An application-layer value, not a configuration type — the adapter binds the property and hands
- * the origin in (the {@code RequestProperties → RequestWindows} pattern), so the inner hexagon stays
- * framework-light. Validated at construction, so a misconfigured origin fails at boot rather than
- * silently mailing an unusable link from a thread whose caller is long gone.
+ * The links a booking mail points at: the code-gated view {@code <base>/booking/<code>} and two
+ * rebook links, {@code <base>/venues/<id>?date=…} and {@code <base>/?date=…} ({@link RebookLinks}
+ * picks). The first is a bearer URL, code in the path per ADR-0006: never log it (invariant #7). Not
+ * {@code /booking/pay}: that resumes in-memory hand-off state and dead-ends from an inbox. It formats
+ * a code already read, minting nothing ({@code RESPONSIBILITIES.md} §notification). Validated at
+ * construction, so a bad origin fails at boot rather than mailing an unusable link.
  */
 public record BookingLinks(String baseUrl) {
 
 	/**
-	 * The SPA route segment, as a segment rather than a {@code "/booking/"} path literal: the URI is
-	 * assembled from parts, which encodes the code and keeps the analyzer's hardcoded-URI rule
-	 * (java:S1075) satisfied without pretending the route is a tunable. It is not — it must match
-	 * {@code app.routes.ts}, and a deployment free to change it could only break every mailed link.
+	 * A segment, not a {@code "/booking/"} literal: parts encode the code and satisfy java:S1075. Not a
+	 * tunable — it must match {@code app.routes.ts}, or every mailed link breaks.
 	 */
 	private static final String BOOKING_SEGMENT = "booking";
 

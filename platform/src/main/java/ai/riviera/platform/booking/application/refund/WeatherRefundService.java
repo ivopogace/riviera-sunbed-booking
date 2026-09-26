@@ -25,31 +25,12 @@ import ai.riviera.platform.operator.vocabulary.VenueRef;
 import ai.riviera.platform.venue.vocabulary.VenueId;
 
 /**
- * The admin weather-refund use case (U9). In one transaction it loads every booking whose span
- * covers {@code (venue, date)} — {@code CONFIRMED}, plus the {@code NO_SHOW}s the sweep made of
- * guests who stayed home — and, per one-day booking, transitions it to {@code CANCELLED} with a
- * <strong>full</strong> refund (the gross amount, ignoring the cutoff — invariant #10) and reason
- * {@code WEATHER}, frees the {@code (set, date)} via {@link AvailabilityClaim#release} (invariant
- * #2), and publishes {@link BookingCancelled}. A booking spanning several days is <em>named</em> on
- * the outcome instead: the storm is one day of a live stay, and a partial refund of a live booking
- * is what neither the single reversal per booking (invariant #9) nor {@code payment}'s one refund
- * can express, so the operator settles it by hand rather than the run skipping it silently. It reuses
- * the U6 spine exactly (ADR-0005): after commit, {@code BookingRefundListener} issues the
- * idempotency-keyed refund (invariant #8) and the {@code payout} listener posts a full {@code REVERSAL}
- * carrying the weather reason (invariant #9).
- *
- * <p><strong>Deliberately outside the guest-cancel fence.</strong> A guest may not cancel once the
- * service day has opened, but an operator may still weather-refund a past date: the storm is only
- * known afterwards, the refund is full rather than a reclaimed share, and it returns the venue's own
- * money behind an {@code assertOwns} check (invariant #13). Pinned by
- * {@code WeatherRefundServiceIT.fullRefundRegardlessOfCutoff}, which seeds on a past date, and by
- * {@code refundsSweptNoShowsOnAPastDate}, which proves the no-show sweep does not close that window.
- *
- * <p><strong>The refund is not issued here</strong> — same reasoning as {@code CancelBookingService}:
- * no Stripe round-trip inside the transaction. The per-booking transition is the guarded
- * {@link Bookings#cancelForWeather} ({@code WHERE status IN ('CONFIRMED','NO_SHOW')}), so a
- * concurrent cancel (tourist or a second weather run) makes the losing call a 0-row no-op — each booking is refunded and reversed
- * exactly once. Package-private behind the {@link RefundForWeather} port (invariant #11).
+ * The admin weather refund (U9), owner-asserted (invariant #13), in one transaction: each one-day
+ * booking on {@code (venue, date)}, {@code CONFIRMED} or a swept {@code NO_SHOW}, is cancelled with a
+ * full refund whatever the cutoff (invariant #10), its {@code (set, date)} freed (invariant #2) and
+ * {@link BookingCancelled} published; a multi-day stay is only named on the outcome for a manual
+ * refund (invariant #9). Outside the guest-cancel fence on purpose: a past date still refunds. A lost
+ * race is a 0-row no-op; the refund runs after commit. Rationale: {@code RESPONSIBILITIES.md} §booking.
  */
 @Service
 class WeatherRefundService implements RefundForWeather {

@@ -14,27 +14,12 @@ import ai.riviera.platform.venue.api.VenueRates;
 import ai.riviera.platform.venue.vocabulary.VenueId;
 
 /**
- * Computes a venue's "online takings today" for the operator console: reads the gross of
- * a venue's online bookings that the venue keeps the money for on the service date — confirmed,
- * checked-in and no-show alike — from {@code booking::api}, then applies
- * the venue's commission to yield net owed. {@code payout} owns the commission arithmetic
- * ({@code venue} stores the rate; invariant #9) and reuses the same {@link CommissionSplit} as the
- * ledger accrual, so the formula never diverges. Read-only, so no {@code @Transactional}.
- *
- * <p>Per-venue authorization (invariant #13): asserts {@code operator} owns {@code venueId}
- * <strong>before</strong> reading any financial data, so one venue's takings never leak to another
- * operator. The figure is indicative per service date — it reads booking amounts, never the ledger.
- *
- * <p><strong>The rate is read by service date, not live.</strong> Reading
- * {@code VenueRates#commissionBps} here meant a rate change silently re-split every <em>past</em> day
- * at the new rate, while {@code payout_ledger_entry} kept the {@code commissionMinor} it had accrued
- * for those same days. Invariant #9 makes the ledger right — history is never repriced and past
- * statements stay as sent — so this read asks for the rate that applied on the date being reported.
- * The accrual path is unaffected and still reads the live rate at accrual time, which is what fixes
- * each entry permanently; a change schedules from the current service date, so today's figure follows
- * the same live rate its new accruals apply. Agreement with the ledger is close but not exact by
- * construction (the ledger is per booking at accrual, this is one rate per service date); what it
- * guarantees is that a past date's figure never changes.
+ * The operator console's "online takings today": the gross of the venue's online bookings it keeps
+ * the money for on {@code date} (confirmed, checked-in, no-show), less commission via the ledger's
+ * own {@link CommissionSplit}. Indicative: it reads booking amounts, never the ledger. Asserts
+ * ownership (invariant #13) <strong>before</strong> reading any financial data. <strong>Reads the
+ * rate in force on {@code date}, not the live rate</strong>, so a rate change never reprices a past
+ * day (invariant #9). Rationale: {@code RESPONSIBILITIES.md} §payout.
  */
 @Service
 class DailyTakingsService implements ViewDailyTakings {

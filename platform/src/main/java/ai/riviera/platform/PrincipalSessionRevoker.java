@@ -5,21 +5,13 @@ import org.springframework.session.Session;
 import org.springframework.stereotype.Component;
 
 /**
- * Invalidates every server-side session belonging to one principal — used wherever an account loses
- * the right to the sessions it already has, so an attacker's (or an ex-operator's) live session cannot
- * outlive the thing that authorized it. Reading / deleting sessions is platform-edge machinery
- * (RV-BE-11), not domain: neither {@code customer} nor {@code operator} may import
- * {@code org.springframework.session}.
+ * Invalidates every server-side session of one principal when an account loses the right to them. Edge
+ * machinery, synchronous (RV-BE-11): {@code customer} and {@code operator} never import
+ * {@code org.springframework.session}. A separate store, so no {@code @Transactional} makes it atomic
+ * with the state change it guards: a failed trailing revoke still errors after the change has landed.
  *
- * <p>Backed by Spring Session's {@link FindByIndexNameSessionRepository} (the JDBC-backed
- * {@code JdbcIndexedSessionRepository} here), which indexes sessions by principal name — the
- * customer's email or the operator's username, whichever value that principal's login stored as the
- * authentication name.
- *
- * <p><strong>The index is not principal-type-scoped.</strong> An operator whose username were literally
- * some customer's email address would have both sets of sessions revoked together. That is accepted:
- * the failure direction is <em>over</em>-revocation — someone is signed out who needn't have been —
- * never under-revocation, so it can cost convenience but not security. Package-private (invariant #11).
+ * <p>Found through {@link FindByIndexNameSessionRepository}'s principal-name index (customer email or
+ * operator username), which is not type-scoped: a name clash revokes both, accepted as over-revocation.
  */
 @Component
 class PrincipalSessionRevoker {
@@ -31,31 +23,18 @@ class PrincipalSessionRevoker {
 	}
 
 	/**
-	 * Delete every session whose principal name matches {@code principalName}.
-	 *
-	 * <p><strong>Callers pairing this with a state change must bracket it:</strong> call it
-	 * <em>before</em> the change, so a failure here cannot leave the state changed behind an error saying
-	 * nothing happened — and <em>again after</em>, because revoking only first leaves a window in which
-	 * the old credential or status is still valid, so a sign-in landing there would produce a session
-	 * that outlives the change. Both calls are idempotent deletes; the second is normally a no-op and is
-	 * <strong>not</strong> dead code. A principal that cannot be named until the change has run is why
-	 * two of the three callers first make a pure read.
+	 * Delete every session of {@code principalName}. Paired with a state change, call it before (a
+	 * failed revoke then leaves the state unchanged) <em>and again after</em> (a sign-in in between
+	 * would outlive the change); the second call is usually a no-op, <strong>not</strong> dead code.
 	 */
 	void revokeAll(String principalName) {
 		revokeAllExcept(principalName, null);
 	}
 
 	/**
-	 * Delete every session of {@code principalName} except {@code keepSessionId} — the self-service
-	 * password-change case, where the point is to evict everyone <em>else</em> (a shared device, a
-	 * thief) while leaving the session doing the change signed in. Pass {@code null} to keep nothing.
-	 *
-	 * <p><strong>Two ordering constraints bind the password-change callers</strong> (#344). Call this
-	 * <em>before</em> the credential write, so a failure here cannot leave the hash rotated behind an error
-	 * saying nothing happened — that one is load-bearing. And pass the <em>pre-rotation</em> id, which is
-	 * the only id this query can see: since #359 {@link SessionIdentity#rotate} deletes the caller's row
-	 * outright and its replacement is not persisted until the filter commits, so an id read after rotating
-	 * names nothing here and the keep-contract would be silently vacuous.
+	 * As {@link #revokeAll} but sparing {@code keepSessionId} ({@code null} spares nothing), for the
+	 * self-service password change. Call it before the credential write, with the id read before
+	 * {@link SessionIdentity#rotate}: a post-rotation id names no stored row, so the keep is vacuous.
 	 */
 	void revokeAllExcept(String principalName, String keepSessionId) {
 		sessions.findByPrincipalName(principalName).keySet().stream()

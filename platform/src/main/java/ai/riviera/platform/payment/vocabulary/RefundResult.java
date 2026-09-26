@@ -1,13 +1,11 @@
 package ai.riviera.platform.payment.vocabulary;
 
 /**
- * The result of issuing a refund — a closed, caller-mappable set (typed outcomes for expected
- * flows, not exceptions). A refund is <strong>server-initiated</strong> through the gateway
- * (invariant #8/#10); the amount is computed by {@code booking} server-side, never
- * by the client. The {@code booking} module logs a {@link Failed} for ops follow-up but does not
- * abort the cancellation — the call is safe to retry at any distance in time, because the gateway
- * checks what it already holds before creating a refund. A sealed interface so callers
- * {@code switch} exhaustively.
+ * The result of issuing a refund: a closed, caller-mappable set of typed outcomes, sealed so callers
+ * {@code switch} exhaustively. A refund is <strong>server-initiated</strong> through the gateway, its
+ * amount computed by {@code booking}, never by the client (invariant #10). A {@link Failed} never
+ * undoes the committed cancellation: {@code booking} throws so the publication is re-driven, safe at
+ * any distance in time because the gateway checks what it already holds before creating a refund.
  */
 public sealed interface RefundResult permits RefundResult.Refunded, RefundResult.Failed {
 

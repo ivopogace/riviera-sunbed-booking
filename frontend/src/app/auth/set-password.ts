@@ -43,24 +43,12 @@ const RESEND_NOTICES = {
 } as const;
 
 /**
- * The signed-in customer's account page: set or change a password, and see/resend email
- * verification. An account created via Google/Apple SSO (no local password)
- * sets its first password here (leaving the current-password field blank), while an account that already
- * has one must supply the correct current password. The verification nudge + resend live here too, so the
- * whole self-service account surface is one page rather than an app-wide banner.
- *
- * The resend has three outcomes, not two (`RESEND_NOTICES`). `withheld` means the request
- * succeeded but the address is on the do-not-email list, so no message will ever leave — claiming
- * "sent" there is the lie this outcome exists to avoid. Two constraints shape that wording, both
- * of them "don't replace one false statement with another":
- *
- * 1. **Reason-neutral.** The response carries no suppression reason, and only one of the three
- *    (`HARD_BOUNCE`) is a delivery failure — copy blaming bounces would lie to a customer who marked
- *    our mail as spam (`COMPLAINT`) or was suppressed by an ops decision (`MANUAL`).
- * 2. **No action the product cannot honour.** The customer cannot lift a suppression themselves
- *    (reinstatement is ADMIN-gated) and the app ships no contact surface, so "get in touch" would point
- *    at nothing. It says what is true instead: verification here is soft/non-blocking, so nothing the
- *    customer came to do is blocked.
+ * The signed-in customer's account page: set or change a password (an SSO-only account leaves the
+ * current password blank), verification status + resend, and erasure. The resend has three outcomes
+ * (`RESEND_NOTICES`): `withheld` means accepted but on the do-not-email list, so never say "sent".
+ * Its copy stays reason-neutral (no reason is returned, and not every suppression is a bounce) and
+ * offers no action the product cannot honour (only an admin lifts a suppression; there is no
+ * contact surface), saying instead that verification is non-blocking.
  */
 @Component({
   selector: 'app-set-password',
@@ -310,25 +298,17 @@ export class SetPassword {
   }
 
   /**
-   * Focus the outcome just set, which is also what scrolls it into view: the notice renders above
-   * the form, so on a phone a success message otherwise lands off-screen and reads as the form
-   * merely emptying itself.
-   *
-   * <p>Error first, notice second — `focusMover` resolves its arguments in the order given, where a
-   * `querySelector` selector list would resolve in document order and return the notice every time.
-   *
-   * <p>Not called from `resend()`, whose trigger survives its own click: a status message is
-   * announced without a focus move.
+   * Focus (and so scroll to) the outcome just set, as on a phone the notice above the form sits
+   * off-screen. Error first: `focusMover` tries ids in argument order, where a selector list would
+   * always find the notice. Not for `resend()`, whose trigger survives; its status is announced.
    */
   private revealOutcome(): void {
     this.focusAfterRender('setpw-error', 'setpw-notice');
   }
 
   /**
-   * Arm the erase confirmation, or back out of it, moving focus with the surface. Each transition
-   * destroys the element that was just activated, which strands keyboard/AT focus on `<body>` unless
-   * it is moved deliberately (WCAG 2.4.3). A completed erasure has no trigger left to return to, so
-   * focus parks on the terminal notice that replaces the whole panel.
+   * Arm the erase confirmation. Arming and backing out each destroy the pressed control, so focus
+   * moves with the surface (WCAG 2.4.3); a completed erasure parks it on the terminal notice.
    */
   protected askToErase(): void {
     this.confirming.set(true);

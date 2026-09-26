@@ -29,26 +29,11 @@ interface ReportRow {
 const MAX_FEE_MINOR = 100_000;
 
 /**
- * The admin console's Venue changes tab: the fee the platform charges a venue for a refund its own
- * layout change caused, and — per venue — how many bookings a remodel refunded, what those refunds
- * returned to guests, and what the venue paid in those fees.
- *
- * <p>The report is the epic's abuse guard — built from ledger rows the refund path always writes, so
- * a venue cannot be missing from it by omission, and a venue that keeps re-laying its beach to resell
- * the spots shows up as a number rather than as a complaint.
- *
- * <p><strong>The two amounts are never added.</strong> The refunded total is what guests got back;
- * the fee total is what the platform charged for it. They come from different ledger entry types and
- * sit in separate columns.
- *
- * <p><strong>Venue names come from the admin venue list, not the report endpoint.</strong> The payout
- * module holds no venue name — its published reads are role-split for tourists — so the report ships
- * venue ids and the console joins them, exactly as the moderation pickers do. A venue the list does
- * not name still renders, by id, rather than vanishing from an abuse report.
- *
- * <p>Like every admin tab, the surrounding {@code AdminConsole} shell self-gates on
- * {@link OperatorAuth} for UX while the backend `/api/admin/**` role gate does the enforcing; this
- * component only ever renders once both have passed.
+ * The Venue changes tab: the flat venue-change fee (ADR-0021), and per venue the remodel refunds,
+ * what they returned to guests and the fees paid. It is an abuse report built from ledger rows the
+ * refund path always writes, so no venue is missing by omission. Never add the two amounts: they
+ * are different ledger entry types. Names are joined from the admin venue list (payout holds none),
+ * and a venue the list does not name still renders by id rather than vanishing from the report.
  */
 @Component({
   selector: 'app-admin-venue-changes',
@@ -337,9 +322,8 @@ export class AdminVenueChanges {
   protected readonly model = signal({ amountEur: '', reason: '' });
   /**
    * Signal Forms over the draft. A bound element may not carry its own `min`/`max`/`maxlength`
-   * (`NG8022`), so any such bound belongs in this schema. The amount's range is not expressible here
-   * — it is a euros string checked by {@link checkAmount} on both the preview and the save, the way
-   * the sibling money forms treat their numeric fields.
+   * (`NG8022`), so bounds go in this schema; the amount, a euros string, is range-checked by
+   * {@link checkAmount} on both the preview and the save instead.
    */
   protected readonly feeForm = form(this.model, (path) => {
     disabled(path.amountEur, { when: () => this.busy() });
@@ -424,15 +408,9 @@ export class AdminVenueChanges {
   }
 
   /**
-   * Send the typed amount, then splice the answer into the card. Two refusals never reach the
-   * network: an amount the field refuses, grounds too long for the trail to carry whole, and the
-   * amount already in force —
-   * the latter because a write is recorded whether or not it changed anything, so a no-op save would
-   * leave an audit entry for a change that did not happen, in the trail that is this setting's only
-   * history.
-   *
-   * <p>A failure keeps the editor open holding what was typed, so a retry costs no re-typing, and
-   * focus lands back on the control that started the write (WCAG 2.4.3).
+   * Send the typed amount and splice the answer in. Never sent: a refused amount, overlong grounds,
+   * or the fee already in force (every write is audited, so a no-op logs a change that never was).
+   * A failure keeps the typed draft open and returns focus to Save (WCAG 2.4.3).
    */
   protected async saveFee(): Promise<void> {
     this.saveError.set('');

@@ -166,7 +166,7 @@ Nineteen sites. "Home?" asks whether a named rule-holder already states it.
 
 | # | Rule | Site | Home? |
 |---|---|---|---|
-| R1 | Only an ONLINE-pool set may be booked online (#3) | `ReserveSetService:92` — `if (!ONLINE_POOL.equals(set.pool()))` | **Partial** — restated in `JdbcAvailabilityClaim:54`; see §E |
+| R1 | Only an ONLINE-pool set may be booked online (#3) | `ReserveSetService:92` — `if (!ONLINE_POOL.equals(set.pool()))` | **Partial** — restated in `JdbcAvailabilityClaim.claim`; see §E |
 | R2 | A date sells until the venue's sales close on the day (#4) | `ReserveSetService:97` — `if (!cutoff.isBookable(set.salesClose(), …, now))` | ✅ `BookingCutoff` |
 | R3 | A hidden venue's set books like one that does not exist | `ReserveSetService:89` — `if (!visibility.isVisible(…))` | ✅ `operator.api.VenueVisibility` |
 | R4 | A REQUEST-mode venue's booking starts as a pending request, not a payment | `ReserveSetService:113` — `if (set.bookingMode() == BookingMode.REQUEST)` | ❌ inline |
@@ -190,7 +190,7 @@ Plus two rules that sit **outside** `application/` entirely and belong in this t
 
 | # | Rule | Site | Home? |
 |---|---|---|---|
-| R20 | A guest cancel may act only on CONFIRMED; the admin weather refund may also reach NO_SHOW | `JdbcBookings:404–416` — `List.of(CONFIRMED)` vs `List.of(CONFIRMED, NO_SHOW)` | ❌ **in the adapter**; *documented* in `BookingStatus`'s Javadoc |
+| R20 | A guest cancel may act only on CONFIRMED; the admin weather refund may also reach NO_SHOW | `JdbcBookings:404–416` — `List.of(CONFIRMED)` vs `List.of(CONFIRMED, NO_SHOW)` | ❌ **in the adapter**; *documented* in `BookingTransition.WEATHER_REFUND`'s Javadoc |
 | R21 | A stranded booking with no payment on record is releasable past its TTL | `AbandonedBookingSweepService:94` — the `NoCollection` arm | ❌ inline (reasoned at length in the Javadoc) |
 
 **Score: 8 of 21 rules have a named home; 13 do not.** But the 13 are not uniform — see §4.
@@ -401,11 +401,11 @@ the copy for a spent day, not who may cancel.
 
 ### D3 · The weather-refund status rule is documented in one place and implemented in another
 
-`BookingStatus`'s Javadoc states it:
+`BookingTransition`'s Javadoc states it:
 
 ```java
-// BookingStatus.java:17
- * Only the admin weather refund reaches a {@link #NO_SHOW}, deliberately.
+// BookingTransition.java, WEATHER_REFUND
+/** The admin weather refund — the only transition that acts on a {@code NO_SHOW}. */
 ```
 
 It is implemented 350 lines away in the adapter, as a list literal:
@@ -422,7 +422,7 @@ The enum documents a rule it does not hold. Nothing binds the two.
 ### D4 · The ONLINE-pool check runs twice, in two modules
 
 `ReserveSetService:92` checks `!ONLINE_POOL.equals(set.pool())` against an unlocked read;
-`JdbcAvailabilityClaim:54` re-checks it against a `FOR KEY SHARE` read inside the claim transaction.
+`JdbcAvailabilityClaim.claim` re-checks it against a `FOR KEY SHARE` read inside the claim transaction.
 Each module declares its own `private static final String ONLINE_POOL = "ONLINE"`. The second is the
 authoritative one and the first is a fast path — a defensible arrangement — but the pool token is an
 untyped `String` duplicated across a module boundary, where the same codebase publishes a typed
@@ -441,9 +441,9 @@ stands; only the count and the ownership reading change.
 ### D5 · The booking transition table is stated twice, in neither Java nor one place
 
 `booking_status_check` (V5/V19/V37) enumerates the nine legal *states*; the eleven `WHERE status =`
-predicates in `JdbcBookings` enumerate the legal *transitions*. `BookingStatus`'s Javadoc narrates
-them in prose. There is no single artefact — Java or SQL — a reader can consult to answer "what may
-follow `AWAITING_PAYMENT`?"; the answer is assembled from grep. This is the one place where
+predicates in `JdbcBookings` enumerate the legal *transitions*. `BookingTransition`'s Javadoc
+narrates them in prose. There is no single artefact — Java or SQL — a reader can consult to answer
+"what may follow `AWAITING_PAYMENT`?"; the answer is assembled from grep. This is the one place where
 `review/domain/ReviewGate`'s virtue ("one statement of the order") has no counterpart in `booking`,
 which has nine states to `review`'s six.
 
@@ -479,10 +479,10 @@ one. Rank is the strength of the case, not a recommendation — this note propos
 |---|---|---|---|---|
 | 1 | **R18** pay window closed | **3** — `RequestWindows.payDeadline/acceptedBefore`; the sweep's SQL (`JdbcBookings:580–583`); `ViewBookingService:107–110` | SQL↔record only (`RequestWindowsTest`) | **Strongest.** Three statements, two pinned, the third held by a comment. The only unpinned duplication in the codebase whose drift is user-visible. |
 | 2 | **R7 / R14 / R20** who may cancel | **4** — `CancelBookingService:80–82`; `ViewBookingService:93`; `JdbcBookings:407` (`List.of(CONFIRMED)`); `JdbcBookings:411–415` (weather admits `NO_SHOW`) | No | **Strong.** Spans three layers plus an admin variant. The enforcing statement is the adapter's; the other three are advisory, so drift 409s rather than mis-writes. |
-| 3 | **R1** ONLINE-pool check | **2**, in **two modules** — `ReserveSetService:92`; `JdbcAvailabilityClaim:54`, each with its own `private static final String ONLINE_POOL = "ONLINE"` | No | **Strong.** The only duplicated rule that crosses a module boundary, on an untyped `String` token, in a codebase that publishes a typed record to avoid a bare `long`. |
+| 3 | **R1** ONLINE-pool check | **2**, in **two modules** — `ReserveSetService:92`; `JdbcAvailabilityClaim.claim`, each with its own `private static final String ONLINE_POOL = "ONLINE"` | No | **Strong.** The only duplicated rule that crosses a module boundary, on an untyped `String` token, in a codebase that publishes a typed record to avoid a bare `long`. |
 | 4 | **R5** accept-deadline cap | **1 + a doc** — computed at `ReserveSetService:114`; `RequestWindows` holds the *pay*-window cap and describes the accept cap without holding it | No | Medium. Not duplicated code, but a rule-holder that documents a sibling rule it does not own. |
 | 5 | **R9** refund tier | **1**, derived a second time from a value that has a home — `CancelBookingService:119` switches on the same `CancellationWindow` that `RefundPolicy:35–39` already switches on | No | Medium. The *amount* has a home; the *label* is a second switch over the same three-valued input. |
-| 6 | **R6** delivered/no-show past cancelling | **1**, with a **deliberately rejected** near-duplicate — `CancelBookingService:77–79` tests `{COMPLETED, NO_SHOW}`, a strict subset of `BookingStatus.canStillBeHonoured()`'s false-set | n/a | Low, and instructive. The codebase anticipated the merge and refused it: *"a general-sounding predicate would be a trap"* (`BookingStatus:38–41`). Evidence **against** extraction. |
+| 6 | **R6** delivered/no-show past cancelling | **1**, with a **deliberately rejected** near-duplicate — `CancelBookingService:77–79` tests `{COMPLETED, NO_SHOW}`, a strict subset of `BookingStatus.canStillBeHonoured()`'s false-set | n/a | Low, and instructive. The codebase anticipated the merge and refused it: *"a general-sounding predicate would be a trap"* (`BookingStatus.canStillBeHonoured`). Evidence **against** extraction. |
 | 7 | **R4** REQUEST-mode entry leg | 1 | n/a | Low — single caller, and the branch *is* the fork in the use case. |
 | 8 | **R13** check-in classification | 1 | n/a | Low — single caller; classifies a guarded-`UPDATE` miss. |
 | 9 | **R15** withdrawable | 1 | n/a | Low — one line, one caller. `ViewBookingService:94–95` notes it is deliberately not a reuse of `cancellable`. |

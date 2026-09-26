@@ -1,18 +1,10 @@
 /**
- * The payment module — Stripe collection, PaymentIntents, refunds and
- * signature-verified webhook handling (invariant #8: webhooks are the source of
- * truth, collect-only, no Stripe Connect). The state is the {@code payment} table (one row per
- * PaymentIntent) and {@code payment_booking} (one row per booking it collects for, carrying that
- * booking's share and its at-most-one refund).
+ * The payment module: Stripe collection, PaymentIntents, refunds and signature-verified webhook
+ * handling (invariant #8: webhooks are the source of truth). Collect-only, no Stripe Connect
+ * (ADR-0002). One {@code payment} row per PaymentIntent, which may collect for several bookings; each
+ * has a {@code payment_booking} row carrying its share and its at-most-one refund.
  *
- * <p>Hexagonal layout (invariant #11, ADR-0007 full template, issue-#95 split surfaces):
- * {@code api} (the published inbound ports), {@code vocabulary} ({@code Money}, {@code BookingRef},
- * the sealed outcomes), {@code events} ({@code PaymentConfirmed}/{@code PaymentCanceled}),
- * {@code application} (services + their driving/driven
- * port interfaces), {@code domain} ({@code PaymentStatus}), {@code adapter.in} (the
- * signature-verified Stripe webhook controller), {@code adapter.out} (the Stripe gateway, the
- * stub gateway, the JDBC repositories, and the Stripe SDK wiring). No {@code spi} — this module
- * owns no cross-module dependency inversion.
+ * <p>ADR-0007 full hexagonal template (invariant #11); no {@code spi}, as it owns no inversion.
  */
 @org.springframework.modulith.ApplicationModule(
     displayName = "Payment",

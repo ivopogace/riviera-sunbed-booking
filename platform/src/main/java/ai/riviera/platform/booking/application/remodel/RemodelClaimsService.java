@@ -53,19 +53,12 @@ import ai.riviera.platform.venue.vocabulary.SetSpot;
 import ai.riviera.platform.venue.vocabulary.VenueId;
 
 /**
- * Serves {@link RemodelClaims}: assert ownership, read the live bookings on the disturbed sets, and
- * classify each in {@code (service date, booking id)} order — the zone first ({@link RemodelZones}),
- * then a move candidate ({@link MoveRanking}) off the online sets free on every day of the claim's
- * span, less the disturbed ones and less what an earlier claim took on any of those days, then the
- * status split. The free pool is read once per distinct date and only when a claim needs it.
- * {@link #classify} is read-only and unlocked, advisory by contract; {@link #commit} runs the same
- * classification inside the caller's transaction — the edge calls it from inside the layout write,
- * under {@code venue}'s set locks — and settles every claim: a move claims the candidate's rows and
- * re-seats the booking, a refund, release or decline runs the module's own guarded transition for
- * that status, and a blocked claim is kept where it is with a receipt line and nothing else. Each
- * ending frees every {@code (set, date)} row of the span it held, and each move or ending publishes
- * the fact the rest of the platform already reacts to, so no refund, reversal or mail is driven
- * from here. Rationale: RESPONSIBILITIES.md §booking.
+ * Serves {@link RemodelClaims}, owner-asserted: classifies the live bookings on the disturbed sets
+ * in {@code (service date, id)} order, by zone ({@link RemodelZones}), then a move candidate
+ * ({@link MoveRanking}) free on every day of the span and untaken by an earlier claim, then status.
+ * {@link #classify} is read-only and advisory; {@link #commit} re-classifies inside {@code venue}'s
+ * locked layout write, settles each claim and frees every {@code (set, date)} it ends. Refunds,
+ * reversals and mails drain off its events. Rationale: {@code RESPONSIBILITIES.md} §booking.
  */
 @Service
 class RemodelClaimsService implements RemodelClaims {
@@ -151,14 +144,9 @@ class RemodelClaimsService implements RemodelClaims {
 	}
 
 	/**
-	 * Cancel a confirmed claim the remodel strands and refund it in full. The refund itself is issued
-	 * after commit by the module's {@code BookingCancelled} listener (invariant #10 computed here,
-	 * invariant #8 honoured there); the payout reversal and the venue-change fee ride the same fact.
-	 * {@code feeMinor} is the rate quoted when this commit ran, recorded on the receipt line so it reads
-	 * back what the operator confirmed rather than today's rate. It is not a pin on what the ledger
-	 * charges: the fee is a stored setting both sides read when they need it, so an edit landing
-	 * between this commit and the asynchronous charge is charged at the new amount, and the free exit
-	 * of a moved booking charges one with no receipt line at all. Rationale: ADR-0021.
+	 * Cancels a stranded confirmed claim with a full {@code VENUE_CHANGE} refund; the refund, reversal
+	 * and fee drain after commit off {@code BookingCancelled}. {@code feeMinor}, the quoted rate, is
+	 * recorded on the receipt line but does not pin what the ledger charges. Rationale: ADR-0021.
 	 */
 	private ReceiptOutcome applyRefund(VenueId venueId, RemodelClaim claim, Instant cancelledAt, long feeMinor) {
 		CancelledBooking cancelled = bookings
@@ -172,13 +160,9 @@ class RemodelClaimsService implements RemodelClaims {
 	}
 
 	/**
-	 * Release an unpaid claim: the same guarded {@code AWAITING_PAYMENT → CANCELLED} transition the
-	 * payment-canceled webhook and the TTL sweep share through {@code ClaimReleaseService} — kept in
-	 * step with it by hand, because that seam answers only whether it released and this leg needs the
-	 * freed claim's spot for the receipt and publishes {@code BookingCancelled}, which the seam's two
-	 * drivers must not. The zero refund on that event is what mails the guest without moving money —
-	 * no refund is issued and no payout reversal is posted for a booking that never collected, and the
-	 * module's own listener voids the intent the guest could otherwise still pay.
+	 * Releases an unpaid claim by the guarded transition {@code ClaimReleaseService} runs, kept in step
+	 * by hand: this leg needs the freed spot and publishes {@code BookingCancelled}, which that seam's
+	 * drivers must not. Its zero refund mails the guest, moving no money; a listener voids the intent.
 	 */
 	private ReceiptOutcome applyRelease(VenueId venueId, RemodelClaim claim) {
 		ClaimRef released = bookings.cancelAwaitingPayment(claim.bookingId().value())

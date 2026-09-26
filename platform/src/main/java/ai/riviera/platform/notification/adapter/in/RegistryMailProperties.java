@@ -4,35 +4,13 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.boot.context.properties.bind.DefaultValue;
 
 /**
- * The bounds of the registry-mail bulkhead ({@link RegistryMailExecutorConfig}), externalised so they
- * can be retuned against a real relay from the deploy environment rather than by code change. Unset
- * config reproduces the original compile-time constants exactly.
+ * {@link RegistryMailExecutorConfig}'s bounds. Every invalid value boots clean, so the constructor
+ * checks both ends ({@code RESPONSIBILITIES.md} §notification); {@code @Validated} would check
+ * nothing (no JSR-303). Keep the {@code ${RIVIERA_REGISTRY_MAIL_*:…}} lines in
+ * {@code application.properties} or env overrides stop binding ({@code RegistryMailPropertiesTest}).
  *
- * <p>The shipped values live in {@code application.properties}; the {@code @DefaultValue}s below are a
- * backstop for a context bound without it. The {@code ${RIVIERA_REGISTRY_MAIL_*:…}} placeholders are
- * also the only reason the readable env-var names work — relaxed binding of
- * {@code riviera.notification.registry-mail.pool-size} would be
- * {@code RIVIERA_NOTIFICATION_REGISTRYMAIL_POOLSIZE}. <strong>Deleting those two property lines keeps
- * the defaults working while silently breaking the env override</strong>, which is what
- * {@code RegistryMailPropertiesTest#theEnvironmentOverridesBothBounds} catches.
- *
- * <p><strong>Both knobs are validated on BOTH ends, because every invalid value boots clean.</strong>
- * {@code ThreadPoolTaskExecutor.createQueue} returns a {@link java.util.concurrent.SynchronousQueue}
- * for any capacity {@code <= 0} — {@code 0} reads as "unbounded" to a human and means "capacity zero"
- * to Spring — and a lazily-allocated {@code LinkedBlockingQueue} for <em>any</em> positive one, so an
- * absurd value is just the unbounded queue this bulkhead removed, restored by configuration. Core
- * threads are lazy too, so an oversized pool fails later as {@code OutOfMemoryError: unable to create
- * native thread}, on the commit thread {@link RegistryMailExecutorConfig}'s shed handler exists to keep
- * exceptions off. The ceilings bound the typo, not the operator.
- *
- * <p>A compact constructor rather than {@code @Validated} + {@code @Min}: Boot validates
- * {@code @ConfigurationProperties} only with a JSR-303 implementation on the classpath, and there is
- * none by deliberate choice, so an annotation here would validate nothing.
- *
- * @param poolSize core <em>and</em> max threads; they are equal by design, since a
- *        {@code ThreadPoolExecutor} grows past core only once the queue is full
- * @param queueCapacity sends that may back up before the pool sheds to the Event Publication
- *        Registry, which is the better queue past that point
+ * @param poolSize core <em>and</em> max threads, equal: a pool grows past core only on a full queue
+ * @param queueCapacity sends that may back up before the pool sheds to the Event Publication Registry
  */
 @ConfigurationProperties("riviera.notification.registry-mail")
 record RegistryMailProperties(@DefaultValue("2") int poolSize, @DefaultValue("200") int queueCapacity) {

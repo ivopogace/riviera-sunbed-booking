@@ -2,12 +2,11 @@ package ai.riviera.platform.payout.domain;
 
 /**
  * The split of a gross amount into commission + net, in integer minor units (invariant #5) — the
- * single home of the commission formula. Commission is rounded <strong>down</strong>:
- * {@code commission = floorDiv(gross × bps, 10000)}; the venue keeps the sub-cent remainder
- * ({@code net = gross − commission}). {@code bps} is the venue's commission rate in basis points
- * (1500 = 15.00%). Used by both the payout-ledger {@link PayoutLedgerEntry#accrual accrual}
- * (per confirmed booking) and the operator console's daily-takings read (per service date, #171),
- * so the arithmetic is written once and never diverges.
+ * single home of the commission formula: {@code commission = floorDiv(gross × bps, 10000)}, rounded
+ * <strong>down</strong>, {@code bps} being the venue's rate in basis points (1500 = 15.00%); the venue
+ * keeps the sub-cent remainder ({@code net = gross − commission}). Used by both the payout-ledger
+ * {@link PayoutLedgerEntry#accrual accrual} (per confirmed booking) and the operator console's
+ * daily-takings read (per service date), so the arithmetic is written once and never diverges.
  */
 public record CommissionSplit(long grossMinor, long commissionMinor, long netMinor) {
 

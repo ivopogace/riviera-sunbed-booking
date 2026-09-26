@@ -23,9 +23,9 @@ import ai.riviera.platform.booking.application.refund.RefundOutbox;
 class RegistryRefundOutbox implements RefundOutbox {
 
 	/**
-	 * The registry's id for {@code BookingRefundListener.on(BookingCancelled)}. #404 deliberately kept
-	 * class, method and parameter type unchanged so this id is byte-identical to what every historical
-	 * publication row carries (invariant #12: no Flyway rewrite owed).
+	 * The registry's id for {@code BookingRefundListener.on(BookingCancelled)}. Keep that class, method and
+	 * parameter type unchanged: every stored publication row carries this id byte-for-byte, and a rename
+	 * would owe a forward Flyway rewrite of those rows (invariant #12).
 	 */
 	static final String REFUND_LISTENER_ID = "ai.riviera.platform.booking.adapter.in."
 			+ "BookingRefundListener.on(ai.riviera.platform.booking.events.BookingCancelled)";

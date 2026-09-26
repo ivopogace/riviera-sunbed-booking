@@ -47,15 +47,11 @@ import {
 } from './operator-console.model';
 
 /**
- * The operator console's own read/write surface — the stats strip, the daily view, and the
- * Requests queue all read and write through here.
- *
- * <p>Single responsibility — HTTP only (no UI state; the badge count lives in
- * {@link import('./pending-requests-store').PendingRequestsStore}). The console is the successor to the
- * retired `StaffDaily` page: the full Request-to-Book client (`pendingRequests` /
- * `acceptRequest` / `declineRequest`) lives here, not in a separate `staff` feature — the one-way
- * frontend import rule forbids one feature folder depending on another. Every endpoint is
- * owner-asserted server-side (invariant #13); the session cookie + CSRF ride the `apiSessionInterceptor`.
+ * The operator console's HTTP surface (stats strip, daily view, Requests queue); no UI state —
+ * the badge count lives in {@link import('./pending-requests-store').PendingRequestsStore}.
+ * The Request-to-Book client stays here, not in a `staff` feature: a feature folder never imports
+ * another (`riviera-frontend`). Every endpoint is owner-asserted server-side (invariant #13); the
+ * session cookie + CSRF ride the `apiSessionInterceptor`.
  */
 @Service()
 export class OperatorConsoleService {
@@ -104,10 +100,9 @@ export class OperatorConsoleService {
   }
 
   /**
-   * The venue's held sets for `date` with their authoritative state tokens —
-   * `BOOKED_ONLINE` (any online hold, paid or not) vs `STAFF_MARKED`; a free set is absent.
-   * Owner-asserted server-side (invariant #13). The Daily view's tile classification and the
-   * strip's Walk-ins tile read this instead of deriving from `taken − confirmed bookings`.
+   * The venue's held sets for `date`: `BOOKED_ONLINE` (any online hold, paid or not) or
+   * `STAFF_MARKED`; a free set is absent. Owner-asserted (invariant #13). The Daily view's tiles
+   * and the Walk-ins tile read this, never derive from `taken − confirmed bookings`.
    */
   dailyAvailability(venueId: number, date: string): Observable<SetDayState[]> {
     return this.http.get<SetDayState[]>(`${this.base}/api/venues/${venueId}/availability`, {
@@ -135,10 +130,9 @@ export class OperatorConsoleService {
   }
 
   /**
-   * Save the venue's whole beach-map layout in one write — a diff by grid cell server-side: a kept
-   * cell updates in place under its own id, a new cell inserts, an absent cell's set leaves the map.
-   * Owner-asserted (invariant #13); a `SETS_IN_USE` failure means the save would remove sets someone
-   * is still owed (invariant #2) — it names them and writes nothing. `204` on success.
+   * Save the whole beach-map layout, diffed by grid cell server-side: a kept cell updates in place,
+   * a new one inserts, an absent one's set leaves the map. Owner-asserted (invariant #13); `204`.
+   * `SETS_IN_USE` names sets someone is still owed (invariant #2) and writes nothing.
    */
   replaceLayout(venueId: number, request: BeachMapLayoutRequest): Observable<void> {
     return this.http.put<void>(`${this.base}/api/venues/${venueId}/beach-map`, request);
@@ -157,11 +151,9 @@ export class OperatorConsoleService {
   }
 
   /**
-   * The commit of a previewed picture: the save body, the preview's token, and the refund count and
-   * reason the operator typed. Under the venue's set locks the server re-derives the picture; a
-   * match saves the layout and settles every booking on it in one transaction and answers the
-   * receipt. `STALE_PREVIEW`, `REMODEL_REFUSED` and `REFUND_NOT_CONFIRMED` carry the fresh picture
-   * ({@link remodelPreviewOf}); `STALE_WRITE` and `SETS_IN_USE` answer as the save would.
+   * Commit a previewed picture: under the set locks the server re-derives it and, on a match, saves
+   * and settles every booking in one transaction → the receipt. A refusal's fresh picture reads via
+   * {@link remodelPreviewOf}; every answer: `RESPONSIBILITIES.md` §Platform edge (remodel).
    */
   commitLayout(venueId: number, request: RemodelCommitRequest): Observable<RemodelReceipt> {
     return this.http.post<RemodelReceipt>(
@@ -200,10 +192,9 @@ export class OperatorConsoleService {
   }
 
   /**
-   * Change price, tier and/or pool on a swept selection of sets in one transaction — booked sets
-   * included, since none of the three is ever refused for a claim. Owner-asserted server-side
-   * (invariant #13); `expectedVersion` is the `setVersion` token the tab loaded, so a stale tab meets
-   * `409 STALE_WRITE` rather than clobbering. Answers the number of sets changed.
+   * Change price, tier and/or pool on a selection of sets in one transaction, booked ones included.
+   * Owner-asserted (invariant #13); `expectedVersion` is the tab's `setVersion`, so a stale tab
+   * gets `409 STALE_WRITE` rather than clobbering. Answers the number of sets changed.
    */
   applySetBatch(venueId: number, request: SetBatchRequest): Observable<SetBatchResult> {
     return this.http.patch<SetBatchResult>(`${this.base}/api/venues/${venueId}/sets`, request);
@@ -219,10 +210,9 @@ export class OperatorConsoleService {
   }
 
   /**
-   * Reprice every set in one beach-map row. Non-destructive and owner-asserted server-side
-   * (invariant #13); `price` is integer minor units + ISO currency (invariant #5). `expectedVersion` is
-   * the required optimistic-concurrency token (`setVersion`) the tab loaded — a stale token is
-   * rejected `409 STALE_WRITE`, a missing one `400`. `204` on success.
+   * Reprice every set in one row; owner-asserted (invariant #13), `price` in integer minor units +
+   * ISO currency (invariant #5). `expectedVersion` is the required `setVersion` the tab loaded:
+   * stale → `409 STALE_WRITE`, missing → `400`. `204` on success.
    */
   repriceRow(
     venueId: number,
@@ -237,10 +227,9 @@ export class OperatorConsoleService {
   }
 
   /**
-   * Rename one beach-map row — a display-only write the layout locks cannot reach, so it keeps
-   * working on a venue that has already sold. `rowLabel` is the label currently STORED for the row
-   * (the draft the operator typed is `newLabel`), and `expectedVersion` is the same `setVersion`
-   * token the reprice and the bulk replace share.
+   * Rename one row — display-only, so the layout locks never refuse it on a venue that has sold.
+   * `rowLabel` is the label currently STORED (the typed draft is `newLabel`); `expectedVersion` is
+   * the `setVersion` token the reprice and the bulk replace share.
    */
   renameRow(
     venueId: number,
@@ -300,22 +289,18 @@ export class OperatorConsoleService {
   }
 
   /**
-   * The venue's payout ledger — accruals, reversals and fees with the server-authoritative net owed
-   * (`netOwedMinor`, invariant #9). Owner-asserted server-side (invariant #13); money is integer minor
-   * units (invariant #5) rendered by the tab, never computed; carries no booking code / guest identity
-   * (invariants #7/#11).
+   * The payout ledger (accruals, reversals, fees) with the server-authoritative `netOwedMinor`
+   * (invariant #9); owner-asserted (invariant #13). Integer minor units (invariant #5) the tab
+   * renders, never computes; no booking code or guest identity (invariants #7/#11).
    */
   payoutLedger(venueId: number): Observable<PayoutLedgerView> {
     return this.http.get<PayoutLedgerView>(`${this.base}/api/venues/${venueId}/payout-ledger`);
   }
 
   /**
-   * Issue a **full weather refund** for every CONFIRMED booking on `venueId`+`date` (invariant
-   * #10) — admin-triggered, whole-day, regardless of the cutoff. The server decides + executes the
-   * refund (via the Stripe webhook path, invariant #8) and posts the payout reversal (invariant
-   * #9); this only triggers it. `date` is a required query param (no implicit "today").
-   * Owner-asserted (invariant #13);
-   * idempotent server-side (a re-run refunds nothing already cancelled).
+   * Trigger a **full weather refund** for the venue on the required `date` (no implicit today),
+   * regardless of the cutoff; the server picks the bookings, refunds (invariant #10) and reverses
+   * (invariant #9). Owner-asserted (#13); idempotent (a re-run refunds nothing already cancelled).
    */
   weatherRefund(venueId: number, date: string): Observable<WeatherRefundResult> {
     return this.http.post<WeatherRefundResult>(
@@ -345,21 +330,18 @@ export class OperatorConsoleService {
   }
 
   /**
-   * Save the venue's editable profile — REPLACES it (the form re-sends every field, `salesClose`
-   * included). Owner-asserted server-side (invariant #13); commission + payout currency are
-   * read-only and never sent (invariant #9). `204` on success; an unknown amenity code / bad
-   * field is `400` (§6b).
+   * REPLACE the venue's editable profile: send every field, `salesClose` included. Owner-asserted
+   * (invariant #13); commission + payout currency are read-only, never sent (invariant #9). `204`;
+   * an unknown amenity code or a bad field is `400`.
    */
   updateVenueProfile(venueId: number, request: VenueProfileUpdate): Observable<void> {
     return this.http.patch<void>(`${this.base}/api/venues/${venueId}`, request);
   }
 
   /**
-   * The daily view's kill switch: close today's online sales by flipping the STANDING
-   * `salesClose` setting to `00:01` (invariant #4) through the same profile GET + full-replace
-   * PATCH the venue tab uses — no dedicated endpoint, no per-day override. The fresh read's
-   * optimistic `version` guards the read-modify-write, so a concurrent profile edit loses loudly
-   * (`409 STALE_WRITE`) instead of being clobbered; effective on the very next tourist reserve.
+   * The kill switch: set the STANDING `salesClose` to `00:01` (invariant #4) via profile GET +
+   * full-replace PATCH, no per-day override; effective on the next tourist reserve. The fresh
+   * read's `version` makes a concurrent profile edit fail `409 STALE_WRITE`, never clobbered.
    */
   closeOnlineSalesNow(venueId: number): Observable<void> {
     return this.venueProfile(venueId).pipe(
@@ -499,10 +481,9 @@ export function requestErrorOf(error: unknown): RequestErrorCode {
 }
 
 /**
- * Map an HTTP failure of a per-set write — add, edit or remove — to a known
- * {@link SetWriteErrorCode} (RFC-7807 `code`; or 401). One mapper for all three: their meaningful
- * surface is the same set of conflicts, so which endpoint answered never changes the mapping. The
- * panel renders one message per code — it does not know which action was attempted.
+ * Map a failed add, edit or remove of one set to a known {@link SetWriteErrorCode} (RFC-7807
+ * `code`; or 401). One mapper for all three: the conflicts are the same, and the panel renders one
+ * message per code without knowing which action was attempted.
  */
 export function setWriteErrorOf(error: unknown): SetWriteErrorCode {
   if (error instanceof HttpErrorResponse) {

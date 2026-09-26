@@ -1,28 +1,17 @@
 /**
- * The payout module — the venue payout ledger (booking amounts − commission − fees),
- * manual BKT batch reporting (invariant #9: a booking contributes exactly once; refunds reverse it,
- * and a refund the venue's own change caused also charges it a fee), and the platform's own
- * settings, of which the venue-change fee is the only one.
- * {@code PayoutLedgerEntry} and {@code PayoutBatch} are immutable value records over the two ledger
- * tables — the entry with {@code accrual}/{@code reversalOf}/{@code fee} factories, the batch built
- * through its canonical constructor — not mutable roots.
- *
- * <p>Hexagonal layout (invariant #11, ADR-0007 full template): {@code application},
- * {@code domain}, {@code adapter.in/out}. Publishes nothing — no {@code api}/{@code spi} of its own;
- * it consumes {@code booking}/{@code venue} events and query ports (incl. {@code booking::api} for the
- * console's daily-takings read), re-reads {@code venue}'s commission rate, and <em>implements</em>
- * {@code booking.spi.VenueChangeFeeRate} so the remodel preview can quote the fee this module decides.
+ * The payout module: the venue payout ledger ({@code Σ amounts − commission − fees}), manual BKT
+ * batch reporting, and the platform's own settings (today only the venue-change fee). A booking
+ * accrues exactly once, a refund reverses it, and a refund the venue's own change caused also
+ * charges it a fee (invariant #9); direction is the entry type, never the sign. Hexagonal
+ * (invariant #11) and publishes no {@code api}/{@code spi} of its own. Rationale:
+ * {@code RESPONSIBILITIES.md} §payout, ADR-0021.
  */
 @org.springframework.modulith.ApplicationModule(
     displayName = "Payout",
     /**
-     * U5: payout reacts to booking::events (BookingConfirmed/BookingCancelled) and re-reads the commission rate
-     * from venue::api at accrual time (invariant #11). booking::api: the console daily-takings read
-     * pulls a venue's gross confirmed-online takings synchronously. booking::spi: payout implements
-     * booking.spi.VenueChangeFeeRate — the inverted, acyclic edge that lets the remodel preview quote a
-     * fee payout decides, since a booking -> payout call would cycle. operator::api: both reads assert
-     * per-venue ownership (invariant #13). Deny-by-default: each provider granted per surface at least
-     * privilege — api+events+spi+vocabulary from booking, api+vocabulary from venue and operator.
+     * Deny-by-default, least privilege per surface (invariant #11): booking events and takings read;
+     * booking::spi to implement VenueChangeFeeRate (inverted, as booking -> payout would cycle); venue's
+     * commission rate; operator ownership checks (invariant #13).
      */
     allowedDependencies = { "booking::api", "booking::events", "booking::spi", "booking::vocabulary", "venue::api", "venue::vocabulary", "operator::api", "operator::vocabulary", "shared" }
 )

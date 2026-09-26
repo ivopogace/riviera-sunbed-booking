@@ -23,27 +23,11 @@ const SLOT_LABELS: Readonly<Record<PhotoSlotKey, string>> = {
 };
 
 /**
- * The admin console's Photos tab — the surface that makes the moderation takedown usable. Until this
- * tab, removing a reported photo meant hand-crafting an HTTP `DELETE` with a session cookie and a
- * CSRF token, which is not a thing anyone does from a phone when a report arrives by email.
- *
- * <p><strong>Why a venue picker at all.</strong> The admin holds no venue, so there is no "my venues"
- * to land in; a report names a venue and the moderator finds it. The list is the admin venue read,
- * shared with the Reviews tab through {@link AdminVenuesService}.
- *
- * <p><strong>Every slot renders, occupied or not.</strong> Emptiness is the null preview URL,
- * so a takedown just empties its slot in place — no re-fetch, and the grid never
- * reflows under the moderator mid-decision.
- *
- * <p><strong>The confirmation is the whole safety story.</strong> A takedown destroys bytes and there
- * is no undo, so Remove only *asks*, and the question names the venue and the slot — the
- * {@code admin-operators} suspend precedent, inline rather than modal, so there is nothing to
- * focus-trap and the action stays where it was clicked. The confirmation also collects
- * optional grounds, which ride the `X-Audit-Reason` header into the platform's admin audit trail.
- *
- * <p>Like every admin tab, the surrounding {@code AdminConsole} shell self-gates on
- * {@link OperatorAuth} for UX while the backend `/api/admin/**` role gate does the enforcing; this
- * component only ever renders once both have passed.
+ * The Photos tab: the admin photo takedown (posture: ADR-0013), reached through a venue picker as
+ * the admin holds no venue. Every slot renders, occupied or not: emptiness is the null preview URL,
+ * so a takedown empties its slot in place, with no re-fetch and no grid reflow mid-decision. A
+ * takedown destroys bytes with no undo, so Remove only asks: an inline confirmation (no modal to
+ * focus-trap) naming venue and slot, collecting optional `X-Audit-Reason` grounds.
  */
 @Component({
   selector: 'app-admin-venue-photos',
@@ -189,12 +173,9 @@ export class AdminVenuePhotos {
   }
 
   /**
-   * Open the confirmation, or close it, moving focus with the surface. Each transition destroys the
-   * element that was just activated, which strands keyboard/AT focus on `<body>` unless focus is
-   * moved deliberately (WCAG 2.4.3 — the recurring stranded-focus class). Focus INTO the
-   * confirmation is {@link ConfirmWithReason}'s own doing; keeping it returns focus to Remove, and a
-   * settled removal has no confirmation left to return to — success parks on the slot card, failure
-   * on the notice carrying the reason, both only while this venue is still the one on screen.
+   * Open the confirmation. Each transition destroys the pressed control, so focus moves with it
+   * (WCAG 2.4.3): into the panel via {@link ConfirmWithReason}, back to Remove on keep, and once
+   * settled to the slot card (success) or the notice (failure), only while this venue is on screen.
    */
   protected askToRemove(slot: PhotoSlotKey): void {
     this.confirming.set(slot);

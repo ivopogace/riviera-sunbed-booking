@@ -9,25 +9,12 @@ import ai.riviera.platform.notification.api.MailSender;
 import ai.riviera.platform.operator.vocabulary.ApprovalOutcome;
 
 /**
- * Tells a self-registered operator that a platform admin approved it: its venues are
- * now tourist-visible. Console access never waited on approval, so the news is the visibility flip,
- * not the ability to sign in.
- *
- * <p><strong>Edge machinery, like every other mail decision</strong> (RV-BE-11): the {@code operator}
- * module owns the {@code PENDING → ACTIVE} transition and knows nothing about mail; {@code notification}
- * owns delivery and knows nothing about approvals; deciding <em>when</em> to send and building the link
- * is this class's job, exactly as {@code CustomerRecovery} does for the recovery pair.
- *
- * <p><strong>Why a class and not two lines in the controller.</strong> Three rules travel together —
- * send only on {@link ApprovalOutcome.Approved}, only when there is an address, and always to the same
- * link — and the second is the one that bites: {@code contact_email} is nullable (V29), so the address
- * arrives as "probably present". Inlined, those rules would sit in a controller method whose subject is
- * HTTP status mapping.
- *
- * <p><strong>The link reuses {@code riviera.recovery.link-base-url}</strong> rather than introducing a
- * second origin property. Despite the name, that value is already documented as the absolute origin
- * emailed links point at and is already an env-injected deploy secret — a second knob would be a
- * second thing to mis-set, with a dead link as the symptom either way.
+ * Tells a self-registered operator that an admin approved it: its venues are now tourist-visible
+ * (console access never waited on approval). Edge machinery, like every mail decision (RV-BE-11):
+ * {@code operator} owns the transition, {@code notification} the delivery; this class decides when to
+ * send and builds the link. It sends only on {@link ApprovalOutcome.Approved} and only with an address
+ * ({@code contact_email} is nullable). The link reuses {@code riviera.recovery.link-base-url}, the one
+ * origin emailed links point at, rather than a second origin property to mis-set.
  */
 @Component
 class OperatorApprovalMail {
@@ -52,15 +39,9 @@ class OperatorApprovalMail {
 	}
 
 	/**
-	 * Mail the approved operator its sign-in link, or do nothing if the account carries no address.
-	 *
-	 * <p>Nothing here is wrapped in a catch, and that is deliberate. The approval has already committed
-	 * by the time this runs and cannot be re-run (a second approve is {@code 409 NOT_PENDING}), so an
-	 * exception escaping would be the #357 failure shape again — a {@code 500} on work that succeeded.
-	 * The defence is that there is nothing left to throw: the link was built at boot, and
-	 * {@link MailSender} never throws by contract (it dispatches off-thread and swallows-and-counts
-	 * inside the task). A catch here would add nothing but the ability to hide a genuine defect in that
-	 * contract, which is the one thing worth hearing about.
+	 * Mail the approved operator its sign-in link, or do nothing without an address. Runs after the
+	 * approval committed, so it must not throw; it can't (link built at boot, {@link MailSender} never
+	 * throws by contract), and it deliberately has no catch, which could only hide a breach of that.
 	 */
 	void notifyApproved(ApprovalOutcome.Approved approved) {
 		String toEmail = approved.contactEmail();

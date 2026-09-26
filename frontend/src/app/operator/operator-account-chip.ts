@@ -28,25 +28,12 @@ import {
 import { TouchTarget } from '../shared/touch-target';
 
 /**
- * The signed-in operator's account chip, for the console shell's section row: an avatar + handle
- * button that discloses the identity block (`Signed in as <username>`), `Change password` and
- * `Sign out` — account actions only: venue actions (`Add another venue`) live under the venue
- * switcher, and the admin console is a section of the row, not a row here. The same disclosure pattern as the tourist
- * header's account menu — a button with `aria-expanded` revealing plain links, a backdrop, Escape
- * — on the `--riv-pop-*` tokens, so it is theme-agnostic. Rendered only while signed in: the host
- * gates on the session and keeps its own signed-out control.
- *
- * <p>Two things belong to the call site. The **test-id prefix** is an input, so each header keeps
- * its own ids. **Sign-out is an output, not a behavior**: a header must run its own teardown —
- * parking focus before the chip unmounts, and resetting any store that would otherwise outlive the
- * session — and this component must not choose one of those for it.
- *
- * <p>Focus is moved on every leg that unmounts the focused element (WCAG 2.4.3): Escape, the
- * backdrop and a row activation all return it to the chip. A navigation that ends while the
- * popover is open (focus tabbed out of it), or a click outside the header, closes the popover
- * without touching focus. The outside click is a document listener, not the backdrop alone: the
- * header's `backdrop-filter` makes it the containing block of the `fixed` backdrop, which
- * therefore covers the header and nothing below it.
+ * The signed-in operator's account chip (the host gates on the session): a disclosure revealing
+ * identity, Change password, console theme and Sign out — account actions only, never venue ones.
+ * Sign-out is an output: each header runs its own teardown (parks focus, resets its stores).
+ * Escape, the backdrop and a row return focus to the chip (WCAG 2.4.3); a navigation or an outside
+ * click closes without moving it. Outside clicks need the document listener: the header's
+ * `backdrop-filter` contains the `fixed` backdrop, so that backdrop covers only the header.
  */
 @Component({
   selector: 'app-operator-account-chip',

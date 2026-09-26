@@ -8,33 +8,12 @@ function nextFieldErrorElementId(): string {
 }
 
 /**
- * Associates an inline field error with the control it belongs to: while this element is in the
- * DOM, the control names it through `aria-describedby` and — unless `appFieldErrorForInvalidValue`
- * says the value itself is fine — carries `aria-invalid="true"`.
- *
- * <p>Applied to the ERROR element, taking the control's template reference, so the association's
- * lifetime is the error's own — `@if` removing the error removes the reference with it, and a stale
- * `aria-describedby` cannot be written. A dangling reference is only an axe *incomplete*, which
- * `expectNoAxeViolations` does not fail on, so this is structure rather than a test. Placement
- * gives that guarantee only while the control outlives the error, which every call site satisfies
- * by declaring the ref in the same view (or the enclosing `@for` body).
- *
- * <p>The directive is the sole writer of `aria-invalid` in this app; pre-existing
- * `aria-describedby` tokens are preserved and kept first, so a hint reads before the error.
- *
- * <p>Three limits, worth knowing before widening its use:
- *
- * <p>- `aria-invalid` is not reference-counted. No control carries two error elements today; if one
- * ever does, the first to unmount clears the mark while the other is still showing. Refcount it
- * then, rather than pre-building for a shape that does not exist.
- *
- * <p>- Preserving a pre-existing `aria-describedby` works for a **static** attribute. This writes
- * imperatively, so an Angular `[attr.aria-describedby]` binding on the same control (today only
- * `auth/auth-page.ts`) would drop the error token whenever Angular re-evaluated it.
- *
- * <p>- Generated ids are process-monotonic and never reset, and `isolate: false` (ADR-0014) shares
- * this module across every spec file in a worker — so a literal id is not reproducible. Read
- * `error.id` back instead of asserting `riv-field-error-N`.
+ * Put on an inline field error, bound to its control's template ref: while the error is in the DOM,
+ * the control lists it in `aria-describedby` after any existing hint and, unless
+ * `appFieldErrorForInvalidValue` is false, carries `aria-invalid` (sole writer). Declare the ref in
+ * the same view or `@for` body so the control outlives the error. Limits: `aria-invalid` is not
+ * ref-counted (two errors on one control need that); an `[attr.aria-describedby]` binding on the
+ * control drops the token; ids are process-monotonic, so read `error.id` back. Rules: RV-FE-11.
  */
 @Directive({
   selector: '[appFieldErrorFor]',
@@ -44,10 +23,9 @@ export class FieldErrorFor {
   readonly control = input.required<HTMLElement>({ alias: 'appFieldErrorFor' });
 
   /**
-   * Whether this error means the control's own value is wrong — the ARIA21 condition for
-   * `aria-invalid`. Default `true`, which is right for a validation error. Bind it `false` for an
-   * error that reports a failed *write* (a 403, an expired session): the entered value is fine, so
-   * the control is described but never marked invalid.
+   * Whether the error means the control's own value is wrong (ARIA21's `aria-invalid` condition).
+   * Default `true`, for a validation error; bind `false` for a failed *write* (a 403, an expired
+   * session): the control is then described but never marked invalid.
    */
   readonly appFieldErrorForInvalidValue = input(true);
 
