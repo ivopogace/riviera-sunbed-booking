@@ -1,17 +1,11 @@
 package ai.riviera.platform.operator.vocabulary;
 
 /**
- * The {@code operator} module's own reference to a venue (invariant #11 — a typed id at the seam,
- * not a raw {@code long}).
- *
- * <p><strong>Why not reuse {@code venue.vocabulary.VenueId}?</strong> Some of the venue-scoped
- * services that must ask the ownership question — {@code venue}'s own {@code BeachMapEditService}
- * and {@code VenueAdminService} — live inside the {@code venue} module. If {@code operator.api} depended on
- * {@code venue::api}, then {@code venue → operator} (to call {@link ai.riviera.platform.operator.api.VenueOwnership VenueOwnership}) plus
- * {@code operator → venue} (for {@code VenueId}) would form a Spring Modulith cycle. Publishing a
- * dedicated {@code VenueRef} keeps {@code operator}'s {@code allowedDependencies} empty and the
- * module graph acyclic, so a <em>single uniform</em> {@code api} port serves every caller.
- * Callers convert with {@code new VenueRef(venueId.value())}.
+ * The {@code operator} module's own typed venue id at the seam (invariant #11), used instead of
+ * {@code venue.vocabulary.VenueId}: {@code venue} depends on {@code operator::api} for
+ * {@link ai.riviera.platform.operator.api.VenueOwnership VenueOwnership}, so naming {@code VenueId}
+ * here would close a Modulith cycle. Callers convert with {@code new VenueRef(venueId.value())}.
+ * Rationale: ADR-0007 (note on the copied id records).
  */
 public record VenueRef(long value) {
 }

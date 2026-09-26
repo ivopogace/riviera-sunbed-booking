@@ -10,14 +10,13 @@ import java.util.HexFormat;
 import org.springframework.stereotype.Component;
 
 /**
- * Edge helper that mints and digests customer account-recovery tokens (S8, epic #108). Credential-material
- * transformation is an edge concern (RV-BE-11): the raw token is emailed to the user, and only its
- * digest is handed to the {@code customer} module to store.
+ * Edge helper that mints and digests customer account-recovery tokens; credential material is an
+ * edge concern (RV-BE-11): the raw token is emailed, only its digest goes to {@code customer}.
  *
- * <p>The raw token is 256 bits of {@link SecureRandom} (URL-safe base64, unguessable — invariant #7). The
- * stored form is a <strong>deterministic SHA-256</strong> digest, chosen precisely so the consume path can
- * look a token up by {@code WHERE token_hash = ?} — bcrypt (used for passwords) salts per row and could
- * not be queried, and a high-entropy random token needs no slow hash. Package-private (invariant #11).
+ * <p>The raw token is 256 bits of {@link SecureRandom}, URL-safe base64 (unguessable, #7). It is
+ * stored as a <strong>deterministic SHA-256</strong> digest so the consume path can look it up by
+ * {@code WHERE token_hash = ?} (row-salted bcrypt could not be queried; a random token needs no
+ * slow hash). Package-private (invariant #11).
  */
 @Component
 class RecoveryTokens {

@@ -18,19 +18,12 @@ import ai.riviera.platform.shared.ApiProblem;
 import ai.riviera.platform.shared.InvalidApiRequestException;
 
 /**
- * The platform-admin review moderation surface — the "remove" half of report-and-remove, applied to
- * reviews. Driving adapter depending only on the module's {@link ReviewModeration} port; hosted in
- * the module like the other module-owned admin surfaces.
- *
- * <p><strong>Role-gated, not venue-scoped.</strong> A reported review sits on a venue the admin does
- * not own, and the public list refuses exactly the venues a moderator must still reach (a suspended
- * owner's), so this lives under {@code /api/admin/**}, invariant #13's exemption, and the
- * {@code ADMIN} gate in {@code SecurityConfig} is the whole authorization. Both verbs are
- * {@code POST}s to their own path so the audit record's {@code method path} column reads
- * unambiguously, with the review id in the path — the record has no target column.
- *
- * <p>Hide and un-hide answer {@code 204} whether they changed the row or found it already so
- * (idempotent); only an unknown review is refused, {@code 404 NO_SUCH_REVIEW}.
+ * Platform-admin review moderation, the "remove" half of report-and-remove; a driving adapter over
+ * the {@link ReviewModeration} port. Role-gated, not venue-scoped: it must reach venues the public
+ * list refuses (a suspended owner's), so under {@code /api/admin/**} (invariant #13's exemption)
+ * the {@code ADMIN} gate in {@code SecurityConfig} is the whole authorization. Each verb is a
+ * {@code POST} to its own path carrying the review id: the audit record has no target column. Hide
+ * and un-hide are idempotent {@code 204}s; an unknown review is {@code 404 NO_SUCH_REVIEW}.
  */
 @RestController
 @RequestMapping("/api/admin")

@@ -22,17 +22,12 @@ import ai.riviera.platform.venue.vocabulary.SetId;
 import ai.riviera.platform.venue.vocabulary.VenueId;
 
 /**
- * The remodel commit's orchestration at the platform edge (ADR-0020): {@code venue} owns the
- * transaction and the venue-wide set lock through {@link BeachMapRemodel#commit}, and this class is
- * its gate — asked once, under the locks, with the disturbed sets and their staff holds. A held set
- * is a claim the preview could not have offered a save for, so it answers the fresh picture as
- * stale; otherwise {@link RemodelClaims#commit} re-derives the classification, checks the token and
- * the operator's refund confirmation, and settles every claim, all inside {@code venue}'s
- * transaction; the gate proceeds only when it answered applied, naming the sets of the claims
- * {@code booking} kept so {@code venue} leaves them as stored. A layout that gives a kept set's label
- * to another set comes back as displaced, the transaction having rolled back, and is answered as
- * refused with the fresh picture. Each port asserts venue ownership itself (invariant #13); this
- * class holds no rule.
+ * The remodel commit's gate at the edge (ADR-0020): {@link BeachMapRemodel#commit} owns the
+ * transaction and set lock and asks it once, under the locks, with the disturbed sets. A staff-held
+ * set answers stale (the preview offered no save for it); else {@link RemodelClaims#commit} checks
+ * token and refund confirmation and settles every claim in that transaction; only applied proceeds,
+ * naming the kept claims' sets. A layout giving a kept set's label away rolls back → refused with
+ * the fresh picture. Ports assert ownership (#13). Rationale: RESPONSIBILITIES.md §Platform edge.
  */
 @Component
 class RemodelCommitService {

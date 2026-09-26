@@ -1,13 +1,9 @@
 package ai.riviera.platform.notification.application;
 
 /**
- * What became of a booking-confirmation mail attempt.
- *
- * <p>This enum is the reason #380 records attempts instead of reading the Event Publication Registry:
- * the registry completes a publication for the first <em>three</em> of these identically, because in
- * all three the listener returns normally. Only {@link #TRANSPORT_FAILED} leaves a trace there (the
- * publication stays outstanding), and it is the one case that self-heals. A view built on
- * {@code completion_date} would therefore report the two silent losses as delivery.
+ * What became of a booking-confirmation mail attempt. Recorded because the Event Publication
+ * Registry completes a publication identically for the first three (the listener returns
+ * normally); only {@link #TRANSPORT_FAILED} stays outstanding there, the one case that self-heals.
  *
  * <p>The constant names <strong>are</strong> the {@code outcome} tokens V36's {@code CHECK} lists;
  * {@code ConfirmationMailAttemptsIT} pins the lockstep by inserting every one.

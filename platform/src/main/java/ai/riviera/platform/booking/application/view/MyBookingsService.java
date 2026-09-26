@@ -15,18 +15,12 @@ import ai.riviera.platform.venue.vocabulary.SetBookingInfo;
 import ai.riviera.platform.venue.vocabulary.SetId;
 
 /**
- * The list-my-bookings use case (S3): load the account's bookings ({@link Bookings#findByAccountId},
- * account-scoped in SQL) and enrich them with venue + set display via the {@code venue} module's
- * {@link SetBookingFacts} api port (invariant #11 — the display names come from {@code venue}, never a
- * cross-module table join), resolved in <strong>one batch call</strong> for the whole list — N bookings
- * cost one venue query, not N. Package-private behind the {@link MyBookings} port;
- * read-only, no {@code @Transactional}.
- *
- * <p>A booking's set always resolves — {@code booking.set_id} references {@code set_position} with
- * {@code ON DELETE RESTRICT}, and a set holding bookings is retired rather than deleted while
- * {@link SetBookingFacts} keeps answering for it (ADR-0019) — matching the present-set assumption the
- * code-gated detail view makes. An impossible missing set fails loud rather than silently dropping
- * the customer's (paid) booking.
+ * The list-my-bookings use case: load the account's bookings ({@link Bookings#findByAccountId},
+ * account-scoped in SQL) and enrich them with venue + set display from {@code venue}'s
+ * {@link SetBookingFacts} port (invariant #11, never a cross-module join), in <strong>one batch
+ * call</strong> for the whole list. Package-private behind {@link MyBookings}; read-only.
+ * A booking's set always resolves (FK {@code ON DELETE RESTRICT}; a booked set retires, ADR-0019);
+ * a missing one fails loud rather than silently dropping the customer's booking.
  */
 @Service
 class MyBookingsService implements MyBookings {

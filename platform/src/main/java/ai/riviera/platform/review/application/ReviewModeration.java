@@ -10,11 +10,9 @@ import ai.riviera.platform.review.vocabulary.VenueRef;
  * Internal to {@code review} (in {@code application}), not cross-module {@code api/}: its only
  * caller is this module's REST adapter (the {@link ReviewLifecycle} precedent).
  *
- * <p>Deliberately ownership-free: it answers for any venue and any review, because the caller is
- * the platform admin, admitted by role at the edge (invariant #13's admin exemption). A hide is a
- * reversible soft flag, never a delete — the review leaves the venue page and the score until it is
- * un-hidden. Both verbs announce {@link ai.riviera.platform.review.events.ReviewsChanged} when, and
- * only when, the row changed.
+ * <p>Ownership-free: the caller is the platform admin, admitted by role at the edge (invariant
+ * #13's admin exemption). A hide is a reversible soft flag, never a delete, and both verbs announce
+ * {@link ai.riviera.platform.review.events.ReviewsChanged} only when the row changed.
  */
 public interface ReviewModeration {
 

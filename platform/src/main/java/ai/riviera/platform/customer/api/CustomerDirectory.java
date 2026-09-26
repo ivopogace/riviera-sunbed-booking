@@ -13,9 +13,8 @@ public interface CustomerDirectory {
 
 	/**
 	 * Return the id of the customer with this contact's email, creating one if none exists.
-	 * Matching is by normalised (lower-cased, trimmed) email — guest checkout has no
-	 * accounts, so email is the identity. On a repeat email the stored name/phone are
-	 * refreshed to the latest supplied values and the same id is returned (idempotent).
+	 * Matched by normalised (lower-cased, trimmed) email, the guest's only identity; a repeat
+	 * email refreshes the stored name/phone to the latest values and returns the same id.
 	 */
 	CustomerId findOrCreate(GuestContact contact);
 }

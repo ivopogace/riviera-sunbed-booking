@@ -6,15 +6,13 @@ import ai.riviera.platform.review.domain.Stars;
 import ai.riviera.platform.shared.InvalidApiRequestException;
 
 /**
- * The write body shared by submit and amend: the stars, the optional comment, and the display name
- * the review is attributed to. Validated in the compact constructor (§6b — no {@code @Valid}), so
- * an over-long text is a {@code 400} before the use case is reached and V46's length CHECKs stay
- * backstops rather than the validator.
+ * The write body shared by submit and amend: the stars, the optional comment, and the required
+ * display name the review is attributed to. Validated in the compact constructor (§6b, no
+ * {@code @Valid}), so an over-long text is a {@code 400} first; V46's CHECKs are backstops.
  *
  * <p>Both texts are stripped first, so padding cannot push a legal value over its bound; a comment
- * that is blank once stripped is {@code null} — the guest wrote none. Nothing is ever truncated: a
- * body over the bound is refused, because silently storing half a sentence is worse than saying no.
- * The display name is required, so every review this slice records is attributable.
+ * blank once stripped is {@code null}. Nothing is ever truncated: a body over the bound is refused.
+ * Rationale: RESPONSIBILITIES.md §review.
  */
 record SubmitReviewRequest(Integer stars, String comment, String displayName) {
 

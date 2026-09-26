@@ -10,18 +10,12 @@ import org.springframework.stereotype.Component;
 import ai.riviera.platform.booking.application.refund.ExpireAbandonedBookings;
 
 /**
- * The codebase's first scheduler — a driving adapter that periodically runs the abandoned-payment
- * TTL sweep (issue #51), reusing the {@code booking} lifecycle's cancel+release orchestration via
- * {@link ExpireAbandonedBookings}. {@code @Profile("stripe")} (with {@code @EnableScheduling} on
- * {@code BookingSchedulingConfig}): under the default stub profile bookings confirm synchronously, so
- * there is nothing to sweep and the scheduler is absent.
- *
- * <p>{@code fixedDelay} (not {@code fixedRate}): each run starts only after the previous one finished,
- * so a slow sweep never overlaps itself on this instance. Multi-instance safety needs no distributed
- * lock — the guarded {@code UPDATE … WHERE status='AWAITING_PAYMENT' … RETURNING} behind the sweep
- * lets at most one runner transition a given booking (invariant #2). The interval and TTL are
- * configurable ({@code booking.awaiting-payment.*}); the TTL is passed into the use case so the
- * application layer holds no configuration type. Package-private (invariant #11).
+ * Driving adapter that periodically runs the abandoned-payment TTL sweep via
+ * {@link ExpireAbandonedBookings}. {@code @Profile("stripe")}: under the stub profile bookings
+ * confirm synchronously, so there is nothing to sweep. {@code fixedDelay}, so a slow run never
+ * overlaps itself; multi-instance needs no lock, as the guarded {@code UPDATE … WHERE
+ * status='AWAITING_PAYMENT' … RETURNING} lets one runner transition a booking (invariant #2).
+ * Interval and TTL from {@code booking.awaiting-payment.*}; the TTL is passed into the use case.
  */
 @Component
 @Profile("stripe")

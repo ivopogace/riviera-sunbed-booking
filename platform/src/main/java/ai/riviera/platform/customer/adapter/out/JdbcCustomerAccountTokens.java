@@ -12,20 +12,18 @@ import ai.riviera.platform.customer.application.TokenPurpose;
 import ai.riviera.platform.customer.vocabulary.CustomerAccountId;
 
 /**
- * JDBC adapter for the {@code customer} module's {@link CustomerAccountTokens} port (ADR-0007
- * {@code adapter/out}). Explicit SQL via {@link JdbcClient} in text blocks, named params,
- * package-private (invariant #1, mirroring {@code JdbcCustomerAccounts}).
+ * JDBC adapter for the {@code customer} module's {@link CustomerAccountTokens} port. Explicit SQL
+ * via {@link JdbcClient} in text blocks, named params, package-private (invariant #1).
  *
  * <p>The single-use guarantee is the atomic {@code UPDATE … SET consumed_at = NOW() WHERE
  * consumed_at IS NULL AND expires_at > NOW() RETURNING account_id}: at most one concurrent redeemer
- * wins the row, and invalid / expired / already-consumed tokens are indistinguishable (zero rows
- * returned — non-enumeration, design D-8). Expiry compares against the DB clock ({@code NOW()}), so no
- * application clock crosses this seam.
+ * wins; invalid / expired / consumed tokens look alike (zero rows; non-enumeration, design D-8).
+ * Expiry uses the DB clock ({@code NOW()}), so no application clock crosses this seam.
  */
 @Repository
 class JdbcCustomerAccountTokens implements CustomerAccountTokens {
 
-	/** SQL named-param keys, named not duplicated (invariant #6a). */
+	/** SQL named-param keys, named not duplicated (conventions §6a). */
 	private static final String ACCOUNT_ID = "accountId";
 	private static final String PURPOSE = "purpose";
 	private static final String TOKEN_HASH = "tokenHash";

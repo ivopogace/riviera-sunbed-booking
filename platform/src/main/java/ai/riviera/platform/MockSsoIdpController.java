@@ -18,15 +18,12 @@ import ai.riviera.platform.shared.InvalidApiRequestException;
 import jakarta.servlet.http.HttpServletRequest;
 
 /**
- * The in-app mock identity provider — present only under {@code @Profile("!sso")} (and
- * forbidden in prod by {@code MockSsoProdGuard}). It plays the IdP's authorize step: the browser arrives
- * here from {@code MockSsoGateway#authorizationRequest}, and it immediately 302-redirects back to the
- * real callback with a canned authorization {@code code} and the echoed {@code state} — making the full
- * "button → redirect → IdP → callback → session" dance real and demoable with no external credentials.
- *
- * <p>The supplied {@code redirect_uri} is <strong>validated</strong> to be our own callback on the same
- * host before redirecting, so this can never be abused as an open redirect (defence-in-depth even though
- * it is non-prod). Package-private (invariant #11).
+ * The in-app mock identity provider, only under {@code @Profile("!sso")} and forbidden in prod by
+ * {@code MockSsoProdGuard}. Plays the IdP's authorize step: the browser arrives from
+ * {@code MockSsoGateway#authorizationRequest} and is 302-redirected straight back to the real
+ * callback with a canned {@code code} and the echoed {@code state}, so the full dance is demoable.
+ * The supplied {@code redirect_uri} must be our own callback on the same host, so this can never be
+ * an open redirect (defence-in-depth even though non-prod). Package-private (invariant #11).
  */
 @RestController
 @Profile("!sso")

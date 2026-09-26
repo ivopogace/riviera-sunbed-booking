@@ -3,16 +3,13 @@ package ai.riviera.platform.booking.application.refund;
 import java.time.Duration;
 
 /**
- * What an admin sees before pressing anything: how many refunds the registry still owes, and
- * whether the lever is currently accepting — the {@code MailOutboxStatus} shape on the money path.
+ * What an admin sees before pressing: how many refunds the registry still owes, and whether the
+ * lever is accepting: the {@code MailOutboxStatus} shape on the money path. Same scoped count as
+ * the resubmission, so the two never disagree on "outstanding".
  *
- * <p>It is the same scoped count the resubmission computes, so the two can never disagree about what
- * "outstanding" means.
- *
- * @param outstanding refund publications still owed — see {@link RefundOutbox#countOutstanding()} for
- *        why a refund that moved money can never appear here
- * @param cooldownRemaining how long until a resubmission would be accepted; {@link Duration#ZERO} when
- *        one would be accepted now
+ * @param outstanding refund publications still owed ({@link RefundOutbox#countOutstanding()}: never
+ *        a refund that moved money)
+ * @param cooldownRemaining time until a resubmission is accepted; {@link Duration#ZERO} if now
  */
 public record RefundOutboxStatus(int outstanding, Duration cooldownRemaining) {
 }

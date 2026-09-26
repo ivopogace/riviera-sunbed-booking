@@ -6,16 +6,12 @@ import ai.riviera.platform.customer.vocabulary.CustomerAccountId;
 
 /**
  * Published read port that resolves a customer account's login email to its {@link CustomerAccountId}.
- * The platform edge's {@code CurrentCustomer} calls this to turn an authenticated
- * {@code CUSTOMER} principal (whose name is the email) into the technical account id that a signed-in
- * booking is linked to. Identity resolution — the account-side twin of {@code operator.api.OperatorDirectory}
- * ({@code operatorFor(username) -> OperatorId}) — deliberately kept separate from the credential port
- * {@link CustomerAccounts} (email + hash): authentication and identity-resolution are different
- * conversations, so each stays a single-purpose port (invariant #11, RV-BE-11).
+ * The platform edge's {@code CurrentCustomer} calls this to turn an authenticated {@code CUSTOMER}
+ * principal (named by its email) into the account id a signed-in booking is linked to. Kept apart
+ * from the credential port {@link CustomerAccounts}: each stays single-purpose (#11, RV-BE-11).
  *
- * <p>The {@code email} is normalized (trimmed + lower-cased) by the module before lookup, matching the
- * registration key, so callers may pass the raw principal name. Returns empty when no account exists
- * for the email.
+ * <p>The module normalizes {@code email} (trimmed + lower-cased) like the registration key, so
+ * callers may pass the raw principal name.
  */
 public interface CustomerAccountDirectory {
 

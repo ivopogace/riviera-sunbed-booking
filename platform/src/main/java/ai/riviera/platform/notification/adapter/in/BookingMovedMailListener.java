@@ -22,13 +22,10 @@ import ai.riviera.platform.shared.ObservabilityMetrics;
 /**
  * Mails the tourist that a remodel moved their booking: its days, both spots, the distance, the
  * free-exit deadline and the link where that cancel lives. The event carries ids and the days only
- * (invariant #7); the contact, code and venue resolve through {@link BookingMailFactsService} on the
- * set the booking now holds, and the spots, distance and deadline through {@code booking}'s move
- * facts — the receipt's snapshot, since the old set may already be retired or renumbered.
- * Asynchronous and after-commit on the mail bulkhead, like every listener here
- * ({@code MailListenerExecutorArchitectureTest}); the move, the layout and the receipt committed
- * before this runs, so no mail outcome can touch them. Giving up is counted under
- * {@link ObservabilityMetrics#MAIL_MOVE_ABANDONED}.
+ * (invariant #7); contact, code and venue resolve via {@link BookingMailFactsService} on the new
+ * set, the spots, distance and deadline via {@code booking}'s move facts (the receipt's snapshot,
+ * since the old set may be retired or renumbered). Async after-commit on the mail bulkhead;
+ * abandons count under {@link ObservabilityMetrics#MAIL_MOVE_ABANDONED}.
  */
 @Component
 class BookingMovedMailListener {

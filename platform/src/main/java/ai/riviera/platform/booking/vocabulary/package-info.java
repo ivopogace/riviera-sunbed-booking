@@ -1,12 +1,9 @@
 /**
- * Published <strong>vocabulary</strong> of the {@code booking} module (invariant #11) — the
- * {@link BookingId} typed id, the {@link RefundReason} carried by
- * {@code BookingCancelled} (policy, weather or venue change; ADR-0005), {@link OnlineTakings} returned by
- * the {@code api/DailyTakings} query port, {@link BookingNotificationInfo} returned by
- * the {@code api/BookingNotificationFacts} query port, and the {@link CancellationWindow}
- * phases (FREE/LATE/CLOSED) the events and views speak. Value types only — the module's
- * command services stay internal in {@code application/}; the published query ports live in the
- * sibling {@code api} named interface and published events in {@code events}. Granted as
+ * Published <strong>vocabulary</strong> of the {@code booking} module (invariant #11): value types
+ * such as the {@link BookingId} typed id, the {@link RefundReason} on {@code BookingCancelled}
+ * (ADR-0005), {@link OnlineTakings} and {@link BookingNotificationInfo} returned by the {@code api}
+ * query ports, and the {@link CancellationWindow} phases. Command services stay internal in
+ * {@code application/}; query ports live in {@code api}, events in {@code events}. Granted as
  * {@code booking::vocabulary} to consumers per least privilege.
  */
 @org.springframework.modulith.NamedInterface("vocabulary")

@@ -25,20 +25,20 @@ import ai.riviera.platform.operator.vocabulary.VenueRef;
  * JDBC adapter for the {@code operator} module's {@link Operators} port (ADR-0007 {@code adapter/out}).
  * Explicit SQL via {@link JdbcClient} in text blocks, named params, package-private (invariant #1,
  * mirroring {@code JdbcCustomerDirectory}). The {@code ACTIVE} token is bound from
- * {@link OperatorStatus} rather than inlined (invariant #6a).
+ * {@link OperatorStatus} rather than inlined (conventions §6a).
  */
 @Repository
 class JdbcOperators implements Operators {
 
-	/** SQL named-param / column key for the operator username (named, not duplicated — invariant #6a). */
+	/** SQL named-param / column key for the operator username (named, not duplicated — conventions §6a). */
 	private static final String USERNAME = "username";
-	/** SQL named-param key bound to the {@code PENDING} status token (named, not duplicated — #6a / S1192). */
+	/** SQL named-param key bound to the {@code PENDING} status token (named, not duplicated — §6a / S1192). */
 	private static final String PENDING_PARAM = "pending";
-	/** SQL named-param key bound to the {@code ACTIVE} status token (named, not duplicated — #6a / S1192). */
+	/** SQL named-param key bound to the {@code ACTIVE} status token (named, not duplicated — §6a / S1192). */
 	private static final String ACTIVE_PARAM = "active";
-	/** SQL named-param key bound to the {@code SUSPENDED} status token (invariant #6a). */
+	/** SQL named-param key bound to the {@code SUSPENDED} status token (conventions §6a). */
 	private static final String SUSPENDED_PARAM = "suspended";
-	/** SQL named-param key bound to the may-operate status tokens (invariant #6a). */
+	/** SQL named-param key bound to the may-operate status tokens (conventions §6a). */
 	private static final String OPERABLE_PARAM = "operable";
 	/** The may-operate set: ownership resolves for these statuses; tourist visibility stays ACTIVE-only. */
 	private static final List<String> MAY_OPERATE =
@@ -51,7 +51,7 @@ class JdbcOperators implements Operators {
 	private static final String ID_PARAM = "id";
 	/** SQL named-param key for the status a lifecycle transition writes (S1192). */
 	private static final String TARGET_PARAM = "target";
-	/** Result-set column holding an operator's registered contact address (named, not duplicated — #6a). */
+	/** Result-set column holding an operator's registered contact address (named, not duplicated — §6a). */
 	private static final String CONTACT_EMAIL = "contact_email";
 
 	private final JdbcClient jdbc;

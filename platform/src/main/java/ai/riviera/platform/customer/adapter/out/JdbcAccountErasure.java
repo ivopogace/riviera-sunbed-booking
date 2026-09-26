@@ -26,7 +26,7 @@ import ai.riviera.platform.customer.vocabulary.CustomerId;
 @Repository
 class JdbcAccountErasure implements AccountErasureStore {
 
-	/** SQL named-param keys, named not duplicated (invariant #6a). */
+	/** SQL named-param keys, named not duplicated (conventions §6a). */
 	private static final String ID = "id";
 	private static final String EMAIL = "email";
 	private static final String ACCOUNT_ID = "accountId";

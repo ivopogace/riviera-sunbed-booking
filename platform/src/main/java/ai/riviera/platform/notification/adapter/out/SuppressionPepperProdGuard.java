@@ -6,13 +6,10 @@ import org.springframework.stereotype.Component;
 
 /**
  * Fail-fast guard (ADR-0012), the pepper sibling of {@code MockMailerProdGuard}: the
- * email-suppression key HMAC must never run on the committed dev pepper in production. Unlike the
- * mock-transport guards this one is conditional — it exists under the {@code prod} profile and its
- * constructor throws only when the pepper property is blank or still the committed dev default, so
- * a correctly configured prod boot pays one string comparison. The pepper is a long-lived secret
- * (rotating it orphans every stored suppression row — the accepted ADR-0012 consequence), supplied
- * via {@code RIVIERA_SUPPRESSION_PEPPER}; dev and tests run on the committed default, which this
- * guard makes unusable in prod. Package-private (invariant #11); pinned by
+ * email-suppression key HMAC must never run on the committed dev pepper in production. Exists under
+ * {@code prod}; its constructor throws only when the pepper is blank or still the committed dev
+ * default. The pepper ({@code RIVIERA_SUPPRESSION_PEPPER}) is long-lived: rotating it orphans every
+ * stored suppression row (ADR-0012). Package-private (invariant #11); pinned by
  * {@code SuppressionPepperProdGuardTest}.
  */
 @Component

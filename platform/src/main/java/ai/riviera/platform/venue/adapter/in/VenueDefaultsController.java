@@ -6,13 +6,12 @@ import org.springframework.web.bind.annotation.RestController;
 import ai.riviera.platform.venue.application.VenueCreationProperties;
 
 /**
- * The operator-facing venue-creation defaults read (issue #692): {@code GET /api/venue-defaults}
- * serves the platform terms the create path will stamp — currently the default commission rate —
- * straight from {@link VenueCreationProperties}, the same bean the stamp reads, so the disclosed
- * figure and the stamped rate are one value by construction. Deliberately outside the
- * {@code /api/venues/{venueId}} path space (that read binds the segment as a {@code long}) and
- * gated to role OPERATOR in {@code SecurityConfig}; there is no ownership to assert — no venue
- * exists yet, the same posture as {@code POST /api/venues} itself.
+ * The operator-facing venue-creation defaults read: {@code GET /api/venue-defaults} serves the
+ * platform terms the create path will stamp — currently the default commission rate — straight
+ * from {@link VenueCreationProperties}, the bean the stamp reads, so disclosed and stamped rate are
+ * one value. Outside the {@code /api/venues/{venueId}} path space (that read binds the segment as a
+ * {@code long}); gated to role OPERATOR in {@code SecurityConfig}, with no ownership to assert — no
+ * venue exists yet, as for {@code POST /api/venues}.
  */
 @RestController
 class VenueDefaultsController {

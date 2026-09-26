@@ -15,13 +15,11 @@ import ai.riviera.platform.venue.vocabulary.SetPlacement;
 
 /**
  * The bulk beach-map save as a diff of the submitted layout against the stored active map, keyed
- * by grid cell: a stored set whose cell the submission still names is an {@link Update} under its
- * own id (whatever the label, tier, pool or price now say), a submitted cell no stored set occupies
- * is an insert, and a stored set whose cell is absent is removed. The sets a guest can be disturbed
- * by are the removed ones and the kept ones whose position number changes — a guest was told a row
- * and a number — so those alone are probed for a live claim; a row label changes in place, as a
- * rename does. A set that changes cell reaches this diff as a removal plus an insert: the request
- * carries no ids, so the cell is the identity. Rationale: RESPONSIBILITIES.md §venue.
+ * by grid cell: a stored set whose cell is still named is an {@link Update} under its own id, a
+ * submitted cell no stored set occupies is an insert, a stored set whose cell is absent is removed.
+ * Only the removed sets and kept ones whose position number changes can disturb a guest, so those
+ * alone are probed for a live claim. The request carries no ids, so a set that changes cell arrives
+ * as a removal plus an insert. Rationale: RESPONSIBILITIES.md §venue.
  */
 record LayoutDiff(List<Update> updates, List<SetCommand> inserts, List<PlacedSet> removed) {
 
@@ -102,10 +100,9 @@ record LayoutDiff(List<Update> updates, List<SetCommand> inserts, List<PlacedSet
 	}
 
 	/**
-	 * The {@code kept} disturbed sets whose stored row and position some other submitted set wants —
-	 * an update of another set or an insert. Written with the kept set in place, that command would
-	 * collide on the layout-uniqueness index, so the save refuses instead — a precise answer where
-	 * {@code set_position_cell_uniq} stays the race-safe backstop, as {@code LayoutCommand#duplicateWithin} does.
+	 * The {@code kept} disturbed sets whose stored row and position another submitted set wants:
+	 * written beside the kept set, it would collide on the layout-uniqueness index, so the save
+	 * refuses; {@code set_position_cell_uniq} stays the race-safe backstop.
 	 */
 	List<PlacedSet> displaced(Set<SetId> kept) {
 		Map<String, SetId> wanted = new HashMap<>();

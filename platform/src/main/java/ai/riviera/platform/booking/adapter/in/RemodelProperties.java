@@ -5,19 +5,12 @@ import java.time.Duration;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
 /**
- * The remodel zone bounds, bound from {@code riviera.booking.remodel.*}: {@code freeze-window} —
- * a claim whose service day opens within it (or already opened) pins its set (default 24h) — and
- * {@code refund-notice-floor} — a claim within it may be moved but never refunded by a remodel
- * (default 96h). Both are durations to the day's open in {@code Europe/Tirane}. Converted to the
- * application-layer {@code RemodelWindows} value by {@code RemodelConfig}.
- *
- * <p>Validated in the compact constructor rather than with {@code @Validated}: no JSR-303
- * implementation is on the classpath, so an annotation would bind and validate nothing. The floor
- * must lie strictly beyond the freeze window, or no move-only band exists and the two bounds
- * contradict each other for the claims between them.
- *
- * @param freezeWindow      default {@code PT24H}, at least {@link #MIN_WINDOW}
- * @param refundNoticeFloor default {@code PT96H}, strictly greater than {@code freezeWindow}
+ * The remodel zone bounds from {@code riviera.booking.remodel.*}, durations to the day's open in
+ * {@code Europe/Tirane}: {@code freeze-window} (default 24h, ≥ {@link #MIN_WINDOW}): a claim whose
+ * service day opens within it (or opened) pins its set; {@code refund-notice-floor} (default 96h,
+ * strictly beyond the freeze, or no move-only band exists): a claim within it moves, never refunds.
+ * Validated in the compact constructor, not {@code @Validated}: no JSR-303 implementation is on the
+ * classpath, so the annotation would validate nothing. Read via {@code RemodelConfig}.
  */
 @ConfigurationProperties("riviera.booking.remodel")
 public record RemodelProperties(Duration freezeWindow, Duration refundNoticeFloor) {

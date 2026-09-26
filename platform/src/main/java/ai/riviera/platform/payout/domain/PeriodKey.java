@@ -8,13 +8,12 @@ import java.util.regex.Pattern;
 
 /**
  * A settlement period — an ISO-8601 week in {@code Europe/Tirane} (invariant #6), rendered as
- * {@code IYYY-Www} (e.g. {@code 2026-W27}). This is the bucket a payout-ledger entry falls into (by its
- * own {@code created_at}) and the key a {@link PayoutBatch} is generated for (U9, issue #12).
+ * {@code IYYY-Www} (e.g. {@code 2026-W27}): the bucket a payout-ledger entry falls into (by its own
+ * {@code created_at}) and the key a {@link PayoutBatch} is generated for (U9).
  *
- * <p>The {@code value} format mirrors the DB {@code period_key} column, whose {@code DEFAULT}
- * computes the same {@code to_char(... AT TIME ZONE 'Europe/Tirane', 'IYYY"-W"IW')} string — so a key
- * parsed here and one stored by the database agree. The canonical constructor validates the format so a
- * malformed period (e.g. from a request param) is rejected at the boundary, not silently mismatched.
+ * <p>Must match the {@code period_key} column's {@code DEFAULT},
+ * {@code to_char(... AT TIME ZONE 'Europe/Tirane', 'IYYY"-W"IW')}, so parsed and stored keys agree;
+ * the constructor rejects a malformed value at the boundary.
  */
 public record PeriodKey(String value) {
 

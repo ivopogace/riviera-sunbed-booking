@@ -17,14 +17,12 @@ import ai.riviera.platform.venue.vocabulary.VenueId;
 
 /**
  * Admin endpoint for the weather refund (U9): full refunds for a washed-out venue+date
- * (invariant #10), regardless of cutoff. Driving adapter depending only on the booking module's
- * {@link RefundForWeather} port (invariant #11).
+ * (invariant #10), regardless of cutoff, via the {@link RefundForWeather} port (invariant #11).
  *
- * <p><strong>Operator-gated</strong> — this moves real money (refunds + payout reversals), so it must
- * never be public. {@code SecurityConfig} matches the weather-refund POST to role {@code OPERATOR}
- * <em>before</em> the public venue rules; an unauthenticated call is {@code 401}. The {@code date} is
- * <strong>required</strong> — a weather refund targets a specific declared day, never an implicit
- * "today" (a mistaken default could refund the wrong day's bookings).
+ * <p><strong>Operator-gated</strong>: it moves real money, so never public. {@code SecurityConfig}
+ * matches this POST to role {@code OPERATOR} <em>before</em> the public venue rules (anonymous →
+ * {@code 401}). {@code date} is <strong>required</strong>: an implicit "today" could refund the
+ * wrong day's bookings.
  */
 @RestController
 @RequestMapping("/api/venues")

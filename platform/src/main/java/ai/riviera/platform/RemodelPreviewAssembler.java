@@ -16,16 +16,12 @@ import ai.riviera.platform.venue.vocabulary.MoneyView;
 import ai.riviera.platform.venue.vocabulary.SetId;
 
 /**
- * The remodel picture on the wire, assembled once for the preview and for the two commit refusals
- * that answer with a fresh picture: {@code venue}'s disturbed sets with their walk-in holds and
- * {@code booking}'s classified claims become the five groups, {@code keep} (the sets that stay on the
- * map: the blocked claims', which the save keeps itself, and the held sets, which the operator must
- * keep, by id) and the {@link PreviewToken} over the classification.
- *
- * <p>The venue-change fee is quoted with the picture: {@code payout} decides the amount and it
- * reaches here through {@code booking}, which is what keeps this root class off {@code payout}
- * entirely (ADR-0020, ADR-0021). The total is the rate times the refund count — the picture's own
- * price, not a stored one; a commit snapshots what it actually charged onto its receipt.
+ * The remodel picture on the wire, for the preview and the two commit refusals that answer a fresh
+ * one: {@code venue}'s disturbed sets with walk-in holds and {@code booking}'s classified claims
+ * become the five groups, {@code keep} (by id: the blocked claims' sets, which the save keeps
+ * itself, and the held sets, which the operator must keep) and the {@link PreviewToken}. The fee
+ * quote reaches here via {@code booking}, keeping the root off {@code payout} (ADR-0020, ADR-0021);
+ * its total is rate × refund count, while a commit snapshots what it charged onto its receipt.
  */
 final class RemodelPreviewAssembler {
 

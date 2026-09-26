@@ -12,13 +12,9 @@ import ai.riviera.platform.venue.vocabulary.VenueId;
 public interface OnboardVenue {
 
 	/**
-	 * Create a venue from a validated command and record {@code creator} as its owner atomically
-	 * (creator-owns-on-create) — the venue starts owned by the operator that created it, so the
-	 * invariant-#13 ownership checks pass for the creator and reject everyone else. The venue starts
-	 * with no rating, no reviews, and the platform's default commission rate — stamped from
-	 * {@link VenueCreationProperties}, never taken from the command. A malformed command surfaces as
-	 * {@link IllegalArgumentException} (mapped to {@code 400} by the adapter); validation lives in
-	 * {@link NewVenueCommand}.
+	 * Create a venue and record {@code creator} as its owner atomically (invariant #13), with no
+	 * rating and the default commission from {@link VenueCreationProperties}, never the command. A
+	 * malformed command throws {@link IllegalArgumentException} (400), per {@link NewVenueCommand}.
 	 */
 	VenueId onboard(OperatorId creator, NewVenueCommand command);
 }

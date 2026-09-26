@@ -18,14 +18,12 @@ import ai.riviera.platform.venue.vocabulary.VenueId;
 
 /**
  * Serves {@link ViewBeachMap}: assert ownership, compose the map through this module's own
- * {@link VenueCatalog} (the tourist read, fence included — the editor seeded from it before this
- * read existed and keeps that behaviour), then ask {@link LiveClaims} which of the map's sets are
- * pinned. Package-private behind its port (invariant #11).
+ * {@link VenueCatalog} (the tourist read, fence included), then ask {@link LiveClaims} which of
+ * the map's sets are pinned. Package-private behind its port (invariant #11).
  *
  * <p>Ownership asserts <strong>first</strong> (invariant #13, BOLA): a non-owner is
  * {@code NotVenueOwnerException} → 403 before any existence probe, so the read discloses nothing
- * about venues you don't own — {@code 403} outranks {@code 404}, matching every sibling
- * venue-scoped service.
+ * about venues you don't own.
  */
 @Service
 class BeachMapReadService implements ViewBeachMap {

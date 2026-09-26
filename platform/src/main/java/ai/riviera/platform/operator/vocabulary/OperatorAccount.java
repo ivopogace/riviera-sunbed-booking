@@ -1,19 +1,12 @@
 package ai.riviera.platform.operator.vocabulary;
 
 /**
- * A decided operator account — one an admin can act on, i.e. {@code ACTIVE} or {@code SUSPENDED}.
- * The read behind the admin console's operator list, the counterpart of {@link PendingOperator}
- * for the approval queue. Both states are in one list deliberately: a suspended operator that vanished
- * from the console would make suspension a one-way door, recoverable only by hand-run SQL.
- *
- * <p>{@code contactEmail} is nullable: an operator provisioned directly (the bootstrap admin, and
- * anything created through {@code OperatorProvisioning#provision}) has no self-registration contact
- * address. {@code admin} surfaces the platform-admin flag so the console can mark those rows — the
- * self-suspend refusal itself is enforced server-side (AC-5), never by hiding a button.
- *
- * <p>The state is published as a {@code suspended} boolean rather than the status token: this list
- * only ever contains decided accounts ({@code ACTIVE}/{@code SUSPENDED}), so a boolean says
- * everything the console needs.
+ * A decided operator account ({@code ACTIVE} or {@code SUSPENDED}) for the admin console's list,
+ * counterpart of {@link PendingOperator}; both states share it so suspension stays reversible from
+ * the console. {@code contactEmail} is null for a directly provisioned operator (the bootstrap
+ * admin, anything from {@code OperatorProvisioning#provision}). {@code admin} lets the console mark
+ * admin rows; the self-suspend refusal is enforced server-side, never by hiding a button.
+ * {@code suspended} is a boolean because the list only ever holds decided accounts.
  */
 public record OperatorAccount(OperatorId id, String username, String contactEmail, boolean admin,
 		boolean suspended) {

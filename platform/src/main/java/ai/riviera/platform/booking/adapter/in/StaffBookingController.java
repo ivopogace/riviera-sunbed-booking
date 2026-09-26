@@ -28,16 +28,12 @@ import ai.riviera.platform.venue.vocabulary.VenueId;
 
 /**
  * Operator endpoints for the staff daily view (U8): a venue's settled bookings for one day —
- * confirmed, checked-in and no-show alike, each with its set, booking code and lifecycle
- * {@code status} — plus the check-in POST that
- * records a scanned booking's guest as arrived today. Driving adapter depending only on the
- * booking module's {@link ListDailyBookings} and {@link CheckInBooking} ports (invariant #11).
+ * confirmed, checked-in and no-show, each with set, code and {@code status} — plus the check-in
+ * POST. Depends only on the {@link ListDailyBookings} and {@link CheckInBooking} ports (#11).
  *
- * <p><strong>Operator-gated</strong> — booking codes are bearer credentials (invariant #7), so this
- * read must never be public. {@code SecurityConfig} matches the staff-bookings GET to role
- * {@code OPERATOR} <em>before</em> the public venue GET rule; an unauthenticated call is
- * {@code 401}. {@code date} defaults to today in {@code Europe/Tirane} (invariant #6) — the day
- * staff are working — computed from the injected UTC {@link Clock}.
+ * <p><strong>Operator-gated</strong>, never public: codes are bearer credentials (invariant #7).
+ * {@code SecurityConfig} must match this GET to {@code OPERATOR} <em>before</em> the public venue
+ * GET rule (unauthenticated: {@code 401}). {@code date} defaults to today in Tirane (invariant #6).
  */
 @RestController
 @RequestMapping("/api/venues")
@@ -69,10 +65,9 @@ class StaffBookingController {
 	}
 
 	/**
-	 * The staff check-in: scan or type the booking code, stamp its guest as attended today
-	 * exactly once. The code travels in the path (ADR-0006's standing
-	 * convention) and never comes back: the success view carries set + date, and every problem body
-	 * keeps the redacted/overridden {@code instance} plus a date-only detail (invariant #7).
+	 * Stamps the scanned or typed code's guest as attended today, exactly once. The code travels in
+	 * the path (ADR-0006) and never comes back: the success view carries set + date, and every
+	 * problem body keeps the code-free {@code instance} plus a date-only detail (invariant #7).
 	 */
 	@PostMapping("/{venueId}/bookings/{code}/check-in")
 	ResponseEntity<?> checkIn(Authentication authentication, @PathVariable long venueId,

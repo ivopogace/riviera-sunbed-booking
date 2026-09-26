@@ -13,18 +13,14 @@ import ai.riviera.platform.notification.application.MailAttemptOutcome;
 import ai.riviera.platform.notification.application.MailAttemptSource;
 
 /**
- * {@link ConfirmationMailAttempts} over the V36 {@code booking_confirmation_mail_attempt} table.
- * Package-private driven adapter (invariant #11), plain {@code JdbcClient} + text-block SQL.
+ * {@link ConfirmationMailAttempts} over the V36 table, package-private (invariant #11).
  *
- * <p><strong>No {@code @Transactional}, deliberately.</strong> The confirmation listener holds no
- * transaction (#371 dropped {@code REQUIRES_NEW} on purpose), so this insert auto-commits — which is
- * exactly what makes a {@code TRANSPORT_FAILED} row survive the exception the listener then rethrows
- * to keep its publication outstanding. Joining an ambient transaction would roll the evidence back
- * with the failure it records.
+ * <p>Never {@code @Transactional}: the confirmation listener holds no transaction, so this insert
+ * auto-commits and a {@code TRANSPORT_FAILED} row survives the exception the listener rethrows;
+ * joining an ambient transaction would roll the evidence back with the failure it records.
  *
- * <p>Tokens are the enum constants' names, matching V36's {@code CHECK} lists; the read maps them back
- * with {@code valueOf}, so a token the enum cannot spell fails loudly here rather than being coerced
- * into a neighbouring value.
+ * <p>Tokens are the enum constants' names (V36's {@code CHECK} lists), read back with
+ * {@code valueOf}, so a token the enum cannot spell fails loudly rather than being coerced.
  */
 @Component
 class JdbcConfirmationMailAttempts implements ConfirmationMailAttempts {

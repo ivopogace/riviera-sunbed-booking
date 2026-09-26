@@ -6,18 +6,13 @@ import java.util.Set;
 import ai.riviera.platform.operator.vocabulary.VenueRef;
 
 /**
- * The {@code operator} module's published tourist-visibility port — a synchronous inbound query
- * answering, per venue, whether its owning operator is {@code ACTIVE}. This is the one home of the
- * platform rule: <strong>a venue is visible to tourists iff its owning operator is
- * {@code ACTIVE}</strong>; a venue with no ownership row has no {@code ACTIVE} owner and is not
- * visible (fail-closed). Approval flips a venue live with no further action, suspension hides it,
- * reinstatement shows it again.
+ * Tourist-visibility query, the one home of the rule: a venue is visible to tourists iff its
+ * owning operator is {@code ACTIVE}; a venue with no ownership row is not visible (fail-closed).
+ * Approval shows a venue, suspension hides it, reinstatement shows it again.
  *
- * <p>Consumers fence <em>discovery and new bookings</em> only: {@code venue} filters its tourist
- * reads (the discovery list, the beach map, the availability calendar and the public review list),
- * {@code booking} refuses a reserve attempt. Sold-booking paths (code-gated view,
- * cancel, check-in, mails) deliberately never consult this port — a booking made while the venue
- * was visible keeps working. Rationale: RESPONSIBILITIES.md §operator.
+ * <p>Fences discovery and new bookings only: {@code venue}'s discovery list, beach map, calendar
+ * and public reviews, and {@code booking}'s reserve. Sold-booking paths (code-gated view, cancel,
+ * check-in, mails) never consult it. Rationale: RESPONSIBILITIES.md §operator.
  */
 public interface VenueVisibility {
 

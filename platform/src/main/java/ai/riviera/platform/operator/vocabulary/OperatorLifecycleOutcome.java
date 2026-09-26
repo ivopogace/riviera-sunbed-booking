@@ -1,16 +1,12 @@
 package ai.riviera.platform.operator.vocabulary;
 
 /**
- * How an admin-driven operator lifecycle transition ended — suspend (ACTIVE → SUSPENDED) or
- * reinstate (SUSPENDED → ACTIVE). A typed outcome rather than an exception: a transition refused
- * because the account is in the wrong status is expected flow, not an exceptional condition
+ * How an admin-driven suspend (ACTIVE → SUSPENDED) or reinstate (SUSPENDED → ACTIVE) ended. A
+ * typed outcome, not an exception: a wrong-status refusal is expected flow
  * ({@code riviera-java-conventions} §6).
  *
- * <p>{@link Changed} carries the operator's <strong>username</strong> because the caller — the
- * platform edge — needs the principal name to revoke that operator's live sessions, and asking the
- * module a second time would open a window between the status write and the revocation. This mirrors
- * the shipped {@code ResetPasswordOutcome.Reset(accountId, email)} on the customer side. Publishing
- * the username across the seam is not new: {@link PendingOperator} already does.
+ * <p>{@link Changed} carries the username so the edge can revoke that operator's live sessions
+ * without a second read after the status write. Rationale: RESPONSIBILITIES.md §operator.
  */
 public sealed interface OperatorLifecycleOutcome
 		permits OperatorLifecycleOutcome.Changed, OperatorLifecycleOutcome.WrongStatus,

@@ -5,14 +5,12 @@ import java.util.Optional;
 import ai.riviera.platform.operator.vocabulary.OperatorId;
 
 /**
- * Resolves an authenticated principal to its {@link OperatorId} (invariant #11 — a pure mapping
- * query owned by {@code operator}; it does <em>not</em> read the Spring Security context — that is
- * an edge concern the controllers handle, then hand the username here). Used by the venue-scoped
- * controllers to turn {@code authentication.getName()} into the id they pass to their service.
+ * Resolves an authenticated principal's username to its {@link OperatorId} (invariant #11): a pure
+ * mapping query. Reading the Spring Security context stays with the edge controllers, which hand
+ * the username here and pass the id to their venue-scoped service.
  *
- * <p>Login/credentials themselves are a platform/edge concern. This port only answers
- * "which operator is this username?", and only for the may-operate set ({@code ACTIVE} or
- * {@code PENDING} — approval gates tourist visibility, not console access).
+ * <p>Answers only for the may-operate set ({@code ACTIVE} or {@code PENDING} — approval gates
+ * tourist visibility, not console access). Login and credentials are edge concerns.
  */
 public interface OperatorDirectory {
 

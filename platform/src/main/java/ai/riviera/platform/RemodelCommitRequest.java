@@ -9,11 +9,10 @@ import ai.riviera.platform.venue.vocabulary.MoneyView;
 import ai.riviera.platform.venue.vocabulary.Pool;
 
 /**
- * The remodel commit's body — the bulk beach-map save's body verbatim ({@code sets} plus the loaded
- * {@code expectedVersion} token), the {@code previewToken} the preview answered, and the operator's
- * refund confirmation: the count they read off the preview and why they are remodelling. Both are
- * absent from a commit that refunds nobody, which is the only case that needs neither; a picture
- * that refunds is answered {@code 409 REFUND_NOT_CONFIRMED} rather than validated here, since only
+ * The remodel commit's body: the bulk beach-map save's body verbatim ({@code sets} plus the loaded
+ * {@code expectedVersion} token), the preview's {@code previewToken}, and the operator's refund
+ * confirmation (the count read off the preview and the reason), both absent if nobody is refunded.
+ * A refunding picture is not validated here but answered {@code 409 REFUND_NOT_CONFIRMED}: only
  * the classification re-derived under lock knows the number. A missing required field, an unknown
  * pool or tier token, or a cell off the save's rules is {@code 400 INVALID_REQUEST}.
  */

@@ -12,14 +12,13 @@ import ai.riviera.platform.operator.vocabulary.VenueRef;
 import ai.riviera.platform.venue.vocabulary.VenueId;
 
 /**
- * The staff daily-bookings use case (U8): list a venue's confirmed bookings for a day. A thin
- * read delegating straight to the {@link Bookings} port — package-private behind
- * {@link ListDailyBookings} (invariant #11); read-only, so no {@code @Transactional}. The booking
- * code is carried through untouched and never logged (invariant #7).
+ * The staff daily-bookings use case: list a venue's settled bookings for a day. A thin read
+ * delegating to the {@link Bookings} port behind {@link ListDailyBookings}; read-only, so no
+ * {@code @Transactional}. The booking code is carried through untouched and never logged (#7).
  *
- * <p>Per-venue authorization (invariant #13): the first act is {@link VenueOwnership#assertOwns} on
- * the acting operator, so booking codes for one venue never leak to another operator — the check is
- * here in the application service, not the controller.
+ * <p>Per-venue authorization (invariant #13): the first act is
+ * {@link VenueOwnership#assertOwns}, so one venue's booking codes never leak to another operator —
+ * here, never in the controller.
  */
 @Service
 class DailyBookingsService implements ListDailyBookings {

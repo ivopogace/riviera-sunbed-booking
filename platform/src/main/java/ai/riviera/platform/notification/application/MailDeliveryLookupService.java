@@ -18,19 +18,12 @@ import ai.riviera.platform.venue.vocabulary.SetId;
 
 /**
  * Assembles the admin mail-delivery view: address → guest contact → that contact's bookings →
- * each booking's recorded mail attempts, with the venue name read live.
+ * each booking's recorded mail attempts, with the venue name read live. The address stops at
+ * {@code customer::api}; every later read is by id, so no contact PII reaches {@code booking}.
  *
- * <p><strong>The address stops at {@code customer::api}.</strong> It is resolved to a
- * {@link CustomerId} and every subsequent read is by id, so no contact PII crosses into
- * {@code booking} or is stored by this module — the same posture as the confirmation mail itself.
- *
- * <p><strong>Unknown address and known-address-with-no-bookings return the same empty list.</strong>
- * Not laziness: a distinguishable answer would turn an admin surface into an "is this address known"
- * oracle, and the admin gains nothing from the distinction — either way there is no booking to act on.
- *
- * <p>Attempts are fetched in <strong>one</strong> read for the whole page and grouped in memory, rather
- * than per booking. The venue name is the one genuinely per-row read, and it goes through the same
- * {@code venue.api.SetBookingFacts} the mail body uses — bounded by the port's own 20-booking cap.
+ * <p>An unknown address and one with no bookings return the same empty list, never an "is this
+ * address known" oracle. Attempts are read once per page and grouped in memory; the venue name
+ * ({@code SetBookingFacts}) is the one per-row read, bounded by {@code CustomerBookings}' 20 cap.
  */
 @Service
 class MailDeliveryLookupService implements MailDeliveryLookup {

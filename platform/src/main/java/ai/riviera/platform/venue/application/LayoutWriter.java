@@ -17,17 +17,12 @@ import ai.riviera.platform.venue.vocabulary.LayoutRejection;
 import ai.riviera.platform.venue.vocabulary.SetId;
 
 /**
- * The one bulk layout write, shared by the save and the remodel commit: the shape checks, the venue
- * row lock and token compare, the {@code FOR UPDATE} over every active set row, the cell-keyed
- * {@link LayoutDiff}, then the caller's {@link RemodelGate} — asked once, with the disturbed sets and
- * their walk-in holds, before anything is written — then the sets the gate kept are taken out of the
- * diff and a submitted set wanting one's label refuses the write, then the save's own live-claim
- * probe over what is still disturbed, then the write: removals (retire with history, delete
- * without), parked labels, in-place updates, inserts, the token. The save's gate always proceeds
- * keeping nothing, so the probe alone decides; the commit's gate settles the bookings first and names
- * the sets it kept for the ones it could not, and the probe then finds nothing unless the gate left a
- * claim behind. Runs inside the caller's transaction, after the caller asserted ownership (invariant
- * #13). Rationale: RESPONSIBILITIES.md §venue.
+ * The one bulk layout write, shared by the save and the remodel commit: shape checks, venue row
+ * lock + token compare, {@code FOR UPDATE} on every active set, the cell-keyed {@link LayoutDiff},
+ * the caller's {@link RemodelGate} (asked once with the disturbed sets' walk-in holds), kept sets
+ * dropped (a set wanting one's slot refuses), the live-claim probe on what is still disturbed,
+ * then removals (retired if booked, else deleted), parked labels, updates, inserts, token bump.
+ * In the caller's transaction, ownership asserted (#13). Rationale: RESPONSIBILITIES.md §venue.
  */
 @Component
 class LayoutWriter {

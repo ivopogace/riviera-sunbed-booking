@@ -5,12 +5,8 @@ import java.time.Instant;
 import ai.riviera.platform.booking.vocabulary.BookingId;
 
 /**
- * One booking-confirmation mail attempt and what became of it (#380) — a row of the delivery history
- * an admin reads, and the whole of what this module records about a send.
- *
- * <p>Deliberately four fields. There is no recipient address (it stays inside {@code customer},
- * ADR-0010) and no arrival code (invariant #7); the booking id is the key, and the address is resolved
- * live at display time.
+ * One booking-confirmation mail attempt and what became of it — a delivery-history row. It holds no
+ * recipient address ({@code customer}, ADR-0010) and no arrival code (invariant #7).
  *
  * @param bookingId the booking whose confirmation this attempt was for
  * @param source what triggered it — the registry listener, or an admin

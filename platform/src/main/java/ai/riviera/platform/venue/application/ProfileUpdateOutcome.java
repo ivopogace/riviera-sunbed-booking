@@ -1,14 +1,11 @@
 package ai.riviera.platform.venue.application;
 
 /**
- * The closed set of outcomes of {@link EditVenueProfile#updateProfile}. Dedicated to the
- * profile write — unlike the shared {@link ChangeOutcome}/{@link SetRejection}, it can be
- * {@code STALE_WRITE} (optimistic-concurrency loss), a state the beach-map edits
- * ({@code addSet}/{@code editSet}/{@code repriceRow}/{@code replaceLayout}) can never reach, so it
- * does not belong on their shared rejection type. A typed outcome, not an exception — a lost
- * optimistic-lock race is expected flow (riviera-java-conventions §6). The REST adapter maps each
- * to one HTTP status via an exhaustive {@code switch}: {@code APPLIED}→204, {@code NO_SUCH_VENUE}→404,
- * {@code STALE_WRITE}→409.
+ * The closed set of outcomes of {@link EditVenueProfile#updateProfile}, dedicated to the profile
+ * write rather than the beach-map edits' {@link ChangeOutcome}/{@link SetRejection}. A typed
+ * outcome, not an exception — a lost optimistic-lock race ({@code STALE_WRITE}) is expected flow
+ * (riviera-java-conventions §6). The REST adapter maps each via an exhaustive {@code switch}:
+ * {@code APPLIED}→204, {@code NO_SUCH_VENUE}→404, {@code STALE_WRITE}→409.
  */
 public enum ProfileUpdateOutcome {
 

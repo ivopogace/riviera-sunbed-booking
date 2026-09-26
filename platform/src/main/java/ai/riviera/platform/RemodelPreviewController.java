@@ -22,16 +22,12 @@ import ai.riviera.platform.venue.vocabulary.LayoutPreview;
 import ai.riviera.platform.venue.vocabulary.VenueId;
 
 /**
- * The remodel preview: a dry run of the bulk beach-map save that answers what it would do to every
- * live claim, without writing. Lives at the platform edge because it composes two modules that may
- * not see each other — {@code venue} diffs the cells and names the disturbed sets with their
- * walk-in holds, {@code booking} classifies the live bookings on them — and only the root may reach
- * both (ADR-0020). Each port asserts venue ownership itself (invariant #13); the edge resolves the
- * principal, maps the rejections and hands the two answers to {@link RemodelPreviewAssembler}.
- *
- * <p>The outcome→HTTP map: a preview → {@code 200}; {@code NO_SUCH_VENUE} → {@code 404};
- * {@code STALE_WRITE} → {@code 409}; a non-owner → {@code 403} via {@code ApiErrorHandler}. The
- * answer is a snapshot: the commit re-decides under its locks against the token this answer carries.
+ * The remodel preview: a dry run of the bulk beach-map save naming what it would do to every live
+ * claim, without writing. At the edge because it composes {@code venue} (the disturbed sets and
+ * their walk-in holds) and {@code booking} (their live bookings' classification), which may not see
+ * each other (ADR-0020). Ports assert ownership (invariant #13): a non-owner is {@code 403} via
+ * {@code ApiErrorHandler}; {@code NO_SUCH_VENUE} → {@code 404}, {@code STALE_WRITE} → {@code 409}.
+ * The answer is a snapshot: the commit re-decides under its locks against the token it carries.
  */
 @RestController
 @RequestMapping("/api/venues")

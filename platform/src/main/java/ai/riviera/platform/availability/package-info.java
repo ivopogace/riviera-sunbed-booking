@@ -1,16 +1,10 @@
 /**
- * The availability module — the per-{@code (set, date)} source of truth
- * (free / booked-online / staff-marked). The <strong>only</strong> writer of that
- * table; enforces invariant #2 (a set is held by at most one party per date) via a
- * unique constraint plus a row-lock / {@code INSERT ... ON CONFLICT} claim.
- * No {@code domain} package, deliberately: a Java class asserting that rule would be a weaker
- * restatement of the constraint (ADR-0018).
- *
- * <p>Full-module layout (ADR-0007): it owns an application service (the synchronous
- * claim port with real concurrency semantics), so it takes the full template —
- * {@code api} + {@code vocabulary} + {@code application} + {@code adapter.in} + {@code adapter.out}
- * (no {@code domain} today). It implements {@code venue::spi}
- * ({@code SetAvailabilityLookup}); it owns no {@code spi} of its own.
+ * The availability module — the per-{@code (set, date)} source of truth (free / booked-online /
+ * staff-marked) and the <strong>only</strong> writer of that table; enforces invariant #2 via a
+ * unique constraint plus a row-lock / {@code INSERT ... ON CONFLICT} claim. No {@code domain}
+ * package: the constraint is the rule (ADR-0018). Otherwise the full template (ADR-0007):
+ * {@code api} + {@code vocabulary} + {@code application} + {@code adapter.in}/{@code adapter.out};
+ * it implements {@code venue::spi} ({@code SetAvailabilityLookup}) and owns no {@code spi}.
  */
 @org.springframework.modulith.ApplicationModule(
     displayName = "Availability",

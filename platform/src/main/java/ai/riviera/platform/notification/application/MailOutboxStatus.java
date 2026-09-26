@@ -3,12 +3,8 @@ package ai.riviera.platform.notification.application;
 import java.time.Duration;
 
 /**
- * What the admin console shows before anyone presses anything: how much mail the registry still
- * owes, and whether the lever is currently accepting.
- *
- * <p>This read exists because a resubmit button with no count is a blind one, and every admin screen
- * is backed by a real endpoint rather than a drawn placeholder. It is the same scoped count the
- * resubmission computes, so the two can never disagree about what "outstanding" means.
+ * What the admin console shows before anyone presses anything: the mail the registry still owes
+ * (the same scoped count the resubmission computes) and whether the lever is accepting.
  *
  * @param outstanding publications this module's listeners still owe — see
  *        {@link MailOutbox#countOutstanding()} for why a completed mail can never appear here

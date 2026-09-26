@@ -13,16 +13,12 @@ import ai.riviera.platform.booking.application.Bookings;
 import ai.riviera.platform.booking.application.cancel.CancellationPolicy;
 
 /**
- * The single confirm seam (invariant #11 event spine): transitions a booking to {@code CONFIRMED}
- * and publishes {@code BookingConfirmed} from one place, so both the stub path and the Stripe
- * webhook path announce the fact identically. {@code payout} accrues off this event (U5, issue #9).
- *
- * <p>Package-private {@code @Service} behind the {@link ConfirmBooking} port (the public seam,
- * invariant #11). {@code @Transactional} so the publish enrolls in the caller's transaction — the
- * Event Publication Registry persists the publication on commit and delivery is {@code AFTER_COMMIT}
- * to the async {@code payout} listener. The event payload is built from the facts the transition
- * {@code RETURNING}s, never from a second read (no race; correct for the webhook path, which holds
- * only a {@code bookingId}).
+ * The single confirm seam behind {@link ConfirmBooking} (invariant #11): transitions a booking to
+ * {@code CONFIRMED} and publishes {@code BookingConfirmed}, which {@code payout} accrues off.
+ * {@code @Transactional} so the publish enrolls in the transition's transaction — the Event
+ * Publication Registry persists it on commit and delivers {@code AFTER_COMMIT}. The payload is
+ * built from the facts the transition {@code RETURNING}s, never from a second read (no race; the
+ * webhook path holds only a {@code bookingId}).
  */
 @Service
 class ConfirmBookingService implements ConfirmBooking {

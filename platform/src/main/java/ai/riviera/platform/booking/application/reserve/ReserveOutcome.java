@@ -3,14 +3,12 @@ package ai.riviera.platform.booking.application.reserve;
 import ai.riviera.platform.venue.vocabulary.SetBookingInfo;
 
 /**
- * The result of the committed <em>reserve</em> phase of Instant-Book: either a
- * persisted {@code AWAITING_PAYMENT} booking already holding its {@code (set, date)} claim, or a
- * rejection that never touched the claim. {@link CreateBookingService} switches on this, then
- * collects payment <strong>after</strong> the reserve transaction has committed — so the claim row
- * lock is never held across the Stripe network call (risk R-3).
- *
- * <p>Package-private, sealed — an internal value of the create orchestration, not a cross-module
- * seam (invariant #11; riviera-java-conventions: typed outcomes for expected flows).
+ * The result of the committed <em>reserve</em> phase of Instant-Book: either a persisted
+ * {@code AWAITING_PAYMENT} booking already holding its {@code (set, date)} claim, or a rejection
+ * that never touched the claim. {@link CreateBookingService} switches on this, then collects
+ * payment <strong>after</strong> the reserve commit, so no claim row lock is held across the
+ * Stripe call (rationale: RESPONSIBILITIES.md §booking). Package-private, sealed — not a
+ * cross-module seam (invariant #11).
  */
 sealed interface ReserveOutcome {
 

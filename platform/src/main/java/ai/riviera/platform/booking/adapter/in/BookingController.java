@@ -31,13 +31,11 @@ import ai.riviera.platform.customer.vocabulary.CustomerAccountId;
 import ai.riviera.platform.venue.vocabulary.SetId;
 
 /**
- * Public tourist booking endpoint (U3). Driving adapter — depends only on the
- * {@code booking} module's {@link CreateBooking} port (invariant #11). Maps the sealed
- * {@link BookingOutcome} to HTTP via an exhaustive {@code switch}: {@code Confirmed}→201,
- * {@code SET_TAKEN}→409, {@code NOT_ONLINE_POOL}/{@code BOOKING_CLOSED}/{@code VENUE_CLOSED}/
- * {@code RANGE_NOT_OFFERED}/{@code STAY_TOO_LONG}→422,
- * {@code NO_SUCH_SET}→404; malformed input→400 via {@code ApiErrorHandler}. Errors are
- * RFC-7807 {@link ProblemDetail} built by {@link ApiProblem}.
+ * Public tourist booking endpoint (U3), over {@link CreateBooking} (invariant #11). Maps the sealed
+ * {@link BookingOutcome} exhaustively: {@code Confirmed}→201, {@code SET_TAKEN}→409,
+ * {@code NOT_ONLINE_POOL}/{@code BOOKING_CLOSED}/{@code VENUE_CLOSED}/{@code RANGE_NOT_OFFERED}/
+ * {@code STAY_TOO_LONG}→422, {@code NO_SUCH_SET}→404; malformed input→400 via
+ * {@code ApiErrorHandler}. Errors are RFC-7807 {@link ProblemDetail} built by {@link ApiProblem}.
  */
 @RestController
 @RequestMapping("/api/bookings")
@@ -70,7 +68,7 @@ class BookingController {
 	}
 
 	/**
-	 * The pre-reserve cancellation-terms quote for a set + date (#795) — a public tourist read (the
+	 * The pre-reserve cancellation-terms quote for a set + date — a public tourist read (the
 	 * venue-map-read precedent; invariant #13 targets operator surfaces). The literal segment ranks
 	 * above the sibling {@code /{code}} template, so neither route shadows the other.
 	 */
@@ -95,10 +93,9 @@ class BookingController {
 	}
 
 	/**
-	 * Cancel a booking by its code (U6). The refund is computed server-side (invariant #10) — no
-	 * request body. {@code Cancelled}→200, {@code NotFound}→404, {@code NotCancellable} and
-	 * {@code WindowClosed}→409 under distinct codes. The code is the bearer credential (invariant #7)
-	 * and is never logged.
+	 * Cancel a booking by its code (U6); refund computed server-side (invariant #10), no body.
+	 * {@code Cancelled}→200, {@code NotFound}→404, {@code NotCancellable}/{@code WindowClosed}→409
+	 * under distinct codes. The code is the bearer credential (invariant #7), never logged.
 	 */
 	@PostMapping("/{code}/cancel")
 	ResponseEntity<?> cancel(@PathVariable String code) {
@@ -116,10 +113,9 @@ class BookingController {
 	}
 
 	/**
-	 * Withdraw a pending booking request by its code. Like cancel, the code is the whole
-	 * authorization (invariant #7) and there is no request body. {@code Withdrawn}→200,
-	 * {@code NO_SUCH_BOOKING}→404, {@code NOT_PENDING}→409. No money is involved — a pending request
-	 * has no PaymentIntent on record — so there is no refund to report, only the new terminal status.
+	 * Withdraw a pending booking request by its code: the code is the whole authorization
+	 * (invariant #7), no body. {@code Withdrawn}→200, {@code NO_SUCH_BOOKING}→404,
+	 * {@code NOT_PENDING}→409. No refund: a pending request has no PaymentIntent on record.
 	 */
 	@PostMapping("/{code}/withdraw")
 	ResponseEntity<?> withdraw(@PathVariable String code) {
@@ -176,10 +172,9 @@ class BookingController {
 	}
 
 	/**
-	 * The code-scoped request paths ({@code /api/bookings/{code}…}) carry the booking code — a
-	 * bearer credential (invariant #7). {@link ApiProblem} already redacts {@code instance}; this
-	 * controller overrides it with the known-safe collection path, which is more informative than
-	 * the redaction placeholder. The ITs assert the code never appears in an error body.
+	 * Code-scoped paths carry the booking code, a bearer credential (invariant #7).
+	 * {@link ApiProblem} redacts {@code instance}; this overrides it with the known-safe collection
+	 * path, more telling than the placeholder. ITs assert the code never appears in an error body.
 	 */
 	private static final URI BOOKINGS_PATH = URI.create("/api/bookings");
 

@@ -9,18 +9,12 @@ import org.springframework.web.util.UriComponentsBuilder;
 import ai.riviera.platform.customer.vocabulary.SsoProvider;
 
 /**
- * Default-profile ({@code @Profile("!sso")}) mock {@link SsoGateway} that plays a cooperative identity
- * provider with canned, verified identities (design D-4) — the same pattern as
- * {@code StubPaymentGateway}. It makes "Continue with Google/Apple" demoable end-to-end with zero
- * external credentials: {@link #authorizationRequest} points the browser at the in-app mock IdP endpoint
- * ({@code MockSsoIdpController}), which redirects back to the real callback, and {@link #exchangeCode}
- * returns the provider's canned identity.
- *
- * <p>{@code @Profile("!sso")} so exactly one {@link SsoGateway} bean exists: the mock when {@code sso} is
- * absent, {@code RealSsoGateway} when it is present. {@code MockSsoProdGuard} additionally forbids this
- * mock from ever running under the {@code prod} profile. Identities are <strong>deterministic per
- * provider</strong>, so a second "Continue with Google" reuses the same account (a distinct provider is a
- * distinct account). Package-private (invariant #11).
+ * Mock {@link SsoGateway} under {@code @Profile("!sso")}, so exactly one gateway bean exists: this,
+ * or {@code RealSsoGateway} under {@code sso}; {@code MockSsoProdGuard} bars it from {@code prod}.
+ * A cooperative IdP with canned, verified identities (design D-4), like {@code StubPaymentGateway},
+ * so "Continue with Google/Apple" demos with no external credentials: {@link #authorizationRequest}
+ * sends the browser to {@code MockSsoIdpController}, which redirects to the real callback.
+ * Identities are fixed per provider, so a repeat sign-in reuses its account. Package-private (#11).
  */
 @Component
 @Profile("!sso")

@@ -12,14 +12,11 @@ import ai.riviera.platform.payment.application.PaymentGateway;
 
 /**
  * Default-profile stub for the outbound {@link PaymentGateway}: collection always succeeds,
- * synchronously and in-process (no external call, so it is safe to run inside the booking's
- * transaction). This keeps dev/CI and the U3 synchronous flow green; the {@code stripe}-profile
- * {@code StripePaymentGateway} (U4) does the real PaymentIntent + signature-verified webhook
- * collection (invariant #8).
+ * synchronously and in-process (no external call, so safe inside the booking's transaction). The
+ * {@code stripe}-profile {@code StripePaymentGateway} collects for real via webhook (invariant #8).
  *
- * <p>{@code @Profile("!stripe")} so exactly one {@link PaymentGateway} bean exists: the stub
- * when the {@code stripe} profile is absent, the Stripe adapter when it is present.
- * Package-private (invariant #11). No Stripe types here.
+ * <p>{@code @Profile("!stripe")} so exactly one {@link PaymentGateway} bean exists. Package-private
+ * (invariant #11). No Stripe types here.
  */
 @Component
 @Profile("!stripe")

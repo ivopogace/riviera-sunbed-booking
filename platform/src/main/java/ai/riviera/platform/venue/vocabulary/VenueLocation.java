@@ -4,15 +4,13 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 
 /**
- * A venue's position on the riviera map, in WGS84 decimal degrees. A venue either has one or has
- * none: absence is a null {@code VenueLocation}, never a half-filled pair, which is why both
- * components are required here. The Java mirror of {@code venue_location_check} (V58, ADR-0018 §3)
- * — the duplication is intended, and the CHECK stays the race-safe backstop.
+ * A venue's position on the riviera map, in WGS84 decimal degrees. Absence is a null
+ * {@code VenueLocation}, never a half-filled pair, so both components are required. Mirrors
+ * {@code venue_location_check} (V58, ADR-0018 §3); the CHECK stays the race-safe backstop.
  *
  * <p>Both coordinates are normalised to six decimal places (~0.11 m), the scale the columns store,
  * so a pin a write echoes equals the one a later read returns and {@code equals} is stable.
- *
- * <p>Rationale: RESPONSIBILITIES.md §venue.
+ * Rationale: RESPONSIBILITIES.md §venue.
  */
 public record VenueLocation(BigDecimal latitude, BigDecimal longitude) {
 

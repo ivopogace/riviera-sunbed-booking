@@ -14,12 +14,8 @@ public final class AggregateRating {
 
 	/**
 	 * The mean of {@code count} reviews totalling {@code sumStars}, in tenths, <strong>rounded
-	 * half-up</strong>: adding {@code count / 2} before the truncating division is what lifts an
-	 * exact half to the next tenth (3.75 stars ⇒ 38, not 37).
-	 *
-	 * <p>Zero reviews short-circuits to {@code 0} before the division — a venue with none reads
-	 * {@code 0/0}, which the surfaces render as "New" rather than "0.0". With stars bounded 1..5 the
-	 * result is otherwise 10..50, inside venue's {@code rating_tenths BETWEEN 0 AND 50} check.
+	 * half-up</strong> by adding {@code count / 2} before the truncating division (3.75 ⇒ 38).
+	 * Zero reviews returns {@code 0} (read as {@code 0/0}, rendered "New"); otherwise 10..50.
 	 */
 	public static int tenths(long sumStars, int count) {
 		if (count == 0) {

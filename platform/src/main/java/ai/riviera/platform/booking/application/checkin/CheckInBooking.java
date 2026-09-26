@@ -14,13 +14,9 @@ import ai.riviera.platform.venue.vocabulary.VenueId;
 public interface CheckInBooking {
 
 	/**
-	 * Check the guest with this {@code code} in at {@code venueId}. Venue-scoped (invariant #13):
-	 * asserts {@code operator} owns {@code venueId} <em>first</em> — {@code 403} on a mismatch,
-	 * before any lookup. Single-use per service day: a second scan on the same day answers
-	 * {@link CheckInResult.AlreadyCheckedIn}; concurrent scans yield exactly one
-	 * {@link CheckInResult.CheckedIn}. Unknown codes and another
-	 * venue's codes are one indistinguishable {@link CheckInResult.NotFound} (non-enumerating), and
-	 * no outcome ever carries the code back (invariant #7).
+	 * Venue-scoped (#13): {@code 403} unless {@code operator} owns {@code venueId}, before lookup.
+	 * Once per service day (a repeat is {@code AlreadyCheckedIn}; concurrent scans, one
+	 * {@code CheckedIn}). Unknown and other-venue codes: one {@code NotFound}. No code echoed (#7).
 	 */
 	CheckInResult checkIn(OperatorId operator, VenueId venueId, String code);
 }

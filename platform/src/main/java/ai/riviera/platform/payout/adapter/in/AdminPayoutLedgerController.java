@@ -16,10 +16,9 @@ import ai.riviera.platform.venue.vocabulary.VenueId;
  * running net owed (invariant #9). Driving adapter depending on the payout module's
  * {@link ViewPayoutLedger} port (invariant #11) plus the edge {@link CurrentOperator} resolver.
  *
- * <p><strong>Operator-gated + per-venue scoped</strong> — the ledger is venue financial data, not
- * public. {@code SecurityConfig} matches the payout-ledger GET to role {@code OPERATOR}
- * <em>before</em> the public venue GET (unauthenticated → {@code 401}); the service then asserts the
- * authenticated operator owns {@code venueId} (invariant #13), a mismatch being {@code 403}.
+ * <p><strong>Operator-gated + per-venue scoped</strong>: {@code SecurityConfig} matches this GET to
+ * {@code OPERATOR} <em>before</em> the public venue GET (unauthenticated → {@code 401}); the
+ * service asserts the operator owns {@code venueId} (invariant #13), a mismatch being {@code 403}.
  */
 @RestController
 @RequestMapping("/api/venues")

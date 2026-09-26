@@ -5,16 +5,11 @@ import ai.riviera.platform.venue.application.SetCommand;
 
 /**
  * The request body for placing/editing one set position ({@code POST}/{@code PATCH}
- * {@code /api/venues/{id}/sets...}, U7). Reuses the published {@link MoneyView} shape for price so
- * the write contract matches the U1 read contract exactly — integer minor units + ISO currency
- * (invariant #5), no float. {@link #toCommand()} checks presence, parses the pool token through
- * {@link PoolToken}, and delegates range/tier-token validation to {@link SetCommand}; bad input →
- * {@link IllegalArgumentException} → {@code 400}.
- *
- * <p><strong>The full set body is required on edit too</strong> — {@code PATCH} here replaces the
- * whole set position (the editor always re-sends every field), so a partial body is rejected
- * {@code 400}. This keeps a set's fields mutually consistent (e.g. a pool change can't be applied
- * without re-stating its cell), which matters for the layout-uniqueness checks.
+ * {@code /api/venues/{id}/sets...}): price in the published {@link MoneyView} shape — integer minor
+ * units + ISO currency (invariant #5), no float. {@link #toCommand()} checks presence, parses the
+ * pool via {@link PoolToken}, leaves range/tier checks to {@link SetCommand}; bad input → 400.
+ * <strong>The full body is required on {@code PATCH} too</strong> (it replaces the whole set), so a
+ * pool change can't land without re-stating its cell — the layout-uniqueness checks depend on it.
  */
 record SetPositionRequest(String rowLabel, Integer positionNo, String tier, String pool,
 		MoneyView price, Integer gridX, Integer gridY) {

@@ -16,9 +16,8 @@ import ai.riviera.platform.audit.api.AdminAuditLog;
  * edge's {@code SecurityConfig} (the invariant-#13 {@code /api/admin/**} exemption, like its
  * siblings); itself a {@code GET}, so browsing the trail never writes to it.
  *
- * <p>No paging, search or filters at Phase 1 — a recent-actions view ({@code limit} defaulting to
- * {@value #DEFAULT_LIMIT}, clamped to {@value #MAX_LIMIT}); an investigation needing more queries
- * the table directly.
+ * <p>No paging, search or filters: {@code limit} defaults to {@value #DEFAULT_LIMIT}, clamped to
+ * {@value #MAX_LIMIT}; an investigation needing more queries the table directly.
  */
 @RestController
 @RequestMapping("/api/admin")

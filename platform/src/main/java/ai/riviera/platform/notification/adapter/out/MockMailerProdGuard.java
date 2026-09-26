@@ -5,14 +5,12 @@ import org.springframework.stereotype.Component;
 
 /**
  * Fail-fast guard (design D-6), the mailer twin of {@code MockSsoProdGuard}: a mock mail
- * transport that only logs must never run in production. This bean exists <strong>only</strong> when the
- * {@code prod} profile is active <em>and</em> {@code mailer} is not (so the default {@link MockMailer}
- * would be live) — the {@code @Profile("prod & !mailer")} expression — and its constructor throws,
+ * transport that only logs must never run in production. Exists only under {@code prod} without
+ * {@code mailer} (so the default {@link MockMailer} would be live); its constructor throws,
  * aborting startup.
  *
- * <p>The intended production activation is {@code prod,mailer} (a real adapter, no mock); {@code prod}
- * alone is the misconfiguration this guard catches. The non-prod demo env may run the mock, so no guard
- * fires there. Package-private (invariant #11); pinned by {@code MockMailerProdGuardTest}.
+ * <p>Production activates {@code prod,mailer}; {@code prod} alone is the misconfiguration caught.
+ * Package-private (invariant #11); pinned by {@code MockMailerProdGuardTest}.
  */
 @Component
 @Profile("prod & !mailer")

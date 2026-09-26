@@ -17,14 +17,11 @@ import ai.riviera.platform.notification.adapter.out.MockMailer;
 import ai.riviera.platform.notification.adapter.out.SentEmail;
 
 /**
- * The recording {@link MockMailer}'s booking mails, readable over HTTP so a real-backend e2e run can
- * prove a mail left — present only where the mock transport is (the same profile guard, and so
- * transitively never under {@code prod}, which {@code MockMailerProdGuard} forbids the mock in).
- * Booking kinds only, and of those only the facts a guest would read on the page anyway: never a
- * code and never the code-gated booking link that embeds one (invariant #7), never a recovery kind.
- * A cancellation's rebook link is the one link that rides, because it embeds no credential — it is
- * the venue's map for the day, or the discovery list for it. Operator-gated: the e2e run holds an
- * operator session, a guest does not.
+ * The recording {@link MockMailer}'s booking mails over HTTP, so a real-backend e2e run can prove
+ * a mail left. Present only where the mock transport is (so never under {@code prod});
+ * operator-gated. Booking kinds only, as facts a guest reads on the page anyway: never a code or
+ * the code-gated link that embeds one (invariant #7), never a recovery kind. The one link that
+ * rides is a cancellation's rebook link, which embeds no credential.
  */
 @RestController
 @RequestMapping("/api/mock-mail")

@@ -3,13 +3,12 @@ package ai.riviera.platform;
 import java.util.regex.Pattern;
 
 /**
- * The {@code X-Audit-Reason} request header and its sanitizer. Any mutating
- * {@code /api/admin/**} request may carry free-text grounds for the action; the value is
- * client-supplied text, so before it is persisted (and later rendered in the admin console) it is
- * neutralized per {@code riviera-java-conventions} §10: runs of control characters — including the
- * CRLF a log-forging or header-splitting payload rides on — collapse to a single space, the result
- * is trimmed, a blank collapses to {@code null} (absent and empty are the same fact: no grounds
- * offered), and the length is capped at {@link #MAX_LENGTH}.
+ * The {@code X-Audit-Reason} header and its sanitizer. Any mutating {@code /api/admin/**} request
+ * may carry free-text grounds; being client-supplied, the value is neutralized per
+ * {@code riviera-java-conventions} §10 before it is persisted and rendered in the admin console:
+ * control-character runs (incl. the CRLF a log-forging or header-splitting payload rides on)
+ * collapse to one space, the result is trimmed, a blank becomes {@code null} (absent and empty are
+ * the same fact: no grounds offered), and the length is capped at {@link #MAX_LENGTH}.
  */
 final class AdminAuditReasons {
 

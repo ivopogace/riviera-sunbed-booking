@@ -9,10 +9,9 @@ package ai.riviera.platform.booking.application.checkin;
 public interface MarkNoShows {
 
 	/**
-	 * Mark every service day before today in {@code Europe/Tirane} that a {@code CONFIRMED} booking
-	 * neither attended nor missed as missed, then resolve every {@code CONFIRMED} booking whose
-	 * last service day is before today; returns how many bookings resolved. Idempotent — a repeated
-	 * run matches nothing.
+	 * Marks every {@code CONFIRMED} booking's unattended, unmarked service day before today
+	 * (Tirane) missed, then resolves every {@code CONFIRMED} booking whose last service day is
+	 * before today; returns how many resolved. Idempotent — a repeated run matches nothing.
 	 */
 	int sweep();
 }

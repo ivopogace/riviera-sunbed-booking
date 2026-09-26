@@ -12,15 +12,9 @@ import ai.riviera.platform.venue.vocabulary.VenueId;
  * Brings a venue's stored rating back in line with its reviews: ask {@code review} what the venue's
  * whole review set now says, write the answer to the venue's own columns.
  *
- * <p>A <strong>full recompute</strong>, never an increment — which is what makes it safe under the
- * registry's at-least-once delivery: running it twice converges on the same row. Nothing is read off
- * the event; the numbers come from the port. Idempotence alone is not enough, though: the read and
- * the write are separate statements, so the venue row is locked first and concurrent recomputes of
- * one venue serialize rather than racing to overwrite each other with differently-stale totals.
- *
- * <p>The venue is named here in venue's own {@link VenueId} and converted at the port call, the
- * conversion {@code review.vocabulary.VenueRef} exists for — review publishes its own ref precisely
- * so this module can be its consumer without the graph cycling.
+ * <p>A full recompute, never an increment, so at-least-once redelivery converges; the venue row is
+ * locked first so concurrent recomputes of one venue serialize. Rationale: RESPONSIBILITIES.md
+ * §venue. The venue is a {@link VenueId} here, converted to review's own ref at the port call.
  */
 @Service
 class VenueRatingService implements RecomputeVenueRating {
