@@ -35,6 +35,7 @@ import ai.riviera.platform.booking.domain.BookingStatus;
 import ai.riviera.platform.booking.events.BookingCancelled;
 import ai.riviera.platform.booking.events.StayCancelled;
 import ai.riviera.platform.booking.vocabulary.RefundReason;
+import ai.riviera.platform.booking.vocabulary.StayId;
 import ai.riviera.platform.venue.vocabulary.SetId;
 
 import static ai.riviera.platform.booking.StayFixtures.PRICE;
@@ -110,8 +111,10 @@ class CancelStayIT {
 		List<StayCancelled> stayCancels = events.stream(StayCancelled.class).toList();
 		assertEquals(1, stayCancels.size(), "one StayCancelled per stay");
 		StayCancelled stayCancelled = stayCancels.getFirst();
-		assertEquals(new StayCancelled(stayCancelled.stayId(), 7 * PRICE, "EUR", RefundReason.POLICY), stayCancelled,
-				"one StayCancelled carries the summed refund");
+		StayId stay = new StayId(jdbc.sql("SELECT id FROM stay WHERE code = :code").param("code", code)
+				.query(Long.class).single());
+		assertEquals(new StayCancelled(stay, 7 * PRICE, "EUR", RefundReason.POLICY), stayCancelled,
+				"one StayCancelled names the stay and carries the summed refund");
 		assertTrue(events.stream(BookingCancelled.class)
 						.allMatch(cancelled -> stayCancelled.stayId().equals(cancelled.cancelledWithStay())),
 				"each stretch names the stay it was cancelled with");

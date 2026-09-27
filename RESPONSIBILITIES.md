@@ -681,7 +681,7 @@ tag names the person, invariant #7):
 - **A stay the guest cancels gets one cancellation mail, on `StayCancelled`**: the lone booking's
   cancellation copy under the stay's code and span, with the summed refund. A stretch's stamped
   `BookingCancelled` mails nothing; an unstamped one (a remodel ending one stretch, an older payload)
-  mails that stretch under the stay's code, with its rebook link.
+  mails that stretch under the stay's code, with a rebook link when a remodel ended it.
 - The **booking-confirmation delivery log** (`booking_confirmation_mail_attempt`) and its ADMIN
   lookup and **resend** exist because the registry's `completion_date` records only that the
   listener *returned*, as on a suppression skip or an abandonment. The resend is **synchronous
