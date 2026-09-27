@@ -379,7 +379,9 @@ any is released on the old, never a swap of my own — so a racing reserve wins 
 - **A moved booking's free exit is a refund-tier override, never a window change:** until
   `BookingCutoff#freeExitEndsAt`, `CancellationPolicy#quote` refunds in full as `VENUE_CHANGE`
   (lifting `LATE`; in `FREE` only the reason changes, so mails and the admin's venue-caused list
-  know why). `CLOSED` is never reopened: the guest may already be consuming the stay.
+  know why). `CLOSED` is never reopened: the guest may already be consuming the stay. A stay's
+  stretch is judged on the stay's first day, so its exit ends by that day's opening: the view, the
+  cancel and the move mail read one capped deadline, and a stretch moved once its stay began has none.
 
 **Not My Job:**
 - Owning the `(set, date)` availability state → **`availability`** (I *ask* it to claim)
@@ -646,7 +648,8 @@ tag names the person, invariant #7):
   own withdraw mails nothing) and moved — carry ids, never the code, and **decide nothing**: the
   birth window and refund (invariant #10) are rendered (CLOSED the non-refundable line, LATE the
   past-free-cancellation line, FREE or `null` nothing), and `booking` publishes payment-due only
-  where money is owed. The move mail carries the unchanged arrival code, the guest's reference.
+  where money is owed. The move mail carries the unchanged arrival code (a stretch's is its
+  stay's), the guest's reference.
 - **The payment-due mail carries the deadline and the request-time amount, and names no spot**:
   the guest already has the spot on screen; the mail exists for the deadline.
 - The **email-suppression list**, hashed and surviving erasure (ADR-0012). **No send to a
