@@ -22,6 +22,7 @@ import {
   requestErrorOf,
   checkInErrorOf,
   checkInWrongDateOf,
+  checkInSetIdOf,
   setWriteErrorOf,
   layoutBlockedSetsOf,
   layoutErrorOf,
@@ -312,6 +313,13 @@ describe('check-in error mapping (#583)', () => {
       checkInWrongDateOf(http(409, { code: 'WRONG_SERVICE_DATE', bookingDate: 7 })),
     ).toBeUndefined();
     expect(checkInWrongDateOf(new Error('offline'))).toBeUndefined();
+  });
+
+  it('reads the setId extension a repeat scan carries only when it is a number (#1209)', () => {
+    expect(checkInSetIdOf(http(409, { code: 'ALREADY_CHECKED_IN', setId: 12 }))).toBe(12);
+    expect(checkInSetIdOf(http(409, { code: 'ALREADY_CHECKED_IN' }))).toBeUndefined();
+    expect(checkInSetIdOf(http(409, { code: 'ALREADY_CHECKED_IN', setId: '12' }))).toBeUndefined();
+    expect(checkInSetIdOf(new Error('offline'))).toBeUndefined();
   });
 });
 

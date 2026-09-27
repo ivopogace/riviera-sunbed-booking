@@ -47,6 +47,7 @@ import {
 import {
   OperatorConsoleService,
   checkInErrorOf,
+  checkInSetIdOf,
   checkInWrongDateOf,
   markErrorOf,
   releaseErrorOf,
@@ -263,7 +264,10 @@ export class DailyViewTab {
       error: (error: unknown) => {
         this.checkInBusy.set(false);
         this.dropSessionIfUnauthorized(error);
-        this.checkInNotice.set({ tone: 'error', text: checkInMessage(error) });
+        this.checkInNotice.set({
+          tone: 'error',
+          text: checkInMessage(error, setsById(this.venue()?.sets)),
+        });
       },
     });
   }
@@ -663,11 +667,19 @@ function cameraUnavailableMessage(error: unknown): string {
   }
 }
 
-/** The operator-facing message for a failed check-in; dates render like the rest of the console. */
-function checkInMessage(error: unknown): string {
+/**
+ * The operator-facing message for a failed check-in; dates render like the rest of the console. A
+ * repeat scan names today's set when the server carries it, so staff can still point a stay's guest
+ * to the right lounger on a move day.
+ */
+function checkInMessage(error: unknown, sets: ReadonlyMap<number, SetView>): string {
   switch (checkInErrorOf(error)) {
-    case 'ALREADY_CHECKED_IN':
-      return 'Already checked in — this code was used before.';
+    case 'ALREADY_CHECKED_IN': {
+      const setId = checkInSetIdOf(error);
+      return setId === undefined
+        ? 'Already checked in today.'
+        : `Already checked in today — ${setLabel(sets, setId)}.`;
+    }
     case 'WRONG_SERVICE_DATE': {
       const date = checkInWrongDateOf(error);
       return date === undefined

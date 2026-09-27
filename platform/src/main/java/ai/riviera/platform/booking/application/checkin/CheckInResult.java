@@ -15,8 +15,11 @@ public sealed interface CheckInResult {
 	record CheckedIn(SetId setId, LocalDate bookingDate) implements CheckInResult {
 	}
 
-	/** Today already attended, or the stay {@code COMPLETED} — what a second scan of the same code gets. */
-	record AlreadyCheckedIn(LocalDate bookingDate) implements CheckInResult {
+	/**
+	 * Today already attended, or the stay {@code COMPLETED} — what a second scan of the same code gets;
+	 * {@code setId} is today's set, so staff can still point the guest to it on a move day.
+	 */
+	record AlreadyCheckedIn(LocalDate bookingDate, SetId setId) implements CheckInResult {
 	}
 
 	/** Live or swept, but today is not one of its unattended service days — refused without a write. */

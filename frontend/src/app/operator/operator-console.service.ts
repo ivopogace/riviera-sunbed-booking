@@ -682,13 +682,23 @@ export function checkInErrorOf(error: unknown): CheckInErrorCode {
 
 /** The `bookingDate` extension a WRONG_SERVICE_DATE problem carries, for the operator's message. */
 export function checkInWrongDateOf(error: unknown): string | undefined {
+  const date = checkInExtensionOf(error, 'bookingDate');
+  return typeof date === 'string' ? date : undefined;
+}
+
+/** The `setId` extension an ALREADY_CHECKED_IN problem carries: today's set, for a stay on a move day. */
+export function checkInSetIdOf(error: unknown): number | undefined {
+  const setId = checkInExtensionOf(error, 'setId');
+  return typeof setId === 'number' ? setId : undefined;
+}
+
+function checkInExtensionOf(error: unknown, key: string): unknown {
   if (
     error instanceof HttpErrorResponse &&
     typeof error.error === 'object' &&
     error.error !== null
   ) {
-    const date = (error.error as { bookingDate?: unknown }).bookingDate;
-    return typeof date === 'string' ? date : undefined;
+    return (error.error as Record<string, unknown>)[key];
   }
   return undefined;
 }

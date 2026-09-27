@@ -752,7 +752,7 @@ class JdbcBookings implements Bookings {
 	public Optional<CheckInFacts> findCheckInFacts(String code, VenueId venueId, LocalDate today) {
 		// Venue-scoped on purpose: a foreign venue's code reads as empty, same as an unknown one.
 		return jdbc.sql("""
-				SELECT b.status, b.booking_date, n.attended_at IS NOT NULL AS attended_today
+				SELECT b.status, b.booking_date, b.set_id, n.attended_at IS NOT NULL AS attended_today
 				FROM booking b
 				LEFT JOIN booking_day n ON n.booking_id = b.id AND n.service_date = :today
 				WHERE %s AND b.venue_id = :venue
@@ -766,6 +766,7 @@ class JdbcBookings implements Bookings {
 				.query((rs, rowNum) -> new CheckInFacts(
 						BookingStatus.valueOf(rs.getString(PARAM_STATUS)),
 						rs.getObject(COL_BOOKING_DATE, LocalDate.class),
+						new SetId(rs.getLong(COL_SET_ID)),
 						rs.getBoolean("attended_today")))
 				.optional();
 	}

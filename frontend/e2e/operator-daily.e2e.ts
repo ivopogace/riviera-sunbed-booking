@@ -101,7 +101,10 @@ async function mockDaily(page: Page): Promise<{ patches: import('@playwright/tes
   // Check-in (#583): first scan completes, any further scan answers the single-use 409.
   await page.route(/\/api\/venues\/1\/bookings\/[A-Z0-9]+\/check-in$/, (route) => {
     if (guestArrived) {
-      return route.fulfill({ status: 409, json: { code: 'ALREADY_CHECKED_IN' } });
+      return route.fulfill({
+        status: 409,
+        json: { code: 'ALREADY_CHECKED_IN', bookingDate: '2026-07-08', setId: 2 },
+      });
     }
     guestArrived = true;
     return route.fulfill({ json: { setId: 2, bookingDate: '2026-07-08' } });
@@ -303,9 +306,9 @@ test('checks a guest in by QR scan — single-use, announced, and the row stays 
   await settle(page);
   await expectNoSeriousAxeViolations(page, 'daily view tab after check-in');
 
-  // Scanning the same code again is refused distinctly — the QR is single-use.
+  // Scanning the same code again is refused distinctly and still names today's set (#1209).
   await page.getByTestId('checkin-scan-toggle').click();
-  await expect(page.getByTestId('checkin-result')).toContainText('Already checked in');
+  await expect(page.getByTestId('checkin-result')).toHaveText('Already checked in today — A · 2.');
 });
 
 test('a swept no-show still lists, badged, so a past day is not an empty page', async ({
