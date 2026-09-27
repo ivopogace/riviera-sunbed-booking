@@ -279,8 +279,8 @@ public final class ItinerarySearch {
 			if (a == null || b == null) {
 				return Cost.UNPLACED_MOVE;
 			}
-			int rows = Math.abs(a.gridY() - b.gridY());
-			int positions = Math.abs(a.positionNo() - b.positionNo());
+			int rows = a.rowsAway(b);
+			int positions = a.positionsAway(b);
 			return new Cost(1, rows == 0 ? 0 : 1, positions, rows);
 		}
 

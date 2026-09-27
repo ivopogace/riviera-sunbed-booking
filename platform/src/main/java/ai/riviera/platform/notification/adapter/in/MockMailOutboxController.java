@@ -48,7 +48,7 @@ class MockMailOutboxController {
 	}
 
 	/**
-	 * One booking mail as recorded; {@code from}/{@code to}/{@code freeExitUntil} ride only on a move,
+	 * One booking mail as recorded; {@code from}/{@code to} ride on a move and a move reminder, {@code freeExitUntil} on a move,
 	 * and {@code rebookLink} only on a cancellation the venue itself caused.
 	 */
 	record BookingMailView(String kind, String venueName, LocalDate bookingDate, String from, String to,
@@ -66,6 +66,11 @@ class MockMailOutboxController {
 				case BOOKING_CONFIRMATION -> Optional.of(new BookingMailView(sent.kind().name(),
 						sent.confirmation().venueName(), sent.confirmation().bookingDate(), null, null, null, null, null,
 						null));
+				case MOVE_REMINDER -> Optional.of(new BookingMailView(sent.kind().name(),
+						sent.moveReminder().venueName(), sent.moveReminder().moveDate(),
+						sent.moveReminder().fromRowLabel() + sent.moveReminder().fromPositionNo(),
+						sent.moveReminder().toRowLabel() + sent.moveReminder().toPositionNo(),
+						sent.moveReminder().rowsAway(), sent.moveReminder().positionsAway(), null, null));
 				case STAY_CONFIRMATION -> Optional.of(new BookingMailView(sent.kind().name(),
 						sent.stayConfirmation().venueName(), sent.stayConfirmation().firstDate(), null, null, null, null,
 						null, null));

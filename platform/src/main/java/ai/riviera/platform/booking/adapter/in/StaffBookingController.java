@@ -24,6 +24,7 @@ import ai.riviera.platform.booking.application.checkin.CheckInBooking;
 import ai.riviera.platform.booking.application.checkin.CheckInResult;
 import ai.riviera.platform.booking.application.view.ListDailyBookings;
 import ai.riviera.platform.operator.vocabulary.OperatorId;
+import ai.riviera.platform.venue.vocabulary.SetId;
 import ai.riviera.platform.venue.vocabulary.VenueId;
 
 /**
@@ -76,25 +77,31 @@ class StaffBookingController {
 		return switch (checkInBooking.checkIn(operator, new VenueId(venueId), code)) {
 			case CheckInResult.CheckedIn(var setId, var bookingDate) ->
 					ResponseEntity.ok(new CheckInView(setId.value(), bookingDate));
-			case CheckInResult.AlreadyCheckedIn(var bookingDate) ->
+			case CheckInResult.AlreadyCheckedIn(var bookingDate, var setId) ->
 					error(venueId, HttpStatus.CONFLICT, "ALREADY_CHECKED_IN",
-							"This booking was already checked in.", bookingDate);
+							"This booking was already checked in today.", bookingDate, setId);
 			case CheckInResult.WrongServiceDate(var bookingDate) ->
 					error(venueId, HttpStatus.CONFLICT, "WRONG_SERVICE_DATE",
-							"This booking is for " + bookingDate + ".", bookingDate);
+							"This booking is for " + bookingDate + ".", bookingDate, null);
 			case CheckInResult.NotFound() ->
 					error(venueId, HttpStatus.NOT_FOUND, "BOOKING_NOT_FOUND",
-							"No such booking at this venue.", null);
+							"No such booking at this venue.", null, null);
 		};
 	}
 
-	/** Problem bodies point {@code instance} at the code-free collection path (invariant #7). */
+	/**
+	 * Problem bodies point {@code instance} at the code-free collection path (invariant #7); a repeat scan
+	 * also names today's set, so staff can point the guest to it on a move day.
+	 */
 	private static ResponseEntity<ProblemDetail> error(long venueId, HttpStatus status, String code,
-			String detail, LocalDate bookingDate) {
+			String detail, LocalDate bookingDate, SetId setId) {
 		ProblemDetail problem = ApiProblem.of(status, code, detail);
 		problem.setInstance(URI.create("/api/venues/" + venueId + "/bookings"));
 		if (bookingDate != null) {
 			problem.setProperty("bookingDate", bookingDate.toString());
+		}
+		if (setId != null) {
+			problem.setProperty("setId", setId.value());
 		}
 		return ResponseEntity.status(status).body(problem);
 	}

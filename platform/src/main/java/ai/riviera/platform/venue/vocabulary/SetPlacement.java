@@ -16,4 +16,14 @@ public record SetPlacement(String rowLabel, int positionNo, int gridX, int gridY
 			throw new IllegalArgumentException("positionNo, gridX and gridY must be >= 1");
 		}
 	}
+
+	/** How many rows apart two spots are: the move distance's first measure, {@code 0} on the same row. */
+	public int rowsAway(SetPlacement other) {
+		return Math.abs(gridY - other.gridY);
+	}
+
+	/** How many positions apart two spots are along their rows: the move distance's second measure. */
+	public int positionsAway(SetPlacement other) {
+		return Math.abs(positionNo - other.positionNo);
+	}
 }

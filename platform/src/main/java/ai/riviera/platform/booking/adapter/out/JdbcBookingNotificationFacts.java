@@ -3,7 +3,9 @@ package ai.riviera.platform.booking.adapter.out;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Repository;
@@ -18,8 +20,14 @@ import ai.riviera.platform.booking.vocabulary.BookingMoveFacts;
 import ai.riviera.platform.booking.vocabulary.BookingNotificationInfo;
 import ai.riviera.platform.booking.vocabulary.StayConfirmationFacts;
 import ai.riviera.platform.booking.vocabulary.StayId;
+import ai.riviera.platform.booking.vocabulary.StayMoveFacts;
+import ai.riviera.platform.booking.domain.BookingStatus;
 import ai.riviera.platform.customer.vocabulary.CustomerId;
+import ai.riviera.platform.venue.api.SetBookingFacts;
 import ai.riviera.platform.venue.vocabulary.SetId;
+import ai.riviera.platform.venue.vocabulary.SetPlacement;
+import ai.riviera.platform.venue.vocabulary.SetSpot;
+import ai.riviera.platform.venue.vocabulary.VenueId;
 
 /**
  * JDBC adapter for {@link BookingNotificationFacts} over {@link JdbcClient} (invariant #1): by primary
@@ -32,6 +40,7 @@ import ai.riviera.platform.venue.vocabulary.SetId;
 class JdbcBookingNotificationFacts implements BookingNotificationFacts {
 
 	private static final String COL_CUSTOMER_ID = "customer_id";
+	private static final String COL_BOOKING_DATE = "booking_date";
 	private static final String MOVED_ROW_SQL = """
 			SELECT b.moved_at, s.first_date AS stay_first_date
 			FROM booking b
@@ -39,17 +48,61 @@ class JdbcBookingNotificationFacts implements BookingNotificationFacts {
 			WHERE b.id = :id AND b.moved_at IS NOT NULL
 			""";
 
+	/** The arriving stretch and the live stretch it follows on another set; nothing when either has gone. */
+	private static final String MOVE_ROW_SQL = """
+			SELECT s.id AS stay_id, s.code, s.last_date AS stay_last_date, t.customer_id, t.venue_id,
+			       t.booking_date, p.set_id AS from_set, t.set_id AS to_set
+			FROM booking t
+			JOIN stay s ON s.id = t.stay_id
+			JOIN booking p ON p.stay_id = t.stay_id AND p.id <> t.id AND p.last_date = t.booking_date - 1
+			WHERE t.id = :id AND t.status = :confirmed AND t.set_id <> p.set_id
+			  AND p.status IN (:confirmed, :completed)
+			""";
+
 	private final JdbcClient jdbc;
 	private final CancellationPolicy cancellationPolicy;
 	private final RemodelReceipts receipts;
 	private final BookingCutoff cutoff;
+	private final SetBookingFacts sets;
 
 	JdbcBookingNotificationFacts(JdbcClient jdbc, CancellationPolicy cancellationPolicy, RemodelReceipts receipts,
-			BookingCutoff cutoff) {
+			BookingCutoff cutoff, SetBookingFacts sets) {
 		this.jdbc = jdbc;
 		this.cancellationPolicy = cancellationPolicy;
 		this.receipts = receipts;
 		this.cutoff = cutoff;
+		this.sets = sets;
+	}
+
+	@Override
+	public Optional<StayMoveFacts> moveReminderFacts(BookingId arrivingBookingId) {
+		return jdbc.sql(MOVE_ROW_SQL)
+				.param("id", arrivingBookingId.value())
+				.param("confirmed", BookingStatus.CONFIRMED.name())
+				.param("completed", BookingStatus.COMPLETED.name())
+				.query((rs, rowNum) -> new MoveRow(new StayId(rs.getLong("stay_id")), rs.getString("code"),
+						new CustomerId(rs.getLong(COL_CUSTOMER_ID)), new VenueId(rs.getLong("venue_id")),
+						rs.getObject(COL_BOOKING_DATE, LocalDate.class), rs.getObject("stay_last_date", LocalDate.class),
+						new SetId(rs.getLong("from_set")), new SetId(rs.getLong("to_set"))))
+				.optional()
+				.flatMap(this::placed);
+	}
+
+	/** The row with its distance off the live map; empty if either set is no longer an active spot. */
+	private Optional<StayMoveFacts> placed(MoveRow row) {
+		Map<SetId, SetPlacement> placements = sets.activeSetsOf(row.venueId()).stream()
+				.collect(Collectors.toMap(SetSpot::setId, SetSpot::placement));
+		SetPlacement from = placements.get(row.fromSet());
+		SetPlacement to = placements.get(row.toSet());
+		if (from == null || to == null) {
+			return Optional.empty();
+		}
+		return Optional.of(new StayMoveFacts(row.stayId(), row.code(), row.customerId(), row.moveDate(),
+				row.stayLastDate(), row.fromSet(), row.toSet(), to.rowsAway(from), to.positionsAway(from)));
+	}
+
+	private record MoveRow(StayId stayId, String code, CustomerId customerId, VenueId venueId, LocalDate moveDate,
+			LocalDate stayLastDate, SetId fromSet, SetId toSet) {
 	}
 
 	@Override
@@ -118,7 +171,7 @@ class JdbcBookingNotificationFacts implements BookingNotificationFacts {
 				.param("stay", stayId.value())
 				.query((rs, rowNum) -> new StayRow(rs.getString("code"),
 						new StayConfirmationFacts.Stop(new BookingId(rs.getLong("id")), new SetId(rs.getLong("set_id")),
-								rs.getObject("booking_date", LocalDate.class), rs.getObject("last_date", LocalDate.class)),
+								rs.getObject(COL_BOOKING_DATE, LocalDate.class), rs.getObject("last_date", LocalDate.class)),
 						rs.getLong("amount_minor"), rs.getString("amount_currency"),
 						new CustomerId(rs.getLong(COL_CUSTOMER_ID)), rs.getBoolean("confirmed"),
 						rs.getTimestamp("created_at").toInstant()))
@@ -156,7 +209,7 @@ class JdbcBookingNotificationFacts implements BookingNotificationFacts {
 	 */
 	private BookingConfirmationFacts factsOf(java.sql.ResultSet rs) throws java.sql.SQLException {
 		SetId setId = new SetId(rs.getLong("set_id"));
-		LocalDate bookingDate = rs.getObject("booking_date", LocalDate.class);
+		LocalDate bookingDate = rs.getObject(COL_BOOKING_DATE, LocalDate.class);
 		Optional<CancellationPolicy.BirthTerms> birth = cancellationPolicy.windowAtBirth(
 				setId, bookingDate, rs.getTimestamp("created_at").toInstant());
 		return new BookingConfirmationFacts(

@@ -132,6 +132,12 @@ public final class ControllableMailer implements Mailer {
 		observeRegistrySend(toEmail);
 	}
 
+	/** The move reminder rides the same vehicle — observed, same reason. */
+	@Override
+	public void sendMoveReminder(String toEmail, ai.riviera.platform.notification.application.MoveReminderMail reminder) {
+		observeRegistrySend(toEmail);
+	}
+
 	private void observeRegistrySend(String toEmail) {
 		entered.add(toEmail);
 		transactionActive.add(TransactionSynchronizationManager.isActualTransactionActive());

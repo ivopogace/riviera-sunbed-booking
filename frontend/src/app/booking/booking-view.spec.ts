@@ -142,6 +142,65 @@ const STAY_MOVED: BookingDetail = {
   ],
 };
 
+/**
+ * A live three-stop stay around the frozen clock (Mon 15 Jun 2026): stop 1 has passed, stop 2 covers
+ * today (its first day), stop 3 is the move to come.
+ */
+const STAY_TODAY: BookingDetail = {
+  ...DETAIL,
+  code: 'STAY234567',
+  bookingDate: '2026-06-13',
+  lastDate: '2026-06-18',
+  amount: { minorUnits: 27000, currency: 'EUR' },
+  cancellable: false,
+  beforeCutoff: false,
+  refundIfCancelledNow: { minorUnits: 0, currency: 'EUR' },
+  stretches: [
+    {
+      setId: 11,
+      rowLabel: 'Front row · Sea view',
+      positionNo: 2,
+      firstDate: '2026-06-13',
+      lastDate: '2026-06-14',
+      amount: { minorUnits: 9000, currency: 'EUR' },
+      status: 'COMPLETED',
+      move: null,
+    },
+    {
+      setId: 15,
+      rowLabel: 'Front row · Sea view',
+      positionNo: 5,
+      firstDate: '2026-06-15',
+      lastDate: '2026-06-16',
+      amount: { minorUnits: 9000, currency: 'EUR' },
+      status: 'CONFIRMED',
+      move: null,
+    },
+    {
+      setId: 21,
+      rowLabel: 'Second row',
+      positionNo: 1,
+      firstDate: '2026-06-17',
+      lastDate: '2026-06-18',
+      amount: { minorUnits: 9000, currency: 'EUR' },
+      status: 'CONFIRMED',
+      move: null,
+    },
+  ],
+};
+
+/** {@link STAY_TODAY} shifted one day earlier, so today is stop 2's last day and the move is tomorrow. */
+const STAY_MOVES_TOMORROW: BookingDetail = {
+  ...STAY_TODAY,
+  bookingDate: '2026-06-12',
+  lastDate: '2026-06-17',
+  stretches: STAY_TODAY.stretches!.map((stretch, i) => ({
+    ...stretch,
+    firstDate: ['2026-06-12', '2026-06-14', '2026-06-16'][i],
+    lastDate: ['2026-06-13', '2026-06-15', '2026-06-17'][i],
+  })),
+};
+
 const CANCELLATION: Cancellation = {
   code: 'ABCD234567',
   status: 'CANCELLED',
@@ -994,6 +1053,119 @@ describe('BookingView', () => {
 
       expect(host.querySelector('[data-testid="booking-moved"]')).toBeNull();
       expect(host.querySelector('[data-testid="view-stop-moved"]')).toBeNull();
+    });
+  });
+
+  describe('your spot today (#1209)', () => {
+    const byId = (host: HTMLElement, id: string) => host.querySelector(`[data-testid="${id}"]`);
+    const stops = (host: HTMLElement) =>
+      Array.from(host.querySelectorAll<HTMLElement>('[data-testid="view-stops"] li'));
+
+    it('leads with the stop covering today and says how long it lasts', async () => {
+      const fixture = await render(stubService({ detail: STAY_TODAY }));
+      const host = fixture.nativeElement as HTMLElement;
+
+      expect(byId(host, 'booking-today')?.textContent).toContain('Your spot today');
+      expect(byId(host, 'booking-today-spot')?.textContent?.trim()).toBe(
+        'Front row · Sea view · spot 5',
+      );
+      expect(byId(host, 'booking-today-note')?.textContent?.trim()).toBe(
+        'Mon, 15 Jun · stop 2, until Tue, 16 Jun.',
+      );
+      const title = host.querySelector('[data-testid="bv-title"]')!;
+      expect(title.compareDocumentPosition(byId(host, 'booking-today')!)).toBe(
+        Node.DOCUMENT_POSITION_FOLLOWING,
+      );
+      expect(
+        byId(host, 'booking-today')!.compareDocumentPosition(byId(host, 'booking-code')!),
+      ).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
+      await expectNoAxeViolations(host);
+    });
+
+    it('dims the stops that have passed, marks today’s and the next move', async () => {
+      const fixture = await render(stubService({ detail: STAY_TODAY }));
+      const [past, today, next] = stops(fixture.nativeElement as HTMLElement);
+
+      expect(past.dataset['stopState']).toBe('past');
+      expect(past.classList.contains('text-riv-card-ink-faint')).toBe(true);
+      expect(past.getAttribute('aria-current')).toBeNull();
+      expect(today.dataset['stopState']).toBe('today');
+      expect(today.getAttribute('aria-current')).toBe('true');
+      expect(today.querySelector('[data-testid="view-stop-today"]')?.textContent).toBe('today');
+      expect(next.dataset['stopState']).toBe('next');
+      expect(next.querySelector('[data-testid="view-stop-next"]')?.textContent).toBe('next');
+      expect(next.classList.contains('text-riv-card-ink-faint')).toBe(false);
+    });
+
+    it('on the last day of a stop, names tomorrow’s spot and marks that stop as tomorrow', async () => {
+      const fixture = await render(stubService({ detail: STAY_MOVES_TOMORROW }));
+      const host = fixture.nativeElement as HTMLElement;
+
+      expect(byId(host, 'booking-today-spot')?.textContent?.trim()).toBe(
+        'Front row · Sea view · spot 5',
+      );
+      expect(byId(host, 'booking-today-note')?.textContent?.trim()).toBe(
+        'Mon, 15 Jun · stop 2. Tomorrow you move to Second row · spot 1.',
+      );
+      expect(stops(host)[2].querySelector('[data-testid="view-stop-next"]')?.textContent).toBe(
+        'tomorrow',
+      );
+    });
+
+    it('on the stay’s last day, says so', async () => {
+      const lastDay: BookingDetail = {
+        ...STAY_TODAY,
+        bookingDate: '2026-06-10',
+        lastDate: '2026-06-15',
+        stretches: STAY_TODAY.stretches!.map((stretch, i) => ({
+          ...stretch,
+          firstDate: ['2026-06-10', '2026-06-12', '2026-06-14'][i],
+          lastDate: ['2026-06-11', '2026-06-13', '2026-06-15'][i],
+        })),
+      };
+      const fixture = await render(stubService({ detail: lastDay }));
+      const host = fixture.nativeElement as HTMLElement;
+
+      expect(byId(host, 'booking-today-spot')?.textContent?.trim()).toBe('Second row · spot 1');
+      expect(byId(host, 'booking-today-note')?.textContent?.trim()).toBe(
+        'Mon, 15 Jun · stop 3. Last day of your stay.',
+      );
+      expect(stops(host).map((li) => li.dataset['stopState'])).toEqual(['past', 'past', 'today']);
+    });
+
+    it('before the stay starts, leads with the first spot and its date, with no stop marked', async () => {
+      const fixture = await render(stubService({ detail: STAY_MOVED }));
+      const host = fixture.nativeElement as HTMLElement;
+
+      expect(byId(host, 'booking-today')?.textContent).toContain('Your first spot');
+      expect(byId(host, 'booking-today-spot')?.textContent?.trim()).toBe(
+        'Front row · Sea view · spot 2',
+      );
+      expect(byId(host, 'booking-today-note')?.textContent?.trim()).toBe(
+        'From Tue, 1 Dec — stop 1 of your stay.',
+      );
+      expect(stops(host).map((li) => li.dataset['stopState'])).toEqual(['later', 'later']);
+      expect(byId(host, 'view-stop-next')).toBeNull();
+    });
+
+    const over: BookingDetail = {
+      ...STAY_TODAY,
+      status: 'COMPLETED',
+      stretches: STAY_TODAY.stretches!.map((stretch) => ({
+        ...stretch,
+        firstDate: '2026-06-01',
+        lastDate: '2026-06-02',
+      })),
+    };
+    const cancelled: BookingDetail = { ...STAY_TODAY, status: 'CANCELLED', cancelReason: 'POLICY' };
+
+    it.each([
+      ['a lone booking', DETAIL],
+      ['a cancelled stay', cancelled],
+      ['a stay already over', over],
+    ])('shows no lead for %s', async (_name, detail) => {
+      const fixture = await render(stubService({ detail }));
+      expect(byId(fixture.nativeElement as HTMLElement, 'booking-today')).toBeNull();
     });
   });
 

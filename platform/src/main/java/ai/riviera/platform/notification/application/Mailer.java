@@ -63,4 +63,7 @@ public interface Mailer {
 
 	/** Send the "your spot changed" notice: both spots, the distance, and the free-exit deadline. */
 	void sendBookingMoved(String toEmail, BookingMovedMail moved);
+
+	/** Send the evening-before move reminder: tomorrow's spot, how far from today's, and the code-gated link. */
+	void sendMoveReminder(String toEmail, MoveReminderMail reminder);
 }

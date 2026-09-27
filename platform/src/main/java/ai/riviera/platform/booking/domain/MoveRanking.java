@@ -30,9 +30,8 @@ public final class MoveRanking {
 				.filter(candidate -> candidate.date().equals(date))
 				.map(FreeSpot::spot)
 				.filter(spot -> spot.pool() == Pool.ONLINE && spot.tier().atLeast(from.tier()))
-				.map(spot -> new Move(spot,
-						Math.abs(spot.placement().gridY() - from.placement().gridY()),
-						Math.abs(spot.placement().positionNo() - from.placement().positionNo())))
+				.map(spot -> new Move(spot, spot.placement().rowsAway(from.placement()),
+						spot.placement().positionsAway(from.placement())))
 				.min(Comparator.comparingInt((Move move) -> move.rowsAway() == 0 ? 0 : 1)
 						.thenComparingInt(Move::positionsAway)
 						.thenComparingInt(Move::rowsAway)

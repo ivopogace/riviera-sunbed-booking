@@ -387,7 +387,20 @@ describe('DailyViewTab (#175)', () => {
       .expectOne((r) => r.method === 'POST' && r.url.includes('/check-in'))
       .flush({ code: 'ALREADY_CHECKED_IN' }, { status: 409, statusText: 'Conflict' });
     fixture.detectChanges();
-    expect(byId('checkin-result').textContent).toContain('Already checked in');
+    expect(byId('checkin-result').textContent).toBe('Already checked in today.');
+  });
+
+  it('a repeat scan of a stay names today’s set, so staff can point the guest to it on a move day (#1209)', () => {
+    render();
+    const input = byId('checkin-code-input') as HTMLInputElement;
+    input.value = 'STAY12345';
+    (byId('checkin-submit') as HTMLButtonElement).click();
+
+    http
+      .expectOne((r) => r.method === 'POST' && r.url.includes('/check-in'))
+      .flush({ code: 'ALREADY_CHECKED_IN', setId: 3 }, { status: 409, statusText: 'Conflict' });
+    fixture.detectChanges();
+    expect(byId('checkin-result').textContent).toBe('Already checked in today — A · 3.');
   });
 
   it('names the booking’s real day on WRONG_SERVICE_DATE, never the code (#583)', () => {

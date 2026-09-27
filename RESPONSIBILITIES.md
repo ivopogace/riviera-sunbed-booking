@@ -278,6 +278,11 @@ any is released on the old, never a swap of my own — so a racing reserve wins 
 - **The no-show sweep** marks the past unresolved days of `CONFIRMED` stays missed, then resolves
   every stay whose last day has passed, in batches that each commit alone. It writes **no
   availability row**: freeing a past claim would make it re-claimable (invariant #2).
+- **The move-reminder sweep announces each of a stitched stay's moves once, the evening before**
+  (design D13; from `booking.move-reminder.send-from`, `Europe/Tirane`, until that day ends): it stamps
+  the arriving stretch's `move_reminder_at` under a guarded `UPDATE` and publishes `StayMoveDue` in
+  that transaction, only while that stretch and the live one it follows on another set both stand. A
+  move whose day has already begun is never announced late, so the mail's "tomorrow" stays true.
 - **Lock order: the booking row, then its service-day rows** — check-in and both sweep statements —
   so a scan, a cancel and the sweep serialize on the stay. The sweep never uses `SKIP LOCKED`: a
   short batch reads as drained, so a skipped contended row would be stranded.
@@ -685,6 +690,11 @@ tag names the person, invariant #7):
   cancellation copy under the stay's code and span, with the summed refund. A stretch's stamped
   `BookingCancelled` mails nothing; an unstamped one (a remodel ending one stretch, an older payload)
   mails that stretch under the stay's code, with a rebook link when a remodel ended it.
+- **A stitched stay's move gets one reminder, on `StayMoveDue`**: the stay's code, tomorrow's date,
+  today's and tomorrow's spots as the live map labels them, the distance `booking` measured, and the
+  code-gated link. No delivery-log row (that log is the confirmation's); a move the listener finds
+  no longer standing is abandoned under `riviera.mail.move-reminder.abandoned`, the one abandon
+  tag that can mean a race rather than a data fault (`docs/runbooks/observability.md`).
 - The **booking-confirmation delivery log** (`booking_confirmation_mail_attempt`) and its ADMIN
   lookup and **resend** exist because the registry's `completion_date` records only that the
   listener *returned*, as on a suppression skip or an abandonment. The resend is **synchronous

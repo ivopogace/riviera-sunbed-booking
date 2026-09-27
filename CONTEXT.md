@@ -266,6 +266,12 @@ model in `docs/architecture/domain-model.md`.
   per stretch on the stay's first day's window. The plan is the **itinerary search**'s answer: fewest moves, then shortest (same row,
   closest position, closest row), within the **move budget** (`riviera.itinerary.max-switches`,
   default and ceiling three), anchored on a tapped set when the tourist plans around it.
+- **Move reminder** — the one mail a stitched stay's guest gets the evening before each **move**,
+  naming tomorrow's set and how far it is from today's (rows and positions, off the live map); the
+  booking page carries the same fact as **your spot today**, leading with the set the guest holds
+  today, dimming the stretches gone by and marking the next move, and the staff scan names today's
+  set even on a repeat scan. Announced once per move by a `booking` sweep, from 18:00
+  `Europe/Tirane` by default; never for the first stretch, never late.
 - **Service day** — one day of a stay, held as its own attendance record from the moment the
   booking confirms: unresolved until it is **attended** (staff checked the guest in
   that day) or **missed** (the day passed with no check-in), never both — one per day of the

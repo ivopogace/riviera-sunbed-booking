@@ -51,9 +51,9 @@ class CheckInService implements CheckInBooking {
 	private CheckInResult classify(String code, VenueId venueId, LocalDate today) {
 		return bookings.findCheckInFacts(code, venueId, today)
 				.<CheckInResult>map(facts -> switch (facts.status()) {
-					case COMPLETED -> new CheckInResult.AlreadyCheckedIn(facts.bookingDate());
+					case COMPLETED -> new CheckInResult.AlreadyCheckedIn(facts.bookingDate(), facts.setId());
 					case CONFIRMED -> facts.attendedToday()
-							? new CheckInResult.AlreadyCheckedIn(facts.bookingDate())
+							? new CheckInResult.AlreadyCheckedIn(facts.bookingDate(), facts.setId())
 							: new CheckInResult.WrongServiceDate(facts.bookingDate());
 					case NO_SHOW -> new CheckInResult.WrongServiceDate(facts.bookingDate());
 					default -> new CheckInResult.NotFound();

@@ -6,7 +6,8 @@ import { HttpErrorResponse } from '@angular/common/http';
 import { Observable } from 'rxjs';
 
 import { problemCodeOf } from '../shared/api-error';
-import { formatStay, formatStayChip } from '../shared/booking-date-label';
+import { addDays, todayBookingDate } from '../shared/booking-date';
+import { formatBookingDate, formatStay, formatStayChip } from '../shared/booking-date-label';
 import { amountLabelFor, metaFor } from '../shared/booking-status';
 import { CardGlass } from '../shared/card-glass';
 import { formatDeadline } from '../shared/deadline';
@@ -35,6 +36,24 @@ interface MovedStop {
   readonly stretch: StayStretchView;
   readonly move: BookingMove;
 }
+
+/** Where a stitched stay's guest is on the day the page is read (design D13, story 23). */
+interface StayToday {
+  /** `today` when a stretch covers today; `upcoming` when the stay has not started. */
+  readonly kind: 'today' | 'upcoming';
+  /** The stop the lead names, as the stop list numbers it (1-based). */
+  readonly stop: number;
+  readonly stretch: StayStretchView;
+  /** The stop the guest moves to next, if any. */
+  readonly next: StayStretchView | null;
+  /** Whether that move is tomorrow morning. */
+  readonly movesTomorrow: boolean;
+  /** Whether today is the stay's last day. */
+  readonly lastDay: boolean;
+}
+
+/** How a stop reads against today: gone by, the one the guest holds, the one they move to, or later. */
+type StopState = 'past' | 'today' | 'next' | 'later';
 
 /** The card-glass EXTRAS `appCardGlass` deliberately doesn't carry (radius stays with the consumer). */
 const CARD_SURFACE =
@@ -96,6 +115,14 @@ const CLS = {
   bannerCancelled: BANNER_NEUTRAL,
   // The moved notice wears the awaiting banner's teal: news, not a warning.
   bannerMoved: `${BANNER} border-[#bfe6ee] bg-[#ddf4f8]`,
+  // The today lead sits on the card glass itself, so it takes the themed card inks, not a fixed fill.
+  today:
+    'mx-0 mt-[18px] mb-1 rounded-[20px] border border-riv-field-border bg-riv-inset-fill px-[18px] py-4',
+  todayEyebrow: 'm-0 text-[11px] font-bold tracking-[0.1em] uppercase text-riv-accent-ink',
+  todaySpot: 'mx-0 mt-1 mb-0 text-[22px] font-bold tracking-[-0.01em] text-riv-card-ink',
+  todayNote: 'mx-0 mt-1 mb-0 text-[13.5px] leading-[1.5] text-riv-card-ink-soft',
+  stopPast: 'text-riv-card-ink-faint',
+  stopMark: 'text-riv-accent-ink',
   eyebrow: 'm-0 text-[11px] font-bold tracking-[0.1em] uppercase',
   // The banner inks are FIXED per banner fill — themed tokens would drift between themes.
   eyebrowAwaiting: 'text-[#0a5e7a]',
@@ -402,6 +429,22 @@ const CLS = {
           </section>
         }
 
+        @if (stayToday(b); as today) {
+          <section
+            [class]="cls.today"
+            data-testid="booking-today"
+            aria-labelledby="booking-today-title"
+          >
+            <h2 id="booking-today-title" [class]="cls.todayEyebrow">
+              {{ today.kind === 'today' ? 'Your spot today' : 'Your first spot' }}
+            </h2>
+            <p [class]="cls.todaySpot" data-testid="booking-today-spot">
+              {{ today.stretch.rowLabel }} · spot {{ today.stretch.positionNo }}
+            </p>
+            <p [class]="cls.todayNote" data-testid="booking-today-note">{{ todayNote(today) }}</p>
+          </section>
+        }
+
         <div
           class="mx-0 mt-[18px] mb-4 rounded-[18px] border border-dashed border-riv-field-border bg-riv-inset-fill p-[15px]"
           data-testid="booking-code"
@@ -433,7 +476,12 @@ const CLS = {
               @if (b.stretches?.length) {
                 <ol class="list-none" data-testid="view-stops">
                   @for (stretch of b.stretches; track $index) {
-                    <li>
+                    @let state = stopState(b, $index);
+                    <li
+                      [class]="state === 'past' ? cls.stopPast : ''"
+                      [attr.data-stop-state]="state"
+                      [attr.aria-current]="state === 'today' ? 'true' : null"
+                    >
                       {{ $index + 1 }}. {{ stretch.rowLabel }} · spot {{ stretch.positionNo }} ·
                       {{ dateLabel(stretch.firstDate, stretch.lastDate) }}
                       @if (stretch.move; as move) {
@@ -441,6 +489,14 @@ const CLS = {
                         <span data-testid="view-stop-moved"
                           >moved from {{ move.fromRowLabel }} · spot {{ move.fromPositionNo }}</span
                         >
+                      }
+                      @if (state === 'today') {
+                        · <span [class]="cls.stopMark" data-testid="view-stop-today">today</span>
+                      } @else if (state === 'next') {
+                        ·
+                        <span [class]="cls.stopMark" data-testid="view-stop-next">{{
+                          stayToday(b)?.movesTomorrow ? 'tomorrow' : 'next'
+                        }}</span>
                       }
                     </li>
                   }
@@ -623,6 +679,9 @@ export class BookingView {
 
   private code = '';
 
+  /** Today in Europe/Tirane (invariant #6), captured once per load so the whole page reads one day. */
+  private today = todayBookingDate(new Date());
+
   /** Money formatter (shared, minor units — invariant #5), exposed to the template. */
   protected readonly formatMoney = formatMoney;
 
@@ -673,6 +732,7 @@ export class BookingView {
    *   the live result region stay on screen.
    */
   private load(isRefresh = false): void {
+    this.today = todayBookingDate(new Date());
     // Initial load consumes a matching find-a-booking prefetch instead of a second GET.
     if (!isRefresh) {
       const prefetched = this.bookings.takePrefetched(this.code);
@@ -928,6 +988,74 @@ export class BookingView {
     return b.status === 'AWAITING_PAYMENT'
       ? 'Non-refundable last-minute booking — it can’t be cancelled once paid.'
       : 'Non-refundable last-minute booking — it can’t be cancelled.';
+  }
+
+  /**
+   * Where a live stitched stay's guest is today: the stop covering today, or the first stop while the
+   * stay has not started; null for a lone booking, a cancelled stay, or one already over —
+   * the story's problem is working "today" out from a list of ranges (design D13).
+   */
+  protected stayToday(b: BookingDetail): StayToday | null {
+    const stretches = b.stretches ?? [];
+    if (stretches.length < 2 || (b.status !== 'CONFIRMED' && b.status !== 'COMPLETED')) {
+      return null;
+    }
+    const index = stretches.findIndex(
+      (stretch) => stretch.firstDate <= this.today && this.today <= stretch.lastDate,
+    );
+    if (index === -1) {
+      return this.today < stretches[0].firstDate
+        ? {
+            kind: 'upcoming',
+            stop: 1,
+            stretch: stretches[0],
+            next: null,
+            movesTomorrow: false,
+            lastDay: false,
+          }
+        : null;
+    }
+    const stretch = stretches[index];
+    const next = stretches[index + 1] ?? null;
+    return {
+      kind: 'today',
+      stop: index + 1,
+      stretch,
+      next,
+      movesTomorrow: next !== null && addDays(this.today, 1) === next.firstDate,
+      lastDay: this.today === stretches.at(-1)!.lastDate,
+    };
+  }
+
+  /** The lead's second line: the day, then what tomorrow brings — a move, the last day, or nothing new. */
+  protected todayNote(today: StayToday): string {
+    if (today.kind === 'upcoming') {
+      return `From ${formatBookingDate(today.stretch.firstDate)} — stop 1 of your stay.`;
+    }
+    const day = `${formatBookingDate(this.today)} · stop ${today.stop}`;
+    if (today.movesTomorrow && today.next) {
+      return `${day}. Tomorrow you move to ${today.next.rowLabel} · spot ${today.next.positionNo}.`;
+    }
+    if (today.lastDay) {
+      return `${day}. Last day of your stay.`;
+    }
+    return `${day}, until ${formatBookingDate(today.stretch.lastDate)}.`;
+  }
+
+  /** A stop against today: dimmed once its last day has passed, marked while held, marked as the move to come. */
+  protected stopState(b: BookingDetail, index: number): StopState {
+    const today = this.stayToday(b);
+    const stretch = b.stretches![index];
+    if (today === null || today.kind === 'upcoming') {
+      return 'later';
+    }
+    if (stretch.lastDate < this.today) {
+      return 'past';
+    }
+    if (index + 1 === today.stop) {
+      return 'today';
+    }
+    return index === today.stop ? 'next' : 'later';
   }
 
   /**

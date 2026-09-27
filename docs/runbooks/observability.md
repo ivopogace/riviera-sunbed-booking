@@ -281,8 +281,8 @@ the work was taken, ran, and failed. Only one of those is about the relay.
 **A mail loss `riviera_outbox_pending` cannot show** — and one of the abandoned counters, which are
 never retried by anything. Since #374 it has siblings — `riviera_mail_cancellation_abandoned_total`,
 #373's `riviera_mail_payment_due_abandoned_total`, #124's
-`riviera_mail_request_declined_abandoned_total` / `riviera_mail_request_expired_abandoned_total`, and
-#1034's `riviera_mail_move_abandoned_total` —
+`riviera_mail_request_declined_abandoned_total` / `riviera_mail_request_expired_abandoned_total`,
+#1034's `riviera_mail_move_abandoned_total` and #1209's `riviera_mail_move_reminder_abandoned_total` —
 each this counter's argument applied to its own listener; everything below holds for all of them, and
 the one place they differ — what an operator does about an increment — is in that section.
 
@@ -343,8 +343,8 @@ never the arrival code and never the address (invariant #7).
 None of the abandoned counters — `riviera_mail_confirmation_abandoned_total`, its #374 sibling
 `riviera_mail_cancellation_abandoned_total`, #373's `riviera_mail_payment_due_abandoned_total`,
 #124's `riviera_mail_request_declined_abandoned_total` /
-`riviera_mail_request_expired_abandoned_total`, or #1034's `riviera_mail_move_abandoned_total` —
-is in that order, deliberately: they never rise because
+`riviera_mail_request_expired_abandoned_total`, #1034's `riviera_mail_move_abandoned_total`, or #1209's
+`riviera_mail_move_reminder_abandoned_total` — is in that order, deliberately: they never rise because
 of a relay, so seeing any of them during an outage means you have found a *second*, unrelated fault.
 
 **Why the registry vehicle has no *transport* failure counter of its own.** Its transport failure
@@ -525,6 +525,29 @@ mail. Nothing re-drives it, and there is no per-booking resend yet (#380).
 
 **Logging is one `ERROR` per loss, unthrottled**, for its siblings' three reasons. Lines carry the
 booking id and both set ids, never the arrival code or the address (invariant #7).
+
+### `riviera_mail_move_reminder_abandoned_total` (counter, #1209)
+
+**The move counter's evening sibling, read the same way.** The reminder a stitched stay's guest gets
+the evening before a move (design D13) that the registry listener **gave up on** because the move no
+longer stands (the arriving stretch or the one before it is no longer live, or a set left the active
+map), a set label or the guest contact did not resolve; the listener returns normally, so the
+publication completes and `riviera_outbox_pending` never moves.
+
+**Read one increment as: a guest moves tomorrow and got no evening notice.** Nothing is lost but the
+push: the booking page leads with today's set, and the morning scan names it to staff. Nothing
+re-drives it, and the sweep will not re-announce the move (`booking.move_reminder_at` is stamped).
+
+| Tag | Meaning | Which module to investigate | Alert when |
+|---|---|---|---|
+| `reason="no-booking"` | `BookingNotificationFacts.moveReminderFacts` found no standing move for the arriving stretch | `booking` | a **sustained** rise; one is a remodel or cancel racing the evening sweep |
+| `reason="no-set"` | `SetBookingFacts.setBookingInfos` found no set for one of the move's set ids | `venue` | **any increase** |
+| `reason="no-contact"` | `CustomerLookup.findById` found no contact for the stay's customer id | `customer` | **any increase** |
+
+> `no-booking` is the one abandon tag that is not a data-integrity signal on its own: the sweep reads
+> the move, then the listener re-reads it after commit, so a stay cancelled or a stretch re-seated
+> in between abandons here by design. Lines carry the stay id, the stretch id and the day, never the
+> code or the address (invariant #7).
 
 ### `riviera_mail_payment_due_abandoned_total` (counter, #373)
 

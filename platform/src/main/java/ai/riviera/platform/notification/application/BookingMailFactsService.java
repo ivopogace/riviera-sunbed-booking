@@ -1,7 +1,9 @@
 package ai.riviera.platform.notification.application;
 
+import java.net.URI;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 import org.springframework.stereotype.Service;
@@ -12,6 +14,7 @@ import ai.riviera.platform.booking.vocabulary.BookingNotificationInfo;
 import ai.riviera.platform.booking.vocabulary.CancellationWindow;
 import ai.riviera.platform.booking.vocabulary.RefundReason;
 import ai.riviera.platform.booking.vocabulary.StayConfirmationFacts;
+import ai.riviera.platform.booking.vocabulary.StayMoveFacts;
 import ai.riviera.platform.customer.api.CustomerLookup;
 import ai.riviera.platform.customer.vocabulary.GuestContact;
 import ai.riviera.platform.venue.api.SetBookingFacts;
@@ -86,6 +89,26 @@ public class BookingMailFactsService {
 		return new StayMailFacts.Resolved(contact.get().email(), new StayConfirmationMail(stay.code(), venueName,
 				stay.firstDate(), stay.lastDate(), stops, stay.amountMinor(),
 				stay.currency(), windowAtBirth, lateCancelRefundBps));
+	}
+
+	/**
+	 * The move's one reminder: both spots' labels off the live map and the contact, or the first fact that did
+	 * not resolve. The distance is {@code booking}'s reading, taken with the same map.
+	 */
+	public MoveReminderMailFacts resolveMoveReminder(StayMoveFacts move, URI bookingLink) {
+		Map<SetId, SetBookingInfo> spots = sets.setBookingInfos(List.of(move.fromSetId(), move.toSetId()));
+		SetBookingInfo from = spots.get(move.fromSetId());
+		SetBookingInfo to = spots.get(move.toSetId());
+		if (from == null || to == null) {
+			return new MoveReminderMailFacts.Missing(MissingBookingFact.NO_SET);
+		}
+		Optional<GuestContact> contact = customers.findById(move.customerId());
+		if (contact.isEmpty()) {
+			return new MoveReminderMailFacts.Missing(MissingBookingFact.NO_CONTACT);
+		}
+		return new MoveReminderMailFacts.Resolved(contact.get().email(), new MoveReminderMail(move.code(),
+				to.venueName(), move.moveDate(), move.stayLastDate(), from.rowLabel(), from.positionNo(),
+				to.rowLabel(), to.positionNo(), move.rowsAway(), move.positionsAway(), bookingLink));
 	}
 
 	/**

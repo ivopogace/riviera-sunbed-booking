@@ -794,8 +794,9 @@ classDiagram
 > kept in clear for operational reads.
 >
 > It listens rather than being called: `BookingConfirmed`, `BookingCancelled`, `BookingMoved`,
-> `BookingPaymentDue`, `BookingRequestDeclined` and `BookingRequestExpired` arrive as events — six
-> listeners — and the facts each mail needs are resolved back through `booking`/`venue`/`customer`
+> `BookingPaymentDue`, `BookingRequestDeclined`, `BookingRequestExpired`, `StayConfirmed`,
+> `StayCancelled` and `StayMoveDue` arrive as events, one listener each, and the facts each mail
+> needs are resolved back through `booking`/`venue`/`customer`
 > ports from inside the listener. Which of the two ADR-0011 vehicles carries a mail follows from
 > its payload: an ids-only payload rides the **Event Publication Registry** (at-least-once,
 > republished on restart), while a payload carrying a bearer credential — a verification or

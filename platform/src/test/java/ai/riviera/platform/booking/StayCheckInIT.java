@@ -102,8 +102,9 @@ class StayCheckInIT {
 		assertEquals(1L, jdbc.sql("SELECT count(*) FROM booking_day d JOIN booking b ON b.id = d.booking_id "
 						+ "WHERE b.venue_id = :v AND d.attended_at IS NOT NULL").param("v", venue.id())
 				.query(Long.class).single(), "only today's day row is stamped");
-		assertInstanceOf(CheckInResult.AlreadyCheckedIn.class, checkIn.checkIn(operator, new VenueId(venue.id()), code),
-				"a second scan today");
+		assertEquals(new CheckInResult.AlreadyCheckedIn(today, venue.online().get(1)),
+				checkIn.checkIn(operator, new VenueId(venue.id()), code),
+				"a second scan today still names today's set, so staff can point the guest to it");
 	}
 
 	@Test

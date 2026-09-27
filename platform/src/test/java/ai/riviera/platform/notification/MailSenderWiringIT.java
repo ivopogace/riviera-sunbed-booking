@@ -155,6 +155,12 @@ class MailSenderWiringIT {
 			record();
 		}
 
+		@Override
+		public void sendMoveReminder(String toEmail,
+				ai.riviera.platform.notification.application.MoveReminderMail reminder) {
+			record();
+		}
+
 		private void record() {
 			sendThread.set(Thread.currentThread().getName());
 			sent.countDown();

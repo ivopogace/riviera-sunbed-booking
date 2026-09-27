@@ -93,6 +93,13 @@ public final class ObservabilityMetrics {
 	public static final String MAIL_MOVE_ABANDONED = "riviera.mail.move.abandoned";
 
 	/**
+	 * Counter: move reminders the registry listener gave up on. Same vehicle and {@code reason} vocabulary
+	 * as {@link #MAIL_MOVE_ABANDONED}; the stay stands and the booking page names tomorrow's set, only the
+	 * evening's push is lost — the guest learns the spot at the morning scan instead.
+	 */
+	public static final String MAIL_MOVE_REMINDER_ABANDONED = "riviera.mail.move-reminder.abandoned";
+
+	/**
 	 * Counter: payment-due mails the registry listener gave up on. The sharpest of the abandoned
 	 * series — this is the guest's only notice that an accepted request must be paid for, and by when,
 	 * so an increment predicts a set released at the deadline. Chase it before that deadline passes.

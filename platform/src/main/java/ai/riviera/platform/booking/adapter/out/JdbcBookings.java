@@ -33,6 +33,7 @@ import ai.riviera.platform.booking.application.Bookings;
 import ai.riviera.platform.booking.application.cancel.CancelledBooking;
 import ai.riviera.platform.booking.application.checkin.CheckInFacts;
 import ai.riviera.platform.booking.application.checkin.CompletedCheckIn;
+import ai.riviera.platform.booking.application.checkin.DueMove;
 import ai.riviera.platform.booking.application.reserve.ClaimRef;
 import ai.riviera.platform.booking.application.reserve.ConfirmedBooking;
 import ai.riviera.platform.booking.application.reserve.ConfirmedStay;
@@ -72,6 +73,7 @@ class JdbcBookings implements Bookings {
 	private static final String COL_VENUE_ID = "venue_id";
 	private static final String COL_SET_ID = "set_id";
 	private static final String COL_BOOKING_DATE = "booking_date";
+	private static final String COL_STAY_ID = "stay_id";
 	private static final String COL_LAST_DATE = "last_date";
 	/**
 	 * The rows a guest's code names: a lone booking by its own code, or every stretch of the stay whose
@@ -422,7 +424,7 @@ class JdbcBookings implements Bookings {
 				ORDER BY b.booking_date DESC, b.id DESC
 				""")
 				.param(PARAM_ACCOUNT, accountId.value())
-				.query((rs, rowNum) -> new AccountRow(mapBookingRecord(rs, rowNum), rs.getObject("stay_id", Long.class),
+				.query((rs, rowNum) -> new AccountRow(mapBookingRecord(rs, rowNum), rs.getObject(COL_STAY_ID, Long.class),
 						rs.getObject("stay_first_date", LocalDate.class), rs.getObject("stay_last_date", LocalDate.class)))
 				.list();
 		return groupedByStay(rows);
@@ -537,7 +539,7 @@ class JdbcBookings implements Bookings {
 						rs.getObject(COL_LAST_DATE, LocalDate.class),
 						rs.getTimestamp(COL_CREATED_AT).toInstant(),
 						rs.getLong(COL_AMOUNT_MINOR), rs.getString(COL_AMOUNT_CURRENCY),
-						Optional.ofNullable(rs.getObject("stay_id", Long.class)).map(StayId::new).orElse(null)))
+						Optional.ofNullable(rs.getObject(COL_STAY_ID, Long.class)).map(StayId::new).orElse(null)))
 				.optional();
 	}
 
@@ -712,10 +714,46 @@ class JdbcBookings implements Bookings {
 	}
 
 	@Override
+	public List<BookingId> findStayMovesDue(LocalDate moveDay) {
+		// Sweep entry read, so the bounded client; served by booking_move_reminder_due_idx (V66).
+		return sweepJdbc.sql("""
+				SELECT t.id
+				FROM booking t
+				JOIN booking p ON p.stay_id = t.stay_id AND p.id <> t.id AND p.last_date = :dayBefore
+				WHERE t.stay_id IS NOT NULL AND t.booking_date = :moveDay AND t.status = :confirmed
+				  AND t.move_reminder_at IS NULL AND t.set_id <> p.set_id
+				  AND p.status IN (:confirmed, :completed)
+				ORDER BY t.id
+				""")
+				.param("moveDay", moveDay)
+				.param("dayBefore", moveDay.minusDays(1))
+				.param(PARAM_CONFIRMED, BookingStatus.CONFIRMED.name())
+				.param(PARAM_COMPLETED, BookingStatus.COMPLETED.name())
+				.query((rs, rowNum) -> new BookingId(rs.getLong("id")))
+				.list();
+	}
+
+	@Override
+	public Optional<DueMove> stampMoveReminder(long bookingId, Instant at) {
+		return jdbc.sql("""
+				UPDATE booking
+				SET move_reminder_at = :at
+				WHERE id = :id AND status = :confirmed AND move_reminder_at IS NULL
+				RETURNING stay_id, booking_date
+				""")
+				.param("at", java.sql.Timestamp.from(at))
+				.param("id", bookingId)
+				.param(PARAM_CONFIRMED, BookingStatus.CONFIRMED.name())
+				.query((rs, rowNum) -> new DueMove(new StayId(rs.getLong(COL_STAY_ID)), new BookingId(bookingId),
+						rs.getObject(COL_BOOKING_DATE, LocalDate.class)))
+				.optional();
+	}
+
+	@Override
 	public Optional<CheckInFacts> findCheckInFacts(String code, VenueId venueId, LocalDate today) {
 		// Venue-scoped on purpose: a foreign venue's code reads as empty, same as an unknown one.
 		return jdbc.sql("""
-				SELECT b.status, b.booking_date, n.attended_at IS NOT NULL AS attended_today
+				SELECT b.status, b.booking_date, b.set_id, n.attended_at IS NOT NULL AS attended_today
 				FROM booking b
 				LEFT JOIN booking_day n ON n.booking_id = b.id AND n.service_date = :today
 				WHERE %s AND b.venue_id = :venue
@@ -729,6 +767,7 @@ class JdbcBookings implements Bookings {
 				.query((rs, rowNum) -> new CheckInFacts(
 						BookingStatus.valueOf(rs.getString(PARAM_STATUS)),
 						rs.getObject(COL_BOOKING_DATE, LocalDate.class),
+						new SetId(rs.getLong(COL_SET_ID)),
 						rs.getBoolean("attended_today")))
 				.optional();
 	}

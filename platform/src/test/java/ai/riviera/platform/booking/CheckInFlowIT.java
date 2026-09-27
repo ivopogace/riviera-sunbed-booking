@@ -88,6 +88,10 @@ class CheckInFlowIT {
 				.query(Long.class).single();
 	}
 
+	private long setOf(long bookingId) {
+		return jdbc.sql("SELECT set_id FROM booking WHERE id = :id").param("id", bookingId).query(Long.class).single();
+	}
+
 	private String statusOf(long bookingId) {
 		return jdbc.sql("SELECT status FROM booking WHERE id = :id")
 				.param("id", bookingId).query(String.class).single();
@@ -131,6 +135,7 @@ class CheckInFlowIT {
 						.cookie(operatorSession).with(csrf()))
 				.andExpect(status().isConflict())
 				.andExpect(jsonPath("$.code").value("ALREADY_CHECKED_IN"))
+				.andExpect(jsonPath("$.setId").value(setOf(bookingId)))
 				.andReturn();
 
 		assertEquals("COMPLETED", statusOf(bookingId));
