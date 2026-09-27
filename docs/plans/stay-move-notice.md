@@ -38,8 +38,8 @@ does not change.
 - [ ] **AC-4:** Given a stretch moved after its stay began (the stay can no longer be cancelled),
   when mailed and viewed, then no free exit is promised: the mail says the stay can no longer be
   cancelled and the view's stretch move has no deadline. *Seam:* as AC-3 and AC-1 · *Pinned by:*
-  `BookingMovedMailIT.aStretchMovedAfterItsStayBeganPromisesNoExit`, `SmtpMailerIT`,
-  `CancellationPolicyFreeExitTest`.
+  `BookingMovedMailIT.aStretchMovedAfterItsStayBeganPromisesNoExit`, `SmtpMailerIT` (the view's arm is
+  the pre-existing CLOSED rule, `CancellationPolicyFreeExitTest.aClosedWindowIsNeverReopened`).
 - [ ] **AC-5:** Given a stay payload with a moved stretch, when the booking view renders, then the
   "Your spot changed" notice names the stop, its days, both spots and the distance, adds the
   free-exit deadline while the stay is cancellable, and the stop list marks that stop as moved.
@@ -99,9 +99,9 @@ does not change.
 
 ## Execution status
 
-**Stage pointer:** `implement (phase 4)`
+**Stage pointer:** `review — fixing findings`
 
-**Next action:** `RESPONSIBILITIES.md` §booking free-exit line + design-doc status; then merge main, review gate.
+**Next action:** post the review comment; check CI on the fix push; then close-out (delete this plan).
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -109,6 +109,6 @@ does not change.
 | 1 — stay view per-stretch move | ✅ | phase-1 commit |
 | 2 — stretch move mail | ✅ | phase-2 commit |
 | 3 — booking view | ✅ | phase-3 commit |
-| 4 — docs + close-out | ⏳ | |
+| 4 — docs + close-out | ⏳ | docs commit; review fixes |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.

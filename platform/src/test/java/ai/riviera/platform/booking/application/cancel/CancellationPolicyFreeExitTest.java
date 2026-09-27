@@ -133,13 +133,4 @@ class CancellationPolicyFreeExitTest {
 		assertEquals(RefundReason.VENUE_CHANGE, quote.reason());
 		assertEquals(tirane(9, 12, 0, 0), quote.freeExitUntil(), "the stay's first day opening, not noon on the 14th");
 	}
-
-	@Test
-	void aStretchMovedAfterItsStayBeganHasNoExit() {
-		RefundQuote quote = policyAt(tirane(9, 13, 10, 0)).quote(booking(DAY.plusDays(3), tirane(9, 13, 9, 0)), DAY);
-
-		assertEquals(CancellationWindow.CLOSED, quote.window());
-		assertFalse(quote.cancellationOpen());
-		assertNull(quote.freeExitUntil());
-	}
 }

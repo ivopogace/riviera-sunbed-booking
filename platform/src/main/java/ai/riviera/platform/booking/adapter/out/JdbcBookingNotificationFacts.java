@@ -32,6 +32,12 @@ import ai.riviera.platform.venue.vocabulary.SetId;
 class JdbcBookingNotificationFacts implements BookingNotificationFacts {
 
 	private static final String COL_CUSTOMER_ID = "customer_id";
+	private static final String MOVED_ROW_SQL = """
+			SELECT b.moved_at, s.first_date AS stay_first_date
+			FROM booking b
+			LEFT JOIN stay s ON s.id = b.stay_id
+			WHERE b.id = :id AND b.moved_at IS NOT NULL
+			""";
 
 	private final JdbcClient jdbc;
 	private final CancellationPolicy cancellationPolicy;
@@ -48,12 +54,7 @@ class JdbcBookingNotificationFacts implements BookingNotificationFacts {
 
 	@Override
 	public Optional<BookingMoveFacts> moveFacts(BookingId bookingId) {
-		return receipts.latestMoveOf(bookingId).flatMap(move -> jdbc.sql("""
-				SELECT b.moved_at, s.first_date AS stay_first_date
-				FROM booking b
-				LEFT JOIN stay s ON s.id = b.stay_id
-				WHERE b.id = :id AND b.moved_at IS NOT NULL
-				""")
+		return receipts.latestMoveOf(bookingId).flatMap(move -> jdbc.sql(MOVED_ROW_SQL)
 				.param("id", bookingId.value())
 				.query((rs, rowNum) -> new MovedRow(rs.getTimestamp("moved_at").toInstant(),
 						rs.getObject("stay_first_date", LocalDate.class)))

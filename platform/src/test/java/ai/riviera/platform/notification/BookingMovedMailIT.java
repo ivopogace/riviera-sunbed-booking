@@ -49,7 +49,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * code-gated link; a moved stay's mail carries its last day; a stitched stay's moved stretch names the
  * stay's code and an exit that ends when the stay opens, or none once it has begun; a suppressed address
  * is skipped with the publication complete; and the mock outbox read answers the mail for a real-backend
- * run without a code or a link. Dates are 2029-08-xx, this class's own, so no other IT's claim collides.
+ * run without a code or a link. Dates are 2029-08-xx, this class's own, so no other IT's claim collides
+ * (invariant #2).
  */
 @EnabledIfDockerAvailable
 @Import(TestcontainersConfiguration.class)
