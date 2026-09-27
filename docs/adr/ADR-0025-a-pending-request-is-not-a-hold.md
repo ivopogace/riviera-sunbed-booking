@@ -44,7 +44,8 @@ still "releases" would delete another guest's claim.
    for a row already terminal.
 4. **Request termination releases nothing.** Decline, expiry, withdrawal and a remodel's decline end
    the row and publish as before, without touching `set_availability`. A remodel that disturbs a set
-   declines its pending requests rather than moving them: there is no claim to re-seat. A failed
+   declines its pending requests rather than moving them, whatever the remodel zone: there is no claim
+   to re-seat and nothing for the freeze to pin, so the guest re-requests on the new layout. A failed
    payment set-up after accept reverts to pending *and* releases the accept's claim.
 5. **`decline_reason` is recorded on the row** (`VENUE`, `SET_UNAVAILABLE`, `ANOTHER_GUEST`; CHECK in
    lockstep with `booking.vocabulary.DeclineReason`) and rides `BookingRequestDeclined`, so the guest's
