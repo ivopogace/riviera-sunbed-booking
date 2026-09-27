@@ -7,6 +7,7 @@ import java.util.function.BiFunction;
 import org.junit.jupiter.api.Test;
 
 import ai.riviera.platform.payment.vocabulary.BookingRef;
+import ai.riviera.platform.payment.vocabulary.CollectionShare;
 import ai.riviera.platform.payment.vocabulary.Money;
 import ai.riviera.platform.payment.vocabulary.PaymentCancellation;
 import ai.riviera.platform.payment.vocabulary.PaymentOutcome;
@@ -28,8 +29,8 @@ class PaymentServiceTest {
 	private static PaymentGateway initiating(BiFunction<BookingRef, Money, PaymentOutcome> initiate) {
 		return new PaymentGateway() {
 			@Override
-			public PaymentOutcome initiate(BookingRef booking, Money amount) {
-				return initiate.apply(booking, amount);
+			public PaymentOutcome initiate(List<CollectionShare> shares) {
+				return initiate.apply(shares.getFirst().booking(), shares.getFirst().amount());
 			}
 
 			@Override

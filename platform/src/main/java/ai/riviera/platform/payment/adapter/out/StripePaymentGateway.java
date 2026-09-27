@@ -4,6 +4,7 @@ import java.util.List;
 import java.util.Locale;
 
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 import com.stripe.StripeClient;
 import com.stripe.exception.ApiConnectionException;
@@ -25,6 +26,7 @@ import org.springframework.stereotype.Component;
 
 import ai.riviera.platform.shared.ObservabilityMetrics;
 import ai.riviera.platform.payment.vocabulary.BookingRef;
+import ai.riviera.platform.payment.vocabulary.CollectionShare;
 import ai.riviera.platform.payment.vocabulary.Money;
 import ai.riviera.platform.payment.vocabulary.PaymentCancellation;
 import ai.riviera.platform.payment.vocabulary.PaymentOutcome;
@@ -49,6 +51,8 @@ class StripePaymentGateway implements PaymentGateway {
 
 	private static final Logger log = LoggerFactory.getLogger(StripePaymentGateway.class);
 	private static final String METADATA_BOOKING_REF = "bookingRef";
+	/** Every booking a shared intent collects for, comma-separated, beside the first in {@link #METADATA_BOOKING_REF}. */
+	private static final String METADATA_BOOKING_REFS = "bookingRefs";
 
 	/** Non-PII fallback reason when a Stripe error carries no code (logged + returned to the caller). */
 	private static final String STRIPE_ERROR = "stripe_error";
@@ -83,23 +87,29 @@ class StripePaymentGateway implements PaymentGateway {
 	}
 
 	@Override
-	public PaymentOutcome initiate(BookingRef booking, Money amount) {
-		PaymentIntentCreateParams params = PaymentIntentCreateParams.builder()
-				.setAmount(amount.minor())                                   // integer minor units (#5)
-				.setCurrency(amount.currency().toLowerCase(Locale.ROOT))     // Stripe wants lowercase ISO
+	public PaymentOutcome initiate(List<CollectionShare> shares) {
+		BookingRef booking = shares.getFirst().booking();
+		String currency = oneCurrencyOf(shares);
+		long amountMinor = shares.stream().mapToLong(share -> share.amount().minor()).reduce(0L, Math::addExact);
+		PaymentIntentCreateParams.Builder params = PaymentIntentCreateParams.builder()
+				.setAmount(amountMinor)                                      // integer minor units (#5)
+				.setCurrency(currency.toLowerCase(Locale.ROOT))              // Stripe wants lowercase ISO
 				.putMetadata(METADATA_BOOKING_REF, Long.toString(booking.value()))
 				.setAutomaticPaymentMethods(PaymentIntentCreateParams.AutomaticPaymentMethods.builder()
 						.setEnabled(true)
-						.build())
-				.build();
+						.build());
+		if (shares.size() > 1) {
+			params.putMetadata(METADATA_BOOKING_REFS, shares.stream()
+					.map(share -> Long.toString(share.booking().value())).collect(Collectors.joining(",")));
+		}
 		RequestOptions options = RequestOptions.builder()
-				.setIdempotencyKey(idempotencyKey(booking))                  // derived from booking id (ADR-0002)
+				.setIdempotencyKey(idempotencyKey(booking))                  // derived from the first booking id (ADR-0002)
 				.build();
 		try {
 			PaymentIntent intent = withLostResponseReplay(booking, "PaymentIntent",
-					() -> stripe.v1().paymentIntents().create(params, options));
-			payments.register(new NewPayment(booking, intent.getId(), amount.minor(), amount.currency(),
-					intent.getClientSecret()));
+					() -> stripe.v1().paymentIntents().create(params.build(), options));
+			payments.register(new NewPayment(intent.getId(), currency, intent.getClientSecret(), shares.stream()
+					.map(share -> new NewPayment.Share(share.booking(), share.amount().minor())).toList()));
 			return new PaymentOutcome.Pending(intent.getClientSecret(), intent.getId());
 		}
 		catch (StripeException e) {
@@ -310,9 +320,20 @@ class StripePaymentGateway implements PaymentGateway {
 		}
 	}
 
-	/** One PaymentIntent per booking: a stable key so a retried create reuses the same intent (ADR-0002). */
+	/**
+	 * One PaymentIntent per collection, keyed on its first booking (unique to the group): a stable key
+	 * so a retried create reuses the same intent (ADR-0002).
+	 */
 	private static String idempotencyKey(BookingRef booking) {
 		return "booking-" + booking.value() + "-pi";
+	}
+
+	private static String oneCurrencyOf(List<CollectionShare> shares) {
+		String currency = shares.getFirst().amount().currency();
+		if (shares.stream().anyMatch(share -> !currency.equals(share.amount().currency()))) {
+			throw new IllegalArgumentException("one PaymentIntent collects in one currency");
+		}
+		return currency;
 	}
 
 	/**

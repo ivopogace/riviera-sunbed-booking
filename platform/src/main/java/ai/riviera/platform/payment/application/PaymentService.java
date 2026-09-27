@@ -3,11 +3,12 @@ package ai.riviera.platform.payment.application;
 import ai.riviera.platform.payment.api.PaymentCredentialsLookup;
 import org.springframework.stereotype.Service;
 
+import java.util.List;
 import java.util.Optional;
 
 import ai.riviera.platform.payment.vocabulary.BookingRef;
+import ai.riviera.platform.payment.vocabulary.CollectionShare;
 import ai.riviera.platform.payment.api.CheckoutPort;
-import ai.riviera.platform.payment.vocabulary.Money;
 import ai.riviera.platform.payment.vocabulary.PaymentCredentials;
 import ai.riviera.platform.payment.vocabulary.PaymentOutcome;
 
@@ -30,8 +31,8 @@ class PaymentService implements CheckoutPort, PaymentCredentialsLookup {
 	}
 
 	@Override
-	public PaymentOutcome pay(BookingRef booking, Money amount) {
-		return gateway.initiate(booking, amount);
+	public PaymentOutcome pay(List<CollectionShare> shares) {
+		return gateway.initiate(shares);
 	}
 
 	@Override

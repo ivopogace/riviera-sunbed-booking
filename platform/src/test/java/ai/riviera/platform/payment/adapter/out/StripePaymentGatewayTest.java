@@ -24,6 +24,7 @@ import org.mockito.ArgumentCaptor;
 
 import ai.riviera.platform.shared.ObservabilityMetrics;
 import ai.riviera.platform.payment.vocabulary.BookingRef;
+import ai.riviera.platform.payment.vocabulary.CollectionShare;
 import ai.riviera.platform.payment.vocabulary.Money;
 import ai.riviera.platform.payment.vocabulary.PaymentCancellation;
 import ai.riviera.platform.payment.vocabulary.PaymentOutcome;
@@ -138,6 +139,46 @@ class StripePaymentGatewayTest {
 				"idempotency key is derived from the booking id (ADR-0002)");
 
 		verify(payments).register(new NewPayment(new BookingRef(42L), "pi_abc", 4500L, "EUR", "pi_abc_secret_xyz"));
+	}
+
+	@Test
+	void collectsSeveralSharesInOneIntentKeyedOnTheFirstBooking() throws StripeException {
+		StripeClient stripe = mock(StripeClient.class);
+		PaymentIntentService intents = mock(PaymentIntentService.class);
+		V1Services v1 = mock(V1Services.class);
+		Payments payments = mock(Payments.class);
+		when(stripe.v1()).thenReturn(v1);
+		when(v1.paymentIntents()).thenReturn(intents);
+		PaymentIntent created = mock(PaymentIntent.class);
+		when(created.getId()).thenReturn("pi_stay");
+		when(created.getClientSecret()).thenReturn("pi_stay_secret");
+		when(intents.create(any(PaymentIntentCreateParams.class), any(RequestOptions.class))).thenReturn(created);
+
+		StripePaymentGateway gateway = new StripePaymentGateway(stripe, payments, new SimpleMeterRegistry());
+		PaymentOutcome outcome = gateway.initiate(List.of(
+				new CollectionShare(new BookingRef(42L), new Money(7500L, "EUR")),
+				new CollectionShare(new BookingRef(43L), new Money(12000L, "EUR"))));
+
+		assertInstanceOf(PaymentOutcome.Pending.class, outcome);
+		ArgumentCaptor<PaymentIntentCreateParams> params = ArgumentCaptor.forClass(PaymentIntentCreateParams.class);
+		ArgumentCaptor<RequestOptions> options = ArgumentCaptor.forClass(RequestOptions.class);
+		verify(intents).create(params.capture(), options.capture());
+		assertEquals(19500L, params.getValue().getAmount(), "the intent collects the sum of the shares (#5)");
+		assertEquals("42", params.getValue().getMetadata().get("bookingRef"));
+		assertEquals("42,43", params.getValue().getMetadata().get("bookingRefs"));
+		assertEquals("booking-42-pi", options.getValue().getIdempotencyKey(),
+				"one key per collection, derived from its first booking (ADR-0002)");
+		verify(payments).register(new NewPayment("pi_stay", "EUR", "pi_stay_secret", List.of(
+				new NewPayment.Share(new BookingRef(42L), 7500L), new NewPayment.Share(new BookingRef(43L), 12000L))));
+	}
+
+	@Test
+	void sharesInTwoCurrenciesAreRefusedBeforeStripeIsAsked() {
+		StripePaymentGateway gateway = new StripePaymentGateway(mock(StripeClient.class), mock(Payments.class),
+				new SimpleMeterRegistry());
+		org.junit.jupiter.api.Assertions.assertThrows(IllegalArgumentException.class, () -> gateway.initiate(List.of(
+				new CollectionShare(new BookingRef(1L), new Money(100L, "EUR")),
+				new CollectionShare(new BookingRef(2L), new Money(100L, "ALL")))));
 	}
 
 	@Test

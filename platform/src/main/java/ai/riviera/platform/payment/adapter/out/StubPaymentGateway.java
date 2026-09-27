@@ -3,7 +3,10 @@ package ai.riviera.platform.payment.adapter.out;
 import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Component;
 
+import java.util.List;
+
 import ai.riviera.platform.payment.vocabulary.BookingRef;
+import ai.riviera.platform.payment.vocabulary.CollectionShare;
 import ai.riviera.platform.payment.vocabulary.Money;
 import ai.riviera.platform.payment.vocabulary.PaymentCancellation;
 import ai.riviera.platform.payment.vocabulary.PaymentOutcome;
@@ -26,8 +29,8 @@ class StubPaymentGateway implements PaymentGateway {
 	private static final String REFUND_PREFIX = "stub-re-";
 
 	@Override
-	public PaymentOutcome initiate(BookingRef booking, Money amount) {
-		return new PaymentOutcome.Succeeded(REFERENCE_PREFIX + booking.value());
+	public PaymentOutcome initiate(List<CollectionShare> shares) {
+		return new PaymentOutcome.Succeeded(REFERENCE_PREFIX + shares.getFirst().booking().value());
 	}
 
 	@Override

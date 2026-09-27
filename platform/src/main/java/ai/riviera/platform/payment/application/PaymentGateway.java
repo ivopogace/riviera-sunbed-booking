@@ -1,6 +1,9 @@
 package ai.riviera.platform.payment.application;
 
+import java.util.List;
+
 import ai.riviera.platform.payment.vocabulary.BookingRef;
+import ai.riviera.platform.payment.vocabulary.CollectionShare;
 import ai.riviera.platform.payment.vocabulary.Money;
 import ai.riviera.platform.payment.vocabulary.PaymentCancellation;
 import ai.riviera.platform.payment.vocabulary.PaymentOutcome;
@@ -17,11 +20,16 @@ import ai.riviera.platform.payment.vocabulary.RefundResult;
 public interface PaymentGateway {
 
 	/**
-	 * Initiate collection of {@code amount}; never throws on a decline or expected failure. Returns
-	 * {@code Succeeded} (stub, in-process), {@code Pending} (a PaymentIntent exists and only the
-	 * signature-verified webhook completes it, invariant #8) or {@code Failed}.
+	 * Initiate one collection for every share (one currency); never throws on a decline or expected
+	 * failure. Returns {@code Succeeded} (stub, in-process), {@code Pending} (a PaymentIntent exists and
+	 * only the signature-verified webhook completes it, invariant #8) or {@code Failed}.
 	 */
-	PaymentOutcome initiate(BookingRef booking, Money amount);
+	PaymentOutcome initiate(List<CollectionShare> shares);
+
+	/** Initiate collection of {@code amount} for one booking: a collection of one share. */
+	default PaymentOutcome initiate(BookingRef booking, Money amount) {
+		return initiate(List.of(new CollectionShare(booking, amount)));
+	}
 
 	/**
 	 * Refund {@code amount} for this booking; never throws on an expected gateway failure or a

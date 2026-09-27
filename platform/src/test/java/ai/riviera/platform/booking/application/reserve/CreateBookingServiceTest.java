@@ -127,7 +127,7 @@ class CreateBookingServiceTest {
 	void confirmsWhenClaimWinsAndPaymentSucceeds() {
 		CreateBookingService service = service(set(Pool.ONLINE),
 				claiming(ClaimOutcome.CLAIMED),
-				(_, _) -> new PaymentOutcome.Succeeded("ok"),
+				_ -> new PaymentOutcome.Succeeded("ok"),
 				() -> "CODE123456");
 
 		BookingOutcome outcome = service.create(command());
@@ -147,7 +147,7 @@ class CreateBookingServiceTest {
 		confirmationMail.withheld = true;
 		CreateBookingService service = service(set(Pool.ONLINE),
 				claiming(ClaimOutcome.CLAIMED),
-				(_, _) -> new PaymentOutcome.Succeeded("ok"),
+				_ -> new PaymentOutcome.Succeeded("ok"),
 				() -> "CODE123456");
 
 		BookingOutcome outcome = service.create(command());
@@ -161,7 +161,7 @@ class CreateBookingServiceTest {
 	void reportsADeliverableConfirmationMailAsNotWithheld() {
 		CreateBookingService service = service(set(Pool.ONLINE),
 				claiming(ClaimOutcome.CLAIMED),
-				(_, _) -> new PaymentOutcome.Succeeded("ok"),
+				_ -> new PaymentOutcome.Succeeded("ok"),
 				() -> "CODE123456");
 
 		BookingOutcome outcome = service.create(command());
@@ -178,7 +178,7 @@ class CreateBookingServiceTest {
 		confirmationMail.withheld = true;
 		CreateBookingService service = service(set(Pool.ONLINE),
 				claiming(ClaimOutcome.CLAIMED),
-				(_, _) -> new PaymentOutcome.Succeeded("ok"),
+				_ -> new PaymentOutcome.Succeeded("ok"),
 				() -> "CODE123456");
 
 		BookingOutcome outcome = service.create(command());
@@ -195,7 +195,7 @@ class CreateBookingServiceTest {
 		confirmationMail.withheld = true;
 		CreateBookingService service = service(set(Pool.ONLINE),
 				claiming(ClaimOutcome.CLAIMED),
-				(_, _) -> new PaymentOutcome.Pending("cs_test", "pi_test"),
+				_ -> new PaymentOutcome.Pending("cs_test", "pi_test"),
 				() -> "CODE123456");
 
 		BookingOutcome outcome = service.create(command());
@@ -211,7 +211,7 @@ class CreateBookingServiceTest {
 		confirmationMail.withheld = true;
 		CreateBookingService service = service(set(Pool.ONLINE, BookingMode.REQUEST),
 				claiming(ClaimOutcome.CLAIMED),
-				(_, _) -> new PaymentOutcome.Succeeded("ok"),
+				_ -> new PaymentOutcome.Succeeded("ok"),
 				() -> "CODE123456");
 
 		BookingOutcome outcome = service.create(command());
@@ -244,7 +244,7 @@ class CreateBookingServiceTest {
 				visibility(true), customers, collidingOnce, codes::removeFirst,
 				new BookingCutoff(CLOCK), WINDOWS, CLOCK);
 		var service = new CreateBookingService(reservation,
-				(_, _) -> new PaymentOutcome.Succeeded("ok"), confirmer, release, confirmationMail,
+				_ -> new PaymentOutcome.Succeeded("ok"), confirmer, release, confirmationMail,
 				collection, CLOCK);
 
 		BookingOutcome outcome = service.create(command());
@@ -259,7 +259,7 @@ class CreateBookingServiceTest {
 		// confirmed synchronously — confirmation comes via the verified webhook (invariant #8).
 		CreateBookingService service = service(set(Pool.ONLINE),
 				claiming(ClaimOutcome.CLAIMED),
-				(_, _) -> new PaymentOutcome.Pending("cs_secret_xyz", "pi_42"),
+				_ -> new PaymentOutcome.Pending("cs_secret_xyz", "pi_42"),
 				() -> "CODE999999");
 
 		BookingOutcome outcome = service.create(command());
@@ -279,7 +279,7 @@ class CreateBookingServiceTest {
 		// PaymentIntent creation holds no (set, date) row lock. Capture the persisted-row count at the
 		// moment pay() is invoked to prove the ordering.
 		int[] insertedAtPayTime = {-1};
-		CheckoutPort capturingCheckout = (_, _) -> {
+		CheckoutPort capturingCheckout = _ -> {
 			insertedAtPayTime[0] = bookings.inserted.size();
 			return new PaymentOutcome.Pending("cs_secret_xyz", "pi_42");
 		};
@@ -318,7 +318,7 @@ class CreateBookingServiceTest {
 				visibility(true), customers, bookings, () -> "CODE12345C",
 				new BookingCutoff(CLOCK), WINDOWS, CLOCK);
 		CreateBookingService service = new CreateBookingService(reservation,
-				(ref, money) -> new PaymentOutcome.Succeeded("ok"), failingConfirm, release,
+				_ -> new PaymentOutcome.Succeeded("ok"), failingConfirm, release,
 				confirmationMail, collection, CLOCK);
 
 		assertThrows(IllegalStateException.class, () -> service.create(command()));
@@ -331,7 +331,7 @@ class CreateBookingServiceTest {
 		// AC-1: a REQUEST venue's booking is created PENDING_REQUEST and the payment gateway is
 		// NEVER invoked — no PaymentIntent, no charge, until the venue accepts.
 		boolean[] paymentTouched = {false};
-		CheckoutPort neverPay = (ref, money) -> {
+		CheckoutPort neverPay = _ -> {
 			paymentTouched[0] = true;
 			throw new AssertionError("a pending request must not initiate payment");
 		};
@@ -360,7 +360,7 @@ class CreateBookingServiceTest {
 		CreateBookingService service = service(
 				set(Pool.ONLINE, BookingMode.REQUEST),
 				claiming(ClaimOutcome.CLAIMED),
-				(_, _) -> new PaymentOutcome.Succeeded("unused"), () -> "REQCODE002");
+				_ -> new PaymentOutcome.Succeeded("unused"), () -> "REQCODE002");
 
 		BookingOutcome outcome = service.create(
 				new CreateBookingCommand(SET, LocalDate.of(2026, 11, 3), GUEST));
@@ -374,7 +374,7 @@ class CreateBookingServiceTest {
 	void rejectsTakenSetWithoutPersisting() {
 		CreateBookingService service = service(set(Pool.ONLINE),
 				claiming(ClaimOutcome.ALREADY_TAKEN),
-				(_, _) -> new PaymentOutcome.Succeeded("ok"), () -> "X");
+				_ -> new PaymentOutcome.Succeeded("ok"), () -> "X");
 
 		assertSame(BookingOutcome.Rejected.SET_TAKEN, service.create(command()));
         assertTrue(bookings.inserted.isEmpty(), "a lost claim must create no booking row");
@@ -383,8 +383,8 @@ class CreateBookingServiceTest {
 	@Test
 	void paysTheStayTotalOnce() {
 		List<ai.riviera.platform.payment.vocabulary.Money> charged = new ArrayList<>();
-		CheckoutPort capturing = (_, money) -> {
-			charged.add(money);
+		CheckoutPort capturing = shares -> {
+			charged.add(shares.getFirst().amount());
 			return new PaymentOutcome.Succeeded("ok");
 		};
 		CreateBookingService service = service(set(Pool.ONLINE), claiming(ClaimOutcome.CLAIMED),
@@ -420,7 +420,7 @@ class CreateBookingServiceTest {
 			}
 		};
 		CreateBookingService service = service(set(Pool.ONLINE), losesTheSecondDay,
-				(_, _) -> new PaymentOutcome.Succeeded("ok"), () -> "X");
+				_ -> new PaymentOutcome.Succeeded("ok"), () -> "X");
 
 		BookingOutcome outcome = service.create(
 				new CreateBookingCommand(SET, DATE, DATE.plusDays(2), GUEST, null));
@@ -446,7 +446,7 @@ class CreateBookingServiceTest {
 			}
 		};
 		CreateBookingService service = service(set(Pool.ONLINE, BookingMode.REQUEST), recording,
-				(_, _) -> new PaymentOutcome.Succeeded("ok"), () -> "X");
+				_ -> new PaymentOutcome.Succeeded("ok"), () -> "X");
 
 		BookingOutcome outcome = service.create(
 				new CreateBookingCommand(SET, DATE, DATE.plusDays(1), GUEST, null));
@@ -471,7 +471,7 @@ class CreateBookingServiceTest {
 			}
 		};
 		CreateBookingService service = service(set(Pool.ONLINE, BookingMode.INSTANT, SeasonClosure.open(), 3),
-				recording, (_, _) -> new PaymentOutcome.Succeeded("ok"), () -> "X");
+				recording, _ -> new PaymentOutcome.Succeeded("ok"), () -> "X");
 
 		BookingOutcome outcome = service.create(
 				new CreateBookingCommand(SET, DATE, DATE.plusDays(3), GUEST, null));
@@ -484,7 +484,7 @@ class CreateBookingServiceTest {
 	@Test
 	void aStayOfExactlyTheMaximumIsReserved() {
 		CreateBookingService service = service(set(Pool.ONLINE, BookingMode.INSTANT, SeasonClosure.open(), 3),
-				claiming(ClaimOutcome.CLAIMED), (_, _) -> new PaymentOutcome.Succeeded("ok"), () -> "X");
+				claiming(ClaimOutcome.CLAIMED), _ -> new PaymentOutcome.Succeeded("ok"), () -> "X");
 
 		BookingOutcome outcome = service.create(
 				new CreateBookingCommand(SET, DATE, DATE.plusDays(2), GUEST, null));
@@ -495,7 +495,7 @@ class CreateBookingServiceTest {
 	@Test
 	void noMaximumAcceptsAnyStay() {
 		CreateBookingService service = service(set(Pool.ONLINE, BookingMode.INSTANT, SeasonClosure.open(), null),
-				claiming(ClaimOutcome.CLAIMED), (_, _) -> new PaymentOutcome.Succeeded("ok"), () -> "X");
+				claiming(ClaimOutcome.CLAIMED), _ -> new PaymentOutcome.Succeeded("ok"), () -> "X");
 
 		BookingOutcome outcome = service.create(
 				new CreateBookingCommand(SET, DATE, DATE.plusDays(9), GUEST, null));
@@ -510,7 +510,7 @@ class CreateBookingServiceTest {
 		// guarded cancel + free) — and surface the failure, never leaving an orphaned AWAITING_PAYMENT.
 		CreateBookingService service = service(set(Pool.ONLINE),
 				claiming(ClaimOutcome.CLAIMED),
-				(_, _) -> new PaymentOutcome.Failed("stripe_error"), () -> "CODEX12345");
+				_ -> new PaymentOutcome.Failed("stripe_error"), () -> "CODEX12345");
 
 		assertThrows(PaymentDeclinedException.class, () -> service.create(command()));
 		assertEquals(1, bookings.inserted.size(), "the booking was persisted before the failed payment");
@@ -523,7 +523,7 @@ class CreateBookingServiceTest {
 		// A RAW throw from pay (not the typed Failed) — e.g. the payment-row insert failing after
 		// Stripe created the intent — must still compensate: release the committed claim, then rethrow,
 		// never leaving an orphaned AWAITING_PAYMENT booking holding the set with no payment row.
-		CheckoutPort throwingCheckout = (_, _) -> {
+		CheckoutPort throwingCheckout = _ -> {
 			throw new org.springframework.dao.DataAccessResourceFailureException("register blew up after intent");
 		};
 		CreateBookingService service = service(set(Pool.ONLINE),
@@ -569,7 +569,7 @@ class CreateBookingServiceTest {
 	@Test
 	void instantReserveRefusedForHiddenVenue() {
 		CreateBookingService service = service(set(Pool.ONLINE), neverClaiming(),
-				(_, _) -> new PaymentOutcome.Succeeded("ok"), () -> "X", false);
+				_ -> new PaymentOutcome.Succeeded("ok"), () -> "X", false);
 
 		assertSame(BookingOutcome.Rejected.NO_SUCH_SET, service.create(command()));
 		assertTrue(bookings.inserted.isEmpty(), "no booking row for a hidden venue");
@@ -578,7 +578,7 @@ class CreateBookingServiceTest {
 	@Test
 	void requestReserveRefusedForHiddenVenue() {
 		CreateBookingService service = service(set(Pool.ONLINE, BookingMode.REQUEST), neverClaiming(),
-				(_, _) -> new PaymentOutcome.Succeeded("ok"), () -> "X", false);
+				_ -> new PaymentOutcome.Succeeded("ok"), () -> "X", false);
 
 		assertSame(BookingOutcome.Rejected.NO_SUCH_SET, service.create(command()));
 		assertTrue(bookings.inserted.isEmpty(), "no pending request for a hidden venue");
@@ -588,7 +588,7 @@ class CreateBookingServiceTest {
 	void rejectsWalkInPool() {
 		CreateBookingService service = service(set(Pool.WALK_IN),
 				claiming(ClaimOutcome.CLAIMED),
-				(_, _) -> new PaymentOutcome.Succeeded("ok"), () -> "X");
+				_ -> new PaymentOutcome.Succeeded("ok"), () -> "X");
 		assertSame(BookingOutcome.Rejected.NOT_ONLINE_POOL, service.create(command()));
 	}
 
@@ -596,7 +596,7 @@ class CreateBookingServiceTest {
 	void rejectsUnknownSet() {
 		CreateBookingService service = service(null,
 				claiming(ClaimOutcome.CLAIMED),
-				(_, _) -> new PaymentOutcome.Succeeded("ok"), () -> "X");
+				_ -> new PaymentOutcome.Succeeded("ok"), () -> "X");
 		assertSame(BookingOutcome.Rejected.NO_SUCH_SET, service.create(command()));
 	}
 
@@ -605,7 +605,7 @@ class CreateBookingServiceTest {
 		// now (2026-11-01) is fine for DATE; use a past date to trip the cutoff.
 		CreateBookingService service = service(set(Pool.ONLINE),
 				claiming(ClaimOutcome.CLAIMED),
-				(_, _) -> new PaymentOutcome.Succeeded("ok"), () -> "X");
+				_ -> new PaymentOutcome.Succeeded("ok"), () -> "X");
 		BookingOutcome outcome = service.create(
 				new CreateBookingCommand(SET, LocalDate.of(2026, 10, 1), GUEST));
 		assertSame(BookingOutcome.Rejected.BOOKING_CLOSED, outcome);
@@ -615,7 +615,7 @@ class CreateBookingServiceTest {
 	void rejectsAClosedVenueBeforeAnyClaim() {
 		SeasonClosure closed = SeasonClosure.closed(DATE.plusDays(10), false);
 		CreateBookingService service = service(set(Pool.ONLINE, BookingMode.INSTANT, closed),
-				claiming(ClaimOutcome.CLAIMED), (_, _) -> new PaymentOutcome.Succeeded("ok"), () -> "X");
+				claiming(ClaimOutcome.CLAIMED), _ -> new PaymentOutcome.Succeeded("ok"), () -> "X");
 
 		assertSame(BookingOutcome.Rejected.VENUE_CLOSED, service.create(command()));
 		assertEquals(0, bookings.inserted.size(), "nothing is written: the fence runs before the claim");
@@ -625,7 +625,7 @@ class CreateBookingServiceTest {
 	void aClosedRequestVenueIsRefusedTheSameWay() {
 		SeasonClosure closed = SeasonClosure.closed(null, false);
 		CreateBookingService service = service(set(Pool.ONLINE, BookingMode.REQUEST, closed),
-				claiming(ClaimOutcome.CLAIMED), (_, _) -> new PaymentOutcome.Succeeded("ok"), () -> "X");
+				claiming(ClaimOutcome.CLAIMED), _ -> new PaymentOutcome.Succeeded("ok"), () -> "X");
 
 		assertSame(BookingOutcome.Rejected.VENUE_CLOSED, service.create(command()));
 	}
@@ -634,7 +634,7 @@ class CreateBookingServiceTest {
 	void theOptInSellsDatesOnOrAfterTheReopenDayWhileStillClosed() {
 		SeasonClosure sellingAhead = SeasonClosure.closed(DATE, true);
 		CreateBookingService service = service(set(Pool.ONLINE, BookingMode.INSTANT, sellingAhead),
-				claiming(ClaimOutcome.CLAIMED), (_, _) -> new PaymentOutcome.Succeeded("ok"), () -> "X");
+				claiming(ClaimOutcome.CLAIMED), _ -> new PaymentOutcome.Succeeded("ok"), () -> "X");
 
 		assertInstanceOf(BookingOutcome.Confirmed.class, service.create(command()));
 		assertSame(BookingOutcome.Rejected.VENUE_CLOSED,
@@ -645,7 +645,7 @@ class CreateBookingServiceTest {
 	void aHiddenClosedVenueStillReadsAsNoSuchSet() {
 		SeasonClosure closed = SeasonClosure.closed(null, false);
 		CreateBookingService service = service(set(Pool.ONLINE, BookingMode.INSTANT, closed),
-				claiming(ClaimOutcome.CLAIMED), (_, _) -> new PaymentOutcome.Succeeded("ok"), () -> "X", false);
+				claiming(ClaimOutcome.CLAIMED), _ -> new PaymentOutcome.Succeeded("ok"), () -> "X", false);
 
 		assertSame(BookingOutcome.Rejected.NO_SUCH_SET, service.create(command()));
 	}
@@ -655,7 +655,7 @@ class CreateBookingServiceTest {
 		// AC-4: "now" is 10:00 Tirane; a 16:00 sales close still allows booking TODAY (#791).
 		Clock beforeClose = Clock.fixed(Instant.parse("2026-11-01T09:00:00Z"), ZoneId.of("UTC"));
 		CreateBookingService service = service(set(Pool.ONLINE), claiming(ClaimOutcome.CLAIMED),
-				(_, _) -> new PaymentOutcome.Succeeded("ok"), () -> "CODE234567", true, beforeClose);
+				_ -> new PaymentOutcome.Succeeded("ok"), () -> "CODE234567", true, beforeClose);
 
 		BookingOutcome outcome = service.create(
 				new CreateBookingCommand(SET, LocalDate.of(2026, 11, 1), GUEST));
@@ -668,7 +668,7 @@ class CreateBookingServiceTest {
 		// AC-4: exactly at the venue's 16:00 sales close (15:00Z = 16:00 CET), the same date is closed.
 		Clock atClose = Clock.fixed(Instant.parse("2026-11-01T15:00:00Z"), ZoneId.of("UTC"));
 		CreateBookingService service = service(set(Pool.ONLINE), claiming(ClaimOutcome.CLAIMED),
-				(_, _) -> new PaymentOutcome.Succeeded("ok"), () -> "X", true, atClose);
+				_ -> new PaymentOutcome.Succeeded("ok"), () -> "X", true, atClose);
 
 		BookingOutcome outcome = service.create(
 				new CreateBookingCommand(SET, LocalDate.of(2026, 11, 1), GUEST));
@@ -682,7 +682,7 @@ class CreateBookingServiceTest {
 		Clock beforeClose = Clock.fixed(Instant.parse("2026-11-01T09:00:00Z"), ZoneId.of("UTC"));
 		CreateBookingService service = service(set(Pool.ONLINE, BookingMode.REQUEST),
 				claiming(ClaimOutcome.CLAIMED),
-				(_, _) -> new PaymentOutcome.Succeeded("unused"), () -> "REQCODE004", true, beforeClose);
+				_ -> new PaymentOutcome.Succeeded("unused"), () -> "REQCODE004", true, beforeClose);
 
 		BookingOutcome outcome = service.create(
 				new CreateBookingCommand(SET, LocalDate.of(2026, 11, 1), GUEST));
@@ -715,7 +715,7 @@ class CreateBookingServiceTest {
 		};
 		CreateBookingService service = service(set(Pool.ONLINE, BookingMode.REQUEST),
 				claiming(ClaimOutcome.CLAIMED),
-				(_, _) -> new PaymentOutcome.Succeeded("unused"), () -> "REQCODE005", true, counting);
+				_ -> new PaymentOutcome.Succeeded("unused"), () -> "REQCODE005", true, counting);
 
 		BookingOutcome outcome = service.create(
 				new CreateBookingCommand(SET, LocalDate.of(2026, 11, 1), GUEST));
@@ -731,7 +731,7 @@ class CreateBookingServiceTest {
 		Clock eveningBefore = Clock.fixed(Instant.parse("2026-11-01T19:00:00Z"), ZoneId.of("UTC"));
 		CreateBookingService service = service(set(Pool.ONLINE, BookingMode.REQUEST),
 				claiming(ClaimOutcome.CLAIMED),
-				(_, _) -> new PaymentOutcome.Succeeded("unused"), () -> "REQCODE003", true, eveningBefore);
+				_ -> new PaymentOutcome.Succeeded("unused"), () -> "REQCODE003", true, eveningBefore);
 
 		BookingOutcome outcome = service.create(
 				new CreateBookingCommand(SET, LocalDate.of(2026, 11, 2), GUEST));
@@ -752,7 +752,7 @@ class CreateBookingServiceTest {
 			String code = "SECRETCODE";
 			CreateBookingService service = service(set(Pool.ONLINE),
 					claiming(ClaimOutcome.CLAIMED),
-					(_, _) -> new PaymentOutcome.Succeeded("ok"), () -> code);
+					_ -> new PaymentOutcome.Succeeded("ok"), () -> code);
 			service.create(command());
 
 			boolean leaked = appender.list.stream()
