@@ -330,22 +330,34 @@
               (dismissed)="closePlan()"
             />
           }
-          @if (planNote(); as note) {
+          @if (planOpen()) {
+            <!-- The live region is in the tree before a read answers, so its text is announced (RV-FE-10). -->
             <output
               class="mt-3 block rounded-[16px] border border-riv-field-border bg-riv-field-solid px-4 py-3 text-[14px] text-riv-card-ink"
+              [class.sr-only]="!planNote()"
               data-testid="stay-plan-none"
+              >{{ planNote() ?? '' }}</output
             >
-              <span class="block">{{ note }}</span>
-              <button
-                appTouchTarget
-                type="button"
-                class="mt-2 inline-flex cursor-pointer items-center rounded-[14px] px-3 py-2 font-bold text-riv-accent-ink underline-offset-2 hover:underline"
-                data-testid="stay-plan-none-close"
-                (click)="closePlan()"
-              >
-                Back to the map
-              </button>
-            </output>
+          }
+          @if (planOpen() && planFailed()) {
+            <p
+              class="mt-3 rounded-[16px] border border-riv-field-border bg-riv-field-solid px-4 py-3 text-[14px] text-riv-card-ink"
+              role="alert"
+              data-testid="stay-plan-failed"
+            >
+              The plan could not be loaded. Please try again.
+            </p>
+          }
+          @if (planNote() || (planOpen() && planFailed())) {
+            <button
+              appTouchTarget
+              type="button"
+              class="mt-2 inline-flex cursor-pointer items-center rounded-[14px] px-3 py-2 font-bold text-riv-accent-ink underline-offset-2 hover:underline"
+              data-testid="stay-plan-none-close"
+              (click)="closePlan()"
+            >
+              Back to the map
+            </button>
           }
         </div>
       </div>

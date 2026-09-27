@@ -254,7 +254,7 @@ export class VenueMap {
   /** Bumped per itinerary dispatch, so a superseded answer is dropped. */
   private planEpoch = 0;
   /** Whether the latest itinerary read failed, so the open panel can say so instead of staying blank. */
-  private readonly planFailed = signal(false);
+  protected readonly planFailed = signal(false);
   protected readonly plan = computed(() => this.itinerary()?.plan ?? undefined);
   /** The plan's sets by first 0-based place, when the panel is open — what numbers the tiles. */
   private readonly planPlaces = computed(() => {
@@ -267,13 +267,10 @@ export class VenueMap {
     });
     return places;
   });
-  /** What the open panel says when it has no plan to show: none fits around the anchor, or the read failed. */
+  /** What the open panel's live region says once a read answers with no plan (a failed read alerts instead). */
   protected readonly planNote = computed<string | undefined>(() => {
-    if (!this.planOpen() || this.plan() !== undefined) {
+    if (!this.planOpen() || this.plan() !== undefined || this.planFailed()) {
       return undefined;
-    }
-    if (this.planFailed()) {
-      return 'The plan could not be loaded. Please try again.';
     }
     const answered = this.itinerary();
     if (answered === undefined) {
@@ -523,12 +520,18 @@ export class VenueMap {
       next: (itinerary) => {
         if (this.planEpoch === epoch) {
           this.itinerary.set(itinerary);
+          if (this.planOpen() && itinerary.plan === null) {
+            this.moveFocus('stay-plan-none');
+          }
         }
       },
       error: () => {
         if (this.planEpoch === epoch) {
           this.itinerary.set(undefined);
           this.planFailed.set(true);
+          if (this.planOpen()) {
+            this.moveFocus('stay-plan-failed');
+          }
         }
       },
     });
@@ -554,7 +557,7 @@ export class VenueMap {
     this.planOpen.set(false);
     this.planAnchorSet.set(undefined);
     if (anchor === undefined) {
-      this.moveFocus('no-cover-plan');
+      this.moveFocus('no-cover-plan', 'no-cover');
     } else {
       this.focusTile(anchor.id);
     }
@@ -566,6 +569,7 @@ export class VenueMap {
     this.lastTriggerId = set.id;
     this.focusTile(set.id);
     this.planAnchorSet.set(set);
+    this.itinerary.set(undefined);
     this.planOpen.set(true);
     this.loadItinerary(set.id);
   }
@@ -602,8 +606,8 @@ export class VenueMap {
         if (this.epoch === epoch) {
           this.venue.set(venue);
           this.openPendingSelection(venue);
-          if (this.noSetCovers()) {
-            this.loadItinerary();
+          if (this.planOpen() || this.noSetCovers()) {
+            this.loadItinerary(this.planAnchorSet()?.id);
           }
         }
       },
@@ -790,7 +794,6 @@ export class VenueMap {
     this.focusTile(this.lastTriggerId);
   }
 
-  /** The plan dialog closed unbooked: back to the plan panel's own button (modal a11y, RV-FE-9). */
   /** The plan dialog closed without booking: re-read the map, so a spot taken meanwhile re-plans the stay. */
   protected onPlanDialogClose(): void {
     this.selectedPlan.set(undefined);

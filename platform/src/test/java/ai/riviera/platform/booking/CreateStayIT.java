@@ -13,6 +13,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.jdbc.core.simple.JdbcClient;
+import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
 import org.springframework.test.context.event.ApplicationEvents;
 import org.springframework.test.context.event.RecordApplicationEvents;
 
@@ -36,6 +37,11 @@ import static ai.riviera.platform.booking.StayFixtures.take;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyList;
+import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 
 /**
  * A stitched stay through {@link CreateStay} against the stub gateway: one stay row with the group's
@@ -53,7 +59,7 @@ class CreateStayIT {
 	@Autowired
 	CreateStay createStay;
 
-	@Autowired
+	@MockitoSpyBean
 	ConfirmBooking confirmBooking;
 
 	@Autowired
@@ -103,6 +109,8 @@ class CreateStayIT {
 				code + "-1 " + a.value() + " " + first + ".." + first.plusDays(2) + " " + 3 * PRICE + " CONFIRMED",
 				code + "-2 " + b.value() + " " + first.plusDays(3) + ".." + first.plusDays(6) + " " + 4 * PRICE + " CONFIRMED"),
 				rows, "one booking per stretch, a derived row code, each at its own total");
+		verify(confirmBooking).confirmAll(anyList(), any());
+		verify(confirmBooking, never()).confirm(anyLong(), any());
 		assertEquals(3L, heldDays(jdbc, a, first, first.plusDays(2)));
 		assertEquals(4L, heldDays(jdbc, b, first.plusDays(3), first.plusDays(6)));
 		assertEquals(0L, heldDays(jdbc, a, first.plusDays(3), first.plusDays(6)), "a stretch claims only its own days");

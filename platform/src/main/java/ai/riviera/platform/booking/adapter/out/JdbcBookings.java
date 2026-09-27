@@ -356,11 +356,10 @@ class JdbcBookings implements Bookings {
 	@Override
 	public Optional<BookingRecord> findByCode(String code) {
 		return jdbc.sql("""
-				SELECT b.id, COALESCE(s.code, b.code) AS code, b.status, b.venue_id, b.set_id, b.customer_id,
+				SELECT b.id, b.code, b.status, b.venue_id, b.set_id, b.customer_id,
 				       b.booking_date, b.last_date, b.amount_minor, b.amount_currency, b.cancelled_at, b.refund_minor,
 				       b.request_expires_at, b.cancel_reason, b.created_at, b.accepted_at, b.moved_at
 				FROM booking b
-				LEFT JOIN stay s ON s.id = b.stay_id
 				WHERE b.code = :code AND b.stay_id IS NULL
 				""")
 				.param("code", code)

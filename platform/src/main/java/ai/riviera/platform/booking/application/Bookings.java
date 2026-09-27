@@ -101,8 +101,9 @@ public interface Bookings {
 	List<BookingRecord> lockStretches(StayId stayId);
 
 	/**
-	 * The bookings linked to a customer account, newest first; never a guest booking (NULL {@code
-	 * account_id}). Pass the session principal's id, never a request param (BOLA, invariant #13).
+	 * The bookings linked to a customer account, newest first, a stitched stay as one record
+	 * ({@link StayRecord#asBooking}); never a guest booking (NULL {@code account_id}). Pass the session
+	 * principal's id, never a request param (BOLA, invariant #13).
 	 */
 	List<BookingRecord> findByAccountId(CustomerAccountId accountId);
 

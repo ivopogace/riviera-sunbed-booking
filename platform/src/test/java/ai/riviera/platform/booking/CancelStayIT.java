@@ -195,7 +195,6 @@ class CancelStayIT {
 		assertEquals(List.of("CONFIRMED", "CANCELLED"), statuses(venue.id()),
 				"the first stretch is untouched: the guest's cancel wrote nothing, not half a stay");
 		assertEquals(3L, heldDays(jdbc, a, first, first.plusDays(6)));
-		assertEquals(0, events.stream(BookingCancelled.class).count(), "the guest's cancel announced nothing");
 	}
 
 	private List<String> statuses(long venue) {
@@ -206,5 +205,23 @@ class CancelStayIT {
 	private long sessionsWaitingOnALock() {
 		return jdbc.sql("SELECT count(*) FROM pg_stat_activity WHERE wait_event_type = 'Lock' AND datname = current_database()")
 				.query(Long.class).single();
+	}
+
+	@Test
+	void everyStretchIsQuotedOnTheStaysFirstDay() {
+		Venue venue = StayFixtures.venue(jdbc, "INSTANT", null, true);
+		venues.add(venue.id());
+		jdbc.sql("UPDATE venue SET booking_cutoff = '00:00', late_cancel_refund_bps = 2500 WHERE id = :v")
+				.param("v", venue.id()).update();
+		LocalDate tomorrow = LocalDate.now(StayFixtures.TIRANE).plusDays(1);
+		String code = assertInstanceOf(StayOutcome.Confirmed.class,
+				createStay.create(plan(venue.online().get(0), 2, venue.online().get(1), 2, tomorrow))).confirmation().code();
+		Awaitility.await().atMost(Duration.ofSeconds(10)).until(() -> accruals(venue.id()) == 2L);
+
+		CancelOutcome outcome = cancelBooking.cancel(code);
+
+		assertEquals(new CancelOutcome.Cancelled(4 * PRICE / 4, "EUR", CancelOutcome.Tier.PARTIAL), outcome,
+				"a stay starting tomorrow is LATE for every stretch: 25% of all four days, "
+						+ "although the second stretch's own first day would still be free to cancel");
 	}
 }

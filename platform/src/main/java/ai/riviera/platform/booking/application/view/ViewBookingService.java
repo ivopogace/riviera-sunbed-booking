@@ -82,16 +82,13 @@ class ViewBookingService implements ViewBooking {
 	private BookingDetail toStayDetail(StayRecord stay) {
 		List<BookingRecord> stretches = stay.stretches();
 		BookingRecord first = stretches.getFirst();
-		BookingStatus status = StayStatus.of(stretches.stream().map(BookingRecord::status).toList());
+		BookingRecord summary = stay.asBooking();
+		BookingStatus status = summary.status();
 		List<RefundQuote> quotes = stretches.stream().map(s -> cancellationPolicy.quote(s, stay.firstDay())).toList();
 		SetBookingInfo firstSet = quotes.getFirst().set();
 		boolean cancellable = stretches.stream().allMatch(s -> BookingTransition.CANCEL_BY_GUEST.admits(s.status()))
 				&& quotes.stream().allMatch(RefundQuote::cancellationOpen);
-		long amount = stretches.stream().mapToLong(BookingRecord::amountMinor).reduce(0L, Math::addExact);
 		long refundIfCancelledNow = quotes.stream().mapToLong(RefundQuote::refundMinor).reduce(0L, Math::addExact);
-		boolean anyRefunded = stretches.stream().anyMatch(s -> s.refundMinor() != null);
-		long refunded = stretches.stream().filter(s -> s.refundMinor() != null).mapToLong(BookingRecord::refundMinor)
-				.reduce(0L, Math::addExact);
 		boolean refundOutstanding = stretches.stream().anyMatch(s -> s.status() == BookingStatus.CANCELLED
 				&& s.refundMinor() != null && s.refundMinor() > 0
 				&& refundStatus.progressOf(new ai.riviera.platform.payment.vocabulary.BookingRef(s.id()))
@@ -114,11 +111,11 @@ class ViewBookingService implements ViewBooking {
 					stretch.status()));
 		}
 		return new BookingDetail(stay.code(), status, stay.venueId(), firstSet.venueName(), firstSet.rowLabel(),
-				firstSet.positionNo(), stay.firstDay(), stay.lastDay(), new MoneyView(amount, first.currency()),
+				firstSet.positionNo(), stay.firstDay(), stay.lastDay(), new MoneyView(summary.amountMinor(), first.currency()),
 				cancellable, false, quotes.getFirst().beforeCutoff(),
 				new MoneyView(refundIfCancelledNow, first.currency()),
-				anyRefunded ? new MoneyView(refunded, first.currency()) : null, refundOutstanding, null, payment,
-				emailWithheld, payWindowClosed, first.cancelReason(),
+				summary.refundMinor() == null ? null : new MoneyView(summary.refundMinor(), first.currency()),
+				refundOutstanding, null, payment, emailWithheld, payWindowClosed, summary.cancelReason(),
 				cutoff.cancellationWindow(firstSet.bookingCutoff(), stay.firstDay(), first.createdAt()),
 				panel, nameSuggestionFor(panel, first), null, stretchViews);
 	}

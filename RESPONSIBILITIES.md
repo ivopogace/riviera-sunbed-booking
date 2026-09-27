@@ -246,13 +246,13 @@ any is released on the old, never a swap of my own — so a racing reserve wins 
   that does not weaken invariant #2: the guard is `UNIQUE (set_id, booking_date)` plus the atomic
   `INSERT … ON CONFLICT DO NOTHING` claim, which holds however long the lock is held.
 - **A stitched stay is a group of bookings under one `stay` row (ADR-0024, design D6); I am its sole
-  writer.** One booking per stretch, each an ordinary booking; the stay's code is the guest's one
-  credential (invariant #7); a stretch's row code (`<stayCode>-<n>`) is never shown and resolves
-  nothing (`JdbcBookings.CODE_MATCH`): every code-rendering read (view, staff list, mail facts, review
-  eligibility once no stretch is live) answers the stay's code and every code-resolving path accepts it. The reserve (`CreateStay`, `POST /api/stays`) validates the
-  plan's shape, judges every stretch by the shared `ReserveFences`, claims every day of every stretch
-  all or nothing (`ConcurrentStayReservationIT`) and collects once with one share per stretch; a stay
-  cancels whole, each stretch quoted on the stay's first day (invariant #10) and reversed once (#9).
+  writer.** One booking per stretch; the stay's code is the guest's one credential (invariant #7) and
+  a stretch's row code (`<stayCode>-<n>`) is never shown and resolves nothing (`JdbcBookings.CODE_MATCH`):
+  view, cancel, check-in, staff list, mail facts and review eligibility (once no stretch is live)
+  answer the stay's code. The reserve (`CreateStay`, `POST /api/stays`) validates the plan's shape,
+  judges every stretch by the shared `ReserveFences`, claims every day of every stretch all or nothing
+  (`ConcurrentStayReservationIT`) and collects once with one share per stretch; a stay cancels whole,
+  each stretch quoted on the stay's first day (invariant #10) and reversed once (#9).
 - **Attendance is per service day; I am the sole writer and reader of `booking_day`**
   (`ResponsibilitiesArchitectureTests` rule 9 — other modules ask my ports). The schema writes the
   rows when a booking becomes `CONFIRMED` (trigger `booking_day_on_confirm`), so no confirm

@@ -39,11 +39,12 @@ one row.
    accrual, one refund, one `booking_day` per day, one settlement under a remodel. `booking` is the
    sole writer of `stay`, and `ResponsibilitiesArchitectureTests` holds that.
 2. **The stay's code is the guest's one bearer credential** (invariant #7). A stretch's own
-   `booking.code` is derived (`<stayCode>-<n>`), keeps `UNIQUE (code)` and the per-booking paths
-   intact, and is never shown: every code-rendering read — the code-gated view, check-in, the
-   staff daily list, the confirmation mail's facts, review eligibility — answers the stay's code,
-   and every code-resolving write accepts it. Check-in resolves the stay's code to the stretch
-   whose span covers today and stamps only that day.
+   `booking.code` is derived (`<stayCode>-<n>`), keeps `UNIQUE (code)` and the per-booking tables
+   intact, and is never shown nor honoured: every code lookup (`JdbcBookings.CODE_MATCH`) answers
+   a lone booking's code or a stay's, never a row code. The code-gated view, cancel, check-in, the
+   staff daily list, the confirmation mail's facts and review eligibility (once no stretch is still
+   live) answer the stay's code. Check-in resolves it to the stretch whose day row is today's and
+   stamps only that day.
 3. **One collection for the group.** `payment.api.CheckoutPort` collects a list of shares under one
    PaymentIntent, one `payment_booking` share per stretch (the shape #1207 prepared); the webhook
    confirms each stretch, so `BookingConfirmed`, payout accrual and the confirmation mail stay per

@@ -9,6 +9,7 @@ import java.util.function.Function;
 
 import ai.riviera.platform.booking.domain.BookingStatus;
 import ai.riviera.platform.booking.domain.StayStatus;
+import ai.riviera.platform.booking.vocabulary.RefundReason;
 import ai.riviera.platform.booking.vocabulary.StayId;
 import ai.riviera.platform.venue.vocabulary.VenueId;
 
@@ -31,9 +32,13 @@ public record StayRecord(StayId id, String code, VenueId venueId, LocalDate firs
 		List<Long> refunds = stretches.stream().map(BookingRecord::refundMinor).filter(Objects::nonNull).toList();
 		Long refund = refunds.isEmpty() ? null : refunds.stream().mapToLong(Long::longValue).reduce(0L, Math::addExact);
 		return new BookingRecord(first.id(), code, status, venueId, first.setId(), first.customerId(), firstDay, lastDay,
-				amount, first.currency(), latest(BookingRecord::cancelledAt), refund, null,
-				stretches.stream().map(BookingRecord::cancelReason).filter(Objects::nonNull).findFirst().orElse(null),
+				amount, first.currency(), latest(BookingRecord::cancelledAt), refund, null, latestCancelReason(),
 				first.createdAt(), first.acceptedAt(), latest(BookingRecord::movedAt));
+	}
+
+	private RefundReason latestCancelReason() {
+		return stretches.stream().filter(s -> s.cancelledAt() != null)
+				.max(Comparator.comparing(BookingRecord::cancelledAt)).map(BookingRecord::cancelReason).orElse(null);
 	}
 
 	private Instant latest(Function<BookingRecord, Instant> at) {
