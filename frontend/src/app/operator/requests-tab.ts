@@ -23,6 +23,7 @@ import { focusMover } from '../shared/focus-after-render';
 import { formatMoney } from '../shared/money';
 import { parentVenueId } from '../shared/parent-venue-id';
 import { formatCivilDate, todayBookingDate } from '../shared/booking-date';
+import { formatStay } from '../shared/booking-date-label';
 import { setLabel, setsById, tierLabel } from '../shared/set-label';
 import { VenueMapView } from '../shared/venue-views';
 import { ConsoleVenueMap } from './console-venue-map';
@@ -40,6 +41,7 @@ interface RequestRow {
   readonly setLabel: string;
   readonly tierName: string;
   readonly dateLabel: string;
+  readonly isStay: boolean;
   readonly priceStr: string;
   readonly respondByStr: string;
   readonly urgent: boolean;
@@ -162,7 +164,11 @@ export class RequestsTab {
         guest: r.guestName,
         setLabel: setLabel(byId, r.setId),
         tierName: tierLabel(set?.tier ?? 'STANDARD'),
-        dateLabel: formatCivilDate(r.bookingDate),
+        dateLabel:
+          r.lastDate === r.bookingDate
+            ? formatCivilDate(r.bookingDate)
+            : formatStay(r.bookingDate, r.lastDate, { withYear: true }),
+        isStay: r.lastDate !== r.bookingDate,
         priceStr: formatMoney(r.amount),
         respondByStr: formatDeadline(r.requestExpiresAt),
         urgent: isUrgent(r.requestExpiresAt, now),
@@ -267,9 +273,12 @@ export class RequestsTab {
       case 'REQUEST_NOT_PENDING':
       case 'NO_SUCH_REQUEST': {
         this.closeDeclineConfirm(bookingId);
+        const days = this.rows().find((row) => row.bookingId === bookingId)?.isStay
+          ? 'those days'
+          : 'that day';
         this.notice.set(
           reason === 'SET_UNAVAILABLE'
-            ? 'That set is no longer free for that day — the request was declined and the guest has been told.'
+            ? `That set is no longer free for ${days} — the request was declined and the guest has been told.`
             : 'That request was already handled — the queue has moved on.',
         );
         const landing = this.landingAfterRemoving(bookingId, NOTICE);
@@ -430,10 +439,10 @@ export class RequestsTab {
   // The accessible names lead with the button's visible text (WCAG 2.5.3 Label in Name) and add the
   // guest + set to disambiguate the repeated per-card buttons for a screen-reader.
   protected acceptLabel(row: RequestRow): string {
-    return `Accept — send to payment: request from ${row.guest} for ${row.setLabel} on ${row.dateLabel}`;
+    return `Accept — send to payment: request from ${row.guest} ${forDays(row)}`;
   }
   protected declineLabel(row: RequestRow): string {
-    return `Decline: request from ${row.guest} for ${row.setLabel} on ${row.dateLabel}`;
+    return `Decline: request from ${row.guest} ${forDays(row)}`;
   }
   protected confirmDeclineLabel(row: RequestRow): string {
     return `Confirm decline: request from ${row.guest} for ${row.setLabel}`;
@@ -473,6 +482,13 @@ function without(set: ReadonlySet<number>, id: number): ReadonlySet<number> {
   const next = new Set(set);
   next.delete(id);
   return next;
+}
+
+/** The set and days a card's accessible names name: `for A · 1 on Fri 3 Jul 2026`, or the stay's range. */
+function forDays(row: RequestRow): string {
+  return row.isStay
+    ? `for ${row.setLabel}, ${row.dateLabel}`
+    : `for ${row.setLabel} on ${row.dateLabel}`;
 }
 
 /** The operator-facing notice for a successful accept/decline. */

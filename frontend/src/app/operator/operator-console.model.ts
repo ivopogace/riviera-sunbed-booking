@@ -480,7 +480,9 @@ export interface PendingRequestItem {
   readonly bookingId: number;
   readonly setId: number;
   readonly bookingDate: string; // ISO YYYY-MM-DD (Europe/Tirane civil day, invariant #6)
+  readonly lastDate: string; // ISO, the stay's last day — the first itself for one day
   readonly guestName: string;
+  /** The whole stay's total. */
   readonly amount: MoneyView;
   readonly requestedAt: string; // ISO-8601 UTC instant
   readonly requestExpiresAt: string; // ISO-8601 UTC instant (the response deadline)

@@ -2,9 +2,9 @@
   <header class="mb-1.5">
     <h1 class="text-[19px] font-bold tracking-[-0.01em] text-riv-card-ink">Booking requests</h1>
     <p class="mt-1 max-w-[520px] text-[13px] leading-[1.5] text-riv-card-ink-soft">
-      Guests requested these sets on your Request-to-Book venue. Accept to send them to payment, or
-      decline. Several guests may request the same set; accepting one declines the others. Requests
-      expire if not answered in time.
+      Guests requested these sets on your Request-to-Book venue — a stay is one request, accepted or
+      declined whole. Accept to send them to payment, or decline. Several guests may request the
+      same set; accepting one declines the others. Requests expire if not answered in time.
     </p>
   </header>
 
@@ -127,7 +127,7 @@
                   >
                     Also requested by {{ row.competing }} other
                     {{ row.competing === 1 ? 'guest' : 'guests' }}
-                    for this day — accepting declines them.
+                    {{ row.isStay ? 'for these days' : 'for this day' }} — accepting declines them.
                   </p>
                 }
               </div>

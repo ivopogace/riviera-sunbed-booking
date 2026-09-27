@@ -159,9 +159,9 @@ standing in for `feature/request-stay`)
 
 ## Execution status
 
-**Stage pointer:** `implement (phase 6)`
+**Stage pointer:** `implement (phase 7)`
 
-**Next action:** red specs for AC-10 (the Requests card reads the range, the day count, the total).
+**Next action:** e2e stay request flow + range card, days-aware guest copy, docs.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -171,7 +171,7 @@ standing in for `feature/request-stay`)
 | 3 — the three mails name the range | ✅ | (phase 3 commit) |
 | 4 — the verdict clamp | ✅ | (phase 4 commit) |
 | 5 — FE venue page and dialog | ✅ | (phase 5 commit) |
-| 6 — FE Requests queue | | |
+| 6 — FE Requests queue | ✅ | (phase 6 commit) |
 | 7 — e2e + docs | | |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.

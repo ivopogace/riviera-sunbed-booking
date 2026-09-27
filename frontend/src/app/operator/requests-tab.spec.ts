@@ -42,6 +42,7 @@ describe('RequestsTab (#176)', () => {
       bookingId: 11,
       setId: 1,
       bookingDate: '2026-07-03',
+      lastDate: '2026-07-03',
       guestName: 'Ana Guest',
       amount: EUR(4500),
       requestedAt: '2026-07-01T09:00:00Z',
@@ -195,6 +196,31 @@ describe('RequestsTab (#176)', () => {
     expect(text).toContain('Respond by');
     // No booking code anywhere in the queue — the queue is deliberately code-less.
     expect(host.querySelector('[data-testid="requests-tab"] code')).toBeNull();
+  });
+
+  it('shows a stay as one card: first day – last day · N days, the whole total, and days-wise copy', () => {
+    render([
+      request({
+        bookingDate: '2026-07-03',
+        lastDate: '2026-07-05',
+        amount: EUR(13500),
+        competingRequests: 1,
+      }),
+    ]);
+    expect(cards()).toHaveLength(1);
+    const text = cards()[0].textContent ?? '';
+    expect(text).toMatch(/Fri,? 3 Jul – Sun,? 5 Jul 2026 · 3 days/);
+    expect(text).toContain('€135');
+    expect(text).not.toContain('€45');
+    expect(host.querySelector('[data-testid="competing-hint"]')!.textContent).toContain(
+      'for these days',
+    );
+    const accept = Array.from(cards()[0].querySelectorAll('button')).find((b) =>
+      b.getAttribute('aria-label')?.startsWith('Accept'),
+    )!;
+    expect(accept.getAttribute('aria-label')).toMatch(
+      /for A · 1, Fri,? 3 Jul – Sun,? 5 Jul 2026 · 3 days/,
+    );
   });
 
   it('shows the amber time-left chip only when the deadline is within the urgency window', () => {
@@ -851,6 +877,7 @@ interface PendingRequest {
   bookingId: number;
   setId: number;
   bookingDate: string;
+  lastDate: string;
   guestName: string;
   amount: MoneyView;
   requestedAt: string;

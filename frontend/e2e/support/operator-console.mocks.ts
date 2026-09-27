@@ -115,6 +115,7 @@ function request(bookingId: number) {
     bookingId,
     setId: 10,
     bookingDate: '2026-07-09',
+    lastDate: '2026-07-09',
     guestName: 'Ana Berisha',
     amount: { minorUnits: 2000, currency: 'EUR' },
     requestedAt: '2026-07-08T09:00:00Z',
