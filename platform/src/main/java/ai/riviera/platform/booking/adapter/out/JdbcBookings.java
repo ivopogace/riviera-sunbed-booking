@@ -35,6 +35,7 @@ import ai.riviera.platform.booking.application.checkin.CheckInFacts;
 import ai.riviera.platform.booking.application.checkin.CompletedCheckIn;
 import ai.riviera.platform.booking.application.reserve.ClaimRef;
 import ai.riviera.platform.booking.application.reserve.ConfirmedBooking;
+import ai.riviera.platform.booking.application.reserve.ConfirmedStay;
 import ai.riviera.platform.booking.application.reserve.NewBooking;
 import ai.riviera.platform.booking.application.reserve.NewStay;
 import ai.riviera.platform.booking.application.refund.RefundableBooking;
@@ -523,7 +524,8 @@ class JdbcBookings implements Bookings {
 				UPDATE booking
 				SET status = :status, confirmed_at = :at
 				WHERE id = :id AND status = :awaiting
-				RETURNING id, venue_id, set_id, booking_date, last_date, created_at, amount_minor, amount_currency
+				RETURNING id, venue_id, set_id, booking_date, last_date, created_at, amount_minor, amount_currency,
+				          stay_id
 				""")
 				.param(PARAM_STATUS, BookingStatus.CONFIRMED.name())
 				.param("at", java.sql.Timestamp.from(confirmedAt))
@@ -534,7 +536,26 @@ class JdbcBookings implements Bookings {
 						new SetId(rs.getLong(COL_SET_ID)), rs.getObject(COL_BOOKING_DATE, LocalDate.class),
 						rs.getObject(COL_LAST_DATE, LocalDate.class),
 						rs.getTimestamp(COL_CREATED_AT).toInstant(),
-						rs.getLong(COL_AMOUNT_MINOR), rs.getString(COL_AMOUNT_CURRENCY)))
+						rs.getLong(COL_AMOUNT_MINOR), rs.getString(COL_AMOUNT_CURRENCY),
+						Optional.ofNullable(rs.getObject("stay_id", Long.class)).map(StayId::new).orElse(null)))
+				.optional();
+	}
+
+	@Override
+	public Optional<ConfirmedStay> lockConfirmedStay(StayId stayId) {
+		// Lock first: the count then runs on a fresh READ COMMITTED snapshot seeing every earlier sibling confirm.
+		jdbc.sql("SELECT id FROM stay WHERE id = :stay FOR UPDATE").param("stay", stayId.value())
+				.query(Long.class).single();
+		return jdbc.sql("""
+				SELECT set_id, booking_date, created_at FROM booking
+				WHERE stay_id = :stay
+				  AND NOT EXISTS (SELECT 1 FROM booking u WHERE u.stay_id = :stay AND u.confirmed_at IS NULL)
+				ORDER BY booking_date
+				LIMIT 1
+				""")
+				.param("stay", stayId.value())
+				.query((rs, rowNum) -> new ConfirmedStay(stayId, new SetId(rs.getLong(COL_SET_ID)),
+						rs.getObject(COL_BOOKING_DATE, LocalDate.class), rs.getTimestamp(COL_CREATED_AT).toInstant()))
 				.optional();
 	}
 

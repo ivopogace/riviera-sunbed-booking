@@ -9,6 +9,7 @@ import ai.riviera.platform.booking.application.refund.RefundableBooking;
 import ai.riviera.platform.booking.application.cancel.CancelledBooking;
 import ai.riviera.platform.booking.application.reserve.ClaimRef;
 import ai.riviera.platform.booking.application.reserve.ConfirmedBooking;
+import ai.riviera.platform.booking.application.reserve.ConfirmedStay;
 
 import java.time.Instant;
 import java.time.LocalDate;
@@ -120,6 +121,12 @@ public interface Bookings {
 	 * error. Present means it transitioned: publish exactly one {@code BookingConfirmed}.
 	 */
 	Optional<ConfirmedBooking> confirmFromPayment(long bookingId, Instant confirmedAt);
+
+	/**
+	 * Row-locks the stay, then answers it iff every stretch is confirmed. Call after a stretch's confirm:
+	 * the lock serializes concurrent stretch confirms, so exactly one of them sees the stay complete.
+	 */
+	Optional<ConfirmedStay> lockConfirmedStay(StayId stayId);
 
 	/**
 	 * Webhook {@code AWAITING_PAYMENT → CANCELLED}, returning the {@link ClaimRef} iff it

@@ -905,6 +905,11 @@ class CreateBookingServiceTest {
 		}
 
 		@Override
+		public Optional<ConfirmedStay> lockConfirmedStay(ai.riviera.platform.booking.vocabulary.StayId stayId) {
+			throw new UnsupportedOperationException("not exercised by the single-booking reserve");
+		}
+
+		@Override
 		public Optional<ClaimRef> cancelAwaitingPayment(long bookingId) {
 			return Optional.empty();
 		}

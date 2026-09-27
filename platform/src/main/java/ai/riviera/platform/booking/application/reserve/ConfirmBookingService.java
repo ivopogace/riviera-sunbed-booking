@@ -9,17 +9,17 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import ai.riviera.platform.booking.events.BookingConfirmed;
+import ai.riviera.platform.booking.events.StayConfirmed;
 import ai.riviera.platform.booking.vocabulary.BookingId;
 import ai.riviera.platform.booking.application.Bookings;
 import ai.riviera.platform.booking.application.cancel.CancellationPolicy;
 
 /**
  * The single confirm seam behind {@link ConfirmBooking} (invariant #11): transitions a booking to
- * {@code CONFIRMED} and publishes {@code BookingConfirmed}, which {@code payout} accrues off.
- * {@code @Transactional} so the publish enrolls in the transition's transaction — the Event
- * Publication Registry persists it on commit and delivers {@code AFTER_COMMIT}. The payload is
- * built from the facts the transition {@code RETURNING}s, never from a second read (no race; the
- * webhook path holds only a {@code bookingId}).
+ * {@code CONFIRMED} and publishes {@code BookingConfirmed}, which {@code payout} accrues off, plus
+ * {@code StayConfirmed} when that confirm leaves the booking's stay complete. {@code @Transactional} so
+ * each publish enrolls in the transition's transaction (the registry persists it on commit). The payload
+ * is built from the facts the transition {@code RETURNING}s, never from a second read.
  */
 @Service
 class ConfirmBookingService implements ConfirmBooking {
@@ -63,6 +63,16 @@ class ConfirmBookingService implements ConfirmBooking {
 		events.publishEvent(new BookingConfirmed(new BookingId(c.id()), c.venueId(), c.setId(),
 				c.bookingDate(), c.amountMinor(), c.currency(),
 				birth.map(CancellationPolicy.BirthTerms::window).orElse(null),
-				birth.map(CancellationPolicy.BirthTerms::lateCancelRefundBps).orElse(0), c.lastDate()));
+				birth.map(CancellationPolicy.BirthTerms::lateCancelRefundBps).orElse(0), c.lastDate(), c.stayId()));
+		if (c.stayId() != null) {
+			bookings.lockConfirmedStay(c.stayId()).ifPresent(this::publish);
+		}
+	}
+
+	private void publish(ConfirmedStay stay) {
+		var birth = cancellationPolicy.windowAtBirth(stay.firstSetId(), stay.firstDate(), stay.createdAt());
+		events.publishEvent(new StayConfirmed(stay.stayId(),
+				birth.map(CancellationPolicy.BirthTerms::window).orElse(null),
+				birth.map(CancellationPolicy.BirthTerms::lateCancelRefundBps).orElse(0)));
 	}
 }
