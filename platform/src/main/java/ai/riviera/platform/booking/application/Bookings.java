@@ -2,6 +2,7 @@ package ai.riviera.platform.booking.application;
 
 import ai.riviera.platform.booking.application.view.BookingRecord;
 import ai.riviera.platform.booking.application.view.StayRecord;
+import ai.riviera.platform.booking.vocabulary.StayId;
 import ai.riviera.platform.booking.application.reserve.NewBooking;
 import ai.riviera.platform.booking.application.reserve.NewStay;
 import ai.riviera.platform.booking.application.refund.RefundableBooking;
@@ -95,6 +96,9 @@ public interface Bookings {
 
 	/** The stay whose code this is, with its stretches in day order; empty for a booking's code or an unknown one. */
 	Optional<StayRecord> findStayByCode(String code);
+
+	/** The stay's stretches in day order, row-locked for the transaction so the caller's guarded transitions cannot lose a race. */
+	List<BookingRecord> lockStretches(StayId stayId);
 
 	/**
 	 * The bookings linked to a customer account, newest first; never a guest booking (NULL {@code

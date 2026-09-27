@@ -233,6 +233,7 @@ test('plans around a tapped partly-free spot: the read is anchored and the plan 
   );
   await page.getByTestId('stay-plan-close').click();
   await expect(page.getByTestId('stay-plan')).toHaveCount(0);
+  await expect(page.locator('button[data-set-id="2"]')).toBeFocused();
 });
 
 test('the stretch fills switch with the dark theme', async ({ page }) => {

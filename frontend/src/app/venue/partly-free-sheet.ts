@@ -109,7 +109,7 @@ export class PartlyFreeSheet {
   readonly first = input.required<string>();
   readonly last = input.required<string>();
 
-  /** Whether the venue offers stitched plans, so the sheet may offer one around this spot (story 7). */
+  /** Whether the sheet may offer a stitched plan around this spot (story 7). */
   readonly canPlan = input(true);
 
   /** The shorter stay the tourist accepted — the page re-reads the map for it and books this set. */

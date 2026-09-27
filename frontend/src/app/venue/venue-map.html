@@ -330,6 +330,23 @@
               (dismissed)="closePlan()"
             />
           }
+          @if (planNote(); as note) {
+            <output
+              class="mt-3 block rounded-[16px] border border-riv-field-border bg-riv-field-solid px-4 py-3 text-[14px] text-riv-card-ink"
+              data-testid="stay-plan-none"
+            >
+              <span class="block">{{ note }}</span>
+              <button
+                appTouchTarget
+                type="button"
+                class="mt-2 inline-flex cursor-pointer items-center rounded-[14px] px-3 py-2 font-bold text-riv-accent-ink underline-offset-2 hover:underline"
+                data-testid="stay-plan-none-close"
+                (click)="closePlan()"
+              >
+                Back to the map
+              </button>
+            </output>
+          }
         </div>
       </div>
 

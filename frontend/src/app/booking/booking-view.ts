@@ -405,7 +405,7 @@ const CLS = {
             <dd [class]="cls.rowValue">
               @if (b.stretches?.length) {
                 <ol class="list-none" data-testid="view-stops">
-                  @for (stretch of b.stretches; track stretch.setId) {
+                  @for (stretch of b.stretches; track $index) {
                     <li>
                       {{ $index + 1 }}. {{ stretch.rowLabel }} · spot {{ stretch.positionNo }} ·
                       {{ dateLabel(stretch.firstDate, stretch.lastDate) }}

@@ -19,15 +19,19 @@ import ai.riviera.platform.booking.StayFixtures.Venue;
 import ai.riviera.platform.booking.api.BookingNotificationFacts;
 import ai.riviera.platform.booking.application.Bookings;
 import ai.riviera.platform.booking.application.reserve.CreateStay;
+import ai.riviera.platform.booking.application.reserve.CreateStayCommand;
 import ai.riviera.platform.booking.application.reserve.StayOutcome;
 import ai.riviera.platform.booking.application.view.BookingDetail;
+import ai.riviera.platform.booking.application.view.BookingRecord;
 import ai.riviera.platform.booking.application.view.ViewBooking;
 import ai.riviera.platform.booking.domain.BookingStatus;
 import ai.riviera.platform.booking.vocabulary.BookingId;
+import ai.riviera.platform.customer.vocabulary.CustomerAccountId;
 import ai.riviera.platform.venue.vocabulary.SetId;
 import ai.riviera.platform.venue.vocabulary.VenueId;
 
 import static ai.riviera.platform.booking.StayFixtures.PRICE;
+import static ai.riviera.platform.booking.StayFixtures.GUEST;
 import static ai.riviera.platform.booking.StayFixtures.firstDay;
 import static ai.riviera.platform.booking.StayFixtures.plan;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -68,10 +72,12 @@ class ViewStayIT {
 	JdbcClient jdbc;
 
 	private final List<Long> venues = new ArrayList<>();
+	private final List<Long> accounts = new ArrayList<>();
 
 	@AfterEach
 	void removeFixtures() {
 		venues.forEach(venue -> StayFixtures.cleanup(jdbc, venue));
+		accounts.forEach(account -> jdbc.sql("DELETE FROM customer_account WHERE id = :a").param("a", account).update());
 	}
 
 	@Test
@@ -124,5 +130,30 @@ class ViewStayIT {
 		}
 		assertEquals(List.of(code), bookings.findSettledForVenueOn(new VenueId(venue.id()), first.plusDays(5)).stream()
 				.map(daily -> daily.code()).toList(), "staff see the stay's code on the stretch's day");
+	}
+
+	@Test
+	void aSignedInGuestsListShowsTheStayAsOneRow() {
+		Venue venue = StayFixtures.venue(jdbc, "INSTANT", null, true);
+		venues.add(venue.id());
+		SetId a = venue.online().get(0);
+		LocalDate first = firstDay();
+		long account = jdbc.sql("INSERT INTO customer_account (email, password_hash) VALUES (:e, '{bcrypt}$2a$stay') RETURNING id")
+				.param("e", "stay-account-" + System.nanoTime() + "@example.com").query(Long.class).single();
+		accounts.add(account);
+		String code = assertInstanceOf(StayOutcome.Confirmed.class, createStay.create(new CreateStayCommand(
+				plan(a, 3, venue.online().get(1), 4, first).stretches(), GUEST, new CustomerAccountId(account))))
+				.confirmation().code();
+
+		List<BookingRecord> rows = bookings.findByAccountId(new CustomerAccountId(account));
+
+		assertEquals(1, rows.size(), "one row for the stay, not one per stretch");
+		BookingRecord row = rows.getFirst();
+		assertEquals(code, row.code());
+		assertEquals(BookingStatus.CONFIRMED, row.status());
+		assertEquals(first, row.bookingDate());
+		assertEquals(first.plusDays(6), row.lastDate());
+		assertEquals(7 * PRICE, row.amountMinor(), "the whole stay's money");
+		assertEquals(a, row.setId(), "the first stretch's spot heads the row");
 	}
 }

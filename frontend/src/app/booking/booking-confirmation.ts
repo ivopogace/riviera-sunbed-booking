@@ -53,7 +53,7 @@ const CLS = {
               data-testid="confirmation-stops"
               aria-label="Your spots"
             >
-              @for (stretch of stretches; track stretch.setId) {
+              @for (stretch of stretches; track $index) {
                 <li class="flex items-center justify-between gap-3 py-[3px]">
                   <span class="font-semibold"
                     >{{ $index + 1 }}. {{ stretch.rowLabel }} · spot {{ stretch.positionNo }}</span

@@ -37,6 +37,7 @@ import {
   isIsoDate,
 } from '../shared/booking-date';
 import { routeIdParam } from '../shared/parent-venue-id';
+import { plural } from '../shared/plural';
 import { spotLabel, tierSentenceLabel } from '../shared/set-label';
 import { ItineraryView, PhotoView, PlanView, SetView, VenueMapView } from '../shared/venue-views';
 import { AvailabilityCalendar, CountsLoader, MAX_STAY_DAYS } from '../shared/availability-calendar';
@@ -252,11 +253,37 @@ export class VenueMap {
   protected readonly selectedPlan = signal<PlanView | undefined>(undefined);
   /** Bumped per itinerary dispatch, so a superseded answer is dropped. */
   private planEpoch = 0;
+  /** Whether the latest itinerary read failed, so the open panel can say so instead of staying blank. */
+  private readonly planFailed = signal(false);
   protected readonly plan = computed(() => this.itinerary()?.plan ?? undefined);
-  /** The plan's sets by 1-based place, when the panel is open — what numbers the tiles. */
+  /** The plan's sets by first 0-based place, when the panel is open — what numbers the tiles. */
   private readonly planPlaces = computed(() => {
+    const places = new Map<number, number>();
     const plan = this.planOpen() ? this.plan() : undefined;
-    return new Map(plan?.stretches.map((stretch, index) => [stretch.setId, index] as const) ?? []);
+    plan?.stretches.forEach((stretch, index) => {
+      if (!places.has(stretch.setId)) {
+        places.set(stretch.setId, index);
+      }
+    });
+    return places;
+  });
+  /** What the open panel says when it has no plan to show: none fits around the anchor, or the read failed. */
+  protected readonly planNote = computed<string | undefined>(() => {
+    if (!this.planOpen() || this.plan() !== undefined) {
+      return undefined;
+    }
+    if (this.planFailed()) {
+      return 'The plan could not be loaded. Please try again.';
+    }
+    const answered = this.itinerary();
+    if (answered === undefined) {
+      return undefined;
+    }
+    const anchor = this.planAnchorSet();
+    const budget = plural(answered.maxMoves, 'move');
+    return anchor === undefined
+      ? `No plan fits within ${budget}.`
+      : `No plan starting or ending on ${spotLabel(anchor.rowLabel, anchor.positionNo)} fits within ${budget}.`;
   });
   /** A set to open the dialog on once the map is re-read for a shortened stay. */
   private pendingSelectSetId: number | undefined;
@@ -491,6 +518,7 @@ export class VenueMap {
       return;
     }
     const epoch = ++this.planEpoch;
+    this.planFailed.set(false);
     this.venues.itinerary(id, this.selectedDate(), this.selectedLastDate(), anchorSetId).subscribe({
       next: (itinerary) => {
         if (this.planEpoch === epoch) {
@@ -500,6 +528,7 @@ export class VenueMap {
       error: () => {
         if (this.planEpoch === epoch) {
           this.itinerary.set(undefined);
+          this.planFailed.set(true);
         }
       },
     });
@@ -508,6 +537,7 @@ export class VenueMap {
   private resetPlan(): void {
     this.planEpoch++;
     this.itinerary.set(undefined);
+    this.planFailed.set(false);
     this.planOpen.set(false);
     this.planAnchorSet.set(undefined);
   }
@@ -515,12 +545,19 @@ export class VenueMap {
   /** Open the plan the banner offered; focus lands on its title once rendered. */
   protected openPlan(): void {
     this.planOpen.set(true);
-    this.moveFocus('stay-plan-book');
+    this.moveFocus('stay-plan-title');
   }
 
+  /** Close the panel; focus returns to what opened it — the tapped tile, else the banner's offer. */
   protected closePlan(): void {
+    const anchor = this.planAnchorSet();
     this.planOpen.set(false);
-    this.moveFocus('no-cover-plan');
+    this.planAnchorSet.set(undefined);
+    if (anchor === undefined) {
+      this.moveFocus('no-cover-plan');
+    } else {
+      this.focusTile(anchor.id);
+    }
   }
 
   /** From the partly-free sheet: a plan that starts or ends on the tapped set (story 7). */
@@ -754,9 +791,11 @@ export class VenueMap {
   }
 
   /** The plan dialog closed unbooked: back to the plan panel's own button (modal a11y, RV-FE-9). */
+  /** The plan dialog closed without booking: re-read the map, so a spot taken meanwhile re-plans the stay. */
   protected onPlanDialogClose(): void {
     this.selectedPlan.set(undefined);
     this.moveFocus('stay-plan-book');
+    this.load();
   }
 
   protected async onBooked(): Promise<void> {

@@ -69,8 +69,9 @@ one row.
   code (owner decision at intake); a single stay mail is a follow-up.
 - "Your spot today", the evening-before move reminder and the staff scan's today-set display build on
   the stay's code resolving (issue #1209).
-- A signed-in guest's booking list shows a stitched stay as one row per stretch, each under the stay's
-  code; grouping that list is a later refinement.
+- A signed-in guest's booking list shows a stitched stay as one row under the stay's code — the whole
+  span, the summed amount, the first stretch's spot (`StayRecord.asBooking`); listing its stretches
+  there is a later refinement.
 
 ## Rejected alternatives
 

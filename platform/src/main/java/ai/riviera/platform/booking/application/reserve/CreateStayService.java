@@ -77,9 +77,8 @@ class CreateStayService implements CreateStay {
 		return switch (payment) {
 			case PaymentOutcome.Succeeded ignored -> {
 				try {
-					for (ReservedStretch stretch : reserved.stretches()) {
-						confirmBooking.confirm(stretch.bookingId(), clock.instant());
-					}
+					confirmBooking.confirmAll(reserved.stretches().stream().map(ReservedStretch::bookingId).toList(),
+							clock.instant());
 				}
 				catch (RuntimeException confirmFailed) {
 					releaseEveryStretch(reserved);

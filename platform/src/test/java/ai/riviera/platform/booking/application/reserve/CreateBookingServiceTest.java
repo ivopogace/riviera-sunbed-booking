@@ -310,6 +310,11 @@ class CreateBookingServiceTest {
 			}
 
 			@Override
+			public void confirmAll(List<Long> bookingIds, Instant confirmedAt) {
+				throw new IllegalStateException("confirm blew up after commit");
+			}
+
+			@Override
 			public boolean confirmFromPayment(long bookingId, Instant confirmedAt) {
 				return false;
 			}
@@ -785,6 +790,12 @@ class CreateBookingServiceTest {
 		}
 
 		@Override
+		public List<ai.riviera.platform.booking.application.view.BookingRecord> lockStretches(
+				ai.riviera.platform.booking.vocabulary.StayId stayId) {
+			throw new UnsupportedOperationException("not exercised by the single-booking reserve");
+		}
+
+		@Override
 		public java.util.OptionalLong insertAwaitingPayment(NewBooking booking) {
 			inserted.add(booking);
 			return java.util.OptionalLong.of(++nextId);
@@ -942,6 +953,11 @@ class CreateBookingServiceTest {
 		@Override
 		public void confirm(long bookingId, Instant confirmedAt) {
 			confirmed.add(bookingId);
+		}
+
+		@Override
+		public void confirmAll(List<Long> bookingIds, Instant confirmedAt) {
+			confirmed.addAll(bookingIds);
 		}
 
 		@Override

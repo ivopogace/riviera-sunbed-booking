@@ -2011,6 +2011,10 @@ describe('VenueMap — date carried from the discovery page (#294)', () => {
       dialog.querySelector<HTMLButtonElement>('[data-testid="dialog-close"]')!.click();
       fixture.detectChanges();
       expect(dom().querySelector('app-booking-dialog')).toBeNull();
+      venueReq().flush(stayMiramar(first, last));
+      await settle();
+      fixture.detectChanges();
+      itineraryReq().flush(stitched());
     });
 
     it('plans around a tapped partly-free set: the sheet closes, the read is anchored, the plan names the anchor’s role', async () => {
@@ -2092,6 +2096,125 @@ describe('VenueMap — date carried from the discovery page (#294)', () => {
 
       expect(dom().querySelector('[data-testid="partly-free-sheet"]')).toBeNull();
       expect(document.activeElement).toBe(dom().querySelector('button[data-set-id="2"]'));
+    });
+
+    it('opening the plan lands focus on its title', async () => {
+      await loadStay(stitched());
+
+      dom().querySelector<HTMLButtonElement>('[data-testid="no-cover-plan"]')!.click();
+      fixture.detectChanges();
+      await settle();
+
+      expect(document.activeElement).toBe(dom().querySelector('[data-testid="stay-plan-title"]'));
+    });
+
+    it('closing a plan opened from the sheet returns focus to the tapped tile', async () => {
+      await loadStay();
+      dom().querySelector<HTMLButtonElement>('button[data-set-id="2"]')!.click();
+      fixture.detectChanges();
+      dom().querySelector<HTMLButtonElement>('[data-testid="plan-around"]')!.click();
+      fixture.detectChanges();
+      itineraryReq().flush({ ...stitched(), anchor: 'START' });
+      fixture.detectChanges();
+
+      dom().querySelector<HTMLButtonElement>('[data-testid="stay-plan-close"]')!.click();
+      fixture.detectChanges();
+      await new Promise((resolve) => queueMicrotask(() => resolve(undefined)));
+
+      expect(dom().querySelector('[data-testid="stay-plan"]')).toBeNull();
+      expect(document.activeElement).toBe(dom().querySelector('button[data-set-id="2"]'));
+    });
+
+    it('says so when no plan fits around the tapped spot, and closing the note returns focus to its tile', async () => {
+      await loadStay();
+      dom().querySelector<HTMLButtonElement>('button[data-set-id="2"]')!.click();
+      fixture.detectChanges();
+      dom().querySelector<HTMLButtonElement>('[data-testid="plan-around"]')!.click();
+      fixture.detectChanges();
+      itineraryReq().flush({ maxMoves: 3, plan: null });
+      fixture.detectChanges();
+
+      const note = dom().querySelector<HTMLElement>('[data-testid="stay-plan-none"]')!;
+      expect(note.tagName).toBe('OUTPUT');
+      expect(note.textContent).toContain(
+        'No plan starting or ending on Front row · Sea view · spot 2 fits within 3 moves.',
+      );
+      expect(dom().querySelector('[data-testid="stay-plan"]')).toBeNull();
+
+      note.querySelector<HTMLButtonElement>('[data-testid="stay-plan-none-close"]')!.click();
+      fixture.detectChanges();
+      await new Promise((resolve) => queueMicrotask(() => resolve(undefined)));
+
+      expect(dom().querySelector('[data-testid="stay-plan-none"]')).toBeNull();
+      expect(document.activeElement).toBe(dom().querySelector('button[data-set-id="2"]'));
+    });
+
+    it('says so when the anchored plan read fails', async () => {
+      await loadStay();
+      dom().querySelector<HTMLButtonElement>('button[data-set-id="2"]')!.click();
+      fixture.detectChanges();
+      dom().querySelector<HTMLButtonElement>('[data-testid="plan-around"]')!.click();
+      fixture.detectChanges();
+      itineraryReq().flush('boom', { status: 500, statusText: 'Server Error' });
+      fixture.detectChanges();
+
+      expect(dom().querySelector('[data-testid="stay-plan-none"]')!.textContent).toContain(
+        'The plan could not be loaded.',
+      );
+    });
+
+    it('numbers a set the plan returns to by its first stop', async () => {
+      const plan = stitched().plan!;
+      const back: ItineraryView = {
+        maxMoves: 3,
+        plan: {
+          ...plan,
+          moves: 2,
+          stretches: [
+            { ...plan.stretches[0], lastDate: first, days: 1 },
+            { ...plan.stretches[1], firstDate: addDays(first, 1), lastDate: addDays(first, 1) },
+            { ...plan.stretches[0], firstDate: last, lastDate: last, days: 1 },
+          ],
+          movesBetween: [
+            { onDate: addDays(first, 1), rowsAway: 1, positionsAway: 0, towardSea: false },
+            { onDate: last, rowsAway: 1, positionsAway: 0, towardSea: true },
+          ],
+        },
+      };
+      await loadStay(back);
+
+      dom().querySelector<HTMLButtonElement>('[data-testid="no-cover-plan"]')!.click();
+      fixture.detectChanges();
+
+      const numbered = dom().querySelectorAll<HTMLElement>('.set-tile[data-plan-index]');
+      expect([...numbered].map((tile) => tile.dataset['planIndex'])).toEqual(['1', '2']);
+      expect(numbered[0].querySelector('button[data-set-id="2"]')).not.toBeNull();
+      expect(dom().querySelectorAll('[data-testid="stay-plan-stop"]')).toHaveLength(3);
+    });
+
+    it('closing the plan dialog re-reads the map, so a spot taken meanwhile re-plans the stay', async () => {
+      await loadStay(stitched());
+      dom().querySelector<HTMLButtonElement>('[data-testid="no-cover-plan"]')!.click();
+      fixture.detectChanges();
+      dom().querySelector<HTMLButtonElement>('[data-testid="stay-plan-book"]')!.click();
+      await settle();
+
+      dom()
+        .querySelector<HTMLButtonElement>('app-booking-dialog [data-testid="dialog-close"]')!
+        .click();
+      fixture.detectChanges();
+
+      expect(dom().querySelector('app-booking-dialog')).toBeNull();
+      venueReq().flush(stayMiramar(first, last));
+      await settle();
+      fixture.detectChanges();
+      itineraryReq().flush({ maxMoves: 3, plan: null });
+      fixture.detectChanges();
+
+      expect(dom().querySelector('[data-testid="stay-plan"]')).toBeNull();
+      expect(dom().querySelector('[data-testid="stay-plan-none"]')!.textContent).toContain(
+        'No plan fits within 3 moves.',
+      );
     });
   });
 

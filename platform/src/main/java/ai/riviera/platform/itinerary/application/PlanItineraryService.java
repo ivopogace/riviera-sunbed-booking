@@ -66,7 +66,10 @@ class PlanItineraryService implements PlanItinerary {
 				.map(set -> ItinerarySearch.planAround(span, sets, placements, taken, budget.maxMoves(), set))
 				.orElseGet(() -> new Anchored(ItinerarySearch.plan(span, sets, placements, taken, budget.maxMoves()),
 						Anchoring.NONE));
-		return new StayItinerary(budget.maxMoves(), found.anchoring(), found.itinerary().map(plan -> price(plan, online)));
+		// A plan with no move is one set covering the stay: booked as itself, never stitched.
+		Optional<Itinerary> stitched = found.itinerary().filter(plan -> plan.moves() > 0);
+		return new StayItinerary(budget.maxMoves(), stitched.isPresent() ? found.anchoring() : Anchoring.NONE,
+				stitched.map(plan -> price(plan, online)));
 	}
 
 	private static StayPlan price(Itinerary itinerary, Map<SetId, SetView> sets) {

@@ -3,8 +3,11 @@ package ai.riviera.platform.booking.adapter.out;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.OptionalLong;
 import java.util.Set;
@@ -69,6 +72,12 @@ class JdbcBookings implements Bookings {
 	private static final String COL_SET_ID = "set_id";
 	private static final String COL_BOOKING_DATE = "booking_date";
 	private static final String COL_LAST_DATE = "last_date";
+	/**
+	 * The rows a guest's code names: a lone booking by its own code, or every stretch of the stay whose
+	 * code it is. A stretch's derived row code names nothing (ADR-0024). Each arm reads a unique index.
+	 */
+	static final String CODE_MATCH =
+			"((b.code = :code AND b.stay_id IS NULL) OR b.stay_id = (SELECT id FROM stay WHERE code = :code))";
 	private static final String COL_AMOUNT_MINOR = "amount_minor";
 	private static final String COL_AMOUNT_CURRENCY = "amount_currency";
 	private static final String COL_REQUEST_EXPIRES_AT = "request_expires_at";
@@ -352,7 +361,7 @@ class JdbcBookings implements Bookings {
 				       b.request_expires_at, b.cancel_reason, b.created_at, b.accepted_at, b.moved_at
 				FROM booking b
 				LEFT JOIN stay s ON s.id = b.stay_id
-				WHERE b.code = :code
+				WHERE b.code = :code AND b.stay_id IS NULL
 				""")
 				.param("code", code)
 				.query(JdbcBookings::mapBookingRecord)
@@ -371,7 +380,16 @@ class JdbcBookings implements Bookings {
 						stretchesOf(stay.id())));
 	}
 
+	@Override
+	public List<BookingRecord> lockStretches(StayId stayId) {
+		return stretchesOf(stayId, "FOR UPDATE OF b");
+	}
+
 	private List<BookingRecord> stretchesOf(StayId stayId) {
+		return stretchesOf(stayId, "");
+	}
+
+	private List<BookingRecord> stretchesOf(StayId stayId, String locking) {
 		return jdbc.sql("""
 				SELECT b.id, s.code, b.status, b.venue_id, b.set_id, b.customer_id,
 				       b.booking_date, b.last_date, b.amount_minor, b.amount_currency, b.cancelled_at, b.refund_minor,
@@ -380,7 +398,8 @@ class JdbcBookings implements Bookings {
 				JOIN stay s ON s.id = b.stay_id
 				WHERE b.stay_id = :stay
 				ORDER BY b.booking_date
-				""")
+				%s
+				""".formatted(locking))
 				.param("stay", stayId.value())
 				.query(JdbcBookings::mapBookingRecord)
 				.list();
@@ -392,18 +411,50 @@ class JdbcBookings implements Bookings {
 		// (the session principal's id, never a request param). Served by booking_account_id_idx (V26,
 		// partial on the non-NULL slice). Same row shape as findByCode so MyBookingsService enriches
 		// uniformly; a guest booking (NULL account_id) can never match.
-		return jdbc.sql("""
+		List<AccountRow> rows = jdbc.sql("""
 				SELECT b.id, COALESCE(s.code, b.code) AS code, b.status, b.venue_id, b.set_id, b.customer_id,
 				       b.booking_date, b.last_date, b.amount_minor, b.amount_currency, b.cancelled_at, b.refund_minor,
-				       b.request_expires_at, b.cancel_reason, b.created_at, b.accepted_at, b.moved_at
+				       b.request_expires_at, b.cancel_reason, b.created_at, b.accepted_at, b.moved_at,
+				       s.id AS stay_id, s.first_date AS stay_first_date, s.last_date AS stay_last_date
 				FROM booking b
 				LEFT JOIN stay s ON s.id = b.stay_id
 				WHERE b.account_id = :account
 				ORDER BY b.booking_date DESC, b.id DESC
 				""")
 				.param(PARAM_ACCOUNT, accountId.value())
-				.query(JdbcBookings::mapBookingRecord)
+				.query((rs, rowNum) -> new AccountRow(mapBookingRecord(rs, rowNum), rs.getObject("stay_id", Long.class),
+						rs.getObject("stay_first_date", LocalDate.class), rs.getObject("stay_last_date", LocalDate.class)))
 				.list();
+		return groupedByStay(rows);
+	}
+
+	/** A stitched stay lists once, as one booking (ADR-0024), where its latest stretch fell; a lone booking as itself. */
+	private static List<BookingRecord> groupedByStay(List<AccountRow> rows) {
+		List<BookingRecord> listed = new ArrayList<>();
+		Map<Long, Integer> slotOfStay = new HashMap<>();
+		Map<Long, AccountRow> stayOf = new HashMap<>();
+		Map<Long, List<BookingRecord>> stretchesOfStay = new HashMap<>();
+		for (AccountRow row : rows) {
+			if (row.stayId() == null) {
+				listed.add(row.booking());
+			}
+			else {
+				if (slotOfStay.putIfAbsent(row.stayId(), listed.size()) == null) {
+					listed.add(row.booking());
+					stayOf.put(row.stayId(), row);
+				}
+				stretchesOfStay.computeIfAbsent(row.stayId(), id -> new ArrayList<>()).add(row.booking());
+			}
+		}
+		slotOfStay.forEach((stayId, slot) -> {
+			AccountRow stay = stayOf.get(stayId);
+			listed.set(slot, new StayRecord(new StayId(stayId), stay.booking().code(), stay.booking().venueId(),
+					stay.stayFirstDate(), stay.stayLastDate(), stretchesOfStay.get(stayId).reversed()).asBooking());
+		});
+		return listed;
+	}
+
+	private record AccountRow(BookingRecord booking, Long stayId, LocalDate stayFirstDate, LocalDate stayLastDate) {
 	}
 
 	/** Shared {@link BookingRecord} row mapper for the by-code + by-account reads. */
@@ -547,27 +598,27 @@ class JdbcBookings implements Bookings {
 
 	/**
 	 * The guarded stamp on today's row, then {@link #RESOLVE_STAY_SQL} when no later day remains; a
-	 * miss skips the resolve. Lock order is a rule: booking row ({@code FOR UPDATE}), today's day, then
-	 * earlier days — the sweep's order (RESPONSIBILITIES.md §booking), so the two never deadlock.
+	 * miss skips the resolve. Lock order is a rule: today's stretch's booking row alone ({@code FOR UPDATE}),
+	 * today's day, then earlier days — the sweep's order (RESPONSIBILITIES.md §booking), so the two never deadlock.
 	 */
 	@Override
 	public Optional<CompletedCheckIn> completeConfirmed(String code, VenueId venueId,
 			LocalDate serviceDate, Instant completedAt) {
 		Optional<CompletedCheckIn> attended = jdbc.sql("""
-				WITH stay AS (
+				WITH today AS (
 				    SELECT b.id, b.set_id, b.booking_date
 				    FROM booking b
-				    LEFT JOIN stay s ON s.id = b.stay_id
-				    WHERE (b.code = :code OR s.code = :code) AND b.venue_id = :venue AND b.status = :confirmed
+				    WHERE %s AND b.venue_id = :venue AND b.status = :confirmed
+				      AND EXISTS (SELECT 1 FROM booking_day d WHERE d.booking_id = b.id AND d.service_date = :date)
 				    FOR UPDATE OF b
 				)
 				UPDATE booking_day n
 				SET attended_at = :at
-				FROM stay
-				WHERE n.booking_id = stay.id AND n.service_date = :date
+				FROM today
+				WHERE n.booking_id = today.id AND n.service_date = :date
 				  AND n.attended_at IS NULL AND n.missed_at IS NULL
-				RETURNING stay.id, stay.set_id, stay.booking_date
-				""")
+				RETURNING today.id, today.set_id, today.booking_date
+				""".formatted(CODE_MATCH))
 				.param("at", java.sql.Timestamp.from(completedAt))
 				.param("code", code)
 				.param(PARAM_VENUE, venueId.value())
@@ -646,13 +697,12 @@ class JdbcBookings implements Bookings {
 		return jdbc.sql("""
 				SELECT b.status, b.booking_date, n.attended_at IS NOT NULL AS attended_today
 				FROM booking b
-				LEFT JOIN stay s ON s.id = b.stay_id
 				LEFT JOIN booking_day n ON n.booking_id = b.id AND n.service_date = :today
-				WHERE (b.code = :code OR s.code = :code) AND b.venue_id = :venue
+				WHERE %s AND b.venue_id = :venue
 				ORDER BY (:today BETWEEN b.booking_date AND b.last_date) DESC, (b.booking_date > :today) DESC,
 				         abs(b.booking_date - :today) ASC
 				LIMIT 1
-				""")
+				""".formatted(CODE_MATCH))
 				.param("code", code)
 				.param(PARAM_VENUE, venueId.value())
 				.param(PARAM_TODAY, today)

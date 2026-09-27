@@ -1,6 +1,7 @@
 package ai.riviera.platform.booking;
 
 import java.time.Duration;
+import java.time.Instant;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
@@ -18,6 +19,7 @@ import org.springframework.test.context.event.RecordApplicationEvents;
 import ai.riviera.platform.EnabledIfDockerAvailable;
 import ai.riviera.platform.TestcontainersConfiguration;
 import ai.riviera.platform.booking.application.reserve.BookingOutcome;
+import ai.riviera.platform.booking.application.reserve.ConfirmBooking;
 import ai.riviera.platform.booking.application.reserve.CreateStay;
 import ai.riviera.platform.booking.application.reserve.CreateStayCommand;
 import ai.riviera.platform.booking.application.reserve.StayOutcome;
@@ -50,6 +52,9 @@ class CreateStayIT {
 
 	@Autowired
 	CreateStay createStay;
+
+	@Autowired
+	ConfirmBooking confirmBooking;
 
 	@Autowired
 	JdbcClient jdbc;
@@ -168,5 +173,38 @@ class CreateStayIT {
 
 	private static StayOutcome rejected(BookingOutcome.Rejected reason) {
 		return new StayOutcome.Rejected(reason);
+	}
+
+	@Test
+	void theStubConfirmOfAStayIsAllOrNothing() {
+		Venue venue = StayFixtures.venue(jdbc, "INSTANT", null, true);
+		venues.add(venue.id());
+		LocalDate first = firstDay();
+		long customer = jdbc.sql("INSERT INTO customer (email, full_name, phone) VALUES (:e, 'Guest', '+355600') RETURNING id")
+				.param("e", "atomic-" + System.nanoTime() + "@example.com").query(Long.class).single();
+		long stay = jdbc.sql("INSERT INTO stay (code, venue_id, first_date, last_date) VALUES (:c, :v, :f, :l) RETURNING id")
+				.param("c", "ATOMIC" + System.nanoTime() % 1_000_000).param("v", venue.id()).param("f", first)
+				.param("l", first.plusDays(3)).query(Long.class).single();
+		long awaiting = insertStretch(venue, venue.online().get(0), customer, first, first.plusDays(1), stay, "AWAITING_PAYMENT");
+		long alreadyConfirmed = insertStretch(venue, venue.online().get(1), customer, first.plusDays(2), first.plusDays(3), stay,
+				"CONFIRMED");
+
+		assertThrows(IllegalStateException.class,
+				() -> confirmBooking.confirmAll(List.of(awaiting, alreadyConfirmed), Instant.now()));
+
+		assertEquals("AWAITING_PAYMENT", jdbc.sql("SELECT status FROM booking WHERE id = :id").param("id", awaiting)
+				.query(String.class).single(), "a stretch that could not confirm leaves its siblings unconfirmed");
+	}
+
+	private long insertStretch(Venue venue, SetId set, long customer, LocalDate first, LocalDate last, long stay, String status) {
+		return jdbc.sql("""
+				INSERT INTO booking (code, venue_id, set_id, customer_id, booking_date, last_date, amount_minor,
+				                     amount_currency, status, confirmed_at, stay_id)
+				VALUES (:code, :venue, :set, :cust, :first, :last, 4500, 'EUR', :status,
+				        CASE WHEN :status = 'CONFIRMED' THEN now() END, :stay)
+				RETURNING id
+				""").param("code", "ATOMIC-" + System.nanoTime() % 1_000_000).param("venue", venue.id()).param("set", set.value())
+				.param("cust", customer).param("first", first).param("last", last).param("status", status).param("stay", stay)
+				.query(Long.class).single();
 	}
 }

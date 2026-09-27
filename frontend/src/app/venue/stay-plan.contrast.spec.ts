@@ -3,10 +3,13 @@ import { baseBlock, themeBlock } from '../../testing/stylesheet-tokens';
 
 /**
  * The stitched plan's stretch fills: the one ink reads at AA over every fill in every theme (the
- * strip's day numbers and the stop discs are text), and each fill marks its stretch at 3:1 against
- * its neighbours' ink-side, so the strip's boundaries survive as non-text contrast (docs/design/
- * non-text-contrast.md rule 2). Pure maths over `src/tailwind.css` as text, per theme block.
+ * strip's day numbers and the stop discs are text), and the move marker the strip draws in that ink
+ * clears 3:1 over every fill, so a move day survives as non-text contrast (WCAG 1.4.11) when the
+ * hues alone would not. Pure maths over `src/tailwind.css` and `stay-plan.ts` as text, per theme.
  */
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
+
 const FILLS = [
   '--riv-stretch-1-fill',
   '--riv-stretch-2-fill',
@@ -38,10 +41,15 @@ describe.each(THEMES)('Stretch fills — $name theme', ({ block }) => {
     }
   });
 
-  it('the fills are opaque and each stands apart from the ink at 3:1 as a boundary', () => {
+  it('the move marker is drawn in the stretch ink and clears 3:1 over every fill', () => {
+    const template = readFileSync(resolve(__dirname, 'stay-plan.ts'), 'utf8');
+    expect(template).toContain('[class.border-riv-stretch-ink]="cell.move"');
+    expect(template).not.toContain('[class.border-riv-card-ink]="cell.move"');
     expect(new Set(fills).size).toBe(fills.length);
     for (const fill of fills) {
-      expect(contrastRatio(fill, ink)).toBeGreaterThanOrEqual(AA_LARGE);
+      expect(contrastRatio(ink, fill), `marker ${ink} over ${fill}`).toBeGreaterThanOrEqual(
+        AA_LARGE,
+      );
     }
   });
 });

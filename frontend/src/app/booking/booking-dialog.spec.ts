@@ -561,6 +561,29 @@ describe('BookingDialog (2-step Liquid Glass modal)', () => {
     expect(alert?.textContent).toContain('just booked this set');
   });
 
+  it('a 409 on a plan names the spots, not "this set", and points at re-planning', async () => {
+    fixture.componentRef.setInput('set', undefined);
+    fixture.componentRef.setInput('plan', PLAN);
+    fixture.componentRef.setInput('lastDate', '2026-12-04');
+    fixture.detectChanges();
+    httpMock.match(TERMS_URL).forEach((req) => req.flush(FREE_TERMS));
+    await fixture.whenStable();
+    await goToReview();
+
+    submitForm();
+    await fixture.whenStable();
+    httpMock
+      .expectOne(`${environment.apiBaseUrl}/api/stays`)
+      .flush({ status: 409, code: 'SET_TAKEN' }, { status: 409, statusText: 'Conflict' });
+    await fixture.whenStable();
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    expect(host().querySelector('[data-testid="dialog-error"]')!.textContent).toContain(
+      'someone just booked one of these spots',
+    );
+  });
+
   describe('the proof-of-work fence on create (ADR-0016)', () => {
     /**
      * Advance to Review — where the widget is hosted — and settle its solve, as a real verify would.

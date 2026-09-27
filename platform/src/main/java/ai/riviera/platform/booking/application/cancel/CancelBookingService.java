@@ -98,12 +98,12 @@ class CancelBookingService implements CancelBooking {
 	}
 
 	/**
-	 * A stay cancels whole (design D6): every stretch quoted on the stay's first day, then transitioned,
-	 * released and announced as an ordinary booking (one reversal each, invariant #9); the guest hears
-	 * one summed refund. A stretch that cannot be cancelled refuses the stay before any write.
+	 * A stay cancels whole (design D6): stretches read under row lock, each quoted on the stay's first day,
+	 * then transitioned, released and announced as an ordinary booking (one reversal each, #9); one summed
+	 * refund. A stretch that cannot be cancelled refuses the stay before any write; a failed transition is a bug.
 	 */
 	private CancelOutcome cancelStay(StayRecord stay) {
-		List<BookingRecord> stretches = stay.stretches();
+		List<BookingRecord> stretches = bookings.lockStretches(stay.id());
 		if (stretches.stream().anyMatch(s -> s.status() == BookingStatus.NO_SHOW || s.status() == BookingStatus.COMPLETED)) {
 			return new CancelOutcome.WindowClosed();
 		}
@@ -126,7 +126,8 @@ class CancelBookingService implements CancelBooking {
 			Optional<CancelledBooking> transitioned = bookings.cancelConfirmed(stretch.id(), now, quote.refundMinor(),
 					quote.reason());
 			if (transitioned.isEmpty()) {
-				return new CancelOutcome.NotCancellable(BookingStatus.CANCELLED);
+				throw new IllegalStateException(
+						"stretch " + stretch.id() + " of stay " + stay.id().value() + " changed under its row lock");
 			}
 			CancelledBooking cancelled = transitioned.get();
 			for (var day : ServiceDays.between(cancelled.bookingDate(), cancelled.lastDate())) {

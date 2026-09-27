@@ -62,7 +62,11 @@ interface Stop {
       >
         {{ kicker() }}
       </p>
-      <h3 id="stay-plan-title" class="mt-1 text-[17px] font-bold tracking-[-0.01em]">
+      <h3
+        id="stay-plan-title"
+        class="mt-1 text-[17px] font-bold tracking-[-0.01em]"
+        data-testid="stay-plan-title"
+      >
         Your {{ days() }} days, planned
       </h3>
       <p class="mt-1 text-riv-card-ink-soft" data-testid="stay-plan-intro">{{ intro() }}</p>
@@ -77,7 +81,7 @@ interface Stop {
             class="grid h-8 place-items-center rounded-[6px] text-[11px] font-bold text-riv-stretch-ink"
             [class]="fillClass(cell.stretch)"
             [class.border-l-2]="cell.move"
-            [class.border-riv-card-ink]="cell.move"
+            [class.border-riv-stretch-ink]="cell.move"
             [attr.data-stretch]="cell.stretch"
             [attr.data-move]="cell.move ? '' : null"
             [attr.aria-label]="cell.label"

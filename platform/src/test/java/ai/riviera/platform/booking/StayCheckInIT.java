@@ -3,6 +3,11 @@ package ai.riviera.platform.booking;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
 
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
@@ -10,6 +15,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.jdbc.core.simple.JdbcClient;
+import org.springframework.transaction.support.TransactionTemplate;
 
 import ai.riviera.platform.EnabledIfDockerAvailable;
 import ai.riviera.platform.TestcontainersConfiguration;
@@ -22,6 +28,7 @@ import ai.riviera.platform.venue.vocabulary.VenueId;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * Check-in with a stay's code (design D6): on a move day the guest is checked into <em>today's</em>
@@ -39,6 +46,9 @@ class StayCheckInIT {
 
 	@Autowired
 	JdbcClient jdbc;
+
+	@Autowired
+	TransactionTemplate tx;
 
 	private final List<Long> venues = new ArrayList<>();
 
@@ -107,5 +117,51 @@ class StayCheckInIT {
 		CheckInResult result = checkIn.checkIn(operator, new VenueId(venue.id()), code);
 
 		assertEquals(new CheckInResult.WrongServiceDate(first), result);
+	}
+
+	@Test
+	void aStretchsRowCodeIsNoCredential() {
+		Venue venue = StayFixtures.venue(jdbc, "INSTANT", null, true);
+		venues.add(venue.id());
+		String code = insertConfirmedStay(venue, LocalDate.now(StayFixtures.TIRANE).minusDays(3), 3, 3);
+
+		assertInstanceOf(CheckInResult.NotFound.class, checkIn.checkIn(ownerOf(venue.id()), new VenueId(venue.id()), code + "-2"));
+	}
+
+	@Test
+	void checkInOnOneStretchNeverWaitsOnASiblingStretchsRow() throws Exception {
+		Venue venue = StayFixtures.venue(jdbc, "INSTANT", null, true);
+		venues.add(venue.id());
+		OperatorId operator = ownerOf(venue.id());
+		String code = insertConfirmedStay(venue, LocalDate.now(StayFixtures.TIRANE).minusDays(3), 3, 3);
+		long firstStretch = jdbc.sql("SELECT id FROM booking WHERE venue_id = :v ORDER BY booking_date LIMIT 1")
+				.param("v", venue.id()).query(Long.class).single();
+		CountDownLatch rowLocked = new CountDownLatch(1);
+		CountDownLatch rowReleased = new CountDownLatch(1);
+
+		CheckInResult result;
+		try (ExecutorService pool = Executors.newFixedThreadPool(2)) {
+			Future<?> holder = pool.submit(() -> tx.executeWithoutResult(status -> {
+				jdbc.sql("SELECT id FROM booking WHERE id = :id FOR UPDATE").param("id", firstStretch).query(Long.class).single();
+				rowLocked.countDown();
+				try {
+					rowReleased.await();
+				}
+				catch (InterruptedException interrupted) {
+					Thread.currentThread().interrupt();
+				}
+			}));
+			assertTrue(rowLocked.await(10, TimeUnit.SECONDS));
+			try {
+				result = pool.submit(() -> checkIn.checkIn(operator, new VenueId(venue.id()), code)).get(10, TimeUnit.SECONDS);
+			}
+			finally {
+				rowReleased.countDown();
+				holder.get(10, TimeUnit.SECONDS);
+			}
+		}
+
+		assertEquals(venue.online().get(1), assertInstanceOf(CheckInResult.CheckedIn.class, result).setId(),
+				"today's stretch checks in while yesterday's stretch row is locked elsewhere");
 	}
 }

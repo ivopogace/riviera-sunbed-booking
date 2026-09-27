@@ -76,7 +76,11 @@ class PlanItineraryIT {
 		insertSet(hidden, "A", 1, 1, 2500, "STANDARD");
 
 		capped = insertVenue("Capped Beach", 3, true);
-		insertSet(capped, "A", 1, 1, 2500, "STANDARD");
+		long cappedA = insertSet(capped, "A", 1, 1, 2500, "STANDARD");
+		long cappedB = insertSet(capped, "A", 2, 1, 2500, "STANDARD");
+		take(cappedA, D1.plusDays(2));
+		take(cappedB, D1);
+		take(cappedB, D1.plusDays(1));
 	}
 
 	@AfterEach
@@ -133,9 +137,9 @@ class PlanItineraryIT {
 	void aSpanOverTheMaximumStayHasNoPlan() {
 		StayItinerary itinerary = planner.plan(new VenueId(capped), SEVEN_DAYS, Optional.empty()).orElseThrow();
 		assertTrue(itinerary.plan().isEmpty());
-		assertEquals(new StaySpan(D1, D1.plusDays(2)).days(),
-				planner.plan(new VenueId(capped), new StaySpan(D1, D1.plusDays(2)), Optional.empty())
-						.orElseThrow().plan().orElseThrow().stretches().getFirst().days());
+		StayPlan withinTheMaximum = planner.plan(new VenueId(capped), new StaySpan(D1, D1.plusDays(2)), Optional.empty())
+				.orElseThrow().plan().orElseThrow();
+		assertEquals(1, withinTheMaximum.moveCount(), "three days stitch at the same venue: the maximum, not the search, refused");
 	}
 
 	@Test
@@ -174,5 +178,18 @@ class PlanItineraryIT {
 	private void take(long setId, LocalDate date) {
 		jdbc.sql("INSERT INTO set_availability (set_id, booking_date, state) VALUES (:id, :date, 'BOOKED_ONLINE')")
 				.param("id", setId).param("date", date).update();
+	}
+
+	@Test
+	void aSetFreeEveryDayIsNoStitchedPlan() {
+		insertSet(venue, "A", 3, 1, 2500, "STANDARD");
+
+		StayItinerary unanchored = planner.plan(new VenueId(venue), SEVEN_DAYS, Optional.empty()).orElseThrow();
+		assertTrue(unanchored.plan().isEmpty(), "a set that covers the stay is booked as itself, not as a plan");
+		assertEquals(Anchoring.NONE, unanchored.anchoring());
+
+		StayItinerary anchored = planner.plan(new VenueId(venue), SEVEN_DAYS, Optional.of(new SetId(a1))).orElseThrow();
+		assertEquals(Anchoring.START, anchored.anchoring(), "a plan through the tapped set is still offered");
+		assertEquals(1, anchored.plan().orElseThrow().moveCount());
 	}
 }

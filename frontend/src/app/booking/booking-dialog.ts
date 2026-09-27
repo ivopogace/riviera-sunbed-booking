@@ -651,7 +651,9 @@ export class BookingDialog implements OnInit {
     }
     switch (code) {
       case 'SET_TAKEN':
-        return 'Sorry — someone just booked this set. Please pick another.';
+        return this.isPlan()
+          ? 'Sorry — someone just booked one of these spots. Close this and we’ll look for another plan.'
+          : 'Sorry — someone just booked this set. Please pick another.';
       case 'SET_NOT_BOOKABLE_ONLINE':
         return 'This set is not available to book online.';
       case 'BOOKING_CLOSED':

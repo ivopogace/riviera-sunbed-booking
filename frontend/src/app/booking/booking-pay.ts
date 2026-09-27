@@ -141,7 +141,7 @@ const CLS = {
             <dd [class]="cls.sumDd">
               @if (booking!.stretches?.length) {
                 <ol class="list-none" data-testid="pay-stops">
-                  @for (stretch of booking!.stretches; track stretch.setId) {
+                  @for (stretch of booking!.stretches; track $index) {
                     <li>
                       {{ $index + 1 }}. {{ stretch.rowLabel }} · spot {{ stretch.positionNo }}
                     </li>

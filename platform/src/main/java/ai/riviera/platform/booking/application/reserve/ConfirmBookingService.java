@@ -1,6 +1,7 @@
 package ai.riviera.platform.booking.application.reserve;
 
 import java.time.Instant;
+import java.util.List;
 import java.util.Optional;
 
 import org.springframework.context.ApplicationEventPublisher;
@@ -38,6 +39,14 @@ class ConfirmBookingService implements ConfirmBooking {
 	@Transactional
 	public void confirm(long bookingId, Instant confirmedAt) {
 		publish(bookings.confirm(bookingId, confirmedAt));
+	}
+
+	@Override
+	@Transactional
+	public void confirmAll(List<Long> bookingIds, Instant confirmedAt) {
+		for (long bookingId : bookingIds) {
+			publish(bookings.confirm(bookingId, confirmedAt));
+		}
 	}
 
 	@Override

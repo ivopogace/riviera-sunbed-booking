@@ -16,8 +16,8 @@ import ai.riviera.platform.review.vocabulary.VenueRef;
  * Answers {@link CompletedStays} from the {@code booking} table in explicit SQL (invariant #1): did
  * this stay complete, and when. {@code completed_at} is the instant the stay resolved {@code COMPLETED};
  * the review window and the eligibility verdict stay in {@code review}, which this inverted port keeps
- * a leaf. A stay's code names its last completed stretch (design D6): the stay ended when it resolved.
- * Rationale: RESPONSIBILITIES.md §booking.
+ * a leaf. A stay's code names its last completed stretch once no stretch is still live (design D6); a
+ * stretch's row code names nothing. Rationale: RESPONSIBILITIES.md §booking.
  */
 @Repository
 class JdbcCompletedStays implements CompletedStays {
@@ -35,13 +35,14 @@ class JdbcCompletedStays implements CompletedStays {
 	public Optional<CompletedStay> byCode(String bookingCode) {
 		return jdbc.sql("""
 				SELECT b.id, b.venue_id, b.booking_date, b.completed_at FROM booking b
-				LEFT JOIN stay s ON s.id = b.stay_id
-				WHERE (b.code = :code OR s.code = :code) AND b.status = :completed AND b.completed_at IS NOT NULL
+				WHERE %s AND b.status = :completed AND b.completed_at IS NOT NULL
+				  AND NOT EXISTS (SELECT 1 FROM booking o WHERE o.stay_id = b.stay_id AND o.status IN (:live))
 				ORDER BY b.booking_date DESC
 				LIMIT 1
-				""")
+				""".formatted(JdbcBookings.CODE_MATCH))
 				.param(CODE, bookingCode)
 				.param("completed", COMPLETED)
+				.param("live", JdbcBookingPresence.LIVE_STATUSES)
 				.query((rs, rowNum) -> new CompletedStay(new BookingRef(rs.getLong("id")),
 						new VenueRef(rs.getLong("venue_id")),
 						rs.getObject("booking_date", LocalDate.class),
@@ -51,10 +52,7 @@ class JdbcCompletedStays implements CompletedStays {
 
 	@Override
 	public boolean existsByCode(String bookingCode) {
-		return Boolean.TRUE.equals(jdbc.sql("""
-				SELECT EXISTS (SELECT 1 FROM booking b LEFT JOIN stay s ON s.id = b.stay_id
-				               WHERE b.code = :code OR s.code = :code)
-				""")
+		return Boolean.TRUE.equals(jdbc.sql("SELECT EXISTS (SELECT 1 FROM booking b WHERE %s)".formatted(JdbcBookings.CODE_MATCH))
 				.param(CODE, bookingCode)
 				.query(Boolean.class)
 				.single());
