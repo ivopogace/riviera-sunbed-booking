@@ -14,12 +14,12 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
 
 import ai.riviera.platform.notification.application.BookingCancellationMail;
 import ai.riviera.platform.notification.application.BookingConfirmationMail;
-import ai.riviera.platform.notification.application.StayConfirmationMail;
 import ai.riviera.platform.notification.application.BookingMovedMail;
 import ai.riviera.platform.notification.application.Mailer;
 import ai.riviera.platform.notification.application.PaymentDueMail;
 import ai.riviera.platform.notification.application.RequestDeclinedMail;
 import ai.riviera.platform.notification.application.RequestExpiredMail;
+import ai.riviera.platform.notification.application.StayConfirmationMail;
 
 /**
  * A transport whose latency and failure are the test's to choose — the "deliberately blocking

@@ -257,7 +257,8 @@ any is released on the old, never a swap of my own — so a racing reserve wins 
   The webhook confirms each stretch in its own transaction, so `ConfirmBookingService` row-locks the
   `stay` before counting unconfirmed stretches: exactly one confirm sees the stay complete. The payload
   is the stay id plus the first stretch's birth window (the day a stay is judged on); each stretch's
-  `BookingConfirmed` names its `stayId`, null for a lone booking and every older payload.
+  `BookingConfirmed` names its `stayId`, null for a lone booking and every older payload. No stay
+  confirms part-way: one PaymentIntent collects every share and the sweep voids it before releasing.
 - **Attendance is per service day; I am the sole writer and reader of `booking_day`**
   (`ResponsibilitiesArchitectureTests` rule 9 — other modules ask my ports). The schema writes the
   rows when a booking becomes `CONFIRMED` (trigger `booking_day_on_confirm`), so no confirm
