@@ -14,5 +14,5 @@ import ai.riviera.platform.venue.vocabulary.SetId;
  */
 public record PendingRequestRow(long bookingId, SetId setId, LocalDate bookingDate,
 		CustomerId customerId, long amountMinor, String currency, Instant requestedAt,
-		Instant requestExpiresAt) {
+		Instant requestExpiresAt, int competingRequests) {
 }

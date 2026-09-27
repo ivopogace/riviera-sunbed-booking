@@ -43,18 +43,18 @@ class WithdrawRequestServiceTest {
 	private final ApplicationEventPublisher publisher = mock(ApplicationEventPublisher.class);
 
 	private WithdrawRequestService service() {
-		return new WithdrawRequestService(bookings, new RequestReleaseService(bookings, availability, publisher));
+		return new WithdrawRequestService(bookings, new RequestTerminationService(bookings, publisher));
 	}
 
 	@Test
-	void withdrawsAndReleasesTheHold() {
+	void withdrawsAndReleasesNothing() {
 		when(bookings.withdrawPendingRequest(CODE))
 				.thenReturn(Optional.of(new WithdrawnRequest(BOOKING_ID, SET, BOOKING_DATE, BOOKING_DATE)));
 
 		WithdrawOutcome outcome = service().withdraw(CODE);
 
 		assertInstanceOf(WithdrawOutcome.Withdrawn.class, outcome);
-		verify(availability).release(SET, BOOKING_DATE);
+		verifyNoInteractions(availability);
 	}
 
 	@Test

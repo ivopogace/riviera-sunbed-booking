@@ -23,8 +23,13 @@ public sealed interface AcceptOutcome {
 		NO_SUCH_REQUEST,
 		/** The booking exists but is not {@code PENDING_REQUEST} (already decided/paid/cancelled). */
 		NOT_PENDING,
-		/** The response deadline has passed — the expiry sweep will (or did) release the hold. */
+		/** The response deadline has passed — the expiry sweep will (or did) expire it. */
 		EXPIRED,
+		/**
+		 * A day of the request could not be claimed (taken meanwhile, or the set is gone); the request
+		 * declined itself with {@code SET_UNAVAILABLE} and the guest is told (ADR-0025).
+		 */
+		SET_UNAVAILABLE,
 		/**
 		 * The PaymentIntent could not be created; the request was reverted to
 		 * {@code PENDING_REQUEST} so the operator can retry (the Stripe idempotency key makes the

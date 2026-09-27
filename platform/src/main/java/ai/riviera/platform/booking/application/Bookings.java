@@ -19,6 +19,7 @@ import java.util.Optional;
 import java.util.OptionalLong;
 
 import ai.riviera.platform.booking.vocabulary.BookingId;
+import ai.riviera.platform.booking.vocabulary.DeclineReason;
 import ai.riviera.platform.booking.application.remodel.LiveClaim;
 import ai.riviera.platform.booking.application.view.DailyBooking;
 import ai.riviera.platform.customer.vocabulary.CustomerAccountId;
@@ -60,6 +61,17 @@ public interface Bookings {
 	Optional<ai.riviera.platform.booking.application.request.AcceptedRequest> acceptPendingRequest(
 			long bookingId, VenueId venueId, Instant now);
 
+	/** The set and span of a {@code PENDING_REQUEST} at this venue, else empty (a foreign booking reads as absent, #13). */
+	Optional<ClaimRef> findPendingRequestSpan(long bookingId, VenueId venueId);
+
+	/**
+	 * Guarded {@code PENDING_REQUEST → DECLINED} of every other pending request on {@code setId} whose
+	 * span overlaps {@code [firstDay, lastDay]}, stamping {@code reason}; the rows that transitioned
+	 * (ADR-0025: the accepted request's rivals).
+	 */
+	List<ai.riviera.platform.booking.application.request.DeclinedRival> declineOverlappingPending(
+			SetId setId, LocalDate firstDay, LocalDate lastDay, long exceptBookingId, DeclineReason reason);
+
 	/**
 	 * Compensate a failed payment-request issuance: the guarded {@code AWAITING_PAYMENT →
 	 * PENDING_REQUEST} revert (clearing {@code accepted_at}), possible only because no
@@ -68,11 +80,11 @@ public interface Bookings {
 	boolean revertAcceptToPending(long bookingId);
 
 	/**
-	 * Guarded venue-scoped {@code PENDING_REQUEST → DECLINED}, returning the {@link ClaimRef} iff it
-	 * transitioned so the caller releases every day's soft-hold exactly once (invariant #2). Not
+	 * Guarded venue-scoped {@code PENDING_REQUEST → DECLINED} stamping {@code reason}; the {@link ClaimRef}
+	 * iff it transitioned, so the caller publishes exactly once (nothing to release: ADR-0025). Not
 	 * deadline-guarded: an expired-but-unswept request may still be declined.
 	 */
-	Optional<ClaimRef> declinePending(long bookingId, VenueId venueId);
+	Optional<ClaimRef> declinePending(long bookingId, VenueId venueId, DeclineReason reason);
 
 	/**
 	 * Status + deadline of a booking at this venue, or empty when unknown <em>or another venue's</em>
@@ -231,15 +243,15 @@ public interface Bookings {
 
 	/**
 	 * Guarded {@code PENDING_REQUEST → EXPIRED} ({@code request_expires_at <= now}), returning the
-	 * claim iff it transitioned so the caller releases every soft-hold once (#2). Disjoint from
-	 * accept's ({@code > now}) and decline's guards, so a raced candidate is a clean empty no-op.
+	 * span iff it transitioned so the caller publishes once (nothing to release: ADR-0025). Disjoint
+	 * from accept's ({@code > now}) and decline's guards, so a raced candidate is a clean empty no-op.
 	 */
 	Optional<ClaimRef> expirePendingRequest(long bookingId, Instant now);
 
 	/**
 	 * Guest withdrawal: guarded {@code PENDING_REQUEST → WITHDRAWN} keyed on the bearer {@code code}
-	 * (#7, no venue scope), returning id + claim iff it transitioned so the caller releases each
-	 * soft-hold once (#2). Not deadline-guarded; a lost race is an {@code empty} no-op.
+	 * (#7, no venue scope), returning id + span iff it transitioned (nothing to release: ADR-0025).
+	 * Not deadline-guarded; a lost race is an {@code empty} no-op.
 	 */
 	Optional<ai.riviera.platform.booking.application.request.WithdrawnRequest> withdrawPendingRequest(
 			String code);

@@ -1,4 +1,4 @@
-import { BookingStatus } from '../shared/booking-status';
+import { BookingStatus, DeclineReason } from '../shared/booking-status';
 import { MoneyView } from '../shared/money';
 
 // Re-exported from its canonical home in shared/ (which owns the exhaustive STATUS_META keyed by it).
@@ -194,6 +194,8 @@ export interface BookingDetail {
   readonly refundOutstanding: boolean;
   /** The venue's response deadline while the request is open; null otherwise. */
   readonly requestExpiresAt: string | null;
+  /** Why a `DECLINED` request ended; null otherwise, and absent on a payload from before reasons. */
+  readonly declineReason?: DeclineReason | null;
   /** Open-intent credentials, present only while `AWAITING_PAYMENT` with an open PaymentIntent. */
   readonly payment: BookingPayment | null;
   /**

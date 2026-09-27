@@ -6,7 +6,6 @@ import ai.riviera.platform.booking.application.request.RequestWindows;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDate;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.OptionalLong;
@@ -16,6 +15,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import ai.riviera.platform.availability.api.AvailabilityClaim;
+import ai.riviera.platform.availability.api.SetAvailabilityFacts;
 import ai.riviera.platform.availability.vocabulary.ClaimOutcome;
 import ai.riviera.platform.booking.application.BookingCodeGenerator;
 import ai.riviera.platform.booking.application.Bookings;
@@ -31,9 +31,9 @@ import ai.riviera.platform.venue.api.SetBookingFacts;
  * The committed <em>reserve</em> phase: validate the set (online pool, invariant #3; season closure,
  * then the first day's sales close, invariant #4; maximum stay), claim every {@code (set, date)}
  * (invariant #2), resolve the guest and insert the booking, in <strong>one transaction that commits
- * before any payment call</strong>, so no row lock spans the Stripe round-trip. The claims join it
- * ({@code REQUIRED}): a failure before the insert rolls them back. Only {@code CreateBookingService}
- * calls it; not a published seam. Rationale: {@code RESPONSIBILITIES.md} §booking.
+ * before any payment call</strong>, so no row lock spans the Stripe round-trip. A Request-to-Book
+ * venue's request claims nothing: a taken day refuses it, the accept claims (ADR-0025). Only
+ * {@code CreateBookingService} calls it; not a published seam. Rationale: {@code RESPONSIBILITIES.md} §booking.
  */
 @Service
 class ReserveSetService {
@@ -42,6 +42,7 @@ class ReserveSetService {
 
 	private final SetBookingFacts setFacts;
 	private final AvailabilityClaim availability;
+	private final SetAvailabilityFacts taken;
 	private final ReserveFences fences;
 	private final CustomerDirectory customers;
 	private final Bookings bookings;
@@ -50,12 +51,13 @@ class ReserveSetService {
 	private final RequestWindows requestWindows;
 	private final Clock clock;
 
-	ReserveSetService(SetBookingFacts setFacts, AvailabilityClaim availability,
+	ReserveSetService(SetBookingFacts setFacts, AvailabilityClaim availability, SetAvailabilityFacts taken,
 			ReserveFences fences, CustomerDirectory customers, Bookings bookings,
 			BookingCodeGenerator codeGenerator, BookingCutoff cutoff, RequestWindows requestWindows,
 			Clock clock) {
 		this.setFacts = setFacts;
 		this.availability = availability;
+		this.taken = taken;
 		this.fences = fences;
 		this.customers = customers;
 		this.bookings = bookings;
@@ -66,9 +68,9 @@ class ReserveSetService {
 	}
 
 	/**
-	 * Validate, claim, and persist the {@code AWAITING_PAYMENT} booking in one committed transaction.
-	 * On return the {@code (set, date)} is held and the row lock released — the caller pays outside
-	 * any transaction.
+	 * Validate, claim, and persist the {@code AWAITING_PAYMENT} booking in one committed transaction;
+	 * on return the {@code (set, date)} is held and the caller pays outside any transaction. At a
+	 * Request-to-Book venue: validate and persist the {@code PENDING_REQUEST}, claiming nothing.
 	 */
 	@Transactional
 	ReserveOutcome reserve(CreateBookingCommand command) {
@@ -85,47 +87,38 @@ class ReserveSetService {
 			return new ReserveOutcome.Rejected(refused.get());
 		}
 
-		ClaimOutcome claim = claimEveryDay(command.setId(), stay);
+		long amountMinor = Math.multiplyExact(set.price().minorUnits(), (long) stay.days());
+		if (set.bookingMode() == BookingMode.REQUEST) {
+			return requestPending(set, command, stay, amountMinor, now);
+		}
+		ClaimOutcome claim = SpanClaim.claimEveryDay(availability, command.setId(), stay);
 		switch (claim) {
 			case ALREADY_TAKEN -> { return new ReserveOutcome.Rejected(BookingOutcome.Rejected.SET_TAKEN); }
 			case NOT_ONLINE_POOL -> { return new ReserveOutcome.Rejected(BookingOutcome.Rejected.NOT_ONLINE_POOL); }
 			case NO_SUCH_SET -> { return new ReserveOutcome.Rejected(BookingOutcome.Rejected.NO_SUCH_SET); }
 			case CLAIMED -> { /* won the claim — proceed */ }
 		}
-
-		long amountMinor = Math.multiplyExact(set.price().minorUnits(), (long) stay.days());
 		CustomerId customerId = customers.findOrCreate(command.contact());
-		// Request-to-Book: a REQUEST venue's booking starts as a pending request that
-		// holds the claimed (set, date) row but triggers no payment — payment-request-on-accept.
-		// The accept deadline caps at D's sales close: past it the venue has shut its own window.
-		if (set.bookingMode() == BookingMode.REQUEST) {
-			Instant expiresAt = min(now.plus(requestWindows.expiryWindow()),
-					cutoff.salesCloseAt(set.salesClose(), command.bookingDate()));
-			Inserted pending = insertWithUniqueCode(set, customerId, command, amountMinor,
-					b -> bookings.insertPendingRequest(b, expiresAt));
-			return new ReserveOutcome.RequestPending(pending.id(), pending.code(), set, expiresAt, amountMinor);
-		}
 		Inserted inserted = insertWithUniqueCode(set, customerId, command, amountMinor,
 				bookings::insertAwaitingPayment);
 		return new ReserveOutcome.Reserved(inserted.id(), inserted.code(), set, customerId, amountMinor);
 	}
 
 	/**
-	 * Claims one {@code (set, date)} row per day of the stay (invariant #2), all or nothing: a day
-	 * that loses gives back every day already won, because a {@code Rejected} return commits and a
-	 * claim left behind would be a row nothing can identify.
+	 * A Request-to-Book request holds nothing (ADR-0025): a day already taken refuses it as a read, else
+	 * the pending row is inserted uncharged; the accept deadline caps at D's sales close (invariant #4).
 	 */
-	private ClaimOutcome claimEveryDay(SetId setId, StaySpan stay) {
-		List<LocalDate> won = new ArrayList<>();
-		for (LocalDate day : stay.eachDay()) {
-			ClaimOutcome outcome = availability.claim(setId, day);
-			if (outcome != ClaimOutcome.CLAIMED) {
-				won.forEach(held -> availability.release(setId, held));
-				return outcome;
-			}
-			won.add(day);
+	private ReserveOutcome requestPending(SetBookingInfo set, CreateBookingCommand command, StaySpan stay,
+			long amountMinor, Instant now) {
+		if (!taken.takenDaysBetween(List.of(set.setId()), stay.firstDay(), stay.lastDay()).isEmpty()) {
+			return new ReserveOutcome.Rejected(BookingOutcome.Rejected.SET_TAKEN);
 		}
-		return ClaimOutcome.CLAIMED;
+		CustomerId customerId = customers.findOrCreate(command.contact());
+		Instant expiresAt = min(now.plus(requestWindows.expiryWindow()),
+				cutoff.salesCloseAt(set.salesClose(), command.bookingDate()));
+		Inserted pending = insertWithUniqueCode(set, customerId, command, amountMinor,
+				b -> bookings.insertPendingRequest(b, expiresAt));
+		return new ReserveOutcome.RequestPending(pending.id(), pending.code(), set, expiresAt, amountMinor);
 	}
 
 	private static Instant min(Instant a, Instant b) {

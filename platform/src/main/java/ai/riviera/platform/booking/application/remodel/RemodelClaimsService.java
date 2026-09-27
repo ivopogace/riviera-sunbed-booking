@@ -25,6 +25,7 @@ import ai.riviera.platform.booking.api.RemodelClaims;
 import ai.riviera.platform.booking.application.Bookings;
 import ai.riviera.platform.booking.application.cancel.CancelledBooking;
 import ai.riviera.platform.booking.application.reserve.ClaimRef;
+import ai.riviera.platform.booking.domain.BookingStatus;
 import ai.riviera.platform.booking.domain.FreeSpot;
 import ai.riviera.platform.booking.domain.MoveRanking;
 import ai.riviera.platform.booking.domain.RemodelZone;
@@ -34,6 +35,7 @@ import ai.riviera.platform.booking.events.BookingMoved;
 import ai.riviera.platform.booking.events.BookingRequestDeclined;
 import ai.riviera.platform.booking.vocabulary.BlockReason;
 import ai.riviera.platform.booking.vocabulary.BookingId;
+import ai.riviera.platform.booking.vocabulary.DeclineReason;
 import ai.riviera.platform.booking.vocabulary.PreviewToken;
 import ai.riviera.platform.booking.vocabulary.ReceiptId;
 import ai.riviera.platform.booking.vocabulary.RefundConfirmation;
@@ -173,12 +175,12 @@ class RemodelClaimsService implements RemodelClaims {
 		return outcomeOf(claim, ReceiptOutcomeKind.RELEASE, 0L);
 	}
 
-	/** Decline a pending request: the venue-scoped guarded transition and the fact its mail listens for. */
+	/** Decline a pending request: the guarded transition and its fact; it held nothing to release (ADR-0025). */
 	private ReceiptOutcome applyDecline(VenueId venueId, RemodelClaim claim) {
-		ClaimRef declined = bookings.declinePending(claim.bookingId().value(), venueId)
+		ClaimRef declined = bookings.declinePending(claim.bookingId().value(), venueId, DeclineReason.SET_UNAVAILABLE)
 				.orElseThrow(() -> lostUnderLock(claim, "pending"));
-		releaseSpan(declined.setId(), declined.bookingDate(), declined.lastDate());
-		events.publishEvent(new BookingRequestDeclined(claim.bookingId(), declined.setId(), declined.bookingDate()));
+		events.publishEvent(new BookingRequestDeclined(claim.bookingId(), declined.setId(), declined.bookingDate(),
+				DeclineReason.SET_UNAVAILABLE));
 		return outcomeOf(claim, ReceiptOutcomeKind.DECLINE, 0L);
 	}
 
@@ -245,6 +247,9 @@ class RemodelClaimsService implements RemodelClaims {
 	}
 
 	private static RemodelOutcome outcomeOf(LiveClaim claim, SetSpot from, RemodelZone zone, FreePools pools) {
+		if (claim.status() == BookingStatus.PENDING_REQUEST) {
+			return RemodelOutcome.Decline.DECLINE;
+		}
 		if (zone == RemodelZone.FROZEN) {
 			return new RemodelOutcome.Blocked(BlockReason.FROZEN);
 		}
@@ -260,8 +265,7 @@ class RemodelClaimsService implements RemodelClaims {
 		return switch (claim.status()) {
 			case CONFIRMED -> RemodelOutcome.Refund.REFUND;
 			case AWAITING_PAYMENT -> RemodelOutcome.Release.RELEASE;
-			case PENDING_REQUEST -> RemodelOutcome.Decline.DECLINE;
-			case CANCELLED, COMPLETED, NO_SHOW, DECLINED, EXPIRED, WITHDRAWN ->
+			case PENDING_REQUEST, CANCELLED, COMPLETED, NO_SHOW, DECLINED, EXPIRED, WITHDRAWN ->
 				throw new IllegalStateException("a settled booking is not a live claim: " + claim.status());
 		};
 	}

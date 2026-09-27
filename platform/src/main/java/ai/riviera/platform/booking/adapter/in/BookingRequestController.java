@@ -23,7 +23,7 @@ import ai.riviera.platform.venue.vocabulary.VenueId;
 
 /**
  * Operator endpoints for the Request-to-Book queue: list the venue's pending requests, accept one
- * (issues the payment request) or decline one (releases the hold), over the {@link PendingRequests}
+ * (claims the set, issues the payment request) or decline one, over the {@link PendingRequests}
  * and {@link RespondToRequest} ports (invariant #11). Ownership is enforced in those services; a
  * mismatch is {@code NotVenueOwnerException} → {@code 403 NOT_VENUE_OWNER} via the single
  * {@code ApiErrorHandler} (invariant #13). Rejections are RFC-7807 via {@link ApiProblem}, stable
@@ -68,6 +68,8 @@ class BookingRequestController {
 						RequestProblemDetails.NOT_PENDING);
 				case EXPIRED -> problem(HttpStatus.CONFLICT, "REQUEST_EXPIRED",
 						"This request's response deadline has passed.");
+				case SET_UNAVAILABLE -> problem(HttpStatus.CONFLICT, "SET_UNAVAILABLE",
+						"That set is no longer free for these days; the request was declined and the guest told.");
 				case PAYMENT_INIT_FAILED -> problem(HttpStatus.BAD_GATEWAY, "PAYMENT_INIT_FAILED",
 						"The payment request could not be issued.");
 			};

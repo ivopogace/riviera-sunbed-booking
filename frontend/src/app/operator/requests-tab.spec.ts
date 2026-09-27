@@ -46,6 +46,7 @@ describe('RequestsTab (#176)', () => {
       amount: EUR(4500),
       requestedAt: '2026-07-01T09:00:00Z',
       requestExpiresAt: inHours(30), // not urgent by default
+      competingRequests: 0,
       ...over,
     };
   }
@@ -524,6 +525,32 @@ describe('RequestsTab (#176)', () => {
     expect(store.count()).toBe(0);
   });
 
+  it('names the competing requests on a card, and says nothing when there are none', () => {
+    render([
+      request({ bookingId: 11, competingRequests: 2 }),
+      request({ bookingId: 12, setId: 2 }),
+    ]);
+    const hints = host.querySelectorAll('[data-testid="competing-hint"]');
+    expect(hints).toHaveLength(1);
+    expect(hints[0].textContent).toContain('Also requested by 2 other guests');
+    expect(hints[0].textContent).toContain('accepting declines them');
+  });
+
+  it('drops a request whose set was gone at accept (409 SET_UNAVAILABLE) and says the guest was told', () => {
+    render([request({ bookingId: 11 })]);
+    button(/Accept/).click();
+    fixture.detectChanges();
+    http
+      .expectOne((r) => r.method === 'POST' && r.url.endsWith('/booking-requests/11/accept'))
+      .flush({ code: 'SET_UNAVAILABLE' }, { status: 409, statusText: 'Conflict' });
+    fixture.detectChanges();
+    flushReconcile([]);
+    expect(byId('expired-race')).toBeNull();
+    expect(cards()).toHaveLength(0);
+    expect(byId('requests-notice')?.textContent).toContain('no longer free');
+    expect(byId('requests-notice')?.textContent).toContain('guest has been told');
+  });
+
   it('drops a stale request (409 REQUEST_NOT_PENDING) with a notice — no expired card', () => {
     render([request({ bookingId: 11 })]);
     button(/Accept/).click();
@@ -828,6 +855,7 @@ interface PendingRequest {
   amount: MoneyView;
   requestedAt: string;
   requestExpiresAt: string;
+  competingRequests: number;
 }
 
 function seat(id: number, rowLabel: string, positionNo: number, tier: Tier): SetView {

@@ -3,15 +3,26 @@ package ai.riviera.platform.booking.events;
 import java.time.LocalDate;
 
 import ai.riviera.platform.booking.vocabulary.BookingId;
+import ai.riviera.platform.booking.vocabulary.DeclineReason;
 import ai.riviera.platform.venue.vocabulary.SetId;
 
 /**
- * A venue declined a pending Request-to-Book (directly or in a remodel): the guarded
- * {@code PENDING_REQUEST → DECLINED} transition committed, the soft-hold was released, and this is
- * published inside that transaction. Ids + the date only (invariant #11): no {@code venueId}, as
- * {@code notification}, the sole subscriber, re-reads the name; the date as its resolver does not.
- * Not a {@code BookingCancelled}: nothing accrued or was collected. Never the code: the registry
- * stores payloads in cleartext (invariant #7). Withdraw emits none: RESPONSIBILITIES.md §booking.
+ * A pending Request-to-Book ended {@code DECLINED} (the venue's no, a day the accept could not claim,
+ * a set a remodel disturbed, or an overlapping request accepted instead — {@link DeclineReason}),
+ * published inside the guarded transition's transaction; nothing was held, so nothing is released
+ * (ADR-0025). Ids + the date only (invariant #11): {@code notification}, the sole subscriber,
+ * re-reads the venue's name. Not a {@code BookingCancelled}: nothing accrued or was collected. Never
+ * the code (invariant #7). Withdraw emits none: RESPONSIBILITIES.md §booking.
  */
-public record BookingRequestDeclined(BookingId bookingId, SetId setId, LocalDate bookingDate) {
+public record BookingRequestDeclined(BookingId bookingId, SetId setId, LocalDate bookingDate,
+		DeclineReason reason) {
+
+	public BookingRequestDeclined(BookingId bookingId, SetId setId, LocalDate bookingDate) {
+		this(bookingId, setId, bookingDate, DeclineReason.VENUE);
+	}
+
+	/** The reason; a payload serialized before {@code reason} existed is the venue's own decline. */
+	public DeclineReason reasonOrVenue() {
+		return reason != null ? reason : DeclineReason.VENUE;
+	}
 }

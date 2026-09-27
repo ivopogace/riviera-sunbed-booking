@@ -702,6 +702,7 @@ describe('BookingDialog (2-step Liquid Glass modal)', () => {
 
     expect(primary().textContent).toContain('Send request');
     expect(host().textContent).toContain('won’t be charged');
+    expect(host().textContent).toContain('isn’t held until the venue accepts');
 
     let booked = false;
     let awaiting = false;

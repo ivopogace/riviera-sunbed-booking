@@ -25,7 +25,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 /**
  * The decline/expiry facts at the SQL seam against real Postgres: each terminal leg
- * of {@code RequestReleaseService} publishes its fact exactly when its guarded transition wins —
+ * of {@code RequestTerminationService} publishes its fact exactly when its guarded transition wins —
  * and the two legs that must stay silent stay silent.
  *
  * <p><strong>Why the recorder is a {@code @TransactionalEventListener}.</strong> The property under
@@ -47,7 +47,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 class RequestTerminationEventPublicationIT {
 
 	@Autowired
-	RequestReleaseService requestRelease;
+	RequestTerminationService requestRelease;
 
 	@Autowired
 	ExpireRequests expireRequests;
@@ -77,7 +77,7 @@ class RequestTerminationEventPublicationIT {
 				""").param("venue", venueId).query(Long.class).single();
 	}
 
-	/** A PENDING_REQUEST row with its (set, date) soft-held; overdue when {@code expiresAt} is past. */
+	/** A PENDING_REQUEST row holding nothing (ADR-0025); overdue when {@code expiresAt} is past. */
 	private long insertRequest(String code, LocalDate date, Instant expiresAt) {
 		long customer = jdbc.sql("INSERT INTO customer (email, full_name, phone) "
 						+ "VALUES (:e, 'Guest', '+355600') RETURNING id")
@@ -92,9 +92,6 @@ class RequestTerminationEventPublicationIT {
 				.param("cust", customer).param("date", date)
 				.param("expires", java.sql.Timestamp.from(expiresAt))
 				.query(Long.class).single();
-		jdbc.sql("INSERT INTO set_availability (set_id, booking_date, state) "
-						+ "VALUES (:set, :date, 'BOOKED_ONLINE') ON CONFLICT DO NOTHING")
-				.param("set", setId).param("date", date).update();
 		return booking;
 	}
 

@@ -484,6 +484,8 @@ export interface PendingRequestItem {
   readonly amount: MoneyView;
   readonly requestedAt: string; // ISO-8601 UTC instant
   readonly requestExpiresAt: string; // ISO-8601 UTC instant (the response deadline)
+  /** Other pending requests on the same set with an overlapping day; accepting this one declines them. */
+  readonly competingRequests: number;
 }
 
 /** The outcome of an accept/decline: `AWAITING_PAYMENT` or `CONFIRMED` (accept), `DECLINED`. */
@@ -495,13 +497,15 @@ export interface RequestDecision {
 /**
  * A known accept/decline failure, mapped from the RFC-7807 `code` for operator-facing copy.
  * `REQUEST_EXPIRED` means the sweep won the race (the dismissible expired-race card);
- * `PAYMENT_INIT_FAILED` that accept could not open the guest's pay window; `NOT_VENUE_OWNER` is the
- * cross-venue 403 (invariant #13).
+ * `PAYMENT_INIT_FAILED` that accept could not open the guest's pay window; `SET_UNAVAILABLE` that the
+ * set was gone when accept tried to claim it (the request is declined, the guest told);
+ * `NOT_VENUE_OWNER` is the cross-venue 403 (invariant #13).
  */
 export type RequestErrorCode =
   | 'NO_SUCH_REQUEST'
   | 'REQUEST_NOT_PENDING'
   | 'REQUEST_EXPIRED'
+  | 'SET_UNAVAILABLE'
   | 'PAYMENT_INIT_FAILED'
   | 'NOT_VENUE_OWNER'
   | 'UNAUTHORIZED'

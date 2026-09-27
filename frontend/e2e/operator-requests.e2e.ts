@@ -63,6 +63,7 @@ function seedQueue() {
       amount: { minorUnits: 4500, currency: 'EUR' },
       requestedAt: '2026-07-01T09:00:00Z',
       requestExpiresAt: inHours(3), // urgent → the clock chip renders
+      competingRequests: 1, // Bora also wants set A·1 that day → the competing hint renders
     },
     {
       bookingId: 12,
@@ -72,6 +73,7 @@ function seedQueue() {
       amount: { minorUnits: 4500, currency: 'EUR' },
       requestedAt: '2026-07-01T10:00:00Z',
       requestExpiresAt: inHours(30), // not urgent
+      competingRequests: 0,
     },
   ];
 }
@@ -115,6 +117,10 @@ async function mockRequests(
     const action = match![2];
     const override = overrides[bookingId];
     if (override) {
+      if (override.code === 'SET_UNAVAILABLE') {
+        // The backend declines the request in the same answer (ADR-0025), so the queue no longer lists it.
+        queue = queue.filter((r) => r.bookingId !== bookingId);
+      }
       return route.fulfill({
         status: override.status,
         contentType: 'application/problem+json',
@@ -289,6 +295,32 @@ test('an accept that lost the sweep race shows the dismissible expired-race copy
   // Dismiss removes the card.
   await page.getByTestId('dismiss-expired').click();
   await expect(page.getByTestId('request-card').filter({ hasText: 'Ana Guest' })).toHaveCount(0);
+});
+
+test('a card names its competing requests, and an accept whose set is gone (409 SET_UNAVAILABLE) drops it with the guest-told notice', async ({
+  page,
+}) => {
+  await mockRequests(page, { 11: { status: 409, code: 'SET_UNAVAILABLE' } });
+  await signInAndOpenRequests(page);
+
+  const anaCard = page.getByTestId('request-card').filter({ hasText: 'Ana Guest' });
+  await expect(anaCard.getByTestId('competing-hint')).toContainText(
+    'Also requested by 1 other guest',
+  );
+  await expect(
+    page
+      .getByTestId('request-card')
+      .filter({ hasText: 'Bora Guest' })
+      .getByTestId('competing-hint'),
+  ).toHaveCount(0);
+  await expectNoSeriousAxeViolations(page, 'requests queue with a competing hint');
+
+  await page.getByRole('button', { name: /Accept.*from Ana Guest/ }).click();
+
+  await expect(page.getByTestId('requests-notice')).toContainText('no longer free');
+  await expect(page.getByTestId('requests-notice')).toContainText('guest has been told');
+  await expect(anaCard).toHaveCount(0);
+  await expect(page.getByTestId('expired-race')).toHaveCount(0);
 });
 
 test('keeps focus off body across every request decision (WCAG 2.4.3, #1082)', async ({ page }) => {

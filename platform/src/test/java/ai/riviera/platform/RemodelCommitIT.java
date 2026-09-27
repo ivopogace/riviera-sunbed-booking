@@ -186,7 +186,7 @@ class RemodelCommitIT {
 		long refunded = claimOn(venue, a1, refundDay, "CONFIRMED");
 		seedAccrual(venue, refunded);
 		long released = claimOn(venue, a1, releaseDay, "AWAITING_PAYMENT");
-		long declined = claimOn(venue, a1, declineDay, "PENDING_REQUEST");
+		long declined = seedBooking(venue, a1, "CMT-" + System.nanoTime(), "PENDING_REQUEST", declineDay);
 		// A2 is the only candidate, so blocking it on three days leaves one move and three ended claims.
 		seedHold(a2, refundDay, "STAFF_MARKED");
 		seedHold(a2, releaseDay, "STAFF_MARKED");

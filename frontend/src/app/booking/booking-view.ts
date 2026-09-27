@@ -266,7 +266,8 @@ const CLS = {
               </h2>
               <p [class]="cls.bannerBody">
                 {{ b.venueName }} hasn’t responded to your booking request yet. You won’t be charged
-                unless they accept.
+                unless they accept. The set isn’t held for you until then — other guests can request
+                it too.
               </p>
               @if (b.requestExpiresAt; as deadline) {
                 <p [class]="cls.bannerBody">
@@ -372,9 +373,9 @@ const CLS = {
               <h2 id="request-state-title" class="{{ cls.eyebrow }} {{ cls.eyebrowDeclined }}">
                 Request declined
               </h2>
-              <p [class]="cls.bannerBody">
-                {{ b.venueName }} couldn’t take this booking, so it was declined. You haven’t been
-                charged — pick another set or date to book again.
+              <p [class]="cls.bannerBody" data-testid="declined-reason">
+                {{ declinedCopy(b) }} You haven’t been charged — pick another set or date to book
+                again.
               </p>
             </section>
           }
@@ -948,6 +949,18 @@ export class BookingView {
   /** A response deadline rendered in Europe/Tirane wall-clock time (invariant #6). */
   protected deadlineLabel(iso: string): string {
     return formatDeadline(iso);
+  }
+
+  /** The one sentence that says why the request was declined; a payload without a reason is the venue's no. */
+  protected declinedCopy(b: BookingDetail): string {
+    switch (b.declineReason ?? 'VENUE') {
+      case 'ANOTHER_GUEST':
+        return `${b.venueName} gave this set to another guest who had also requested it, so your request was declined.`;
+      case 'SET_UNAVAILABLE':
+        return `The set you requested at ${b.venueName} is no longer available for that day, so your request was declined.`;
+      default:
+        return `${b.venueName} couldn’t take this booking, so it was declined.`;
+    }
   }
 
   /**

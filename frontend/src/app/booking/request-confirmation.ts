@@ -61,7 +61,8 @@ const CLS = {
             <strong [class]="cls.strong" data-testid="request-deadline">{{
               deadline(r.requestExpiresAt)
             }}</strong
-            >. If accepted, you’ll get a link to pay
+            >. The set isn’t held for you until the venue accepts — other guests can request it too.
+            If accepted, you’ll get a link to pay
             <strong [class]="cls.strong">{{ formatMoney(r.amount) }}</strong> and lock in the set.
           </p>
         </div>

@@ -31,11 +31,11 @@ machine-enforced: see [Machine-checked vs review-checked](#machine-checked-vs-re
    `booking`'s own refund listener drives **`payment`**'s `RefundPort` with the amount `booking`
    decided, and **`notification`** mails the record with that amount.
 
-> **Variant — Request-to-Book** (per the venue's booking mode): step 3 commits the claimed booking
-> as `PENDING_REQUEST`, uncharged, until the host accepts or declines (ownership via
-> `operator::api`); `booking` owns that lifecycle, its expiry sweep and the guest's **withdraw**
-> (authorized by the booking code alone). On accept, `payment` issues the PaymentIntent and the
-> Instant spine runs on, unchanged, from step 4.
+> **Variant — Request-to-Book** (per the venue's booking mode): step 3 commits the booking as
+> `PENDING_REQUEST`, uncharged and **unclaimed** (ADR-0025), until the host accepts or declines
+> (ownership via `operator::api`); `booking` owns that lifecycle, its expiry sweep and the guest's
+> **withdraw** (authorized by the booking code alone). The accept claims every day, declines the
+> overlapping requests, and `payment` issues the PaymentIntent; the Instant spine runs on from step 4.
 
 **Decision vs. execution is split, three times.** `booking` owns the cancellation/refund
 *policy*, `payment` *executes* the refund; `venue` stores the commission *rate*, `payout` *does*
@@ -227,10 +227,12 @@ any is released on the old, never a swap of my own — so a racing reserve wins 
   An insert naming no last day is one-day (trigger `booking_last_date_on_insert`);
   `booking_span_check` (Java twin `domain/ServiceDays`) refuses a last day before the first. "Who is
   booked on D" selects by overlap; "still owed from D on" and the retention basis read `last_date`.
-- **Every terminal transition releases every day of the span**, and a remodel move claims every day
-  on the candidate before freeing the old set; only the guarded `UPDATE … RETURNING`'s winner
-  releases. `set_availability` has no link to a booking, so a day a leg forgets is unrecoverable
-  (invariant #2); `SpanReleaseIT` re-claims the span after each leg.
+- **Every terminal transition of a claim releases every day of the span**, and a remodel move claims
+  every day on the candidate before freeing the old set; only the guarded `UPDATE … RETURNING`'s
+  winner releases. `set_availability` has no link to a booking, so a day a leg forgets is
+  unrecoverable and a day a leg releases without holding is someone else's (invariant #2);
+  `SpanReleaseIT` re-claims the span after each leg. A pending request is no claim: decline, expiry,
+  withdraw and the remodel decline release nothing (`RequestHoldsNothingIT`, ADR-0025).
 - **A reserve fences before any claim, on both booking modes:** a hidden venue's set
   (`operator.api.VenueVisibility`) is `NO_SUCH_SET`, and no later leg consults visibility; a season
   closure that does not admit every day is `VENUE_CLOSED` (the venue is deliberately visible); the
@@ -318,12 +320,21 @@ any is released on the old, never a swap of my own — so a racing reserve wins 
   rule; `cancellationWindowAtBirth` + `lateCancelRefundBps` ride `BookingConfirmed` and
   `BookingPaymentDue` so a later cutoff edit cannot rewrite a sent mail (null: no disclosure). The
   view and admin-resend facts re-derive from the *current* cutoff — bounded, documented drift.
-- **Request termination** (decline, expiry, withdraw) lives on `RequestReleaseService`. **Withdraw**
+- **The accept is the claim (ADR-0025):** `RequestClaimService` claims every day of the pending
+  request, then runs the guarded `PENDING_REQUEST → AWAITING_PAYMENT`, then declines every other
+  pending request on that set with an overlapping day (`ANOTHER_GUEST`), in one transaction that
+  commits before the payment call; a day it cannot claim makes the request decline itself
+  (`SET_UNAVAILABLE`), and a failed payment set-up reverts to pending and gives the claim back. Lock
+  order is the reserve's and the remodel's: the set's rows, then the booking row; two overlapping
+  accepts leave exactly one winner (`RequestAcceptClaimsIT`, `ConcurrentOverlappingAcceptIT`). The
+  queue names each request's competing requests; a request for a day already taken is `SET_TAKEN`.
+- **Request termination** (decline, expiry, withdraw) lives on `RequestTerminationService`. **Withdraw**
   is authorized by the code alone (the only request command with no ownership check) and guarded by
-  status, not deadline, so on an overdue row the row lock leaves one transition and one release
+  status, not deadline, so on an overdue row the row lock leaves one transition
   (`ConcurrentRequestTerminationIT`). It publishes **no** event: a `refundMinor = 0`
-  `BookingCancelled` would mail a cancellation for a retracted request. `BookingRequestDeclined` is
-  published inside the deciding transaction; `BookingPaymentDue` cannot be.
+  `BookingCancelled` would mail a cancellation for a retracted request. `BookingRequestDeclined`
+  carries its `DeclineReason` and is published inside the deciding transaction; `BookingPaymentDue`
+  cannot be.
 - **My read ports keep `BookingStatus` internal**: `BookingNotificationFacts#confirmationFacts` and
   `CustomerBookings` answer `everConfirmed` (from `confirmed_at`). `CustomerBookings` caps at a
   contact's 20 newest booked dates (unbounded is a support-surface hazard), each naming a set, not a
@@ -355,8 +366,9 @@ any is released on the old, never a swap of my own — so a racing reserve wins 
 - **Remodel classification** (`RemodelClaims#classify`, ADR-0020) decides each live booking on the
   disturbed sets in `(service date, id)` order: zone (`RemodelZones`), then a move candidate
   (`MoveRanking`; a taken one leaves the pool on every day of the span), then status — `CONFIRMED`
-  refunds, `AWAITING_PAYMENT` releases, `PENDING_REQUEST` declines; a frozen claim, or a move-only
-  one without a candidate, blocks. Outcome kinds only, never a status or code (invariant #7);
+  refunds, `AWAITING_PAYMENT` releases; a frozen claim, or a move-only one without a candidate,
+  blocks. A `PENDING_REQUEST` is no claim: it declines (`SET_UNAVAILABLE`) whatever the zone, never
+  moves, releases nothing (ADR-0025). Outcome kinds only, never a status or code (invariant #7);
   advisory and unlocked, so the commit re-derives it.
 - **The remodel commit** (`RemodelClaims#commit`) runs in `venue`'s commit transaction behind its
   `RemodelGate`: it re-classifies under the lock; the `PreviewToken` must **cover** the fresh

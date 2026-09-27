@@ -15,5 +15,5 @@ import ai.riviera.platform.venue.vocabulary.VenueId;
  * {@code accepted_at} the sweep compares against; {@code createdAt} keys the window-at-birth mail.
  */
 public record AcceptedRequest(long bookingId, VenueId venueId, SetId setId, LocalDate bookingDate,
-		Instant acceptedAt, Instant createdAt, long amountMinor, String currency) {
+		LocalDate lastDate, Instant acceptedAt, Instant createdAt, long amountMinor, String currency) {
 }

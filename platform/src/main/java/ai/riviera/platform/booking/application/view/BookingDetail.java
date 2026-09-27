@@ -5,6 +5,7 @@ import java.util.List;
 
 import ai.riviera.platform.booking.domain.BookingStatus;
 import ai.riviera.platform.booking.vocabulary.CancellationWindow;
+import ai.riviera.platform.booking.vocabulary.DeclineReason;
 import ai.riviera.platform.booking.vocabulary.RefundReason;
 import ai.riviera.platform.review.vocabulary.ReviewPanel;
 import ai.riviera.platform.venue.vocabulary.MoneyView;
@@ -26,7 +27,7 @@ public record BookingDetail(String code, BookingStatus status, VenueId venueId, 
 		MoneyView refundedAmount, boolean refundOutstanding,
 		java.time.Instant requestExpiresAt,
 		ai.riviera.platform.payment.vocabulary.PaymentCredentials payment, boolean emailWithheld,
-		boolean payWindowClosed, RefundReason cancelReason,
+		boolean payWindowClosed, RefundReason cancelReason, DeclineReason declineReason,
 		CancellationWindow cancellationWindowAtBirth, ReviewPanel reviewPanel,
 		String reviewNameSuggestion, BookingMove move, List<StayStretch> stretches) {
 

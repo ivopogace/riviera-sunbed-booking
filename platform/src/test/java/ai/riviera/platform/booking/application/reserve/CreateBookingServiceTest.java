@@ -22,6 +22,7 @@ import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.core.read.ListAppender;
 
 import ai.riviera.platform.availability.api.AvailabilityClaim;
+import ai.riviera.platform.availability.api.SetAvailabilityFacts;
 import ai.riviera.platform.availability.vocabulary.ClaimOutcome;
 import ai.riviera.platform.booking.vocabulary.BookingId;
 import ai.riviera.platform.booking.application.refund.ReleaseAbandonedBooking;
@@ -99,7 +100,7 @@ class CreateBookingServiceTest {
 			CheckoutPort checkout, BookingCodeGenerator codes, boolean venueVisible, Clock clock) {
 		SetBookingFacts catalog = new FakeCatalog(info);
 		CustomerDirectory customers = _ -> new CustomerId(99);
-		ReserveSetService reservation = new ReserveSetService(catalog, claim,
+		ReserveSetService reservation = new ReserveSetService(catalog, claim, nothingTaken,
 				new ReserveFences(visibility(venueVisible), new BookingCutoff(clock)),
 				customers, bookings, codes, new BookingCutoff(clock), WINDOWS, clock);
 		return new CreateBookingService(reservation, checkout, confirmer, release, confirmationMail,
@@ -109,6 +110,9 @@ class CreateBookingServiceTest {
 	private CreateBookingCommand command() {
 		return new CreateBookingCommand(SET, DATE, GUEST);
 	}
+
+	/** The read side of availability: nothing taken anywhere. */
+	private final SetAvailabilityFacts nothingTaken = (sets, from, to) -> Map.of();
 
 	/** A fake claim port (AvailabilityClaim is no longer a single-method since U4's release). */
 	private static AvailabilityClaim claiming(ClaimOutcome outcome) {
@@ -242,7 +246,7 @@ class CreateBookingServiceTest {
 		};
 		SetBookingFacts catalog = new FakeCatalog(set(Pool.ONLINE));
 		CustomerDirectory customers = _ -> new CustomerId(1);
-		ReserveSetService reservation = new ReserveSetService(catalog, claiming(ClaimOutcome.CLAIMED),
+		ReserveSetService reservation = new ReserveSetService(catalog, claiming(ClaimOutcome.CLAIMED), nothingTaken,
 				new ReserveFences(visibility(true), new BookingCutoff(CLOCK)), customers, collidingOnce,
 				codes::removeFirst, new BookingCutoff(CLOCK), WINDOWS, CLOCK);
 		var service = new CreateBookingService(reservation,
@@ -321,7 +325,7 @@ class CreateBookingServiceTest {
 		};
 		SetBookingFacts catalog = new FakeCatalog(set(Pool.ONLINE));
 		CustomerDirectory customers = contact -> new CustomerId(7);
-		ReserveSetService reservation = new ReserveSetService(catalog, claiming(ClaimOutcome.CLAIMED),
+		ReserveSetService reservation = new ReserveSetService(catalog, claiming(ClaimOutcome.CLAIMED), nothingTaken,
 				new ReserveFences(visibility(true), new BookingCutoff(CLOCK)), customers, bookings,
 				() -> "CODE12345C", new BookingCutoff(CLOCK), WINDOWS, CLOCK);
 		CreateBookingService service = new CreateBookingService(reservation,
@@ -331,6 +335,35 @@ class CreateBookingServiceTest {
 		assertThrows(IllegalStateException.class, () -> service.create(command()));
 		assertEquals(1, release.released.size(),
 				"a confirm failure after commit compensates by releasing the claim");
+	}
+
+	@Test
+	void requestModeClaimsNothing() {
+		// ADR-0025: the reserve at a Request venue never touches the claim port; the accept claims.
+		CreateBookingService service = service(set(Pool.ONLINE, BookingMode.REQUEST), neverClaiming(),
+				_ -> { throw new AssertionError("no payment for a request"); }, () -> "REQCODE003");
+
+		BookingOutcome outcome = service.create(command());
+
+		assertInstanceOf(BookingOutcome.Requested.class, outcome);
+		assertEquals(1, bookings.pendingInserted.size());
+	}
+
+	@Test
+	void requestOnATakenDayIsRefusedAsSetTaken() {
+		SetBookingFacts catalog = new FakeCatalog(set(Pool.ONLINE, BookingMode.REQUEST));
+		SetAvailabilityFacts takenOnDate = (sets, from, to) -> Map.of(SET, List.of(DATE));
+		ReserveSetService reservation = new ReserveSetService(catalog, neverClaiming(), takenOnDate,
+				new ReserveFences(visibility(true), new BookingCutoff(CLOCK)), _ -> new CustomerId(99), bookings,
+				() -> "REQCODE004", new BookingCutoff(CLOCK), WINDOWS, CLOCK);
+		CreateBookingService service = new CreateBookingService(reservation,
+				_ -> { throw new AssertionError("no payment for a request"); }, confirmer, release,
+				confirmationMail, collection, CLOCK);
+
+		BookingOutcome outcome = service.create(command());
+
+		assertSame(BookingOutcome.Rejected.SET_TAKEN, outcome);
+		assertTrue(bookings.pendingInserted.isEmpty(), "a taken day creates no request row");
 	}
 
 	@Test
@@ -558,17 +591,17 @@ class CreateBookingServiceTest {
 		};
 	}
 
-	/** A claim port that fails the test if any claim is attempted (#693: refuse before claiming). */
+	/** A claim port that fails the test if any claim is attempted: a refusal (#693) or a request (ADR-0025). */
 	private static AvailabilityClaim neverClaiming() {
 		return new AvailabilityClaim() {
 			@Override
 			public ClaimOutcome claim(SetId setId, LocalDate bookingDate) {
-				throw new AssertionError("claim must not be attempted for a hidden venue");
+				throw new AssertionError("claim must not be attempted here");
 			}
 
 			@Override
 			public void release(SetId setId, LocalDate bookingDate) {
-				throw new AssertionError("release must not be attempted for a hidden venue");
+				throw new AssertionError("release must not be attempted here");
 			}
 		};
 	}
@@ -866,8 +899,22 @@ class CreateBookingServiceTest {
 		}
 
 		@Override
-		public Optional<ClaimRef> declinePending(long bookingId,
+		public Optional<ClaimRef> findPendingRequestSpan(long bookingId,
 				ai.riviera.platform.venue.vocabulary.VenueId venueId) {
+			return Optional.empty();
+		}
+
+		@Override
+		public List<ai.riviera.platform.booking.application.request.DeclinedRival> declineOverlappingPending(
+				SetId setId, LocalDate firstDay, LocalDate lastDay, long exceptBookingId,
+				ai.riviera.platform.booking.vocabulary.DeclineReason reason) {
+			return List.of();
+		}
+
+		@Override
+		public Optional<ClaimRef> declinePending(long bookingId,
+				ai.riviera.platform.venue.vocabulary.VenueId venueId,
+				ai.riviera.platform.booking.vocabulary.DeclineReason reason) {
 			return Optional.empty();
 		}
 

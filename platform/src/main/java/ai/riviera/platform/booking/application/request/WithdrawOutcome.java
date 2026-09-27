@@ -11,7 +11,7 @@ package ai.riviera.platform.booking.application.request;
  */
 public sealed interface WithdrawOutcome {
 
-	/** The request is terminally {@code WITHDRAWN} and the {@code (set, date)} hold released. */
+	/** The request is terminally {@code WITHDRAWN}; it held nothing to release (ADR-0025). */
 	record Withdrawn() implements WithdrawOutcome {
 	}
 

@@ -226,17 +226,22 @@ model in `docs/architecture/domain-model.md`.
   `PENDING_REQUEST`, `AWAITING_PAYMENT`, `CONFIRMED`, `CANCELLED`, `COMPLETED`,
   `NO_SHOW`, `DECLINED`, `EXPIRED` (Request-to-Book), `WITHDRAWN` (the guest's own
   retraction of a pending request).
-- **Pending request / soft-hold** — a Request-to-Book booking awaiting the venue's
-  decision (`PENDING_REQUEST`): it claims the same `set_availability (set, date)` row as any
-  online booking (invariant #2) — the soft-hold — but no PaymentIntent exists and no card
-  is charged until the venue accepts (payment-request-on-accept). It ends in one of three
-  ways, one per party who can end it: the venue **declines** (`DECLINED`), nobody answers by
-  the response deadline (`EXPIRED`), or the guest **withdraws** it (`WITHDRAWN`). Each frees
-  the soft-hold. The deadline is
-  min(request + `booking.request.expiry-window`, the venue's sales close); after accept
-  the guest has min(accept + `booking.request.pay-window`, the end of the service day) to pay
-  before the abandoned sweep cancels — never past the day's end, because once the day is
+- **Pending request** — a Request-to-Book booking awaiting the venue's decision
+  (`PENDING_REQUEST`). It holds nothing: no `set_availability` row is written, its days stay free on
+  every map and count, and several guests may request the same set for overlapping days (ADR-0025).
+  No PaymentIntent exists and no card is charged until the venue accepts. **Accept is the claim**: it
+  claims every day of the request (invariant #2), sends the guest to payment, and declines every
+  **competing request** — another pending request on the same set with an overlapping day — as
+  `ANOTHER_GUEST`; an accept whose day cannot be claimed declines the request `SET_UNAVAILABLE`. A
+  request also ends when the venue **declines** it (`DECLINED`, reason `VENUE`), nobody answers by
+  the response deadline (`EXPIRED`), or the guest **withdraws** it (`WITHDRAWN`); none of these frees
+  anything. The deadline is min(request + `booking.request.expiry-window`, the venue's sales close);
+  after accept the guest has min(accept + `booking.request.pay-window`, the end of the service day)
+  to pay before the abandoned sweep cancels — never past the day's end, because once the day is
   over there is nothing left to buy (invariant #4).
+- **Decline reason** — why a pending request ended `DECLINED`: `VENUE` (the venue's own no),
+  `SET_UNAVAILABLE` (the accept could not claim a day, or a remodel disturbed the set) or
+  `ANOTHER_GUEST` (an overlapping request on the same set was accepted instead). Named to the guest.
 - **Withdraw** — the guest's own retraction of their pending request, before the venue has
   decided (`WITHDRAWN`). Distinct from **cancel**, which ends a *confirmed* booking and carries
   a refund decision: a withdrawn request was never charged, so there is nothing to refund.

@@ -1397,6 +1397,49 @@ describe('BookingView', () => {
     await expectNoAxeViolations(host);
   });
 
+  it('says the set went to another guest when a request was declined for that reason', async () => {
+    const fixture = await render(
+      stubService({
+        detail: {
+          ...DETAIL,
+          status: 'DECLINED',
+          cancellable: false,
+          declineReason: 'ANOTHER_GUEST',
+        },
+      }),
+    );
+    expect(
+      (fixture.nativeElement as HTMLElement).querySelector('[data-testid="declined-reason"]')
+        ?.textContent,
+    ).toContain('gave this set to another guest');
+  });
+
+  it('says the set was no longer available when the accept could not claim it', async () => {
+    const fixture = await render(
+      stubService({
+        detail: {
+          ...DETAIL,
+          status: 'DECLINED',
+          cancellable: false,
+          declineReason: 'SET_UNAVAILABLE',
+        },
+      }),
+    );
+    expect(
+      (fixture.nativeElement as HTMLElement).querySelector('[data-testid="declined-reason"]')
+        ?.textContent,
+    ).toContain('no longer available for that day');
+  });
+
+  it('tells a waiting guest the set is not held and others may request it', async () => {
+    const fixture = await render(stubService({ detail: PENDING }));
+    const panel = (fixture.nativeElement as HTMLElement).querySelector(
+      '[data-testid="request-pending"]',
+    );
+    expect(panel?.textContent).toContain('isn’t held for you');
+    expect(panel?.textContent).toContain('other guests can request it too');
+  });
+
   it('shows terminal no-charge copy for an EXPIRED request', async () => {
     const fixture = await render(
       stubService({ detail: { ...DETAIL, status: 'EXPIRED', cancellable: false } }),

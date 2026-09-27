@@ -44,6 +44,7 @@ interface RequestRow {
   readonly respondByStr: string;
   readonly urgent: boolean;
   readonly timeLeft: string;
+  readonly competing: number;
 }
 
 /**
@@ -166,6 +167,7 @@ export class RequestsTab {
         respondByStr: formatDeadline(r.requestExpiresAt),
         urgent: isUrgent(r.requestExpiresAt, now),
         timeLeft: timeLeftLabel(r.requestExpiresAt, now),
+        competing: r.competingRequests,
       };
     });
   });
@@ -261,10 +263,15 @@ export class RequestsTab {
         this.focusAfterRender(expiredRaceTestId(bookingId), NOTICE);
         break;
       }
+      case 'SET_UNAVAILABLE':
       case 'REQUEST_NOT_PENDING':
       case 'NO_SUCH_REQUEST': {
         this.closeDeclineConfirm(bookingId);
-        this.notice.set('That request was already handled — the queue has moved on.');
+        this.notice.set(
+          reason === 'SET_UNAVAILABLE'
+            ? 'That set is no longer free for that day — the request was declined and the guest has been told.'
+            : 'That request was already handled — the queue has moved on.',
+        );
         const landing = this.landingAfterRemoving(bookingId, NOTICE);
         this.removeCard(bookingId);
         this.focusAfterRender(landing, NOTICE);

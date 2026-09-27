@@ -4,6 +4,7 @@ import java.time.Instant;
 import java.time.LocalDate;
 
 import ai.riviera.platform.booking.domain.BookingStatus;
+import ai.riviera.platform.booking.vocabulary.DeclineReason;
 import ai.riviera.platform.booking.vocabulary.RefundReason;
 import ai.riviera.platform.customer.vocabulary.CustomerId;
 import ai.riviera.platform.venue.vocabulary.SetId;
@@ -20,7 +21,16 @@ import ai.riviera.platform.venue.vocabulary.VenueId;
 public record BookingRecord(long id, String code, BookingStatus status, VenueId venueId, SetId setId,
 		CustomerId customerId, LocalDate bookingDate, LocalDate lastDate, long amountMinor, String currency,
 		Instant cancelledAt, Long refundMinor, Instant requestExpiresAt, RefundReason cancelReason,
-		Instant createdAt, Instant acceptedAt, Instant movedAt) {
+		Instant createdAt, Instant acceptedAt, Instant movedAt, DeclineReason declineReason) {
+
+	/** A booking that was never declined. */
+	public BookingRecord(long id, String code, BookingStatus status, VenueId venueId, SetId setId,
+			CustomerId customerId, LocalDate bookingDate, LocalDate lastDate, long amountMinor, String currency,
+			Instant cancelledAt, Long refundMinor, Instant requestExpiresAt, RefundReason cancelReason,
+			Instant createdAt, Instant acceptedAt, Instant movedAt) {
+		this(id, code, status, venueId, setId, customerId, bookingDate, lastDate, amountMinor, currency,
+				cancelledAt, refundMinor, requestExpiresAt, cancelReason, createdAt, acceptedAt, movedAt, null);
+	}
 
 	/** A one-day booking: its last day is its first. */
 	public BookingRecord(long id, String code, BookingStatus status, VenueId venueId, SetId setId,

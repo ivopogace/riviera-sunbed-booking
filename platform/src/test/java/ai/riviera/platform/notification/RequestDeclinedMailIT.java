@@ -104,6 +104,22 @@ class RequestDeclinedMailIT {
 				.endsWith("/booking/DECMAIL1");
 	}
 
+	@Test
+	void namesTheReasonTheRequestEndedFor() {
+		BookingMailFixtures.SetRef set = fixtures.onlineSet();
+		LocalDate date = LocalDate.of(2029, 9, 12);
+		String guest = "outbid-guest@example.com";
+
+		long bookingId = fixtures.seedBooking(set, "DECMAIL2", date, guest, 9912L, "DECLINED");
+		fixtures.publishInTransaction(fixtures.requestDeclinedOf(set, bookingId, date,
+				ai.riviera.platform.booking.vocabulary.DeclineReason.ANOTHER_GUEST));
+
+		Awaitility.await().atMost(WAIT).until(() -> mailer.lastTo(guest).isPresent());
+
+		assertThat(mailer.lastTo(guest).orElseThrow().requestDeclined().reason())
+				.isEqualTo(ai.riviera.platform.booking.vocabulary.DeclineReason.ANOTHER_GUEST);
+	}
+
 	/**
 	 * AC-5. The skip must leave <em>no</em> outstanding publication: on this vehicle a throw would
 	 * park the row in a retry loop against an address the policy keeps refusing.

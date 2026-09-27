@@ -12,8 +12,8 @@
 >
 > Both booking modes are built end-to-end: Instant Book (signature-verified webhooks, the
 > event spine through the Modulith Event Publication Registry, the payout ledger, per-venue
-> authorization) and Request-to-Book (soft-hold on the shared availability claim, operator
-> accept/decline with payment-request-on-accept, the request-expiry sweep). Where a diagram
+> authorization) and Request-to-Book (an unclaimed pending request, operator accept that claims
+> the set and declines its rivals, payment-request-on-accept, the request-expiry sweep; ADR-0025). Where a diagram
 > and the code disagree, the code and `RESPONSIBILITIES.md` win.
 >
 > All diagrams are [Mermaid](https://mermaid.js.org/) and render on GitHub.
@@ -934,8 +934,8 @@ stateDiagram-v2
 > end); `EXPIRED` means the venue never answered before the request deadline (min(request +
 > expiry-window, the venue's sales close on the date)), and `WITHDRAWN` means the guest
 > retracted the request themselves — one terminal state per party who can end a pending
-> request. The soft-hold is the same `BOOKED_ONLINE` availability row as any online booking
-> (availability records *that* a set is held, never *why*); all three terminal legs release it.
+> request. A pending request holds no availability row (ADR-0025): several guests may request the
+> same set and day, the accept claims it and declines the rivals, and no terminal leg releases.
 >
 > **`COMPLETED` and `NO_SHOW` are stay outcomes, not attendance.** Attendance is the per-day
 > `booking_day` record — one row per service day from the moment the booking confirms, stamped

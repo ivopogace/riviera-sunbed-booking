@@ -109,9 +109,6 @@ class WithdrawRequestIT {
 				.param("cust", customer).param("date", date)
 				.param("expires", java.sql.Timestamp.from(Instant.now().plusSeconds(3600)))
 				.query(Long.class).single();
-		jdbc.sql("INSERT INTO set_availability (set_id, booking_date, state) "
-						+ "VALUES (:set, :date, 'BOOKED_ONLINE') ON CONFLICT DO NOTHING")
-				.param("set", setId).param("date", date).update();
 		return booking;
 	}
 
@@ -215,7 +212,7 @@ class WithdrawRequestIT {
 		assertEquals(0L, jdbc.sql("SELECT COUNT(*) FROM set_availability "
 						+ "WHERE set_id = :set AND booking_date = :date")
 				.param("set", setId).param("date", bookable()).query(Long.class).single(),
-				"the withdrawn request's soft-hold stays released (invariant #2)");
+				"a withdrawn request holds nothing, and the stale accept claims nothing (ADR-0025)");
 	}
 
 	/** Decline is the operator's other stale-queue action, and answers the same conflict. */

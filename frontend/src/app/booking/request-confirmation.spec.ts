@@ -57,6 +57,7 @@ describe('RequestConfirmation', () => {
     expect(host.querySelector('[data-testid="booking-code"]')?.textContent).toContain('RQST234567');
     expect(host.querySelector('[data-testid="request-deadline"]')?.textContent).toContain('17:00');
     expect(host.textContent).toMatch(/haven.t been charged/); // no-charge copy
+    expect(host.textContent).toMatch(/isn.t held for you until the venue accepts/); // no hold (ADR-0025)
     expect(host.querySelector('[data-testid="status-link"]')?.getAttribute('href')).toContain(
       '/booking/RQST234567',
     );

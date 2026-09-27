@@ -3,7 +3,8 @@
     <h1 class="text-[19px] font-bold tracking-[-0.01em] text-riv-card-ink">Booking requests</h1>
     <p class="mt-1 max-w-[520px] text-[13px] leading-[1.5] text-riv-card-ink-soft">
       Guests requested these sets on your Request-to-Book venue. Accept to send them to payment, or
-      decline. Requests expire if not answered in time.
+      decline. Several guests may request the same set; accepting one declines the others. Requests
+      expire if not answered in time.
     </p>
   </header>
 
@@ -119,6 +120,16 @@
                     <strong class="text-riv-console-accent-ink">{{ row.priceStr }}</strong></span
                   >
                 </div>
+                @if (row.competing > 0) {
+                  <p
+                    class="competing-hint mt-2 text-[12.5px] font-semibold text-riv-error-ink"
+                    data-testid="competing-hint"
+                  >
+                    Also requested by {{ row.competing }} other
+                    {{ row.competing === 1 ? 'guest' : 'guests' }}
+                    for this day — accepting declines them.
+                  </p>
+                }
               </div>
               <div class="flex-shrink-0 text-right">
                 @if (row.urgent && !isExpired(row.bookingId)) {
