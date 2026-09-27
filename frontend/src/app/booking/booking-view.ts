@@ -957,7 +957,7 @@ export class BookingView {
       case 'ANOTHER_GUEST':
         return `${b.venueName} gave this set to another guest who had also requested it, so your request was declined.`;
       case 'SET_UNAVAILABLE':
-        return `${b.venueName} accepted, but the set was no longer available for that day, so your request was declined.`;
+        return `The set you requested at ${b.venueName} is no longer available for that day, so your request was declined.`;
       default:
         return `${b.venueName} couldn’t take this booking, so it was declined.`;
     }

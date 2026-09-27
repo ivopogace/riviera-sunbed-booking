@@ -161,6 +161,19 @@ class RemodelClaimsServiceTest {
 	}
 
 	@Test
+	void aPendingRequestDeclinesWhateverTheZoneAndNeverMoves() {
+		// ADR-0025: a pending request is no claim — frozen or not, a free candidate or not, it declines.
+		when(bookings.findLiveOnSets(Set.of(A1.setId())))
+				.thenReturn(List.of(claim(105, A1, TOMORROW, BookingStatus.PENDING_REQUEST)));
+		givenMap(List.of(A1, A2, A3), TOMORROW, List.of(A3));
+
+		List<RemodelClaim> claims = service.classify(OWNER, VENUE, List.of(A1.setId()));
+
+		assertEquals(List.of(new RemodelClaim(new BookingId(105), ref(A1), TOMORROW, TOMORROW, 4500, "EUR",
+				RemodelOutcome.Decline.DECLINE)), claims);
+	}
+
+	@Test
 	void aMoveOnlyClaimMovesToTheRankedCandidateOrBlocksNamingItsSet() {
 		when(bookings.findLiveOnSets(Set.of(A1.setId())))
 				.thenReturn(List.of(claim(101, A1, IN_THREE_DAYS, BookingStatus.CONFIRMED)));
