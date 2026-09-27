@@ -53,8 +53,8 @@ Facts settled from the code (← confirm? marks a reading to re-check when the p
   more stretches is still N valid bookings, bounded by `StaySpan.MAX_DAYS`.
 - Request-to-Book venues refuse any range (`RANGE_NOT_OFFERED`, until #1203), so a stitched stay is
   Instant-only here; no withdraw path takes a stay code.
-- The sea is at low `gridY` (the canvas washes sea at the top) ← confirm? in phase F3 against
-  `beach-grid-frame.ts` before wording "back" / "closer to the sea".
+- The sea is at low `gridY`: the canvas washes sea at the top and the server reports `towardSea`
+  when a move lands on a lower grid row, so the client only words it.
 - #1209 owns "your spot today", the move reminder and the staff scan's today-set display; this
   slice makes a stay code **resolve** everywhere (view, cancel, check-in, review eligibility) and
   renders the stops list on the booking page, nothing more.
@@ -326,9 +326,9 @@ consulted per API)
 
 ## Execution status
 
-**Stage pointer:** `implement (phase F2) — itinerary fetch + banner`
+**Stage pointer:** `implement (phase F4) — book the plan`
 
-**Next action:** red `venue.service.spec.ts#itinerary`, then the no-cover banner's "see a K-move plan" and the partly sheet's "Plan my stay around {set}".
+**Next action:** red `booking-dialog.spec.ts` (plan mode), `booking.service.spec.ts#createStay`; then pay, confirmation and booking view render `stretches`.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -340,8 +340,8 @@ consulted per API)
 | 5 — Stay code resolves | ✅ | phase-5 commit |
 | 6 — ADR + docs | ✅ | phase-5 commit (ADR-0024) |
 | F1 — Discovery tier | ✅ | phase-F1 commit |
-| F2 — Fetch + banner | | |
-| F3 — Plan view | | |
+| F2 — Fetch + banner | ✅ | phase-F2/F3 commit |
+| F3 — Plan view | ✅ | phase-F2/F3 commit |
 | F4 — Book the plan | | |
 | F5 — Mocked e2e | | |
 

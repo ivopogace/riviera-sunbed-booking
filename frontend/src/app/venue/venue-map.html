@@ -255,13 +255,30 @@
               class="mt-3 rounded-[16px] border border-riv-field-border bg-riv-field-solid px-4 py-3 text-[14px] text-riv-card-ink"
               data-testid="no-cover"
             >
-              <p class="font-bold">No single spot is free for all {{ dayCount() }} days.</p>
+              @if (plan(); as offered) {
+                <!-- A stitched plan fits the move budget: the banner leads with it (D13); the longest single run stays as the way not to move. -->
+                <p class="font-bold" data-testid="no-cover-plan-line">
+                  No single spot is free for all {{ dayCount() }} days — see a
+                  {{ offered.moves }}-move plan.
+                </p>
+              } @else {
+                <p class="font-bold">No single spot is free for all {{ dayCount() }} days.</p>
+              }
               @if (longestRun(); as best) {
                 <p class="mt-1 text-riv-card-ink-soft" data-testid="no-cover-run">
                   The longest one spot can host is {{ best.set.rowLabel }} · spot
                   {{ best.set.positionNo }}, {{ runLabel(best) }}.
                 </p>
                 <div class="mt-3 flex flex-wrap items-center gap-3">
+                  @if (plan(); as offered) {
+                    @if (!planOpen()) {
+                      <app-retry-button
+                        testId="no-cover-plan"
+                        [label]="'See a ' + offered.moves + '-move plan'"
+                        (retry)="openPlan()"
+                      />
+                    }
+                  }
                   <app-retry-button
                     testId="no-cover-shorten"
                     [label]="'Shorten to ' + runLabel(best)"
@@ -277,16 +294,41 @@
                   >
                 </div>
               } @else {
-                <a
-                  appTouchTarget
-                  class="mt-2 inline-flex items-center font-bold text-riv-accent-ink underline-offset-2 hover:underline"
-                  data-testid="no-cover-others"
-                  [routerLink]="['/']"
-                  [queryParams]="otherBeachesLink()"
-                  >See other beaches</a
-                >
+                <div class="mt-2 flex flex-wrap items-center gap-3">
+                  @if (plan(); as offered) {
+                    @if (!planOpen()) {
+                      <app-retry-button
+                        testId="no-cover-plan"
+                        [label]="'See a ' + offered.moves + '-move plan'"
+                        (retry)="openPlan()"
+                      />
+                    }
+                  }
+                  <a
+                    appTouchTarget
+                    class="inline-flex items-center font-bold text-riv-accent-ink underline-offset-2 hover:underline"
+                    data-testid="no-cover-others"
+                    [routerLink]="['/']"
+                    [queryParams]="otherBeachesLink()"
+                    >See other beaches</a
+                  >
+                </div>
               }
             </div>
+          }
+          @if (planOpen() && plan(); as offered) {
+            <app-stay-plan
+              [plan]="offered"
+              [first]="selectedDate()"
+              [last]="selectedLastDate()"
+              [maxMoves]="itinerary()?.maxMoves ?? 3"
+              [anchor]="itinerary()?.anchor"
+              [anchorSet]="planAnchorSet()"
+              [longestRun]="longestRun()"
+              (book)="bookPlan()"
+              (shorten)="shortenToRun($event)"
+              (dismissed)="closePlan()"
+            />
           }
         </div>
       </div>
@@ -355,15 +397,27 @@
               <li
                 appMapTile
                 [state]="tile.state"
-                class="set-tile relative snap-start h-full min-w-0 flex items-center justify-center rounded-[10px] border-[1.5px] font-bold text-[12.5px] [&.bookable]:p-0 [&.partly]:p-0 data-[state=partly]:border-2"
+                class="set-tile relative snap-start h-full min-w-0 flex items-center justify-center rounded-[10px] border-[1.5px] font-bold text-[12.5px] [&.bookable]:p-0 [&.partly]:p-0 data-[state=partly]:border-2 [&.inplan]:shadow-[0_0_0_3px_var(--riv-plan-fill)]"
                 data-testid="set-tile"
                 [class.premium]="tile.state === 'premium'"
                 [class.partly]="tile.state === 'partly'"
                 [class.walkin]="tile.state === 'walkin'"
                 [class.taken]="tile.state === 'taken'"
                 [class.bookable]="tile.bookable"
+                [class.inplan]="tile.planIndex !== undefined"
+                [style.--riv-plan-fill]="tile.planFill"
+                [attr.data-plan-index]="tile.planIndex ?? null"
                 [attr.aria-label]="tile.bookable || tile.partly ? null : tile.name"
               >
+                @if (tile.planIndex !== undefined) {
+                  <!-- Inside the tile's box, so the disc adds no touch target; aria-hidden because the plan panel names each stop. -->
+                  <span
+                    class="pointer-events-none absolute -top-1.5 -left-1.5 z-[2] grid size-[16px] place-items-center rounded-full bg-(--riv-plan-fill) text-[9px] leading-none font-bold text-riv-stretch-ink"
+                    data-testid="plan-number"
+                    aria-hidden="true"
+                    >{{ tile.planIndex }}</span
+                  >
+                }
                 @if (tile.state === 'partly') {
                   <!-- Inside the existing button's box, so the badge adds no touch target; aria-hidden because the name already says "free k of N days". -->
                   <span
@@ -460,6 +514,7 @@
         [first]="selectedDate()"
         [last]="selectedLastDate()"
         (shorten)="shortenTo(set, $event)"
+        (planAround)="planAround(set)"
         (dismissed)="closeSheet()"
       />
     }

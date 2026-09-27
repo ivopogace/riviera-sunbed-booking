@@ -38,9 +38,10 @@ import {
 } from '../shared/booking-date';
 import { routeIdParam } from '../shared/parent-venue-id';
 import { spotLabel, tierSentenceLabel } from '../shared/set-label';
-import { PhotoView, SetView, VenueMapView } from '../shared/venue-views';
+import { ItineraryView, PhotoView, PlanView, SetView, VenueMapView } from '../shared/venue-views';
 import { AvailabilityCalendar, CountsLoader, MAX_STAY_DAYS } from '../shared/availability-calendar';
 import { PartlyFreeSheet } from './partly-free-sheet';
+import { StayPlan, stretchFillVar } from './stay-plan';
 import { stayRule } from '../shared/stay-rule';
 import { SetRun, freeDaysOf, longestRunAcross } from './stay-runs';
 import { VenueReviews } from './venue-reviews';
@@ -72,6 +73,10 @@ interface TileView {
   readonly freeDays: number;
   /** Accessible name for the partly-free button (adds the "see which days" affordance). */
   readonly partlyName: string;
+  /** The set's 1-based place in the open stitched plan, or undefined when it is not in it. */
+  readonly planIndex: number | undefined;
+  /** The `--riv-plan-fill` value of that place, the stretch token the plan colours it with. */
+  readonly planFill: string | null;
 }
 
 /** One row of the map: the shared canvas's row contract plus this surface's tiles. */
@@ -154,6 +159,7 @@ interface VenueHeader {
     UmbrellaIcon,
     ArrowLeftIcon,
     PartlyFreeSheet,
+    StayPlan,
     RouterLink,
   ],
   templateUrl: './venue-map.html',
@@ -236,6 +242,22 @@ export class VenueMap {
   protected readonly selectedSet = signal<SetView | undefined>(undefined);
   /** The partly-free set whose days are being shown, or undefined when the sheet is closed. */
   protected readonly partlySet = signal<SetView | undefined>(undefined);
+  /** The itinerary read for the current stay, once it has answered; undefined while none is asked or in flight. */
+  protected readonly itinerary = signal<ItineraryView | undefined>(undefined);
+  /** Whether the plan panel is open under the availability line. */
+  protected readonly planOpen = signal(false);
+  /** The set the open plan was anchored on, when the tourist planned around one. */
+  protected readonly planAnchorSet = signal<SetView | undefined>(undefined);
+  /** The plan the tourist chose to book, for the booking dialog's plan mode. */
+  protected readonly selectedPlan = signal<PlanView | undefined>(undefined);
+  /** Bumped per itinerary dispatch, so a superseded answer is dropped. */
+  private planEpoch = 0;
+  protected readonly plan = computed(() => this.itinerary()?.plan ?? undefined);
+  /** The plan's sets by 1-based place, when the panel is open — what numbers the tiles. */
+  private readonly planPlaces = computed(() => {
+    const plan = this.planOpen() ? this.plan() : undefined;
+    return new Map(plan?.stretches.map((stretch, index) => [stretch.setId, index] as const) ?? []);
+  });
   /** A set to open the dialog on once the map is re-read for a shortened stay. */
   private pendingSelectSetId: number | undefined;
   /** Id of the tile that opened the dialog, so focus can return to it on close. */
@@ -412,6 +434,7 @@ export class VenueMap {
     this.pickerOpen.set(false);
     this.lightboxIndex.set(undefined);
     this.partlySet.set(undefined);
+    this.resetPlan();
     this.pendingSelectSetId = undefined;
     if (modalWasOpen) {
       this.moveFocus('map-loading');
@@ -438,6 +461,7 @@ export class VenueMap {
     const bookable = set.availability === 'FREE' && set.pool === 'ONLINE' && !fenced;
     const partly = state === 'partly' && !fenced;
     const freeDays = freeDaysOf(set, this.dayCount());
+    const place = this.planPlaces().get(set.id);
     const announced =
       state === 'partly'
         ? `${MAP_TILE_MEANING.partly.announced}, free ${freeDays} of ${this.dayCount()} days`
@@ -452,7 +476,78 @@ export class VenueMap {
       partly,
       freeDays,
       partlyName: `${name}. Select to see which days.`,
+      planIndex: place === undefined ? undefined : place + 1,
+      planFill: place === undefined ? null : stretchFillVar(place),
     };
+  }
+
+  /**
+   * Ask for the stay's stitched plan (design D7), anchored on `anchorSetId` when the tourist planned
+   * around a tapped set. A snapshot like the map read: a later dispatch or a new map supersedes it.
+   */
+  private loadItinerary(anchorSetId?: number): void {
+    const id = this.venueId();
+    if (id === undefined || !this.isStay()) {
+      return;
+    }
+    const epoch = ++this.planEpoch;
+    this.venues.itinerary(id, this.selectedDate(), this.selectedLastDate(), anchorSetId).subscribe({
+      next: (itinerary) => {
+        if (this.planEpoch === epoch) {
+          this.itinerary.set(itinerary);
+        }
+      },
+      error: () => {
+        if (this.planEpoch === epoch) {
+          this.itinerary.set(undefined);
+        }
+      },
+    });
+  }
+
+  private resetPlan(): void {
+    this.planEpoch++;
+    this.itinerary.set(undefined);
+    this.planOpen.set(false);
+    this.planAnchorSet.set(undefined);
+  }
+
+  /** Open the plan the banner offered; focus lands on its title once rendered. */
+  protected openPlan(): void {
+    this.planOpen.set(true);
+    this.moveFocus('stay-plan-book');
+  }
+
+  protected closePlan(): void {
+    this.planOpen.set(false);
+    this.moveFocus('no-cover-plan');
+  }
+
+  /** From the partly-free sheet: a plan that starts or ends on the tapped set (story 7). */
+  protected planAround(set: SetView): void {
+    this.partlySet.set(undefined);
+    this.lastTriggerId = set.id;
+    this.focusTile(set.id);
+    this.planAnchorSet.set(set);
+    this.planOpen.set(true);
+    this.loadItinerary(set.id);
+  }
+
+  /** The plan panel's way not to move: the longest run's spot for its days. */
+  protected shortenToRun(days: DateRange): void {
+    const best = this.longestRun();
+    if (best !== undefined) {
+      this.shortenTo(best.set, days);
+    }
+  }
+
+  /** Book the open plan: the dialog takes the plan instead of one set. */
+  protected bookPlan(): void {
+    const plan = this.plan();
+    if (plan !== undefined) {
+      this.lastTriggerId = undefined;
+      this.selectedPlan.set(plan);
+    }
   }
 
   /** Fetch the map for the currently selected days. */
@@ -471,6 +566,9 @@ export class VenueMap {
         if (this.epoch === epoch) {
           this.venue.set(venue);
           this.openPendingSelection(venue);
+          if (this.noSetCovers()) {
+            this.loadItinerary();
+          }
         }
       },
       error: (error: unknown) => {
@@ -537,6 +635,7 @@ export class VenueMap {
     }
     this.selectedSet.set(undefined);
     this.partlySet.set(undefined);
+    this.resetPlan();
     this.selectedDate.set(days.first);
     this.selectedLastDate.set(days.last);
     this.load();

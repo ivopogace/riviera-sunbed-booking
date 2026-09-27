@@ -22,7 +22,7 @@ import { uniformDays } from '../../testing/calendar-days';
 import { expectCellsFillCanvasRow } from '../../testing/beach-map-height';
 import { formatBookingDate } from '../shared/booking-date-label';
 import { addDays, defaultBookingDate, formatCivilDate } from '../shared/booking-date';
-import { SetView, VenueMapView } from '../shared/venue-views';
+import { ItineraryView, SetView, VenueMapView } from '../shared/venue-views';
 import { VenueMap } from './venue-map';
 import { ProofOfWork } from '../core/proof-of-work';
 
@@ -1809,10 +1809,59 @@ describe('VenueMap — date carried from the discovery page (#294)', () => {
       return fixture.nativeElement as HTMLElement;
     }
 
-    async function loadStay(): Promise<void> {
+    function itineraryReq(): TestRequest {
+      return httpMock.expectOne(
+        (req) => req.url === `${environment.apiBaseUrl}/api/venues/1/itinerary`,
+      );
+    }
+
+    /** The plan the itinerary read answers over the stay fixture: set 2 (front row) then set 8. */
+    function stitched(): ItineraryView {
+      const middle = addDays(first, 1);
+      return {
+        maxMoves: 3,
+        plan: {
+          moves: 1,
+          stretches: [
+            {
+              setId: 2,
+              rowLabel: 'Front row · Sea view',
+              positionNo: 2,
+              gridX: 2,
+              gridY: 1,
+              tier: 'PREMIUM',
+              firstDate: first,
+              lastDate: middle,
+              days: 2,
+              pricePerDay: { minorUnits: 4500, currency: 'EUR' },
+              amount: { minorUnits: 9000, currency: 'EUR' },
+            },
+            {
+              setId: 8,
+              rowLabel: 'Second row',
+              positionNo: 2,
+              gridX: 2,
+              gridY: 2,
+              tier: 'STANDARD',
+              firstDate: last,
+              lastDate: last,
+              days: 1,
+              pricePerDay: { minorUnits: 3500, currency: 'EUR' },
+              amount: { minorUnits: 3500, currency: 'EUR' },
+            },
+          ],
+          movesBetween: [{ onDate: last, rowsAway: 1, positionsAway: 0, towardSea: false }],
+          total: { minorUnits: 12500, currency: 'EUR' },
+        },
+      };
+    }
+
+    async function loadStay(itinerary: ItineraryView = { maxMoves: 3, plan: null }): Promise<void> {
       await setup({ date: first, lastDate: last });
       venueReq().flush(stayMiramar(first, last));
       await settle();
+      fixture.detectChanges();
+      itineraryReq().flush(itinerary);
       fixture.detectChanges();
     }
 
@@ -1879,6 +1928,88 @@ describe('VenueMap — date carried from the discovery page (#294)', () => {
           .querySelector<HTMLAnchorElement>('[data-testid="no-cover-others"]')!
           .getAttribute('href'),
       ).toBe(`/?date=${first}&lastDate=${last}`);
+    });
+
+    it('asks for the plan once no set covers the stay, and keeps the longest run when none fits', async () => {
+      await setup({ date: first, lastDate: last });
+      venueReq().flush(stayMiramar(first, last));
+      await settle();
+      fixture.detectChanges();
+
+      const request = itineraryReq();
+      expect(request.request.params.get('date')).toBe(first);
+      expect(request.request.params.get('lastDate')).toBe(last);
+      expect(request.request.params.has('anchorSetId')).toBe(false);
+      request.flush({ maxMoves: 3, plan: null });
+      fixture.detectChanges();
+
+      expect(dom().querySelector('[data-testid="no-cover-plan"]')).toBeNull();
+      expect(dom().querySelector('[data-testid="no-cover"]')!.textContent).toContain(
+        'No single spot is free for all 3 days.',
+      );
+    });
+
+    it('offers the plan in the banner, opens it with the strip, stops and prices, and numbers its sets on the map', async () => {
+      await loadStay(stitched());
+
+      const banner = dom().querySelector<HTMLElement>('[data-testid="no-cover"]')!;
+      expect(banner.querySelector('[data-testid="no-cover-plan-line"]')!.textContent).toContain(
+        'No single spot is free for all 3 days — see a 1-move plan.',
+      );
+      expect(dom().querySelector('[data-testid="stay-plan"]')).toBeNull();
+      expect(dom().querySelectorAll('[data-testid="plan-number"]')).toHaveLength(0);
+
+      dom().querySelector<HTMLButtonElement>('[data-testid="no-cover-plan"]')!.click();
+      fixture.detectChanges();
+
+      const plan = dom().querySelector<HTMLElement>('[data-testid="stay-plan"]')!;
+      expect(plan.querySelector('[data-testid="stay-plan-kicker"]')!.textContent).toContain(
+        '1 move · 2 spots',
+      );
+      expect(plan.querySelectorAll('[data-testid="stay-plan-strip"] li')).toHaveLength(3);
+      expect(plan.querySelectorAll('[data-testid="stay-plan-stop"]')).toHaveLength(2);
+      expect(plan.querySelector('[data-testid="stay-plan-move"]')!.textContent).toContain(
+        '1 row back',
+      );
+      expect(plan.querySelector('[data-testid="stay-plan-price"]')!.textContent).toContain('€125');
+      expect(plan.querySelector('[data-testid="stay-plan-shorten"]')!.textContent).toContain(
+        'Prefer not to move?',
+      );
+      expect(dom().querySelector('[data-testid="no-cover-plan"]')).toBeNull();
+      const numbered = dom().querySelectorAll<HTMLElement>('.set-tile[data-plan-index]');
+      expect([...numbered].map((tile) => tile.dataset['planIndex'])).toEqual(['1', '2']);
+      expect(
+        numbered[0].querySelector('[data-testid="plan-number"]')!.getAttribute('aria-hidden'),
+      ).toBe('true');
+      expect(numbered[0].style.getPropertyValue('--riv-plan-fill')).toBe(
+        'var(--riv-stretch-1-fill)',
+      );
+      expect(numbered[0].querySelector('button[data-set-id="2"]')).not.toBeNull();
+
+      plan.querySelector<HTMLButtonElement>('[data-testid="stay-plan-close"]')!.click();
+      fixture.detectChanges();
+      expect(dom().querySelector('[data-testid="stay-plan"]')).toBeNull();
+      expect(dom().querySelectorAll('[data-testid="plan-number"]')).toHaveLength(0);
+      expect(dom().querySelector('[data-testid="no-cover-plan"]')).not.toBeNull();
+    });
+
+    it('plans around a tapped partly-free set: the sheet closes, the read is anchored, the plan names the anchor’s role', async () => {
+      await loadStay();
+
+      dom().querySelector<HTMLButtonElement>('button[data-set-id="2"]')!.click();
+      fixture.detectChanges();
+      dom().querySelector<HTMLButtonElement>('[data-testid="plan-around"]')!.click();
+      fixture.detectChanges();
+
+      expect(dom().querySelector('[data-testid="partly-free-sheet"]')).toBeNull();
+      const request = itineraryReq();
+      expect(request.request.params.get('anchorSetId')).toBe('2');
+      request.flush({ ...stitched(), anchor: 'START' });
+      fixture.detectChanges();
+
+      expect(dom().querySelector('[data-testid="stay-plan-intro"]')!.textContent).toContain(
+        'Starts at Front row · Sea view · spot 2, the spot you picked.',
+      );
     });
 
     it('opens the sheet from a partly-free tile, and shortening re-reads the map and opens the dialog on that set', async () => {

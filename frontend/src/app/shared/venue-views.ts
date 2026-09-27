@@ -148,6 +148,50 @@ export type SalesCloseTime = '00:01' | '16:00' | '23:59';
  */
 export type StayFit = 'SAME_SET' | 'FITS_WITH_MOVES' | 'CANNOT_HOST';
 
+/** Whether the tapped set starts or ends the plan, or fits no plan within the budget. */
+export type PlanAnchor = 'START' | 'END' | 'UNANCHORABLE';
+
+/** One same-set stretch of a stitched plan (mirrors the backend `StretchView`): where it sits, its days and money. */
+export interface PlanStretch {
+  readonly setId: number;
+  readonly rowLabel: string;
+  readonly positionNo: number;
+  readonly gridX: number;
+  readonly gridY: number;
+  readonly tier: Tier;
+  readonly firstDate: string;
+  readonly lastDate: string;
+  readonly days: number;
+  readonly pricePerDay: MoneyView;
+  readonly amount: MoneyView;
+}
+
+/** A move between two stretches: the morning it happens and how far (`towardSea`: to a row nearer the water). */
+export interface PlanMove {
+  readonly onDate: string;
+  readonly rowsAway: number;
+  readonly positionsAway: number;
+  readonly towardSea: boolean;
+}
+
+/** A priced stitched plan: its stretches in order, the move between each pair, the total. */
+export interface PlanView {
+  readonly moves: number;
+  readonly stretches: readonly PlanStretch[];
+  readonly movesBetween: readonly PlanMove[];
+  readonly total: MoneyView;
+}
+
+/**
+ * The itinerary read (mirrors the backend `ItineraryView`): the move budget, the anchor's role when
+ * a set was tapped, and the plan — `null` when no plan within the budget covers the stay.
+ */
+export interface ItineraryView {
+  readonly maxMoves: number;
+  readonly anchor?: PlanAnchor | null;
+  readonly plan: PlanView | null;
+}
+
 /**
  * A venue's verdict for the chosen stay (mirrors the backend `StayVerdictView`): how many online
  * sets are free on every day, the fewest moves of a plan (`FITS_WITH_MOVES` only, else 0), the most

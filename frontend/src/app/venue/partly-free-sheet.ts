@@ -20,7 +20,8 @@ import { freeDaysOf, longestFreeRun, stayDays } from './stay-runs';
 
 /**
  * What a tapped partly-free set covers of the tourist's stay: each day named free or taken, and the
- * longest run of days the set can host, offered as a shorter stay on this very spot. A modal like
+ * longest run of days the set can host, offered as a shorter stay on this very spot, and the way to a
+ * stitched plan anchored on it (story 7). A modal like
  * the availability calendar (a real `<dialog open>`, the shared focus trap, Escape and the scrim to
  * dismiss). It books nothing: accepting the offer only asks the page for the shorter days.
  */
@@ -62,6 +63,15 @@ import { freeDaysOf, longestFreeRun, stayDays } from './stay-runs';
           </li>
         }
       </ul>
+      @if (canPlan()) {
+        <div class="mt-3 flex justify-center">
+          <app-retry-button
+            testId="plan-around"
+            [label]="'Plan my stay around ' + spot()"
+            (retry)="planAround.emit()"
+          />
+        </div>
+      }
       @if (run(); as run) {
         <p
           class="mt-3 text-[13px] leading-[1.4] text-riv-pop-ink-soft"
@@ -70,11 +80,15 @@ import { freeDaysOf, longestFreeRun, stayDays } from './stay-runs';
           The longest this spot can host you is {{ runLabel() }}.
         </p>
         <div class="mt-3 flex justify-center">
-          <app-retry-button
-            testId="shorten-stay"
-            [label]="'Shorten my stay to ' + runLabel()"
-            (retry)="shorten.emit({ first: run.first, last: run.last })"
-          />
+          <button
+            appTouchTarget
+            type="button"
+            class="cursor-pointer rounded-[14px] px-4 py-2.5 text-[14px] font-bold text-riv-calendar-accent hover:bg-riv-pop-hover"
+            data-testid="shorten-stay"
+            (click)="shorten.emit({ first: run.first, last: run.last })"
+          >
+            Shorten my stay to {{ runLabel() }}
+          </button>
         </div>
       }
       <button
@@ -95,8 +109,13 @@ export class PartlyFreeSheet {
   readonly first = input.required<string>();
   readonly last = input.required<string>();
 
+  /** Whether the venue offers stitched plans, so the sheet may offer one around this spot (story 7). */
+  readonly canPlan = input(true);
+
   /** The shorter stay the tourist accepted — the page re-reads the map for it and books this set. */
   readonly shorten = output<DateRange>();
+  /** The tourist wants a plan that starts or ends on this spot — the page asks the itinerary read. */
+  readonly planAround = output<void>();
   readonly dismissed = output<void>();
 
   private readonly hostRef = inject<ElementRef<HTMLElement>>(ElementRef);
@@ -109,6 +128,8 @@ export class PartlyFreeSheet {
       free: !taken.has(iso),
     }));
   });
+
+  protected readonly spot = computed(() => spotLabel(this.set().rowLabel, this.set().positionNo));
 
   protected readonly title = computed(() => {
     const set = this.set();
@@ -128,7 +149,9 @@ export class PartlyFreeSheet {
   constructor() {
     afterNextRender(() => {
       this.hostRef.nativeElement
-        .querySelector<HTMLElement>('[data-testid="shorten-stay"], [data-testid="keep-dates"]')
+        .querySelector<HTMLElement>(
+          '[data-testid="plan-around"], [data-testid="shorten-stay"], [data-testid="keep-dates"]',
+        )
         ?.focus();
     });
   }

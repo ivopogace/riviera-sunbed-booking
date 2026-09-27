@@ -6,6 +6,7 @@ import { environment } from '../../environments/environment';
 import { apiPhotoView, resolveCoverPhoto } from '../shared/photo-url';
 import {
   DailyAvailability,
+  ItineraryView,
   VenueMapView,
   VenueReviewsPage,
   VenueSummary,
@@ -21,7 +22,8 @@ export interface VenueListFilter {
  * Reads the public venue catalogue: the discovery list (`GET /api/venues`), a
  * single venue + beach map (`GET /api/venues/{id}`), that venue's per-day availability over a
  * window (`GET /api/venues/{id}/availability-calendar`), and its listed reviews a page at a time
- * (`GET /api/venues/{id}/reviews`). Single responsibility: typed access to the read API; no state
+ * (`GET /api/venues/{id}/reviews`), and its stitched plan for a stay (`GET /api/venues/{id}/itinerary`).
+ * Single responsibility: typed access to the read API; no state
  * of its own.
  */
 @Service()
@@ -79,6 +81,29 @@ export class VenueService {
           lightboxPhotos: (venue.lightboxPhotos ?? []).map(apiPhotoView),
         })),
       );
+  }
+
+  /**
+   * The stitched plan for the stay `date` to `lastDate` (`GET /api/venues/{id}/itinerary`), anchored on
+   * `anchorSetId` when the tourist plans around a tapped set. A `null` plan means none fits the move
+   * budget; a hidden venue `404`s like the map read; errors are the caller's.
+   */
+  itinerary(
+    venueId: number,
+    date: string,
+    lastDate: string,
+    anchorSetId?: number,
+  ): Observable<ItineraryView> {
+    let params = new HttpParams().set('date', date).set('lastDate', lastDate);
+    if (anchorSetId !== undefined) {
+      params = params.set('anchorSetId', anchorSetId);
+    }
+    return this.http.get<ItineraryView>(
+      `${environment.apiBaseUrl}/api/venues/${venueId}/itinerary`,
+      {
+        params,
+      },
+    );
   }
 
   /**
