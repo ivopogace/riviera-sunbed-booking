@@ -1023,7 +1023,7 @@ export class BookingView {
       stretch,
       next,
       movesTomorrow: next !== null && addDays(this.today, 1) === next.firstDate,
-      lastDay: this.today === stretches[stretches.length - 1].lastDate,
+      lastDay: this.today === stretches.at(-1)!.lastDate,
     };
   }
 

@@ -73,6 +73,7 @@ class JdbcBookings implements Bookings {
 	private static final String COL_VENUE_ID = "venue_id";
 	private static final String COL_SET_ID = "set_id";
 	private static final String COL_BOOKING_DATE = "booking_date";
+	private static final String COL_STAY_ID = "stay_id";
 	private static final String COL_LAST_DATE = "last_date";
 	/**
 	 * The rows a guest's code names: a lone booking by its own code, or every stretch of the stay whose
@@ -423,7 +424,7 @@ class JdbcBookings implements Bookings {
 				ORDER BY b.booking_date DESC, b.id DESC
 				""")
 				.param(PARAM_ACCOUNT, accountId.value())
-				.query((rs, rowNum) -> new AccountRow(mapBookingRecord(rs, rowNum), rs.getObject("stay_id", Long.class),
+				.query((rs, rowNum) -> new AccountRow(mapBookingRecord(rs, rowNum), rs.getObject(COL_STAY_ID, Long.class),
 						rs.getObject("stay_first_date", LocalDate.class), rs.getObject("stay_last_date", LocalDate.class)))
 				.list();
 		return groupedByStay(rows);
@@ -538,7 +539,7 @@ class JdbcBookings implements Bookings {
 						rs.getObject(COL_LAST_DATE, LocalDate.class),
 						rs.getTimestamp(COL_CREATED_AT).toInstant(),
 						rs.getLong(COL_AMOUNT_MINOR), rs.getString(COL_AMOUNT_CURRENCY),
-						Optional.ofNullable(rs.getObject("stay_id", Long.class)).map(StayId::new).orElse(null)))
+						Optional.ofNullable(rs.getObject(COL_STAY_ID, Long.class)).map(StayId::new).orElse(null)))
 				.optional();
 	}
 
@@ -743,7 +744,7 @@ class JdbcBookings implements Bookings {
 				.param("at", java.sql.Timestamp.from(at))
 				.param("id", bookingId)
 				.param(PARAM_CONFIRMED, BookingStatus.CONFIRMED.name())
-				.query((rs, rowNum) -> new DueMove(new StayId(rs.getLong("stay_id")), new BookingId(bookingId),
+				.query((rs, rowNum) -> new DueMove(new StayId(rs.getLong(COL_STAY_ID)), new BookingId(bookingId),
 						rs.getObject(COL_BOOKING_DATE, LocalDate.class)))
 				.optional();
 	}

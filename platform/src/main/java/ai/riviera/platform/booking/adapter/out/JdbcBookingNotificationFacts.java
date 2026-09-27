@@ -40,6 +40,7 @@ import ai.riviera.platform.venue.vocabulary.VenueId;
 class JdbcBookingNotificationFacts implements BookingNotificationFacts {
 
 	private static final String COL_CUSTOMER_ID = "customer_id";
+	private static final String COL_BOOKING_DATE = "booking_date";
 	private static final String MOVED_ROW_SQL = """
 			SELECT b.moved_at, s.first_date AS stay_first_date
 			FROM booking b
@@ -81,7 +82,7 @@ class JdbcBookingNotificationFacts implements BookingNotificationFacts {
 				.param("completed", BookingStatus.COMPLETED.name())
 				.query((rs, rowNum) -> new MoveRow(new StayId(rs.getLong("stay_id")), rs.getString("code"),
 						new CustomerId(rs.getLong(COL_CUSTOMER_ID)), new VenueId(rs.getLong("venue_id")),
-						rs.getObject("booking_date", LocalDate.class), rs.getObject("stay_last_date", LocalDate.class),
+						rs.getObject(COL_BOOKING_DATE, LocalDate.class), rs.getObject("stay_last_date", LocalDate.class),
 						new SetId(rs.getLong("from_set")), new SetId(rs.getLong("to_set"))))
 				.optional()
 				.flatMap(this::placed);
@@ -170,7 +171,7 @@ class JdbcBookingNotificationFacts implements BookingNotificationFacts {
 				.param("stay", stayId.value())
 				.query((rs, rowNum) -> new StayRow(rs.getString("code"),
 						new StayConfirmationFacts.Stop(new BookingId(rs.getLong("id")), new SetId(rs.getLong("set_id")),
-								rs.getObject("booking_date", LocalDate.class), rs.getObject("last_date", LocalDate.class)),
+								rs.getObject(COL_BOOKING_DATE, LocalDate.class), rs.getObject("last_date", LocalDate.class)),
 						rs.getLong("amount_minor"), rs.getString("amount_currency"),
 						new CustomerId(rs.getLong(COL_CUSTOMER_ID)), rs.getBoolean("confirmed"),
 						rs.getTimestamp("created_at").toInstant()))
@@ -208,7 +209,7 @@ class JdbcBookingNotificationFacts implements BookingNotificationFacts {
 	 */
 	private BookingConfirmationFacts factsOf(java.sql.ResultSet rs) throws java.sql.SQLException {
 		SetId setId = new SetId(rs.getLong("set_id"));
-		LocalDate bookingDate = rs.getObject("booking_date", LocalDate.class);
+		LocalDate bookingDate = rs.getObject(COL_BOOKING_DATE, LocalDate.class);
 		Optional<CancellationPolicy.BirthTerms> birth = cancellationPolicy.windowAtBirth(
 				setId, bookingDate, rs.getTimestamp("created_at").toInstant());
 		return new BookingConfirmationFacts(
