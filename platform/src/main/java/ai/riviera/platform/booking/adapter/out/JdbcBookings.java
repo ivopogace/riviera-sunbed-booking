@@ -67,6 +67,7 @@ class JdbcBookings implements Bookings {
 	private static final String PARAM_COMPLETED = "completed";
 	private static final String PARAM_NO_SHOW = "noShow";
 	private static final String PARAM_VENUE = "venue";
+	private static final String PARAM_REASON = "reason";
 	private static final String PARAM_ACCOUNT = "account";
 	private static final String PARAM_TODAY = "today";
 
@@ -284,7 +285,7 @@ class JdbcBookings implements Bookings {
 				RETURNING id, set_id, booking_date
 				""")
 				.param("declined", BookingStatus.DECLINED.name())
-				.param("reason", reason.name())
+				.param(PARAM_REASON, reason.name())
 				.param("set", setId.value())
 				.param(PARAM_PENDING, BookingStatus.PENDING_REQUEST.name())
 				.param("except", exceptBookingId)
@@ -323,7 +324,7 @@ class JdbcBookings implements Bookings {
 				RETURNING set_id, booking_date, last_date
 				""")
 				.param("declined", BookingStatus.DECLINED.name())
-				.param("reason", reason.name())
+				.param(PARAM_REASON, reason.name())
 				.param("id", bookingId)
 				.param(PARAM_VENUE, venueId.value())
 				.param(PARAM_PENDING, BookingStatus.PENDING_REQUEST.name())
@@ -652,7 +653,7 @@ class JdbcBookings implements Bookings {
 				.param("cancelled", BookingStatus.CANCELLED.name())
 				.param("at", java.sql.Timestamp.from(cancelledAt))
 				.param("refund", refundMinor)
-				.param("reason", reason.name())
+				.param(PARAM_REASON, reason.name())
 				.param("id", bookingId)
 				.param("admitted", admitted.stream().map(BookingStatus::name).toArray(String[]::new))
 				.query((rs, rowNum) -> new CancelledBooking(
