@@ -178,19 +178,19 @@ rows) is untouched; `findCheckInFacts` only gains `set_id` in its select list.
 
 ## Execution status
 
-**Stage pointer:** `implement (phase 0)`
+**Stage pointer:** `PR — draft open, CI gate pending`
 
-**Next action:** red test `SetPlacementTest`, then `MoveReminderWindowTest`.
+**Next action:** watch the first CI run; then merge `origin/main`, mark ready, run the review gate.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — geometry rule | | |
-| 1 — window rule | | |
-| 2 — sweep | | |
-| 3 — facts | | |
-| 4 — mail | | |
-| 5 — staff re-scan | | |
-| 6 — your spot today | | |
-| 7 — docs + retire plan | | |
+| 0 — geometry rule | ✅ | 49a775a |
+| 1 — window rule | ✅ | 49a775a |
+| 2 — sweep | ✅ | d8dedc9 |
+| 3 — facts | ✅ | 15abf81 |
+| 4 — mail | ✅ | 15abf81 |
+| 5 — staff re-scan | ✅ | 51b0b16 |
+| 6 — your spot today | ✅ | 268914e |
+| 7 — docs + retire plan | ⏳ | docs landed; the plan retires in the PR's last commit |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
