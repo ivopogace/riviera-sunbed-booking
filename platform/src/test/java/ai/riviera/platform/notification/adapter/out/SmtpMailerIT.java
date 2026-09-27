@@ -4,6 +4,7 @@ import java.net.ServerSocket;
 import java.net.URI;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.util.List;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -25,6 +26,7 @@ import ai.riviera.platform.notification.application.BookingCancellationMail;
 import ai.riviera.platform.notification.application.BookingConfirmationMail;
 import ai.riviera.platform.notification.application.BookingMovedMail;
 import ai.riviera.platform.notification.application.PaymentDueMail;
+import ai.riviera.platform.notification.application.StayConfirmationMail;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -114,6 +116,38 @@ class SmtpMailerIT {
 		String body = theOnlyReceivedMessage().getContent().toString();
 		assertThat(body).contains("Days:          15 August – 19 August 2026 (5 days)", "EUR 125.00");
 		assertThat(body).as("a stay names its days, not one date").doesNotContain("Date:");
+	}
+
+	@Test
+	void aStitchedStayNamesEveryStopUnderOneCode() throws Exception {
+		mailer().sendStayConfirmation(TO, new StayConfirmationMail(BOOKING_CODE, "Miramar Beach",
+				LocalDate.of(2026, 8, 15), LocalDate.of(2026, 8, 20),
+				List.of(new StayConfirmationMail.Stop(LocalDate.of(2026, 8, 15), LocalDate.of(2026, 8, 17),
+								"Front row · Sea view", 3),
+						new StayConfirmationMail.Stop(LocalDate.of(2026, 8, 18), LocalDate.of(2026, 8, 18), "B", 1),
+						new StayConfirmationMail.Stop(LocalDate.of(2026, 8, 19), LocalDate.of(2026, 8, 20), "C", 7)),
+				15000, "EUR", CancellationWindow.LATE, 2500));
+
+		MimeMessage message = theOnlyReceivedMessage();
+		assertThat(GreenMailUtil.getHeaders(message)).contains("Subject: Your stay at Miramar Beach is confirmed")
+				.doesNotContain(BOOKING_CODE);
+		assertThat(message.getContent().toString().replace("\r\n", "\n")).isEqualTo("""
+				Your stay is confirmed.
+
+				  Booking code:  XK4T9PQ2
+				  Venue:         Miramar Beach
+				  Days:          15 August – 20 August 2026 (6 days)
+				  Paid:          EUR 150.00
+
+				Your spot changes during the stay:
+
+				  15 August – 17 August 2026:  Front row · Sea view, position 3
+				  18 August 2026:  B, position 1
+				  19 August – 20 August 2026:  C, position 7
+
+				Show the same booking code at the venue every morning.
+
+				This booking was made past free cancellation — cancelling refunds only 25% of the price.""");
 	}
 
 	@Test

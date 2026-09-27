@@ -9,6 +9,7 @@ import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
 import java.util.Currency;
 import java.util.Locale;
+import java.util.stream.Collectors;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Profile;
@@ -24,6 +25,7 @@ import ai.riviera.platform.notification.application.Mailer;
 import ai.riviera.platform.notification.application.PaymentDueMail;
 import ai.riviera.platform.notification.application.RequestDeclinedMail;
 import ai.riviera.platform.notification.application.RequestExpiredMail;
+import ai.riviera.platform.notification.application.StayConfirmationMail;
 
 /**
  * Real SMTP {@link Mailer} over {@link JavaMailSender} (ADR-0011): Scaleway TEM in deployment, any relay
@@ -40,6 +42,7 @@ class SmtpMailer implements Mailer {
 	private static final String VERIFICATION_SUBJECT = "Verify your email";
 	private static final String RESET_SUBJECT = "Reset your password";
 	private static final String CONFIRMATION_SUBJECT = "Your booking at %s is confirmed";
+	private static final String STAY_CONFIRMATION_SUBJECT = "Your stay at %s is confirmed";
 	private static final String CANCELLATION_SUBJECT = "Your booking at %s is cancelled";
 	private static final String PAYMENT_DUE_SUBJECT = "%s accepted your request — payment due";
 	private static final String OPERATOR_APPROVED_SUBJECT = "Your operator account is approved";
@@ -129,6 +132,32 @@ class SmtpMailer implements Mailer {
 	}
 
 	@Override
+	public void sendStayConfirmation(String toEmail, StayConfirmationMail confirmation) {
+		send(toEmail, STAY_CONFIRMATION_SUBJECT.formatted(headerSafe(confirmation.venueName())), """
+				Your stay is confirmed.
+
+				  Booking code:  %s
+				  Venue:         %s
+				  %s
+				  Paid:          %s
+
+				Your spot changes during the stay:
+
+				%s
+
+				Show the same booking code at the venue every morning.%s"""
+				.formatted(confirmation.bookingCode(), confirmation.venueName(),
+						daysLine(confirmation.firstDate(), confirmation.lastDate(), CONFIRMATION_LABEL_WIDTH),
+						formatAmount(confirmation.amountMinor(), confirmation.currency()),
+						confirmation.stops().stream()
+								.map(stop -> "  %s:  %s, position %d".formatted(span(stop.firstDate(), stop.lastDate()),
+										stop.rowLabel(), stop.positionNo()))
+								.collect(Collectors.joining("\n")),
+						disclosureLine(confirmation.cancellationWindowAtBirth(),
+								confirmation.lateCancelRefundBps())));
+	}
+
+	@Override
 	public void sendBookingCancellation(String toEmail, BookingCancellationMail cancellation) {
 		send(toEmail, CANCELLATION_SUBJECT.formatted(headerSafe(cancellation.venueName())), """
 				%s
@@ -153,9 +182,16 @@ class SmtpMailer implements Mailer {
 			return padded("Date:", labelWidth) + DATE_FORMAT.format(first);
 		}
 		long days = ChronoUnit.DAYS.between(first, last) + 1;
-		String range = (first.getYear() == last.getYear() ? DAY_MONTH_FORMAT : DATE_FORMAT).format(first)
+		return padded("Days:", labelWidth) + span(first, last) + " (" + days + " days)";
+	}
+
+	/** {@code 3 July 2027}, or {@code 3 July – 7 July 2027}: the first end shares the second's year. */
+	private static String span(LocalDate first, LocalDate last) {
+		if (first.equals(last)) {
+			return DATE_FORMAT.format(first);
+		}
+		return (first.getYear() == last.getYear() ? DAY_MONTH_FORMAT : DATE_FORMAT).format(first)
 				+ " – " + DATE_FORMAT.format(last);
-		return padded("Days:", labelWidth) + range + " (" + days + " days)";
 	}
 
 	private static String padded(String label, int width) {

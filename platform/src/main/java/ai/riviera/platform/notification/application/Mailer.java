@@ -24,6 +24,9 @@ public interface Mailer {
 	 */
 	void sendBookingConfirmation(String toEmail, BookingConfirmationMail confirmation);
 
+	/** Send a stitched stay's one confirmation: the stay's code, its span, every stop's days and spot. */
+	void sendStayConfirmation(String toEmail, StayConfirmationMail confirmation);
+
 	/**
 	 * Send the cancellation/refund record: what was cancelled, why, and the server-computed refund,
 	 * or that none applies. The implementation decides how a zero refund and each

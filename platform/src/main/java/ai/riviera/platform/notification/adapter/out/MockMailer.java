@@ -17,6 +17,7 @@ import ai.riviera.platform.notification.application.Mailer;
 import ai.riviera.platform.notification.application.PaymentDueMail;
 import ai.riviera.platform.notification.application.RequestDeclinedMail;
 import ai.riviera.platform.notification.application.RequestExpiredMail;
+import ai.riviera.platform.notification.application.StayConfirmationMail;
 
 /**
  * Recording {@link Mailer}: keeps each {@link SentEmail} in memory instead of sending, so every kind
@@ -58,6 +59,13 @@ public class MockMailer implements Mailer {
 		// tourist already has it in the app — so invariant #7 costs nothing here.
 		log.info(BOOKING_RECORD_LOG, SentEmail.Kind.BOOKING_CONFIRMATION,
 				sanitize(toEmail), sanitize(confirmation.venueName()), confirmation.bookingDate());
+	}
+
+	@Override
+	public void sendStayConfirmation(String toEmail, StayConfirmationMail confirmation) {
+		sent.add(SentEmail.stayConfirmation(toEmail, confirmation));
+		log.info(BOOKING_RECORD_LOG, SentEmail.Kind.STAY_CONFIRMATION,
+				sanitize(toEmail), sanitize(confirmation.venueName()), confirmation.firstDate());
 	}
 
 	@Override

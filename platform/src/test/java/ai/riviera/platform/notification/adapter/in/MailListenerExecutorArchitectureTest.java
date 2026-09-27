@@ -100,7 +100,7 @@ class MailListenerExecutorArchitectureTest {
 		List<Class<?>> expected = List.of(BookingConfirmationMailListener.class,
 				BookingCancellationMailListener.class, RequestPaymentDueMailListener.class,
 				RequestDeclinedMailListener.class, RequestExpiredMailListener.class,
-				BookingMovedMailListener.class);
+				BookingMovedMailListener.class, StayConfirmationMailListener.class);
 		List<Class<?>> examined = inScopeListeners(notificationEventListeners()).stream()
 				.filter(listener -> "on".equals(listener.getName()))
 				.map(Method::getDeclaringClass)

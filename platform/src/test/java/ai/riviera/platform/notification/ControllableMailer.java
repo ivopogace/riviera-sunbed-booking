@@ -14,6 +14,7 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
 
 import ai.riviera.platform.notification.application.BookingCancellationMail;
 import ai.riviera.platform.notification.application.BookingConfirmationMail;
+import ai.riviera.platform.notification.application.StayConfirmationMail;
 import ai.riviera.platform.notification.application.BookingMovedMail;
 import ai.riviera.platform.notification.application.Mailer;
 import ai.riviera.platform.notification.application.PaymentDueMail;
@@ -89,6 +90,11 @@ public final class ControllableMailer implements Mailer {
 
 	@Override
 	public void sendBookingConfirmation(String toEmail, BookingConfirmationMail confirmation) {
+		observeRegistrySend(toEmail);
+	}
+
+	@Override
+	public void sendStayConfirmation(String toEmail, StayConfirmationMail confirmation) {
 		observeRegistrySend(toEmail);
 	}
 

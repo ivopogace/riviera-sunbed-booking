@@ -1,5 +1,7 @@
 package ai.riviera.platform.notification.application;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Optional;
 
 import org.springframework.stereotype.Service;
@@ -7,6 +9,8 @@ import org.springframework.stereotype.Service;
 import ai.riviera.platform.booking.api.BookingNotificationFacts;
 import ai.riviera.platform.booking.vocabulary.BookingId;
 import ai.riviera.platform.booking.vocabulary.BookingNotificationInfo;
+import ai.riviera.platform.booking.vocabulary.CancellationWindow;
+import ai.riviera.platform.booking.vocabulary.StayConfirmationFacts;
 import ai.riviera.platform.customer.api.CustomerLookup;
 import ai.riviera.platform.customer.vocabulary.GuestContact;
 import ai.riviera.platform.venue.api.SetBookingFacts;
@@ -55,5 +59,31 @@ public class BookingMailFactsService {
 		}
 		return new BookingMailFacts.Resolved(contact.get().email(), booking.get().code(),
 				set.get().venueName(), set.get().rowLabel(), set.get().positionNo());
+	}
+
+	/**
+	 * The stay's one confirmation mail with the birth terms the caller holds, or the first fact that did
+	 * not resolve: every stop's set, then the contact. Never throws for a missing row, as {@link #resolve}.
+	 */
+	public StayMailFacts resolveStay(StayConfirmationFacts stay, CancellationWindow windowAtBirth,
+			int lateCancelRefundBps) {
+		List<StayConfirmationMail.Stop> stops = new ArrayList<>();
+		String venueName = null;
+		for (StayConfirmationFacts.Stop stop : stay.stops()) {
+			Optional<SetBookingInfo> set = sets.setBookingInfo(stop.setId());
+			if (set.isEmpty()) {
+				return new StayMailFacts.Missing(MissingBookingFact.NO_SET);
+			}
+			venueName = set.get().venueName();
+			stops.add(new StayConfirmationMail.Stop(stop.firstDate(), stop.lastDate(), set.get().rowLabel(),
+					set.get().positionNo()));
+		}
+		Optional<GuestContact> contact = customers.findById(stay.customerId());
+		if (contact.isEmpty()) {
+			return new StayMailFacts.Missing(MissingBookingFact.NO_CONTACT);
+		}
+		return new StayMailFacts.Resolved(contact.get().email(), new StayConfirmationMail(stay.code(), venueName,
+				stay.firstDate(), stay.lastDate(), stops, stay.amountMinor(),
+				stay.currency(), windowAtBirth, lateCancelRefundBps));
 	}
 }

@@ -18,6 +18,7 @@ import ai.riviera.platform.PostgresContainerConfiguration;
 import ai.riviera.platform.notification.api.MailSender;
 import ai.riviera.platform.notification.application.BookingCancellationMail;
 import ai.riviera.platform.notification.application.BookingConfirmationMail;
+import ai.riviera.platform.notification.application.StayConfirmationMail;
 import ai.riviera.platform.notification.application.Mailer;
 import ai.riviera.platform.notification.application.PaymentDueMail;
 import ai.riviera.platform.notification.application.RequestDeclinedMail;
@@ -116,6 +117,11 @@ class MailSenderWiringIT {
 
 		@Override
 		public void sendBookingConfirmation(String toEmail, BookingConfirmationMail confirmation) {
+			record();
+		}
+
+		@Override
+		public void sendStayConfirmation(String toEmail, StayConfirmationMail confirmation) {
 			record();
 		}
 

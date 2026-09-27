@@ -1,6 +1,7 @@
 package ai.riviera.platform.notification.application;
 
 import java.time.Clock;
+import java.util.List;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -29,6 +30,11 @@ public class ConfirmationAttemptRecorder {
 	ConfirmationAttemptRecorder(ConfirmationMailAttempts attempts, Clock clock) {
 		this.attempts = attempts;
 		this.clock = clock;
+	}
+
+	/** Record one attempt of a mail covering several bookings (a stay's), once per booking it covers. */
+	public void recordAttempts(List<BookingId> bookingIds, MailAttemptSource source, MailAttemptOutcome outcome) {
+		bookingIds.forEach(bookingId -> recordAttempt(bookingId, source, outcome));
 	}
 
 	/**
