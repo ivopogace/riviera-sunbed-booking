@@ -10,9 +10,12 @@ import ai.riviera.platform.booking.api.BookingNotificationFacts;
 import ai.riviera.platform.booking.vocabulary.BookingConfirmationFacts;
 import ai.riviera.platform.booking.vocabulary.CancellationWindow;
 import ai.riviera.platform.booking.vocabulary.BookingId;
+import ai.riviera.platform.booking.vocabulary.StayConfirmationFacts;
+import ai.riviera.platform.booking.vocabulary.StayId;
 import ai.riviera.platform.customer.vocabulary.CustomerId;
 import ai.riviera.platform.venue.vocabulary.SetId;
 
+import java.util.List;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -155,5 +158,69 @@ class BookingConfirmationResendServiceTest {
 	private void givenAConfirmedBooking() {
 		when(bookings.confirmationFacts(BOOKING_ID)).thenReturn(Optional.of(CONFIRMED));
 		when(mailFacts.resolve(BOOKING_ID, SET_ID)).thenReturn(RESOLVED);
+	}
+
+	private static final List<BookingId> STRETCHES = List.of(new BookingId(41L), BOOKING_ID);
+	private static final StayConfirmationFacts STAY = new StayConfirmationFacts(new StayId(5L), "STAYCODE",
+			new CustomerId(9L),
+			List.of(new StayConfirmationFacts.Stop(STRETCHES.get(0), SET_ID, LocalDate.of(2026, 8, 1),
+							LocalDate.of(2026, 8, 2)),
+					new StayConfirmationFacts.Stop(BOOKING_ID, new SetId(8L), LocalDate.of(2026, 8, 3),
+							LocalDate.of(2026, 8, 4))),
+			18000L, "EUR", true, CancellationWindow.LATE, 2500);
+	private static final StayConfirmationMail STAY_MAIL = new StayConfirmationMail("STAYCODE", "Vala Beach",
+			LocalDate.of(2026, 8, 1), LocalDate.of(2026, 8, 4), List.of(), 18000L, "EUR", CancellationWindow.LATE, 2500);
+
+	@Test
+	void aStretchResendsItsStaysMailWithTheReDerivedTermsAndLogsEveryStretch() {
+		givenAConfirmedBooking();
+		when(bookings.stayConfirmationFactsOf(BOOKING_ID)).thenReturn(Optional.of(STAY));
+		when(mailFacts.resolveStay(STAY, CancellationWindow.LATE, 2500))
+				.thenReturn(new StayMailFacts.Resolved(EMAIL, STAY_MAIL));
+		when(mails.sendStayConfirmation(EMAIL, STAY_MAIL)).thenReturn(ConfirmationSendOutcome.SENT);
+
+		assertThat(service.resend(BOOKING_ID)).isEqualTo(ResendOutcome.SENT);
+
+		verify(attempts).recordAttempts(STRETCHES, MailAttemptSource.ADMIN_RESEND, MailAttemptOutcome.SENT);
+		verify(mails, never()).sendBookingConfirmation(any(), any());
+	}
+
+	@Test
+	void refusesAStayNotEveryStretchOfWhichWasConfirmed() {
+		givenAConfirmedBooking();
+		when(bookings.stayConfirmationFactsOf(BOOKING_ID)).thenReturn(Optional.of(new StayConfirmationFacts(
+				STAY.stayId(), STAY.code(), STAY.customerId(), STAY.stops(), STAY.amountMinor(), STAY.currency(), false,
+				CancellationWindow.FREE, 0)));
+
+		assertThat(service.resend(BOOKING_ID)).isEqualTo(ResendOutcome.NOT_CONFIRMED);
+
+		verifyNoInteractions(mails, attempts);
+	}
+
+	@Test
+	void aStayWhoseFactsDoNotResolveIsAbandonedOnEveryStretch() {
+		givenAConfirmedBooking();
+		when(bookings.stayConfirmationFactsOf(BOOKING_ID)).thenReturn(Optional.of(STAY));
+		when(mailFacts.resolveStay(STAY, CancellationWindow.LATE, 2500))
+				.thenReturn(new StayMailFacts.Missing(MissingBookingFact.NO_SET));
+
+		assertThat(service.resend(BOOKING_ID)).isEqualTo(ResendOutcome.MISSING_FACTS);
+
+		verify(attempts).recordAttempts(STRETCHES, MailAttemptSource.ADMIN_RESEND,
+				MailAttemptOutcome.ABANDONED_MISSING_FACTS);
+	}
+
+	@Test
+	void aStaysTransportFailureIsAnAnswer() {
+		givenAConfirmedBooking();
+		when(bookings.stayConfirmationFactsOf(BOOKING_ID)).thenReturn(Optional.of(STAY));
+		when(mailFacts.resolveStay(STAY, CancellationWindow.LATE, 2500))
+				.thenReturn(new StayMailFacts.Resolved(EMAIL, STAY_MAIL));
+		doThrow(new IllegalStateException("relay down")).when(mails).sendStayConfirmation(EMAIL, STAY_MAIL);
+
+		assertThat(service.resend(BOOKING_ID)).isEqualTo(ResendOutcome.TRANSPORT_FAILED);
+
+		verify(attempts).recordAttempts(STRETCHES, MailAttemptSource.ADMIN_RESEND,
+				MailAttemptOutcome.TRANSPORT_FAILED);
 	}
 }

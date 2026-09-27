@@ -16,10 +16,12 @@ import org.junit.jupiter.api.RepetitionInfo;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.annotation.Import;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.modulith.events.IncompleteEventPublications;
+import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
 
@@ -33,22 +35,31 @@ import ai.riviera.platform.payment.events.PaymentConfirmed;
 import ai.riviera.platform.payment.vocabulary.BookingRef;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
  * The stitched stay's confirmation mail end-to-end: each stretch's verified {@code PaymentConfirmed},
  * in its own transaction and racing the other, drives {@code booking}'s confirm; the confirm that
  * completes the stay publishes {@code StayConfirmed}, and the registry delivers exactly one
  * {@code STAY_CONFIRMATION} naming every stop, the stay's code and total, while each stretch's
- * {@code BookingConfirmed} mails nothing. Stays are SQL-seeded on the first seeded venue, never claimed,
+ * {@code BookingConfirmed} mails nothing; an admin resend on any stretch resends the stay's mail. Stays are SQL-seeded on the first seeded venue, never claimed,
  * on dates no other IT uses. Testcontainers; skipped where Docker is absent.
  */
 @EnabledIfDockerAvailable
 @Import(TestcontainersConfiguration.class)
 @SpringBootTest
+@AutoConfigureMockMvc
 class StayConfirmationMailIT {
 
 	private static final Duration WAIT = Duration.ofSeconds(15);
 	private static final long STRETCH_AMOUNT = 9100L;
+
+	@Autowired
+	MockMvc mvc;
 
 	@Autowired
 	JdbcClient jdbc;
@@ -111,6 +122,28 @@ class StayConfirmationMailIT {
 
 		Awaitility.await().during(Duration.ofSeconds(2)).atMost(WAIT)
 				.until(() -> count(email, SentEmail.Kind.STAY_CONFIRMATION) == 1L);
+	}
+
+	@Test
+	void adminResendOnAStretchResendsTheStayMail() throws Exception {
+		String email = "stay-resend@example.com";
+		SeededStay stay = seedAwaitingStay(twoSetsOfOneVenue(), LocalDate.of(2031, 7, 11), email);
+		confirmConcurrently(stay.stretches());
+		Awaitility.await().atMost(WAIT).until(() -> count(email, SentEmail.Kind.STAY_CONFIRMATION) == 1L);
+		Awaitility.await().atMost(WAIT).until(() -> automaticSentAttempts(stay.stretches()) == 2L);
+
+		mvc.perform(post("/api/admin/mail-deliveries/{id}/resend", stay.stretches().get(1))
+						.with(user("operator").roles("ADMIN")).with(csrf()))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.outcome").value("SENT"));
+
+		assertEquals(2L, count(email, SentEmail.Kind.STAY_CONFIRMATION));
+		assertEquals(0L, count(email, SentEmail.Kind.BOOKING_CONFIRMATION));
+		assertEquals(stay.code(), mailer.lastTo(email).orElseThrow().stayConfirmation().bookingCode());
+		assertEquals(2L, jdbc.sql("""
+				SELECT count(*) FROM booking_confirmation_mail_attempt
+				WHERE booking_id IN (:ids) AND trigger_source = 'ADMIN_RESEND' AND outcome = 'SENT'
+				""").param("ids", stay.stretches()).query(Long.class).single(), "the resend is logged on every stretch");
 	}
 
 	private List<SetRef> twoSetsOfOneVenue() {
