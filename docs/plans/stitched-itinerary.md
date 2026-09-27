@@ -326,9 +326,9 @@ consulted per API)
 
 ## Execution status
 
-**Stage pointer:** `implement (phase 5) — a stay code resolves`
+**Stage pointer:** `implement (phase F1) — discovery tier`
 
-**Next action:** red `StayCheckInIT`, `CancelStayIT`, `ViewStayIT`; then the notification and staff-list code reads answer the stay code.
+**Next action:** red `stay-label.spec.ts` ("Fits with N moves"), `place-groups.spec.ts` (three-tier sort), then `e2e/discovery-stay.e2e.ts`.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -337,8 +337,8 @@ consulted per API)
 | 2 — Itinerary read | ✅ | phase-2 commit |
 | 3 — Stay schema + group checkout | ✅ | phase-3 commit (sole-writer rule → phase 4) |
 | 4 — Reserve a plan | ✅ | phase-4 commit |
-| 5 — Stay code resolves | | |
-| 6 — ADR + docs | | |
+| 5 — Stay code resolves | ✅ | phase-5 commit |
+| 6 — ADR + docs | ✅ | phase-5 commit (ADR-0024) |
 | F1 — Discovery tier | | |
 | F2 — Fetch + banner | | |
 | F3 — Plan view | | |

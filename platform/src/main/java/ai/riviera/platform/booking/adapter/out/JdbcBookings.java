@@ -24,6 +24,8 @@ import ai.riviera.platform.booking.vocabulary.BookingId;
 import ai.riviera.platform.booking.vocabulary.RefundReason;
 import ai.riviera.platform.booking.application.view.DailyBooking;
 import ai.riviera.platform.booking.application.view.BookingRecord;
+import ai.riviera.platform.booking.vocabulary.StayId;
+import ai.riviera.platform.booking.application.view.StayRecord;
 import ai.riviera.platform.booking.application.Bookings;
 import ai.riviera.platform.booking.application.cancel.CancelledBooking;
 import ai.riviera.platform.booking.application.checkin.CheckInFacts;
@@ -345,15 +347,43 @@ class JdbcBookings implements Bookings {
 	@Override
 	public Optional<BookingRecord> findByCode(String code) {
 		return jdbc.sql("""
-				SELECT id, code, status, venue_id, set_id, customer_id, booking_date, last_date,
-				       amount_minor, amount_currency, cancelled_at, refund_minor, request_expires_at,
-				       cancel_reason, created_at, accepted_at, moved_at
-				FROM booking
-				WHERE code = :code
+				SELECT b.id, COALESCE(s.code, b.code) AS code, b.status, b.venue_id, b.set_id, b.customer_id,
+				       b.booking_date, b.last_date, b.amount_minor, b.amount_currency, b.cancelled_at, b.refund_minor,
+				       b.request_expires_at, b.cancel_reason, b.created_at, b.accepted_at, b.moved_at
+				FROM booking b
+				LEFT JOIN stay s ON s.id = b.stay_id
+				WHERE b.code = :code
 				""")
 				.param("code", code)
 				.query(JdbcBookings::mapBookingRecord)
 				.optional();
+	}
+
+	@Override
+	public Optional<StayRecord> findStayByCode(String code) {
+		return jdbc.sql("SELECT id, code, venue_id, first_date, last_date FROM stay WHERE code = :code")
+				.param("code", code)
+				.query((rs, rowNum) -> new StayRecord(new StayId(rs.getLong("id")), rs.getString("code"),
+						new VenueId(rs.getLong(COL_VENUE_ID)), rs.getObject("first_date", LocalDate.class),
+						rs.getObject("last_date", LocalDate.class), List.of()))
+				.optional()
+				.map(stay -> new StayRecord(stay.id(), stay.code(), stay.venueId(), stay.firstDay(), stay.lastDay(),
+						stretchesOf(stay.id())));
+	}
+
+	private List<BookingRecord> stretchesOf(StayId stayId) {
+		return jdbc.sql("""
+				SELECT b.id, s.code, b.status, b.venue_id, b.set_id, b.customer_id,
+				       b.booking_date, b.last_date, b.amount_minor, b.amount_currency, b.cancelled_at, b.refund_minor,
+				       b.request_expires_at, b.cancel_reason, b.created_at, b.accepted_at, b.moved_at
+				FROM booking b
+				JOIN stay s ON s.id = b.stay_id
+				WHERE b.stay_id = :stay
+				ORDER BY b.booking_date
+				""")
+				.param("stay", stayId.value())
+				.query(JdbcBookings::mapBookingRecord)
+				.list();
 	}
 
 	@Override
@@ -363,12 +393,13 @@ class JdbcBookings implements Bookings {
 		// partial on the non-NULL slice). Same row shape as findByCode so MyBookingsService enriches
 		// uniformly; a guest booking (NULL account_id) can never match.
 		return jdbc.sql("""
-				SELECT id, code, status, venue_id, set_id, customer_id, booking_date, last_date,
-				       amount_minor, amount_currency, cancelled_at, refund_minor, request_expires_at,
-				       cancel_reason, created_at, accepted_at, moved_at
-				FROM booking
-				WHERE account_id = :account
-				ORDER BY booking_date DESC, id DESC
+				SELECT b.id, COALESCE(s.code, b.code) AS code, b.status, b.venue_id, b.set_id, b.customer_id,
+				       b.booking_date, b.last_date, b.amount_minor, b.amount_currency, b.cancelled_at, b.refund_minor,
+				       b.request_expires_at, b.cancel_reason, b.created_at, b.accepted_at, b.moved_at
+				FROM booking b
+				LEFT JOIN stay s ON s.id = b.stay_id
+				WHERE b.account_id = :account
+				ORDER BY b.booking_date DESC, b.id DESC
 				""")
 				.param(PARAM_ACCOUNT, accountId.value())
 				.query(JdbcBookings::mapBookingRecord)
@@ -524,10 +555,12 @@ class JdbcBookings implements Bookings {
 			LocalDate serviceDate, Instant completedAt) {
 		Optional<CompletedCheckIn> attended = jdbc.sql("""
 				WITH stay AS (
-				    SELECT id, set_id, booking_date
-				    FROM booking
-				    WHERE code = :code AND venue_id = :venue AND status = :confirmed
-				    FOR UPDATE
+				    SELECT b.id, b.set_id, b.booking_date
+				    FROM booking b
+				    LEFT JOIN stay s ON s.id = b.stay_id
+				    WHERE (b.code = :code OR s.code = :code) AND b.venue_id = :venue AND b.status = :confirmed
+				      AND :date BETWEEN b.booking_date AND b.last_date
+				    FOR UPDATE OF b
 				)
 				UPDATE booking_day n
 				SET attended_at = :at
@@ -614,8 +647,12 @@ class JdbcBookings implements Bookings {
 		return jdbc.sql("""
 				SELECT b.status, b.booking_date, n.attended_at IS NOT NULL AS attended_today
 				FROM booking b
+				LEFT JOIN stay s ON s.id = b.stay_id
 				LEFT JOIN booking_day n ON n.booking_id = b.id AND n.service_date = :today
-				WHERE b.code = :code AND b.venue_id = :venue
+				WHERE (b.code = :code OR s.code = :code) AND b.venue_id = :venue
+				ORDER BY (:today BETWEEN b.booking_date AND b.last_date) DESC, (b.booking_date > :today) DESC,
+				         abs(b.booking_date - :today) ASC
+				LIMIT 1
 				""")
 				.param("code", code)
 				.param(PARAM_VENUE, venueId.value())
@@ -635,9 +672,10 @@ class JdbcBookings implements Bookings {
 	@Override
 	public List<DailyBooking> findSettledForVenueOn(VenueId venueId, LocalDate date) {
 		return jdbc.sql("""
-				SELECT set_id, code, status
-				FROM booking
-				WHERE venue_id = :venue AND booking_date <= :date AND last_date >= :date
+				SELECT b.set_id, COALESCE(s.code, b.code) AS code, b.status
+				FROM booking b
+				LEFT JOIN stay s ON s.id = b.stay_id
+				WHERE b.venue_id = :venue AND b.booking_date <= :date AND b.last_date >= :date
 				  AND status IN (:confirmed, :completed, :noShow)
 				ORDER BY set_id
 				""")

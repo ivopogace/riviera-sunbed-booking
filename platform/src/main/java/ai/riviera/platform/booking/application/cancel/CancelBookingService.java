@@ -1,7 +1,9 @@
 package ai.riviera.platform.booking.application.cancel;
 
 import java.time.Clock;
+import java.time.Instant;
 import java.util.Optional;
+import java.util.List;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -14,6 +16,7 @@ import ai.riviera.platform.booking.events.BookingCancelled;
 import ai.riviera.platform.booking.vocabulary.BookingId;
 import ai.riviera.platform.booking.application.cancel.CancellationPolicy.RefundQuote;
 import ai.riviera.platform.booking.application.view.BookingRecord;
+import ai.riviera.platform.booking.application.view.StayRecord;
 import ai.riviera.platform.booking.application.Bookings;
 import ai.riviera.platform.booking.domain.BookingStatus;
 import ai.riviera.platform.booking.domain.BookingTransition;
@@ -53,7 +56,7 @@ class CancelBookingService implements CancelBooking {
 	public CancelOutcome cancel(String code) {
 		Optional<BookingRecord> found = bookings.findByCode(code);
 		if (found.isEmpty()) {
-			return new CancelOutcome.NotFound();
+			return bookings.findStayByCode(code).map(this::cancelStay).orElseGet(CancelOutcome.NotFound::new);
 		}
 		BookingRecord booking = found.get();
 		if (booking.status() == BookingStatus.NO_SHOW || booking.status() == BookingStatus.COMPLETED) {
@@ -92,6 +95,51 @@ class CancelBookingService implements CancelBooking {
 
 		CancelOutcome.Tier tier = tierFor(quote.window(), refundMinor, cancelled.amountMinor());
 		return new CancelOutcome.Cancelled(refundMinor, cancelled.currency(), tier);
+	}
+
+	/**
+	 * A stay cancels whole (design D6): every stretch quoted on the stay's first day, then transitioned,
+	 * released and announced as an ordinary booking (one reversal each, invariant #9); the guest hears
+	 * one summed refund. A stretch that cannot be cancelled refuses the stay before any write.
+	 */
+	private CancelOutcome cancelStay(StayRecord stay) {
+		List<BookingRecord> stretches = stay.stretches();
+		if (stretches.stream().anyMatch(s -> s.status() == BookingStatus.NO_SHOW || s.status() == BookingStatus.COMPLETED)) {
+			return new CancelOutcome.WindowClosed();
+		}
+		Optional<BookingRecord> notAdmitted = stretches.stream()
+				.filter(s -> !BookingTransition.CANCEL_BY_GUEST.admits(s.status())).findFirst();
+		if (notAdmitted.isPresent()) {
+			return new CancelOutcome.NotCancellable(notAdmitted.get().status());
+		}
+		List<RefundQuote> quotes = stretches.stream().map(s -> cancellationPolicy.quote(s, stay.firstDay())).toList();
+		if (quotes.stream().anyMatch(quote -> !quote.cancellationOpen())) {
+			return new CancelOutcome.WindowClosed();
+		}
+		long refundTotal = 0;
+		long amountTotal = 0;
+		String currency = stretches.getFirst().currency();
+		Instant now = clock.instant();
+		for (int i = 0; i < stretches.size(); i++) {
+			BookingRecord stretch = stretches.get(i);
+			RefundQuote quote = quotes.get(i);
+			Optional<CancelledBooking> transitioned = bookings.cancelConfirmed(stretch.id(), now, quote.refundMinor(),
+					quote.reason());
+			if (transitioned.isEmpty()) {
+				return new CancelOutcome.NotCancellable(BookingStatus.CANCELLED);
+			}
+			CancelledBooking cancelled = transitioned.get();
+			for (var day : ServiceDays.between(cancelled.bookingDate(), cancelled.lastDate())) {
+				availability.release(cancelled.setId(), day);
+			}
+			events.publishEvent(new BookingCancelled(new BookingId(cancelled.id()), cancelled.venueId(),
+					cancelled.setId(), cancelled.bookingDate(), quote.refundMinor(), cancelled.currency(),
+					quote.reason(), cancelled.lastDate()));
+			refundTotal = Math.addExact(refundTotal, quote.refundMinor());
+			amountTotal = Math.addExact(amountTotal, cancelled.amountMinor());
+		}
+		log.info("cancelled stay {} of {} stretches (refund {} minor)", stay.id().value(), stretches.size(), refundTotal);
+		return new CancelOutcome.Cancelled(refundTotal, currency, tierFor(quotes.getFirst().window(), refundTotal, amountTotal));
 	}
 
 	/**

@@ -6,6 +6,7 @@ import ai.riviera.platform.review.vocabulary.ReviewPanel;
 import ai.riviera.platform.venue.vocabulary.MoneyView;
 
 import java.time.Instant;
+import java.util.List;
 
 /**
  * The {@code 200} body of {@code GET /api/bookings/{code}}, mirroring the FE {@code BookingDetail};
@@ -22,7 +23,17 @@ record BookingDetailView(String code, String status, long venueId, String venueN
 		boolean refundOutstanding,
 		Instant requestExpiresAt, PaymentCredentialsView payment, boolean emailWithheld,
 		boolean payWindowClosed, String cancelReason, String cancellationWindowAtBirth,
-		ReviewPanelView reviewPanel, MoveView move) {
+		ReviewPanelView reviewPanel, MoveView move, List<StretchView> stretches) {
+
+	/** One stretch of a stitched stay (design D6); empty for a lone booking. */
+	record StretchView(long setId, String rowLabel, int positionNo, String firstDate, String lastDate, MoneyView amount,
+			String status) {
+
+		static StretchView of(BookingDetail.StayStretch stretch) {
+			return new StretchView(stretch.setId().value(), stretch.rowLabel(), stretch.positionNo(),
+					stretch.firstDay().toString(), stretch.lastDay().toString(), stretch.amount(), stretch.status().name());
+		}
+	}
 
 	static BookingDetailView of(BookingDetail d) {
 		return new BookingDetailView(d.code(), d.status().name(), d.venueId().value(), d.venueName(),
@@ -37,7 +48,8 @@ record BookingDetailView(String code, String status, long venueId, String venueN
 				d.cancelReason() == null ? null : d.cancelReason().name(),
 				d.cancellationWindowAtBirth().name(),
 				ReviewPanelView.of(d.reviewPanel(), d.reviewNameSuggestion()),
-				d.move() == null ? null : MoveView.of(d.move()));
+				d.move() == null ? null : MoveView.of(d.move()),
+				d.stretches().stream().map(StretchView::of).toList());
 	}
 
 	/**

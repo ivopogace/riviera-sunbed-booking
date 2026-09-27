@@ -7,6 +7,8 @@ import ai.riviera.platform.booking.application.request.RequestWindows;
 import ai.riviera.platform.booking.vocabulary.BookingId;
 
 import java.time.Clock;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Optional;
 
 import org.springframework.stereotype.Service;
@@ -14,6 +16,7 @@ import org.springframework.stereotype.Service;
 import ai.riviera.platform.booking.application.cancel.CancellationPolicy.RefundQuote;
 import ai.riviera.platform.booking.application.Bookings;
 import ai.riviera.platform.booking.domain.BookingStatus;
+import ai.riviera.platform.booking.domain.StayStatus;
 import ai.riviera.platform.booking.domain.BookingTransition;
 import ai.riviera.platform.customer.api.CustomerLookup;
 import ai.riviera.platform.customer.vocabulary.GuestContact;
@@ -67,7 +70,57 @@ class ViewBookingService implements ViewBooking {
 
 	@Override
 	public Optional<BookingDetail> byCode(String code) {
-		return bookings.findByCode(code).map(this::toDetail);
+		Optional<BookingDetail> booking = bookings.findByCode(code).map(this::toDetail);
+		return booking.isPresent() ? booking : bookings.findStayByCode(code).map(this::toStayDetail);
+	}
+
+	/**
+	 * A stay reads as one booking (design D6): the group's code and span, the status {@link StayStatus}
+	 * derives, the first stretch's spot and payment credentials (one intent for the group), money summed,
+	 * every stretch quoted on the stay's first day, and the stretches themselves.
+	 */
+	private BookingDetail toStayDetail(StayRecord stay) {
+		List<BookingRecord> stretches = stay.stretches();
+		BookingRecord first = stretches.getFirst();
+		BookingStatus status = StayStatus.of(stretches.stream().map(BookingRecord::status).toList());
+		List<RefundQuote> quotes = stretches.stream().map(s -> cancellationPolicy.quote(s, stay.firstDay())).toList();
+		SetBookingInfo firstSet = quotes.getFirst().set();
+		boolean cancellable = stretches.stream().allMatch(s -> BookingTransition.CANCEL_BY_GUEST.admits(s.status()))
+				&& quotes.stream().allMatch(RefundQuote::cancellationOpen);
+		long amount = stretches.stream().mapToLong(BookingRecord::amountMinor).reduce(0L, Math::addExact);
+		long refundIfCancelledNow = quotes.stream().mapToLong(RefundQuote::refundMinor).reduce(0L, Math::addExact);
+		boolean anyRefunded = stretches.stream().anyMatch(s -> s.refundMinor() != null);
+		long refunded = stretches.stream().filter(s -> s.refundMinor() != null).mapToLong(BookingRecord::refundMinor)
+				.reduce(0L, Math::addExact);
+		boolean refundOutstanding = stretches.stream().anyMatch(s -> s.status() == BookingStatus.CANCELLED
+				&& s.refundMinor() != null && s.refundMinor() > 0
+				&& refundStatus.progressOf(new ai.riviera.platform.payment.vocabulary.BookingRef(s.id()))
+						== ai.riviera.platform.payment.vocabulary.RefundProgress.OUTSTANDING);
+		boolean awaitingPayment = status == BookingStatus.AWAITING_PAYMENT;
+		boolean payWindowClosed = awaitingPayment && windows.payWindowClosed(first.acceptedAt(),
+				cutoff.serviceDayEndsAt(first.bookingDate()), clock.instant());
+		ai.riviera.platform.payment.vocabulary.PaymentCredentials payment = awaitingPayment && !payWindowClosed
+				? checkout.pendingCredentials(new ai.riviera.platform.payment.vocabulary.BookingRef(first.id())).orElse(null)
+				: null;
+		boolean emailWithheld = status == BookingStatus.CONFIRMED && collection.provenBeforeConfirmation()
+				&& confirmationMail.isWithheld(first.customerId());
+		ReviewPanel panel = reviewEligibility.panelFor(stay.code());
+		List<BookingDetail.StayStretch> stretchViews = new ArrayList<>();
+		for (int i = 0; i < stretches.size(); i++) {
+			BookingRecord stretch = stretches.get(i);
+			SetBookingInfo set = quotes.get(i).set();
+			stretchViews.add(new BookingDetail.StayStretch(stretch.setId(), set.rowLabel(), set.positionNo(),
+					stretch.bookingDate(), stretch.lastDate(), new MoneyView(stretch.amountMinor(), stretch.currency()),
+					stretch.status()));
+		}
+		return new BookingDetail(stay.code(), status, stay.venueId(), firstSet.venueName(), firstSet.rowLabel(),
+				firstSet.positionNo(), stay.firstDay(), stay.lastDay(), new MoneyView(amount, first.currency()),
+				cancellable, false, quotes.getFirst().beforeCutoff(),
+				new MoneyView(refundIfCancelledNow, first.currency()),
+				anyRefunded ? new MoneyView(refunded, first.currency()) : null, refundOutstanding, null, payment,
+				emailWithheld, payWindowClosed, first.cancelReason(),
+				cutoff.cancellationWindow(firstSet.bookingCutoff(), stay.firstDay(), first.createdAt()),
+				panel, nameSuggestionFor(panel, first), null, stretchViews);
 	}
 
 	/**
@@ -110,7 +163,7 @@ class ViewBookingService implements ViewBooking {
 				refunded, refundOutstanding, b.requestExpiresAt(), payment, emailWithheld,
 				payWindowClosed, b.cancelReason(),
 				cutoff.cancellationWindow(set.bookingCutoff(), b.bookingDate(), b.createdAt()),
-				panel, nameSuggestionFor(panel, b), moveOf(b, quote));
+				panel, nameSuggestionFor(panel, b), moveOf(b, quote), List.of());
 	}
 
 	/** The latest move of a moved booking, with the exit deadline the quote still holds open; {@code null} otherwise. */

@@ -780,6 +780,11 @@ class CreateBookingServiceTest {
 		}
 
 		@Override
+		public Optional<ai.riviera.platform.booking.application.view.StayRecord> findStayByCode(String code) {
+			return Optional.empty();
+		}
+
+		@Override
 		public java.util.OptionalLong insertAwaitingPayment(NewBooking booking) {
 			inserted.add(booking);
 			return java.util.OptionalLong.of(++nextId);

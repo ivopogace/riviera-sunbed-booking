@@ -1,6 +1,7 @@
 package ai.riviera.platform.booking.application;
 
 import ai.riviera.platform.booking.application.view.BookingRecord;
+import ai.riviera.platform.booking.application.view.StayRecord;
 import ai.riviera.platform.booking.application.reserve.NewBooking;
 import ai.riviera.platform.booking.application.reserve.NewStay;
 import ai.riviera.platform.booking.application.refund.RefundableBooking;
@@ -91,6 +92,9 @@ public interface Bookings {
 	 * row the caller needs without exposing the aggregate.
 	 */
 	Optional<BookingRecord> findByCode(String code);
+
+	/** The stay whose code this is, with its stretches in day order; empty for a booking's code or an unknown one. */
+	Optional<StayRecord> findStayByCode(String code);
 
 	/**
 	 * The bookings linked to a customer account, newest first; never a guest booking (NULL {@code
