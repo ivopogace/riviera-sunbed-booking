@@ -127,42 +127,54 @@ public final class ItinerarySearch {
 			if (startOn != null && start < 0 || endOn != null && end < 0 || sets.isEmpty()) {
 				return Optional.empty();
 			}
-			int dayCount = days.size();
-			int setCount = sets.size();
-			Cost[][] cost = new Cost[dayCount][setCount];
-			int[][] from = new int[dayCount][setCount];
-			for (int s = 0; s < setCount; s++) {
+			Cost[][] cost = new Cost[days.size()][sets.size()];
+			int[][] from = new int[days.size()][sets.size()];
+			seedFirstDay(cost, start);
+			for (int d = 1; d < days.size(); d++) {
+				relaxDay(cost, from, d);
+			}
+			int last = cheapestLastSet(cost[days.size() - 1], end);
+			return last < 0 ? Optional.empty() : Optional.of(walkBack(from, last));
+		}
+
+		/** Day one: every free set (or the anchor alone) starts a plan at no cost. */
+		private void seedFirstDay(Cost[][] cost, int start) {
+			for (int s = 0; s < sets.size(); s++) {
 				if (free[0][s] && (start < 0 || s == start)) {
 					cost[0][s] = Cost.ZERO;
-					from[0][s] = -1;
 				}
 			}
-			for (int d = 1; d < dayCount; d++) {
-				for (int s = 0; s < setCount; s++) {
-					if (!free[d][s]) {
+		}
+
+		/** Day {@code d}: each free set keeps the cheapest way in — staying, or moving from another set. */
+		private void relaxDay(Cost[][] cost, int[][] from, int d) {
+			for (int s = 0; s < sets.size(); s++) {
+				if (!free[d][s]) {
+					continue;
+				}
+				for (int t = 0; t < sets.size(); t++) {
+					Cost previous = cost[d - 1][t];
+					if (previous == null) {
 						continue;
 					}
-					for (int t = 0; t < setCount; t++) {
-						Cost previous = cost[d - 1][t];
-						if (previous == null) {
-							continue;
-						}
-						Cost candidate = t == s ? previous : previous.plus(moveCost(t, s));
-						if (candidate.moves() <= maxMoves && (cost[d][s] == null || candidate.compareTo(cost[d][s]) < 0)) {
-							cost[d][s] = candidate;
-							from[d][s] = t;
-						}
+					Cost candidate = t == s ? previous : previous.plus(moveCost(t, s));
+					if (candidate.moves() <= maxMoves && (cost[d][s] == null || candidate.compareTo(cost[d][s]) < 0)) {
+						cost[d][s] = candidate;
+						from[d][s] = t;
 					}
 				}
 			}
+		}
+
+		/** The set the cheapest plan ends on (the anchor alone when one must end it), or -1 when none reaches the last day. */
+		private int cheapestLastSet(Cost[] lastDay, int end) {
 			int last = -1;
-			for (int s = 0; s < setCount; s++) {
-				if (cost[dayCount - 1][s] != null && (end < 0 || s == end)
-						&& (last < 0 || cost[dayCount - 1][s].compareTo(cost[dayCount - 1][last]) < 0)) {
+			for (int s = 0; s < sets.size(); s++) {
+				if (lastDay[s] != null && (end < 0 || s == end) && (last < 0 || lastDay[s].compareTo(lastDay[last]) < 0)) {
 					last = s;
 				}
 			}
-			return last < 0 ? Optional.empty() : Optional.of(walkBack(from, last));
+			return last;
 		}
 
 		Cost cost(Itinerary itinerary) {
