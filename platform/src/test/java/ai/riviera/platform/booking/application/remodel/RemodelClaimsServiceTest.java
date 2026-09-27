@@ -25,6 +25,7 @@ import ai.riviera.platform.booking.events.BookingMoved;
 import ai.riviera.platform.booking.events.BookingRequestDeclined;
 import ai.riviera.platform.booking.vocabulary.BlockReason;
 import ai.riviera.platform.booking.vocabulary.BookingId;
+import ai.riviera.platform.booking.vocabulary.DeclineReason;
 import ai.riviera.platform.booking.vocabulary.PreviewToken;
 import ai.riviera.platform.booking.vocabulary.ReceiptId;
 import ai.riviera.platform.booking.vocabulary.RefundConfirmation;
@@ -366,7 +367,7 @@ class RemodelClaimsServiceTest {
 		givenMap(List.of(A1), IN_TEN_DAYS, List.of());
 		when(bookings.cancelAwaitingPayment(211))
 				.thenReturn(java.util.Optional.of(new ClaimRef(A1.setId(), IN_TEN_DAYS, IN_TEN_DAYS)));
-		when(bookings.declinePending(212, VENUE))
+		when(bookings.declinePending(212, VENUE, DeclineReason.SET_UNAVAILABLE))
 				.thenReturn(java.util.Optional.of(new ClaimRef(A1.setId(), IN_TEN_DAYS, IN_TEN_DAYS)));
 		when(receipts.store(any())).thenReturn(RECEIPT);
 
@@ -376,8 +377,9 @@ class RemodelClaimsServiceTest {
 		assertEquals(new RemodelCommit.Applied(RECEIPT, CLOCK.instant(), List.of(release, decline)), outcome);
 		verify(events).publishEvent(new BookingCancelled(new BookingId(211), VENUE, A1.setId(), IN_TEN_DAYS,
 				0, "EUR", RefundReason.VENUE_CHANGE));
-		verify(events).publishEvent(new BookingRequestDeclined(new BookingId(212), A1.setId(), IN_TEN_DAYS));
-		verify(availability, times(2)).release(A1.setId(), IN_TEN_DAYS);
+		verify(events).publishEvent(new BookingRequestDeclined(new BookingId(212), A1.setId(), IN_TEN_DAYS,
+				DeclineReason.SET_UNAVAILABLE));
+		verify(availability, times(1)).release(A1.setId(), IN_TEN_DAYS);
 		verify(bookings, never()).cancelConfirmed(anyLong(), any(), anyLong(), any());
 		verify(receipts).store(new NewReceipt(VENUE, OWNER, CLOCK.instant(), List.of(), List.of(
 				new ReceiptOutcome(new BookingId(211), IN_TEN_DAYS, ref(A1), ReceiptOutcomeKind.RELEASE, 4500, "EUR", 0L),
@@ -416,7 +418,7 @@ class RemodelClaimsServiceTest {
 	void commitMovesEveryClaimClaimingTheCandidateBeforeReleasingTheOldRowAndReceiptsIt() {
 		when(bookings.findLiveOnSets(Set.of(A1.setId()))).thenReturn(List.of(
 				claim(203, A1, IN_TEN_DAYS, BookingStatus.CONFIRMED),
-				claim(204, A1, IN_TEN_DAYS.plusDays(1), BookingStatus.PENDING_REQUEST)));
+				claim(204, A1, IN_TEN_DAYS.plusDays(1), BookingStatus.AWAITING_PAYMENT)));
 		givenMap(List.of(A1, A2, A3), IN_TEN_DAYS, List.of(A2, A3));
 		when(facts.freeOnlineSetsOn(VENUE, IN_TEN_DAYS.plusDays(1))).thenReturn(List.of(A3));
 		when(availability.claim(any(), any())).thenReturn(ClaimOutcome.CLAIMED);

@@ -17,7 +17,9 @@ import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.dao.QueryTimeoutException;
 
 import ai.riviera.platform.booking.events.BookingPaymentDue;
+import ai.riviera.platform.booking.events.BookingRequestDeclined;
 import ai.riviera.platform.booking.vocabulary.BookingId;
+import ai.riviera.platform.booking.vocabulary.DeclineReason;
 import ai.riviera.platform.booking.application.Bookings;
 import ai.riviera.platform.booking.application.BookingCutoff;
 import ai.riviera.platform.booking.application.cancel.CancellationPolicy;
@@ -95,7 +97,7 @@ class RespondToRequestServiceTest {
 
 	private RespondToRequestService serviceOn(Clock at) {
 		return new RespondToRequestService(ownership, bookings,
-				new RequestReleaseService(bookings, availability, publisher), checkout, confirmBooking,
+				new RequestTerminationService(bookings, publisher), checkout, confirmBooking,
 				releaseAbandoned, new PaymentDueAnnouncer(publisher), WINDOWS, new BookingCutoff(at),
 				cancellationPolicy, at);
 	}
@@ -291,17 +293,17 @@ class RespondToRequestServiceTest {
 	}
 
 	@Test
-	void declineReleasesHold() {
+	void declineReleasesNothing() {
 		SetId set = new SetId(11);
 		var date = LocalDate.of(2026, 8, 1);
-		when(bookings.declinePending(BOOKING.value(), VENUE))
+		when(bookings.declinePending(BOOKING.value(), VENUE, DeclineReason.VENUE))
 				.thenReturn(Optional.of(new ClaimRef(set, date, date)));
 
 		DeclineOutcome outcome = service().decline(OPERATOR, VENUE, BOOKING);
 
 		assertInstanceOf(DeclineOutcome.Declined.class, outcome);
-		verify(availability).release(set, date);
-		verifyNoInteractions(checkout);
+		verify(publisher).publishEvent(new BookingRequestDeclined(BOOKING, set, date, DeclineReason.VENUE));
+		verifyNoInteractions(checkout, availability);
 	}
 
 	@Test
@@ -315,7 +317,7 @@ class RespondToRequestServiceTest {
 
 	@Test
 	void declineOfDecidedRequestIsNotPending() {
-		when(bookings.declinePending(BOOKING.value(), VENUE)).thenReturn(Optional.empty());
+		when(bookings.declinePending(BOOKING.value(), VENUE, DeclineReason.VENUE)).thenReturn(Optional.empty());
 		when(bookings.requestSnapshot(BOOKING.value(), VENUE)).thenReturn(Optional.of(
 				new RequestSnapshot(BookingStatus.CONFIRMED, null)));
 
@@ -323,8 +325,8 @@ class RespondToRequestServiceTest {
 	}
 
 	@Test
-	void expirySweepReleasesEveryExpiredHold() {
-		// ExpireRequestsService: per-row guarded expiry (failure-isolated), each hold released.
+	void expirySweepExpiresEveryOverdueRequestAndReleasesNothing() {
+		// ExpireRequestsService: per-row guarded expiry (failure-isolated); nothing was held (ADR-0025).
 		var date = LocalDate.of(2026, 8, 2);
 		when(bookings.findOverduePendingRequests(NOW))
 				.thenReturn(List.of(new BookingId(11), new BookingId(12)));
@@ -334,11 +336,10 @@ class RespondToRequestServiceTest {
 				.thenReturn(Optional.of(new ClaimRef(new SetId(2), date, date)));
 
 		int expired = new ExpireRequestsService(bookings,
-				new RequestReleaseService(bookings, availability, publisher), clock).sweep();
+				new RequestTerminationService(bookings, publisher), clock).sweep();
 
 		assertEquals(2, expired);
-		verify(availability).release(new SetId(1), date);
-		verify(availability).release(new SetId(2), date);
+		verifyNoInteractions(availability);
 	}
 
 	@Test
@@ -353,10 +354,10 @@ class RespondToRequestServiceTest {
 				.thenReturn(Optional.of(new ClaimRef(new SetId(2), date, date)));
 
 		int expired = new ExpireRequestsService(bookings,
-				new RequestReleaseService(bookings, availability, publisher), clock).sweep();
+				new RequestTerminationService(bookings, publisher), clock).sweep();
 
 		assertEquals(1, expired, "the healthy row is still expired");
-		verify(availability).release(new SetId(2), date);
+		verifyNoInteractions(availability);
 	}
 
 	@Test

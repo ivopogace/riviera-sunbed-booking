@@ -84,7 +84,8 @@ class JdbcBookingTransitionTableIT {
 		return switch (transition) {
 			case ACCEPT_REQUEST ->
 				bookings.acceptPendingRequest(booking.id(), booking.venueId(), NOW).isPresent();
-			case DECLINE_REQUEST -> bookings.declinePending(booking.id(), booking.venueId()).isPresent();
+			case DECLINE_REQUEST -> bookings.declinePending(booking.id(), booking.venueId(),
+					ai.riviera.platform.booking.vocabulary.DeclineReason.VENUE).isPresent();
 			case WITHDRAW_REQUEST -> bookings.withdrawPendingRequest(booking.code()).isPresent();
 			case EXPIRE_REQUEST -> bookings.expirePendingRequest(booking.id(), NOW).isPresent();
 			case REVERT_ACCEPT -> bookings.revertAcceptToPending(booking.id());

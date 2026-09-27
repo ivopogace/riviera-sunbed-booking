@@ -318,7 +318,7 @@ any is released on the old, never a swap of my own — so a racing reserve wins 
   rule; `cancellationWindowAtBirth` + `lateCancelRefundBps` ride `BookingConfirmed` and
   `BookingPaymentDue` so a later cutoff edit cannot rewrite a sent mail (null: no disclosure). The
   view and admin-resend facts re-derive from the *current* cutoff — bounded, documented drift.
-- **Request termination** (decline, expiry, withdraw) lives on `RequestReleaseService`. **Withdraw**
+- **Request termination** (decline, expiry, withdraw) lives on `RequestTerminationService`. **Withdraw**
   is authorized by the code alone (the only request command with no ownership check) and guarded by
   status, not deadline, so on an overdue row the row lock leaves one transition and one release
   (`ConcurrentRequestTerminationIT`). It publishes **no** event: a `refundMinor = 0`

@@ -867,7 +867,8 @@ class CreateBookingServiceTest {
 
 		@Override
 		public Optional<ClaimRef> declinePending(long bookingId,
-				ai.riviera.platform.venue.vocabulary.VenueId venueId) {
+				ai.riviera.platform.venue.vocabulary.VenueId venueId,
+				ai.riviera.platform.booking.vocabulary.DeclineReason reason) {
 			return Optional.empty();
 		}
 

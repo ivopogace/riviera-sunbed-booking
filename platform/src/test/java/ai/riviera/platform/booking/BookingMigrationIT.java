@@ -92,6 +92,33 @@ class BookingMigrationIT {
 	}
 
 	@Test
+	void everyDeclineReasonAccepted() {
+		// V67: the enum and the CHECK stay in lockstep, and a reason sits only on a DECLINED row.
+		long venue = anyVenueId();
+		long set = anyOnlineSetId();
+		long cust = insertCustomer("decline-reason@example.com");
+		int i = 0;
+		for (ai.riviera.platform.booking.vocabulary.DeclineReason reason
+				: ai.riviera.platform.booking.vocabulary.DeclineReason.values()) {
+			String code = "REASON00%02d".formatted(i++);
+			insertBooking(venue, set, cust, code, LocalDate.of(2026, 9, 21), "DECLINED");
+			assertDoesNotThrow(() -> setDeclineReason(code, reason.name()),
+					"CHECK must accept enum value " + reason + " (enum/schema lockstep, invariant #12).");
+		}
+		insertBooking(venue, set, cust, "REASON0099", LocalDate.of(2026, 9, 21), "DECLINED");
+		assertThrows(DataIntegrityViolationException.class, () -> setDeclineReason("REASON0099", "WEATHER"),
+				"an unknown decline reason is refused");
+		insertBooking(venue, set, cust, "REASON0098", LocalDate.of(2026, 9, 21), "PENDING_REQUEST");
+		assertThrows(DataIntegrityViolationException.class, () -> setDeclineReason("REASON0098", "VENUE"),
+				"a reason on a row that is not DECLINED is refused");
+	}
+
+	private void setDeclineReason(String code, String reason) {
+		jdbc.sql("UPDATE booking SET decline_reason = :reason WHERE code = :code")
+				.param("reason", reason).param("code", code).update();
+	}
+
+	@Test
 	void unknownStatusRejected() {
 		long venue = anyVenueId();
 		long set = anyOnlineSetId();

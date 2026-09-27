@@ -24,6 +24,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import ai.riviera.platform.booking.vocabulary.BookingId;
+import ai.riviera.platform.booking.vocabulary.DeclineReason;
 import ai.riviera.platform.booking.vocabulary.RefundReason;
 import ai.riviera.platform.booking.application.view.DailyBooking;
 import ai.riviera.platform.booking.application.view.BookingRecord;
@@ -276,15 +277,16 @@ class JdbcBookings implements Bookings {
 	}
 
 	@Override
-	public Optional<ClaimRef> declinePending(long bookingId, VenueId venueId) {
+	public Optional<ClaimRef> declinePending(long bookingId, VenueId venueId, DeclineReason reason) {
 		// Venue-scoped and guarded; RETURNING the set and span iff it transitioned (contract: the port).
 		return jdbc.sql("""
 				UPDATE booking
-				SET status = :declined
+				SET status = :declined, decline_reason = :reason
 				WHERE id = :id AND venue_id = :venue AND status = :pending
 				RETURNING set_id, booking_date, last_date
 				""")
 				.param("declined", BookingStatus.DECLINED.name())
+				.param("reason", reason.name())
 				.param("id", bookingId)
 				.param(PARAM_VENUE, venueId.value())
 				.param(PARAM_PENDING, BookingStatus.PENDING_REQUEST.name())

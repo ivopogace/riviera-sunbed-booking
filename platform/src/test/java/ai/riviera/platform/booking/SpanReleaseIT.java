@@ -20,11 +20,6 @@ import ai.riviera.platform.booking.api.RemodelClaims;
 import ai.riviera.platform.booking.application.cancel.CancelBooking;
 import ai.riviera.platform.booking.application.cancel.CancelOutcome;
 import ai.riviera.platform.booking.application.refund.ReleaseAbandonedBooking;
-import ai.riviera.platform.booking.application.request.DeclineOutcome;
-import ai.riviera.platform.booking.application.request.ExpireRequests;
-import ai.riviera.platform.booking.application.request.RespondToRequest;
-import ai.riviera.platform.booking.application.request.WithdrawOutcome;
-import ai.riviera.platform.booking.application.request.WithdrawRequest;
 import ai.riviera.platform.booking.vocabulary.BookingId;
 import ai.riviera.platform.booking.vocabulary.PreviewToken;
 import ai.riviera.platform.booking.vocabulary.RefundConfirmation;
@@ -40,8 +35,8 @@ import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * Every terminal transition frees every service day of a stay, and the remodel move re-seats every
- * one of them: a three-day booking is seeded directly with its three {@code (set, date)} rows held,
+ * Every terminal transition of a claim frees every service day of a stay, and the remodel move re-seats
+ * every one of them (a pending request is no claim: {@code RequestHoldsNothingIT}): a three-day booking is seeded directly with its three {@code (set, date)} rows held,
  * the leg runs through its own driving port, and the proof is that all three days re-claim
  * afterwards. {@code set_availability} carries no link to a booking, so a day a leg forgot would be
  * unrecoverable (invariant #2); this is the slice's correctness risk stated as a test per leg. Each
@@ -51,7 +46,6 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 @Import(TestcontainersConfiguration.class)
 @SpringBootTest(properties = {
 		"booking.no-show.enabled=false",
-		"booking.request.initial-delay=PT2H",
 		"booking.awaiting-payment.initial-delay=PT2H"
 })
 class SpanReleaseIT {
@@ -62,14 +56,8 @@ class SpanReleaseIT {
 	@Autowired
 	CancelBooking cancelBooking;
 
-	@Autowired
-	RespondToRequest respondToRequest;
 
-	@Autowired
-	ExpireRequests expireRequests;
 
-	@Autowired
-	WithdrawRequest withdrawRequest;
 
 	@Autowired
 	ReleaseAbandonedBooking releaseAbandonedBooking;
@@ -173,36 +161,8 @@ class SpanReleaseIT {
 		assertEveryDayReleased(stay.setId());
 	}
 
-	@Test
-	void declineReleasesEveryDay() {
-		Stay stay = insertStay(insertSet(1), "PENDING_REQUEST", Instant.now().plusSeconds(3600));
 
-		assertInstanceOf(DeclineOutcome.Declined.class,
-				respondToRequest.decline(operator, new VenueId(venueId), new BookingId(stay.id())));
 
-		assertEquals("DECLINED", statusOf(stay.id()));
-		assertEveryDayReleased(stay.setId());
-	}
-
-	@Test
-	void expiryReleasesEveryDay() {
-		Stay stay = insertStay(insertSet(1), "PENDING_REQUEST", Instant.now().minusSeconds(3600));
-
-		assertTrue(expireRequests.sweep() >= 1, "the overdue request is swept");
-
-		assertEquals("EXPIRED", statusOf(stay.id()));
-		assertEveryDayReleased(stay.setId());
-	}
-
-	@Test
-	void withdrawReleasesEveryDay() {
-		Stay stay = insertStay(insertSet(1), "PENDING_REQUEST", Instant.now().plusSeconds(3600));
-
-		assertInstanceOf(WithdrawOutcome.Withdrawn.class, withdrawRequest.withdraw(stay.code()));
-
-		assertEquals("WITHDRAWN", statusOf(stay.id()));
-		assertEveryDayReleased(stay.setId());
-	}
 
 	/** The seam the abandoned-payment sweep and the payment-canceled webhook share. */
 	@Test
@@ -238,16 +198,6 @@ class SpanReleaseIT {
 		assertEveryDayReleased(stay.setId());
 	}
 
-	@Test
-	void remodelDeclineReleasesEveryDay() {
-		Stay stay = insertStay(insertSet(1), "PENDING_REQUEST", Instant.now().plusSeconds(3600));
-
-		RemodelCommit outcome = commitDisturbing(stay.setId(), RemodelOutcome.Decline.DECLINE, RefundConfirmation.NONE);
-
-		assertInstanceOf(RemodelCommit.Applied.class, outcome);
-		assertEquals("DECLINED", statusOf(stay.id()));
-		assertEveryDayReleased(stay.setId());
-	}
 
 	@Test
 	void remodelMoveClaimsAndReleasesEveryDay() {

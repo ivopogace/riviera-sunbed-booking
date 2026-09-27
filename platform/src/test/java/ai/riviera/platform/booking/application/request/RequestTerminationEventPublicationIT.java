@@ -25,7 +25,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 /**
  * The decline/expiry facts at the SQL seam against real Postgres: each terminal leg
- * of {@code RequestReleaseService} publishes its fact exactly when its guarded transition wins —
+ * of {@code RequestTerminationService} publishes its fact exactly when its guarded transition wins —
  * and the two legs that must stay silent stay silent.
  *
  * <p><strong>Why the recorder is a {@code @TransactionalEventListener}.</strong> The property under
@@ -47,7 +47,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 class RequestTerminationEventPublicationIT {
 
 	@Autowired
-	RequestReleaseService requestRelease;
+	RequestTerminationService requestRelease;
 
 	@Autowired
 	ExpireRequests expireRequests;

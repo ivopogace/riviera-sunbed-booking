@@ -14,7 +14,7 @@ import ai.riviera.platform.booking.application.Bookings;
 /**
  * Expires overdue pending requests and frees their sets, implementing {@link ExpireRequests}.
  * Mirrors the abandoned-payment sweep: read the candidate ids, then expire each via
- * {@link RequestReleaseService#expire} in its own transaction, with a per-row try/catch so one bad
+ * {@link RequestTerminationService#expire} in its own transaction, with a per-row try/catch so one bad
  * row cannot roll back or starve the batch; it is retried next run, safely, because the guarded
  * transition is idempotent. Lockless, matching the abandoned sweep's single-instance posture
  * (improvement-plan D3; docs/deploy/production-hardening.md).
@@ -25,10 +25,10 @@ class ExpireRequestsService implements ExpireRequests {
 	private static final Logger log = LoggerFactory.getLogger(ExpireRequestsService.class);
 
 	private final Bookings bookings;
-	private final RequestReleaseService requestRelease;
+	private final RequestTerminationService requestRelease;
 	private final Clock clock;
 
-	ExpireRequestsService(Bookings bookings, RequestReleaseService requestRelease, Clock clock) {
+	ExpireRequestsService(Bookings bookings, RequestTerminationService requestRelease, Clock clock) {
 		this.bookings = bookings;
 		this.requestRelease = requestRelease;
 		this.clock = clock;

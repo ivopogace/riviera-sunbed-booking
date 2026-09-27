@@ -19,6 +19,7 @@ import java.util.Optional;
 import java.util.OptionalLong;
 
 import ai.riviera.platform.booking.vocabulary.BookingId;
+import ai.riviera.platform.booking.vocabulary.DeclineReason;
 import ai.riviera.platform.booking.application.remodel.LiveClaim;
 import ai.riviera.platform.booking.application.view.DailyBooking;
 import ai.riviera.platform.customer.vocabulary.CustomerAccountId;
@@ -68,11 +69,11 @@ public interface Bookings {
 	boolean revertAcceptToPending(long bookingId);
 
 	/**
-	 * Guarded venue-scoped {@code PENDING_REQUEST → DECLINED}, returning the {@link ClaimRef} iff it
-	 * transitioned so the caller releases every day's soft-hold exactly once (invariant #2). Not
+	 * Guarded venue-scoped {@code PENDING_REQUEST → DECLINED} stamping {@code reason}; the {@link ClaimRef}
+	 * iff it transitioned, so the caller publishes exactly once (nothing to release: ADR-0025). Not
 	 * deadline-guarded: an expired-but-unswept request may still be declined.
 	 */
-	Optional<ClaimRef> declinePending(long bookingId, VenueId venueId);
+	Optional<ClaimRef> declinePending(long bookingId, VenueId venueId, DeclineReason reason);
 
 	/**
 	 * Status + deadline of a booking at this venue, or empty when unknown <em>or another venue's</em>

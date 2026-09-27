@@ -40,7 +40,7 @@ class RespondToRequestService implements RespondToRequest {
 
 	private final VenueOwnership ownership;
 	private final Bookings bookings;
-	private final RequestReleaseService declineRelease;
+	private final RequestTerminationService termination;
 	private final CheckoutPort checkout;
 	private final ConfirmBooking confirmBooking;
 	private final ReleaseAbandonedBooking releaseAbandoned;
@@ -51,13 +51,13 @@ class RespondToRequestService implements RespondToRequest {
 	private final Clock clock;
 
 	RespondToRequestService(VenueOwnership ownership, Bookings bookings,
-			RequestReleaseService declineRelease, CheckoutPort checkout, ConfirmBooking confirmBooking,
+			RequestTerminationService termination, CheckoutPort checkout, ConfirmBooking confirmBooking,
 			ReleaseAbandonedBooking releaseAbandoned, PaymentDueAnnouncer paymentDue,
 			RequestWindows windows, BookingCutoff cutoff, CancellationPolicy cancellationPolicy,
 			Clock clock) {
 		this.ownership = ownership;
 		this.bookings = bookings;
-		this.declineRelease = declineRelease;
+		this.termination = termination;
 		this.checkout = checkout;
 		this.confirmBooking = confirmBooking;
 		this.releaseAbandoned = releaseAbandoned;
@@ -174,7 +174,7 @@ class RespondToRequestService implements RespondToRequest {
 	@Override
 	public DeclineOutcome decline(OperatorId operator, VenueId venueId, BookingId bookingId) {
 		ownership.assertOwns(operator, new VenueRef(venueId.value()));
-		if (declineRelease.decline(bookingId, venueId)) {
+		if (termination.decline(bookingId, venueId)) {
 			log.info("request {} declined by venue {}", bookingId.value(), venueId.value());
 			return new DeclineOutcome.Declined();
 		}

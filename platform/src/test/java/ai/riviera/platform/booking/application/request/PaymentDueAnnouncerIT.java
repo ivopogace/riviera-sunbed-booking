@@ -40,7 +40,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  * a package-private {@code @Transactional} — the shape this started as, matching every other
  * collaborator behind the {@link RespondToRequest} seam — rests on proxying behaviour that is not the
  * documented contract. It applied in practice (this test passed before the visibility changed), but
- * {@code RequestReleaseService}'s convention makes the method public so nothing depends on that. The
+ * {@code RequestTerminationService}'s convention makes the method public so nothing depends on that. The
  * assertion stays behavioural for the same reason it was written: a persisted publication row is proof
  * a real transaction committed, which no amount of reading the annotation — or the modifier — can
  * establish, and it is what would catch a future Spring version tightening the rule again.
