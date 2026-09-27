@@ -92,9 +92,9 @@ the delivery log keeps its per-booking grain, one row per stretch the stay mail 
 
 ## Execution status
 
-**Stage pointer:** implement (phase 4)
+**Stage pointer:** PR gates (merge main, ready, review, Sonar)
 
-**Next action:** docs — RESPONSIBILITIES §booking/§notification, CLAUDE.md events, ADR-0024, design-doc status.
+**Next action:** merge origin/main, mark ready, run the review gate.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -102,6 +102,6 @@ the delivery log keeps its per-booking grain, one row per stretch the stay mail 
 | 1 — facts port | ✅ | phase 1 commit |
 | 2 — stay mail | ✅ | phase 2 commit |
 | 3 — resend | ✅ | phase 3 commit |
-| 4 — docs | ⏳ | |
+| 4 — docs | ✅ | phase 4 commit |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
