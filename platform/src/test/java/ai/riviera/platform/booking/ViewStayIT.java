@@ -17,16 +17,24 @@ import ai.riviera.platform.EnabledIfDockerAvailable;
 import ai.riviera.platform.TestcontainersConfiguration;
 import ai.riviera.platform.booking.StayFixtures.Venue;
 import ai.riviera.platform.booking.api.BookingNotificationFacts;
+import ai.riviera.platform.booking.api.RemodelClaims;
+import ai.riviera.platform.booking.application.BookingCutoff;
 import ai.riviera.platform.booking.application.Bookings;
 import ai.riviera.platform.booking.application.reserve.CreateStay;
 import ai.riviera.platform.booking.application.reserve.CreateStayCommand;
 import ai.riviera.platform.booking.application.reserve.StayOutcome;
 import ai.riviera.platform.booking.application.view.BookingDetail;
+import ai.riviera.platform.booking.application.view.BookingMove;
 import ai.riviera.platform.booking.application.view.BookingRecord;
 import ai.riviera.platform.booking.application.view.ViewBooking;
 import ai.riviera.platform.booking.domain.BookingStatus;
 import ai.riviera.platform.booking.vocabulary.BookingId;
+import ai.riviera.platform.booking.vocabulary.PreviewToken;
+import ai.riviera.platform.booking.vocabulary.RefundConfirmation;
+import ai.riviera.platform.booking.vocabulary.RemodelClaim;
+import ai.riviera.platform.booking.vocabulary.RemodelCommit;
 import ai.riviera.platform.customer.vocabulary.CustomerAccountId;
+import ai.riviera.platform.operator.vocabulary.OperatorId;
 import ai.riviera.platform.venue.vocabulary.SetId;
 import ai.riviera.platform.venue.vocabulary.VenueId;
 
@@ -36,6 +44,7 @@ import static ai.riviera.platform.booking.StayFixtures.firstDay;
 import static ai.riviera.platform.booking.StayFixtures.plan;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -43,9 +52,9 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 /**
  * A stay's code resolves wherever a booking's does (design D6, invariant #7): the code-gated view
- * reads the group as one booking with its stretches, the confirmation mail's fact for a stretch is
- * the stay's code (never the row code), and the staff daily list names the stay's code. Stub gateway,
- * real Postgres via Testcontainers.
+ * reads the group as one booking with its stretches (a remodel-moved one with its move), the
+ * confirmation mail's fact for a stretch is the stay's code (never the row code), and the staff daily
+ * list names the stay's code. Stub gateway, real Postgres via Testcontainers.
  */
 @EnabledIfDockerAvailable
 @Import(TestcontainersConfiguration.class)
@@ -64,6 +73,12 @@ class ViewStayIT {
 
 	@Autowired
 	Bookings bookings;
+
+	@Autowired
+	RemodelClaims remodelClaims;
+
+	@Autowired
+	BookingCutoff cutoff;
 
 	@Autowired
 	MockMvc mvc;
@@ -112,6 +127,53 @@ class ViewStayIT {
 				.andExpect(jsonPath("$.stretches[1].setId").value(b.value()))
 				.andExpect(jsonPath("$.stretches[1].status").value("CONFIRMED"))
 				.andExpect(jsonPath("$.amount.minorUnits").value(7 * PRICE));
+	}
+
+	@Test
+	void aMovedStretchCarriesItsMoveNotice() throws Exception {
+		Venue venue = StayFixtures.venue(jdbc, "INSTANT", null, true);
+		venues.add(venue.id());
+		SetId a = venue.online().get(0);
+		SetId b = venue.online().get(1);
+		SetId c = venue.online().get(2);
+		LocalDate first = firstDay();
+		String code = assertInstanceOf(StayOutcome.Confirmed.class, createStay.create(plan(a, 3, b, 4, first)))
+				.confirmation().code();
+		StayFixtures.take(jdbc, a, first.plusDays(3));
+		VenueId venueId = new VenueId(venue.id());
+		OperatorId operator = new OperatorId(jdbc.sql("SELECT operator_id FROM operator_venue WHERE venue_id = :v")
+				.param("v", venue.id()).query(Long.class).single());
+		List<RemodelClaim> claims = remodelClaims.classify(operator, venueId, List.of(b));
+		assertInstanceOf(RemodelCommit.Applied.class,
+				remodelClaims.commit(operator, venueId, List.of(b), PreviewToken.of(claims), RefundConfirmation.NONE));
+
+		BookingDetail view = viewBooking.byCode(code).orElseThrow();
+
+		assertNull(view.move(), "the stay's spot is its first stretch's, which never moved");
+		assertNull(view.stretches().get(0).move());
+		BookingDetail.StayStretch moved = view.stretches().get(1);
+		assertEquals(c, moved.setId());
+		assertEquals(3, moved.positionNo(), "the stretch shows the spot it holds now");
+		BookingMove move = moved.move();
+		assertEquals("A", move.fromRowLabel());
+		assertEquals(2, move.fromPositionNo());
+		assertEquals(0, move.rowsAway());
+		assertEquals(1, move.positionsAway());
+		assertEquals(cutoff.serviceDayOpensAt(first), move.freeExitUntil(),
+				"the exit ends when the stay stops being cancellable, before the stretch's own noon");
+		assertTrue(view.cancellable());
+		assertEquals(7 * PRICE, view.refundIfCancelledNow().minorUnits());
+
+		mvc.perform(get("/api/bookings/{code}", code))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.move").doesNotExist())
+				.andExpect(jsonPath("$.stretches[0].move").doesNotExist())
+				.andExpect(jsonPath("$.stretches[1].positionNo").value(3))
+				.andExpect(jsonPath("$.stretches[1].move.fromRowLabel").value("A"))
+				.andExpect(jsonPath("$.stretches[1].move.fromPositionNo").value(2))
+				.andExpect(jsonPath("$.stretches[1].move.positionsAway").value(1))
+				.andExpect(jsonPath("$.stretches[1].move.movedAt").isString())
+				.andExpect(jsonPath("$.stretches[1].move.freeExitUntil").value(cutoff.serviceDayOpensAt(first).toString()));
 	}
 
 	@Test

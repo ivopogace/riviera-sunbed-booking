@@ -99,15 +99,15 @@ does not change.
 
 ## Execution status
 
-**Stage pointer:** `implement (phase 1)`
+**Stage pointer:** `implement (phase 2)`
 
-**Next action:** red `ViewBookingServiceTest` stay arm for a moved stretch.
+**Next action:** red `BookingMovedMailIT` for a moved stretch (stay code, capped deadline).
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — stretch free exit capped | ✅ | phase-0 commit |
-| 1 — stay view per-stretch move | ⏳ | |
-| 2 — stretch move mail | | |
+| 1 — stay view per-stretch move | ✅ | phase-1 commit |
+| 2 — stretch move mail | ⏳ | |
 | 3 — booking view | | |
 | 4 — docs + close-out | | |
 

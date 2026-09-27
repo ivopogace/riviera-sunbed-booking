@@ -75,9 +75,9 @@ class ViewBookingService implements ViewBooking {
 	}
 
 	/**
-	 * A stay reads as one booking (design D6): the group's code and span, the status {@link StayStatus}
-	 * derives, the first stretch's spot and payment credentials (one intent for the group), money summed,
-	 * every stretch quoted on the stay's first day, and the stretches themselves.
+	 * A stay reads as one booking (design D6): code, span, {@link StayStatus}, the first stretch's spot and
+	 * credentials (one intent), money summed, every stretch quoted on the stay's first day, and each stretch
+	 * with its own move; the stay's {@code move} stays null, as its spot is the first stretch's.
 	 */
 	private BookingDetail toStayDetail(StayRecord stay) {
 		List<BookingRecord> stretches = stay.stretches();
@@ -108,7 +108,7 @@ class ViewBookingService implements ViewBooking {
 			SetBookingInfo set = quotes.get(i).set();
 			stretchViews.add(new BookingDetail.StayStretch(stretch.setId(), set.rowLabel(), set.positionNo(),
 					stretch.bookingDate(), stretch.lastDate(), new MoneyView(stretch.amountMinor(), stretch.currency()),
-					stretch.status()));
+					stretch.status(), moveOf(stretch, quotes.get(i))));
 		}
 		return new BookingDetail(stay.code(), status, stay.venueId(), firstSet.venueName(), firstSet.rowLabel(),
 				firstSet.positionNo(), stay.firstDay(), stay.lastDay(), new MoneyView(summary.amountMinor(), first.currency()),

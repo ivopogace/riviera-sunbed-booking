@@ -5,6 +5,7 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.time.ZoneId;
+import java.util.List;
 import java.util.Optional;
 
 import org.junit.jupiter.api.Test;
@@ -14,11 +15,15 @@ import org.junit.jupiter.params.provider.EnumSource;
 import ai.riviera.platform.booking.application.Bookings;
 import ai.riviera.platform.booking.application.BookingCutoff;
 import ai.riviera.platform.booking.application.cancel.CancellationPolicy;
+import ai.riviera.platform.booking.application.remodel.ReceiptMove;
 import ai.riviera.platform.booking.application.request.RequestWindows;
 import ai.riviera.platform.booking.domain.BookingStatus;
+import ai.riviera.platform.booking.vocabulary.BookingId;
 import ai.riviera.platform.booking.vocabulary.CancellationWindow;
 import ai.riviera.platform.booking.spi.ConfirmationMailDelivery;
 import ai.riviera.platform.booking.vocabulary.RefundReason;
+import ai.riviera.platform.booking.vocabulary.SpotRef;
+import ai.riviera.platform.booking.vocabulary.StayId;
 import ai.riviera.platform.customer.vocabulary.CustomerId;
 import ai.riviera.platform.customer.vocabulary.GuestContact;
 import ai.riviera.platform.payment.api.CollectionGuarantee;
@@ -227,6 +232,37 @@ class ViewBookingServiceTest {
 
 		assertThat(service.byCode(CODE).orElseThrow().move()).isNull();
 		org.mockito.Mockito.verifyNoInteractions(receipts);
+	}
+
+	@Test
+	void aStaysMovedStretchCarriesItsOwnMoveWhileTheStayCarriesNone() {
+		Instant movedAt = Instant.parse("2026-07-19T13:00:00Z");
+		Instant deadline = Instant.parse("2026-07-31T22:00:00Z");
+		BookingRecord first = stretch(1L, DATE, DATE.plusDays(2), null);
+		BookingRecord moved = stretch(2L, DATE.plusDays(3), DATE.plusDays(5), movedAt);
+		when(bookings.findByCode(CODE)).thenReturn(Optional.empty());
+		when(bookings.findStayByCode(CODE)).thenReturn(Optional.of(
+				new StayRecord(new StayId(4L), CODE, VENUE, DATE, DATE.plusDays(5), List.of(first, moved))));
+		when(cancellationPolicy.quote(first, DATE)).thenReturn(new CancellationPolicy.RefundQuote(setInfo(),
+				CancellationWindow.LATE, 3375L, RefundReason.POLICY, null));
+		when(cancellationPolicy.quote(moved, DATE)).thenReturn(new CancellationPolicy.RefundQuote(setInfo(),
+				CancellationWindow.LATE, 13500L, RefundReason.VENUE_CHANGE, deadline));
+		when(receipts.latestMoveOf(new BookingId(2L))).thenReturn(Optional.of(new ReceiptMove(new BookingId(2L),
+				DATE.plusDays(3), new SpotRef(new SetId(9L), "Back row", 4), new SpotRef(SET, "Front row", 2), 1, 2)));
+
+		BookingDetail detail = service.byCode(CODE).orElseThrow();
+
+		assertThat(detail.move()).isNull();
+		assertThat(detail.stretches().get(0).move()).isNull();
+		assertThat(detail.stretches().get(1).move()).isEqualTo(new BookingMove("Back row", 4, 1, 2, movedAt, deadline));
+		assertThat(detail.refundIfCancelledNow().minorUnits()).isEqualTo(16875L);
+		assertThat(detail.cancellable()).isTrue();
+		verify(receipts, never()).latestMoveOf(new BookingId(1L));
+	}
+
+	private static BookingRecord stretch(long id, LocalDate firstDay, LocalDate lastDay, Instant movedAt) {
+		return new BookingRecord(id, CODE, BookingStatus.CONFIRMED, VENUE, SET, GUEST, firstDay, lastDay, 13500L,
+				"EUR", null, null, null, null, Instant.EPOCH, null, movedAt);
 	}
 
 	@Test

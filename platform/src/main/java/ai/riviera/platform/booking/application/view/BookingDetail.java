@@ -30,8 +30,11 @@ public record BookingDetail(String code, BookingStatus status, VenueId venueId, 
 		CancellationWindow cancellationWindowAtBirth, ReviewPanel reviewPanel,
 		String reviewNameSuggestion, BookingMove move, List<StayStretch> stretches) {
 
-	/** One stretch of a stitched stay (design D6); a lone booking has none. */
+	/**
+	 * One stretch of a stitched stay (design D6); a lone booking has none. {@code move} is the remodel
+	 * move this stretch went through, {@code null} if none; its spot is this stretch's own.
+	 */
 	public record StayStretch(SetId setId, String rowLabel, int positionNo, LocalDate firstDay, LocalDate lastDay,
-			MoneyView amount, BookingStatus status) {
+			MoneyView amount, BookingStatus status, BookingMove move) {
 	}
 }
