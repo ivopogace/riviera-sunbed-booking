@@ -53,7 +53,8 @@ one row.
 4. **A stay cancels whole, judged on the stay's first day.** Every stretch's refund is quoted with the
    window anchored on the stay's first day, so a stitched stay refunds exactly what a same-set stay of
    the same dates would (invariant #10). Each stretch then transitions, releases its days and
-   publishes its own `BookingCancelled`, so payout reverses once per stretch (invariant #9).
+   publishes its own `BookingCancelled`, so payout reverses once per stretch (invariant #9); one
+   `StayCancelled` then carries the summed refund, which the stay's one cancellation mail rides (#1259).
 5. **The search is a pure rule in `itinerary/domain`** (`ItinerarySearch`, ADR-0018): a shortest path
    over `(day, set)` with the cost `(moves, row changes, positions, rows)` compared lexicographically,
    mirroring the remodel move rule's distance order; the budget is `riviera.itinerary.max-switches`,
@@ -68,7 +69,8 @@ one row.
   new tests cover only the group: all-or-nothing claims across stretches, one intent with N shares,
   the stay code resolving at check-in, cancel and view, one reversal per stretch.
 - A guest of a stitched stay receives **one** confirmation mail naming every stop, sent once every
-  stretch is confirmed (#1255; the slice first shipped one mail per stretch, by owner decision).
+  stretch is confirmed (#1255; the slice first shipped one mail per stretch, by owner decision), and
+  one cancellation mail with the total refund when they cancel it (#1259).
 - "Your spot today", the evening-before move reminder and the staff scan's today-set display build on
   the stay's code resolving (issue #1209).
 - A signed-in guest's booking list shows a stitched stay as one row under the stay's code — the whole

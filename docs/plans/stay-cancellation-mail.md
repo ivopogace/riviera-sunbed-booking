@@ -105,14 +105,14 @@ untouched. The mail reports the summed server-side quote (#10), integer minor un
 
 ## Execution status
 
-**Stage pointer:** implement (phase 2)
+**Stage pointer:** PR — merge origin/main, mark ready, review gate
 
-**Next action:** docs: RESPONSIBILITIES.md, CLAUDE.md event list, ADR-0024, multi-day-stays.md, CONTEXT.md.
+**Next action:** check CI on the docs push, then merge `origin/main` and mark #1260 ready for review.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — booking publishes | ✅ | phase-0 commit |
-| 1 — notification mails | ✅ | phase-1 commit |
-| 2 — docs | ⏳ | |
+| 0 — booking publishes | ✅ | f71d994b |
+| 1 — notification mails | ✅ | c66c7045 |
+| 2 — docs | ✅ | phase-2 commit |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.

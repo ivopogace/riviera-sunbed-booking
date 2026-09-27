@@ -262,7 +262,7 @@ model in `docs/architecture/domain-model.md`.
 - **Stitched stay** — a stay no single set is free for, covered by a few **stretches** (same-set
   runs) with a **move** between each: a different set on a different morning, never within a day.
   Booked as a **group of bookings**, one per stretch, under one `stay` row that carries the guest's
-  one code (ADR-0024); paid once, confirmed by one mail naming every stop, cancelled whole, refunded
+  one code (ADR-0024); paid once, confirmed by one mail naming every stop, cancelled whole by one mail with the total, refunded
   per stretch on the stay's first day's window. The plan is the **itinerary search**'s answer: fewest moves, then shortest (same row,
   closest position, closest row), within the **move budget** (`riviera.itinerary.max-switches`,
   default and ceiling three), anchored on a tapped set when the tourist plans around it.
