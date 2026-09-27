@@ -33,6 +33,7 @@ import ai.riviera.platform.booking.application.Bookings;
 import ai.riviera.platform.booking.application.cancel.CancelledBooking;
 import ai.riviera.platform.booking.application.checkin.CheckInFacts;
 import ai.riviera.platform.booking.application.checkin.CompletedCheckIn;
+import ai.riviera.platform.booking.application.checkin.DueMove;
 import ai.riviera.platform.booking.application.reserve.ClaimRef;
 import ai.riviera.platform.booking.application.reserve.ConfirmedBooking;
 import ai.riviera.platform.booking.application.reserve.ConfirmedStay;
@@ -709,6 +710,42 @@ class JdbcBookings implements Bookings {
 				.param("batch", batchSize)
 				.param("at", java.sql.Timestamp.from(clock.instant()))
 				.update();
+	}
+
+	@Override
+	public List<BookingId> findStayMovesDue(LocalDate moveDay) {
+		// Sweep entry read, so the bounded client; served by booking_move_reminder_due_idx (V66).
+		return sweepJdbc.sql("""
+				SELECT t.id
+				FROM booking t
+				JOIN booking p ON p.stay_id = t.stay_id AND p.id <> t.id AND p.last_date = :dayBefore
+				WHERE t.stay_id IS NOT NULL AND t.booking_date = :moveDay AND t.status = :confirmed
+				  AND t.move_reminder_at IS NULL AND t.set_id <> p.set_id
+				  AND p.status IN (:confirmed, :completed)
+				ORDER BY t.id
+				""")
+				.param("moveDay", moveDay)
+				.param("dayBefore", moveDay.minusDays(1))
+				.param(PARAM_CONFIRMED, BookingStatus.CONFIRMED.name())
+				.param(PARAM_COMPLETED, BookingStatus.COMPLETED.name())
+				.query((rs, rowNum) -> new BookingId(rs.getLong("id")))
+				.list();
+	}
+
+	@Override
+	public Optional<DueMove> stampMoveReminder(long bookingId, Instant at) {
+		return jdbc.sql("""
+				UPDATE booking
+				SET move_reminder_at = :at
+				WHERE id = :id AND status = :confirmed AND move_reminder_at IS NULL
+				RETURNING stay_id, booking_date
+				""")
+				.param("at", java.sql.Timestamp.from(at))
+				.param("id", bookingId)
+				.param(PARAM_CONFIRMED, BookingStatus.CONFIRMED.name())
+				.query((rs, rowNum) -> new DueMove(new StayId(rs.getLong("stay_id")), new BookingId(bookingId),
+						rs.getObject(COL_BOOKING_DATE, LocalDate.class)))
+				.optional();
 	}
 
 	@Override

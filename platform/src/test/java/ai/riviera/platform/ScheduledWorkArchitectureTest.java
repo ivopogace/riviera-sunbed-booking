@@ -74,6 +74,7 @@ class ScheduledWorkArchitectureTest {
 			"ChallengeRegistrySweep#sweep",
 			"GuestContactRetentionScheduler#sweep",
 			"MoneyPathAlertCheck#check",
+			"MoveReminderScheduler#sweep",
 			"NoShowSweepScheduler#sweep",
 			"RequestSweepScheduler#sweep");
 

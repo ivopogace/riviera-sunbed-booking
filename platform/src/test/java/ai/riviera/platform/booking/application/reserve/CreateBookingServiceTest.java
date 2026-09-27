@@ -828,6 +828,17 @@ class CreateBookingServiceTest {
 		}
 
 		@Override
+		public List<ai.riviera.platform.booking.vocabulary.BookingId> findStayMovesDue(java.time.LocalDate moveDay) {
+			return List.of();
+		}
+
+		@Override
+		public Optional<ai.riviera.platform.booking.application.checkin.DueMove> stampMoveReminder(long bookingId,
+				Instant at) {
+			return Optional.empty();
+		}
+
+		@Override
 		public int markPastServiceDaysMissed(java.time.LocalDate today, int batchSize) {
 			return 0;
 		}

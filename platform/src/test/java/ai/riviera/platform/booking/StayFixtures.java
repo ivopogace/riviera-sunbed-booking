@@ -70,6 +70,40 @@ final class StayFixtures {
 				new CreateStayCommand.Stretch(b, switchDay, switchDay.plusDays(daysOnB - 1L))), GUEST, null);
 	}
 
+	/** A stored stay: its row id, its code and its stretches' booking ids in day order. */
+	record SeededStay(long id, String code, List<Long> stretches) {
+	}
+
+	/**
+	 * A stay inserted as stored, never claimed: the {@code stay} row, then one booking per stretch with the
+	 * given status (the trigger writes the days of a {@code CONFIRMED} one). {@code first} is the stay's
+	 * first day; the guest is on {@code a} for {@code daysOnA} days, then on {@code b} for {@code daysOnB}.
+	 */
+	static SeededStay insertStay(JdbcClient jdbc, Venue venue, String code, LocalDate first, SetId a, int daysOnA,
+			String statusA, SetId b, int daysOnB, String statusB) {
+		long customer = jdbc.sql("INSERT INTO customer (email, full_name, phone) VALUES (:e, 'Guest', '+355600') RETURNING id")
+				.param("e", code + "@example.com").query(Long.class).single();
+		LocalDate switchDay = first.plusDays(daysOnA);
+		LocalDate last = switchDay.plusDays(daysOnB - 1L);
+		long stay = jdbc.sql("INSERT INTO stay (code, venue_id, first_date, last_date) VALUES (:c, :v, :f, :l) RETURNING id")
+				.param("c", code).param("v", venue.id()).param("f", first).param("l", last).query(Long.class).single();
+		long onA = insertStretch(jdbc, code + "-1", venue, a, customer, first, switchDay.minusDays(1), stay, statusA);
+		long onB = insertStretch(jdbc, code + "-2", venue, b, customer, switchDay, last, stay, statusB);
+		return new SeededStay(stay, code, List.of(onA, onB));
+	}
+
+	private static long insertStretch(JdbcClient jdbc, String rowCode, Venue venue, SetId set, long customer,
+			LocalDate first, LocalDate last, long stay, String status) {
+		return jdbc.sql("""
+				INSERT INTO booking (code, venue_id, set_id, customer_id, booking_date, last_date, amount_minor,
+				                     amount_currency, status, confirmed_at, stay_id)
+				VALUES (:code, :venue, :set, :cust, :first, :last, :price, 'EUR', :status, now(), :stay)
+				RETURNING id
+				""").param("code", rowCode).param("venue", venue.id()).param("set", set.value()).param("cust", customer)
+				.param("first", first).param("last", last).param("price", PRICE).param("status", status).param("stay", stay)
+				.query(Long.class).single();
+	}
+
 	static void take(JdbcClient jdbc, SetId set, LocalDate day) {
 		jdbc.sql("INSERT INTO set_availability (set_id, booking_date, state) VALUES (:id, :date, 'BOOKED_ONLINE')")
 				.param("id", set.value()).param("date", day).update();
