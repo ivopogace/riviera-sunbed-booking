@@ -299,7 +299,7 @@ class BookingControllerIT {
 	}
 
 	@Test
-	void rangeAtRequestVenueIs422() throws Exception {
+	void rangeAtRequestVenueIsOnePendingRequest() throws Exception {
 		long venue = jdbc.sql("""
 				INSERT INTO venue (name, beach, booking_mode, commission_bps, payout_currency)
 				VALUES ('Range Request Club', 'KSAMIL', 'REQUEST', 1500, 'EUR') RETURNING id
@@ -312,16 +312,17 @@ class BookingControllerIT {
 		long set = boundaryOnlineSet(venue);
 		LocalDate first = bookable().plusDays(60);
 
-		reserve(rangeBody(set, first, first.plusDays(1)))
-				.andExpect(status().isUnprocessableEntity())
-				.andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
-				.andExpect(jsonPath("$.code").value("RANGE_NOT_OFFERED"));
+		reserve(rangeBody(set, first, first.plusDays(2)))
+				.andExpect(status().isAccepted())
+				.andExpect(jsonPath("$.status").value("PENDING_REQUEST"))
+				.andExpect(jsonPath("$.bookingDate").value(first.toString()))
+				.andExpect(jsonPath("$.lastDate").value(first.plusDays(2).toString()));
 		Integer claims = jdbc.sql("SELECT COUNT(*) FROM set_availability WHERE set_id = :s")
 				.param("s", set).query(Integer.class).single();
-		org.junit.jupiter.api.Assertions.assertEquals(0, claims, "refused before any claim");
-		reserve(rangeBody(set, first, first))
-				.andExpect(status().isAccepted())
-				.andExpect(jsonPath("$.status").value("PENDING_REQUEST"));
+		org.junit.jupiter.api.Assertions.assertEquals(0, claims, "a pending request holds nothing");
+		Integer rows = jdbc.sql("SELECT COUNT(*) FROM booking WHERE set_id = :s AND status = 'PENDING_REQUEST'")
+				.param("s", set).query(Integer.class).single();
+		org.junit.jupiter.api.Assertions.assertEquals(1, rows, "one request for the whole range");
 	}
 
 	@Test

@@ -15,11 +15,10 @@ public sealed interface BookingOutcome
 	}
 
 	/**
-	 * Request-to-Book: the venue sells by request, so the booking was created
-	 * {@code PENDING_REQUEST} — the {@code (set, date)} is soft-held (invariant #2), but no
-	 * PaymentIntent exists and no card is charged until the venue accepts. The controller maps
-	 * this to {@code 202}; {@code requestExpiresAt} is the venue-response deadline
-	 * (min(now + expiry-window, the venue's sales close)).
+	 * Request-to-Book: the venue sells by request, so the booking was created {@code PENDING_REQUEST}
+	 * for the whole span — nothing is held (ADR-0025), no PaymentIntent exists and no card is charged
+	 * until the venue accepts. The controller maps this to {@code 202}; {@code requestExpiresAt} is the
+	 * venue-response deadline (min(now + expiry-window, the first day's sales close)).
 	 */
 	record Requested(BookingConfirmation confirmation, java.time.Instant requestExpiresAt)
 			implements BookingOutcome {
@@ -51,7 +50,7 @@ public sealed interface BookingOutcome
 		BOOKING_CLOSED,
 		/** The venue is closed for the season and its closure does not admit every day asked; the venue stays visible. */
 		VENUE_CLOSED,
-		/** A stay of several days at a venue that sells by request, which takes one day at a time. */
+		/** A stitched stay at a venue that sells by request, which takes one set per request, never a plan. */
 		RANGE_NOT_OFFERED,
 		/** A stay longer than the venue's own maximum stay length. */
 		STAY_TOO_LONG
