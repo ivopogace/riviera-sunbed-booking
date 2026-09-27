@@ -28,7 +28,7 @@ the delivery log keeps its per-booking grain, one row per stretch the stay mail 
   `StayConfirmationMailIT.mailsTheStayOnceAfterEveryStretchConfirms`.
 - [ ] **AC-2:** Given N stretches confirmed concurrently, when every confirm commits, then exactly
   one `StayConfirmed` is published. *Seam:* `ConfirmBooking.confirmFromPayment`. *Pinned by:*
-  `StayConfirmationMailIT.concurrentStretchConfirmsMailOnce` (registry-observed; `StayConfirmedPublicationIT` pins the sequential and one-go cases).
+  `StayConfirmationMailIT.mailsTheStayOnceAfterEveryStretchConfirms` (registry-observed; `StayConfirmedPublicationIT` pins the sequential and one-go cases).
 - [ ] **AC-3:** Given a lone booking, when it confirms, then its mail equals today's
   `BookingConfirmationMail` and `BookingConfirmed.stayId` is null. *Seam:* registry → `MockMailer`.
   *Pinned by:* existing `BookingConfirmationMailIT` (unchanged, still green).

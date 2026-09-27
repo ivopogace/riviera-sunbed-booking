@@ -53,11 +53,11 @@ class BookingConfirmationResendService implements BookingConfirmationResend {
 		if (!booking.everConfirmed()) {
 			return ResendOutcome.NOT_CONFIRMED;
 		}
-		Consumer<MailAttemptOutcome> record =
+		Consumer<MailAttemptOutcome> recordOutcome =
 				outcome -> attempts.recordAttempt(bookingId, MailAttemptSource.ADMIN_RESEND, outcome);
 		return switch (mailFacts.resolve(bookingId, booking.setId())) {
-			case BookingMailFacts.Missing(MissingBookingFact fact) -> abandon(bookingId, fact, record);
-			case BookingMailFacts.Resolved resolved -> sendAndRecord(bookingId, record,
+			case BookingMailFacts.Missing(MissingBookingFact fact) -> abandon(bookingId, fact, recordOutcome);
+			case BookingMailFacts.Resolved resolved -> sendAndRecord(bookingId, recordOutcome,
 					() -> mails.sendBookingConfirmation(resolved.toEmail(), new BookingConfirmationMail(
 							resolved.bookingCode(), resolved.venueName(), booking.bookingDate(), booking.lastDate(),
 							resolved.rowLabel(), resolved.positionNo(), booking.amountMinor(), booking.currency(),
@@ -71,11 +71,11 @@ class BookingConfirmationResendService implements BookingConfirmationResend {
 			return ResendOutcome.NOT_CONFIRMED;
 		}
 		List<BookingId> stretches = stay.stops().stream().map(StayConfirmationFacts.Stop::bookingId).toList();
-		Consumer<MailAttemptOutcome> record =
+		Consumer<MailAttemptOutcome> recordOutcome =
 				outcome -> attempts.recordAttempts(stretches, MailAttemptSource.ADMIN_RESEND, outcome);
 		return switch (mailFacts.resolveStay(stay, stay.cancellationWindowAtBirth(), stay.lateCancelRefundBps())) {
-			case StayMailFacts.Missing(MissingBookingFact fact) -> abandon(pressed, fact, record);
-			case StayMailFacts.Resolved resolved -> sendAndRecord(pressed, record,
+			case StayMailFacts.Missing(MissingBookingFact fact) -> abandon(pressed, fact, recordOutcome);
+			case StayMailFacts.Resolved resolved -> sendAndRecord(pressed, recordOutcome,
 					() -> mails.sendStayConfirmation(resolved.toEmail(), resolved.mail()));
 		};
 	}
@@ -85,19 +85,19 @@ class BookingConfirmationResendService implements BookingConfirmationResend {
 	 * listener, whose throw keeps the publication outstanding for retry, there is nothing to keep here:
 	 * the retry is the admin pressing again.
 	 */
-	private ResendOutcome sendAndRecord(BookingId bookingId, Consumer<MailAttemptOutcome> record,
+	private ResendOutcome sendAndRecord(BookingId bookingId, Consumer<MailAttemptOutcome> recordOutcome,
 			Supplier<ConfirmationSendOutcome> send) {
 		ConfirmationSendOutcome outcome;
 		try {
 			outcome = send.get();
 		}
 		catch (RuntimeException e) {
-			record.accept(MailAttemptOutcome.TRANSPORT_FAILED);
+			recordOutcome.accept(MailAttemptOutcome.TRANSPORT_FAILED);
 			log.warn("Admin resend of the confirmation mail for booking {} failed ({}); nothing retries "
 					+ "it, so the admin is told to try again", bookingId.value(), e.getClass().getSimpleName());
 			return ResendOutcome.TRANSPORT_FAILED;
 		}
-		record.accept(outcome.recorded());
+		recordOutcome.accept(outcome.recorded());
 		return switch (outcome) {
 			case SENT -> ResendOutcome.SENT;
 			case WITHHELD_SUPPRESSED -> ResendOutcome.WITHHELD_SUPPRESSED;
@@ -109,8 +109,9 @@ class BookingConfirmationResendService implements BookingConfirmationResend {
 	 * other attempt so the history shows the press happened, and named in the outcome so the admin
 	 * stops pressing.
 	 */
-	private ResendOutcome abandon(BookingId bookingId, MissingBookingFact fact, Consumer<MailAttemptOutcome> record) {
-		record.accept(MailAttemptOutcome.ABANDONED_MISSING_FACTS);
+	private ResendOutcome abandon(BookingId bookingId, MissingBookingFact fact,
+			Consumer<MailAttemptOutcome> recordOutcome) {
+		recordOutcome.accept(MailAttemptOutcome.ABANDONED_MISSING_FACTS);
 		log.error("Admin resend of the confirmation mail for booking {} abandoned ({}) — the fact cannot "
 				+ "appear later, so no press will ever succeed", bookingId.value(), fact.tagValue());
 		return ResendOutcome.MISSING_FACTS;

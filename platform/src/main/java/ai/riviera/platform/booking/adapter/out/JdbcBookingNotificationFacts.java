@@ -31,6 +31,8 @@ import ai.riviera.platform.venue.vocabulary.SetId;
 @Repository
 class JdbcBookingNotificationFacts implements BookingNotificationFacts {
 
+	private static final String COL_CUSTOMER_ID = "customer_id";
+
 	private final JdbcClient jdbc;
 	private final CancellationPolicy cancellationPolicy;
 	private final RemodelReceipts receipts;
@@ -69,7 +71,7 @@ class JdbcBookingNotificationFacts implements BookingNotificationFacts {
 						+ "LEFT JOIN stay s ON s.id = b.stay_id WHERE b.id = :id")
 				.param("id", bookingId.value())
 				.query((rs, rowNum) -> new BookingNotificationInfo(
-						rs.getString("code"), new CustomerId(rs.getLong("customer_id"))))
+						rs.getString("code"), new CustomerId(rs.getLong(COL_CUSTOMER_ID))))
 				.optional();
 	}
 
@@ -104,7 +106,7 @@ class JdbcBookingNotificationFacts implements BookingNotificationFacts {
 						new StayConfirmationFacts.Stop(new BookingId(rs.getLong("id")), new SetId(rs.getLong("set_id")),
 								rs.getObject("booking_date", LocalDate.class), rs.getObject("last_date", LocalDate.class)),
 						rs.getLong("amount_minor"), rs.getString("amount_currency"),
-						new CustomerId(rs.getLong("customer_id")), rs.getBoolean("confirmed"),
+						new CustomerId(rs.getLong(COL_CUSTOMER_ID)), rs.getBoolean("confirmed"),
 						rs.getTimestamp("created_at").toInstant()))
 				.list();
 		if (rows.isEmpty()) {
@@ -150,7 +152,7 @@ class JdbcBookingNotificationFacts implements BookingNotificationFacts {
 				rs.getLong("amount_minor"),
 				rs.getString("amount_currency"),
 				rs.getString("code"),
-				new CustomerId(rs.getLong("customer_id")),
+				new CustomerId(rs.getLong(COL_CUSTOMER_ID)),
 				rs.getBoolean("ever_confirmed"),
 				birth.map(CancellationPolicy.BirthTerms::window).orElse(null),
 				birth.map(CancellationPolicy.BirthTerms::lateCancelRefundBps).orElse(0));
