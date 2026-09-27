@@ -8,7 +8,9 @@ and the D7 module `itinerary` landed with #1206; D6, D7's search and D13's budge
 itineraries, ADR-0024) landed with #1208; story 15 (one confirmation mail per stay) landed with
 #1255 and its cancellation twin with #1259; a remodel-moved stretch's notice in the stay view and
 its move mail landed with #1257; story 22's evening move reminder, story 23's "your spot today" and
-story 36's staff re-scan naming today's set landed with #1209; the rest is not yet built.** Decisions below were made at the refine stage (2026-09-12/13) against `main` @
+story 36's staff re-scan naming today's set landed with #1209; stories 17–19 and 25–27 (a stay at a
+Request-to-Book venue is one request, answered whole; no stitched plan there) landed with #1203; the
+rest is not yet built.** Decisions below were made at the refine stage (2026-09-12/13) against `main` @
 `5bceef00`, grounded in four verification passes over the reserve path, the sweeps, the money paths
 and the beach map. Each is a one-paragraph re-decision if reality disagrees. The per-module
 contracts these decisions settle belong in `RESPONSIBILITIES.md` once a slice lands; the glossary

@@ -35,7 +35,7 @@ import static org.junit.jupiter.api.Assertions.assertSame;
 /**
  * A stay at an Instant venue through {@link CreateBooking}: one booking row spanning the days at
  * the stay's total, every day claimed (invariant #2), the guest cancel freeing every day for a
- * re-claim (D5), and a Request-to-Book venue refusing a range before any claim. Real Postgres
+ * re-claim (D5), and a Request-to-Book venue taking a range as one pending request that holds nothing. Real Postgres
  * via Testcontainers, the stub gateway.
  */
 @EnabledIfDockerAvailable
@@ -168,12 +168,19 @@ class RangeBookingIT {
 	}
 
 	@Test
-	void aRequestVenueRefusesARange() {
+	void aRequestVenueTakesOneSetForARange() {
 		SetId set = onlineSetOf("REQUEST");
 		LocalDate first = firstDay();
 
-		assertSame(BookingOutcome.Rejected.RANGE_NOT_OFFERED, createBooking.create(stay(set, first, 2)));
-		assertEquals(0L, availabilityRows(set, first, first.plusDays(1)), "refused before any claim");
-		assertEquals(ClaimOutcome.CLAIMED, availability.claim(set, first), "sanity: the day was never held");
+		BookingOutcome outcome = createBooking.create(stay(set, first, 3));
+
+		BookingOutcome.Requested requested = assertInstanceOf(BookingOutcome.Requested.class, outcome);
+		assertEquals(first.plusDays(2), requested.confirmation().lastDate());
+		assertEquals(3 * PRICE, requested.confirmation().amount().minorUnits());
+		List<String> rows = jdbc.sql("SELECT status || ':' || booking_date || '..' || last_date || '=' || amount_minor "
+						+ "FROM booking WHERE set_id = :s").param("s", set.value()).query(String.class).list();
+		assertEquals(List.of("PENDING_REQUEST:" + first + ".." + first.plusDays(2) + "=" + 3 * PRICE), rows,
+				"one pending row spanning the stay at the total");
+		assertEquals(0L, availabilityRows(set, first, first.plusDays(2)), "a pending request holds nothing (ADR-0025)");
 	}
 }

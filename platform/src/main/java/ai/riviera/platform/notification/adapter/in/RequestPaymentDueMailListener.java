@@ -49,7 +49,7 @@ class RequestPaymentDueMailListener {
 		switch (facts.resolve(event.bookingId(), event.setId())) {
 			case BookingMailFacts.Missing(MissingBookingFact fact) -> abandon(fact, event);
 			case BookingMailFacts.Resolved booking -> mails.sendPaymentDue(booking.toEmail(),
-					new PaymentDueMail(booking.bookingCode(), booking.venueName(), event.bookingDate(),
+					new PaymentDueMail(booking.bookingCode(), booking.venueName(), event.bookingDate(), event.lastDay(),
 							event.payBy(), event.amountMinor(), event.currency(),
 							links.forBooking(booking.bookingCode()),
 							event.cancellationWindowAtBirth(), event.lateCancelRefundBps()));

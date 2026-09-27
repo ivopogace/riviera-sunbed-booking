@@ -107,7 +107,7 @@ function mapless(): VenueMapView {
   return { ...miramar(), sets: [], fromPrice: null };
 }
 
-/** The same venue in Request-to-Book mode — the map footer is the one surface that branches on it. */
+/** The same venue in Request-to-Book mode: the footer's deal, and no stitched plan is ever offered. */
 function requestMode(): VenueMapView {
   return { ...miramar(), bookingMode: 'REQUEST' };
 }
@@ -763,7 +763,9 @@ describe('VenueMap', () => {
     expect(footer.textContent).toContain(
       'Pick a set to request it \u2014 you pay only once Miramar Beach Club accepts, and nothing is held until then.',
     );
-    expect(footer.textContent).toContain('Prices are per set, full day.');
+    expect(footer.textContent).toContain(
+      'Prices are per set, full day; a stay is one request, answered whole.',
+    );
   });
 
   it('renders no legend, grid or tap-hint for a venue with no sets (#717)', async () => {
@@ -1477,13 +1479,13 @@ describe('VenueMap', () => {
     );
   });
 
-  it('offers no stay mode at a Request-to-Book venue', async () => {
+  it('offers the stay mode at a Request-to-Book venue too: a range is one request', async () => {
     flushRequestVenue();
     await settle();
     fixture.detectChanges();
     await openPicker();
 
-    expect(el().querySelector('[data-testid="calendar-mode-stay"]')).toBeNull();
+    expect(el().querySelector('[data-testid="calendar-mode-stay"]')).not.toBeNull();
   });
 
   it('navigates back to discovery when the back pill is pressed', async () => {
@@ -1912,6 +1914,28 @@ describe('VenueMap — date carried from the discovery page (#294)', () => {
 
       expect(dom().querySelector('[data-testid="availability-calendar"]')).not.toBeNull();
       httpMock.match((req) => req.url.endsWith('/availability-calendar'));
+    });
+
+    it('at a Request-to-Book venue asks for no plan: the banner says one spot per request, the sheet offers no plan around', async () => {
+      await setup({ date: first, lastDate: last });
+      venueReq().flush({ ...stayMiramar(first, last), bookingMode: 'REQUEST' });
+      await settle();
+      fixture.detectChanges();
+
+      httpMock.expectNone((req) => req.url === `${environment.apiBaseUrl}/api/venues/1/itinerary`);
+      const banner = dom().querySelector<HTMLElement>('[data-testid="no-cover"]')!;
+      expect(banner.textContent).toContain('No single spot is free for all 3 days');
+      expect(banner.querySelector('[data-testid="no-cover-request"]')!.textContent).toContain(
+        'one spot at a time',
+      );
+      expect(dom().querySelector('[data-testid="no-cover-plan"]')).toBeNull();
+      expect(dom().querySelector('[data-testid="no-cover-run"]')).not.toBeNull();
+
+      dom().querySelector<HTMLButtonElement>('button[data-set-id="2"]')!.click();
+      fixture.detectChanges();
+
+      expect(dom().querySelector('[data-testid="partly-free-sheet"]')).not.toBeNull();
+      expect(dom().querySelector('[data-testid="plan-around"]')).toBeNull();
     });
 
     it('offers the longest one-spot run and the way to other beaches', async () => {

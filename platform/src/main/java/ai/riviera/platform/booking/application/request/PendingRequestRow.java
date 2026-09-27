@@ -12,7 +12,7 @@ import ai.riviera.platform.venue.vocabulary.SetId;
  * guest name via {@code customer::api} (the booking module never reads customer tables,
  * invariant #11).
  */
-public record PendingRequestRow(long bookingId, SetId setId, LocalDate bookingDate,
+public record PendingRequestRow(long bookingId, SetId setId, LocalDate bookingDate, LocalDate lastDate,
 		CustomerId customerId, long amountMinor, String currency, Instant requestedAt,
 		Instant requestExpiresAt, int competingRequests) {
 }

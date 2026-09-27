@@ -282,7 +282,7 @@ class JdbcBookings implements Bookings {
 				SET status = :declined, decline_reason = :reason
 				WHERE set_id = :set AND status = :pending AND id <> :except
 				  AND booking_date <= :last AND last_date >= :first
-				RETURNING id, set_id, booking_date
+				RETURNING id, set_id, booking_date, last_date
 				""")
 				.param("declined", BookingStatus.DECLINED.name())
 				.param(PARAM_REASON, reason.name())
@@ -293,7 +293,7 @@ class JdbcBookings implements Bookings {
 				.param("last", lastDay)
 				.query((rs, rowNum) -> new ai.riviera.platform.booking.application.request.DeclinedRival(
 						rs.getLong("id"), new SetId(rs.getLong(COL_SET_ID)),
-						rs.getObject(COL_BOOKING_DATE, LocalDate.class)))
+						rs.getObject(COL_BOOKING_DATE, LocalDate.class), rs.getObject(COL_LAST_DATE, LocalDate.class)))
 				.list();
 	}
 
@@ -378,8 +378,8 @@ class JdbcBookings implements Bookings {
 		// does NOT select the code (invariant #7 — the operator acts by id). Served by
 		// booking_venue_id_idx; the PENDING_REQUEST slice per venue is tiny.
 		return jdbc.sql("""
-				SELECT b.id, b.set_id, b.booking_date, b.customer_id, b.amount_minor, b.amount_currency,
-				       b.created_at, b.request_expires_at,
+				SELECT b.id, b.set_id, b.booking_date, b.last_date, b.customer_id, b.amount_minor,
+				       b.amount_currency, b.created_at, b.request_expires_at,
 				       (SELECT COUNT(*) FROM booking o
 				        WHERE o.set_id = b.set_id AND o.status = :pending AND o.id <> b.id
 				          AND o.booking_date <= b.last_date AND o.last_date >= b.booking_date) AS competing_requests
@@ -391,7 +391,7 @@ class JdbcBookings implements Bookings {
 				.param(PARAM_PENDING, BookingStatus.PENDING_REQUEST.name())
 				.query((rs, rowNum) -> new ai.riviera.platform.booking.application.request.PendingRequestRow(
 						rs.getLong("id"), new SetId(rs.getLong(COL_SET_ID)),
-						rs.getObject(COL_BOOKING_DATE, LocalDate.class),
+						rs.getObject(COL_BOOKING_DATE, LocalDate.class), rs.getObject(COL_LAST_DATE, LocalDate.class),
 						new ai.riviera.platform.customer.vocabulary.CustomerId(rs.getLong(COL_CUSTOMER_ID)),
 						rs.getLong(COL_AMOUNT_MINOR), rs.getString(COL_AMOUNT_CURRENCY),
 						rs.getTimestamp(COL_CREATED_AT).toInstant(),

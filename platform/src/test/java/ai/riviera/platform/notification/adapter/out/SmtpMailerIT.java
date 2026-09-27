@@ -27,6 +27,9 @@ import ai.riviera.platform.notification.application.BookingConfirmationMail;
 import ai.riviera.platform.notification.application.BookingMovedMail;
 import ai.riviera.platform.notification.application.MoveReminderMail;
 import ai.riviera.platform.notification.application.PaymentDueMail;
+import ai.riviera.platform.booking.vocabulary.DeclineReason;
+import ai.riviera.platform.notification.application.RequestDeclinedMail;
+import ai.riviera.platform.notification.application.RequestExpiredMail;
 import ai.riviera.platform.notification.application.StayConfirmationMail;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -278,7 +281,7 @@ class SmtpMailerIT {
 	@Test
 	void rendersTheDisclosureOnThePaymentDueMailToo() throws Exception {
 		mailer().sendPaymentDue(TO, new PaymentDueMail(BOOKING_CODE, "Miramar Beach",
-				LocalDate.of(2026, 8, 15), DEADLINE, 2500, "EUR", PAY_LINK,
+				LocalDate.of(2026, 8, 15), LocalDate.of(2026, 8, 15), DEADLINE, 2500, "EUR", PAY_LINK,
 				CancellationWindow.CLOSED, 0));
 		assertThat(theOnlyReceivedMessage().getContent().toString())
 				.contains("non-refundable last-minute booking");
@@ -470,8 +473,28 @@ class SmtpMailerIT {
 	}
 
 	private static PaymentDueMail paymentDue() {
-		return new PaymentDueMail(BOOKING_CODE, "Miramar Beach", LocalDate.of(2026, 8, 15),
+		return new PaymentDueMail(BOOKING_CODE, "Miramar Beach", LocalDate.of(2026, 8, 15), LocalDate.of(2026, 8, 15),
 				DEADLINE, 2500, "EUR", PAY_LINK, CancellationWindow.FREE, 0);
+	}
+
+	@Test
+	void aStaysRequestMailsNameItsDays() throws Exception {
+		LocalDate first = LocalDate.of(2026, 8, 15);
+		LocalDate last = LocalDate.of(2026, 8, 17);
+		mailer().sendPaymentDue(TO, new PaymentDueMail(BOOKING_CODE, "Miramar Beach", first, last,
+				DEADLINE, 7500, "EUR", PAY_LINK, CancellationWindow.FREE, 0));
+		mailer().sendRequestDeclined(TO, new RequestDeclinedMail(BOOKING_CODE, "Miramar Beach", first, last,
+				PAY_LINK, DeclineReason.SET_UNAVAILABLE));
+		mailer().sendRequestExpired(TO, new RequestExpiredMail(BOOKING_CODE, "Miramar Beach", first, last, PAY_LINK));
+
+		greenMail.waitForIncomingEmail(3);
+		for (MimeMessage message : greenMail.getReceivedMessages()) {
+			String body = message.getContent().toString();
+			assertThat(body).as(message.getSubject()).contains("Days:          15 August – 17 August 2026 (3 days)");
+			assertThat(body).as(message.getSubject()).doesNotContain("Date:");
+		}
+		assertThat(greenMail.getReceivedMessages()[1].getContent().toString())
+				.contains("the set is no longer available for those days");
 	}
 
 	/** The venue's own remodel ended it: same reason, plus the way back that marks it. */

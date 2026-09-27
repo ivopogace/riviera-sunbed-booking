@@ -50,7 +50,8 @@ class RequestDeclinedMailListener {
 			case BookingMailFacts.Missing(MissingBookingFact fact) -> abandon(fact, event);
 			case BookingMailFacts.Resolved booking -> mails.sendRequestDeclined(booking.toEmail(),
 					new RequestDeclinedMail(booking.bookingCode(), booking.venueName(),
-							event.bookingDate(), links.forBooking(booking.bookingCode()), event.reasonOrVenue()));
+							event.bookingDate(), event.lastDay(), links.forBooking(booking.bookingCode()),
+							event.reasonOrVenue()));
 		}
 	}
 

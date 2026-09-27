@@ -391,7 +391,7 @@ class RemodelClaimsServiceTest {
 		verify(events).publishEvent(new BookingCancelled(new BookingId(211), VENUE, A1.setId(), IN_TEN_DAYS,
 				0, "EUR", RefundReason.VENUE_CHANGE));
 		verify(events).publishEvent(new BookingRequestDeclined(new BookingId(212), A1.setId(), IN_TEN_DAYS,
-				DeclineReason.SET_UNAVAILABLE));
+				IN_TEN_DAYS, DeclineReason.SET_UNAVAILABLE));
 		verify(availability, times(1)).release(A1.setId(), IN_TEN_DAYS);
 		verify(bookings, never()).cancelConfirmed(anyLong(), any(), anyLong(), any());
 		verify(receipts).store(new NewReceipt(VENUE, OWNER, CLOCK.instant(), List.of(), List.of(

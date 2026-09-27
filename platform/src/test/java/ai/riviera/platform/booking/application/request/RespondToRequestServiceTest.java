@@ -149,7 +149,7 @@ class RespondToRequestServiceTest {
 
 		service().accept(OPERATOR, VENUE, BOOKING);
 
-		verify(publisher).publishEvent((Object) new BookingPaymentDue(BOOKING, VENUE, SET, BOOKING_DATE,
+		verify(publisher).publishEvent((Object) new BookingPaymentDue(BOOKING, VENUE, SET, BOOKING_DATE, BOOKING_DATE,
 				NOW.plus(PAY_WINDOW), 4500L, "EUR", CancellationWindow.LATE, 2500));
 		// The classification keys on the booking's birth, not the accept instant (#795 S-5).
 		verify(cancellationPolicy).windowAtBirth(SET, BOOKING_DATE, CREATED_AT);
@@ -171,7 +171,7 @@ class RespondToRequestServiceTest {
 		Instant serviceDayEndsAt = Instant.parse("2026-07-11T22:00:00Z");
 		assertTrue(serviceDayEndsAt.isBefore(onDayAccept.plus(PAY_WINDOW)),
 				"the raw window must genuinely outrun the service day's end, or this pins nothing");
-		verify(publisher).publishEvent((Object) new BookingPaymentDue(BOOKING, VENUE, SET, today,
+		verify(publisher).publishEvent((Object) new BookingPaymentDue(BOOKING, VENUE, SET, today, today,
 				serviceDayEndsAt, 4500L, "EUR", CancellationWindow.LATE, 2500));
 	}
 
@@ -188,7 +188,7 @@ class RespondToRequestServiceTest {
 
 		serviceOn(atAccept).accept(OPERATOR, VENUE, BOOKING);
 
-		verify(publisher).publishEvent((Object) new BookingPaymentDue(BOOKING, VENUE, SET, today,
+		verify(publisher).publishEvent((Object) new BookingPaymentDue(BOOKING, VENUE, SET, today, today,
 				onDayAccept.plus(PAY_WINDOW), 4500L, "EUR", CancellationWindow.LATE, 2500));
 	}
 
@@ -294,7 +294,7 @@ class RespondToRequestServiceTest {
 		AcceptOutcome outcome = service().accept(OPERATOR, VENUE, BOOKING);
 
 		assertSame(AcceptOutcome.Rejected.SET_UNAVAILABLE, outcome);
-		verify(publisher).publishEvent(new BookingRequestDeclined(BOOKING, SET, BOOKING_DATE,
+		verify(publisher).publishEvent(new BookingRequestDeclined(BOOKING, SET, BOOKING_DATE, BOOKING_DATE,
 				DeclineReason.SET_UNAVAILABLE));
 		verify(bookings, never()).acceptPendingRequest(anyLong(), any(), any());
 		verifyNoInteractions(checkout);
@@ -306,14 +306,14 @@ class RespondToRequestServiceTest {
 				.thenReturn(Optional.of(acceptedRequest()));
 		when(bookings.declineOverlappingPending(SET, BOOKING_DATE, BOOKING_DATE, BOOKING.value(),
 				DeclineReason.ANOTHER_GUEST))
-				.thenReturn(List.of(new DeclinedRival(77, SET, BOOKING_DATE), new DeclinedRival(78, SET, BOOKING_DATE)));
+				.thenReturn(List.of(new DeclinedRival(77, SET, BOOKING_DATE, BOOKING_DATE), new DeclinedRival(78, SET, BOOKING_DATE, BOOKING_DATE)));
 		when(checkout.pay(any(), any())).thenReturn(new PaymentOutcome.Succeeded("ok"));
 
 		service().accept(OPERATOR, VENUE, BOOKING);
 
-		verify(publisher).publishEvent(new BookingRequestDeclined(new BookingId(77), SET, BOOKING_DATE,
+		verify(publisher).publishEvent(new BookingRequestDeclined(new BookingId(77), SET, BOOKING_DATE, BOOKING_DATE,
 				DeclineReason.ANOTHER_GUEST));
-		verify(publisher).publishEvent(new BookingRequestDeclined(new BookingId(78), SET, BOOKING_DATE,
+		verify(publisher).publishEvent(new BookingRequestDeclined(new BookingId(78), SET, BOOKING_DATE, BOOKING_DATE,
 				DeclineReason.ANOTHER_GUEST));
 	}
 
@@ -365,7 +365,7 @@ class RespondToRequestServiceTest {
 		DeclineOutcome outcome = service().decline(OPERATOR, VENUE, BOOKING);
 
 		assertInstanceOf(DeclineOutcome.Declined.class, outcome);
-		verify(publisher).publishEvent(new BookingRequestDeclined(BOOKING, set, date, DeclineReason.VENUE));
+		verify(publisher).publishEvent(new BookingRequestDeclined(BOOKING, set, date, date, DeclineReason.VENUE));
 		verifyNoInteractions(checkout, availability);
 	}
 
@@ -428,7 +428,8 @@ class RespondToRequestServiceTest {
 		var lookup = mock(CustomerLookup.class);
 		var customerId = new CustomerId(5);
 		when(bookings.findPendingRequestsForVenue(VENUE)).thenReturn(List.of(new PendingRequestRow(
-				BOOKING.value(), new SetId(3), java.time.LocalDate.of(2026, 8, 3), customerId,
+				BOOKING.value(), new SetId(3), java.time.LocalDate.of(2026, 8, 3), java.time.LocalDate.of(2026, 8, 3),
+				customerId,
 				4500L, "EUR", NOW.minusSeconds(3600), NOW.plusSeconds(3600), 0)));
 		when(lookup.findByIds(java.util.Set.of(customerId))).thenReturn(java.util.Map.of(customerId,
 				new ai.riviera.platform.customer.vocabulary.GuestContact("g@e.com", "Guest Name", "+355")));

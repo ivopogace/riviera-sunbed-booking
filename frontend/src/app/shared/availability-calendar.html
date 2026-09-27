@@ -46,17 +46,15 @@
     </button>
   </header>
 
-  @if (rangeAllowed()) {
-    <div class="mt-2">
-      <app-segmented-control
-        variant="pill"
-        label="How long"
-        [options]="modeOptions"
-        [value]="mode()"
-        (valueChange)="onModeChange($event)"
-      />
-    </div>
-  }
+  <div class="mt-2">
+    <app-segmented-control
+      variant="pill"
+      label="How long"
+      [options]="modeOptions"
+      [value]="mode()"
+      (valueChange)="onModeChange($event)"
+    />
+  </div>
 
   <table
     class="mt-2 w-full table-fixed border-collapse"

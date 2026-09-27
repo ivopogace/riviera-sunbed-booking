@@ -268,6 +268,9 @@ const CLS = {
                 {{ b.venueName }} hasn’t responded to your booking request yet. You won’t be charged
                 unless they accept. The set isn’t held for you until then — other guests can request
                 it too.
+                @if (isStay(b)) {
+                  They accept or decline your whole stay, never part of it.
+                }
               </p>
               @if (b.requestExpiresAt; as deadline) {
                 <p [class]="cls.bannerBody">
@@ -951,13 +954,18 @@ export class BookingView {
     return formatDeadline(iso);
   }
 
+  /** A booking of several days; a payload without a last day is one day. */
+  protected isStay(b: BookingDetail): boolean {
+    return b.lastDate !== undefined && b.lastDate !== b.bookingDate;
+  }
+
   /** The one sentence that says why the request was declined; a payload without a reason is the venue's no. */
   protected declinedCopy(b: BookingDetail): string {
     switch (b.declineReason ?? 'VENUE') {
       case 'ANOTHER_GUEST':
         return `${b.venueName} gave this set to another guest who had also requested it, so your request was declined.`;
       case 'SET_UNAVAILABLE':
-        return `The set you requested at ${b.venueName} is no longer available for that day, so your request was declined.`;
+        return `The set you requested at ${b.venueName} is no longer available for ${this.isStay(b) ? 'those days' : 'that day'}, so your request was declined.`;
       default:
         return `${b.venueName} couldn’t take this booking, so it was declined.`;
     }

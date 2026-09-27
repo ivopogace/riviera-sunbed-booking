@@ -68,7 +68,7 @@ class ReserveStayService {
 		Instant now = clock.instant();
 		StaySpan stay = command.stay();
 		for (Stretch stretch : command.stretches()) {
-			Optional<BookingOutcome.Rejected> refused = fences.refuse(sets.get(stretch.setId()), stay, now);
+			Optional<BookingOutcome.Rejected> refused = fences.refuseStretch(sets.get(stretch.setId()), stay, now);
 			if (refused.isPresent()) {
 				return new StayReserveOutcome.Rejected(refused.get());
 			}

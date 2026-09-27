@@ -472,28 +472,18 @@ class CreateBookingServiceTest {
 	}
 
 	@Test
-	void aRequestVenueRefusesARange() {
-		List<LocalDate> claimed = new ArrayList<>();
-		AvailabilityClaim recording = new AvailabilityClaim() {
-			@Override
-			public ClaimOutcome claim(SetId setId, LocalDate bookingDate) {
-				claimed.add(bookingDate);
-				return ClaimOutcome.CLAIMED;
-			}
-
-			@Override
-			public void release(SetId setId, LocalDate bookingDate) {
-			}
-		};
-		CreateBookingService service = service(set(Pool.ONLINE, BookingMode.REQUEST), recording,
-				_ -> new PaymentOutcome.Succeeded("ok"), () -> "X");
+	void aRequestVenueTakesOneSetForARange() {
+		CreateBookingService service = service(set(Pool.ONLINE, BookingMode.REQUEST), neverClaiming(),
+				_ -> { throw new AssertionError("no payment for a request"); }, () -> "REQRANGE01");
 
 		BookingOutcome outcome = service.create(
-				new CreateBookingCommand(SET, DATE, DATE.plusDays(1), GUEST, null));
+				new CreateBookingCommand(SET, DATE, DATE.plusDays(2), GUEST, null));
 
-		assertSame(BookingOutcome.Rejected.RANGE_NOT_OFFERED, outcome);
-		assertTrue(claimed.isEmpty(), "refused before any claim");
-		assertTrue(bookings.pendingInserted.isEmpty());
+		BookingOutcome.Requested requested = assertInstanceOf(BookingOutcome.Requested.class, outcome);
+		assertEquals(DATE.plusDays(2), requested.confirmation().lastDate());
+		assertEquals(13500L, requested.confirmation().amount().minorUnits(), "3 days × 4500");
+		assertEquals(1, bookings.pendingInserted.size(), "one pending row for the whole range");
+		assertEquals(DATE.plusDays(2), bookings.pendingInserted.getFirst().lastDate());
 	}
 
 	@Test

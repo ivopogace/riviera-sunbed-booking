@@ -96,6 +96,21 @@ class RequestExpiredMailIT {
 				.endsWith("/booking/EXPMAIL1");
 	}
 
+	@Test
+	void namesTheStaysDays() {
+		BookingMailFixtures.SetRef set = fixtures.onlineSet();
+		LocalDate first = LocalDate.of(2029, 10, 13);
+		String guest = "expired-stay@example.com";
+
+		long bookingId = fixtures.seedBooking(set, "EXPMAIL3", first, guest, 10_013L, "EXPIRED");
+		fixtures.publishInTransaction(fixtures.requestExpiredOf(set, bookingId, first, first.plusDays(2)));
+
+		Awaitility.await().atMost(WAIT).until(() -> mailer.lastTo(guest).isPresent());
+
+		assertThat(mailer.lastTo(guest).orElseThrow().requestExpired().bookingDate()).isEqualTo(first);
+		assertThat(mailer.lastTo(guest).orElseThrow().requestExpired().lastDate()).isEqualTo(first.plusDays(2));
+	}
+
 	/** AC-5: the skip completes the publication — no retry loop against a refused address. */
 	@Test
 	void suppressedAddressIsSkippedAndCompletes() {

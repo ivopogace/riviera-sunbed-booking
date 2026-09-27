@@ -38,7 +38,7 @@ class RequestTerminationService {
 		return bookings.declinePending(bookingId.value(), venueId, DeclineReason.VENUE)
 				.map(claim -> {
 					events.publishEvent(new BookingRequestDeclined(bookingId, claim.setId(),
-							claim.bookingDate(), DeclineReason.VENUE));
+							claim.bookingDate(), claim.lastDate(), DeclineReason.VENUE));
 					return true;
 				})
 				.orElse(false);
@@ -49,7 +49,7 @@ class RequestTerminationService {
 		return bookings.expirePendingRequest(bookingId.value(), now)
 				.map(claim -> {
 					events.publishEvent(new BookingRequestExpired(bookingId, claim.setId(),
-							claim.bookingDate()));
+							claim.bookingDate(), claim.lastDate()));
 					return true;
 				})
 				.orElse(false);

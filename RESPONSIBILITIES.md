@@ -236,8 +236,9 @@ any is released on the old, never a swap of my own — so a racing reserve wins 
 - **A reserve fences before any claim, on both booking modes:** a hidden venue's set
   (`operator.api.VenueVisibility`) is `NO_SUCH_SET`, and no later leg consults visibility; a season
   closure that does not admit every day is `VENUE_CLOSED` (the venue is deliberately visible); the
-  sales close is judged on the first day (invariant #4); a Request-to-Book venue refuses several
-  days (`RANGE_NOT_OFFERED`); a span over the venue's maximum stay is `STAY_TOO_LONG`.
+  sales close is judged on the first day (invariant #4); a stitched stay at a Request-to-Book venue
+  is `RANGE_NOT_OFFERED` (one set for a range is one request, #1203); a span over the venue's
+  maximum stay is `STAY_TOO_LONG`.
 - **Then it claims every day, all or nothing:** a day that loses gives back every day won, then
   answers `SET_TAKEN` (`ConcurrentRangeReservationIT`). One PaymentIntent for per-day price × days
   (invariant #5); the cancellation window and refund are the first day's, on the whole amount
@@ -817,12 +818,12 @@ into one verdict per venue.
 
 **Job:** say, for a span, which venues can host a stay — one online set free for every day within
 the venue's maximum stay (`SAME_SET`, with how many sets), a stitched plan within the move budget
-(`FITS_WITH_MOVES`, with how many) — and why not (`CANNOT_HOST`, with the longest single-set run
-and the maximum). And, for one venue, the plan itself: `domain.ItinerarySearch` is a shortest path
-over `(day, set)`, fewest moves then shortest (the remodel move rule's distance order), anchored
-on a tapped set when one is named, under `riviera.itinerary.max-switches` (default and ceiling
-three, D13); `PlanItinerary` prices it off the tourist map read and `GET /api/venues/{id}/itinerary`
-serves it. A snapshot, never a hold (invariant #2): the reserve path still claims each `(set, date)`.
+(`FITS_WITH_MOVES`, with how many) — and why not (`CANNOT_HOST`, with the longest run and the
+maximum). A Request-to-Book venue's budget is zero (`MoveBudget#forVenue`, #1203): one set per
+request, so it reads `SAME_SET` or `CANNOT_HOST` and gets no plan. For one venue, the plan itself
+(`GET /api/venues/{id}/itinerary`, priced by `PlanItinerary`): `domain.ItinerarySearch`, a shortest
+path over `(day, set)`, fewest moves then shortest, anchored on a tapped set when named, under
+`riviera.itinerary.max-switches` (D13: three). A snapshot, never a hold (#2).
 
 **Not my job:** which sets exist, their pools and prices → **`venue`**; the `(set, date)` rows →
 **`availability`**; whether a date still sells → **`booking`**; visibility → `VenueCatalog` fences

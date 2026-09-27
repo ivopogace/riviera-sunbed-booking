@@ -19,9 +19,15 @@ import org.springframework.jdbc.core.simple.JdbcClient;
 
 import ai.riviera.platform.EnabledIfDockerAvailable;
 import ai.riviera.platform.TestcontainersConfiguration;
+import ai.riviera.platform.booking.application.request.AcceptOutcome;
 import ai.riviera.platform.booking.application.request.ExpireRequests;
+import ai.riviera.platform.booking.application.request.RespondToRequest;
+import ai.riviera.platform.booking.vocabulary.BookingId;
+import ai.riviera.platform.operator.vocabulary.OperatorId;
+import ai.riviera.platform.venue.vocabulary.VenueId;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
@@ -45,10 +51,14 @@ class RequestExpiryVsAcceptRaceIT {
 	ExpireRequests expireRequests;
 
 	@Autowired
+	RespondToRequest respondToRequest;
+
+	@Autowired
 	JdbcClient jdbc;
 
 	private long venueId;
 	private long setId;
+	private OperatorId operator;
 
 	@BeforeEach
 	void seedRequestVenue() {
@@ -63,21 +73,30 @@ class RequestExpiryVsAcceptRaceIT {
 				VALUES (:venue, 'A', 1, 'STANDARD', 'ONLINE', 4500, 'EUR', 1, 1)
 				RETURNING id
 				""").param("venue", venueId).query(Long.class).single();
+		long operatorId = jdbc.sql("INSERT INTO operator (username, status) VALUES (:u, 'ACTIVE') RETURNING id")
+				.param("u", "race-op-" + System.nanoTime()).query(Long.class).single();
+		jdbc.sql("INSERT INTO operator_venue (venue_id, operator_id) VALUES (:v, :o)")
+				.param("v", venueId).param("o", operatorId).update();
+		operator = new OperatorId(operatorId);
 	}
 
 	/** A PENDING_REQUEST row already past its deadline, holding nothing (ADR-0025). */
 	private long insertOverdueRequest(String code, LocalDate date) {
+		return insertOverdueRequest(code, date, date);
+	}
+
+	private long insertOverdueRequest(String code, LocalDate first, LocalDate last) {
 		long customer = jdbc.sql("INSERT INTO customer (email, full_name, phone) "
 						+ "VALUES (:e, 'Guest', '+355600') RETURNING id")
 				.param("e", code + "@example.com").query(Long.class).single();
 		long booking = jdbc.sql("""
-				INSERT INTO booking (code, venue_id, set_id, customer_id, booking_date,
+				INSERT INTO booking (code, venue_id, set_id, customer_id, booking_date, last_date,
 				                     amount_minor, amount_currency, status, request_expires_at)
-				VALUES (:code, :venue, :set, :cust, :date, 4500, 'EUR', 'PENDING_REQUEST', :expires)
+				VALUES (:code, :venue, :set, :cust, :first, :last, 4500, 'EUR', 'PENDING_REQUEST', :expires)
 				RETURNING id
 				""")
 				.param("code", code).param("venue", venueId).param("set", setId)
-				.param("cust", customer).param("date", date)
+				.param("cust", customer).param("first", first).param("last", last)
 				.param("expires", java.sql.Timestamp.from(Instant.now().minusSeconds(30)))
 				.query(Long.class).single();
 		return booking;
@@ -135,5 +154,41 @@ class RequestExpiryVsAcceptRaceIT {
 						+ "WHERE set_id = :set AND booking_date = :date")
 				.param("set", setId).param("date", date).query(Long.class).single(),
 				"an expired request held nothing, and the losing accept claimed nothing (ADR-0025)");
+	}
+
+	@RepeatedTest(3)
+	void aRangeLeavesOneOutcomeAndNoPartialClaim() throws Exception {
+		LocalDate first = LocalDate.now().plusMonths(3);
+		long bookingId = insertOverdueRequest("RNGR" + System.nanoTime() % 1_000_000, first, first.plusDays(2));
+
+		CountDownLatch gate = new CountDownLatch(1);
+		Callable<Integer> sweep = () -> {
+			gate.await();
+			return expireRequests.sweep();
+		};
+		Callable<AcceptOutcome> accept = () -> {
+			gate.await();
+			return respondToRequest.accept(operator, new VenueId(venueId), new BookingId(bookingId));
+		};
+
+		int swept;
+		AcceptOutcome accepted;
+		try (ExecutorService pool = Executors.newFixedThreadPool(2)) {
+			Future<Integer> sweeping = pool.submit(sweep);
+			Future<AcceptOutcome> accepting = pool.submit(accept);
+			gate.countDown();
+			swept = sweeping.get();
+			accepted = accepting.get();
+		}
+
+		assertInstanceOf(AcceptOutcome.Rejected.class, accepted, "an overdue range is never accepted");
+		assertTrue(swept >= 1, "the sweep expires the overdue request");
+		String status = jdbc.sql("SELECT status FROM booking WHERE id = :id")
+				.param("id", bookingId).query(String.class).single();
+		assertEquals("EXPIRED", status);
+		assertEquals(0L, jdbc.sql("SELECT COUNT(*) FROM set_availability "
+						+ "WHERE set_id = :set AND booking_date BETWEEN :first AND :last")
+				.param("set", setId).param("first", first).param("last", first.plusDays(2))
+				.query(Long.class).single(), "the losing accept keeps no day of the range");
 	}
 }

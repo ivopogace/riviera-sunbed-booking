@@ -160,22 +160,34 @@ public final class BookingMailFixtures {
 		return paymentDueOf(set, bookingId, date, amountMinor, payBy, CancellationWindow.FREE, 0);
 	}
 
+	/** The payment-due fact for a stay of {@code first..last}. */
+	public BookingPaymentDue paymentDueOf(SetRef set, long bookingId, LocalDate first, LocalDate last,
+			long amountMinor, Instant payBy) {
+		return new BookingPaymentDue(new BookingId(bookingId), new VenueId(set.venueId()),
+				new SetId(set.setId()), first, last, payBy, amountMinor, "EUR", CancellationWindow.FREE, 0);
+	}
+
 	/** The stamped form (#795): callers pinning the disclosure pass the birth window explicitly. */
 	public BookingPaymentDue paymentDueOf(SetRef set, long bookingId, LocalDate date, long amountMinor,
 			Instant payBy, CancellationWindow windowAtBirth, int lateCancelRefundBps) {
 		return new BookingPaymentDue(new BookingId(bookingId), new VenueId(set.venueId()),
-				new SetId(set.setId()), date, payBy, amountMinor, "EUR", windowAtBirth, lateCancelRefundBps);
+				new SetId(set.setId()), date, date, payBy, amountMinor, "EUR", windowAtBirth, lateCancelRefundBps);
 	}
 
 	/** The decline fact an IT publishes to drive the mail; the date is the matching fragment. */
 	public BookingRequestDeclined requestDeclinedOf(SetRef set, long bookingId, LocalDate date) {
-		return new BookingRequestDeclined(new BookingId(bookingId), new SetId(set.setId()), date);
+		return requestDeclinedOf(set, bookingId, date, date);
+	}
+
+	/** The venue's own decline of a stay of {@code first..last}. */
+	public BookingRequestDeclined requestDeclinedOf(SetRef set, long bookingId, LocalDate first, LocalDate last) {
+		return new BookingRequestDeclined(new BookingId(bookingId), new SetId(set.setId()), first, last);
 	}
 
 	/** The decline fact with the reason the mail names (ADR-0025). */
 	public BookingRequestDeclined requestDeclinedOf(SetRef set, long bookingId, LocalDate date,
 			ai.riviera.platform.booking.vocabulary.DeclineReason reason) {
-		return new BookingRequestDeclined(new BookingId(bookingId), new SetId(set.setId()), date, reason);
+		return new BookingRequestDeclined(new BookingId(bookingId), new SetId(set.setId()), date, date, reason);
 	}
 
 	/** The move fact an IT publishes to drive the mail; the booking must carry a receipt move and {@code moved_at}. */
@@ -193,7 +205,12 @@ public final class BookingMailFixtures {
 
 	/** The expiry fact an IT publishes to drive the mail; the date is the matching fragment. */
 	public BookingRequestExpired requestExpiredOf(SetRef set, long bookingId, LocalDate date) {
-		return new BookingRequestExpired(new BookingId(bookingId), new SetId(set.setId()), date);
+		return requestExpiredOf(set, bookingId, date, date);
+	}
+
+	/** The expiry fact for a stay of {@code first..last}. */
+	public BookingRequestExpired requestExpiredOf(SetRef set, long bookingId, LocalDate first, LocalDate last) {
+		return new BookingRequestExpired(new BookingId(bookingId), new SetId(set.setId()), first, last);
 	}
 
 	/** How much the registry still owes the confirmation listener for one test's event. */

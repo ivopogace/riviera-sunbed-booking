@@ -59,6 +59,7 @@ function seedQueue() {
       bookingId: 11,
       setId: 1,
       bookingDate: '2026-07-03',
+      lastDate: '2026-07-03',
       guestName: 'Ana Guest',
       amount: { minorUnits: 4500, currency: 'EUR' },
       requestedAt: '2026-07-01T09:00:00Z',
@@ -69,8 +70,9 @@ function seedQueue() {
       bookingId: 12,
       setId: 2,
       bookingDate: '2026-07-04',
+      lastDate: '2026-07-06', // a three-day stay: one card, answered whole
       guestName: 'Bora Guest',
-      amount: { minorUnits: 4500, currency: 'EUR' },
+      amount: { minorUnits: 13500, currency: 'EUR' },
       requestedAt: '2026-07-01T10:00:00Z',
       requestExpiresAt: inHours(30), // not urgent
       competingRequests: 0,
@@ -185,6 +187,9 @@ test('lists the queue, accepts (badge decrements), and declines to empty — no 
   // The urgent card carries the amber time-left chip; the calm one does not.
   await expect(cards.first().getByTestId('urgency-chip')).toBeVisible();
   await expect(cards.nth(1).getByTestId('urgency-chip')).toHaveCount(0);
+  // A stay is one card naming its days and the whole total.
+  await expect(cards.nth(1)).toContainText(/Sat,? 4 Jul – Mon,? 6 Jul 2026 · 3 days/);
+  await expect(cards.nth(1)).toContainText('€135');
   // No booking code anywhere in the requests region (invariant #7).
   await expect(page.getByTestId('requests-tab').locator('code')).toHaveCount(0);
   await settle(page);

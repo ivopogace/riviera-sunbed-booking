@@ -723,6 +723,17 @@ describe('BookingDialog (2-step Liquid Glass modal)', () => {
     expect(awaiting).toBe(false);
   });
 
+  it('REQUEST venue stay: the note says the venue answers the whole stay and quotes the total, not the rate', async () => {
+    fixture.componentRef.setInput('mode', 'REQUEST');
+    fixture.componentRef.setInput('lastDate', '2026-12-03');
+    await goToReview();
+
+    const note = host().querySelector<HTMLElement>('.mode-note.request')!;
+    expect(note.textContent).toContain('accepts or declines your whole stay');
+    expect(note.textContent).toContain('pay €135');
+    expect(note.textContent).not.toContain('per day');
+  });
+
   it('emits dismissed from the header close button and from a backdrop click', () => {
     let dismissed = 0;
     dialog.dismissed.subscribe(() => (dismissed += 1));
@@ -740,6 +751,8 @@ describe('BookingDialog (2-step Liquid Glass modal)', () => {
       BOOKING_CLOSED: 'Booking has closed',
       VENUE_CLOSED: 'closed for the season',
       NO_SUCH_SET: 'could not be found',
+      RANGE_NOT_OFFERED: 'one spot at a time',
+      STAY_TOO_LONG: 'more than this venue takes',
       INVALID_REQUEST: 'check the form',
       UNKNOWN: 'Something went wrong',
     };

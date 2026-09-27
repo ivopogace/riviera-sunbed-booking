@@ -26,6 +26,7 @@ describe('RequestsTab a11y (#176)', () => {
       bookingId: 11,
       setId: 1,
       bookingDate: '2026-07-03',
+      lastDate: '2026-07-03',
       guestName: 'Ana Guest',
       amount: { minorUnits: 4500, currency: 'EUR' } as MoneyView,
       requestedAt: '2026-07-01T09:00:00Z',

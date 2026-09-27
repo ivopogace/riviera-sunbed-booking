@@ -180,7 +180,7 @@ class RemodelClaimsService implements RemodelClaims {
 		ClaimRef declined = bookings.declinePending(claim.bookingId().value(), venueId, DeclineReason.SET_UNAVAILABLE)
 				.orElseThrow(() -> lostUnderLock(claim, "pending"));
 		events.publishEvent(new BookingRequestDeclined(claim.bookingId(), declined.setId(), declined.bookingDate(),
-				DeclineReason.SET_UNAVAILABLE));
+				declined.lastDate(), DeclineReason.SET_UNAVAILABLE));
 		return outcomeOf(claim, ReceiptOutcomeKind.DECLINE, 0L);
 	}
 
