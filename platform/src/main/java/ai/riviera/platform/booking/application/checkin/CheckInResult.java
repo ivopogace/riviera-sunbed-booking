@@ -11,7 +11,7 @@ import ai.riviera.platform.venue.vocabulary.SetId;
  */
 public sealed interface CheckInResult {
 
-	/** The scan won today's guarded stamp; {@code bookingDate} is the stay's first service day. */
+	/** The scan won today's guarded stamp; {@code bookingDate} is the first day of the booking stamped — a stay's stretch of today. */
 	record CheckedIn(SetId setId, LocalDate bookingDate) implements CheckInResult {
 	}
 

@@ -44,7 +44,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * tomorrow's date and the stay's last day, today's and tomorrow's spots as the live map labels them, the
  * distance and the code-gated link; a suppressed address is skipped with the publication complete; and
  * the mock outbox read answers the mail for a real-backend run without a code or a link. Stays are
- * SQL-seeded on the first seeded venue's online sets on 2033-07-xx, this class's own dates (invariant #2).
+ * SQL-seeded on the first seeded venue's online sets on 2033-09-xx, a month no other IT claims (invariant #2).
  */
 @EnabledIfDockerAvailable
 @Import(TestcontainersConfiguration.class)
@@ -90,7 +90,7 @@ class MoveReminderMailIT {
 	void mailsTomorrowsSpotTheDistanceAndTheLinkAndTheMockOutboxReadsItBack() throws Exception {
 		List<Spot> spots = twoSpotsOfOneVenue();
 		String guest = "move-reminder-" + System.nanoTime() + "@example.com";
-		SeededStay stay = seedStay(spots, LocalDate.of(2033, 7, 10), guest);
+		SeededStay stay = seedStay(spots, LocalDate.of(2033, 9, 10), guest);
 
 		fixtures.publishInTransaction(new StayMoveDue(new StayId(stay.id()), new BookingId(stay.arriving()), stay.moveDay()));
 
@@ -124,7 +124,7 @@ class MoveReminderMailIT {
 		List<Spot> spots = twoSpotsOfOneVenue();
 		String guest = "move-reminder-suppressed-" + System.nanoTime() + "@example.com";
 		suppressions.suppress(guest, SuppressionReason.HARD_BOUNCE, java.time.Instant.now());
-		SeededStay stay = seedStay(spots, LocalDate.of(2033, 7, 20), guest);
+		SeededStay stay = seedStay(spots, LocalDate.of(2033, 9, 20), guest);
 
 		fixtures.publishInTransaction(new StayMoveDue(new StayId(stay.id()), new BookingId(stay.arriving()), stay.moveDay()));
 

@@ -128,12 +128,14 @@ class StayMoveReminderIT {
 		clock.set(AFTERNOON_BEFORE);
 		assertEquals(0, remindStayMoves.sweep(SEND_FROM), "before the send hour");
 		clock.set(EVENING_BEFORE.minusSeconds(86_400));
-		assertEquals(0, remindStayMoves.sweep(SEND_FROM), "the evening before the stay begins: no move tomorrow");
+		assertEquals(0, remindStayMoves.sweep(SEND_FROM), "two evenings before the move: the guest stays put tomorrow");
 		clock.set(EVENING_BEFORE.plusSeconds(86_400));
 		assertEquals(0, remindStayMoves.sweep(SEND_FROM), "the evening of the move day: nothing moves tomorrow");
-
 		assertNull(reminderStamp(stay.stretches().get(1)));
 		assertEquals(0, events.stream(StayMoveDue.class).filter(e -> e.stayId().equals(new StayId(stay.id()))).count());
+
+		clock.set(EVENING_BEFORE);
+		assertEquals(1, remindStayMoves.sweep(SEND_FROM), "the same stay is due once the evening before arrives");
 	}
 
 	@Test

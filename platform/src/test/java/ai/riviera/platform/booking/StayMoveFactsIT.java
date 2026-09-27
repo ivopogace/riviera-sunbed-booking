@@ -23,6 +23,7 @@ import ai.riviera.platform.booking.vocabulary.StayMoveFacts;
 import ai.riviera.platform.customer.vocabulary.CustomerId;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * {@link BookingNotificationFacts#moveReminderFacts}: the stay's code (never a row code, invariant #7),
@@ -87,6 +88,8 @@ class StayMoveFactsIT {
 		assertEquals(Optional.empty(), facts.moveReminderFacts(new BookingId(ended.stretches().get(1))),
 				"the stretch the guest would leave was ended by a remodel");
 
+		assertTrue(facts.moveReminderFacts(new BookingId(stay.stretches().get(1))).isPresent(),
+				"the standing move resolves before its set retires");
 		jdbc.sql("UPDATE set_position SET retired_at = now() WHERE id = :s").param("s", venue.online().get(0).value())
 				.update();
 		assertEquals(Optional.empty(), facts.moveReminderFacts(new BookingId(stay.stretches().get(1))),
