@@ -159,9 +159,9 @@ standing in for `feature/request-stay`)
 
 ## Execution status
 
-**Stage pointer:** `implement (phase 7)`
+**Stage pointer:** `CI gate — awaiting the run on the pushed head, then merge origin/main and mark ready`
 
-**Next action:** e2e stay request flow + range card, days-aware guest copy, docs.
+**Next action:** check CI on the pushed head; merge `origin/main`; ready for review; review gate.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -172,6 +172,6 @@ standing in for `feature/request-stay`)
 | 4 — the verdict clamp | ✅ | (phase 4 commit) |
 | 5 — FE venue page and dialog | ✅ | (phase 5 commit) |
 | 6 — FE Requests queue | ✅ | (phase 6 commit) |
-| 7 — e2e + docs | | |
+| 7 — e2e + docs | ✅ | (phase 7 commit) |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.

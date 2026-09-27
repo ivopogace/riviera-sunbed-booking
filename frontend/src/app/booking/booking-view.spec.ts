@@ -1431,6 +1431,32 @@ describe('BookingView', () => {
     ).toContain('no longer available for that day');
   });
 
+  it('tells a waiting guest of a stay that the venue answers the whole stay', async () => {
+    const pending = await render(stubService({ detail: { ...PENDING, lastDate: '2026-12-03' } }));
+    const panel = (pending.nativeElement as HTMLElement).querySelector(
+      '[data-testid="request-pending"]',
+    );
+    expect(panel?.textContent).toContain('accept or decline your whole stay');
+  });
+
+  it('a declined stay names its days when the set was no longer available', async () => {
+    const declined = await render(
+      stubService({
+        detail: {
+          ...DETAIL,
+          lastDate: '2026-12-03',
+          status: 'DECLINED',
+          cancellable: false,
+          declineReason: 'SET_UNAVAILABLE',
+        },
+      }),
+    );
+    expect(
+      (declined.nativeElement as HTMLElement).querySelector('[data-testid="declined-reason"]')
+        ?.textContent,
+    ).toContain('no longer available for those days');
+  });
+
   it('tells a waiting guest the set is not held and others may request it', async () => {
     const fixture = await render(stubService({ detail: PENDING }));
     const panel = (fixture.nativeElement as HTMLElement).querySelector(

@@ -142,6 +142,67 @@ test('request-to-book: request dialog → 202 PENDING_REQUEST → request-sent �
   await expectNoSeriousAxeViolations(page, 'booking view (pending request)');
 });
 
+test('a stay at a Request venue is one request: the dialog quotes the total, the post carries the last day, the sent screen and the pending view name the days', async ({
+  page,
+}) => {
+  let posted: { lastDate?: string } | undefined;
+  await page.route('**/api/bookings', (route) => {
+    posted = route.request().postDataJSON() as { lastDate?: string };
+    return route.fulfill({
+      status: 202,
+      json: {
+        ...REQUESTED,
+        lastDate: '2026-12-03',
+        amount: { minorUnits: 13500, currency: 'EUR' },
+      },
+    });
+  });
+  await page.route(new RegExp(`/api/bookings/${CODE}(\\?.*)?$`), (route) =>
+    route.fulfill({
+      json: {
+        ...DETAIL_BASE,
+        lastDate: '2026-12-03',
+        amount: { minorUnits: 13500, currency: 'EUR' },
+      },
+    }),
+  );
+
+  await page.goto('/venues/1?date=2026-12-01&lastDate=2026-12-03');
+  await expect(page.getByRole('heading', { name: 'Miramar Beach Club' })).toBeVisible();
+  await expect(page.getByTestId('map-date')).toContainText('3 days');
+  await page
+    .getByRole('button', { name: /Select to book/ })
+    .first()
+    .click();
+
+  const dialog = page.getByRole('dialog');
+  await expect(dialog.getByTestId('dialog-date')).toContainText('3 days');
+  await expect(dialog.getByTestId('dialog-price')).toContainText('€45 per day · 3 days');
+  await expect(dialog.getByTestId('dialog-total')).toContainText('€135');
+  await dialog.getByLabel('Full name').fill('Holiday Guest');
+  await dialog.getByLabel('Email').fill('guest@example.com');
+  await dialog.getByLabel('Phone').fill('+355699000');
+  await dialog.getByRole('button', { name: 'Continue', exact: true }).click();
+
+  await expect(dialog).toContainText('accepts or declines your whole stay of 3 days');
+  await expect(dialog).toContainText('pay €135');
+  await settle(page);
+  await expectNoSeriousAxeViolations(page, 'stay request dialog (Review)');
+  await dialog.getByRole('button', { name: 'Send request' }).click();
+
+  await expect(page).toHaveURL(/\/booking\/requested/);
+  expect(posted?.lastDate).toBe('2026-12-03');
+  await expect(page.getByTestId('booking-code')).toContainText(CODE);
+  await expect(page.locator('main')).toContainText('3 days');
+  await expect(page.locator('main')).toContainText('€135');
+
+  await page.getByTestId('status-link').click();
+  await expect(page.getByTestId('request-pending')).toContainText('Waiting for the venue');
+  await expect(page.getByTestId('request-pending')).toContainText('whole stay');
+  await expect(page.locator('main')).toContainText('3 days');
+  await expectNoSeriousAxeViolations(page, 'booking view (pending stay request)');
+});
+
 test('same-day request: today is offered at a Request venue and the accepted booking is payable (#792)', async ({
   page,
 }) => {
