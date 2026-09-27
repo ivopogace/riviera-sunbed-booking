@@ -18,7 +18,7 @@ import ai.riviera.platform.venue.vocabulary.StaySpan;
  * closest position, then closest row), summed over the plan, the lowest set id breaking a tie. A
  * shortest path over {@code (day, set)}; pure, so it lives in {@code domain} (ADR-0018). Sets with no
  * placement move at zero distance, so the coast verdict needs only the move count, and with no set
- * placed each day relaxes from the previous day's cheapest set alone (O(sets), not O(sets²)).
+ * placed each day relaxes from the previous day's cheapest set or its runner-up (O(sets), not O(sets²)).
  */
 public final class ItinerarySearch {
 
@@ -176,44 +176,54 @@ public final class ItinerarySearch {
 
 		/**
 		 * With every move costing alike, the one move worth offering into a set comes from the previous
-		 * day's cheapest set (the runner-up, into the cheapest itself), offered in set order so a tie falls
-		 * as in the pair loop.
+		 * day's cheapest set (the runner-up, into the cheapest itself).
 		 */
 		private void relaxDayFromCheapest(Cost[][] cost, int[][] from, int d) {
 			Cost[] previous = cost[d - 1];
-			int cheapest = -1;
-			int runnerUp = -1;
-			for (int t = 0; t < sets.size(); t++) {
-				if (previous[t] == null) {
-					continue;
-				}
-				if (cheapest < 0 || previous[t].compareTo(previous[cheapest]) < 0) {
-					runnerUp = cheapest;
-					cheapest = t;
-				} else if (runnerUp < 0 || previous[t].compareTo(previous[runnerUp]) < 0) {
-					runnerUp = t;
-				}
-			}
+			int[] cheapestTwo = cheapestTwo(previous);
+			int cheapest = cheapestTwo[0];
+			int runnerUp = cheapestTwo[1];
 			if (cheapest < 0) {
 				return;
 			}
 			Cost viaCheapest = previous[cheapest].plus(Cost.UNPLACED_MOVE);
 			Cost viaRunnerUp = runnerUp < 0 ? null : previous[runnerUp].plus(Cost.UNPLACED_MOVE);
 			for (int s = 0; s < sets.size(); s++) {
-				if (!free[d][s]) {
+				if (free[d][s]) {
+					boolean isCheapest = cheapest == s;
+					offerMoveOrStay(cost, from, d, s, isCheapest ? runnerUp : cheapest, isCheapest ? viaRunnerUp : viaCheapest);
+				}
+			}
+		}
+
+		/** The lowest-index cheapest set of a day, then the lowest-index cheapest other set; -1 for none. */
+		private static int[] cheapestTwo(Cost[] costs) {
+			int cheapest = -1;
+			int runnerUp = -1;
+			for (int t = 0; t < costs.length; t++) {
+				if (costs[t] == null) {
 					continue;
 				}
-				int mover = cheapest == s ? runnerUp : cheapest;
-				Cost viaMover = cheapest == s ? viaRunnerUp : viaCheapest;
-				if (mover >= 0 && mover < s) {
-					offer(cost, from, d, s, mover, viaMover);
+				if (cheapest < 0 || costs[t].compareTo(costs[cheapest]) < 0) {
+					runnerUp = cheapest;
+					cheapest = t;
+				} else if (runnerUp < 0 || costs[t].compareTo(costs[runnerUp]) < 0) {
+					runnerUp = t;
 				}
-				if (previous[s] != null) {
-					offer(cost, from, d, s, s, previous[s]);
-				}
-				if (mover > s) {
-					offer(cost, from, d, s, mover, viaMover);
-				}
+			}
+			return new int[] { cheapest, runnerUp };
+		}
+
+		/** The move from {@code mover} (none when -1) and the stay, in set order so a tie falls as in the pair loop. */
+		private void offerMoveOrStay(Cost[][] cost, int[][] from, int d, int s, int mover, Cost viaMover) {
+			if (mover >= 0 && mover < s) {
+				offer(cost, from, d, s, mover, viaMover);
+			}
+			if (cost[d - 1][s] != null) {
+				offer(cost, from, d, s, s, cost[d - 1][s]);
+			}
+			if (mover > s) {
+				offer(cost, from, d, s, mover, viaMover);
 			}
 		}
 
