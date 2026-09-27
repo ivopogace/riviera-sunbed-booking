@@ -559,7 +559,6 @@ class JdbcBookings implements Bookings {
 				    FROM booking b
 				    LEFT JOIN stay s ON s.id = b.stay_id
 				    WHERE (b.code = :code OR s.code = :code) AND b.venue_id = :venue AND b.status = :confirmed
-				      AND :date BETWEEN b.booking_date AND b.last_date
 				    FOR UPDATE OF b
 				)
 				UPDATE booking_day n
