@@ -319,7 +319,8 @@ const SET_INCLUDES = '2 loungers + umbrella · full day';
               >
                 <strong class="text-riv-card-ink">Request to Book.</strong> This venue reviews each
                 request before payment. We’ll send your request now —
-                <strong class="text-riv-card-ink">you won’t be charged yet</strong>. If the venue
+                <strong class="text-riv-card-ink">you won’t be charged yet</strong>. The set isn’t
+                held until the venue accepts — other guests can request it too. If the venue
                 accepts, you’ll get a link to pay {{ price() }} and lock in the set.
               </p>
             } @else {

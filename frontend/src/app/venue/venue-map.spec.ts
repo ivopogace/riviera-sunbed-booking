@@ -761,7 +761,7 @@ describe('VenueMap', () => {
 
     const footer = el().querySelector('[canvasFooter]')!;
     expect(footer.textContent).toContain(
-      'Pick a set to request it \u2014 you pay only once Miramar Beach Club accepts.',
+      'Pick a set to request it \u2014 you pay only once Miramar Beach Club accepts, and nothing is held until then.',
     );
     expect(footer.textContent).toContain('Prices are per set, full day.');
   });

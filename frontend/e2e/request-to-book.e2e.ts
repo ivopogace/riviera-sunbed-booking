@@ -103,7 +103,7 @@ test('request-to-book: request dialog → 202 PENDING_REQUEST → request-sent �
   await expect(page.getByRole('heading', { name: 'Miramar Beach Club' })).toBeVisible();
   // A REQUEST venue explains the no-charge deal on the map, before the tourist commits to a spot (#703).
   await expect(page.getByTestId('beach-grid')).toContainText(
-    'Pick a set to request it — you pay only once Miramar Beach Club accepts.',
+    'Pick a set to request it — you pay only once Miramar Beach Club accepts, and nothing is held until then.',
   );
   await page
     .getByRole('button', { name: /Select to book/ })
@@ -441,12 +441,44 @@ test('an accepted request whose pay deadline has passed cannot be paid', async (
 
 test('a declined request shows terminal no-charge copy', async ({ page }) => {
   await page.route(new RegExp(`/api/bookings/${CODE}(\\?.*)?$`), (route) =>
-    route.fulfill({ json: { ...DETAIL_BASE, status: 'DECLINED', requestExpiresAt: null } }),
+    route.fulfill({
+      json: { ...DETAIL_BASE, status: 'DECLINED', requestExpiresAt: null, declineReason: 'VENUE' },
+    }),
   );
 
   await page.goto(`/booking/${CODE}`);
   await expect(page.getByTestId('request-declined')).toContainText('Request declined');
+  await expect(page.getByTestId('request-declined')).toContainText('couldn’t take this booking');
   await expect(page.getByTestId('request-declined')).toContainText('haven’t been charged');
   await expect(page.getByTestId('booking-status')).toContainText('Declined');
   await expectNoSeriousAxeViolations(page, 'booking view (declined request)');
+});
+
+test('a request declined because another guest got the set says so', async ({ page }) => {
+  await page.route(new RegExp(`/api/bookings/${CODE}(\\?.*)?$`), (route) =>
+    route.fulfill({
+      json: {
+        ...DETAIL_BASE,
+        status: 'DECLINED',
+        requestExpiresAt: null,
+        declineReason: 'ANOTHER_GUEST',
+      },
+    }),
+  );
+
+  await page.goto(`/booking/${CODE}`);
+  await expect(page.getByTestId('declined-reason')).toContainText('gave this set to another guest');
+  await expect(page.getByTestId('request-declined')).toContainText('haven’t been charged');
+});
+
+test('the pending view says the set is not held while the venue decides', async ({ page }) => {
+  await page.route(new RegExp(`/api/bookings/${CODE}(\\?.*)?$`), (route) =>
+    route.fulfill({ json: DETAIL_BASE }),
+  );
+
+  await page.goto(`/booking/${CODE}`);
+  await expect(page.getByTestId('request-pending')).toContainText('isn’t held for you');
+  await expect(page.getByTestId('request-pending')).toContainText(
+    'other guests can request it too',
+  );
 });

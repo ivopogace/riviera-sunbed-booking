@@ -119,6 +119,7 @@ function request(bookingId: number) {
     amount: { minorUnits: 2000, currency: 'EUR' },
     requestedAt: '2026-07-08T09:00:00Z',
     requestExpiresAt: '2026-07-08T21:00:00Z',
+    competingRequests: 0,
   };
 }
 

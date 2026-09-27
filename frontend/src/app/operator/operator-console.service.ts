@@ -470,6 +470,7 @@ export function requestErrorOf(error: unknown): RequestErrorCode {
       case 'NO_SUCH_REQUEST':
       case 'REQUEST_NOT_PENDING':
       case 'REQUEST_EXPIRED':
+      case 'SET_UNAVAILABLE':
       case 'PAYMENT_INIT_FAILED':
       case 'NOT_VENUE_OWNER':
         return code;

@@ -77,3 +77,7 @@ export function metaFor(status: string): StatusMeta {
     }
   );
 }
+
+/** Why a request ended `DECLINED` (mirrors the backend `DeclineReason`): the venue's no, a set gone
+ *  when accept tried to claim it, or an overlapping request accepted instead. */
+export type DeclineReason = 'VENUE' | 'SET_UNAVAILABLE' | 'ANOTHER_GUEST';

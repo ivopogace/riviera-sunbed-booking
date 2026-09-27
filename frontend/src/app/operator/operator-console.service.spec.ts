@@ -136,6 +136,7 @@ describe('OperatorConsoleService — Request-to-Book client (#176)', () => {
     amount: { minorUnits: 4500, currency: 'EUR' },
     requestedAt: '2026-07-01T09:00:00Z',
     requestExpiresAt: '2026-07-02T16:00:00Z',
+    competingRequests: 0,
   };
 
   it('GETs the venue-wide pending booking requests', () => {

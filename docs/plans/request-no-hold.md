@@ -210,9 +210,9 @@ Decision record: ADR-0025.
 
 ## Execution status
 
-**Stage pointer:** `implement (phase 6 — frontend)`
+**Stage pointer:** `CI gate → ready for review`
 
-**Next action:** models + queue hint + `SET_UNAVAILABLE` copy + declined-by-reason copy + not-held copy; Vitest, then mocked e2e
+**Next action:** CI green on the phase 6 push → merge `origin/main` → mark ready → `/code-review` + overlay
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -222,7 +222,7 @@ Decision record: ADR-0025.
 | 3 — Accept claims | ✅ | phase 2–5 commit |
 | 4 — Rivals | ✅ | phase 2–5 commit |
 | 5 — Reads and mails | ✅ | phase 2–5 commit |
-| 6 — Frontend | ⏳ | |
+| 6 — Frontend | ✅ | phase 6 commit |
 | 7 — Docs | ✅ (plan removal pending) | phase 2–5 commit |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
