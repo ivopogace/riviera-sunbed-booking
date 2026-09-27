@@ -17,7 +17,8 @@ import ai.riviera.platform.venue.vocabulary.StaySpan;
  * then the shortest ones — a move is judged as the remodel move rule judges it (same row, then
  * closest position, then closest row), summed over the plan, the lowest set id breaking a tie. A
  * shortest path over {@code (day, set)}; pure, so it lives in {@code domain} (ADR-0018). Sets with no
- * placement move at zero distance, so the coast verdict needs only the move count.
+ * placement move at zero distance, so the coast verdict needs only the move count, and with no set
+ * placed each day relaxes from the previous day's cheapest set alone (O(sets), not O(sets²)).
  */
 public final class ItinerarySearch {
 
@@ -79,6 +80,9 @@ public final class ItinerarySearch {
 
 		static final Cost ZERO = new Cost(0, 0, 0, 0);
 
+		/** A move between unplaced sets: one move, no distance. */
+		static final Cost UNPLACED_MOVE = new Cost(1, 0, 0, 0);
+
 		Cost plus(Cost move) {
 			return new Cost(moves + move.moves, rowChanges + move.rowChanges, positions + move.positions, rows + move.rows);
 		}
@@ -105,6 +109,7 @@ public final class ItinerarySearch {
 		private final Map<SetId, SetPlacement> placements;
 		private final boolean[][] free;
 		private final int maxMoves;
+		private final boolean unplaced;
 
 		Search(StaySpan span, List<SetId> sets, Map<SetId, SetPlacement> placements,
 				Map<SetId, List<LocalDate>> takenDays, int maxMoves) {
@@ -112,6 +117,7 @@ public final class ItinerarySearch {
 			this.sets = sets.stream().sorted((a, b) -> Long.compare(a.value(), b.value())).toList();
 			this.placements = placements;
 			this.maxMoves = maxMoves;
+			this.unplaced = this.sets.stream().noneMatch(placements::containsKey);
 			this.free = new boolean[days.size()][this.sets.size()];
 			for (int s = 0; s < this.sets.size(); s++) {
 				Set<LocalDate> taken = new HashSet<>(takenDays.getOrDefault(this.sets.get(s), List.of()));
@@ -147,6 +153,10 @@ public final class ItinerarySearch {
 		}
 
 		private void relaxDay(Cost[][] cost, int[][] from, int d) {
+			if (unplaced) {
+				relaxDayFromCheapest(cost, from, d);
+				return;
+			}
 			for (int s = 0; s < sets.size(); s++) {
 				if (free[d][s]) {
 					relaxSet(cost, from, d, s);
@@ -158,14 +168,63 @@ public final class ItinerarySearch {
 		private void relaxSet(Cost[][] cost, int[][] from, int d, int s) {
 			for (int t = 0; t < sets.size(); t++) {
 				Cost previous = cost[d - 1][t];
-				if (previous == null) {
+				if (previous != null) {
+					offer(cost, from, d, s, t, t == s ? previous : previous.plus(moveCost(t, s)));
+				}
+			}
+		}
+
+		/**
+		 * With every move costing alike, the one move worth offering into a set comes from the previous
+		 * day's cheapest set (the runner-up, into the cheapest itself), offered in set order so a tie falls
+		 * as in the pair loop.
+		 */
+		private void relaxDayFromCheapest(Cost[][] cost, int[][] from, int d) {
+			Cost[] previous = cost[d - 1];
+			int cheapest = -1;
+			int runnerUp = -1;
+			for (int t = 0; t < sets.size(); t++) {
+				if (previous[t] == null) {
 					continue;
 				}
-				Cost candidate = t == s ? previous : previous.plus(moveCost(t, s));
-				if (candidate.moves() <= maxMoves && (cost[d][s] == null || candidate.compareTo(cost[d][s]) < 0)) {
-					cost[d][s] = candidate;
-					from[d][s] = t;
+				if (cheapest < 0 || previous[t].compareTo(previous[cheapest]) < 0) {
+					runnerUp = cheapest;
+					cheapest = t;
+				} else if (runnerUp < 0 || previous[t].compareTo(previous[runnerUp]) < 0) {
+					runnerUp = t;
 				}
+			}
+			if (cheapest < 0) {
+				return;
+			}
+			Cost viaCheapest = previous[cheapest].plus(Cost.UNPLACED_MOVE);
+			Cost viaRunnerUp = runnerUp < 0 ? null : previous[runnerUp].plus(Cost.UNPLACED_MOVE);
+			for (int s = 0; s < sets.size(); s++) {
+				if (!free[d][s]) {
+					continue;
+				}
+				int mover = cheapest == s ? runnerUp : cheapest;
+				Cost viaMover = cheapest == s ? viaRunnerUp : viaCheapest;
+				if (mover >= 0 && mover < s) {
+					offer(cost, from, d, s, mover, viaMover);
+				}
+				if (previous[s] != null) {
+					offer(cost, from, d, s, s, previous[s]);
+				}
+				if (mover > s) {
+					offer(cost, from, d, s, mover, viaMover);
+				}
+			}
+		}
+
+		/**
+		 * Keep {@code candidate}, reached from set {@code t}, as the way into set {@code s} on day {@code d}
+		 * when it beats the one kept.
+		 */
+		private void offer(Cost[][] cost, int[][] from, int d, int s, int t, Cost candidate) {
+			if (candidate.moves() <= maxMoves && (cost[d][s] == null || candidate.compareTo(cost[d][s]) < 0)) {
+				cost[d][s] = candidate;
+				from[d][s] = t;
 			}
 		}
 
@@ -208,7 +267,7 @@ public final class ItinerarySearch {
 			SetPlacement a = placements.get(sets.get(fromSet));
 			SetPlacement b = placements.get(sets.get(toSet));
 			if (a == null || b == null) {
-				return new Cost(1, 0, 0, 0);
+				return Cost.UNPLACED_MOVE;
 			}
 			int rows = Math.abs(a.gridY() - b.gridY());
 			int positions = Math.abs(a.positionNo() - b.positionNo());

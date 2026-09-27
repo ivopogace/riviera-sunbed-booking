@@ -1,9 +1,12 @@
 package ai.riviera.platform.itinerary.domain;
 
 import java.time.LocalDate;
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Random;
 
 import org.junit.jupiter.api.Test;
 
@@ -21,7 +24,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * The stitching rule (design D7/D13): the fewest moves first, the shortest moves second (same row,
  * then closest position, then closest row, as the remodel move rule), never past the budget; an
  * anchor set starts or ends the plan when any plan through it fits the budget. Pure unit test of
- * the {@code domain} holder over fixed availability grids.
+ * the {@code domain} holder over fixed availability grids; the random grids prove the unplaced
+ * (uniform-cost) relaxation equals the pair loop.
  */
 class ItinerarySearchTest {
 
@@ -179,6 +183,46 @@ class ItinerarySearchTest {
 				taken, 3, A);
 		assertEquals(Anchoring.NONE, anchored.anchoring());
 		assertTrue(anchored.itinerary().isEmpty());
+	}
+
+	/**
+	 * Every set on one cell makes every move cost (1, 0, 0, 0) through the pair loop — exactly the
+	 * unplaced cost — so the plans must agree grid for grid, anchored or not.
+	 */
+	@Test
+	void withoutPlacementsThePlanEqualsThePairLoopOverEveryUniformGrid() {
+		Random random = new Random(1256);
+		int agreedPlans = 0;
+		for (int trial = 0; trial < 400; trial++) {
+			int setCount = 1 + random.nextInt(6);
+			int dayCount = 1 + random.nextInt(8);
+			StaySpan span = new StaySpan(D1, D1.plusDays(dayCount - 1L));
+			List<SetId> sets = new ArrayList<>();
+			Map<SetId, SetPlacement> oneCell = new HashMap<>();
+			Map<SetId, List<LocalDate>> taken = new HashMap<>();
+			for (int s = 0; s < setCount; s++) {
+				SetId set = new SetId(100L - s);
+				sets.add(set);
+				oneCell.put(set, new SetPlacement("A", 1, 1, 1));
+				List<LocalDate> takenDays = new ArrayList<>();
+				for (int d = 0; d < dayCount; d++) {
+					if (random.nextDouble() < 0.6) {
+						takenDays.add(D1.plusDays(d));
+					}
+				}
+				taken.put(set, takenDays);
+			}
+			int maxMoves = random.nextInt(5);
+			SetId anchor = sets.get(random.nextInt(setCount));
+			Optional<Itinerary> paired = ItinerarySearch.plan(span, sets, oneCell, taken, maxMoves);
+			assertEquals(paired, ItinerarySearch.plan(span, sets, Map.of(), taken, maxMoves), "trial " + trial);
+			assertEquals(ItinerarySearch.planAround(span, sets, oneCell, taken, maxMoves, anchor),
+					ItinerarySearch.planAround(span, sets, Map.of(), taken, maxMoves, anchor), "anchored trial " + trial);
+			if (paired.isPresent()) {
+				agreedPlans++;
+			}
+		}
+		assertTrue(agreedPlans > 100, "the grids must stitch often enough to compare plans, not only misses: " + agreedPlans);
 	}
 
 	@Test
