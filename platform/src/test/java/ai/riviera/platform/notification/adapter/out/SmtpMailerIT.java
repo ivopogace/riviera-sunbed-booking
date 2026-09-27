@@ -25,6 +25,7 @@ import ai.riviera.platform.booking.vocabulary.CancellationWindow;
 import ai.riviera.platform.notification.application.BookingCancellationMail;
 import ai.riviera.platform.notification.application.BookingConfirmationMail;
 import ai.riviera.platform.notification.application.BookingMovedMail;
+import ai.riviera.platform.notification.application.MoveReminderMail;
 import ai.riviera.platform.notification.application.PaymentDueMail;
 import ai.riviera.platform.notification.application.StayConfirmationMail;
 
@@ -205,6 +206,47 @@ class SmtpMailerIT {
 		assertThat(body).contains("Your stay has already begun, so it can no longer be cancelled. Your booking:",
 				PAY_LINK.toString());
 		assertThat(body).doesNotContain("refund");
+	}
+
+	// ---- the move-reminder kind (#1209, design D13) ------------------------------------------
+
+	@Test
+	void theMoveReminderNamesTomorrowsSpotTheDistanceAndTheLink() throws Exception {
+		mailer().sendMoveReminder(TO, moveReminder());
+
+		MimeMessage message = theOnlyReceivedMessage();
+		assertThat(GreenMailUtil.getAddressList(message.getAllRecipients())).isEqualTo(TO);
+		assertThat(message.getSubject()).isEqualTo("Tomorrow at Miramar Beach: your spot moves");
+		String body = message.getContent().toString();
+		assertThat(body).contains(
+				"Tomorrow, 18 August 2026, your spot at Miramar Beach changes: B5 instead of today's A3, "
+						+ "1 row and 2 positions away.",
+				"Booking code:  " + BOOKING_CODE,
+				"Tomorrow:      Row B, position 5",
+				"Until:         20 August 2026",
+				PAY_LINK.toString());
+		assertThat(message.isMimeType("text/plain")).as("plain text, no HTML/tracking (ADR-0011)").isTrue();
+		assertThat(body).doesNotContain("<html", "<img", "http://track", "utm_");
+	}
+
+	@Test
+	void theMoveReminderKeepsAVenueNameOutOfTheSubjectHeaders() throws Exception {
+		MoveReminderMail reminder = moveReminder();
+		mailer().sendMoveReminder(TO, new MoveReminderMail(reminder.bookingCode(), "Miramar\r\nBcc: x@evil.test",
+				reminder.moveDate(), reminder.stayLastDate(), reminder.fromRowLabel(), reminder.fromPositionNo(),
+				reminder.toRowLabel(), reminder.toPositionNo(), reminder.rowsAway(), reminder.positionsAway(),
+				reminder.bookingLink()));
+
+		MimeMessage message = theOnlyReceivedMessage();
+		assertThat(message.getSubject()).isEqualTo("Tomorrow at Miramar  Bcc: x@evil.test: your spot moves");
+		assertThat(message.getHeader("Bcc")).isNull();
+	}
+
+	@Test
+	void neverLogsTheBookingCodeOnAMoveReminder(CapturedOutput output) {
+		mailer().sendMoveReminder(TO, moveReminder());
+
+		assertThat(output).doesNotContain(BOOKING_CODE);
 	}
 
 	/** The #795 disclosure branches, rendered — only CLOSED may claim the booking can't be cancelled. */
@@ -545,6 +587,12 @@ class SmtpMailerIT {
 	private static BookingMovedMail movedMail(LocalDate lastDate) {
 		return new BookingMovedMail(BOOKING_CODE, "Miramar Beach", LocalDate.of(2026, 8, 15), lastDate, "A", 3, "B",
 				5, 1, 2, DEADLINE, false, PAY_LINK);
+	}
+
+	/** Three days on A3, then B5 from the 18th to the 20th: one row and two positions away. */
+	private static MoveReminderMail moveReminder() {
+		return new MoveReminderMail(BOOKING_CODE, "Miramar Beach", LocalDate.of(2026, 8, 18), LocalDate.of(2026, 8, 20),
+				"A", 3, "B", 5, 1, 2, PAY_LINK);
 	}
 
 	private static BookingMovedMail stretchMail(Instant freeExitUntil) {
