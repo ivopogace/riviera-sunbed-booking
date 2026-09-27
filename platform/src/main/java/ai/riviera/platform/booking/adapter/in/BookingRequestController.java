@@ -23,7 +23,7 @@ import ai.riviera.platform.venue.vocabulary.VenueId;
 
 /**
  * Operator endpoints for the Request-to-Book queue: list the venue's pending requests, accept one
- * (issues the payment request) or decline one (releases the hold), over the {@link PendingRequests}
+ * (claims the set, issues the payment request) or decline one, over the {@link PendingRequests}
  * and {@link RespondToRequest} ports (invariant #11). Ownership is enforced in those services; a
  * mismatch is {@code NotVenueOwnerException} → {@code 403 NOT_VENUE_OWNER} via the single
  * {@code ApiErrorHandler} (invariant #13). Rejections are RFC-7807 via {@link ApiProblem}, stable

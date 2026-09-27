@@ -8,7 +8,7 @@ package ai.riviera.platform.booking.application.request;
  */
 public sealed interface DeclineOutcome {
 
-	/** The request is terminally {@code DECLINED} and the {@code (set, date)} hold released. */
+	/** The request is terminally {@code DECLINED}; it held nothing to release (ADR-0025). */
 	record Declined() implements DeclineOutcome {
 	}
 

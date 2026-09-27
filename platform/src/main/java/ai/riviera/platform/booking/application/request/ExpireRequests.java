@@ -2,7 +2,7 @@ package ai.riviera.platform.booking.application.request;
 
 /**
  * The request-expiry sweep: each {@code PENDING_REQUEST} past its {@code request_expires_at} becomes
- * {@code EXPIRED} and frees its {@code (set, date)}. Idempotent; safe beside accept, decline and
+ * {@code EXPIRED}; it held nothing to free (ADR-0025). Idempotent; safe beside accept, decline and
  * withdraw because the <strong>row lock</strong>, not the predicates, makes them exclusive: decline
  * and withdraw guard on status alone, so an overdue request stays declinable and withdrawable
  * ({@code RequestTerminationService}). No gateway call: a pending request has no PaymentIntent <em>on

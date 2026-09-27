@@ -31,12 +31,12 @@ still "releases" would delete another guest's claim.
 1. **A `PENDING_REQUEST` booking writes no availability row.** The reserve at a Request-to-Book venue
    runs the same fences, refuses a day already taken (a read, answered `SET_TAKEN`), and inserts the
    pending row. Its days stay free on every tourist and staff read, and other guests may request them.
-2. **Accept is the claim.** Inside one transaction the accept locks the pending row (guarded by status
-   and the response deadline), claims every day with the existing `INSERT … ON CONFLICT DO NOTHING`
-   (invariant #2, one primitive), and only then moves the row to `AWAITING_PAYMENT`; the payment call
-   follows after commit, as the Instant reserve does. A day that cannot be claimed gives back the days
-   won and the request declines itself with reason `SET_UNAVAILABLE`; the operator is told, the guest
-   is mailed.
+2. **Accept is the claim.** Inside one transaction the accept reads the pending row's set and span,
+   claims every day with the existing `INSERT … ON CONFLICT DO NOTHING` (invariant #2, one primitive),
+   and only then runs the guarded `PENDING_REQUEST → AWAITING_PAYMENT` (status and response deadline);
+   a row that left pending meanwhile gives the days back. The payment call follows after commit, as the
+   Instant reserve does. A day that cannot be claimed gives back the days won and the request declines
+   itself with reason `SET_UNAVAILABLE`; the operator is told, the guest is mailed.
 3. **The winner declines its rivals.** In the same transaction every other pending request on that set
    with an overlapping day becomes `DECLINED` with reason `ANOTHER_GUEST`, each publishing its own
    `BookingRequestDeclined`. Under two concurrent accepts the claim's `ON CONFLICT` decides, and the

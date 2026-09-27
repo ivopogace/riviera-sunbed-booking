@@ -68,9 +68,9 @@ class ReserveSetService {
 	}
 
 	/**
-	 * Validate, claim, and persist the {@code AWAITING_PAYMENT} booking in one committed transaction.
-	 * On return the {@code (set, date)} is held and the row lock released — the caller pays outside
-	 * any transaction.
+	 * Validate, claim, and persist the {@code AWAITING_PAYMENT} booking in one committed transaction;
+	 * on return the {@code (set, date)} is held and the caller pays outside any transaction. At a
+	 * Request-to-Book venue: validate and persist the {@code PENDING_REQUEST}, claiming nothing.
 	 */
 	@Transactional
 	ReserveOutcome reserve(CreateBookingCommand command) {

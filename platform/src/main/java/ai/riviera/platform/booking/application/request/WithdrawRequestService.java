@@ -11,8 +11,8 @@ import ai.riviera.platform.booking.application.Bookings;
  * {@code RespondToRequestService} does. The guarded {@code UPDATE} in {@link RequestTerminationService}
  * <em>is</em> the decision, so no concurrent decline or expiry sweep can slip into a
  * read-then-write window; a lost race matches 0 rows and classifies as {@code NOT_PENDING}. Not
- * {@code @Transactional}: the classifying read must not join the transaction the transition and its
- * hold release commit in. Package-private behind the {@link WithdrawRequest} port (invariant #11).
+ * {@code @Transactional}: the classifying read must not join the transaction the transition commits
+ * in. Package-private behind the {@link WithdrawRequest} port (invariant #11).
  */
 @Service
 class WithdrawRequestService implements WithdrawRequest {
