@@ -8,7 +8,7 @@ import { baseBlock, themeBlock } from '../../testing/stylesheet-tokens';
  * hues alone would not. Pure maths over `src/tailwind.css` and `stay-plan.ts` as text, per theme.
  */
 import { readFileSync } from 'node:fs';
-import { resolve } from 'node:path';
+import { join } from 'node:path';
 
 const FILLS = [
   '--riv-stretch-1-fill',
@@ -42,7 +42,7 @@ describe.each(THEMES)('Stretch fills — $name theme', ({ block }) => {
   });
 
   it('the move marker is drawn in the stretch ink and clears 3:1 over every fill', () => {
-    const template = readFileSync(resolve(__dirname, 'stay-plan.ts'), 'utf8');
+    const template = readFileSync(join(process.cwd(), 'src/app/venue/stay-plan.ts'), 'utf8');
     expect(template).toContain('[class.border-riv-stretch-ink]="cell.move"');
     expect(template).not.toContain('[class.border-riv-card-ink]="cell.move"');
     expect(new Set(fills).size).toBe(fills.length);
