@@ -545,7 +545,6 @@ export class VenueMap {
   protected bookPlan(): void {
     const plan = this.plan();
     if (plan !== undefined) {
-      this.lastTriggerId = undefined;
       this.selectedPlan.set(plan);
     }
   }
@@ -754,8 +753,15 @@ export class VenueMap {
     this.focusTile(this.lastTriggerId);
   }
 
+  /** The plan dialog closed unbooked: back to the plan panel's own button (modal a11y, RV-FE-9). */
+  protected onPlanDialogClose(): void {
+    this.selectedPlan.set(undefined);
+    this.moveFocus('stay-plan-book');
+  }
+
   protected async onBooked(): Promise<void> {
     this.selectedSet.set(undefined);
+    this.selectedPlan.set(undefined);
     // The confirmation screen reads BookingService.lastConfirmation() (set by the POST), so no
     // navigation state is needed.
     await this.router.navigate(['/booking/confirmation']);
@@ -763,6 +769,7 @@ export class VenueMap {
 
   protected async onAwaiting(): Promise<void> {
     this.selectedSet.set(undefined);
+    this.selectedPlan.set(undefined);
     // The payment page reads BookingService.lastAwaitingPayment() (set by the 202 POST) to mount
     // the Stripe Payment Element; confirmation follows the verified webhook (invariant #8).
     await this.router.navigate(['/booking/pay']);
@@ -770,6 +777,7 @@ export class VenueMap {
 
   protected async onRequested(): Promise<void> {
     this.selectedSet.set(undefined);
+    this.selectedPlan.set(undefined);
     // Nothing is charged until the venue accepts; the request-sent screen reads lastRequested().
     await this.router.navigate(['/booking/requested']);
   }

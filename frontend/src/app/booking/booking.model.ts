@@ -23,6 +23,49 @@ export interface CreateBookingRequest {
   readonly contact: BookingContact;
 }
 
+/** One stretch of a stitched stay's plan as the guest booked it (mirrors the backend `StretchRequest`). */
+export interface StayStretchRequest {
+  readonly setId: number;
+  readonly firstDate: string;
+  readonly lastDate: string;
+}
+
+/** `POST /api/stays`: the plan's stretches, in day order, and the guest (mirrors `CreateStayRequest`). */
+export interface CreateStayRequest {
+  readonly stretches: readonly StayStretchRequest[];
+  readonly contact: BookingContact;
+}
+
+/** One stretch of a booked stay: its set, where it sits, its days and money (mirrors the backend `StretchView`). */
+export interface StayStretchView {
+  readonly setId: number;
+  readonly rowLabel: string;
+  readonly positionNo: number;
+  readonly firstDate: string;
+  readonly lastDate: string;
+  readonly amount: MoneyView;
+  /** The stretch's own contract state on the code-gated view; absent on a creation response. */
+  readonly status?: string;
+}
+
+/**
+ * The `POST /api/stays` body as the backend answers it (`StayView`): the group's one code and status,
+ * its venue, span, total and stretches; `clientSecret`/`paymentIntentId` ride the `202`.
+ */
+export interface StayView {
+  readonly code: string;
+  readonly status: string;
+  readonly venueId: number;
+  readonly venueName: string;
+  readonly firstDate: string;
+  readonly lastDate: string;
+  readonly total: MoneyView;
+  readonly stretches: readonly StayStretchView[];
+  readonly emailWithheld: boolean;
+  readonly clientSecret?: string;
+  readonly paymentIntentId?: string;
+}
+
 export interface BookingConfirmation {
   readonly code: string;
   readonly status: string;
@@ -37,6 +80,8 @@ export interface BookingConfirmation {
   readonly amount: MoneyView;
   /** The confirmation email was suppressed, so this code is the guest's only record. */
   readonly emailWithheld: boolean;
+  /** A stitched stay's stretches; absent for one set. `setId`/`rowLabel`/`positionNo` are the first stretch's. */
+  readonly stretches?: readonly StayStretchView[];
 }
 
 /**
@@ -70,6 +115,8 @@ export interface PaymentHandoff {
   readonly amount: MoneyView;
   readonly clientSecret: string;
   readonly paymentIntentId: string;
+  /** A stitched stay's stretches; absent for one set. */
+  readonly stretches?: readonly StayStretchView[];
   /**
    * The terms quoted at checkout, riding the hand-off so the pay page repeats the disclosure
    * without a refetch. Absent on the "Pay now" rebuild from a fetched detail — the
@@ -174,6 +221,8 @@ export interface BookingDetail {
   readonly reviewPanel: ReviewPanel;
   /** The remodel move this booking went through, or null when the venue never moved it. */
   readonly move: BookingMove | null;
+  /** A stitched stay's stretches with their own states; empty (or absent, older payload) for one set. */
+  readonly stretches?: readonly StayStretchView[];
 }
 
 /**

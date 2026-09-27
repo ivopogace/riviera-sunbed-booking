@@ -39,8 +39,33 @@ const CLS = {
         </div>
         <h1 [class]="cls.h1" id="confirmation-title">You’re booked.</h1>
         <p [class]="cls.lead">
-          {{ c.rowLabel }} · spot {{ c.positionNo }} at {{ c.venueName }}<br />on {{ dateLabel() }}.
+          @if (c.stretches?.length) {
+            Your stay at {{ c.venueName }}<br />{{ dateLabel() }} · one code for every morning.
+          } @else {
+            {{ c.rowLabel }} · spot {{ c.positionNo }} at {{ c.venueName }}<br />on
+            {{ dateLabel() }}.
+          }
         </p>
+        @if (c.stretches; as stretches) {
+          @if (stretches.length) {
+            <ol
+              class="mb-3.5 list-none rounded-[18px] border border-[rgba(255,255,255,0.6)] bg-riv-inset-fill px-4 py-3 text-left text-[13.5px]"
+              data-testid="confirmation-stops"
+              aria-label="Your spots"
+            >
+              @for (stretch of stretches; track stretch.setId) {
+                <li class="flex items-center justify-between gap-3 py-[3px]">
+                  <span class="font-semibold"
+                    >{{ $index + 1 }}. {{ stretch.rowLabel }} · spot {{ stretch.positionNo }}</span
+                  >
+                  <span class="text-riv-card-ink-soft">{{
+                    stayLabel(stretch.firstDate, stretch.lastDate)
+                  }}</span>
+                </li>
+              }
+            </ol>
+          }
+        }
 
         <dl
           class="mb-3.5 rounded-[18px] border border-[rgba(255,255,255,0.6)] bg-riv-inset-fill px-4 py-3.5 text-left"
@@ -118,6 +143,10 @@ export class BookingConfirmation {
 
   protected readonly formatMoney = formatMoney;
   /** The booking date, formatted once per confirmation (memoized like the dialog/pay siblings). */
+  protected stayLabel(first: string, last: string): string {
+    return formatStay(first, last);
+  }
+
   protected readonly dateLabel = computed(() => {
     const c = this.confirmation();
     return c ? formatStay(c.bookingDate, c.lastDate ?? c.bookingDate) : '';

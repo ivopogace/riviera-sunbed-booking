@@ -8,7 +8,7 @@ import { environment } from '../../environments/environment';
 import { ProofOfWork } from '../core/proof-of-work';
 import { defineFakeAltchaElement, FakeAltchaElement } from '../../testing/fake-altcha-element';
 import { todayBookingDate } from '../shared/booking-date';
-import { SetView } from '../shared/venue-views';
+import { PlanView, SetView } from '../shared/venue-views';
 import {
   AwaitingPayment,
   BookingConfirmation,
@@ -54,6 +54,40 @@ const AWAITING: AwaitingPayment = {
   amount: { minorUnits: 4500, currency: 'EUR' },
   clientSecret: 'pi_123_secret_abc',
   paymentIntentId: 'pi_123',
+};
+
+const PLAN: PlanView = {
+  moves: 1,
+  stretches: [
+    {
+      setId: 2,
+      rowLabel: 'Front row · Sea view',
+      positionNo: 2,
+      gridX: 2,
+      gridY: 1,
+      tier: 'PREMIUM',
+      firstDate: '2026-12-01',
+      lastDate: '2026-12-02',
+      days: 2,
+      pricePerDay: { minorUnits: 4500, currency: 'EUR' },
+      amount: { minorUnits: 9000, currency: 'EUR' },
+    },
+    {
+      setId: 5,
+      rowLabel: 'Second row',
+      positionNo: 1,
+      gridX: 1,
+      gridY: 2,
+      tier: 'STANDARD',
+      firstDate: '2026-12-03',
+      lastDate: '2026-12-04',
+      days: 2,
+      pricePerDay: { minorUnits: 3500, currency: 'EUR' },
+      amount: { minorUnits: 7000, currency: 'EUR' },
+    },
+  ],
+  movesBetween: [{ onDate: '2026-12-03', rowsAway: 1, positionsAway: 1, towardSea: false }],
+  total: { minorUnits: 16000, currency: 'EUR' },
 };
 
 const REQUESTED: RequestedBooking = {
@@ -416,6 +450,72 @@ describe('BookingDialog (2-step Liquid Glass modal)', () => {
       amount: { minorUnits: 13500, currency: 'EUR' },
     });
     await fixture.whenStable();
+  });
+
+  it('a plan books as one stay: the header names the moves, the review lists the stops, and POST /api/stays carries the stretches', async () => {
+    fixture.componentRef.setInput('set', undefined);
+    fixture.componentRef.setInput('plan', PLAN);
+    fixture.componentRef.setInput('lastDate', '2026-12-04');
+    fixture.detectChanges();
+    // The plan's first stretch re-quotes the terms; answer it so whenStable can settle.
+    httpMock.match(TERMS_URL).forEach((req) => req.flush(FREE_TERMS));
+    await fixture.whenStable();
+
+    expect(host().querySelector('#booking-dialog-title')!.textContent).toContain(
+      'Your 4 days, planned',
+    );
+    expect(host().querySelector('[data-testid="dialog-meta"]')!.textContent).toContain(
+      '1 move · 2 spots · one code, one payment',
+    );
+    expect(host().querySelector('[data-testid="dialog-price"]')!.textContent).toContain(
+      '€40 per day · 4 days',
+    );
+    expect(host().querySelector('[data-testid="dialog-total"]')!.textContent).toContain('€160');
+
+    await goToReview();
+    const stops = host().querySelectorAll('[data-testid="review-stops"] li');
+    expect(stops).toHaveLength(2);
+    expect(stops[0].textContent).toContain('1. Front row · Sea view · spot 2');
+    expect(stops[1].textContent).toContain('2. Second row · spot 1');
+    expect(host().querySelector('[data-testid="review-total"]')!.textContent).toContain('€160');
+    submitForm();
+    await fixture.whenStable();
+
+    const req = httpMock.expectOne(`${environment.apiBaseUrl}/api/stays`);
+    expect(req.request.body).toEqual({
+      stretches: [
+        { setId: 2, firstDate: '2026-12-01', lastDate: '2026-12-02' },
+        { setId: 5, firstDate: '2026-12-03', lastDate: '2026-12-04' },
+      ],
+      contact: { email: 'guest@example.com', fullName: 'Holiday Guest', phone: '+355699000' },
+    });
+    const booked = vi.fn();
+    dialog.booked.subscribe(booked);
+    req.flush(
+      {
+        code: 'STAY123456',
+        status: 'CONFIRMED',
+        venueId: 1,
+        venueName: 'Miramar Beach Club',
+        firstDate: '2026-12-01',
+        lastDate: '2026-12-04',
+        total: { minorUnits: 16000, currency: 'EUR' },
+        stretches: PLAN.stretches.map((s) => ({
+          setId: s.setId,
+          rowLabel: s.rowLabel,
+          positionNo: s.positionNo,
+          firstDate: s.firstDate,
+          lastDate: s.lastDate,
+          amount: s.amount,
+        })),
+        emailWithheld: false,
+      },
+      { status: 201, statusText: 'Created' },
+    );
+    await fixture.whenStable();
+    expect(booked).toHaveBeenCalledWith(
+      expect.objectContaining({ code: 'STAY123456', rowLabel: 'Front row · Sea view' }),
+    );
   });
 
   it('emits awaiting (not booked) on a 202 AWAITING_PAYMENT (stripe profile, invariant #8)', async () => {

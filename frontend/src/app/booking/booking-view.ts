@@ -401,8 +401,21 @@ const CLS = {
             <dd [class]="cls.rowValue">{{ b.venueName }}</dd>
           </div>
           <div [class]="cls.row">
-            <dt [class]="cls.rowLabel">Set</dt>
-            <dd [class]="cls.rowValue">{{ b.rowLabel }} · spot {{ b.positionNo }}</dd>
+            <dt [class]="cls.rowLabel">{{ b.stretches?.length ? 'Spots' : 'Set' }}</dt>
+            <dd [class]="cls.rowValue">
+              @if (b.stretches?.length) {
+                <ol class="list-none" data-testid="view-stops">
+                  @for (stretch of b.stretches; track stretch.setId) {
+                    <li>
+                      {{ $index + 1 }}. {{ stretch.rowLabel }} · spot {{ stretch.positionNo }} ·
+                      {{ dateLabel(stretch.firstDate, stretch.lastDate) }}
+                    </li>
+                  }
+                </ol>
+              } @else {
+                {{ b.rowLabel }} · spot {{ b.positionNo }}
+              }
+            </dd>
           </div>
           <div [class]="cls.row">
             <dt [class]="cls.rowLabel">Date</dt>

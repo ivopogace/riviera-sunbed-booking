@@ -326,9 +326,9 @@ consulted per API)
 
 ## Execution status
 
-**Stage pointer:** `implement (phase F4) — book the plan`
+**Stage pointer:** `implement (phase F5) — mocked e2e`
 
-**Next action:** red `booking-dialog.spec.ts` (plan mode), `booking.service.spec.ts#createStay`; then pay, confirmation and booking view render `stretches`.
+**Next action:** `e2e/stitched-stay.e2e.ts` (banner → plan → dialog → pay → code), then the full mocked suite (`PW_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium npm run test:e2e:a11y`).
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -342,7 +342,7 @@ consulted per API)
 | F1 — Discovery tier | ✅ | phase-F1 commit |
 | F2 — Fetch + banner | ✅ | phase-F2/F3 commit |
 | F3 — Plan view | ✅ | phase-F2/F3 commit |
-| F4 — Book the plan | | |
+| F4 — Book the plan | ✅ | phase-F4 commit |
 | F5 — Mocked e2e | | |
 
 **Cost numbers (R-6):** `CoastVerdictCostIT` after the DP tier: 40 venues × 60 sets × 14 days at 70 % occupancy = 23,557 rows, times 110/63/43/39/35 ms, **median 43 ms** (was 29 ms before the third tier; the DP adds CPU only, no rows).

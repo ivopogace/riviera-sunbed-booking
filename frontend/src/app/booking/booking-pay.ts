@@ -137,8 +137,20 @@ const CLS = {
             <dd [class]="cls.sumDd">{{ booking!.venueName }}</dd>
           </div>
           <div [class]="cls.sumRow">
-            <dt [class]="cls.sumDt">Set</dt>
-            <dd [class]="cls.sumDd">{{ booking!.rowLabel }} · spot {{ booking!.positionNo }}</dd>
+            <dt [class]="cls.sumDt">{{ booking!.stretches?.length ? 'Spots' : 'Set' }}</dt>
+            <dd [class]="cls.sumDd">
+              @if (booking!.stretches?.length) {
+                <ol class="list-none" data-testid="pay-stops">
+                  @for (stretch of booking!.stretches; track stretch.setId) {
+                    <li>
+                      {{ $index + 1 }}. {{ stretch.rowLabel }} · spot {{ stretch.positionNo }}
+                    </li>
+                  }
+                </ol>
+              } @else {
+                {{ booking!.rowLabel }} · spot {{ booking!.positionNo }}
+              }
+            </dd>
           </div>
           <div [class]="cls.sumRow">
             <dt [class]="cls.sumDt">Date</dt>

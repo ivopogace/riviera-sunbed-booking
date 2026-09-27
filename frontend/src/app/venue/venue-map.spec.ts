@@ -1993,6 +1993,26 @@ describe('VenueMap — date carried from the discovery page (#294)', () => {
       expect(dom().querySelector('[data-testid="no-cover-plan"]')).not.toBeNull();
     });
 
+    it('“Review & pay” on the plan opens the booking dialog in plan mode', async () => {
+      await loadStay(stitched());
+      dom().querySelector<HTMLButtonElement>('[data-testid="no-cover-plan"]')!.click();
+      fixture.detectChanges();
+
+      dom().querySelector<HTMLButtonElement>('[data-testid="stay-plan-book"]')!.click();
+      await settle();
+
+      const dialog = dom().querySelector<HTMLElement>('app-booking-dialog')!;
+      expect(dialog).not.toBeNull();
+      expect(dialog.querySelector('[data-testid="dialog-meta"]')!.textContent).toContain(
+        '1 move · 2 spots · one code, one payment',
+      );
+      expect(dialog.querySelector('[data-testid="dialog-total"]')!.textContent).toContain('€125');
+
+      dialog.querySelector<HTMLButtonElement>('[data-testid="dialog-close"]')!.click();
+      fixture.detectChanges();
+      expect(dom().querySelector('app-booking-dialog')).toBeNull();
+    });
+
     it('plans around a tapped partly-free set: the sheet closes, the read is anchored, the plan names the anchor’s role', async () => {
       await loadStay();
 

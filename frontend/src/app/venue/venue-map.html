@@ -510,6 +510,7 @@
 
     @if (partlySet(); as set) {
       <app-partly-free-sheet
+        [canPlan]="true"
         [set]="set"
         [first]="selectedDate()"
         [last]="selectedLastDate()"
@@ -527,6 +528,19 @@
         [mode]="v.bookingMode"
         [venueName]="v.name"
         (dismissed)="onDialogClose()"
+        (booked)="onBooked()"
+        (awaiting)="onAwaiting()"
+        (requested)="onRequested()"
+      />
+    }
+    @if (selectedPlan(); as plan) {
+      <app-booking-dialog
+        [plan]="plan"
+        [date]="selectedDate()"
+        [lastDate]="selectedLastDate()"
+        [mode]="v.bookingMode"
+        [venueName]="v.name"
+        (dismissed)="onPlanDialogClose()"
         (booked)="onBooked()"
         (awaiting)="onAwaiting()"
         (requested)="onRequested()"

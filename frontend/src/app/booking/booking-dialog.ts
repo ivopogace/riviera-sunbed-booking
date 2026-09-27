@@ -27,9 +27,9 @@ import {
 import { ChallengeWidget } from '../shared/challenge-widget';
 import { trapFocusWithin } from '../shared/focus-trap';
 import { formatMoney } from '../shared/money';
-import { touristTierLabel } from '../shared/set-label';
+import { spotLabel, touristTierLabel } from '../shared/set-label';
 import { BusyAction } from '../shared/busy-action';
-import { BookingMode, SetView } from '../shared/venue-views';
+import { BookingMode, PlanView, SetView } from '../shared/venue-views';
 import {
   AwaitingPayment,
   BookingConfirmation,
@@ -107,10 +107,19 @@ const SET_INCLUDES = '2 loungers + umbrella · full day';
           id="booking-dialog-title"
           class="dialog-title mt-[5px] text-[23px] leading-[1.1] font-bold tracking-[-0.02em] text-white"
         >
-          {{ set().rowLabel }}
+          @if (plan(); as p) {
+            Your {{ dayCount() }} days, planned
+          } @else {
+            {{ primarySet().rowLabel }}
+          }
         </h2>
-        <p class="dialog-meta mt-[5px] text-[13px] text-white">
-          Spot {{ set().positionNo }} · {{ tierLabel() }}
+        <p class="dialog-meta mt-[5px] text-[13px] text-white" data-testid="dialog-meta">
+          @if (plan(); as p) {
+            {{ p.moves }} {{ p.moves === 1 ? 'move' : 'moves' }} · {{ p.stretches.length }} spots ·
+            one code, one payment
+          } @else {
+            Spot {{ primarySet().positionNo }} · {{ tierLabel() }}
+          }
         </p>
         <p class="dialog-includes mt-[7px] text-[12.5px] text-white">{{ includes }}</p>
 
@@ -266,9 +275,17 @@ const SET_INCLUDES = '2 loungers + umbrella · full day';
               <div
                 class="sum-row flex items-center justify-between gap-3 border-b border-b-riv-card-track py-[11px] text-[14.5px] first:pt-0"
               >
-                <dt class="text-riv-card-ink-soft">Set</dt>
+                <dt class="text-riv-card-ink-soft">{{ isPlan() ? 'Spots' : 'Set' }}</dt>
                 <dd class="text-right font-bold text-riv-card-ink">
-                  {{ set().rowLabel }} · spot {{ set().positionNo }}
+                  @if (isPlan()) {
+                    <ol class="list-none" data-testid="review-stops">
+                      @for (stop of stops(); track $index) {
+                        <li>{{ $index + 1 }}. {{ stop.spot }} · {{ stop.range }}</li>
+                      }
+                    </ol>
+                  } @else {
+                    {{ primarySet().rowLabel }} · spot {{ primarySet().positionNo }}
+                  }
                 </dd>
               </div>
               <div
@@ -382,7 +399,10 @@ const SET_INCLUDES = '2 loungers + umbrella · full day';
   `,
 })
 export class BookingDialog implements OnInit {
-  readonly set = input.required<SetView>();
+  /** The one set to book; absent when a stitched `plan` is booked instead. */
+  readonly set = input<SetView | undefined>(undefined);
+  /** A stitched plan to book as one stay (design D6): every stretch claimed at once, one code, one payment. */
+  readonly plan = input<PlanView | undefined>(undefined);
   /** The first day the map is showing (ISO YYYY-MM-DD); seeds the POST body and the read-only date row. */
   readonly date = input.required<string>();
   /** The last day of the stay; absent or equal to the first for one day. */
@@ -421,7 +441,7 @@ export class BookingDialog implements OnInit {
    * renders no cancellation claim at all — never a false "free cancellation".
    */
   protected readonly terms = this.bookings.cancellationTerms(() => ({
-    setId: this.set().id,
+    setId: this.primarySet().id,
     date: this.date(),
   }));
 
@@ -433,21 +453,59 @@ export class BookingDialog implements OnInit {
   private readonly errorCode = signal<BookingErrorCode | ChallengeRejection | undefined>(undefined);
 
   protected readonly isRequest = computed(() => this.mode() === 'REQUEST');
-  protected readonly tierLabel = computed(() => touristTierLabel(this.set().tier));
+  protected readonly isPlan = computed(() => this.plan() !== undefined);
+  /** The set the dialog is about: the one given, or a plan's first stretch. */
+  protected readonly primarySet = computed<SetView>(() => {
+    const set = this.set();
+    if (set !== undefined) {
+      return set;
+    }
+    const first = this.plan()!.stretches[0];
+    return {
+      id: first.setId,
+      rowLabel: first.rowLabel,
+      positionNo: first.positionNo,
+      tier: first.tier,
+      pool: 'ONLINE',
+      price: first.pricePerDay,
+      gridX: first.gridX,
+      gridY: first.gridY,
+      availability: 'FREE',
+    };
+  });
+  /** A plan's stops as the review lists them. */
+  protected readonly stops = computed(() =>
+    (this.plan()?.stretches ?? []).map((stretch) => ({
+      spot: spotLabel(stretch.rowLabel, stretch.positionNo),
+      range: formatStay(stretch.firstDate, stretch.lastDate),
+    })),
+  );
+  protected readonly tierLabel = computed(() => touristTierLabel(this.primarySet().tier));
   /** The stay's last day, the first itself for one day. */
   protected readonly lastDay = computed(() => this.lastDate() ?? this.date());
   protected readonly dayCount = computed(() => daysBetween(this.date(), this.lastDay()));
   protected readonly isStay = computed(() => this.dayCount() > 1);
   protected readonly dateLabel = computed(() => formatStay(this.date(), this.lastDay()));
-  /** The set's per-day price. */
-  protected readonly perDay = computed(() => formatMoney(this.set().price));
-  /** The stay's total: the per-day price × the days (integer minor units, invariant #5). */
-  protected readonly total = computed(() =>
-    formatMoney({
-      minorUnits: this.set().price.minorUnits * this.dayCount(),
-      currency: this.set().price.currency,
-    }),
-  );
+  /** The set's per-day price; a plan's average over its days. */
+  protected readonly perDay = computed(() => {
+    const plan = this.plan();
+    return plan === undefined
+      ? formatMoney(this.primarySet().price)
+      : formatMoney({
+          minorUnits: Math.round(plan.total.minorUnits / this.dayCount()),
+          currency: plan.total.currency,
+        });
+  });
+  /** The stay's total: the per-day price × the days, or the plan's server-priced total (invariant #5). */
+  protected readonly total = computed(() => {
+    const plan = this.plan();
+    return formatMoney(
+      plan?.total ?? {
+        minorUnits: this.primarySet().price.minorUnits * this.dayCount(),
+        currency: this.primarySet().price.currency,
+      },
+    );
+  });
   protected readonly primaryLabel = computed(() => {
     if (this.step() === 1) {
       return 'Continue';
@@ -539,17 +597,33 @@ export class BookingDialog implements OnInit {
       try {
         // Awaited, not read: a fast tourist can reach Review before the on-focus solve lands.
         const challenge = await this.challenge()?.solved();
+        const contact = { email: m.email, fullName: m.fullName, phone: m.phone };
+        const terms = this.terms.hasValue() ? this.terms.value() : undefined;
+        const plan = this.plan();
         const result = await firstValueFrom(
-          this.bookings.createBooking(
-            {
-              setId: this.set().id,
-              bookingDate: m.date,
-              ...(this.isStay() ? { lastDate: this.lastDay() } : {}),
-              contact: { email: m.email, fullName: m.fullName, phone: m.phone },
-            },
-            this.terms.hasValue() ? this.terms.value() : undefined,
-            challenge,
-          ),
+          plan !== undefined
+            ? this.bookings.createStay(
+                {
+                  stretches: plan.stretches.map((stretch) => ({
+                    setId: stretch.setId,
+                    firstDate: stretch.firstDate,
+                    lastDate: stretch.lastDate,
+                  })),
+                  contact,
+                },
+                terms,
+                challenge,
+              )
+            : this.bookings.createBooking(
+                {
+                  setId: this.primarySet().id,
+                  bookingDate: m.date,
+                  ...(this.isStay() ? { lastDate: this.lastDay() } : {}),
+                  contact,
+                },
+                terms,
+                challenge,
+              ),
         );
         if (result.kind === 'requested') {
           this.requested.emit(result.requested);

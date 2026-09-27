@@ -123,6 +123,67 @@ describe('BookingService', () => {
     expect(service.lastAwaitingPayment()).toBeUndefined();
   });
 
+  it('books a plan as one stay and answers it in the booking’s shape (design D6)', () => {
+    let received: CreateBookingResult | undefined;
+    const stayRequest = {
+      stretches: [
+        { setId: 2, firstDate: '2026-12-01', lastDate: '2026-12-02' },
+        { setId: 5, firstDate: '2026-12-03', lastDate: '2026-12-04' },
+      ],
+      contact: REQUEST.contact,
+    };
+    service.createStay(stayRequest, undefined, 'solved').subscribe((r) => (received = r));
+
+    const req = httpMock.expectOne(`${environment.apiBaseUrl}/api/stays`);
+    expect(req.request.method).toBe('POST');
+    expect(req.request.body).toEqual(stayRequest);
+    expect(req.request.headers.get('X-Altcha-Payload')).toBe('solved');
+    req.flush(
+      {
+        code: 'STAY123456',
+        status: 'AWAITING_PAYMENT',
+        venueId: 1,
+        venueName: 'Miramar Beach Club',
+        firstDate: '2026-12-01',
+        lastDate: '2026-12-04',
+        total: { minorUnits: 18000, currency: 'EUR' },
+        stretches: [
+          {
+            setId: 2,
+            rowLabel: 'Front row',
+            positionNo: 2,
+            firstDate: '2026-12-01',
+            lastDate: '2026-12-02',
+            amount: { minorUnits: 9000, currency: 'EUR' },
+          },
+          {
+            setId: 5,
+            rowLabel: 'Second row',
+            positionNo: 1,
+            firstDate: '2026-12-03',
+            lastDate: '2026-12-04',
+            amount: { minorUnits: 9000, currency: 'EUR' },
+          },
+        ],
+        emailWithheld: false,
+        clientSecret: 'pi_stay_secret',
+        paymentIntentId: 'pi_stay',
+      },
+      { status: 202, statusText: 'Accepted' },
+    );
+
+    expect(received?.kind).toBe('awaiting');
+    const awaiting = service.lastAwaitingPayment()!;
+    expect(awaiting.code).toBe('STAY123456');
+    expect(awaiting.rowLabel).toBe('Front row');
+    expect(awaiting.bookingDate).toBe('2026-12-01');
+    expect(awaiting.lastDate).toBe('2026-12-04');
+    expect(awaiting.amount).toEqual({ minorUnits: 18000, currency: 'EUR' });
+    expect(awaiting.clientSecret).toBe('pi_stay_secret');
+    expect(awaiting.stretches).toHaveLength(2);
+    expect(TestBed.inject(DeviceLocalBookings).codes()).toContain('STAY123456');
+  });
+
   it('sends the solved proof-of-work payload as the fence header when it has one', () => {
     service.createBooking(REQUEST, undefined, 'solved-base64-payload').subscribe();
 
