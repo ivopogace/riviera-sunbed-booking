@@ -220,10 +220,10 @@ Facts settled from the code (← confirm? marks a reading to re-check when the p
 
 ## Modulith
 
-- **`itinerary`** gains `api/PlanItinerary` (`Optional<Itinerary> plan(VenueId, StaySpan,
-  Optional<SetId> anchor)`) + `vocabulary/` records (`Itinerary`, `Stretch`, `Move`) — published so
-  the controller and a later slice (#1209's reminder) can read it; today's only consumer is its own
-  `adapter/in`. Reads `venue.api.SetBookingFacts.activeSetsOf` (placements) + `setBookingInfos`
+- **`itinerary`** gains the `application/PlanItinerary` port (its own `adapter/in` is the only
+  caller, so no `api/`; `riviera-modulith`: "api/ ONLY if a sibling calls a port here") with its
+  result records in `domain/` (`ItinerarySearch.Itinerary`/`Stretch`); #1209 promotes it to `api/`
+  + `vocabulary/` if its reminder needs it. Reads `venue.api.SetBookingFacts.activeSetsOf` (placements) + `setBookingInfos`
   (prices) + `VenueCatalog.findVenueMap` (visibility fence, 404) and
   `availability.api.SetAvailabilityFacts`. Grants unchanged. `StayVerdict.Fit` gains
   `FITS_WITH_MOVES` + `moves`. Budget: `riviera.itinerary.max-switches` (`ItineraryProperties`
@@ -326,14 +326,14 @@ consulted per API)
 
 ## Execution status
 
-**Stage pointer:** `plan — committed; implement (phase 0) next`
+**Stage pointer:** `implement (phase 2) — itinerary read`
 
-**Next action:** red `ItinerarySearchTest` in `platform/src/test/java/ai/riviera/platform/itinerary/domain/`.
+**Next action:** red `PlanItineraryIT` / `ItineraryControllerIT`; the port stays in `application/` (no sibling calls it) and its records in `domain/` — the plan's Modulith section is amended accordingly.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — Search domain | | |
-| 1 — Budget + coast tier | | |
+| 0 — Search domain | ✅ | phase-0/1 commit |
+| 1 — Budget + coast tier | ✅ | phase-0/1 commit |
 | 2 — Itinerary read | | |
 | 3 — Stay schema + group checkout | | |
 | 4 — Reserve a plan | | |
@@ -345,6 +345,6 @@ consulted per API)
 | F4 — Book the plan | | |
 | F5 — Mocked e2e | | |
 
-**Cost numbers (R-6):** _pending phase 1_.
+**Cost numbers (R-6):** `CoastVerdictCostIT` after the DP tier: 40 venues × 60 sets × 14 days at 70 % occupancy = 23,557 rows, times 110/63/43/39/35 ms, **median 43 ms** (was 29 ms before the third tier; the DP adds CPU only, no rows).
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
