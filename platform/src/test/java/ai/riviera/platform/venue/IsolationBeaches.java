@@ -20,6 +20,8 @@ public final class IsolationBeaches {
 	/** The itinerary module's ITs: one beach for the verdict fixtures, one for the peak-shape cost read. */
 	public static final String STAY_VERDICT_IT_BEACH = "DIVJAKE";
 	public static final String STAY_COST_IT_BEACH = "SEMAN";
+	/** {@code PlanItineraryIT} + {@code ItineraryControllerIT}: the stitched-plan fixtures. */
+	public static final String STAY_PLAN_IT_BEACH = "ORIKUM";
 
 	private IsolationBeaches() {
 	}

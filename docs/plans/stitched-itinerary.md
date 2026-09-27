@@ -326,15 +326,15 @@ consulted per API)
 
 ## Execution status
 
-**Stage pointer:** `implement (phase 2) — itinerary read`
+**Stage pointer:** `implement (phase 3) — stay schema + group checkout`
 
-**Next action:** red `PlanItineraryIT` / `ItineraryControllerIT`; the port stays in `application/` (no sibling calls it) and its records in `domain/` — the plan's Modulith section is amended accordingly.
+**Next action:** red sole-writer rule for `stay` in `ResponsibilitiesArchitectureTests`, then `V65__stay.sql`; then `CheckoutPort.pay(shares)`.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — Search domain | ✅ | phase-0/1 commit |
 | 1 — Budget + coast tier | ✅ | phase-0/1 commit |
-| 2 — Itinerary read | | |
+| 2 — Itinerary read | ✅ | phase-2 commit |
 | 3 — Stay schema + group checkout | | |
 | 4 — Reserve a plan | | |
 | 5 — Stay code resolves | | |
