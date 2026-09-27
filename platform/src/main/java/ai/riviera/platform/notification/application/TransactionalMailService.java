@@ -80,6 +80,16 @@ public class TransactionalMailService implements MailSender {
 		return ConfirmationSendOutcome.SENT;
 	}
 
+	/** {@link #sendBookingConfirmation}'s twin for a stitched stay's one confirmation, on the same terms. */
+	public ConfirmationSendOutcome sendStayConfirmation(String toEmail, StayConfirmationMail confirmation) {
+		if (suppressions.isSuppressed(toEmail)) {
+			log.info("Stay-confirmation mail skipped: the address is suppressed");
+			return ConfirmationSendOutcome.WITHHELD_SUPPRESSED;
+		}
+		mailer.sendStayConfirmation(toEmail, confirmation);
+		return ConfirmationSendOutcome.SENT;
+	}
+
 	/**
 	 * Deliver the cancellation/refund record now, on the caller's thread; a transport failure propagates.
 	 * The suppression check gets no {@link #isSuppressedOrFailOpen} carve-out on this vehicle, for the

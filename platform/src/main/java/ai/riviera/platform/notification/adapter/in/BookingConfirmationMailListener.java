@@ -25,8 +25,8 @@ import ai.riviera.platform.shared.ObservabilityMetrics;
  * Keep {@code @Async(MAIL_EXECUTOR)} + {@code @TransactionalEventListener} spelled out (the composite runs on
  * the shared money-path pool), and add no {@code @Transactional}: it would pin a connection across SMTP.
  * Renaming the class, method or parameter type orphans outstanding publications (registry {@code listener_id}).
- * At-least-once, no dedupe table (ADR-0011); a missing fact is skipped, a transport failure propagates. Never
- * log the arrival code (invariant #7). Rationale: RESPONSIBILITIES.md §notification.
+ * At-least-once, no dedupe table (ADR-0011); a missing fact is skipped, a transport failure propagates; a
+ * stay's stretch is left to {@link StayConfirmationMailListener}. Never log the arrival code (invariant #7).
  */
 @Component
 class BookingConfirmationMailListener {
@@ -49,6 +49,9 @@ class BookingConfirmationMailListener {
 	@Async(RegistryMailExecutorConfig.MAIL_EXECUTOR)
 	@TransactionalEventListener
 	void on(BookingConfirmed event) {
+		if (event.stayId() != null) {
+			return;
+		}
 		switch (facts.resolve(event.bookingId(), event.setId())) {
 			case BookingMailFacts.Missing(MissingBookingFact fact) -> abandon(fact, event);
 			case BookingMailFacts.Resolved booking -> send(booking, event);

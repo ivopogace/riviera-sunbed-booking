@@ -19,6 +19,7 @@ import ai.riviera.platform.notification.application.Mailer;
 import ai.riviera.platform.notification.application.PaymentDueMail;
 import ai.riviera.platform.notification.application.RequestDeclinedMail;
 import ai.riviera.platform.notification.application.RequestExpiredMail;
+import ai.riviera.platform.notification.application.StayConfirmationMail;
 
 /**
  * A transport whose latency and failure are the test's to choose — the "deliberately blocking
@@ -89,6 +90,11 @@ public final class ControllableMailer implements Mailer {
 
 	@Override
 	public void sendBookingConfirmation(String toEmail, BookingConfirmationMail confirmation) {
+		observeRegistrySend(toEmail);
+	}
+
+	@Override
+	public void sendStayConfirmation(String toEmail, StayConfirmationMail confirmation) {
 		observeRegistrySend(toEmail);
 	}
 

@@ -6,6 +6,7 @@ import java.util.List;
 import ai.riviera.platform.booking.events.BookingConfirmed;
 import ai.riviera.platform.booking.vocabulary.BookingId;
 import ai.riviera.platform.booking.vocabulary.CancellationWindow;
+import ai.riviera.platform.booking.vocabulary.StayId;
 import ai.riviera.platform.notification.application.BookingConfirmationMail;
 import ai.riviera.platform.notification.application.BookingMailFacts;
 import ai.riviera.platform.notification.application.BookingMailFactsService;
@@ -119,6 +120,14 @@ class BookingConfirmationMailListenerTest {
 		assertThat(abandoned(fact.tagValue())).isEqualTo(1.0);
 		assertThat(meters.find(ObservabilityMetrics.MAIL_CONFIRMATION_ABANDONED).counters()).hasSize(1);
 		verifyNoInteractions(mails);
+	}
+
+	@Test
+	void aStretchOfAStayIsLeftToTheStayMail() {
+		listener.on(new BookingConfirmed(BOOKING_ID, new VenueId(3L), SET_ID, LocalDate.of(2026, 8, 1), 4500, "EUR",
+				CancellationWindow.FREE, 0, LocalDate.of(2026, 8, 2), new StayId(9L)));
+
+		verifyNoInteractions(facts, mails, attempts);
 	}
 
 	@Test

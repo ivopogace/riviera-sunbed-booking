@@ -47,8 +47,9 @@ one row.
    stamps only that day.
 3. **One collection for the group.** `payment.api.CheckoutPort` collects a list of shares under one
    PaymentIntent, one `payment_booking` share per stretch (the shape #1207 prepared); the webhook
-   confirms each stretch, so `BookingConfirmed`, payout accrual and the confirmation mail stay per
-   booking. Refunds stay per stretch against the shared intent, as ADR-0005 and #1207 already say.
+   confirms each stretch, so `BookingConfirmed` and payout accrual stay per booking; the confirm that
+   completes the stay also publishes `StayConfirmed`, which the stay's one confirmation mail rides
+   (#1255). Refunds stay per stretch against the shared intent, as ADR-0005 and #1207 already say.
 4. **A stay cancels whole, judged on the stay's first day.** Every stretch's refund is quoted with the
    window anchored on the stay's first day, so a stitched stay refunds exactly what a same-set stay of
    the same dates would (invariant #10). Each stretch then transitions, releases its days and
@@ -66,8 +67,8 @@ one row.
 - Every existing per-booking invariant, test and event holds for a stitched stay by construction; the
   new tests cover only the group: all-or-nothing claims across stretches, one intent with N shares,
   the stay code resolving at check-in, cancel and view, one reversal per stretch.
-- A guest of a stitched stay receives one confirmation mail **per stretch**, each carrying the stay's
-  code (owner decision at intake); a single stay mail is a follow-up.
+- A guest of a stitched stay receives **one** confirmation mail naming every stop, sent once every
+  stretch is confirmed (#1255; the slice first shipped one mail per stretch, by owner decision).
 - "Your spot today", the evening-before move reminder and the staff scan's today-set display build on
   the stay's code resolving (issue #1209).
 - A signed-in guest's booking list shows a stitched stay as one row under the stay's code — the whole

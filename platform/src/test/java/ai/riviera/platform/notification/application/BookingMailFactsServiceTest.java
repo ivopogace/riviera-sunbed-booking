@@ -1,11 +1,16 @@
 package ai.riviera.platform.notification.application;
 
+import java.time.LocalDate;
 import java.time.LocalTime;
+import java.util.List;
 import java.util.Optional;
 
 import ai.riviera.platform.booking.api.BookingNotificationFacts;
 import ai.riviera.platform.booking.vocabulary.BookingId;
 import ai.riviera.platform.booking.vocabulary.BookingNotificationInfo;
+import ai.riviera.platform.booking.vocabulary.CancellationWindow;
+import ai.riviera.platform.booking.vocabulary.StayConfirmationFacts;
+import ai.riviera.platform.booking.vocabulary.StayId;
 import ai.riviera.platform.customer.api.CustomerLookup;
 import ai.riviera.platform.customer.vocabulary.CustomerId;
 import ai.riviera.platform.customer.vocabulary.GuestContact;
@@ -110,5 +115,49 @@ class BookingMailFactsServiceTest {
 		assertThat(MissingBookingFact.NO_SET.tagValue()).isEqualTo("no-set");
 		assertThat(MissingBookingFact.NO_CONTACT.tagValue()).isEqualTo("no-contact");
 		assertThat(MissingBookingFact.TAG).isEqualTo("reason");
+	}
+
+	private static final SetId SECOND_SET_ID = new SetId(8L);
+	private static final StayConfirmationFacts STAY = new StayConfirmationFacts(new StayId(9L), "STAYCODE", CUSTOMER_ID,
+			List.of(new StayConfirmationFacts.Stop(new BookingId(41L), SET_ID, LocalDate.of(2026, 8, 1),
+							LocalDate.of(2026, 8, 2)),
+					new StayConfirmationFacts.Stop(new BookingId(42L), SECOND_SET_ID, LocalDate.of(2026, 8, 3),
+							LocalDate.of(2026, 8, 3))),
+			13500, "EUR", true, CancellationWindow.FREE, 0);
+
+	@Test
+	void resolvesAStaysMailWithEveryStopsSpotAndTheCallersBirthTerms() {
+		when(sets.setBookingInfo(SET_ID)).thenReturn(Optional.of(SET));
+		when(sets.setBookingInfo(SECOND_SET_ID)).thenReturn(Optional.of(new SetBookingInfo(SECOND_SET_ID,
+				new VenueId(3L), "Vala Beach", "B", 5, Pool.ONLINE, new MoneyView(4500, "EUR"), LocalTime.of(18, 0),
+				LocalTime.of(16, 0), BookingMode.INSTANT, SeasonClosure.open(), null)));
+		when(customers.findById(CUSTOMER_ID)).thenReturn(Optional.of(CONTACT));
+
+		assertThat(facts.resolveStay(STAY, CancellationWindow.LATE, 2500)).isEqualTo(new StayMailFacts.Resolved(
+				"tourist@example.com", new StayConfirmationMail("STAYCODE", "Vala Beach", LocalDate.of(2026, 8, 1),
+						LocalDate.of(2026, 8, 3),
+						List.of(new StayConfirmationMail.Stop(LocalDate.of(2026, 8, 1), LocalDate.of(2026, 8, 2), "A", 3),
+								new StayConfirmationMail.Stop(LocalDate.of(2026, 8, 3), LocalDate.of(2026, 8, 3), "B", 5)),
+						13500, "EUR", CancellationWindow.LATE, 2500)));
+	}
+
+	@Test
+	void aStopWithoutASetIsNamedAndStopsTheContactRead() {
+		when(sets.setBookingInfo(SET_ID)).thenReturn(Optional.of(SET));
+		when(sets.setBookingInfo(SECOND_SET_ID)).thenReturn(Optional.empty());
+
+		assertThat(facts.resolveStay(STAY, CancellationWindow.FREE, 0))
+				.isEqualTo(new StayMailFacts.Missing(MissingBookingFact.NO_SET));
+		verifyNoInteractions(customers);
+	}
+
+	@Test
+	void aStayWithoutAContactIsNamed() {
+		when(sets.setBookingInfo(SET_ID)).thenReturn(Optional.of(SET));
+		when(sets.setBookingInfo(SECOND_SET_ID)).thenReturn(Optional.of(SET));
+		when(customers.findById(CUSTOMER_ID)).thenReturn(Optional.empty());
+
+		assertThat(facts.resolveStay(STAY, CancellationWindow.FREE, 0))
+				.isEqualTo(new StayMailFacts.Missing(MissingBookingFact.NO_CONTACT));
 	}
 }

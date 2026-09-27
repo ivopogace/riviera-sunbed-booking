@@ -1,6 +1,8 @@
 package ai.riviera.platform.booking.adapter.out;
 
+import java.time.Instant;
 import java.time.LocalDate;
+import java.util.List;
 import java.util.Optional;
 
 import org.springframework.jdbc.core.simple.JdbcClient;
@@ -14,19 +16,22 @@ import ai.riviera.platform.booking.vocabulary.BookingConfirmationFacts;
 import ai.riviera.platform.booking.vocabulary.BookingId;
 import ai.riviera.platform.booking.vocabulary.BookingMoveFacts;
 import ai.riviera.platform.booking.vocabulary.BookingNotificationInfo;
+import ai.riviera.platform.booking.vocabulary.StayConfirmationFacts;
+import ai.riviera.platform.booking.vocabulary.StayId;
 import ai.riviera.platform.customer.vocabulary.CustomerId;
 import ai.riviera.platform.venue.vocabulary.SetId;
 
 /**
- * JDBC adapter for {@link BookingNotificationFacts} — every read is by primary key via
- * {@link JdbcClient} (invariant #1, no JPA): two columns for the listener's narrow
- * {@code notificationInfo}, the wider {@code confirmationFacts} an admin resend rebuilds the mail
- * from, and {@code moveFacts}, the receipt's latest move plus the booking's {@code moved_at} and the
- * free-exit deadline {@link BookingCutoff} derives from it. Package-private; only the {@code api/} port is
- * referenced cross-module (invariant #11). Read-only.
+ * JDBC adapter for {@link BookingNotificationFacts} over {@link JdbcClient} (invariant #1): by primary
+ * key, bar the stay reads, which walk {@code booking_stay_id_idx}. {@code confirmationFacts} and the stay
+ * facts re-derive the birth window a resend has no payload for; {@code moveFacts} adds the free-exit
+ * deadline {@link BookingCutoff} derives. Package-private; only the {@code api/} port is referenced
+ * cross-module (invariant #11). Read-only.
  */
 @Repository
 class JdbcBookingNotificationFacts implements BookingNotificationFacts {
+
+	private static final String COL_CUSTOMER_ID = "customer_id";
 
 	private final JdbcClient jdbc;
 	private final CancellationPolicy cancellationPolicy;
@@ -66,7 +71,7 @@ class JdbcBookingNotificationFacts implements BookingNotificationFacts {
 						+ "LEFT JOIN stay s ON s.id = b.stay_id WHERE b.id = :id")
 				.param("id", bookingId.value())
 				.query((rs, rowNum) -> new BookingNotificationInfo(
-						rs.getString("code"), new CustomerId(rs.getLong("customer_id"))))
+						rs.getString("code"), new CustomerId(rs.getLong(COL_CUSTOMER_ID))))
 				.optional();
 	}
 
@@ -86,6 +91,50 @@ class JdbcBookingNotificationFacts implements BookingNotificationFacts {
 				.optional();
 	}
 
+	@Override
+	public Optional<StayConfirmationFacts> stayConfirmationFacts(StayId stayId) {
+		List<StayRow> rows = jdbc.sql("""
+				SELECT s.code, b.id, b.set_id, b.booking_date, b.last_date, b.amount_minor, b.amount_currency,
+				       b.customer_id, b.confirmed_at IS NOT NULL AS confirmed, b.created_at
+				FROM stay s
+				JOIN booking b ON b.stay_id = s.id
+				WHERE s.id = :stay
+				ORDER BY b.booking_date
+				""")
+				.param("stay", stayId.value())
+				.query((rs, rowNum) -> new StayRow(rs.getString("code"),
+						new StayConfirmationFacts.Stop(new BookingId(rs.getLong("id")), new SetId(rs.getLong("set_id")),
+								rs.getObject("booking_date", LocalDate.class), rs.getObject("last_date", LocalDate.class)),
+						rs.getLong("amount_minor"), rs.getString("amount_currency"),
+						new CustomerId(rs.getLong(COL_CUSTOMER_ID)), rs.getBoolean("confirmed"),
+						rs.getTimestamp("created_at").toInstant()))
+				.list();
+		if (rows.isEmpty()) {
+			return Optional.empty();
+		}
+		StayRow first = rows.getFirst();
+		Optional<CancellationPolicy.BirthTerms> birth = cancellationPolicy.windowAtBirth(
+				first.stop().setId(), first.stop().firstDate(), first.createdAt());
+		return Optional.of(new StayConfirmationFacts(stayId, first.code(), first.customerId(),
+				rows.stream().map(StayRow::stop).toList(), rows.stream().mapToLong(StayRow::amountMinor).sum(),
+				first.currency(), rows.stream().allMatch(StayRow::confirmed),
+				birth.map(CancellationPolicy.BirthTerms::window).orElse(null),
+				birth.map(CancellationPolicy.BirthTerms::lateCancelRefundBps).orElse(0)));
+	}
+
+	@Override
+	public Optional<StayConfirmationFacts> stayConfirmationFactsOf(BookingId bookingId) {
+		return jdbc.sql("SELECT stay_id FROM booking WHERE id = :id AND stay_id IS NOT NULL")
+				.param("id", bookingId.value())
+				.query(Long.class)
+				.optional()
+				.flatMap(stayId -> stayConfirmationFacts(new StayId(stayId)));
+	}
+
+	private record StayRow(String code, StayConfirmationFacts.Stop stop, long amountMinor, String currency,
+			CustomerId customerId, boolean confirmed, Instant createdAt) {
+	}
+
 	/**
 	 * A resend has no event payload, so the window-at-birth is re-derived here from the venue's
 	 * current cutoff via {@code CancellationPolicy} — bounded, documented drift after a cutoff edit;
@@ -103,7 +152,7 @@ class JdbcBookingNotificationFacts implements BookingNotificationFacts {
 				rs.getLong("amount_minor"),
 				rs.getString("amount_currency"),
 				rs.getString("code"),
-				new CustomerId(rs.getLong("customer_id")),
+				new CustomerId(rs.getLong(COL_CUSTOMER_ID)),
 				rs.getBoolean("ever_confirmed"),
 				birth.map(CancellationPolicy.BirthTerms::window).orElse(null),
 				birth.map(CancellationPolicy.BirthTerms::lateCancelRefundBps).orElse(0));

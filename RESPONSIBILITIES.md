@@ -253,6 +253,12 @@ any is released on the old, never a swap of my own — so a racing reserve wins 
   judges every stretch by the shared `ReserveFences`, claims every day of every stretch all or nothing
   (`ConcurrentStayReservationIT`) and collects once with one share per stretch; a stay cancels whole,
   each stretch quoted on the stay's first day (invariant #10) and reversed once (#9).
+- **A stay is confirmed once: the confirm that leaves no stretch unconfirmed publishes `StayConfirmed`.**
+  The webhook confirms each stretch in its own transaction, so `ConfirmBookingService` row-locks the
+  `stay` before counting unconfirmed stretches: exactly one confirm sees the stay complete. The payload
+  is the stay id plus the first stretch's birth window (the day a stay is judged on); each stretch's
+  `BookingConfirmed` names its `stayId`, null for a lone booking and every older payload. No stay
+  confirms part-way: one PaymentIntent collects every share and the sweep voids it before releasing.
 - **Attendance is per service day; I am the sole writer and reader of `booking_day`**
   (`ResponsibilitiesArchitectureTests` rule 9 — other modules ask my ports). The schema writes the
   rows when a booking becomes `CONFIRMED` (trigger `booking_day_on_confirm`), so no confirm
@@ -662,6 +668,11 @@ tag names the person, invariant #7):
   `forgot-password` flow relies on it). `MailDeliverability` ("withheld now?") is safe only where
   the caller owns the address; its sole consumer is the authenticated verification-resend. I also
   *implement* `booking.spi.ConfirmationMailDelivery`; the dependency stays `notification → booking`.
+- **A stitched stay gets one confirmation mail, on `StayConfirmed`**: the stay's code, span, every
+  stop's days and spot, and the total. A stretch's `BookingConfirmed` mails nothing (one without a
+  `stayId`, an older payload, mails as a lone booking's). The delivery log keeps its per-booking grain:
+  the stay mail's attempt is logged on every stretch it covers, and a resend on any stretch resends
+  the stay's mail, refused unless every stretch confirmed.
 - The **booking-confirmation delivery log** (`booking_confirmation_mail_attempt`) and its ADMIN
   lookup and **resend** exist because the registry's `completion_date` records only that the
   listener *returned*, as on a suppression skip or an abandonment. The resend is **synchronous
