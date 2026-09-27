@@ -6,6 +6,8 @@ import ai.riviera.platform.booking.vocabulary.BookingConfirmationFacts;
 import ai.riviera.platform.booking.vocabulary.BookingId;
 import ai.riviera.platform.booking.vocabulary.BookingMoveFacts;
 import ai.riviera.platform.booking.vocabulary.BookingNotificationInfo;
+import ai.riviera.platform.booking.vocabulary.StayConfirmationFacts;
+import ai.riviera.platform.booking.vocabulary.StayId;
 
 /**
  * The {@code booking} module's published notification-facts query port (invariant #11): what
@@ -28,6 +30,12 @@ public interface BookingNotificationFacts {
 	 * The first send keeps taking date and amount off the event, so an edit cannot rewrite it.
 	 */
 	Optional<BookingConfirmationFacts> confirmationFacts(BookingId bookingId);
+
+	/** What the stay confirmation mail renders, or empty if no stay has this id. Unfiltered by status. */
+	Optional<StayConfirmationFacts> stayConfirmationFacts(StayId stayId);
+
+	/** {@link #stayConfirmationFacts} of the stay this booking is a stretch of; empty for a lone booking. */
+	Optional<StayConfirmationFacts> stayConfirmationFactsOf(BookingId bookingId);
 
 	/**
 	 * This booking's latest remodel move (both spots as they were, distance, when, exit deadline), or

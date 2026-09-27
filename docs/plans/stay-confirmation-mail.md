@@ -92,15 +92,15 @@ the delivery log keeps its per-booking grain, one row per stretch the stay mail 
 
 ## Execution status
 
-**Stage pointer:** implement (phase 1)
+**Stage pointer:** implement (phase 2)
 
-**Next action:** red IT for the stay confirmation facts port.
+**Next action:** red `StayConfirmationMailIT` (AC-1/5/6 + concurrent confirms).
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — StayConfirmed | ✅ | phase 0 commit |
-| 1 — facts port | ⏳ | |
-| 2 — stay mail | | |
+| 1 — facts port | ✅ | phase 1 commit |
+| 2 — stay mail | ⏳ | |
 | 3 — resend | | |
 | 4 — docs | | |
 
