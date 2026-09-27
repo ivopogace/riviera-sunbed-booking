@@ -3,6 +3,7 @@ import {
   BANNER_BODY_INK,
   BANNER_STRONG_INK,
   CARD_INK,
+  CARD_INK_FAINT_ALPHA,
   CARD_INK_SOFT_ALPHA,
   DARK_ACCENT_INK,
   DARK_CARD_GLASS,
@@ -63,6 +64,10 @@ describe.each(THEMES)('Booking view — card-glass text (WCAG AA, issue #138) �
 
   it('accent ink (booking code, Paid amount, cancel result, links) meets AA on the card glass', () => {
     expectAaOverStops(theme.accent, 1, theme.cardGlass, theme.stops);
+  });
+
+  it('card ink-faint (a stay’s stops that have passed, #1209) meets AA on the card glass', () => {
+    expectAaOverStops(theme.cardInkBase, CARD_INK_FAINT_ALPHA, theme.cardGlass, theme.stops);
   });
 });
 
