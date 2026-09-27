@@ -242,6 +242,13 @@ class WebSliceStubs {
 		return _ -> BookingOutcome.Rejected.NO_SUCH_SET;
 	}
 
+	/** The stitched-stay create behind {@code POST /api/stays} — inert: no set exists. */
+	@Bean
+	ai.riviera.platform.booking.application.reserve.CreateStay createStay() {
+		return _ -> new ai.riviera.platform.booking.application.reserve.StayOutcome.Rejected(
+				BookingOutcome.Rejected.NO_SUCH_SET);
+	}
+
 	@Bean
 	ViewBooking viewBooking() {
 		return _ -> Optional.empty();
@@ -1072,6 +1079,12 @@ class WebSliceStubs {
 	@Bean
 	ai.riviera.platform.itinerary.application.StayVerdicts stayVerdicts() {
 		return (_, _) -> Map.of();
+	}
+
+	/** The stitched plan behind {@code GET /api/venues/{id}/itinerary} — inert: no venue is visible. */
+	@Bean
+	ai.riviera.platform.itinerary.application.PlanItinerary planItinerary() {
+		return (_, _, _) -> Optional.empty();
 	}
 
 	/** The public review list behind {@code GET /api/venues/{id}/reviews} — inert: no venue is visible. */

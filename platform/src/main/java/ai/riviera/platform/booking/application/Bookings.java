@@ -1,7 +1,10 @@
 package ai.riviera.platform.booking.application;
 
 import ai.riviera.platform.booking.application.view.BookingRecord;
+import ai.riviera.platform.booking.application.view.StayRecord;
+import ai.riviera.platform.booking.vocabulary.StayId;
 import ai.riviera.platform.booking.application.reserve.NewBooking;
+import ai.riviera.platform.booking.application.reserve.NewStay;
 import ai.riviera.platform.booking.application.refund.RefundableBooking;
 import ai.riviera.platform.booking.application.cancel.CancelledBooking;
 import ai.riviera.platform.booking.application.reserve.ClaimRef;
@@ -41,6 +44,12 @@ public interface Bookings {
 	 * PaymentIntent is created only if the venue accepts.
 	 */
 	OptionalLong insertPendingRequest(NewBooking booking, Instant requestExpiresAt);
+
+	/**
+	 * Insert a stay (the group a stitched itinerary's bookings belong to, design D6) and return its id,
+	 * or empty on a {@code code} collision — the same contract as {@link #insertAwaitingPayment}.
+	 */
+	OptionalLong insertStay(NewStay stay);
 
 	/**
 	 * Guarded venue-scoped {@code PENDING_REQUEST → AWAITING_PAYMENT} while {@code request_expires_at
@@ -85,9 +94,16 @@ public interface Bookings {
 	 */
 	Optional<BookingRecord> findByCode(String code);
 
+	/** The stay whose code this is, with its stretches in day order; empty for a booking's code or an unknown one. */
+	Optional<StayRecord> findStayByCode(String code);
+
+	/** The stay's stretches in day order, row-locked for the transaction so the caller's guarded transitions cannot lose a race. */
+	List<BookingRecord> lockStretches(StayId stayId);
+
 	/**
-	 * The bookings linked to a customer account, newest first; never a guest booking (NULL {@code
-	 * account_id}). Pass the session principal's id, never a request param (BOLA, invariant #13).
+	 * The bookings linked to a customer account, newest first, a stitched stay as one record
+	 * ({@link StayRecord#asBooking}); never a guest booking (NULL {@code account_id}). Pass the session
+	 * principal's id, never a request param (BOLA, invariant #13).
 	 */
 	List<BookingRecord> findByAccountId(CustomerAccountId accountId);
 

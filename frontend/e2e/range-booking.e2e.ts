@@ -126,6 +126,10 @@ async function mockMap(
     }
     return route.fulfill({ json: lastDate === LAST ? stay : shortened });
   });
+  // No plan fits: the banner keeps the longest one-spot run (the stitched journey is its own spec).
+  await page.route(/\/api\/venues\/1\/itinerary\?.*$/, (route) =>
+    route.fulfill({ json: { maxMoves: 3, plan: null } }),
+  );
   await page.route(/\/api\/venues\/1\/availability-calendar\?.*$/, (route) => {
     const url = new URL(route.request().url());
     return route.fulfill({

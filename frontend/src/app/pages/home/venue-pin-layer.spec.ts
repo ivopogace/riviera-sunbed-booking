@@ -421,7 +421,13 @@ describe('VenuePinLayer', () => {
         ...pin,
         card: {
           ...pin.card,
-          stay: { verdict: 'CANNOT_HOST', sameSetCount: 0, longestRunDays: 2, maxStayDays: null },
+          stay: {
+            verdict: 'CANNOT_HOST',
+            sameSetCount: 0,
+            longestRunDays: 2,
+            maxStayDays: null,
+            moves: 0,
+          },
           canHost: false,
           stayLabel: LABEL,
         },

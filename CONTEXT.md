@@ -255,9 +255,17 @@ model in `docs/architecture/domain-model.md`.
 - **Longest free run** — the most consecutive days of a stay one set is free for; offered as a
   shorter stay on that spot, and, when no set is free for every day, the venue's longest offer.
 - **Stay verdict** — what the discovery page says of each venue for a chosen stay: **same set**
-  (one online set free for every day, within the venue's maximum stay, with how many such sets)
-  or **can't host** (with the longest free run, or the maximum when that is the reason). A
-  snapshot off the same `(set, date)` rows as the map, never a hold.
+  (one online set free for every day, within the venue's maximum stay, with how many such sets),
+  **fits with N moves** (no single set, but a stitched plan within the move budget) or **can't
+  host** (with the longest free run, or the maximum when that is the reason). A snapshot off the
+  same `(set, date)` rows as the map, never a hold.
+- **Stitched stay** — a stay no single set is free for, covered by a few **stretches** (same-set
+  runs) with a **move** between each: a different set on a different morning, never within a day.
+  Booked as a **group of bookings**, one per stretch, under one `stay` row that carries the guest's
+  one code (ADR-0024); paid once, cancelled whole, refunded per stretch on the stay's first day's
+  window. The plan is the **itinerary search**'s answer: fewest moves, then shortest (same row,
+  closest position, closest row), within the **move budget** (`riviera.itinerary.max-switches`,
+  default and ceiling three), anchored on a tapped set when the tourist plans around it.
 - **Service day** — one day of a stay, held as its own attendance record from the moment the
   booking confirms: unresolved until it is **attended** (staff checked the guest in
   that day) or **missed** (the day passed with no check-in), never both — one per day of the

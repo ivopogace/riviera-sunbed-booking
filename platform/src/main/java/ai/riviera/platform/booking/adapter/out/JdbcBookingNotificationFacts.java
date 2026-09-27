@@ -62,7 +62,8 @@ class JdbcBookingNotificationFacts implements BookingNotificationFacts {
 	public Optional<BookingNotificationInfo> notificationInfo(BookingId bookingId) {
 		// No status predicate on purpose — the caller reacts to a published confirmation fact, and a
 		// booking cancelled in the interim must still resolve (the port's contract).
-		return jdbc.sql("SELECT code, customer_id FROM booking WHERE id = :id")
+		return jdbc.sql("SELECT COALESCE(s.code, b.code) AS code, b.customer_id FROM booking b "
+						+ "LEFT JOIN stay s ON s.id = b.stay_id WHERE b.id = :id")
 				.param("id", bookingId.value())
 				.query((rs, rowNum) -> new BookingNotificationInfo(
 						rs.getString("code"), new CustomerId(rs.getLong("customer_id"))))
@@ -73,9 +74,12 @@ class JdbcBookingNotificationFacts implements BookingNotificationFacts {
 	public Optional<BookingConfirmationFacts> confirmationFacts(BookingId bookingId) {
 		// confirmed_at, not status — see BookingConfirmationFacts#everConfirmed for why.
 		return jdbc.sql("""
-				SELECT set_id, booking_date, last_date, amount_minor, amount_currency, code, customer_id,
-				       confirmed_at IS NOT NULL AS ever_confirmed, created_at
-				FROM booking WHERE id = :id
+				SELECT b.set_id, b.booking_date, b.last_date, b.amount_minor, b.amount_currency,
+				       COALESCE(s.code, b.code) AS code, b.customer_id,
+				       b.confirmed_at IS NOT NULL AS ever_confirmed, b.created_at
+				FROM booking b
+				LEFT JOIN stay s ON s.id = b.stay_id
+				WHERE b.id = :id
 				""")
 				.param("id", bookingId.value())
 				.query((rs, rowNum) -> factsOf(rs))

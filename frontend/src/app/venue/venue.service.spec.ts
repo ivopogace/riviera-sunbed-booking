@@ -25,6 +25,27 @@ describe('VenueService', () => {
 
   afterEach(() => httpMock.verify());
 
+  describe('itinerary', () => {
+    it('asks the itinerary path with the stay, and the anchor only when one is named', () => {
+      service.itinerary(7, '2026-07-10', '2026-07-16').subscribe();
+      const plain = httpMock.expectOne(
+        (req) => req.url === `${environment.apiBaseUrl}/api/venues/7/itinerary`,
+      );
+      expect(plain.request.method).toBe('GET');
+      expect(plain.request.params.get('date')).toBe('2026-07-10');
+      expect(plain.request.params.get('lastDate')).toBe('2026-07-16');
+      expect(plain.request.params.has('anchorSetId')).toBe(false);
+      plain.flush({ maxMoves: 3, plan: null });
+
+      service.itinerary(7, '2026-07-10', '2026-07-16', 42).subscribe();
+      const anchored = httpMock.expectOne(
+        (req) => req.url === `${environment.apiBaseUrl}/api/venues/7/itinerary`,
+      );
+      expect(anchored.request.params.get('anchorSetId')).toBe('42');
+      anchored.flush({ maxMoves: 3, anchor: 'START', plan: null });
+    });
+  });
+
   describe('reviews', () => {
     it('asks the reviews path with no cursor for the first page', () => {
       service.reviews(7).subscribe();

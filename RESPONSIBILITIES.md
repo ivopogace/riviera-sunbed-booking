@@ -245,6 +245,14 @@ any is released on the old, never a swap of my own — so a racing reserve wins 
 - **The reserve commits before any payment call** (no row lock spans the gateway round-trip), and
   that does not weaken invariant #2: the guard is `UNIQUE (set_id, booking_date)` plus the atomic
   `INSERT … ON CONFLICT DO NOTHING` claim, which holds however long the lock is held.
+- **A stitched stay is a group of bookings under one `stay` row (ADR-0024, design D6); I am its sole
+  writer.** One booking per stretch; the stay's code is the guest's one credential (invariant #7) and
+  a stretch's row code (`<stayCode>-<n>`) is never shown and resolves nothing (`JdbcBookings.CODE_MATCH`):
+  view, cancel, check-in, staff list, mail facts and review eligibility (once no stretch is live)
+  answer the stay's code. The reserve (`CreateStay`, `POST /api/stays`) validates the plan's shape,
+  judges every stretch by the shared `ReserveFences`, claims every day of every stretch all or nothing
+  (`ConcurrentStayReservationIT`) and collects once with one share per stretch; a stay cancels whole,
+  each stretch quoted on the stay's first day (invariant #10) and reversed once (#9).
 - **Attendance is per service day; I am the sole writer and reader of `booking_day`**
   (`ResponsibilitiesArchitectureTests` rule 9 — other modules ask my ports). The schema writes the
   rows when a booking becomes `CONFIRMED` (trigger `booking_day_on_confirm`), so no confirm
@@ -393,8 +401,9 @@ or `initiate`/`refund` caller needs; on `PaymentGateway`, which test fakes imple
 `@FunctionalInterface`), it would be the wide-port smell. The answers sit beside their gateways
 under the same profiles (`ProfiledCollectionGuarantee`); the coverage test below fails a gap.
 
-**One PaymentIntent may collect for several bookings** (a stay, design D6/D8): `payment` holds
-the intent, `payment_booking` each booking's share and refund state. Refund reads and writes key on
+**One PaymentIntent may collect for several bookings** (a stay, design D6/D8): `CheckoutPort.pay`
+takes the shares, one intent for their sum keyed on the first booking; `payment` holds the intent,
+`payment_booking` each booking's share and refund state. Refund reads and writes key on
 the booking's row, the same statement deriving the intent's status from its shares; a verified
 `succeeded`/`canceled` publishes **once per booking**. `RefundStatusLookup` reads the booking's own
 share — a sibling's refund leaves the intent `PARTIALLY_REFUNDED` while this one is `OUTSTANDING`.
@@ -762,9 +771,13 @@ into one verdict per venue.
   is what B4 moves here.
 
 **Job:** say, for a span, which venues can host a stay — one online set free for every day within
-the venue's maximum stay (`SAME_SET`, with how many sets) — and why not (`CANNOT_HOST`, with the
-longest single-set run and the maximum). A snapshot, never a hold (invariant #2): the reserve path
-still claims each `(set, date)`. Later the per-venue itinerary search (D7) and its move budget.
+the venue's maximum stay (`SAME_SET`, with how many sets), a stitched plan within the move budget
+(`FITS_WITH_MOVES`, with how many) — and why not (`CANNOT_HOST`, with the longest single-set run
+and the maximum). And, for one venue, the plan itself: `domain.ItinerarySearch` is a shortest path
+over `(day, set)`, fewest moves then shortest (the remodel move rule's distance order), anchored
+on a tapped set when one is named, under `riviera.itinerary.max-switches` (default and ceiling
+three, D13); `PlanItinerary` prices it off the tourist map read and `GET /api/venues/{id}/itinerary`
+serves it. A snapshot, never a hold (invariant #2): the reserve path still claims each `(set, date)`.
 
 **Not my job:** which sets exist, their pools and prices → **`venue`**; the `(set, date)` rows →
 **`availability`**; whether a date still sells → **`booking`**; visibility → `VenueCatalog` fences

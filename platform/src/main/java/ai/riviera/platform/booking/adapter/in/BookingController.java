@@ -152,22 +152,7 @@ class BookingController {
 			// accepts. The guest tracks status (and later pays) via the code-gated view.
 			case BookingOutcome.Requested requested -> ResponseEntity.status(HttpStatus.ACCEPTED)
 					.body(RequestedView.of(requested.confirmation(), requested.requestExpiresAt()));
-			case BookingOutcome.Rejected rejected -> switch (rejected) {
-				case SET_TAKEN -> error(HttpStatus.CONFLICT, "SET_TAKEN",
-						"The set is already taken for this date.");
-				case NOT_ONLINE_POOL -> error(HttpStatus.UNPROCESSABLE_ENTITY, "SET_NOT_BOOKABLE_ONLINE",
-						"This set is not bookable online.");
-				case BOOKING_CLOSED -> error(HttpStatus.UNPROCESSABLE_ENTITY, "BOOKING_CLOSED",
-						"Online booking for this date has closed.");
-				case VENUE_CLOSED -> error(HttpStatus.UNPROCESSABLE_ENTITY, "VENUE_CLOSED",
-						"The venue is closed for the season on this date.");
-				case NO_SUCH_SET -> error(HttpStatus.NOT_FOUND, "NO_SUCH_SET",
-						"No such set.");
-				case RANGE_NOT_OFFERED -> error(HttpStatus.UNPROCESSABLE_ENTITY, "RANGE_NOT_OFFERED",
-						"This venue takes one day at a time online.");
-				case STAY_TOO_LONG -> error(HttpStatus.UNPROCESSABLE_ENTITY, "STAY_TOO_LONG",
-						"The stay is longer than this venue's maximum stay length.");
-			};
+			case BookingOutcome.Rejected rejected -> Rejections.respond(rejected, BOOKINGS_PATH);
 		};
 	}
 

@@ -106,6 +106,25 @@ describe('place groups (the located state)', () => {
       expect(groups.map((group) => group.cards.map((c) => c.id))).toEqual([[5], [2, 4, 1, 3]]);
     });
 
+    it('places a venue that fits with moves after the same-set hosts and before the ones that can’t', () => {
+      const moves = {
+        verdict: 'FITS_WITH_MOVES',
+        sameSetCount: 0,
+        longestRunDays: 3,
+        maxStayDays: null,
+        moves: 2,
+      } as const;
+      const cards = [
+        { ...card(1, 'DHERMI', 'Himarë', 19.6, 40.15), canHost: false },
+        { ...card(2, 'DHERMI', 'Himarë', 19.61, 40.15), stay: moves },
+        card(3, 'DHERMI', 'Himarë', 19.62, 40.15),
+      ];
+
+      const groups = groupByBeach(cards, null);
+
+      expect(groups[0].cards.map((c) => c.id)).toEqual([3, 2, 1]);
+    });
+
     it('keeps the located nearest-first order inside each side too', () => {
       const cards = [
         { ...card(1, 'DHERMI', 'Himarë', 19.6, 40.15), canHost: false },

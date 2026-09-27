@@ -162,6 +162,11 @@
   --color-riv-tile-partly-border: var(--riv-tile-partly-border);
   --color-riv-tile-badge-fill: var(--riv-tile-badge-fill);
   --color-riv-tile-badge-ink: var(--riv-tile-badge-ink);
+  --color-riv-stretch-1-fill: var(--riv-stretch-1-fill);
+  --color-riv-stretch-2-fill: var(--riv-stretch-2-fill);
+  --color-riv-stretch-3-fill: var(--riv-stretch-3-fill);
+  --color-riv-stretch-4-fill: var(--riv-stretch-4-fill);
+  --color-riv-stretch-ink: var(--riv-stretch-ink);
   --color-riv-tile-hover: var(--riv-tile-hover);
   --color-riv-tile-focus: var(--riv-tile-focus);
   --color-riv-photo-ink: var(--riv-photo-ink);
@@ -811,6 +816,13 @@
   --riv-tile-badge-ink: #ffffff;
   --riv-tile-hover: #e6f6f3;
   --riv-tile-focus: #0f7d8c;
+  /** A stitched plan's stretches, cycled by position: opaque fills the day strip, the stop discs and
+      the plan tiles' rings wear, one ink over all four (AA in every theme, stay-plan.contrast.spec). */
+  --riv-stretch-1-fill: #0f6f7d;
+  --riv-stretch-2-fill: #9a5a0a;
+  --riv-stretch-3-fill: #5f45b3;
+  --riv-stretch-4-fill: #a82c52;
+  --riv-stretch-ink: #ffffff;
   --riv-photo-grad: linear-gradient(162deg, #2bb8d4 0%, #0e8aa8 70%, #0e8aa8 100%);
   /** The scrim reaches alpha 0.68 at its three-quarter stop (the drawn header had no scrim): the
       location overlay's text band, sitting in the lower tenth of the photo, needs a backing of at
@@ -879,6 +891,12 @@
 [data-riv-theme='riviera'] {
   /* Native UI follows the dark palette; the light-styled fields opt back out via --riv-field-scheme */
   color-scheme: dark;
+
+  --riv-stretch-1-fill: #3fb8c8;
+  --riv-stretch-2-fill: #e19a3c;
+  --riv-stretch-3-fill: #a08bf0;
+  --riv-stretch-4-fill: #ee6f95;
+  --riv-stretch-ink: #0b1418;
 
   --riv-bg:
     radial-gradient(110% 70% at 8% 2%, #93e6f2 0%, rgba(147, 230, 242, 0) 52%),
@@ -1040,6 +1058,11 @@
   --riv-tile-badge-ink: #0b2a31;
   --riv-tile-hover: rgba(255, 255, 255, 0.14);
   --riv-tile-focus: #8fd6e2;
+  --riv-stretch-1-fill: #3fb8c8;
+  --riv-stretch-2-fill: #e19a3c;
+  --riv-stretch-3-fill: #a08bf0;
+  --riv-stretch-4-fill: #ee6f95;
+  --riv-stretch-ink: #0b1418;
 
   /** The DARK CONSOLE: the operator's own porcelain-or-dark choice, pinned by the app
       shell on every console route (core/console-theme.ts), never the document attribute. Every

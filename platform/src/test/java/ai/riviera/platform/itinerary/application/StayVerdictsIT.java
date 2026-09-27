@@ -45,6 +45,7 @@ class StayVerdictsIT {
 
 	private long sameSet;
 	private long cannotHost;
+	private long withMoves;
 	private long tooLong;
 
 	@BeforeEach
@@ -64,9 +65,17 @@ class StayVerdictsIT {
 		take(b1, D1.plusDays(3));
 		take(b2, D1);
 		take(b2, D1.plusDays(2));
+		take(b2, D1.plusDays(3));
 		for (int day = 0; day < 4; day++) {
 			take(walkIn, D1.plusDays(day));
 		}
+
+		withMoves = insertVenue("Moves Beach", null);
+		long c1 = insertSet(withMoves, 1, "ONLINE");
+		long c2 = insertSet(withMoves, 2, "ONLINE");
+		take(c1, D1.plusDays(3));
+		take(c2, D1);
+		take(c2, D1.plusDays(2));
 
 		tooLong = insertVenue("Too Long Beach", 2);
 		insertSet(tooLong, 1, "ONLINE");
@@ -80,14 +89,16 @@ class StayVerdictsIT {
 	}
 
 	@Test
-	void sameSetCannotHostAndTooLongVerdicts() {
-		Map<VenueId, StayVerdict> byVenue = verdicts.forCoast(
-				List.of(new VenueId(sameSet), new VenueId(cannotHost), new VenueId(tooLong)), FOUR_DAYS);
+	void sameSetCannotHostFitsWithMovesAndTooLongVerdicts() {
+		Map<VenueId, StayVerdict> byVenue = verdicts.forCoast(List.of(new VenueId(sameSet),
+				new VenueId(cannotHost), new VenueId(withMoves), new VenueId(tooLong)), FOUR_DAYS);
 
-		assertEquals(new StayVerdict(StayVerdict.Fit.SAME_SET, 1, 4, null), byVenue.get(new VenueId(sameSet)));
-		assertEquals(new StayVerdict(StayVerdict.Fit.CANNOT_HOST, 0, 3, null),
+		assertEquals(new StayVerdict(StayVerdict.Fit.SAME_SET, 1, 4, null, 0), byVenue.get(new VenueId(sameSet)));
+		assertEquals(new StayVerdict(StayVerdict.Fit.CANNOT_HOST, 0, 3, null, 0),
 				byVenue.get(new VenueId(cannotHost)));
-		assertEquals(new StayVerdict(StayVerdict.Fit.CANNOT_HOST, 1, 4, 2), byVenue.get(new VenueId(tooLong)));
+		assertEquals(new StayVerdict(StayVerdict.Fit.FITS_WITH_MOVES, 0, 3, null, 1),
+				byVenue.get(new VenueId(withMoves)));
+		assertEquals(new StayVerdict(StayVerdict.Fit.CANNOT_HOST, 1, 4, 2, 0), byVenue.get(new VenueId(tooLong)));
 	}
 
 	@Test

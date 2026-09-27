@@ -4,7 +4,8 @@ Status: **sliced under epic #1096; D2 (per-day attendance) landed in PR #1211; D
 span on the row, every terminal transition releasing it, the weather refund naming stays) landed
 with #1201; D10 (the venue maximum stay) landed with #1204; D8's `payment` side (one intent for
 several bookings, refunded per booking) landed with #1207; D11 (the discovery verdict per venue)
-and the D7 module `itinerary` landed with #1206; the rest is not yet built.** Decisions below were made at the refine stage (2026-09-12/13) against `main` @
+and the D7 module `itinerary` landed with #1206; D6, D7's search and D13's budget (stitched
+itineraries, ADR-0024) landed with #1208; the rest is not yet built.** Decisions below were made at the refine stage (2026-09-12/13) against `main` @
 `5bceef00`, grounded in four verification passes over the reserve path, the sweeps, the money paths
 and the beach map. Each is a one-paragraph re-decision if reality disagrees. The per-module
 contracts these decisions settle belong in `RESPONSIBILITIES.md` once a slice lands; the glossary
@@ -297,9 +298,10 @@ three problems rather than managing them:
   disturbed set is any removal *or renumber*, the whole column geometry to its right — for a
   fortnight. Segments are two to five service days, which keeps the freeze near today's scale.
 
-**An ADR is owed here** (hard to reverse once stay data exists; surprising to a future reader who
-will ask why a stay is not one booking; a genuine trade-off against the segments-in-one-booking
-alternative). Proposed as a new ADR (numbered when written), to be written with the stitching slice.
+**ADR-0024** records this decision (hard to reverse once stay data exists; surprising to a future
+reader who will ask why a stay is not one booking; a genuine trade-off against the
+segments-in-one-booking alternative) and how the stitching slice settled the code: a `stay` row
+carries it, a stretch's own row code is derived and never shown.
 
 The booking **code** becomes stay-level: one bearer credential for the guest (invariant #7
 unchanged), with check-in resolving code → today's segment.

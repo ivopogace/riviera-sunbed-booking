@@ -47,10 +47,19 @@ public class CancellationPolicy implements QuoteCancellationTerms {
 	 * alike. Throws {@link IllegalStateException} on an unknown set (an FK breach, not a flow).
 	 */
 	public RefundQuote quote(BookingRecord booking) {
+		return quote(booking, booking.bookingDate());
+	}
+
+	/**
+	 * The quote with the window judged on {@code windowDay} instead of the booking's own first day: a
+	 * stitched stay's stretches are all judged on the stay's first day, so stitching never changes the
+	 * money a same-set stay of the same dates would refund (invariant #10, design D6).
+	 */
+	public RefundQuote quote(BookingRecord booking, java.time.LocalDate windowDay) {
 		SetBookingInfo set = setFacts.setBookingInfo(booking.setId()).orElseThrow(() ->
 				new IllegalStateException("no set info for set " + booking.setId().value()));
 		Instant now = clock.instant();
-		CancellationWindow window = cutoff.cancellationWindow(set.bookingCutoff(), booking.bookingDate(), now);
+		CancellationWindow window = cutoff.cancellationWindow(set.bookingCutoff(), windowDay, now);
 		Instant freeExitUntil = freeExitUntil(booking, window, now);
 		if (freeExitUntil != null) {
 			return new RefundQuote(set, window, booking.amountMinor(), RefundReason.VENUE_CHANGE, freeExitUntil);

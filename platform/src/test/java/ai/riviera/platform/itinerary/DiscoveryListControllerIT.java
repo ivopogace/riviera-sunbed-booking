@@ -53,6 +53,12 @@ class DiscoveryListControllerIT {
 		long c1 = insertSet(cannot, 1);
 		take(c1, D1.plusDays(2));
 
+		long moves = insertVenue("Moves Beach", null);
+		long m1 = insertSet(moves, 1);
+		long m2 = insertSet(moves, 2);
+		take(m1, D1.plusDays(3));
+		take(m2, D1);
+
 		long tooLong = insertVenue("Too Long Beach", 2);
 		insertSet(tooLong, 1);
 	}
@@ -69,7 +75,7 @@ class DiscoveryListControllerIT {
 		mvc.perform(get("/api/venues").param("beach", BEACH)
 						.param("date", D1.toString()).param("lastDate", D1.plusDays(3).toString()))
 				.andExpect(status().isOk())
-				.andExpect(jsonPath("$.length()").value(3))
+				.andExpect(jsonPath("$.length()").value(4))
 				.andExpect(jsonPath("$[?(@.name=='Hosts Beach')].stay.verdict").value("SAME_SET"))
 				.andExpect(jsonPath("$[?(@.name=='Hosts Beach')].stay.sameSetCount").value(1))
 				.andExpect(jsonPath("$[?(@.name=='Hosts Beach')].stay.longestRunDays").value(4))
@@ -77,6 +83,8 @@ class DiscoveryListControllerIT {
 				.andExpect(jsonPath("$[?(@.name=='Hosts Beach')].fromPrice.minorUnits").value(2500))
 				.andExpect(jsonPath("$[?(@.name=='Cannot Beach')].stay.verdict").value("CANNOT_HOST"))
 				.andExpect(jsonPath("$[?(@.name=='Cannot Beach')].stay.longestRunDays").value(2))
+				.andExpect(jsonPath("$[?(@.name=='Moves Beach')].stay.verdict").value("FITS_WITH_MOVES"))
+				.andExpect(jsonPath("$[?(@.name=='Moves Beach')].stay.moves").value(1))
 				.andExpect(jsonPath("$[?(@.name=='Too Long Beach')].stay.verdict").value("CANNOT_HOST"))
 				.andExpect(jsonPath("$[?(@.name=='Too Long Beach')].stay.maxStayDays").value(2));
 	}
@@ -85,7 +93,7 @@ class DiscoveryListControllerIT {
 	void oneDayListIsUnchanged() throws Exception {
 		mvc.perform(get("/api/venues").param("beach", BEACH).param("date", D1.toString()))
 				.andExpect(status().isOk())
-				.andExpect(jsonPath("$.length()").value(3))
+				.andExpect(jsonPath("$.length()").value(4))
 				.andExpect(jsonPath("$[0].stay").doesNotExist())
 				.andExpect(jsonPath("$[?(@.name=='Hosts Beach')].availability.free").value(2));
 	}

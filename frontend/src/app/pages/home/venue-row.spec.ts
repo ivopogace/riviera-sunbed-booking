@@ -198,7 +198,13 @@ describe('VenueRow', () => {
       const hosts = render(
         venueCard({
           ...PALASA,
-          stay: { verdict: 'SAME_SET', sameSetCount: 2, longestRunDays: 4, maxStayDays: null },
+          stay: {
+            verdict: 'SAME_SET',
+            sameSetCount: 2,
+            longestRunDays: 4,
+            maxStayDays: null,
+            moves: 0,
+          },
           canHost: true,
           stayLabel: 'Same set all 4 days · 2 sets',
         }),
@@ -210,7 +216,13 @@ describe('VenueRow', () => {
       const cannot = render(
         venueCard({
           ...PALASA,
-          stay: { verdict: 'CANNOT_HOST', sameSetCount: 0, longestRunDays: 2, maxStayDays: null },
+          stay: {
+            verdict: 'CANNOT_HOST',
+            sameSetCount: 0,
+            longestRunDays: 2,
+            maxStayDays: null,
+            moves: 0,
+          },
           canHost: false,
           stayLabel: 'Can’t host 4 days · up to 2 days in a row',
         }),

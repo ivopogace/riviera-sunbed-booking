@@ -105,9 +105,12 @@ class EndpointRoleGateCoverageTest {
 			"GET /api/venues/{venueId}/availability-calendar",
 			// permitAll — the venue page's public review list (#813).
 			"GET /api/venues/{venueId}/reviews",
+			// permitAll — the venue page's stitched-stay plan, a snapshot over the public map read (#1208).
+			"GET /api/venues/{venueId}/itinerary",
 			// permitAll — guest checkout is deliberately session-free; the booking code authorizes
 			// the read, the cancel and the request-withdraw (invariant #7).
 			"POST /api/bookings",
+			"POST /api/stays",
 			"GET /api/bookings/{code}",
 			"POST /api/bookings/{code}/cancel",
 			"POST /api/bookings/{code}/withdraw",

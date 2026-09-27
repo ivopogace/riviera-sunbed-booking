@@ -1,6 +1,7 @@
 package ai.riviera.platform.booking.application.reserve;
 
 import java.time.Instant;
+import java.util.List;
 
 /**
  * The single seam through which a booking transitions to {@code CONFIRMED}. Both confirm paths
@@ -19,6 +20,12 @@ public interface ConfirmBooking {
 	 * non-{@code AWAITING_PAYMENT} booking is an error; the caller releases the claim and rethrows.
 	 */
 	void confirm(long bookingId, Instant confirmedAt);
+
+	/**
+	 * {@link #confirm} for every stretch of a stay in one transaction: all transition and publish, or
+	 * none does and the caller releases the claims and rethrows.
+	 */
+	void confirmAll(List<Long> bookingIds, Instant confirmedAt);
 
 	/**
 	 * Idempotent webhook-path confirm: transition {@code AWAITING_PAYMENT → CONFIRMED} and publish

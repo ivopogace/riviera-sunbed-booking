@@ -2,6 +2,7 @@ package ai.riviera.platform.booking.application.reserve;
 
 import java.time.LocalDate;
 
+import ai.riviera.platform.booking.vocabulary.StayId;
 import ai.riviera.platform.customer.vocabulary.CustomerAccountId;
 import ai.riviera.platform.customer.vocabulary.CustomerId;
 import ai.riviera.platform.venue.vocabulary.SetId;
@@ -17,5 +18,11 @@ import ai.riviera.platform.venue.vocabulary.VenueId;
  */
 public record NewBooking(String code, VenueId venueId, SetId setId, CustomerId customerId,
 		CustomerAccountId accountId, LocalDate bookingDate, LocalDate lastDate, long amountMinor,
-		String amountCurrency) {
+		String amountCurrency, StayId stayId) {
+
+	/** A lone booking, no stay. */
+	public NewBooking(String code, VenueId venueId, SetId setId, CustomerId customerId, CustomerAccountId accountId,
+			LocalDate bookingDate, LocalDate lastDate, long amountMinor, String amountCurrency) {
+		this(code, venueId, setId, customerId, accountId, bookingDate, lastDate, amountMinor, amountCurrency, null);
+	}
 }

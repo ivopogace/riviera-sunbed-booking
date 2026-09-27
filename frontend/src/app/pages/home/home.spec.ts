@@ -1723,7 +1723,13 @@ describe('Home (a stay)', () => {
         beach: 'DHERMI',
         region: 'HIMARE',
         availability: { free: 5, total: 10 },
-        stay: { verdict: 'SAME_SET', sameSetCount: 2, longestRunDays: 4, maxStayDays: null },
+        stay: {
+          verdict: 'SAME_SET',
+          sameSetCount: 2,
+          longestRunDays: 4,
+          maxStayDays: null,
+          moves: 0,
+        },
       },
       {
         ...aurora,
@@ -1732,7 +1738,13 @@ describe('Home (a stay)', () => {
         beach: 'DHERMI',
         region: 'HIMARE',
         availability: { free: 3, total: 10 },
-        stay: { verdict: 'CANNOT_HOST', sameSetCount: 0, longestRunDays: 3, maxStayDays: null },
+        stay: {
+          verdict: 'CANNOT_HOST',
+          sameSetCount: 0,
+          longestRunDays: 3,
+          maxStayDays: null,
+          moves: 0,
+        },
       },
       {
         ...aurora,
@@ -1741,7 +1753,13 @@ describe('Home (a stay)', () => {
         beach: 'DHERMI',
         region: 'HIMARE',
         availability: { free: 9, total: 10 },
-        stay: { verdict: 'CANNOT_HOST', sameSetCount: 1, longestRunDays: 4, maxStayDays: 2 },
+        stay: {
+          verdict: 'CANNOT_HOST',
+          sameSetCount: 1,
+          longestRunDays: 4,
+          maxStayDays: 2,
+          moves: 0,
+        },
       },
     ];
   }

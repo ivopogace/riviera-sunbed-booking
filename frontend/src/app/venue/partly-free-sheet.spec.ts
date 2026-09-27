@@ -27,6 +27,7 @@ const SET: SetView = {
       [first]="'2026-06-30'"
       [last]="'2026-07-03'"
       (shorten)="shortened.push($event)"
+      (planAround)="planned = planned + 1"
       (dismissed)="dismissals = dismissals + 1"
     />
   `,
@@ -34,6 +35,7 @@ const SET: SetView = {
 class Host {
   readonly set = signal(SET);
   readonly shortened: DateRange[] = [];
+  planned = 0;
   dismissals = 0;
 }
 
@@ -78,8 +80,15 @@ describe('PartlyFreeSheet', () => {
     expect(host.shortened).toEqual([{ first: '2026-06-30', last: '2026-07-01' }]);
   });
 
-  it('opens with focus on the offer, and dismisses on "Keep my dates" and on Escape', () => {
-    expect(document.activeElement).toBe(byTestId('shorten-stay'));
+  it('offers a plan around this spot and emits it', () => {
+    expect(byTestId('plan-around')!.textContent).toContain('Plan my stay around');
+    byTestId('plan-around')!.click();
+
+    expect(host.planned).toBe(1);
+  });
+
+  it('opens with focus on the plan offer, and dismisses on "Keep my dates" and on Escape', () => {
+    expect(document.activeElement).toBe(byTestId('plan-around'));
 
     byTestId('keep-dates')!.click();
     dom()

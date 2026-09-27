@@ -1,12 +1,14 @@
 package ai.riviera.platform.booking.application.view;
 
 import java.time.LocalDate;
+import java.util.List;
 
 import ai.riviera.platform.booking.domain.BookingStatus;
 import ai.riviera.platform.booking.vocabulary.CancellationWindow;
 import ai.riviera.platform.booking.vocabulary.RefundReason;
 import ai.riviera.platform.review.vocabulary.ReviewPanel;
 import ai.riviera.platform.venue.vocabulary.MoneyView;
+import ai.riviera.platform.venue.vocabulary.SetId;
 import ai.riviera.platform.venue.vocabulary.VenueId;
 
 /**
@@ -26,5 +28,10 @@ public record BookingDetail(String code, BookingStatus status, VenueId venueId, 
 		ai.riviera.platform.payment.vocabulary.PaymentCredentials payment, boolean emailWithheld,
 		boolean payWindowClosed, RefundReason cancelReason,
 		CancellationWindow cancellationWindowAtBirth, ReviewPanel reviewPanel,
-		String reviewNameSuggestion, BookingMove move) {
+		String reviewNameSuggestion, BookingMove move, List<StayStretch> stretches) {
+
+	/** One stretch of a stitched stay (design D6); a lone booking has none. */
+	public record StayStretch(SetId setId, String rowLabel, int positionNo, LocalDate firstDay, LocalDate lastDay,
+			MoneyView amount, BookingStatus status) {
+	}
 }

@@ -25,12 +25,13 @@ final class ChallengeVerificationFilter extends OncePerRequestFilter {
 
 	static final String HEADER = "X-Altcha-Payload";
 
-	/** The fenced {@code POST} routes — the three auth writes and booking create, for every caller. */
+	/** The fenced {@code POST} routes — the three auth writes and the two creates, for every caller. */
 	private static final Set<String> FENCED_POSTS = Set.of(
 			"/api/auth/customer/register",
 			"/api/auth/operator/register",
 			"/api/auth/customer/forgot-password",
-			"/api/bookings");
+			"/api/bookings",
+			"/api/stays");
 
 	private final ProofOfWorkChallenges challenges;
 

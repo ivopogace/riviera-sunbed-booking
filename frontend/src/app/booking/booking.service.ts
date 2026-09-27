@@ -15,9 +15,11 @@ import {
   CancellationTerms,
   CreateBookingRequest,
   CreateBookingResult,
+  CreateStayRequest,
   MyBookingSummary,
   PaymentHandoff,
   RequestedBooking,
+  StayView,
   SubmitReviewRequest,
   Withdrawal,
 } from './booking.model';
@@ -71,6 +73,42 @@ export class BookingService {
         ? `${environment.apiBaseUrl}/api/bookings/cancellation-terms?setId=${p.setId}&date=${p.date}`
         : undefined;
     });
+  }
+
+  /**
+   * Book a stitched plan (`POST /api/stays`, design D6): every stretch claimed all or nothing, one code,
+   * one collection. The stay answers in the booking's shape — the first stretch's spot heads it, the
+   * span and total are the group's — so the confirmation and pay pages need no second path.
+   */
+  createStay(
+    request: CreateStayRequest,
+    termsAtCheckout?: CancellationTerms,
+    challenge?: string,
+  ): Observable<CreateBookingResult> {
+    return this.http
+      .post<StayView>(`${environment.apiBaseUrl}/api/stays`, request, {
+        observe: 'response',
+        headers: challengeHeaders(challenge),
+      })
+      .pipe(
+        map((response): CreateBookingResult => {
+          this.device.remember(response.body?.code);
+          const stay = response.body!;
+          const summary = stayAsBooking(stay);
+          if (response.status === 202) {
+            const awaiting: AwaitingPayment = {
+              ...summary,
+              clientSecret: stay.clientSecret ?? '',
+              paymentIntentId: stay.paymentIntentId ?? '',
+              cancellationTerms: termsAtCheckout ?? null,
+            };
+            this.handoff.set({ kind: 'awaiting', awaiting });
+            return { kind: 'awaiting', awaiting };
+          }
+          this.handoff.set({ kind: 'confirmed', confirmation: summary });
+          return { kind: 'confirmed', confirmation: summary };
+        }),
+      );
   }
 
   /**
@@ -249,4 +287,23 @@ export function bookingErrorOf(error: unknown): BookingErrorCode | ChallengeReje
     }
   }
   return 'UNKNOWN';
+}
+
+/** A booked stay in the booking's shape: the first stretch's spot, the group's code, span and total. */
+function stayAsBooking(stay: StayView): BookingConfirmation {
+  const first = stay.stretches[0];
+  return {
+    code: stay.code,
+    status: stay.status,
+    venueId: stay.venueId,
+    venueName: stay.venueName,
+    setId: first.setId,
+    rowLabel: first.rowLabel,
+    positionNo: first.positionNo,
+    bookingDate: stay.firstDate,
+    lastDate: stay.lastDate,
+    amount: stay.total,
+    emailWithheld: stay.emailWithheld,
+    stretches: stay.stretches,
+  };
 }
