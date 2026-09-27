@@ -60,7 +60,7 @@ public class CancellationPolicy implements QuoteCancellationTerms {
 				new IllegalStateException("no set info for set " + booking.setId().value()));
 		Instant now = clock.instant();
 		CancellationWindow window = cutoff.cancellationWindow(set.bookingCutoff(), windowDay, now);
-		Instant freeExitUntil = freeExitUntil(booking, window, now);
+		Instant freeExitUntil = freeExitUntil(booking, windowDay, window, now);
 		if (freeExitUntil != null) {
 			return new RefundQuote(set, window, booking.amountMinor(), RefundReason.VENUE_CHANGE, freeExitUntil);
 		}
@@ -72,11 +72,11 @@ public class CancellationPolicy implements QuoteCancellationTerms {
 	}
 
 	/** The open free-exit deadline of a moved booking, or {@code null}: never moved, past it, or CLOSED. */
-	private Instant freeExitUntil(BookingRecord booking, CancellationWindow window, Instant now) {
+	private Instant freeExitUntil(BookingRecord booking, LocalDate windowDay, CancellationWindow window, Instant now) {
 		if (booking.movedAt() == null || window == CancellationWindow.CLOSED) {
 			return null;
 		}
-		Instant deadline = cutoff.freeExitEndsAt(booking.bookingDate(), booking.movedAt());
+		Instant deadline = cutoff.freeExitEndsAt(booking.bookingDate(), windowDay, booking.movedAt());
 		return now.isBefore(deadline) ? deadline : null;
 	}
 
