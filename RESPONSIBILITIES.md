@@ -962,8 +962,8 @@ The mechanism and edge cases behind `CLAUDE.md`'s one-line invariants; its numbe
 
 1. **No JPA/Hibernate — JDBC only.** No `spring-boot-starter-data-jpa`, no `@Entity`; adapters are
    hand-written `JdbcClient` SQL, with no `org.springframework.data.*` import in `src/main/java`.
-   The Spring Data JDBC starter is on the classpath, but nothing has earned its aggregate mapping
-   (`riviera-java-conventions` §1a): reaching for it is a review conversation, not a preference.
+   The Spring Data JDBC starter is on the classpath, but nothing has earned its aggregate mapping:
+   only a cluster of rows loaded, mutated and saved together by one writer would, with the why stated.
 2. **Availability is the single source of truth, per `(set, date)`.** Every channel (online claim,
    staff tap-to-mark) writes the one `set_availability(set_id, booking_date)` row, and
    `UNIQUE (set_id, booking_date)` plus an atomic `INSERT … ON CONFLICT DO NOTHING` claim (or
@@ -1068,7 +1068,7 @@ Most rules also prove on every build that they can fail, against deliberately-vi
 (`ai.riviera.responsibilityfixture`, `ai.riviera.placementfixture`, `ai.riviera.retirefixture` and
 siblings) — never by breaking production code.
 
-**Review-checked only** (plan-time Module-ownership table, `riviera-plan-doc` §4a; RV-BE-11):
+**Review-checked only** (the plan's Modulith section, `riviera-plan-doc`; RV-BE-11):
 
 - A refund **policy** inside `payment` (`booking` decides whether and how much; `payment` executes).
 - Commission **math** inside `venue` (it stores the rate; only `payout` computes).

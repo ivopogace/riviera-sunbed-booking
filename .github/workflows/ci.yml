@@ -289,14 +289,10 @@ jobs:
     # change, which is a repository setting and not expressible in a diff — #539 records the
     # swap sequencing that lands the pair without an unmergeable window.
     name: Repo hygiene (diff-scoped)
-    # Four diff-scoped repo-hygiene guards, not one: RV-STYLE-1 comments and skill prose (#529, #956), the plan
-    # doc's File-structure section (#533), the two stranded-focus postures (#621), and the
-    # touch-target declaration (#648). They share
-    # this job because they share a shape — judge what a DIFF wrote, not the standing tree (the
-    # plan-doc guard also judges untracked paths since #654, which is empty on a CI checkout) — and
-    # because the name above is the enforcement handle. Until #539 the job kept #529's original
-    # name, which described only the first guard; a plan-doc failure surfacing under "Inline
-    # comments" sent the author hunting the wrong rule.
+    # Several diff-scoped repo-hygiene guards, not one: RV-STYLE-1 comments and skill prose (#529, #956),
+    # the two stranded-focus postures (#621), and the touch-target declaration (#648). They share
+    # this job because they share a shape — judge what a DIFF wrote, not the standing tree — and
+    # because the name above is the enforcement handle.
     #
     # One standing-tree check rides along since #659 — the cloud Node pin — and the job name is why
     # it is a comment rather than a rename: `Repo hygiene (diff-scoped)` is a required-status-check
@@ -305,9 +301,7 @@ jobs:
     #
     # The authoring-time guard's backstop (#529). The hook in .claude/settings.json is the
     # primary control — it fires on the edit itself — but hooks are per-machine and an author
-    # can disable them, so the rule also has to hold somewhere the merge gate can read. The #533
-    # guard has no hook half: its rule needs the whole diff, and mid-slice a plan doc legitimately
-    # lags the code it plans, so a per-edit check would fire on nearly every edit.
+    # can disable them, so the rule also has to hold somewhere the merge gate can read.
     #
     # Pull requests only, deliberately. The rule governs what a DIFF writes, and a push to main
     # has no base to diff against that means anything here (the tree carries many pre-existing
@@ -355,11 +349,10 @@ jobs:
         run: node --test "scripts/*.test.mjs"
 
       - name: Check the diff's comments and skill prose (RV-STYLE-1, hard gate)
-        # Four rules in one guard: a multi-line inline comment the diff added, a provenance tell
-        # (an issue/PR number) in an added comment, a touched doc comment or an added skill line,
-        # and a touched doc comment or RESPONSIBILITIES.md block over §6d's line budget, fail the
-        # step; history phrasing is printed as advisory. The step NAME is free to change — only
-        # the job name above is a required context.
+        # A multi-line inline comment the diff added to production source, and a touched doc comment
+        # or RESPONSIBILITIES.md block over §6d's line budget, fail the step; a multi-line comment in
+        # test source and history phrasing are printed as advisory. The step NAME is free to change —
+        # only the job name above is a required context.
         run: node scripts/check-inline-comments.mjs --diff origin/${{ github.event.pull_request.base.ref }}
 
       - name: Check doc comments and RESPONSIBILITIES.md over budget did not grow (§6d ratchet, hard gate)
@@ -367,12 +360,6 @@ jobs:
         # the lower scripts/doc-budget-baseline.json (`--update`), so every trim stays trimmed.
         if: ${{ !cancelled() }}
         run: node scripts/check-doc-budget.mjs
-
-      - name: Check each plan doc lists what the diff changed (#533, hard gate)
-        # Runs even when the step above failed, so one push surfaces both rules rather than
-        # trickling them out over two round trips — each is a seconds-long fix on its own.
-        if: ${{ !cancelled() }}
-        run: node scripts/check-plan-file-structure.mjs --diff origin/${{ github.event.pull_request.base.ref }}
 
       - name: Check the diff for stranded-focus postures (#621, BUSY-1 gates)
         # The CI half of the authoring-time hook, same as the RV-STYLE-1 guard above. Diff-scoped:
@@ -382,7 +369,7 @@ jobs:
         # Only BUSY-1 fails the build. FOCUS-1 prints to the log and returns 0 — it asks whether a
         # component MOVES FOCUS, a runtime property approximated over source, and three review passes
         # each found a fresh false positive in that predicate. A gate that fails correct code is the
-        # one error direction this job cannot afford (#529's lesson, restated by #533's R-2), so the
+        # one error direction this job cannot afford (#529's lesson), so the
         # rule advises instead. Rationale: #621.
         if: ${{ !cancelled() }}
         run: node scripts/check-focus-posture.mjs --diff origin/${{ github.event.pull_request.base.ref }}

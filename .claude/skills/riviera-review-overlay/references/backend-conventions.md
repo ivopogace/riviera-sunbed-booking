@@ -1,7 +1,8 @@
 # Riviera backend overlay items
 
-Gate → follow-up → default severity. Ids are not sequential — never renumber. Invariant
-numbers: `CLAUDE.md`.
+Default severity per item. Ids are not sequential — never renumber. Invariant numbers:
+`CLAUDE.md`. JPA (#1), module imports, package shape, domain purity and surface placement fail
+the build (the structural net); only what those tests cannot see is listed here.
 
 ### RV-BE-1. Availability single source of truth (#2) — **Blocker**
 Any write to `set_availability(set_id, booking_date)`: unique constraint present; the reservation
@@ -12,15 +13,9 @@ Request-to-Book adds a pending hold on place and a release on decline / expiry s
 withdraw; those legs are separated by the row lock, not by predicate (decline and withdraw
 guard on `status` alone).
 
-### RV-BE-2. JDBC only (#1) — **Blocker**
-No `spring-boot-starter-data-jpa` (a finding even if unused), no `@Entity`/`EntityManager`/
-`JpaRepository` (Major). `JdbcOnlyArchitectureTests` probes the classpath; eyes go to the
-build-file diff and to mapping staying explicit.
-
-### RV-BE-3. Modulith boundaries (#11) — **Blocker**
-No cross-module import of `application.*`/`adapter.*`/`domain.*`; new module has
-`package-info.java` `@ApplicationModule` (Major). `ModularityTests` enforces the imports; eyes
-go to query-vs-event (sync answer → `api/` port; state change → event) and RV-BE-3b.
+### RV-BE-3. Port vs event (#11) — Major
+A caller that needs an answer now uses an `api/` port; a module announcing a state change
+publishes an event. Needing many synchronous beans from one sibling is a coupling smell.
 
 ### RV-BE-3b. API vs SPI — Major
 Others *call* it → `api/`; another module *implements* it → `spi/` (`@NamedInterface("spi")`),
@@ -31,10 +26,9 @@ calls venue, gets `venue::api` + `::vocabulary`. Both misfilings are `verify()`-
 the only catch.
 
 ### RV-BE-3c. Published-surface placement — Major
-Ids/value records → `vocabulary/`, events → `events/`, ports only in `api/`/`spi/`
-(`PublishedSurfacePlacementArchitectureTests`). A new sibling-facing method on `VenueCatalog`
-instead of `SetBookingFacts`/`VenueRates` is a finding; a further tourist read is not. An event
-class move ships an `event_type` Flyway rewrite (see `V18`).
+The test pins which package each kind lives in; review catches the rest: a new sibling-facing
+method on `VenueCatalog` instead of `SetBookingFacts`/`VenueRates` is a finding (a further
+tourist read is not), and an event class move ships an `event_type` Flyway rewrite (see `V18`).
 
 ### RV-BE-4. Events carry ids (#11) — Major
 Payload = typed ids + immutable value facts; no aggregate or foreign module type; mutable
@@ -67,26 +61,22 @@ is role-gated; `AdminSurfaceRoleGateTest` fails unless every mapped admin endpoi
 both non-admin principal types, so a new one needs its `hasRole(ADMIN_ROLE)` matcher.
 
 ### RV-BE-10. Error contract (`riviera-java-conventions` §6b) — Minor (Major if the wire shape diverges)
-No bespoke `{"error": …}` body, no per-controller `@ExceptionHandler`. `detail` states the
-**condition**, never a remedy, consequence or UI navigation; no call site is exempt. A code
-emitted from several call sites carries one string per code and token
-(`MISSING_CURRENT_PASSWORD`, `REQUEST_NOT_PENDING`; `STALE_WRITE` has one per version token;
-`CurrentPasswordDetailTwinTest` pins one pair) that stays true of the broadest arm.
-Authority: `riviera-java-conventions/references/error-contract.md`.
+Every error is a `ProblemDetail` with a stable `code`; the SPA branches on `code` alone
+(`shared/api-error.ts`), so a renamed or re-purposed code is a breaking change and `detail`
+wording is not a finding. `detail` never carries a booking code, secret or exception message
+(Major). Authority: `riviera-java-conventions/references/error-contract.md`.
 
 ### RV-BE-11. Responsibility placement (`RESPONSIBILITIES.md`) — Major
 Whenever behaviour is added or moved: each file's logic serves its module's **Job** and is not on
-its **Not My Job** list; diff the plan's Module-ownership table against the code. The tells no rule
-catches: refund/cancellation policy in `payment` (executor; `booking` decides); commission/payout
-arithmetic in `venue` or `booking` (`payout` computes); `customer` growing login machinery beyond
-the Spring Security imports `CustomerAuthPlacementTests` bans (edge concern); `operator` sitting in
-every request path. Blocker when the misplacement also breaks a Blocker invariant.
+its **Not My Job** list. The tells no rule catches: refund/cancellation policy in `payment`
+(executor; `booking` decides); commission/payout arithmetic in `venue` or `booking` (`payout`
+computes); `customer` growing login machinery beyond the Spring Security imports
+`CustomerAuthPlacementTests` bans (edge concern); `operator` sitting in every request path. Blocker when the misplacement also breaks a Blocker invariant.
 
 ### RV-BE-12. Package shape (ADR-0007) — Major
-On any package add/move, `PackageShapeArchitectureTests` must be green (it rejects an
-`application/in|out` split); eyes go to a serviceless module with an empty `application/` or
-`domain/` (or a module with a service still in the thin shape), and use-case slicing outside
-`booking`. `vocabulary` and `events` are allowed — flagging them is a false finding.
+`PackageShapeArchitectureTests` holds the structural half; eyes go to a serviceless module with
+an empty `application/` or `domain/` (or a module with a service still in the thin shape), and
+use-case slicing outside `booking`. `vocabulary` and `events` are allowed — flagging them is a false finding.
 
 ### RV-BE-19. Rule-layer placement (ADR-0018) — Major
 On any new/changed choice, calculation or lifecycle statement. `DomainPurityArchitectureTests`

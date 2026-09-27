@@ -7,32 +7,13 @@ Every API error is an RFC-7807 `ProblemDetail` (`application/problem+json`) with
 ## `ApiProblem` (`ai.riviera.platform.shared`)
 
 The one factory for the wire shape; controllers use it when a typed-outcome `switch` rejects.
-`detail` never carries a booking code (#7), an exception message or any internal echo.
-
-**`detail` states the condition, not the remedy.** `code` is the contract; wording a human
-reads belongs to the client. Write the fact about server state (*"Another set already
-occupies this grid cell."*), never a consequence, a remedy or UI navigation.
-
-- **Name the condition class, not the arm, and keep the class true.** A code serving several
-  guards (`SET_IN_USE`: move, save-that-moves, remove) gets one `detail` naming no arm, and
-  the ITs assert the same string at every arm. Too short is untrue ("This set is in use."
-  reads as occupied now); too broad is uncharacterizing. *"has a booking or a **current**
-  hold"* is the narrowest statement true at every arm.
-- **No call site is exempt**, mapper or not (`RATE_LIMITED`, `CANNOT_SUSPEND_SELF` have none).
-  Enumerate by mechanism: `grep -rn "ApiProblem\." platform/src/main` unrolled through each
-  controller's local `problem(...)`/`error(...)` helper, plus the hand-built JSON in
-  `RateLimitFilter` and `SecurityProblemResponses` — a phrase grep misses all of those.
-- **One string per code and token.** `MISSING_CURRENT_PASSWORD` (operator + customer),
-  `REQUEST_NOT_PENDING` (accept, decline, withdraw — may not say "already been decided").
-  `STALE_WRITE` guards two tokens, two conditions, so it carries one string per token:
-  `venue.version` (the profile write, `STALE_PROFILE_DETAIL`) and `venue.set_version` (reprice,
-  rename, batch apply, replace and remodel — may not claim *prices* or *layout*). The set string
-  is three literals, changed together: `VenueAdminController.STALE_SETS_DETAIL` (reprice, rename,
-  batch apply), `LayoutRejection.STALE_WRITE` (replace, remodel commit) and
-  `RemodelPreviewController.STALE_SETS_DETAIL`. `CurrentPasswordDetailTwinTest` pins its pair live.
-- **Not findings:** `UNSUPPORTED_FORMAT` (states what the server accepts),
-  `BOOTSTRAP_CREDENTIAL_MANAGED`, `SET_NOT_BOOKABLE_ONLINE`, `RATE_LIMITED`'s *"Too many
-  requests."* (any widening leaks which of four dimensions fired).
+`code` is the contract: the SPA branches on it alone (`frontend/src/app/shared/api-error.ts`) and
+maps it to its own copy, so a renamed or re-purposed code is a breaking change. `detail` is for a
+human reading the raw response: state the condition in a sentence, and never carry a booking code
+(#7), an exception message or any internal echo. Enumerate every call site by mechanism, not by
+phrase: `grep -rn "ApiProblem\." platform/src/main` unrolled through each controller's local
+`problem(...)`/`error(...)` helper, plus the hand-built JSON in `RateLimitFilter` and
+`SecurityProblemResponses`.
 
 ## `ApiErrorHandler` (root package)
 

@@ -1,11 +1,11 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { findViolations, GATING, isBudgeted, proseBlocks } from './check-inline-comments.mjs';
+import { findViolations, GATING, isBudgeted, isTestSource, proseBlocks } from './check-inline-comments.mjs';
 
 const JAVA = 'platform/src/main/java/ai/riviera/platform/SecurityConfig.java';
 
-/** The one-line rule's own findings; the fixtures below also carry issue numbers, a separate rule. */
+/** The one-line rule's own findings; the fixtures below also carry issue numbers, which no rule gates. */
 const multiline = (violations) => violations.filter((v) => v.rule === 'multiline');
 
 /**
@@ -301,52 +301,52 @@ test('an empty template literal at end of line is still closed', () => {
   assert.equal(violations[0].line, 2);
 });
 
-/** A Javadoc block whose last prose line cites an issue number; lines 2–6 are the block. */
-const JAVADOC_WITH_PROVENANCE = [
+/** A Javadoc block whose last prose line narrates history; lines 2–6 are the block. */
+const JAVADOC_WITH_HISTORY = [
   'class CommissionRates {',
   '\t/**',
   '\t * The platform-admin commission surface: the venues-with-commission list and the',
   '\t * rate write. Same ADMIN gate as the photo moderation paths, and for the same reason: an',
-  '\t * admin does not own a rate, so object-level authorization has nothing to check (#348).',
+  '\t * admin does not own a rate, so object-level authorization no longer has anything to check.',
   '\t */',
   '\tprivate static final String ADMIN_VENUE_COMMISSIONS_PATH = "/api/admin/venues";',
   '}',
 ];
 
-test('judges a touched Javadoc block whole: a provenance tell on a line the diff never wrote', () => {
+test('judges a touched Javadoc block whole: a history tell on a line the diff never wrote', () => {
   const violations = findViolations({
     path: JAVA,
-    lines: JAVADOC_WITH_PROVENANCE,
+    lines: JAVADOC_WITH_HISTORY,
     added: new Set([3]),
   });
 
   assert.deepEqual(
     violations.map(({ line, endLine, rule }) => ({ line, endLine, rule })),
-    [{ line: 5, endLine: 5, rule: 'provenance' }],
+    [{ line: 5, endLine: 5, rule: 'history' }],
   );
 });
 
 test('never reads an untouched doc comment', () => {
   const violations = findViolations({
     path: JAVA,
-    lines: JAVADOC_WITH_PROVENANCE,
+    lines: JAVADOC_WITH_HISTORY,
     added: new Set([7]),
   });
 
   assert.deepEqual(violations, []);
 });
 
-test('flags a provenance tell in an added skill line, not inside a fence or a code span', () => {
+test('flags a history tell in an added skill line, not inside a fence or a code span', () => {
   const lines = [
     '# Riviera local debug',
     '',
-    'The guards fetch their base themselves since #952, so `--diff origin/main` is correct as typed.',
+    'The guards no longer trust a stale base, so `--diff origin/main` is correct as typed.',
     '',
-    '```css',
-    'background: #333;',
+    '```bash',
+    '# the old form is no longer accepted',
     '```',
     '',
-    'A colour token is written as `#333` in a span.',
+    'The flag `--no-longer-used` sits in a span.',
   ];
   const violations = findViolations({
     path: '.claude/skills/riviera-local-debug/SKILL.md',
@@ -356,19 +356,19 @@ test('flags a provenance tell in an added skill line, not inside a fence or a co
 
   assert.deepEqual(
     violations.map(({ line, rule }) => ({ line, rule })),
-    [{ line: 3, rule: 'provenance' }],
+    [{ line: 3, rule: 'history' }],
   );
 });
 
 test('scope follows the extension, not the directory, so a docs-rooted script is judged', () => {
   const added = new Set([1]);
 
-  assert.notDeepEqual(findViolations({ path: 'docs/design/support.js', lines: ['// see #1003'], added }), []);
-  assert.deepEqual(findViolations({ path: 'docs/design/README.md', lines: ['see #1003'], added }), []);
+  assert.notDeepEqual(findViolations({ path: 'docs/design/support.js', lines: ['// this no longer runs'], added }), []);
+  assert.deepEqual(findViolations({ path: 'docs/design/README.md', lines: ['this no longer runs'], added }), []);
 });
 
 test('markdown outside SKILL.md and references/ is out of scope', () => {
-  const lines = ['- issue #134: "Dark theme option"'];
+  const lines = ['- issue #134: "Dark theme option" was previously in scope'];
   const added = new Set([1]);
 
   assert.deepEqual(findViolations({ path: '.claude/skills/triage/OUT-OF-SCOPE.md', lines, added }), []);
@@ -401,44 +401,20 @@ test('reports history phrasing under its own rule, so the CLI can advise rather 
 test('never reads the code after a block comment closes on the same line', () => {
   const violations = findViolations({
     path: JAVA,
-    lines: ['  /* note */ String s = "issue 342 filed";', '/** opens', ' * closes */ String t = "see PR #521";'],
+    lines: ['  /* note */ String s = "no longer filed";', '/** opens', ' * closes */ String t = "previously seen";'],
     added: new Set([1, 2, 3]),
   });
 
   assert.deepEqual(violations, []);
 });
 
-test('a bare issue number counts only in a citing position, so a colour is left to review', () => {
-  const at = (path, line) =>
-    findViolations({ path, lines: [line], added: new Set([1]) }).map((v) => v.rule);
-
-  assert.deepEqual(at(SCSS, '// border color: #123 for emphasis'), []);
-  assert.deepEqual(at(JAVA, '/** Falls back to #123 opacity when unset. */'), []);
-  assert.deepEqual(at(JAVA, '// the admin gate (#348), same as the photo paths'), ['provenance']);
-  assert.deepEqual(at(JAVA, '// the #413/#420 failure, paid for once'), ['provenance']);
-  assert.deepEqual(at(JAVA, '/** Rate write, epic #348. */'), ['provenance']);
-  assert.deepEqual(at('frontend/src/app/x.ts', '// issue 529 names it as the first proof case'), ['provenance']);
-});
-
-test('a comment opener is not a citing slash, and a generic word is not a citing word', () => {
-  const at = (line) =>
-    findViolations({ path: JAVA, lines: [line], added: new Set([1]) }).map((v) => v.rule);
-
-  assert.deepEqual(at('// the #123 emphasis colour'), []);
-  assert.deepEqual(at('// returns the #404 error and the #500 fallback'), []);
-  assert.deepEqual(at('/** Mirrors the #401 vs #403 split. */'), []);
-  assert.deepEqual(at('// fixed by #618, see #619'), ['provenance']);
-  assert.deepEqual(at('// the #413/#420 failure, paid for once'), ['provenance']);
-  assert.deepEqual(at('// closed in #952 with a shared resolver'), ['provenance']);
-});
-
-/** The issue's own probe: an inline Angular template whose HTML comment breaks both gating rules. */
+/** An inline Angular template whose HTML comment breaks the one-line rule and narrates history. */
 const INLINE_TEMPLATE = [
   '@Component({',
   "  selector: 'app-probe',",
   '  template: `',
   '    <!-- A deliberately multi-line HTML comment inside an Angular inline template',
-  '         that also carries provenance (#923) to see whether the guard scans it. -->',
+  '         that no longer hides from the guard, to see whether it is scanned. -->',
   '    <p>hi</p>',
   '  `,',
   '})',
@@ -458,7 +434,7 @@ test('flags a multi-line HTML comment inside an inline Angular template', () => 
   );
 });
 
-test("reports provenance inside an inline Angular template's HTML comment", () => {
+test("reports a history tell inside an inline Angular template's HTML comment", () => {
   const violations = findViolations({
     path: 'frontend/src/app/probe.ts',
     lines: INLINE_TEMPLATE,
@@ -467,7 +443,7 @@ test("reports provenance inside an inline Angular template's HTML comment", () =
 
   assert.deepEqual(
     violations.map(({ line, rule }) => ({ line, rule })),
-    [{ line: 5, rule: 'provenance' }],
+    [{ line: 5, rule: 'history' }],
   );
 });
 
@@ -505,40 +481,6 @@ test('the code after an inline template closes is still scanned', () => {
   );
 });
 
-test('a bare issue number opening the comment is a citing position', () => {
-  const at = (path, line) =>
-    findViolations({ path, lines: [line], added: new Set([1]) }).map((v) => v.rule);
-
-  assert.deepEqual(at(JAVA, "// #923's widget pushed Review past a phone's height."), ['provenance']);
-  assert.deepEqual(at(SCSS, '// #123 is the emphasis colour'), ['provenance'], 'a colour opening a comment is the accepted cost');
-  assert.deepEqual(at(JAVA, '/** #795 AC-8: a same-day booking reports its CLOSED birth window. */'), ['provenance']);
-  assert.deepEqual(at('frontend/src/app/x.ts', '  <!-- #741: the announcer must outlive the branch it describes. -->'), []);
-  assert.deepEqual(at('frontend/src/app/x.html', '  <!-- #741: the announcer must outlive the branch it describes. -->'), ['provenance']);
-  assert.deepEqual(at(JAVA, '// returns the #404 error and the #500 fallback'), []);
-  assert.deepEqual(at(SCSS, '// border color: #123 for emphasis'), []);
-  assert.deepEqual(at(JAVA, '// #12 is two digits, not an issue'), []);
-  assert.deepEqual(at(JAVA, '// #12345 is five digits, not an issue'), []);
-});
-
-test('a doc-comment line that opens with an issue number is provenance', () => {
-  const lines = [
-    'class Sweep {',
-    '\t/**',
-    '\t * Sweeps the abandoned bookings.',
-    '\t * #373 handed the sweep the whole record, so its cutoff and the mailed deadline share one source.',
-    '\t */',
-    '\tvoid sweep() {}',
-    '}',
-  ];
-
-  const violations = findViolations({ path: JAVA, lines, added: new Set([3]) });
-
-  assert.deepEqual(
-    violations.map(({ line, rule }) => ({ line, rule })),
-    [{ line: 4, rule: 'provenance' }],
-  );
-});
-
 test('an interpolation inside an inline template is code, not markup', () => {
   const component = (...rows) => [
     '@Component({',
@@ -552,10 +494,10 @@ test('an interpolation inside an inline template is code, not markup', () => {
     findViolations({ path: 'frontend/src/app/probe.ts', lines, added: new Set(lines.map((_, i) => i + 1)) })
       .map(({ line, rule }) => ({ line, rule }));
 
-  assert.deepEqual(at(component('    <p>${label("<!-- see #923 -->")}</p>')), []);
+  assert.deepEqual(at(component('    <p>${label("<!-- no longer -->")}</p>')), []);
   assert.deepEqual(
-    at(component('    <p>${cond ? `a` : `b`}</p>', '    <!-- the live region must outlive its branch (#741) -->')),
-    [{ line: 4, rule: 'provenance' }],
+    at(component('    <p>${cond ? `a` : `b`}</p>', '    <!-- the live region no longer dies with its branch -->')),
+    [{ line: 4, rule: 'history' }],
   );
 });
 
@@ -565,7 +507,7 @@ test('an inline template whose backtick opens on the line after `template:` is s
     '  template:',
     '    `',
     '    <!-- A two-line HTML comment,',
-    '         carrying provenance (#923). -->',
+    '         no longer on one line. -->',
     '    <p>hi</p>',
     '  `,',
     '})',
@@ -575,8 +517,34 @@ test('an inline template whose backtick opens on the line after `template:` is s
 
   assert.deepEqual(
     violations.map(({ line, endLine, rule }) => ({ line, endLine, rule })),
-    [{ line: 4, endLine: 5, rule: 'multiline' }, { line: 5, endLine: 5, rule: 'provenance' }],
+    [{ line: 4, endLine: 5, rule: 'multiline' }, { line: 5, endLine: 5, rule: 'history' }],
   );
+});
+
+test('a multi-line inline comment in test source advises instead of gating', () => {
+  const lines = ['const rate = 1; /* the commission, in basis points —', '   set per venue */'];
+  const judge = (path) => findViolations({ path, lines, added: new Set([1, 2]) }).map((v) => v.rule);
+
+  assert.deepEqual(judge('frontend/src/app/booking/probe.ts'), ['multiline']);
+  for (const path of [
+    'frontend/src/app/booking/probe.spec.ts',
+    'frontend/e2e/probe.e2e.ts',
+    'frontend/src/testing/probe.ts',
+    'platform/src/test/java/ai/riviera/platform/ProbeIT.java',
+    'scripts/probe.test.mjs',
+  ]) {
+    assert.deepEqual(judge(path), ['multiline-test'], path);
+    assert.equal(isTestSource(path), true, path);
+  }
+  assert.equal(GATING.has('multiline-test'), false);
+});
+
+test('an issue number in a comment is not a finding', () => {
+  const at = (path, line) => findViolations({ path, lines: [line], added: new Set([1]) });
+
+  assert.deepEqual(at(JAVA, '// the admin gate (#348), same as the photo paths'), []);
+  assert.deepEqual(at(JAVA, '/** Rate write, epic #348. */'), []);
+  assert.deepEqual(at('.claude/skills/riviera-sdlc/SKILL.md', 'Fixed by PR #521.'), []);
 });
 
 const budget = (violations) =>

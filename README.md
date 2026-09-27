@@ -62,9 +62,9 @@ npm run test:e2e                    # Playwright — the local-only REAL-backend
 
 CI (`.github/workflows/`) runs the same backend build/test, the frontend
 lint/format/test/build + the mocked e2e suite, most of the `scripts/check-*.mjs`
-hygiene checks (two are by-hand verifiers, not CI gates), CodeQL, and a SonarCloud
-scan on every PR. The Sonar merge bar is stricter
-than the default gate: **0 new issues, 0 duplicated blocks, ≥80% new-code coverage**.
+hygiene checks (`check-comment-only.mjs` is a by-hand verifier, not a CI gate), CodeQL, and a
+SonarCloud scan on every PR. The Sonar merge bar: **no new bug, vulnerability or unreviewed
+hotspot, ≥80% new-code coverage**.
 
 ## The system in one picture
 

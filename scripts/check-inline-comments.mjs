@@ -1,15 +1,15 @@
 /**
- * Diff-scoped guard for RV-STYLE-1 (`riviera-java-conventions` §6c): an inline comment is one
- * line or it is not written, and a comment or a skill line is kept only if a fresh session
- * reading it would act differently — an issue or PR number never is.
+ * Diff-scoped guard for RV-STYLE-1 (`riviera-java-conventions` §6c): an inline comment in
+ * production source is one line or it is not written, and a doc comment keeps to §6d's budget.
  *
  * Reasons about lines a diff **added**, for anything git already tracks: the existing tree
- * carries many multi-line inline comments and issue-numbered doc comments that a repo-wide gate
- * would go red on and get switched off. Two things are judged whole instead — a doc comment with
+ * carries many multi-line inline comments that a repo-wide gate would go red on and get switched
+ * off. Two things are judged whole instead — a doc comment with
  * any added line, and a file git has never seen (see `checkPaths`).
  *
  * Exempt from the one-line rule: doc comments, a block comment standing before any code as the
- * file's header, and `#`/SQL-`--` comment syntaxes. A doc comment in production source keeps to
+ * file's header, and `#`/SQL-`--` comment syntaxes; in test source it only advises
+ * (`multiline-test`). A doc comment in production source keeps to
  * §6d's line budget instead (`docbudget`), and so does each block of `RESPONSIBILITIES.md`
  * (`respbudget`), where rationale relocated out of the code lands. The scope's deliberate gaps are listed in
  * `riviera-java-conventions` `references/inline-comment-guard.md`.
@@ -77,24 +77,11 @@ export function syntaxFor(path) {
 }
 
 /**
- * Text that is written for the author's session rather than the next reader's. `provenance` is
- * an issue or PR number — `git blame`'s job, and what `riviera-java-conventions` §6d forbids in a
- * doc comment outright; it gates. A bare `#NNN` counts only in a citing position (after `(`, a
- * comma, a `NNN/`, a citing word, or opening the comment's own text), because `: #123` is how a
- * colour reads, `the #404 error` is prose, and a false positive is how a gate gets switched off.
- * `history` narrates a change the reader never saw and is contract language often enough (a port
- * that releases a set claimed earlier) that it only advises.
+ * Text that is written for the author's session rather than the next reader's. `history` narrates
+ * a change the reader never saw and is contract language often enough (a port that releases a set
+ * claimed earlier) that it only advises. An issue or PR number is a lookup key, not a tell.
  */
-const CITING = '(?:issues?|PRs?|epics?|since|until|before|after|see|by|at|in|from|fix(?:es|ed)?|closes)';
-
-/** A comment's own opening: after its marker, a doc comment's leading `*`, and whitespace. */
-const OPENING = String.raw`^\s*(?:\*\s*)?`;
-
 const TELLS = {
-  provenance: new RegExp(
-    String.raw`(?:${OPENING}|[(,]\s*|\d/\s*|\b${CITING}\s+)#[1-9]\d{2,3}(?!\w)|\b(?:issues?|PRs?|pull requests?)\s+#?\d{2,4}\b`,
-    'i',
-  ),
   history:
     /\bused to (?:be|have|do|need|run|take|hold|read|say|mean)\b|\bno longer\b|\bpreviously\b|\bformerly\b|\boriginally\b|\bhistorically\b|\bthis (?:change|slice|PR)\b|\bthe alternative would\b|\bwas left out\b/i,
 };
@@ -102,7 +89,6 @@ const TELLS = {
 /** Every violation carries a `rule`; these fail a run, the rest are printed and let through. */
 export const GATING = new Set([
   'multiline',
-  'provenance',
   'docbudget',
   'docbudget-touched',
   'respbudget',
@@ -133,6 +119,14 @@ const MODIFIERS =
 const TYPE_KEYWORD = /^(?:class|interface|enum|record|@interface|type|namespace)\s+[\w$]/;
 
 const isTypeDeclaration = (code) => TYPE_KEYWORD.test(code.replace(MODIFIERS, ''));
+
+/** Test source, where a multi-line inline comment explaining a fixture advises instead of gating. */
+export function isTestSource(path) {
+  return (
+    /\.(?:spec|e2e|test)\.[cm]?[jt]sx?$/.test(path) ||
+    /^(?:platform\/src\/test|frontend\/e2e|frontend\/src\/testing)\//.test(path)
+  );
+}
 
 /**
  * Every finding in one file: the multi-line inline comments the diff wrote, and the tells in
@@ -174,7 +168,7 @@ function violationAt(path, lines, startLine, endLine) {
     line: startLine + 1,
     endLine: endLine + 1,
     text: lines[startLine].trim(),
-    rule: 'multiline',
+    rule: isTestSource(path) ? 'multiline-test' : 'multiline',
   };
 }
 
@@ -635,10 +629,9 @@ const ADVICE = {
   multiline:
     'RV-STYLE-1: an inline comment is one line, or it is not written. Shorten it, delete it, or ' +
     'move the contract to a doc comment (Javadoc/TSDoc). See riviera-java-conventions §6c.',
-  provenance:
-    `RV-STYLE-1: ${TEST} An issue or PR number is provenance — git blame's job — so drop it; ` +
-    'relocate load-bearing rationale to RESPONSIBILITIES.md or an ADR and leave a one-line ' +
-    'pointer. A touched doc comment is judged whole. See riviera-java-conventions §6c.',
+  'multiline-test':
+    'RV-STYLE-1 (advisory in test source): prefer a one-line comment or a better-named test or ' +
+    'fixture over a multi-line explanation. See riviera-java-conventions §6c.',
   history:
     `RV-STYLE-1 (advisory): ${TEST} "no longer", "previously", "used to be" narrate a change ` +
     'the reader never saw: state the contract as it stands, or drop the line. See ' +

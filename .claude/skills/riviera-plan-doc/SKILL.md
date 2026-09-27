@@ -1,66 +1,54 @@
 ---
 name: riviera-plan-doc
 description: >-
-  Plan-doc discipline for riviera-sunbed-booking: testable ACs with named seams, risk and
-  open-question registers, the Modulith/availability/payment sections, the
-  Execution-status state store. Load at the riviera-sdlc plan stage or when executing an
-  existing plan in docs/plans/.
+  Plan-doc discipline for riviera-sunbed-booking: testable ACs with named seams, risks and
+  open questions, the Modulith/availability/payment sections, the Execution-status state
+  store. Load at the riviera-sdlc plan stage or when executing an existing plan in docs/plans/.
 ---
 
 # Riviera Plan Doc
 
-`references/plan-doc-template.md` is the single home of section guidance. Load at the plan
-stage and again when picking up a plan in a fresh session. The plan is preventive: its
-sections are built from the risks the design surfaced, not from post-mortems.
+`references/plan-doc-template.md` is the shape. The plan is preventive: its sections come from
+the risks the design surfaced. Its main job across sessions is Execution status.
 
-## Required artifacts
+## Required
 
-- `docs/plans/<short-slug>.md`, following the template exactly; empty sections read
-  `N/A — <reason>`.
-- A branch `<feature|bugfix>/<short-slug>` before phase 0 (cloud: the designated branch, noted
-  in the Branch line).
-- A live Execution-status section, updated in the same commit window as what it records.
+- `docs/plans/<short-slug>.md` on the slice's branch. Omit a conditional section that doesn't
+  apply rather than writing `N/A`.
+- A live Execution status, updated in the same commit window as what it records.
 - Open Questions empty (or each citing a follow-up issue) before "done".
-- The plan is deleted at the next close-out after merge (`riviera-docs-freshness`
-  § *Plan-doc retirement*); rationale a later slice needs goes to `RESPONSIBILITIES.md` or an
-  ADR first.
+- Deleted in the PR's last commit before merge, after anything a later slice needs moves to
+  `RESPONSIBILITIES.md`, an ADR or the issue (`riviera-sdlc` `references/pr-gates.md` §3).
 
 ## At plan time
 
-0. Run the `riviera-sdlc` Skill-routing gate before any design; record each skill and what it
-   changed in **Skills consulted** (extend the five pre-filled entries).
-1. ACs before phase 0: Given/When/Then, named test, at the inner hexagon, **each naming its
-   seam** — an unnamed seam blocks phase 0.
-2. Risk register + Open Questions before phase 0. A question the slice can answer →
-   `research` or `prototype`, closed with the note as citation. One it cannot → fog, escalate
-   per the issue-intake gate; never park it.
+1. ACs before phase 0: Given/When/Then, at the inner hexagon, **each naming its seam** and the
+   test that pins it — an unnamed seam blocks phase 0.
+2. Risks and Open Questions before phase 0. A question the slice can answer → `research` or
+   `prototype`. One it cannot → fog, escalate per the issue-intake gate; never park it.
 3. Availability & concurrency section if booking, the beach map or `availability` is touched.
-4. Spring Modulith section if any backend code; `codebase-design` for seams. **4a** Module
-   ownership table whenever behaviour is added or moved, checked against `RESPONSIBILITIES.md`.
+4. Modulith section if backend structure changes (new port, event, module or cross-module call);
+   check each new capability's owner against `RESPONSIBILITIES.md` Job / Not My Job.
 5. Payment & payout section if money moves; load `riviera-stripe-payments`.
-6. Decompose into independently reviewable phases, TDD red-green per task.
+6. Decompose into independently reviewable phases, red-green per task.
 7. Behaviour-parity ledger if the slice retires or replaces a surface: every old behaviour
    marked preserved / changed / dropped with reason. "Restyle only" is not self-justifying.
 
 ## At execution time
 
-1. After every bug fix or new pattern, a generalization pass: name the **mechanism** the
-   defect needs, enumerate every member with a command, judge each; log the command that
-   found the population.
+1. After a bug fix, find the siblings: name the mechanism the defect needs, enumerate every
+   member with a command, judge each.
 2. `AskUserQuestion` for forks the evidence can't settle (availability strategy, module
    boundary, payment flow, public `api/` port). Decide naming/style yourself.
-3. Self-review checklist before claiming done. Reconcile File structure with the diff:
-   `node scripts/check-plan-file-structure.mjs --diff origin/main` (the plan must be staged or
-   committed, else the guard short-circuits).
-4. Scope test runs per `riviera-local-debug`.
+3. Scope test runs per `riviera-local-debug`.
 
 ## Anti-patterns
 
-- `N/A` in Availability & concurrency when the feature touches booking or the map.
+- Skipping Availability & concurrency when the feature touches booking or the map.
 - ACs as prose. "Given two clients reserving set 12 on 2026-07-01 concurrently, when both
   submit, then exactly one is `CONFIRMED` and the other gets `409 SET_TAKEN`, pinned by
   `ConcurrentReservationIT`" is an AC.
-- Deleting an Open Question instead of moving it under `### Resolved` with outcome + SHA.
+- Writing the implementation into the plan: phases name the behaviour and the test, the code
+  lives in the diff.
 
-Skip for one-line fixes, copy tweaks, dependency bumps, spikes. RV-BE-11 re-checks the
-ownership table; RV-PROC-1 re-checks *Skills consulted*.
+Skip for small fixes, copy tweaks, dependency bumps, spikes.
