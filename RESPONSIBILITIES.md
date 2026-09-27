@@ -236,9 +236,9 @@ any is released on the old, never a swap of my own — so a racing reserve wins 
 - **A reserve fences before any claim, on both booking modes:** a hidden venue's set
   (`operator.api.VenueVisibility`) is `NO_SUCH_SET`, and no later leg consults visibility; a season
   closure that does not admit every day is `VENUE_CLOSED` (the venue is deliberately visible); the
-  sales close is judged on the first day (invariant #4); a stitched stay at a Request-to-Book venue
-  is `RANGE_NOT_OFFERED` (one set for a range is one request, #1203); a span over the venue's
-  maximum stay is `STAY_TOO_LONG`.
+  sales close is judged on the first day (invariant #4); a span over the venue's maximum stay is
+  `STAY_TOO_LONG`; a stitched stay at a Request-to-Book venue is `RANGE_NOT_OFFERED` (one set for a
+  range is one request, #1203).
 - **Then it claims every day, all or nothing:** a day that loses gives back every day won, then
   answers `SET_TAKEN` (`ConcurrentRangeReservationIT`). One PaymentIntent for per-day price × days
   (invariant #5); the cancellation window and refund are the first day's, on the whole amount

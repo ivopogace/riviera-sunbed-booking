@@ -28,7 +28,7 @@ standing in for `feature/request-stay`)
   and the outcome is `Requested` naming both days. *Seam:* `CreateBooking` / `POST /api/bookings`
   · *Pinned by:* `RangeBookingIT.aRequestVenueTakesOneSetForARange`,
   `CreateBookingServiceTest.aRequestVenueTakesOneSetForARange`,
-  `BookingControllerIT.rangeAtRequestVenueIs202`
+  `BookingControllerIT.rangeAtRequestVenueIsOnePendingRequest`
 - [ ] **AC-2:** Given a Request-to-Book venue, when a stitched plan is posted, then it is refused
   `RANGE_NOT_OFFERED` before any claim. *Seam:* `CreateStay` / `POST /api/stays` · *Pinned by:*
   `CreateStayIT.refusesAFencedPlanBeforeAnyClaim` (unchanged)
@@ -55,7 +55,7 @@ standing in for `feature/request-stay`)
   `BookingPaymentDue` → `Mailer` · *Pinned by:* `RequestDeclinedMailIT.namesTheStaysDays`,
   `RequestExpiredMailIT.namesTheStaysDays`, `RequestPaymentDueMailIT.namesTheStaysDays`,
   `SmtpMailerIT` rendering cases; an older payload without `lastDate` reads as one day
-  (`BookingRequestDeclinedTest` / event `lastDay()` fallback)
+  (`RequestEventsLastDayTest`)
 - [ ] **AC-8:** Given a Request-to-Book venue where no single set covers the span but a stitched plan
   within three moves exists, when discovery lists the coast, then its verdict is `CANNOT_HOST`
   (longest run reported), never `FITS_WITH_MOVES`; and `GET /api/venues/{id}/itinerary` answers a
@@ -141,7 +141,7 @@ standing in for `feature/request-stay`)
 
 - **Phase 0 — one set for a range at a Request venue:** the fence lifts for one set, the stitched
   path keeps refusing · red `RangeBookingIT.aRequestVenueTakesOneSetForARange`,
-  `CreateBookingServiceTest.aRequestVenueTakesOneSetForARange`, `BookingControllerIT.rangeAtRequestVenueIs202`
+  `CreateBookingServiceTest.aRequestVenueTakesOneSetForARange`, `BookingControllerIT.rangeAtRequestVenueIsOnePendingRequest`
 - **Phase 1 — the queue shows the range:** `last_date` through row, record, view · red
   `RequestAcceptClaimsIT.theQueueShowsARangeAsOneRow`
 - **Phase 2 — accept, race and sweep on a range:** · red `RequestAcceptClaimsIT` range cases,
