@@ -48,7 +48,7 @@ class PendingRequestsService implements PendingRequests {
 				rows.stream().map(PendingRequestRow::customerId).collect(Collectors.toSet());
 		Map<CustomerId, GuestContact> contacts = customers.findByIds(ids);
 		return rows.stream()
-				.map(row -> new PendingRequest(row.bookingId(), row.setId(), row.bookingDate(),
+				.map(row -> new PendingRequest(row.bookingId(), row.setId(), row.bookingDate(), row.lastDate(),
 						guestName(contacts, row.customerId()),
 						row.amountMinor(), row.currency(), row.requestedAt(), row.requestExpiresAt(),
 						row.competingRequests()))

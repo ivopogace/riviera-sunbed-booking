@@ -203,6 +203,29 @@ class AbandonedBookingSweepIT {
 	// --- tests ---------------------------------------------------------------------------------
 
 	@Test
+	void anUnpaidAcceptedRangeIsReleasedWhole() throws Exception {
+		SetRef set = onlineSet();
+		LocalDate first = LocalDate.of(2027, 8, 10);
+		int acceptedPastThePayWindow = (int) PAY_WINDOW.plusHours(1).toMinutes();
+		long booking = insertAcceptedRequest("SWEEPAC0011", set, first, acceptedPastThePayWindow);
+		jdbc.sql("UPDATE booking SET last_date = :last, amount_minor = 13500 WHERE id = :id")
+				.param("last", first.plusDays(2)).param("id", booking).update();
+		insertPayment(booking, "pi_sweep_range");
+		for (int i = 0; i < 3; i++) {
+			claim(set, first.plusDays(i));
+		}
+
+		int expired = sweep.sweep(TTL, WINDOWS);
+
+		assertEquals(1, expired, "the accepted range unpaid past its deadline is expired once");
+		assertEquals("CANCELLED", statusOf(booking));
+		for (int i = 0; i < 3; i++) {
+			assertEquals(0L, availabilityRows(set, first.plusDays(i)), "day " + i + " is released");
+		}
+		verify(cancelableIntent).cancel();
+	}
+
+	@Test
 	void expiresStaleBookingAndFreesTheSet() throws Exception {
 		SetRef set = onlineSet();
 		LocalDate date = LocalDate.of(2027, 8, 1);

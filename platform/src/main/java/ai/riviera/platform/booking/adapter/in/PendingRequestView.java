@@ -10,14 +10,15 @@ import ai.riviera.platform.venue.vocabulary.MoneyView;
  * carries <strong>no booking code</strong> (invariant #7): the operator accepts/declines by
  * {@code bookingId}; the code becomes staff-relevant only once the booking is confirmed (then
  * the daily view shows it). Money as {@link MoneyView} (integer minor units, invariant #5);
- * dates ISO; instants ISO-8601 UTC (invariant #6).
+ * dates ISO ({@code bookingDate..lastDate}, the whole span the amount covers); instants ISO-8601 UTC
+ * (invariant #6).
  */
-record PendingRequestView(long bookingId, long setId, String bookingDate, String guestName,
+record PendingRequestView(long bookingId, long setId, String bookingDate, String lastDate, String guestName,
 		MoneyView amount, Instant requestedAt, Instant requestExpiresAt, int competingRequests) {
 
 	static PendingRequestView of(PendingRequest request) {
 		return new PendingRequestView(request.bookingId(), request.setId().value(),
-				request.bookingDate().toString(), request.guestName(),
+				request.bookingDate().toString(), request.lastDate().toString(), request.guestName(),
 				new MoneyView(request.amountMinor(), request.currency()),
 				request.requestedAt(), request.requestExpiresAt(), request.competingRequests());
 	}

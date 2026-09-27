@@ -159,15 +159,15 @@ standing in for `feature/request-stay`)
 
 ## Execution status
 
-**Stage pointer:** `implement (phase 0)`
+**Stage pointer:** `implement (phase 3)`
 
-**Next action:** red test for AC-1.
+**Next action:** red tests for AC-7 (the three request mails name the range).
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — one set for a range at a Request venue | ⏳ | |
-| 1 — the queue shows the range | | |
-| 2 — accept, race and sweep on a range | | |
+| 0 — one set for a range at a Request venue | ✅ | 7c3739b4 |
+| 1 — the queue shows the range | ✅ | (phase 1+2 commit) |
+| 2 — accept, race and sweep on a range | ✅ | (phase 1+2 commit) |
 | 3 — the three mails name the range | | |
 | 4 — the verdict clamp | | |
 | 5 — FE venue page and dialog | | |

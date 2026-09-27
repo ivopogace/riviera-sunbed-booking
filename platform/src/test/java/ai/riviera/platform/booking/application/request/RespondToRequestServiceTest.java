@@ -428,7 +428,8 @@ class RespondToRequestServiceTest {
 		var lookup = mock(CustomerLookup.class);
 		var customerId = new CustomerId(5);
 		when(bookings.findPendingRequestsForVenue(VENUE)).thenReturn(List.of(new PendingRequestRow(
-				BOOKING.value(), new SetId(3), java.time.LocalDate.of(2026, 8, 3), customerId,
+				BOOKING.value(), new SetId(3), java.time.LocalDate.of(2026, 8, 3), java.time.LocalDate.of(2026, 8, 3),
+				customerId,
 				4500L, "EUR", NOW.minusSeconds(3600), NOW.plusSeconds(3600), 0)));
 		when(lookup.findByIds(java.util.Set.of(customerId))).thenReturn(java.util.Map.of(customerId,
 				new ai.riviera.platform.customer.vocabulary.GuestContact("g@e.com", "Guest Name", "+355")));

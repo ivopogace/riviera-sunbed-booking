@@ -86,6 +86,11 @@ class RequestAcceptClaimsIT {
 
 	/** A one-day {@code PENDING_REQUEST} on {@code day}, holding nothing. */
 	private long insertPending(LocalDate on) {
+		return insertPending(on, on);
+	}
+
+	/** A {@code PENDING_REQUEST} over {@code first..last} at 4500 a day, holding nothing. */
+	private long insertPending(LocalDate first, LocalDate last) {
 		String code = "ACPT" + System.nanoTime() % 1_000_000_000L;
 		long customer = jdbc.sql("INSERT INTO customer (email, full_name, phone) "
 						+ "VALUES (:e, 'Guest', '+355600') RETURNING id")
@@ -93,11 +98,13 @@ class RequestAcceptClaimsIT {
 		return jdbc.sql("""
 				INSERT INTO booking (code, venue_id, set_id, customer_id, booking_date, last_date,
 				                     amount_minor, amount_currency, status, request_expires_at)
-				VALUES (:code, :venue, :set, :cust, :day, :day, 4500, 'EUR', 'PENDING_REQUEST', :expires)
+				VALUES (:code, :venue, :set, :cust, :first, :last, :amount, 'EUR', 'PENDING_REQUEST', :expires)
 				RETURNING id
 				""")
 				.param("code", code).param("venue", venueId).param("set", setId).param("cust", customer)
-				.param("day", on).param("expires", java.sql.Timestamp.from(Instant.now().plusSeconds(3600)))
+				.param("first", first).param("last", last)
+				.param("amount", 4500L * (last.toEpochDay() - first.toEpochDay() + 1))
+				.param("expires", java.sql.Timestamp.from(Instant.now().plusSeconds(3600)))
 				.query(Long.class).single();
 	}
 
@@ -158,6 +165,49 @@ class RequestAcceptClaimsIT {
 		assertEquals("PENDING_REQUEST", statusOf(rivalAnotherDay), "a request on another day is nobody's rival");
 		assertNull(declineReasonOf(rivalAnotherDay));
 		assertEquals(0L, heldRows(day.plusDays(1)));
+	}
+
+	@Test
+	void theQueueShowsARangeAsOneRow() {
+		long range = insertPending(day, day.plusDays(2));
+		insertPending(day.plusDays(1));
+
+		var queue = pendingRequests.forVenue(operator, new VenueId(venueId));
+
+		PendingRequest row = queue.stream().filter(r -> r.bookingId() == range).findFirst().orElseThrow();
+		assertEquals(day, row.bookingDate());
+		assertEquals(day.plusDays(2), row.lastDate());
+		assertEquals(13500L, row.amountMinor(), "the whole stay's total");
+		assertEquals(1, row.competingRequests(), "a request on a middle day competes");
+	}
+
+	@Test
+	void acceptClaimsEveryDayOfARange() {
+		long request = insertPending(day, day.plusDays(2));
+
+		AcceptOutcome outcome = respondToRequest.accept(operator, new VenueId(venueId), new BookingId(request));
+
+		assertInstanceOf(AcceptOutcome.Accepted.class, outcome);
+		assertEquals("CONFIRMED", statusOf(request));
+		for (int i = 0; i < 3; i++) {
+			assertEquals(1L, heldRows(day.plusDays(i)), "day " + i + " is claimed");
+		}
+	}
+
+	@Test
+	void aTakenMiddleDayDeclinesTheWholeRangeAndClaimsNothing() {
+		long request = insertPending(day, day.plusDays(2));
+		jdbc.sql("INSERT INTO set_availability (set_id, booking_date, state) VALUES (:set, :day, 'STAFF_MARKED')")
+				.param("set", setId).param("day", day.plusDays(1)).update();
+
+		AcceptOutcome outcome = respondToRequest.accept(operator, new VenueId(venueId), new BookingId(request));
+
+		assertSame(AcceptOutcome.Rejected.SET_UNAVAILABLE, outcome);
+		assertEquals("DECLINED", statusOf(request));
+		assertEquals("SET_UNAVAILABLE", declineReasonOf(request));
+		assertEquals(0L, heldRows(day), "the first day is given back");
+		assertEquals(0L, heldRows(day.plusDays(2)), "the last day is given back");
+		assertEquals(1L, heldRows(day.plusDays(1)), "the staff mark is untouched");
 	}
 
 	@Test
