@@ -68,7 +68,7 @@ class PaymentDueAnnouncerIT {
 	@Test
 	void announcingPersistsAnEventPublication() {
 		announcer.announce(new BookingPaymentDue(new BookingId(876_543_210L), new VenueId(1),
-				new SetId(1), LocalDate.of(2029, 9, 9),
+				new SetId(1), LocalDate.of(2029, 9, 9), LocalDate.of(2029, 9, 9),
 				Instant.now().plus(Duration.ofHours(12)).truncatedTo(ChronoUnit.MILLIS),
 				AMOUNT_MINOR, "EUR", CancellationWindow.CLOSED, 0));
 

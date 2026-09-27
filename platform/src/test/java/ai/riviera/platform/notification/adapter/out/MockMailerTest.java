@@ -37,7 +37,7 @@ class MockMailerTest {
 	private final MockMailer mailer = new MockMailer();
 
 	private static final PaymentDueMail PAYMENT_DUE = new PaymentDueMail("CODE1234", "Vala Beach",
-			java.time.LocalDate.of(2026, 8, 1), java.time.Instant.parse("2026-07-31T18:00:00Z"),
+			java.time.LocalDate.of(2026, 8, 1), java.time.LocalDate.of(2026, 8, 1), java.time.Instant.parse("2026-07-31T18:00:00Z"),
 			4500, "EUR", URI.create("https://riviera.example/booking/CODE1234"),
 			CancellationWindow.CLOSED, 0);
 

@@ -107,7 +107,7 @@ class RequestTerminationEventPublicationIT {
 		assertThat(requestRelease.decline(new BookingId(bookingId), new VenueId(venueId))).isTrue();
 
 		assertThat(recorded.all()).containsExactly(
-				new BookingRequestDeclined(new BookingId(bookingId), new SetId(setId), date));
+				new BookingRequestDeclined(new BookingId(bookingId), new SetId(setId), date, date));
 	}
 
 	@Test
@@ -118,7 +118,7 @@ class RequestTerminationEventPublicationIT {
 		assertThat(expireRequests.sweep()).isEqualTo(1);
 
 		assertThat(recorded.all()).containsExactly(
-				new BookingRequestExpired(new BookingId(bookingId), new SetId(setId), date));
+				new BookingRequestExpired(new BookingId(bookingId), new SetId(setId), date, date));
 	}
 
 	@Test

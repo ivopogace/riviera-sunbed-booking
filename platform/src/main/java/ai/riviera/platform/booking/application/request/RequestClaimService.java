@@ -57,7 +57,7 @@ class RequestClaimService {
 		for (DeclinedRival rival : bookings.declineOverlappingPending(span.setId(), span.bookingDate(),
 				span.lastDate(), bookingId.value(), DeclineReason.ANOTHER_GUEST)) {
 			events.publishEvent(new BookingRequestDeclined(new BookingId(rival.bookingId()), rival.setId(),
-					rival.bookingDate(), DeclineReason.ANOTHER_GUEST));
+					rival.bookingDate(), rival.lastDate(), DeclineReason.ANOTHER_GUEST));
 		}
 		return new AcceptClaim.Accepted(accepted.get());
 	}
@@ -77,7 +77,7 @@ class RequestClaimService {
 		return bookings.declinePending(bookingId.value(), venueId, DeclineReason.SET_UNAVAILABLE)
 				.<AcceptClaim>map(declined -> {
 					events.publishEvent(new BookingRequestDeclined(bookingId, declined.setId(),
-							declined.bookingDate(), DeclineReason.SET_UNAVAILABLE));
+							declined.bookingDate(), declined.lastDate(), DeclineReason.SET_UNAVAILABLE));
 					return new AcceptClaim.SetUnavailable();
 				})
 				.orElseGet(AcceptClaim.Missed::new);

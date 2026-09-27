@@ -105,6 +105,21 @@ class RequestDeclinedMailIT {
 	}
 
 	@Test
+	void namesTheStaysDays() {
+		BookingMailFixtures.SetRef set = fixtures.onlineSet();
+		LocalDate first = LocalDate.of(2029, 9, 13);
+		String guest = "declined-stay@example.com";
+
+		long bookingId = fixtures.seedBooking(set, "DECMAIL3", first, guest, 9913L, "DECLINED");
+		fixtures.publishInTransaction(fixtures.requestDeclinedOf(set, bookingId, first, first.plusDays(2)));
+
+		Awaitility.await().atMost(WAIT).until(() -> mailer.lastTo(guest).isPresent());
+
+		assertThat(mailer.lastTo(guest).orElseThrow().requestDeclined().bookingDate()).isEqualTo(first);
+		assertThat(mailer.lastTo(guest).orElseThrow().requestDeclined().lastDate()).isEqualTo(first.plusDays(2));
+	}
+
+	@Test
 	void namesTheReasonTheRequestEndedFor() {
 		BookingMailFixtures.SetRef set = fixtures.onlineSet();
 		LocalDate date = LocalDate.of(2029, 9, 12);

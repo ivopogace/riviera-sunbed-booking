@@ -13,5 +13,5 @@ import java.time.LocalDate;
  * {@code SentEmail}'s one-slot-per-kind rule keeps an IT on one kind from matching the other.
  */
 public record RequestExpiredMail(String bookingCode, String venueName, LocalDate bookingDate,
-		URI statusLink) {
+		LocalDate lastDate, URI statusLink) {
 }

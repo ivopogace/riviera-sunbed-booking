@@ -130,6 +130,23 @@ class RequestPaymentDueMailIT {
 				.endsWith("/booking/PAYDUE01");
 	}
 
+	@Test
+	void namesTheStaysDays() {
+		SetRef set = onlineSet();
+		LocalDate first = LocalDate.of(2029, 8, 13);
+		String guest = "pay-stay@example.com";
+		Instant payBy = Instant.now().plus(Duration.ofHours(12)).truncatedTo(ChronoUnit.MILLIS);
+		BookingMailFixtures.SetRef ref = new BookingMailFixtures.SetRef(set.setId(), set.venueId());
+
+		long bookingId = fixtures.seedBooking(ref, "PAYDUE03", first, guest, 24_933L, "AWAITING_PAYMENT");
+		fixtures.publishInTransaction(fixtures.paymentDueOf(ref, bookingId, first, first.plusDays(2), 24_933L, payBy));
+
+		Awaitility.await().atMost(WAIT).until(() -> countTo(guest) == 1L);
+
+		assertThat(mailer.lastTo(guest).orElseThrow().paymentDue().bookingDate()).isEqualTo(first);
+		assertThat(mailer.lastTo(guest).orElseThrow().paymentDue().lastDate()).isEqualTo(first.plusDays(2));
+	}
+
 	/**
 	 * AC-4. A decline publishes nothing at all, so the assertion that matters is about <em>silence</em>
 	 * — and silence is only meaningful against a context that demonstrably does mail: this seeds a

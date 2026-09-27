@@ -273,7 +273,7 @@ class SmtpMailer implements Mailer {
 
 				  Booking code:  %s
 				  Venue:         %s
-				  Date:          %s
+				  %s
 				  To pay:        %s
 				  Pay by:        %s
 
@@ -284,7 +284,7 @@ class SmtpMailer implements Mailer {
 				If we haven't received payment by then the set is released for someone else, and you
 				would need to request it again.%s"""
 				.formatted(paymentDue.venueName(), paymentDue.bookingCode(), paymentDue.venueName(),
-						DATE_FORMAT.format(paymentDue.bookingDate()),
+						daysLine(paymentDue.bookingDate(), paymentDue.lastDate(), CONFIRMATION_LABEL_WIDTH),
 						formatAmount(paymentDue.amountMinor(), paymentDue.currency()),
 						DEADLINE_FORMAT.format(paymentDue.payBy().atZone(TIRANE)), paymentDue.payLink(),
 						disclosureLine(paymentDue.cancellationWindowAtBirth(),
@@ -407,20 +407,22 @@ class SmtpMailer implements Mailer {
 
 				  Booking code:  %s
 				  Venue:         %s
-				  Date:          %s
+				  %s
 
 				You can see the request here:
 
 				%s"""
 				.formatted(declineLine(declined), declined.bookingCode(), declined.venueName(),
-						DATE_FORMAT.format(declined.bookingDate()), declined.statusLink()));
+						daysLine(declined.bookingDate(), declined.lastDate(), CONFIRMATION_LABEL_WIDTH),
+						declined.statusLink()));
 	}
 
 	/** The one line that says why the request ended (ADR-0025). */
 	private static String declineLine(RequestDeclinedMail declined) {
 		return switch (declined.reason()) {
 			case VENUE -> declined.venueName() + " declined your booking request";
-			case SET_UNAVAILABLE -> declined.venueName() + " could not take your booking request: the set is no longer available for that day";
+			case SET_UNAVAILABLE -> declined.venueName() + " could not take your booking request: the set is no longer available for "
+					+ (declined.bookingDate().equals(declined.lastDate()) ? "that day" : "those days");
 			case ANOTHER_GUEST -> declined.venueName() + " gave that set to another guest, so your booking request was declined";
 		};
 	}
@@ -433,13 +435,14 @@ class SmtpMailer implements Mailer {
 
 				  Booking code:  %s
 				  Venue:         %s
-				  Date:          %s
+				  %s
 
 				You can see the request here:
 
 				%s"""
 				.formatted(expired.bookingCode(), expired.venueName(),
-						DATE_FORMAT.format(expired.bookingDate()), expired.statusLink()));
+						daysLine(expired.bookingDate(), expired.lastDate(), CONFIRMATION_LABEL_WIDTH),
+						expired.statusLink()));
 	}
 
 	@Override

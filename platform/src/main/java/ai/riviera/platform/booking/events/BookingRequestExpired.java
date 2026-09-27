@@ -13,5 +13,10 @@ import ai.riviera.platform.venue.vocabulary.SetId;
  * invariants #7, #11), never a {@code BookingCancelled}, and a separate event from the decline:
  * different guest copy ({@code CONTEXT.md}), counters never summed.
  */
-public record BookingRequestExpired(BookingId bookingId, SetId setId, LocalDate bookingDate) {
+public record BookingRequestExpired(BookingId bookingId, SetId setId, LocalDate bookingDate, LocalDate lastDate) {
+
+	/** The last service day; a payload serialized before {@code lastDate} existed is a one-day request. */
+	public LocalDate lastDay() {
+		return lastDate != null ? lastDate : bookingDate;
+	}
 }

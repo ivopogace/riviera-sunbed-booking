@@ -282,7 +282,7 @@ class JdbcBookings implements Bookings {
 				SET status = :declined, decline_reason = :reason
 				WHERE set_id = :set AND status = :pending AND id <> :except
 				  AND booking_date <= :last AND last_date >= :first
-				RETURNING id, set_id, booking_date
+				RETURNING id, set_id, booking_date, last_date
 				""")
 				.param("declined", BookingStatus.DECLINED.name())
 				.param(PARAM_REASON, reason.name())
@@ -293,7 +293,7 @@ class JdbcBookings implements Bookings {
 				.param("last", lastDay)
 				.query((rs, rowNum) -> new ai.riviera.platform.booking.application.request.DeclinedRival(
 						rs.getLong("id"), new SetId(rs.getLong(COL_SET_ID)),
-						rs.getObject(COL_BOOKING_DATE, LocalDate.class)))
+						rs.getObject(COL_BOOKING_DATE, LocalDate.class), rs.getObject(COL_LAST_DATE, LocalDate.class)))
 				.list();
 	}
 

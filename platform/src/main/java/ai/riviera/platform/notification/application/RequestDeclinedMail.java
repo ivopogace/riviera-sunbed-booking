@@ -11,8 +11,8 @@ import ai.riviera.platform.booking.vocabulary.DeclineReason;
  * view ({@link BookingLinks}) rendering {@code DECLINED}; it and {@code bookingCode} are bearer
  * credentials (invariant #7): mail them, never log them. No amount (nothing was charged; a price by
  * "declined" reads as money moved) and no spot, for {@link PaymentDueMail}'s reason. {@code reason}
- * picks the one line that says why (ADR-0025).
+ * picks the one line that says why (ADR-0025); {@code bookingDate..lastDate} is the whole stay asked for.
  */
 public record RequestDeclinedMail(String bookingCode, String venueName, LocalDate bookingDate,
-		URI statusLink, DeclineReason reason) {
+		LocalDate lastDate, URI statusLink, DeclineReason reason) {
 }

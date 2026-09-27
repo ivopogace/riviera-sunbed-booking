@@ -150,7 +150,7 @@ class RespondToRequestService implements RespondToRequest {
 			var birth = cancellationPolicy.windowAtBirth(accepted.setId(), accepted.bookingDate(),
 					accepted.createdAt());
 			paymentDue.announce(new BookingPaymentDue(new BookingId(accepted.bookingId()),
-					accepted.venueId(), accepted.setId(), accepted.bookingDate(),
+					accepted.venueId(), accepted.setId(), accepted.bookingDate(), accepted.lastDate(),
 					windows.payDeadline(accepted.acceptedAt(),
 							cutoff.serviceDayEndsAt(accepted.bookingDate())),
 					accepted.amountMinor(), accepted.currency(),
