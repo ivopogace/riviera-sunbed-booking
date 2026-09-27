@@ -6,7 +6,7 @@ import { HttpErrorResponse } from '@angular/common/http';
 import { Observable } from 'rxjs';
 
 import { problemCodeOf } from '../shared/api-error';
-import { formatStay } from '../shared/booking-date-label';
+import { formatStay, formatStayChip } from '../shared/booking-date-label';
 import { amountLabelFor, metaFor } from '../shared/booking-status';
 import { CardGlass } from '../shared/card-glass';
 import { formatDeadline } from '../shared/deadline';
@@ -16,12 +16,25 @@ import { setDistanceText } from '../shared/set-distance';
 import { StatusChip } from '../shared/status-chip';
 import { BusyAction } from '../shared/busy-action';
 import { BookingQr } from './booking-qr';
-import { BookingDetail, Cancellation, SubmitReviewRequest } from './booking.model';
+import {
+  BookingDetail,
+  BookingMove,
+  Cancellation,
+  StayStretchView,
+  SubmitReviewRequest,
+} from './booking.model';
 import { BookingService } from './booking.service';
 import { ReviewPanel } from './review-panel';
 
 import { TouchTarget } from '../shared/touch-target';
 import { PartyIcon } from '../shared/party-icon';
+
+/** A stay's stop a remodel moved, numbered as the stop list numbers it. */
+interface MovedStop {
+  readonly stop: number;
+  readonly stretch: StayStretchView;
+  readonly move: BookingMove;
+}
 
 /** The card-glass EXTRAS `appCardGlass` deliberately doesn't carry (radius stays with the consumer). */
 const CARD_SURFACE =
@@ -362,15 +375,29 @@ const CLS = {
             aria-labelledby="booking-moved-title"
           >
             <h2 id="booking-moved-title" class="{{ cls.eyebrow }} {{ cls.eyebrowMoved }}">
-              Your spot changed
+              {{ movedStops(b).length > 1 ? 'Your spots changed' : 'Your spot changed' }}
             </h2>
-            <p [class]="cls.bannerBody">{{ movedSentence(b) }}</p>
-            @if (freeExitOpen(b); as until) {
-              <p [class]="cls.bannerBody" data-testid="booking-free-exit">
-                If the new spot doesn’t suit you, cancel below for a full refund until
-                <strong>{{ deadlineLabel(until) }}</strong
-                >.
-              </p>
+            @if (b.move) {
+              <p [class]="cls.bannerBody">{{ movedSentence(b) }}</p>
+              @if (freeExitOpen(b); as until) {
+                <p [class]="cls.bannerBody" data-testid="booking-free-exit">
+                  If the new spot doesn’t suit you, cancel below for a full refund until
+                  <strong>{{ deadlineLabel(until) }}</strong
+                  >.
+                </p>
+              }
+            } @else {
+              @for (moved of movedStops(b); track moved.stop) {
+                <p [class]="cls.bannerBody">{{ stopMovedSentence(b, moved) }}</p>
+                @if (freeExitOpen(b, moved.move); as until) {
+                  <p [class]="cls.bannerBody" data-testid="booking-free-exit">
+                    If the new spot doesn’t suit you, you can cancel the stay below until
+                    <strong>{{ deadlineLabel(until) }}</strong> and stop {{ moved.stop }} is
+                    refunded in full.
+                  </p>
+                }
+              }
+              <p [class]="cls.bannerBody">Your booking code, price and dates are unchanged.</p>
             }
           </section>
         }
@@ -409,6 +436,12 @@ const CLS = {
                     <li>
                       {{ $index + 1 }}. {{ stretch.rowLabel }} · spot {{ stretch.positionNo }} ·
                       {{ dateLabel(stretch.firstDate, stretch.lastDate) }}
+                      @if (stretch.move; as move) {
+                        ·
+                        <span data-testid="view-stop-moved"
+                          >moved from {{ move.fromRowLabel }} · spot {{ move.fromPositionNo }}</span
+                        >
+                      }
                     </li>
                   }
                 </ol>
@@ -902,7 +935,21 @@ export class BookingView {
    * wire body without the field (an older server, a mock) reads as never moved, never as a crash.
    */
   protected showMoved(b: BookingDetail): boolean {
-    return (b.move ?? null) !== null && b.status !== 'CANCELLED';
+    const moved = (b.move ?? null) !== null || this.movedStops(b).length > 0;
+    return moved && b.status !== 'CANCELLED';
+  }
+
+  /** A stay's stops a remodel moved; empty for a lone booking and for a stay no remodel touched. */
+  protected movedStops(b: BookingDetail): readonly MovedStop[] {
+    return (b.stretches ?? []).flatMap((stretch, i) =>
+      stretch.move ? [{ stop: i + 1, stretch, move: stretch.move }] : [],
+    );
+  }
+
+  /** "Miramar rearranged its beach map, so your set for stop 2 (4 – 7 Dec · 4 days) moved from Row A · spot 4 to Row A · spot 7 (3 positions along the row)." */
+  protected stopMovedSentence(b: BookingDetail, moved: MovedStop): string {
+    const { stop, stretch, move } = moved;
+    return `${b.venueName} rearranged its beach map, so your set for stop ${stop} (${formatStayChip(stretch.firstDate, stretch.lastDate)}) moved from ${move.fromRowLabel} · spot ${move.fromPositionNo} to ${stretch.rowLabel} · spot ${stretch.positionNo} (${setDistanceText(move.rowsAway, move.positionsAway)}).`;
   }
 
   /** "Miramar rearranged its beach map, so your set moved from Row A · spot 3 to Row A · spot 7 (4 positions along the row). …" */
@@ -911,9 +958,9 @@ export class BookingView {
     return `${b.venueName} rearranged its beach map, so your set moved from ${move.fromRowLabel} · spot ${move.fromPositionNo} to ${b.rowLabel} · spot ${b.positionNo} (${setDistanceText(move.rowsAway, move.positionsAway)}). Your booking code, price and date are unchanged.`;
   }
 
-  /** The free-exit deadline while it is still open and the booking can still be cancelled; else null. */
-  protected freeExitOpen(b: BookingDetail): string | null {
-    return b.cancellable && !this.cancellation() ? (b.move?.freeExitUntil ?? null) : null;
+  /** A move's free-exit deadline while it is still open and the booking can still be cancelled; else null. */
+  protected freeExitOpen(b: BookingDetail, move: BookingMove | null = b.move): string | null {
+    return b.cancellable && !this.cancellation() ? (move?.freeExitUntil ?? null) : null;
   }
 
   /** Refund-terms copy for a still-cancellable booking (server-computed values, invariant #10). */

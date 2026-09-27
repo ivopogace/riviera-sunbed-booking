@@ -99,16 +99,16 @@ does not change.
 
 ## Execution status
 
-**Stage pointer:** `implement (phase 3)`
+**Stage pointer:** `implement (phase 4)`
 
-**Next action:** red `booking-view.spec.ts` for a stay with a moved stop.
+**Next action:** `RESPONSIBILITIES.md` §booking free-exit line + design-doc status; then merge main, review gate.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — stretch free exit capped | ✅ | phase-0 commit |
 | 1 — stay view per-stretch move | ✅ | phase-1 commit |
 | 2 — stretch move mail | ✅ | phase-2 commit |
-| 3 — booking view | ⏳ | |
-| 4 — docs + close-out | | |
+| 3 — booking view | ✅ | phase-3 commit |
+| 4 — docs + close-out | ⏳ | |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.

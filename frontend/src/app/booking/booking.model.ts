@@ -46,6 +46,11 @@ export interface StayStretchView {
   readonly amount: MoneyView;
   /** The stretch's own contract state on the code-gated view; absent on a creation response. */
   readonly status?: string;
+  /**
+   * The remodel move this stretch went through, or null; its new spot is this stretch's own. Absent
+   * on a creation response.
+   */
+  readonly move?: BookingMove | null;
 }
 
 /**
