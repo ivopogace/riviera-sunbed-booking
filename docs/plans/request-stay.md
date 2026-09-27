@@ -159,9 +159,9 @@ standing in for `feature/request-stay`)
 
 ## Execution status
 
-**Stage pointer:** `implement (phase 5)`
+**Stage pointer:** `implement (phase 6)`
 
-**Next action:** red specs for AC-9 (venue page offers a range at a Request venue, no plan; dialog quotes the total).
+**Next action:** red specs for AC-10 (the Requests card reads the range, the day count, the total).
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -170,7 +170,7 @@ standing in for `feature/request-stay`)
 | 2 — accept, race and sweep on a range | ✅ | (phase 1+2 commit) |
 | 3 — the three mails name the range | ✅ | (phase 3 commit) |
 | 4 — the verdict clamp | ✅ | (phase 4 commit) |
-| 5 — FE venue page and dialog | | |
+| 5 — FE venue page and dialog | ✅ | (phase 5 commit) |
 | 6 — FE Requests queue | | |
 | 7 — e2e + docs | | |
 

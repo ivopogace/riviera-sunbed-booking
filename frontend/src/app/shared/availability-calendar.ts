@@ -121,9 +121,6 @@ export class AvailabilityCalendar {
   /** The earliest day that can be chosen — today in `Europe/Tirane`, sales close on the day itself. */
   readonly minDate = input.required<string>();
 
-  /** Whether a stay of several days may be picked here — an Instant venue's page says yes. */
-  readonly rangeAllowed = input(false);
-
   /** The venue's maximum stay in days; `null` or absent means any length this season. */
   readonly maxStayDays = input<number | null | undefined>(undefined);
 
@@ -136,12 +133,9 @@ export class AvailabilityCalendar {
 
   /**
    * Day mode is the one-tap pick the picker always had; stay mode takes a first and a last tap. It
-   * opens in stay mode only when the map already shows a stay, and never where a range is not
-   * allowed.
+   * opens in stay mode only when the map already shows a stay.
    */
-  protected readonly mode = linkedSignal<StayMode>(() =>
-    this.rangeAllowed() && this.showsStay() ? 'stay' : 'day',
-  );
+  protected readonly mode = linkedSignal<StayMode>(() => (this.showsStay() ? 'stay' : 'day'));
 
   /** In stay mode, the first day tapped while the last is still to come. */
   protected readonly pendingFirst = signal<string | undefined>(undefined);

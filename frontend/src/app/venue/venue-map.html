@@ -264,6 +264,12 @@
               } @else {
                 <p class="font-bold">No single spot is free for all {{ dayCount() }} days.</p>
               }
+              @if (v.bookingMode === 'REQUEST') {
+                <p class="mt-1 text-riv-card-ink-soft" data-testid="no-cover-request">
+                  This venue takes requests for one spot at a time, so a stay here isn’t split
+                  across spots.
+                </p>
+              }
               @if (longestRun(); as best) {
                 <p class="mt-1 text-riv-card-ink-soft" data-testid="no-cover-run">
                   The longest one spot can host is {{ best.set.rowLabel }} · spot
@@ -493,7 +499,7 @@
           @if (v.bookingMode === 'REQUEST') {
             Pick a set to request it — you pay only once {{ v.name }} accepts, and nothing is held
             until then.<br />
-            Prices are per set, full day.
+            Prices are per set, full day; a stay is one request, answered whole.
           } @else {
             Pick any free set to book it · prices are per set, full day.
           }
@@ -522,7 +528,6 @@
         [selectedDate]="selectedDate()"
         [selectedLastDate]="selectedLastDate()"
         [minDate]="minDate()"
-        [rangeAllowed]="v.bookingMode === 'INSTANT'"
         [maxStayDays]="v.maxStayDays"
         (chosen)="onDateChosen($event)"
         (dismissed)="closePicker()"
@@ -540,7 +545,7 @@
 
     @if (partlySet(); as set) {
       <app-partly-free-sheet
-        [canPlan]="true"
+        [canPlan]="v.bookingMode === 'INSTANT'"
         [set]="set"
         [first]="selectedDate()"
         [last]="selectedLastDate()"

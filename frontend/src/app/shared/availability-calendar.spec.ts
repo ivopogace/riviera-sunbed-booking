@@ -24,7 +24,6 @@ const MIN_DATE = '2026-06-15';
       [selectedDate]="selectedDate()"
       [selectedLastDate]="selectedLastDate()"
       [minDate]="minDate()"
-      [rangeAllowed]="rangeAllowed()"
       [maxStayDays]="maxStayDays()"
       (chosen)="chosen.push($event)"
       (dismissed)="dismissals = dismissals + 1"
@@ -44,7 +43,6 @@ class Host {
   readonly selectedDate = signal('2026-06-20');
   readonly selectedLastDate = signal<string | undefined>(undefined);
   readonly minDate = signal(MIN_DATE);
-  readonly rangeAllowed = signal(false);
   readonly maxStayDays = signal<number | null | undefined>(undefined);
   readonly chosen: DateRange[] = [];
   dismissals = 0;
@@ -324,16 +322,14 @@ describe('AvailabilityCalendar', () => {
       return dom().querySelector<HTMLButtonElement>(`[data-testid="${testId}"]`);
     }
 
-    it('offers no stay mode unless the venue allows a range', async () => {
+    it('opens in day mode with no stay hint until stay mode is picked', async () => {
       await flushCalendar();
 
-      expect(modeOption('calendar-mode-stay')).toBeNull();
+      expect(modeOption('calendar-mode-stay')).not.toBeNull();
       expect(dom().querySelector('[data-testid="calendar-stay-hint"]')).toBeNull();
     });
 
-    it('keeps the one-tap pick in day mode even when a range is allowed', async () => {
-      host.rangeAllowed.set(true);
-      fixture.detectChanges();
+    it('keeps the one-tap pick in day mode', async () => {
       await flushCalendar();
 
       expect(modeOption('calendar-mode-day')!.getAttribute('aria-checked')).toBe('true');
@@ -343,8 +339,6 @@ describe('AvailabilityCalendar', () => {
     });
 
     it('emits the range after a first and a last tap in stay mode', async () => {
-      host.rangeAllowed.set(true);
-      fixture.detectChanges();
       await flushCalendar();
       modeOption('calendar-mode-stay')!.click();
       fixture.detectChanges();
@@ -364,8 +358,6 @@ describe('AvailabilityCalendar', () => {
     });
 
     it('restarts from an earlier day tapped after the first', async () => {
-      host.rangeAllowed.set(true);
-      fixture.detectChanges();
       await flushCalendar();
       modeOption('calendar-mode-stay')!.click();
       fixture.detectChanges();
@@ -380,8 +372,6 @@ describe('AvailabilityCalendar', () => {
     });
 
     it('lets "Just this day" commit the first day alone', async () => {
-      host.rangeAllowed.set(true);
-      fixture.detectChanges();
       await flushCalendar();
       modeOption('calendar-mode-stay')!.click();
       fixture.detectChanges();
@@ -394,8 +384,6 @@ describe('AvailabilityCalendar', () => {
     });
 
     it('refuses a last day more than 61 days after the first', async () => {
-      host.rangeAllowed.set(true);
-      fixture.detectChanges();
       await flushCalendar();
       modeOption('calendar-mode-stay')!.click();
       fixture.detectChanges();
@@ -415,7 +403,6 @@ describe('AvailabilityCalendar', () => {
     });
 
     it("refuses a last day past the venue's maximum stay", async () => {
-      host.rangeAllowed.set(true);
       host.maxStayDays.set(3);
       fixture.detectChanges();
       await flushCalendar();
@@ -433,7 +420,6 @@ describe('AvailabilityCalendar', () => {
     });
 
     it("states the venue's stay rule in stay mode", async () => {
-      host.rangeAllowed.set(true);
       host.maxStayDays.set(3);
       fixture.detectChanges();
       await flushCalendar();
@@ -453,7 +439,6 @@ describe('AvailabilityCalendar', () => {
     });
 
     it('opens in stay mode with the whole range selected when the map shows a stay', async () => {
-      host.rangeAllowed.set(true);
       host.selectedLastDate.set('2026-06-24');
       fixture.detectChanges();
       await flushCalendar();
@@ -763,7 +748,6 @@ describe('AvailabilityCalendar', () => {
     });
 
     it('still commits a stay from a first and a last tap', async () => {
-      host.rangeAllowed.set(true);
       await withoutLoader();
 
       control('calendar-mode-stay').click();
