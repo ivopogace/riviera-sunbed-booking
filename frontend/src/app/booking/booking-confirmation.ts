@@ -142,11 +142,11 @@ export class BookingConfirmation {
   });
 
   protected readonly formatMoney = formatMoney;
-  /** The booking date, formatted once per confirmation (memoized like the dialog/pay siblings). */
   protected stayLabel(first: string, last: string): string {
     return formatStay(first, last);
   }
 
+  /** The booking date, formatted once per confirmation (memoized like the dialog/pay siblings). */
   protected readonly dateLabel = computed(() => {
     const c = this.confirmation();
     return c ? formatStay(c.bookingDate, c.lastDate ?? c.bookingDate) : '';
