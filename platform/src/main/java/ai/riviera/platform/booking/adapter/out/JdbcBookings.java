@@ -365,7 +365,7 @@ class JdbcBookings implements Bookings {
 				.param("code", code)
 				.query((rs, rowNum) -> new StayRecord(new StayId(rs.getLong("id")), rs.getString("code"),
 						new VenueId(rs.getLong(COL_VENUE_ID)), rs.getObject("first_date", LocalDate.class),
-						rs.getObject("last_date", LocalDate.class), List.of()))
+						rs.getObject(COL_LAST_DATE, LocalDate.class), List.of()))
 				.optional()
 				.map(stay -> new StayRecord(stay.id(), stay.code(), stay.venueId(), stay.firstDay(), stay.lastDay(),
 						stretchesOf(stay.id())));

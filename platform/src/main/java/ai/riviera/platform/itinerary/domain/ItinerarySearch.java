@@ -146,22 +146,25 @@ public final class ItinerarySearch {
 			}
 		}
 
-		/** Day {@code d}: each free set keeps the cheapest way in — staying, or moving from another set. */
 		private void relaxDay(Cost[][] cost, int[][] from, int d) {
 			for (int s = 0; s < sets.size(); s++) {
-				if (!free[d][s]) {
+				if (free[d][s]) {
+					relaxSet(cost, from, d, s);
+				}
+			}
+		}
+
+		/** Day {@code d}, set {@code s}: keep the cheapest way in — staying, or moving from another set. */
+		private void relaxSet(Cost[][] cost, int[][] from, int d, int s) {
+			for (int t = 0; t < sets.size(); t++) {
+				Cost previous = cost[d - 1][t];
+				if (previous == null) {
 					continue;
 				}
-				for (int t = 0; t < sets.size(); t++) {
-					Cost previous = cost[d - 1][t];
-					if (previous == null) {
-						continue;
-					}
-					Cost candidate = t == s ? previous : previous.plus(moveCost(t, s));
-					if (candidate.moves() <= maxMoves && (cost[d][s] == null || candidate.compareTo(cost[d][s]) < 0)) {
-						cost[d][s] = candidate;
-						from[d][s] = t;
-					}
+				Cost candidate = t == s ? previous : previous.plus(moveCost(t, s));
+				if (candidate.moves() <= maxMoves && (cost[d][s] == null || candidate.compareTo(cost[d][s]) < 0)) {
+					cost[d][s] = candidate;
+					from[d][s] = t;
 				}
 			}
 		}
