@@ -33,6 +33,8 @@ import ai.riviera.platform.booking.application.view.BookingDetail;
 import ai.riviera.platform.booking.application.view.ViewBooking;
 import ai.riviera.platform.booking.domain.BookingStatus;
 import ai.riviera.platform.booking.events.BookingCancelled;
+import ai.riviera.platform.booking.events.StayCancelled;
+import ai.riviera.platform.booking.vocabulary.RefundReason;
 import ai.riviera.platform.venue.vocabulary.SetId;
 
 import static ai.riviera.platform.booking.StayFixtures.PRICE;
@@ -105,6 +107,14 @@ class CancelStayIT {
 		assertEquals(0L, heldDays(jdbc, a, first, first.plusDays(6)));
 		assertEquals(0L, heldDays(jdbc, b, first, first.plusDays(6)), "every day of every stretch is released");
 		assertEquals(2, events.stream(BookingCancelled.class).count(), "one BookingCancelled per stretch");
+		List<StayCancelled> stayCancels = events.stream(StayCancelled.class).toList();
+		assertEquals(1, stayCancels.size(), "one StayCancelled per stay");
+		StayCancelled stayCancelled = stayCancels.getFirst();
+		assertEquals(new StayCancelled(stayCancelled.stayId(), 7 * PRICE, "EUR", RefundReason.POLICY), stayCancelled,
+				"one StayCancelled carries the summed refund");
+		assertTrue(events.stream(BookingCancelled.class)
+						.allMatch(cancelled -> stayCancelled.stayId().equals(cancelled.cancelledWithStay())),
+				"each stretch names the stay it was cancelled with");
 		Awaitility.await().atMost(Duration.ofSeconds(10)).until(() -> reversals(venue.id()) == 2L);
 		assertEquals(2L, reversals(venue.id()), "payout reverses each stretch's accrual exactly once (#9)");
 
