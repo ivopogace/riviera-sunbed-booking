@@ -63,6 +63,8 @@ final class RateLimitFilter extends OncePerRequestFilter {
 
 	// Mirrors the SecurityConfig matchers for the eight public booking endpoints.
 	private static final String CREATE_PATH = "/api/bookings";
+	/** A stitched stay's create: as {@link #CREATE_PATH}, no code to key on, per-IP only. */
+	private static final String STAY_CREATE_PATH = "/api/stays";
 	/** A literal sibling of the {@code {code}} routes: it carries no code to key a bucket on. */
 	private static final String TERMS_PATH = "/api/bookings/cancellation-terms";
 	private static final String VIEW_TEMPLATE = "/api/bookings/{code}";
@@ -352,7 +354,7 @@ final class RateLimitFilter extends OncePerRequestFilter {
 			if (paths.match(WITHDRAW_TEMPLATE, path)) {
 				return new Target(paths.extractUriTemplateVariables(WITHDRAW_TEMPLATE, path).get(CODE_VAR));
 			}
-			if (path.equals(CREATE_PATH)) {
+			if (path.equals(CREATE_PATH) || path.equals(STAY_CREATE_PATH)) {
 				return new Target(null); // create carries no code → per-IP only
 			}
 		}

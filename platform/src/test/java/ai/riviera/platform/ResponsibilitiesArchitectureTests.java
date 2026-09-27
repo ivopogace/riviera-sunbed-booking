@@ -152,6 +152,11 @@ class ResponsibilitiesArchitectureTests {
 	/** The one module that may reference {@link #BOOKING_DAY_TABLE}. */
 	private static final String BOOKING_MODULE = "booking";
 
+	/** SQL-shaped reference to the {@code stay} table (design D6): keyword + whole-word table name,
+	 * because the bare word appears in prose and in {@code max_stay_days}. */
+	private static final Pattern STAY_TABLE_SQL =
+			Pattern.compile("(?i)\\b(?:from|into|update|join|table)\\s+stay(?![_\\p{Alnum}])");
+
 	/** The one module that may reference {@link #PLATFORM_SETTING_TABLE}. */
 	private static final String PAYOUT_MODULE = "payout";
 
@@ -518,7 +523,57 @@ class ResponsibilitiesArchitectureTests {
 				"The fixture booking module's own SQL must not be flagged, but got: " + violations);
 	}
 
+	// ---- rule 10: booking is the sole toucher of the stay table (design D6) --------------
+
+	@Test
+	void stayTableIsTouchedOnlyInsideTheBookingModule() {
+		List<String> violations = stayTableViolations(PRODUCTION_CLASSES, PRODUCTION_BASE);
+		assertNoViolations("RESPONSIBILITIES.md fitness-function violations (booking sole-writer of stay)",
+				violations);
+	}
+
+	@Test
+	void theBookingModuleItselfWritesTheStayTable() {
+		boolean bookingReferencesTable = false;
+		for (JavaClass type : PRODUCTION_CLASSES) {
+			if (BOOKING_MODULE.equals(moduleOf(type, PRODUCTION_BASE)) && referencesStayTableSql(type)) {
+				bookingReferencesTable = true;
+				break;
+			}
+		}
+		assertTrue(bookingReferencesTable,
+				"expected at least one booking class to run SQL against 'stay' — otherwise the scan proves nothing");
+	}
+
+	@Test
+	void stayTableTouchedOutsideTheBookingModuleIsRejected() {
+		List<String> violations = stayTableViolations(FIXTURE_CLASSES, FIXTURE_BASE);
+		assertTrue(violations.stream().anyMatch(v -> v.contains("RogueStayWriter")),
+				"Expected the booking sole-writer scan to reject the fixture outside writer, but got: " + violations);
+		assertFalse(violations.stream().anyMatch(v -> v.contains("FixtureJdbcStays")),
+				"The fixture booking module's own SQL must not be flagged, but got: " + violations);
+	}
+
 	// ---- violation collectors (parameterized so fixtures prove the red case) ---------------
+
+	private static List<String> stayTableViolations(JavaClasses classes, String base) {
+		List<String> violations = new ArrayList<>();
+		for (JavaClass type : classes) {
+			if (BOOKING_MODULE.equals(moduleOf(type, base))) {
+				continue;
+			}
+			if (referencesStayTableSql(type)) {
+				violations.add(type.getName() + " runs SQL against the 'stay' table — the booking module is its "
+						+ "only writer AND reader (RESPONSIBILITIES.md §booking); a stay is asked of booking's "
+						+ "ports, never read off the table");
+			}
+		}
+		return violations;
+	}
+
+	private static boolean referencesStayTableSql(JavaClass type) {
+		return compiledBytecodeOf(type).map(bytecode -> STAY_TABLE_SQL.matcher(bytecode).find()).orElse(false);
+	}
 
 	private static List<String> availabilityTableViolations(JavaClasses classes, String base) {
 		List<String> violations = new ArrayList<>();

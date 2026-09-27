@@ -8,6 +8,7 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.OptionalLong;
 import java.util.stream.Collectors;
 
 import ai.riviera.platform.booking.application.request.RequestWindows;
@@ -98,7 +99,8 @@ class CreateBookingServiceTest {
 			CheckoutPort checkout, BookingCodeGenerator codes, boolean venueVisible, Clock clock) {
 		SetBookingFacts catalog = new FakeCatalog(info);
 		CustomerDirectory customers = _ -> new CustomerId(99);
-		ReserveSetService reservation = new ReserveSetService(catalog, claim, visibility(venueVisible),
+		ReserveSetService reservation = new ReserveSetService(catalog, claim,
+				new ReserveFences(visibility(venueVisible), new BookingCutoff(clock)),
 				customers, bookings, codes, new BookingCutoff(clock), WINDOWS, clock);
 		return new CreateBookingService(reservation, checkout, confirmer, release, confirmationMail,
 				collection, clock);
@@ -241,8 +243,8 @@ class CreateBookingServiceTest {
 		SetBookingFacts catalog = new FakeCatalog(set(Pool.ONLINE));
 		CustomerDirectory customers = _ -> new CustomerId(1);
 		ReserveSetService reservation = new ReserveSetService(catalog, claiming(ClaimOutcome.CLAIMED),
-				visibility(true), customers, collidingOnce, codes::removeFirst,
-				new BookingCutoff(CLOCK), WINDOWS, CLOCK);
+				new ReserveFences(visibility(true), new BookingCutoff(CLOCK)), customers, collidingOnce,
+				codes::removeFirst, new BookingCutoff(CLOCK), WINDOWS, CLOCK);
 		var service = new CreateBookingService(reservation,
 				_ -> new PaymentOutcome.Succeeded("ok"), confirmer, release, confirmationMail,
 				collection, CLOCK);
@@ -315,8 +317,8 @@ class CreateBookingServiceTest {
 		SetBookingFacts catalog = new FakeCatalog(set(Pool.ONLINE));
 		CustomerDirectory customers = contact -> new CustomerId(7);
 		ReserveSetService reservation = new ReserveSetService(catalog, claiming(ClaimOutcome.CLAIMED),
-				visibility(true), customers, bookings, () -> "CODE12345C",
-				new BookingCutoff(CLOCK), WINDOWS, CLOCK);
+				new ReserveFences(visibility(true), new BookingCutoff(CLOCK)), customers, bookings,
+				() -> "CODE12345C", new BookingCutoff(CLOCK), WINDOWS, CLOCK);
 		CreateBookingService service = new CreateBookingService(reservation,
 				_ -> new PaymentOutcome.Succeeded("ok"), failingConfirm, release,
 				confirmationMail, collection, CLOCK);
@@ -771,6 +773,11 @@ class CreateBookingServiceTest {
 		final List<NewBooking> pendingInserted = new ArrayList<>();
 		Instant lastRequestExpiresAt;
 		private long nextId = 1000;
+
+		@Override
+		public OptionalLong insertStay(NewStay stay) {
+			throw new UnsupportedOperationException("not exercised by the single-booking reserve");
+		}
 
 		@Override
 		public java.util.OptionalLong insertAwaitingPayment(NewBooking booking) {

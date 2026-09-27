@@ -31,6 +31,7 @@ import ai.riviera.platform.booking.application.checkin.CompletedCheckIn;
 import ai.riviera.platform.booking.application.reserve.ClaimRef;
 import ai.riviera.platform.booking.application.reserve.ConfirmedBooking;
 import ai.riviera.platform.booking.application.reserve.NewBooking;
+import ai.riviera.platform.booking.application.reserve.NewStay;
 import ai.riviera.platform.booking.application.refund.RefundableBooking;
 import ai.riviera.platform.booking.application.remodel.LiveClaim;
 import ai.riviera.platform.booking.domain.BookingStatus;
@@ -166,6 +167,24 @@ class JdbcBookings implements Bookings {
 		return insert(b, BookingStatus.PENDING_REQUEST, requestExpiresAt);
 	}
 
+	@Override
+	public OptionalLong insertStay(NewStay stay) {
+		return jdbc.sql("""
+				INSERT INTO stay (code, venue_id, first_date, last_date)
+				VALUES (:code, :venue, :first, :last)
+				ON CONFLICT (code) DO NOTHING
+				RETURNING id
+				""")
+				.param("code", stay.code())
+				.param(PARAM_VENUE, stay.venueId().value())
+				.param("first", stay.firstDay())
+				.param("last", stay.lastDay())
+				.query(Long.class)
+				.optional()
+				.map(OptionalLong::of)
+				.orElseGet(OptionalLong::empty);
+	}
+
 	/**
 	 * The one creation INSERT. {@code ON CONFLICT (code) DO NOTHING} makes a collision an empty
 	 * result, not a thrown violation that would poison the caller's transaction; FK/CHECK still throw.
@@ -174,12 +193,14 @@ class JdbcBookings implements Bookings {
 	private OptionalLong insert(NewBooking b, BookingStatus status, Instant requestExpiresAt) {
 		return jdbc.sql("""
 				INSERT INTO booking (code, venue_id, set_id, customer_id, account_id, booking_date, last_date,
-				                     amount_minor, amount_currency, status, request_expires_at)
-				VALUES (:code, :venue, :set, :customer, :account, :date, :last, :amount, :currency, :status, :expires)
+				                     amount_minor, amount_currency, status, request_expires_at, stay_id)
+				VALUES (:code, :venue, :set, :customer, :account, :date, :last, :amount, :currency, :status, :expires,
+				        :stay)
 				ON CONFLICT (code) DO NOTHING
 				RETURNING id
 				""")
 				.param("code", b.code())
+				.param("stay", b.stayId() == null ? null : b.stayId().value(), java.sql.Types.BIGINT)
 				.param(PARAM_VENUE, b.venueId().value())
 				.param("set", b.setId().value())
 				.param("customer", b.customerId().value())

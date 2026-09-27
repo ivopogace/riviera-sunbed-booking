@@ -326,9 +326,9 @@ consulted per API)
 
 ## Execution status
 
-**Stage pointer:** `implement (phase 4) — reserve a plan`
+**Stage pointer:** `implement (phase 5) — a stay code resolves`
 
-**Next action:** red `CreateStayIT` + `ConcurrentStayReservationIT`; the `stay` sole-writer rule lands here with `booking`'s first SQL against the table (its vacuous-scan guard needs a writer).
+**Next action:** red `StayCheckInIT`, `CancelStayIT`, `ViewStayIT`; then the notification and staff-list code reads answer the stay code.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -336,7 +336,7 @@ consulted per API)
 | 1 — Budget + coast tier | ✅ | phase-0/1 commit |
 | 2 — Itinerary read | ✅ | phase-2 commit |
 | 3 — Stay schema + group checkout | ✅ | phase-3 commit (sole-writer rule → phase 4) |
-| 4 — Reserve a plan | | |
+| 4 — Reserve a plan | ✅ | phase-4 commit |
 | 5 — Stay code resolves | | |
 | 6 — ADR + docs | | |
 | F1 — Discovery tier | | |

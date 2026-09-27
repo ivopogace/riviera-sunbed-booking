@@ -2,6 +2,7 @@ package ai.riviera.platform.booking.application;
 
 import ai.riviera.platform.booking.application.view.BookingRecord;
 import ai.riviera.platform.booking.application.reserve.NewBooking;
+import ai.riviera.platform.booking.application.reserve.NewStay;
 import ai.riviera.platform.booking.application.refund.RefundableBooking;
 import ai.riviera.platform.booking.application.cancel.CancelledBooking;
 import ai.riviera.platform.booking.application.reserve.ClaimRef;
@@ -41,6 +42,12 @@ public interface Bookings {
 	 * PaymentIntent is created only if the venue accepts.
 	 */
 	OptionalLong insertPendingRequest(NewBooking booking, Instant requestExpiresAt);
+
+	/**
+	 * Insert a stay (the group a stitched itinerary's bookings belong to, design D6) and return its id,
+	 * or empty on a {@code code} collision — the same contract as {@link #insertAwaitingPayment}.
+	 */
+	OptionalLong insertStay(NewStay stay);
 
 	/**
 	 * Guarded venue-scoped {@code PENDING_REQUEST → AWAITING_PAYMENT} while {@code request_expires_at

@@ -280,7 +280,7 @@ class SecurityConfig {
 						.spa()
 						// Hardened to mirror the session cookie's posture (keeps spa()'s handler).
 						.csrfTokenRepository(csrfTokenRepository)
-						.ignoringRequestMatchers("/api/bookings", "/api/bookings/*/cancel",
+						.ignoringRequestMatchers("/api/bookings", "/api/stays", "/api/bookings/*/cancel",
 								"/api/bookings/*/withdraw", BOOKING_REVIEW_PATH,
 								"/api/payments/stripe/webhook"))
 				.authorizeHttpRequests(auth -> auth
@@ -370,6 +370,8 @@ class SecurityConfig {
 						.requestMatchers(HttpMethod.POST, PHOTO_ITEM_PATH).hasRole(OPERATOR_ROLE)
 						.requestMatchers(HttpMethod.DELETE, PHOTO_ITEM_PATH).hasRole(OPERATOR_ROLE)
 						.requestMatchers(HttpMethod.POST, "/api/bookings").permitAll()
+						// A stitched stay's create: the same session-free, code-authorized posture (#1208).
+						.requestMatchers(HttpMethod.POST, "/api/stays").permitAll()
 						// Knowing the booking code authorizes the read (invariant #7). One segment only.
 						.requestMatchers(HttpMethod.GET, "/api/bookings/*").permitAll()
 						// Authorized by the code (invariant #7); the refund amount is server-computed.

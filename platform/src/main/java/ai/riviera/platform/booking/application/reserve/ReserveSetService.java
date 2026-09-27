@@ -21,10 +21,7 @@ import ai.riviera.platform.booking.application.BookingCodeGenerator;
 import ai.riviera.platform.booking.application.Bookings;
 import ai.riviera.platform.customer.api.CustomerDirectory;
 import ai.riviera.platform.customer.vocabulary.CustomerId;
-import ai.riviera.platform.operator.api.VenueVisibility;
-import ai.riviera.platform.operator.vocabulary.VenueRef;
 import ai.riviera.platform.venue.vocabulary.BookingMode;
-import ai.riviera.platform.venue.vocabulary.Pool;
 import ai.riviera.platform.venue.vocabulary.SetBookingInfo;
 import ai.riviera.platform.venue.vocabulary.StaySpan;
 import ai.riviera.platform.venue.vocabulary.SetId;
@@ -45,7 +42,7 @@ class ReserveSetService {
 
 	private final SetBookingFacts setFacts;
 	private final AvailabilityClaim availability;
-	private final VenueVisibility visibility;
+	private final ReserveFences fences;
 	private final CustomerDirectory customers;
 	private final Bookings bookings;
 	private final BookingCodeGenerator codeGenerator;
@@ -54,12 +51,12 @@ class ReserveSetService {
 	private final Clock clock;
 
 	ReserveSetService(SetBookingFacts setFacts, AvailabilityClaim availability,
-			VenueVisibility visibility, CustomerDirectory customers, Bookings bookings,
+			ReserveFences fences, CustomerDirectory customers, Bookings bookings,
 			BookingCodeGenerator codeGenerator, BookingCutoff cutoff, RequestWindows requestWindows,
 			Clock clock) {
 		this.setFacts = setFacts;
 		this.availability = availability;
-		this.visibility = visibility;
+		this.fences = fences;
 		this.customers = customers;
 		this.bookings = bookings;
 		this.codeGenerator = codeGenerator;
@@ -80,27 +77,12 @@ class ReserveSetService {
 			return new ReserveOutcome.Rejected(BookingOutcome.Rejected.NO_SUCH_SET);
 		}
 		SetBookingInfo set = found.get();
-		// A hidden venue's set books like one that does not exist, refused before any claim.
-		if (!visibility.isVisible(new VenueRef(set.venueId().value()))) {
-			return new ReserveOutcome.Rejected(BookingOutcome.Rejected.NO_SUCH_SET);
-		}
-		if (set.pool() != Pool.ONLINE) {
-			return new ReserveOutcome.Rejected(BookingOutcome.Rejected.NOT_ONLINE_POOL);
-		}
 		// One reading of the clock, so both fences and the request deadline classify the same instant.
 		Instant now = clock.instant();
 		StaySpan stay = command.stay();
-		if (!stay.eachDay().stream().allMatch(day -> cutoff.admitsDate(set.seasonClosure(), day, now))) {
-			return new ReserveOutcome.Rejected(BookingOutcome.Rejected.VENUE_CLOSED);
-		}
-		if (!cutoff.isBookable(set.salesClose(), stay.firstDay(), now)) {
-			return new ReserveOutcome.Rejected(BookingOutcome.Rejected.BOOKING_CLOSED);
-		}
-		if (set.bookingMode() == BookingMode.REQUEST && !stay.isOneDay()) {
-			return new ReserveOutcome.Rejected(BookingOutcome.Rejected.RANGE_NOT_OFFERED);
-		}
-		if (set.maxStayDays() != null && stay.days() > set.maxStayDays()) {
-			return new ReserveOutcome.Rejected(BookingOutcome.Rejected.STAY_TOO_LONG);
+		Optional<BookingOutcome.Rejected> refused = fences.refuse(set, stay, now);
+		if (refused.isPresent()) {
+			return new ReserveOutcome.Rejected(refused.get());
 		}
 
 		ClaimOutcome claim = claimEveryDay(command.setId(), stay);

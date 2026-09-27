@@ -242,6 +242,13 @@ class WebSliceStubs {
 		return _ -> BookingOutcome.Rejected.NO_SUCH_SET;
 	}
 
+	/** The stitched-stay create behind {@code POST /api/stays} — inert: no set exists. */
+	@Bean
+	ai.riviera.platform.booking.application.reserve.CreateStay createStay() {
+		return _ -> new ai.riviera.platform.booking.application.reserve.StayOutcome.Rejected(
+				BookingOutcome.Rejected.NO_SUCH_SET);
+	}
+
 	@Bean
 	ViewBooking viewBooking() {
 		return _ -> Optional.empty();
