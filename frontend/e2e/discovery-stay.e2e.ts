@@ -6,7 +6,8 @@ import { settle } from './support/booking-dialog';
 /**
  * Real-render journey of a stay on the discovery page: the day rail's last chip opens the range
  * calendar, the picked days re-read the coast, every card says whether its venue can host the stay
- * and why not, the ones that can't sink in their beach group and wear dusk, a lone pin for one
+ * and why not, a venue that fits with moves sits between the same-set hosts and the ones that can't,
+ * which sink in their beach group and wear dusk, a lone pin for one
  * hollows by shape, the venue link carries the stay, and a single day is exactly today's page.
  * The API is mocked; axe runs on the stay page.
  */
@@ -38,14 +39,22 @@ function venue(id: number, name: string, ratingTenths: number, location: typeof 
 /** Server order (rating): the one that can't host first, so the sheet's re-order is visible. */
 const VENUES = [
   venue(12, 'Borsh Cove', 47, BORSH),
+  venue(14, 'Stitch Point', 46, DHERMI),
   venue(11, 'Aurora Bay', 45, DHERMI),
   venue(13, 'Capped Sands', 40, { latitude: 40.15747, longitude: 19.64026 }),
 ];
 
 const STAY = {
-  12: { verdict: 'CANNOT_HOST', sameSetCount: 0, longestRunDays: 3, maxStayDays: null },
-  11: { verdict: 'SAME_SET', sameSetCount: 2, longestRunDays: 4, maxStayDays: null },
-  13: { verdict: 'CANNOT_HOST', sameSetCount: 1, longestRunDays: 4, maxStayDays: 2 },
+  12: { verdict: 'CANNOT_HOST', sameSetCount: 0, longestRunDays: 3, maxStayDays: null, moves: 0 },
+  14: {
+    verdict: 'FITS_WITH_MOVES',
+    sameSetCount: 0,
+    longestRunDays: 3,
+    maxStayDays: null,
+    moves: 2,
+  },
+  11: { verdict: 'SAME_SET', sameSetCount: 2, longestRunDays: 4, maxStayDays: null, moves: 0 },
+  13: { verdict: 'CANNOT_HOST', sameSetCount: 1, longestRunDays: 4, maxStayDays: 2, moves: 0 },
 } as const;
 
 async function mockCoast(page: Page): Promise<void> {
@@ -78,7 +87,12 @@ test('picks a stay from the rail, reads every venue’s verdict, and carries the
   await page.setViewportSize(PHONE);
   await page.goto('/');
   await expect(page.getByTestId('sheet-rows')).toBeVisible();
-  await expect(cardNames(page)).toHaveText(['Borsh Cove', 'Aurora Bay', 'Capped Sands']);
+  await expect(cardNames(page)).toHaveText([
+    'Borsh Cove',
+    'Stitch Point',
+    'Aurora Bay',
+    'Capped Sands',
+  ]);
   await expect(page.getByTestId('card-stay')).toHaveCount(0);
   await expect(page.getByTestId('card-availability').first()).toContainText('5 of 10 free');
 
@@ -121,18 +135,25 @@ test('picks a stay from the rail, reads every venue’s verdict, and carries the
   expect(new URL(request.url()).searchParams.get('date')).toBe(FIRST);
   expect(calendarReads).toBe(0);
 
-  // The chip names the stay; the hosts lead their beach; each card says why it can or can't.
+  // The chip names the stay; same-set hosts lead their beach, a stitched fit follows, then the rest.
   await expect(page.getByTestId('head-day')).toHaveText('13 – 16 Aug · 4 days');
-  await expect(cardNames(page)).toHaveText(['Aurora Bay', 'Borsh Cove', 'Capped Sands']);
+  await expect(cardNames(page)).toHaveText([
+    'Aurora Bay',
+    'Stitch Point',
+    'Borsh Cove',
+    'Capped Sands',
+  ]);
   const cards = page.getByTestId('venue-card');
   await expect(cards.nth(0).getByTestId('card-stay')).toHaveText('Same set all 4 days · 2 sets');
-  await expect(cards.nth(1).getByTestId('card-stay')).toHaveText(
+  await expect(cards.nth(1).getByTestId('card-stay')).toHaveText('Fits with 2 moves · all 4 days');
+  await expect(cards.nth(2).getByTestId('card-stay')).toHaveText(
     'Can’t host 4 days · up to 3 days in a row',
   );
-  await expect(cards.nth(2).getByTestId('card-stay')).toHaveText('Stays of up to 2 days here');
+  await expect(cards.nth(3).getByTestId('card-stay')).toHaveText('Stays of up to 2 days here');
   await expect(page.getByTestId('card-availability')).toHaveCount(0);
   await expect(cards.nth(0)).toHaveCSS('filter', 'none');
-  await expect(cards.nth(1)).toHaveCSS('filter', 'saturate(0)');
+  await expect(cards.nth(1)).toHaveCSS('filter', 'none');
+  await expect(cards.nth(2)).toHaveCSS('filter', 'saturate(0)');
   await expect(cards.nth(0)).toHaveAttribute('aria-label', /Same set all 4 days, 2 sets for/);
   await expect(cards.nth(0)).toHaveAttribute('href', `/venues/11?date=${FIRST}&lastDate=${LAST}`);
   await settle(page);
@@ -166,9 +187,14 @@ test('a single day is today’s page: the day alone is asked for, the free count
   const request = await coastRead;
   expect(new URL(request.url()).searchParams.has('lastDate')).toBe(false);
   await expect(page.getByTestId('sheet-rows')).toBeVisible();
-  await expect(cardNames(page)).toHaveText(['Borsh Cove', 'Aurora Bay', 'Capped Sands']);
+  await expect(cardNames(page)).toHaveText([
+    'Borsh Cove',
+    'Stitch Point',
+    'Aurora Bay',
+    'Capped Sands',
+  ]);
   await expect(page.getByTestId('card-stay')).toHaveCount(0);
-  await expect(page.getByTestId('card-availability')).toHaveCount(3);
+  await expect(page.getByTestId('card-availability')).toHaveCount(4);
   await expect(page.getByTestId('venue-card').first()).toHaveCSS('filter', 'none');
   await expect(page.getByTestId('venue-card').first()).toHaveAttribute(
     'href',

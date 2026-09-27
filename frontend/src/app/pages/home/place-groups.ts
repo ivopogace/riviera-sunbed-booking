@@ -58,8 +58,8 @@ export function nearestRegion(here: LngLat, cards: readonly VenueCard[]): Region
 
 /**
  * The set grouped by beach — nearest first when located, else coast order (the list arrives
- * rating-sorted); inside a group nearest first too, the venues that can't host the chosen stay
- * after the rest in the same order. A group with no pinned venue sorts last.
+ * rating-sorted); inside a group nearest first too, then by stay verdict — same set, fits with
+ * moves, can't host — each tier keeping its order. A group with no pinned venue sorts last.
  */
 export function groupByBeach(cards: readonly VenueCard[], here: LngLat | null): BeachGroup[] {
   const byBeach = new Map<string, VenueCard[]>();
@@ -79,12 +79,20 @@ export function groupByBeach(cards: readonly VenueCard[], here: LngLat | null): 
           };
     const km = here === null || centre === null ? null : distanceKm(here, centre);
     const sorted = here === null ? on : [...on].sort((a, b) => kmOf(a, here) - kmOf(b, here));
-    const cards = [...sorted.filter((c) => c.canHost), ...sorted.filter((c) => !c.canHost)];
+    const cards = [...sorted].sort((a, b) => stayRank(a) - stayRank(b));
     return { code, label: beachLabel(code), cards, km } satisfies BeachGroup;
   });
   return here === null
     ? groups.sort((a, b) => coastIndex(a.code) - coastIndex(b.code))
     : groups.sort((a, b) => (a.km ?? Infinity) - (b.km ?? Infinity));
+}
+
+/** Same set first, a stitched plan second, can't host last; a one-day page ranks every card alike. */
+function stayRank(card: VenueCard): number {
+  if (!card.canHost) {
+    return 2;
+  }
+  return card.stay?.verdict === 'FITS_WITH_MOVES' ? 1 : 0;
 }
 
 function coastIndex(code: string): number {

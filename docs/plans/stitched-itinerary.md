@@ -326,9 +326,9 @@ consulted per API)
 
 ## Execution status
 
-**Stage pointer:** `implement (phase F1) — discovery tier`
+**Stage pointer:** `implement (phase F2) — itinerary fetch + banner`
 
-**Next action:** red `stay-label.spec.ts` ("Fits with N moves"), `place-groups.spec.ts` (three-tier sort), then `e2e/discovery-stay.e2e.ts`.
+**Next action:** red `venue.service.spec.ts#itinerary`, then the no-cover banner's "see a K-move plan" and the partly sheet's "Plan my stay around {set}".
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -339,7 +339,7 @@ consulted per API)
 | 4 — Reserve a plan | ✅ | phase-4 commit |
 | 5 — Stay code resolves | ✅ | phase-5 commit |
 | 6 — ADR + docs | ✅ | phase-5 commit (ADR-0024) |
-| F1 — Discovery tier | | |
+| F1 — Discovery tier | ✅ | phase-F1 commit |
 | F2 — Fetch + banner | | |
 | F3 — Plan view | | |
 | F4 — Book the plan | | |
