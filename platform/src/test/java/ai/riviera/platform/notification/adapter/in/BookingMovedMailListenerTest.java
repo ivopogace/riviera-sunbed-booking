@@ -51,7 +51,7 @@ class BookingMovedMailListenerTest {
 
 	private static final BookingMoved EVENT = new BookingMoved(BOOKING_ID, new VenueId(4L), FROM, TO, BOOKING_DATE);
 	private static final BookingMailFacts.Resolved FACTS = new BookingMailFacts.Resolved(EMAIL, CODE, "Vala Beach", "A", 7);
-	private static final BookingMoveFacts MOVE = new BookingMoveFacts(BOOKING_DATE, "A", 3, "A", 7, 0, 4, MOVED_AT, DEADLINE);
+	private static final BookingMoveFacts MOVE = new BookingMoveFacts(BOOKING_DATE, "A", 3, "A", 7, 0, 4, MOVED_AT, DEADLINE, false);
 
 	private final BookingMailFactsService facts = mock(BookingMailFactsService.class);
 	private final BookingNotificationFacts bookings = mock(BookingNotificationFacts.class);
@@ -80,7 +80,20 @@ class BookingMovedMailListenerTest {
 		listener.on(new BookingMoved(BOOKING_ID, new VenueId(4L), FROM, TO, BOOKING_DATE, BOOKING_DATE.plusDays(2)));
 
 		verify(mails).sendBookingMoved(EMAIL, new BookingMovedMail(CODE, "Vala Beach", BOOKING_DATE,
-				BOOKING_DATE.plusDays(2), "A", 3, "A", 7, 0, 4, DEADLINE,
+				BOOKING_DATE.plusDays(2), "A", 3, "A", 7, 0, 4, DEADLINE, false,
+				URI.create("https://riviera.example/booking/" + CODE)));
+	}
+
+	@Test
+	void aStretchMovedOnceItsStayBeganIsMailedAsAStretchWithNoExit() {
+		when(facts.resolve(BOOKING_ID, TO)).thenReturn(FACTS);
+		when(bookings.moveFacts(BOOKING_ID)).thenReturn(Optional.of(
+				new BookingMoveFacts(BOOKING_DATE, "A", 3, "A", 7, 0, 4, MOVED_AT, null, true)));
+
+		listener.on(new BookingMoved(BOOKING_ID, new VenueId(4L), FROM, TO, BOOKING_DATE, BOOKING_DATE.plusDays(2)));
+
+		verify(mails).sendBookingMoved(EMAIL, new BookingMovedMail(CODE, "Vala Beach", BOOKING_DATE,
+				BOOKING_DATE.plusDays(2), "A", 3, "A", 7, 0, 4, null, true,
 				URI.create("https://riviera.example/booking/" + CODE)));
 	}
 
@@ -92,7 +105,7 @@ class BookingMovedMailListenerTest {
 		listener.on(new BookingMoved(BOOKING_ID, new VenueId(4L), FROM, TO, BOOKING_DATE, null));
 
 		verify(mails).sendBookingMoved(EMAIL, new BookingMovedMail(CODE, "Vala Beach", BOOKING_DATE, BOOKING_DATE,
-				"A", 3, "A", 7, 0, 4, DEADLINE, URI.create("https://riviera.example/booking/" + CODE)));
+				"A", 3, "A", 7, 0, 4, DEADLINE, false, URI.create("https://riviera.example/booking/" + CODE)));
 	}
 
 	@ParameterizedTest(name = "{0}")

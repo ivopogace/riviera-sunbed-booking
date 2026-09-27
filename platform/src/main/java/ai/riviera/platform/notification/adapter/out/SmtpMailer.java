@@ -332,7 +332,7 @@ class SmtpMailer implements Mailer {
 				  %s
 				  Your spot:     Row %s, position %d
 
-				If the new spot does not suit you, you can cancel for a full refund until %s (Albania time):
+				%s
 
 				%s"""
 				.formatted(moved.venueName(), moved.toRowLabel(), moved.toPositionNo(), moved.fromRowLabel(),
@@ -340,8 +340,20 @@ class SmtpMailer implements Mailer {
 						moved.bookingDate().equals(moved.lastDate()) ? "date" : "days",
 						moved.bookingCode(), moved.venueName(),
 						daysLine(moved.bookingDate(), moved.lastDate(), MOVED_LABEL_WIDTH), moved.toRowLabel(),
-						moved.toPositionNo(),
-						DEADLINE_FORMAT.format(moved.freeExitUntil().atZone(TIRANE)), moved.bookingLink()));
+						moved.toPositionNo(), freeExitLine(moved), moved.bookingLink()));
+	}
+
+	/** The exit a move earned: in full for a lone booking, these days in full for a stretch, none once a stay began. */
+	private static String freeExitLine(BookingMovedMail moved) {
+		if (moved.freeExitUntil() == null) {
+			return "Your stay has already begun, so it can no longer be cancelled. Your booking:";
+		}
+		String until = DEADLINE_FORMAT.format(moved.freeExitUntil().atZone(TIRANE));
+		return moved.stretch()
+				? ("If the new spot does not suit you, you can cancel your stay until %s (Albania time), "
+						+ "and these days are refunded in full:").formatted(until)
+				: "If the new spot does not suit you, you can cancel for a full refund until %s (Albania time):"
+						.formatted(until);
 	}
 
 	/** "4 positions along the row", "1 row over", "2 rows and 3 positions away". */

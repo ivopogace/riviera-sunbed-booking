@@ -46,9 +46,10 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 /**
  * {@code BookingMoved} → one "your spot changed" mail through the registry vehicle: the code, the
  * venue, both spots as the receipt snapshotted them, the distance, the free-exit deadline and the
- * code-gated link; a moved stay's mail carries its last day; a suppressed address is skipped with the
- * publication complete; and the mock outbox read answers the mail for a real-backend run without a
- * code or a link. Dates are 2029-08-xx, this class's own, so no other IT's claim collides (invariant #2).
+ * code-gated link; a moved stay's mail carries its last day; a stitched stay's moved stretch names the
+ * stay's code and an exit that ends when the stay opens, or none once it has begun; a suppressed address
+ * is skipped with the publication complete; and the mock outbox read answers the mail for a real-backend
+ * run without a code or a link. Dates are 2029-08-xx, this class's own, so no other IT's claim collides.
  */
 @EnabledIfDockerAvailable
 @Import(TestcontainersConfiguration.class)
@@ -157,6 +158,62 @@ class BookingMovedMailIT {
 		BookingMovedMail moved = mailer.lastTo(guest).orElseThrow().moved();
 		assertThat(moved.bookingDate()).isEqualTo(first);
 		assertThat(moved.lastDate()).isEqualTo(last);
+	}
+
+	@Test
+	void aMovedStretchIsMailedWithTheStaysCodeAndTheStaysExit() {
+		LocalDate first = LocalDate.of(2029, 8, 20);
+		String guest = "moved-stretch-" + System.nanoTime() + "@example.com";
+		Stretch moved = seedStitchedStayMovedAt(guest, "MVSTAY01", first, Instant.parse("2029-08-01T13:00:00Z"));
+
+		fixtures.publishInTransaction(fixtures.movedOf(moved.from(), moved.to(), moved.id(), moved.first(), moved.last()));
+
+		Awaitility.await().atMost(WAIT).until(() -> countTo(guest) == 1L);
+		BookingMovedMail mail = mailer.lastTo(guest).orElseThrow().moved();
+		assertThat(mail.bookingCode()).isEqualTo("MVSTAY01");
+		assertThat(mail.bookingLink().getPath()).endsWith("/booking/MVSTAY01");
+		assertThat(mail.bookingDate()).isEqualTo(first.plusDays(3));
+		assertThat(mail.lastDate()).isEqualTo(first.plusDays(5));
+		assertThat(mail.freeExitUntil()).as("the stay stops being cancellable before the stretch's own noon")
+				.isEqualTo(cutoff.serviceDayOpensAt(first));
+	}
+
+	@Test
+	void aStretchMovedAfterItsStayBeganPromisesNoExit() {
+		LocalDate first = LocalDate.of(2029, 8, 26);
+		String guest = "moved-begun-" + System.nanoTime() + "@example.com";
+		Stretch moved = seedStitchedStayMovedAt(guest, "MVSTAY02", first, Instant.parse("2029-08-27T08:00:00Z"));
+
+		fixtures.publishInTransaction(fixtures.movedOf(moved.from(), moved.to(), moved.id(), moved.first(), moved.last()));
+
+		Awaitility.await().atMost(WAIT).until(() -> countTo(guest) == 1L);
+		BookingMovedMail mail = mailer.lastTo(guest).orElseThrow().moved();
+		assertThat(mail.bookingCode()).isEqualTo("MVSTAY02");
+		assertThat(mail.freeExitUntil()).as("a stay under way can no longer be cancelled").isNull();
+	}
+
+	private record Stretch(long id, BookingMailFixtures.SetRef from, long to, LocalDate first, LocalDate last) {
+	}
+
+	/** A three-day stretch then a moved three-day stretch under one stay code; the rows keep codes of their own. */
+	private Stretch seedStitchedStayMovedAt(String guest, String stayCode, LocalDate first, Instant movedAt) {
+		BookingMailFixtures.SetRef from = fixtures.onlineSet();
+		long to = insertSet(from.venueId(), first.getDayOfMonth() + 60);
+		long stay = jdbc.sql("INSERT INTO stay (code, venue_id, first_date, last_date) VALUES (:c, :v, :f, :l) RETURNING id")
+				.param("c", stayCode).param("v", from.venueId()).param("f", first).param("l", first.plusDays(5))
+				.query(Long.class).single();
+		long head = fixtures.seedBooking(from, stayCode + "A", first, guest, 13500L, "CONFIRMED");
+		long moved = fixtures.seedBooking(new BookingMailFixtures.SetRef(to, from.venueId()), stayCode + "B",
+				first.plusDays(3), "row-" + guest, 13500L, "CONFIRMED");
+		jdbc.sql("UPDATE booking SET stay_id = :s, last_date = booking_date + 2 WHERE id IN (:head, :moved)")
+				.param("s", stay).param("head", head).param("moved", moved).update();
+		jdbc.sql("UPDATE booking SET moved_at = :at, customer_id = (SELECT customer_id FROM booking WHERE id = :head) "
+						+ "WHERE id = :moved")
+				.param("at", java.sql.Timestamp.from(movedAt)).param("head", head).param("moved", moved).update();
+		receipts.store(new NewReceipt(new VenueId(from.venueId()), operatorId(), movedAt, List.of(new ReceiptMove(
+				new BookingId(moved), first.plusDays(3), new SpotRef(new SetId(from.setId()), "A", 3),
+				new SpotRef(new SetId(to), "Z", first.getDayOfMonth() + 60), 0, 1)), List.of(), "", List.of()));
+		return new Stretch(moved, from, to, first.plusDays(3), first.plusDays(5));
 	}
 
 	@Test

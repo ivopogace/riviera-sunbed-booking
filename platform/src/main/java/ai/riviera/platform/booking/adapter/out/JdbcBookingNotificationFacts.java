@@ -48,14 +48,27 @@ class JdbcBookingNotificationFacts implements BookingNotificationFacts {
 
 	@Override
 	public Optional<BookingMoveFacts> moveFacts(BookingId bookingId) {
-		return receipts.latestMoveOf(bookingId).flatMap(move -> jdbc.sql(
-				"SELECT moved_at FROM booking WHERE id = :id AND moved_at IS NOT NULL")
+		return receipts.latestMoveOf(bookingId).flatMap(move -> jdbc.sql("""
+				SELECT b.moved_at, s.first_date AS stay_first_date
+				FROM booking b
+				LEFT JOIN stay s ON s.id = b.stay_id
+				WHERE b.id = :id AND b.moved_at IS NOT NULL
+				""")
 				.param("id", bookingId.value())
-				.query((rs, rowNum) -> rs.getTimestamp("moved_at").toInstant())
+				.query((rs, rowNum) -> new MovedRow(rs.getTimestamp("moved_at").toInstant(),
+						rs.getObject("stay_first_date", LocalDate.class)))
 				.optional()
-				.map(movedAt -> new BookingMoveFacts(move.bookingDate(), move.from().rowLabel(),
-						move.from().positionNo(), move.to().rowLabel(), move.to().positionNo(), move.rowsAway(),
-						move.positionsAway(), movedAt, cutoff.freeExitEndsAt(move.bookingDate(), movedAt))));
+				.map(row -> {
+					LocalDate windowDay = row.stayFirstDay() != null ? row.stayFirstDay() : move.bookingDate();
+					Instant exit = cutoff.freeExitEndsAt(move.bookingDate(), windowDay, row.movedAt());
+					return new BookingMoveFacts(move.bookingDate(), move.from().rowLabel(), move.from().positionNo(),
+							move.to().rowLabel(), move.to().positionNo(), move.rowsAway(), move.positionsAway(),
+							row.movedAt(), exit.isAfter(row.movedAt()) ? exit : null, row.stayFirstDay() != null);
+				}));
+	}
+
+	/** A moved booking's move instant and, for a stay's stretch, the stay's first day (the day it is judged on). */
+	private record MovedRow(Instant movedAt, LocalDate stayFirstDay) {
 	}
 
 	@Override
