@@ -3,9 +3,8 @@ import { StayVerdictView } from '../../shared/venue-views';
 
 /**
  * A venue's stay verdict as the card says it, in the free count's slot: the same set for every day
- * with how many sets, a stitched plan with how many moves, or why not — the venue's maximum when
- * that is the reason, else the most days in a row one set is free for. One sentence for the card,
- * the row and the pin, so they agree.
+ * with how many sets, a stitched plan with how many moves, or why not (the venue's maximum, else the
+ * most days in a row one set is free for). One sentence for the card, the row and the pin.
  */
 export function stayLabel(stay: StayVerdictView, days: number): string {
   if (stay.verdict === 'SAME_SET') {

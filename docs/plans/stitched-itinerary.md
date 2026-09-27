@@ -200,7 +200,8 @@ Facts settled from the code (← confirm? marks a reading to re-check when the p
 
 ### Resolved
 
-- Refund window · confirmation mail · anchor binding · pins — owner decisions above.
+- Refund window · confirmation mail · anchor binding · pins — owner decisions above. The one-mail
+  stay confirmation is follow-up #1255.
 - Group representation — `stay` table with the code, `booking.stay_id` (facts above).
 
 ## Availability & concurrency
@@ -326,9 +327,9 @@ consulted per API)
 
 ## Execution status
 
-**Stage pointer:** `implement (phase F5) — mocked e2e`
+**Stage pointer:** `PR — merge main, ready for review, review + Sonar gates`
 
-**Next action:** `e2e/stitched-stay.e2e.ts` (banner → plan → dialog → pay → code), then the full mocked suite (`PW_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium npm run test:e2e:a11y`).
+**Next action:** confirm the full mocked suite's run, tick the ACs in the PR body, mark ready for review, run `/code-review` + the overlay.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -343,7 +344,7 @@ consulted per API)
 | F2 — Fetch + banner | ✅ | phase-F2/F3 commit |
 | F3 — Plan view | ✅ | phase-F2/F3 commit |
 | F4 — Book the plan | ✅ | phase-F4 commit |
-| F5 — Mocked e2e | | |
+| F5 — Mocked e2e | ✅ | phase-F5 commit |
 
 **Cost numbers (R-6):** `CoastVerdictCostIT` after the DP tier: 40 venues × 60 sets × 14 days at 70 % occupancy = 23,557 rows, times 110/63/43/39/35 ms, **median 43 ms** (was 29 ms before the third tier; the DP adds CPU only, no rows).
 
