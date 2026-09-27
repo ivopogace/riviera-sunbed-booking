@@ -21,6 +21,7 @@ import ai.riviera.platform.booking.vocabulary.CancellationWindow;
 import ai.riviera.platform.notification.application.BookingCancellationMail;
 import ai.riviera.platform.notification.application.BookingConfirmationMail;
 import ai.riviera.platform.notification.application.BookingMovedMail;
+import ai.riviera.platform.notification.application.MoveReminderMail;
 import ai.riviera.platform.notification.application.Mailer;
 import ai.riviera.platform.notification.application.PaymentDueMail;
 import ai.riviera.platform.notification.application.RequestDeclinedMail;
@@ -49,6 +50,7 @@ class SmtpMailer implements Mailer {
 	private static final String REQUEST_DECLINED_SUBJECT = "%s declined your booking request";
 	private static final String BOOKING_MOVED_SUBJECT = "Your spot at %s has changed";
 	private static final String REQUEST_EXPIRED_SUBJECT = "Your booking request to %s has expired";
+	private static final String MOVE_REMINDER_SUBJECT = "Tomorrow at %s: your spot moves";
 
 	/** English-only in v1 (ADR-0011); the locale is explicit so the JVM default cannot change the copy. */
 	private static final DateTimeFormatter DATE_FORMAT =
@@ -343,6 +345,27 @@ class SmtpMailer implements Mailer {
 						moved.toPositionNo(), freeExitLine(moved), moved.bookingLink()));
 	}
 
+	@Override
+	public void sendMoveReminder(String toEmail, MoveReminderMail reminder) {
+		send(toEmail, MOVE_REMINDER_SUBJECT.formatted(headerSafe(reminder.venueName())), """
+				Tomorrow, %s, your spot at %s changes: %s%d instead of today's %s%d, %s.
+				Show the same booking code in the morning and staff will point you to it.
+
+				  Booking code:  %s
+				  Venue:         %s
+				  Tomorrow:      Row %s, position %d
+				  Until:         %s
+
+				Your stay:
+
+				%s"""
+				.formatted(DATE_FORMAT.format(reminder.moveDate()), reminder.venueName(), reminder.toRowLabel(),
+						reminder.toPositionNo(), reminder.fromRowLabel(), reminder.fromPositionNo(),
+						distance(reminder.rowsAway(), reminder.positionsAway()), reminder.bookingCode(),
+						reminder.venueName(), reminder.toRowLabel(), reminder.toPositionNo(),
+						DATE_FORMAT.format(reminder.stayLastDate()), reminder.bookingLink()));
+	}
+
 	/** The exit a move earned: in full for a lone booking, these days in full for a stretch, none once a stay began. */
 	private static String freeExitLine(BookingMovedMail moved) {
 		if (moved.freeExitUntil() == null) {
@@ -358,12 +381,16 @@ class SmtpMailer implements Mailer {
 
 	/** "4 positions along the row", "1 row over", "2 rows and 3 positions away". */
 	static String distance(BookingMovedMail moved) {
-		String positions = plural(moved.positionsAway(), "position");
-		if (moved.rowsAway() == 0) {
+		return distance(moved.rowsAway(), moved.positionsAway());
+	}
+
+	static String distance(int rowsAway, int positionsAway) {
+		String positions = plural(positionsAway, "position");
+		if (rowsAway == 0) {
 			return positions + " along the row";
 		}
-		String rows = plural(moved.rowsAway(), "row");
-		if (moved.positionsAway() == 0) {
+		String rows = plural(rowsAway, "row");
+		if (positionsAway == 0) {
 			return rows + " over";
 		}
 		return rows + " and " + positions + " away";

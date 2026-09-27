@@ -8,6 +8,7 @@ import ai.riviera.platform.booking.vocabulary.BookingMoveFacts;
 import ai.riviera.platform.booking.vocabulary.BookingNotificationInfo;
 import ai.riviera.platform.booking.vocabulary.StayConfirmationFacts;
 import ai.riviera.platform.booking.vocabulary.StayId;
+import ai.riviera.platform.booking.vocabulary.StayMoveFacts;
 
 /**
  * The {@code booking} module's published notification-facts query port (invariant #11): what
@@ -43,6 +44,13 @@ public interface BookingNotificationFacts {
 	 * the old label is a receipt snapshot, since the live set may be renamed or retired.
 	 */
 	Optional<BookingMoveFacts> moveFacts(BookingId bookingId);
+
+	/**
+	 * The move the reminder mail names, keyed by the stretch the guest arrives on: empty unless that
+	 * stretch is {@code CONFIRMED} and a live stretch of its stay on another set ends the day before, or
+	 * either set has left the active map. Distance is read off the live map at send time.
+	 */
+	Optional<StayMoveFacts> moveReminderFacts(BookingId arrivingBookingId);
 
 	/**
 	 * Whether a venue's remodel ended this booking (refund, release or decline), not the guest's free

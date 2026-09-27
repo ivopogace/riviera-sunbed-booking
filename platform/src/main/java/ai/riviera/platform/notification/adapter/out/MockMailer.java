@@ -13,6 +13,7 @@ import org.springframework.stereotype.Component;
 import ai.riviera.platform.notification.application.BookingCancellationMail;
 import ai.riviera.platform.notification.application.BookingConfirmationMail;
 import ai.riviera.platform.notification.application.BookingMovedMail;
+import ai.riviera.platform.notification.application.MoveReminderMail;
 import ai.riviera.platform.notification.application.Mailer;
 import ai.riviera.platform.notification.application.PaymentDueMail;
 import ai.riviera.platform.notification.application.RequestDeclinedMail;
@@ -109,6 +110,14 @@ public class MockMailer implements Mailer {
 		log.info("[mock-mailer] {} (to {}) for {} on {} — {}{} to {}{}", SentEmail.Kind.BOOKING_MOVED,
 				sanitize(toEmail), sanitize(moved.venueName()), moved.bookingDate(), moved.fromRowLabel(),
 				moved.fromPositionNo(), moved.toRowLabel(), moved.toPositionNo());
+	}
+
+	@Override
+	public void sendMoveReminder(String toEmail, MoveReminderMail reminder) {
+		sent.add(SentEmail.moveReminder(toEmail, reminder));
+		log.info("[mock-mailer] {} (to {}) for {} on {} — {}{} to {}{}", SentEmail.Kind.MOVE_REMINDER,
+				sanitize(toEmail), sanitize(reminder.venueName()), reminder.moveDate(), reminder.fromRowLabel(),
+				reminder.fromPositionNo(), reminder.toRowLabel(), reminder.toPositionNo());
 	}
 
 	@Override
