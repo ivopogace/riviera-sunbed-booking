@@ -178,7 +178,7 @@ rows) is untouched; `findCheckInFacts` only gains `set_id` in its select list.
 
 ## Execution status
 
-**Stage pointer:** `PR — draft open, CI gate pending`
+**Stage pointer:** `PR #1263 — draft open, CI gate pending`
 
 **Next action:** watch the first CI run; then merge `origin/main`, mark ready, run the review gate.
 
