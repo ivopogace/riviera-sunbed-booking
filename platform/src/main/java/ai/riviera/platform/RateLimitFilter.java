@@ -61,7 +61,7 @@ final class RateLimitFilter extends OncePerRequestFilter {
 			{"type":"about:blank","title":"Too Many Requests","status":429,\
 			"detail":"Too many requests.","code":"RATE_LIMITED"}""";
 
-	// Mirrors the SecurityConfig matchers for the eight public booking endpoints.
+	// Mirrors the SecurityConfig matchers for the public booking and stay endpoints.
 	private static final String CREATE_PATH = "/api/bookings";
 	/** A stitched stay's create: as {@link #CREATE_PATH}, no code to key on, per-IP only. */
 	private static final String STAY_CREATE_PATH = "/api/stays";

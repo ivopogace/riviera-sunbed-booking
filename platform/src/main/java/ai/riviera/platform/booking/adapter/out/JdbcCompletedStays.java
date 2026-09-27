@@ -51,8 +51,10 @@ class JdbcCompletedStays implements CompletedStays {
 
 	@Override
 	public boolean existsByCode(String bookingCode) {
-		return Boolean.TRUE.equals(jdbc.sql("SELECT EXISTS (SELECT 1 FROM booking b LEFT JOIN stay s "
-						+ "ON s.id = b.stay_id WHERE b.code = :code OR s.code = :code)")
+		return Boolean.TRUE.equals(jdbc.sql("""
+				SELECT EXISTS (SELECT 1 FROM booking b LEFT JOIN stay s ON s.id = b.stay_id
+				               WHERE b.code = :code OR s.code = :code)
+				""")
 				.param(CODE, bookingCode)
 				.query(Boolean.class)
 				.single());
