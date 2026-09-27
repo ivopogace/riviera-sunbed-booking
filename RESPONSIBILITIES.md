@@ -259,6 +259,11 @@ any is released on the old, never a swap of my own — so a racing reserve wins 
   is the stay id plus the first stretch's birth window (the day a stay is judged on); each stretch's
   `BookingConfirmed` names its `stayId`, null for a lone booking and every older payload. No stay
   confirms part-way: one PaymentIntent collects every share and the sweep voids it before releasing.
+- **A guest's stay cancel publishes `StayCancelled` once, after every stretch's `BookingCancelled`.**
+  Each stretch's event names the stay in `cancelledWithStay`, so its refund and reversal stay per
+  stretch while its mail is left to the stay; the stay event carries the summed refund and
+  `VENUE_CHANGE` only if every stretch took a free exit, else `POLICY`. Every other `BookingCancelled`
+  (the remodel legs ending one stretch, a lone booking, an older payload) leaves the stamp null.
 - **Attendance is per service day; I am the sole writer and reader of `booking_day`**
   (`ResponsibilitiesArchitectureTests` rule 9 — other modules ask my ports). The schema writes the
   rows when a booking becomes `CONFIRMED` (trigger `booking_day_on_confirm`), so no confirm
@@ -673,6 +678,10 @@ tag names the person, invariant #7):
   `stayId`, an older payload, mails as a lone booking's). The delivery log keeps its per-booking grain:
   the stay mail's attempt is logged on every stretch it covers, and a resend on any stretch resends
   the stay's mail, refused unless every stretch confirmed.
+- **A stay the guest cancels gets one cancellation mail, on `StayCancelled`**: the lone booking's
+  cancellation copy under the stay's code and span, with the summed refund. A stretch's stamped
+  `BookingCancelled` mails nothing; an unstamped one (a remodel ending one stretch, an older payload)
+  mails that stretch under the stay's code, with a rebook link when a remodel ended it.
 - The **booking-confirmation delivery log** (`booking_confirmation_mail_attempt`) and its ADMIN
   lookup and **resend** exist because the registry's `completion_date` records only that the
   listener *returned*, as on a suppression skip or an abandonment. The resend is **synchronous

@@ -9,6 +9,7 @@ import ai.riviera.platform.booking.api.BookingNotificationFacts;
 import ai.riviera.platform.booking.vocabulary.BookingId;
 import ai.riviera.platform.booking.vocabulary.BookingNotificationInfo;
 import ai.riviera.platform.booking.vocabulary.CancellationWindow;
+import ai.riviera.platform.booking.vocabulary.RefundReason;
 import ai.riviera.platform.booking.vocabulary.StayConfirmationFacts;
 import ai.riviera.platform.booking.vocabulary.StayId;
 import ai.riviera.platform.customer.api.CustomerLookup;
@@ -159,5 +160,34 @@ class BookingMailFactsServiceTest {
 
 		assertThat(facts.resolveStay(STAY, CancellationWindow.FREE, 0))
 				.isEqualTo(new StayMailFacts.Missing(MissingBookingFact.NO_CONTACT));
+	}
+
+	@Test
+	void resolvesAStaysCancellationUnderTheStaysCodeAndSpanWithTheCallersRefund() {
+		when(sets.setBookingInfo(SET_ID)).thenReturn(Optional.of(SET));
+		when(customers.findById(CUSTOMER_ID)).thenReturn(Optional.of(CONTACT));
+
+		assertThat(facts.resolveStayCancellation(STAY, 6750, "EUR", RefundReason.POLICY))
+				.isEqualTo(new StayCancellationMailFacts.Resolved("tourist@example.com", new BookingCancellationMail(
+						"STAYCODE", "Vala Beach", LocalDate.of(2026, 8, 1), LocalDate.of(2026, 8, 3), 6750, "EUR",
+						RefundReason.POLICY, null)));
+	}
+
+	@Test
+	void aStaysCancellationWithoutItsVenueIsNamedAndStopsTheContactRead() {
+		when(sets.setBookingInfo(SET_ID)).thenReturn(Optional.empty());
+
+		assertThat(facts.resolveStayCancellation(STAY, 0, "EUR", RefundReason.POLICY))
+				.isEqualTo(new StayCancellationMailFacts.Missing(MissingBookingFact.NO_SET));
+		verifyNoInteractions(customers);
+	}
+
+	@Test
+	void aStaysCancellationWithoutAContactIsNamed() {
+		when(sets.setBookingInfo(SET_ID)).thenReturn(Optional.of(SET));
+		when(customers.findById(CUSTOMER_ID)).thenReturn(Optional.empty());
+
+		assertThat(facts.resolveStayCancellation(STAY, 0, "EUR", RefundReason.POLICY))
+				.isEqualTo(new StayCancellationMailFacts.Missing(MissingBookingFact.NO_CONTACT));
 	}
 }

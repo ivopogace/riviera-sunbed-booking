@@ -13,6 +13,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import ai.riviera.platform.availability.api.AvailabilityClaim;
 import ai.riviera.platform.booking.events.BookingCancelled;
+import ai.riviera.platform.booking.events.StayCancelled;
 import ai.riviera.platform.booking.vocabulary.BookingId;
 import ai.riviera.platform.booking.application.cancel.CancellationPolicy.RefundQuote;
 import ai.riviera.platform.booking.application.view.BookingRecord;
@@ -22,6 +23,7 @@ import ai.riviera.platform.booking.domain.BookingStatus;
 import ai.riviera.platform.booking.domain.BookingTransition;
 import ai.riviera.platform.booking.domain.ServiceDays;
 import ai.riviera.platform.booking.vocabulary.CancellationWindow;
+import ai.riviera.platform.booking.vocabulary.RefundReason;
 
 /**
  * The guest cancel, in one transaction: quote the refund server-side ({@link CancellationPolicy},
@@ -98,8 +100,8 @@ class CancelBookingService implements CancelBooking {
 	}
 
 	/**
-	 * A stay cancels whole (design D6): stretches read under row lock, each quoted on the stay's first day,
-	 * then transitioned, released and announced as an ordinary booking (one reversal each, #9); one summed
+	 * A stay cancels whole (D6): stretches row-locked, each quoted on the stay's first day, then cancelled and
+	 * announced stamped with the stay (one reversal each, #9); one {@link StayCancelled} carries the summed
 	 * refund. A stretch that cannot be cancelled refuses the stay before any write; a failed transition is a bug.
 	 */
 	private CancelOutcome cancelStay(StayRecord stay) {
@@ -135,12 +137,20 @@ class CancelBookingService implements CancelBooking {
 			}
 			events.publishEvent(new BookingCancelled(new BookingId(cancelled.id()), cancelled.venueId(),
 					cancelled.setId(), cancelled.bookingDate(), quote.refundMinor(), cancelled.currency(),
-					quote.reason(), cancelled.lastDate()));
+					quote.reason(), cancelled.lastDate(), stay.id()));
 			refundTotal = Math.addExact(refundTotal, quote.refundMinor());
 			amountTotal = Math.addExact(amountTotal, cancelled.amountMinor());
 		}
+		events.publishEvent(new StayCancelled(stay.id(), refundTotal, currency, stayReason(quotes)));
 		log.info("cancelled stay {} of {} stretches (refund {} minor)", stay.id().value(), stretches.size(), refundTotal);
 		return new CancelOutcome.Cancelled(refundTotal, currency, tierFor(quotes.getFirst().window(), refundTotal, amountTotal));
+	}
+
+	/** A free exit on every stretch is the venue's change; any stretch on the policy makes it the guest's own cancel. */
+	private static RefundReason stayReason(List<RefundQuote> quotes) {
+		return quotes.stream().allMatch(quote -> quote.reason() == RefundReason.VENUE_CHANGE)
+				? RefundReason.VENUE_CHANGE
+				: RefundReason.POLICY;
 	}
 
 	/**

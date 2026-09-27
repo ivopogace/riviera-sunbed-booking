@@ -8,6 +8,7 @@ import ai.riviera.platform.booking.api.BookingNotificationFacts;
 import ai.riviera.platform.booking.events.BookingCancelled;
 import ai.riviera.platform.booking.vocabulary.BookingId;
 import ai.riviera.platform.booking.vocabulary.RefundReason;
+import ai.riviera.platform.booking.vocabulary.StayId;
 import ai.riviera.platform.notification.application.BookingCancellationMail;
 import ai.riviera.platform.notification.application.BookingMailFacts;
 import ai.riviera.platform.notification.application.BookingMailFactsService;
@@ -113,6 +114,15 @@ class BookingCancellationMailListenerTest {
 		verify(mails).sendBookingCancellation(EMAIL, new BookingCancellationMail(
 				CODE, "Vala Beach", BOOKING_DATE, 4500, "EUR", RefundReason.POLICY, null));
 		verifyNoInteractions(rebookLinks);
+	}
+
+	/** A stretch of a stay the guest cancelled whole is mailed once, on {@code StayCancelled}, never on its own. */
+	@Test
+	void aStretchCancelledWithItsStayMailsNothing() {
+		listener.on(new BookingCancelled(BOOKING_ID, new VenueId(4L), SET_ID, BOOKING_DATE, 4500, "EUR",
+				RefundReason.POLICY, BOOKING_DATE, new StayId(3L)));
+
+		verifyNoInteractions(facts, bookings, mails, rebookLinks);
 	}
 
 	/** The refund is the event's number, never re-derived — invariant #10 has one owner, upstream. */

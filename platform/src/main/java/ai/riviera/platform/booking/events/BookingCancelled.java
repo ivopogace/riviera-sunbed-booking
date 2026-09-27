@@ -7,17 +7,24 @@ import ai.riviera.platform.venue.vocabulary.VenueId;
 
 import ai.riviera.platform.booking.vocabulary.BookingId;
 import ai.riviera.platform.booking.vocabulary.RefundReason;
+import ai.riviera.platform.booking.vocabulary.StayId;
 
 /**
- * Published when a booking becomes {@code CANCELLED}. Id-based (invariant #11); days are in
- * {@code Europe/Tirane} (#6); the server computes {@code refundMinor}, minor units + ISO currency
- * (#5, #10). {@code payout} reverses in proportion to it, stamps {@code reason} (a
- * {@code VENUE_CHANGE} adds a fee) and re-reads the accrual rather than carrying it here;
- * {@code notification} mails the record; {@code booking}'s own listeners refund and void a released
- * intent. {@code availability} and {@code payment} must never subscribe: an event back would cycle.
+ * Published when a booking becomes {@code CANCELLED}. Id-based (#11); days in {@code Europe/Tirane} (#6);
+ * {@code refundMinor} is the server's, minor units + ISO currency (#5, #10). {@code payout} reverses in
+ * proportion and stamps {@code reason}; {@code notification} mails it; {@code booking} refunds and voids.
+ * {@code availability} and {@code payment} must never subscribe (a cycle). {@code cancelledWithStay} names
+ * the stay a guest cancelled whole ({@link StayCancelled} mails it); null for one that ended on its own.
  */
 public record BookingCancelled(BookingId bookingId, VenueId venueId, SetId setId,
-		LocalDate bookingDate, long refundMinor, String currency, RefundReason reason, LocalDate lastDate) {
+		LocalDate bookingDate, long refundMinor, String currency, RefundReason reason, LocalDate lastDate,
+		StayId cancelledWithStay) {
+
+	/** A booking or stretch that ended on its own. */
+	public BookingCancelled(BookingId bookingId, VenueId venueId, SetId setId, LocalDate bookingDate,
+			long refundMinor, String currency, RefundReason reason, LocalDate lastDate) {
+		this(bookingId, venueId, setId, bookingDate, refundMinor, currency, reason, lastDate, null);
+	}
 
 	/** A one-day booking: its last day is its first. */
 	public BookingCancelled(BookingId bookingId, VenueId venueId, SetId setId, LocalDate bookingDate,

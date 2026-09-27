@@ -5,6 +5,7 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.time.ZoneId;
+import java.util.List;
 import java.util.Optional;
 
 import org.junit.jupiter.api.Test;
@@ -16,11 +17,14 @@ import ai.riviera.platform.availability.api.AvailabilityClaim;
 import ai.riviera.platform.booking.application.Bookings;
 import ai.riviera.platform.booking.application.cancel.CancellationPolicy.RefundQuote;
 import ai.riviera.platform.booking.application.view.BookingRecord;
+import ai.riviera.platform.booking.application.view.StayRecord;
 import ai.riviera.platform.booking.domain.BookingStatus;
 import ai.riviera.platform.booking.events.BookingCancelled;
+import ai.riviera.platform.booking.events.StayCancelled;
 import ai.riviera.platform.booking.vocabulary.BookingId;
 import ai.riviera.platform.booking.vocabulary.CancellationWindow;
 import ai.riviera.platform.booking.vocabulary.RefundReason;
+import ai.riviera.platform.booking.vocabulary.StayId;
 import ai.riviera.platform.customer.vocabulary.CustomerId;
 import ai.riviera.platform.venue.vocabulary.BookingMode;
 import ai.riviera.platform.venue.vocabulary.MoneyView;
@@ -51,6 +55,8 @@ import static org.mockito.Mockito.when;
 class CancelBookingServiceTest {
 
 	private static final String CODE = "ABCD2345";
+	private static final String STAY_CODE = "STAY2345";
+	private static final SetId OTHER_SET = new SetId(3);
 	private static final CustomerId GUEST = new CustomerId(7);
 	private static final SetId SET = new SetId(2);
 	private static final VenueId VENUE = new VenueId(1);
@@ -112,6 +118,7 @@ class CancelBookingServiceTest {
 		verify(availability).release(SET, DATE);
 		verify(events).publishEvent(new BookingCancelled(new BookingId(booking.id()), VENUE, SET, DATE,
 				4500L, "EUR", RefundReason.POLICY));
+		verify(events, never()).publishEvent(any(StayCancelled.class));
 	}
 
 	@Test
@@ -128,6 +135,64 @@ class CancelBookingServiceTest {
 		assertEquals(CancelOutcome.Tier.FULL, cancelled.tier());
 		verify(events).publishEvent(new BookingCancelled(new BookingId(booking.id()), VENUE, SET, DATE,
 				4500L, "EUR", RefundReason.VENUE_CHANGE));
+	}
+
+	/**
+	 * A stay cancels in one go: every stretch's {@code BookingCancelled} names the stay it was cancelled
+	 * with, and one {@link StayCancelled} carries the summed refund the guest's one mail reports.
+	 */
+	@Test
+	void aStayAnnouncesEachStretchStampedAndItsSummedRefundOnce() {
+		StayId stay = givenStay(RefundReason.POLICY, 4500L, RefundReason.POLICY, 1125L);
+
+		service.cancel(STAY_CODE);
+
+		verify(events).publishEvent(new BookingCancelled(new BookingId(11L), VENUE, SET, DATE, 4500L, "EUR",
+				RefundReason.POLICY, DATE, stay));
+		verify(events).publishEvent(new BookingCancelled(new BookingId(12L), VENUE, OTHER_SET, DATE.plusDays(1),
+				1125L, "EUR", RefundReason.POLICY, DATE.plusDays(1), stay));
+		verify(events).publishEvent(new StayCancelled(stay, 5625L, "EUR", RefundReason.POLICY));
+	}
+
+	/** A moved stretch's free exit alone does not make the stay a venue change: the rest is the guest's own cancel. */
+	@Test
+	void aStayIsAVenueChangeOnlyWhenEveryStretchWas() {
+		StayId stay = givenStay(RefundReason.VENUE_CHANGE, 4500L, RefundReason.POLICY, 0L);
+
+		service.cancel(STAY_CODE);
+
+		verify(events).publishEvent(new StayCancelled(stay, 4500L, "EUR", RefundReason.POLICY));
+	}
+
+	@Test
+	void aStayWhoseEveryStretchWasMovedIsAVenueChange() {
+		StayId stay = givenStay(RefundReason.VENUE_CHANGE, 4500L, RefundReason.VENUE_CHANGE, 4500L);
+
+		service.cancel(STAY_CODE);
+
+		verify(events).publishEvent(new StayCancelled(stay, 9000L, "EUR", RefundReason.VENUE_CHANGE));
+	}
+
+	/** Two one-day stretches on {@code DATE} and the day after, quoted with {@code firstReason} and {@code secondReason}. */
+	private StayId givenStay(RefundReason firstReason, long firstRefund, RefundReason secondReason, long secondRefund) {
+		StayId stay = new StayId(5L);
+		BookingRecord first = new BookingRecord(11L, STAY_CODE, BookingStatus.CONFIRMED, VENUE, SET, GUEST, DATE, 4500L,
+				"EUR", null, null, null, null, Instant.EPOCH, null, null);
+		BookingRecord second = new BookingRecord(12L, STAY_CODE, BookingStatus.CONFIRMED, VENUE, OTHER_SET, GUEST,
+				DATE.plusDays(1), 4500L, "EUR", null, null, null, null, Instant.EPOCH, null, null);
+		when(bookings.findByCode(STAY_CODE)).thenReturn(Optional.empty());
+		when(bookings.findStayByCode(STAY_CODE)).thenReturn(Optional.of(
+				new StayRecord(stay, STAY_CODE, VENUE, DATE, DATE.plusDays(1), List.of(first, second))));
+		when(bookings.lockStretches(stay)).thenReturn(List.of(first, second));
+		when(cancellationPolicy.quote(first, DATE)).thenReturn(
+				new RefundQuote(setInfo(), CancellationWindow.FREE, firstRefund, firstReason, null));
+		when(cancellationPolicy.quote(second, DATE)).thenReturn(
+				new RefundQuote(setInfo(), CancellationWindow.FREE, secondRefund, secondReason, null));
+		when(bookings.cancelConfirmed(11L, NOW.instant(), firstRefund, firstReason))
+				.thenReturn(Optional.of(new CancelledBooking(11L, VENUE, SET, DATE, DATE, 4500L, "EUR")));
+		when(bookings.cancelConfirmed(12L, NOW.instant(), secondRefund, secondReason)).thenReturn(Optional.of(
+				new CancelledBooking(12L, VENUE, OTHER_SET, DATE.plusDays(1), DATE.plusDays(1), 4500L, "EUR")));
+		return stay;
 	}
 
 	private BookingRecord givenBooking(BookingStatus status) {
