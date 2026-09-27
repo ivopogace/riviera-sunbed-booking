@@ -157,6 +157,10 @@ class CreateStayIT {
 		Venue capped = venue("INSTANT", 5, true);
 		assertEquals(rejected(BookingOutcome.Rejected.STAY_TOO_LONG),
 				createStay.create(plan(capped.online().get(0), 3, capped.online().get(1), 4, first)));
+		Venue cappedRequest = venue("REQUEST", 5, true);
+		assertEquals(rejected(BookingOutcome.Rejected.RANGE_NOT_OFFERED),
+				createStay.create(plan(cappedRequest.online().get(0), 3, cappedRequest.online().get(1), 4, first)),
+				"a Request venue refuses the plan before judging its maximum stay");
 		assertEquals(0L, heldDays(jdbc, a, first, first.plusDays(6)), "a refusal claims nothing");
 		assertEquals(0L, heldDays(jdbc, b, first, first.plusDays(6)));
 	}

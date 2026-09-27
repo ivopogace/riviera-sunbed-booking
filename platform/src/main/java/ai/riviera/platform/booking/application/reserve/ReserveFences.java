@@ -16,8 +16,8 @@ import ai.riviera.platform.venue.vocabulary.StaySpan;
 /**
  * The reserve fences, in the order both reserve paths judge them: a hidden venue's set books like
  * one that does not exist ({@code NO_SUCH_SET}), the online pool (invariant #3), the season closure
- * on every day and the sales close on the first (invariant #4), the venue's maximum stay; a stretch
- * of a stitched stay also fails at a Request-to-Book venue. Rationale: RESPONSIBILITIES.md §booking.
+ * on every day and the sales close on the first (invariant #4), a stitched stay at a Request-to-Book
+ * venue (the stretch path only), the venue's maximum stay. Rationale: RESPONSIBILITIES.md §booking.
  */
 @Component
 class ReserveFences {
@@ -50,10 +50,14 @@ class ReserveFences {
 		return Optional.empty();
 	}
 
-	/** {@link #refuse} for a stretch of a stitched stay: a Request-to-Book venue takes one set per request, never a plan. */
+	/**
+	 * {@link #refuse} for a stretch of a stitched stay: a Request-to-Book venue takes one set per request,
+	 * never a plan, judged before its maximum stay and after the fences that hide the venue.
+	 */
 	Optional<BookingOutcome.Rejected> refuseStretch(SetBookingInfo set, StaySpan stay, Instant now) {
 		Optional<BookingOutcome.Rejected> refused = refuse(set, stay, now);
-		if (refused.isEmpty() && set.bookingMode() == BookingMode.REQUEST) {
+		boolean pastTheHidingFences = refused.isEmpty() || refused.get() == BookingOutcome.Rejected.STAY_TOO_LONG;
+		if (pastTheHidingFences && set.bookingMode() == BookingMode.REQUEST) {
 			return Optional.of(BookingOutcome.Rejected.RANGE_NOT_OFFERED);
 		}
 		return refused;
