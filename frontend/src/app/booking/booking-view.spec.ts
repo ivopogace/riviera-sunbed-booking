@@ -102,6 +102,46 @@ const MOVED: BookingDetail = {
   },
 };
 
+/**
+ * A stitched stay whose second stop a remodel moved; its free exit runs until the stay opens
+ * (23:00Z on a CET date → midnight Tirane).
+ */
+const STAY_MOVED: BookingDetail = {
+  ...DETAIL,
+  lastDate: '2026-12-07',
+  amount: { minorUnits: 31500, currency: 'EUR' },
+  refundIfCancelledNow: { minorUnits: 31500, currency: 'EUR' },
+  stretches: [
+    {
+      setId: 11,
+      rowLabel: 'Front row · Sea view',
+      positionNo: 2,
+      firstDate: '2026-12-01',
+      lastDate: '2026-12-03',
+      amount: { minorUnits: 13500, currency: 'EUR' },
+      status: 'CONFIRMED',
+      move: null,
+    },
+    {
+      setId: 13,
+      rowLabel: 'Front row · Sea view',
+      positionNo: 7,
+      firstDate: '2026-12-04',
+      lastDate: '2026-12-07',
+      amount: { minorUnits: 18000, currency: 'EUR' },
+      status: 'CONFIRMED',
+      move: {
+        fromRowLabel: 'Front row · Sea view',
+        fromPositionNo: 4,
+        rowsAway: 0,
+        positionsAway: 3,
+        movedAt: '2026-11-20T13:00:00Z',
+        freeExitUntil: '2026-11-30T23:00:00Z',
+      },
+    },
+  ],
+};
+
 const CANCELLATION: Cancellation = {
   code: 'ABCD234567',
   status: 'CANCELLED',
@@ -898,6 +938,62 @@ describe('BookingView', () => {
         '€45 will be refunded to your card.',
       );
       expect(host.querySelector('[data-testid="booking-moved"]')).toBeNull();
+    });
+  });
+
+  describe('stitched stay with a moved stop (#1257)', () => {
+    it('names the moved stop, its days, both spots and the distance, with the exit until the stay opens', async () => {
+      const fixture = await render(stubService({ detail: STAY_MOVED }));
+      const host = fixture.nativeElement as HTMLElement;
+      const banner = host.querySelector('[data-testid="booking-moved"]')!;
+
+      expect(banner.textContent).toContain('Your spot changed');
+      expect(banner.textContent).toContain(
+        'Miramar Beach Club rearranged its beach map, so your set for stop 2 (4 – 7 Dec · 4 days) moved from Front row · Sea view · spot 4 to Front row · Sea view · spot 7 (3 positions along the row).',
+      );
+      expect(banner.textContent).toContain('Your booking code, price and dates are unchanged.');
+      expect(host.querySelector('[data-testid="booking-free-exit"]')?.textContent).toMatch(
+        /cancel the stay below until\s+Tue, 1 Dec, 00:00\s*and stop 2 is refunded in full\./,
+      );
+      await expectNoAxeViolations(host);
+    });
+
+    it('marks the moved stop in the list and leaves the others as booked', async () => {
+      const fixture = await render(stubService({ detail: STAY_MOVED }));
+      const stops = Array.from(
+        (fixture.nativeElement as HTMLElement).querySelectorAll('[data-testid="view-stops"] li'),
+      );
+
+      expect(stops).toHaveLength(2);
+      expect(stops[0].querySelector('[data-testid="view-stop-moved"]')).toBeNull();
+      expect(stops[1].querySelector('[data-testid="view-stop-moved"]')?.textContent?.trim()).toBe(
+        'moved from Front row · Sea view · spot 4',
+      );
+    });
+
+    it('keeps the notice but promises no exit once the stay can no longer be cancelled', async () => {
+      const fixture = await render(
+        stubService({ detail: { ...STAY_MOVED, beforeCutoff: false, cancellable: false } }),
+      );
+      const host = fixture.nativeElement as HTMLElement;
+
+      expect(host.querySelector('[data-testid="booking-moved"]')).toBeTruthy();
+      expect(host.querySelector('[data-testid="booking-free-exit"]')).toBeNull();
+    });
+
+    it('shows no notice for a stay no remodel touched', async () => {
+      const fixture = await render(
+        stubService({
+          detail: {
+            ...STAY_MOVED,
+            stretches: STAY_MOVED.stretches!.map((stretch) => ({ ...stretch, move: null })),
+          },
+        }),
+      );
+      const host = fixture.nativeElement as HTMLElement;
+
+      expect(host.querySelector('[data-testid="booking-moved"]')).toBeNull();
+      expect(host.querySelector('[data-testid="view-stop-moved"]')).toBeNull();
     });
   });
 

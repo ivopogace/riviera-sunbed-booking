@@ -179,6 +179,34 @@ class SmtpMailerIT {
 		assertThat(body).doesNotContain("Days:");
 	}
 
+	@Test
+	void aMovedBookingOffersAFullRefundUntilItsDeadline() throws Exception {
+		mailer().sendBookingMoved(TO, movedMail(LocalDate.of(2026, 8, 15)));
+
+		assertThat(theOnlyReceivedMessage().getContent().toString())
+				.contains("you can cancel for a full refund until 14 August 2026 at 20:30 (CEST) (Albania time):");
+	}
+
+	@Test
+	void aMovedStretchPromisesItsOwnDaysInFullNotTheWholeStay() throws Exception {
+		mailer().sendBookingMoved(TO, stretchMail(DEADLINE));
+
+		String body = theOnlyReceivedMessage().getContent().toString();
+		assertThat(body).contains("you can cancel your stay until 14 August 2026 at 20:30 (CEST) (Albania time), "
+				+ "and these days are refunded in full:");
+		assertThat(body).doesNotContain("for a full refund");
+	}
+
+	@Test
+	void aStretchMovedOnceItsStayBeganOffersNoExit() throws Exception {
+		mailer().sendBookingMoved(TO, stretchMail(null));
+
+		String body = theOnlyReceivedMessage().getContent().toString();
+		assertThat(body).contains("Your stay has already begun, so it can no longer be cancelled. Your booking:",
+				PAY_LINK.toString());
+		assertThat(body).doesNotContain("refund");
+	}
+
 	/** The #795 disclosure branches, rendered — only CLOSED may claim the booking can't be cancelled. */
 	@Test
 	void rendersTheBornPastFreeCancellationDisclosure() throws Exception {
@@ -516,7 +544,12 @@ class SmtpMailerIT {
 
 	private static BookingMovedMail movedMail(LocalDate lastDate) {
 		return new BookingMovedMail(BOOKING_CODE, "Miramar Beach", LocalDate.of(2026, 8, 15), lastDate, "A", 3, "B",
-				5, 1, 2, DEADLINE, PAY_LINK);
+				5, 1, 2, DEADLINE, false, PAY_LINK);
+	}
+
+	private static BookingMovedMail stretchMail(Instant freeExitUntil) {
+		return new BookingMovedMail(BOOKING_CODE, "Miramar Beach", LocalDate.of(2026, 8, 18), LocalDate.of(2026, 8, 20),
+				"A", 3, "B", 5, 1, 2, freeExitUntil, true, PAY_LINK);
 	}
 
 	private static void assertPlainTextWithLink(MimeMessage message) throws Exception {

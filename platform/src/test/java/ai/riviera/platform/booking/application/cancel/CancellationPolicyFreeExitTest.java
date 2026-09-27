@@ -38,7 +38,8 @@ import static org.mockito.Mockito.when;
  * The free-exit override (invariant #10): a moved booking quoted inside the LATE window before its
  * deadline refunds in full with reason {@code VENUE_CHANGE}; after the deadline the venue's late share
  * applies with reason {@code POLICY}; a CLOSED window stays closed; an unmoved booking keeps the
- * policy's own answer; a moved one still in the FREE window is full either way and names the exit.
+ * policy's own answer; a moved one still in the FREE window is full either way and names the exit. A
+ * stay's later stretch quoted on the stay's first day keeps the exit only until that day opens.
  */
 class CancellationPolicyFreeExitTest {
 
@@ -66,7 +67,11 @@ class CancellationPolicyFreeExitTest {
 	}
 
 	private static BookingRecord booking(Instant movedAt) {
-		return new BookingRecord(1L, "CODE", BookingStatus.CONFIRMED, VENUE, SET, new CustomerId(5), DAY,
+		return booking(DAY, movedAt);
+	}
+
+	private static BookingRecord booking(LocalDate firstDay, Instant movedAt) {
+		return new BookingRecord(1L, "CODE", BookingStatus.CONFIRMED, VENUE, SET, new CustomerId(5), firstDay,
 				4500L, "EUR", null, null, null, null, Instant.EPOCH, null, movedAt);
 	}
 
@@ -117,5 +122,15 @@ class CancellationPolicyFreeExitTest {
 		assertEquals(4500L, quote.refundMinor());
 		assertEquals(RefundReason.VENUE_CHANGE, quote.reason());
 		assertEquals(tirane(9, 11, 15, 0), quote.freeExitUntil());
+	}
+
+	@Test
+	void aLaterStretchsExitEndsWhenItsStayStopsBeingCancellable() {
+		RefundQuote quote = policyAt(tirane(9, 11, 12, 0)).quote(booking(DAY.plusDays(3), MOVED_AT), DAY);
+
+		assertEquals(CancellationWindow.LATE, quote.window());
+		assertEquals(4500L, quote.refundMinor());
+		assertEquals(RefundReason.VENUE_CHANGE, quote.reason());
+		assertEquals(tirane(9, 12, 0, 0), quote.freeExitUntil(), "the stay's first day opening, not noon on the 14th");
 	}
 }

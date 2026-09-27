@@ -25,13 +25,17 @@ record BookingDetailView(String code, String status, long venueId, String venueN
 		boolean payWindowClosed, String cancelReason, String cancellationWindowAtBirth,
 		ReviewPanelView reviewPanel, MoveView move, List<StretchView> stretches) {
 
-	/** One stretch of a stitched stay (design D6); empty for a lone booking. */
+	/**
+	 * One stretch of a stitched stay (design D6) with its own remodel move, {@code null} if unmoved; empty
+	 * for a lone booking.
+	 */
 	record StretchView(long setId, String rowLabel, int positionNo, String firstDate, String lastDate, MoneyView amount,
-			String status) {
+			String status, MoveView move) {
 
 		static StretchView of(BookingDetail.StayStretch stretch) {
 			return new StretchView(stretch.setId().value(), stretch.rowLabel(), stretch.positionNo(),
-					stretch.firstDay().toString(), stretch.lastDay().toString(), stretch.amount(), stretch.status().name());
+					stretch.firstDay().toString(), stretch.lastDay().toString(), stretch.amount(), stretch.status().name(),
+					stretch.move() == null ? null : MoveView.of(stretch.move()));
 		}
 	}
 

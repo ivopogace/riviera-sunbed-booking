@@ -91,6 +91,11 @@ final class StayFixtures {
 			jdbc.sql("DELETE FROM " + dependent + " WHERE booking_id IN (SELECT id FROM booking WHERE venue_id = :v)")
 					.param("v", venue).update();
 		}
+		for (String line : List.of("remodel_receipt_move", "remodel_receipt_outcome", "remodel_receipt_kept")) {
+			jdbc.sql("DELETE FROM " + line + " WHERE receipt_id IN (SELECT id FROM remodel_receipt WHERE venue_id = :v)")
+					.param("v", venue).update();
+		}
+		jdbc.sql("DELETE FROM remodel_receipt WHERE venue_id = :v").param("v", venue).update();
 		jdbc.sql("DELETE FROM payment_booking WHERE booking_ref IN (SELECT id FROM booking WHERE venue_id = :v)")
 				.param("v", venue).update();
 		payments.forEach(payment -> jdbc.sql("DELETE FROM payment WHERE id = :p").param("p", payment).update());

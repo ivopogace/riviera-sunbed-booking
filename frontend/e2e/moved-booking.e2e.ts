@@ -8,8 +8,9 @@ import { settle } from './support/booking-dialog';
  * reads that the spot changed — where from, where to, how far — with the free-exit deadline the
  * server named; the refund terms promise the full refund; cancelling takes it through the same
  * two-step cancel, and the cancelled panel says the guest took that exit. The "My bookings" row
- * carries the change too. The API is mocked (`page.route`), so the suite is CI-safe; axe runs on
- * the moved and the cancelled states.
+ * carries the change too. A stitched stay names the stop that moved and marks it in its stop list.
+ * The API is mocked (`page.route`), so the suite is CI-safe; axe runs on the moved and the
+ * cancelled states and on the moved stay.
  */
 
 const CODE = 'MOVE234567';
@@ -130,4 +131,75 @@ test('the My bookings row of a moved booking says the spot changed', async ({ pa
   await expect(row.getByTestId('row-subline')).toHaveText(
     'Spot changed by the venue · see details',
   );
+});
+
+const STAY_CODE = 'MVST234567';
+
+/** A stitched stay whose second stop moved; its exit runs to the stay's first midnight (23:00Z → 00:00 CET). */
+const MOVED_STAY_DETAIL = {
+  ...MOVED_DETAIL,
+  code: STAY_CODE,
+  positionNo: 2,
+  lastDate: '2026-12-07',
+  amount: { minorUnits: 31500, currency: 'EUR' },
+  refundIfCancelledNow: { minorUnits: 31500, currency: 'EUR' },
+  beforeCutoff: true,
+  move: null,
+  stretches: [
+    {
+      setId: 11,
+      rowLabel: 'Front row',
+      positionNo: 2,
+      firstDate: '2026-12-01',
+      lastDate: '2026-12-03',
+      amount: { minorUnits: 13500, currency: 'EUR' },
+      status: 'CONFIRMED',
+      move: null,
+    },
+    {
+      setId: 13,
+      rowLabel: 'Front row',
+      positionNo: 7,
+      firstDate: '2026-12-04',
+      lastDate: '2026-12-07',
+      amount: { minorUnits: 18000, currency: 'EUR' },
+      status: 'CONFIRMED',
+      move: {
+        fromRowLabel: 'Front row',
+        fromPositionNo: 4,
+        rowsAway: 0,
+        positionsAway: 3,
+        movedAt: '2026-11-20T13:00:00Z',
+        freeExitUntil: '2026-11-30T23:00:00Z',
+      },
+    },
+  ],
+};
+
+test('a stitched stay names the stop that moved, its exit, and marks it in the stop list (+ axe)', async ({
+  page,
+}) => {
+  await page.route(new RegExp(`/api/bookings/${STAY_CODE}(\\?.*)?$`), (route) =>
+    route.fulfill({ json: MOVED_STAY_DETAIL }),
+  );
+
+  await page.goto(`/booking/${STAY_CODE}`);
+
+  const notice = page.getByTestId('booking-moved');
+  await expect(notice).toContainText('Your spot changed');
+  await expect(notice).toContainText(
+    'Miramar Beach Club rearranged its beach map, so your set for stop 2 (4 – 7 Dec · 4 days) moved from Front row · spot 4 to Front row · spot 7 (3 positions along the row).',
+  );
+  await expect(notice).toContainText('Your booking code, price and dates are unchanged.');
+  await expect(page.getByTestId('booking-free-exit')).toContainText(
+    /cancel the stay below until\s+Tue, 1 Dec, 00:00\s+and stop 2 is refunded in full\./,
+  );
+  const stops = page.getByTestId('view-stops').getByRole('listitem');
+  await expect(stops).toHaveCount(2);
+  await expect(stops.nth(0).getByTestId('view-stop-moved')).toHaveCount(0);
+  await expect(stops.nth(1).getByTestId('view-stop-moved')).toHaveText(
+    'moved from Front row · spot 4',
+  );
+  await settle(page);
+  await expectNoSeriousAxeViolations(page, 'booking view (stitched stay, one stop moved)');
 });

@@ -146,6 +146,16 @@ public class BookingCutoff {
 	}
 
 	/**
+	 * The free exit of a booking whose cancellation is judged on {@code windowDay} (a stay's later
+	 * stretch, judged on the stay's first day): its own deadline, never past that day's opening.
+	 */
+	public java.time.Instant freeExitEndsAt(LocalDate bookingDate, LocalDate windowDay, java.time.Instant movedAt) {
+		java.time.Instant own = freeExitEndsAt(bookingDate, movedAt);
+		java.time.Instant windowCloses = serviceDayOpensAt(windowDay);
+		return own.isBefore(windowCloses) ? own : windowCloses;
+	}
+
+	/**
 	 * The instant free cancellation for {@code bookingDate} ends — the venue's evening-before
 	 * {@code cutoff} wall-clock time in {@code Europe/Tirane} (ADR-0005; no sales role now).
 	 */

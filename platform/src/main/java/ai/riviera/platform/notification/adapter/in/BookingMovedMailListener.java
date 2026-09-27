@@ -61,7 +61,7 @@ class BookingMovedMailListener {
 	private BookingMovedMail mailOf(BookingMoved event, BookingMailFacts.Resolved booking, BookingMoveFacts move) {
 		return new BookingMovedMail(booking.bookingCode(), booking.venueName(), event.bookingDate(), event.lastDay(),
 				move.fromRowLabel(), move.fromPositionNo(), move.toRowLabel(), move.toPositionNo(), move.rowsAway(),
-				move.positionsAway(), move.freeExitUntil(), links.forBooking(booking.bookingCode()));
+				move.positionsAway(), move.freeExitUntil(), move.stretch(), links.forBooking(booking.bookingCode()));
 	}
 
 	/** Ids and the reason only — never the code or the booking link that embeds it (invariant #7). */

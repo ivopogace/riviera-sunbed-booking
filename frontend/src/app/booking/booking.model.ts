@@ -46,6 +46,11 @@ export interface StayStretchView {
   readonly amount: MoneyView;
   /** The stretch's own contract state on the code-gated view; absent on a creation response. */
   readonly status?: string;
+  /**
+   * The remodel move this stretch went through, or null; its new spot is this stretch's own. Absent
+   * on a creation response.
+   */
+  readonly move?: BookingMove | null;
 }
 
 /**
@@ -219,7 +224,10 @@ export interface BookingDetail {
    * reviewable without its status moving, and every such fence is the server's.
    */
   readonly reviewPanel: ReviewPanel;
-  /** The remodel move this booking went through, or null when the venue never moved it. */
+  /**
+   * The remodel move this booking went through, or null when the venue never moved it. Always null
+   * for a stay: a moved stretch carries its own on `stretches`.
+   */
   readonly move: BookingMove | null;
   /** A stitched stay's stretches with their own states; empty (or absent, older payload) for one set. */
   readonly stretches?: readonly StayStretchView[];
