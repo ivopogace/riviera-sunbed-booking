@@ -55,6 +55,7 @@ class PlanItineraryIT {
 	private long b1;
 	private long hidden;
 	private long capped;
+	private long request;
 
 	@BeforeEach
 	void seedFixtures() {
@@ -81,6 +82,14 @@ class PlanItineraryIT {
 		take(cappedA, D1.plusDays(2));
 		take(cappedB, D1);
 		take(cappedB, D1.plusDays(1));
+
+		request = insertVenue("Request Beach", null, true);
+		jdbc.sql("UPDATE venue SET booking_mode = 'REQUEST' WHERE id = :id").param("id", request).update();
+		long requestA = insertSet(request, "A", 1, 1, 2500, "STANDARD");
+		long requestB = insertSet(request, "A", 2, 1, 2500, "STANDARD");
+		take(requestA, D1.plusDays(2));
+		take(requestB, D1);
+		take(requestB, D1.plusDays(1));
 	}
 
 	@AfterEach
@@ -140,6 +149,18 @@ class PlanItineraryIT {
 		StayPlan withinTheMaximum = planner.plan(new VenueId(capped), new StaySpan(D1, D1.plusDays(2)), Optional.empty())
 				.orElseThrow().plan().orElseThrow();
 		assertEquals(1, withinTheMaximum.moveCount(), "three days stitch at the same venue: the maximum, not the search, refused");
+	}
+
+	@Test
+	void aRequestToBookVenueGetsNoPlan() {
+		StaySpan threeDays = new StaySpan(D1, D1.plusDays(2));
+		StayItinerary itinerary = planner.plan(new VenueId(request), threeDays, Optional.empty()).orElseThrow();
+
+		assertEquals(0, itinerary.maxMoves(), "one set per request: no move budget");
+		assertTrue(itinerary.plan().isEmpty());
+		assertEquals(Anchoring.NONE, itinerary.anchoring());
+		assertEquals(1, planner.plan(new VenueId(capped), threeDays, Optional.empty()).orElseThrow().plan().orElseThrow()
+				.moveCount(), "the same grid stitches at an Instant venue");
 	}
 
 	@Test

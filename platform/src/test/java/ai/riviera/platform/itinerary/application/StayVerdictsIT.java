@@ -47,6 +47,7 @@ class StayVerdictsIT {
 	private long cannotHost;
 	private long withMoves;
 	private long tooLong;
+	private long requestWithMoves;
 
 	@BeforeEach
 	void seedFixtures() {
@@ -79,6 +80,13 @@ class StayVerdictsIT {
 
 		tooLong = insertVenue("Too Long Beach", 2);
 		insertSet(tooLong, 1, "ONLINE");
+
+		requestWithMoves = insertVenue("Request Moves Beach", null, "REQUEST");
+		long d1 = insertSet(requestWithMoves, 1, "ONLINE");
+		long d2 = insertSet(requestWithMoves, 2, "ONLINE");
+		take(d1, D1.plusDays(3));
+		take(d2, D1);
+		take(d2, D1.plusDays(2));
 	}
 
 	@AfterEach
@@ -102,19 +110,33 @@ class StayVerdictsIT {
 	}
 
 	@Test
+	void aRequestToBookVenueIsNeverFitsWithMoves() {
+		Map<VenueId, StayVerdict> byVenue = verdicts.forCoast(List.of(new VenueId(withMoves),
+				new VenueId(requestWithMoves)), FOUR_DAYS);
+
+		assertEquals(StayVerdict.Fit.FITS_WITH_MOVES, byVenue.get(new VenueId(withMoves)).fit(), "the same grid, Instant");
+		assertEquals(new StayVerdict(StayVerdict.Fit.CANNOT_HOST, 0, 3, null, 0),
+				byVenue.get(new VenueId(requestWithMoves)), "one set per request, never a plan");
+	}
+
+	@Test
 	void anUnknownVenueIsAbsentAndAnEmptyCoastReadsNothing() {
 		assertEquals(Map.of(), verdicts.forCoast(List.of(), FOUR_DAYS));
 		assertEquals(Map.of(), verdicts.forCoast(List.of(new VenueId(-1)), FOUR_DAYS));
 	}
 
 	private long insertVenue(String name, Integer maxStayDays) {
+		return insertVenue(name, maxStayDays, "INSTANT");
+	}
+
+	private long insertVenue(String name, Integer maxStayDays, String bookingMode) {
 		long id = jdbc.sql("""
 				INSERT INTO venue (name, beach, rating_tenths, reviews_count, booking_mode,
 				                   commission_bps, payout_currency, max_stay_days)
-				VALUES (:name, :beach, 40, 1, 'INSTANT', 1500, 'EUR', :max)
+				VALUES (:name, :beach, 40, 1, :mode, 1500, 'EUR', :max)
 				RETURNING id
 				""")
-				.param("name", name).param("beach", BEACH).param("max", maxStayDays)
+				.param("name", name).param("beach", BEACH).param("max", maxStayDays).param("mode", bookingMode)
 				.query(Long.class).single();
 		OwnershipFixtures.grantToBootstrap(jdbc, id);
 		return id;

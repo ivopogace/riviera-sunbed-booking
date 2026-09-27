@@ -159,9 +159,9 @@ standing in for `feature/request-stay`)
 
 ## Execution status
 
-**Stage pointer:** `implement (phase 4)`
+**Stage pointer:** `implement (phase 5)`
 
-**Next action:** red tests for AC-8 (the verdict clamp: a Request-to-Book venue has no move budget).
+**Next action:** red specs for AC-9 (venue page offers a range at a Request venue, no plan; dialog quotes the total).
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -169,7 +169,7 @@ standing in for `feature/request-stay`)
 | 1 — the queue shows the range | ✅ | (phase 1+2 commit) |
 | 2 — accept, race and sweep on a range | ✅ | (phase 1+2 commit) |
 | 3 — the three mails name the range | ✅ | (phase 3 commit) |
-| 4 — the verdict clamp | | |
+| 4 — the verdict clamp | ✅ | (phase 4 commit) |
 | 5 — FE venue page and dialog | | |
 | 6 — FE Requests queue | | |
 | 7 — e2e + docs | | |
