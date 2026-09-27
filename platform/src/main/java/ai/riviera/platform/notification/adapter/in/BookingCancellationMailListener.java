@@ -22,12 +22,11 @@ import ai.riviera.platform.notification.application.TransactionalMailService;
 import ai.riviera.platform.shared.ObservabilityMetrics;
 
 /**
- * Mails the tourist a record of a cancelled booking and its refund — one listener for every
- * cancellation channel. Renders the server-computed refund off the payload (invariants #10, #5); zero
- * is a decision too. It reports the decision, not a settlement: the refund may still fail
- * ({@link ObservabilityMetrics#REFUNDS_FAILED}). Only a remodel-ended booking gets a {@link RebookLinks}
- * link, and {@code VENUE_CHANGE} alone cannot say so. Async after-commit on the mail bulkhead, no
- * {@code @Transactional}, at-least-once. Rationale: RESPONSIBILITIES.md §notification, ADR-0011.
+ * Mails the tourist a cancelled booking's record, for every cancellation channel: the payload's server-computed
+ * refund (#10, #5), zero included, a decision not a settlement ({@link ObservabilityMetrics#REFUNDS_FAILED}).
+ * Only a remodel-ended booking gets a {@link RebookLinks} link. A stretch of a stay cancelled whole is left to
+ * {@link StayCancellationMailListener}. Async after-commit on the mail bulkhead, at-least-once, no
+ * {@code @Transactional}. Rationale: RESPONSIBILITIES.md §notification, ADR-0011.
  */
 @Component
 class BookingCancellationMailListener {
@@ -52,6 +51,9 @@ class BookingCancellationMailListener {
 	@Async(RegistryMailExecutorConfig.MAIL_EXECUTOR)
 	@TransactionalEventListener
 	void on(BookingCancelled event) {
+		if (event.cancelledWithStay() != null) {
+			return;
+		}
 		switch (facts.resolve(event.bookingId(), event.setId())) {
 			case BookingMailFacts.Missing(MissingBookingFact fact) -> abandon(fact, event);
 			case BookingMailFacts.Resolved booking -> mails.sendBookingCancellation(booking.toEmail(),

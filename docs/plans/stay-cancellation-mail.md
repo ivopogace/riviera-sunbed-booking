@@ -105,14 +105,14 @@ untouched. The mail reports the summed server-side quote (#10), integer minor un
 
 ## Execution status
 
-**Stage pointer:** implement (phase 1)
+**Stage pointer:** implement (phase 2)
 
-**Next action:** red `StayCancellationMailListenerTest` + stamped-skip in `BookingCancellationMailListenerTest`.
+**Next action:** docs: RESPONSIBILITIES.md, CLAUDE.md event list, ADR-0024, multi-day-stays.md, CONTEXT.md.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — booking publishes | ✅ | phase-0 commit |
-| 1 — notification mails | ⏳ | |
-| 2 — docs | | |
+| 1 — notification mails | ✅ | phase-1 commit |
+| 2 — docs | ⏳ | |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
