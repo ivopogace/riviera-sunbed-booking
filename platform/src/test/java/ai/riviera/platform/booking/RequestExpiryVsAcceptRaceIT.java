@@ -65,7 +65,7 @@ class RequestExpiryVsAcceptRaceIT {
 				""").param("venue", venueId).query(Long.class).single();
 	}
 
-	/** A PENDING_REQUEST row already past its deadline, its (set, date) soft-held. */
+	/** A PENDING_REQUEST row already past its deadline, holding nothing (ADR-0025). */
 	private long insertOverdueRequest(String code, LocalDate date) {
 		long customer = jdbc.sql("INSERT INTO customer (email, full_name, phone) "
 						+ "VALUES (:e, 'Guest', '+355600') RETURNING id")
@@ -80,9 +80,6 @@ class RequestExpiryVsAcceptRaceIT {
 				.param("cust", customer).param("date", date)
 				.param("expires", java.sql.Timestamp.from(Instant.now().minusSeconds(30)))
 				.query(Long.class).single();
-		jdbc.sql("INSERT INTO set_availability (set_id, booking_date, state) "
-						+ "VALUES (:set, :date, 'BOOKED_ONLINE') ON CONFLICT DO NOTHING")
-				.param("set", setId).param("date", date).update();
 		return booking;
 	}
 
@@ -137,6 +134,6 @@ class RequestExpiryVsAcceptRaceIT {
 		assertEquals(0L, jdbc.sql("SELECT COUNT(*) FROM set_availability "
 						+ "WHERE set_id = :set AND booking_date = :date")
 				.param("set", setId).param("date", date).query(Long.class).single(),
-				"the expired request's soft-hold is released exactly once (invariant #2)");
+				"an expired request held nothing, and the losing accept claimed nothing (ADR-0025)");
 	}
 }

@@ -403,7 +403,7 @@ class SmtpMailer implements Mailer {
 	@Override
 	public void sendRequestDeclined(String toEmail, RequestDeclinedMail declined) {
 		send(toEmail, REQUEST_DECLINED_SUBJECT.formatted(headerSafe(declined.venueName())), """
-				%s declined your booking request — nothing is held for you and nothing was charged.
+				%s — nothing is held for you and nothing was charged.
 
 				  Booking code:  %s
 				  Venue:         %s
@@ -412,8 +412,17 @@ class SmtpMailer implements Mailer {
 				You can see the request here:
 
 				%s"""
-				.formatted(declined.venueName(), declined.bookingCode(), declined.venueName(),
+				.formatted(declineLine(declined), declined.bookingCode(), declined.venueName(),
 						DATE_FORMAT.format(declined.bookingDate()), declined.statusLink()));
+	}
+
+	/** The one line that says why the request ended (ADR-0025). */
+	private static String declineLine(RequestDeclinedMail declined) {
+		return switch (declined.reason()) {
+			case VENUE -> declined.venueName() + " declined your booking request";
+			case SET_UNAVAILABLE -> declined.venueName() + " could not take your booking request: the set is no longer available for that day";
+			case ANOTHER_GUEST -> declined.venueName() + " gave that set to another guest, so your booking request was declined";
+		};
 	}
 
 	@Override

@@ -68,6 +68,17 @@ class BookingRequestControllerTest {
 	}
 
 	@Test
+	void aLostClaimAnswersSetUnavailableAndSaysTheGuestWasTold() throws Exception {
+		when(respondToRequest.accept(any(), any(), any())).thenReturn(AcceptOutcome.Rejected.SET_UNAVAILABLE);
+
+		mvc.perform(post(ACCEPT, VENUE, BOOKING).with(csrf()).with(user("op").roles("OPERATOR")))
+				.andExpect(status().isConflict())
+				.andExpect(jsonPath("$.code").value("SET_UNAVAILABLE"))
+				.andExpect(jsonPath("$.detail").value(
+						"That set is no longer free for these days; the request was declined and the guest told."));
+	}
+
+	@Test
 	void paymentInitFailureStatesTheCondition() throws Exception {
 		when(respondToRequest.accept(any(), any(), any()))
 				.thenReturn(AcceptOutcome.Rejected.PAYMENT_INIT_FAILED);

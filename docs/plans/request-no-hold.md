@@ -210,19 +210,19 @@ Decision record: ADR-0025.
 
 ## Execution status
 
-**Stage pointer:** `implement (phase 2)`
+**Stage pointer:** `implement (phase 6 — frontend)`
 
-**Next action:** the reserve at a Request venue claims nothing; `RequestToBookFlowIT` and `ConcurrentRequestClaimIT` rewritten
+**Next action:** models + queue hint + `SET_UNAVAILABLE` copy + declined-by-reason copy + not-held copy; Vitest, then mocked e2e
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — Vocabulary and schema | ✅ | phase 0–1 commit |
 | 1 — Termination releases nothing | ✅ | phase 0–1 commit |
-| 2 — The reserve claims nothing | | |
-| 3 — Accept claims | | |
-| 4 — Rivals | | |
-| 5 — Reads and mails | | |
-| 6 — Frontend | | |
-| 7 — Docs | | |
+| 2 — The reserve claims nothing | ✅ | phase 2–5 commit |
+| 3 — Accept claims | ✅ | phase 2–5 commit |
+| 4 — Rivals | ✅ | phase 2–5 commit |
+| 5 — Reads and mails | ✅ | phase 2–5 commit |
+| 6 — Frontend | ⏳ | |
+| 7 — Docs | ✅ (plan removal pending) | phase 2–5 commit |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.

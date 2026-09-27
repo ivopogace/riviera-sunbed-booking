@@ -6,13 +6,13 @@ import java.time.LocalDate;
 import ai.riviera.platform.venue.vocabulary.SetId;
 
 /**
- * One row of the operator's pending-requests queue. Deliberately carries the
- * booking's technical id and <strong>no booking code</strong> — the code is the guest's bearer
- * credential (invariant #7) and the operator does not need it before the booking is confirmed;
- * accept/decline act by id. {@code guestName} is resolved via the {@code customer::api} port;
- * the set is a typed id the staff UI correlates with its map (invariant #11). Money in integer
- * minor units (invariant #5).
+ * One row of the operator's pending-requests queue: the booking's technical id and <strong>no booking
+ * code</strong> (the guest's bearer credential, invariant #7; accept/decline act by id). {@code guestName}
+ * comes from {@code customer::api}; the set is a typed id (invariant #11); money in integer minor units
+ * (invariant #5). {@code competingRequests}: other pending requests on the same set with an overlapping
+ * day, which accepting this one declines (ADR-0025).
  */
 public record PendingRequest(long bookingId, SetId setId, LocalDate bookingDate, String guestName,
-		long amountMinor, String currency, Instant requestedAt, Instant requestExpiresAt) {
+		long amountMinor, String currency, Instant requestedAt, Instant requestExpiresAt,
+		int competingRequests) {
 }

@@ -50,7 +50,8 @@ class PendingRequestsService implements PendingRequests {
 		return rows.stream()
 				.map(row -> new PendingRequest(row.bookingId(), row.setId(), row.bookingDate(),
 						guestName(contacts, row.customerId()),
-						row.amountMinor(), row.currency(), row.requestedAt(), row.requestExpiresAt()))
+						row.amountMinor(), row.currency(), row.requestedAt(), row.requestExpiresAt(),
+						row.competingRequests()))
 				.toList();
 	}
 

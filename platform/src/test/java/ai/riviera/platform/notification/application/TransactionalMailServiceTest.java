@@ -68,7 +68,8 @@ class TransactionalMailServiceTest {
 			URI.create("https://riviera.example/booking/CODE1234"), CancellationWindow.FREE, 0);
 	private static final RequestDeclinedMail DECLINED = new RequestDeclinedMail(
 			"CODE1234", "Vala Beach", LocalDate.of(2026, 8, 1),
-			URI.create("https://riviera.example/booking/CODE1234"));
+			URI.create("https://riviera.example/booking/CODE1234"),
+			ai.riviera.platform.booking.vocabulary.DeclineReason.VENUE);
 	private static final RequestExpiredMail EXPIRED = new RequestExpiredMail(
 			"CODE1234", "Vala Beach", LocalDate.of(2026, 8, 1),
 			URI.create("https://riviera.example/booking/CODE1234"));

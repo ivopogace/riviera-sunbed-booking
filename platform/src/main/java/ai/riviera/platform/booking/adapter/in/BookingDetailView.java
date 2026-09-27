@@ -22,7 +22,7 @@ record BookingDetailView(String code, String status, long venueId, String venueN
 		boolean beforeCutoff, MoneyView refundIfCancelledNow, MoneyView refundedAmount,
 		boolean refundOutstanding,
 		Instant requestExpiresAt, PaymentCredentialsView payment, boolean emailWithheld,
-		boolean payWindowClosed, String cancelReason, String cancellationWindowAtBirth,
+		boolean payWindowClosed, String cancelReason, String declineReason, String cancellationWindowAtBirth,
 		ReviewPanelView reviewPanel, MoveView move, List<StretchView> stretches) {
 
 	/**
@@ -50,6 +50,7 @@ record BookingDetailView(String code, String status, long venueId, String venueN
 								d.payment().paymentIntentId()),
 				d.emailWithheld(), d.payWindowClosed(),
 				d.cancelReason() == null ? null : d.cancelReason().name(),
+				d.declineReason() == null ? null : d.declineReason().name(),
 				d.cancellationWindowAtBirth().name(),
 				ReviewPanelView.of(d.reviewPanel(), d.reviewNameSuggestion()),
 				d.move() == null ? null : MoveView.of(d.move()),

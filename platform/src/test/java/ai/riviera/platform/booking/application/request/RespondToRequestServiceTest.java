@@ -29,6 +29,7 @@ import ai.riviera.platform.booking.application.reserve.ConfirmBooking;
 import ai.riviera.platform.booking.domain.BookingStatus;
 import ai.riviera.platform.booking.vocabulary.CancellationWindow;
 import ai.riviera.platform.availability.api.AvailabilityClaim;
+import ai.riviera.platform.availability.vocabulary.ClaimOutcome;
 import ai.riviera.platform.operator.api.VenueOwnership;
 import ai.riviera.platform.operator.vocabulary.NotVenueOwnerException;
 import ai.riviera.platform.operator.vocabulary.OperatorId;
@@ -89,6 +90,10 @@ class RespondToRequestServiceTest {
 	{
 		when(cancellationPolicy.windowAtBirth(any(), any(), any())).thenReturn(
 				Optional.of(new CancellationPolicy.BirthTerms(CancellationWindow.LATE, 2500)));
+		// ADR-0025: the accept reads the pending span, claims it, then transitions.
+		when(bookings.findPendingRequestSpan(BOOKING.value(), VENUE))
+				.thenReturn(Optional.of(new ClaimRef(SET, BOOKING_DATE, BOOKING_DATE)));
+		when(availability.claim(any(), any())).thenReturn(ClaimOutcome.CLAIMED);
 	}
 
 	private RespondToRequestService service() {
@@ -97,14 +102,15 @@ class RespondToRequestServiceTest {
 
 	private RespondToRequestService serviceOn(Clock at) {
 		return new RespondToRequestService(ownership, bookings,
-				new RequestTerminationService(bookings, publisher), checkout, confirmBooking,
+				new RequestTerminationService(bookings, publisher),
+				new RequestClaimService(bookings, availability, publisher), checkout, confirmBooking,
 				releaseAbandoned, new PaymentDueAnnouncer(publisher), WINDOWS, new BookingCutoff(at),
 				cancellationPolicy, at);
 	}
 
 	/** The facts the guarded accept transition RETURNINGs — every one of them a payload field. */
 	private static AcceptedRequest acceptedRequest() {
-		return new AcceptedRequest(BOOKING.value(), VENUE, SET, BOOKING_DATE, NOW, CREATED_AT, 4500L, "EUR");
+		return new AcceptedRequest(BOOKING.value(), VENUE, SET, BOOKING_DATE, BOOKING_DATE, NOW, CREATED_AT, 4500L, "EUR");
 	}
 
 	@Test
@@ -156,7 +162,7 @@ class RespondToRequestServiceTest {
 		LocalDate today = LocalDate.of(2026, 7, 11);
 		Clock atAccept = Clock.fixed(onDayAccept, ZoneId.of("UTC"));
 		when(bookings.acceptPendingRequest(BOOKING.value(), VENUE, onDayAccept)).thenReturn(
-				Optional.of(new AcceptedRequest(BOOKING.value(), VENUE, SET, today, onDayAccept,
+				Optional.of(new AcceptedRequest(BOOKING.value(), VENUE, SET, today, today, onDayAccept,
 						CREATED_AT, 4500L, "EUR")));
 		when(checkout.pay(any(), any())).thenReturn(new PaymentOutcome.Pending("cs_x", "pi_x"));
 
@@ -176,7 +182,7 @@ class RespondToRequestServiceTest {
 		LocalDate today = LocalDate.of(2026, 7, 11);
 		Clock atAccept = Clock.fixed(onDayAccept, ZoneId.of("UTC"));
 		when(bookings.acceptPendingRequest(BOOKING.value(), VENUE, onDayAccept)).thenReturn(
-				Optional.of(new AcceptedRequest(BOOKING.value(), VENUE, SET, today, onDayAccept,
+				Optional.of(new AcceptedRequest(BOOKING.value(), VENUE, SET, today, today, onDayAccept,
 						CREATED_AT, 4500L, "EUR")));
 		when(checkout.pay(any(), any())).thenReturn(new PaymentOutcome.Pending("cs_x", "pi_x"));
 
@@ -250,9 +256,8 @@ class RespondToRequestServiceTest {
 	}
 
 	@Test
-	void failedPaymentRequestRevertsToPendingAndKeepsTheHold() {
-		// R-4: the venue said yes — a PI-creation failure must NOT release the (set, date); it
-		// reverts so the operator can retry (the idempotency key makes the retry replay-safe).
+	void failedPaymentRequestRevertsToPendingAndReleasesTheClaim() {
+		// The accept claimed the day; the revert gives it back, since a pending request holds nothing (ADR-0025).
 		when(bookings.acceptPendingRequest(BOOKING.value(), VENUE, NOW))
 				.thenReturn(Optional.of(acceptedRequest()));
 		when(checkout.pay(any(), any())).thenReturn(new PaymentOutcome.Failed("stripe_error"));
@@ -262,7 +267,65 @@ class RespondToRequestServiceTest {
 
 		assertSame(AcceptOutcome.Rejected.PAYMENT_INIT_FAILED, outcome);
 		verify(bookings).revertAcceptToPending(BOOKING.value());
-		verifyNoInteractions(availability, releaseAbandoned);
+		verify(availability).release(SET, BOOKING_DATE);
+		verifyNoInteractions(releaseAbandoned);
+	}
+
+	@Test
+	void acceptClaimsTheDayBeforeTransitioning() {
+		when(bookings.acceptPendingRequest(BOOKING.value(), VENUE, NOW))
+				.thenReturn(Optional.of(acceptedRequest()));
+		when(checkout.pay(any(), any())).thenReturn(new PaymentOutcome.Pending("cs_x", "pi_x"));
+
+		service().accept(OPERATOR, VENUE, BOOKING);
+
+		var order = org.mockito.Mockito.inOrder(availability, bookings);
+		order.verify(availability).claim(SET, BOOKING_DATE);
+		order.verify(bookings).acceptPendingRequest(BOOKING.value(), VENUE, NOW);
+		verify(availability, never()).release(any(), any());
+	}
+
+	@Test
+	void acceptOnALostDayDeclinesTheRequestAsSetUnavailable() {
+		when(availability.claim(SET, BOOKING_DATE)).thenReturn(ClaimOutcome.ALREADY_TAKEN);
+		when(bookings.declinePending(BOOKING.value(), VENUE, DeclineReason.SET_UNAVAILABLE))
+				.thenReturn(Optional.of(new ClaimRef(SET, BOOKING_DATE, BOOKING_DATE)));
+
+		AcceptOutcome outcome = service().accept(OPERATOR, VENUE, BOOKING);
+
+		assertSame(AcceptOutcome.Rejected.SET_UNAVAILABLE, outcome);
+		verify(publisher).publishEvent(new BookingRequestDeclined(BOOKING, SET, BOOKING_DATE,
+				DeclineReason.SET_UNAVAILABLE));
+		verify(bookings, never()).acceptPendingRequest(anyLong(), any(), any());
+		verifyNoInteractions(checkout);
+	}
+
+	@Test
+	void acceptDeclinesEveryOverlappingRival() {
+		when(bookings.acceptPendingRequest(BOOKING.value(), VENUE, NOW))
+				.thenReturn(Optional.of(acceptedRequest()));
+		when(bookings.declineOverlappingPending(SET, BOOKING_DATE, BOOKING_DATE, BOOKING.value(),
+				DeclineReason.ANOTHER_GUEST))
+				.thenReturn(List.of(new DeclinedRival(77, SET, BOOKING_DATE), new DeclinedRival(78, SET, BOOKING_DATE)));
+		when(checkout.pay(any(), any())).thenReturn(new PaymentOutcome.Succeeded("ok"));
+
+		service().accept(OPERATOR, VENUE, BOOKING);
+
+		verify(publisher).publishEvent(new BookingRequestDeclined(new BookingId(77), SET, BOOKING_DATE,
+				DeclineReason.ANOTHER_GUEST));
+		verify(publisher).publishEvent(new BookingRequestDeclined(new BookingId(78), SET, BOOKING_DATE,
+				DeclineReason.ANOTHER_GUEST));
+	}
+
+	@Test
+	void aRowThatLeftPendingUnderTheClaimGivesItBack() {
+		// Withdrawn or swept between the read and the transition: the claim is released and the miss classified.
+		when(bookings.acceptPendingRequest(BOOKING.value(), VENUE, NOW)).thenReturn(Optional.empty());
+		when(bookings.requestSnapshot(BOOKING.value(), VENUE)).thenReturn(Optional.of(
+				new RequestSnapshot(BookingStatus.WITHDRAWN, NOW.plusSeconds(600))));
+
+		assertSame(AcceptOutcome.Rejected.NOT_PENDING, service().accept(OPERATOR, VENUE, BOOKING));
+		verify(availability).release(SET, BOOKING_DATE);
 	}
 
 	@Test
@@ -366,7 +429,7 @@ class RespondToRequestServiceTest {
 		var customerId = new CustomerId(5);
 		when(bookings.findPendingRequestsForVenue(VENUE)).thenReturn(List.of(new PendingRequestRow(
 				BOOKING.value(), new SetId(3), java.time.LocalDate.of(2026, 8, 3), customerId,
-				4500L, "EUR", NOW.minusSeconds(3600), NOW.plusSeconds(3600))));
+				4500L, "EUR", NOW.minusSeconds(3600), NOW.plusSeconds(3600), 0)));
 		when(lookup.findByIds(java.util.Set.of(customerId))).thenReturn(java.util.Map.of(customerId,
 				new ai.riviera.platform.customer.vocabulary.GuestContact("g@e.com", "Guest Name", "+355")));
 

@@ -76,7 +76,7 @@ class ConcurrentRequestTerminationIT {
 				""").param("venue", venueId).query(Long.class).single();
 	}
 
-	/** A PENDING_REQUEST row with its (set, date) soft-held; overdue when {@code expiresAt} is past. */
+	/** A PENDING_REQUEST row holding nothing (ADR-0025); overdue when {@code expiresAt} is past. */
 	private long insertRequest(String code, LocalDate date, Instant expiresAt) {
 		long customer = jdbc.sql("INSERT INTO customer (email, full_name, phone) "
 						+ "VALUES (:e, 'Guest', '+355600') RETURNING id")
@@ -91,9 +91,6 @@ class ConcurrentRequestTerminationIT {
 				.param("cust", customer).param("date", date)
 				.param("expires", java.sql.Timestamp.from(expiresAt))
 				.query(Long.class).single();
-		jdbc.sql("INSERT INTO set_availability (set_id, booking_date, state) "
-						+ "VALUES (:set, :date, 'BOOKED_ONLINE') ON CONFLICT DO NOTHING")
-				.param("set", setId).param("date", date).update();
 		return booking;
 	}
 
@@ -144,7 +141,7 @@ class ConcurrentRequestTerminationIT {
 						.formatted(withdrawWon, swept));
 		assertEquals(withdrawWon ? "WITHDRAWN" : "EXPIRED", statusOf(bookingId));
 		assertEquals(0L, heldRows(date),
-				"the soft-hold is released exactly once, whichever leg won (invariant #2)");
+				"whichever leg won, nothing is held: a pending request has no row (ADR-0025)");
 	}
 
 	@Test
@@ -182,9 +179,11 @@ class ConcurrentRequestTerminationIT {
 		long bookingId = insertRequest(code, date, Instant.now().plusSeconds(3600));
 		jdbc.sql("UPDATE booking SET status = 'AWAITING_PAYMENT', accepted_at = now() WHERE id = :id")
 				.param("id", bookingId).update();
+		jdbc.sql("INSERT INTO set_availability (set_id, booking_date, state) VALUES (:set, :date, 'BOOKED_ONLINE')")
+				.param("set", setId).param("date", date).update();
 
 		assertEquals(WithdrawOutcome.Rejected.NOT_PENDING, withdrawRequest.withdraw(code));
 		assertEquals("AWAITING_PAYMENT", statusOf(bookingId));
-		assertEquals(1L, heldRows(date), "a rejected withdraw releases nothing");
+		assertEquals(1L, heldRows(date), "a rejected withdraw releases nothing — the accept's claim stands");
 	}
 }

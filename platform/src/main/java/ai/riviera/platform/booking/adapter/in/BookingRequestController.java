@@ -68,6 +68,8 @@ class BookingRequestController {
 						RequestProblemDetails.NOT_PENDING);
 				case EXPIRED -> problem(HttpStatus.CONFLICT, "REQUEST_EXPIRED",
 						"This request's response deadline has passed.");
+				case SET_UNAVAILABLE -> problem(HttpStatus.CONFLICT, "SET_UNAVAILABLE",
+						"That set is no longer free for these days; the request was declined and the guest told.");
 				case PAYMENT_INIT_FAILED -> problem(HttpStatus.BAD_GATEWAY, "PAYMENT_INIT_FAILED",
 						"The payment request could not be issued.");
 			};

@@ -172,6 +172,12 @@ public final class BookingMailFixtures {
 		return new BookingRequestDeclined(new BookingId(bookingId), new SetId(set.setId()), date);
 	}
 
+	/** The decline fact with the reason the mail names (ADR-0025). */
+	public BookingRequestDeclined requestDeclinedOf(SetRef set, long bookingId, LocalDate date,
+			ai.riviera.platform.booking.vocabulary.DeclineReason reason) {
+		return new BookingRequestDeclined(new BookingId(bookingId), new SetId(set.setId()), date, reason);
+	}
+
 	/** The move fact an IT publishes to drive the mail; the booking must carry a receipt move and {@code moved_at}. */
 	public ai.riviera.platform.booking.events.BookingMoved movedOf(SetRef from, long toSetId, long bookingId,
 			LocalDate date) {

@@ -115,7 +115,7 @@ class ViewBookingService implements ViewBooking {
 				cancellable, false, quotes.getFirst().beforeCutoff(),
 				new MoneyView(refundIfCancelledNow, first.currency()),
 				summary.refundMinor() == null ? null : new MoneyView(summary.refundMinor(), first.currency()),
-				refundOutstanding, null, payment, emailWithheld, payWindowClosed, summary.cancelReason(),
+				refundOutstanding, null, payment, emailWithheld, payWindowClosed, summary.cancelReason(), null,
 				cutoff.cancellationWindow(firstSet.bookingCutoff(), stay.firstDay(), first.createdAt()),
 				panel, nameSuggestionFor(panel, first), null, stretchViews);
 	}
@@ -158,7 +158,7 @@ class ViewBookingService implements ViewBooking {
 				cancellable, withdrawable, quote.beforeCutoff(),
 				new MoneyView(quote.refundMinor(), b.currency()),
 				refunded, refundOutstanding, b.requestExpiresAt(), payment, emailWithheld,
-				payWindowClosed, b.cancelReason(),
+				payWindowClosed, b.cancelReason(), b.declineReason(),
 				cutoff.cancellationWindow(set.bookingCutoff(), b.bookingDate(), b.createdAt()),
 				panel, nameSuggestionFor(panel, b), moveOf(b, quote), List.of());
 	}

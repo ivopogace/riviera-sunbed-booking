@@ -28,13 +28,12 @@ import ai.riviera.platform.venue.vocabulary.SetId;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 /**
- * Request-to-Book concurrency (issue #98, AC-2 / invariant #2): many tourists request the SAME
- * {@code (set, date)} of a REQUEST-mode venue at once; exactly one must end
- * {@code PENDING_REQUEST} and every other {@code SET_TAKEN} — the soft-hold is the same atomic
- * {@code INSERT … ON CONFLICT} claim as Instant Book, against real Postgres. Also proves exactly
- * one booking row and one availability row survive, and that no payment gateway is touched (the
- * default stub profile would confirm synchronously — a {@code Requested} outcome proves the
- * request branch, not the instant one, ran).
+ * Request-to-Book concurrency under ADR-0025: many tourists request the SAME {@code (set, date)} of a
+ * REQUEST-mode venue at once, and every one of them ends {@code PENDING_REQUEST} — a request is not a
+ * hold, so nothing contends; no availability row is written and no payment gateway is touched (the
+ * default stub profile would confirm synchronously — a {@code Requested} outcome proves the request
+ * branch, not the instant one, ran). The venue picks among them at accept time
+ * ({@code ConcurrentOverlappingAcceptIT}).
  */
 @EnabledIfDockerAvailable
 @Import(TestcontainersConfiguration.class)
@@ -66,7 +65,7 @@ class ConcurrentRequestClaimIT {
 	}
 
 	@Test
-	void exactlyOnePendingRequestUnderContention() throws Exception {
+	void everyContenderEndsPendingAndNothingIsHeld() throws Exception {
 		LocalDate date = LocalDate.now().plusMonths(2);
 		int contenders = 8;
 
@@ -89,17 +88,13 @@ class ConcurrentRequestClaimIT {
 		}
 
 		long requested = outcomes.stream().filter(BookingOutcome.Requested.class::isInstance).count();
-		long taken = outcomes.stream().filter(o -> o == BookingOutcome.Rejected.SET_TAKEN).count();
-		assertEquals(1, requested, "exactly one contender wins the soft-hold (invariant #2)");
-		assertEquals(contenders - 1, taken, "every loser gets SET_TAKEN, never an exception");
+		assertEquals(contenders, requested, "a request holds nothing, so every contender is pending (ADR-0025)");
 
-		assertEquals(1, count("SELECT count(*) FROM booking WHERE set_id = :id AND booking_date = :date"),
-				"one PENDING_REQUEST booking row survives");
-		assertEquals("PENDING_REQUEST", jdbc.sql(
-				"SELECT status FROM booking WHERE set_id = :id AND booking_date = :date")
-				.param("id", requestModeSet.value()).param("date", date).query(String.class).single());
-		assertEquals(1, count("SELECT count(*) FROM set_availability WHERE set_id = :id AND booking_date = :date"),
-				"one availability row — the soft-hold IS the claim row");
+		assertEquals(contenders, count("SELECT count(*) FROM booking WHERE set_id = :id AND booking_date = :date"
+						+ " AND status = 'PENDING_REQUEST'"),
+				"one PENDING_REQUEST row per contender");
+		assertEquals(0, count("SELECT count(*) FROM set_availability WHERE set_id = :id AND booking_date = :date"),
+				"no availability row — the accept claims, not the request");
 		assertEquals(0, count("SELECT count(*) FROM payment_booking p JOIN booking b ON p.booking_ref = b.id "
 						+ "WHERE b.set_id = :id AND b.booking_date = :date"),
 				"no PaymentIntent exists for a pending request (payment-request-on-accept)");

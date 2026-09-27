@@ -77,7 +77,7 @@ class RequestTerminationEventPublicationIT {
 				""").param("venue", venueId).query(Long.class).single();
 	}
 
-	/** A PENDING_REQUEST row with its (set, date) soft-held; overdue when {@code expiresAt} is past. */
+	/** A PENDING_REQUEST row holding nothing (ADR-0025); overdue when {@code expiresAt} is past. */
 	private long insertRequest(String code, LocalDate date, Instant expiresAt) {
 		long customer = jdbc.sql("INSERT INTO customer (email, full_name, phone) "
 						+ "VALUES (:e, 'Guest', '+355600') RETURNING id")
@@ -92,9 +92,6 @@ class RequestTerminationEventPublicationIT {
 				.param("cust", customer).param("date", date)
 				.param("expires", java.sql.Timestamp.from(expiresAt))
 				.query(Long.class).single();
-		jdbc.sql("INSERT INTO set_availability (set_id, booking_date, state) "
-						+ "VALUES (:set, :date, 'BOOKED_ONLINE') ON CONFLICT DO NOTHING")
-				.param("set", setId).param("date", date).update();
 		return booking;
 	}
 

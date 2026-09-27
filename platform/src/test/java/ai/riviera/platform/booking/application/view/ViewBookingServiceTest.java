@@ -616,6 +616,22 @@ class ViewBookingServiceTest {
 		givenBooking(status, window, refundMinor, Instant.EPOCH);
 	}
 
+	@Test
+	void aDeclinedRequestNamesItsReason() {
+		when(collection.provenBeforeConfirmation()).thenReturn(true);
+		BookingRecord record = new BookingRecord(1L, CODE, BookingStatus.DECLINED, VENUE, SET, GUEST, DATE, DATE,
+				4500L, "EUR", null, null, null, null, Instant.EPOCH, null, null,
+				ai.riviera.platform.booking.vocabulary.DeclineReason.ANOTHER_GUEST);
+		when(bookings.findByCode(CODE)).thenReturn(Optional.of(record));
+		when(cancellationPolicy.quote(record))
+				.thenReturn(new CancellationPolicy.RefundQuote(setInfo(), CancellationWindow.LATE, 0L, RefundReason.POLICY, null));
+
+		BookingDetail detail = service.byCode(CODE).orElseThrow();
+
+		assertThat(detail.declineReason()).isEqualTo(ai.riviera.platform.booking.vocabulary.DeclineReason.ANOTHER_GUEST);
+		assertThat(detail.withdrawable()).isFalse();
+	}
+
 	/** {@code createdAt} is advance-born ({@code Instant.EPOCH}) by default; AC-7 tests override it. */
 	private void givenBooking(BookingStatus status, CancellationWindow window, long refundMinor,
 			Instant createdAt) {

@@ -156,8 +156,10 @@ which lengthens runs. Weekend-aligned gaps could cut the other way; only real tr
     accidentally sell a broken holiday.
 28. As a venue operator, I want to cap how long a stay may be at my venue, so that a fortnight-long
     request cannot tie up inventory I would rather sell daily.
-29. As a venue operator, I want long requests to expire faster than short ones, so that an
-    abandoned fifteen-day request does not hold fifteen days of inventory with no money at risk.
+29. ~~As a venue operator, I want long requests to expire faster than short ones, so that an
+    abandoned fifteen-day request does not hold fifteen days of inventory with no money at risk.~~
+    Retired by ADR-0025 (2026-09-27): a pending request holds no inventory, so its length puts
+    nothing at risk; the venue's accept is the claim.
 30. As a venue operator, I want my daily view to separate guests arriving today, staying today and
     leaving today, so that my staff know who to greet and which sets turn over.
 31. As a venue operator, I want to see who has not yet checked in **today**, so that "nobody turned
@@ -264,7 +266,8 @@ the venue-change fee.
 Each release site today frees exactly one date, taken from the single `booking_date` its
 `RETURNING` clause yields. There are seven: the guest cancel, the four remodel legs, the three
 request-termination legs, and the abandoned-payment sweep. Under a range each must release the
-whole span. This is the slice's highest-risk correctness item, because `set_availability` carries
+whole span. (Since ADR-0025 a pending request holds nothing, so the three request-termination legs
+and the remodel's decline release nothing; the accept's revert joined the releasing legs instead.) This is the slice's highest-risk correctness item, because `set_availability` carries
 **no link to a booking** (`held_by_booking_id` was deferred in V4 and never added), so a stranded
 row is not merely unswept — nothing in the system can identify it, no sweep or constraint frees it,
 and the only operator-facing delete filters on `state = 'STAFF_MARKED'`. Recovery would need direct
@@ -357,8 +360,7 @@ this season". The reserve path rejects a range longer than the venue's maximum, 
 
 Nothing in the design needs a fixed limit. Invariant #2 is one claim per `(set, date)` at any length,
 and the itinerary search runs in microseconds at sixty days. The concerns a cap would answer are
-answered elsewhere. Inventory held by an unanswered Request-to-Book stay is bounded by story 29's
-shorter expiry for longer requests. The layout freeze is bounded by segment length (D6), which the
+answered elsewhere. An unanswered Request-to-Book stay holds no inventory at all (ADR-0025). The layout freeze is bounded by segment length (D6), which the
 stitching keeps at two to five days whatever the stay length.
 
 In the UI, the discovery page's calendar accepts any range up to the season's end. A venue whose

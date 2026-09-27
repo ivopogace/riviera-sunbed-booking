@@ -110,7 +110,7 @@ class RequestToBookFlowIT {
 	}
 
 	@Test
-	void pendingHoldBlocksOnlineChannel() throws Exception {
+	void aPendingRequestLeavesTheDayOpenToOtherRequests() throws Exception {
 		LocalDate date = bookable().plusDays(1);
 		mvc.perform(post("/api/bookings")
 						.header(SessionLoginSupport.CHALLENGE_HEADER, SessionLoginSupport.solvedChallenge(mvc))
@@ -118,16 +118,20 @@ class RequestToBookFlowIT {
 						.content(body(requestSet, date)))
 				.andExpect(status().isAccepted());
 
+		// ADR-0025: a request is not a hold — a second guest may request the same set and day.
 		mvc.perform(post("/api/bookings")
 						.header(SessionLoginSupport.CHALLENGE_HEADER, SessionLoginSupport.solvedChallenge(mvc))
 						.contentType(MediaType.APPLICATION_JSON)
 						.content(body(requestSet, date)))
-				.andExpect(status().isConflict())
-				.andExpect(jsonPath("$.code").value("SET_TAKEN"));
+				.andExpect(status().isAccepted())
+				.andExpect(jsonPath("$.status").value("PENDING_REQUEST"));
+		assertEquals(0L, jdbc.sql("SELECT count(*) FROM set_availability WHERE set_id = :set AND booking_date = :date")
+				.param("set", requestSet).param("date", date).query(Long.class).single(),
+				"neither request wrote an availability row");
 	}
 
 	@Test
-	void pendingHoldBlocksStaffMarkOnTheSameRow() throws Exception {
+	void aPendingRequestLeavesTheDayOpenToStaff() throws Exception {
 		LocalDate date = bookable().plusDays(2);
 		mvc.perform(post("/api/bookings")
 						.header(SessionLoginSupport.CHALLENGE_HEADER, SessionLoginSupport.solvedChallenge(mvc))
@@ -135,13 +139,25 @@ class RequestToBookFlowIT {
 						.content(body(requestSet, date)))
 				.andExpect(status().isAccepted());
 
-		// The staff tap-to-mark write primitive (StaffAvailabilityService): the same atomic
-		// ON CONFLICT claim against the same single row — 0 rows affected means blocked.
 		int marked = jdbc.sql("""
 				INSERT INTO set_availability (set_id, booking_date, state)
 				VALUES (:set, :date, 'STAFF_MARKED')
 				ON CONFLICT (set_id, booking_date) DO NOTHING
 				""").param("set", requestSet).param("date", date).update();
-		assertEquals(0, marked, "the soft-hold blocks the walk-in channel on the same (set, date) row");
+		assertEquals(1, marked, "the walk-in channel still finds the (set, date) row free (ADR-0025)");
+	}
+
+	@Test
+	void aTakenDayRefusesTheRequest() throws Exception {
+		LocalDate date = bookable().plusDays(3);
+		jdbc.sql("INSERT INTO set_availability (set_id, booking_date, state) VALUES (:set, :date, 'STAFF_MARKED')")
+				.param("set", requestSet).param("date", date).update();
+
+		mvc.perform(post("/api/bookings")
+						.header(SessionLoginSupport.CHALLENGE_HEADER, SessionLoginSupport.solvedChallenge(mvc))
+						.contentType(MediaType.APPLICATION_JSON)
+						.content(body(requestSet, date)))
+				.andExpect(status().isConflict())
+				.andExpect(jsonPath("$.code").value("SET_TAKEN"));
 	}
 }

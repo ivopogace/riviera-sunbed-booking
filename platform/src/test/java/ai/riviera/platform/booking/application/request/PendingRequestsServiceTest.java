@@ -81,7 +81,7 @@ class PendingRequestsServiceTest {
 	private static PendingRequestRow row(long bookingId, CustomerId customerId) {
 		return new PendingRequestRow(bookingId, new SetId(11), LocalDate.of(2026, 8, 10),
 				customerId, 4500L, "EUR", Instant.parse("2026-08-01T08:00:00Z"),
-				Instant.parse("2026-08-01T20:00:00Z"));
+				Instant.parse("2026-08-01T20:00:00Z"), 0);
 	}
 
 	private static GuestContact contact(String fullName) {
