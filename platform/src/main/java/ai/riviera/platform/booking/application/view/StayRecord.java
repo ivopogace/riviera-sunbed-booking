@@ -32,10 +32,11 @@ public record StayRecord(StayId id, String code, VenueId venueId, LocalDate firs
 		long amount = stretches.stream().mapToLong(BookingRecord::amountMinor).reduce(0L, Math::addExact);
 		List<Long> refunds = stretches.stream().map(BookingRecord::refundMinor).filter(Objects::nonNull).toList();
 		Long refund = refunds.isEmpty() ? null : refunds.stream().mapToLong(Long::longValue).reduce(0L, Math::addExact);
+		long dayRefunded = stretches.stream().mapToLong(BookingRecord::dayRefundedMinor).reduce(0L, Math::addExact);
 		return new BookingRecord(first.id(), code, status, venueId, first.setId(), first.customerId(), firstDay, lastDay,
 				amount, first.currency(), latest(BookingRecord::cancelledAt), refund, first.requestExpiresAt(),
 				latestCancelReason(), first.createdAt(), first.acceptedAt(), latest(BookingRecord::movedAt),
-				first.declineReason());
+				first.declineReason(), dayRefunded);
 	}
 
 	private RefundReason latestCancelReason() {

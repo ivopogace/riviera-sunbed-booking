@@ -21,10 +21,10 @@ import ai.riviera.platform.venue.api.VenueRates;
 /**
  * The one place the server-side cancellation refund is computed (invariant #10), shared by the
  * view's quote and the cancel so the rule cannot drift: the set's cutoff from {@code venue::api},
- * the evening-before boundary ({@link BookingCutoff}) and the late share via {@link RefundPolicy}.
- * A remodel-moved booking gets the <strong>free-exit override</strong>: a full refund until
- * {@link BookingCutoff#freeExitEndsAt}, whatever LATE answers, never reopening CLOSED (ADR-0005).
- * {@code public} for the {@code view} slice, not exported. Rationale: RESPONSIBILITIES.md §booking.
+ * the evening-before boundary ({@link BookingCutoff}) and the late share via {@link RefundPolicy}, over
+ * {@code remainingMinor} (the days refunded for weather excluded, ADR-0026). A remodel-moved booking gets
+ * the <strong>free-exit override</strong>: a full refund until {@link BookingCutoff#freeExitEndsAt}, never
+ * reopening CLOSED (ADR-0005). {@code public} for the {@code view} slice. Rationale: RESPONSIBILITIES.md §booking.
  */
 @Component
 public class CancellationPolicy implements QuoteCancellationTerms {
@@ -62,12 +62,12 @@ public class CancellationPolicy implements QuoteCancellationTerms {
 		CancellationWindow window = cutoff.cancellationWindow(set.bookingCutoff(), windowDay, now);
 		Instant freeExitUntil = freeExitUntil(booking, windowDay, window, now);
 		if (freeExitUntil != null) {
-			return new RefundQuote(set, window, booking.amountMinor(), RefundReason.VENUE_CHANGE, freeExitUntil);
+			return new RefundQuote(set, window, booking.remainingMinor(), RefundReason.VENUE_CHANGE, freeExitUntil);
 		}
 		int lateBps = window == CancellationWindow.LATE
 				? rates.lateCancelRefundBps(booking.venueId()).orElse(0)
 				: 0;
-		long refundMinor = RefundPolicy.refundMinor(booking.amountMinor(), window, lateBps);
+		long refundMinor = RefundPolicy.refundMinor(booking.remainingMinor(), window, lateBps);
 		return new RefundQuote(set, window, refundMinor, RefundReason.POLICY, freeExitUntil);
 	}
 

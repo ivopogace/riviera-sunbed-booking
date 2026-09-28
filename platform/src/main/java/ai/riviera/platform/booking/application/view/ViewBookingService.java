@@ -118,7 +118,8 @@ class ViewBookingService implements ViewBooking {
 				refundOutstanding, summary.requestExpiresAt(), payment, emailWithheld, payWindowClosed,
 				summary.cancelReason(), summary.declineReason(),
 				cutoff.cancellationWindow(firstSet.bookingCutoff(), stay.firstDay(), first.createdAt()),
-				panel, nameSuggestionFor(panel, first), null, stretchViews);
+				panel, nameSuggestionFor(panel, first), null, stretchViews,
+				stretches.stream().flatMap(s -> bookings.findRefundedDays(s.id()).stream()).toList());
 	}
 
 	/**
@@ -161,7 +162,8 @@ class ViewBookingService implements ViewBooking {
 				refunded, refundOutstanding, b.requestExpiresAt(), payment, emailWithheld,
 				payWindowClosed, b.cancelReason(), b.declineReason(),
 				cutoff.cancellationWindow(set.bookingCutoff(), b.bookingDate(), b.createdAt()),
-				panel, nameSuggestionFor(panel, b), moveOf(b, quote), List.of());
+				panel, nameSuggestionFor(panel, b), moveOf(b, quote), List.of(),
+				b.dayRefundedMinor() == 0 ? List.of() : bookings.findRefundedDays(b.id()));
 	}
 
 	/** The latest move of a moved booking, with the exit deadline the quote still holds open; {@code null} otherwise. */

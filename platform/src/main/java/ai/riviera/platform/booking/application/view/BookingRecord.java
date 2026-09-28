@@ -21,7 +21,26 @@ import ai.riviera.platform.venue.vocabulary.VenueId;
 public record BookingRecord(long id, String code, BookingStatus status, VenueId venueId, SetId setId,
 		CustomerId customerId, LocalDate bookingDate, LocalDate lastDate, long amountMinor, String currency,
 		Instant cancelledAt, Long refundMinor, Instant requestExpiresAt, RefundReason cancelReason,
-		Instant createdAt, Instant acceptedAt, Instant movedAt, DeclineReason declineReason) {
+		Instant createdAt, Instant acceptedAt, Instant movedAt, DeclineReason declineReason,
+		long dayRefundedMinor) {
+
+	/** A booking none of whose days was refunded on its own. */
+	public BookingRecord(long id, String code, BookingStatus status, VenueId venueId, SetId setId,
+			CustomerId customerId, LocalDate bookingDate, LocalDate lastDate, long amountMinor, String currency,
+			Instant cancelledAt, Long refundMinor, Instant requestExpiresAt, RefundReason cancelReason,
+			Instant createdAt, Instant acceptedAt, Instant movedAt, DeclineReason declineReason) {
+		this(id, code, status, venueId, setId, customerId, bookingDate, lastDate, amountMinor, currency,
+				cancelledAt, refundMinor, requestExpiresAt, cancelReason, createdAt, acceptedAt, movedAt, declineReason,
+				0L);
+	}
+
+	/**
+	 * What the guest still holds: the amount less the days already refunded for weather (issue #1210) —
+	 * the base of every later refund decision (invariant #10).
+	 */
+	public long remainingMinor() {
+		return amountMinor - dayRefundedMinor;
+	}
 
 	/** A booking that was never declined. */
 	public BookingRecord(long id, String code, BookingStatus status, VenueId venueId, SetId setId,

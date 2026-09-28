@@ -38,7 +38,12 @@ class RegistryRefundOutbox implements RefundOutbox {
 	static final String RELEASE_VOID_LISTENER_ID = "ai.riviera.platform.booking.adapter.in."
 			+ "RemodelReleasePaymentListener.on(ai.riviera.platform.booking.events.BookingCancelled)";
 
-	private static final Set<String> ALLOWED_LISTENER_IDS = Set.of(REFUND_LISTENER_ID, RELEASE_VOID_LISTENER_ID);
+	/** The registry's id for {@code BookingDayRefundListener.on(BookingDayRefunded)} — a refunded day's money (#1210). */
+	static final String DAY_REFUND_LISTENER_ID = "ai.riviera.platform.booking.adapter.in."
+			+ "BookingDayRefundListener.on(ai.riviera.platform.booking.events.BookingDayRefunded)";
+
+	private static final Set<String> ALLOWED_LISTENER_IDS =
+			Set.of(REFUND_LISTENER_ID, RELEASE_VOID_LISTENER_ID, DAY_REFUND_LISTENER_ID);
 
 	private final EventPublicationRegistry registry;
 

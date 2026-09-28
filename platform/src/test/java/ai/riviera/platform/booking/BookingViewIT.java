@@ -228,6 +228,27 @@ class BookingViewIT {
 				.param("createdAt", java.sql.Timestamp.from(createdAt)).update();
 	}
 
+	/** #1210: the page lists the days a storm gave back while the booking went on. */
+	@Test
+	void refundedDaysAreListed() throws Exception {
+		LocalDate first = tirane().plusDays(10);
+		seedLateCancelBooking("VIEWSTORM1", "storm-view@e.com", first);
+		jdbc.sql("UPDATE booking SET last_date = :last WHERE code = 'VIEWSTORM1'").param("last", first.plusDays(2)).update();
+		jdbc.sql("""
+				INSERT INTO booking_day (booking_id, service_date, refunded_at, refund_minor)
+				SELECT id, :d, NOW(), 1500 FROM booking WHERE code = 'VIEWSTORM1'
+				ON CONFLICT (booking_id, service_date) DO UPDATE SET refunded_at = NOW(), refund_minor = 1500
+				""").param("d", first.plusDays(1)).update();
+
+		mvc.perform(get("/api/bookings/{code}", "VIEWSTORM1"))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.status").value("CONFIRMED"))
+				.andExpect(jsonPath("$.refundedDays.length()").value(1))
+				.andExpect(jsonPath("$.refundedDays[0].day").value(first.plusDays(1).toString()))
+				.andExpect(jsonPath("$.refundedDays[0].amount.minorUnits").value(1500))
+				.andExpect(jsonPath("$.refundIfCancelledNow.minorUnits").value(3000));
+	}
+
 	@Test
 	void unknownCodeReturns404() throws Exception {
 		// The body must never echo the attempted code — it is a bearer credential (invariant #7).

@@ -1034,6 +1034,17 @@ class CreateBookingServiceTest {
 		}
 
 		@Override
+		public Optional<ai.riviera.platform.booking.application.refund.DayRefundedBooking> refundDay(long bookingId,
+				java.time.LocalDate day, long refundMinor, Instant at) {
+			return Optional.empty();
+		}
+
+		@Override
+		public List<ai.riviera.platform.booking.application.view.RefundedDay> findRefundedDays(long bookingId) {
+			return List.of();
+		}
+
+		@Override
 		public List<ai.riviera.platform.booking.vocabulary.BookingId> findExpirableAwaitingPayment(
 				Instant createdBefore, Instant acceptedBefore, java.time.LocalDate serviceDayOnOrBefore) {
 			return List.of();

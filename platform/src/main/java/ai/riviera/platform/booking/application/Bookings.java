@@ -196,8 +196,8 @@ public interface Bookings {
 
 	/**
 	 * Venue-scoped stamp of {@code attended_at} on the {@code CONFIRMED} booking's {@code serviceDate}
-	 * (today in {@code Europe/Tirane}, #6), resolving {@code COMPLETED} when no later day remains.
-	 * Present iff a day moved (row lock: one winner); else classify via {@link #findCheckInFacts}.
+	 * (today in {@code Europe/Tirane}, #6), never on a refunded day, resolving {@code COMPLETED} when no
+	 * later day remains. Present iff a day moved (one winner); else classify via {@link #findCheckInFacts}.
 	 */
 	Optional<ai.riviera.platform.booking.application.checkin.CompletedCheckIn> completeConfirmed(
 			String code, VenueId venueId, LocalDate serviceDate, Instant completedAt);
@@ -245,11 +245,22 @@ public interface Bookings {
 	List<DailyBooking> findSettledForVenueOn(VenueId venueId, LocalDate date);
 
 	/**
-	 * The venue's {@code CONFIRMED}/{@code NO_SHOW} bookings covering {@code date}, by id — the
-	 * weather refund's candidates, matching {@link #cancelForWeather}'s statuses. The caller cancels
-	 * one-day bookings and only names a multi-day stay.
+	 * The venue's bookings that happened ({@code BookingStatus#stormDayRefundable}) covering {@code date},
+	 * by id, each with the date's own service-day stamps — the weather refund's candidates. The caller
+	 * cancels a lone one-day booking and refunds any other's day.
 	 */
 	List<RefundableBooking> findRefundableForWeather(VenueId venueId, LocalDate date);
+
+	/**
+	 * Guarded stamp of a weather refund on one service day (issue #1210): {@code refunded_at} and the
+	 * day's {@code refundMinor}, only on an unattended, not yet refunded day of a booking that happened;
+	 * nothing else changes. Present iff this statement stamped it — the caller publishes exactly once.
+	 */
+	Optional<ai.riviera.platform.booking.application.refund.DayRefundedBooking> refundDay(long bookingId,
+			LocalDate day, long refundMinor, Instant at);
+
+	/** The booking's days refunded for weather, in day order; empty when none. */
+	List<ai.riviera.platform.booking.application.view.RefundedDay> findRefundedDays(long bookingId);
 
 	/**
 	 * Ids of unpayable {@code AWAITING_PAYMENT} bookings (a closed tab sends no webhook), by id: instant

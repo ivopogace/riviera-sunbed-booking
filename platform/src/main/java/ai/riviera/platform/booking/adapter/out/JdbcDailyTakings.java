@@ -38,16 +38,18 @@ class JdbcDailyTakings implements DailyTakings {
 
 	/**
 	 * The day's share of every {@code CONFIRMED}/{@code COMPLETED}/{@code NO_SHOW} booking covering
-	 * {@code date} (design D4; no pool filter); an empty day is {@code (0, 'EUR')} (invariant #5).
-	 * Rationale: RESPONSIBILITIES.md §booking. Served by {@code booking_venue_id_idx}.
+	 * {@code date} (D4; no pool filter), a day refunded for weather excluded (#1210); an empty day is
+	 * {@code (0, 'EUR')} (#5). Rationale: RESPONSIBILITIES.md §booking; served by {@code booking_venue_id_idx}.
 	 */
 	@Override
 	public OnlineTakings grossOnlineTakings(VenueId venueId, LocalDate date) {
 		List<Covering> covering = jdbc.sql("""
-				SELECT amount_minor, amount_currency, booking_date, last_date
-				FROM booking
-				WHERE venue_id = :venue AND booking_date <= :date AND last_date >= :date
-				  AND status IN (:confirmed, :completed, :noShow)
+				SELECT b.amount_minor, b.amount_currency, b.booking_date, b.last_date
+				FROM booking b
+				LEFT JOIN booking_day d ON d.booking_id = b.id AND d.service_date = :date
+				WHERE b.venue_id = :venue AND b.booking_date <= :date AND b.last_date >= :date
+				  AND b.status IN (:confirmed, :completed, :noShow)
+				  AND d.refunded_at IS NULL
 				""")
 				.param("venue", venueId.value())
 				.param("date", date)

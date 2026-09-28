@@ -12,9 +12,9 @@ import java.util.List;
  * The {@code 200} body of {@code GET /api/bookings/{code}}, mirroring the FE {@code BookingDetail};
  * money as {@link MoneyView} (invariant #5). {@code refundedAmount} is null unless cancelled;
  * {@code cancelReason} (a {@code RefundReason} name) is null while live or if cancelled uncharged.
- * {@code payWindowClosed}: the pay deadline passed, so {@code payment} is null (invariant #4).
- * {@code refundOutstanding}: refund decided, not yet gateway-accepted. {@code emailWithheld} is true
- * only once {@code CONFIRMED}, else this code-gated view would be a suppression oracle.
+ * {@code payWindowClosed}: the pay deadline passed, so {@code payment} is null (#4). {@code refundOutstanding}:
+ * refund decided, not yet gateway-accepted. {@code emailWithheld} is true only once {@code CONFIRMED},
+ * else this code-gated view would be a suppression oracle. {@code refundedDays}: a storm's days given back.
  */
 record BookingDetailView(String code, String status, long venueId, String venueName, String rowLabel,
 		int positionNo, String bookingDate, String lastDate, MoneyView amount, boolean cancellable,
@@ -23,7 +23,16 @@ record BookingDetailView(String code, String status, long venueId, String venueN
 		boolean refundOutstanding,
 		Instant requestExpiresAt, PaymentCredentialsView payment, boolean emailWithheld,
 		boolean payWindowClosed, String cancelReason, String declineReason, String cancellationWindowAtBirth,
-		ReviewPanelView reviewPanel, MoveView move, List<StretchView> stretches) {
+		ReviewPanelView reviewPanel, MoveView move, List<StretchView> stretches,
+		List<RefundedDayView> refundedDays) {
+
+	/** One day refunded for weather while the booking went on (#1210). */
+	record RefundedDayView(String day, MoneyView amount) {
+
+		static RefundedDayView of(ai.riviera.platform.booking.application.view.RefundedDay day) {
+			return new RefundedDayView(day.day().toString(), new MoneyView(day.refundMinor(), day.currency()));
+		}
+	}
 
 	/**
 	 * One stretch of a stitched stay (design D6) with its own remodel move, {@code null} if unmoved; empty
@@ -54,7 +63,8 @@ record BookingDetailView(String code, String status, long venueId, String venueN
 				d.cancellationWindowAtBirth().name(),
 				ReviewPanelView.of(d.reviewPanel(), d.reviewNameSuggestion()),
 				d.move() == null ? null : MoveView.of(d.move()),
-				d.stretches().stream().map(StretchView::of).toList());
+				d.stretches().stream().map(StretchView::of).toList(),
+				d.refundedDays().stream().map(RefundedDayView::of).toList());
 	}
 
 	/**
