@@ -282,7 +282,12 @@ model in `docs/architecture/domain-model.md`.
 - **Service day** — one day of a stay, held as its own attendance record from the moment the
   booking confirms: unresolved until it is **attended** (staff checked the guest in
   that day) or **missed** (the day passed with no check-in), never both — one per day of the
-  span; a one-day booking has exactly one, its `booking_date`.
+  span; a one-day booking has exactly one, its `booking_date`. A **day refund** stamps it too.
+- **Day refund** — the weather refund's answer for a day of a stay that goes on: that day's share
+  (its own rate, the stretch's) comes back to the guest, the service day is stamped refunded (never
+  attended, possibly missed), the set stays the guest's and nothing is released. Check-in on it is
+  refused, the sweep and the stay outcome ignore it, takings exclude it, and a later cancellation is
+  quoted over what remains. A lone one-day booking is cancelled instead, as before.
 - **Check-in** — staff recording, by scanning the booking's QR code or typing its
   booking code, that the guest arrived **today**: stamps today's service day as attended, exactly
   once per service day. On the stay's last service day it also resolves the stay to `COMPLETED`.
@@ -343,6 +348,9 @@ model in `docs/architecture/domain-model.md`.
 - **Reversal** — a payout-ledger entry that backs out an accrual when a booking is
   refunded. **Proportional to the refund**: a full refund reverses the whole accrual,
   a partial refund reverses the matching fraction, no refund posts no reversal.
+- **Day reversal** — a payout-ledger entry that backs out one service day's share of an accrual
+  after a **day refund**, at most once per booking and day; the reversal that exhausts the accrual
+  returns the commission still held, so a booking reversed in parts nets exactly zero.
 - **Fee** — a payout-ledger entry that charges a venue for a refund its own change caused: the
   remodel refunding a booking it could not move, or a **moved booking**'s guest taking their
   **free exit**. Flat, platform-wide, and charged once per booking beside the reversal. It is not

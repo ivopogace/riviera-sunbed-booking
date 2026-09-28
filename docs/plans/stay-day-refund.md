@@ -234,20 +234,20 @@ remaining (no cancel, no release, no cancellation mail); the sweep resolves it a
 
 ## Execution status
 
-**Stage pointer:** `plan committed — implement (phase 0)`
+**Stage pointer:** `implement done locally — open the draft PR, CI gate`
 
-**Next action:** write the three migrations and their red migration ITs.
+**Next action:** push the phase commits, open the draft PR, watch CI; then ready-for-review → review gate.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — schema | ⏳ | |
-| 1 — payout | | |
-| 2 — payment | | |
-| 3 — booking day refund | | |
-| 4 — attendance, takings, policy | | |
-| 5 — notification | | |
-| 6 — API views | | |
-| 7 — frontend | | |
-| 8 — docs + close-out | | |
+| 0 — schema | ✅ | V68–V70 + migration ITs |
+| 1 — payout | ✅ | `DAY_REVERSAL`, `Reversed`, listener, `PayoutDayReversalIT` |
+| 2 — payment | ✅ | `RefundScope`, `payment_refund`, `RefundPort#refundDay`, contract case |
+| 3 — booking day refund | ✅ | `WeatherRefundService` legs, `BookingDayRefunded`, outbox pin |
+| 4 — attendance, takings, policy | ✅ | check-in `DayRefunded`, sweep/takings exclusion, `remainingMinor` |
+| 5 — notification | ✅ | `DayRefundMail`, listener, `DayRefundMailIT` |
+| 6 — API views | ✅ | `WeatherRefundView`, `refundedDays`, `REFUNDED`, ledger `serviceDate` |
+| 7 — frontend | ✅ | payouts notice + chip, daily chip + message, booking page days, e2e |
+| 8 — docs + close-out | ⏳ | ADR-0026, substrate docs done; plan retires in the last commit |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.

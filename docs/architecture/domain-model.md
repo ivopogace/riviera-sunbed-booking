@@ -50,7 +50,7 @@ graph TB
         RCPT["remodel_receipt<br/>+ _move, _outcome"]
     end
     subgraph payment["payment"]
-        PAY["payment<br/>+ payment_booking, stripe_webhook_event"]
+        PAY["payment<br/>+ payment_booking, payment_refund, stripe_webhook_event"]
     end
     subgraph payout["payout"]
         LEDG["payout_ledger_entry"]
@@ -428,9 +428,16 @@ classDiagram
     class payment_booking {
         <<table>>
         id, payment_id, booking_ref
-        amount_minor, refunded_minor, refund_id
-        refund_attempted_at, refund_failed_at, failed_refund_id
-        UNIQUE (booking_ref), UNIQUE (refund_id)
+        amount_minor, refunded_minor
+        UNIQUE (booking_ref)
+    }
+    class payment_refund {
+        <<table>>
+        id, payment_booking_id
+        scope, service_date
+        amount_minor, refund_id
+        attempted_at, failed_at, failed_refund_id
+        UNIQUE (payment_booking_id, scope, service_date), UNIQUE (refund_id)
     }
     class stripe_webhook_event {
         <<table>>
@@ -463,6 +470,7 @@ classDiagram
     }
     payment ..> PaymentStatus : status, mirrors the CHECK
     payment "1" *-- "1..*" payment_booking : the bookings it collects for
+    payment_booking "1" *-- "0..*" payment_refund : its refunds, one per scope
     payment_booking ..> BookingRef : booking_ref
     stripe_webhook_event ..> payment : event-id dedup guards the write
 ```
@@ -487,10 +495,10 @@ classDiagram
     class payout_ledger_entry {
         <<table>>
         id, venue_id, booking_id
-        entry_type, reason
+        entry_type, reason, service_date
         gross_minor, commission_minor, net_minor, currency
         period_key, created_at
-        UNIQUE (booking_id, entry_type)
+        UNIQUE NULLS NOT DISTINCT (booking_id, entry_type, service_date)
     }
     class payout_batch {
         <<table>>
@@ -548,8 +556,9 @@ classDiagram
 > auditable under invariant #9. `bookingId` is a bare `long` while `venueId` is typed.
 >
 > A booking contributes **exactly once** (an `ACCRUAL`), a refund posts a proportional `REVERSAL`,
-> and a refund the venue's own layout change caused posts a `FEE` beside it — each enforced by
-> `payout_once_per_booking UNIQUE (booking_id, entry_type)` (invariant #9).
+> a stay's washed-out day posts a `DAY_REVERSAL` keyed by the day (ADR-0026), and a refund the venue's
+> own layout change caused posts a `FEE` beside it — each enforced by
+> `payout_once_per_booking UNIQUE NULLS NOT DISTINCT (booking_id, entry_type, service_date)` (invariant #9).
 >
 > **Direction lives in the entry type, never in the amount.** Every amount is a non-negative
 > magnitude, so a payout reads `Σ ACCRUAL.net − Σ REVERSAL.net − Σ FEE.net`: only an `ACCRUAL` adds

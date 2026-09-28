@@ -295,9 +295,14 @@ any is released on the old, never a swap of my own — so a racing reserve wins 
   known afterwards): separate port methods and `BookingTransition` rows, so the asymmetry cannot be
   tidied away. The guest guard's readers (the view's `cancellable`, the cancel's `NotCancellable`)
   read `CANCEL_BY_GUEST`, never restate it; `{NO_SHOW, COMPLETED} → WindowClosed` only picks copy.
-- **The weather refund never cancels a multi-day booking:** it refunds the one-day bookings covering
-  the date in full and names each longer one on the outcome (ids, never codes — invariant #7) for a
-  manual refund, since one reversal per booking (invariant #9) cannot express a partial refund.
+- **The weather refund refunds a stay's day and keeps the stay (ADR-0026).** Over every booking that
+  happened and covers the date (`BookingStatus#stormDayRefundable`): a checked-in day is named on the
+  outcome (ids, never codes — #7), never refunded; a lone one-day booking is cancelled and refunded in
+  full as before; any other row (a stay, or any stretch of one, one-day stretches included) has the day's
+  own rate (`DayShare`) stamped on its `booking_day` and `BookingDayRefunded` published, nothing released.
+  A refunded day is neither attended nor missed: check-in answers `DayRefunded`, the sweep, the outcome
+  and takings skip it; a later cancellation is quoted over `BookingRecord#remainingMinor` (#10).
+  `BookingDayRefundListener` refunds it via `RefundPort#refundDay`, pinned in `RegistryRefundOutbox`.
 - **The retention probe (`JdbcGuestBookingHistory`) is bounded too** (§`customer`): bounding only
   `customer`'s read would let the retention sweep (sole caller) wedge on a lock stalling my sweeps.
 - **The lifecycle is stated once, in `domain/BookingTransition`, and enforced by `JdbcBookings`'
@@ -443,10 +448,13 @@ under the same profiles (`ProfiledCollectionGuarantee`); the coverage test below
 
 **One PaymentIntent may collect for several bookings** (a stay, design D6/D8): `CheckoutPort.pay`
 takes the shares, one intent for their sum keyed on the first booking; `payment` holds the intent,
-`payment_booking` each booking's share and refund state. Refund reads and writes key on
-the booking's row, the same statement deriving the intent's status from its shares; a verified
-`succeeded`/`canceled` publishes **once per booking**. `RefundStatusLookup` reads the booking's own
-share — a sibling's refund leaves the intent `PARTIALLY_REFUNDED` while this one is `OUTSTANDING`.
+`payment_booking` each booking's share, `payment_refund` each refund of a share by **scope** — the whole
+share (`BOOKING`, key `booking-<id>-refund`) or one day (`DAY`, key `booking-<id>-day-<date>-refund`,
+ADR-0026), one per scope — the share's `refunded_minor` their running sum. A refund write moves its row,
+re-sums the share and derives the intent's status in one statement; a verified `succeeded`/`canceled`
+publishes **once per booking**. `RefundStatusLookup` reads the whole-share refund only. A Stripe refund
+is tagged `bookingRef` and, for a day, `serviceDate`, so adoption after a lost response is per scope.
+
 `CancelPaymentPort.cancel(booking)` voids the intent behind the booking, so an unpaid group is
 cancelled all-or-nothing, never one booking of it.
 
@@ -525,11 +533,14 @@ batch reporting. Accrue **idempotently** — a booking contributes once; a refun
 **order-independently**: a refunded cancellation with no `ACCRUAL` to mirror *defers* (the listener
 throws; `riviera.outbox.pending` shows it), never reading the absence as "nothing to reverse".
 
-**Direction lives in the entry type, never in the amount** (invariant #9): amounts are
-non-negative (`payout_amounts_check`) and only an `ACCRUAL` adds, so a type added later deducts.
-Every ledger sum is written that way and pinned by a test carrying a `FEE` row. A **`FEE`** is
-charged when a `VENUE_CHANGE` refund is reversed (a remodel's forced refund, or a moved guest's free
-exit); a release or decline collected nothing, so nothing is reversed or charged (ADR-0021).
+**Direction lives in the entry type, never in the amount** (invariant #9): amounts are non-negative
+(`payout_amounts_check`) and only an `ACCRUAL` adds, so a type added later deducts. Every ledger sum is
+written that way and pinned by a test carrying a `FEE` row. A **`DAY_REVERSAL`** reverses one day's share
+of a stay that goes on (`BookingDayRefunded`, ADR-0026), once per `(booking, day)` (`UNIQUE NULLS NOT
+DISTINCT (booking_id, entry_type, service_date)`); every reversal reads what earlier ones took (`Reversed`,
+under the accrual's lock) and the exhausting one returns the commission still held, so a booking reversed
+in parts nets zero. A **`FEE`** is charged when a `VENUE_CHANGE` refund is reversed (a remodel's forced
+refund, or a moved guest's free exit); a release or decline collected nothing, so nothing is charged (ADR-0021).
 
 **I own `platform_setting` — its sole writer and reader — and the venue-change fee it holds.** Both
 readers (the cancelled-booking listener; `booking.spi.VenueChangeFeeRate`, which the remodel preview
@@ -671,8 +682,9 @@ tag names the person, invariant #7):
 **Owned flows and surfaces:**
 
 - The **registry-borne booking mails** — confirmation, cancellation (one listener for every
-  channel), payment-due, request declined / expired (plain record, no call-to-action; the guest's
-  own withdraw mails nothing) and moved — carry ids, never the code, and **decide nothing**: the
+  channel), a refunded day (`BookingDayRefunded`, under a stretch's stay code, abandoned under
+  `riviera.mail.day-refund.abandoned`), payment-due, request declined / expired (plain record, no
+  call-to-action; the guest's own withdraw mails nothing) and moved — carry ids, never the code, and **decide nothing**: the
   birth window and refund (invariant #10) are rendered (CLOSED the non-refundable line, LATE the
   past-free-cancellation line, FREE or `null` nothing), and `booking` publishes payment-due only
   where money is owed. The move mail carries the unchanged arrival code (a stretch's is its
@@ -1067,8 +1079,9 @@ The mechanism and edge cases behind `CLAUDE.md`'s one-line invariants; its numbe
 8. **Stripe webhooks are the source of truth for payment state — not the client.** Never confirm a
    booking from a client redirect; reconcile only from signature-verified webhooks (§`payment`).
 9. **The payout ledger is auditable and idempotent.** Every entry is order-independent and
-   idempotent on `UNIQUE (booking_id, entry_type)`: a booking accrues once, a refund reverses it,
-   and a refund the venue's own change caused also charges it a `FEE`. Payout = Σ bookings −
+   idempotent on `UNIQUE NULLS NOT DISTINCT (booking_id, entry_type, service_date)`: a booking accrues
+   once, a refund reverses it, a stay's washed-out day reverses that day once (`DAY_REVERSAL`,
+   ADR-0026), and a refund the venue's own change caused also charges it a `FEE`. Payout = Σ bookings −
    commission (per-venue rate, effective-dated, forward-only) − fees. **Direction is the entry
    type**: amounts are non-negative magnitudes, only `ACCRUAL` adds and every other type deducts
    (the safe default for a type added later); a `FEE` has no gross or commission and is the one

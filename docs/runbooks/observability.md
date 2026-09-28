@@ -282,8 +282,8 @@ the work was taken, ran, and failed. Only one of those is about the relay.
 never retried by anything. Since #374 it has siblings — `riviera_mail_cancellation_abandoned_total`,
 #373's `riviera_mail_payment_due_abandoned_total`, #124's
 `riviera_mail_request_declined_abandoned_total` / `riviera_mail_request_expired_abandoned_total`,
-#1034's `riviera_mail_move_abandoned_total` and #1209's `riviera_mail_move_reminder_abandoned_total` —
-each this counter's argument applied to its own listener; everything below holds for all of them, and
+#1034's `riviera_mail_move_abandoned_total`, #1209's `riviera_mail_move_reminder_abandoned_total` and
+#1210's `riviera_mail_day_refund_abandoned_total` — each this counter's argument applied to its own listener; everything below holds for all of them, and
 the one place they differ — what an operator does about an increment — is in that section.
 
 A booking confirmation the registry listener **gave up on** because a fact it needs did not resolve:
@@ -343,8 +343,9 @@ never the arrival code and never the address (invariant #7).
 None of the abandoned counters — `riviera_mail_confirmation_abandoned_total`, its #374 sibling
 `riviera_mail_cancellation_abandoned_total`, #373's `riviera_mail_payment_due_abandoned_total`,
 #124's `riviera_mail_request_declined_abandoned_total` /
-`riviera_mail_request_expired_abandoned_total`, #1034's `riviera_mail_move_abandoned_total`, or #1209's
-`riviera_mail_move_reminder_abandoned_total` — is in that order, deliberately: they never rise because
+`riviera_mail_request_expired_abandoned_total`, #1034's `riviera_mail_move_abandoned_total`, #1209's
+`riviera_mail_move_reminder_abandoned_total`, or #1210's `riviera_mail_day_refund_abandoned_total` — is in
+that order, deliberately: they never rise because
 of a relay, so seeing any of them during an outage means you have found a *second*, unrelated fault.
 
 **Why the registry vehicle has no *transport* failure counter of its own.** Its transport failure
