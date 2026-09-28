@@ -143,7 +143,7 @@ _None._
 
 ## Execution status
 
-**Stage pointer:** `PR — draft open, CI due`
+**Stage pointer:** `CI gate — draft PR #1269 open`
 
 **Next action:** watch CI on the draft; then merge `origin/main`, mark ready, run the review gate.
 
