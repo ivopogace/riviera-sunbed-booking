@@ -283,13 +283,13 @@
       </div>
     </app-beach-map-canvas>
 
-    <!-- Arrivals: the day's bookings (confirmed, checked-in, no-show) with their arrival codes -->
+    <!-- Guests: the day's bookings, grouped arriving / staying / leaving, with their arrival codes -->
     <section
       appCardGlass
       class="mt-4 rounded-[20px] px-[18px] py-4"
       aria-labelledby="arrivals-title"
     >
-      <h2 id="arrivals-title" class="text-[15px] font-bold text-riv-card-ink">Arrivals</h2>
+      <h2 id="arrivals-title" class="text-[15px] font-bold text-riv-card-ink">Guests</h2>
       <p class="mt-1 mb-3 text-[12.5px] leading-[1.45] text-riv-card-ink-soft">
         Scan the guest's QR code — or type their booking code — to check them in.
       </p>
@@ -351,26 +351,51 @@
         >
       </div>
       @if (arrivals().length) {
-        <ul class="flex list-none flex-col gap-1.5 p-0">
-          @for (a of arrivals(); track a.setId) {
-            <li
-              class="flex items-center justify-between rounded-[12px] border border-riv-card-border bg-riv-console-inset/45 px-3 py-2"
-              data-testid="daily-arrival-row"
-            >
-              <span class="text-[13.5px] font-semibold text-riv-card-ink">{{ a.label }}</span>
-              @if (a.chip; as chip) {
-                <span [appStatusChip]="chip.modifier" [attr.data-testid]="chip.testId">{{
-                  chip.label
-                }}</span>
-              }
-              <code
-                class="rounded-[8px] bg-riv-chip-bg px-2 py-1 font-mono text-[13px] font-bold tracking-[0.06em] text-riv-card-ink"
-                data-testid="daily-arrival-code"
-                >{{ a.code }}</code
+        @if (notCheckedInText(); as pending) {
+          <p
+            class="mb-2 text-[13px] leading-[1.45] font-semibold text-riv-card-ink"
+            data-testid="daily-not-checked-in"
+          >
+            {{ pending }}
+          </p>
+        }
+        @for (group of guestGroups(); track group.key) {
+          <h3
+            class="mt-3 mb-1.5 text-[12.5px] font-bold tracking-[0.04em] text-riv-card-ink-soft uppercase"
+            [attr.data-testid]="group.testId"
+          >
+            {{ group.title }} · {{ group.rows.length }}
+          </h3>
+          <ul class="flex list-none flex-col gap-1.5 p-0">
+            @for (a of group.rows; track a.setId) {
+              <li
+                class="flex items-center justify-between gap-2 rounded-[12px] border border-riv-card-border bg-riv-console-inset/45 px-3 py-2"
+                data-testid="daily-arrival-row"
               >
-            </li>
-          }
-        </ul>
+                <span class="flex min-w-0 flex-col">
+                  <span class="text-[13.5px] font-semibold text-riv-card-ink">{{ a.label }}</span>
+                  @if (a.span; as span) {
+                    <span
+                      class="text-[12px] leading-[1.4] text-riv-card-ink"
+                      data-testid="daily-arrival-span"
+                      >{{ span }}</span
+                    >
+                  }
+                </span>
+                @if (a.chip; as chip) {
+                  <span [appStatusChip]="chip.modifier" [attr.data-testid]="chip.testId">{{
+                    chip.label
+                  }}</span>
+                }
+                <code
+                  class="rounded-[8px] bg-riv-chip-bg px-2 py-1 font-mono text-[13px] font-bold tracking-[0.06em] text-riv-card-ink"
+                  data-testid="daily-arrival-code"
+                  >{{ a.code }}</code
+                >
+              </li>
+            }
+          </ul>
+        }
       } @else {
         <p class="text-[13px] text-riv-card-ink-soft" data-testid="daily-arrivals-empty">
           No online bookings for {{ dateLabel() }}.

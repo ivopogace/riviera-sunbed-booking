@@ -153,7 +153,10 @@ describe('LayoutEditor a11y (#172)', () => {
       gridY: 1,
       availability: 'FREE',
     };
-    render([set], [{ setId: 7, bookedOn: '2026-09-12', heldOn: '2026-09-12' }]);
+    render(
+      [set],
+      [{ setId: 7, bookedOn: '2026-09-12', bookedUntil: '2026-09-12', heldOn: '2026-09-12' }],
+    );
     byId('layout-tool-premium').click();
     fixture.detectChanges();
 
@@ -206,7 +209,16 @@ describe('LayoutEditor a11y (#172)', () => {
         {
           code: 'SETS_IN_USE',
           detail: 'x',
-          sets: [{ setId: 2, rowLabel: 'A', positionNo: 2, bookedOn: null, heldOn: '2026-09-12' }],
+          sets: [
+            {
+              setId: 2,
+              rowLabel: 'A',
+              positionNo: 2,
+              bookedOn: null,
+              bookedUntil: null,
+              heldOn: '2026-09-12',
+            },
+          ],
         },
         { status: 409, statusText: 'Conflict' },
       );

@@ -272,9 +272,9 @@ export class OperatorConsoleService {
   }
 
   /**
-   * The venue's settled bookings for `date` — confirmed, checked-in and no-show alike — each as
-   * `(setId, code, status)`, the Daily view's Arrivals list. Owner-asserted server-side (invariant #13); the code is
-   * display-only (invariant #7) — shown for arrival verification, never logged.
+   * The venue's settled bookings covering `date` — live, checked-in and no-show alike — each with the
+   * guest's span and the day's attendance, the Daily view's guest list. Owner-asserted server-side
+   * (invariant #13); the code is display-only (invariant #7) — shown for arrival verification, never logged.
    */
   dailyBookings(venueId: number, date: string): Observable<ConsoleDailyBooking[]> {
     return this.http.get<ConsoleDailyBooking[]>(`${this.base}/api/venues/${venueId}/bookings`, {
@@ -672,7 +672,9 @@ function isBlockedSet(value: unknown): value is BlockedSet {
     typeof set['rowLabel'] === 'string' &&
     typeof set['positionNo'] === 'number' &&
     date(set['bookedOn']) &&
+    date(set['bookedUntil']) &&
     date(set['heldOn']) &&
+    (set['bookedOn'] === null) === (set['bookedUntil'] === null) &&
     (set['bookedOn'] !== null || set['heldOn'] !== null)
   );
 }

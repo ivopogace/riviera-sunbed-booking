@@ -94,7 +94,12 @@ interface MockConsole {
 async function mockConsole(
   page: Page,
   seed = seedSets(),
-  locks: { setId: number; bookedOn: string | null; heldOn: string | null }[] = [],
+  locks: {
+    setId: number;
+    bookedOn: string | null;
+    bookedUntil: string | null;
+    heldOn: string | null;
+  }[] = [],
 ): Promise<MockConsole> {
   let sessionLive = false;
   let sets = seed;
@@ -685,7 +690,12 @@ test('a locked set disables Move and Remove with the reason before any request, 
   page,
 }) => {
   const mock = await mockConsole(page, seedSets(), [
-    { setId: CLAIMED_SET_ID, bookedOn: '2026-09-12', heldOn: '2026-09-12' },
+    {
+      setId: CLAIMED_SET_ID,
+      bookedOn: '2026-09-12',
+      bookedUntil: '2026-09-12',
+      heldOn: '2026-09-12',
+    },
   ]);
   await page.goto('/operator/1/beach-map');
   await signIn(page);

@@ -150,16 +150,23 @@ export type RowNameErrorCode =
   | 'UNAUTHORIZED'
   | 'UNKNOWN';
 
+/** One service day's attendance: unresolved, scanned in, or passed unscanned (the sweep's stamp). */
+export type DayAttendance = 'EXPECTED' | 'ATTENDED' | 'MISSED';
+
 /**
- * One booking in the Daily view's arrivals list (`GET /api/venues/{id}/bookings?date`) — which set
- * it holds, its arrival code, and its `status`: `CONFIRMED` (expected), `COMPLETED` (scanned in) or
- * `NO_SHOW` (the service day passed unscanned), so a past day still lists who was booked. The code
- * is a bearer credential (invariant #7): shown for arrival verification, never logged.
+ * One booking in the Daily view's guest list (`GET /api/venues/{id}/bookings?date`) — which set it
+ * holds on the day, its arrival code, its stay outcome `status` (`CONFIRMED` while live, else
+ * `COMPLETED` / `NO_SHOW`), the guest's whole span (`firstDate..lastDate`, ISO civil days — a
+ * stitched stay's, not the stretch's) and the day's own `attendance`. The code is a bearer credential
+ * (invariant #7): shown for arrival verification, never logged.
  */
 export interface ConsoleDailyBooking {
   readonly setId: number;
   readonly code: string;
   readonly status: BookingStatus;
+  readonly firstDate: string;
+  readonly lastDate: string;
+  readonly attendance: DayAttendance;
 }
 
 /** Successful check-in: which set the guest holds and the service date (never echoes the code). */
@@ -190,15 +197,16 @@ export interface SetDayState {
 
 /**
  * Why one set on the owner's beach map cannot be moved or removed right now, from
- * `GET /api/venues/{id}/beach-map`: `bookedOn` is the earliest service day a guest is still coming on
- * (a booking that can still be honoured), `heldOn` the earliest hold dated today or later — each an ISO
- * `YYYY-MM-DD` (invariant #6) or `null` when that arm does not hold, never both null (a booked set
- * usually carries both). The set's price, tier and pool stay editable; the lock means "cannot move or
- * remove" only.
+ * `GET /api/venues/{id}/beach-map`: `bookedOn..bookedUntil` is the span its live bookings hold (the
+ * earliest day a guest is still coming on to the last day any of them holds), `heldOn` the earliest
+ * hold dated today or later — each an ISO `YYYY-MM-DD` (invariant #6) or `null` when that arm does
+ * not hold, never both arms null. The set's price, tier and pool stay editable; the lock means
+ * "cannot move or remove" only.
  */
 export interface SetLock {
   readonly setId: number;
   readonly bookedOn: string | null;
+  readonly bookedUntil: string | null;
   readonly heldOn: string | null;
 }
 

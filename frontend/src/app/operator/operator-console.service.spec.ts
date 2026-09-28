@@ -424,11 +424,13 @@ describe('OperatorConsoleService — the owner’s beach-map read', () => {
     expect(req.request.method).toBe('GET');
     req.flush({
       map: { id: 1, name: 'V', sets: [], setVersion: 4 },
-      locks: [{ setId: 7, bookedOn: '2026-09-12', heldOn: null }],
+      locks: [{ setId: 7, bookedOn: '2026-09-12', bookedUntil: '2026-09-12', heldOn: null }],
     });
 
     expect(received?.map.setVersion).toBe(4);
-    expect(received?.locks).toEqual([{ setId: 7, bookedOn: '2026-09-12', heldOn: null }]);
+    expect(received?.locks).toEqual([
+      { setId: 7, bookedOn: '2026-09-12', bookedUntil: '2026-09-12', heldOn: null },
+    ]);
   });
 });
 
@@ -630,15 +632,43 @@ describe('layout save error mapping (#1032)', () => {
     const refusal = problem(409, {
       code: 'SETS_IN_USE',
       sets: [
-        { setId: 2, rowLabel: 'A', positionNo: 2, bookedOn: '2026-09-12', heldOn: null },
-        { setId: 5, rowLabel: 'Front', positionNo: 1, bookedOn: null, heldOn: '2026-09-20' },
+        {
+          setId: 2,
+          rowLabel: 'A',
+          positionNo: 2,
+          bookedOn: '2026-09-12',
+          bookedUntil: '2026-09-12',
+          heldOn: null,
+        },
+        {
+          setId: 5,
+          rowLabel: 'Front',
+          positionNo: 1,
+          bookedOn: null,
+          bookedUntil: null,
+          heldOn: '2026-09-20',
+        },
       ],
     });
 
     expect(layoutErrorOf(refusal)).toBe('SETS_IN_USE');
     expect(layoutBlockedSetsOf(refusal)).toEqual([
-      { setId: 2, rowLabel: 'A', positionNo: 2, bookedOn: '2026-09-12', heldOn: null },
-      { setId: 5, rowLabel: 'Front', positionNo: 1, bookedOn: null, heldOn: '2026-09-20' },
+      {
+        setId: 2,
+        rowLabel: 'A',
+        positionNo: 2,
+        bookedOn: '2026-09-12',
+        bookedUntil: '2026-09-12',
+        heldOn: null,
+      },
+      {
+        setId: 5,
+        rowLabel: 'Front',
+        positionNo: 1,
+        bookedOn: null,
+        bookedUntil: null,
+        heldOn: '2026-09-20',
+      },
     ]);
   });
 
@@ -646,15 +676,36 @@ describe('layout save error mapping (#1032)', () => {
     const malformed = problem(409, {
       code: 'SETS_IN_USE',
       sets: [
-        { setId: '2', rowLabel: 'A', positionNo: 2, bookedOn: '2026-09-12', heldOn: null },
-        { setId: 3, rowLabel: 'A', positionNo: 3, bookedOn: null, heldOn: null },
-        { setId: 4, rowLabel: 'A', positionNo: 4, bookedOn: '2026-09-12', heldOn: null },
+        {
+          setId: '2',
+          rowLabel: 'A',
+          positionNo: 2,
+          bookedOn: '2026-09-12',
+          bookedUntil: '2026-09-12',
+          heldOn: null,
+        },
+        { setId: 3, rowLabel: 'A', positionNo: 3, bookedOn: null, bookedUntil: null, heldOn: null },
+        {
+          setId: 4,
+          rowLabel: 'A',
+          positionNo: 4,
+          bookedOn: '2026-09-12',
+          bookedUntil: '2026-09-12',
+          heldOn: null,
+        },
         null,
       ],
     });
 
     expect(layoutBlockedSetsOf(malformed)).toEqual([
-      { setId: 4, rowLabel: 'A', positionNo: 4, bookedOn: '2026-09-12', heldOn: null },
+      {
+        setId: 4,
+        rowLabel: 'A',
+        positionNo: 4,
+        bookedOn: '2026-09-12',
+        bookedUntil: '2026-09-12',
+        heldOn: null,
+      },
     ]);
     expect(layoutBlockedSetsOf(problem(409, { code: 'SETS_IN_USE' }))).toEqual([]);
     expect(layoutBlockedSetsOf(problem(409, { code: 'STALE_WRITE' }))).toEqual([]);
