@@ -16,6 +16,7 @@ import ai.riviera.platform.booking.application.request.DeclineOutcome;
 import ai.riviera.platform.booking.application.request.PendingRequest;
 import ai.riviera.platform.booking.application.request.PendingRequests;
 import ai.riviera.platform.booking.application.request.RespondToRequest;
+import ai.riviera.platform.booking.domain.BookingStatus;
 import ai.riviera.platform.booking.vocabulary.StayId;
 import ai.riviera.platform.venue.vocabulary.SetId;
 
@@ -44,6 +45,7 @@ class BookingRequestControllerTest {
 
 	private static final String ACCEPT = "/api/venues/{venueId}/booking-requests/{bookingId}/accept";
 	private static final String DECLINE = "/api/venues/{venueId}/booking-requests/{bookingId}/decline";
+	private static final String ACCEPT_STAY = "/api/venues/{venueId}/booking-requests/stays/{stayId}/accept";
 	private static final long VENUE = 12L;
 	private static final long BOOKING = 77L;
 
@@ -58,6 +60,26 @@ class BookingRequestControllerTest {
 
 	@MockitoBean
 	PendingRequests pendingRequests;
+
+	@Test
+	void aStayAcceptAnswersTheStayAndItsStatus() throws Exception {
+		when(respondToRequest.acceptStay(any(), any(), any()))
+				.thenReturn(new AcceptOutcome.Accepted(BookingStatus.AWAITING_PAYMENT));
+
+		mvc.perform(post(ACCEPT_STAY, VENUE, 40L).with(csrf()).with(user("op").roles("OPERATOR")))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.stayId").value(40))
+				.andExpect(jsonPath("$.status").value("AWAITING_PAYMENT"));
+	}
+
+	@Test
+	void aStayAcceptThatLostADaySaysTheGuestWasTold() throws Exception {
+		when(respondToRequest.acceptStay(any(), any(), any())).thenReturn(AcceptOutcome.Rejected.SET_UNAVAILABLE);
+
+		mvc.perform(post(ACCEPT_STAY, VENUE, 40L).with(csrf()).with(user("op").roles("OPERATOR")))
+				.andExpect(status().isConflict())
+				.andExpect(jsonPath("$.code").value("SET_UNAVAILABLE"));
+	}
 
 	@Test
 	void theQueueTagsEachItemByKindAndListsAStaysStops() throws Exception {

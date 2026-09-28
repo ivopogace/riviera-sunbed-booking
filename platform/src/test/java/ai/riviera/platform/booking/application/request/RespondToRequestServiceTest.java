@@ -304,9 +304,9 @@ class RespondToRequestServiceTest {
 	void acceptDeclinesEveryOverlappingRival() {
 		when(bookings.acceptPendingRequest(BOOKING.value(), VENUE, NOW))
 				.thenReturn(Optional.of(acceptedRequest()));
-		when(bookings.declineOverlappingPending(SET, BOOKING_DATE, BOOKING_DATE, BOOKING.value(),
-				DeclineReason.ANOTHER_GUEST))
-				.thenReturn(List.of(new DeclinedRival(77, SET, BOOKING_DATE, BOOKING_DATE), new DeclinedRival(78, SET, BOOKING_DATE, BOOKING_DATE)));
+		when(bookings.declineRivals(SET, BOOKING_DATE, BOOKING_DATE, DeclineReason.ANOTHER_GUEST))
+				.thenReturn(List.of(new DeclinedRival(77, SET, BOOKING_DATE, BOOKING_DATE, null),
+						new DeclinedRival(78, SET, BOOKING_DATE, BOOKING_DATE, null)));
 		when(checkout.pay(any(), any())).thenReturn(new PaymentOutcome.Succeeded("ok"));
 
 		service().accept(OPERATOR, VENUE, BOOKING);

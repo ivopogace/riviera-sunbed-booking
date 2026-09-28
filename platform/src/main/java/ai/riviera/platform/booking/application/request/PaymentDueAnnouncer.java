@@ -5,6 +5,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import ai.riviera.platform.booking.events.BookingPaymentDue;
+import ai.riviera.platform.booking.events.StayPaymentDue;
 
 /**
  * Publishes {@link BookingPaymentDue} in its own transaction, so the Event Publication Registry gets
@@ -25,6 +26,11 @@ class PaymentDueAnnouncer {
 
 	@Transactional
 	public void announce(BookingPaymentDue paymentDue) {
+		events.publishEvent(paymentDue);
+	}
+
+	@Transactional
+	public void announce(StayPaymentDue paymentDue) {
 		events.publishEvent(paymentDue);
 	}
 }

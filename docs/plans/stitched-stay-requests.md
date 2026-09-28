@@ -63,7 +63,7 @@ nothing and collects under one PaymentIntent. Stay-level events (`StayRequestDec
   - one PaymentIntent carries one share per stretch;
   - one `StayPaymentDue(stayId, payBy, …)` is published, with no per-booking `BookingPaymentDue`.
 
-  *Seam:* `RespondToRequest.acceptStay` · *Pinned by:* `StayRequestAcceptIT.acceptClaimsEveryStretchAndCollectsOnce`
+  *Seam:* `RespondToRequest.acceptStay` · *Pinned by:* `StayRequestAcceptPayIT.acceptCollectsOnceAndAnnouncesThePaymentDue` (stripe profile), `StayRequestAcceptIT.acceptClaimsEveryStretchAndCollectsOnce` (stub)
 - [ ] **AC-4 (all or nothing):** Given a pending stay whose second stretch has a day taken since the
   request, when the owner accepts, then no day stays claimed, every stretch is `DECLINED` with
   `SET_UNAVAILABLE`, one `StayRequestDeclined` is published, and the answer is `SET_UNAVAILABLE`.
@@ -76,7 +76,7 @@ nothing and collects under one PaymentIntent. Stay-level events (`StayRequestDec
     `BookingRequestDeclined`.
   - The accepted stay's own stretches are never its own rivals.
 
-  *Seam:* `RespondToRequest.accept` / `acceptStay` · *Pinned by:* `StayRequestAcceptIT.rivalStaysDeclineWhole`
+  *Seam:* `RespondToRequest.accept` / `acceptStay` · *Pinned by:* `StayRequestAcceptIT.rivalStaysDeclineWhole`, `StayRequestAcceptIT.aLoneAcceptDeclinesARivalStayWhole`
 - [ ] **AC-6 (concurrent accepts never double-sell):** Given two pending stays sharing one
   `(set, date)`, when both are accepted concurrently, then exactly one is `AWAITING_PAYMENT`, the
   other is wholly `DECLINED`, and every contested row is claimed once (#2).
@@ -84,7 +84,7 @@ nothing and collects under one PaymentIntent. Stay-level events (`StayRequestDec
 - [ ] **AC-7 (a failed collection reverts the stay):** Given the gateway fails the payment set-up,
   when the owner accepts, then every stretch is `PENDING_REQUEST` again with its deadline intact and
   no day stays claimed. The answer is `PAYMENT_INIT_FAILED`.
-  *Seam:* `RespondToRequest.acceptStay` · *Pinned by:* `StayRequestAcceptIT.aFailedCollectionRevertsEveryStretch`
+  *Seam:* `RespondToRequest.acceptStay` · *Pinned by:* `StayRequestAcceptPayIT.aFailedCollectionRevertsEveryStretch`
 - [ ] **AC-8 (the venue declines whole):** Given a pending stay, when the owner declines it, then
   every stretch is `DECLINED` with `VENUE` and one `StayRequestDeclined(stayId, VENUE)` is
   published. A second decline answers `REQUEST_NOT_PENDING`, and another venue's operator gets 403.
@@ -282,9 +282,9 @@ All inside `booking` except the three `notification` listeners. No new module de
 
 ## Execution status
 
-**Stage pointer:** `implement (phase 2)`
+**Stage pointer:** `implement (phase 3)`
 
-**Next action:** phase 2 — red `StayRequestAcceptIT.acceptClaimsEveryStretchAndCollectsOnce`.
+**Next action:** phase 3 — red `StayRequestDeclineIT` (the venue's decline of a stay, whole).
 
 **Notes:**
 - Local ITs need `postgres:17`. Docker Hub rate-limited the pull, so it was pulled from
@@ -297,7 +297,7 @@ All inside `booking` except the three `notification` listeners. No new module de
 |-------|--------|---------|
 | 0 — plan | ✅ | (this commit) |
 | 1 — read side | ✅ | (phase-1 commit) |
-| 2 — stay accept | | |
+| 2 — stay accept | ✅ | (phase-2 commit) |
 | 3 — other legs | | |
 | 4 — mails | | |
 | 5 — backend gate | | |

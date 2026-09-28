@@ -65,12 +65,33 @@ public interface Bookings {
 	Optional<ClaimRef> findPendingRequestSpan(long bookingId, VenueId venueId);
 
 	/**
-	 * Guarded {@code PENDING_REQUEST → DECLINED} of every other pending request on {@code setId} whose
-	 * span overlaps {@code [firstDay, lastDay]}, stamping {@code reason}; the rows that transitioned
-	 * (ADR-0025: the accepted request's rivals).
+	 * Guarded {@code PENDING_REQUEST → DECLINED} of every pending request on {@code setId} overlapping
+	 * {@code [firstDay, lastDay]}, a stay's with every stretch (#1267), stamping {@code reason}; the rows
+	 * that moved (ADR-0025: an accept's rivals, called once the accepted rows left pending).
 	 */
-	List<ai.riviera.platform.booking.application.request.DeclinedRival> declineOverlappingPending(
-			SetId setId, LocalDate firstDay, LocalDate lastDay, long exceptBookingId, DeclineReason reason);
+	List<ai.riviera.platform.booking.application.request.DeclinedRival> declineRivals(
+			SetId setId, LocalDate firstDay, LocalDate lastDay, DeclineReason reason);
+
+	/** A pending stay request's stretches at this venue in day order, else empty (a foreign stay reads as absent, #13). */
+	List<ai.riviera.platform.booking.application.request.StayStretchRef> findPendingStayStretches(StayId stayId,
+			VenueId venueId);
+
+	/**
+	 * {@link #acceptPendingRequest} for every stretch of a stay request in one guarded statement, all
+	 * sharing {@code accepted_at}; the facts of the rows that moved (every stretch, or none).
+	 */
+	List<ai.riviera.platform.booking.application.request.AcceptedRequest> acceptPendingStay(StayId stayId,
+			VenueId venueId, Instant now);
+
+	/**
+	 * Guarded venue-scoped {@code PENDING_REQUEST → DECLINED} of every stretch of a stay request, stamping
+	 * {@code reason}; true iff they moved, so the caller publishes once. Not deadline-guarded.
+	 */
+	boolean declinePendingStay(StayId stayId, VenueId venueId, DeclineReason reason);
+
+	/** {@link #requestSnapshot} of a stay request: its stretches' statuses and shared deadline, or empty. */
+	Optional<ai.riviera.platform.booking.application.request.RequestSnapshot> stayRequestSnapshot(StayId stayId,
+			VenueId venueId);
 
 	/**
 	 * Compensate a failed payment-request issuance: the guarded {@code AWAITING_PAYMENT →

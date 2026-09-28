@@ -275,26 +275,119 @@ class JdbcBookings implements Bookings {
 	}
 
 	@Override
-	public List<ai.riviera.platform.booking.application.request.DeclinedRival> declineOverlappingPending(
-			SetId setId, LocalDate firstDay, LocalDate lastDay, long exceptBookingId, DeclineReason reason) {
+	public List<ai.riviera.platform.booking.application.request.DeclinedRival> declineRivals(
+			SetId setId, LocalDate firstDay, LocalDate lastDay, DeclineReason reason) {
+		// A stay rival is declined whole: every pending stretch of a stay one of whose stretches overlaps.
 		return jdbc.sql("""
-				UPDATE booking
+				WITH hit AS (
+				  SELECT id, stay_id FROM booking
+				  WHERE set_id = :set AND status = :pending AND booking_date <= :last AND last_date >= :first
+				)
+				UPDATE booking b
 				SET status = :declined, decline_reason = :reason
-				WHERE set_id = :set AND status = :pending AND id <> :except
-				  AND booking_date <= :last AND last_date >= :first
-				RETURNING id, set_id, booking_date, last_date
+				WHERE b.status = :pending
+				  AND (b.id IN (SELECT id FROM hit WHERE stay_id IS NULL)
+				       OR b.stay_id IN (SELECT stay_id FROM hit WHERE stay_id IS NOT NULL))
+				RETURNING b.id, b.set_id, b.booking_date, b.last_date, b.stay_id
 				""")
 				.param("declined", BookingStatus.DECLINED.name())
 				.param(PARAM_REASON, reason.name())
 				.param("set", setId.value())
 				.param(PARAM_PENDING, BookingStatus.PENDING_REQUEST.name())
-				.param("except", exceptBookingId)
 				.param("first", firstDay)
 				.param("last", lastDay)
 				.query((rs, rowNum) -> new ai.riviera.platform.booking.application.request.DeclinedRival(
 						rs.getLong("id"), new SetId(rs.getLong(COL_SET_ID)),
+						rs.getObject(COL_BOOKING_DATE, LocalDate.class), rs.getObject(COL_LAST_DATE, LocalDate.class),
+						stayIdOf(rs)))
+				.list();
+	}
+
+	@Override
+	public List<ai.riviera.platform.booking.application.request.StayStretchRef> findPendingStayStretches(
+			StayId stayId, VenueId venueId) {
+		return jdbc.sql("""
+				SELECT id, set_id, booking_date, last_date
+				FROM booking
+				WHERE stay_id = :stay AND venue_id = :venue AND status = :pending
+				ORDER BY booking_date
+				""")
+				.param("stay", stayId.value())
+				.param(PARAM_VENUE, venueId.value())
+				.param(PARAM_PENDING, BookingStatus.PENDING_REQUEST.name())
+				.query((rs, rowNum) -> new ai.riviera.platform.booking.application.request.StayStretchRef(
+						rs.getLong("id"), new SetId(rs.getLong(COL_SET_ID)),
 						rs.getObject(COL_BOOKING_DATE, LocalDate.class), rs.getObject(COL_LAST_DATE, LocalDate.class)))
 				.list();
+	}
+
+	@Override
+	public List<ai.riviera.platform.booking.application.request.AcceptedRequest> acceptPendingStay(StayId stayId,
+			VenueId venueId, Instant now) {
+		// Every stretch or none: a stay whose stretches are not all pending and in time matches no row.
+		return jdbc.sql("""
+				UPDATE booking
+				SET status = :awaiting, accepted_at = :now
+				WHERE stay_id = :stay AND venue_id = :venue AND status = :pending AND request_expires_at > :now
+				  AND NOT EXISTS (SELECT 1 FROM booking o WHERE o.stay_id = :stay
+				                  AND (o.status <> :pending OR o.request_expires_at <= :now))
+				RETURNING id, venue_id, set_id, booking_date, last_date, accepted_at, created_at,
+				          amount_minor, amount_currency
+				""")
+				.param(PARAM_AWAITING, BookingStatus.AWAITING_PAYMENT.name())
+				.param("now", java.sql.Timestamp.from(now))
+				.param("stay", stayId.value())
+				.param(PARAM_VENUE, venueId.value())
+				.param(PARAM_PENDING, BookingStatus.PENDING_REQUEST.name())
+				.query((rs, rowNum) -> new ai.riviera.platform.booking.application.request.AcceptedRequest(
+						rs.getLong("id"), new VenueId(rs.getLong(COL_VENUE_ID)),
+						new SetId(rs.getLong(COL_SET_ID)), rs.getObject(COL_BOOKING_DATE, LocalDate.class),
+						rs.getObject(COL_LAST_DATE, LocalDate.class), rs.getTimestamp("accepted_at").toInstant(),
+						rs.getTimestamp(COL_CREATED_AT).toInstant(), rs.getLong(COL_AMOUNT_MINOR),
+						rs.getString(COL_AMOUNT_CURRENCY)))
+				.list()
+				.stream()
+				.sorted(java.util.Comparator.comparing(
+						ai.riviera.platform.booking.application.request.AcceptedRequest::bookingDate))
+				.toList();
+	}
+
+	@Override
+	public boolean declinePendingStay(StayId stayId, VenueId venueId, DeclineReason reason) {
+		return jdbc.sql("""
+				UPDATE booking
+				SET status = :declined, decline_reason = :reason
+				WHERE stay_id = :stay AND venue_id = :venue AND status = :pending
+				""")
+				.param("declined", BookingStatus.DECLINED.name())
+				.param(PARAM_REASON, reason.name())
+				.param("stay", stayId.value())
+				.param(PARAM_VENUE, venueId.value())
+				.param(PARAM_PENDING, BookingStatus.PENDING_REQUEST.name())
+				.update() > 0;
+	}
+
+	@Override
+	public Optional<RequestSnapshot> stayRequestSnapshot(StayId stayId, VenueId venueId) {
+		List<RequestSnapshot> stretches = jdbc.sql("""
+				SELECT status, request_expires_at
+				FROM booking
+				WHERE stay_id = :stay AND venue_id = :venue
+				""")
+				.param("stay", stayId.value())
+				.param(PARAM_VENUE, venueId.value())
+				.query((rs, rowNum) -> {
+					java.sql.Timestamp expires = rs.getTimestamp(COL_REQUEST_EXPIRES_AT);
+					return new RequestSnapshot(BookingStatus.valueOf(rs.getString(PARAM_STATUS)),
+							expires == null ? null : expires.toInstant());
+				})
+				.list();
+		if (stretches.isEmpty()) {
+			return Optional.empty();
+		}
+		return Optional.of(new RequestSnapshot(
+				ai.riviera.platform.booking.domain.StayStatus.of(stretches.stream().map(RequestSnapshot::status).toList()),
+				stretches.getFirst().requestExpiresAt()));
 	}
 
 	@Override
