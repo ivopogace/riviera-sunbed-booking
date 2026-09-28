@@ -18,6 +18,7 @@ import ai.riviera.platform.venue.vocabulary.DisturbedSet;
 import ai.riviera.platform.venue.vocabulary.GateVerdict;
 import ai.riviera.platform.venue.vocabulary.LayoutRejection;
 import ai.riviera.platform.venue.vocabulary.Pool;
+import ai.riviera.platform.venue.vocabulary.BookedSpan;
 import ai.riviera.platform.venue.vocabulary.SetId;
 import ai.riviera.platform.venue.vocabulary.SetPlacement;
 import ai.riviera.platform.venue.vocabulary.VenueId;
@@ -99,12 +100,12 @@ class LayoutWriterTest {
 	@Test
 	void aProceedingGateIsStillFollowedByTheProbeWhichRefusesAClaimItLeftBehind() {
 		givenLockedMap();
-		when(bookings.nearestLiveBookings(List.of(A1))).thenReturn(Map.of(A1, TODAY_IN_TIRANE.plusDays(3)));
+		when(bookings.nearestLiveBookings(List.of(A1))).thenReturn(Map.of(A1, BookedSpan.oneDay(TODAY_IN_TIRANE.plusDays(3))));
 
 		LayoutWrite outcome = writer.write(VENUE, 4, KEEP_A2_ONLY, disturbed -> GateVerdict.proceed());
 
 		assertEquals(new LayoutWrite.SetsInUse(List.of(new BlockedSet(new PlacedSet(A1, AT_A1),
-				new SetLock(A1, TODAY_IN_TIRANE.plusDays(3), null)))), outcome);
+				new SetLock(A1, BookedSpan.oneDay(TODAY_IN_TIRANE.plusDays(3)), null)))), outcome);
 		verify(venues, never()).retireSet(any(), any(), any());
 		verify(venues, never()).incrementSetVersion(any());
 	}
@@ -149,7 +150,7 @@ class LayoutWriterTest {
 	@Test
 	void aKeptSetIsLeftAsStoredAndSkippedByTheProbe() {
 		givenLockedMap();
-		when(bookings.nearestLiveBookings(List.of(A1))).thenReturn(Map.of(A1, TODAY_IN_TIRANE.plusDays(1)));
+		when(bookings.nearestLiveBookings(List.of(A1))).thenReturn(Map.of(A1, BookedSpan.oneDay(TODAY_IN_TIRANE.plusDays(1))));
 
 		LayoutWrite outcome = writer.write(VENUE, 4, KEEP_A2_ONLY, disturbed -> new GateVerdict.Proceed(List.of(A1)));
 

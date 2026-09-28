@@ -16,9 +16,9 @@ import ai.riviera.platform.venue.vocabulary.VenueId;
 public interface DailyTakings {
 
 	/**
-	 * The gross of {@code venueId}'s {@code CONFIRMED}, {@code COMPLETED} and {@code NO_SHOW}
-	 * bookings whose first service day is {@code date} (Tirane, invariant #6), in minor units + ISO
-	 * currency (invariant #5); an empty day is {@code (0, "EUR")}, never {@code null}.
+	 * The gross {@code venueId} kept on {@code date} (Tirane, invariant #6): each {@code CONFIRMED},
+	 * {@code COMPLETED} and {@code NO_SHOW} booking covering the day counts its day's share, in
+	 * minor units + ISO currency (invariant #5); an empty day is {@code (0, "EUR")}, never {@code null}.
 	 */
 	OnlineTakings grossOnlineTakings(VenueId venueId, LocalDate date);
 }

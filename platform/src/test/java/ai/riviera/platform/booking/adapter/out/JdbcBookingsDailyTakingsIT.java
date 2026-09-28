@@ -82,6 +82,21 @@ class JdbcBookingsDailyTakingsIT {
 				.param("status", status).update();
 	}
 
+	private void insertStay(String code, long venueId, long setId, LocalDate first, LocalDate last,
+			long amountMinor, String status) {
+		long customer = jdbc.sql("INSERT INTO customer (email, full_name, phone) "
+						+ "VALUES (:e, 'Guest', '+355600') RETURNING id")
+				.param("e", code + "@example.com").query(Long.class).single();
+		jdbc.sql("""
+				INSERT INTO booking (code, venue_id, set_id, customer_id, booking_date, last_date,
+				                     amount_minor, amount_currency, status)
+				VALUES (:code, :venue, :set, :cust, :first, :last, :amount, 'EUR', :status)
+				""")
+				.param("code", code).param("venue", venueId).param("set", setId)
+				.param("cust", customer).param("first", first).param("last", last)
+				.param("amount", amountMinor).param("status", status).update();
+	}
+
 	private long insertSecondVenue() {
 		return jdbc.sql("""
 				INSERT INTO venue (name, beach, booking_mode, commission_bps, payout_currency)
@@ -129,6 +144,27 @@ class JdbcBookingsDailyTakingsIT {
 		assertEquals(7000L, before.grossMinor());
 		assertEquals(before.grossMinor(), after.grossMinor(),
 				"a paid no-show is not refunded (invariant #10), so the venue's day must not shrink");
+	}
+
+	/**
+	 * Design D4: a stay counts on each day it serves, its amount split by {@code DayShare}, never
+	 * whole on its arrival day; a one-day booking beside it still counts whole on its day.
+	 */
+	@Test
+	void aStayCountsOnEachDayItServes() {
+		SetRef target = ownVenueWithOnlineSet("Stay Venue");
+		LocalDate first = LocalDate.of(2027, 8, 20);
+		insertStay("TAKE0009", target.venueId(), target.setId(), first, first.plusDays(2), 9000, "CONFIRMED");
+		insertBooking("TAKE0010", target.venueId(), target.setId(), first.plusDays(1), 4000, "CONFIRMED");
+		VenueId venue = new VenueId(target.venueId());
+
+		assertEquals(3000L, dailyTakings.grossOnlineTakings(venue, first).grossMinor(),
+				"the arrival day carries one third, not the whole stay");
+		assertEquals(7000L, dailyTakings.grossOnlineTakings(venue, first.plusDays(1)).grossMinor(),
+				"the middle day carries the stay's third plus the one-day booking");
+		assertEquals(3000L, dailyTakings.grossOnlineTakings(venue, first.plusDays(2)).grossMinor());
+		assertEquals(0L, dailyTakings.grossOnlineTakings(venue, first.plusDays(3)).grossMinor(),
+				"the day after the stay ends is empty");
 	}
 
 	@Test

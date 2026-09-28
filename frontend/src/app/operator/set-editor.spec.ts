@@ -141,7 +141,12 @@ describe('SetEditor (#600)', () => {
   }
 
   describe('locked set (#1031)', () => {
-    const LOCK: SetLock = { setId: 11, bookedOn: '2026-09-12', heldOn: '2026-09-12' };
+    const LOCK: SetLock = {
+      setId: 11,
+      bookedOn: '2026-09-12',
+      bookedUntil: '2026-09-12',
+      heldOn: '2026-09-12',
+    };
     const DESCRIPTION =
       'Locked — booked Sat 12 Sept 2026. Can’t be moved or removed; tier and pool can still change.';
 

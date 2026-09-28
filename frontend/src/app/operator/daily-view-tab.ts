@@ -33,7 +33,9 @@ import { StatusChip } from '../shared/status-chip';
 import { formatMoney, formatMoneyRange, MoneyView } from '../shared/money';
 import { parentVenueId } from '../shared/parent-venue-id';
 import { formatCivilDate, todayBookingDate } from '../shared/booking-date';
-import { BookingStatus, metaFor } from '../shared/booking-status';
+import { formatStay } from '../shared/booking-date-label';
+import { metaFor } from '../shared/booking-status';
+import { plural } from '../shared/plural';
 import { setLabel, setsById, tierSentenceLabel } from '../shared/set-label';
 import { SetView, VenueMapView } from '../shared/venue-views';
 import { VenueService } from '../venue/venue.service';
@@ -43,6 +45,7 @@ import {
   MarkErrorCode,
   ReleaseErrorCode,
   VenueProfileErrorCode,
+  DayAttendance,
 } from './operator-console.model';
 import {
   OperatorConsoleService,
@@ -55,12 +58,14 @@ import {
 } from './operator-console.service';
 import { QrScanner } from './qr-scanner';
 import { codeFromScan } from './scan-input';
+import { StayDayGroup, stayDayGroupOf } from './stay-day-group';
 import { CheckIcon } from '../shared/check-icon';
 import { DotIcon } from '../shared/dot-icon';
 
 /**
- * One arrivals row: set label, display-only arrival code (invariant #7), and — for a booking that
- * has settled — the chip announcing how. `chip` is `null` for a still-expected `CONFIRMED` booking,
+ * One guest row: set label, display-only arrival code (invariant #7), the guest's span when the
+ * stay is longer than the day (`span`, else `null`), where the stay stands on the day (`group`),
+ * and — once the day resolved — the chip announcing how. `chip` is `null` for a day still expected,
  * which needs no badge; the operator wording ("Checked in") is deliberately not `STATUS_META`'s
  * tourist-facing "Completed".
  */
@@ -68,8 +73,24 @@ interface ArrivalRow {
   readonly setId: number;
   readonly code: string;
   readonly label: string;
+  readonly span: string | null;
+  readonly group: StayDayGroup;
   readonly chip: ArrivalChip | null;
 }
+
+/** One of the guest list's groups on the day, in the order shown; an empty group is not rendered. */
+interface GuestGroup {
+  readonly key: StayDayGroup;
+  readonly title: string;
+  readonly testId: string;
+  readonly rows: readonly ArrivalRow[];
+}
+
+const GUEST_GROUPS: readonly { key: StayDayGroup; title: string }[] = [
+  { key: 'ARRIVING', title: 'Arriving' },
+  { key: 'STAYING', title: 'Staying' },
+  { key: 'LEAVING', title: 'Leaving' },
+];
 
 /** The settled-status badge: shared-directive modifier, operator wording, and its test hook. */
 interface ArrivalChip {
@@ -79,17 +100,17 @@ interface ArrivalChip {
 }
 
 /**
- * The arrivals badge per settled status; a still-expected `CONFIRMED` row shows none. The modifier
- * is read from `STATUS_META` (the one status→modifier map), so a rename there can't silently drop
- * this chip to the neutral fallback.
+ * The badge per resolved day — the day's attendance, never the stay's outcome; an `EXPECTED` day
+ * shows none. The modifier is read from `STATUS_META` (the one status→modifier map), so a rename
+ * there can't silently drop this chip to the neutral fallback.
  */
-const ARRIVAL_CHIPS: Partial<Record<BookingStatus, ArrivalChip>> = {
-  COMPLETED: {
+const ARRIVAL_CHIPS: Partial<Record<DayAttendance, ArrivalChip>> = {
+  ATTENDED: {
     modifier: metaFor('COMPLETED').chip,
     label: 'Checked in',
     testId: 'arrival-checked-in',
   },
-  NO_SHOW: { modifier: metaFor('NO_SHOW').chip, label: 'No-show', testId: 'arrival-no-show' },
+  MISSED: { modifier: metaFor('NO_SHOW').chip, label: 'No-show', testId: 'arrival-no-show' },
 };
 
 /** One availability row on the shared canvas's row contract, plus the sets its tiles render. */
@@ -312,15 +333,40 @@ export class DailyViewTab {
     deriveTileStates(this.venue()?.sets ?? [], this.states() ?? new Map(), this.overrides()),
   );
 
-  /** The arrivals rows, each labelled with its set's position (else the raw set id). */
+  /** The guest rows, each labelled with its set's position (else the raw set id). */
   protected readonly arrivals = computed<readonly ArrivalRow[]>(() => {
     const byId = setsById(this.venue()?.sets);
+    const date = this.selectedDate();
     return this.bookings().map((b) => ({
       setId: b.setId,
       code: b.code,
       label: setLabel(byId, b.setId),
-      chip: ARRIVAL_CHIPS[b.status] ?? null,
+      span: b.firstDate === b.lastDate ? null : formatStay(b.firstDate, b.lastDate),
+      group: stayDayGroupOf(b.firstDate, b.lastDate, date),
+      chip: ARRIVAL_CHIPS[b.attendance] ?? null,
     }));
+  });
+
+  /** Arriving, staying, leaving — the non-empty groups in that order (design D4, story 30). */
+  protected readonly guestGroups = computed<readonly GuestGroup[]>(() =>
+    GUEST_GROUPS.map(({ key, title }) => ({
+      key,
+      title,
+      testId: `daily-group-${key.toLowerCase()}`,
+      rows: this.arrivals().filter((row) => row.group === key),
+    })).filter((group) => group.rows.length > 0),
+  );
+
+  /**
+   * "N guests not yet checked in today" — today only (story 31): a future day has no scans yet and a
+   * past day is the sweep's; `null` when there is nothing to say.
+   */
+  protected readonly notCheckedInText = computed<string | null>(() => {
+    if (!this.selectedDateIsToday()) {
+      return null;
+    }
+    const pending = this.bookings().filter((b) => b.attendance === 'EXPECTED').length;
+    return pending > 0 ? `${plural(pending, 'guest')} not yet checked in today.` : null;
   });
 
   protected readonly markedCount = computed(

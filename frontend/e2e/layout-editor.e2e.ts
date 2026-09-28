@@ -57,6 +57,7 @@ test.use({ colorScheme: 'dark' });
 interface MockLock {
   setId: number;
   bookedOn: string | null;
+  bookedUntil: string | null;
   heldOn: string | null;
 }
 
@@ -369,7 +370,14 @@ const SEEDED_SETS = [
 ];
 
 /** Set 2 (row B, position 1) as a refusal names it: booked, so a save that removes it is refused. */
-const REFUSED_B1 = { setId: 2, rowLabel: 'B', positionNo: 1, bookedOn: '2026-09-12', heldOn: null };
+const REFUSED_B1 = {
+  setId: 2,
+  rowLabel: 'B',
+  positionNo: 1,
+  bookedOn: '2026-09-12',
+  bookedUntil: '2026-09-12',
+  heldOn: null,
+};
 
 /** The remodel preview of a save that drops B1 with claims in every group — the blocked shape. */
 const BLOCKED_PREVIEW = {
@@ -771,14 +779,18 @@ test('adds a row on a trading venue in one PUT that keeps every seeded cell (#10
   page,
 }) => {
   const { puts } = await mockEditor(page, [], SEEDED_SETS, [
-    { setId: 2, bookedOn: '2026-09-12', heldOn: '2026-09-12' },
+    { setId: 2, bookedOn: '2026-09-12', bookedUntil: '2026-09-15', heldOn: '2026-09-12' },
   ]);
   await page.goto('/operator/1/beach-map');
   await signIn(page);
 
-  // The bulk surface on a venue that has sold: the booked cell is pinned, the grid is still editable.
+  // The bulk surface on a venue that has sold: the booked cell is pinned for the whole span the
+  // guest holds (#1205), the grid is still editable.
   await page.getByTestId('layout-tool-premium').click();
   await expect(page.getByTestId('layout-locked-legend')).toContainText('1 set is booked or held');
+  await expect(
+    page.locator('[data-testid="layout-cell"][data-locked="true"]'),
+  ).toHaveAccessibleDescription(/booked Sat 12 Sept 2026 – Tue 15 Sept 2026/);
   await expect(page.getByTestId('layout-cell')).toHaveCount(2);
 
   // Regenerate one row taller: the two seeded cells stay at their coordinates, row C is new.
@@ -1359,7 +1371,9 @@ test('a staff-held cell repaints its tier but never gaps, and the per-set surfac
   page,
 }) => {
   // Set 2 (row B, position 1) is marked for a walk-in: the owner's map read names it, so the editor knows before any click.
-  await mockEditor(page, [], SEEDED_SETS, [{ setId: 2, bookedOn: null, heldOn: '2026-09-12' }]);
+  await mockEditor(page, [], SEEDED_SETS, [
+    { setId: 2, bookedOn: null, bookedUntil: null, heldOn: '2026-09-12' },
+  ]);
   await page.goto('/operator/1/beach-map');
   await signIn(page);
 

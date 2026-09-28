@@ -15,6 +15,7 @@ import org.junit.jupiter.api.Test;
 
 import ai.riviera.platform.venue.spi.BookingPresence;
 import ai.riviera.platform.venue.spi.SetAvailabilityLookup;
+import ai.riviera.platform.venue.vocabulary.BookedSpan;
 import ai.riviera.platform.venue.vocabulary.SetId;
 import ai.riviera.platform.venue.vocabulary.VenueId;
 
@@ -62,8 +63,8 @@ class LiveClaimsTest {
 
 		assertEquals(Map.of(
 				HELD_TODAY, new SetLock(HELD_TODAY, null, TODAY_IN_TIRANE),
-				BOOKED, new SetLock(BOOKED, TODAY_IN_TIRANE.plusDays(3), null),
-				HELD_AND_BOOKED, new SetLock(HELD_AND_BOOKED, TODAY_IN_TIRANE.plusDays(1),
+				BOOKED, new SetLock(BOOKED, BookedSpan.oneDay(TODAY_IN_TIRANE.plusDays(3)), null),
+				HELD_AND_BOOKED, new SetLock(HELD_AND_BOOKED, BookedSpan.oneDay(TODAY_IN_TIRANE.plusDays(1)),
 						TODAY_IN_TIRANE.plusDays(1))),
 				locks, "a past hold and a free set carry no lock; both dates ride when both facts hold");
 		assertEquals(TODAY_IN_TIRANE, availability.askedFrom, "the hold cutoff is today in Tirane, inclusive");
@@ -153,10 +154,10 @@ class LiveClaimsTest {
 		}
 
 		@Override
-		public Map<SetId, LocalDate> nearestLiveBookings(Collection<SetId> setIds) {
+		public Map<SetId, BookedSpan> nearestLiveBookings(Collection<SetId> setIds) {
 			return setIds.stream()
 					.filter(liveOn::containsKey)
-					.collect(Collectors.toMap(id -> id, liveOn::get));
+					.collect(Collectors.toMap(id -> id, id -> BookedSpan.oneDay(liveOn.get(id))));
 		}
 	}
 }

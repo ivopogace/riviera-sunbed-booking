@@ -101,7 +101,12 @@ describe('SetEditor a11y (#600)', () => {
     render();
     const locked = firstSetCell();
     fixture.componentRef.setInput('locks', [
-      { setId: Number(locked.dataset['setId']), bookedOn: '2026-09-12', heldOn: null },
+      {
+        setId: Number(locked.dataset['setId']),
+        bookedOn: '2026-09-12',
+        bookedUntil: '2026-09-12',
+        heldOn: null,
+      },
     ]);
     fixture.detectChanges();
 

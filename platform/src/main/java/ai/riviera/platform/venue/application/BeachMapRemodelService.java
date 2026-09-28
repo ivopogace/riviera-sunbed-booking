@@ -90,7 +90,7 @@ class BeachMapRemodelService implements BeachMapRemodel {
 					new LayoutCommitOutcome.KeptSetsDisplaced(kept.stream().map(PlacedSet::id).toList());
 				case LayoutWrite.SetsInUse(var sets) -> new LayoutCommitOutcome.SetsInUse(sets.stream()
 						.map(blocked -> new LockedSet(blocked.set().id(), blocked.set().placement(),
-								blocked.lock().bookedOn(), blocked.lock().heldOn()))
+								blocked.lock().booked(), blocked.lock().heldOn()))
 						.toList());
 				case LayoutWrite.Rejected(var reason) -> new LayoutCommitOutcome.Rejected(reason);
 			};

@@ -10,7 +10,7 @@ import { BehaviorSubject } from 'rxjs';
 import { vi } from 'vitest';
 
 import { expectCellsFillCanvasRow } from '../../testing/beach-map-height';
-import { defaultBookingDate, todayBookingDate } from '../shared/booking-date';
+import { addDays, defaultBookingDate, todayBookingDate } from '../shared/booking-date';
 import { Pool, SetView, Tier } from '../shared/venue-views';
 import { ConsoleVenueMap } from './console-venue-map';
 import { ConsoleDailyBooking } from './operator-console.model';
@@ -41,8 +41,21 @@ describe('DailyViewTab (#175)', () => {
     seat(3, 'A', 3, 'PREMIUM', 'ONLINE', 'TAKEN'),
     seat(4, 'B', 1, 'STANDARD', 'WALK_IN', 'FREE'),
   ];
+  const TODAY = todayBookingDate(new Date());
+  /** A one-day booking on `TODAY` for set 2, expected — the fields a case does not care about. */
+  function booking(overrides: Partial<ConsoleDailyBooking> = {}): ConsoleDailyBooking {
+    return {
+      setId: 2,
+      code: 'ABC12345',
+      status: 'CONFIRMED',
+      firstDate: TODAY,
+      lastDate: TODAY,
+      attendance: 'EXPECTED',
+      ...overrides,
+    };
+  }
   // set 2 is held by a confirmed online booking
-  const BOOKINGS: ConsoleDailyBooking[] = [{ setId: 2, code: 'ABC12345', status: 'CONFIRMED' }];
+  const BOOKINGS: ConsoleDailyBooking[] = [booking()];
   // Server states — the tile-classification authority; FREE sets are absent.
   const STATES = [
     { setId: 2, state: 'BOOKED_ONLINE' },
@@ -340,7 +353,7 @@ describe('DailyViewTab (#175)', () => {
   });
 
   it('renders a no-show arrivals row so a swept past day is not empty', () => {
-    render(SEED, [{ setId: 2, code: 'ABC12345', status: 'NO_SHOW' }]);
+    render(SEED, [booking({ status: 'NO_SHOW', attendance: 'MISSED' })]);
 
     const rows = host.querySelectorAll('[data-testid="daily-arrival-row"]');
     expect(rows).toHaveLength(1);
@@ -359,6 +372,62 @@ describe('DailyViewTab (#175)', () => {
     expect(host.querySelectorAll('[data-testid="daily-arrival-row"]')).toHaveLength(1);
   });
 
+  it('a one-day venue sees one Arriving group, no span, and today’s not-checked-in count (#1205)', () => {
+    render();
+
+    expect(byId('daily-group-arriving').textContent).toContain('Arriving · 1');
+    expect(byId('daily-group-staying')).toBeNull();
+    expect(byId('daily-group-leaving')).toBeNull();
+    expect(byId('daily-arrival-span')).toBeNull();
+    expect(byId('daily-not-checked-in').textContent?.trim()).toBe(
+      '1 guest not yet checked in today.',
+    );
+  });
+
+  it('groups guests by where their stay stands today, names the span, and badges the day, not the stay (#1205)', () => {
+    render(SEED, [
+      booking(),
+      booking({
+        setId: 3,
+        code: 'STAY00001',
+        firstDate: addDays(TODAY, -1),
+        lastDate: addDays(TODAY, 1),
+        attendance: 'ATTENDED',
+      }),
+      booking({ setId: 4, code: 'STAY00002', firstDate: addDays(TODAY, -2), lastDate: TODAY }),
+    ]);
+
+    expect(byId('daily-group-arriving').textContent).toContain('Arriving · 1');
+    expect(byId('daily-group-staying').textContent).toContain('Staying · 1');
+    expect(byId('daily-group-leaving').textContent).toContain('Leaving · 1');
+    const rows = host.querySelectorAll('[data-testid="daily-arrival-row"]');
+    expect(rows).toHaveLength(3);
+    expect(
+      [...rows].map((r) => r.querySelector('[data-testid="daily-arrival-code"]')!.textContent),
+    ).toEqual(['ABC12345', 'STAY00001', 'STAY00002']);
+    const spans = host.querySelectorAll('[data-testid="daily-arrival-span"]');
+    expect(spans).toHaveLength(2);
+    expect(spans[0].textContent).toContain('3 days');
+    // The staying guest scanned in today while the stay is still CONFIRMED: the day's chip, not the stay's.
+    expect(rows[1].querySelector('[data-testid="arrival-checked-in"]')).toBeTruthy();
+    expect(host.querySelectorAll('[data-testid="arrival-checked-in"]')).toHaveLength(1);
+    expect(byId('daily-not-checked-in').textContent?.trim()).toBe(
+      '2 guests not yet checked in today.',
+    );
+  });
+
+  it('says nothing about check-ins on another day — a future day has none, a past day is the sweep’s (#1205)', () => {
+    render();
+    const date = byId('daily-date') as HTMLInputElement;
+    date.value = addDays(TODAY, 1);
+    date.dispatchEvent(new Event('change'));
+    flushLoad(SEED, [booking({ firstDate: addDays(TODAY, 1), lastDate: addDays(TODAY, 3) })]);
+
+    expect(byId('daily-not-checked-in')).toBeNull();
+    expect(byId('daily-group-arriving').textContent).toContain('Arriving · 1');
+    expect(byId('daily-arrival-span').textContent).toContain('3 days');
+  });
+
   it('checks a typed code in: POST, success notice, then a reconcile shows the checked-in chip (#583)', () => {
     render();
     const input = byId('checkin-code-input') as HTMLInputElement;
@@ -372,7 +441,7 @@ describe('DailyViewTab (#175)', () => {
     fixture.detectChanges();
     expect(byId('checkin-result').textContent).toContain('Checked in');
 
-    flushLoad(SEED, [{ setId: 2, code: 'ABC12345', status: 'COMPLETED' }]);
+    flushLoad(SEED, [booking({ status: 'COMPLETED', attendance: 'ATTENDED' })]);
     expect(byId('arrival-checked-in')).toBeTruthy();
     expect(input.value).toBe('');
   });
@@ -450,7 +519,7 @@ describe('DailyViewTab (#175)', () => {
         .flush({ setId: 2, bookingDate: '2026-06-15' });
       fixture.detectChanges();
       expect(byId('checkin-result').textContent).toContain('Checked in');
-      flushLoad(SEED, [{ setId: 2, code: 'ABC12345', status: 'COMPLETED' }]);
+      flushLoad(SEED, [booking({ status: 'COMPLETED', attendance: 'ATTENDED' })]);
     } finally {
       delete (globalThis as { __RIVIERA_FAKE_QR__?: string[] }).__RIVIERA_FAKE_QR__;
     }

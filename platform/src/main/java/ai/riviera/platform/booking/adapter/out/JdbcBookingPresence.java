@@ -12,6 +12,7 @@ import org.springframework.stereotype.Repository;
 
 import ai.riviera.platform.booking.domain.BookingStatus;
 
+import ai.riviera.platform.venue.vocabulary.BookedSpan;
 import ai.riviera.platform.venue.vocabulary.LiveBookingCounts;
 import ai.riviera.platform.venue.vocabulary.SetId;
 import ai.riviera.platform.venue.vocabulary.VenueId;
@@ -21,8 +22,8 @@ import ai.riviera.platform.venue.spi.BookingPresence;
  * Answers {@code venue}'s {@link BookingPresence} from the {@code booking} table this module owns
  * (invariant #1: explicit {@link JdbcClient} SQL). {@code hasBookings} counts any status, and a set a
  * remodel receipt names as a move's old or new spot, since each pins the set by FK: that decides
- * retire-or-delete. The live probes count only {@link #LIVE_STATUSES}; {@code liveBookingsFrom} reads
- * {@code last_date}, so a stay still running on the day is owed its remaining days. Served by
+ * retire-or-delete. The live probes count only {@link #LIVE_STATUSES} and read {@code last_date}, so a
+ * stay still running is owed its remaining days and a lock names every day it holds. Served by
  * {@code booking_venue_id_idx} and {@code booking_set_date_idx} (V5); no new index.
  */
 @Repository
@@ -68,14 +69,14 @@ class JdbcBookingPresence implements BookingPresence {
 	}
 
 	@Override
-	public Map<SetId, LocalDate> nearestLiveBookings(Collection<SetId> setIds) {
+	public Map<SetId, BookedSpan> nearestLiveBookings(Collection<SetId> setIds) {
 		if (setIds.isEmpty()) {
 			return Map.of(); // no IN-list — avoid an empty "IN ()" and a needless round-trip
 		}
 		List<Long> ids = setIds.stream().map(SetId::value).toList();
 		// The same live filter as hasLiveBookings, grouped; booking_set_date_idx serves both columns.
 		return jdbc.sql("""
-				SELECT set_id, MIN(booking_date) AS nearest
+				SELECT set_id, MIN(booking_date) AS first_day, MAX(last_date) AS last_day
 				FROM booking
 				WHERE set_id IN (:ids) AND status IN (:live)
 				GROUP BY set_id
@@ -83,7 +84,8 @@ class JdbcBookingPresence implements BookingPresence {
 				.param("ids", ids)
 				.param("live", LIVE_STATUSES)
 				.query((rs, rowNum) -> Map.entry(
-						new SetId(rs.getLong("set_id")), rs.getObject("nearest", LocalDate.class)))
+						new SetId(rs.getLong("set_id")),
+						new BookedSpan(rs.getObject("first_day", LocalDate.class), rs.getObject("last_day", LocalDate.class))))
 				.list()
 				.stream()
 				.collect(Collectors.toUnmodifiableMap(Map.Entry::getKey, Map.Entry::getValue));

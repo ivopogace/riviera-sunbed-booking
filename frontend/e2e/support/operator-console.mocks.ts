@@ -40,7 +40,18 @@ export async function mockWholeConsole(page: Page): Promise<void> {
     route.fulfill({ json: [request(31), request(32)] }),
   );
   await page.route(/\/api\/venues\/1\/bookings(\?.*)?$/, (route) =>
-    route.fulfill({ json: [{ setId: 10, code: 'RIV7K2QX', status: 'CONFIRMED' }] }),
+    route.fulfill({
+      json: [
+        {
+          setId: 10,
+          code: 'RIV7K2QX',
+          status: 'CONFIRMED',
+          firstDate: '2026-07-08',
+          lastDate: '2026-07-08',
+          attendance: 'EXPECTED',
+        },
+      ],
+    }),
   );
   await page.route(/\/api\/venues\/1\/profile$/, (route) => route.fulfill({ json: profile() }));
   await page.route(/\/api\/venues\/1\/photos\/[0-9a-f]+$/, (route) =>

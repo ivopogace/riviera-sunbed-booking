@@ -34,6 +34,7 @@ import ai.riviera.platform.venue.vocabulary.BookingMode;
 import ai.riviera.platform.venue.vocabulary.LiveBookingCounts;
 import ai.riviera.platform.venue.vocabulary.Pool;
 import ai.riviera.platform.venue.vocabulary.SeasonClosure;
+import ai.riviera.platform.venue.vocabulary.BookedSpan;
 import ai.riviera.platform.venue.vocabulary.SetId;
 import ai.riviera.platform.venue.vocabulary.SetPlacement;
 import ai.riviera.platform.venue.vocabulary.VenueId;
@@ -579,7 +580,7 @@ class VenueAdminServiceTest {
 		ReplaceLayoutOutcome outcome = mapEditor.replaceLayout(OWNER, VENUE, 0L, grid(2, 3));
 
 		assertEquals(new ReplaceLayoutOutcome.SetsInUse(List.of(new BlockedSet(
-				new PlacedSet(SET, OFF_GRID), new SetLock(SET, TODAY_IN_TIRANE.plusDays(3), null)))), outcome);
+				new PlacedSet(SET, OFF_GRID), new SetLock(SET, BookedSpan.oneDay(TODAY_IN_TIRANE.plusDays(3)), null)))), outcome);
 		assertEquals(0, venues.deletedSets + venues.retiredSets + venues.updatedSets + venues.insertedInLayout,
 				"a refused save writes nothing");
 		assertEquals(0, venues.incrementedSetVersions, "no spurious bump on the in-use refusal");
@@ -627,7 +628,7 @@ class VenueAdminServiceTest {
 		assertSame(ReplaceLayoutOutcome.Replaced.REPLACED, mapEditor.replaceLayout(OWNER, VENUE, 0L, renamed),
 				"a row label changes in place on a booked set, as a rename does");
 		assertEquals(new ReplaceLayoutOutcome.SetsInUse(List.of(new BlockedSet(
-				new PlacedSet(SET, A1), new SetLock(SET, TODAY_IN_TIRANE.plusDays(3), null)))),
+				new PlacedSet(SET, A1), new SetLock(SET, BookedSpan.oneDay(TODAY_IN_TIRANE.plusDays(3)), null)))),
 				mapEditor.replaceLayout(OWNER, VENUE, 0L, renumbered),
 				"a guest was told this row and number: a new number on a claimed set is refused and named");
 	}
@@ -1577,10 +1578,10 @@ class VenueAdminServiceTest {
 		}
 
 		@Override
-		public Map<SetId, LocalDate> nearestLiveBookings(Collection<SetId> setIds) {
+		public Map<SetId, BookedSpan> nearestLiveBookings(Collection<SetId> setIds) {
 			return setIds.stream()
 					.filter(liveOn::containsKey)
-					.collect(Collectors.toMap(id -> id, liveOn::get));
+					.collect(Collectors.toMap(id -> id, id -> BookedSpan.oneDay(liveOn.get(id))));
 		}
 	}
 }

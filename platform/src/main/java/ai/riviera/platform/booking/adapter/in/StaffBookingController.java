@@ -28,8 +28,8 @@ import ai.riviera.platform.venue.vocabulary.SetId;
 import ai.riviera.platform.venue.vocabulary.VenueId;
 
 /**
- * Operator endpoints for the staff daily view: a venue's settled bookings for one day —
- * confirmed, checked-in and no-show, each with set, code and {@code status} — plus the check-in
+ * Operator endpoints for the staff daily view: a venue's settled bookings covering one day —
+ * each with set, code, stay outcome, the guest's span and the day's attendance — plus the check-in
  * POST. Depends only on the {@link ListDailyBookings} and {@link CheckInBooking} ports (#11).
  *
  * <p><strong>Operator-gated</strong>, never public: codes are bearer credentials (invariant #7).
@@ -61,7 +61,7 @@ class StaffBookingController {
 		OperatorId operator = currentOperator.require(authentication);
 		LocalDate effectiveDate = date != null ? date : LocalDate.ofInstant(clock.instant(), TIRANE);
 		return dailyBookings.forVenueOn(operator, new VenueId(venueId), effectiveDate).stream()
-				.map(b -> new DailyBookingView(b.setId().value(), b.code(), b.status().name()))
+				.map(DailyBookingView::of)
 				.toList();
 	}
 

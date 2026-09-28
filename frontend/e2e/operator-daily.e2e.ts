@@ -19,7 +19,18 @@ import {
 const PRINCIPAL = { username: 'operator', principalType: 'OPERATOR' };
 
 // A1 free, A2 held by a CONFIRMED booking, A3 free, A4 an UNPAID online hold.
-const BOOKINGS = [{ setId: 2, code: 'ABC12345', status: 'CONFIRMED' }];
+/** Today in Europe/Tirane as the app reads it (invariant #6); the daily view opens on it. */
+const TODAY = new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Tirane' }).format(new Date());
+const BOOKINGS = [
+  {
+    setId: 2,
+    code: 'ABC12345',
+    status: 'CONFIRMED',
+    firstDate: TODAY,
+    lastDate: TODAY,
+    attendance: 'EXPECTED',
+  },
+];
 
 function seat(
   id: number,
@@ -96,7 +107,15 @@ async function mockDaily(page: Page): Promise<{ patches: import('@playwright/tes
     return route.fulfill({ status: 204, body: '' });
   });
   await page.route(/\/api\/venues\/1\/bookings(\?.*)?$/, (route) =>
-    route.fulfill({ json: [{ ...BOOKINGS[0], status: guestArrived ? 'COMPLETED' : 'CONFIRMED' }] }),
+    route.fulfill({
+      json: [
+        {
+          ...BOOKINGS[0],
+          status: guestArrived ? 'COMPLETED' : 'CONFIRMED',
+          attendance: guestArrived ? 'ATTENDED' : 'EXPECTED',
+        },
+      ],
+    }),
   );
   // Check-in (#583): first scan completes, any further scan answers the single-use 409.
   await page.route(/\/api\/venues\/1\/bookings\/[A-Z0-9]+\/check-in$/, (route) => {
@@ -235,9 +254,13 @@ test('shows tile states + arrival codes, and marks a walk-in that survives the r
   // Only STAFF_MARKED states count — the old taken−confirmed remainder showed a phantom 1.
   await expect(page.getByTestId('oc-stat-walkins')).toHaveText('0');
 
-  // Arrivals: one row with the display-only booking code chip.
+  // Guests: one row with the display-only booking code chip, under Arriving, still to check in.
   await expect(page.getByTestId('daily-arrival-row')).toHaveCount(1);
   await expect(page.getByTestId('daily-arrival-code')).toHaveText('ABC12345');
+  await expect(page.getByTestId('daily-group-arriving')).toContainText('Arriving · 1');
+  await expect(page.getByTestId('daily-not-checked-in')).toHaveText(
+    '1 guest not yet checked in today.',
+  );
 
   await settle(page);
   await expectNoSeriousAxeViolations(page, 'daily view tab');
@@ -317,7 +340,9 @@ test('a swept no-show still lists, badged, so a past day is not an empty page', 
   await mockDaily(page);
   // The sweep has already run on this day: the booking is terminal, not awaited.
   await page.route(/\/api\/venues\/1\/bookings(\?.*)?$/, (route) =>
-    route.fulfill({ json: [{ setId: 2, code: 'ABC12345', status: 'NO_SHOW' }] }),
+    route.fulfill({
+      json: [{ ...BOOKINGS[0], status: 'NO_SHOW', attendance: 'MISSED' }],
+    }),
   );
   await page.goto('/operator/1');
   await signInAndOpenDaily(page);
@@ -329,6 +354,57 @@ test('a swept no-show still lists, badged, so a past day is not an empty page', 
 
   await settle(page);
   await expectNoSeriousAxeViolations(page, 'daily view tab with a swept no-show');
+});
+
+test('tells arriving, staying and leaving guests apart on a day with stays, and counts who has not checked in (#1205, + axe)', async ({
+  page,
+}) => {
+  await mockDaily(page);
+  const shift = (days: number) => {
+    const d = new Date(`${TODAY}T00:00:00Z`);
+    d.setUTCDate(d.getUTCDate() + days);
+    return d.toISOString().slice(0, 10);
+  };
+  await page.route(/\/api\/venues\/1\/bookings(\?.*)?$/, (route) =>
+    route.fulfill({
+      json: [
+        BOOKINGS[0],
+        {
+          setId: 3,
+          code: 'STAY00001',
+          status: 'CONFIRMED',
+          firstDate: shift(-1),
+          lastDate: shift(1),
+          attendance: 'ATTENDED',
+        },
+        {
+          setId: 4,
+          code: 'STAY00002',
+          status: 'CONFIRMED',
+          firstDate: shift(-2),
+          lastDate: TODAY,
+          attendance: 'EXPECTED',
+        },
+      ],
+    }),
+  );
+  await page.goto('/operator/1');
+  await signInAndOpenDaily(page);
+
+  await expect(page.getByTestId('daily-group-arriving')).toContainText('Arriving · 1');
+  await expect(page.getByTestId('daily-group-staying')).toContainText('Staying · 1');
+  await expect(page.getByTestId('daily-group-leaving')).toContainText('Leaving · 1');
+  await expect(page.getByTestId('daily-arrival-row')).toHaveCount(3);
+  await expect(page.getByTestId('daily-arrival-span')).toHaveCount(2);
+  await expect(page.getByTestId('daily-arrival-span').first()).toContainText('3 days');
+  // The staying guest scanned in today while the stay is still CONFIRMED: the day's chip.
+  await expect(page.getByTestId('arrival-checked-in')).toHaveCount(1);
+  await expect(page.getByTestId('daily-not-checked-in')).toHaveText(
+    '2 guests not yet checked in today.',
+  );
+
+  await settle(page);
+  await expectNoSeriousAxeViolations(page, 'daily view tab with stays');
 });
 
 test('checks a guest in by typed code — the keyboard path needs no camera (#583)', async ({

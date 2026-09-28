@@ -440,9 +440,14 @@ describe('LayoutEditor (#172)', () => {
   });
 
   describe('locked cells (#1031)', () => {
-    const LOCK: SetLock = { setId: 2, bookedOn: '2026-09-12', heldOn: '2026-09-12' };
+    const LOCK: SetLock = {
+      setId: 2,
+      bookedOn: '2026-09-12',
+      bookedUntil: '2026-09-12',
+      heldOn: '2026-09-12',
+    };
     /** A staff walk-in mark with no booking behind it — the one lock the gap brush still keeps. */
-    const HELD: SetLock = { setId: 2, bookedOn: null, heldOn: '2026-09-12' };
+    const HELD: SetLock = { setId: 2, bookedOn: null, bookedUntil: null, heldOn: '2026-09-12' };
     const DESCRIPTION =
       'Locked — booked Sat 12 Sept 2026. Can’t be moved or removed; tier and pool can still change.';
 
@@ -1803,7 +1808,16 @@ describe('LayoutEditor (#172)', () => {
         {
           code: 'SETS_IN_USE',
           detail: 'x',
-          sets: [{ setId: 2, rowLabel: 'A', positionNo: 2, bookedOn: '2026-09-12', heldOn: null }],
+          sets: [
+            {
+              setId: 2,
+              rowLabel: 'A',
+              positionNo: 2,
+              bookedOn: '2026-09-12',
+              bookedUntil: '2026-09-12',
+              heldOn: null,
+            },
+          ],
         },
         { status: 409, statusText: 'Conflict' },
       );
@@ -2514,7 +2528,16 @@ describe('LayoutEditor (#172)', () => {
         {
           code: 'SETS_IN_USE',
           detail: 'x',
-          sets: [{ setId: 2, rowLabel: 'A', positionNo: 2, bookedOn: '2026-09-12', heldOn: null }],
+          sets: [
+            {
+              setId: 2,
+              rowLabel: 'A',
+              positionNo: 2,
+              bookedOn: '2026-09-12',
+              bookedUntil: '2026-09-12',
+              heldOn: null,
+            },
+          ],
         },
         { status: 409, statusText: 'Conflict' },
       );

@@ -4,6 +4,7 @@ import java.time.LocalDate;
 import java.util.Collection;
 import java.util.Map;
 
+import ai.riviera.platform.venue.vocabulary.BookedSpan;
 import ai.riviera.platform.venue.vocabulary.LiveBookingCounts;
 import ai.riviera.platform.venue.vocabulary.SetId;
 import ai.riviera.platform.venue.vocabulary.VenueId;
@@ -30,10 +31,11 @@ public interface BookingPresence {
 	boolean hasLiveBookings(SetId setId);
 
 	/**
-	 * For each of {@code setIds} with a live booking, its earliest service day; other sets are absent, never
-	 * {@code null}, and an empty input touches no database. Feeds the owner's map locks and the bulk save's refusal.
+	 * For each of {@code setIds} with a live booking, the span its live bookings hold (earliest first day to
+	 * latest last day); other sets are absent, never {@code null}, and an empty input touches no database.
+	 * Feeds the owner's map locks and the bulk save's refusal.
 	 */
-	Map<SetId, LocalDate> nearestLiveBookings(Collection<SetId> setIds);
+	Map<SetId, BookedSpan> nearestLiveBookings(Collection<SetId> setIds);
 
 	/**
 	 * What the venue's guests are still owed from {@code from} (a civil day in {@code Europe/Tirane})

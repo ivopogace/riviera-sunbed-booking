@@ -44,6 +44,7 @@ import ai.riviera.platform.booking.application.refund.RefundableBooking;
 import ai.riviera.platform.booking.application.remodel.LiveClaim;
 import ai.riviera.platform.booking.domain.BookingStatus;
 import ai.riviera.platform.booking.domain.BookingTransition;
+import ai.riviera.platform.booking.domain.DayAttendance;
 import ai.riviera.platform.customer.vocabulary.CustomerAccountId;
 import ai.riviera.platform.venue.vocabulary.SetId;
 import ai.riviera.platform.venue.vocabulary.VenueId;
@@ -929,18 +930,22 @@ class JdbcBookings implements Bookings {
 
 	/**
 	 * Staff daily view: settled bookings covering one day, by set, served by {@code
-	 * booking_venue_id_idx}. The code is selected for staff verification (invariant #7) — returned
-	 * to the operator-gated caller, never logged here.
+	 * booking_venue_id_idx}; a stitched stretch carries its stay's code and span, and the day's
+	 * {@code booking_day} stamps. The code is for staff verification (invariant #7), never logged.
 	 */
 	@Override
 	public List<DailyBooking> findSettledForVenueOn(VenueId venueId, LocalDate date) {
 		return jdbc.sql("""
-				SELECT b.set_id, COALESCE(s.code, b.code) AS code, b.status
+				SELECT b.set_id, COALESCE(s.code, b.code) AS code, b.status,
+				       COALESCE(s.first_date, b.booking_date) AS first_date,
+				       COALESCE(s.last_date, b.last_date) AS last_date,
+				       d.attended_at IS NOT NULL AS attended, d.missed_at IS NOT NULL AS missed
 				FROM booking b
 				LEFT JOIN stay s ON s.id = b.stay_id
+				LEFT JOIN booking_day d ON d.booking_id = b.id AND d.service_date = :date
 				WHERE b.venue_id = :venue AND b.booking_date <= :date AND b.last_date >= :date
-				  AND status IN (:confirmed, :completed, :noShow)
-				ORDER BY set_id
+				  AND b.status IN (:confirmed, :completed, :noShow)
+				ORDER BY b.set_id
 				""")
 				.param(PARAM_VENUE, venueId.value())
 				.param("date", date)
@@ -949,7 +954,9 @@ class JdbcBookings implements Bookings {
 				.param(PARAM_NO_SHOW, BookingStatus.NO_SHOW.name())
 				.query((rs, rowNum) -> new DailyBooking(
 						new SetId(rs.getLong(COL_SET_ID)), rs.getString("code"),
-						BookingStatus.valueOf(rs.getString(PARAM_STATUS))))
+						BookingStatus.valueOf(rs.getString(PARAM_STATUS)),
+						rs.getObject("first_date", LocalDate.class), rs.getObject(COL_LAST_DATE, LocalDate.class),
+						DayAttendance.of(rs.getBoolean("attended"), rs.getBoolean("missed"))))
 				.list();
 	}
 
