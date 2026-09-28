@@ -425,6 +425,15 @@ class CrossVenueDenialIT {
 	}
 
 	@Test
+	void declineStayRequestByNonOwnerIs403() throws Exception {
+		actingAs(operatorA);
+		mvc.perform(post("/api/venues/{v}/booking-requests/stays/{s}/decline", MIRAMAR, 999_999)
+						.cookie(operatorSession).with(csrf()))
+				.andExpect(status().isForbidden())
+				.andExpect(jsonPath("$.code").value("NOT_VENUE_OWNER"));
+	}
+
+	@Test
 	void checkInByNonOwnerIs403() throws Exception {
 		// Ownership fires BEFORE any lookup: even a nonexistent code is 403, never 404 (invariant #13).
 		actingAs(operatorA);

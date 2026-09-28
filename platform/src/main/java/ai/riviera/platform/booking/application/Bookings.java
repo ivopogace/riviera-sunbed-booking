@@ -89,6 +89,9 @@ public interface Bookings {
 	 */
 	boolean declinePendingStay(StayId stayId, VenueId venueId, DeclineReason reason);
 
+	/** The stay this booking is a stretch of; empty for a lone booking or an unknown id. */
+	Optional<StayId> stayOf(long bookingId);
+
 	/** {@link #requestSnapshot} of a stay request: its stretches' statuses and shared deadline, or empty. */
 	Optional<ai.riviera.platform.booking.application.request.RequestSnapshot> stayRequestSnapshot(StayId stayId,
 			VenueId venueId);
@@ -263,14 +266,26 @@ public interface Bookings {
 	List<BookingId> findOverduePendingRequests(Instant now);
 
 	/**
-	 * Guarded {@code PENDING_REQUEST → EXPIRED} ({@code request_expires_at <= now}), returning the
-	 * span iff it transitioned so the caller publishes once (nothing to release: ADR-0025). Disjoint
+	 * Guarded {@code PENDING_REQUEST → EXPIRED} ({@code request_expires_at <= now}) of a lone request, returning
+	 * the span iff it transitioned so the caller publishes once (nothing to release: ADR-0025). Disjoint
 	 * from accept's ({@code > now}) and decline's guards, so a raced candidate is a clean empty no-op.
 	 */
 	Optional<ClaimRef> expirePendingRequest(long bookingId, Instant now);
 
 	/**
-	 * Guest withdrawal: guarded {@code PENDING_REQUEST → WITHDRAWN} keyed on the bearer {@code code}
+	 * {@link #expirePendingRequest} for the stay request {@code bookingId} is a stretch of, whole (#1267):
+	 * the stay iff its stretches moved; empty for a lone request, or one another leg already ended.
+	 */
+	Optional<StayId> expirePendingStayOf(long bookingId, Instant now);
+
+	/**
+	 * {@link #withdrawPendingRequest} of a stay request by the stay's own code, every stretch or none
+	 * (#1267); the stay iff they moved. A stretch's row code is never honoured (invariant #7).
+	 */
+	Optional<StayId> withdrawPendingStay(String code);
+
+	/**
+	 * Guest withdrawal of a lone request: guarded {@code PENDING_REQUEST → WITHDRAWN} keyed on the bearer {@code code}
 	 * (#7, no venue scope), returning id + span iff it transitioned (nothing to release: ADR-0025).
 	 * Not deadline-guarded; a lost race is an {@code empty} no-op.
 	 */

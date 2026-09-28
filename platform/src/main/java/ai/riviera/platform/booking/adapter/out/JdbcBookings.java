@@ -368,6 +368,14 @@ class JdbcBookings implements Bookings {
 	}
 
 	@Override
+	public Optional<StayId> stayOf(long bookingId) {
+		return jdbc.sql("SELECT stay_id FROM booking WHERE id = :id AND stay_id IS NOT NULL")
+				.param("id", bookingId)
+				.query((rs, rowNum) -> new StayId(rs.getLong(COL_STAY_ID)))
+				.optional();
+	}
+
+	@Override
 	public Optional<RequestSnapshot> stayRequestSnapshot(StayId stayId, VenueId venueId) {
 		List<RequestSnapshot> stretches = jdbc.sql("""
 				SELECT status, request_expires_at
@@ -432,7 +440,7 @@ class JdbcBookings implements Bookings {
 		return jdbc.sql("""
 				UPDATE booking
 				SET status = :withdrawn
-				WHERE code = :code AND status = :pending
+				WHERE code = :code AND status = :pending AND stay_id IS NULL
 				RETURNING id, set_id, booking_date, last_date
 				""")
 				.param("withdrawn", BookingStatus.WITHDRAWN.name())
@@ -1017,7 +1025,7 @@ class JdbcBookings implements Bookings {
 		return jdbc.sql("""
 				UPDATE booking
 				SET status = :expired
-				WHERE id = :id AND status = :pending AND request_expires_at <= :now
+				WHERE id = :id AND status = :pending AND request_expires_at <= :now AND stay_id IS NULL
 				RETURNING set_id, booking_date, last_date
 				""")
 				.param("expired", BookingStatus.EXPIRED.name())
@@ -1026,6 +1034,42 @@ class JdbcBookings implements Bookings {
 				.param("now", java.sql.Timestamp.from(now))
 				.query(JdbcBookings::mapClaimRef)
 				.optional();
+	}
+
+	@Override
+	public Optional<StayId> expirePendingStayOf(long bookingId, Instant now) {
+		return jdbc.sql("""
+				UPDATE booking
+				SET status = :expired
+				WHERE stay_id = (SELECT stay_id FROM booking WHERE id = :id)
+				  AND status = :pending AND request_expires_at <= :now
+				RETURNING stay_id
+				""")
+				.param("expired", BookingStatus.EXPIRED.name())
+				.param("id", bookingId)
+				.param(PARAM_PENDING, BookingStatus.PENDING_REQUEST.name())
+				.param("now", java.sql.Timestamp.from(now))
+				.query((rs, rowNum) -> new StayId(rs.getLong(COL_STAY_ID)))
+				.list()
+				.stream()
+				.findFirst();
+	}
+
+	@Override
+	public Optional<StayId> withdrawPendingStay(String code) {
+		return jdbc.sql("""
+				UPDATE booking
+				SET status = :withdrawn
+				WHERE stay_id = (SELECT id FROM stay WHERE code = :code) AND status = :pending
+				RETURNING stay_id
+				""")
+				.param("withdrawn", BookingStatus.WITHDRAWN.name())
+				.param("code", code)
+				.param(PARAM_PENDING, BookingStatus.PENDING_REQUEST.name())
+				.query((rs, rowNum) -> new StayId(rs.getLong(COL_STAY_ID)))
+				.list()
+				.stream()
+				.findFirst();
 	}
 
 	@Override

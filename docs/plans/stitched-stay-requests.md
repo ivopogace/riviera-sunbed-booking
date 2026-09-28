@@ -88,14 +88,14 @@ nothing and collects under one PaymentIntent. Stay-level events (`StayRequestDec
 - [ ] **AC-8 (the venue declines whole):** Given a pending stay, when the owner declines it, then
   every stretch is `DECLINED` with `VENUE` and one `StayRequestDeclined(stayId, VENUE)` is
   published. A second decline answers `REQUEST_NOT_PENDING`, and another venue's operator gets 403.
-  *Seam:* `RespondToRequest.declineStay` · *Pinned by:* `StayRequestDeclineIT`
+  *Seam:* `RespondToRequest.declineStay` · *Pinned by:* `StayRequestDeclineIT.theVenueDeclinesAStayWhole`, `CrossVenueDenialIT`
 - [ ] **AC-9 (expiry is whole):** Given a pending stay past its deadline, when the sweep runs, then
   every stretch is `EXPIRED` and exactly one `StayRequestExpired` is published, whichever stretch
-  the sweep meets first. *Seam:* `ExpireRequests.sweep` · *Pinned by:* `StayRequestExpiryIT`
+  the sweep meets first. *Seam:* `ExpireRequests.sweep` · *Pinned by:* `StayRequestDeclineIT.theSweepExpiresAStayWholeAndSaysSoOnce`
 - [ ] **AC-10 (withdraw by the stay's code):** Given a pending stay, when the guest withdraws with
   the stay's code, then every stretch is `WITHDRAWN` and nothing is published. The same code again
   answers `REQUEST_NOT_PENDING`, and a stretch's row code answers 404.
-  *Seam:* `WithdrawRequest.withdraw` · *Pinned by:* `WithdrawRequestIT.aStayWithdrawsWhole`
+  *Seam:* `WithdrawRequest.withdraw` · *Pinned by:* `WithdrawRequestIT.aStayWithdrawsWholeByItsCodeAndNeverByARowCode`
 - [ ] **AC-11 (a remodel declines the whole stay):** Given a pending stay with one stretch on a set
   the remodel disturbs, when the remodel commits, then every stretch is `DECLINED` with
   `SET_UNAVAILABLE`. The receipt records the disturbed stretch's `DECLINE`, and one
@@ -282,23 +282,22 @@ All inside `booking` except the three `notification` listeners. No new module de
 
 ## Execution status
 
-**Stage pointer:** `implement (phase 3)`
+**Stage pointer:** `implement (phase 4)`
 
-**Next action:** phase 3 — red `StayRequestDeclineIT` (the venue's decline of a stay, whole).
+**Next action:** phase 4 — red `StayRequestMailIT` (three stay-request listeners).
 
 **Notes:**
 - Local ITs need `postgres:17`. Docker Hub rate-limited the pull, so it was pulled from
   `mirror.gcr.io/library/postgres:17` and re-tagged.
-- Phase 1 guards the lone-request SQL with `stay_id IS NULL`. Until phase 3, a remodel that
-  disturbs a pending stay's stretch throws under the venue lock. That is inert while the fence
-  refuses stay requests.
+- Phase 1 guards the lone-request SQL with `stay_id IS NULL`. Phase 3 routed the remodel,
+  expiry and withdraw legs to the whole stay.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — plan | ✅ | (this commit) |
 | 1 — read side | ✅ | (phase-1 commit) |
 | 2 — stay accept | ✅ | (phase-2 commit) |
-| 3 — other legs | | |
+| 3 — other legs | ✅ | (phase-3 commit) |
 | 4 — mails | | |
 | 5 — backend gate | | |
 | 6 — frontend | | |

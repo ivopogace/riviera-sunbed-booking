@@ -922,6 +922,21 @@ class CreateBookingServiceTest {
 		}
 
 		@Override
+		public Optional<ai.riviera.platform.booking.vocabulary.StayId> expirePendingStayOf(long bookingId, Instant now) {
+			throw new UnsupportedOperationException("not exercised by the single-booking reserve");
+		}
+
+		@Override
+		public Optional<ai.riviera.platform.booking.vocabulary.StayId> withdrawPendingStay(String code) {
+			throw new UnsupportedOperationException("not exercised by the single-booking reserve");
+		}
+
+		@Override
+		public Optional<ai.riviera.platform.booking.vocabulary.StayId> stayOf(long bookingId) {
+			throw new UnsupportedOperationException("not exercised by the single-booking reserve");
+		}
+
+		@Override
 		public Optional<ai.riviera.platform.booking.application.request.RequestSnapshot> stayRequestSnapshot(
 				ai.riviera.platform.booking.vocabulary.StayId stayId, ai.riviera.platform.venue.vocabulary.VenueId venueId) {
 			throw new UnsupportedOperationException("not exercised by the single-booking reserve");

@@ -65,6 +65,16 @@ class BookingRequestController {
 		};
 	}
 
+	@PostMapping("/stays/{stayId}/decline")
+	ResponseEntity<?> declineStay(Authentication authentication, @PathVariable long venueId, @PathVariable long stayId) {
+		OperatorId operator = currentOperator.require(authentication);
+		return switch (respondToRequest.declineStay(operator, new VenueId(venueId), new StayId(stayId))) {
+			case DeclineOutcome.Declined ignored -> ResponseEntity.ok(new StayDecisionView(stayId,
+					ai.riviera.platform.booking.domain.BookingStatus.DECLINED.name()));
+			case DeclineOutcome.Rejected rejected -> declineRejection(rejected);
+		};
+	}
+
 	private static ResponseEntity<?> acceptRejection(AcceptOutcome.Rejected rejected) {
 		return switch (rejected) {
 			case NO_SUCH_REQUEST -> problem(HttpStatus.NOT_FOUND, "NO_SUCH_REQUEST",
@@ -99,12 +109,15 @@ class BookingRequestController {
 			case DeclineOutcome.Declined ignored ->
 					ResponseEntity.ok(new RequestDecisionView(bookingId,
 							ai.riviera.platform.booking.domain.BookingStatus.DECLINED.name()));
-			case DeclineOutcome.Rejected rejected -> switch (rejected) {
-				case NO_SUCH_REQUEST -> problem(HttpStatus.NOT_FOUND, "NO_SUCH_REQUEST",
-						"No pending request with this id at this venue.");
-				case NOT_PENDING -> problem(HttpStatus.CONFLICT, "REQUEST_NOT_PENDING",
-						RequestProblemDetails.NOT_PENDING);
-			};
+			case DeclineOutcome.Rejected rejected -> declineRejection(rejected);
+		};
+	}
+
+	private static ResponseEntity<?> declineRejection(DeclineOutcome.Rejected rejected) {
+		return switch (rejected) {
+			case NO_SUCH_REQUEST -> problem(HttpStatus.NOT_FOUND, "NO_SUCH_REQUEST",
+					"No pending request with this id at this venue.");
+			case NOT_PENDING -> problem(HttpStatus.CONFLICT, "REQUEST_NOT_PENDING", RequestProblemDetails.NOT_PENDING);
 		};
 	}
 

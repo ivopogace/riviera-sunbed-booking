@@ -20,4 +20,7 @@ public interface RespondToRequest {
 	AcceptOutcome acceptStay(OperatorId operator, VenueId venueId, StayId stayId);
 
 	DeclineOutcome decline(OperatorId operator, VenueId venueId, BookingId bookingId);
+
+	/** {@link #decline} for a stay request, whole (#1267). */
+	DeclineOutcome declineStay(OperatorId operator, VenueId venueId, StayId stayId);
 }

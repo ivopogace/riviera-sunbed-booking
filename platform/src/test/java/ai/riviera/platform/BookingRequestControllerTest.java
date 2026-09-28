@@ -46,6 +46,7 @@ class BookingRequestControllerTest {
 	private static final String ACCEPT = "/api/venues/{venueId}/booking-requests/{bookingId}/accept";
 	private static final String DECLINE = "/api/venues/{venueId}/booking-requests/{bookingId}/decline";
 	private static final String ACCEPT_STAY = "/api/venues/{venueId}/booking-requests/stays/{stayId}/accept";
+	private static final String DECLINE_STAY = "/api/venues/{venueId}/booking-requests/stays/{stayId}/decline";
 	private static final long VENUE = 12L;
 	private static final long BOOKING = 77L;
 
@@ -79,6 +80,21 @@ class BookingRequestControllerTest {
 		mvc.perform(post(ACCEPT_STAY, VENUE, 40L).with(csrf()).with(user("op").roles("OPERATOR")))
 				.andExpect(status().isConflict())
 				.andExpect(jsonPath("$.code").value("SET_UNAVAILABLE"));
+	}
+
+	@Test
+	void aStayDeclineAnswersTheStayDeclinedAndARepeatIsAConflict() throws Exception {
+		when(respondToRequest.declineStay(any(), any(), any())).thenReturn(new DeclineOutcome.Declined(),
+				DeclineOutcome.Rejected.NOT_PENDING);
+
+		mvc.perform(post(DECLINE_STAY, VENUE, 40L).with(csrf()).with(user("op").roles("OPERATOR")))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.stayId").value(40))
+				.andExpect(jsonPath("$.status").value("DECLINED"));
+		mvc.perform(post(DECLINE_STAY, VENUE, 40L).with(csrf()).with(user("op").roles("OPERATOR")))
+				.andExpect(status().isConflict())
+				.andExpect(jsonPath("$.code").value("REQUEST_NOT_PENDING"))
+				.andExpect(jsonPath("$.detail").value(NOT_PENDING_DETAIL));
 	}
 
 	@Test

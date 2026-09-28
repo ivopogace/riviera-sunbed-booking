@@ -139,6 +139,32 @@ class WithdrawRequestIT {
 	}
 
 	@Test
+	void aStayWithdrawsWholeByItsCodeAndNeverByARowCode() throws Exception {
+		StayFixtures.Venue venue = StayFixtures.venue(jdbc, "REQUEST", null, true);
+		try {
+			StayFixtures.SeededStay stay = StayFixtures.insertPendingStay(jdbc, venue, uniqueCode("WDSTAY"),
+					StayFixtures.firstDay(), venue.online().get(0), 2, venue.online().get(1), 2,
+					Instant.now().plusSeconds(3600));
+
+			mvc.perform(post("/api/bookings/{code}/withdraw", stay.code() + "-1"))
+					.andExpect(status().isNotFound())
+					.andExpect(jsonPath("$.code").value("NO_SUCH_BOOKING"));
+			mvc.perform(post("/api/bookings/{code}/withdraw", stay.code()))
+					.andExpect(status().isOk())
+					.andExpect(jsonPath("$.status").value("WITHDRAWN"));
+			for (long id : stay.stretches()) {
+				assertEquals("WITHDRAWN", StayFixtures.statusOf(jdbc, id));
+			}
+			mvc.perform(post("/api/bookings/{code}/withdraw", stay.code()))
+					.andExpect(status().isConflict())
+					.andExpect(jsonPath("$.code").value("REQUEST_NOT_PENDING"));
+		}
+		finally {
+			StayFixtures.cleanup(jdbc, venue.id());
+		}
+	}
+
+	@Test
 	void unknownCodeIsNotFound() throws Exception {
 		mvc.perform(post("/api/bookings/{code}/withdraw", "NOSUCHCODE"))
 				.andExpect(status().isNotFound())

@@ -252,4 +252,16 @@ class RespondToRequestService implements RespondToRequest {
 				.<DeclineOutcome>map(snapshot -> DeclineOutcome.Rejected.NOT_PENDING)
 				.orElse(DeclineOutcome.Rejected.NO_SUCH_REQUEST);
 	}
+
+	@Override
+	public DeclineOutcome declineStay(OperatorId operator, VenueId venueId, StayId stayId) {
+		ownership.assertOwns(operator, new VenueRef(venueId.value()));
+		if (termination.declineStay(stayId, venueId)) {
+			log.info("stay request {} declined by venue {}", stayId.value(), venueId.value());
+			return new DeclineOutcome.Declined();
+		}
+		return bookings.stayRequestSnapshot(stayId, venueId)
+				.<DeclineOutcome>map(snapshot -> DeclineOutcome.Rejected.NOT_PENDING)
+				.orElse(DeclineOutcome.Rejected.NO_SUCH_REQUEST);
+	}
 }
