@@ -5,12 +5,13 @@ import java.util.Optional;
 
 import ai.riviera.platform.payment.vocabulary.BookingRef;
 import ai.riviera.platform.payment.domain.PaymentStatus;
+import ai.riviera.platform.payment.domain.RefundScope;
 import ai.riviera.platform.payment.vocabulary.PaymentCredentials;
 
 /**
  * The {@code payment} module's persistence port for the collection record: correlates verified
- * webhooks to the bookings they collect for, and records collection and refunds per booking (one
- * PaymentIntent may collect for several; each is refunded on its own).
+ * webhooks to the bookings they collect for, and records collection per booking and refunds per
+ * booking and {@link RefundScope}, the share's {@code refunded_minor} being their running sum.
  *
  * <p>Every write is a <strong>guarded single statement that reports whether it moved</strong>, never
  * a read-then-write: Stripe promises neither ordering nor single delivery, and a refund races its own
@@ -50,22 +51,33 @@ public interface Payments {
 	Optional<String> findIntentByBookingRef(BookingRef booking);
 
 	/**
-	 * Record, committed <strong>before</strong> the gateway call, an unresolved refund obligation — what
-	 * tells our not-yet-recorded refund from a manual gateway one. Cleared by every in-app resolution,
-	 * kept on a {@code Failed} return. Rationale: {@code RESPONSIBILITIES.md} §{@code payment}.
+	 * Record, committed <strong>before</strong> the gateway call, an unresolved refund obligation within
+	 * {@code scope} — what tells our not-yet-recorded refund from a manual gateway one. Cleared by every
+	 * in-app resolution, kept on a {@code Failed} return. Rationale: {@code RESPONSIBILITIES.md} §{@code payment}.
 	 */
-	void markRefundAttempted(BookingRef booking);
+	void markRefundAttempted(BookingRef booking, RefundScope scope);
+
+	/** {@link #markRefundAttempted(BookingRef, RefundScope)} for the whole share. */
+	default void markRefundAttempted(BookingRef booking) {
+		markRefundAttempted(booking, RefundScope.WHOLE);
+	}
 
 	/**
-	 * Record the refund on the booking's share, derive {@code REFUNDED}/{@code PARTIALLY_REFUNDED}, and
-	 * clear the owed flag. Moves only a collected payment, never a refund already reported dead; success
-	 * on {@code false} strands a guest owed money. Rationale: {@code RESPONSIBILITIES.md} §{@code payment}.
+	 * Record the refund of {@code scope} on the booking's share, re-sum the share, derive the intent's
+	 * status and clear the owed flag. Moves only a collected payment, never a refund already reported
+	 * dead; success on {@code false} strands a guest owed money (RESPONSIBILITIES.md §payment).
 	 */
-	boolean markRefunded(BookingRef booking, long refundedMinor, String refundId);
+	boolean markRefunded(BookingRef booking, RefundScope scope, long refundedMinor, String refundId);
+
+	/** {@link #markRefunded(BookingRef, RefundScope, long, String)} for the whole share. */
+	default boolean markRefunded(BookingRef booking, long refundedMinor, String refundId) {
+		return markRefunded(booking, RefundScope.WHOLE, refundedMinor, refundId);
+	}
 
 	/**
-	 * The refund-relevant state of the booking's share — the collection's status plus the share's
-	 * {@code refunded_minor} — or empty when no row exists (the stub profile records no payment).
+	 * The refund-relevant state of the booking's share — the collection's status plus what the
+	 * <strong>whole-share</strong> refund has recorded (a day refund does not count: the cancellation's
+	 * progress is the question) — or empty when no row exists (the stub profile records no payment).
 	 */
 	Optional<RefundState> findRefundState(BookingRef booking);
 
@@ -77,11 +89,16 @@ public interface Payments {
 	boolean markRefundFailed(String refundId);
 
 	/**
-	 * Mark the share as owing a refund that died <strong>before</strong> it was recorded; the caller
-	 * resolves the booking. Moves only with a {@link #markRefundAttempted} on record and no refund
-	 * recorded, so a failed manual gateway refund moves nothing (RESPONSIBILITIES.md §payment).
+	 * Mark the booking's refund of {@code scope} as one that died <strong>before</strong> it was recorded;
+	 * the caller resolves the booking. Moves only with a {@link #markRefundAttempted} on record and no
+	 * refund recorded, so a failed manual gateway refund moves nothing (RESPONSIBILITIES.md §payment).
 	 */
-	boolean markUnrecordedRefundFailed(BookingRef booking, String refundId);
+	boolean markUnrecordedRefundFailed(BookingRef booking, RefundScope scope, String refundId);
+
+	/** {@link #markUnrecordedRefundFailed(BookingRef, RefundScope, String)} for the whole share. */
+	default boolean markUnrecordedRefundFailed(BookingRef booking, String refundId) {
+		return markUnrecordedRefundFailed(booking, RefundScope.WHOLE, refundId);
+	}
 
 	/**
 	 * How many bookings currently owe a refund the gateway would not issue — <strong>distinct refunds

@@ -167,7 +167,8 @@ class StripeWebhookController {
 			return true;
 		}
 		return booking
-				.map(ref -> payments.markUnrecordedRefundFailed(ref, refund.getId()))
+				.flatMap(ref -> StripeRefundTag.scopeOf(refund)
+						.map(scope -> payments.markUnrecordedRefundFailed(ref, scope, refund.getId())))
 				.orElse(false);
 	}
 

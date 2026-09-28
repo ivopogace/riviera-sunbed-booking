@@ -14,14 +14,15 @@ import ai.riviera.platform.payment.application.NewPayment;
 import ai.riviera.platform.payment.application.Payments;
 import ai.riviera.platform.payment.application.RefundState;
 import ai.riviera.platform.payment.domain.PaymentStatus;
+import ai.riviera.platform.payment.domain.RefundScope;
 
 /**
  * JDBC adapter for {@link Payments} — explicit SQL via {@link JdbcClient}, no JPA (invariant
  * #1). Package-private; only the port is referenced cross-layer. Stores the Stripe
  * {@code payment_intent_id} (never card data) so a signature-verified webhook can correlate
- * back to the bookings (invariant #8). The intent lives on {@code payment}, each booking's share
- * and refund on {@code payment_booking}; a refund write moves the one share and re-derives the
- * intent's status from every share in the same statement.
+ * back to the bookings (invariant #8). The intent lives on {@code payment}, each booking's share on
+ * {@code payment_booking}, each refund of a share on {@code payment_refund}; a refund write moves one
+ * refund row, re-sums its share and re-derives the intent's status in the same statement.
  */
 @Repository
 class JdbcPayments implements Payments {
@@ -34,6 +35,8 @@ class JdbcPayments implements Payments {
 	private static final String PARAM_COLLECTED = "collected";
 	private static final String PARAM_REFUND_ID = "refundId";
 	private static final String PARAM_DELTA = "delta";
+	private static final String PARAM_KIND = "kind";
+	private static final String PARAM_DAY = "day";
 
 	/** The non-terminal statuses: an intent here can still be paid, so it is also still transitionable. */
 	private static final List<String> OPEN_STATUSES =
@@ -50,22 +53,31 @@ class JdbcPayments implements Payments {
 			.toList();
 
 	/**
-	 * The second half of every refund write: the intent's status from what its shares hold refunded.
-	 * A data-modifying CTE sees the snapshot from before the statement, so the moved share's new
-	 * amount arrives as {@code :delta} and only its siblings are summed.
+	 * The second half of every refund write, after a {@code moved} CTE ({@code id, payment_booking_id}):
+	 * the share's running sum, then the intent's status. A data-modifying CTE sees the pre-statement
+	 * snapshot, so the moved row and share arrive as {@code :delta} and {@code share.refunded_minor}.
 	 */
-	private static final String DERIVE_INTENT_STATUS = """
+	private static final String APPLY_REFUND = """
+			, share AS (
+			    UPDATE payment_booking b
+			    SET refunded_minor = COALESCE((SELECT SUM(x.amount_minor) FROM payment_refund x
+			                                   WHERE x.payment_booking_id = b.id AND x.id <> moved.id), 0) + :delta,
+			        updated_at = NOW()
+			    FROM moved
+			    WHERE b.id = moved.payment_booking_id
+			    RETURNING b.id, b.payment_id, b.refunded_minor
+			)
 			UPDATE payment p
 			SET status = CASE WHEN total.refunded >= p.amount_minor THEN 'REFUNDED'
 			                  WHEN total.refunded > 0 THEN 'PARTIALLY_REFUNDED'
 			                  ELSE 'SUCCEEDED' END,
 			    updated_at = NOW()
-			FROM moved, LATERAL (
-			    SELECT COALESCE(SUM(s.refunded_minor), 0) + :delta AS refunded
+			FROM share, LATERAL (
+			    SELECT COALESCE(SUM(s.refunded_minor), 0) + share.refunded_minor AS refunded
 			    FROM payment_booking s
-			    WHERE s.payment_id = moved.payment_id AND s.id <> moved.id
+			    WHERE s.payment_id = share.payment_id AND s.id <> share.id
 			) AS total
-			WHERE p.id = moved.payment_id
+			WHERE p.id = share.payment_id
 			""";
 
 	private final JdbcClient jdbc;
@@ -165,47 +177,57 @@ class JdbcPayments implements Payments {
 	@Override
 	public Optional<RefundState> findRefundState(BookingRef booking) {
 		return jdbc.sql("""
-				SELECT p.status, b.refunded_minor
-				FROM payment_booking b JOIN payment p ON p.id = b.payment_id
+				SELECT p.status, COALESCE(r.amount_minor, 0) AS refunded_minor
+				FROM payment_booking b
+				JOIN payment p ON p.id = b.payment_id
+				LEFT JOIN payment_refund r ON r.payment_booking_id = b.id AND r.scope = :whole
 				WHERE b.booking_ref = :ref
 				""")
 				.param(PARAM_REF, booking.value())
+				.param("whole", RefundScope.WHOLE.kind())
 				.query((rs, rowNum) -> new RefundState(
 						PaymentStatus.valueOf(rs.getString(PARAM_STATUS)), rs.getLong("refunded_minor")))
 				.optional();
 	}
 
 	@Override
-	public void markRefundAttempted(BookingRef booking) {
+	public void markRefundAttempted(BookingRef booking, RefundScope scope) {
 		jdbc.sql("""
-				UPDATE payment_booking b
-				SET refund_attempted_at = NOW(), updated_at = NOW()
-				FROM payment p
-				WHERE p.id = b.payment_id AND b.booking_ref = :ref AND p.status IN (:collected)
+				INSERT INTO payment_refund (payment_booking_id, scope, service_date, attempted_at)
+				SELECT b.id, :kind, :day, NOW()
+				FROM payment_booking b JOIN payment p ON p.id = b.payment_id
+				WHERE b.booking_ref = :ref AND p.status IN (:collected)
+				ON CONFLICT (payment_booking_id, scope, service_date) DO UPDATE
+				SET attempted_at = NOW(), updated_at = NOW()
 				""")
 				.param(PARAM_REF, booking.value())
+				.param(PARAM_KIND, scope.kind())
+				.param(PARAM_DAY, scope.serviceDate())
 				.param(PARAM_COLLECTED, COLLECTED_STATUSES)
 				.update();
 	}
 
 	@Override
-	public boolean markRefunded(BookingRef booking, long refundedMinor, String refundId) {
+	public boolean markRefunded(BookingRef booking, RefundScope scope, long refundedMinor, String refundId) {
+		// An upsert, since an adoption may record before any attempt row exists; the conflict arm's WHERE is the dead-refund guard.
 		return jdbc.sql("""
 				WITH moved AS (
-				    UPDATE payment_booking b
-				    SET refunded_minor = :delta, refund_id = :refundId, refund_failed_at = NULL,
-				        refund_attempted_at = NULL, updated_at = NOW()
-				    FROM payment p
-				    WHERE p.id = b.payment_id
-				      AND b.booking_ref = :ref
-				      AND p.status IN (:collected)
-				      AND (b.failed_refund_id IS NULL OR b.failed_refund_id <> :refundId)
-				    RETURNING b.id, b.payment_id
+				    INSERT INTO payment_refund (payment_booking_id, scope, service_date, amount_minor, refund_id)
+				    SELECT b.id, :kind, :day, :delta, :refundId
+				    FROM payment_booking b JOIN payment p ON p.id = b.payment_id
+				    WHERE b.booking_ref = :ref AND p.status IN (:collected)
+				    ON CONFLICT (payment_booking_id, scope, service_date) DO UPDATE
+				    SET amount_minor = EXCLUDED.amount_minor, refund_id = EXCLUDED.refund_id,
+				        failed_at = NULL, attempted_at = NULL, updated_at = NOW()
+				    WHERE payment_refund.failed_refund_id IS NULL OR payment_refund.failed_refund_id <> EXCLUDED.refund_id
+				    RETURNING id, payment_booking_id
 				)
-				""" + DERIVE_INTENT_STATUS)
+				""" + APPLY_REFUND)
 				.param(PARAM_DELTA, refundedMinor)
 				.param(PARAM_REFUND_ID, refundId)
 				.param(PARAM_REF, booking.value())
+				.param(PARAM_KIND, scope.kind())
+				.param(PARAM_DAY, scope.serviceDate())
 				.param(PARAM_COLLECTED, COLLECTED_STATUSES)
 				.update() == 1;
 	}
@@ -215,15 +237,15 @@ class JdbcPayments implements Payments {
 		// Guarded in the one statement, never read-then-write: two deliveries cannot both un-record.
 		return jdbc.sql("""
 				WITH moved AS (
-				    UPDATE payment_booking b
-				    SET refunded_minor = 0, refund_id = NULL,
-				        failed_refund_id = :refundId, refund_failed_at = NOW(),
-				        refund_attempted_at = NULL, updated_at = NOW()
-				    FROM payment p
-				    WHERE p.id = b.payment_id AND b.refund_id = :refundId AND p.status IN (:recorded)
-				    RETURNING b.id, b.payment_id
+				    UPDATE payment_refund r
+				    SET amount_minor = 0, refund_id = NULL,
+				        failed_refund_id = :refundId, failed_at = NOW(),
+				        attempted_at = NULL, updated_at = NOW()
+				    FROM payment_booking b JOIN payment p ON p.id = b.payment_id
+				    WHERE r.payment_booking_id = b.id AND r.refund_id = :refundId AND p.status IN (:recorded)
+				    RETURNING r.id, r.payment_booking_id
 				)
-				""" + DERIVE_INTENT_STATUS)
+				""" + APPLY_REFUND)
 				.param(PARAM_REFUND_ID, refundId)
 				.param("recorded", REFUND_RECORDED_STATUSES)
 				.param(PARAM_DELTA, 0L)
@@ -231,30 +253,33 @@ class JdbcPayments implements Payments {
 	}
 
 	@Override
-	public boolean markUnrecordedRefundFailed(BookingRef booking, String refundId) {
-		// refund_attempted_at is the discriminator: without it this is someone else's manual refund.
+	public boolean markUnrecordedRefundFailed(BookingRef booking, RefundScope scope, String refundId) {
+		// attempted_at is the discriminator: without it this is someone else's manual refund.
 		return jdbc.sql("""
-				UPDATE payment_booking b
-				SET failed_refund_id = :refundId, refund_failed_at = NOW(),
-				    refund_attempted_at = NULL, updated_at = NOW()
-				FROM payment p
-				WHERE p.id = b.payment_id
+				UPDATE payment_refund r
+				SET failed_refund_id = :refundId, failed_at = NOW(),
+				    attempted_at = NULL, updated_at = NOW()
+				FROM payment_booking b JOIN payment p ON p.id = b.payment_id
+				WHERE r.payment_booking_id = b.id
 				  AND b.booking_ref = :ref
+				  AND r.scope = :kind AND r.service_date IS NOT DISTINCT FROM CAST(:day AS DATE)
 				  AND p.status IN (:collected)
-				  AND b.refund_id IS NULL
-				  AND b.refund_attempted_at IS NOT NULL
-				  AND (b.failed_refund_id IS NULL OR b.failed_refund_id <> :refundId)
+				  AND r.refund_id IS NULL
+				  AND r.attempted_at IS NOT NULL
+				  AND (r.failed_refund_id IS NULL OR r.failed_refund_id <> :refundId)
 				""")
 				.param(PARAM_REFUND_ID, refundId)
 				.param(PARAM_REF, booking.value())
+				.param(PARAM_KIND, scope.kind())
+				.param(PARAM_DAY, scope.serviceDate())
 				.param(PARAM_COLLECTED, COLLECTED_STATUSES)
 				.update() == 1;
 	}
 
 	@Override
 	public long owedRefundCount() {
-		// Served by payment_booking_refund_owed_idx, the partial index over exactly these rows (V64).
-		return jdbc.sql("SELECT COUNT(*) FROM payment_booking WHERE refund_failed_at IS NOT NULL")
+		// Served by payment_refund_owed_idx, the partial index over exactly these rows (V70).
+		return jdbc.sql("SELECT COUNT(*) FROM payment_refund WHERE failed_at IS NOT NULL")
 				.query(Long.class)
 				.single();
 	}

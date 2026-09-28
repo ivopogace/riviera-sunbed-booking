@@ -711,7 +711,7 @@ class WebSliceStubs {
 
 	@Bean
 	RefundForWeather refundForWeather() {
-		return (_, _, _) -> new WeatherRefundOutcome(0, 0, "EUR", java.util.List.of());
+		return (_, _, _) -> new WeatherRefundOutcome(0, 0, "EUR", 0, 0, java.util.List.of());
 	}
 
 	@Bean
@@ -980,11 +980,13 @@ class WebSliceStubs {
 			}
 
 			@Override
-			public void markRefundAttempted(BookingRef booking) {
+			public void markRefundAttempted(BookingRef booking,
+					ai.riviera.platform.payment.domain.RefundScope scope) {
 			}
 
 			@Override
-			public boolean markRefunded(BookingRef booking, long refundedMinor, String refundId) {
+			public boolean markRefunded(BookingRef booking, ai.riviera.platform.payment.domain.RefundScope scope,
+					long refundedMinor, String refundId) {
 				return true;
 			}
 
@@ -999,7 +1001,8 @@ class WebSliceStubs {
 			}
 
 			@Override
-			public boolean markUnrecordedRefundFailed(BookingRef booking, String refundId) {
+			public boolean markUnrecordedRefundFailed(BookingRef booking,
+					ai.riviera.platform.payment.domain.RefundScope scope, String refundId) {
 				return false;
 			}
 

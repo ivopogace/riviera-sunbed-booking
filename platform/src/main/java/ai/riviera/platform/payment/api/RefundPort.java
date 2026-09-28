@@ -1,5 +1,7 @@
 package ai.riviera.platform.payment.api;
 
+import java.time.LocalDate;
+
 import ai.riviera.platform.payment.vocabulary.BookingRef;
 import ai.riviera.platform.payment.vocabulary.Money;
 import ai.riviera.platform.payment.vocabulary.RefundResult;
@@ -10,8 +12,8 @@ import ai.riviera.platform.payment.vocabulary.RefundResult;
  * would cycle (invariant #11). Collect-only, <strong>no Stripe Connect</strong> (ADR-0002). The
  * {@code amount} is decided server-side by {@code booking} (invariant #10), never by the client.
  *
- * <p>At most one refund per booking, however late a retry lands: the gateway is asked what it holds
- * before creating one (idempotency keys expire). Rationale: {@code RESPONSIBILITIES.md} §payment.
+ * <p>At most one refund per booking and scope (the whole share, or one day's), however late a retry
+ * lands: the gateway is asked what it holds before creating one. Rationale: RESPONSIBILITIES.md §payment.
  */
 public interface RefundPort {
 
@@ -21,4 +23,11 @@ public interface RefundPort {
 	 * under the {@code stripe} profile it creates a Stripe Refund against the booking's PaymentIntent.
 	 */
 	RefundResult refund(BookingRef booking, Money amount);
+
+	/**
+	 * Refund {@code amount}, one service day's share, for a booking that continues (issue #1210): at most
+	 * once per {@code (booking, day)}, beside the whole-share refund a later cancellation may still ask
+	 * for. Same outcome contract as {@link #refund}.
+	 */
+	RefundResult refundDay(BookingRef booking, LocalDate serviceDate, Money amount);
 }

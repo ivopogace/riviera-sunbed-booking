@@ -5,7 +5,10 @@ import io.micrometer.core.instrument.MeterRegistry;
 
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDate;
+
 import ai.riviera.platform.shared.ObservabilityMetrics;
+import ai.riviera.platform.payment.domain.RefundScope;
 import ai.riviera.platform.payment.vocabulary.BookingRef;
 import ai.riviera.platform.payment.vocabulary.Money;
 import ai.riviera.platform.payment.api.RefundPort;
@@ -37,8 +40,17 @@ class RefundService implements RefundPort, RefundStatusLookup {
 
 	@Override
 	public RefundResult refund(BookingRef booking, Money amount) {
-		payments.markRefundAttempted(booking);
-		RefundResult result = gateway.refund(booking, amount);
+		return refund(booking, RefundScope.WHOLE, amount);
+	}
+
+	@Override
+	public RefundResult refundDay(BookingRef booking, LocalDate serviceDate, Money amount) {
+		return refund(booking, RefundScope.day(serviceDate), amount);
+	}
+
+	private RefundResult refund(BookingRef booking, RefundScope scope, Money amount) {
+		payments.markRefundAttempted(booking, scope);
+		RefundResult result = gateway.refund(booking, scope, amount);
 		if (result instanceof RefundResult.Failed) {
 			failedRefunds.increment();
 		}

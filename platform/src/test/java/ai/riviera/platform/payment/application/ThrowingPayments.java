@@ -4,6 +4,7 @@ import java.util.List;
 import java.util.Optional;
 
 import ai.riviera.platform.payment.domain.PaymentStatus;
+import ai.riviera.platform.payment.domain.RefundScope;
 import ai.riviera.platform.payment.vocabulary.BookingRef;
 import ai.riviera.platform.payment.vocabulary.PaymentCredentials;
 
@@ -40,12 +41,12 @@ interface ThrowingPayments extends Payments {
 	}
 
 	@Override
-	default void markRefundAttempted(BookingRef booking) {
+	default void markRefundAttempted(BookingRef booking, RefundScope scope) {
 		throw new UnsupportedOperationException("not stubbed by this test");
 	}
 
 	@Override
-	default boolean markRefunded(BookingRef booking, long refundedMinor, String refundId) {
+	default boolean markRefunded(BookingRef booking, RefundScope scope, long refundedMinor, String refundId) {
 		throw new UnsupportedOperationException("not stubbed by this test");
 	}
 
@@ -60,7 +61,7 @@ interface ThrowingPayments extends Payments {
 	}
 
 	@Override
-	default boolean markUnrecordedRefundFailed(BookingRef booking, String refundId) {
+	default boolean markUnrecordedRefundFailed(BookingRef booking, RefundScope scope, String refundId) {
 		throw new UnsupportedOperationException("not stubbed by this test");
 	}
 

@@ -3,6 +3,8 @@ package ai.riviera.platform.booking.adapter.in;
 import ai.riviera.platform.booking.events.BookingCancelled;
 import ai.riviera.platform.booking.vocabulary.BookingId;
 import ai.riviera.platform.payment.api.RefundPort;
+import ai.riviera.platform.payment.vocabulary.BookingRef;
+import ai.riviera.platform.payment.vocabulary.Money;
 import ai.riviera.platform.payment.vocabulary.RefundResult;
 import ai.riviera.platform.venue.vocabulary.SetId;
 import ai.riviera.platform.venue.vocabulary.VenueId;
@@ -33,10 +35,10 @@ class BookingRefundListenerTest {
 	@Test
 	void refundsWhenAmountIsPositive() {
 		List<Call> calls = new ArrayList<>();
-		RefundPort port = (booking, amount) -> {
+		RefundPort port = wholeRefunds((booking, amount) -> {
 			calls.add(new Call(booking.value(), amount.minor(), amount.currency()));
 			return new RefundResult.Refunded("re_ok");
-		};
+		});
 
 		new BookingRefundListener(port).on(event(42L, 2250L, "EUR"));
 
@@ -47,10 +49,10 @@ class BookingRefundListenerTest {
 	@Test
 	void skipsWhenNothingIsOwed() {
 		List<Call> calls = new ArrayList<>();
-		RefundPort port = (booking, amount) -> {
+		RefundPort port = wholeRefunds((booking, amount) -> {
 			calls.add(new Call(booking.value(), amount.minor(), amount.currency()));
 			return new RefundResult.Refunded("re_unexpected");
-		};
+		});
 
 		new BookingRefundListener(port).on(event(42L, 0L, "EUR"));
 
@@ -59,10 +61,25 @@ class BookingRefundListenerTest {
 
 	@Test
 	void throwsOnGatewayFailureSoTheRegistryRetries() {
-		RefundPort port = (_, _) -> new RefundResult.Failed("card_error");
+		RefundPort port = wholeRefunds((_, _) -> new RefundResult.Failed("card_error"));
 
 		assertThrows(IllegalStateException.class,
 				() -> new BookingRefundListener(port).on(event(42L, 2250L, "EUR")),
 				"a failed refund throws so the publication is retained and re-submitted");
+	}
+
+	/** A {@link RefundPort} whose whole-share leg is the given function; the day leg is not this listener's. */
+	private static RefundPort wholeRefunds(java.util.function.BiFunction<BookingRef, Money, RefundResult> refund) {
+		return new RefundPort() {
+			@Override
+			public RefundResult refund(BookingRef booking, Money amount) {
+				return refund.apply(booking, amount);
+			}
+
+			@Override
+			public RefundResult refundDay(BookingRef booking, LocalDate serviceDate, Money amount) {
+				throw new UnsupportedOperationException("a cancellation never refunds one day");
+			}
+		};
 	}
 }

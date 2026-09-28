@@ -109,8 +109,8 @@ class StripeWebhookIT {
 	}
 
 	private long owedRows(long... bookingRefs) {
-		return jdbc.sql("SELECT COUNT(*) FROM payment_booking WHERE refund_failed_at IS NOT NULL "
-						+ "AND booking_ref IN (:refs)")
+		return jdbc.sql("SELECT COUNT(*) FROM payment_refund r JOIN payment_booking b ON b.id = r.payment_booking_id "
+						+ "WHERE r.failed_at IS NOT NULL AND b.booking_ref IN (:refs)")
 				.param("refs", java.util.Arrays.stream(bookingRefs).boxed().toList())
 				.query(Long.class).single();
 	}
@@ -491,8 +491,7 @@ class StripeWebhookIT {
 
 		assertEquals(before + 1, refundsFailedCount(),
 				"a refund the platform issued and the gateway killed is owed money, recorded or not");
-		assertEquals(1, jdbc.sql("SELECT COUNT(*) FROM payment_booking WHERE booking_ref = 7312 "
-						+ "AND refund_failed_at IS NOT NULL").query(Integer.class).single(),
+		assertEquals(1L, owedRows(7312L),
 				"and it is enumerable as owed, not reconstructable only from a WARN line");
 	}
 
@@ -520,8 +519,7 @@ class StripeWebhookIT {
 
 		assertEquals(before, refundsFailedCount(),
 				"the platform never promised this refund, so its failure is not money we owe");
-		assertEquals(0, jdbc.sql("SELECT COUNT(*) FROM payment_booking WHERE booking_ref = 7314 "
-						+ "AND refund_failed_at IS NOT NULL").query(Integer.class).single(),
+		assertEquals(0L, owedRows(7314L),
 				"and it must stay off the list of bookings owed a refund");
 	}
 

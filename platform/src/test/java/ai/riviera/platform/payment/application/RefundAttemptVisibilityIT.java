@@ -74,7 +74,8 @@ class RefundAttemptVisibilityIT {
 	private boolean attemptIsVisibleOnItsOwnConnection() {
 		try (Connection connection = dataSource.getConnection();
 				PreparedStatement statement = connection.prepareStatement(
-						"SELECT b.refund_attempted_at FROM payment_booking b "
+						"SELECT r.attempted_at AS refund_attempted_at FROM payment_refund r "
+								+ "JOIN payment_booking b ON b.id = r.payment_booking_id "
 								+ "JOIN payment p ON p.id = b.payment_id WHERE p.payment_intent_id = ?")) {
 			statement.setString(1, INTENT);
 			try (ResultSet rows = statement.executeQuery()) {

@@ -337,6 +337,11 @@ class RefundOutboxScopeIT {
 		private final AtomicBoolean failing = new AtomicBoolean();
 
 		@Override
+		public RefundResult refundDay(BookingRef booking, java.time.LocalDate serviceDate, Money amount) {
+			return refund(booking, amount);
+		}
+
+		@Override
 		public RefundResult refund(BookingRef booking, Money amount) {
 			long bookingId = booking.value();
 			if (failing.get()) {

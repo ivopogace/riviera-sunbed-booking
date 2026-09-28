@@ -1,5 +1,6 @@
 package ai.riviera.platform.payment.adapter.out;
 
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 
@@ -32,6 +33,7 @@ import ai.riviera.platform.payment.vocabulary.RefundResult;
 import ai.riviera.platform.payment.application.NewPayment;
 import ai.riviera.platform.payment.application.Payments;
 import ai.riviera.platform.payment.domain.PaymentStatus;
+import ai.riviera.platform.payment.domain.RefundScope;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
@@ -82,7 +84,7 @@ class StripePaymentGatewayTest {
 		when(payments.findIntentByBookingRef(BOOKING)).thenReturn(Optional.of(INTENT));
 		when(payments.findBookingRefsByIntent(INTENT)).thenReturn(List.of(BOOKING));
 		// A bare mock answers false, which is the "died before its record" branch, not the norm.
-		when(payments.markRefunded(any(), anyLong(), any())).thenReturn(true);
+		when(payments.markRefunded(any(), any(), anyLong(), any())).thenReturn(true);
 		SimpleMeterRegistry meters = new SimpleMeterRegistry();
 		return new RefundFixture(new StripePaymentGateway(stripe, payments, meters), refunds, payments, meters);
 	}
@@ -289,7 +291,7 @@ class StripePaymentGatewayTest {
 		assertEquals(2250L, params.getValue().getAmount(), "amount is integer minor units (invariant #5)");
 		assertEquals("booking-42-refund", options.getValue().getIdempotencyKey(),
 				"refund idempotency key is derived from the booking id (ADR-0002, invariant #10)");
-		verify(fixture.payments()).markRefunded(BOOKING, 2250L, "re_xyz");
+		verify(fixture.payments()).markRefunded(BOOKING, RefundScope.WHOLE, 2250L, "re_xyz");
 		assertEquals(0.0, fixture.adoptedCount(), "a freshly created refund is not an adoption");
 	}
 
@@ -310,6 +312,49 @@ class StripePaymentGatewayTest {
 	}
 
 	@Test
+	void aDayRefundHasItsOwnKeyAndNamesItsDay() throws StripeException {
+		RefundFixture fixture = refundFixture();
+		stripeHolds(fixture.refunds());
+		when(fixture.refunds().create(any(RefundCreateParams.class), any(RequestOptions.class)))
+				.thenReturn(stripeRefund("re_day", REFUND_SUCCEEDED, 300L));
+		RefundScope day8 = RefundScope.day(LocalDate.of(2026, 7, 8));
+
+		RefundResult result = fixture.gateway().refund(BOOKING, day8, new Money(300L, "EUR"));
+
+		assertEquals("re_day", assertInstanceOf(RefundResult.Refunded.class, result).refundId());
+		ArgumentCaptor<RefundCreateParams> params = ArgumentCaptor.forClass(RefundCreateParams.class);
+		ArgumentCaptor<RequestOptions> options = ArgumentCaptor.forClass(RequestOptions.class);
+		verify(fixture.refunds()).create(params.capture(), options.capture());
+		assertEquals("booking-42-day-2026-07-08-refund", options.getValue().getIdempotencyKey(),
+				"a day's key is its own, so it never replays the whole share's refund (ADR-0002)");
+		assertEquals("2026-07-08", StripeRefunds.metadataOf(params.getValue()).get("serviceDate"),
+				"the refund names its day at the gateway, the one fact that tells it from the share's");
+		verify(fixture.payments()).markRefunded(BOOKING, day8, 300L, "re_day");
+	}
+
+	@Test
+	void aLiveDayRefundIsNotAdoptedForTheWholeShareNorTheOtherWayRound() throws StripeException {
+		RefundFixture fixture = refundFixture();
+		LocalDate day = LocalDate.of(2026, 7, 8);
+		stripeHolds(fixture.refunds(), StripeRefunds.dayRefund("re_day_held", REFUND_SUCCEEDED, 2250L, BOOKING, day));
+		when(fixture.refunds().create(any(RefundCreateParams.class), any(RequestOptions.class)))
+				.thenReturn(stripeRefund("re_rest", REFUND_SUCCEEDED, 2250L));
+
+		RefundResult whole = fixture.gateway().refund(BOOKING, new Money(2250L, "EUR"));
+
+		assertEquals("re_rest", assertInstanceOf(RefundResult.Refunded.class, whole).refundId(),
+				"the day's refund is the day's: the whole share still gets its own, same amount or not");
+		assertEquals(0.0, fixture.adoptedCount());
+
+		RefundResult replay = fixture.gateway().refund(BOOKING, RefundScope.day(day), new Money(2250L, "EUR"));
+
+		assertEquals("re_day_held", assertInstanceOf(RefundResult.Refunded.class, replay).refundId(),
+				"a replayed day refund adopts the day's own live refund");
+		verify(fixture.refunds()).create(any(RefundCreateParams.class), any(RequestOptions.class));
+		verify(fixture.payments()).markRefunded(BOOKING, RefundScope.day(day), 2250L, "re_day_held");
+	}
+
+	@Test
 	void aSiblingsLiveRefundDoesNotBlockThisBookings() throws StripeException {
 		RefundFixture fixture = sharedRefundFixture();
 		stripeHolds(fixture.refunds(), StripeRefunds.taggedRefund("re_sibling", REFUND_SUCCEEDED, 2250L, SIBLING));
@@ -321,7 +366,7 @@ class StripePaymentGatewayTest {
 		RefundResult.Refunded refunded = assertInstanceOf(RefundResult.Refunded.class, result,
 				"the sibling's refund is the sibling's — this booking's guest is still owed theirs");
 		assertEquals("re_mine", refunded.refundId());
-		verify(fixture.payments()).markRefunded(BOOKING, 2250L, "re_mine");
+		verify(fixture.payments()).markRefunded(BOOKING, RefundScope.WHOLE, 2250L, "re_mine");
 		assertEquals(0.0, fixture.adoptedCount(), "nothing was adopted");
 	}
 
@@ -337,7 +382,7 @@ class StripePaymentGatewayTest {
 		verify(fixture.refunds(), never()).create(any(RefundCreateParams.class), any(RequestOptions.class));
 		assertEquals("re_mine_lost", assertInstanceOf(RefundResult.Refunded.class, result).refundId(),
 				"two live refunds of the same amount, and the tag says which one is this booking's");
-		verify(fixture.payments()).markRefunded(BOOKING, 2250L, "re_mine_lost");
+		verify(fixture.payments()).markRefunded(BOOKING, RefundScope.WHOLE, 2250L, "re_mine_lost");
 		assertEquals(1.0, fixture.adoptedCount());
 	}
 
@@ -352,7 +397,7 @@ class StripePaymentGatewayTest {
 		verify(fixture.refunds(), never()).create(any(RefundCreateParams.class), any(RequestOptions.class));
 		RefundResult.Failed failed = assertInstanceOf(RefundResult.Failed.class, result);
 		assertEquals("refund_mismatch", failed.reason());
-		verify(fixture.payments(), never()).markRefunded(any(), anyLong(), any());
+		verify(fixture.payments(), never()).markRefunded(any(), any(), anyLong(), any());
 	}
 
 	@Test
@@ -367,7 +412,7 @@ class StripePaymentGatewayTest {
 		RefundResult.Failed failed = assertInstanceOf(RefundResult.Failed.class, result,
 				"a refund that returned nothing is not a refund, however new its id is");
 		assertEquals("refund_returned_nothing", failed.reason());
-		verify(fixture.payments(), never()).markRefunded(any(), anyLong(), any());
+		verify(fixture.payments(), never()).markRefunded(any(), any(), anyLong(), any());
 	}
 
 	@Test
@@ -384,7 +429,7 @@ class StripePaymentGatewayTest {
 		RefundResult.Failed failed = assertInstanceOf(RefundResult.Failed.class, result,
 				"a replayed corpse is not a refund — reporting success would strand the guest");
 		assertEquals("refund_key_replay", failed.reason());
-		verify(fixture.payments(), never()).markRefunded(any(), anyLong(), any());
+		verify(fixture.payments(), never()).markRefunded(any(), any(), anyLong(), any());
 	}
 
 	@Test
@@ -399,7 +444,7 @@ class StripePaymentGatewayTest {
 		RefundResult.Refunded refunded = assertInstanceOf(RefundResult.Refunded.class, result,
 				"the refund already happened at Stripe — the caller is told it succeeded, not that it failed");
 		assertEquals("re_first", refunded.refundId());
-		verify(fixture.payments()).markRefunded(BOOKING, 2250L, "re_first");
+		verify(fixture.payments()).markRefunded(BOOKING, RefundScope.WHOLE, 2250L, "re_first");
 	}
 
 	@Test
@@ -442,7 +487,7 @@ class StripePaymentGatewayTest {
 		RefundResult.Failed failed = assertInstanceOf(RefundResult.Failed.class, result,
 				"a shortfall is neither adopted nor topped up — it stays outstanding for a human");
 		assertEquals("refund_mismatch", failed.reason());
-		verify(fixture.payments(), never()).markRefunded(any(), anyLong(), any());
+		verify(fixture.payments(), never()).markRefunded(any(), any(), anyLong(), any());
 		assertEquals(0.0, fixture.adoptedCount());
 	}
 
@@ -457,7 +502,7 @@ class StripePaymentGatewayTest {
 		// Summing them would record one refund's id against another's money; the pair needs a human.
 		verify(fixture.refunds(), never()).create(any(RefundCreateParams.class), any(RequestOptions.class));
 		assertInstanceOf(RefundResult.Failed.class, result);
-		verify(fixture.payments(), never()).markRefunded(any(), anyLong(), any());
+		verify(fixture.payments(), never()).markRefunded(any(), any(), anyLong(), any());
 	}
 
 	@Test
@@ -470,7 +515,7 @@ class StripePaymentGatewayTest {
 		// An unboxing NPE here would escape the StripeException catch and wedge the publication forever.
 		assertInstanceOf(RefundResult.Failed.class, result,
 				"an amount the gateway did not report is refused, not unboxed");
-		verify(fixture.payments(), never()).markRefunded(any(), anyLong(), any());
+		verify(fixture.payments(), never()).markRefunded(any(), any(), anyLong(), any());
 	}
 
 	@Test
@@ -486,7 +531,7 @@ class StripePaymentGatewayTest {
 		RefundResult.Failed failed = assertInstanceOf(RefundResult.Failed.class, result,
 				"an unreadable refund list must not be read as 'no refund exists'");
 		assertEquals("rate_limit", failed.reason());
-		verify(fixture.payments(), never()).markRefunded(any(), anyLong(), any());
+		verify(fixture.payments(), never()).markRefunded(any(), any(), anyLong(), any());
 	}
 
 	@ParameterizedTest
@@ -503,7 +548,7 @@ class StripePaymentGatewayTest {
 		// A dead refund returned no money, so the tourist is still owed it.
 		RefundResult.Refunded refunded = assertInstanceOf(RefundResult.Refunded.class, result);
 		assertEquals("re_new", refunded.refundId());
-		verify(fixture.payments()).markRefunded(BOOKING, 2250L, "re_new");
+		verify(fixture.payments()).markRefunded(BOOKING, RefundScope.WHOLE, 2250L, "re_new");
 		assertEquals(0.0, fixture.adoptedCount());
 	}
 
@@ -526,7 +571,7 @@ class StripePaymentGatewayTest {
 		verify(fixture.refunds(), times(2)).create(any(RefundCreateParams.class), options.capture());
 		options.getAllValues().forEach(o -> assertEquals("booking-42-refund", o.getIdempotencyKey(),
 				"both attempts carry the same key, so Stripe returns the refund it already made"));
-		verify(fixture.payments()).markRefunded(BOOKING, 2250L, "re_recovered");
+		verify(fixture.payments()).markRefunded(BOOKING, RefundScope.WHOLE, 2250L, "re_recovered");
 		assertEquals(0.0, fixture.adoptedCount(), "a same-key replay is a recovery, not an adoption");
 	}
 
@@ -541,7 +586,7 @@ class StripePaymentGatewayTest {
 		stripeHolds(fixture.refunds());
 		when(fixture.refunds().create(any(RefundCreateParams.class), any(RequestOptions.class)))
 				.thenReturn(stripeRefund("re_raced", "pending", 2250L));
-		when(fixture.payments().markRefunded(BOOKING, 2250L, "re_raced")).thenReturn(false);
+		when(fixture.payments().markRefunded(BOOKING, RefundScope.WHOLE, 2250L, "re_raced")).thenReturn(false);
 
 		RefundResult result = fixture.gateway().refund(BOOKING, new Money(2250L, "EUR"));
 
@@ -554,7 +599,7 @@ class StripePaymentGatewayTest {
 	void adoptedRefundThatDiedBeforeItsRecordIsReportedFailed() throws StripeException {
 		RefundFixture fixture = refundFixture();
 		stripeHolds(fixture.refunds(), stripeRefund("re_held", "pending", 2250L));
-		when(fixture.payments().markRefunded(BOOKING, 2250L, "re_held")).thenReturn(false);
+		when(fixture.payments().markRefunded(BOOKING, RefundScope.WHOLE, 2250L, "re_held")).thenReturn(false);
 
 		RefundResult result = fixture.gateway().refund(BOOKING, new Money(2250L, "EUR"));
 
@@ -577,7 +622,7 @@ class StripePaymentGatewayTest {
 		assertInstanceOf(RefundResult.Failed.class, result,
 				"the publication stays outstanding; the next replay adopts whatever Stripe ended up holding");
 		verify(fixture.refunds(), times(2)).create(any(RefundCreateParams.class), any(RequestOptions.class));
-		verify(fixture.payments(), never()).markRefunded(any(), anyLong(), any());
+		verify(fixture.payments(), never()).markRefunded(any(), any(), anyLong(), any());
 	}
 
 	@Test

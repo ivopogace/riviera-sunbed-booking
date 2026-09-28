@@ -2,6 +2,7 @@ package ai.riviera.platform.payment.application;
 
 import java.util.List;
 
+import ai.riviera.platform.payment.domain.RefundScope;
 import ai.riviera.platform.payment.vocabulary.BookingRef;
 import ai.riviera.platform.payment.vocabulary.CollectionShare;
 import ai.riviera.platform.payment.vocabulary.Money;
@@ -32,11 +33,16 @@ public interface PaymentGateway {
 	}
 
 	/**
-	 * Refund {@code amount} for this booking; never throws on an expected gateway failure or a
-	 * missing collection. <strong>At-most-once per booking</strong> for any collecting adapter, even
-	 * replayed past the idempotency-key window: {@code PaymentGatewayRefundContract} enforces it.
+	 * Refund {@code amount} of this booking's share within {@code scope}; never throws on an expected
+	 * gateway failure or a missing collection. <strong>At-most-once per booking and scope</strong>, even
+	 * replayed past the idempotency-key window ({@code PaymentGatewayRefundContract}).
 	 */
-	RefundResult refund(BookingRef booking, Money amount);
+	RefundResult refund(BookingRef booking, RefundScope scope, Money amount);
+
+	/** Refund {@code amount} of the whole share. */
+	default RefundResult refund(BookingRef booking, Money amount) {
+		return refund(booking, RefundScope.WHOLE, amount);
+	}
 
 	/**
 	 * Void the booking's PaymentIntent so it can never succeed; never throws on an expected failure.

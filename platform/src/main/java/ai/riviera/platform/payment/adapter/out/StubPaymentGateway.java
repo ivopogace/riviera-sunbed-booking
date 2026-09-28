@@ -12,6 +12,7 @@ import ai.riviera.platform.payment.vocabulary.PaymentCancellation;
 import ai.riviera.platform.payment.vocabulary.PaymentOutcome;
 import ai.riviera.platform.payment.vocabulary.RefundResult;
 import ai.riviera.platform.payment.application.PaymentGateway;
+import ai.riviera.platform.payment.domain.RefundScope;
 
 /**
  * Default-profile stub for the outbound {@link PaymentGateway}: collection always succeeds,
@@ -34,9 +35,9 @@ class StubPaymentGateway implements PaymentGateway {
 	}
 
 	@Override
-	public RefundResult refund(BookingRef booking, Money amount) {
+	public RefundResult refund(BookingRef booking, RefundScope scope, Money amount) {
 		// In-process success — the stub collected nothing real, so there is nothing to record.
-		return new RefundResult.Refunded(REFUND_PREFIX + booking.value());
+		return new RefundResult.Refunded(REFUND_PREFIX + booking.value() + "-" + scope.keySuffix());
 	}
 
 	@Override
