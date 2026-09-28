@@ -53,14 +53,19 @@ class PayoutMigrationIT {
 	}
 
 	private void insertEntry(long bookingId, String type, long gross, long commission, long net) {
+		insertEntry(bookingId, type, null, gross, commission, net);
+	}
+
+	private void insertEntry(long bookingId, String type, LocalDate serviceDate, long gross, long commission,
+			long net) {
 		long venue = jdbc.sql("SELECT venue_id FROM booking WHERE id = :id")
 				.param("id", bookingId).query(Long.class).single();
 		jdbc.sql("""
-				INSERT INTO payout_ledger_entry (venue_id, booking_id, entry_type, gross_minor,
+				INSERT INTO payout_ledger_entry (venue_id, booking_id, entry_type, service_date, gross_minor,
 				                                 commission_minor, net_minor, currency)
-				VALUES (:venue, :booking, :type, :gross, :commission, :net, 'EUR')
+				VALUES (:venue, :booking, :type, :day, :gross, :commission, :net, 'EUR')
 				""")
-				.param("venue", venue).param("booking", bookingId).param("type", type)
+				.param("venue", venue).param("booking", bookingId).param("type", type).param("day", serviceDate)
 				.param("gross", gross).param("commission", commission).param("net", net)
 				.update();
 	}
@@ -97,7 +102,7 @@ class PayoutMigrationIT {
 		long booking = insertBooking("PAYMIG0004");
 		assertThrows(DataIntegrityViolationException.class,
 				() -> insertEntry(booking, "BONUS", 4500, 675, 3825),
-				"entry_type CHECK admits only ACCRUAL | REVERSAL | FEE.");
+				"entry_type CHECK admits only ACCRUAL | REVERSAL | FEE | DAY_REVERSAL.");
 	}
 
 	@Test
@@ -125,6 +130,44 @@ class PayoutMigrationIT {
 		assertThrows(DataIntegrityViolationException.class,
 				() -> insertEntry(booking, "FEE", 0, 0, 500),
 				"UNIQUE(booking_id, entry_type) is the fee's idempotency guard too (invariant #9).");
+	}
+
+	@Test
+	void oneDayReversalPerBookingAndDay() {
+		// V69: the exactly-once key gains the day; a second storm date is a second row.
+		long booking = insertBooking("PAYMIG0009");
+		LocalDate day = LocalDate.of(2029, 7, 8);
+		insertEntry(booking, "ACCRUAL", 42000, 6300, 35700);
+		insertEntry(booking, "DAY_REVERSAL", day, 3000, 450, 2550);
+
+		assertThrows(DataIntegrityViolationException.class,
+				() -> insertEntry(booking, "DAY_REVERSAL", day, 3000, 450, 2550),
+				"UNIQUE (booking_id, entry_type, service_date) reverses a day at most once (invariant #9).");
+		assertDoesNotThrow(() -> insertEntry(booking, "DAY_REVERSAL", day.plusDays(1), 3000, 450, 2550),
+				"another storm date is another day's reversal");
+		assertDoesNotThrow(() -> insertEntry(booking, "REVERSAL", 36000, 5400, 30600),
+				"the whole-booking REVERSAL sits beside the day reversals");
+	}
+
+	@Test
+	void aDayReversalNamesItsDayAndNothingElseDoes() {
+		long booking = insertBooking("PAYMIG0010");
+		assertThrows(DataIntegrityViolationException.class,
+				() -> insertEntry(booking, "DAY_REVERSAL", 3000, 450, 2550),
+				"a DAY_REVERSAL without its service_date has no key");
+		assertThrows(DataIntegrityViolationException.class,
+				() -> insertEntry(booking, "REVERSAL", LocalDate.of(2029, 7, 8), 3000, 450, 2550),
+				"a service_date on any other type would split its one-per-booking guard");
+	}
+
+	@Test
+	void datelessTypesStayOnePerBooking() {
+		// NULLS NOT DISTINCT: two NULL service dates collide, so V9's guard is unchanged for them.
+		long booking = insertBooking("PAYMIG0011");
+		insertEntry(booking, "REVERSAL", 4500, 675, 3825);
+		assertThrows(DataIntegrityViolationException.class,
+				() -> insertEntry(booking, "REVERSAL", 4500, 675, 3825),
+				"one REVERSAL per booking, ever (invariant #9)");
 	}
 
 	@Test

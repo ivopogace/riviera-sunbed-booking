@@ -22,7 +22,8 @@ import static org.junit.jupiter.api.Assertions.assertNull;
  * whose share is the whole amount, and its refund state — recorded, partial, owed after a failure, or
  * none — must arrive on {@code payment_booking} exactly as it was, so no guest reads as refunded who
  * was not and no owed refund leaves the list. Its own Spring context (the Flyway target) gives it
- * its own container, so the pre-V64 shape is real rather than assumed.
+ * its own container, so the pre-V64 shape is real rather than assumed; it stops at V64, since V70 moves
+ * the refund columns on again ({@code PaymentRefundBackfillIT}).
  */
 @EnabledIfDockerAvailable
 @Import(TestcontainersConfiguration.class)
@@ -47,7 +48,7 @@ class PaymentBookingBackfillIT {
 				       (6404, 'pi_v64_open',    3000, 'EUR', 'REQUIRES_PAYMENT',   0,    NULL, NULL, NULL, NULL)
 				""").update();
 
-		Flyway.configure().configuration(flyway.getConfiguration()).target(MigrationVersion.LATEST)
+		Flyway.configure().configuration(flyway.getConfiguration()).target(MigrationVersion.fromVersion("64"))
 				.load().migrate();
 
 		List<Map<String, Object>> moved = jdbc.sql("""
