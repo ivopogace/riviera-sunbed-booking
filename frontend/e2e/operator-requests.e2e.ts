@@ -53,9 +53,43 @@ function venueMap() {
   };
 }
 
+/** A stay request: every stop under one card, answered whole by its stay id (#1267). */
+function stayRequest() {
+  return {
+    kind: 'STAY' as const,
+    stayId: 40,
+    guestName: 'Cora Guest',
+    firstDate: '2026-07-10',
+    lastDate: '2026-07-13',
+    total: { minorUnits: 18000, currency: 'EUR' },
+    requestedAt: '2026-07-01T11:00:00Z',
+    requestExpiresAt: inHours(30),
+    competingRequests: 0,
+    stops: [
+      {
+        setId: 1,
+        firstDate: '2026-07-10',
+        lastDate: '2026-07-11',
+        amount: { minorUnits: 9000, currency: 'EUR' },
+        competingRequests: 0,
+      },
+      {
+        setId: 2,
+        firstDate: '2026-07-12',
+        lastDate: '2026-07-13',
+        amount: { minorUnits: 9000, currency: 'EUR' },
+        competingRequests: 0,
+      },
+    ],
+  };
+}
+
+type QueueItem = ReturnType<typeof seedQueue>[number] | ReturnType<typeof stayRequest>;
+
 function seedQueue() {
   return [
     {
+      kind: 'BOOKING' as const,
       bookingId: 11,
       setId: 1,
       bookingDate: '2026-07-03',
@@ -67,6 +101,7 @@ function seedQueue() {
       competingRequests: 1, // Bora also wants set A·1 that day → the competing hint renders
     },
     {
+      kind: 'BOOKING' as const,
       bookingId: 12,
       setId: 2,
       bookingDate: '2026-07-04',
@@ -88,9 +123,10 @@ function seedQueue() {
 async function mockRequests(
   page: Page,
   overrides: Record<number, { status: number; code: string }> = {},
+  seed: readonly QueueItem[] = seedQueue(),
 ): Promise<{ mapReads: () => number }> {
   let sessionLive = false;
-  let queue = seedQueue();
+  let queue: readonly QueueItem[] = seed;
   let mapReads = 0;
 
   await page.route(/\/api\/auth\/me$/, (route) =>
@@ -121,7 +157,7 @@ async function mockRequests(
     if (override) {
       if (override.code === 'SET_UNAVAILABLE') {
         // The backend declines the request in the same answer (ADR-0025), so the queue no longer lists it.
-        queue = queue.filter((r) => r.bookingId !== bookingId);
+        queue = queue.filter((r) => r.kind === 'STAY' || r.bookingId !== bookingId);
       }
       return route.fulfill({
         status: override.status,
@@ -129,11 +165,24 @@ async function mockRequests(
         json: { type: 'about:blank', status: override.status, code: override.code },
       });
     }
-    queue = queue.filter((r) => r.bookingId !== bookingId);
+    queue = queue.filter((r) => r.kind === 'STAY' || r.bookingId !== bookingId);
     return route.fulfill({
       json: { bookingId, status: action === 'accept' ? 'AWAITING_PAYMENT' : 'DECLINED' },
     });
   });
+
+  // A stay request is answered whole through its own endpoint (#1267).
+  await page.route(
+    /\/api\/venues\/1\/booking-requests\/stays\/(\d+)\/(accept|decline)$/,
+    (route) => {
+      const match = /stays\/(\d+)\/(accept|decline)$/.exec(route.request().url());
+      const stayId = Number(match![1]);
+      queue = queue.filter((r) => r.kind !== 'STAY' || r.stayId !== stayId);
+      return route.fulfill({
+        json: { stayId, status: match![2] === 'accept' ? 'AWAITING_PAYMENT' : 'DECLINED' },
+      });
+    },
+  );
 
   // The stats strip's reads + the tab's venue-map read for set labels.
   await page.route(/\/api\/venues\/1\/bookings(\?.*)?$/, (route) => route.fulfill({ json: [] }));
@@ -371,4 +420,26 @@ test('the lost sweep race and its dismiss both land focus (WCAG 2.4.3, #1082)', 
   // Dismiss removes the card, and the queue still holds Bora's — so focus lands on that row.
   await page.getByTestId('dismiss-expired').click();
   await expect(page.getByTestId('request-row-12')).toBeFocused();
+});
+
+test('a stay request is one card with every stop, accepted whole (#1267)', async ({ page }) => {
+  const stays = page.waitForRequest((request) =>
+    request.url().endsWith('/api/venues/1/booking-requests/stays/40/accept'),
+  );
+  await mockRequests(page, {}, [stayRequest()]);
+  await signInAndOpenRequests(page);
+
+  const card = page.getByTestId('request-row-stay-40');
+  await expect(card.getByTestId('request-stops').locator('li')).toHaveCount(2);
+  await expect(card.getByTestId('request-stops')).toContainText('A · 1');
+  await expect(card.getByTestId('request-stops')).toContainText('B · 2');
+  await expect(card).toContainText('€180');
+  await expect(card).toContainText('whole stay');
+  await settle(page);
+  await expectNoSeriousAxeViolations(page, 'a stay request card');
+
+  await page.getByRole('button', { name: /Accept.*from Cora Guest for 2 spots/ }).click();
+  await stays;
+  await expect(page.getByTestId('requests-empty')).toBeVisible();
+  await expect(page.getByTestId('requests-notice')).toContainText('asked to pay');
 });

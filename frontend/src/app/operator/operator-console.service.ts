@@ -82,10 +82,26 @@ export class OperatorConsoleService {
     );
   }
 
-  /** Decline a pending request → `DECLINED`; the soft-held set is freed server-side. */
+  /** Decline a pending request → `DECLINED`; nothing was held, so nothing is freed (ADR-0025). */
   declineRequest(venueId: number, bookingId: number): Observable<RequestDecision> {
     return this.http.post<RequestDecision>(
       `${this.base}/api/venues/${venueId}/booking-requests/${bookingId}/decline`,
+      {},
+    );
+  }
+
+  /** {@link acceptRequest} for a stay request, whole: every stop claimed, one payment request (#1267). */
+  acceptStayRequest(venueId: number, stayId: number): Observable<RequestDecision> {
+    return this.http.post<RequestDecision>(
+      `${this.base}/api/venues/${venueId}/booking-requests/stays/${stayId}/accept`,
+      {},
+    );
+  }
+
+  /** {@link declineRequest} for a stay request, whole (#1267). */
+  declineStayRequest(venueId: number, stayId: number): Observable<RequestDecision> {
+    return this.http.post<RequestDecision>(
+      `${this.base}/api/venues/${venueId}/booking-requests/stays/${stayId}/decline`,
       {},
     );
   }

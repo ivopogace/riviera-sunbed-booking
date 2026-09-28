@@ -17,6 +17,7 @@ const CLS = {
     'mx-auto mb-4.5 flex size-16 items-center justify-center rounded-full border border-[rgba(255,255,255,0.6)] bg-riv-medallion-waiting-fill text-riv-medallion-waiting-ink [&_svg]:size-[28px] shadow-[inset_0_1px_0_rgba(255,255,255,0.7)]',
   h1: 'm-0 mb-2 text-[27px] font-bold tracking-[-0.02em] text-riv-card-ink',
   lead: 'm-0 mb-4.5 text-[14.5px] leading-[1.5] text-riv-card-ink-soft',
+  stops: 'm-0 mb-4.5 list-none p-0 text-[14px] leading-[1.6] font-semibold text-riv-card-ink',
   strong: 'text-riv-card-ink',
   infoBox:
     'mb-3.5 flex items-start gap-2.5 rounded-[18px] border border-riv-accent-border bg-riv-accent-fill px-4 py-3.5 text-left',
@@ -48,11 +49,25 @@ const CLS = {
       <section [class]="cls.card" appCardGlass aria-labelledby="request-title">
         <div [class]="cls.badge" aria-hidden="true"><app-mail-icon /></div>
         <h1 id="request-title" [class]="cls.h1">Request sent</h1>
-        <p [class]="cls.lead">
-          {{ r.rowLabel }} · spot {{ r.positionNo }} at {{ r.venueName }} on {{ dateLabel() }} is a
-          <strong [class]="cls.strong">Request to Book</strong> venue. The host needs to accept
-          before you pay — <strong [class]="cls.strong">you haven’t been charged</strong>.
-        </p>
+        @if (stops().length > 0) {
+          <p [class]="cls.lead">
+            Your stay at {{ r.venueName }}, {{ dateLabel() }}, is a
+            <strong [class]="cls.strong">Request to Book</strong>. The host accepts or declines your
+            whole stay before you pay —
+            <strong [class]="cls.strong">you haven’t been charged</strong>.
+          </p>
+          <ol [class]="cls.stops" data-testid="request-stops">
+            @for (stop of stops(); track $index) {
+              <li>{{ $index + 1 }}. {{ stop.spot }} · {{ stop.range }}</li>
+            }
+          </ol>
+        } @else {
+          <p [class]="cls.lead">
+            {{ r.rowLabel }} · spot {{ r.positionNo }} at {{ r.venueName }} on {{ dateLabel() }} is
+            a <strong [class]="cls.strong">Request to Book</strong> venue. The host needs to accept
+            before you pay — <strong [class]="cls.strong">you haven’t been charged</strong>.
+          </p>
+        }
 
         <div [class]="cls.infoBox">
           <span [class]="cls.infoIcon" aria-hidden="true"><app-hourglass-icon /></span>
@@ -61,9 +76,16 @@ const CLS = {
             <strong [class]="cls.strong" data-testid="request-deadline">{{
               deadline(r.requestExpiresAt)
             }}</strong
-            >. The set isn’t held for you until the venue accepts — other guests can request it too.
-            If accepted, you’ll get a link to pay
-            <strong [class]="cls.strong">{{ formatMoney(r.amount) }}</strong> and lock in the set.
+            >.
+            @if (stops().length > 0) {
+              The spots aren’t held for you until the venue accepts — other guests can request them
+              too. If accepted, you’ll get a link to pay
+              <strong [class]="cls.strong">{{ formatMoney(r.amount) }}</strong> for the whole stay.
+            } @else {
+              The set isn’t held for you until the venue accepts — other guests can request it too.
+              If accepted, you’ll get a link to pay
+              <strong [class]="cls.strong">{{ formatMoney(r.amount) }}</strong> and lock in the set.
+            }
           </p>
         </div>
 
@@ -103,6 +125,14 @@ export class RequestConfirmation {
   });
 
   protected readonly formatMoney = formatMoney;
+  /** A stay request's stops in day order (#1267), each its spot and days; empty for one set. */
+  protected readonly stops = computed(() =>
+    (this.requested()?.stretches ?? []).map((stretch) => ({
+      spot: `${stretch.rowLabel} · spot ${stretch.positionNo}`,
+      range: formatStay(stretch.firstDate, stretch.lastDate),
+    })),
+  );
+
   /** The booking date, formatted once per request (memoized like the dialog/pay siblings). */
   protected readonly dateLabel = computed(() => {
     const r = this.requested();

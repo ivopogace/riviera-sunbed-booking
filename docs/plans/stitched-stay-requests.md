@@ -137,8 +137,9 @@ nothing and collects under one PaymentIntent. Stay-level events (`StayRequestDec
   - The guest's booking page shows a pending stay with its deadline and a Withdraw button.
 
   *Seam:* components + `BookingService`/`OperatorConsoleService` · *Pinned by:* Vitest specs
-  (`venue-map`, `booking-dialog`, `request-confirmation`, `requests-tab`, `booking-view`) + mocked
-  e2e `e2e/stay-request.spec.ts`
+  (`venue-map`, `booking-dialog`, `request-confirmation`, `requests-tab`, `booking-view`,
+  `booking.service`, `operator-console.service`) + mocked e2e `e2e/stay-request.e2e.ts` and
+  `e2e/operator-requests.e2e.ts` (the stay card)
 
 ## Non-goals
 
@@ -282,9 +283,9 @@ All inside `booking` except the three `notification` listeners. No new module de
 
 ## Execution status
 
-**Stage pointer:** `implement (phase 6)`
+**Stage pointer:** `implement (phase 7)`
 
-**Next action:** phase 6 — frontend: booking service 'requested' stay branch first (red `booking.service.spec.ts`).
+**Next action:** phase 7 — substrate docs (RESPONSIBILITIES, CLAUDE.md events, CONTEXT, ADR-0025, design doc), then merge main, ready for review, review gate.
 
 **Notes:**
 - Local ITs need `postgres:17`. Docker Hub rate-limited the pull, so it was pulled from
@@ -300,7 +301,7 @@ All inside `booking` except the three `notification` listeners. No new module de
 | 3 — other legs | ✅ | (phase-3 commit) |
 | 4 — mails | ✅ | (phase-4 commit) |
 | 5 — backend gate | ✅ | (phase-5 commit) |
-| 6 — frontend | | |
+| 6 — frontend | ✅ | (phase-6 commit) |
 | 7 — docs | | |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.

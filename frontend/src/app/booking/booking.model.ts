@@ -69,6 +69,8 @@ export interface StayView {
   readonly emailWithheld: boolean;
   readonly clientSecret?: string;
   readonly paymentIntentId?: string;
+  /** The venue's response deadline on a stay request's `202 PENDING_REQUEST` (ISO-8601 UTC). */
+  readonly requestExpiresAt?: string;
 }
 
 export interface BookingConfirmation {
@@ -149,6 +151,8 @@ export interface RequestedBooking {
   readonly lastDate?: string;
   readonly amount: MoneyView;
   readonly requestExpiresAt: string;
+  /** A stitched stay request's stops, answered whole (#1267); absent for one set. */
+  readonly stretches?: readonly StayStretchView[];
 }
 
 /**
@@ -393,7 +397,6 @@ export type BookingErrorCode =
   | 'SET_NOT_BOOKABLE_ONLINE'
   | 'BOOKING_CLOSED'
   | 'VENUE_CLOSED'
-  | 'RANGE_NOT_OFFERED'
   | 'STAY_TOO_LONG'
   | 'NO_SUCH_SET'
   | 'INVALID_REQUEST'

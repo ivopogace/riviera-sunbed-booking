@@ -734,6 +734,53 @@ describe('BookingDialog (2-step Liquid Glass modal)', () => {
     expect(note.textContent).not.toContain('per day');
   });
 
+  it('REQUEST venue plan: one request for every stop, the note names the spots, and a 202 PENDING emits requested (#1267)', async () => {
+    fixture.componentRef.setInput('mode', 'REQUEST');
+    fixture.componentRef.setInput('set', undefined);
+    fixture.componentRef.setInput('plan', PLAN);
+    fixture.componentRef.setInput('lastDate', '2026-12-04');
+    fixture.detectChanges();
+    httpMock.match(TERMS_URL).forEach((req) => req.flush(FREE_TERMS));
+    await fixture.whenStable();
+    await goToReview();
+
+    const note = host().querySelector<HTMLElement>('.mode-note.request')!;
+    expect(note.textContent).toContain('The spots aren’t held until the venue accepts');
+    expect(note.textContent).toContain('accepts or declines your whole stay');
+    expect(primary().textContent).toContain('Send request');
+    let requested: RequestedBooking | undefined;
+    dialog.requested.subscribe((r) => (requested = r));
+
+    submitForm();
+    await fixture.whenStable();
+    httpMock.expectOne(`${environment.apiBaseUrl}/api/stays`).flush(
+      {
+        code: 'STAYRQ3456',
+        status: 'PENDING_REQUEST',
+        venueId: 1,
+        venueName: 'Miramar Beach Club',
+        firstDate: '2026-12-01',
+        lastDate: '2026-12-04',
+        total: { minorUnits: 16000, currency: 'EUR' },
+        stretches: PLAN.stretches.map((s) => ({
+          setId: s.setId,
+          rowLabel: s.rowLabel,
+          positionNo: s.positionNo,
+          firstDate: s.firstDate,
+          lastDate: s.lastDate,
+          amount: s.amount,
+        })),
+        emailWithheld: false,
+        requestExpiresAt: '2026-11-30T16:00:00Z',
+      },
+      { status: 202, statusText: 'Accepted' },
+    );
+    await fixture.whenStable();
+
+    expect(requested?.code).toBe('STAYRQ3456');
+    expect(requested?.stretches).toHaveLength(2);
+  });
+
   it('emits dismissed from the header close button and from a backdrop click', () => {
     let dismissed = 0;
     dialog.dismissed.subscribe(() => (dismissed += 1));
@@ -751,7 +798,6 @@ describe('BookingDialog (2-step Liquid Glass modal)', () => {
       BOOKING_CLOSED: 'Booking has closed',
       VENUE_CLOSED: 'closed for the season',
       NO_SUCH_SET: 'could not be found',
-      RANGE_NOT_OFFERED: 'one spot at a time',
       STAY_TOO_LONG: 'more than this venue takes',
       INVALID_REQUEST: 'check the form',
       UNKNOWN: 'Something went wrong',

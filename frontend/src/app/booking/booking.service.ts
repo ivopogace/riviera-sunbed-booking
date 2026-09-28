@@ -77,8 +77,8 @@ export class BookingService {
 
   /**
    * Book a stitched plan (`POST /api/stays`, design D6): every stretch claimed all or nothing, one code,
-   * one collection. The stay answers in the booking's shape — the first stretch's spot heads it, the
-   * span and total are the group's — so the confirmation and pay pages need no second path.
+   * one collection; at a Request-to-Book venue one request, answered whole (#1267). The stay answers in
+   * the booking's shape — the first stretch's spot heads it, the span and total are the group's.
    */
   createStay(
     request: CreateStayRequest,
@@ -95,6 +95,14 @@ export class BookingService {
           this.device.remember(response.body?.code);
           const stay = response.body!;
           const summary = stayAsBooking(stay);
+          if (response.status === 202 && stay.status === 'PENDING_REQUEST') {
+            const requested: RequestedBooking = {
+              ...summary,
+              requestExpiresAt: stay.requestExpiresAt ?? '',
+            };
+            this.handoff.set({ kind: 'requested', requested });
+            return { kind: 'requested', requested };
+          }
           if (response.status === 202) {
             const awaiting: AwaitingPayment = {
               ...summary,
@@ -276,7 +284,6 @@ export function bookingErrorOf(error: unknown): BookingErrorCode | ChallengeReje
       case 'SET_NOT_BOOKABLE_ONLINE':
       case 'BOOKING_CLOSED':
       case 'VENUE_CLOSED':
-      case 'RANGE_NOT_OFFERED':
       case 'STAY_TOO_LONG':
       case 'NO_SUCH_SET':
         return code;

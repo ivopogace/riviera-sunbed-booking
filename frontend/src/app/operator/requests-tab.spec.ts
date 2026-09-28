@@ -39,6 +39,7 @@ describe('RequestsTab (#176)', () => {
 
   function request(over: Partial<PendingRequest> = {}): PendingRequest {
     return {
+      kind: 'BOOKING',
       bookingId: 11,
       setId: 1,
       bookingDate: '2026-07-03',
@@ -84,7 +85,7 @@ describe('RequestsTab (#176)', () => {
   }
 
   /** Flush the load cycle: the venue-map GET (labels) + the pending-requests GET. */
-  function flushLoad(requests: PendingRequest[], sets: SetView[] = SEED_SETS): void {
+  function flushLoad(requests: QueueItem[], sets: SetView[] = SEED_SETS): void {
     http
       .expectOne((r) => r.method === 'GET' && r.url.endsWith('/api/venues/1/booking-requests'))
       .flush(requests);
@@ -99,7 +100,7 @@ describe('RequestsTab (#176)', () => {
     fixture.detectChanges();
   }
 
-  function render(requests: PendingRequest[], sets: SetView[] = SEED_SETS): void {
+  function render(requests: QueueItem[], sets: SetView[] = SEED_SETS): void {
     configure();
     flushLoad(requests, sets);
     host = fixture.nativeElement as HTMLElement;
@@ -177,7 +178,7 @@ describe('RequestsTab (#176)', () => {
   }
 
   /** Flush the queue re-read a post-action (or poll) reconcile fires, with the fresh server queue. */
-  function flushReconcile(queue: PendingRequest[]): void {
+  function flushReconcile(queue: QueueItem[]): void {
     http
       .expectOne((r) => r.method === 'GET' && r.url.endsWith('/api/venues/1/booking-requests'))
       .flush(queue);
@@ -221,6 +222,90 @@ describe('RequestsTab (#176)', () => {
     expect(accept.getAttribute('aria-label')).toMatch(
       /for A · 1, Fri,? 3 Jul – Sun,? 5 Jul 2026 · 3 days/,
     );
+  });
+
+  function stay(over: Partial<PendingStay> = {}): PendingStay {
+    return {
+      kind: 'STAY',
+      stayId: 40,
+      guestName: 'Bo Guest',
+      firstDate: '2026-07-03',
+      lastDate: '2026-07-06',
+      total: EUR(18000),
+      requestedAt: '2026-07-01T09:00:00Z',
+      requestExpiresAt: inHours(30),
+      competingRequests: 1,
+      stops: [
+        {
+          setId: 1,
+          firstDate: '2026-07-03',
+          lastDate: '2026-07-04',
+          amount: EUR(9000),
+          competingRequests: 1,
+        },
+        {
+          setId: 2,
+          firstDate: '2026-07-05',
+          lastDate: '2026-07-06',
+          amount: EUR(9000),
+          competingRequests: 0,
+        },
+      ],
+      ...over,
+    };
+  }
+
+  it('shows a stay request as one card with every stop and answers it whole by its stay id (#1267)', async () => {
+    render([request({ bookingId: 11 }), stay()]);
+    expect(cards()).toHaveLength(2);
+    const card = byId('request-row-stay-40')!;
+    const stops = card.querySelectorAll('[data-testid="request-stops"] li');
+    expect(stops).toHaveLength(2);
+    expect(stops[0].textContent).toContain('A · 1');
+    expect(stops[1].textContent).toContain('B · 2');
+    expect(card.textContent).toContain('€180');
+    expect(card.textContent).toContain('whole stay');
+    expect(card.querySelector('[data-testid="competing-hint"]')!.textContent).toContain(
+      'for these days',
+    );
+    const accept = Array.from(card.querySelectorAll('button')).find((b) =>
+      b.getAttribute('aria-label')?.startsWith('Accept'),
+    )!;
+    expect(accept.getAttribute('aria-label')).toContain('for 2 spots');
+
+    accept.click();
+    fixture.detectChanges();
+    http
+      .expectOne(
+        (r) =>
+          r.method === 'POST' && r.url.endsWith('/api/venues/1/booking-requests/stays/40/accept'),
+      )
+      .flush({ stayId: 40, status: 'AWAITING_PAYMENT' });
+    fixture.detectChanges();
+    flushReconcile([request({ bookingId: 11 })]);
+    await settle();
+
+    expect(byId('request-row-stay-40')).toBeNull();
+    expect(byId('request-row-11')).not.toBeNull();
+    expect(store.count()).toBe(1);
+  });
+
+  it('declines a stay request whole through its stay endpoint (#1267)', () => {
+    render([stay()]);
+    button(/^Decline$/).click();
+    fixture.detectChanges();
+    byId('request-confirm-decline-stay-40')!.click();
+    fixture.detectChanges();
+    http
+      .expectOne(
+        (r) =>
+          r.method === 'POST' && r.url.endsWith('/api/venues/1/booking-requests/stays/40/decline'),
+      )
+      .flush({ stayId: 40, status: 'DECLINED' });
+    fixture.detectChanges();
+    flushReconcile([]);
+
+    expect(cards()).toHaveLength(0);
   });
 
   it('shows the amber time-left chip only when the deadline is within the urgency window', () => {
@@ -813,7 +898,7 @@ describe('RequestsTab (#176)', () => {
   });
 
   /** Switch in place to venue 2 and settle both its reads, with `queue` as its pending requests. */
-  function switchToVenue2(queue: PendingRequest[]): void {
+  function switchToVenue2(queue: QueueItem[]): void {
     params$.next(convertToParamMap({ venueId: '2' }));
     fixture.detectChanges();
     http
@@ -874,6 +959,7 @@ describe('RequestsTab (#176)', () => {
 
 /** A pending Request-to-Book entry as the operator queue endpoint returns it (no booking code, #7). */
 interface PendingRequest {
+  kind: 'BOOKING';
   bookingId: number;
   setId: number;
   bookingDate: string;
@@ -884,6 +970,28 @@ interface PendingRequest {
   requestExpiresAt: string;
   competingRequests: number;
 }
+
+/** A stay request as the queue endpoint returns it: every stop, answered whole by `stayId` (#1267). */
+interface PendingStay {
+  kind: 'STAY';
+  stayId: number;
+  guestName: string;
+  firstDate: string;
+  lastDate: string;
+  total: MoneyView;
+  requestedAt: string;
+  requestExpiresAt: string;
+  competingRequests: number;
+  stops: {
+    setId: number;
+    firstDate: string;
+    lastDate: string;
+    amount: MoneyView;
+    competingRequests: number;
+  }[];
+}
+
+type QueueItem = PendingRequest | PendingStay;
 
 function seat(id: number, rowLabel: string, positionNo: number, tier: Tier): SetView {
   return {

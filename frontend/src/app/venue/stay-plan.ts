@@ -120,7 +120,11 @@ interface Stop {
         <strong class="text-[17px]">{{ total() }}</strong>
       </p>
       <div class="mt-3 flex flex-wrap items-center gap-3">
-        <app-retry-button testId="stay-plan-book" label="Review & pay" (retry)="book.emit()" />
+        <app-retry-button
+          testId="stay-plan-book"
+          [label]="request() ? 'Review & request' : 'Review & pay'"
+          (retry)="book.emit()"
+        />
         <button
           appTouchTarget
           type="button"
@@ -163,6 +167,8 @@ export class StayPlan {
   readonly anchorSet = input<SetView | undefined>(undefined);
   /** The longest one-spot run, offered instead of moving; absent when no spot hosts any of the stay. */
   readonly longestRun = input<SetRun | undefined>(undefined);
+  /** A Request-to-Book venue: the plan is sent as one request, not paid for (#1267). */
+  readonly request = input(false);
 
   readonly book = output<void>();
   readonly shorten = output<DateRange>();

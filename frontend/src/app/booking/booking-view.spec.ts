@@ -1439,6 +1439,32 @@ describe('BookingView', () => {
     expect(panel?.textContent).toContain('accept or decline your whole stay');
   });
 
+  it('a pending stitched stay lists its stops, says the spots are not held, and can be withdrawn (#1267)', async () => {
+    const pending = await render(
+      stubService({
+        detail: {
+          ...STAY_MOVED,
+          status: 'PENDING_REQUEST',
+          cancellable: false,
+          withdrawable: true,
+          requestExpiresAt: '2026-11-30T16:00:00Z',
+          stretches: STAY_MOVED.stretches!.map((stretch) => ({
+            ...stretch,
+            status: 'PENDING_REQUEST',
+            move: null,
+          })),
+        },
+      }),
+    );
+    const el = pending.nativeElement as HTMLElement;
+    const panel = el.querySelector('[data-testid="request-pending"]')!;
+    expect(panel.textContent).toContain('The spots aren’t held for you until then');
+    expect(panel.textContent).toContain('accept or decline your whole stay');
+    expect(panel.textContent).toContain('17:00');
+    expect(el.querySelectorAll('[data-testid="view-stops"] li')).toHaveLength(2);
+    expect(el.querySelector('[data-testid="withdraw-request"]')).not.toBeNull();
+  });
+
   it('a declined stay names its days when the set was no longer available', async () => {
     const declined = await render(
       stubService({

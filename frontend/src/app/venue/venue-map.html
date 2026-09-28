@@ -264,10 +264,10 @@
               } @else {
                 <p class="font-bold">No single spot is free for all {{ dayCount() }} days.</p>
               }
-              @if (v.bookingMode === 'REQUEST') {
+              @if (v.bookingMode === 'REQUEST' && plan()) {
                 <p class="mt-1 text-riv-card-ink-soft" data-testid="no-cover-request">
-                  This venue takes requests for one spot at a time, so a stay here isn’t split
-                  across spots.
+                  The plan goes to the venue as one request — it accepts or declines your whole
+                  stay.
                 </p>
               }
               @if (longestRun(); as best) {
@@ -331,6 +331,7 @@
               [anchor]="itinerary()?.anchor"
               [anchorSet]="planAnchorSet()"
               [longestRun]="longestRun()"
+              [request]="v.bookingMode === 'REQUEST'"
               (book)="bookPlan()"
               (shorten)="shortenToRun($event)"
               (dismissed)="closePlan()"
@@ -545,7 +546,6 @@
 
     @if (partlySet(); as set) {
       <app-partly-free-sheet
-        [canPlan]="v.bookingMode === 'INSTANT'"
         [set]="set"
         [first]="selectedDate()"
         [last]="selectedLastDate()"
