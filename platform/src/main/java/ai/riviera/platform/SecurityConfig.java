@@ -131,6 +131,9 @@ class SecurityConfig {
 	/** Accept/decline a pending request; operator-session POSTs, CSRF token required. */
 	private static final String BOOKING_REQUEST_ACCEPT_PATH = "/api/venues/*/booking-requests/*/accept";
 	private static final String BOOKING_REQUEST_DECLINE_PATH = "/api/venues/*/booking-requests/*/decline";
+	/** Accept/decline a stay request whole (#1267); operator-session POSTs, CSRF token required. */
+	private static final String STAY_REQUEST_ACCEPT_PATH = "/api/venues/*/booking-requests/stays/*/accept";
+	private static final String STAY_REQUEST_DECLINE_PATH = "/api/venues/*/booking-requests/stays/*/decline";
 	/**
 	 * The admin BKT payout-batch report (POST generate / GET list). It and {@link #PAYOUT_BATCH_ITEM_PATH}
 	 * are not venue-scoped and exempt from invariant #13, so the ADMIN gate is the whole authorization:
@@ -318,6 +321,8 @@ class SecurityConfig {
 						.requestMatchers(HttpMethod.GET, BOOKING_REQUESTS_PATH).hasRole(OPERATOR_ROLE)
 						.requestMatchers(HttpMethod.POST, BOOKING_REQUEST_ACCEPT_PATH).hasRole(OPERATOR_ROLE)
 						.requestMatchers(HttpMethod.POST, BOOKING_REQUEST_DECLINE_PATH).hasRole(OPERATOR_ROLE)
+						.requestMatchers(HttpMethod.POST, STAY_REQUEST_ACCEPT_PATH).hasRole(OPERATOR_ROLE)
+						.requestMatchers(HttpMethod.POST, STAY_REQUEST_DECLINE_PATH).hasRole(OPERATOR_ROLE)
 						// Issues real refunds + payout reversals for a washed-out venue+date (invariant #10).
 						.requestMatchers(HttpMethod.POST, WEATHER_REFUND_PATH).hasRole(OPERATOR_ROLE)
 						.requestMatchers(PAYOUT_BATCHES_PATH, PAYOUT_BATCH_ITEM_PATH).hasRole(ADMIN_ROLE)
