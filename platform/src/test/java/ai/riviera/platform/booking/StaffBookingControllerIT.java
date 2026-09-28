@@ -4,6 +4,7 @@ import java.time.LocalDate;
 import java.time.ZoneId;
 import java.util.List;
 
+import org.hamcrest.Matchers;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -87,6 +88,20 @@ class StaffBookingControllerIT {
 				.update();
 	}
 
+	/** A span in one INSERT, so the confirm trigger writes every service day; {@code stayId} groups a stretch. */
+	private void seedSpan(String code, long setId, long customerId, String status, LocalDate first,
+			LocalDate last, Long stayId) {
+		jdbc.sql("""
+				INSERT INTO booking (code, venue_id, set_id, customer_id, booking_date, last_date,
+				                     amount_minor, amount_currency, status, stay_id)
+				VALUES (:code, :venue, :set, :customer, :first, :last, 4500, 'EUR', :status, :stay)
+				""")
+				.param("code", code).param("venue", MIRAMAR).param("set", setId)
+				.param("customer", customerId).param("first", first).param("last", last)
+				.param("status", status).param("stay", stayId)
+				.update();
+	}
+
 	@Test
 	void listsOnlyConfirmedBookingsForVenueAndDate() throws Exception {
 		List<Long> sets = venueSets(4);
@@ -159,6 +174,82 @@ class StaffBookingControllerIT {
 						.param("date", middle.plusDays(2).toString()))
 				.andExpect(status().isOk())
 				.andExpect(jsonPath("$.length()").value(0));
+	}
+
+	/** Story 30: each row names the guest's whole span, so the view can tell arriving, staying and leaving apart. */
+	@Test
+	void eachRowCarriesTheGuestsSpan() throws Exception {
+		LocalDate day = LocalDate.of(2032, 6, 10);
+		List<Long> sets = venueSets(3);
+		long customer = newCustomer("span-" + day + "@e.com");
+		seedBookingOn("U8SPANONE1", sets.get(0), customer, "CONFIRMED", day);
+		seedSpan("U8SPANMID1", sets.get(1), customer, "CONFIRMED", day.minusDays(1), day.plusDays(1), null);
+		seedSpan("U8SPANEND1", sets.get(2), customer, "CONFIRMED", day.minusDays(2), day, null);
+
+		mvc.perform(get("/api/venues/{id}/bookings", MIRAMAR).cookie(operatorSession)
+						.param("date", day.toString()))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.length()").value(3))
+				.andExpect(jsonPath("$[?(@.code == 'U8SPANONE1')].firstDate").value(day.toString()))
+				.andExpect(jsonPath("$[?(@.code == 'U8SPANONE1')].lastDate").value(day.toString()))
+				.andExpect(jsonPath("$[?(@.code == 'U8SPANMID1')].firstDate").value(day.minusDays(1).toString()))
+				.andExpect(jsonPath("$[?(@.code == 'U8SPANMID1')].lastDate").value(day.plusDays(1).toString()))
+				.andExpect(jsonPath("$[?(@.code == 'U8SPANEND1')].firstDate").value(day.minusDays(2).toString()))
+				.andExpect(jsonPath("$[?(@.code == 'U8SPANEND1')].lastDate").value(day.toString()))
+				.andExpect(jsonPath("$[*].attendance", Matchers.everyItem(Matchers.is("EXPECTED"))));
+	}
+
+	/** A stitched stretch that begins on the day is not an arrival: the row carries the stay's span and code. */
+	@Test
+	void aStitchedStretchCarriesTheStaysSpan() throws Exception {
+		LocalDate moveDay = LocalDate.of(2032, 7, 12);
+		List<Long> sets = venueSets(2);
+		long customer = newCustomer("stitch-" + moveDay + "@e.com");
+		long stay = jdbc.sql("""
+				INSERT INTO stay (code, venue_id, first_date, last_date)
+				VALUES ('U8STITCH01', :venue, :first, :last) RETURNING id
+				""").param("venue", MIRAMAR).param("first", moveDay.minusDays(2)).param("last", moveDay.plusDays(1))
+				.query(Long.class).single();
+		seedSpan("U8STITCHA1", sets.get(0), customer, "CONFIRMED", moveDay.minusDays(2), moveDay.minusDays(1), stay);
+		seedSpan("U8STITCHB1", sets.get(1), customer, "CONFIRMED", moveDay, moveDay.plusDays(1), stay);
+
+		mvc.perform(get("/api/venues/{id}/bookings", MIRAMAR).cookie(operatorSession)
+						.param("date", moveDay.toString()))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.length()").value(1))
+				.andExpect(jsonPath("$[0].setId").value(sets.get(1)))
+				.andExpect(jsonPath("$[0].code").value("U8STITCH01"))
+				.andExpect(jsonPath("$[0].firstDate").value(moveDay.minusDays(2).toString()))
+				.andExpect(jsonPath("$[0].lastDate").value(moveDay.plusDays(1).toString()));
+	}
+
+	/**
+	 * Story 31: the row's attendance is the day's, read from {@code booking_day}, while
+	 * {@code status} stays the stay's outcome — so "not checked in today" is answerable on a
+	 * middle day and the last day, not only the first.
+	 */
+	@Test
+	void attendanceIsTheDaysNotTheStays() throws Exception {
+		// Nine to seven days back: clear of the swept no-show case's day, which shares this venue.
+		LocalDate first = LocalDate.now(ZoneId.of("Europe/Tirane")).minusDays(9);
+		List<Long> sets = venueSets(1);
+		long customer = newCustomer("attend-" + first + "@e.com");
+		seedSpan("U8ATTEND01", sets.get(0), customer, "CONFIRMED", first, first.plusDays(2), null);
+		jdbc.sql("""
+				UPDATE booking_day SET attended_at = now() WHERE service_date IN (:d1, :d2)
+				  AND booking_id = (SELECT id FROM booking WHERE code = 'U8ATTEND01')
+				""").param("d1", first).param("d2", first.plusDays(1)).update();
+
+		markNoShows.sweep();
+
+		for (int offset = 0; offset < 3; offset++) {
+			String expected = offset < 2 ? "ATTENDED" : "MISSED";
+			mvc.perform(get("/api/venues/{id}/bookings", MIRAMAR).cookie(operatorSession)
+							.param("date", first.plusDays(offset).toString()))
+					.andExpect(status().isOk())
+					.andExpect(jsonPath("$[?(@.code == 'U8ATTEND01')].attendance").value(expected))
+					.andExpect(jsonPath("$[?(@.code == 'U8ATTEND01')].status").value("COMPLETED"));
+		}
 	}
 
 	@Test

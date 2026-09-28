@@ -238,9 +238,9 @@ public interface Bookings {
 			Instant at);
 
 	/**
-	 * The venue's {@code CONFIRMED}/{@code COMPLETED}/{@code NO_SHOW} bookings on {@code date},
-	 * ordered by set, for the staff daily view. The {@code code} is a bearer credential — for the
-	 * operator-gated caller only, never logged (invariant #7).
+	 * The venue's {@code CONFIRMED}/{@code COMPLETED}/{@code NO_SHOW} bookings covering {@code date},
+	 * ordered by set, each with the guest's span and the day's attendance, for the staff daily view.
+	 * The {@code code} is a bearer credential — for the operator-gated caller only, never logged (#7).
 	 */
 	List<DailyBooking> findSettledForVenueOn(VenueId venueId, LocalDate date);
 
