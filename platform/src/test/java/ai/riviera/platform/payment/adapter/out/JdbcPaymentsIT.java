@@ -525,7 +525,7 @@ class JdbcPaymentsIT {
 		assertEquals(0L, payments.findRefundState(new BookingRef(9621L)).orElseThrow().refundedMinor(),
 				"a day refund is not the whole-share refund the cancellation's progress asks about");
 
-		assertTrue(payments.markRefunded(new BookingRef(9621L), 600L, "re_rest"));
+		assertTrue(payments.markRefunded(new BookingRef(9621L), 600L, "re_9621_rest"));
 
 		assertEquals(900L, refundedMinorOf(9621L), "day plus remainder is the whole share");
 		assertEquals("REFUNDED", statusOf("pi_day_then_rest"), "every cent came back, in two refunds");
