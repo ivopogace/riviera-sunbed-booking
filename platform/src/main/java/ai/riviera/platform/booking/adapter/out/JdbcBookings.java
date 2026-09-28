@@ -955,7 +955,7 @@ class JdbcBookings implements Bookings {
 				.query((rs, rowNum) -> new DailyBooking(
 						new SetId(rs.getLong(COL_SET_ID)), rs.getString("code"),
 						BookingStatus.valueOf(rs.getString(PARAM_STATUS)),
-						rs.getObject("first_date", LocalDate.class), rs.getObject("last_date", LocalDate.class),
+						rs.getObject("first_date", LocalDate.class), rs.getObject(COL_LAST_DATE, LocalDate.class),
 						DayAttendance.of(rs.getBoolean("attended"), rs.getBoolean("missed"))))
 				.list();
 	}
