@@ -306,8 +306,9 @@ model in `docs/architecture/domain-model.md`.
   per-venue configurable). Governs free cancellation only — it never gates whether a
   booking can be created; that is sales close's job.
 - **Booking mode** — how a venue accepts bookings: **Instant Book** (auto-confirm)
-  or **Request-to-Book** (venue accepts/declines first). At a Request-to-Book venue a same-set
-  range is one request, accepted or declined whole; no stitched plan is offered there (#1203).
+  or **Request-to-Book** (venue accepts/declines first). At a Request-to-Book venue a stay, same-set
+  or stitched, is one request (a **stay request** when stitched), accepted or declined whole (#1203,
+  #1267).
 
 ## Money
 

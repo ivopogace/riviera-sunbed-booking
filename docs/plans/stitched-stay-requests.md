@@ -283,9 +283,9 @@ All inside `booking` except the three `notification` listeners. No new module de
 
 ## Execution status
 
-**Stage pointer:** `implement (phase 7)`
+**Stage pointer:** `PR — merge main, ready for review`
 
-**Next action:** phase 7 — substrate docs (RESPONSIBILITIES, CLAUDE.md events, CONTEXT, ADR-0025, design doc), then merge main, ready for review, review gate.
+**Next action:** merge `origin/main`, mark #1268 ready, run the review gate (`/code-review` + overlay) and the Sonar gate.
 
 **Notes:**
 - Local ITs need `postgres:17`. Docker Hub rate-limited the pull, so it was pulled from
@@ -302,6 +302,6 @@ All inside `booking` except the three `notification` listeners. No new module de
 | 4 — mails | ✅ | (phase-4 commit) |
 | 5 — backend gate | ✅ | (phase-5 commit) |
 | 6 — frontend | ✅ | (phase-6 commit) |
-| 7 — docs | | |
+| 7 — docs | ✅ | (docs commit); close-out after review |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
