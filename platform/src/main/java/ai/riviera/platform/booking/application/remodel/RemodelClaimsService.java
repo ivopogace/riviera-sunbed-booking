@@ -119,15 +119,12 @@ class RemodelClaimsService implements RemodelClaims {
 		}
 		Instant committedAt = clock.instant();
 		long feeMinor = feeRate.perRefund().perRefundMinor();
-		List<ReceiptMove> moves = new ArrayList<>();
-		List<ReceiptOutcome> outcomes = new ArrayList<>();
-		List<ReceiptKept> kept = new ArrayList<>();
-		Set<StayId> declinedStays = new HashSet<>();
+		Settled settled = new Settled(new ArrayList<>(), new ArrayList<>(), new ArrayList<>(), new HashSet<>());
 		for (RemodelClaim claim : fresh) {
-			apply(venueId, claim, committedAt, feeMinor, moves, outcomes, kept, declinedStays);
+			apply(venueId, claim, committedAt, feeMinor, settled);
 		}
-		ReceiptId receipt = receipts.store(new NewReceipt(venueId, operator, committedAt, moves, outcomes,
-				confirmation.reason(), kept));
+		ReceiptId receipt = receipts.store(new NewReceipt(venueId, operator, committedAt, settled.moves(),
+				settled.outcomes(), confirmation.reason(), settled.kept()));
 		return new RemodelCommit.Applied(receipt, committedAt, fresh);
 	}
 
@@ -137,16 +134,22 @@ class RemodelClaimsService implements RemodelClaims {
 	}
 
 	/** A blocked claim is kept: its booking, its rows and its set are left exactly as they are, and the receipt says why. */
-	private void apply(VenueId venueId, RemodelClaim claim, Instant committedAt, long feeMinor,
-			List<ReceiptMove> moves, List<ReceiptOutcome> outcomes, List<ReceiptKept> kept, Set<StayId> declinedStays) {
+	private void apply(VenueId venueId, RemodelClaim claim, Instant committedAt, long feeMinor, Settled settled) {
 		switch (claim.outcome()) {
-			case RemodelOutcome.Move move -> moves.add(applyMove(venueId, claim, move, committedAt));
-			case RemodelOutcome.Refund ignored -> outcomes.add(applyRefund(venueId, claim, committedAt, feeMinor));
-			case RemodelOutcome.Release ignored -> outcomes.add(applyRelease(venueId, claim));
-			case RemodelOutcome.Decline ignored -> outcomes.add(applyDecline(venueId, claim, declinedStays));
+			case RemodelOutcome.Move move -> settled.moves().add(applyMove(venueId, claim, move, committedAt));
+			case RemodelOutcome.Refund ignored ->
+				settled.outcomes().add(applyRefund(venueId, claim, committedAt, feeMinor));
+			case RemodelOutcome.Release ignored -> settled.outcomes().add(applyRelease(venueId, claim));
+			case RemodelOutcome.Decline ignored ->
+				settled.outcomes().add(applyDecline(venueId, claim, settled.declinedStays()));
 			case RemodelOutcome.Blocked(var reason) ->
-				kept.add(new ReceiptKept(claim.bookingId(), claim.bookingDate(), claim.from(), reason));
+				settled.kept().add(new ReceiptKept(claim.bookingId(), claim.bookingDate(), claim.from(), reason));
 		}
+	}
+
+	/** What one commit settled so far: the receipt's lines, and the stay requests it already declined whole. */
+	private record Settled(List<ReceiptMove> moves, List<ReceiptOutcome> outcomes, List<ReceiptKept> kept,
+			Set<StayId> declinedStays) {
 	}
 
 	/**

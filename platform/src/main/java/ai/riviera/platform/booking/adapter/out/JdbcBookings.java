@@ -70,6 +70,7 @@ class JdbcBookings implements Bookings {
 	private static final String PARAM_REASON = "reason";
 	private static final String PARAM_ACCOUNT = "account";
 	private static final String PARAM_TODAY = "today";
+	private static final String PARAM_DECLINED = "declined";
 
 	// Result-column names reused across the row mappers (keep in lockstep with the SELECT/RETURNING).
 	private static final String COL_VENUE_ID = "venue_id";
@@ -89,6 +90,7 @@ class JdbcBookings implements Bookings {
 	private static final String COL_CUSTOMER_ID = "customer_id";
 	private static final String COL_CANCEL_REASON = "cancel_reason";
 	private static final String COL_CREATED_AT = "created_at";
+	private static final String COL_ACCEPTED_AT = "accepted_at";
 
 	/**
 	 * The one outcome rule, shared by check-in and the sweep: mark a due stay's unresolved days
@@ -254,7 +256,7 @@ class JdbcBookings implements Bookings {
 				.query((rs, rowNum) -> new ai.riviera.platform.booking.application.request.AcceptedRequest(
 						rs.getLong("id"), new VenueId(rs.getLong(COL_VENUE_ID)),
 						new SetId(rs.getLong(COL_SET_ID)), rs.getObject(COL_BOOKING_DATE, LocalDate.class),
-						rs.getObject(COL_LAST_DATE, LocalDate.class), rs.getTimestamp("accepted_at").toInstant(),
+						rs.getObject(COL_LAST_DATE, LocalDate.class), rs.getTimestamp(COL_ACCEPTED_AT).toInstant(),
 						rs.getTimestamp(COL_CREATED_AT).toInstant(), rs.getLong(COL_AMOUNT_MINOR),
 						rs.getString(COL_AMOUNT_CURRENCY)))
 				.optional();
@@ -290,7 +292,7 @@ class JdbcBookings implements Bookings {
 				       OR b.stay_id IN (SELECT stay_id FROM hit WHERE stay_id IS NOT NULL))
 				RETURNING b.id, b.set_id, b.booking_date, b.last_date, b.stay_id
 				""")
-				.param("declined", BookingStatus.DECLINED.name())
+				.param(PARAM_DECLINED, BookingStatus.DECLINED.name())
 				.param(PARAM_REASON, reason.name())
 				.param("set", setId.value())
 				.param(PARAM_PENDING, BookingStatus.PENDING_REQUEST.name())
@@ -342,7 +344,7 @@ class JdbcBookings implements Bookings {
 				.query((rs, rowNum) -> new ai.riviera.platform.booking.application.request.AcceptedRequest(
 						rs.getLong("id"), new VenueId(rs.getLong(COL_VENUE_ID)),
 						new SetId(rs.getLong(COL_SET_ID)), rs.getObject(COL_BOOKING_DATE, LocalDate.class),
-						rs.getObject(COL_LAST_DATE, LocalDate.class), rs.getTimestamp("accepted_at").toInstant(),
+						rs.getObject(COL_LAST_DATE, LocalDate.class), rs.getTimestamp(COL_ACCEPTED_AT).toInstant(),
 						rs.getTimestamp(COL_CREATED_AT).toInstant(), rs.getLong(COL_AMOUNT_MINOR),
 						rs.getString(COL_AMOUNT_CURRENCY)))
 				.list()
@@ -359,7 +361,7 @@ class JdbcBookings implements Bookings {
 				SET status = :declined, decline_reason = :reason
 				WHERE stay_id = :stay AND venue_id = :venue AND status = :pending
 				""")
-				.param("declined", BookingStatus.DECLINED.name())
+				.param(PARAM_DECLINED, BookingStatus.DECLINED.name())
 				.param(PARAM_REASON, reason.name())
 				.param("stay", stayId.value())
 				.param(PARAM_VENUE, venueId.value())
@@ -424,7 +426,7 @@ class JdbcBookings implements Bookings {
 				WHERE id = :id AND venue_id = :venue AND status = :pending AND stay_id IS NULL
 				RETURNING set_id, booking_date, last_date
 				""")
-				.param("declined", BookingStatus.DECLINED.name())
+				.param(PARAM_DECLINED, BookingStatus.DECLINED.name())
 				.param(PARAM_REASON, reason.name())
 				.param("id", bookingId)
 				.param(PARAM_VENUE, venueId.value())
@@ -616,7 +618,7 @@ class JdbcBookings implements Bookings {
 		Long refundMinor = rs.getObject("refund_minor", Long.class);
 		java.sql.Timestamp requestExpiresAt = rs.getTimestamp(COL_REQUEST_EXPIRES_AT);
 		String cancelReason = rs.getString(COL_CANCEL_REASON);
-		java.sql.Timestamp acceptedAt = rs.getTimestamp("accepted_at");
+		java.sql.Timestamp acceptedAt = rs.getTimestamp(COL_ACCEPTED_AT);
 		java.sql.Timestamp movedAt = rs.getTimestamp("moved_at");
 		String declineReason = rs.getString("decline_reason");
 		return new BookingRecord(
