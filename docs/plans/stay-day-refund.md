@@ -234,7 +234,7 @@ remaining (no cancel, no release, no cancellation mail); the sweep resolves it a
 
 ## Execution status
 
-**Stage pointer:** `implement done locally — open the draft PR, CI gate`
+**Stage pointer:** `draft PR #1270 open — CI gate on e9e10488 (first run: one shared-DB refund-id collision, fixed)`
 
 **Next action:** push the phase commits, open the draft PR, watch CI; then ready-for-review → review gate.
 
