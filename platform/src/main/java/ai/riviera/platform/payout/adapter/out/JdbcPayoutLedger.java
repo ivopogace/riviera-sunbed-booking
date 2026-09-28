@@ -22,10 +22,10 @@ import ai.riviera.platform.venue.vocabulary.VenueId;
 /**
  * JDBC adapter for {@link PayoutLedger} — explicit SQL via {@link JdbcClient} (invariant #1).
  *
- * <p>The accrual is an atomic {@code INSERT … ON CONFLICT (booking_id, entry_type) DO NOTHING}: a
- * re-delivered {@code BookingConfirmed} (the registry is at-least-once) hits the
- * {@code UNIQUE(booking_id, entry_type)} guard and writes nothing — exactly-once accrual without a
- * read-modify-write race (invariant #9).
+ * <p>Every write is an atomic {@code INSERT … ON CONFLICT (booking_id, entry_type, service_date) DO
+ * NOTHING}: a re-delivered event (the registry is at-least-once) hits the
+ * {@code UNIQUE NULLS NOT DISTINCT (booking_id, entry_type, service_date)} guard (V69) and writes nothing —
+ * exactly-once per booking, and per day for a DAY_REVERSAL, without a read-modify-write race (#9).
  */
 @Repository
 class JdbcPayoutLedger implements PayoutLedger {
@@ -57,7 +57,7 @@ class JdbcPayoutLedger implements PayoutLedger {
 
 	@Override
 	public void charge(PayoutLedgerEntry entry) {
-		// UNIQUE(booking_id, entry_type) gives one FEE per booking (exactly-once, invariant #9).
+		// The dateless key (booking_id, entry_type, NULL) gives one FEE per booking (exactly-once, invariant #9).
 		insertIdempotently(entry);
 	}
 

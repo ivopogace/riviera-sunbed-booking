@@ -63,6 +63,25 @@ class JdbcBookingsLiveClaimsIT {
 	}
 
 	@Test
+	void aRefundedDayComesOffTheClaim() {
+		// A 3-day stay whose stormy day already returned 1500 (#1210): the remodel refund is the 3000 that remain.
+		long venue = insertVenue("Live Claims Storm Venue");
+		long set = insertSet(venue, 1);
+		long stay = insertBooking(venue, set, "CONFIRMED", JULY_1);
+		jdbc.sql("UPDATE booking SET last_date = :last WHERE id = :id").param("last", JULY_1.plusDays(2)).param("id", stay)
+				.update();
+		jdbc.sql("INSERT INTO booking_day (booking_id, service_date, refunded_at, refund_minor) "
+						+ "VALUES (:id, :day, NOW(), 1500)")
+				.param("id", stay).param("day", JULY_1.plusDays(1)).update();
+
+		LiveClaim claim = bookings.findLiveOnSets(Set.of(new SetId(set))).getFirst();
+
+		assertEquals(4500, claim.amountMinor(), "the snapshotted price is untouched");
+		assertEquals(1500, claim.dayRefundedMinor());
+		assertEquals(3000, claim.remainingMinor());
+	}
+
+	@Test
 	void anEmptySetListAnswersEmpty() {
 		assertTrue(bookings.findLiveOnSets(List.of()).isEmpty());
 	}

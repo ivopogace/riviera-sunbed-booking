@@ -9,8 +9,8 @@ import ai.riviera.platform.venue.vocabulary.VenueId;
  * One payout-ledger entry for a booking (invariant #9), and the home of its commission arithmetic.
  * Money is integer minor units + ISO currency (#5); amounts are non-negative magnitudes, direction is
  * the {@link EntryType}. The constructor mirrors the DB's CHECKs: {@code net = gross − commission} but
- * for a {@code FEE}, {@code reason} null only on an {@code ACCRUAL}, {@code serviceDate} only on a
- * {@code DAY_REVERSAL} ({@code payout_service_date_check}).
+ * for a {@code FEE}, {@code serviceDate} only on a {@code DAY_REVERSAL} ({@code payout_service_date_check});
+ * {@code reason} is null on an {@code ACCRUAL} and the {@code RefundReason} otherwise.
  */
 public record PayoutLedgerEntry(VenueId venueId, long bookingId, EntryType entryType,
 		long grossMinor, long commissionMinor, long netMinor, String currency, RefundReason reason,

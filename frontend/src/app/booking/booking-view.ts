@@ -543,7 +543,7 @@ const CLS = {
             </div>
           }
         </dl>
-        @if (b.refundedDays?.length) {
+        @if (b.refundedDays?.length && b.status === 'CONFIRMED') {
           <p
             class="mx-0 mt-2 mb-0 text-[12px] leading-[1.4] text-riv-card-ink-soft"
             data-testid="view-refunded-days-note"

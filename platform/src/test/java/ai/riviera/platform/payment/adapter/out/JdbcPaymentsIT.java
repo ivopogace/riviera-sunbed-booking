@@ -1,14 +1,24 @@
 package ai.riviera.platform.payment.adapter.out;
 
+import java.time.Duration;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
+
+import org.awaitility.Awaitility;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.jdbc.core.simple.JdbcClient;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.support.TransactionTemplate;
 
 import ai.riviera.platform.EnabledIfDockerAvailable;
 import ai.riviera.platform.TestcontainersConfiguration;
@@ -38,6 +48,9 @@ class JdbcPaymentsIT {
 
 	@Autowired
 	JdbcClient jdbc;
+
+	@Autowired
+	PlatformTransactionManager txManager;
 
 	private String statusOf(String intentId) {
 		return jdbc.sql("SELECT status FROM payment WHERE payment_intent_id = :i")
@@ -533,6 +546,40 @@ class JdbcPaymentsIT {
 		assertTrue(payments.markRefunded(new BookingRef(9621L), day2, 300L, "re_day_2"),
 				"a replayed day refund re-records its own row");
 		assertEquals(900L, refundedMinorOf(9621L), "and the running sum does not grow: the day is refunded once");
+	}
+
+	@Test
+	void twoRefundsOnOneShareSerializeOnItsRow() throws Exception {
+		// Day 3's refund arrives while day 2's is uncommitted (#1210): it must wait on the share's row, then sum both.
+		payments.register(new NewPayment(new BookingRef(9624L), "pi_day_pair", 900L, "EUR", "cs_test_secret"));
+		payments.markStatus("pi_day_pair", PaymentStatus.SUCCEEDED);
+		TransactionTemplate tx = new TransactionTemplate(txManager);
+		CountDownLatch firstRecorded = new CountDownLatch(1);
+		CountDownLatch firstMayCommit = new CountDownLatch(1);
+		try (ExecutorService pool = Executors.newFixedThreadPool(2)) {
+			Future<?> first = pool.submit(() -> tx.executeWithoutResult(status -> {
+				payments.markRefunded(new BookingRef(9624L), RefundScope.day(LocalDate.of(2026, 7, 2)), 300L, "re_pair_a");
+				firstRecorded.countDown();
+				try {
+					firstMayCommit.await(10, TimeUnit.SECONDS);
+				}
+				catch (InterruptedException interrupted) {
+					Thread.currentThread().interrupt();
+				}
+			}));
+			assertTrue(firstRecorded.await(10, TimeUnit.SECONDS));
+			Future<Boolean> second = pool.submit(() -> payments.markRefunded(new BookingRef(9624L),
+					RefundScope.day(LocalDate.of(2026, 7, 3)), 300L, "re_pair_b"));
+			Awaitility.await().atMost(Duration.ofSeconds(10)).until(() -> jdbc.sql(
+					"SELECT COUNT(*) FROM pg_stat_activity WHERE wait_event_type = 'Lock' AND query LIKE '%payment_booking%'")
+					.query(Long.class).single() > 0);
+			firstMayCommit.countDown();
+			first.get(10, TimeUnit.SECONDS);
+			assertTrue(second.get(10, TimeUnit.SECONDS));
+		}
+
+		assertEquals(600L, refundedMinorOf(9624L), "both days are on the share's running sum");
+		assertEquals("PARTIALLY_REFUNDED", statusOf("pi_day_pair"));
 	}
 
 	@Test

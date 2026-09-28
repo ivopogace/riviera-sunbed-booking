@@ -209,6 +209,22 @@ class MultiDayAttendanceIT {
 	}
 
 	@Test
+	void aCheckInOnTheLastUnrefundedDayResolvesTheStay() {
+		// Day 3 was refunded for weather, so day 2 is the last the guest can attend (#1210).
+		String code = uniqueCode("STAYWXLAST");
+		long stay = insertStay(code, FIRST_DAY, 3);
+		assertTrue(bookings.refundDay(stay, FIRST_DAY.plusDays(2), 1500L, Instant.now()).isPresent());
+
+		assertTrue(scan(code, FIRST_DAY).isPresent());
+		assertEquals("CONFIRMED", statusOf(stay), "day 2 is still ahead");
+
+		assertTrue(scan(code, FIRST_DAY.plusDays(1)).isPresent());
+		assertEquals("COMPLETED", statusOf(stay), "no unrefunded day remains: the stay resolves at the scan");
+		assertNotNull(completedAtOf(stay));
+		assertEquals(List.of(), missedDays(stay), "the refunded day is not marked missed");
+	}
+
+	@Test
 	void aScanOnTodayRefundedAnswersDayRefunded() {
 		String code = uniqueCode("STAYWXNOW");
 		long stay = insertStay(code, today().minusDays(1), 3);

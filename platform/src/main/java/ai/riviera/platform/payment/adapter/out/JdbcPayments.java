@@ -208,7 +208,9 @@ class JdbcPayments implements Payments {
 	}
 
 	@Override
+	@Transactional
 	public boolean markRefunded(BookingRef booking, RefundScope scope, long refundedMinor, String refundId) {
+		lockShare(booking);
 		// An upsert, since an adoption may record before any attempt row exists; the conflict arm's WHERE is the dead-refund guard.
 		return jdbc.sql("""
 				WITH moved AS (
@@ -233,7 +235,15 @@ class JdbcPayments implements Payments {
 	}
 
 	@Override
+	@Transactional
 	public boolean markRefundFailed(String refundId) {
+		jdbc.sql("""
+				SELECT b.id FROM payment_booking b JOIN payment_refund r ON r.payment_booking_id = b.id
+				WHERE r.refund_id = :refundId FOR UPDATE OF b
+				""")
+				.param(PARAM_REFUND_ID, refundId)
+				.query(Long.class)
+				.list();
 		// Guarded in the one statement, never read-then-write: two deliveries cannot both un-record.
 		return jdbc.sql("""
 				WITH moved AS (
@@ -274,6 +284,17 @@ class JdbcPayments implements Payments {
 				.param(PARAM_DAY, scope.serviceDate())
 				.param(PARAM_COLLECTED, COLLECTED_STATUSES)
 				.update() == 1;
+	}
+
+	/**
+	 * A share's refunds serialize on its {@code payment_booking} row: the write that follows runs on a
+	 * snapshot taken after the lock, so its running sum sees every refund committed before it (#1210).
+	 */
+	private void lockShare(BookingRef booking) {
+		jdbc.sql("SELECT id FROM payment_booking WHERE booking_ref = :ref FOR UPDATE")
+				.param(PARAM_REF, booking.value())
+				.query(Long.class)
+				.list();
 	}
 
 	@Override

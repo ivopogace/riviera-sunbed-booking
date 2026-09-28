@@ -101,8 +101,8 @@ public interface Payments {
 	}
 
 	/**
-	 * How many bookings currently owe a refund the gateway would not issue — <strong>distinct refunds
-	 * owed</strong>, unlike the failure counter, which re-increments on every resubmission.
+	 * How many refunds (a share's whole, or one day of it) the gateway would not issue and are still owed
+	 * — <strong>distinct refunds owed</strong>, unlike the failure counter, which re-increments on every resubmission.
 	 */
 	long owedRefundCount();
 }

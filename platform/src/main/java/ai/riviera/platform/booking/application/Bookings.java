@@ -172,12 +172,12 @@ public interface Bookings {
 	Optional<ClaimRef> cancelAwaitingPayment(long bookingId);
 
 	/**
-	 * Guest-path {@code CONFIRMED → CANCELLED}, stamping the server-computed refund and policy reason
-	 * (#10), returning the refund + {@code BookingCancelled} facts via {@code RETURNING}. Guarded on
-	 * {@code CONFIRMED}: a double-cancel is an {@code empty} no-op; a swept no-show is out of reach.
+	 * Guest-path {@code CONFIRMED → CANCELLED}, stamping the server-computed refund and reason (#10) and
+	 * returning the {@code BookingCancelled} facts. Guarded on {@code CONFIRMED} and on {@code remainingMinor}
+	 * (the amount less the weather-refunded days the quote saw): a double-cancel or a day refunded since is {@code empty}.
 	 */
 	Optional<CancelledBooking> cancelConfirmed(long bookingId, java.time.Instant cancelledAt,
-			long refundMinor, ai.riviera.platform.booking.vocabulary.RefundReason reason);
+			long refundMinor, ai.riviera.platform.booking.vocabulary.RefundReason reason, long remainingMinor);
 
 	/**
 	 * Guarded re-seat of a live booking from {@code from} to {@code to} (same venue); code, price and
@@ -187,12 +187,12 @@ public interface Bookings {
 	boolean moveToSet(long bookingId, SetId from, SetId to, Instant movedAt);
 
 	/**
-	 * Admin weather refund: like {@link #cancelConfirmed} but also admitting {@code NO_SHOW} (the
-	 * storm's already-swept stay-homes), stamping {@code WEATHER}; separate so a no-show is never
-	 * guest-cancellable. A re-run or concurrent cancel is an {@code empty} no-op: one refund each.
+	 * Weather refund: like {@link #cancelConfirmed} but also admitting {@code NO_SHOW} (the storm's
+	 * already-swept stay-homes), stamping {@code WEATHER}; separate so a no-show is never guest-cancellable.
+	 * A re-run, a concurrent cancel or a remainder other than {@code remainingMinor} is {@code empty}: one refund each.
 	 */
 	Optional<CancelledBooking> cancelForWeather(long bookingId, java.time.Instant cancelledAt,
-			long refundMinor);
+			long refundMinor, long remainingMinor);
 
 	/**
 	 * Venue-scoped stamp of {@code attended_at} on the {@code CONFIRMED} booking's {@code serviceDate}
@@ -217,8 +217,8 @@ public interface Bookings {
 	int markPastConfirmedAsNoShow(LocalDate today, int batchSize);
 
 	/**
-	 * Status, first service day and whether {@code today} is attended behind a code, to classify a
-	 * 0-row check-in. Venue-scoped: a foreign code reads {@code empty} like an unknown one (#7).
+	 * Status, first service day and whether {@code today} is attended or refunded behind a code, to
+	 * classify a 0-row check-in. Venue-scoped: a foreign code reads {@code empty} like an unknown one (#7).
 	 */
 	Optional<ai.riviera.platform.booking.application.checkin.CheckInFacts> findCheckInFacts(
 			String code, VenueId venueId, LocalDate today);

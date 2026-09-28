@@ -28,6 +28,7 @@ import ai.riviera.platform.venue.vocabulary.SetId;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * AC-4/AC-5/AC-7 (issue #11): cancelling a CONFIRMED booking frees the {@code (set, date)}
@@ -54,6 +55,9 @@ class CancelBookingIT {
 
 	@Autowired
 	JdbcClient jdbc;
+
+	@Autowired
+	ai.riviera.platform.booking.application.Bookings bookings;
 
 	@Autowired
 	ApplicationEvents events;
@@ -180,6 +184,35 @@ class CancelBookingIT {
 	}
 
 	/** AC-9 (#1210): after a day refund the guest cancels what they still hold, quoted and refunded over the remainder. */
+	@Test
+	void aCancelQuotedBeforeADayRefundWritesNothing() {
+		// The quote read 9000 remaining; a weather refund of day 2 (3000) landed before the write (#1210).
+		LocalDate first = LocalDate.of(2035, 7, 1);
+		long setId = VisibleOnlineSets.newest(jdbc).id();
+		long venueId = jdbc.sql("SELECT venue_id FROM set_position WHERE id = :s").param("s", setId)
+				.query(Long.class).single();
+		long customer = jdbc.sql("INSERT INTO customer (email, full_name, phone) "
+						+ "VALUES ('storm-race@example.com', 'Guest', '+355600') RETURNING id")
+				.query(Long.class).single();
+		long id = jdbc.sql("""
+				INSERT INTO booking (code, venue_id, set_id, customer_id, booking_date, last_date,
+				                     amount_minor, amount_currency, status, confirmed_at)
+				VALUES ('CANCELWX02', :venue, :set, :cust, :first, :last, 9000, 'EUR', 'CONFIRMED', NOW())
+				RETURNING id
+				""").param("venue", venueId).param("set", setId).param("cust", customer)
+				.param("first", first).param("last", first.plusDays(2)).query(Long.class).single();
+		jdbc.sql("UPDATE booking_day SET refunded_at = NOW(), refund_minor = 3000 WHERE booking_id = :id AND service_date = :d")
+				.param("id", id).param("d", first.plusDays(1)).update();
+
+		assertTrue(bookings.cancelConfirmed(id, java.time.Instant.now(), 9000L, RefundReason.POLICY, 9000L).isEmpty(),
+				"the stale quote writes nothing: the day it counted was refunded since");
+		assertEquals("CONFIRMED", jdbc.sql("SELECT status FROM booking WHERE id = :id").param("id", id)
+				.query(String.class).single());
+
+		assertTrue(bookings.cancelConfirmed(id, java.time.Instant.now(), 6000L, RefundReason.POLICY, 6000L).isPresent(),
+				"a quote over the true remainder cancels");
+	}
+
 	@Test
 	void aCancellationAfterADayRefundRefundsTheRemainder() {
 		LocalDate first = LocalDate.of(2035, 7, 1);

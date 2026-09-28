@@ -17,7 +17,7 @@ import ai.riviera.platform.payout.domain.Reversed;
  * On {@code BookingCancelled}, posts a REVERSAL of the prior ACCRUAL <strong>proportional to the refund</strong>
  * (ADR-0005; no refund, no reversal), mirroring the re-read accrual so a rate change cannot break the netting
  * and reading the day reversals before it so a booking reversed in parts nets zero (issue #1210), plus a FEE when {@code reason == VENUE_CHANGE} (ADR-0021; its position after the zero-refund return and the
- * accrual lookup is load-bearing). Idempotent under redelivery via {@code UNIQUE(booking_id, entry_type)}. A
+ * accrual lookup is load-bearing). Idempotent under redelivery via the ledger's {@code (booking_id, entry_type, service_date)} key. A
  * refund with no accrual yet <strong>throws</strong>, leaving the publication outstanding rather than letting
  * the ledger overstate what the venue is owed (invariant #9). Rationale: RESPONSIBILITIES.md §payout.
  */

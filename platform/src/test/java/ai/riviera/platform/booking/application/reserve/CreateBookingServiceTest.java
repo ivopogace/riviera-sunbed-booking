@@ -873,7 +873,7 @@ class CreateBookingServiceTest {
 
 		@Override
 		public Optional<ai.riviera.platform.booking.application.cancel.CancelledBooking> cancelForWeather(
-				long bookingId, Instant cancelledAt, long refundMinor) {
+				long bookingId, Instant cancelledAt, long refundMinor, long remainingMinor) {
 			return Optional.empty();
 		}
 
@@ -1011,7 +1011,7 @@ class CreateBookingServiceTest {
 		@Override
 		public Optional<ai.riviera.platform.booking.application.cancel.CancelledBooking> cancelConfirmed(
 				long bookingId, Instant cancelledAt, long refundMinor,
-				ai.riviera.platform.booking.vocabulary.RefundReason reason) {
+				ai.riviera.platform.booking.vocabulary.RefundReason reason, long remainingMinor) {
 			return Optional.empty();
 		}
 

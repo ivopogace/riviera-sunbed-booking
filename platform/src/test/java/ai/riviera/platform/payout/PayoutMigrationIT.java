@@ -17,7 +17,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 
 /**
  * Verifies the ledger migrations create {@code payout_ledger_entry} with the constraints that
- * enforce the ledger invariants (invariant #12): the {@code UNIQUE(booking_id, entry_type)}
+ * enforce the ledger invariants (invariant #12): the {@code UNIQUE NULLS NOT DISTINCT (booking_id, entry_type, service_date)}
  * exactly-once guard (#9), the {@code net = gross − commission} CHECK (#5), the {@code entry_type}
  * CHECK, and the {@code booking_id} FK. A different {@code entry_type} for the same booking (the
  * REVERSAL, and the venue-change FEE) is allowed.
@@ -77,7 +77,7 @@ class PayoutMigrationIT {
 
 		assertThrows(DataIntegrityViolationException.class,
 				() -> insertEntry(booking, "ACCRUAL", 4500, 675, 3825),
-				"UNIQUE(booking_id, entry_type) is the exactly-once accrual guard (invariant #9).");
+				"the dateless key (booking_id, entry_type, NULL) is the exactly-once accrual guard (invariant #9).");
 	}
 
 	@Test
@@ -129,7 +129,7 @@ class PayoutMigrationIT {
 
 		assertThrows(DataIntegrityViolationException.class,
 				() -> insertEntry(booking, "FEE", 0, 0, 500),
-				"UNIQUE(booking_id, entry_type) is the fee's idempotency guard too (invariant #9).");
+				"the dateless key (booking_id, entry_type, NULL) is the fee's idempotency guard too (invariant #9).");
 	}
 
 	@Test

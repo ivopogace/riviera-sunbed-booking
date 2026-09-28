@@ -13,7 +13,7 @@ import ai.riviera.platform.booking.application.refund.RefundOutbox;
 
 /**
  * The {@link RefundOutbox} over the Event Publication Registry, scoped to an exact-id allowlist of the
- * two refund-bulkhead listeners: the {@code booking} package prefix would also replay
+ * refund-bulkhead listeners (three since #1210): the {@code booking} package prefix would also replay
  * {@code PaymentEventListener}'s payment → confirm spine ({@code RESPONSIBILITIES.md} §booking). Uses the
  * {@code Predicate} resubmission overload because {@code ResubmissionOptions} misses a shed publication
  * (§notification); the registry's {@code markResubmitted} makes a re-drive once-only. Fail-closed: a

@@ -1,5 +1,5 @@
 -- A washed-out day of a stay is refunded on its own and the stay continues (issue #1210, design D5,
--- option A): the day's share comes back to the guest, the booking row stays CONFIRMED, the set stays
+-- option A): the day's share comes back to the guest, the booking row keeps its status, the set stays
 -- held for that day and nothing is released. The fact lives on the service day it is about, beside
 -- the two attendance stamps: refunded_at says when, refund_minor what was refunded for that day in
 -- integer minor units (invariant #5), always both or neither.

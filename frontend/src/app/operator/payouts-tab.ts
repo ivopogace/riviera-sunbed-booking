@@ -69,7 +69,7 @@ export class PayoutsTab {
 
   /** The washed-out day a weather refund targets (ISO YYYY-MM-DD); defaults to today Europe/Tirane
    *  (invariant #6). The refund is per-DATE (whole-day, invariant #10) — the drawn per-row buttons
-   *  don't map to the per-date endpoint, and the ledger carries no service-date. */
+   *  don't map to the per-date endpoint; a DAY_REVERSAL ledger row names its day. */
   protected readonly selectedDate = signal(todayBookingDate(new Date()));
   /** True while the amber "Issue full weather refund" confirm is open (a two-step, no accidental refund). */
   protected readonly weatherConfirm = signal(false);
@@ -200,8 +200,8 @@ export class PayoutsTab {
   }
 
   /**
-   * Issue the per-date weather refund: the server cancels and fully refunds the day's bookings
-   * (invariant #10) and posts the payout reversals (invariant #9) after commit, so once the outcome
+   * Issue the per-date weather refund: the server cancels the day's one-day bookings, refunds the day
+   * of every stay (invariant #10) and posts the payout reversals (invariant #9) after commit, so once the outcome
    * lands the ledger is re-read to pull them in. This only triggers it and re-renders.
    */
   protected onConfirmWeather(): void {

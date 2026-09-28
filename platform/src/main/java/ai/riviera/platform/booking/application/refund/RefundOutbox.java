@@ -2,8 +2,8 @@ package ai.riviera.platform.booking.application.refund;
 
 /**
  * What the Event Publication Registry still owes the refund-bulkhead listeners, and the lever to
- * re-drive them. Scoped to an exact-id allowlist ({@code BookingRefundListener} and
- * {@code RemodelReleasePaymentListener}), never a package prefix, which would also sweep
+ * re-drive them. Scoped to an exact-id allowlist ({@code BookingRefundListener},
+ * {@code BookingDayRefundListener} and {@code RemodelReleasePaymentListener}), never a package prefix, which would also sweep
  * {@code PaymentEventListener}'s payment → confirm spine (invariant #8). Re-driving is safe: the
  * gateway adopts a refund it already holds, and a void moves no money. Not a delivery guarantee:
  * watch {@code riviera.refunds.failed}. Rationale: {@code RESPONSIBILITIES.md} §booking, §payment.

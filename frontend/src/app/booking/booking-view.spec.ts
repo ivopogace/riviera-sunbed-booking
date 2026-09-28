@@ -379,6 +379,26 @@ describe('BookingView', () => {
     expect(document.activeElement).toBe(host.querySelector('[data-testid="start-cancel"]'));
   });
 
+  it('lists a refunded day on a cancelled booking without claiming the spot is still held', async () => {
+    const fixture = await render(
+      stubService({
+        detail: {
+          ...DETAIL,
+          status: 'CANCELLED',
+          lastDate: '2026-12-03',
+          amount: { minorUnits: 13500, currency: 'EUR' },
+          refundedAmount: { minorUnits: 9000, currency: 'EUR' },
+          refundedDays: [{ day: '2026-12-02', amount: { minorUnits: 4500, currency: 'EUR' } }],
+        },
+      }),
+    );
+    const host = fixture.nativeElement as HTMLElement;
+    expect(host.querySelector('[data-testid="view-refunded-days"]')?.textContent).toContain(
+      '2 Dec',
+    );
+    expect(host.querySelector('[data-testid="view-refunded-days-note"]')).toBeNull();
+  });
+
   it('lists the days a weather refund gave back while the booking went on (#1210)', async () => {
     const fixture = await render(
       stubService({

@@ -9,7 +9,7 @@ import ai.riviera.platform.booking.vocabulary.BookingId;
 import ai.riviera.platform.booking.vocabulary.StayId;
 
 /**
- * Published when one service day of a live booking is refunded for weather and the booking continues
+ * Published when one service day of a booking that happened is refunded for weather and the booking stands
  * (issue #1210, design D5). Id-based (#11); {@code serviceDate} in {@code Europe/Tirane} (#6);
  * {@code refundMinor} is the day's rate the server decided, minor units + ISO currency (#5, #10).
  * {@code payout} posts the day's reversal, {@code notification} mails it, {@code booking} refunds it.

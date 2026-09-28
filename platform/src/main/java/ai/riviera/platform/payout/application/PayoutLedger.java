@@ -16,7 +16,7 @@ public interface PayoutLedger {
 
 	/**
 	 * Record an entry <strong>idempotently</strong> ({@code INSERT … ON CONFLICT DO NOTHING}): an
-	 * existing {@code (booking_id, entry_type)} is a no-op, so the registry's at-least-once redelivery
+	 * existing {@code (booking_id, entry_type, service_date)} is a no-op, so the registry's at-least-once redelivery
 	 * of {@code BookingConfirmed} never double-pays the venue (invariant #9).
 	 */
 	void accrue(PayoutLedgerEntry entry);
@@ -52,7 +52,7 @@ public interface PayoutLedger {
 	List<LedgerEntryRow> entriesForVenue(VenueId venueId);
 
 	/**
-	 * Per venue with any entry in {@code period}: {@code Σ ACCRUAL.net − Σ REVERSAL.net − Σ FEE.net}
+	 * Per venue with any entry in {@code period}: {@code Σ ACCRUAL.net − Σ REVERSAL.net − Σ DAY_REVERSAL.net − Σ FEE.net}
 	 * in minor units (invariant #5), possibly negative; a venue netting to zero still appears. Empty
 	 * when no entry falls in the period.
 	 */

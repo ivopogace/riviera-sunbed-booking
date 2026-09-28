@@ -342,13 +342,38 @@ class RemodelClaimsServiceTest {
 	}
 
 	@Test
+	void aRefundedDayComesOffTheRemodelRefund() {
+		// A 4500 stretch whose stormy day already returned 1500 (#1210): the remodel refunds the 3000 that remain.
+		LiveClaim stormy = new LiveClaim(211, A1.setId(), IN_TEN_DAYS, IN_TEN_DAYS.plusDays(2), BookingStatus.CONFIRMED,
+				4500, "EUR", 1500);
+		RemodelClaim refund = new RemodelClaim(new BookingId(211), ref(A1), IN_TEN_DAYS, IN_TEN_DAYS.plusDays(2), 3000,
+				"EUR", RemodelOutcome.Refund.REFUND);
+		when(bookings.findLiveOnSets(Set.of(A1.setId()))).thenReturn(List.of(stormy));
+		givenMap(List.of(A1), IN_TEN_DAYS, List.of());
+		when(bookings.cancelConfirmed(211, CLOCK.instant(), 3000, RefundReason.VENUE_CHANGE, 3000))
+				.thenReturn(java.util.Optional.of(new CancelledBooking(211, VENUE, A1.setId(), IN_TEN_DAYS,
+						IN_TEN_DAYS.plusDays(2), 4500, "EUR")));
+		when(receipts.store(any())).thenReturn(RECEIPT);
+
+		RemodelCommit outcome = service.commit(OWNER, VENUE, List.of(A1.setId()), previewOf(refund), CONFIRMED_ONE);
+
+		assertEquals(new RemodelCommit.Applied(RECEIPT, CLOCK.instant(), List.of(refund)), outcome);
+		verify(events).publishEvent(new BookingCancelled(new BookingId(211), VENUE, A1.setId(), IN_TEN_DAYS,
+				3000, "EUR", RefundReason.VENUE_CHANGE, IN_TEN_DAYS.plusDays(2)));
+		verify(receipts).store(new NewReceipt(VENUE, OWNER, CLOCK.instant(), List.of(),
+				List.of(new ReceiptOutcome(new BookingId(211), IN_TEN_DAYS, ref(A1), ReceiptOutcomeKind.REFUND,
+						3000, "EUR", 500L)),
+				"Re-laying row A", List.of()));
+	}
+
+	@Test
 	void refundsAConfirmedClaimWithVenueChange() {
 		RemodelClaim refund = new RemodelClaim(new BookingId(210), ref(A1), IN_TEN_DAYS, IN_TEN_DAYS, 4500, "EUR",
 				RemodelOutcome.Refund.REFUND);
 		when(bookings.findLiveOnSets(Set.of(A1.setId())))
 				.thenReturn(List.of(claim(210, A1, IN_TEN_DAYS, BookingStatus.CONFIRMED)));
 		givenMap(List.of(A1), IN_TEN_DAYS, List.of());
-		when(bookings.cancelConfirmed(210, CLOCK.instant(), 4500, RefundReason.VENUE_CHANGE))
+		when(bookings.cancelConfirmed(210, CLOCK.instant(), 4500, RefundReason.VENUE_CHANGE, 4500))
 				.thenReturn(java.util.Optional.of(new CancelledBooking(210, VENUE, A1.setId(), IN_TEN_DAYS, IN_TEN_DAYS, 4500, "EUR")));
 		when(receipts.store(any())).thenReturn(RECEIPT);
 
@@ -356,7 +381,7 @@ class RemodelClaimsServiceTest {
 
 		assertEquals(new RemodelCommit.Applied(RECEIPT, CLOCK.instant(), List.of(refund)), outcome);
 		InOrder order = inOrder(bookings, availability, events, receipts);
-		order.verify(bookings).cancelConfirmed(210, CLOCK.instant(), 4500, RefundReason.VENUE_CHANGE);
+		order.verify(bookings).cancelConfirmed(210, CLOCK.instant(), 4500, RefundReason.VENUE_CHANGE, 4500);
 		order.verify(availability).release(A1.setId(), IN_TEN_DAYS);
 		order.verify(events).publishEvent(new BookingCancelled(new BookingId(210), VENUE, A1.setId(), IN_TEN_DAYS,
 				4500, "EUR", RefundReason.VENUE_CHANGE));
@@ -393,7 +418,7 @@ class RemodelClaimsServiceTest {
 		verify(events).publishEvent(new BookingRequestDeclined(new BookingId(212), A1.setId(), IN_TEN_DAYS,
 				IN_TEN_DAYS, DeclineReason.SET_UNAVAILABLE));
 		verify(availability, times(1)).release(A1.setId(), IN_TEN_DAYS);
-		verify(bookings, never()).cancelConfirmed(anyLong(), any(), anyLong(), any());
+		verify(bookings, never()).cancelConfirmed(anyLong(), any(), anyLong(), any(), anyLong());
 		verify(receipts).store(new NewReceipt(VENUE, OWNER, CLOCK.instant(), List.of(), List.of(
 				new ReceiptOutcome(new BookingId(211), IN_TEN_DAYS, ref(A1), ReceiptOutcomeKind.RELEASE, 4500, "EUR", 0L),
 				new ReceiptOutcome(new BookingId(212), IN_TEN_DAYS, ref(A1), ReceiptOutcomeKind.DECLINE, 4500, "EUR", 0L)),
@@ -411,9 +436,9 @@ class RemodelClaimsServiceTest {
 				claim(214, A1, IN_TEN_DAYS.plusDays(1), BookingStatus.CONFIRMED)));
 		givenMap(List.of(A1), IN_TEN_DAYS, List.of());
 		when(facts.freeOnlineSetsOn(VENUE, IN_TEN_DAYS.plusDays(1))).thenReturn(List.of());
-		when(bookings.cancelConfirmed(eq(213L), any(), eq(4500L), eq(RefundReason.VENUE_CHANGE)))
+		when(bookings.cancelConfirmed(eq(213L), any(), eq(4500L), eq(RefundReason.VENUE_CHANGE), eq(4500L)))
 				.thenReturn(java.util.Optional.of(new CancelledBooking(213, VENUE, A1.setId(), IN_TEN_DAYS, IN_TEN_DAYS, 4500, "EUR")));
-		when(bookings.cancelConfirmed(eq(214L), any(), eq(4500L), eq(RefundReason.VENUE_CHANGE)))
+		when(bookings.cancelConfirmed(eq(214L), any(), eq(4500L), eq(RefundReason.VENUE_CHANGE), eq(4500L)))
 				.thenReturn(java.util.Optional.of(
 						new CancelledBooking(214, VENUE, A1.setId(), IN_TEN_DAYS.plusDays(1), IN_TEN_DAYS.plusDays(1), 4500, "EUR")));
 		when(receipts.store(any())).thenReturn(RECEIPT);

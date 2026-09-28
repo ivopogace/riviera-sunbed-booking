@@ -7,7 +7,7 @@ import ai.riviera.platform.venue.vocabulary.VenueId;
 /**
  * A venue's payout ledger: its entries oldest-first (each carrying the running net
  * owed) plus the {@code netOwedMinor} total — what the platform currently owes the venue,
- * {@code Σ(ACCRUAL.net) − Σ(REVERSAL.net) − Σ(FEE.net)} in integer minor units + ISO currency
+ * {@code Σ(ACCRUAL.net) − Σ(REVERSAL.net) − Σ(DAY_REVERSAL.net) − Σ(FEE.net)} in integer minor units + ISO currency
  * (invariant #5/#9), which a venue that owes the platform may leave negative. An
  * empty ledger has {@code netOwedMinor == 0} and no entries.
  */

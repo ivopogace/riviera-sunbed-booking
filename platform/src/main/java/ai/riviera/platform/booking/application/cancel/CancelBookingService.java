@@ -75,9 +75,9 @@ class CancelBookingService implements CancelBooking {
 		long refundMinor = quote.refundMinor();
 
 		Optional<CancelledBooking> transitioned = bookings.cancelConfirmed(
-				booking.id(), clock.instant(), refundMinor, quote.reason());
+				booking.id(), clock.instant(), refundMinor, quote.reason(), booking.remainingMinor());
 		if (transitioned.isEmpty()) {
-			// Lost a concurrent cancel race — the other cancel already released and published.
+			// Lost a race: a concurrent cancel already released and published, or a day refund overtook the quote.
 			return new CancelOutcome.NotCancellable(BookingStatus.CANCELLED);
 		}
 		CancelledBooking cancelled = transitioned.get();
@@ -126,7 +126,7 @@ class CancelBookingService implements CancelBooking {
 			BookingRecord stretch = stretches.get(i);
 			RefundQuote quote = quotes.get(i);
 			Optional<CancelledBooking> transitioned = bookings.cancelConfirmed(stretch.id(), now, quote.refundMinor(),
-					quote.reason());
+					quote.reason(), stretch.remainingMinor());
 			if (transitioned.isEmpty()) {
 				throw new IllegalStateException(
 						"stretch " + stretch.id() + " of stay " + stay.id().value() + " changed under its row lock");

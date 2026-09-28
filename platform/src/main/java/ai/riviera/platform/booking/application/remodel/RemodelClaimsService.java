@@ -153,13 +153,14 @@ class RemodelClaimsService implements RemodelClaims {
 	}
 
 	/**
-	 * Cancels a stranded confirmed claim with a full {@code VENUE_CHANGE} refund; the refund, reversal
-	 * and fee drain after commit off {@code BookingCancelled}. {@code feeMinor}, the quoted rate, is
-	 * recorded on the receipt line but does not pin what the ledger charges. Rationale: ADR-0021.
+	 * Cancels a stranded confirmed claim with a {@code VENUE_CHANGE} refund of all that remains (the amount
+	 * less its weather-refunded days, #1210); refund, reversal and fee drain after commit off {@code BookingCancelled}.
+	 * {@code feeMinor}, the quoted rate, is recorded on the receipt line, not what the ledger charges (ADR-0021).
 	 */
 	private ReceiptOutcome applyRefund(VenueId venueId, RemodelClaim claim, Instant cancelledAt, long feeMinor) {
 		CancelledBooking cancelled = bookings
-				.cancelConfirmed(claim.bookingId().value(), cancelledAt, claim.amountMinor(), RefundReason.VENUE_CHANGE)
+				.cancelConfirmed(claim.bookingId().value(), cancelledAt, claim.amountMinor(), RefundReason.VENUE_CHANGE,
+						claim.amountMinor())
 				.orElseThrow(() -> lostUnderLock(claim, "confirmed"));
 		releaseSpan(cancelled.setId(), cancelled.bookingDate(), cancelled.lastDate());
 		events.publishEvent(new BookingCancelled(claim.bookingId(), venueId, cancelled.setId(),
@@ -260,7 +261,7 @@ class RemodelClaimsService implements RemodelClaims {
 			}
 			RemodelOutcome outcome = outcomeOf(claim, from, zones.zoneOf(claim.bookingDate(), now), pools);
 			result.add(new RemodelClaim(new BookingId(claim.bookingId()), refOf(from), claim.bookingDate(),
-					claim.lastDate(), claim.amountMinor(), claim.currency(), outcome));
+					claim.lastDate(), claim.remainingMinor(), claim.currency(), outcome));
 		}
 		return List.copyOf(result);
 	}
