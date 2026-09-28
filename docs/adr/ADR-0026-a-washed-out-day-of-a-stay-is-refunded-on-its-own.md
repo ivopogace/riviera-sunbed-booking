@@ -45,7 +45,8 @@ one-day stretch of a stitched stay is a booking of its own or a day of the stay.
 3. **Nothing is released; the set stays the guest's on the refunded day.** A release would let a second
    booking claim the set while the stay's row still covers the date, and the daily list, the layout
    lock and the beach map would disagree. Check-in on a refunded day answers `DayRefunded` and stamps
-   nothing; the no-show sweep and the stay outcome ignore the day; daily takings exclude it.
+   nothing; the no-show sweep and the stay outcome ignore the day; daily takings exclude it. A check-in
+   on the last unrefunded day resolves the stay, as the last day's did before.
 4. **The ledger gains `DAY_REVERSAL`, keyed by the day.** `payout_ledger_entry.service_date` names it
    and the exactly-once key widens to `UNIQUE NULLS NOT DISTINCT (booking_id, entry_type,
    service_date)` (V69), so the three dateless types keep one row per booking and a day reverses at
@@ -62,9 +63,13 @@ one-day stretch of a stitched stay is a booking of its own or a day of the stay.
    tagged `serviceDate` beside `bookingRef`, so adoption after a lost response is per scope. The
    whole-share key and `PaymentGatewayRefundContract` keep their shape; the contract gains the
    day-then-cancellation case.
-6. **A later cancellation is quoted over the remainder.** `BookingRecord#remainingMinor` is the amount
+6. **A later refund of the whole booking is the remainder.** `BookingRecord#remainingMinor` is the amount
    less the days refunded; `CancellationPolicy` quotes on it (invariant #10) and the cancel's tier is
-   judged against it, so a refunded day is never refunded twice.
+   judged against it; a remodel's `VENUE_CHANGE` refund (`LiveClaim#remainingMinor`) is the remainder
+   too. The cancellation write is guarded on the remainder the caller quoted, summed afresh in the
+   statement, so a day refunded between quote and write makes the cancel a no-op rather than a second
+   refund of that day. On the payment side the refunds of one share serialize on its `payment_booking`
+   row (`FOR UPDATE` before the write), so the running sum never loses a concurrent refund.
 7. **A stay whose every day ends up refunded stays live**, with nothing left to refund: no cancel, no
    release, no cancellation mail; the sweep resolves it as any stay. Rare, and the honest state.
 
