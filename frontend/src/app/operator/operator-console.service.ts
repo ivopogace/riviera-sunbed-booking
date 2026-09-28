@@ -689,6 +689,7 @@ export function checkInErrorOf(error: unknown): CheckInErrorCode {
     switch (code) {
       case 'ALREADY_CHECKED_IN':
       case 'WRONG_SERVICE_DATE':
+      case 'DAY_REFUNDED':
       case 'BOOKING_NOT_FOUND':
       case 'NOT_VENUE_OWNER':
         return code;
@@ -705,7 +706,7 @@ export function checkInWrongDateOf(error: unknown): string | undefined {
   return typeof date === 'string' ? date : undefined;
 }
 
-/** The `setId` extension an ALREADY_CHECKED_IN problem carries: today's set, for a stay on a move day. */
+/** The `setId` extension an ALREADY_CHECKED_IN or DAY_REFUNDED problem carries: today's set, for a stay. */
 export function checkInSetIdOf(error: unknown): number | undefined {
   const setId = checkInExtensionOf(error, 'setId');
   return typeof setId === 'number' ? setId : undefined;

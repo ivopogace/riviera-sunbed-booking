@@ -130,8 +130,7 @@
       >
     }
 
-    <!-- Weather refund: per-DATE, whole-day (invariant #10). The server decides + executes the refund
-         and reverses the payout; this only picks a day and triggers it. -->
+    <!-- Weather refund, per date (invariant #10): the server decides and executes it; this only picks a day and triggers it. -->
     <section appCardGlass class="mt-3.5 rounded-[20px] px-[18px] py-4" data-testid="weather-panel">
       <div class="flex flex-wrap items-end justify-between gap-3">
         <label class="flex flex-col gap-1.5">
@@ -164,7 +163,7 @@
         <app-confirm-panel
           [label]="'Weather refund for ' + selectedDateLabel() + '?'"
           [headline]="'Weather refund for ' + selectedDateLabel() + '?'"
-          message="This is an exception — it cancels and fully refunds every confirmed online booking for that day and posts the reversals against your payout. Use it only when weather stopped guests visiting."
+          message="This is an exception — it cancels and fully refunds every one-day online booking for that day, refunds that day of every stay that goes on, and posts the reversals against your payout. A day a guest checked into is kept. Use it only when weather stopped guests visiting."
           confirmLabel="Issue full weather refund"
           tone="warn"
           [busy]="refunding()"

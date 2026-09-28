@@ -530,7 +530,30 @@ const CLS = {
               </dd>
             </div>
           }
+          @if (b.refundedDays?.length) {
+            <div [class]="cls.row">
+              <dt [class]="cls.rowLabel">Refunded for weather</dt>
+              <dd [class]="cls.rowValue">
+                <ul class="list-none" data-testid="view-refunded-days">
+                  @for (day of b.refundedDays; track day.day) {
+                    <li>{{ dateLabel(day.day, day.day) }} · {{ formatMoney(day.amount) }}</li>
+                  }
+                </ul>
+              </dd>
+            </div>
+          }
         </dl>
+        @if (b.refundedDays?.length) {
+          <p
+            class="mx-0 mt-2 mb-0 text-[12px] leading-[1.4] text-riv-card-ink-soft"
+            data-testid="view-refunded-days-note"
+          >
+            The venue closed for the weather on
+            {{ b.refundedDays!.length === 1 ? 'that day' : 'those days' }}, so
+            {{ b.refundedDays!.length === 1 ? 'its' : 'their' }} share came back to you. Your spot
+            stays yours.
+          </p>
+        }
 
         <!-- Outside the status switch on purpose: scoped to PENDING_REQUEST it would unmount on success. -->
         <output [class]="cls.result" aria-live="polite" tabindex="-1" data-testid="withdraw-result">

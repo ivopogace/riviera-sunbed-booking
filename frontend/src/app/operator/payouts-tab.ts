@@ -148,7 +148,7 @@ export class PayoutsTab {
     () => this.entries().filter((e) => e.type === 'ACCRUAL').length,
   );
   private readonly reversalCount = computed(
-    () => this.entries().filter((e) => e.type === 'REVERSAL').length,
+    () => this.entries().filter((e) => e.type === 'REVERSAL' || e.type === 'DAY_REVERSAL').length,
   );
 
   /** "N bookings, M refunds · paid by bank transfer" — the hero's sub-line. */
@@ -317,10 +317,15 @@ function signedSum(
   return entries.reduce((total, e) => total + (isDeduction(e) ? -pick(e) : pick(e)), 0);
 }
 
-/** A deduction's short human label — the fee names itself, a reversal names its refund reason. */
+/** A deduction's short human label — the fee names itself, a day's reversal its day, a reversal its reason. */
 function reasonLabel(entry: PayoutLedgerEntryView): string {
   if (entry.type === 'FEE') {
     return 'Venue change fee';
+  }
+  if (entry.type === 'DAY_REVERSAL') {
+    return entry.serviceDate
+      ? `Weather · ${formatCivilDate(entry.serviceDate)}`
+      : 'Weather · one day';
   }
   return refundReasonLabel(entry.reason);
 }
@@ -342,23 +347,33 @@ function refundReasonLabel(reason: RefundReasonCode | null): string {
 }
 
 /**
- * The operator-facing notice for a successful weather refund — count + total, or a no-op for 0 — plus
- * the stays the server could not refund (a storm is one day of a live stay), named by booking id so
- * the operator settles them by hand rather than never learning of them.
+ * The operator-facing notice for a successful weather refund: the one-day bookings cancelled and the
+ * stay days refunded with their totals (or a no-op), plus the checked-in bookings kept, by id (never a code, #7).
  */
 function weatherSuccessNotice(result: WeatherRefundResult, dateLabel: string): string {
+  const parts: string[] = [];
+  if (result.refundedCount > 0) {
+    parts.push(
+      `${plural(result.refundedCount, 'one-day booking')} cancelled,` +
+        ` ${money(result.totalRefundedMinor, result.currency)} returned`,
+    );
+  }
+  if (result.dayRefundCount > 0) {
+    parts.push(
+      `the day refunded on ${plural(result.dayRefundCount, 'stay')},` +
+        ` ${money(result.dayRefundedMinor, result.currency)} returned`,
+    );
+  }
   const refunded =
-    result.refundedCount === 0
-      ? `No one-day bookings for ${dateLabel} — nothing refunded.`
-      : `Weather refund issued for ${dateLabel} — ${plural(result.refundedCount, 'booking')},` +
-        ` ${money(result.totalRefundedMinor, result.currency)} returned to guests.`;
-  if (result.manualRefundCount === 0) {
+    parts.length === 0
+      ? `No bookings to refund for ${dateLabel} — nothing refunded.`
+      : `Weather refund issued for ${dateLabel} — ${parts.join('; ')}.`;
+  if (result.notRefundedCount === 0) {
     return refunded;
   }
-  const ids = result.manualRefundBookingIds.map((id) => `#${id}`).join(', ');
-  const verbs =
-    result.manualRefundCount === 1 ? 'overlaps this date and needs' : 'overlap this date and need';
-  return `${refunded} ${plural(result.manualRefundCount, 'stay')} ${verbs} a manual refund (${ids}).`;
+  const ids = result.notRefundedBookingIds.map((id) => `#${id}`).join(', ');
+  const verb = result.notRefundedCount === 1 ? 'had checked in and was' : 'had checked in and were';
+  return `${refunded} ${plural(result.notRefundedCount, 'booking')} ${verb} not refunded (${ids}).`;
 }
 
 /** Map a weather-refund failure to its operator-facing notice (no nested ternaries). */

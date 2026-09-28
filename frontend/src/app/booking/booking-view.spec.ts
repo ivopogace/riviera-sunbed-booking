@@ -379,6 +379,29 @@ describe('BookingView', () => {
     expect(document.activeElement).toBe(host.querySelector('[data-testid="start-cancel"]'));
   });
 
+  it('lists the days a weather refund gave back while the booking went on (#1210)', async () => {
+    const fixture = await render(
+      stubService({
+        detail: {
+          ...DETAIL,
+          lastDate: '2026-12-03',
+          refundIfCancelledNow: { minorUnits: 9000, currency: 'EUR' },
+          amount: { minorUnits: 13500, currency: 'EUR' },
+          refundedDays: [{ day: '2026-12-02', amount: { minorUnits: 4500, currency: 'EUR' } }],
+        },
+      }),
+    );
+    const host = fixture.nativeElement as HTMLElement;
+    const days = host.querySelector('[data-testid="view-refunded-days"]')!;
+    expect(days.querySelectorAll('li')).toHaveLength(1);
+    expect(days.textContent).toContain('2 Dec');
+    expect(days.textContent).toContain('€45');
+    expect(host.querySelector('[data-testid="view-refunded-days-note"]')?.textContent).toContain(
+      'Your spot stays yours',
+    );
+    expect(host.querySelector('[data-testid="refunded-amount"]')).toBeNull();
+  });
+
   it('shows a not-found message for an unknown code', async () => {
     const fixture = await render(stubService({ getError: { status: 404 } }));
     const host = fixture.nativeElement as HTMLElement;

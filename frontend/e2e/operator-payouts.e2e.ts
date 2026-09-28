@@ -110,13 +110,31 @@ function seedLedger() {
   };
 }
 
-/** The ledger after the weather refund of #11 posts its reversal → net owed €23.25, two reversals. */
+/**
+ * The ledger after the weather refund: #11 (a one-day booking) posts its reversal and #12 (a stay) the
+ * storm day's reversal → net owed €18.25, three deductions with a reason.
+ */
 function ledgerAfterWeather() {
   const seed = seedLedger();
   return {
     ...seed,
-    netOwedMinor: 2325,
-    entries: [...seed.entries, reversal(11, 3825, 2325, 'WEATHER', '2026-07-05T09:00:00Z')],
+    netOwedMinor: 1825,
+    entries: [
+      ...seed.entries,
+      reversal(11, 3825, 2325, 'WEATHER', '2026-07-05T09:00:00Z'),
+      {
+        type: 'DAY_REVERSAL',
+        bookingId: 12,
+        grossMinor: 600,
+        commissionMinor: 100,
+        netMinor: 500,
+        currency: 'EUR',
+        reason: 'WEATHER',
+        serviceDate: '2026-07-05',
+        createdAt: '2026-07-05T09:00:01Z',
+        runningNetMinor: 1825,
+      },
+    ],
   };
 }
 
@@ -124,14 +142,14 @@ function ledgerAfterWeather() {
  * Mock the console shell + payout endpoints with a stateful session and a stateful ledger. The weather
  * refund flips the ledger to include the WEATHER reversal (as the AFTER_COMMIT payout listener would),
  * so the re-read shows it. Pass `weatherError` to make the refund fail (the owner-assert / failure path),
- * `manualRefunds` for the stays the server names instead of refunding.
+ * `notRefunded` for the bookings the server names as checked in and kept.
  */
 async function mockPayouts(
   page: Page,
   {
     weatherError,
-    manualRefunds = [],
-  }: { weatherError?: { status: number; code: string }; manualRefunds?: number[] } = {},
+    notRefunded = [],
+  }: { weatherError?: { status: number; code: string }; notRefunded?: number[] } = {},
 ): Promise<void> {
   let sessionLive = false;
   let ledger = seedLedger();
@@ -168,8 +186,10 @@ async function mockPayouts(
         refundedCount: 1,
         totalRefundedMinor: 4500,
         currency: 'EUR',
-        manualRefundCount: manualRefunds.length,
-        manualRefundBookingIds: manualRefunds,
+        dayRefundCount: 1,
+        dayRefundedMinor: 600,
+        notRefundedCount: notRefunded.length,
+        notRefundedBookingIds: notRefunded,
       },
     });
   });
@@ -243,16 +263,21 @@ test('renders the ledger + owed, opens the statement, and issues a per-date weat
   await expect(weatherConfirm).toHaveAttribute('role', 'alertdialog');
   await expect(weatherConfirm).toHaveAccessibleName(/^Weather refund for .+\?$/);
   await page.getByTestId('weather-confirm-btn').click();
-  await expect(page.getByTestId('payouts-notice')).toContainText('refund issued');
-  await expect(page.getByTestId('ledger-reason')).toHaveCount(3); // the new WEATHER reversal joined
-  await expect(page.getByTestId('payout-owed')).toContainText('€23.25');
+  const notice = page.getByTestId('payouts-notice');
+  await expect(notice).toContainText('refund issued');
+  await expect(notice).toContainText('1 one-day booking cancelled, €45 returned');
+  await expect(notice).toContainText('the day refunded on 1 stay, €6 returned');
+  // The WEATHER reversal and the stay's day reversal joined; the day's chip names its day (#1210).
+  await expect(page.getByTestId('ledger-reason')).toHaveCount(4);
+  await expect(page.getByTestId('ledger-reason').nth(3)).toContainText('Weather · Sun 5 Jul 2026');
+  await expect(page.getByTestId('payout-owed')).toContainText('€18.25');
   await expectNoSeriousAxeViolations(page, 'after weather refund');
 });
 
-test('a weather refund names the stays it could not reach, by booking id (#7)', async ({
+test('a weather refund names the bookings whose guest had checked in, by booking id (#7, #1210)', async ({
   page,
 }) => {
-  await mockPayouts(page, { manualRefunds: [21, 34] });
+  await mockPayouts(page, { notRefunded: [21, 34] });
   await signInAndOpenPayouts(page);
 
   await page.getByTestId('weather-trigger').click();
@@ -260,12 +285,10 @@ test('a weather refund names the stays it could not reach, by booking id (#7)', 
 
   const notice = page.getByTestId('payouts-notice');
   await expect(notice).toContainText('refund issued');
-  await expect(notice).toContainText(
-    '2 stays overlap this date and need a manual refund (#21, #34)',
-  );
+  await expect(notice).toContainText('2 bookings had checked in and were not refunded (#21, #34)');
   await expect(notice.locator('code')).toHaveCount(0); // ids, never a bearer code
   await settle(page);
-  await expectNoSeriousAxeViolations(page, 'weather refund naming stays');
+  await expectNoSeriousAxeViolations(page, 'weather refund naming kept bookings');
 });
 
 test('a cross-venue weather refund shows the owner-assert copy and posts no reversal (#13)', async ({
