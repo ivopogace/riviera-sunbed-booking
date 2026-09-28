@@ -127,8 +127,8 @@ nothing and collects under one PaymentIntent. Stay-level events (`StayRequestDec
   `refusesAFencedPlanBeforeAnyClaim`'s request arm)
 - [ ] **AC-15 (discovery offers plans):** Given a Request-to-Book venue, discovery reads it
   `FITS_WITH_MOVES` where a plan exists, and `/itinerary` answers the plan.
-  *Seam:* `MoveBudget` / `PlanItinerary` / `StayVerdicts` · *Pinned by:* `MoveBudgetTest`,
-  `PlanItineraryIT.aRequestToBookVenueGetsAPlan`, `StayVerdictsIT.aRequestToBookVenueFitsWithMoves`
+  *Seam:* `PlanItinerary` / `StayVerdicts` · *Pinned by:* `PlanItineraryIT.aRequestToBookVenueGetsAPlan`,
+  `StayVerdictsIT.aRequestToBookVenueFitsWithMovesAsAnInstantOneDoes` (`MoveBudget.forVenue` and its test retired)
 - [ ] **AC-16 (frontend):**
   - The venue page offers the plan and "Plan my stay around" at a Request-to-Book venue.
   - Submitting a plan there shows "request sent" with every stop.
@@ -282,9 +282,9 @@ All inside `booking` except the three `notification` listeners. No new module de
 
 ## Execution status
 
-**Stage pointer:** `implement (phase 5)`
+**Stage pointer:** `implement (phase 6)`
 
-**Next action:** phase 5 — run `CreateStayIT`, `StayControllerIT`, `PlanItineraryIT`, `StayVerdictsIT` against the lifted gate.
+**Next action:** phase 6 — frontend: booking service 'requested' stay branch first (red `booking.service.spec.ts`).
 
 **Notes:**
 - Local ITs need `postgres:17`. Docker Hub rate-limited the pull, so it was pulled from
@@ -299,7 +299,7 @@ All inside `booking` except the three `notification` listeners. No new module de
 | 2 — stay accept | ✅ | (phase-2 commit) |
 | 3 — other legs | ✅ | (phase-3 commit) |
 | 4 — mails | ✅ | (phase-4 commit) |
-| 5 — backend gate | | |
+| 5 — backend gate | ✅ | (phase-5 commit) |
 | 6 — frontend | | |
 | 7 — docs | | |
 

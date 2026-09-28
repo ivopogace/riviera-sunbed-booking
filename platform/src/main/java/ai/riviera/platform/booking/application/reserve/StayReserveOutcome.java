@@ -22,6 +22,11 @@ sealed interface StayReserveOutcome {
 		}
 	}
 
+	/** A stay request at a Request-to-Book venue: every stretch pending under one deadline, nothing claimed (ADR-0025). */
+	record Requested(StayId stayId, String code, SetBookingInfo venue, List<ReservedStretch> stretches,
+			java.time.Instant requestExpiresAt) implements StayReserveOutcome {
+	}
+
 	/** One stretch's booking as inserted: its id, its set and the money it owes (invariant #5). */
 	record ReservedStretch(long bookingId, SetBookingInfo set, LocalDate firstDay, LocalDate lastDay,
 			long amountMinor) {

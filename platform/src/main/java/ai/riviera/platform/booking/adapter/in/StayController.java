@@ -47,6 +47,8 @@ class StayController {
 			case StayOutcome.AwaitingPayment awaiting -> ResponseEntity.status(HttpStatus.ACCEPTED)
 					.body(new StayView.Awaiting(StayView.of(awaiting.confirmation()), awaiting.clientSecret(),
 							awaiting.paymentIntentId()));
+			case StayOutcome.Requested requested -> ResponseEntity.status(HttpStatus.ACCEPTED)
+					.body(new StayView.Requested(StayView.of(requested.confirmation()), requested.requestExpiresAt()));
 			case StayOutcome.Rejected rejected -> Rejections.respond(rejected.reason(), STAYS_URI);
 		};
 	}

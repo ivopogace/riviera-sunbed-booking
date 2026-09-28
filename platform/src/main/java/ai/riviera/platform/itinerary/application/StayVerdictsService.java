@@ -19,8 +19,7 @@ import ai.riviera.platform.venue.vocabulary.VenueStayFacts;
 
 /**
  * One map read for every venue's online sets and maximum stay, one availability read for every
- * set's taken days over the span, then {@link StayFit} per venue under its {@link MoveBudget#forVenue}
- * budget. {@link SetBookingFacts} answers for any venue, hence the caller's visibility fence.
+ * set's taken days over the span, then {@link StayFit} per venue under the {@link MoveBudget}. {@link SetBookingFacts} answers for any venue, hence the caller's visibility fence.
  */
 @Service
 class StayVerdictsService implements StayVerdicts {
@@ -43,6 +42,6 @@ class StayVerdictsService implements StayVerdicts {
 		var takenDays = availability.takenDaysBetween(onlineSets, span.firstDay(), span.lastDay());
 		return facts.entrySet().stream().collect(Collectors.toUnmodifiableMap(Map.Entry::getKey,
 				entry -> StayFit.verdict(span, entry.getValue().onlineSets(), takenDays,
-						entry.getValue().maxStayDays(), budget.forVenue(entry.getValue().bookingMode()))));
+						entry.getValue().maxStayDays(), budget.maxMoves())));
 	}
 }

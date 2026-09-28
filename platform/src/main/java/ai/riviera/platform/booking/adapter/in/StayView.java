@@ -22,6 +22,10 @@ record StayView(String code, String status, long venueId, String venueName, Stri
 	record Awaiting(@JsonUnwrapped StayView stay, String clientSecret, String paymentIntentId) {
 	}
 
+	/** A stay request's {@code 202}: status {@code PENDING_REQUEST} and the venue's deadline, no payment credential. */
+	record Requested(@JsonUnwrapped StayView stay, java.time.Instant requestExpiresAt) {
+	}
+
 	static StayView of(StayConfirmation confirmation) {
 		return new StayView(confirmation.code(), confirmation.status().name(), confirmation.venueId().value(),
 				confirmation.venueName(), confirmation.stay().firstDay().toString(),

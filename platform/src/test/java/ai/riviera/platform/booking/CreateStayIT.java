@@ -151,18 +151,55 @@ class CreateStayIT {
 		Venue hidden = venue("INSTANT", null, false);
 		assertEquals(rejected(BookingOutcome.Rejected.NO_SUCH_SET),
 				createStay.create(plan(hidden.online().get(0), 3, hidden.online().get(1), 4, first)));
-		Venue request = venue("REQUEST", null, true);
-		assertEquals(rejected(BookingOutcome.Rejected.RANGE_NOT_OFFERED),
-				createStay.create(plan(request.online().get(0), 3, request.online().get(1), 4, first)));
 		Venue capped = venue("INSTANT", 5, true);
 		assertEquals(rejected(BookingOutcome.Rejected.STAY_TOO_LONG),
 				createStay.create(plan(capped.online().get(0), 3, capped.online().get(1), 4, first)));
 		Venue cappedRequest = venue("REQUEST", 5, true);
-		assertEquals(rejected(BookingOutcome.Rejected.RANGE_NOT_OFFERED),
+		assertEquals(rejected(BookingOutcome.Rejected.STAY_TOO_LONG),
 				createStay.create(plan(cappedRequest.online().get(0), 3, cappedRequest.online().get(1), 4, first)),
-				"a Request venue refuses the plan before judging its maximum stay");
+				"a Request venue's maximum stay binds a plan as it binds one set");
 		assertEquals(0L, heldDays(jdbc, a, first, first.plusDays(6)), "a refusal claims nothing");
 		assertEquals(0L, heldDays(jdbc, b, first, first.plusDays(6)));
+	}
+
+	@Test
+	void aRequestVenueTakesAPlanAsOneRequest() {
+		Venue venue = venue("REQUEST", null, true);
+		SetId a = venue.online().get(0);
+		SetId b = venue.online().get(1);
+		LocalDate first = firstDay();
+
+		StayOutcome outcome = createStay.create(plan(a, 3, b, 4, first));
+
+		StayOutcome.Requested requested = assertInstanceOf(StayOutcome.Requested.class, outcome);
+		assertEquals(ai.riviera.platform.booking.domain.BookingStatus.PENDING_REQUEST,
+				requested.confirmation().status());
+		assertEquals(7 * PRICE, requested.confirmation().total().minorUnits());
+		assertEquals(2, requested.confirmation().stretches().size());
+		String code = requested.confirmation().code();
+		List<String> rows = jdbc.sql("""
+				SELECT b.status || ' ' || b.set_id || ' ' || (b.request_expires_at = :expires)
+				FROM booking b JOIN stay s ON s.id = b.stay_id WHERE s.code = :c ORDER BY b.booking_date
+				""").param("c", code).param("expires", java.sql.Timestamp.from(requested.requestExpiresAt()))
+				.query(String.class).list();
+		assertEquals(List.of("PENDING_REQUEST " + a.value() + " true", "PENDING_REQUEST " + b.value() + " true"), rows,
+				"one pending stretch per stop, sharing one deadline");
+		assertEquals(0L, heldDays(jdbc, a, first, first.plusDays(6)), "a request holds nothing (ADR-0025)");
+		assertEquals(0L, heldDays(jdbc, b, first, first.plusDays(6)));
+		assertEquals(0, events.stream(BookingConfirmed.class).count());
+	}
+
+	@Test
+	void aRequestVenueRefusesAPlanWithATakenDay() {
+		Venue venue = venue("REQUEST", null, true);
+		SetId a = venue.online().get(0);
+		SetId b = venue.online().get(1);
+		LocalDate first = firstDay();
+		take(jdbc, b, first.plusDays(5));
+
+		assertEquals(rejected(BookingOutcome.Rejected.SET_TAKEN), createStay.create(plan(a, 3, b, 4, first)));
+		assertEquals(0L, jdbc.sql("SELECT count(*) FROM stay WHERE venue_id = :v").param("v", venue.id())
+				.query(Long.class).single(), "no stay row");
 	}
 
 	@Test
