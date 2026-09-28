@@ -12,6 +12,7 @@ import ai.riviera.platform.payout.application.VenueChangeFeeAmount;
 import ai.riviera.platform.payout.application.VenueChangeFeeSetting;
 import ai.riviera.platform.payout.domain.EntryType;
 import ai.riviera.platform.payout.domain.PayoutLedgerEntry;
+import ai.riviera.platform.payout.domain.Reversed;
 import ai.riviera.platform.venue.vocabulary.SetId;
 import ai.riviera.platform.venue.vocabulary.VenueId;
 
@@ -80,6 +81,7 @@ class BookingCancelledPayoutListenerTest {
 	@BeforeEach
 	void storeTheFee() {
 		when(feeSetting.current()).thenReturn(new VenueChangeFeeAmount(500L, "EUR"));
+		when(ledger.findReversed(BOOKING_ID.value())).thenReturn(Reversed.NONE);
 	}
 
 	@BeforeEach
@@ -191,5 +193,21 @@ class BookingCancelledPayoutListenerTest {
 		verify(ledger, times(2)).charge(charged.capture());
 		assertThat(charged.getAllValues()).extracting(PayoutLedgerEntry::netMinor)
 				.containsExactly(500L, 700L);
+	}
+
+	@Test
+	void aCancellationAfterDayRefundsReversesOnlyTheRemainderAndClosesTheCommission() {
+		// Accrual 4500 at 15% = 675; a day reversal already took 1000 gross / 150 commission.
+		when(ledger.findAccrual(BOOKING_ID.value())).thenReturn(Optional.of(ACCRUAL));
+		when(ledger.findReversed(BOOKING_ID.value())).thenReturn(new Reversed(1000L, 150L));
+		BookingCancelled remainder = new BookingCancelled(BOOKING_ID, VENUE_ID, new SetId(7L),
+				LocalDate.of(2026, 8, 1), 3500L, "EUR", RefundReason.POLICY);
+
+		listener.on(remainder);
+
+		ArgumentCaptor<PayoutLedgerEntry> posted = ArgumentCaptor.forClass(PayoutLedgerEntry.class);
+		verify(ledger).reverse(posted.capture());
+		assertThat(posted.getValue().grossMinor()).isEqualTo(3500L);
+		assertThat(posted.getValue().commissionMinor()).isEqualTo(525L);
 	}
 }

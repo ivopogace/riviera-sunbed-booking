@@ -1,6 +1,7 @@
 package ai.riviera.platform.payout.adapter.out;
 
 import java.time.Instant;
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 
@@ -15,6 +16,7 @@ import ai.riviera.platform.payout.application.VenuePeriodTotal;
 import ai.riviera.platform.payout.domain.EntryType;
 import ai.riviera.platform.payout.domain.PayoutLedgerEntry;
 import ai.riviera.platform.payout.domain.PeriodKey;
+import ai.riviera.platform.payout.domain.Reversed;
 import ai.riviera.platform.venue.vocabulary.VenueId;
 
 /**
@@ -46,8 +48,7 @@ class JdbcPayoutLedger implements PayoutLedger {
 
 	@Override
 	public void reverse(PayoutLedgerEntry entry) {
-		// Same conflict-free insert as accrual; the UNIQUE(booking_id, entry_type) guard makes a
-		// re-delivered BookingCancelled write no second REVERSAL (exactly-once, invariant #9).
+		// UNIQUE (booking_id, entry_type, service_date): a redelivery writes no second REVERSAL or DAY_REVERSAL (#9).
 		insertIdempotently(entry);
 	}
 
@@ -59,10 +60,12 @@ class JdbcPayoutLedger implements PayoutLedger {
 
 	@Override
 	public Optional<PayoutLedgerEntry> findAccrual(long bookingId) {
+		// FOR UPDATE: a booking's reversals serialize on its accrual, so each reads the ones before it.
 		return jdbc.sql("""
 				SELECT venue_id, booking_id, gross_minor, commission_minor, net_minor, currency
 				FROM payout_ledger_entry
 				WHERE booking_id = :booking AND entry_type = 'ACCRUAL'
+				FOR UPDATE
 				""")
 				.param("booking", bookingId)
 				.query((rs, rowNum) -> new PayoutLedgerEntry(
@@ -73,12 +76,25 @@ class JdbcPayoutLedger implements PayoutLedger {
 	}
 
 	@Override
+	public Reversed findReversed(long bookingId) {
+		return jdbc.sql("""
+				SELECT COALESCE(SUM(gross_minor), 0) AS gross_minor,
+				       COALESCE(SUM(commission_minor), 0) AS commission_minor
+				FROM payout_ledger_entry
+				WHERE booking_id = :booking AND entry_type IN ('REVERSAL', 'DAY_REVERSAL')
+				""")
+				.param("booking", bookingId)
+				.query((rs, rowNum) -> new Reversed(rs.getLong("gross_minor"), rs.getLong("commission_minor")))
+				.single();
+	}
+
+	@Override
 	public List<LedgerEntryRow> entriesForVenue(VenueId venueId) {
 		// Per-venue ledger read: all entries oldest-first; the caller folds the running net owed.
 		// Served by payout_ledger_venue_idx (V9). reason is NULL on ACCRUAL rows.
 		return jdbc.sql("""
 				SELECT entry_type, booking_id, gross_minor, commission_minor, net_minor, currency,
-				       reason, created_at
+				       reason, service_date, created_at
 				FROM payout_ledger_entry
 				WHERE venue_id = :venue
 				ORDER BY created_at, id
@@ -91,6 +107,7 @@ class JdbcPayoutLedger implements PayoutLedger {
 							rs.getLong("gross_minor"), rs.getLong("commission_minor"), rs.getLong(COL_NET_MINOR),
 							rs.getString(COL_CURRENCY),
 							reasonToken == null ? null : RefundReason.valueOf(reasonToken),
+							rs.getObject("service_date", LocalDate.class),
 							toInstant(rs.getTimestamp("created_at")));
 				})
 				.list();
@@ -147,17 +164,18 @@ class JdbcPayoutLedger implements PayoutLedger {
 				.list();
 	}
 
-	/** Conflict-free insert shared by every entry type — {@code ON CONFLICT (booking_id, entry_type)}. */
+	/** Conflict-free insert shared by every entry type — {@code ON CONFLICT (booking_id, entry_type, service_date)}. */
 	private void insertIdempotently(PayoutLedgerEntry entry) {
 		jdbc.sql("""
-				INSERT INTO payout_ledger_entry (venue_id, booking_id, entry_type, gross_minor,
+				INSERT INTO payout_ledger_entry (venue_id, booking_id, entry_type, service_date, gross_minor,
 				                                 commission_minor, net_minor, currency, reason)
-				VALUES (:venue, :booking, :type, :gross, :commission, :net, :currency, :reason)
-				ON CONFLICT (booking_id, entry_type) DO NOTHING
+				VALUES (:venue, :booking, :type, :day, :gross, :commission, :net, :currency, :reason)
+				ON CONFLICT (booking_id, entry_type, service_date) DO NOTHING
 				""")
 				.param("venue", entry.venueId().value())
 				.param("booking", entry.bookingId())
 				.param("type", entry.entryType().name())
+				.param("day", entry.serviceDate())
 				.param("gross", entry.grossMinor())
 				.param("commission", entry.commissionMinor())
 				.param("net", entry.netMinor())

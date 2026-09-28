@@ -5,6 +5,7 @@ import java.util.Optional;
 
 import ai.riviera.platform.payout.domain.PayoutLedgerEntry;
 import ai.riviera.platform.payout.domain.PeriodKey;
+import ai.riviera.platform.payout.domain.Reversed;
 import ai.riviera.platform.venue.vocabulary.VenueId;
 
 /**
@@ -21,15 +22,19 @@ public interface PayoutLedger {
 	void accrue(PayoutLedgerEntry entry);
 
 	/**
-	 * The booking's {@code ACCRUAL}, which a reversal mirrors proportionally. <strong>Empty means
-	 * "not yet", never "nothing to reverse"</strong>: the caller must defer (throw, so the publication
-	 * retries) or the ledger overstates what the venue is owed (ADR-0005, invariant #9).
+	 * The booking's {@code ACCRUAL}, locked for the caller's transaction so its reversals post one at a
+	 * time. <strong>Empty means "not yet", never "nothing to reverse"</strong>: the caller must defer
+	 * (throw, so the publication retries) or the ledger overstates the venue's due (ADR-0005, #9).
 	 */
 	Optional<PayoutLedgerEntry> findAccrual(long bookingId);
 
+	/** What the booking's {@code REVERSAL} and {@code DAY_REVERSAL} rows have taken back so far. */
+	Reversed findReversed(long bookingId);
+
 	/**
-	 * Record a {@code REVERSAL} <strong>idempotently</strong>, like {@link #accrue}: an existing
-	 * {@code (booking_id, REVERSAL)} is a no-op, so redelivery reverses exactly once (invariant #9).
+	 * Record a {@code REVERSAL} or {@code DAY_REVERSAL} <strong>idempotently</strong>, like
+	 * {@link #accrue}: an existing {@code (booking_id, entry_type, service_date)} is a no-op, so
+	 * redelivery reverses exactly once per booking, or per booking and day (invariant #9).
 	 */
 	void reverse(PayoutLedgerEntry entry);
 

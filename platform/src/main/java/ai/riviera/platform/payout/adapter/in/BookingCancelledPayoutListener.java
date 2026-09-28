@@ -11,11 +11,12 @@ import ai.riviera.platform.payout.application.PayoutLedger;
 import ai.riviera.platform.payout.application.VenueChangeFeeAmount;
 import ai.riviera.platform.payout.application.VenueChangeFeeSetting;
 import ai.riviera.platform.payout.domain.PayoutLedgerEntry;
+import ai.riviera.platform.payout.domain.Reversed;
 
 /**
  * On {@code BookingCancelled}, posts a REVERSAL of the prior ACCRUAL <strong>proportional to the refund</strong>
- * (ADR-0005; no refund, no reversal), mirroring the re-read accrual so a rate change cannot break the netting,
- * plus a FEE when {@code reason == VENUE_CHANGE} (ADR-0021; its position after the zero-refund return and the
+ * (ADR-0005; no refund, no reversal), mirroring the re-read accrual so a rate change cannot break the netting
+ * and reading the day reversals before it so a booking reversed in parts nets zero (issue #1210), plus a FEE when {@code reason == VENUE_CHANGE} (ADR-0021; its position after the zero-refund return and the
  * accrual lookup is load-bearing). Idempotent under redelivery via {@code UNIQUE(booking_id, entry_type)}. A
  * refund with no accrual yet <strong>throws</strong>, leaving the publication outstanding rather than letting
  * the ledger overstate what the venue is owed (invariant #9). Rationale: RESPONSIBILITIES.md §payout.
@@ -42,8 +43,9 @@ class BookingCancelledPayoutListener {
 			return;
 		}
 		PayoutLedgerEntry accrual = ledger.findAccrual(bookingId).orElseThrow(() -> deferReversal(event));
+		Reversed prior = ledger.findReversed(bookingId);
 
-		ledger.reverse(PayoutLedgerEntry.reversalOf(accrual, event.refundMinor(), event.reason()));
+		ledger.reverse(PayoutLedgerEntry.reversalOf(accrual, event.refundMinor(), event.reason(), prior));
 		log.info("reversed payout for cancelled booking {} (refund {} {}, reason {})", bookingId,
 				event.refundMinor(), event.currency(), event.reason());
 
