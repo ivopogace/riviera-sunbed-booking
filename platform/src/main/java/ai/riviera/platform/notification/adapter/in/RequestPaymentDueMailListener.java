@@ -9,11 +9,13 @@ import org.springframework.stereotype.Component;
 import org.springframework.transaction.event.TransactionalEventListener;
 
 import ai.riviera.platform.booking.events.BookingPaymentDue;
+import ai.riviera.platform.booking.events.StayPaymentDue;
 import ai.riviera.platform.notification.application.BookingLinks;
 import ai.riviera.platform.notification.application.BookingMailFacts;
 import ai.riviera.platform.notification.application.BookingMailFactsService;
 import ai.riviera.platform.notification.application.MissingBookingFact;
 import ai.riviera.platform.notification.application.PaymentDueMail;
+import ai.riviera.platform.notification.application.StayRequestMailFacts;
 import ai.riviera.platform.notification.application.TransactionalMailService;
 import ai.riviera.platform.shared.ObservabilityMetrics;
 
@@ -52,6 +54,25 @@ class RequestPaymentDueMailListener {
 					new PaymentDueMail(booking.bookingCode(), booking.venueName(), event.bookingDate(), event.lastDay(),
 							event.payBy(), event.amountMinor(), event.currency(),
 							links.forBooking(booking.bookingCode()),
+							event.cancellationWindowAtBirth(), event.lateCancelRefundBps()));
+		}
+	}
+
+	/** An accepted stay request (#1267): one mail under the stay's code and span, with the stay's total. */
+	@Async(RegistryMailExecutorConfig.MAIL_EXECUTOR)
+	@TransactionalEventListener
+	void on(StayPaymentDue event) {
+		switch (facts.resolveStayRequest(event.stayId())) {
+			case StayRequestMailFacts.Missing(MissingBookingFact fact) -> {
+				meters.counter(ObservabilityMetrics.MAIL_PAYMENT_DUE_ABANDONED,
+						MissingBookingFact.TAG, fact.tagValue()).increment();
+				log.error("Payment-due mail abandoned ({}) for stay {} — the fact cannot appear later, so nothing "
+						+ "retries it: the guest has no notice that payment is due by {}", fact.tagValue(),
+						event.stayId().value(), event.payBy());
+			}
+			case StayRequestMailFacts.Resolved stay -> mails.sendPaymentDue(stay.toEmail(),
+					new PaymentDueMail(stay.stayCode(), stay.venueName(), stay.firstDate(), stay.lastDate(),
+							event.payBy(), event.amountMinor(), event.currency(), links.forBooking(stay.stayCode()),
 							event.cancellationWindowAtBirth(), event.lateCancelRefundBps()));
 		}
 	}

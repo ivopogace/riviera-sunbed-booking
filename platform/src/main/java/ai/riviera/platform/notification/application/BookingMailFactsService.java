@@ -14,6 +14,7 @@ import ai.riviera.platform.booking.vocabulary.BookingNotificationInfo;
 import ai.riviera.platform.booking.vocabulary.CancellationWindow;
 import ai.riviera.platform.booking.vocabulary.RefundReason;
 import ai.riviera.platform.booking.vocabulary.StayConfirmationFacts;
+import ai.riviera.platform.booking.vocabulary.StayId;
 import ai.riviera.platform.booking.vocabulary.StayMoveFacts;
 import ai.riviera.platform.customer.api.CustomerLookup;
 import ai.riviera.platform.customer.vocabulary.GuestContact;
@@ -109,6 +110,27 @@ public class BookingMailFactsService {
 		return new MoveReminderMailFacts.Resolved(contact.get().email(), new MoveReminderMail(move.code(),
 				to.venueName(), move.moveDate(), move.stayLastDate(), from.rowLabel(), from.positionNo(),
 				to.rowLabel(), to.positionNo(), move.rowsAway(), move.positionsAway(), bookingLink));
+	}
+
+	/**
+	 * A stay request's one decline, expiry or payment-due mail under the stay's code and span, or the first
+	 * fact that did not resolve: the stay, the venue (off the first stop's set), then the contact.
+	 */
+	public StayRequestMailFacts resolveStayRequest(StayId stayId) {
+		Optional<StayConfirmationFacts> stay = bookings.stayConfirmationFacts(stayId);
+		if (stay.isEmpty()) {
+			return new StayRequestMailFacts.Missing(MissingBookingFact.NO_BOOKING);
+		}
+		Optional<SetBookingInfo> set = sets.setBookingInfo(stay.get().stops().getFirst().setId());
+		if (set.isEmpty()) {
+			return new StayRequestMailFacts.Missing(MissingBookingFact.NO_SET);
+		}
+		Optional<GuestContact> contact = customers.findById(stay.get().customerId());
+		if (contact.isEmpty()) {
+			return new StayRequestMailFacts.Missing(MissingBookingFact.NO_CONTACT);
+		}
+		return new StayRequestMailFacts.Resolved(contact.get().email(), stay.get().code(), set.get().venueName(),
+				stay.get().firstDate(), stay.get().lastDate());
 	}
 
 	/**

@@ -282,9 +282,9 @@ All inside `booking` except the three `notification` listeners. No new module de
 
 ## Execution status
 
-**Stage pointer:** `implement (phase 4)`
+**Stage pointer:** `implement (phase 5)`
 
-**Next action:** phase 4 — red `StayRequestMailIT` (three stay-request listeners).
+**Next action:** phase 5 — run `CreateStayIT`, `StayControllerIT`, `PlanItineraryIT`, `StayVerdictsIT` against the lifted gate.
 
 **Notes:**
 - Local ITs need `postgres:17`. Docker Hub rate-limited the pull, so it was pulled from
@@ -298,7 +298,7 @@ All inside `booking` except the three `notification` listeners. No new module de
 | 1 — read side | ✅ | (phase-1 commit) |
 | 2 — stay accept | ✅ | (phase-2 commit) |
 | 3 — other legs | ✅ | (phase-3 commit) |
-| 4 — mails | | |
+| 4 — mails | ✅ | (phase-4 commit) |
 | 5 — backend gate | | |
 | 6 — frontend | | |
 | 7 — docs | | |

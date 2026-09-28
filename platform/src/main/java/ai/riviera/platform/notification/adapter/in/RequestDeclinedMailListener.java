@@ -9,11 +9,13 @@ import org.springframework.stereotype.Component;
 import org.springframework.transaction.event.TransactionalEventListener;
 
 import ai.riviera.platform.booking.events.BookingRequestDeclined;
+import ai.riviera.platform.booking.events.StayRequestDeclined;
 import ai.riviera.platform.notification.application.BookingLinks;
 import ai.riviera.platform.notification.application.BookingMailFacts;
 import ai.riviera.platform.notification.application.BookingMailFactsService;
 import ai.riviera.platform.notification.application.MissingBookingFact;
 import ai.riviera.platform.notification.application.RequestDeclinedMail;
+import ai.riviera.platform.notification.application.StayRequestMailFacts;
 import ai.riviera.platform.notification.application.TransactionalMailService;
 import ai.riviera.platform.shared.ObservabilityMetrics;
 
@@ -52,6 +54,24 @@ class RequestDeclinedMailListener {
 					new RequestDeclinedMail(booking.bookingCode(), booking.venueName(),
 							event.bookingDate(), event.lastDay(), links.forBooking(booking.bookingCode()),
 							event.reasonOrVenue()));
+		}
+	}
+
+	/** A stay request declined whole (#1267): one record under the stay's code and span, naming the reason. */
+	@Async(RegistryMailExecutorConfig.MAIL_EXECUTOR)
+	@TransactionalEventListener
+	void on(StayRequestDeclined event) {
+		switch (facts.resolveStayRequest(event.stayId())) {
+			case StayRequestMailFacts.Missing(MissingBookingFact fact) -> {
+				meters.counter(ObservabilityMetrics.MAIL_REQUEST_DECLINED_ABANDONED,
+						MissingBookingFact.TAG, fact.tagValue()).increment();
+				log.error("Request-declined mail abandoned ({}) for stay {} — the fact cannot appear later, so "
+						+ "nothing retries it: the guest has no notice the venue declined", fact.tagValue(),
+						event.stayId().value());
+			}
+			case StayRequestMailFacts.Resolved stay -> mails.sendRequestDeclined(stay.toEmail(),
+					new RequestDeclinedMail(stay.stayCode(), stay.venueName(), stay.firstDate(), stay.lastDate(),
+							links.forBooking(stay.stayCode()), event.reason()));
 		}
 	}
 
