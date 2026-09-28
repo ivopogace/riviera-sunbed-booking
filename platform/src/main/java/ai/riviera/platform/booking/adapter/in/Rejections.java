@@ -29,8 +29,6 @@ final class Rejections {
 			case VENUE_CLOSED -> ApiProblem.responseAt(HttpStatus.UNPROCESSABLE_ENTITY, "VENUE_CLOSED",
 					"The venue is closed for the season on this date.", path);
 			case NO_SUCH_SET -> ApiProblem.responseAt(HttpStatus.NOT_FOUND, "NO_SUCH_SET", "No such set.", path);
-			case RANGE_NOT_OFFERED -> ApiProblem.responseAt(HttpStatus.UNPROCESSABLE_ENTITY, "RANGE_NOT_OFFERED",
-					"This venue takes requests for one set at a time, not a plan of several.", path);
 			case STAY_TOO_LONG -> ApiProblem.responseAt(HttpStatus.UNPROCESSABLE_ENTITY, "STAY_TOO_LONG",
 					"The stay is longer than this venue's maximum stay length.", path);
 		};

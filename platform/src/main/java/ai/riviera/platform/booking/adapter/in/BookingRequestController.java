@@ -14,6 +14,7 @@ import org.springframework.web.bind.annotation.RestController;
 import ai.riviera.platform.shared.ApiProblem;
 import ai.riviera.platform.shared.CurrentOperator;
 import ai.riviera.platform.booking.vocabulary.BookingId;
+import ai.riviera.platform.booking.vocabulary.StayId;
 import ai.riviera.platform.booking.application.request.AcceptOutcome;
 import ai.riviera.platform.booking.application.request.DeclineOutcome;
 import ai.riviera.platform.booking.application.request.PendingRequests;
@@ -22,11 +23,10 @@ import ai.riviera.platform.operator.vocabulary.OperatorId;
 import ai.riviera.platform.venue.vocabulary.VenueId;
 
 /**
- * Operator endpoints for the Request-to-Book queue: list the venue's pending requests, accept one
- * (claims the set, issues the payment request) or decline one, over the {@link PendingRequests}
- * and {@link RespondToRequest} ports (invariant #11). Ownership is enforced in those services; a
- * mismatch is {@code NotVenueOwnerException} → {@code 403 NOT_VENUE_OWNER} via the single
- * {@code ApiErrorHandler} (invariant #13). Rejections are RFC-7807 via {@link ApiProblem}, stable
+ * Operator endpoints for the Request-to-Book queue over {@link PendingRequests} and {@link RespondToRequest}
+ * (invariant #11): list, accept (claims, issues the payment request) or decline a request, a stay request
+ * whole under {@code /stays/{stayId}} (#1267). Ownership is enforced in the services → {@code 403
+ * NOT_VENUE_OWNER} via {@code ApiErrorHandler} (#13). Rejections are RFC-7807 via {@link ApiProblem}, stable
  * codes; no booking code appears in any response (invariant #7 — the queue is id-based).
  */
 @RestController
@@ -61,18 +61,41 @@ class BookingRequestController {
 		return switch (outcome) {
 			case AcceptOutcome.Accepted accepted ->
 					ResponseEntity.ok(new RequestDecisionView(bookingId, accepted.status().name()));
-			case AcceptOutcome.Rejected rejected -> switch (rejected) {
-				case NO_SUCH_REQUEST -> problem(HttpStatus.NOT_FOUND, "NO_SUCH_REQUEST",
-						"No pending request with this id at this venue.");
-				case NOT_PENDING -> problem(HttpStatus.CONFLICT, "REQUEST_NOT_PENDING",
-						RequestProblemDetails.NOT_PENDING);
-				case EXPIRED -> problem(HttpStatus.CONFLICT, "REQUEST_EXPIRED",
-						"This request's response deadline has passed.");
-				case SET_UNAVAILABLE -> problem(HttpStatus.CONFLICT, "SET_UNAVAILABLE",
-						"That set is no longer free for these days; the request was declined and the guest told.");
-				case PAYMENT_INIT_FAILED -> problem(HttpStatus.BAD_GATEWAY, "PAYMENT_INIT_FAILED",
-						"The payment request could not be issued.");
-			};
+			case AcceptOutcome.Rejected rejected -> acceptRejection(rejected);
+		};
+	}
+
+	@PostMapping("/stays/{stayId}/decline")
+	ResponseEntity<?> declineStay(Authentication authentication, @PathVariable long venueId, @PathVariable long stayId) {
+		OperatorId operator = currentOperator.require(authentication);
+		return switch (respondToRequest.declineStay(operator, new VenueId(venueId), new StayId(stayId))) {
+			case DeclineOutcome.Declined ignored -> ResponseEntity.ok(new StayDecisionView(stayId,
+					ai.riviera.platform.booking.domain.BookingStatus.DECLINED.name()));
+			case DeclineOutcome.Rejected rejected -> declineRejection(rejected);
+		};
+	}
+
+	private static ResponseEntity<?> acceptRejection(AcceptOutcome.Rejected rejected) {
+		return switch (rejected) {
+			case NO_SUCH_REQUEST -> problem(HttpStatus.NOT_FOUND, "NO_SUCH_REQUEST",
+					"No pending request with this id at this venue.");
+			case NOT_PENDING -> problem(HttpStatus.CONFLICT, "REQUEST_NOT_PENDING",
+					RequestProblemDetails.NOT_PENDING);
+			case EXPIRED -> problem(HttpStatus.CONFLICT, "REQUEST_EXPIRED",
+					"This request's response deadline has passed.");
+			case SET_UNAVAILABLE -> problem(HttpStatus.CONFLICT, "SET_UNAVAILABLE",
+					"That set is no longer free for these days; the request was declined and the guest told.");
+			case PAYMENT_INIT_FAILED -> problem(HttpStatus.BAD_GATEWAY, "PAYMENT_INIT_FAILED",
+					"The payment request could not be issued.");
+		};
+	}
+
+	@PostMapping("/stays/{stayId}/accept")
+	ResponseEntity<?> acceptStay(Authentication authentication, @PathVariable long venueId, @PathVariable long stayId) {
+		OperatorId operator = currentOperator.require(authentication);
+		return switch (respondToRequest.acceptStay(operator, new VenueId(venueId), new StayId(stayId))) {
+			case AcceptOutcome.Accepted accepted -> ResponseEntity.ok(new StayDecisionView(stayId, accepted.status().name()));
+			case AcceptOutcome.Rejected rejected -> acceptRejection(rejected);
 		};
 	}
 
@@ -86,12 +109,15 @@ class BookingRequestController {
 			case DeclineOutcome.Declined ignored ->
 					ResponseEntity.ok(new RequestDecisionView(bookingId,
 							ai.riviera.platform.booking.domain.BookingStatus.DECLINED.name()));
-			case DeclineOutcome.Rejected rejected -> switch (rejected) {
-				case NO_SUCH_REQUEST -> problem(HttpStatus.NOT_FOUND, "NO_SUCH_REQUEST",
-						"No pending request with this id at this venue.");
-				case NOT_PENDING -> problem(HttpStatus.CONFLICT, "REQUEST_NOT_PENDING",
-						RequestProblemDetails.NOT_PENDING);
-			};
+			case DeclineOutcome.Rejected rejected -> declineRejection(rejected);
+		};
+	}
+
+	private static ResponseEntity<?> declineRejection(DeclineOutcome.Rejected rejected) {
+		return switch (rejected) {
+			case NO_SUCH_REQUEST -> problem(HttpStatus.NOT_FOUND, "NO_SUCH_REQUEST",
+					"No pending request with this id at this venue.");
+			case NOT_PENDING -> problem(HttpStatus.CONFLICT, "REQUEST_NOT_PENDING", RequestProblemDetails.NOT_PENDING);
 		};
 	}
 

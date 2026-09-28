@@ -184,6 +184,62 @@ describe('BookingService', () => {
     expect(TestBed.inject(DeviceLocalBookings).codes()).toContain('STAY123456');
   });
 
+  it('answers a plan at a Request-to-Book venue as one request with every stop (#1267)', () => {
+    let received: CreateBookingResult | undefined;
+    service
+      .createStay({
+        stretches: [
+          { setId: 2, firstDate: '2026-12-01', lastDate: '2026-12-02' },
+          { setId: 5, firstDate: '2026-12-03', lastDate: '2026-12-04' },
+        ],
+        contact: REQUEST.contact,
+      })
+      .subscribe((r) => (received = r));
+
+    httpMock.expectOne(`${environment.apiBaseUrl}/api/stays`).flush(
+      {
+        code: 'STAYRQ3456',
+        status: 'PENDING_REQUEST',
+        venueId: 1,
+        venueName: 'Miramar Beach Club',
+        firstDate: '2026-12-01',
+        lastDate: '2026-12-04',
+        total: { minorUnits: 18000, currency: 'EUR' },
+        stretches: [
+          {
+            setId: 2,
+            rowLabel: 'Front row',
+            positionNo: 2,
+            firstDate: '2026-12-01',
+            lastDate: '2026-12-02',
+            amount: { minorUnits: 9000, currency: 'EUR' },
+          },
+          {
+            setId: 5,
+            rowLabel: 'Second row',
+            positionNo: 1,
+            firstDate: '2026-12-03',
+            lastDate: '2026-12-04',
+            amount: { minorUnits: 9000, currency: 'EUR' },
+          },
+        ],
+        emailWithheld: false,
+        requestExpiresAt: '2026-11-30T16:00:00Z',
+      },
+      { status: 202, statusText: 'Accepted' },
+    );
+
+    expect(received?.kind).toBe('requested');
+    const requested = service.lastRequested()!;
+    expect(requested.code).toBe('STAYRQ3456');
+    expect(requested.bookingDate).toBe('2026-12-01');
+    expect(requested.lastDate).toBe('2026-12-04');
+    expect(requested.amount).toEqual({ minorUnits: 18000, currency: 'EUR' });
+    expect(requested.requestExpiresAt).toBe('2026-11-30T16:00:00Z');
+    expect(requested.stretches).toHaveLength(2);
+    expect(service.lastAwaitingPayment()).toBeUndefined();
+  });
+
   it('sends the solved proof-of-work payload as the fence header when it has one', () => {
     service.createBooking(REQUEST, undefined, 'solved-base64-payload').subscribe();
 
@@ -437,7 +493,6 @@ describe('bookingErrorOf', () => {
       'SET_NOT_BOOKABLE_ONLINE',
     );
     expect(bookingErrorOf(httpError(404, 'NO_SUCH_SET'))).toBe('NO_SUCH_SET');
-    expect(bookingErrorOf(httpError(422, 'RANGE_NOT_OFFERED'))).toBe('RANGE_NOT_OFFERED');
     expect(bookingErrorOf(httpError(422, 'STAY_TOO_LONG'))).toBe('STAY_TOO_LONG');
     expect(bookingErrorOf(httpError(400, 'INVALID_REQUEST'))).toBe('INVALID_REQUEST');
   });

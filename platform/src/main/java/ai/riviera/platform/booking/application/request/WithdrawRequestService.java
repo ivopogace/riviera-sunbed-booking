@@ -1,10 +1,14 @@
 package ai.riviera.platform.booking.application.request;
 
+import java.util.Optional;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 import ai.riviera.platform.booking.application.Bookings;
+import ai.riviera.platform.booking.vocabulary.BookingId;
+import ai.riviera.platform.booking.vocabulary.StayId;
 
 /**
  * The guest withdraw use case: transition first, read only to explain a miss, as
@@ -29,18 +33,22 @@ class WithdrawRequestService implements WithdrawRequest {
 
 	@Override
 	public WithdrawOutcome withdraw(String code) {
-		return release.withdraw(code)
-				.<WithdrawOutcome>map(bookingId -> {
-					log.info("request {} withdrawn by the guest", bookingId.value());
-					return new WithdrawOutcome.Withdrawn();
-				})
-				.orElseGet(() -> classifyMiss(code));
+		Optional<BookingId> lone = release.withdraw(code);
+		if (lone.isPresent()) {
+			log.info("request {} withdrawn by the guest", lone.get().value());
+			return new WithdrawOutcome.Withdrawn();
+		}
+		Optional<StayId> stay = release.withdrawStay(code);
+		if (stay.isPresent()) {
+			log.info("stay request {} withdrawn by the guest", stay.get().value());
+			return new WithdrawOutcome.Withdrawn();
+		}
+		return classifyMiss(code);
 	}
 
-	/** The transition matched no row — read the booking to say why. Never logs the code. */
+	/** The transition matched no row — read the booking or stay to say why. Never logs the code. */
 	private WithdrawOutcome classifyMiss(String code) {
-		return bookings.findByCode(code)
-				.<WithdrawOutcome>map(booking -> WithdrawOutcome.Rejected.NOT_PENDING)
-				.orElse(WithdrawOutcome.Rejected.NO_SUCH_BOOKING);
+		boolean known = bookings.findByCode(code).isPresent() || bookings.findStayByCode(code).isPresent();
+		return known ? WithdrawOutcome.Rejected.NOT_PENDING : WithdrawOutcome.Rejected.NO_SUCH_BOOKING;
 	}
 }

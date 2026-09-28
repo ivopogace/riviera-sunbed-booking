@@ -104,6 +104,67 @@ final class StayFixtures {
 				.query(Long.class).single();
 	}
 
+	/**
+	 * A stay request inserted as stored, holding nothing (ADR-0025): the {@code stay} row, then one
+	 * {@code PENDING_REQUEST} booking per stretch sharing {@code expiresAt}, the guest on {@code a} for
+	 * {@code daysOnA} days from {@code first}, then on {@code b} for {@code daysOnB}.
+	 */
+	static SeededStay insertPendingStay(JdbcClient jdbc, Venue venue, String code, LocalDate first, SetId a,
+			int daysOnA, SetId b, int daysOnB, java.time.Instant expiresAt) {
+		long customer = jdbc.sql("INSERT INTO customer (email, full_name, phone) VALUES (:e, 'Stay Guest', '+355600') RETURNING id")
+				.param("e", code + "@example.com").query(Long.class).single();
+		LocalDate switchDay = first.plusDays(daysOnA);
+		LocalDate last = switchDay.plusDays(daysOnB - 1L);
+		long stay = jdbc.sql("INSERT INTO stay (code, venue_id, first_date, last_date) VALUES (:c, :v, :f, :l) RETURNING id")
+				.param("c", code).param("v", venue.id()).param("f", first).param("l", last).query(Long.class).single();
+		long onA = insertPendingStretch(jdbc, code + "-1", venue, a, customer, first, switchDay.minusDays(1), stay,
+				expiresAt);
+		long onB = insertPendingStretch(jdbc, code + "-2", venue, b, customer, switchDay, last, stay, expiresAt);
+		return new SeededStay(stay, code, List.of(onA, onB));
+	}
+
+	private static long insertPendingStretch(JdbcClient jdbc, String rowCode, Venue venue, SetId set, long customer,
+			LocalDate first, LocalDate last, long stay, java.time.Instant expiresAt) {
+		return jdbc.sql("""
+				INSERT INTO booking (code, venue_id, set_id, customer_id, booking_date, last_date, amount_minor,
+				                     amount_currency, status, request_expires_at, stay_id)
+				VALUES (:code, :venue, :set, :cust, :first, :last, :amount, 'EUR', 'PENDING_REQUEST', :expires, :stay)
+				RETURNING id
+				""").param("code", rowCode).param("venue", venue.id()).param("set", set.value()).param("cust", customer)
+				.param("first", first).param("last", last)
+				.param("amount", PRICE * (last.toEpochDay() - first.toEpochDay() + 1))
+				.param("expires", java.sql.Timestamp.from(expiresAt)).param("stay", stay)
+				.query(Long.class).single();
+	}
+
+	/** A lone {@code PENDING_REQUEST} on {@code set} over {@code first..last}, holding nothing. */
+	static long insertPendingLone(JdbcClient jdbc, Venue venue, String code, SetId set, LocalDate first, LocalDate last,
+			java.time.Instant expiresAt) {
+		long customer = jdbc.sql("INSERT INTO customer (email, full_name, phone) VALUES (:e, 'Lone Guest', '+355600') RETURNING id")
+				.param("e", code + "@example.com").query(Long.class).single();
+		return jdbc.sql("""
+				INSERT INTO booking (code, venue_id, set_id, customer_id, booking_date, last_date, amount_minor,
+				                     amount_currency, status, request_expires_at)
+				VALUES (:code, :venue, :set, :cust, :first, :last, :amount, 'EUR', 'PENDING_REQUEST', :expires)
+				RETURNING id
+				""").param("code", code).param("venue", venue.id()).param("set", set.value()).param("cust", customer)
+				.param("first", first).param("last", last)
+				.param("amount", PRICE * (last.toEpochDay() - first.toEpochDay() + 1))
+				.param("expires", java.sql.Timestamp.from(expiresAt))
+				.query(Long.class).single();
+	}
+
+	/** The operator {@link #venue} made owner of a visible venue. */
+	static ai.riviera.platform.operator.vocabulary.OperatorId ownerOf(JdbcClient jdbc, Venue venue) {
+		return new ai.riviera.platform.operator.vocabulary.OperatorId(jdbc.sql(
+				"SELECT operator_id FROM operator_venue WHERE venue_id = :v").param("v", venue.id())
+				.query(Long.class).single());
+	}
+
+	static String statusOf(JdbcClient jdbc, long bookingId) {
+		return jdbc.sql("SELECT status FROM booking WHERE id = :id").param("id", bookingId).query(String.class).single();
+	}
+
 	static void take(JdbcClient jdbc, SetId set, LocalDate day) {
 		jdbc.sql("INSERT INTO set_availability (set_id, booking_date, state) VALUES (:id, :date, 'BOOKED_ONLINE')")
 				.param("id", set.value()).param("date", day).update();

@@ -62,6 +62,9 @@ still "releases" would delete another guest's claim.
   cancels it (`accepted_at` + pay window), exactly as today.
 - Pending requests that exist at deploy time lose their rows in the migration, so no row is stranded
   once the termination legs stop releasing.
+- A stitched stay request (#1267) applies §2–§4 to the whole `stay`: the accept claims every stretch
+  or none and a lost day declines the stay whole; a rival that is itself a stay declines whole; every
+  termination leg moves every stretch together.
 
 ## Rejected alternatives
 

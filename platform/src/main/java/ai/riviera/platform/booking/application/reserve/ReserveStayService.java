@@ -8,19 +8,24 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.OptionalLong;
+import java.util.function.Function;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import ai.riviera.platform.availability.api.AvailabilityClaim;
+import ai.riviera.platform.availability.api.SetAvailabilityFacts;
 import ai.riviera.platform.availability.vocabulary.ClaimOutcome;
 import ai.riviera.platform.booking.application.BookingCodeGenerator;
+import ai.riviera.platform.booking.application.BookingCutoff;
 import ai.riviera.platform.booking.application.Bookings;
+import ai.riviera.platform.booking.application.request.RequestWindows;
 import ai.riviera.platform.booking.application.reserve.CreateStayCommand.Stretch;
 import ai.riviera.platform.booking.application.reserve.StayReserveOutcome.ReservedStretch;
 import ai.riviera.platform.booking.vocabulary.StayId;
 import ai.riviera.platform.customer.api.CustomerDirectory;
 import ai.riviera.platform.customer.vocabulary.CustomerId;
+import ai.riviera.platform.venue.vocabulary.BookingMode;
 import ai.riviera.platform.venue.vocabulary.SetBookingInfo;
 import ai.riviera.platform.venue.vocabulary.SetId;
 import ai.riviera.platform.venue.vocabulary.StaySpan;
@@ -31,7 +36,7 @@ import ai.riviera.platform.venue.vocabulary.VenueId;
  * shared {@link ReserveFences} over the whole stay, then every {@code (set, date)} of every stretch
  * claimed all-or-nothing (invariant #2), the stay row inserted with the group's one code (invariant
  * #7) and one {@code AWAITING_PAYMENT} booking per stretch under it — in one transaction that
- * commits before any payment call. Only {@code CreateStayService} calls it.
+ * commits before any payment call. At a Request-to-Book venue: one pending stretch each, claiming nothing.
  */
 @Service
 class ReserveStayService {
@@ -40,21 +45,27 @@ class ReserveStayService {
 
 	private final ai.riviera.platform.venue.api.SetBookingFacts setFacts;
 	private final AvailabilityClaim availability;
+	private final SetAvailabilityFacts taken;
 	private final ReserveFences fences;
 	private final CustomerDirectory customers;
 	private final Bookings bookings;
 	private final BookingCodeGenerator codeGenerator;
+	private final BookingCutoff cutoff;
+	private final RequestWindows requestWindows;
 	private final Clock clock;
 
 	ReserveStayService(ai.riviera.platform.venue.api.SetBookingFacts setFacts, AvailabilityClaim availability,
-			ReserveFences fences, CustomerDirectory customers, Bookings bookings, BookingCodeGenerator codeGenerator,
-			Clock clock) {
+			SetAvailabilityFacts taken, ReserveFences fences, CustomerDirectory customers, Bookings bookings,
+			BookingCodeGenerator codeGenerator, BookingCutoff cutoff, RequestWindows requestWindows, Clock clock) {
 		this.setFacts = setFacts;
 		this.availability = availability;
+		this.taken = taken;
 		this.fences = fences;
 		this.customers = customers;
 		this.bookings = bookings;
 		this.codeGenerator = codeGenerator;
+		this.cutoff = cutoff;
+		this.requestWindows = requestWindows;
 		this.clock = clock;
 	}
 
@@ -68,10 +79,14 @@ class ReserveStayService {
 		Instant now = clock.instant();
 		StaySpan stay = command.stay();
 		for (Stretch stretch : command.stretches()) {
-			Optional<BookingOutcome.Rejected> refused = fences.refuseStretch(sets.get(stretch.setId()), stay, now);
+			Optional<BookingOutcome.Rejected> refused = fences.refuse(sets.get(stretch.setId()), stay, now);
 			if (refused.isPresent()) {
 				return new StayReserveOutcome.Rejected(refused.get());
 			}
+		}
+		SetBookingInfo venue = sets.get(command.stretches().getFirst().setId());
+		if (venue.bookingMode() == BookingMode.REQUEST) {
+			return requestPending(command, sets, venue, now);
 		}
 		ClaimOutcome claim = claimEveryDay(command.stretches());
 		switch (claim) {
@@ -80,24 +95,53 @@ class ReserveStayService {
 			case NO_SUCH_SET -> { return new StayReserveOutcome.Rejected(BookingOutcome.Rejected.NO_SUCH_SET); }
 			case CLAIMED -> { /* every day won — proceed */ }
 		}
-		SetBookingInfo venue = sets.get(command.stretches().getFirst().setId());
 		CustomerId customerId = customers.findOrCreate(command.contact());
 		InsertedStay inserted = insertStayWithUniqueCode(venue.venueId(), stay);
+		List<ReservedStretch> stretches = insertStretches(command, sets, customerId, inserted,
+				bookings::insertAwaitingPayment);
+		return new StayReserveOutcome.Reserved(inserted.id(), inserted.code(), venue, customerId, stretches);
+	}
+
+	/**
+	 * A stay request at a Request-to-Book venue holds nothing (ADR-0025, #1267): a day already taken on
+	 * any stretch refuses it as a read, else one pending booking per stretch under one shared deadline,
+	 * capped at the first day's sales close (invariant #4).
+	 */
+	private StayReserveOutcome requestPending(CreateStayCommand command, Map<SetId, SetBookingInfo> sets,
+			SetBookingInfo venue, Instant now) {
+		for (Stretch stretch : command.stretches()) {
+			if (!taken.takenDaysBetween(List.of(stretch.setId()), stretch.firstDay(), stretch.lastDay()).isEmpty()) {
+				return new StayReserveOutcome.Rejected(BookingOutcome.Rejected.SET_TAKEN);
+			}
+		}
+		CustomerId customerId = customers.findOrCreate(command.contact());
+		Instant closes = cutoff.salesCloseAt(venue.salesClose(), command.stay().firstDay());
+		Instant window = now.plus(requestWindows.expiryWindow());
+		Instant expiresAt = window.isBefore(closes) ? window : closes;
+		InsertedStay inserted = insertStayWithUniqueCode(venue.venueId(), command.stay());
+		List<ReservedStretch> stretches = insertStretches(command, sets, customerId, inserted,
+				row -> bookings.insertPendingRequest(row, expiresAt));
+		return new StayReserveOutcome.Requested(inserted.id(), inserted.code(), venue, stretches, expiresAt);
+	}
+
+	/** One booking per stretch under the stay, at its own total (#5), with a derived row code never shown (#7). */
+	private List<ReservedStretch> insertStretches(CreateStayCommand command, Map<SetId, SetBookingInfo> sets,
+			CustomerId customerId, InsertedStay inserted, Function<NewBooking, OptionalLong> insert) {
 		List<ReservedStretch> stretches = new ArrayList<>();
 		int n = 0;
 		for (Stretch stretch : command.stretches()) {
 			SetBookingInfo set = sets.get(stretch.setId());
 			long amountMinor = Math.multiplyExact(set.price().minorUnits(), (long) stretch.span().days());
 			String rowCode = inserted.code() + "-" + (++n);
-			OptionalLong bookingId = bookings.insertAwaitingPayment(new NewBooking(rowCode, set.venueId(), set.setId(),
-					customerId, command.accountId(), stretch.firstDay(), stretch.lastDay(), amountMinor,
-					set.price().currency(), inserted.id()));
+			OptionalLong bookingId = insert.apply(new NewBooking(rowCode, set.venueId(), set.setId(), customerId,
+					command.accountId(), stretch.firstDay(), stretch.lastDay(), amountMinor, set.price().currency(),
+					inserted.id()));
 			if (bookingId.isEmpty()) {
 				throw new IllegalStateException("a stretch's row code collided with an existing booking code");
 			}
 			stretches.add(new ReservedStretch(bookingId.getAsLong(), set, stretch.firstDay(), stretch.lastDay(), amountMinor));
 		}
-		return new StayReserveOutcome.Reserved(inserted.id(), inserted.code(), venue, customerId, stretches);
+		return stretches;
 	}
 
 	/**

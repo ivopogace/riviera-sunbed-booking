@@ -152,15 +152,14 @@ class PlanItineraryIT {
 	}
 
 	@Test
-	void aRequestToBookVenueGetsNoPlan() {
+	void aRequestToBookVenueGetsAPlan() {
 		StaySpan threeDays = new StaySpan(D1, D1.plusDays(2));
 		StayItinerary itinerary = planner.plan(new VenueId(request), threeDays, Optional.empty()).orElseThrow();
 
-		assertEquals(0, itinerary.maxMoves(), "one set per request: no move budget");
-		assertTrue(itinerary.plan().isEmpty());
-		assertEquals(Anchoring.NONE, itinerary.anchoring());
-		assertEquals(1, planner.plan(new VenueId(capped), threeDays, Optional.empty()).orElseThrow().plan().orElseThrow()
-				.moveCount(), "the same grid stitches at an Instant venue");
+		assertEquals(3, itinerary.maxMoves(), "the configured budget: the venue answers the whole plan (#1267)");
+		assertEquals(1, itinerary.plan().orElseThrow().moveCount());
+		assertEquals(planner.plan(new VenueId(capped), threeDays, Optional.empty()).orElseThrow().plan().orElseThrow()
+				.moveCount(), itinerary.plan().orElseThrow().moveCount(), "the same grid stitches as at an Instant venue");
 	}
 
 	@Test

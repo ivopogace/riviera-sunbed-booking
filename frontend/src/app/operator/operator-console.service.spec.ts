@@ -129,6 +129,7 @@ describe('OperatorConsoleService — Request-to-Book client (#176)', () => {
   afterEach(() => httpMock.verify());
 
   const REQUEST: PendingRequestItem = {
+    kind: 'BOOKING',
     bookingId: 11,
     setId: 7,
     bookingDate: '2026-07-03',
@@ -180,6 +181,19 @@ describe('OperatorConsoleService — Request-to-Book client (#176)', () => {
     expect(req.request.body).toEqual({});
     req.flush({ bookingId: 11, status: 'DECLINED' });
     expect(actual).toEqual({ bookingId: 11, status: 'DECLINED' });
+  });
+
+  it('answers a stay request by its stay id, whole (#1267)', () => {
+    service.acceptStayRequest(1, 40).subscribe();
+    const accept = httpMock.expectOne(`${BASE}/api/venues/1/booking-requests/stays/40/accept`);
+    expect(accept.request.method).toBe('POST');
+    expect(accept.request.body).toEqual({});
+    accept.flush({ stayId: 40, status: 'AWAITING_PAYMENT' });
+
+    service.declineStayRequest(1, 40).subscribe();
+    const decline = httpMock.expectOne(`${BASE}/api/venues/1/booking-requests/stays/40/decline`);
+    expect(decline.request.method).toBe('POST');
+    decline.flush({ stayId: 40, status: 'DECLINED' });
   });
 });
 

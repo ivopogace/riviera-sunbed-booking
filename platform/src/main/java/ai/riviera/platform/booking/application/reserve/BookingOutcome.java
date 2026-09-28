@@ -37,7 +37,7 @@ public sealed interface BookingOutcome
 	/**
 	 * The booking was not created. Each reason maps to one HTTP status in the controller:
 	 * {@code SET_TAKEN}→409, {@code NOT_ONLINE_POOL}/{@code BOOKING_CLOSED}/{@code VENUE_CLOSED}/
-	 * {@code RANGE_NOT_OFFERED}/{@code STAY_TOO_LONG}→422, {@code NO_SUCH_SET}→404.
+	 * {@code STAY_TOO_LONG}→422, {@code NO_SUCH_SET}→404.
 	 */
 	enum Rejected implements BookingOutcome {
 		/** The {@code (set, date)} is already held by another party (invariant #2). */
@@ -50,8 +50,6 @@ public sealed interface BookingOutcome
 		BOOKING_CLOSED,
 		/** The venue is closed for the season and its closure does not admit every day asked; the venue stays visible. */
 		VENUE_CLOSED,
-		/** A stitched stay at a venue that sells by request, which takes one set per request, never a plan. */
-		RANGE_NOT_OFFERED,
 		/** A stay longer than the venue's own maximum stay length. */
 		STAY_TOO_LONG
 	}

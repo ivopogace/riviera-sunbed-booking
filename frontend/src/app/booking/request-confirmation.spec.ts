@@ -63,6 +63,59 @@ describe('RequestConfirmation', () => {
     );
   });
 
+  it('names every stop of a stay request and says the venue answers the whole stay (#1267)', () => {
+    TestBed.inject(BookingService)
+      .createStay({
+        stretches: [
+          { setId: 2, firstDate: '2026-12-01', lastDate: '2026-12-02' },
+          { setId: 5, firstDate: '2026-12-03', lastDate: '2026-12-04' },
+        ],
+        contact: REQUEST.contact,
+      })
+      .subscribe();
+    httpMock.expectOne(`${environment.apiBaseUrl}/api/stays`).flush(
+      {
+        code: 'STAYRQ3456',
+        status: 'PENDING_REQUEST',
+        venueId: 1,
+        venueName: 'Miramar Beach Club',
+        firstDate: '2026-12-01',
+        lastDate: '2026-12-04',
+        total: { minorUnits: 18000, currency: 'EUR' },
+        stretches: [
+          {
+            setId: 2,
+            rowLabel: 'Front row',
+            positionNo: 2,
+            firstDate: '2026-12-01',
+            lastDate: '2026-12-02',
+            amount: { minorUnits: 9000, currency: 'EUR' },
+          },
+          {
+            setId: 5,
+            rowLabel: 'Second row',
+            positionNo: 1,
+            firstDate: '2026-12-03',
+            lastDate: '2026-12-04',
+            amount: { minorUnits: 9000, currency: 'EUR' },
+          },
+        ],
+        emailWithheld: false,
+        requestExpiresAt: '2026-11-30T16:00:00Z',
+      },
+      { status: 202, statusText: 'Accepted' },
+    );
+
+    const { host } = render();
+    const stops = host.querySelectorAll('[data-testid="request-stops"] li');
+    expect(stops).toHaveLength(2);
+    expect(stops[0].textContent).toContain('Front row · spot 2');
+    expect(stops[1].textContent).toContain('Second row · spot 1');
+    expect(host.textContent).toContain('accepts or declines your whole stay');
+    expect(host.textContent).toMatch(/spots aren.t held for you until the venue accepts/);
+    expect(host.textContent).toContain('€180');
+  });
+
   it('does NOT render a non-pending hand-off as a sent request (belt-and-braces)', () => {
     TestBed.inject(BookingService).createBooking(REQUEST).subscribe();
     httpMock

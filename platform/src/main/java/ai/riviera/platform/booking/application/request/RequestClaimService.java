@@ -1,7 +1,11 @@
 package ai.riviera.platform.booking.application.request;
 
 import java.time.Instant;
+import java.util.ArrayList;
+import java.util.LinkedHashSet;
+import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
@@ -13,17 +17,20 @@ import ai.riviera.platform.booking.application.Bookings;
 import ai.riviera.platform.booking.application.reserve.ClaimRef;
 import ai.riviera.platform.booking.application.reserve.SpanClaim;
 import ai.riviera.platform.booking.events.BookingRequestDeclined;
+import ai.riviera.platform.booking.events.StayRequestDeclined;
 import ai.riviera.platform.booking.vocabulary.BookingId;
 import ai.riviera.platform.booking.vocabulary.DeclineReason;
+import ai.riviera.platform.booking.vocabulary.StayId;
 import ai.riviera.platform.venue.vocabulary.StaySpan;
 import ai.riviera.platform.venue.vocabulary.VenueId;
 
 /**
- * The committed half of the venue's accept (ADR-0025): claim every day of the pending request
- * (invariant #2), move it to {@code AWAITING_PAYMENT}, and decline every other pending request that
- * overlaps it on that set — in one transaction, so the payment call that follows holds no lock. A day
- * that cannot be claimed makes the request decline itself. Lock order matches the reserve and the
- * remodel: the set's rows first, the booking row after. Rationale: {@code RESPONSIBILITIES.md} §booking.
+ * The committed half of the venue's accept (ADR-0025): claim every day of the pending request, or of
+ * every stretch of a stay request (invariant #2, #1267), move it to {@code AWAITING_PAYMENT}, and decline
+ * every pending request overlapping it, a stay whole — in one transaction, so the payment call that
+ * follows holds no lock. A day that cannot be claimed makes the request decline itself whole. Lock
+ * order matches the reserve and the remodel: set rows by ascending day, then booking rows.
+ * Rationale: {@code RESPONSIBILITIES.md} §booking.
  */
 @Service
 class RequestClaimService {
@@ -54,12 +61,37 @@ class RequestClaimService {
 			SpanClaim.releaseEveryDay(availability, span.setId(), days);
 			return new AcceptClaim.Missed();
 		}
-		for (DeclinedRival rival : bookings.declineOverlappingPending(span.setId(), span.bookingDate(),
-				span.lastDate(), bookingId.value(), DeclineReason.ANOTHER_GUEST)) {
-			events.publishEvent(new BookingRequestDeclined(new BookingId(rival.bookingId()), rival.setId(),
-					rival.bookingDate(), rival.lastDate(), DeclineReason.ANOTHER_GUEST));
-		}
+		declineRivals(List.of(span));
 		return new AcceptClaim.Accepted(accepted.get());
+	}
+
+	/** {@link #accept} for a stay request: every stretch claimed and accepted, or none. */
+	@Transactional
+	public StayAcceptClaim acceptStay(StayId stayId, VenueId venueId, Instant now) {
+		List<StayStretchRef> stretches = bookings.findPendingStayStretches(stayId, venueId);
+		if (stretches.isEmpty()) {
+			return new StayAcceptClaim.Missed();
+		}
+		List<StayStretchRef> won = new ArrayList<>();
+		for (StayStretchRef stretch : stretches) {
+			if (SpanClaim.claimEveryDay(availability, stretch.setId(), stretch.span()) != ClaimOutcome.CLAIMED) {
+				won.forEach(held -> SpanClaim.releaseEveryDay(availability, held.setId(), held.span()));
+				return declineStaySelf(stayId, venueId);
+			}
+			won.add(stretch);
+		}
+		List<AcceptedRequest> accepted = bookings.acceptPendingStay(stayId, venueId, now);
+		if (accepted.isEmpty()) {
+			won.forEach(held -> SpanClaim.releaseEveryDay(availability, held.setId(), held.span()));
+			return new StayAcceptClaim.Missed();
+		}
+		if (accepted.size() != stretches.size()) {
+			throw new IllegalStateException("stay " + stayId.value() + " accepted " + accepted.size() + " of "
+					+ stretches.size() + " stretches");
+		}
+		declineRivals(stretches.stream()
+				.map(stretch -> new ClaimRef(stretch.setId(), stretch.firstDay(), stretch.lastDay())).toList());
+		return new StayAcceptClaim.Accepted(accepted);
 	}
 
 	/** Compensates a failed payment set-up: back to pending, and the accept's claim is given back. */
@@ -73,6 +105,34 @@ class RequestClaimService {
 		return reverted;
 	}
 
+	/** {@link #revert} for every stretch of an accepted stay request, in one transaction. */
+	@Transactional
+	public boolean revertStay(List<AcceptedRequest> stretches) {
+		boolean reverted = false;
+		for (AcceptedRequest stretch : stretches) {
+			reverted |= revert(stretch);
+		}
+		return reverted;
+	}
+
+	/** Declines every pending request overlapping the accepted spans; one fact per lone rival and per rival stay. */
+	private void declineRivals(List<ClaimRef> accepted) {
+		Set<StayId> rivalStays = new LinkedHashSet<>();
+		for (ClaimRef span : accepted) {
+			for (DeclinedRival rival : bookings.declineRivals(span.setId(), span.bookingDate(), span.lastDate(),
+					DeclineReason.ANOTHER_GUEST)) {
+				if (rival.stayId() != null) {
+					rivalStays.add(rival.stayId());
+				}
+				else {
+					events.publishEvent(new BookingRequestDeclined(new BookingId(rival.bookingId()), rival.setId(),
+							rival.bookingDate(), rival.lastDate(), DeclineReason.ANOTHER_GUEST));
+				}
+			}
+		}
+		rivalStays.forEach(stay -> events.publishEvent(new StayRequestDeclined(stay, DeclineReason.ANOTHER_GUEST)));
+	}
+
 	private AcceptClaim declineSelf(BookingId bookingId, VenueId venueId) {
 		return bookings.declinePending(bookingId.value(), venueId, DeclineReason.SET_UNAVAILABLE)
 				.<AcceptClaim>map(declined -> {
@@ -81,5 +141,13 @@ class RequestClaimService {
 					return new AcceptClaim.SetUnavailable();
 				})
 				.orElseGet(AcceptClaim.Missed::new);
+	}
+
+	private StayAcceptClaim declineStaySelf(StayId stayId, VenueId venueId) {
+		if (!bookings.declinePendingStay(stayId, venueId, DeclineReason.SET_UNAVAILABLE)) {
+			return new StayAcceptClaim.Missed();
+		}
+		events.publishEvent(new StayRequestDeclined(stayId, DeclineReason.SET_UNAVAILABLE));
+		return new StayAcceptClaim.SetUnavailable();
 	}
 }

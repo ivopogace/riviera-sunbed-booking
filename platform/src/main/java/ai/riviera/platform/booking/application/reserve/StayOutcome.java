@@ -14,6 +14,10 @@ public sealed interface StayOutcome {
 			implements StayOutcome {
 	}
 
+	/** A stay request at a Request-to-Book venue, pending until {@code requestExpiresAt}; nothing charged or held. */
+	record Requested(StayConfirmation confirmation, java.time.Instant requestExpiresAt) implements StayOutcome {
+	}
+
 	record Rejected(BookingOutcome.Rejected reason) implements StayOutcome {
 	}
 }

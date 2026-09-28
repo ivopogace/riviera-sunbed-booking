@@ -174,7 +174,8 @@ class RequestAcceptClaimsIT {
 
 		var queue = pendingRequests.forVenue(operator, new VenueId(venueId));
 
-		PendingRequest row = queue.stream().filter(r -> r.bookingId() == range).findFirst().orElseThrow();
+		PendingRequest.Lone row = queue.stream().map(PendingRequest.Lone.class::cast)
+				.filter(r -> r.bookingId() == range).findFirst().orElseThrow();
 		assertEquals(day, row.bookingDate());
 		assertEquals(day.plusDays(2), row.lastDate());
 		assertEquals(13500L, row.amountMinor(), "the whole stay's total");
@@ -219,7 +220,7 @@ class RequestAcceptClaimsIT {
 		var queue = pendingRequests.forVenue(operator, new VenueId(venueId));
 
 		assertEquals(3, queue.size());
-		for (PendingRequest row : queue) {
+		for (PendingRequest.Lone row : queue.stream().map(PendingRequest.Lone.class::cast).toList()) {
 			int expected = row.bookingId() == a || row.bookingId() == b ? 1 : 0;
 			assertEquals(expected, row.competingRequests(), "competitors of request " + row.bookingId());
 		}

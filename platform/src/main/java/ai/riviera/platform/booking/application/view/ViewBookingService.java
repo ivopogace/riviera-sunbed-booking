@@ -112,10 +112,11 @@ class ViewBookingService implements ViewBooking {
 		}
 		return new BookingDetail(stay.code(), status, stay.venueId(), firstSet.venueName(), firstSet.rowLabel(),
 				firstSet.positionNo(), stay.firstDay(), stay.lastDay(), new MoneyView(summary.amountMinor(), first.currency()),
-				cancellable, false, quotes.getFirst().beforeCutoff(),
+				cancellable, status == BookingStatus.PENDING_REQUEST, quotes.getFirst().beforeCutoff(),
 				new MoneyView(refundIfCancelledNow, first.currency()),
 				summary.refundMinor() == null ? null : new MoneyView(summary.refundMinor(), first.currency()),
-				refundOutstanding, null, payment, emailWithheld, payWindowClosed, summary.cancelReason(), null,
+				refundOutstanding, summary.requestExpiresAt(), payment, emailWithheld, payWindowClosed,
+				summary.cancelReason(), summary.declineReason(),
 				cutoff.cancellationWindow(firstSet.bookingCutoff(), stay.firstDay(), first.createdAt()),
 				panel, nameSuggestionFor(panel, first), null, stretchViews);
 	}

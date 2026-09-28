@@ -101,8 +101,9 @@ root on modules, nothing on the root.
 availability claim, erasure's reach into reviews, the remodel gate + claim settlement. Events:
 `PaymentConfirmed`/`PaymentCanceled` → `booking`; `BookingConfirmed` → `payout`, `notification`;
 `BookingCancelled` → those two plus `booking`'s own refund + intent-void listeners;
-`StayConfirmed`/`StayCancelled`/`StayMoveDue`/`BookingPaymentDue`/`BookingRequestDeclined`/
-`BookingRequestExpired`/`BookingMoved` → `notification`; `ReviewsChanged` → `venue`.
+`StayConfirmed`/`StayCancelled`/`StayMoveDue`/`BookingPaymentDue`/`StayPaymentDue`/
+`BookingRequestDeclined`/`StayRequestDeclined`/`BookingRequestExpired`/`StayRequestExpired`/
+`BookingMoved` → `notification`; `ReviewsChanged` → `venue`.
 
 **Platform edge** (`RESPONSIBILITIES.md` § *Platform edge*): server-side sessions, two
 principal types; login machinery at the edge, never in modules; customer account and guest

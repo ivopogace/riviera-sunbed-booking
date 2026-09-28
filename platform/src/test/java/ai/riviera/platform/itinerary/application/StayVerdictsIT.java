@@ -110,13 +110,14 @@ class StayVerdictsIT {
 	}
 
 	@Test
-	void aRequestToBookVenueIsNeverFitsWithMoves() {
+	void aRequestToBookVenueFitsWithMovesAsAnInstantOneDoes() {
 		Map<VenueId, StayVerdict> byVenue = verdicts.forCoast(List.of(new VenueId(withMoves),
 				new VenueId(requestWithMoves)), FOUR_DAYS);
 
-		assertEquals(StayVerdict.Fit.FITS_WITH_MOVES, byVenue.get(new VenueId(withMoves)).fit(), "the same grid, Instant");
-		assertEquals(new StayVerdict(StayVerdict.Fit.CANNOT_HOST, 0, 3, null, 0),
-				byVenue.get(new VenueId(requestWithMoves)), "one set per request, never a plan");
+		assertEquals(byVenue.get(new VenueId(withMoves)), byVenue.get(new VenueId(requestWithMoves)),
+				"the same grid reads the same verdict: the venue answers the whole plan (#1267)");
+		assertEquals(new StayVerdict(StayVerdict.Fit.FITS_WITH_MOVES, 0, 3, null, 1),
+				byVenue.get(new VenueId(requestWithMoves)));
 	}
 
 	@Test

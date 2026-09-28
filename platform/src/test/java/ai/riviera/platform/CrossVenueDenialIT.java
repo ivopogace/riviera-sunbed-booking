@@ -415,6 +415,25 @@ class CrossVenueDenialIT {
 	}
 
 	@Test
+	void acceptStayRequestByNonOwnerIs403() throws Exception {
+		// The stay accept moves money for every stretch: ownership fires before any read (#1267).
+		actingAs(operatorA);
+		mvc.perform(post("/api/venues/{v}/booking-requests/stays/{s}/accept", MIRAMAR, 999_999)
+						.cookie(operatorSession).with(csrf()))
+				.andExpect(status().isForbidden())
+				.andExpect(jsonPath("$.code").value("NOT_VENUE_OWNER"));
+	}
+
+	@Test
+	void declineStayRequestByNonOwnerIs403() throws Exception {
+		actingAs(operatorA);
+		mvc.perform(post("/api/venues/{v}/booking-requests/stays/{s}/decline", MIRAMAR, 999_999)
+						.cookie(operatorSession).with(csrf()))
+				.andExpect(status().isForbidden())
+				.andExpect(jsonPath("$.code").value("NOT_VENUE_OWNER"));
+	}
+
+	@Test
 	void checkInByNonOwnerIs403() throws Exception {
 		// Ownership fires BEFORE any lookup: even a nonexistent code is 403, never 404 (invariant #13).
 		actingAs(operatorA);
@@ -447,6 +466,10 @@ class CrossVenueDenialIT {
 				.andExpect(status().isNotFound())
 				.andExpect(jsonPath("$.code").value("NO_SUCH_REQUEST"));
 		mvc.perform(post("/api/venues/{v}/booking-requests/{b}/decline", venueOwnedByB, 999_999)
+						.cookie(operatorSession).with(csrf()))
+				.andExpect(status().isNotFound())
+				.andExpect(jsonPath("$.code").value("NO_SUCH_REQUEST"));
+		mvc.perform(post("/api/venues/{v}/booking-requests/stays/{s}/accept", venueOwnedByB, 999_999)
 						.cookie(operatorSession).with(csrf()))
 				.andExpect(status().isNotFound())
 				.andExpect(jsonPath("$.code").value("NO_SUCH_REQUEST"));

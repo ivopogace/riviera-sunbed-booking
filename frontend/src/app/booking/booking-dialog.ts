@@ -319,8 +319,12 @@ const SET_INCLUDES = '2 loungers + umbrella · full day';
               >
                 <strong class="text-riv-card-ink">Request to Book.</strong> This venue reviews each
                 request before payment. We’ll send your request now —
-                <strong class="text-riv-card-ink">you won’t be charged yet</strong>. The set isn’t
-                held until the venue accepts — other guests can request it too.
+                <strong class="text-riv-card-ink">you won’t be charged yet</strong>.
+                @if (isPlan()) {
+                  The spots aren’t held until the venue accepts — other guests can request them too.
+                } @else {
+                  The set isn’t held until the venue accepts — other guests can request it too.
+                }
                 @if (isStay()) {
                   The venue accepts or declines your whole stay of {{ dayCount() }} days, never part
                   of it.
@@ -665,8 +669,6 @@ export class BookingDialog implements OnInit {
         return this.date() === todayBookingDate(new Date())
           ? 'Online sales for today have closed at this venue. Try another venue or tomorrow.'
           : 'Booking has closed for that date. Try a later day.';
-      case 'RANGE_NOT_OFFERED':
-        return 'This venue takes requests for one spot at a time, not a plan across several. Pick one spot that’s free for all your days.';
       case 'STAY_TOO_LONG':
         return 'These days are more than this venue takes in one stay. Pick fewer days to book here.';
       case 'VENUE_CLOSED':

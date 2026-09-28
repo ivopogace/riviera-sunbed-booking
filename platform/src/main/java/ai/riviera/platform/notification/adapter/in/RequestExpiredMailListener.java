@@ -9,11 +9,13 @@ import org.springframework.stereotype.Component;
 import org.springframework.transaction.event.TransactionalEventListener;
 
 import ai.riviera.platform.booking.events.BookingRequestExpired;
+import ai.riviera.platform.booking.events.StayRequestExpired;
 import ai.riviera.platform.notification.application.BookingLinks;
 import ai.riviera.platform.notification.application.BookingMailFacts;
 import ai.riviera.platform.notification.application.BookingMailFactsService;
 import ai.riviera.platform.notification.application.MissingBookingFact;
 import ai.riviera.platform.notification.application.RequestExpiredMail;
+import ai.riviera.platform.notification.application.StayRequestMailFacts;
 import ai.riviera.platform.notification.application.TransactionalMailService;
 import ai.riviera.platform.shared.ObservabilityMetrics;
 
@@ -51,6 +53,24 @@ class RequestExpiredMailListener {
 			case BookingMailFacts.Resolved booking -> mails.sendRequestExpired(booking.toEmail(),
 					new RequestExpiredMail(booking.bookingCode(), booking.venueName(),
 							event.bookingDate(), event.lastDay(), links.forBooking(booking.bookingCode())));
+		}
+	}
+
+	/** A stay request expired whole (#1267): one record under the stay's code and span. */
+	@Async(RegistryMailExecutorConfig.MAIL_EXECUTOR)
+	@TransactionalEventListener
+	void on(StayRequestExpired event) {
+		switch (facts.resolveStayRequest(event.stayId())) {
+			case StayRequestMailFacts.Missing(MissingBookingFact fact) -> {
+				meters.counter(ObservabilityMetrics.MAIL_REQUEST_EXPIRED_ABANDONED,
+						MissingBookingFact.TAG, fact.tagValue()).increment();
+				log.error("Request-expired mail abandoned ({}) for stay {} — the fact cannot appear later, so "
+						+ "nothing retries it: the guest has no notice their request expired", fact.tagValue(),
+						event.stayId().value());
+			}
+			case StayRequestMailFacts.Resolved stay -> mails.sendRequestExpired(stay.toEmail(),
+					new RequestExpiredMail(stay.stayCode(), stay.venueName(), stay.firstDate(), stay.lastDate(),
+							links.forBooking(stay.stayCode())));
 		}
 	}
 

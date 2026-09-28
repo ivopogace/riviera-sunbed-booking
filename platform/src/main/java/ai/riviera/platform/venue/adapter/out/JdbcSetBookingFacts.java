@@ -156,10 +156,9 @@ class JdbcSetBookingFacts implements SetBookingFacts {
 		}
 		List<Long> ids = venueIds.stream().map(VenueId::value).toList();
 		Map<VenueId, Integer> maxima = new LinkedHashMap<>();
-		Map<VenueId, BookingMode> modes = new LinkedHashMap<>();
 		Map<VenueId, List<SetId>> online = new LinkedHashMap<>();
 		jdbc.sql("""
-				SELECT v.id AS venue_id, v.max_stay_days, v.booking_mode, sp.id AS set_id
+				SELECT v.id AS venue_id, v.max_stay_days, sp.id AS set_id
 				FROM venue v
 				LEFT JOIN active_set_position sp ON sp.venue_id = v.id AND sp.pool = :pool
 				WHERE v.id IN (:ids)
@@ -170,7 +169,6 @@ class JdbcSetBookingFacts implements SetBookingFacts {
 				.query(rs -> {
 					VenueId venue = new VenueId(rs.getLong(COL_VENUE_ID));
 					maxima.put(venue, rs.getObject("max_stay_days", Integer.class));
-					modes.put(venue, BookingMode.valueOf(rs.getString("booking_mode")));
 					List<SetId> sets = online.computeIfAbsent(venue, id -> new ArrayList<>());
 					long setId = rs.getLong("set_id");
 					if (!rs.wasNull()) {
@@ -178,8 +176,7 @@ class JdbcSetBookingFacts implements SetBookingFacts {
 					}
 				});
 		return maxima.entrySet().stream().collect(Collectors.toUnmodifiableMap(Map.Entry::getKey,
-				entry -> new VenueStayFacts(List.copyOf(online.get(entry.getKey())), entry.getValue(),
-						modes.get(entry.getKey()))));
+				entry -> new VenueStayFacts(List.copyOf(online.get(entry.getKey())), entry.getValue())));
 	}
 
 	@Override

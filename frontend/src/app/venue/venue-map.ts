@@ -508,11 +508,11 @@ export class VenueMap {
   /**
    * Ask for the stay's stitched plan (design D7), anchored on `anchorSetId` when the tourist planned
    * around a tapped set. A snapshot like the map read: a later dispatch or a new map supersedes it.
-   * A Request-to-Book venue takes one spot per request, so it is never asked for a plan.
+   * A Request-to-Book venue is asked too: the plan goes as one request, answered whole (#1267).
    */
   private loadItinerary(anchorSetId?: number): void {
     const id = this.venueId();
-    if (id === undefined || !this.isStay() || this.venue()?.bookingMode === 'REQUEST') {
+    if (id === undefined || !this.isStay()) {
       return;
     }
     const epoch = ++this.planEpoch;

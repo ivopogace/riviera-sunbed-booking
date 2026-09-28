@@ -895,10 +895,51 @@ class CreateBookingServiceTest {
 		}
 
 		@Override
-		public List<ai.riviera.platform.booking.application.request.DeclinedRival> declineOverlappingPending(
-				SetId setId, LocalDate firstDay, LocalDate lastDay, long exceptBookingId,
+		public List<ai.riviera.platform.booking.application.request.DeclinedRival> declineRivals(
+				SetId setId, LocalDate firstDay, LocalDate lastDay,
 				ai.riviera.platform.booking.vocabulary.DeclineReason reason) {
 			return List.of();
+		}
+
+		@Override
+		public List<ai.riviera.platform.booking.application.request.StayStretchRef> findPendingStayStretches(
+				ai.riviera.platform.booking.vocabulary.StayId stayId, ai.riviera.platform.venue.vocabulary.VenueId venueId) {
+			throw new UnsupportedOperationException("not exercised by the single-booking reserve");
+		}
+
+		@Override
+		public List<ai.riviera.platform.booking.application.request.AcceptedRequest> acceptPendingStay(
+				ai.riviera.platform.booking.vocabulary.StayId stayId, ai.riviera.platform.venue.vocabulary.VenueId venueId,
+				Instant now) {
+			throw new UnsupportedOperationException("not exercised by the single-booking reserve");
+		}
+
+		@Override
+		public boolean declinePendingStay(ai.riviera.platform.booking.vocabulary.StayId stayId,
+				ai.riviera.platform.venue.vocabulary.VenueId venueId,
+				ai.riviera.platform.booking.vocabulary.DeclineReason reason) {
+			throw new UnsupportedOperationException("not exercised by the single-booking reserve");
+		}
+
+		@Override
+		public Optional<ai.riviera.platform.booking.vocabulary.StayId> expirePendingStayOf(long bookingId, Instant now) {
+			throw new UnsupportedOperationException("not exercised by the single-booking reserve");
+		}
+
+		@Override
+		public Optional<ai.riviera.platform.booking.vocabulary.StayId> withdrawPendingStay(String code) {
+			throw new UnsupportedOperationException("not exercised by the single-booking reserve");
+		}
+
+		@Override
+		public Optional<ai.riviera.platform.booking.vocabulary.StayId> stayOf(long bookingId) {
+			throw new UnsupportedOperationException("not exercised by the single-booking reserve");
+		}
+
+		@Override
+		public Optional<ai.riviera.platform.booking.application.request.RequestSnapshot> stayRequestSnapshot(
+				ai.riviera.platform.booking.vocabulary.StayId stayId, ai.riviera.platform.venue.vocabulary.VenueId venueId) {
+			throw new UnsupportedOperationException("not exercised by the single-booking reserve");
 		}
 
 		@Override

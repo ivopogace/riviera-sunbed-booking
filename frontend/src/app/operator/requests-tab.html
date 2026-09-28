@@ -102,24 +102,44 @@
     </div>
   } @else {
     <ul class="mt-3.5 flex list-none flex-col gap-3 p-0">
-      @for (row of rows(); track row.bookingId) {
+      @for (row of rows(); track row.key) {
         <!-- A settled decision parks focus here, never on Accept — one Enter there would pay. -->
-        <li [attr.data-testid]="'request-row-' + row.bookingId">
+        <li [attr.data-testid]="'request-row-' + row.key">
           <article appCardGlass class="rounded-[22px] px-5 py-[18px]" data-testid="request-card">
             <div class="flex flex-wrap items-start gap-3.5">
               <div class="min-w-[200px] flex-1">
                 <span class="text-[16.5px] font-bold text-riv-card-ink">{{ row.guest }}</span>
                 <div class="mt-2.5 flex flex-wrap gap-3.5 text-[13px] text-riv-card-ink-soft">
-                  <span
-                    >Set <strong class="text-riv-card-ink">{{ row.setLabel }}</strong> ·
-                    {{ row.tierName }}</span
-                  >
+                  @if (row.stops.length === 0) {
+                    <span
+                      >Set <strong class="text-riv-card-ink">{{ row.setLabel }}</strong> ·
+                      {{ row.tierName }}</span
+                    >
+                  }
                   <span>{{ row.dateLabel }}</span>
                   <span
                     >Price
                     <strong class="text-riv-console-accent-ink">{{ row.priceStr }}</strong></span
                   >
                 </div>
+                @if (row.stops.length > 0) {
+                  <!-- A stay request: every stop it would occupy, accepted or declined whole (#1267). -->
+                  <ol
+                    class="mt-2 list-none p-0 text-[13px] leading-[1.6] text-riv-card-ink-soft"
+                    data-testid="request-stops"
+                  >
+                    @for (stop of row.stops; track $index) {
+                      <li>
+                        {{ $index + 1 }}. Set
+                        <strong class="text-riv-card-ink">{{ stop.setLabel }}</strong> ·
+                        {{ stop.tierName }} · {{ stop.dateLabel }}
+                      </li>
+                    }
+                  </ol>
+                  <p class="mt-1 text-[12.5px] text-riv-card-ink-soft">
+                    One request for the whole stay — accept or decline it whole.
+                  </p>
+                }
                 @if (row.competing > 0) {
                   <p
                     class="competing-hint mt-2 text-[12.5px] font-semibold text-riv-error-ink"
@@ -132,7 +152,7 @@
                 }
               </div>
               <div class="flex-shrink-0 text-right">
-                @if (row.urgent && !isExpired(row.bookingId)) {
+                @if (row.urgent && !isExpired(row.key)) {
                   <span
                     class="inline-flex items-center gap-1.5 rounded-full border border-riv-alert-tint/25 bg-riv-alert-tint/10 px-2.5 py-1 text-[12px] font-bold text-riv-error-ink"
                     data-testid="urgency-chip"
@@ -140,7 +160,7 @@
                     <app-clock-icon />{{ row.timeLeft }}
                   </span>
                 }
-                @if (!isExpired(row.bookingId)) {
+                @if (!isExpired(row.key)) {
                   <span class="mt-1.5 block text-[11.5px] text-riv-card-ink-faint"
                     >Respond by {{ row.respondByStr }}</span
                   >
@@ -148,14 +168,14 @@
               </div>
             </div>
 
-            @if (isExpired(row.bookingId)) {
+            @if (isExpired(row.key)) {
               <div
                 class="mt-3.5 flex flex-wrap items-center justify-between gap-3 border-t border-riv-card-border pt-3.5"
                 data-testid="expired-race"
               >
                 <output
                   class="block min-w-[220px] flex-1 text-[13.5px] font-semibold text-riv-error-ink"
-                  [attr.data-testid]="'expired-race-' + row.bookingId"
+                  [attr.data-testid]="'expired-race-' + row.key"
                 >
                   <app-alert-icon class="[&_svg]:inline [&_svg]:size-[14px] [&_svg]:align-[-2px]" />
                   This request just expired — our system swept it before you responded. The guest
@@ -171,7 +191,7 @@
                   Dismiss
                 </button>
               </div>
-            } @else if (inDecline(row.bookingId)) {
+            } @else if (inDecline(row.key)) {
               <div
                 class="mt-3.5 border-t border-riv-card-border pt-3.5"
                 data-testid="decline-confirm"
@@ -184,9 +204,9 @@
                     type="button"
                     appTouchTarget
                     class="rounded-[13px] bg-riv-solid-fill-danger px-5 py-[11px] text-[14px] font-bold text-white aria-disabled:opacity-60"
-                    [appBusy]="isDeciding(row.bookingId)"
+                    [appBusy]="isDeciding(row.key)"
                     [attr.aria-label]="confirmDeclineLabel(row)"
-                    [attr.data-testid]="'request-confirm-decline-' + row.bookingId"
+                    [attr.data-testid]="'request-confirm-decline-' + row.key"
                     (click)="onConfirmDecline(row)"
                   >
                     Confirm decline
@@ -195,7 +215,7 @@
                     type="button"
                     appTouchTarget
                     class="rounded-[13px] border border-riv-card-border bg-riv-console-inset/60 px-5 py-[11px] text-[14px] font-semibold text-riv-card-ink aria-disabled:opacity-60"
-                    [appBusy]="isDeciding(row.bookingId)"
+                    [appBusy]="isDeciding(row.key)"
                     (click)="onCancelDecline(row)"
                   >
                     Keep it
@@ -208,7 +228,7 @@
                   type="button"
                   appTouchTarget
                   class="min-w-[130px] flex-1 rounded-[13px] bg-riv-solid-fill-brand px-4 py-[11px] text-[14px] font-bold text-white aria-disabled:opacity-60"
-                  [appBusy]="isDeciding(row.bookingId)"
+                  [appBusy]="isDeciding(row.key)"
                   [attr.aria-label]="acceptLabel(row)"
                   (click)="onAccept(row)"
                 >
@@ -218,9 +238,9 @@
                   type="button"
                   appTouchTarget
                   class="rounded-[13px] border border-riv-alert-tint/50 bg-riv-console-inset/50 px-5 py-[11px] text-[14px] font-semibold text-riv-error-ink aria-disabled:opacity-60"
-                  [appBusy]="isDeciding(row.bookingId)"
+                  [appBusy]="isDeciding(row.key)"
                   [attr.aria-label]="declineLabel(row)"
-                  [attr.data-testid]="'request-decline-' + row.bookingId"
+                  [attr.data-testid]="'request-decline-' + row.key"
                   (click)="onDecline(row)"
                 >
                   Decline

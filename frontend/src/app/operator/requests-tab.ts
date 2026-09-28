@@ -11,6 +11,7 @@ import {
   untracked,
 } from '@angular/core';
 import { ActivatedRoute } from '@angular/router';
+import { Observable } from 'rxjs';
 
 import { TouchTarget } from '../shared/touch-target';
 import { OperatorAuth, SESSION_EXPIRED_MESSAGE } from '../core/operator-auth';
@@ -27,16 +28,22 @@ import { formatStay } from '../shared/booking-date-label';
 import { setLabel, setsById, tierLabel } from '../shared/set-label';
 import { VenueMapView } from '../shared/venue-views';
 import { ConsoleVenueMap } from './console-venue-map';
-import { PendingRequestItem, RequestErrorCode } from './operator-console.model';
+import { PendingRequestItem, RequestDecision, RequestErrorCode } from './operator-console.model';
 import { OperatorConsoleService, requestErrorOf } from './operator-console.service';
 import { PendingRequestsStore } from './pending-requests-store';
 import { CheckIcon } from '../shared/check-icon';
 import { AlertIcon } from '../shared/alert-icon';
 import { ClockIcon } from '../shared/clock-icon';
 
-/** One pending-request card's static display fields; the transient accept/decline/expired state is per-id. */
+/**
+ * One pending-request card's static display fields; the transient accept/decline/expired state is per
+ * `key`: the booking id for one set, `stay-<id>` for a stay request answered whole (#1267).
+ */
 interface RequestRow {
-  readonly bookingId: number;
+  readonly key: string;
+  readonly kind: PendingRequestItem['kind'];
+  /** The id the decision endpoint takes: the booking's, or the stay's. */
+  readonly id: number;
   readonly guest: string;
   readonly setLabel: string;
   readonly tierName: string;
@@ -47,6 +54,15 @@ interface RequestRow {
   readonly urgent: boolean;
   readonly timeLeft: string;
   readonly competing: number;
+  /** A stay request's stops in day order; empty for one set. */
+  readonly stops: readonly StopRow[];
+}
+
+/** One stop of a stay request's card: its set, tier and days. */
+interface StopRow {
+  readonly setLabel: string;
+  readonly tierName: string;
+  readonly dateLabel: string;
 }
 
 /**
@@ -112,11 +128,11 @@ export class RequestsTab {
   private readonly nowMs = signal(0);
 
   /** Requests with an in-flight accept/decline — their buttons are disabled until it settles. */
-  private readonly deciding = signal<ReadonlySet<number>>(new Set());
+  private readonly deciding = signal<ReadonlySet<string>>(new Set());
   /** Requests showing the inline "Decline this request?" confirm. */
-  private readonly declineConfirm = signal<ReadonlySet<number>>(new Set());
+  private readonly declineConfirm = signal<ReadonlySet<string>>(new Set());
   /** Requests the sweep expired mid-action — the dismissible expired-race card. */
-  private readonly expired = signal<ReadonlySet<number>>(new Set());
+  private readonly expired = signal<ReadonlySet<string>>(new Set());
   /** Bumped per venue context: an identity guard — a venueId value check passes again
    *  after an A→B→A switch, so continuations compare this instead. */
   private epoch = 0;
@@ -158,9 +174,37 @@ export class RequestsTab {
     const byId = setsById(this.venue()?.sets);
     const now = this.nowMs();
     return this.requests().map((r) => {
+      const deadline = {
+        respondByStr: formatDeadline(r.requestExpiresAt),
+        urgent: isUrgent(r.requestExpiresAt, now),
+        timeLeft: timeLeftLabel(r.requestExpiresAt, now),
+        competing: r.competingRequests,
+      };
+      if (r.kind === 'STAY') {
+        const stops = r.stops.map((stop) => ({
+          setLabel: setLabel(byId, stop.setId),
+          tierName: tierLabel(byId.get(stop.setId)?.tier ?? 'STANDARD'),
+          dateLabel: formatStay(stop.firstDate, stop.lastDate, { withYear: true }),
+        }));
+        return {
+          key: keyOf(r),
+          kind: r.kind,
+          id: r.stayId,
+          guest: r.guestName,
+          setLabel: `${stops.length} spots`,
+          tierName: '',
+          dateLabel: formatStay(r.firstDate, r.lastDate, { withYear: true }),
+          isStay: true,
+          priceStr: formatMoney(r.total),
+          stops,
+          ...deadline,
+        };
+      }
       const set = byId.get(r.setId);
       return {
-        bookingId: r.bookingId,
+        key: keyOf(r),
+        kind: r.kind,
+        id: r.bookingId,
         guest: r.guestName,
         setLabel: setLabel(byId, r.setId),
         tierName: tierLabel(set?.tier ?? 'STANDARD'),
@@ -170,52 +214,50 @@ export class RequestsTab {
             : formatStay(r.bookingDate, r.lastDate, { withYear: true }),
         isStay: r.lastDate !== r.bookingDate,
         priceStr: formatMoney(r.amount),
-        respondByStr: formatDeadline(r.requestExpiresAt),
-        urgent: isUrgent(r.requestExpiresAt, now),
-        timeLeft: timeLeftLabel(r.requestExpiresAt, now),
-        competing: r.competingRequests,
+        stops: [],
+        ...deadline,
       };
     });
   });
 
-  protected isDeciding(bookingId: number): boolean {
-    return this.deciding().has(bookingId);
+  protected isDeciding(key: string): boolean {
+    return this.deciding().has(key);
   }
-  protected inDecline(bookingId: number): boolean {
-    return this.declineConfirm().has(bookingId);
+  protected inDecline(key: string): boolean {
+    return this.declineConfirm().has(key);
   }
-  protected isExpired(bookingId: number): boolean {
-    return this.expired().has(bookingId);
+  protected isExpired(key: string): boolean {
+    return this.expired().has(key);
   }
 
   protected onAccept(row: RequestRow): void {
-    this.decide(row.bookingId, 'accept');
+    this.decide(row, 'accept');
   }
 
   /** Open the inline decline confirm (a two-step decline — no accidental cancellations). The confirm
    *  replaces the Decline button that opened it, so focus follows onto the destructive button. */
   protected onDecline(row: RequestRow): void {
     this.notice.set(undefined);
-    this.declineConfirm.update((s) => new Set(s).add(row.bookingId));
-    this.focusAfterRender(confirmDeclineTestId(row.bookingId));
+    this.declineConfirm.update((s) => new Set(s).add(row.key));
+    this.focusAfterRender(confirmDeclineTestId(row.key));
   }
 
   protected onConfirmDecline(row: RequestRow): void {
-    this.decide(row.bookingId, 'decline');
+    this.decide(row, 'decline');
   }
 
   /** Back out of the confirm — focus returns to the Decline trigger the confirm replaced. */
   protected onCancelDecline(row: RequestRow): void {
-    this.declineConfirm.update((s) => without(s, row.bookingId));
-    this.focusAfterRender(declineTestId(row.bookingId));
+    this.declineConfirm.update((s) => without(s, row.key));
+    this.focusAfterRender(declineTestId(row.key));
   }
 
   /** Dismiss an expired-race card: drop it from the queue and re-sync the badge. Dismiss sets no
    *  notice, so the empty region would be a silent landing — the all-caught-up panel speaks instead. */
   protected onDismissExpired(row: RequestRow): void {
-    this.expired.update((s) => without(s, row.bookingId));
-    const landing = this.landingAfterRemoving(row.bookingId, EMPTY);
-    this.removeCard(row.bookingId);
+    this.expired.update((s) => without(s, row.key));
+    const landing = this.landingAfterRemoving(row.key, EMPTY);
+    this.removeCard(row.key);
     this.focusAfterRender(landing, EMPTY);
   }
 
@@ -223,72 +265,79 @@ export class RequestsTab {
    * Send the accept or decline and settle the card on the answer. The decline confirm stays up for
    * the whole round trip: closing it early strands focus (WCAG 2.4.3) and voids its `[appBusy]`.
    */
-  private decide(bookingId: number, action: 'accept' | 'decline'): void {
-    const venueId = this.venueId();
-    if (this.isDeciding(bookingId)) {
+  private decide(row: RequestRow, action: 'accept' | 'decline'): void {
+    const key = row.key;
+    if (this.isDeciding(key)) {
       return;
     }
     const epoch = this.epoch;
     this.notice.set(undefined);
-    this.deciding.update((s) => new Set(s).add(bookingId));
-    const call =
-      action === 'accept'
-        ? this.console.acceptRequest(venueId, bookingId)
-        : this.console.declineRequest(venueId, bookingId);
-    call.subscribe({
+    this.deciding.update((s) => new Set(s).add(key));
+    this.decision(row, action).subscribe({
       next: (decision) => {
         if (this.epoch !== epoch) {
           return; // a venue switch superseded this decision's UI state
         }
-        this.stopDeciding(bookingId);
-        this.closeDeclineConfirm(bookingId);
+        this.stopDeciding(key);
+        this.closeDeclineConfirm(key);
         this.notice.set(decisionNotice(action, decision.status));
         // Read the landing spot BEFORE the queue loses the card, or the neighbour is off by one.
-        const landing = this.landingAfterRemoving(bookingId, NOTICE);
-        this.removeCard(bookingId); // instant optimistic removal…
+        const landing = this.landingAfterRemoving(key, NOTICE);
+        this.removeCard(key); // instant optimistic removal…
         this.focusAfterRender(landing, NOTICE);
         this.reconcile(); // …then re-sync the rest of the queue with server truth
       },
       error: (e: unknown) => {
         if (this.epoch === epoch) {
-          this.onDecisionError(bookingId, action, e); // skip if a venue switch superseded it
+          this.onDecisionError(key, action, e); // skip if a venue switch superseded it
         }
       },
     });
   }
 
+  /** The decision call: a stay request is answered whole through its own endpoint (#1267). */
+  private decision(row: RequestRow, action: 'accept' | 'decline'): Observable<RequestDecision> {
+    const venueId = this.venueId();
+    if (row.kind === 'STAY') {
+      return action === 'accept'
+        ? this.console.acceptStayRequest(venueId, row.id)
+        : this.console.declineStayRequest(venueId, row.id);
+    }
+    return action === 'accept'
+      ? this.console.acceptRequest(venueId, row.id)
+      : this.console.declineRequest(venueId, row.id);
+  }
+
   /** Route an accept/decline failure: the sweep race → the in-card expired copy; stale → drop; else a notice. */
-  private onDecisionError(bookingId: number, action: 'accept' | 'decline', e: unknown): void {
-    this.stopDeciding(bookingId);
+  private onDecisionError(key: string, action: 'accept' | 'decline', e: unknown): void {
+    this.stopDeciding(key);
     const reason = requestErrorOf(e);
     switch (reason) {
       case 'REQUEST_EXPIRED': {
         // Keep the card, flipped to the dismissible expired-race copy — do NOT reconcile it away.
-        this.closeDeclineConfirm(bookingId);
-        this.expired.update((s) => new Set(s).add(bookingId));
-        this.focusAfterRender(expiredRaceTestId(bookingId), NOTICE);
+        this.closeDeclineConfirm(key);
+        this.expired.update((s) => new Set(s).add(key));
+        this.focusAfterRender(expiredRaceTestId(key), NOTICE);
         break;
       }
       case 'SET_UNAVAILABLE':
       case 'REQUEST_NOT_PENDING':
       case 'NO_SUCH_REQUEST': {
-        this.closeDeclineConfirm(bookingId);
-        const days = this.rows().find((row) => row.bookingId === bookingId)?.isStay
-          ? 'those days'
-          : 'that day';
+        this.closeDeclineConfirm(key);
+        const days = this.rows().find((row) => row.key === key)?.isStay ? 'those days' : 'that day';
         this.notice.set(
           reason === 'SET_UNAVAILABLE'
             ? `That set is no longer free for ${days} — the request was declined and the guest has been told.`
             : 'That request was already handled — the queue has moved on.',
         );
-        const landing = this.landingAfterRemoving(bookingId, NOTICE);
-        this.removeCard(bookingId);
+        const landing = this.landingAfterRemoving(key, NOTICE);
+        this.removeCard(key);
         this.focusAfterRender(landing, NOTICE);
         this.reconcile(); // other cards may be stale too
         break;
       }
       case 'UNAUTHORIZED':
-        this.closeDeclineConfirm(bookingId);
+        this.closeDeclineConfirm(key);
         this.notice.set(SESSION_EXPIRED_MESSAGE);
         this.operator.sessionLost();
         this.focusAfterRender(NOTICE);
@@ -300,29 +349,29 @@ export class RequestsTab {
     }
   }
 
-  private closeDeclineConfirm(bookingId: number): void {
-    this.declineConfirm.update((s) => without(s, bookingId));
+  private closeDeclineConfirm(key: string): void {
+    this.declineConfirm.update((s) => without(s, key));
   }
 
   /**
-   * The test id focus lands on once `bookingId` leaves: the card below, else above, else `whenEmpty`.
+   * The test id focus lands on once the card `key` leaves: the card below, else above, else `whenEmpty`.
    * A neighbour, not the top notice, so the operator walks on down the queue; its row, never its
    * Accept button (a one-click, no-confirm money action).
    */
-  private landingAfterRemoving(bookingId: number, whenEmpty: string): string {
+  private landingAfterRemoving(key: string, whenEmpty: string): string {
     const queue = this.requests();
-    const gone = queue.findIndex((r) => r.bookingId === bookingId);
+    const gone = queue.findIndex((r) => keyOf(r) === key);
     const neighbour = gone < 0 ? undefined : (queue[gone + 1] ?? queue[gone - 1]);
-    return neighbour === undefined ? whenEmpty : rowTestId(neighbour.bookingId);
+    return neighbour === undefined ? whenEmpty : rowTestId(keyOf(neighbour));
   }
 
-  private stopDeciding(bookingId: number): void {
-    this.deciding.update((s) => without(s, bookingId));
+  private stopDeciding(key: string): void {
+    this.deciding.update((s) => without(s, key));
   }
 
   /** Drop a card from the queue and re-sync the shell badge to the new pending count. */
-  private removeCard(bookingId: number): void {
-    this.requests.update((list) => list.filter((r) => r.bookingId !== bookingId));
+  private removeCard(key: string): void {
+    this.requests.update((list) => list.filter((r) => keyOf(r) !== key));
     this.badge.set(this.requests().length);
   }
 
@@ -397,40 +446,40 @@ export class RequestsTab {
 
   /**
    * Where focus goes when a re-read (poll or action) drops the row it sits in — the expiry sweep or
-   * another device took it — else undefined. `@for` tracks by booking id, so only a leaving row
+   * another device took it — else undefined. `@for` tracks by card key, so only a leaving row
    * strands focus (WCAG 2.4.3); lands on the nearest surviving row, else the empty state.
    */
   private landingIfFocusLeaves(fresh: readonly PendingRequestItem[]): string | undefined {
     const focused = this.focusedRow();
-    const survives = (id: number): boolean => fresh.some((r) => r.bookingId === id);
+    const survives = (key: string): boolean => fresh.some((r) => keyOf(r) === key);
     if (focused === undefined || survives(focused)) {
       return undefined;
     }
     const queue = this.requests();
-    const gone = queue.findIndex((r) => r.bookingId === focused);
-    const below = queue.slice(gone + 1).find((r) => survives(r.bookingId));
+    const gone = queue.findIndex((r) => keyOf(r) === focused);
+    const below = queue.slice(gone + 1).find((r) => survives(keyOf(r)));
     const above = queue
       .slice(0, gone)
       .reverse()
-      .find((r) => survives(r.bookingId));
+      .find((r) => survives(keyOf(r)));
     const neighbour = below ?? above;
-    return neighbour === undefined ? EMPTY : rowTestId(neighbour.bookingId);
+    return neighbour === undefined ? EMPTY : rowTestId(keyOf(neighbour));
   }
 
-  /** The booking id of the queue row keyboard focus is inside, if it is inside one at all. */
-  private focusedRow(): number | undefined {
+  /** The card key of the queue row keyboard focus is inside, if it is inside one at all. */
+  private focusedRow(): string | undefined {
     const active = this.document.activeElement;
     const row = active?.closest<HTMLElement>(`[data-testid^="${ROW_PREFIX}"]`);
-    const id = Number(row?.dataset['testid']?.slice(ROW_PREFIX.length));
-    return row == null || Number.isNaN(id) ? undefined : id;
+    const key = row?.dataset['testid']?.slice(ROW_PREFIX.length);
+    return key === undefined || key === '' ? undefined : key;
   }
 
   /** Drop stale ids from the transient sets once their card leaves the freshly-read queue (e.g. a poll
    *  removed a sweep-expired request), so the sets don't accumulate over a long-open session. */
   private pruneTransient(fresh: readonly PendingRequestItem[]): void {
-    const ids = new Set(fresh.map((r) => r.bookingId));
-    const keep = (s: ReadonlySet<number>): ReadonlySet<number> =>
-      new Set([...s].filter((id) => ids.has(id)));
+    const keys = new Set(fresh.map(keyOf));
+    const keep = (s: ReadonlySet<string>): ReadonlySet<string> =>
+      new Set([...s].filter((key) => keys.has(key)));
     this.deciding.update(keep);
     this.declineConfirm.update(keep);
     this.expired.update(keep);
@@ -459,28 +508,33 @@ const EMPTY = 'requests-empty';
 /** The tab itself — where focus goes when a venue switch takes the whole surface with it. */
 const TAB = 'requests-tab';
 
-/**
- * The per-card focus targets. Each carries the booking id because {@link focusMover} resolves by
- * `querySelector`, which takes the first match — a queue-wide id would focus the wrong card.
- */
-function rowTestId(bookingId: number): string {
-  return `${ROW_PREFIX}${bookingId}`;
-}
-const ROW_PREFIX = 'request-row-';
-function expiredRaceTestId(bookingId: number): string {
-  return `expired-race-${bookingId}`;
-}
-function declineTestId(bookingId: number): string {
-  return `request-decline-${bookingId}`;
-}
-function confirmDeclineTestId(bookingId: number): string {
-  return `request-confirm-decline-${bookingId}`;
+/** A card's key: the booking id for one set, `stay-<id>` for a stay request (#1267). */
+function keyOf(request: PendingRequestItem): string {
+  return request.kind === 'STAY' ? `stay-${request.stayId}` : String(request.bookingId);
 }
 
-/** A new set with `id` removed (signals are replaced, never mutated). */
-function without(set: ReadonlySet<number>, id: number): ReadonlySet<number> {
+/**
+ * The per-card focus targets. Each carries the card key because {@link focusMover} resolves by
+ * `querySelector`, which takes the first match — a queue-wide id would focus the wrong card.
+ */
+function rowTestId(key: string): string {
+  return `${ROW_PREFIX}${key}`;
+}
+const ROW_PREFIX = 'request-row-';
+function expiredRaceTestId(key: string): string {
+  return `expired-race-${key}`;
+}
+function declineTestId(key: string): string {
+  return `request-decline-${key}`;
+}
+function confirmDeclineTestId(key: string): string {
+  return `request-confirm-decline-${key}`;
+}
+
+/** A new set with `key` removed (signals are replaced, never mutated). */
+function without(set: ReadonlySet<string>, key: string): ReadonlySet<string> {
   const next = new Set(set);
-  next.delete(id);
+  next.delete(key);
   return next;
 }
 

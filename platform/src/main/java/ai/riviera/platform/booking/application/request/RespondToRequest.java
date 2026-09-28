@@ -1,6 +1,7 @@
 package ai.riviera.platform.booking.application.request;
 
 import ai.riviera.platform.booking.vocabulary.BookingId;
+import ai.riviera.platform.booking.vocabulary.StayId;
 import ai.riviera.platform.operator.vocabulary.OperatorId;
 import ai.riviera.platform.venue.vocabulary.VenueId;
 
@@ -15,5 +16,11 @@ public interface RespondToRequest {
 
 	AcceptOutcome accept(OperatorId operator, VenueId venueId, BookingId bookingId);
 
+	/** {@link #accept} for a stay request, whole (#1267): every stretch claimed, one payment request, or none. */
+	AcceptOutcome acceptStay(OperatorId operator, VenueId venueId, StayId stayId);
+
 	DeclineOutcome decline(OperatorId operator, VenueId venueId, BookingId bookingId);
+
+	/** {@link #decline} for a stay request, whole (#1267). */
+	DeclineOutcome declineStay(OperatorId operator, VenueId venueId, StayId stayId);
 }

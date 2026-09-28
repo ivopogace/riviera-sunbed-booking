@@ -476,7 +476,11 @@ export interface LedgerRow {
  * request is not confirmed or paid yet, and the code is the guest's unguessable bearer credential
  * (invariant #7), shown to staff only at arrival in the Daily-view arrivals list.
  */
-export interface PendingRequestItem {
+export type PendingRequestItem = PendingBookingRequest | PendingStayRequest;
+
+/** A request for one set, answered by `bookingId`. */
+export interface PendingBookingRequest {
+  readonly kind: 'BOOKING';
   readonly bookingId: number;
   readonly setId: number;
   readonly bookingDate: string; // ISO YYYY-MM-DD (Europe/Tirane civil day, invariant #6)
@@ -490,9 +494,34 @@ export interface PendingRequestItem {
   readonly competingRequests: number;
 }
 
+/**
+ * A stitched stay request (#1267): every stop under one deadline, accepted or declined whole by
+ * `stayId`. `competingRequests` counts each rival request once, across every stop.
+ */
+export interface PendingStayRequest {
+  readonly kind: 'STAY';
+  readonly stayId: number;
+  readonly guestName: string;
+  readonly firstDate: string; // ISO, the stay's first day
+  readonly lastDate: string; // ISO, the stay's last day
+  readonly total: MoneyView;
+  readonly requestedAt: string;
+  readonly requestExpiresAt: string;
+  readonly competingRequests: number;
+  readonly stops: readonly PendingStayStop[];
+}
+
+/** One stop of a stay request: its set, days and money, and the requests competing for it. */
+export interface PendingStayStop {
+  readonly setId: number;
+  readonly firstDate: string;
+  readonly lastDate: string;
+  readonly amount: MoneyView;
+  readonly competingRequests: number;
+}
+
 /** The outcome of an accept/decline: `AWAITING_PAYMENT` or `CONFIRMED` (accept), `DECLINED`. */
 export interface RequestDecision {
-  readonly bookingId: number;
   readonly status: string;
 }
 

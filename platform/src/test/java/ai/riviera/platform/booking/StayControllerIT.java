@@ -83,6 +83,25 @@ class StayControllerIT {
 	}
 
 	@Test
+	void aPlanAtARequestVenueIsOneRequestAnswered202WithItsDeadline() throws Exception {
+		Venue venue = StayFixtures.venue(jdbc, "REQUEST", null, true);
+		venues.add(venue.id());
+		LocalDate first = firstDay();
+		long a = venue.online().get(0).value();
+		long b = venue.online().get(1).value();
+
+		mvc.perform(post("/api/stays").header(SessionLoginSupport.CHALLENGE_HEADER, SessionLoginSupport.solvedChallenge(mvc))
+				.contentType(MediaType.APPLICATION_JSON).content(body(a, b, first)))
+				.andExpect(status().isAccepted())
+				.andExpect(jsonPath("$.code").isString())
+				.andExpect(jsonPath("$.status").value("PENDING_REQUEST"))
+				.andExpect(jsonPath("$.requestExpiresAt").isString())
+				.andExpect(jsonPath("$.clientSecret").doesNotExist())
+				.andExpect(jsonPath("$.total.minorUnits").value(7 * PRICE))
+				.andExpect(jsonPath("$.stretches.length()").value(2));
+	}
+
+	@Test
 	void aMalformedPlanIs400AndATakenDayIs409() throws Exception {
 		Venue venue = StayFixtures.venue(jdbc, "INSTANT", null, true);
 		venues.add(venue.id());

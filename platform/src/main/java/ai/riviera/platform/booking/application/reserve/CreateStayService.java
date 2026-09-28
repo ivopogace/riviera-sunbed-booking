@@ -58,6 +58,11 @@ class CreateStayService implements CreateStay {
 		return switch (reservation.reserve(command)) {
 			case StayReserveOutcome.Rejected rejected -> new StayOutcome.Rejected(rejected.reason());
 			case StayReserveOutcome.Reserved reserved -> collect(reserved);
+			case StayReserveOutcome.Requested requested -> {
+				log.info("stay request {} of {} stretches sent", requested.stayId().value(), requested.stretches().size());
+				yield new StayOutcome.Requested(confirmation(requested.code(), requested.venue(), requested.stretches(),
+						BookingStatus.PENDING_REQUEST, false), requested.requestExpiresAt());
+			}
 		};
 	}
 
@@ -111,16 +116,21 @@ class CreateStayService implements CreateStay {
 
 	private static StayConfirmation confirmation(StayReserveOutcome.Reserved reserved, BookingStatus status,
 			boolean emailWithheld) {
-		SetBookingInfo venue = reserved.venue();
+		return confirmation(reserved.code(), reserved.venue(), reserved.stretches(), status, emailWithheld);
+	}
+
+	private static StayConfirmation confirmation(String code, SetBookingInfo venue, List<ReservedStretch> reserved,
+			BookingStatus status, boolean emailWithheld) {
 		String currency = venue.price().currency();
-		List<StayConfirmation.Stretch> stretches = reserved.stretches().stream()
+		List<StayConfirmation.Stretch> stretches = reserved.stream()
 				.map(stretch -> new StayConfirmation.Stretch(stretch.set().setId(), stretch.set().rowLabel(),
 						stretch.set().positionNo(), stretch.firstDay(), stretch.lastDay(),
 						new MoneyView(stretch.amountMinor(), currency)))
 				.toList();
-		return new StayConfirmation(reserved.code(), status, venue.venueId(), venue.venueName(),
+		long totalMinor = reserved.stream().mapToLong(ReservedStretch::amountMinor).reduce(0L, Math::addExact);
+		return new StayConfirmation(code, status, venue.venueId(), venue.venueName(),
 				new ai.riviera.platform.venue.vocabulary.StaySpan(stretches.getFirst().firstDay(),
 						stretches.getLast().lastDay()),
-				new MoneyView(reserved.totalMinor(), currency), stretches, emailWithheld);
+				new MoneyView(totalMinor, currency), stretches, emailWithheld);
 	}
 }

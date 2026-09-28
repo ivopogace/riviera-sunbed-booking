@@ -8,6 +8,7 @@ import java.util.Comparator;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 import java.util.Collection;
@@ -33,6 +34,8 @@ import ai.riviera.platform.booking.domain.ServiceDays;
 import ai.riviera.platform.booking.events.BookingCancelled;
 import ai.riviera.platform.booking.events.BookingMoved;
 import ai.riviera.platform.booking.events.BookingRequestDeclined;
+import ai.riviera.platform.booking.vocabulary.StayId;
+import ai.riviera.platform.booking.events.StayRequestDeclined;
 import ai.riviera.platform.booking.vocabulary.BlockReason;
 import ai.riviera.platform.booking.vocabulary.BookingId;
 import ai.riviera.platform.booking.vocabulary.DeclineReason;
@@ -116,14 +119,12 @@ class RemodelClaimsService implements RemodelClaims {
 		}
 		Instant committedAt = clock.instant();
 		long feeMinor = feeRate.perRefund().perRefundMinor();
-		List<ReceiptMove> moves = new ArrayList<>();
-		List<ReceiptOutcome> outcomes = new ArrayList<>();
-		List<ReceiptKept> kept = new ArrayList<>();
+		Settled settled = new Settled(new ArrayList<>(), new ArrayList<>(), new ArrayList<>(), new HashSet<>());
 		for (RemodelClaim claim : fresh) {
-			apply(venueId, claim, committedAt, feeMinor, moves, outcomes, kept);
+			apply(venueId, claim, committedAt, feeMinor, settled);
 		}
-		ReceiptId receipt = receipts.store(new NewReceipt(venueId, operator, committedAt, moves, outcomes,
-				confirmation.reason(), kept));
+		ReceiptId receipt = receipts.store(new NewReceipt(venueId, operator, committedAt, settled.moves(),
+				settled.outcomes(), confirmation.reason(), settled.kept()));
 		return new RemodelCommit.Applied(receipt, committedAt, fresh);
 	}
 
@@ -133,16 +134,22 @@ class RemodelClaimsService implements RemodelClaims {
 	}
 
 	/** A blocked claim is kept: its booking, its rows and its set are left exactly as they are, and the receipt says why. */
-	private void apply(VenueId venueId, RemodelClaim claim, Instant committedAt, long feeMinor,
-			List<ReceiptMove> moves, List<ReceiptOutcome> outcomes, List<ReceiptKept> kept) {
+	private void apply(VenueId venueId, RemodelClaim claim, Instant committedAt, long feeMinor, Settled settled) {
 		switch (claim.outcome()) {
-			case RemodelOutcome.Move move -> moves.add(applyMove(venueId, claim, move, committedAt));
-			case RemodelOutcome.Refund ignored -> outcomes.add(applyRefund(venueId, claim, committedAt, feeMinor));
-			case RemodelOutcome.Release ignored -> outcomes.add(applyRelease(venueId, claim));
-			case RemodelOutcome.Decline ignored -> outcomes.add(applyDecline(venueId, claim));
+			case RemodelOutcome.Move move -> settled.moves().add(applyMove(venueId, claim, move, committedAt));
+			case RemodelOutcome.Refund ignored ->
+				settled.outcomes().add(applyRefund(venueId, claim, committedAt, feeMinor));
+			case RemodelOutcome.Release ignored -> settled.outcomes().add(applyRelease(venueId, claim));
+			case RemodelOutcome.Decline ignored ->
+				settled.outcomes().add(applyDecline(venueId, claim, settled.declinedStays()));
 			case RemodelOutcome.Blocked(var reason) ->
-				kept.add(new ReceiptKept(claim.bookingId(), claim.bookingDate(), claim.from(), reason));
+				settled.kept().add(new ReceiptKept(claim.bookingId(), claim.bookingDate(), claim.from(), reason));
 		}
+	}
+
+	/** What one commit settled so far: the receipt's lines, and the stay requests it already declined whole. */
+	private record Settled(List<ReceiptMove> moves, List<ReceiptOutcome> outcomes, List<ReceiptKept> kept,
+			Set<StayId> declinedStays) {
 	}
 
 	/**
@@ -175,12 +182,24 @@ class RemodelClaimsService implements RemodelClaims {
 		return outcomeOf(claim, ReceiptOutcomeKind.RELEASE, 0L);
 	}
 
-	/** Decline a pending request: the guarded transition and its fact; it held nothing to release (ADR-0025). */
-	private ReceiptOutcome applyDecline(VenueId venueId, RemodelClaim claim) {
-		ClaimRef declined = bookings.declinePending(claim.bookingId().value(), venueId, DeclineReason.SET_UNAVAILABLE)
-				.orElseThrow(() -> lostUnderLock(claim, "pending"));
-		events.publishEvent(new BookingRequestDeclined(claim.bookingId(), declined.setId(), declined.bookingDate(),
-				declined.lastDate(), DeclineReason.SET_UNAVAILABLE));
+	/**
+	 * Decline a pending request: the guarded transition and its fact; it held nothing to release (ADR-0025).
+	 * A stay request's stretch declines its whole stay, once per commit however many stretches it disturbs (#1267).
+	 */
+	private ReceiptOutcome applyDecline(VenueId venueId, RemodelClaim claim, Set<StayId> declinedStays) {
+		Optional<ClaimRef> lone = bookings.declinePending(claim.bookingId().value(), venueId, DeclineReason.SET_UNAVAILABLE);
+		if (lone.isPresent()) {
+			events.publishEvent(new BookingRequestDeclined(claim.bookingId(), lone.get().setId(), lone.get().bookingDate(),
+					lone.get().lastDate(), DeclineReason.SET_UNAVAILABLE));
+			return outcomeOf(claim, ReceiptOutcomeKind.DECLINE, 0L);
+		}
+		StayId stay = bookings.stayOf(claim.bookingId().value()).orElseThrow(() -> lostUnderLock(claim, "pending"));
+		if (declinedStays.add(stay)) {
+			if (!bookings.declinePendingStay(stay, venueId, DeclineReason.SET_UNAVAILABLE)) {
+				throw lostUnderLock(claim, "pending");
+			}
+			events.publishEvent(new StayRequestDeclined(stay, DeclineReason.SET_UNAVAILABLE));
+		}
 		return outcomeOf(claim, ReceiptOutcomeKind.DECLINE, 0L);
 	}
 

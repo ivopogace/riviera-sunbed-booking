@@ -23,7 +23,8 @@ public record StayRecord(StayId id, String code, VenueId venueId, LocalDate firs
 
 	/**
 	 * The stay read as one booking: its code and span, {@link StayStatus} over the stretches, the first
-	 * stretch's spot and birth, money and refunds summed, the latest cancellation or move.
+	 * stretch's spot, birth and request deadline and reason (answered whole, #1267), money and refunds
+	 * summed, the latest cancellation or move.
 	 */
 	public BookingRecord asBooking() {
 		BookingRecord first = stretches.getFirst();
@@ -32,8 +33,9 @@ public record StayRecord(StayId id, String code, VenueId venueId, LocalDate firs
 		List<Long> refunds = stretches.stream().map(BookingRecord::refundMinor).filter(Objects::nonNull).toList();
 		Long refund = refunds.isEmpty() ? null : refunds.stream().mapToLong(Long::longValue).reduce(0L, Math::addExact);
 		return new BookingRecord(first.id(), code, status, venueId, first.setId(), first.customerId(), firstDay, lastDay,
-				amount, first.currency(), latest(BookingRecord::cancelledAt), refund, null, latestCancelReason(),
-				first.createdAt(), first.acceptedAt(), latest(BookingRecord::movedAt));
+				amount, first.currency(), latest(BookingRecord::cancelledAt), refund, first.requestExpiresAt(),
+				latestCancelReason(), first.createdAt(), first.acceptedAt(), latest(BookingRecord::movedAt),
+				first.declineReason());
 	}
 
 	private RefundReason latestCancelReason() {

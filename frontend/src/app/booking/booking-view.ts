@@ -266,8 +266,12 @@ const CLS = {
               </h2>
               <p [class]="cls.bannerBody">
                 {{ b.venueName }} hasn’t responded to your booking request yet. You won’t be charged
-                unless they accept. The set isn’t held for you until then — other guests can request
-                it too.
+                unless they accept.
+                @if (b.stretches?.length) {
+                  The spots aren’t held for you until then — other guests can request them too.
+                } @else {
+                  The set isn’t held for you until then — other guests can request it too.
+                }
                 @if (isStay(b)) {
                   They accept or decline your whole stay, never part of it.
                 }

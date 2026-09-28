@@ -199,6 +199,18 @@ class WebSliceStubs {
 			}
 
 			@Override
+			public AcceptOutcome acceptStay(OperatorId operator, VenueId venueId,
+					ai.riviera.platform.booking.vocabulary.StayId stayId) {
+				return AcceptOutcome.Rejected.NO_SUCH_REQUEST;
+			}
+
+			@Override
+			public DeclineOutcome declineStay(OperatorId operator, VenueId venueId,
+					ai.riviera.platform.booking.vocabulary.StayId stayId) {
+				return DeclineOutcome.Rejected.NO_SUCH_REQUEST;
+			}
+
+			@Override
 			public DeclineOutcome decline(OperatorId operator,
 					VenueId venueId,
 					BookingId bookingId) {

@@ -304,9 +304,9 @@ class RespondToRequestServiceTest {
 	void acceptDeclinesEveryOverlappingRival() {
 		when(bookings.acceptPendingRequest(BOOKING.value(), VENUE, NOW))
 				.thenReturn(Optional.of(acceptedRequest()));
-		when(bookings.declineOverlappingPending(SET, BOOKING_DATE, BOOKING_DATE, BOOKING.value(),
-				DeclineReason.ANOTHER_GUEST))
-				.thenReturn(List.of(new DeclinedRival(77, SET, BOOKING_DATE, BOOKING_DATE), new DeclinedRival(78, SET, BOOKING_DATE, BOOKING_DATE)));
+		when(bookings.declineRivals(SET, BOOKING_DATE, BOOKING_DATE, DeclineReason.ANOTHER_GUEST))
+				.thenReturn(List.of(new DeclinedRival(77, SET, BOOKING_DATE, BOOKING_DATE, null),
+						new DeclinedRival(78, SET, BOOKING_DATE, BOOKING_DATE, null)));
 		when(checkout.pay(any(), any())).thenReturn(new PaymentOutcome.Succeeded("ok"));
 
 		service().accept(OPERATOR, VENUE, BOOKING);
@@ -430,7 +430,7 @@ class RespondToRequestServiceTest {
 		when(bookings.findPendingRequestsForVenue(VENUE)).thenReturn(List.of(new PendingRequestRow(
 				BOOKING.value(), new SetId(3), java.time.LocalDate.of(2026, 8, 3), java.time.LocalDate.of(2026, 8, 3),
 				customerId,
-				4500L, "EUR", NOW.minusSeconds(3600), NOW.plusSeconds(3600), 0)));
+				4500L, "EUR", NOW.minusSeconds(3600), NOW.plusSeconds(3600), 0, null, 0)));
 		when(lookup.findByIds(java.util.Set.of(customerId))).thenReturn(java.util.Map.of(customerId,
 				new ai.riviera.platform.customer.vocabulary.GuestContact("g@e.com", "Guest Name", "+355")));
 
@@ -439,6 +439,6 @@ class RespondToRequestServiceTest {
 		verify(ownership).assertOwns(eq(OPERATOR), eq(new VenueRef(VENUE.value())));
 		assertEquals(1, queue.size());
 		assertEquals("Guest Name", queue.getFirst().guestName());
-		assertTrue(queue.getFirst().requestExpiresAt().isAfter(NOW), "deadline carried through");
+		assertTrue(((PendingRequest.Lone) queue.getFirst()).requestExpiresAt().isAfter(NOW), "deadline carried through");
 	}
 }

@@ -236,9 +236,8 @@ any is released on the old, never a swap of my own — so a racing reserve wins 
 - **A reserve fences before any claim, on both booking modes:** a hidden venue's set
   (`operator.api.VenueVisibility`) is `NO_SUCH_SET`, and no later leg consults visibility; a season
   closure that does not admit every day is `VENUE_CLOSED` (the venue is deliberately visible); the
-  sales close is judged on the first day (invariant #4); a stitched stay at a Request-to-Book venue
-  is `RANGE_NOT_OFFERED` (one set for a range is one request, #1203); a span over the venue's
-  maximum stay is `STAY_TOO_LONG`.
+  sales close is judged on the first day (invariant #4); a span over the venue's maximum stay is
+  `STAY_TOO_LONG`. A stitched plan judges every stretch's set over the whole stay.
 - **Then it claims every day, all or nothing:** a day that loses gives back every day won, then
   answers `SET_TAKEN` (`ConcurrentRangeReservationIT`). One PaymentIntent for per-day price × days
   (invariant #5); the cancellation window and refund are the first day's, on the whole amount
@@ -329,6 +328,13 @@ any is released on the old, never a swap of my own — so a racing reserve wins 
   order is the reserve's and the remodel's: the set's rows, then the booking row; two overlapping
   accepts leave exactly one winner (`RequestAcceptClaimsIT`, `ConcurrentOverlappingAcceptIT`). The
   queue names each request's competing requests; a request for a day already taken is `SET_TAKEN`.
+- **A stay request is answered whole (#1267):** at a Request-to-Book venue a stitched plan is a
+  `stay` of `PENDING_REQUEST` stretches under one deadline. Every leg (accept, decline, expiry,
+  withdraw by the stay's code, a remodel's decline, a rival's decline) moves every stretch or none,
+  keyed by `stay_id`; the lone-request SQL skips a stretch (`stay_id IS NULL`), so none is answered
+  alone. The accept claims every stretch in ascending day order and collects once; a rival stay
+  declines whole. Its facts are `StayRequestDeclined` / `StayRequestExpired` / `StayPaymentDue`; its
+  stretches publish no per-booking request fact (`StayRequestAcceptIT`, `ConcurrentStayAcceptIT`).
 - **Request termination** (decline, expiry, withdraw) lives on `RequestTerminationService`. **Withdraw**
   is authorized by the code alone (the only request command with no ownership check) and guarded by
   status, not deadline, so on an overdue row the row lock leaves one transition
@@ -703,6 +709,9 @@ tag names the person, invariant #7):
   cancellation copy under the stay's code and span, with the summed refund. A stretch's stamped
   `BookingCancelled` mails nothing; an unstamped one (a remodel ending one stretch, an older payload)
   mails that stretch under the stay's code, with a rebook link when a remodel ended it.
+- **A stay request gets one mail per outcome (#1267)**: `StayRequestDeclined` and `StayRequestExpired`
+  send the request record, `StayPaymentDue` the payment-due mail with the stay's total, each under the
+  stay's code and whole span and naming no spot, through the lone flows' listeners and abandon counters.
 - **A stitched stay's move gets one reminder, on `StayMoveDue`**: the stay's code, tomorrow's date,
   today's and tomorrow's spots as the live map labels them, the distance `booking` measured, and the
   code-gated link. No delivery-log row (that log is the confirmation's); a move the listener finds
@@ -819,8 +828,8 @@ into one verdict per venue.
 **Job:** say, for a span, which venues can host a stay — one online set free for every day within
 the venue's maximum stay (`SAME_SET`, with how many sets), a stitched plan within the move budget
 (`FITS_WITH_MOVES`, with how many) — and why not (`CANNOT_HOST`, with the longest run and the
-maximum). A Request-to-Book venue's budget is zero (`MoveBudget#forVenue`, #1203): one set per
-request, so it reads `SAME_SET` or `CANNOT_HOST` and gets no plan. For one venue, the plan itself
+maximum). Every venue gets the same budget; at a Request-to-Book one the plan goes as one request,
+answered whole (#1267). For one venue, the plan itself
 (`GET /api/venues/{id}/itinerary`, priced by `PlanItinerary`): `domain.ItinerarySearch`, a shortest
 path over `(day, set)`, fewest moves then shortest, anchored on a tapped set when named, under
 `riviera.itinerary.max-switches` (D13: three). A snapshot, never a hold (#2).

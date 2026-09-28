@@ -1916,26 +1916,31 @@ describe('VenueMap — date carried from the discovery page (#294)', () => {
       httpMock.match((req) => req.url.endsWith('/availability-calendar'));
     });
 
-    it('at a Request-to-Book venue asks for no plan: the banner says one spot per request, the sheet offers no plan around', async () => {
+    it('at a Request-to-Book venue offers the plan as one request and plans around a tapped spot (#1267)', async () => {
       await setup({ date: first, lastDate: last });
       venueReq().flush({ ...stayMiramar(first, last), bookingMode: 'REQUEST' });
       await settle();
       fixture.detectChanges();
-
-      httpMock.expectNone((req) => req.url === `${environment.apiBaseUrl}/api/venues/1/itinerary`);
-      const banner = dom().querySelector<HTMLElement>('[data-testid="no-cover"]')!;
-      expect(banner.textContent).toContain('No single spot is free for all 3 days');
-      expect(banner.querySelector('[data-testid="no-cover-request"]')!.textContent).toContain(
-        'one spot at a time',
-      );
-      expect(dom().querySelector('[data-testid="no-cover-plan"]')).toBeNull();
-      expect(dom().querySelector('[data-testid="no-cover-run"]')).not.toBeNull();
-
-      dom().querySelector<HTMLButtonElement>('button[data-set-id="2"]')!.click();
+      itineraryReq().flush(stitched());
       fixture.detectChanges();
 
-      expect(dom().querySelector('[data-testid="partly-free-sheet"]')).not.toBeNull();
-      expect(dom().querySelector('[data-testid="plan-around"]')).toBeNull();
+      const banner = dom().querySelector<HTMLElement>('[data-testid="no-cover"]')!;
+      expect(banner.querySelector('[data-testid="no-cover-plan-line"]')!.textContent).toContain(
+        'see a 1-move plan',
+      );
+      expect(banner.querySelector('[data-testid="no-cover-request"]')!.textContent).toContain(
+        'one request',
+      );
+      dom().querySelector<HTMLButtonElement>('[data-testid="no-cover-plan"]')!.click();
+      fixture.detectChanges();
+      const book = dom().querySelector<HTMLElement>('[data-testid="stay-plan-book"]')!;
+      expect(book.textContent).toContain('Review & request');
+
+      dom().querySelector<HTMLButtonElement>('[data-testid="stay-plan-close"]')!.click();
+      fixture.detectChanges();
+      dom().querySelector<HTMLButtonElement>('button[data-set-id="2"]')!.click();
+      fixture.detectChanges();
+      expect(dom().querySelector('[data-testid="plan-around"]')).not.toBeNull();
     });
 
     it('offers the longest one-spot run and the way to other beaches', async () => {

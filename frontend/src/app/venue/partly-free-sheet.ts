@@ -63,15 +63,13 @@ import { freeDaysOf, longestFreeRun, stayDays } from './stay-runs';
           </li>
         }
       </ul>
-      @if (canPlan()) {
-        <div class="mt-3 flex justify-center">
-          <app-retry-button
-            testId="plan-around"
-            [label]="'Plan my stay around ' + spot()"
-            (retry)="planAround.emit()"
-          />
-        </div>
-      }
+      <div class="mt-3 flex justify-center">
+        <app-retry-button
+          testId="plan-around"
+          [label]="'Plan my stay around ' + spot()"
+          (retry)="planAround.emit()"
+        />
+      </div>
       @if (run(); as run) {
         <p
           class="mt-3 text-[13px] leading-[1.4] text-riv-pop-ink-soft"
@@ -108,9 +106,6 @@ export class PartlyFreeSheet {
   /** The first and last day of the stay the map is showing. */
   readonly first = input.required<string>();
   readonly last = input.required<string>();
-
-  /** Whether the sheet may offer a stitched plan around this spot (story 7). */
-  readonly canPlan = input(true);
 
   /** The shorter stay the tourist accepted — the page re-reads the map for it and books this set. */
   readonly shorten = output<DateRange>();
