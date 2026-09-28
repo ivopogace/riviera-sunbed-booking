@@ -1,14 +1,20 @@
 package ai.riviera.platform.booking.domain;
 
 import java.util.Collection;
+import java.util.EnumSet;
+import java.util.Set;
 
 /**
  * The status a stay reads as, derived from its stretches' contract states (design D6): still owed
- * money while any stretch is, cancelled only when every stretch is, live while any stretch is, and
- * once every stretch has resolved, {@code COMPLETED} if any day was attended, else {@code NO_SHOW}.
+ * money while any stretch is, a stay request's shared request state (its legs move every stretch
+ * together, #1267), cancelled only when every stretch is, live while any stretch is, and once every
+ * stretch has resolved, {@code COMPLETED} if any day was attended, else {@code NO_SHOW}.
  * A lifecycle rule, so it lives in {@code domain} (ADR-0018).
  */
 public final class StayStatus {
+
+	private static final Set<BookingStatus> REQUEST_STATES = EnumSet.of(BookingStatus.PENDING_REQUEST,
+			BookingStatus.DECLINED, BookingStatus.EXPIRED, BookingStatus.WITHDRAWN);
 
 	private StayStatus() {
 	}
@@ -19,6 +25,10 @@ public final class StayStatus {
 		}
 		if (stretches.contains(BookingStatus.AWAITING_PAYMENT)) {
 			return BookingStatus.AWAITING_PAYMENT;
+		}
+		BookingStatus first = stretches.iterator().next();
+		if (REQUEST_STATES.contains(first) && stretches.stream().allMatch(status -> status == first)) {
+			return first;
 		}
 		if (stretches.stream().allMatch(status -> status == BookingStatus.CANCELLED)) {
 			return BookingStatus.CANCELLED;

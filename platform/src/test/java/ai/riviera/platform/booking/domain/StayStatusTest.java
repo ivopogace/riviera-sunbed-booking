@@ -8,7 +8,11 @@ import static ai.riviera.platform.booking.domain.BookingStatus.AWAITING_PAYMENT;
 import static ai.riviera.platform.booking.domain.BookingStatus.CANCELLED;
 import static ai.riviera.platform.booking.domain.BookingStatus.COMPLETED;
 import static ai.riviera.platform.booking.domain.BookingStatus.CONFIRMED;
+import static ai.riviera.platform.booking.domain.BookingStatus.DECLINED;
+import static ai.riviera.platform.booking.domain.BookingStatus.EXPIRED;
 import static ai.riviera.platform.booking.domain.BookingStatus.NO_SHOW;
+import static ai.riviera.platform.booking.domain.BookingStatus.PENDING_REQUEST;
+import static ai.riviera.platform.booking.domain.BookingStatus.WITHDRAWN;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
@@ -36,6 +40,14 @@ class StayStatusTest {
 		assertEquals(COMPLETED, StayStatus.of(List.of(NO_SHOW, COMPLETED)));
 		assertEquals(NO_SHOW, StayStatus.of(List.of(NO_SHOW, NO_SHOW)));
 		assertEquals(COMPLETED, StayStatus.of(List.of(CANCELLED, COMPLETED)));
+	}
+
+	@Test
+	void aStayRequestReadsTheStatusItsStretchesShare() {
+		assertEquals(PENDING_REQUEST, StayStatus.of(List.of(PENDING_REQUEST, PENDING_REQUEST)));
+		assertEquals(DECLINED, StayStatus.of(List.of(DECLINED, DECLINED)));
+		assertEquals(EXPIRED, StayStatus.of(List.of(EXPIRED, EXPIRED)));
+		assertEquals(WITHDRAWN, StayStatus.of(List.of(WITHDRAWN, WITHDRAWN)));
 	}
 
 	@Test

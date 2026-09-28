@@ -130,6 +130,37 @@ class ViewStayIT {
 	}
 
 	@Test
+	void aStayRequestReadsItsStatus() throws Exception {
+		Venue venue = StayFixtures.venue(jdbc, "REQUEST", null, true);
+		venues.add(venue.id());
+		LocalDate first = firstDay();
+		java.time.Instant expires = java.time.Instant.now().plusSeconds(3600).truncatedTo(java.time.temporal.ChronoUnit.SECONDS);
+		StayFixtures.SeededStay stay = StayFixtures.insertPendingStay(jdbc, venue, "VSR" + System.nanoTime() % 100_000_000L,
+				first, venue.online().get(0), 2, venue.online().get(1), 2, expires);
+
+		BookingDetail pending = viewBooking.byCode(stay.code()).orElseThrow();
+
+		assertEquals(BookingStatus.PENDING_REQUEST, pending.status());
+		assertTrue(pending.withdrawable(), "a pending stay is withdrawn whole by its code");
+		assertEquals(expires, pending.requestExpiresAt());
+		assertEquals(false, pending.cancellable());
+		assertEquals(2, pending.stretches().size());
+		mvc.perform(get("/api/bookings/{code}", stay.code()))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.status").value("PENDING_REQUEST"))
+				.andExpect(jsonPath("$.withdrawable").value(true))
+				.andExpect(jsonPath("$.stretches[1].status").value("PENDING_REQUEST"));
+
+		jdbc.sql("UPDATE booking SET status = 'DECLINED', decline_reason = 'ANOTHER_GUEST' WHERE stay_id = :s")
+				.param("s", stay.id()).update();
+
+		BookingDetail declined = viewBooking.byCode(stay.code()).orElseThrow();
+		assertEquals(BookingStatus.DECLINED, declined.status());
+		assertEquals(false, declined.withdrawable());
+		assertEquals(ai.riviera.platform.booking.vocabulary.DeclineReason.ANOTHER_GUEST, declined.declineReason());
+	}
+
+	@Test
 	void aMovedStretchCarriesItsMoveNotice() throws Exception {
 		Venue venue = StayFixtures.venue(jdbc, "INSTANT", null, true);
 		venues.add(venue.id());

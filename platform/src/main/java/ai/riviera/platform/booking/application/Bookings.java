@@ -54,9 +54,9 @@ public interface Bookings {
 	OptionalLong insertStay(NewStay stay);
 
 	/**
-	 * Guarded venue-scoped {@code PENDING_REQUEST → AWAITING_PAYMENT} while {@code request_expires_at
-	 * > now}, stamping {@code accepted_at = now} (the guest pay-window clock). Returns the facts iff a
-	 * row transitioned; on empty the caller classifies via {@link #requestSnapshot}.
+	 * Guarded venue-scoped {@code PENDING_REQUEST → AWAITING_PAYMENT} of a lone request (never a stay's
+	 * stretch, #1267, nor in the next three) while {@code request_expires_at > now}, stamping {@code accepted_at}.
+	 * The facts iff a row transitioned; on empty the caller classifies via {@link #requestSnapshot}.
 	 */
 	Optional<ai.riviera.platform.booking.application.request.AcceptedRequest> acceptPendingRequest(
 			long bookingId, VenueId venueId, Instant now);

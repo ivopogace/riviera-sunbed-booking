@@ -241,7 +241,7 @@ class JdbcBookings implements Bookings {
 		return jdbc.sql("""
 				UPDATE booking
 				SET status = :awaiting, accepted_at = :now
-				WHERE id = :id AND venue_id = :venue AND status = :pending
+				WHERE id = :id AND venue_id = :venue AND status = :pending AND stay_id IS NULL
 				  AND request_expires_at > :now
 				RETURNING id, venue_id, set_id, booking_date, last_date, accepted_at, created_at,
 				          amount_minor, amount_currency
@@ -265,7 +265,7 @@ class JdbcBookings implements Bookings {
 		return jdbc.sql("""
 				SELECT set_id, booking_date, last_date
 				FROM booking
-				WHERE id = :id AND venue_id = :venue AND status = :pending
+				WHERE id = :id AND venue_id = :venue AND status = :pending AND stay_id IS NULL
 				""")
 				.param("id", bookingId)
 				.param(PARAM_VENUE, venueId.value())
@@ -320,7 +320,7 @@ class JdbcBookings implements Bookings {
 		return jdbc.sql("""
 				UPDATE booking
 				SET status = :declined, decline_reason = :reason
-				WHERE id = :id AND venue_id = :venue AND status = :pending
+				WHERE id = :id AND venue_id = :venue AND status = :pending AND stay_id IS NULL
 				RETURNING set_id, booking_date, last_date
 				""")
 				.param("declined", BookingStatus.DECLINED.name())
@@ -358,7 +358,7 @@ class JdbcBookings implements Bookings {
 		return jdbc.sql("""
 				SELECT status, request_expires_at
 				FROM booking
-				WHERE id = :id AND venue_id = :venue
+				WHERE id = :id AND venue_id = :venue AND stay_id IS NULL
 				""")
 				.param("id", bookingId)
 				.param(PARAM_VENUE, venueId.value())
@@ -377,12 +377,18 @@ class JdbcBookings implements Bookings {
 		// Operator queue: pending requests, most urgent deadline first. Deliberately
 		// does NOT select the code (invariant #7 — the operator acts by id). Served by
 		// booking_venue_id_idx; the PENDING_REQUEST slice per venue is tiny.
+		// A rival is counted once per request (a stay by its stay id), never against its own stay.
 		return jdbc.sql("""
 				SELECT b.id, b.set_id, b.booking_date, b.last_date, b.customer_id, b.amount_minor,
-				       b.amount_currency, b.created_at, b.request_expires_at,
-				       (SELECT COUNT(*) FROM booking o
+				       b.amount_currency, b.created_at, b.request_expires_at, b.stay_id,
+				       (SELECT COUNT(DISTINCT COALESCE('s' || o.stay_id, 'b' || o.id)) FROM booking o
 				        WHERE o.set_id = b.set_id AND o.status = :pending AND o.id <> b.id
-				          AND o.booking_date <= b.last_date AND o.last_date >= b.booking_date) AS competing_requests
+				          AND (b.stay_id IS NULL OR o.stay_id IS DISTINCT FROM b.stay_id)
+				          AND o.booking_date <= b.last_date AND o.last_date >= b.booking_date) AS competing_requests,
+				       (SELECT COUNT(DISTINCT COALESCE('s' || o.stay_id, 'b' || o.id)) FROM booking o
+				        JOIN booking m ON m.stay_id = b.stay_id AND o.set_id = m.set_id
+				        WHERE o.status = :pending AND o.stay_id IS DISTINCT FROM b.stay_id
+				          AND o.booking_date <= m.last_date AND o.last_date >= m.booking_date) AS stay_competing_requests
 				FROM booking b
 				WHERE b.venue_id = :venue AND b.status = :pending
 				ORDER BY b.request_expires_at, b.id
@@ -396,7 +402,7 @@ class JdbcBookings implements Bookings {
 						rs.getLong(COL_AMOUNT_MINOR), rs.getString(COL_AMOUNT_CURRENCY),
 						rs.getTimestamp(COL_CREATED_AT).toInstant(),
 						rs.getTimestamp(COL_REQUEST_EXPIRES_AT).toInstant(),
-						rs.getInt("competing_requests")))
+						rs.getInt("competing_requests"), stayIdOf(rs), rs.getInt("stay_competing_requests")))
 				.list();
 	}
 
@@ -946,6 +952,11 @@ class JdbcBookings implements Bookings {
 	}
 
 	/** The set and span every releasing transition {@code RETURNING}s: one row to free per day. */
+	private static StayId stayIdOf(java.sql.ResultSet rs) throws java.sql.SQLException {
+		long stayId = rs.getLong(COL_STAY_ID);
+		return rs.wasNull() ? null : new StayId(stayId);
+	}
+
 	private static ClaimRef mapClaimRef(java.sql.ResultSet rs, int rowNum) throws java.sql.SQLException {
 		return new ClaimRef(new SetId(rs.getLong(COL_SET_ID)), rs.getObject(COL_BOOKING_DATE, LocalDate.class),
 				rs.getObject(COL_LAST_DATE, LocalDate.class));

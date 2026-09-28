@@ -282,14 +282,21 @@ All inside `booking` except the three `notification` listeners. No new module de
 
 ## Execution status
 
-**Stage pointer:** `plan` → `implement (phase 1)`
+**Stage pointer:** `implement (phase 2)`
 
-**Next action:** phase 1 — red `StayStatusTest` for the request arms.
+**Next action:** phase 2 — red `StayRequestAcceptIT.acceptClaimsEveryStretchAndCollectsOnce`.
+
+**Notes:**
+- Local ITs need `postgres:17`. Docker Hub rate-limited the pull, so it was pulled from
+  `mirror.gcr.io/library/postgres:17` and re-tagged.
+- Phase 1 guards the lone-request SQL with `stay_id IS NULL`. Until phase 3, a remodel that
+  disturbs a pending stay's stretch throws under the venue lock. That is inert while the fence
+  refuses stay requests.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — plan | ✅ | (this commit) |
-| 1 — read side | | |
+| 1 — read side | ✅ | (phase-1 commit) |
 | 2 — stay accept | | |
 | 3 — other legs | | |
 | 4 — mails | | |

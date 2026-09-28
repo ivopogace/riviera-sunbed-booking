@@ -9,6 +9,7 @@ import java.util.Set;
 import org.junit.jupiter.api.Test;
 
 import ai.riviera.platform.booking.application.Bookings;
+import ai.riviera.platform.booking.vocabulary.StayId;
 import ai.riviera.platform.customer.api.CustomerLookup;
 import ai.riviera.platform.customer.vocabulary.CustomerId;
 import ai.riviera.platform.customer.vocabulary.GuestContact;
@@ -18,6 +19,7 @@ import ai.riviera.platform.venue.vocabulary.SetId;
 import ai.riviera.platform.venue.vocabulary.VenueId;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
@@ -61,6 +63,33 @@ class PendingRequestsServiceTest {
 	}
 
 	@Test
+	void aStaysStretchesAreOneItemWithEveryStopInDayOrder() {
+		StayId stay = new StayId(40);
+		when(bookings.findPendingRequestsForVenue(VENUE)).thenReturn(List.of(
+				row(1, ANA),
+				stretch(3, BO, stay, new SetId(12), LocalDate.of(2026, 8, 12), LocalDate.of(2026, 8, 13), 1),
+				stretch(2, BO, stay, new SetId(11), LocalDate.of(2026, 8, 10), LocalDate.of(2026, 8, 11), 2)));
+		when(customers.findByIds(Set.of(ANA, BO)))
+				.thenReturn(Map.of(ANA, contact("Ana Doe"), BO, contact("Bo Doe")));
+
+		List<PendingRequest> queue = service.forVenue(OPERATOR, VENUE);
+
+		assertEquals(2, queue.size());
+		assertInstanceOf(PendingRequest.Lone.class, queue.getFirst());
+		PendingRequest.Stay item = assertInstanceOf(PendingRequest.Stay.class, queue.get(1));
+		assertEquals(stay, item.stayId());
+		assertEquals("Bo Doe", item.guestName());
+		assertEquals(List.of(new PendingRequest.Stop(new SetId(11), LocalDate.of(2026, 8, 10), LocalDate.of(2026, 8, 11),
+						9000L, 2),
+				new PendingRequest.Stop(new SetId(12), LocalDate.of(2026, 8, 12), LocalDate.of(2026, 8, 13), 9000L, 1)),
+				item.stops());
+		assertEquals(18000L, item.amountMinor());
+		assertEquals(2, item.competingRequests(), "the stay's own count, a rival on two stops counted once");
+		assertEquals(LocalDate.of(2026, 8, 10), item.firstDate());
+		assertEquals(LocalDate.of(2026, 8, 13), item.lastDate());
+	}
+
+	@Test
 	void rendersAMissingContactAsAnEmptyName() {
 		when(bookings.findPendingRequestsForVenue(VENUE)).thenReturn(List.of(row(1, ANA)));
 		when(customers.findByIds(Set.of(ANA))).thenReturn(Map.of());
@@ -81,7 +110,13 @@ class PendingRequestsServiceTest {
 	private static PendingRequestRow row(long bookingId, CustomerId customerId) {
 		return new PendingRequestRow(bookingId, new SetId(11), LocalDate.of(2026, 8, 10), LocalDate.of(2026, 8, 10),
 				customerId, 4500L, "EUR", Instant.parse("2026-08-01T08:00:00Z"),
-				Instant.parse("2026-08-01T20:00:00Z"), 0);
+				Instant.parse("2026-08-01T20:00:00Z"), 0, null, 0);
+	}
+
+	private static PendingRequestRow stretch(long bookingId, CustomerId customerId, StayId stay, SetId set,
+			LocalDate first, LocalDate last, int competing) {
+		return new PendingRequestRow(bookingId, set, first, last, customerId, 9000L, "EUR",
+				Instant.parse("2026-08-01T08:00:00Z"), Instant.parse("2026-08-01T20:00:00Z"), competing, stay, 2);
 	}
 
 	private static GuestContact contact(String fullName) {
