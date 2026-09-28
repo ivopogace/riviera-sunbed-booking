@@ -108,9 +108,10 @@ PAYLOAD='{"id":"evt_local_refund_failed","object":"event","api_version":"2024-04
 ```
 
 ```sql
-SELECT p.status, b.refunded_minor, b.refund_id, b.failed_refund_id, b.refund_failed_at
-FROM payment_booking b JOIN payment p ON p.id = b.payment_id
-WHERE b.booking_ref = <id>;  -- SUCCEEDED, 0, NULL, <$RE>, <a timestamp>
+SELECT p.status, b.refunded_minor, r.refund_id, r.failed_refund_id, r.failed_at
+FROM payment_refund r
+JOIN payment_booking b ON b.id = r.payment_booking_id JOIN payment p ON p.id = b.payment_id
+WHERE b.booking_ref = <id> AND r.scope = 'BOOKING';  -- SUCCEEDED, 0, NULL, <$RE>, <a timestamp>
 ```
 
 The booking view flips back to showing the refund as outstanding, and
@@ -127,7 +128,9 @@ recorded POST the same payload with a refund id the app has never seen (`re_forg
 booking's `$PI`.
 
 ```sql
-SELECT refund_attempted_at, refund_id, failed_refund_id FROM payment_booking WHERE booking_ref = <id>;
+SELECT r.attempted_at, r.refund_id, r.failed_refund_id
+FROM payment_refund r JOIN payment_booking b ON b.id = r.payment_booking_id
+WHERE b.booking_ref = <id> AND r.scope = 'BOOKING';
 -- NULL, NULL, 're_forged_race'   (the attempt is cleared once it concludes, however it concluded)
 ```
 
@@ -136,8 +139,8 @@ event was consumed silently and the row went on to settle at `REFUNDED`. It incr
 because the forged event has no concurrent create racing it; the real race increments twice (the
 webhook, and the recording call it beat), while the gauge still reads 1. Posting the same payload
 against a booking that was never cancelled must move nothing and increment nothing: with no
-`refund_attempted_at`, a failed refund on our collection is someone's manual dashboard refund, and
-the platform owes nothing.
+`payment_refund` row carrying `attempted_at`, a failed refund on our collection is someone's manual
+dashboard refund, and the platform owes nothing.
 
 ## Idempotency / retry checks (optional)
 

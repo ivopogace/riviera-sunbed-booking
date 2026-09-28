@@ -134,6 +134,15 @@ public class TransactionalMailService implements MailSender {
 		mailer.sendMoveReminder(toEmail, reminder);
 	}
 
+	/** Deliver a refunded day's record now, on the caller's thread; a transport failure propagates. */
+	public void sendDayRefund(String toEmail, DayRefundMail refund) {
+		if (suppressions.isSuppressed(toEmail)) {
+			log.info("Day-refund mail skipped: the address is suppressed");
+			return;
+		}
+		mailer.sendDayRefund(toEmail, refund);
+	}
+
 	/** Deliver the declined request's record now, on the caller's thread; a transport failure propagates. */
 	public void sendRequestDeclined(String toEmail, RequestDeclinedMail declined) {
 		if (suppressions.isSuppressed(toEmail)) {

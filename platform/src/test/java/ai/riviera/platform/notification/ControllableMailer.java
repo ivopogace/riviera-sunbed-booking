@@ -132,6 +132,12 @@ public final class ControllableMailer implements Mailer {
 		observeRegistrySend(toEmail);
 	}
 
+	/** A refunded day's mail rides the same vehicle — observed, same reason. */
+	@Override
+	public void sendDayRefund(String toEmail, ai.riviera.platform.notification.application.DayRefundMail refund) {
+		observeRegistrySend(toEmail);
+	}
+
 	/** The move reminder rides the same vehicle — observed, same reason. */
 	@Override
 	public void sendMoveReminder(String toEmail, ai.riviera.platform.notification.application.MoveReminderMail reminder) {

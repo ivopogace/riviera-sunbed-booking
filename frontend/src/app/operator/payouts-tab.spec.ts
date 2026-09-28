@@ -169,6 +169,31 @@ describe('PayoutsTab (#173) — ledger', () => {
     expect(text).not.toMatch(/guest/i);
   });
 
+  it('shows a day reversal as a negative net with a chip naming its day', () => {
+    render(
+      ledger({
+        entries: [
+          {
+            type: 'DAY_REVERSAL',
+            bookingId: 42,
+            grossMinor: 3000,
+            commissionMinor: 450,
+            netMinor: 2550,
+            currency: 'EUR',
+            reason: 'WEATHER',
+            serviceDate: '2026-07-08',
+            createdAt: '2026-07-09T09:00:00Z',
+            runningNetMinor: -2550,
+          },
+        ],
+      }),
+    );
+    const [row] = rows();
+    expect(row.querySelector('[data-testid="ledger-reason"]')?.textContent).toContain('Weather');
+    expect(row.querySelector('[data-testid="ledger-reason"]')?.textContent).toContain('8 Jul');
+    expect(row.textContent).toContain(formatMoney({ minorUnits: -2550, currency: 'EUR' }));
+  });
+
   it('shows a reversal as a negative net with a reason chip; an accrual has no chip', () => {
     render(
       ledger({
@@ -372,8 +397,10 @@ describe('PayoutsTab (#173) — ledger', () => {
       refundedCount: 1,
       totalRefundedMinor: 4500,
       currency: 'EUR',
-      manualRefundCount: 0,
-      manualRefundBookingIds: [],
+      dayRefundCount: 0,
+      dayRefundedMinor: 0,
+      notRefundedCount: 0,
+      notRefundedBookingIds: [],
     });
     fixture.detectChanges();
 
@@ -410,15 +437,17 @@ describe('PayoutsTab (#173) — ledger', () => {
       refundedCount: 0,
       totalRefundedMinor: 0,
       currency: 'EUR',
-      manualRefundCount: 0,
-      manualRefundBookingIds: [],
+      dayRefundCount: 0,
+      dayRefundedMinor: 0,
+      notRefundedCount: 0,
+      notRefundedBookingIds: [],
     });
     fixture.detectChanges();
     flushLedger(ledger());
     expect(byId('payouts-notice')?.textContent?.toLowerCase()).toContain('nothing refunded');
   });
 
-  it('names overlapping stays that need a manual refund, by booking id (never a code)', () => {
+  it('reports one-day cancellations and refunded stay days apart, and names checked-in bookings by id (never a code)', () => {
     render(ledger());
     byId('weather-trigger')!.click();
     fixture.detectChanges();
@@ -428,17 +457,21 @@ describe('PayoutsTab (#173) — ledger', () => {
       refundedCount: 1,
       totalRefundedMinor: 4500,
       currency: 'EUR',
-      manualRefundCount: 2,
-      manualRefundBookingIds: [21, 34],
+      dayRefundCount: 2,
+      dayRefundedMinor: 6000,
+      notRefundedCount: 2,
+      notRefundedBookingIds: [21, 34],
     });
     fixture.detectChanges();
     flushLedger(ledger());
     const notice = byId('payouts-notice')?.textContent ?? '';
     expect(notice).toContain('refund issued');
-    expect(notice).toContain('2 stays overlap this date and need a manual refund (#21, #34)');
+    expect(notice).toContain('1 one-day booking cancelled, €45 returned');
+    expect(notice).toContain('the day refunded on 2 stays, €60 returned');
+    expect(notice).toContain('2 bookings had checked in and were not refunded (#21, #34)');
   });
 
-  it('names a single overlapping stay in the singular', () => {
+  it('names a single checked-in booking in the singular, with nothing else refunded', () => {
     render(ledger());
     byId('weather-trigger')!.click();
     fixture.detectChanges();
@@ -448,14 +481,16 @@ describe('PayoutsTab (#173) — ledger', () => {
       refundedCount: 0,
       totalRefundedMinor: 0,
       currency: 'EUR',
-      manualRefundCount: 1,
-      manualRefundBookingIds: [21],
+      dayRefundCount: 0,
+      dayRefundedMinor: 0,
+      notRefundedCount: 1,
+      notRefundedBookingIds: [21],
     });
     fixture.detectChanges();
     flushLedger(ledger());
-    expect(byId('payouts-notice')?.textContent).toContain(
-      '1 stay overlaps this date and needs a manual refund (#21)',
-    );
+    const notice = byId('payouts-notice')?.textContent ?? '';
+    expect(notice).toContain('nothing refunded');
+    expect(notice).toContain('1 booking had checked in and was not refunded (#21)');
   });
 
   it('shows the not-owner copy when the weather refund is 403 (invariant #13), keeping the view', () => {
@@ -621,8 +656,10 @@ describe('PayoutsTab (#173) — ledger', () => {
       refundedCount: 1,
       totalRefundedMinor: 4500,
       currency: 'EUR',
-      manualRefundCount: 0,
-      manualRefundBookingIds: [],
+      dayRefundCount: 0,
+      dayRefundedMinor: 0,
+      notRefundedCount: 0,
+      notRefundedBookingIds: [],
     });
     await settle();
 
@@ -668,8 +705,10 @@ describe('PayoutsTab (#173) — ledger', () => {
       refundedCount: 1,
       totalRefundedMinor: 4500,
       currency: 'EUR',
-      manualRefundCount: 0,
-      manualRefundBookingIds: [],
+      dayRefundCount: 0,
+      dayRefundedMinor: 0,
+      notRefundedCount: 0,
+      notRefundedBookingIds: [],
     });
     await settle();
 

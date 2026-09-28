@@ -13,7 +13,7 @@ import ai.riviera.platform.shared.ResubmissionOutcome;
 
 /**
  * ADMIN surface over the refund outbox: what the Event Publication Registry still owes the refund
- * bulkhead's two listeners, and the lever that re-drives it now, via {@link RefundResubmission}. The
+ * bulkhead's listeners, and the lever that re-drives it now, via {@link RefundResubmission}. The
  * twin of {@code AdminMailOutboxController}: role-gated under {@code /api/admin/**} (invariant #13's
  * exemption), hosted in this module, every outcome {@code 200} with a typed token, and counts only,
  * never a booking id, code or payload (invariant #7). Rationale: {@code RESPONSIBILITIES.md}

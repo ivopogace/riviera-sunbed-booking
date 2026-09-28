@@ -13,6 +13,7 @@ import org.springframework.stereotype.Component;
 import ai.riviera.platform.notification.application.BookingCancellationMail;
 import ai.riviera.platform.notification.application.BookingConfirmationMail;
 import ai.riviera.platform.notification.application.BookingMovedMail;
+import ai.riviera.platform.notification.application.DayRefundMail;
 import ai.riviera.platform.notification.application.MoveReminderMail;
 import ai.riviera.platform.notification.application.Mailer;
 import ai.riviera.platform.notification.application.PaymentDueMail;
@@ -118,6 +119,15 @@ public class MockMailer implements Mailer {
 		log.info("[mock-mailer] {} (to {}) for {} on {} — {}{} to {}{}", SentEmail.Kind.MOVE_REMINDER,
 				sanitize(toEmail), sanitize(reminder.venueName()), reminder.moveDate(), reminder.fromRowLabel(),
 				reminder.fromPositionNo(), reminder.toRowLabel(), reminder.toPositionNo());
+	}
+
+	@Override
+	public void sendDayRefund(String toEmail, DayRefundMail refund) {
+		sent.add(SentEmail.dayRefund(toEmail, refund));
+		// No code in the line, for the cancellation's reason: mailing it is the point, logging it is not.
+		log.info("[mock-mailer] {} (to {}) for {} on {} — refund {} {}", SentEmail.Kind.DAY_REFUND,
+				sanitize(toEmail), sanitize(refund.venueName()), refund.serviceDate(), refund.refundMinor(),
+				refund.currency());
 	}
 
 	@Override

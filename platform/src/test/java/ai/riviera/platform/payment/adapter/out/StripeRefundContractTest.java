@@ -89,7 +89,7 @@ class StripeRefundContractTest extends PaymentGatewayRefundContract {
 		}
 		when(payments.findBookingRefsByIntent(intentId)).thenReturn(bookings);
 		// The record accepts; refusing it is the racing-failure case, which is not this contract's.
-		when(payments.markRefunded(any(), anyLong(), any())).thenReturn(true);
+		when(payments.markRefunded(any(), any(), anyLong(), any())).thenReturn(true);
 		try {
 			when(refunds.list(any(RefundListParams.class))).thenAnswer(_ -> heldRefundPage());
 			when(refunds.create(any(RefundCreateParams.class), any(RequestOptions.class)))

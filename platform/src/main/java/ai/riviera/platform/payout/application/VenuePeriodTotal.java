@@ -5,7 +5,7 @@ import ai.riviera.platform.venue.vocabulary.VenueId;
 /**
  * The signed net owed to one venue for one settlement period — the aggregate the BKT
  * report turns into a {@link ai.riviera.platform.payout.domain.PayoutBatch}. {@code netMinor} is
- * {@code Σ(ACCRUAL.net) − Σ(REVERSAL.net) − Σ(FEE.net)} for the period in integer minor units
+ * {@code Σ(ACCRUAL.net) − Σ(REVERSAL.net) − Σ(DAY_REVERSAL.net) − Σ(FEE.net)} for the period in integer minor units
  * (invariant #5/#9) and
  * may be negative. A read projection internal to the {@code payout} module.
  */

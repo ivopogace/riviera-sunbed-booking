@@ -2,6 +2,7 @@ package ai.riviera.platform.payment.application;
 
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -9,6 +10,7 @@ import java.util.Optional;
 import org.junit.jupiter.api.Test;
 
 import ai.riviera.platform.payment.domain.PaymentStatus;
+import ai.riviera.platform.payment.domain.RefundScope;
 import ai.riviera.platform.payment.vocabulary.BookingRef;
 import ai.riviera.platform.payment.vocabulary.Money;
 import ai.riviera.platform.payment.vocabulary.RefundProgress;
@@ -69,6 +71,30 @@ class RefundServiceTest {
 
 		assertEquals(List.of("attempt:42", "gateway"), calls,
 				"an attempt recorded after the call would be invisible for the whole window it exists to cover");
+	}
+
+	@Test
+	void refundDayScopesTheAttemptAndTheGatewayCallToTheDay() {
+		List<String> calls = new ArrayList<>();
+		PaymentGateway fake = new RefundOnlyGateway() {
+			@Override
+			public RefundResult refund(BookingRef booking, Money amount) {
+				throw new UnsupportedOperationException("a day refund never reaches the whole-share leg");
+			}
+
+			@Override
+			public RefundResult refund(BookingRef booking, RefundScope scope, Money amount) {
+				calls.add("gateway:" + scope.serviceDate());
+				return new RefundResult.Refunded("re_day");
+			}
+		};
+		RefundService service = new RefundService(fake, new SimpleMeterRegistry(), new AttemptRecordingPayments(calls));
+
+		RefundResult result = service.refundDay(BOOKING, LocalDate.of(2026, 7, 8), new Money(300L, "EUR"));
+
+		assertInstanceOf(RefundResult.Refunded.class, result);
+		assertEquals(List.of("attempt:42:2026-07-08", "gateway:2026-07-08"), calls,
+				"the day's attempt is its own row, recorded before the gateway is asked");
 	}
 
 	/**

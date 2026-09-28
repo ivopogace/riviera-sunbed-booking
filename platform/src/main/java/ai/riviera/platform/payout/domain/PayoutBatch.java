@@ -8,7 +8,7 @@ import ai.riviera.platform.venue.vocabulary.VenueId;
  * {@code (venue, period)}.
  *
  * <p>{@code totalNetMinor} is the <strong>signed</strong> net owed for the period —
- * {@code Σ(ACCRUAL.net) − Σ(REVERSAL.net) − Σ(FEE.net)} in integer minor units (invariant #5),
+ * {@code Σ(ACCRUAL.net) − Σ(REVERSAL.net) − Σ(DAY_REVERSAL.net) − Σ(FEE.net)} in integer minor units (invariant #5),
  * negative when deductions exceed accruals. {@code id} is {@code null} before the row is persisted.
  */
 public record PayoutBatch(Long id, VenueId venueId, PeriodKey periodKey, long totalNetMinor,

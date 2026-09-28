@@ -1,7 +1,10 @@
 package ai.riviera.platform.payment.application;
 
+import java.time.LocalDate;
+
 import org.junit.jupiter.api.Test;
 
+import ai.riviera.platform.payment.domain.RefundScope;
 import ai.riviera.platform.payment.vocabulary.BookingRef;
 import ai.riviera.platform.payment.vocabulary.Money;
 import ai.riviera.platform.payment.vocabulary.RefundResult;
@@ -106,6 +109,26 @@ public abstract class PaymentGatewayRefundContract {
 		assertEquals(second, refundIdOf(gateway().refund(SIBLING, AMOUNT)));
 		assertEquals(2L, refundsCreatedThroughThePort(),
 				"each booking on the collection is refunded once, however often either call replays");
+	}
+
+	/**
+	 * One booking, two refunds: a washed-out day's share and, later, the whole share's remainder (issue
+	 * #1210). Each is made once however often either replays, and a replay of one never adopts the other,
+	 * whatever their amounts.
+	 */
+	@Test
+	void aDayRefundAndACancellationRefundAreEachMadeOnce() {
+		gatewayCollected(BOOKING, AMOUNT);
+		RefundScope day = RefundScope.day(LocalDate.of(2026, 7, 8));
+		Money same = new Money(2250L, "EUR");
+		String dayRefund = refundIdOf(gateway().refund(BOOKING, day, same));
+		String whole = refundIdOf(gateway().refund(BOOKING, RefundScope.WHOLE, same));
+		assertNotEquals(dayRefund, whole, "the day's share and the whole share are two refunds");
+
+		assertEquals(dayRefund, refundIdOf(gateway().refund(BOOKING, day, same)),
+				"a replayed day refund reports the day's own refund, never the whole share's of the same amount");
+		assertEquals(whole, refundIdOf(gateway().refund(BOOKING, RefundScope.WHOLE, same)));
+		assertEquals(2L, refundsCreatedThroughThePort(), "one refund per scope, however often either replays");
 	}
 
 	private static String refundIdOf(RefundResult result) {

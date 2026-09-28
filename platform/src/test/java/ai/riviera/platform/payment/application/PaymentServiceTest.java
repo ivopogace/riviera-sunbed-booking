@@ -34,7 +34,8 @@ class PaymentServiceTest {
 			}
 
 			@Override
-			public RefundResult refund(BookingRef booking, Money amount) {
+			public RefundResult refund(BookingRef booking, ai.riviera.platform.payment.domain.RefundScope scope,
+					Money amount) {
 				throw new UnsupportedOperationException("not exercised by the checkout seam");
 			}
 
@@ -69,11 +70,13 @@ class PaymentServiceTest {
 			}
 
 			@Override
-			public void markRefundAttempted(BookingRef booking) {
+			public void markRefundAttempted(BookingRef booking,
+					ai.riviera.platform.payment.domain.RefundScope scope) {
 			}
 
 			@Override
-			public boolean markRefunded(BookingRef booking, long refundedMinor, String refundId) {
+			public boolean markRefunded(BookingRef booking, ai.riviera.platform.payment.domain.RefundScope scope,
+					long refundedMinor, String refundId) {
 				return true;
 			}
 
@@ -94,7 +97,8 @@ class PaymentServiceTest {
 			}
 
 			@Override
-			public boolean markUnrecordedRefundFailed(BookingRef booking, String refundId) {
+			public boolean markUnrecordedRefundFailed(BookingRef booking,
+					ai.riviera.platform.payment.domain.RefundScope scope, String refundId) {
 				return false;
 			}
 

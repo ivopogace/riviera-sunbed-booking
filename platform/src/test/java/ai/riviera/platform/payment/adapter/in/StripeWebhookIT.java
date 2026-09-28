@@ -108,9 +108,26 @@ class StripeWebhookIT {
 				TAGGED_REFUND_OBJECT.formatted(refundId, status, intentId, bookingRef));
 	}
 
+	/** A day refund this platform issued (#1210): tagged with its booking and its service day. */
+	private static final String DAY_TAGGED_REFUND_OBJECT = """
+			{"id":"%s","object":"refund","status":"%s","amount":300,"payment_intent":"%s",\
+			"metadata":{"bookingRef":"%s","serviceDate":"%s"}}""";
+
+	private static String dayTaggedRefundEventJson(String eventId, String refundId, String intentId, long bookingRef,
+			String serviceDate) {
+		return eventJson(eventId, "refund.failed", Stripe.API_VERSION,
+				DAY_TAGGED_REFUND_OBJECT.formatted(refundId, "failed", intentId, bookingRef, serviceDate));
+	}
+
+	private List<String> owedScopes(long bookingRef) {
+		return jdbc.sql("SELECT r.scope FROM payment_refund r JOIN payment_booking b ON b.id = r.payment_booking_id "
+						+ "WHERE r.failed_at IS NOT NULL AND b.booking_ref = :ref ORDER BY r.scope")
+				.param("ref", bookingRef).query(String.class).list();
+	}
+
 	private long owedRows(long... bookingRefs) {
-		return jdbc.sql("SELECT COUNT(*) FROM payment_booking WHERE refund_failed_at IS NOT NULL "
-						+ "AND booking_ref IN (:refs)")
+		return jdbc.sql("SELECT COUNT(*) FROM payment_refund r JOIN payment_booking b ON b.id = r.payment_booking_id "
+						+ "WHERE r.failed_at IS NOT NULL AND b.booking_ref IN (:refs)")
 				.param("refs", java.util.Arrays.stream(bookingRefs).boxed().toList())
 				.query(Long.class).single();
 	}
@@ -491,8 +508,7 @@ class StripeWebhookIT {
 
 		assertEquals(before + 1, refundsFailedCount(),
 				"a refund the platform issued and the gateway killed is owed money, recorded or not");
-		assertEquals(1, jdbc.sql("SELECT COUNT(*) FROM payment_booking WHERE booking_ref = 7312 "
-						+ "AND refund_failed_at IS NOT NULL").query(Integer.class).single(),
+		assertEquals(1L, owedRows(7312L),
 				"and it is enumerable as owed, not reconstructable only from a WARN line");
 	}
 
@@ -520,8 +536,7 @@ class StripeWebhookIT {
 
 		assertEquals(before, refundsFailedCount(),
 				"the platform never promised this refund, so its failure is not money we owe");
-		assertEquals(0, jdbc.sql("SELECT COUNT(*) FROM payment_booking WHERE booking_ref = 7314 "
-						+ "AND refund_failed_at IS NOT NULL").query(Integer.class).single(),
+		assertEquals(0L, owedRows(7314L),
 				"and it must stay off the list of bookings owed a refund");
 	}
 
@@ -606,6 +621,25 @@ class StripeWebhookIT {
 		assertEquals(1L, owedRows(7407L), "the tag names A, so A's attempt is the one that died");
 		assertEquals(0L, owedRows(7408L), "B's attempt is still in flight — its refund may yet land");
 		assertEquals(before + 1, refundsFailedCount());
+	}
+
+	@Test
+	void anUnrecordedDayRefundFailureIsAttributedByItsServiceDay() throws Exception {
+		sharedCollection("pi_ref_day_tag", 7411L, 7412L);
+		payments.markRefundAttempted(new BookingRef(7411L));
+		payments.markRefundAttempted(new BookingRef(7411L),
+				ai.riviera.platform.payment.domain.RefundScope.day(java.time.LocalDate.of(2026, 7, 2)));
+		String payload = dayTaggedRefundEventJson("evt_ref_day_tag_1", "re_day_tag", "pi_ref_day_tag", 7411L, "2026-07-02");
+
+		postSigned(payload, sign(payload), 200);
+
+		assertEquals(List.of("DAY"), owedScopes(7411L),
+				"the tag names the day, so the day's attempt is the one that died; the whole-share attempt is still in flight");
+
+		String malformed = dayTaggedRefundEventJson("evt_ref_day_tag_2", "re_day_tag_bad", "pi_ref_day_tag", 7411L, "not-a-day");
+		postSigned(malformed, sign(malformed), 200);
+
+		assertEquals(List.of("DAY"), owedScopes(7411L), "a tag this platform never writes pins nothing on the booking");
 	}
 
 	@Test

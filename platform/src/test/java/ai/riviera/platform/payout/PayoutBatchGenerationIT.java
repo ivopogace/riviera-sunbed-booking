@@ -129,6 +129,24 @@ class PayoutBatchGenerationIT {
 	}
 
 	@Test
+	void aDayReversalDeductsFromTheBatchTotal() {
+		// 42000 accrued - 2550 reversed for one day; a type the sum did not name would still deduct (V69).
+		PeriodKey period = PeriodKey.of("2099-W48");
+		long venue = newVenue();
+		long booking = newBooking(venue, "BATCHDAY1");
+		accrual(venue, booking, 35700L, period.value());
+		jdbc.sql("""
+				INSERT INTO payout_ledger_entry (venue_id, booking_id, entry_type, service_date, gross_minor,
+				                                 commission_minor, net_minor, currency, period_key, reason)
+				VALUES (:v, :b, 'DAY_REVERSAL', DATE '2099-07-08', 3000, 450, 2550, 'EUR', :period, 'WEATHER')
+				""").param("v", venue).param("b", booking).param("period", period.value()).update();
+
+		List<PayoutBatch> batches = payoutReport.generate(period);
+
+		assertEquals(33150L, batchFor(batches, venue).totalNetMinor(), "35700 - 2550: a day's reversal deducts");
+	}
+
+	@Test
 	void aFeeDeductsFromTheBatchTotal() {
 		PeriodKey period = PeriodKey.of("2099-W49");
 		long venue = newVenue();

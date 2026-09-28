@@ -14,8 +14,8 @@ import ai.riviera.platform.venue.vocabulary.VenueId;
 /**
  * The per-venue payout-ledger read, behind {@link ViewPayoutLedger} (invariant #11). Folds the
  * entries of {@link PayoutLedger#entriesForVenue} oldest-first into a <strong>running net
- * owed</strong>: only an {@code ACCRUAL} adds; every other type ({@code REVERSAL}, {@code FEE})
- * deducts (invariant #9), so the result may be negative. Integer minor units (invariant #5).
+ * owed</strong>: only an {@code ACCRUAL} adds; every other type ({@code REVERSAL}, {@code DAY_REVERSAL},
+ * {@code FEE}) deducts (invariant #9), so the result may be negative. Integer minor units (invariant #5).
  *
  * <p>Asserts {@code operator} owns {@code venueId} before reading anything (invariant #13).
  */
@@ -43,8 +43,8 @@ class PayoutLedgerQueryService implements ViewPayoutLedger {
 			runningNetMinor += row.entryType() == EntryType.ACCRUAL ? row.netMinor() : -row.netMinor();
 			currency = row.currency();
 			entries.add(new LedgerEntryView(row.entryType(), row.bookingId(), row.grossMinor(),
-					row.commissionMinor(), row.netMinor(), row.currency(), row.reason(), row.createdAt(),
-					runningNetMinor));
+					row.commissionMinor(), row.netMinor(), row.currency(), row.reason(), row.serviceDate(),
+					row.createdAt(), runningNetMinor));
 		}
 		return new VenueLedger(venueId, currency, runningNetMinor, entries);
 	}

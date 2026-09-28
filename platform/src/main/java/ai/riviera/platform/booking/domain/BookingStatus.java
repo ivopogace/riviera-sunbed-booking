@@ -30,4 +30,16 @@ public enum BookingStatus {
 			case CANCELLED, COMPLETED, NO_SHOW, DECLINED, EXPIRED, WITHDRAWN -> false;
 		};
 	}
+
+	/**
+	 * Whether a washed-out day of this booking may be refunded on its own (issue #1210): the booking
+	 * happened — live, or resolved either way — and its day decides the rest. Not "cancellable": a
+	 * {@code COMPLETED} stay's missed day is refunded; a one-day booking's cancel leg keeps its own row.
+	 */
+	public boolean stormDayRefundable() {
+		return switch (this) {
+			case CONFIRMED, COMPLETED, NO_SHOW -> true;
+			case PENDING_REQUEST, AWAITING_PAYMENT, CANCELLED, DECLINED, EXPIRED, WITHDRAWN -> false;
+		};
+	}
 }

@@ -51,6 +51,13 @@ class RefundOutboxScopeTest {
 	void pinsTheConstantsAgainstTheListenersRealIds() {
 		assertEquals(BookingListenerIds.REFUND, RegistryRefundOutbox.REFUND_LISTENER_ID);
 		assertEquals(BookingListenerIds.REMODEL_RELEASE_VOID, RegistryRefundOutbox.RELEASE_VOID_LISTENER_ID);
+		assertEquals(BookingListenerIds.DAY_REFUND, RegistryRefundOutbox.DAY_REFUND_LISTENER_ID);
+	}
+
+	@Test
+	@DisplayName("a refunded day's publication is in scope")
+	void matchesTheDayRefundListenersPublication() {
+		assertTrue(RegistryRefundOutbox.isRefundPublication(publicationFor(BookingListenerIds.DAY_REFUND)));
 	}
 
 	@Test

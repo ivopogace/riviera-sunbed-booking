@@ -150,8 +150,11 @@ export type RowNameErrorCode =
   | 'UNAUTHORIZED'
   | 'UNKNOWN';
 
-/** One service day's attendance: unresolved, scanned in, or passed unscanned (the sweep's stamp). */
-export type DayAttendance = 'EXPECTED' | 'ATTENDED' | 'MISSED';
+/**
+ * One service day's attendance: unresolved, scanned in, passed unscanned (the sweep's stamp), or given
+ * back by a weather refund while the stay went on (neither attended nor missed).
+ */
+export type DayAttendance = 'EXPECTED' | 'ATTENDED' | 'MISSED' | 'REFUNDED';
 
 /**
  * One booking in the Daily view's guest list (`GET /api/venues/{id}/bookings?date`) — which set it
@@ -179,6 +182,7 @@ export interface CheckInResultView {
 export type CheckInErrorCode =
   | 'ALREADY_CHECKED_IN'
   | 'WRONG_SERVICE_DATE'
+  | 'DAY_REFUNDED'
   | 'BOOKING_NOT_FOUND'
   | 'NOT_VENUE_OWNER'
   | 'UNAUTHORIZED'
@@ -396,11 +400,11 @@ export interface OperatorBeachMap {
 }
 
 /**
- * The kind of payout-ledger entry: a confirmed booking accrues, a refund reverses, and a refund the
- * venue's own change caused also charges a fee. Direction lives here, never in the amount — only an
- * `ACCRUAL` adds, everything else deducts (invariant #9).
+ * The kind of payout-ledger entry: a confirmed booking accrues, a refund reverses, a weather refund of
+ * one day of a stay reverses that day, and a refund the venue's own change caused also charges a fee.
+ * Direction lives here, never in the amount — only an `ACCRUAL` adds, everything else deducts (invariant #9).
  */
-export type PayoutEntryType = 'ACCRUAL' | 'REVERSAL' | 'FEE';
+export type PayoutEntryType = 'ACCRUAL' | 'REVERSAL' | 'DAY_REVERSAL' | 'FEE';
 
 /** Why a reversal or a fee happened; `null` on an ACCRUAL. */
 export type RefundReasonCode = 'WEATHER' | 'POLICY' | 'CONFLICT' | 'VENUE_CHANGE';
@@ -420,6 +424,8 @@ export interface PayoutLedgerEntryView {
   readonly netMinor: number;
   readonly currency: string;
   readonly reason: RefundReasonCode | null;
+  /** The service day a `DAY_REVERSAL` is for (ISO civil day); null on every other type, absent on an older payload. */
+  readonly serviceDate?: string | null;
   readonly createdAt: string; // ISO-8601 UTC instant
   readonly runningNetMinor: number;
 }
@@ -438,17 +444,19 @@ export interface PayoutLedgerView {
 
 /**
  * The outcome of an admin weather refund (`POST /api/venues/{id}/weather-refund?date=`, invariant #10):
- * how many one-day CONFIRMED bookings were cancelled + fully refunded for the venue and date, the total
- * in integer minor units (invariant #5), and the stays covering the date the server left for a manual
- * refund — a count and their booking ids, never codes (invariant #7). A {@link refundedCount} of 0 with
- * no manual refunds is a valid **no-op**, not an error.
+ * how many one-day bookings were cancelled + fully refunded for the venue and date and their total, how
+ * many stays had that day refunded while they go on and that total (integer minor units, invariant #5),
+ * and the bookings whose guest had checked in that day and so kept it — a count and their booking ids,
+ * never codes (invariant #7). Every count 0 is a valid **no-op**, not an error.
  */
 export interface WeatherRefundResult {
   readonly refundedCount: number;
   readonly totalRefundedMinor: number;
   readonly currency: string;
-  readonly manualRefundCount: number;
-  readonly manualRefundBookingIds: readonly number[];
+  readonly dayRefundCount: number;
+  readonly dayRefundedMinor: number;
+  readonly notRefundedCount: number;
+  readonly notRefundedBookingIds: readonly number[];
 }
 
 /**

@@ -364,6 +364,16 @@ describe('DailyViewTab (#175)', () => {
     expect(byId('arrival-checked-in')).toBeNull();
   });
 
+  it('badges a day the weather refund gave back, never as a no-show (#1210)', () => {
+    render(SEED, [booking({ status: 'CONFIRMED', attendance: 'REFUNDED' })]);
+
+    const chip = byId('arrival-day-refunded');
+    expect(chip.textContent).toContain('Day refunded');
+    expect(chip.className).toContain('chip--cancelled');
+    expect(byId('arrival-no-show')).toBeNull();
+    expect(byId('arrival-checked-in')).toBeNull();
+  });
+
   it('shows no badge on a still-expected CONFIRMED arrival', () => {
     render();
 
@@ -470,6 +480,22 @@ describe('DailyViewTab (#175)', () => {
       .flush({ code: 'ALREADY_CHECKED_IN', setId: 3 }, { status: 409, statusText: 'Conflict' });
     fixture.detectChanges();
     expect(byId('checkin-result').textContent).toBe('Already checked in today — A · 3.');
+  });
+
+  it('explains a scan on a refunded day and names the guest’s set (#1210)', () => {
+    render();
+    const input = byId('checkin-code-input') as HTMLInputElement;
+    input.value = 'STAY12345';
+    (byId('checkin-submit') as HTMLButtonElement).click();
+
+    http
+      .expectOne((r) => r.method === 'POST' && r.url.includes('/check-in'))
+      .flush({ code: 'DAY_REFUNDED', setId: 3 }, { status: 409, statusText: 'Conflict' });
+    fixture.detectChanges();
+    const notice = byId('checkin-result').textContent;
+    expect(notice).toContain('refunded for weather');
+    expect(notice).toContain('A · 3');
+    expect(notice).not.toContain('STAY12345');
   });
 
   it('names the booking’s real day on WRONG_SERVICE_DATE, never the code (#583)', () => {

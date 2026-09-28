@@ -13,7 +13,7 @@ import ai.riviera.platform.booking.application.refund.RefundOutbox;
 
 /**
  * The {@link RefundOutbox} over the Event Publication Registry, scoped to an exact-id allowlist of the
- * two refund-bulkhead listeners: the {@code booking} package prefix would also replay
+ * refund-bulkhead listeners (three since #1210): the {@code booking} package prefix would also replay
  * {@code PaymentEventListener}'s payment → confirm spine ({@code RESPONSIBILITIES.md} §booking). Uses the
  * {@code Predicate} resubmission overload because {@code ResubmissionOptions} misses a shed publication
  * (§notification); the registry's {@code markResubmitted} makes a re-drive once-only. Fail-closed: a
@@ -38,7 +38,12 @@ class RegistryRefundOutbox implements RefundOutbox {
 	static final String RELEASE_VOID_LISTENER_ID = "ai.riviera.platform.booking.adapter.in."
 			+ "RemodelReleasePaymentListener.on(ai.riviera.platform.booking.events.BookingCancelled)";
 
-	private static final Set<String> ALLOWED_LISTENER_IDS = Set.of(REFUND_LISTENER_ID, RELEASE_VOID_LISTENER_ID);
+	/** The registry's id for {@code BookingDayRefundListener.on(BookingDayRefunded)} — a refunded day's money (#1210). */
+	static final String DAY_REFUND_LISTENER_ID = "ai.riviera.platform.booking.adapter.in."
+			+ "BookingDayRefundListener.on(ai.riviera.platform.booking.events.BookingDayRefunded)";
+
+	private static final Set<String> ALLOWED_LISTENER_IDS =
+			Set.of(REFUND_LISTENER_ID, RELEASE_VOID_LISTENER_ID, DAY_REFUND_LISTENER_ID);
 
 	private final EventPublicationRegistry registry;
 

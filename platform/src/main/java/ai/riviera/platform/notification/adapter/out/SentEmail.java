@@ -5,6 +5,7 @@ import java.net.URI;
 import ai.riviera.platform.notification.application.BookingCancellationMail;
 import ai.riviera.platform.notification.application.BookingConfirmationMail;
 import ai.riviera.platform.notification.application.BookingMovedMail;
+import ai.riviera.platform.notification.application.DayRefundMail;
 import ai.riviera.platform.notification.application.MoveReminderMail;
 import ai.riviera.platform.notification.application.PaymentDueMail;
 import ai.riviera.platform.notification.application.RequestDeclinedMail;
@@ -21,7 +22,7 @@ import ai.riviera.platform.notification.application.StayConfirmationMail;
 public record SentEmail(String toEmail, Kind kind, URI link, BookingConfirmationMail confirmation,
 		BookingCancellationMail cancellation, PaymentDueMail paymentDue,
 		RequestDeclinedMail requestDeclined, RequestExpiredMail requestExpired, BookingMovedMail moved,
-		StayConfirmationMail stayConfirmation, MoveReminderMail moveReminder) {
+		StayConfirmationMail stayConfirmation, MoveReminderMail moveReminder, DayRefundMail dayRefund) {
 
 	/** Which message this is. */
 	public enum Kind {
@@ -35,12 +36,13 @@ public record SentEmail(String toEmail, Kind kind, URI link, BookingConfirmation
 		REQUEST_DECLINED,
 		REQUEST_EXPIRED,
 		BOOKING_MOVED,
-		MOVE_REMINDER
+		MOVE_REMINDER,
+		DAY_REFUND
 	}
 
 	/** A recovery email, identified by its tokenized link (a bearer credential, invariant #7). */
 	static SentEmail recovery(String toEmail, Kind kind, URI link) {
-		return new SentEmail(toEmail, kind, link, null, null, null, null, null, null, null, null);
+		return new SentEmail(toEmail, kind, link, null, null, null, null, null, null, null, null, null);
 	}
 
 	/**
@@ -48,22 +50,22 @@ public record SentEmail(String toEmail, Kind kind, URI link, BookingConfirmation
 	 * factory: that link is a bearer credential, this one the public sign-in URL the mock may log.
 	 */
 	static SentEmail operatorApproved(String toEmail, URI signInLink) {
-		return new SentEmail(toEmail, Kind.OPERATOR_APPROVED, signInLink, null, null, null, null, null, null, null, null);
+		return new SentEmail(toEmail, Kind.OPERATOR_APPROVED, signInLink, null, null, null, null, null, null, null, null, null);
 	}
 
 	/** A booking confirmation, identified by the details it renders. */
 	static SentEmail bookingConfirmation(String toEmail, BookingConfirmationMail confirmation) {
-		return new SentEmail(toEmail, Kind.BOOKING_CONFIRMATION, null, confirmation, null, null, null, null, null, null, null);
+		return new SentEmail(toEmail, Kind.BOOKING_CONFIRMATION, null, confirmation, null, null, null, null, null, null, null, null);
 	}
 
 	/** A stitched stay's one confirmation, identified by the details it renders. */
 	static SentEmail stayConfirmation(String toEmail, StayConfirmationMail confirmation) {
-		return new SentEmail(toEmail, Kind.STAY_CONFIRMATION, null, null, null, null, null, null, null, confirmation, null);
+		return new SentEmail(toEmail, Kind.STAY_CONFIRMATION, null, null, null, null, null, null, null, confirmation, null, null);
 	}
 
 	/** A cancellation/refund record, identified by the details it renders. */
 	static SentEmail bookingCancellation(String toEmail, BookingCancellationMail cancellation) {
-		return new SentEmail(toEmail, Kind.BOOKING_CANCELLATION, null, null, cancellation, null, null, null, null, null, null);
+		return new SentEmail(toEmail, Kind.BOOKING_CANCELLATION, null, null, cancellation, null, null, null, null, null, null, null);
 	}
 
 	/**
@@ -71,26 +73,30 @@ public record SentEmail(String toEmail, Kind kind, URI link, BookingConfirmation
 	 * {@link #link} slot, which the recovery ITs follow blindly as a token exchange.
 	 */
 	static SentEmail paymentDue(String toEmail, PaymentDueMail paymentDue) {
-		return new SentEmail(toEmail, Kind.PAYMENT_DUE, null, null, null, paymentDue, null, null, null, null, null);
+		return new SentEmail(toEmail, Kind.PAYMENT_DUE, null, null, null, paymentDue, null, null, null, null, null, null);
 	}
 
 	/** A declined request's record; its {@code statusLink} rides the payload, like the pay link. */
 	static SentEmail requestDeclined(String toEmail, RequestDeclinedMail declined) {
-		return new SentEmail(toEmail, Kind.REQUEST_DECLINED, null, null, null, null, declined, null, null, null, null);
+		return new SentEmail(toEmail, Kind.REQUEST_DECLINED, null, null, null, null, declined, null, null, null, null, null);
 	}
 
 	/** An expired request's record, on the declined kind's rules. */
 	static SentEmail requestExpired(String toEmail, RequestExpiredMail expired) {
-		return new SentEmail(toEmail, Kind.REQUEST_EXPIRED, null, null, null, null, null, expired, null, null, null);
+		return new SentEmail(toEmail, Kind.REQUEST_EXPIRED, null, null, null, null, null, expired, null, null, null, null);
 	}
 
 	/** A changed-spot notice; its {@code bookingLink} rides the payload, like the pay and status links. */
 	static SentEmail bookingMoved(String toEmail, BookingMovedMail moved) {
-		return new SentEmail(toEmail, Kind.BOOKING_MOVED, null, null, null, null, null, null, moved, null, null);
+		return new SentEmail(toEmail, Kind.BOOKING_MOVED, null, null, null, null, null, null, moved, null, null, null);
 	}
 
 	/** The evening-before move reminder; its {@code bookingLink} rides the payload, as the move's does. */
 	static SentEmail moveReminder(String toEmail, MoveReminderMail reminder) {
-		return new SentEmail(toEmail, Kind.MOVE_REMINDER, null, null, null, null, null, null, null, null, reminder);
+		return new SentEmail(toEmail, Kind.MOVE_REMINDER, null, null, null, null, null, null, null, null, reminder, null);
+	}
+
+	static SentEmail dayRefund(String toEmail, DayRefundMail refund) {
+		return new SentEmail(toEmail, Kind.DAY_REFUND, null, null, null, null, null, null, null, null, null, refund);
 	}
 }

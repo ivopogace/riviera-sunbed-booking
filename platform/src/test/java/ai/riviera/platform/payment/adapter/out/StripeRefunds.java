@@ -1,5 +1,6 @@
 package ai.riviera.platform.payment.adapter.out;
 
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
 
@@ -33,6 +34,14 @@ final class StripeRefunds {
 	static Refund taggedRefund(String id, String status, Long amountMinor, BookingRef booking) {
 		Refund refund = refund(id, status, amountMinor);
 		refund.setMetadata(Map.of(StripeRefundTag.KEY, StripeRefundTag.of(booking)));
+		return refund;
+	}
+
+	/** A day refund this platform issued: it names the booking and the service day. */
+	static Refund dayRefund(String id, String status, Long amountMinor, BookingRef booking, LocalDate day) {
+		Refund refund = refund(id, status, amountMinor);
+		refund.setMetadata(Map.of(StripeRefundTag.KEY, StripeRefundTag.of(booking),
+				StripeRefundTag.DAY_KEY, day.toString()));
 		return refund;
 	}
 

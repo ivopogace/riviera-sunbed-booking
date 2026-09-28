@@ -75,9 +75,9 @@ money-path signal, and `MoneyPathAlertCheck` deliberately reads only the three a
 
 | Metric | Meaning | Alert when |
 |---|---|---|
-| `riviera_refunds_shed_total` (counter, #404) | A gateway call on the refund bulkhead was shed: its pool was saturated — `riviera.booking.refund.pool-size` threads busy and all `queue-capacity` slots full — so the listener never ran and the gateway was never asked. **Two listeners drain on that pool** — `BookingRefundListener` (a cancellation refund) and `RemodelReleasePaymentListener` (the void of a remodel-released booking's uncollected intent, #1035) — so read the ERROR line beside `riviera_remodel_release_collected_total` below to tell which was shed; a shed void owes nobody money yet, but leaves an intent a guest can still pay. Like the mail shed below, the work survives: the event publication stays outstanding and `republish-outstanding-events-on-restart` re-delivers it at the next start — and since #454 you need not wait for one: `POST /api/admin/refund-outbox/resubmit` re-drives it on demand. **Read it beside `riviera_refunds_failed_total`, never summed with it** — *failed* is a refund the gateway refused (investigate there); *shed* is one it was never asked for (investigate the pool and the burst) | **any increase.** Reaching saturation at all means a burst far larger than one weather-refund sweep, or a gateway degraded long enough to back up 500 refunds. Diagnose the gateway first; raising the bounds trades a lossless shed for a longer backlog |
+| `riviera_refunds_shed_total` (counter, #404) | A gateway call on the refund bulkhead was shed: its pool was saturated — `riviera.booking.refund.pool-size` threads busy and all `queue-capacity` slots full — so the listener never ran and the gateway was never asked. **Three listeners drain on that pool** — `BookingRefundListener` (a cancellation refund), `BookingDayRefundListener` (a stay's washed-out day, #1210) and `RemodelReleasePaymentListener` (the void of a remodel-released booking's uncollected intent, #1035) — so read the ERROR line beside `riviera_remodel_release_collected_total` below to tell which was shed; a shed void owes nobody money yet, but leaves an intent a guest can still pay. Like the mail shed below, the work survives: the event publication stays outstanding and `republish-outstanding-events-on-restart` re-delivers it at the next start — and since #454 you need not wait for one: `POST /api/admin/refund-outbox/resubmit` re-drives it on demand. **Read it beside `riviera_refunds_failed_total`, never summed with it** — *failed* is a refund the gateway refused (investigate there); *shed* is one it was never asked for (investigate the pool and the burst) | **any increase.** Reaching saturation at all means a burst far larger than one weather-refund sweep, or a gateway degraded long enough to back up 500 refunds. Diagnose the gateway first; raising the bounds trades a lossless shed for a longer backlog |
 | `riviera_refunds_adopted_total` (counter, #569) | A refund the gateway **already held** was adopted instead of created again: the adapter lists the refunds on the booking's PaymentIntent before creating one, found exactly one live refund for exactly the requested amount, recorded it locally and reported success. On a PaymentIntent shared by several bookings only the refunds tagged with this booking (`StripeRefundTag`, metadata `bookingRef`) are candidates; an untagged live refund there is `refund_mismatch` even at the right amount, because it could as well be a sibling's. An increment says an earlier attempt **moved the money but lost the response** (a read timeout), so nothing was written locally at the time — the money was always right and the record has just caught up. It logs `adopted refund re_… already held for booking <id>` at INFO. **Not a money-loss signal, and never summed with `riviera_refunds_failed_total`** — nothing failed here, and nothing is owed. It is a *gateway-connectivity* signal: read it beside the adapter's WARN lines about a timed-out create (`Stripe refund create timed out for booking <id>`). One-offs are the design working | not on a single increment. **A sustained rate** — lost responses have become routine, so investigate gateway latency; each one delays a tourist's refund *record* until a replay. The anomaly case does **not** land here: when the gateway holds several live refunds, or one for a different amount, the adapter refuses (`RefundResult.Failed("refund_mismatch")`, WARN `booking <id> carries N live refund(s) …`), so it shows up on `riviera_refunds_failed_total` and the publication stays outstanding — see that row |
-| `riviera_refunds_owed` (gauge, #594) | How many bookings are **still owed** a refund the gateway would not issue — a live count over `payment_booking.refund_failed_at IS NOT NULL`, served by the partial index that exists for it. This is the distinct-count answer `riviera_refunds_failed_total` cannot give: that counter records *observations*, so one stuck refund re-increments it on every resubmission, while this moves by one and falls back to zero as bookings are settled. **Read them together, never summed** — the counter for "something happened", the gauge for "how many are outstanding". A gauge above zero with a flat counter is the normal shape of an unresolved incident; a rising counter with a flat gauge is one stuck refund retrying. **It is not a fourth money-path signal** — it quantifies the debt signal 2 already counts, so `MoneyPathAlertCheck` still reads three; this is what you consult once that alert has fired | **any value above zero that does not fall.** Enumerate the bookings with the query below, then settle each at the gateway — a full refund clears its row when the retry records |
+| `riviera_refunds_owed` (gauge, #594) | How many bookings are **still owed** a refund the gateway would not issue — a live count over `payment_refund.failed_at IS NOT NULL` (one row per refund the platform pursues — since #1210 a share may owe a whole-share refund and a day's refund separately), served by the partial index that exists for it. This is the distinct-count answer `riviera_refunds_failed_total` cannot give: that counter records *observations*, so one stuck refund re-increments it on every resubmission, while this moves by one and falls back to zero as bookings are settled. **Read them together, never summed** — the counter for "something happened", the gauge for "how many are outstanding". A gauge above zero with a flat counter is the normal shape of an unresolved incident; a rising counter with a flat gauge is one stuck refund retrying. **It is not a fourth money-path signal** — it quantifies the debt signal 2 already counts, so `MoneyPathAlertCheck` still reads three; this is what you consult once that alert has fired | **any value above zero that does not fall.** Enumerate the bookings with the query below, then settle each at the gateway — a full refund clears its row when the retry records |
 | `riviera_remodel_release_collected_total` (counter, #1035) | A remodel released an unpaid booking, and the void of its PaymentIntent came back `NotCancellable` — the guest paid between the layout commit and the after-commit void, so they have paid for a booking that no longer exists. The ERROR line names the booking id and the gateway's reason. **Nothing retries this and no lever helps**: there is no uncollected intent left to void, and the publication completes, so `riviera_outbox_pending` never moves and `/api/admin/refund-outbox` reports nothing. Not summed with `riviera_refunds_failed_total` — that counts refunds the platform did ask for; this is a refund it has not asked for at all | **any increase.** Refund the booking by hand at the Stripe dashboard, then tell the guest. A sustained rate means the commit → void window is wide enough to race routine payments; look at refund-executor queue depth first |
 | `riviera_mail_registry_shed_total` (counter, #408) | A booking-confirmation mail was **shed**: the registry-mail bulkhead (#383) was saturated — `pool-size` threads busy and all `queue-capacity` slots full — so the send never reached the relay. The work is *expected* to survive: its event publication stays outstanding and `spring.modulith.events.republish-outstanding-events-on-restart` re-delivers it at the next start (pinned end-to-end by `RegistryMailShedDurabilityIT`, #407: it saturates a shrunk bulkhead, sheds a real confirmation, and proves the publication is still outstanding afterwards) — and since #405 you need not wait for one: `POST /api/admin/mail-outbox/resubmit` re-drives it on demand. Until it lands, a paying tourist has no arrival code by mail | any increase. A single shed means the relay is degraded or the pool is undersized for real volume. **Diagnose the relay first** — raising the bounds trades a lossless shed for a larger backlog, and past the ceilings below it is not accepted at all |
 
@@ -96,36 +96,50 @@ that does **not** trigger its own recovery: a crash restarts by definition and t
 whereas a shed happens while the process is healthy and nothing restarts it. Until someone acts, a
 tourist owed money under invariant #10 has not been paid.
 
-**Enumerating the bookings that are owed money (#594).** `riviera_refunds_owed` says how many; this says
-which. The un-record leaves the collection `SUCCEEDED` with nothing refunded — deliberately, because that
-is what it still is — so the failure marker, not the status, is what identifies the debt:
+**Enumerating the refunds that are owed (#594).** `riviera_refunds_owed` says how many; this says
+which. Since #1210 each refund the platform pursues is a row of `payment_refund` — `scope = 'BOOKING'`
+for the whole share, `scope = 'DAY'` plus `service_date` for one day of a stay — and
+`payment_booking.refunded_minor` is the running sum of the share's recorded refunds. The un-record
+leaves the refund row at `amount_minor = 0` with no `refund_id` — deliberately, because that is what it
+still is — so the failure marker, not the collection's status, is what identifies the debt:
 
 ```sql
-SELECT b.booking_ref, b.amount_minor, p.currency, p.payment_intent_id, b.failed_refund_id, b.refund_failed_at
-FROM payment_booking b JOIN payment p ON p.id = b.payment_id
-WHERE b.refund_failed_at IS NOT NULL
-ORDER BY b.refund_failed_at;
+SELECT b.booking_ref, r.scope, r.service_date, b.amount_minor, b.refunded_minor, p.currency,
+       p.payment_intent_id, r.failed_refund_id, r.failed_at
+FROM payment_refund r
+JOIN payment_booking b ON b.id = r.payment_booking_id
+JOIN payment p ON p.id = b.payment_id
+WHERE r.failed_at IS NOT NULL
+ORDER BY r.failed_at;
 ```
 
-`failed_refund_id` is the refund to look up in the Stripe dashboard. **Expect `refund_attempted_at` to
-be NULL on every row of this list** — it records an attempt *in flight*, and every row here has one that
+`failed_refund_id` is the refund to look up in the Stripe dashboard. **Expect `attempted_at` to be NULL
+on every row of this list** — it records an attempt *in flight*, and every row here has one that
 concluded, so it is cleared. That is the point rather than a gap: a stamp that outlived its attempt would
-make the next refund on that collection look like ours, including one someone issued by hand. A row
-leaves the list when a retry records successfully, or when someone clears it after settling by hand:
+make the next refund on that scope look like ours, including one someone issued by hand. A row leaves
+the list when a retry records successfully, or when someone clears it after settling by hand:
 
 settling by hand means **recording
 the refund you issued**, not merely clearing the flag — clearing alone leaves the row reading
-`SUCCEEDED, refunded_minor = 0`, which `RefundStatusLookup` reports as `OUTSTANDING` and the booking
-view shows the guest as *refund still outstanding*, permanently:
+`amount_minor = 0`, which for the whole-share row `RefundStatusLookup` reports as `OUTSTANDING` and the
+booking view shows the guest as *refund still outstanding*, permanently:
 
 ```sql
-UPDATE payment_booking
-SET refunded_minor      = <minor units actually refunded at the gateway>,
-    refund_id           = '<the re_… you issued by hand>',
-    refund_failed_at    = NULL,
-    refund_attempted_at = NULL,
-    updated_at          = NOW()
-WHERE booking_ref = <id> AND refund_failed_at IS NOT NULL;
+UPDATE payment_refund r
+SET amount_minor = <minor units actually refunded at the gateway>,
+    refund_id    = '<the re_… you issued by hand>',
+    failed_at    = NULL,
+    attempted_at = NULL,
+    updated_at   = NOW()
+FROM payment_booking b
+WHERE r.payment_booking_id = b.id AND b.booking_ref = <id>
+  AND r.scope = '<BOOKING or DAY>' AND r.service_date IS NOT DISTINCT FROM <NULL, or the day for DAY>
+  AND r.failed_at IS NOT NULL;
+
+UPDATE payment_booking b
+SET refunded_minor = (SELECT COALESCE(SUM(amount_minor), 0) FROM payment_refund WHERE payment_booking_id = b.id),
+    updated_at     = NOW()
+WHERE booking_ref = <id>;
 
 UPDATE payment p
 SET status = CASE WHEN t.refunded >= p.amount_minor THEN 'REFUNDED'
@@ -135,21 +149,23 @@ FROM (SELECT payment_id, SUM(refunded_minor) AS refunded FROM payment_booking GR
 WHERE t.payment_id = p.id AND p.id = (SELECT payment_id FROM payment_booking WHERE booking_ref = <id>);
 ```
 
-The second statement re-derives the intent's status from every booking it collects for, which is
-what the app's own refund writes do in one statement; tag the refund you issue at the dashboard
-with metadata `bookingRef = <id>` so a later failure of it finds the right booking.
+The second and third statements re-derive the share's running sum and the intent's status from every
+refund and every booking they collect for, which is what the app's own refund writes do in one
+statement; tag the refund you issue at the dashboard with metadata `bookingRef = <id>` (and
+`serviceDate = <yyyy-MM-dd>` for a day) so a later failure of it finds the right row.
 
-The `refund_failed_at IS NOT NULL` guard is load-bearing twice over: it makes the statement a no-op if
-an automatic retry already recorded the refund while you were working, and writing `refund_id` means a
+The `failed_at IS NOT NULL` guard is load-bearing twice over: it makes the statement a no-op if an
+automatic retry already recorded the refund while you were working, and writing `refund_id` means a
 later failure of the refund *you* issued is matched by the ordinary un-record path rather than being
-mistaken for a stranger's. Clearing `refund_attempted_at` is safe in the same statement precisely
-because `refund_id` is now set — the by-intent arm requires it to be NULL.
+mistaken for a stranger's. Clearing `attempted_at` is safe in the same statement precisely
+because `refund_id` is now set — the by-scope arm requires it to be NULL.
 
 **The lever is `POST /api/admin/refund-outbox/resubmit` (#454; the admin console's Refunds tab at
 `/admin/refunds` drives it since #460).** It re-drives what the registry
-still owes `BookingRefundListener` — thrown, shed, or crash-stranded alike — and nothing else: the
-scope is that listener's **exact id** (an allowlist of one, not the `booking` package prefix, which
-would also sweep `PaymentEventListener`'s payment→confirm spine). The mail lever remains equally
+still owes the refund bulkhead's listeners (`BookingRefundListener`, `BookingDayRefundListener`,
+`RemodelReleasePaymentListener`) — thrown, shed, or crash-stranded alike — and nothing else: the
+scope is their **exact ids** (an allowlist, not the `booking` package prefix, which would also sweep
+`PaymentEventListener`'s payment→confirm spine). The mail lever remains equally
 narrow the other way — `/api/admin/mail-outbox` (#405) is scoped to `ai.riviera.platform.notification.`
 and cannot reach the refund listener — so neither button can replay the other's work.
 `GET /api/admin/refund-outbox` shows the outstanding count first; a press inside the 60s cooldown
@@ -282,8 +298,8 @@ the work was taken, ran, and failed. Only one of those is about the relay.
 never retried by anything. Since #374 it has siblings — `riviera_mail_cancellation_abandoned_total`,
 #373's `riviera_mail_payment_due_abandoned_total`, #124's
 `riviera_mail_request_declined_abandoned_total` / `riviera_mail_request_expired_abandoned_total`,
-#1034's `riviera_mail_move_abandoned_total` and #1209's `riviera_mail_move_reminder_abandoned_total` —
-each this counter's argument applied to its own listener; everything below holds for all of them, and
+#1034's `riviera_mail_move_abandoned_total`, #1209's `riviera_mail_move_reminder_abandoned_total` and
+#1210's `riviera_mail_day_refund_abandoned_total` — each this counter's argument applied to its own listener; everything below holds for all of them, and
 the one place they differ — what an operator does about an increment — is in that section.
 
 A booking confirmation the registry listener **gave up on** because a fact it needs did not resolve:
@@ -343,8 +359,9 @@ never the arrival code and never the address (invariant #7).
 None of the abandoned counters — `riviera_mail_confirmation_abandoned_total`, its #374 sibling
 `riviera_mail_cancellation_abandoned_total`, #373's `riviera_mail_payment_due_abandoned_total`,
 #124's `riviera_mail_request_declined_abandoned_total` /
-`riviera_mail_request_expired_abandoned_total`, #1034's `riviera_mail_move_abandoned_total`, or #1209's
-`riviera_mail_move_reminder_abandoned_total` — is in that order, deliberately: they never rise because
+`riviera_mail_request_expired_abandoned_total`, #1034's `riviera_mail_move_abandoned_total`, #1209's
+`riviera_mail_move_reminder_abandoned_total`, or #1210's `riviera_mail_day_refund_abandoned_total` — is in
+that order, deliberately: they never rise because
 of a relay, so seeing any of them during an outage means you have found a *second*, unrelated fault.
 
 **Why the registry vehicle has no *transport* failure counter of its own.** Its transport failure

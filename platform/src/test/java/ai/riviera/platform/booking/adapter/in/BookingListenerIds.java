@@ -20,6 +20,10 @@ public final class BookingListenerIds {
 	/** {@code BookingRefundListener} — the money-moving half of what the admin lever may re-drive. */
 	public static final String REFUND = id(BookingRefundListener.class, BookingCancelled.class);
 
+	/** {@code BookingDayRefundListener} — a refunded day's money (#1210), the lever's third allowed id. */
+	public static final String DAY_REFUND = id(BookingDayRefundListener.class,
+			ai.riviera.platform.booking.events.BookingDayRefunded.class);
+
 	/** {@code RemodelReleasePaymentListener} — the intent-void half, the lever's second allowed id. */
 	public static final String REMODEL_RELEASE_VOID =
 			id(RemodelReleasePaymentListener.class, BookingCancelled.class);

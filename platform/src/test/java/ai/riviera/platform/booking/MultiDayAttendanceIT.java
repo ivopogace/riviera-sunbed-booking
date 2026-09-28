@@ -188,6 +188,56 @@ class MultiDayAttendanceIT {
 		assertEquals(List.of(), missedDays(stay));
 	}
 
+	/** AC-8 (#1210): a refunded day is neither missed nor attended, refuses a scan, and the outcome ignores it. */
+	@Test
+	void aRefundedDayIsNeitherMissedNorAttendedAndRefusesAScan() {
+		String code = uniqueCode("STAYWX");
+		long stay = insertStay(code, FIRST_DAY, 3);
+		attend(stay, FIRST_DAY);
+		assertTrue(bookings.refundDay(stay, FIRST_DAY.plusDays(1), 1500L, Instant.now()).isPresent(), "day 2 refunded");
+		assertTrue(bookings.refundDay(stay, FIRST_DAY.plusDays(1), 1500L, Instant.now()).isEmpty(),
+				"a second refund of the same day stamps nothing");
+		assertTrue(bookings.refundDay(stay, FIRST_DAY, 1500L, Instant.now()).isEmpty(), "an attended day is never refunded");
+
+		assertTrue(scan(code, FIRST_DAY.plusDays(1)).isEmpty(), "a scan on the refunded day stamps nothing");
+		assertEquals(1, sweepOn(FIRST_DAY.plusDays(3)), "the stay resolves after its last day");
+
+		assertEquals(List.of(FIRST_DAY), attendedDays(stay));
+		assertEquals(List.of(FIRST_DAY.plusDays(2)), missedDays(stay), "the refunded day is not marked missed");
+		assertEquals(List.of(FIRST_DAY.plusDays(1)), daysWhere(stay, "refunded_at IS NOT NULL"));
+		assertEquals("COMPLETED", statusOf(stay), "day 1 was attended");
+	}
+
+	@Test
+	void aCheckInOnTheLastUnrefundedDayResolvesTheStay() {
+		// Day 3 was refunded for weather, so day 2 is the last the guest can attend (#1210).
+		String code = uniqueCode("STAYWXLAST");
+		long stay = insertStay(code, FIRST_DAY, 3);
+		assertTrue(bookings.refundDay(stay, FIRST_DAY.plusDays(2), 1500L, Instant.now()).isPresent());
+
+		assertTrue(scan(code, FIRST_DAY).isPresent());
+		assertEquals("CONFIRMED", statusOf(stay), "day 2 is still ahead");
+
+		assertTrue(scan(code, FIRST_DAY.plusDays(1)).isPresent());
+		assertEquals("COMPLETED", statusOf(stay), "no unrefunded day remains: the stay resolves at the scan");
+		assertNotNull(completedAtOf(stay));
+		assertEquals(List.of(), missedDays(stay), "the refunded day is not marked missed");
+	}
+
+	@Test
+	void aScanOnTodayRefundedAnswersDayRefunded() {
+		String code = uniqueCode("STAYWXNOW");
+		long stay = insertStay(code, today().minusDays(1), 3);
+		bookings.refundDay(stay, today(), 1500L, Instant.now());
+
+		CheckInResult result = checkInBooking.checkIn(operator, new VenueId(venueId), code);
+
+		assertEquals(new CheckInResult.DayRefunded(today().minusDays(1), new ai.riviera.platform.venue.vocabulary.SetId(setId)),
+				result, "the day is the guest's, its money came back, nothing is stamped");
+		assertEquals(List.of(), attendedDays(stay));
+		assertEquals("CONFIRMED", statusOf(stay));
+	}
+
 	@Test
 	void aDayOutsideTheStayIsRefused() {
 		String code = uniqueCode("STAYOUT");

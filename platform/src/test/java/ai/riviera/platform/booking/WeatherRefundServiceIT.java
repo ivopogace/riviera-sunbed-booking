@@ -15,7 +15,9 @@ import org.springframework.test.context.event.RecordApplicationEvents;
 import ai.riviera.platform.EnabledIfDockerAvailable;
 import ai.riviera.platform.TestcontainersConfiguration;
 import ai.riviera.platform.booking.events.BookingCancelled;
+import ai.riviera.platform.booking.events.BookingDayRefunded;
 import ai.riviera.platform.booking.vocabulary.BookingId;
+import ai.riviera.platform.booking.vocabulary.StayId;
 import ai.riviera.platform.booking.vocabulary.RefundReason;
 import ai.riviera.platform.booking.application.refund.RefundForWeather;
 import ai.riviera.platform.booking.application.refund.WeatherRefundOutcome;
@@ -27,10 +29,11 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 
 /**
- * AC-4 (issue #12): the admin weather refund fully refunds <strong>every</strong> {@code CONFIRMED}
+ * AC-4 (issue #12): the admin weather refund fully refunds <strong>every</strong> lone one-day
  * booking for a venue+date <em>regardless of the cutoff</em> (invariant #10), records reason
  * {@code WEATHER}, frees each {@code (set, date)} (invariant #2), and publishes one
- * {@link BookingCancelled} per booking. Seeds confirmed bookings directly on a <strong>past</strong>
+ * {@link BookingCancelled} per booking; a stay's day is refunded at its own rate while the stay continues
+ * (issue #1210), publishing one {@link BookingDayRefunded}. Seeds confirmed bookings directly on a <strong>past</strong>
  * date (after the cutoff, when a tourist cancel is refused outright) to prove the cutoff is ignored.
  * That past-date seeding also pins the guest-cancel fence's scope: the operator path stays open once
  * the service day has passed, because a post-storm refund returns the venue's own money.
@@ -116,6 +119,16 @@ class WeatherRefundServiceIT {
 				.query(String.class).single();
 	}
 
+	private void attend(long bookingId, LocalDate day) {
+		jdbc.sql("UPDATE booking_day SET attended_at = NOW() WHERE booking_id = :id AND service_date = :d")
+				.param("id", bookingId).param("d", day).update();
+	}
+
+	private Long dayRefund(long bookingId, LocalDate day) {
+		return jdbc.sql("SELECT refund_minor FROM booking_day WHERE booking_id = :id AND service_date = :d")
+				.param("id", bookingId).param("d", day).query(Long.class).optional().orElse(null);
+	}
+
 	private long availabilityRows(long setId, LocalDate date) {
 		return jdbc.sql("SELECT count(*) FROM set_availability WHERE set_id = :s AND booking_date = :d")
 				.param("s", setId).param("d", date).query(Long.class).single();
@@ -188,40 +201,138 @@ class WeatherRefundServiceIT {
 				"one BookingCancelled per booking, so payout reverses exactly once (invariant #9)");
 	}
 
-	/**
-	 * A stay mid-storm selects by overlap and is named, never refunded: the day's share of a live
-	 * booking is #1210's, and until then a silent skip would refund nobody and tell nobody.
-	 */
+	/** AC-1: a storm on day 8 of a 14-day booking refunds day 8's rate, the stay continues and keeps its set. */
 	@Test
-	void aStayOverlappingTheDateIsNamedNotRefunded() {
-		LocalDate storm = LocalDate.of(2020, 7, 15);
+	void aStaysUnattendedDayIsRefundedAndTheStayContinues() {
+		LocalDate first = LocalDate.of(2020, 8, 1);
+		LocalDate storm = first.plusDays(7);
 		long venueId = venueWithOnlineSets();
-		List<Long> sets = onlineSets(venueId, 2);
-		Seeded oneDay = confirmedBooking(venueId, sets.get(0), storm, "WX00000015", 4500L);
-		Seeded stay = confirmedStay(venueId, sets.get(1), storm.minusDays(1), 3, "WX00000016", 12000L);
+		List<Long> sets = onlineSets(venueId, 1);
+		Seeded stay = confirmedStay(venueId, sets.getFirst(), first, 14, "WXSTAY0001", 42000L);
 
 		WeatherRefundOutcome outcome = refundForWeather.refundForWeather(bootstrap(), new VenueId(venueId), storm);
 
-		assertEquals(1, outcome.refundedCount(), "the one-day booking refunds exactly as before");
-		assertEquals(4500L, outcome.totalRefundedMinor());
-		assertEquals(List.of(new BookingId(stay.bookingId())), outcome.manualRefunds(),
-				"the stay is named for a manual refund, by id");
-		assertEquals("CANCELLED", status(oneDay.bookingId()));
-		assertEquals("CONFIRMED", status(stay.bookingId()), "the stay is not cancelled");
+		assertEquals(0, outcome.refundedCount(), "no one-day booking on the date");
+		assertEquals(1, outcome.dayRefundCount(), "one stay had its day refunded");
+		assertEquals(3000L, outcome.dayRefundedMinor(), "day 8's rate: 42000 over 14 days (invariant #5)");
+		assertEquals("EUR", outcome.currency());
+		assertEquals(List.of(), outcome.notRefunded());
+		assertEquals("CONFIRMED", status(stay.bookingId()), "the stay continues");
+		assertEquals(3000L, dayRefund(stay.bookingId(), storm), "the day carries its refund");
+		assertEquals(13L, jdbc.sql("SELECT COUNT(*) FROM booking_day WHERE booking_id = :id AND refunded_at IS NULL")
+				.param("id", stay.bookingId()).query(Long.class).single(), "the other thirteen days are untouched");
 		assertNull(jdbc.sql("SELECT refund_minor FROM booking WHERE id = :id").param("id", stay.bookingId())
-				.query(Long.class).optional().orElse(null), "and not refunded");
-		for (int i = 0; i < 3; i++) {
-			assertEquals(1, availabilityRows(stay.setId(), storm.minusDays(1).plusDays(i)),
-					"every day of the stay stays held");
+				.query(Long.class).optional().orElse(null), "the booking's own refund column is the cancellation's");
+		for (int i = 0; i < 14; i++) {
+			assertEquals(1, availabilityRows(stay.setId(), first.plusDays(i)), "every day stays held (invariant #2)");
 		}
-		assertEquals(0, availabilityRows(oneDay.setId(), storm), "the one-day set is freed (invariant #2)");
-		assertEquals(List.of(new BookingId(oneDay.bookingId())), events.stream(BookingCancelled.class)
-				.filter(e -> e.bookingDate().equals(storm)).map(BookingCancelled::bookingId).toList(),
-				"one BookingCancelled, for the one-day booking only");
+		List<BookingDayRefunded> published = events.stream(BookingDayRefunded.class)
+				.filter(e -> e.serviceDate().equals(storm)).toList();
+		assertEquals(1, published.size(), "one BookingDayRefunded");
+		assertEquals(new BookingId(stay.bookingId()), published.getFirst().bookingId());
+		assertEquals(3000L, published.getFirst().refundMinor());
+		assertEquals(0, events.stream(BookingCancelled.class).filter(e -> e.bookingId().value() == stay.bookingId())
+				.count(), "nothing is cancelled");
+	}
 
-		assertEquals(List.of(new BookingId(stay.bookingId())),
-				refundForWeather.refundForWeather(bootstrap(), new VenueId(venueId), storm).manualRefunds(),
-				"a re-run names the stay again");
+	/** AC-2: a day the guest checked into keeps its money, and the outcome names the booking. */
+	@Test
+	void aCheckedInDayIsNotRefundedAndIsNamed() {
+		LocalDate first = LocalDate.of(2020, 8, 20);
+		LocalDate storm = first.plusDays(1);
+		long venueId = venueWithOnlineSets();
+		List<Long> sets = onlineSets(venueId, 1);
+		Seeded stay = confirmedStay(venueId, sets.getFirst(), first, 3, "WXSTAY0002", 9000L);
+		attend(stay.bookingId(), storm);
+
+		WeatherRefundOutcome outcome = refundForWeather.refundForWeather(bootstrap(), new VenueId(venueId), storm);
+
+		assertEquals(0, outcome.dayRefundCount());
+		assertEquals(List.of(new BookingId(stay.bookingId())), outcome.notRefunded(), "named by id, never by code");
+		assertEquals("CONFIRMED", status(stay.bookingId()));
+		assertNull(dayRefund(stay.bookingId(), storm), "the attended day is not refunded");
+		assertEquals(0, events.stream(BookingDayRefunded.class)
+				.filter(e -> e.bookingId().value() == stay.bookingId()).count());
+	}
+
+	/** AC-3: a day the sweep marked missed is refunded, on a live stay and on one already COMPLETED. */
+	@Test
+	void aMissedDayIsRefundedWhateverTheStayOutcome() {
+		LocalDate first = LocalDate.of(2020, 9, 1);
+		LocalDate storm = first.plusDays(1);
+		long venueId = venueWithOnlineSets();
+		List<Long> sets = onlineSets(venueId, 2);
+		Seeded live = confirmedStay(venueId, sets.get(0), first, 3, "WXSTAY0003", 9000L);
+		Seeded completed = confirmedStay(venueId, sets.get(1), first, 3, "WXSTAY0004", 9000L);
+		attend(completed.bookingId(), first);
+		markNoShows.sweep();
+		assertEquals("NO_SHOW", status(live.bookingId()), "swept: no day attended");
+		assertEquals("COMPLETED", status(completed.bookingId()), "swept: day 1 attended");
+
+		WeatherRefundOutcome outcome = refundForWeather.refundForWeather(bootstrap(), new VenueId(venueId), storm);
+
+		assertEquals(2, outcome.dayRefundCount(), "both stays' missed storm day is refunded");
+		assertEquals(6000L, outcome.dayRefundedMinor());
+		assertEquals(3000L, dayRefund(live.bookingId(), storm));
+		assertEquals(3000L, dayRefund(completed.bookingId(), storm));
+		assertEquals("NO_SHOW", status(live.bookingId()), "the outcomes stand");
+		assertEquals("COMPLETED", status(completed.bookingId()));
+		assertEquals(1L, jdbc.sql("SELECT COUNT(*) FROM booking_day WHERE booking_id = :id AND service_date = :d "
+						+ "AND missed_at IS NOT NULL AND refunded_at IS NOT NULL")
+				.param("id", live.bookingId()).param("d", storm).query(Long.class).single(),
+				"missed and refunded sit together on the day");
+	}
+
+	/** AC-4: a stitched stay refunds the rate of the stretch that covers the date, a one-day stretch included. */
+	@Test
+	void aStitchedStayRefundsTheStretchsOwnRate() {
+		LocalDate first = LocalDate.of(2020, 9, 10);
+		long venueId = venueWithOnlineSets();
+		List<Long> sets = onlineSets(venueId, 2);
+		long stayId = jdbc.sql("""
+				INSERT INTO stay (code, venue_id, first_date, last_date)
+				VALUES ('WXSTITCH01', :venue, :first, :last) RETURNING id
+				""").param("venue", venueId).param("first", first).param("last", first.plusDays(3))
+				.query(Long.class).single();
+		Seeded cheap = confirmedStay(venueId, sets.get(0), first, 3, "WXSTITCH01-1", 6000L);
+		Seeded dear = confirmedStay(venueId, sets.get(1), first.plusDays(3), 1, "WXSTITCH01-2", 5000L);
+		jdbc.sql("UPDATE booking SET stay_id = :stay WHERE id IN (:a, :b)")
+				.param("stay", stayId).param("a", cheap.bookingId()).param("b", dear.bookingId()).update();
+
+		WeatherRefundOutcome dayTwo = refundForWeather.refundForWeather(bootstrap(), new VenueId(venueId),
+				first.plusDays(1));
+		WeatherRefundOutcome lastDay = refundForWeather.refundForWeather(bootstrap(), new VenueId(venueId),
+				first.plusDays(3));
+
+		assertEquals(2000L, dayTwo.dayRefundedMinor(), "the cheap stretch's rate: 6000 over 3 days");
+		assertEquals(5000L, lastDay.dayRefundedMinor(), "the dear stretch's rate, its one day");
+		assertEquals(0, lastDay.refundedCount(), "a one-day stretch is a day of the stay, never cancelled");
+		assertEquals("CONFIRMED", status(dear.bookingId()));
+		assertEquals(1, availabilityRows(dear.setId(), first.plusDays(3)), "and keeps its set");
+		assertEquals(new StayId(stayId), events.stream(BookingDayRefunded.class)
+				.filter(e -> e.bookingId().value() == dear.bookingId()).findFirst().orElseThrow().stayId(),
+				"the event names the stay, so the mail can");
+	}
+
+	/** AC-5: a second run on the same date refunds nothing more; another storm date refunds another day. */
+	@Test
+	void twoStormDatesRefundTwoDaysAndARerunNone() {
+		LocalDate first = LocalDate.of(2020, 10, 1);
+		long venueId = venueWithOnlineSets();
+		List<Long> sets = onlineSets(venueId, 1);
+		Seeded stay = confirmedStay(venueId, sets.getFirst(), first, 5, "WXSTAY0005", 15000L);
+		VenueId venue = new VenueId(venueId);
+
+		assertEquals(1, refundForWeather.refundForWeather(bootstrap(), venue, first.plusDays(1)).dayRefundCount());
+		assertEquals(0, refundForWeather.refundForWeather(bootstrap(), venue, first.plusDays(1)).dayRefundCount(),
+				"a re-run refunds nothing more");
+		assertEquals(1, refundForWeather.refundForWeather(bootstrap(), venue, first.plusDays(2)).dayRefundCount(),
+				"another storm date is another day");
+
+		assertEquals(6000L, jdbc.sql("SELECT SUM(refund_minor) FROM booking_day WHERE booking_id = :id")
+				.param("id", stay.bookingId()).query(Long.class).single(), "two days, refunded once each");
+		assertEquals(2, events.stream(BookingDayRefunded.class)
+				.filter(e -> e.bookingId().value() == stay.bookingId()).count());
 	}
 
 	@Test

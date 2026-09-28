@@ -167,6 +167,24 @@ class JdbcBookingsDailyTakingsIT {
 				"the day after the stay ends is empty");
 	}
 
+	/** #1210: a day a storm gave back is not the venue's takings; the stay's other days still are. */
+	@Test
+	void aRefundedDayIsExcluded() {
+		SetRef target = ownVenueWithOnlineSet("Storm Venue");
+		LocalDate first = LocalDate.of(2027, 9, 1);
+		insertStay("TAKE0011", target.venueId(), target.setId(), first, first.plusDays(2), 9000, "CONFIRMED");
+		jdbc.sql("""
+				UPDATE booking_day SET refunded_at = NOW(), refund_minor = 3000
+				WHERE booking_id = (SELECT id FROM booking WHERE code = 'TAKE0011') AND service_date = :d
+				""").param("d", first.plusDays(1)).update();
+		VenueId venue = new VenueId(target.venueId());
+
+		assertEquals(3000L, dailyTakings.grossOnlineTakings(venue, first).grossMinor());
+		assertEquals(0L, dailyTakings.grossOnlineTakings(venue, first.plusDays(1)).grossMinor(),
+				"the refunded day carries nothing");
+		assertEquals(3000L, dailyTakings.grossOnlineTakings(venue, first.plusDays(2)).grossMinor());
+	}
+
 	@Test
 	void emptyDayYieldsZeroInEur() {
 		SetRef target = ownVenueWithOnlineSet("Empty Venue");

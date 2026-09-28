@@ -294,8 +294,10 @@ describe('OperatorConsoleService — payout ledger + weather refund (#173)', () 
       refundedCount: 2,
       totalRefundedMinor: 7000,
       currency: 'EUR',
-      manualRefundCount: 1,
-      manualRefundBookingIds: [21],
+      dayRefundCount: 1,
+      dayRefundedMinor: 3000,
+      notRefundedCount: 1,
+      notRefundedBookingIds: [21],
     };
     req.flush(outcome);
     expect(actual).toEqual(outcome);

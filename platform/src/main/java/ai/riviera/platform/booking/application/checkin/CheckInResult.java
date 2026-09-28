@@ -26,6 +26,10 @@ public sealed interface CheckInResult {
 	record WrongServiceDate(LocalDate bookingDate) implements CheckInResult {
 	}
 
+	/** Today was refunded for weather (issue #1210): the set is still the guest's, the day is not stamped. */
+	record DayRefunded(LocalDate bookingDate, SetId setId) implements CheckInResult {
+	}
+
 	/** Unknown at this venue — covers unknown codes, foreign venues' codes and dead lifecycles alike. */
 	record NotFound() implements CheckInResult {
 	}

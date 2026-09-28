@@ -101,7 +101,8 @@ class MailListenerExecutorArchitectureTest {
 				BookingCancellationMailListener.class, RequestPaymentDueMailListener.class,
 				RequestDeclinedMailListener.class, RequestExpiredMailListener.class,
 				BookingMovedMailListener.class, StayConfirmationMailListener.class,
-				StayCancellationMailListener.class, StayMoveReminderMailListener.class);
+				StayCancellationMailListener.class, StayMoveReminderMailListener.class,
+				BookingDayRefundMailListener.class);
 		List<Class<?>> examined = inScopeListeners(notificationEventListeners()).stream()
 				.filter(listener -> "on".equals(listener.getName()))
 				.map(Method::getDeclaringClass)

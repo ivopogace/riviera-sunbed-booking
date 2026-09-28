@@ -1,5 +1,7 @@
 package ai.riviera.platform.payment;
 
+import java.time.LocalDate;
+
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -17,7 +19,8 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 /**
  * Verifies the payment schema's invariant-enforcing constraints (invariant #12): one collection per
  * Stripe id ({@code UNIQUE(payment_intent_id)}), one booking row per booking
- * ({@code payment_booking_uniq}) while one intent may collect for several, a closed {@code status}
+ * ({@code payment_booking_uniq}) while one intent may collect for several, one refund per booking and
+ * scope ({@code payment_refund_uniq}: the whole share once, each day once), a closed {@code status}
  * value set, non-negative money and a share never refunded past itself (invariant #5), and the
  * webhook-id dedup key ({@code stripe_webhook_event.event_id} PK — the idempotency guard, invariant
  * #8). Real Flyway on Testcontainers Postgres; skipped (not failed) where Docker is absent.
@@ -135,17 +138,13 @@ class PaymentMigrationIT {
 	void refundStatesAccepted() {
 		assertDoesNotThrow(() -> {
 			insertPayment(6001L, "pi_refunded", "SUCCEEDED");
-			jdbc.sql("""
-					UPDATE payment_booking SET refunded_minor = 4500, refund_id = 're_mig_full' WHERE booking_ref = 6001
-					""").update();
+			recordRefund(6001L, "BOOKING", null, 4500L, "re_mig_full");
 			jdbc.sql("UPDATE payment SET status = 'REFUNDED' WHERE payment_intent_id = 'pi_refunded'").update();
 			insertPayment(6002L, "pi_partial", "SUCCEEDED");
-			jdbc.sql("""
-					UPDATE payment_booking SET refunded_minor = 2250, refund_id = 're_mig_part' WHERE booking_ref = 6002
-					""").update();
+			recordRefund(6002L, "BOOKING", null, 2250L, "re_mig_part");
 			jdbc.sql("UPDATE payment SET status = 'PARTIALLY_REFUNDED' WHERE payment_intent_id = 'pi_partial'")
 					.update();
-		}, "REFUNDED / PARTIALLY_REFUNDED + the booking's refund columns must be accepted.");
+		}, "REFUNDED / PARTIALLY_REFUNDED + the booking's refund rows must be accepted.");
 	}
 
 	@Test
@@ -154,24 +153,54 @@ class PaymentMigrationIT {
 		assertThrows(DataIntegrityViolationException.class,
 				() -> jdbc.sql("UPDATE payment_booking SET refunded_minor = 9999 WHERE booking_ref = 7001")
 						.update(),
-				"payment_booking_refunded_check must reject a refund greater than the booking's share.");
+				"payment_booking_refunded_check must reject a running sum greater than the booking's share.");
 	}
 
 	@Test
 	void aRefundIdIsRecordedOnce() {
 		insertPayment(7101L, "pi_refund_id_a", "SUCCEEDED");
 		insertPayment(7102L, "pi_refund_id_b", "SUCCEEDED");
-		jdbc.sql("UPDATE payment_booking SET refund_id = 're_once' WHERE booking_ref = 7101").update();
+		recordRefund(7101L, "BOOKING", null, 4500L, "re_once");
 
 		assertThrows(DataIntegrityViolationException.class,
-				() -> jdbc.sql("UPDATE payment_booking SET refund_id = 're_once' WHERE booking_ref = 7102")
-						.update(),
-				"payment_booking_refund_uniq: a gateway refund belongs to one booking, so its failure finds one row.");
+				() -> recordRefund(7102L, "BOOKING", null, 4500L, "re_once"),
+				"payment_refund_id_uniq: a gateway refund belongs to one row, so its failure finds one.");
+	}
+
+	@Test
+	void oneRefundPerBookingAndScope() {
+		// V70: the whole share once, each day once; a day and the whole share may both exist.
+		insertPayment(7201L, "pi_scopes", "SUCCEEDED");
+		LocalDate day = LocalDate.of(2029, 7, 8);
+		recordRefund(7201L, "DAY", day, 300L, "re_day_8");
+
+		assertThrows(DataIntegrityViolationException.class,
+				() -> recordRefund(7201L, "DAY", day, 300L, "re_day_8_again"),
+				"payment_refund_uniq: a day's share is refunded at most once");
+		assertDoesNotThrow(() -> recordRefund(7201L, "DAY", day.plusDays(1), 300L, "re_day_9"),
+				"another day is another refund");
+		assertDoesNotThrow(() -> recordRefund(7201L, "BOOKING", null, 3900L, "re_rest"),
+				"the whole-share refund sits beside the day refunds");
+		assertThrows(DataIntegrityViolationException.class,
+				() -> recordRefund(7201L, "BOOKING", null, 3900L, "re_rest_again"),
+				"payment_refund_uniq: NULLS NOT DISTINCT keeps the whole-share refund one per booking");
+	}
+
+	@Test
+	void aDayRefundNamesItsDayAndTheWholeShareDoesNot() {
+		insertPayment(7301L, "pi_scope_shape", "SUCCEEDED");
+		assertThrows(DataIntegrityViolationException.class, () -> recordRefund(7301L, "DAY", null, 300L, "re_x"),
+				"payment_refund_day_check: a DAY refund names its day");
+		assertThrows(DataIntegrityViolationException.class,
+				() -> recordRefund(7301L, "BOOKING", LocalDate.of(2029, 7, 8), 300L, "re_y"),
+				"payment_refund_day_check: the whole share carries no day");
+		assertThrows(DataIntegrityViolationException.class, () -> recordRefund(7301L, "STAY", null, 300L, "re_z"),
+				"payment_refund_scope_check admits only BOOKING | DAY");
 	}
 
 	/**
 	 * The owed shape: a collected payment whose refund died is {@code SUCCEEDED} with nothing refunded
-	 * and no live refund id on the booking, carrying only the failure trace. That combination is what
+	 * and no live refund id on the refund row, carrying only the failure trace. That combination is what
 	 * makes the owed-refund list enumerable, so the schema must admit it rather than constrain it away.
 	 */
 	@Test
@@ -179,28 +208,41 @@ class PaymentMigrationIT {
 		insertPayment(8001L, "pi_owed", "SUCCEEDED");
 
 		assertDoesNotThrow(() -> jdbc.sql("""
-				UPDATE payment_booking
-				SET refund_attempted_at = NOW(), refund_failed_at = NOW(), failed_refund_id = 're_dead',
-				    refunded_minor = 0, refund_id = NULL
-				WHERE booking_ref = 8001
-				""").update(), "the booking row must admit a collected payment whose refund returned no money.");
+				INSERT INTO payment_refund (payment_booking_id, scope, attempted_at, failed_at, failed_refund_id)
+				SELECT id, 'BOOKING', NOW(), NOW(), 're_dead' FROM payment_booking WHERE booking_ref = 8001
+				""").update(), "the refund row must admit a collected payment whose refund returned no money.");
 
 		assertEquals(1, jdbc.sql("""
-				SELECT COUNT(*) FROM payment_booking b JOIN payment p ON p.id = b.payment_id
-				WHERE b.booking_ref = 8001 AND b.refund_failed_at IS NOT NULL AND p.status = 'SUCCEEDED'
+				SELECT COUNT(*) FROM payment_refund r
+				JOIN payment_booking b ON b.id = r.payment_booking_id JOIN payment p ON p.id = b.payment_id
+				WHERE b.booking_ref = 8001 AND r.failed_at IS NOT NULL AND r.refund_id IS NULL
+				  AND r.amount_minor = 0 AND p.status = 'SUCCEEDED'
 				""").query(Integer.class).single(),
 				"the trace must be readable as the queryable list of bookings still owed a refund.");
 	}
 
 	@Test
-	void refundFailureTraceIsNullForEveryFreshRow() {
+	void aFreshShareCarriesNoRefundRow() {
 		insertPayment(8002L, "pi_untouched", "SUCCEEDED");
 
-		assertEquals(1, jdbc.sql("""
-				SELECT COUNT(*) FROM payment_booking
-				WHERE booking_ref = 8002 AND refund_attempted_at IS NULL AND refund_failed_at IS NULL
-				  AND failed_refund_id IS NULL AND refunded_minor = 0
+		assertEquals(0, jdbc.sql("""
+				SELECT COUNT(*) FROM payment_refund r JOIN payment_booking b ON b.id = r.payment_booking_id
+				WHERE b.booking_ref = 8002
 				""").query(Integer.class).single(),
-				"no attempt recorded and no failure observed is a fresh booking row's truth.");
+				"no attempt recorded and no failure observed is a fresh share's truth: no refund row at all.");
+		assertEquals(0L, jdbc.sql("SELECT refunded_minor FROM payment_booking WHERE booking_ref = 8002")
+				.query(Long.class).single());
+	}
+
+	private void recordRefund(long bookingRef, String scope, LocalDate serviceDate, long amountMinor, String refundId) {
+		jdbc.sql("""
+				INSERT INTO payment_refund (payment_booking_id, scope, service_date, amount_minor, refund_id)
+				SELECT id, :scope, :day, :amount, :refundId FROM payment_booking WHERE booking_ref = :ref
+				""")
+				.param("ref", bookingRef).param("scope", scope).param("day", serviceDate)
+				.param("amount", amountMinor).param("refundId", refundId)
+				.update();
+		jdbc.sql("UPDATE payment_booking SET refunded_minor = refunded_minor + :amount WHERE booking_ref = :ref")
+				.param("amount", amountMinor).param("ref", bookingRef).update();
 	}
 }

@@ -237,6 +237,17 @@ export interface BookingDetail {
   readonly move: BookingMove | null;
   /** A stitched stay's stretches with their own states; empty (or absent, older payload) for one set. */
   readonly stretches?: readonly StayStretchView[];
+  /**
+   * The days a weather refund gave back while the booking went on, in day order — every stretch's;
+   * empty (or absent, older payload) when none.
+   */
+  readonly refundedDays?: readonly RefundedDayView[];
+}
+
+/** One service day refunded for weather (mirrors the backend `RefundedDayView`): the day and what came back. */
+export interface RefundedDayView {
+  readonly day: string;
+  readonly amount: MoneyView;
 }
 
 /**

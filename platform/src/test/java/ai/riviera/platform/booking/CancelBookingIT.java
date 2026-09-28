@@ -28,6 +28,7 @@ import ai.riviera.platform.venue.vocabulary.SetId;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * AC-4/AC-5/AC-7 (issue #11): cancelling a CONFIRMED booking frees the {@code (set, date)}
@@ -54,6 +55,9 @@ class CancelBookingIT {
 
 	@Autowired
 	JdbcClient jdbc;
+
+	@Autowired
+	ai.riviera.platform.booking.application.Bookings bookings;
 
 	@Autowired
 	ApplicationEvents events;
@@ -177,6 +181,74 @@ class CancelBookingIT {
 				"no refund is stamped");
 		assertEquals(0, events.stream(BookingCancelled.class).count(),
 				"no BookingCancelled means no Stripe refund and no payout reversal");
+	}
+
+	/** AC-9 (#1210): after a day refund the guest cancels what they still hold, quoted and refunded over the remainder. */
+	@Test
+	void aCancelQuotedBeforeADayRefundWritesNothing() {
+		// The quote read 9000 remaining; a weather refund of day 2 (3000) landed before the write (#1210).
+		LocalDate first = LocalDate.of(2035, 7, 1);
+		long setId = VisibleOnlineSets.newest(jdbc).id();
+		long venueId = jdbc.sql("SELECT venue_id FROM set_position WHERE id = :s").param("s", setId)
+				.query(Long.class).single();
+		long customer = jdbc.sql("INSERT INTO customer (email, full_name, phone) "
+						+ "VALUES ('storm-race@example.com', 'Guest', '+355600') RETURNING id")
+				.query(Long.class).single();
+		long id = jdbc.sql("""
+				INSERT INTO booking (code, venue_id, set_id, customer_id, booking_date, last_date,
+				                     amount_minor, amount_currency, status, confirmed_at)
+				VALUES ('CANCELWX02', :venue, :set, :cust, :first, :last, 9000, 'EUR', 'CONFIRMED', NOW())
+				RETURNING id
+				""").param("venue", venueId).param("set", setId).param("cust", customer)
+				.param("first", first).param("last", first.plusDays(2)).query(Long.class).single();
+		jdbc.sql("UPDATE booking_day SET refunded_at = NOW(), refund_minor = 3000 WHERE booking_id = :id AND service_date = :d")
+				.param("id", id).param("d", first.plusDays(1)).update();
+
+		assertTrue(bookings.cancelConfirmed(id, java.time.Instant.now(), 9000L, RefundReason.POLICY, 9000L).isEmpty(),
+				"the stale quote writes nothing: the day it counted was refunded since");
+		assertEquals("CONFIRMED", jdbc.sql("SELECT status FROM booking WHERE id = :id").param("id", id)
+				.query(String.class).single());
+
+		assertTrue(bookings.cancelConfirmed(id, java.time.Instant.now(), 6000L, RefundReason.POLICY, 6000L).isPresent(),
+				"a quote over the true remainder cancels");
+	}
+
+	@Test
+	void aCancellationAfterADayRefundRefundsTheRemainder() {
+		LocalDate first = LocalDate.of(2035, 7, 1);
+		long setId = VisibleOnlineSets.newest(jdbc).id();
+		long venueId = jdbc.sql("SELECT venue_id FROM set_position WHERE id = :s").param("s", setId)
+				.query(Long.class).single();
+		long customer = jdbc.sql("INSERT INTO customer (email, full_name, phone) "
+						+ "VALUES ('storm-cancel@example.com', 'Guest', '+355600') RETURNING id")
+				.query(Long.class).single();
+		long id = jdbc.sql("""
+				INSERT INTO booking (code, venue_id, set_id, customer_id, booking_date, last_date,
+				                     amount_minor, amount_currency, status, confirmed_at)
+				VALUES ('CANCELWX01', :venue, :set, :cust, :first, :last, 9000, 'EUR', 'CONFIRMED', NOW())
+				RETURNING id
+				""").param("venue", venueId).param("set", setId).param("cust", customer)
+				.param("first", first).param("last", first.plusDays(2)).query(Long.class).single();
+		jdbc.sql("""
+				INSERT INTO payout_ledger_entry (venue_id, booking_id, entry_type, gross_minor, commission_minor,
+				                                 net_minor, currency)
+				VALUES (:v, :b, 'ACCRUAL', 9000, 0, 9000, 'EUR')
+				""").param("v", venueId).param("b", id).update();
+		jdbc.sql("UPDATE booking_day SET refunded_at = NOW(), refund_minor = 3000 WHERE booking_id = :id AND service_date = :d")
+				.param("id", id).param("d", first.plusDays(1)).update();
+
+		BookingDetail before = viewBooking.byCode("CANCELWX01").orElseThrow();
+		assertEquals(6000L, before.refundIfCancelledNow().minorUnits(), "quoted over the remainder");
+		assertEquals(1, before.refundedDays().size());
+		assertEquals(first.plusDays(1), before.refundedDays().getFirst().day());
+
+		CancelOutcome outcome = cancelBooking.cancel("CANCELWX01");
+
+		CancelOutcome.Cancelled cancelled = assertInstanceOf(CancelOutcome.Cancelled.class, outcome);
+		assertEquals(6000L, cancelled.refundMinor(), "the day already refunded is never refunded again");
+		assertEquals(CancelOutcome.Tier.FULL, cancelled.tier(), "everything still held came back");
+		assertEquals(6000L, events.stream(BookingCancelled.class).filter(e -> e.bookingId().value() == id)
+				.findFirst().orElseThrow().refundMinor());
 	}
 
 	@Test

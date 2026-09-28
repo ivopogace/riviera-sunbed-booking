@@ -50,7 +50,7 @@ graph TB
         RCPT["remodel_receipt<br/>+ _move, _outcome"]
     end
     subgraph payment["payment"]
-        PAY["payment<br/>+ payment_booking, stripe_webhook_event"]
+        PAY["payment<br/>+ payment_booking, payment_refund, stripe_webhook_event"]
     end
     subgraph payout["payout"]
         LEDG["payout_ledger_entry"]
@@ -341,8 +341,10 @@ classDiagram
         <<table>>
         booking_id, service day
         attended_at, missed_at
+        refunded_at, refund_minor
         PK (booking_id, service_date)
         CHECK not both attended and missed
+        CHECK refunded_at and refund_minor both or neither, never beside attended_at
     }
     booking "1" --> "1..*" booking_day : one row per service day, written on CONFIRMED
     class BookingStatus {
@@ -428,9 +430,16 @@ classDiagram
     class payment_booking {
         <<table>>
         id, payment_id, booking_ref
-        amount_minor, refunded_minor, refund_id
-        refund_attempted_at, refund_failed_at, failed_refund_id
-        UNIQUE (booking_ref), UNIQUE (refund_id)
+        amount_minor, refunded_minor
+        UNIQUE (booking_ref)
+    }
+    class payment_refund {
+        <<table>>
+        id, payment_booking_id
+        scope, service_date
+        amount_minor, refund_id
+        attempted_at, failed_at, failed_refund_id
+        UNIQUE (payment_booking_id, scope, service_date), UNIQUE (refund_id)
     }
     class stripe_webhook_event {
         <<table>>
@@ -463,14 +472,16 @@ classDiagram
     }
     payment ..> PaymentStatus : status, mirrors the CHECK
     payment "1" *-- "1..*" payment_booking : the bookings it collects for
+    payment_booking "1" *-- "0..*" payment_refund : its refunds, one per scope
     payment_booking ..> BookingRef : booking_ref
     stripe_webhook_event ..> payment : event-id dedup guards the write
 ```
 
-> **One intent, one row per booking, at most one refund per booking, and no `Refund` entity.**
+> **One intent, one row per booking, one row per refund of a share, and no `Refund` entity.**
 > A stay is a group of bookings paid once, so `payment` holds the intent and `payment_booking`
-> holds each booking's share with its refund state — `refunded_minor`, `refund_id` and the failure
-> trace behind the resubmission lever (§5). The intent's status is derived from its shares. There
+> holds each booking's share with `refunded_minor`, the running sum of its refunds; each refund is a
+> `payment_refund` row keyed by scope (the whole share, or one day of a stay, ADR-0026) carrying its
+> `refund_id` and the failure trace behind the resubmission lever (§5). The intent's status is derived from its shares. There
 > is no `PaymentId`, `RefundId` or `RefundStatus` type, and the **idempotency key is not stored**
 > at all: it is derived from the booking id at call time; the refund's booking travels as Stripe
 > metadata (`StripeRefundTag`). `RefundReason` belongs to `booking` — why a refund happened is
@@ -487,10 +498,10 @@ classDiagram
     class payout_ledger_entry {
         <<table>>
         id, venue_id, booking_id
-        entry_type, reason
+        entry_type, reason, service_date
         gross_minor, commission_minor, net_minor, currency
         period_key, created_at
-        UNIQUE (booking_id, entry_type)
+        UNIQUE NULLS NOT DISTINCT (booking_id, entry_type, service_date)
     }
     class payout_batch {
         <<table>>
@@ -548,8 +559,9 @@ classDiagram
 > auditable under invariant #9. `bookingId` is a bare `long` while `venueId` is typed.
 >
 > A booking contributes **exactly once** (an `ACCRUAL`), a refund posts a proportional `REVERSAL`,
-> and a refund the venue's own layout change caused posts a `FEE` beside it — each enforced by
-> `payout_once_per_booking UNIQUE (booking_id, entry_type)` (invariant #9).
+> a stay's washed-out day posts a `DAY_REVERSAL` keyed by the day (ADR-0026), and a refund the venue's
+> own layout change caused posts a `FEE` beside it — each enforced by
+> `payout_once_per_booking UNIQUE NULLS NOT DISTINCT (booking_id, entry_type, service_date)` (invariant #9).
 >
 > **Direction lives in the entry type, never in the amount.** Every amount is a non-negative
 > magnitude, so a payout reads `Σ ACCRUAL.net − Σ REVERSAL.net − Σ FEE.net`: only an `ACCRUAL` adds
@@ -880,7 +892,7 @@ sequenceDiagram
         P->>S: create Refund
         S-->>P: webhook refund updated (signed)
     else gateway refuses or is down
-        P->>P: stamp the booking's refund_attempted_at / refund_failed_at / failed_refund_id
+        P->>P: stamp the refund row (payment_refund): attempted_at / failed_at / failed_refund_id
         Note over B,P: the publication stays outstanding — riviera.refunds.failed is the signal
         Adm->>B: admin presses re-submit (window-limited)
         B->>P: same BookingCancelled re-driven, same refund re-asked
@@ -893,8 +905,8 @@ sequenceDiagram
 > swept `NO_SHOW`.
 >
 > **The failure leg is not decoration.** A refund the gateway refuses leaves its `BookingCancelled`
-> publication outstanding in the Event Publication Registry, with the attempt traced on the booking's
-> `payment_booking` row. `RefundOutbox` exposes exactly that backlog for the one refund listener and the lever
+> publication outstanding in the Event Publication Registry, with the attempt traced on the refund's
+> `payment_refund` row. `RefundOutbox` exposes exactly that backlog for the refund listeners and the lever
 > to re-drive it; `RefundResubmissionWindow` is how long the lever refuses after an accepted press,
 > so an outage cannot be re-swept once per click. Re-driving is safe because it re-issues the *same*
 > gateway call: a refund that already succeeded is returned, not repeated. It is a retry loop, not a
@@ -939,8 +951,8 @@ stateDiagram-v2
 >
 > **`COMPLETED` and `NO_SHOW` are stay outcomes, not attendance.** Attendance is the per-day
 > `booking_day` record — one row per service day from the moment the booking confirms, stamped
-> attended by the check-in or missed by the sweep. The outcome is written once, when the last
-> service day resolves; `completed_at` is that instant for a `COMPLETED` stay and the review window's
+> attended by the check-in, missed by the sweep or refunded by the weather refund (ADR-0026). The
+> outcome is written once, when the last service day resolves; `completed_at` is that instant for a `COMPLETED` stay and the review window's
 > input. Every booking has one service day today, so the two coincide until range bookings arrive.
 >
 > **`NO_SHOW` is terminal for the guest, not terminal.** The admin weather refund is the one

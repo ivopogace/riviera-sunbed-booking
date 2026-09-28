@@ -181,13 +181,15 @@ class CancelStayIT {
 		Awaitility.await().atMost(Duration.ofSeconds(10)).until(() -> accruals(venue.id()) == 2L);
 		long secondStretch = jdbc.sql("SELECT id FROM booking WHERE venue_id = :v ORDER BY booking_date DESC LIMIT 1")
 				.param("v", venue.id()).query(Long.class).single();
+		long secondAmount = jdbc.sql("SELECT amount_minor FROM booking WHERE id = :id").param("id", secondStretch)
+				.query(Long.class).single();
 		CountDownLatch weatherCancelled = new CountDownLatch(1);
 		CountDownLatch weatherCommits = new CountDownLatch(1);
 
 		CancelOutcome outcome;
 		try (ExecutorService pool = Executors.newFixedThreadPool(2)) {
 			Future<?> operator = pool.submit(() -> tx.executeWithoutResult(status -> {
-				bookings.cancelForWeather(secondStretch, java.time.Instant.now(), 0L).orElseThrow();
+				bookings.cancelForWeather(secondStretch, java.time.Instant.now(), 0L, secondAmount).orElseThrow();
 				weatherCancelled.countDown();
 				try {
 					weatherCommits.await();

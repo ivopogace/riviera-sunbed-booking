@@ -294,6 +294,32 @@ class CheckInFlowIT {
 		assertEquals("COMPLETED", statusOf(completedId));
 	}
 
+	/** #1210: a scan on a day the storm gave back is refused with its own code, and stamps nothing. */
+	@Test
+	void aRefundedDayRefusesCheckIn() throws Exception {
+		long venue = newOwnedVenue("CI Storm Club");
+		String code = uniqueCode("CISTORM1");
+		long id = insertConfirmed(code, venue, today().minusDays(1));
+		jdbc.sql("UPDATE booking SET last_date = :last WHERE id = :id").param("last", today().plusDays(1))
+				.param("id", id).update();
+		jdbc.sql("""
+				INSERT INTO booking_day (booking_id, service_date, refunded_at, refund_minor)
+				VALUES (:id, :d, NOW(), 1500)
+				ON CONFLICT (booking_id, service_date) DO UPDATE SET refunded_at = NOW(), refund_minor = 1500
+				""").param("id", id).param("d", today()).update();
+
+		MvcResult result = mvc.perform(post("/api/venues/{v}/bookings/{code}/check-in", venue, code)
+						.cookie(operatorSession).with(csrf()))
+				.andExpect(status().isConflict())
+				.andExpect(jsonPath("$.code").value("DAY_REFUNDED"))
+				.andExpect(jsonPath("$.setId").value(setOf(id)))
+				.andReturn();
+		assertNoCodeLeak(result, code);
+		assertEquals("CONFIRMED", statusOf(id));
+		assertEquals(0L, jdbc.sql("SELECT COUNT(*) FROM booking_day WHERE booking_id = :id AND attended_at IS NOT NULL")
+				.param("id", id).query(Long.class).single());
+	}
+
 	/** Invariant #7: no error body may echo the bearer credential — not even in {@code instance}. */
 	private static void assertNoCodeLeak(MvcResult result, String code) throws Exception {
 		String body = result.getResponse().getContentAsString();

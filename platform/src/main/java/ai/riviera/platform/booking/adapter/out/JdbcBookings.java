@@ -41,6 +41,8 @@ import ai.riviera.platform.booking.application.reserve.ConfirmedStay;
 import ai.riviera.platform.booking.application.reserve.NewBooking;
 import ai.riviera.platform.booking.application.reserve.NewStay;
 import ai.riviera.platform.booking.application.refund.RefundableBooking;
+import ai.riviera.platform.booking.application.view.RefundedDay;
+import ai.riviera.platform.booking.application.refund.DayRefundedBooking;
 import ai.riviera.platform.booking.application.remodel.LiveClaim;
 import ai.riviera.platform.booking.domain.BookingStatus;
 import ai.riviera.platform.booking.domain.BookingTransition;
@@ -92,10 +94,18 @@ class JdbcBookings implements Bookings {
 	private static final String COL_CANCEL_REASON = "cancel_reason";
 	private static final String COL_CREATED_AT = "created_at";
 	private static final String COL_ACCEPTED_AT = "accepted_at";
+	private static final String COL_DAY_REFUNDED_MINOR = "day_refunded_minor";
+	/** The minor units of booking {@code b} already refunded for weather (#1210), summed off its days. */
+	private static final String DAY_REFUNDED_SUM_SQL =
+			"(SELECT COALESCE(SUM(d.refund_minor), 0) FROM booking_day d WHERE d.booking_id = b.id)";
+
+	/** The statuses whose washed-out day may be refunded on its own — {@code BookingStatus#stormDayRefundable}'s members. */
+	private static final List<String> STORM_DAY_REFUNDABLE = java.util.stream.Stream.of(BookingStatus.values())
+			.filter(BookingStatus::stormDayRefundable).map(BookingStatus::name).toList();
 
 	/**
 	 * The one outcome rule, shared by check-in and the sweep: mark a due stay's unresolved days
-	 * missed, then {@code COMPLETED} if any day was attended, else {@code NO_SHOW}. {@code %s} is the
+	 * missed (a refunded day is left as it is), then {@code COMPLETED} if any day was attended, else {@code NO_SHOW}. {@code %s} is the
 	 * caller's due-set predicate over {@code booking b}; {@code FOR UPDATE} makes a racing resolve no-op.
 	 */
 	private static final String RESOLVE_STAY_SQL = """
@@ -111,6 +121,7 @@ class JdbcBookings implements Bookings {
 			    SET missed_at = :at
 			    FROM due
 			    WHERE n.booking_id = due.id AND n.attended_at IS NULL AND n.missed_at IS NULL
+			      AND n.refunded_at IS NULL
 			)
 			UPDATE booking b
 			SET status       = CASE WHEN due.attended THEN :completed ELSE :noShow END,
@@ -119,11 +130,11 @@ class JdbcBookings implements Bookings {
 			WHERE b.id = due.id
 			""";
 
-	/** Check-in's arm of {@link #RESOLVE_STAY_SQL}: this stay, once no service day after today remains. */
+	/** Check-in's arm of {@link #RESOLVE_STAY_SQL}: this stay, once no unrefunded service day after today remains. */
 	private static final String RESOLVE_AFTER_CHECK_IN_SQL = RESOLVE_STAY_SQL.formatted("""
 			b.id = :id
 			      AND NOT EXISTS (SELECT 1 FROM booking_day r
-			                      WHERE r.booking_id = b.id AND r.service_date > :date)""");
+			                      WHERE r.booking_id = b.id AND r.service_date > :date AND r.refunded_at IS NULL)""");
 
 	/**
 	 * The sweep's arm of {@link #RESOLVE_STAY_SQL}: every stay whose last service day has passed,
@@ -515,7 +526,8 @@ class JdbcBookings implements Bookings {
 		return jdbc.sql("""
 				SELECT b.id, b.code, b.status, b.venue_id, b.set_id, b.customer_id,
 				       b.booking_date, b.last_date, b.amount_minor, b.amount_currency, b.cancelled_at, b.refund_minor,
-				       b.request_expires_at, b.cancel_reason, b.created_at, b.accepted_at, b.moved_at, b.decline_reason
+				       b.request_expires_at, b.cancel_reason, b.created_at, b.accepted_at, b.moved_at, b.decline_reason,
+				       (SELECT COALESCE(SUM(d.refund_minor), 0) FROM booking_day d WHERE d.booking_id = b.id) AS day_refunded_minor
 				FROM booking b
 				WHERE b.code = :code AND b.stay_id IS NULL
 				""")
@@ -549,7 +561,8 @@ class JdbcBookings implements Bookings {
 		return jdbc.sql("""
 				SELECT b.id, s.code, b.status, b.venue_id, b.set_id, b.customer_id,
 				       b.booking_date, b.last_date, b.amount_minor, b.amount_currency, b.cancelled_at, b.refund_minor,
-				       b.request_expires_at, b.cancel_reason, b.created_at, b.accepted_at, b.moved_at, b.decline_reason
+				       b.request_expires_at, b.cancel_reason, b.created_at, b.accepted_at, b.moved_at, b.decline_reason,
+				       (SELECT COALESCE(SUM(d.refund_minor), 0) FROM booking_day d WHERE d.booking_id = b.id) AS day_refunded_minor
 				FROM booking b
 				JOIN stay s ON s.id = b.stay_id
 				WHERE b.stay_id = :stay
@@ -571,7 +584,8 @@ class JdbcBookings implements Bookings {
 				SELECT b.id, COALESCE(s.code, b.code) AS code, b.status, b.venue_id, b.set_id, b.customer_id,
 				       b.booking_date, b.last_date, b.amount_minor, b.amount_currency, b.cancelled_at, b.refund_minor,
 				       b.request_expires_at, b.cancel_reason, b.created_at, b.accepted_at, b.moved_at, b.decline_reason,
-				       s.id AS stay_id, s.first_date AS stay_first_date, s.last_date AS stay_last_date
+				       s.id AS stay_id, s.first_date AS stay_first_date, s.last_date AS stay_last_date,
+				       (SELECT COALESCE(SUM(d.refund_minor), 0) FROM booking_day d WHERE d.booking_id = b.id) AS day_refunded_minor
 				FROM booking b
 				LEFT JOIN stay s ON s.id = b.stay_id
 				WHERE b.account_id = :account
@@ -634,7 +648,8 @@ class JdbcBookings implements Bookings {
 				refundReasonOf(cancelReason), rs.getTimestamp(COL_CREATED_AT).toInstant(),
 				acceptedAt == null ? null : acceptedAt.toInstant(),
 				movedAt == null ? null : movedAt.toInstant(),
-				declineReason == null ? null : DeclineReason.valueOf(declineReason));
+				declineReason == null ? null : DeclineReason.valueOf(declineReason),
+				rs.getLong(COL_DAY_REFUNDED_MINOR));
 	}
 
 	/**
@@ -719,8 +734,8 @@ class JdbcBookings implements Bookings {
 
 	@Override
 	public Optional<CancelledBooking> cancelConfirmed(long bookingId, Instant cancelledAt,
-			long refundMinor, RefundReason reason) {
-		return cancelReturningFacts(bookingId, cancelledAt, refundMinor, reason,
+			long refundMinor, RefundReason reason, long remainingMinor) {
+		return cancelReturningFacts(bookingId, cancelledAt, refundMinor, reason, remainingMinor,
 				BookingTransition.CANCEL_BY_GUEST.admittedFrom());
 	}
 
@@ -741,29 +756,32 @@ class JdbcBookings implements Bookings {
 
 	@Override
 	public Optional<CancelledBooking> cancelForWeather(long bookingId, Instant cancelledAt,
-			long refundMinor) {
+			long refundMinor, long remainingMinor) {
 		// Admits NO_SHOW too: the sweep gets to a washed-out day before the operator does.
-		return cancelReturningFacts(bookingId, cancelledAt, refundMinor, RefundReason.WEATHER,
+		return cancelReturningFacts(bookingId, cancelledAt, refundMinor, RefundReason.WEATHER, remainingMinor,
 				BookingTransition.WEATHER_REFUND.admittedFrom());
 	}
 
 	/**
-	 * The one cancellation write for both entry points, guarded on {@code admitted} (from {@link
-	 * BookingTransition}): a double-cancel or a status outside it is an {@code empty} no-op, so the
-	 * release, refund and event fire exactly once; {@code reason} is the audit of why (#10).
+	 * The one cancellation write for both entry points, guarded on {@code admitted} ({@link BookingTransition})
+	 * and on {@code remainingMinor}, the amount less the refunded days summed afresh here (#1210): a double-cancel
+	 * or a quote a day refund overtook is {@code empty}, so release, refund and event fire once; {@code reason} is why (#10).
 	 */
 	private Optional<CancelledBooking> cancelReturningFacts(long bookingId, Instant cancelledAt,
-			long refundMinor, RefundReason reason, Set<BookingStatus> admitted) {
+			long refundMinor, RefundReason reason, long remainingMinor, Set<BookingStatus> admitted) {
 		return jdbc.sql("""
-				UPDATE booking
+				UPDATE booking b
 				SET status = :cancelled, cancelled_at = :at, refund_minor = :refund, cancel_reason = :reason
 				WHERE id = :id AND status = ANY (:admitted)
+				  AND amount_minor - """ + DAY_REFUNDED_SUM_SQL + """
+				      = :remaining
 				RETURNING id, venue_id, set_id, booking_date, last_date, amount_minor, amount_currency
 				""")
 				.param("cancelled", BookingStatus.CANCELLED.name())
 				.param("at", java.sql.Timestamp.from(cancelledAt))
 				.param("refund", refundMinor)
 				.param(PARAM_REASON, reason.name())
+				.param("remaining", remainingMinor)
 				.param("id", bookingId)
 				.param("admitted", admitted.stream().map(BookingStatus::name).toArray(String[]::new))
 				.query((rs, rowNum) -> new CancelledBooking(
@@ -794,7 +812,7 @@ class JdbcBookings implements Bookings {
 				SET attended_at = :at
 				FROM today
 				WHERE n.booking_id = today.id AND n.service_date = :date
-				  AND n.attended_at IS NULL AND n.missed_at IS NULL
+				  AND n.attended_at IS NULL AND n.missed_at IS NULL AND n.refunded_at IS NULL
 				RETURNING today.id, today.set_id, today.booking_date
 				""".formatted(CODE_MATCH))
 				.param("at", java.sql.Timestamp.from(completedAt))
@@ -835,7 +853,7 @@ class JdbcBookings implements Bookings {
 				    WHERE b.status = :confirmed AND b.booking_date < :today
 				      AND EXISTS (SELECT 1 FROM booking_day u
 				                  WHERE u.booking_id = b.id AND u.service_date < :today
-				                    AND u.attended_at IS NULL AND u.missed_at IS NULL)
+				                    AND u.attended_at IS NULL AND u.missed_at IS NULL AND u.refunded_at IS NULL)
 				    ORDER BY b.booking_date
 				    LIMIT :batch
 				    FOR UPDATE
@@ -844,7 +862,7 @@ class JdbcBookings implements Bookings {
 				SET missed_at = :at
 				FROM due
 				WHERE n.booking_id = due.id AND n.service_date < :today
-				  AND n.attended_at IS NULL AND n.missed_at IS NULL
+				  AND n.attended_at IS NULL AND n.missed_at IS NULL AND n.refunded_at IS NULL
 				""")
 				.param(PARAM_CONFIRMED, BookingStatus.CONFIRMED.name())
 				.param(PARAM_TODAY, today)
@@ -909,7 +927,8 @@ class JdbcBookings implements Bookings {
 	public Optional<CheckInFacts> findCheckInFacts(String code, VenueId venueId, LocalDate today) {
 		// Venue-scoped on purpose: a foreign venue's code reads as empty, same as an unknown one.
 		return jdbc.sql("""
-				SELECT b.status, b.booking_date, b.set_id, n.attended_at IS NOT NULL AS attended_today
+				SELECT b.status, b.booking_date, b.set_id, n.attended_at IS NOT NULL AS attended_today,
+				       n.refunded_at IS NOT NULL AS refunded_today
 				FROM booking b
 				LEFT JOIN booking_day n ON n.booking_id = b.id AND n.service_date = :today
 				WHERE %s AND b.venue_id = :venue
@@ -924,7 +943,7 @@ class JdbcBookings implements Bookings {
 						BookingStatus.valueOf(rs.getString(PARAM_STATUS)),
 						rs.getObject(COL_BOOKING_DATE, LocalDate.class),
 						new SetId(rs.getLong(COL_SET_ID)),
-						rs.getBoolean("attended_today")))
+						rs.getBoolean("attended_today"), rs.getBoolean("refunded_today")))
 				.optional();
 	}
 
@@ -939,7 +958,8 @@ class JdbcBookings implements Bookings {
 				SELECT b.set_id, COALESCE(s.code, b.code) AS code, b.status,
 				       COALESCE(s.first_date, b.booking_date) AS first_date,
 				       COALESCE(s.last_date, b.last_date) AS last_date,
-				       d.attended_at IS NOT NULL AS attended, d.missed_at IS NOT NULL AS missed
+				       d.attended_at IS NOT NULL AS attended, d.missed_at IS NOT NULL AS missed,
+				       d.refunded_at IS NOT NULL AS refunded
 				FROM booking b
 				LEFT JOIN stay s ON s.id = b.stay_id
 				LEFT JOIN booking_day d ON d.booking_id = b.id AND d.service_date = :date
@@ -956,31 +976,81 @@ class JdbcBookings implements Bookings {
 						new SetId(rs.getLong(COL_SET_ID)), rs.getString("code"),
 						BookingStatus.valueOf(rs.getString(PARAM_STATUS)),
 						rs.getObject("first_date", LocalDate.class), rs.getObject(COL_LAST_DATE, LocalDate.class),
-						DayAttendance.of(rs.getBoolean("attended"), rs.getBoolean("missed"))))
+						DayAttendance.of(rs.getBoolean("attended"), rs.getBoolean("missed"), rs.getBoolean("refunded"))))
 				.list();
 	}
 
 	/**
-	 * Weather refund candidates covering the date, served by {@code booking_venue_id_idx}; a stay is
-	 * selected too, its span telling it from a one-day booking. The amount is the FULL refund the
-	 * caller stamps on a one-day booking via {@link #cancelForWeather}.
+	 * Weather refund candidates: every booking that happened ({@code stormDayRefundable}) covering the
+	 * date, served by {@code booking_venue_id_idx}, with the date's own service-day stamps so the caller
+	 * can tell an attended day from one still owed, and a stretch from a lone booking.
 	 */
 	@Override
 	public List<RefundableBooking> findRefundableForWeather(VenueId venueId, LocalDate date) {
 		return jdbc.sql("""
-				SELECT id, amount_minor, booking_date, last_date
-				FROM booking
-				WHERE venue_id = :venue AND booking_date <= :date AND last_date >= :date
-				  AND status IN (:confirmed, :noShow)
-				ORDER BY id
+				SELECT b.id, b.amount_minor, b.amount_currency, b.booking_date, b.last_date, b.set_id, b.stay_id,
+				       d.attended_at IS NOT NULL AS attended, d.refunded_at IS NOT NULL AS refunded
+				FROM booking b
+				LEFT JOIN booking_day d ON d.booking_id = b.id AND d.service_date = :date
+				WHERE b.venue_id = :venue AND b.booking_date <= :date AND b.last_date >= :date
+				  AND b.status IN (:happened)
+				ORDER BY b.id
 				""")
 				.param(PARAM_VENUE, venueId.value())
 				.param("date", date)
-				.param(PARAM_CONFIRMED, BookingStatus.CONFIRMED.name())
-				.param(PARAM_NO_SHOW, BookingStatus.NO_SHOW.name())
+				.param("happened", STORM_DAY_REFUNDABLE)
 				.query((rs, rowNum) -> new RefundableBooking(
-						rs.getLong("id"), rs.getLong(COL_AMOUNT_MINOR),
-						rs.getObject(COL_BOOKING_DATE, LocalDate.class), rs.getObject(COL_LAST_DATE, LocalDate.class)))
+						rs.getLong("id"), rs.getLong(COL_AMOUNT_MINOR), rs.getString(COL_AMOUNT_CURRENCY),
+						rs.getObject(COL_BOOKING_DATE, LocalDate.class), rs.getObject(COL_LAST_DATE, LocalDate.class),
+						new SetId(rs.getLong(COL_SET_ID)),
+						Optional.ofNullable(rs.getObject(COL_STAY_ID, Long.class)).map(StayId::new).orElse(null),
+						rs.getBoolean("attended"), rs.getBoolean("refunded")))
+				.list();
+	}
+
+	/**
+	 * The booking row locked first, then the day stamped under its guard — the lock order check-in and the
+	 * sweep use, so a scan, a refund and the sweep serialize on the stay.
+	 */
+	@Override
+	public Optional<DayRefundedBooking> refundDay(long bookingId, LocalDate day, long refundMinor, Instant at) {
+		return jdbc.sql("""
+				WITH locked AS (
+				    SELECT b.id, b.venue_id, b.set_id, b.amount_currency, b.stay_id
+				    FROM booking b
+				    WHERE b.id = :id AND b.status IN (:happened)
+				    FOR UPDATE
+				)
+				UPDATE booking_day n
+				SET refunded_at = :at, refund_minor = :refund
+				FROM locked
+				WHERE n.booking_id = locked.id AND n.service_date = :day
+				  AND n.attended_at IS NULL AND n.refunded_at IS NULL
+				RETURNING locked.id, locked.venue_id, locked.set_id, locked.amount_currency, locked.stay_id
+				""")
+				.param("id", bookingId)
+				.param("happened", STORM_DAY_REFUNDABLE)
+				.param("at", java.sql.Timestamp.from(at))
+				.param("refund", refundMinor)
+				.param("day", day)
+				.query((rs, rowNum) -> new DayRefundedBooking(
+						rs.getLong("id"), new VenueId(rs.getLong(COL_VENUE_ID)), new SetId(rs.getLong(COL_SET_ID)),
+						rs.getString(COL_AMOUNT_CURRENCY),
+						Optional.ofNullable(rs.getObject(COL_STAY_ID, Long.class)).map(StayId::new).orElse(null)))
+				.optional();
+	}
+
+	@Override
+	public List<RefundedDay> findRefundedDays(long bookingId) {
+		return jdbc.sql("""
+				SELECT d.service_date, d.refund_minor, b.amount_currency
+				FROM booking_day d JOIN booking b ON b.id = d.booking_id
+				WHERE d.booking_id = :id AND d.refunded_at IS NOT NULL
+				ORDER BY d.service_date
+				""")
+				.param("id", bookingId)
+				.query((rs, rowNum) -> new RefundedDay(rs.getObject("service_date", LocalDate.class),
+						rs.getLong("refund_minor"), rs.getString(COL_AMOUNT_CURRENCY)))
 				.list();
 	}
 
@@ -1115,8 +1185,9 @@ class JdbcBookings implements Bookings {
 			return List.of();
 		}
 		return jdbc.sql("""
-				SELECT id, set_id, booking_date, last_date, status, amount_minor, amount_currency
-				FROM booking
+				SELECT id, set_id, booking_date, last_date, status, amount_minor, amount_currency,
+				       (SELECT COALESCE(SUM(d.refund_minor), 0) FROM booking_day d WHERE d.booking_id = b.id) AS day_refunded_minor
+				FROM booking b
 				WHERE set_id IN (:ids) AND status IN (:live)
 				ORDER BY booking_date, id
 				""")
@@ -1125,7 +1196,8 @@ class JdbcBookings implements Bookings {
 				.query((rs, rowNum) -> new LiveClaim(rs.getLong("id"), new SetId(rs.getLong(COL_SET_ID)),
 						rs.getObject(COL_BOOKING_DATE, LocalDate.class), rs.getObject(COL_LAST_DATE, LocalDate.class),
 						BookingStatus.valueOf(rs.getString(PARAM_STATUS)),
-						rs.getLong(COL_AMOUNT_MINOR), rs.getString(COL_AMOUNT_CURRENCY)))
+						rs.getLong(COL_AMOUNT_MINOR), rs.getString(COL_AMOUNT_CURRENCY),
+						rs.getLong(COL_DAY_REFUNDED_MINOR)))
 				.list();
 	}
 }

@@ -36,6 +36,7 @@ import ai.riviera.platform.payment.application.Payments;
 import ai.riviera.platform.payment.application.PaymentGateway;
 import ai.riviera.platform.payment.domain.PaymentStatus;
 import ai.riviera.platform.payment.domain.RefundLifecycle;
+import ai.riviera.platform.payment.domain.RefundScope;
 
 /**
  * The real Stripe adapter ({@code stripe} profile) for {@link PaymentGateway}: creates a
@@ -61,7 +62,7 @@ class StripePaymentGateway implements PaymentGateway {
 	private static final String STATUS_SUCCEEDED = "succeeded";
 	private static final String STATUS_CANCELED = "canceled";
 
-	/** Far above any real count — a booking gets one refund, so page one is always decisive. */
+	/** Far above any real count — a booking gets one refund per scope, so page one is always decisive. */
 	private static final long REFUND_PAGE_LIMIT = 100L;
 
 	/** The gateway holds a live refund that is not the one asked for, or one nobody can attribute; a human must settle it. */
@@ -121,12 +122,12 @@ class StripePaymentGateway implements PaymentGateway {
 	}
 
 	/**
-	 * Refund a booking's collection <strong>at most once</strong>, even after Stripe prunes the key: a
-	 * live refund the gateway already holds for it ({@link StripeRefundTag}) is adopted, never re-created,
-	 * and an unreadable list fails closed. Rationale: {@code RESPONSIBILITIES.md} §{@code payment}.
+	 * Refund a booking's share within {@code scope} <strong>at most once</strong>, even after Stripe prunes
+	 * the key: a live refund it already holds ({@link StripeRefundTag}) is adopted, never re-created, and
+	 * an unreadable list fails closed. Rationale: {@code RESPONSIBILITIES.md} §{@code payment}.
 	 */
 	@Override
-	public RefundResult refund(BookingRef booking, Money amount) {
+	public RefundResult refund(BookingRef booking, RefundScope scope, Money amount) {
 		Optional<String> intentId = payments.findIntentByBookingRef(booking);
 		if (intentId.isEmpty()) {
 			log.warn("no PaymentIntent on record for booking {} — cannot refund", booking.value());
@@ -136,24 +137,24 @@ class StripePaymentGateway implements PaymentGateway {
 			List<Refund> held = refundsOn(intentId.get());
 			List<Refund> live = held.stream().filter(StripePaymentGateway::isLive).toList();
 			if (!live.isEmpty()) {
-				Optional<List<Refund>> candidates = candidatesFor(booking, intentId.get(), live);
+				Optional<List<Refund>> candidates = candidatesFor(booking, scope, intentId.get(), live);
 				if (candidates.isEmpty()) {
 					return new RefundResult.Failed(REFUND_MISMATCH);
 				}
 				if (!candidates.get().isEmpty()) {
-					return adoptOrRefuse(booking, candidates.get(), amount);
+					return adoptOrRefuse(booking, scope, candidates.get(), amount);
 				}
 			}
-			RefundCreateParams params = RefundCreateParams.builder()
+			RefundCreateParams.Builder params = RefundCreateParams.builder()
 					.setPaymentIntent(intentId.get())
 					.setAmount(amount.minor())                               // integer minor units (#5)
-					.putMetadata(StripeRefundTag.KEY, StripeRefundTag.of(booking))
-					.build();
+					.putMetadata(StripeRefundTag.KEY, StripeRefundTag.of(booking));
+			StripeRefundTag.dayOf(scope).ifPresent(day -> params.putMetadata(StripeRefundTag.DAY_KEY, day));
 			RequestOptions options = RequestOptions.builder()
-					.setIdempotencyKey(refundIdempotencyKey(booking))        // derived from booking id (ADR-0002)
+					.setIdempotencyKey(refundIdempotencyKey(booking, scope))  // derived from booking id + scope (ADR-0002)
 					.build();
 			Refund refund = withLostResponseReplay(booking, "refund",
-					() -> stripe.v1().refunds().create(params, options));
+					() -> stripe.v1().refunds().create(params.build(), options));
 			if (isAlreadyKnownDead(held, refund)) {
 				return new RefundResult.Failed(REFUND_KEY_REPLAY);
 			}
@@ -163,7 +164,7 @@ class StripePaymentGateway implements PaymentGateway {
 						refund.getStatus());
 				return new RefundResult.Failed(REFUND_BORN_DEAD);
 			}
-			if (!payments.markRefunded(booking, amount.minor(), refund.getId())) {
+			if (!payments.markRefunded(booking, scope, amount.minor(), refund.getId())) {
 				return unrecordable(booking, refund.getId());
 			}
 			return new RefundResult.Refunded(refund.getId());
@@ -189,21 +190,23 @@ class StripePaymentGateway implements PaymentGateway {
 	}
 
 	/**
-	 * The live refunds that may be this booking's: all of them on a single-booking intent (so an untagged
-	 * manual refund is still adopted), only those tagged with it on a shared one — where an untagged live
-	 * refund makes the answer empty: refuse, never guess.
+	 * The live refunds that may be this booking's within {@code scope}: those tagged with this booking and
+	 * scope, plus untagged ones on a single-booking intent (a manual refund); on a shared intent an untagged
+	 * live refund makes the answer empty — refuse, never guess.
 	 */
-	private Optional<List<Refund>> candidatesFor(BookingRef booking, String intentId, List<Refund> live) {
-		if (payments.findBookingRefsByIntent(intentId).size() <= 1) {
-			return Optional.of(live);
-		}
-		if (live.stream().anyMatch(refund -> StripeRefundTag.bookingOf(refund).isEmpty())) {
+	private Optional<List<Refund>> candidatesFor(BookingRef booking, RefundScope scope, String intentId,
+			List<Refund> live) {
+		boolean shared = payments.findBookingRefsByIntent(intentId).size() > 1;
+		if (shared && live.stream().anyMatch(refund -> StripeRefundTag.bookingOf(refund).isEmpty())) {
 			log.warn("booking {}'s PaymentIntent is shared and carries a live refund naming no booking — "
 					+ "refusing to act until a human attributes it", booking.value());
 			return Optional.empty();
 		}
 		return Optional.of(live.stream()
-				.filter(refund -> StripeRefundTag.bookingOf(refund).filter(booking::equals).isPresent())
+				.filter(refund -> StripeRefundTag.bookingOf(refund)
+						.map(tagged -> tagged.equals(booking)
+								&& StripeRefundTag.scopeOf(refund).filter(scope::equals).isPresent())
+						.orElse(!shared))
 				.toList());
 	}
 
@@ -232,7 +235,7 @@ class StripePaymentGateway implements PaymentGateway {
 	 * <strong>exactly</strong> the requested amount — the shape a lost response leaves; anything else is
 	 * {@code refund_mismatch}. Rationale: {@code RESPONSIBILITIES.md} §{@code payment}.
 	 */
-	private RefundResult adoptOrRefuse(BookingRef booking, List<Refund> live, Money requested) {
+	private RefundResult adoptOrRefuse(BookingRef booking, RefundScope scope, List<Refund> live, Money requested) {
 		Refund held = live.getFirst();
 		Long heldMinor = held.getAmount();
 		if (live.size() > 1 || heldMinor == null || heldMinor != requested.minor()) {
@@ -241,7 +244,7 @@ class StripePaymentGateway implements PaymentGateway {
 					requested.minor());
 			return new RefundResult.Failed(REFUND_MISMATCH);
 		}
-		if (!payments.markRefunded(booking, heldMinor, held.getId())) {
+		if (!payments.markRefunded(booking, scope, heldMinor, held.getId())) {
 			return unrecordable(booking, held.getId());
 		}
 		adoptedRefunds.increment();
@@ -337,11 +340,11 @@ class StripePaymentGateway implements PaymentGateway {
 	}
 
 	/**
-	 * One refund per booking: a stable key so a replay <em>inside</em> Stripe's key window returns
-	 * the original refund. Beyond that window the key is pruned and {@link #refund}'s existence read
-	 * is what prevents a second one (ADR-0002; invariant #10).
+	 * One key per booking and scope ({@code booking-<id>-refund}, {@code booking-<id>-day-<date>-refund}), so
+	 * a replay inside Stripe's key window returns the original refund; beyond it {@link #refund}'s
+	 * existence read prevents a second one (ADR-0002; invariant #10).
 	 */
-	private static String refundIdempotencyKey(BookingRef booking) {
-		return "booking-" + booking.value() + "-refund";
+	private static String refundIdempotencyKey(BookingRef booking, RefundScope scope) {
+		return "booking-" + booking.value() + "-" + scope.keySuffix();
 	}
 }

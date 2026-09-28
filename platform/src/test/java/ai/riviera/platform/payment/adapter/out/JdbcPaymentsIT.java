@@ -1,13 +1,24 @@
 package ai.riviera.platform.payment.adapter.out;
 
+import java.time.Duration;
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
+
+import org.awaitility.Awaitility;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.jdbc.core.simple.JdbcClient;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.support.TransactionTemplate;
 
 import ai.riviera.platform.EnabledIfDockerAvailable;
 import ai.riviera.platform.TestcontainersConfiguration;
@@ -15,6 +26,7 @@ import ai.riviera.platform.payment.vocabulary.BookingRef;
 import ai.riviera.platform.payment.application.NewPayment;
 import ai.riviera.platform.payment.application.Payments;
 import ai.riviera.platform.payment.domain.PaymentStatus;
+import ai.riviera.platform.payment.domain.RefundScope;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -36,6 +48,9 @@ class JdbcPaymentsIT {
 
 	@Autowired
 	JdbcClient jdbc;
+
+	@Autowired
+	PlatformTransactionManager txManager;
 
 	private String statusOf(String intentId) {
 		return jdbc.sql("SELECT status FROM payment WHERE payment_intent_id = :i")
@@ -260,9 +275,9 @@ class JdbcPaymentsIT {
 		assertTrue(payments.markRefundFailed("re_traced"));
 
 		assertEquals(1, jdbc.sql("""
-				SELECT COUNT(*) FROM payment_booking
-				WHERE booking_ref = 9701 AND refund_failed_at IS NOT NULL
-				  AND failed_refund_id = 're_traced' AND refund_id IS NULL
+				SELECT COUNT(*) FROM payment_refund r JOIN payment_booking b ON b.id = r.payment_booking_id
+				WHERE b.booking_ref = 9701 AND r.failed_at IS NOT NULL
+				  AND r.failed_refund_id = 're_traced' AND r.refund_id IS NULL
 				""").query(Integer.class).single(),
 				"the un-record must be enumerable, not just a WARN line: the dead refund id moves to "
 						+ "failed_refund_id and refund_id stops claiming a live refund");
@@ -305,9 +320,10 @@ class JdbcPaymentsIT {
 				"but the attempt is on record, so the failure is this platform's and must not be lost");
 
 		assertEquals(1, jdbc.sql("""
-				SELECT COUNT(*) FROM payment_booking b JOIN payment p ON p.id = b.payment_id
-				WHERE b.booking_ref = 9801 AND b.refund_failed_at IS NOT NULL
-				  AND b.failed_refund_id = 're_racing' AND p.status = 'SUCCEEDED' AND b.refunded_minor = 0
+				SELECT COUNT(*) FROM payment_refund r JOIN payment_booking b ON b.id = r.payment_booking_id
+				JOIN payment p ON p.id = b.payment_id
+				WHERE b.booking_ref = 9801 AND r.failed_at IS NOT NULL
+				  AND r.failed_refund_id = 're_racing' AND p.status = 'SUCCEEDED' AND b.refunded_minor = 0
 				""").query(Integer.class).single(),
 				"the guest is owed again, and the booking is enumerable as owed");
 	}
@@ -350,8 +366,7 @@ class JdbcPaymentsIT {
 		assertFalse(payments.markUnrecordedRefundFailed(new BookingRef(9808L), "re_by_hand"),
 				"our attempt is over — a later refund on this collection is not ours to own");
 
-		assertEquals("re_ours", jdbc.sql("SELECT failed_refund_id FROM payment_booking "
-						+ "WHERE booking_ref = 9808").query(String.class).single(),
+		assertEquals("re_ours", failedRefundIdOf(9808L),
 				"and the trace still names the refund that actually died, which is what the runbook looks up");
 	}
 
@@ -366,8 +381,7 @@ class JdbcPaymentsIT {
 
 		assertTrue(payments.markUnrecordedRefundFailed(new BookingRef(9809L), "re_second_race"),
 				"the outbox re-drive is a new attempt, so its own racing failure must land too");
-		assertEquals("re_second_race", jdbc.sql("SELECT failed_refund_id FROM payment_booking "
-						+ "WHERE booking_ref = 9809").query(String.class).single());
+		assertEquals("re_second_race", failedRefundIdOf(9809L));
 		assertFalse(payments.markRefunded(new BookingRef(9809L), 4500L, "re_second_race"),
 				"and the second corpse is blocked from being recorded, exactly like the first");
 	}
@@ -380,8 +394,7 @@ class JdbcPaymentsIT {
 		assertFalse(payments.markUnrecordedRefundFailed(new BookingRef(9804L), "re_by_hand"),
 				"no attempt on record means this refund is not ours — the platform owes nothing");
 
-		assertEquals(0, jdbc.sql("SELECT COUNT(*) FROM payment_booking WHERE booking_ref = 9804 "
-						+ "AND refund_failed_at IS NOT NULL").query(Integer.class).single(),
+		assertEquals(0L, owedRows(9804L),
 				"and it must not appear on the list of bookings owed a refund");
 	}
 
@@ -408,9 +421,9 @@ class JdbcPaymentsIT {
 				"a fresh refund id is not the corpse, so the retry records normally");
 
 		assertEquals(1, jdbc.sql("""
-				SELECT COUNT(*) FROM payment_booking
-				WHERE booking_ref = 9702 AND refund_failed_at IS NULL
-				  AND failed_refund_id = 're_died_once'
+				SELECT COUNT(*) FROM payment_refund r JOIN payment_booking b ON b.id = r.payment_booking_id
+				WHERE b.booking_ref = 9702 AND r.failed_at IS NULL
+				  AND r.failed_refund_id = 're_died_once'
 				""").query(Integer.class).single(),
 				"owed-now is cleared by the retry that worked, while the id of what died is kept");
 	}
@@ -470,8 +483,7 @@ class JdbcPaymentsIT {
 				"B's refund stands — one sibling's failure is not the other's");
 		assertEquals("PARTIALLY_REFUNDED", statusOf("pi_shared_died"),
 				"the intent falls back to partly refunded, not to SUCCEEDED, while B's money is out");
-		assertEquals(1L, jdbc.sql("SELECT COUNT(*) FROM payment_booking WHERE refund_failed_at IS NOT NULL "
-						+ "AND booking_ref IN (9955, 9956)").query(Long.class).single(),
+		assertEquals(1L, owedRows(9955L, 9956L),
 				"exactly one booking of the pair is enumerable as owed");
 
 		assertTrue(payments.markRefundFailed("re_shared_died_b"));
@@ -492,5 +504,119 @@ class JdbcPaymentsIT {
 		assertEquals(4500L, payments.findRefundState(new BookingRef(9957L)).orElseThrow().refundedMinor(),
 				"A's recorded refund is untouched by B's racing failure");
 		assertEquals("PARTIALLY_REFUNDED", statusOf("pi_shared_race"), "the intent's status does not move");
+	}
+
+	private long owedRows(long... bookingRefs) {
+		return jdbc.sql("SELECT COUNT(*) FROM payment_refund r JOIN payment_booking b ON b.id = r.payment_booking_id "
+						+ "WHERE r.failed_at IS NOT NULL AND b.booking_ref IN (:refs)")
+				.param("refs", java.util.Arrays.stream(bookingRefs).boxed().toList())
+				.query(Long.class).single();
+	}
+
+	private String failedRefundIdOf(long bookingRef) {
+		return jdbc.sql("SELECT r.failed_refund_id FROM payment_refund r JOIN payment_booking b "
+						+ "ON b.id = r.payment_booking_id WHERE b.booking_ref = :ref AND r.scope = 'BOOKING'")
+				.param("ref", bookingRef).query(String.class).single();
+	}
+
+	private long refundedMinorOf(long bookingRef) {
+		return jdbc.sql("SELECT refunded_minor FROM payment_booking WHERE booking_ref = :ref")
+				.param("ref", bookingRef).query(Long.class).single();
+	}
+
+	@Test
+	void aDayRefundAndTheWholeShareAccumulateOnTheShare() {
+		// A 3-day share of 900: day 2 refunds 300, then the cancellation refunds the remaining 600 (#1210).
+		payments.register(new NewPayment(new BookingRef(9621L), "pi_day_then_rest", 900L, "EUR", "cs_test_secret"));
+		payments.markStatus("pi_day_then_rest", PaymentStatus.SUCCEEDED);
+		RefundScope day2 = RefundScope.day(LocalDate.of(2026, 7, 2));
+
+		assertTrue(payments.markRefunded(new BookingRef(9621L), day2, 300L, "re_day_2"));
+
+		assertEquals(300L, refundedMinorOf(9621L), "the share's running sum holds the day");
+		assertEquals("PARTIALLY_REFUNDED", statusOf("pi_day_then_rest"));
+		assertEquals(0L, payments.findRefundState(new BookingRef(9621L)).orElseThrow().refundedMinor(),
+				"a day refund is not the whole-share refund the cancellation's progress asks about");
+
+		assertTrue(payments.markRefunded(new BookingRef(9621L), 600L, "re_9621_rest"));
+
+		assertEquals(900L, refundedMinorOf(9621L), "day plus remainder is the whole share");
+		assertEquals("REFUNDED", statusOf("pi_day_then_rest"), "every cent came back, in two refunds");
+		assertEquals(600L, payments.findRefundState(new BookingRef(9621L)).orElseThrow().refundedMinor());
+		assertTrue(payments.markRefunded(new BookingRef(9621L), day2, 300L, "re_day_2"),
+				"a replayed day refund re-records its own row");
+		assertEquals(900L, refundedMinorOf(9621L), "and the running sum does not grow: the day is refunded once");
+	}
+
+	@Test
+	void twoRefundsOnOneShareSerializeOnItsRow() throws Exception {
+		// Day 3's refund arrives while day 2's is uncommitted (#1210): it must wait on the share's row, then sum both.
+		payments.register(new NewPayment(new BookingRef(9624L), "pi_day_pair", 900L, "EUR", "cs_test_secret"));
+		payments.markStatus("pi_day_pair", PaymentStatus.SUCCEEDED);
+		TransactionTemplate tx = new TransactionTemplate(txManager);
+		CountDownLatch firstRecorded = new CountDownLatch(1);
+		CountDownLatch firstMayCommit = new CountDownLatch(1);
+		try (ExecutorService pool = Executors.newFixedThreadPool(2)) {
+			Future<?> first = pool.submit(() -> tx.executeWithoutResult(status -> {
+				payments.markRefunded(new BookingRef(9624L), RefundScope.day(LocalDate.of(2026, 7, 2)), 300L, "re_pair_a");
+				firstRecorded.countDown();
+				try {
+					firstMayCommit.await(10, TimeUnit.SECONDS);
+				}
+				catch (InterruptedException interrupted) {
+					Thread.currentThread().interrupt();
+				}
+			}));
+			assertTrue(firstRecorded.await(10, TimeUnit.SECONDS));
+			Future<Boolean> second = pool.submit(() -> payments.markRefunded(new BookingRef(9624L),
+					RefundScope.day(LocalDate.of(2026, 7, 3)), 300L, "re_pair_b"));
+			Awaitility.await().atMost(Duration.ofSeconds(10)).until(() -> jdbc.sql(
+					"SELECT COUNT(*) FROM pg_stat_activity WHERE wait_event_type = 'Lock' AND query LIKE '%payment_booking%'")
+					.query(Long.class).single() > 0);
+			firstMayCommit.countDown();
+			first.get(10, TimeUnit.SECONDS);
+			assertTrue(second.get(10, TimeUnit.SECONDS));
+		}
+
+		assertEquals(600L, refundedMinorOf(9624L), "both days are on the share's running sum");
+		assertEquals("PARTIALLY_REFUNDED", statusOf("pi_day_pair"));
+	}
+
+	@Test
+	void aDeadDayRefundIsUnrecordedAlone() {
+		payments.register(new NewPayment(new BookingRef(9622L), "pi_day_died", 900L, "EUR", "cs_test_secret"));
+		payments.markStatus("pi_day_died", PaymentStatus.SUCCEEDED);
+		RefundScope day2 = RefundScope.day(LocalDate.of(2026, 7, 2));
+		payments.markRefunded(new BookingRef(9622L), day2, 300L, "re_day_died");
+		payments.markRefunded(new BookingRef(9622L), RefundScope.day(LocalDate.of(2026, 7, 3)), 300L, "re_day_3");
+
+		assertTrue(payments.markRefundFailed("re_day_died"));
+
+		assertEquals(300L, refundedMinorOf(9622L), "day 3's refund stands; only the dead day came off the sum");
+		assertEquals("PARTIALLY_REFUNDED", statusOf("pi_day_died"));
+		assertEquals(1L, owedRows(9622L), "the dead day is enumerable as owed");
+		assertTrue(payments.markRefunded(new BookingRef(9622L), day2, 300L, "re_day_retry"),
+				"a fresh refund for the same day records over the corpse");
+		assertEquals(600L, refundedMinorOf(9622L));
+		assertEquals(0L, owedRows(9622L));
+	}
+
+	@Test
+	void aRacingDayRefundFailureIsKeyedToItsDay() {
+		payments.register(new NewPayment(new BookingRef(9623L), "pi_day_race", 900L, "EUR", "cs_test_secret"));
+		payments.markStatus("pi_day_race", PaymentStatus.SUCCEEDED);
+		RefundScope day2 = RefundScope.day(LocalDate.of(2026, 7, 2));
+		payments.markRefundAttempted(new BookingRef(9623L), day2);
+		payments.markRefundAttempted(new BookingRef(9623L));
+
+		assertTrue(payments.markUnrecordedRefundFailed(new BookingRef(9623L), day2, "re_day_race"),
+				"the day's attempt is on record, so its death is this platform's");
+		assertFalse(payments.markUnrecordedRefundFailed(new BookingRef(9623L), day2, "re_day_race"),
+				"and counts once");
+		assertTrue(payments.markUnrecordedRefundFailed(new BookingRef(9623L), "re_whole_race"),
+				"the whole share's attempt is a row of its own");
+		assertEquals(2L, owedRows(9623L));
+		assertFalse(payments.markRefunded(new BookingRef(9623L), day2, 300L, "re_day_race"),
+				"the corpse is blocked from being recorded, on its own row");
 	}
 }

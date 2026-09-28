@@ -111,6 +111,11 @@ const ARRIVAL_CHIPS: Partial<Record<DayAttendance, ArrivalChip>> = {
     testId: 'arrival-checked-in',
   },
   MISSED: { modifier: metaFor('NO_SHOW').chip, label: 'No-show', testId: 'arrival-no-show' },
+  REFUNDED: {
+    modifier: metaFor('CANCELLED').chip,
+    label: 'Day refunded',
+    testId: 'arrival-day-refunded',
+  },
 };
 
 /** One availability row on the shared canvas's row contract, plus the sets its tiles render. */
@@ -731,6 +736,12 @@ function checkInMessage(error: unknown, sets: ReadonlyMap<number, SetView>): str
       return date === undefined
         ? 'This booking is for a different day.'
         : `This booking is for ${date}.`;
+    }
+    case 'DAY_REFUNDED': {
+      const setId = checkInSetIdOf(error);
+      return setId === undefined
+        ? 'Today was refunded for weather — the spot is still the guest’s, no check-in.'
+        : `Today was refunded for weather — ${setLabel(sets, setId)} is still the guest’s, no check-in.`;
     }
     case 'BOOKING_NOT_FOUND':
       return 'No booking with that code at this venue.';

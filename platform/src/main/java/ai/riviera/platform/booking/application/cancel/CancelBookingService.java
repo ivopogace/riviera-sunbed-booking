@@ -75,9 +75,9 @@ class CancelBookingService implements CancelBooking {
 		long refundMinor = quote.refundMinor();
 
 		Optional<CancelledBooking> transitioned = bookings.cancelConfirmed(
-				booking.id(), clock.instant(), refundMinor, quote.reason());
+				booking.id(), clock.instant(), refundMinor, quote.reason(), booking.remainingMinor());
 		if (transitioned.isEmpty()) {
-			// Lost a concurrent cancel race — the other cancel already released and published.
+			// Lost a race: a concurrent cancel already released and published, or a day refund overtook the quote.
 			return new CancelOutcome.NotCancellable(BookingStatus.CANCELLED);
 		}
 		CancelledBooking cancelled = transitioned.get();
@@ -95,7 +95,7 @@ class CancelBookingService implements CancelBooking {
 		log.info("cancelled booking {} and released set {} from {} to {} (refund {} minor)", cancelled.id(),
 				cancelled.setId().value(), cancelled.bookingDate(), cancelled.lastDate(), refundMinor);
 
-		CancelOutcome.Tier tier = tierFor(quote.window(), refundMinor, cancelled.amountMinor());
+		CancelOutcome.Tier tier = tierFor(quote.window(), refundMinor, booking.remainingMinor());
 		return new CancelOutcome.Cancelled(refundMinor, cancelled.currency(), tier);
 	}
 
@@ -126,7 +126,7 @@ class CancelBookingService implements CancelBooking {
 			BookingRecord stretch = stretches.get(i);
 			RefundQuote quote = quotes.get(i);
 			Optional<CancelledBooking> transitioned = bookings.cancelConfirmed(stretch.id(), now, quote.refundMinor(),
-					quote.reason());
+					quote.reason(), stretch.remainingMinor());
 			if (transitioned.isEmpty()) {
 				throw new IllegalStateException(
 						"stretch " + stretch.id() + " of stay " + stay.id().value() + " changed under its row lock");
@@ -139,7 +139,7 @@ class CancelBookingService implements CancelBooking {
 					cancelled.setId(), cancelled.bookingDate(), quote.refundMinor(), cancelled.currency(),
 					quote.reason(), cancelled.lastDate(), stay.id()));
 			refundTotal = Math.addExact(refundTotal, quote.refundMinor());
-			amountTotal = Math.addExact(amountTotal, cancelled.amountMinor());
+			amountTotal = Math.addExact(amountTotal, stretch.remainingMinor());
 		}
 		events.publishEvent(new StayCancelled(stay.id(), refundTotal, currency, stayReason(quotes)));
 		log.info("cancelled stay {} of {} stretches (refund {} minor)", stay.id().value(), stretches.size(), refundTotal);
@@ -166,9 +166,9 @@ class CancelBookingService implements CancelBooking {
 		};
 	}
 
-	/** The LATE tier the refund amount implies: the whole amount is FULL (the free exit), part is PARTIAL, nothing is NONE. */
-	private static CancelOutcome.Tier lateTier(long refundMinor, long amountMinor) {
-		if (refundMinor >= amountMinor) {
+	/** The LATE tier the refund implies: all the guest still holds is FULL (the free exit), part is PARTIAL, nothing is NONE. */
+	private static CancelOutcome.Tier lateTier(long refundMinor, long remainingMinor) {
+		if (refundMinor >= remainingMinor) {
 			return CancelOutcome.Tier.FULL;
 		}
 		return refundMinor > 0 ? CancelOutcome.Tier.PARTIAL : CancelOutcome.Tier.NONE;

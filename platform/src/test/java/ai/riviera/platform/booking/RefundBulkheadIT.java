@@ -383,6 +383,11 @@ class RefundBulkheadIT {
 		}
 
 		@Override
+		public RefundResult refundDay(BookingRef booking, java.time.LocalDate serviceDate, Money amount) {
+			return refund(booking, amount);
+		}
+
+		@Override
 		public RefundResult refund(BookingRef booking, Money amount) {
 			long bookingId = booking.value();
 			boolean inTransaction = TransactionSynchronizationManager.isActualTransactionActive();

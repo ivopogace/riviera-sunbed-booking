@@ -3,6 +3,7 @@ package ai.riviera.platform.payment.application;
 import java.util.ArrayList;
 import java.util.List;
 
+import ai.riviera.platform.payment.domain.RefundScope;
 import ai.riviera.platform.payment.vocabulary.BookingRef;
 
 /**
@@ -23,7 +24,7 @@ final class AttemptRecordingPayments implements ThrowingPayments {
 	}
 
 	@Override
-	public void markRefundAttempted(BookingRef booking) {
-		calls.add("attempt:" + booking.value());
+	public void markRefundAttempted(BookingRef booking, RefundScope scope) {
+		calls.add("attempt:" + booking.value() + (scope.isDay() ? ":" + scope.serviceDate() : ""));
 	}
 }

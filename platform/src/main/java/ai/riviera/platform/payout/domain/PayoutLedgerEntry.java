@@ -1,18 +1,20 @@
 package ai.riviera.platform.payout.domain;
 
+import java.time.LocalDate;
+
 import ai.riviera.platform.booking.vocabulary.RefundReason;
 import ai.riviera.platform.venue.vocabulary.VenueId;
 
 /**
  * One payout-ledger entry for a booking (invariant #9), and the home of its commission arithmetic.
- * Money is integer minor units + ISO currency (invariant #5). Amounts are non-negative magnitudes;
- * direction lives in {@link EntryType}, never the sign. The constructor mirrors the DB's CHECKs,
- * {@code net = gross − commission} included, with the same {@code FEE} exemption keyed on the type
- * alone (as {@code payout_net_check} is). {@code reason} is {@code null} on an {@code ACCRUAL} and the
- * {@link RefundReason} otherwise.
+ * Money is integer minor units + ISO currency (#5); amounts are non-negative magnitudes, direction is
+ * the {@link EntryType}. The constructor mirrors the DB's CHECKs: {@code net = gross − commission} but
+ * for a {@code FEE}, {@code serviceDate} only on a {@code DAY_REVERSAL} ({@code payout_service_date_check});
+ * {@code reason} is null on an {@code ACCRUAL} and the {@code RefundReason} otherwise.
  */
 public record PayoutLedgerEntry(VenueId venueId, long bookingId, EntryType entryType,
-		long grossMinor, long commissionMinor, long netMinor, String currency, RefundReason reason) {
+		long grossMinor, long commissionMinor, long netMinor, String currency, RefundReason reason,
+		LocalDate serviceDate) {
 
 	public PayoutLedgerEntry {
 		if (venueId == null || entryType == null || currency == null || currency.isBlank()) {
@@ -24,6 +26,15 @@ public record PayoutLedgerEntry(VenueId venueId, long bookingId, EntryType entry
 		if (entryType != EntryType.FEE && netMinor != grossMinor - commissionMinor) {
 			throw new IllegalArgumentException("net must equal gross - commission");
 		}
+		if ((entryType == EntryType.DAY_REVERSAL) != (serviceDate != null)) {
+			throw new IllegalArgumentException("a DAY_REVERSAL names its day; no other type does");
+		}
+	}
+
+	/** A dateless entry: any type but {@code DAY_REVERSAL}. */
+	public PayoutLedgerEntry(VenueId venueId, long bookingId, EntryType entryType, long grossMinor,
+			long commissionMinor, long netMinor, String currency, RefundReason reason) {
+		this(venueId, bookingId, entryType, grossMinor, commissionMinor, netMinor, currency, reason, null);
 	}
 
 	/**
@@ -45,10 +56,41 @@ public record PayoutLedgerEntry(VenueId venueId, long bookingId, EntryType entry
 	 */
 	public static PayoutLedgerEntry reversalOf(PayoutLedgerEntry accrual, long refundMinor,
 			RefundReason reason) {
-		long commission = accrual.grossMinor() == 0 ? 0
-				: Math.floorDiv(accrual.commissionMinor() * refundMinor, accrual.grossMinor());
+		return reversalOf(accrual, refundMinor, reason, Reversed.NONE);
+	}
+
+	/**
+	 * {@link #reversalOf(PayoutLedgerEntry, long, RefundReason)} after earlier reversals took {@code prior}:
+	 * pro rata, except that the reversal reaching the accrual's gross returns every cent of commission
+	 * still held, so a booking reversed in parts nets exactly zero (invariant #9).
+	 */
+	public static PayoutLedgerEntry reversalOf(PayoutLedgerEntry accrual, long refundMinor,
+			RefundReason reason, Reversed prior) {
+		long commission = commissionOn(accrual, refundMinor, prior);
 		return new PayoutLedgerEntry(accrual.venueId(), accrual.bookingId(), EntryType.REVERSAL,
 				refundMinor, commission, refundMinor - commission, accrual.currency(), reason);
+	}
+
+	/**
+	 * The {@code DAY_REVERSAL} of one service day's share, always for weather: the same arithmetic as
+	 * {@link #reversalOf(PayoutLedgerEntry, long, RefundReason, Reversed)}, keyed by {@code serviceDate}.
+	 */
+	public static PayoutLedgerEntry dayReversalOf(PayoutLedgerEntry accrual, LocalDate serviceDate,
+			long refundMinor, Reversed prior) {
+		long commission = commissionOn(accrual, refundMinor, prior);
+		return new PayoutLedgerEntry(accrual.venueId(), accrual.bookingId(), EntryType.DAY_REVERSAL,
+				refundMinor, commission, refundMinor - commission, accrual.currency(), RefundReason.WEATHER,
+				serviceDate);
+	}
+
+	private static long commissionOn(PayoutLedgerEntry accrual, long refundMinor, Reversed prior) {
+		if (accrual.grossMinor() == 0) {
+			return 0;
+		}
+		if (prior.grossMinor() + refundMinor >= accrual.grossMinor()) {
+			return accrual.commissionMinor() - prior.commissionMinor();
+		}
+		return Math.floorDiv(accrual.commissionMinor() * refundMinor, accrual.grossMinor());
 	}
 
 	/**

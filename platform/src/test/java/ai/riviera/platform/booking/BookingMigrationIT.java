@@ -297,6 +297,37 @@ class BookingMigrationIT {
 				""").query(Long.class).single(), "every service day of a fresh stay is unresolved");
 	}
 
+	@Test
+	void aRefundedDayCarriesItsAmount() {
+		// V68: refunded_at and refund_minor come together, never one without the other.
+		long venue = anyVenueId();
+		long set = anyOnlineSetId();
+		long cust = insertCustomer("service day-refund@example.com");
+		insertBooking(venue, set, cust, "SDAY000006", LocalDate.of(2026, 9, 26), "CONFIRMED");
+
+		assertThrows(DataIntegrityViolationException.class, () -> refundServiceDay("SDAY000006", "NOW()", "NULL"),
+				"a refunded day names what was refunded (invariant #5)");
+		assertThrows(DataIntegrityViolationException.class, () -> refundServiceDay("SDAY000006", "NULL", "3000"),
+				"an amount without the stamp is not a refund");
+		assertThrows(DataIntegrityViolationException.class, () -> refundServiceDay("SDAY000006", "NOW()", "-1"),
+				"a day's refund is a non-negative magnitude (invariant #5)");
+		assertDoesNotThrow(() -> refundServiceDay("SDAY000006", "NOW()", "3000"));
+	}
+
+	@Test
+	void aRefundedDayIsNeverAttendedButMayBeMissed() {
+		long venue = anyVenueId();
+		long set = anyOnlineSetId();
+		long cust = insertCustomer("service day-refund-attended@example.com");
+		insertBooking(venue, set, cust, "SDAY000007", LocalDate.of(2026, 9, 27), "CONFIRMED");
+		refundServiceDay("SDAY000007", "NOW()", "3000");
+
+		assertThrows(DataIntegrityViolationException.class, () -> stampServiceDay("SDAY000007", "NOW()", "NULL"),
+				"a refunded day cannot be attended: the storm refund and the check-in exclude each other");
+		assertDoesNotThrow(() -> stampServiceDay("SDAY000007", "NULL", "NOW()"),
+				"a day swept missed before the storm was known is still refundable");
+	}
+
 	private LocalDate lastDateOf(String code) {
 		return jdbc.sql("SELECT last_date FROM booking WHERE code = :code").param("code", code)
 				.query(LocalDate.class).single();
@@ -317,6 +348,13 @@ class BookingMigrationIT {
 	/** Column values are SQL literals from this file, never caller input. */
 	private void stampServiceDay(String code, String attendedAt, String missedAt) {
 		jdbc.sql("UPDATE booking_day SET attended_at = " + attendedAt + ", missed_at = " + missedAt
+				+ " WHERE booking_id = (SELECT id FROM booking WHERE code = :code)")
+				.param("code", code).update();
+	}
+
+	/** Column values are SQL literals from this file, never caller input. */
+	private void refundServiceDay(String code, String refundedAt, String refundMinor) {
+		jdbc.sql("UPDATE booking_day SET refunded_at = " + refundedAt + ", refund_minor = " + refundMinor
 				+ " WHERE booking_id = (SELECT id FROM booking WHERE code = :code)")
 				.param("code", code).update();
 	}
