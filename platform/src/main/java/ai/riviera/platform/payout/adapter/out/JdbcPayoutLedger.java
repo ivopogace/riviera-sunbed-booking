@@ -34,6 +34,9 @@ class JdbcPayoutLedger implements PayoutLedger {
 	private static final String COL_VENUE_ID = "venue_id";
 	private static final String COL_NET_MINOR = "net_minor";
 	private static final String COL_CURRENCY = "currency";
+	private static final String COL_GROSS_MINOR = "gross_minor";
+	private static final String COL_COMMISSION_MINOR = "commission_minor";
+	private static final String PARAM_BOOKING = "booking";
 
 	private final JdbcClient jdbc;
 
@@ -67,10 +70,10 @@ class JdbcPayoutLedger implements PayoutLedger {
 				WHERE booking_id = :booking AND entry_type = 'ACCRUAL'
 				FOR UPDATE
 				""")
-				.param("booking", bookingId)
+				.param(PARAM_BOOKING, bookingId)
 				.query((rs, rowNum) -> new PayoutLedgerEntry(
 						new VenueId(rs.getLong(COL_VENUE_ID)), rs.getLong("booking_id"), EntryType.ACCRUAL,
-						rs.getLong("gross_minor"), rs.getLong("commission_minor"), rs.getLong(COL_NET_MINOR),
+						rs.getLong(COL_GROSS_MINOR), rs.getLong(COL_COMMISSION_MINOR), rs.getLong(COL_NET_MINOR),
 						rs.getString(COL_CURRENCY), null))
 				.optional();
 	}
@@ -83,8 +86,8 @@ class JdbcPayoutLedger implements PayoutLedger {
 				FROM payout_ledger_entry
 				WHERE booking_id = :booking AND entry_type IN ('REVERSAL', 'DAY_REVERSAL')
 				""")
-				.param("booking", bookingId)
-				.query((rs, rowNum) -> new Reversed(rs.getLong("gross_minor"), rs.getLong("commission_minor")))
+				.param(PARAM_BOOKING, bookingId)
+				.query((rs, rowNum) -> new Reversed(rs.getLong(COL_GROSS_MINOR), rs.getLong(COL_COMMISSION_MINOR)))
 				.single();
 	}
 
@@ -104,7 +107,7 @@ class JdbcPayoutLedger implements PayoutLedger {
 					String reasonToken = rs.getString("reason");
 					return new LedgerEntryRow(
 							EntryType.valueOf(rs.getString("entry_type")), rs.getLong("booking_id"),
-							rs.getLong("gross_minor"), rs.getLong("commission_minor"), rs.getLong(COL_NET_MINOR),
+							rs.getLong(COL_GROSS_MINOR), rs.getLong(COL_COMMISSION_MINOR), rs.getLong(COL_NET_MINOR),
 							rs.getString(COL_CURRENCY),
 							reasonToken == null ? null : RefundReason.valueOf(reasonToken),
 							rs.getObject("service_date", LocalDate.class),
@@ -173,7 +176,7 @@ class JdbcPayoutLedger implements PayoutLedger {
 				ON CONFLICT (booking_id, entry_type, service_date) DO NOTHING
 				""")
 				.param("venue", entry.venueId().value())
-				.param("booking", entry.bookingId())
+				.param(PARAM_BOOKING, entry.bookingId())
 				.param("type", entry.entryType().name())
 				.param("day", entry.serviceDate())
 				.param("gross", entry.grossMinor())

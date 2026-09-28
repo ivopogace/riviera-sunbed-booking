@@ -75,9 +75,8 @@ class WeatherRefundService implements RefundForWeather {
 			}
 			if (candidate.dayAttended()) {
 				notRefunded.add(new BookingId(candidate.bookingId()));
-				continue;
 			}
-			if (candidate.isLoneOneDay()) {
+			else if (candidate.isLoneOneDay()) {
 				Optional<CancelledBooking> cancelled = refundInFull(candidate, now);
 				if (cancelled.isPresent()) {
 					refundedCount++;
