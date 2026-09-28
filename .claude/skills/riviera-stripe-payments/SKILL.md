@@ -49,8 +49,9 @@ would re-decide the gateway; this model stays authoritative until that work star
 - Refund eligibility/amount server-side (#10); the weather refund is an explicit action
   by the venue's operator for a venue+date.
 - A refund reverses the ledger accrual (#9); a venue-caused one (`reason == VENUE_CHANGE`) also
-  charges a flat fee. Payout = `Σ amounts − commission − fees`, exactly-once per booking and
-  entry type. **Direction is the entry type:** amounts are non-negative, only `ACCRUAL` adds;
+  charges a flat fee; a washed-out day of a stay reverses as a `DAY_REVERSAL` (ADR-0026). Payout =
+  `Σ amounts − commission − fees`, exactly-once per booking, entry type and (for a day) service day.
+  **Direction is the entry type:** amounts are non-negative, only `ACCRUAL` adds;
   pin every new ledger sum with a `FEE` row. A `FEE` has no gross and no commission and is the
   one type the net CHECK exempts (ADR-0021).
 - Settlement is out-of-app: a weekly per-venue report; the founder pays via BKT and marks the batch

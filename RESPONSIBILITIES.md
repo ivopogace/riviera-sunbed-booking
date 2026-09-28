@@ -241,8 +241,8 @@ any is released on the old, never a swap of my own — so a racing reserve wins 
   `STAY_TOO_LONG`. A stitched plan judges every stretch's set over the whole stay.
 - **Then it claims every day, all or nothing:** a day that loses gives back every day won, then
   answers `SET_TAKEN` (`ConcurrentRangeReservationIT`). One PaymentIntent for per-day price × days
-  (invariant #5); the cancellation window and refund are the first day's, on the whole amount
-  (invariant #10). The staff daily list and daily takings count `CONFIRMED`, `COMPLETED` and
+  (invariant #5); the cancellation window and refund are the first day's, on what remains of the
+  amount once any weather-refunded day is off it (invariant #10, ADR-0026). The staff daily list and daily takings count `CONFIRMED`, `COMPLETED` and
   `NO_SHOW` (a resolved stay still happened, its money kept). The daily list names the guest's
   whole span (a stitched stay's, not the stretch's) and the day's own `booking_day` attendance;
   takings count each covering booking's **day share** (`DayShare`: the amount split over its days,
@@ -359,7 +359,8 @@ any is released on the old, never a swap of my own — so a racing reserve wins 
   sits in the outbox, never "in transit".
 - **No cancellation refunds inside its own transaction** — a failed commit after Stripe accepted
   would split money from state, and the round-trip would hold the booking row lock. It carries the
-  refund on `BookingCancelled`; `BookingRefundListener` alone calls `payment.api.RefundPort`, after
+  refund on `BookingCancelled` (a day's on `BookingDayRefunded`); only `BookingRefundListener` and
+  `BookingDayRefundListener` call `payment.api.RefundPort`, after
   commit and outside any transaction (never `REQUIRES_NEW`): the refund path records its attempt
   before the gateway call, and a transaction would hide that write (§`payment`).
 - **Gateway-reaching listeners drain on my bounded executor** (`riviera.booking.refund.*`), never
@@ -369,7 +370,7 @@ any is released on the old, never a swap of my own — so a racing reserve wins 
   to `ObservabilityMetrics.REFUNDS_SHED` (never thrown or run on the caller), and the publication
   stays outstanding for the restart republish.
 - **The ADMIN refund-outbox re-drive uses an exact-id allowlist** (`BookingRefundListener`,
-  `RemodelReleasePaymentListener`), never the `booking` package prefix, which would also replay
+  `BookingDayRefundListener`, `RemodelReleasePaymentListener`), never the `booking` package prefix, which would also replay
   `PaymentEventListener`'s payment→confirm spine. It refuses for a cooldown window
   (`RefundResubmissionWindow`), not just during a press: money is safe either way, but in an outage
   every press would re-ask the gateway for every refund.
@@ -514,9 +515,9 @@ cancelled all-or-nothing, never one booking of it.
   `markRefunded` also refuses a refund id already reported dead (`refund_died_before_record`), so
   the publication stays outstanding for a re-drive past the key window; that one incident counts
   **twice** on `riviera.refunds.failed` but once on `riviera.refunds.owed` (observations vs debts).
-- **An owed refund is enumerable.** The dead id moves to `failed_refund_id`, `refund_id` stops
-  claiming a live refund, and `refund_failed_at` marks the debt over a partial index empty when
-  healthy. Enumerating and settling by hand: `docs/runbooks/observability.md`.
+- **An owed refund is enumerable.** The dead id moves to the refund row's `failed_refund_id`,
+  `refund_id` stops claiming a live refund, and `failed_at` marks the debt over a partial index
+  (`payment_refund_owed_idx`) empty when healthy. By hand: `docs/runbooks/observability.md`.
 
 **Not My Job:**
 - The booking lifecycle, and deciding *whether* or *how much* to refund → **`booking`**; I execute

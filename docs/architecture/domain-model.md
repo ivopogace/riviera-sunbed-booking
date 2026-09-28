@@ -341,8 +341,10 @@ classDiagram
         <<table>>
         booking_id, service day
         attended_at, missed_at
+        refunded_at, refund_minor
         PK (booking_id, service_date)
         CHECK not both attended and missed
+        CHECK refunded_at and refund_minor both or neither, never beside attended_at
     }
     booking "1" --> "1..*" booking_day : one row per service day, written on CONFIRMED
     class BookingStatus {
@@ -475,10 +477,11 @@ classDiagram
     stripe_webhook_event ..> payment : event-id dedup guards the write
 ```
 
-> **One intent, one row per booking, at most one refund per booking, and no `Refund` entity.**
+> **One intent, one row per booking, one row per refund of a share, and no `Refund` entity.**
 > A stay is a group of bookings paid once, so `payment` holds the intent and `payment_booking`
-> holds each booking's share with its refund state — `refunded_minor`, `refund_id` and the failure
-> trace behind the resubmission lever (§5). The intent's status is derived from its shares. There
+> holds each booking's share with `refunded_minor`, the running sum of its refunds; each refund is a
+> `payment_refund` row keyed by scope (the whole share, or one day of a stay, ADR-0026) carrying its
+> `refund_id` and the failure trace behind the resubmission lever (§5). The intent's status is derived from its shares. There
 > is no `PaymentId`, `RefundId` or `RefundStatus` type, and the **idempotency key is not stored**
 > at all: it is derived from the booking id at call time; the refund's booking travels as Stripe
 > metadata (`StripeRefundTag`). `RefundReason` belongs to `booking` — why a refund happened is
@@ -889,7 +892,7 @@ sequenceDiagram
         P->>S: create Refund
         S-->>P: webhook refund updated (signed)
     else gateway refuses or is down
-        P->>P: stamp the booking's refund_attempted_at / refund_failed_at / failed_refund_id
+        P->>P: stamp the refund row (payment_refund): attempted_at / failed_at / failed_refund_id
         Note over B,P: the publication stays outstanding — riviera.refunds.failed is the signal
         Adm->>B: admin presses re-submit (window-limited)
         B->>P: same BookingCancelled re-driven, same refund re-asked
@@ -902,8 +905,8 @@ sequenceDiagram
 > swept `NO_SHOW`.
 >
 > **The failure leg is not decoration.** A refund the gateway refuses leaves its `BookingCancelled`
-> publication outstanding in the Event Publication Registry, with the attempt traced on the booking's
-> `payment_booking` row. `RefundOutbox` exposes exactly that backlog for the one refund listener and the lever
+> publication outstanding in the Event Publication Registry, with the attempt traced on the refund's
+> `payment_refund` row. `RefundOutbox` exposes exactly that backlog for the refund listeners and the lever
 > to re-drive it; `RefundResubmissionWindow` is how long the lever refuses after an accepted press,
 > so an outage cannot be re-swept once per click. Re-driving is safe because it re-issues the *same*
 > gateway call: a refund that already succeeded is returned, not repeated. It is a retry loop, not a
@@ -948,8 +951,8 @@ stateDiagram-v2
 >
 > **`COMPLETED` and `NO_SHOW` are stay outcomes, not attendance.** Attendance is the per-day
 > `booking_day` record — one row per service day from the moment the booking confirms, stamped
-> attended by the check-in or missed by the sweep. The outcome is written once, when the last
-> service day resolves; `completed_at` is that instant for a `COMPLETED` stay and the review window's
+> attended by the check-in, missed by the sweep or refunded by the weather refund (ADR-0026). The
+> outcome is written once, when the last service day resolves; `completed_at` is that instant for a `COMPLETED` stay and the review window's
 > input. Every booking has one service day today, so the two coincide until range bookings arrive.
 >
 > **`NO_SHOW` is terminal for the guest, not terminal.** The admin weather refund is the one

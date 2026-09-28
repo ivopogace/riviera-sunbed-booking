@@ -1,7 +1,7 @@
 # Cross-module domain events
 
 The spine is CLAUDE.md's event inventory. Its refund and intent-void listeners are `booking`'s
-`BookingRefundListener` (drives `RefundPort`) and `RemodelReleasePaymentListener` (voids an
+`BookingRefundListener` and `BookingDayRefundListener` (drive `RefundPort`) and `RemodelReleasePaymentListener` (voids an
 uncollected intent via `CancelPaymentPort`); `venue`'s `ReviewsChanged` listener recomputes the
 rating from a full re-read, not the payload.
 
