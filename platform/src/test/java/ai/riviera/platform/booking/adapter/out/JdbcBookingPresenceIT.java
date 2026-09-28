@@ -14,6 +14,7 @@ import ai.riviera.platform.EnabledIfDockerAvailable;
 import ai.riviera.platform.TestcontainersConfiguration;
 import ai.riviera.platform.booking.domain.BookingStatus;
 import ai.riviera.platform.venue.spi.BookingPresence;
+import ai.riviera.platform.venue.vocabulary.BookedSpan;
 import ai.riviera.platform.venue.vocabulary.LiveBookingCounts;
 import ai.riviera.platform.venue.vocabulary.SetId;
 import ai.riviera.platform.venue.vocabulary.VenueId;
@@ -124,25 +125,27 @@ class JdbcBookingPresenceIT {
 	}
 
 	/**
-	 * The read the owner's beach map pins a locked cell with: per set, the earliest date a guest may
-	 * still turn up on. Finished history never answers, a set whose whole history is finished is
-	 * absent, and a neighbour's booking never bleeds across.
+	 * The read the owner's beach map pins a locked cell with: per set, the span its live bookings
+	 * hold — the earliest day a guest may still turn up on to the last day any of them holds, so a
+	 * remodel can be planned past it. Finished history never answers, a set whose whole history is
+	 * finished is absent, and a neighbour's booking never bleeds across.
 	 */
 	@Test
-	void nearestLiveBookingsAnswersTheEarliestHonourableDatePerSet() {
+	void nearestLiveBookingsAnswersTheBookedSpanPerSet() {
 		long venueId = insertVenue("Nearest Venue");
 		long twiceBooked = insertSet(venueId, 1);
 		long finishedOnly = insertSet(venueId, 2);
 		long neverBooked = insertSet(venueId, 3);
 		insertBooking("NEAR0001", venueId, twiceBooked, "CANCELLED", LocalDate.of(2027, 6, 10));
 		insertBooking("NEAR0002", venueId, twiceBooked, "CONFIRMED", LocalDate.of(2027, 6, 22));
+		jdbc.sql("UPDATE booking SET last_date = DATE '2027-06-24' WHERE code = 'NEAR0002'").update();
 		insertBooking("NEAR0003", venueId, twiceBooked, "PENDING_REQUEST", LocalDate.of(2027, 6, 25));
 		insertBooking("NEAR0004", venueId, finishedOnly, "COMPLETED", LocalDate.of(2027, 6, 1));
 
-		assertEquals(Map.of(new SetId(twiceBooked), LocalDate.of(2027, 6, 22)),
+		assertEquals(Map.of(new SetId(twiceBooked), new BookedSpan(LocalDate.of(2027, 6, 22), LocalDate.of(2027, 6, 25))),
 				presence.nearestLiveBookings(List.of(
 						new SetId(twiceBooked), new SetId(finishedOnly), new SetId(neverBooked))),
-				"the earliest non-terminal date; the cancelled one before it and the finished set are absent");
+				"from the earliest non-terminal first day to the latest last day; the cancelled one before it and the finished set are absent");
 		assertEquals(Map.of(), presence.nearestLiveBookings(List.of()),
 				"an empty input answers empty without a query");
 	}

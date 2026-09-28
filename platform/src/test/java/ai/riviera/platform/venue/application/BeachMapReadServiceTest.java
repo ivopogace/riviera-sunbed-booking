@@ -14,6 +14,7 @@ import ai.riviera.platform.operator.vocabulary.VenueRef;
 import ai.riviera.platform.venue.api.VenueCatalog;
 import ai.riviera.platform.venue.vocabulary.MoneyView;
 import ai.riviera.platform.venue.vocabulary.Pool;
+import ai.riviera.platform.venue.vocabulary.BookedSpan;
 import ai.riviera.platform.venue.vocabulary.SetId;
 import ai.riviera.platform.venue.vocabulary.SetView;
 import ai.riviera.platform.venue.vocabulary.StaySpan;
@@ -61,7 +62,7 @@ class BeachMapReadServiceTest {
 		VenueMapView map = map(List.of(set(9L, 1), set(3L, 2), set(5L, 3)));
 		when(claims.today()).thenReturn(TODAY);
 		when(catalog.findVenueMap(VENUE, StaySpan.oneDay(TODAY))).thenReturn(Optional.of(map));
-		SetLock nine = new SetLock(new SetId(9L), TODAY.plusDays(2), null);
+		SetLock nine = new SetLock(new SetId(9L), BookedSpan.oneDay(TODAY.plusDays(2)), null);
 		SetLock three = new SetLock(new SetId(3L), null, TODAY);
 		when(claims.locksOn(List.of(new SetId(9L), new SetId(3L), new SetId(5L))))
 				.thenReturn(Map.of(new SetId(9L), nine, new SetId(3L), three));

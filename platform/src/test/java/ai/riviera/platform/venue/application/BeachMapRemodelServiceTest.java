@@ -26,6 +26,7 @@ import ai.riviera.platform.venue.vocabulary.LayoutRejection;
 import ai.riviera.platform.venue.vocabulary.LockedSet;
 import ai.riviera.platform.venue.vocabulary.Pool;
 import ai.riviera.platform.venue.vocabulary.PreviewRejection;
+import ai.riviera.platform.venue.vocabulary.BookedSpan;
 import ai.riviera.platform.venue.vocabulary.SetId;
 import ai.riviera.platform.venue.vocabulary.SetPlacement;
 import ai.riviera.platform.venue.vocabulary.VenueId;
@@ -158,8 +159,8 @@ class BeachMapRemodelServiceTest {
 
 		SetPlacement at = new SetPlacement("A", 2, 2, 1);
 		when(writer.write(VENUE, 4, LayoutCommand.of(CELLS), PROCEED)).thenReturn(new LayoutWrite.SetsInUse(
-				List.of(new BlockedSet(new PlacedSet(A2, at), new SetLock(A2, TODAY_IN_TIRANE.plusDays(3), null)))));
-		assertEquals(new LayoutCommitOutcome.SetsInUse(List.of(new LockedSet(A2, at, TODAY_IN_TIRANE.plusDays(3), null))),
+				List.of(new BlockedSet(new PlacedSet(A2, at), new SetLock(A2, BookedSpan.oneDay(TODAY_IN_TIRANE.plusDays(3)), null)))));
+		assertEquals(new LayoutCommitOutcome.SetsInUse(List.of(new LockedSet(A2, at, BookedSpan.oneDay(TODAY_IN_TIRANE.plusDays(3)), null))),
 				service.commit(OWNER, VENUE, 4, CELLS, PROCEED));
 		assertEquals(true, status.isRollbackOnly(),
 				"anything but a written layout rolls the unit back, so a move the gate made never survives");

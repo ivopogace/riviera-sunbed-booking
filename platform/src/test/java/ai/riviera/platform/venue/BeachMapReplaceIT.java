@@ -332,10 +332,12 @@ class BeachMapReplaceIT {
 				.andExpect(jsonPath("$.sets[0].rowLabel").value("A"))
 				.andExpect(jsonPath("$.sets[0].positionNo").value(1))
 				.andExpect(jsonPath("$.sets[0].bookedOn").value("2035-07-01"))
+				.andExpect(jsonPath("$.sets[0].bookedUntil").value("2035-07-01"))
 				.andExpect(jsonPath("$.sets[0].heldOn").doesNotExist())
 				.andExpect(jsonPath("$.sets[1].setId").value(rowA.get(2)))
 				.andExpect(jsonPath("$.sets[1].positionNo").value(3))
 				.andExpect(jsonPath("$.sets[1].bookedOn").doesNotExist())
+				.andExpect(jsonPath("$.sets[1].bookedUntil").doesNotExist())
 				.andExpect(jsonPath("$.sets[1].heldOn").value(heldOn.toString()));
 
 		// Nothing written: the sets, the hold (no CASCADE) and the token are as they were.

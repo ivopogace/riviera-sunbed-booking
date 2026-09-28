@@ -60,12 +60,14 @@ record RemodelCommitResponse(long receiptId, Instant committedAt, List<RemodelPr
 	}
 
 	/** One set a {@code 409 SETS_IN_USE} names, in the bulk save's own wire shape. */
-	record LockedSetView(long setId, String rowLabel, int positionNo, String bookedOn, String heldOn) {
+	record LockedSetView(long setId, String rowLabel, int positionNo, String bookedOn, String bookedUntil,
+			String heldOn) {
 
 		static LockedSetView of(LockedSet locked) {
 			return new LockedSetView(locked.setId().value(), locked.placement().rowLabel(),
 					locked.placement().positionNo(),
-					locked.bookedOn() == null ? null : locked.bookedOn().toString(),
+					locked.booked() == null ? null : locked.booked().firstDay().toString(),
+					locked.booked() == null ? null : locked.booked().lastDay().toString(),
 					locked.heldOn() == null ? null : locked.heldOn().toString());
 		}
 	}

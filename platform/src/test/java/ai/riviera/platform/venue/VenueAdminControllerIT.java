@@ -352,6 +352,8 @@ class VenueAdminControllerIT {
 		long staffHeld = addSet(venue, setBody("A", 2, "STANDARD", "ONLINE", 3000, "EUR", 2, 1));
 		addSet(venue, setBody("A", 3, "STANDARD", "WALK_IN", 2500, "EUR", 3, 1));
 		seedBooking("PINNED01", venue, booked, "CONFIRMED", LocalDate.of(2027, 7, 1));
+		seedBooking("PINNED02", venue, booked, "CONFIRMED", LocalDate.of(2027, 7, 3));
+		jdbc.sql("UPDATE booking SET last_date = DATE '2027-07-05' WHERE code = 'PINNED02'").update();
 		jdbc.sql("INSERT INTO set_availability (set_id, booking_date, state) "
 						+ "VALUES (:set, DATE '2027-07-01', 'BOOKED_ONLINE')")
 				.param("set", booked).update();
@@ -369,9 +371,11 @@ class VenueAdminControllerIT {
 				.andExpect(jsonPath("$.locks.length()").value(2))
 				.andExpect(jsonPath("$.locks[0].setId").value(booked))
 				.andExpect(jsonPath("$.locks[0].bookedOn").value("2027-07-01"))
+				.andExpect(jsonPath("$.locks[0].bookedUntil").value("2027-07-05"))
 				.andExpect(jsonPath("$.locks[0].heldOn").value("2027-07-01"))
 				.andExpect(jsonPath("$.locks[1].setId").value(staffHeld))
 				.andExpect(jsonPath("$.locks[1].bookedOn").value(Matchers.nullValue()))
+				.andExpect(jsonPath("$.locks[1].bookedUntil").value(Matchers.nullValue()))
 				.andExpect(jsonPath("$.locks[1].heldOn").value(tomorrow.toString()));
 	}
 

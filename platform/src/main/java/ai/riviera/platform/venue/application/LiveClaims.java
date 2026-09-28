@@ -13,6 +13,7 @@ import org.springframework.stereotype.Component;
 
 import ai.riviera.platform.venue.spi.BookingPresence;
 import ai.riviera.platform.venue.spi.SetAvailabilityLookup;
+import ai.riviera.platform.venue.vocabulary.BookedSpan;
 import ai.riviera.platform.venue.vocabulary.SetId;
 
 /**
@@ -53,16 +54,16 @@ class LiveClaims {
 	}
 
 	/**
-	 * The locked subset of {@code setIds} with the nearest date behind each arm — a free set is
-	 * absent. Agrees with {@link #isLivelyClaimed} set by set; an empty input answers empty.
+	 * The locked subset of {@code setIds} with the booked span and the nearest hold behind each arm
+	 * — a free set is absent. Agrees with {@link #isLivelyClaimed} set by set; an empty input answers empty.
 	 */
 	Map<SetId, SetLock> locksOn(Collection<SetId> setIds) {
 		Map<SetId, LocalDate> heldOn = availability.nearestClaimsFrom(setIds, today());
-		Map<SetId, LocalDate> bookedOn = bookings.nearestLiveBookings(setIds);
-		return Stream.concat(heldOn.keySet().stream(), bookedOn.keySet().stream())
+		Map<SetId, BookedSpan> booked = bookings.nearestLiveBookings(setIds);
+		return Stream.concat(heldOn.keySet().stream(), booked.keySet().stream())
 				.distinct()
 				.collect(Collectors.toUnmodifiableMap(id -> id,
-						id -> new SetLock(id, bookedOn.get(id), heldOn.get(id))));
+						id -> new SetLock(id, booked.get(id), heldOn.get(id))));
 	}
 
 	/** The staff walk-in holds from today on each of these sets, oldest first — the preview's hold group. */
