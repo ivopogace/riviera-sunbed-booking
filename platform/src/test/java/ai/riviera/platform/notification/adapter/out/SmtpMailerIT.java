@@ -25,6 +25,7 @@ import ai.riviera.platform.booking.vocabulary.CancellationWindow;
 import ai.riviera.platform.notification.application.BookingCancellationMail;
 import ai.riviera.platform.notification.application.BookingConfirmationMail;
 import ai.riviera.platform.notification.application.BookingMovedMail;
+import ai.riviera.platform.notification.application.DayRefundMail;
 import ai.riviera.platform.notification.application.MoveReminderMail;
 import ai.riviera.platform.notification.application.PaymentDueMail;
 import ai.riviera.platform.booking.vocabulary.DeclineReason;
@@ -230,6 +231,23 @@ class SmtpMailerIT {
 				PAY_LINK.toString());
 		assertThat(message.isMimeType("text/plain")).as("plain text, no HTML/tracking (ADR-0011)").isTrue();
 		assertThat(body).doesNotContain("<html", "<img", "http://track", "utm_");
+	}
+
+	@Test
+	void theDayRefundNamesTheDayTheAmountAndTheLink() throws Exception {
+		mailer().sendDayRefund(TO, new DayRefundMail(BOOKING_CODE, "Miramar Beach", LocalDate.of(2026, 8, 18), 3000L,
+				"EUR", PAY_LINK));
+
+		MimeMessage message = theOnlyReceivedMessage();
+		assertThat(message.getSubject()).isEqualTo("A day of your booking at Miramar Beach is refunded");
+		String body = message.getContent().toString();
+		assertThat(body).contains(
+				"Miramar Beach closed for the weather on 18 August 2026, so that day's share of your booking is refunded.",
+				"Booking code:  " + BOOKING_CODE,
+				"Refunded day:  18 August 2026",
+				"Refund:        EUR 30.00",
+				PAY_LINK.toString());
+		assertThat(message.isMimeType("text/plain")).as("plain text, no HTML/tracking (ADR-0011)").isTrue();
 	}
 
 	@Test

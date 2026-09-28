@@ -66,4 +66,7 @@ public interface Mailer {
 
 	/** Send the evening-before move reminder: tomorrow's spot, how far from today's, and the code-gated link. */
 	void sendMoveReminder(String toEmail, MoveReminderMail reminder);
+
+	/** A refunded day's record (issue #1210): the day, the amount, the booking going on. */
+	void sendDayRefund(String toEmail, DayRefundMail refund);
 }

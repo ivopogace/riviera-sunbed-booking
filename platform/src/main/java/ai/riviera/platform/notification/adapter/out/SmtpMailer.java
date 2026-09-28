@@ -21,6 +21,7 @@ import ai.riviera.platform.booking.vocabulary.CancellationWindow;
 import ai.riviera.platform.notification.application.BookingCancellationMail;
 import ai.riviera.platform.notification.application.BookingConfirmationMail;
 import ai.riviera.platform.notification.application.BookingMovedMail;
+import ai.riviera.platform.notification.application.DayRefundMail;
 import ai.riviera.platform.notification.application.MoveReminderMail;
 import ai.riviera.platform.notification.application.Mailer;
 import ai.riviera.platform.notification.application.PaymentDueMail;
@@ -51,6 +52,7 @@ class SmtpMailer implements Mailer {
 	private static final String BOOKING_MOVED_SUBJECT = "Your spot at %s has changed";
 	private static final String REQUEST_EXPIRED_SUBJECT = "Your booking request to %s has expired";
 	private static final String MOVE_REMINDER_SUBJECT = "Tomorrow at %s: your spot moves";
+	private static final String DAY_REFUND_SUBJECT = "A day of your booking at %s is refunded";
 
 	/** English-only in v1 (ADR-0011); the locale is explicit so the JVM default cannot change the copy. */
 	private static final DateTimeFormatter DATE_FORMAT =
@@ -364,6 +366,26 @@ class SmtpMailer implements Mailer {
 						distance(reminder.rowsAway(), reminder.positionsAway()), reminder.bookingCode(),
 						reminder.venueName(), reminder.toRowLabel(), reminder.toPositionNo(),
 						DATE_FORMAT.format(reminder.stayLastDate()), reminder.bookingLink()));
+	}
+
+	@Override
+	public void sendDayRefund(String toEmail, DayRefundMail refund) {
+		send(toEmail, DAY_REFUND_SUBJECT.formatted(headerSafe(refund.venueName())), """
+				%s closed for the weather on %s, so that day's share of your booking is refunded. Your
+				booking stands for its other days, and your spot stays yours.
+
+				  Booking code:  %s
+				  Venue:         %s
+				  Refunded day:  %s
+				  Refund:        %s
+
+				The refund is on its way back to the payment method you used; it can take a few working
+				days to appear on your statement.
+
+				%s"""
+				.formatted(refund.venueName(), DATE_FORMAT.format(refund.serviceDate()), refund.bookingCode(),
+						refund.venueName(), DATE_FORMAT.format(refund.serviceDate()),
+						formatAmount(refund.refundMinor(), refund.currency()), refund.bookingLink()));
 	}
 
 	/** The exit a move earned: in full for a lone booking, these days in full for a stretch, none once a stay began. */

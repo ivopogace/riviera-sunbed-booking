@@ -78,6 +78,10 @@ public final class BookingMailFixtures {
 	public static final String MOVE_REMINDER_LISTENER_ID = "ai.riviera.platform.notification.adapter.in."
 			+ "StayMoveReminderMailListener.on(ai.riviera.platform.booking.events.StayMoveDue)";
 
+	/** The registry's id for the refunded-day listener; new class, no migration needed. */
+	public static final String DAY_REFUND_LISTENER_ID = "ai.riviera.platform.notification.adapter.in."
+			+ "BookingDayRefundMailListener.on(ai.riviera.platform.booking.events.BookingDayRefunded)";
+
 	/** The registry's id for the booking-moved listener; new class, no migration needed. */
 	public static final String BOOKING_MOVED_LISTENER_ID = "ai.riviera.platform.notification.adapter.in."
 			+ "BookingMovedMailListener.on(ai.riviera.platform.booking.events.BookingMoved)";

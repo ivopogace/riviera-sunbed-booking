@@ -74,6 +74,8 @@ class MockMailOutboxController {
 				case STAY_CONFIRMATION -> Optional.of(new BookingMailView(sent.kind().name(),
 						sent.stayConfirmation().venueName(), sent.stayConfirmation().firstDate(), null, null, null, null,
 						null, null));
+				case DAY_REFUND -> Optional.of(new BookingMailView(sent.kind().name(), sent.dayRefund().venueName(),
+						sent.dayRefund().serviceDate(), null, null, null, null, null, null));
 				case EMAIL_VERIFICATION, PASSWORD_RESET, PAYMENT_DUE, OPERATOR_APPROVED, REQUEST_DECLINED,
 						REQUEST_EXPIRED -> Optional.empty();
 			};

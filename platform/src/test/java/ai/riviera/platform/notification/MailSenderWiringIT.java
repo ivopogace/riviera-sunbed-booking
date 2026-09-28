@@ -161,6 +161,12 @@ class MailSenderWiringIT {
 			record();
 		}
 
+		@Override
+		public void sendDayRefund(String toEmail,
+				ai.riviera.platform.notification.application.DayRefundMail refund) {
+			record();
+		}
+
 		private void record() {
 			sendThread.set(Thread.currentThread().getName());
 			sent.countDown();
