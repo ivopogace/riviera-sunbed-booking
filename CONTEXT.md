@@ -139,7 +139,9 @@ model in `docs/architecture/domain-model.md`.
   set position that has never been booked can be deleted.
 - **Locked set** — a set position someone is still owed: it carries a **live claim** — a hold
   dated today or later, or a booking a guest may still turn up on. The editor shows it pinned
-  with a lock and the reason ("booked Sat 12 Sept", "held by staff …"); it cannot be moved or
+  with a lock and the reason — the whole span its live bookings hold ("booked Sat 12 Sept 2026 –
+  Tue 15 Sept 2026", one day named alone) or "held by staff …" — so a remodel can be planned past
+  it; it cannot be moved or
   removed one set at a time while the claim lasts, and its price, tier and pool stay editable. A
   set held by staff cannot be painted out of the bulk save either; a set only bookings pin can,
   and that save then previews moving them (**moved booking**) before it commits. The lock is the
@@ -284,6 +286,15 @@ model in `docs/architecture/domain-model.md`.
 - **Check-in** — staff recording, by scanning the booking's QR code or typing its
   booking code, that the guest arrived **today**: stamps today's service day as attended, exactly
   once per service day. On the stay's last service day it also resolves the stay to `COMPLETED`.
+- **Day share** — a booking's money on one of the days it serves: its amount split evenly over
+  its days, the remainder on the first, so the days sum back to the amount in minor units. Daily
+  takings count every covering booking's day share, never a stay's whole price on its arrival day.
+- **Guest list** — the operator's daily view of who holds a set on a date, grouped by where each
+  guest's stay stands: **arriving** (the span starts that day — a one-day booking is an arrival),
+  **staying** (strictly inside) or **leaving** (the last day of a stay begun earlier); a stitched
+  stay is grouped by the stay's span, so a move day reads as staying on the new set. Each row
+  carries the day's attendance, not the stay outcome, and today's list counts who has not yet
+  checked in.
 - **Stay outcome** — what a confirmed booking becomes once its last service day has passed or been
   checked in: `COMPLETED` if any service day was attended, `NO_SHOW` if none was. Written once, by
   the check-in (last service day) or the scheduled sweep, never by hand.

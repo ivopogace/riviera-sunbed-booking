@@ -48,11 +48,11 @@ in for `feature/operator-stay-day`).
   D, then the row's span is the stay's, not the stretch's. *Seam:* the same endpoint · *Pinned by:*
   `StaffBookingControllerIT.aStitchedStretchCarriesTheStaysSpan`
 - [ ] **AC-3:** Given a three-day stay checked in on day 1 and day 2 only, when the list is read for
-  day 1, day 2 and day 3 (after the sweep), then `attendance` is `CHECKED_IN`, `CHECKED_IN`,
+  day 1, day 2 and day 3 (after the sweep), then `attendance` is `ATTENDED`, `ATTENDED`,
   `MISSED` while `status` stays the stay outcome. *Seam:* the same endpoint · *Pinned by:*
   `StaffBookingControllerIT.attendanceIsTheDaysNotTheStays`
 - [ ] **AC-4:** Given a one-day `COMPLETED` and a one-day `NO_SHOW` booking, when listed, then
-  `attendance` is `CHECKED_IN` and `MISSED` (parity with the status chips). *Pinned by:* the
+  `attendance` is `ATTENDED` and `MISSED` (parity with the status chips). *Pinned by:* the
   existing `StaffBookingControllerIT` cases plus `…attendanceIsTheDaysNotTheStays`.
 - [ ] **AC-5:** Given a booking of 9000 over D..D+2 and a one-day booking of 4000 on D+1, when
   gross takings are read for D, D+1, D+2, then they are 3000, 7000, 3000 — never 9000 on D.
@@ -110,8 +110,9 @@ _None._
   (`DayAttendance` enum in `booking/domain`); no new port.
 - `booking.api.DailyTakings` keeps its signature; its adapter reads covering rows and sums via
   `booking.domain.DayShare`. `payout` is untouched (still the caller, still applies the rate).
-- `venue.spi.BookingPresence#nearestLiveBookings` returns `Map<SetId, StaySpan>`
-  (`venue.vocabulary.StaySpan`, already published); `venue.application.SetLock`,
+- `venue.spi.BookingPresence#nearestLiveBookings` returns `Map<SetId, BookedSpan>` (a new
+  `venue.vocabulary` record: `StaySpan`'s 62-day ceiling would refuse a season-long union);
+  `venue.application.SetLock`,
   `venue.vocabulary.LockedSet`, `SetLockView`, `BlockedSetView` and the root's
   `RemodelCommitResponse.LockedSetView` carry `bookedUntil`. Owner check: the span of a booking is
   `booking`'s fact; the lock is `venue`'s reading of it — matches RESPONSIBILITIES §venue.
@@ -119,7 +120,7 @@ _None._
 ## FE↔BE contract
 
 - `GET /api/venues/{id}/bookings?date` rows: `{ setId, code, status, firstDate, lastDate,
-  attendance }` — `attendance ∈ EXPECTED | CHECKED_IN | MISSED`, dates ISO `LocalDate`.
+  attendance }` — `attendance ∈ EXPECTED | ATTENDED | MISSED`, dates ISO `LocalDate`.
 - `GET /api/venues/{id}/beach-map` `locks[]` and `409 SETS_IN_USE` `sets[]` gain `bookedUntil`
   (ISO or `null`, `null` iff `bookedOn` is).
 - `GET /api/venues/{id}/takings?date` unchanged in shape; the figure is the day's share.
@@ -142,17 +143,24 @@ _None._
 
 ## Execution status
 
-**Stage pointer:** `plan — written`
+**Stage pointer:** `PR — draft open, CI due`
 
-**Next action:** Phase 0 red test.
+**Next action:** watch CI on the draft; then merge `origin/main`, mark ready, run the review gate.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — day share rule | | |
-| 1 — takings per served day | | |
-| 2 — daily list span + attendance | | |
-| 3 — lock span | | |
-| 4 — frontend | | |
-| 5 — docs | | |
+| 0 — day share rule | ✅ | phase 0+1 commit |
+| 1 — takings per served day | ✅ | phase 0+1 commit |
+| 2 — daily list span + attendance | ✅ | phase 2 commit |
+| 3 — lock span | ✅ | phase 3 commit |
+| 4 — frontend | ✅ | phase 4 commit |
+| 5 — docs | ✅ | phase 5 commit |
+
+Local proof (cloud session, one IT class at a time): `DayShareTest`, `LiveClaimsTest`,
+`BeachMapReadServiceTest`, `LayoutWriterTest`, `BeachMapRemodelServiceTest`,
+`VenueAdminServiceTest`, `JdbcBookingsDailyTakingsIT`, `StaffBookingControllerIT`,
+`JdbcBookingPresenceIT`, `VenueAdminControllerIT`, `BeachMapReplaceIT`, the structural net;
+Vitest over `operator/`; mocked Playwright `operator-daily` + `layout-editor`; `ng lint`,
+`format:check`, the comment/doc-budget/focus/touch guards.
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.

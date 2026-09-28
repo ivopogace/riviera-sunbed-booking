@@ -10,8 +10,9 @@ itineraries, ADR-0024) landed with #1208; story 15 (one confirmation mail per st
 its move mail landed with #1257; story 22's evening move reminder, story 23's "your spot today" and
 story 36's staff re-scan naming today's set landed with #1209; stories 17–19 and 25–27 (a stay at a
 Request-to-Book venue is one request, answered whole) landed with #1203, and a stitched stay there as one
-request, accepted or declined whole, with #1267; the
-rest is not yet built.** Decisions below were made at the refine stage (2026-09-12/13) against `main` @
+request, accepted or declined whole, with #1267; D4 and stories 30–33 (the operator's guest list
+split arriving / staying / leaving with the day's attendance, takings by day share, the layout lock
+naming the booked span) landed with #1205; the rest is not yet built.** Decisions below were made at the refine stage (2026-09-12/13) against `main` @
 `5bceef00`, grounded in four verification passes over the reserve path, the sweeps, the money paths
 and the beach map. Each is a one-paragraph re-decision if reality disagrees. The per-module
 contracts these decisions settle belong in `RESPONSIBILITIES.md` once a slice lands; the glossary

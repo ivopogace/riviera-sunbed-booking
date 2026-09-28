@@ -190,7 +190,8 @@ close, the maximum stay, the season closure, and the commission rate over time. 
   I compose. The public map stays state-agnostic — hold type never reaches a public surface.
 - **The owner's beach-map read** (`…/beach-map`; owner-asserted, 403 before existence; the layout
   editor's seed): the tourist map, fence included, plus a sparse `locks` list — per pinned set, the
-  nearest live booking and hold — by the same `LiveClaims` predicate the write guards ask. A lock
+  span its live bookings hold (`BookingPresence#nearestLiveBookings`: earliest first day to latest
+  last day) and the nearest hold — by the same `LiveClaims` predicate the write guards ask. A lock
   means *cannot move or remove*, never *cannot repaint*: the editor still edits a locked set's
   price, tier and pool. Which sets a venue's guests hold never reaches the public map.
 
@@ -242,8 +243,10 @@ any is released on the old, never a swap of my own — so a racing reserve wins 
   answers `SET_TAKEN` (`ConcurrentRangeReservationIT`). One PaymentIntent for per-day price × days
   (invariant #5); the cancellation window and refund are the first day's, on the whole amount
   (invariant #10). The staff daily list and daily takings count `CONFIRMED`, `COMPLETED` and
-  `NO_SHOW` (a resolved stay still happened, its money kept); takings land a stay's whole price on
-  its first day, pending `docs/architecture/multi-day-stays.md` D4.
+  `NO_SHOW` (a resolved stay still happened, its money kept). The daily list names the guest's
+  whole span (a stitched stay's, not the stretch's) and the day's own `booking_day` attendance;
+  takings count each covering booking's **day share** (`DayShare`: the amount split over its days,
+  remainder on the first), so a fortnight's money lands on the days it serves (design D4).
 - **The reserve commits before any payment call** (no row lock spans the gateway round-trip), and
   that does not weaken invariant #2: the guard is `UNIQUE (set_id, booking_date)` plus the atomic
   `INSERT … ON CONFLICT DO NOTHING` claim, which holds however long the lock is held.
