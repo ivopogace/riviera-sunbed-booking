@@ -1,7 +1,8 @@
 # ADR-0026: A washed-out day of a stay is refunded on its own, and the stay continues
 
 - **Status:** Accepted — implemented by the slice for issue #1210 (epic #1096, design D5 option A,
-  decided 2026-09-24).
+  decided 2026-09-24). §3 amended by ADR-0027 for the venue's own day refund (reason `VENUE`, whose
+  day is released); as written here for weather.
 - **Date:** 2026-09-28
 - **Relates to:** `docs/architecture/multi-day-stays.md` § D5, D8, ADR-0005 (the server-side refund
   it leaves whole for the remainder), ADR-0021 (the ledger's sign convention it extends), ADR-0024 (a
