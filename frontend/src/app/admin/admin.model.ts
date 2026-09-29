@@ -221,8 +221,8 @@ export interface GuestBookingDayView {
 
 /**
  * One booking the admin may refund a day of; mirrors the backend
- * `AdminDayRefundController.GuestBookingResponse`. `refundable` is false for a booking that never
- * happened, whose days the card offers no action on. Dates are Europe/Tirane civil days (#6). No
+ * `AdminDayRefundController.GuestBookingResponse`. `refundable` is true only for a booking that is
+ * confirmed, completed or a no-show; a cancelled one, or one that never happened, offers no day. Dates are Europe/Tirane civil days (#6). No
  * arrival code and no address is ever returned (invariant #7).
  */
 export interface GuestBookingView {

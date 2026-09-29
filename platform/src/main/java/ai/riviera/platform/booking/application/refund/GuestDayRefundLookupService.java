@@ -20,7 +20,7 @@ import ai.riviera.platform.venue.vocabulary.SetId;
 @Service
 class GuestDayRefundLookupService implements GuestDayRefundLookup {
 
-	/** Shown when a set no longer resolves — the row is still worth listing for its days. */
+	/** Shown when a set does not resolve — the row is still worth listing for its days. */
 	private static final String UNKNOWN_VENUE = "Unknown venue";
 
 	private final CustomerLookup customers;

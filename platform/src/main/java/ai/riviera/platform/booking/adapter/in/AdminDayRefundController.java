@@ -33,6 +33,9 @@ import ai.riviera.platform.shared.CurrentOperator;
 @RequestMapping("/api/admin/bookings")
 class AdminDayRefundController {
 
+	/** The problem {@code instance} for the refund: a constant, never a value from the request (#7). */
+	private static final URI REFUND_INSTANCE = URI.create("/api/admin/bookings");
+
 	private final GuestDayRefundLookup lookup;
 	private final RefundVenueDay refundVenueDay;
 	private final CurrentOperator currentOperator;
@@ -53,8 +56,9 @@ class AdminDayRefundController {
 	}
 
 	/**
-	 * One booking the admin may act on: {@code refundable} iff the booking happened (a day refund's precondition);
-	 * {@code status} is the lifecycle token; dates are {@code Europe/Tirane} civil days (#6). Never the code (#7).
+	 * One booking the admin may act on: {@code refundable} iff it is {@code CONFIRMED}, {@code COMPLETED} or
+	 * {@code NO_SHOW} (a day refund's precondition; a cancelled one has nothing left); {@code status} is the
+	 * lifecycle token; dates are {@code Europe/Tirane} civil days (#6). Never the code (#7).
 	 */
 	record GuestBookingResponse(long bookingId, String venueName, LocalDate firstDate, LocalDate lastDate,
 			String status, boolean refundable, List<GuestBookingDayResponse> days) {
@@ -78,7 +82,7 @@ class AdminDayRefundController {
 			@PathVariable @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
 		return VenueDayRefundResponses.of(
 				refundVenueDay.refundDayAsAdmin(currentOperator.require(authentication), new BookingId(bookingId), date),
-				date, URI.create("/api/admin/bookings/" + bookingId));
+				date, REFUND_INSTANCE);
 	}
 
 	/** A non-empty local part, an {@code @} and a non-empty domain: a shapeless value would hide a typo behind an empty list. */

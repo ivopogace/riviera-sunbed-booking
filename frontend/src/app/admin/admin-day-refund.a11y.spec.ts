@@ -112,8 +112,8 @@ describe('AdminDayRefund a11y', () => {
     expect(notice.getAttribute('aria-live')).toBe('polite');
   });
 
-  /** Each day's button is one of several on the page, so its name must say which day it acts on. */
-  it('gives every day action a distinct target and an accessible name', async () => {
+  /** Each day's button is one of several on the page, so its name must say which day it acts on (WCAG 2.5.3: the visible text leads). */
+  it('gives every day action a distinct accessible name that starts with its visible text', async () => {
     const fixture = await render(RESULTS);
     await search(fixture);
 
@@ -123,8 +123,11 @@ describe('AdminDayRefund a11y', () => {
       ),
     );
     expect(buttons).toHaveLength(2);
+    const names = buttons.map((button) => button.getAttribute('aria-label') ?? '');
+    expect(new Set(names).size).toBe(2);
+    expect(names).toEqual(['Refund this day — Sun 2 Aug 2026', 'Refund this day — Mon 3 Aug 2026']);
     for (const button of buttons) {
-      expect(button.textContent?.trim()).toBeTruthy();
+      expect(button.getAttribute('aria-label')).toContain(button.textContent?.trim() ?? '?');
     }
   });
 });

@@ -316,9 +316,9 @@ any is released on the old, never a swap of my own — so a racing reserve wins 
   role gate and audit are the whole authorization — and records the admin as the actor; the venue is the
   row's. `GuestDayRefundLookup` is how the admin finds the id: the guest's bookings by canonical email
   (`customer::api`, never stored here), each with venue name (`venue::api`), span, status and per-day
-  state, never a code (#7); an unknown address and a known one with no bookings answer alike. Both sit
-  under `/api/admin/bookings` (`AdminDayRefundController`), the date in the path so the audit row names
-  the day (`AdminDayRefundControllerIT`).
+  state, never a code (#7); an unknown address and a known one with no bookings answer alike. The two
+  endpoints sit under `/api/admin/bookings` (`AdminDayRefundController`), the date in the path so the audit
+  row names the day (`AdminDayRefundControllerIT`).
 - **A released row is another guest's or nobody's (#2):** every leg that frees a live booking's span (the
   guest cancel, the weather cancel, the remodel refund and move) walks `ServiceDays.held` — the span less
   `Bookings#findReleasedDays` — so a resold day survives the first guest's cancellation (`VenueDayRefundServiceIT`).

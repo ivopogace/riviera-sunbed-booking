@@ -18,7 +18,7 @@ import { TouchTarget } from '../shared/touch-target';
 
 /**
  * The console's canonical tab order as GROUPS, a hairline divider at each boundary (see
- * {@link AdminConsoleTabs}): accounts, outbox re-drive levers, moderation, money, records (Audit
+ * {@link AdminConsoleTabs}): accounts, outbox levers and refunds, moderation, money, records (Audit
  * last). `Payouts` is a reserved slot for a tab that does not ship yet.
  */
 export const ADMIN_CONSOLE_TAB_GROUPS = [

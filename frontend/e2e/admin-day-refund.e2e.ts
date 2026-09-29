@@ -148,6 +148,8 @@ test('an admin refunds an open day of a stay with grounds and sees the day relea
   await expect(notice).toContainText('Sun 2 Aug 2026 refunded');
   await expect(notice).toContainText('€45');
   await expect(notice).toContainText('free again');
+  // The settled leg: the confirm is gone, so focus parks on the notice (WCAG 2.4.3).
+  await expect(notice).toBeFocused();
   expect(api.reasons).toEqual(['pool closed for repair']);
   // The card re-reads rather than assuming — the released state is the server's, not the client's.
   await expect(page.getByTestId('admin-day-refund-state-42-2026-08-02')).toContainText('released');
@@ -181,8 +183,32 @@ test('a refused refund reads as an answer, not as a failure', async ({ page }) =
 
   const notice = page.getByTestId('admin-day-refund-notice');
   await expect(notice).toContainText('checked in');
+  await expect(notice).toBeFocused();
   await expect(page.getByTestId('admin-day-refund-error')).toHaveCount(0);
   await expectNoSeriousAxeViolations(page, 'admin day refund refused');
+});
+
+test('switching to another day of the same booking recreates the confirm and moves focus onto it', async ({
+  page,
+}) => {
+  await mockOperatorLifecycleApi(page, { admin: ADMIN });
+  await mockAdminBookings(page);
+  await openRefundsTab(page);
+  await lookUp(page);
+
+  await page.getByTestId('admin-day-refund-open-42-2026-08-02').click();
+  await expect(page.getByTestId('admin-day-refund-confirm-42')).toBeFocused();
+
+  await page.getByTestId('admin-day-refund-open-42-2026-08-03').click();
+
+  const panel = page.getByTestId('admin-day-refund-confirm-panel-42');
+  await expect(panel).toHaveCount(1);
+  await expect(panel).toContainText('Mon 3 Aug 2026');
+  await expect(page.getByTestId('admin-day-refund-confirm-42')).toBeFocused();
+  // Every open day names its date, so the buttons never read alike (WCAG 2.5.3).
+  await expect(page.getByTestId('admin-day-refund-open-42-2026-08-02')).toHaveAccessibleName(
+    'Refund this day — Sun 2 Aug 2026',
+  );
 });
 
 test('an address with no bookings is an empty result, not an error', async ({ page }) => {

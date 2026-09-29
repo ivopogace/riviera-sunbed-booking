@@ -103,6 +103,32 @@ function problem(status: number, code: string): HttpErrorResponse {
   return new HttpErrorResponse({ status, error: { code } });
 }
 
+/** The stay of {@link GUEST_BOOKINGS} with two open days, for the day-switch case. */
+const TWO_OPEN_DAYS: GuestBookingLookupView = {
+  bookings: [
+    {
+      ...GUEST_BOOKINGS.bookings[0],
+      days: [
+        { date: '2026-08-01', state: 'ATTENDED' },
+        { date: '2026-08-02', state: 'OPEN' },
+        { date: '2026-08-03', state: 'OPEN' },
+      ],
+    },
+  ],
+};
+
+/** A promise the test resolves by hand, to order two reads. */
+function deferred<T>(): { promise: Promise<T>; resolve: (value: T) => void } {
+  let resolve!: (value: T) => void;
+  const promise = new Promise<T>((r) => (resolve = r));
+  return { promise, resolve };
+}
+
+async function settle(fixture: ComponentFixture<AdminDayRefund>): Promise<void> {
+  await fixture.whenStable();
+  fixture.detectChanges();
+}
+
 describe('AdminDayRefund', () => {
   it('lists each booking with its venue, span, status and days, offering a refund only on an open day (AC-6)', async () => {
     const service = serviceStub(GUEST_BOOKINGS);
@@ -154,8 +180,108 @@ describe('AdminDayRefund', () => {
 
     await lookUp(fixture);
 
-    expect(testId(fixture, 'admin-day-refund-error')).not.toBeNull();
+    expect(testId(fixture, 'admin-day-refund-error')?.textContent).toContain('went wrong');
     expect(testId(fixture, 'admin-day-refund-empty')).toBeNull();
+  });
+
+  it('names a malformed address rather than reporting a generic failure', async () => {
+    const service = serviceStub();
+    service.lookup.mockRejectedValue(problem(400, 'INVALID_REQUEST'));
+    const fixture = await render(service);
+
+    await lookUp(fixture, 'not-an-address');
+
+    expect(testId(fixture, 'admin-day-refund-error')?.textContent).toContain('full email address');
+  });
+
+  it('tells a cancelled booking from one that never happened', async () => {
+    const fixture = await render(
+      serviceStub({
+        bookings: [
+          { ...GUEST_BOOKINGS.bookings[1], bookingId: 44, status: 'CANCELLED' },
+          GUEST_BOOKINGS.bookings[1],
+        ],
+      }),
+    );
+
+    await lookUp(fixture);
+
+    expect(testId(fixture, 'admin-day-refund-not-refundable-44')?.textContent).toContain(
+      'Cancelled',
+    );
+    expect(testId(fixture, 'admin-day-refund-not-refundable-43')?.textContent).toContain(
+      'never happened',
+    );
+  });
+
+  it('moves focus on every confirm leg: open, back-out, settled (WCAG 2.4.3)', async () => {
+    const service = serviceStub(GUEST_BOOKINGS);
+    service.refund.mockRejectedValue(problem(409, 'DAY_ALREADY_REFUNDED'));
+    const fixture = await render(service);
+    await lookUp(fixture);
+
+    openConfirm(fixture);
+    await settle(fixture);
+    expect(document.activeElement).toBe(testId(fixture, 'admin-day-refund-confirm-42'));
+
+    (testId(fixture, 'admin-day-refund-cancel-42') as HTMLButtonElement).click();
+    await settle(fixture);
+    expect(testId(fixture, 'admin-day-refund-confirm-panel-42')).toBeNull();
+    expect(document.activeElement).toBe(testId(fixture, 'admin-day-refund-open-42-2026-08-03'));
+
+    openConfirm(fixture);
+    await settle(fixture);
+    await confirm(fixture);
+    await settle(fixture);
+    expect(testId(fixture, 'admin-day-refund-confirm-panel-42')).toBeNull();
+    expect(document.activeElement).toBe(testId(fixture, 'admin-day-refund-notice'));
+  });
+
+  it('recreates the confirm and re-focuses it when the admin switches to another day of the same booking', async () => {
+    const fixture = await render(serviceStub(TWO_OPEN_DAYS));
+    await lookUp(fixture);
+    (testId(fixture, 'admin-day-refund-open-42-2026-08-02') as HTMLButtonElement).click();
+    await settle(fixture);
+    const first = testId(fixture, 'admin-day-refund-confirm-panel-42');
+    expect(first?.textContent).toContain('Sun 2 Aug 2026');
+
+    (testId(fixture, 'admin-day-refund-open-42-2026-08-03') as HTMLButtonElement).click();
+    await settle(fixture);
+
+    const second = testId(fixture, 'admin-day-refund-confirm-panel-42');
+    expect(second).not.toBe(first);
+    expect(second?.textContent).toContain('Mon 3 Aug 2026');
+    expect(
+      (fixture.nativeElement as HTMLElement).querySelectorAll(
+        '[data-testid="admin-day-refund-confirm-panel-42"]',
+      ),
+    ).toHaveLength(1);
+    expect(document.activeElement).toBe(testId(fixture, 'admin-day-refund-confirm-42'));
+  });
+
+  /** A refund's re-read that lands after a newer lookup must not overwrite that lookup's list. */
+  it('drops a stale post-refund re-read that lands after a newer lookup', async () => {
+    const service = serviceStub(GUEST_BOOKINGS);
+    const fixture = await render(service);
+    await lookUp(fixture);
+    openConfirm(fixture);
+    const stale = deferred<GuestBookingLookupView>();
+    const other: GuestBookingLookupView = {
+      bookings: [{ ...GUEST_BOOKINGS.bookings[0], bookingId: 77, venueName: 'Other Beach' }],
+    };
+    service.lookup.mockReturnValueOnce(stale.promise).mockResolvedValueOnce(other);
+
+    (testId(fixture, 'admin-day-refund-confirm-42') as HTMLButtonElement).click();
+    await settle(fixture);
+    await lookUp(fixture, 'someone-else@example.com');
+    expect(testId(fixture, 'admin-day-refund-booking-77')).not.toBeNull();
+
+    stale.resolve(GUEST_BOOKINGS);
+    await settle(fixture);
+    await settle(fixture);
+
+    expect(testId(fixture, 'admin-day-refund-booking-77')).not.toBeNull();
+    expect(testId(fixture, 'admin-day-refund-booking-42')).toBeNull();
   });
 
   it('refunds nothing until the two-step confirm is confirmed (AC-6)', async () => {

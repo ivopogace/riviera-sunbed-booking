@@ -36,7 +36,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 /**
  * HTTP contract of the admin venue day refund (#1276, ADR-0027 decision 1): the guest lookup answers ids,
  * venue, span, status and per-day state and never a code (AC-4); the refund on the booking id at a venue
- * the admin does not own takes slice 1's legs and refusals (AC-1, AC-5); every call leaves one audit row
+ * the admin does not own takes the operator entry's legs and refusals (AC-1, AC-5); every call leaves one audit row
  * naming the id and the sanitized grounds, never a code (AC-3); a plain operator is {@code 403} and anonymous
  * {@code 401} (AC-2). The bootstrap operator is the platform admin (V29) and owns none of the venues seeded here.
  */
@@ -187,7 +187,7 @@ class AdminDayRefundControllerIT {
 				.andExpect(jsonPath("$.code").value("INVALID_REQUEST"));
 	}
 
-	/** AC-1 + AC-3: the day at an unowned venue is refunded as slice 1 does it, and each call leaves one audit row naming the id. */
+	/** AC-1 + AC-3: the day at an unowned venue is refunded as the operator's entry does it, and each call leaves one audit row naming the id. */
 	@Test
 	void refundsADayAtAnUnownedVenueAndEveryCallLeavesOneAuditRowNamingTheIdNeverTheCode() throws Exception {
 		long venue = unownedVenue("ADR Refund Club");
@@ -230,9 +230,9 @@ class AdminDayRefundControllerIT {
 		assertFalse(path.contains(code), "the audited path carries the id, never the code (#7)");
 	}
 
-	/** AC-5: an attended day, a booking that did not happen and an unknown id answer as slice 1's refusals. */
+	/** AC-5: an attended day, a booking that did not happen and an unknown id answer as the operator entry's refusals. */
 	@Test
-	void refusalsAreSliceOnes() throws Exception {
+	void refusalsMatchTheOperatorsEntry() throws Exception {
 		long venue = unownedVenue("ADR Refusal Club");
 		String code = uniqueCode("ADRATT");
 		LocalDate first = today().minusDays(2);
@@ -265,6 +265,7 @@ class AdminDayRefundControllerIT {
 		LocalDate first = today().plusDays(60);
 		long id = insertSpan(code, "adr-gate-" + code + "@example.com", venue, first, 2, 9000L, "CONFIRMED");
 		String path = refundPath(id, first);
+		int lookupRowsBefore = auditRows(LOOKUP_PATH).size();
 
 		mvc.perform(post(path).cookie(plainOperatorSession()).with(csrf())).andExpect(status().isForbidden());
 		mvc.perform(post(LOOKUP_PATH).cookie(plainOperatorSession()).with(csrf())
@@ -275,6 +276,7 @@ class AdminDayRefundControllerIT {
 				.andExpect(status().isUnauthorized());
 
 		assertEquals(0, auditRows(path).size(), "a request the gate refused leaves no row");
+		assertEquals(lookupRowsBefore, auditRows(LOOKUP_PATH).size(), "nor does a refused lookup");
 		assertEquals("CONFIRMED", jdbc.sql("SELECT status FROM booking WHERE id = :id").param("id", id).query(String.class).single());
 		assertNull(jdbc.sql("SELECT refunded_at FROM booking_day WHERE booking_id = :id AND service_date = :d")
 				.param("id", id).param("d", first).query(java.time.OffsetDateTime.class).optional().orElse(null));

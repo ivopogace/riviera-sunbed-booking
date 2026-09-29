@@ -30,7 +30,7 @@ import static org.mockito.Mockito.when;
 /**
  * The admin day-refund lookup's assembly (#1276 AC-4): the address resolves at {@code customer::api}, an
  * unknown address and a known one with no bookings answer alike, and each row carries its venue's name
- * from one batched {@code venue::api} read, {@code Unknown venue} when a set no longer resolves.
+ * from one batched {@code venue::api} read, {@code Unknown venue} when a set does not resolve.
  */
 class GuestDayRefundLookupServiceTest {
 
@@ -87,6 +87,6 @@ class GuestDayRefundLookupServiceTest {
 		assertEquals(2, found.size());
 		assertEquals(new GuestBooking(new BookingId(42L), "Vala Beach", FIRST, FIRST.plusDays(2), BookingStatus.CONFIRMED,
 				row(42L, 7L).days()), found.getFirst());
-		assertEquals("Unknown venue", found.get(1).venueName(), "a set that no longer resolves keeps its row");
+		assertEquals("Unknown venue", found.get(1).venueName(), "a set that does not resolve keeps its row");
 	}
 }
