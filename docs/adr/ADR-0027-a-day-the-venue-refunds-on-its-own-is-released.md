@@ -26,11 +26,16 @@ path.
 
 ## Decision
 
-1. **Two actors, one use case.** The venue's operator, on their own venue (invariant #13), and a
-   platform admin through a mutating `/api/admin/**` action the edge audits (actor, path, status, the
-   optional grounds header). The admin finds the booking by the guest's email and acts on the booking
-   **id**: a booking code never sits in an audited path (invariant #7). The application service takes
-   the actor and records it on the service day, without a foreign key, as the remodel receipt does.
+1. **Two actors, one use case, two gates.** The venue's operator acts under the venue: the service
+   asserts ownership of the path's venue before anything else (invariant #13, a `403`) and resolves the
+   booking by code **within that venue**, as check-in does, so an owned venue in the path never reaches
+   another venue's booking. A platform admin acts on the booking **id** through a mutating
+   `/api/admin/**` action, where the edge's ADMIN role gate is the whole authorization and every call is
+   audited (actor, path, status, the optional grounds header); the venue comes from the booking row and
+   no ownership is asserted, or an admin could refund only at venues they happen to own. The admin
+   finds the booking by the guest's email: a booking code never sits in an audited path (invariant #7).
+   An admin who also owns venues may use either path; the admin one is the audited one. The service
+   takes the actor and records it on the service day, without a foreign key, as the remodel receipt does.
 2. **Per guest and day.** One booking, one service day: the operator acts from the staff daily view's
    row for the viewed date, the admin from the booking the lookup named. The venue-wide grain stays
    the weather refund; a reasoned "closure" of a whole date is not added.
