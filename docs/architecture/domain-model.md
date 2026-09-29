@@ -948,10 +948,10 @@ stateDiagram-v2
     AWAITING_PAYMENT --> PENDING_REQUEST: payment-request issuance failed (compensating revert)
     PENDING_REQUEST --> EXPIRED: response deadline passed (sweep)
     PENDING_REQUEST --> WITHDRAWN: guest retracts the request
-    CONFIRMED --> CANCELLED: tourist cancel (policy) / admin weather refund
+    CONFIRMED --> CANCELLED: tourist cancel (policy) / the venue's refund (weather, or its day refund of a one-day booking)
     CONFIRMED --> COMPLETED: last service day resolved, some service day attended
     CONFIRMED --> NO_SHOW: every service day passed, none attended
-    NO_SHOW --> CANCELLED: admin weather refund only
+    NO_SHOW --> CANCELLED: the venue's refund only
     DECLINED --> [*]
     EXPIRED --> [*]
     WITHDRAWN --> [*]
@@ -969,7 +969,8 @@ stateDiagram-v2
 >
 > **`COMPLETED` and `NO_SHOW` are stay outcomes, not attendance.** Attendance is the per-day
 > `booking_day` record — one row per service day from the moment the booking confirms, stamped
-> attended by the check-in, missed by the sweep or refunded by the weather refund (ADR-0026). The
+> attended by the check-in, missed by the sweep or refunded by a day refund (ADR-0026; the venue's own
+> refund also releases the day, ADR-0027). The
 > outcome is written once, when the last service day resolves; `completed_at` is that instant for a
 > `COMPLETED` stay and the review window's input. For a one-day booking the two coincide; a stay's
 > `completed_at` is the instant its last unrefunded day resolved.

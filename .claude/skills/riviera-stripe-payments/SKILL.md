@@ -52,7 +52,8 @@ would re-decide the gateway; this model stays authoritative until that work star
 
 ## Refunds and payout
 
-- Refund eligibility/amount server-side (#10); the weather refund is an explicit action
+- Refund eligibility/amount server-side (#10); the venue day refund (ADR-0027) refunds one guest's day at
+  its rate and releases it, reason `VENUE`, no fee; the weather refund is an explicit action
   by the venue's operator for a venue+date — for a stay it refunds that day's share at the
   stretch's rate and the stay continues (ADR-0026).
 - A refund reverses the ledger accrual (#9); a venue-caused one (`reason == VENUE_CHANGE`) also

@@ -304,6 +304,13 @@ any is released on the old, never a swap of my own — so a racing reserve wins 
   A refunded day is neither attended nor missed: check-in answers `DayRefunded`, the sweep, the outcome
   and takings skip it; a later cancellation is quoted over `BookingRecord#remainingMinor` (#10).
   `BookingDayRefundListener` refunds it via `RefundPort#refundDay`, pinned in `RegistryRefundOutbox`.
+- **The venue day refund refunds one guest's one day and releases it (ADR-0027).** `RefundVenueDay` asserts
+  ownership first (#13), resolves the booking by code within the venue (a stay's code names the stretch
+  covering the date; a foreign code is `NotFound`) and takes the weather refund's leg with reason `VENUE`: a
+  stay's day stamped with `refund_reason`, `released_at` and the actor (no foreign key), its claim freed through
+  `availability::api` unless the day is past (before today in `Europe/Tirane`, the sweep's past); a lone one-day
+  booking cancelled whole under `BookingTransition.VENUE_REFUND`. `BookingDayRefunded` carries the reason and
+  the released fact; the daily view and check-in (`DayReleased`) branch on the stamp, never the reason.
 - **The retention probe (`JdbcGuestBookingHistory`) is bounded too** (§`customer`): bounding only
   `customer`'s read would let the retention sweep (sole caller) wedge on a lock stalling my sweeps.
 - **The lifecycle is stated once, in `domain/BookingTransition`, and enforced by `JdbcBookings`'
@@ -542,11 +549,11 @@ throws; `riviera.outbox.pending` shows it), never reading the absence as "nothin
 **Direction lives in the entry type, never in the amount** (invariant #9): amounts are non-negative
 (`payout_amounts_check`) and only an `ACCRUAL` adds, so a type added later deducts. Every ledger sum is
 written that way and pinned by a test carrying a `FEE` row. A **`DAY_REVERSAL`** reverses one day's share
-of a stay that goes on (`BookingDayRefunded`, ADR-0026), once per `(booking, day)` (`UNIQUE NULLS NOT
-DISTINCT (booking_id, entry_type, service_date)`); every reversal reads what earlier ones took (`Reversed`,
-under the accrual's lock) and the exhausting one returns the commission still held, so a booking reversed
-in parts nets zero. A **`FEE`** is charged when a `VENUE_CHANGE` refund is reversed (a remodel's forced
-refund, or a moved guest's free exit); a release or decline collected nothing, so nothing is charged (ADR-0021).
+of a stay that goes on (`BookingDayRefunded`, stamped with the event's reason, `WEATHER` or `VENUE`, never a
+fee — ADR-0026, ADR-0027), once per `(booking, day)` (`UNIQUE NULLS NOT DISTINCT (booking_id, entry_type,
+service_date)`); every reversal reads what earlier ones took (`Reversed`, under the accrual's lock) and the
+exhausting one returns the commission still held, so a booking reversed in parts nets zero. A **`FEE`** is
+charged when a `VENUE_CHANGE` refund is reversed; a release or decline collected nothing, so none is (ADR-0021).
 
 **I own `platform_setting` — its sole writer and reader — and the venue-change fee it holds.** Both
 readers (the cancelled-booking listener; `booking.spi.VenueChangeFeeRate`, which the remodel preview
@@ -687,14 +694,14 @@ tag names the person, invariant #7):
 
 **Owned flows and surfaces:**
 
-- The **registry-borne booking mails** — confirmation, cancellation (one listener for every
-  channel), a refunded day (`BookingDayRefunded`, under a stretch's stay code, abandoned under
-  `riviera.mail.day-refund.abandoned`), payment-due, request declined / expired (plain record, no
-  call-to-action; the guest's own withdraw mails nothing) and moved — carry ids, never the code, and **decide nothing**: the
-  birth window and refund (invariant #10) are rendered (CLOSED the non-refundable line, LATE the
-  past-free-cancellation line, FREE or `null` nothing), and `booking` publishes payment-due only
-  where money is owed. The move mail carries the unchanged arrival code (a stretch's is its
-  stay's), the guest's reference.
+- The **registry-borne booking mails** — confirmation, cancellation (one listener for every channel), a
+  refunded day (`BookingDayRefunded`, under a stretch's stay code, abandoned under
+  `riviera.mail.day-refund.abandoned`; copy by the event's reason and released mark, never why — ADR-0027
+  §9), payment-due, request declined / expired (plain record, no call-to-action; the guest's own withdraw
+  mails nothing) and moved — carry ids, never the code, and **decide nothing**: the birth window and refund
+  (invariant #10) are rendered (CLOSED the non-refundable line, LATE the past-free-cancellation line, FREE
+  or `null` nothing), and `booking` publishes payment-due only where money is owed. The move mail carries
+  the unchanged arrival code (a stretch's is its stay's), the guest's reference.
 - **The payment-due mail carries the deadline and the request-time amount, and names no spot**:
   the guest already has the spot on screen; the mail exists for the deadline.
 - The **email-suppression list**, hashed and surviving erasure (ADR-0012). **No send to a
