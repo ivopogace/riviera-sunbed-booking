@@ -292,7 +292,7 @@ any is released on the old, never a swap of my own — so a racing reserve wins 
 - **Lock order: the booking row, then its service-day rows** — check-in and both sweep statements —
   so a scan, a cancel and the sweep serialize on the stay. The sweep never uses `SKIP LOCKED`: a
   short batch reads as drained, so a skipped contended row would be stranded.
-- **The guest cancel admits `CONFIRMED` only; the weather refund also `NO_SHOW`** (the storm is
+- **The guest cancel admits `CONFIRMED` only; the venue's refund (`cancelByVenue`, `VENUE_REFUND`) also `NO_SHOW`** (the storm is
   known afterwards): separate port methods and `BookingTransition` rows, so the asymmetry cannot be
   tidied away. The guest guard's readers (the view's `cancellable`, the cancel's `NotCancellable`)
   read `CANCEL_BY_GUEST`, never restate it; `{NO_SHOW, COMPLETED} → WindowClosed` only picks copy.

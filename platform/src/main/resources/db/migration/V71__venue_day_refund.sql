@@ -9,10 +9,12 @@
 -- was weather's, so the backfill names it before the CHECK binds refund_reason to refunded_at.
 --
 -- released_at is the stamp that tells a released day from a held one -- a fact of its own, never
--- inferred from the reason: a past VENUE day is refunded but keeps its claim (ADR-0027 §4). It is
--- stamped only on a refunded day. refunded_by_operator_id is the actor, recorded without a foreign
+-- inferred from the reason: a past VENUE day is refunded but keeps its claim (ADR-0027 §4). Only a
+-- VENUE day is ever released (a weather day keeps its set, ADR-0026 §3), so the CHECK binds it to
+-- the reason, and through the reason to refunded_at. refunded_by_operator_id is the actor, recorded without a foreign
 -- key as remodel_receipt.operator_id is (V52): the stamp outlives the operator row. A VENUE day
--- always names its actor; the weather refund stamps none.
+-- always names its actor; a lone one-day booking the venue cancels under VENUE names it on its one
+-- service day too, beside the booking row that carries the money; the weather refund stamps none.
 ALTER TABLE booking_day
     ADD COLUMN refund_reason           TEXT,
     ADD COLUMN released_at             TIMESTAMPTZ,
@@ -25,7 +27,7 @@ ALTER TABLE booking_day
         CHECK ((refunded_at IS NULL) = (refund_reason IS NULL)
                AND (refund_reason IS NULL OR refund_reason IN ('WEATHER', 'VENUE'))),
     ADD CONSTRAINT booking_day_released_check
-        CHECK (released_at IS NULL OR refunded_at IS NOT NULL),
+        CHECK (released_at IS NULL OR refund_reason IS NOT DISTINCT FROM 'VENUE'),
     ADD CONSTRAINT booking_day_refund_actor_check
         CHECK (refund_reason IS DISTINCT FROM 'VENUE' OR refunded_by_operator_id IS NOT NULL);
 

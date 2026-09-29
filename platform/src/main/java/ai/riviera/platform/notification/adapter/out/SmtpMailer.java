@@ -204,7 +204,7 @@ class SmtpMailer implements Mailer {
 
 	/**
 	 * Why the booking ended, in the tourist's terms. Exhaustive over the published enum with no
-	 * {@code default}, so a fifth {@code RefundReason} is a compile error here rather than a blank
+	 * {@code default}, so a new {@code RefundReason} is a compile error here rather than a blank
 	 * first line in someone's inbox.
 	 */
 	private static String opening(BookingCancellationMail cancellation) {

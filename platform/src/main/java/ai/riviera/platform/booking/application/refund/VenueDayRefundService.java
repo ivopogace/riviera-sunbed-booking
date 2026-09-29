@@ -70,7 +70,7 @@ class VenueDayRefundService implements RefundVenueDay {
 		}
 		Instant now = clock.instant();
 		Optional<VenueDayRefundOutcome> done = candidate.isLoneOneDay()
-				? cancelWhole(candidate, now)
+				? cancelWhole(candidate, actor, now)
 				: refundStayDay(candidate, day, actor, now);
 		done.ifPresent(outcome -> log.info("venue day refund by operator {} at venue {} on {}: booking {} → {}",
 				actor.value(), venueId.value(), day, candidate.bookingId(), outcome));
@@ -87,11 +87,11 @@ class VenueDayRefundService implements RefundVenueDay {
 		return Optional.empty();
 	}
 
-	/** The lone one-day leg (ADR-0027 §6): the weather refund's, with reason {@code VENUE}. */
-	private Optional<VenueDayRefundOutcome> cancelWhole(RefundableBooking candidate, Instant now) {
+	/** The lone one-day leg (ADR-0027 §6): the weather refund's, with reason {@code VENUE} and the actor on its day. */
+	private Optional<VenueDayRefundOutcome> cancelWhole(RefundableBooking candidate, OperatorId actor, Instant now) {
 		long refundMinor = candidate.amountMinor();
 		Optional<CancelledBooking> transitioned = bookings.cancelByVenue(candidate.bookingId(), now, refundMinor,
-				candidate.amountMinor(), RefundReason.VENUE);
+				candidate.amountMinor(), RefundReason.VENUE, actor);
 		return transitioned.map(cancelled -> {
 			for (LocalDate served : ServiceDays.held(cancelled.bookingDate(), cancelled.lastDate(),
 					bookings.findReleasedDays(cancelled.id()))) {

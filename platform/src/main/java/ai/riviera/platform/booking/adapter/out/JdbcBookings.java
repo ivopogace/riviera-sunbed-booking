@@ -49,6 +49,7 @@ import ai.riviera.platform.booking.domain.BookingStatus;
 import ai.riviera.platform.booking.domain.BookingTransition;
 import ai.riviera.platform.booking.domain.DayAttendance;
 import ai.riviera.platform.customer.vocabulary.CustomerAccountId;
+import ai.riviera.platform.operator.vocabulary.OperatorId;
 import ai.riviera.platform.venue.vocabulary.SetId;
 import ai.riviera.platform.venue.vocabulary.VenueId;
 
@@ -96,7 +97,7 @@ class JdbcBookings implements Bookings {
 	private static final String COL_CREATED_AT = "created_at";
 	private static final String COL_ACCEPTED_AT = "accepted_at";
 	private static final String COL_DAY_REFUNDED_MINOR = "day_refunded_minor";
-	/** The minor units of booking {@code b} already refunded for weather (#1210), summed off its days. */
+	/** The minor units of booking {@code b} already refunded on its days (ADR-0026, ADR-0027), summed off them. */
 	private static final String DAY_REFUNDED_SUM_SQL =
 			"(SELECT COALESCE(SUM(d.refund_minor), 0) FROM booking_day d WHERE d.booking_id = b.id)";
 
@@ -737,7 +738,7 @@ class JdbcBookings implements Bookings {
 	public Optional<CancelledBooking> cancelConfirmed(long bookingId, Instant cancelledAt,
 			long refundMinor, RefundReason reason, long remainingMinor) {
 		return cancelReturningFacts(bookingId, cancelledAt, refundMinor, reason, remainingMinor,
-				BookingTransition.CANCEL_BY_GUEST.admittedFrom());
+				BookingTransition.CANCEL_BY_GUEST.admittedFrom(), null);
 	}
 
 	@Override
@@ -757,26 +758,36 @@ class JdbcBookings implements Bookings {
 
 	@Override
 	public Optional<CancelledBooking> cancelByVenue(long bookingId, Instant cancelledAt,
-			long refundMinor, long remainingMinor, RefundReason reason) {
-		// Admits NO_SHOW too: the sweep gets to a washed-out day before the operator does.
+			long refundMinor, long remainingMinor, RefundReason reason, OperatorId actor) {
+		// Admits NO_SHOW too: the sweep gets to the day before the venue does.
 		return cancelReturningFacts(bookingId, cancelledAt, refundMinor, reason, remainingMinor,
-				BookingTransition.VENUE_REFUND.admittedFrom());
+				BookingTransition.VENUE_REFUND.admittedFrom(), actor);
 	}
 
 	/**
-	 * The one cancellation write for both entry points, guarded on {@code admitted} ({@link BookingTransition})
-	 * and on {@code remainingMinor}, the amount less the refunded days summed afresh here (#1210): a double-cancel
-	 * or a quote a day refund overtook is {@code empty}, so release, refund and event fire once; {@code reason} is why (#10).
+	 * The one cancellation write for both entry points, guarded on {@code admitted} ({@link BookingTransition}) and
+	 * on {@code remainingMinor}, the amount less the refunded days summed afresh: a double-cancel or an overtaken quote
+	 * is {@code empty}, so release, refund and event fire once; a venue {@code actor} is stamped on the service days after the row.
 	 */
 	private Optional<CancelledBooking> cancelReturningFacts(long bookingId, Instant cancelledAt,
-			long refundMinor, RefundReason reason, long remainingMinor, Set<BookingStatus> admitted) {
+			long refundMinor, RefundReason reason, long remainingMinor, Set<BookingStatus> admitted,
+			OperatorId actor) {
 		return jdbc.sql("""
-				UPDATE booking b
-				SET status = :cancelled, cancelled_at = :at, refund_minor = :refund, cancel_reason = :reason
-				WHERE id = :id AND status = ANY (:admitted)
-				  AND amount_minor - """ + DAY_REFUNDED_SUM_SQL + """
-				      = :remaining
-				RETURNING id, venue_id, set_id, booking_date, last_date, amount_minor, amount_currency
+				WITH cancelled AS (
+				    UPDATE booking b
+				    SET status = :cancelled, cancelled_at = :at, refund_minor = :refund, cancel_reason = :reason
+				    WHERE id = :id AND status = ANY (:admitted)
+				      AND amount_minor - """ + DAY_REFUNDED_SUM_SQL + """
+				          = :remaining
+				    RETURNING id, venue_id, set_id, booking_date, last_date, amount_minor, amount_currency
+				),
+				stamped AS (
+				    UPDATE booking_day d
+				    SET refunded_by_operator_id = :actor
+				    FROM cancelled
+				    WHERE d.booking_id = cancelled.id AND :actor IS NOT NULL
+				)
+				SELECT id, venue_id, set_id, booking_date, last_date, amount_minor, amount_currency FROM cancelled
 				""")
 				.param("cancelled", BookingStatus.CANCELLED.name())
 				.param("at", java.sql.Timestamp.from(cancelledAt))
@@ -785,6 +796,7 @@ class JdbcBookings implements Bookings {
 				.param("remaining", remainingMinor)
 				.param("id", bookingId)
 				.param("admitted", admitted.stream().map(BookingStatus::name).toArray(String[]::new))
+				.param("actor", actor == null ? null : actor.value(), java.sql.Types.BIGINT)
 				.query((rs, rowNum) -> new CancelledBooking(
 						rs.getLong("id"), new VenueId(rs.getLong(COL_VENUE_ID)),
 						new SetId(rs.getLong(COL_SET_ID)), rs.getObject(COL_BOOKING_DATE, LocalDate.class),
@@ -967,7 +979,7 @@ class JdbcBookings implements Bookings {
 				LEFT JOIN booking_day d ON d.booking_id = b.id AND d.service_date = :date
 				WHERE b.venue_id = :venue AND b.booking_date <= :date AND b.last_date >= :date
 				  AND b.status IN (:confirmed, :completed, :noShow)
-				ORDER BY b.set_id
+				ORDER BY b.set_id, b.id
 				""")
 				.param(PARAM_VENUE, venueId.value())
 				.param("date", date)

@@ -49,8 +49,8 @@ class VenueDayRefundServiceTest {
 	private static final VenueId VENUE = new VenueId(1L);
 	private static final SetId SET = new SetId(2L);
 	private static final String CODE = "STAY12345";
-	/** 2026-07-20 09:00 Tirane. */
-	private static final Clock NOW = Clock.fixed(Instant.parse("2026-07-20T07:00:00Z"), ZoneId.of("UTC"));
+	/** 2026-07-20 00:30 Tirane — still 2026-07-19 in UTC, so "past" is judged in the venue's day (#6). */
+	private static final Clock NOW = Clock.fixed(Instant.parse("2026-07-19T22:30:00Z"), ZoneId.of("UTC"));
 	private static final LocalDate TODAY = LocalDate.of(2026, 7, 20);
 	private static final LocalDate FIRST = LocalDate.of(2026, 7, 18);
 	private static final LocalDate LAST = LocalDate.of(2026, 7, 22);
@@ -107,7 +107,7 @@ class VenueDayRefundServiceTest {
 		verify(availability).release(SET, TODAY);
 		verify(events).publishEvent(new BookingDayRefunded(new BookingId(42L), VENUE, SET, TODAY, 5000L, "EUR",
 				new StayId(9L), RefundReason.VENUE, true));
-		verify(bookings, never()).cancelByVenue(anyLong(), any(), anyLong(), anyLong(), any());
+		verify(bookings, never()).cancelByVenue(anyLong(), any(), anyLong(), anyLong(), any(), any());
 	}
 
 	@Test
@@ -142,7 +142,7 @@ class VenueDayRefundServiceTest {
 	@Test
 	void aLoneOneDayBookingIsCancelledWholeWithReasonVenue() {
 		found(FIRST, loneOneDay());
-		when(bookings.cancelByVenue(43L, NOW.instant(), 4500L, 4500L, RefundReason.VENUE))
+		when(bookings.cancelByVenue(43L, NOW.instant(), 4500L, 4500L, RefundReason.VENUE, ACTOR))
 				.thenReturn(Optional.of(new CancelledBooking(43L, VENUE, SET, FIRST, FIRST, 4500L, "EUR")));
 
 		VenueDayRefundOutcome outcome = service.refundDay(ACTOR, VENUE, CODE, FIRST);
@@ -192,7 +192,7 @@ class VenueDayRefundServiceTest {
 	void aLostRaceOnALoneBookingThatVanishedIsNotFound() {
 		when(bookings.findRefundableByCode(anyString(), any(), any()))
 				.thenReturn(Optional.of(loneOneDay()), Optional.empty());
-		when(bookings.cancelByVenue(anyLong(), any(), anyLong(), anyLong(), any())).thenReturn(Optional.empty());
+		when(bookings.cancelByVenue(anyLong(), any(), anyLong(), anyLong(), any(), any())).thenReturn(Optional.empty());
 
 		assertInstanceOf(VenueDayRefundOutcome.NotFound.class, service.refundDay(ACTOR, VENUE, CODE, FIRST));
 

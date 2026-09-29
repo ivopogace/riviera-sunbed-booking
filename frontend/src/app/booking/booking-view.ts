@@ -997,7 +997,7 @@ export class BookingView {
 
   /**
    * Who cancelled, for the guest's panel: `POLICY`/`VENUE_CHANGE` are the guest's own act,
-   * `WEATHER` the venue's; an unknown or absent reason (e.g. reserved `CONFLICT`) blames nobody.
+   * `WEATHER` and `VENUE` the venue's; an unknown or absent reason (e.g. reserved `CONFLICT`) blames nobody.
    */
   protected cancelledOpener(b: BookingDetail): string {
     switch (b.cancelReason) {

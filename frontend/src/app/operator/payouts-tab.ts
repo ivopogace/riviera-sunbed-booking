@@ -323,7 +323,6 @@ function reasonLabel(entry: PayoutLedgerEntryView): string {
     return 'Venue change fee';
   }
   if (entry.type === 'DAY_REVERSAL') {
-    // An older payload names no reason on a day reversal: every one of those was weather's.
     const reason = refundReasonLabel(entry.reason ?? 'WEATHER');
     return entry.serviceDate
       ? `${reason} · ${formatCivilDate(entry.serviceDate)}`

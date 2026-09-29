@@ -154,6 +154,8 @@ class BookingMigrationIT {
 				"a day is released only once refunded");
 		assertDoesNotThrow(() -> stampDay("DAYREASON1",
 				"refunded_at = NOW(), refund_minor = 1500, refund_reason = 'WEATHER'"));
+		assertThrows(DataIntegrityViolationException.class, () -> stampDay("DAYREASON1", "released_at = NOW()"),
+				"a weather day keeps its set (ADR-0026 §3): only a VENUE day is released");
 		assertDoesNotThrow(() -> stampDay("DAYREASON1",
 				"released_at = NOW(), refund_reason = 'VENUE', refunded_by_operator_id = 7"));
 		assertThrows(DataIntegrityViolationException.class, () -> stampDay("DAYREASON1",

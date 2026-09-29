@@ -172,8 +172,8 @@ refusal branch on the released **stamp**, never on the reason.
 
 - **New:** `POST /api/venues/{venueId}/bookings/{code}/day-refund?date=` → `200 {kind:
   'DAY_REFUNDED'|'BOOKING_CANCELLED', serviceDate, refundMinor, currency, released}`; `403
-  NOT_VENUE_OWNER`, `404 BOOKING_NOT_FOUND`, `409 DAY_ATTENDED | DAY_ALREADY_REFUNDED |
-  DAY_NOT_COVERED` (RFC-7807, `instance` code-free).
+  NOT_VENUE_OWNER`, `404 BOOKING_NOT_FOUND` (an unknown or foreign code, a dead lifecycle or an uncovered
+  date alike), `409 DAY_ATTENDED | DAY_ALREADY_REFUNDED` (RFC-7807, `instance` code-free).
 - **Changed:** `GET /api/venues/{id}/bookings` rows gain `released: boolean`; the check-in POST
   gains `409 DAY_RELEASED`; `GET /api/bookings/{code}` `refundedDays[]` gain `reason` and
   `released`; the payout ledger's `DAY_REVERSAL.reason` may be `VENUE`.

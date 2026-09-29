@@ -109,7 +109,7 @@ class WeatherRefundService implements RefundForWeather {
 		// A lone one-day booking has no refunded day (it never takes the day leg), so the whole amount remains.
 		long refundMinor = candidate.amountMinor();
 		Optional<CancelledBooking> transitioned = bookings.cancelByVenue(candidate.bookingId(), now, refundMinor,
-				candidate.amountMinor(), RefundReason.WEATHER);
+				candidate.amountMinor(), RefundReason.WEATHER, null);
 		transitioned.ifPresent(cancelled -> {
 			for (LocalDate day : ServiceDays.held(cancelled.bookingDate(), cancelled.lastDate(),
 					bookings.findReleasedDays(cancelled.id()))) {

@@ -189,8 +189,8 @@ class CancelStayIT {
 		CancelOutcome outcome;
 		try (ExecutorService pool = Executors.newFixedThreadPool(2)) {
 			Future<?> operator = pool.submit(() -> tx.executeWithoutResult(status -> {
-				bookings.cancelByVenue(secondStretch, java.time.Instant.now(), 0L, secondAmount, RefundReason.WEATHER)
-						.orElseThrow();
+				bookings.cancelByVenue(secondStretch, java.time.Instant.now(), 0L, secondAmount, RefundReason.WEATHER,
+						null).orElseThrow();
 				weatherCancelled.countDown();
 				try {
 					weatherCommits.await();

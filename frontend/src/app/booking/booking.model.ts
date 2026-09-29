@@ -359,7 +359,8 @@ export interface MyBookingSummary {
  * CHECK tokens). Only a cancellation that took a refund decision carries one, so it is `null` for a
  * booking released without ever being charged — the abandoned-payment sweep and the
  * `payment_intent.canceled` webhook both leave it unset. `VENUE_CHANGE` is the guest's free exit
- * after a remodel moved their spot; `CONFLICT` is reserved and unused in v1.
+ * after a remodel moved their spot; `VENUE` the venue's own refund of a one-day booking (ADR-0027);
+ * `CONFLICT` is reserved and unused in v1.
  */
 export type CancelReason = 'POLICY' | 'WEATHER' | 'CONFLICT' | 'VENUE_CHANGE' | 'VENUE';
 

@@ -874,7 +874,8 @@ class CreateBookingServiceTest {
 		@Override
 		public Optional<ai.riviera.platform.booking.application.cancel.CancelledBooking> cancelByVenue(
 				long bookingId, Instant cancelledAt, long refundMinor, long remainingMinor,
-				ai.riviera.platform.booking.vocabulary.RefundReason reason) {
+				ai.riviera.platform.booking.vocabulary.RefundReason reason,
+				ai.riviera.platform.operator.vocabulary.OperatorId actor) {
 			return Optional.empty();
 		}
 

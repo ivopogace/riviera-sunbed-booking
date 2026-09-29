@@ -10,7 +10,12 @@ import { BehaviorSubject } from 'rxjs';
 import { vi } from 'vitest';
 
 import { expectCellsFillCanvasRow } from '../../testing/beach-map-height';
-import { addDays, defaultBookingDate, todayBookingDate } from '../shared/booking-date';
+import {
+  addDays,
+  defaultBookingDate,
+  formatCivilDate,
+  todayBookingDate,
+} from '../shared/booking-date';
 import { Pool, SetView, Tier } from '../shared/venue-views';
 import { ConsoleVenueMap } from './console-venue-map';
 import { ConsoleDailyBooking } from './operator-console.model';
@@ -384,6 +389,7 @@ describe('DailyViewTab (#175)', () => {
   });
 
   it('lists two rows on one set when a released day was resold, each with its own code (ADR-0027)', () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
     render(SEED, [
       booking({
         code: 'STAYAAAA1',
@@ -396,6 +402,9 @@ describe('DailyViewTab (#175)', () => {
 
     const rows = host.querySelectorAll('[data-testid="daily-arrival-row"]');
     expect(rows).toHaveLength(2);
+    // Tracked by set, Angular warns about the duplicate key (NG0955) and may collapse the rows.
+    expect(warn.mock.calls.flat().join(' ')).not.toMatch(/NG0955|duplicate/i);
+    warn.mockRestore();
     const codes = [...host.querySelectorAll('[data-testid="daily-arrival-code"]')].map(
       (c) => c.textContent,
     );
@@ -454,16 +463,31 @@ describe('DailyViewTab (#175)', () => {
     flushLoad(SEED, []);
   });
 
-  it('announces a past missed day refunded but still held, and keeps the refunded chip', () => {
-    render(SEED, [booking({ attendance: 'MISSED', status: 'NO_SHOW' })]);
+  it('a past missed day: the confirm promises no resale, the notice names the posted day, the chip stays refunded', () => {
+    const past = addDays(TODAY, -3);
+    const missed = booking({
+      attendance: 'MISSED',
+      status: 'NO_SHOW',
+      firstDate: past,
+      lastDate: past,
+    });
+    render(SEED, [missed]);
+    const date = byId('daily-date') as HTMLInputElement;
+    date.value = past;
+    date.dispatchEvent(new Event('change'));
+    flushLoad(SEED, [missed]);
+
     byId('refund-day-ABC12345').click();
     fixture.detectChanges();
+    const confirm = byId('daily-refund-confirm-panel').textContent;
+    expect(confirm).toContain('not put back on sale');
+    expect(confirm).not.toContain('free to sell');
     byId('daily-refund-confirm').click();
     http
       .expectOne((r) => r.method === 'POST' && r.url.includes('/day-refund'))
       .flush({
         kind: 'DAY_REFUNDED',
-        serviceDate: TODAY,
+        serviceDate: past,
         refundMinor: 3000,
         currency: 'EUR',
         released: false,
@@ -471,20 +495,42 @@ describe('DailyViewTab (#175)', () => {
     fixture.detectChanges();
     const notice = byId('daily-refund-result').textContent;
     expect(notice).toContain('€30');
+    expect(notice).toContain(formatCivilDate(past));
     expect(notice).not.toContain('free again');
-    flushLoad(SEED, [booking({ attendance: 'REFUNDED', status: 'NO_SHOW' })]);
+    flushLoad(SEED, [{ ...missed, attendance: 'REFUNDED' }]);
     expect(byId('arrival-day-refunded')).toBeTruthy();
   });
 
-  it('cancelling the refund confirm posts nothing and gives focus back to the row action', () => {
+  it('a confirm for a day still ahead promises the set back on sale', () => {
     render();
     byId('refund-day-ABC12345').click();
     fixture.detectChanges();
+    expect(byId('daily-refund-confirm-panel').textContent).toContain('free to sell again');
     byId('daily-refund-cancel').click();
     fixture.detectChanges();
+  });
+
+  it('moves focus on every day-refund confirm leg: open, back-out, settled (WCAG 2.4.3)', async () => {
+    render();
+    byId('refund-day-ABC12345').click();
+    await settleDaily();
+    expect(document.activeElement).toBe(byId('daily-refund-confirm'));
+
+    byId('daily-refund-cancel').click();
+    await settleDaily();
     http.expectNone((r) => r.method === 'POST');
     expect(byId('daily-refund-confirm-panel')).toBeNull();
-    expect(byId('refund-day-ABC12345')).toBeTruthy();
+    expect(document.activeElement).toBe(byId('refund-day-ABC12345'));
+
+    byId('refund-day-ABC12345').click();
+    await settleDaily();
+    byId('daily-refund-confirm').click();
+    http
+      .expectOne((r) => r.method === 'POST' && r.url.includes('/day-refund'))
+      .flush({ code: 'DAY_ALREADY_REFUNDED' }, { status: 409, statusText: 'Conflict' });
+    await settleDaily();
+    expect(document.activeElement).toBe(byId('daily-refund-result'));
+    flushLoad();
   });
 
   it('offers no refund action on an attended or already refunded day', () => {

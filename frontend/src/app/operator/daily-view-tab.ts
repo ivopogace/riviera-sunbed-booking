@@ -206,7 +206,7 @@ export class DailyViewTab {
   /** The day the view reflects (ISO YYYY-MM-DD); defaults to today in Europe/Tirane (invariant #6). */
   protected readonly selectedDate = signal(todayBookingDate(new Date()));
 
-  /** Every kill-switch transition destroys the control that was just activated (WCAG 2.4.3). */
+  /** Every confirm transition (the kill switch, a day refund) destroys the control just activated (WCAG 2.4.3). */
   private readonly focusAfterRender = focusMover();
   /** True while the amber "close today's online sales" confirm is open (two-step, no accidental close). */
   protected readonly closeSalesConfirm = signal(false);
@@ -218,6 +218,12 @@ export class DailyViewTab {
   );
   /** Whether today's online sales are still open per the map read's per-request verdict. */
   protected readonly salesOpenToday = computed(() => this.venue()?.salesOpen !== false);
+  /** The day-refund confirm's warning: a day still ahead is freed to sell; a past day keeps its claim (ADR-0027 §4). */
+  protected readonly refundConfirmMessage = computed(() =>
+    this.selectedDate() < todayBookingDate(new Date())
+      ? 'The guest gets that day’s share back; the day has passed, so the set is not put back on sale. A one-day booking is cancelled and refunded in full. The amount is decided by the booking, and the guest is not told why.'
+      : 'The guest gets that day’s share back and the set is free to sell again for the day; a one-day booking is cancelled and refunded in full. The amount is decided by the booking, and the guest is not told why.',
+  );
 
   private readonly scanner = inject(QrScanner);
   /** The check-in scanner panel is open (camera live for the real adapter). */
@@ -421,7 +427,7 @@ export class DailyViewTab {
         this.refundConfirmCode.set(undefined);
         this.refundNotice.set({
           tone: 'ok',
-          text: dayRefundSuccessNotice(result, this.dateLabel()),
+          text: dayRefundSuccessNotice(result, formatCivilDate(result.serviceDate)),
         });
         this.focusAfterRender('daily-refund-result');
         this.load();

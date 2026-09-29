@@ -249,6 +249,7 @@ class VenueDayRefundServiceIT {
 				.query(Long.class).single());
 		assertEquals(0, availabilityRows(lone.setId(), date), "its day is released");
 		assertNull(day(lone.bookingId(), date).refundMinor(), "the day leg is not taken: the cancellation carries the money");
+		assertEquals(bootstrap().value(), day(lone.bookingId(), date).actor(), "the actor is recorded on its one service day");
 		List<BookingCancelled> published = events.stream(BookingCancelled.class)
 				.filter(e -> e.bookingId().value() == lone.bookingId()).toList();
 		assertEquals(1, published.size(), "one BookingCancelled: one REVERSAL, one cancellation mail");

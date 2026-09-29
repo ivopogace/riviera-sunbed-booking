@@ -12,11 +12,11 @@ import ai.riviera.platform.payout.domain.Reversed;
 
 /**
  * On {@code BookingDayRefunded}, posts the {@code DAY_REVERSAL} of that day's share of the booking's
- * {@code ACCRUAL}, keyed by the day and stamped with the event's reason, never a fee (ADR-0026, ADR-0027): pro rata like a cancellation's reversal, reading what
- * earlier reversals took so the one that exhausts the accrual returns the commission exactly. Idempotent
- * under redelivery via {@code UNIQUE (booking_id, entry_type, service_date)}. A day refund with no
- * accrual yet <strong>throws</strong>, leaving the publication outstanding rather than letting the ledger
- * overstate what the venue is owed (invariant #9). Rationale: RESPONSIBILITIES.md §payout.
+ * {@code ACCRUAL}, keyed by the day and stamped with the event's reason, never a fee (ADR-0026, ADR-0027):
+ * pro rata like a cancellation's reversal, reading what earlier reversals took so the one that exhausts the
+ * accrual returns the commission exactly. Idempotent under redelivery via {@code UNIQUE (booking_id,
+ * entry_type, service_date)}. A day refund with no accrual yet <strong>throws</strong>, leaving the publication
+ * outstanding rather than letting the ledger overstate what the venue is owed (#9). Rationale: RESPONSIBILITIES.md §payout.
  */
 @Component
 class BookingDayRefundedPayoutListener {

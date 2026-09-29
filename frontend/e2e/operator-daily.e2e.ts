@@ -473,6 +473,35 @@ test('refunds one guest’s day from the row behind a two-step confirm, and the 
   await expectNoSeriousAxeViolations(page, 'daily view tab after a day refund');
 });
 
+test('keeps focus off body across the day-refund confirm (WCAG 2.4.3)', async ({ page }) => {
+  await mockDaily(page);
+  await page.route(/\/api\/venues\/1\/bookings\/ABC12345\/day-refund(\?.*)?$/, (route) =>
+    route.fulfill({
+      status: 409,
+      contentType: 'application/problem+json',
+      json: { type: 'about:blank', status: 409, code: 'DAY_ALREADY_REFUNDED' },
+    }),
+  );
+  await page.goto('/operator/1');
+  await signInAndOpenDaily(page);
+
+  // Open: the trigger is removed from the DOM, so focus has to land on the destructive button.
+  await page.getByTestId('refund-day-ABC12345').click();
+  await expect(page.getByTestId('daily-refund-confirm')).toBeFocused();
+
+  // Back out: the confirm is removed, so focus returns to the trigger it replaced.
+  await page.getByTestId('daily-refund-cancel').click();
+  await expect(page.getByTestId('refund-day-ABC12345')).toBeFocused();
+
+  // Settled (a refusal here): the confirm is gone, so focus parks on the region carrying the outcome.
+  await page.getByTestId('refund-day-ABC12345').click();
+  await page.getByTestId('daily-refund-confirm').click();
+  await expect(page.getByTestId('daily-refund-result')).toContainText('already refunded');
+  await expect(page.getByTestId('daily-refund-result')).toBeFocused();
+  await settle(page);
+  await expectNoSeriousAxeViolations(page, 'day refund focus legs');
+});
+
 test('checks a guest in by typed code — the keyboard path needs no camera (#583)', async ({
   page,
 }) => {

@@ -174,7 +174,7 @@ public interface Bookings {
 	/**
 	 * Guest-path {@code CONFIRMED → CANCELLED}, stamping the server-computed refund and reason (#10) and
 	 * returning the {@code BookingCancelled} facts. Guarded on {@code CONFIRMED} and on {@code remainingMinor}
-	 * (the amount less the weather-refunded days the quote saw): a double-cancel or a day refunded since is {@code empty}.
+	 * (the amount less the refunded days the quote saw): a double-cancel or a day refunded since is {@code empty}.
 	 */
 	Optional<CancelledBooking> cancelConfirmed(long bookingId, java.time.Instant cancelledAt,
 			long refundMinor, ai.riviera.platform.booking.vocabulary.RefundReason reason, long remainingMinor);
@@ -188,11 +188,12 @@ public interface Bookings {
 
 	/**
 	 * The venue's cancellation ({@code WEATHER}, or {@code VENUE} for a lone one-day booking, ADR-0027 §6): like
-	 * {@link #cancelConfirmed} but also admitting {@code NO_SHOW}, stamping {@code reason}; separate so a no-show
-	 * is never guest-cancellable. A re-run, a lost race or a remainder other than {@code remainingMinor} is {@code empty}.
+	 * {@link #cancelConfirmed} but also admitting {@code NO_SHOW}, stamping {@code reason} and a given {@code actor} on
+	 * the service days; separate so a no-show is never guest-cancellable. A re-run, a lost race or a stale remainder is {@code empty}.
 	 */
 	Optional<CancelledBooking> cancelByVenue(long bookingId, java.time.Instant cancelledAt,
-			long refundMinor, long remainingMinor, ai.riviera.platform.booking.vocabulary.RefundReason reason);
+			long refundMinor, long remainingMinor, ai.riviera.platform.booking.vocabulary.RefundReason reason,
+			ai.riviera.platform.operator.vocabulary.OperatorId actor);
 
 	/**
 	 * Venue-scoped stamp of {@code attended_at} on the {@code CONFIRMED} booking's {@code serviceDate}
@@ -261,7 +262,7 @@ public interface Bookings {
 	/**
 	 * Guarded stamp of a day refund (ADR-0026, ADR-0027): {@code refunded_at}, {@code refundMinor} and the
 	 * {@code stamp}'s reason, actor and released mark, only on an unattended, not yet refunded day of a booking
-	 * that happened; the caller releases the claim. Present iff this statement stamped it — publish exactly once.
+	 * that happened; the caller frees the claim when the stamp says released. Present iff this statement stamped it — publish exactly once.
 	 */
 	Optional<ai.riviera.platform.booking.application.refund.DayRefundedBooking> refundDay(long bookingId,
 			LocalDate day, long refundMinor, Instant at, ai.riviera.platform.booking.application.refund.DayRefundStamp stamp);

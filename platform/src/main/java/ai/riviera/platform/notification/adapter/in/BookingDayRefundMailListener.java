@@ -19,9 +19,9 @@ import ai.riviera.platform.shared.ObservabilityMetrics;
 
 /**
  * Mails the guest a refunded day's record on {@link BookingDayRefunded} (ADR-0026, ADR-0027): the day, the
- * payload's server-computed refund (#10, #5), its reason and released mark, and the code-gated link, under the stay's code for a
- * stretch. The link is built after the code resolves, so the event stays ids-only (invariant #7). On
- * {@code BookingCancellationMailListener}'s terms: after commit, on the mail executor, no
+ * payload's server-computed refund (#10, #5), its reason and released mark, and the code-gated link, under
+ * the stay's code for a stretch. The link is built after the code resolves, so the event stays ids-only (#7).
+ * On {@code BookingCancellationMailListener}'s terms: after commit, on the mail executor, no
  * {@code @Transactional}, at-least-once, a missing fact abandoned under
  * {@link ObservabilityMetrics#MAIL_DAY_REFUND_ABANDONED}, a transport failure propagated.
  */
