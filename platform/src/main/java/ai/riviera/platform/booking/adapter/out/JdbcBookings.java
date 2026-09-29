@@ -1032,6 +1032,23 @@ class JdbcBookings implements Bookings {
 				.optional();
 	}
 
+	@Override
+	public Optional<RefundableBooking> findRefundableById(long bookingId, LocalDate date) {
+		return jdbc.sql("""
+				SELECT b.id, b.amount_minor, b.amount_currency, b.booking_date, b.last_date, b.set_id, b.stay_id,
+				       d.attended_at IS NOT NULL AS attended, d.refunded_at IS NOT NULL AS refunded
+				FROM booking b
+				LEFT JOIN booking_day d ON d.booking_id = b.id AND d.service_date = :date
+				WHERE b.id = :id AND b.booking_date <= :date AND b.last_date >= :date
+				  AND b.status IN (:happened)
+				""")
+				.param("id", bookingId)
+				.param("date", date)
+				.param(PARAM_HAPPENED, STORM_DAY_REFUNDABLE)
+				.query(JdbcBookings::toRefundable)
+				.optional();
+	}
+
 	private static RefundableBooking toRefundable(java.sql.ResultSet rs, int rowNum) throws java.sql.SQLException {
 		return new RefundableBooking(
 				rs.getLong("id"), rs.getLong(COL_AMOUNT_MINOR), rs.getString(COL_AMOUNT_CURRENCY),
