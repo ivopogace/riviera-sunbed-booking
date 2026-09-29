@@ -4,6 +4,7 @@ import { provideRouter } from '@angular/router';
 import { vi } from 'vitest';
 
 import { OperatorAuth } from '../core/operator-auth';
+import { AdminDayRefundService } from './admin-day-refund.service';
 import { AdminRefundOutbox } from './admin-refund-outbox';
 import { AdminRefundOutboxService } from './admin-refund-outbox.service';
 import { OutboxStatusView, ResubmissionResultView } from './admin.model';
@@ -49,6 +50,8 @@ async function render(
       provideRouter([]),
       { provide: OperatorAuth, useValue: auth },
       { provide: AdminRefundOutboxService, useValue: service },
+      // The day-refund card below the lever calls nothing until an admin looks a guest up.
+      { provide: AdminDayRefundService, useValue: {} },
     ],
   }).compileComponents();
   const fixture = TestBed.createComponent(AdminRefundOutbox);

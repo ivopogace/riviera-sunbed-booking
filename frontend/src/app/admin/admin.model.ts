@@ -207,3 +207,52 @@ export interface VenueChangeFeeView {
   readonly amountMinor: number;
   readonly currency: string;
 }
+
+/**
+ * One service day of a guest's booking as the admin day-refund lookup shows it; mirrors the backend
+ * `AdminDayRefundController.GuestBookingDayResponse`. Only an `OPEN` day (neither attended nor refunded,
+ * a missed day included) is a refund's candidate; `RELEASED` tells a freed day from a `REFUNDED` one
+ * whose set is still held (ADR-0027 §4).
+ */
+export interface GuestBookingDayView {
+  readonly date: string;
+  readonly state: 'OPEN' | 'ATTENDED' | 'REFUNDED' | 'RELEASED';
+}
+
+/**
+ * One booking the admin may refund a day of; mirrors the backend
+ * `AdminDayRefundController.GuestBookingResponse`. `refundable` is false for a booking that never
+ * happened, whose days the card offers no action on. Dates are Europe/Tirane civil days (#6). No
+ * arrival code and no address is ever returned (invariant #7).
+ */
+export interface GuestBookingView {
+  readonly bookingId: number;
+  readonly venueName: string;
+  readonly firstDate: string;
+  readonly lastDate: string;
+  readonly status: string;
+  readonly refundable: boolean;
+  readonly days: readonly GuestBookingDayView[];
+}
+
+/** The lookup result; empty for an unknown address and for a known one with no bookings alike. */
+export interface GuestBookingLookupView {
+  readonly bookings: readonly GuestBookingView[];
+}
+
+/**
+ * What an admin day refund did; mirrors the backend `VenueDayRefundView` the operator's entry answers
+ * too: a stay's day refunded (`DAY_REFUNDED`, `released` iff its claim was freed) or a lone one-day
+ * booking cancelled whole (`BOOKING_CANCELLED`). Money is integer minor units + ISO currency (#5).
+ */
+export interface AdminDayRefundResultView {
+  readonly kind: 'DAY_REFUNDED' | 'BOOKING_CANCELLED';
+  readonly serviceDate: string;
+  readonly refundMinor: number;
+  readonly currency: string;
+  readonly released: boolean;
+}
+
+/** The RFC-7807 `code`s an admin day refund can answer with, plus the two the client adds. */
+export type AdminDayRefundErrorCode =
+  'DAY_ATTENDED' | 'DAY_ALREADY_REFUNDED' | 'BOOKING_NOT_FOUND' | 'UNAUTHORIZED' | 'UNKNOWN';

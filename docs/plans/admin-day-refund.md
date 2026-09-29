@@ -119,17 +119,17 @@ Unchanged: the same `BookingDayRefunded`/`BookingCancelled` events, the same ref
 
 ## Execution status
 
-**Stage pointer:** `implement (phase 3)`
+**Stage pointer:** `implement (phase 4)`
 
-**Next action:** the console card on the Refunds tab (model, service, component, Vitest, a11y).
+**Next action:** mocked Playwright `admin-day-refund.e2e.ts`.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — admin entry | ✅ | d59656d |
 | 1 — lookup | ✅ | d59656d |
-| 2 — controller + gate | ✅ | (this commit) |
-| 3 — console | ⏳ | |
-| 4 — e2e | | |
+| 2 — controller + gate | ✅ | 2e526de |
+| 3 — console | ✅ | (this commit) |
+| 4 — e2e | ⏳ | |
 | 5 — docs | | |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.

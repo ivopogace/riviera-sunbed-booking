@@ -4,6 +4,7 @@ import { provideRouter } from '@angular/router';
 
 import { expectNoAxeViolations } from '../../testing/axe';
 import { OperatorAuth } from '../core/operator-auth';
+import { AdminDayRefundService } from './admin-day-refund.service';
 import { AdminRefundOutbox } from './admin-refund-outbox';
 import { AdminRefundOutboxService } from './admin-refund-outbox.service';
 import { OutboxStatusView } from './admin.model';
@@ -40,6 +41,7 @@ async function render(status: OutboxStatusView): Promise<ComponentFixture<AdminR
       provideRouter([]),
       { provide: OperatorAuth, useValue: authStub },
       { provide: AdminRefundOutboxService, useValue: serviceStub(status) },
+      { provide: AdminDayRefundService, useValue: {} },
     ],
   }).compileComponents();
   const fixture = TestBed.createComponent(AdminRefundOutbox);

@@ -83,7 +83,7 @@ export const ADMIN_CONSOLE_TABS: readonly ConsoleDestination[] = [
     'Refunds',
     'admin-tab-refunds',
     RefundsGlyph,
-    'Outstanding refunds, re-drive',
+    'Outstanding refunds, a guest’s day',
   ),
   shipped('/admin/photos', 'Photos', 'admin-tab-photos', PhotosGlyph, 'Venue photo takedowns'),
   shipped(
