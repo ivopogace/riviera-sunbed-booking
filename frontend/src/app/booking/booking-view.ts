@@ -23,6 +23,7 @@ import {
   Cancellation,
   StayStretchView,
   SubmitReviewRequest,
+  RefundedDayView,
 } from './booking.model';
 import { BookingService } from './booking.service';
 import { ReviewPanel } from './review-panel';
@@ -348,7 +349,9 @@ const CLS = {
               @if (b.refundedAmount; as refunded) {
                 <h2 id="request-state-title" class="{{ cls.eyebrow }} {{ cls.eyebrowCancelled }}">
                   {{
-                    b.cancelReason === 'WEATHER' ? 'Cancelled by the venue' : 'Booking cancelled'
+                    b.cancelReason === 'WEATHER' || b.cancelReason === 'VENUE'
+                      ? 'Cancelled by the venue'
+                      : 'Booking cancelled'
                   }}
                 </h2>
                 <p [class]="cls.bannerBody">
@@ -530,12 +533,24 @@ const CLS = {
               </dd>
             </div>
           }
-          @if (b.refundedDays?.length) {
+          @if (weatherDays(b).length) {
             <div [class]="cls.row">
               <dt [class]="cls.rowLabel">Refunded for weather</dt>
               <dd [class]="cls.rowValue">
                 <ul class="list-none" data-testid="view-refunded-days">
-                  @for (day of b.refundedDays; track day.day) {
+                  @for (day of weatherDays(b); track day.day) {
+                    <li>{{ dateLabel(day.day, day.day) }} · {{ formatMoney(day.amount) }}</li>
+                  }
+                </ul>
+              </dd>
+            </div>
+          }
+          @if (venueDays(b).length) {
+            <div [class]="cls.row">
+              <dt [class]="cls.rowLabel">Refunded by the venue</dt>
+              <dd [class]="cls.rowValue">
+                <ul class="list-none" data-testid="view-venue-refunded-days">
+                  @for (day of venueDays(b); track day.day) {
                     <li>{{ dateLabel(day.day, day.day) }} · {{ formatMoney(day.amount) }}</li>
                   }
                 </ul>
@@ -543,15 +558,25 @@ const CLS = {
             </div>
           }
         </dl>
-        @if (b.refundedDays?.length && b.status === 'CONFIRMED') {
+        @if (weatherDays(b).length && b.status === 'CONFIRMED') {
           <p
             class="mx-0 mt-2 mb-0 text-[12px] leading-[1.4] text-riv-card-ink-soft"
             data-testid="view-refunded-days-note"
           >
             The venue closed for the weather on
-            {{ b.refundedDays!.length === 1 ? 'that day' : 'those days' }}, so
-            {{ b.refundedDays!.length === 1 ? 'its' : 'their' }} share came back to you. Your spot
+            {{ weatherDays(b).length === 1 ? 'that day' : 'those days' }}, so
+            {{ weatherDays(b).length === 1 ? 'its' : 'their' }} share came back to you. Your spot
             stays yours.
+          </p>
+        }
+        @if (venueDays(b).length && b.status === 'CONFIRMED') {
+          <p
+            class="mx-0 mt-2 mb-0 text-[12px] leading-[1.4] text-riv-card-ink-soft"
+            data-testid="view-venue-refunded-days-note"
+          >
+            {{ b.venueName }} refunded {{ venueDays(b).length === 1 ? 'that day' : 'those days' }},
+            so {{ venueDays(b).length === 1 ? 'its' : 'their' }} share came back to you.
+            {{ venueReleasedNote(b) }}
           </p>
         }
 
@@ -949,6 +974,27 @@ export class BookingView {
     return amountLabelFor(b.status, b.refundedAmount);
   }
 
+  /** The days the weather refund gave back; a day naming no reason (an older payload) is weather's. */
+  protected weatherDays(b: BookingDetail): readonly RefundedDayView[] {
+    return (b.refundedDays ?? []).filter((day) => day.reason !== 'VENUE');
+  }
+
+  /** The days the venue refunded on its own (ADR-0027). */
+  protected venueDays(b: BookingDetail): readonly RefundedDayView[] {
+    return (b.refundedDays ?? []).filter((day) => day.reason === 'VENUE');
+  }
+
+  /** The spot line for the venue's refund: a released day frees the spot; a past one leaves the line out. */
+  protected venueReleasedNote(b: BookingDetail): string {
+    const released = this.venueDays(b).filter((day) => day.released).length;
+    if (released === 0) {
+      return '';
+    }
+    return released === 1
+      ? 'Your spot is no longer held for that day.'
+      : 'Your spot is no longer held for those days.';
+  }
+
   /**
    * Who cancelled, for the guest's panel: `POLICY`/`VENUE_CHANGE` are the guest's own act,
    * `WEATHER` the venue's; an unknown or absent reason (e.g. reserved `CONFLICT`) blames nobody.
@@ -959,6 +1005,8 @@ export class BookingView {
         return 'You cancelled this booking.';
       case 'WEATHER':
         return `${b.venueName} cancelled this booking because of the weather.`;
+      case 'VENUE':
+        return `${b.venueName} refunded this booking.`;
       case 'VENUE_CHANGE':
         return 'You cancelled this booking after the venue moved your spot.';
       default:

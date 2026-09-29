@@ -152,7 +152,7 @@ export type RowNameErrorCode =
 
 /**
  * One service day's attendance: unresolved, scanned in, passed unscanned (the sweep's stamp), or given
- * back by a weather refund while the stay went on (neither attended nor missed).
+ * back by a day refund while the stay went on (neither attended nor missed).
  */
 export type DayAttendance = 'EXPECTED' | 'ATTENDED' | 'MISSED' | 'REFUNDED';
 
@@ -170,7 +170,32 @@ export interface ConsoleDailyBooking {
   readonly firstDate: string;
   readonly lastDate: string;
   readonly attendance: DayAttendance;
+  /** A refunded day whose claim the venue freed (ADR-0027): another guest may hold the set that day. Absent on an older payload. */
+  readonly released?: boolean;
 }
+
+/**
+ * The outcome of a venue day refund (`POST /api/venues/{id}/bookings/{code}/day-refund?date=`, ADR-0027):
+ * a stay's day refunded at its own rate (`DAY_REFUNDED`) or a lone one-day booking cancelled whole
+ * (`BOOKING_CANCELLED`); the server-decided refund in integer minor units (invariant #5) and whether the
+ * day's claim was released. Never the booking code (invariant #7).
+ */
+export interface VenueDayRefundResult {
+  readonly kind: 'DAY_REFUNDED' | 'BOOKING_CANCELLED';
+  readonly serviceDate: string;
+  readonly refundMinor: number;
+  readonly currency: string;
+  readonly released: boolean;
+}
+
+/** The day-refund POST's RFC-7807 `code` values the Daily view explains, plus the transport buckets. */
+export type DayRefundErrorCode =
+  | 'DAY_ATTENDED'
+  | 'DAY_ALREADY_REFUNDED'
+  | 'BOOKING_NOT_FOUND'
+  | 'NOT_VENUE_OWNER'
+  | 'UNAUTHORIZED'
+  | 'UNKNOWN';
 
 /** Successful check-in: which set the guest holds and the service date (never echoes the code). */
 export interface CheckInResultView {
@@ -183,6 +208,7 @@ export type CheckInErrorCode =
   | 'ALREADY_CHECKED_IN'
   | 'WRONG_SERVICE_DATE'
   | 'DAY_REFUNDED'
+  | 'DAY_RELEASED'
   | 'BOOKING_NOT_FOUND'
   | 'NOT_VENUE_OWNER'
   | 'UNAUTHORIZED'
@@ -400,14 +426,14 @@ export interface OperatorBeachMap {
 }
 
 /**
- * The kind of payout-ledger entry: a confirmed booking accrues, a refund reverses, a weather refund of
- * one day of a stay reverses that day, and a refund the venue's own change caused also charges a fee.
+ * The kind of payout-ledger entry: a confirmed booking accrues, a refund reverses, a day refund of one
+ * day of a stay reverses that day, and a refund the venue's own change caused also charges a fee.
  * Direction lives here, never in the amount — only an `ACCRUAL` adds, everything else deducts (invariant #9).
  */
 export type PayoutEntryType = 'ACCRUAL' | 'REVERSAL' | 'DAY_REVERSAL' | 'FEE';
 
-/** Why a reversal or a fee happened; `null` on an ACCRUAL. */
-export type RefundReasonCode = 'WEATHER' | 'POLICY' | 'CONFLICT' | 'VENUE_CHANGE';
+/** Why a reversal or a fee happened; `null` on an ACCRUAL. `VENUE` is the venue's own day refund (ADR-0027). */
+export type RefundReasonCode = 'WEATHER' | 'POLICY' | 'CONFLICT' | 'VENUE_CHANGE' | 'VENUE';
 
 /**
  * One row of the per-venue payout ledger (`GET /api/venues/{id}/payout-ledger`, invariant #9). Money is

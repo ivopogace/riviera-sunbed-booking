@@ -238,16 +238,22 @@ export interface BookingDetail {
   /** A stitched stay's stretches with their own states; empty (or absent, older payload) for one set. */
   readonly stretches?: readonly StayStretchView[];
   /**
-   * The days a weather refund gave back while the booking went on, in day order — every stretch's;
-   * empty (or absent, older payload) when none.
+   * The days a day refund gave back while the booking went on, in day order — every stretch's; empty
+   * (or absent, older payload) when none.
    */
   readonly refundedDays?: readonly RefundedDayView[];
 }
 
-/** One service day refunded for weather (mirrors the backend `RefundedDayView`): the day and what came back. */
+/**
+ * One service day refunded while the booking went on (mirrors the backend `RefundedDayView`): the day,
+ * what came back, why (`WEATHER`: the venue closed, the spot stays the guest's; `VENUE`: the venue's own
+ * refund, ADR-0027; absent on an older payload, which is weather's) and whether the spot was released.
+ */
 export interface RefundedDayView {
   readonly day: string;
   readonly amount: MoneyView;
+  readonly reason?: 'WEATHER' | 'VENUE';
+  readonly released?: boolean;
 }
 
 /**
@@ -355,7 +361,7 @@ export interface MyBookingSummary {
  * `payment_intent.canceled` webhook both leave it unset. `VENUE_CHANGE` is the guest's free exit
  * after a remodel moved their spot; `CONFLICT` is reserved and unused in v1.
  */
-export type CancelReason = 'POLICY' | 'WEATHER' | 'CONFLICT' | 'VENUE_CHANGE';
+export type CancelReason = 'POLICY' | 'WEATHER' | 'CONFLICT' | 'VENUE_CHANGE' | 'VENUE';
 
 /** The refund tier returned with a cancellation (mirrors the backend `CancelOutcome.Tier`). */
 export type RefundTier = 'FULL' | 'PARTIAL' | 'NONE';

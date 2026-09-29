@@ -194,6 +194,46 @@ describe('PayoutsTab (#173) — ledger', () => {
     expect(row.textContent).toContain(formatMoney({ minorUnits: -2550, currency: 'EUR' }));
   });
 
+  it('labels a venue day reversal by its reason and day, and an old reasonless one as weather (ADR-0027)', () => {
+    render(
+      ledger({
+        entries: [
+          {
+            type: 'DAY_REVERSAL',
+            bookingId: 42,
+            grossMinor: 3000,
+            commissionMinor: 450,
+            netMinor: 2550,
+            currency: 'EUR',
+            reason: 'VENUE',
+            serviceDate: '2026-07-08',
+            createdAt: '2026-07-09T09:00:00Z',
+            runningNetMinor: -2550,
+          },
+          {
+            type: 'DAY_REVERSAL',
+            bookingId: 43,
+            grossMinor: 3000,
+            commissionMinor: 450,
+            netMinor: 2550,
+            currency: 'EUR',
+            reason: null,
+            serviceDate: '2026-07-09',
+            createdAt: '2026-07-10T09:00:00Z',
+            runningNetMinor: -5100,
+          },
+        ],
+      }),
+    );
+    const [venue, weather] = rows();
+    expect(venue.querySelector('[data-testid="ledger-reason"]')?.textContent).toContain(
+      'Venue refund · Wed 8 Jul 2026',
+    );
+    expect(weather.querySelector('[data-testid="ledger-reason"]')?.textContent).toContain(
+      'Weather · Thu 9 Jul 2026',
+    );
+  });
+
   it('shows a reversal as a negative net with a reason chip; an accrual has no chip', () => {
     render(
       ledger({

@@ -42,8 +42,10 @@ import { VenueService } from '../venue/venue.service';
 import { BeachMapCanvas, BeachMapCanvasRow, BeachMapRowDef } from '../shared/beach-map-canvas';
 import {
   ConsoleDailyBooking,
+  DayRefundErrorCode,
   MarkErrorCode,
   ReleaseErrorCode,
+  VenueDayRefundResult,
   VenueProfileErrorCode,
   DayAttendance,
 } from './operator-console.model';
@@ -52,6 +54,7 @@ import {
   checkInErrorOf,
   checkInSetIdOf,
   checkInWrongDateOf,
+  dayRefundErrorOf,
   markErrorOf,
   releaseErrorOf,
   venueProfileErrorOf,
@@ -65,9 +68,9 @@ import { DotIcon } from '../shared/dot-icon';
 /**
  * One guest row: set label, display-only arrival code (invariant #7), the guest's span when the
  * stay is longer than the day (`span`, else `null`), where the stay stands on the day (`group`),
- * and — once the day resolved — the chip announcing how. `chip` is `null` for a day still expected,
- * which needs no badge; the operator wording ("Checked in") is deliberately not `STATUS_META`'s
- * tourist-facing "Completed".
+ * the chip announcing how the day resolved (`null` while still expected; the operator wording
+ * "Checked in" is deliberately not `STATUS_META`'s tourist-facing "Completed"), and whether the
+ * venue may still refund the day (`refundable`: neither attended nor already refunded, ADR-0027 §7).
  */
 interface ArrivalRow {
   readonly setId: number;
@@ -76,6 +79,7 @@ interface ArrivalRow {
   readonly span: string | null;
   readonly group: StayDayGroup;
   readonly chip: ArrivalChip | null;
+  readonly refundable: boolean;
 }
 
 /** One of the guest list's groups on the day, in the order shown; an empty group is not rendered. */
@@ -100,9 +104,9 @@ interface ArrivalChip {
 }
 
 /**
- * The badge per resolved day — the day's attendance, never the stay's outcome; an `EXPECTED` day
- * shows none. The modifier is read from `STATUS_META` (the one status→modifier map), so a rename
- * there can't silently drop this chip to the neutral fallback.
+ * The badge per resolved day — the day's attendance, never the stay's outcome; an `EXPECTED` day shows
+ * none. The modifier is read from `STATUS_META` (the one status→modifier map), so a rename there can't
+ * silently drop this chip to the neutral fallback; a released day's badge is `RELEASED_CHIP` (ADR-0027).
  */
 const ARRIVAL_CHIPS: Partial<Record<DayAttendance, ArrivalChip>> = {
   ATTENDED: {
@@ -117,6 +121,24 @@ const ARRIVAL_CHIPS: Partial<Record<DayAttendance, ArrivalChip>> = {
     testId: 'arrival-day-refunded',
   },
 };
+
+const RELEASED_CHIP: ArrivalChip = {
+  modifier: metaFor('CANCELLED').chip,
+  label: 'Day released',
+  testId: 'arrival-day-released',
+};
+
+function arrivalChipOf(b: ConsoleDailyBooking): ArrivalChip | null {
+  if (b.attendance === 'REFUNDED' && b.released === true) {
+    return RELEASED_CHIP;
+  }
+  return ARRIVAL_CHIPS[b.attendance] ?? null;
+}
+
+/** ADR-0027 §7: a day neither attended nor already refunded, on a booking that happened (every listed row did). */
+function isRefundable(b: ConsoleDailyBooking): boolean {
+  return b.attendance === 'EXPECTED' || b.attendance === 'MISSED';
+}
 
 /** One availability row on the shared canvas's row contract, plus the sets its tiles render. */
 interface DailyRow extends BeachMapCanvasRow {
@@ -205,6 +227,13 @@ export class DailyViewTab {
   /** The last check-in outcome, announced via the panel's status region. */
   protected readonly checkInNotice = signal<CheckInNotice | undefined>(undefined);
   protected readonly scanVideo = viewChild<ElementRef<HTMLVideoElement>>('scanVideo');
+
+  /** The row whose venue day refund confirm is open (its code), one at a time; `undefined` when none. */
+  protected readonly refundConfirmCode = signal<string | undefined>(undefined);
+  /** An in-flight day-refund POST — gates the confirm so a double-tap cannot double-refund. */
+  protected readonly refundBusy = signal(false);
+  /** The last day-refund outcome, announced via the guest list's status region. */
+  protected readonly refundNotice = signal<CheckInNotice | undefined>(undefined);
 
   /** Optimistic per-set overrides applied on tap, cleared once a reconcile confirms server truth. */
   private readonly overrides = signal<ReadonlyMap<number, TileState>>(new Map());
@@ -305,6 +334,9 @@ export class DailyViewTab {
     this.closeScan();
     this.checkInBusy.set(false);
     this.checkInNotice.set(undefined);
+    this.refundConfirmCode.set(undefined);
+    this.refundBusy.set(false);
+    this.refundNotice.set(undefined);
     this.closeSalesConfirm.set(false);
     this.closeSalesBusy.set(false);
     this.selectedDate.set(todayBookingDate(new Date()));
@@ -348,9 +380,68 @@ export class DailyViewTab {
       label: setLabel(byId, b.setId),
       span: b.firstDate === b.lastDate ? null : formatStay(b.firstDate, b.lastDate),
       group: stayDayGroupOf(b.firstDate, b.lastDate, date),
-      chip: ARRIVAL_CHIPS[b.attendance] ?? null,
+      chip: arrivalChipOf(b),
+      refundable: isRefundable(b),
     }));
   });
+
+  /** Open the amber day-refund confirm under one row (two-step — the write is the confirm's job). */
+  protected onRefundDay(row: ArrivalRow): void {
+    this.refundNotice.set(undefined);
+    this.refundConfirmCode.set(row.code);
+  }
+
+  protected onCancelRefund(): void {
+    const code = this.refundConfirmCode();
+    this.refundConfirmCode.set(undefined);
+    if (code !== undefined) {
+      this.focusAfterRender(`refund-day-${code}`, 'daily-refund-result');
+    }
+  }
+
+  /**
+   * Refund the open row's day for the venue's own reason (ADR-0027): the server picks the leg and the
+   * amount (invariant #10); either outcome re-reads the day so the row's chip reconciles.
+   */
+  protected onConfirmRefund(): void {
+    const venueId = this.venueId();
+    const code = this.refundConfirmCode();
+    if (code === undefined || this.refundBusy()) {
+      return;
+    }
+    const epoch = this.epoch;
+    const date = this.selectedDate();
+    this.refundBusy.set(true);
+    this.console.dayRefund(venueId, code, date).subscribe({
+      next: (result) => {
+        if (this.epoch !== epoch) {
+          return; // a venue switch superseded this write's UI state
+        }
+        this.refundBusy.set(false);
+        this.refundConfirmCode.set(undefined);
+        this.refundNotice.set({
+          tone: 'ok',
+          text: dayRefundSuccessNotice(result, this.dateLabel()),
+        });
+        this.focusAfterRender('daily-refund-result');
+        this.load();
+      },
+      error: (error: unknown) => {
+        if (this.epoch !== epoch) {
+          return; // a venue switch superseded this write's UI state
+        }
+        this.refundBusy.set(false);
+        this.refundConfirmCode.set(undefined);
+        this.dropSessionIfUnauthorized(error);
+        this.refundNotice.set({
+          tone: 'error',
+          text: dayRefundFailureNotice(dayRefundErrorOf(error)),
+        });
+        this.focusAfterRender('daily-refund-result');
+        this.load();
+      },
+    });
+  }
 
   /** Arriving, staying, leaving — the non-empty groups in that order (design D4, story 30). */
   protected readonly guestGroups = computed<readonly GuestGroup[]>(() =>
@@ -459,6 +550,8 @@ export class DailyViewTab {
     this.pendingSets.set(new Set());
     this.notice.set(undefined);
     this.closeSalesConfirm.set(false);
+    this.refundConfirmCode.set(undefined);
+    this.refundNotice.set(undefined);
     this.loadError.set(false);
     this.loaded.set(false);
     this.venue.set(undefined);
@@ -743,6 +836,12 @@ function checkInMessage(error: unknown, sets: ReadonlyMap<number, SetView>): str
         ? 'Today was refunded for weather — the spot is still the guest’s, no check-in.'
         : `Today was refunded for weather — ${setLabel(sets, setId)} is still the guest’s, no check-in.`;
     }
+    case 'DAY_RELEASED': {
+      const setId = checkInSetIdOf(error);
+      return setId === undefined
+        ? 'Today was refunded by the venue and the spot released — no check-in.'
+        : `Today was refunded by the venue and ${setLabel(sets, setId)} was released — no check-in.`;
+    }
     case 'BOOKING_NOT_FOUND':
       return 'No booking with that code at this venue.';
     case 'NOT_VENUE_OWNER':
@@ -751,5 +850,34 @@ function checkInMessage(error: unknown, sets: ReadonlyMap<number, SetView>): str
       return 'Your session expired — sign in again.';
     default:
       return 'Couldn’t check in. Try again.';
+  }
+}
+
+/** The operator-facing notice for a venue day refund the server carried out (money in minor units, #5). */
+function dayRefundSuccessNotice(result: VenueDayRefundResult, dateLabel: string): string {
+  const amount = formatMoney({ minorUnits: result.refundMinor, currency: result.currency });
+  if (result.kind === 'BOOKING_CANCELLED') {
+    return `Booking cancelled and ${amount} refunded in full — the set is free again on ${dateLabel}.`;
+  }
+  return result.released
+    ? `${dateLabel} refunded (${amount}) — the set is free again that day; the stay goes on.`
+    : `${dateLabel} refunded (${amount}); the stay goes on.`;
+}
+
+/** Map a day-refund failure to its operator-facing notice (no nested ternaries). */
+function dayRefundFailureNotice(reason: DayRefundErrorCode): string {
+  switch (reason) {
+    case 'DAY_ATTENDED':
+      return 'The guest checked in that day — an attended day is not refunded.';
+    case 'DAY_ALREADY_REFUNDED':
+      return 'That day was already refunded.';
+    case 'BOOKING_NOT_FOUND':
+      return 'No booking with that code covers this day at this venue.';
+    case 'NOT_VENUE_OWNER':
+      return 'You don’t manage this venue.';
+    case 'UNAUTHORIZED':
+      return 'Your session expired — sign in again.';
+    default:
+      return 'Could not refund the day. Please try again.';
   }
 }

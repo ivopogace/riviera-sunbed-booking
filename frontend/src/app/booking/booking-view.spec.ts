@@ -422,6 +422,82 @@ describe('BookingView', () => {
     expect(host.querySelector('[data-testid="refunded-amount"]')).toBeNull();
   });
 
+  it('lists the days the venue refunded on its own, apart from weather, and says the spot is no longer held (ADR-0027)', async () => {
+    const fixture = await render(
+      stubService({
+        detail: {
+          ...DETAIL,
+          lastDate: '2026-12-05',
+          refundIfCancelledNow: { minorUnits: 9000, currency: 'EUR' },
+          amount: { minorUnits: 22500, currency: 'EUR' },
+          refundedDays: [
+            { day: '2026-12-02', amount: { minorUnits: 4500, currency: 'EUR' }, reason: 'WEATHER' },
+            {
+              day: '2026-12-03',
+              amount: { minorUnits: 4500, currency: 'EUR' },
+              reason: 'VENUE',
+              released: true,
+            },
+            { day: '2026-12-01', amount: { minorUnits: 4500, currency: 'EUR' } },
+          ],
+        },
+      }),
+    );
+    const host = fixture.nativeElement as HTMLElement;
+    const weather = host.querySelector('[data-testid="view-refunded-days"]')!;
+    expect(weather.querySelectorAll('li')).toHaveLength(2);
+    expect(weather.textContent).toContain('2 Dec');
+    expect(weather.textContent).toContain('1 Dec');
+    const venue = host.querySelector('[data-testid="view-venue-refunded-days"]')!;
+    expect(venue.querySelectorAll('li')).toHaveLength(1);
+    expect(venue.textContent).toContain('3 Dec');
+    expect(venue.textContent).toContain('€45');
+    const note = host.querySelector('[data-testid="view-venue-refunded-days-note"]')?.textContent;
+    expect(note).toContain('Miramar Beach Club refunded that day');
+    expect(note).toContain('Your spot is no longer held for that day');
+    expect(note).not.toMatch(/weather|because/i);
+    expect(host.querySelector('[data-testid="view-refunded-days-note"]')?.textContent).toContain(
+      'Your spot stays yours',
+    );
+    await expectNoAxeViolations(host);
+  });
+
+  it('a past venue-refunded day is refunded but the spot line is not claimed', async () => {
+    const fixture = await render(
+      stubService({
+        detail: {
+          ...DETAIL,
+          lastDate: '2026-12-03',
+          amount: { minorUnits: 13500, currency: 'EUR' },
+          refundedDays: [
+            {
+              day: '2026-12-02',
+              amount: { minorUnits: 4500, currency: 'EUR' },
+              reason: 'VENUE',
+              released: false,
+            },
+          ],
+        },
+      }),
+    );
+    const host = fixture.nativeElement as HTMLElement;
+    expect(host.querySelector('[data-testid="view-refunded-days"]')).toBeNull();
+    const note = host.querySelector('[data-testid="view-venue-refunded-days-note"]')?.textContent;
+    expect(note).toContain('refunded that day');
+    expect(note).not.toContain('no longer held');
+  });
+
+  it('attributes a VENUE cancellation to the venue without a reason (ADR-0027)', async () => {
+    const fixture = await render(stubService({ detail: cancelled('VENUE', 4500) }));
+    const host = fixture.nativeElement as HTMLElement;
+    const panel = host.querySelector('[data-testid="booking-cancelled"]');
+
+    expect(panel?.textContent).toContain('Cancelled by the venue');
+    expect(panel?.textContent).toContain('Miramar Beach Club refunded this booking.');
+    expect(panel?.textContent).not.toContain('You cancelled');
+    expect(panel?.textContent).not.toMatch(/weather/i);
+  });
+
   it('shows a not-found message for an unknown code', async () => {
     const fixture = await render(stubService({ getError: { status: 404 } }));
     const host = fixture.nativeElement as HTMLElement;

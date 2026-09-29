@@ -374,6 +374,166 @@ describe('DailyViewTab (#175)', () => {
     expect(byId('arrival-checked-in')).toBeNull();
   });
 
+  it('badges a day the venue released off the released stamp, never the reason (ADR-0027)', () => {
+    render(SEED, [booking({ status: 'CONFIRMED', attendance: 'REFUNDED', released: true })]);
+
+    const chip = byId('arrival-day-released');
+    expect(chip.textContent).toContain('Day released');
+    expect(byId('arrival-day-refunded')).toBeNull();
+    expect(byId('refund-day-ABC12345')).toBeNull();
+  });
+
+  it('lists two rows on one set when a released day was resold, each with its own code (ADR-0027)', () => {
+    render(SEED, [
+      booking({
+        code: 'STAYAAAA1',
+        attendance: 'REFUNDED',
+        released: true,
+        lastDate: addDays(TODAY, 2),
+      }),
+      booking({ code: 'NEWGUEST1' }),
+    ]);
+
+    const rows = host.querySelectorAll('[data-testid="daily-arrival-row"]');
+    expect(rows).toHaveLength(2);
+    const codes = [...host.querySelectorAll('[data-testid="daily-arrival-code"]')].map(
+      (c) => c.textContent,
+    );
+    expect(codes).toEqual(['STAYAAAA1', 'NEWGUEST1']);
+  });
+
+  it('refunds a guest’s day behind a two-step confirm: POST, announce, reconcile to the released chip (ADR-0027)', () => {
+    render();
+    expect(byId('daily-refund-confirm-panel')).toBeNull();
+    byId('refund-day-ABC12345').click();
+    fixture.detectChanges();
+    expect(byId('daily-refund-confirm-panel')).toBeTruthy();
+    expect(byId('refund-day-ABC12345')).toBeNull();
+    http.expectNone((r) => r.method === 'POST');
+
+    byId('daily-refund-confirm').click();
+    const post = http.expectOne(
+      (r) => r.method === 'POST' && r.url.includes('/api/venues/1/bookings/ABC12345/day-refund'),
+    );
+    expect(post.request.params.get('date')).toBe(TODAY);
+    expect(post.request.body).toBeNull();
+    post.flush({
+      kind: 'DAY_REFUNDED',
+      serviceDate: TODAY,
+      refundMinor: 4500,
+      currency: 'EUR',
+      released: true,
+    });
+    fixture.detectChanges();
+    const notice = byId('daily-refund-result').textContent;
+    expect(notice).toContain('refunded');
+    expect(notice).toContain('€45');
+    expect(notice).toContain('free again');
+    expect(byId('daily-refund-confirm-panel')).toBeNull();
+
+    flushLoad(SEED, [booking({ attendance: 'REFUNDED', released: true })]);
+    expect(byId('arrival-day-released')).toBeTruthy();
+  });
+
+  it('announces a lone booking cancelled whole', () => {
+    render();
+    byId('refund-day-ABC12345').click();
+    fixture.detectChanges();
+    byId('daily-refund-confirm').click();
+    http
+      .expectOne((r) => r.method === 'POST' && r.url.includes('/day-refund'))
+      .flush({
+        kind: 'BOOKING_CANCELLED',
+        serviceDate: TODAY,
+        refundMinor: 4500,
+        currency: 'EUR',
+        released: true,
+      });
+    fixture.detectChanges();
+    expect(byId('daily-refund-result').textContent).toContain('cancelled and €45 refunded in full');
+    flushLoad(SEED, []);
+  });
+
+  it('announces a past missed day refunded but still held, and keeps the refunded chip', () => {
+    render(SEED, [booking({ attendance: 'MISSED', status: 'NO_SHOW' })]);
+    byId('refund-day-ABC12345').click();
+    fixture.detectChanges();
+    byId('daily-refund-confirm').click();
+    http
+      .expectOne((r) => r.method === 'POST' && r.url.includes('/day-refund'))
+      .flush({
+        kind: 'DAY_REFUNDED',
+        serviceDate: TODAY,
+        refundMinor: 3000,
+        currency: 'EUR',
+        released: false,
+      });
+    fixture.detectChanges();
+    const notice = byId('daily-refund-result').textContent;
+    expect(notice).toContain('€30');
+    expect(notice).not.toContain('free again');
+    flushLoad(SEED, [booking({ attendance: 'REFUNDED', status: 'NO_SHOW' })]);
+    expect(byId('arrival-day-refunded')).toBeTruthy();
+  });
+
+  it('cancelling the refund confirm posts nothing and gives focus back to the row action', () => {
+    render();
+    byId('refund-day-ABC12345').click();
+    fixture.detectChanges();
+    byId('daily-refund-cancel').click();
+    fixture.detectChanges();
+    http.expectNone((r) => r.method === 'POST');
+    expect(byId('daily-refund-confirm-panel')).toBeNull();
+    expect(byId('refund-day-ABC12345')).toBeTruthy();
+  });
+
+  it('offers no refund action on an attended or already refunded day', () => {
+    render(SEED, [
+      booking({ code: 'ATTENDED1', attendance: 'ATTENDED', status: 'COMPLETED' }),
+      booking({ code: 'REFUNDED1', attendance: 'REFUNDED' }),
+    ]);
+    expect(byId('refund-day-ATTENDED1')).toBeNull();
+    expect(byId('refund-day-REFUNDED1')).toBeNull();
+  });
+
+  it('explains every day-refund denial in operator terms and reconciles', () => {
+    render();
+    const submit = (status: number, body: { code: string }): string => {
+      byId('refund-day-ABC12345').click();
+      fixture.detectChanges();
+      byId('daily-refund-confirm').click();
+      http
+        .expectOne((r) => r.method === 'POST' && r.url.includes('/day-refund'))
+        .flush(body, { status, statusText: 'Error' });
+      fixture.detectChanges();
+      const text = byId('daily-refund-result').textContent ?? '';
+      flushLoad();
+      return text;
+    };
+    expect(submit(409, { code: 'DAY_ATTENDED' })).toContain('checked in');
+    expect(submit(409, { code: 'DAY_ALREADY_REFUNDED' })).toContain('already refunded');
+    expect(submit(404, { code: 'BOOKING_NOT_FOUND' })).toContain('No booking');
+    expect(submit(403, { code: 'NOT_VENUE_OWNER' })).toContain('don’t manage this venue');
+    expect(submit(500, { code: 'BOOM' })).toContain('Could not refund');
+    expect(submit(401, { code: 'UNAUTHENTICATED' })).toContain('session expired');
+  });
+
+  it('explains a scan on a released day and names the set (ADR-0027)', () => {
+    render();
+    const input = byId('checkin-code-input') as HTMLInputElement;
+    input.value = 'STAY12345';
+    (byId('checkin-submit') as HTMLButtonElement).click();
+
+    http
+      .expectOne((r) => r.method === 'POST' && r.url.includes('/check-in'))
+      .flush({ code: 'DAY_RELEASED', setId: 3 }, { status: 409, statusText: 'Conflict' });
+    fixture.detectChanges();
+    const notice = byId('checkin-result').textContent;
+    expect(notice).toContain('released');
+    expect(notice).toContain('A · 3');
+    expect(notice).not.toContain('STAY12345');
+  });
+
   it('shows no badge on a still-expected CONFIRMED arrival', () => {
     render();
 

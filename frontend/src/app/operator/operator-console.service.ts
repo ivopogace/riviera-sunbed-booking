@@ -12,6 +12,7 @@ import {
   CheckInErrorCode,
   CheckInResultView,
   ConsoleDailyBooking,
+  DayRefundErrorCode,
   CreatedSet,
   LayoutErrorCode,
   MarkErrorCode,
@@ -43,6 +44,7 @@ import {
   VenueProfileErrorCode,
   VenueProfileUpdate,
   VenueProfileView,
+  VenueDayRefundResult,
   WeatherRefundResult,
 } from './operator-console.model';
 
@@ -268,6 +270,19 @@ export class OperatorConsoleService {
     return this.http.post<CheckInResultView>(
       `${this.base}/api/venues/${venueId}/bookings/${encodeURIComponent(code)}/check-in`,
       null,
+    );
+  }
+
+  /**
+   * Refund one guest's one `date` for the venue's own reason (ADR-0027): the server picks the leg, the amount
+   * (invariant #10) and the reversal (#9). Owner-asserted (#13); idempotent per booking and day (`409
+   * DAY_ALREADY_REFUNDED` on a replay). The code rides the path, never a body or a log (#7).
+   */
+  dayRefund(venueId: number, code: string, date: string): Observable<VenueDayRefundResult> {
+    return this.http.post<VenueDayRefundResult>(
+      `${this.base}/api/venues/${venueId}/bookings/${encodeURIComponent(code)}/day-refund`,
+      null,
+      { params: new HttpParams().set('date', date) },
     );
   }
 
@@ -690,6 +705,27 @@ export function checkInErrorOf(error: unknown): CheckInErrorCode {
       case 'ALREADY_CHECKED_IN':
       case 'WRONG_SERVICE_DATE':
       case 'DAY_REFUNDED':
+      case 'DAY_RELEASED':
+      case 'BOOKING_NOT_FOUND':
+      case 'NOT_VENUE_OWNER':
+        return code;
+      default:
+        return 'UNKNOWN';
+    }
+  }
+  return 'UNKNOWN';
+}
+
+/** Map an HTTP failure of a venue day refund to a known {@link DayRefundErrorCode} (RFC-7807 `code`; or 401). */
+export function dayRefundErrorOf(error: unknown): DayRefundErrorCode {
+  if (error instanceof HttpErrorResponse) {
+    if (error.status === 401) {
+      return 'UNAUTHORIZED';
+    }
+    const code = problemCodeOf(error);
+    switch (code) {
+      case 'DAY_ATTENDED':
+      case 'DAY_ALREADY_REFUNDED':
       case 'BOOKING_NOT_FOUND':
       case 'NOT_VENUE_OWNER':
         return code;
@@ -706,7 +742,7 @@ export function checkInWrongDateOf(error: unknown): string | undefined {
   return typeof date === 'string' ? date : undefined;
 }
 
-/** The `setId` extension an ALREADY_CHECKED_IN or DAY_REFUNDED problem carries: today's set, for a stay. */
+/** The `setId` extension an ALREADY_CHECKED_IN, DAY_REFUNDED or DAY_RELEASED problem carries: today's set, for a stay. */
 export function checkInSetIdOf(error: unknown): number | undefined {
   const setId = checkInExtensionOf(error, 'setId');
   return typeof setId === 'number' ? setId : undefined;
