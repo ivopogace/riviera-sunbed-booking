@@ -294,11 +294,11 @@ model in `docs/architecture/domain-model.md`.
   refund**'s, where the set stays the guest's and nothing is released, and the **venue day refund**,
   where the day is released. A lone one-day booking is cancelled instead under either.
 - **Venue day refund** *(decided in ADR-0027, not yet built)* — the venue's own refund of one guest's
-  one day for a reason of its own (a
-  pool closed for repair, a broken umbrella, a gesture after a complaint), issued by the venue's
-  operator or by a platform admin on the venue's behalf: a **day refund** whose day is **released**,
-  because the venue has decided the guest will not use it; a past day is refunded but not released.
-  The guest is told who refunded what, never why; no grounds reach the guest or the books.
+  one day for a reason of its own (a pool closed for repair, a broken umbrella, a gesture after a
+  complaint), issued by the venue's operator or by a platform admin on the venue's behalf: a **day
+  refund** whose day is **released**, because the venue has decided the guest will not use it; a past
+  day is refunded but not released. The guest is told who refunded what, never why; no grounds reach
+  the guest or the books.
 - **Check-in** — staff recording, by scanning the booking's QR code or typing its
   booking code, that the guest arrived **today**: stamps today's service day as attended, exactly
   once per service day. On the stay's last service day it also resolves the stay to `COMPLETED`.
