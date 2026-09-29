@@ -46,6 +46,7 @@ final class EndpointProbes {
 	private static final Map<String, String> PATH_VARIABLE_SAMPLES = Map.of(
 			"provider", "google",
 			"code", "PROBE999",
+			"date", "2026-07-01",
 			"rowLabel", "A",
 			"slot", "COVER",
 			"hash", "0123456789abcdef");

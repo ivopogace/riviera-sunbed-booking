@@ -119,16 +119,16 @@ Unchanged: the same `BookingDayRefunded`/`BookingCancelled` events, the same ref
 
 ## Execution status
 
-**Stage pointer:** `implement (phase 0)`
+**Stage pointer:** `implement (phase 3)`
 
-**Next action:** red test for the admin entry on `VenueDayRefundService`.
+**Next action:** the console card on the Refunds tab (model, service, component, Vitest, a11y).
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — admin entry | ⏳ | |
-| 1 — lookup | | |
-| 2 — controller + gate | | |
-| 3 — console | | |
+| 0 — admin entry | ✅ | d59656d |
+| 1 — lookup | ✅ | d59656d |
+| 2 — controller + gate | ✅ | (this commit) |
+| 3 — console | ⏳ | |
 | 4 — e2e | | |
 | 5 — docs | | |
 

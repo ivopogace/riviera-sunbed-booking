@@ -28,13 +28,12 @@ import ai.riviera.platform.operator.vocabulary.VenueRef;
 import ai.riviera.platform.venue.vocabulary.VenueId;
 
 /**
- * The venue day refund in one transaction, the operator's entry owner-asserted first (invariant #13) and the
- * admin's keyed on the booking id with no ownership (ADR-0027 decision 1): the weather refund's two legs
- * (ADR-0026) with reason {@code VENUE} and the actor stamped. A stay's day is refunded at its own rate
- * ({@link DayShare}) and its claim released unless the day is past — past is the no-show sweep's past,
- * before today in {@code Europe/Tirane} (#6) — so the set is sellable again (#2); a lone one-day booking is
- * cancelled and refunded in full whatever the cutoff (#10), its day freed. A lost race is classified off
- * the committed day, never retried. The refunds run after commit. Rationale: {@code RESPONSIBILITIES.md} §booking.
+ * The venue day refund in one transaction: the operator's entry owner-asserted first (#13), the admin's keyed
+ * on the booking id with no ownership (ADR-0027 decision 1); both take the weather refund's legs (ADR-0026)
+ * with reason {@code VENUE} and the actor stamped. A stay's day is refunded at its own rate ({@link DayShare})
+ * and released unless past (before today in {@code Europe/Tirane}, the sweep's past, #6), so the set sells
+ * again (#2); a lone one-day booking is cancelled in full whatever the cutoff (#10). A lost race is classified
+ * off the committed day; the refunds run after commit. Rationale: {@code RESPONSIBILITIES.md} §booking.
  */
 @Service
 class VenueDayRefundService implements RefundVenueDay {
