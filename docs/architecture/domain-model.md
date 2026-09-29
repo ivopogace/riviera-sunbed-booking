@@ -5,10 +5,10 @@
 > `docs/superpowers/specs/2026-06-25-riviera-sunbed-booking-design.md` and the
 > invariants in `/CLAUDE.md` (referenced below as "invariant #N").
 >
-> **Vocabulary (ADR-0018).** The platform is **one bounded context** with thirteen modules, and it
-> has no aggregate-root classes: `domain/` holds policies, calculations and value objects, and the
-> lifecycles live in guarded SQL. The diagrams below say what a thing *is* — a table row, a record,
-> an enum, a rule — rather than labelling it an aggregate.
+> **Vocabulary (ADR-0018).** The platform is **one bounded context** over the modules of
+> `CLAUDE.md`'s table, and it has no aggregate-root classes: `domain/` holds policies, calculations
+> and value objects, and the lifecycles live in guarded SQL. The diagrams below say what a thing
+> *is* — a table row, a record, an enum, a rule — rather than labelling it an aggregate.
 >
 > Both booking modes are built end-to-end: Instant Book (signature-verified webhooks, the
 > event spine through the Modulith Event Publication Registry, the payout ledger, per-venue
@@ -22,14 +22,15 @@
 
 ## 1. Module map
 
-The **nine domain modules** and how they collaborate. Each node is named for the state its module
-owns. **Solid arrows = domain events** (state changes). **Dotted arrows = `api/` port queries**
-(reads). Modules never import each other's internals — only `api/` ports or events (invariant #11).
+The **context modules** of `CLAUDE.md`'s table that own state, and how they collaborate. Each node
+is named for the state its module owns. **Solid arrows = domain events** (state changes). **Dotted
+arrows = `api/` port queries** (reads). Modules never import each other's internals — only `api/`
+ports or events (invariant #11).
 
-The other **four of the thirteen** modules are not drawn because no domain module collaborates
-with them: `shared` (the OPEN kernel of edge types); the closed read model `itinerary` (no table;
-it only reads `venue::api` + `availability::api` for the stay verdict per venue, improvement plan
-B4, and nothing reads it); and the two closed ADR-0017 mechanisms, `challenge` (proof of work, owns
+The **remaining** modules are not drawn because no domain module collaborates with them: `shared`
+(the OPEN kernel of edge types); the closed read model `itinerary` (no table; it only reads
+`venue::api` + `availability::api` for the stay verdict per venue, improvement plan B4, and nothing
+reads it); and the closed ADR-0017 mechanisms, `challenge` (proof of work, owns
 `challenge_registry`) and `audit` (the admin audit trail, owns `admin_audit_record`), both reached
 from the platform edge through a port.
 

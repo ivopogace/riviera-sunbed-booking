@@ -190,7 +190,7 @@ Two knobs now hold that open, both in `application.properties`:
 
 | Property | Default | What it buys |
 |---|---|---|
-| `spring.task.scheduling.pool.size` | `7` (one per `@Scheduled` job) | A thread per `@Scheduled` job, so a job that is stuck cannot delay a sibling's schedule. Must stay **≥ the number of `@Scheduled` methods** — `ScheduledWorkArchitectureTest` counts them and fails the build otherwise, so a new job either gets a thread or does not merge. |
+| `spring.task.scheduling.pool.size` | as `application.properties` sets it | A thread per `@Scheduled` job, so a job that is stuck cannot delay a sibling's schedule. Must stay **≥ the number of `@Scheduled` methods** — `ScheduledWorkArchitectureTest` counts them and fails the build otherwise, so a new job either gets a thread or does not merge. |
 | `riviera.scheduled.query-timeout-seconds` | `10` | A finite bound on each job's **entry** query, so a wedged job eventually ends instead of pinning its thread and its pooled connection. Applied per adapter; the sweeps' per-item **writes** stay unbounded on purpose. |
 
 **Operationally:** a bounded read that aborts fails that run, logs, and is retried on the next tick
@@ -205,7 +205,7 @@ bound; **never** reach for `spring.jdbc.template.query-timeout` to do it, which 
 | Load-bearing assumption | Where it lives | Failure mode at N > 1 instances |
 |---|---|---|
 | **Abandoned-payment sweep** | `AbandonedBookingScheduler` (`@Profile("stripe")`) | Every instance runs the scheduler. The guarded `UPDATE … WHERE status='AWAITING_PAYMENT' … RETURNING` keeps **DB state** correct (one instance wins each row), but each winner still fires its own Stripe **PaymentIntent cancel** → duplicate cancel calls racing at Stripe for the same intent. |
-| **Request-expiry sweep, and every later sweep** (`ScheduledWorkArchitectureTest` lists them: no-show, move reminder, guest-contact retention, challenge registry, the money-path alert check) | `RequestSweepScheduler` (all profiles, issue #98) and its siblings | Same guarded-transition design, so DB state stays correct, but the sweep is **sized and timed for one runner**; N copies do N× the redundant scans and fan out any per-expiry side effect. |
+| **Request-expiry sweep, and every later `@Scheduled` job** (`ScheduledWorkArchitectureTest` lists them) | `RequestSweepScheduler` (all profiles, issue #98) and its siblings | The row-transition sweeps share the guarded design, so DB state stays correct, but each is **sized and timed for one runner**; N copies do N× the redundant scans and fan out any per-row side effect. `MoneyPathAlertCheck` writes nothing and fires its alert N times; `ChallengeRegistrySweep` deletes expired rows, harmless twice. |
 | **In-memory rate-limit buckets** | `RateLimitFilter` + `TokenBucket` (per-IP #56/ADR-0006; per-identity login throttle #292) — bounded `ConcurrentHashMap`s on the heap | Each instance holds its **own** buckets. A client's requests spread across instances, so the **effective cap is ~N× the configured limit** — the brute-force / abuse / credential-guess protection weakens in proportion to instance count. |
 
 ### Scale-out preconditions (all required before a second instance)

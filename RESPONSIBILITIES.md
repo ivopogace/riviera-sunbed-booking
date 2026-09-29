@@ -312,11 +312,12 @@ any is released on the old, never a swap of my own — so a racing reserve wins 
   also answers the tourist browse, display-only — the reserve enforces independently, asking the
   season-closure and sales-close arms one at a time to name the refusal (`VENUE_CLOSED`, then
   `BOOKING_CLOSED`). `freeCancellationEndsAt` is cancellation-only.
-- **Windows:** a request must be answered by `min(created + expiry-window, D's sales close)`; the
-  pay deadline is `min(accepted_at + pay-window, end of service day)`, or the day's end if never
-  accepted (the TTL, `AbandonedPaymentProperties`, is only the sweep's earlier backstop, never a
-  view fence). The payment-due mail promises it, the abandoned sweep's SQL mirrors it
-  (`RequestWindows#payDeadline`, `RequestWindowsTest`); the view hides the `clientSecret` past it.
+- **Windows:** a request must be answered by `min(created + expiry-window, D's sales close)` (D =
+  the stay's first day); the pay deadline is `min(accepted_at + pay-window, end of service day)`, or
+  the day's end if never accepted (the TTL, `AbandonedPaymentProperties`, is only the sweep's
+  earlier backstop, never a view fence). The payment-due mail promises it, the abandoned sweep's SQL
+  mirrors it (`RequestWindows#payDeadline`, `RequestWindowsTest`); the view hides the `clientSecret`
+  past it.
 - **The confirm path is deliberately not fenced**
   (`JdbcBookingsTransitionIT.confirmSucceedsAfterThePayDeadlineHasPassed`): a payment landing past
   the deadline still confirms. Refusing without refunding strands the money on a booking no sweep
@@ -983,10 +984,9 @@ mutating `/api/admin/**` action, §`audit`) stay here; `challenge` and `audit` o
   first (`CustomerAccountRecovery#emailForResetToken`, consuming nothing) and revokes; the second
   revoke closes the old password's window. Encode above the first revoke, or bcrypt widens the gap.
 - **The money-path alert check shares the sweeps' single-instance posture.** `MoneyPathAlertCheck`
-  is lockless `@Scheduled`: each extra instance fires the outbox-backlog alert again. It takes
-  ShedLock with the sweeps at scale-out — `docs/deploy/production-hardening.md`'s preconditions name
-  the lockless sweeps (`ScheduledWorkArchitectureTest` holds the current list), so it joins that
-  list then.
+  is lockless `@Scheduled`: each extra instance fires the outbox-backlog alert again. It is on
+  `ScheduledWorkArchitectureTest`'s job list, so `docs/deploy/production-hardening.md`'s scale-out
+  precondition (ShedLock on every job on that list) covers it.
 - **The bootstrap credential is stamped by an edge runner, and only that one.**
   `OperatorCredentialInitializer` (full context only; a `@WebMvcTest` slice does not scan it)
   touches only the bootstrap admin; every other operator self-registers (`OperatorRegistration`,

@@ -258,8 +258,9 @@ model in `docs/architecture/domain-model.md`.
   frees every day (a stay outcome keeps them). The remodel move re-seats every day.
 - **Stay** — a booking of several consecutive days on one set, made once: one code, one payment for
   the per-day price × the days, one confirmation naming the days, one cancellation. Offered at
-  Instant venues and, as one request, at Request-to-Book venues; at most `StaySpan.MAX_DAYS`. Its
-  claim is all or nothing: a day that loses gives back the days already won.
+  Instant venues and, as one request, at Request-to-Book venues; at most a fixed technical ceiling
+  (62 days today; `RESPONSIBILITIES.md` §`venue`). Its claim is all or nothing: a day that loses
+  gives back the days already won.
 - **Partly free** — a set free on some days of a stay but not all; the map shows how many, and a
   tap names which. Never bookable for the stay as picked.
 - **Longest free run** — the most consecutive days of a stay one set is free for; offered as a
@@ -366,8 +367,8 @@ model in `docs/architecture/domain-model.md`.
   one venue. Only the platform admin changes one (a venue sees the fee only as quoted, on the
   remodel preview); every change is recorded, with its grounds when the admin gives any, and a
   change is **forward-only**: it governs what is decided from then on and never rewrites what is
-  already recorded. The admitted keys are the `platform_setting_key_check` constraint (V55); so far
-  it admits the venue-change **fee** alone.
+  already recorded. So far the only admitted setting is the venue-change **fee** (the schema's key
+  check is the list).
 - **Payout batch** — a period's worth of ledger entries settled together, paid to
   the venue manually via BKT.
 - **Refund** — money returned to a tourist, by reason: policy, weather, venue change (a remodel

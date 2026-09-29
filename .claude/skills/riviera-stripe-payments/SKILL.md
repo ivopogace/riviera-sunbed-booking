@@ -39,16 +39,16 @@ would re-decide the gateway; this model stays authoritative until that work star
   immediate-capture PaymentIntent (`setAutomaticPaymentMethods(enabled=true)`); webhook →
   `CONFIRMED`.
 - **Request-to-Book:** no charge, no PaymentIntent and no `set_availability` row at request time
-  (ADR-0025: a pending request is not a hold); the row is `PENDING_REQUEST` and decline, expiry or
-  guest withdraw release nothing. On accept, `RequestClaimService` claims every day of the span all
-  or nothing through the same port as Instant Book (`SpanClaim`, #2) — a day taken meanwhile
+  (ADR-0025: a pending request is not a hold); the booking is `PENDING_REQUEST` and decline, expiry
+  or guest withdraw release nothing. On accept, `RequestClaimService` claims every day of the span
+  all or nothing through the same port as Instant Book (`SpanClaim`, #2) — a day taken meanwhile
   declines the request itself — then `AWAITING_PAYMENT` and a fresh PaymentIntent; identical to
   Instant Book from there.
-- Windows: accept deadline = `booking.request.expiry-window`, capped at D's sales close; pay
-  window = `booking.request.pay-window` from `accepted_at`, capped at the end of the service day
-  (#4, `RESPONSIBILITIES.md` §`booking`). `ExpireRequestsService` +
-  `RequestSweepScheduler` run lockless (guarded `UPDATE … RETURNING`); ShedLock only when
-  scaling out.
+- Windows: accept deadline = `booking.request.expiry-window`, capped at D's sales close (D = the
+  stay's first day); pay window = `booking.request.pay-window` from `accepted_at`, capped at the end
+  of the service day (#4, `RESPONSIBILITIES.md` §`booking`). `ExpireRequestsService` +
+  `RequestSweepScheduler` run lockless (guarded `UPDATE … RETURNING`); ShedLock only when scaling
+  out.
 - Never model this as auth-and-capture; a doc implying manual capture/void is stale.
 
 ## Refunds and payout

@@ -49,10 +49,12 @@ not in the locked stack.
    called. Legal basis: legitimate interest in abuse prevention, Art. 6(1)(f) GDPR; no consent
    needed because nothing leaves the origin and no cookie is set. The draft privacy policy names
    the measure.
-2. **Surfaces:** customer register, operator register, forgot-password, booking create and the stay
-   reserve (`POST /api/stays`, epic #1096) — for **every** caller of booking create, guest or signed
-   in, so the verifier has no auth-state branch and a scripted account cannot bypass it. Login keeps
-   the D-8 per-identity throttle and gets no challenge in this epic.
+2. **Surfaces:** customer register, operator register, forgot-password, and booking create —
+   for **every** caller of booking create, guest or signed in, so the verifier has no auth-state
+   branch and a scripted account cannot bypass it. Login keeps the D-8 per-identity throttle and
+   gets no challenge in this epic. *Amended 2026-09-29 (epic #1096):* the stay reserve
+   (`POST /api/stays`) joins the fence, for every caller; `ChallengeVerificationFilter` holds the
+   list.
 3. **Placement:** the challenge endpoint, the verifier and the registry are root-package edge
    concerns like `RateLimitFilter` (RV-BE-11). No Modulith module knows the challenge exists.
    *Amended by ADR-0017 (2026-09-03):* the challenge **fence** — verification filter, fenced route

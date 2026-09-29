@@ -276,8 +276,8 @@ the venue-change fee.
 
 Each release site today frees exactly one date, taken from the single `booking_date` its `RETURNING`
 clause yields. Each site in `booking/` that calls `AvailabilityClaim.release` must release the whole
-span: the span-wide helpers `SpanClaim#releaseEveryDay` (a lost claim gives back what it won the
-same way), `ClaimReleaseService` (every unpaid-booking cancel) and
+span: `SpanClaim#releaseEveryDay` (a lost claim gives back what it won the same way),
+`ClaimReleaseService` (the payment-canceled webhook and the abandoned-payment sweep) and
 `RemodelClaimsService#releaseSpan` (the remodel legs) walk it, and the guest cancel and the weather
 refund loop `ServiceDays.between` themselves. (Since ADR-0025 a pending request holds nothing, so
 the three request-termination legs and the remodel's decline release nothing; the accept's revert
@@ -412,11 +412,11 @@ already has.
 Three facts decide it. Forced-colors mode drops non-`url()` `background-image` and author background
 colours, but keeps border style. A split fill or a per-day strip would vanish under high contrast.
 The dotted border and the badge's text survive, as `taken`'s dash does. Next, the count is content
-that identifies the control at AA, so the shipped spec measures two ratios per theme — the 2px
-dotted border at 3:1 (`docs/design/non-text-contrast.md` rule 2) and the badge ink at 4.5:1 on its
-own fill — where a split fill would have needed a third, un-measurable one. Last, the tile needs
-only a count per set, which D11's verdict already computes. A per-day strip would ship a per-set ×
-per-day grid to the client, and at D10's unbounded lengths its cells shrink below a pixel.
+that identifies the control at AA, so the shipped spec measures two ratios per map ink family
+(daylight, night; `venue-map.contrast.spec.ts`) — the 2px dotted border at 3:1 (WCAG 1.4.11) and
+the badge ink at 4.5:1 on its own fill. Last, the tile needs only a count per set, which D11's
+verdict already computes. A per-day strip would ship a per-set × per-day grid to the client, and at
+D10's unbounded lengths its cells shrink below a pixel.
 
 The badge is `aria-hidden` inside the existing tile button, so it adds no touch target. Dotted
 (partly free) and dashed (taken) sit close at hairline widths. The badge and the fill carry the
