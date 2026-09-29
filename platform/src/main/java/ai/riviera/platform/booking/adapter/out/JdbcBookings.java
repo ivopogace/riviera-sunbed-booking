@@ -984,11 +984,10 @@ class JdbcBookings implements Bookings {
 	}
 
 	/**
-	 * Weather refund candidates: every booking that happened ({@code stormDayRefundable}) covering the
-	 * date, served by {@code booking_venue_id_idx}, with the date's own service-day stamps so the caller
-	 * can tell an attended day from one still owed, and a stretch from a lone booking.
+	 * A day refund's candidate row: every booking that happened ({@code stormDayRefundable}) covering the date,
+	 * served by {@code booking_venue_id_idx}, with the date's own service-day stamps so the caller can tell an
+	 * attended day from one still owed, and a stretch from a lone booking.
 	 */
-	/** The day-refund candidate row: the booking's money and span, its set and stay, and the date's own stamps. */
 	private static final String REFUNDABLE_SELECT_SQL = """
 			SELECT b.id, b.amount_minor, b.amount_currency, b.booking_date, b.last_date, b.set_id, b.stay_id,
 			       d.attended_at IS NOT NULL AS attended, d.refunded_at IS NOT NULL AS refunded
@@ -1064,6 +1063,18 @@ class JdbcBookings implements Bookings {
 						rs.getString(COL_AMOUNT_CURRENCY),
 						Optional.ofNullable(rs.getObject(COL_STAY_ID, Long.class)).map(StayId::new).orElse(null)))
 				.optional();
+	}
+
+	@Override
+	public List<LocalDate> findReleasedDays(long bookingId) {
+		return jdbc.sql("""
+				SELECT service_date FROM booking_day
+				WHERE booking_id = :id AND released_at IS NOT NULL
+				ORDER BY service_date
+				""")
+				.param("id", bookingId)
+				.query(LocalDate.class)
+				.list();
 	}
 
 	@Override

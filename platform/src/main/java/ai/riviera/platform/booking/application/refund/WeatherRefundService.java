@@ -111,7 +111,8 @@ class WeatherRefundService implements RefundForWeather {
 		Optional<CancelledBooking> transitioned = bookings.cancelByVenue(candidate.bookingId(), now, refundMinor,
 				candidate.amountMinor(), RefundReason.WEATHER);
 		transitioned.ifPresent(cancelled -> {
-			for (LocalDate day : ServiceDays.between(cancelled.bookingDate(), cancelled.lastDate())) {
+			for (LocalDate day : ServiceDays.held(cancelled.bookingDate(), cancelled.lastDate(),
+					bookings.findReleasedDays(cancelled.id()))) {
 				availability.release(cancelled.setId(), day);
 			}
 			events.publishEvent(new BookingCancelled(new BookingId(cancelled.id()), cancelled.venueId(),

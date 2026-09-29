@@ -82,8 +82,9 @@ class CancelBookingService implements CancelBooking {
 		}
 		CancelledBooking cancelled = transitioned.get();
 
-		// Free every day of the span (invariant #2) — synchronous, the existing booking -> availability direction.
-		for (var day : ServiceDays.between(cancelled.bookingDate(), cancelled.lastDate())) {
+		// Free every day the booking still holds (#2; a venue-released day is not its to free, ADR-0027).
+		for (var day : ServiceDays.held(cancelled.bookingDate(), cancelled.lastDate(),
+				bookings.findReleasedDays(cancelled.id()))) {
 			availability.release(cancelled.setId(), day);
 		}
 
@@ -132,7 +133,8 @@ class CancelBookingService implements CancelBooking {
 						"stretch " + stretch.id() + " of stay " + stay.id().value() + " changed under its row lock");
 			}
 			CancelledBooking cancelled = transitioned.get();
-			for (var day : ServiceDays.between(cancelled.bookingDate(), cancelled.lastDate())) {
+			for (var day : ServiceDays.held(cancelled.bookingDate(), cancelled.lastDate(),
+					bookings.findReleasedDays(cancelled.id()))) {
 				availability.release(cancelled.setId(), day);
 			}
 			events.publishEvent(new BookingCancelled(new BookingId(cancelled.id()), cancelled.venueId(),

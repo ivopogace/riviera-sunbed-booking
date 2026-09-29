@@ -301,16 +301,19 @@ any is released on the old, never a swap of my own — so a racing reserve wins 
   outcome (ids, never codes — #7), never refunded; a lone one-day booking is cancelled and refunded in
   full as before; any other row (a stay, or any stretch of one, one-day stretches included) has the day's
   own rate (`DayShare`) stamped on its `booking_day` and `BookingDayRefunded` published, nothing released.
-  A refunded day is neither attended nor missed: check-in answers `DayRefunded`, the sweep, the outcome
-  and takings skip it; a later cancellation is quoted over `BookingRecord#remainingMinor` (#10).
-  `BookingDayRefundListener` refunds it via `RefundPort#refundDay`, pinned in `RegistryRefundOutbox`.
+  A refunded day is neither attended nor missed: check-in answers `DayRefunded` (`DayReleased` once the
+  venue freed it), the sweep, the outcome and takings skip it; a later cancellation is quoted over
+  `BookingRecord#remainingMinor` (#10). `BookingDayRefundListener` refunds it (`RegistryRefundOutbox`).
 - **The venue day refund refunds one guest's one day and releases it (ADR-0027).** `RefundVenueDay` asserts
   ownership first (#13), resolves the booking by code within the venue (a stay's code names the stretch
   covering the date; a foreign code is `NotFound`) and takes the weather refund's leg with reason `VENUE`: a
-  stay's day stamped with `refund_reason`, `released_at` and the actor (no foreign key), its claim freed through
-  `availability::api` unless the day is past (before today in `Europe/Tirane`, the sweep's past); a lone one-day
-  booking cancelled whole under `BookingTransition.VENUE_REFUND`. `BookingDayRefunded` carries the reason and
-  the released fact; the daily view and check-in (`DayReleased`) branch on the stamp, never the reason.
+  stay's day stamped with `refund_reason`, `released_at` and the actor (no foreign key), its claim freed
+  unless the day is past (before today in `Europe/Tirane`, the sweep's past); a lone one-day booking
+  cancelled whole under `BookingTransition.VENUE_REFUND`. `BookingDayRefunded` carries the reason and the
+  released fact; the daily view and check-in (`DayReleased`) branch on the stamp, never the reason.
+- **A released row is another guest's or nobody's (#2):** every leg that frees a live booking's span (the
+  guest cancel, the weather cancel, the remodel refund and move) walks `ServiceDays.held` — the span less
+  `Bookings#findReleasedDays` — so a resold day survives the first guest's cancellation (`VenueDayRefundServiceIT`).
 - **The retention probe (`JdbcGuestBookingHistory`) is bounded too** (§`customer`): bounding only
   `customer`'s read would let the retention sweep (sole caller) wedge on a lock stalling my sweeps.
 - **The lifecycle is stated once, in `domain/BookingTransition`, and enforced by `JdbcBookings`'

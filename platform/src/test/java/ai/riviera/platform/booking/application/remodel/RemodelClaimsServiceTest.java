@@ -484,6 +484,33 @@ class RemodelClaimsServiceTest {
 				List.of(), "", List.of()));
 	}
 
+	/** ADR-0027 (#2): a move neither claims nor frees a day the venue released — that row is another guest's or nobody's. */
+	@Test
+	void commitMovesAStayAroundTheDayTheVenueReleased() {
+		LocalDate last = IN_TEN_DAYS.plusDays(2);
+		LocalDate released = IN_TEN_DAYS.plusDays(1);
+		when(bookings.findLiveOnSets(Set.of(A1.setId()))).thenReturn(List.of(
+				new LiveClaim(209, A1.setId(), IN_TEN_DAYS, last, BookingStatus.CONFIRMED, 13500, "EUR", 4500)));
+		when(bookings.findReleasedDays(209)).thenReturn(List.of(released));
+		when(facts.activeSetsOf(VENUE)).thenReturn(List.of(A1, A2));
+		when(facts.freeOnlineSetsOn(eq(VENUE), any())).thenReturn(List.of(A2));
+		when(availability.claim(any(), any())).thenReturn(ClaimOutcome.CLAIMED);
+		when(bookings.moveToSet(any(Long.class), any(), any(), any())).thenReturn(true);
+		when(receipts.store(any())).thenReturn(RECEIPT);
+		RemodelClaim stay = new RemodelClaim(new BookingId(209), ref(A1), IN_TEN_DAYS, last, 13500, "EUR",
+				new RemodelOutcome.Move(ref(A2), 0, 1));
+
+		service.commit(OWNER, VENUE, List.of(A1.setId()), previewOf(stay), RefundConfirmation.NONE);
+
+		for (LocalDate day : List.of(IN_TEN_DAYS, last)) {
+			verify(availability).claim(A2.setId(), day);
+			verify(availability).release(A1.setId(), day);
+		}
+		verify(availability, never()).claim(A2.setId(), released);
+		verify(availability, never()).release(A1.setId(), released);
+		verify(bookings).moveToSet(209, A1.setId(), A2.setId(), CLOCK.instant());
+	}
+
 	@Test
 	void commitMovesAStayEveryDayAndPublishesItsLastDay() {
 		LocalDate last = IN_TEN_DAYS.plusDays(2);

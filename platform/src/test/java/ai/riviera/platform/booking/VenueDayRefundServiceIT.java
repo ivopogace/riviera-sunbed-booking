@@ -16,6 +16,8 @@ import ai.riviera.platform.EnabledIfDockerAvailable;
 import ai.riviera.platform.TestcontainersConfiguration;
 import ai.riviera.platform.availability.api.AvailabilityClaim;
 import ai.riviera.platform.availability.vocabulary.ClaimOutcome;
+import ai.riviera.platform.booking.application.cancel.CancelBooking;
+import ai.riviera.platform.booking.application.cancel.CancelOutcome;
 import ai.riviera.platform.booking.application.refund.RefundForWeather;
 import ai.riviera.platform.booking.application.refund.RefundVenueDay;
 import ai.riviera.platform.booking.application.refund.VenueDayRefundOutcome;
@@ -54,6 +56,9 @@ class VenueDayRefundServiceIT {
 
 	@Autowired
 	RefundForWeather refundForWeather;
+
+	@Autowired
+	CancelBooking cancelBooking;
 
 	@Autowired
 	AvailabilityClaim availability;
@@ -278,6 +283,26 @@ class VenueDayRefundServiceIT {
 		assertInstanceOf(VenueDayRefundOutcome.NotFound.class,
 				refundVenueDay.refundDay(bootstrap(), new VenueId(venueId), "VDSTITCH01-2", first.plusDays(3)),
 				"a stretch's row code resolves nothing (ADR-0024)");
+	}
+
+	/** #2 (ADR-0027): a released day resold to another guest survives the first guest's later cancellation of the stay. */
+	@Test
+	void aLaterCancellationOfTheStayNeverFreesTheResoldDay() {
+		LocalDate first = today().plusDays(180);
+		LocalDate released = first.plusDays(1);
+		long venueId = venueWithOnlineSets();
+		Seeded stay = confirmedStay(venueId, onlineSets(venueId, 1).getFirst(), first, 3, "VDRESOLD01", 9000L);
+		assertInstanceOf(VenueDayRefundOutcome.DayRefunded.class,
+				refundVenueDay.refundDay(bootstrap(), new VenueId(venueId), "VDRESOLD01", released));
+		assertEquals(ClaimOutcome.CLAIMED, availability.claim(new SetId(stay.setId()), released), "another guest takes the day");
+
+		CancelOutcome outcome = cancelBooking.cancel("VDRESOLD01");
+
+		assertInstanceOf(CancelOutcome.Cancelled.class, outcome);
+		assertEquals("CANCELLED", status(stay.bookingId()));
+		assertEquals(1, availabilityRows(stay.setId(), released), "the second guest's claim stands (invariant #2)");
+		assertEquals(0, availabilityRows(stay.setId(), first), "the cancelled stay's own days are freed");
+		assertEquals(0, availabilityRows(stay.setId(), first.plusDays(2)));
 	}
 
 	/** AC-5 at the service: a code from another venue at an owned venue reads as absent (#13, #7). */

@@ -93,7 +93,8 @@ class VenueDayRefundService implements RefundVenueDay {
 		Optional<CancelledBooking> transitioned = bookings.cancelByVenue(candidate.bookingId(), now, refundMinor,
 				candidate.amountMinor(), RefundReason.VENUE);
 		return transitioned.map(cancelled -> {
-			for (LocalDate served : ServiceDays.between(cancelled.bookingDate(), cancelled.lastDate())) {
+			for (LocalDate served : ServiceDays.held(cancelled.bookingDate(), cancelled.lastDate(),
+					bookings.findReleasedDays(cancelled.id()))) {
 				availability.release(cancelled.setId(), served);
 			}
 			events.publishEvent(new BookingCancelled(new BookingId(cancelled.id()), cancelled.venueId(),

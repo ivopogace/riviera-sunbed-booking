@@ -266,6 +266,12 @@ public interface Bookings {
 	Optional<ai.riviera.platform.booking.application.refund.DayRefundedBooking> refundDay(long bookingId,
 			LocalDate day, long refundMinor, Instant at, ai.riviera.platform.booking.application.refund.DayRefundStamp stamp);
 
+	/**
+	 * The booking's days whose claim the venue released (ADR-0027), in day order; empty when none. A leg that
+	 * frees a live booking's span walks {@code ServiceDays.held} over these: a released row is not its to free (#2).
+	 */
+	List<LocalDate> findReleasedDays(long bookingId);
+
 	/** The booking's refunded days with their reason and released mark, in day order; empty when none. */
 	List<ai.riviera.platform.booking.application.view.RefundedDay> findRefundedDays(long bookingId);
 
