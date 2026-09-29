@@ -2,6 +2,7 @@ package ai.riviera.platform.booking.application.refund;
 
 import java.time.LocalDate;
 
+import ai.riviera.platform.booking.vocabulary.BookingId;
 import ai.riviera.platform.operator.vocabulary.OperatorId;
 import ai.riviera.platform.venue.vocabulary.VenueId;
 
@@ -10,7 +11,7 @@ import ai.riviera.platform.venue.vocabulary.VenueId;
  * ({@code DayShare}, invariant #10: nothing is typed), with the day released unless it is past; a lone
  * one-day booking is cancelled whole with reason {@code VENUE}. The operator acts under the venue they
  * own (#13) on the booking behind {@code code} at that venue — a stay's code names the stretch covering
- * {@code day}. Internal to {@code booking}, not cross-module {@code api/}.
+ * {@code day}; the admin acts on the booking id. Internal to {@code booking}, not cross-module {@code api/}.
  */
 public interface RefundVenueDay {
 
@@ -20,4 +21,11 @@ public interface RefundVenueDay {
 	 * booking and day: a replay is {@link VenueDayRefundOutcome.DayAlreadyRefunded}.
 	 */
 	VenueDayRefundOutcome refundDay(OperatorId actor, VenueId venueId, String code, LocalDate day);
+
+	/**
+	 * The platform admin's entry (ADR-0027 decision 1): {@code day} of the booking behind {@code bookingId}, at
+	 * whichever venue the row names — no ownership is asserted, the edge's ADMIN gate and audit being the whole
+	 * authorization. Same legs, refusals and idempotency as {@link #refundDay}; {@code admin} is the recorded actor.
+	 */
+	VenueDayRefundOutcome refundDayAsAdmin(OperatorId admin, BookingId bookingId, LocalDate day);
 }

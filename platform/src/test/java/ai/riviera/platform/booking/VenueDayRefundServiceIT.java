@@ -306,6 +306,39 @@ class VenueDayRefundServiceIT {
 		assertEquals(0, availabilityRows(stay.setId(), first.plusDays(2)));
 	}
 
+	/** #1276 AC-1: the admin refunds a stay's day by booking id at a venue the bootstrap admin does not own; the stamps are slice 1's. */
+	@Test
+	void anAdminRefundsAStaysDayAtAVenueTheyDoNotOwn() {
+		LocalDate first = today().plusDays(200);
+		LocalDate dayTwo = first.plusDays(1);
+		long other = jdbc.sql("""
+				INSERT INTO venue (name, beach, booking_mode, commission_bps, payout_currency)
+				VALUES ('Unowned Admin Club', 'KSAMIL', 'INSTANT', 1500, 'EUR') RETURNING id
+				""").query(Long.class).single();
+		long set = jdbc.sql("""
+				INSERT INTO set_position (venue_id, row_label, position_no, tier, pool, price_minor, price_currency, grid_x, grid_y)
+				VALUES (:venue, 'A', 1, 'STANDARD', 'ONLINE', 4500, 'EUR', 1, 1) RETURNING id
+				""").param("venue", other).query(Long.class).single();
+		Seeded stay = confirmedStay(other, set, first, 4, "VDADMIN001", 12000L);
+
+		VenueDayRefundOutcome outcome = refundVenueDay.refundDayAsAdmin(bootstrap(), new BookingId(stay.bookingId()), dayTwo);
+
+		assertEquals(new VenueDayRefundOutcome.DayRefunded(3000L, "EUR", true), outcome);
+		assertEquals("CONFIRMED", status(stay.bookingId()), "the stay continues");
+		DayStamp stamp = day(stay.bookingId(), dayTwo);
+		assertEquals("VENUE", stamp.reason());
+		assertEquals(true, stamp.released());
+		assertEquals(bootstrap().value(), stamp.actor(), "the admin is the recorded actor");
+		assertEquals(0, availabilityRows(stay.setId(), dayTwo), "the claim is freed (#2)");
+		assertEquals(RefundReason.VENUE, events.stream(BookingDayRefunded.class)
+				.filter(e -> e.bookingId().value() == stay.bookingId()).findFirst().orElseThrow().reason());
+		assertInstanceOf(VenueDayRefundOutcome.DayAlreadyRefunded.class,
+				refundVenueDay.refundDayAsAdmin(bootstrap(), new BookingId(stay.bookingId()), dayTwo), "a replay");
+		assertInstanceOf(VenueDayRefundOutcome.NotFound.class,
+				refundVenueDay.refundDayAsAdmin(bootstrap(), new BookingId(stay.bookingId()), first.plusDays(9)),
+				"a date the span does not cover");
+	}
+
 	/** AC-5 at the service: a code from another venue at an owned venue reads as absent (#13, #7). */
 	@Test
 	void aForeignCodeAtAnOwnedVenueIsNotFound() {

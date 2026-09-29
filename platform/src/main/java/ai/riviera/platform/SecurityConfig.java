@@ -183,6 +183,13 @@ class SecurityConfig {
 	private static final String ADMIN_MAIL_DELIVERY_LOOKUP_PATH = "/api/admin/mail-deliveries/lookup";
 	private static final String ADMIN_MAIL_DELIVERY_RESEND_PATH = "/api/admin/mail-deliveries/*/resend";
 	/**
+	 * The admin venue day refund (ADR-0027 decision 1): the guest lookup, a {@code POST} for the same reason as
+	 * the mail-delivery one, and the refund on the booking id with the date in the path, so the audit row names
+	 * the day and never a code (#7). Wildcards: booking id, ISO date.
+	 */
+	private static final String ADMIN_BOOKING_LOOKUP_PATH = "/api/admin/bookings/lookup";
+	private static final String ADMIN_BOOKING_DAY_REFUND_PATH = "/api/admin/bookings/*/days/*/refund";
+	/**
 	 * Admin venue-photo takedown on one venue's data, relying on the invariant-#13 exemption: the
 	 * venue-scoped DELETE answers a non-owner {@code 403 NOT_VENUE_OWNER}. Wildcards: venue id, slot.
 	 */
@@ -346,6 +353,8 @@ class SecurityConfig {
 						.requestMatchers(HttpMethod.POST, ADMIN_REFUND_OUTBOX_RESUBMIT_PATH).hasRole(ADMIN_ROLE)
 						.requestMatchers(HttpMethod.POST, ADMIN_MAIL_DELIVERY_LOOKUP_PATH).hasRole(ADMIN_ROLE)
 						.requestMatchers(HttpMethod.POST, ADMIN_MAIL_DELIVERY_RESEND_PATH).hasRole(ADMIN_ROLE)
+						.requestMatchers(HttpMethod.POST, ADMIN_BOOKING_LOOKUP_PATH).hasRole(ADMIN_ROLE)
+						.requestMatchers(HttpMethod.POST, ADMIN_BOOKING_DAY_REFUND_PATH).hasRole(ADMIN_ROLE)
 						.requestMatchers(HttpMethod.GET, ADMIN_VENUE_PHOTOS_PATH).hasRole(ADMIN_ROLE)
 						.requestMatchers(HttpMethod.DELETE, ADMIN_VENUE_PHOTO_PATH).hasRole(ADMIN_ROLE)
 						.requestMatchers(HttpMethod.GET, ADMIN_VENUE_COMMISSIONS_PATH).hasRole(ADMIN_ROLE)

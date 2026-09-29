@@ -85,6 +85,45 @@ class VenueDayRefundServiceTest {
 		verifyNoInteractions(bookings, availability, events);
 	}
 
+	/** ADR-0027 decision 1: the admin path asserts no ownership; the booking id names the row, the admin is the actor. */
+	@Test
+	void anAdminRefundsADayByBookingIdWithoutOwnership() {
+		OperatorId admin = new OperatorId(99L);
+		when(bookings.findRefundableById(42L, TODAY)).thenReturn(Optional.of(stay(false, false)));
+		when(bookings.refundDay(42L, TODAY, 5000L, NOW.instant(), DayRefundStamp.venue(admin, true)))
+				.thenReturn(Optional.of(new DayRefundedBooking(42L, VENUE, SET, "EUR", new StayId(9L))));
+
+		VenueDayRefundOutcome outcome = service.refundDayAsAdmin(admin, new BookingId(42L), TODAY);
+
+		assertEquals(new VenueDayRefundOutcome.DayRefunded(5000L, "EUR", true), outcome);
+		verifyNoInteractions(ownership);
+		verify(availability).release(SET, TODAY);
+		verify(events).publishEvent(new BookingDayRefunded(new BookingId(42L), VENUE, SET, TODAY, 5000L, "EUR",
+				new StayId(9L), RefundReason.VENUE, true));
+	}
+
+	@Test
+	void anAdminsLostRaceIsClassifiedOffTheCommittedDayById() {
+		when(bookings.findRefundableById(42L, TODAY))
+				.thenReturn(Optional.of(stay(false, false)), Optional.of(stay(true, false)));
+		when(bookings.refundDay(anyLong(), any(), anyLong(), any(), any())).thenReturn(Optional.empty());
+
+		assertInstanceOf(VenueDayRefundOutcome.DayAttended.class,
+				service.refundDayAsAdmin(ACTOR, new BookingId(42L), TODAY));
+
+		verifyNoInteractions(availability, events, ownership);
+	}
+
+	@Test
+	void anAdminsUnknownOrDeadBookingIsNotFound() {
+		when(bookings.findRefundableById(7L, TODAY)).thenReturn(Optional.empty());
+
+		assertInstanceOf(VenueDayRefundOutcome.NotFound.class, service.refundDayAsAdmin(ACTOR, new BookingId(7L), TODAY));
+
+		verify(bookings, never()).refundDay(anyLong(), any(), anyLong(), any(), any());
+		verifyNoInteractions(availability, events, ownership);
+	}
+
 	@Test
 	void anUnknownOrForeignCodeIsNotFound() {
 		when(bookings.findRefundableByCode(CODE, VENUE, TODAY)).thenReturn(Optional.empty());

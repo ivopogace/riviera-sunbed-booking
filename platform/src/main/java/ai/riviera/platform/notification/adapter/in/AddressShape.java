@@ -1,7 +1,7 @@
 package ai.riviera.platform.notification.adapter.in;
 
 /**
- * Whether a request body's value could be an email address at all — the shape check both
+ * Whether a request body's value could be an email address at all — the shape check this module's
  * address-taking admin surfaces share (suppression reinstatement, mail-delivery lookup).
  *
  * <p>Both halves around the {@code @} must be non-empty: a shapeless value matches nothing

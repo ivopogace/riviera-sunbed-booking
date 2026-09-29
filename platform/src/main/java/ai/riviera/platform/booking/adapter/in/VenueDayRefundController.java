@@ -4,8 +4,6 @@ import java.net.URI;
 import java.time.LocalDate;
 
 import org.springframework.format.annotation.DateTimeFormat;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.ProblemDetail;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -15,9 +13,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import ai.riviera.platform.booking.application.refund.RefundVenueDay;
-import ai.riviera.platform.booking.application.refund.VenueDayRefundOutcome;
 import ai.riviera.platform.operator.vocabulary.OperatorId;
-import ai.riviera.platform.shared.ApiProblem;
 import ai.riviera.platform.shared.CurrentOperator;
 import ai.riviera.platform.venue.vocabulary.VenueId;
 
@@ -45,23 +41,7 @@ class VenueDayRefundController {
 	ResponseEntity<?> refund(Authentication authentication, @PathVariable long venueId, @PathVariable String code,
 			@RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
 		OperatorId operator = currentOperator.require(authentication);
-		return switch (refundVenueDay.refundDay(operator, new VenueId(venueId), code, date)) {
-			case VenueDayRefundOutcome.DayRefunded(var refundMinor, var currency, var released) ->
-					ResponseEntity.ok(VenueDayRefundView.dayRefunded(date, refundMinor, currency, released));
-			case VenueDayRefundOutcome.BookingCancelled(var refundMinor, var currency) ->
-					ResponseEntity.ok(VenueDayRefundView.bookingCancelled(date, refundMinor, currency));
-			case VenueDayRefundOutcome.DayAttended() -> error(venueId, HttpStatus.CONFLICT, "DAY_ATTENDED",
-					"The guest checked in on " + date + "; an attended day is not refunded.");
-			case VenueDayRefundOutcome.DayAlreadyRefunded() -> error(venueId, HttpStatus.CONFLICT,
-					"DAY_ALREADY_REFUNDED", "The day " + date + " was already refunded.");
-			case VenueDayRefundOutcome.NotFound() -> error(venueId, HttpStatus.NOT_FOUND, "BOOKING_NOT_FOUND",
-					"No such booking covers " + date + " at this venue.");
-		};
-	}
-
-	private static ResponseEntity<ProblemDetail> error(long venueId, HttpStatus status, String code, String detail) {
-		ProblemDetail problem = ApiProblem.of(status, code, detail);
-		problem.setInstance(URI.create("/api/venues/" + venueId + "/bookings"));
-		return ResponseEntity.status(status).body(problem);
+		return VenueDayRefundResponses.of(refundVenueDay.refundDay(operator, new VenueId(venueId), code, date), date,
+				URI.create("/api/venues/" + venueId + "/bookings"));
 	}
 }

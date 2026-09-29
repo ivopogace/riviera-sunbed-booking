@@ -1049,6 +1049,12 @@ class CreateBookingServiceTest {
 		}
 
 		@Override
+		public Optional<ai.riviera.platform.booking.application.refund.RefundableBooking> findRefundableById(
+				long bookingId, java.time.LocalDate date) {
+			return Optional.empty();
+		}
+
+		@Override
 		public List<ai.riviera.platform.booking.application.view.RefundedDay> findRefundedDays(long bookingId) {
 			return List.of();
 		}

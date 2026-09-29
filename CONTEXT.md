@@ -295,7 +295,8 @@ model in `docs/architecture/domain-model.md`.
   where the day is released. A lone one-day booking is cancelled instead under either.
 - **Venue day refund** (ADR-0027) — the venue's own refund of one guest's one day for a reason of its
   own (a pool closed for repair, a broken umbrella, a gesture after a complaint), issued by the venue's
-  operator from the daily view's row (the admin path is not built yet): a **day
+  operator from the daily view's row or by a platform admin from the admin console, audited, after
+  looking the guest up by email: a **day
   refund** whose day is **released**, because the venue has decided the guest will not use it; a past
   day is refunded but not released. The guest is told who refunded what, never why; no grounds reach
   the guest or the books.

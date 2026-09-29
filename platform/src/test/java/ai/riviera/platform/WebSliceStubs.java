@@ -33,6 +33,7 @@ import ai.riviera.platform.audit.vocabulary.AdminAuditEntry;
 import ai.riviera.platform.booking.application.cancel.CancelBooking;
 import ai.riviera.platform.booking.application.cancel.CancelOutcome;
 import ai.riviera.platform.booking.application.refund.RefundForWeather;
+import ai.riviera.platform.booking.application.refund.GuestDayRefundLookup;
 import ai.riviera.platform.booking.application.refund.RefundVenueDay;
 import ai.riviera.platform.booking.application.refund.VenueDayRefundOutcome;
 import ai.riviera.platform.booking.application.refund.RefundOutboxStatus;
@@ -718,7 +719,24 @@ class WebSliceStubs {
 
 	@Bean
 	RefundVenueDay refundVenueDay() {
-		return (_, _, _, _) -> new VenueDayRefundOutcome.NotFound();
+		return new RefundVenueDay() {
+			@Override
+			public VenueDayRefundOutcome refundDay(ai.riviera.platform.operator.vocabulary.OperatorId actor,
+					ai.riviera.platform.venue.vocabulary.VenueId venueId, String code, java.time.LocalDate day) {
+				return new VenueDayRefundOutcome.NotFound();
+			}
+
+			@Override
+			public VenueDayRefundOutcome refundDayAsAdmin(ai.riviera.platform.operator.vocabulary.OperatorId admin,
+					ai.riviera.platform.booking.vocabulary.BookingId bookingId, java.time.LocalDate day) {
+				return new VenueDayRefundOutcome.NotFound();
+			}
+		};
+	}
+
+	@Bean
+	GuestDayRefundLookup guestDayRefundLookup() {
+		return _ -> List.of();
 	}
 
 	@Bean

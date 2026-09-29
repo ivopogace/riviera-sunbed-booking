@@ -3,6 +3,7 @@ import { Component, effect, inject } from '@angular/core';
 import { OperatorAuth } from '../core/operator-auth';
 import { BusyAction } from '../shared/busy-action';
 import { CardGlass } from '../shared/card-glass';
+import { AdminDayRefund } from './admin-day-refund';
 import { AdminRefundOutboxService } from './admin-refund-outbox.service';
 import { OutboxLever } from './admin-outbox-lever';
 
@@ -10,15 +11,15 @@ import { TouchTarget } from '../shared/touch-target';
 
 /**
  * The admin console's Refunds tab: the refunds the Event Publication Registry still owes the
- * cancellation-refund listener (gateway call failed or shed), and the lever that re-drives them,
- * with {@link OutboxLever}'s press semantics. It shows no booking id, code or per-publication
- * detail (invariant #7): the endpoint returns counts, an outcome token and seconds, and the client
- * invents no columns. The {@code AdminConsole} shell self-gates on {@link OperatorAuth} for UX; the
- * backend `/api/admin/**` role gate enforces.
+ * cancellation-refund listener and the lever that re-drives them ({@link OutboxLever}'s press
+ * semantics), then {@link AdminDayRefund}, one guest's day refunded (ADR-0027). The lever shows no
+ * booking id, code or per-publication detail (invariant #7): counts, an outcome token and seconds.
+ * The {@code AdminConsole} shell self-gates on {@link OperatorAuth} for UX; the backend
+ * `/api/admin/**` role gate enforces.
  */
 @Component({
   selector: 'app-admin-refund-outbox',
-  imports: [CardGlass, BusyAction, TouchTarget],
+  imports: [CardGlass, BusyAction, TouchTarget, AdminDayRefund],
   template: `
     @if (lever.loading()) {
       <p class="mt-4 text-[15px] text-riv-ink-soft" data-testid="admin-refunds-loading">Loading…</p>
@@ -79,6 +80,8 @@ import { TouchTarget } from '../shared/touch-target';
         {{ lever.notice() }}
       </output>
     }
+
+    <app-admin-day-refund />
   `,
 })
 export class AdminRefundOutbox {

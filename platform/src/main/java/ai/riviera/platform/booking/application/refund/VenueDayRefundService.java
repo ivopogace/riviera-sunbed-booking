@@ -5,6 +5,7 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneId;
 import java.util.Optional;
+import java.util.function.Supplier;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -27,12 +28,12 @@ import ai.riviera.platform.operator.vocabulary.VenueRef;
 import ai.riviera.platform.venue.vocabulary.VenueId;
 
 /**
- * The venue day refund, owner-asserted first (invariant #13), in one transaction: the weather refund's two
- * legs (ADR-0026) with reason {@code VENUE} and the actor stamped. A stay's day is refunded at its own rate
- * ({@link DayShare}) and its claim released unless the day is past — past is the no-show sweep's past,
- * before today in {@code Europe/Tirane} (#6) — so the set is sellable again (#2); a lone one-day booking is
- * cancelled and refunded in full whatever the cutoff (#10), its day freed. A lost race is classified off
- * the committed day, never retried. The refunds run after commit. Rationale: {@code RESPONSIBILITIES.md} §booking.
+ * The venue day refund in one transaction: the operator's entry owner-asserted first (#13), the admin's keyed
+ * on the booking id with no ownership (ADR-0027 decision 1); both take the weather refund's legs (ADR-0026)
+ * with reason {@code VENUE} and the actor stamped. A stay's day is refunded at its own rate ({@link DayShare})
+ * and released unless past (before today in {@code Europe/Tirane}, the sweep's past, #6), so the set sells
+ * again (#2); a lone one-day booking is cancelled in full whatever the cutoff (#10). A lost race is classified
+ * off the committed day; the refunds run after commit. Rationale: {@code RESPONSIBILITIES.md} §booking.
  */
 @Service
 class VenueDayRefundService implements RefundVenueDay {
@@ -59,22 +60,37 @@ class VenueDayRefundService implements RefundVenueDay {
 	@Transactional
 	public VenueDayRefundOutcome refundDay(OperatorId actor, VenueId venueId, String code, LocalDate day) {
 		ownership.assertOwns(actor, new VenueRef(venueId.value()));
-		Optional<RefundableBooking> found = bookings.findRefundableByCode(code, venueId, day);
+		Supplier<Optional<RefundableBooking>> candidate = () -> bookings.findRefundableByCode(code, venueId, day);
+		return refund(candidate, actor, day, "operator " + actor.value() + " at venue " + venueId.value());
+	}
+
+	@Override
+	@Transactional
+	public VenueDayRefundOutcome refundDayAsAdmin(OperatorId admin, BookingId bookingId, LocalDate day) {
+		Supplier<Optional<RefundableBooking>> candidate = () -> bookings.findRefundableById(bookingId.value(), day);
+		return refund(candidate, admin, day, "admin " + admin.value());
+	}
+
+	/** Both gates' shared body: {@code candidate} is re-read to classify a lost race off the committed day. */
+	private VenueDayRefundOutcome refund(Supplier<Optional<RefundableBooking>> candidate, OperatorId actor,
+			LocalDate day, String actorLabel) {
+		Optional<RefundableBooking> found = candidate.get();
 		if (found.isEmpty()) {
 			return new VenueDayRefundOutcome.NotFound();
 		}
-		RefundableBooking candidate = found.get();
-		Optional<VenueDayRefundOutcome> refused = refusal(candidate);
+		RefundableBooking booking = found.get();
+		Optional<VenueDayRefundOutcome> refused = refusal(booking);
 		if (refused.isPresent()) {
 			return refused.get();
 		}
 		Instant now = clock.instant();
-		Optional<VenueDayRefundOutcome> done = candidate.isLoneOneDay()
-				? cancelWhole(candidate, actor, now)
-				: refundStayDay(candidate, day, actor, now);
-		done.ifPresent(outcome -> log.info("venue day refund by operator {} at venue {} on {}: booking {} → {}",
-				actor.value(), venueId.value(), day, candidate.bookingId(), outcome));
-		return done.orElseGet(() -> lostRace(code, venueId, day));
+		Optional<VenueDayRefundOutcome> done = booking.isLoneOneDay()
+				? cancelWhole(booking, actor, now)
+				: refundStayDay(booking, day, actor, now);
+		done.ifPresent(outcome -> log.info("venue day refund by {} on {}: booking {} → {}", actorLabel, day,
+				booking.bookingId(), outcome));
+		return done.orElseGet(() -> candidate.get().flatMap(VenueDayRefundService::refusal)
+				.orElseGet(VenueDayRefundOutcome.NotFound::new));
 	}
 
 	private static Optional<VenueDayRefundOutcome> refusal(RefundableBooking candidate) {
@@ -120,12 +136,5 @@ class VenueDayRefundService implements RefundVenueDay {
 					released));
 			return new VenueDayRefundOutcome.DayRefunded(refundMinor, refunded.currency(), released);
 		});
-	}
-
-	/** The guarded write moved nothing: the committed day says which refusal a concurrent writer earned us. */
-	private VenueDayRefundOutcome lostRace(String code, VenueId venueId, LocalDate day) {
-		return bookings.findRefundableByCode(code, venueId, day)
-				.flatMap(VenueDayRefundService::refusal)
-				.orElseGet(VenueDayRefundOutcome.NotFound::new);
 	}
 }

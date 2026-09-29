@@ -260,6 +260,12 @@ public interface Bookings {
 	Optional<RefundableBooking> findRefundableByCode(String code, VenueId venueId, LocalDate date);
 
 	/**
+	 * {@link #findRefundableByCode}'s row for the booking behind {@code bookingId} — the admin's venue day refund
+	 * (ADR-0027 decision 1), scoped to no venue: the row names its own. A dead lifecycle or an uncovered date reads {@code empty}.
+	 */
+	Optional<RefundableBooking> findRefundableById(long bookingId, LocalDate date);
+
+	/**
 	 * Guarded stamp of a day refund (ADR-0026, ADR-0027): {@code refunded_at}, {@code refundMinor} and the
 	 * {@code stamp}'s reason, actor and released mark, only on an unattended, not yet refunded day of a booking
 	 * that happened; the caller frees the claim when the stamp says released. Present iff this statement stamped it — publish exactly once.

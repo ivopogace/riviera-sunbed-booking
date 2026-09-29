@@ -311,6 +311,14 @@ any is released on the old, never a swap of my own — so a racing reserve wins 
   unless the day is past (before today in `Europe/Tirane`, the sweep's past); a lone one-day booking
   cancelled whole under `BookingTransition.VENUE_REFUND`. `BookingDayRefunded` carries the reason and the
   released fact; the daily view and check-in (`DayReleased`) branch on the stamp, never the reason.
+- **The admin's venue day refund is the same use case behind a second gate (ADR-0027 decision 1).**
+  `RefundVenueDay#refundDayAsAdmin` takes the booking **id** and asserts no ownership — the edge's ADMIN
+  role gate and audit are the whole authorization — and records the admin as the actor; the venue is the
+  row's. `GuestDayRefundLookup` is how the admin finds the id: the guest's bookings by canonical email
+  (`customer::api`, never stored here), each with venue name (`venue::api`), span, status and per-day
+  state, never a code (#7); an unknown address and a known one with no bookings answer alike. The two
+  endpoints sit under `/api/admin/bookings` (`AdminDayRefundController`), the date in the path so the audit
+  row names the day (`AdminDayRefundControllerIT`).
 - **A released row is another guest's or nobody's (#2):** every leg that frees a live booking's span (the
   guest cancel, the weather cancel, the remodel refund and move) walks `ServiceDays.held` — the span less
   `Bookings#findReleasedDays` — so a resold day survives the first guest's cancellation (`VenueDayRefundServiceIT`).
@@ -981,6 +989,12 @@ mutating `/api/admin/**` action, §`audit`) stay here; `challenge` and `audit` o
 - **Remodel answers:** `200` with the receipt; `409 STALE_PREVIEW`, `REMODEL_REFUSED` or
   `REFUND_NOT_CONFIRMED`, each with the fresh picture and its token in `preview`, so the operator
   re-decides on what is true now; or the save's own `SETS_IN_USE`, `STALE_WRITE` and shape errors.
+- **The admin venue day refund is authorized and recorded here, not in `booking` (ADR-0027 decision
+  1):** `POST /api/admin/bookings/lookup` (the address in a body, never a URL) and `POST
+  /api/admin/bookings/*/days/*/refund` are ADMIN-gated matchers, discovered by `AdminSurfaceRoleGateTest`,
+  and every call leaves an `AdminAuditFilter` row with the optional `X-Audit-Reason`; the path carries a
+  booking id and a date, never a code (#7). The service asserts no ownership on this path — an admin acts
+  on any venue — so the gate here is the only one.
 - **Riviera map resources (ADR-0022)** — the **riviera map** (not a venue's **beach map**) is drawn
   from resources the root's `MapResourcesConfig` serves anonymously under `/map/**`, owned by no
   module. **No third-party map host, tile CDN, glyph host or geocoder is ever contacted from a
