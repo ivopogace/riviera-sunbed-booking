@@ -119,9 +119,9 @@ Unchanged: the same `BookingDayRefunded`/`BookingCancelled` events, the same ref
 
 ## Execution status
 
-**Stage pointer:** `implement (phase 5)`
+**Stage pointer:** `review`
 
-**Next action:** RESPONSIBILITIES.md § booking + § Platform edge; delete this plan; ready for review.
+**Next action:** delete this plan; ready for review; /code-review + Sonar gate.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -130,6 +130,6 @@ Unchanged: the same `BookingDayRefunded`/`BookingCancelled` events, the same ref
 | 2 — controller + gate | ✅ | 2e526de |
 | 3 — console | ✅ | a55c911 |
 | 4 — e2e | ✅ | (this commit) |
-| 5 — docs | ⏳ | |
+| 5 — docs | ✅ | (this commit) |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
