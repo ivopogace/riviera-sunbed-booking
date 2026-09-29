@@ -2,12 +2,13 @@
 
 - **Status:** Accepted — implemented by the slice for issue #1036 (epic #1027, user stories 33–34).
   Amended 2026-09-10 by the slice for issue #1037; see *Amendment* below, which supersedes points 5
-  and 7.
+  and 7. ADR-0026 (2026-09-28) added the fourth type; see the note closing *Amendment*.
 - **Date:** 2026-09-10
 - **Relates to:** ADR-0002 (collect-only, no Stripe Connect — the fee moves no money at the
   gateway), ADR-0005 (the proportional reversal it rides beside), ADR-0020 (the remodel's
-  orchestration home, which is why the fee reaches the preview by inversion), invariants #5, #9,
-  #11, #12, `RESPONSIBILITIES.md` § `payout`, `CONTEXT.md` § *Money*.
+  orchestration home, which is why the fee reaches the preview by inversion), ADR-0026 (the fourth
+  type, `DAY_REVERSAL`), invariants #5, #9, #11, #12, `RESPONSIBILITIES.md` § `payout`,
+  `CONTEXT.md` § *Money*.
 
 ## Context
 
@@ -154,3 +155,7 @@ second table (`platform_setting`) beside the two ledger ones.
 **What did not change.** The `FEE` entry type, its CHECK exemption, its idempotency guard, which
 refunds earn it, where it is posted from, and the receipt's own snapshot of the quoted amount are all
 exactly as decided above.
+
+**Amendment (2026-09-29, ADR-0026).** The fourth type `DAY_REVERSAL` arrived and deducts exactly as
+point 2 predicted, with no sum touched; the key is now `UNIQUE NULLS NOT DISTINCT (booking_id,
+entry_type, service_date)` (V69), still one `FEE` per booking.

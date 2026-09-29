@@ -91,8 +91,10 @@ curl -s "localhost:8080/api/bookings/$CODE" | jq '.status, .refundedAmount'   # 
 DB checks (psql into the compose Postgres — see `platform/compose.yaml` for creds):
 
 ```sql
-SELECT p.status, b.refunded_minor, b.refund_id
-FROM payment_booking b JOIN payment p ON p.id = b.payment_id WHERE b.booking_ref = <id>;  -- REFUNDED
+SELECT p.status, b.refunded_minor, r.refund_id
+FROM payment_booking b JOIN payment p ON p.id = b.payment_id
+  LEFT JOIN payment_refund r ON r.payment_booking_id = b.id AND r.scope = 'BOOKING'
+WHERE b.booking_ref = <id>;  -- REFUNDED, the share, re_…
 SELECT entry_type, net_minor          FROM payout_ledger_entry WHERE booking_id = <id>;  -- ACCRUAL + REVERSAL
 SELECT status, cancelled_at, refund_minor FROM booking      WHERE code = '<CODE>';      -- CANCELLED
 ```

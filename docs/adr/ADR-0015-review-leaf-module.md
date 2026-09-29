@@ -89,3 +89,6 @@ documented "publishes no event" stance, and the slice still uses an event where 
 
 - #813 — the `ListedReviews` port and the public list endpoint carried by `venue`.
 - #815 — the `ReviewTombstones` write port for erasure.
+- #1200 / #1208 — the question is now "has this stay ended, and when": `completed_at` is the stay's
+  resolution instant (design D2) and a stitched stay is eligible once no stretch is live; the pull
+  shape and the no-event stance are unchanged.

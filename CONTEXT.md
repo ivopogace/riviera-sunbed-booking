@@ -180,21 +180,23 @@ model in `docs/architecture/domain-model.md`.
   is no undo — a move is reversed by another remodel.
 
 - **Venue-caused refund** — what a saved remodel owes a **confirmed** booking it disturbs beyond the
-  refund-notice floor with no **move candidate** free: the booking is cancelled and refunded in
-  full, by reason **venue change**, and the guest is mailed a link to book again — that venue's map
-  for the same day, or the discovery list for it when the venue cannot sell that day. The operator
-  authorises it by typing how many refunds the preview named and why; both go on the **commit
-  receipt**. An unpaid booking in the same position is **released** — mailed the same way, link and
-  all — and a pending request is **declined**, which keeps the mail a decline has always sent and no
-  link. Neither collected anything, so neither returns money and the payout ledger is untouched.
-  Distinct from the **weather refund**, which is the venue operator's answer to a storm, and from
-  the guest's own **free exit**, which is the same reason from the other side.
-- **Moved booking** — a booking a saved remodel re-seated on another set for the same date: its code,
-  price and date are unchanged, the guest is mailed the new spot, and the booking carries when it
-  moved and opens a **free exit**.
+  refund-notice floor with no **move candidate** free: the booking is cancelled and refunded in full
+  over what remains (a day already refunded is not returned twice), by reason **venue change**, and
+  the guest is mailed a link to book again — that venue's map for the same day, or the discovery
+  list for it when the venue cannot sell that day. The operator authorises it by typing how many
+  refunds the preview named and why; both go on the **commit receipt**. An unpaid booking in the
+  same position is **released** — mailed the same way, link and all — and a pending request is
+  **declined**, which keeps the mail a decline has always sent and no link. Neither collected
+  anything, so neither returns money and the payout ledger is untouched. Distinct from the **weather
+  refund**, which is the venue operator's answer to a storm, and from the guest's own **free exit**,
+  which is the same reason from the other side.
+- **Moved booking** — a booking a saved remodel re-seated on another set for the same span: its
+  code, price and dates are unchanged, the guest is mailed the new spot, and the booking carries
+  when it moved and opens a **free exit**.
 - **Free exit** — a moved guest's right to cancel for a **full refund whatever the refund tier would
-  say**, from the move until the earliest of: the service day opening, and the later of 12:00
-  (`Europe/Tirane`) the day before and 24 hours after the move. It lifts the refund tier only — it
+  say**, from the move until the earliest of: the service day opening (for a stitched stay's later
+  stretch, the stay's first day opening), and the later of 12:00 (`Europe/Tirane`) the day before
+  and 24 hours after the move. It lifts the refund tier only — it
   never reopens a closed **cancellation window** — and a cancellation that takes it is a refund by
   reason **venue change**.
 - **Set** — the bookable unit: **2 loungers + 1 umbrella**, full day, tied to a set
@@ -237,8 +239,9 @@ model in `docs/architecture/domain-model.md`.
   `ANOTHER_GUEST`; an accept whose day cannot be claimed declines the request `SET_UNAVAILABLE`. A
   request also ends when the venue **declines** it (`DECLINED`, reason `VENUE`), nobody answers by
   the response deadline (`EXPIRED`), or the guest **withdraws** it (`WITHDRAWN`); none of these frees
-  anything. The deadline is min(request + `booking.request.expiry-window`, the venue's sales close);
-  after accept the guest has min(accept + `booking.request.pay-window`, the end of the service day)
+  anything. The deadline is min(request + `booking.request.expiry-window`, the venue's sales close
+  on the first day); after accept the guest has min(accept + `booking.request.pay-window`, the end
+  of the first service day)
   to pay before the abandoned sweep cancels — never past the day's end, because once the day is
   over there is nothing left to buy (invariant #4).
 - **Decline reason** — why a pending request ended `DECLINED`: `VENUE` (the venue's own no),
@@ -253,10 +256,11 @@ model in `docs/architecture/domain-model.md`.
   last), inclusive; a one-day booking is a one-day span, and every day of it is its own
   `(set, date)` claim, so a booking that is cancelled, declined, expired, withdrawn or released
   frees every day (a stay outcome keeps them). The remodel move re-seats every day.
-- **Stay** — a booking of several consecutive days on one set, made once: one code, one payment
-  for the per-day price × the days, one confirmation naming the days, one cancellation. Offered
-  at Instant venues; at most 62 days. Its claim is all or nothing: a day that loses gives back the
-  days already won.
+- **Stay** — a booking of several consecutive days on one set, made once: one code, one payment for
+  the per-day price × the days, one confirmation naming the days, one cancellation. Offered at
+  Instant venues and, as one request, at Request-to-Book venues; at most a fixed technical ceiling
+  (62 days today; `RESPONSIBILITIES.md` §`venue`). Its claim is all or nothing: a day that loses
+  gives back the days already won.
 - **Partly free** — a set free on some days of a stay but not all; the map shows how many, and a
   tap names which. Never bookable for the stay as picked.
 - **Longest free run** — the most consecutive days of a stay one set is free for; offered as a
@@ -340,9 +344,10 @@ model in `docs/architecture/domain-model.md`.
   rate new accruals apply while a day already past never re-prices, and the payout ledger it must
   agree with is never rewritten (invariant #9). A venue whose rate has never changed has no
   schedule at all — its live rate is what applied throughout.
-- **Payout ledger** — the per-venue record of what is owed (booking amounts minus
-  commission, minus fees), entry-per-booking, reversed on refund. Direction lives in the entry
-  type: only an accrual adds, every other kind deducts.
+- **Payout ledger** — the per-venue record of what is owed (booking amounts minus commission, minus
+  fees): one accrual per booking, backed out on refund by a reversal (the whole) or a day reversal
+  (one service day at a time). Direction lives in the entry type: only an accrual adds, every other
+  kind deducts.
 - **Accrual** — a payout-ledger entry that adds what the platform owes a venue for a
   confirmed booking (`net = gross − commission`).
 - **Reversal** — a payout-ledger entry that backs out an accrual when a booking is
@@ -362,7 +367,8 @@ model in `docs/architecture/domain-model.md`.
   one venue. Only the platform admin changes one (a venue sees the fee only as quoted, on the
   remodel preview); every change is recorded, with its grounds when the admin gives any, and a
   change is **forward-only**: it governs what is decided from then on and never rewrites what is
-  already recorded. Today there is exactly one — the venue-change **fee**.
+  already recorded. So far the only admitted setting is the venue-change **fee** (the schema's key
+  check is the list).
 - **Payout batch** — a period's worth of ledger entries settled together, paid to
   the venue manually via BKT.
 - **Refund** — money returned to a tourist, by reason: policy, weather, venue change (a remodel
@@ -380,14 +386,16 @@ model in `docs/architecture/domain-model.md`.
   share), or **none** (after the cutoff, the venue offering 0 bps). Always computed
   server-side, and only within the **cancellation window**.
 - **Cancellation window** — how long a confirmed booking may be cancelled at all:
-  from booking until `00:00 Europe/Tirane` on the service date, in three named phases
+  from booking until `00:00 Europe/Tirane` on the first service day (a stitched stay's stretches
+  are all judged on the stay's first day), in the named phases
   (`booking.vocabulary.CancellationWindow`): **FREE** (before the cutoff — the *full*
   refund tier), **LATE** (cutoff passed, service day not open — the *partial*/*none*
   tier), **CLOSED** (the service day has opened — the cancellation is refused outright,
   not refunded at a tier, because the guest can already be consuming the stay). The
   venue's own weather refund is outside the window and stays available for past dates.
 - **Window at birth** — the cancellation-window phase in force at the instant a booking
-  was created. Stamped on `BookingConfirmed`/`BookingPaymentDue` and their mails —
+  was created. Stamped on `BookingConfirmed`/`BookingPaymentDue` and, for a stitched stay,
+  `StayConfirmed`/`StayPaymentDue` (the first stretch's), and their mails —
   immutable once stamped, even if the venue later edits its cutoff. The code-gated view
   and the admin resend re-derive it from the venue's current cutoff on each read
   (bounded, documented drift; the stamped events stay the record of what was first sent).

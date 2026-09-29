@@ -3,10 +3,11 @@
 Status: **accepted design, shipped** (epic #108), including the D-8 revision's proof-of-work
 challenge, shipped under epic #903: the revised password policy with #904, the challenge spine and
 the customer-register fence with #905, the operator-register and forgot-password fences with #906,
-and the booking-create fence with #907 — the four fenced routes ADR-0016 names.
-Decisions below were made at the refine stage (2026-07-02) and approved by the
-maintainer; each is a one-paragraph re-decision if reality disagrees. The per-module contracts these decisions settled are in
-`RESPONSIBILITIES.md` (§`customer`, §`operator`, § *Platform edge*).
+and the booking-create fence with #907 — the fenced routes ADR-0016 names
+(`ChallengeVerificationFilter` holds the list). Decisions below were made at the refine stage
+(2026-07-02) and approved by the maintainer; each is a one-paragraph re-decision if reality
+disagrees. The per-module contracts these decisions settled are in `RESPONSIBILITIES.md`
+(§`customer`, §`operator`, § *Platform edge*).
 
 ## What this adds
 

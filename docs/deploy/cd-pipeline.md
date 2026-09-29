@@ -129,10 +129,10 @@ must include `frontend/`, so:
     [`docs/runbooks/observability.md`](../runbooks/observability.md).
 - **Health Check Path:** `/actuator/health`.
 - **Instances / scaling: keep at exactly ONE.** Do **not** raise the instance count (Render
-  *Scaling*). Two in-memory rate-limit buckets and two lockless scheduler sweeps assume a single
+  *Scaling*). The in-memory rate-limit buckets and the lockless scheduler sweeps assume a single
   runner — a second instance weakens the rate limits (~N× the cap) and races duplicate Stripe
   cancels. Scaling out is gated on the preconditions (ShedLock on every sweep + shared-store
-  rate-limit state) in [production-hardening.md → *Single instance only*](./production-hardening.md#single-instance-only--do-not-scale-out-yet-the-two-lockless-sweeps--rate-limit-buckets)
+  rate-limit state) in [production-hardening.md → *Single instance only*](./production-hardening.md#single-instance-only--do-not-scale-out-yet-the-lockless-sweeps--rate-limit-buckets)
   (improvement-plan D3, issue #99).
 - Copy the service's **Deploy Hook** URL → GitHub secret `RENDER_DEPLOY_HOOK_URL`.
 - Note the service URL (`https://<name>.onrender.com`) → GitHub variable `BACKEND_API_URL`.

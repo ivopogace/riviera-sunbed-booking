@@ -5,10 +5,10 @@
 > `docs/superpowers/specs/2026-06-25-riviera-sunbed-booking-design.md` and the
 > invariants in `/CLAUDE.md` (referenced below as "invariant #N").
 >
-> **Vocabulary (ADR-0018).** The platform is **one bounded context** with thirteen modules, and it
-> has no aggregate-root classes: `domain/` holds policies, calculations and value objects, and the
-> lifecycles live in guarded SQL. The diagrams below say what a thing *is* — a table row, a record,
-> an enum, a rule — rather than labelling it an aggregate.
+> **Vocabulary (ADR-0018).** The platform is **one bounded context** over the modules of
+> `CLAUDE.md`'s table, and it has no aggregate-root classes: `domain/` holds policies, calculations
+> and value objects, and the lifecycles live in guarded SQL. The diagrams below say what a thing
+> *is* — a table row, a record, an enum, a rule — rather than labelling it an aggregate.
 >
 > Both booking modes are built end-to-end: Instant Book (signature-verified webhooks, the
 > event spine through the Modulith Event Publication Registry, the payout ledger, per-venue
@@ -22,14 +22,15 @@
 
 ## 1. Module map
 
-The **nine domain modules** and how they collaborate. Each node is named for the state its module
-owns. **Solid arrows = domain events** (state changes). **Dotted arrows = `api/` port queries**
-(reads). Modules never import each other's internals — only `api/` ports or events (invariant #11).
+The **context modules** of `CLAUDE.md`'s table that own state, and how they collaborate. Each node
+is named for the state its module owns. **Solid arrows = domain events** (state changes). **Dotted
+arrows = `api/` port queries** (reads). Modules never import each other's internals — only `api/`
+ports or events (invariant #11).
 
-The other **four of the thirteen** modules are not drawn because no domain module collaborates
-with them: `shared` (the OPEN kernel of edge types); the closed read model `itinerary` (no table;
-it only reads `venue::api` + `availability::api` for the stay verdict per venue, improvement plan
-B4, and nothing reads it); and the two closed ADR-0017 mechanisms, `challenge` (proof of work, owns
+The **remaining** modules are not drawn because no domain module collaborates with them: `shared`
+(the OPEN kernel of edge types); the closed read model `itinerary` (no table; it only reads
+`venue::api` + `availability::api` for the stay verdict per venue, improvement plan B4, and nothing
+reads it); and the closed ADR-0017 mechanisms, `challenge` (proof of work, owns
 `challenge_registry`) and `audit` (the admin audit trail, owns `admin_audit_record`), both reached
 from the platform edge through a port.
 
@@ -46,8 +47,8 @@ graph TB
         AVAIL["set_availability"]
     end
     subgraph booking["booking"]
-        BOOK["booking"]
-        RCPT["remodel_receipt<br/>+ _move, _outcome"]
+        BOOK["booking<br/>+ stay, booking_day"]
+        RCPT["remodel_receipt<br/>+ _move, _outcome, _kept"]
     end
     subgraph payment["payment"]
         PAY["payment<br/>+ payment_booking, payment_refund, stripe_webhook_event"]
@@ -71,10 +72,12 @@ graph TB
     BOOK -- "BookingConfirmed" --> LEDG
     BOOK -- "BookingConfirmed (confirmation mail)" --> notification
     BOOK -- "BookingCancelled (proportional reversal)" --> LEDG
+    BOOK -- "BookingDayRefunded (DAY_REVERSAL)" --> LEDG
+    BOOK -- "BookingDayRefunded (day-refund mail)" --> notification
     REV -- "ReviewsChanged (venue recomputes its rating columns)" --> VEN
     VEN -. "aggregate (VenueRatingSummary), listed page (ListedReviews)" .-> REV
     BOOK -. "review panel (ReviewEligibility)" .-> REV
-    REV -. "checked-in stay (spi CompletedStays)" .-> BOOK
+    REV -. "completed stay (spi CompletedStays)" .-> BOOK
 
     BOOK -. "claim / release (set, date)" .-> AVAIL
     BOOK -. "refund (RefundPort)" .-> PAY
@@ -190,6 +193,7 @@ classDiagram
         late_cancel_refund_bps
         payout_currency
         booking_cutoff, sales_close
+        max_stay_days (null = any length)
         closed_at, reopen_on, advance_sales
         distance_to_water_m
         latitude, longitude
@@ -326,16 +330,25 @@ classDiagram
     class booking {
         <<table>>
         id, code
-        venue_id, set_id, customer_id, account_id
-        booking_date
+        venue_id, set_id, customer_id, account_id, stay_id
+        booking_date (first day), last_date
         amount_minor, amount_currency
         status
         created_at, confirmed_at, completed_at
         cancelled_at, refund_minor, cancel_reason
-        request_expires_at, accepted_at
-        moved_at
+        request_expires_at, accepted_at, decline_reason
+        moved_at, move_reminder_at
         UNIQUE (code)
         CHECK status IN (the nine below)
+        CHECK last_date >= booking_date
+    }
+    class stay {
+        <<table>>
+        id, code
+        venue_id
+        first_date, last_date
+        UNIQUE (code)
+        CHECK last_date >= first_date
     }
     class booking_day {
         <<table>>
@@ -347,6 +360,7 @@ classDiagram
         CHECK refunded_at and refund_minor both or neither, never beside attended_at
     }
     booking "1" --> "1..*" booking_day : one row per service day, written on CONFIRMED
+    stay "0..1" <-- "1..*" booking : a stitched stay's stretches (ADR-0024)
     class BookingStatus {
         <<enum>>
         PENDING_REQUEST
@@ -387,6 +401,7 @@ classDiagram
         id, venue_id, operator_id, committed_at, refund_reason
         _move child (from/to set, labels, rows_away, positions_away)
         _outcome child (kind, booking_id, booking_date, set label, amount_minor, fee_minor)
+        _kept child (booking_id, booking_date, set label, reason)
     }
     booking ..> BookingStatus : status
     BookingTransition ..> BookingStatus : the lifecycle, stated once
@@ -805,18 +820,19 @@ classDiagram
 > the suppression list is keyed by a peppered SHA-256 (`v1:<64 hex>`, ADR-0012) with the domain
 > kept in clear for operational reads.
 >
-> It listens rather than being called: `BookingConfirmed`, `BookingCancelled`, `BookingMoved`,
-> `BookingPaymentDue`, `BookingRequestDeclined`, `BookingRequestExpired`, `StayConfirmed`,
-> `StayCancelled` and `StayMoveDue` arrive as events, one listener each, and the facts each mail
-> needs are resolved back through `booking`/`venue`/`customer`
-> ports from inside the listener. Which of the two ADR-0011 vehicles carries a mail follows from
-> its payload: an ids-only payload rides the **Event Publication Registry** (at-least-once,
-> republished on restart), while a payload carrying a bearer credential — a verification or
-> password-reset token — rides a **bounded in-memory executor** instead, because the registry would
-> persist that token in cleartext (invariant #7). Every attempt is logged with its source and
-> outcome, so an admin can see what happened and re-send; that re-send is synchronous, and reports
-> the real outcome. Both vehicles sit behind one `Mailer` port, with the mock profile-guarded out
-> of production.
+> It listens rather than being called: every `booking.events` type arrives as an event —
+> `BookingConfirmed`, `BookingCancelled`, `BookingMoved`, `BookingDayRefunded`,
+> `BookingPaymentDue`/`StayPaymentDue`, `BookingRequestDeclined`/`StayRequestDeclined`,
+> `BookingRequestExpired`/`StayRequestExpired`, `StayConfirmed`, `StayCancelled`, `StayMoveDue` —
+> one listener per mail, a request event's stay twin sharing its listener, and the facts each mail
+> needs are resolved back through `booking`/`venue`/`customer` ports from inside the listener. Which
+> of the two ADR-0011 vehicles carries a mail follows from its payload: an ids-only payload rides
+> the **Event Publication Registry** (at-least-once, republished on restart), while a payload
+> carrying a bearer credential — a verification or password-reset token — rides a **bounded
+> in-memory executor** instead, because the registry would persist that token in cleartext
+> (invariant #7). Every attempt is logged with its source and outcome, so an admin can see what
+> happened and re-send; that re-send is synchronous, and reports the real outcome. Both vehicles sit
+> behind one `Mailer` port, with the mock profile-guarded out of production.
 
 ---
 
@@ -902,7 +918,9 @@ sequenceDiagram
 
 > Refund amounts are computed **server-side** then actioned via Stripe (invariant #10). Weather
 > refunds are the same flow but admin-triggered with reason `WEATHER`, and they alone may reach a
-> swept `NO_SHOW`.
+> swept `NO_SHOW`. A stay's washed-out day is not this flow: `booking` stamps the day, publishes
+> `BookingDayRefunded`, `payment` refunds the day's share on the stretch's intent and `payout` posts
+> a `DAY_REVERSAL`; the booking's status does not move (ADR-0026).
 >
 > **The failure leg is not decoration.** A refund the gateway refuses leaves its `BookingCancelled`
 > publication outstanding in the Event Publication Registry, with the attempt traced on the refund's
@@ -952,8 +970,9 @@ stateDiagram-v2
 > **`COMPLETED` and `NO_SHOW` are stay outcomes, not attendance.** Attendance is the per-day
 > `booking_day` record — one row per service day from the moment the booking confirms, stamped
 > attended by the check-in, missed by the sweep or refunded by the weather refund (ADR-0026). The
-> outcome is written once, when the last service day resolves; `completed_at` is that instant for a `COMPLETED` stay and the review window's
-> input. Every booking has one service day today, so the two coincide until range bookings arrive.
+> outcome is written once, when the last service day resolves; `completed_at` is that instant for a
+> `COMPLETED` stay and the review window's input. For a one-day booking the two coincide; a stay's
+> `completed_at` is the instant its last unrefunded day resolved.
 >
 > **`NO_SHOW` is terminal for the guest, not terminal.** The admin weather refund is the one
 > transition that reaches it — the sweep gets to a washed-out day before the operator does, so

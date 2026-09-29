@@ -15,20 +15,20 @@ How the domain-knowledge files are laid out, so `domain-modeling`, `tdd`,
 - `docs/architecture/domain-model.md` — the tables, types and flows as diagrams.
 - `docs/architecture/improvement-plan.md` — the sequenced roadmap (epic #93).
 
-**No context map, and that is decided.** ADR-0018 §5 ruled the platform **one bounded
-context with thirteen modules**, on the evidence that none of the four language tells fires
-across any module pair: a *set* is the same set in `venue`, `availability`, `booking` and
-`notification`; a *booking* is the same booking in `booking`, `payment`, `payout` and
-`review`; money is EUR minor units everywhere. The duplicated id records (`VenueRef`,
-`BookingRef`) are identity conversions that keep the Modulith graph acyclic, not translations
-that can fail or lose information, and the system's one genuine translation boundary is
-against Stripe, fenced inside `payment`.
+**No context map, and that is decided.** ADR-0018 §5 ruled the platform **one bounded context** over
+the modules of `CLAUDE.md`'s table (the count amended when `itinerary` landed, #1206), on the
+evidence that none of the four language tells fires across any module pair: a *set* is the same set
+in `venue`, `availability`, `booking` and `notification`; a *booking* is the same booking in
+`booking`, `payment`, `payout` and `review`; money is EUR minor units everywhere. The duplicated id
+records (`VenueRef`, `BookingRef`) are identity conversions that keep the Modulith graph acyclic,
+not translations that can fail or lose information, and the system's one genuine translation
+boundary is against Stripe, fenced inside `payment`.
 
-So there is deliberately **no root `CONTEXT-MAP.md` and no per-module `CONTEXT.md`** — one
-root glossary is the whole ubiquitous language, and splitting it would assert thirteen
-languages the code does not speak. `domain-modeling`'s "if a `CONTEXT-MAP.md` exists at the
-root, the repo has multiple contexts" is generic guidance about a file this repo does not
-have; creating one to satisfy it inverts the decision.
+So there is deliberately **no root `CONTEXT-MAP.md` and no per-module `CONTEXT.md`** — one root
+glossary is the whole ubiquitous language, and splitting it would assert one language per module,
+which the code does not speak. `domain-modeling`'s "if a `CONTEXT-MAP.md` exists at the root, the
+repo has multiple contexts" is generic guidance about a file this repo does not have; creating one
+to satisfy it inverts the decision.
 
 **What would reopen it** is one of those four tells firing on a domain word: the same word
 carrying genuinely different fields or rules in two modules; a domain word needing a

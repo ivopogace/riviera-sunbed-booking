@@ -55,7 +55,7 @@ secrets/variables. Operational details: `docs/deploy/cd-pipeline.md`.
   lockless-on-one-runner, so a second instance weakens rate limits and races duplicate gateway
   cancels. Failure modes and the precondition list (ShedLock on every sweep + shared-store
   rate-limit state) live in
-  [production-hardening.md → *Single instance only*](../deploy/production-hardening.md#single-instance-only--do-not-scale-out-yet-the-two-lockless-sweeps--rate-limit-buckets).
+  [production-hardening.md → *Single instance only*](../deploy/production-hardening.md#single-instance-only--do-not-scale-out-yet-the-lockless-sweeps--rate-limit-buckets).
 
 ## DSGVO-conform PROD plan: Hetzner (planned, not implemented)
 

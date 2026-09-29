@@ -131,7 +131,9 @@ SPRING_PROFILES_ACTIVE=mailer ./gradlew bootRun
   both carry the same tag, so either is a direct read rather than a reconciliation by hand. Neither
   names the operator (invariant #7): find them in that window's approval log, then tell them directly
   (`docs/runbooks/observability.md`).
-- Verification, reset, booking-confirmation (#371) and operator-approval (#375) mails exist; the
-  request-accepted (#373) and cancellation/refund (#374) kinds are still to come.
+- Every `notification`-bound event in `CLAUDE.md`'s inventory has a listener under
+  `notification/adapter/in`; that folder is the list. Verification, reset and operator-approval
+  mails are not events: the edge sends them through `MailSender` (`CustomerRecovery`,
+  `OperatorApprovalMail`).
 - Suppression is **enforced** on both vehicles (V32–V35), but nothing populates the list until the
   bounce/complaint webhook feed lands (#372) — so watch the TEM console during early use.
