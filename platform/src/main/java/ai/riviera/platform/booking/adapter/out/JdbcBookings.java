@@ -76,6 +76,7 @@ class JdbcBookings implements Bookings {
 	private static final String PARAM_ACCOUNT = "account";
 	private static final String PARAM_TODAY = "today";
 	private static final String PARAM_DECLINED = "declined";
+	private static final String PARAM_HAPPENED = "happened";
 
 	// Result-column names reused across the row mappers (keep in lockstep with the SELECT/RETURNING).
 	private static final String COL_VENUE_ID = "venue_id";
@@ -1014,7 +1015,7 @@ class JdbcBookings implements Bookings {
 		return jdbc.sql(REFUNDABLE_SELECT_SQL + "ORDER BY b.id")
 				.param(PARAM_VENUE, venueId.value())
 				.param("date", date)
-				.param("happened", STORM_DAY_REFUNDABLE)
+				.param(PARAM_HAPPENED, STORM_DAY_REFUNDABLE)
 				.query(JdbcBookings::toRefundable)
 				.list();
 	}
@@ -1026,7 +1027,7 @@ class JdbcBookings implements Bookings {
 				.param("code", code)
 				.param(PARAM_VENUE, venueId.value())
 				.param("date", date)
-				.param("happened", STORM_DAY_REFUNDABLE)
+				.param(PARAM_HAPPENED, STORM_DAY_REFUNDABLE)
 				.query(JdbcBookings::toRefundable)
 				.optional();
 	}
@@ -1063,7 +1064,7 @@ class JdbcBookings implements Bookings {
 				RETURNING locked.id, locked.venue_id, locked.set_id, locked.amount_currency, locked.stay_id
 				""")
 				.param("id", bookingId)
-				.param("happened", STORM_DAY_REFUNDABLE)
+				.param(PARAM_HAPPENED, STORM_DAY_REFUNDABLE)
 				.param("at", java.sql.Timestamp.from(at))
 				.param("refund", refundMinor)
 				.param(PARAM_REASON, stamp.reason().name())
