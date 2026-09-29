@@ -287,11 +287,18 @@ model in `docs/architecture/domain-model.md`.
   booking confirms: unresolved until it is **attended** (staff checked the guest in
   that day) or **missed** (the day passed with no check-in), never both — one per day of the
   span; a one-day booking has exactly one, its `booking_date`. A **day refund** stamps it too.
-- **Day refund** — the weather refund's answer for a day of a stay that goes on: that day's share
-  (its own rate, the stretch's) comes back to the guest, the service day is stamped refunded (never
-  attended, possibly missed), the set stays the guest's and nothing is released. Check-in on it is
-  refused, the sweep and the stay outcome ignore it, takings exclude it, and a later cancellation is
-  quoted over what remains. A lone one-day booking is cancelled instead, as before.
+- **Day refund** — one service day of a stay that goes on, given back to the guest: that day's share
+  (its own rate, the stretch's) is refunded and the service day is stamped refunded (never attended,
+  possibly missed). Check-in on it is refused, the sweep and the stay outcome ignore it, takings
+  exclude it, and a later cancellation is quoted over what remains. By reason: the **weather
+  refund**'s, where the set stays the guest's and nothing is released, and the **venue day refund**,
+  where the day is released. A lone one-day booking is cancelled instead under either.
+- **Venue day refund** *(decided in ADR-0027, not yet built)* — the venue's own refund of one guest's
+  one day for a reason of its own (a pool closed for repair, a broken umbrella, a gesture after a
+  complaint), issued by the venue's operator or by a platform admin on the venue's behalf: a **day
+  refund** whose day is **released**, because the venue has decided the guest will not use it; a past
+  day is refunded but not released. The guest is told who refunded what, never why; no grounds reach
+  the guest or the books.
 - **Check-in** — staff recording, by scanning the booking's QR code or typing its
   booking code, that the guest arrived **today**: stamps today's service day as attended, exactly
   once per service day. On the stay's last service day it also resolves the stay to `COMPLETED`.
@@ -311,9 +318,10 @@ model in `docs/architecture/domain-model.md`.
   had passed (`NO_SHOW`), written by the scheduled sweep; the same sweep marks each unattended
   service day of a still-live stay as missed. Terminal: not cancellable and not check-in-able. It
   is **not** a refund — the guest paid and the venue held the set, so every money read that counts
-  a delivered stay counts a no-show too. The one exception is the venue's **weather refund**, which
-  reaches a no-show on purpose: on a washed-out day those are the guests who stayed home because
-  of the storm.
+  a delivered stay counts a no-show too. The exceptions are the venue's **weather refund**, which
+  reaches a no-show on purpose — on a washed-out day those are the guests who stayed home because
+  of the storm — and its own **venue day refund**, which may reach a missed day by decision: a guest
+  who stayed away because of the venue is a day the venue may make good after the fact.
 - **Sales close** — the moment a venue's online sales for a date close, on the date
   itself: a per-venue setting fixed at one of three wall-clock values (00:01 opts the
   venue out of same-day sales, 16:00 the default, or 23:59), `Europe/Tirane`. The point
@@ -371,7 +379,8 @@ model in `docs/architecture/domain-model.md`.
   check is the list).
 - **Payout batch** — a period's worth of ledger entries settled together, paid to
   the venue manually via BKT.
-- **Refund** — money returned to a tourist, by reason: policy, weather, venue change (a remodel
+- **Refund** — money returned to a tourist, by reason: policy, weather, venue (the venue's own
+  gesture: a **venue day refund**, or a lone one-day booking it cancels), venue change (a remodel
   that ended the booking, or the **free exit** of a **moved booking**), or conflict (reserved;
   nothing produces it yet).
 - **Refund progress** — how far a decided refund has actually travelled: **decided**

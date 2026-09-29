@@ -1,7 +1,8 @@
 # ADR-0026: A washed-out day of a stay is refunded on its own, and the stay continues
 
 - **Status:** Accepted — implemented by the slice for issue #1210 (epic #1096, design D5 option A,
-  decided 2026-09-24).
+  decided 2026-09-24). *Amended 2026-09-29 by ADR-0027:* §3 holds for weather only; the venue's own
+  day refund (reason `VENUE`) releases its day. §7 holds for that reason too.
 - **Date:** 2026-09-28
 - **Relates to:** `docs/architecture/multi-day-stays.md` § D5, D8, ADR-0005 (the server-side refund
   it leaves whole for the remainder), ADR-0021 (the ledger's sign convention it extends), ADR-0024 (a
@@ -42,7 +43,8 @@ one-day stretch of a stitched stay is a booking of its own or a day of the stay.
    is one set at one price, so the split is exact and a stitched stay refunds the rate of the stretch
    covering the date. `booking` publishes one `BookingDayRefunded` (id-based, the day, the amount) and
    is its sole writer.
-3. **Nothing is released; the set stays the guest's on the refunded day.** A release would let a second
+3. **Nothing is released; the set stays the guest's on the refunded day.** *Amended 2026-09-29 by
+   ADR-0027:* for weather only; a `VENUE`-refunded day is released and the hole shown. A release would let a second
    booking claim the set while the stay's row still covers the date, and the daily list, the layout
    lock and the beach map would disagree. Check-in on a refunded day answers `DayRefunded` and stamps
    nothing; the no-show sweep and the stay outcome ignore the day; daily takings exclude it. A check-in
@@ -96,7 +98,8 @@ one-day stretch of a stitched stay is a booking of its own or a day of the stay.
   exists.
 - **Keeping the whole-refund columns on `payment_booking` and adding a day table** — two sources for
   the intent's derived status and the refund progress, and a second copy of the failure trace.
-- **Releasing the refunded day's availability** — a hole in a stay the daily list, the layout lock and
+- **Releasing the refunded day's availability** (*for weather; ADR-0027 chooses it for the venue's own
+  refund and shows the hole*) — a hole in a stay the daily list, the layout lock and
   the map cannot represent.
 - **Dividing the stay's total by its days** — wrong across stretches of different rates; the stretch's
   own rate is exact.
