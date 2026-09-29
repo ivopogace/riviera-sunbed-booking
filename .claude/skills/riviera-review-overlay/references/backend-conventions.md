@@ -45,12 +45,15 @@ Booking date `LocalDate` in `Europe/Tirane`, cutoff computed there; no `LocalDat
 
 ### RV-BE-7. Webhook is truth + idempotent (#8) — **Blocker**
 Confirm only on a signature-verified webhook; dedupe on Stripe event id (no-op when already
-applied); idempotency key on charge/refund from `BookingId` + operation; a test replays the
+applied); idempotency key on charge/refund from `BookingId` + operation, plus the service day for
+a one-day refund (`RefundScope`; `payment_refund` holds one row per scope); a test replays the
 same event twice. Non-idempotent handler: Major.
 
 ### RV-BE-8. Payout ledger exactly-once (#9) — **Blocker**
-Accrual keyed by `BookingId` so redelivery can't double; refund reverses; commission read from
-the venue setting, never a constant (Major).
+Ledger rows keyed by `(booking_id, entry_type, service_date)` (`payout_once_per_booking`, NULLS
+NOT DISTINCT) so redelivery can't double; a refund posts a `REVERSAL`, a stay's refunded day a
+`DAY_REVERSAL` for that day (ADR-0026); commission read from the venue setting, never a constant
+(Major).
 
 ### RV-BE-9. Per-venue authorization / BOLA (#13) — **Blocker**
 Any venue-scoped surface (`/api/venues/{venueId}/**`, payout ledger, staff bookings, beach-map

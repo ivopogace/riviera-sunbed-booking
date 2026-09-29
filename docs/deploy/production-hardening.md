@@ -165,9 +165,9 @@ not the *list* — #286 stays open for that half.
 framework filter would also drop the resolver's preferred header path. Verification procedure (no
 unit or slice test can prove this class of change): `docs/runbooks/rate-limit-client-ip.md`.
 
-## Single instance only — do not scale out yet (the two lockless sweeps + rate-limit buckets)
+## Single instance only — do not scale out yet (the lockless sweeps + rate-limit buckets)
 
-**Run exactly one instance of the backend.** Three pieces of state are held in-process and
+**Run exactly one instance of the backend.** The state below is held in-process and
 are correct **only on a single runner**; a second instance breaks them silently — no error, no
 log, just wrong behaviour. The Render service is configured for one instance
 ([cd-pipeline.md](./cd-pipeline.md) → *Render service configuration*), and it must **stay**
@@ -190,7 +190,7 @@ Two knobs now hold that open, both in `application.properties`:
 
 | Property | Default | What it buys |
 |---|---|---|
-| `spring.task.scheduling.pool.size` | `6` | A thread per `@Scheduled` job, so a job that is stuck cannot delay a sibling's schedule. Must stay **≥ the number of `@Scheduled` methods** — `ScheduledWorkArchitectureTest` counts them and fails the build otherwise, so a new job either gets a thread or does not merge. |
+| `spring.task.scheduling.pool.size` | `7` (one per `@Scheduled` job) | A thread per `@Scheduled` job, so a job that is stuck cannot delay a sibling's schedule. Must stay **≥ the number of `@Scheduled` methods** — `ScheduledWorkArchitectureTest` counts them and fails the build otherwise, so a new job either gets a thread or does not merge. |
 | `riviera.scheduled.query-timeout-seconds` | `10` | A finite bound on each job's **entry** query, so a wedged job eventually ends instead of pinning its thread and its pooled connection. Applied per adapter; the sweeps' per-item **writes** stay unbounded on purpose. |
 
 **Operationally:** a bounded read that aborts fails that run, logs, and is retried on the next tick
@@ -205,14 +205,14 @@ bound; **never** reach for `spring.jdbc.template.query-timeout` to do it, which 
 | Load-bearing assumption | Where it lives | Failure mode at N > 1 instances |
 |---|---|---|
 | **Abandoned-payment sweep** | `AbandonedBookingScheduler` (`@Profile("stripe")`) | Every instance runs the scheduler. The guarded `UPDATE … WHERE status='AWAITING_PAYMENT' … RETURNING` keeps **DB state** correct (one instance wins each row), but each winner still fires its own Stripe **PaymentIntent cancel** → duplicate cancel calls racing at Stripe for the same intent. |
-| **Request-expiry sweep** | `RequestSweepScheduler` (all profiles, issue #98) | Same guarded-transition design, so DB state stays correct, but the sweep is **sized and timed for one runner**; N copies do N× the redundant scans and fan out any per-expiry side effect. |
+| **Request-expiry sweep, and every later sweep** (`ScheduledWorkArchitectureTest` lists them: no-show, move reminder, guest-contact retention, challenge registry, the money-path alert check) | `RequestSweepScheduler` (all profiles, issue #98) and its siblings | Same guarded-transition design, so DB state stays correct, but the sweep is **sized and timed for one runner**; N copies do N× the redundant scans and fan out any per-expiry side effect. |
 | **In-memory rate-limit buckets** | `RateLimitFilter` + `TokenBucket` (per-IP #56/ADR-0006; per-identity login throttle #292) — bounded `ConcurrentHashMap`s on the heap | Each instance holds its **own** buckets. A client's requests spread across instances, so the **effective cap is ~N× the configured limit** — the brute-force / abuse / credential-guess protection weakens in proportion to instance count. |
 
 ### Scale-out preconditions (all required before a second instance)
 
-1. **ShedLock (or equivalent) on *every* sweep** — both `AbandonedBookingScheduler` and
-   `RequestSweepScheduler` — so exactly one instance runs each tick. Add it to any **new**
-   scheduler at the same time (standing trigger: a third scheduler, improvement-plan B3).
+1. **ShedLock (or equivalent) on *every* `@Scheduled` job** — the list is
+   `ScheduledWorkArchitectureTest`'s `KNOWN_SCHEDULED_JOBS` — so exactly one instance runs each
+   tick. Add it to any **new** job at the same time.
 2. **Rate-limit state in a shared store** (e.g. Redis) — one bucket per client across all
    instances, so the cap holds regardless of which instance serves a request.
 

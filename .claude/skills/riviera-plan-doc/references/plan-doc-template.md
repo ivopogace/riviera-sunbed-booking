@@ -56,8 +56,9 @@
 
 ## Payment & payout (if money moves)
 
-> Load `riviera-stripe-payments`. State the idempotency keys, the ledger effect (accrual on
-> confirm, reversal on refund, exactly-once), the refund policy applied and the pinning tests.
+> Load `riviera-stripe-payments`. State the idempotency keys, the ledger effect (accrual on confirm,
+> reversal on refund or a day reversal for a stay's refunded day, exactly-once), the refund policy
+> applied and the pinning tests.
 
 ## Behaviour-parity ledger (if the slice retires or replaces a surface)
 

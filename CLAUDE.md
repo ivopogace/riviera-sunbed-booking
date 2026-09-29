@@ -93,12 +93,14 @@ aggregate-root classes: `domain/` holds rules, state is in tables, lifecycles ar
 | `itinerary` | the stay read model (D7/D11): the whole-coast verdict per venue for a span (same set · fits with N moves · can't host), served on `GET /api/venues`; the per-venue stitched plan on `GET /api/venues/{id}/itinerary`; the move budget `riviera.itinerary.max-switches` | nothing — a read model over `venue::api` + `availability::api` |
 
 Plus `shared` (OPEN kernel of edge types like `ApiProblem`, `CurrentOperator`; admission by
-ownership, never reuse) and two closed non-context modules with `allowedDependencies = {}`:
+ownership, never reuse) and the closed non-context modules with `allowedDependencies = {}`:
 `challenge` (proof of work) and `audit` (admin audit trail). Modules depend on `shared`, the
 root on modules, nothing on the root.
 
-**Collaboration:** events for state changes, `api/` ports for queries. Synchronous ports: the
-availability claim, erasure's reach into reviews, the remodel gate + claim settlement. Events:
+**Collaboration:** events for state changes, `api/` ports for queries. Synchronous, state-changing
+ports: the availability claim (walked per day by `booking`'s `SpanClaim`), payment collection /
+refund / void (`payment::api`), erasure's reach into reviews, the remodel gate + claim settlement.
+Events:
 `PaymentConfirmed`/`PaymentCanceled` → `booking`; `BookingConfirmed` → `payout`, `notification`;
 `BookingCancelled` → those two plus `booking`'s own refund + intent-void listeners;
 `StayConfirmed`/`StayCancelled`/`StayMoveDue`/`BookingPaymentDue`/`StayPaymentDue`/
@@ -106,13 +108,13 @@ availability claim, erasure's reach into reviews, the remodel gate + claim settl
 `BookingMoved` → `notification`; `BookingDayRefunded` → `payout`, `notification` and `booking`'s own
 day-refund listener; `ReviewsChanged` → `venue`.
 
-**Platform edge** (`RESPONSIBILITIES.md` § *Platform edge*): server-side sessions, two
-principal types; login machinery at the edge, never in modules; customer account and guest
-row never linked; auth endpoints non-enumerating and constant-time; mocks profile-guarded out
-of prod; revocation edge-orchestrated and synchronous; public writes that cost money or
+**Platform edge** (`RESPONSIBILITIES.md` § *Platform edge*): server-side sessions carrying an
+operator or a customer principal; login machinery at the edge, never in modules; customer account
+and guest row never linked; auth endpoints non-enumerating and constant-time; mocks profile-guarded
+out of prod; revocation edge-orchestrated and synchronous; public writes that cost money or
 inventory fenced by `challenge`'s proof-of-work against a single-use registry; every mutating
-`/api/admin/**` action audited by the edge; map tiles self-hosted under `/map/**`, no
-third-party map host.
+`/api/admin/**` action audited by the edge; map tiles self-hosted under `/map/**`, no third-party
+map host.
 
 ## Cross-cutting invariants
 

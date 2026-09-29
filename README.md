@@ -5,17 +5,17 @@ Albanian-riviera beach venue — pick the exact spot from a visual beach map and
 in-app. A two-sided marketplace: tourists are demand, venues are supply, the
 platform takes a commission per booking and pays venues out manually.
 
-> **Status: in active development.** The full stack is built and deployed — the
-> Spring Boot backend (`platform/`, thirteen Modulith modules) and the Angular
-> frontend (`frontend/`), served same-origin by the backend since #110 (Spring bundles
-> the SPA into its image) at [riviera-sunbed-booking.onrender.com](https://riviera-sunbed-booking.onrender.com).
+> **Status: in active development.** The full stack is built and deployed — the Spring
+> Boot backend (`platform/`, the Spring Modulith modules in `CLAUDE.md`'s table) and the
+> Angular frontend (`frontend/`), served same-origin by the backend since #110 (Spring
+> bundles the SPA into its image) at
+> [riviera-sunbed-booking.onrender.com](https://riviera-sunbed-booking.onrender.com).
 > Both Liquid Glass restyle epics are complete — tourist (#133) and operator console
 > (#141) — as are customer accounts (sign-in, SSO, GDPR erasure) and tourist reviews
 > (#810). In flight: the design-token colour audit, the real transactional mailer
-> (#367), and the Stripe → Paysera payment migration (#284, ADR-0009). Per-slice
-> history lives on the closed issues and PRs; what's next lives in the issue
-> tracker. If you're here to contribute, start with
-> [`CONTRIBUTING.md`](CONTRIBUTING.md).
+> (#367), and the Stripe → Paysera payment migration (#284, ADR-0009). Per-slice history
+> lives on the closed issues and PRs; what's next lives in the issue tracker. If you're
+> here to contribute, start with [`CONTRIBUTING.md`](CONTRIBUTING.md).
 
 ## Start here
 
@@ -68,13 +68,14 @@ hotspot, ≥80% new-code coverage**.
 
 ## The system in one picture
 
-Nine Spring-Modulith domain modules collaborate via **domain events** (state
+The context modules of `CLAUDE.md`'s table collaborate via **domain events** (state
 changes, id-based payloads) and **`api/` ports** (queries):
 
 `venue` · `availability` · `booking` · `payment` · `payout` · `customer` ·
-`operator` · `review` · `notification`
+`operator` · `review` · `notification` · `itinerary` (the stay read model over
+`venue::api` + `availability::api`)
 
-…plus three non-context modules: `shared`, a Shared Kernel of edge/technical types, and the
+…plus the non-context modules: `shared`, a Shared Kernel of edge/technical types, and the
 closed ADR-0017 mechanisms `challenge` (proof of work) and `audit` (the admin audit trail).
 
 The spine flow: reserving a set **claims it synchronously** through `availability`'s

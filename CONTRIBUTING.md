@@ -172,7 +172,7 @@ These are the rules a reviewer will block on. Canonical text + rationale in
 ## 6. Using Claude Code in this repo
 
 This repo ships **repo-scoped skills** under [`.claude/skills/`](.claude/skills/)
-that load automatically when you work here with Claude Code. The ten `riviera-*`
+that load automatically when you work here with Claude Code. The `riviera-*`
 ones are written for this project; the rest are vendored from upstream and pinned in
 [`skills-lock.json`](skills-lock.json) (refresh them through that file, don't hand-edit
 a vendored skill):

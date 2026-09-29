@@ -10,9 +10,9 @@ machine-enforced: see [Machine-checked vs review-checked](#machine-checked-vs-re
 
 ## Main Use Case — Book and manage one sunbed reservation (Instant Book)
 
-1. A tourist opens a venue and sees its beach map (**`venue`**) with each set free, **partly
-   free** or taken (**`availability`**) for one day or for each day of a stay (≤ 62 days, Instant
-   venues only).
+1. A tourist opens a venue and sees its beach map (**`venue`**) with each set free, **partly free**
+   or taken (**`availability`**) for one day or for each day of a stay (≤ `StaySpan#MAX_DAYS`; at a
+   Request-to-Book venue the same span is one request, answered whole).
 2. They pick a set and days and give guest-checkout contact (**`customer`** owns it); **`booking`**
    opens one booking for the whole stay.
 3. **`booking`** has **`availability`** claim one `(set, date)` row per day **atomically** — a
@@ -270,9 +270,10 @@ any is released on the old, never a swap of my own — so a racing reserve wins 
   `VENUE_CHANGE` only if every stretch took a free exit, else `POLICY`. Every other `BookingCancelled`
   (the remodel legs ending one stretch, a lone booking, an older payload) leaves the stamp null.
 - **Attendance is per service day; I am the sole writer and reader of `booking_day`**
-  (`ResponsibilitiesArchitectureTests` rule 9 — other modules ask my ports). The schema writes the
-  rows when a booking becomes `CONFIRMED` (trigger `booking_day_on_confirm`), so no confirm
-  statement or fixture can forget them; a day is attended or missed, never both (CHECK).
+  (`ResponsibilitiesArchitectureTests`' `booking_day` sole-writer scan — other modules ask my
+  ports). The schema writes the rows when a booking becomes `CONFIRMED` (trigger
+  `booking_day_on_confirm`), so no confirm statement or fixture can forget them; a day is attended
+  or missed, never both (CHECK).
 - **`booking.status` stays the contract state machine.** `COMPLETED` / `NO_SHOW` are stay outcomes,
   written once when the last day resolves (`COMPLETED` if any day was attended) by one statement
   shared by check-in and the sweep (`JdbcBookings.RESOLVE_STAY_SQL`). `completed_at`, the review
@@ -365,8 +366,9 @@ any is released on the old, never a swap of my own — so a racing reserve wins 
   before the gateway call, and a transaction would hide that write (§`payment`).
 - **Gateway-reaching listeners drain on my bounded executor** (`riviera.booking.refund.*`), never
   Boot's shared `applicationTaskExecutor`, which carries the confirm and payout spine
-  (`RefundListenerExecutorArchitectureTest`). Sized for up to three blocking calls per refund (each
-  within the Stripe timeouts' 25s sum) and a weather refund's venue-day burst; saturation **sheds**
+  (`RefundListenerExecutorArchitectureTest`). Sized as `RefundExecutorProperties` states, against
+  the Stripe timeouts (`stripe.connect-timeout` + `stripe.read-timeout`) and a weather refund's
+  venue-day burst; saturation **sheds**
   to `ObservabilityMetrics.REFUNDS_SHED` (never thrown or run on the caller), and the publication
   stays outstanding for the restart republish.
 - **The ADMIN refund-outbox re-drive uses an exact-id allowlist** (`BookingRefundListener`,
@@ -485,18 +487,20 @@ cancelled all-or-nothing, never one booking of it.
   candidates or another amount is `refund_mismatch` too: topping up is a refund **decision**
   (`booking`'s). `Failed` keeps the publication outstanding and lights `riviera.refunds.failed`,
   which never clears itself: a human settles it at the gateway.
-- **At-most-once per booking is the gateway contract**: `PaymentGatewayRefundContract` pins it (its
-  fixture never dedupes on the key); `PaymentGatewayContractCoverageArchitectureTest` fails the
+- **At-most-once per refund scope is the gateway contract**: `PaymentGatewayRefundContract` pins it
+  (its fixture never dedupes on the key); `PaymentGatewayContractCoverageArchitectureTest` fails the
   build on a collecting adapter (ADR-0009) with no contract subclass, or a gateway whose profile
-  has no `CollectionGuarantee`. It is structural too: `payment_booking_uniq` (one share row per
-  booking) and the key `booking-<id>-refund`; a second refund on one booking relaxes both.
+  has no `CollectionGuarantee`. It is structural too: `payment_refund_uniq` (one row per share,
+  scope and day) and the scope's key (`booking-<id>-refund`, `booking-<id>-day-<date>-refund`); a
+  second refund of one scope relaxes both.
 - **A refund later reported dead is un-recorded, and nothing re-drives it.** A `pending` refund
-  stays adoptable, so a verified refund event (all three types — `canceled` has no failure-only
-  one), branched on the refund's status, clears the share, re-derives the intent and lights
-  `riviera.refunds.failed`. Guarded on the recorded `refund_id`: a re-delivery, a stranger's
-  refund or a stale failure after a successful retry moves nothing. No lever, deliberately (an issuer rejection is not transient): the
-  publication completed on acceptance, and a re-attempt inside the key window is refused as
-  `refund_key_replay`. A human refunds at the gateway, or retries once the key has expired.
+  stays adoptable, so a verified refund event (the refund event types `StripeWebhookController`
+  handles; `canceled` has no failure-only one), branched on the refund's status, clears the share,
+  re-derives the intent and lights `riviera.refunds.failed`. Guarded on the recorded `refund_id`: a
+  re-delivery, a stranger's refund or a stale failure after a successful retry moves nothing. No
+  lever, deliberately (an issuer rejection is not transient): the publication completed on
+  acceptance, and a re-attempt inside the key window is refused as `refund_key_replay`. A human
+  refunds at the gateway, or retries once the key has expired.
 - **The attempt is recorded before the gateway is asked** (`markRefundAttempted`), from
   `RefundService#refund`, which must stay **outside a caller's transaction** — one would hide the
   write for exactly the window it covers (`RefundAttemptVisibilityIT`; `RefundBulkheadIT` pins the
@@ -981,7 +985,8 @@ mutating `/api/admin/**` action, §`audit`) stay here; `challenge` and `audit` o
 - **The money-path alert check shares the sweeps' single-instance posture.** `MoneyPathAlertCheck`
   is lockless `@Scheduled`: each extra instance fires the outbox-backlog alert again. It takes
   ShedLock with the sweeps at scale-out — `docs/deploy/production-hardening.md`'s preconditions name
-  only the two lockless sweeps, so it joins that list then.
+  the lockless sweeps (`ScheduledWorkArchitectureTest` holds the current list), so it joins that
+  list then.
 - **The bootstrap credential is stamped by an edge runner, and only that one.**
   `OperatorCredentialInitializer` (full context only; a `@WebMvcTest` slice does not scan it)
   touches only the bootstrap admin; every other operator self-registers (`OperatorRegistration`,
@@ -1017,7 +1022,8 @@ The SPA rules whose TSDoc points here; structure is `riviera-frontend`'s, stylin
   page, panel and card as three nested rounded surfaces read as a template. Its selected row names the
   booking mode only as the exception (`Request to Book`); if request-mode ever dominates, invert it.
 - **`operator/remodel-preview-panel.ts` is a sibling of `shared/confirm-panel.ts`, not a variant**:
-  it owns lists (five claim groups, the sets that stay) and refund fields; the confirm panel is a
+  it owns lists (moves, refunds, releases, staff holds, blocked claims, and the sets that stay) and
+  refund fields; the confirm panel is a
   warning, a toned button and Cancel with no projected content. Both wear the amber warn skin.
 - **The withheld-email notice is one component, in `booking/`** (both its surfaces are booking's;
   `shared/` takes what two features need). Never the same markup twice: the copy is the product
@@ -1090,11 +1096,11 @@ The mechanism and edge cases behind `CLAUDE.md`'s one-line invariants; its numbe
 10. **Cancellation/refund policy is enforced server-side** (ADR-0005 as amended), never from a
     caller's figure. Full refund until the venue's evening-before `booking_cutoff` (default `18:00`
     `Europe/Tirane`, owner-editable; not #4's sales close), then the venue's late share (none or
-    partial); from service-day open (00:00 `Europe/Tirane`) a guest cancel is refused, not
-    refunded. Outside the tiers, deliberately: the **weather exception** (manual, triggered by the
-    venue's operator, full) and a **moved booking's free exit** — in full under `VENUE_CHANGE` until
-    `BookingCutoff#freeExitEndsAt`, whatever `LATE` would answer; it never reopens `CLOSED`, as
-    that deadline is capped at service-day open (§`booking`, ADR-0020).
+    partial); from service-day open (00:00 `Europe/Tirane`) a guest cancel is refused, not refunded.
+    Outside the tiers, deliberately: the **weather exception** (by the venue's operator: a one-day
+    booking in full, a stay's day at its share — ADR-0026) and a **moved booking's free exit** — in
+    full under `VENUE_CHANGE` until `BookingCutoff#freeExitEndsAt`, whatever `LATE` would answer; it
+    never reopens `CLOSED`, as that deadline is capped at service-day open (§`booking`, ADR-0020).
 11. **Spring Modulith boundaries are hexagonal and id-based** (ADR-0007). Cross-module access is an
     `api/` port or a domain event carrying technical ids (no business fields), never another
     module's `application.*`/`adapter.*`/`domain.*`. A full module is `{api?, spi?, vocabulary?,
@@ -1131,6 +1137,7 @@ them form the *structural net* is `riviera-modulith` § *The structural net*'s c
 | `audit` is the only writer (and direct reader) of `admin_audit_record` — ADR-0017 | `ResponsibilitiesArchitectureTests` (sole-writer scan) |
 | `payout` is the only writer (and direct reader) of `platform_setting` — ADR-0021 | `ResponsibilitiesArchitectureTests` (sole-writer scan) |
 | `booking` is the only writer (and direct reader) of `booking_day` | `ResponsibilitiesArchitectureTests` (sole-writer scan) |
+| `booking` is the only writer (and direct reader) of `stay` — ADR-0024 | `ResponsibilitiesArchitectureTests` (SQL-shaped scan: the bare word is in prose and in `max_stay_days`) |
 | No class inside a module depends on a type directly in `ai.riviera.platform` — ADR-0017 | `CompositionRootDisciplineTests` (module→root rule; `allowedDependencies` cannot see it) |
 | The root touches only the module surfaces it is granted — never `payment`, `payout`, `availability` or `review` (ADR-0017, ADR-0020) | `CompositionRootDisciplineTests` (root→module allowlist) |
 | `payment` uses no Stripe **Connect** API (collect-only, ADR-0002) | `NoStripeConnectArchitectureTest` |

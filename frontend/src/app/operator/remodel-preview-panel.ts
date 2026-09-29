@@ -32,11 +32,11 @@ import {
 
 /**
  * The layout editor's remodel `alertdialog`, a sibling of `shared/confirm-panel.ts`, not a variant
- * (`RESPONSIBILITIES.md` §Frontend): every claim a save would disturb, in five groups, as the server
- * answered. A staff hold or `displaced` offers Back alone. Save arms on refunds only once count and
- * reason are typed (else `409 REFUND_NOT_CONFIRMED`). Fields keep the fixed warn skin, never a
- * themed one (`riviera-tailwind`). <strong>Keep the `@if` outside</strong>: it focuses its first
- * control on mount (WCAG 2.4.3); `focusMover()` moves it back out. Bookings by id, never code (#7).
+ * (`RESPONSIBILITIES.md` §Frontend): every claim a save would disturb, grouped as the server
+ * answered (moves, refunds, releases, staff holds, blocked); a staff hold or `displaced` offers
+ * Back alone. Save arms on refunds only once count and reason are typed (else the server answers
+ * `409 REFUND_NOT_CONFIRMED`). Fixed warn skin (`riviera-tailwind`). Keep the `@if` outside: it
+ * focuses its first control on mount (WCAG 2.4.3); `focusMover()` moves it out. Ids only (#7).
  */
 @Component({
   selector: 'app-remodel-preview-panel',
