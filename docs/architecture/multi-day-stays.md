@@ -312,9 +312,8 @@ three problems rather than managing them:
   ever. Cancelling part of a stay becomes cancelling one segment — an ordinary whole-booking
   cancellation — so invariant #9's exactly-once guard needs no re-key and `BookingCancelled` needs
   no new field in a registry-persisted payload.
-  *(ADR-0026 later widened the key with `service_date` for `DAY_REVERSAL`; a dateless `REVERSAL`
-  stays one per booking, so the group-of-bookings choice stands on the other two reasons plus this
-  narrower one.)*
+  *(ADR-0026 re-keyed the guard with `service_date` for `DAY_REVERSAL`; a dateless `REVERSAL` is
+  still one per booking.)*
 - `booking.set_id` stays a single foreign key, so every read model, the remodel receipt's from/to
   pair and `BookingMoved` are unchanged.
 - The layout freeze shrinks. A live claim locks its set from creation until its status goes
@@ -404,19 +403,23 @@ before the range-bookings slice ships it, and it is scope the slicing has to cou
 ### D12 — A partly-free set is a dotted tile with a free-day count
 
 Decided 2026-09-24 over two rejected alternatives: a diagonal split fill, and a strip of per-day
-cells. Story 3's third tile state is `border-dotted` (2px) on the available fill, plus a count badge
-("9"). The set's accessible name carries "free 9 of 14 days". It enters `map-tile.ts` as one more
-`MAP_TILE_STATES` entry and one `MAP_TILE_CLASS` string, the same shape `taken`'s `border-dashed`
-already has.
+cells. Story 3's third tile state is `border-dotted` (2px) on the available fill, plus a count
+badge ("9", or "9/14" where the tile is wide enough). The set's accessible name carries "free 9 of
+14 days". It enters `map-tile.ts` as one more `MAP_TILE_STATES` entry and one `MAP_TILE_CLASS`
+string, the same shape `taken`'s `border-dashed` already has.
 
-Three facts decide it. Forced-colors mode drops non-`url()` `background-image` and author background
-colours, but keeps border style. A split fill or a per-day strip would vanish under high contrast.
-The dotted border and the badge's text survive, as `taken`'s dash does. Next, the count is content
-that identifies the control at AA, so the shipped spec measures two ratios per map ink family
-(daylight, night; `venue-map.contrast.spec.ts`) — the 2px dotted border at 3:1 (WCAG 1.4.11) and
-the badge ink at 4.5:1 on its own fill. Last, the tile needs only a count per set, which D11's
-verdict already computes. A per-day strip would ship a per-set × per-day grid to the client, and at
-D10's unbounded lengths its cells shrink below a pixel.
+Three facts decide it. Forced-colors mode drops non-`url()` `background-image` and author
+background colours, but keeps border style. A split fill or a per-day strip would vanish under
+high contrast. The dotted border and the badge's text survive, as `taken`'s dash does. Next,
+the count is content that identifies the control at AA, so `docs/design/non-text-contrast.md`
+rule 2 covers the tile with one measured ratio per theme, where a split would need two. Last,
+the tile needs only a count per set, which D11's verdict already computes. A per-day strip would
+ship a per-set × per-day grid to the client, and at D10's unbounded lengths its cells shrink
+below a pixel.
+
+*(Shipped with #1202 and #1216: the badge shows the count alone; `venue-map.contrast.spec.ts`
+measures the 2px dotted border at 3:1 (WCAG 1.4.11) and the badge ink at 4.5:1 on its own fill, per
+map ink family.)*
 
 The badge is `aria-hidden` inside the existing tile button, so it adds no touch target. Dotted
 (partly free) and dashed (taken) sit close at hairline widths. The badge and the fill carry the

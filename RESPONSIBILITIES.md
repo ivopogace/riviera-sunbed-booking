@@ -367,8 +367,8 @@ any is released on the old, never a swap of my own — so a racing reserve wins 
   before the gateway call, and a transaction would hide that write (§`payment`).
 - **Gateway-reaching listeners drain on my bounded executor** (`riviera.booking.refund.*`), never
   Boot's shared `applicationTaskExecutor`, which carries the confirm and payout spine
-  (`RefundListenerExecutorArchitectureTest`). Sized as `RefundExecutorProperties` states, against
-  the Stripe timeouts (`stripe.connect-timeout` + `stripe.read-timeout`) and a weather refund's
+  (`RefundListenerExecutorArchitectureTest`). Sized for up to three blocking gateway calls per
+  refund (each bounded by `stripe.connect-timeout` + `stripe.read-timeout`) and a weather refund's
   venue-day burst; saturation **sheds**
   to `ObservabilityMetrics.REFUNDS_SHED` (never thrown or run on the caller), and the publication
   stays outstanding for the restart republish.

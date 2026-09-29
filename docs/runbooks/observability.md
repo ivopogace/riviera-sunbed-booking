@@ -5,7 +5,7 @@ an authenticated Prometheus scrape endpoint, and three money-path failure signal
 alert route. This runbook says what each signal means, how it is alerted today, and how to upgrade to
 metric-native alerting later.
 
-> **Single-instance posture.** Like the two sweeps, the alert self-check is correct only on **one**
+> **Single-instance posture.** Like the sweeps, the alert self-check is correct only on **one**
 > instance (in-memory metrics, no lease). Do not scale out before adding ShedLock + a shared metrics
 > backend — see `docs/deploy/production-hardening.md` and ADR-0004 (improvement-plan D3).
 

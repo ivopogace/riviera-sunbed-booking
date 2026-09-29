@@ -150,12 +150,12 @@ diverge from at all.
 
 **One consequence above is now understated.** "Its admin surface grows a second read beside the
 payout-batch report" is now a third read and this module's first admin *write*, and `payout` owns a
-second table (`platform_setting`) beside `payout_ledger_entry` and `payout_batch`.
+second table (`platform_setting`) beside the two ledger ones.
 
 **What did not change.** The `FEE` entry type, its CHECK exemption, its idempotency guard, which
 refunds earn it, where it is posted from, and the receipt's own snapshot of the quoted amount are all
 exactly as decided above.
 
-*(2026-09-28, ADR-0026: the fourth type `DAY_REVERSAL` arrived and deducts exactly as point 2
-predicted, with no sum touched; the key is now `UNIQUE NULLS NOT DISTINCT (booking_id, entry_type,
-service_date)` (V69), still one `FEE` per booking.)*
+**Amendment (2026-09-29, ADR-0026).** The fourth type `DAY_REVERSAL` arrived and deducts exactly as
+point 2 predicted, with no sum touched; the key is now `UNIQUE NULLS NOT DISTINCT (booking_id,
+entry_type, service_date)` (V69), still one `FEE` per booking.

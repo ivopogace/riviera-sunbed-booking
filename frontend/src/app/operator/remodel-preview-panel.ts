@@ -36,7 +36,7 @@ import {
  * answered (moves, refunds, releases, staff holds, blocked); a staff hold or `displaced` offers
  * Back alone. Save arms on refunds only once count and reason are typed (else the server answers
  * `409 REFUND_NOT_CONFIRMED`). Fixed warn skin (`riviera-tailwind`). Keep the `@if` outside: it
- * focuses its first control on mount (WCAG 2.4.3); `focusMover()` moves it out. Ids only (#7).
+ * focuses its first control on mount (WCAG 2.4.3); `focusMover()` undoes it. Bookings by id (#7).
  */
 @Component({
   selector: 'app-remodel-preview-panel',

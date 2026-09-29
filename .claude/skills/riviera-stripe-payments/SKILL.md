@@ -25,10 +25,9 @@ would re-decide the gateway; this model stays authoritative until that work star
   implemented by `adapter/out/StripePaymentGateway`). The domain never touches Stripe types.
 - Confirm only on the signature-verified `payment_intent.succeeded` webhook (#8); the redirect
   is never a confirmation.
-- Idempotency key from `BookingId` + operation on charge/refund (`booking-<id>-refund` for a
-  share's whole refund, `booking-<id>-day-<yyyy-MM-dd>-refund` for one day of a stay —
-  `RefundScope`, one `payment_refund` row per scope); webhook handlers dedupe on the Stripe
-  event id and no-op when already applied.
+- Idempotency key from `BookingId` + operation on charge/refund, plus the service day for a
+  one-day refund (`RefundScope`; one `payment_refund` row per scope; `PaymentGatewayRefundContract`
+  pins the formats); webhook handlers dedupe on the Stripe event id and no-op when already applied.
 - Money per #5, converted at the Stripe boundary only. Persist the PaymentIntent and
   refund ids; never card data.
 
