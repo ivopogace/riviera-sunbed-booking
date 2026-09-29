@@ -43,7 +43,8 @@ fourteen cards for what is, to everyone involved, one decision.
 
 ## Solution
 
-**A stay is one booking of a contiguous date range**, made once: one code, one payment, one
+**A stay is booked once, as one contiguous date range**: a same-set stay is one booking, a stitched
+stay a group of bookings under one `stay` row (ADR-0024) — either way one code, one payment, one
 cancellation, one request for the venue to accept or decline.
 
 Where a single set is free for the whole range, that is what the guest gets and the product
@@ -221,17 +222,22 @@ booking_day (booking_id, service_date, attended_at, missed_at)
   CHECK (attended_at IS NULL OR missed_at IS NULL)
 ```
 
+*(V68 / ADR-0026 later added `refunded_at, refund_minor`, both-or-neither and never beside
+`attended_at`.)*
+
 - **Check-in** stamps today's row under a guarded `UPDATE … WHERE booking_id = ? AND service_date =
-  :today AND attended_at IS NULL AND missed_at IS NULL`. A second scan moves zero rows and answers
-  "already checked in today" — the identical one-shot property the current transition gets from
-  `status = 'CONFIRMED'`, scoped to a service day.
+  :today AND attended_at IS NULL AND missed_at IS NULL AND refunded_at IS NULL` (since #1210: a
+  refunded day answers `DayRefunded`). A second scan moves zero rows and answers "already checked in
+  today" — the identical one-shot property the current transition gets from `status = 'CONFIRMED'`,
+  scoped to a service day.
 - **The no-show sweep** marks past unattended service days, then resolves the parent booking once its
-  last service day has passed. Same batching shape, same guarded-update discipline, same scheduler — this
-  deliberately does **not** add a fourth scheduler.
+  last service day has passed. Same batching shape, same guarded-update discipline, same scheduler —
+  the no-show sweep adds none (`MoveReminderScheduler` came later with #1209's move reminder).
 - **`COMPLETED` / `NO_SHOW` stay in `booking.status`**, redefined as *stay outcomes* written once
   when the last service day resolves. This is what keeps the blast radius small: `DailyTakings` still
   sums `CONFIRMED/COMPLETED/NO_SHOW`, `BookingStatus#canStillBeHonoured` still means the stay is
-  live, and the weather refund's `CONFIRMED|NO_SHOW` admission is unchanged.
+  live, and the weather refund's `CONFIRMED|NO_SHOW` admission is unchanged (the whole-cancel leg;
+  ADR-0026's day leg admits `COMPLETED` too, `BookingStatus#stormDayRefundable`).
 - `completed_at` changes meaning from "when the guest checked in" to "when the stay resolved". For
   existing single-service-day rows the two instants coincide exactly, which is what makes the migration
   safe and the equivalence provable.
@@ -268,15 +274,18 @@ the venue-change fee.
 
 ### D5 — Every terminal transition releases every service day
 
-Each release site today frees exactly one date, taken from the single `booking_date` its
-`RETURNING` clause yields. There are seven: the guest cancel, the four remodel legs, the three
-request-termination legs, and the abandoned-payment sweep. Under a range each must release the
-whole span. (Since ADR-0025 a pending request holds nothing, so the three request-termination legs
-and the remodel's decline release nothing; the accept's revert joined the releasing legs instead.) This is the slice's highest-risk correctness item, because `set_availability` carries
-**no link to a booking** (`held_by_booking_id` was deferred in V4 and never added), so a stranded
-row is not merely unswept — nothing in the system can identify it, no sweep or constraint frees it,
-and the only operator-facing delete filters on `state = 'STAFF_MARKED'`. Recovery would need direct
-database access.
+Each release site today frees exactly one date, taken from the single `booking_date` its `RETURNING`
+clause yields. Each site in `booking/` that calls `AvailabilityClaim.release` must release the whole
+span: the span-wide helpers `SpanClaim#releaseEveryDay` (a lost claim gives back what it won the
+same way), `ClaimReleaseService` (every unpaid-booking cancel) and
+`RemodelClaimsService#releaseSpan` (the remodel legs) walk it, and the guest cancel and the weather
+refund loop `ServiceDays.between` themselves. (Since ADR-0025 a pending request holds nothing, so
+the three request-termination legs and the remodel's decline release nothing; the accept's revert
+joined the releasing legs instead.) This is the slice's highest-risk correctness item, because
+`set_availability` carries **no link to a booking** (`held_by_booking_id` was deferred in V4 and
+never added), so a stranded row is not merely unswept — nothing in the system can identify it, no
+sweep or constraint frees it, and the only operator-facing delete filters on `state =
+'STAFF_MARKED'`. Recovery would need direct database access.
 
 The weather refund is the same defect wearing a disguise: its `booking_date = :date` equality means
 that once ranges exist, a storm mid-stay selects **nothing** and silently refunds nobody. It moves
@@ -284,11 +293,12 @@ to an overlap predicate, and it never skips a stay silently. Decided 2026-09-24 
 washed-out day refunds **that day's share** and the stay continues. That is a partial refund on a
 live booking, which the payout ledger's one-reversal-per-booking guard (invariant #9) and
 `payment`'s single refund cannot express. So it lands in its own slice, after the refund child
-table (D8). Until then the overlap selection refunds one-service day bookings as today and **names**
-every overlapping stay for a manual refund, instead of refunding nobody. The refund is the day's actual
-rate (the set held that day), never the total divided by its days. A day the guest already
-checked into is **not** refunded, the same as today's single-day rule, which admits only
-`CONFIRMED|NO_SHOW`.
+table (D8). That interim shipped with #1201 and was replaced by #1210 (ADR-0026): the day leg
+refunds every overlapping stay's day at the stretch's rate, and the outcome separates cancelled
+one-day bookings, refunded stay days and the checked-in bookings it kept. The refund is the day's
+actual rate (the set held that day), never the total divided by its days. A day the guest already
+checked into is **not** refunded (ADR-0026 §1: the day decides, not the status — a `COMPLETED`
+stay's missed stormy day is refunded).
 
 ### D6 — A stay is a group of bookings, not one booking with segments
 
@@ -302,6 +312,9 @@ three problems rather than managing them:
   ever. Cancelling part of a stay becomes cancelling one segment — an ordinary whole-booking
   cancellation — so invariant #9's exactly-once guard needs no re-key and `BookingCancelled` needs
   no new field in a registry-persisted payload.
+  *(ADR-0026 later widened the key with `service_date` for `DAY_REVERSAL`; a dateless `REVERSAL`
+  stays one per booking, so the group-of-bookings choice stands on the other two reasons plus this
+  narrower one.)*
 - `booking.set_id` stays a single foreign key, so every read model, the remodel receipt's from/to
   pair and `BookingMoved` are unchanged.
 - The layout freeze shrinks. A live claim locks its set from creation until its status goes
@@ -327,8 +340,8 @@ It keeps the search out of `booking`, which is already past three of four **B3**
 comment-stripped LOC against a ~4,000 threshold; the third scheduler on 2026-08-09; the refund seam
 deepening on 2026-09-10). The ranking itself is pure — a shortest path over `(day, set)`, cost =
 moves, tie-broken on distance — so it lands framework-free in the new module's `domain/` under
-ADR-0018, beside a distance rule that mirrors `MoveRanking`'s (same row, then closest position,
-then closest row).
+ADR-0018, using the one distance rule, `venue.vocabulary.SetPlacement#rowsAway/positionsAway`, that
+`MoveRanking` and the move reminder also use (same row, then closest position, then closest row).
 
 The **switch budget is configuration, not a constant** (`riviera.<module>.max-switches`), because
 the right value is an open product question and will move.
@@ -338,13 +351,14 @@ the right value is an open product question and will move.
 One PaymentIntent covers the stay; the guest is charged once. Refunds are then per segment against
 a shared intent, which `payment` cannot express today — `markRefunded` writes `refunded_minor` as
 an absolute overwrite into a single `refund_id` column, and adoption is locked to "exactly one live
-refund, for exactly the amount requested". `payment` therefore grows a refund child table keyed by
-segment.
+refund, for exactly the amount requested". `payment` therefore grows a share row per booking
+(`payment_booking`, V64) and a row per refund scope (`payment_refund`, V70, ADR-0026).
 
-The Stripe idempotency key stays `booking-<segment-id>-refund`, so it remains unique per refund and
-`PaymentGatewayRefundContract` keeps its shape. This is the highest-risk decision in the epic and
-sits in the module with the most careful invariants in the tree; it is deliberately confined to the
-last slice so the first two never touch it.
+The whole-share key stays `booking-<id>-refund`; a day refund adds `booking-<id>-day-<date>-refund`
+(ADR-0026 §5), so each key is unique per refund scope and `PaymentGatewayRefundContract` keeps its
+shape. This is the highest-risk decision in the epic and sits in the module with the most careful
+invariants in the tree; it is deliberately confined to the last slice so the first two never touch
+it.
 
 ### D9 — Prerequisite: per-claim remodel settlement
 
@@ -390,19 +404,19 @@ before the range-bookings slice ships it, and it is scope the slicing has to cou
 ### D12 — A partly-free set is a dotted tile with a free-day count
 
 Decided 2026-09-24 over two rejected alternatives: a diagonal split fill, and a strip of per-day
-cells. Story 3's third tile state is `border-dotted` (2px) on the available fill, plus a count
-badge ("9", or "9/14" where the tile is wide enough). The set's accessible name carries "free 9 of
-14 days". It enters `map-tile.ts` as one more `MAP_TILE_STATES` entry and one `MAP_TILE_CLASS`
-string, the same shape `taken`'s `border-dashed` already has.
+cells. Story 3's third tile state is `border-dotted` (2px) on the available fill, plus a count badge
+("9"). The set's accessible name carries "free 9 of 14 days". It enters `map-tile.ts` as one more
+`MAP_TILE_STATES` entry and one `MAP_TILE_CLASS` string, the same shape `taken`'s `border-dashed`
+already has.
 
-Three facts decide it. Forced-colors mode drops non-`url()` `background-image` and author
-background colours, but keeps border style. A split fill or a per-day strip would vanish under
-high contrast. The dotted border and the badge's text survive, as `taken`'s dash does. Next,
-the count is content that identifies the control at AA, so `docs/design/non-text-contrast.md`
-rule 2 covers the tile with one measured ratio per theme, where a split would need two. Last,
-the tile needs only a count per set, which D11's verdict already computes. A per-day strip would
-ship a per-set × per-day grid to the client, and at D10's unbounded lengths its cells shrink
-below a pixel.
+Three facts decide it. Forced-colors mode drops non-`url()` `background-image` and author background
+colours, but keeps border style. A split fill or a per-day strip would vanish under high contrast.
+The dotted border and the badge's text survive, as `taken`'s dash does. Next, the count is content
+that identifies the control at AA, so the shipped spec measures two ratios per theme — the 2px
+dotted border at 3:1 (`docs/design/non-text-contrast.md` rule 2) and the badge ink at 4.5:1 on its
+own fill — where a split fill would have needed a third, un-measurable one. Last, the tile needs
+only a count per set, which D11's verdict already computes. A per-day strip would ship a per-set ×
+per-day grid to the client, and at D10's unbounded lengths its cells shrink below a pixel.
 
 The badge is `aria-hidden` inside the existing tile button, so it adds no touch target. Dotted
 (partly free) and dashed (taken) sit close at hairline widths. The badge and the fill carry the
@@ -432,7 +446,9 @@ count), and a tourist session can still disprove D13. But the budget no longer w
 
 A good test here asserts **external behaviour at the highest available seam** — what a caller of a
 published port observes — never the shape of a row or the name of a private method. Existing seams
-are reused in preference to new ones; the epic adds exactly one new seam (D7's itinerary port).
+are reused in preference to new ones; the epic's new published seams are D7's itinerary port and
+`availability::api`'s `SetAvailabilityFacts`; the payment ports widen in place
+(`CheckoutPort.pay(List)`, `RefundPort#refundDay`).
 
 **Seam 1 — `CheckInBooking` + `MarkNoShows` (existing driving ports).** The equivalence proof is
 the point of slicing attendance first: **the existing check-in and no-show integration tests stay
@@ -445,8 +461,9 @@ guest who stops turning up mid-stay.
 **Seam 2 — `CreateBooking` (existing port).** One new integration test carries invariant #2 for
 ranges: an N-day claim is all-or-nothing under contention, with a concurrent single-day booking
 on one of the days forcing the whole stay to lose. Prior art for the row-lock discipline is
-`ConcurrentRequestTerminationIT`. A second test carries D5: every day is released on each of the
-seven terminal transitions, asserted by re-claiming the whole range afterwards.
+`ConcurrentRequestTerminationIT`. A second test carries D5: every day is released on every terminal
+transition that releases (grep `availability.release` in `booking/`), asserted by re-claiming the
+whole range afterwards.
 
 **Seam 3 — the itinerary port (new).** The ranking is pure and unit-tested exactly as `MoveRanking`
 and `RemodelZones` are — fixed availability grids in, expected itinerary out, including the cases

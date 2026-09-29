@@ -122,7 +122,7 @@ written *against* the constraint rather than in place of it:
 | Invariant | Constraint | The code written against it |
 |---|---|---|
 | #2 — at most one party per `(set, date)` | `set_availability_uniq UNIQUE (set_id, booking_date)` (`V4__availability.sql:32`) | `INSERT … ON CONFLICT (set_id, booking_date) DO NOTHING` (`availability/adapter/out/JdbcAvailabilityClaim.java`, `claim`) |
-| #9 — a booking accrues once, a refund reverses it once | `payout_once_per_booking UNIQUE (booking_id, entry_type)` (`V9__payout_ledger.sql:33`) | the at-least-once `BookingConfirmed` listener, idempotent on that constraint |
+| #9 — a booking accrues once, a refund reverses it once | `payout_once_per_booking UNIQUE NULLS NOT DISTINCT (booking_id, entry_type, service_date)` (`V9__payout_ledger.sql:33`, re-keyed by `V69__payout_day_reversal.sql`, ADR-0026) | the at-least-once `BookingConfirmed` listener, idempotent on that constraint |
 | #7 — a booking code is unique | `booking_code_uniq UNIQUE (code)` (`V5__booking_and_customer.sql:43`) | `INSERT … ON CONFLICT (code) DO NOTHING` (`booking/adapter/out/JdbcBookings.java`, `insert`) with bounded regeneration above it (`ReserveSetService.insertWithUniqueCode`) |
 
 **A Java class asserting one of these would be a weaker restatement**: it would hold only for rows
@@ -130,8 +130,9 @@ this application writes, and only when every writer remembers to call it. That i
 `availability` has no `domain/` package and should not have one — its subject is one table with one
 constraint (`2026-09-04-where-the-business-rules-live.md` §C).
 
-This does **not** forbid a Java statement that mirrors a DB *bound or vocabulary*. Eight such
-mirrors exist, each naming its twin in Javadoc and calling the duplication deliberate: `Stars` ↔
+This does **not** forbid a Java statement that mirrors a DB *bound or vocabulary*. Such mirrors
+exist — each names its twin in Javadoc (grep `lockstep`) and calls the duplication deliberate; the
+list at 2026-09-04 was: `Stars` ↔
 `review_stars_check` ("the only one of the two that also holds for a row written by anything but
 this application, so the duplication there is deliberate, not drift",
 `review/domain/Stars.java:8–10`), `ReviewText` ↔ `review_comment_length_check`, `SalesClose` ↔

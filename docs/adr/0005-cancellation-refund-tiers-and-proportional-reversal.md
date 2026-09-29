@@ -104,3 +104,10 @@ returns the venue's own money behind an `assertOwns` check (invariant #13). Pinn
   venue's change that earned it, which is why the same reason charges the venue a fee (ADR-0021).
   Orchestration and the move itself: ADR-0020. The standing warning in *Consequences* covers this
   exit too: do not fence it for symmetry either.
+- 2026-09-29, epic #1096 — ADR-0024 §4: a stitched stay's stretches are judged on the stay's first
+  day, and a moved stretch's free exit is capped there
+  (`BookingCutoff#freeExitEndsAt(bookingDate, windowDay, movedAt)`). ADR-0026: a stay's washed-out
+  day is a partial refund outside these tiers; the tiers then quote over
+  `BookingRecord#remainingMinor`; a booking's reversals sum to its accrual across
+  `REVERSAL`/`DAY_REVERSAL`, and the exactly-once key gained `service_date` (V69) — a dateless
+  `REVERSAL` is still one per booking.
