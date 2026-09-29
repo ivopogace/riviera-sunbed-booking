@@ -13,7 +13,7 @@ import ai.riviera.platform.payment.vocabulary.Money;
 import ai.riviera.platform.payment.vocabulary.RefundResult;
 
 /**
- * Issues a refunded day's money via {@link RefundPort#refundDay} after the weather refund commits
+ * Issues a refunded day's money via {@link RefundPort#refundDay} after a day refund commits
  * (invariants #10, #11); nothing is refunded for a zero-rate day. Throws on {@link RefundResult.Failed} so
  * the registry retains and re-drives the publication; a redelivery never refunds a day twice (§payment).
  * Runs on the refund bulkhead, outside any transaction, as {@code BookingRefundListener} does. Renaming

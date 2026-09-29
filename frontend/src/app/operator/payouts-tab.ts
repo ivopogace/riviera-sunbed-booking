@@ -323,9 +323,10 @@ function reasonLabel(entry: PayoutLedgerEntryView): string {
     return 'Venue change fee';
   }
   if (entry.type === 'DAY_REVERSAL') {
+    const reason = refundReasonLabel(entry.reason ?? 'WEATHER');
     return entry.serviceDate
-      ? `Weather · ${formatCivilDate(entry.serviceDate)}`
-      : 'Weather · one day';
+      ? `${reason} · ${formatCivilDate(entry.serviceDate)}`
+      : `${reason} · one day`;
   }
   return refundReasonLabel(entry.reason);
 }
@@ -335,6 +336,8 @@ function refundReasonLabel(reason: RefundReasonCode | null): string {
   switch (reason) {
     case 'WEATHER':
       return 'Weather';
+    case 'VENUE':
+      return 'Venue refund';
     case 'POLICY':
       return 'Policy';
     case 'CONFLICT':

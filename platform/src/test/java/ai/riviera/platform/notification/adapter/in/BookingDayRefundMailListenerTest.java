@@ -19,6 +19,7 @@ import ai.riviera.platform.notification.application.TransactionalMailService;
 import ai.riviera.platform.shared.ObservabilityMetrics;
 import ai.riviera.platform.venue.vocabulary.SetId;
 import ai.riviera.platform.venue.vocabulary.VenueId;
+import ai.riviera.platform.booking.vocabulary.RefundReason;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
@@ -41,7 +42,7 @@ class BookingDayRefundMailListenerTest {
 	private static final SetId SET = new SetId(7L);
 	private static final LocalDate DAY = LocalDate.of(2026, 7, 8);
 	private static final BookingDayRefunded EVENT = new BookingDayRefunded(BOOKING, new VenueId(3L), SET, DAY, 3000L,
-			"EUR", null);
+			"EUR", null, RefundReason.WEATHER, false);
 	private static final URI LINK = URI.create("https://riviera.example/booking/STAYCODE");
 
 	private final BookingMailFactsService facts = mock(BookingMailFactsService.class);
@@ -59,8 +60,24 @@ class BookingDayRefundMailListenerTest {
 		listener.on(EVENT);
 
 		verify(mails).sendDayRefund("guest@example.com",
-				new DayRefundMail("STAYCODE", "Vala Beach", DAY, 3000L, "EUR", LINK));
+				new DayRefundMail("STAYCODE", "Vala Beach", DAY, 3000L, "EUR", RefundReason.WEATHER, false, LINK));
 		assertThat(meters.find(ObservabilityMetrics.MAIL_DAY_REFUND_ABANDONED).counters()).isEmpty();
+	}
+
+	/** ADR-0027: the venue's reason and the released mark ride into the mail; a payload without a reason is weather's. */
+	@Test
+	void carriesTheReasonAndTheReleasedMarkIntoTheMail() {
+		when(facts.resolve(BOOKING, SET)).thenReturn(new BookingMailFacts.Resolved("guest@example.com", "STAYCODE",
+				"Vala Beach", "A", 3));
+
+		listener.on(new BookingDayRefunded(BOOKING, new VenueId(3L), SET, DAY, 3000L, "EUR", null, RefundReason.VENUE,
+				true));
+		listener.on(new BookingDayRefunded(BOOKING, new VenueId(3L), SET, DAY, 3000L, "EUR", null, null, false));
+
+		verify(mails).sendDayRefund("guest@example.com",
+				new DayRefundMail("STAYCODE", "Vala Beach", DAY, 3000L, "EUR", RefundReason.VENUE, true, LINK));
+		verify(mails).sendDayRefund("guest@example.com",
+				new DayRefundMail("STAYCODE", "Vala Beach", DAY, 3000L, "EUR", RefundReason.WEATHER, false, LINK));
 	}
 
 	@Test

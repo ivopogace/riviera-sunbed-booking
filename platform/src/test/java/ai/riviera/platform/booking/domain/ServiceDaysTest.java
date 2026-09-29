@@ -24,6 +24,15 @@ class ServiceDaysTest {
 				ServiceDays.between(FIRST, FIRST.plusDays(2)));
 	}
 
+	/** ADR-0027: a day the venue released is another guest's or nobody's — a whole-span release must skip it. */
+	@Test
+	void theHeldDaysLeaveOutTheReleasedOnes() {
+		assertEquals(List.of(FIRST, FIRST.plusDays(2)),
+				ServiceDays.held(FIRST, FIRST.plusDays(2), List.of(FIRST.plusDays(1), FIRST.plusDays(9))));
+		assertEquals(List.of(), ServiceDays.held(FIRST, FIRST, List.of(FIRST)));
+		assertEquals(ServiceDays.between(FIRST, FIRST.plusDays(1)), ServiceDays.held(FIRST, FIRST.plusDays(1), List.of()));
+	}
+
 	@Test
 	void aLastDayBeforeTheFirstIsRefused() {
 		assertThrows(IllegalArgumentException.class, () -> ServiceDays.between(FIRST, FIRST.minusDays(1)),

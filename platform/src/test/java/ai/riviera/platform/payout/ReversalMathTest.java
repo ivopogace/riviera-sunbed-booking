@@ -60,14 +60,15 @@ class ReversalMathTest {
 		PayoutLedgerEntry accrual = PayoutLedgerEntry.accrual(new VenueId(1L), 43L, 42000L, 1500, "EUR");
 		LocalDate day = LocalDate.of(2026, 7, 8);
 
-		PayoutLedgerEntry reversal = PayoutLedgerEntry.dayReversalOf(accrual, day, 3000L, Reversed.NONE);
+		PayoutLedgerEntry reversal = PayoutLedgerEntry.dayReversalOf(accrual, day, 3000L, Reversed.NONE,
+				RefundReason.WEATHER);
 
 		assertEquals(EntryType.DAY_REVERSAL, reversal.entryType());
 		assertEquals(day, reversal.serviceDate(), "the day is the row's key");
 		assertEquals(3000L, reversal.grossMinor());
 		assertEquals(450L, reversal.commissionMinor(), "floorDiv(6300 × 3000, 42000) = 450");
 		assertEquals(2550L, reversal.netMinor());
-		assertEquals(RefundReason.WEATHER, reversal.reason(), "a day is only ever refunded for weather");
+		assertEquals(RefundReason.WEATHER, reversal.reason(), "the reason is the event's");
 	}
 
 	@Test
@@ -76,9 +77,9 @@ class ReversalMathTest {
 		// return 52, not floor(150 × 334 / 1000) = 50, so the three reverse exactly 150.
 		PayoutLedgerEntry accrual = PayoutLedgerEntry.accrual(new VenueId(1L), 44L, 1000L, 1500, "EUR");
 		PayoutLedgerEntry first = PayoutLedgerEntry.dayReversalOf(accrual, LocalDate.of(2026, 7, 1), 333L,
-				Reversed.NONE);
+				Reversed.NONE, RefundReason.WEATHER);
 		PayoutLedgerEntry second = PayoutLedgerEntry.dayReversalOf(accrual, LocalDate.of(2026, 7, 2), 333L,
-				new Reversed(first.grossMinor(), first.commissionMinor()));
+				new Reversed(first.grossMinor(), first.commissionMinor()), RefundReason.VENUE);
 		PayoutLedgerEntry last = PayoutLedgerEntry.reversalOf(accrual, 334L, RefundReason.POLICY,
 				new Reversed(666L, first.commissionMinor() + second.commissionMinor()));
 

@@ -201,7 +201,8 @@ class CancelBookingIT {
 				RETURNING id
 				""").param("venue", venueId).param("set", setId).param("cust", customer)
 				.param("first", first).param("last", first.plusDays(2)).query(Long.class).single();
-		jdbc.sql("UPDATE booking_day SET refunded_at = NOW(), refund_minor = 3000 WHERE booking_id = :id AND service_date = :d")
+		jdbc.sql("UPDATE booking_day SET refunded_at = NOW(), refund_minor = 3000, refund_reason = 'WEATHER' "
+						+ "WHERE booking_id = :id AND service_date = :d")
 				.param("id", id).param("d", first.plusDays(1)).update();
 
 		assertTrue(bookings.cancelConfirmed(id, java.time.Instant.now(), 9000L, RefundReason.POLICY, 9000L).isEmpty(),
@@ -234,7 +235,8 @@ class CancelBookingIT {
 				                                 net_minor, currency)
 				VALUES (:v, :b, 'ACCRUAL', 9000, 0, 9000, 'EUR')
 				""").param("v", venueId).param("b", id).update();
-		jdbc.sql("UPDATE booking_day SET refunded_at = NOW(), refund_minor = 3000 WHERE booking_id = :id AND service_date = :d")
+		jdbc.sql("UPDATE booking_day SET refunded_at = NOW(), refund_minor = 3000, refund_reason = 'WEATHER' "
+						+ "WHERE booking_id = :id AND service_date = :d")
 				.param("id", id).param("d", first.plusDays(1)).update();
 
 		BookingDetail before = viewBooking.byCode("CANCELWX01").orElseThrow();

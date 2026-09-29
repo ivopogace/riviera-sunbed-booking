@@ -96,7 +96,8 @@ class JdbcBookingTransitionTableIT {
 			case CHECK_IN ->
 				bookings.completeConfirmed(booking.code(), booking.venueId(), SERVICE_DATE, NOW).isPresent();
 			case SWEEP_NO_SHOW -> bookings.markPastConfirmedAsNoShow(SERVICE_DATE.plusDays(1), SWEEP_BATCH) > 0;
-			case WEATHER_REFUND -> bookings.cancelForWeather(booking.id(), NOW, 0L, 4500L).isPresent();
+			case VENUE_REFUND -> bookings.cancelByVenue(booking.id(), NOW, 0L, 4500L,
+					ai.riviera.platform.booking.vocabulary.RefundReason.VENUE, null).isPresent();
 		};
 	}
 

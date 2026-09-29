@@ -204,7 +204,7 @@ class SmtpMailer implements Mailer {
 
 	/**
 	 * Why the booking ended, in the tourist's terms. Exhaustive over the published enum with no
-	 * {@code default}, so a fifth {@code RefundReason} is a compile error here rather than a blank
+	 * {@code default}, so a new {@code RefundReason} is a compile error here rather than a blank
 	 * first line in someone's inbox.
 	 */
 	private static String opening(BookingCancellationMail cancellation) {
@@ -212,6 +212,8 @@ class SmtpMailer implements Mailer {
 			case POLICY -> "Your cancellation is confirmed.";
 			case WEATHER -> "The venue cancelled bookings for %s because of the weather."
 					.formatted(DATE_FORMAT.format(cancellation.bookingDate()));
+			case VENUE -> "%s refunded your booking for %s."
+					.formatted(cancellation.venueName(), DATE_FORMAT.format(cancellation.bookingDate()));
 			case CONFLICT -> "The venue had to cancel your booking.";
 			case VENUE_CHANGE -> venueChangeOpening(cancellation);
 		};
@@ -371,8 +373,7 @@ class SmtpMailer implements Mailer {
 	@Override
 	public void sendDayRefund(String toEmail, DayRefundMail refund) {
 		send(toEmail, DAY_REFUND_SUBJECT.formatted(headerSafe(refund.venueName())), """
-				%s closed for the weather on %s, so that day's share of your booking is refunded. Your
-				booking stands for its other days, and your spot stays yours.
+				%s
 
 				  Booking code:  %s
 				  Venue:         %s
@@ -383,9 +384,30 @@ class SmtpMailer implements Mailer {
 				days to appear on your statement.
 
 				%s"""
-				.formatted(refund.venueName(), DATE_FORMAT.format(refund.serviceDate()), refund.bookingCode(),
+				.formatted(dayRefundOpening(refund), refund.bookingCode(),
 						refund.venueName(), DATE_FORMAT.format(refund.serviceDate()),
 						formatAmount(refund.refundMinor(), refund.currency()), refund.bookingLink()));
+	}
+
+	/**
+	 * Who refunded the day and what becomes of the spot: weather keeps it the guest's (ADR-0026 §3); the
+	 * venue's own refund frees it when released, and names no grounds (ADR-0027 §9). Exhaustive on
+	 * purpose: a day reason without copy is a compile error, not a blank first line.
+	 */
+	private static String dayRefundOpening(DayRefundMail refund) {
+		String venue = refund.venueName();
+		String day = DATE_FORMAT.format(refund.serviceDate());
+		return switch (refund.reason()) {
+			case WEATHER -> ("%s closed for the weather on %s, so that day's share of your booking is refunded. Your\n"
+					+ "booking stands for its other days, and your spot stays yours.").formatted(venue, day);
+			case VENUE -> refund.released()
+					? ("%s refunded %s of your booking, so that day's share is on its way back to you. Your spot\n"
+							+ "is no longer held for that day; your booking stands for its other days.").formatted(venue, day)
+					: ("%s refunded %s of your booking, so that day's share is on its way back to you. Your\n"
+							+ "booking stands for its other days.").formatted(venue, day);
+			case POLICY, CONFLICT, VENUE_CHANGE -> throw new IllegalArgumentException(
+					"a day is refunded for weather or by the venue, not " + refund.reason());
+		};
 	}
 
 	/** The exit a move earned: in full for a lone booking, these days in full for a stretch, none once a stay began. */

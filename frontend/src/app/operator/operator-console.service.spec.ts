@@ -12,6 +12,7 @@ import {
   RequestDecision,
   SetBatchRequest,
   SetWriteRequest,
+  VenueDayRefundResult,
   WeatherRefundResult,
 } from './operator-console.model';
 import {
@@ -22,6 +23,7 @@ import {
   requestErrorOf,
   checkInErrorOf,
   checkInWrongDateOf,
+  dayRefundErrorOf,
   checkInSetIdOf,
   setWriteErrorOf,
   layoutBlockedSetsOf,
@@ -304,6 +306,54 @@ describe('OperatorConsoleService — payout ledger + weather refund (#173)', () 
   });
 });
 
+describe('OperatorConsoleService — venue day refund (ADR-0027)', () => {
+  let service: OperatorConsoleService;
+  let httpMock: HttpTestingController;
+
+  beforeEach(() => {
+    TestBed.configureTestingModule({
+      providers: [provideHttpClient(), provideHttpClientTesting(), OperatorConsoleService],
+    });
+    service = TestBed.inject(OperatorConsoleService);
+    httpMock = TestBed.inject(HttpTestingController);
+  });
+
+  afterEach(() => httpMock.verify());
+
+  it('POSTs the code in the path and the date as a query param, with no body', () => {
+    let actual: VenueDayRefundResult | undefined;
+    service.dayRefund(1, 'STAY12345', '2026-07-05').subscribe((r) => (actual = r));
+
+    const req = httpMock.expectOne(
+      (r) => r.url === `${BASE}/api/venues/1/bookings/STAY12345/day-refund` && r.method === 'POST',
+    );
+    expect(req.request.params.get('date')).toBe('2026-07-05');
+    expect(req.request.body).toBeNull();
+    const outcome: VenueDayRefundResult = {
+      kind: 'DAY_REFUNDED',
+      serviceDate: '2026-07-05',
+      refundMinor: 5000,
+      currency: 'EUR',
+      released: true,
+    };
+    req.flush(outcome);
+    expect(actual).toEqual(outcome);
+  });
+
+  it('maps the day-refund RFC-7807 codes, 401 and the unrecognised rest', () => {
+    const http = (status: number, body: unknown) => new HttpErrorResponse({ status, error: body });
+    expect(dayRefundErrorOf(http(409, { code: 'DAY_ATTENDED' }))).toBe('DAY_ATTENDED');
+    expect(dayRefundErrorOf(http(409, { code: 'DAY_ALREADY_REFUNDED' }))).toBe(
+      'DAY_ALREADY_REFUNDED',
+    );
+    expect(dayRefundErrorOf(http(404, { code: 'BOOKING_NOT_FOUND' }))).toBe('BOOKING_NOT_FOUND');
+    expect(dayRefundErrorOf(http(403, { code: 'NOT_VENUE_OWNER' }))).toBe('NOT_VENUE_OWNER');
+    expect(dayRefundErrorOf(http(401, { code: 'UNAUTHENTICATED' }))).toBe('UNAUTHORIZED');
+    expect(dayRefundErrorOf(http(500, { code: 'BOOM' }))).toBe('UNKNOWN');
+    expect(dayRefundErrorOf(new Error('offline'))).toBe('UNKNOWN');
+  });
+});
+
 describe('check-in error mapping (#583)', () => {
   function http(status: number, body: unknown): HttpErrorResponse {
     return new HttpErrorResponse({ status, error: body });
@@ -311,6 +361,7 @@ describe('check-in error mapping (#583)', () => {
 
   it('maps the RFC-7807 codes the Daily view explains', () => {
     expect(checkInErrorOf(http(409, { code: 'ALREADY_CHECKED_IN' }))).toBe('ALREADY_CHECKED_IN');
+    expect(checkInErrorOf(http(409, { code: 'DAY_RELEASED' }))).toBe('DAY_RELEASED');
     expect(checkInErrorOf(http(409, { code: 'WRONG_SERVICE_DATE' }))).toBe('WRONG_SERVICE_DATE');
     expect(checkInErrorOf(http(404, { code: 'BOOKING_NOT_FOUND' }))).toBe('BOOKING_NOT_FOUND');
     expect(checkInErrorOf(http(403, { code: 'NOT_VENUE_OWNER' }))).toBe('NOT_VENUE_OWNER');

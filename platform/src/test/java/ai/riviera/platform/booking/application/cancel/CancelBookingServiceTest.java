@@ -102,6 +102,24 @@ class CancelBookingServiceTest {
 		verify(bookings, never()).cancelConfirmed(anyLong(), any(), anyLong(), any(), anyLong());
 	}
 
+	/** ADR-0027 (#2): a day the venue released may hold another guest's claim — the cancel never frees it. */
+	@Test
+	void aCancelSkipsTheDaysTheVenueReleased() {
+		LocalDate last = DATE.plusDays(2);
+		BookingRecord booking = givenBooking(BookingStatus.CONFIRMED);
+		when(cancellationPolicy.quote(booking))
+				.thenReturn(new RefundQuote(setInfo(), CancellationWindow.FREE, 4500L, RefundReason.POLICY, null));
+		when(bookings.cancelConfirmed(booking.id(), NOW.instant(), 4500L, RefundReason.POLICY, 4500L))
+				.thenReturn(Optional.of(new CancelledBooking(booking.id(), VENUE, SET, DATE, last, 4500L, "EUR")));
+		when(bookings.findReleasedDays(booking.id())).thenReturn(List.of(DATE.plusDays(1)));
+
+		service.cancel(CODE);
+
+		verify(availability).release(SET, DATE);
+		verify(availability).release(SET, last);
+		verify(availability, never()).release(SET, DATE.plusDays(1));
+	}
+
 	@Test
 	void aConfirmedBookingInsideTheWindowIsCancelled() {
 		BookingRecord booking = givenBooking(BookingStatus.CONFIRMED);

@@ -280,6 +280,16 @@ class CrossVenueDenialIT {
 				.andExpect(status().isForbidden());
 	}
 
+	/** ADR-0027: the venue day refund asserts ownership before any read of the booking (#13). */
+	@Test
+	void venueDayRefundByNonOwnerIs403() throws Exception {
+		actingAs(operatorA);
+		mvc.perform(post("/api/venues/{v}/bookings/{code}/day-refund", MIRAMAR, "ANYCODE01").cookie(operatorSession)
+						.with(csrf()).param("date", "2020-01-01"))
+				.andExpect(status().isForbidden())
+				.andExpect(jsonPath("$.code").value("NOT_VENUE_OWNER"));
+	}
+
 	@Test
 	void payoutLedgerReadByNonOwnerIs403() throws Exception {
 		actingAs(operatorA);

@@ -1,8 +1,9 @@
 # ADR-0027: A day the venue refunds on its own is released, and the stay goes on around it
 
-- **Status:** Accepted — decided by the owner 2026-09-29 (issue #1272); **to be implemented** by the
-  slices under #1272, nothing of it in the tree yet. Amends ADR-0026 §3 for the reason it introduces
-  (dated marker there); ADR-0026 stands as written for weather, its §7 for this reason too.
+- **Status:** Accepted — decided by the owner 2026-09-29 (issue #1272); the operator path (decisions
+  2–9, the operator gate of decision 1) is implemented by the slice for issue #1275; the admin path
+  (decision 1's audited gate, the email lookup) is the slice after it. Amends ADR-0026 §3 for the reason
+  it introduces (dated marker there); ADR-0026 stands as written for weather, its §7 for this reason too.
 - **Date:** 2026-09-29
 - **Relates to:** ADR-0026 (the day leg this reuses), ADR-0005 (the server-side policy the remainder
   keeps), ADR-0013 and ADR-0017 (the admin audit trail), ADR-0021 (the ledger's sign convention; the

@@ -174,7 +174,7 @@ public interface Bookings {
 	/**
 	 * Guest-path {@code CONFIRMED → CANCELLED}, stamping the server-computed refund and reason (#10) and
 	 * returning the {@code BookingCancelled} facts. Guarded on {@code CONFIRMED} and on {@code remainingMinor}
-	 * (the amount less the weather-refunded days the quote saw): a double-cancel or a day refunded since is {@code empty}.
+	 * (the amount less the refunded days the quote saw): a double-cancel or a day refunded since is {@code empty}.
 	 */
 	Optional<CancelledBooking> cancelConfirmed(long bookingId, java.time.Instant cancelledAt,
 			long refundMinor, ai.riviera.platform.booking.vocabulary.RefundReason reason, long remainingMinor);
@@ -187,12 +187,13 @@ public interface Bookings {
 	boolean moveToSet(long bookingId, SetId from, SetId to, Instant movedAt);
 
 	/**
-	 * Weather refund: like {@link #cancelConfirmed} but also admitting {@code NO_SHOW} (the storm's
-	 * already-swept stay-homes), stamping {@code WEATHER}; separate so a no-show is never guest-cancellable.
-	 * A re-run, a concurrent cancel or a remainder other than {@code remainingMinor} is {@code empty}: one refund each.
+	 * The venue's cancellation ({@code WEATHER}, or {@code VENUE} for a lone one-day booking, ADR-0027 §6): like
+	 * {@link #cancelConfirmed} but also admitting {@code NO_SHOW}, stamping {@code reason} and a given {@code actor} on
+	 * the service days; separate so a no-show is never guest-cancellable. A re-run, a lost race or a stale remainder is {@code empty}.
 	 */
-	Optional<CancelledBooking> cancelForWeather(long bookingId, java.time.Instant cancelledAt,
-			long refundMinor, long remainingMinor);
+	Optional<CancelledBooking> cancelByVenue(long bookingId, java.time.Instant cancelledAt,
+			long refundMinor, long remainingMinor, ai.riviera.platform.booking.vocabulary.RefundReason reason,
+			ai.riviera.platform.operator.vocabulary.OperatorId actor);
 
 	/**
 	 * Venue-scoped stamp of {@code attended_at} on the {@code CONFIRMED} booking's {@code serviceDate}
@@ -217,8 +218,8 @@ public interface Bookings {
 	int markPastConfirmedAsNoShow(LocalDate today, int batchSize);
 
 	/**
-	 * Status, first service day and whether {@code today} is attended or refunded behind a code, to
-	 * classify a 0-row check-in. Venue-scoped: a foreign code reads {@code empty} like an unknown one (#7).
+	 * Status, first service day and whether {@code today} is attended, refunded or released behind a code,
+	 * to classify a 0-row check-in. Venue-scoped: a foreign code reads {@code empty} like an unknown one (#7).
 	 */
 	Optional<ai.riviera.platform.booking.application.checkin.CheckInFacts> findCheckInFacts(
 			String code, VenueId venueId, LocalDate today);
@@ -238,9 +239,9 @@ public interface Bookings {
 			Instant at);
 
 	/**
-	 * The venue's {@code CONFIRMED}/{@code COMPLETED}/{@code NO_SHOW} bookings covering {@code date},
-	 * ordered by set, each with the guest's span and the day's attendance, for the staff daily view.
-	 * The {@code code} is a bearer credential — for the operator-gated caller only, never logged (#7).
+	 * The venue's {@code CONFIRMED}/{@code COMPLETED}/{@code NO_SHOW} bookings covering {@code date}, by set, each
+	 * with the guest's span, the day's attendance and released mark (ADR-0027: two rows may then share a set), for
+	 * the staff daily view. The {@code code} is a bearer credential — operator-gated callers only, never logged (#7).
 	 */
 	List<DailyBooking> findSettledForVenueOn(VenueId venueId, LocalDate date);
 
@@ -252,14 +253,27 @@ public interface Bookings {
 	List<RefundableBooking> findRefundableForWeather(VenueId venueId, LocalDate date);
 
 	/**
-	 * Guarded stamp of a weather refund on one service day (issue #1210): {@code refunded_at} and the
-	 * day's {@code refundMinor}, only on an unattended, not yet refunded day of a booking that happened;
-	 * nothing else changes. Present iff this statement stamped it — the caller publishes exactly once.
+	 * {@link #findRefundableForWeather}'s row for the one booking behind {@code code} at this venue (a
+	 * stay's code names the stretch covering {@code date}) that happened and covers the date — the venue
+	 * day refund's candidate (ADR-0027). A foreign code, a dead lifecycle or an uncovered date reads {@code empty}.
+	 */
+	Optional<RefundableBooking> findRefundableByCode(String code, VenueId venueId, LocalDate date);
+
+	/**
+	 * Guarded stamp of a day refund (ADR-0026, ADR-0027): {@code refunded_at}, {@code refundMinor} and the
+	 * {@code stamp}'s reason, actor and released mark, only on an unattended, not yet refunded day of a booking
+	 * that happened; the caller frees the claim when the stamp says released. Present iff this statement stamped it — publish exactly once.
 	 */
 	Optional<ai.riviera.platform.booking.application.refund.DayRefundedBooking> refundDay(long bookingId,
-			LocalDate day, long refundMinor, Instant at);
+			LocalDate day, long refundMinor, Instant at, ai.riviera.platform.booking.application.refund.DayRefundStamp stamp);
 
-	/** The booking's days refunded for weather, in day order; empty when none. */
+	/**
+	 * The booking's days whose claim the venue released (ADR-0027), in day order; empty when none. A leg that
+	 * frees a live booking's span walks {@code ServiceDays.held} over these: a released row is not its to free (#2).
+	 */
+	List<LocalDate> findReleasedDays(long bookingId);
+
+	/** The booking's refunded days with their reason and released mark, in day order; empty when none. */
 	List<ai.riviera.platform.booking.application.view.RefundedDay> findRefundedDays(long bookingId);
 
 	/**

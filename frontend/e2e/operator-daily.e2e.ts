@@ -407,6 +407,101 @@ test('tells arriving, staying and leaving guests apart on a day with stays, and 
   await expectNoSeriousAxeViolations(page, 'daily view tab with stays');
 });
 
+test('refunds one guest’s day from the row behind a two-step confirm, and the row reads released (ADR-0027, + axe)', async ({
+  page,
+}) => {
+  await mockDaily(page);
+  const shift = (days: number) => {
+    const d = new Date(`${TODAY}T00:00:00Z`);
+    d.setUTCDate(d.getUTCDate() + days);
+    return d.toISOString().slice(0, 10);
+  };
+  let refunded = false;
+  const refunds: import('@playwright/test').Request[] = [];
+  await page.route(/\/api\/venues\/1\/bookings(\?.*)?$/, (route) =>
+    route.fulfill({
+      json: [
+        {
+          setId: 3,
+          code: 'STAY00001',
+          status: 'CONFIRMED',
+          firstDate: shift(-1),
+          lastDate: shift(1),
+          attendance: refunded ? 'REFUNDED' : 'EXPECTED',
+          released: refunded,
+        },
+      ],
+    }),
+  );
+  await page.route(/\/api\/venues\/1\/bookings\/STAY00001\/day-refund(\?.*)?$/, (route) => {
+    refunds.push(route.request());
+    refunded = true;
+    return route.fulfill({
+      json: {
+        kind: 'DAY_REFUNDED',
+        serviceDate: TODAY,
+        refundMinor: 4500,
+        currency: 'EUR',
+        released: true,
+      },
+    });
+  });
+  await page.goto('/operator/1');
+  await signInAndOpenDaily(page);
+
+  // The row action opens the amber confirm; nothing is posted until confirmed.
+  await page.getByTestId('refund-day-STAY00001').click();
+  const confirm = page.getByTestId('daily-refund-confirm-panel');
+  await expect(confirm).toBeVisible();
+  await expect(confirm).toContainText('Refund');
+  expect(refunds).toHaveLength(0);
+  await settle(page);
+  await expectNoSeriousAxeViolations(page, 'daily view tab with the day-refund confirm open');
+
+  await page.getByTestId('daily-refund-confirm').click();
+  await expect(page.getByTestId('daily-refund-result')).toContainText('€45');
+  await expect(page.getByTestId('daily-refund-result')).toContainText('free again');
+  expect(refunds).toHaveLength(1);
+  expect(new URL(refunds[0].url()).searchParams.get('date')).toBe(TODAY);
+  expect(refunds[0].method()).toBe('POST');
+
+  // The reconcile shows the hole: the stay's row stays listed, badged released, its action gone.
+  await expect(page.getByTestId('arrival-day-released')).toHaveText('Day released');
+  await expect(page.getByTestId('daily-arrival-row')).toHaveCount(1);
+  await expect(page.getByTestId('refund-day-STAY00001')).toHaveCount(0);
+  await settle(page);
+  await expectNoSeriousAxeViolations(page, 'daily view tab after a day refund');
+});
+
+test('keeps focus off body across the day-refund confirm (WCAG 2.4.3)', async ({ page }) => {
+  await mockDaily(page);
+  await page.route(/\/api\/venues\/1\/bookings\/ABC12345\/day-refund(\?.*)?$/, (route) =>
+    route.fulfill({
+      status: 409,
+      contentType: 'application/problem+json',
+      json: { type: 'about:blank', status: 409, code: 'DAY_ALREADY_REFUNDED' },
+    }),
+  );
+  await page.goto('/operator/1');
+  await signInAndOpenDaily(page);
+
+  // Open: the trigger is removed from the DOM, so focus has to land on the destructive button.
+  await page.getByTestId('refund-day-ABC12345').click();
+  await expect(page.getByTestId('daily-refund-confirm')).toBeFocused();
+
+  // Back out: the confirm is removed, so focus returns to the trigger it replaced.
+  await page.getByTestId('daily-refund-cancel').click();
+  await expect(page.getByTestId('refund-day-ABC12345')).toBeFocused();
+
+  // Settled (a refusal here): the confirm is gone, so focus parks on the region carrying the outcome.
+  await page.getByTestId('refund-day-ABC12345').click();
+  await page.getByTestId('daily-refund-confirm').click();
+  await expect(page.getByTestId('daily-refund-result')).toContainText('already refunded');
+  await expect(page.getByTestId('daily-refund-result')).toBeFocused();
+  await settle(page);
+  await expectNoSeriousAxeViolations(page, 'day refund focus legs');
+});
+
 test('checks a guest in by typed code — the keyboard path needs no camera (#583)', async ({
   page,
 }) => {

@@ -78,8 +78,12 @@ class PayoutDayReversalIT {
 	}
 
 	private BookingDayRefunded dayRefunded(Ref b, LocalDate day) {
+		return dayRefunded(b, day, RefundReason.WEATHER);
+	}
+
+	private BookingDayRefunded dayRefunded(Ref b, LocalDate day, RefundReason reason) {
 		return new BookingDayRefunded(new BookingId(b.bookingId()), new VenueId(b.venueId()),
-				new SetId(b.setId()), day, 3000L, "EUR", null);
+				new SetId(b.setId()), day, 3000L, "EUR", null, reason, reason == RefundReason.VENUE);
 	}
 
 	private void publishInTransaction(Object event) {
@@ -139,6 +143,25 @@ class PayoutDayReversalIT {
 		assertEquals(39000L, jdbc.sql("SELECT gross_minor FROM payout_ledger_entry "
 						+ "WHERE booking_id = :id AND entry_type = 'REVERSAL'")
 				.param("id", b.bookingId()).query(Long.class).single(), "the remainder, never the day again");
+		assertEquals(0L, net(b.bookingId()), "reversed in parts, the booking nets exactly zero (invariant #9)");
+	}
+
+	/** ADR-0027: a venue day refund reverses under {@code VENUE}, once per day, and a later cancellation takes the remainder. */
+	@Test
+	void aVenueDayReversalCarriesTheReasonAndALaterCancellationTakesTheRemainder() {
+		Ref b = stayWithAccrual("DAYREV004");
+		publishInTransaction(dayRefunded(b, DAY_8, RefundReason.VENUE));
+		publishInTransaction(dayRefunded(b, DAY_8, RefundReason.VENUE));
+		Awaitility.await().atMost(WAIT).untilAsserted(() -> assertEquals(1L, rows(b.bookingId(), "DAY_REVERSAL")));
+		assertEquals("VENUE", jdbc.sql("SELECT reason FROM payout_ledger_entry "
+						+ "WHERE booking_id = :id AND entry_type = 'DAY_REVERSAL'")
+				.param("id", b.bookingId()).query(String.class).single(), "the ledger names the venue's reason");
+		assertEquals(0L, rows(b.bookingId(), "FEE"), "a goodwill refund carries no venue-change fee (ADR-0027 §8)");
+
+		publishInTransaction(new BookingCancelled(new BookingId(b.bookingId()), new VenueId(b.venueId()),
+				new SetId(b.setId()), FIRST_DAY, 39000L, "EUR", RefundReason.POLICY, FIRST_DAY.plusDays(13)));
+
+		Awaitility.await().atMost(WAIT).untilAsserted(() -> assertEquals(1L, rows(b.bookingId(), "REVERSAL")));
 		assertEquals(0L, net(b.bookingId()), "reversed in parts, the booking nets exactly zero (invariant #9)");
 	}
 }

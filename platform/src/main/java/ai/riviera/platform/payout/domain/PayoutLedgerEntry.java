@@ -72,15 +72,15 @@ public record PayoutLedgerEntry(VenueId venueId, long bookingId, EntryType entry
 	}
 
 	/**
-	 * The {@code DAY_REVERSAL} of one service day's share, always for weather: the same arithmetic as
+	 * The {@code DAY_REVERSAL} of one service day's share for {@code reason} ({@code WEATHER} or {@code VENUE},
+	 * no fee either way): the same arithmetic as
 	 * {@link #reversalOf(PayoutLedgerEntry, long, RefundReason, Reversed)}, keyed by {@code serviceDate}.
 	 */
 	public static PayoutLedgerEntry dayReversalOf(PayoutLedgerEntry accrual, LocalDate serviceDate,
-			long refundMinor, Reversed prior) {
+			long refundMinor, Reversed prior, RefundReason reason) {
 		long commission = commissionOn(accrual, refundMinor, prior);
 		return new PayoutLedgerEntry(accrual.venueId(), accrual.bookingId(), EntryType.DAY_REVERSAL,
-				refundMinor, commission, refundMinor - commission, accrual.currency(), RefundReason.WEATHER,
-				serviceDate);
+				refundMinor, commission, refundMinor - commission, accrual.currency(), reason, serviceDate);
 	}
 
 	private static long commissionOn(PayoutLedgerEntry accrual, long refundMinor, Reversed prior) {

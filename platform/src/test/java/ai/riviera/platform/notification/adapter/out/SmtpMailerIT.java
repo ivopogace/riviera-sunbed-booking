@@ -233,10 +233,31 @@ class SmtpMailerIT {
 		assertThat(body).doesNotContain("<html", "<img", "http://track", "utm_");
 	}
 
+	/** ADR-0027 §9: the venue's own refund names who and what, never why; only a released day's copy frees the spot. */
+	@Test
+	void theVenuesDayRefundSaysWhoRefundedAndWhetherTheSpotIsHeld() throws Exception {
+		mailer().sendDayRefund(TO, new DayRefundMail(BOOKING_CODE, "Miramar Beach", LocalDate.of(2026, 8, 18), 3000L,
+				"EUR", RefundReason.VENUE, true, PAY_LINK));
+		String released = theOnlyReceivedMessage().getContent().toString();
+		greenMail.reset();
+
+		mailer().sendDayRefund(TO, new DayRefundMail(BOOKING_CODE, "Miramar Beach", LocalDate.of(2026, 8, 18), 3000L,
+				"EUR", RefundReason.VENUE, false, PAY_LINK));
+		String held = theOnlyReceivedMessage().getContent().toString();
+
+		assertThat(released).contains("Miramar Beach refunded 18 August 2026 of your booking", "Your spot",
+				"is no longer held for that day", "Refund:        EUR 30.00", PAY_LINK.toString());
+		assertThat(held).contains("Miramar Beach refunded 18 August 2026 of your booking", "Refund:        EUR 30.00")
+				.doesNotContain("no longer held");
+		for (String body : new String[] {released, held}) {
+			assertThat(body).doesNotContainIgnoringCase("weather").doesNotContainIgnoringCase("because");
+		}
+	}
+
 	@Test
 	void theDayRefundNamesTheDayTheAmountAndTheLink() throws Exception {
 		mailer().sendDayRefund(TO, new DayRefundMail(BOOKING_CODE, "Miramar Beach", LocalDate.of(2026, 8, 18), 3000L,
-				"EUR", PAY_LINK));
+				"EUR", RefundReason.WEATHER, false, PAY_LINK));
 
 		MimeMessage message = theOnlyReceivedMessage();
 		assertThat(message.getSubject()).isEqualTo("A day of your booking at Miramar Beach is refunded");
@@ -387,6 +408,17 @@ class SmtpMailerIT {
 	 * issues. The transport switches exhaustively so a fourth constant is a compile error, but nothing
 	 * makes the third produce sensible copy except a spec that reads it.
 	 */
+	/** ADR-0027 §6/§9: a lone one-day booking the venue refunded is cancelled under VENUE — who and what, never why. */
+	@Test
+	void aVenueCancellationNamesTheVenueAndNoGrounds() throws Exception {
+		mailer().sendBookingCancellation(TO, cancellation(2500, RefundReason.VENUE));
+
+		String body = theOnlyReceivedMessage().getContent().toString();
+		assertThat(body).contains("Miramar Beach refunded your booking for")
+				.doesNotContainIgnoringCase("weather").doesNotContainIgnoringCase("your cancellation")
+				.doesNotContainIgnoringCase("because");
+	}
+
 	@Test
 	void everyRefundReasonRendersABody() throws Exception {
 		for (RefundReason reason : RefundReason.values()) {

@@ -162,7 +162,7 @@ class RemodelClaimsService implements RemodelClaims {
 				.cancelConfirmed(claim.bookingId().value(), cancelledAt, claim.amountMinor(), RefundReason.VENUE_CHANGE,
 						claim.amountMinor())
 				.orElseThrow(() -> lostUnderLock(claim, "confirmed"));
-		releaseSpan(cancelled.setId(), cancelled.bookingDate(), cancelled.lastDate());
+		releaseHeld(cancelled.id(), cancelled.setId(), cancelled.bookingDate(), cancelled.lastDate());
 		events.publishEvent(new BookingCancelled(claim.bookingId(), venueId, cancelled.setId(),
 				cancelled.bookingDate(), claim.amountMinor(), claim.currency(), RefundReason.VENUE_CHANGE,
 				cancelled.lastDate()));
@@ -215,19 +215,23 @@ class RemodelClaimsService implements RemodelClaims {
 	}
 
 	/**
-	 * Claim every day of the span on the candidate before releasing the old rows (invariant #2), then
-	 * re-seat the booking. A day not won under the venue lock throws, and the commit's transaction
-	 * moves nothing.
+	 * Claim every day the booking still holds on the candidate before releasing the old rows (invariant
+	 * #2; a venue-released day is neither claimed nor freed, ADR-0027), then re-seat the booking. A day not
+	 * won under the venue lock throws, and the commit's transaction moves nothing.
 	 */
 	private ReceiptMove applyMove(VenueId venueId, RemodelClaim claim, RemodelOutcome.Move move, Instant movedAt) {
-		for (LocalDate day : ServiceDays.between(claim.bookingDate(), claim.lastDate())) {
+		List<LocalDate> held = ServiceDays.held(claim.bookingDate(), claim.lastDate(),
+				bookings.findReleasedDays(claim.bookingId().value()));
+		for (LocalDate day : held) {
 			ClaimOutcome claimed = availability.claim(move.to().setId(), day);
 			if (claimed != ClaimOutcome.CLAIMED) {
 				throw new IllegalStateException("move candidate " + move.to().setId().value() + " on "
 						+ day + " was not free under the venue lock: " + claimed);
 			}
 		}
-		releaseSpan(claim.from().setId(), claim.bookingDate(), claim.lastDate());
+		for (LocalDate day : held) {
+			availability.release(claim.from().setId(), day);
+		}
 		if (!bookings.moveToSet(claim.bookingId().value(), claim.from().setId(), move.to().setId(), movedAt)) {
 			throw new IllegalStateException("booking " + claim.bookingId().value() + " left set "
 					+ claim.from().setId().value() + " under the venue lock");
@@ -290,9 +294,16 @@ class RemodelClaimsService implements RemodelClaims {
 		};
 	}
 
-	/** Every day of the span, one {@code (set, date)} row each (invariant #2). */
+	/** Every day of an unpaid claim's span, one {@code (set, date)} row each (invariant #2). */
 	private void releaseSpan(SetId setId, LocalDate firstDay, LocalDate lastDay) {
 		for (LocalDate day : ServiceDays.between(firstDay, lastDay)) {
+			availability.release(setId, day);
+		}
+	}
+
+	/** Every day a live booking still holds: its span less the days the venue released (#2, ADR-0027). */
+	private void releaseHeld(long bookingId, SetId setId, LocalDate firstDay, LocalDate lastDay) {
+		for (LocalDate day : ServiceDays.held(firstDay, lastDay, bookings.findReleasedDays(bookingId))) {
 			availability.release(setId, day);
 		}
 	}

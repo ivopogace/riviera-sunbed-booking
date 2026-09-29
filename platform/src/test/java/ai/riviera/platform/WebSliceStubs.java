@@ -33,6 +33,8 @@ import ai.riviera.platform.audit.vocabulary.AdminAuditEntry;
 import ai.riviera.platform.booking.application.cancel.CancelBooking;
 import ai.riviera.platform.booking.application.cancel.CancelOutcome;
 import ai.riviera.platform.booking.application.refund.RefundForWeather;
+import ai.riviera.platform.booking.application.refund.RefundVenueDay;
+import ai.riviera.platform.booking.application.refund.VenueDayRefundOutcome;
 import ai.riviera.platform.booking.application.refund.RefundOutboxStatus;
 import ai.riviera.platform.booking.application.refund.RefundResubmission;
 import ai.riviera.platform.booking.application.refund.WeatherRefundOutcome;
@@ -712,6 +714,11 @@ class WebSliceStubs {
 	@Bean
 	RefundForWeather refundForWeather() {
 		return (_, _, _) -> new WeatherRefundOutcome(0, 0, "EUR", 0, 0, java.util.List.of());
+	}
+
+	@Bean
+	RefundVenueDay refundVenueDay() {
+		return (_, _, _, _) -> new VenueDayRefundOutcome.NotFound();
 	}
 
 	@Bean

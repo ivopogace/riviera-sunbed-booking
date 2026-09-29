@@ -15,12 +15,12 @@ import ai.riviera.platform.operator.vocabulary.VenueRef;
 import ai.riviera.platform.venue.vocabulary.VenueId;
 
 /**
- * The check-in use case. {@link VenueOwnership#assertOwns} runs first (invariant #13), before any
- * code lookup, so denial discloses nothing; then the guarded stamp on today's service-day row
- * (today in {@code Europe/Tirane}, invariant #6), resolving the stay on its last day. A 0-row miss is
- * read after the {@code UPDATE}: a lost race is {@link CheckInResult.AlreadyCheckedIn}, a swept
- * {@code NO_SHOW} {@link CheckInResult.WrongServiceDate} (this venue's, its days passed), a refunded
- * day {@link CheckInResult.DayRefunded}, never stamped (#1210). Rationale: RESPONSIBILITIES.md §booking.
+ * The check-in use case. {@link VenueOwnership#assertOwns} runs first (invariant #13), before any code
+ * lookup, so denial discloses nothing; then the guarded stamp on today's service-day row (today in
+ * {@code Europe/Tirane}, #6), resolving the stay on its last day. A 0-row miss is classified off the committed
+ * row: a lost race {@link CheckInResult.AlreadyCheckedIn}, a swept {@code NO_SHOW} {@link CheckInResult.WrongServiceDate},
+ * a refunded day {@link CheckInResult.DayRefunded}, a released one {@link CheckInResult.DayReleased} (ADR-0026,
+ * ADR-0027). Rationale: RESPONSIBILITIES.md §booking.
  */
 @Service
 class CheckInService implements CheckInBooking {
@@ -52,7 +52,9 @@ class CheckInService implements CheckInBooking {
 		return bookings.findCheckInFacts(code, venueId, today)
 				.<CheckInResult>map(facts -> {
 					if (facts.refundedToday() && facts.status().stormDayRefundable()) {
-						return new CheckInResult.DayRefunded(facts.bookingDate(), facts.setId());
+						return facts.releasedToday()
+								? new CheckInResult.DayReleased(facts.bookingDate(), facts.setId())
+								: new CheckInResult.DayRefunded(facts.bookingDate(), facts.setId());
 					}
 					return switch (facts.status()) {
 						case COMPLETED -> new CheckInResult.AlreadyCheckedIn(facts.bookingDate(), facts.setId());
