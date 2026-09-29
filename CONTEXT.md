@@ -290,10 +290,11 @@ model in `docs/architecture/domain-model.md`.
 - **Day refund** — one service day of a stay that goes on, given back to the guest: that day's share
   (its own rate, the stretch's) is refunded and the service day is stamped refunded (never attended,
   possibly missed). Check-in on it is refused, the sweep and the stay outcome ignore it, takings
-  exclude it, and a later cancellation is quoted over what remains. Two reasons: the **weather
+  exclude it, and a later cancellation is quoted over what remains. By reason: the **weather
   refund**'s, where the set stays the guest's and nothing is released, and the **venue day refund**,
   where the day is released. A lone one-day booking is cancelled instead under either.
-- **Venue day refund** — the venue's own refund of one guest's one day for a reason of its own (a
+- **Venue day refund** *(decided in ADR-0027, not yet built)* — the venue's own refund of one guest's
+  one day for a reason of its own (a
   pool closed for repair, a broken umbrella, a gesture after a complaint), issued by the venue's
   operator or by a platform admin on the venue's behalf: a **day refund** whose day is **released**,
   because the venue has decided the guest will not use it; a past day is refunded but not released.
@@ -319,7 +320,8 @@ model in `docs/architecture/domain-model.md`.
   is **not** a refund — the guest paid and the venue held the set, so every money read that counts
   a delivered stay counts a no-show too. The exceptions are the venue's **weather refund**, which
   reaches a no-show on purpose — on a washed-out day those are the guests who stayed home because
-  of the storm — and its own **venue day refund**, which may reach a missed day the same way.
+  of the storm — and its own **venue day refund**, which may reach a missed day by decision: a guest
+  who stayed away because of the venue is a day the venue may make good after the fact.
 - **Sales close** — the moment a venue's online sales for a date close, on the date
   itself: a per-venue setting fixed at one of three wall-clock values (00:01 opts the
   venue out of same-day sales, 16:00 the default, or 23:59), `Europe/Tirane`. The point
