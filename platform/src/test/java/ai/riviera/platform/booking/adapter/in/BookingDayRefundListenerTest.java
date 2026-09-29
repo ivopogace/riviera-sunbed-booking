@@ -8,6 +8,7 @@ import ai.riviera.platform.payment.vocabulary.Money;
 import ai.riviera.platform.payment.vocabulary.RefundResult;
 import ai.riviera.platform.venue.vocabulary.SetId;
 import ai.riviera.platform.venue.vocabulary.VenueId;
+import ai.riviera.platform.booking.vocabulary.RefundReason;
 import org.junit.jupiter.api.Test;
 
 import java.time.LocalDate;
@@ -27,7 +28,8 @@ class BookingDayRefundListenerTest {
 	}
 
 	private static BookingDayRefunded event(long refundMinor) {
-		return new BookingDayRefunded(new BookingId(42L), new VenueId(1L), new SetId(2L), DAY, refundMinor, "EUR", null);
+		return new BookingDayRefunded(new BookingId(42L), new VenueId(1L), new SetId(2L), DAY, refundMinor, "EUR", null,
+				RefundReason.VENUE, true);
 	}
 
 	private static RefundPort dayRefunds(List<Call> calls, RefundResult answer) {

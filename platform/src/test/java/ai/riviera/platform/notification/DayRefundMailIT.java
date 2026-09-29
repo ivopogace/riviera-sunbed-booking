@@ -24,6 +24,7 @@ import ai.riviera.platform.notification.application.EmailSuppressions;
 import ai.riviera.platform.notification.application.SuppressionReason;
 import ai.riviera.platform.venue.vocabulary.SetId;
 import ai.riviera.platform.venue.vocabulary.VenueId;
+import ai.riviera.platform.booking.vocabulary.RefundReason;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -79,14 +80,14 @@ class DayRefundMailIT {
 		long bookingId = fixtures.seedBooking(set, "DAYWX0001", day.minusDays(2), guest, 42000L, "CONFIRMED");
 
 		fixtures.publishInTransaction(new BookingDayRefunded(new BookingId(bookingId), new VenueId(set.venueId()),
-				new SetId(set.setId()), day, 3000L, "EUR", null));
+				new SetId(set.setId()), day, 3000L, "EUR", null, RefundReason.WEATHER, false));
 
 		Awaitility.await().atMost(WAIT).until(() -> countTo(guest) == 1L);
 		SentEmail sent = mailer.lastTo(guest).orElseThrow();
 		assertThat(sent.kind()).isEqualTo(SentEmail.Kind.DAY_REFUND);
 		DayRefundMail mail = sent.dayRefund();
 		assertThat(mail).isEqualTo(new DayRefundMail("DAYWX0001", venueNameOf(set.venueId()), day, 3000L, "EUR",
-				mail.bookingLink()));
+				RefundReason.WEATHER, false, mail.bookingLink()));
 		assertThat(mail.bookingLink().getPath()).endsWith("/booking/DAYWX0001");
 		assertThat(fixtures.outstandingPublicationsMatching(BookingMailFixtures.DAY_REFUND_LISTENER_ID, "3000"))
 				.as("the publication completes once the mail left").isZero();
@@ -101,7 +102,7 @@ class DayRefundMailIT {
 		long bookingId = fixtures.seedBooking(set, "DAYWX0002", day.minusDays(1), guest, 9000L, "CONFIRMED");
 
 		fixtures.publishInTransaction(new BookingDayRefunded(new BookingId(bookingId), new VenueId(set.venueId()),
-				new SetId(set.setId()), day, 3001L, "EUR", null));
+				new SetId(set.setId()), day, 3001L, "EUR", null, RefundReason.WEATHER, false));
 
 		Awaitility.await().atMost(WAIT).until(() -> fixtures.outstandingPublicationsMatching(
 				BookingMailFixtures.DAY_REFUND_LISTENER_ID, "3001") == 0L);

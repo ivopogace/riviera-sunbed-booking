@@ -38,7 +38,7 @@ class BookingTransitionTest {
 	}
 
 	@Test
-	void onlyTheWeatherRefundActsOnANoShow() {
+	void onlyTheVenueRefundActsOnANoShow() {
 		Set<BookingTransition> admittingNoShow = EnumSet.noneOf(BookingTransition.class);
 		for (BookingTransition transition : BookingTransition.values()) {
 			if (transition.admits(BookingStatus.NO_SHOW)) {
@@ -46,8 +46,8 @@ class BookingTransitionTest {
 			}
 		}
 
-		assertEquals(EnumSet.of(BookingTransition.WEATHER_REFUND), admittingNoShow,
-				"a swept no-show is out of the guest's reach — only the admin refund still reaches it");
+		assertEquals(EnumSet.of(BookingTransition.VENUE_REFUND), admittingNoShow,
+				"a swept no-show is out of the guest's reach — only the venue's refund still reaches it");
 		assertEquals(EnumSet.of(BookingStatus.CONFIRMED),
 				BookingTransition.CANCEL_BY_GUEST.admittedFrom(),
 				"the guest's own cancel admits CONFIRMED and nothing else");

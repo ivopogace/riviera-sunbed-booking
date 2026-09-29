@@ -70,8 +70,8 @@ class JdbcBookingsLiveClaimsIT {
 		long stay = insertBooking(venue, set, "CONFIRMED", JULY_1);
 		jdbc.sql("UPDATE booking SET last_date = :last WHERE id = :id").param("last", JULY_1.plusDays(2)).param("id", stay)
 				.update();
-		jdbc.sql("INSERT INTO booking_day (booking_id, service_date, refunded_at, refund_minor) "
-						+ "VALUES (:id, :day, NOW(), 1500)")
+		jdbc.sql("INSERT INTO booking_day (booking_id, service_date, refunded_at, refund_minor, refund_reason) "
+						+ "VALUES (:id, :day, NOW(), 1500, 'WEATHER')")
 				.param("id", stay).param("day", JULY_1.plusDays(1)).update();
 
 		LiveClaim claim = bookings.findLiveOnSets(Set.of(new SetId(set))).getFirst();

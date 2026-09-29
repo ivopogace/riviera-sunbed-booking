@@ -12,7 +12,7 @@ import ai.riviera.platform.payout.domain.Reversed;
 
 /**
  * On {@code BookingDayRefunded}, posts the {@code DAY_REVERSAL} of that day's share of the booking's
- * {@code ACCRUAL}, keyed by the day (issue #1210): pro rata like a cancellation's reversal, reading what
+ * {@code ACCRUAL}, keyed by the day and stamped with the event's reason, never a fee (ADR-0026, ADR-0027): pro rata like a cancellation's reversal, reading what
  * earlier reversals took so the one that exhausts the accrual returns the commission exactly. Idempotent
  * under redelivery via {@code UNIQUE (booking_id, entry_type, service_date)}. A day refund with no
  * accrual yet <strong>throws</strong>, leaving the publication outstanding rather than letting the ledger
@@ -39,9 +39,10 @@ class BookingDayRefundedPayoutListener {
 		}
 		PayoutLedgerEntry accrual = ledger.findAccrual(bookingId).orElseThrow(() -> deferReversal(event));
 		Reversed prior = ledger.findReversed(bookingId);
-		ledger.reverse(PayoutLedgerEntry.dayReversalOf(accrual, event.serviceDate(), event.refundMinor(), prior));
-		log.info("reversed day {} of booking {} (refund {} {})", event.serviceDate(), bookingId,
-				event.refundMinor(), event.currency());
+		ledger.reverse(PayoutLedgerEntry.dayReversalOf(accrual, event.serviceDate(), event.refundMinor(), prior,
+				event.refundReason()));
+		log.info("reversed day {} of booking {} (refund {} {}, {})", event.serviceDate(), bookingId,
+				event.refundMinor(), event.currency(), event.refundReason());
 	}
 
 	private IllegalStateException deferReversal(BookingDayRefunded event) {

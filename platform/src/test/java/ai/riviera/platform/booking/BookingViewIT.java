@@ -235,9 +235,10 @@ class BookingViewIT {
 		seedLateCancelBooking("VIEWSTORM1", "storm-view@e.com", first);
 		jdbc.sql("UPDATE booking SET last_date = :last WHERE code = 'VIEWSTORM1'").param("last", first.plusDays(2)).update();
 		jdbc.sql("""
-				INSERT INTO booking_day (booking_id, service_date, refunded_at, refund_minor)
-				SELECT id, :d, NOW(), 1500 FROM booking WHERE code = 'VIEWSTORM1'
-				ON CONFLICT (booking_id, service_date) DO UPDATE SET refunded_at = NOW(), refund_minor = 1500
+				INSERT INTO booking_day (booking_id, service_date, refunded_at, refund_minor, refund_reason)
+				SELECT id, :d, NOW(), 1500, 'WEATHER' FROM booking WHERE code = 'VIEWSTORM1'
+				ON CONFLICT (booking_id, service_date) DO UPDATE SET refunded_at = NOW(), refund_minor = 1500,
+				    refund_reason = 'WEATHER'
 				""").param("d", first.plusDays(1)).update();
 
 		mvc.perform(get("/api/bookings/{code}", "VIEWSTORM1"))

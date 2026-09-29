@@ -23,6 +23,7 @@ import ai.riviera.platform.booking.application.checkin.CompletedCheckIn;
 import ai.riviera.platform.booking.application.checkin.MarkNoShows;
 import ai.riviera.platform.operator.vocabulary.OperatorId;
 import ai.riviera.platform.venue.vocabulary.VenueId;
+import ai.riviera.platform.booking.application.refund.DayRefundStamp;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
@@ -194,10 +195,10 @@ class MultiDayAttendanceIT {
 		String code = uniqueCode("STAYWX");
 		long stay = insertStay(code, FIRST_DAY, 3);
 		attend(stay, FIRST_DAY);
-		assertTrue(bookings.refundDay(stay, FIRST_DAY.plusDays(1), 1500L, Instant.now()).isPresent(), "day 2 refunded");
-		assertTrue(bookings.refundDay(stay, FIRST_DAY.plusDays(1), 1500L, Instant.now()).isEmpty(),
+		assertTrue(bookings.refundDay(stay, FIRST_DAY.plusDays(1), 1500L, Instant.now(), DayRefundStamp.weather()).isPresent(), "day 2 refunded");
+		assertTrue(bookings.refundDay(stay, FIRST_DAY.plusDays(1), 1500L, Instant.now(), DayRefundStamp.weather()).isEmpty(),
 				"a second refund of the same day stamps nothing");
-		assertTrue(bookings.refundDay(stay, FIRST_DAY, 1500L, Instant.now()).isEmpty(), "an attended day is never refunded");
+		assertTrue(bookings.refundDay(stay, FIRST_DAY, 1500L, Instant.now(), DayRefundStamp.weather()).isEmpty(), "an attended day is never refunded");
 
 		assertTrue(scan(code, FIRST_DAY.plusDays(1)).isEmpty(), "a scan on the refunded day stamps nothing");
 		assertEquals(1, sweepOn(FIRST_DAY.plusDays(3)), "the stay resolves after its last day");
@@ -213,7 +214,7 @@ class MultiDayAttendanceIT {
 		// Day 3 was refunded for weather, so day 2 is the last the guest can attend (#1210).
 		String code = uniqueCode("STAYWXLAST");
 		long stay = insertStay(code, FIRST_DAY, 3);
-		assertTrue(bookings.refundDay(stay, FIRST_DAY.plusDays(2), 1500L, Instant.now()).isPresent());
+		assertTrue(bookings.refundDay(stay, FIRST_DAY.plusDays(2), 1500L, Instant.now(), DayRefundStamp.weather()).isPresent());
 
 		assertTrue(scan(code, FIRST_DAY).isPresent());
 		assertEquals("CONFIRMED", statusOf(stay), "day 2 is still ahead");
@@ -228,7 +229,7 @@ class MultiDayAttendanceIT {
 	void aScanOnTodayRefundedAnswersDayRefunded() {
 		String code = uniqueCode("STAYWXNOW");
 		long stay = insertStay(code, today().minusDays(1), 3);
-		bookings.refundDay(stay, today(), 1500L, Instant.now());
+		bookings.refundDay(stay, today(), 1500L, Instant.now(), DayRefundStamp.weather());
 
 		CheckInResult result = checkInBooking.checkIn(operator, new VenueId(venueId), code);
 

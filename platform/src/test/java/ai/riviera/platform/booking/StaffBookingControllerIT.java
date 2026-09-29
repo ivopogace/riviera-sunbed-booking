@@ -252,6 +252,39 @@ class StaffBookingControllerIT {
 		}
 	}
 
+	/** ADR-0027 §5: a released day keeps the stay's row on that date, marked refunded and released; a held weather day is not. */
+	@Test
+	void aReleasedDayIsListedAndTold() throws Exception {
+		LocalDate first = LocalDate.of(2034, 8, 1);
+		List<Long> sets = venueSets(1);
+		long customer = newCustomer("released-" + first + "@e.com");
+		seedSpan("U8RELEASE1", sets.get(0), customer, "CONFIRMED", first, first.plusDays(2), null);
+		jdbc.sql("""
+				UPDATE booking_day SET refunded_at = now(), refund_minor = 1500, refund_reason = 'WEATHER'
+				WHERE service_date = :d AND booking_id = (SELECT id FROM booking WHERE code = 'U8RELEASE1')
+				""").param("d", first).update();
+		jdbc.sql("""
+				UPDATE booking_day SET refunded_at = now(), refund_minor = 1500, refund_reason = 'VENUE', released_at = now(),
+				                       refunded_by_operator_id = 1
+				WHERE service_date = :d AND booking_id = (SELECT id FROM booking WHERE code = 'U8RELEASE1')
+				""").param("d", first.plusDays(1)).update();
+
+		mvc.perform(get("/api/venues/{id}/bookings", MIRAMAR).cookie(operatorSession).param("date", first.toString()))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$[?(@.code == 'U8RELEASE1')].attendance").value("REFUNDED"))
+				.andExpect(jsonPath("$[?(@.code == 'U8RELEASE1')].released").value(false));
+		mvc.perform(get("/api/venues/{id}/bookings", MIRAMAR).cookie(operatorSession)
+						.param("date", first.plusDays(1).toString()))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$[?(@.code == 'U8RELEASE1')].attendance").value("REFUNDED"))
+				.andExpect(jsonPath("$[?(@.code == 'U8RELEASE1')].released").value(true))
+				.andExpect(jsonPath("$[?(@.code == 'U8RELEASE1')].status").value("CONFIRMED"));
+		mvc.perform(get("/api/venues/{id}/bookings", MIRAMAR).cookie(operatorSession)
+						.param("date", first.plusDays(2).toString()))
+				.andExpect(jsonPath("$[?(@.code == 'U8RELEASE1')].attendance").value("EXPECTED"))
+				.andExpect(jsonPath("$[?(@.code == 'U8RELEASE1')].released").value(false));
+	}
+
 	@Test
 	void bookingsListRequiresOperator() throws Exception {
 		// AC-9: no operator credential → 401, never a public read of booking codes (invariant #7).

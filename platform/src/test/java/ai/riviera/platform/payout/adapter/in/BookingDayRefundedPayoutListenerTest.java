@@ -43,7 +43,12 @@ class BookingDayRefundedPayoutListenerTest {
 	private final BookingDayRefundedPayoutListener listener = new BookingDayRefundedPayoutListener(ledger);
 
 	private static BookingDayRefunded refunded(long refundMinor) {
-		return new BookingDayRefunded(BOOKING_ID, VENUE_ID, new SetId(7L), DAY, refundMinor, "EUR", null);
+		return refunded(refundMinor, RefundReason.WEATHER, false);
+	}
+
+	private static BookingDayRefunded refunded(long refundMinor, RefundReason reason, boolean released) {
+		return new BookingDayRefunded(BOOKING_ID, VENUE_ID, new SetId(7L), DAY, refundMinor, "EUR", null, reason,
+				released);
 	}
 
 	@Test
@@ -68,6 +73,34 @@ class BookingDayRefundedPayoutListenerTest {
 		assertThat(posted.getValue().serviceDate()).isEqualTo(DAY);
 		assertThat(posted.getValue().grossMinor()).isEqualTo(3000L);
 		assertThat(posted.getValue().commissionMinor()).isEqualTo(450L);
+		assertThat(posted.getValue().reason()).isEqualTo(RefundReason.WEATHER);
+	}
+
+	/** ADR-0027: the venue's own day refund reverses under its reason, with no fee. */
+	@Test
+	void aVenueRefundedDayCarriesItsReason() {
+		when(ledger.findAccrual(BOOKING_ID.value())).thenReturn(Optional.of(ACCRUAL));
+		when(ledger.findReversed(BOOKING_ID.value())).thenReturn(Reversed.NONE);
+
+		listener.on(refunded(3000L, RefundReason.VENUE, true));
+
+		ArgumentCaptor<PayoutLedgerEntry> posted = ArgumentCaptor.forClass(PayoutLedgerEntry.class);
+		verify(ledger).reverse(posted.capture());
+		assertThat(posted.getValue().entryType()).isEqualTo(EntryType.DAY_REVERSAL);
+		assertThat(posted.getValue().reason()).isEqualTo(RefundReason.VENUE);
+		assertThat(posted.getValue().commissionMinor()).isEqualTo(450L);
+	}
+
+	/** A publication serialized before the reason existed is a weather refund's. */
+	@Test
+	void aPayloadWithoutAReasonReversesForWeather() {
+		when(ledger.findAccrual(BOOKING_ID.value())).thenReturn(Optional.of(ACCRUAL));
+		when(ledger.findReversed(BOOKING_ID.value())).thenReturn(Reversed.NONE);
+
+		listener.on(new BookingDayRefunded(BOOKING_ID, VENUE_ID, new SetId(7L), DAY, 3000L, "EUR", null, null, false));
+
+		ArgumentCaptor<PayoutLedgerEntry> posted = ArgumentCaptor.forClass(PayoutLedgerEntry.class);
+		verify(ledger).reverse(posted.capture());
 		assertThat(posted.getValue().reason()).isEqualTo(RefundReason.WEATHER);
 	}
 

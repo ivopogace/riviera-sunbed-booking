@@ -93,6 +93,8 @@ class SecurityConfig {
 
 	/** Staff check-in: flips lifecycle state off a bearer code — operator-gated (invariant #7). */
 	private static final String BOOKING_CHECK_IN_PATH = "/api/venues/*/bookings/*/check-in";
+	/** The venue day refund (ADR-0027): moves real money off a bearer code — operator-gated (#7, #10). */
+	private static final String BOOKING_DAY_REFUND_PATH = "/api/venues/*/bookings/*/day-refund";
 	/** The guest's one review on their own stay — POST / PUT / DELETE, all code-gated (invariant #7). */
 	private static final String BOOKING_REVIEW_PATH = "/api/bookings/*/review";
 	/** The admin weather-refund write; an operator-session POST, CSRF-protected like every write. */
@@ -301,6 +303,7 @@ class SecurityConfig {
 						// Order-sensitive: booking codes are bearer credentials (invariant #7).
 						.requestMatchers(HttpMethod.GET, STAFF_BOOKINGS_PATH).hasRole(OPERATOR_ROLE)
 						.requestMatchers(HttpMethod.POST, BOOKING_CHECK_IN_PATH).hasRole(OPERATOR_ROLE)
+						.requestMatchers(HttpMethod.POST, BOOKING_DAY_REFUND_PATH).hasRole(OPERATOR_ROLE)
 						// Order-sensitive: venue financial data.
 						.requestMatchers(HttpMethod.GET, PAYOUT_LEDGER_PATH).hasRole(OPERATOR_ROLE)
 						// Order-sensitive: returns the commission rate + payout currency.

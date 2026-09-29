@@ -26,11 +26,12 @@ record BookingDetailView(String code, String status, long venueId, String venueN
 		ReviewPanelView reviewPanel, MoveView move, List<StretchView> stretches,
 		List<RefundedDayView> refundedDays) {
 
-	/** One day refunded for weather while the booking went on (#1210). */
-	record RefundedDayView(String day, MoneyView amount) {
+	/** One day refunded while the booking went on: {@code reason} a {@code RefundReason} name, {@code released} per ADR-0027. */
+	record RefundedDayView(String day, MoneyView amount, String reason, boolean released) {
 
 		static RefundedDayView of(ai.riviera.platform.booking.application.view.RefundedDay day) {
-			return new RefundedDayView(day.day().toString(), new MoneyView(day.refundMinor(), day.currency()));
+			return new RefundedDayView(day.day().toString(), new MoneyView(day.refundMinor(), day.currency()),
+					day.reason().name(), day.released());
 		}
 	}
 

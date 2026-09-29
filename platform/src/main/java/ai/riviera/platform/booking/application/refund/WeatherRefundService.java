@@ -108,8 +108,8 @@ class WeatherRefundService implements RefundForWeather {
 	private Optional<CancelledBooking> refundInFull(RefundableBooking candidate, Instant now) {
 		// A lone one-day booking has no refunded day (it never takes the day leg), so the whole amount remains.
 		long refundMinor = candidate.amountMinor();
-		Optional<CancelledBooking> transitioned =
-				bookings.cancelForWeather(candidate.bookingId(), now, refundMinor, candidate.amountMinor());
+		Optional<CancelledBooking> transitioned = bookings.cancelByVenue(candidate.bookingId(), now, refundMinor,
+				candidate.amountMinor(), RefundReason.WEATHER);
 		transitioned.ifPresent(cancelled -> {
 			for (LocalDate day : ServiceDays.between(cancelled.bookingDate(), cancelled.lastDate())) {
 				availability.release(cancelled.setId(), day);
@@ -127,9 +127,11 @@ class WeatherRefundService implements RefundForWeather {
 	 */
 	private Optional<Long> refundDay(RefundableBooking candidate, LocalDate date, Instant now) {
 		long refundMinor = DayShare.on(candidate.amountMinor(), candidate.bookingDate(), candidate.lastDate(), date);
-		Optional<DayRefundedBooking> stamped = bookings.refundDay(candidate.bookingId(), date, refundMinor, now);
+		Optional<DayRefundedBooking> stamped = bookings.refundDay(candidate.bookingId(), date, refundMinor, now,
+				DayRefundStamp.weather());
 		stamped.ifPresent(refunded -> events.publishEvent(new BookingDayRefunded(new BookingId(refunded.id()),
-				refunded.venueId(), refunded.setId(), date, refundMinor, refunded.currency(), refunded.stayId())));
+				refunded.venueId(), refunded.setId(), date, refundMinor, refunded.currency(), refunded.stayId(),
+				RefundReason.WEATHER, false)));
 		return stamped.map(refunded -> refundMinor);
 	}
 }

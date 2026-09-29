@@ -9,7 +9,7 @@ import java.util.Set;
 /**
  * The booking lifecycle as one table: each transition, the statuses it admits, the status it writes;
  * {@link #successorsOf} answers "what may follow?". Transitions, not bare successors: both
- * {@link #CANCEL_BY_GUEST} ({@code CONFIRMED} only) and {@link #WEATHER_REFUND} (also {@code NO_SHOW})
+ * {@link #CANCEL_BY_GUEST} ({@code CONFIRMED} only) and {@link #VENUE_REFUND} (also {@code NO_SHOW})
  * write {@code CANCELLED}, and the guest path must never gain {@code NO_SHOW}. Generates no SQL: the
  * guarded {@code UPDATE … WHERE status = …} in {@code JdbcBookings} enforce it, the cancel statement
  * binds those two rows' statuses, and {@code JdbcBookingTransitionTableIT} holds every other row.
@@ -49,8 +49,11 @@ public enum BookingTransition {
 	/** Every service day passed and none was attended; the no-show sweep resolves it. */
 	SWEEP_NO_SHOW(BookingStatus.CONFIRMED, BookingStatus.NO_SHOW),
 
-	/** The admin weather refund — the only transition that acts on a {@code NO_SHOW}. */
-	WEATHER_REFUND(EnumSet.of(BookingStatus.CONFIRMED, BookingStatus.NO_SHOW), BookingStatus.CANCELLED);
+	/**
+	 * The venue's refund of a whole booking — the weather refund, or the venue's own day refund of a lone
+	 * one-day booking (ADR-0027 §6) — the only transition that acts on a {@code NO_SHOW}.
+	 */
+	VENUE_REFUND(EnumSet.of(BookingStatus.CONFIRMED, BookingStatus.NO_SHOW), BookingStatus.CANCELLED);
 
 	private static final Map<BookingStatus, Set<BookingStatus>> SUCCESSORS = successorMap();
 

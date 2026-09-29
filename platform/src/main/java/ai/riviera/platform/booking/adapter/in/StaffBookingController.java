@@ -86,6 +86,9 @@ class StaffBookingController {
 			case CheckInResult.DayRefunded(var bookingDate, var setId) ->
 					error(venueId, HttpStatus.CONFLICT, "DAY_REFUNDED",
 							"This day was refunded for weather.", bookingDate, setId);
+			case CheckInResult.DayReleased(var bookingDate, var setId) ->
+					error(venueId, HttpStatus.CONFLICT, "DAY_RELEASED",
+							"This day was refunded by the venue and the spot released.", bookingDate, setId);
 			case CheckInResult.NotFound() ->
 					error(venueId, HttpStatus.NOT_FOUND, "BOOKING_NOT_FOUND",
 							"No such booking at this venue.", null, null);

@@ -303,15 +303,45 @@ class CheckInFlowIT {
 		jdbc.sql("UPDATE booking SET last_date = :last WHERE id = :id").param("last", today().plusDays(1))
 				.param("id", id).update();
 		jdbc.sql("""
-				INSERT INTO booking_day (booking_id, service_date, refunded_at, refund_minor)
-				VALUES (:id, :d, NOW(), 1500)
-				ON CONFLICT (booking_id, service_date) DO UPDATE SET refunded_at = NOW(), refund_minor = 1500
+				INSERT INTO booking_day (booking_id, service_date, refunded_at, refund_minor, refund_reason)
+				VALUES (:id, :d, NOW(), 1500, 'WEATHER')
+				ON CONFLICT (booking_id, service_date) DO UPDATE SET refunded_at = NOW(), refund_minor = 1500,
+				    refund_reason = 'WEATHER'
 				""").param("id", id).param("d", today()).update();
 
 		MvcResult result = mvc.perform(post("/api/venues/{v}/bookings/{code}/check-in", venue, code)
 						.cookie(operatorSession).with(csrf()))
 				.andExpect(status().isConflict())
 				.andExpect(jsonPath("$.code").value("DAY_REFUNDED"))
+				.andExpect(jsonPath("$.setId").value(setOf(id)))
+				.andReturn();
+		assertNoCodeLeak(result, code);
+		assertEquals("CONFIRMED", statusOf(id));
+		assertEquals(0L, jdbc.sql("SELECT COUNT(*) FROM booking_day WHERE booking_id = :id AND attended_at IS NOT NULL")
+				.param("id", id).query(Long.class).single());
+	}
+
+	/** ADR-0027 §5: a scan on a day the venue released is refused with its own code, naming the set, and stamps nothing. */
+	@Test
+	void aReleasedDayRefusesCheckInSayingSo() throws Exception {
+		long venue = newOwnedVenue("CI Released Club");
+		String code = uniqueCode("CIRELEASE");
+		long id = insertConfirmed(code, venue, today().minusDays(1));
+		jdbc.sql("UPDATE booking SET last_date = :last WHERE id = :id").param("last", today().plusDays(1))
+				.param("id", id).update();
+		jdbc.sql("""
+				INSERT INTO booking_day (booking_id, service_date, refunded_at, refund_minor, refund_reason, released_at,
+				                         refunded_by_operator_id)
+				VALUES (:id, :d, NOW(), 1500, 'VENUE', NOW(), 1)
+				ON CONFLICT (booking_id, service_date) DO UPDATE SET refunded_at = NOW(), refund_minor = 1500,
+				    refund_reason = 'VENUE', released_at = NOW(), refunded_by_operator_id = 1
+				""").param("id", id).param("d", today()).update();
+
+		MvcResult result = mvc.perform(post("/api/venues/{v}/bookings/{code}/check-in", venue, code)
+						.cookie(operatorSession).with(csrf()))
+				.andExpect(status().isConflict())
+				.andExpect(jsonPath("$.code").value("DAY_RELEASED"))
+				.andExpect(jsonPath("$.detail").value(org.hamcrest.Matchers.containsString("released")))
 				.andExpect(jsonPath("$.setId").value(setOf(id)))
 				.andReturn();
 		assertNoCodeLeak(result, code);

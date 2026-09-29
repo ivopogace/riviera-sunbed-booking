@@ -42,6 +42,7 @@ import ai.riviera.platform.booking.application.reserve.NewBooking;
 import ai.riviera.platform.booking.application.reserve.NewStay;
 import ai.riviera.platform.booking.application.refund.RefundableBooking;
 import ai.riviera.platform.booking.application.view.RefundedDay;
+import ai.riviera.platform.booking.application.refund.DayRefundStamp;
 import ai.riviera.platform.booking.application.refund.DayRefundedBooking;
 import ai.riviera.platform.booking.application.remodel.LiveClaim;
 import ai.riviera.platform.booking.domain.BookingStatus;
@@ -755,11 +756,11 @@ class JdbcBookings implements Bookings {
 	}
 
 	@Override
-	public Optional<CancelledBooking> cancelForWeather(long bookingId, Instant cancelledAt,
-			long refundMinor, long remainingMinor) {
+	public Optional<CancelledBooking> cancelByVenue(long bookingId, Instant cancelledAt,
+			long refundMinor, long remainingMinor, RefundReason reason) {
 		// Admits NO_SHOW too: the sweep gets to a washed-out day before the operator does.
-		return cancelReturningFacts(bookingId, cancelledAt, refundMinor, RefundReason.WEATHER, remainingMinor,
-				BookingTransition.WEATHER_REFUND.admittedFrom());
+		return cancelReturningFacts(bookingId, cancelledAt, refundMinor, reason, remainingMinor,
+				BookingTransition.VENUE_REFUND.admittedFrom());
 	}
 
 	/**
@@ -928,7 +929,7 @@ class JdbcBookings implements Bookings {
 		// Venue-scoped on purpose: a foreign venue's code reads as empty, same as an unknown one.
 		return jdbc.sql("""
 				SELECT b.status, b.booking_date, b.set_id, n.attended_at IS NOT NULL AS attended_today,
-				       n.refunded_at IS NOT NULL AS refunded_today
+				       n.refunded_at IS NOT NULL AS refunded_today, n.released_at IS NOT NULL AS released_today
 				FROM booking b
 				LEFT JOIN booking_day n ON n.booking_id = b.id AND n.service_date = :today
 				WHERE %s AND b.venue_id = :venue
@@ -943,7 +944,8 @@ class JdbcBookings implements Bookings {
 						BookingStatus.valueOf(rs.getString(PARAM_STATUS)),
 						rs.getObject(COL_BOOKING_DATE, LocalDate.class),
 						new SetId(rs.getLong(COL_SET_ID)),
-						rs.getBoolean("attended_today"), rs.getBoolean("refunded_today")))
+						rs.getBoolean("attended_today"), rs.getBoolean("refunded_today"),
+						rs.getBoolean("released_today")))
 				.optional();
 	}
 
@@ -959,7 +961,7 @@ class JdbcBookings implements Bookings {
 				       COALESCE(s.first_date, b.booking_date) AS first_date,
 				       COALESCE(s.last_date, b.last_date) AS last_date,
 				       d.attended_at IS NOT NULL AS attended, d.missed_at IS NOT NULL AS missed,
-				       d.refunded_at IS NOT NULL AS refunded
+				       d.refunded_at IS NOT NULL AS refunded, d.released_at IS NOT NULL AS released
 				FROM booking b
 				LEFT JOIN stay s ON s.id = b.stay_id
 				LEFT JOIN booking_day d ON d.booking_id = b.id AND d.service_date = :date
@@ -976,7 +978,8 @@ class JdbcBookings implements Bookings {
 						new SetId(rs.getLong(COL_SET_ID)), rs.getString("code"),
 						BookingStatus.valueOf(rs.getString(PARAM_STATUS)),
 						rs.getObject("first_date", LocalDate.class), rs.getObject(COL_LAST_DATE, LocalDate.class),
-						DayAttendance.of(rs.getBoolean("attended"), rs.getBoolean("missed"), rs.getBoolean("refunded"))))
+						DayAttendance.of(rs.getBoolean("attended"), rs.getBoolean("missed"), rs.getBoolean("refunded")),
+						rs.getBoolean("released")))
 				.list();
 	}
 
@@ -985,27 +988,45 @@ class JdbcBookings implements Bookings {
 	 * date, served by {@code booking_venue_id_idx}, with the date's own service-day stamps so the caller
 	 * can tell an attended day from one still owed, and a stretch from a lone booking.
 	 */
+	/** The day-refund candidate row: the booking's money and span, its set and stay, and the date's own stamps. */
+	private static final String REFUNDABLE_SELECT_SQL = """
+			SELECT b.id, b.amount_minor, b.amount_currency, b.booking_date, b.last_date, b.set_id, b.stay_id,
+			       d.attended_at IS NOT NULL AS attended, d.refunded_at IS NOT NULL AS refunded
+			FROM booking b
+			LEFT JOIN booking_day d ON d.booking_id = b.id AND d.service_date = :date
+			WHERE b.venue_id = :venue AND b.booking_date <= :date AND b.last_date >= :date
+			  AND b.status IN (:happened)
+			""";
+
 	@Override
 	public List<RefundableBooking> findRefundableForWeather(VenueId venueId, LocalDate date) {
-		return jdbc.sql("""
-				SELECT b.id, b.amount_minor, b.amount_currency, b.booking_date, b.last_date, b.set_id, b.stay_id,
-				       d.attended_at IS NOT NULL AS attended, d.refunded_at IS NOT NULL AS refunded
-				FROM booking b
-				LEFT JOIN booking_day d ON d.booking_id = b.id AND d.service_date = :date
-				WHERE b.venue_id = :venue AND b.booking_date <= :date AND b.last_date >= :date
-				  AND b.status IN (:happened)
-				ORDER BY b.id
-				""")
+		return jdbc.sql(REFUNDABLE_SELECT_SQL + "ORDER BY b.id")
 				.param(PARAM_VENUE, venueId.value())
 				.param("date", date)
 				.param("happened", STORM_DAY_REFUNDABLE)
-				.query((rs, rowNum) -> new RefundableBooking(
-						rs.getLong("id"), rs.getLong(COL_AMOUNT_MINOR), rs.getString(COL_AMOUNT_CURRENCY),
-						rs.getObject(COL_BOOKING_DATE, LocalDate.class), rs.getObject(COL_LAST_DATE, LocalDate.class),
-						new SetId(rs.getLong(COL_SET_ID)),
-						Optional.ofNullable(rs.getObject(COL_STAY_ID, Long.class)).map(StayId::new).orElse(null),
-						rs.getBoolean("attended"), rs.getBoolean("refunded")))
+				.query(JdbcBookings::toRefundable)
 				.list();
+	}
+
+	@Override
+	public Optional<RefundableBooking> findRefundableByCode(String code, VenueId venueId, LocalDate date) {
+		// Venue-scoped on purpose: a foreign venue's code reads as empty, same as an unknown one (#13, #7).
+		return jdbc.sql(REFUNDABLE_SELECT_SQL + "  AND " + CODE_MATCH)
+				.param("code", code)
+				.param(PARAM_VENUE, venueId.value())
+				.param("date", date)
+				.param("happened", STORM_DAY_REFUNDABLE)
+				.query(JdbcBookings::toRefundable)
+				.optional();
+	}
+
+	private static RefundableBooking toRefundable(java.sql.ResultSet rs, int rowNum) throws java.sql.SQLException {
+		return new RefundableBooking(
+				rs.getLong("id"), rs.getLong(COL_AMOUNT_MINOR), rs.getString(COL_AMOUNT_CURRENCY),
+				rs.getObject(COL_BOOKING_DATE, LocalDate.class), rs.getObject(COL_LAST_DATE, LocalDate.class),
+				new SetId(rs.getLong(COL_SET_ID)),
+				Optional.ofNullable(rs.getObject(COL_STAY_ID, Long.class)).map(StayId::new).orElse(null),
+				rs.getBoolean("attended"), rs.getBoolean("refunded"));
 	}
 
 	/**
@@ -1013,7 +1034,8 @@ class JdbcBookings implements Bookings {
 	 * sweep use, so a scan, a refund and the sweep serialize on the stay.
 	 */
 	@Override
-	public Optional<DayRefundedBooking> refundDay(long bookingId, LocalDate day, long refundMinor, Instant at) {
+	public Optional<DayRefundedBooking> refundDay(long bookingId, LocalDate day, long refundMinor, Instant at,
+			DayRefundStamp stamp) {
 		return jdbc.sql("""
 				WITH locked AS (
 				    SELECT b.id, b.venue_id, b.set_id, b.amount_currency, b.stay_id
@@ -1022,7 +1044,8 @@ class JdbcBookings implements Bookings {
 				    FOR UPDATE
 				)
 				UPDATE booking_day n
-				SET refunded_at = :at, refund_minor = :refund
+				SET refunded_at = :at, refund_minor = :refund, refund_reason = :reason,
+				    released_at = :releasedAt, refunded_by_operator_id = :actor
 				FROM locked
 				WHERE n.booking_id = locked.id AND n.service_date = :day
 				  AND n.attended_at IS NULL AND n.refunded_at IS NULL
@@ -1032,6 +1055,9 @@ class JdbcBookings implements Bookings {
 				.param("happened", STORM_DAY_REFUNDABLE)
 				.param("at", java.sql.Timestamp.from(at))
 				.param("refund", refundMinor)
+				.param(PARAM_REASON, stamp.reason().name())
+				.param("releasedAt", stamp.released() ? java.sql.Timestamp.from(at) : null, java.sql.Types.TIMESTAMP)
+				.param("actor", stamp.actor() == null ? null : stamp.actor().value(), java.sql.Types.BIGINT)
 				.param("day", day)
 				.query((rs, rowNum) -> new DayRefundedBooking(
 						rs.getLong("id"), new VenueId(rs.getLong(COL_VENUE_ID)), new SetId(rs.getLong(COL_SET_ID)),
@@ -1043,14 +1069,16 @@ class JdbcBookings implements Bookings {
 	@Override
 	public List<RefundedDay> findRefundedDays(long bookingId) {
 		return jdbc.sql("""
-				SELECT d.service_date, d.refund_minor, b.amount_currency
+				SELECT d.service_date, d.refund_minor, b.amount_currency, d.refund_reason,
+				       d.released_at IS NOT NULL AS released
 				FROM booking_day d JOIN booking b ON b.id = d.booking_id
 				WHERE d.booking_id = :id AND d.refunded_at IS NOT NULL
 				ORDER BY d.service_date
 				""")
 				.param("id", bookingId)
 				.query((rs, rowNum) -> new RefundedDay(rs.getObject("service_date", LocalDate.class),
-						rs.getLong("refund_minor"), rs.getString(COL_AMOUNT_CURRENCY)))
+						rs.getLong("refund_minor"), rs.getString(COL_AMOUNT_CURRENCY),
+						RefundReason.valueOf(rs.getString("refund_reason")), rs.getBoolean("released")))
 				.list();
 	}
 

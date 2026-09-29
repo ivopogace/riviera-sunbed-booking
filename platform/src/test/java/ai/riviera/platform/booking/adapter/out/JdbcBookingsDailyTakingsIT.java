@@ -174,7 +174,7 @@ class JdbcBookingsDailyTakingsIT {
 		LocalDate first = LocalDate.of(2027, 9, 1);
 		insertStay("TAKE0011", target.venueId(), target.setId(), first, first.plusDays(2), 9000, "CONFIRMED");
 		jdbc.sql("""
-				UPDATE booking_day SET refunded_at = NOW(), refund_minor = 3000
+				UPDATE booking_day SET refunded_at = NOW(), refund_minor = 3000, refund_reason = 'WEATHER'
 				WHERE booking_id = (SELECT id FROM booking WHERE code = 'TAKE0011') AND service_date = :d
 				""").param("d", first.plusDays(1)).update();
 		VenueId venue = new VenueId(target.venueId());

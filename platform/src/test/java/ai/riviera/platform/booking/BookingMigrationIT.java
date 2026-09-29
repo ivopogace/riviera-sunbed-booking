@@ -119,6 +119,55 @@ class BookingMigrationIT {
 	}
 
 	@Test
+	void everyRefundReasonAcceptedAsACancelReason() {
+		// V71: every RefundReason is a cancel_reason the CHECK admits (enum/schema lockstep, invariant #12).
+		long venue = anyVenueId();
+		long set = anyOnlineSetId();
+		long cust = insertCustomer("cancel-reason@example.com");
+		int i = 0;
+		for (ai.riviera.platform.booking.vocabulary.RefundReason reason
+				: ai.riviera.platform.booking.vocabulary.RefundReason.values()) {
+			String code = "CANCELR0%02d".formatted(i++);
+			insertBooking(venue, set, cust, code, LocalDate.of(2026, 9, 22), "CANCELLED");
+			assertDoesNotThrow(() -> jdbc.sql("UPDATE booking SET cancel_reason = :reason WHERE code = :code")
+					.param("reason", reason.name()).param("code", code).update(),
+					"booking_cancel_reason_check must accept enum value " + reason);
+		}
+	}
+
+	/** V71: a refunded day names its reason (weather or the venue's own), a released day is a refunded one, and a VENUE day names its actor. */
+	@Test
+	void aRefundedDayCarriesItsReasonAndOnlyAVenueDayIsReleased() {
+		long venue = anyVenueId();
+		long set = anyOnlineSetId();
+		long cust = insertCustomer("day-reason@example.com");
+		insertBooking(venue, set, cust, "DAYREASON1", LocalDate.of(2026, 9, 23), "CONFIRMED");
+		assertThrows(DataIntegrityViolationException.class, () -> stampDay("DAYREASON1",
+				"refunded_at = NOW(), refund_minor = 1500"), "a refund without a reason is refused");
+		assertThrows(DataIntegrityViolationException.class, () -> stampDay("DAYREASON1",
+				"refunded_at = NOW(), refund_minor = 1500, refund_reason = 'POLICY'"),
+				"a day is refunded for weather or by the venue, never under the guest's policy");
+		assertThrows(DataIntegrityViolationException.class, () -> stampDay("DAYREASON1",
+				"refunded_at = NOW(), refund_minor = 1500, refund_reason = 'VENUE'"),
+				"a VENUE day names who refunded it");
+		assertThrows(DataIntegrityViolationException.class, () -> stampDay("DAYREASON1", "released_at = NOW()"),
+				"a day is released only once refunded");
+		assertDoesNotThrow(() -> stampDay("DAYREASON1",
+				"refunded_at = NOW(), refund_minor = 1500, refund_reason = 'WEATHER'"));
+		assertDoesNotThrow(() -> stampDay("DAYREASON1",
+				"released_at = NOW(), refund_reason = 'VENUE', refunded_by_operator_id = 7"));
+		assertThrows(DataIntegrityViolationException.class, () -> stampDay("DAYREASON1",
+				"refunded_at = NULL, refund_minor = NULL, refund_reason = NULL, released_at = NOW()"),
+				"clearing the refund clears the release");
+	}
+
+	private void stampDay(String code, String assignments) {
+		jdbc.sql("UPDATE booking_day SET " + assignments
+						+ " WHERE booking_id = (SELECT id FROM booking WHERE code = :code)")
+				.param("code", code).update();
+	}
+
+	@Test
 	void unknownStatusRejected() {
 		long venue = anyVenueId();
 		long set = anyOnlineSetId();
@@ -355,6 +404,7 @@ class BookingMigrationIT {
 	/** Column values are SQL literals from this file, never caller input. */
 	private void refundServiceDay(String code, String refundedAt, String refundMinor) {
 		jdbc.sql("UPDATE booking_day SET refunded_at = " + refundedAt + ", refund_minor = " + refundMinor
+				+ ", refund_reason = CASE WHEN " + refundedAt + " IS NULL THEN NULL ELSE 'WEATHER' END"
 				+ " WHERE booking_id = (SELECT id FROM booking WHERE code = :code)")
 				.param("code", code).update();
 	}
