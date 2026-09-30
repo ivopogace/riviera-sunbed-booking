@@ -62,7 +62,7 @@ not re-validation after the save. The sessions stored before the fix end once (V
 
 - Re-validating after the session save (the rejected alternative).
 - Changing what revokes when: every existing bracket stays.
-- A schema change: the stamp is derived from columns that already exist.
+- A schema change: the stamp is derived from columns that already exist (V72 only deletes stale session rows).
 
 ## Risks
 
@@ -75,13 +75,13 @@ not re-validation after the save. The sessions stored before the fix end once (V
   stamp and sign the admin out on each deploy. Fix: skip the write when the stored hash already matches.
 - **R-4 (in-flight residual):** a request already past the filter when the change commits completes on the
   old credential. `RESPONSIBILITIES.md` §Platform edge states it.
-- **R-5 (#11):** the customer read is a new method on `customer.api.CustomerAccounts`, the edge's
+- **R-5 (#11):** the customer reads are new methods on `customer.api.CustomerAccounts`, the edge's
   credential conversation. There is no new port and no grant; the root composes, nothing depends on it.
 
 ## Modulith
 
-- **Port:** `CustomerAccounts#sessionCredential(String)` returns the credential of a live account, SSO-only
-  accounts included (null hash). Owner: `customer`. Consumer: the edge filter and the SSO callback. The
+- **Port:** `CustomerAccounts#liveCredential(String)` and `#liveCredential(CustomerAccountId)` return the live
+  account as a new vocabulary record, `LiveAccountCredential`, SSO-only accounts included (null hash). Owner: `customer`. Consumer: the edge filter and the SSO callback. The
   operator side reuses `OperatorAccounts#findByUsername` unchanged.
 - **No new grant or event.** Pinned by the structural net, `CustomerAuthPlacementTests` and
   `OperatorAuthPlacementTests`.

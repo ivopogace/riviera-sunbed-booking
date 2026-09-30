@@ -160,6 +160,18 @@ class CustomerAccountRecoveryIT {
 				.extracting(CustomerAccountCredential::passwordHash).isEqualTo("{bcrypt}changed");
 	}
 
+	/** A first password (no hash expected) never lands on an erased account, whose hash is null too. */
+	@Test
+	void aFirstPasswordNeverLandsOnAnErasedAccount() {
+		CustomerAccountId id = register("change-erased@example.com");
+		jdbc.update("UPDATE customer_account SET email = 'erased+' || id || '@erased.invalid', password_hash = NULL,"
+				+ " erased_at = NOW() WHERE id = ?", id.value());
+
+		assertThat(recovery.changePassword(id, null, "{bcrypt}late")).isFalse();
+		assertThat(jdbc.queryForObject("SELECT password_hash FROM customer_account WHERE id = ?", String.class,
+				id.value())).isNull();
+	}
+
 	private CustomerAccountId register(String email) {
 		RegistrationOutcome outcome = provisioning.register(email, "{bcrypt}orig");
 		return ((RegistrationOutcome.Registered) outcome).accountId();

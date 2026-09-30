@@ -629,8 +629,8 @@ suppression key's HMAC). It cannot live in `shared`, which depends on `customer:
 
 Email verification is **soft**: it gates no sign-in or booking. `CustomerAccountRecovery` names a
 reset token's account **without consuming** it, so the edge revokes that principal's sessions first.
-`CustomerAccounts#liveCredential` answers the edge's per-request session check and the SSO sign-in: the
-live account by email or id, SSO-only included (null hash), never an erased one; the edge owns the stamp.
+`CustomerAccounts#liveCredential` answers the edge's password login, SSO sign-in and per-request session check:
+the live account by email or id, SSO-only included (null hash), never an erased one; the edge owns the stamp.
 
 **Only the retention sweep's entry reads carry a query timeout** (its candidate read, `booking`'s
 `GuestBookingHistory` probe): they run before any write, so a timeout costs one tick. My scrubs and
@@ -1032,8 +1032,8 @@ mutating `/api/admin/**` action, §`audit`) stay here; `challenge` and `audit` o
   `SessionCredentialFilter` re-reads the account (`CustomerAccounts#liveCredential`, `OperatorAccounts`) and
   ends the session when the stamp, an operator's may-authenticate status or its admin flag no longer matches.
   `SessionAuthentication` is the only session writer (`SessionWriterArchitectureTests`); V72 ended the
-  unstamped sessions. A self-service change writes only over the hash it verified, so a reset landing first
-  wins, and re-stamps the session it keeps. Residual: a request already past the filter completes. Cost: one
+  unstamped sessions. A customer's self-service change writes only over the hash it verified, so a reset landing
+  first wins; either self-service change re-stamps the session it keeps. Residual: a request already past the filter completes. Cost: one
   indexed read per authenticated request.
 - **The money-path alert check shares the sweeps' single-instance posture.** `MoneyPathAlertCheck`
   is lockless `@Scheduled`: each extra instance fires the outbox-backlog alert again. It is on

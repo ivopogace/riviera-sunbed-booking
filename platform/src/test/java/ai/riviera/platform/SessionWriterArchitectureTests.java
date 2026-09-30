@@ -10,6 +10,7 @@ import static com.tngtech.archunit.core.domain.JavaClass.Predicates.assignableTo
 import static com.tngtech.archunit.core.domain.properties.HasName.Predicates.name;
 import static com.tngtech.archunit.core.domain.properties.HasOwner.Predicates.With.owner;
 import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noClasses;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * {@link SessionAuthentication} is the only code that saves a security context through any
@@ -18,14 +19,27 @@ import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noClasses;
  */
 class SessionWriterArchitectureTests {
 
+	private static final String FIXTURE_BASE = "ai.riviera.sessionwriterfixture";
+
 	@Test
 	void onlySessionAuthenticationSavesASecurityContext() {
-		ArchRule rule = noClasses()
+		onlySessionAuthenticationWrites().check(PRODUCTION_CLASSES);
+	}
+
+	@Test
+	void aWriteTypedOnAConcreteRepositoryIsCaught() {
+		String violations = onlySessionAuthenticationWrites()
+				.evaluate(ArchitectureTestSupport.fixtureClasses(FIXTURE_BASE)).getFailureReport().toString();
+
+		assertTrue(violations.contains("StraySessionWriter"), "expected the fixture's write to be caught: " + violations);
+	}
+
+	private static ArchRule onlySessionAuthenticationWrites() {
+		return noClasses()
 				.that().doNotHaveFullyQualifiedName(SessionAuthentication.class.getName())
 				.should().callMethodWhere(target(name("saveContext"))
 						.and(target(owner(assignableTo(SecurityContextRepository.class)))))
 				.because("a session principal must carry a credential stamp (#1306); SessionAuthentication "
 						+ "refuses any other principal");
-		rule.check(PRODUCTION_CLASSES);
 	}
 }

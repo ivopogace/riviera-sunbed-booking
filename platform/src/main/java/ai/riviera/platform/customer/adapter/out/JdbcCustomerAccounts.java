@@ -1,5 +1,8 @@
 package ai.riviera.platform.customer.adapter.out;
 
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.sql.Types;
 import java.util.Optional;
 
 import org.springframework.jdbc.core.simple.JdbcClient;
@@ -69,7 +72,7 @@ class JdbcCustomerAccounts implements CustomerAccountStore {
 				.optional();
 	}
 
-	private static LiveAccountCredential mapLiveCredential(java.sql.ResultSet rs, int rowNum) throws java.sql.SQLException {
+	private static LiveAccountCredential mapLiveCredential(ResultSet rs, int rowNum) throws SQLException {
 		return new LiveAccountCredential(new CustomerAccountId(rs.getLong(ID)), rs.getString(EMAIL),
 				rs.getString("password_hash"));
 	}
@@ -167,7 +170,7 @@ class JdbcCustomerAccounts implements CustomerAccountStore {
 				""")
 				.param("hash", passwordHash)
 				.param(ID, accountId.value())
-				.param("expected", expectedHash, java.sql.Types.VARCHAR)
+				.param("expected", expectedHash, Types.VARCHAR)
 				.update() == 1;
 	}
 

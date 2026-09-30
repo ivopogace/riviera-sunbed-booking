@@ -56,9 +56,8 @@ public interface CustomerAccountStore {
 	void markEmailVerified(CustomerAccountId accountId);
 
 	/**
-	 * Set the account's opaque password hash — an unconditional {@code UPDATE}. The edge has
-	 * already authorized the write (token-proven reset or authenticated set-password) and encoded the hash.
-	 * Also gives a password-less SSO-only account its first local password.
+	 * Set the account's opaque password hash, unconditionally: the token-proven reset's write, authorized and encoded
+	 * at the edge; it also gives an SSO-only account its first password.
 	 */
 	void updatePasswordHash(CustomerAccountId accountId, String passwordHash);
 

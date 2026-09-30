@@ -25,8 +25,8 @@ import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 import ai.riviera.platform.customer.api.CustomerAccounts;
 import ai.riviera.platform.customer.api.SsoAccountProvisioning;
 import ai.riviera.platform.customer.vocabulary.CustomerAccountId;
-import ai.riviera.platform.customer.vocabulary.LiveAccountCredential;
 import ai.riviera.platform.customer.vocabulary.Emails;
+import ai.riviera.platform.customer.vocabulary.LiveAccountCredential;
 import ai.riviera.platform.customer.vocabulary.SsoProvider;
 
 import jakarta.servlet.http.HttpServletRequest;
@@ -107,7 +107,7 @@ class SsoController {
 		// by the account email (principal name), exactly like password login, so CurrentCustomer resolves it.
 		CustomerAccountId resolved = ssoAccounts.resolveOrCreate(identity.provider(), identity.subject(), email);
 		LiveAccountCredential account = customerAccounts.liveCredential(resolved)
-				.orElseGet(() -> new LiveAccountCredential(resolved, email, null));
+				.orElseThrow(() -> new IllegalStateException("the SSO account was erased during its sign-in"));
 		List<SimpleGrantedAuthority> authorities = List.of(new SimpleGrantedAuthority(CUSTOMER_ROLE));
 		Authentication authentication = UsernamePasswordAuthenticationToken.authenticated(
 				SessionPrincipal.erased(account.email(), authorities,
