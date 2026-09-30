@@ -601,6 +601,10 @@ splits a date's gross at `VenueRates#commissionBpsOn`, while each ledger entry f
 at accrual from the live rate; the read guarantees only that a past date's figure never changes
 (invariant #9). A rate change schedules from the current service date (§`venue`).
 
+**Batch generation runs one at a time per period** (`PayoutBatches#lockPeriod`, a transaction-scoped advisory lock
+keyed by the period, taken before any read): the first run for a period has no row to lock, and two unserialized
+runs could write an older ledger total over a newer one (#1309). `mark` does not take it; its guard is the status.
+
 **The BKT batch endpoints and the venue-caused refunds report are `ADMIN`-only:** nothing on them
 belongs to one venue, so invariant #13 has no owner to check (it exempts `/api/admin/**`) and the
 `SecurityConfig` role is the whole authorization — under `OPERATOR`, any approved operator could

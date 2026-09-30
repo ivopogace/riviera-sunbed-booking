@@ -37,6 +37,15 @@ class JdbcPayoutBatches implements PayoutBatches {
 	}
 
 	@Override
+	public void lockPeriod(PeriodKey period) {
+		// A transaction-scoped advisory lock: the first run for a period has no batch row to lock.
+		jdbc.sql("SELECT pg_advisory_xact_lock(hashtext('payout_batch'), hashtext(:period))")
+				.param(PARAM_PERIOD, period.value())
+				.query((rs, rowNum) -> Boolean.TRUE)
+				.single();
+	}
+
+	@Override
 	public void upsertDraft(VenuePeriodTotal total, PeriodKey period) {
 		jdbc.sql("""
 				INSERT INTO payout_batch (venue_id, period_key, total_net_minor, currency, status)

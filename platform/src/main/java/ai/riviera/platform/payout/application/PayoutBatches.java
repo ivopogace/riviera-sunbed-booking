@@ -14,6 +14,12 @@ import ai.riviera.platform.payout.domain.PeriodKey;
 public interface PayoutBatches {
 
 	/**
+	 * Serialize generation of {@code period} for the caller's transaction, in a statement of its own before the ledger
+	 * read, so two runs refresh its batches in the order they read the ledger (#1309).
+	 */
+	void lockPeriod(PeriodKey period);
+
+	/**
 	 * Generate or <strong>refresh</strong> the {@code DRAFT} batch for {@code (venueId, period)}
 	 * with the recomputed total; one already {@code REPORTED}/{@code SETTLED} stays
 	 * <strong>frozen</strong> (idempotent generation, invariant #9). New rows start {@code DRAFT}.
