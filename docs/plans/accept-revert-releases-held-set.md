@@ -29,6 +29,11 @@ That is what the remodel does to a pending stay it disturbs.
   day (`RequestAcceptRevertIT`, `StayRequestAcceptPayIT.aFailedCollectionRevertsEveryStretch`), and
   `JdbcBookingTransitionTableIT` and `RespondToRequestServiceTest` stay green.
 
+- [x] **AC-4 (review round):** Given a revert that commits between a remodel's classification and its row lock,
+  when the remodel moves the booking, then `moveToSet` misses (a pending request holds no claim, ADR-0025)
+  and the remodel's commit rolls back. *Seam:* `Bookings.moveToSet` · *Pinned by:*
+  `RequestAcceptRevertIT.aRemodelCannotMoveARequestThatHoldsNoClaim` (mutation-checked).
+
 ## Non-goals
 
 - The `BookingPaymentDue`/`StayPaymentDue` announce on a *successful* set-up naming the accepted set after a
@@ -59,13 +64,14 @@ That is what the remodel does to a pending stay it disturbs.
 
 ## Execution status
 
-**Stage pointer:** PR — CI, then ready for review
+**Stage pointer:** review — findings fixed; CI, Sonar, then merge
 
-**Next action:** check CI, mark ready, run the review gate.
+**Next action:** CI + Sonar on the review push, delete this plan, merge.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — lone revert | ✅ | a082b69 |
-| 1 — stay decline | ✅ | (this commit) |
+| 1 — stay decline | ✅ | c1f2124 |
+| review — moveToSet guard, docs | ✅ | (this commit) |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.

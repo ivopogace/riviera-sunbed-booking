@@ -355,9 +355,9 @@ any is released on the old, never a swap of my own — so a racing reserve wins 
 - **The accept is the claim (ADR-0025):** `RequestClaimService` claims every day of the request, runs the
   guarded `PENDING_REQUEST → AWAITING_PAYMENT` and declines overlapping pending rivals on the set
   (`ANOTHER_GUEST`) in one transaction committed before the payment call. A day it cannot claim declines the
-  request (`SET_UNAVAILABLE`); a failed payment set-up reverts it to pending and frees the claim it then
-  holds, which a remodel may have moved, declining a stay it cannot restore whole (#1302). Lock order is the
-  reserve's: availability row, then booking row (a remodel locks each booking row first); two overlapping
+  request (`SET_UNAVAILABLE`); a failed payment set-up reverts it to pending, freeing the claim it held
+  (a remodel may have moved it), and a stay it cannot restore whole is declined (#1302). The accept locks as
+  the reserve does, availability row then booking row (the revert and a remodel, booking row first); two overlapping
   accepts leave one winner (`RequestAcceptClaimsIT`, `ConcurrentOverlappingAcceptIT`). The queue names each
   request's competing requests; a request for a day already taken is `SET_TAKEN`.
 - **A stay request is answered whole (#1267):** at a Request-to-Book venue a stitched plan is a

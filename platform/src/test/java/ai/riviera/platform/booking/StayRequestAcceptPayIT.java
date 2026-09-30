@@ -59,7 +59,7 @@ import static org.mockito.Mockito.when;
  * The collect leg of a stay request's accept (#1267) under the {@code stripe} profile with the Stripe
  * client mocked: one PaymentIntent for the stay's total with one share per stretch, every stretch left
  * {@code AWAITING_PAYMENT} (invariant #8) and one {@link StayPaymentDue}; a failed set-up reverts every
- * stretch to pending and gives every day back (invariant #2).
+ * stretch to pending and gives every day back (invariant #2), or declines a stay a remodel split (#1302).
  */
 @RecordApplicationEvents
 @EnabledIfDockerAvailable
@@ -189,7 +189,7 @@ class StayRequestAcceptPayIT {
 
 		assertSame(AcceptOutcome.Rejected.PAYMENT_INIT_FAILED, outcome);
 		assertEquals("DECLINED", statusOf(jdbc, stay.stretches().get(0)),
-				"a stay the revert cannot restore whole is declined, as the remodel declines a pending stay");
+				"a stay the revert cannot restore whole is declined, never left mixed");
 		assertEquals("SET_UNAVAILABLE", jdbc.sql("SELECT decline_reason FROM booking WHERE id = :id")
 				.param("id", stay.stretches().get(0)).query(String.class).single());
 		assertEquals("CANCELLED", statusOf(jdbc, released), "the remodel's release stands");

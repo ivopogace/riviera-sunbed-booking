@@ -29,6 +29,7 @@ import ai.riviera.platform.venue.vocabulary.SetId;
 import ai.riviera.platform.venue.vocabulary.VenueId;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
@@ -124,6 +125,18 @@ class RequestAcceptRevertIT {
 				.param("id", request).query(Long.class).single(), "the request stands where the remodel put it");
 		assertEquals(1L, heldOn(setId), "the other guest's claim on the accepted set stands (#2)");
 		assertEquals(0L, heldOn(candidate), "the claim the request held is the one given back");
+	}
+
+	@Test
+	void aRemodelCannotMoveARequestThatHoldsNoClaim() {
+		// A revert that commits before a remodel's row lock leaves the booking pending (#1302): it holds nothing to move.
+		long candidate = insertSet(2);
+		long request = insertRequest();
+
+		assertFalse(bookings.moveToSet(request, new SetId(setId), new SetId(candidate), Instant.now()),
+				"a pending request holds no claim (ADR-0025), so the remodel's move misses and its commit rolls back");
+		assertEquals(setId, jdbc.sql("SELECT set_id FROM booking WHERE id = :id")
+				.param("id", request).query(Long.class).single());
 	}
 
 	private long insertSet(int position) {

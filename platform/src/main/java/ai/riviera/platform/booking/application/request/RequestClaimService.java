@@ -28,8 +28,8 @@ import ai.riviera.platform.venue.vocabulary.VenueId;
  * The committed half of the venue's accept (ADR-0025): claim every day of the pending request, or of
  * every stretch of a stay request (invariant #2, #1267), move it to {@code AWAITING_PAYMENT}, and decline
  * every pending request overlapping it, a stay whole — in one transaction, so the payment call that
- * follows holds no lock. A day that cannot be claimed makes the request decline itself whole. Lock
- * order matches the reserve and the remodel: set rows by ascending day, then booking rows.
+ * follows holds no lock. A day that cannot be claimed makes the request decline itself whole. The accept locks
+ * set rows by ascending day, then booking rows, as the reserve does; the revert, like the remodel, booking first.
  * Rationale: {@code RESPONSIBILITIES.md} §booking.
  */
 @Service
@@ -94,7 +94,7 @@ class RequestClaimService {
 		return new StayAcceptClaim.Accepted(accepted);
 	}
 
-	/** Compensates a failed payment set-up: back to pending, and the claim it holds now is given back (#2, #1302). */
+	/** Compensates a failed payment set-up: back to pending, releasing the claim it held (invariant #2, #1302). */
 	@Transactional
 	public boolean revert(AcceptedRequest accepted) {
 		Optional<ClaimRef> held = bookings.revertAcceptToPending(accepted.bookingId());
@@ -105,11 +105,16 @@ class RequestClaimService {
 
 	/**
 	 * {@link #revert} for every stretch of an accepted stay request, in one transaction. A stay it cannot restore
-	 * whole (a remodel released a stretch meanwhile) is declined whole, as the remodel declines a pending stay (#1302).
+	 * whole (a remodel released a stretch meanwhile) is declined {@code SET_UNAVAILABLE}, never left mixed (#1302).
 	 */
 	@Transactional
 	public boolean revertStay(StayId stayId, List<AcceptedRequest> stretches) {
-		long reverted = stretches.stream().filter(this::revert).count();
+		int reverted = 0;
+		for (AcceptedRequest stretch : stretches) {
+			if (revert(stretch)) {
+				reverted++;
+			}
+		}
 		if (reverted > 0 && reverted < stretches.size()) {
 			declineStaySelf(stayId, stretches.getFirst().venueId());
 		}

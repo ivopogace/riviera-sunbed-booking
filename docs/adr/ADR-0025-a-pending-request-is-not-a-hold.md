@@ -46,7 +46,7 @@ still "releases" would delete another guest's claim.
    the row and publish as before, without touching `set_availability`. A remodel that disturbs a set
    declines its pending requests rather than moving them, whatever the remodel zone: there is no claim
    to re-seat and nothing for the freeze to pin, so the guest re-requests on the new layout. A failed
-   payment set-up after accept reverts to pending *and* releases the claim the booking then holds.
+   payment set-up after accept reverts to pending *and* releases the claim the booking held when reverted.
 5. **`decline_reason` is recorded on the row** (`VENUE`, `SET_UNAVAILABLE`, `ANOTHER_GUEST`; CHECK in
    lockstep with `booking.vocabulary.DeclineReason`) and rides `BookingRequestDeclined`, so the guest's
    view and the decline mail name it. The response window stays a flat `booking.request.expiry-window`
