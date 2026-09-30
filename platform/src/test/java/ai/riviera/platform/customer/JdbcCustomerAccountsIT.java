@@ -19,6 +19,7 @@ import ai.riviera.platform.TestcontainersConfiguration;
 import ai.riviera.platform.customer.api.CustomerAccountProvisioning;
 import ai.riviera.platform.customer.api.CustomerAccounts;
 import ai.riviera.platform.customer.api.SsoAccountProvisioning;
+import ai.riviera.platform.customer.application.CustomerAccountStore;
 import ai.riviera.platform.customer.vocabulary.CustomerAccountCredential;
 import ai.riviera.platform.customer.vocabulary.CustomerAccountId;
 import ai.riviera.platform.customer.vocabulary.LiveAccountCredential;
@@ -48,6 +49,9 @@ class JdbcCustomerAccountsIT {
 
 	@Autowired
 	SsoAccountProvisioning sso;
+
+	@Autowired
+	CustomerAccountStore store;
 
 	@Autowired
 	JdbcTemplate jdbc;
@@ -81,6 +85,21 @@ class JdbcCustomerAccountsIT {
 		assertThat(accounts.findByEmail("sso-only@example.com")).isEmpty();
 		assertThat(accounts.liveCredential("erased+" + erasedId + "@erased.invalid")).isEmpty();
 		assertThat(accounts.liveCredential(new CustomerAccountId(erasedId))).isEmpty();
+	}
+
+	@Test
+	void anErasedAccountTakesNoPasswordAndNoVerification() {
+		provisioning.register("erased-guard@example.com", "{bcrypt}gone");
+		Long erasedId = jdbc.queryForObject(
+				"SELECT id FROM customer_account WHERE email = 'erased-guard@example.com'", Long.class);
+		jdbc.update("UPDATE customer_account SET email = 'erased+' || id || '@erased.invalid', password_hash = NULL,"
+				+ " erased_at = NOW() WHERE id = ?", erasedId);
+
+		store.updatePasswordHash(new CustomerAccountId(erasedId), "{bcrypt}late");
+		store.markEmailVerified(new CustomerAccountId(erasedId));
+
+		assertThat(jdbc.queryForObject("SELECT password_hash IS NULL AND NOT email_verified FROM customer_account"
+				+ " WHERE id = ?", Boolean.class, erasedId)).isTrue();
 	}
 
 	@Test
