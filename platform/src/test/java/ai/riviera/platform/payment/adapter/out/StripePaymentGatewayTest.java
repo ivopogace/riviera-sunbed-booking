@@ -401,6 +401,21 @@ class StripePaymentGatewayTest {
 	}
 
 	@Test
+	void refusesAnUntaggedLiveRefundForADayOfASingleBookingIntent() throws StripeException {
+		RefundFixture fixture = refundFixture();
+		LocalDate day = LocalDate.of(2026, 7, 8);
+		stripeHolds(fixture.refunds(), stripeRefund("re_by_hand", REFUND_SUCCEEDED, 300L));
+
+		RefundResult result = fixture.gateway().refund(BOOKING, RefundScope.day(day), new Money(300L, "EUR"));
+
+		// Its failure would be matched to the whole share, so a day must not own it (#1310).
+		verify(fixture.refunds(), never()).create(any(RefundCreateParams.class), any(RequestOptions.class));
+		assertEquals("refund_mismatch", assertInstanceOf(RefundResult.Failed.class, result).reason());
+		verify(fixture.payments(), never()).markRefunded(any(), any(), anyLong(), any());
+		assertEquals(0.0, fixture.adoptedCount());
+	}
+
+	@Test
 	void doesNotRecordARefundStripeAnswersAsAlreadyDead() throws StripeException {
 		RefundFixture fixture = refundFixture();
 		stripeHolds(fixture.refunds());
