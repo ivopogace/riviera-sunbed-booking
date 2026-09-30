@@ -90,7 +90,7 @@ public interface Payments {
 
 	/**
 	 * {@link #markRefundFailed(String)} for a refund that names its booking and scope, run after any write in flight
-	 * on its intent; else, with a {@link #markRefundAttempted} on record and no refund recorded, marks that attempt
+	 * on its intent; if that moves nothing, a {@link #markRefundAttempted} on record with no refund recorded is marked
 	 * died before it was recorded — a failed manual gateway refund moves nothing (RESPONSIBILITIES.md §payment).
 	 */
 	boolean markRefundFailed(String refundId, BookingRef booking, RefundScope scope);

@@ -159,8 +159,8 @@ class StripeWebhookController {
 	}
 
 	/**
-	 * Put the booking back to owed and report whether this delivery did it; a refund pinned on a booking also
-	 * matches by it, for the window before its id is recorded (RESPONSIBILITIES.md §payment).
+	 * Put the booking back to owed and report whether this delivery did it; a refund naming its booking and scope
+	 * also matches by them, for the window before its id is recorded (RESPONSIBILITIES.md §payment).
 	 */
 	private boolean markOwedAgain(Refund refund, Optional<BookingRef> booking) {
 		return booking

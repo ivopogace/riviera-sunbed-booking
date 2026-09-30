@@ -5,6 +5,7 @@ import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.Callable;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -551,7 +552,7 @@ class JdbcPaymentsIT {
 
 	@Test
 	void twoRefundsOnOneShareSerializeOnItsRow() throws Exception {
-		// Day 3's refund arrives while day 2's is uncommitted (#1210): it must wait on the share's row, then sum both.
+		// Day 3's refund arrives while day 2's is uncommitted (#1210): it must wait on the intent's row, then sum both.
 		payments.register(new NewPayment(new BookingRef(9624L), "pi_day_pair", 900L, "EUR", "cs_test_secret"));
 		payments.markStatus("pi_day_pair", PaymentStatus.SUCCEEDED);
 
@@ -607,33 +608,41 @@ class JdbcPaymentsIT {
 	}
 
 	/**
-	 * Runs {@code held} in a transaction left open until {@code racer} is seen waiting on a lock, then commits it
-	 * and returns what {@code racer} answered.
+	 * Runs {@code held} in a transaction left open until {@code racer} is blocked by it, then commits it and returns
+	 * what {@code racer} answered.
 	 */
 	private <T> T racingAHeldWrite(Runnable held, Callable<T> racer) throws Exception {
 		TransactionTemplate tx = new TransactionTemplate(txManager);
-		CountDownLatch written = new CountDownLatch(1);
+		CompletableFuture<Integer> holderPid = new CompletableFuture<>();
 		CountDownLatch mayCommit = new CountDownLatch(1);
 		try (ExecutorService pool = Executors.newFixedThreadPool(2)) {
-			Future<?> holder = pool.submit(() -> tx.executeWithoutResult(status -> {
-				held.run();
-				written.countDown();
-				try {
-					mayCommit.await(10, TimeUnit.SECONDS);
-				}
-				catch (InterruptedException interrupted) {
-					Thread.currentThread().interrupt();
-				}
-			}));
-			assertTrue(written.await(10, TimeUnit.SECONDS));
-			Future<T> raced = pool.submit(racer);
-			Awaitility.await().atMost(Duration.ofSeconds(10)).until(() -> jdbc.sql(
-					"SELECT COUNT(*) FROM pg_stat_activity WHERE wait_event_type = 'Lock' AND query LIKE '%payment%'")
-					.query(Long.class).single() > 0);
-			mayCommit.countDown();
-			holder.get(10, TimeUnit.SECONDS);
-			return raced.get(10, TimeUnit.SECONDS);
+			try {
+				Future<?> holder = pool.submit(() -> tx.executeWithoutResult(status -> {
+					held.run();
+					holderPid.complete(jdbc.sql("SELECT pg_backend_pid()").query(Integer.class).single());
+					try {
+						mayCommit.await(10, TimeUnit.SECONDS);
+					}
+					catch (InterruptedException interrupted) {
+						Thread.currentThread().interrupt();
+					}
+				}));
+				int pid = holderPid.get(10, TimeUnit.SECONDS);
+				Future<T> raced = pool.submit(racer);
+				Awaitility.await().atMost(Duration.ofSeconds(10)).until(() -> sessionsBlockedBy(pid) >= 1L);
+				mayCommit.countDown();
+				holder.get(10, TimeUnit.SECONDS);
+				return raced.get(10, TimeUnit.SECONDS);
+			}
+			finally {
+				mayCommit.countDown();
+			}
 		}
+	}
+
+	private long sessionsBlockedBy(int pid) {
+		return jdbc.sql("SELECT COUNT(*) FROM pg_stat_activity WHERE :pid = ANY (pg_blocking_pids(pid))")
+				.param("pid", pid).query(Long.class).single();
 	}
 
 	@Test

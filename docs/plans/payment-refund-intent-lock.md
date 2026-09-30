@@ -41,8 +41,8 @@ both run on a snapshot taken after an in-flight `markRefunded` commits.
 ## Risks
 
 - **R-1: deadlock from a new lock order.** → Every refund write takes the `payment` row first, then
-  its refund row, then the share; `markStatus` and `markRefundAttempted` take no `payment` lock and
-  hold none while waiting on one. `RefundService` runs outside any caller transaction, so no `booking`
+  its refund row, then the share; `markStatus` holds no other lock while it waits on the `payment` row, and
+  `markRefundAttempted` takes none. `RefundService` runs outside any caller transaction, so no `booking`
   row is held around it.
 - **R-2: webhook duplicate / out-of-order (#8).** → The guards stay the same single statements; the
   lock only moves their snapshot after an in-flight write, never widens what they match.
