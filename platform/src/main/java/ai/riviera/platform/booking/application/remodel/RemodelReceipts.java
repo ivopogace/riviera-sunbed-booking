@@ -29,4 +29,7 @@ public interface RemodelReceipts {
 
 	/** Whether a remodel commit ended this booking — refunded, released or declined it; a kept booking was not. */
 	boolean endedByRemodel(BookingId bookingId);
+
+	/** Whether a remodel commit released this booking unpaid; a refund line, however small, is not a release (#1291). */
+	boolean releasedByRemodel(BookingId bookingId);
 }

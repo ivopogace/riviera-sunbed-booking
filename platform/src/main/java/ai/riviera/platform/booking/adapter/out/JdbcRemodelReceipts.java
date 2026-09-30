@@ -57,6 +57,7 @@ class JdbcRemodelReceipts implements RemodelReceipts {
 	private static final String P_BOOKING = "booking";
 	private static final String P_DATE = "date";
 	private static final String P_REASON = "reason";
+	private static final String P_KIND = "kind";
 	private static final String C_REASON = "refund_reason";
 	private static final String C_BOOKING = "booking_id";
 	private static final String C_DATE = "booking_date";
@@ -112,7 +113,7 @@ class JdbcRemodelReceipts implements RemodelReceipts {
 				.param(P_RECEIPT, receiptId)
 				.param(P_BOOKING, outcome.bookingId().value())
 				.param(P_DATE, outcome.bookingDate())
-				.param("kind", outcome.kind().name())
+				.param(P_KIND, outcome.kind().name())
 				.param("set", outcome.spot().setId().value())
 				.param("row", outcome.spot().rowLabel())
 				.param("position", outcome.spot().positionNo())
@@ -224,6 +225,17 @@ class JdbcRemodelReceipts implements RemodelReceipts {
 	public boolean endedByRemodel(BookingId bookingId) {
 		return jdbc.sql("SELECT EXISTS(SELECT 1 FROM remodel_receipt_outcome WHERE booking_id = :booking)")
 				.param(P_BOOKING, bookingId.value())
+				.query(Boolean.class)
+				.single();
+	}
+
+	@Override
+	public boolean releasedByRemodel(BookingId bookingId) {
+		return jdbc.sql("""
+				SELECT EXISTS(SELECT 1 FROM remodel_receipt_outcome WHERE booking_id = :booking AND kind = :kind)
+				""")
+				.param(P_BOOKING, bookingId.value())
+				.param(P_KIND, ReceiptOutcomeKind.RELEASE.name())
 				.query(Boolean.class)
 				.single();
 	}

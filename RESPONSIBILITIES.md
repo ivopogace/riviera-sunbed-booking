@@ -431,8 +431,9 @@ any is released on the old, never a swap of my own — so a racing reserve wins 
   lines) tells a venue-caused cancellation from a free exit, both being `VENUE_CHANGE`.
 - **A remodel-released booking's intent is voided after commit, never inside it:** the abandoned
   sweep reads only `AWAITING_PAYMENT`, so nothing else reaches it. `RemodelReleasePaymentListener`
-  acts only on the release shape (`VENUE_CHANGE`, nothing refunded; every other cancel collected)
-  and throws on a transient failure. An intent that had collected cannot be undone: it counts to
+  acts only on a `VENUE_CHANGE` cancel with a `RELEASE` receipt line (`RemodelReceipts#releasedByRemodel`),
+  never on a zero refund: a paid booking whose every day was already refunded also returns nothing
+  (#1291). It throws on a transient failure. An intent that had collected cannot be undone: it counts to
   `ObservabilityMetrics.REMODEL_RELEASE_COLLECTED` and is refunded by hand, never retried.
 - **A moved booking's free exit is a refund-tier override, never a window change:** until
   `BookingCutoff#freeExitEndsAt`, `CancellationPolicy#quote` refunds in full as `VENUE_CHANGE`

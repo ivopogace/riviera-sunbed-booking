@@ -1,5 +1,6 @@
 package ai.riviera.platform.booking.adapter.in;
 
+import ai.riviera.platform.booking.application.remodel.RemodelReceipts;
 import ai.riviera.platform.booking.events.BookingCancelled;
 import ai.riviera.platform.booking.vocabulary.RefundReason;
 import ai.riviera.platform.payment.api.CancelPaymentPort;
@@ -17,12 +18,12 @@ import org.springframework.stereotype.Component;
 import org.springframework.transaction.event.TransactionalEventListener;
 
 /**
- * Voids the PaymentIntent of a booking a remodel released, after commit, moving no money (ADR-0002):
- * the abandoned-payment sweep reads only {@code AWAITING_PAYMENT}, so nothing else would reach it
- * and the guest could still pay. Acts only on {@link RefundReason#VENUE_CHANGE} returning nothing,
- * the release's shape. Bulkhead ({@code RefundListenerExecutorArchitectureTest}): {@code Failed}
- * throws to be retried; {@code NotCancellable} (the guest paid first) is counted and logged for a
- * manual refund, never retried. Rationale: {@code RESPONSIBILITIES.md} §booking.
+ * Voids the PaymentIntent of a booking a remodel released, after commit, moving no money (ADR-0002): the
+ * abandoned-payment sweep reads only {@code AWAITING_PAYMENT}, so nothing else would and the guest could still pay.
+ * Acts only on a {@link RefundReason#VENUE_CHANGE} cancel the receipt records as a release, never on the amount: a paid
+ * booking whose every day was refunded also returns nothing. Bulkhead ({@code RefundListenerExecutorArchitectureTest}): {@code Failed}
+ * throws to be retried; {@code NotCancellable} (the guest paid first) is counted and logged for a manual refund, never
+ * retried. Rationale: {@code RESPONSIBILITIES.md} §booking.
  */
 @Component
 class RemodelReleasePaymentListener {
@@ -31,17 +32,20 @@ class RemodelReleasePaymentListener {
 
 	private final CancelPaymentPort cancelPaymentPort;
 
+	private final RemodelReceipts receipts;
+
 	private final Counter collected;
 
-	RemodelReleasePaymentListener(CancelPaymentPort cancelPaymentPort, MeterRegistry meters) {
+	RemodelReleasePaymentListener(CancelPaymentPort cancelPaymentPort, RemodelReceipts receipts, MeterRegistry meters) {
 		this.cancelPaymentPort = cancelPaymentPort;
+		this.receipts = receipts;
 		this.collected = meters.counter(ObservabilityMetrics.REMODEL_RELEASE_COLLECTED);
 	}
 
 	@Async(RefundExecutorConfig.REFUND_EXECUTOR)
 	@TransactionalEventListener
 	void on(BookingCancelled event) {
-		if (event.reason() != RefundReason.VENUE_CHANGE || event.refundMinor() > 0) {
+		if (event.reason() != RefundReason.VENUE_CHANGE || !receipts.releasedByRemodel(event.bookingId())) {
 			return;
 		}
 		long bookingId = event.bookingId().value();
