@@ -291,7 +291,11 @@ any is released on the old, never a swap of my own — so a racing reserve wins 
   move whose day has already begun is never announced late, so the mail's "tomorrow" stays true.
 - **Lock order: the booking row, then its service-day rows** — check-in and both sweep statements —
   so a scan, a cancel and the sweep serialize on the stay. The sweep never uses `SKIP LOCKED`: a
-  short batch reads as drained, so a skipped contended row would be stranded.
+  short batch reads as drained, so a skipped contended row would be stranded. A whole-booking cancel
+  that can follow a day refund (guest, stay, a remodel's refund leg) and a remodel move lock in a statement
+  of their own, then read: a day refund writes only `booking_day`, so a guard or read that waited on the
+  lock would see the refunded and released days as of before (#1281). The venue's lone one-day cancel has
+  no day to race.
 - **The guest cancel admits `CONFIRMED` only; the venue's refund (`cancelByVenue`, `VENUE_REFUND`) also `NO_SHOW`** (the storm is
   known afterwards): separate port methods and `BookingTransition` rows, so the asymmetry cannot be
   tidied away. The guest guard's readers (the view's `cancellable`, the cancel's `NotCancellable`)
@@ -353,9 +357,9 @@ any is released on the old, never a swap of my own — so a racing reserve wins 
   pending request on that set with an overlapping day (`ANOTHER_GUEST`), in one transaction that
   commits before the payment call; a day it cannot claim makes the request decline itself
   (`SET_UNAVAILABLE`), and a failed payment set-up reverts to pending and gives the claim back. Lock
-  order is the reserve's and the remodel's: the set's rows, then the booking row; two overlapping
-  accepts leave exactly one winner (`RequestAcceptClaimsIT`, `ConcurrentOverlappingAcceptIT`). The
-  queue names each request's competing requests; a request for a day already taken is `SET_TAKEN`.
+  order is the reserve's: availability row, then booking row (a remodel locks each booking row first); two
+  overlapping accepts leave one winner (`RequestAcceptClaimsIT`, `ConcurrentOverlappingAcceptIT`). The queue
+  names each request's competing requests; a request for a day already taken is `SET_TAKEN`.
 - **A stay request is answered whole (#1267):** at a Request-to-Book venue a stitched plan is a
   `stay` of `PENDING_REQUEST` stretches under one deadline. Every leg (accept, decline, expiry,
   withdraw by the stay's code, a remodel's decline, a rival's decline) moves every stretch or none,

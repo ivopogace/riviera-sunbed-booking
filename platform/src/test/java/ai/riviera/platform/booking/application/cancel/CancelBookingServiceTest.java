@@ -11,6 +11,7 @@ import java.util.Optional;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
+import org.mockito.InOrder;
 import org.springframework.context.ApplicationEventPublisher;
 
 import ai.riviera.platform.availability.api.AvailabilityClaim;
@@ -39,6 +40,7 @@ import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
@@ -137,6 +139,9 @@ class CancelBookingServiceTest {
 		verify(events).publishEvent(new BookingCancelled(new BookingId(booking.id()), VENUE, SET, DATE,
 				4500L, "EUR", RefundReason.POLICY));
 		verify(events, never()).publishEvent(any(StayCancelled.class));
+		InOrder lockFirst = inOrder(bookings);
+		lockFirst.verify(bookings).lockByCode(CODE);
+		lockFirst.verify(bookings).findByCode(CODE);
 	}
 
 	@Test

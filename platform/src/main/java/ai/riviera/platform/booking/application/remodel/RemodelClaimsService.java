@@ -153,20 +153,22 @@ class RemodelClaimsService implements RemodelClaims {
 	}
 
 	/**
-	 * Cancels a stranded confirmed claim with a {@code VENUE_CHANGE} refund of all that remains (the amount
-	 * less its weather-refunded days, #1210); refund, reversal and fee drain after commit off {@code BookingCancelled}.
+	 * Cancels a stranded confirmed claim with a {@code VENUE_CHANGE} refund of all that remains, read under its row lock
+	 * (a day refunded meanwhile is counted, #1281); refund, reversal and fee drain after commit off {@code BookingCancelled}.
 	 * {@code feeMinor}, the quoted rate, is recorded on the receipt line, not what the ledger charges (ADR-0021).
 	 */
 	private ReceiptOutcome applyRefund(VenueId venueId, RemodelClaim claim, Instant cancelledAt, long feeMinor) {
+		long remainingMinor = bookings.lockRemainingMinor(claim.bookingId().value());
 		CancelledBooking cancelled = bookings
-				.cancelConfirmed(claim.bookingId().value(), cancelledAt, claim.amountMinor(), RefundReason.VENUE_CHANGE,
-						claim.amountMinor())
+				.cancelConfirmed(claim.bookingId().value(), cancelledAt, remainingMinor, RefundReason.VENUE_CHANGE,
+						remainingMinor)
 				.orElseThrow(() -> lostUnderLock(claim, "confirmed"));
 		releaseHeld(cancelled.id(), cancelled.setId(), cancelled.bookingDate(), cancelled.lastDate());
 		events.publishEvent(new BookingCancelled(claim.bookingId(), venueId, cancelled.setId(),
-				cancelled.bookingDate(), claim.amountMinor(), claim.currency(), RefundReason.VENUE_CHANGE,
+				cancelled.bookingDate(), remainingMinor, claim.currency(), RefundReason.VENUE_CHANGE,
 				cancelled.lastDate()));
-		return outcomeOf(claim, ReceiptOutcomeKind.REFUND, feeMinor);
+		return new ReceiptOutcome(claim.bookingId(), claim.bookingDate(), claim.from(), ReceiptOutcomeKind.REFUND,
+				remainingMinor, claim.currency(), feeMinor);
 	}
 
 	/**
@@ -215,11 +217,12 @@ class RemodelClaimsService implements RemodelClaims {
 	}
 
 	/**
-	 * Claim every day the booking still holds on the candidate before releasing the old rows (invariant
-	 * #2; a venue-released day is neither claimed nor freed, ADR-0027), then re-seat the booking. A day not
-	 * won under the venue lock throws, and the commit's transaction moves nothing.
+	 * Claim every day the booking still holds, read under its row lock, on the candidate before releasing the old
+	 * rows (#2; a venue-released day is neither claimed nor freed, ADR-0027, #1281), then re-seat the booking. A day
+	 * not won under the venue lock throws, and the commit's transaction moves nothing.
 	 */
 	private ReceiptMove applyMove(VenueId venueId, RemodelClaim claim, RemodelOutcome.Move move, Instant movedAt) {
+		bookings.lockById(claim.bookingId().value());
 		List<LocalDate> held = ServiceDays.held(claim.bookingDate(), claim.lastDate(),
 				bookings.findReleasedDays(claim.bookingId().value()));
 		for (LocalDate day : held) {

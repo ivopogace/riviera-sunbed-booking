@@ -350,6 +350,7 @@ class RemodelClaimsServiceTest {
 				"EUR", RemodelOutcome.Refund.REFUND);
 		when(bookings.findLiveOnSets(Set.of(A1.setId()))).thenReturn(List.of(stormy));
 		givenMap(List.of(A1), IN_TEN_DAYS, List.of());
+		when(bookings.lockRemainingMinor(211)).thenReturn(3000L);
 		when(bookings.cancelConfirmed(211, CLOCK.instant(), 3000, RefundReason.VENUE_CHANGE, 3000))
 				.thenReturn(java.util.Optional.of(new CancelledBooking(211, VENUE, A1.setId(), IN_TEN_DAYS,
 						IN_TEN_DAYS.plusDays(2), 4500, "EUR")));
@@ -373,6 +374,7 @@ class RemodelClaimsServiceTest {
 		when(bookings.findLiveOnSets(Set.of(A1.setId())))
 				.thenReturn(List.of(claim(210, A1, IN_TEN_DAYS, BookingStatus.CONFIRMED)));
 		givenMap(List.of(A1), IN_TEN_DAYS, List.of());
+		when(bookings.lockRemainingMinor(210)).thenReturn(4500L);
 		when(bookings.cancelConfirmed(210, CLOCK.instant(), 4500, RefundReason.VENUE_CHANGE, 4500))
 				.thenReturn(java.util.Optional.of(new CancelledBooking(210, VENUE, A1.setId(), IN_TEN_DAYS, IN_TEN_DAYS, 4500, "EUR")));
 		when(receipts.store(any())).thenReturn(RECEIPT);
@@ -381,6 +383,7 @@ class RemodelClaimsServiceTest {
 
 		assertEquals(new RemodelCommit.Applied(RECEIPT, CLOCK.instant(), List.of(refund)), outcome);
 		InOrder order = inOrder(bookings, availability, events, receipts);
+		order.verify(bookings).lockRemainingMinor(210);
 		order.verify(bookings).cancelConfirmed(210, CLOCK.instant(), 4500, RefundReason.VENUE_CHANGE, 4500);
 		order.verify(availability).release(A1.setId(), IN_TEN_DAYS);
 		order.verify(events).publishEvent(new BookingCancelled(new BookingId(210), VENUE, A1.setId(), IN_TEN_DAYS,
@@ -436,6 +439,7 @@ class RemodelClaimsServiceTest {
 				claim(214, A1, IN_TEN_DAYS.plusDays(1), BookingStatus.CONFIRMED)));
 		givenMap(List.of(A1), IN_TEN_DAYS, List.of());
 		when(facts.freeOnlineSetsOn(VENUE, IN_TEN_DAYS.plusDays(1))).thenReturn(List.of());
+		when(bookings.lockRemainingMinor(anyLong())).thenReturn(4500L);
 		when(bookings.cancelConfirmed(eq(213L), any(), eq(4500L), eq(RefundReason.VENUE_CHANGE), eq(4500L)))
 				.thenReturn(java.util.Optional.of(new CancelledBooking(213, VENUE, A1.setId(), IN_TEN_DAYS, IN_TEN_DAYS, 4500, "EUR")));
 		when(bookings.cancelConfirmed(eq(214L), any(), eq(4500L), eq(RefundReason.VENUE_CHANGE), eq(4500L)))
@@ -471,6 +475,8 @@ class RemodelClaimsServiceTest {
 
 		assertEquals(new RemodelCommit.Applied(RECEIPT, CLOCK.instant(), List.of(first, second)), outcome);
 		InOrder order = inOrder(availability, bookings, events, receipts);
+		order.verify(bookings).lockById(203);
+		order.verify(bookings).findReleasedDays(203);
 		order.verify(availability).claim(A2.setId(), IN_TEN_DAYS);
 		order.verify(availability).release(A1.setId(), IN_TEN_DAYS);
 		order.verify(bookings).moveToSet(203, A1.setId(), A2.setId(), CLOCK.instant());
