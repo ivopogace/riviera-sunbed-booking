@@ -158,7 +158,9 @@ close, the maximum stay, the season closure, and the commission rate over time. 
   has its own owner-asserted endpoint (`CloseForSeason`), never the profile full-replace: a state
   change rides no version token, and the close answers what guests are still owed
   (`LiveBookingCounts`, via my `spi` `BookingPresence#liveBookingsFrom`). A reopen day not after
-  today is `REOPEN_DATE_PASSED`. Closing touches no booking, hold, request or walk-in mark.
+  today is `REOPEN_DATE_PASSED`. Closing touches no booking, hold, request or walk-in mark. It
+  serializes with the reserve on the venue row: `SetBookingFacts#setBookingInfoForReserve` takes it
+  `FOR SHARE` first, so the close waits and counts the booking, or the reserve reads it (#1304).
 - **A venue closed for season stays visible; I store the closure, `booking` keeps the rule**
   (`BookingCutoff`, via `SalesWindow`). The list and map project `closedForSeason` / `reopensOn`
   beside `salesOpen` (the list sorts closed venues last) and the calendar carries `salesOpen` per

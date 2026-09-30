@@ -74,7 +74,7 @@ class ReserveSetService {
 	 */
 	@Transactional
 	ReserveOutcome reserve(CreateBookingCommand command) {
-		Optional<SetBookingInfo> found = setFacts.setBookingInfo(command.setId());
+		Optional<SetBookingInfo> found = setFacts.setBookingInfoForReserve(command.setId());
 		if (found.isEmpty()) {
 			return new ReserveOutcome.Rejected(BookingOutcome.Rejected.NO_SUCH_SET);
 		}

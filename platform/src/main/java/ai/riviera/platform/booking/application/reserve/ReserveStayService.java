@@ -72,7 +72,7 @@ class ReserveStayService {
 	@Transactional
 	StayReserveOutcome reserve(CreateStayCommand command) {
 		List<SetId> setIds = command.stretches().stream().map(Stretch::setId).distinct().toList();
-		Map<SetId, SetBookingInfo> sets = setFacts.setBookingInfos(setIds);
+		Map<SetId, SetBookingInfo> sets = setFacts.setBookingInfosForReserve(setIds);
 		if (sets.size() != setIds.size() || sets.values().stream().map(SetBookingInfo::venueId).distinct().count() != 1) {
 			return new StayReserveOutcome.Rejected(BookingOutcome.Rejected.NO_SUCH_SET);
 		}
