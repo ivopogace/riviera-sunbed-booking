@@ -16,8 +16,8 @@ import ai.riviera.platform.customer.vocabulary.CustomerAccountId;
 public interface CustomerAccountTokens {
 
 	/**
-	 * Store a token digest for the account, invalidating any prior unconsumed token of the same purpose
-	 * first (only the newest link works). Atomic — invoked within the service's {@code @Transactional}.
+	 * Store a token digest for the account, invalidating any prior unconsumed token of the same purpose first. Only
+	 * the newest link works while the caller holds the account's row lock; without it two issues both stay live.
 	 */
 	void issue(CustomerAccountId accountId, TokenPurpose purpose, String tokenHash, Instant expiresAt);
 

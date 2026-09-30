@@ -67,8 +67,8 @@ public interface CustomerAccountStore {
 	void markEmailVerified(CustomerAccountId accountId);
 
 	/**
-	 * Lock the account row {@code FOR NO KEY UPDATE} (a token insert's key check still passes) for the caller's
-	 * transaction, in a statement of its own; false when gone or erased. Before its token rows, as erasure (#1305).
+	 * Lock the account row {@code FOR NO KEY UPDATE} (a child insert's key check still passes) for the caller's
+	 * transaction, in a statement of its own; false when gone or erased. Before its tokens and identities, as erasure.
 	 */
 	boolean lockLiveAccount(CustomerAccountId accountId);
 

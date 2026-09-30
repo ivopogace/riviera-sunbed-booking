@@ -73,24 +73,32 @@ class CustomerAccountService implements CustomerAccounts, CustomerAccountProvisi
 	@Transactional
 	public CustomerAccountId resolveOrCreate(SsoProvider provider, String subject, String email) {
 		String normalized = Emails.normalize(email);
+		Optional<CustomerAccountId> createdHere = Optional.empty();
 		for (int attempt = 0; attempt < SSO_ATTEMPTS; attempt++) {
+			// The returning subject first, so a changed provider email never spawns a second account.
 			Optional<CustomerAccountId> returning = store.accountForSsoIdentity(provider, subject);
 			if (returning.isPresent()) {
-				return returning.get();
+				return keepOnly(returning.get(), createdHere);
 			}
 			Optional<SsoAccountClaim> claim = store.claimAccountForSso(normalized)
 					.filter(claimed -> store.lockLiveAccount(claimed.accountId()));
+			if (claim.filter(SsoAccountClaim::created).isPresent()) {
+				createdHere = claim.map(SsoAccountClaim::accountId);
+			}
 			Optional<CustomerAccountId> linked = claim
 					.flatMap(claimed -> store.linkSsoIdentity(claimed.accountId(), provider, subject, normalized));
 			if (linked.isPresent()) {
-				if (claim.get().created() && !linked.get().equals(claim.get().accountId())) {
-					store.deleteUnlinkedAccount(claim.get().accountId());
-				}
 				store.markEmailVerified(linked.get()); // an SSO email is provider-verified (design D-6)
-				return linked.get();
+				return keepOnly(linked.get(), createdHere);
 			}
 		}
 		throw new IllegalStateException("an erasure took the SSO account on every attempt");
+	}
+
+	/** Deletes the account this sign-in created when its subject resolved to another one (#1307). */
+	private CustomerAccountId keepOnly(CustomerAccountId resolved, Optional<CustomerAccountId> createdHere) {
+		createdHere.filter(created -> !created.equals(resolved)).ifPresent(store::deleteUnlinkedAccount);
+		return resolved;
 	}
 
 	@Override

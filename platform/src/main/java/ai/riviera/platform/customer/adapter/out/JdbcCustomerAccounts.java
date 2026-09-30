@@ -132,12 +132,18 @@ class JdbcCustomerAccounts implements CustomerAccountStore {
 	@Override
 	public Optional<CustomerAccountId> linkSsoIdentity(CustomerAccountId accountId, SsoProvider provider,
 			String subject, String normalizedEmail) {
+		jdbc.sql("""
+				DELETE FROM customer_sso_identity i
+				WHERE i.provider = :provider AND i.subject = :subject
+				  AND EXISTS (SELECT 1 FROM customer_account a WHERE a.id = i.account_id AND a.erased_at IS NOT NULL)
+				""")
+				.param(PROVIDER, provider.name())
+				.param(SUBJECT, subject)
+				.update();
 		Optional<Long> linked = jdbc.sql("""
-				INSERT INTO customer_sso_identity AS linked (account_id, provider, subject, email)
+				INSERT INTO customer_sso_identity (account_id, provider, subject, email)
 				VALUES (:accountId, :provider, :subject, :email)
-				ON CONFLICT (provider, subject) DO UPDATE SET account_id = EXCLUDED.account_id, email = EXCLUDED.email
-				WHERE EXISTS (SELECT 1 FROM customer_account a
-				              WHERE a.id = linked.account_id AND a.erased_at IS NOT NULL)
+				ON CONFLICT (provider, subject) DO NOTHING
 				RETURNING account_id
 				""")
 				.param(ACCOUNT_ID, accountId.value())

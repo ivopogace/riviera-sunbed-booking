@@ -40,7 +40,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 /**
  * Account-scoped writes against a concurrent erasure (#1307): no SSO identity or recovery token outlives the
  * account's erasure, two reset issues leave one live link, and a lost first SSO sign-in leaves no account behind.
- * Where the race sits inside one store call, a third transaction holds the identity key the sign-in inserts.
+ * Where the race sits inside one store call, a third transaction holds the identity key the sign-in inserts; it is
+ * declared after the pool, so a failed wait closes (rolls back) it before the pool waits for the sign-ins.
  */
 @EnabledIfDockerAvailable
 @Import({TestcontainersConfiguration.class, PausingPorts.class})
@@ -73,8 +74,8 @@ class CustomerErasureRaceIT {
 		CustomerAccountId account = register(email);
 		String subject = unique("sub");
 
-		try (Connection holder = holdIdentity(register(unique("holder")), subject);
-				ExecutorService pool = Executors.newFixedThreadPool(2)) {
+		try (ExecutorService pool = Executors.newFixedThreadPool(2);
+				Connection holder = holdIdentity(register(unique("holder")), subject)) {
 			Future<CustomerAccountId> signIn = pool.submit(() -> sso.resolveOrCreate(SsoProvider.GOOGLE, subject, email));
 			awaitBlocked(1);
 			Future<EraseOutcome> erased = pool.submit(() -> erasure.eraseAccount(account));
@@ -127,7 +128,7 @@ class CustomerErasureRaceIT {
 		String first = unique("stray-a");
 		String second = unique("stray-b");
 
-		try (Connection holder = holdIdentity(winner, subject); ExecutorService pool = Executors.newFixedThreadPool(2)) {
+		try (ExecutorService pool = Executors.newFixedThreadPool(2); Connection holder = holdIdentity(winner, subject)) {
 			Future<CustomerAccountId> a = pool.submit(() -> sso.resolveOrCreate(SsoProvider.GOOGLE, subject, first));
 			Future<CustomerAccountId> b = pool.submit(() -> sso.resolveOrCreate(SsoProvider.GOOGLE, subject, second));
 			awaitBlocked(2);

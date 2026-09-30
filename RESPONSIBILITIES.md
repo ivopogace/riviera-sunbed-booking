@@ -637,9 +637,10 @@ reset token's account **without consuming** it, so the edge revokes that princip
 `CustomerAccounts#liveCredential` answers the edge's password login, SSO sign-in and per-request session check:
 the live account by email or id, SSO-only included (null hash), never an erased one; the edge owns the stamp.
 
-**Every write under an account locks its live row first** (`CustomerAccountStore#lockLiveAccount`, `FOR NO KEY
-UPDATE` so a child insert's key check passes), in a statement of its own: the order erasure takes the account,
-then its children. Token issue, token redemption and an SSO first sign-in's identity link all do (#1305, #1307).
+**A write of an account's children locks its live row first** (`CustomerAccountStore#lockLiveAccount`, `FOR NO
+KEY UPDATE` so the child insert's key check passes), in a statement of its own, the order erasure takes them: token
+issue and redemption, and an SSO first sign-in's identity link (#1305, #1307). One-statement account writes
+(password change and reset, verification) carry an `erased_at IS NULL` guard instead.
 A missing row is erased: an issue stores and mails nothing, a redemption redeems nothing, a sign-in re-resolves
 to a fresh account and takes over an identity left on an erased one. Two issues serialize, so one reset link is
 live, and a reset retires the rest; a first sign-in that loses its subject deletes the account it created.

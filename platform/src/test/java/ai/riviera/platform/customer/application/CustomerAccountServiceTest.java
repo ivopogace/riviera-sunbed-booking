@@ -18,6 +18,7 @@ import ai.riviera.platform.customer.vocabulary.SsoProvider;
 import ai.riviera.platform.customer.vocabulary.VerifyEmailOutcome;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 /**
  * Unit spec for the account service's email normalization + non-enumerating registration + the S8
@@ -173,6 +174,23 @@ class CustomerAccountServiceTest {
 	}
 
 	@Test
+	void anSsoSignInWhoseAccountIsErasedOnEveryAttemptGivesUp() {
+		store.refusedLocks = 3;
+
+		assertThrows(IllegalStateException.class,
+				() -> service.resolveOrCreate(SsoProvider.GOOGLE, "g-erased", "erased-sso@example.com"));
+	}
+
+	@Test
+	void anSsoSignInThatLosesItsSubjectAfterARetryDeletesTheAccountItCreated() {
+		CustomerAccountId winner = registeredId("winner@example.com");
+		store.subjectTakenOnFirstLinkBy = winner.value();
+
+		assertThat(service.resolveOrCreate(SsoProvider.GOOGLE, "g-lost", "loser@example.com")).isEqualTo(winner);
+		assertThat(service.accountFor("loser@example.com")).as("no stray account").isEmpty();
+	}
+
+	@Test
 	void setPasswordGivesAPasswordlessSsoAccountItsFirstPassword() {
 		CustomerAccountId id = service.resolveOrCreate(SsoProvider.GOOGLE, "g-x", "sso@example.com");
 		assertThat(service.findByEmail("sso@example.com")).as("an SSO-only account has no password yet").isEmpty();
@@ -253,6 +271,11 @@ class CustomerAccountServiceTest {
 		@Override
 		public Optional<CustomerAccountId> linkSsoIdentity(CustomerAccountId accountId, SsoProvider provider,
 				String subject, String normalizedEmail) {
+			if (subjectTakenOnFirstLinkBy != null) {
+				accountBySsoIdentity.put(provider.name() + '|' + subject, subjectTakenOnFirstLinkBy);
+				subjectTakenOnFirstLinkBy = null;
+				return Optional.empty();
+			}
 			return Optional.of(new CustomerAccountId(
 					accountBySsoIdentity.computeIfAbsent(provider.name() + '|' + subject, k -> accountId.value())));
 		}
@@ -267,8 +290,18 @@ class CustomerAccountServiceTest {
 			verified.add(accountId.value());
 		}
 
+		/** Locks refused as if an erasure committed between the claim and the lock. */
+		private int refusedLocks;
+
+		/** The winner's id when the first link loses its subject to it and finds that link gone, then back. */
+		private Long subjectTakenOnFirstLinkBy;
+
 		@Override
 		public boolean lockLiveAccount(CustomerAccountId accountId) {
+			if (refusedLocks > 0) {
+				refusedLocks--;
+				return false;
+			}
 			return idByEmail.containsValue(accountId.value());
 		}
 

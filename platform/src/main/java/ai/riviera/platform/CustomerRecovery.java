@@ -47,7 +47,7 @@ class CustomerRecovery {
 		this.clock = clock;
 	}
 
-	/** Issue a fresh verification token for the account and (best-effort, off-thread) email its link; none if erased. */
+	/** Issue a fresh verification token for the account and (best-effort, off-thread) email its link; no mail once erased. */
 	void sendVerificationEmail(CustomerAccountId accountId, String email) {
 		String rawToken = tokens.generate();
 		// The token store is NOT best-effort and stays on this thread; only the send is.
@@ -66,7 +66,7 @@ class CustomerRecovery {
 		return deliverability.isWithheld(email);
 	}
 
-	/** Issue a fresh password-reset token for the account and (best-effort, off-thread) email its link; none if erased. */
+	/** Issue a fresh password-reset token for the account and (best-effort, off-thread) email its link; no mail once erased. */
 	void sendPasswordResetEmail(CustomerAccountId accountId, String email) {
 		String rawToken = tokens.generate();
 		if (recovery.issuePasswordResetToken(accountId, tokens.hash(rawToken),
