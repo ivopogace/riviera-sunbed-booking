@@ -16,10 +16,9 @@ import ai.riviera.platform.payout.domain.PayoutBatch;
 import ai.riviera.platform.payout.domain.PeriodKey;
 
 /**
- * The weekly BKT payout-report use case. {@link #generate} folds the ledger into one
- * {@code DRAFT} batch per venue for the period (idempotent refresh, invariant #9); {@link #mark}
- * advances a batch through {@code DRAFT → REPORTED → SETTLED}, rejecting illegal moves with a typed
- * outcome rather than an exception. Money is integer minor units throughout (invariant #5).
+ * The weekly BKT payout-report use case. {@link #generate} folds the ledger into one {@code DRAFT} batch per venue
+ * for the period (idempotent refresh, invariant #9), one run per period at a time; {@link #mark} advances a batch
+ * through {@code DRAFT → REPORTED → SETTLED}, rejecting illegal moves with a typed outcome rather than an exception. Money is integer minor units throughout (invariant #5).
  * Package-private behind {@link PayoutReport} (invariant #11).
  */
 @Service
@@ -38,6 +37,7 @@ class PayoutReportService implements PayoutReport {
 	@Override
 	@Transactional
 	public List<PayoutBatch> generate(PeriodKey period) {
+		batches.lockPeriod(period);
 		Map<Long, PayoutBatch> existing = batches.forPeriod(period).stream()
 				.collect(Collectors.toMap(b -> b.venueId().value(), Function.identity()));
 		List<VenuePeriodTotal> totals = ledger.netTotalsForPeriod(period);
