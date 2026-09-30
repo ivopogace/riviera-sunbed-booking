@@ -44,6 +44,16 @@ public interface SetBookingFacts {
 	Map<SetId, SetBookingInfo> setBookingInfos(Collection<SetId> setIds);
 
 	/**
+	 * {@link #setBookingInfo(SetId)} for the reserve, after taking the set's venue row {@code FOR SHARE} for the
+	 * caller's transaction: a season closure then waits for the reserve, or the reserve sees it (#1304). Must run
+	 * in a transaction, never a read-only one. Rationale: RESPONSIBILITIES.md §venue.
+	 */
+	Optional<SetBookingInfo> setBookingInfoForReserve(SetId setId);
+
+	/** {@link #setBookingInfos(Collection)} under the same lock on every venue the sets belong to, in id order. */
+	Map<SetId, SetBookingInfo> setBookingInfosForReserve(Collection<SetId> setIds);
+
+	/**
 	 * Every active set of the venue as a spot — placement, tier and pool — in id order; empty for an
 	 * unknown venue. The remodel classification resolves a disturbed set's own spot here. Reads the
 	 * active map: a retired set is not a spot.

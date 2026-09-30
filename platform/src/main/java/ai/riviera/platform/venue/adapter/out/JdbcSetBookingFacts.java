@@ -124,6 +124,34 @@ class JdbcSetBookingFacts implements SetBookingFacts {
 				.collect(Collectors.toMap(SetBookingInfo::setId, info -> info));
 	}
 
+	@Override
+	public Optional<SetBookingInfo> setBookingInfoForReserve(SetId setId) {
+		lockVenuesOf(List.of(setId));
+		return setBookingInfo(setId);
+	}
+
+	@Override
+	public Map<SetId, SetBookingInfo> setBookingInfosForReserve(Collection<SetId> setIds) {
+		lockVenuesOf(setIds);
+		return setBookingInfos(setIds);
+	}
+
+	/** In a statement of its own, so the read that follows runs on a snapshot taken after any closure it waited on. */
+	private void lockVenuesOf(Collection<SetId> setIds) {
+		if (setIds.isEmpty()) {
+			return;
+		}
+		jdbc.sql("""
+				SELECT v.id FROM venue v
+				WHERE v.id IN (SELECT sp.venue_id FROM set_position sp WHERE sp.id IN (:setIds))
+				ORDER BY v.id
+				FOR SHARE
+				""")
+				.param("setIds", setIds.stream().map(SetId::value).toList())
+				.query(Long.class)
+				.list();
+	}
+
 	private static SetBookingInfo mapSetBookingInfo(java.sql.ResultSet rs, int rowNum)
 			throws java.sql.SQLException {
 		return new SetBookingInfo(

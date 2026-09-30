@@ -43,6 +43,16 @@ final class FixtureSetFacts implements SetBookingFacts {
 	}
 
 	@Override
+	public Optional<SetBookingInfo> setBookingInfoForReserve(SetId setId) {
+		return setBookingInfo(setId);
+	}
+
+	@Override
+	public Map<SetId, SetBookingInfo> setBookingInfosForReserve(Collection<SetId> setIds) {
+		return setBookingInfos(setIds);
+	}
+
+	@Override
 	public Map<SetId, SetBookingInfo> setBookingInfos(Collection<SetId> setIds) {
 		return Map.of();
 	}

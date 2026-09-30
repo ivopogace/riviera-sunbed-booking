@@ -96,7 +96,7 @@ close, the maximum stay, the season closure, and the commission rate over time. 
   conflict probe, and both claim paths (online reserve and staff mark answer `NO_SUCH_SET`) — each
   reads the `active_set_position` view, and every set write names the marker, so a retired set's
   label and price stay frozen at what its guests were told. Exempt:
-  `SetBookingFacts#setBookingInfo(s)` alone (cancel, booking view, mails, staff booking lookup), as
+  `SetBookingFacts#setBookingInfo(s)` and their `ForReserve` twins (cancel, booking view, mails, staff lookup), as
   a later move mail must name the old spot. Its slot and cell are free for a new set (partial unique
   indexes). `RetiredSetExclusionArchitectureTests` enforces all of it (§ *Machine-checked*).
 - **The bulk save (`PUT …/beach-map`) is a diff keyed by grid cell, never a delete-all.** The body
@@ -123,6 +123,9 @@ close, the maximum stay, the season closure, and the commission rate over time. 
   SHARE` is the weakest lock that conflicts with the set-writes' `FOR UPDATE`, so a claim racing a
   pool flip decides against the committed pool, whichever commits first. Trap: it must run in a
   read-write transaction, never a read-only one; the unlocked `setBookingInfo` serves list and mail.
+  The reserve's `setBookingInfoForReserve` is the other: the venue row `FOR SHARE` (`KEY SHARE` would
+  not conflict with a non-key `UPDATE venue`), venue before set as the set-writes lock, so venue
+  writers (closure, profile, commission, rating, layout token) queue behind in-flight reserves (#1304).
 - **The batch apply (`applyToSets`) is one transaction on the `set_version` token.** Lock order:
   the venue row (`lockAndReadSetVersion`), then the named set rows `FOR UPDATE` — the order every
   set-write takes, so none deadlocks another. A stale token (`STALE_WRITE`) or a set id not on the
@@ -158,7 +161,9 @@ close, the maximum stay, the season closure, and the commission rate over time. 
   has its own owner-asserted endpoint (`CloseForSeason`), never the profile full-replace: a state
   change rides no version token, and the close answers what guests are still owed
   (`LiveBookingCounts`, via my `spi` `BookingPresence#liveBookingsFrom`). A reopen day not after
-  today is `REOPEN_DATE_PASSED`. Closing touches no booking, hold, request or walk-in mark.
+  today is `REOPEN_DATE_PASSED`. Closing touches no booking, hold, request or walk-in mark. It
+  serializes with the reserve on the venue row: `SetBookingFacts#setBookingInfoForReserve` takes it
+  `FOR SHARE` first, so the close waits and counts the booking, or the reserve is refused (#1304).
 - **A venue closed for season stays visible; I store the closure, `booking` keeps the rule**
   (`BookingCutoff`, via `SalesWindow`). The list and map project `closedForSeason` / `reopensOn`
   beside `salesOpen` (the list sorts closed venues last) and the calendar carries `salesOpen` per
@@ -238,7 +243,8 @@ any is released on the old, never a swap of my own — so a racing reserve wins 
   (`operator.api.VenueVisibility`) is `NO_SUCH_SET`, and no later leg consults visibility; a season
   closure that does not admit every day is `VENUE_CLOSED` (the venue is deliberately visible); the
   sales close is judged on the first day (invariant #4); a span over the venue's maximum stay is
-  `STAY_TOO_LONG`. A stitched plan judges every stretch's set over the whole stay.
+  `STAY_TOO_LONG`. A stitched plan judges every stretch's set over the whole stay. The fence facts are
+  read through `SetBookingFacts#setBookingInfo(s)ForReserve`, under the venue row lock (#1304).
 - **Then it claims every day, all or nothing:** a day that loses gives back every day won, then
   answers `SET_TAKEN` (`ConcurrentRangeReservationIT`). One PaymentIntent for per-day price × days
   (invariant #5); the cancellation window and refund are the first day's, on what remains of the
@@ -356,8 +362,8 @@ any is released on the old, never a swap of my own — so a racing reserve wins 
   guarded `PENDING_REQUEST → AWAITING_PAYMENT` and declines overlapping pending rivals on the set
   (`ANOTHER_GUEST`) in one transaction committed before the payment call. A day it cannot claim declines the
   request (`SET_UNAVAILABLE`); a failed payment set-up reverts it to pending, freeing the claim it held
-  (a remodel may have moved it), and a stay it cannot restore whole is declined (#1302). The accept locks as
-  the reserve does, availability row then booking row (the revert and a remodel, booking row first); two overlapping
+  (a remodel may have moved it), and a stay it cannot restore whole is declined (#1302). The accept locks
+  availability row then booking row, as the reserve does after its venue row (revert, remodel: booking first); two overlapping
   accepts leave one winner (`RequestAcceptClaimsIT`, `ConcurrentOverlappingAcceptIT`). The queue names each
   request's competing requests; a request for a day already taken is `SET_TAKEN`.
 - **A stay request is answered whole (#1267):** at a Request-to-Book venue a stitched plan is a
