@@ -25,9 +25,9 @@ import ai.riviera.platform.review.vocabulary.VenueRef;
 /**
  * JDBC adapter over the {@code review} table (invariant #1). Races resolve in the database: the claim
  * is one atomic {@code INSERT ... ON CONFLICT (booking_id) DO NOTHING} whose row count is the outcome
- * (never read-then-write), edit and delete by {@code booking_id} lose a race as "no such review", and
- * hide/un-hide return the venue only when the row flipped. Only the aggregate and listing reads carry
- * {@code hidden_at IS NULL}; the mean and its rounding stay in the domain.
+ * (never read-then-write), edit and delete by {@code booking_id} touch only a visible row, so they lose a race
+ * to a delete or a takedown, and hide/un-hide return the venue only when the row flipped. The public reads and
+ * the author's writes carry {@code hidden_at IS NULL}; the mean and its rounding stay in the domain.
  * Rationale: {@code RESPONSIBILITIES.md} §{@code review}.
  */
 @Repository

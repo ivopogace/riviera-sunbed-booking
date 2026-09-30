@@ -14,7 +14,7 @@ import org.awaitility.Awaitility;
 import org.springframework.jdbc.core.simple.JdbcClient;
 
 /**
- * Two transactions in a chosen interleaving, for the lock-order ITs (#1305): {@code holder} runs to the {@link
+ * Two transactions in a chosen interleaving, for the race ITs (#1305): {@code holder} runs to the {@link
  * PausingPorts} pause and waits there holding its locks; {@code racer} then starts, and the holder is released once
  * the racer is seen blocked by the holder's backend ({@code pg_blocking_pids}) or has finished. A lock-order
  * inversion then aborts one side with {@code 40P01}, surfacing as that side's exception.

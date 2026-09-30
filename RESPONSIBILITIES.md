@@ -849,9 +849,9 @@ per booking), who may leave, change or remove it and until when, and the score a
   `AdminReviewController`) in one conditional `UPDATE`; a repeat is `AlreadyApplied` and only a real
   flip publishes `ReviewsChanged`. Ownership-free (invariant #13's admin exemption): it must reach
   venues the public list refuses — a suspended owner's.
-- **The visibility predicate (`hidden_at IS NULL`) lives in exactly two statements**, `JdbcReviews`'
-  `totalsFor` and `newestListedBefore`; the author's read-back and the admin list see a hidden row on
-  purpose. A listed review is also commented: a star-only one counts, never shows as an empty row.
+- **The visibility predicate (`hidden_at IS NULL`) lives in the public reads and the author's writes**:
+  `JdbcReviews`' `totalsFor` and `newestListedBefore`, and `update` and `delete`, which skip a hidden row. The
+  author's read-back and the admin list see a hidden row on purpose. A listed review is also commented: a star-only one counts, never shows as an empty row.
 - **The fence order is stated once, in `domain/ReviewGate`**, which lifecycle and panel both consult.
   A hidden review is frozen for its author: `HIDDEN` precedes the window, and edit, delete and
   resubmit get `409 REVIEW_HIDDEN` with the slot kept taken — a delete would free it and a resubmit

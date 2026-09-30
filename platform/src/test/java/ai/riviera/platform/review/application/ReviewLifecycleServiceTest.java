@@ -225,17 +225,30 @@ class ReviewLifecycleServiceTest {
 	}
 
 	@Test
-	void aTakedownBetweenTheReadAndTheWriteAnswersHidden() {
+	void anEditThatATakedownBeatsToTheWriteAnswersHidden() {
+		reviewedThenHiddenBeforeTheWrite();
+
+		assertEquals(new AmendOutcome.Hidden(), service.edit(CODE, new ReviewSubmission(5, null, "Ana")));
+
+		assertEquals(new OwnReview(4, "Great sunbeds", "Ana"), reviews.stored.get(BOOKING));
+		assertTrue(events.published.isEmpty());
+	}
+
+	@Test
+	void aDeleteThatATakedownBeatsToTheWriteAnswersHidden() {
+		reviewedThenHiddenBeforeTheWrite();
+
+		assertEquals(new AmendOutcome.Hidden(), service.delete(CODE));
+
+		assertTrue(reviews.stored.containsKey(BOOKING), "the takedown keeps the slot taken");
+		assertTrue(events.published.isEmpty());
+	}
+
+	private void reviewedThenHiddenBeforeTheWrite() {
 		stays.completed(CODE, BOOKING, VENUE, NOW.minus(Duration.ofDays(1)));
 		service.submit(CODE, COMMENTED);
 		events.published.clear();
 		reviews.hideBeforeTheWrite = true;
-
-		assertEquals(new AmendOutcome.Hidden(), service.edit(CODE, new ReviewSubmission(5, null, "Ana")));
-		assertEquals(new AmendOutcome.Hidden(), service.delete(CODE));
-
-		assertEquals(new OwnReview(4, "Great sunbeds", "Ana"), reviews.stored.get(BOOKING));
-		assertTrue(events.published.isEmpty());
 	}
 
 	@Test
@@ -302,6 +315,8 @@ class ReviewLifecycleServiceTest {
 		private final Map<BookingRef, OwnReview> stored = new LinkedHashMap<>();
 		private final Set<BookingRef> hidden = new HashSet<>();
 		private final List<Recorded> writes = new ArrayList<>();
+		/** A takedown that lands between the amend's read and its write. */
+		private boolean hideBeforeTheWrite;
 
 		@Override
 		public boolean claim(CompletedStay stay, ReviewSubmission submission, Instant at) {
@@ -312,9 +327,6 @@ class ReviewLifecycleServiceTest {
 			writes.add(new Recorded(stay.booking(), stay.venue(), review, at));
 			return true;
 		}
-
-		/** A takedown that lands between the amend's read and its write. */
-		private boolean hideBeforeTheWrite;
 
 		private boolean visibleAtTheWrite(BookingRef booking) {
 			if (hideBeforeTheWrite) {
