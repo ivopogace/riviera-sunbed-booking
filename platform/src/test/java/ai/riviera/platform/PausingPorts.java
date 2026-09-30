@@ -27,7 +27,8 @@ public class PausingPorts {
 			"ai.riviera.platform.booking.application.Bookings",
 			"ai.riviera.platform.customer.application.AccountErasureStore",
 			"ai.riviera.platform.customer.application.CustomerAccountStore",
-			"ai.riviera.platform.customer.application.CustomerAccountTokens"};
+			"ai.riviera.platform.customer.application.CustomerAccountTokens",
+			"ai.riviera.platform.payout.application.PayoutLedger"};
 
 	private static final AtomicReference<Pause> ARMED = new AtomicReference<>();
 
