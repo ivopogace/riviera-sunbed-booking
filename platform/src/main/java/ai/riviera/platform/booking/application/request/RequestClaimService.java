@@ -21,32 +21,36 @@ import ai.riviera.platform.booking.events.StayRequestDeclined;
 import ai.riviera.platform.booking.vocabulary.BookingId;
 import ai.riviera.platform.booking.vocabulary.DeclineReason;
 import ai.riviera.platform.booking.vocabulary.StayId;
+import ai.riviera.platform.venue.api.SetBookingFacts;
 import ai.riviera.platform.venue.vocabulary.StaySpan;
 import ai.riviera.platform.venue.vocabulary.VenueId;
 
 /**
- * The committed half of the venue's accept (ADR-0025): claim every day of the pending request, or of
- * every stretch of a stay request (invariant #2, #1267), move it to {@code AWAITING_PAYMENT}, and decline
- * every pending request overlapping it, a stay whole — in one transaction, so the payment call that
- * follows holds no lock. A day that cannot be claimed makes the request decline itself whole. The accept locks
- * set rows by ascending day, then booking rows (the reserve takes its venue row first); the revert, booking first.
- * Rationale: {@code RESPONSIBILITIES.md} §booking.
+ * The committed half of the venue's accept (ADR-0025): claim every day of the pending request, or of every stretch
+ * of a stay request (invariant #2, #1267), move it to {@code AWAITING_PAYMENT}, and decline every pending request
+ * overlapping it, a stay whole — in one transaction, so the payment call that follows holds no lock. A day that
+ * cannot be claimed declines the request whole. The accept locks its venue row, then set rows by ascending day,
+ * then booking rows (#1305); the revert, booking first. Rationale: {@code RESPONSIBILITIES.md} §booking.
  */
 @Service
 class RequestClaimService {
 
 	private final Bookings bookings;
 	private final AvailabilityClaim availability;
+	private final SetBookingFacts sets;
 	private final ApplicationEventPublisher events;
 
-	RequestClaimService(Bookings bookings, AvailabilityClaim availability, ApplicationEventPublisher events) {
+	RequestClaimService(Bookings bookings, AvailabilityClaim availability, SetBookingFacts sets,
+			ApplicationEventPublisher events) {
 		this.bookings = bookings;
 		this.availability = availability;
+		this.sets = sets;
 		this.events = events;
 	}
 
 	@Transactional
 	public AcceptClaim accept(BookingId bookingId, VenueId venueId, Instant now) {
+		sets.lockVenueForClaim(venueId);
 		Optional<ClaimRef> pending = bookings.findPendingRequestSpan(bookingId.value(), venueId);
 		if (pending.isEmpty()) {
 			return new AcceptClaim.Missed();
@@ -68,6 +72,7 @@ class RequestClaimService {
 	/** {@link #accept} for a stay request: every stretch claimed and accepted, or none. */
 	@Transactional
 	public StayAcceptClaim acceptStay(StayId stayId, VenueId venueId, Instant now) {
+		sets.lockVenueForClaim(venueId);
 		List<StayStretchRef> stretches = bookings.findPendingStayStretches(stayId, venueId);
 		if (stretches.isEmpty()) {
 			return new StayAcceptClaim.Missed();

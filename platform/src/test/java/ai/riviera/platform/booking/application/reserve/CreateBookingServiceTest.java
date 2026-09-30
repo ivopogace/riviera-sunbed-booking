@@ -1045,6 +1045,11 @@ class CreateBookingServiceTest {
 		}
 
 		@Override
+		public void lockRefundableForWeather(ai.riviera.platform.venue.vocabulary.VenueId venueId,
+				java.time.LocalDate date) {
+		}
+
+		@Override
 		public List<ai.riviera.platform.booking.application.refund.RefundableBooking> findRefundableForWeather(
 				ai.riviera.platform.venue.vocabulary.VenueId venueId, java.time.LocalDate date) {
 			return List.of();
@@ -1143,6 +1148,10 @@ class CreateBookingServiceTest {
 		@Override
 		public Map<SetId, SetBookingInfo> setBookingInfosForReserve(Collection<SetId> setIds) {
 			return setBookingInfos(setIds);
+		}
+
+		@Override
+		public void lockVenueForClaim(VenueId venueId) {
 		}
 
 		@Override

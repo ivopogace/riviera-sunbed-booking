@@ -36,6 +36,7 @@ import ai.riviera.platform.operator.vocabulary.OperatorId;
 import ai.riviera.platform.operator.vocabulary.VenueRef;
 import ai.riviera.platform.payment.api.CheckoutPort;
 import ai.riviera.platform.payment.vocabulary.PaymentOutcome;
+import ai.riviera.platform.venue.api.SetBookingFacts;
 import ai.riviera.platform.venue.vocabulary.SetId;
 import ai.riviera.platform.venue.vocabulary.VenueId;
 
@@ -103,7 +104,8 @@ class RespondToRequestServiceTest {
 	private RespondToRequestService serviceOn(Clock at) {
 		return new RespondToRequestService(ownership, bookings,
 				new RequestTerminationService(bookings, publisher),
-				new RequestClaimService(bookings, availability, publisher), checkout, confirmBooking,
+				new RequestClaimService(bookings, availability, mock(SetBookingFacts.class), publisher), checkout,
+				confirmBooking,
 				releaseAbandoned, new PaymentDueAnnouncer(publisher), WINDOWS, new BookingCutoff(at),
 				cancellationPolicy, at);
 	}

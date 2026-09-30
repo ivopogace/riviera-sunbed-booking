@@ -259,6 +259,12 @@ public interface Bookings {
 	List<RefundableBooking> findRefundableForWeather(VenueId venueId, LocalDate date);
 
 	/**
+	 * Lock every booking {@link #findRefundableForWeather} may return, {@code FOR UPDATE} in {@code (booking_date, id)}
+	 * order in a statement of its own, before that read: the order the sweep and a remodel take (#1305).
+	 */
+	void lockRefundableForWeather(VenueId venueId, LocalDate date);
+
+	/**
 	 * {@link #findRefundableForWeather}'s row for the one booking behind {@code code} at this venue (a
 	 * stay's code names the stretch covering {@code date}) that happened and covers the date — the venue
 	 * day refund's candidate (ADR-0027). A foreign code, a dead lifecycle or an uncovered date reads {@code empty}.

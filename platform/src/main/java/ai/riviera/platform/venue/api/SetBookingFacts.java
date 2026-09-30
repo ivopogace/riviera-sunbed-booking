@@ -54,6 +54,13 @@ public interface SetBookingFacts {
 	Map<SetId, SetBookingInfo> setBookingInfosForReserve(Collection<SetId> setIds);
 
 	/**
+	 * Take the venue row {@code FOR SHARE} for the caller's transaction, before the request accept claims any set: the
+	 * venue-then-set order the layout writes and the reserve take (#1305). Must run in a read-write transaction.
+	 * Rationale: RESPONSIBILITIES.md §venue.
+	 */
+	void lockVenueForClaim(VenueId venueId);
+
+	/**
 	 * Every active set of the venue as a spot — placement, tier and pool — in id order; empty for an
 	 * unknown venue. The remodel classification resolves a disturbed set's own spot here. Reads the
 	 * active map: a retired set is not a spot.

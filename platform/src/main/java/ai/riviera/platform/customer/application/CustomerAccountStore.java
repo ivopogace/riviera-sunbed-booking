@@ -56,6 +56,12 @@ public interface CustomerAccountStore {
 	void markEmailVerified(CustomerAccountId accountId);
 
 	/**
+	 * Lock the account row {@code FOR NO KEY UPDATE} (a token insert's key check still passes) for the caller's
+	 * transaction, in a statement of its own; false when gone or erased. Before its token rows, as erasure (#1305).
+	 */
+	boolean lockLiveAccount(CustomerAccountId accountId);
+
+	/**
 	 * Set the account's opaque password hash, unconditionally: the token-proven reset's write, authorized and encoded
 	 * at the edge; it also gives an SSO-only account its first password.
 	 */

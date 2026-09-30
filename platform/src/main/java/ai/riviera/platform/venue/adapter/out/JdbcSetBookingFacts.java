@@ -136,6 +136,14 @@ class JdbcSetBookingFacts implements SetBookingFacts {
 		return setBookingInfos(setIds);
 	}
 
+	@Override
+	public void lockVenueForClaim(VenueId venueId) {
+		jdbc.sql("SELECT id FROM venue WHERE id = :venue FOR SHARE")
+				.param(VENUE_PARAM, venueId.value())
+				.query(Long.class)
+				.optional();
+	}
+
 	/** In a statement of its own, so the read that follows runs on a snapshot taken after any closure it waited on. */
 	private void lockVenuesOf(Collection<SetId> setIds) {
 		if (setIds.isEmpty()) {

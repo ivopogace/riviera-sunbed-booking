@@ -123,9 +123,10 @@ close, the maximum stay, the season closure, and the commission rate over time. 
   SHARE` is the weakest lock that conflicts with the set-writes' `FOR UPDATE`, so a claim racing a
   pool flip decides against the committed pool, whichever commits first. Trap: it must run in a
   read-write transaction, never a read-only one; the unlocked `setBookingInfo` serves list and mail.
-  The reserve's `setBookingInfoForReserve` is the other: the venue row `FOR SHARE` (`KEY SHARE` would
-  not conflict with a non-key `UPDATE venue`), venue before set as the set-writes lock, so venue
-  writers (closure, profile, commission, rating, layout token) queue behind in-flight reserves (#1304).
+  The reserve's `setBookingInfoForReserve` and the request accept's `lockVenueForClaim` take the venue row
+  `FOR SHARE` (`KEY SHARE` would not conflict with a non-key `UPDATE venue`), venue before set as the
+  set-writes lock, so venue writers (closure, profile, commission, rating, layout token) queue behind
+  in-flight reserves and accepts (#1304, #1305).
 - **The batch apply (`applyToSets`) is one transaction on the `set_version` token.** Lock order:
   the venue row (`lockAndReadSetVersion`), then the named set rows `FOR UPDATE` — the order every
   set-write takes, so none deadlocks another. A stale token (`STALE_WRITE`) or a set id not on the
@@ -162,8 +163,9 @@ close, the maximum stay, the season closure, and the commission rate over time. 
   change rides no version token, and the close answers what guests are still owed
   (`LiveBookingCounts`, via my `spi` `BookingPresence#liveBookingsFrom`). A reopen day not after
   today is `REOPEN_DATE_PASSED`. Closing touches no booking, hold, request or walk-in mark. It
-  serializes with the reserve on the venue row: `SetBookingFacts#setBookingInfoForReserve` takes it
-  `FOR SHARE` first, so the close waits and counts the booking, or the reserve is refused (#1304).
+  serializes with the reserve and the request accept on the venue row: `SetBookingFacts#setBookingInfoForReserve`
+  and `#lockVenueForClaim` take it `FOR SHARE` first, so the close waits and counts the booking, or the reserve
+  is refused (#1304).
 - **A venue closed for season stays visible; I store the closure, `booking` keeps the rule**
   (`BookingCutoff`, via `SalesWindow`). The list and map project `closedForSeason` / `reopensOn`
   beside `salesOpen` (the list sorts closed venues last) and the calendar carries `salesOpen` per
@@ -302,6 +304,9 @@ any is released on the old, never a swap of my own — so a racing reserve wins 
   of their own, then read: a day refund writes only `booking_day`, so a guard or read that waited on the
   lock would see the refunded and released days as of before (#1281). The venue's lone one-day cancel has
   no day to race.
+- **Several bookings lock in `(booking_date, id)` order:** the sweep batches, a remodel commit (one at a time
+  under the venue lock) and the weather refund, which locks every refundable booking covering the day in one statement
+  before it reads them (#1305). So none of the three deadlocks another.
 - **The guest cancel admits `CONFIRMED` only; the venue's refund (`cancelByVenue`, `VENUE_REFUND`) also `NO_SHOW`** (the storm is
   known afterwards): separate port methods and `BookingTransition` rows, so the asymmetry cannot be
   tidied away. The guest guard's readers (the view's `cancellable`, the cancel's `NotCancellable`)
@@ -362,10 +367,10 @@ any is released on the old, never a swap of my own — so a racing reserve wins 
   guarded `PENDING_REQUEST → AWAITING_PAYMENT` and declines overlapping pending rivals on the set
   (`ANOTHER_GUEST`) in one transaction committed before the payment call. A day it cannot claim declines the
   request (`SET_UNAVAILABLE`); a failed payment set-up reverts it to pending, freeing the claim it held
-  (a remodel may have moved it), and a stay it cannot restore whole is declined (#1302). The accept locks
-  availability row then booking row, as the reserve does after its venue row (revert, remodel: booking first); two overlapping
-  accepts leave one winner (`RequestAcceptClaimsIT`, `ConcurrentOverlappingAcceptIT`). The queue names each
-  request's competing requests; a request for a day already taken is `SET_TAKEN`.
+  (a remodel may have moved it), and a stay it cannot restore whole is declined (#1302). The accept locks its venue
+  row (`SetBookingFacts#lockVenueForClaim`), then availability, then booking rows, as the reserve and layout writes
+  (#1305; revert, remodel: booking first); two overlapping accepts leave one winner (`ConcurrentOverlappingAcceptIT`).
+  The queue names each request's competing requests; a request for a day already taken is `SET_TAKEN`.
 - **A stay request is answered whole (#1267):** at a Request-to-Book venue a stitched plan is a
   `stay` of `PENDING_REQUEST` stretches under one deadline. Every leg (accept, decline, expiry,
   withdraw by the stay's code, a remodel's decline, a rival's decline) moves every stretch or none,
@@ -629,6 +634,8 @@ suppression key's HMAC). It cannot live in `shared`, which depends on `customer:
 
 Email verification is **soft**: it gates no sign-in or booking. `CustomerAccountRecovery` names a
 reset token's account **without consuming** it, so the edge revokes that principal's sessions first.
+Redeeming a token locks its live account (`FOR NO KEY UPDATE`, so a token insert's key check passes) before
+the token row, the order erasure takes them (#1305); an erased account redeems nothing.
 `CustomerAccounts#liveCredential` answers the edge's password login, SSO sign-in and per-request session check:
 the live account by email or id, SSO-only included (null hash), never an erased one; the edge owns the stamp.
 

@@ -87,7 +87,7 @@ class CustomerAccountService implements CustomerAccounts, CustomerAccountProvisi
 	@Override
 	@Transactional
 	public VerifyEmailOutcome verifyEmail(String tokenHash) {
-		return tokens.consume(TokenPurpose.VERIFY_EMAIL, tokenHash)
+		return redeem(TokenPurpose.VERIFY_EMAIL, tokenHash)
 				.<VerifyEmailOutcome>map(accountId -> {
 					store.markEmailVerified(accountId);
 					return new VerifyEmailOutcome.Verified(accountId);
@@ -98,7 +98,7 @@ class CustomerAccountService implements CustomerAccounts, CustomerAccountProvisi
 	@Override
 	@Transactional
 	public ResetPasswordOutcome resetPassword(String tokenHash, String newPasswordHash) {
-		return tokens.consume(TokenPurpose.RESET_PASSWORD, tokenHash)
+		return redeem(TokenPurpose.RESET_PASSWORD, tokenHash)
 				.<ResetPasswordOutcome>map(accountId -> {
 					store.updatePasswordHash(accountId, newPasswordHash);
 					return new ResetPasswordOutcome.Reset(accountId, store.emailOf(accountId));
@@ -106,9 +106,17 @@ class CustomerAccountService implements CustomerAccounts, CustomerAccountProvisi
 				.orElseGet(ResetPasswordOutcome.InvalidOrExpired::new);
 	}
 
+	/** Consumes the token under its live account's row lock, taken first as erasure takes it (#1305). */
+	private Optional<CustomerAccountId> redeem(TokenPurpose purpose, String tokenHash) {
+		return tokens.accountFor(purpose, tokenHash)
+				.filter(store::lockLiveAccount)
+				.flatMap(accountId -> tokens.consume(purpose, tokenHash));
+	}
+
 	@Override
 	public Optional<String> emailForResetToken(String tokenHash) {
-		return tokens.accountFor(TokenPurpose.RESET_PASSWORD, tokenHash).map(store::emailOf);
+		return tokens.accountFor(TokenPurpose.RESET_PASSWORD, tokenHash).flatMap(store::findLiveCredential)
+				.map(LiveAccountCredential::email);
 	}
 
 	@Override

@@ -159,6 +159,20 @@ class CustomerAccountServiceTest {
 	}
 
 	@Test
+	void aTokenOfAnErasedAccountRedeemsNothingAndNamesNoOne() {
+		CustomerAccountId id = registeredId("erased@example.com");
+		service.issuePasswordResetToken(id, "hash-e", FUTURE);
+		service.issueEmailVerificationToken(id, "hash-v", FUTURE);
+		store.erase("erased@example.com");
+
+		assertThat(service.emailForResetToken("hash-e")).isEmpty();
+		assertThat(service.resetPassword("hash-e", "{bcrypt}x")).isInstanceOf(ResetPasswordOutcome.InvalidOrExpired.class);
+		assertThat(service.verifyEmail("hash-v")).isInstanceOf(VerifyEmailOutcome.InvalidOrExpired.class);
+		assertThat(tokens.accountFor(TokenPurpose.RESET_PASSWORD, "hash-e")).as("the lock refused before the consume")
+				.contains(id);
+	}
+
+	@Test
 	void setPasswordGivesAPasswordlessSsoAccountItsFirstPassword() {
 		CustomerAccountId id = service.resolveOrCreate(SsoProvider.GOOGLE, "g-x", "sso@example.com");
 		assertThat(service.findByEmail("sso@example.com")).as("an SSO-only account has no password yet").isEmpty();
@@ -242,6 +256,11 @@ class CustomerAccountServiceTest {
 		}
 
 		@Override
+		public boolean lockLiveAccount(CustomerAccountId accountId) {
+			return idByEmail.containsValue(accountId.value());
+		}
+
+		@Override
 		public boolean replacePasswordHash(CustomerAccountId accountId, String expectedHash, String passwordHash) {
 			Optional<String> email = emailForId(accountId.value());
 			if (email.isEmpty() || !java.util.Objects.equals(hashOf(email.get()), expectedHash)) {
@@ -270,6 +289,12 @@ class CustomerAccountServiceTest {
 		@Override
 		public String emailOf(CustomerAccountId accountId) {
 			return emailForId(accountId.value()).orElseThrow();
+		}
+
+		/** The tombstone renames the email, so the erased account is found by neither its email nor its id. */
+		void erase(String email) {
+			idByEmail.remove(email);
+			byEmail.remove(email);
 		}
 
 		private Optional<String> emailForId(long id) {
