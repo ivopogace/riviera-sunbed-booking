@@ -402,7 +402,8 @@ model in `docs/architecture/domain-model.md`.
   refund tier), **LATE** (cutoff passed, service day not open — the *partial*/*none*
   tier), **CLOSED** (the service day has opened — the cancellation is refused outright,
   not refunded at a tier, because the guest can already be consuming the stay). The
-  venue's own weather refund is outside the window and stays available for past dates.
+  venue's own refunds — the **weather refund** and the **venue day refund** — are outside the window
+  and stay available for past dates.
 - **Window at birth** — the cancellation-window phase in force at the instant a booking
   was created. Stamped on `BookingConfirmed`/`BookingPaymentDue` and, for a stitched stay,
   `StayConfirmed`/`StayPaymentDue` (the first stretch's), and their mails —
@@ -533,7 +534,7 @@ model in `docs/architecture/domain-model.md`.
   platform-wide admin surface.
 - **Venue ownership** — the operator↔venue mapping that answers *"does this operator own
   this venue?"*. Every venue-scoped operation (beach-map edit, staff bookings, staff
-  availability, weather refund, payout ledger) verifies it in the application service and
+  availability, weather refund, venue day refund, payout ledger) verifies it in the application service and
   returns **403** on a mismatch (object-level authorization, not role-level — invariant #13).
 - **Operator approval** — a platform admin's decision on a self-registered (`PENDING`) operator:
   approve (→ `ACTIVE`) or reject (→ `REJECTED`, terminal). A `PENDING` operator already

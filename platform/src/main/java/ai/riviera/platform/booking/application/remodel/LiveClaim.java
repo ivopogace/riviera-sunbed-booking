@@ -8,7 +8,7 @@ import ai.riviera.platform.venue.vocabulary.SetId;
 /**
  * A booking a guest may still turn up on, read off a disturbed set for the remodel classification:
  * its id, set, span (first and last service day), status (live by construction), snapshotted
- * amount and the days of it already refunded for weather (invariant #5, issue #1210).
+ * amount and the days of it already refunded (invariant #5, ADR-0026, ADR-0027).
  * Module-internal; the published shape is {@code booking.vocabulary.RemodelClaim}.
  */
 public record LiveClaim(long bookingId, SetId setId, LocalDate bookingDate, LocalDate lastDate,

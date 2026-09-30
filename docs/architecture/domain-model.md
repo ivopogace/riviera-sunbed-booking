@@ -355,9 +355,11 @@ classDiagram
         booking_id, service day
         attended_at, missed_at
         refunded_at, refund_minor
+        refund_reason, released_at, refunded_by_operator_id
         PK (booking_id, service_date)
         CHECK not both attended and missed
         CHECK refunded_at and refund_minor both or neither, never beside attended_at
+        CHECK refund_reason WEATHER or VENUE iff refunded; released_at only under VENUE; a VENUE day names its actor
     }
     booking "1" --> "1..*" booking_day : one row per service day, written on CONFIRMED
     stay "0..1" <-- "1..*" booking : a stitched stay's stretches (ADR-0024)
@@ -916,11 +918,13 @@ sequenceDiagram
     B-->>L: BookingCancelled → proportional REVERSAL entry
 ```
 
-> Refund amounts are computed **server-side** then actioned via Stripe (invariant #10). Weather
-> refunds are the same flow but admin-triggered with reason `WEATHER`, and they alone may reach a
-> swept `NO_SHOW`. A stay's washed-out day is not this flow: `booking` stamps the day, publishes
-> `BookingDayRefunded`, `payment` refunds the day's share on the stretch's intent and `payout` posts
-> a `DAY_REVERSAL`; the booking's status does not move (ADR-0026).
+> Refund amounts are computed **server-side** then actioned via Stripe (invariant #10). The venue's
+> refunds of a whole booking are the same flow, operator- or admin-triggered — the weather refund under
+> `WEATHER`, the venue day refund of a lone one-day booking under `VENUE` (ADR-0027 §6) — and they alone
+> may reach a swept `NO_SHOW`. A stay's refunded day is not this flow: `booking` stamps the day with its
+> reason (`WEATHER`, or `VENUE` with the day released, ADR-0027), publishes `BookingDayRefunded`,
+> `payment` refunds the day's share on the stretch's intent and `payout` posts a `DAY_REVERSAL`; the
+> booking's status does not move (ADR-0026).
 >
 > **The failure leg is not decoration.** A refund the gateway refuses leaves its `BookingCancelled`
 > publication outstanding in the Event Publication Registry, with the attempt traced on the refund's

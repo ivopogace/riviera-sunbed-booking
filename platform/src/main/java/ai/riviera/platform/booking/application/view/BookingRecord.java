@@ -35,7 +35,7 @@ public record BookingRecord(long id, String code, BookingStatus status, VenueId 
 	}
 
 	/**
-	 * What the guest still holds: the amount less the days already refunded for weather (issue #1210) —
+	 * What the guest still holds: the amount less the days already refunded (ADR-0026, ADR-0027) —
 	 * the base of every later refund decision (invariant #10).
 	 */
 	public long remainingMinor() {

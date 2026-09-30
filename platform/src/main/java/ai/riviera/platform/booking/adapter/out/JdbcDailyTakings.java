@@ -38,7 +38,7 @@ class JdbcDailyTakings implements DailyTakings {
 
 	/**
 	 * The day's share of every {@code CONFIRMED}/{@code COMPLETED}/{@code NO_SHOW} booking covering
-	 * {@code date} (D4; no pool filter), a day refunded for weather excluded (#1210); an empty day is
+	 * {@code date} (D4; no pool filter), a refunded day excluded (ADR-0026, ADR-0027); an empty day is
 	 * {@code (0, 'EUR')} (#5). Rationale: RESPONSIBILITIES.md §booking; served by {@code booking_venue_id_idx}.
 	 */
 	@Override

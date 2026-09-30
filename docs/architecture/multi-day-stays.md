@@ -227,7 +227,7 @@ booking_day (booking_id, service_date, attended_at, missed_at)
 
 - **Check-in** stamps today's row under a guarded `UPDATE … WHERE booking_id = ? AND service_date =
   :today AND attended_at IS NULL AND missed_at IS NULL AND refunded_at IS NULL` (since #1210: a
-  refunded day answers `DayRefunded`). A second scan moves zero rows and answers "already checked in
+  refunded day answers `DayRefunded`; since ADR-0027 a released one `DayReleased`). A second scan moves zero rows and answers "already checked in
   today" — the identical one-shot property the current transition gets from `status = 'CONFIRMED'`,
   scoped to a service day.
 - **The no-show sweep** marks past unattended service days, then resolves the parent booking once its
@@ -279,7 +279,8 @@ clause yields. Each site in `booking/` that calls `AvailabilityClaim.release` mu
 span: `SpanClaim#releaseEveryDay` (a lost claim gives back what it won the same way),
 `ClaimReleaseService` (the payment-canceled webhook and the abandoned-payment sweep) and
 `RemodelClaimsService#releaseSpan` (the remodel legs) walk it, and the guest cancel and the weather
-refund loop `ServiceDays.between` themselves. (Since ADR-0025 a pending request holds nothing, so
+refund loop it themselves — since ADR-0027 as `ServiceDays.held`, the span less the days the venue
+released, which are another guest's or nobody's. (Since ADR-0025 a pending request holds nothing, so
 the three request-termination legs and the remodel's decline release nothing; the accept's revert
 joined the releasing legs instead.) This is the slice's highest-risk correctness item, because
 `set_availability` carries **no link to a booking** (`held_by_booking_id` was deferred in V4 and
