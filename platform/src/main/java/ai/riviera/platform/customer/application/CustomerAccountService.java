@@ -32,6 +32,9 @@ import ai.riviera.platform.customer.vocabulary.VerifyEmailOutcome;
 class CustomerAccountService implements CustomerAccounts, CustomerAccountProvisioning,
 		CustomerAccountDirectory, SsoAccountProvisioning, CustomerAccountRecovery {
 
+	/** Each retry of an SSO resolution needs another erasure to commit under it, so this only ends a pathological run. */
+	private static final int SSO_ATTEMPTS = 3;
+
 	private final CustomerAccountStore store;
 	private final CustomerAccountTokens tokens;
 
@@ -69,19 +72,54 @@ class CustomerAccountService implements CustomerAccounts, CustomerAccountProvisi
 	@Override
 	@Transactional
 	public CustomerAccountId resolveOrCreate(SsoProvider provider, String subject, String email) {
-		return store.resolveSsoAccount(provider, subject, Emails.normalize(email));
+		String normalized = Emails.normalize(email);
+		Optional<CustomerAccountId> createdHere = Optional.empty();
+		for (int attempt = 0; attempt < SSO_ATTEMPTS; attempt++) {
+			// The returning subject first, so a changed provider email never spawns a second account.
+			Optional<CustomerAccountId> returning = store.accountForSsoIdentity(provider, subject);
+			if (returning.isPresent()) {
+				return keepOnly(returning.get(), createdHere);
+			}
+			Optional<SsoAccountClaim> claim = store.claimAccountForSso(normalized)
+					.filter(claimed -> store.lockLiveAccount(claimed.accountId()));
+			if (claim.filter(SsoAccountClaim::created).isPresent()) {
+				createdHere = claim.map(SsoAccountClaim::accountId);
+			}
+			Optional<CustomerAccountId> linked = claim
+					.flatMap(claimed -> store.linkSsoIdentity(claimed.accountId(), provider, subject, normalized));
+			if (linked.isPresent()) {
+				store.markEmailVerified(linked.get()); // an SSO email is provider-verified (design D-6)
+				return keepOnly(linked.get(), createdHere);
+			}
+		}
+		throw new IllegalStateException("an erasure took the SSO account on every attempt");
+	}
+
+	/** Deletes the account this sign-in created when its subject resolved to another one (#1307). */
+	private CustomerAccountId keepOnly(CustomerAccountId resolved, Optional<CustomerAccountId> createdHere) {
+		createdHere.filter(created -> !created.equals(resolved)).ifPresent(store::deleteUnlinkedAccount);
+		return resolved;
 	}
 
 	@Override
 	@Transactional
-	public void issueEmailVerificationToken(CustomerAccountId accountId, String tokenHash, Instant expiresAt) {
-		tokens.issue(accountId, TokenPurpose.VERIFY_EMAIL, tokenHash, expiresAt);
+	public boolean issueEmailVerificationToken(CustomerAccountId accountId, String tokenHash, Instant expiresAt) {
+		return issue(accountId, TokenPurpose.VERIFY_EMAIL, tokenHash, expiresAt);
 	}
 
 	@Override
 	@Transactional
-	public void issuePasswordResetToken(CustomerAccountId accountId, String tokenHash, Instant expiresAt) {
-		tokens.issue(accountId, TokenPurpose.RESET_PASSWORD, tokenHash, expiresAt);
+	public boolean issuePasswordResetToken(CustomerAccountId accountId, String tokenHash, Instant expiresAt) {
+		return issue(accountId, TokenPurpose.RESET_PASSWORD, tokenHash, expiresAt);
+	}
+
+	/** Under the live account's row lock, so an erasure and a second issue serialize with it (#1307). */
+	private boolean issue(CustomerAccountId accountId, TokenPurpose purpose, String tokenHash, Instant expiresAt) {
+		if (!store.lockLiveAccount(accountId)) {
+			return false;
+		}
+		tokens.issue(accountId, purpose, tokenHash, expiresAt);
+		return true;
 	}
 
 	@Override
@@ -101,6 +139,7 @@ class CustomerAccountService implements CustomerAccounts, CustomerAccountProvisi
 		return redeem(TokenPurpose.RESET_PASSWORD, tokenHash)
 				.<ResetPasswordOutcome>map(accountId -> {
 					store.updatePasswordHash(accountId, newPasswordHash);
+					tokens.retireAll(accountId, TokenPurpose.RESET_PASSWORD);
 					return new ResetPasswordOutcome.Reset(accountId, store.emailOf(accountId));
 				})
 				.orElseGet(ResetPasswordOutcome.InvalidOrExpired::new);

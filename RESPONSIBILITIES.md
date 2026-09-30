@@ -634,10 +634,16 @@ suppression key's HMAC). It cannot live in `shared`, which depends on `customer:
 
 Email verification is **soft**: it gates no sign-in or booking. `CustomerAccountRecovery` names a
 reset token's account **without consuming** it, so the edge revokes that principal's sessions first.
-Redeeming a token locks its live account (`FOR NO KEY UPDATE`, so a token insert's key check passes) before
-the token row, the order erasure takes them (#1305); an erased account redeems nothing.
 `CustomerAccounts#liveCredential` answers the edge's password login, SSO sign-in and per-request session check:
 the live account by email or id, SSO-only included (null hash), never an erased one; the edge owns the stamp.
+
+**A write of an account's children locks its live row first** (`CustomerAccountStore#lockLiveAccount`, `FOR NO
+KEY UPDATE` so the child insert's key check passes), in a statement of its own, the order erasure takes them: token
+issue and redemption, and an SSO first sign-in's identity link (#1305, #1307). One-statement account writes
+(password change and reset, verification) carry an `erased_at IS NULL` guard instead.
+A missing row is erased: an issue stores and mails nothing, a redemption redeems nothing, a sign-in re-resolves
+to a fresh account and takes over an identity left on an erased one. Two issues serialize, so one reset link is
+live, and a reset retires the rest; a first sign-in that loses its subject deletes the account it created.
 
 **Only the retention sweep's entry reads carry a query timeout** (its candidate read, `booking`'s
 `GuestBookingHistory` probe): they run before any write, so a timeout costs one tick. My scrubs and

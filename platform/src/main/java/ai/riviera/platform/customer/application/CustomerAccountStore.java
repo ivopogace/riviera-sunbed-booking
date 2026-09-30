@@ -41,29 +41,40 @@ public interface CustomerAccountStore {
 	 */
 	RegistrationOutcome insertIfAbsent(String normalizedEmail, String passwordHash);
 
-	/**
-	 * Resolve-or-create the account for an external {@code (provider, subject)}, idempotent and
-	 * race-safe ({@code ON CONFLICT DO NOTHING}). A returning subject reuses its account; a new one
-	 * auto-links to the account holding its verified email, else gets a new password-less account.
-	 */
-	CustomerAccountId resolveSsoAccount(SsoProvider provider, String subject, String normalizedEmail);
+	/** The live account an external {@code (provider, subject)} is linked to, or empty for a first sign-in. */
+	Optional<CustomerAccountId> accountForSsoIdentity(SsoProvider provider, String subject);
 
 	/**
-	 * Mark the account's email verified — sets {@code email_verified = true} +
-	 * {@code email_verified_at = NOW()}, idempotent: it only writes rows still {@code false}, so a repeat
-	 * (e.g. a returning SSO sign-in) does not churn the timestamp.
+	 * Find-or-create the account for an SSO email: a new password-less account if the email is free
+	 * ({@code ON CONFLICT DO NOTHING}), else the one holding it; empty when that one lost the email meanwhile.
+	 */
+	Optional<SsoAccountClaim> claimAccountForSso(String normalizedEmail);
+
+	/**
+	 * Link {@code (provider, subject)} to the account, taking it over from an erased one, unless a concurrent first
+	 * sign-in linked it to a live account first; answers the account it is linked to, empty when that link is gone.
+	 */
+	Optional<CustomerAccountId> linkSsoIdentity(CustomerAccountId accountId, SsoProvider provider, String subject,
+			String normalizedEmail);
+
+	/** Delete a password-less account this transaction created and then lost its identity for. */
+	void deleteUnlinkedAccount(CustomerAccountId accountId);
+
+	/**
+	 * Mark the live account's email verified — sets {@code email_verified = true} + {@code email_verified_at = NOW()},
+	 * idempotent: it only writes rows still {@code false}, so a repeat does not churn the timestamp.
 	 */
 	void markEmailVerified(CustomerAccountId accountId);
 
 	/**
-	 * Lock the account row {@code FOR NO KEY UPDATE} (a token insert's key check still passes) for the caller's
-	 * transaction, in a statement of its own; false when gone or erased. Before its token rows, as erasure (#1305).
+	 * Lock the account row {@code FOR NO KEY UPDATE} (a child insert's key check still passes) for the caller's
+	 * transaction, in a statement of its own; false when gone or erased. Before its tokens and identities, as erasure.
 	 */
 	boolean lockLiveAccount(CustomerAccountId accountId);
 
 	/**
-	 * Set the account's opaque password hash, unconditionally: the token-proven reset's write, authorized and encoded
-	 * at the edge; it also gives an SSO-only account its first password.
+	 * Set the live account's opaque password hash: the token-proven reset's write, authorized and encoded at the
+	 * edge; it also gives an SSO-only account its first password.
 	 */
 	void updatePasswordHash(CustomerAccountId accountId, String passwordHash);
 

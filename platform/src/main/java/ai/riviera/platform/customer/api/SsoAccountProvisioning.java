@@ -14,9 +14,9 @@ import ai.riviera.platform.customer.vocabulary.SsoProvider;
 public interface SsoAccountProvisioning {
 
 	/**
-	 * Resolve the account for this external identity, creating and/or linking on first sight; see the
-	 * type javadoc for the three cases. {@code email} is normalized internally (trimmed + lower-cased),
-	 * matching {@link CustomerAccountProvisioning}.
+	 * Resolve the live account for this external identity, creating and/or linking on first sight (an identity left
+	 * on an erased account counts as first sight); see the type javadoc for the three cases. {@code email} is
+	 * normalized internally, matching {@link CustomerAccountProvisioning}.
 	 */
 	CustomerAccountId resolveOrCreate(SsoProvider provider, String subject, String email);
 }

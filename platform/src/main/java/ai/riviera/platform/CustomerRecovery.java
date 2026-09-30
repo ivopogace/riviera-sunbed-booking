@@ -47,13 +47,14 @@ class CustomerRecovery {
 		this.clock = clock;
 	}
 
-	/** Issue a fresh verification token for the account and (best-effort, off-thread) email its link. */
+	/** Issue a fresh verification token for the account and (best-effort, off-thread) email its link; no mail once erased. */
 	void sendVerificationEmail(CustomerAccountId accountId, String email) {
 		String rawToken = tokens.generate();
-		recovery.issueEmailVerificationToken(accountId, tokens.hash(rawToken),
-				clock.instant().plus(properties.verificationTokenTtl()));
-		// The token store above is NOT best-effort and stays on this thread; only the send is.
-		mails.sendEmailVerification(email, link(VERIFY_PATH, rawToken));
+		// The token store is NOT best-effort and stays on this thread; only the send is.
+		if (recovery.issueEmailVerificationToken(accountId, tokens.hash(rawToken),
+				clock.instant().plus(properties.verificationTokenTtl()))) {
+			mails.sendEmailVerification(email, link(VERIFY_PATH, rawToken));
+		}
 	}
 
 	/**
@@ -65,12 +66,13 @@ class CustomerRecovery {
 		return deliverability.isWithheld(email);
 	}
 
-	/** Issue a fresh password-reset token for the account and (best-effort, off-thread) email its link. */
+	/** Issue a fresh password-reset token for the account and (best-effort, off-thread) email its link; no mail once erased. */
 	void sendPasswordResetEmail(CustomerAccountId accountId, String email) {
 		String rawToken = tokens.generate();
-		recovery.issuePasswordResetToken(accountId, tokens.hash(rawToken),
-				clock.instant().plus(properties.resetTokenTtl()));
-		mails.sendPasswordReset(email, link(RESET_PATH, rawToken));
+		if (recovery.issuePasswordResetToken(accountId, tokens.hash(rawToken),
+				clock.instant().plus(properties.resetTokenTtl()))) {
+			mails.sendPasswordReset(email, link(RESET_PATH, rawToken));
+		}
 	}
 
 	/** Redeem a presented raw verification token (hashes it, then claims it single-use in the module). */

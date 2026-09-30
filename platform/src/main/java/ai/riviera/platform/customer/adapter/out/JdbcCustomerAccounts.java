@@ -9,6 +9,7 @@ import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Repository;
 
 import ai.riviera.platform.customer.application.CustomerAccountStore;
+import ai.riviera.platform.customer.application.SsoAccountClaim;
 import ai.riviera.platform.customer.vocabulary.CustomerAccountCredential;
 import ai.riviera.platform.customer.vocabulary.CustomerAccountId;
 import ai.riviera.platform.customer.vocabulary.LiveAccountCredential;
@@ -103,17 +104,13 @@ class JdbcCustomerAccounts implements CustomerAccountStore {
 	}
 
 	@Override
-	public CustomerAccountId resolveSsoAccount(SsoProvider provider, String subject, String normalizedEmail) {
-		// 1. A returning (provider, subject) resolves to its already-linked account FIRST — before any
-		//    email path — so a changed provider email can never spawn a stray second account.
-		Optional<Long> existing = accountIdForIdentity(provider, subject);
-		if (existing.isPresent()) {
-			return new CustomerAccountId(existing.get());
-		}
-		// 2. Find-or-create the account by email: claim a new password-less account, or (email taken)
-		//    auto-link to the existing one. Race-safe — a concurrent creator wins the ON CONFLICT and we
-		//    read back its id.
-		long accountId = jdbc.sql("""
+	public Optional<CustomerAccountId> accountForSsoIdentity(SsoProvider provider, String subject) {
+		return liveAccountIdForIdentity(provider, subject).map(CustomerAccountId::new);
+	}
+
+	@Override
+	public Optional<SsoAccountClaim> claimAccountForSso(String normalizedEmail) {
+		Optional<Long> created = jdbc.sql("""
 				INSERT INTO customer_account (email, password_hash)
 				VALUES (:email, NULL)
 				ON CONFLICT (email) DO NOTHING
@@ -121,42 +118,56 @@ class JdbcCustomerAccounts implements CustomerAccountStore {
 				""")
 				.param(EMAIL, normalizedEmail)
 				.query(Long.class)
+				.optional();
+		if (created.isPresent()) {
+			return Optional.of(new SsoAccountClaim(new CustomerAccountId(created.get()), true));
+		}
+		return jdbc.sql("SELECT id FROM customer_account WHERE email = :email")
+				.param(EMAIL, normalizedEmail)
+				.query(Long.class)
 				.optional()
-				.orElseGet(() -> jdbc.sql("SELECT id FROM customer_account WHERE email = :email")
-						.param(EMAIL, normalizedEmail)
-						.query(Long.class)
-						.single());
-		// 3. Link the identity, race-safe: a concurrent first sign-in for the same subject wins the
-		//    ON CONFLICT (provider, subject) claim and we read back the winner's account_id.
-		long linked = jdbc.sql("""
+				.map(id -> new SsoAccountClaim(new CustomerAccountId(id), false));
+	}
+
+	@Override
+	public Optional<CustomerAccountId> linkSsoIdentity(CustomerAccountId accountId, SsoProvider provider,
+			String subject, String normalizedEmail) {
+		jdbc.sql("""
+				DELETE FROM customer_sso_identity i
+				WHERE i.provider = :provider AND i.subject = :subject
+				  AND EXISTS (SELECT 1 FROM customer_account a WHERE a.id = i.account_id AND a.erased_at IS NOT NULL)
+				""")
+				.param(PROVIDER, provider.name())
+				.param(SUBJECT, subject)
+				.update();
+		Optional<Long> linked = jdbc.sql("""
 				INSERT INTO customer_sso_identity (account_id, provider, subject, email)
 				VALUES (:accountId, :provider, :subject, :email)
 				ON CONFLICT (provider, subject) DO NOTHING
 				RETURNING account_id
 				""")
-				.param(ACCOUNT_ID, accountId)
+				.param(ACCOUNT_ID, accountId.value())
 				.param(PROVIDER, provider.name())
 				.param(SUBJECT, subject)
 				.param(EMAIL, normalizedEmail)
 				.query(Long.class)
-				.optional()
-				.orElseGet(() -> accountIdForIdentity(provider, subject).orElseThrow());
-		// An SSO email is provider-verified (design D-6): mark the account verified on first sign-in / auto-link.
-		// Guarded (only writes email_verified = false), so a returning subject that short-circuits above never
-		// re-marks, and an already-verified password account is untouched.
-		CustomerAccountId resolved = new CustomerAccountId(linked);
-		markEmailVerified(resolved);
-		return resolved;
+				.optional();
+		return linked.or(() -> liveAccountIdForIdentity(provider, subject)).map(CustomerAccountId::new);
+	}
+
+	@Override
+	public void deleteUnlinkedAccount(CustomerAccountId accountId) {
+		jdbc.sql("DELETE FROM customer_account WHERE id = :id AND password_hash IS NULL")
+				.param(ID, accountId.value())
+				.update();
 	}
 
 	@Override
 	public void markEmailVerified(CustomerAccountId accountId) {
-		// Guarded (email_verified = false) so it is idempotent and never churns email_verified_at on a
-		// repeat call (e.g. a returning SSO sign-in re-marking an already-verified account).
 		jdbc.sql("""
 				UPDATE customer_account
 				SET email_verified = true, email_verified_at = NOW()
-				WHERE id = :id AND email_verified = false
+				WHERE id = :id AND email_verified = false AND erased_at IS NULL
 				""")
 				.param(ID, accountId.value())
 				.update();
@@ -185,7 +196,7 @@ class JdbcCustomerAccounts implements CustomerAccountStore {
 
 	@Override
 	public void updatePasswordHash(CustomerAccountId accountId, String passwordHash) {
-		jdbc.sql("UPDATE customer_account SET password_hash = :hash WHERE id = :id")
+		jdbc.sql("UPDATE customer_account SET password_hash = :hash WHERE id = :id AND erased_at IS NULL")
 				.param("hash", passwordHash)
 				.param(ID, accountId.value())
 				.update();
@@ -207,9 +218,11 @@ class JdbcCustomerAccounts implements CustomerAccountStore {
 				.single();
 	}
 
-	private Optional<Long> accountIdForIdentity(SsoProvider provider, String subject) {
+	private Optional<Long> liveAccountIdForIdentity(SsoProvider provider, String subject) {
 		return jdbc.sql("""
-				SELECT account_id FROM customer_sso_identity WHERE provider = :provider AND subject = :subject
+				SELECT i.account_id FROM customer_sso_identity i
+				JOIN customer_account a ON a.id = i.account_id AND a.erased_at IS NULL
+				WHERE i.provider = :provider AND i.subject = :subject
 				""")
 				.param(PROVIDER, provider.name())
 				.param(SUBJECT, subject)
