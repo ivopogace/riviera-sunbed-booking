@@ -4,6 +4,7 @@ import java.time.Duration;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
+import java.util.concurrent.Callable;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -553,33 +554,69 @@ class JdbcPaymentsIT {
 		// Day 3's refund arrives while day 2's is uncommitted (#1210): it must wait on the share's row, then sum both.
 		payments.register(new NewPayment(new BookingRef(9624L), "pi_day_pair", 900L, "EUR", "cs_test_secret"));
 		payments.markStatus("pi_day_pair", PaymentStatus.SUCCEEDED);
+
+		assertTrue(racingAHeldWrite(
+				() -> payments.markRefunded(new BookingRef(9624L), RefundScope.day(LocalDate.of(2026, 7, 2)), 300L, "re_pair_a"),
+				() -> payments.markRefunded(new BookingRef(9624L), RefundScope.day(LocalDate.of(2026, 7, 3)), 300L, "re_pair_b")));
+
+		assertEquals(600L, refundedMinorOf(9624L), "both days are on the share's running sum");
+		assertEquals("PARTIALLY_REFUNDED", statusOf("pi_day_pair"));
+	}
+
+	@Test
+	void twoSharesRefundedInParallelEndRefunded() throws Exception {
+		// A stay cancel refunds its stretches in parallel (#1298): B's write must sum A's committed share, not its snapshot.
+		sharedCollection("pi_shared_parallel", 9961L, 9962L);
+
+		assertTrue(racingAHeldWrite(
+				() -> payments.markRefunded(new BookingRef(9961L), 4500L, "re_parallel_a"),
+				() -> payments.markRefunded(new BookingRef(9962L), 3000L, "re_parallel_b")));
+
+		assertEquals("REFUNDED", statusOf("pi_shared_parallel"), "every share came back, so the whole intent did");
+	}
+
+	@Test
+	void aSiblingsRefundFailureRacingARecordKeepsTheRecordVisible() throws Exception {
+		// B's refund dies while A's is being recorded (#1298): a stale SUCCEEDED would hide A's refund from its own failure.
+		sharedCollection("pi_shared_mixed", 9963L, 9964L);
+		payments.markRefunded(new BookingRef(9964L), 3000L, "re_mixed_b");
+
+		assertTrue(racingAHeldWrite(
+				() -> payments.markRefunded(new BookingRef(9963L), 4500L, "re_mixed_a"),
+				() -> payments.markRefundFailed("re_mixed_b")));
+
+		assertEquals("PARTIALLY_REFUNDED", statusOf("pi_shared_mixed"), "A's money is out, B's came back");
+		assertTrue(payments.markRefundFailed("re_mixed_a"), "so A's own later failure still finds its record");
+	}
+
+	/**
+	 * Runs {@code held} in a transaction left open until {@code racer} is seen waiting on a lock, then commits it
+	 * and returns what {@code racer} answered.
+	 */
+	private <T> T racingAHeldWrite(Runnable held, Callable<T> racer) throws Exception {
 		TransactionTemplate tx = new TransactionTemplate(txManager);
-		CountDownLatch firstRecorded = new CountDownLatch(1);
-		CountDownLatch firstMayCommit = new CountDownLatch(1);
+		CountDownLatch written = new CountDownLatch(1);
+		CountDownLatch mayCommit = new CountDownLatch(1);
 		try (ExecutorService pool = Executors.newFixedThreadPool(2)) {
-			Future<?> first = pool.submit(() -> tx.executeWithoutResult(status -> {
-				payments.markRefunded(new BookingRef(9624L), RefundScope.day(LocalDate.of(2026, 7, 2)), 300L, "re_pair_a");
-				firstRecorded.countDown();
+			Future<?> holder = pool.submit(() -> tx.executeWithoutResult(status -> {
+				held.run();
+				written.countDown();
 				try {
-					firstMayCommit.await(10, TimeUnit.SECONDS);
+					mayCommit.await(10, TimeUnit.SECONDS);
 				}
 				catch (InterruptedException interrupted) {
 					Thread.currentThread().interrupt();
 				}
 			}));
-			assertTrue(firstRecorded.await(10, TimeUnit.SECONDS));
-			Future<Boolean> second = pool.submit(() -> payments.markRefunded(new BookingRef(9624L),
-					RefundScope.day(LocalDate.of(2026, 7, 3)), 300L, "re_pair_b"));
+			assertTrue(written.await(10, TimeUnit.SECONDS));
+			Future<T> raced = pool.submit(racer);
 			Awaitility.await().atMost(Duration.ofSeconds(10)).until(() -> jdbc.sql(
-					"SELECT COUNT(*) FROM pg_stat_activity WHERE wait_event_type = 'Lock' AND query LIKE '%payment_booking%'")
+					"SELECT COUNT(*) FROM pg_stat_activity WHERE wait_event_type = 'Lock' AND query LIKE '%payment%'")
 					.query(Long.class).single() > 0);
-			firstMayCommit.countDown();
-			first.get(10, TimeUnit.SECONDS);
-			assertTrue(second.get(10, TimeUnit.SECONDS));
+			mayCommit.countDown();
+			holder.get(10, TimeUnit.SECONDS);
+			return raced.get(10, TimeUnit.SECONDS);
 		}
-
-		assertEquals(600L, refundedMinorOf(9624L), "both days are on the share's running sum");
-		assertEquals("PARTIALLY_REFUNDED", statusOf("pi_day_pair"));
 	}
 
 	@Test

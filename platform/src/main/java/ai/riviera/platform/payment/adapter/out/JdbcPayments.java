@@ -210,7 +210,7 @@ class JdbcPayments implements Payments {
 	@Override
 	@Transactional
 	public boolean markRefunded(BookingRef booking, RefundScope scope, long refundedMinor, String refundId) {
-		lockShare(booking);
+		lockIntent(booking);
 		// An upsert, since an adoption may record before any attempt row exists; the conflict arm's WHERE is the dead-refund guard.
 		return jdbc.sql("""
 				WITH moved AS (
@@ -238,8 +238,9 @@ class JdbcPayments implements Payments {
 	@Transactional
 	public boolean markRefundFailed(String refundId) {
 		jdbc.sql("""
-				SELECT b.id FROM payment_booking b JOIN payment_refund r ON r.payment_booking_id = b.id
-				WHERE r.refund_id = :refundId FOR UPDATE OF b
+				SELECT p.id FROM payment p JOIN payment_booking b ON b.payment_id = p.id
+				JOIN payment_refund r ON r.payment_booking_id = b.id
+				WHERE r.refund_id = :refundId FOR UPDATE OF p
 				""")
 				.param(PARAM_REFUND_ID, refundId)
 				.query(Long.class)
@@ -287,11 +288,14 @@ class JdbcPayments implements Payments {
 	}
 
 	/**
-	 * A share's refunds serialize on its {@code payment_booking} row: the write that follows runs on a
-	 * snapshot taken after the lock, so its running sum sees every refund committed before it (#1210).
+	 * An intent's refund writes serialize on its {@code payment} row: the write that follows runs on a snapshot
+	 * taken after the lock, so its share's running sum and its siblings' sums see every refund committed before it.
 	 */
-	private void lockShare(BookingRef booking) {
-		jdbc.sql("SELECT id FROM payment_booking WHERE booking_ref = :ref FOR UPDATE")
+	private void lockIntent(BookingRef booking) {
+		jdbc.sql("""
+				SELECT p.id FROM payment p JOIN payment_booking b ON b.payment_id = p.id
+				WHERE b.booking_ref = :ref FOR UPDATE OF p
+				""")
 				.param(PARAM_REF, booking.value())
 				.query(Long.class)
 				.list();
