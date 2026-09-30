@@ -48,9 +48,9 @@ public interface AccountErasureStore {
 	List<CustomerId> expiredGuestCandidates(Instant olderThan, int limit);
 
 	/**
-	 * Tombstone one live guest {@code customer} row by id, to the same effect as
-	 * {@link #eraseGuestByEmail}. {@code true} iff a live row was scrubbed; a tombstoned or absent row
-	 * yields {@code false}, which makes a repeated or overlapping sweep a no-op.
+	 * Tombstone one guest {@code customer} row by id, as {@link #eraseGuestByEmail} does, only while it still
+	 * passes {@link #expiredGuestCandidates}' gates; {@code false} for a row a booking refreshed or an account
+	 * claimed since the candidate read, or a tombstoned or absent one, so an overlapping sweep is a no-op.
 	 */
-	boolean eraseGuestById(CustomerId guestId);
+	boolean eraseGuestById(CustomerId guestId, Instant olderThan);
 }

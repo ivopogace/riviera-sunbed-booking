@@ -190,7 +190,7 @@ class ExpireGuestContactsServiceTest {
 		}
 
 		@Override
-		public boolean eraseGuestById(CustomerId guestId) {
+		public boolean eraseGuestById(CustomerId guestId, Instant olderThan) {
 			eraseAttempts.merge(guestId, 1, Integer::sum);
 			if (!erased.containsKey(guestId) || erased(guestId)) {
 				return false;
