@@ -845,8 +845,9 @@ per booking), who may leave, change or remove it and until when, and the score a
   called only by my REST adapter. No other module's SQL names the `review` table (machine-checked).
 - **One review per booking is the database's answer** (the invariant-#2 discipline):
   `UNIQUE (booking_id)` plus `INSERT … ON CONFLICT DO NOTHING`, row count as outcome; a lost race is
-  `AlreadyReviewed`. Edit and delete go by `booking_id` on rows-affected, so an edit racing a delete
-  is `NoSuchReview`. A delete frees the slot while the window is open.
+  `AlreadyReviewed`. Edit and delete go by `booking_id` on rows-affected and touch only a visible row, so an
+  edit racing a delete is `NoSuchReview` and one racing a takedown is `Hidden` (#1308). A delete frees the slot
+  while the window is open.
 - **The mean is integer and half-up, taken in the domain** (`AggregateRating`), never SQL or `double`.
 - **A tombstone is erasure's mark, and it keeps the star** (ADR-0010): `ReviewTombstones` blanks
   name and comment — a scrub, never a delete — so the slot stays taken, the aggregate is unchanged
@@ -858,9 +859,9 @@ per booking), who may leave, change or remove it and until when, and the score a
   `AdminReviewController`) in one conditional `UPDATE`; a repeat is `AlreadyApplied` and only a real
   flip publishes `ReviewsChanged`. Ownership-free (invariant #13's admin exemption): it must reach
   venues the public list refuses — a suspended owner's.
-- **The visibility predicate (`hidden_at IS NULL`) lives in exactly two statements**, `JdbcReviews`'
-  `totalsFor` and `newestListedBefore`; the author's read-back and the admin list see a hidden row on
-  purpose. A listed review is also commented: a star-only one counts, never shows as an empty row.
+- **The visibility predicate (`hidden_at IS NULL`) lives in the public reads and the author's writes**:
+  `JdbcReviews`' `totalsFor` and `newestListedBefore`, and `update` and `delete`, which skip a hidden row. The
+  author's read-back and the admin list see a hidden row on purpose. A listed review is also commented: a star-only one counts, never shows as an empty row.
 - **The fence order is stated once, in `domain/ReviewGate`**, which lifecycle and panel both consult.
   A hidden review is frozen for its author: `HIDDEN` precedes the window, and edit, delete and
   resubmit get `409 REVIEW_HIDDEN` with the slot kept taken — a delete would free it and a resubmit

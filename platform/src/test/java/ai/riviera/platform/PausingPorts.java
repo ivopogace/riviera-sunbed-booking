@@ -14,7 +14,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.util.ClassUtils;
 
 /**
- * Holds a thread inside a transaction at a chosen point, for the lock-order ITs: every bean implementing one
+ * Holds a thread inside a transaction at a chosen point, for the race ITs: every bean implementing one
  * of {@link #PORTS} is wrapped (an unordered post-processor, so after its transactional proxy), and a call
  * matching the armed {@link Pause} returns only once the test releases it, with the caller's locks still held.
  */
@@ -28,7 +28,9 @@ public class PausingPorts {
 			"ai.riviera.platform.customer.application.AccountErasureStore",
 			"ai.riviera.platform.customer.application.CustomerAccountStore",
 			"ai.riviera.platform.customer.application.CustomerAccountTokens",
-			"ai.riviera.platform.payout.application.PayoutLedger"};
+			"ai.riviera.platform.customer.application.CustomerAccountTokens",
+			"ai.riviera.platform.payout.application.PayoutLedger",
+			"ai.riviera.platform.review.application.Reviews"};
 
 	private static final AtomicReference<Pause> ARMED = new AtomicReference<>();
 
