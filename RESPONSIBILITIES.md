@@ -835,8 +835,9 @@ per booking), who may leave, change or remove it and until when, and the score a
   called only by my REST adapter. No other module's SQL names the `review` table (machine-checked).
 - **One review per booking is the database's answer** (the invariant-#2 discipline):
   `UNIQUE (booking_id)` plus `INSERT … ON CONFLICT DO NOTHING`, row count as outcome; a lost race is
-  `AlreadyReviewed`. Edit and delete go by `booking_id` on rows-affected, so an edit racing a delete
-  is `NoSuchReview`. A delete frees the slot while the window is open.
+  `AlreadyReviewed`. Edit and delete go by `booking_id` on rows-affected and touch only a visible row, so an
+  edit racing a delete is `NoSuchReview` and one racing a takedown is `Hidden` (#1308). A delete frees the slot
+  while the window is open.
 - **The mean is integer and half-up, taken in the domain** (`AggregateRating`), never SQL or `double`.
 - **A tombstone is erasure's mark, and it keeps the star** (ADR-0010): `ReviewTombstones` blanks
   name and comment — a scrub, never a delete — so the slot stays taken, the aggregate is unchanged

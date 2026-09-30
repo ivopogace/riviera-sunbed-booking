@@ -79,7 +79,7 @@ class JdbcReviews implements Reviews {
 				UPDATE review
 				SET stars = :stars, comment = :comment, display_name = :displayName,
 				    updated_at = :updatedAt
-				WHERE booking_id = :booking
+				WHERE booking_id = :booking AND hidden_at IS NULL
 				""")
 				.param(PARAM_BOOKING, booking.value())
 				.param(PARAM_STARS, submission.stars())
@@ -92,7 +92,7 @@ class JdbcReviews implements Reviews {
 
 	@Override
 	public boolean delete(BookingRef booking) {
-		return jdbc.sql("DELETE FROM review WHERE booking_id = :booking")
+		return jdbc.sql("DELETE FROM review WHERE booking_id = :booking AND hidden_at IS NULL")
 				.param(PARAM_BOOKING, booking.value())
 				.update() == 1;
 	}

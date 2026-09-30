@@ -95,7 +95,9 @@ class ReviewLifecycleService implements ReviewLifecycle {
 
 	private AmendOutcome write(CompletedStay stay, AmendWrite write, Instant now) {
 		if (!write.to(stay, now)) {
-			return new AmendOutcome.NoSuchReview();
+			return reviews.findFor(stay.booking()).filter(StoredReview::hidden).isPresent()
+					? new AmendOutcome.Hidden()
+					: new AmendOutcome.NoSuchReview();
 		}
 		events.publishEvent(new ReviewsChanged(stay.venue()));
 		return new AmendOutcome.Done();
@@ -117,9 +119,8 @@ class ReviewLifecycleService implements ReviewLifecycle {
 	}
 
 	/**
-	 * The row write an amend performs once the gate has cleared it. {@code false} means no row
-	 * answered to the booking any more — a concurrent delete won, which the caller reports as
-	 * {@code NoSuchReview} rather than as a failure.
+	 * The row write an amend performs once the gate has cleared it. {@code false} means no visible row answered to
+	 * the booking any more: a concurrent takedown won ({@code Hidden}) or a delete did ({@code NoSuchReview}).
 	 */
 	private interface AmendWrite {
 
