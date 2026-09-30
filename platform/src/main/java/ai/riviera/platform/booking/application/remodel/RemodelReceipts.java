@@ -10,8 +10,8 @@ import ai.riviera.platform.venue.vocabulary.VenueId;
 /**
  * The {@code booking} module's driven port onto the commit receipts ({@code remodel_receipt},
  * {@code remodel_receipt_move}, {@code remodel_receipt_outcome}, {@code remodel_receipt_kept}). Implemented by
- * {@code JdbcRemodelReceipts} (explicit SQL, invariant #1). Venue-scoped reads only: the ownership
- * check is the service's (invariant #13).
+ * {@code JdbcRemodelReceipts} (explicit SQL, invariant #1). A venue-scoped read leaves the ownership check to
+ * the service (invariant #13); a booking-keyed read serves a system caller with no operator.
  */
 public interface RemodelReceipts {
 
@@ -29,4 +29,7 @@ public interface RemodelReceipts {
 
 	/** Whether a remodel commit ended this booking — refunded, released or declined it; a kept booking was not. */
 	boolean endedByRemodel(BookingId bookingId);
+
+	/** Whether a remodel commit released this booking unpaid; a refund line, however small, is not a release (#1291). */
+	boolean releasedByRemodel(BookingId bookingId);
 }

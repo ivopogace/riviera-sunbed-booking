@@ -36,7 +36,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 /**
  * The receipt round trip against a real Postgres: a receipt with two moves reads back whole, newest
  * first per venue, by id only for its own venue, and a booking's latest move is the last one written.
- * A kept line reads back with its reason and never makes {@code endedByRemodel} true.
+ * A kept line reads back with its reason and never makes {@code endedByRemodel} true; only a release line
+ * makes {@code releasedByRemodel} true.
  */
 @EnabledIfDockerAvailable
 @Import(TestcontainersConfiguration.class)
@@ -114,6 +115,8 @@ class JdbcRemodelReceiptsIT {
 		assertEquals(4500, read.refundedMinor(), "only the refund lines count toward what guests got back");
 		assertEquals(List.of(read.outcomes().getFirst()), read.refunds());
 		assertEquals(read.outcomes(), receipts.receiptsOf(new VenueId(venue)).getFirst().outcomes());
+		assertTrue(receipts.releasedByRemodel(new BookingId(released)), "a release line reads as released");
+		assertFalse(receipts.releasedByRemodel(new BookingId(refunded)), "a refund line is not a release");
 	}
 
 	@Test
@@ -131,6 +134,7 @@ class JdbcRemodelReceiptsIT {
 		assertEquals(List.of(line), read.kept());
 		assertEquals(List.of(line), receipts.receiptsOf(new VenueId(venue)).getFirst().kept());
 		assertFalse(receipts.endedByRemodel(new BookingId(kept)), "a kept booking was not ended by the remodel");
+		assertFalse(receipts.releasedByRemodel(new BookingId(kept)), "a kept booking was not released");
 	}
 
 	@Test
