@@ -31,7 +31,6 @@ public class PausingPorts {
 			"ai.riviera.platform.operator.application.Operators",
 			"ai.riviera.platform.payout.application.PayoutLedger",
 			"ai.riviera.platform.review.application.Reviews"};
-			"ai.riviera.platform.review.application.Reviews"};
 
 	private static final AtomicReference<Pause> ARMED = new AtomicReference<>();
 
