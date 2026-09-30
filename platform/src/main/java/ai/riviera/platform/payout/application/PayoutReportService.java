@@ -18,7 +18,8 @@ import ai.riviera.platform.payout.domain.PeriodKey;
 /**
  * The weekly BKT payout-report use case. {@link #generate} folds the ledger into one {@code DRAFT} batch per venue
  * for the period (idempotent refresh, invariant #9), one run per period at a time; {@link #mark} advances a batch
- * through {@code DRAFT → REPORTED → SETTLED}, rejecting illegal moves with a typed outcome rather than an exception. Money is integer minor units throughout (invariant #5).
+ * through {@code DRAFT → REPORTED → SETTLED}, rejecting illegal moves with a typed outcome rather than an exception.
+ * Money is integer minor units throughout (invariant #5).
  * Package-private behind {@link PayoutReport} (invariant #11).
  */
 @Service

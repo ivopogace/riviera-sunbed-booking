@@ -39,13 +39,14 @@ class PayoutGenerateRaceIT {
 		long booking = newBooking(venue);
 		entry(venue, booking, "ACCRUAL", 1000);
 
-		LockOrderRace.race(jdbc, "netTotalsForPeriod", args -> PERIOD.equals(args[0]),
+		LockOrderRace.Outcome<?, ?> outcome = LockOrderRace.race(jdbc, "netTotalsForPeriod", args -> PERIOD.equals(args[0]),
 				() -> payoutReport.generate(PERIOD),
 				() -> {
 					entry(venue, booking, "REVERSAL", 200);
 					return payoutReport.generate(PERIOD);
 				});
 
+		assertThat(outcome.racerWaited()).as("the second run waited for the first").isTrue();
 		assertThat(jdbc.sql("SELECT total_net_minor FROM payout_batch WHERE venue_id = :v AND period_key = :p")
 				.param("v", venue).param("p", PERIOD.value()).query(Long.class).single())
 				.as("the ledger now nets 800").isEqualTo(800L);
