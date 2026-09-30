@@ -143,6 +143,10 @@ class AdminOperatorController {
 					"WRONG_STATUS", "This operator is not in a status that allows this change.");
 			case OperatorLifecycleOutcome.NoSuchOperator ignored -> ApiProblem.response(HttpStatus.NOT_FOUND,
 					"NO_SUCH_OPERATOR", "No such operator.");
+			case OperatorLifecycleOutcome.LastActiveAdmin ignored -> ApiProblem.response(HttpStatus.CONFLICT,
+					"LAST_ACTIVE_ADMIN", "This suspension would leave the platform without an active admin.");
+			case OperatorLifecycleOutcome.ActorNotActiveAdmin ignored -> ApiProblem.response(HttpStatus.FORBIDDEN,
+					"NOT_AN_ACTIVE_ADMIN", "The account this request is authenticated as is no longer an active admin.");
 		};
 	}
 

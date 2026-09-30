@@ -10,7 +10,8 @@ package ai.riviera.platform.operator.vocabulary;
  */
 public sealed interface OperatorLifecycleOutcome
 		permits OperatorLifecycleOutcome.Changed, OperatorLifecycleOutcome.WrongStatus,
-		OperatorLifecycleOutcome.NoSuchOperator {
+		OperatorLifecycleOutcome.NoSuchOperator, OperatorLifecycleOutcome.LastActiveAdmin,
+		OperatorLifecycleOutcome.ActorNotActiveAdmin {
 
 	/** The transition happened; {@code username} is the principal name whose sessions the edge revokes. */
 	record Changed(OperatorId operatorId, String username) implements OperatorLifecycleOutcome {
@@ -22,5 +23,13 @@ public sealed interface OperatorLifecycleOutcome
 
 	/** No operator with this id → the edge maps to 404. */
 	record NoSuchOperator() implements OperatorLifecycleOutcome {
+	}
+
+	/** The suspend would leave no {@code ACTIVE} admin → the edge maps to 409 (RESPONSIBILITIES.md §operator). */
+	record LastActiveAdmin() implements OperatorLifecycleOutcome {
+	}
+
+	/** The acting admin is not an {@code ACTIVE} admin when the suspend runs (suspended while it waited) → 403. */
+	record ActorNotActiveAdmin() implements OperatorLifecycleOutcome {
 	}
 }

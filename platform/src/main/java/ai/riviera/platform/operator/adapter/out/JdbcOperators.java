@@ -11,6 +11,7 @@ import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Repository;
 
 import ai.riviera.platform.operator.application.Operators;
+import ai.riviera.platform.operator.application.SuspendFacts;
 import ai.riviera.platform.operator.vocabulary.OperatorAccount;
 import ai.riviera.platform.operator.vocabulary.ApprovalOutcome;
 import ai.riviera.platform.operator.vocabulary.OperatorCredential;
@@ -49,6 +50,9 @@ class JdbcOperators implements Operators {
 	private static final String VENUE_PARAM = "venue";
 	/** SQL named-param key for an operator's primary key in the lifecycle statements (S1192). */
 	private static final String ID_PARAM = "id";
+	/** SQL named-param keys for the admin acting on, and the operator subject to, a suspend (S1192). */
+	private static final String ACTOR_PARAM = "actor";
+	private static final String SUBJECT_PARAM = "subject";
 	/** SQL named-param key for the status a lifecycle transition writes (S1192). */
 	private static final String TARGET_PARAM = "target";
 	/** Result-set column holding an operator's registered contact address (named, not duplicated — §6a). */
@@ -218,6 +222,27 @@ class JdbcOperators implements Operators {
 	 */
 	private ApprovalOutcome classifyMissedTransition(OperatorId operatorId) {
 		return exists(operatorId) ? new ApprovalOutcome.NotPending() : new ApprovalOutcome.NoSuchOperator();
+	}
+
+	@Override
+	public SuspendFacts lockForSuspend(OperatorId actor, OperatorId target) {
+		jdbc.sql("SELECT id FROM operator WHERE is_admin OR id IN (:actor, :subject) ORDER BY id FOR UPDATE")
+				.param(ACTOR_PARAM, actor.value())
+				.param(SUBJECT_PARAM, target.value())
+				.query(Long.class)
+				.list();
+		return jdbc.sql("""
+				SELECT COALESCE(BOOL_OR(id = :actor AND is_admin AND status = :active), FALSE) AS actor_admin,
+				       COALESCE(BOOL_OR(id = :subject AND is_admin AND status = :active), FALSE) AS target_admin,
+				       COUNT(*) FILTER (WHERE id <> :subject AND is_admin AND status = :active) AS other_admins
+				FROM operator WHERE is_admin OR id IN (:actor, :subject)
+				""")
+				.param(ACTOR_PARAM, actor.value())
+				.param(SUBJECT_PARAM, target.value())
+				.param(ACTIVE_PARAM, OperatorStatus.ACTIVE.name())
+				.query((rs, rowNum) -> new SuspendFacts(rs.getBoolean("actor_admin"), rs.getBoolean("target_admin"),
+						rs.getLong("other_admins")))
+				.single();
 	}
 
 	@Override

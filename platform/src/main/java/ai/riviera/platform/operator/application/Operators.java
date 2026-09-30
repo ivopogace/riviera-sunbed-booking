@@ -69,6 +69,12 @@ public interface Operators {
 	ApprovalOutcome rejectPending(OperatorId operatorId);
 
 	/**
+	 * Lock every admin row, plus {@code actor} and {@code target}, {@code FOR UPDATE} in id order in a statement of its
+	 * own, then read what a suspend decides on: the order two concurrent suspends take, so each sees the other (#1311).
+	 */
+	SuspendFacts lockForSuspend(OperatorId actor, OperatorId target);
+
+	/**
 	 * Transition the ACTIVE operator with this id to SUSPENDED, returning
 	 * {@link OperatorLifecycleOutcome.Changed} with its username so the edge can revoke its sessions.
 	 * Writes nothing on a non-ACTIVE or unknown operator.

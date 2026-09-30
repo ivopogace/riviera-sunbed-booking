@@ -148,6 +148,22 @@ class AdminOperatorControllerTest {
 		verify(sessionRevoker, never()).revokeAll(anyString());
 	}
 
+	/** A suspend refused to keep an active admin, or because the actor lost admin meanwhile, revokes nothing (#1311). */
+	@Test
+	void aRefusedSuspendMapsToItsCodeAndRevokesNothing() throws Exception {
+		when(lifecycle.suspend(ADMIN, TARGET)).thenReturn(new OperatorLifecycleOutcome.LastActiveAdmin())
+				.thenReturn(new OperatorLifecycleOutcome.ActorNotActiveAdmin());
+
+		mvc.perform(isolated(post(SUSPEND, TARGET.value())).with(user(ADMIN_USERNAME).roles("ADMIN")))
+				.andExpect(status().isConflict())
+				.andExpect(jsonPath("$.code").value("LAST_ACTIVE_ADMIN"));
+		mvc.perform(isolated(post(SUSPEND, TARGET.value())).with(user(ADMIN_USERNAME).roles("ADMIN")))
+				.andExpect(status().isForbidden())
+				.andExpect(jsonPath("$.code").value("NOT_AN_ACTIVE_ADMIN"));
+
+		verify(sessionRevoker, never()).revokeAll(TARGET_USERNAME);
+	}
+
 	/** Reinstatement restores the account, not the old cookies — it neither pre-reads nor revokes. */
 	@Test
 	void reinstateRevokesNothing() throws Exception {

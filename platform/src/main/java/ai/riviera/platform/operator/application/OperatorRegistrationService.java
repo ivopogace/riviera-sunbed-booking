@@ -71,6 +71,13 @@ class OperatorRegistrationService implements OperatorRegistration, OperatorLifec
 	@Override
 	@Transactional
 	public OperatorLifecycleOutcome suspend(OperatorId actor, OperatorId target) {
+		SuspendFacts facts = operators.lockForSuspend(actor, target);
+		if (facts.leavesNoActiveAdmin()) {
+			return new OperatorLifecycleOutcome.LastActiveAdmin();
+		}
+		if (!facts.actorActiveAdmin()) {
+			return new OperatorLifecycleOutcome.ActorNotActiveAdmin();
+		}
 		return operators.suspend(target);
 	}
 

@@ -58,6 +58,7 @@ class AdminQuorumRaceIT {
 				() -> lifecycle.suspend(y, x));
 
 		assertThat(outcome.held()).isInstanceOf(OperatorLifecycleOutcome.Changed.class);
+		assertThat(outcome.raced()).isInstanceOf(OperatorLifecycleOutcome.LastActiveAdmin.class);
 		assertThat(activeAdmins()).containsExactly("quorum-x");
 	}
 
@@ -73,6 +74,7 @@ class AdminQuorumRaceIT {
 				() -> lifecycle.suspend(x, y));
 
 		assertThat(outcome.held()).isInstanceOf(OperatorLifecycleOutcome.Changed.class);
+		assertThat(outcome.raced()).isInstanceOf(OperatorLifecycleOutcome.ActorNotActiveAdmin.class);
 		assertThat(activeAdmins()).containsExactly("quorum-y", "quorum-z");
 	}
 

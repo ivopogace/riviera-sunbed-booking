@@ -47,9 +47,9 @@ public interface OperatorLifecycle {
 	ApprovalOutcome reject(OperatorId operatorId);
 
 	/**
-	 * ACTIVE → SUSPENDED, by the admin {@code actor}: cannot authenticate and owns nothing until {@link #reinstate}
-	 * (ownership rows are kept). {@link OperatorLifecycleOutcome.Changed} carries the username for session
-	 * revocation; otherwise {@link OperatorLifecycleOutcome.WrongStatus} or {@link OperatorLifecycleOutcome.NoSuchOperator}.
+	 * ACTIVE → SUSPENDED by the admin {@code actor}, never leaving the platform without an active admin: cannot
+	 * authenticate and owns nothing until {@link #reinstate}. {@link OperatorLifecycleOutcome.Changed} carries the
+	 * username for session revocation. Rationale: RESPONSIBILITIES.md §operator.
 	 */
 	OperatorLifecycleOutcome suspend(OperatorId actor, OperatorId target);
 
