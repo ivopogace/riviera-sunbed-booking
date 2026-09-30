@@ -475,6 +475,8 @@ class RemodelClaimsServiceTest {
 
 		assertEquals(new RemodelCommit.Applied(RECEIPT, CLOCK.instant(), List.of(first, second)), outcome);
 		InOrder order = inOrder(availability, bookings, events, receipts);
+		order.verify(bookings).lockById(203);
+		order.verify(bookings).findReleasedDays(203);
 		order.verify(availability).claim(A2.setId(), IN_TEN_DAYS);
 		order.verify(availability).release(A1.setId(), IN_TEN_DAYS);
 		order.verify(bookings).moveToSet(203, A1.setId(), A2.setId(), CLOCK.instant());

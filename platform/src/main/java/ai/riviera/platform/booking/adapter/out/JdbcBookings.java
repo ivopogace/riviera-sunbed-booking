@@ -1279,8 +1279,13 @@ class JdbcBookings implements Bookings {
 	}
 
 	@Override
-	public long lockRemainingMinor(long bookingId) {
+	public void lockById(long bookingId) {
 		jdbc.sql("SELECT id FROM booking WHERE id = :id FOR UPDATE").param("id", bookingId).query(Long.class).single();
+	}
+
+	@Override
+	public long lockRemainingMinor(long bookingId) {
+		lockById(bookingId);
 		return jdbc.sql("SELECT b.amount_minor - " + DAY_REFUNDED_SUM_SQL + " FROM booking b WHERE b.id = :id")
 				.param("id", bookingId)
 				.query(Long.class)

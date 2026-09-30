@@ -31,11 +31,14 @@ import ai.riviera.platform.booking.application.Bookings;
 import ai.riviera.platform.booking.application.cancel.CancelBooking;
 import ai.riviera.platform.booking.application.cancel.CancelOutcome;
 import ai.riviera.platform.booking.application.refund.DayRefundStamp;
+import ai.riviera.platform.booking.application.refund.RefundVenueDay;
+import ai.riviera.platform.booking.application.refund.VenueDayRefundOutcome;
 import ai.riviera.platform.booking.vocabulary.PreviewToken;
 import ai.riviera.platform.booking.vocabulary.RefundConfirmation;
 import ai.riviera.platform.booking.vocabulary.RemodelClaim;
 import ai.riviera.platform.booking.vocabulary.RemodelCommit;
 import ai.riviera.platform.booking.vocabulary.RemodelOutcome;
+import ai.riviera.platform.operator.vocabulary.OperatorId;
 import ai.riviera.platform.venue.vocabulary.SetId;
 import ai.riviera.platform.venue.vocabulary.VenueId;
 
@@ -45,10 +48,10 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 
 /**
- * A whole-booking cancel that starts while a day refund holds the booking row lock (#1281): each cancel
- * leg quotes from a read taken after that lock, so the day refunded under it is never refunded again
- * and no booking gives back more than it collected (#9, #10). Real Postgres; the day refund's
- * transaction is held open until the cancel is seen blocked by it.
+ * A whole-booking cancel or a remodel move that starts while a day refund holds the booking row lock (#1281):
+ * each reads the booking after that lock, so the day refunded under it is never refunded again, no booking
+ * gives back more than it collected (#9, #10), and a day the venue released stays free (#2). Real Postgres;
+ * the day refund's transaction is held open until the other side is seen blocked by it.
  */
 @EnabledIfDockerAvailable
 @Import(TestcontainersConfiguration.class)
@@ -65,6 +68,9 @@ class CancelVsDayRefundRaceIT {
 
 	@Autowired
 	Bookings bookings;
+
+	@Autowired
+	RefundVenueDay refundVenueDay;
 
 	@Autowired
 	JdbcClient jdbc;
@@ -141,18 +147,49 @@ class CancelVsDayRefundRaceIT {
 		assertEquals((DAYS - 1) * PRICE, reversedGrossOf(id), "the venue is debited only for what the guest gets back (#9)");
 	}
 
-	/**
-	 * Runs {@code cancel} while {@code day} of {@code bookingId} is refunded in a transaction that holds the booking row
-	 * lock, commits the refund once a session is blocked by that transaction, and answers {@code cancel}'s result.
-	 */
+	@Test
+	void aRemodelMoveWaitingOnAVenueDayRefundLeavesTheReleasedDayFree() throws Exception {
+		Venue venue = venue();
+		LocalDate first = firstDay();
+		LocalDate refunded = first.plusDays(1);
+		SetId from = venue.online().get(0);
+		SetId to = venue.online().get(1);
+		String code = "RACEMOVE" + System.nanoTime() % 1_000_000;
+		accrue(venue, insertLone(venue, code, from, first), DAYS * PRICE);
+		first.datesUntil(first.plusDays(DAYS)).forEach(day -> StayFixtures.take(jdbc, venue.online().get(2), day));
+		OperatorId owner = StayFixtures.ownerOf(jdbc, venue);
+		VenueId venueId = new VenueId(venue.id());
+		List<RemodelClaim> claims = remodelClaims.classify(owner, venueId, List.of(from));
+		assertEquals(to, assertInstanceOf(RemodelOutcome.Move.class, claims.getFirst().outcome()).to().setId());
+
+		RemodelCommit outcome = whileHeld(
+				() -> assertInstanceOf(VenueDayRefundOutcome.DayRefunded.class,
+						refundVenueDay.refundDay(owner, venueId, code, refunded)),
+				() -> remodelClaims.commit(owner, venueId, List.of(from), PreviewToken.of(claims), RefundConfirmation.NONE));
+
+		assertInstanceOf(RemodelCommit.Applied.class, outcome);
+		assertEquals(List.of(first, first.plusDays(2)), heldOn(to),
+				"the move claims only the days the booking still holds: the venue released the refunded one");
+		assertEquals(List.of(), heldOn(from), "every day the booking held on the old set is freed");
+	}
+
 	private <T> T whileADayRefundHoldsTheLock(long bookingId, LocalDate day, long refundMinor, Callable<T> cancel)
 			throws Exception {
+		return whileHeld(() -> bookings.refundDay(bookingId, day, refundMinor, Instant.now(), DayRefundStamp.weather())
+				.orElseThrow(), cancel);
+	}
+
+	/**
+	 * Runs {@code cancel} while {@code dayRefund} runs in a transaction that holds the booking row lock, commits the
+	 * refund once a session is blocked by that transaction, and answers {@code cancel}'s result.
+	 */
+	private <T> T whileHeld(Runnable dayRefund, Callable<T> cancel) throws Exception {
 		CompletableFuture<Integer> refundPid = new CompletableFuture<>();
 		CountDownLatch refundCommits = new CountDownLatch(1);
 		try (ExecutorService pool = Executors.newFixedThreadPool(2)) {
 			try {
 				Future<?> refund = pool.submit(() -> tx.executeWithoutResult(status -> {
-					bookings.refundDay(bookingId, day, refundMinor, Instant.now(), DayRefundStamp.weather()).orElseThrow();
+					dayRefund.run();
 					refundPid.complete(jdbc.sql("SELECT pg_backend_pid()").query(Integer.class).single());
 					try {
 						refundCommits.await(30, TimeUnit.SECONDS);
@@ -226,6 +263,11 @@ class CancelVsDayRefundRaceIT {
 				     + (SELECT COALESCE(SUM(d.refund_minor), 0) FROM booking_day d WHERE d.booking_id = b.id)
 				FROM booking b WHERE b.id = :id
 				""").param("id", bookingId).query(Long.class).single();
+	}
+
+	private List<LocalDate> heldOn(SetId set) {
+		return jdbc.sql("SELECT booking_date FROM set_availability WHERE set_id = :s ORDER BY booking_date")
+				.param("s", set.value()).query(LocalDate.class).list();
 	}
 
 	private long sessionsBlockedBy(int pid) {

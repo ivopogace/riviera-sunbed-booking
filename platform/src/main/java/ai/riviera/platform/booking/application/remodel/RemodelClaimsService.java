@@ -217,11 +217,12 @@ class RemodelClaimsService implements RemodelClaims {
 	}
 
 	/**
-	 * Claim every day the booking still holds on the candidate before releasing the old rows (invariant
-	 * #2; a venue-released day is neither claimed nor freed, ADR-0027), then re-seat the booking. A day not
-	 * won under the venue lock throws, and the commit's transaction moves nothing.
+	 * Claim every day the booking still holds, read under its row lock, on the candidate before releasing the old
+	 * rows (#2; a venue-released day is neither claimed nor freed, ADR-0027, #1281), then re-seat the booking. A day
+	 * not won under the venue lock throws, and the commit's transaction moves nothing.
 	 */
 	private ReceiptMove applyMove(VenueId venueId, RemodelClaim claim, RemodelOutcome.Move move, Instant movedAt) {
+		bookings.lockById(claim.bookingId().value());
 		List<LocalDate> held = ServiceDays.held(claim.bookingDate(), claim.lastDate(),
 				bookings.findReleasedDays(claim.bookingId().value()));
 		for (LocalDate day : held) {

@@ -1016,6 +1016,11 @@ class CreateBookingServiceTest {
 		}
 
 		@Override
+		public void lockById(long bookingId) {
+			throw new UnsupportedOperationException("not exercised by the single-booking reserve");
+		}
+
+		@Override
 		public long lockRemainingMinor(long bookingId) {
 			throw new UnsupportedOperationException("not exercised by the single-booking reserve");
 		}
