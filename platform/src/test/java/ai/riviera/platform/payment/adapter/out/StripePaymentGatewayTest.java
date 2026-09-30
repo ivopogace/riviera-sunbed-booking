@@ -408,8 +408,7 @@ class StripePaymentGatewayTest {
 
 		RefundResult result = fixture.gateway().refund(BOOKING, RefundScope.day(day), new Money(300L, "EUR"));
 
-		// A manual refund names no day: its failure would be matched to the whole share, so adopting it for a day
-		// could record a day refunded by money that came back. A human attributes it (#1310).
+		// Its failure would be matched to the whole share, so a day must not own it (#1310).
 		verify(fixture.refunds(), never()).create(any(RefundCreateParams.class), any(RequestOptions.class));
 		assertEquals("refund_mismatch", assertInstanceOf(RefundResult.Failed.class, result).reason());
 		verify(fixture.payments(), never()).markRefunded(any(), any(), anyLong(), any());
