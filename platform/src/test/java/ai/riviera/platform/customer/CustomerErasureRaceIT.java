@@ -145,15 +145,13 @@ class CustomerErasureRaceIT {
 	void aTokenIssuedDuringAnErasureIsNeverStored() throws Exception {
 		CustomerAccountId account = register(unique("token-erased"));
 
-		LockOrderRace.Outcome<EraseOutcome, Void> outcome = LockOrderRace.race(jdbc, "eraseAccountById",
+		LockOrderRace.Outcome<EraseOutcome, Boolean> outcome = LockOrderRace.race(jdbc, "eraseAccountById",
 				args -> account.equals(args[0]),
 				() -> erasure.eraseAccount(account),
-				() -> {
-					recovery.issuePasswordResetToken(account, unique("late-token"), FUTURE);
-					return null;
-				});
+				() -> recovery.issuePasswordResetToken(account, unique("late-token"), FUTURE));
 
 		assertThat(outcome.racerWaited()).as("the issue waited on the erasure").isTrue();
+		assertThat(outcome.raced()).as("so no link is mailed").isFalse();
 		assertThat(tokenCount(account)).as("no token outlives the erasure").isZero();
 	}
 

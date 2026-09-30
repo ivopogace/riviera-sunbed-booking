@@ -41,7 +41,7 @@ public interface CustomerAccountStore {
 	 */
 	RegistrationOutcome insertIfAbsent(String normalizedEmail, String passwordHash);
 
-	/** The account an external {@code (provider, subject)} is linked to, or empty for a first sign-in. */
+	/** The live account an external {@code (provider, subject)} is linked to, or empty for a first sign-in. */
 	Optional<CustomerAccountId> accountForSsoIdentity(SsoProvider provider, String subject);
 
 	/**
@@ -51,16 +51,18 @@ public interface CustomerAccountStore {
 	Optional<SsoAccountClaim> claimAccountForSso(String normalizedEmail);
 
 	/**
-	 * Link {@code (provider, subject)} to the account unless a concurrent first sign-in linked it first; answers
-	 * the account it is linked to, empty when that link is gone again.
+	 * Link {@code (provider, subject)} to the account, taking it over from an erased one, unless a concurrent first
+	 * sign-in linked it to a live account first; answers the account it is linked to, empty when that link is gone.
 	 */
 	Optional<CustomerAccountId> linkSsoIdentity(CustomerAccountId accountId, SsoProvider provider, String subject,
 			String normalizedEmail);
 
+	/** Delete a password-less account this transaction created and then lost its identity for. */
+	void deleteUnlinkedAccount(CustomerAccountId accountId);
+
 	/**
-	 * Mark the account's email verified — sets {@code email_verified = true} +
-	 * {@code email_verified_at = NOW()}, idempotent: it only writes rows still {@code false}, so a repeat
-	 * (e.g. a returning SSO sign-in) does not churn the timestamp.
+	 * Mark the live account's email verified — sets {@code email_verified = true} + {@code email_verified_at = NOW()},
+	 * idempotent: it only writes rows still {@code false}, so a repeat does not churn the timestamp.
 	 */
 	void markEmailVerified(CustomerAccountId accountId);
 
@@ -71,8 +73,8 @@ public interface CustomerAccountStore {
 	boolean lockLiveAccount(CustomerAccountId accountId);
 
 	/**
-	 * Set the account's opaque password hash, unconditionally: the token-proven reset's write, authorized and encoded
-	 * at the edge; it also gives an SSO-only account its first password.
+	 * Set the live account's opaque password hash: the token-proven reset's write, authorized and encoded at the
+	 * edge; it also gives an SSO-only account its first password.
 	 */
 	void updatePasswordHash(CustomerAccountId accountId, String passwordHash);
 

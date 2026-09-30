@@ -105,7 +105,7 @@ class JdbcCustomerAccounts implements CustomerAccountStore {
 
 	@Override
 	public Optional<CustomerAccountId> accountForSsoIdentity(SsoProvider provider, String subject) {
-		return accountIdForIdentity(provider, subject).map(CustomerAccountId::new);
+		return liveAccountIdForIdentity(provider, subject).map(CustomerAccountId::new);
 	}
 
 	@Override
@@ -133,9 +133,11 @@ class JdbcCustomerAccounts implements CustomerAccountStore {
 	public Optional<CustomerAccountId> linkSsoIdentity(CustomerAccountId accountId, SsoProvider provider,
 			String subject, String normalizedEmail) {
 		Optional<Long> linked = jdbc.sql("""
-				INSERT INTO customer_sso_identity (account_id, provider, subject, email)
+				INSERT INTO customer_sso_identity AS linked (account_id, provider, subject, email)
 				VALUES (:accountId, :provider, :subject, :email)
-				ON CONFLICT (provider, subject) DO NOTHING
+				ON CONFLICT (provider, subject) DO UPDATE SET account_id = EXCLUDED.account_id, email = EXCLUDED.email
+				WHERE EXISTS (SELECT 1 FROM customer_account a
+				              WHERE a.id = linked.account_id AND a.erased_at IS NOT NULL)
 				RETURNING account_id
 				""")
 				.param(ACCOUNT_ID, accountId.value())
@@ -144,17 +146,22 @@ class JdbcCustomerAccounts implements CustomerAccountStore {
 				.param(EMAIL, normalizedEmail)
 				.query(Long.class)
 				.optional();
-		return linked.or(() -> accountIdForIdentity(provider, subject)).map(CustomerAccountId::new);
+		return linked.or(() -> liveAccountIdForIdentity(provider, subject)).map(CustomerAccountId::new);
+	}
+
+	@Override
+	public void deleteUnlinkedAccount(CustomerAccountId accountId) {
+		jdbc.sql("DELETE FROM customer_account WHERE id = :id AND password_hash IS NULL")
+				.param(ID, accountId.value())
+				.update();
 	}
 
 	@Override
 	public void markEmailVerified(CustomerAccountId accountId) {
-		// Guarded (email_verified = false) so it is idempotent and never churns email_verified_at on a
-		// repeat call (e.g. a returning SSO sign-in re-marking an already-verified account).
 		jdbc.sql("""
 				UPDATE customer_account
 				SET email_verified = true, email_verified_at = NOW()
-				WHERE id = :id AND email_verified = false
+				WHERE id = :id AND email_verified = false AND erased_at IS NULL
 				""")
 				.param(ID, accountId.value())
 				.update();
@@ -183,7 +190,7 @@ class JdbcCustomerAccounts implements CustomerAccountStore {
 
 	@Override
 	public void updatePasswordHash(CustomerAccountId accountId, String passwordHash) {
-		jdbc.sql("UPDATE customer_account SET password_hash = :hash WHERE id = :id")
+		jdbc.sql("UPDATE customer_account SET password_hash = :hash WHERE id = :id AND erased_at IS NULL")
 				.param("hash", passwordHash)
 				.param(ID, accountId.value())
 				.update();
@@ -205,9 +212,11 @@ class JdbcCustomerAccounts implements CustomerAccountStore {
 				.single();
 	}
 
-	private Optional<Long> accountIdForIdentity(SsoProvider provider, String subject) {
+	private Optional<Long> liveAccountIdForIdentity(SsoProvider provider, String subject) {
 		return jdbc.sql("""
-				SELECT account_id FROM customer_sso_identity WHERE provider = :provider AND subject = :subject
+				SELECT i.account_id FROM customer_sso_identity i
+				JOIN customer_account a ON a.id = i.account_id AND a.erased_at IS NULL
+				WHERE i.provider = :provider AND i.subject = :subject
 				""")
 				.param(PROVIDER, provider.name())
 				.param(SUBJECT, subject)

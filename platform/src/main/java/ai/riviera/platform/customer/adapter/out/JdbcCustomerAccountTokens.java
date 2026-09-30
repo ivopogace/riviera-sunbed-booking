@@ -36,14 +36,7 @@ class JdbcCustomerAccountTokens implements CustomerAccountTokens {
 
 	@Override
 	public void issue(CustomerAccountId accountId, TokenPurpose purpose, String tokenHash, Instant expiresAt) {
-		// Invalidate this account's prior unconsumed tokens of this purpose so only the newest link works.
-		jdbc.sql("""
-				UPDATE customer_account_token SET consumed_at = NOW()
-				WHERE account_id = :accountId AND purpose = :purpose AND consumed_at IS NULL
-				""")
-				.param(ACCOUNT_ID, accountId.value())
-				.param(PURPOSE, purpose.name())
-				.update();
+		retireAll(accountId, purpose);
 		jdbc.sql("""
 				INSERT INTO customer_account_token (account_id, purpose, token_hash, expires_at)
 				VALUES (:accountId, :purpose, :tokenHash, :expiresAt)
@@ -52,6 +45,17 @@ class JdbcCustomerAccountTokens implements CustomerAccountTokens {
 				.param(PURPOSE, purpose.name())
 				.param(TOKEN_HASH, tokenHash)
 				.param("expiresAt", Timestamp.from(expiresAt))
+				.update();
+	}
+
+	@Override
+	public void retireAll(CustomerAccountId accountId, TokenPurpose purpose) {
+		jdbc.sql("""
+				UPDATE customer_account_token SET consumed_at = NOW()
+				WHERE account_id = :accountId AND purpose = :purpose AND consumed_at IS NULL
+				""")
+				.param(ACCOUNT_ID, accountId.value())
+				.param(PURPOSE, purpose.name())
 				.update();
 	}
 

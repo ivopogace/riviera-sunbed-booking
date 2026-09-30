@@ -258,6 +258,11 @@ class CustomerAccountServiceTest {
 		}
 
 		@Override
+		public void deleteUnlinkedAccount(CustomerAccountId accountId) {
+			emailForId(accountId.value()).ifPresent(this::erase);
+		}
+
+		@Override
 		public void markEmailVerified(CustomerAccountId accountId) {
 			verified.add(accountId.value());
 		}
@@ -323,6 +328,13 @@ class CustomerAccountServiceTest {
 					? new Row(r.accountId(), r.purpose(), true)
 					: r);
 			byHash.put(tokenHash, new Row(accountId.value(), purpose, false));
+		}
+
+		@Override
+		public void retireAll(CustomerAccountId accountId, TokenPurpose purpose) {
+			byHash.replaceAll((h, r) -> r.accountId() == accountId.value() && r.purpose() == purpose
+					? new Row(r.accountId(), r.purpose(), true)
+					: r);
 		}
 
 		@Override

@@ -17,16 +17,22 @@ import ai.riviera.platform.customer.vocabulary.VerifyEmailOutcome;
  */
 public interface CustomerAccountRecovery {
 
-	/** Issue an email-verification token for the account, invalidating its prior unconsumed ones. */
-	void issueEmailVerificationToken(CustomerAccountId accountId, String tokenHash, Instant expiresAt);
+	/**
+	 * Issue an email-verification token for the account, invalidating its prior unconsumed ones; false, storing
+	 * nothing, when the account is gone or erased, so the caller mails no link.
+	 */
+	boolean issueEmailVerificationToken(CustomerAccountId accountId, String tokenHash, Instant expiresAt);
 
-	/** Issue a password-reset token for the account, invalidating its prior unconsumed ones. */
-	void issuePasswordResetToken(CustomerAccountId accountId, String tokenHash, Instant expiresAt);
+	/** {@link #issueEmailVerificationToken}, for a password reset. */
+	boolean issuePasswordResetToken(CustomerAccountId accountId, String tokenHash, Instant expiresAt);
 
 	/** Redeem a verification token (single-use): on success mark the account's email verified. */
 	VerifyEmailOutcome verifyEmail(String tokenHash);
 
-	/** Redeem a reset token (single-use): on success set the account's password to {@code newPasswordHash}. */
+	/**
+	 * Redeem a reset token (single-use): on success set the account's password to {@code newPasswordHash} and retire
+	 * the account's other reset tokens.
+	 */
 	ResetPasswordOutcome resetPassword(String tokenHash, String newPasswordHash);
 
 	/**

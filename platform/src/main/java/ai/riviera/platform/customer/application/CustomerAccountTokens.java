@@ -21,6 +21,9 @@ public interface CustomerAccountTokens {
 	 */
 	void issue(CustomerAccountId accountId, TokenPurpose purpose, String tokenHash, Instant expiresAt);
 
+	/** Consume every unconsumed token of this purpose for the account. */
+	void retireAll(CustomerAccountId accountId, TokenPurpose purpose);
+
 	/**
 	 * Atomically claim an unexpired, unconsumed token by {@code (purpose, tokenHash)}, marking it
 	 * consumed in the same statement so concurrent redeemers cannot both succeed; returns its

@@ -18,32 +18,32 @@ link redeemed after erasure were fixed by #1315 and #1316.
 
 ## Acceptance criteria
 
-- [ ] **AC-1 (SSO link after erasure):** Given a first SSO sign-in that found account A by email and is
+- [x] **AC-1 (SSO link after erasure):** Given a first SSO sign-in that found account A by email and is
   waiting on its identity insert, when A's erasure runs, then no identity for A survives the erasure.
   *Seam:* `SsoAccountProvisioning.resolveOrCreate` racing `AccountErasure.eraseAccount` · *Pinned by:*
   `CustomerErasureRaceIT.anSsoIdentityNeverOutlivesItsAccountsErasure` (red on `main`: the identity survives).
-- [ ] **AC-2 (SSO re-resolves):** Given a first SSO sign-in paused after finding A by email, when A's erasure
+- [x] **AC-2 (SSO re-resolves):** Given a first SSO sign-in paused after finding A by email, when A's erasure
   commits, then the sign-in links a fresh live account under that email. *Pinned by:*
   `CustomerErasureRaceIT.anSsoSignInWhoseAccountWasErasedMeanwhileGetsAFreshAccount`.
-- [ ] **AC-3 (stale identity):** Given an identity whose account is erased (left by the old race), when its
+- [x] **AC-3 (stale identity):** Given an identity whose account is erased (left by the old race), when its
   subject signs in, then it resolves to a fresh live account and the identity moves to it. *Pinned by:*
   `CustomerErasureRaceIT.anIdentityOfAnErasedAccountIsAdoptedByAFreshOne` (red on `main`: resolves to the
   erased account).
-- [ ] **AC-4 (token after erasure):** Given an erasure paused after its tombstone, when a reset token is
+- [x] **AC-4 (token after erasure):** Given an erasure paused after its tombstone, when a reset token is
   issued for that account, then it is never stored and the issue answers "not issued". *Seam:*
   `CustomerAccountRecovery.issuePasswordResetToken` · *Pinned by:*
   `CustomerErasureRaceIT.aTokenIssuedDuringAnErasureIsNeverStored` (red on `main`).
-- [ ] **AC-5 (one live link):** Given a reset issue paused after its insert, when a second issue for the same
+- [x] **AC-5 (one live link):** Given a reset issue paused after its insert, when a second issue for the same
   account runs, then exactly one reset token is live, the second's. *Pinned by:*
   `CustomerErasureRaceIT.twoConcurrentResetIssuesLeaveOneLiveLink` (red on `main`: two live).
-- [ ] **AC-6 (reset retires the rest):** Given two live reset tokens of one account, when one is redeemed,
+- [x] **AC-6 (reset retires the rest):** Given two live reset tokens of one account, when one is redeemed,
   then the other is consumed. *Pinned by:* `CustomerAccountRecoveryIT.aResetRetiresTheAccountsOtherResetLinks`.
-- [ ] **AC-7 (no stray):** Given two first SSO sign-ins with one subject and different emails, both waiting on
+- [x] **AC-7 (no stray):** Given two first SSO sign-ins with one subject and different emails, both waiting on
   a third's identity insert, when it commits, then both resolve to its account and neither leaves an account
   behind. *Pinned by:* `CustomerErasureRaceIT.concurrentFirstSignInsOfOneSubjectLeaveNoStrayAccount`.
-- [ ] **AC-8 (guards):** `updatePasswordHash` and `markEmailVerified` write nothing to an erased account.
+- [x] **AC-8 (guards):** `updatePasswordHash` and `markEmailVerified` write nothing to an erased account.
   *Pinned by:* `JdbcCustomerAccountsIT`.
-- [ ] **AC-9:** the recovery, SSO, erasure and lock-order suites and the structural net stay green.
+- [x] **AC-9:** the recovery, SSO, erasure and lock-order suites and the structural net stay green.
 
 ## Non-goals
 
@@ -83,17 +83,17 @@ link redeemed after erasure were fixed by #1315 and #1316.
 
 ## Execution status
 
-**Stage pointer:** plan
+**Stage pointer:** PR — waiting for #1316 to merge, then rebase onto main and open the PR
 
-**Next action:** phase 0.
+**Next action:** rebase onto main after #1316 merges, push, open the PR, review gate.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — split | | |
-| 1 — red | | |
-| 2 — SSO | | |
-| 3 — tokens | | |
-| 4 — guards | | |
-| 5 — docs | | |
+| 0 — split | ✅ | 2e627120 |
+| 1 — red | ✅ | f05f6fa1 |
+| 2 — SSO | ✅ | (next commit) |
+| 3 — tokens | ✅ | (next commit) |
+| 4 — guards | ✅ | (next commit) |
+| 5 — docs | ✅ | (next commit) |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
