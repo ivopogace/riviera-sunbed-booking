@@ -192,7 +192,7 @@ class StripePaymentGateway implements PaymentGateway {
 	/**
 	 * The live refunds that may be this booking's within {@code scope}: those tagged with this booking and scope, plus
 	 * untagged ones on a single-booking intent for the whole share (a manual refund). An untagged live refund on a
-	 * shared intent, or for a day (its failure is matched to the whole share, #1310), makes the answer empty: refuse.
+	 * shared intent, or met by a day (the webhook matches its failure to the whole share, #1310), empties the answer.
 	 */
 	private Optional<List<Refund>> candidatesFor(BookingRef booking, RefundScope scope, String intentId,
 			List<Refund> live) {
