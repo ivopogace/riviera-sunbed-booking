@@ -3,6 +3,7 @@ package ai.riviera.platform.payout.application;
 import java.util.Optional;
 
 import org.junit.jupiter.api.Test;
+import org.mockito.InOrder;
 
 import ai.riviera.platform.payout.domain.BatchStatus;
 import ai.riviera.platform.payout.domain.PayoutBatch;
@@ -13,6 +14,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -32,7 +34,18 @@ class PayoutReportServiceTest {
 	private static final PeriodKey PERIOD = new PeriodKey("2026-W28");
 
 	private final PayoutBatches batches = mock(PayoutBatches.class);
-	private final PayoutReportService service = new PayoutReportService(mock(PayoutLedger.class), batches);
+	private final PayoutLedger ledger = mock(PayoutLedger.class);
+	private final PayoutReportService service = new PayoutReportService(ledger, batches);
+
+	@Test
+	void generateLocksItsPeriodBeforeItReadsTheBatchesOrTheLedger() {
+		service.generate(PERIOD);
+
+		InOrder order = inOrder(batches, ledger);
+		order.verify(batches).lockPeriod(PERIOD);
+		order.verify(batches).forPeriod(PERIOD);
+		order.verify(ledger).netTotalsForPeriod(PERIOD);
+	}
 
 	private static PayoutBatch batch(BatchStatus status) {
 		return new PayoutBatch(BATCH_ID, VENUE, PERIOD, 9350, "EUR", status);
