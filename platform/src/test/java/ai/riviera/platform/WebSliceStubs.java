@@ -627,11 +627,13 @@ class WebSliceStubs {
 	CustomerAccountRecovery customerAccountRecovery() {
 		return new CustomerAccountRecovery() {
 			@Override
-			public void issueEmailVerificationToken(CustomerAccountId accountId, String tokenHash, Instant expiresAt) {
+			public boolean issueEmailVerificationToken(CustomerAccountId accountId, String tokenHash, Instant expiresAt) {
+				return true;
 			}
 
 			@Override
-			public void issuePasswordResetToken(CustomerAccountId accountId, String tokenHash, Instant expiresAt) {
+			public boolean issuePasswordResetToken(CustomerAccountId accountId, String tokenHash, Instant expiresAt) {
+				return true;
 			}
 
 			@Override

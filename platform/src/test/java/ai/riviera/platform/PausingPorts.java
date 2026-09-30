@@ -25,6 +25,8 @@ public class PausingPorts {
 	private static final String[] PORTS = {
 			"ai.riviera.platform.availability.api.AvailabilityClaim",
 			"ai.riviera.platform.booking.application.Bookings",
+			"ai.riviera.platform.customer.application.AccountErasureStore",
+			"ai.riviera.platform.customer.application.CustomerAccountStore",
 			"ai.riviera.platform.customer.application.CustomerAccountTokens",
 			"ai.riviera.platform.review.application.Reviews"};
 

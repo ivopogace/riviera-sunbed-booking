@@ -6,6 +6,7 @@ import java.time.Duration;
 import java.time.Instant;
 import java.time.ZoneOffset;
 
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 
@@ -45,6 +46,23 @@ class CustomerRecoveryTest {
 			new RecoveryTokens(),
 			new RecoveryProperties(Duration.ofHours(24), Duration.ofHours(1), BASE_URL),
 			Clock.fixed(Instant.parse("2026-07-27T10:00:00Z"), ZoneOffset.UTC));
+
+	@BeforeEach
+	void issuesForALiveAccount() {
+		when(accounts.issuePasswordResetToken(any(), any(), any())).thenReturn(true);
+		when(accounts.issueEmailVerificationToken(any(), any(), any())).thenReturn(true);
+	}
+
+	@Test
+	void mailsNoLinkWhenTheAccountWasErased() {
+		when(accounts.issuePasswordResetToken(any(), any(), any())).thenReturn(false);
+		when(accounts.issueEmailVerificationToken(any(), any(), any())).thenReturn(false);
+
+		recovery.sendPasswordResetEmail(ACCOUNT, EMAIL);
+		recovery.sendVerificationEmail(ACCOUNT, EMAIL);
+
+		verifyNoInteractions(mails);
+	}
 
 	@Test
 	void issuesTheTokenOnTheCallersThread() {

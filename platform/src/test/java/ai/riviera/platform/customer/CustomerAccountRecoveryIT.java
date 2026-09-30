@@ -172,6 +172,20 @@ class CustomerAccountRecoveryIT {
 				id.value())).isNull();
 	}
 
+	@Test
+	void aResetRetiresTheAccountsOtherResetLinks() {
+		CustomerAccountId id = register("two-live-links@example.com");
+		for (String hash : new String[] {"live-link-a", "live-link-b"}) {
+			jdbc.update("INSERT INTO customer_account_token (account_id, purpose, token_hash, expires_at)"
+					+ " VALUES (?, 'RESET_PASSWORD', ?, ?)", id.value(), hash, java.sql.Timestamp.from(FUTURE));
+		}
+
+		assertThat(recovery.resetPassword("live-link-a", "{bcrypt}reset")).isInstanceOf(ResetPasswordOutcome.Reset.class);
+
+		assertThat(recovery.resetPassword("live-link-b", "{bcrypt}again"))
+				.as("the other link died with the reset").isInstanceOf(ResetPasswordOutcome.InvalidOrExpired.class);
+	}
+
 	private CustomerAccountId register(String email) {
 		RegistrationOutcome outcome = provisioning.register(email, "{bcrypt}orig");
 		return ((RegistrationOutcome.Registered) outcome).accountId();
