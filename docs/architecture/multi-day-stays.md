@@ -223,13 +223,13 @@ booking_day (booking_id, service_date, attended_at, missed_at)
 ```
 
 *(V68 / ADR-0026 later added `refunded_at, refund_minor`, both-or-neither and never beside
-`attended_at`.)*
+`attended_at`; V71 / ADR-0027 `refund_reason`, `released_at` and `refunded_by_operator_id`.)*
 
 - **Check-in** stamps today's row under a guarded `UPDATE … WHERE booking_id = ? AND service_date =
   :today AND attended_at IS NULL AND missed_at IS NULL AND refunded_at IS NULL` (since #1210: a
-  refunded day answers `DayRefunded`; since ADR-0027 a released one `DayReleased`). A second scan moves zero rows and answers "already checked in
-  today" — the identical one-shot property the current transition gets from `status = 'CONFIRMED'`,
-  scoped to a service day.
+  refunded day answers `DayRefunded`; since ADR-0027 a released one `DayReleased`). A second scan
+  moves zero rows and answers "already checked in today" — the identical one-shot property the
+  current transition gets from `status = 'CONFIRMED'`, scoped to a service day.
 - **The no-show sweep** marks past unattended service days, then resolves the parent booking once its
   last service day has passed. Same batching shape, same guarded-update discipline, same scheduler —
   the no-show sweep adds none (`MoveReminderScheduler` came later with #1209's move reminder).
@@ -276,11 +276,13 @@ the venue-change fee.
 
 Each release site today frees exactly one date, taken from the single `booking_date` its `RETURNING`
 clause yields. Each site in `booking/` that calls `AvailabilityClaim.release` must release the whole
-span: `SpanClaim#releaseEveryDay` (a lost claim gives back what it won the same way),
-`ClaimReleaseService` (the payment-canceled webhook and the abandoned-payment sweep) and
-`RemodelClaimsService#releaseSpan` (the remodel legs) walk it, and the guest cancel and the weather
-refund loop it themselves — since ADR-0027 as `ServiceDays.held`, the span less the days the venue
-released, which are another guest's or nobody's. (Since ADR-0025 a pending request holds nothing, so
+span the booking still holds: `SpanClaim#releaseEveryDay` (a lost claim gives back what it won the
+same way), `ClaimReleaseService` (the payment-canceled webhook and the abandoned-payment sweep) and
+`RemodelClaimsService#releaseSpan` (an unpaid claim's remodel release) walk `ServiceDays.between`;
+the guest cancel, the weather refund, the venue day refund's lone one-day leg and the remodel refund
+and move (`RemodelClaimsService#releaseHeld`) walk `ServiceDays.held` since ADR-0027 — the span less
+the days the venue released, which are another guest's or nobody's. The venue day refund's stay leg
+frees exactly that one day, unless it is past. (Since ADR-0025 a pending request holds nothing, so
 the three request-termination legs and the remodel's decline release nothing; the accept's revert
 joined the releasing legs instead.) This is the slice's highest-risk correctness item, because
 `set_availability` carries **no link to a booking** (`held_by_booking_id` was deferred in V4 and

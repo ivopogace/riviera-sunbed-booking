@@ -421,8 +421,8 @@ classDiagram
 >
 > **The lifecycle is enforced in SQL**, as ten guarded `UPDATE … WHERE status = … RETURNING`
 > statements in `JdbcBookings` plus `booking_status_check` — eleven transitions, because the one
-> cancel statement is driven twice with different admitted statuses (the guest's and the admin
-> weather refund's). `BookingTransition` states the same table in Java, and
+> cancel statement is driven twice with different admitted statuses (the guest's and the venue's
+> refund's, `VENUE_REFUND`). `BookingTransition` states the same table in Java, and
 > `JdbcBookingTransitionTableIT` holds the two together. `EXPIRED` is a request the venue never
 > answered (deadline sweep); an abandoned `AWAITING_PAYMENT` booking — instant, or an
 > accepted-but-unpaid request past its pay window — is swept to `CANCELLED`. §6.1 draws it.
@@ -922,7 +922,7 @@ sequenceDiagram
 > refunds of a whole booking are the same flow, operator- or admin-triggered — the weather refund under
 > `WEATHER`, the venue day refund of a lone one-day booking under `VENUE` (ADR-0027 §6) — and they alone
 > may reach a swept `NO_SHOW`. A stay's refunded day is not this flow: `booking` stamps the day with its
-> reason (`WEATHER`, or `VENUE` with the day released, ADR-0027), publishes `BookingDayRefunded`,
+> reason (`WEATHER`, or `VENUE` with the day released unless past, ADR-0027), publishes `BookingDayRefunded`,
 > `payment` refunds the day's share on the stretch's intent and `payout` posts a `DAY_REVERSAL`; the
 > booking's status does not move (ADR-0026).
 >

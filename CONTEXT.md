@@ -534,8 +534,9 @@ model in `docs/architecture/domain-model.md`.
   platform-wide admin surface.
 - **Venue ownership** — the operator↔venue mapping that answers *"does this operator own
   this venue?"*. Every venue-scoped operation (beach-map edit, staff bookings, staff
-  availability, weather refund, venue day refund, payout ledger) verifies it in the application service and
-  returns **403** on a mismatch (object-level authorization, not role-level — invariant #13).
+  availability, weather refund, the operator's venue day refund, payout ledger) verifies it in the
+  application service and returns **403** on a mismatch (object-level authorization, not role-level —
+  invariant #13).
 - **Operator approval** — a platform admin's decision on a self-registered (`PENDING`) operator:
   approve (→ `ACTIVE`) or reject (→ `REJECTED`, terminal). A `PENDING` operator already
   signs in and uses the **entire** operator console — registering flows straight into it, and the

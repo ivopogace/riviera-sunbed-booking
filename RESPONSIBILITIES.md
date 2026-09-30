@@ -1121,10 +1121,10 @@ The mechanism and edge cases behind `CLAUDE.md`'s one-line invariants; its numbe
     caller's figure. Full refund until the venue's evening-before `booking_cutoff` (default `18:00`
     `Europe/Tirane`, owner-editable; not #4's sales close), then the venue's late share (none or
     partial); from service-day open (00:00 `Europe/Tirane`) a guest cancel is refused, not refunded.
-    Outside the tiers, deliberately: the venue's own refunds — the **weather exception** (a one-day
-    booking in full, a stay's day at its share, ADR-0026) and the **venue day refund** (one guest's
-    day at its share, released, ADR-0027) — and a **moved booking's free exit**, in full under
-    `VENUE_CHANGE` until `BookingCutoff#freeExitEndsAt`, never reopening `CLOSED` (§`booking`, ADR-0020).
+    Outside the tiers, deliberately: the venue's own refunds — the **weather exception** (a one-day booking
+    in full, a stay's day at its share, ADR-0026) and the **venue day refund** (the same for one guest, the
+    day released unless past, ADR-0027) — and a **moved booking's free exit**, in full under `VENUE_CHANGE`
+    until `BookingCutoff#freeExitEndsAt` whatever `LATE` would answer; capped at service-day open, it never reopens `CLOSED` (§`booking`, ADR-0020).
 11. **Spring Modulith boundaries are hexagonal and id-based** (ADR-0007). Cross-module access is an
     `api/` port or a domain event carrying technical ids (no business fields), never another
     module's `application.*`/`adapter.*`/`domain.*`. A full module is `{api?, spi?, vocabulary?,
