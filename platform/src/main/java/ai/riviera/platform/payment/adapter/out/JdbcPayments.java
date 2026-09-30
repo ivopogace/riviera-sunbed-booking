@@ -245,7 +245,18 @@ class JdbcPayments implements Payments {
 				.param(PARAM_REFUND_ID, refundId)
 				.query(Long.class)
 				.list();
-		// Guarded in the one statement, never read-then-write: two deliveries cannot both un-record.
+		return unrecord(refundId);
+	}
+
+	@Override
+	@Transactional
+	public boolean markRefundFailed(String refundId, BookingRef booking, RefundScope scope) {
+		lockIntent(booking);
+		return unrecord(refundId) || markDiedBeforeRecord(booking, scope, refundId);
+	}
+
+	/** Guarded in the one statement, never read-then-write: two deliveries cannot both un-record. */
+	private boolean unrecord(String refundId) {
 		return jdbc.sql("""
 				WITH moved AS (
 				    UPDATE payment_refund r
@@ -263,8 +274,7 @@ class JdbcPayments implements Payments {
 				.update() == 1;
 	}
 
-	@Override
-	public boolean markUnrecordedRefundFailed(BookingRef booking, RefundScope scope, String refundId) {
+	private boolean markDiedBeforeRecord(BookingRef booking, RefundScope scope, String refundId) {
 		// attempted_at is the discriminator: without it this is someone else's manual refund.
 		return jdbc.sql("""
 				UPDATE payment_refund r

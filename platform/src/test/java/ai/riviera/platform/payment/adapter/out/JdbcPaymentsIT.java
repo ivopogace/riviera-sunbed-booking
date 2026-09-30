@@ -310,14 +310,14 @@ class JdbcPaymentsIT {
 	}
 
 	@Test
-	void markUnrecordedRefundFailedMarksTheRacingAttempt() {
+	void aFailureBeforeItsRecordMarksTheRacingAttempt() {
 		payments.register(new NewPayment(new BookingRef(9801L), "pi_racing", 4500L, "EUR", "cs_test_secret"));
 		payments.markStatus("pi_racing", PaymentStatus.SUCCEEDED);
 		payments.markRefundAttempted(new BookingRef(9801L));
 
 		assertFalse(payments.markRefundFailed("re_racing"),
 				"the refund is not written down yet, so the id-matched un-record finds nothing");
-		assertTrue(payments.markUnrecordedRefundFailed(new BookingRef(9801L), "re_racing"),
+		assertTrue(payments.markRefundFailed("re_racing", new BookingRef(9801L), RefundScope.WHOLE),
 				"but the attempt is on record, so the failure is this platform's and must not be lost");
 
 		assertEquals(1, jdbc.sql("""
@@ -334,7 +334,7 @@ class JdbcPaymentsIT {
 		payments.register(new NewPayment(new BookingRef(9802L), "pi_lost_race", 4500L, "EUR", "cs_test_secret"));
 		payments.markStatus("pi_lost_race", PaymentStatus.SUCCEEDED);
 		payments.markRefundAttempted(new BookingRef(9802L));
-		payments.markUnrecordedRefundFailed(new BookingRef(9802L), "re_lost_race");
+		payments.markRefundFailed("re_lost_race", new BookingRef(9802L), RefundScope.WHOLE);
 
 		assertFalse(payments.markRefunded(new BookingRef(9802L), 4500L, "re_lost_race"),
 				"the refund the gateway already killed must never be recorded as a live one");
@@ -350,9 +350,9 @@ class JdbcPaymentsIT {
 		payments.register(new NewPayment(new BookingRef(9803L), "pi_twice_raced", 4500L, "EUR", "cs_test_secret"));
 		payments.markStatus("pi_twice_raced", PaymentStatus.SUCCEEDED);
 		payments.markRefundAttempted(new BookingRef(9803L));
-		payments.markUnrecordedRefundFailed(new BookingRef(9803L), "re_twice_raced");
+		payments.markRefundFailed("re_twice_raced", new BookingRef(9803L), RefundScope.WHOLE);
 
-		assertFalse(payments.markUnrecordedRefundFailed(new BookingRef(9803L), "re_twice_raced"),
+		assertFalse(payments.markRefundFailed("re_twice_raced", new BookingRef(9803L), RefundScope.WHOLE),
 				"Stripe re-delivers, and both refund types carry the same death — it must count once");
 	}
 
@@ -364,7 +364,7 @@ class JdbcPaymentsIT {
 		payments.markRefunded(new BookingRef(9808L), 4500L, "re_ours");
 		payments.markRefundFailed("re_ours");
 
-		assertFalse(payments.markUnrecordedRefundFailed(new BookingRef(9808L), "re_by_hand"),
+		assertFalse(payments.markRefundFailed("re_by_hand", new BookingRef(9808L), RefundScope.WHOLE),
 				"our attempt is over — a later refund on this collection is not ours to own");
 
 		assertEquals("re_ours", failedRefundIdOf(9808L),
@@ -376,11 +376,11 @@ class JdbcPaymentsIT {
 		payments.register(new NewPayment(new BookingRef(9809L), "pi_reattempt", 4500L, "EUR", "cs_test_secret"));
 		payments.markStatus("pi_reattempt", PaymentStatus.SUCCEEDED);
 		payments.markRefundAttempted(new BookingRef(9809L));
-		payments.markUnrecordedRefundFailed(new BookingRef(9809L), "re_first_race");
+		payments.markRefundFailed("re_first_race", new BookingRef(9809L), RefundScope.WHOLE);
 
 		payments.markRefundAttempted(new BookingRef(9809L));
 
-		assertTrue(payments.markUnrecordedRefundFailed(new BookingRef(9809L), "re_second_race"),
+		assertTrue(payments.markRefundFailed("re_second_race", new BookingRef(9809L), RefundScope.WHOLE),
 				"the outbox re-drive is a new attempt, so its own racing failure must land too");
 		assertEquals("re_second_race", failedRefundIdOf(9809L));
 		assertFalse(payments.markRefunded(new BookingRef(9809L), 4500L, "re_second_race"),
@@ -392,7 +392,7 @@ class JdbcPaymentsIT {
 		payments.register(new NewPayment(new BookingRef(9804L), "pi_manual", 4500L, "EUR", "cs_test_secret"));
 		payments.markStatus("pi_manual", PaymentStatus.SUCCEEDED);
 
-		assertFalse(payments.markUnrecordedRefundFailed(new BookingRef(9804L), "re_by_hand"),
+		assertFalse(payments.markRefundFailed("re_by_hand", new BookingRef(9804L), RefundScope.WHOLE),
 				"no attempt on record means this refund is not ours — the platform owes nothing");
 
 		assertEquals(0L, owedRows(9804L),
@@ -406,7 +406,7 @@ class JdbcPaymentsIT {
 		payments.markRefundAttempted(new BookingRef(9805L));
 		payments.markRefunded(new BookingRef(9805L), 4500L, "re_written");
 
-		assertFalse(payments.markUnrecordedRefundFailed(new BookingRef(9805L), "re_other"),
+		assertFalse(payments.markRefundFailed("re_other", new BookingRef(9805L), RefundScope.WHOLE),
 				"the by-intent arm covers the un-written window only; a recorded refund is matched by id");
 		assertEquals(4500L, payments.findRefundState(new BookingRef(9805L)).orElseThrow().refundedMinor());
 	}
@@ -498,9 +498,9 @@ class JdbcPaymentsIT {
 		payments.markRefunded(new BookingRef(9957L), 4500L, "re_shared_race_a");
 		payments.markRefundAttempted(new BookingRef(9958L));
 
-		assertTrue(payments.markUnrecordedRefundFailed(new BookingRef(9958L), "re_shared_race_b"),
+		assertTrue(payments.markRefundFailed("re_shared_race_b", new BookingRef(9958L), RefundScope.WHOLE),
 				"B's attempt is on record and B has no refund written down, so the death is B's");
-		assertFalse(payments.markUnrecordedRefundFailed(new BookingRef(9957L), "re_shared_race_x"),
+		assertFalse(payments.markRefundFailed("re_shared_race_x", new BookingRef(9957L), RefundScope.WHOLE),
 				"A's refund is recorded, so a failure for A is matched by id or not at all");
 		assertEquals(4500L, payments.findRefundState(new BookingRef(9957L)).orElseThrow().refundedMinor(),
 				"A's recorded refund is untouched by B's racing failure");
@@ -589,6 +589,23 @@ class JdbcPaymentsIT {
 		assertTrue(payments.markRefundFailed("re_mixed_a"), "so A's own later failure still finds its record");
 	}
 
+	@Test
+	void aFailureRacingItsOwnRecordUnrecordsItOnceCommitted() throws Exception {
+		// The refund's failure lands while its id is written but uncommitted (#1298): it must wait, then un-record it.
+		payments.register(new NewPayment(new BookingRef(9811L), "pi_record_race", 4500L, "EUR", "cs_test_secret"));
+		payments.markStatus("pi_record_race", PaymentStatus.SUCCEEDED);
+		payments.markRefundAttempted(new BookingRef(9811L));
+
+		assertTrue(racingAHeldWrite(
+				() -> payments.markRefunded(new BookingRef(9811L), 4500L, "re_record_race"),
+				() -> payments.markRefundFailed("re_record_race", new BookingRef(9811L), RefundScope.WHOLE)),
+				"the failure is applied once the record commits, never consumed unapplied");
+
+		assertEquals(0L, refundedMinorOf(9811L), "the dead refund is off the share");
+		assertEquals(1L, owedRows(9811L), "and the guest is listed as owed");
+		assertEquals("SUCCEEDED", statusOf("pi_record_race"));
+	}
+
 	/**
 	 * Runs {@code held} in a transaction left open until {@code racer} is seen waiting on a lock, then commits it
 	 * and returns what {@code racer} answered.
@@ -646,11 +663,11 @@ class JdbcPaymentsIT {
 		payments.markRefundAttempted(new BookingRef(9623L), day2);
 		payments.markRefundAttempted(new BookingRef(9623L));
 
-		assertTrue(payments.markUnrecordedRefundFailed(new BookingRef(9623L), day2, "re_day_race"),
+		assertTrue(payments.markRefundFailed("re_day_race", new BookingRef(9623L), day2),
 				"the day's attempt is on record, so its death is this platform's");
-		assertFalse(payments.markUnrecordedRefundFailed(new BookingRef(9623L), day2, "re_day_race"),
+		assertFalse(payments.markRefundFailed("re_day_race", new BookingRef(9623L), day2),
 				"and counts once");
-		assertTrue(payments.markUnrecordedRefundFailed(new BookingRef(9623L), "re_whole_race"),
+		assertTrue(payments.markRefundFailed("re_whole_race", new BookingRef(9623L), RefundScope.WHOLE),
 				"the whole share's attempt is a row of its own");
 		assertEquals(2L, owedRows(9623L));
 		assertFalse(payments.markRefunded(new BookingRef(9623L), day2, 300L, "re_day_race"),

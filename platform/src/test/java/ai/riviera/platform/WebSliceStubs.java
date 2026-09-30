@@ -1026,8 +1026,8 @@ class WebSliceStubs {
 			}
 
 			@Override
-			public boolean markUnrecordedRefundFailed(BookingRef booking,
-					ai.riviera.platform.payment.domain.RefundScope scope, String refundId) {
+			public boolean markRefundFailed(String refundId, BookingRef booking,
+					ai.riviera.platform.payment.domain.RefundScope scope) {
 				return false;
 			}
 

@@ -89,16 +89,11 @@ public interface Payments {
 	boolean markRefundFailed(String refundId);
 
 	/**
-	 * Mark the booking's refund of {@code scope} as one that died <strong>before</strong> it was recorded;
-	 * the caller resolves the booking. Moves only with a {@link #markRefundAttempted} on record and no
-	 * refund recorded, so a failed manual gateway refund moves nothing (RESPONSIBILITIES.md §payment).
+	 * {@link #markRefundFailed(String)} for a refund that names its booking and scope, run after any write in flight
+	 * on its intent; else, with a {@link #markRefundAttempted} on record and no refund recorded, marks that attempt
+	 * died before it was recorded — a failed manual gateway refund moves nothing (RESPONSIBILITIES.md §payment).
 	 */
-	boolean markUnrecordedRefundFailed(BookingRef booking, RefundScope scope, String refundId);
-
-	/** {@link #markUnrecordedRefundFailed(BookingRef, RefundScope, String)} for the whole share. */
-	default boolean markUnrecordedRefundFailed(BookingRef booking, String refundId) {
-		return markUnrecordedRefundFailed(booking, RefundScope.WHOLE, refundId);
-	}
+	boolean markRefundFailed(String refundId, BookingRef booking, RefundScope scope);
 
 	/**
 	 * How many refunds (a share's whole, or one day of it) the gateway would not issue and are still owed
