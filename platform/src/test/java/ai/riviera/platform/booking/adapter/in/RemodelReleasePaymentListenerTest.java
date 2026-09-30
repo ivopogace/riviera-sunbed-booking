@@ -41,8 +41,11 @@ class RemodelReleasePaymentListenerTest {
 
 	private final MeterRegistry meters = new SimpleMeterRegistry();
 
-	/** The bookings whose receipt line is a release; every other id was refunded, declined or never remodelled. */
-	private final Set<Long> released = Set.of(42L, 46L, 47L, 48L, 49L, 50L, 51L);
+	/**
+	 * The bookings the receipt answers as released; every other id was refunded, declined or never remodelled. 43 and 44
+	 * are in it so only the reason check keeps their policy and weather cancels from a void.
+	 */
+	private final Set<Long> released = Set.of(42L, 43L, 44L, 46L, 47L, 48L, 49L, 50L, 51L);
 
 	private static BookingCancelled event(long bookingId, long refundMinor, RefundReason reason) {
 		return new BookingCancelled(new BookingId(bookingId), new VenueId(1L), new SetId(2L),

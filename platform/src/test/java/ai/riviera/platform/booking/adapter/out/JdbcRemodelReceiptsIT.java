@@ -116,7 +116,7 @@ class JdbcRemodelReceiptsIT {
 		assertEquals(List.of(read.outcomes().getFirst()), read.refunds());
 		assertEquals(read.outcomes(), receipts.receiptsOf(new VenueId(venue)).getFirst().outcomes());
 		assertTrue(receipts.releasedByRemodel(new BookingId(released)), "a release line reads as released");
-		assertFalse(receipts.releasedByRemodel(new BookingId(refunded)), "a refund line, even of nothing, is not a release");
+		assertFalse(receipts.releasedByRemodel(new BookingId(refunded)), "a refund line is not a release");
 	}
 
 	@Test
