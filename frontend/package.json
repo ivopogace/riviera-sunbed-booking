@@ -59,7 +59,7 @@
     "@axe-core/playwright": "^4.10.2",
     "@eslint/js": "^10.0.1",
     "@mapbox/vector-tile": "^3.0.0",
-    "@playwright/test": "1.62.1",
+    "@playwright/test": "1.63.0",
     "@tailwindcss/postcss": "^4.3.3",
     "@types/node": "^26.4.1",
     "@types/qrcode": "^1.5.6",
