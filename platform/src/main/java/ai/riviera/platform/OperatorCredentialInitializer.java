@@ -1,5 +1,7 @@
 package ai.riviera.platform;
 
+import java.util.Optional;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.ApplicationArguments;
@@ -13,11 +15,11 @@ import ai.riviera.platform.operator.vocabulary.OperatorCredential;
 
 /**
  * Boot-time provisioning of the bootstrap admin's credential from {@code RIVIERA_OPERATOR_PASSWORD}
- * ({@link RivieraOperatorProperties#password}), encoded by the {@link PasswordEncoder} and re-stamped
- * via {@link OperatorProvisioning#setPassword} on every boot (idempotent): a new value and a restart
- * rotate it. Blank or outside {@link PasswordPolicy}'s length rule: not stamped, one WARN without the
- * value, never a boot failure. Touches only the bootstrap account: {@code RESPONSIBILITIES.md}
- * §Platform edge. Runbook: {@code docs/runbooks/operator-credential-provisioning.md}.
+ * ({@link RivieraOperatorProperties#password}) via {@link OperatorProvisioning#setPassword}, written only when the
+ * stored hash does not {@code matches} it: bcrypt re-salts, and a new hash ends every session's stamp (#1306).
+ * Blank or outside {@link PasswordPolicy}'s length rule: not written, one WARN without the value, never a boot
+ * failure. Touches only the bootstrap account: {@code RESPONSIBILITIES.md} §Platform edge. Runbook:
+ * {@code docs/runbooks/operator-credential-provisioning.md}.
  */
 @Component
 class OperatorCredentialInitializer implements ApplicationRunner {
@@ -55,7 +57,12 @@ class OperatorCredentialInitializer implements ApplicationRunner {
 					PasswordPolicy.MIN_LENGTH, PasswordPolicy.MAX_BYTES, username);
 			return;
 		}
-		boolean rotated = isGenuineRotation(username, password);
+		Optional<String> storedHash = accounts.findByUsername(username).map(OperatorCredential::passwordHash);
+		if (storedHash.filter(hash -> encoder.matches(password, hash)).isPresent()) {
+			log.info("Bootstrap operator '{}' already holds the configured credential.", username);
+			return;
+		}
+		boolean rotated = storedHash.isPresent();
 		boolean updated = provisioning.setPassword(username, encoder.encode(password));
 		if (updated && rotated) {
 			// A restart does not clear SPRING_SESSION, so the rotated-away sessions must go.
@@ -69,17 +76,5 @@ class OperatorCredentialInitializer implements ApplicationRunner {
 					+ "it — the write API stays locked. Check riviera.operator.username matches a seeded "
 					+ "operator.", username);
 		}
-	}
-
-	/**
-	 * Whether the configured password differs from the stored one: a real rotation, not the every-boot
-	 * re-stamp. Use {@code matches}, never hash equality: bcrypt re-salts, so equality would revoke the
-	 * admin's sessions on every deploy. No stored hash yet (first boot) is not a rotation.
-	 */
-	private boolean isGenuineRotation(String username, String password) {
-		return accounts.findByUsername(username)
-				.map(OperatorCredential::passwordHash)
-				.filter(storedHash -> !encoder.matches(password, storedHash))
-				.isPresent();
 	}
 }

@@ -113,8 +113,9 @@ On any credential change, account-lifecycle transition or session machinery: ses
 revoked at the edge, synchronously (`PrincipalSessionRevoker`), not via an event; the revoke
 **brackets** the state change (before, keyed by a status-guarded pre-read such as
 `OperatorLifecycle#usernameInStatus` / `CustomerAccountRecovery#emailForResetToken`, AND after);
-a self-service password change revokes the *other* sessions before the hash write and rotates
-the surviving session id via `SessionIdentity#rotate` (`SessionIdentityTest`); a rate-limit
+a self-service password change revokes the *other* sessions before the hash write, rotates
+the surviving session id via `SessionIdentity#rotate` (`SessionIdentityTest`) and re-stamps it
+(`SessionAuthentication#restamp`), or `SessionCredentialFilter` ends it on the next request; a rate-limit
 budget on authenticated work refunds a 401/403-denied request, login budgets still charge.
 
 ### RV-BE-17. Flyway enforces the invariants (#12) — Blocker for availability uniqueness missing in SQL, Major otherwise

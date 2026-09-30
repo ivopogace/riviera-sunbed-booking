@@ -26,19 +26,11 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * The session-revocation proof (AC-1, AC-2) against Testcontainers Postgres and the
  * real Spring Session JDBC store.
  *
- * <p><strong>Why this class exists.</strong> Under the old HTTP Basic model credentials were
- * re-verified on <em>every</em> request, so suspending an operator revoked access on its next call —
- * a property {@code PerOperatorLoginIT} used to assert. The move to server-side sessions
- * deleted that assertion, because session auth deliberately has no per-request credential re-check,
- * and nothing replaced it: a live {@code SPRING_SESSION} row kept authenticating a suspended operator
- * until it expired. This class is that replacement coverage.
+ * <p>The revoke is one of two defences: the per-request credential stamp ({@code SessionCredentialStampIT},
+ * {@code SessionCredentialRaceIT}) also ends a suspended operator's session, including one saved after the revoke.
  *
- * <p>Venue-scoped surfaces were never the hole — they resolve ownership ACTIVE-only, so a suspended
- * operator already got a {@code 403} there. The hole was every role-gated surface that is <em>not</em>
- * venue-scoped, of which {@code POST /api/venues} is the sharpest: a suspended operator could keep
- * creating venues (and own them, via creator-owns-on-create). {@link #aRevokedCookieCannotCreateAVenue}
- * pins exactly that, and proves the {@code 401} comes from revocation rather than from a malformed
- * request by first showing the same body succeeds on a live session.
+ * <p>{@link #aRevokedCookieCannotCreateAVenue} pins the sharpest role-gated surface that is not venue-scoped,
+ * {@code POST /api/venues}, and shows the {@code 401} is the revocation by first creating a venue on the live session.
  */
 @EnabledIfDockerAvailable
 @Import(TestcontainersConfiguration.class)

@@ -87,7 +87,8 @@ class AccountRecoveryControllerTest {
 	/**
 	 * The other half of the bracket (D-1): revoking only first would open a window in which the OLD
 	 * password still works — precisely the credential an attacker holds in the flow this endpoint exists
-	 * to recover from. The trailing revoke this endpoint already had closes it, so it is kept, not moved.
+	 * to recover from. The trailing revoke ends a session signed in there at once; the credential stamp would end it
+	 * only on its next request (#1306).
 	 */
 	@Test
 	void revokesAgainAfterTheResetSoAWindowSessionCannotSurvive() throws Exception {

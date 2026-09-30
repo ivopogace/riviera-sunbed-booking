@@ -22,6 +22,7 @@ import org.springframework.security.crypto.factory.PasswordEncoderFactories;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.access.intercept.AuthorizationFilter;
+import org.springframework.security.web.authentication.AnonymousAuthenticationFilter;
 import org.springframework.security.web.authentication.logout.HttpStatusReturningLogoutSuccessHandler;
 import org.springframework.security.web.authentication.logout.LogoutSuccessHandler;
 import org.springframework.security.web.context.HttpSessionSecurityContextRepository;
@@ -276,7 +277,7 @@ class SecurityConfig {
 	@Order(1)
 	SecurityFilterChain apiSecurityFilterChain(HttpSecurity http, RateLimitProperties rateLimitProperties,
 			Clock clock, ObjectMapper objectMapper, AdminAuditLog adminAuditLog,
-			ProofOfWorkChallenges challenges) {
+			ProofOfWorkChallenges challenges, CustomerAccounts customerAccounts, OperatorAccounts operatorAccounts) {
 		// One instance, so the chain and the logout success handler stay in lockstep.
 		CookieCsrfTokenRepository csrfTokenRepository = csrfCookieRepository();
 		http
@@ -286,6 +287,9 @@ class SecurityConfig {
 				.addFilterAfter(new RateLimitFilter(rateLimitProperties, clock, objectMapper), CorsFilter.class)
 				// After the rate limiter and the CSRF check, so a 429 wins and the registry claim comes last.
 				.addFilterAfter(new ChallengeVerificationFilter(challenges), CsrfFilter.class)
+				// Before the anonymous filter, so a session with a stale credential proceeds as anonymous (#1306).
+				.addFilterBefore(new SessionCredentialFilter(customerAccounts, operatorAccounts),
+						AnonymousAuthenticationFilter.class)
 				// After AuthorizationFilter, so only actions past the gate leave an audit row.
 				.addFilterAfter(new AdminAuditFilter(adminAuditLog, ADMIN_AUDIT_NAMESPACE), AuthorizationFilter.class)
 				.csrf(csrf -> csrf

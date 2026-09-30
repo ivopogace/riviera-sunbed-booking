@@ -629,6 +629,8 @@ suppression key's HMAC). It cannot live in `shared`, which depends on `customer:
 
 Email verification is **soft**: it gates no sign-in or booking. `CustomerAccountRecovery` names a
 reset token's account **without consuming** it, so the edge revokes that principal's sessions first.
+`CustomerAccounts#liveCredential` answers the edge's password login, SSO sign-in and per-request session check:
+the live account by email or id, SSO-only included (null hash), never an erased one; the edge owns the stamp.
 
 **Only the retention sweep's entry reads carry a query timeout** (its candidate read, `booking`'s
 `GuestBookingHistory` probe): they run before any write, so a timeout costs one tick. My scrubs and
@@ -966,7 +968,8 @@ sessions (Spring Session JDBC) with **two principal types**; all login/session m
 edge, never in modules; customer-account identity separate from the guest row — no FK, no
 back-linking of past guest bookings, ever; auth endpoints non-enumerating + constant-time, on their
 own rate-limit buckets; mocked externals (SSO IdPs, mailer) profile-guarded out of prod; session
-revocation edge-orchestrated and synchronous, bracketing the state change.
+revocation edge-orchestrated and synchronous, bracketing the state change; every request re-checks the
+session's credential stamp.
 
 **Abuse and accountability split into fence and mechanism** (ADR-0017): the **fence** — filters and
 their order, route policy, filter-chain problem bodies, neutralizing client input such as
@@ -1022,7 +1025,16 @@ mutating `/api/admin/**` action, §`audit`) stay here; `challenge` and `audit` o
   `customer`'s transaction, Spring Session's deletes). Revoking only after would let a failed revoke
   answer `500` with the token spent and the attacker's session alive, so the edge names the account
   first (`CustomerAccountRecovery#emailForResetToken`, consuming nothing) and revokes; the second
-  revoke closes the old password's window. Encode above the first revoke, or bcrypt widens the gap.
+  revoke ends sessions saved in between, and a login saved later fails its stamp check (next bullet).
+  Encode above the first revoke, or bcrypt widens the gap.
+- **Every session carries a credential stamp, checked on each request (#1306).** Its `SessionPrincipal` holds
+  a SHA-256 of the account (a customer's id, an operator's name) and the hash it was opened against.
+  `SessionCredentialFilter` re-reads the account (`CustomerAccounts#liveCredential`, `OperatorAccounts`) and
+  ends the session when the stamp, an operator's may-authenticate status or its admin flag no longer matches.
+  `SessionAuthentication` is the only session writer (`SessionWriterArchitectureTests`); V72 ended the
+  unstamped sessions. A customer's self-service change writes only over the hash it verified, so a reset landing
+  first wins; either self-service change re-stamps the session it keeps. Residual: a request already past the filter completes. Cost: one
+  indexed read per authenticated request.
 - **The money-path alert check shares the sweeps' single-instance posture.** `MoneyPathAlertCheck`
   is lockless `@Scheduled`: each extra instance fires the outbox-backlog alert again. It is on
   `ScheduledWorkArchitectureTest`'s job list, so `docs/deploy/production-hardening.md`'s scale-out

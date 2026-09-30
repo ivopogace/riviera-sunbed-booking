@@ -22,8 +22,11 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
+import ai.riviera.platform.customer.api.CustomerAccounts;
 import ai.riviera.platform.customer.api.SsoAccountProvisioning;
+import ai.riviera.platform.customer.vocabulary.CustomerAccountId;
 import ai.riviera.platform.customer.vocabulary.Emails;
+import ai.riviera.platform.customer.vocabulary.LiveAccountCredential;
 import ai.riviera.platform.customer.vocabulary.SsoProvider;
 
 import jakarta.servlet.http.HttpServletRequest;
@@ -56,13 +59,15 @@ class SsoController {
 
 	private final SsoGateway ssoGateway;
 	private final SsoAccountProvisioning ssoAccounts;
+	private final CustomerAccounts customerAccounts;
 	private final SecurityContextRepository securityContextRepository;
 	private final SecureRandom secureRandom = new SecureRandom();
 
-	SsoController(SsoGateway ssoGateway, SsoAccountProvisioning ssoAccounts,
+	SsoController(SsoGateway ssoGateway, SsoAccountProvisioning ssoAccounts, CustomerAccounts customerAccounts,
 			SecurityContextRepository securityContextRepository) {
 		this.ssoGateway = ssoGateway;
 		this.ssoAccounts = ssoAccounts;
+		this.customerAccounts = customerAccounts;
 		this.securityContextRepository = securityContextRepository;
 	}
 
@@ -100,9 +105,13 @@ class SsoController {
 		String email = Emails.normalize(identity.email());
 		// Resolve-or-create the account (find-or-create by verified email, auto-link); the session is keyed
 		// by the account email (principal name), exactly like password login, so CurrentCustomer resolves it.
-		ssoAccounts.resolveOrCreate(identity.provider(), identity.subject(), email);
+		CustomerAccountId resolved = ssoAccounts.resolveOrCreate(identity.provider(), identity.subject(), email);
+		LiveAccountCredential account = customerAccounts.liveCredential(resolved)
+				.orElseThrow(() -> new IllegalStateException("the SSO account was erased during its sign-in"));
+		List<SimpleGrantedAuthority> authorities = List.of(new SimpleGrantedAuthority(CUSTOMER_ROLE));
 		Authentication authentication = UsernamePasswordAuthenticationToken.authenticated(
-				email, null, List.of(new SimpleGrantedAuthority(CUSTOMER_ROLE)));
+				SessionPrincipal.erased(account.email(), authorities,
+						CredentialStamp.customer(resolved, account.passwordHash())), null, authorities);
 		SessionAuthentication.establish(securityContextRepository, authentication, request, response);
 		return redirectTo(URI.create(POST_LOGIN_REDIRECT));
 	}

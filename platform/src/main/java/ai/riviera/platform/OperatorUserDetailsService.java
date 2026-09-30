@@ -1,10 +1,11 @@
 package ai.riviera.platform;
 
+import java.util.Arrays;
 import java.util.EnumSet;
 import java.util.Set;
 
 import org.jspecify.annotations.NullMarked;
-import org.springframework.security.core.userdetails.User;
+import org.springframework.security.core.authority.AuthorityUtils;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
@@ -45,13 +46,10 @@ class OperatorUserDetailsService implements UserDetailsService {
 				.filter(c -> c.passwordHash() != null)
 				.orElseThrow(() -> new UsernameNotFoundException("no operator credential"));
 		// An admin carries both ADMIN (approval surface) and OPERATOR (console for any venues it owns).
-		String[] roles = credential.admin()
-				? new String[] {OPERATOR_ROLE, ADMIN_ROLE}
-				: new String[] {OPERATOR_ROLE};
-		return User.withUsername(credential.username())
-				.password(credential.passwordHash())
-				.roles(roles)
-				.disabled(!MAY_AUTHENTICATE.contains(credential.status()))
-				.build();
+		String[] roles = credential.admin() ? new String[] {OPERATOR_ROLE, ADMIN_ROLE} : new String[] {OPERATOR_ROLE};
+		return new SessionPrincipal(credential.username(), credential.passwordHash(),
+				MAY_AUTHENTICATE.contains(credential.status()), AuthorityUtils.createAuthorityList(
+						Arrays.stream(roles).map(role -> "ROLE_" + role).toArray(String[]::new)),
+				CredentialStamp.operator(credential.username(), credential.passwordHash()));
 	}
 }

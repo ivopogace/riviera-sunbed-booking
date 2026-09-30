@@ -1,5 +1,8 @@
 package ai.riviera.platform.customer.adapter.out;
 
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.sql.Types;
 import java.util.Optional;
 
 import org.springframework.jdbc.core.simple.JdbcClient;
@@ -8,6 +11,7 @@ import org.springframework.stereotype.Repository;
 import ai.riviera.platform.customer.application.CustomerAccountStore;
 import ai.riviera.platform.customer.vocabulary.CustomerAccountCredential;
 import ai.riviera.platform.customer.vocabulary.CustomerAccountId;
+import ai.riviera.platform.customer.vocabulary.LiveAccountCredential;
 import ai.riviera.platform.customer.vocabulary.RegistrationOutcome;
 import ai.riviera.platform.customer.vocabulary.SsoProvider;
 
@@ -30,6 +34,8 @@ class JdbcCustomerAccounts implements CustomerAccountStore {
 	private static final String ACCOUNT_ID = "accountId";
 	private static final String ID = "id";
 
+	private static final String LIVE_CREDENTIAL_SELECT = "SELECT id, email, password_hash FROM customer_account ";
+
 	private final JdbcClient jdbc;
 
 	JdbcCustomerAccounts(JdbcClient jdbc) {
@@ -48,6 +54,27 @@ class JdbcCustomerAccounts implements CustomerAccountStore {
 				.query((rs, rowNum) -> new CustomerAccountCredential(
 						rs.getString(EMAIL), rs.getString("password_hash")))
 				.optional();
+	}
+
+	@Override
+	public Optional<LiveAccountCredential> findLiveCredential(String normalizedEmail) {
+		return jdbc.sql(LIVE_CREDENTIAL_SELECT + "WHERE email = :email AND erased_at IS NULL")
+				.param(EMAIL, normalizedEmail)
+				.query(JdbcCustomerAccounts::mapLiveCredential)
+				.optional();
+	}
+
+	@Override
+	public Optional<LiveAccountCredential> findLiveCredential(CustomerAccountId accountId) {
+		return jdbc.sql(LIVE_CREDENTIAL_SELECT + "WHERE id = :id AND erased_at IS NULL")
+				.param(ID, accountId.value())
+				.query(JdbcCustomerAccounts::mapLiveCredential)
+				.optional();
+	}
+
+	private static LiveAccountCredential mapLiveCredential(ResultSet rs, int rowNum) throws SQLException {
+		return new LiveAccountCredential(new CustomerAccountId(rs.getLong(ID)), rs.getString(EMAIL),
+				rs.getString("password_hash"));
 	}
 
 	@Override
@@ -133,6 +160,18 @@ class JdbcCustomerAccounts implements CustomerAccountStore {
 				""")
 				.param(ID, accountId.value())
 				.update();
+	}
+
+	@Override
+	public boolean replacePasswordHash(CustomerAccountId accountId, String expectedHash, String passwordHash) {
+		return jdbc.sql("""
+				UPDATE customer_account SET password_hash = :hash
+				WHERE id = :id AND erased_at IS NULL AND password_hash IS NOT DISTINCT FROM :expected
+				""")
+				.param("hash", passwordHash)
+				.param(ID, accountId.value())
+				.param("expected", expectedHash, Types.VARCHAR)
+				.update() == 1;
 	}
 
 	@Override
