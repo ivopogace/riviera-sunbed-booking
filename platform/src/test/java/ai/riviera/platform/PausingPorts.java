@@ -25,7 +25,8 @@ public class PausingPorts {
 	private static final String[] PORTS = {
 			"ai.riviera.platform.availability.api.AvailabilityClaim",
 			"ai.riviera.platform.booking.application.Bookings",
-			"ai.riviera.platform.customer.application.CustomerAccountTokens"};
+			"ai.riviera.platform.customer.application.CustomerAccountTokens",
+			"ai.riviera.platform.review.application.Reviews"};
 
 	private static final AtomicReference<Pause> ARMED = new AtomicReference<>();
 
