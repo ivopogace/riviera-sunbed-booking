@@ -61,7 +61,7 @@ interface ThrowingPayments extends Payments {
 	}
 
 	@Override
-	default boolean markUnrecordedRefundFailed(BookingRef booking, RefundScope scope, String refundId) {
+	default boolean markRefundFailed(String refundId, BookingRef booking, RefundScope scope) {
 		throw new UnsupportedOperationException("not stubbed by this test");
 	}
 

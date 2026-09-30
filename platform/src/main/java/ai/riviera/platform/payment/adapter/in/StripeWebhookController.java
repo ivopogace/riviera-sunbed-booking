@@ -159,17 +159,14 @@ class StripeWebhookController {
 	}
 
 	/**
-	 * Put the booking back to owed and report whether this delivery did it; the second arm matches by booking
-	 * for the window before the refund id is recorded (RESPONSIBILITIES.md §payment).
+	 * Put the booking back to owed and report whether this delivery did it; a refund naming its booking and scope
+	 * also matches by them, for the window before its id is recorded (RESPONSIBILITIES.md §payment).
 	 */
 	private boolean markOwedAgain(Refund refund, Optional<BookingRef> booking) {
-		if (payments.markRefundFailed(refund.getId())) {
-			return true;
-		}
 		return booking
 				.flatMap(ref -> StripeRefundTag.scopeOf(refund)
-						.map(scope -> payments.markUnrecordedRefundFailed(ref, scope, refund.getId())))
-				.orElse(false);
+						.map(scope -> payments.markRefundFailed(refund.getId(), ref, scope)))
+				.orElseGet(() -> payments.markRefundFailed(refund.getId()));
 	}
 
 	/**
