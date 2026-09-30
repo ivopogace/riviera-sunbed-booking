@@ -60,8 +60,10 @@ import ai.riviera.platform.customer.api.CustomerAccountProvisioning;
 import ai.riviera.platform.customer.api.CustomerAccountRecovery;
 import ai.riviera.platform.customer.api.CustomerAccounts;
 import ai.riviera.platform.customer.api.SsoAccountProvisioning;
+import ai.riviera.platform.customer.vocabulary.CustomerAccountCredential;
 import ai.riviera.platform.customer.vocabulary.CustomerAccountId;
 import ai.riviera.platform.customer.vocabulary.EraseOutcome;
+import ai.riviera.platform.customer.vocabulary.LiveAccountCredential;
 import ai.riviera.platform.customer.vocabulary.RegistrationOutcome;
 import ai.riviera.platform.customer.vocabulary.ResetPasswordOutcome;
 import ai.riviera.platform.customer.vocabulary.SsoProvider;
@@ -296,7 +298,7 @@ class WebSliceStubs {
 	}
 
 	/**
-	 * Credential store for the edge {@code UserDetailsService} imported via {@code SecurityConfig}.
+	 * Credential store for the edge {@code UserDetailsService} and session check imported via {@code SecurityConfig}.
 	 * The web slices only hit permit-all endpoints / preflights, never an authenticated login,
 	 * so an empty store is enough — no operator can be authenticated here.
 	 */
@@ -313,7 +315,22 @@ class WebSliceStubs {
 	 */
 	@Bean
 	CustomerAccounts customerAccounts() {
-		return _ -> Optional.empty();
+		return new CustomerAccounts() {
+			@Override
+			public Optional<CustomerAccountCredential> findByEmail(String email) {
+				return Optional.empty();
+			}
+
+			@Override
+			public Optional<LiveAccountCredential> liveCredential(String email) {
+				return Optional.empty();
+			}
+
+			@Override
+			public Optional<LiveAccountCredential> liveCredential(CustomerAccountId accountId) {
+				return Optional.empty();
+			}
+		};
 	}
 
 	@Bean
@@ -633,7 +650,8 @@ class WebSliceStubs {
 			}
 
 			@Override
-			public void setPassword(CustomerAccountId accountId, String newPasswordHash) {
+			public boolean changePassword(CustomerAccountId accountId, String currentHash, String newPasswordHash) {
+				return false;
 			}
 
 			@Override

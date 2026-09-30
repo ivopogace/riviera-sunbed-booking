@@ -93,7 +93,7 @@ class MeSurfaceRoleGateTest {
 				.andReturn();
 
 		assertNeverDispatched(result);
-		verify(recovery, never()).setPassword(any(), any());
+		verify(recovery, never()).changePassword(any(), any(), any());
 	}
 
 	@Test
@@ -138,12 +138,13 @@ class MeSurfaceRoleGateTest {
 	@Test
 	void customerCanStillSetItsPassword() throws Exception {
 		when(directory.accountFor(CUSTOMER_EMAIL)).thenReturn(Optional.of(ACCOUNT));
+		when(recovery.changePassword(eq(ACCOUNT), any(), any())).thenReturn(true);
 
 		mvc.perform(isolated(post(SET_PASSWORD)).with(user(CUSTOMER_EMAIL).roles("CUSTOMER"))
 						.contentType(MediaType.APPLICATION_JSON).content(NEW_PASSWORD_BODY))
 				.andExpect(status().isNoContent());
 
-		verify(recovery).setPassword(eq(ACCOUNT), any());
+		verify(recovery).changePassword(eq(ACCOUNT), any(), any());
 	}
 
 	/** CSRF token + a unique rate-bucket client IP — the two things every request in this class needs. */

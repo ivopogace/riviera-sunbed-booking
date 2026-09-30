@@ -21,8 +21,9 @@ variable as before #115; no new secret**:
 
 - **Set it** (e.g. a Render env var) → on boot the admin can log in as `operator` / `<that value>`.
   The value is **never committed** and never logged (invariant #7).
-- **Rotate it** → set a new value and restart. Each boot re-stamps the hash (bcrypt salts differ;
-  the current password verifies), so changing the variable and restarting rotates the password.
+- **Rotate it** → set a new value and restart. A boot writes a new hash only when the value no longer
+  verifies against the stored one, so changing the variable and restarting rotates the password, and a
+  plain redeploy leaves the hash and the admin's sessions alone (a new hash would end them, #1306).
   **This stays the admin's only rotation path** — it is deliberately excluded from the #326
   self-service page (see below), because a self-service change would be silently reverted at the
   next boot.
@@ -103,8 +104,8 @@ compromised had to find a platform admin.
 - **Own rate-limit budget.** The path has its own per-IP bucket, separate from operator login, so a
   change flood cannot lock operators out of signing in (the #127 lesson). Exhausted → `429`.
 - **The bootstrap admin is refused**: `409 BOOTSTRAP_CREDENTIAL_MANAGED`. Its credential is
-  env-managed and re-stamped every boot, so a self-service change would die at the next deploy and
-  take the admin's session with it. The guard keys on `riviera.operator.username`, **not** on the
+  env-managed and rewritten at boot whenever it differs from the variable, so a self-service change would
+  die at the next deploy and take the admin's session with it. The guard keys on `riviera.operator.username`, **not** on the
   `is_admin` flag — a *second* admin approved through `/api/admin/operators` is an admin but is not
   env-managed, and keeps self-service.
 - **A non-`ACTIVE` account is refused**: `409 ACCOUNT_NOT_ACTIVE` (defence-in-depth; suspension

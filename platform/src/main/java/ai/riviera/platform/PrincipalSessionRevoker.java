@@ -23,9 +23,9 @@ class PrincipalSessionRevoker {
 	}
 
 	/**
-	 * Delete every session of {@code principalName}. Paired with a state change, call it before (a
-	 * failed revoke then leaves the state unchanged) <em>and again after</em> (a sign-in in between
-	 * would outlive the change); the second call is usually a no-op, <strong>not</strong> dead code.
+	 * Delete every session of {@code principalName}. Paired with a state change, call it before (a failed revoke then
+	 * leaves the state unchanged) <em>and again after</em>: that ends a sign-in saved in between at once, where the
+	 * credential stamp would end it only on its next request; usually a no-op, <strong>not</strong> dead code.
 	 */
 	void revokeAll(String principalName) {
 		revokeAllExcept(principalName, null);

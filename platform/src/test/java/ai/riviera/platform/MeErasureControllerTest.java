@@ -102,9 +102,9 @@ class MeErasureControllerTest {
 	}
 
 	/**
-	 * The other half of the bracket (D-1): revoking first would, on its own, open a window in which the
-	 * credential still works — a sign-in landing there would produce a session that outlives the erasure. The
-	 * trailing revoke this endpoint already had closes it, so it is kept rather than moved.
+	 * The other half of the bracket (D-1): revoking only first leaves a window in which the credential still works.
+	 * The trailing revoke ends a session signed in there at once; the credential stamp would end it only on its next
+	 * request (#1306).
 	 */
 	@Test
 	void revokesAgainAfterTheScrub() throws Exception {

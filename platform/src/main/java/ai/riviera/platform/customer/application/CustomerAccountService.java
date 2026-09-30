@@ -14,6 +14,7 @@ import ai.riviera.platform.customer.api.SsoAccountProvisioning;
 import ai.riviera.platform.customer.vocabulary.CustomerAccountCredential;
 import ai.riviera.platform.customer.vocabulary.CustomerAccountId;
 import ai.riviera.platform.customer.vocabulary.Emails;
+import ai.riviera.platform.customer.vocabulary.LiveAccountCredential;
 import ai.riviera.platform.customer.vocabulary.RegistrationOutcome;
 import ai.riviera.platform.customer.vocabulary.ResetPasswordOutcome;
 import ai.riviera.platform.customer.vocabulary.SsoProvider;
@@ -42,6 +43,16 @@ class CustomerAccountService implements CustomerAccounts, CustomerAccountProvisi
 	@Override
 	public Optional<CustomerAccountCredential> findByEmail(String email) {
 		return store.findByEmail(Emails.normalize(email));
+	}
+
+	@Override
+	public Optional<LiveAccountCredential> liveCredential(String email) {
+		return store.findLiveCredential(Emails.normalize(email));
+	}
+
+	@Override
+	public Optional<LiveAccountCredential> liveCredential(CustomerAccountId accountId) {
+		return store.findLiveCredential(accountId);
 	}
 
 	@Override
@@ -109,8 +120,8 @@ class CustomerAccountService implements CustomerAccounts, CustomerAccountProvisi
 
 	@Override
 	@Transactional
-	public void setPassword(CustomerAccountId accountId, String newPasswordHash) {
-		store.updatePasswordHash(accountId, newPasswordHash);
+	public boolean changePassword(CustomerAccountId accountId, String currentHash, String newPasswordHash) {
+		return store.replacePasswordHash(accountId, currentHash, newPasswordHash);
 	}
 
 	@Override

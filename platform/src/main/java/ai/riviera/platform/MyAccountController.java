@@ -8,6 +8,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.web.context.SecurityContextRepository;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
@@ -16,6 +17,7 @@ import ai.riviera.platform.customer.api.CustomerAccounts;
 import ai.riviera.platform.customer.vocabulary.CustomerAccountCredential;
 import ai.riviera.platform.customer.vocabulary.CustomerAccountId;
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 
 /**
  * Signed-in customer account management under {@code /api/me/**}: set/change password, re-request verification.
@@ -35,16 +37,19 @@ class MyAccountController {
 	private final CustomerAccounts accounts;
 	private final PasswordEncoder passwordEncoder;
 	private final PrincipalSessionRevoker sessionRevoker;
+	private final SecurityContextRepository securityContextRepository;
 	private final HttpServletRequest httpRequest;
 
 	MyAccountController(CustomerRecovery recovery, CurrentCustomer currentCustomer,
 			CustomerAccounts accounts, PasswordEncoder passwordEncoder,
-			PrincipalSessionRevoker sessionRevoker, HttpServletRequest httpRequest) {
+			PrincipalSessionRevoker sessionRevoker, SecurityContextRepository securityContextRepository,
+			HttpServletRequest httpRequest) {
 		this.recovery = recovery;
 		this.currentCustomer = currentCustomer;
 		this.accounts = accounts;
 		this.passwordEncoder = passwordEncoder;
 		this.sessionRevoker = sessionRevoker;
+		this.securityContextRepository = securityContextRepository;
 		this.httpRequest = httpRequest;
 	}
 
@@ -58,12 +63,13 @@ class MyAccountController {
 	}
 
 	/**
-	 * Set/change the password. The new-password policy outranks a missing current password — the reverse of the operator
-	 * twin, forced because presence depends on the account having one. Success effects are ordered, not transactional:
-	 * rationale on {@link OperatorAccountController#changePassword}; keep the twins in step.
+	 * Set/change the password; the new-password policy outranks a missing current one (presence depends on the account).
+	 * Effects ordered, not transactional, as {@link OperatorAccountController#changePassword}. The write lands only over the
+	 * hash just verified: a reset committing meanwhile wins, and this answers as a wrong password (#1306).
 	 */
 	@PostMapping(SET_PASSWORD_PATH)
-	ResponseEntity<?> setPassword(@RequestBody SetPasswordRequest request, Authentication authentication) {
+	ResponseEntity<?> setPassword(@RequestBody SetPasswordRequest request, Authentication authentication,
+			HttpServletResponse httpResponse) {
 		CustomerAccountId accountId = currentCustomer.require(authentication);
 		PasswordPolicy.validate(request.newPassword(), PasswordPolicy.emailLocalPart(authentication.getName()));
 		// Empty means no local password (null-hash SSO-only rows are filtered), so neither answer below applies.
@@ -82,8 +88,14 @@ class MyAccountController {
 		String newPasswordHash = passwordEncoder.encode(request.newPassword());
 		// Keep-id read BEFORE the rotation below: after it, no row carries an id this query can match.
 		sessionRevoker.revokeAllExcept(authentication.getName(), SessionIdentity.currentId(httpRequest));
-		recovery.setPassword(accountId, newPasswordHash);
+		String verifiedHash = existing.map(CustomerAccountCredential::passwordHash).orElse(null);
+		if (!recovery.changePassword(accountId, verifiedHash, newPasswordHash)) {
+			return ApiProblem.response(HttpStatus.BAD_REQUEST, "INVALID_CURRENT_PASSWORD",
+					"The current password is incorrect.");
+		}
 		SessionIdentity.rotate(httpRequest);
+		SessionAuthentication.restamp(securityContextRepository, CredentialStamp.customer(accountId, newPasswordHash),
+				httpRequest, httpResponse);
 		return ResponseEntity.noContent().build();
 	}
 

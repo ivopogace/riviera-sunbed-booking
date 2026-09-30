@@ -11,6 +11,10 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.web.util.UriComponentsBuilder;
 
+import ai.riviera.platform.customer.api.CustomerAccountProvisioning;
+import ai.riviera.platform.customer.api.SsoAccountProvisioning;
+import ai.riviera.platform.customer.vocabulary.SsoProvider;
+
 import jakarta.servlet.http.Cookie;
 
 import static org.hamcrest.Matchers.containsString;
@@ -44,6 +48,10 @@ class SsoCallbackIT {
 	MockMvc mvc;
 	@Autowired
 	JdbcClient jdbc;
+	@Autowired
+	CustomerAccountProvisioning accounts;
+	@Autowired
+	SsoAccountProvisioning ssoAccounts;
 
 	@BeforeEach
 	void clean() {
@@ -74,6 +82,30 @@ class SsoCallbackIT {
 				.andExpect(jsonPath("$.username").value(APPLE_EMAIL))
 				.andExpect(jsonPath("$.principalType").value("CUSTOMER"));
 		assertEquals(1, accountRows(APPLE_EMAIL));
+	}
+
+	/** Auto-linked onto an account that has a password, the session carries that account's stamp (#1306). */
+	@Test
+	void anSsoSignInOntoAnAccountWithAPasswordStaysSignedIn() throws Exception {
+		accounts.register(GOOGLE_EMAIL, "{bcrypt}an-existing-password-hash");
+		SignedIn google = signIn("google");
+
+		mvc.perform(get("/api/auth/me").cookie(google.session()).header("X-Forwarded-For", google.ip()))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.username").value(GOOGLE_EMAIL));
+	}
+
+	/** A returning subject signs in as its linked account, under that account's email, not the provider's new one. */
+	@Test
+	void aReturningSubjectWhoseProviderEmailChangedSignsInAsItsAccount() throws Exception {
+		String accountEmail = "renamed.tourist@example.com";
+		ssoAccounts.resolveOrCreate(SsoProvider.GOOGLE, "google-mock-subject-001", accountEmail);
+		SignedIn google = signIn("google");
+
+		mvc.perform(get("/api/auth/me").cookie(google.session()).header("X-Forwarded-For", google.ip()))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.username").value(accountEmail));
+		assertEquals(0, accountRows(GOOGLE_EMAIL), "the provider's new email opened no second account");
 	}
 
 	@Test

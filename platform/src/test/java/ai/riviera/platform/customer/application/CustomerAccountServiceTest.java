@@ -11,6 +11,7 @@ import org.junit.jupiter.api.Test;
 
 import ai.riviera.platform.customer.vocabulary.CustomerAccountCredential;
 import ai.riviera.platform.customer.vocabulary.CustomerAccountId;
+import ai.riviera.platform.customer.vocabulary.LiveAccountCredential;
 import ai.riviera.platform.customer.vocabulary.RegistrationOutcome;
 import ai.riviera.platform.customer.vocabulary.ResetPasswordOutcome;
 import ai.riviera.platform.customer.vocabulary.SsoProvider;
@@ -54,6 +55,15 @@ class CustomerAccountServiceTest {
 		assertThat(store.byEmail.get("alice@example.com").passwordHash())
 				.as("a duplicate registration must not overwrite the stored hash")
 				.isEqualTo("{bcrypt}first");
+	}
+
+	@Test
+	void liveCredentialLooksUpTheNormalizedEmail() {
+		CustomerAccountId id = registeredId("Alice@Example.com ");
+
+		assertThat(service.liveCredential("  ALICE@Example.com  "))
+				.contains(new LiveAccountCredential(id, "alice@example.com", "{bcrypt}pw"));
+		assertThat(service.liveCredential(id)).contains(new LiveAccountCredential(id, "alice@example.com", "{bcrypt}pw"));
 	}
 
 	@Test
@@ -153,10 +163,19 @@ class CustomerAccountServiceTest {
 		CustomerAccountId id = service.resolveOrCreate(SsoProvider.GOOGLE, "g-x", "sso@example.com");
 		assertThat(service.findByEmail("sso@example.com")).as("an SSO-only account has no password yet").isEmpty();
 
-		service.setPassword(id, "{bcrypt}first");
+		assertThat(service.changePassword(id, null, "{bcrypt}first")).isTrue();
 
 		assertThat(service.findByEmail("sso@example.com")).get()
 				.extracting(CustomerAccountCredential::passwordHash).isEqualTo("{bcrypt}first"); // closes S4 F-1
+	}
+
+	@Test
+	void aChangeOverAHashThatMovedOnWritesNothing() {
+		CustomerAccountId id = registeredId("moved@example.com");
+
+		assertThat(service.changePassword(id, "{bcrypt}stale", "{bcrypt}mine")).isFalse();
+		assertThat(service.findByEmail("moved@example.com")).get()
+				.extracting(CustomerAccountCredential::passwordHash).isEqualTo("{bcrypt}pw");
 	}
 
 	private CustomerAccountId registeredId(String email) {
@@ -174,6 +193,18 @@ class CustomerAccountServiceTest {
 		@Override
 		public Optional<CustomerAccountCredential> findByEmail(String normalizedEmail) {
 			return Optional.ofNullable(byEmail.get(normalizedEmail));
+		}
+
+		@Override
+		public Optional<LiveAccountCredential> findLiveCredential(String normalizedEmail) {
+			return Optional.ofNullable(idByEmail.get(normalizedEmail)).map(id -> new LiveAccountCredential(
+					new CustomerAccountId(id), normalizedEmail, hashOf(normalizedEmail)));
+		}
+
+		@Override
+		public Optional<LiveAccountCredential> findLiveCredential(CustomerAccountId accountId) {
+			return idByEmail.entrySet().stream().filter(entry -> entry.getValue() == accountId.value()).findFirst()
+					.flatMap(entry -> findLiveCredential(entry.getKey()));
 		}
 
 		@Override
@@ -213,6 +244,21 @@ class CustomerAccountServiceTest {
 		@Override
 		public boolean lockLiveAccount(CustomerAccountId accountId) {
 			return idByEmail.containsValue(accountId.value());
+		}
+
+		@Override
+		public boolean replacePasswordHash(CustomerAccountId accountId, String expectedHash, String passwordHash) {
+			Optional<String> email = emailForId(accountId.value());
+			if (email.isEmpty() || !java.util.Objects.equals(hashOf(email.get()), expectedHash)) {
+				return false;
+			}
+			byEmail.put(email.get(), new CustomerAccountCredential(email.get(), passwordHash));
+			return true;
+		}
+
+		private String hashOf(String email) {
+			CustomerAccountCredential credential = byEmail.get(email);
+			return credential == null ? null : credential.passwordHash();
 		}
 
 		@Override
