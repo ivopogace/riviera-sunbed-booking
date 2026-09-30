@@ -359,7 +359,7 @@ classDiagram
         PK (booking_id, service_date)
         CHECK not both attended and missed
         CHECK refunded_at and refund_minor both or neither, never beside attended_at
-        CHECK refund_reason WEATHER or VENUE iff refunded; released_at only under VENUE; a VENUE day names its actor
+        CHECK refund_reason WEATHER or VENUE iff refunded, released_at only under VENUE, a VENUE day names its actor
     }
     booking "1" --> "1..*" booking_day : one row per service day, written on CONFIRMED
     stay "0..1" <-- "1..*" booking : a stitched stay's stretches (ADR-0024)
