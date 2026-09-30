@@ -17,4 +17,10 @@ public interface CustomerAccounts {
 
 	/** The stored credential for this email, or empty if no such account exists. */
 	Optional<CustomerAccountCredential> findByEmail(String email);
+
+	/**
+	 * The credential of the live account a session names, SSO-only accounts included (null hash), or empty once
+	 * the account is gone or erased: the edge compares it with the session's stamp on every request (#1306).
+	 */
+	Optional<CustomerAccountCredential> sessionCredential(String email);
 }

@@ -966,7 +966,8 @@ sessions (Spring Session JDBC) with **two principal types**; all login/session m
 edge, never in modules; customer-account identity separate from the guest row — no FK, no
 back-linking of past guest bookings, ever; auth endpoints non-enumerating + constant-time, on their
 own rate-limit buckets; mocked externals (SSO IdPs, mailer) profile-guarded out of prod; session
-revocation edge-orchestrated and synchronous, bracketing the state change.
+revocation edge-orchestrated and synchronous, bracketing the state change; every request re-checks the
+session's credential stamp.
 
 **Abuse and accountability split into fence and mechanism** (ADR-0017): the **fence** — filters and
 their order, route policy, filter-chain problem bodies, neutralizing client input such as
@@ -1022,7 +1023,15 @@ mutating `/api/admin/**` action, §`audit`) stay here; `challenge` and `audit` o
   `customer`'s transaction, Spring Session's deletes). Revoking only after would let a failed revoke
   answer `500` with the token spent and the attacker's session alive, so the edge names the account
   first (`CustomerAccountRecovery#emailForResetToken`, consuming nothing) and revokes; the second
-  revoke closes the old password's window. Encode above the first revoke, or bcrypt widens the gap.
+  revoke ends sessions saved in between, and a login saved later fails its stamp check (next bullet).
+  Encode above the first revoke, or bcrypt widens the gap.
+- **Every session carries a credential stamp, checked on each request (#1306).** Its `SessionPrincipal`
+  holds a SHA-256 of the password hash it was opened against (empty for SSO-only). `SessionCredentialFilter`
+  re-reads the account (`CustomerAccounts#sessionCredential`, `OperatorAccounts`) and ends the session when
+  the stamp, an operator's may-authenticate status or its admin flag no longer matches, or the account is
+  gone or erased. `SessionAuthentication` is the only session writer (`SessionWriterArchitectureTests`); the
+  self-service password changes re-stamp the session they keep. Residual: a request already past the filter
+  completes. Cost: one indexed read per authenticated request.
 - **The money-path alert check shares the sweeps' single-instance posture.** `MoneyPathAlertCheck`
   is lockless `@Scheduled`: each extra instance fires the outbox-backlog alert again. It is on
   `ScheduledWorkArchitectureTest`'s job list, so `docs/deploy/production-hardening.md`'s scale-out

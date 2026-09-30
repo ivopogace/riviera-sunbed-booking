@@ -23,25 +23,29 @@ not re-validation after the save. Unstamped sessions are rejected, since the app
 
 ## Acceptance criteria
 
-- [ ] **AC-1:** Given a customer login paused after `authenticate()` verified the old hash, when a password
+- [x] **AC-1:** Given a customer login paused after `authenticate()` verified the old hash, when a password
   reset commits and both of its revokes run, and the login then saves its session, then that session is
   unauthenticated on its next request. *Seam:* `POST /api/auth/customer/login` racing
   `POST /api/auth/customer/reset-password`, observed on `GET /api/auth/me` · *Pinned by:*
   `SessionCredentialRaceIT.aLoginSavedAfterAResetsRevokesIsRejected` (red on `main`).
-- [ ] **AC-2:** Given an admin operator's login paused the same way, when another admin suspends it, then
+- [x] **AC-2:** Given an admin operator's login paused the same way, when another admin suspends it, then
   the admin session it saves cannot reach `/api/admin/**`. *Seam:* `POST /api/auth/operator/login` racing
   `POST /api/admin/operators/{id}/suspend` · *Pinned by:*
   `SessionCredentialRaceIT.anAdminLoginSavedAfterItsSuspensionIsRejected` (red on `main`).
-- [ ] **AC-3:** Given a live session, when its credential changes with no revoke at all (hash, operator
+- [x] **AC-3:** Given a live session, when its credential changes with no revoke at all (hash, operator
   status, admin flag, erasure), then the next request is unauthenticated. *Seam:* the filter, via the
   account ports · *Pinned by:* `SessionCredentialStampIT` (one method per change).
-- [ ] **AC-4:** The self-service password changes keep the caller's session, and the SSO callback's
+- [x] **AC-4:** The self-service password changes keep the caller's session, and the SSO callback's
   session authenticates. *Pinned by:* the existing `SetPasswordIT`, `OperatorPasswordChangeIT` and the SSO
   ITs, plus a re-login-free follow-up request in each password-change test.
-- [ ] **AC-5:** A boot with an unchanged `RIVIERA_OPERATOR_PASSWORD` writes no new hash, so a deploy does
+- [x] **AC-5:** A boot with an unchanged `RIVIERA_OPERATOR_PASSWORD` writes no new hash, so a deploy does
   not end the bootstrap admin's session. *Pinned by:* `OperatorCredentialInitializerTest`.
-- [ ] **AC-6:** A session whose principal carries no stamp is rejected. *Pinned by:*
-  `SessionCredentialStampIT.anUnstampedSessionIsRejected`.
+- [x] **AC-6:** Only a stamped `SessionPrincipal` is ever stored in a session, and a stored session is
+  admitted only while its stamp matches the stored hash. *Seam:* `SessionAuthentication` (the one session
+  writer) · *Pinned by:* `SessionAuthenticationTest`, `SessionWriterArchitectureTests`,
+  `SessionCredentialStampIT.aStoredSessionIsAdmittedOnlyWhileItsStampMatchesTheStoredHash`. MockMvc's
+  `with(user(...))` also stores its context in the session, so the filter admits a non-`SessionPrincipal`;
+  the single-writer rule is what keeps that from being a hole.
 
 ## Non-goals
 
@@ -51,8 +55,9 @@ not re-validation after the save. Unstamped sessions are rejected, since the app
 
 ## Risks
 
-- **R-1 (slice tests):** MockMvc `with(user(...))` builds no HTTP session, so the filter checks only a
-  context loaded from the session. That keeps the web slices unaffected.
+- **R-1 (slice tests):** MockMvc `with(user(...))` stores a plain `User` in the session. The filter admits a
+  non-`SessionPrincipal`, which is safe only because `SessionAuthentication` is the sole session writer and
+  refuses anything else (pinned by an ArchUnit rule).
 - **R-2 (cost):** one indexed by-email or by-username read per authenticated `/api` request. Spring Session
   already reads and touches the session row on each request.
 - **R-3 (bootstrap):** bcrypt re-salts, so re-stamping the bootstrap hash on every boot would change the
@@ -79,15 +84,15 @@ not re-validation after the save. Unstamped sessions are rejected, since the app
 
 ## Execution status
 
-**Stage pointer:** plan — intake done, design decided
+**Stage pointer:** PR — draft open; merge main, ready for review, review gate
 
-**Next action:** Phase 0 red tests.
+**Next action:** ready for review, run code-review + overlay (high).
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — red | | |
-| 1 — stamp + filter | | |
-| 2 — bootstrap | | |
-| 3 — docs | | |
+| 0 — red | ✅ | 7c49983 |
+| 1 — stamp + filter | ✅ | (next commit) |
+| 2 — bootstrap | ✅ | (next commit) |
+| 3 — docs | ✅ | (next commit) |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.

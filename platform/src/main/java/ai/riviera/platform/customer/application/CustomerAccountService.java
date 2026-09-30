@@ -45,6 +45,11 @@ class CustomerAccountService implements CustomerAccounts, CustomerAccountProvisi
 	}
 
 	@Override
+	public Optional<CustomerAccountCredential> sessionCredential(String email) {
+		return store.findSessionCredential(Emails.normalize(email));
+	}
+
+	@Override
 	public Optional<CustomerAccountId> accountFor(String email) {
 		return store.findIdByEmail(Emails.normalize(email));
 	}

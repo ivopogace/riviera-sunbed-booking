@@ -8,6 +8,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.web.context.SecurityContextRepository;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
@@ -16,6 +17,7 @@ import ai.riviera.platform.customer.api.CustomerAccounts;
 import ai.riviera.platform.customer.vocabulary.CustomerAccountCredential;
 import ai.riviera.platform.customer.vocabulary.CustomerAccountId;
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 
 /**
  * Signed-in customer account management under {@code /api/me/**}: set/change password, re-request verification.
@@ -35,16 +37,19 @@ class MyAccountController {
 	private final CustomerAccounts accounts;
 	private final PasswordEncoder passwordEncoder;
 	private final PrincipalSessionRevoker sessionRevoker;
+	private final SecurityContextRepository securityContextRepository;
 	private final HttpServletRequest httpRequest;
 
 	MyAccountController(CustomerRecovery recovery, CurrentCustomer currentCustomer,
 			CustomerAccounts accounts, PasswordEncoder passwordEncoder,
-			PrincipalSessionRevoker sessionRevoker, HttpServletRequest httpRequest) {
+			PrincipalSessionRevoker sessionRevoker, SecurityContextRepository securityContextRepository,
+			HttpServletRequest httpRequest) {
 		this.recovery = recovery;
 		this.currentCustomer = currentCustomer;
 		this.accounts = accounts;
 		this.passwordEncoder = passwordEncoder;
 		this.sessionRevoker = sessionRevoker;
+		this.securityContextRepository = securityContextRepository;
 		this.httpRequest = httpRequest;
 	}
 
@@ -63,7 +68,8 @@ class MyAccountController {
 	 * rationale on {@link OperatorAccountController#changePassword}; keep the twins in step.
 	 */
 	@PostMapping(SET_PASSWORD_PATH)
-	ResponseEntity<?> setPassword(@RequestBody SetPasswordRequest request, Authentication authentication) {
+	ResponseEntity<?> setPassword(@RequestBody SetPasswordRequest request, Authentication authentication,
+			HttpServletResponse httpResponse) {
 		CustomerAccountId accountId = currentCustomer.require(authentication);
 		PasswordPolicy.validate(request.newPassword(), PasswordPolicy.emailLocalPart(authentication.getName()));
 		// Empty means no local password (null-hash SSO-only rows are filtered), so neither answer below applies.
@@ -84,6 +90,7 @@ class MyAccountController {
 		sessionRevoker.revokeAllExcept(authentication.getName(), SessionIdentity.currentId(httpRequest));
 		recovery.setPassword(accountId, newPasswordHash);
 		SessionIdentity.rotate(httpRequest);
+		SessionAuthentication.restamp(securityContextRepository, newPasswordHash, httpRequest, httpResponse);
 		return ResponseEntity.noContent().build();
 	}
 

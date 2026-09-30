@@ -141,6 +141,18 @@ class OperatorCredentialInitializerTest {
 		verify(sessionRevoker, times(1)).revokeAll(any());
 	}
 
+	/** A redeploy with the same value writes no new hash: its fresh salt would end the admin's sessions (#1306). */
+	@Test
+	void anUnchangedPasswordWritesNothing() {
+		storedCredential("same-secret-1");
+
+		initializer("operator", "same-secret-1").run(null);
+
+		verify(provisioning, never()).setPassword(any(), any());
+		verify(encoder, never()).encode(any());
+		verifyNoInteractions(sessionRevoker);
+	}
+
 	@Test
 	void aFirstEverProvisioningRevokesNothing() {
 		when(encoder.encode(any())).thenReturn("{bcrypt}encoded");

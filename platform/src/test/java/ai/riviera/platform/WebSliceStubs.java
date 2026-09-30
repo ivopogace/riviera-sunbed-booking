@@ -60,6 +60,7 @@ import ai.riviera.platform.customer.api.CustomerAccountProvisioning;
 import ai.riviera.platform.customer.api.CustomerAccountRecovery;
 import ai.riviera.platform.customer.api.CustomerAccounts;
 import ai.riviera.platform.customer.api.SsoAccountProvisioning;
+import ai.riviera.platform.customer.vocabulary.CustomerAccountCredential;
 import ai.riviera.platform.customer.vocabulary.CustomerAccountId;
 import ai.riviera.platform.customer.vocabulary.EraseOutcome;
 import ai.riviera.platform.customer.vocabulary.RegistrationOutcome;
@@ -313,7 +314,17 @@ class WebSliceStubs {
 	 */
 	@Bean
 	CustomerAccounts customerAccounts() {
-		return _ -> Optional.empty();
+		return new CustomerAccounts() {
+			@Override
+			public Optional<CustomerAccountCredential> findByEmail(String email) {
+				return Optional.empty();
+			}
+
+			@Override
+			public Optional<CustomerAccountCredential> sessionCredential(String email) {
+				return Optional.empty();
+			}
+		};
 	}
 
 	@Bean

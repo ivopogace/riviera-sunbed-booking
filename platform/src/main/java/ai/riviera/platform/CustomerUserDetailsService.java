@@ -1,7 +1,7 @@
 package ai.riviera.platform;
 
 import org.jspecify.annotations.NullMarked;
-import org.springframework.security.core.userdetails.User;
+import org.springframework.security.core.authority.AuthorityUtils;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
@@ -33,9 +33,7 @@ class CustomerUserDetailsService implements UserDetailsService {
 	public UserDetails loadUserByUsername(String email) {
 		CustomerAccountCredential credential = accounts.findByEmail(email)
 				.orElseThrow(() -> new UsernameNotFoundException("no customer account"));
-		return User.withUsername(credential.email())
-				.password(credential.passwordHash())
-				.roles(CUSTOMER_ROLE)
-				.build();
+		return new SessionPrincipal(credential.email(), credential.passwordHash(), true,
+				AuthorityUtils.createAuthorityList("ROLE_" + CUSTOMER_ROLE));
 	}
 }

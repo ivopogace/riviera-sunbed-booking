@@ -16,7 +16,6 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.authority.AuthorityUtils;
 import org.springframework.security.core.context.SecurityContextImpl;
-import org.springframework.security.core.userdetails.User;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.context.HttpSessionSecurityContextRepository;
 import org.springframework.session.FindByIndexNameSessionRepository;
@@ -36,7 +35,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 /**
  * A session authenticates only while the credential it was opened against is current (#1306): a password,
  * operator status, admin flag or erasure changed with no revoke at all still ends it on the next request,
- * and a session whose principal carries no credential stamp is refused.
+ * and a stored session is admitted only while its principal's stamp matches the stored hash.
  */
 @EnabledIfDockerAvailable
 @Import(TestcontainersConfiguration.class)
@@ -119,12 +118,17 @@ class SessionCredentialStampIT {
 	}
 
 	@Test
-	void anUnstampedSessionIsRejected() throws Exception {
-		Authentication unstamped = UsernamePasswordAuthenticationToken.authenticated(
-				new User(TARGET, "", AuthorityUtils.createAuthorityList("ROLE_OPERATOR")), null,
-				AuthorityUtils.createAuthorityList("ROLE_OPERATOR"));
+	void aStoredSessionIsAdmittedOnlyWhileItsStampMatchesTheStoredHash() throws Exception {
+		String storedHash = jdbc.sql("SELECT password_hash FROM operator WHERE id = :id")
+				.param("id", target.value()).query(String.class).single();
+		var authorities = AuthorityUtils.createAuthorityList("ROLE_OPERATOR");
 
-		mvc.perform(get(ME_PATH).cookie(storedSession(sessions, unstamped))).andExpect(status().isUnauthorized());
+		mvc.perform(get(ME_PATH).cookie(storedSession(sessions, UsernamePasswordAuthenticationToken.authenticated(
+				SessionPrincipal.erased(TARGET, storedHash, authorities), null, authorities))))
+				.andExpect(status().isOk());
+		mvc.perform(get(ME_PATH).cookie(storedSession(sessions, UsernamePasswordAuthenticationToken.authenticated(
+				SessionPrincipal.erased(TARGET, encoder.encode(TARGET_PASSWORD), authorities), null, authorities))))
+				.andExpect(status().isUnauthorized());
 	}
 
 	/** A session written straight to the store, holding {@code authentication} as its security context. */

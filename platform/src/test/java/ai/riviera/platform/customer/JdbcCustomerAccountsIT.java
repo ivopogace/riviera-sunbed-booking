@@ -18,8 +18,10 @@ import ai.riviera.platform.EnabledIfDockerAvailable;
 import ai.riviera.platform.TestcontainersConfiguration;
 import ai.riviera.platform.customer.api.CustomerAccountProvisioning;
 import ai.riviera.platform.customer.api.CustomerAccounts;
+import ai.riviera.platform.customer.api.SsoAccountProvisioning;
 import ai.riviera.platform.customer.vocabulary.CustomerAccountCredential;
 import ai.riviera.platform.customer.vocabulary.RegistrationOutcome;
+import ai.riviera.platform.customer.vocabulary.SsoProvider;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -43,6 +45,9 @@ class JdbcCustomerAccountsIT {
 	CustomerAccounts accounts;
 
 	@Autowired
+	SsoAccountProvisioning sso;
+
+	@Autowired
 	JdbcTemplate jdbc;
 
 	@Test
@@ -56,6 +61,21 @@ class JdbcCustomerAccountsIT {
 
 		assertThat(accounts.findByEmail("  BOB@example.com ")) // case/space-insensitive lookup
 				.get().extracting(CustomerAccountCredential::passwordHash).isEqualTo("{bcrypt}$2a$bobhash");
+	}
+
+	@Test
+	void theSessionCredentialCoversSsoOnlyAccountsAndNotErasedOnes() {
+		sso.resolveOrCreate(SsoProvider.GOOGLE, "session-credential-sub", "sso-only@example.com");
+		provisioning.register("erased-later@example.com", "{bcrypt}gone");
+		Long erasedId = jdbc.queryForObject(
+				"SELECT id FROM customer_account WHERE email = 'erased-later@example.com'", Long.class);
+		jdbc.update("UPDATE customer_account SET email = 'erased+' || id || '@erased.invalid', password_hash = NULL,"
+				+ " erased_at = NOW() WHERE id = ?", erasedId);
+
+		assertThat(accounts.sessionCredential("SSO-Only@Example.com"))
+				.contains(new CustomerAccountCredential("sso-only@example.com", null));
+		assertThat(accounts.findByEmail("sso-only@example.com")).isEmpty();
+		assertThat(accounts.sessionCredential("erased+" + erasedId + "@erased.invalid")).isEmpty();
 	}
 
 	@Test

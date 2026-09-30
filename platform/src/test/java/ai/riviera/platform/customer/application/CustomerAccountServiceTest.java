@@ -57,6 +57,14 @@ class CustomerAccountServiceTest {
 	}
 
 	@Test
+	void sessionCredentialLooksUpTheNormalizedEmail() {
+		service.register("Alice@Example.com ", "{bcrypt}hash");
+
+		assertThat(service.sessionCredential("  ALICE@Example.com  "))
+				.contains(new CustomerAccountCredential("alice@example.com", "{bcrypt}hash"));
+	}
+
+	@Test
 	void accountForResolvesNormalizedEmailToItsAccountId() {
 		service.register("Alice@Example.com ", "{bcrypt}hash");
 
@@ -173,6 +181,11 @@ class CustomerAccountServiceTest {
 
 		@Override
 		public Optional<CustomerAccountCredential> findByEmail(String normalizedEmail) {
+			return Optional.ofNullable(byEmail.get(normalizedEmail));
+		}
+
+		@Override
+		public Optional<CustomerAccountCredential> findSessionCredential(String normalizedEmail) {
 			return Optional.ofNullable(byEmail.get(normalizedEmail));
 		}
 

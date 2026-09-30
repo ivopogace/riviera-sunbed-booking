@@ -24,6 +24,9 @@ public interface CustomerAccountStore {
 	 */
 	Optional<CustomerAccountCredential> findByEmail(String normalizedEmail);
 
+	/** The credential of the live account with this normalized email, null hash for SSO-only; empty if erased. */
+	Optional<CustomerAccountCredential> findSessionCredential(String normalizedEmail);
+
 	/** The account id for this normalized email, or empty if no account exists */
 	Optional<CustomerAccountId> findIdByEmail(String normalizedEmail);
 

@@ -51,6 +51,18 @@ class JdbcCustomerAccounts implements CustomerAccountStore {
 	}
 
 	@Override
+	public Optional<CustomerAccountCredential> findSessionCredential(String normalizedEmail) {
+		return jdbc.sql("""
+				SELECT email, password_hash FROM customer_account
+				WHERE email = :email AND erased_at IS NULL
+				""")
+				.param(EMAIL, normalizedEmail)
+				.query((rs, rowNum) -> new CustomerAccountCredential(
+						rs.getString(EMAIL), rs.getString("password_hash")))
+				.optional();
+	}
+
+	@Override
 	public Optional<CustomerAccountId> findIdByEmail(String normalizedEmail) {
 		return jdbc.sql("SELECT id FROM customer_account WHERE email = :email")
 				.param(EMAIL, normalizedEmail)

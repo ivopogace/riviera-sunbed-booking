@@ -7,6 +7,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.web.context.SecurityContextRepository;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
@@ -15,6 +16,7 @@ import ai.riviera.platform.operator.api.OperatorAccounts;
 import ai.riviera.platform.operator.api.OperatorProvisioning;
 import ai.riviera.platform.operator.vocabulary.OperatorCredential;
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 
 /**
  * The signed-in operator's own credential surface: change your own password, proving the current one
@@ -34,16 +36,19 @@ class OperatorAccountController {
 	private final PasswordEncoder passwordEncoder;
 	private final PrincipalSessionRevoker sessionRevoker;
 	private final RivieraOperatorProperties bootstrapOperator;
+	private final SecurityContextRepository securityContextRepository;
 	private final HttpServletRequest httpRequest;
 
 	OperatorAccountController(OperatorAccounts accounts, OperatorProvisioning provisioning,
 			PasswordEncoder passwordEncoder, PrincipalSessionRevoker sessionRevoker,
-			RivieraOperatorProperties bootstrapOperator, HttpServletRequest httpRequest) {
+			RivieraOperatorProperties bootstrapOperator, SecurityContextRepository securityContextRepository,
+			HttpServletRequest httpRequest) {
 		this.accounts = accounts;
 		this.provisioning = provisioning;
 		this.passwordEncoder = passwordEncoder;
 		this.sessionRevoker = sessionRevoker;
 		this.bootstrapOperator = bootstrapOperator;
+		this.securityContextRepository = securityContextRepository;
 		this.httpRequest = httpRequest;
 	}
 
@@ -61,12 +66,13 @@ class OperatorAccountController {
 	}
 
 	/**
-	 * Revoke every <em>other</em> session, write the new hash, rotate this session's id — ordered, not
-	 * transactional (no shared transaction exists): revoke first so its failure leaves the password unchanged,
-	 * accepting a one-UPDATE old-password sign-in window. Codes: docs/runbooks/operator-credential-provisioning.md.
+	 * Revoke every <em>other</em> session, write the new hash, rotate and re-stamp this session — ordered, not
+	 * transactional (no shared transaction exists): revoke first so its failure leaves the password unchanged; an
+	 * old-password sign-in inside the gap fails its stamp check. Codes: docs/runbooks/operator-credential-provisioning.md.
 	 */
 	@PostMapping(CHANGE_PASSWORD_PATH)
-	ResponseEntity<?> changePassword(@RequestBody ChangePasswordRequest request, Authentication authentication) {
+	ResponseEntity<?> changePassword(@RequestBody ChangePasswordRequest request, Authentication authentication,
+			HttpServletResponse httpResponse) {
 		String username = authentication.getName();
 		if (bootstrapOperator.username().equals(username)) {
 			return ApiProblem.response(HttpStatus.CONFLICT, "BOOTSTRAP_CREDENTIAL_MANAGED",
@@ -94,6 +100,7 @@ class OperatorAccountController {
 		sessionRevoker.revokeAllExcept(username, SessionIdentity.currentId(httpRequest));
 		provisioning.setPassword(username, newPasswordHash);
 		SessionIdentity.rotate(httpRequest);
+		SessionAuthentication.restamp(securityContextRepository, newPasswordHash, httpRequest, httpResponse);
 		return ResponseEntity.noContent().build();
 	}
 
