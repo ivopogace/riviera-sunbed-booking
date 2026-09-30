@@ -97,11 +97,11 @@ public interface Bookings {
 			VenueId venueId);
 
 	/**
-	 * Compensate a failed payment-request issuance: the guarded {@code AWAITING_PAYMENT →
-	 * PENDING_REQUEST} revert (clearing {@code accepted_at}), possible only because no
-	 * PaymentIntent exists to race it. True iff a row reverted.
+	 * Compensate a failed payment-request issuance: the guarded {@code AWAITING_PAYMENT → PENDING_REQUEST} revert
+	 * (clearing {@code accepted_at}), possible only because no PaymentIntent exists to race it. Returns the set and
+	 * span it held iff a row reverted, which a remodel may have moved since the accept (#1302).
 	 */
-	boolean revertAcceptToPending(long bookingId);
+	Optional<ClaimRef> revertAcceptToPending(long bookingId);
 
 	/**
 	 * Guarded venue-scoped {@code PENDING_REQUEST → DECLINED} stamping {@code reason}; the {@link ClaimRef}
@@ -186,9 +186,9 @@ public interface Bookings {
 			long refundMinor, ai.riviera.platform.booking.vocabulary.RefundReason reason, long remainingMinor);
 
 	/**
-	 * Guarded re-seat of a live booking from {@code from} to {@code to} (same venue); code, price and
-	 * status survive (invariant #7). False when not live or not on {@code from} — the caller
-	 * then rolls back, since a move classified under lock cannot legitimately vanish.
+	 * Guarded re-seat of a claim-holding booking from {@code from} to {@code to} (same venue); code, price and
+	 * status survive (invariant #7). False when it holds no claim (a reverted accept, #1302) or is not on
+	 * {@code from}: the caller rolls back, since a move classified under lock cannot legitimately vanish.
 	 */
 	boolean moveToSet(long bookingId, SetId from, SetId to, Instant movedAt);
 

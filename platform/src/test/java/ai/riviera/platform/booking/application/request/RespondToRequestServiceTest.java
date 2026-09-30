@@ -261,7 +261,8 @@ class RespondToRequestServiceTest {
 		when(bookings.acceptPendingRequest(BOOKING.value(), VENUE, NOW))
 				.thenReturn(Optional.of(acceptedRequest()));
 		when(checkout.pay(any(), any())).thenReturn(new PaymentOutcome.Failed("stripe_error"));
-		when(bookings.revertAcceptToPending(BOOKING.value())).thenReturn(true);
+		when(bookings.revertAcceptToPending(BOOKING.value()))
+				.thenReturn(Optional.of(new ClaimRef(SET, BOOKING_DATE, BOOKING_DATE)));
 
 		AcceptOutcome outcome = service().accept(OPERATOR, VENUE, BOOKING);
 

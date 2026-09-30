@@ -151,6 +151,10 @@ class JdbcBookings implements Bookings {
 			    ORDER BY b.booking_date
 			    LIMIT :batch""");
 
+	/** The statuses whose booking holds its {@code (set, date)} rows: a pending request holds none (ADR-0025). */
+	private static final List<String> CLAIM_HOLDING_STATUSES =
+			List.of(BookingStatus.AWAITING_PAYMENT.name(), BookingStatus.CONFIRMED.name());
+
 	private final JdbcClient jdbc;
 
 	/**
@@ -416,7 +420,7 @@ class JdbcBookings implements Bookings {
 	}
 
 	@Override
-	public boolean revertAcceptToPending(long bookingId) {
+	public Optional<ClaimRef> revertAcceptToPending(long bookingId) {
 		// Compensation for a failed payment-request issuance. No REGISTERED PaymentIntent exists
 		// (a double-timeout residual at Stripe stays unregistered and inert — webhooks correlate
 		// via the payment table), so no webhook can race this back-transition. Restores the
@@ -425,11 +429,13 @@ class JdbcBookings implements Bookings {
 				UPDATE booking
 				SET status = :pending, accepted_at = NULL
 				WHERE id = :id AND status = :awaiting
+				RETURNING set_id, booking_date, last_date
 				""")
 				.param(PARAM_PENDING, BookingStatus.PENDING_REQUEST.name())
 				.param("id", bookingId)
 				.param(PARAM_AWAITING, BookingStatus.AWAITING_PAYMENT.name())
-				.update() == 1;
+				.query(JdbcBookings::mapClaimRef)
+				.optional();
 	}
 
 	@Override
@@ -755,13 +761,13 @@ class JdbcBookings implements Bookings {
 		return jdbc.sql("""
 				UPDATE booking
 				SET set_id = :to, moved_at = :at
-				WHERE id = :id AND set_id = :from AND status IN (:live)
+				WHERE id = :id AND set_id = :from AND status IN (:holding)
 				""")
 				.param("to", to.value())
 				.param("at", java.sql.Timestamp.from(movedAt))
 				.param("id", bookingId)
 				.param("from", from.value())
-				.param("live", JdbcBookingPresence.LIVE_STATUSES)
+				.param("holding", CLAIM_HOLDING_STATUSES)
 				.update() == 1;
 	}
 
