@@ -25,17 +25,17 @@ public interface Reviews {
 	boolean claim(CompletedStay stay, ReviewSubmission submission, Instant at);
 
 	/**
-	 * Overwrite this booking's review in place, stamping {@code at} as its edit time.
+	 * Overwrite this booking's visible review in place, stamping {@code at} as its edit time; a hidden one is the
+	 * admin's to keep as they saw it (#1308).
 	 *
-	 * @return {@code false} when no row answered to the booking — a delete won the race
+	 * @return {@code false} when no visible row answered to the booking — a delete or a takedown won the race
 	 */
 	boolean update(BookingRef booking, ReviewSubmission submission, Instant at);
 
 	/**
-	 * Remove this booking's review, freeing nothing: the slot stays claimable only in the sense that
-	 * a fresh submit may re-take it.
+	 * Remove this booking's visible review; a hidden one stays, so its slot stays taken (#1308).
 	 *
-	 * @return {@code false} when no row answered to the booking
+	 * @return {@code false} when no visible row answered to the booking
 	 */
 	boolean delete(BookingRef booking);
 

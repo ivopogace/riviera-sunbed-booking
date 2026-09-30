@@ -225,6 +225,33 @@ class ReviewLifecycleServiceTest {
 	}
 
 	@Test
+	void anEditThatATakedownBeatsToTheWriteAnswersHidden() {
+		reviewedThenHiddenBeforeTheWrite();
+
+		assertEquals(new AmendOutcome.Hidden(), service.edit(CODE, new ReviewSubmission(5, null, "Ana")));
+
+		assertEquals(new OwnReview(4, "Great sunbeds", "Ana"), reviews.stored.get(BOOKING));
+		assertTrue(events.published.isEmpty());
+	}
+
+	@Test
+	void aDeleteThatATakedownBeatsToTheWriteAnswersHidden() {
+		reviewedThenHiddenBeforeTheWrite();
+
+		assertEquals(new AmendOutcome.Hidden(), service.delete(CODE));
+
+		assertTrue(reviews.stored.containsKey(BOOKING), "the takedown keeps the slot taken");
+		assertTrue(events.published.isEmpty());
+	}
+
+	private void reviewedThenHiddenBeforeTheWrite() {
+		stays.completed(CODE, BOOKING, VENUE, NOW.minus(Duration.ofDays(1)));
+		service.submit(CODE, COMMENTED);
+		events.published.clear();
+		reviews.hideBeforeTheWrite = true;
+	}
+
+	@Test
 	void deleteWithoutAReviewIsNoSuchReview() {
 		stays.completed(CODE, BOOKING, VENUE, NOW.minus(Duration.ofDays(1)));
 
@@ -288,6 +315,8 @@ class ReviewLifecycleServiceTest {
 		private final Map<BookingRef, OwnReview> stored = new LinkedHashMap<>();
 		private final Set<BookingRef> hidden = new HashSet<>();
 		private final List<Recorded> writes = new ArrayList<>();
+		/** A takedown that lands between the amend's read and its write. */
+		private boolean hideBeforeTheWrite;
 
 		@Override
 		public boolean claim(CompletedStay stay, ReviewSubmission submission, Instant at) {
@@ -299,10 +328,17 @@ class ReviewLifecycleServiceTest {
 			return true;
 		}
 
+		private boolean visibleAtTheWrite(BookingRef booking) {
+			if (hideBeforeTheWrite) {
+				hidden.add(booking);
+			}
+			return !hidden.contains(booking);
+		}
+
 		@Override
 		public boolean update(BookingRef booking, ReviewSubmission submission, Instant at) {
 			OwnReview review = asStored(submission);
-			if (stored.replace(booking, review) == null) {
+			if (!visibleAtTheWrite(booking) || stored.replace(booking, review) == null) {
 				return false;
 			}
 			writes.add(new Recorded(booking, null, review, at));
@@ -311,7 +347,7 @@ class ReviewLifecycleServiceTest {
 
 		@Override
 		public boolean delete(BookingRef booking) {
-			return stored.remove(booking) != null;
+			return visibleAtTheWrite(booking) && stored.remove(booking) != null;
 		}
 
 		@Override
