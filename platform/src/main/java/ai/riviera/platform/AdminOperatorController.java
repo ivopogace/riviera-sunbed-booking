@@ -112,12 +112,13 @@ class AdminOperatorController {
 	@PostMapping("/{operatorId}/suspend")
 	ResponseEntity<?> suspend(@PathVariable long operatorId, Authentication authentication) {
 		OperatorId target = new OperatorId(operatorId);
-		if (target.equals(currentOperator.require(authentication))) {
+		OperatorId actor = currentOperator.require(authentication);
+		if (target.equals(actor)) {
 			return ApiProblem.response(HttpStatus.CONFLICT, "CANNOT_SUSPEND_SELF",
 					"The target operator is the account this request is authenticated as.");
 		}
 		lifecycle.usernameInStatus(target, OperatorStatus.ACTIVE).ifPresent(sessionRevoker::revokeAll);
-		return toResponse(lifecycle.suspend(target), true);
+		return toResponse(lifecycle.suspend(actor, target), true);
 	}
 
 	@PostMapping("/{operatorId}/reinstate")

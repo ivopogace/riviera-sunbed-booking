@@ -465,7 +465,7 @@ class WebSliceStubs {
 			}
 
 			@Override
-			public OperatorLifecycleOutcome suspend(OperatorId operatorId) {
+			public OperatorLifecycleOutcome suspend(OperatorId actor, OperatorId target) {
 				return new OperatorLifecycleOutcome.NoSuchOperator();
 			}
 

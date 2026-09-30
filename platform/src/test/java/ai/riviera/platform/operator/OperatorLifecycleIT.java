@@ -58,7 +58,7 @@ class OperatorLifecycleIT {
 	void suspendMovesAnOperatorAccountToSuspendedAndNamesThePrincipal() {
 		OperatorId id = insertOperator("lifecycle-active", OperatorStatus.ACTIVE);
 
-		OperatorLifecycleOutcome outcome = lifecycle.suspend(id);
+		OperatorLifecycleOutcome outcome = lifecycle.suspend(bootstrapAdmin(), id);
 
 		// The username comes back, so the edge revokes without a second round-trip.
 		assertEquals(new OperatorLifecycleOutcome.Changed(id, "lifecycle-active"), outcome);
@@ -70,9 +70,9 @@ class OperatorLifecycleIT {
 		OperatorId pending = insertOperator("lifecycle-pending", OperatorStatus.PENDING);
 		OperatorId alreadySuspended = insertOperator("lifecycle-suspended", OperatorStatus.SUSPENDED);
 
-		assertInstanceOf(OperatorLifecycleOutcome.WrongStatus.class, lifecycle.suspend(pending));
-		assertInstanceOf(OperatorLifecycleOutcome.WrongStatus.class, lifecycle.suspend(alreadySuspended));
-		assertInstanceOf(OperatorLifecycleOutcome.NoSuchOperator.class, lifecycle.suspend(new OperatorId(-1L)));
+		assertInstanceOf(OperatorLifecycleOutcome.WrongStatus.class, lifecycle.suspend(bootstrapAdmin(), pending));
+		assertInstanceOf(OperatorLifecycleOutcome.WrongStatus.class, lifecycle.suspend(bootstrapAdmin(), alreadySuspended));
+		assertInstanceOf(OperatorLifecycleOutcome.NoSuchOperator.class, lifecycle.suspend(bootstrapAdmin(), new OperatorId(-1L)));
 
 		assertEquals(OperatorStatus.PENDING.name(), statusOf(pending));
 		assertEquals(OperatorStatus.SUSPENDED.name(), statusOf(alreadySuspended));
@@ -143,7 +143,7 @@ class OperatorLifecycleIT {
 		assertEquals(Optional.of("lifecycle-named-untouched"),
 				lifecycle.usernameInStatus(id, OperatorStatus.ACTIVE));
 		assertEquals(OperatorStatus.ACTIVE.name(), statusOf(id));
-		assertInstanceOf(OperatorLifecycleOutcome.Changed.class, lifecycle.suspend(id));
+		assertInstanceOf(OperatorLifecycleOutcome.Changed.class, lifecycle.suspend(bootstrapAdmin(), id));
 	}
 
 	/**
@@ -220,5 +220,10 @@ class OperatorLifecycleIT {
 				.param("id", id.value())
 				.query(String.class)
 				.single();
+	}
+
+	/** The seeded bootstrap admin, the actor of every suspend here. */
+	private OperatorId bootstrapAdmin() {
+		return new OperatorId(jdbc.sql("SELECT id FROM operator WHERE username = 'operator'").query(Long.class).single());
 	}
 }

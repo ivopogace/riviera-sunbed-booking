@@ -70,8 +70,8 @@ class OperatorRegistrationService implements OperatorRegistration, OperatorLifec
 
 	@Override
 	@Transactional
-	public OperatorLifecycleOutcome suspend(OperatorId operatorId) {
-		return operators.suspend(operatorId);
+	public OperatorLifecycleOutcome suspend(OperatorId actor, OperatorId target) {
+		return operators.suspend(target);
 	}
 
 	@Override
