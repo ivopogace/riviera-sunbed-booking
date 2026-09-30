@@ -1010,6 +1010,12 @@ class JdbcBookings implements Bookings {
 				.list();
 	}
 
+	/** The bookings the weather refund may touch, one predicate for its lock and its read so they cannot drift. */
+	private static final String REFUNDABLE_WHERE = """
+			WHERE b.venue_id = :venue AND b.booking_date <= :date AND b.last_date >= :date
+			  AND b.status IN (:happened)
+			""";
+
 	/**
 	 * A day refund's candidate row: every booking that happened ({@code stormDayRefundable}) covering the date,
 	 * served by {@code booking_venue_id_idx}, with the date's own service-day stamps so the caller can tell an
@@ -1020,9 +1026,7 @@ class JdbcBookings implements Bookings {
 			       d.attended_at IS NOT NULL AS attended, d.refunded_at IS NOT NULL AS refunded
 			FROM booking b
 			LEFT JOIN booking_day d ON d.booking_id = b.id AND d.service_date = :date
-			WHERE b.venue_id = :venue AND b.booking_date <= :date AND b.last_date >= :date
-			  AND b.status IN (:happened)
-			""";
+			""" + REFUNDABLE_WHERE;
 
 	@Override
 	public List<RefundableBooking> findRefundableForWeather(VenueId venueId, LocalDate date) {
@@ -1036,13 +1040,7 @@ class JdbcBookings implements Bookings {
 
 	@Override
 	public void lockRefundableForWeather(VenueId venueId, LocalDate date) {
-		jdbc.sql("""
-				SELECT b.id FROM booking b
-				WHERE b.venue_id = :venue AND b.booking_date <= :date AND b.last_date >= :date
-				  AND b.status IN (:happened)
-				ORDER BY b.booking_date, b.id
-				FOR UPDATE
-				""")
+		jdbc.sql("SELECT b.id FROM booking b " + REFUNDABLE_WHERE + "ORDER BY b.booking_date, b.id FOR UPDATE")
 				.param(PARAM_VENUE, venueId.value())
 				.param("date", date)
 				.param(PARAM_HAPPENED, STORM_DAY_REFUNDABLE)

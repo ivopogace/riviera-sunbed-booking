@@ -123,9 +123,10 @@ close, the maximum stay, the season closure, and the commission rate over time. 
   SHARE` is the weakest lock that conflicts with the set-writes' `FOR UPDATE`, so a claim racing a
   pool flip decides against the committed pool, whichever commits first. Trap: it must run in a
   read-write transaction, never a read-only one; the unlocked `setBookingInfo` serves list and mail.
-  The reserve's `setBookingInfoForReserve` is the other: the venue row `FOR SHARE` (`KEY SHARE` would
-  not conflict with a non-key `UPDATE venue`), venue before set as the set-writes lock, so venue
-  writers (closure, profile, commission, rating, layout token) queue behind in-flight reserves (#1304).
+  The reserve's `setBookingInfoForReserve` and the request accept's `lockVenueForClaim` take the venue row
+  `FOR SHARE` (`KEY SHARE` would not conflict with a non-key `UPDATE venue`), venue before set as the
+  set-writes lock, so venue writers (closure, profile, commission, rating, layout token) queue behind
+  in-flight reserves and accepts (#1304, #1305).
 - **The batch apply (`applyToSets`) is one transaction on the `set_version` token.** Lock order:
   the venue row (`lockAndReadSetVersion`), then the named set rows `FOR UPDATE` — the order every
   set-write takes, so none deadlocks another. A stale token (`STALE_WRITE`) or a set id not on the
@@ -162,8 +163,9 @@ close, the maximum stay, the season closure, and the commission rate over time. 
   change rides no version token, and the close answers what guests are still owed
   (`LiveBookingCounts`, via my `spi` `BookingPresence#liveBookingsFrom`). A reopen day not after
   today is `REOPEN_DATE_PASSED`. Closing touches no booking, hold, request or walk-in mark. It
-  serializes with the reserve on the venue row: `SetBookingFacts#setBookingInfoForReserve` takes it
-  `FOR SHARE` first, so the close waits and counts the booking, or the reserve is refused (#1304).
+  serializes with the reserve and the request accept on the venue row: `SetBookingFacts#setBookingInfoForReserve`
+  and `#lockVenueForClaim` take it `FOR SHARE` first, so the close waits and counts the booking, or the reserve
+  is refused (#1304).
 - **A venue closed for season stays visible; I store the closure, `booking` keeps the rule**
   (`BookingCutoff`, via `SalesWindow`). The list and map project `closedForSeason` / `reopensOn`
   beside `salesOpen` (the list sorts closed venues last) and the calendar carries `salesOpen` per
@@ -303,7 +305,7 @@ any is released on the old, never a swap of my own — so a racing reserve wins 
   lock would see the refunded and released days as of before (#1281). The venue's lone one-day cancel has
   no day to race.
 - **Several bookings lock in `(booking_date, id)` order:** the sweep batches, a remodel commit (one at a time
-  under the venue lock) and the weather refund, which locks every booking covering the day in one statement
+  under the venue lock) and the weather refund, which locks every refundable booking covering the day in one statement
   before it reads them (#1305). So none of the three deadlocks another.
 - **The guest cancel admits `CONFIRMED` only; the venue's refund (`cancelByVenue`, `VENUE_REFUND`) also `NO_SHOW`** (the storm is
   known afterwards): separate port methods and `BookingTransition` rows, so the asymmetry cannot be

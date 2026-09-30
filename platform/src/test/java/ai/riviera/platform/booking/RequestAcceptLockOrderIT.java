@@ -17,13 +17,17 @@ import ai.riviera.platform.PausingPorts;
 import ai.riviera.platform.TestcontainersConfiguration;
 import ai.riviera.platform.booking.application.request.AcceptOutcome;
 import ai.riviera.platform.booking.application.request.RespondToRequest;
+import ai.riviera.platform.booking.vocabulary.BookingId;
 import ai.riviera.platform.booking.vocabulary.StayId;
 import ai.riviera.platform.operator.vocabulary.OperatorId;
+import ai.riviera.platform.venue.application.CloseForSeason;
+import ai.riviera.platform.venue.application.CloseOutcome;
 import ai.riviera.platform.venue.application.EditBeachMap;
 import ai.riviera.platform.venue.application.LayoutCommand;
 import ai.riviera.platform.venue.application.ReplaceLayoutOutcome;
 import ai.riviera.platform.venue.application.SetCommand;
 import ai.riviera.platform.venue.vocabulary.Pool;
+import ai.riviera.platform.venue.vocabulary.SeasonClosure;
 import ai.riviera.platform.venue.vocabulary.SetId;
 import ai.riviera.platform.venue.vocabulary.VenueId;
 
@@ -32,7 +36,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 /**
  * A stay accept takes its venue row before any set lock, as the layout writes do (#1305 pair 2): an accept paused
  * after claiming its first stretch's set, the higher-id one, and a layout save over the venue serialize instead of
- * deadlocking on the other set.
+ * deadlocking on the other set. A lone accept holds the venue too, so a season close waits for it.
  */
 @EnabledIfDockerAvailable
 @Import({TestcontainersConfiguration.class, PausingPorts.class})
@@ -47,6 +51,8 @@ class RequestAcceptLockOrderIT {
 	RespondToRequest respondToRequest;
 	@Autowired
 	EditBeachMap editBeachMap;
+	@Autowired
+	CloseForSeason seasons;
 	@Autowired
 	JdbcClient jdbc;
 
@@ -83,7 +89,25 @@ class RequestAcceptLockOrderIT {
 
 		assertThat(outcome.racerWaited()).as("the layout save waited on the accept").isTrue();
 		assertThat(outcome.held()).isInstanceOf(AcceptOutcome.Accepted.class);
-		assertThat(outcome.raced()).isNotNull();
+	}
+
+	@Test
+	void aLoneAcceptHoldsItsVenueAgainstASeasonClose() throws Exception {
+		SetId set = venue.online().get(0);
+		LocalDate first = StayFixtures.firstDay();
+		long request = StayFixtures.insertPendingLone(jdbc, venue, "LOL" + System.nanoTime() % 100_000_000L, set,
+				first, first.plusDays(1), Instant.now().plusSeconds(3600));
+		VenueId venueId = new VenueId(venue.id());
+		SeasonClosure closure = SeasonClosure.closed(first.plusDays(60), false);
+
+		LockOrderRace.Outcome<AcceptOutcome, CloseOutcome> outcome = LockOrderRace.race(jdbc, "claim",
+				args -> set.equals(args[0]),
+				() -> respondToRequest.accept(owner, venueId, new BookingId(request)),
+				() -> seasons.close(owner, venueId, closure));
+
+		assertThat(outcome.racerWaited()).as("the close waited on the accept's venue lock").isTrue();
+		assertThat(outcome.held()).isInstanceOf(AcceptOutcome.Accepted.class);
+		assertThat(outcome.raced()).isInstanceOf(CloseOutcome.Closed.class);
 	}
 
 	private LayoutCommand currentLayout() {

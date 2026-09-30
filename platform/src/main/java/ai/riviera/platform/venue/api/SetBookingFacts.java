@@ -56,6 +56,7 @@ public interface SetBookingFacts {
 	/**
 	 * Take the venue row {@code FOR SHARE} for the caller's transaction, before the request accept claims any set: the
 	 * venue-then-set order the layout writes and the reserve take (#1305). Must run in a read-write transaction.
+	 * Rationale: RESPONSIBILITIES.md §venue.
 	 */
 	void lockVenueForClaim(VenueId venueId);
 

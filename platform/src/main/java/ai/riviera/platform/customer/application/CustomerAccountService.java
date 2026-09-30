@@ -115,7 +115,8 @@ class CustomerAccountService implements CustomerAccounts, CustomerAccountProvisi
 
 	@Override
 	public Optional<String> emailForResetToken(String tokenHash) {
-		return tokens.accountFor(TokenPurpose.RESET_PASSWORD, tokenHash).map(store::emailOf);
+		return tokens.accountFor(TokenPurpose.RESET_PASSWORD, tokenHash).flatMap(store::findLiveCredential)
+				.map(LiveAccountCredential::email);
 	}
 
 	@Override
