@@ -24,12 +24,12 @@ both run on a snapshot taken after an in-flight `markRefunded` commits.
   `markRefundFailed(B's id)`, then the intent is `PARTIALLY_REFUNDED` (A's money is out), so A's own
   later `refund.failed` still un-records. *Seam:* `Payments.markRefunded` / `markRefundFailed` ·
   *Pinned by:* `JdbcPaymentsIT.aSiblingsRefundFailureRacingARecordKeepsTheRecordVisible` (red on `main`).
-- [ ] **AC-3:** Given our attempt on record, when a `refund.failed` for the refund arrives while
+- [x] **AC-3:** Given our attempt on record, when a `refund.failed` for the refund arrives while
   `markRefunded` holds it uncommitted, then once it commits the refund is un-recorded and the booking
   listed as owed. *Seam:* `Payments.markRefundFailed(refundId, booking, scope)` · *Pinned by:*
   `JdbcPaymentsIT.aFailureRacingItsOwnRecordUnrecordsItOnceCommitted` (mutation-checked by removing
   the lock).
-- [ ] **AC-4:** The webhook routes a tagged refund's death through the booking-scoped call and an
+- [x] **AC-4:** The webhook routes a tagged refund's death through the booking-scoped call and an
   unattributable one through the refund id alone; `JdbcPaymentsIT`, `StripeWebhookIT` and the
   structural net stay green.
 
@@ -61,14 +61,14 @@ intent's status and the owed flag; payout reads neither.
 
 ## Execution status
 
-**Stage pointer:** implement (phase 1)
+**Stage pointer:** PR — CI, then ready for review
 
-**Next action:** red IT for AC-3, then the booking-scoped `markRefundFailed`.
+**Next action:** check CI on the push, merge `origin/main`, mark ready, run the review gate.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — intent lock | ✅ | (this commit) |
-| 1 — failure arms | ⏳ | |
-| 2 — docs | | |
+| 0 — intent lock | ✅ | f936573 |
+| 1 — failure arms | ✅ | 3a6a6f23 |
+| 2 — docs | ✅ | (this commit) |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.

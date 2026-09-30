@@ -536,7 +536,11 @@ cancelled all-or-nothing, never one booking of it.
   timeout replay leaves a gap before the id is written, so the webhook takes the booking the tag
   names, or an untagged refund's only booking on its intent (on a shared intent: nothing moves).
   The attempt stamp is the discriminator: with none on record, a refund issued by hand at the
-  gateway — money the platform never promised — moves nothing.
+  gateway — money the platform never promised — moves nothing. Both matches run under the
+  intent's lock, so a failure landing mid-record waits for the id rather than missing it (#1298).
+- **Every refund write locks the intent's `payment` row first, in a statement of its own**: the
+  write derives the status from its siblings' shares, which a lock wait inside the statement would
+  leave read on a stale snapshot, so a stay's parallel refunds would end half-refunded (#1298).
 - **Every refund write is a guarded statement that reports whether it moved.** `markRefunded` and
   `markRefundFailed` move only a collected payment — unguarded, they could fabricate one from a
   `REQUIRES_PAYMENT`/`FAILED`/`CANCELED` row, and the derived `SUCCEEDED` restore relies on it.
