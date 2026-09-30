@@ -465,6 +465,11 @@ class WebSliceStubs {
 			}
 
 			@Override
+			public java.util.Optional<OperatorLifecycleOutcome> suspendRefusal(OperatorId actor, OperatorId target) {
+				return java.util.Optional.empty();
+			}
+
+			@Override
 			public OperatorLifecycleOutcome suspend(OperatorId actor, OperatorId target) {
 				return new OperatorLifecycleOutcome.NoSuchOperator();
 			}

@@ -148,11 +148,12 @@ class AdminOperatorControllerTest {
 		verify(sessionRevoker, never()).revokeAll(anyString());
 	}
 
-	/** A suspend refused to keep an active admin, or because the actor lost admin meanwhile, revokes nothing (#1311). */
+	/** The active-admin rule's refusal is answered before the pre-read, so the still-active target keeps its sessions. */
 	@Test
-	void aRefusedSuspendMapsToItsCodeAndRevokesNothing() throws Exception {
-		when(lifecycle.suspend(ADMIN, TARGET)).thenReturn(new OperatorLifecycleOutcome.LastActiveAdmin())
-				.thenReturn(new OperatorLifecycleOutcome.ActorNotActiveAdmin());
+	void aSuspendTheRuleRefusesIsAnsweredBeforeAnyRevoke() throws Exception {
+		when(lifecycle.usernameInStatus(TARGET, OperatorStatus.ACTIVE)).thenReturn(Optional.of(TARGET_USERNAME));
+		when(lifecycle.suspendRefusal(ADMIN, TARGET)).thenReturn(Optional.of(new OperatorLifecycleOutcome.LastActiveAdmin()))
+				.thenReturn(Optional.of(new OperatorLifecycleOutcome.ActorNotActiveAdmin()));
 
 		mvc.perform(isolated(post(SUSPEND, TARGET.value())).with(user(ADMIN_USERNAME).roles("ADMIN")))
 				.andExpect(status().isConflict())
@@ -161,7 +162,21 @@ class AdminOperatorControllerTest {
 				.andExpect(status().isForbidden())
 				.andExpect(jsonPath("$.code").value("NOT_AN_ACTIVE_ADMIN"));
 
-		verify(sessionRevoker, never()).revokeAll(TARGET_USERNAME);
+		verify(sessionRevoker, never()).revokeAll(anyString());
+		verify(lifecycle, never()).suspend(any(), any());
+	}
+
+	/** A refusal only the locked suspend sees (a race) comes after the pre-read revoke: the accepted cost. */
+	@Test
+	void aSuspendRefusedUnderTheLockHasAlreadyRevokedAndRevokesNoMore() throws Exception {
+		when(lifecycle.usernameInStatus(TARGET, OperatorStatus.ACTIVE)).thenReturn(Optional.of(TARGET_USERNAME));
+		when(lifecycle.suspend(ADMIN, TARGET)).thenReturn(new OperatorLifecycleOutcome.LastActiveAdmin());
+
+		mvc.perform(isolated(post(SUSPEND, TARGET.value())).with(user(ADMIN_USERNAME).roles("ADMIN")))
+				.andExpect(status().isConflict())
+				.andExpect(jsonPath("$.code").value("LAST_ACTIVE_ADMIN"));
+
+		verify(sessionRevoker, times(1)).revokeAll(TARGET_USERNAME);
 	}
 
 	/** Reinstatement restores the account, not the old cookies — it neither pre-reads nor revokes. */

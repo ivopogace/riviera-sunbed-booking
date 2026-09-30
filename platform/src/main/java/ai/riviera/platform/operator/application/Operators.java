@@ -69,10 +69,13 @@ public interface Operators {
 	ApprovalOutcome rejectPending(OperatorId operatorId);
 
 	/**
-	 * Lock every admin row, plus {@code actor} and {@code target}, {@code FOR UPDATE} in id order in a statement of its
-	 * own, then read what a suspend decides on: the order two concurrent suspends take, so each sees the other (#1311).
+	 * Lock every admin row, plus {@code actor} and {@code target}, {@code FOR NO KEY UPDATE} in id order, in a statement
+	 * of its own: {@link #suspendFacts} then reads after a rival's commit, which a read in this statement would miss.
 	 */
-	SuspendFacts lockForSuspend(OperatorId actor, OperatorId target);
+	void lockForSuspend(OperatorId actor, OperatorId target);
+
+	/** What a suspend decides on; binding only after {@link #lockForSuspend} in the same transaction (#1311). */
+	SuspendFacts suspendFacts(OperatorId actor, OperatorId target);
 
 	/**
 	 * Transition the ACTIVE operator with this id to SUSPENDED, returning

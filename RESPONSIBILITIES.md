@@ -683,11 +683,12 @@ catalogue reads and `booking`'s reserve, never a sold-booking path. A suspension
 `Approved` the contact email, `Rejected` and `Changed` the username (a `PENDING` operator can hold a
 live session to revoke). An admin that loses a race receives no address and cannot act twice.
 
-**The platform always keeps an `ACTIVE` admin** (#1311). A suspend locks every admin row, plus actor and target,
-`FOR UPDATE` in id order in a statement of its own, then refuses one that would leave no other active admin
-(`LastActiveAdmin`, 409 `LAST_ACTIVE_ADMIN`) and one by an actor that is not an active admin by then
-(`ActorNotActiveAdmin`, 403): two admins suspending each other leave one. Any later path that removes an admin (a demote, a delete) takes
-the same lock and keeps the rule.
+**The admin surface always keeps an `ACTIVE` admin** (#1311). A suspend locks every admin row, plus actor and
+target, `FOR NO KEY UPDATE` in id order in a statement of its own, then refuses one that would leave no other active
+admin (`LastActiveAdmin`, 409 `LAST_ACTIVE_ADMIN`) and one by an actor no longer an active admin by then
+(`ActorNotActiveAdmin`, 403): two admins suspending each other leave one. The edge asks `suspendRefusal` before it
+revokes, so only a race signs out a target whose suspend is refused. A later path that removes an admin (a demote, a
+delete) takes the same lock and keeps the rule.
 
 **Not My Job:**
 - Tourist identity → **`customer`**; venue data → **`venue`**; bookings, payment, payout → theirs

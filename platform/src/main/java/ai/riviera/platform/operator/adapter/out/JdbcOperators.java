@@ -225,12 +225,16 @@ class JdbcOperators implements Operators {
 	}
 
 	@Override
-	public SuspendFacts lockForSuspend(OperatorId actor, OperatorId target) {
-		jdbc.sql("SELECT id FROM operator WHERE is_admin OR id IN (:actor, :subject) ORDER BY id FOR UPDATE")
+	public void lockForSuspend(OperatorId actor, OperatorId target) {
+		jdbc.sql("SELECT id FROM operator WHERE is_admin OR id IN (:actor, :subject) ORDER BY id FOR NO KEY UPDATE")
 				.param(ACTOR_PARAM, actor.value())
 				.param(SUBJECT_PARAM, target.value())
 				.query(Long.class)
 				.list();
+	}
+
+	@Override
+	public SuspendFacts suspendFacts(OperatorId actor, OperatorId target) {
 		return jdbc.sql("""
 				SELECT COALESCE(BOOL_OR(id = :actor AND is_admin AND status = :active), FALSE) AS actor_admin,
 				       COALESCE(BOOL_OR(id = :subject AND is_admin AND status = :active), FALSE) AS target_admin,
