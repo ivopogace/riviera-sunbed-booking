@@ -1,6 +1,7 @@
 package ai.riviera.platform.customer.application;
 
 import java.time.Clock;
+import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneId;
 import java.util.ArrayList;
@@ -49,15 +50,15 @@ class ExpireGuestContactsService implements ExpireGuestContacts {
 	@Transactional
 	public int sweep() {
 		LocalDate cutoff = LocalDate.now(clock.withZone(TIRANE)).minus(retention.window());
-		List<CustomerId> candidates =
-				store.expiredGuestCandidates(cutoff.atStartOfDay(TIRANE).toInstant(), retention.batchSize());
+		Instant olderThan = cutoff.atStartOfDay(TIRANE).toInstant();
+		List<CustomerId> candidates = store.expiredGuestCandidates(olderThan, retention.batchSize());
 		if (candidates.isEmpty()) {
 			return 0;
 		}
 		Set<CustomerId> stillInBasis = history.withBookingOnOrAfter(candidates, cutoff);
 		List<CustomerId> scrubbed = new ArrayList<>();
 		for (CustomerId candidate : candidates) {
-			if (!stillInBasis.contains(candidate) && store.eraseGuestById(candidate)) {
+			if (!stillInBasis.contains(candidate) && store.eraseGuestById(candidate, olderThan)) {
 				scrubbed.add(candidate);
 			}
 		}

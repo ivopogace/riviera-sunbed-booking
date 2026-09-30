@@ -189,7 +189,7 @@ class AccountErasureServiceTest {
 		}
 
 		@Override
-		public boolean eraseGuestById(CustomerId guestId) {
+		public boolean eraseGuestById(CustomerId guestId, Instant olderThan) {
 			throw new UnsupportedOperationException("retention sweep — see ExpireGuestContactsServiceTest");
 		}
 	}

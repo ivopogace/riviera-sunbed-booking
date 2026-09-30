@@ -43,6 +43,17 @@ class JdbcAccountErasure implements AccountErasureStore {
 			    erased_at = NOW(), updated_at = NOW()
 			""";
 
+	/**
+	 * The SQL retention gates on a {@code customer} row. The account gate is a subquery, stale after a lock wait: whatever
+	 * locks a guest row, a booking's FK included, must also move {@code updated_at} or {@code erased_at}, re-read then.
+	 */
+	private static final String EXPIRED_GUEST = """
+			customer.erased_at IS NULL
+			  AND customer.updated_at < :olderThan
+			  AND NOT EXISTS (SELECT 1 FROM customer_account a
+			                  WHERE a.email = customer.email AND a.erased_at IS NULL)
+			""";
+
 	private final JdbcClient jdbc;
 
 	/**
@@ -112,15 +123,7 @@ class JdbcAccountErasure implements AccountErasureStore {
 	@Override
 	public List<CustomerId> expiredGuestCandidates(Instant olderThan, int limit) {
 		// sweepJdbc, not jdbc: this read opens a scheduled run and is bounded.
-		return sweepJdbc.sql("""
-				SELECT c.id FROM customer c
-				WHERE c.erased_at IS NULL
-				  AND c.updated_at < :olderThan
-				  AND NOT EXISTS (SELECT 1 FROM customer_account a
-				                  WHERE a.email = c.email AND a.erased_at IS NULL)
-				ORDER BY c.id
-				LIMIT :limit
-				""")
+		return sweepJdbc.sql("SELECT id FROM customer WHERE " + EXPIRED_GUEST + " ORDER BY id LIMIT :limit")
 				.param(OLDER_THAN, Timestamp.from(olderThan))
 				.param(LIMIT, limit)
 				.query((rs, rowNum) -> new CustomerId(rs.getLong("id")))
@@ -128,9 +131,11 @@ class JdbcAccountErasure implements AccountErasureStore {
 	}
 
 	@Override
-	public boolean eraseGuestById(CustomerId guestId) {
-		return jdbc.sql(GUEST_TOMBSTONE + "WHERE id = :id AND erased_at IS NULL")
+	public boolean eraseGuestById(CustomerId guestId, Instant olderThan) {
+		// Re-applies gates 1-2: a booking since the candidate read refreshed updated_at, so it keeps the contact (#1303).
+		return jdbc.sql(GUEST_TOMBSTONE + "WHERE id = :id AND " + EXPIRED_GUEST)
 				.param(ID, guestId.value())
+				.param(OLDER_THAN, Timestamp.from(olderThan))
 				.update() > 0;
 	}
 

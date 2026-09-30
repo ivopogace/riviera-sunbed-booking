@@ -2,22 +2,36 @@ package ai.riviera.platform.customer;
 
 import java.sql.Date;
 import java.sql.Timestamp;
+import java.time.Duration;
+import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Locale;
 import java.util.Set;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
 
+import org.awaitility.Awaitility;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.support.TransactionTemplate;
 
 import ai.riviera.platform.EnabledIfDockerAvailable;
 import ai.riviera.platform.TestcontainersConfiguration;
+import ai.riviera.platform.customer.api.CustomerDirectory;
+import ai.riviera.platform.customer.application.AccountErasureStore;
 import ai.riviera.platform.customer.application.ExpireGuestContacts;
 import ai.riviera.platform.customer.spi.GuestBookingHistory;
 import ai.riviera.platform.customer.vocabulary.CustomerId;
+import ai.riviera.platform.customer.vocabulary.GuestContact;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -49,6 +63,15 @@ class GuestContactRetentionIT {
 
 	@Autowired
 	JdbcTemplate jdbc;
+
+	@Autowired
+	CustomerDirectory customers;
+
+	@Autowired
+	AccountErasureStore store;
+
+	@Autowired
+	PlatformTransactionManager txManager;
 
 	@Test
 	void reportsOnlyGuestsWithABookingOnOrAfterTheCutoff() {
@@ -165,6 +188,59 @@ class GuestContactRetentionIT {
 				.isEqualTo(firstErasedAt);
 	}
 
+	@Test
+	void aGuestWhoBooksWhileTheSweepReachesTheirRowIsNotScrubbed() throws Exception {
+		// The booking's find-or-create holds the row when the scrub arrives (#1303): after the wait, the row is young.
+		String email = "retention-it-racing@example.com";
+		long customerId = insertAgedGuest(email);
+		TransactionTemplate tx = new TransactionTemplate(txManager);
+		CompletableFuture<Integer> bookingPid = new CompletableFuture<>();
+		CountDownLatch bookingCommits = new CountDownLatch(1);
+		try (ExecutorService pool = Executors.newFixedThreadPool(2)) {
+			try {
+				Future<?> booking = pool.submit(() -> tx.executeWithoutResult(status -> {
+					customers.findOrCreate(new GuestContact(email, "Returning Guest", "+355691110901"));
+					bookingPid.complete(jdbc.queryForObject("SELECT pg_backend_pid()", Integer.class));
+					try {
+						bookingCommits.await(30, TimeUnit.SECONDS);
+					}
+					catch (InterruptedException interrupted) {
+						Thread.currentThread().interrupt();
+					}
+				}));
+				int pid = bookingPid.get(10, TimeUnit.SECONDS);
+				Future<Integer> swept = pool.submit(sweep::sweep);
+				Awaitility.await().atMost(Duration.ofSeconds(10)).until(() -> sessionsBlockedBy(pid) >= 1L);
+				bookingCommits.countDown();
+				booking.get(10, TimeUnit.SECONDS);
+				swept.get(10, TimeUnit.SECONDS);
+			}
+			finally {
+				bookingCommits.countDown();
+			}
+		}
+
+		assertThat(timestamp("SELECT erased_at FROM customer WHERE id = ?", customerId))
+				.as("the guest was refreshed by a booking before the scrub landed, so the row is no longer expired")
+				.isNull();
+		assertThat(string("SELECT full_name FROM customer WHERE id = ?", customerId)).isEqualTo("Returning Guest");
+	}
+
+	@Test
+	void aGuestWhoseEmailIsClaimedAfterTheCandidateReadIsNotScrubbed() {
+		String email = "retention-it-late-signup@example.com";
+		long customerId = insertAgedGuest(email);
+		Instant olderThan = Instant.parse("2020-01-01T00:00:00Z");
+		assertThat(store.expiredGuestCandidates(olderThan, Integer.MAX_VALUE)).contains(new CustomerId(customerId));
+
+		insertAccount(email);
+
+		assertThat(store.eraseGuestById(new CustomerId(customerId), olderThan))
+				.as("the scrub re-applies the live-account gate the candidate read passed")
+				.isFalse();
+		assertThat(timestamp("SELECT erased_at FROM customer WHERE id = ?", customerId)).isNull();
+	}
+
 	// --- fixture helpers -------------------------------------------------------------------------------
 
 	private CustomerId insertGuestWithBooking(String email, LocalDate bookingDate) {
@@ -240,5 +316,10 @@ class GuestContactRetentionIT {
 	private int count(String sql, Object... args) {
 		Integer n = jdbc.queryForObject(sql, Integer.class, args);
 		return n == null ? 0 : n;
+	}
+
+	private long sessionsBlockedBy(int pid) {
+		return jdbc.queryForObject("SELECT COUNT(*) FROM pg_stat_activity WHERE ? = ANY (pg_blocking_pids(pid))",
+				Long.class, pid);
 	}
 }

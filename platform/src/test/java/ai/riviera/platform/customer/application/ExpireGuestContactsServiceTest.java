@@ -138,6 +138,9 @@ class ExpireGuestContactsServiceTest {
 		assertThat(store.lastOlderThan())
 				.as("the row-age gate uses the same cutoff, as a Tirane start-of-day instant")
 				.isEqualTo(EXPECTED_CUTOFF.atStartOfDay(TIRANE).toInstant());
+		assertThat(store.lastEraseOlderThan())
+				.as("the scrub re-applies the row-age gate at the candidate read's cutoff (#1303)")
+				.isEqualTo(store.lastOlderThan());
 	}
 
 	@Test
@@ -148,16 +151,17 @@ class ExpireGuestContactsServiceTest {
 
 	/**
 	 * In-memory store mirroring the adapter's two retention methods: candidates are the live (non-tombstoned)
-	 * guests, capped by the batch limit and returned in insertion order (the SQL's {@code ORDER BY c.id});
+	 * guests, capped by the batch limit and returned in insertion order (the SQL's {@code ORDER BY id});
 	 * {@code eraseGuestById} tombstones a live row and is a no-op on an already-tombstoned one (mirrors the
 	 * {@code erased_at IS NULL} guard). The row-age and live-account gates are SQL-level and belong to the IT;
-	 * the fake only records the instant it was asked for.
+	 * the fake only records the instants the read and the scrub were asked for.
 	 */
 	private static final class FakeRetentionStore implements AccountErasureStore {
 		private final List<CustomerId> guests = new ArrayList<>();
 		private final Map<CustomerId, Boolean> erased = new HashMap<>();
 		private final Map<CustomerId, Integer> eraseAttempts = new HashMap<>();
 		private Instant lastOlderThan;
+		private Instant lastEraseOlderThan;
 		private long nextId = 1;
 
 		CustomerId liveGuest() {
@@ -183,6 +187,10 @@ class ExpireGuestContactsServiceTest {
 			return lastOlderThan;
 		}
 
+		Instant lastEraseOlderThan() {
+			return lastEraseOlderThan;
+		}
+
 		@Override
 		public List<CustomerId> expiredGuestCandidates(Instant olderThan, int limit) {
 			lastOlderThan = olderThan;
@@ -190,7 +198,8 @@ class ExpireGuestContactsServiceTest {
 		}
 
 		@Override
-		public boolean eraseGuestById(CustomerId guestId) {
+		public boolean eraseGuestById(CustomerId guestId, Instant olderThan) {
+			lastEraseOlderThan = olderThan;
 			eraseAttempts.merge(guestId, 1, Integer::sum);
 			if (!erased.containsKey(guestId) || erased(guestId)) {
 				return false;
