@@ -16,10 +16,10 @@ total is a follow-up issue.
 
 ## Acceptance criteria
 
-- [ ] **AC-1:** Given a `generate` paused after its ledger read of venue V at 1000, when a reversal of 200 for V
+- [x] **AC-1:** Given a `generate` paused after its ledger read of venue V at 1000, when a reversal of 200 for V
   commits and a second `generate` runs, then the `DRAFT` batch ends at 800. *Seam:* `PayoutReport.generate` racing
   itself · *Pinned by:* `PayoutGenerateRaceIT.twoGeneratesAroundALedgerCommitLeaveTheLedgersNet` (red on `main`: 1000).
-- [ ] **AC-2:** the generation, lifecycle and batch-race suites stay green.
+- [x] **AC-2:** the generation, lifecycle and batch-race suites stay green.
 
 ## Non-goals
 
@@ -45,14 +45,14 @@ total is a follow-up issue.
 
 ## Execution status
 
-**Stage pointer:** implement (phase 0)
+**Stage pointer:** review
 
-**Next action:** red IT.
+**Next action:** review gate, record, plan removal, CI and Sonar, merge.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — red | ⏳ | |
-| 1 — lock | | |
-| 2 — docs | | |
+| 0 — red | ✅ | 32d015fa |
+| 1 — lock | ✅ | 9d817066 |
+| 2 — docs | ✅ | 9d817066 |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
