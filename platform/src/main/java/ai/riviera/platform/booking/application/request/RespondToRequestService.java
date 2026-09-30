@@ -34,7 +34,7 @@ import ai.riviera.platform.venue.vocabulary.VenueId;
  * (invariant #13 → 403). Accept commits {@link RequestClaimService}'s claim-and-transition (the request
  * holds nothing until then, ADR-0025; no row past the deadline, invariant #4), then issues the
  * PaymentIntent outside any transaction — no lock across Stripe. A failed issuance reverts to
- * {@code PENDING_REQUEST} and gives the claim back, replay-safe on {@code booking-<id>-pi}.
+ * {@code PENDING_REQUEST} and releases the claim, replay-safe on {@code booking-<id>-pi} (a stay: {@link #collectStay}).
  */
 @Service
 class RespondToRequestService implements RespondToRequest {
@@ -157,7 +157,7 @@ class RespondToRequestService implements RespondToRequest {
 		};
 	}
 
-	/** {@link #collect} for a stay: one payment request for every stretch; a failure reverts them all. */
+	/** {@link #collect} for a stay: one payment request; a failure reverts every stretch, or declines a stay a remodel split. */
 	private AcceptOutcome collectStay(StayId stayId, List<AcceptedRequest> stretches) {
 		String currency = stretches.getFirst().currency();
 		PaymentOutcome payment;
@@ -168,7 +168,7 @@ class RespondToRequestService implements RespondToRequest {
 					.toList());
 		}
 		catch (RuntimeException paymentBlewUp) {
-			claims.revertStay(stretches);
+			claims.revertStay(stayId, stretches);
 			throw paymentBlewUp;
 		}
 		return switch (payment) {
@@ -190,7 +190,7 @@ class RespondToRequestService implements RespondToRequest {
 				yield new AcceptOutcome.Accepted(BookingStatus.AWAITING_PAYMENT);
 			}
 			case PaymentOutcome.Failed failed -> {
-				boolean reverted = claims.revertStay(stretches);
+				boolean reverted = claims.revertStay(stayId, stretches);
 				log.warn("payment request for accepted stay {} failed ({}); reverted={}", stayId.value(),
 						failed.reason(), reverted);
 				yield AcceptOutcome.Rejected.PAYMENT_INIT_FAILED;

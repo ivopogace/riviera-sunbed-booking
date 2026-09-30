@@ -28,8 +28,8 @@ import ai.riviera.platform.venue.vocabulary.VenueId;
  * The committed half of the venue's accept (ADR-0025): claim every day of the pending request, or of
  * every stretch of a stay request (invariant #2, #1267), move it to {@code AWAITING_PAYMENT}, and decline
  * every pending request overlapping it, a stay whole — in one transaction, so the payment call that
- * follows holds no lock. A day that cannot be claimed makes the request decline itself whole. Lock
- * order matches the reserve and the remodel: set rows by ascending day, then booking rows.
+ * follows holds no lock. A day that cannot be claimed makes the request decline itself whole. The accept locks
+ * set rows by ascending day, then booking rows, as the reserve does; the revert, like the remodel, booking first.
  * Rationale: {@code RESPONSIBILITIES.md} §booking.
  */
 @Service
@@ -94,25 +94,31 @@ class RequestClaimService {
 		return new StayAcceptClaim.Accepted(accepted);
 	}
 
-	/** Compensates a failed payment set-up: back to pending, and the accept's claim is given back. */
+	/** Compensates a failed payment set-up: back to pending, releasing the claim it held (invariant #2, #1302). */
 	@Transactional
 	public boolean revert(AcceptedRequest accepted) {
-		boolean reverted = bookings.revertAcceptToPending(accepted.bookingId());
-		if (reverted) {
-			SpanClaim.releaseEveryDay(availability, accepted.setId(),
-					StaySpan.of(accepted.bookingDate(), accepted.lastDate()));
-		}
-		return reverted;
+		Optional<ClaimRef> held = bookings.revertAcceptToPending(accepted.bookingId());
+		held.ifPresent(claim -> SpanClaim.releaseEveryDay(availability, claim.setId(),
+				StaySpan.of(claim.bookingDate(), claim.lastDate())));
+		return held.isPresent();
 	}
 
-	/** {@link #revert} for every stretch of an accepted stay request, in one transaction. */
+	/**
+	 * {@link #revert} for every stretch of an accepted stay request, in one transaction. A stay it cannot restore
+	 * whole (a remodel released a stretch meanwhile) is declined {@code SET_UNAVAILABLE}, never left mixed (#1302).
+	 */
 	@Transactional
-	public boolean revertStay(List<AcceptedRequest> stretches) {
-		boolean reverted = false;
+	public boolean revertStay(StayId stayId, List<AcceptedRequest> stretches) {
+		int reverted = 0;
 		for (AcceptedRequest stretch : stretches) {
-			reverted |= revert(stretch);
+			if (revert(stretch)) {
+				reverted++;
+			}
 		}
-		return reverted;
+		if (reverted > 0 && reverted < stretches.size()) {
+			declineStaySelf(stayId, stretches.getFirst().venueId());
+		}
+		return reverted > 0;
 	}
 
 	/** Declines every pending request overlapping the accepted spans; one fact per lone rival and per rival stay. */

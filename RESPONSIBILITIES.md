@@ -352,14 +352,14 @@ any is released on the old, never a swap of my own — so a racing reserve wins 
   rule; `cancellationWindowAtBirth` + `lateCancelRefundBps` ride `BookingConfirmed` and
   `BookingPaymentDue` so a later cutoff edit cannot rewrite a sent mail (null: no disclosure). The
   view and admin-resend facts re-derive from the *current* cutoff — bounded, documented drift.
-- **The accept is the claim (ADR-0025):** `RequestClaimService` claims every day of the pending
-  request, then runs the guarded `PENDING_REQUEST → AWAITING_PAYMENT`, then declines every other
-  pending request on that set with an overlapping day (`ANOTHER_GUEST`), in one transaction that
-  commits before the payment call; a day it cannot claim makes the request decline itself
-  (`SET_UNAVAILABLE`), and a failed payment set-up reverts to pending and gives the claim back. Lock
-  order is the reserve's: availability row, then booking row (a remodel locks each booking row first); two
-  overlapping accepts leave one winner (`RequestAcceptClaimsIT`, `ConcurrentOverlappingAcceptIT`). The queue
-  names each request's competing requests; a request for a day already taken is `SET_TAKEN`.
+- **The accept is the claim (ADR-0025):** `RequestClaimService` claims every day of the request, runs the
+  guarded `PENDING_REQUEST → AWAITING_PAYMENT` and declines overlapping pending rivals on the set
+  (`ANOTHER_GUEST`) in one transaction committed before the payment call. A day it cannot claim declines the
+  request (`SET_UNAVAILABLE`); a failed payment set-up reverts it to pending, freeing the claim it held
+  (a remodel may have moved it), and a stay it cannot restore whole is declined (#1302). The accept locks as
+  the reserve does, availability row then booking row (the revert and a remodel, booking row first); two overlapping
+  accepts leave one winner (`RequestAcceptClaimsIT`, `ConcurrentOverlappingAcceptIT`). The queue names each
+  request's competing requests; a request for a day already taken is `SET_TAKEN`.
 - **A stay request is answered whole (#1267):** at a Request-to-Book venue a stitched plan is a
   `stay` of `PENDING_REQUEST` stretches under one deadline. Every leg (accept, decline, expiry,
   withdraw by the stay's code, a remodel's decline, a rival's decline) moves every stretch or none,

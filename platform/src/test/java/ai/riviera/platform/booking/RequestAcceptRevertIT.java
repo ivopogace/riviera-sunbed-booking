@@ -11,20 +11,29 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.support.TransactionTemplate;
 
 import ai.riviera.platform.EnabledIfDockerAvailable;
 import ai.riviera.platform.TestcontainersConfiguration;
+import ai.riviera.platform.availability.api.AvailabilityClaim;
+import ai.riviera.platform.availability.vocabulary.ClaimOutcome;
+import ai.riviera.platform.booking.application.Bookings;
 import ai.riviera.platform.booking.application.request.AcceptOutcome;
 import ai.riviera.platform.booking.application.request.RespondToRequest;
 import ai.riviera.platform.booking.vocabulary.BookingId;
 import ai.riviera.platform.operator.vocabulary.OperatorId;
 import ai.riviera.platform.payment.api.CheckoutPort;
 import ai.riviera.platform.payment.vocabulary.PaymentOutcome;
+import ai.riviera.platform.venue.vocabulary.SetId;
 import ai.riviera.platform.venue.vocabulary.VenueId;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertSame;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doReturn;
 
 /**
@@ -45,6 +54,15 @@ class RequestAcceptRevertIT {
 
 	@Autowired
 	JdbcClient jdbc;
+
+	@Autowired
+	Bookings bookings;
+
+	@Autowired
+	AvailabilityClaim availability;
+
+	@Autowired
+	PlatformTransactionManager txManager;
 
 	/** A spy, not a mock: the payment service also serves the credentials lookup the view needs. */
 	@MockitoSpyBean
@@ -67,22 +85,75 @@ class RequestAcceptRevertIT {
 		jdbc.sql("INSERT INTO operator_venue (venue_id, operator_id) VALUES (:v, :o)")
 				.param("v", venueId).param("o", operatorId).update();
 		operator = new OperatorId(operatorId);
-		setId = jdbc.sql("""
-				INSERT INTO set_position (venue_id, row_label, position_no, tier, pool, price_minor,
-				                          price_currency, grid_x, grid_y)
-				VALUES (:venue, 'A', 1, 'STANDARD', 'ONLINE', 4500, 'EUR', 1, 1)
-				RETURNING id
-				""").param("venue", venueId).query(Long.class).single();
+		setId = insertSet(1);
 	}
 
 	@Test
 	void aFailedPaymentSetUpRevertsAndReleasesTheClaim() {
 		doReturn(new PaymentOutcome.Failed("stripe_error")).when(checkout).pay(any(), any());
+		long request = insertRequest();
+
+		AcceptOutcome outcome = respondToRequest.accept(operator, new VenueId(venueId), new BookingId(request));
+
+		assertSame(AcceptOutcome.Rejected.PAYMENT_INIT_FAILED, outcome);
+		assertEquals("PENDING_REQUEST", jdbc.sql("SELECT status FROM booking WHERE id = :id")
+				.param("id", request).query(String.class).single());
+		assertEquals(0L, heldOn(setId), "the accept's claim is given back");
+	}
+
+	@Test
+	void aRevertAfterARemodelMoveReleasesTheMovedToSetOnly() {
+		long candidate = insertSet(2);
+		long request = insertRequest();
+		doAnswer(payCall -> {
+			// A remodel commit lands inside the Stripe call (#1302): the booking moves off its set, and a guest takes the day.
+			new TransactionTemplate(txManager).executeWithoutResult(status -> {
+				assertSame(ClaimOutcome.CLAIMED, availability.claim(new SetId(candidate), day));
+				availability.release(new SetId(setId), day);
+				assertTrue(bookings.moveToSet(request, new SetId(setId), new SetId(candidate), Instant.now()));
+			});
+			assertSame(ClaimOutcome.CLAIMED, availability.claim(new SetId(setId), day));
+			return new PaymentOutcome.Failed("stripe_error");
+		}).when(checkout).pay(any(), any());
+
+		AcceptOutcome outcome = respondToRequest.accept(operator, new VenueId(venueId), new BookingId(request));
+
+		assertSame(AcceptOutcome.Rejected.PAYMENT_INIT_FAILED, outcome);
+		assertEquals("PENDING_REQUEST", jdbc.sql("SELECT status FROM booking WHERE id = :id")
+				.param("id", request).query(String.class).single());
+		assertEquals(candidate, jdbc.sql("SELECT set_id FROM booking WHERE id = :id")
+				.param("id", request).query(Long.class).single(), "the request stands where the remodel put it");
+		assertEquals(1L, heldOn(setId), "the other guest's claim on the accepted set stands (#2)");
+		assertEquals(0L, heldOn(candidate), "the claim the request held is the one given back");
+	}
+
+	@Test
+	void aRemodelCannotMoveARequestThatHoldsNoClaim() {
+		// A revert that commits before a remodel's row lock leaves the booking pending (#1302): it holds nothing to move.
+		long candidate = insertSet(2);
+		long request = insertRequest();
+
+		assertFalse(bookings.moveToSet(request, new SetId(setId), new SetId(candidate), Instant.now()),
+				"a pending request holds no claim (ADR-0025), so the remodel's move misses and its commit rolls back");
+		assertEquals(setId, jdbc.sql("SELECT set_id FROM booking WHERE id = :id")
+				.param("id", request).query(Long.class).single());
+	}
+
+	private long insertSet(int position) {
+		return jdbc.sql("""
+				INSERT INTO set_position (venue_id, row_label, position_no, tier, pool, price_minor,
+				                          price_currency, grid_x, grid_y)
+				VALUES (:venue, 'A', :pos, 'STANDARD', 'ONLINE', 4500, 'EUR', :pos, 1)
+				RETURNING id
+				""").param("venue", venueId).param("pos", position).query(Long.class).single();
+	}
+
+	private long insertRequest() {
 		String code = "RVRT" + System.nanoTime() % 1_000_000_000L;
 		long customer = jdbc.sql("INSERT INTO customer (email, full_name, phone) "
 						+ "VALUES (:e, 'Guest', '+355600') RETURNING id")
 				.param("e", code + "@example.com").query(Long.class).single();
-		long request = jdbc.sql("""
+		return jdbc.sql("""
 				INSERT INTO booking (code, venue_id, set_id, customer_id, booking_date, last_date,
 				                     amount_minor, amount_currency, status, request_expires_at)
 				VALUES (:code, :venue, :set, :cust, :day, :day, 4500, 'EUR', 'PENDING_REQUEST', :expires)
@@ -91,13 +162,10 @@ class RequestAcceptRevertIT {
 				.param("code", code).param("venue", venueId).param("set", setId).param("cust", customer)
 				.param("day", day).param("expires", java.sql.Timestamp.from(Instant.now().plusSeconds(3600)))
 				.query(Long.class).single();
+	}
 
-		AcceptOutcome outcome = respondToRequest.accept(operator, new VenueId(venueId), new BookingId(request));
-
-		assertSame(AcceptOutcome.Rejected.PAYMENT_INIT_FAILED, outcome);
-		assertEquals("PENDING_REQUEST", jdbc.sql("SELECT status FROM booking WHERE id = :id")
-				.param("id", request).query(String.class).single());
-		assertEquals(0L, jdbc.sql("SELECT COUNT(*) FROM set_availability WHERE set_id = :set AND booking_date = :day")
-				.param("set", setId).param("day", day).query(Long.class).single(), "the accept's claim is given back");
+	private long heldOn(long set) {
+		return jdbc.sql("SELECT COUNT(*) FROM set_availability WHERE set_id = :set AND booking_date = :day")
+				.param("set", set).param("day", day).query(Long.class).single();
 	}
 }
