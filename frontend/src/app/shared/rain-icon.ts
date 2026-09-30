@@ -1,8 +1,9 @@
 import { Component } from '@angular/core';
 
 /**
- * The rain cloud: the operator's weather refund, the one refund the venue — not the guest's
- * cancellation window — decides.
+ * The rain cloud: the operator's weather refund of a whole venue and date, decided by the venue
+ * rather than the guest's cancellation window. Its per-guest sibling, the venue day refund, has no
+ * icon.
  *
  * <p>Zero API surface — `shared/clock-icon.ts` explains the shape.
  */

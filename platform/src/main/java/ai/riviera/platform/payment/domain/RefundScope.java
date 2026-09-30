@@ -5,10 +5,10 @@ import java.util.Objects;
 
 /**
  * Which part of a booking's share a refund is for: the whole share ({@link #WHOLE}, the cancellation
- * refund) or one service day's share ({@link #day}, a weather refund of a day the stay continues past,
- * issue #1210). One refund per scope is the rule (`payment_refund_uniq`), so a replay finds its own
- * row and a day is never refunded twice. {@code kind()} is the {@code TEXT} token the DB {@code CHECK}
- * lists (keep in lockstep).
+ * refund) or one service day's share ({@link #day}, a day refund of a day the stay goes on past —
+ * weather's, ADR-0026, or the venue's own, ADR-0027). One refund per scope is the rule
+ * (`payment_refund_uniq`), so a replay finds its own row and a day is never refunded twice.
+ * {@code kind()} is the {@code TEXT} token the DB {@code CHECK} lists (keep in lockstep).
  */
 public record RefundScope(LocalDate serviceDate) {
 

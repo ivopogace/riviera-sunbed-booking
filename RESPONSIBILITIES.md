@@ -242,7 +242,7 @@ any is released on the old, never a swap of my own — so a racing reserve wins 
 - **Then it claims every day, all or nothing:** a day that loses gives back every day won, then
   answers `SET_TAKEN` (`ConcurrentRangeReservationIT`). One PaymentIntent for per-day price × days
   (invariant #5); the cancellation window and refund are the first day's, on what remains of the
-  amount once any weather-refunded day is off it (invariant #10, ADR-0026). The staff daily list and daily takings count `CONFIRMED`, `COMPLETED` and
+  amount once any refunded day is off it (invariant #10, ADR-0026, ADR-0027). The staff daily list and daily takings count `CONFIRMED`, `COMPLETED` and
   `NO_SHOW` (a resolved stay still happened, its money kept). The daily list names the guest's
   whole span (a stitched stay's, not the stretch's) and the day's own `booking_day` attendance;
   takings count each covering booking's **day share** (`DayShare`: the amount split over its days,
@@ -1121,10 +1121,10 @@ The mechanism and edge cases behind `CLAUDE.md`'s one-line invariants; its numbe
     caller's figure. Full refund until the venue's evening-before `booking_cutoff` (default `18:00`
     `Europe/Tirane`, owner-editable; not #4's sales close), then the venue's late share (none or
     partial); from service-day open (00:00 `Europe/Tirane`) a guest cancel is refused, not refunded.
-    Outside the tiers, deliberately: the **weather exception** (by the venue's operator: a one-day
-    booking in full, a stay's day at its share — ADR-0026) and a **moved booking's free exit** — in
-    full under `VENUE_CHANGE` until `BookingCutoff#freeExitEndsAt`, whatever `LATE` would answer; it
-    never reopens `CLOSED`, as that deadline is capped at service-day open (§`booking`, ADR-0020).
+    Outside the tiers, deliberately: the venue's own refunds — the **weather exception** (a one-day booking
+    in full, a stay's day at its share, ADR-0026) and the **venue day refund** (the same for one guest, the
+    day released unless past, ADR-0027) — and a **moved booking's free exit**, in full under `VENUE_CHANGE`
+    until `BookingCutoff#freeExitEndsAt` whatever `LATE` would answer; capped at service-day open, it never reopens `CLOSED` (§`booking`, ADR-0020).
 11. **Spring Modulith boundaries are hexagonal and id-based** (ADR-0007). Cross-module access is an
     `api/` port or a domain event carrying technical ids (no business fields), never another
     module's `application.*`/`adapter.*`/`domain.*`. A full module is `{api?, spi?, vocabulary?,

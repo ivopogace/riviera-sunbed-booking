@@ -57,8 +57,8 @@ NOT DISTINCT) so redelivery can't double; a refund posts a `REVERSAL`, a stay's 
 
 ### RV-BE-9. Per-venue authorization / BOLA (#13) — **Blocker**
 Any venue-scoped surface (`/api/venues/{venueId}/**`, payout ledger, staff bookings, beach-map
-edit, staff availability, weather refund) calls `operator`'s `assertOwns` in the
-**application service** (pinned by `CrossVenueDenialIT`). Denial is `403 NOT_VENUE_OWNER`
+edit, staff availability, weather refund, the operator's venue day refund) calls `operator`'s
+`assertOwns` in the **application service** (pinned by `CrossVenueDenialIT`). Denial is `403 NOT_VENUE_OWNER`
 **before any existence check** — a 404 for an unowned venue leaks existence. `/api/admin/**`
 is role-gated; `AdminSurfaceRoleGateTest` fails unless every mapped admin endpoint refuses
 both non-admin principal types, so a new one needs its `hasRole(ADMIN_ROLE)` matcher.
@@ -101,8 +101,8 @@ the cutoff from the venue's `sales_close` through `BookingCutoff`, the zone the 
 
 ### RV-BE-16. Refund policy server-side (#10) — Major
 Refund eligibility/amount from booking state + policy; client never supplies the amount; weather
-refund is an explicit action by the venue's operator (owner-asserted, RV-BE-9); thresholds not
-duplicated (Minor).
+refund is an explicit action by the venue's operator (owner-asserted, RV-BE-9), the venue day refund
+(ADR-0027) the operator's owner-asserted or the admin's audited one; thresholds not duplicated (Minor).
 
 ### RV-BE-13. No injection — **Blocker**
 SQL via bound params only; user-controlled text logged only with `\r\n` neutralized (Major);

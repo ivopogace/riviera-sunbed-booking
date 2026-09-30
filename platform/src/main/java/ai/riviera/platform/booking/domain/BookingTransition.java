@@ -85,8 +85,8 @@ public enum BookingTransition {
 
 	/**
 	 * Every status a booking in {@code status} may next hold, across all actors. Empty for the five
-	 * statuses nothing leaves; {@code NO_SHOW} is not among them, because the weather refund
-	 * reaches it.
+	 * statuses nothing leaves; {@code NO_SHOW} is not among them, because the venue's refund
+	 * ({@link #VENUE_REFUND}) reaches it.
 	 */
 	public static Set<BookingStatus> successorsOf(BookingStatus status) {
 		return SUCCESSORS.get(status);
