@@ -1011,6 +1011,16 @@ class CreateBookingServiceTest {
 		}
 
 		@Override
+		public void lockByCode(String code) {
+			throw new UnsupportedOperationException("not exercised by the single-booking reserve");
+		}
+
+		@Override
+		public void lockLiveOnSets(Collection<SetId> setIds) {
+			throw new UnsupportedOperationException("not exercised by the single-booking reserve");
+		}
+
+		@Override
 		public Optional<ai.riviera.platform.booking.application.cancel.CancelledBooking> cancelConfirmed(
 				long bookingId, Instant cancelledAt, long refundMinor,
 				ai.riviera.platform.booking.vocabulary.RefundReason reason, long remainingMinor) {

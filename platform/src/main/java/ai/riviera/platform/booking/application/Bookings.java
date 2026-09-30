@@ -131,10 +131,16 @@ public interface Bookings {
 	 */
 	Optional<BookingRecord> findByCode(String code);
 
+	/**
+	 * Row-locks the lone booking with this {@code code} (a stay's code locks nothing) for the transaction. Read it
+	 * afterwards, in a statement of its own, so a day refund committed under the lock is in what the caller quotes.
+	 */
+	void lockByCode(String code);
+
 	/** The stay whose code this is, with its stretches in day order; empty for a booking's code or an unknown one. */
 	Optional<StayRecord> findStayByCode(String code);
 
-	/** The stay's stretches in day order, row-locked for the transaction so the caller's guarded transitions cannot lose a race. */
+	/** The stay's stretches in day order, row-locked for the transaction and read after the lock, so a day refunded under it is counted. */
 	List<BookingRecord> lockStretches(StayId stayId);
 
 	/**
@@ -329,4 +335,7 @@ public interface Bookings {
 	 * by service date then id. An empty input answers empty without a round-trip.
 	 */
 	List<LiveClaim> findLiveOnSets(Collection<SetId> setIds);
+
+	/** Row-locks what {@link #findLiveOnSets} would answer, in its order; read them after, so a day refunded under the lock is counted. */
+	void lockLiveOnSets(Collection<SetId> setIds);
 }

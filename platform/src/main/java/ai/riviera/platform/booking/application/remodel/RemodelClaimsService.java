@@ -61,8 +61,8 @@ import ai.riviera.platform.venue.vocabulary.VenueId;
  * Serves {@link RemodelClaims}, owner-asserted: classifies the live bookings on the disturbed sets
  * in {@code (service date, id)} order, by zone ({@link RemodelZones}), then a move candidate
  * ({@link MoveRanking}) free on every day of the span and untaken by an earlier claim, then status.
- * {@link #classify} is read-only and advisory; {@link #commit} re-classifies inside {@code venue}'s
- * locked layout write, settles each claim and frees every {@code (set, date)} it ends. Refunds,
+ * {@link #classify} is read-only and advisory; {@link #commit} row-locks the claims, then re-classifies inside
+ * {@code venue}'s locked layout write, settles each claim and frees every {@code (set, date)} it ends. Refunds,
  * reversals and mails drain off its events. Rationale: {@code RESPONSIBILITIES.md} §booking.
  */
 @Service
@@ -109,6 +109,7 @@ class RemodelClaimsService implements RemodelClaims {
 	public RemodelCommit commit(OperatorId operator, VenueId venueId, Collection<SetId> disturbedSets,
 			PreviewToken token, RefundConfirmation confirmation) {
 		ownership.assertOwns(operator, new VenueRef(venueId.value()));
+		bookings.lockLiveOnSets(disturbedSets);
 		List<RemodelClaim> fresh = classifyOwned(venueId, disturbedSets);
 		if (!token.covers(fresh)) {
 			return new RemodelCommit.Stale(fresh);

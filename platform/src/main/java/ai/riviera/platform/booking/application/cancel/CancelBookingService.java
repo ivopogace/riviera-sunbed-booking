@@ -26,9 +26,9 @@ import ai.riviera.platform.booking.vocabulary.CancellationWindow;
 import ai.riviera.platform.booking.vocabulary.RefundReason;
 
 /**
- * The guest cancel, in one transaction: quote the refund server-side ({@link CancellationPolicy},
- * invariant #10), guarded {@code CONFIRMED → CANCELLED}, free every {@code (set, date)} of the span
- * (invariant #2), publish {@link BookingCancelled}. Never refund in here; {@code BookingRefundListener}
+ * The guest cancel, in one transaction: lock the row, then read and quote the refund server-side
+ * ({@link CancellationPolicy}, #10), guarded {@code CONFIRMED → CANCELLED}, free every {@code (set, date)}
+ * of the span (#2), publish {@link BookingCancelled}. Never refund in here; {@code BookingRefundListener}
  * refunds after commit. Who may cancel is {@link BookingTransition#CANCEL_BY_GUEST}, never restated;
  * a spent day ({@code NO_SHOW}, {@code COMPLETED}, a closed quote window) answers {@code WindowClosed}
  * before any write. Rationale: {@code RESPONSIBILITIES.md} §booking.
@@ -56,6 +56,7 @@ class CancelBookingService implements CancelBooking {
 	@Override
 	@Transactional
 	public CancelOutcome cancel(String code) {
+		bookings.lockByCode(code);
 		Optional<BookingRecord> found = bookings.findByCode(code);
 		if (found.isEmpty()) {
 			return bookings.findStayByCode(code).map(this::cancelStay).orElseGet(CancelOutcome.NotFound::new);
@@ -77,7 +78,7 @@ class CancelBookingService implements CancelBooking {
 		Optional<CancelledBooking> transitioned = bookings.cancelConfirmed(
 				booking.id(), clock.instant(), refundMinor, quote.reason(), booking.remainingMinor());
 		if (transitioned.isEmpty()) {
-			// Lost a race: a concurrent cancel already released and published, or a day refund overtook the quote.
+			// The backstop: under the row lock neither a concurrent cancel nor a day refund can have overtaken the read.
 			return new CancelOutcome.NotCancellable(BookingStatus.CANCELLED);
 		}
 		CancelledBooking cancelled = transitioned.get();

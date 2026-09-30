@@ -539,6 +539,15 @@ class JdbcBookings implements Bookings {
 				.optional();
 	}
 
+	/** A statement of its own: the read after it takes a fresh snapshot, where a lock-waiting {@code SELECT} would not. */
+	@Override
+	public void lockByCode(String code) {
+		jdbc.sql("SELECT id FROM booking WHERE code = :code AND stay_id IS NULL FOR UPDATE")
+				.param("code", code)
+				.query(Long.class)
+				.list();
+	}
+
 	@Override
 	public Optional<StayRecord> findStayByCode(String code) {
 		return jdbc.sql("SELECT id, code, venue_id, first_date, last_date FROM stay WHERE code = :code")
@@ -553,14 +562,14 @@ class JdbcBookings implements Bookings {
 
 	@Override
 	public List<BookingRecord> lockStretches(StayId stayId) {
-		return stretchesOf(stayId, "FOR UPDATE OF b");
+		jdbc.sql("SELECT id FROM booking WHERE stay_id = :stay ORDER BY booking_date FOR UPDATE")
+				.param("stay", stayId.value())
+				.query(Long.class)
+				.list();
+		return stretchesOf(stayId);
 	}
 
 	private List<BookingRecord> stretchesOf(StayId stayId) {
-		return stretchesOf(stayId, "");
-	}
-
-	private List<BookingRecord> stretchesOf(StayId stayId, String locking) {
 		return jdbc.sql("""
 				SELECT b.id, s.code, b.status, b.venue_id, b.set_id, b.customer_id,
 				       b.booking_date, b.last_date, b.amount_minor, b.amount_currency, b.cancelled_at, b.refund_minor,
@@ -570,8 +579,7 @@ class JdbcBookings implements Bookings {
 				JOIN stay s ON s.id = b.stay_id
 				WHERE b.stay_id = :stay
 				ORDER BY b.booking_date
-				%s
-				""".formatted(locking))
+				""")
 				.param("stay", stayId.value())
 				.query(JdbcBookings::mapBookingRecord)
 				.list();
@@ -1267,6 +1275,18 @@ class JdbcBookings implements Bookings {
 						BookingStatus.valueOf(rs.getString(PARAM_STATUS)),
 						rs.getLong(COL_AMOUNT_MINOR), rs.getString(COL_AMOUNT_CURRENCY),
 						rs.getLong(COL_DAY_REFUNDED_MINOR)))
+				.list();
+	}
+
+	@Override
+	public void lockLiveOnSets(Collection<SetId> setIds) {
+		if (setIds.isEmpty()) {
+			return;
+		}
+		jdbc.sql("SELECT id FROM booking WHERE set_id IN (:ids) AND status IN (:live) ORDER BY booking_date, id FOR UPDATE")
+				.param("ids", setIds.stream().map(SetId::value).toList())
+				.param("live", JdbcBookingPresence.LIVE_STATUSES)
+				.query(Long.class)
 				.list();
 	}
 }
