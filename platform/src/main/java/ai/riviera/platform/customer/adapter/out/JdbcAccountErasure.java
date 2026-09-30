@@ -44,8 +44,8 @@ class JdbcAccountErasure implements AccountErasureStore {
 			""";
 
 	/**
-	 * The SQL retention gates on a {@code customer} row. The account gate is a subquery, stale after a lock wait:
-	 * every writer that locks a guest row must also move {@code updated_at} or {@code erased_at}, which decide then.
+	 * The SQL retention gates on a {@code customer} row. The account gate is a subquery, stale after a lock wait: whatever
+	 * locks a guest row, a booking's FK included, must also move {@code updated_at} or {@code erased_at}, re-read then.
 	 */
 	private static final String EXPIRED_GUEST = """
 			customer.erased_at IS NULL
@@ -132,7 +132,7 @@ class JdbcAccountErasure implements AccountErasureStore {
 
 	@Override
 	public boolean eraseGuestById(CustomerId guestId, Instant olderThan) {
-		// Re-applies the candidate read's gates, so a booking or sign-up since then keeps the contact (#1303).
+		// Re-applies gates 1-2: a booking since the candidate read refreshed updated_at, so it keeps the contact (#1303).
 		return jdbc.sql(GUEST_TOMBSTONE + "WHERE id = :id AND " + EXPIRED_GUEST)
 				.param(ID, guestId.value())
 				.param(OLDER_THAN, Timestamp.from(olderThan))

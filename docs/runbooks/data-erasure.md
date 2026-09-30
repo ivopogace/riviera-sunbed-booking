@@ -110,9 +110,10 @@ A contact is scrubbed only when **all three** agree it has no live basis. Any on
 | 2 | no **live** `customer_account` (`erased_at IS NULL`) claims that email — a signed-up customer's contact is never swept | candidate SQL and the scrub, same predicate |
 | 3 | the guest has **no booking whose last day (`booking.last_date`) falls on or after the cutoff**, any status (a cancelled or no-show booking still produced a financial record, so it still counts) | `customer.spi.GuestBookingHistory`, answered by the `booking` module |
 
-Gates 1 and 2 are re-applied by the scrub itself, so a guest a booking refreshed (every booking's
-find-or-create touches `updated_at`) or an account claimed after the candidate read is kept, even when the
-scrub waited on that booking's row lock (#1303). That is also what covers gate 3 for a booking made mid-sweep.
+Gates 1 and 2 are re-applied by the scrub itself (#1303). A guest a booking refreshed after the candidate
+read is kept — every booking's find-or-create touches `updated_at`, which the scrub re-reads even after
+waiting on that booking's row lock — and this is what covers gate 3 for a booking made mid-sweep. An account
+claimed before the scrub statement starts is seen too; one committing inside that statement is not.
 
 The boundary is **inclusive-retain**: a booking whose last day is exactly *on* the cutoff date keeps the
 contact. A guest with no bookings at all is swept once its own row ages out — that is the
@@ -168,7 +169,7 @@ un-erase — see ADR-0010).
 
 ### Safety properties
 
-- **Idempotent.** Every contact scrub is `UPDATE … WHERE id = :id AND erased_at IS NULL` and the review
+- **Idempotent.** Every contact scrub is guarded on `erased_at IS NULL` (the sweep's re-applies gates 1–2 too) and the review
   tombstone matches only a row still carrying a name or a comment; tombstoned rows are not candidates, so
   re-running scrubs nothing and never re-stamps `erased_at`.
 - **No distributed lock needed.** `fixedDelay` means a run never overlaps itself on one instance, and the
