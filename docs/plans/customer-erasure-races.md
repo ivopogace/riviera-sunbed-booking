@@ -83,17 +83,17 @@ link redeemed after erasure were fixed by #1315 and #1316.
 
 ## Execution status
 
-**Stage pointer:** PR — waiting for #1316 to merge, then rebase onto main and open the PR
+**Stage pointer:** review
 
-**Next action:** rebase onto main after #1316 merges, push, open the PR, review gate.
+**Next action:** review gate on the PR, then the review record, plan removal, CI and Sonar, merge.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — split | ✅ | 2e627120 |
-| 1 — red | ✅ | f05f6fa1 |
-| 2 — SSO | ✅ | (next commit) |
-| 3 — tokens | ✅ | (next commit) |
-| 4 — guards | ✅ | (next commit) |
-| 5 — docs | ✅ | (next commit) |
+| 0 — split | ✅ | 08edc2df |
+| 1 — red | ✅ | 2773e850 |
+| 2 — SSO | ✅ | b6f9ccb4 |
+| 3 — tokens | ✅ | b6f9ccb4 |
+| 4 — guards | ✅ | b6f9ccb4 |
+| 5 — docs | ✅ | b6f9ccb4 |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
