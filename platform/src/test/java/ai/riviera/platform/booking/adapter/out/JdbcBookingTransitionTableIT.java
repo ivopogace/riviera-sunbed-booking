@@ -88,7 +88,7 @@ class JdbcBookingTransitionTableIT {
 					ai.riviera.platform.booking.vocabulary.DeclineReason.VENUE).isPresent();
 			case WITHDRAW_REQUEST -> bookings.withdrawPendingRequest(booking.code()).isPresent();
 			case EXPIRE_REQUEST -> bookings.expirePendingRequest(booking.id(), NOW).isPresent();
-			case REVERT_ACCEPT -> bookings.revertAcceptToPending(booking.id());
+			case REVERT_ACCEPT -> bookings.revertAcceptToPending(booking.id()).isPresent();
 			case CONFIRM_PAYMENT -> bookings.confirmFromPayment(booking.id(), NOW).isPresent();
 			case RELEASE_UNPAID -> bookings.cancelAwaitingPayment(booking.id()).isPresent();
 			case CANCEL_BY_GUEST -> bookings.cancelConfirmed(booking.id(), NOW, 0L,

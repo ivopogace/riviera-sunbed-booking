@@ -886,8 +886,8 @@ class CreateBookingServiceTest {
 		}
 
 		@Override
-		public boolean revertAcceptToPending(long bookingId) {
-			return false;
+		public Optional<ClaimRef> revertAcceptToPending(long bookingId) {
+			return Optional.empty();
 		}
 
 		@Override

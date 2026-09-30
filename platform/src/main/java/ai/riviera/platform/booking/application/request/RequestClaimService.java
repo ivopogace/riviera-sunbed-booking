@@ -94,15 +94,13 @@ class RequestClaimService {
 		return new StayAcceptClaim.Accepted(accepted);
 	}
 
-	/** Compensates a failed payment set-up: back to pending, and the accept's claim is given back. */
+	/** Compensates a failed payment set-up: back to pending, and the claim it holds now is given back (#2, #1302). */
 	@Transactional
 	public boolean revert(AcceptedRequest accepted) {
-		boolean reverted = bookings.revertAcceptToPending(accepted.bookingId());
-		if (reverted) {
-			SpanClaim.releaseEveryDay(availability, accepted.setId(),
-					StaySpan.of(accepted.bookingDate(), accepted.lastDate()));
-		}
-		return reverted;
+		Optional<ClaimRef> held = bookings.revertAcceptToPending(accepted.bookingId());
+		held.ifPresent(claim -> SpanClaim.releaseEveryDay(availability, claim.setId(),
+				StaySpan.of(claim.bookingDate(), claim.lastDate())));
+		return held.isPresent();
 	}
 
 	/** {@link #revert} for every stretch of an accepted stay request, in one transaction. */

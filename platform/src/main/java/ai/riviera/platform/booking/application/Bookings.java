@@ -97,11 +97,11 @@ public interface Bookings {
 			VenueId venueId);
 
 	/**
-	 * Compensate a failed payment-request issuance: the guarded {@code AWAITING_PAYMENT →
-	 * PENDING_REQUEST} revert (clearing {@code accepted_at}), possible only because no
-	 * PaymentIntent exists to race it. True iff a row reverted.
+	 * Compensate a failed payment-request issuance: the guarded {@code AWAITING_PAYMENT → PENDING_REQUEST} revert
+	 * (clearing {@code accepted_at}), possible only because no PaymentIntent exists to race it. The set and span the
+	 * booking holds iff a row reverted — a remodel may have moved it since the accept (#1302).
 	 */
-	boolean revertAcceptToPending(long bookingId);
+	Optional<ClaimRef> revertAcceptToPending(long bookingId);
 
 	/**
 	 * Guarded venue-scoped {@code PENDING_REQUEST → DECLINED} stamping {@code reason}; the {@link ClaimRef}
