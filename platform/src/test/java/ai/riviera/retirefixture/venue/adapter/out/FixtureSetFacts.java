@@ -53,6 +53,10 @@ final class FixtureSetFacts implements SetBookingFacts {
 	}
 
 	@Override
+	public void lockVenueForClaim(VenueId venueId) {
+	}
+
+	@Override
 	public Map<SetId, SetBookingInfo> setBookingInfos(Collection<SetId> setIds) {
 		return Map.of();
 	}

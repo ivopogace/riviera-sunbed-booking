@@ -12,7 +12,8 @@ depends on it.
 - The weather refund locks every booking it will touch in one `(booking_date, id)`-ordered statement, then
   reads its candidates. That is the remodel's order, and the no-show sweep adopts it too by adding the `id`
   tiebreak.
-- Token redemption locks the live account before consuming the token, which is erasure's account-first order.
+- Token redemption locks the live account (`FOR NO KEY UPDATE`, so a token insert's key check still passes)
+  before consuming the token, which is erasure's account-first order.
 
 **Source of intent:** #1305 (sweep for #1298). Pair 1 and the reserve side of pair 2 closed in #1314. The
 remaining pairs are the accept side of pair 2, pairs 3 and 4, and pair 5.
@@ -21,22 +22,23 @@ remaining pairs are the accept side of pair 2, pairs 3 and 4, and pair 5.
 
 ## Acceptance criteria
 
-- [ ] **AC-1 (pair 2, accept side):** Given a stay request whose stretches claim set B then set A (B > A in
+- [x] **AC-1 (pair 2, accept side):** Given a stay request whose stretches claim set B then set A (B > A in
   id order), and an accept paused after its first claim, when a layout write over A and B runs, then both
   complete, one after the other. *Seam:* `RespondToRequestService.acceptStay` racing
-  `VenueLayoutService` bulk save · *Pinned by:* `LockOrderDeadlockIT.aStayAcceptAndALayoutWriteSerialize`
+  `VenueLayoutService` bulk save · *Pinned by:* `RequestAcceptLockOrderIT.aStayAcceptAndALayoutSaveSerialize`
   (`40P01` on `main`).
-- [ ] **AC-2 (pair 3):** Given two past bookings covering the storm day, one with the lower id and the later
+- [x] **AC-2 (pair 3):** Given two past bookings covering the storm day, one with the lower id and the later
   `booking_date`, and a weather refund paused after its first booking write, when the no-show sweep runs,
   then both complete. *Seam:* `RefundForWeather.refundForWeather` racing `NoShowSweepService` ·
-  *Pinned by:* `LockOrderDeadlockIT.aWeatherRefundAndTheNoShowSweepSerialize` (`40P01` on `main`).
-- [ ] **AC-3 (pair 4):** The same two bookings, when a remodel commit moving both runs, then both complete.
-  *Pinned by:* `LockOrderDeadlockIT.aWeatherRefundAndARemodelCommitSerialize` (`40P01` on `main`).
-- [ ] **AC-4 (pair 5):** Given a password reset paused after consuming its token, when the account's
+  *Pinned by:* `WeatherRefundLockOrderIT.aWeatherRefundAndTheNoShowSweepSerialize` (`40P01` on `main`).
+- [x] **AC-3 (pair 4):** The same two bookings, when a remodel commit moving both runs, then both complete.
+  *Pinned by:* `WeatherRefundLockOrderIT.aWeatherRefundAndARemodelCommitSerialize` (`40P01` on `main`).
+- [x] **AC-4 (pair 5):** Given a password reset paused after consuming its token, when the account's
   erasure runs, then both complete, and the reset either lands before the erasure or finds the account
   erased. *Seam:* `CustomerAccountRecovery.resetPassword` racing `AccountErasure` · *Pinned by:*
-  `LockOrderDeadlockIT.aResetAndAnErasureSerialize` (`40P01` on `main`). Likewise for `verifyEmail`.
-- [ ] **AC-5:** The existing accept, weather-refund, sweep, remodel, recovery and erasure suites stay green,
+  `TokenRedemptionLockOrderIT.aResetAndAnErasureOfTheSameAccountSerialize` (`40P01` on `main`); likewise
+  `aVerificationAndAnErasureOfTheSameAccountSerialize`.
+- [x] **AC-5:** The existing accept, weather-refund, sweep, remodel, recovery and erasure suites stay green,
   and so do the structural net and `VenueApiRoleSplitTests`.
 
 ## Non-goals
@@ -52,6 +54,9 @@ remaining pairs are the accept side of pair 2, pairs 3 and 4, and pair 5.
   - Account `FOR UPDATE`: erasure, sign-in and the token writes.
 - **R-2 (stale reads):** the weather refund reads its candidates after the lock statement, so `attended` and
   `refunded` are post-wait. The per-booking writes keep their guards.
+- **R-4 (a new cycle, found in the check):** an account `FOR UPDATE` would conflict with `issue()`'s token-insert
+  key check while `issue()` holds the token it invalidates. `FOR NO KEY UPDATE` still serializes with erasure's
+  tombstone `UPDATE` and not with key checks.
 - **R-3 (Modulith #11):** `booking` takes the venue lock through `venue::api`
   (`SetBookingFacts#lockVenueForClaim`, the conversation of `poolForClaim`). The account lock is `customer`'s
   own.
@@ -80,16 +85,16 @@ remaining pairs are the accept side of pair 2, pairs 3 and 4, and pair 5.
 
 ## Execution status
 
-**Stage pointer:** plan — intake done
+**Stage pointer:** PR — draft; merge main after #1315 lands (shared test doubles), then ready for review
 
-**Next action:** Phase 0 red ITs.
+**Next action:** push, open draft PR, merge main once #1315 merges, ready for review, review gate.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — red | | |
-| 1 — accept | | |
-| 2 — weather | | |
-| 3 — redemption | | |
-| 4 — docs | | |
+| 0 — red | ✅ | 4df62247 |
+| 1 — accept | ✅ | (next commit) |
+| 2 — weather | ✅ | (next commit) |
+| 3 — redemption | ✅ | (next commit) |
+| 4 — docs | ✅ | (next commit) |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.

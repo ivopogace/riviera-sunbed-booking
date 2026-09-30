@@ -60,6 +60,7 @@ class WeatherRefundService implements RefundForWeather {
 	@Transactional
 	public WeatherRefundOutcome refundForWeather(OperatorId operator, VenueId venueId, LocalDate date) {
 		ownership.assertOwns(operator, new VenueRef(venueId.value()));
+		bookings.lockRefundableForWeather(venueId, date);
 		List<RefundableBooking> candidates = bookings.findRefundableForWeather(venueId, date);
 		Instant now = clock.instant();
 

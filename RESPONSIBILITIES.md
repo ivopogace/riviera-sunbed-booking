@@ -302,6 +302,9 @@ any is released on the old, never a swap of my own — so a racing reserve wins 
   of their own, then read: a day refund writes only `booking_day`, so a guard or read that waited on the
   lock would see the refunded and released days as of before (#1281). The venue's lone one-day cancel has
   no day to race.
+- **Several bookings lock in `(booking_date, id)` order:** the sweep batches, a remodel commit (one at a time
+  under the venue lock) and the weather refund, which locks every booking covering the day in one statement
+  before it reads them (#1305). So none of the three deadlocks another.
 - **The guest cancel admits `CONFIRMED` only; the venue's refund (`cancelByVenue`, `VENUE_REFUND`) also `NO_SHOW`** (the storm is
   known afterwards): separate port methods and `BookingTransition` rows, so the asymmetry cannot be
   tidied away. The guest guard's readers (the view's `cancellable`, the cancel's `NotCancellable`)
@@ -362,10 +365,10 @@ any is released on the old, never a swap of my own — so a racing reserve wins 
   guarded `PENDING_REQUEST → AWAITING_PAYMENT` and declines overlapping pending rivals on the set
   (`ANOTHER_GUEST`) in one transaction committed before the payment call. A day it cannot claim declines the
   request (`SET_UNAVAILABLE`); a failed payment set-up reverts it to pending, freeing the claim it held
-  (a remodel may have moved it), and a stay it cannot restore whole is declined (#1302). The accept locks
-  availability row then booking row, as the reserve does after its venue row (revert, remodel: booking first); two overlapping
-  accepts leave one winner (`RequestAcceptClaimsIT`, `ConcurrentOverlappingAcceptIT`). The queue names each
-  request's competing requests; a request for a day already taken is `SET_TAKEN`.
+  (a remodel may have moved it), and a stay it cannot restore whole is declined (#1302). The accept locks its venue
+  row (`SetBookingFacts#lockVenueForClaim`), then availability, then booking rows, as the reserve and layout writes
+  (#1305; revert, remodel: booking first); two overlapping accepts leave one winner (`ConcurrentOverlappingAcceptIT`).
+  The queue names each request's competing requests; a request for a day already taken is `SET_TAKEN`.
 - **A stay request is answered whole (#1267):** at a Request-to-Book venue a stitched plan is a
   `stay` of `PENDING_REQUEST` stretches under one deadline. Every leg (accept, decline, expiry,
   withdraw by the stay's code, a remodel's decline, a rival's decline) moves every stretch or none,
@@ -629,6 +632,8 @@ suppression key's HMAC). It cannot live in `shared`, which depends on `customer:
 
 Email verification is **soft**: it gates no sign-in or booking. `CustomerAccountRecovery` names a
 reset token's account **without consuming** it, so the edge revokes that principal's sessions first.
+Redeeming a token locks its live account (`FOR NO KEY UPDATE`, so a token insert's key check passes) before
+the token row, the order erasure takes them (#1305); an erased account redeems nothing.
 
 **Only the retention sweep's entry reads carry a query timeout** (its candidate read, `booking`'s
 `GuestBookingHistory` probe): they run before any write, so a timeout costs one tick. My scrubs and

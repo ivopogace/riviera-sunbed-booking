@@ -211,6 +211,11 @@ class CustomerAccountServiceTest {
 		}
 
 		@Override
+		public boolean lockLiveAccount(CustomerAccountId accountId) {
+			return idByEmail.containsValue(accountId.value());
+		}
+
+		@Override
 		public void updatePasswordHash(CustomerAccountId accountId, String passwordHash) {
 			emailForId(accountId.value()).ifPresent(
 					email -> byEmail.put(email, new CustomerAccountCredential(email, passwordHash)));
