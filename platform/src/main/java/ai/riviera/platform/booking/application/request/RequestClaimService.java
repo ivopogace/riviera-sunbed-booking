@@ -103,14 +103,17 @@ class RequestClaimService {
 		return held.isPresent();
 	}
 
-	/** {@link #revert} for every stretch of an accepted stay request, in one transaction. */
+	/**
+	 * {@link #revert} for every stretch of an accepted stay request, in one transaction. A stay it cannot restore
+	 * whole (a remodel released a stretch meanwhile) is declined whole, as the remodel declines a pending stay (#1302).
+	 */
 	@Transactional
-	public boolean revertStay(List<AcceptedRequest> stretches) {
-		boolean reverted = false;
-		for (AcceptedRequest stretch : stretches) {
-			reverted |= revert(stretch);
+	public boolean revertStay(StayId stayId, List<AcceptedRequest> stretches) {
+		long reverted = stretches.stream().filter(this::revert).count();
+		if (reverted > 0 && reverted < stretches.size()) {
+			declineStaySelf(stayId, stretches.getFirst().venueId());
 		}
-		return reverted;
+		return reverted > 0;
 	}
 
 	/** Declines every pending request overlapping the accepted spans; one fact per lone rival and per rival stay. */

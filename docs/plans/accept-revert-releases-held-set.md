@@ -20,12 +20,12 @@ That is what the remodel does to a pending stay it disturbs.
   guest who then claimed (S, d), when the payment set-up fails, then the request is pending on C, (C, d) is
   released, and (S, d) still stands (#2). *Seam:* `RespondToRequest.accept` · *Pinned by:*
   `RequestAcceptRevertIT.aRevertAfterARemodelMoveReleasesTheMovedToSetOnly` (red on `main`).
-- [ ] **AC-2:** Given an accepted two-stretch stay whose second stretch a remodel released during the payment
+- [x] **AC-2:** Given an accepted two-stretch stay whose second stretch a remodel released during the payment
   call, when the payment set-up fails, then the first stretch is declined `SET_UNAVAILABLE`, the second stays
   cancelled, no day of either is held, and one `StayRequestDeclined` is published. *Seam:*
   `RespondToRequest.acceptStay` · *Pinned by:*
   `StayRequestAcceptPayIT.aFailedCollectionAfterARemodelReleaseDeclinesTheStay` (red on `main`).
-- [ ] **AC-3:** The existing revert paths are unchanged: a plain failure reverts to pending and frees the
+- [x] **AC-3:** The existing revert paths are unchanged: a plain failure reverts to pending and frees the
   day (`RequestAcceptRevertIT`, `StayRequestAcceptPayIT.aFailedCollectionRevertsEveryStretch`), and
   `JdbcBookingTransitionTableIT` and `RespondToRequestServiceTest` stay green.
 
@@ -59,13 +59,13 @@ That is what the remodel does to a pending stay it disturbs.
 
 ## Execution status
 
-**Stage pointer:** implement (phase 1)
+**Stage pointer:** PR — CI, then ready for review
 
-**Next action:** red IT for AC-2 (stay decline).
+**Next action:** check CI, mark ready, run the review gate.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — lone revert | ✅ | (this commit) |
-| 1 — stay decline | ⏳ | |
+| 0 — lone revert | ✅ | a082b69 |
+| 1 — stay decline | ✅ | (this commit) |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.

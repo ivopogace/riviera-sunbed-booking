@@ -168,7 +168,7 @@ class RespondToRequestService implements RespondToRequest {
 					.toList());
 		}
 		catch (RuntimeException paymentBlewUp) {
-			claims.revertStay(stretches);
+			claims.revertStay(stayId, stretches);
 			throw paymentBlewUp;
 		}
 		return switch (payment) {
@@ -190,7 +190,7 @@ class RespondToRequestService implements RespondToRequest {
 				yield new AcceptOutcome.Accepted(BookingStatus.AWAITING_PAYMENT);
 			}
 			case PaymentOutcome.Failed failed -> {
-				boolean reverted = claims.revertStay(stretches);
+				boolean reverted = claims.revertStay(stayId, stretches);
 				log.warn("payment request for accepted stay {} failed ({}); reverted={}", stayId.value(),
 						failed.reason(), reverted);
 				yield AcceptOutcome.Rejected.PAYMENT_INIT_FAILED;

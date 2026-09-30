@@ -3,6 +3,7 @@ package ai.riviera.platform.booking;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import com.stripe.StripeClient;
 import com.stripe.exception.ApiConnectionException;
@@ -24,14 +25,21 @@ import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.context.event.ApplicationEvents;
 import org.springframework.test.context.event.RecordApplicationEvents;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.support.TransactionTemplate;
 
 import ai.riviera.platform.EnabledIfDockerAvailable;
 import ai.riviera.platform.TestcontainersConfiguration;
+import ai.riviera.platform.availability.api.AvailabilityClaim;
+import ai.riviera.platform.booking.application.Bookings;
+import ai.riviera.platform.booking.application.reserve.ClaimRef;
 import ai.riviera.platform.booking.application.request.AcceptOutcome;
 import ai.riviera.platform.booking.application.request.RespondToRequest;
 import ai.riviera.platform.booking.domain.BookingStatus;
 import ai.riviera.platform.booking.events.BookingPaymentDue;
 import ai.riviera.platform.booking.events.StayPaymentDue;
+import ai.riviera.platform.booking.events.StayRequestDeclined;
+import ai.riviera.platform.booking.vocabulary.DeclineReason;
 import ai.riviera.platform.booking.vocabulary.StayId;
 import ai.riviera.platform.operator.vocabulary.OperatorId;
 import ai.riviera.platform.venue.vocabulary.VenueId;
@@ -73,6 +81,15 @@ class StayRequestAcceptPayIT {
 
 	@Autowired
 	ApplicationEvents events;
+
+	@Autowired
+	Bookings bookings;
+
+	@Autowired
+	AvailabilityClaim availability;
+
+	@Autowired
+	PlatformTransactionManager txManager;
 
 	@MockitoBean
 	StripeClient stripeClient;
@@ -150,5 +167,35 @@ class StayRequestAcceptPayIT {
 		assertEquals(0L, heldDays(jdbc, venue.online().get(0), first, first.plusDays(4)));
 		assertEquals(0L, heldDays(jdbc, venue.online().get(1), first, first.plusDays(4)), "every day given back");
 		assertEquals(0L, events.stream(StayPaymentDue.class).count());
+	}
+
+	@Test
+	void aFailedCollectionAfterARemodelReleaseDeclinesTheStay() throws Exception {
+		long released = stay.stretches().get(1);
+		AtomicBoolean remodelled = new AtomicBoolean();
+		when(intents().create(any(PaymentIntentCreateParams.class), any(RequestOptions.class))).thenAnswer(createCall -> {
+			// A remodel releases the second stretch inside the Stripe call (#1302), as RemodelClaimsService.applyRelease does.
+			if (remodelled.compareAndSet(false, true)) {
+				new TransactionTemplate(txManager).executeWithoutResult(status -> {
+					ClaimRef held = bookings.cancelAwaitingPayment(released).orElseThrow();
+					held.bookingDate().datesUntil(held.lastDate().plusDays(1))
+							.forEach(day -> availability.release(held.setId(), day));
+				});
+			}
+			throw new ApiConnectionException("stripe unreachable");
+		});
+
+		AcceptOutcome outcome = respondToRequest.acceptStay(owner, new VenueId(venue.id()), new StayId(stay.id()));
+
+		assertSame(AcceptOutcome.Rejected.PAYMENT_INIT_FAILED, outcome);
+		assertEquals("DECLINED", statusOf(jdbc, stay.stretches().get(0)),
+				"a stay the revert cannot restore whole is declined, as the remodel declines a pending stay");
+		assertEquals("SET_UNAVAILABLE", jdbc.sql("SELECT decline_reason FROM booking WHERE id = :id")
+				.param("id", stay.stretches().get(0)).query(String.class).single());
+		assertEquals("CANCELLED", statusOf(jdbc, released), "the remodel's release stands");
+		assertEquals(0L, heldDays(jdbc, venue.online().get(0), first, first.plusDays(4)));
+		assertEquals(0L, heldDays(jdbc, venue.online().get(1), first, first.plusDays(4)), "no day of the stay is held");
+		assertEquals(List.of(new StayRequestDeclined(new StayId(stay.id()), DeclineReason.SET_UNAVAILABLE)),
+				events.stream(StayRequestDeclined.class).toList());
 	}
 }
