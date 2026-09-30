@@ -20,6 +20,8 @@ import ai.riviera.platform.customer.api.CustomerAccountProvisioning;
 import ai.riviera.platform.customer.api.CustomerAccounts;
 import ai.riviera.platform.customer.api.SsoAccountProvisioning;
 import ai.riviera.platform.customer.vocabulary.CustomerAccountCredential;
+import ai.riviera.platform.customer.vocabulary.CustomerAccountId;
+import ai.riviera.platform.customer.vocabulary.LiveAccountCredential;
 import ai.riviera.platform.customer.vocabulary.RegistrationOutcome;
 import ai.riviera.platform.customer.vocabulary.SsoProvider;
 
@@ -64,18 +66,21 @@ class JdbcCustomerAccountsIT {
 	}
 
 	@Test
-	void theSessionCredentialCoversSsoOnlyAccountsAndNotErasedOnes() {
-		sso.resolveOrCreate(SsoProvider.GOOGLE, "session-credential-sub", "sso-only@example.com");
+	void theLiveCredentialCoversSsoOnlyAccountsAndNotErasedOnes() {
+		CustomerAccountId ssoOnly = sso.resolveOrCreate(SsoProvider.GOOGLE, "session-credential-sub",
+				"sso-only@example.com");
 		provisioning.register("erased-later@example.com", "{bcrypt}gone");
 		Long erasedId = jdbc.queryForObject(
 				"SELECT id FROM customer_account WHERE email = 'erased-later@example.com'", Long.class);
 		jdbc.update("UPDATE customer_account SET email = 'erased+' || id || '@erased.invalid', password_hash = NULL,"
 				+ " erased_at = NOW() WHERE id = ?", erasedId);
 
-		assertThat(accounts.sessionCredential("SSO-Only@Example.com"))
-				.contains(new CustomerAccountCredential("sso-only@example.com", null));
+		LiveAccountCredential live = new LiveAccountCredential(ssoOnly, "sso-only@example.com", null);
+		assertThat(accounts.liveCredential("SSO-Only@Example.com")).contains(live);
+		assertThat(accounts.liveCredential(ssoOnly)).contains(live);
 		assertThat(accounts.findByEmail("sso-only@example.com")).isEmpty();
-		assertThat(accounts.sessionCredential("erased+" + erasedId + "@erased.invalid")).isEmpty();
+		assertThat(accounts.liveCredential("erased+" + erasedId + "@erased.invalid")).isEmpty();
+		assertThat(accounts.liveCredential(new CustomerAccountId(erasedId))).isEmpty();
 	}
 
 	@Test

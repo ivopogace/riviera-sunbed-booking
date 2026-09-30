@@ -22,6 +22,9 @@ import org.springframework.session.FindByIndexNameSessionRepository;
 import org.springframework.session.Session;
 import org.springframework.test.web.servlet.MockMvc;
 
+import ai.riviera.platform.customer.api.SsoAccountProvisioning;
+import ai.riviera.platform.customer.vocabulary.CustomerAccountId;
+import ai.riviera.platform.customer.vocabulary.SsoProvider;
 import ai.riviera.platform.operator.api.OperatorProvisioning;
 import ai.riviera.platform.operator.vocabulary.OperatorId;
 
@@ -58,6 +61,8 @@ class SessionCredentialStampIT {
 	PasswordEncoder encoder;
 	@Autowired
 	FindByIndexNameSessionRepository<? extends Session> sessions;
+	@Autowired
+	SsoAccountProvisioning ssoAccounts;
 
 	private OperatorId target;
 
@@ -124,11 +129,27 @@ class SessionCredentialStampIT {
 		var authorities = AuthorityUtils.createAuthorityList("ROLE_OPERATOR");
 
 		mvc.perform(get(ME_PATH).cookie(storedSession(sessions, UsernamePasswordAuthenticationToken.authenticated(
-				SessionPrincipal.erased(TARGET, storedHash, authorities), null, authorities))))
+				SessionPrincipal.erased(TARGET, authorities, CredentialStamp.operator(TARGET, storedHash)), null, authorities))))
 				.andExpect(status().isOk());
 		mvc.perform(get(ME_PATH).cookie(storedSession(sessions, UsernamePasswordAuthenticationToken.authenticated(
-				SessionPrincipal.erased(TARGET, encoder.encode(TARGET_PASSWORD), authorities), null, authorities))))
+				SessionPrincipal.erased(TARGET, authorities,
+						CredentialStamp.operator(TARGET, encoder.encode(TARGET_PASSWORD))), null, authorities))))
 				.andExpect(status().isUnauthorized());
+	}
+
+	@Test
+	void aSessionOfAnErasedAccountIsNotAdmittedToALaterAccountUnderItsEmail() throws Exception {
+		String email = uniqueEmail();
+		CustomerAccountId erased = ssoAccounts.resolveOrCreate(SsoProvider.GOOGLE, "stamp-it-" + System.nanoTime(), email);
+		var authorities = AuthorityUtils.createAuthorityList("ROLE_CUSTOMER");
+		Cookie session = storedSession(sessions, UsernamePasswordAuthenticationToken.authenticated(
+				SessionPrincipal.erased(email, authorities, CredentialStamp.customer(erased, null)), null, authorities));
+		jdbc.sql("UPDATE customer_account SET email = 'erased+' || id || '@erased.invalid', erased_at = NOW() WHERE id = :id")
+				.param("id", erased.value()).update();
+
+		ssoAccounts.resolveOrCreate(SsoProvider.APPLE, "stamp-it-" + System.nanoTime(), email);
+
+		mvc.perform(get(ME_PATH).cookie(session)).andExpect(status().isUnauthorized());
 	}
 
 	/** A session written straight to the store, holding {@code authentication} as its security context. */

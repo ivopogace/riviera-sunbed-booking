@@ -24,7 +24,8 @@ import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
 import ai.riviera.platform.customer.api.CustomerAccounts;
 import ai.riviera.platform.customer.api.SsoAccountProvisioning;
-import ai.riviera.platform.customer.vocabulary.CustomerAccountCredential;
+import ai.riviera.platform.customer.vocabulary.CustomerAccountId;
+import ai.riviera.platform.customer.vocabulary.LiveAccountCredential;
 import ai.riviera.platform.customer.vocabulary.Emails;
 import ai.riviera.platform.customer.vocabulary.SsoProvider;
 
@@ -104,12 +105,13 @@ class SsoController {
 		String email = Emails.normalize(identity.email());
 		// Resolve-or-create the account (find-or-create by verified email, auto-link); the session is keyed
 		// by the account email (principal name), exactly like password login, so CurrentCustomer resolves it.
-		ssoAccounts.resolveOrCreate(identity.provider(), identity.subject(), email);
+		CustomerAccountId resolved = ssoAccounts.resolveOrCreate(identity.provider(), identity.subject(), email);
+		LiveAccountCredential account = customerAccounts.liveCredential(resolved)
+				.orElseGet(() -> new LiveAccountCredential(resolved, email, null));
 		List<SimpleGrantedAuthority> authorities = List.of(new SimpleGrantedAuthority(CUSTOMER_ROLE));
-		String passwordHash = customerAccounts.sessionCredential(email)
-				.map(CustomerAccountCredential::passwordHash).orElse(null);
 		Authentication authentication = UsernamePasswordAuthenticationToken.authenticated(
-				SessionPrincipal.erased(email, passwordHash, authorities), null, authorities);
+				SessionPrincipal.erased(account.email(), authorities,
+						CredentialStamp.customer(resolved, account.passwordHash())), null, authorities);
 		SessionAuthentication.establish(securityContextRepository, authentication, request, response);
 		return redirectTo(URI.create(POST_LOGIN_REDIRECT));
 	}

@@ -4,6 +4,7 @@ import java.util.Optional;
 
 import ai.riviera.platform.customer.vocabulary.CustomerAccountCredential;
 import ai.riviera.platform.customer.vocabulary.CustomerAccountId;
+import ai.riviera.platform.customer.vocabulary.LiveAccountCredential;
 import ai.riviera.platform.customer.vocabulary.RegistrationOutcome;
 import ai.riviera.platform.customer.vocabulary.SsoProvider;
 
@@ -24,8 +25,11 @@ public interface CustomerAccountStore {
 	 */
 	Optional<CustomerAccountCredential> findByEmail(String normalizedEmail);
 
-	/** The credential of the live account with this normalized email, null hash for SSO-only; empty if erased. */
-	Optional<CustomerAccountCredential> findSessionCredential(String normalizedEmail);
+	/** The live account with this normalized email, null hash for SSO-only; empty if gone or erased. */
+	Optional<LiveAccountCredential> findLiveCredential(String normalizedEmail);
+
+	/** The live account with this id; empty if gone or erased. */
+	Optional<LiveAccountCredential> findLiveCredential(CustomerAccountId accountId);
 
 	/** The account id for this normalized email, or empty if no account exists */
 	Optional<CustomerAccountId> findIdByEmail(String normalizedEmail);
@@ -57,6 +61,12 @@ public interface CustomerAccountStore {
 	 * Also gives a password-less SSO-only account its first local password.
 	 */
 	void updatePasswordHash(CustomerAccountId accountId, String passwordHash);
+
+	/**
+	 * Write the hash only while the live account still stores {@code expectedHash} ({@code null}: no password yet),
+	 * one guarded statement; false when a concurrent reset or change got there first.
+	 */
+	boolean replacePasswordHash(CustomerAccountId accountId, String expectedHash, String passwordHash);
 
 	/** Whether the email's account is verified; empty if no account exists. */
 	Optional<Boolean> emailVerifiedFor(String normalizedEmail);

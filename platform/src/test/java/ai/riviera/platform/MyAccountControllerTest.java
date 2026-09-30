@@ -93,7 +93,21 @@ class MyAccountControllerTest {
 
 		InOrder effects = inOrder(sessionRevoker, recovery);
 		effects.verify(sessionRevoker).revokeAllExcept(eq(EMAIL), any());
-		effects.verify(recovery).setPassword(eq(ACCOUNT_ID), anyString());
+		effects.verify(recovery).changePassword(eq(ACCOUNT_ID), anyString(), anyString());
+	}
+
+	/** A reset or another change landing after the verify wins: this one writes nothing and keeps its session id. */
+	@Test
+	void aChangeLosingToAConcurrentResetAnswersAsAWrongPassword() throws Exception {
+		givenAccountWithPassword();
+		when(recovery.changePassword(eq(ACCOUNT_ID), anyString(), anyString())).thenReturn(false);
+		MockHttpSession thisSession = new MockHttpSession();
+
+		mvc.perform(changePassword(CURRENT_PASSWORD, NEW_PASSWORD).session(thisSession))
+				.andExpect(status().isBadRequest())
+				.andExpect(jsonPath("$.code").value("INVALID_CURRENT_PASSWORD"));
+
+		assertThat(thisSession.isInvalid()).isFalse();
 	}
 
 	@Test
@@ -105,7 +119,7 @@ class MyAccountControllerTest {
 		assertThatThrownBy(() -> mvc.perform(changePassword(CURRENT_PASSWORD, NEW_PASSWORD)))
 				.hasRootCauseInstanceOf(DataAccessResourceFailureException.class);
 
-		verify(recovery, never()).setPassword(any(), anyString());
+		verify(recovery, never()).changePassword(any(), any(), anyString());
 	}
 
 	/**
@@ -140,7 +154,7 @@ class MyAccountControllerTest {
 				.andExpect(jsonPath("$.code").value("PASSWORD_CONTAINS_BLOCKED_TERM"));
 
 		verify(sessionRevoker, never()).revokeAllExcept(anyString(), any());
-		verify(recovery, never()).setPassword(any(), anyString());
+		verify(recovery, never()).changePassword(any(), any(), anyString());
 	}
 
 	@Test
@@ -188,8 +202,9 @@ class MyAccountControllerTest {
 
 	private void givenAccountWithPassword() {
 		when(directory.accountFor(EMAIL)).thenReturn(Optional.of(ACCOUNT_ID));
-		when(accounts.findByEmail(EMAIL)).thenReturn(Optional.of(
-				new CustomerAccountCredential(EMAIL, passwordEncoder.encode(CURRENT_PASSWORD))));
+		String storedHash = passwordEncoder.encode(CURRENT_PASSWORD);
+		when(accounts.findByEmail(EMAIL)).thenReturn(Optional.of(new CustomerAccountCredential(EMAIL, storedHash)));
+		when(recovery.changePassword(eq(ACCOUNT_ID), eq(storedHash), anyString())).thenReturn(true);
 	}
 
 	private static MockHttpServletRequestBuilder requestVerification() {

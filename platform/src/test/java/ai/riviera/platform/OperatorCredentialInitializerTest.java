@@ -121,10 +121,9 @@ class OperatorCredentialInitializerTest {
 	}
 
 	/**
-	 * AC-6: the initializer re-stamps the configured password on EVERY boot (bcrypt re-salts, so
-	 * the stored hash differs each time) — so "the hash changed" proves nothing and revoking on it
-	 * would sign the admin out on every deploy. A genuine rotation is the raw configured password no
-	 * longer matching the stored hash.
+	 * AC-6: a genuine rotation is a raw configured password that does not {@code matches} the stored hash; bcrypt
+	 * re-salts, so "the hash changed" proves nothing. Only a rotation writes and revokes; a plain redeploy does
+	 * neither ({@link #anUnchangedPasswordWritesNothing}).
 	 */
 	@Test
 	void revokesSessionsOnlyWhenThePasswordActuallyChanged() {

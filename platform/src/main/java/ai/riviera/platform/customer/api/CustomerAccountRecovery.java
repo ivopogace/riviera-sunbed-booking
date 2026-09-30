@@ -37,11 +37,11 @@ public interface CustomerAccountRecovery {
 	Optional<String> emailForResetToken(String tokenHash);
 
 	/**
-	 * Set the account's password directly (authenticated set-password). The edge authorizes
-	 * the caller (own session) and, when the account already has a password, verifies the current one first;
-	 * this write is unconditional. Lets an SSO-only (password-less) account gain a local password.
+	 * Replace the password the edge verified (authenticated set-password): written only while the account still
+	 * stores {@code currentHash} ({@code null} lets an SSO-only account gain its first password). False when a reset
+	 * or another change landed since the verify, so a stale change can never overwrite a reset (#1306).
 	 */
-	void setPassword(CustomerAccountId accountId, String newPasswordHash);
+	boolean changePassword(CustomerAccountId accountId, String currentHash, String newPasswordHash);
 
 	/**
 	 * Whether the email's account is verified (the "please verify" nudge on {@code /api/auth/me}), or

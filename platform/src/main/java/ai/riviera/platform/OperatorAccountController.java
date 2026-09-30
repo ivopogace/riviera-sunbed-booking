@@ -100,7 +100,8 @@ class OperatorAccountController {
 		sessionRevoker.revokeAllExcept(username, SessionIdentity.currentId(httpRequest));
 		provisioning.setPassword(username, newPasswordHash);
 		SessionIdentity.rotate(httpRequest);
-		SessionAuthentication.restamp(securityContextRepository, newPasswordHash, httpRequest, httpResponse);
+		SessionAuthentication.restamp(securityContextRepository, CredentialStamp.operator(username, newPasswordHash),
+				httpRequest, httpResponse);
 		return ResponseEntity.noContent().build();
 	}
 

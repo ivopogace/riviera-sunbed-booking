@@ -100,10 +100,9 @@ class AdminOperatorControllerTest {
 	}
 
 	/**
-	 * The other half of the bracket (D-1): revoking only first would open a window in which the
-	 * account is still ACTIVE, so the operator being suspended could sign in again and keep that session
-	 * indefinitely — with no admin recovery path, since a second suspend is {@code 409 WRONG_STATUS} and
-	 * revokes nothing. The trailing revoke this surface already had closes it, so it is kept rather than moved.
+	 * The other half of the bracket (D-1): revoking only first leaves a window in which the account is still
+	 * ACTIVE, so the operator being suspended could sign in again. The trailing revoke ends that session at once;
+	 * the credential stamp would end it only on its next request (#1306).
 	 */
 	@Test
 	void revokesAgainAfterTheSuspensionCommits() throws Exception {

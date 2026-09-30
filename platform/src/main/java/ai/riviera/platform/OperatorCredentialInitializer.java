@@ -17,7 +17,7 @@ import ai.riviera.platform.operator.vocabulary.OperatorCredential;
  * Boot-time provisioning of the bootstrap admin's credential from {@code RIVIERA_OPERATOR_PASSWORD}
  * ({@link RivieraOperatorProperties#password}) via {@link OperatorProvisioning#setPassword}, written only when the
  * stored hash does not {@code matches} it: bcrypt re-salts, and a new hash ends every session's stamp (#1306).
- * Blank or outside {@link PasswordPolicy}'s length rule: not stamped, one WARN without the value, never a boot
+ * Blank or outside {@link PasswordPolicy}'s length rule: not written, one WARN without the value, never a boot
  * failure. Touches only the bootstrap account: {@code RESPONSIBILITIES.md} §Platform edge. Runbook:
  * {@code docs/runbooks/operator-credential-provisioning.md}.
  */

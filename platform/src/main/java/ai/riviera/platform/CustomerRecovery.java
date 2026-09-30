@@ -92,9 +92,9 @@ class CustomerRecovery {
 		return recovery.emailForResetToken(tokens.hash(rawToken));
 	}
 
-	/** Set the account's already-encoded password directly (the authenticated set-password). */
-	void setPassword(CustomerAccountId accountId, String encodedNewPassword) {
-		recovery.setPassword(accountId, encodedNewPassword);
+	/** Replace the verified {@code currentHash} with the already-encoded password; false when it changed meanwhile. */
+	boolean changePassword(CustomerAccountId accountId, String currentHash, String encodedNewPassword) {
+		return recovery.changePassword(accountId, currentHash, encodedNewPassword);
 	}
 
 	/**

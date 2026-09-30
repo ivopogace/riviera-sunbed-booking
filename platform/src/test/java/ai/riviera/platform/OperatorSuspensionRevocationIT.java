@@ -29,12 +29,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * <p>The revoke is one of two defences: the per-request credential stamp ({@code SessionCredentialStampIT},
  * {@code SessionCredentialRaceIT}) also ends a suspended operator's session, including one saved after the revoke.
  *
- * <p>Venue-scoped surfaces were never the hole — they resolve ownership ACTIVE-only, so a suspended
- * operator already got a {@code 403} there. The hole was every role-gated surface that is <em>not</em>
- * venue-scoped, of which {@code POST /api/venues} is the sharpest: a suspended operator could keep
- * creating venues (and own them, via creator-owns-on-create). {@link #aRevokedCookieCannotCreateAVenue}
- * pins exactly that, and proves the {@code 401} comes from revocation rather than from a malformed
- * request by first showing the same body succeeds on a live session.
+ * <p>{@link #aRevokedCookieCannotCreateAVenue} pins the sharpest role-gated surface that is not venue-scoped,
+ * {@code POST /api/venues}, and shows the {@code 401} is the revocation by first creating a venue on the live session.
  */
 @EnabledIfDockerAvailable
 @Import(TestcontainersConfiguration.class)

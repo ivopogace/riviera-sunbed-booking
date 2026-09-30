@@ -1,14 +1,13 @@
 package ai.riviera.platform;
 
 import java.util.Collection;
-import java.util.Objects;
 
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.userdetails.User;
 
 /**
- * Every session's principal: a {@link User} that keeps the {@link CredentialStamp} of the hash it was built from
- * after its credentials are erased, for {@link SessionCredentialFilter}'s per-request check (#1306).
+ * Every session's principal: a {@link User} that keeps its {@link CredentialStamp} after its credentials are
+ * erased, for {@link SessionCredentialFilter}'s per-request check (#1306). Identity stays {@link User}'s, the name.
  */
 final class SessionPrincipal extends User {
 
@@ -18,31 +17,20 @@ final class SessionPrincipal extends User {
 
 	/** For a {@code UserDetailsService}: the provider verifies {@code passwordHash}, then erases it. */
 	SessionPrincipal(String username, String passwordHash, boolean enabled,
-			Collection<? extends GrantedAuthority> authorities) {
-		super(username, passwordHash == null ? "" : passwordHash, enabled, true, true, true, authorities);
-		this.credentialStamp = CredentialStamp.of(passwordHash);
+			Collection<? extends GrantedAuthority> authorities, String credentialStamp) {
+		super(username, passwordHash, enabled, true, true, true, authorities);
+		this.credentialStamp = credentialStamp;
 	}
 
-	/** A principal no provider verifies (SSO, a re-stamp), stamped with {@code passwordHash} and already erased. */
-	static SessionPrincipal erased(String username, String passwordHash,
-			Collection<? extends GrantedAuthority> authorities) {
-		SessionPrincipal principal = new SessionPrincipal(username, passwordHash, true, authorities);
+	/** A principal no provider verifies (SSO, a re-stamp): no password, already erased. */
+	static SessionPrincipal erased(String username, Collection<? extends GrantedAuthority> authorities,
+			String credentialStamp) {
+		SessionPrincipal principal = new SessionPrincipal(username, "", true, authorities, credentialStamp);
 		principal.eraseCredentials();
 		return principal;
 	}
 
 	String credentialStamp() {
 		return credentialStamp;
-	}
-
-	@Override
-	public boolean equals(Object other) {
-		return other instanceof SessionPrincipal that && super.equals(that)
-				&& credentialStamp.equals(that.credentialStamp);
-	}
-
-	@Override
-	public int hashCode() {
-		return Objects.hash(super.hashCode(), credentialStamp);
 	}
 }

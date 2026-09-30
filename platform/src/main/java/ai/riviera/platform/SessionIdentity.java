@@ -30,8 +30,8 @@ final class SessionIdentity {
 
 	/**
 	 * Retire the session into a fresh one with its interval and all attributes, {@code SPRING_SECURITY_CONTEXT} included so
-	 * {@code PrincipalSessionRevoker} can still find it (fixation defence; no-op without a session). Run AFTER any
-	 * {@code revokeAllExcept} sparing it. Invalidate, never {@code changeSessionId()}: a concurrent save writes the old id back.
+	 * {@code PrincipalSessionRevoker} still finds it (fixation defence; no-op without one). After any sparing revoke, before
+	 * any re-stamp. Invalidate, never {@code changeSessionId()}: a concurrent save writes the old id back.
 	 */
 	static void rotate(HttpServletRequest request) {
 		HttpSession retiring = request.getSession(false);

@@ -6,10 +6,10 @@
 request. That covers a password reset or change, an operator suspension or rejection, an admin demotion
 and an erasure, even when the login's session is saved after the revoke that was meant to end it.
 
-**Architecture:** every session principal carries a stamp: a SHA-256 digest of the password hash it was
-authenticated against (the empty string for an SSO-only customer). A root-edge filter in the `/api/**`
+**Architecture:** every session principal carries a stamp: a SHA-256 digest of the account (a customer's id, an
+operator's name) and the password hash it was authenticated against (empty for an SSO-only customer). A root-edge filter in the `/api/**`
 chain re-reads the credential for each request whose security context came from the HTTP session.
-- Customer: through `CustomerAccounts`.
+- Customer: through `CustomerAccounts#liveCredential`.
 - Operator: through `OperatorAccounts`, which also checks the may-authenticate status and that the admin
   flag matches `ROLE_ADMIN`.
 
@@ -17,7 +17,7 @@ On a mismatch the filter invalidates the session and the request continues anony
 revokes stay as defence in depth. The self-service password changes re-stamp the session they keep.
 
 **Source of intent:** #1306 (concurrency sweep for #1298). Design chosen by the owner: a per-request stamp,
-not re-validation after the save. Unstamped sessions are rejected, since the app is not live yet.
+not re-validation after the save. The sessions stored before the fix end once (V72), since the app is not live yet.
 
 **Branch:** `bugfix/session-credential-stamp`
 
@@ -46,6 +46,17 @@ not re-validation after the save. Unstamped sessions are rejected, since the app
   `SessionCredentialStampIT.aStoredSessionIsAdmittedOnlyWhileItsStampMatchesTheStoredHash`. MockMvc's
   `with(user(...))` also stores its context in the session, so the filter admits a non-`SessionPrincipal`;
   the single-writer rule is what keeps that from being a hole.
+
+- [x] **AC-7 (review round):** an SSO sign-in onto an account with a password, and a returning subject whose
+  provider email changed, both stay signed in (the latter as its account's stored email). *Pinned by:*
+  `SsoCallbackIT.anSsoSignInOntoAnAccountWithAPasswordStaysSignedIn`,
+  `SsoCallbackIT.aReturningSubjectWhoseProviderEmailChangedSignsInAsItsAccount` (both red with the SSO stamp
+  or name reverted).
+- [x] **AC-8 (review round):** a customer password change writes only over the hash it verified, so a reset
+  landing first wins; a later account under an erased account's email never admits the erased one's session.
+  *Pinned by:* `CustomerAccountRecoveryIT.aChangeWritesOnlyOverTheHashItVerified`,
+  `MyAccountControllerTest.aChangeLosingToAConcurrentResetAnswersAsAWrongPassword`,
+  `SessionCredentialStampIT.aSessionOfAnErasedAccountIsNotAdmittedToALaterAccountUnderItsEmail`.
 
 ## Non-goals
 
@@ -84,15 +95,16 @@ not re-validation after the save. Unstamped sessions are rejected, since the app
 
 ## Execution status
 
-**Stage pointer:** PR — draft open; merge main, ready for review, review gate
+**Stage pointer:** review — findings fixed; CI, review record, Sonar, then merge
 
-**Next action:** ready for review, run code-review + overlay (high).
+**Next action:** push the review round, post the review record, check CI + Sonar, delete this plan, merge.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — red | ✅ | 7c49983 |
-| 1 — stamp + filter | ✅ | (next commit) |
-| 2 — bootstrap | ✅ | (next commit) |
-| 3 — docs | ✅ | (next commit) |
+| 1 — stamp + filter | ✅ | dcf8b74 |
+| 2 — bootstrap | ✅ | dcf8b74 |
+| 3 — docs | ✅ | dcf8b74 |
+| review — SSO, CAS change, id-keyed stamp, V72, docs | ✅ | (this commit) |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.

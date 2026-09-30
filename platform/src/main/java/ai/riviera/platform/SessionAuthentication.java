@@ -26,31 +26,31 @@ final class SessionAuthentication {
 
 	static void establish(SecurityContextRepository repository, Authentication authentication,
 			HttpServletRequest request, HttpServletResponse response) {
+		if (!(authentication.getPrincipal() instanceof SessionPrincipal)) {
+			throw new IllegalArgumentException("a session holds only a stamped SessionPrincipal (#1306)");
+		}
 		SessionIdentity.rotate(request);
 		save(repository, authentication, request, response);
 	}
 
 	/**
-	 * Re-stamp the caller's session with the hash it just wrote, so {@link SessionCredentialFilter} keeps
-	 * admitting it (#1306). Run after {@link SessionIdentity#rotate}; a no-op without a server-side session.
+	 * Re-stamp the caller's session with {@code credentialStamp}, of the hash it just wrote, so
+	 * {@link SessionCredentialFilter} keeps admitting it (#1306). Run after {@link SessionIdentity#rotate}; a no-op
+	 * without a server-side session.
 	 */
-	static void restamp(SecurityContextRepository repository, String newPasswordHash, HttpServletRequest request,
+	static void restamp(SecurityContextRepository repository, String credentialStamp, HttpServletRequest request,
 			HttpServletResponse response) {
 		Authentication current = CONTEXT_STRATEGY.getContext().getAuthentication();
 		if (current == null || request.getSession(false) == null) {
 			return;
 		}
-		SessionPrincipal principal =
-				SessionPrincipal.erased(current.getName(), newPasswordHash, current.getAuthorities());
+		SessionPrincipal principal = SessionPrincipal.erased(current.getName(), current.getAuthorities(), credentialStamp);
 		save(repository, UsernamePasswordAuthenticationToken.authenticated(principal, null, current.getAuthorities()),
 				request, response);
 	}
 
 	private static void save(SecurityContextRepository repository, Authentication authentication,
 			HttpServletRequest request, HttpServletResponse response) {
-		if (!(authentication.getPrincipal() instanceof SessionPrincipal)) {
-			throw new IllegalArgumentException("a session holds only a stamped SessionPrincipal (#1306)");
-		}
 		SecurityContext context = CONTEXT_STRATEGY.createEmptyContext();
 		context.setAuthentication(authentication);
 		CONTEXT_STRATEGY.setContext(context);

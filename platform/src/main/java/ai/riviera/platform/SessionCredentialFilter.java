@@ -11,7 +11,6 @@ import org.springframework.web.filter.OncePerRequestFilter;
 
 import ai.riviera.platform.customer.api.CustomerAccounts;
 import ai.riviera.platform.operator.api.OperatorAccounts;
-import ai.riviera.platform.operator.vocabulary.OperatorCredential;
 
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -20,10 +19,10 @@ import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
 
 /**
- * Admits a session only while its credential is current (#1306): the {@link SessionPrincipal}'s stamp matches
- * the stored hash's, the account exists unerased and, for an operator, its status is in the may-authenticate set
- * and its admin flag matches {@code ROLE_ADMIN}. A stale one is invalidated and the request goes on anonymous.
- * Another principal type is not a session's ({@link SessionAuthentication} stores only this one) and passes.
+ * Admits a session only while its credential is current (#1306): the {@link SessionPrincipal}'s stamp matches the
+ * live account's, and an operator's status is in the may-authenticate set with an admin flag matching
+ * {@code ROLE_ADMIN}. A stale one is invalidated and the request goes on anonymous. Only {@link SessionAuthentication}
+ * stores a session context, always a {@code SessionPrincipal}; any other principal is MockMvc's and passes.
  */
 final class SessionCredentialFilter extends OncePerRequestFilter {
 
@@ -58,15 +57,16 @@ final class SessionCredentialFilter extends OncePerRequestFilter {
 			return true;
 		}
 		if (holds(authentication, ROLE_CUSTOMER)) {
-			return customers.sessionCredential(authentication.getName())
-					.filter(credential -> principal.credentialStamp().equals(CredentialStamp.of(credential.passwordHash())))
+			return customers.liveCredential(authentication.getName())
+					.filter(account -> principal.credentialStamp()
+							.equals(CredentialStamp.customer(account.accountId(), account.passwordHash())))
 					.isPresent();
 		}
 		return operators.findByUsername(authentication.getName())
 				.filter(credential -> OperatorUserDetailsService.MAY_AUTHENTICATE.contains(credential.status()))
 				.filter(credential -> credential.admin() == holds(authentication, ROLE_ADMIN))
-				.map(OperatorCredential::passwordHash)
-				.filter(hash -> principal.credentialStamp().equals(CredentialStamp.of(hash)))
+				.filter(credential -> principal.credentialStamp()
+						.equals(CredentialStamp.operator(credential.username(), credential.passwordHash())))
 				.isPresent();
 	}
 

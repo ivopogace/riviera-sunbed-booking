@@ -49,6 +49,7 @@ class OperatorUserDetailsService implements UserDetailsService {
 				? new String[] {"ROLE_" + OPERATOR_ROLE, "ROLE_" + ADMIN_ROLE}
 				: new String[] {"ROLE_" + OPERATOR_ROLE};
 		return new SessionPrincipal(credential.username(), credential.passwordHash(),
-				MAY_AUTHENTICATE.contains(credential.status()), AuthorityUtils.createAuthorityList(authorities));
+				MAY_AUTHENTICATE.contains(credential.status()), AuthorityUtils.createAuthorityList(authorities),
+				CredentialStamp.operator(credential.username(), credential.passwordHash()));
 	}
 }

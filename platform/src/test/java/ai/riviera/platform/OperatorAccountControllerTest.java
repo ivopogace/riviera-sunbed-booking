@@ -318,9 +318,9 @@ class OperatorAccountControllerTest {
 
 	/**
 	 * AC-4 / R-3: the bootstrap admin's credential is env-managed. {@code OperatorCredentialInitializer}
-	 * re-stamps {@code RIVIERA_OPERATOR_PASSWORD} on every boot and treats the difference as a genuine
-	 * rotation, so a self-service change here would be silently reverted at the next deploy — and would
-	 * revoke the admin's own session on the way. Refused rather than half-supported.
+	 * rewrites {@code RIVIERA_OPERATOR_PASSWORD} at boot whenever the stored hash does not match it, so a
+	 * self-service change here would be silently reverted at the next deploy — and would revoke the admin's own
+	 * session on the way. Refused rather than half-supported.
 	 */
 	@Test
 	void refusesBootstrapAdminSelfService() throws Exception {

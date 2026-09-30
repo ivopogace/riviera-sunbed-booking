@@ -63,9 +63,9 @@ class MyAccountController {
 	}
 
 	/**
-	 * Set/change the password. The new-password policy outranks a missing current password — the reverse of the operator
-	 * twin, forced because presence depends on the account having one. Success effects are ordered, not transactional:
-	 * rationale on {@link OperatorAccountController#changePassword}; keep the twins in step.
+	 * Set/change the password; the new-password policy outranks a missing current one (presence depends on the account).
+	 * Effects ordered, not transactional, as {@link OperatorAccountController#changePassword}. The write lands only over the
+	 * hash just verified: a reset committing meanwhile wins, and this answers as a wrong password (#1306).
 	 */
 	@PostMapping(SET_PASSWORD_PATH)
 	ResponseEntity<?> setPassword(@RequestBody SetPasswordRequest request, Authentication authentication,
@@ -88,9 +88,14 @@ class MyAccountController {
 		String newPasswordHash = passwordEncoder.encode(request.newPassword());
 		// Keep-id read BEFORE the rotation below: after it, no row carries an id this query can match.
 		sessionRevoker.revokeAllExcept(authentication.getName(), SessionIdentity.currentId(httpRequest));
-		recovery.setPassword(accountId, newPasswordHash);
+		String verifiedHash = existing.map(CustomerAccountCredential::passwordHash).orElse(null);
+		if (!recovery.changePassword(accountId, verifiedHash, newPasswordHash)) {
+			return ApiProblem.response(HttpStatus.BAD_REQUEST, "INVALID_CURRENT_PASSWORD",
+					"The current password is incorrect.");
+		}
 		SessionIdentity.rotate(httpRequest);
-		SessionAuthentication.restamp(securityContextRepository, newPasswordHash, httpRequest, httpResponse);
+		SessionAuthentication.restamp(securityContextRepository, CredentialStamp.customer(accountId, newPasswordHash),
+				httpRequest, httpResponse);
 		return ResponseEntity.noContent().build();
 	}
 

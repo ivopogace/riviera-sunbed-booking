@@ -14,6 +14,7 @@ import ai.riviera.platform.TestcontainersConfiguration;
 import ai.riviera.platform.customer.api.CustomerAccountProvisioning;
 import ai.riviera.platform.customer.api.CustomerAccountRecovery;
 import ai.riviera.platform.customer.api.CustomerAccounts;
+import ai.riviera.platform.customer.vocabulary.CustomerAccountCredential;
 import ai.riviera.platform.customer.vocabulary.CustomerAccountId;
 import ai.riviera.platform.customer.vocabulary.RegistrationOutcome;
 import ai.riviera.platform.customer.vocabulary.ResetPasswordOutcome;
@@ -144,6 +145,19 @@ class CustomerAccountRecoveryIT {
 		assertThat(recovery.emailForResetToken("rh-gone")).as("expired").isEmpty();
 		assertThat(recovery.emailForResetToken("vh-other-purpose")).as("wrong purpose").isEmpty();
 		assertThat(recovery.emailForResetToken("rh-unknown")).as("unknown").isEmpty();
+	}
+
+	/** The authenticated change writes only over the hash the edge verified, so a reset landing first wins (#1306). */
+	@Test
+	void aChangeWritesOnlyOverTheHashItVerified() {
+		CustomerAccountId id = register("change-cas@example.com");
+
+		assertThat(recovery.changePassword(id, "{bcrypt}not-the-stored-one", "{bcrypt}stale")).isFalse();
+		assertThat(accounts.findByEmail("change-cas@example.com")).get()
+				.extracting(CustomerAccountCredential::passwordHash).isEqualTo("{bcrypt}orig");
+		assertThat(recovery.changePassword(id, "{bcrypt}orig", "{bcrypt}changed")).isTrue();
+		assertThat(accounts.findByEmail("change-cas@example.com")).get()
+				.extracting(CustomerAccountCredential::passwordHash).isEqualTo("{bcrypt}changed");
 	}
 
 	private CustomerAccountId register(String email) {
