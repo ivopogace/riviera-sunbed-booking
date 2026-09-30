@@ -20,9 +20,9 @@ write the booking row would not fix it: EvalPlanQual re-checks only the target r
 
 ## Acceptance criteria
 
-- [ ] **AC-1:** Given a lone 3-day booking (9000 collected, FREE window) whose day-2 refund (3000)
+- [ ] **AC-1:** Given a lone 3-day booking (13500 collected, FREE window) whose day-2 refund (4500)
   holds the booking lock, when the guest cancels and the refund then commits, then the cancel
-  answers `Cancelled(6000)`, the booking's `refund_minor` is 6000, and refunded total ≤ 9000.
+  answers `Cancelled(9000)`, the booking's `refund_minor` is 9000, and refunded total ≤ 13500.
   *Seam:* `CancelBooking.cancel` · *Pinned by:* `CancelVsDayRefundRaceIT.aLoneCancelWaitingOnADayRefundRefundsTheRemainder`
 - [ ] **AC-2:** Given a stay whose second stretch has a day refund holding its lock, when the guest
   cancels the stay, then it answers `Cancelled` over the remainder (no `IllegalStateException`).
@@ -42,11 +42,11 @@ write the booking row would not fix it: EvalPlanQual re-checks only the target r
 
 ## Risks
 
-- **R-1 deadlock:** a new lock taken earlier could invert an order. → Booking rows are locked in
-  the orders already used: one row for a lone cancel; stretches in `booking_date` order (as
-  `lockStretches`); remodel's live claims in `(booking_date, id)` order, the order it already
-  updated them in and the sweep's `booking_date` order. Remodel already waited on these rows at
-  `cancelConfirmed`/`moveToSet` under the venue lock; locking them earlier adds no new pair.
+- **R-1 deadlock:** a new lock taken earlier could invert an order. → No new lock footprint: the lone
+  cancel locks its one row; the stay cancel its stretches in `booking_date` order, as `lockStretches`
+  already did; the remodel only the booking its refund leg is about to cancel, just before
+  `cancelConfirmed` would have locked it anyway. (A first cut locked every live claim up front; review
+  found it could deadlock with the weather refund's id-ordered locks, so it was narrowed.)
 - **R-2 payout double reversal (#9):** follows from a single event; pinned by the refunded-total
   assertions in AC-1..3.
 
@@ -66,21 +66,23 @@ so `BookingRefundListener` refunds within the charge and payout reverses within 
 
 - **Phase 0 — lone cancel locks before quoting:** red `CancelVsDayRefundRaceIT` AC-1, then `Bookings.lockByCode`.
 - **Phase 1 — stay cancel reads after the lock:** red AC-2, then `lockStretches` lock-then-read.
-- **Phase 2 — remodel commit locks its claims before classifying:** red AC-3, then `lockLiveOnSets`.
+- **Phase 2 — remodel refund leg re-reads its remainder under the lock:** red AC-3, then `lockRemainingMinor`.
 
 ## Execution status
 
-**Stage pointer:** implement done → CI gate / draft PR
+**Stage pointer:** review — findings fixed, awaiting CI + Sonar
 
-**Next action:** confirm the scoped suites + structural net green locally, push, open the draft PR.
+**Next action:** check CI and the Sonar gate on the fix push; then drop this plan in the last commit and merge.
 
-Phases 0–2 landed together: one mechanism (lock, then read in a fresh statement), one race IT covering
-all three legs, red on `main` for each and mutation-checked by reverting the locks.
+Phases 0–2 landed together (one mechanism, one race IT). Review round 1: the race gate was pinned to the
+refund's backend with a `finally` release; the remodel lock narrowed from every live claim to the refund leg's
+booking (a deadlock pair with the weather refund); ADR-0026 §6 and the AC-1 numbers corrected. The remodel leg
+was re-mutation-checked red.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — lone cancel | ✅ | fix commit |
-| 1 — stay cancel | ✅ | fix commit |
-| 2 — remodel | ✅ | fix commit |
+| 0 — lone cancel | ✅ | 3996d9d, review fixes |
+| 1 — stay cancel | ✅ | 3996d9d, review fixes |
+| 2 — remodel | ✅ | 3996d9d, review fixes |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.

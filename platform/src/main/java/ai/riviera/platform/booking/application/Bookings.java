@@ -336,6 +336,6 @@ public interface Bookings {
 	 */
 	List<LiveClaim> findLiveOnSets(Collection<SetId> setIds);
 
-	/** Row-locks what {@link #findLiveOnSets} would answer, in its order; read them after, so a day refunded under the lock is counted. */
-	void lockLiveOnSets(Collection<SetId> setIds);
+	/** Row-locks the booking, then reads what it still holds (the amount less its refunded days) in a statement of its own. */
+	long lockRemainingMinor(long bookingId);
 }

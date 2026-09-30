@@ -61,8 +61,8 @@ import ai.riviera.platform.venue.vocabulary.VenueId;
  * Serves {@link RemodelClaims}, owner-asserted: classifies the live bookings on the disturbed sets
  * in {@code (service date, id)} order, by zone ({@link RemodelZones}), then a move candidate
  * ({@link MoveRanking}) free on every day of the span and untaken by an earlier claim, then status.
- * {@link #classify} is read-only and advisory; {@link #commit} row-locks the claims, then re-classifies inside
- * {@code venue}'s locked layout write, settles each claim and frees every {@code (set, date)} it ends. Refunds,
+ * {@link #classify} is read-only and advisory; {@link #commit} re-classifies inside {@code venue}'s
+ * locked layout write, settles each claim and frees every {@code (set, date)} it ends. Refunds,
  * reversals and mails drain off its events. Rationale: {@code RESPONSIBILITIES.md} §booking.
  */
 @Service
@@ -109,7 +109,6 @@ class RemodelClaimsService implements RemodelClaims {
 	public RemodelCommit commit(OperatorId operator, VenueId venueId, Collection<SetId> disturbedSets,
 			PreviewToken token, RefundConfirmation confirmation) {
 		ownership.assertOwns(operator, new VenueRef(venueId.value()));
-		bookings.lockLiveOnSets(disturbedSets);
 		List<RemodelClaim> fresh = classifyOwned(venueId, disturbedSets);
 		if (!token.covers(fresh)) {
 			return new RemodelCommit.Stale(fresh);
@@ -154,20 +153,22 @@ class RemodelClaimsService implements RemodelClaims {
 	}
 
 	/**
-	 * Cancels a stranded confirmed claim with a {@code VENUE_CHANGE} refund of all that remains (the amount
-	 * less its weather-refunded days, #1210); refund, reversal and fee drain after commit off {@code BookingCancelled}.
+	 * Cancels a stranded confirmed claim with a {@code VENUE_CHANGE} refund of all that remains, read under its row lock
+	 * (a day refunded meanwhile is counted, #1281); refund, reversal and fee drain after commit off {@code BookingCancelled}.
 	 * {@code feeMinor}, the quoted rate, is recorded on the receipt line, not what the ledger charges (ADR-0021).
 	 */
 	private ReceiptOutcome applyRefund(VenueId venueId, RemodelClaim claim, Instant cancelledAt, long feeMinor) {
+		long remainingMinor = bookings.lockRemainingMinor(claim.bookingId().value());
 		CancelledBooking cancelled = bookings
-				.cancelConfirmed(claim.bookingId().value(), cancelledAt, claim.amountMinor(), RefundReason.VENUE_CHANGE,
-						claim.amountMinor())
+				.cancelConfirmed(claim.bookingId().value(), cancelledAt, remainingMinor, RefundReason.VENUE_CHANGE,
+						remainingMinor)
 				.orElseThrow(() -> lostUnderLock(claim, "confirmed"));
 		releaseHeld(cancelled.id(), cancelled.setId(), cancelled.bookingDate(), cancelled.lastDate());
 		events.publishEvent(new BookingCancelled(claim.bookingId(), venueId, cancelled.setId(),
-				cancelled.bookingDate(), claim.amountMinor(), claim.currency(), RefundReason.VENUE_CHANGE,
+				cancelled.bookingDate(), remainingMinor, claim.currency(), RefundReason.VENUE_CHANGE,
 				cancelled.lastDate()));
-		return outcomeOf(claim, ReceiptOutcomeKind.REFUND, feeMinor);
+		return new ReceiptOutcome(claim.bookingId(), claim.bookingDate(), claim.from(), ReceiptOutcomeKind.REFUND,
+				remainingMinor, claim.currency(), feeMinor);
 	}
 
 	/**

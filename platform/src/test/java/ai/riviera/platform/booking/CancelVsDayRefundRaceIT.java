@@ -6,6 +6,7 @@ import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.Callable;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -42,13 +43,12 @@ import static ai.riviera.platform.booking.StayFixtures.PRICE;
 import static ai.riviera.platform.booking.StayFixtures.firstDay;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * A whole-booking cancel that starts while a day refund holds the booking row lock (#1281): each cancel
  * leg quotes from a read taken after that lock, so the day refunded under it is never refunded again
  * and no booking gives back more than it collected (#9, #10). Real Postgres; the day refund's
- * transaction is held open until the cancel is seen waiting on a lock.
+ * transaction is held open until the cancel is seen blocked by it.
  */
 @EnabledIfDockerAvailable
 @Import(TestcontainersConfiguration.class)
@@ -142,30 +142,35 @@ class CancelVsDayRefundRaceIT {
 	}
 
 	/**
-	 * Runs {@code cancel} while {@code day} of {@code bookingId} is refunded in a transaction that holds the
-	 * booking row lock, commits the refund once {@code cancel} waits on a lock, and answers {@code cancel}'s result.
+	 * Runs {@code cancel} while {@code day} of {@code bookingId} is refunded in a transaction that holds the booking row
+	 * lock, commits the refund once a session is blocked by that transaction, and answers {@code cancel}'s result.
 	 */
 	private <T> T whileADayRefundHoldsTheLock(long bookingId, LocalDate day, long refundMinor, Callable<T> cancel)
 			throws Exception {
-		CountDownLatch refunded = new CountDownLatch(1);
+		CompletableFuture<Integer> refundPid = new CompletableFuture<>();
 		CountDownLatch refundCommits = new CountDownLatch(1);
 		try (ExecutorService pool = Executors.newFixedThreadPool(2)) {
-			Future<?> refund = pool.submit(() -> tx.executeWithoutResult(status -> {
-				bookings.refundDay(bookingId, day, refundMinor, Instant.now(), DayRefundStamp.weather()).orElseThrow();
-				refunded.countDown();
-				try {
-					refundCommits.await();
-				}
-				catch (InterruptedException interrupted) {
-					Thread.currentThread().interrupt();
-				}
-			}));
-			assertTrue(refunded.await(10, TimeUnit.SECONDS), "the day refund took the booking lock");
-			Future<T> cancelled = pool.submit(cancel);
-			Awaitility.await().atMost(Duration.ofSeconds(10)).until(() -> sessionsWaitingOnALock() >= 1L);
-			refundCommits.countDown();
-			refund.get(10, TimeUnit.SECONDS);
-			return cancelled.get(10, TimeUnit.SECONDS);
+			try {
+				Future<?> refund = pool.submit(() -> tx.executeWithoutResult(status -> {
+					bookings.refundDay(bookingId, day, refundMinor, Instant.now(), DayRefundStamp.weather()).orElseThrow();
+					refundPid.complete(jdbc.sql("SELECT pg_backend_pid()").query(Integer.class).single());
+					try {
+						refundCommits.await(30, TimeUnit.SECONDS);
+					}
+					catch (InterruptedException interrupted) {
+						Thread.currentThread().interrupt();
+					}
+				}));
+				int pid = refundPid.get(10, TimeUnit.SECONDS);
+				Future<T> cancelled = pool.submit(cancel);
+				Awaitility.await().atMost(Duration.ofSeconds(10)).until(() -> sessionsBlockedBy(pid) >= 1L);
+				refundCommits.countDown();
+				refund.get(10, TimeUnit.SECONDS);
+				return cancelled.get(10, TimeUnit.SECONDS);
+			}
+			finally {
+				refundCommits.countDown();
+			}
 		}
 	}
 
@@ -223,8 +228,8 @@ class CancelVsDayRefundRaceIT {
 				""").param("id", bookingId).query(Long.class).single();
 	}
 
-	private long sessionsWaitingOnALock() {
-		return jdbc.sql("SELECT count(*) FROM pg_stat_activity WHERE wait_event_type = 'Lock' AND datname = current_database()")
-				.query(Long.class).single();
+	private long sessionsBlockedBy(int pid) {
+		return jdbc.sql("SELECT count(*) FROM pg_stat_activity WHERE :pid = ANY (pg_blocking_pids(pid))")
+				.param("pid", pid).query(Long.class).single();
 	}
 }

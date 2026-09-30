@@ -1016,7 +1016,7 @@ class CreateBookingServiceTest {
 		}
 
 		@Override
-		public void lockLiveOnSets(Collection<SetId> setIds) {
+		public long lockRemainingMinor(long bookingId) {
 			throw new UnsupportedOperationException("not exercised by the single-booking reserve");
 		}
 

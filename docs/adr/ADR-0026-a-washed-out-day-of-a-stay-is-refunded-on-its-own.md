@@ -68,9 +68,9 @@ one-day stretch of a stitched stay is a booking of its own or a day of the stay.
 6. **A later refund of the whole booking is the remainder.** `BookingRecord#remainingMinor` is the amount
    less the days refunded; `CancellationPolicy` quotes on it (invariant #10) and the cancel's tier is
    judged against it; a remodel's `VENUE_CHANGE` refund (`LiveClaim#remainingMinor`) is the remainder
-   too. The cancellation write is guarded on the remainder the caller quoted, summed afresh in the
-   statement, so a day refunded between quote and write makes the cancel a no-op rather than a second
-   refund of that day. On the payment side the refunds of one share serialize on its `payment_booking`
+   too. The cancel takes the booking row lock in a statement of its own before it reads the remainder, so a
+   day refunded under that lock is counted, never refunded twice (#1281); the write stays guarded on the
+   quoted remainder as the backstop. On the payment side the refunds of one share serialize on its `payment_booking`
    row (`FOR UPDATE` before the write), so the running sum never loses a concurrent refund.
 7. **A stay whose every day ends up refunded stays live**, with nothing left to refund: no cancel, no
    release, no cancellation mail; the sweep resolves it as any stay. Rare, and the honest state.
