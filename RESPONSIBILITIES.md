@@ -357,9 +357,9 @@ any is released on the old, never a swap of my own — so a racing reserve wins 
   pending request on that set with an overlapping day (`ANOTHER_GUEST`), in one transaction that
   commits before the payment call; a day it cannot claim makes the request decline itself
   (`SET_UNAVAILABLE`), and a failed payment set-up reverts to pending and gives the claim back. Lock
-  order is the reserve's and the remodel's: the set's rows, then the booking row; two overlapping
-  accepts leave exactly one winner (`RequestAcceptClaimsIT`, `ConcurrentOverlappingAcceptIT`). The
-  queue names each request's competing requests; a request for a day already taken is `SET_TAKEN`.
+  order is the reserve's: availability row, then booking row (a remodel locks each booking row first); two
+  overlapping accepts leave one winner (`RequestAcceptClaimsIT`, `ConcurrentOverlappingAcceptIT`). The queue
+  names each request's competing requests; a request for a day already taken is `SET_TAKEN`.
 - **A stay request is answered whole (#1267):** at a Request-to-Book venue a stitched plan is a
   `stay` of `PENDING_REQUEST` stretches under one deadline. Every leg (accept, decline, expiry,
   withdraw by the stay's code, a remodel's decline, a rival's decline) moves every stretch or none,
