@@ -516,9 +516,10 @@ cancelled all-or-nothing, never one booking of it.
   attempt lost its response), a `failed`/`canceled` one never. Not our `refunded_minor`: written
   after the call returns, it misses a lost response. An unreadable list **fails closed** (`Failed`).
 - **Adoption is narrow: exactly one live refund, for exactly the amount requested.** Every refund
-  I create names its booking (`StripeRefundTag`). On a single-booking intent every live refund is a
-  candidate; on a shared one only this booking's tagged refunds are, and an **untagged live refund
-  is `refund_mismatch`** — guessing would strand one guest and refund the other twice. Several
+  I create names its booking (`StripeRefundTag`). For a single-booking intent's whole share every live refund
+  is a candidate; on a shared intent or for a day only this booking's tagged refunds are, and an **untagged
+  live refund is `refund_mismatch`**: guessing would strand one guest and refund the other twice, and a day
+  can't own a refund whose failure matches the whole share (#1310). Several
   candidates or another amount is `refund_mismatch` too: topping up is a refund **decision**
   (`booking`'s). `Failed` keeps the publication outstanding and lights `riviera.refunds.failed`,
   which never clears itself: a human settles it at the gateway.

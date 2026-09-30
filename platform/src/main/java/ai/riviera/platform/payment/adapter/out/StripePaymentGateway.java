@@ -190,16 +190,16 @@ class StripePaymentGateway implements PaymentGateway {
 	}
 
 	/**
-	 * The live refunds that may be this booking's within {@code scope}: those tagged with this booking and
-	 * scope, plus untagged ones on a single-booking intent (a manual refund); on a shared intent an untagged
-	 * live refund makes the answer empty — refuse, never guess.
+	 * The live refunds that may be this booking's within {@code scope}: those tagged with this booking and scope, plus
+	 * untagged ones on a single-booking intent for the whole share (a manual refund). An untagged live refund on a
+	 * shared intent, or for a day (its failure is matched to the whole share, #1310), makes the answer empty: refuse.
 	 */
 	private Optional<List<Refund>> candidatesFor(BookingRef booking, RefundScope scope, String intentId,
 			List<Refund> live) {
 		boolean shared = payments.findBookingRefsByIntent(intentId).size() > 1;
-		if (shared && live.stream().anyMatch(refund -> StripeRefundTag.bookingOf(refund).isEmpty())) {
-			log.warn("booking {}'s PaymentIntent is shared and carries a live refund naming no booking — "
-					+ "refusing to act until a human attributes it", booking.value());
+		if ((shared || scope.isDay()) && live.stream().anyMatch(refund -> StripeRefundTag.bookingOf(refund).isEmpty())) {
+			log.warn("booking {}'s PaymentIntent carries a live refund naming no booking, and it is shared or this is a "
+					+ "day refund — refusing to act until a human attributes it", booking.value());
 			return Optional.empty();
 		}
 		return Optional.of(live.stream()
