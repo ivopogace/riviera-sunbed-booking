@@ -71,13 +71,14 @@ of `poolForClaim`, the port's existing locking read, and is implemented by venue
 
 ## Execution status
 
-**Stage pointer:** PR — CI, review
+**Stage pointer:** review — findings fixed; CI, Sonar, then merge
 
-**Next action:** open the PR, run the review gate.
+**Next action:** CI + Sonar, delete this plan, merge.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — single-set | ✅ | (this commit) |
-| 1 — stay | ✅ | (this commit) |
+| 0 — single-set | ✅ | e3e0808 |
+| 1 — stay | ✅ | e3e0808 |
+| review — docs, IT cleanup | ✅ | (this commit) |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.

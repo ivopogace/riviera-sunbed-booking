@@ -66,6 +66,7 @@ class SeasonClosureVsReserveRaceIT {
 	private final LocalDate day = LocalDate.now(TIRANE).plusDays(30);
 	private final SeasonClosure closure = SeasonClosure.closed(LocalDate.now(TIRANE).plusDays(60), false);
 	private long venueId;
+	private long operatorId;
 	private long setA;
 	private long setB;
 	private OperatorId owner;
@@ -76,7 +77,7 @@ class SeasonClosureVsReserveRaceIT {
 				INSERT INTO venue (name, beach, booking_mode, commission_bps, payout_currency)
 				VALUES (:name, 'KSAMIL', 'INSTANT', 1500, 'EUR') RETURNING id
 				""").param("name", "Closure Race " + System.nanoTime()).query(Long.class).single();
-		long operatorId = jdbc.sql("INSERT INTO operator (username, status) VALUES (:u, 'ACTIVE') RETURNING id")
+		operatorId = jdbc.sql("INSERT INTO operator (username, status) VALUES (:u, 'ACTIVE') RETURNING id")
 				.param("u", "closure-race-" + System.nanoTime()).query(Long.class).single();
 		jdbc.sql("INSERT INTO operator_venue (venue_id, operator_id) VALUES (:v, :o)")
 				.param("v", venueId).param("o", operatorId).update();
@@ -92,7 +93,9 @@ class SeasonClosureVsReserveRaceIT {
 		jdbc.sql("DELETE FROM set_availability WHERE set_id IN (:s)").param("s", List.of(setA, setB)).update();
 		jdbc.sql("DELETE FROM set_position WHERE venue_id = :v").param("v", venueId).update();
 		jdbc.sql("DELETE FROM operator_venue WHERE venue_id = :v").param("v", venueId).update();
+		jdbc.sql("DELETE FROM operator WHERE id = :o").param("o", operatorId).update();
 		jdbc.sql("DELETE FROM venue WHERE id = :v").param("v", venueId).update();
+		jdbc.sql("DELETE FROM customer WHERE email LIKE 'closure-race-%'").update();
 	}
 
 	@Test
@@ -141,7 +144,13 @@ class SeasonClosureVsReserveRaceIT {
 		try (ExecutorService pool = Executors.newFixedThreadPool(2)) {
 			try {
 				Future<?> holder = pool.submit(() -> tx.executeWithoutResult(status -> {
-					held.run();
+					try {
+						held.run();
+					}
+					catch (RuntimeException | AssertionError heldFailed) {
+						holderPid.completeExceptionally(heldFailed);
+						throw heldFailed;
+					}
 					holderPid.complete(jdbc.sql("SELECT pg_backend_pid()").query(Integer.class).single());
 					try {
 						mayCommit.await(30, TimeUnit.SECONDS);

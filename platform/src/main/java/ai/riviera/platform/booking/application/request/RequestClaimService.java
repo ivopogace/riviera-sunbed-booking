@@ -29,7 +29,7 @@ import ai.riviera.platform.venue.vocabulary.VenueId;
  * every stretch of a stay request (invariant #2, #1267), move it to {@code AWAITING_PAYMENT}, and decline
  * every pending request overlapping it, a stay whole — in one transaction, so the payment call that
  * follows holds no lock. A day that cannot be claimed makes the request decline itself whole. The accept locks
- * set rows by ascending day, then booking rows, as the reserve does; the revert, like the remodel, booking first.
+ * set rows by ascending day, then booking rows (the reserve takes its venue row first); the revert, booking first.
  * Rationale: {@code RESPONSIBILITIES.md} §booking.
  */
 @Service

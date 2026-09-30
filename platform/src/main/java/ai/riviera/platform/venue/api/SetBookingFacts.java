@@ -45,7 +45,7 @@ public interface SetBookingFacts {
 
 	/**
 	 * {@link #setBookingInfo(SetId)} for the reserve, after taking the set's venue row {@code FOR SHARE} for the
-	 * caller's transaction: a season closure then waits for the reserve, or the reserve reads it (#1304). Must run
+	 * caller's transaction: a season closure then waits for the reserve, or the reserve sees it (#1304). Must run
 	 * in a transaction, never a read-only one. Rationale: RESPONSIBILITIES.md §venue.
 	 */
 	Optional<SetBookingInfo> setBookingInfoForReserve(SetId setId);
