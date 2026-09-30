@@ -69,7 +69,15 @@ class CustomerAccountService implements CustomerAccounts, CustomerAccountProvisi
 	@Override
 	@Transactional
 	public CustomerAccountId resolveOrCreate(SsoProvider provider, String subject, String email) {
-		return store.resolveSsoAccount(provider, subject, Emails.normalize(email));
+		String normalized = Emails.normalize(email);
+		Optional<CustomerAccountId> returning = store.accountForSsoIdentity(provider, subject);
+		if (returning.isPresent()) {
+			return returning.get();
+		}
+		SsoAccountClaim claim = store.claimAccountForSso(normalized).orElseThrow();
+		CustomerAccountId linked = store.linkSsoIdentity(claim.accountId(), provider, subject, normalized).orElseThrow();
+		store.markEmailVerified(linked); // an SSO email is provider-verified (design D-6)
+		return linked;
 	}
 
 	@Override

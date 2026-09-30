@@ -238,16 +238,23 @@ class CustomerAccountServiceTest {
 		}
 
 		@Override
-		public CustomerAccountId resolveSsoAccount(SsoProvider provider, String subject, String normalizedEmail) {
-			Long existing = accountBySsoIdentity.get(provider.name() + '|' + subject);
-			if (existing != null) {
-				return new CustomerAccountId(existing);
-			}
-			// find-or-create by email (auto-link); an SSO-only account gets an id but no password credential.
+		public Optional<CustomerAccountId> accountForSsoIdentity(SsoProvider provider, String subject) {
+			return Optional.ofNullable(accountBySsoIdentity.get(provider.name() + '|' + subject))
+					.map(CustomerAccountId::new);
+		}
+
+		@Override
+		public Optional<SsoAccountClaim> claimAccountForSso(String normalizedEmail) {
+			boolean created = !idByEmail.containsKey(normalizedEmail);
 			long accountId = idByEmail.computeIfAbsent(normalizedEmail, e -> nextId++);
-			accountBySsoIdentity.put(provider.name() + '|' + subject, accountId);
-			verified.add(accountId); // SSO email is provider-verified (design D-6)
-			return new CustomerAccountId(accountId);
+			return Optional.of(new SsoAccountClaim(new CustomerAccountId(accountId), created));
+		}
+
+		@Override
+		public Optional<CustomerAccountId> linkSsoIdentity(CustomerAccountId accountId, SsoProvider provider,
+				String subject, String normalizedEmail) {
+			return Optional.of(new CustomerAccountId(
+					accountBySsoIdentity.computeIfAbsent(provider.name() + '|' + subject, k -> accountId.value())));
 		}
 
 		@Override

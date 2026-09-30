@@ -41,12 +41,21 @@ public interface CustomerAccountStore {
 	 */
 	RegistrationOutcome insertIfAbsent(String normalizedEmail, String passwordHash);
 
+	/** The account an external {@code (provider, subject)} is linked to, or empty for a first sign-in. */
+	Optional<CustomerAccountId> accountForSsoIdentity(SsoProvider provider, String subject);
+
 	/**
-	 * Resolve-or-create the account for an external {@code (provider, subject)}, idempotent and
-	 * race-safe ({@code ON CONFLICT DO NOTHING}). A returning subject reuses its account; a new one
-	 * auto-links to the account holding its verified email, else gets a new password-less account.
+	 * Find-or-create the account for an SSO email: a new password-less account if the email is free
+	 * ({@code ON CONFLICT DO NOTHING}), else the one holding it; empty when that one lost the email meanwhile.
 	 */
-	CustomerAccountId resolveSsoAccount(SsoProvider provider, String subject, String normalizedEmail);
+	Optional<SsoAccountClaim> claimAccountForSso(String normalizedEmail);
+
+	/**
+	 * Link {@code (provider, subject)} to the account unless a concurrent first sign-in linked it first; answers
+	 * the account it is linked to, empty when that link is gone again.
+	 */
+	Optional<CustomerAccountId> linkSsoIdentity(CustomerAccountId accountId, SsoProvider provider, String subject,
+			String normalizedEmail);
 
 	/**
 	 * Mark the account's email verified — sets {@code email_verified = true} +
