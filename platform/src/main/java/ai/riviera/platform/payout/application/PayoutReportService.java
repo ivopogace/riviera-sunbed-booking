@@ -96,9 +96,8 @@ class PayoutReportService implements PayoutReport {
 	}
 
 	/**
-	 * The guarded write matched no row: re-read and say why. Already at {@code target} and {@code expectedTotal} is
-	 * {@link BatchStatusOutcome.Marked}; at another total, before or at {@code target}, {@link BatchStatusOutcome.TotalChanged}.
-	 * Needs READ COMMITTED (the default) so the re-read sees the winner's commit, not a snapshot.
+	 * Why the guarded write matched no row: already at {@code target} and {@code expectedTotal} is
+	 * {@link BatchStatusOutcome.Marked}, otherwise still headed there or already there is a moved total.
 	 */
 	private static BatchStatusOutcome classify(PayoutBatch current, BatchStatus target, long expectedTotal) {
 		if (current.status() == target && current.totalNetMinor() == expectedTotal) {
@@ -110,6 +109,10 @@ class PayoutReportService implements PayoutReport {
 		return new BatchStatusOutcome.IllegalTransition(current.status(), target);
 	}
 
+	/**
+	 * The guarded write lost a race: re-read and {@link #classify} where the batch is now. Needs READ COMMITTED (the
+	 * default) so the re-read sees the winner's commit, not a snapshot.
+	 */
 	private BatchStatusOutcome lostRace(long batchId, BatchStatus target, long expectedTotal) {
 		return batches.findById(batchId)
 				.map(current -> classify(current, target, expectedTotal))

@@ -7,6 +7,7 @@ import { BusyAction } from '../shared/busy-action';
 import { CardGlass } from '../shared/card-glass';
 import { FieldErrorFor } from '../shared/field-error-for';
 import { focusMover } from '../shared/focus-after-render';
+import { LoadAnnouncer } from '../shared/load-announcer';
 import { formatMoney } from '../shared/money';
 import { TouchTarget } from '../shared/touch-target';
 import { AdminPayoutsService, payoutMarkErrorOf } from './admin-payouts.service';
@@ -37,7 +38,7 @@ const STATUS_LABEL: Readonly<Record<PayoutBatchStatus, string>> = {
  */
 @Component({
   selector: 'app-admin-payouts',
-  imports: [CardGlass, TouchTarget, BusyAction, FieldErrorFor, FormField],
+  imports: [CardGlass, TouchTarget, BusyAction, FieldErrorFor, FormField, LoadAnnouncer],
   template: `
     <section
       appCardGlass
@@ -81,7 +82,7 @@ const STATUS_LABEL: Readonly<Record<PayoutBatchStatus, string>> = {
           appTouchTarget
           type="button"
           data-testid="admin-payouts-show"
-          [appBusy]="busy()"
+          [appBusy]="busy() || loading()"
           (click)="show()"
           class="rounded-[10px] border border-riv-field-border px-4 py-2 text-[14px] font-semibold text-riv-card-ink aria-disabled:cursor-not-allowed aria-disabled:opacity-60"
         >
@@ -91,7 +92,7 @@ const STATUS_LABEL: Readonly<Record<PayoutBatchStatus, string>> = {
           appTouchTarget
           type="button"
           data-testid="admin-payouts-generate"
-          [appBusy]="busy()"
+          [appBusy]="busy() || loading()"
           (click)="generate()"
           class="rounded-[10px] border border-riv-field-border bg-riv-console-inset/70 px-4 py-2 text-[14px] font-semibold text-riv-card-ink aria-disabled:cursor-not-allowed aria-disabled:opacity-60"
         >
@@ -108,8 +109,21 @@ const STATUS_LABEL: Readonly<Record<PayoutBatchStatus, string>> = {
       {{ notice() }}
     </output>
 
+    <app-load-announcer
+      [loading]="loading()"
+      [ready]="!loading() && !loadError()"
+      loadingLabel="Loading payout batches…"
+      readyLabel="Payout batches loaded."
+    />
+
     @if (loading()) {
-      <p class="mt-3 text-[15px] text-riv-ink-soft" data-testid="admin-payouts-loading">Loading…</p>
+      <p
+        class="mt-3 text-[15px] text-riv-ink-soft"
+        aria-hidden="true"
+        data-testid="admin-payouts-loading"
+      >
+        Loading…
+      </p>
     } @else if (loadError()) {
       <p class="mt-3 text-[15px] text-riv-error-ink" role="alert" data-testid="admin-payouts-error">
         Something went wrong loading payout batches.
@@ -117,7 +131,8 @@ const STATUS_LABEL: Readonly<Record<PayoutBatchStatus, string>> = {
           type="button"
           data-touch-exempt="control inside a sentence (WCAG 2.5.5 inline exception)"
           class="font-semibold underline"
-          (click)="show()"
+          data-testid="admin-payouts-retry"
+          (click)="retry()"
         >
           Retry
         </button>
@@ -258,24 +273,36 @@ export class AdminPayouts {
     effect(() => {
       if (!this.auth.restoring() && this.auth.isAdmin() && !this.loaded) {
         this.loaded = true;
-        void this.read(this.shown(), true);
+        void this.read(this.shown());
       }
     });
   }
 
-  /** Read the week in the field. */
+  /** Read the week in the field; one read or write at a time, so no older answer lands last. */
   protected async show(): Promise<void> {
     const period = this.validatedPeriod();
-    if (period !== null) {
+    if (period !== null && !this.busy() && !this.loading()) {
       this.notice.set('');
-      await this.read(period, this.venueNames().size === 0);
+      await this.read(period);
     }
+  }
+
+  /** Re-read the week shown, then focus what replaced the Retry button. */
+  protected async retry(): Promise<void> {
+    if (this.loading()) {
+      return;
+    }
+    await this.read(this.shown());
+    this.focusAfterRender(
+      this.loadError() ? 'admin-payouts-error' : 'admin-payouts-card',
+      'admin-payouts-empty',
+    );
   }
 
   /** Generate or refresh the week in the field, answering every batch it now has. */
   protected async generate(): Promise<void> {
     const period = this.validatedPeriod();
-    if (period === null || this.busy()) {
+    if (period === null || this.busy() || this.loading()) {
       return;
     }
     this.busy.set(true);
@@ -348,7 +375,7 @@ export class AdminPayouts {
       return `${row.venueName} was not updated, and the week could not be re-read.`;
     }
     const current = this.batches().find((batch) => batch.id === row.id);
-    if (reason === 'TOTAL_CHANGED' && current) {
+    if (reason === 'TOTAL_CHANGED' && current?.status === 'DRAFT') {
       return (
         `${row.venueName} now nets ${formatBatchTotal(current)}, not ${row.totalStr}: the ledger ` +
         `moved since this week was loaded. Nothing was reported; review the new total.`
@@ -360,13 +387,14 @@ export class AdminPayouts {
     return `${row.venueName} is already ${STATUS_LABEL[current.status].toLowerCase()}. Nothing was changed.`;
   }
 
-  private async read(period: string, withVenues: boolean): Promise<void> {
+  /** The names are best-effort: without them a batch still renders, by venue id. */
+  private async read(period: string): Promise<void> {
     this.loading.set(true);
     this.loadError.set(false);
     try {
       const [batches, venues] = await Promise.all([
         this.payouts.forPeriod(period),
-        withVenues ? this.venues.venues() : Promise.resolve(null),
+        this.venueNames().size === 0 ? this.venues.venues().catch(() => null) : null,
       ]);
       this.batches.set(batches);
       this.shown.set(period);

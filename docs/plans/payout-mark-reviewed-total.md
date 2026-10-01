@@ -45,7 +45,7 @@ console tab in this slice; `expectedTotalNetMinor` is **required** for `REPORTED
   region, and nothing is marked. *Seam:* `AdminPayouts` · *Pinned by:* `admin-payouts.spec.ts`;
   user-visible flow in `e2e/admin-payouts.e2e.ts` (mocked suite)
 - [ ] **AC-7:** The tab rail renders `Payouts` in its reserved slot. *Pinned by:*
-  `admin-console-tabs.spec.ts` (subsequence contract), `admin-payouts.a11y.spec.ts` (axe + contrast)
+  `admin-console-tabs.spec.ts` (subsequence contract), `admin-payouts.a11y.spec.ts` (axe; its tokens are the Venue changes tab's, whose contrast spec proves them)
 
 ## Non-goals
 
@@ -128,9 +128,9 @@ generate (#1309's `lockPeriod`) is unchanged.
 
 ## Execution status
 
-**Stage pointer:** `PR` — phases 0–4 built; draft PR open, CI pending
+**Stage pointer:** `review — fixing findings` (CI + Sonar green on fb63213; review gate run on #1324)
 
-**Next action:** Check CI on the draft PR; once green, merge `origin/main`, mark ready, run the review gate.
+**Next action:** Push the review fixes, post the review comment, then the merge close-out (delete this plan last).
 
 Local evidence: the payout ITs and unit tests, `CrossVenueDenialIT`, `AdminSurfaceRoleGateTest`, and the
 structural net (plus `ErrorContractArchitectureTests`, `ResponsibilitiesArchitectureTests`) are green. Both race ITs

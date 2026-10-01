@@ -66,7 +66,7 @@ async function render(
   }).compileComponents();
   const fixture = TestBed.createComponent(AdminPayouts);
   fixture.detectChanges();
-  await fixture.whenStable();
+  await new Promise((resolve) => setTimeout(resolve));
   await fixture.whenStable();
   fixture.detectChanges();
   return fixture;

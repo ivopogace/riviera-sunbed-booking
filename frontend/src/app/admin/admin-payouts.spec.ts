@@ -67,21 +67,25 @@ function payoutsStub(batches: readonly PayoutBatchView[] = [DRAFT, REPORTED]): P
   };
 }
 
+/** The stubs answer with plain promises Angular does not track, so a macrotask drains them. */
 async function settle(fixture: ComponentFixture<AdminPayouts>): Promise<void> {
   fixture.detectChanges();
-  await fixture.whenStable();
+  await new Promise((resolve) => setTimeout(resolve));
   await fixture.whenStable();
   fixture.detectChanges();
 }
 
-async function render(payouts: PayoutsStub): Promise<ComponentFixture<AdminPayouts>> {
+async function render(
+  payouts: PayoutsStub,
+  venues: () => Promise<typeof VENUES> = () => Promise.resolve(VENUES),
+): Promise<ComponentFixture<AdminPayouts>> {
   await TestBed.configureTestingModule({
     imports: [AdminPayouts],
     providers: [
       provideRouter([]),
       { provide: OperatorAuth, useValue: authStub() },
       { provide: AdminPayoutsService, useValue: payouts },
-      { provide: AdminVenuesService, useValue: { venues: () => Promise.resolve(VENUES) } },
+      { provide: AdminVenuesService, useValue: { venues } },
     ],
   }).compileComponents();
   const fixture = TestBed.createComponent(AdminPayouts);
@@ -141,6 +145,74 @@ describe('AdminPayouts', () => {
     expect(text(host, 'payout-batch-settle-12')).toBe('Mark settled for Bora Bora');
     expect(byId(host, 'payout-batch-report-13')).toBeNull();
     expect(byId(host, 'payout-batch-settle-13')).toBeNull();
+  });
+
+  /** One region, mounted before the read, speaks both legs; the visible copy is decoration. */
+  it('announces the load and its landing from the one live region', async () => {
+    let land!: (batches: readonly PayoutBatchView[]) => void;
+    const payouts = payoutsStub();
+    payouts.forPeriod.mockImplementationOnce(() => new Promise((resolve) => (land = resolve)));
+    await TestBed.configureTestingModule({
+      imports: [AdminPayouts],
+      providers: [
+        provideRouter([]),
+        { provide: OperatorAuth, useValue: authStub() },
+        { provide: AdminPayoutsService, useValue: payouts },
+        { provide: AdminVenuesService, useValue: { venues: () => Promise.resolve(VENUES) } },
+      ],
+    }).compileComponents();
+    const fixture = TestBed.createComponent(AdminPayouts);
+    await settle(fixture);
+    const host = fixture.nativeElement as HTMLElement;
+    const announcer = byId(host, 'load-announcer')!;
+    expect(announcer.textContent?.trim()).toBe('Loading payout batches…');
+    expect(byId(host, 'admin-payouts-loading')!.getAttribute('aria-hidden')).toBe('true');
+
+    land([DRAFT]);
+    await settle(fixture);
+
+    expect(byId(host, 'load-announcer')).toBe(announcer);
+    expect(announcer.textContent?.trim()).toBe('Payout batches loaded.');
+  });
+
+  it('starts no second read while one is in flight', async () => {
+    let land!: (batches: readonly PayoutBatchView[]) => void;
+    const payouts = payoutsStub();
+    const fixture = await render(payouts);
+    payouts.forPeriod.mockImplementationOnce(() => new Promise((resolve) => (land = resolve)));
+    const host = fixture.nativeElement as HTMLElement;
+
+    byId(host, 'admin-payouts-show')!.click();
+    await settle(fixture);
+    byId(host, 'admin-payouts-show')!.click();
+    byId(host, 'admin-payouts-generate')!.click();
+    await settle(fixture);
+    land([DRAFT]);
+    await settle(fixture);
+
+    expect(payouts.forPeriod).toHaveBeenCalledTimes(2);
+    expect(payouts.generate).not.toHaveBeenCalled();
+  });
+
+  it('still lists the batches by id when the venue names cannot be read', async () => {
+    const fixture = await render(payoutsStub([DRAFT]), () => Promise.reject(new Error('offline')));
+
+    expect(rowTexts(fixture.nativeElement as HTMLElement)[0]).toContain('Venue #3');
+  });
+
+  it('moves focus from Retry to the batches it brought back', async () => {
+    const payouts = payoutsStub();
+    payouts.forPeriod.mockRejectedValueOnce(new HttpErrorResponse({ status: 502 }));
+    const fixture = await render(payouts);
+    const host = fixture.nativeElement as HTMLElement;
+    const retry = byId(host, 'admin-payouts-retry')!;
+    retry.focus();
+
+    retry.click();
+    await settle(fixture);
+    await settle(fixture);
+
+    expect(document.activeElement).toBe(byId(host, 'admin-payouts-card'));
   });
 
   it('names a venue the admin list lacks by its id rather than dropping the batch', async () => {
@@ -250,6 +322,26 @@ describe('AdminPayouts', () => {
     );
   });
 
+  /** Another admin froze it first at another total: nothing is left to report, so say where it is. */
+  it('on TOTAL_CHANGED for a batch already reported elsewhere, says it is reported', async () => {
+    const payouts = payoutsStub();
+    const fixture = await render(payouts);
+    const host = fixture.nativeElement as HTMLElement;
+    payouts.markReported.mockRejectedValueOnce(conflict('TOTAL_CHANGED'));
+    payouts.forPeriod.mockResolvedValueOnce([
+      { ...DRAFT, totalNetMinor: 7000, status: 'REPORTED' },
+      REPORTED,
+    ]);
+
+    byId(host, 'payout-batch-report-11')!.click();
+    await settle(fixture);
+    await settle(fixture);
+
+    expect(text(host, 'admin-payouts-notice')).toBe(
+      'Miramar Beach Club is already reported. Nothing was changed.',
+    );
+  });
+
   it('keeps the row and says nothing changed on an unexpected failure', async () => {
     const payouts = payoutsStub();
     const fixture = await render(payouts);
@@ -276,5 +368,6 @@ describe('AdminPayouts', () => {
     expect(payouts.markSettled).toHaveBeenCalledWith(12);
     expect(rowTexts(host)[1]).toContain('Settled');
     expect(text(host, 'admin-payouts-notice')).toBe('Bora Bora is settled.');
+    expect(document.activeElement).toBe(byId(host, 'admin-payouts-notice'));
   });
 });

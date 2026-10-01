@@ -11,7 +11,7 @@ import { openMoreSheet } from './support/shell';
  * audit trail, and is told an outcome that reveals nothing about whether the address was known.
  *
  * Run at **360px**, the project's small-screen bar, because the two-column layout has to
- * collapse there and the strip is at eight tabs with Privacy in it — the narrow viewport is the honest
+ * collapse there and the strip holds every tab, Privacy among them — the narrow viewport is the honest
  * place to prove both still fit.
  *
  * The erasure endpoint is mocked below so the spec is self-contained and runs in CI
@@ -219,7 +219,7 @@ test('the failure banner lands in reserved space, so the panel absorbs part of i
   expect((await confirm.boundingBox())?.y).toBe(clean.confirm?.y);
 });
 
-test('the tab rail marks Privacy in slot 9 and never scrolls sideways at 360px', async ({
+test('the tab rail marks Privacy in its slot and never scrolls sideways at 360px', async ({
   page,
 }) => {
   await mockOperatorLifecycleApi(page, { admin: ADMIN });
