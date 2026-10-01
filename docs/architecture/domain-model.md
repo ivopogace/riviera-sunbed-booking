@@ -28,13 +28,13 @@ arrows = `api/` port queries** (reads). Modules never import each other's intern
 ports or events (invariant #11).
 
 The **remaining** modules are not drawn because no domain module collaborates with them: `shared`
-(the closed kernel of edge types, registered as Modulith's shared module); the closed read model `itinerary` (no table; it only reads
-`venue::api` + `availability::api` for the stay verdict per venue, improvement plan B4, and nothing
-reads it); and the closed ADR-0017 mechanisms, `challenge` (proof of work, owns
-`challenge_registry`) and `audit` (the admin audit trail, owns `admin_audit_record`), both reached
-from the platform edge through a port. `monitoring` (no table) is not drawn either: `booking` and
-`notification` reach only its `vocabulary` (metric names, the MDC task decorator), never a port or an
-event.
+(the closed kernel of edge types, registered as Modulith's shared module); the closed read model
+`itinerary` (no table; it only reads `venue::api` + `availability::api` for the stay verdict per
+venue, improvement plan B4, and nothing reads it); and the closed ADR-0017 mechanisms, `challenge`
+(proof of work, owns `challenge_registry`) and `audit` (the admin audit trail, owns
+`admin_audit_record`), both reached from the platform edge through a port. `monitoring` (no table)
+is not drawn either: `booking` and `notification` reach only its `vocabulary` (metric names, the MDC
+task decorator), never a port or an event.
 
 ```mermaid
 graph TB
@@ -108,14 +108,15 @@ module, and no diagram here shows it — so it is stated instead. The root holds
 and the fences: `SecurityConfig` and the filter chain (`RateLimitFilter`,
 `ChallengeVerificationFilter`, `AdminAuditFilter`; the correlation-id filter is `monitoring`'s), the session principals
 and their revocation, the SSO gateways, the error contract (`ApiErrorHandler`, `ApiProblem`), and
-**nine controllers** — auth, SSO, my-account, account recovery, my-erasure, admin-operator,
-admin-erasure, operator-account, and the profile-guarded mock SSO IdP.
+the controllers — auth, SSO, my-account, account recovery, my-erasure, admin-operator,
+operator-account, remodel preview and commit, and the profile-guarded mock SSO IdP.
 
-Two consequences a reader of §1 would otherwise miss: `customer` and `operator` have **no
-controllers of their own** — everything a person does with an account is an edge endpoint calling
-their ports — and the rule that keeps this honest runs one way only. Modules depend on `shared`,
-the root depends on modules, and **nothing depends on the root** (ADR-0007 Amendment 2, machine-checked
-by `CompositionRootDisciplineTests`). `RESPONSIBILITIES.md` § *Platform edge* is the contract.
+Two consequences a reader of §1 would otherwise miss: `operator` has **no controllers of its own**
+and `customer` only the admin erasure one — everything a person does with their own account is an
+edge endpoint calling those modules' ports — and the rule that keeps this honest runs one way only.
+Modules depend on `shared`, the root depends on modules, and **nothing depends on the root**
+(ADR-0007 Amendment 2, machine-checked by `CompositionRootDisciplineTests`). `RESPONSIBILITIES.md` §
+*Platform edge* is the contract.
 
 ---
 
