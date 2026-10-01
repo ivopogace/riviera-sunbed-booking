@@ -36,7 +36,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  *
  * <p><strong>Why a status assertion would pin nothing.</strong> Every {@code /api/me} controller opens
  * with {@link CustomerAccountDirectory#requireSignedInAccount}, which throws {@code NotSignedInCustomerException}
- * for a non-customer principal. That reaches {@link ApiErrorHandler#onAccessDenied} and produces
+ * for a non-customer principal. That reaches {@code ApiErrorHandler#onAccessDenied} and produces
  * {@code 403 ACCESS_DENIED} — <em>byte-identical</em> to what
  * {@code SecurityProblemResponses#writeAccessDenied} emits from inside the filter chain. So neither the
  * status code nor the response body can tell the two layers apart, and a test asserting only

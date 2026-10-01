@@ -43,7 +43,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  *
  * <p><strong>Why a status assertion would pin nothing.</strong> Both handlers open with
  * {@code OperatorDirectory#requireOperator}, which throws {@code NoOperableOperatorException} for a principal that
- * resolves to no operator. That reaches {@link ApiErrorHandler#onAccessDenied} and produces
+ * resolves to no operator. That reaches {@code ApiErrorHandler#onAccessDenied} and produces
  * {@code 403 ACCESS_DENIED} — <em>byte-identical</em> to what
  * {@code SecurityProblemResponses#writeAccessDenied} emits from inside the filter chain. So neither
  * the status code nor the body can tell the two layers apart, and a test asserting only

@@ -84,8 +84,10 @@ class CompositionRootDisciplineTests {
 
 	@Test
 	void rootReachingNoModuleIsAccepted() {
-		List<String> violations =
-				inspect(ArchitectureTestSupport.fixtureClasses(FIXTURE_BASE), FIXTURE_BASE).violations();
+		JavaClasses fixture = ArchitectureTestSupport.fixtureClasses(FIXTURE_BASE);
+		assertTrue(fixture.contain(FIXTURE_BASE + ".RootReachingNoModule"),
+				"The control fixture was not imported, so its acceptance would prove nothing.");
+		List<String> violations = inspect(fixture, FIXTURE_BASE).violations();
 
 		assertTrue(violations.stream().noneMatch(v -> v.contains("RootReachingNoModule")),
 				"The rule rejected a root class that reaches no module — it is over-strict, and its "
