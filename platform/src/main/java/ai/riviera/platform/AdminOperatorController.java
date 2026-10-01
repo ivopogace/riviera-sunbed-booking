@@ -4,6 +4,7 @@ import ai.riviera.platform.shared.CurrentOperator;
 import ai.riviera.platform.shared.ApiProblem;
 import java.time.Instant;
 import java.util.List;
+import java.util.Optional;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -24,12 +25,12 @@ import ai.riviera.platform.operator.vocabulary.OperatorStatus;
 import ai.riviera.platform.operator.vocabulary.PendingOperator;
 
 /**
- * Platform-admin operator lifecycle — approve/reject registrations, suspend/reinstate accounts — through the
- * {@link OperatorLifecycle} port only (invariant #11). {@code ADMIN}-gated in {@link SecurityConfig}, not venue-scoped
- * (exempt from #13); errors are {@link ApiProblem} bodies, success {@code 204}. Suspend and reject revoke sessions on
- * both sides of the transition: before it ({@link OperatorLifecycle#usernameInStatus}), so a failed revoke cannot commit
- * a suspension that leaves sessions alive, and after it, for sign-ins inside the window; signing out an operator whose
- * suspend is then refused is the accepted cost. Rationale: RESPONSIBILITIES.md §Platform edge (settled).
+ * Platform-admin operator lifecycle through the {@link OperatorLifecycle} port only (invariant #11); {@code ADMIN}-gated
+ * in {@link SecurityConfig}, exempt from #13; errors are {@link ApiProblem} bodies, success {@code 204}. Suspend and
+ * reject revoke sessions before the transition ({@link OperatorLifecycle#usernameInStatus}), so a failed revoke cannot
+ * commit a suspension with live sessions, and after it, for sign-ins in the window. A suspend the active-admin rule
+ * refuses is answered before any revoke; one refused only under its lock (a race) signed its target out, the accepted
+ * cost. Rationale: RESPONSIBILITIES.md §Platform edge (settled).
  */
 @RestController
 @RequestMapping("/api/admin/operators")
@@ -112,12 +113,17 @@ class AdminOperatorController {
 	@PostMapping("/{operatorId}/suspend")
 	ResponseEntity<?> suspend(@PathVariable long operatorId, Authentication authentication) {
 		OperatorId target = new OperatorId(operatorId);
-		if (target.equals(currentOperator.require(authentication))) {
+		OperatorId actor = currentOperator.require(authentication);
+		if (target.equals(actor)) {
 			return ApiProblem.response(HttpStatus.CONFLICT, "CANNOT_SUSPEND_SELF",
 					"The target operator is the account this request is authenticated as.");
 		}
+		Optional<OperatorLifecycleOutcome> refused = lifecycle.suspendRefusal(actor, target);
+		if (refused.isPresent()) {
+			return toResponse(refused.get(), false);
+		}
 		lifecycle.usernameInStatus(target, OperatorStatus.ACTIVE).ifPresent(sessionRevoker::revokeAll);
-		return toResponse(lifecycle.suspend(target), true);
+		return toResponse(lifecycle.suspend(actor, target), true);
 	}
 
 	@PostMapping("/{operatorId}/reinstate")
@@ -142,6 +148,10 @@ class AdminOperatorController {
 					"WRONG_STATUS", "This operator is not in a status that allows this change.");
 			case OperatorLifecycleOutcome.NoSuchOperator ignored -> ApiProblem.response(HttpStatus.NOT_FOUND,
 					"NO_SUCH_OPERATOR", "No such operator.");
+			case OperatorLifecycleOutcome.LastActiveAdmin ignored -> ApiProblem.response(HttpStatus.CONFLICT,
+					"LAST_ACTIVE_ADMIN", "This suspension would leave the platform without an active admin.");
+			case OperatorLifecycleOutcome.ActorNotActiveAdmin ignored -> ApiProblem.response(HttpStatus.FORBIDDEN,
+					"NOT_AN_ACTIVE_ADMIN", "The account this request is authenticated as is no longer an active admin.");
 		};
 	}
 

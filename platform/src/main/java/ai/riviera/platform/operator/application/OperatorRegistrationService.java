@@ -70,8 +70,26 @@ class OperatorRegistrationService implements OperatorRegistration, OperatorLifec
 
 	@Override
 	@Transactional
-	public OperatorLifecycleOutcome suspend(OperatorId operatorId) {
-		return operators.suspend(operatorId);
+	public OperatorLifecycleOutcome suspend(OperatorId actor, OperatorId target) {
+		operators.lockForSuspend(actor, target);
+		return refusal(operators.suspendFacts(actor, target)).orElseGet(() -> operators.suspend(target));
+	}
+
+	@Override
+	@Transactional(readOnly = true)
+	public Optional<OperatorLifecycleOutcome> suspendRefusal(OperatorId actor, OperatorId target) {
+		return refusal(operators.suspendFacts(actor, target));
+	}
+
+	/** The rule first, so a suspended admin's suspend that would also empty the admins answers the rule. */
+	private static Optional<OperatorLifecycleOutcome> refusal(SuspendFacts facts) {
+		if (facts.leavesNoActiveAdmin()) {
+			return Optional.of(new OperatorLifecycleOutcome.LastActiveAdmin());
+		}
+		if (!facts.actorActiveAdmin()) {
+			return Optional.of(new OperatorLifecycleOutcome.ActorNotActiveAdmin());
+		}
+		return Optional.empty();
 	}
 
 	@Override

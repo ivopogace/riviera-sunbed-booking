@@ -96,7 +96,7 @@ class AdminOperatorControllerTest {
 
 		InOrder effects = inOrder(sessionRevoker, lifecycle);
 		effects.verify(sessionRevoker).revokeAll(TARGET_USERNAME);
-		effects.verify(lifecycle).suspend(TARGET);
+		effects.verify(lifecycle).suspend(ADMIN, TARGET);
 	}
 
 	/**
@@ -113,7 +113,7 @@ class AdminOperatorControllerTest {
 
 		InOrder effects = inOrder(sessionRevoker, lifecycle, sessionRevoker);
 		effects.verify(sessionRevoker).revokeAll(TARGET_USERNAME);
-		effects.verify(lifecycle).suspend(TARGET);
+		effects.verify(lifecycle).suspend(ADMIN, TARGET);
 		effects.verify(sessionRevoker).revokeAll(TARGET_USERNAME);
 		verify(sessionRevoker, times(2)).revokeAll(TARGET_USERNAME);
 	}
@@ -129,7 +129,7 @@ class AdminOperatorControllerTest {
 				.with(user(ADMIN_USERNAME).roles("ADMIN"))))
 				.hasRootCauseInstanceOf(DataAccessResourceFailureException.class);
 
-		verify(lifecycle, never()).suspend(any());
+		verify(lifecycle, never()).suspend(any(), any());
 	}
 
 	/**
@@ -139,13 +139,44 @@ class AdminOperatorControllerTest {
 	@Test
 	void anUnknownOrNotActiveTargetRevokesNothing() throws Exception {
 		when(lifecycle.usernameInStatus(TARGET, OperatorStatus.ACTIVE)).thenReturn(Optional.empty());
-		when(lifecycle.suspend(TARGET)).thenReturn(new OperatorLifecycleOutcome.WrongStatus());
+		when(lifecycle.suspend(ADMIN, TARGET)).thenReturn(new OperatorLifecycleOutcome.WrongStatus());
 
 		mvc.perform(isolated(post(SUSPEND, TARGET.value())).with(user(ADMIN_USERNAME).roles("ADMIN")))
 				.andExpect(status().isConflict())
 				.andExpect(jsonPath("$.code").value("WRONG_STATUS"));
 
 		verify(sessionRevoker, never()).revokeAll(anyString());
+	}
+
+	/** The active-admin rule's refusal is answered before the pre-read, so the still-active target keeps its sessions. */
+	@Test
+	void aSuspendTheRuleRefusesIsAnsweredBeforeAnyRevoke() throws Exception {
+		when(lifecycle.usernameInStatus(TARGET, OperatorStatus.ACTIVE)).thenReturn(Optional.of(TARGET_USERNAME));
+		when(lifecycle.suspendRefusal(ADMIN, TARGET)).thenReturn(Optional.of(new OperatorLifecycleOutcome.LastActiveAdmin()))
+				.thenReturn(Optional.of(new OperatorLifecycleOutcome.ActorNotActiveAdmin()));
+
+		mvc.perform(isolated(post(SUSPEND, TARGET.value())).with(user(ADMIN_USERNAME).roles("ADMIN")))
+				.andExpect(status().isConflict())
+				.andExpect(jsonPath("$.code").value("LAST_ACTIVE_ADMIN"));
+		mvc.perform(isolated(post(SUSPEND, TARGET.value())).with(user(ADMIN_USERNAME).roles("ADMIN")))
+				.andExpect(status().isForbidden())
+				.andExpect(jsonPath("$.code").value("NOT_AN_ACTIVE_ADMIN"));
+
+		verify(sessionRevoker, never()).revokeAll(anyString());
+		verify(lifecycle, never()).suspend(any(), any());
+	}
+
+	/** A refusal only the locked suspend sees (a race) comes after the pre-read revoke: the accepted cost. */
+	@Test
+	void aSuspendRefusedUnderTheLockHasAlreadyRevokedAndRevokesNoMore() throws Exception {
+		when(lifecycle.usernameInStatus(TARGET, OperatorStatus.ACTIVE)).thenReturn(Optional.of(TARGET_USERNAME));
+		when(lifecycle.suspend(ADMIN, TARGET)).thenReturn(new OperatorLifecycleOutcome.LastActiveAdmin());
+
+		mvc.perform(isolated(post(SUSPEND, TARGET.value())).with(user(ADMIN_USERNAME).roles("ADMIN")))
+				.andExpect(status().isConflict())
+				.andExpect(jsonPath("$.code").value("LAST_ACTIVE_ADMIN"));
+
+		verify(sessionRevoker, times(1)).revokeAll(TARGET_USERNAME);
 	}
 
 	/** Reinstatement restores the account, not the old cookies — it neither pre-reads nor revokes. */
@@ -174,7 +205,7 @@ class AdminOperatorControllerTest {
 						.value("The target operator is the account this request is authenticated as."));
 
 		verify(lifecycle, never()).usernameInStatus(any(), any());
-		verify(lifecycle, never()).suspend(any());
+		verify(lifecycle, never()).suspend(any(), any());
 		verify(sessionRevoker, never()).revokeAll(anyString());
 	}
 
@@ -247,7 +278,7 @@ class AdminOperatorControllerTest {
 
 	private void givenTheTargetIsActive() {
 		when(lifecycle.usernameInStatus(TARGET, OperatorStatus.ACTIVE)).thenReturn(Optional.of(TARGET_USERNAME));
-		when(lifecycle.suspend(TARGET))
+		when(lifecycle.suspend(ADMIN, TARGET))
 				.thenReturn(new OperatorLifecycleOutcome.Changed(TARGET, TARGET_USERNAME));
 	}
 

@@ -136,7 +136,7 @@ class VenueCatalogVisibilityIT {
 		assertTrue(isListed("viscat season venue"));
 		assertTrue(catalog.findVenueMap(venue, StaySpan.oneDay(tomorrow())).isPresent());
 
-		lifecycle.suspend(owner);
+		lifecycle.suspend(bootstrapAdmin(), owner);
 		assertFalse(isListed("viscat season venue"));
 		assertTrue(catalog.findVenueMap(venue, StaySpan.oneDay(tomorrow())).isEmpty());
 
@@ -177,8 +177,13 @@ class VenueCatalogVisibilityIT {
 		// The pin is really on the listed row, so the absence below is the fence and not a missing location.
 		assertEquals(pin, listedByName("viscat pinned venue").orElseThrow().location());
 
-		lifecycle.suspend(owner);
+		lifecycle.suspend(bootstrapAdmin(), owner);
 
 		assertTrue(listedByName("viscat pinned venue").isEmpty());
+	}
+
+	/** The seeded bootstrap admin, the actor of every suspend here. */
+	private OperatorId bootstrapAdmin() {
+		return new OperatorId(jdbc.sql("SELECT id FROM operator WHERE username = 'operator'").query(Long.class).single());
 	}
 }
