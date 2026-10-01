@@ -1,12 +1,12 @@
-package ai.riviera.platform.shared;
+package ai.riviera.platform.monitoring.vocabulary;
 
 /**
  * The platform's operational metric names, the single source of truth for emitters and readers:
  * dashboards and alerts key on these strings, so renaming one breaks them. The constants inline at
  * compile time, so a reference adds no runtime dependency (invariant #11). Emitters own emission
  * and tags. <strong>Never sum two counters here</strong>: each is a distinct loss mode with its own
- * remedy. Meanings, tags, alerts: {@code docs/runbooks/observability.md}; why {@code shared}:
- * {@code RESPONSIBILITIES.md} §{@code shared}.
+ * remedy. Meanings, tags, alerts: {@code docs/runbooks/observability.md}; ownership:
+ * {@code RESPONSIBILITIES.md} §{@code monitoring}.
  */
 public final class ObservabilityMetrics {
 

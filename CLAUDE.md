@@ -94,8 +94,9 @@ aggregate-root classes: `domain/` holds rules, state is in tables, lifecycles ar
 
 Plus `shared` (OPEN kernel of edge types like `ApiProblem`, depending on no module; admission by
 ownership, never reuse) and the closed non-context modules with `allowedDependencies = {}`:
-`challenge` (proof of work; writes `challenge_registry`) and `audit` (admin audit trail; writes
-`admin_audit_record`). No module writes the framework tables: `SPRING_SESSION*` (Spring Session,
+`challenge` (proof of work; writes `challenge_registry`), `audit` (admin audit trail; writes
+`admin_audit_record`) and `monitoring` (correlation id, metric names, money-path alert check; writes
+nothing). No module writes the framework tables: `SPRING_SESSION*` (Spring Session,
 from the edge) and `event_publication*` (Modulith's registry; re-driven by the outbox levers).
 Context modules depend on `shared`, which depends on no module; the root on modules, nothing on the
 root.

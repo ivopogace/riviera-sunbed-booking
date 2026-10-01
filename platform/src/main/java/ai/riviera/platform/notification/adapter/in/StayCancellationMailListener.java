@@ -17,7 +17,7 @@ import ai.riviera.platform.notification.application.BookingMailFactsService;
 import ai.riviera.platform.notification.application.MissingBookingFact;
 import ai.riviera.platform.notification.application.StayCancellationMailFacts;
 import ai.riviera.platform.notification.application.TransactionalMailService;
-import ai.riviera.platform.shared.ObservabilityMetrics;
+import ai.riviera.platform.monitoring.vocabulary.ObservabilityMetrics;
 
 /**
  * Mails a stitched stay's one cancellation record on {@link StayCancelled}: the stay's code and span with the
