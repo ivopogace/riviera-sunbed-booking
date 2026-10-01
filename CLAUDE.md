@@ -93,7 +93,8 @@ aggregate-root classes: `domain/` holds rules, state is in tables, lifecycles ar
 | `itinerary` | the stay read model (D7/D11): the whole-coast verdict per venue for a span (same set · fits with N moves · can't host), served on `GET /api/venues`; the per-venue stitched plan on `GET /api/venues/{id}/itinerary`; the move budget `riviera.itinerary.max-switches` | nothing — a read model over `venue::api` + `availability::api` |
 | `remodel` | the beach-map remodel preview + commit (ADR-0020/ADR-0028): composes `venue`'s layout diff and write with `booking`'s claim classification and settlement, supplying `venue.spi.RemodelGate`; assembles, never decides | nothing — a composition over `venue::api` + `booking::api` |
 
-Plus `shared` (OPEN kernel of edge types like `ApiProblem`, depending on no module; admission by
+Plus `shared` (closed kernel of edge types like `ApiProblem`, registered in
+`@Modulithic(sharedModules)` so every module may use it, depending on no module; admission by
 ownership, never reuse) and the closed non-context modules with `allowedDependencies = {}`:
 `challenge` (proof of work; writes `challenge_registry`), `audit` (admin audit trail; writes
 `admin_audit_record`) and `monitoring` (correlation id, metric names, money-path alert check; writes
@@ -101,7 +102,7 @@ nothing). Also closed and non-context, but an adapter layer depending on the sur
 (sign-in and sessions: the `UserDetailsService`s, session establishment, credential stamp and revocation,
 SSO, password policy, recovery, the login and self-service controllers; writes nothing). No module writes
 the framework tables: `SPRING_SESSION*` (Spring Session, from `auth` and the edge) and `event_publication*` (Modulith's registry; re-driven by the outbox levers).
-Context modules depend on `shared`, which depends on no module; the root on modules, nothing on the
+Every module may depend on `shared`, which depends on no module; the root on modules, nothing on the
 root.
 
 **Collaboration:** events for state changes, `api/` ports for queries. Synchronous, state-changing

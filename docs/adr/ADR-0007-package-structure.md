@@ -212,10 +212,9 @@ controllers), which *depends on* modules — and the home of `ApiProblem`, `Curr
 both closes cycles by construction, and did (`booking → root → booking`) the moment an edge
 listener on `booking.events.BookingConfirmed` needed `root → booking`.
 
-*Amended 2026-10-01 by ADR-0028 (lands with #1331 and #1329; until then the code is as written
-below):* `shared` will depend on nothing (`CurrentOperator`/`CurrentCustomer` dissolve into
-`operator::api`/`customer::api`), be CLOSED (its flat base package is its API) and be registered via
-`@Modulithic(sharedModules = "shared")`. This supersedes the Decision's `type = OPEN` and the
+*Amended 2026-10-01 by ADR-0028 (landed with #1331 and #1329):* `shared` depends on nothing
+(`CurrentOperator`/`CurrentCustomer` dissolved into `operator::api`/`customer::api`), is CLOSED (its
+flat base package is its API) and is registered via `@Modulithic(sharedModules = "shared")`. This supersedes the Decision's `type = OPEN` and the
 admission test's "may reach only `customer::api` and `operator::api`"; the flat shape stands.
 
 **Decision.** Those types live in `ai.riviera.platform.shared`, declared

@@ -21,7 +21,6 @@ import ai.riviera.platform.booking.vocabulary.CancellationWindow;
 import ai.riviera.platform.audit.api.AdminAuditLog;
 import ai.riviera.platform.auth.api.SessionCredentials;
 import ai.riviera.platform.challenge.api.ProofOfWorkChallenges;
-import ai.riviera.platform.customer.api.AccountErasure;
 import ai.riviera.platform.operator.api.OperatorDirectory;
 import ai.riviera.platform.operator.api.VenueOwnership;
 import ai.riviera.platform.venue.api.VenueRates;
@@ -68,10 +67,6 @@ class PayoutModuleTest {
 
 	@MockitoBean
 	OperatorDirectory operatorDirectory;
-
-	// [D5]: the root's AdminErasureController drives customer::api's AccountErasure — same isolation story.
-	@MockitoBean
-	AccountErasure accountErasure;
 
 	// The root edge's fence calls challenge::api, a module bean — same isolation story as the two above.
 	@MockitoBean
