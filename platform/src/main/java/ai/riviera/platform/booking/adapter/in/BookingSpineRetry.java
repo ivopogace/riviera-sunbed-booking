@@ -17,7 +17,8 @@ import ai.riviera.platform.shared.FailedPublicationRetry;
  * Re-drives this module's failed payment → booking publications on a schedule (#1340). Both handlers are
  * guarded transitions, so a redelivery is a no-op (invariants #2, #8); the refund-bulkhead listeners stay on
  * the admin lever, which may re-ask the gateway.
- * {@code riviera.events.spine-retry.enabled=false} is the IT isolation seam; the initial delay backstops it.
+ * {@code riviera.events.spine-retry.enabled=false} halts it; an IT that leaves a spine row FAILED past
+ * {@code min-age} must set it, and the initial delay backstops a forgotten opt-out.
  */
 @Component
 @ConditionalOnProperty(name = "riviera.events.spine-retry.enabled", havingValue = "true", matchIfMissing = true)

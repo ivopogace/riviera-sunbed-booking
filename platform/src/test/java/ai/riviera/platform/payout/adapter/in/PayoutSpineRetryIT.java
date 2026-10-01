@@ -2,6 +2,7 @@ package ai.riviera.platform.payout.adapter.in;
 
 import java.time.Duration;
 import java.time.LocalDate;
+import java.util.List;
 import java.util.UUID;
 
 import org.awaitility.Awaitility;
@@ -67,12 +68,17 @@ class PayoutSpineRetryIT {
 		jdbc.sql("DELETE FROM payout_ledger_entry WHERE booking_id = :id AND entry_type = 'ACCRUAL'")
 				.param("id", bookingId).update();
 
-		retry.sweep();
+		try {
+			retry.sweep();
 
-		Awaitility.await("the failed accrual was re-driven and completed").atMost(WAIT)
-				.until(() -> accrualsFor(bookingId) == 1L && !isOutstanding(failedAccrual));
-		assertThat(isOutstanding(failedMail)).as("a mail is never auto-retried (#1340)").isTrue();
-		jdbc.sql("DELETE FROM event_publication WHERE id = :id").param("id", failedMail).update();
+			Awaitility.await("the failed accrual was re-driven and completed").atMost(WAIT)
+					.until(() -> accrualsFor(bookingId) == 1L && !isOutstanding(failedAccrual));
+			assertThat(isOutstanding(failedMail)).as("a mail is never auto-retried (#1340)").isTrue();
+		}
+		finally {
+			jdbc.sql("DELETE FROM event_publication WHERE id IN (:ids)")
+					.param("ids", List.of(failedAccrual, failedMail)).update();
+		}
 	}
 
 	private UUID archived(String listenerId) {

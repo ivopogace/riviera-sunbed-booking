@@ -201,6 +201,13 @@ class RefundBulkheadIT {
 				.query(String.class).list();
 	}
 
+	private List<String> outstandingStatus(long refundMinor) {
+		return jdbc.sql("SELECT status FROM event_publication WHERE completion_date IS NULL "
+						+ "AND listener_id = :listener AND serialized_event LIKE :amountFragment")
+				.param("listener", REFUND_LISTENER_ID).param("amountFragment", "%" + refundMinor + "%")
+				.query(String.class).list();
+	}
+
 	// ---- the acceptance criteria -------------------------------------------------------------
 
 	/**
@@ -326,6 +333,9 @@ class RefundBulkheadIT {
 				.as("republication matches listener_id string-equal; drift dead-letters every outstanding "
 						+ "refund and owes a Flyway rewrite")
 				.contains(REFUND_LISTENER_ID);
+		Awaitility.await("a listener that threw leaves its row FAILED, which the spine retry filters on (#1340)")
+				.atMost(WAIT)
+				.until(() -> outstandingStatus(LISTENER_ID_REFUND_MINOR).equals(List.of("FAILED")));
 	}
 
 	// ---- the controllable gateway ------------------------------------------------------------

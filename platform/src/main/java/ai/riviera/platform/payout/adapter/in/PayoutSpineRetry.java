@@ -16,7 +16,8 @@ import ai.riviera.platform.shared.FailedPublicationRetry;
 /**
  * Re-drives this module's failed ledger publications on a schedule (#1340). Every ledger write is
  * {@code INSERT … ON CONFLICT DO NOTHING}, so a redelivery is a no-op (invariant #9).
- * {@code riviera.events.spine-retry.enabled=false} is the IT isolation seam; the initial delay backstops it.
+ * {@code riviera.events.spine-retry.enabled=false} halts it; an IT that leaves a spine row FAILED past
+ * {@code min-age} must set it, and the initial delay backstops a forgotten opt-out.
  */
 @Component
 @ConditionalOnProperty(name = "riviera.events.spine-retry.enabled", havingValue = "true", matchIfMissing = true)

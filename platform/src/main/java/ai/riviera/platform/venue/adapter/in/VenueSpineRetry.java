@@ -16,7 +16,8 @@ import ai.riviera.platform.shared.FailedPublicationRetry;
 /**
  * Re-drives this module's failed rating recomputes on a schedule (#1340). The recompute re-reads the whole
  * review set and overwrites, so a redelivery is a no-op.
- * {@code riviera.events.spine-retry.enabled=false} is the IT isolation seam; the initial delay backstops it.
+ * {@code riviera.events.spine-retry.enabled=false} halts it; an IT that leaves a spine row FAILED past
+ * {@code min-age} must set it, and the initial delay backstops a forgotten opt-out.
  */
 @Component
 @ConditionalOnProperty(name = "riviera.events.spine-retry.enabled", havingValue = "true", matchIfMissing = true)
