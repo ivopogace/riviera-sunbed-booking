@@ -1,15 +1,14 @@
-package ai.riviera.platform;
+package ai.riviera.platform.monitoring.adapter.in;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 /**
- * Platform-wide bound (seconds, 1–300) on a scheduled job's entry query, checked once at boot in the compact
- * constructor — there is no JSR-303 validator, so {@code @Min} would validate nothing. The trap: JDBC reads {@code 0} as
- * <em>no limit</em> and {@code JdbcTemplate} ignores a negative, so "unlimited" boots clean and unbounds every scheduled
- * query. The ceiling is the 5-minute sweep cadence: a longer bound outlives the next run. Module adapters read the raw
- * property via {@code @Value} (nothing may depend on the root); this bean's boot failure vets it for all of them.
- * Never a global query timeout instead: it would bound the invariant #2 claim.
+ * Platform-wide bound (seconds, 1–300) on a scheduled job's entry query, checked at boot in the compact constructor
+ * (no JSR-303 validator, so {@code @Min} would validate nothing). JDBC reads {@code 0} as <em>no limit</em> and
+ * {@code JdbcTemplate} ignores a negative, so "unlimited" would boot clean; above the 5-minute sweep cadence a bound
+ * outlives the next run. Module adapters read the raw property via {@code @Value}; this bean vets it for all of them,
+ * in full contexts only. Never a global query timeout instead: it would bound the invariant #2 claim.
  */
 @Component
 record ScheduledQueryTimeout(@Value("${riviera.scheduled.query-timeout-seconds}") int seconds) {

@@ -15,7 +15,7 @@ import ai.riviera.platform.notification.application.BookingMailFactsService;
 import ai.riviera.platform.notification.application.DayRefundMail;
 import ai.riviera.platform.notification.application.MissingBookingFact;
 import ai.riviera.platform.notification.application.TransactionalMailService;
-import ai.riviera.platform.shared.ObservabilityMetrics;
+import ai.riviera.platform.monitoring.vocabulary.ObservabilityMetrics;
 
 /**
  * Mails the guest a refunded day's record on {@link BookingDayRefunded} (ADR-0026, ADR-0027): the day, the

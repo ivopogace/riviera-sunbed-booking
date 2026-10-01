@@ -23,7 +23,7 @@ import ai.riviera.platform.notification.application.MailAttemptSource;
 import ai.riviera.platform.notification.application.MissingBookingFact;
 import ai.riviera.platform.notification.application.StayMailFacts;
 import ai.riviera.platform.notification.application.TransactionalMailService;
-import ai.riviera.platform.shared.ObservabilityMetrics;
+import ai.riviera.platform.monitoring.vocabulary.ObservabilityMetrics;
 
 /**
  * Mails a stitched stay's one confirmation on {@link StayConfirmed}, on {@link BookingConfirmationMailListener}'s

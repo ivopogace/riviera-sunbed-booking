@@ -17,7 +17,7 @@ import ai.riviera.platform.notification.application.MissingBookingFact;
 import ai.riviera.platform.notification.application.RequestExpiredMail;
 import ai.riviera.platform.notification.application.StayRequestMailFacts;
 import ai.riviera.platform.notification.application.TransactionalMailService;
-import ai.riviera.platform.shared.ObservabilityMetrics;
+import ai.riviera.platform.monitoring.vocabulary.ObservabilityMetrics;
 
 /**
  * Mails the tourist a record that their Request-to-Book expired unanswered —

@@ -1,4 +1,4 @@
-package ai.riviera.platform.shared;
+package ai.riviera.platform.monitoring.vocabulary;
 
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
