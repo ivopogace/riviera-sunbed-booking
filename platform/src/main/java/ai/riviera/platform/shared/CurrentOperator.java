@@ -1,5 +1,7 @@
 package ai.riviera.platform.shared;
 
+import java.util.Optional;
+
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Component;
@@ -18,10 +20,31 @@ import ai.riviera.platform.operator.vocabulary.OperatorId;
 @Component
 public class CurrentOperator {
 
+	/** The authority every operator principal carries, admins included. */
+	static final String ROLE_OPERATOR = "ROLE_OPERATOR";
+	/** The platform-admin authority, kept in step with {@code is_admin} by the edge's session filter. */
+	static final String ROLE_ADMIN = "ROLE_ADMIN";
+
 	private final OperatorDirectory directory;
 
 	public CurrentOperator(OperatorDirectory directory) {
 		this.directory = directory;
+	}
+
+	/**
+	 * The signed-in operator's id, or empty for an anonymous or customer principal or one outside the
+	 * may-operate set. For {@code permitAll} reads where signed-out is the normal case.
+	 */
+	public Optional<OperatorId> optional(Authentication authentication) {
+		if (authentication == null || !holds(authentication, ROLE_OPERATOR)) {
+			return Optional.empty();
+		}
+		return directory.operatorFor(authentication.getName());
+	}
+
+	/** Whether the principal is a platform admin ({@code ROLE_ADMIN}). */
+	public boolean isAdmin(Authentication authentication) {
+		return authentication != null && holds(authentication, ROLE_ADMIN);
 	}
 
 	/** The current operator's id, or {@link AccessDeniedException} (→ 403) if the principal maps to none. */
@@ -32,5 +55,9 @@ public class CurrentOperator {
 		}
 		return directory.operatorFor(username)
 				.orElseThrow(() -> new AccessDeniedException("principal resolves to no operable operator"));
+	}
+
+	private static boolean holds(Authentication authentication, String authority) {
+		return authentication.getAuthorities().stream().anyMatch(granted -> authority.equals(granted.getAuthority()));
 	}
 }

@@ -9,6 +9,7 @@ import java.util.Optional;
 import org.springframework.stereotype.Service;
 
 import ai.riviera.platform.operator.api.VenueOwnership;
+import ai.riviera.platform.operator.api.VenueVisibility;
 import ai.riviera.platform.operator.vocabulary.OperatorId;
 import ai.riviera.platform.operator.vocabulary.VenueRef;
 import ai.riviera.platform.venue.vocabulary.ContentHash;
@@ -20,7 +21,7 @@ import ai.riviera.platform.venue.vocabulary.VenueId;
  * Orchestrates the venue-photo use cases: the two {@link VenuePhotos} writes assert ownership
  * <strong>first</strong> (invariant #13, so no driving adapter can bypass it), then run the pure
  * {@link PhotoProcessor} and persist via the {@link PhotoStorage} port; the public {@link #serve}
- * read skips ownership. Callers depend on the ports (invariant #11); no JPA (invariant #1).
+ * read is fenced on tourist visibility, bypassed by an admin or the owner. Callers depend on the ports (invariant #11); no JPA (invariant #1).
  *
  * <p>Also implements the ownership-free {@link VenuePhotoModeration} port, so admin removal reuses
  * the one {@code PhotoStorage#delete} call. Rationale: RESPONSIBILITIES.md §venue (ADR-0013).
@@ -29,11 +30,14 @@ import ai.riviera.platform.venue.vocabulary.VenueId;
 class VenuePhotoService implements VenuePhotos, VenuePhotoModeration {
 
 	private final VenueOwnership ownership;
+	private final VenueVisibility visibility;
 	private final PhotoProcessor processor;
 	private final PhotoStorage storage;
 
-	VenuePhotoService(VenueOwnership ownership, PhotoProcessor processor, PhotoStorage storage) {
+	VenuePhotoService(VenueOwnership ownership, VenueVisibility visibility, PhotoProcessor processor,
+			PhotoStorage storage) {
 		this.ownership = ownership;
+		this.visibility = visibility;
 		this.processor = processor;
 		this.storage = storage;
 	}
@@ -85,15 +89,28 @@ class VenuePhotoService implements VenuePhotos, VenuePhotoModeration {
 	}
 
 	@Override
-	public Optional<StoredBytes> serve(VenueId venueId, ContentHash hash) {
-		// Public tourist read — deliberately NO ownership check (the serving endpoint is permitAll).
-		return storage.loadBytes(venueId, hash);
+	public Optional<ServedPhoto> serve(PhotoViewer viewer, VenueId venueId, ContentHash hash) {
+		return audienceFor(viewer, venueId)
+				.flatMap(audience -> storage.loadBytes(venueId, hash).map(bytes -> new ServedPhoto(bytes, audience)));
 	}
 
 	@Override
-	public boolean exists(VenueId venueId, ContentHash hash) {
-		// Public like serve(); kept off the blob so revalidating on every view stays cheap.
-		return storage.exists(venueId, hash);
+	public Optional<PhotoAudience> exists(PhotoViewer viewer, VenueId venueId, ContentHash hash) {
+		return audienceFor(viewer, venueId).filter(audience -> storage.exists(venueId, hash));
+	}
+
+	/** The serving fence: a visible venue is public; a hidden one only to an admin or its owner. */
+	private Optional<PhotoAudience> audienceFor(PhotoViewer viewer, VenueId venueId) {
+		VenueRef venue = new VenueRef(venueId.value());
+		if (visibility.isVisible(venue)) {
+			return Optional.of(PhotoAudience.PUBLIC);
+		}
+		boolean mayPreview = switch (viewer) {
+			case PhotoViewer.Admin() -> true;
+			case PhotoViewer.Operator(OperatorId operator) -> ownership.ownedVenues(operator).contains(venue);
+			case PhotoViewer.Anonymous() -> false;
+		};
+		return mayPreview ? Optional.of(PhotoAudience.PRIVATE) : Optional.empty();
 	}
 
 	/** The stored photo's blob-free metadata (for the operator's immediate preview after upload). */

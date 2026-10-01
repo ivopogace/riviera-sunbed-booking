@@ -11,8 +11,8 @@ import ai.riviera.platform.venue.vocabulary.VenueId;
  * The venue-photo use cases the driving adapter calls (inbound port, invariant #11). The two writes
  * ({@link #upload}, {@link #delete}) are venue-scoped and assert the operator owns the venue
  * <strong>first</strong> (invariant #13, BOLA); the two reads ({@link #serve}, {@link #exists}) are
- * the <strong>public</strong> tourist serving path and carry no ownership check.
- * Implemented by {@code VenuePhotoService}.
+ * the public serving path, fenced on the venue's tourist visibility with an owner/admin bypass
+ * (ADR-0013). Implemented by {@code VenuePhotoService}.
  */
 public interface VenuePhotos {
 
@@ -30,15 +30,14 @@ public interface VenuePhotos {
 	boolean delete(OperatorId operator, VenueId venueId, PhotoSlot slot);
 
 	/**
-	 * Load one variant's bytes by content hash for the public serving path — no ownership check
-	 * (tourist reads are public). {@link Optional#empty()} for an unknown hash (→ 404).
+	 * Load one variant's bytes by content hash for {@code viewer}, with the audience it may be cached
+	 * for. Empty for an unknown hash, or a hidden venue the viewer may not preview (→ 404).
 	 */
-	Optional<StoredBytes> serve(VenueId venueId, ContentHash hash);
+	Optional<ServedPhoto> serve(PhotoViewer viewer, VenueId venueId, ContentHash hash);
 
 	/**
-	 * Whether {@code hash} still names a servable variant of {@code venueId} — the public,
-	 * ownership-free conditional-GET question, answered without the bytes. {@code false} once
-	 * the photo is deleted or taken down, so a removal reaches a client holding the {@code ETag}.
+	 * The conditional-GET twin of {@link #serve}, fenced the same and answered without the bytes:
+	 * empty once the photo is removed or the venue is hidden from {@code viewer}, so neither revalidates.
 	 */
-	boolean exists(VenueId venueId, ContentHash hash);
+	Optional<PhotoAudience> exists(PhotoViewer viewer, VenueId venueId, ContentHash hash);
 }

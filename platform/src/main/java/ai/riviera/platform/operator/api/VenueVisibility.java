@@ -10,8 +10,8 @@ import ai.riviera.platform.operator.vocabulary.VenueRef;
  * owning operator is {@code ACTIVE}; a venue with no ownership row is not visible (fail-closed).
  * Approval shows a venue, suspension hides it, reinstatement shows it again.
  *
- * <p>Fences discovery and new bookings only: {@code venue}'s discovery list, beach map, calendar
- * and public reviews, and {@code booking}'s reserve. Sold-booking paths (code-gated view, cancel,
+ * <p>Fences discovery and new bookings only: {@code venue}'s discovery list, beach map, calendar,
+ * public reviews and photo serving, and {@code booking}'s reserve. Sold-booking paths (code-gated view, cancel,
  * check-in, mails) never consult it. Rationale: RESPONSIBILITIES.md §operator.
  */
 public interface VenueVisibility {

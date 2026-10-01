@@ -6,6 +6,7 @@ import java.awt.image.BufferedImage;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
@@ -15,6 +16,7 @@ import javax.imageio.ImageIO;
 import org.junit.jupiter.api.Test;
 
 import ai.riviera.platform.operator.api.VenueOwnership;
+import ai.riviera.platform.operator.api.VenueVisibility;
 import ai.riviera.platform.operator.vocabulary.NotVenueOwnerException;
 import ai.riviera.platform.operator.vocabulary.OperatorId;
 import ai.riviera.platform.operator.vocabulary.VenueRef;
@@ -35,8 +37,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 /**
  * The photo orchestration in isolation: ownership is asserted <strong>before</strong> any processing
  * or storage (invariant #13, BOLA), rejections surface as typed values, and the serving read is
- * public. Uses the in-memory storage fake + the real {@link PhotoProcessor} (pure) + a fake ownership
- * port — no Spring, no DB.
+ * fenced on tourist visibility with an owner/admin bypass. Uses the in-memory storage fake, the real
+ * {@link PhotoProcessor} (pure) and fake ownership + visibility ports — no Spring, no DB.
  */
 class VenuePhotoServiceTest {
 
@@ -44,8 +46,9 @@ class VenuePhotoServiceTest {
 	private static final long VENUE = 42L;
 
 	private final InMemoryPhotoStorage storage = new InMemoryPhotoStorage();
+	private final FakeVenueVisibility visibility = new FakeVenueVisibility();
 	private final VenuePhotoService service = new VenuePhotoService(
-			new FakeVenueOwnership(OPERATOR, VENUE),
+			new FakeVenueOwnership(OPERATOR, VENUE), visibility,
 			new PhotoProcessor(26_214_400L, 50_000_000L, 12_000),
 			storage);
 
@@ -205,17 +208,55 @@ class VenuePhotoServiceTest {
 	}
 
 	@Test
-	void serveIsPublicAndReturnsBytesByHash() throws IOException {
+	void aVisibleVenuesPhotoServesPubliclyToAnyone() throws IOException {
+		ContentHash hash = uploadedCoverHash();
+		visibility.visible = true;
+
+		Optional<ServedPhoto> served = service.serve(PhotoViewer.anonymous(), new VenueId(VENUE), hash);
+
+		assertEquals(PhotoAudience.PUBLIC, served.orElseThrow().audience());
+		assertEquals("image/jpeg", served.get().bytes().contentType());
+		assertEquals(Optional.of(PhotoAudience.PUBLIC), service.exists(PhotoViewer.anonymous(), new VenueId(VENUE), hash));
+		assertTrue(service.serve(PhotoViewer.anonymous(), new VenueId(VENUE), new ContentHash("deadbeef")).isEmpty(),
+				"unknown hash → empty");
+	}
+
+	@Test
+	void aHiddenVenuesPhotoIsAbsentToTheAnonymousViewerAndANonOwner() throws IOException {
+		ContentHash hash = uploadedCoverHash();
+		visibility.visible = false;
+
+		for (PhotoViewer viewer : List.of(PhotoViewer.anonymous(), PhotoViewer.operator(new OperatorId(999L)))) {
+			assertTrue(service.serve(viewer, new VenueId(VENUE), hash).isEmpty(), viewer.toString());
+			assertTrue(service.exists(viewer, new VenueId(VENUE), hash).isEmpty(), viewer.toString());
+		}
+	}
+
+	@Test
+	void theOwnerAndAnAdminPreviewAHiddenVenuesPhotoPrivately() throws IOException {
+		ContentHash hash = uploadedCoverHash();
+		visibility.visible = false;
+
+		for (PhotoViewer viewer : List.of(PhotoViewer.operator(new OperatorId(OPERATOR)), PhotoViewer.admin())) {
+			assertEquals(PhotoAudience.PRIVATE,
+					service.serve(viewer, new VenueId(VENUE), hash).orElseThrow().audience(), viewer.toString());
+			assertEquals(Optional.of(PhotoAudience.PRIVATE), service.exists(viewer, new VenueId(VENUE), hash),
+					viewer.toString());
+		}
+	}
+
+	@Test
+	void aBypassingViewerStillGetsNothingForAnUnknownHash() {
+		visibility.visible = false;
+
+		assertTrue(service.serve(PhotoViewer.admin(), new VenueId(VENUE), new ContentHash("deadbeef")).isEmpty());
+		assertTrue(service.exists(PhotoViewer.admin(), new VenueId(VENUE), new ContentHash("deadbeef")).isEmpty());
+	}
+
+	private ContentHash uploadedCoverHash() throws IOException {
 		PhotoUploadResult.Stored stored = assertInstanceOf(PhotoUploadResult.Stored.class,
 				service.upload(new OperatorId(OPERATOR), new VenueId(VENUE), PhotoSlot.COVER, jpeg(1600, 1200)));
-		ContentHash hash = stored.metadata().variants().get(0).hash();
-
-		// No operator, no ownership check — the tourist read is public.
-		Optional<StoredBytes> served = service.serve(new VenueId(VENUE), hash);
-
-		assertTrue(served.isPresent());
-		assertEquals("image/jpeg", served.get().contentType());
-		assertTrue(service.serve(new VenueId(VENUE), new ContentHash("deadbeef")).isEmpty(), "unknown hash → empty");
+		return stored.metadata().variants().get(0).hash();
 	}
 
 	/** A stored photo carrying only the PREVIEW variant — the surface the moderation read serves. */
@@ -267,6 +308,22 @@ class VenuePhotoServiceTest {
 		@Override
 		public void assignOwner(OperatorId operator, VenueRef venue) {
 			// not exercised by the photo service
+		}
+	}
+
+	/** Answers one fixed visibility for every venue. */
+	private static final class FakeVenueVisibility implements VenueVisibility {
+
+		boolean visible = true;
+
+		@Override
+		public boolean isVisible(VenueRef venue) {
+			return visible;
+		}
+
+		@Override
+		public Set<VenueRef> visibleAmong(Collection<VenueRef> venues) {
+			return visible ? Set.copyOf(venues) : Set.of();
 		}
 	}
 }
