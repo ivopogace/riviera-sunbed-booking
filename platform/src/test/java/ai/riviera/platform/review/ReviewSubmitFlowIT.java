@@ -38,8 +38,8 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
  * <p>{@code @SpringBootTest} + {@code @RecordApplicationEvents}, the house shape for pinning a
  * publication at the inner hexagon ({@code BookingEventIT}), rather than
  * {@code @ApplicationModuleTest}: module isolation here would bootstrap the root composition and
- * force every other module's {@code api} port to be mocked ({@code PayoutModuleTest} carries
- * fifteen), while proving less — the point of this test is that the inverted port really answers.
+ * force every other module's {@code api} port to be mocked (as {@code PayoutModuleTest} does),
+ * while proving less — the point of this test is that the inverted port really answers.
  */
 @EnabledIfDockerAvailable
 @Import(TestcontainersConfiguration.class)

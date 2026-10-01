@@ -131,8 +131,8 @@ class PayoutModuleTest {
 	@MockitoBean
 	CustomerAccountRecovery customerAccountRecovery;
 
-	// [D5]: the root edge's MyErasureController + AdminErasureController drive customer::api's
-	// AccountErasure (right-to-erasure) — same isolation story, so it is mocked here too.
+	// [D5]: the root edge's MyErasureController drives customer::api's AccountErasure
+	// (right-to-erasure) — same isolation story, so it is mocked here too.
 	@MockitoBean
 	AccountErasure accountErasure;
 
