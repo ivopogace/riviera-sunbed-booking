@@ -37,8 +37,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * {@link SecurityProblemResponses#writeAccessDenied} emits from inside the filter chain. So neither the
  * status code nor the response body can tell the two layers apart, and a test asserting only
  * {@code isForbidden()} passes just as happily against a {@code SecurityConfig} with no matcher at all.
- * A {@code verify(collaborator, never())} is no better on its own: {@code require} is the controller's
- * first statement, so nothing downstream is touched on either path.
+ * A {@code verify(collaborator, never())} is no better on its own: {@code requireSignedInAccount} is the
+ * controller's first statement, so nothing downstream is touched on either path.
  *
  * <p><strong>The discriminator</strong> is therefore structural — {@link MvcResult#getHandler()}. It is
  * {@code null} exactly when the security chain short-circuited before {@code DispatcherServlet} ever

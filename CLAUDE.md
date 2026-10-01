@@ -97,8 +97,8 @@ ownership, never reuse) and the closed non-context modules with `allowedDependen
 `challenge` (proof of work; writes `challenge_registry`) and `audit` (admin audit trail; writes
 `admin_audit_record`). No module writes the framework tables: `SPRING_SESSION*` (Spring Session,
 from the edge) and `event_publication*` (Modulith's registry; re-driven by the outbox levers).
-Context modules depend on `shared` (except `customer`/`operator`, which `shared` depends on), the
-root on modules, nothing on the root.
+Context modules depend on `shared`, which depends on no module; the root on modules, nothing on the
+root.
 
 **Collaboration:** events for state changes, `api/` ports for queries. Synchronous, state-changing
 ports: the availability claim (walked per day by `booking`'s `SpanClaim`), payment collection /

@@ -86,7 +86,7 @@ class RateLimitFilterTest {
 	MockMvc mvc;
 
 	/**
-	 * Overrides the {@link WebSliceStubs} bean, which resolves every principal to {@link Optional#empty()}.
+	 * Overrides the {@link WebSliceStubs} bean, which resolves no principal to an account.
 	 * That default makes {@code requireSignedInAccount} throw {@code NotSignedInCustomerException}, so an
 	 * authenticated {@code /api/me/password} call would answer {@code 403} — a status the refund treats
 	 * as "never reached the credential check". The customer-side budget could then never be exercised

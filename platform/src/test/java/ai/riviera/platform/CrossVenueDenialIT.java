@@ -123,7 +123,7 @@ class CrossVenueDenialIT {
 				.param("v", venueId).param("o", operator.value()).update();
 	}
 
-	/** Attribute every subsequent request in the test to this operator (bypassing the interim resolver). */
+	/** Attribute every subsequent request in the test to this operator (stubbing {@link OperatorDirectory#requireOperator}). */
 	private void actingAs(OperatorId operator) {
 		doReturn(operator).when(operatorDirectory).requireOperator(any());
 	}
