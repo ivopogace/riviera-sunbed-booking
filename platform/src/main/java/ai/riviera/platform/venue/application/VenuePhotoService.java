@@ -18,13 +18,11 @@ import ai.riviera.platform.venue.vocabulary.PhotoSurface;
 import ai.riviera.platform.venue.vocabulary.VenueId;
 
 /**
- * Orchestrates the venue-photo use cases: the two {@link VenuePhotos} writes assert ownership
- * <strong>first</strong> (invariant #13, so no driving adapter can bypass it), then run the pure
- * {@link PhotoProcessor} and persist via the {@link PhotoStorage} port; the public {@link #serve}
- * read is fenced on tourist visibility, bypassed by an admin or the owner. Callers depend on the ports (invariant #11); no JPA (invariant #1).
- *
- * <p>Also implements the ownership-free {@link VenuePhotoModeration} port, so admin removal reuses
- * the one {@code PhotoStorage#delete} call. Rationale: RESPONSIBILITIES.md §venue (ADR-0013).
+ * Orchestrates the venue-photo use cases: the {@link VenuePhotos} writes assert ownership first
+ * (invariant #13), then run the pure {@link PhotoProcessor} and persist via {@link PhotoStorage};
+ * the {@link #serve} read is fenced on tourist visibility, bypassed by an admin or the owner. Also
+ * implements the ownership-free {@link VenuePhotoModeration} port, so admin removal reuses the one
+ * {@code PhotoStorage#delete} call. Rationale: RESPONSIBILITIES.md §venue (ADR-0013).
  */
 @Service
 class VenuePhotoService implements VenuePhotos, VenuePhotoModeration {

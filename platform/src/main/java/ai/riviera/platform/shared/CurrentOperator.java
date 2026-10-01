@@ -10,12 +10,12 @@ import ai.riviera.platform.operator.api.OperatorDirectory;
 import ai.riviera.platform.operator.vocabulary.OperatorId;
 
 /**
- * Edge glue that resolves the authenticated principal to its {@link OperatorId}; {@code operator}
- * only maps a username to an id via {@link OperatorDirectory}. Venue-scoped controllers call
- * {@link #require} and pass the id to their application service, which performs the ownership check
- * (invariant #13). In {@code shared}, not the root, because modules depend on it (Rationale:
- * {@code RESPONSIBILITIES.md} § {@code shared}). A principal outside the may-operate set
- * ({@code ACTIVE} or {@code PENDING}) owns nothing → {@link AccessDeniedException} ({@code 403}).
+ * Edge glue resolving the authenticated principal to its {@link OperatorId} via {@link OperatorDirectory}.
+ * Venue-scoped controllers call {@link #require} and pass the id to their application service, which
+ * checks ownership (invariant #13); a principal outside the may-operate set ({@code ACTIVE} or
+ * {@code PENDING}) owns nothing → {@link AccessDeniedException} ({@code 403}). {@code permitAll} reads
+ * use the non-throwing {@link #optional} and {@link #isAdmin}. In {@code shared}, not the root, because
+ * modules depend on it (Rationale: {@code RESPONSIBILITIES.md} § {@code shared}).
  */
 @Component
 public class CurrentOperator {
@@ -58,6 +58,7 @@ public class CurrentOperator {
 	}
 
 	private static boolean holds(Authentication authentication, String authority) {
-		return authentication.getAuthorities().stream().anyMatch(granted -> authority.equals(granted.getAuthority()));
+		return authentication.getAuthorities().stream()
+				.anyMatch(granted -> authority.equals(granted.getAuthority()));
 	}
 }
