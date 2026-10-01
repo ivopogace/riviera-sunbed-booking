@@ -61,6 +61,8 @@ not in the locked stack.
    set, problem bodies — stays a root-package edge concern like `RateLimitFilter`; the challenge
    **mechanism** — endpoint, issuer/verifier, registry, sweep — is the closed non-context module
    `challenge`. No bounded-context module knows the challenge exists.
+   *Amended 2026-10-01 by ADR-0028 (lands with #1326):* the fence's home moves from the root package
+   to the closed module `web`, beside `RateLimitFilter`; the mechanism stays `challenge`'s.
 4. **Single-use registry in Postgres.** One Flyway table keyed by the challenge id with an expiry
    column; a solution is accepted only if `INSERT … ON CONFLICT DO NOTHING` claims the row (the
    invariant #2 idiom), and a scheduled sweep deletes expired rows. This is the one place this

@@ -2,7 +2,13 @@
 
 - **Status:** Accepted — implemented by the slices for issues #1033 (the preview; epic #1027, user
   stories 19 and 21), #1034 (the commit's moves; user stories 20, 23–30) and #1035 (the commit's
-  refunds, releases and declines; user stories 22, 31–32 and 35).
+  refunds, releases and declines; user stories 22, 31–32 and 35). *Superseded on placement
+  2026-10-01 by ADR-0028 (lands with #1327):* Decision 1's home moves from the root to the closed
+  module `remodel`; Decision 2's grant rows become its `allowedDependencies`, plus `venue::spi`, since
+  `RemodelGate` moves to `venue.spi` once a module supplies it. The considered option rejected below,
+  a module "for remodel" that "would own no table and no rule of its own", is the one ADR-0028 takes:
+  a module needs no table (its Decision 8). Decisions 3–4 stand; the Consequences' root-bootstrap
+  costs and the Revisit-if's `booking`-hosted fallback lapse with the move.
 - **Date:** 2026-09-09
 - **Relates to:** ADR-0017 (the root as the home of edge mechanisms), ADR-0007 (module structure),
   invariants #2, #11, #13, `RESPONSIBILITIES.md` § *Platform edge*, `CompositionRootDisciplineTests`

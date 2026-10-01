@@ -56,9 +56,11 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * second bounds what may reach the root — no class inside a module may depend on a type sitting
  * directly in the base package. Modules depend on {@code shared}, the root depends on modules, and
  * nothing depends on the root; a package that is both closes cycles by construction, and once did.
- * Spring Modulith cannot supply this half: {@code allowedDependencies} constrains what a module
- * reaches in <em>other modules</em>, while code in the base package is assigned to no module at all,
- * which {@code verify()} permits. A module needing a root type is the signal to move that type to
+ * Spring Modulith cannot supply this half: since 1.1 it verifies the base package as a hidden
+ * {@code root:ai.riviera.platform} module — a root class reaching a module's internals, or a
+ * root&harr;module cycle, fails {@code verify()} — but a root type is never a dependency
+ * <em>target</em> to it, so {@code allowedDependencies = {}} still lets a module reach the root
+ * (ADR-0028's research note, &sect;1). A module needing a root type is the signal to move that type to
  * {@code shared} (or into the module), never to grant an exception here.
  *
  * <p>Sibling to {@link PackageShapeArchitectureTests}: fast, context-free ArchUnit, production
