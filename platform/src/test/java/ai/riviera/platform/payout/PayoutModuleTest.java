@@ -62,14 +62,7 @@ class PayoutModuleTest {
 	@MockitoBean
 	DailyTakings bookingTakings;
 
-	// The root's remodel preview controller composes these two ports; neither module is bootstrapped here.
-	@MockitoBean
-	ai.riviera.platform.venue.api.BeachMapRemodel beachMapRemodel;
-
-	@MockitoBean
-	ai.riviera.platform.booking.api.RemodelClaims remodelClaims;
-
-	// The ledger read and the root's remodel controllers need operator::api; the listener under test uses neither.
+	// The ledger read and payout's controllers need operator::api; the listener under test uses neither.
 	@MockitoBean
 	VenueOwnership ownership;
 

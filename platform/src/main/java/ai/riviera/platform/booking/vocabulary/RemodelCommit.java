@@ -8,7 +8,7 @@ import java.util.List;
  * ({@link Applied}); the preview token no longer covers the claims re-derived under lock — a new
  * booking or a changed kind — ({@link Stale}, with the fresh classification); or it refunds guests
  * and the operator's typed count and reason do not authorise it ({@link Unconfirmed}). Only
- * {@link Applied} wrote anything. Sealed so the edge's switch is exhaustive.
+ * {@link Applied} wrote anything. Sealed so {@code remodel}'s switch is exhaustive.
  */
 public sealed interface RemodelCommit permits RemodelCommit.Applied, RemodelCommit.Stale, RemodelCommit.Unconfirmed {
 

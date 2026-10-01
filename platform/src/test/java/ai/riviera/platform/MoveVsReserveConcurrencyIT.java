@@ -25,6 +25,8 @@ import ai.riviera.platform.booking.api.RemodelClaims;
 import ai.riviera.platform.booking.vocabulary.PreviewToken;
 import ai.riviera.platform.booking.vocabulary.RefundConfirmation;
 import ai.riviera.platform.operator.vocabulary.OperatorId;
+import ai.riviera.platform.remodel.application.RemodelCommitOutcome;
+import ai.riviera.platform.remodel.application.RemodelCommitService;
 import ai.riviera.platform.venue.vocabulary.LayoutCell;
 import ai.riviera.platform.venue.vocabulary.Pool;
 import ai.riviera.platform.venue.vocabulary.SetId;

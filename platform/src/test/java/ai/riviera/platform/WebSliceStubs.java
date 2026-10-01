@@ -928,7 +928,7 @@ class WebSliceStubs {
 			public ai.riviera.platform.venue.vocabulary.LayoutCommitOutcome commit(OperatorId operator,
 					VenueId venueId, long expectedVersion,
 					List<ai.riviera.platform.venue.vocabulary.LayoutCell> cells,
-					ai.riviera.platform.venue.api.RemodelGate gate) {
+					ai.riviera.platform.venue.spi.RemodelGate gate) {
 				return ai.riviera.platform.venue.vocabulary.LayoutCommitOutcome.Refused.REFUSED;
 			}
 		};
@@ -941,9 +941,9 @@ class WebSliceStubs {
 	}
 
 	@Bean
-	RemodelCommitService remodelCommitService(ai.riviera.platform.venue.api.BeachMapRemodel remodel,
-			ai.riviera.platform.booking.api.RemodelClaims claims) {
-		return new RemodelCommitService(remodel, claims);
+	ai.riviera.platform.remodel.application.RemodelCommitService remodelCommitService(
+			ai.riviera.platform.venue.api.BeachMapRemodel remodel, ai.riviera.platform.booking.api.RemodelClaims claims) {
+		return new ai.riviera.platform.remodel.application.RemodelCommitService(remodel, claims);
 	}
 
 	@Bean

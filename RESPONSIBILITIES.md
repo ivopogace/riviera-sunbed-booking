@@ -450,7 +450,7 @@ any is released on the old, never a swap of my own — so a racing reserve wins 
   amounts, reasons, so mails and views name the spot after its set retires.
   `BookingPresence#hasBookings` counts a move's from- and to-sets, so a left set retires rather than
   deletes; ended and kept lines need no FK (their booking keeps its `set_id`). The receipts read is
-  my own inbound adapter, not the root's. Only `BookingNotificationFacts#endedByRemodel` (outcome
+  my own inbound adapter, not `remodel`'s. Only `BookingNotificationFacts#endedByRemodel` (outcome
   lines) tells a venue-caused cancellation from a free exit, both being `VENUE_CHANGE`.
 - **A remodel-released booking's intent is voided after commit, never inside it:** the abandoned
   sweep reads only `AWAITING_PAYMENT`, so nothing else reaches it. `RemodelReleasePaymentListener`
@@ -946,6 +946,34 @@ path over `(day, set)`, fewest moves then shortest, anchored on a tapped set whe
 **`availability`**; whether a date still sells → **`booking`**; visibility → `VenueCatalog` fences
 the list before I am asked, and `SetBookingFacts` answers only for the ids that list returned.
 
+## `remodel`
+
+The **remodel composition** (ADR-0020, placed by ADR-0028): a closed full module with no table and
+no published surface, shaped like `itinerary`. `venue` may not depend on `booking`, so the beach-map
+remodel preview and commit compose the two here, granted `venue::api`, `venue::vocabulary`,
+`venue::spi` (it supplies `RemodelGate`), `booking::api`, `booking::vocabulary`, `operator::api`,
+`operator::vocabulary` and `shared`.
+
+- **The composition:** `RemodelPreviewController` and `RemodelCommitController` compose
+  `venue.api.BeachMapRemodel` with `booking.api.RemodelClaims`. `RemodelCommitService` supplies the
+  `venue.spi.RemodelGate` `BeachMapRemodel#commit` asks under its locks, where `RemodelClaims#commit`
+  settles every claim, so layout, moves, availability rows and receipt are one transaction, and no
+  Stripe call is inside.
+- **Each remodel port asserts venue ownership itself** (invariant #13); I resolve the principal
+  (`operator.api.OperatorDirectory`) and map outcomes. Diff, zone, candidate, status split, token and
+  free exit stay in `venue` and `booking`: a rule growing here is the signal it belongs in one.
+- **Remodel answers:** `200` with the receipt; `409 STALE_PREVIEW`, `REMODEL_REFUSED` or
+  `REFUND_NOT_CONFIRMED`, each with the fresh picture and its token in `preview`, so the operator
+  re-decides on what is true now; or the save's own `SETS_IN_USE`, `STALE_WRITE` and shape errors.
+
+**Job:** `POST /api/venues/{id}/beach-map/preview` and `/commit`: assemble the five groups, the sets
+to keep and the preview token from `venue`'s disturbed sets and `booking`'s classified claims; carry
+the commit's gate into `booking`'s settlement.
+
+**Not my job:** the layout diff and write → **`venue`**; what a booking becomes, the token, the
+settlement and the receipt (and its read, `GET /api/venues/{id}/remodels`) → **`booking`**; the fee
+rate → **`payout`**, reached only through `booking`.
+
 ## `shared` (not a bounded context)
 
 The **Shared Kernel** (Evans, DDD ch. 14), an `OPEN` module with no `api`/`vocabulary` surface. The
@@ -1113,18 +1141,6 @@ mutating `/api/admin/**` action, §`audit`) stay here; `challenge` and `audit` o
   branch, since a script holding the online pool costs the same either way. A refusal precedes any
   availability claim, booking row or PaymentIntent (invariant #2 untouched). The SPA solves on the
   checkout's Review step, not Details, for Details' fold budget (`booking-challenge.e2e.ts`).
-- **Remodel orchestration (ADR-0020)** — the one domain composition the root holds, since `venue`
-  may not depend on `booking`: `RemodelPreviewController` and `RemodelCommitController` compose
-  `venue.api.BeachMapRemodel` with `booking.api.RemodelClaims` (`CompositionRootDisciplineTests`
-  grants exactly their `api` + `vocabulary`). `RemodelCommitService` supplies the `RemodelGate`
-  `BeachMapRemodel#commit` asks under its locks, where `RemodelClaims#commit` settles every claim,
-  so layout, moves, availability rows and receipt are one transaction, and no Stripe call is inside.
-- **Each remodel port asserts venue ownership itself** (invariant #13); the edge resolves the
-  principal and maps outcomes. Diff, zone, candidate, status split, token and free exit stay in
-  their modules: a rule growing at the root is the signal it belongs in one.
-- **Remodel answers:** `200` with the receipt; `409 STALE_PREVIEW`, `REMODEL_REFUSED` or
-  `REFUND_NOT_CONFIRMED`, each with the fresh picture and its token in `preview`, so the operator
-  re-decides on what is true now; or the save's own `SETS_IN_USE`, `STALE_WRITE` and shape errors.
 - **The admin venue day refund is authorized and recorded here, not in `booking` (ADR-0027 decision
   1):** `POST /api/admin/bookings/lookup` (the address in a body, never a URL) and `POST
   /api/admin/bookings/*/days/*/refund` are ADMIN-gated matchers, discovered by `AdminSurfaceRoleGateTest`,
@@ -1286,7 +1302,7 @@ them form the *structural net* is `riviera-modulith` § *The structural net*'s c
 | `booking` is the only writer (and direct reader) of `booking_day` | `ResponsibilitiesArchitectureTests` (sole-writer scan) |
 | `booking` is the only writer (and direct reader) of `stay` — ADR-0024 | `ResponsibilitiesArchitectureTests` (SQL-shaped scan: the bare word is in prose and in `max_stay_days`) |
 | No class inside a module depends on a type directly in `ai.riviera.platform` — ADR-0017 | `CompositionRootDisciplineTests` (module→root rule; `allowedDependencies` cannot see it) |
-| The root touches only the module surfaces it is granted — never `payment`, `payout`, `availability` or `review` (ADR-0017, ADR-0020) | `CompositionRootDisciplineTests` (root→module allowlist) |
+| The root touches only the module surfaces it is granted — never `venue`, `booking`, `payment`, `payout`, `availability` or `review` (ADR-0017, ADR-0028) | `CompositionRootDisciplineTests` (root→module allowlist) |
 | `payment` uses no Stripe **Connect** API (collect-only, ADR-0002) | `NoStripeConnectArchitectureTest` |
 | No module reaches another's `application`/`domain`/`adapter`; `allowedDependencies` hold | `ModularityTests` (`ApplicationModules.verify()`) |
 | The ADR-0007 package shape; published-surface kinds; the `VenueCatalog` role split | `PackageShapeArchitectureTests`, `PublishedSurfacePlacementArchitectureTests`, `VenueApiRoleSplitTests` |

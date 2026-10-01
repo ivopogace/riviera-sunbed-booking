@@ -47,8 +47,8 @@ Hands off: Java idioms → `riviera-java-conventions`; seams → `codebase-desig
 ## Module layout (ADR-0007)
 
 **THIN iff no application service** (the `api/` port is implemented directly by a JDBC adapter);
-otherwise FULL. Every context module in CLAUDE.md's table (the `itinerary` read model included) and
-`challenge` are full; `audit` is thin plus a driving `adapter/in` (its admin controller);
+otherwise FULL. Every context module in CLAUDE.md's table (the `itinerary` read model and
+`remodel` included) and `challenge` are full; `audit` is thin plus a driving `adapter/in` (its admin controller);
 `monitoring` is `vocabulary` plus `adapter/in` (filter, gauge, alert job), no port; `auth` is full,
 with `api` (`SessionRevocation`, `SessionCredentials`) and `vocabulary` (`AuthRoles`, a constants holder).
 `shared` is neither: `@ApplicationModule(type = OPEN)`, flat classes at the module root, no

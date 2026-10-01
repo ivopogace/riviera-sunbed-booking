@@ -13,7 +13,7 @@ import ai.riviera.platform.venue.vocabulary.SetId;
 import ai.riviera.platform.venue.vocabulary.VenueId;
 
 /**
- * The published remodel port, composed with {@code venue}'s diff at the platform edge (ADR-0020):
+ * The published remodel port, composed with {@code venue}'s diff by {@code remodel} (ADR-0020):
  * what a layout save disturbing {@code disturbedSets} does to every live booking on them.
  * {@link #classify} is advisory — an unlocked snapshot shown before confirming — so {@link #commit}
  * re-derives it inside the caller's transaction, after {@code venue} has locked every set row of the

@@ -1,4 +1,4 @@
-package ai.riviera.platform;
+package ai.riviera.platform.remodel.application;
 
 import java.util.List;
 
@@ -9,14 +9,14 @@ import ai.riviera.platform.venue.vocabulary.LayoutRejection;
 import ai.riviera.platform.venue.vocabulary.LockedSet;
 
 /**
- * What the edge's remodel commit answered, for the controller to map; only {@link Committed}
+ * What the remodel commit answered, for the controller to map; only {@link Committed}
  * (layout saved, every claim applied) writes anything. With the fresh picture: {@link StalePreview}
  * (the claims changed since the preview — a new one, a changed kind, a staff hold),
  * {@link Refused} (the layout gives a kept set's row and position to another set), and
  * {@link NotConfirmed} (it refunds guests; the typed count and reason do not authorise it).
  * {@link SetsInUse}: the save's live-claim probe found a claim; {@link Rejected}: shape and token.
  */
-sealed interface RemodelCommitOutcome {
+public sealed interface RemodelCommitOutcome {
 
 	record Committed(ReceiptId receiptId, java.time.Instant committedAt, List<RemodelClaim> settled)
 			implements RemodelCommitOutcome {

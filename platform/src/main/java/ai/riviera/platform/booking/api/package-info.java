@@ -4,7 +4,7 @@
  * {@code events}. The ports are split by consumer role, so no caller sees another's methods:
  * {@link DailyTakings} ({@code payout}'s takings figure), {@link BookingNotificationFacts} and
  * {@link CustomerBookings} ({@code notification}'s mails, resend and support lookup), and
- * {@link RemodelClaims} (the platform edge's remodel preview and commit, ADR-0020, ADR-0021).
+ * {@link RemodelClaims} ({@code remodel}'s preview and commit, ADR-0020, ADR-0021).
  */
 @org.springframework.modulith.NamedInterface("api")
 package ai.riviera.platform.booking.api;
