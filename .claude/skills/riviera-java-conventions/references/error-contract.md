@@ -21,8 +21,8 @@ The single `@RestControllerAdvice`, extending `ResponseEntityExceptionHandler`:
 `shared.InvalidApiRequestException` → `400 INVALID_REQUEST`; `BlockedPasswordException` →
 `400 PASSWORD_CONTAINS_BLOCKED_TERM`; `AuthenticationException` → `401 INVALID_CREDENTIALS`
 (one body for every cause — telling them apart is account enumeration); `DuplicateKeyException` →
-`409 CONFLICT` (unique-constraint race backstop); `NotVenueOwnerException` /
-`AccessDeniedException` → `403`. Raw `IllegalArgumentException` and non-duplicate
+`409 CONFLICT` (unique-constraint race backstop); `NotVenueOwnerException` → `403 NOT_VENUE_OWNER`;
+`AccessDeniedException`, `NoOperableOperatorException`, `NotSignedInCustomerException` → `403 ACCESS_DENIED`. Raw `IllegalArgumentException` and non-duplicate
 `DataIntegrityViolationException` are deliberately unmapped — they are server bugs and reach
 the framework's logged 500. A controller feeding request input into IAE-throwing guards
 (`toCommand()`, `PeriodKey.of`, enum parses) translates at the conversion boundary via

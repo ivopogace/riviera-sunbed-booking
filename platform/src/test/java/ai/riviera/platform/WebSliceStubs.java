@@ -65,6 +65,7 @@ import ai.riviera.platform.customer.vocabulary.CustomerAccountCredential;
 import ai.riviera.platform.customer.vocabulary.CustomerAccountId;
 import ai.riviera.platform.customer.vocabulary.EraseOutcome;
 import ai.riviera.platform.customer.vocabulary.LiveAccountCredential;
+import ai.riviera.platform.customer.vocabulary.NotSignedInCustomerException;
 import ai.riviera.platform.customer.vocabulary.RegistrationOutcome;
 import ai.riviera.platform.customer.vocabulary.ResetPasswordOutcome;
 import ai.riviera.platform.customer.vocabulary.SsoProvider;
@@ -108,8 +109,6 @@ import ai.riviera.platform.payout.application.ViewPayoutLedger;
 import ai.riviera.platform.payout.domain.BatchStatus;
 import ai.riviera.platform.payout.domain.PayoutBatch;
 import ai.riviera.platform.payout.domain.PeriodKey;
-import ai.riviera.platform.shared.CurrentCustomer;
-import ai.riviera.platform.shared.CurrentOperator;
 import ai.riviera.platform.shared.ResubmissionOutcome;
 import ai.riviera.platform.venue.api.SetBookingFacts;
 import ai.riviera.platform.venue.api.VenueCatalog;
@@ -125,17 +124,19 @@ import ai.riviera.platform.venue.application.LayoutCommand;
 import ai.riviera.platform.venue.application.ListOwnedVenues;
 import ai.riviera.platform.venue.application.ListVenueReviews;
 import ai.riviera.platform.venue.application.OnboardVenue;
+import ai.riviera.platform.venue.application.PhotoAudience;
 import ai.riviera.platform.venue.application.PhotoProcessingResult;
 import ai.riviera.platform.venue.application.PhotoSlotView;
 import ai.riviera.platform.venue.application.PhotoUploadResult;
+import ai.riviera.platform.venue.application.PhotoViewer;
 import ai.riviera.platform.venue.application.ProfileUpdateOutcome;
 import ai.riviera.platform.venue.application.ReopenOutcome;
 import ai.riviera.platform.venue.application.ReplaceLayoutOutcome;
 import ai.riviera.platform.venue.vocabulary.LayoutRejection;
 import ai.riviera.platform.venue.application.SeasonClosureRejection;
+import ai.riviera.platform.venue.application.ServedPhoto;
 import ai.riviera.platform.venue.application.SetCommand;
 import ai.riviera.platform.venue.application.SetRejection;
-import ai.riviera.platform.venue.application.StoredBytes;
 import ai.riviera.platform.venue.application.VenueCommissionAdministration;
 import ai.riviera.platform.venue.application.VenueCommissionView;
 import ai.riviera.platform.venue.application.VenueCreationProperties;
@@ -295,7 +296,17 @@ class WebSliceStubs {
 	/** Resolve any principal to a fixed operator id — the web slices don't exercise ownership. */
 	@Bean
 	OperatorDirectory operatorDirectory() {
-		return _ -> Optional.of(new OperatorId(1));
+		return new OperatorDirectory() {
+			@Override
+			public Optional<OperatorId> operatorFor(String username) {
+				return Optional.of(new OperatorId(1));
+			}
+
+			@Override
+			public OperatorId requireOperator(String principalName) {
+				return new OperatorId(1);
+			}
+		};
 	}
 
 	/**
@@ -482,25 +493,29 @@ class WebSliceStubs {
 		};
 	}
 
-	/** Same-package (root) construction reaches {@code CurrentOperator}'s package-private constructor. */
-	@Bean
-	CurrentOperator currentOperator(OperatorDirectory operatorDirectory) {
-		return new CurrentOperator(operatorDirectory);
-	}
-
 	/**
-	 * The customer account-id resolver + the edge helper that {@code BookingController}
-	 * (signed-in checkout link) and {@code MyBookingsController} (my-bookings) now depend on. Inert:
-	 * the web slices hit permit-all / role-gated paths, never resolving a real account.
+	 * The customer account-id resolver {@code BookingController} (signed-in checkout link) and the
+	 * {@code /api/me} controllers depend on. Inert: the web slices hit permit-all / role-gated paths,
+	 * never resolving a real account, so {@code requireSignedInAccount} answers {@code 403}.
 	 */
 	@Bean
 	CustomerAccountDirectory customerAccountDirectory() {
-		return _ -> Optional.empty();
-	}
+		return new CustomerAccountDirectory() {
+			@Override
+			public Optional<CustomerAccountId> accountFor(String email) {
+				return Optional.empty();
+			}
 
-	@Bean
-	CurrentCustomer currentCustomer(CustomerAccountDirectory customerAccountDirectory) {
-		return new CurrentCustomer(customerAccountDirectory);
+			@Override
+			public Optional<CustomerAccountId> signedInAccount(String principalName, boolean customerPrincipal) {
+				return Optional.empty();
+			}
+
+			@Override
+			public CustomerAccountId requireSignedInAccount(String principalName, boolean customerPrincipal) {
+				throw new NotSignedInCustomerException();
+			}
+		};
 	}
 
 	/**
@@ -1212,12 +1227,12 @@ class WebSliceStubs {
 			}
 
 			@Override
-			public boolean exists(VenueId venueId, ContentHash hash) {
-				return false;
+			public Optional<PhotoAudience> exists(PhotoViewer viewer, VenueId venueId, ContentHash hash) {
+				return Optional.empty();
 			}
 
 			@Override
-			public Optional<StoredBytes> serve(VenueId venueId, ContentHash hash) {
+			public Optional<ServedPhoto> serve(PhotoViewer viewer, VenueId venueId, ContentHash hash) {
 				return Optional.empty();
 			}
 		};

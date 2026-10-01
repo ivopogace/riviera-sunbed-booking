@@ -1,6 +1,5 @@
 package ai.riviera.platform;
 
-import ai.riviera.platform.shared.CurrentCustomer;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.slf4j.LoggerFactory;
@@ -32,6 +31,7 @@ import static ai.riviera.platform.WebSliceStubs.fromIp;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
@@ -86,8 +86,8 @@ class RateLimitFilterTest {
 	MockMvc mvc;
 
 	/**
-	 * Overrides the {@link WebSliceStubs} bean, which resolves every principal to {@link Optional#empty()}.
-	 * That default makes {@code CurrentCustomer#require} throw {@code AccessDeniedException}, so an
+	 * Overrides the {@link WebSliceStubs} bean, which resolves no principal to an account.
+	 * That default makes {@code requireSignedInAccount} throw {@code NotSignedInCustomerException}, so an
 	 * authenticated {@code /api/me/password} call would answer {@code 403} — a status the refund treats
 	 * as "never reached the credential check". The customer-side budget could then never be exercised
 	 * authenticated at all, so the resolution is stubbed to succeed here.
@@ -110,7 +110,7 @@ class RateLimitFilterTest {
 
 	@BeforeEach
 	void resolveTheSignedInCustomer() {
-		when(customerAccountDirectory.accountFor(any())).thenReturn(Optional.of(new CustomerAccountId(1)));
+		when(customerAccountDirectory.requireSignedInAccount(any(), eq(true))).thenReturn(new CustomerAccountId(1));
 		when(customerAccounts.findByEmail(any())).thenReturn(Optional.empty());
 		when(customerAccounts.findByEmail(TEST_CUSTOMER)).thenReturn(Optional.of(
 				new CustomerAccountCredential(TEST_CUSTOMER, passwordEncoder.encode("not-the-submitted-one"))));

@@ -7,6 +7,7 @@ import java.util.Set;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import ai.riviera.platform.operator.vocabulary.NoOperableOperatorException;
 import ai.riviera.platform.operator.vocabulary.NotVenueOwnerException;
 import ai.riviera.platform.operator.api.OperatorDirectory;
 import ai.riviera.platform.operator.vocabulary.OperatorId;
@@ -52,6 +53,14 @@ class OperatorService implements VenueOwnership, OperatorDirectory, VenueVisibil
 	@Override
 	public Optional<OperatorId> operatorFor(String username) {
 		return operators.idByOperableUsername(username);
+	}
+
+	@Override
+	public OperatorId requireOperator(String principalName) {
+		if (principalName == null) {
+			throw new NoOperableOperatorException();
+		}
+		return operatorFor(principalName).orElseThrow(NoOperableOperatorException::new);
 	}
 
 	@Override

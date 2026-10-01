@@ -12,8 +12,8 @@ import org.springframework.web.bind.annotation.RestController;
 
 import ai.riviera.platform.booking.application.reserve.CreateStay;
 import ai.riviera.platform.booking.application.reserve.StayOutcome;
+import ai.riviera.platform.customer.api.CustomerAccountDirectory;
 import ai.riviera.platform.customer.vocabulary.CustomerAccountId;
-import ai.riviera.platform.shared.CurrentCustomer;
 import ai.riviera.platform.shared.InvalidApiRequestException;
 
 /**
@@ -30,16 +30,17 @@ class StayController {
 	private static final URI STAYS_URI = URI.create(STAYS_PATH);
 
 	private final CreateStay createStay;
-	private final CurrentCustomer currentCustomer;
+	private final CustomerAccountDirectory customerDirectory;
 
-	StayController(CreateStay createStay, CurrentCustomer currentCustomer) {
+	StayController(CreateStay createStay, CustomerAccountDirectory customerDirectory) {
 		this.createStay = createStay;
-		this.currentCustomer = currentCustomer;
+		this.customerDirectory = customerDirectory;
 	}
 
 	@PostMapping
 	ResponseEntity<?> create(@RequestBody CreateStayRequest request, Authentication authentication) {
-		CustomerAccountId accountId = currentCustomer.optional(authentication).orElse(null);
+		CustomerAccountId accountId = customerDirectory.signedInAccount(CustomerPrincipal.name(authentication),
+				CustomerPrincipal.isCustomer(authentication)).orElse(null);
 		StayOutcome outcome = createStay.create(InvalidApiRequestException.parsing(() -> request.toCommand(accountId)));
 		return switch (outcome) {
 			case StayOutcome.Confirmed confirmed -> ResponseEntity.status(HttpStatus.CREATED)

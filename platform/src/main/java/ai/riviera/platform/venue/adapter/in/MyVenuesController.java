@@ -7,7 +7,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import ai.riviera.platform.shared.CurrentOperator;
+import ai.riviera.platform.operator.api.OperatorDirectory;
 import ai.riviera.platform.venue.application.ListOwnedVenues;
 import ai.riviera.platform.venue.application.OwnedVenueView;
 
@@ -24,15 +24,15 @@ import ai.riviera.platform.venue.application.OwnedVenueView;
 class MyVenuesController {
 
 	private final ListOwnedVenues listOwnedVenues;
-	private final CurrentOperator currentOperator;
+	private final OperatorDirectory operatorDirectory;
 
-	MyVenuesController(ListOwnedVenues listOwnedVenues, CurrentOperator currentOperator) {
+	MyVenuesController(ListOwnedVenues listOwnedVenues, OperatorDirectory operatorDirectory) {
 		this.listOwnedVenues = listOwnedVenues;
-		this.currentOperator = currentOperator;
+		this.operatorDirectory = operatorDirectory;
 	}
 
 	@GetMapping("/mine")
 	List<OwnedVenueView> myVenues(Authentication authentication) {
-		return listOwnedVenues.ownedBy(currentOperator.require(authentication));
+		return listOwnedVenues.ownedBy(operatorDirectory.requireOperator(authentication.getName()));
 	}
 }

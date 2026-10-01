@@ -15,8 +15,8 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import ai.riviera.platform.operator.api.OperatorDirectory;
 import ai.riviera.platform.shared.ApiProblem;
-import ai.riviera.platform.shared.CurrentOperator;
 import ai.riviera.platform.availability.application.StaffAvailability;
 import ai.riviera.platform.operator.vocabulary.OperatorId;
 import ai.riviera.platform.venue.vocabulary.SetId;
@@ -25,7 +25,7 @@ import ai.riviera.platform.venue.vocabulary.VenueId;
 /**
  * Operator endpoints for staff tap-to-mark walk-ins, driving the module's own
  * {@link StaffAvailability} port; an authenticated {@code OPERATOR} surface resolved via
- * {@link CurrentOperator}. Mark: MARKED→200, ALREADY_TAKEN→409, NO_SUCH_SET→404, DATE_IN_PAST→422;
+ * {@link OperatorDirectory}. Mark: MARKED→200, ALREADY_TAKEN→409, NO_SUCH_SET→404, DATE_IN_PAST→422;
  * release: RELEASED→204, NOT_MARKED→409; errors are {@link ApiProblem} bodies. The service asserts
  * ownership of the path {@code venueId} (invariant #13) before any set lookup ({@code 403} via
  * {@code ApiErrorHandler}); a set not on that venue maps as a missing one.
@@ -35,11 +35,11 @@ import ai.riviera.platform.venue.vocabulary.VenueId;
 class StaffAvailabilityController {
 
 	private final StaffAvailability staff;
-	private final CurrentOperator currentOperator;
+	private final OperatorDirectory operatorDirectory;
 
-	StaffAvailabilityController(StaffAvailability staff, CurrentOperator currentOperator) {
+	StaffAvailabilityController(StaffAvailability staff, OperatorDirectory operatorDirectory) {
 		this.staff = staff;
-		this.currentOperator = currentOperator;
+		this.operatorDirectory = operatorDirectory;
 	}
 
 	@PostMapping("/{venueId}/sets/{setId}/availability")
@@ -48,7 +48,7 @@ class StaffAvailabilityController {
 		if (request == null || request.date() == null) {
 			return problem(HttpStatus.BAD_REQUEST, "INVALID_REQUEST", "A date is required.");
 		}
-		OperatorId operator = currentOperator.require(authentication);
+		OperatorId operator = operatorDirectory.requireOperator(authentication.getName());
 		return switch (staff.mark(operator, new VenueId(venueId), new SetId(setId), request.date())) {
 			case MARKED -> ResponseEntity.ok(Map.of("state", "STAFF_MARKED"));
 			case ALREADY_TAKEN -> problem(HttpStatus.CONFLICT, "ALREADY_TAKEN",
@@ -63,7 +63,7 @@ class StaffAvailabilityController {
 	ResponseEntity<Object> release(Authentication authentication,
 			@PathVariable long venueId, @PathVariable long setId,
 			@RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
-		OperatorId operator = currentOperator.require(authentication);
+		OperatorId operator = operatorDirectory.requireOperator(authentication.getName());
 		return switch (staff.release(operator, new VenueId(venueId), new SetId(setId), date)) {
 			case RELEASED -> ResponseEntity.noContent().build();
 			case NOT_MARKED -> problem(HttpStatus.CONFLICT, "NOT_MARKED",

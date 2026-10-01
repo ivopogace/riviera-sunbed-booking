@@ -1,6 +1,5 @@
 package ai.riviera.platform;
 
-import ai.riviera.platform.shared.CurrentOperator;
 import ai.riviera.platform.shared.ApiProblem;
 import ai.riviera.platform.shared.InvalidApiRequestException;
 import org.slf4j.Logger;
@@ -18,13 +17,15 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.context.request.WebRequest;
 import org.springframework.web.servlet.mvc.method.annotation.ResponseEntityExceptionHandler;
 
+import ai.riviera.platform.customer.vocabulary.NotSignedInCustomerException;
+import ai.riviera.platform.operator.vocabulary.NoOperableOperatorException;
 import ai.riviera.platform.operator.vocabulary.NotVenueOwnerException;
 
 /**
  * The single {@code @RestControllerAdvice}: every failure becomes an RFC-7807 {@link ProblemDetail} with a
  * stable {@code code} via {@link ApiProblem}; {@code detail} states the condition, never a remedy, and never
  * echoes an exception message, ids or a booking code (invariant #7). Per-controller {@code @ExceptionHandler}s
- * are forbidden. {@link NotVenueOwnerException} (invariant #13) and {@link CurrentOperator}'s denial → 403.
+ * are forbidden. {@link NotVenueOwnerException} (invariant #13) and a principal that resolves to no operator/customer → 403.
  * Raw {@link IllegalArgumentException} is deliberately unmapped: a server bug, left to the logged 500.
  * Full mapping: {@code .claude/skills/riviera-java-conventions/references/error-contract.md}.
  */
@@ -42,8 +43,9 @@ public class ApiErrorHandler extends ResponseEntityExceptionHandler {
 				"The authenticated operator does not own this venue.");
 	}
 
-	@ExceptionHandler(AccessDeniedException.class)
-	ProblemDetail onAccessDenied(AccessDeniedException e) {
+	@ExceptionHandler({ AccessDeniedException.class, NoOperableOperatorException.class,
+			NotSignedInCustomerException.class })
+	ProblemDetail onAccessDenied(RuntimeException e) {
 		return ApiProblem.of(HttpStatus.FORBIDDEN, "ACCESS_DENIED", "Access denied.");
 	}
 

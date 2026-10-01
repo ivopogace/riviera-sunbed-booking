@@ -20,11 +20,13 @@ through those fenced venue reads, so no unvetted upload reaches a tourist ahead 
 decision as before. The human gate stands; it has moved from "before the upload can exist" to
 "before tourists can see it".
 
-*Amended 2026-10-01 (#1342):* the photos do not surface only through those fenced reads. The
-serving read `GET /api/venues/{id}/photos/{hash}` is `permitAll` and unfenced
-(`VenuePhotoController`, `VenuePhotoService#serve`; `RESPONSIBILITIES.md` § `venue`), and the
-upload response hands back that URL, so a PENDING-owned venue's photo is fetchable by anyone who
-holds its URL. The fence hides the URL from tourists; it does not gate the bytes. Tracked in #1335.
+*Amended 2026-10-01 (#1342, #1335):* the serving read `GET /api/venues/{id}/photos/{hash}` is
+`permitAll` and was unfenced, so a PENDING-owned venue's photo was fetchable by anyone holding its
+URL (the upload response hands it back). It is now fenced on the same `VenueVisibility` answer as
+the venue reads, the `304` path included: a hidden venue's photo is `404` to everyone but its owner
+and a platform admin, the console previews, who get it under `Cache-Control: private, no-cache` so
+no shared cache stores it (`VenuePhotoService#serve`; `RESPONSIBILITIES.md` § `venue`). The premise
+above holds again.
 
 Scale is the deciding constraint. At Phase 1 this is a handful of Albanian-riviera venues, each
 behind an approved operator account, uploading marketing photographs of their own beach — the
@@ -66,7 +68,8 @@ column, any pre-publication gating, a vision-API screening call at upload, and a
 - **A takedown reaches shared caches and `ETag` holders.** The serving GET returns
   `Cache-Control: public, no-cache` and gates its `304` on the variant still existing (ADR-0008),
   because `*.onrender.com` is Cloudflare-fronted on Render's own zone, which we cannot purge, and a
-  `304` answered from the URL path alone would let a removed photo revalidate forever. A purge
+  `304` answered from the URL path alone would let a removed photo revalidate forever. The same
+  holds for a venue that becomes hidden: its photos `404` on the next revalidation. A purge
   step is the right answer for a future self-owned CDN and is a precondition on ADR-0008's
   object-storage flip.
 - **Takedown is scoped to one slot, not one image.** The variant pipeline is deterministic, so the
@@ -103,3 +106,5 @@ column, any pre-publication gating, a vision-API screening call at upload, and a
   `304`; two premises (no CDN in front of the API; exposure bounded to clients already holding
   the bytes) were wrong.
 - 2026-08-17, #694 — the human gate moved from console access to tourist visibility.
+- 2026-10-01, #1335 — photo serving fenced on tourist visibility with an owner/admin bypass, after
+  #1342 found the bytes reachable by URL ahead of approval.

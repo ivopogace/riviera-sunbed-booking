@@ -54,9 +54,10 @@ close, the maximum stay, the season closure, and the commission rate over time. 
   `SetBookingFacts` stays **unfenced** and is the one port that answers for a **retired set**
   (ADR-0019): cancel, the booking view, the mails and the staff lookup must keep resolving a hidden
   venue's sets and a spot that left the map. The reserve path fences visibility itself in `booking`;
-  `poolForClaim` is the retired-set fence for both claim paths. Photo serving by hash is unfenced.
+  `poolForClaim` is the retired-set fence for both claim paths. Photo serving is visibility-fenced too.
 - **Venue photos** (ADR-0008): per-slot upload/replace/delete, processing, `bytea` storage behind
-  the module-internal `PhotoStorage` port, the public content-hash serving read. **Each tourist
+  the module-internal `PhotoStorage` port, the content-hash serving read — `404` (bytes and `304`)
+  for a hidden venue except to its owner or an admin, served `private` (ADR-0013). **Each tourist
   surface reads its own slideshow list** — one photo per occupied slot in `PhotoSlot` order, `CARD`
   preferred for the list read's `photos`, `BANNER` for the map read's `photos`, `LIGHTBOX` for
   `lightboxPhotos` — so one list's widest candidate never reaches another. Trap: the slot order is
@@ -650,7 +651,12 @@ the ids my scrubs return; `booking` resolves them, `review` blanks its rows. I n
 
 Own the **canonical form of an email address** (`customer.vocabulary.Emails`), the platform's one
 definition, used by my services, the platform edge and `notification` (the input contract of the
-suppression key's HMAC). It cannot live in `shared`, which depends on `customer::api`.
+suppression key's HMAC). It stays here: a module's published value is its own, never `shared`'s.
+
+I answer *which account is this signed-in customer?* (`CustomerAccountDirectory`;
+`NotSignedInCustomerException` → `403`). The caller reads the session and says whether the principal
+holds the customer role, so an operator session named like a customer's email never resolves; I see
+no Spring Security type.
 
 Email verification is **soft**: it gates no sign-in or booking. `CustomerAccountRecovery` names a
 reset token's account **without consuming** it, so the edge revokes that principal's sessions first.
@@ -693,11 +699,14 @@ venue?* (invariant #13), *its username, if in the expected status* (`usernameInS
 revokes sessions **before** a revoking transition commits) and *does this venue have an `ACTIVE`
 owner?* (`VenueVisibility`).
 
+I answer *which operator is this principal name?* (`OperatorDirectory`; `NoOperableOperatorException`
+→ `403` when it owns nothing). The controllers hand me the name, never a Spring Security type.
+
 **The `ACTIVE` predicate is three explicit sets, each at its owner:** the edge's may-authenticate
 set and `OperatorDirectory`'s may-operate set are `ACTIVE`+`PENDING` (approval gates tourist
 visibility, not console access); the tourist-visible set is `ACTIVE` only, deliberately, and
 `VenueVisibility` is its one home: no ownership row answers no (fail-closed); it fences `venue`'s
-catalogue reads and `booking`'s reserve, never a sold-booking path. A suspension **keeps** the
+catalogue reads and photo serving, and `booking`'s reserve, never a sold-booking path. A suspension **keeps** the
 `operator_venue` rows (reversible) but hides the venues until reinstatement.
 
 **Each transition is a status-guarded `UPDATE … RETURNING`, so only the winner gets the facts:**
@@ -948,8 +957,7 @@ because no module can own it, not because several use it. Nothing else: three mo
 is the trigger for asking the question, and the answer is always ownership.
 
 - `ApiProblem` and `InvalidApiRequestException` (the root advice owns exception→status; module
-  adapters throw), `CurrentOperator` and `CurrentCustomer` (principal → typed id): module adapters
-  need them, and no module may depend on the root.
+  adapters throw): module adapters need them, and no module may depend on the root.
 - `ShutdownBudget`: pools in several modules drain one after another, so their claims on the
   SIGTERM grace add and only the platform owns the sum. `ShutdownDrainArchitectureTest` finds them
   from bytecode: the context misses `defaultCandidate = false` and non-bean pools.
@@ -965,7 +973,9 @@ is the trigger for asking the question, and the answer is always ownership.
 
 **Not my job:**
 - **Any business logic or module-owned state** → its owner: a change here ripples everywhere.
-- **Depending on a module that depends back** → only `customer` and `operator` (`api`/`vocabulary`).
+- **Depending on any module** → `allowedDependencies = {}`. Principal → typed id is
+  `operator::api.OperatorDirectory` and `customer::api.CustomerAccountDirectory`, each throwing its
+  own `403` vocabulary exception.
 - **Being the composition root** (`PlatformApplication`, `SecurityConfig`, the controllers) → the
   root package, which depends on modules; merged with `shared`, it closes `booking → root → booking`.
 

@@ -20,8 +20,8 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import ai.riviera.platform.operator.api.OperatorDirectory;
 import ai.riviera.platform.shared.ApiProblem;
-import ai.riviera.platform.shared.CurrentOperator;
 import ai.riviera.platform.shared.InvalidApiRequestException;
 import ai.riviera.platform.operator.vocabulary.OperatorId;
 import ai.riviera.platform.venue.vocabulary.SetId;
@@ -81,19 +81,19 @@ class VenueAdminController {
 	private final ViewVenueProfile viewVenueProfile;
 	private final ViewDailyAvailability viewDailyAvailability;
 	private final ViewBeachMap viewBeachMap;
-	private final CurrentOperator currentOperator;
+	private final OperatorDirectory operatorDirectory;
 
 	VenueAdminController(OnboardVenue onboardVenue, EditBeachMap editBeachMap,
 			EditVenueProfile editVenueProfile, ViewVenueProfile viewVenueProfile,
 			ViewDailyAvailability viewDailyAvailability, ViewBeachMap viewBeachMap,
-			CurrentOperator currentOperator) {
+			OperatorDirectory operatorDirectory) {
 		this.onboardVenue = onboardVenue;
 		this.editBeachMap = editBeachMap;
 		this.editVenueProfile = editVenueProfile;
 		this.viewVenueProfile = viewVenueProfile;
 		this.viewDailyAvailability = viewDailyAvailability;
 		this.viewBeachMap = viewBeachMap;
-		this.currentOperator = currentOperator;
+		this.operatorDirectory = operatorDirectory;
 	}
 
 	@PostMapping
@@ -102,7 +102,7 @@ class VenueAdminController {
 		// Creator-owns-on-create (invariant #13): resolve the authenticated operator and hand it
 		// to the service, which records ownership in the same transaction as the insert. Create is still
 		// role-gated only (any resolvable operator may create) — there is no prior owner to check against.
-		OperatorId creator = currentOperator.require(authentication);
+		OperatorId creator = operatorDirectory.requireOperator(authentication.getName());
 		// Conversion wraps here and below: bad request input stays a 400, a service IAE stays a 500.
 		var command = InvalidApiRequestException.parsing(request::toCommand);
 		VenueId id = onboardVenue.onboard(creator, command);
@@ -117,7 +117,7 @@ class VenueAdminController {
 		// profile (which carries the read-only commission + payout currency) — a non-owner is 403 via
 		// ApiErrorHandler. This endpoint is gated to role OPERATOR ABOVE the public "GET /api/venues/**"
 		// in SecurityConfig, so it never leaks commission to the anonymous tourist read.
-		OperatorId operator = currentOperator.require(authentication);
+		OperatorId operator = operatorDirectory.requireOperator(authentication.getName());
 		return viewVenueProfile.profileFor(operator, new VenueId(venueId))
 				.map(VenueProfileResponse::from)
 				.map(ResponseEntity::ok)
@@ -133,7 +133,7 @@ class VenueAdminController {
 	ResponseEntity<?> dailyAvailability(Authentication authentication,
 			@PathVariable long venueId,
 			@RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
-		OperatorId operator = currentOperator.require(authentication);
+		OperatorId operator = operatorDirectory.requireOperator(authentication.getName());
 		return viewDailyAvailability.statesFor(operator, new VenueId(venueId), date)
 				.<ResponseEntity<?>>map(ResponseEntity::ok)
 				.orElseGet(() -> ApiProblem.response(HttpStatus.NOT_FOUND, NO_SUCH_VENUE_CODE,
@@ -147,7 +147,7 @@ class VenueAdminController {
 	 */
 	@GetMapping("/{venueId}/beach-map")
 	ResponseEntity<?> beachMap(Authentication authentication, @PathVariable long venueId) {
-		OperatorId operator = currentOperator.require(authentication);
+		OperatorId operator = operatorDirectory.requireOperator(authentication.getName());
 		return viewBeachMap.beachMapFor(operator, new VenueId(venueId))
 				.<ResponseEntity<?>>map(beachMap -> ResponseEntity.ok(OperatorBeachMapView.of(beachMap)))
 				.orElseGet(() -> ApiProblem.response(HttpStatus.NOT_FOUND, NO_SUCH_VENUE_CODE,
@@ -157,7 +157,7 @@ class VenueAdminController {
 	@PatchMapping("/{venueId}")
 	ResponseEntity<?> updateProfile(Authentication authentication, @PathVariable long venueId,
 			@RequestBody UpdateVenueProfileRequest request) {
-		OperatorId operator = currentOperator.require(authentication);
+		OperatorId operator = operatorDirectory.requireOperator(authentication.getName());
 		// ExpectedVersion.require first: a missing token is a 400 (INVALID_REQUEST) before the write,
 		// never a silent 0. STALE_WRITE → 409 lets the tab reload the latest values and re-apply.
 		long expectedVersion = InvalidApiRequestException
@@ -176,7 +176,7 @@ class VenueAdminController {
 	@PostMapping("/{venueId}/sets")
 	ResponseEntity<?> addSet(Authentication authentication, @PathVariable long venueId,
 			@RequestBody SetPositionRequest request) {
-		OperatorId operator = currentOperator.require(authentication);
+		OperatorId operator = operatorDirectory.requireOperator(authentication.getName());
 		var command = InvalidApiRequestException.parsing(request::toCommand);
 		return switch (editBeachMap.addSet(operator, new VenueId(venueId), command)) {
 			case AddSetOutcome.Added added -> ResponseEntity
@@ -189,7 +189,7 @@ class VenueAdminController {
 	@PatchMapping("/{venueId}/sets/{setId}")
 	ResponseEntity<?> editSet(Authentication authentication, @PathVariable long venueId,
 			@PathVariable long setId, @RequestBody SetPositionRequest request) {
-		OperatorId operator = currentOperator.require(authentication);
+		OperatorId operator = operatorDirectory.requireOperator(authentication.getName());
 		var command = InvalidApiRequestException.parsing(request::toCommand);
 		return toResponse(editBeachMap.editSet(operator, new VenueId(venueId), new SetId(setId), command));
 	}
@@ -197,14 +197,14 @@ class VenueAdminController {
 	@DeleteMapping("/{venueId}/sets/{setId}")
 	ResponseEntity<?> removeSet(Authentication authentication, @PathVariable long venueId,
 			@PathVariable long setId) {
-		OperatorId operator = currentOperator.require(authentication);
+		OperatorId operator = operatorDirectory.requireOperator(authentication.getName());
 		return toResponse(editBeachMap.removeSet(operator, new VenueId(venueId), new SetId(setId)));
 	}
 
 	@PatchMapping("/{venueId}/sets")
 	ResponseEntity<?> applyToSets(Authentication authentication, @PathVariable long venueId,
 			@RequestBody SetBatchRequest request) {
-		OperatorId operator = currentOperator.require(authentication);
+		OperatorId operator = operatorDirectory.requireOperator(authentication.getName());
 		// A missing token is a 400 before the write, never a silent 0 — as on the replace below.
 		long expectedVersion = InvalidApiRequestException
 				.parsing(() -> ExpectedVersion.require(request.expectedVersion()));
@@ -218,7 +218,7 @@ class VenueAdminController {
 	@PutMapping("/{venueId}/beach-map")
 	ResponseEntity<?> replaceLayout(Authentication authentication, @PathVariable long venueId,
 			@RequestBody BeachMapLayoutRequest request) {
-		OperatorId operator = currentOperator.require(authentication);
+		OperatorId operator = operatorDirectory.requireOperator(authentication.getName());
 		// ExpectedVersion.require first: a missing token is a 400 (INVALID_REQUEST) before the write,
 		// never a silent 0. STALE_WRITE → 409 lets the tab reload the latest map and re-apply.
 		long expectedVersion = InvalidApiRequestException
@@ -235,7 +235,7 @@ class VenueAdminController {
 	@PutMapping("/{venueId}/rows/{rowLabel}/price")
 	ResponseEntity<?> repriceRow(Authentication authentication, @PathVariable long venueId,
 			@PathVariable String rowLabel, @RequestBody RowPriceRequest request) {
-		OperatorId operator = currentOperator.require(authentication);
+		OperatorId operator = operatorDirectory.requireOperator(authentication.getName());
 		// ExpectedVersion.require first: a missing token is a 400 (INVALID_REQUEST) before the write,
 		// never a silent 0. STALE_WRITE → 409 lets the tab reload the latest prices and re-apply.
 		long expectedVersion = InvalidApiRequestException
@@ -247,7 +247,7 @@ class VenueAdminController {
 	@PutMapping("/{venueId}/rows/{rowLabel}/name")
 	ResponseEntity<?> renameRow(Authentication authentication, @PathVariable long venueId,
 			@PathVariable String rowLabel, @RequestBody RowNameRequest request) {
-		OperatorId operator = currentOperator.require(authentication);
+		OperatorId operator = operatorDirectory.requireOperator(authentication.getName());
 		// A missing token is a 400 before the write, never a silent 0 — as on the reprice above.
 		long expectedVersion = InvalidApiRequestException
 				.parsing(() -> ExpectedVersion.require(request.expectedVersion()));

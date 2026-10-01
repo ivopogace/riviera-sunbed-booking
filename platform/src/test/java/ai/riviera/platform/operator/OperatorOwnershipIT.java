@@ -9,6 +9,7 @@ import org.springframework.jdbc.core.simple.JdbcClient;
 
 import ai.riviera.platform.EnabledIfDockerAvailable;
 import ai.riviera.platform.TestcontainersConfiguration;
+import ai.riviera.platform.operator.vocabulary.NoOperableOperatorException;
 import ai.riviera.platform.operator.vocabulary.NotVenueOwnerException;
 import ai.riviera.platform.operator.api.OperatorDirectory;
 import ai.riviera.platform.operator.vocabulary.OperatorId;
@@ -157,5 +158,21 @@ class OperatorOwnershipIT {
 		assertTrue(directory.operatorFor("no-such-operator").isEmpty());
 		assertTrue(directory.operatorFor("suspended-d").isEmpty());
 		assertTrue(directory.operatorFor("rejected-d").isEmpty());
+	}
+
+	@Test
+	void requireOperatorResolvesAnOperableUsername() {
+		assertEquals(directory.operatorFor("operator").orElseThrow(), directory.requireOperator("operator"));
+	}
+
+	@Test
+	void requireOperatorThrowsForUnknownSuspendedRejectedAndMissingPrincipals() {
+		insertOperator("suspended-d", "SUSPENDED");
+		insertOperator("rejected-d", "REJECTED");
+
+		assertThrows(NoOperableOperatorException.class, () -> directory.requireOperator("no-such-operator"));
+		assertThrows(NoOperableOperatorException.class, () -> directory.requireOperator("suspended-d"));
+		assertThrows(NoOperableOperatorException.class, () -> directory.requireOperator("rejected-d"));
+		assertThrows(NoOperableOperatorException.class, () -> directory.requireOperator(null));
 	}
 }

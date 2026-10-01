@@ -1,6 +1,6 @@
 package ai.riviera.platform;
 
-import ai.riviera.platform.shared.CurrentOperator;
+import ai.riviera.platform.operator.api.OperatorDirectory;
 import ai.riviera.platform.shared.ApiProblem;
 import java.time.Instant;
 import java.util.List;
@@ -37,14 +37,14 @@ import ai.riviera.platform.operator.vocabulary.PendingOperator;
 class AdminOperatorController {
 
 	private final OperatorLifecycle lifecycle;
-	private final CurrentOperator currentOperator;
+	private final OperatorDirectory operatorDirectory;
 	private final PrincipalSessionRevoker sessionRevoker;
 	private final OperatorApprovalMail approvalMail;
 
-	AdminOperatorController(OperatorLifecycle lifecycle, CurrentOperator currentOperator,
+	AdminOperatorController(OperatorLifecycle lifecycle, OperatorDirectory operatorDirectory,
 			PrincipalSessionRevoker sessionRevoker, OperatorApprovalMail approvalMail) {
 		this.lifecycle = lifecycle;
-		this.currentOperator = currentOperator;
+		this.operatorDirectory = operatorDirectory;
 		this.sessionRevoker = sessionRevoker;
 		this.approvalMail = approvalMail;
 	}
@@ -113,7 +113,7 @@ class AdminOperatorController {
 	@PostMapping("/{operatorId}/suspend")
 	ResponseEntity<?> suspend(@PathVariable long operatorId, Authentication authentication) {
 		OperatorId target = new OperatorId(operatorId);
-		OperatorId actor = currentOperator.require(authentication);
+		OperatorId actor = operatorDirectory.requireOperator(authentication.getName());
 		if (target.equals(actor)) {
 			return ApiProblem.response(HttpStatus.CONFLICT, "CANNOT_SUSPEND_SELF",
 					"The target operator is the account this request is authenticated as.");

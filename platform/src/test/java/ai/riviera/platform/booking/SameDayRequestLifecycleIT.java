@@ -14,7 +14,7 @@ import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.simple.JdbcClient;
-import org.springframework.test.context.bean.override.mockito.MockitoBean;
+import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
 import org.springframework.test.web.servlet.MockMvc;
 
 import com.jayway.jsonpath.JsonPath;
@@ -22,12 +22,12 @@ import com.jayway.jsonpath.JsonPath;
 import ai.riviera.platform.EnabledIfDockerAvailable;
 import ai.riviera.platform.SessionLoginSupport;
 import ai.riviera.platform.TestcontainersConfiguration;
+import ai.riviera.platform.operator.api.OperatorDirectory;
 import ai.riviera.platform.operator.vocabulary.OperatorId;
-import ai.riviera.platform.shared.CurrentOperator;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.doReturn;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -55,9 +55,9 @@ class SameDayRequestLifecycleIT {
 	@Autowired
 	JdbcClient jdbc;
 
-	/** Mock only the identity seam (as in RequestAcceptPayIT); ownership + flow are real. */
-	@MockitoBean
-	CurrentOperator currentOperator;
+	/** Stub only the identity seam (as in RequestAcceptPayIT); ownership + flow are real. */
+	@MockitoSpyBean
+	OperatorDirectory operatorDirectory;
 
 	private long venueId;
 	private long setId;
@@ -83,7 +83,7 @@ class SameDayRequestLifecycleIT {
 				.param("v", venueId).query(Long.class).single();
 		jdbc.sql("INSERT INTO operator_venue (venue_id, operator_id) VALUES (:v, :o)")
 				.param("v", venueId).param("o", operator).update();
-		when(currentOperator.require(any())).thenReturn(new OperatorId(operator));
+		doReturn(new OperatorId(operator)).when(operatorDirectory).requireOperator(any());
 	}
 
 	@Test

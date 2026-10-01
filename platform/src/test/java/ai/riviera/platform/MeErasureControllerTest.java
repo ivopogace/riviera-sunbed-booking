@@ -1,7 +1,5 @@
 package ai.riviera.platform;
 
-import ai.riviera.platform.shared.CurrentCustomer;
-import java.util.Optional;
 
 import org.junit.jupiter.api.Test;
 import org.mockito.InOrder;
@@ -65,7 +63,7 @@ class MeErasureControllerTest {
 	@MockitoBean
 	AccountErasure erasure;
 
-	/** Replaces the inert stub so {@link CurrentCustomer} resolves the principal to an account. */
+	/** Replaces the inert stub so a customer principal resolves to an account. */
 	@MockitoBean
 	CustomerAccountDirectory directory;
 
@@ -122,7 +120,7 @@ class MeErasureControllerTest {
 	/** The failure direction the ordering buys: a revoke that fails must leave the account unscrubbed. */
 	@Test
 	void aFailedRevokeNeverScrubsTheAccount() {
-		when(directory.accountFor(EMAIL)).thenReturn(Optional.of(ACCOUNT));
+		when(directory.requireSignedInAccount(EMAIL, true)).thenReturn(ACCOUNT);
 		doThrow(new DataAccessResourceFailureException("connection reset"))
 				.when(sessionRevoker).revokeAll(anyString());
 
@@ -150,7 +148,7 @@ class MeErasureControllerTest {
 	}
 
 	private void givenTheAccountCanBeErased() {
-		when(directory.accountFor(EMAIL)).thenReturn(Optional.of(ACCOUNT));
+		when(directory.requireSignedInAccount(EMAIL, true)).thenReturn(ACCOUNT);
 		when(erasure.eraseAccount(ACCOUNT)).thenReturn(EraseOutcome.ERASED);
 	}
 }

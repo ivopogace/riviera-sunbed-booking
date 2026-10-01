@@ -17,7 +17,6 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import ai.riviera.platform.shared.ApiProblem;
-import ai.riviera.platform.shared.CurrentCustomer;
 import ai.riviera.platform.shared.InvalidApiRequestException;
 import ai.riviera.platform.booking.application.reserve.BookingOutcome;
 import ai.riviera.platform.booking.application.cancel.CancelBooking;
@@ -27,6 +26,7 @@ import ai.riviera.platform.booking.application.request.WithdrawRequest;
 import ai.riviera.platform.booking.application.cancel.QuoteCancellationTerms;
 import ai.riviera.platform.booking.application.reserve.CreateBooking;
 import ai.riviera.platform.booking.application.view.ViewBooking;
+import ai.riviera.platform.customer.api.CustomerAccountDirectory;
 import ai.riviera.platform.customer.vocabulary.CustomerAccountId;
 import ai.riviera.platform.venue.vocabulary.SetId;
 
@@ -53,17 +53,17 @@ class BookingController {
 	private final ViewBooking viewBooking;
 	private final CancelBooking cancelBooking;
 	private final WithdrawRequest withdrawRequest;
-	private final CurrentCustomer currentCustomer;
+	private final CustomerAccountDirectory customerDirectory;
 	private final QuoteCancellationTerms cancellationTerms;
 
 	BookingController(CreateBooking createBooking, ViewBooking viewBooking, CancelBooking cancelBooking,
-			WithdrawRequest withdrawRequest, CurrentCustomer currentCustomer,
+			WithdrawRequest withdrawRequest, CustomerAccountDirectory customerDirectory,
 			QuoteCancellationTerms cancellationTerms) {
 		this.createBooking = createBooking;
 		this.viewBooking = viewBooking;
 		this.cancelBooking = cancelBooking;
 		this.withdrawRequest = withdrawRequest;
-		this.currentCustomer = currentCustomer;
+		this.customerDirectory = customerDirectory;
 		this.cancellationTerms = cancellationTerms;
 	}
 
@@ -136,7 +136,8 @@ class BookingController {
 		// Signed-in checkout links the booking to the customer's account; a guest / anonymous
 		// principal resolves to null → an unchanged guest booking (invariant #2/#4 flows untouched). The
 		// account id comes from the SESSION principal only, never the request body (BOLA-safe).
-		CustomerAccountId accountId = currentCustomer.optional(authentication).orElse(null);
+		CustomerAccountId accountId = customerDirectory.signedInAccount(CustomerPrincipal.name(authentication),
+				CustomerPrincipal.isCustomer(authentication)).orElse(null);
 		// The conversion wrap keeps bad request input a 400 while a service-level IAE stays a 500.
 		BookingOutcome outcome = createBooking.create(
 				InvalidApiRequestException.parsing(() -> request.toCommand(accountId)));
