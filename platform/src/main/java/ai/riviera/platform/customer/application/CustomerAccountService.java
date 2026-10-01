@@ -15,6 +15,7 @@ import ai.riviera.platform.customer.vocabulary.CustomerAccountCredential;
 import ai.riviera.platform.customer.vocabulary.CustomerAccountId;
 import ai.riviera.platform.customer.vocabulary.Emails;
 import ai.riviera.platform.customer.vocabulary.LiveAccountCredential;
+import ai.riviera.platform.customer.vocabulary.NotSignedInCustomerException;
 import ai.riviera.platform.customer.vocabulary.RegistrationOutcome;
 import ai.riviera.platform.customer.vocabulary.ResetPasswordOutcome;
 import ai.riviera.platform.customer.vocabulary.SsoProvider;
@@ -61,6 +62,19 @@ class CustomerAccountService implements CustomerAccounts, CustomerAccountProvisi
 	@Override
 	public Optional<CustomerAccountId> accountFor(String email) {
 		return store.findIdByEmail(Emails.normalize(email));
+	}
+
+	@Override
+	public Optional<CustomerAccountId> signedInAccount(String principalName, boolean customerPrincipal) {
+		if (!customerPrincipal || principalName == null) {
+			return Optional.empty();
+		}
+		return accountFor(principalName);
+	}
+
+	@Override
+	public CustomerAccountId requireSignedInAccount(String principalName, boolean customerPrincipal) {
+		return signedInAccount(principalName, customerPrincipal).orElseThrow(NotSignedInCustomerException::new);
 	}
 
 	@Override
