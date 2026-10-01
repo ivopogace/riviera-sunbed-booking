@@ -1,4 +1,7 @@
-package ai.riviera.platform;
+package ai.riviera.platform.monitoring.adapter.in;
+
+import ai.riviera.platform.EnabledIfDockerAvailable;
+import ai.riviera.platform.TestcontainersConfiguration;
 
 import java.util.Arrays;
 import java.util.Optional;
@@ -21,7 +24,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * ({@code logging.structured.format.console=ecs} — the ONE env var production flips), a log line is
  * emitted as JSON and carries the {@link CorrelationIdFilter#MDC_KEY} MDC field, so a correlation id
  * surfaces on every line. Boots the real application under the {@code ecs} property (Testcontainers,
- * like {@link ActuatorHardeningIT}) so the format is exercised exactly as production configures it.
+ * like {@code ActuatorHardeningIT}) so the format is exercised exactly as production configures it.
  */
 @EnabledIfDockerAvailable
 @Import(TestcontainersConfiguration.class)

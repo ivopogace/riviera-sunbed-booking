@@ -1,4 +1,4 @@
-package ai.riviera.platform.shared;
+package ai.riviera.platform.monitoring.vocabulary;
 
 import java.util.Map;
 
@@ -6,12 +6,12 @@ import org.slf4j.MDC;
 import org.springframework.core.task.TaskDecorator;
 
 /**
- * Carries the submitter's {@link MDC} onto a pooled worker, then restores the worker's own so no
- * context leaks onto the next task (invariant #7 keeps booking codes and recipients out; the
- * correlation id is the handle). {@link #decorate} must capture on the submitting thread, not in
- * the task. A taken decorator slot composes via {@code CompositeTaskDecorator}; a second
- * {@code setTaskDecorator} silently drops the first. Rejections log on the calling thread, already
- * in context: don't "fix" them. Why {@code shared}: {@code RESPONSIBILITIES.md} §{@code shared}.
+ * Carries the submitter's {@link MDC} onto a pooled worker, then restores the worker's own so no context leaks
+ * onto the next task (invariant #7 keeps codes and recipients out; the correlation id is the handle).
+ * {@link #decorate} captures on the submitting thread. A taken slot composes via {@code CompositeTaskDecorator};
+ * a second {@code setTaskDecorator} silently drops the first. Rejections log on the calling thread, already in
+ * context: don't "fix" them. Built with {@code new}, never a bean: Boot would apply a {@code TaskDecorator} bean
+ * to its own {@code applicationTaskExecutor} and scheduler.
  */
 public final class MdcTaskDecorator implements TaskDecorator {
 

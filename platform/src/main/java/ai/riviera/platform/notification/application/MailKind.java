@@ -1,6 +1,6 @@
 package ai.riviera.platform.notification.application;
 
-import ai.riviera.platform.shared.ObservabilityMetrics;
+import ai.riviera.platform.monitoring.vocabulary.ObservabilityMetrics;
 
 /**
  * The flow a send on the in-memory vehicle belongs to: the {@code kind} tag on both its loss

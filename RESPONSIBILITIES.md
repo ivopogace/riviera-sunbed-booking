@@ -946,13 +946,9 @@ is the trigger for asking the question, and the answer is always ownership.
 - `ApiProblem` and `InvalidApiRequestException` (the root advice owns exception→status; module
   adapters throw), `CurrentOperator` and `CurrentCustomer` (principal → typed id): module adapters
   need them, and no module may depend on the root.
-- `ObservabilityMetrics`, the metric names; emission and tags stay with the module owning the thing
-  measured. Admitted only for **naming consistency**, a narrower ground — hold new entries to it.
 - `ShutdownBudget`: pools in several modules drain one after another, so their claims on the
   SIGTERM grace add and only the platform owns the sum. `ShutdownDrainArchitectureTest` finds them
   from bytecode: the context misses `defaultCandidate = false` and non-bean pools.
-- `MdcTaskDecorator`, the one way a pooled worker inherits its submitter's logging context: its
-  other half, `CorrelationIdFilter`, sits at the root, so no module can own it.
 - `ResubmissionThrottle` + `ResubmissionOutcome`, an admin outbox-resubmit lever's once-only guard
   (single-flight, a cooldown from construction so a press cannot race the boot republication); each
   lever module keeps its own scope, window and log noun.
@@ -998,6 +994,32 @@ failure.
 **Not my job:** which requests are audited and when in the chain, the `X-Audit-Reason` header and
 its sanitizer, the ADMIN role gate — the root's fence (§ *Platform edge*); judging *whether* an
 admin action was justified; retention (a named non-goal — rows are kept indefinitely).
+
+## `monitoring` (not a bounded context)
+
+**Platform observability** (ADR-0028 Decision 5): a closed non-context module, `allowedDependencies =
+{}`, owning no table. Internals in `adapter/in`; publishes only `vocabulary` (`ObservabilityMetrics`,
+`MdcTaskDecorator`), granted to `booking` and `notification`, where a reference survives compilation
+(the metric names inline, so `payment` needs none).
+
+**Job:**
+- **The correlation id, both halves.** `CorrelationIdFilter` stamps each request (registered by
+  `ObservabilityConfig` as a servlet filter outside the security chain, so not the edge's);
+  `MdcTaskDecorator` carries the submitter's MDC onto a pooled worker. Each pool builds the decorator
+  with `new`, never as a bean: Boot applies a `TaskDecorator` bean to its own `applicationTaskExecutor`
+  and scheduler, which stay undecorated (`WorkerContextArchitectureTest`).
+- **The metric names** (`ObservabilityMetrics`). Emission and tags stay with the module that owns the
+  thing measured; this module owns the names, the outbox-backlog gauge and the alerts on them.
+- **The money-path alert check shares the sweeps' single-instance posture.** `MoneyPathAlertCheck`
+  is lockless `@Scheduled`: each extra instance fires the outbox-backlog alert again. It is on
+  `ScheduledWorkArchitectureTest`'s job list, so `docs/deploy/production-hardening.md`'s scale-out
+  precondition (ShedLock on every job on that list) covers it.
+- **The scheduled-query bound** (`ScheduledQueryTimeout`, 1–300 s), checked at boot. Module adapters
+  read the raw property, so the check runs in full contexts only (production, every `@SpringBootTest`);
+  the committed value is unit-tested by `ScheduledQueryTimeoutBoundsTest`.
+
+**Not my job:** emitting a module's counters or choosing their tags → the module owning the thing
+measured; the meaning of a crossed threshold and the response → `docs/runbooks/observability.md`.
 
 ## Platform edge (settled)
 
@@ -1074,10 +1096,6 @@ mutating `/api/admin/**` action, §`audit`) stay here; `challenge` and `audit` o
   unstamped sessions. A customer's self-service change writes only over the hash it verified, so a reset landing
   first wins; either self-service change re-stamps the session it keeps. Residual: a request already past the filter completes. Cost: one
   indexed read per authenticated request.
-- **The money-path alert check shares the sweeps' single-instance posture.** `MoneyPathAlertCheck`
-  is lockless `@Scheduled`: each extra instance fires the outbox-backlog alert again. It is on
-  `ScheduledWorkArchitectureTest`'s job list, so `docs/deploy/production-hardening.md`'s scale-out
-  precondition (ShedLock on every job on that list) covers it.
 - **The bootstrap credential is stamped by an edge runner, and only that one.**
   `OperatorCredentialInitializer` (full context only; a `@WebMvcTest` slice does not scan it)
   touches only the bootstrap admin; every other operator self-registers (`OperatorRegistration`,
@@ -1243,7 +1261,7 @@ them form the *structural net* is `riviera-modulith` § *The structural net*'s c
 | No Spring Security type inside `customer` — login machinery's checked half (RV-BE-11) | `CustomerAuthPlacementTests` |
 | Mail listeners name their own bounded executors, never Boot's shared `applicationTaskExecutor` | `MailListenerExecutorArchitectureTest` |
 | `booking` listeners reaching `payment::api` run on the bounded refund pool | `RefundListenerExecutorArchitectureTest` |
-| Every self-configured worker pool carries the shared MDC decorator | `WorkerContextArchitectureTest` |
+| Every self-configured worker pool carries `monitoring`'s MDC decorator | `WorkerContextArchitectureTest` |
 | The draining pools' shutdown claims sum within the SIGTERM grace | `ShutdownDrainArchitectureTest` |
 | Pool tokens live only in `venue.vocabulary.Pool`: no other production class holds an `"ONLINE"` / `"WALK_IN"` literal (invariant #3's operand is the published type) | `PoolTokenArchitectureTest` (`CONSTANT_String` scan, so `Pool.ONLINE` passes) |
 | A retired set is absent from every read but `SetBookingFacts`: production SQL naming `set_position` reads `active_set_position` or names `retired_at`, an `INSERT INTO` excepted (ADR-0019, §`venue`) | `RetiredSetExclusionArchitectureTests` (per-statement `CONSTANT_String` scan; the structural net's one member admitted by decision) |
