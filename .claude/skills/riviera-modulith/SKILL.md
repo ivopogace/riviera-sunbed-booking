@@ -50,8 +50,9 @@ Hands off: Java idioms → `riviera-java-conventions`; seams → `codebase-desig
 otherwise FULL. Every context module in CLAUDE.md's table (the `itinerary` read model included) and
 `challenge` are full; `audit` is thin plus a driving `adapter/in` (its admin controller);
 `monitoring` is `vocabulary` plus `adapter/in` (filter, gauge, alert job), no port.
-`shared` is neither: `@ApplicationModule(type = OPEN)`, flat classes at the module root, no
-published surface, no layers, `allowedDependencies = {}`. A type that needs a module's `api` is that
+`shared` is neither: a closed `@ApplicationModule` registered in `@Modulithic(sharedModules)` (so
+Modulith allows it to every module, `{}` grants included), flat classes at the module root as its
+API, no named surface, no layers, `allowedDependencies = {}`. A type that needs a module's `api` is that
 module's to publish, never `shared`'s (principal → id is `operator::api`/`customer::api`).
 
 Thin:

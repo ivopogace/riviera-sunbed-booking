@@ -58,6 +58,8 @@ controller's `ApiProblem` use without a grant.
 ## Execution status
 
 - [x] Phase 0 — `ModularityTests` red on the move alone (customer → shared, "Allowed targets: none"), green once registered
-- [ ] Phase 1
-- [ ] Structural net + named tests green locally
-- [ ] Draft PR, CI green, merge `main`, review, Sonar
+- [x] Phase 1 — docs-freshness over the slice's diff: CLAUDE.md, RESPONSIBILITIES.md (`shared`, `audit`,
+  `customer`), `riviera-modulith`, `riviera-local-debug`, `domain-model.md`, ADR-0007/ADR-0017 amendment
+  pointers, `CompositionRootDisciplineTests` Javadoc; ADR-0010's location-free mention stands
+- [x] Structural net + named tests green locally (incl. `PayoutModuleTest`, `ReviewSubmitFlowIT` on Docker)
+- [ ] Draft PR #1351, CI green, merge `main`, review, Sonar

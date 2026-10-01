@@ -92,13 +92,14 @@ aggregate-root classes: `domain/` holds rules, state is in tables, lifecycles ar
 | `notification` | transactional mail, hashed suppression list, delivery log + admin resend | `email_suppression`, `booking_confirmation_mail_attempt` |
 | `itinerary` | the stay read model (D7/D11): the whole-coast verdict per venue for a span (same set · fits with N moves · can't host), served on `GET /api/venues`; the per-venue stitched plan on `GET /api/venues/{id}/itinerary`; the move budget `riviera.itinerary.max-switches` | nothing — a read model over `venue::api` + `availability::api` |
 
-Plus `shared` (OPEN kernel of edge types like `ApiProblem`, depending on no module; admission by
+Plus `shared` (closed kernel of edge types like `ApiProblem`, registered in
+`@Modulithic(sharedModules)` so every module may use it, depending on no module; admission by
 ownership, never reuse) and the closed non-context modules with `allowedDependencies = {}`:
 `challenge` (proof of work; writes `challenge_registry`), `audit` (admin audit trail; writes
 `admin_audit_record`) and `monitoring` (correlation id, metric names, money-path alert check; writes
 nothing). No module writes the framework tables: `SPRING_SESSION*` (Spring Session,
 from the edge) and `event_publication*` (Modulith's registry; re-driven by the outbox levers).
-Context modules depend on `shared`, which depends on no module; the root on modules, nothing on the
+Every module may depend on `shared`, which depends on no module; the root on modules, nothing on the
 root.
 
 **Collaboration:** events for state changes, `api/` ports for queries. Synchronous, state-changing

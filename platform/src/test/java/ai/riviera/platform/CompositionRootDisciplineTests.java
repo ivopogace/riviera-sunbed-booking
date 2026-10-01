@@ -75,7 +75,7 @@ class CompositionRootDisciplineTests {
 	/** The mirror-image fixture tree: module stand-ins, one of which depends on a root stand-in. */
 	private static final String MODULE_FIXTURE_BASE = "ai.riviera.modulefixture";
 
-	/** The surface directly under a module; {@code ""} is a type at the module root (the OPEN kernel's shape). */
+	/** The surface directly under a module; {@code ""} is a type at the module root (the flat {@code shared} kernel's shape). */
 	private static final String MODULE_ROOT_SURFACE = "";
 
 	/**

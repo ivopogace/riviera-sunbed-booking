@@ -28,7 +28,7 @@ arrows = `api/` port queries** (reads). Modules never import each other's intern
 ports or events (invariant #11).
 
 The **remaining** modules are not drawn because no domain module collaborates with them: `shared`
-(the OPEN kernel of edge types); the closed read model `itinerary` (no table; it only reads
+(the closed kernel of edge types, registered as Modulith's shared module); the closed read model `itinerary` (no table; it only reads
 `venue::api` + `availability::api` for the stay verdict per venue, improvement plan B4, and nothing
 reads it); and the closed ADR-0017 mechanisms, `challenge` (proof of work, owns
 `challenge_registry`) and `audit` (the admin audit trail, owns `admin_audit_record`), both reached
