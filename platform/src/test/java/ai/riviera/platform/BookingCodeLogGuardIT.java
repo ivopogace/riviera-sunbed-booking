@@ -149,7 +149,11 @@ class BookingCodeLogGuardIT {
 
 	private List<String> leaks() {
 		List<String> leaks = new ArrayList<>();
-		for (ILoggingEvent event : captured.list) {
+		List<ILoggingEvent> events;
+		synchronized (captured) { // AppenderBase.doAppend holds this lock; async listeners append mid-scan
+			events = List.copyOf(captured.list);
+		}
+		for (ILoggingEvent event : events) {
 			String rendered = render(event);
 			codes.stream().filter(rendered::contains)
 					.forEach(code -> leaks.add(event.getLoggerName() + " " + event.getLevel() + ": " + rendered));
