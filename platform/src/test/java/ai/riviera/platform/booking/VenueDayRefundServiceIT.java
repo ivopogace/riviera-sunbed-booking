@@ -306,6 +306,43 @@ class VenueDayRefundServiceIT {
 		assertEquals(0, availabilityRows(stay.setId(), first.plusDays(2)));
 	}
 
+	/** ADR-0027 §6: a stay whose every day the venue refunds stays live, only its own days released, each refunded once. */
+	@Test
+	void aStayWhoseEveryDayIsRefundedStaysLive() {
+		LocalDate first = today().plusDays(220);
+		long venueId = venueWithOnlineSets();
+		long set = onlineSets(venueId, 1).getFirst();
+		Seeded stay = confirmedStay(venueId, set, first, 3, "VDALLDAYS1", 10000L);
+		Seeded next = confirmedStay(venueId, set, first.plusDays(3), 1, "VDALLDAYS2", 4500L);
+		VenueId venue = new VenueId(venueId);
+
+		for (int i = 0; i < 3; i++) {
+			assertInstanceOf(VenueDayRefundOutcome.DayRefunded.class,
+					refundVenueDay.refundDay(bootstrap(), venue, "VDALLDAYS1", first.plusDays(i)));
+		}
+		for (int i = 0; i < 3; i++) {
+			assertInstanceOf(VenueDayRefundOutcome.DayAlreadyRefunded.class,
+					refundVenueDay.refundDay(bootstrap(), venue, "VDALLDAYS1", first.plusDays(i)),
+					"nothing is left to refund");
+		}
+
+		assertEquals("CONFIRMED", status(stay.bookingId()), "the stay stays live");
+		assertNull(jdbc.sql("SELECT refund_minor FROM booking WHERE id = :id").param("id", stay.bookingId())
+				.query(Long.class).optional().orElse(null), "no cancellation refund on top of the days");
+		assertEquals(3334L, day(stay.bookingId(), first).refundMinor(), "the remainder rides the first day");
+		assertEquals(10000L, jdbc.sql("SELECT SUM(refund_minor) FROM booking_day WHERE booking_id = :id")
+				.param("id", stay.bookingId()).query(Long.class).single(), "the days sum to the amount (#5)");
+		for (int i = 0; i < 3; i++) {
+			assertEquals(0, availabilityRows(set, first.plusDays(i)), "each refunded day is freed (#2)");
+		}
+		assertEquals(1, availabilityRows(set, first.plusDays(3)), "the next guest's day on the set is not released");
+		assertEquals("CONFIRMED", status(next.bookingId()));
+		assertEquals(3, events.stream(BookingDayRefunded.class)
+				.filter(e -> e.bookingId().value() == stay.bookingId()).count(), "one BookingDayRefunded per day");
+		assertEquals(0, events.stream(BookingCancelled.class)
+				.filter(e -> e.bookingId().value() == stay.bookingId()).count(), "no cancel, so no cancellation mail");
+	}
+
 	/** #1276 AC-1: the admin refunds a stay's day by booking id at a venue the bootstrap admin does not own; the stamps are slice 1's. */
 	@Test
 	void anAdminRefundsAStaysDayAtAVenueTheyDoNotOwn() {

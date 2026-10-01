@@ -65,6 +65,11 @@ public final class ChallengeSolving {
 		return payload(parsed.challenge(), wrong);
 	}
 
+	/** The nonce a solved payload's challenge carries: the key its {@code challenge_registry} row is claimed under. */
+	public static String nonce(String payload) throws Exception {
+		return Altcha.parsePayload(payload).challenge().parameters().nonce();
+	}
+
 	public static Altcha.Challenge parse(String challengeJson) {
 		JSONObject root = new JSONObject(challengeJson);
 		JSONObject p = root.getJSONObject("parameters");
