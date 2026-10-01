@@ -14,7 +14,7 @@ import ai.riviera.platform.EnabledIfDockerAvailable;
 import ai.riviera.platform.MovableClock;
 import ai.riviera.platform.OwnershipFixtures;
 import ai.riviera.platform.TestcontainersConfiguration;
-import ai.riviera.platform.TiraneNoonClock;
+import ai.riviera.platform.TiraneDaytimeClock;
 
 import static org.hamcrest.Matchers.contains;
 import static org.hamcrest.Matchers.empty;
@@ -32,7 +32,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * skipped where Docker is absent.
  */
 @EnabledIfDockerAvailable
-@Import({ TestcontainersConfiguration.class, TiraneNoonClock.class })
+@Import({ TestcontainersConfiguration.class, TiraneDaytimeClock.class })
 @SpringBootTest
 @AutoConfigureMockMvc
 class VenueReadControllerIT {
@@ -168,7 +168,7 @@ class VenueReadControllerIT {
 		// AC-3: no date param ⇒ today in Europe/Tirane. Book a set for that exact date and
 		// confirm the param-less read renders it TAKEN.
 		long set = anyOnlineSet();
-		LocalDate today = TiraneNoonClock.today(clock);
+		LocalDate today = TiraneDaytimeClock.today(clock);
 		book(set, today);
 
 		mvc.perform(get("/api/venues/{id}", MIRAMAR))
@@ -208,7 +208,7 @@ class VenueReadControllerIT {
 	void mapCarriesSalesOpenForSelectedDate() throws Exception {
 		// #793 AC-3: a 00:01 opt-out venue's map reads closed for today, open for tomorrow.
 		long id = insertOptOutVenue();
-		LocalDate today = TiraneNoonClock.today(clock);
+		LocalDate today = TiraneDaytimeClock.today(clock);
 		try {
 			mvc.perform(get("/api/venues/{id}", id).param("date", today.toString()))
 					.andExpect(status().isOk())

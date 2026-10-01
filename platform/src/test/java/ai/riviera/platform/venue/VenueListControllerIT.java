@@ -20,7 +20,7 @@ import ai.riviera.platform.EnabledIfDockerAvailable;
 import ai.riviera.platform.MovableClock;
 import ai.riviera.platform.OwnershipFixtures;
 import ai.riviera.platform.TestcontainersConfiguration;
-import ai.riviera.platform.TiraneNoonClock;
+import ai.riviera.platform.TiraneDaytimeClock;
 
 import static org.hamcrest.Matchers.contains;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -41,7 +41,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * insert their own venues into the shared container.
  */
 @EnabledIfDockerAvailable
-@Import({ TestcontainersConfiguration.class, TiraneNoonClock.class })
+@Import({ TestcontainersConfiguration.class, TiraneDaytimeClock.class })
 @SpringBootTest
 @AutoConfigureMockMvc
 class VenueListControllerIT {
@@ -209,7 +209,7 @@ class VenueListControllerIT {
 	@Test
 	void defaultsToTodayTirane() throws Exception {
 		// AC-5: no date param ⇒ counts for today in Europe/Tirane.
-		LocalDate today = TiraneNoonClock.today(clock);
+		LocalDate today = TiraneDaytimeClock.today(clock);
 		book(firstSetOf(aurora), today);
 
 		mvc.perform(get("/api/venues").param("beach", BEACH_DHERMI))
@@ -250,7 +250,7 @@ class VenueListControllerIT {
 	}
 
 	/**
-	 * A fresh visible venue at the given {@code sales_close} boundary value: at the pinned noon a
+	 * A fresh visible venue at the given {@code sales_close} boundary value: on the pinned clock a
 	 * {@code 00:01} venue is closed for today, a {@code 23:59} one open.
 	 */
 	private long insertVenueAtSalesClose(String name, LocalTime salesClose) {
@@ -274,7 +274,7 @@ class VenueListControllerIT {
 		long open = insertVenueAtSalesClose("Open Till Late IT", LocalTime.of(23, 59));
 
 		mvc.perform(get("/api/venues").param("beach", BEACH_SALES_CLOSE)
-						.param("date", TiraneNoonClock.today(clock).toString()))
+						.param("date", TiraneDaytimeClock.today(clock).toString()))
 				.andExpect(status().isOk())
 				.andExpect(jsonPath("$[?(@.id == %d)].salesOpen".formatted(closed)).value(contains(false)))
 				.andExpect(jsonPath("$[?(@.id == %d)].salesOpen".formatted(open)).value(contains(true)));
@@ -287,7 +287,7 @@ class VenueListControllerIT {
 		long lateClose = insertVenueAtSalesClose("Late Tomorrow IT", LocalTime.of(23, 59));
 
 		mvc.perform(get("/api/venues").param("beach", BEACH_SALES_CLOSE)
-						.param("date", TiraneNoonClock.today(clock).plusDays(1).toString()))
+						.param("date", TiraneDaytimeClock.today(clock).plusDays(1).toString()))
 				.andExpect(status().isOk())
 				.andExpect(jsonPath("$[?(@.id == %d)].salesOpen".formatted(optOut)).value(contains(true)))
 				.andExpect(jsonPath("$[?(@.id == %d)].salesOpen".formatted(lateClose)).value(contains(true)));

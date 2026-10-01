@@ -20,7 +20,7 @@ import ai.riviera.platform.EnabledIfDockerAvailable;
 import ai.riviera.platform.MovableClock;
 import ai.riviera.platform.SessionLoginSupport;
 import ai.riviera.platform.TestcontainersConfiguration;
-import ai.riviera.platform.TiraneNoonClock;
+import ai.riviera.platform.TiraneDaytimeClock;
 import ai.riviera.platform.operator.api.OperatorDirectory;
 import ai.riviera.platform.operator.vocabulary.OperatorId;
 
@@ -36,11 +36,11 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * The same-day Request-to-Book lifecycle end-to-end (issue #792, AC-5): at a {@code 23:59}-close
  * venue a tourist requests a set for <strong>today</strong>, the venue accepts, and — on the stub
  * profile's synchronous collection — the booking reaches {@code CONFIRMED} on the service day
- * itself, at the pinned noon ({@link TiraneNoonClock}) so the request leg is inside the sales window.
+ * itself; {@link TiraneDaytimeClock} keeps the request leg inside the sales window.
  * Testcontainers; skipped where Docker is absent.
  */
 @EnabledIfDockerAvailable
-@Import({ TestcontainersConfiguration.class, TiraneNoonClock.class })
+@Import({ TestcontainersConfiguration.class, TiraneDaytimeClock.class })
 @SpringBootTest(properties = "riviera.operator.password=test-sameday-pw")
 @AutoConfigureMockMvc
 class SameDayRequestLifecycleIT {
@@ -85,7 +85,7 @@ class SameDayRequestLifecycleIT {
 
 	@Test
 	void sameDayRequestAcceptPayConfirms() throws Exception {
-		LocalDate today = TiraneNoonClock.today(clock);
+		LocalDate today = TiraneDaytimeClock.today(clock);
 		String body = """
 				{"setId": %d, "bookingDate": "%s",
 				 "contact": {"email": "sameday@e.com", "fullName": "Same Day Guest", "phone": "+355600"}}

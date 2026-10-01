@@ -16,7 +16,7 @@ import ai.riviera.platform.EnabledIfDockerAvailable;
 import ai.riviera.platform.MovableClock;
 import ai.riviera.platform.SessionLoginSupport;
 import ai.riviera.platform.TestcontainersConfiguration;
-import ai.riviera.platform.TiraneNoonClock;
+import ai.riviera.platform.TiraneDaytimeClock;
 
 import com.jayway.jsonpath.JsonPath;
 
@@ -37,7 +37,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * gateway.
  */
 @EnabledIfDockerAvailable
-@Import({ TestcontainersConfiguration.class, TiraneNoonClock.class })
+@Import({ TestcontainersConfiguration.class, TiraneDaytimeClock.class })
 @SpringBootTest(properties = { "riviera.operator.password=test-operator-pw",
 		"booking.no-show.enabled=false" })
 @AutoConfigureMockMvc
@@ -75,12 +75,12 @@ class BookingControllerIT {
 
 	/** Today as the pinned clock's Tirane civil date (invariant #6), never the wall's. */
 	private LocalDate today() {
-		return TiraneNoonClock.today(clock);
+		return TiraneDaytimeClock.today(clock);
 	}
 
 	/**
 	 * A fresh Instant-Book venue at the given {@code sales_close} boundary value, with one ONLINE
-	 * set: at the pinned noon a {@code 00:01} venue is closed for today, a {@code 23:59} one open.
+	 * set: on the pinned clock a {@code 00:01} venue is closed for today, a {@code 23:59} one open.
 	 */
 	private long onlineSetAtSalesClose(String salesClose) {
 		long venue = boundaryVenue(salesClose);
@@ -217,7 +217,7 @@ class BookingControllerIT {
 
 	@Test
 	void reserveRefusedAfterOwnerClosesSalesForToday() throws Exception {
-		// AC-4 (#794): the owner's PATCH to 00:01 refuses the very next reserve for today (R-5 trick).
+		// AC-4 (#794): the owner's PATCH to 00:01 refuses the very next reserve for today.
 		long venue = boundaryVenueOwnedBySeededOperator("23:59");
 		long set = boundaryOnlineSet(venue);
 		Cookie owner = SessionLoginSupport.operatorSession(mvc, "operator", "test-operator-pw");
