@@ -111,10 +111,10 @@ the filter chain (`RateLimitFilter`, `ChallengeVerificationFilter`, `AdminAuditF
 `SessionCredentialFilter`; the correlation-id filter is `monitoring`'s) and the error contract
 (`ApiErrorHandler`, `ApiProblem`). The closed `auth` module holds the login machinery: the session
 principals and their revocation, the SSO gateways, and the auth, SSO, my-account, account-recovery,
-my-erasure, admin-operator, operator-account and mock-IdP controllers.
+my-erasure, admin-erasure, admin-operator, operator-account and mock-IdP controllers.
 
-Two consequences a reader of §1 would otherwise miss: `operator` has **no controllers of its own**
-and `customer` only the admin erasure one — everything a person does with their own account is an
+Two consequences a reader of §1 would otherwise miss: `operator` and `customer` have **no
+controllers of their own** — everything a person does with their own account is an
 `auth` endpoint calling those modules' ports — and the rule that keeps this honest runs one way only.
 Modules depend on `shared`, the root depends on modules, and **nothing depends on the root**
 (ADR-0007 Amendment 2, machine-checked by `CompositionRootDisciplineTests`). `RESPONSIBILITIES.md` §

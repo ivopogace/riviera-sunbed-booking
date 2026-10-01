@@ -49,6 +49,9 @@ Content-Type: application/json
   reveals whether the email existed); a blank email is `400 INVALID_REQUEST`.
 - It erases **any** account **and** guest row sharing that email. A guest row whose email diverges
   from the account email is a separate subject — submit that email too.
+- It signs the subject out everywhere: every session named by that (normalized) email is deleted
+  before and after the scrub, as on the self-service path. Re-submitting is safe and ends any session
+  a failed earlier attempt left behind.
 
 > **Use the console: the Privacy tab at `/admin/privacy`** (A3, epic #348, PR #526) — the endpoint was
 > API-only from #101 Slice 1 until then. It is address → confirm → done, and the irreversible step

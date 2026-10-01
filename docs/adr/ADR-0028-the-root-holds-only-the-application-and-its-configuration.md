@@ -161,6 +161,9 @@ architecturally impossible").
    `AccountErasure` and imports no Spring Security type, so the module whose use case it drives
    owns it. Its `ApiProblem` use makes `customer` depend on `shared`. That is no cycle once
    Decision 7 has `shared` depending on nothing, so #1331 merges before #1329.
+   *Amended 2026-10-01 (#1334):* the controller sits in `auth`'s `adapter/in`. It revokes the
+   subject's sessions before and after the scrub, as the self-service path does, and `customer`
+   cannot call `auth::api` (`auth` depends on `customer`). `customer` keeps no controller.
 
 7. **`shared` moves to the bottom of the dependency graph, becomes CLOSED, and is registered as a
    Modulith shared module.**

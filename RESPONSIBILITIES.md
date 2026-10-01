@@ -640,9 +640,8 @@ opaque credential hash) behind register / sign-in. The two are **never linked** 
 registration never auto-claims a guest email's past bookings; back-linking them is a **permanent
 non-goal** (design D-2, D-6). Own **right-to-erasure**: tombstone account + guest-contact PII in
 place, delete the transient SSO/token children, retain booking/payment/payout rows under the
-**statutory-retention exception** (ADR-0010); `auth` authenticates, and its self-service path
-revokes sessions. The admin path is mine (`adapter/in.AdminErasureController`, ADMIN-gated by the
-edge) and leaves sessions to the credential stamp (#1334).
+**statutory-retention exception** (ADR-0010); `auth` authenticates and holds both erasure
+endpoints, which revoke the subject's sessions around my scrub (§`auth`). I hold no controller.
 
 Own the **retention policy** — the **retention window**, which guest contacts have no **retention
 basis** left, and the sweep that tombstones them; `booking` supplies only the recency *fact*. Both
@@ -1082,7 +1081,7 @@ per-request check the chain's filter calls) and `vocabulary` (`AuthRoles`, `Bloc
 **Job:** turn a credential into a server-side session and keep it honest: both `UserDetailsService`s
 and their `AuthenticationManager`s, session establishment and rotation, the credential stamp, session
 revocation, SSO, the password policy, account recovery, the login, register, `/me` and self-service
-password endpoints, and the admin-lifecycle and self-erasure endpoints that revoke sessions in the same
+password endpoints, and the admin-lifecycle and both erasure endpoints that revoke sessions in the same
 request (a domain module calling `auth` would cycle). `customer` and `operator` supply identity and an
 opaque hash through their `api`; no Spring Security type enters them (`*AuthPlacementTests`).
 
@@ -1096,6 +1095,11 @@ opaque hash through their `api`; no Spring Security type enters them (`*AuthPlac
   first (`CustomerAccountRecovery#emailForResetToken`, consuming nothing) and revokes; the second
   revoke ends sessions saved in between, and a login saved later fails its stamp check (next bullet).
   Encode above the first revoke, or bcrypt widens the gap.
+- **Both erasure paths revoke before and after `customer`'s scrub** (ADR-0010; not atomic, as above).
+  Self-service names the principal from its session. The admin path names it by the canonical form of
+  the submitted email (`customer.vocabulary.Emails`), which every customer principal carries, so no
+  `SPRING_SESSION` row keeps the erased email, and a repeat request ends a session an earlier one missed
+  (#1334). An operator named like that email is signed out too, the revoker's accepted over-revocation.
 - **Every session carries a credential stamp, checked on each request (#1306).** Its `SessionPrincipal`
   holds a SHA-256 of the account (a customer's id, an operator's name) and the hash it was opened against.
   `api.SessionCredentials` re-reads the account; the chain's `SessionCredentialFilter` ends the session when

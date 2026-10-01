@@ -72,6 +72,9 @@ Two erasure shapes were possible:
   *Amended 2026-10-01 (#1342):* only the self-service path (`MyErasureController`) revokes; the
   admin path (`AdminErasureController`) revokes nothing, and the subject's session ends lazily on
   its next request, when the #1306 credential check no longer finds the account. Tracked in #1334.
+  *Amended 2026-10-01 (#1334):* both paths revoke, before and after the scrub, both controllers
+  sitting in `auth`. The admin path revokes under the canonical form of the submitted email, the name
+  every customer principal carries, so a repeat request also ends a session an earlier one missed.
   The structured log line is written by `customer`'s `AccountErasureService`, not the edge.
 - **Backups** hold pre-erasure copies erasure cannot reach; that is handled operationally, not in
   code — a bounded backup-retention window plus re-applying `erased_at`-flagged erasures on any
