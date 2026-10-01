@@ -1,4 +1,4 @@
-package ai.riviera.platform;
+package ai.riviera.platform.remodel.application;
 
 import java.util.List;
 import java.util.concurrent.atomic.AtomicReference;
@@ -22,30 +22,30 @@ import ai.riviera.platform.venue.vocabulary.SetId;
 import ai.riviera.platform.venue.vocabulary.VenueId;
 
 /**
- * The remodel commit's gate at the edge (ADR-0020): {@link BeachMapRemodel#commit} owns the
+ * The remodel commit's gate (ADR-0020): {@link BeachMapRemodel#commit} owns the
  * transaction and set lock and asks it once, under the locks, with the disturbed sets. A staff-held
  * set answers stale (the preview offered no save for it); else {@link RemodelClaims#commit} checks
  * token and refund confirmation and settles every claim in that transaction; only applied proceeds,
  * naming the kept claims' sets. A layout giving a kept set's label away rolls back → refused with
- * the fresh picture. Ports assert ownership (#13). Rationale: RESPONSIBILITIES.md §Platform edge.
+ * the fresh picture. Ports assert ownership (#13). Rationale: RESPONSIBILITIES.md §remodel.
  */
 @Component
-class RemodelCommitService {
+public class RemodelCommitService {
 
 	private final BeachMapRemodel remodel;
 	private final RemodelClaims claims;
 
-	RemodelCommitService(BeachMapRemodel remodel, RemodelClaims claims) {
+	public RemodelCommitService(BeachMapRemodel remodel, RemodelClaims claims) {
 		this.remodel = remodel;
 		this.claims = claims;
 	}
 
 	/** The rate the refusal pictures quote — the same one the preview did, straight off the port. */
-	VenueChangeFee venueChangeFee() {
+	public VenueChangeFee venueChangeFee() {
 		return claims.venueChangeFee();
 	}
 
-	RemodelCommitOutcome commit(OperatorId operator, VenueId venue, long expectedVersion, List<LayoutCell> cells,
+	public RemodelCommitOutcome commit(OperatorId operator, VenueId venue, long expectedVersion, List<LayoutCell> cells,
 			PreviewToken token, RefundConfirmation confirmation) {
 		AtomicReference<RemodelCommitOutcome> decided = new AtomicReference<>();
 		AtomicReference<List<DisturbedSet>> seen = new AtomicReference<>();

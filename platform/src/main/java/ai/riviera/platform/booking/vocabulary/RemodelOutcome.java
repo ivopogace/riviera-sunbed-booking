@@ -5,7 +5,7 @@ package ai.riviera.platform.booking.vocabulary;
  * {@link Move} to a set of the same or better tier free on every day of the claim, or — with no
  * candidate beyond the refund-notice floor — a {@link Refund} of a confirmed booking, a
  * {@link Release} of an unpaid one, a {@link Decline} of a pending request; a {@link Blocked} claim
- * is kept where it is and its set stays as stored. Sealed so the edge's switch is exhaustive; the
+ * is kept where it is and its set stays as stored. Sealed so a caller's switch is exhaustive; the
  * preview is advisory, the commit re-derives it.
  */
 public sealed interface RemodelOutcome

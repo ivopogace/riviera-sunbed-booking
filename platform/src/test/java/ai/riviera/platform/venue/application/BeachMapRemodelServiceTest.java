@@ -16,7 +16,7 @@ import ai.riviera.platform.operator.vocabulary.OperatorId;
 import ai.riviera.platform.operator.vocabulary.VenueRef;
 import ai.riviera.platform.venue.spi.BookingPresence;
 import ai.riviera.platform.venue.spi.SetAvailabilityLookup;
-import ai.riviera.platform.venue.api.RemodelGate;
+import ai.riviera.platform.venue.spi.RemodelGate;
 import ai.riviera.platform.venue.vocabulary.DisturbedSet;
 import ai.riviera.platform.venue.vocabulary.LayoutCell;
 import ai.riviera.platform.venue.vocabulary.GateVerdict;

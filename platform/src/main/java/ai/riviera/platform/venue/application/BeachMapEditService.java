@@ -21,7 +21,7 @@ import ai.riviera.platform.venue.vocabulary.VenueId;
 /**
  * The beach-map edits behind {@link EditBeachMap} (invariant #11): single-set edits, row
  * reprice/rename, batch price/tier/pool, and the bulk save ({@link LayoutWriter}'s diff under an
- * always-proceed gate; the remodel commit passes the edge's). Commands self-validate; this owns
+ * always-proceed gate; the remodel commit passes its own). Commands self-validate; this owns
  * existence checks, row locks, claim probes, {@link SetRejection} mapping and the {@link Venues}
  * write, DB UNIQUE constraints the backstop. {@link VenueOwnership#assertOwns} runs first on every
  * write (invariant #13). Which writes ask the claim question, and why: RESPONSIBILITIES.md §venue.

@@ -1,4 +1,4 @@
-package ai.riviera.platform;
+package ai.riviera.platform.remodel.adapter.in;
 
 import java.time.Instant;
 import java.util.ArrayList;
@@ -7,6 +7,7 @@ import java.util.List;
 import ai.riviera.platform.booking.vocabulary.RemodelClaim;
 import ai.riviera.platform.booking.vocabulary.RemodelOutcome;
 import ai.riviera.platform.booking.vocabulary.VenueChangeFee;
+import ai.riviera.platform.remodel.application.RemodelCommitOutcome;
 import ai.riviera.platform.venue.vocabulary.LockedSet;
 import ai.riviera.platform.venue.vocabulary.MoneyView;
 

@@ -1,4 +1,4 @@
-package ai.riviera.platform;
+package ai.riviera.platform.remodel.adapter.in;
 
 import java.util.List;
 
@@ -23,7 +23,7 @@ import ai.riviera.platform.venue.vocabulary.VenueId;
 
 /**
  * The remodel preview: a dry run of the bulk beach-map save naming what it would do to every live
- * claim, without writing. At the edge because it composes {@code venue} (the disturbed sets and
+ * claim, without writing. Here because it composes {@code venue} (the disturbed sets and
  * their walk-in holds) and {@code booking} (their live bookings' classification), which may not see
  * each other (ADR-0020). Ports assert ownership (invariant #13): a non-owner is {@code 403} via
  * {@code ApiErrorHandler}; {@code NO_SUCH_VENUE} → {@code 404}, {@code STALE_WRITE} → {@code 409}.

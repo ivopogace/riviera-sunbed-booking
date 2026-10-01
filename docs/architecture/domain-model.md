@@ -30,11 +30,13 @@ ports or events (invariant #11).
 The **remaining** modules are not drawn because no domain module collaborates with them: `shared`
 (the closed kernel of edge types, registered as Modulith's shared module); the closed read model
 `itinerary` (no table; it only reads `venue::api` + `availability::api` for the stay verdict per
-venue, improvement plan B4, and nothing reads it); and the closed ADR-0017 mechanisms, `challenge`
-(proof of work, owns `challenge_registry`) and `audit` (the admin audit trail, owns
-`admin_audit_record`), both reached from the platform edge through a port. `monitoring` (no table)
-is not drawn either: `booking` and `notification` reach only its `vocabulary` (metric names, the MDC
-task decorator), never a port or an event.
+venue, improvement plan B4, and nothing reads it); the closed `remodel` composition (no table; it
+composes `venue::api` with `booking::api` for the beach-map remodel preview and commit, ADR-0028,
+and nothing reads it); and the closed ADR-0017 mechanisms, `challenge` (proof of work, owns
+`challenge_registry`) and `audit` (the admin audit trail, owns `admin_audit_record`), both reached
+from the platform edge through a port. `monitoring` (no table) is not drawn either: `booking` and
+`notification` reach only its `vocabulary` (metric names, the MDC task decorator), never a port or
+an event.
 
 ```mermaid
 graph TB
@@ -109,7 +111,7 @@ and the fences: `SecurityConfig` and the filter chain (`RateLimitFilter`,
 `ChallengeVerificationFilter`, `AdminAuditFilter`; the correlation-id filter is `monitoring`'s), the session principals
 and their revocation, the SSO gateways, the error contract (`ApiErrorHandler`, `ApiProblem`), and
 the controllers — auth, SSO, my-account, account recovery, my-erasure, admin-operator,
-operator-account, remodel preview and commit, and the profile-guarded mock SSO IdP.
+operator-account, and the profile-guarded mock SSO IdP.
 
 Two consequences a reader of §1 would otherwise miss: `operator` has **no controllers of its own**
 and `customer` only the admin erasure one — everything a person does with their own account is an

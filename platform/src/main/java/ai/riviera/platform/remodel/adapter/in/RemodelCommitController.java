@@ -1,4 +1,4 @@
-package ai.riviera.platform;
+package ai.riviera.platform.remodel.adapter.in;
 
 import java.util.List;
 
@@ -16,6 +16,8 @@ import ai.riviera.platform.operator.api.OperatorDirectory;
 import ai.riviera.platform.booking.vocabulary.PreviewToken;
 import ai.riviera.platform.booking.vocabulary.RefundConfirmation;
 import ai.riviera.platform.operator.vocabulary.OperatorId;
+import ai.riviera.platform.remodel.application.RemodelCommitOutcome;
+import ai.riviera.platform.remodel.application.RemodelCommitService;
 import ai.riviera.platform.shared.ApiProblem;
 import ai.riviera.platform.shared.InvalidApiRequestException;
 import ai.riviera.platform.venue.vocabulary.LayoutCell;
@@ -23,12 +25,12 @@ import ai.riviera.platform.venue.vocabulary.LayoutRejection;
 import ai.riviera.platform.venue.vocabulary.VenueId;
 
 /**
- * The remodel commit: the bulk beach-map save that also settles the claims its layout disturbs, at
- * the edge as it composes {@code venue}'s write with {@code booking}'s moves, refunds, releases and
+ * The remodel commit: the bulk beach-map save that also settles the claims its layout disturbs,
+ * composing {@code venue}'s write with {@code booking}'s moves, refunds, releases and
  * declines (ADR-0020; {@link RemodelCommitService} is the gate). Committed → {@code 200} with the
  * receipt; {@code 409 STALE_PREVIEW}, {@code REMODEL_REFUSED} and {@code REFUND_NOT_CONFIRMED}
  * carry the fresh {@code preview}, token included; a non-owner → {@code 403} via
- * {@code ApiErrorHandler}. Only {@code 200} writes. Outcomes: RESPONSIBILITIES.md §Platform edge.
+ * {@code ApiErrorHandler}. Only {@code 200} writes. Outcomes: RESPONSIBILITIES.md §remodel.
  */
 @RestController
 @RequestMapping("/api/venues")
