@@ -1,4 +1,4 @@
-package ai.riviera.platform;
+package ai.riviera.platform.monitoring.adapter.in;
 
 import java.io.IOException;
 import java.util.UUID;
