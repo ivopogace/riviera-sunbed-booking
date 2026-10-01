@@ -56,6 +56,7 @@ describe('console glyphs', () => {
         'app-requests-glyph',
         'app-reviews-glyph',
         'app-search-glyph',
+        'app-venue-changes-glyph',
         'app-venue-glyph',
         'app-venues-glyph',
       ].sort(),

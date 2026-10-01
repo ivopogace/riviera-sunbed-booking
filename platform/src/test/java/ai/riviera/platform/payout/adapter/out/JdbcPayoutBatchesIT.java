@@ -19,9 +19,9 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * Verifies the {@code payout} batch persistence adapter against real Postgres (Testcontainers):
- * the status transition is guarded on the expected prior status <em>in the one statement</em>, so a
- * caller acting on a stale read cannot regress a batch (invariant #9), and the row it returns is
- * the row as persisted. JDBC-only (invariant #1); skipped where Docker is absent.
+ * the status transition is guarded on the expected prior status and total <em>in the one statement</em>,
+ * so a caller acting on a stale read cannot regress a batch or freeze a total it never saw
+ * (invariant #9), and the row it returns is the row as persisted. JDBC-only (invariant #1); skipped where Docker is absent.
  */
 @EnabledIfDockerAvailable
 @Import(TestcontainersConfiguration.class)
@@ -61,7 +61,7 @@ class JdbcPayoutBatchesIT {
 	void staleTransitionCannotRegressStatus() {
 		long batchId = newBatch("2098-W48", BatchStatus.SETTLED);
 
-		Optional<PayoutBatch> stale = batches.transition(batchId, BatchStatus.DRAFT, BatchStatus.REPORTED);
+		Optional<PayoutBatch> stale = batches.transition(batchId, BatchStatus.DRAFT, BatchStatus.REPORTED, 4000);
 
 		assertTrue(stale.isEmpty(), "a transition whose expected status no longer holds must write nothing");
 		assertEquals(BatchStatus.SETTLED, statusOf(batchId), "a settled batch is never regressed by a stale write");
@@ -71,7 +71,7 @@ class JdbcPayoutBatchesIT {
 	void matchingTransitionReturnsThePersistedRow() {
 		long batchId = newBatch("2098-W47", BatchStatus.DRAFT);
 
-		PayoutBatch moved = batches.transition(batchId, BatchStatus.DRAFT, BatchStatus.REPORTED).orElseThrow();
+		PayoutBatch moved = batches.transition(batchId, BatchStatus.DRAFT, BatchStatus.REPORTED, 4000).orElseThrow();
 
 		assertEquals(BatchStatus.REPORTED, moved.status(), "the returned row carries the new status");
 		assertEquals(4000L, moved.totalNetMinor(), "and the rest of the row as persisted");
@@ -80,7 +80,17 @@ class JdbcPayoutBatchesIT {
 
 	@Test
 	void anUnknownBatchTransitionsNothing() {
-		assertTrue(batches.transition(999_999_999L, BatchStatus.DRAFT, BatchStatus.REPORTED).isEmpty(),
+		assertTrue(batches.transition(999_999_999L, BatchStatus.DRAFT, BatchStatus.REPORTED, 4000).isEmpty(),
 				"no row, no write, no phantom result");
+	}
+
+	@Test
+	void aStaleTotalTransitionsNothing() {
+		long batchId = newBatch("2098-W46", BatchStatus.DRAFT);
+
+		Optional<PayoutBatch> stale = batches.transition(batchId, BatchStatus.DRAFT, BatchStatus.REPORTED, 3500);
+
+		assertTrue(stale.isEmpty(), "a total other than the one the row holds must write nothing (#1320)");
+		assertEquals(BatchStatus.DRAFT, statusOf(batchId), "the batch stays DRAFT");
 	}
 }

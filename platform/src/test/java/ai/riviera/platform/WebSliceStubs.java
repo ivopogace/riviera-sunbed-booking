@@ -11,6 +11,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.OptionalInt;
+import java.util.OptionalLong;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
@@ -789,7 +790,7 @@ class WebSliceStubs {
 			}
 
 			@Override
-			public BatchStatusOutcome mark(long batchId, BatchStatus target) {
+			public BatchStatusOutcome mark(long batchId, BatchStatus target, OptionalLong reviewedTotalNetMinor) {
 				return new BatchStatusOutcome.NotFound();
 			}
 		};

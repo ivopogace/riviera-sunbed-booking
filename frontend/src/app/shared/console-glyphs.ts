@@ -145,6 +145,28 @@ export class VenueGlyph {}
 })
 export class PayoutsGlyph {}
 
+/** Venue changes: two arrows trading places, a layout change. */
+@Component({
+  selector: 'app-venue-changes-glyph',
+  host: HOST,
+  template: `<svg
+    class="shrink-0"
+    aria-hidden="true"
+    width="18"
+    height="18"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    stroke-width="1.9"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+  >
+    <path d="m8 3-4 4 4 4M4 7h16" />
+    <path d="m16 13 4 4-4 4M20 17H4" />
+  </svg>`,
+})
+export class VenueChangesGlyph {}
+
 /** Operators: two people. */
 @Component({
   selector: 'app-operators-glyph',
@@ -421,6 +443,7 @@ export const CONSOLE_GLYPHS: readonly Type<unknown>[] = [
   PricingGlyph,
   VenueGlyph,
   PayoutsGlyph,
+  VenueChangesGlyph,
   OperatorsGlyph,
   CommissionsGlyph,
   EmailGlyph,

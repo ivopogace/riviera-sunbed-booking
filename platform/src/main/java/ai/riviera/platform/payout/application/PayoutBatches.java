@@ -33,9 +33,9 @@ public interface PayoutBatches {
 	Optional<PayoutBatch> findById(long id);
 
 	/**
-	 * Move the batch from {@code expected} to {@code target} in one guarded write (no stale-read
-	 * regression, invariant #9), stamping {@code updated_at}; returns the persisted row, or empty
-	 * if it is gone or already moved off {@code expected} (the caller re-reads to tell which).
+	 * Move the batch from {@code expected} at {@code expectedTotalNetMinor} to {@code target} in one guarded write
+	 * (invariant #9), stamping {@code updated_at}; returns the persisted row, or empty if it is gone, moved off
+	 * {@code expected} or refreshed to another total (the caller re-reads to tell which).
 	 */
-	Optional<PayoutBatch> transition(long id, BatchStatus expected, BatchStatus target);
+	Optional<PayoutBatch> transition(long id, BatchStatus expected, BatchStatus target, long expectedTotalNetMinor);
 }

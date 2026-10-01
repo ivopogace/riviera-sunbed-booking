@@ -11,8 +11,8 @@ import { expectPhoneRailFits, openMoreSheet, openPalette } from './support/shell
  * The admin console's rail in its two shapes. From `sm` up: a single scrolling row of underlined
  * text tabs on one hairline (`shared/tab-rail.ts`), matching the operator console's own rail
  * rather than wrapping — every tab still reachable, via one row that wears no edge mask (the tab
- * cut off at the edge is the overflow cue), hairline dividers at the group boundaries stopping nine
- * destinations reading as nine peers. Below `sm`: the phone rail — Operators · Email · Refunds
+ * cut off at the edge is the overflow cue), hairline dividers at the group boundaries stopping the
+ * destinations reading as peers. Below `sm`: the phone rail — Operators · Email · Refunds
  * as glyph-over-label slots and a More slot that names the current secondary and carries its
  * `aria-current`, so the current page is never hidden inside a closed menu; More opens the grouped
  * sheet with `Your venues` at its foot. From `sm` up the ⌘K palette is the accelerator over the rail.
@@ -54,7 +54,7 @@ test.describe('from sm up: one scrolling row', () => {
     await openConsole(page);
 
     const tabs = railTabs(page);
-    await expect(tabs).toHaveCount(9);
+    await expect(tabs).toHaveCount(10);
     const tops = await tabs.evaluateAll((els) => els.map((el) => el.getBoundingClientRect().top));
     expect(new Set(tops.map((t) => Math.round(t))).size).toBe(1);
 
@@ -102,7 +102,7 @@ test.describe('from sm up: one scrolling row', () => {
     await expect(dialog).toBeVisible();
     const field = page.getByTestId('oc-palette-search');
     await expect(field).toBeFocused();
-    await expect(dialog.getByRole('link')).toHaveCount(11);
+    await expect(dialog.getByRole('link')).toHaveCount(12);
 
     // No hit: the status line, and Enter leaves the dialog and the page alone.
     await field.fill('zzz');
@@ -146,7 +146,7 @@ test.describe('from sm up: one scrolling row', () => {
 
     const dividers = nav.locator(':scope > span[aria-hidden="true"]');
     await expect(dividers).toHaveCount(4);
-    // Operators | Email · Refunds | Photos · Reviews | Commissions · Venue changes | Privacy · Audit
+    // Operators | Email · Refunds | Photos · Reviews | Commissions · Venue changes · Payouts | Privacy · Audit
     const sequence = await nav.evaluate((el) =>
       [...el.children].map((child) => (child.tagName === 'A' ? child.textContent.trim() : '|')),
     );
@@ -161,6 +161,7 @@ test.describe('from sm up: one scrolling row', () => {
       '|',
       'Commissions',
       'Venue changes',
+      'Payouts',
       '|',
       'Privacy',
       'Audit',
@@ -226,6 +227,7 @@ test.describe('below sm: the phone rail', () => {
       'Reviews',
       'Commissions',
       'Venue changes',
+      'Payouts',
       'Privacy',
       'Audit',
       'Your venues',

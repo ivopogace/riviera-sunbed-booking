@@ -1,6 +1,7 @@
 package ai.riviera.platform.payout.application;
 
 import java.util.List;
+import java.util.OptionalLong;
 
 import ai.riviera.platform.payout.domain.BatchStatus;
 import ai.riviera.platform.payout.domain.PayoutBatch;
@@ -24,6 +25,9 @@ public interface PayoutReport {
 	/** The batches for {@code period}, ordered by venue (the report read). Empty when none generated. */
 	List<PayoutBatch> forPeriod(PeriodKey period);
 
-	/** Advance one batch's status (DRAFT→REPORTED→SETTLED); returns the typed {@link BatchStatusOutcome}. */
-	BatchStatusOutcome mark(long batchId, BatchStatus target);
+	/**
+	 * Advance one batch's status (DRAFT→REPORTED→SETTLED), only while it holds the total the admin reviewed:
+	 * {@code reviewedTotalNetMinor} is required for {@code REPORTED}, which freezes it (#1320), and ignored otherwise.
+	 */
+	BatchStatusOutcome mark(long batchId, BatchStatus target, OptionalLong reviewedTotalNetMinor);
 }

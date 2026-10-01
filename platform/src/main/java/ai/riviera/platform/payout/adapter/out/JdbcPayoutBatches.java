@@ -20,7 +20,8 @@ import ai.riviera.platform.venue.vocabulary.VenueId;
  * <p>Both writes guard on {@code status} in the one statement, so neither acts on a stale read
  * (invariant #9): {@link #upsertDraft}'s {@code ON CONFLICT … DO UPDATE} refreshes only a
  * {@code DRAFT} batch, never a {@code REPORTED}/{@code SETTLED} one, and {@link #transition} pins
- * the expected prior status in its {@code WHERE}, so a batch never moves backwards.
+ * the expected prior status and total in its {@code WHERE}, so a batch never moves backwards and never
+ * freezes a total its caller did not read.
  */
 @Repository
 class JdbcPayoutBatches implements PayoutBatches {
@@ -89,16 +90,18 @@ class JdbcPayoutBatches implements PayoutBatches {
 	}
 
 	@Override
-	public Optional<PayoutBatch> transition(long id, BatchStatus expected, BatchStatus target) {
+	public Optional<PayoutBatch> transition(long id, BatchStatus expected, BatchStatus target,
+			long expectedTotalNetMinor) {
 		return jdbc.sql("""
 				UPDATE payout_batch
 				SET status = :target, updated_at = NOW()
-				WHERE id = :id AND status = :expected
+				WHERE id = :id AND status = :expected AND total_net_minor = :expectedTotal
 				RETURNING id, venue_id, period_key, total_net_minor, currency, status
 				""")
 				.param("target", target.name())
 				.param(PARAM_ID, id)
 				.param("expected", expected.name())
+				.param("expectedTotal", expectedTotalNetMinor)
 				.query(BATCH_MAPPER)
 				.optional();
 	}

@@ -65,7 +65,7 @@ class AdminPayoutSecurityIT {
 	private static final String PERIOD = "period";
 	private static final String A_PERIOD = "2099-W30";
 	private static final String REPORTED_BODY = """
-			{"status":"REPORTED"}""";
+			{"status":"REPORTED","expectedTotalNetMinor":0}""";
 	private static final long MIRAMAR = 1L;
 
 	@Autowired

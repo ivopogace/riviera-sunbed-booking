@@ -186,7 +186,7 @@ const CLS = {
   phoneSlot: `min-h-[58px] cursor-pointer touch-manipulation flex-col justify-center gap-1 px-1 text-center text-[11px] leading-tight font-semibold text-riv-ink-soft no-underline after:-bottom-px [&_svg]:size-[21px] ${SLOT} ${EDGE_SLOT_RING}`,
   phoneBadge: 'absolute top-1.5 right-[calc(50%-26px)]',
   sheetBackdrop: `${POP_BACKDROP} sm:hidden`,
-  // Above the home indicator; capped to the viewport so nine admin rows still scroll inside the sheet on a short phone.
+  // Above the home indicator; capped to the viewport so the admin rows still scroll inside the sheet on a short phone.
   sheet: `fixed inset-x-2.5 bottom-[calc(12px+env(safe-area-inset-bottom))] max-h-[calc(100dvh-24px)] overflow-y-auto p-2.5 sm:hidden ${POP_SKIN}`,
   groupLabel:
     'mt-3 mb-1 px-3.5 text-[10.5px] font-bold tracking-[0.16em] text-riv-pop-ink-soft uppercase first:mt-0',

@@ -256,3 +256,23 @@ export interface AdminDayRefundResultView {
 /** The RFC-7807 `code`s an admin day refund can answer with, plus the two the client adds. */
 export type AdminDayRefundErrorCode =
   'DAY_ATTENDED' | 'DAY_ALREADY_REFUNDED' | 'BOOKING_NOT_FOUND' | 'UNAUTHORIZED' | 'UNKNOWN';
+
+/** Where a payout batch stands, strictly forward; settlement itself is a manual BKT transfer (ADR-0002). */
+export type PayoutBatchStatus = 'DRAFT' | 'REPORTED' | 'SETTLED';
+
+/**
+ * One venue's payout batch for an ISO-week period; mirrors the backend `PayoutBatchView`.
+ * `totalNetMinor` is the signed net owed in integer minor units (#5), negative when deductions exceed
+ * accruals. A `DRAFT` total still follows the ledger; `REPORTED` freezes it.
+ */
+export interface PayoutBatchView {
+  readonly id: number;
+  readonly venueId: number;
+  readonly periodKey: string;
+  readonly totalNetMinor: number;
+  readonly currency: string;
+  readonly status: PayoutBatchStatus;
+}
+
+/** Why a batch status change was refused; `TOTAL_CHANGED` means a refresh moved the total since it was read. */
+export type PayoutMarkError = 'TOTAL_CHANGED' | 'ILLEGAL_TRANSITION' | 'NO_SUCH_BATCH' | 'UNKNOWN';

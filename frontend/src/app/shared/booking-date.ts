@@ -148,6 +148,18 @@ export function endOfWeek(isoDate: string): string {
 }
 
 /**
+ * The ISO-8601 week containing `isoDate`, as `IYYY-Www` (`2026-W25`): the payout settlement period's
+ * key and the `<input type="week">` value. The week belongs to the year of its Thursday, so the first
+ * days of January can fall in the previous year's week 52 or 53.
+ */
+export function isoWeekKey(isoDate: string): string {
+  const thursday = parseIsoDate(addDays(isoDate, 3 - mondayIndex(isoDate)));
+  const year = thursday.getUTCFullYear();
+  const dayOfYear = (thursday.getTime() - Date.UTC(year, 0, 1)) / 86_400_000;
+  return `${year}-W${String(Math.floor(dayOfYear / 7) + 1).padStart(2, '0')}`;
+}
+
+/**
  * The month containing `isoDate` as Monday-first weeks of seven cells: the day's ISO string, or
  * `undefined` outside the month — **blank, not borrowed from neighbours**, so one request for this
  * month's own bounds answers the grid and never nears the server's 62-day window cap.

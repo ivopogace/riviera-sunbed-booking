@@ -1,6 +1,7 @@
 package ai.riviera.platform.payout;
 
 import java.time.LocalDate;
+import java.util.OptionalLong;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -12,14 +13,19 @@ import ai.riviera.platform.EnabledIfDockerAvailable;
 import ai.riviera.platform.LockOrderRace;
 import ai.riviera.platform.PausingPorts;
 import ai.riviera.platform.TestcontainersConfiguration;
+import ai.riviera.platform.payout.application.BatchStatusOutcome;
 import ai.riviera.platform.payout.application.PayoutReport;
+import ai.riviera.platform.payout.domain.BatchStatus;
+import ai.riviera.platform.payout.domain.PayoutBatch;
 import ai.riviera.platform.payout.domain.PeriodKey;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 
 /**
  * Two {@code generate} runs for one period serialize (#1309): a run paused after its ledger read cannot write its
- * older total over a later run's, so the {@code DRAFT} batch ends at the ledger's net.
+ * older total over a later run's, so the {@code DRAFT} batch ends at the ledger's net. A {@code mark} blocked behind
+ * a refresh sees the committed total and is refused, never freezing a total the admin did not review (#1320).
  */
 @EnabledIfDockerAvailable
 @Import({TestcontainersConfiguration.class, PausingPorts.class})
@@ -52,6 +58,28 @@ class PayoutGenerateRaceIT {
 				.as("the ledger now nets 800").isEqualTo(800L);
 	}
 
+	@Test
+	void aMarkBlockedBehindARefreshSeesTheCommittedTotal() throws Exception {
+		PeriodKey period = PeriodKey.of("2096-W12");
+		long venue = newVenue();
+		long booking = newBooking(venue);
+		entry(venue, booking, "ACCRUAL", 1000, period);
+		long batchId = payoutReport.generate(period).getFirst().id();
+		entry(venue, booking, "REVERSAL", 300, period);
+
+		LockOrderRace.Outcome<?, BatchStatusOutcome> outcome = LockOrderRace.race(jdbc, "upsertDraft",
+				args -> period.equals(args[1]),
+				() -> payoutReport.generate(period),
+				() -> payoutReport.mark(batchId, BatchStatus.REPORTED, OptionalLong.of(1000)));
+
+		assertThat(outcome.racerWaited()).as("the mark waited on the refresh's row lock").isTrue();
+		PayoutBatch current = assertInstanceOf(BatchStatusOutcome.TotalChanged.class, outcome.raced()).current();
+		assertThat(current.status()).as("the batch stays DRAFT").isEqualTo(BatchStatus.DRAFT);
+		assertThat(current.totalNetMinor()).as("at the refreshed total").isEqualTo(700L);
+		assertThat(jdbc.sql("SELECT status FROM payout_batch WHERE id = :id").param("id", batchId)
+				.query(String.class).single()).isEqualTo("DRAFT");
+	}
+
 	private long newVenue() {
 		return jdbc.sql("""
 				INSERT INTO venue (name, beach, booking_mode, commission_bps, payout_currency)
@@ -75,12 +103,16 @@ class PayoutGenerateRaceIT {
 	}
 
 	private void entry(long venueId, long bookingId, String type, long net) {
+		entry(venueId, bookingId, type, net, PERIOD);
+	}
+
+	private void entry(long venueId, long bookingId, String type, long net, PeriodKey period) {
 		jdbc.sql("""
 				INSERT INTO payout_ledger_entry (venue_id, booking_id, entry_type, gross_minor, commission_minor, net_minor,
 				                                 currency, period_key, reason)
 				VALUES (:v, :b, :type, :net, 0, :net, 'EUR', :period, :reason)
 				""")
 				.param("v", venueId).param("b", bookingId).param("type", type).param("net", net)
-				.param("period", PERIOD.value()).param("reason", "REVERSAL".equals(type) ? "POLICY" : null).update();
+				.param("period", period.value()).param("reason", "REVERSAL".equals(type) ? "POLICY" : null).update();
 	}
 }
