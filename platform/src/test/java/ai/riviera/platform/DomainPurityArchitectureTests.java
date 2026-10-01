@@ -22,8 +22,9 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 /**
  * ADR-0018's principle as a fitness function: a class in a module's {@code domain/} package holds a
  * statement that survives throwing away the database, the HTTP API, Stripe and Spring. So it may
- * name the JDK and other modules' {@code vocabulary/} and {@code domain/} types — the ids, value
- * objects and pure rules its own statement is written in — and nothing else. Spring, the JDBC API,
+ * name the JDK and {@code vocabulary/} and {@code domain/} types — the ids, value objects and pure
+ * rules its own statement is written in — and nothing else. This test admits any module's; another
+ * module's {@code domain/} is that module's internals, which {@code verify()} refuses. Spring, the JDBC API,
  * the Stripe SDK, any {@code adapter/}, and any port or repository interface (every one of which
  * lives in an {@code api/}, {@code spi/} or {@code application/} package under ADR-0007) are out.
  *

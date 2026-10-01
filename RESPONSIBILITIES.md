@@ -222,7 +222,7 @@ move is my ordinary writes in `venue`'s commit transaction — every day claimed
 any is released on the old, never a swap of my own — so a racing reserve wins or loses as usual.
 
 - **Staff tap-to-mark** (`POST`/`DELETE /api/venues/{venueId}/sets/{setId}/availability`) is my
-  second writer: `StaffAvailabilityService` asserts the operator owns the path venue first
+  other write path: `StaffAvailabilityService` asserts the operator owns the path venue first
   (invariant #13 — why I depend on `operator::api`), refuses a past `Europe/Tirane` date
   (`DATE_IN_PAST` → `422`), then marks with the claim's `ON CONFLICT DO NOTHING`; release deletes
   only a `STAFF_MARKED` row.
@@ -634,7 +634,8 @@ opaque credential hash) behind register / sign-in. The two are **never linked** 
 registration never auto-claims a guest email's past bookings; back-linking them is a **permanent
 non-goal** (design D-2, D-6). Own **right-to-erasure**: tombstone account + guest-contact PII in
 place, delete the transient SSO/token children, retain booking/payment/payout rows under the
-**statutory-retention exception** (ADR-0010); the edge authenticates and revokes sessions.
+**statutory-retention exception** (ADR-0010); the edge authenticates, and the self-service path
+revokes sessions (the admin path leaves them to the credential stamp, #1334).
 
 Own the **retention policy** — the **retention window**, which guest contacts have no **retention
 basis** left, and the sweep that tombstones them; `booking` supplies only the recency *fact*. Both

@@ -20,7 +20,7 @@ through those fenced venue reads, so no unvetted upload reaches a tourist ahead 
 decision as before. The human gate stands; it has moved from "before the upload can exist" to
 "before tourists can see it".
 
-*Corrected 2026-10-01 (#1342):* the photos do not surface only through those fenced reads. The
+*Amended 2026-10-01 (#1342):* the photos do not surface only through those fenced reads. The
 serving read `GET /api/venues/{id}/photos/{hash}` is `permitAll` and unfenced
 (`VenuePhotoController`, `VenuePhotoService#serve`; `RESPONSIBILITIES.md` § `venue`), and the
 upload response hands back that URL, so a PENDING-owned venue's photo is fetchable by anyone who

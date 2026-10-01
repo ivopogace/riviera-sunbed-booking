@@ -12,7 +12,7 @@ the recording `MockMailer` everywhere, and the mock was barred from prod (`MockM
 Real mail was on the critical path three times over: the product spec promises a booking-code
 email at checkout (the code is the venue-arrival credential, invariant #7); account recovery
 (verify / reset) was dead in prod until a transport existed; and dormant-account retention needs
-advance notice by email. *(Past-tensed 2026-10-01, #1342: `SmtpMailer` has since shipped behind
+advance notice by email. *(Amended 2026-10-01, #1342: `SmtpMailer` has since shipped behind
 the `mailer` profile.)*
 
 The legal posture frames the choice. The controller is an **Albanian sh.p.k.** serving EU data
@@ -105,10 +105,10 @@ own IP warm-up, blocklists, DKIM rotation; operationally wrong for a small team.
    equalization.
 6. **One platform sending domain.** SPF + DKIM (2048-bit) + DMARC (`p=none` → tighten) on the
    platform domain; shared IP pool. Mail "from" an operator's own domain is out until an operator
-   demands it; a per-tenant `Reply-To` can cover the near need if one arises. *(Softened
+   demands it; a per-tenant `Reply-To` can cover the near need if one arises. *(Amended
    2026-10-01, #1342: no `Reply-To` is set in code.)*
 7. **Bounces/complaints are consumed and suppressed.** A signature-verified webhook endpoint
-   records hard bounces + complaints *(pending #370, noted 2026-10-01, #1342: no such endpoint
+   records hard bounces + complaints *(pending #372, itself blocked on #370; noted 2026-10-01, #1342: no such endpoint
    exists and `EmailSuppressions#suppress` has no production caller, so the list is written only
    by tests)*; suppressed addresses are not sent to again — on every path but one, deliberately:
    on the **recovery vehicle**, a **transient** failure of the suppression *lookup itself* sends

@@ -3,7 +3,7 @@
 - **Status:** Proposed (flips to Accepted when the preconditions below are met)
 - **Date:** 2026-07-22
 - **Supersedes:** would supersede ADR-0002 on acceptance (the gateway and the payout leg; the
-  collect-only model itself is **reaffirmed**, not reversed). *(Reworded 2026-10-01, #1342: this
+  collect-only model itself is **reaffirmed**, not reversed). *(Amended 2026-10-01, #1342: this
   ADR is Proposed, so it supersedes nothing yet.)*
 
 ## Context
@@ -69,7 +69,7 @@ Provider landscape (researched 2026-07-22):
    > rules, and the gateway-neutral rewording must carry them there, not into #8.
 3. **Payout currency is EUR — resolving the CLAUDE.md provisional decision** (EUR vs ALL per
    venue). The ledger is already EUR-native end-to-end (invariant #5; `payout` stores EUR
-   minor units, `JdbcPayoutLedger` is EUR by convention, not constraint — *corrected
+   minor units, `JdbcPayoutLedger` is EUR by convention, not constraint — *amended
    2026-10-01 (#1342):* `venue.payout_currency` accepts any ISO code), so **no FX ever enters
    the app**. Each venue supplies a **EUR-capable IBAN** (standard at Albanian banks; SEPA
    makes the transfer cheap). A venue that wants lek converts at its own bank — outside the

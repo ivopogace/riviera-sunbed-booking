@@ -56,7 +56,7 @@ NOT DISTINCT) so redelivery can't double; a refund posts a `REVERSAL`, a stay's 
 (Major).
 
 ### RV-BE-9. Per-venue authorization / BOLA (#13) — **Blocker**
-Any venue-scoped surface (`/api/venues/{venueId}/**`, payout ledger, staff bookings, beach-map
+Any operator-gated venue-scoped surface (`/api/venues/{venueId}/**`, payout ledger, staff bookings, beach-map
 edit, staff availability, weather refund, the operator's venue day refund) calls `operator`'s
 `assertOwns` in the **application service** (pinned by `CrossVenueDenialIT`). Denial is `403 NOT_VENUE_OWNER`
 **before any existence check** — a 404 for an unowned venue leaks existence. `/api/admin/**`

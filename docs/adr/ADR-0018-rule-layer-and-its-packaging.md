@@ -18,7 +18,7 @@ written. `itinerary` holds a pure domain rule (`itinerary/domain/StayFit`), so i
 with a rule layer. The decision and § 5's verdict hold: the thirteen are modules, the platform is one
 bounded context.
 
-*Citations re-read 2026-10-01 (#1342):* the line references into `RefundPolicy`, `RequestWindows`,
+*Amended 2026-10-01 (#1342), citations re-read:* the line references into `RefundPolicy`, `RequestWindows`,
 `ReviewGate`, `BookingCutoff`, `CancellationPolicy`, `PayoutBatch` and ADR-0007, and the quotes from
 `ReviewGate` and `BookingCutoff`, are corrected in place to the current text; what they evidence is
 unchanged.
@@ -87,11 +87,10 @@ ceremony, and in at least one case a trap the codebase has already refused by na
 general-sounding predicate would be a trap" (`booking/domain/BookingStatus.java`). Naming a
 rule is not free: a name that reads more general than the rule is worse than an inline condition.
 
-*Clarified 2026-10-01 (#1342):* "stays where it is used" means a one-caller rule **need not** be
-extracted, not that it must not be. One is extracted when it earns a name or a test of its own:
-`AggregateRating`, `MoveRanking`, `StayFit`, `ReviewText` and `MoveReminderWindow` each have one
-caller and sit in `domain/`. RV-BE-19 reads the corollary the same way — flagging an inline
-one-caller rule is a false finding; extracting one is not a violation.
+*Amended 2026-10-01 (#1342):* the review overlay reads "stays where it is used" as "need not be
+extracted": RV-BE-19 makes flagging an inline one-caller rule a false finding. The tree holds
+one-caller rules in `domain/` too (`AggregateRating`, `MoveRanking`, `StayFit`, `ReviewText`,
+`MoveReminderWindow`); this ADR does not rule on them.
 
 ### 2. Purity decides the package; both packages are the rule layer
 
@@ -164,7 +163,7 @@ boundary; it also normalises to the scale the columns store, so a written value 
 distinction is that a bound constrains one row's field and a set invariant constrains the
 relationship *between* rows; only the second is beyond Java's reach.
 
-*Corrected 2026-10-01 (#1342):* the list above is not exhaustive. Other Java statements mirror a
+*Amended 2026-10-01 (#1342):* the list above is not exhaustive. Other Java statements mirror a
 CHECK the same way, among them `PaymentStatus` ↔ `payment_status_check`, `BatchStatus` ↔
 `payout_batch_status_check`, `EntryType` ↔ `payout_entry_type_check`, `RefundScope` ↔
 `payment_refund_scope_check` and `VenueFieldValidation.MAX_BPS` ↔ `venue_commission_bps_check`;
@@ -182,6 +181,9 @@ package, or any port/repository interface. It may name the JDK and other modules
 and `domain/` types — purity here means no framework and no outside layer, never module isolation.
 `DomainPurityArchitectureTests` is that rule; it passed against all 18 files unchanged, and its
 negative cases are proven against `ai.riviera.domainpurityfixture`.
+*Amended 2026-10-01 (#1342):* another module's `domain/` is that module's internals, which
+`verify()` refuses to a closed module; the purity test admits it, but the effective rule is the JDK,
+the class's own module's `domain/`, and any module's `vocabulary/` (`riviera-modulith`).
 
 ### 5. The twelve are **modules**; the platform is one bounded context
 
@@ -191,7 +193,7 @@ fires: one *set* in `venue`, `availability`, `booking` and `notification`; one *
 duplicated id records are `record X(long value)` converted by identity, each documented as existing
 to keep the Modulith graph acyclic (`operator/vocabulary/VenueRef`'s type doc). The boundaries are
 correct **module** boundaries — deep, well-named, one owner per table — and nothing here argues for
-removing or merging any of them. *Corrected 2026-10-01 (#1342):* the audit's count missed
+removing or merging any of them. *Amended 2026-10-01 (#1342):* the audit's count missed
 `payment.vocabulary.BookingRef`, a copied id record of the same kind (ADR-0007, *Note*).
 
 So: **the twelve are modules.** ADR-0007's "bounded context" wording is corrected in that document
@@ -284,7 +286,7 @@ fitness function can hold, rather than 18 files that happen to comply.
 - The `domain/` purity rule now holds `domain/` to the JDK and published ids, values and rules, so
   a rule that genuinely needs a `Clock` or a port has one place to go: `application/`, per §2.
 
-*Residues closed (verified 2026-10-01, #1342):* the first two bullets no longer hold.
+*Amended 2026-10-01 (#1342), residues closed:* the first two bullets no longer hold.
 `PayoutBatch`'s Javadoc no longer calls it an aggregate root; `CLAUDE.md`'s table heads its column
 "Sole writer of" and says there are no aggregate-root classes; `domain-model.md` draws no
 `«aggregate root»` box; and `README.md` no longer says "Nine Spring-Modulith bounded contexts".

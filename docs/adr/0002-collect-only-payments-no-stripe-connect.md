@@ -1,6 +1,6 @@
 # ADR-0002: Collect-only payments — Stripe, no Connect, manual BKT payout
 
-- **Status:** Accepted. *Corrected 2026-10-01 (#1342):* supersession proposed by ADR-0009 (not
+- **Status:** Accepted. *Amended 2026-10-01 (#1342):* supersession proposed by ADR-0009 (not
   accepted).
 - **Date:** 2026-06-25
 

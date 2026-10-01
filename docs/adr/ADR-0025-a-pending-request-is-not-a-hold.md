@@ -47,7 +47,7 @@ still "releases" would delete another guest's claim.
    declines its pending requests rather than moving them, whatever the remodel zone: there is no claim
    to re-seat and nothing for the freeze to pin, so the guest re-requests on the new layout. A failed
    payment set-up after accept reverts to pending *and* releases the claim the booking held when reverted.
-   *Corrected 2026-10-01 (#1342):* "the freeze" is the remodel's `FROZEN` zone (`RemodelZone`). A
+   *Amended 2026-10-01 (#1342):* "the freeze" is the remodel's `FROZEN` zone (`RemodelZone`). A
    pending request still counts as live for the layout-edit lock:
    `JdbcBookingPresence.LIVE_STATUSES` derives from `BookingStatus.canStillBeHonoured`, which
    includes `PENDING_REQUEST`, and `venue`'s `LiveClaims` asks it before a layout write touches the

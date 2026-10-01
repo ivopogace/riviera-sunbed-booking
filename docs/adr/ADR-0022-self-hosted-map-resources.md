@@ -57,7 +57,7 @@ a first load still fetches only the tiles in view — see the amendment log.)*
 5. **Two machine locks hold the self-hosting rule.** `MapStyleSelfHostedTest` parses the shipped style and
    fails on any absolute host; the mocked Playwright suite runs the real MapLibre adapter against
    the committed resources and fails on any request that leaves our origin.
-   *Corrected 2026-10-01 (#1342):* that guard lives only in the Discover specs
+   *Amended 2026-10-01 (#1342):* that guard lives only in the Discover specs
    (`frontend/e2e/discover-map.e2e.ts`); the operator pin placer renders the same map without it.
    Extending it is tracked in #1339.
 6. **Attribution** "© OpenMapTiles © OpenStreetMap contributors" is rendered permanently on the

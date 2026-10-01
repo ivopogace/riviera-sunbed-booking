@@ -18,7 +18,7 @@ Each set carries a **pool** flag — **online** or **walk-in** — and the two p
 front-row sets reserved exclusively for app bookings). An online booking can only
 ever target an online-pool set. (Invariant #3; collision-prevention Layer 1.)
 
-*Corrected 2026-10-01 (#1342):* physical separation is operational guidance to venues, not
+*Amended 2026-10-01 (#1342):* physical separation is operational guidance to venues, not
 something the code knows. The code enforces a per-set pool flag, a sales-channel attribute, at
 reserve time (`ReserveFences`) and again at the availability claim (`JdbcAvailabilityClaim`). A
 set switched to walk-in refuses new online reserves but keeps its booked dates claimed

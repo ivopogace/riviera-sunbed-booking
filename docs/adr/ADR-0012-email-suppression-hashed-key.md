@@ -29,7 +29,7 @@ plus the cleartext `domain` part; entries still survive erasure, deliberately.**
   then keys the row on `HMAC-SHA-256(pepper, normalized-address)` (lower-case hex).
   `isSuppressed` applies the same normalize-then-hash before lookup. Both live in the one
   `adapter/out` (`JdbcEmailSuppressions`), so the bounce feed inherits them.
-  *Corrected 2026-10-01 (#1342):* the stored key carries a scheme tag, `v1:` followed by the
+  *Amended 2026-10-01 (#1342):* the stored key carries a scheme tag, `v1:` followed by the
   64 lower-case hex digits, pinned by V33's `CHECK (email_key ~ '^v1:[0-9a-f]{64}$')` as the hook
   for a future scheme migration.
 - The **pepper** is an env-managed, long-lived secret (fail-at-boot in prod when unset) held
@@ -74,7 +74,7 @@ plus the cleartext `domain` part; entries still survive erasure, deliberately.**
 - Every caller takes raw addresses and hashes at the chokepoint: the reinstate endpoint today, and
   the `MANUAL` suppression path and the bounce-feed webhook when they land; writing pre-hashed
   values from anywhere else is a defect. Ops never needs the pepper to *act*, only to
-  investigate. *(Reworded 2026-10-01, #1342: only the reinstate endpoint exists so far.)*
+  investigate. *(Amended 2026-10-01, #1342: only the reinstate endpoint exists so far.)*
 - The reinstate endpoint answers with the row's technical facts (`reason`, `first_suppressed_at`,
   `last_event_at`, and on a repeat call the original `reinstatedAt`), so the check-then-lift
   workflow is one call and no separate lookup endpoint exists.

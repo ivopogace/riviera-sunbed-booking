@@ -57,7 +57,7 @@ segment a venue?" a question every component downstream must be able to answer.
    `venueId === undefined` early returns behind them.
 6. **The guard runs before the session guard.** A malformed segment is malformed whoever is
    asking, so a signed-out visitor signs in *for the page* rather than for a link that can never
-   work. *Corrected 2026-10-01 (#1342):* it takes priority over the session guard rather than
+   work. *Amended 2026-10-01 (#1342):* it takes priority over the session guard rather than
    running first. Angular runs every `canActivate` guard in the array and acts on the first
    non-`true` result in array order, so `venueIdGuard`'s redirect wins by sitting first.
 7. **The literal route sits above `operator/:venueId`.** `venue-not-found` is itself a legal

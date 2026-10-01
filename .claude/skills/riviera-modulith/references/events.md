@@ -27,7 +27,8 @@ inside the transaction. Listen with `@ApplicationModuleListener` in the subscrib
 `adapter/in`, or, for a listener that must drain on its own bounded executor (the mail and refund
 bulkheads), `@Async("<executor>")` + `@TransactionalEventListener`. That spelling deliberately
 drops the composite's `@Transactional(propagation = REQUIRES_NEW)`: no connection is pinned across
-the SMTP or Stripe call (`BookingConfirmationMailListener`; `RESPONSIBILITIES.md` §`booking`).
+the SMTP or Stripe call (`RESPONSIBILITIES.md` §`notification` for the mail listeners, §`booking`
+for the refund listeners).
 Listeners must be idempotent (dedupe on `BookingId`): the registry re-delivers an outstanding
 publication on restart.
 

@@ -63,7 +63,7 @@ hexagon beneath is at most `application` / `domain` / `adapter`.
 ```
 No `application/`, no `domain/`. If a thin module grows real logic, it **graduates** to the full
 template — a visible, reviewable refactor, which is a feature, not a cost.
-*Corrected 2026-10-01 (#1342):* the sketch gained `adapter/in/`. A thin module carries one when it
+*Amended 2026-10-01 (#1342):* the sketch gained `adapter/in/`. A thin module carries one when it
 serves its own endpoint, as `audit` does (`audit/adapter/in/AdminAuditController`).
 
 ### Full template — everything else
@@ -80,7 +80,7 @@ serves its own endpoint, as `audit` does (`audit/adapter/in/AdminAuditController
     out/               driven adapters: JDBC repositories, gateways, code generators
   package-info.java
 ```
-*Corrected 2026-10-01 (#1342):* `domain/` read "aggregates, value objects, policies, enums" until
+*Amended 2026-10-01 (#1342):* `domain/` read "aggregates, value objects, policies, enums" until
 ADR-0018 §6 dropped the aggregate-root vocabulary; its rules are the choices, calculations and
 lifecycles of ADR-0018 §1.
 
@@ -126,7 +126,7 @@ move the port). The classification rule is mechanical, so the cost is ~zero for 
 - `adapter.*` may depend on `application`/`domain`; `application`/`domain` must not depend on
   `adapter` (hexagon direction).
 - `api`/`spi`/`vocabulary`/`events` are `@NamedInterface` and top-level (not nested under
-  `application`). *Corrected 2026-10-01 (#1342):* the reason is this repo's arithmetic, not
+  `application`). *Amended 2026-10-01 (#1342):* the reason is this repo's arithmetic, not
   Spring Modulith's. Modulith finds a `@NamedInterface` package at any depth; it is
   `ArchitectureTestSupport.surfaceOf`, keyed on the segment directly under the module, that would
   not see a nested surface, so `PublishedSurfacePlacementArchitectureTests` would not check it.
@@ -149,7 +149,7 @@ and the thin template gets applied inconsistently in review.
 - **Spring-Modulith-flat (root = public API, everything else `internal/`).** Rejected: deletes the
   package-level `api`/`spi` distinction. `venue.spi.SetAvailabilityLookup` is a live inversion
   with its own grant; flat would bury it at the module root marked only by an annotation argument.
-  *Corrected 2026-10-01 (#1342):* the option is base-package-as-API, not Spring Modulith's own
+  *Amended 2026-10-01 (#1342):* the option is base-package-as-API, not Spring Modulith's own
   shape. Modulith's reference example itself declares a named-interface sub-package (`order.spi`),
   so it does not delete the distinction; the rejection above stands for the base-package layout.
 - **Assign thin/full by size ("≤1 driven adapter").** Superseded: that rule would put
@@ -181,7 +181,7 @@ never a command surface. `allowedDependencies` grants are per-surface and least-
 grant matrix is the modules' `allowedDependencies` declarations. Because the Event Publication
 Registry persists event FQCNs, an event move ships with a registry migration
 (`V18__event_publication_event_type_moves.sql` is the precedent).
-*Corrected 2026-10-01 (#1342):* the `booking` example is the 2026-07-01 tree. `booking` has since
+*Amended 2026-10-01 (#1342):* the `booking` example is the 2026-07-01 tree. `booking` has since
 published `api/` and `spi/` as well, and `payout` is granted `booking::api` (the
 `booking.api.DailyTakings` read) and `booking::spi` (to implement `booking.spi.VenueChangeFeeRate`,
 ADR-0021) beside `booking::events` and `booking::vocabulary` (`payout/package-info.java`). The
@@ -250,7 +250,7 @@ records mark exactly the bidirectional edges**, and nothing else:
 - `booking` depends on `review::spi`/`review::api` (`booking/package-info.java`,
   `allowedDependencies`) while `review` implements nothing outbound (`allowedDependencies = { "shared" }`,
   `review/package-info.java`), so `review` publishes its own `BookingRef` for the same reason.
-- *Corrected 2026-10-01 (#1342):* the audit missed `payment.vocabulary.BookingRef`, which fits the
+- *Amended 2026-10-01 (#1342):* the audit missed `payment.vocabulary.BookingRef`, which fits the
   same rule. `booking` depends on `payment::api`, `payment::vocabulary` and `payment::events`
   (`booking/package-info.java`) while `payment` depends only on `shared`
   (`payment/package-info.java`), so `payment` publishes its own `BookingRef`. The copied records are
