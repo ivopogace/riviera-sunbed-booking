@@ -12,7 +12,9 @@
   (`auth`, `web`) and an orchestration module (`remodel`) that own none of these. The considered
   option's "Modulith has no per-package opt-out" is incomplete — `explicitly-annotated` or a custom
   detection strategy does opt a package out, but leaves it checked by nothing, so the rejection
-  stands (ADR-0028's research note §3).
+  stands (ADR-0028's research note §3). Decision 1's "unless it demonstrably needs `shared`" and the
+  "not even `shared`" rule retire with ADR-0028 Decision 7 (#1329): the registered `shared` module is
+  allowed to every module, `allowedDependencies = {}` included.
 - **Date:** 2026-09-03
 - **Relates to:** ADR-0016 (Decision 3 is amended by this ADR), ADR-0007 (the module templates
   this applies unchanged; Amendment 2 introduced the one non-context module `shared`), invariant
