@@ -6,10 +6,10 @@ import ai.riviera.platform.payout.domain.PayoutBatch;
 /**
  * The result of a batch status transition — a closed, caller-mappable set (typed
  * outcomes for expected flows, not exceptions). The web adapter {@code switch}es exhaustively:
- * {@link Marked} → 200, {@link NotFound} → 404, {@link IllegalTransition} → 409.
+ * {@link Marked} → 200, {@link NotFound} → 404, {@link IllegalTransition} and {@link TotalChanged} → 409.
  */
-public sealed interface BatchStatusOutcome
-		permits BatchStatusOutcome.Marked, BatchStatusOutcome.NotFound, BatchStatusOutcome.IllegalTransition {
+public sealed interface BatchStatusOutcome permits BatchStatusOutcome.Marked, BatchStatusOutcome.NotFound,
+		BatchStatusOutcome.IllegalTransition, BatchStatusOutcome.TotalChanged {
 
 	/** The transition was applied; {@code batch} is the updated batch. */
 	record Marked(PayoutBatch batch) implements BatchStatusOutcome {
@@ -21,5 +21,9 @@ public sealed interface BatchStatusOutcome
 
 	/** {@code from → to} is not a legal forward transition (DRAFT→REPORTED→SETTLED). */
 	record IllegalTransition(BatchStatus from, BatchStatus to) implements BatchStatusOutcome {
+	}
+
+	/** The batch holds another total than the one the caller reviewed; nothing moved, {@code current} is the batch. */
+	record TotalChanged(PayoutBatch current) implements BatchStatusOutcome {
 	}
 }

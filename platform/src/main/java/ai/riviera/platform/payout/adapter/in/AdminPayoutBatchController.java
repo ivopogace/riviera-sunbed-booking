@@ -1,6 +1,7 @@
 package ai.riviera.platform.payout.adapter.in;
 
 import java.util.List;
+import java.util.OptionalLong;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
@@ -25,8 +26,8 @@ import ai.riviera.platform.payout.domain.PeriodKey;
  * Admin endpoints for the weekly BKT payout report: generate/read an ISO-week period's per-venue
  * batches and advance a batch's status, via the {@link PayoutReport} port (invariant #11). The
  * {@code SecurityConfig} {@code ADMIN} gate is the whole authorization (invariant #13 exempts
- * {@code /api/admin/**}) and must stay {@code ADMIN}. POST/PATCH need CSRF. A bad
- * {@code period}/{@code status} is {@code 400 INVALID_REQUEST}; errors are RFC-7807
+ * {@code /api/admin/**}) and must stay {@code ADMIN}. POST/PATCH need CSRF. A bad {@code period}/{@code status},
+ * or a {@code REPORTED} without {@code expectedTotalNetMinor}, is {@code 400 INVALID_REQUEST}; errors are RFC-7807
  * {@link ProblemDetail} via {@link ApiProblem}. Rationale: RESPONSIBILITIES.md §payout.
  */
 @RestController
@@ -52,23 +53,32 @@ class AdminPayoutBatchController {
 	@PatchMapping("/{id}")
 	ResponseEntity<?> mark(@PathVariable long id, @RequestBody UpdateBatchStatusRequest request) {
 		BatchStatus target = InvalidApiRequestException.parsing(() -> BatchStatus.valueOf(request.status()));
-		return switch (payoutReport.mark(id, target)) {
+		OptionalLong reviewed = request.expectedTotalNetMinor() == null ? OptionalLong.empty()
+				: OptionalLong.of(request.expectedTotalNetMinor());
+		if (target == BatchStatus.REPORTED && reviewed.isEmpty()) {
+			throw new InvalidApiRequestException("REPORTED needs expectedTotalNetMinor");
+		}
+		return switch (payoutReport.mark(id, target, reviewed)) {
 			case BatchStatusOutcome.Marked marked -> ResponseEntity.ok(PayoutBatchView.of(marked.batch()));
 			case BatchStatusOutcome.NotFound ignored -> ApiProblem.response(HttpStatus.NOT_FOUND,
 					"NO_SUCH_BATCH", "No such payout batch.");
 			// The code is stable; the offending from→to pair belongs in the human-readable detail.
 			case BatchStatusOutcome.IllegalTransition it -> ApiProblem.response(HttpStatus.CONFLICT,
 					"ILLEGAL_TRANSITION", it.from() + " to " + it.to() + " is not a legal transition.");
+			case BatchStatusOutcome.TotalChanged ignored -> ApiProblem.response(HttpStatus.CONFLICT,
+					"TOTAL_CHANGED", "The batch total is not the one reviewed.");
 		};
 	}
-
 
 	/** A malformed period token is a 400, while {@link PeriodKey}'s guard stays a 500 off the edge. */
 	private static PeriodKey parsePeriod(String period) {
 		return InvalidApiRequestException.parsing(() -> PeriodKey.of(period));
 	}
 
-	/** PATCH body: the target status token ({@code REPORTED} | {@code SETTLED}). */
-	record UpdateBatchStatusRequest(String status) {
+	/**
+	 * PATCH body: the target status token ({@code REPORTED} | {@code SETTLED}) and, for {@code REPORTED}, the total
+	 * the admin reviewed in minor units, which the batch must still hold (#1320).
+	 */
+	record UpdateBatchStatusRequest(String status, Long expectedTotalNetMinor) {
 	}
 }

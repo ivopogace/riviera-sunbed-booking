@@ -29,6 +29,7 @@ public class PausingPorts {
 			"ai.riviera.platform.customer.application.CustomerAccountStore",
 			"ai.riviera.platform.customer.application.CustomerAccountTokens",
 			"ai.riviera.platform.operator.application.Operators",
+			"ai.riviera.platform.payout.application.PayoutBatches",
 			"ai.riviera.platform.payout.application.PayoutLedger",
 			"ai.riviera.platform.review.application.Reviews"};
 

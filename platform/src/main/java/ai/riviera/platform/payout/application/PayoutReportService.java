@@ -3,6 +3,7 @@ package ai.riviera.platform.payout.application;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.OptionalLong;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -18,7 +19,7 @@ import ai.riviera.platform.payout.domain.PeriodKey;
 /**
  * The weekly BKT payout-report use case. {@link #generate} folds the ledger into one {@code DRAFT} batch per venue
  * for the period (idempotent refresh, invariant #9), one run per period at a time; {@link #mark} advances a batch
- * through {@code DRAFT → REPORTED → SETTLED}, rejecting illegal moves with a typed outcome rather than an exception.
+ * through {@code DRAFT → REPORTED → SETTLED} at the total its caller reviewed, answering a typed outcome otherwise.
  * Money is integer minor units throughout (invariant #5).
  * Package-private behind {@link PayoutReport} (invariant #11).
  */
@@ -72,7 +73,10 @@ class PayoutReportService implements PayoutReport {
 
 	@Override
 	@Transactional
-	public BatchStatusOutcome mark(long batchId, BatchStatus target) {
+	public BatchStatusOutcome mark(long batchId, BatchStatus target, OptionalLong reviewedTotalNetMinor) {
+		if (target == BatchStatus.REPORTED && reviewedTotalNetMinor.isEmpty()) {
+			throw new IllegalArgumentException("REPORTED freezes the total, so it needs the one the admin reviewed");
+		}
 		var found = batches.findById(batchId);
 		if (found.isEmpty()) {
 			return new BatchStatusOutcome.NotFound();
@@ -81,9 +85,10 @@ class PayoutReportService implements PayoutReport {
 		if (!batch.status().canTransitionTo(target)) {
 			return new BatchStatusOutcome.IllegalTransition(batch.status(), target);
 		}
-		Optional<PayoutBatch> moved = batches.transition(batchId, batch.status(), target);
+		long expectedTotal = target == BatchStatus.REPORTED ? reviewedTotalNetMinor.getAsLong() : batch.totalNetMinor();
+		Optional<PayoutBatch> moved = batches.transition(batchId, batch.status(), target, expectedTotal);
 		if (moved.isEmpty()) {
-			return lostRace(batchId, target);
+			return lostRace(batchId, target, expectedTotal);
 		}
 		log.info("payout batch {} ({} {}) -> {}", batchId, batch.venueId().value(),
 				batch.periodKey().value(), target);
@@ -91,15 +96,23 @@ class PayoutReportService implements PayoutReport {
 	}
 
 	/**
-	 * The guarded write lost a race: re-read and report the actual status (the stale one names a
-	 * retry-forever move); one already at {@code target} is {@link BatchStatusOutcome.Marked}.
+	 * The guarded write matched no row: re-read and say why. Already at {@code target} and {@code expectedTotal} is
+	 * {@link BatchStatusOutcome.Marked}; at another total, before or at {@code target}, {@link BatchStatusOutcome.TotalChanged}.
 	 * Needs READ COMMITTED (the default) so the re-read sees the winner's commit, not a snapshot.
 	 */
-	private BatchStatusOutcome lostRace(long batchId, BatchStatus target) {
+	private static BatchStatusOutcome classify(PayoutBatch current, BatchStatus target, long expectedTotal) {
+		if (current.status() == target && current.totalNetMinor() == expectedTotal) {
+			return new BatchStatusOutcome.Marked(current);
+		}
+		if (current.status() == target || current.status().canTransitionTo(target)) {
+			return new BatchStatusOutcome.TotalChanged(current);
+		}
+		return new BatchStatusOutcome.IllegalTransition(current.status(), target);
+	}
+
+	private BatchStatusOutcome lostRace(long batchId, BatchStatus target, long expectedTotal) {
 		return batches.findById(batchId)
-				.<BatchStatusOutcome>map(current -> current.status() == target
-						? new BatchStatusOutcome.Marked(current)
-						: new BatchStatusOutcome.IllegalTransition(current.status(), target))
+				.map(current -> classify(current, target, expectedTotal))
 				.orElseGet(BatchStatusOutcome.NotFound::new);
 	}
 }

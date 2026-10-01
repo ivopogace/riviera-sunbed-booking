@@ -2,6 +2,7 @@ package ai.riviera.platform.payout;
 
 import java.time.LocalDate;
 import java.util.List;
+import java.util.OptionalLong;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -186,7 +187,7 @@ class PayoutBatchGenerationIT {
 		long batchId = batchFor(payoutReport.generate(period), venue).id();
 
 		// DRAFT -> REPORTED
-		BatchStatusOutcome reported = payoutReport.mark(batchId, BatchStatus.REPORTED);
+		BatchStatusOutcome reported = payoutReport.mark(batchId, BatchStatus.REPORTED, OptionalLong.of(4000L));
 		assertEquals(BatchStatus.REPORTED,
 				assertInstanceOf(BatchStatusOutcome.Marked.class, reported).batch().status());
 
@@ -211,7 +212,7 @@ class PayoutBatchGenerationIT {
 				"re-generating a stale frozen batch warns the operator to reconcile manually");
 
 		// REPORTED -> SETTLED
-		assertInstanceOf(BatchStatusOutcome.Marked.class, payoutReport.mark(batchId, BatchStatus.SETTLED));
+		assertInstanceOf(BatchStatusOutcome.Marked.class, payoutReport.mark(batchId, BatchStatus.SETTLED, OptionalLong.empty()));
 	}
 
 	@Test
@@ -222,9 +223,9 @@ class PayoutBatchGenerationIT {
 		long draftId = batchFor(payoutReport.generate(period), venue).id();
 
 		assertInstanceOf(BatchStatusOutcome.IllegalTransition.class,
-				payoutReport.mark(draftId, BatchStatus.SETTLED), "cannot settle a DRAFT directly");
+				payoutReport.mark(draftId, BatchStatus.SETTLED, OptionalLong.empty()), "cannot settle a DRAFT directly");
 		assertInstanceOf(BatchStatusOutcome.NotFound.class,
-				payoutReport.mark(999_999_999L, BatchStatus.REPORTED), "unknown batch id");
+				payoutReport.mark(999_999_999L, BatchStatus.REPORTED, OptionalLong.of(4000L)), "unknown batch id");
 	}
 
 	@Test

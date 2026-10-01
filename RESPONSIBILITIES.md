@@ -603,7 +603,10 @@ at accrual from the live rate; the read guarantees only that a past date's figur
 
 **Batch generation runs one at a time per period** (`PayoutBatches#lockPeriod`, a transaction-scoped advisory lock
 keyed by the period, taken before any read): the first run for a period has no row to lock, and two unserialized
-runs could write an older ledger total over a newer one (#1309). `mark` does not take it; its guard is the status.
+runs could write an older ledger total over a newer one (#1309). `mark` does not take it: its `UPDATE` guards on the
+status **and the total the admin reviewed** (required for `REPORTED`), so a refresh between the read and the click
+answers `409 TOTAL_CHANGED` instead of freezing a figure nobody saw (#1320). A mark blocked on a refresh's row lock
+re-checks that predicate against the committed total under READ COMMITTED.
 
 **The BKT batch endpoints and the venue-caused refunds report are `ADMIN`-only:** nothing on them
 belongs to one venue, so invariant #13 has no owner to check (it exempts `/api/admin/**`) and the

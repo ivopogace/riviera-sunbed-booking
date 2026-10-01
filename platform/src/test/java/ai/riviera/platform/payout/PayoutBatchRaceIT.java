@@ -1,6 +1,7 @@
 package ai.riviera.platform.payout;
 
 import java.util.Optional;
+import java.util.OptionalLong;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -79,7 +80,7 @@ class PayoutBatchRaceIT {
 		long batchId = newBatch(BatchStatus.SETTLED);
 		doReturn(Optional.of(staleDraft(batchId))).doCallRealMethod().when(batches).findById(batchId);
 
-		BatchStatusOutcome outcome = payoutReport.mark(batchId, BatchStatus.REPORTED);
+		BatchStatusOutcome outcome = payoutReport.mark(batchId, BatchStatus.REPORTED, OptionalLong.of(4000));
 
 		BatchStatusOutcome.IllegalTransition illegal =
 				assertInstanceOf(BatchStatusOutcome.IllegalTransition.class, outcome,
@@ -96,7 +97,7 @@ class PayoutBatchRaceIT {
 		long batchId = newBatch(BatchStatus.REPORTED);
 		doReturn(Optional.of(staleDraft(batchId))).doCallRealMethod().when(batches).findById(batchId);
 
-		BatchStatusOutcome outcome = payoutReport.mark(batchId, BatchStatus.REPORTED);
+		BatchStatusOutcome outcome = payoutReport.mark(batchId, BatchStatus.REPORTED, OptionalLong.of(4000));
 
 		BatchStatusOutcome.Marked marked = assertInstanceOf(BatchStatusOutcome.Marked.class, outcome,
 				"losing the race to the very target requested is not an error");
@@ -107,9 +108,25 @@ class PayoutBatchRaceIT {
 	void anUncontendedMarkStillSucceeds() {
 		long batchId = newBatch(BatchStatus.DRAFT);
 
-		BatchStatusOutcome outcome = payoutReport.mark(batchId, BatchStatus.REPORTED);
+		BatchStatusOutcome outcome = payoutReport.mark(batchId, BatchStatus.REPORTED, OptionalLong.of(4000));
 
 		assertEquals(BatchStatus.REPORTED,
 				assertInstanceOf(BatchStatusOutcome.Marked.class, outcome).batch().status());
+	}
+
+	@Test
+	void aRefreshBetweenTheReadAndTheMarkRefusesTheMark() {
+		long batchId = newBatch(BatchStatus.DRAFT);
+		long reviewed = jdbc.sql("SELECT total_net_minor FROM payout_batch WHERE id = :id")
+				.param("id", batchId).query(Long.class).single();
+		jdbc.sql("UPDATE payout_batch SET total_net_minor = 3500 WHERE id = :id").param("id", batchId).update();
+
+		BatchStatusOutcome outcome = payoutReport.mark(batchId, BatchStatus.REPORTED, OptionalLong.of(reviewed));
+
+		PayoutBatch current = assertInstanceOf(BatchStatusOutcome.TotalChanged.class, outcome,
+				"the admin never saw 3500, so it must not be frozen (#1320)").current();
+		assertEquals(3500L, current.totalNetMinor(), "the outcome carries the refreshed total");
+		assertEquals("DRAFT", jdbc.sql("SELECT status FROM payout_batch WHERE id = :id")
+				.param("id", batchId).query(String.class).single(), "and the batch stays DRAFT");
 	}
 }

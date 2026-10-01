@@ -590,7 +590,7 @@ class CrossVenueDenialIT {
 				.andExpect(status().isOk());
 		mvc.perform(patch("/api/admin/payout-batches/{id}", Long.MAX_VALUE).cookie(operatorSession)
 						.with(csrf()).contentType(MediaType.APPLICATION_JSON)
-						.content("{\"status\":\"REPORTED\"}"))
+						.content("{\"status\":\"REPORTED\",\"expectedTotalNetMinor\":0}"))
 				.andExpect(status().isNotFound())
 				.andExpect(jsonPath("$.code").value("NO_SUCH_BATCH"));
 	}
