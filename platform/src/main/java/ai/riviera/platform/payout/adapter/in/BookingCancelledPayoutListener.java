@@ -34,7 +34,7 @@ class BookingCancelledPayoutListener {
 		this.venueChangeFee = venueChangeFee;
 	}
 
-	@ApplicationModuleListener
+	@ApplicationModuleListener(id = "payout.reverse-on-booking-cancelled")
 	void on(BookingCancelled event) {
 		long bookingId = event.bookingId().value();
 		if (event.refundMinor() <= 0) {
@@ -59,9 +59,9 @@ class BookingCancelledPayoutListener {
 	}
 
 	/**
-	 * Refuses a reversal with no accrual to mirror yet (see the class doc). {@code ERROR} because the republish
-	 * waits for the next restart, so the ledger can overstate for days; ids only, never a booking code
-	 * (invariant #7).
+	 * Refuses a reversal with no accrual to mirror yet (see the class doc). {@code ERROR} because past the spine
+	 * retry's attempt cap the republish waits for the next restart, so the ledger can overstate for days; ids
+	 * only, never a booking code (invariant #7).
 	 */
 	private IllegalStateException deferReversal(BookingCancelled event) {
 		long bookingId = event.bookingId().value();

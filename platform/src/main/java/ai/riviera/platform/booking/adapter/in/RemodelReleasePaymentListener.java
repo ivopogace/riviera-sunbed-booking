@@ -43,7 +43,7 @@ class RemodelReleasePaymentListener {
 	}
 
 	@Async(RefundExecutorConfig.REFUND_EXECUTOR)
-	@TransactionalEventListener
+	@TransactionalEventListener(id = "booking.release-void-on-booking-cancelled")
 	void on(BookingCancelled event) {
 		if (event.reason() != RefundReason.VENUE_CHANGE || !receipts.releasedByRemodel(event.bookingId())) {
 			return;

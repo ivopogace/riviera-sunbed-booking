@@ -71,12 +71,15 @@ class ScheduledWorkArchitectureTest {
 	 */
 	private static final Set<String> KNOWN_SCHEDULED_JOBS = Set.of(
 			"AbandonedBookingScheduler#sweep",
+			"BookingSpineRetry#sweep",
 			"ChallengeRegistrySweep#sweep",
 			"GuestContactRetentionScheduler#sweep",
 			"MoneyPathAlertCheck#check",
 			"MoveReminderScheduler#sweep",
 			"NoShowSweepScheduler#sweep",
-			"RequestSweepScheduler#sweep");
+			"PayoutSpineRetry#sweep",
+			"RequestSweepScheduler#sweep",
+			"VenueSpineRetry#sweep");
 
 	@Test
 	void everyScheduledJobHasAThreadOfItsOwn() {

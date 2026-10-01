@@ -49,7 +49,7 @@ class BookingCancellationMailListener {
 	}
 
 	@Async(RegistryMailExecutorConfig.MAIL_EXECUTOR)
-	@TransactionalEventListener
+	@TransactionalEventListener(id = "notification.mail-on-booking-cancelled")
 	void on(BookingCancelled event) {
 		if (event.cancelledWithStay() != null) {
 			return;

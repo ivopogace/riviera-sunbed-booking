@@ -42,8 +42,9 @@ metric-native alerting later.
 
 **One backlog cause worth recognising by name: a payout reversal waiting for its accrual** (#428's
 audit). `BookingCancelledPayoutListener` throws when a refunded cancellation finds no `ACCRUAL` to
-mirror, so its publication stays outstanding and this gauge holds at ≥ 1 until the next restart's
-republish. Its `ERROR` line — *"refunded booking N (venue M) has no ACCRUAL to reverse"* — is the
+mirror, so its publication stays outstanding and this gauge holds at ≥ 1 until the spine retry
+(#1340, every `riviera.events.spine-retry.interval`, at most `max-attempts` times) or the next
+restart's republish finds the accrual. Its `ERROR` line — *"refunded booking N (venue M) has no ACCRUAL to reverse"* — is the
 tell. **Do not "fix" it by making that listener return normally:** the branch did exactly that until
 #428, which completed the publication and left the venue's ledger permanently overstating the refund
 (invariant #9). If the gauge will not drain after a restart, check whether the *accrual* listener is

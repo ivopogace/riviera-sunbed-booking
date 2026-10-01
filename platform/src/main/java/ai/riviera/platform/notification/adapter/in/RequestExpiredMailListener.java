@@ -46,7 +46,7 @@ class RequestExpiredMailListener {
 	}
 
 	@Async(RegistryMailExecutorConfig.MAIL_EXECUTOR)
-	@TransactionalEventListener
+	@TransactionalEventListener(id = "notification.mail-on-booking-request-expired")
 	void on(BookingRequestExpired event) {
 		switch (facts.resolve(event.bookingId(), event.setId())) {
 			case BookingMailFacts.Missing(MissingBookingFact fact) -> abandon(fact, event);
@@ -58,7 +58,7 @@ class RequestExpiredMailListener {
 
 	/** A stay request expired whole (#1267): one record under the stay's code and span. */
 	@Async(RegistryMailExecutorConfig.MAIL_EXECUTOR)
-	@TransactionalEventListener
+	@TransactionalEventListener(id = "notification.mail-on-stay-request-expired")
 	void on(StayRequestExpired event) {
 		switch (facts.resolveStayRequest(event.stayId())) {
 			case StayRequestMailFacts.Missing(MissingBookingFact fact) -> {

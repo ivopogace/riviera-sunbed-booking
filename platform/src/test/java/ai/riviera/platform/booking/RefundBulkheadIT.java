@@ -65,9 +65,9 @@ import static org.assertj.core.api.Assertions.assertThat;
  *   <li>a failed refund still leaves the publication <em>outstanding</em> and a resubmit still
  *       re-delivers it. This is the whole retry story for a refund, so losing it silently would turn
  *       "money owed is never lost" into fire-and-forget;</li>
- *   <li>the {@code listener_id} still reads as the registry wrote it. The id embeds the listener FQCN
- *       and signature and republication matches it string-equal, so drift would dead-letter every
- *       outstanding refund and would owe a Flyway rewrite (invariant #12).</li>
+ *   <li>the {@code listener_id} the registry writes is the listener's explicit id. Republication
+ *       matches it string-equal, so drift would dead-letter every outstanding refund and would owe a
+ *       Flyway rewrite (invariant #12).</li>
  * </ul>
  *
  * <p>What a <em>shed</em> refund costs is not asked here: these tests wedge the gateway, they never
@@ -96,8 +96,8 @@ class RefundBulkheadIT {
 	private static final int WEDGED_REFUNDS = 10;
 
 	/**
-	 * The registry's id for the refund listener, class-derived so a rename breaks the compile rather
-	 * than this pin. {@link #keepsTheListenerIdUnchanged} proves the running registry writes it, and is
+	 * The refund listener's explicit registry id, read from its annotation.
+	 * {@link #keepsTheListenerIdUnchanged} proves the running registry writes it, and is
 	 * also level 2 of the admin refund-outbox lever's scope pinning ({@code RefundOutboxScopeTest}
 	 * being level 1).
 	 */
@@ -198,6 +198,13 @@ class RefundBulkheadIT {
 		return jdbc.sql("SELECT listener_id FROM event_publication "
 						+ "WHERE completion_date IS NULL AND serialized_event LIKE :amountFragment")
 				.param("amountFragment", "%" + refundMinor + "%")
+				.query(String.class).list();
+	}
+
+	private List<String> outstandingStatus(long refundMinor) {
+		return jdbc.sql("SELECT status FROM event_publication WHERE completion_date IS NULL "
+						+ "AND listener_id = :listener AND serialized_event LIKE :amountFragment")
+				.param("listener", REFUND_LISTENER_ID).param("amountFragment", "%" + refundMinor + "%")
 				.query(String.class).list();
 	}
 
@@ -306,7 +313,7 @@ class RefundBulkheadIT {
 	}
 
 	/**
-	 * The {@code listener_id} the registry writes still reads as the pin expects. Asserted against an
+	 * The {@code listener_id} the registry writes is the pinned explicit id. Asserted against an
 	 * <em>outstanding</em> row, which is the one republication actually matches on.
 	 */
 	@Test
@@ -324,8 +331,11 @@ class RefundBulkheadIT {
 
 		assertThat(outstandingListenerIds(LISTENER_ID_REFUND_MINOR))
 				.as("republication matches listener_id string-equal; drift dead-letters every outstanding "
-						+ "refund and would owe the Flyway rewrite this slice claims not to need")
+						+ "refund and owes a Flyway rewrite")
 				.contains(REFUND_LISTENER_ID);
+		Awaitility.await("a listener that threw leaves its row FAILED, which the spine retry filters on (#1340)")
+				.atMost(WAIT)
+				.until(() -> outstandingStatus(LISTENER_ID_REFUND_MINOR).equals(List.of("FAILED")));
 	}
 
 	// ---- the controllable gateway ------------------------------------------------------------

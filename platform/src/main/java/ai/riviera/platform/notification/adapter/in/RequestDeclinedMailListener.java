@@ -46,7 +46,7 @@ class RequestDeclinedMailListener {
 	}
 
 	@Async(RegistryMailExecutorConfig.MAIL_EXECUTOR)
-	@TransactionalEventListener
+	@TransactionalEventListener(id = "notification.mail-on-booking-request-declined")
 	void on(BookingRequestDeclined event) {
 		switch (facts.resolve(event.bookingId(), event.setId())) {
 			case BookingMailFacts.Missing(MissingBookingFact fact) -> abandon(fact, event);
@@ -59,7 +59,7 @@ class RequestDeclinedMailListener {
 
 	/** A stay request declined whole (#1267): one record under the stay's code and span, naming the reason. */
 	@Async(RegistryMailExecutorConfig.MAIL_EXECUTOR)
-	@TransactionalEventListener
+	@TransactionalEventListener(id = "notification.mail-on-stay-request-declined")
 	void on(StayRequestDeclined event) {
 		switch (facts.resolveStayRequest(event.stayId())) {
 			case StayRequestMailFacts.Missing(MissingBookingFact fact) -> {

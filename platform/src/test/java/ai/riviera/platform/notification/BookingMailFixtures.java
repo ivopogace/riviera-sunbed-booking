@@ -47,48 +47,31 @@ import ai.riviera.platform.venue.vocabulary.VenueId;
 public final class BookingMailFixtures {
 
 	/**
-	 * The registry's id for the confirmation listener, exactly as V31 migrated it. It embeds
-	 * the listener FQCN and signature, and republication matches it string-equal, so drift here
-	 * dead-letters every outstanding row.
+	 * The confirmation listener's explicit registry id. Like every id below it is pinned by
+	 * {@code ListenerIdSnapshotTest} and against the live registry by {@code RegistryMailBulkheadIT}.
 	 */
-	public static final String LISTENER_ID = "ai.riviera.platform.notification.adapter.in."
-			+ "BookingConfirmationMailListener.on(ai.riviera.platform.booking.events.BookingConfirmed)";
+	public static final String LISTENER_ID = "notification.mail-on-booking-confirmed";
 
-	/**
-	 * The registry's id for the cancellation listener. It needs no migration, unlike
-	 * {@link #LISTENER_ID}: the class is new, so its default id is correct on first write and there is
-	 * no historical spelling to rewrite. Pinned the same two ways — {@code MailOutboxScopeTest} against
-	 * the module prefix, {@code BookingCancellationMailIT} against what the running registry writes.
-	 */
-	public static final String CANCELLATION_LISTENER_ID = "ai.riviera.platform.notification.adapter.in."
-			+ "BookingCancellationMailListener.on(ai.riviera.platform.booking.events.BookingCancelled)";
+	/** The cancellation listener's explicit registry id ({@code BookingCancellationMailIT} pins the write). */
+	public static final String CANCELLATION_LISTENER_ID = "notification.mail-on-booking-cancelled";
 
-	/**
-	 * The registry's id for the payment-due listener. Like {@link #CANCELLATION_LISTENER_ID} it
-	 * needs no migration — the class is new, so its default id is correct on first write.
-	 */
-	public static final String PAYMENT_DUE_LISTENER_ID = "ai.riviera.platform.notification.adapter.in."
-			+ "RequestPaymentDueMailListener.on(ai.riviera.platform.booking.events.BookingPaymentDue)";
+	/** The payment-due listener's explicit registry id. */
+	public static final String PAYMENT_DUE_LISTENER_ID = "notification.mail-on-booking-payment-due";
 
-	/** The registry's id for the request-declined listener; new class, no migration needed. */
-	public static final String REQUEST_DECLINED_LISTENER_ID = "ai.riviera.platform.notification.adapter.in."
-			+ "RequestDeclinedMailListener.on(ai.riviera.platform.booking.events.BookingRequestDeclined)";
+	/** The request-declined listener's explicit registry id. */
+	public static final String REQUEST_DECLINED_LISTENER_ID = "notification.mail-on-booking-request-declined";
 
-	/** The registry's id for the move-reminder listener; new class, no migration needed. */
-	public static final String MOVE_REMINDER_LISTENER_ID = "ai.riviera.platform.notification.adapter.in."
-			+ "StayMoveReminderMailListener.on(ai.riviera.platform.booking.events.StayMoveDue)";
+	/** The move-reminder listener's explicit registry id. */
+	public static final String MOVE_REMINDER_LISTENER_ID = "notification.mail-on-stay-move-due";
 
-	/** The registry's id for the refunded-day listener; new class, no migration needed. */
-	public static final String DAY_REFUND_LISTENER_ID = "ai.riviera.platform.notification.adapter.in."
-			+ "BookingDayRefundMailListener.on(ai.riviera.platform.booking.events.BookingDayRefunded)";
+	/** The refunded-day listener's explicit registry id. */
+	public static final String DAY_REFUND_LISTENER_ID = "notification.mail-on-booking-day-refunded";
 
-	/** The registry's id for the booking-moved listener; new class, no migration needed. */
-	public static final String BOOKING_MOVED_LISTENER_ID = "ai.riviera.platform.notification.adapter.in."
-			+ "BookingMovedMailListener.on(ai.riviera.platform.booking.events.BookingMoved)";
+	/** The booking-moved listener's explicit registry id. */
+	public static final String BOOKING_MOVED_LISTENER_ID = "notification.mail-on-booking-moved";
 
-	/** The registry's id for the request-expired listener; new class, no migration needed. */
-	public static final String REQUEST_EXPIRED_LISTENER_ID = "ai.riviera.platform.notification.adapter.in."
-			+ "RequestExpiredMailListener.on(ai.riviera.platform.booking.events.BookingRequestExpired)";
+	/** The request-expired listener's explicit registry id. */
+	public static final String REQUEST_EXPIRED_LISTENER_ID = "notification.mail-on-booking-request-expired";
 
 	private final JdbcClient jdbc;
 	private final TransactionTemplate transactions;

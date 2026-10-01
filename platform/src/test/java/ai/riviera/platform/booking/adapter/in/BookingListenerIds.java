@@ -1,19 +1,17 @@
 package ai.riviera.platform.booking.adapter.in;
 
+import org.springframework.core.annotation.MergedAnnotations;
+import org.springframework.transaction.event.TransactionalEventListener;
+
 import ai.riviera.platform.booking.events.BookingCancelled;
 import ai.riviera.platform.payment.events.PaymentCanceled;
 import ai.riviera.platform.payment.events.PaymentConfirmed;
 
 /**
- * The registry {@code listener_id}s of this package's listeners, <strong>derived from the class
- * literals</strong> rather than typed as strings — so a rename that would change what the registry
- * writes breaks these fixtures at compile time instead of silently un-matching every test that pins
- * them (the improvement over {@code BookingMailFixtures}' hand-typed ids).
- *
- * <p>It lives in {@code adapter/in} because the listeners are package-private here; the derivation is
- * Spring Modulith's default id format, FQCN + {@code .on(} + parameter FQCN + {@code )}, which
- * {@code RefundBulkheadIT.keepsTheListenerIdUnchanged} pins against what the running registry actually
- * writes — a second guard anchored to the same value as the first.
+ * The registry {@code listener_id}s of this package's listeners, <strong>read from each handler's
+ * explicit {@code id}</strong> rather than typed again, so a fixture can never drift from the annotation.
+ * It lives in {@code adapter/in} because the listeners are package-private here;
+ * {@code RefundBulkheadIT.keepsTheListenerIdUnchanged} pins the value against what the registry writes.
  */
 public final class BookingListenerIds {
 
@@ -38,6 +36,13 @@ public final class BookingListenerIds {
 	}
 
 	private static String id(Class<?> listener, Class<?> event) {
-		return listener.getName() + ".on(" + event.getName() + ")";
+		try {
+			return MergedAnnotations.from(listener.getDeclaredMethod("on", event))
+					.get(TransactionalEventListener.class)
+					.getString("id");
+		}
+		catch (NoSuchMethodException e) {
+			throw new IllegalStateException(listener.getName() + " has no on(" + event.getName() + ")", e);
+		}
 	}
 }

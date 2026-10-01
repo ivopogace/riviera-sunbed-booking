@@ -12,13 +12,12 @@ birth) ride in the payload (`BookingConfirmed`); mutable configuration (the comm
 does not — the listener re-reads it via `venue::api` (`BookingConfirmedPayoutListener`),
 because it can change while the event sits in the registry.
 
-> Moving or renaming a published event changes the persisted FQCN in `event_publication` and
-> `event_publication_archive` (`event_type` and the default `listener_id`); moving or renaming a
-> listener's class, method or parameter type changes `listener_id`. Ship a Flyway rewrite like
-> `V18__event_publication_event_type_moves.sql` (both columns) or
-> `V31__event_publication_listener_move.sql` (`listener_id`, pinned by `ListenerMoveMigrationIT`),
-> or outstanding publications dead-letter after deploy. Stable listener ids (#1340) would remove
-> the `listener_id` half.
+> Every registry listener declares an explicit id (`@ApplicationModuleListener(id = "<module>.<what>-on-<event>")`
+> or `@TransactionalEventListener(id = …)`), which the registry stores as `listener_id`; a new listener
+> without one fails `ListenerIdSnapshotTest`, which pins every `(listener_id, event_type)` pair. Moving
+> or renaming a published event changes the persisted `event_type`, and changing an id changes
+> `listener_id`: ship a forward Flyway rewrite of both tables (`V18__event_publication_event_type_moves.sql`,
+> `V74__event_publication_stable_listener_ids.sql`), or outstanding publications dead-letter after deploy.
 
 ## Publishing and listening
 

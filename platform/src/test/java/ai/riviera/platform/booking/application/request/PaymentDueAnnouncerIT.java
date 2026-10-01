@@ -86,7 +86,7 @@ class PaymentDueAnnouncerIT {
 				     + (SELECT COUNT(*) FROM event_publication_archive
 				        WHERE listener_id LIKE :listener AND serialized_event LIKE :amount)
 				""")
-				.param("listener", "%RequestPaymentDueMailListener%")
+				.param("listener", "notification.mail-on-%payment-due")
 				.param("amount", "%" + AMOUNT_MINOR + "%")
 				.query(Long.class).single();
 	}

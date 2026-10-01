@@ -24,7 +24,7 @@ class ReviewsChangedListener {
 		this.ratings = ratings;
 	}
 
-	@ApplicationModuleListener
+	@ApplicationModuleListener(id = "venue.rating-on-reviews-changed")
 	void on(ReviewsChanged event) {
 		ratings.recompute(new VenueId(event.venue().value()));
 	}

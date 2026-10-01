@@ -206,6 +206,7 @@ bound; **never** reach for `spring.jdbc.template.query-timeout` to do it, which 
 |---|---|---|
 | **Abandoned-payment sweep** | `AbandonedBookingScheduler` (`@Profile("stripe")`) | Every instance runs the scheduler. The guarded `UPDATE … WHERE status='AWAITING_PAYMENT' … RETURNING` keeps **DB state** correct (one instance wins each row), but each winner still fires its own Stripe **PaymentIntent cancel** → duplicate cancel calls racing at Stripe for the same intent. |
 | **Request-expiry sweep, and every later `@Scheduled` job** (`ScheduledWorkArchitectureTest` lists them) | `RequestSweepScheduler` (all profiles, issue #98) and its siblings | The row-transition sweeps share the guarded design, so DB state stays correct, but each is **sized and timed for one runner**; N copies do N× the redundant scans and fan out any per-row side effect. `MoneyPathAlertCheck` writes nothing and fires its alert N times; `ChallengeRegistrySweep` deletes expired rows, harmless twice. |
+| **Event Publication Registry restart republish** | `spring.modulith.events.republish-outstanding-events-on-restart=true` (`application.properties`) | Every instance that starts re-submits **every** outstanding publication, including ones another live instance is still running, so a rolling deploy re-runs in-flight refunds, mails and accruals once per new instance. The Spring Modulith reference calls it "usually not recommended in multi-instance deployments" (quoted in #1340). The staleness monitor and the spine retries (#1340) also run on every instance: a row still running on one can be marked stale and re-driven by another. |
 | **In-memory rate-limit buckets** | `RateLimitFilter` + `TokenBucket` (per-IP #56/ADR-0006; per-identity login throttle #292) — bounded `ConcurrentHashMap`s on the heap | Each instance holds its **own** buckets. A client's requests spread across instances, so the **effective cap is ~N× the configured limit** — the brute-force / abuse / credential-guess protection weakens in proportion to instance count. |
 
 ### Scale-out preconditions (all required before a second instance)
@@ -215,8 +216,12 @@ bound; **never** reach for `spring.jdbc.template.query-timeout` to do it, which 
    tick. Add it to any **new** job at the same time.
 2. **Rate-limit state in a shared store** (e.g. Redis) — one bucket per client across all
    instances, so the cap holds regardless of which instance serves a request.
+3. **`spring.modulith.events.republish-outstanding-events-on-restart=false`**, with the recovery it
+   provides replaced: the staleness monitor plus a scheduled `FailedEventPublications` re-drive
+   under ShedLock covering every listener the restart republish covers today (the refund and mail
+   listeners included, not only the #1340 spine).
 
-Until **both** land, keep the instance count at one. The deploy-runbook callout that enforces
+Until **all three** land, keep the instance count at one. The deploy-runbook callout that enforces
 this at the point the count is set is in [cd-pipeline.md](./cd-pipeline.md).
 
 ## Not in scope (deferred)

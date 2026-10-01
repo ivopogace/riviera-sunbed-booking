@@ -173,7 +173,7 @@ class MailOutboxScopeIT {
 	private UUID archivedAccrual() {
 		return jdbc.sql("""
 				SELECT id FROM event_publication_archive
-				WHERE listener_id LIKE '%BookingConfirmedPayoutListener%'
+				WHERE listener_id LIKE 'payout.accrue-on-booking-confirmed'
 				  AND serialized_event LIKE :amountFragment
 				""")
 				.param("amountFragment", "%" + ACCRUAL_AMOUNT_MINOR + "%")

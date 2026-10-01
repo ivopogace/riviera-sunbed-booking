@@ -24,7 +24,7 @@ import ai.riviera.platform.monitoring.vocabulary.ObservabilityMetrics;
  * Mails the booking code on {@link BookingConfirmed}, after commit, via {@link TransactionalMailService}.
  * Keep {@code @Async(MAIL_EXECUTOR)} + {@code @TransactionalEventListener} spelled out (the composite runs on
  * the shared money-path pool), and add no {@code @Transactional}: it would pin a connection across SMTP.
- * Renaming the class, method or parameter type orphans outstanding publications (registry {@code listener_id}).
+ * Its registry id is pinned by {@code ListenerIdSnapshotTest}; changing it owes a Flyway rewrite.
  * At-least-once, no dedupe table (ADR-0011); a missing fact is skipped, a transport failure propagates; a
  * stay's stretch is left to {@link StayConfirmationMailListener}. Never log the arrival code (invariant #7).
  */
@@ -47,7 +47,7 @@ class BookingConfirmationMailListener {
 	}
 
 	@Async(RegistryMailExecutorConfig.MAIL_EXECUTOR)
-	@TransactionalEventListener
+	@TransactionalEventListener(id = "notification.mail-on-booking-confirmed")
 	void on(BookingConfirmed event) {
 		if (event.stayId() != null) {
 			return;

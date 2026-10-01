@@ -254,7 +254,7 @@ class BookingCancellationMailIT {
 		assertThat(jdbc.sql("SELECT DISTINCT listener_id FROM event_publication_archive "
 						+ "WHERE serialized_event LIKE :fragment AND listener_id LIKE :module")
 				.param("fragment", "%7334%")
-				.param("module", "ai.riviera.platform.notification.%")
+				.param("module", "notification.%")
 				.query(String.class).list())
 				.containsExactly(BookingMailFixtures.CANCELLATION_LISTENER_ID);
 	}

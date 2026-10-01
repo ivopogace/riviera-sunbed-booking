@@ -48,7 +48,7 @@ class BookingMovedMailListener {
 	}
 
 	@Async(RegistryMailExecutorConfig.MAIL_EXECUTOR)
-	@TransactionalEventListener
+	@TransactionalEventListener(id = "notification.mail-on-booking-moved")
 	void on(BookingMoved event) {
 		switch (facts.resolve(event.bookingId(), event.toSetId())) {
 			case BookingMailFacts.Missing(MissingBookingFact fact) -> abandon(fact, event);

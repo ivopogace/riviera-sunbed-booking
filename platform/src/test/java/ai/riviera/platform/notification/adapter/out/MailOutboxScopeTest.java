@@ -30,24 +30,19 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * <p><strong>How the prefix is kept honest.</strong> The chain is closed in two links: this test pins
  * {@link RegistryMailOutbox#NOTIFICATION_LISTENER_PREFIX} against
  * {@link BookingMailFixtures#LISTENER_ID}, and {@code RegistryMailBulkheadIT} pins that same
- * constant against the id the live registry writes. Move the listener's package without the V31-style
- * rewrite and the second link goes red; change the prefix so it stops covering the module and the
- * first does.
+ * constant against the id the live registry writes. Change a listener's explicit id off the prefix
+ * and the second link goes red; change the prefix so it stops covering the module and the first does.
  */
 class MailOutboxScopeTest {
 
 	/** The money-path listeners AC-2 exists to protect — the ledger (#9), the refund, and the confirm (#8). */
-	private static final String PAYOUT_ACCRUAL_LISTENER_ID = "ai.riviera.platform.payout.adapter.in."
-			+ "BookingConfirmedPayoutListener.on(ai.riviera.platform.booking.events.BookingConfirmed)";
+	private static final String PAYOUT_ACCRUAL_LISTENER_ID = "payout.accrue-on-booking-confirmed";
 
-	private static final String PAYOUT_REVERSAL_LISTENER_ID = "ai.riviera.platform.payout.adapter.in."
-			+ "BookingCancelledPayoutListener.on(ai.riviera.platform.booking.events.BookingCancelled)";
+	private static final String PAYOUT_REVERSAL_LISTENER_ID = "payout.reverse-on-booking-cancelled";
 
-	private static final String REFUND_LISTENER_ID = "ai.riviera.platform.booking.adapter.in."
-			+ "BookingRefundListener.on(ai.riviera.platform.booking.events.BookingCancelled)";
+	private static final String REFUND_LISTENER_ID = "booking.refund-on-booking-cancelled";
 
-	private static final String PAYMENT_LISTENER_ID = "ai.riviera.platform.booking.adapter.in."
-			+ "PaymentEventListener.on(ai.riviera.platform.payment.events.PaymentConfirmed)";
+	private static final String PAYMENT_LISTENER_ID = "booking.confirm-on-payment-confirmed";
 
 	@Test
 	@DisplayName("the confirmation-mail publication is in scope")

@@ -131,8 +131,8 @@ must include `frontend/`, so:
 - **Instances / scaling: keep at exactly ONE.** Do **not** raise the instance count (Render
   *Scaling*). The in-memory rate-limit buckets and the lockless scheduler sweeps assume a single
   runner — a second instance weakens the rate limits (~N× the cap) and races duplicate Stripe
-  cancels. Scaling out is gated on the preconditions (ShedLock on every sweep + shared-store
-  rate-limit state) in [production-hardening.md → *Single instance only*](./production-hardening.md#single-instance-only--do-not-scale-out-yet-the-lockless-sweeps--rate-limit-buckets)
+  cancels. Scaling out is gated on the preconditions (ShedLock on every sweep, shared-store
+  rate-limit state, restart republish off with its recovery replaced) in [production-hardening.md → *Single instance only*](./production-hardening.md#single-instance-only--do-not-scale-out-yet-the-lockless-sweeps--rate-limit-buckets)
   (improvement-plan D3, issue #99).
 - Copy the service's **Deploy Hook** URL → GitHub secret `RENDER_DEPLOY_HOOK_URL`.
 - Note the service URL (`https://<name>.onrender.com`) → GitHub variable `BACKEND_API_URL`.
@@ -157,6 +157,23 @@ After wiring, the next green CI on `main` deploys the one service. Verify:
 - `https://<name>.onrender.com/` loads the app, and a deep link (`/operator/1`) doesn't 404;
 - `https://<name>.onrender.com/actuator/health` returns `{"status":"UP"}` (proves Neon + Flyway);
 - operator sign-in reaches the credential check (the same-origin session cookie works — #110's fix).
+
+## Post-deploy steps by release
+
+Render swaps instances with zero downtime, so for a moment the old and new instances both run.
+A release listed here owes one extra step after the old instance has drained.
+
+- **#1340 (Flyway V74, stable event-registry listener ids).** The old instance can write a
+  publication under a pre-V74 listener id after V74 ran; no listener matches it, so it never
+  completes. Once the deploy is live, run against Neon:
+  ```sql
+  SELECT id, listener_id, status, publication_date FROM event_publication
+  WHERE completion_date IS NULL AND listener_id LIKE 'ai.riviera.platform.%';
+  ```
+  Zero rows: done. Any rows: run the statement in
+  `platform/src/main/resources/db/migration/V74__event_publication_stable_listener_ids.sql`
+  against the same database (it is idempotent), re-run the query to confirm zero rows, then
+  restart the service so the restart republish delivers them.
 
 ## Notes & caveats
 

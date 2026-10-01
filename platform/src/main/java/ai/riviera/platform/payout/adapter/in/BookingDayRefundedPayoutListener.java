@@ -29,7 +29,7 @@ class BookingDayRefundedPayoutListener {
 		this.ledger = ledger;
 	}
 
-	@ApplicationModuleListener
+	@ApplicationModuleListener(id = "payout.reverse-day-on-booking-day-refunded")
 	void on(BookingDayRefunded event) {
 		long bookingId = event.bookingId().value();
 		if (event.refundMinor() <= 0) {

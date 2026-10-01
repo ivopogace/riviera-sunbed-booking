@@ -17,8 +17,8 @@ import ai.riviera.platform.payment.vocabulary.RefundResult;
  * (invariants #10, #11); nothing is refunded when nothing is owed. Throws on {@link RefundResult.Failed}
  * so the registry retains and re-drives the publication; a redelivery never double-refunds (§payment).
  * Runs on the refund bulkhead and deliberately outside any transaction — load-bearing, see
- * {@code RESPONSIBILITIES.md} §booking. Renaming the class, {@code on} or its parameter type changes
- * the registry {@code listener_id} and orphans outstanding publications.
+ * {@code RESPONSIBILITIES.md} §booking. Its registry id is pinned by {@code ListenerIdSnapshotTest};
+ * changing it owes a Flyway rewrite.
  */
 @Component
 class BookingRefundListener {
@@ -32,7 +32,7 @@ class BookingRefundListener {
 	}
 
 	@Async(RefundExecutorConfig.REFUND_EXECUTOR)
-	@TransactionalEventListener
+	@TransactionalEventListener(id = "booking.refund-on-booking-cancelled")
 	void on(BookingCancelled event) {
 		if (event.refundMinor() <= 0) {
 			return; // non-refundable cancellation — nothing to refund (ADR-0005)
