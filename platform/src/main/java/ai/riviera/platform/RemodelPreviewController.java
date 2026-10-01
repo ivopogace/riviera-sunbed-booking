@@ -11,10 +11,10 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import ai.riviera.platform.operator.api.OperatorDirectory;
 import ai.riviera.platform.booking.api.RemodelClaims;
 import ai.riviera.platform.operator.vocabulary.OperatorId;
 import ai.riviera.platform.shared.ApiProblem;
-import ai.riviera.platform.shared.CurrentOperator;
 import ai.riviera.platform.shared.InvalidApiRequestException;
 import ai.riviera.platform.venue.api.BeachMapRemodel;
 import ai.riviera.platform.venue.vocabulary.DisturbedSet;
@@ -38,12 +38,12 @@ class RemodelPreviewController {
 	private static final String STALE_SETS_DETAIL =
 			"This venue's sets have changed since the version this request carries.";
 
-	private final CurrentOperator currentOperator;
+	private final OperatorDirectory operatorDirectory;
 	private final BeachMapRemodel remodel;
 	private final RemodelClaims claims;
 
-	RemodelPreviewController(CurrentOperator currentOperator, BeachMapRemodel remodel, RemodelClaims claims) {
-		this.currentOperator = currentOperator;
+	RemodelPreviewController(OperatorDirectory operatorDirectory, BeachMapRemodel remodel, RemodelClaims claims) {
+		this.operatorDirectory = operatorDirectory;
 		this.remodel = remodel;
 		this.claims = claims;
 	}
@@ -51,7 +51,7 @@ class RemodelPreviewController {
 	@PostMapping("/{venueId}/beach-map/preview")
 	ResponseEntity<?> preview(Authentication authentication, @PathVariable long venueId,
 			@RequestBody RemodelPreviewRequest request) {
-		OperatorId operator = currentOperator.require(authentication);
+		OperatorId operator = operatorDirectory.requireOperator(authentication.getName());
 		long expectedVersion = InvalidApiRequestException.parsing(request::requireExpectedVersion);
 		var cells = InvalidApiRequestException.parsing(request::toPlacements);
 		VenueId venue = new VenueId(venueId);

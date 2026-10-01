@@ -10,11 +10,11 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import ai.riviera.platform.operator.api.OperatorDirectory;
 import ai.riviera.platform.booking.application.remodel.ViewRemodelReceipts;
 import ai.riviera.platform.booking.vocabulary.ReceiptId;
 import ai.riviera.platform.operator.vocabulary.OperatorId;
 import ai.riviera.platform.shared.ApiProblem;
-import ai.riviera.platform.shared.CurrentOperator;
 import ai.riviera.platform.venue.vocabulary.VenueId;
 
 /**
@@ -30,16 +30,16 @@ class RemodelReceiptController {
 	private static final String NO_SUCH_RECEIPT_CODE = "NO_SUCH_RECEIPT";
 
 	private final ViewRemodelReceipts receipts;
-	private final CurrentOperator currentOperator;
+	private final OperatorDirectory operatorDirectory;
 
-	RemodelReceiptController(ViewRemodelReceipts receipts, CurrentOperator currentOperator) {
+	RemodelReceiptController(ViewRemodelReceipts receipts, OperatorDirectory operatorDirectory) {
 		this.receipts = receipts;
-		this.currentOperator = currentOperator;
+		this.operatorDirectory = operatorDirectory;
 	}
 
 	@GetMapping("/{venueId}/remodels")
 	List<RemodelReceiptView.Summary> list(Authentication authentication, @PathVariable long venueId) {
-		OperatorId operator = currentOperator.require(authentication);
+		OperatorId operator = operatorDirectory.requireOperator(authentication.getName());
 		return receipts.receiptsOf(operator, new VenueId(venueId)).stream()
 				.map(RemodelReceiptView.Summary::of)
 				.toList();
@@ -47,7 +47,7 @@ class RemodelReceiptController {
 
 	@GetMapping("/{venueId}/remodels/{receiptId}")
 	ResponseEntity<?> one(Authentication authentication, @PathVariable long venueId, @PathVariable long receiptId) {
-		OperatorId operator = currentOperator.require(authentication);
+		OperatorId operator = operatorDirectory.requireOperator(authentication.getName());
 		return receipts.receipt(operator, new VenueId(venueId), new ReceiptId(receiptId))
 				.<ResponseEntity<?>>map(receipt -> ResponseEntity.ok(RemodelReceiptView.of(receipt)))
 				.orElseGet(() -> ApiProblem.response(HttpStatus.NOT_FOUND, NO_SUCH_RECEIPT_CODE,

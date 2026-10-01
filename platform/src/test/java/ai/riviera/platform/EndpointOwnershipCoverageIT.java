@@ -23,7 +23,7 @@ import org.springframework.context.annotation.Import;
 import org.springframework.http.HttpStatus;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.mock.web.MockMultipartFile;
-import org.springframework.test.context.bean.override.mockito.MockitoBean;
+import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.test.web.servlet.RequestBuilder;
@@ -34,13 +34,13 @@ import org.springframework.web.servlet.mvc.method.annotation.RequestMappingHandl
 
 import com.jayway.jsonpath.JsonPath;
 
+import ai.riviera.platform.operator.api.OperatorDirectory;
 import ai.riviera.platform.operator.vocabulary.OperatorId;
-import ai.riviera.platform.shared.CurrentOperator;
 import jakarta.servlet.http.Cookie;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.doReturn;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
 
 /**
@@ -115,8 +115,8 @@ class EndpointOwnershipCoverageIT {
 	RequestMappingHandlerMapping handlerMapping;
 
 	/** The identity seam only; the ownership check is the real DB-backed bean. */
-	@MockitoBean
-	CurrentOperator currentOperator;
+	@MockitoSpyBean
+	OperatorDirectory operatorDirectory;
 
 	private RequestPostProcessor operatorSession;
 
@@ -130,7 +130,7 @@ class EndpointOwnershipCoverageIT {
 		jdbc.sql("DELETE FROM operator WHERE username = :u").param("u", NON_OWNER).update();
 		long id = jdbc.sql("INSERT INTO operator (username, status) VALUES (:u, 'ACTIVE') RETURNING id")
 				.param("u", NON_OWNER).query(Long.class).single();
-		when(currentOperator.require(any())).thenReturn(new OperatorId(id));
+		doReturn(new OperatorId(id)).when(operatorDirectory).requireOperator(any());
 	}
 
 	@Test

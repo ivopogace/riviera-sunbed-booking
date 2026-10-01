@@ -1,6 +1,5 @@
 package ai.riviera.platform;
 
-import ai.riviera.platform.shared.CurrentOperator;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -41,7 +40,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * a prior generalization audit.
  *
  * <p><strong>Why a status assertion would pin nothing.</strong> Both handlers open with
- * {@link CurrentOperator#require}, which throws {@code AccessDeniedException} for a principal that
+ * {@code OperatorDirectory#requireOperator}, which throws {@code NoOperableOperatorException} for a principal that
  * resolves to no operator. That reaches {@link ApiErrorHandler#onAccessDenied} and produces
  * {@code 403 ACCESS_DENIED} — <em>byte-identical</em> to what
  * {@link SecurityProblemResponses#writeAccessDenied} emits from inside the filter chain. So neither
@@ -192,7 +191,7 @@ class VenueWriteRoleGateTest {
 	private static void assertNeverDispatched(MvcResult result) {
 		assertThat(result.getHandler())
 				.as("the rejection must come from the security filter chain — a non-null handler means "
-						+ "the request reached the controller and CurrentOperator produced the 403 instead")
+						+ "the request reached the controller and the directory produced the 403 instead")
 				.isNull();
 	}
 }

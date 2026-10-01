@@ -1,6 +1,5 @@
 package ai.riviera.platform;
 
-import ai.riviera.platform.shared.CurrentCustomer;
 import java.time.Instant;
 import java.util.Set;
 
@@ -36,7 +35,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * one is {@code 400 MISSING_CURRENT_PASSWORD} and a supplied-but-wrong one {@code 400 INVALID_CURRENT_PASSWORD}
  * (one code for both told a caller a password it never sent was incorrect), and the stored password is
  * unchanged either way. The signed-in principal is faked with {@code user(email).roles("CUSTOMER")} so the SSO-only
- * case (which cannot password-login) can still be driven; {@code CurrentCustomer} resolves it to the real
+ * case (which cannot password-login) can still be driven; {@code CustomerAccountDirectory} resolves it to the real
  * DB account by email. Never a register-time UPSERT.
  */
 @EnabledIfDockerAvailable

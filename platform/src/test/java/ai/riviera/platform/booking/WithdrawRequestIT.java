@@ -15,10 +15,10 @@ import org.springframework.test.web.servlet.MockMvc;
 import ai.riviera.platform.EnabledIfDockerAvailable;
 import ai.riviera.platform.SessionLoginSupport;
 import ai.riviera.platform.TestcontainersConfiguration;
-import ai.riviera.platform.shared.CurrentOperator;
+import ai.riviera.platform.operator.api.OperatorDirectory;
 import ai.riviera.platform.operator.vocabulary.OperatorId;
 
-import org.springframework.test.context.bean.override.mockito.MockitoBean;
+import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
 
 import jakarta.servlet.http.Cookie;
 
@@ -26,7 +26,7 @@ import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.not;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.doReturn;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
@@ -66,8 +66,8 @@ class WithdrawRequestIT {
 	@Autowired
 	JdbcClient jdbc;
 
-	@MockitoBean
-	CurrentOperator currentOperator;
+	@MockitoSpyBean
+	OperatorDirectory operatorDirectory;
 
 	private long venueId;
 	private long setId;
@@ -92,7 +92,7 @@ class WithdrawRequestIT {
 				.param("v", venueId).query(Long.class).single();
 		jdbc.sql("INSERT INTO operator_venue (venue_id, operator_id) VALUES (:v, :o)")
 				.param("v", venueId).param("o", operator).update();
-		when(currentOperator.require(any())).thenReturn(new OperatorId(operator));
+		doReturn(new OperatorId(operator)).when(operatorDirectory).requireOperator(any());
 	}
 
 	private long insertPendingRequest(String code, LocalDate date) {

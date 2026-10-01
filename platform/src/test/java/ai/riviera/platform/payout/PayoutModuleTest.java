@@ -29,12 +29,11 @@ import ai.riviera.platform.customer.api.SsoAccountProvisioning;
 import ai.riviera.platform.notification.api.MailDeliverability;
 import ai.riviera.platform.notification.api.MailSender;
 import ai.riviera.platform.operator.api.OperatorAccounts;
+import ai.riviera.platform.operator.api.OperatorDirectory;
 import ai.riviera.platform.operator.api.OperatorLifecycle;
 import ai.riviera.platform.operator.api.OperatorProvisioning;
 import ai.riviera.platform.operator.api.OperatorRegistration;
 import ai.riviera.platform.operator.api.VenueOwnership;
-import ai.riviera.platform.shared.CurrentCustomer;
-import ai.riviera.platform.shared.CurrentOperator;
 import ai.riviera.platform.venue.api.VenueRates;
 import ai.riviera.platform.venue.vocabulary.SetId;
 import ai.riviera.platform.venue.vocabulary.VenueId;
@@ -81,7 +80,7 @@ class PayoutModuleTest {
 	ai.riviera.platform.booking.api.RemodelClaims remodelClaims;
 
 	// The ledger-read service (PayoutLedgerQueryService) depends on operator::api's ownership port,
-	// and the root edge (SecurityConfig + its beans) depends on operator::api too — CurrentOperator on
+	// and the root edge (SecurityConfig + its beans) depends on operator::api too — the controllers on
 	// OperatorDirectory, the DB-backed UserDetailsService on OperatorAccounts, and the boot
 	// provisioner on OperatorProvisioning. In module isolation the operator module isn't bootstrapped,
 	// so these operator::api ports are supplied as mocks to let the payout context load; the accrual
@@ -90,13 +89,7 @@ class PayoutModuleTest {
 	VenueOwnership ownership;
 
 	@MockitoBean
-	CurrentOperator currentOperator;
-
-	// Both principal accessors need mocking because they moved out of the root package into the
-	// `shared` kernel module: Modulith's STANDALONE bootstrap always supplies root-package beans, but
-	// a module's beans only when that module is bootstrapped — which `shared` is not, here.
-	@MockitoBean
-	CurrentCustomer currentCustomer;
+	OperatorDirectory operatorDirectory;
 
 	@MockitoBean
 	OperatorAccounts accounts;
@@ -123,7 +116,7 @@ class PayoutModuleTest {
 	@MockitoBean
 	CustomerAccountProvisioning customerAccountProvisioning;
 
-	// The root edge's CurrentCustomer resolves the signed-in principal to its account id via
+	// The root edge's /api/me controllers resolve the signed-in principal to its account id via
 	// customer::api's CustomerAccountDirectory — same isolation story, so it is mocked here too.
 	@MockitoBean
 	CustomerAccountDirectory customerAccountDirectory;

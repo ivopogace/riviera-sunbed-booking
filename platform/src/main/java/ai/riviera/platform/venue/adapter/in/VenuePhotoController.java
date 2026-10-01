@@ -20,8 +20,8 @@ import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
+import ai.riviera.platform.operator.api.OperatorDirectory;
 import ai.riviera.platform.shared.ApiProblem;
-import ai.riviera.platform.shared.CurrentOperator;
 import ai.riviera.platform.operator.vocabulary.OperatorId;
 import ai.riviera.platform.venue.application.PhotoProcessingResult.Reason;
 import ai.riviera.platform.venue.application.PhotoAudience;
@@ -52,17 +52,17 @@ class VenuePhotoController {
 	private static final CacheControl REVALIDATE_PRIVATE = CacheControl.noCache().cachePrivate();
 
 	private final VenuePhotos photos;
-	private final CurrentOperator currentOperator;
+	private final OperatorDirectory operatorDirectory;
 
-	VenuePhotoController(VenuePhotos photos, CurrentOperator currentOperator) {
+	VenuePhotoController(VenuePhotos photos, OperatorDirectory operatorDirectory) {
 		this.photos = photos;
-		this.currentOperator = currentOperator;
+		this.operatorDirectory = operatorDirectory;
 	}
 
 	@PostMapping("/{venueId}/photos/{slot}")
 	ResponseEntity<?> upload(Authentication authentication, @PathVariable long venueId,
 			@PathVariable String slot, @RequestPart("file") MultipartFile file) throws IOException {
-		OperatorId operator = currentOperator.require(authentication);
+		OperatorId operator = operatorDirectory.requireOperator(authentication.getName());
 		return switch (photos.upload(operator, new VenueId(venueId), PhotoSlots.parse(slot), file.getBytes())) {
 			case PhotoUploadResult.Stored(var metadata) ->
 					ResponseEntity.ok(PhotoUploadResponse.from(venueId, metadata));
@@ -73,7 +73,7 @@ class VenuePhotoController {
 	@DeleteMapping("/{venueId}/photos/{slot}")
 	ResponseEntity<?> delete(Authentication authentication, @PathVariable long venueId,
 			@PathVariable String slot) {
-		OperatorId operator = currentOperator.require(authentication);
+		OperatorId operator = operatorDirectory.requireOperator(authentication.getName());
 		return photos.delete(operator, new VenueId(venueId), PhotoSlots.parse(slot))
 				? ResponseEntity.noContent().build()
 				: ApiProblem.response(HttpStatus.NOT_FOUND, "NO_SUCH_PHOTO", "No photo in this slot.");
@@ -113,8 +113,11 @@ class VenuePhotoController {
 
 	/** An admin outranks its own operator role: it may preview any venue, not only the ones it owns. */
 	private PhotoViewer viewerOf(Authentication authentication) {
-		return currentOperator.optional(authentication)
-				.map(operator -> currentOperator.isAdmin(authentication)
+		if (!OperatorPrincipal.isOperator(authentication)) {
+			return PhotoViewer.anonymous();
+		}
+		return operatorDirectory.operatorFor(authentication.getName())
+				.map(operator -> OperatorPrincipal.isAdmin(authentication)
 						? PhotoViewer.admin()
 						: PhotoViewer.operator(operator))
 				.orElseGet(PhotoViewer::anonymous);

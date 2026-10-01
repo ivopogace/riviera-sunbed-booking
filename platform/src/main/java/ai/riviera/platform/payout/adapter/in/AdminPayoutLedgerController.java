@@ -6,7 +6,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import ai.riviera.platform.shared.CurrentOperator;
+import ai.riviera.platform.operator.api.OperatorDirectory;
 import ai.riviera.platform.operator.vocabulary.OperatorId;
 import ai.riviera.platform.payout.application.ViewPayoutLedger;
 import ai.riviera.platform.venue.vocabulary.VenueId;
@@ -14,7 +14,7 @@ import ai.riviera.platform.venue.vocabulary.VenueId;
 /**
  * Operator-gated read of a venue's payout ledger: accruals, reversals and fees with the
  * running net owed (invariant #9). Driving adapter depending on the payout module's
- * {@link ViewPayoutLedger} port (invariant #11) plus the edge {@link CurrentOperator} resolver.
+ * {@link ViewPayoutLedger} port (invariant #11) plus {@link OperatorDirectory} to resolve the principal.
  *
  * <p><strong>Operator-gated + per-venue scoped</strong>: {@code SecurityConfig} matches this GET to
  * {@code OPERATOR} <em>before</em> the public venue GET (unauthenticated → {@code 401}); the
@@ -25,16 +25,16 @@ import ai.riviera.platform.venue.vocabulary.VenueId;
 class AdminPayoutLedgerController {
 
 	private final ViewPayoutLedger viewPayoutLedger;
-	private final CurrentOperator currentOperator;
+	private final OperatorDirectory operatorDirectory;
 
-	AdminPayoutLedgerController(ViewPayoutLedger viewPayoutLedger, CurrentOperator currentOperator) {
+	AdminPayoutLedgerController(ViewPayoutLedger viewPayoutLedger, OperatorDirectory operatorDirectory) {
 		this.viewPayoutLedger = viewPayoutLedger;
-		this.currentOperator = currentOperator;
+		this.operatorDirectory = operatorDirectory;
 	}
 
 	@GetMapping("/{venueId}/payout-ledger")
 	PayoutLedgerView ledger(Authentication authentication, @PathVariable long venueId) {
-		OperatorId operator = currentOperator.require(authentication);
+		OperatorId operator = operatorDirectory.requireOperator(authentication.getName());
 		return PayoutLedgerView.of(viewPayoutLedger.forVenue(operator, new VenueId(venueId)));
 	}
 }

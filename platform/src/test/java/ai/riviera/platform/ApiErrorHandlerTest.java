@@ -16,6 +16,8 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MaxUploadSizeExceededException;
 
+import ai.riviera.platform.customer.vocabulary.NotSignedInCustomerException;
+import ai.riviera.platform.operator.vocabulary.NoOperableOperatorException;
 import ai.riviera.platform.operator.vocabulary.NotVenueOwnerException;
 import ai.riviera.platform.operator.vocabulary.OperatorId;
 import ai.riviera.platform.operator.vocabulary.VenueRef;
@@ -73,6 +75,17 @@ class ApiErrorHandlerTest {
 				.andExpect(status().isForbidden())
 				.andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
 				.andExpect(jsonPath("$.code").value("ACCESS_DENIED"));
+	}
+
+	@Test
+	void principalResolvingToNoOperatorOrCustomerIsTheSame403() throws Exception {
+		for (String path : new String[] { "/throw/no-operator", "/throw/not-customer" }) {
+			mvc.perform(get(path))
+					.andExpect(status().isForbidden())
+					.andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
+					.andExpect(jsonPath("$.code").value("ACCESS_DENIED"))
+					.andExpect(jsonPath("$.detail").value("Access denied."));
+		}
 	}
 
 	@Test
@@ -192,6 +205,16 @@ class ApiErrorHandlerTest {
 		@GetMapping("/throw/denied")
 		void denied() {
 			throw new AccessDeniedException("no active operator");
+		}
+
+		@GetMapping("/throw/no-operator")
+		void noOperator() {
+			throw new NoOperableOperatorException();
+		}
+
+		@GetMapping("/throw/not-customer")
+		void notCustomer() {
+			throw new NotSignedInCustomerException();
 		}
 
 		@GetMapping("/throw/invalid")

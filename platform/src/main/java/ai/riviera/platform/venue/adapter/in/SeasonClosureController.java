@@ -10,9 +10,9 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import ai.riviera.platform.operator.api.OperatorDirectory;
 import ai.riviera.platform.operator.vocabulary.OperatorId;
 import ai.riviera.platform.shared.ApiProblem;
-import ai.riviera.platform.shared.CurrentOperator;
 import ai.riviera.platform.shared.InvalidApiRequestException;
 import ai.riviera.platform.venue.application.CloseForSeason;
 import ai.riviera.platform.venue.application.CloseOutcome;
@@ -30,17 +30,17 @@ import ai.riviera.platform.venue.vocabulary.VenueId;
 class SeasonClosureController {
 
 	private final CloseForSeason closeForSeason;
-	private final CurrentOperator currentOperator;
+	private final OperatorDirectory operatorDirectory;
 
-	SeasonClosureController(CloseForSeason closeForSeason, CurrentOperator currentOperator) {
+	SeasonClosureController(CloseForSeason closeForSeason, OperatorDirectory operatorDirectory) {
 		this.closeForSeason = closeForSeason;
-		this.currentOperator = currentOperator;
+		this.operatorDirectory = operatorDirectory;
 	}
 
 	@PutMapping
 	ResponseEntity<?> close(Authentication authentication, @PathVariable long venueId,
 			@RequestBody SeasonClosureRequest request) {
-		OperatorId operator = currentOperator.require(authentication);
+		OperatorId operator = operatorDirectory.requireOperator(authentication.getName());
 		var closure = InvalidApiRequestException.parsing(request::toClosure);
 		return switch (closeForSeason.close(operator, new VenueId(venueId), closure)) {
 			case CloseOutcome.Closed closed -> ResponseEntity.ok(SeasonClosureResponse.of(closed));
@@ -54,7 +54,7 @@ class SeasonClosureController {
 
 	@DeleteMapping
 	ResponseEntity<?> reopen(Authentication authentication, @PathVariable long venueId) {
-		OperatorId operator = currentOperator.require(authentication);
+		OperatorId operator = operatorDirectory.requireOperator(authentication.getName());
 		return switch (closeForSeason.reopen(operator, new VenueId(venueId))) {
 			case REOPENED -> ResponseEntity.noContent().build();
 			case NO_SUCH_VENUE -> ApiProblem.response(HttpStatus.NOT_FOUND, "NO_SUCH_VENUE", "No such venue.");

@@ -1,6 +1,5 @@
 package ai.riviera.platform;
 
-import ai.riviera.platform.shared.CurrentCustomer;
 import ai.riviera.platform.shared.InvalidApiRequestException;
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
@@ -104,7 +103,7 @@ class SsoController {
 		// provider may assert a mixed-case address; the mock already returns a lower-cased one).
 		String email = Emails.normalize(identity.email());
 		// Resolve-or-create the account (find-or-create by verified email, auto-link); the session is keyed
-		// by the account email (principal name), exactly like password login, so CurrentCustomer resolves it.
+		// by the account email (principal name), exactly like password login, so /api/me resolves it.
 		CustomerAccountId resolved = ssoAccounts.resolveOrCreate(identity.provider(), identity.subject(), email);
 		LiveAccountCredential account = customerAccounts.liveCredential(resolved)
 				.orElseThrow(() -> new IllegalStateException("the SSO account was erased during its sign-in"));

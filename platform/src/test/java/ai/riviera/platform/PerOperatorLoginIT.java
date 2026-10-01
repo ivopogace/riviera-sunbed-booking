@@ -1,6 +1,5 @@
 package ai.riviera.platform;
 
-import ai.riviera.platform.shared.CurrentOperator;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -24,9 +23,9 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 /**
  * The per-operator login proof (AC-3/AC-4/AC-5) — the reference deliverable that the
  * shared {@code OPERATOR} password is gone and each operator authenticates as <strong>itself</strong>.
- * Unlike {@code CrossVenueDenialIT} (which mocks the principal→id seam), this runs the <em>real</em>
+ * Unlike {@code CrossVenueDenialIT} (which stubs the principal→id seam), this runs the <em>real</em>
  * login path end to end: distinct DB-backed credentials are provisioned for two operators, and the
- * ownership resolution ({@code CurrentOperator} + the real {@code operator} tables) is left intact —
+ * ownership resolution ({@code OperatorDirectory} + the real {@code operator} tables) is left intact —
  * so a request is attributed purely by which password authenticated.
  *
  * <p>Two synthetic per-venue operators are provisioned via the real {@link OperatorProvisioning}

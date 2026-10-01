@@ -12,6 +12,7 @@ import org.junit.jupiter.api.Test;
 import ai.riviera.platform.customer.vocabulary.CustomerAccountCredential;
 import ai.riviera.platform.customer.vocabulary.CustomerAccountId;
 import ai.riviera.platform.customer.vocabulary.LiveAccountCredential;
+import ai.riviera.platform.customer.vocabulary.NotSignedInCustomerException;
 import ai.riviera.platform.customer.vocabulary.RegistrationOutcome;
 import ai.riviera.platform.customer.vocabulary.ResetPasswordOutcome;
 import ai.riviera.platform.customer.vocabulary.SsoProvider;
@@ -74,6 +75,31 @@ class CustomerAccountServiceTest {
 		Optional<CustomerAccountId> resolved = service.accountFor("  ALICE@example.com "); // case/space-insensitive
 		assertThat(resolved).isPresent().isEqualTo(store.findIdByEmail("alice@example.com"));
 		assertThat(service.accountFor("nobody@example.com")).isEmpty();
+	}
+
+	@Test
+	void signedInAccountResolvesOnlyACustomerPrincipal() {
+		service.register("alice@example.com", "{bcrypt}hash");
+		Optional<CustomerAccountId> alice = store.findIdByEmail("alice@example.com");
+
+		assertThat(service.signedInAccount(" Alice@Example.com", true)).isEqualTo(alice);
+		assertThat(service.signedInAccount("alice@example.com", false))
+				.as("an operator session named like a customer email resolves to no customer").isEmpty();
+		assertThat(service.signedInAccount(null, true)).isEmpty();
+		assertThat(service.signedInAccount("nobody@example.com", true)).isEmpty();
+	}
+
+	@Test
+	void requireSignedInAccountThrowsForANonCustomerPrincipal() {
+		service.register("alice@example.com", "{bcrypt}hash");
+
+		assertThat(service.requireSignedInAccount("alice@example.com", true))
+				.isEqualTo(store.findIdByEmail("alice@example.com").orElseThrow());
+		assertThrows(NotSignedInCustomerException.class,
+				() -> service.requireSignedInAccount("alice@example.com", false));
+		assertThrows(NotSignedInCustomerException.class, () -> service.requireSignedInAccount(null, true));
+		assertThrows(NotSignedInCustomerException.class,
+				() -> service.requireSignedInAccount("nobody@example.com", true));
 	}
 
 	@Test
