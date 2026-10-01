@@ -14,7 +14,7 @@ import ai.riviera.platform.operator.api.VenueOwnership;
 import ai.riviera.platform.operator.vocabulary.OperatorId;
 import ai.riviera.platform.operator.vocabulary.VenueRef;
 import ai.riviera.platform.venue.api.BeachMapRemodel;
-import ai.riviera.platform.venue.api.RemodelGate;
+import ai.riviera.platform.venue.spi.RemodelGate;
 import ai.riviera.platform.venue.vocabulary.DisturbedSet;
 import ai.riviera.platform.venue.vocabulary.LayoutCell;
 import ai.riviera.platform.venue.vocabulary.LayoutCommitOutcome;

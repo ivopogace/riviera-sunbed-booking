@@ -1,4 +1,4 @@
-package ai.riviera.platform;
+package ai.riviera.platform.remodel;
 
 import java.time.LocalDate;
 import java.time.ZoneId;
@@ -16,6 +16,10 @@ import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
+
+import ai.riviera.platform.EnabledIfDockerAvailable;
+import ai.riviera.platform.SessionLoginSupport;
+import ai.riviera.platform.TestcontainersConfiguration;
 
 import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.not;

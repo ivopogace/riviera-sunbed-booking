@@ -3,6 +3,7 @@ package ai.riviera.platform.venue.api;
 import java.util.List;
 
 import ai.riviera.platform.operator.vocabulary.OperatorId;
+import ai.riviera.platform.venue.spi.RemodelGate;
 import ai.riviera.platform.venue.vocabulary.LayoutCell;
 import ai.riviera.platform.venue.vocabulary.LayoutCommitOutcome;
 import ai.riviera.platform.venue.vocabulary.LayoutPreview;
@@ -11,7 +12,7 @@ import ai.riviera.platform.venue.vocabulary.VenueId;
 
 /**
  * The {@code venue} module's published <strong>remodel</strong> port (invariant #11), composed with
- * {@code booking} by the platform edge (ADR-0020); {@code venue} never learns what a booking is.
+ * {@code booking} by the {@code remodel} module (ADR-0028); {@code venue} never learns what a booking is.
  * {@link #preview}: what a bulk beach-map save would disturb, by the save's own cell-keyed diff
  * against the active map, under no lock and writing nothing. {@link #commit}: the save itself, with
  * the caller's {@link RemodelGate} asked between the locks and the write. Rationale:
