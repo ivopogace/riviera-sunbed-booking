@@ -32,6 +32,12 @@ stays bounded by a stretch's few days rather than a fortnight. What the slice ha
 **code**: `booking.code` is `UNIQUE`, and every guest, staff and mail path resolves a code to exactly
 one row.
 
+*Re-keyed by ADR-0026 (2026-09-28), pointer added by issue #1342:* V69 has since widened the
+ledger's exactly-once guard to `UNIQUE NULLS NOT DISTINCT (booking_id, entry_type, service_date)`,
+so one day of a booking can be refunded on its own as a `DAY_REVERSAL`. One `REVERSAL` per booking
+still holds and the group still spares the ledger segments, but a partial refund is no longer a
+concept the ledger cannot express.
+
 ## Decision
 
 1. **A stay is a `stay` row plus one `booking` row per stretch** (`booking.stay_id`, nullable: a lone
@@ -83,6 +89,7 @@ one row.
 
 - **Segments inside one booking** — see *Context*: it re-keys the ledger's exactly-once guard, widens
   `BookingCancelled`, `BookingMoved` and the receipt, and makes a partial refund a new ledger concept.
+  (V69 later re-keyed that guard for day refunds; see the pointer in *Context*.)
 - **Sharing the stay's code across its `booking` rows** (relaxing `UNIQUE (code)`) — loses the
   `ON CONFLICT (code) DO NOTHING` collision guard that makes a bearer credential unique by
   construction, and turns a credential into an internal grouping key.

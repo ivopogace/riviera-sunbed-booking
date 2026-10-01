@@ -54,6 +54,9 @@ Serving discipline that keeps Neon out of the tourist hot path (part of this dec
   and both are encoded at a lower JPEG quality, which a high-density display hides. Hard byte +
   dimension caps on every rendition; a ≈50 MP / 12,000-px decode guard rejects decompression bombs
   regardless of byte size.
+  *Corrected 2026-10-01 (#1342):* every rendition has a hard **dimension** cap; its byte size
+  follows from that box and the JPEG quality, and `PhotoProcessor` checks no rendition's bytes. The
+  only byte cap is on the upload (`venue.photo.max-upload-bytes`).
 - **A rendition added later cannot be backfilled.** Discarding the original is what makes a photo
   stored before a surface or a density existed publish fewer candidates until it is re-uploaded —
   the accepted cost of not keeping masters. Each slideshow read falls back to its next-best stored

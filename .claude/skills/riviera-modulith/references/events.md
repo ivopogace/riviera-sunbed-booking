@@ -13,17 +13,23 @@ does not — the listener re-reads it via `venue::api` (`BookingConfirmedPayoutL
 because it can change while the event sits in the registry.
 
 > Moving or renaming a published event changes the persisted FQCN in `event_publication` and
-> `event_publication_archive` (`event_type` and the default `listener_id`). Ship a Flyway
-> rewrite like `V18__event_publication_event_type_moves.sql`, or outstanding publications
-> dead-letter after deploy.
+> `event_publication_archive` (`event_type` and the default `listener_id`); moving or renaming a
+> listener's class, method or parameter type changes `listener_id`. Ship a Flyway rewrite like
+> `V18__event_publication_event_type_moves.sql` (both columns) or
+> `V31__event_publication_listener_move.sql` (`listener_id`, pinned by `ListenerMoveMigrationIT`),
+> or outstanding publications dead-letter after deploy. Stable listener ids (#1340) would remove
+> the `listener_id` half.
 
 ## Publishing and listening
 
 Publish from the application service via `ApplicationEventPublisher` after the state change,
 inside the transaction. Listen with `@ApplicationModuleListener` in the subscriber's
 `adapter/in`, or, for a listener that must drain on its own bounded executor (the mail and refund
-bulkheads), `@Async("<executor>")` + `@TransactionalEventListener`. Listeners must be idempotent
-(dedupe on `BookingId`): the registry re-delivers an outstanding publication on restart.
+bulkheads), `@Async("<executor>")` + `@TransactionalEventListener`. That spelling deliberately
+drops the composite's `@Transactional(propagation = REQUIRES_NEW)`: no connection is pinned across
+the SMTP or Stripe call (`BookingConfirmationMailListener`; `RESPONSIBILITIES.md` §`booking`).
+Listeners must be idempotent (dedupe on `BookingId`): the registry re-delivers an outstanding
+publication on restart.
 
 Default to async. A plain `@EventListener` runs in the publisher's transaction and a throw
 rolls the publisher back — only when the producer must fail if the consumer can't apply and an

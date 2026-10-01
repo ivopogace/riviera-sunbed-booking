@@ -17,6 +17,11 @@ Persist via **Spring Data JDBC / `JdbcTemplate` only**. `spring-boot-starter-dat
 must never be on the classpath. No `@Entity`, `@OneToMany`, `@ManyToOne`, `mappedBy`,
 or `EntityManager`. Schema changes go through Flyway forward migrations. (Invariant #1.)
 
+*Corrected 2026-10-01 (#1342):* adapters are hand-written `JdbcClient` (and `JdbcTemplate`) SQL.
+The Spring Data JDBC starter is on the classpath, but Spring Data repositories are not used and
+nothing in `src/main/java` imports `org.springframework.data.*`; that ban is prose today
+(`RESPONSIBILITIES.md` § *Invariants, long form*), its build check tracked in #1337.
+
 ## Consequences
 
 - Full control over the reservation transaction (`SELECT … FOR UPDATE` /

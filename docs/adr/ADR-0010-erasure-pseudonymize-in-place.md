@@ -14,10 +14,12 @@ accounting-and-tax records with a statutory retention period. So "erase everythi
 financial record" both bind at once, over the *same* person's data.
 
 The schema already encodes the tension structurally. `booking.customer_id` (V5) and
-`booking.account_id` (V26) are both **`ON DELETE RESTRICT`**, and the payout ledger's cross-module
+`booking.account_id` (V26) both declare no `ON DELETE` clause, so they take the default
+**`NO ACTION`**, which for a non-deferrable FK refuses the delete exactly as `RESTRICT` would
+*(corrected 2026-10-01, #1342: was "`ON DELETE RESTRICT`")*, and the payout ledger's cross-module
 FKs (V9) are `NO ACTION` with a deliberate "an audit row must not vanish" comment. A customer /
 account row that has bookings therefore **cannot be hard-deleted** — the database refuses it. That
-RESTRICT is not an obstacle to work around; it *is* the retention obligation expressed in DDL.
+refusal is not an obstacle to work around; it *is* the retention obligation expressed in DDL.
 
 Two erasure shapes were possible:
 
@@ -37,7 +39,9 @@ Two erasure shapes were possible:
   deterministic, unique, non-routable placeholder `erased+<id>@erased.invalid` (reserved `.invalid`
   TLD, RFC 2606; per-row `id` keeps it unique against the `email` UNIQUE constraint),
   `full_name`/`phone` become `'ERASED'`, `password_hash` becomes `NULL`, and a new nullable
-  `erased_at TIMESTAMPTZ` marker (Flyway **V30**) is set.
+  `erased_at TIMESTAMPTZ` marker (Flyway **V30**) is set. *Corrected 2026-10-01 (#1342):*
+  `full_name` and `phone` are the guest `customer` row's columns, `password_hash` the
+  `customer_account` row's; `customer_account` holds no name or phone.
 - The transient credential **children are deleted**: `customer_sso_identity` (carries a provider
   subject + email) and `customer_account_token` (bearer digests). These are not audit records.
 - `booking`, `payment`, and `payout_ledger_entry` are **never touched**. The payout ledger holds no
@@ -65,6 +69,10 @@ Two erasure shapes were possible:
   self-service `POST /api/me/erasure` (CUSTOMER, session-scoped) and admin `POST /api/admin/erasure`
   (ADMIN, by email). The edge revokes the subject's sessions (`PrincipalSessionRevoker`) and records
   the event via the structured logger with technical ids only — never PII or a booking code.
+  *Corrected 2026-10-01 (#1342):* only the self-service path (`MyErasureController`) revokes; the
+  admin path (`AdminErasureController`) revokes nothing, and the subject's session ends lazily on
+  its next request, when the #1306 credential check no longer finds the account. Tracked in #1334.
+  The structured log line is written by `customer`'s `AccountErasureService`, not the edge.
 - **Backups** hold pre-erasure copies erasure cannot reach; that is handled operationally, not in
   code — a bounded backup-retention window plus re-applying `erased_at`-flagged erasures on any
   restore (documented in `docs/runbooks/data-erasure.md`).
