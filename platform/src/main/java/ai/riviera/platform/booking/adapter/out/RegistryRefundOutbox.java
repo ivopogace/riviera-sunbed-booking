@@ -26,13 +26,13 @@ class RegistryRefundOutbox implements RefundOutbox {
 	static final String REFUND_LISTENER_ID = "booking.refund-on-booking-cancelled";
 
 	/**
-	 * The registry's id for {@code RemodelReleasePaymentListener.on(BookingCancelled)} — the void of a
+	 * The explicit registry id of {@code RemodelReleasePaymentListener} — the void of a
 	 * remodel-released booking's uncollected intent. No money moves when it runs, but none is collected
 	 * either: an intent left un-voided stays chargeable to a guest whose booking no longer exists.
 	 */
 	static final String RELEASE_VOID_LISTENER_ID = "booking.release-void-on-booking-cancelled";
 
-	/** The registry's id for {@code BookingDayRefundListener.on(BookingDayRefunded)} — a refunded day's money (#1210). */
+	/** The explicit registry id of {@code BookingDayRefundListener} — a refunded day's money (#1210). */
 	static final String DAY_REFUND_LISTENER_ID = "booking.day-refund-on-booking-day-refunded";
 
 	private static final Set<String> ALLOWED_LISTENER_IDS =

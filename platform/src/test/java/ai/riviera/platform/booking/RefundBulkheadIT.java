@@ -65,9 +65,9 @@ import static org.assertj.core.api.Assertions.assertThat;
  *   <li>a failed refund still leaves the publication <em>outstanding</em> and a resubmit still
  *       re-delivers it. This is the whole retry story for a refund, so losing it silently would turn
  *       "money owed is never lost" into fire-and-forget;</li>
- *   <li>the {@code listener_id} still reads as the registry wrote it. The id embeds the listener FQCN
- *       and signature and republication matches it string-equal, so drift would dead-letter every
- *       outstanding refund and would owe a Flyway rewrite (invariant #12).</li>
+ *   <li>the {@code listener_id} the registry writes is the listener's explicit id. Republication
+ *       matches it string-equal, so drift would dead-letter every outstanding refund and would owe a
+ *       Flyway rewrite (invariant #12).</li>
  * </ul>
  *
  * <p>What a <em>shed</em> refund costs is not asked here: these tests wedge the gateway, they never
@@ -306,7 +306,7 @@ class RefundBulkheadIT {
 	}
 
 	/**
-	 * The {@code listener_id} the registry writes still reads as the pin expects. Asserted against an
+	 * The {@code listener_id} the registry writes is the pinned explicit id. Asserted against an
 	 * <em>outstanding</em> row, which is the one republication actually matches on.
 	 */
 	@Test
@@ -324,7 +324,7 @@ class RefundBulkheadIT {
 
 		assertThat(outstandingListenerIds(LISTENER_ID_REFUND_MINOR))
 				.as("republication matches listener_id string-equal; drift dead-letters every outstanding "
-						+ "refund and would owe the Flyway rewrite this slice claims not to need")
+						+ "refund and owes a Flyway rewrite")
 				.contains(REFUND_LISTENER_ID);
 	}
 

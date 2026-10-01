@@ -184,12 +184,12 @@ class RegistryMailBulkheadIT {
 	}
 
 	/**
-	 * The {@code listener_id} the registry writes is still the string the migration wrote onto every
+	 * The {@code listener_id} the registry writes is the listener's explicit id, the one V74 mapped every
 	 * pre-existing row to. Asserted against an <em>outstanding</em> row, which is the one republication
 	 * actually matches on.
 	 */
 	@Test
-	void keepsTheListenerIdV31Migrated() {
+	void writesTheExplicitListenerId() {
 		SetRef set = fixtures.onlineSet();
 		LocalDate date = LocalDate.of(2031, 6, 4);
 		long bookingId = fixtures.seedBooking(set, "LSTNRID1", date, "listener-id@example.com",
@@ -198,7 +198,7 @@ class RegistryMailBulkheadIT {
 		transport.failEverySend(true);
 		fixtures.publishInTransaction(fixtures.confirmationOf(set, bookingId, date, LISTENER_ID_AMOUNT_MINOR));
 
-		Awaitility.await("an outstanding row exists under the migrated listener id").atMost(WAIT)
+		Awaitility.await("an outstanding row exists under the explicit listener id").atMost(WAIT)
 				.until(() -> fixtures.outstandingMailPublications(LISTENER_ID_AMOUNT_MINOR) == 1L);
 
 		List<String> ids = fixtures.outstandingListenerIds(LISTENER_ID_AMOUNT_MINOR);

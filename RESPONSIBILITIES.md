@@ -412,7 +412,8 @@ any is released on the old, never a swap of my own — so a racing reserve wins 
   to `ObservabilityMetrics.REFUNDS_SHED` (never thrown or run on the caller), and the publication
   stays outstanding for the restart republish.
 - **The payment → booking listeners retry themselves; the refund-bulkhead ones never do.**
-  `BookingSpineRetry` re-drives a `FAILED` confirm or cancel (both guarded transitions, #2/#8);
+  `BookingSpineRetry` re-drives a `FAILED` confirm on `PaymentConfirmed` or release on
+  `PaymentCanceled` (both guarded transitions, #2/#8);
   staleness (`spring.modulith.events.staleness.*`) turns a stuck one `FAILED` first. A refund,
   day refund or intent void waits for the admin lever or a restart.
 - **The ADMIN refund-outbox re-drive uses an exact-id allowlist** (`BookingRefundListener`,
