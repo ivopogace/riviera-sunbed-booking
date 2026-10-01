@@ -13,8 +13,10 @@ import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.test.web.servlet.MockMvc;
 
 import ai.riviera.platform.EnabledIfDockerAvailable;
+import ai.riviera.platform.MovableClock;
 import ai.riviera.platform.SessionLoginSupport;
 import ai.riviera.platform.TestcontainersConfiguration;
+import ai.riviera.platform.TiraneDaytimeClock;
 
 import com.jayway.jsonpath.JsonPath;
 
@@ -35,7 +37,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * gateway.
  */
 @EnabledIfDockerAvailable
-@Import(TestcontainersConfiguration.class)
+@Import({ TestcontainersConfiguration.class, TiraneDaytimeClock.class })
 @SpringBootTest(properties = { "riviera.operator.password=test-operator-pw",
 		"booking.no-show.enabled=false" })
 @AutoConfigureMockMvc
@@ -46,6 +48,9 @@ class BookingControllerIT {
 
 	@Autowired
 	JdbcClient jdbc;
+
+	@Autowired
+	MovableClock clock;
 
 	private long onlineSet() {
 		return jdbc.sql("SELECT id FROM set_position WHERE pool = 'ONLINE' ORDER BY id LIMIT 1")
@@ -68,16 +73,14 @@ class BookingControllerIT {
 		return LocalDate.now().plusYears(1);
 	}
 
-	/** Today as Tirane's civil date (invariant #6) — the JVM-default zone drifts a day near midnight UTC. */
-	private static LocalDate today() {
-		return LocalDate.now(java.time.ZoneId.of("Europe/Tirane"));
+	/** Today as the pinned clock's Tirane civil date (invariant #6), never the wall's. */
+	private LocalDate today() {
+		return TiraneDaytimeClock.today(clock);
 	}
 
 	/**
 	 * A fresh Instant-Book venue at the given {@code sales_close} boundary value, with one ONLINE
-	 * set — the R-5 boundary-venue trick: a {@code 23:59}/{@code 00:01} venue makes today's
-	 * bookability deterministic without a fixed-clock Spring context, residual risk only within a
-	 * minute of Tirane midnight.
+	 * set: on the pinned clock a {@code 00:01} venue is closed for today, a {@code 23:59} one open.
 	 */
 	private long onlineSetAtSalesClose(String salesClose) {
 		long venue = boundaryVenue(salesClose);
@@ -183,7 +186,7 @@ class BookingControllerIT {
 		mvc.perform(post("/api/bookings")
 						.header(SessionLoginSupport.CHALLENGE_HEADER, SessionLoginSupport.solvedChallenge(mvc))
 						.contentType(MediaType.APPLICATION_JSON)
-						.content(body(onlineSet(), LocalDate.now().minusDays(1))))
+						.content(body(onlineSet(), today().minusDays(1))))
 				.andExpect(status().isUnprocessableEntity())
 				.andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
 				.andExpect(jsonPath("$.code").value("BOOKING_CLOSED"));
@@ -214,7 +217,7 @@ class BookingControllerIT {
 
 	@Test
 	void reserveRefusedAfterOwnerClosesSalesForToday() throws Exception {
-		// AC-4 (#794): the owner's PATCH to 00:01 refuses the very next reserve for today (R-5 trick).
+		// AC-4 (#794): the owner's PATCH to 00:01 refuses the very next reserve for today.
 		long venue = boundaryVenueOwnedBySeededOperator("23:59");
 		long set = boundaryOnlineSet(venue);
 		Cookie owner = SessionLoginSupport.operatorSession(mvc, "operator", "test-operator-pw");

@@ -2,13 +2,11 @@ package ai.riviera.platform.venue;
 
 import java.time.LocalDate;
 import java.time.LocalTime;
-import java.time.ZoneId;
 import java.util.List;
 
 import com.jayway.jsonpath.JsonPath;
 
 import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -19,8 +17,10 @@ import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.test.web.servlet.MockMvc;
 
 import ai.riviera.platform.EnabledIfDockerAvailable;
+import ai.riviera.platform.MovableClock;
 import ai.riviera.platform.OwnershipFixtures;
 import ai.riviera.platform.TestcontainersConfiguration;
+import ai.riviera.platform.TiraneDaytimeClock;
 
 import static org.hamcrest.Matchers.contains;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -41,7 +41,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * insert their own venues into the shared container.
  */
 @EnabledIfDockerAvailable
-@Import(TestcontainersConfiguration.class)
+@Import({ TestcontainersConfiguration.class, TiraneDaytimeClock.class })
 @SpringBootTest
 @AutoConfigureMockMvc
 class VenueListControllerIT {
@@ -51,13 +51,15 @@ class VenueListControllerIT {
 	private static final String BEACH_PALASE = IsolationBeaches.LIST_IT_BEACH_B;
 	private static final String BEACH_SALES_CLOSE = IsolationBeaches.LIST_IT_SALES_CLOSE_BEACH;
 	private static final List<String> IT_BEACHES = List.of(BEACH_DHERMI, BEACH_PALASE, BEACH_SALES_CLOSE);
-	private static final ZoneId TIRANE = ZoneId.of("Europe/Tirane");
 
 	@Autowired
 	MockMvc mvc;
 
 	@Autowired
 	JdbcClient jdbc;
+
+	@Autowired
+	MovableClock clock;
 
 	private long aurora; // Shëngjin, rating 47, 3 sets @ 4500/3500/3000 → fromPrice 3000
 	private long zephyr; // Tale, rating 47 (name tie-break: Aurora before Zephyr)
@@ -207,7 +209,7 @@ class VenueListControllerIT {
 	@Test
 	void defaultsToTodayTirane() throws Exception {
 		// AC-5: no date param ⇒ counts for today in Europe/Tirane.
-		LocalDate today = LocalDate.now(TIRANE);
+		LocalDate today = TiraneDaytimeClock.today(clock);
 		book(firstSetOf(aurora), today);
 
 		mvc.perform(get("/api/venues").param("beach", BEACH_DHERMI))
@@ -248,9 +250,8 @@ class VenueListControllerIT {
 	}
 
 	/**
-	 * A fresh visible venue at the given {@code sales_close} boundary value — the boundary-venue
-	 * trick the reserve ITs use instead of clock mocking: a {@code 00:01} venue is closed for today
-	 * at any run hour past the first minute, a {@code 23:59} venue open until the last.
+	 * A fresh visible venue at the given {@code sales_close} boundary value: on the pinned clock a
+	 * {@code 00:01} venue is closed for today, a {@code 23:59} one open.
 	 */
 	private long insertVenueAtSalesClose(String name, LocalTime salesClose) {
 		long id = jdbc.sql("""
@@ -266,22 +267,14 @@ class VenueListControllerIT {
 		return id;
 	}
 
-	/** Skip the midnight minutes where "today" or a boundary venue's verdict would flip mid-test. */
-	private static void assumeAwayFromMidnightBoundaries() {
-		LocalTime now = LocalTime.now(TIRANE);
-		Assumptions.assumeTrue(now.isAfter(LocalTime.of(0, 2)) && now.isBefore(LocalTime.of(23, 58)),
-				"skipped near midnight — today would roll over or a boundary venue's verdict flip mid-test");
-	}
-
 	@Test
 	void listCarriesPerVenueSalesOpenForToday() throws Exception {
 		// #793 AC-1: today's list carries per-venue verdicts — 00:01 closed, 23:59 open, one response.
-		assumeAwayFromMidnightBoundaries();
 		long closed = insertVenueAtSalesClose("Closed For Today IT", LocalTime.of(0, 1));
 		long open = insertVenueAtSalesClose("Open Till Late IT", LocalTime.of(23, 59));
 
 		mvc.perform(get("/api/venues").param("beach", BEACH_SALES_CLOSE)
-						.param("date", LocalDate.now(TIRANE).toString()))
+						.param("date", TiraneDaytimeClock.today(clock).toString()))
 				.andExpect(status().isOk())
 				.andExpect(jsonPath("$[?(@.id == %d)].salesOpen".formatted(closed)).value(contains(false)))
 				.andExpect(jsonPath("$[?(@.id == %d)].salesOpen".formatted(open)).value(contains(true)));
@@ -290,12 +283,11 @@ class VenueListControllerIT {
 	@Test
 	void futureDatesAreOpenAtEveryVenue() throws Exception {
 		// #793 AC-2: tomorrow is open at both boundary venues — the rule alone, no special-casing.
-		assumeAwayFromMidnightBoundaries();
 		long optOut = insertVenueAtSalesClose("Opt-Out Tomorrow IT", LocalTime.of(0, 1));
 		long lateClose = insertVenueAtSalesClose("Late Tomorrow IT", LocalTime.of(23, 59));
 
 		mvc.perform(get("/api/venues").param("beach", BEACH_SALES_CLOSE)
-						.param("date", LocalDate.now(TIRANE).plusDays(1).toString()))
+						.param("date", TiraneDaytimeClock.today(clock).plusDays(1).toString()))
 				.andExpect(status().isOk())
 				.andExpect(jsonPath("$[?(@.id == %d)].salesOpen".formatted(optOut)).value(contains(true)))
 				.andExpect(jsonPath("$[?(@.id == %d)].salesOpen".formatted(lateClose)).value(contains(true)));
