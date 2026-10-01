@@ -1,6 +1,8 @@
 package ai.riviera.platform;
 
+import java.net.URI;
 import java.util.List;
+import java.util.Set;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -15,6 +17,7 @@ import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilde
 
 import static ai.riviera.platform.WebSliceStubs.StubProofOfWorkChallenges.EXPIRED;
 import static ai.riviera.platform.WebSliceStubs.StubProofOfWorkChallenges.SOLVED;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
@@ -42,15 +45,37 @@ class ChallengeVerificationFilterTest {
 	private static final String OPERATOR_REGISTER_PATH = "/api/auth/operator/register";
 	private static final String FORGOT_PASSWORD_PATH = "/api/auth/customer/forgot-password";
 	private static final String BOOKING_CREATE_PATH = "/api/bookings";
+	private static final String STAY_CREATE_PATH = "/api/stays";
 	private static final String HEADER = "X-Altcha-Payload";
 
 	/** A well-formed body per fenced route, so only the challenge decides the answer. */
 	static List<String> fencedRoutes() {
-		return List.of(REGISTER_PATH, OPERATOR_REGISTER_PATH, FORGOT_PASSWORD_PATH, BOOKING_CREATE_PATH);
+		return List.of(REGISTER_PATH, OPERATOR_REGISTER_PATH, FORGOT_PASSWORD_PATH, BOOKING_CREATE_PATH,
+				STAY_CREATE_PATH);
 	}
 
 	@Autowired
 	MockMvc mvc;
+
+	/** Spelled out, not read from the filter, so a route fenced without a contract line here fails. */
+	@Test
+	void theFenceCoversExactlyTheContractedRoutes() {
+		assertEquals(Set.copyOf(fencedRoutes()), ChallengeVerificationFilter.FENCED_POSTS);
+	}
+
+	/**
+	 * The fence keys on the path Spring routes on: {@code /api/booking%73} reaches booking create, so it is
+	 * refused like the plain spelling. {@code URI.create} keeps {@code %73} unencoded for the firewall.
+	 */
+	@Test
+	void aPercentEncodedSpellingOfAFencedRouteIsFencedToo() throws Exception {
+		mvc.perform(post(URI.create("/api/booking%73")).with(csrf())
+				.header("X-Forwarded-For", SessionLoginSupport.uniqueClientIp())
+				.contentType(MediaType.APPLICATION_JSON)
+				.content(bodyFor(BOOKING_CREATE_PATH)))
+				.andExpect(status().isBadRequest())
+				.andExpect(jsonPath("$.code").value("CHALLENGE_REQUIRED"));
+	}
 
 	@ParameterizedTest
 	@MethodSource("fencedRoutes")
@@ -138,6 +163,9 @@ class ChallengeVerificationFilterTest {
 					{"email":"slice@example.com"}""";
 			case BOOKING_CREATE_PATH -> """
 					{"setId":1,"bookingDate":"2026-12-01",
+					 "contact":{"email":"slice@example.com","fullName":"Slice Guest","phone":"+355699"}}""";
+			case STAY_CREATE_PATH -> """
+					{"stretches":[{"setId":1,"firstDate":"2026-12-01","lastDate":"2026-12-02"}],
 					 "contact":{"email":"slice@example.com","fullName":"Slice Guest","phone":"+355699"}}""";
 			default -> """
 					{"email":"slice@example.com","password":"passphrase-123"}""";
