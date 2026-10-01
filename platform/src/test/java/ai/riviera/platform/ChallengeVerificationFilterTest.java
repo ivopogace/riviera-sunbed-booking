@@ -1,5 +1,6 @@
 package ai.riviera.platform;
 
+import java.net.URI;
 import java.util.List;
 import java.util.Set;
 
@@ -53,14 +54,28 @@ class ChallengeVerificationFilterTest {
 				STAY_CREATE_PATH);
 	}
 
-	/** Spelled out, not read from the filter: a route dropped from the fence must fail the refusals below. */
+	@Autowired
+	MockMvc mvc;
+
+	/** Spelled out, not read from the filter, so a route fenced without a contract line here fails. */
 	@Test
 	void theFenceCoversExactlyTheContractedRoutes() {
 		assertEquals(Set.copyOf(fencedRoutes()), ChallengeVerificationFilter.FENCED_POSTS);
 	}
 
-	@Autowired
-	MockMvc mvc;
+	/**
+	 * The fence keys on the path Spring routes on: {@code /api/booking%73} reaches booking create, so it is
+	 * refused like the plain spelling. {@code URI.create} keeps {@code %73} unencoded for the firewall.
+	 */
+	@Test
+	void aPercentEncodedSpellingOfAFencedRouteIsFencedToo() throws Exception {
+		mvc.perform(post(URI.create("/api/booking%73")).with(csrf())
+				.header("X-Forwarded-For", SessionLoginSupport.uniqueClientIp())
+				.contentType(MediaType.APPLICATION_JSON)
+				.content(bodyFor(BOOKING_CREATE_PATH)))
+				.andExpect(status().isBadRequest())
+				.andExpect(jsonPath("$.code").value("CHALLENGE_REQUIRED"));
+	}
 
 	@ParameterizedTest
 	@MethodSource("fencedRoutes")
