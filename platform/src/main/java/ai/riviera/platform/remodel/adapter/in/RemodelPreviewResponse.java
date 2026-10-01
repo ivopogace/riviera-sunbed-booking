@@ -1,4 +1,4 @@
-package ai.riviera.platform;
+package ai.riviera.platform.remodel.adapter.in;
 
 import java.util.List;
 

@@ -91,6 +91,7 @@ aggregate-root classes: `domain/` holds rules, state is in tables, lifecycles ar
 | `review` | one review per booking, eligibility + window, aggregate rating, admin takedown, erasure tombstone; a leaf (ADR-0015) | `review` |
 | `notification` | transactional mail, hashed suppression list, delivery log + admin resend | `email_suppression`, `booking_confirmation_mail_attempt` |
 | `itinerary` | the stay read model (D7/D11): the whole-coast verdict per venue for a span (same set · fits with N moves · can't host), served on `GET /api/venues`; the per-venue stitched plan on `GET /api/venues/{id}/itinerary`; the move budget `riviera.itinerary.max-switches` | nothing — a read model over `venue::api` + `availability::api` |
+| `remodel` | the beach-map remodel preview + commit (ADR-0020/ADR-0028): composes `venue`'s layout diff and write with `booking`'s claim classification and settlement, supplying `venue.spi.RemodelGate`; assembles, never decides | nothing — a composition over `venue::api` + `booking::api` |
 
 Plus `shared` (OPEN kernel of edge types like `ApiProblem`, depending on no module; admission by
 ownership, never reuse) and the closed non-context modules with `allowedDependencies = {}`:

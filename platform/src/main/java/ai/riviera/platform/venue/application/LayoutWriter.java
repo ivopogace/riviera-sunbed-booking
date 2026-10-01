@@ -9,7 +9,7 @@ import org.springframework.stereotype.Component;
 
 import java.util.Set;
 
-import ai.riviera.platform.venue.api.RemodelGate;
+import ai.riviera.platform.venue.spi.RemodelGate;
 import ai.riviera.platform.venue.spi.BookingPresence;
 import ai.riviera.platform.venue.vocabulary.DisturbedSet;
 import ai.riviera.platform.venue.vocabulary.GateVerdict;

@@ -1,4 +1,4 @@
-package ai.riviera.platform;
+package ai.riviera.platform.remodel.adapter.in;
 
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -20,7 +20,7 @@ import ai.riviera.platform.venue.vocabulary.SetId;
  * one: {@code venue}'s disturbed sets with walk-in holds and {@code booking}'s classified claims
  * become the five groups, {@code keep} (by id: the blocked claims' sets, which the save keeps
  * itself, and the held sets, which the operator must keep) and the {@link PreviewToken}. The fee
- * quote reaches here via {@code booking}, keeping the root off {@code payout} (ADR-0020, ADR-0021);
+ * quote reaches here via {@code booking}, keeping this module off {@code payout} (ADR-0020, ADR-0021);
  * its total is rate × refund count, while a commit snapshots what it charged onto its receipt.
  */
 final class RemodelPreviewAssembler {
