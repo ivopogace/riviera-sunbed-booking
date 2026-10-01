@@ -48,10 +48,12 @@ edit to this rule".
 
 1. **The remodel preview and the remodel commit live in the root package**, as driving adapters that
    compose `venue.api.BeachMapRemodel` and `booking.api.RemodelClaims`. The preview is
-   `RemodelPreviewController`; the commit is `RemodelCommitController` with `RemodelCommitService` as
-   the `venue.api.RemodelGate` that `BeachMapRemodel#commit` calls back inside its transaction, where
-   `RemodelClaims#commit` settles every claim on the disturbed sets — the root composes the callback,
-   the modules own the transaction and every write in it.
+   `RemodelPreviewController`; the commit is `RemodelCommitController` with `RemodelCommitService`
+   supplying the `venue.api.RemodelGate` that `BeachMapRemodel#commit` calls back inside its
+   transaction, where `RemodelClaims#commit` settles every claim on the disturbed sets — the root
+   composes the callback, the modules own the transaction and every write in it.
+   *Amended 2026-10-01 (#1342):* `RemodelCommitService` implements no interface; it passes the
+   gate to `BeachMapRemodel#commit` as a per-call lambda.
 2. **The root's grant map gains `venue` and `booking`, `api` + `vocabulary` only.** Never `spi`
    (the root implements nothing for a module), never `application`, `domain` or `adapter`, and
    nothing of `payment`, `payout` or `availability` — those remain out of bounds exactly as before.

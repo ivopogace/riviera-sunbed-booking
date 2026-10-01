@@ -18,10 +18,16 @@ written. `itinerary` holds a pure domain rule (`itinerary/domain/StayFit`), so i
 with a rule layer. The decision and § 5's verdict hold: the thirteen are modules, the platform is one
 bounded context.
 
+*Amended 2026-10-01 (#1342), citations re-read:* the line references into `RefundPolicy`, `RequestWindows`,
+`ReviewGate`, `BookingCutoff`, `CancellationPolicy`, `PayoutBatch` and ADR-0007, and the quotes from
+`ReviewGate` and `BookingCutoff`, are corrected in place to the current text; what they evidence is
+unchanged.
+
 ## Context
 
 Nothing in the substrate wrote down what `domain/` is *for*. ADR-0007 lists it in the full template
-as "aggregates, value objects, policies, enums" (`docs/adr/ADR-0007-package-structure.md:63`) and
+as "aggregates, value objects, policies, enums" (`docs/adr/ADR-0007-package-structure.md:77`,
+since corrected there to "rules, value objects, enums") and
 names "DDD (strategic + light tactical)" among its hard constraints (`:31`), but neither says which
 statements belong in the layer, which belong beside it in `application/`, and which belong in
 neither because Postgres already holds them. Two consequences followed.
@@ -60,18 +66,18 @@ it is one of three things:
   been decided otherwise without anything else breaking. `ReviewWindow`'s 60 days, `Stars`' 1..5
   (`review/domain/Stars.java:14–15`), `SalesClose`'s three fixed times
   (`venue/domain/SalesClose.java:18–22`), `RefundPolicy`'s three tiers
-  (`booking/domain/RefundPolicy.java:34–40`), the pay and expiry windows of
-  `RequestWindows` (`booking/application/request/RequestWindows.java:20`).
+  (`booking/domain/RefundPolicy.java:25–31`), the pay and expiry windows of
+  `RequestWindows` (`booking/application/request/RequestWindows.java:13`).
 - **A calculation** — anything deriving money or a rating. `CommissionSplit.of`
   (`payout/domain/CommissionSplit.java`), `PayoutLedgerEntry.accrual`/`reversalOf`
   (`payout/domain/PayoutLedgerEntry.java`), `RefundPolicy.refundMinor`,
   `AggregateRating`. Where a calculation divides, the rounding direction is written down at the
   division (the docs of `CommissionSplit.of` and `PayoutLedgerEntry.reversalOf`; invariant #5).
 - **A lifecycle** — what may follow what. `ReviewGate.stateOf` is the model
-  (`review/domain/ReviewGate.java:30–42`): one ordered statement of the fences, called by every
-  path that asks, "so a stay that trips two fences at once is told the same thing whichever surface
-  asks … That agreement is a property of there being one statement of the order, not of four
-  services being kept in step" (`:10–14`).
+  (`review/domain/ReviewGate.java:26–38`): one ordered statement of the fences, called by every
+  path that asks — "Submit, edit, delete and the code-gated read all ask here, so a stay tripping
+  two fences gets one answer on every surface … keep the order here, never restated per service"
+  (`:10–12`).
 
 The corollary the codebase already applies: **a rule with exactly one caller stays where it is
 used.** Nine of the thirteen homeless rules in `2026-09-04-where-the-business-rules-live.md` §B have
@@ -81,6 +87,11 @@ ceremony, and in at least one case a trap the codebase has already refused by na
 general-sounding predicate would be a trap" (`booking/domain/BookingStatus.java`). Naming a
 rule is not free: a name that reads more general than the rule is worse than an inline condition.
 
+*Amended 2026-10-01 (#1342):* the review overlay reads "stays where it is used" as "need not be
+extracted": RV-BE-19 makes flagging an inline one-caller rule a false finding. The tree holds
+one-caller rules in `domain/` too (`AggregateRating`, `MoveRanking`, `StayFit`, `ReviewText`,
+`MoveReminderWindow`); this ADR does not rule on them.
+
 ### 2. Purity decides the package; both packages are the rule layer
 
 - **A rule that is pure** — statics or an enum over values; no Spring, no `Clock`, no port, no row
@@ -89,10 +100,10 @@ rule is not free: a name that reads more general than the rule is worse than an 
 - **A rule that needs an injected collaborator** — a `Clock`, a port, bound configuration — goes in
   **`application/`**, as a **named holder, separately unit-tested**, never as a condition inlined
   in a service. `BookingCutoff` (a `@Component` over an injected UTC `Clock`,
-  `booking/application/BookingCutoff.java:29–37`), `CancellationPolicy` (three ports,
-  `booking/application/cancel/CancellationPolicy.java:30–40`), `RequestWindows`,
-  `RetentionWindow`, `RefundResubmissionWindow` (plain records the adapter binds from
-  configuration, "so the inner hexagon stays framework-light",
+  `booking/application/BookingCutoff.java:22–33`), `CancellationPolicy` (two `venue::api` ports,
+  `BookingCutoff` and a `Clock`, `booking/application/cancel/CancellationPolicy.java:30–42`),
+  `RequestWindows`, `RetentionWindow`, `RefundResubmissionWindow` (plain records the adapter binds
+  from configuration, "so the inner hexagon stays framework-light",
   `customer/application/RetentionWindow.java`, type Javadoc).
 
 **Both are the rule layer. The split is packaging, not status.** The evidence that they are one
@@ -103,11 +114,10 @@ layer is the test tree: `RefundPolicyTest`, `CommissionSplitTest`, `ReviewGateTe
 its service; all nine are.
 
 `BookingCutoff` is where the codebase already defends this line in prose. Its one static method
-carries a paragraph explaining why it is static while its neighbours are clock-backed: "**Static,
-and that is the contract:** it is a pure projection of the caller's own instant onto the Tirane
-civil day … An instance method here would read as clock-backed like the two-argument
-`isBookable` and `cancellationWindow` overloads, and silently is not"
-(`booking/application/BookingCutoff.java:99–102`). That paragraph is this decision applied
+carries a paragraph explaining why it is static while its neighbours are clock-backed: "Static by
+contract: a pure projection of the caller's instant, so a sweep bounds every arm of one run against
+one reading; an instance method would read as clock-backed"
+(`booking/application/BookingCutoff.java:128–129`). That paragraph is this decision applied
 one method at a time.
 
 **Consequently `BookingCutoff`, `CancellationPolicy`, `RequestWindows`, `RetentionWindow` and
@@ -153,6 +163,12 @@ boundary; it also normalises to the scale the columns store, so a written value 
 distinction is that a bound constrains one row's field and a set invariant constrains the
 relationship *between* rows; only the second is beyond Java's reach.
 
+*Amended 2026-10-01 (#1342):* the list above is not exhaustive. Other Java statements mirror a
+CHECK the same way, among them `PaymentStatus` ↔ `payment_status_check`, `BatchStatus` ↔
+`payout_batch_status_check`, `EntryType` ↔ `payout_entry_type_check`, `RefundScope` ↔
+`payment_refund_scope_check` and `VenueFieldValidation.MAX_BPS` ↔ `venue_commission_bps_check`;
+each names its twin in Javadoc.
+
 ### 4. `domain/` is framework-free, and that is checkable
 
 The reason `domain/` is worth having as a separate package is that its statements survive throwing
@@ -165,6 +181,9 @@ package, or any port/repository interface. It may name the JDK and other modules
 and `domain/` types — purity here means no framework and no outside layer, never module isolation.
 `DomainPurityArchitectureTests` is that rule; it passed against all 18 files unchanged, and its
 negative cases are proven against `ai.riviera.domainpurityfixture`.
+*Amended 2026-10-01 (#1342):* another module's `domain/` is that module's internals, which
+`verify()` refuses to a closed module; the purity test admits it, but the effective rule is the JDK,
+the class's own module's `domain/`, and any module's `vocabulary/` (`riviera-modulith`).
 
 ### 5. The twelve are **modules**; the platform is one bounded context
 
@@ -174,7 +193,8 @@ fires: one *set* in `venue`, `availability`, `booking` and `notification`; one *
 duplicated id records are `record X(long value)` converted by identity, each documented as existing
 to keep the Modulith graph acyclic (`operator/vocabulary/VenueRef`'s type doc). The boundaries are
 correct **module** boundaries — deep, well-named, one owner per table — and nothing here argues for
-removing or merging any of them.
+removing or merging any of them. *Amended 2026-10-01 (#1342):* the audit's count missed
+`payment.vocabulary.BookingRef`, a copied id record of the same kind (ADR-0007, *Note*).
 
 So: **the twelve are modules.** ADR-0007's "bounded context" wording is corrected in that document
 by this decision. Where a module's own `package-info` or an ADR uses "bounded context" to say what
@@ -204,14 +224,17 @@ should describe them that way:
   (`payout/domain/PayoutLedgerEntry.java`), append-only, with `accrual()`, `reversalOf()` and
   `fee()` factories and a canonical constructor that re-checks the amount invariants the DB also
   enforces. Its own Javadoc calls it "One payout-ledger entry for a booking … and the home of its
-  commission arithmetic" (type Javadoc).
+  commission arithmetic" (type Javadoc). *Extended by ADR-0026 (2026-09-28), pointer added by
+  issue #1342:* the record now ends `RefundReason reason, LocalDate serviceDate)` and gains a
+  `dayReversalOf()` factory for the `DAY_REVERSAL` entry type; it is still an immutable value
+  record.
 - `PayoutBatch` — `record PayoutBatch(Long id, VenueId, PeriodKey, long totalNetMinor, String
-  currency, BatchStatus)` (`payout/domain/PayoutBatch.java:15–16`), one row per `(venue, period)`,
+  currency, BatchStatus)` (`payout/domain/PayoutBatch.java:14–15`), one row per `(venue, period)`,
   `id` null before persistence. Its Javadoc line "Aggregate root: one row per `(venue, period)`"
   (`:8`) is the one residue of the vocabulary left in source and reads against this decision.
 
 Correcting `CLAUDE.md`'s column and `domain-model.md`'s `«aggregate root»` boxes is doc work and
-lands with the rest of the §3 drift batch, not here.
+lands with the rest of the §3 drift batch, not here. *(Closed since — see* Consequences*.)*
 
 ## Considered options
 
@@ -229,7 +252,7 @@ A label that cannot go stale because it was never true is worse than no label.
 
 **Move the five `Clock`/port-needing holders into `domain/`, passing time as a parameter
 (rejected).** It would make `domain/` the whole rule layer and simplify §2 to one sentence. But
-`BookingCutoff`'s own Javadoc already rules on this trade-off for its one static method (`:99–102`)
+`BookingCutoff`'s own Javadoc already rules on this trade-off for its one static method (`:128–129`)
 and the answer cuts the other way: a rule that reads clock-backed and silently is not is the worse
 failure. `CancellationPolicy` resolves set facts and venue rates through two `venue::api` ports; it
 is an application service by any reading.
@@ -262,6 +285,11 @@ fitness function can hold, rather than 18 files that happen to comply.
   correction when that file is next touched.
 - The `domain/` purity rule now holds `domain/` to the JDK and published ids, values and rules, so
   a rule that genuinely needs a `Clock` or a port has one place to go: `application/`, per §2.
+
+*Amended 2026-10-01 (#1342), residues closed:* the first two bullets no longer hold.
+`PayoutBatch`'s Javadoc no longer calls it an aggregate root; `CLAUDE.md`'s table heads its column
+"Sole writer of" and says there are no aggregate-root classes; `domain-model.md` draws no
+`«aggregate root»` box; and `README.md` no longer says "Nine Spring-Modulith bounded contexts".
 
 **ADR-0017's category is unaffected.** It classifies `challenge` and `audit` as *non-context
 modules* on the ground that each "owns no aggregate a tourist or operator would name"

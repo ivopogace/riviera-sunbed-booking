@@ -68,7 +68,7 @@ class PackageShapeArchitectureTests {
 	/**
 	 * Assertion 1 — allowed top-level package set (ADR-0007). Each module's top-level packages (the
 	 * segment directly under {@code ai.riviera.platform.<module>}) must be in
-	 * {@code {api, spi, application, domain, adapter}} — fails a lingering {@code infrastructure/} — AND
+	 * {@code {api, spi, vocabulary, events, application, domain, adapter}} — fails a lingering {@code infrastructure/} — AND
 	 * no class may sit in {@code <module>.application.in} / {@code .application.out}: the application-layer
 	 * {@code in}/{@code out} split was folded away (sub-decision 2), direction now lives at the adapter layer.
 	 */
@@ -138,8 +138,9 @@ class PackageShapeArchitectureTests {
 	 * Assertion 3 — the {@code @NamedInterface} packages ({@code api} / {@code spi} /
 	 * {@code vocabulary} / {@code events}) are top-level (ADR-0007).
 	 * Each must be a direct child of the module, never nested (no {@code application.api},
-	 * {@code adapter.in.events}, …) — nesting would hide the published surface from Spring Modulith,
-	 * and the four names are reserved for published surfaces even as internal package names.
+	 * {@code adapter.in.events}, …) — Spring Modulith would still find a nested one, but the placement and
+	 * purity rules key on the segment under the module and would not check it; and the four names are
+	 * reserved for published surfaces even as internal package names.
 	 */
 	@Test
 	void namedInterfacePackagesAreTopLevel() {
@@ -162,7 +163,7 @@ class PackageShapeArchitectureTests {
 		}
 
 		assertModulesWereInspected(modules);
-		assertNoViolations("ADR-0007 package-shape violations (api/spi are top-level)", violations);
+		assertNoViolations("ADR-0007 package-shape violations (api/spi/vocabulary/events are top-level)", violations);
 	}
 
 	/**

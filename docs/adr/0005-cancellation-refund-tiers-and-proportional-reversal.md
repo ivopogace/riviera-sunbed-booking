@@ -28,6 +28,8 @@ reclaim money afterwards.
   `venue.late_cancel_refund_bps` (basis points, `0..10000`, **default 0** = non-refundable);
   `refund = floorDiv(gross × bps, 10000)`, rounded **down** (the platform keeps the sub-cent,
   consistent with commission rounding). The set is freed regardless of tier (invariant #2).
+  *Amended 2026-10-01 (#1342):* not consistent with commission rounding — they point
+  opposite ways: `CommissionSplit` floors the commission, so there the **venue** keeps the sub-cent.
   A **moved booking's free exit overrides this tier** with a full refund — see the amendment log.
 - **`CLOSED`** — from `00:00` on the booking date onward. The cancellation is **refused**
   (`CancelOutcome.WindowClosed` → `409 CANCELLATION_WINDOW_CLOSED`): nothing is refunded, the
@@ -48,6 +50,10 @@ kept). Reversal rows store **positive** magnitudes (the ledger's `CHECK (net = g
 commission)` and `>= 0` constraints forbid negatives); the sign is carried by
 `entry_type = REVERSAL`. Exactly-once via `UNIQUE(booking_id, REVERSAL)` + `ON CONFLICT DO
 NOTHING` under the Event Publication Registry's at-least-once redelivery (invariant #9).
+*Amended 2026-10-01 (#1342):* the pro-rata `floorDiv` holds until the reversal that brings the
+booking's reversed gross to `G`: that one returns all commission still held (`C` less what earlier
+reversals took), so a booking reversed in parts nets exactly zero
+(`PayoutLedgerEntry#commissionOn`, `ReversalMathTest`).
 
 **A missing accrual defers, it does not decline.** The accrual and the reversal are independent
 registry publications: a crash or a shed send can leave `BookingConfirmed`'s payout listener
@@ -111,3 +117,8 @@ returns the venue's own money behind an `assertOwns` check (invariant #13). Pinn
   `BookingRecord#remainingMinor`; a booking's reversals sum to its accrual across
   `REVERSAL`/`DAY_REVERSAL`, and the exactly-once key gained `service_date` (V69) — a dateless
   `REVERSAL` is still one per booking.
+- 2026-09-29, ADR-0027 — a **third** refund sits outside the tiers: the venue's own refund (reason
+  `VENUE`) of one day whatever the cutoff, at the day's `DayShare`; a lone one-day booking is
+  cancelled whole and refunded in full. A stay's `VENUE`-refunded day not yet past is released (a
+  weather-refunded day stays held, ADR-0026 §3), so "the set is freed" now means the days the
+  booking still holds: a later cancel releases `ServiceDays#held`. (Logged 2026-10-01, #1342.)

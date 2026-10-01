@@ -57,6 +57,11 @@ row reads live for a booked guest today), and nothing for a future move mail to 
    class (`JdbcSetBookingFacts`) beside `JdbcVenueCatalog`. The test joins the structural net by this
    decision although it names its table: a new JDBC adapter anywhere in the tree can break the rule
    it holds, which is the property the net exists to catch.
+   *Amended 2026-10-01 (#1342):* the exempt class holds more than point 4's bare reads.
+   `JdbcSetBookingFacts` also serves reads that must exclude retired sets — `poolForClaim`,
+   `activeSetsOf`, `freeOnlineSetsOn` and `stayFactsOf` — and they select from
+   `active_set_position` by convention only, since the exemption covers the whole class. Splitting
+   the bare reads out, or exempting per statement, is tracked in #1337.
 
 ## Considered options
 

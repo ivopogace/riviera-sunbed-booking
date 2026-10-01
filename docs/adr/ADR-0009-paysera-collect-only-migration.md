@@ -2,8 +2,9 @@
 
 - **Status:** Proposed (flips to Accepted when the preconditions below are met)
 - **Date:** 2026-07-22
-- **Supersedes:** ADR-0002 (the gateway and the payout leg; the collect-only model itself is
-  **reaffirmed**, not reversed)
+- **Supersedes:** would supersede ADR-0002 on acceptance (the gateway and the payout leg; the
+  collect-only model itself is **reaffirmed**, not reversed). *(Amended 2026-10-01, #1342: this
+  ADR is Proposed, so it supersedes nothing yet.)*
 
 ## Context
 
@@ -68,10 +69,11 @@ Provider landscape (researched 2026-07-22):
    > rules, and the gateway-neutral rewording must carry them there, not into #8.
 3. **Payout currency is EUR — resolving the CLAUDE.md provisional decision** (EUR vs ALL per
    venue). The ledger is already EUR-native end-to-end (invariant #5; `payout` stores EUR
-   minor units, `JdbcPayoutLedger` is EUR-only), so **no FX ever enters the app**. Each venue
-   supplies a **EUR-capable IBAN** (standard at Albanian banks; SEPA makes the transfer
-   cheap). A venue that wants lek converts at its own bank — outside the platform, same
-   posture ADR-0002 took, now permanent.
+   minor units, `JdbcPayoutLedger` is EUR by convention, not constraint — *amended
+   2026-10-01 (#1342):* `venue.payout_currency` accepts any ISO code), so **no FX ever enters
+   the app**. Each venue supplies a **EUR-capable IBAN** (standard at Albanian banks; SEPA
+   makes the transfer cheap). A venue that wants lek converts at its own bank — outside the
+   platform, same posture ADR-0002 took, now permanent.
 4. **Settlement is ledger-driven and moves to post-service automation in two phases.**
    - *Phase 1 (migration):* mechanics identical to today — the O7 statement, manual
      transfers, mark-batch-settled — except the transfers go out from the platform's Paysera
@@ -84,6 +86,14 @@ Provider landscape (researched 2026-07-22):
      evening-before cutoff and weather refunds happen on the day itself, so money is only
      ever refunded while it is still in the platform account — **clawback from venues can
      never be needed**. (Same reason Airbnb pays ~24h after check-in.)
+
+   > **Review note (2026-10-01, #1342) — to resolve before acceptance:** the premise above does
+   > not hold today. Refund eligibility does not end the evening before: a `LATE` refund runs
+   > until the service day opens at Tirane midnight (ADR-0005). Worse for this decision, the
+   > weather refund has no date window (`WeatherRefundServiceIT` refunds a 2020 date), a stay's
+   > day refund (ADR-0026, ADR-0027) may land on or after its service day, and a payout period's
+   > net may already be negative (`JdbcPayoutLedger#netTotalsForPeriod`). A refund can follow a
+   > post-service payout, so phase 2 must either hold money back or recover it from the venue.
 5. **Booking-mode money timing is untouched.** Instant Book and Request-to-Book
    (payment-request-on-accept) keep their flows; only the gateway behind the port changes.
 

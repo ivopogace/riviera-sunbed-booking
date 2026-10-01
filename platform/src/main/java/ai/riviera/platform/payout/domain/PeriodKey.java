@@ -1,8 +1,6 @@
 package ai.riviera.platform.payout.domain;
 
-import java.time.Clock;
 import java.time.LocalDate;
-import java.time.ZoneId;
 import java.time.temporal.IsoFields;
 import java.util.regex.Pattern;
 
@@ -17,7 +15,6 @@ import java.util.regex.Pattern;
  */
 public record PeriodKey(String value) {
 
-	private static final ZoneId TIRANE = ZoneId.of("Europe/Tirane");
 	private static final Pattern FORMAT = Pattern.compile("\\d{4}-W\\d{2}");
 	private static final int MAX_ISO_WEEK = 53; // ISO long years have 53 weeks; 54+ and 00 never exist
 
@@ -34,11 +31,6 @@ public record PeriodKey(String value) {
 	/** Parse a period string (request param), validating the {@code IYYY-Www} format. */
 	public static PeriodKey of(String value) {
 		return new PeriodKey(value);
-	}
-
-	/** The ISO week containing "now" in {@code Europe/Tirane} — the default report period. */
-	public static PeriodKey current(Clock clock) {
-		return ofDate(LocalDate.ofInstant(clock.instant(), TIRANE));
 	}
 
 	/** The ISO week of a {@code Europe/Tirane} calendar day, as {@code IYYY-Www}. */

@@ -18,6 +18,12 @@ Each set carries a **pool** flag — **online** or **walk-in** — and the two p
 front-row sets reserved exclusively for app bookings). An online booking can only
 ever target an online-pool set. (Invariant #3; collision-prevention Layer 1.)
 
+*Amended 2026-10-01 (#1342):* physical separation is operational guidance to venues, not
+something the code knows. The code enforces a per-set pool flag, a sales-channel attribute, at
+reserve time (`ReserveFences`) and again at the availability claim (`JdbcAvailabilityClaim`). A
+set switched to walk-in refuses new online reserves but keeps its booked dates claimed
+(`PoolSwitchOnBookedSetIT`; `RESPONSIBILITIES.md` § `venue`).
+
 Combined with the evening-before cutoff (Layer 2, invariant #4), this means staff
 open each day with a fixed "today's reservations" sheet and never seat walk-ins in
 the online block — so there is no live race to lose.

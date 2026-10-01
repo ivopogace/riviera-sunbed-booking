@@ -7,12 +7,13 @@
 
 ## Context
 
-The platform has an email **port** but no transport: `Mailer` is served by the recording
-`MockMailer` everywhere, and the mock is barred from prod (`MockMailerProdGuard`). Real mail is on
-the critical path three times over: the product spec promises a booking-code email at checkout
-(the code is the venue-arrival credential, invariant #7); account recovery (verify / reset) is
-dead in prod until a transport exists; and dormant-account retention needs advance notice by
-email.
+When this was written the platform had an email **port** but no transport: `Mailer` was served by
+the recording `MockMailer` everywhere, and the mock was barred from prod (`MockMailerProdGuard`).
+Real mail was on the critical path three times over: the product spec promises a booking-code
+email at checkout (the code is the venue-arrival credential, invariant #7); account recovery
+(verify / reset) was dead in prod until a transport existed; and dormant-account retention needs
+advance notice by email. *(Amended 2026-10-01, #1342: `SmtpMailer` has since shipped behind
+the `mailer` profile.)*
 
 The legal posture frames the choice. The controller is an **Albanian sh.p.k.** serving EU data
 subjects (ADR-0009): GDPR Art. 3(2) applies, every mail processor is an Art. 28 processor needing
@@ -104,11 +105,14 @@ own IP warm-up, blocklists, DKIM rotation; operationally wrong for a small team.
    equalization.
 6. **One platform sending domain.** SPF + DKIM (2048-bit) + DMARC (`p=none` → tighten) on the
    platform domain; shared IP pool. Mail "from" an operator's own domain is out until an operator
-   demands it; per-tenant `Reply-To` covers the near need.
+   demands it; a per-tenant `Reply-To` can cover the near need if one arises. *(Amended
+   2026-10-01, #1342: no `Reply-To` is set in code.)*
 7. **Bounces/complaints are consumed and suppressed.** A signature-verified webhook endpoint
-   records hard bounces + complaints; suppressed addresses are not sent to again — on every path
-   but one, deliberately: on the **recovery vehicle**, a **transient** failure of the suppression
-   *lookup itself* sends the mail rather than dropping it. The list is empty in production until
+   records hard bounces + complaints *(pending #372, itself blocked on #370; noted 2026-10-01, #1342: no such endpoint
+   exists and `EmailSuppressions#suppress` has no production caller, so the list is written only
+   by tests)*; suppressed addresses are not sent to again — on every path but one, deliberately:
+   on the **recovery vehicle**, a **transient** failure of the suppression *lookup itself* sends
+   the mail rather than dropping it. The list is empty in production until
    the bounce feed lands; a user-requested reset sent to a suppressed address is the most harmless
    send available; and design D-8 makes the HTTP response identical either way, so a dropped
    reset is a dead end the user cannot distinguish from success. The carve-out is bounded three

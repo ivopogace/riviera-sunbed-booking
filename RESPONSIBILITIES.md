@@ -221,6 +221,12 @@ days per set are also `api.SetAvailabilityFacts`, the `itinerary` read model's r
 move is my ordinary writes in `venue`'s commit transaction — every day claimed on the new set before
 any is released on the old, never a swap of my own — so a racing reserve wins or loses as usual.
 
+- **Staff tap-to-mark** (`POST`/`DELETE /api/venues/{venueId}/sets/{setId}/availability`) is my
+  other write path: `StaffAvailabilityService` asserts the operator owns the path venue first
+  (invariant #13 — why I depend on `operator::api`), refuses a past `Europe/Tirane` date
+  (`DATE_IN_PAST` → `422`), then marks with the claim's `ON CONFLICT DO NOTHING`; release deletes
+  only a `STAFF_MARKED` row.
+
 **Not My Job:**
 - The venue layout, which sets exist, their positions or prices → **`venue`**
 - *Why* a set is taken (which booking, who paid) and whether a date still sells → **`booking`**
@@ -628,7 +634,8 @@ opaque credential hash) behind register / sign-in. The two are **never linked** 
 registration never auto-claims a guest email's past bookings; back-linking them is a **permanent
 non-goal** (design D-2, D-6). Own **right-to-erasure**: tombstone account + guest-contact PII in
 place, delete the transient SSO/token children, retain booking/payment/payout rows under the
-**statutory-retention exception** (ADR-0010); the edge authenticates and revokes sessions.
+**statutory-retention exception** (ADR-0010); the edge authenticates, and the self-service path
+revokes sessions (the admin path leaves them to the credential stamp, #1334).
 
 Own the **retention policy** — the **retention window**, which guest contacts have no **retention
 basis** left, and the sweep that tombstones them; `booking` supplies only the recency *fact*. Both
@@ -666,7 +673,8 @@ transaction, on the request path too, a timeout fails the whole erasure, and a s
   implements — an inversion, because a direct `customer → booking` call would cycle
 - Encoding/verifying credentials and all login machinery (`UserDetailsService`, sessions, the auth
   endpoints, the OIDC exchange, mail transport) → the **platform edge** and **`notification`**
-  (RV-BE-11, `CustomerAuthPlacementTests`); I store the identity and an opaque hash
+  (RV-BE-11; `CustomerAuthPlacementTests` checks only the Spring Security half); I store the
+  identity and an opaque hash
 
 ---
 
@@ -1010,9 +1018,10 @@ mutating `/api/admin/**` action, §`audit`) stay here; `challenge` and `audit` o
   (never at sign-in), checked before any write — on register, ahead of the timing-equalized
   branches; modules get only the encoded hash, never the rule. Length → `400 INVALID_REQUEST`, a
   blocked term → `400 PASSWORD_CONTAINS_BLOCKED_TERM`, distinct so the client can name the rule.
-- **Proof-of-work challenge (ADR-0016)** — customer and operator register, forgot-password and
-  booking create need a solved, self-hosted ALTCHA challenge (single use: §`challenge`). No ALTCHA
-  hosted service is ever called; no domain module knows the challenge exists.
+- **Proof-of-work challenge (ADR-0016)** — customer and operator register, forgot-password, and
+  booking and stay create (`POST /api/stays`) need a solved, self-hosted ALTCHA challenge (single
+  use: §`challenge`). No ALTCHA hosted service is ever called; no domain module knows the challenge
+  exists.
   `riviera.altcha.enabled=false` is the kill switch (the endpoint's `204` hides the widget).
 - **Challenge refusals are `400`, never `403`, after `RateLimitFilter` and `CsrfFilter`:** the
   limiter refunds a `403` on budgets guarding authenticated work, and a refused solution must still
@@ -1021,10 +1030,10 @@ mutating `/api/admin/**` action, §`audit`) stay here; `challenge` and `audit` o
 - **Not fenced, deliberately:** login (the per-identity throttle covers it) and token redemption
   (a reset or verification token is already a bearer credential). Forgot-password stays
   non-enumerating (D-8): a refusal precedes the account lookup, identical for every address.
-- **Booking create is fenced for every caller**, guest or signed-in — no auth-state branch, since a
-  script holding the online pool costs the same either way. A refusal precedes any availability
-  claim, booking row or PaymentIntent (invariant #2 untouched). The SPA solves on the checkout's
-  Review step, not Details, for Details' fold budget (`booking-challenge.e2e.ts`).
+- **Booking and stay create are fenced for every caller**, guest or signed-in — no auth-state
+  branch, since a script holding the online pool costs the same either way. A refusal precedes any
+  availability claim, booking row or PaymentIntent (invariant #2 untouched). The SPA solves on the
+  checkout's Review step, not Details, for Details' fold budget (`booking-challenge.e2e.ts`).
 - **Remodel orchestration (ADR-0020)** — the one domain composition the root holds, since `venue`
   may not depend on `booking`: `RemodelPreviewController` and `RemodelCommitController` compose
   `venue.api.BeachMapRemodel` with `booking.api.RemodelClaims` (`CompositionRootDisciplineTests`
@@ -1193,10 +1202,11 @@ The mechanism and edge cases behind `CLAUDE.md`'s one-line invariants; its numbe
 12. **Schema changes go through Flyway.** Versioned forward migrations only, no hand-run DDL; every
     constraint enforcing an invariant (especially #2) is created and tested by a migration.
 13. **Venue-scoped operations verify the actor owns the venue** — object-level, not role-level
-    (OWASP API #1, BOLA): the `OPERATOR` role is necessary, never sufficient. Every
+    (OWASP API #1, BOLA): the `OPERATOR` role is necessary, never sufficient. Every operator-gated
     `/api/venues/{venueId}/**` operation checks via `operator`'s `api/` port that the operator owns
     the path `venueId` (`403` on mismatch) in the **application service**, so no driving adapter can
-    bypass it. `/api/admin/**` is role-gated and exempt. Reviewed as RV-BE-9.
+    bypass it; the public tourist `GET`s there check none. `/api/admin/**` is role-gated and exempt.
+    Reviewed as RV-BE-9.
 
 ## Machine-checked vs review-checked
 
@@ -1226,10 +1236,10 @@ them form the *structural net* is `riviera-modulith` § *The structural net*'s c
 | The ADR-0007 package shape; published-surface kinds; the `VenueCatalog` role split | `PackageShapeArchitectureTests`, `PublishedSurfacePlacementArchitectureTests`, `VenueApiRoleSplitTests` |
 | No JPA/Hibernate on the classpath — invariant #1 | `JdbcOnlyArchitectureTests` |
 | A `domain/` class names only the JDK and published ids, values and rules (ADR-0018 §4) | `DomainPurityArchitectureTests` |
-| The booking transition table and the guarded `UPDATE`s admit the same statuses (ADR-0018 §1) | `JdbcBookingTransitionTableIT` (every transition × every status) |
+| The booking transition table and the guarded `UPDATE`s admit the same statuses (ADR-0018 §1) | `JdbcBookingTransitionTableIT` (every transition × every status; Docker-gated, so it fails the build only where Docker runs — CI) |
 | The view's `cancellable` and the guest cancel's refusal agree with `CANCEL_BY_GUEST`, status by status (ADR-0018 §1) | `ViewBookingServiceTest.onlyAConfirmedBookingIsCancellableWhileTheWindowIsOpen`, `CancelBookingServiceTest` (against the literal `BookingTransitionTest` pins) |
-| No login machinery inside `operator` (RV-BE-11) | `OperatorAuthPlacementTests` |
-| No login machinery inside `customer` (RV-BE-11) | `CustomerAuthPlacementTests` |
+| No Spring Security type inside `operator` — login machinery's checked half (RV-BE-11) | `OperatorAuthPlacementTests` |
+| No Spring Security type inside `customer` — login machinery's checked half (RV-BE-11) | `CustomerAuthPlacementTests` |
 | Mail listeners name their own bounded executors, never Boot's shared `applicationTaskExecutor` | `MailListenerExecutorArchitectureTest` |
 | `booking` listeners reaching `payment::api` run on the bounded refund pool | `RefundListenerExecutorArchitectureTest` |
 | Every self-configured worker pool carries the shared MDC decorator | `WorkerContextArchitectureTest` |

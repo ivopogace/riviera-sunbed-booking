@@ -39,8 +39,9 @@ Hands off: Java idioms → `riviera-java-conventions`; seams → `codebase-desig
 - **`domain/` is framework-free**: a pure rule goes there; one needing a `Clock`, a port or
   config goes in `application/` as a named, unit-tested holder (`BookingCutoff`,
   `CancellationPolicy`, `RequestWindows`). A set invariant belongs in a DB constraint.
-  `DomainPurityArchitectureTests`: a `domain/` class may import the JDK and any module's
-  `vocabulary/`/`domain/`, nothing else. A Java mirror of a DB *bound or vocabulary*
+  A `domain/` class may import the JDK, its own module's `domain/` and any module's
+  `vocabulary/`, nothing else (`DomainPurityArchitectureTests`; `verify()` for another module's
+  `domain/`). A Java mirror of a DB *bound or vocabulary*
   (`Stars` ↔ `review_stars_check`) is fine if its Javadoc names the twin.
 
 ## Module layout (ADR-0007)
@@ -48,8 +49,8 @@ Hands off: Java idioms → `riviera-java-conventions`; seams → `codebase-desig
 **THIN iff no application service** (the `api/` port is implemented directly by a JDBC adapter);
 otherwise FULL. Every context module in CLAUDE.md's table (the `itinerary` read model included) and
 `challenge` are full; `audit` is thin plus a driving `adapter/in` (its admin controller).
-`challenge` is full minus `domain/`. `shared` is neither: `@ApplicationModule(type = OPEN)`, flat
-classes at the module root, no published surface, no layers.
+`shared` is neither: `@ApplicationModule(type = OPEN)`, flat classes at the module root, no
+published surface, no layers.
 
 Thin:
 ```
@@ -66,12 +67,13 @@ Full:
 <module>/
 ├── package-info.java
 ├── api/                       # ONLY if a sibling calls a port here; plain interfaces, never sealed
-├── vocabulary/                # ONLY if it publishes ids/values/enums/sealed outcomes/exceptions
-├── events/                    # ONLY if it publishes events; RECORDS only, id-based
+├── vocabulary/                # ONLY if it publishes ids/values/enums/sealed outcomes/exceptions/pure fns
+├── events/                    # ONLY if it publishes events; RECORDS of typed ids + immutable facts, no mutable config
 ├── spi/                       # ONLY if it owns a cross-module inversion (driven ports others implement)
-├── application/               # package-private @Service/@Transactional + their port interfaces, no in/out split
+├── application/               # @Service/@Transactional + public port interfaces, no in/out split;
+│                              #   a service is package-private unless a sibling slice or adapter/in needs it
 │   └── <use-case>/            #   booking ONLY (reserve/request/cancel/checkin/refund/view/remodel)
-├── domain/                    # framework-free rules, value objects, enums
+├── domain/                    # ONLY if it holds rules: framework-free rules, value objects, enums
 └── adapter/
     ├── in/                    # @RestController, @ApplicationModuleListener, DTOs
     └── out/                   # package-private JdbcClient adapters / port impls
@@ -92,13 +94,15 @@ listener's parameter to live in its owner's `events` surface):
 - `api/` — ports only. A wide port splits by consumer role: sibling-facing methods go on
   `SetBookingFacts`/`VenueRates`, not `VenueCatalog` (a further tourist read on `VenueCatalog`
   is fine; `VenueApiRoleSplitTests` asserts direction, not a method list).
-- `vocabulary/` — ids, value records, enums, sealed outcomes, exceptions.
+- `vocabulary/` — ids, value records, enums, sealed outcomes, exceptions, published pure
+  functions (`Emails.normalize`).
 - `events/` — event records only.
 - `spi/` — cross-module driven ports.
 
 Grants are least-privilege: a caller lists `<provider>::api` + `::vocabulary`; a listener-only
-consumer lists `::events` + `::vocabulary`. Mechanics: `references/boundaries.md`. A moved or
-renamed event needs a Flyway `event_type` rewrite (`references/events.md`).
+consumer lists `::events` + `::vocabulary`. Mechanics: `references/boundaries.md`. Moving or
+renaming an event, or a listener's class, method or parameter type, needs a Flyway `event_type`
+and/or `listener_id` rewrite (`references/events.md`; #1340 would drop the listener half).
 
 ## api vs spi; port vs event
 

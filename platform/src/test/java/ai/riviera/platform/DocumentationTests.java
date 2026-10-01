@@ -16,7 +16,7 @@ class DocumentationTests {
 		ApplicationModules modules = ApplicationModules.of(PlatformApplication.class);
 
 		// Writes component PlantUML (all + per-module) and per-module canvases to the default
-		// output folder (target/spring-modulith-docs).
+		// output folder (build/spring-modulith-docs).
 		new Documenter(modules).writeDocumentation();
 	}
 }

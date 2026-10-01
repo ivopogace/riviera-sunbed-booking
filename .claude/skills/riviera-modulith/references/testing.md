@@ -9,7 +9,7 @@ keep it class-unique. A one-class run misses the collision; run the module's DB-
 
 `ModularityTests` (`verify()`: cycles, internal access, disallowed dependencies) runs with no
 Spring context and no DB; never weaken it. `PackageShapeArchitectureTests` adds the hexagon's
-dependency direction on top; don't add jMolecules.
+dependency direction on top; don't add jMolecules (package-name rules do it without annotations).
 
 ## `@ApplicationModuleTest`
 

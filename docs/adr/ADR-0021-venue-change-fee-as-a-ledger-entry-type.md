@@ -1,8 +1,10 @@
 # ADR-0021: The venue-change fee is a third payout-ledger entry type, and the entry type carries the sign
 
 - **Status:** Accepted — implemented by the slice for issue #1036 (epic #1027, user stories 33–34).
-  Amended 2026-09-10 by the slice for issue #1037; see *Amendment* below, which supersedes points 5
-  and 7. ADR-0026 (2026-09-28) added the fourth type; see the note closing *Amendment*.
+  Amended 2026-09-10 by the slice for issue #1037; see *Amendment* below, which supersedes point 5
+  and point 7's window paragraph (*amended 2026-10-01, #1342:* first written "points 5 and 7";
+  point 7's receipt snapshot stands). ADR-0026 (2026-09-28) added the fourth type; see the note
+  closing *Amendment*.
 - **Date:** 2026-09-10
 - **Relates to:** ADR-0002 (collect-only, no Stripe Connect — the fee moves no money at the
   gateway), ADR-0005 (the proportional reversal it rides beside), ADR-0020 (the remodel's
@@ -36,8 +38,8 @@ commit receipt tells them apart, through `BookingNotificationFacts#endedByRemode
    `commission_minor` are both `0` and its `net_minor` is the whole charge, so V54 exempts `FEE`
    from `payout_net_check` — keyed on the entry type alone, leaving `ACCRUAL` and `REVERSAL` bound
    as before. `payout_amounts_check` still binds it. Idempotency needs nothing new:
-   `UNIQUE (booking_id, entry_type)` already gives one `FEE` per booking under the Event Publication
-   Registry's at-least-once redelivery.
+   `UNIQUE (booking_id, entry_type)` (re-keyed by V69, see the note closing *Amendment*) already
+   gives one `FEE` per booking under the Event Publication Registry's at-least-once redelivery.
 
 2. **Direction lives in the entry type, never in the amount, and the default is "deducts".** A
    payout is `Σ ACCRUAL.net − Σ REVERSAL.net − Σ FEE.net`. Every sum in the tree is written as *only
@@ -71,6 +73,9 @@ commit receipt tells them apart, through `BookingNotificationFacts#endedByRemode
    `payout` implements it, the shape `booking.spi.ConfirmationMailDelivery` and
    `customer.spi.GuestBookingHistory` already use. `RemodelClaims` gains one method on the
    conversation it already holds rather than a fifth narrow port.
+   *Amended 2026-10-01 (#1342):* the test was already an allowlist when this was written. `payout` stays out
+   because the test's `GRANTED_SURFACES` map omits it, not because it is named; only the test's
+   Javadoc names it.
 
 7. **A commit records the rate it quoted onto its receipt line** (`remodel_receipt_outcome.fee_minor`),
    so a receipt reads back what the operator confirmed rather than today's rate — the lesson V39 taught
@@ -142,11 +147,12 @@ instant to a registry-persisted event payload, so that outstanding publications 
 and need a fallback of their own.
 
 That is more machinery than a rarely-changed flat fee justifies, so the window is **accepted and
-documented** instead — in the `V55` migration header, on the listener, on the admin controller, and
-in `RESPONSIBILITIES.md` §`payout`. What is still guaranteed is narrower and exact: a posted `FEE`
-row is never repriced, because the ledger is append-only and nothing in the settings path writes to
-it. The second `VENUE_CHANGE` shape — a moved guest's free exit — still has no receipt line to
-diverge from at all.
+documented** instead — in the `V55` migration header, in `VenueChangeFeeSetting`'s Javadoc, and in
+`RESPONSIBILITIES.md` §`payout`, which `PayoutVenueChangeFeeRate`'s Javadoc cites. *Amended
+2026-10-01 (#1342):* the listener's and the admin controller's pointers to the window, accurate
+when this was written, were trimmed since (#1225); neither carries it now. What is still guaranteed is narrower and exact: a posted `FEE` row is never repriced, because
+the ledger is append-only and nothing in the settings path writes to it. The second `VENUE_CHANGE`
+shape — a moved guest's free exit — still has no receipt line to diverge from at all.
 
 **One consequence above is now understated.** "Its admin surface grows a second read beside the
 payout-batch report" is now a third read and this module's first admin *write*, and `payout` owns a
@@ -156,6 +162,6 @@ second table (`platform_setting`) beside the two ledger ones.
 refunds earn it, where it is posted from, and the receipt's own snapshot of the quoted amount are all
 exactly as decided above.
 
-**Amendment (2026-09-29, ADR-0026).** The fourth type `DAY_REVERSAL` arrived and deducts exactly as
-point 2 predicted, with no sum touched; the key is now `UNIQUE NULLS NOT DISTINCT (booking_id,
-entry_type, service_date)` (V69), still one `FEE` per booking.
+**Amendment (2026-09-29, for ADR-0026 of 2026-09-28).** The fourth type `DAY_REVERSAL` arrived
+and deducts exactly as point 2 predicted, with no sum touched; the key is now `UNIQUE NULLS NOT
+DISTINCT (booking_id, entry_type, service_date)` (V69), still one `FEE` per booking.

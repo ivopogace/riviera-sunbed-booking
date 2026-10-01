@@ -7,8 +7,8 @@ import ai.riviera.platform.booking.vocabulary.CancellationWindow;
  * Three tiers, one per {@link CancellationWindow}: full before the evening-before cutoff, the
  * venue's configurable basis-point share after it, and nothing once the service day has opened.
  * Money is integer minor units (invariant #5) and the share rounds <strong>down</strong>
- * ({@code floorDiv}): the platform keeps the sub-cent, as with the commission in
- * {@code payout.domain.PayoutLedgerEntry}.
+ * ({@code floorDiv}): the platform keeps the sub-cent (the commission rounds the other way, the venue
+ * keeping it, {@code payout.domain.CommissionSplit}).
  */
 public final class RefundPolicy {
 

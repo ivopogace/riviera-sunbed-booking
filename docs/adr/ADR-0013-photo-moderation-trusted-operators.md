@@ -20,6 +20,12 @@ through those fenced venue reads, so no unvetted upload reaches a tourist ahead 
 decision as before. The human gate stands; it has moved from "before the upload can exist" to
 "before tourists can see it".
 
+*Amended 2026-10-01 (#1342):* the photos do not surface only through those fenced reads. The
+serving read `GET /api/venues/{id}/photos/{hash}` is `permitAll` and unfenced
+(`VenuePhotoController`, `VenuePhotoService#serve`; `RESPONSIBILITIES.md` § `venue`), and the
+upload response hands back that URL, so a PENDING-owned venue's photo is fetchable by anyone who
+holds its URL. The fence hides the URL from tourists; it does not gate the bytes. Tracked in #1335.
+
 Scale is the deciding constraint. At Phase 1 this is a handful of Albanian-riviera venues, each
 behind an approved operator account, uploading marketing photographs of their own beach — the
 incentive to upload something harmful is close to zero, because the photo *is* the venue's sales

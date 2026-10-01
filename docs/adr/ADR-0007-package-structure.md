@@ -57,11 +57,14 @@ hexagon beneath is at most `application` / `domain` / `adapter`.
 <module>/
   api/                 @NamedInterface — the published port(s)
   vocabulary/          @NamedInterface — published ids/value records (Amendment 1)
+  adapter/in/          only when the module serves its own endpoint
   adapter/out/         the JDBC adapter implementing the api port directly
   package-info.java
 ```
 No `application/`, no `domain/`. If a thin module grows real logic, it **graduates** to the full
 template — a visible, reviewable refactor, which is a feature, not a cost.
+*Amended 2026-10-01 (#1342):* the sketch gained `adapter/in/`. A thin module carries one when it
+serves its own endpoint, as `audit` does (`audit/adapter/in/AdminAuditController`).
 
 ### Full template — everything else
 ```
@@ -71,12 +74,15 @@ template — a visible, reviewable refactor, which is a feature, not a cost.
   vocabulary/          @NamedInterface — published typed ids, value records, enums, outcomes
   events/              @NamedInterface — published domain-event records
   application/         services + their in/out port interfaces, TOGETHER (no in/out split)
-  domain/              aggregates, value objects, policies, enums
+  domain/              rules, value objects, enums
   adapter/
     in/                driving adapters: controllers + event listeners (+ request/response DTOs)
     out/               driven adapters: JDBC repositories, gateways, code generators
   package-info.java
 ```
+*Amended 2026-10-01 (#1342):* `domain/` read "aggregates, value objects, policies, enums" until
+ADR-0018 §6 dropped the aggregate-root vocabulary; its rules are the choices, calculations and
+lifecycles of ADR-0018 §1.
 
 **Assignment rule (mechanical):** a module is **thin** iff it has no application service;
 otherwise **full**. Every surface is optional per kind — do not force an empty `api/` onto a
@@ -120,7 +126,10 @@ move the port). The classification rule is mechanical, so the cost is ~zero for 
 - `adapter.*` may depend on `application`/`domain`; `application`/`domain` must not depend on
   `adapter` (hexagon direction).
 - `api`/`spi`/`vocabulary`/`events` are `@NamedInterface` and top-level (not nested under
-  `application`).
+  `application`). *Amended 2026-10-01 (#1342):* the reason is this repo's arithmetic, not
+  Spring Modulith's. Modulith finds a `@NamedInterface` package at any depth; it is
+  `ArchitectureTestSupport.surfaceOf`, keyed on the segment directly under the module, that would
+  not see a nested surface, so `PublishedSurfacePlacementArchitectureTests` would not check it.
 - The **semantic** half (a policy/decision/calculation landing in the wrong module) is review-only
   — RV-BE-11 + the plan's Modulith section.
 
@@ -140,6 +149,9 @@ and the thin template gets applied inconsistently in review.
 - **Spring-Modulith-flat (root = public API, everything else `internal/`).** Rejected: deletes the
   package-level `api`/`spi` distinction. `venue.spi.SetAvailabilityLookup` is a live inversion
   with its own grant; flat would bury it at the module root marked only by an annotation argument.
+  *Amended 2026-10-01 (#1342):* the option is base-package-as-API, not Spring Modulith's own
+  shape. Modulith's reference example itself declares a named-interface sub-package (`order.spi`),
+  so it does not delete the distinction; the rejection above stands for the base-package layout.
 - **Assign thin/full by size ("≤1 driven adapter").** Superseded: that rule would put
   `availability` on the borderline and risk classifying it thin, losing a clean `api` on the
   module that owns the synchronous claim port. The corrected rule keys on *collaboration shape*
@@ -169,6 +181,11 @@ never a command surface. `allowedDependencies` grants are per-surface and least-
 grant matrix is the modules' `allowedDependencies` declarations. Because the Event Publication
 Registry persists event FQCNs, an event move ships with a registry migration
 (`V18__event_publication_event_type_moves.sql` is the precedent).
+*Amended 2026-10-01 (#1342):* the `booking` example is the 2026-07-01 tree. `booking` has since
+published `api/` and `spi/` as well, and `payout` is granted `booking::api` (the
+`booking.api.DailyTakings` read) and `booking::spi` (to implement `booking.spi.VenueChangeFeeRate`,
+ADR-0021) beside `booking::events` and `booking::vocabulary` (`payout/package-info.java`). The
+per-surface, least-privilege rule is unchanged.
 
 **Enforcement:** `PublishedSurfacePlacementArchitectureTests` — api/spi hold only non-sealed
 interfaces; events surfaces hold only records; vocabulary surfaces hold no plain interfaces; every
@@ -219,7 +236,7 @@ depends back. `shared` may reach only `customer::api` and `operator::api`.
 **Do not copy this shape for any other module.** A new module is still thin-or-full per the
 mechanical rule; OPEN is reserved for technical shared code, and `shared` is the only instance.
 
-## Note — why three id records are copied and `SetId` is not (2026-09-04)
+## Note — why some id records are copied and `SetId` is not (2026-09-04)
 
 Answering `docs/research/2026-09-04-bounded-context-and-doc-drift-audit.md` §H-3, which asked why
 `operator.vocabulary.VenueRef`, `review.vocabulary.VenueRef` and `review.vocabulary.BookingRef`
@@ -239,6 +256,12 @@ records mark exactly the bidirectional edges**, and nothing else:
 - `booking` depends on `review::spi`/`review::api` (`booking/package-info.java`,
   `allowedDependencies`) while `review` implements nothing outbound (`allowedDependencies = { "shared" }`,
   `review/package-info.java`), so `review` publishes its own `BookingRef` for the same reason.
+- *Amended 2026-10-01 (#1342):* the audit missed `payment.vocabulary.BookingRef`, which fits the
+  same rule. `booking` depends on `payment::api`, `payment::vocabulary` and `payment::events`
+  (`booking/package-info.java`) while `payment` depends only on `shared`
+  (`payment/package-info.java`), so `payment` publishes its own `BookingRef`. The copied records are
+  `operator.vocabulary.VenueRef`, `review.vocabulary.VenueRef`, `review.vocabulary.BookingRef` and
+  `payment.vocabulary.BookingRef`.
 
 The asymmetry is a rule, not grant history: a module copies an id **iff** the module that owns the
 id already depends on it. No code change follows — recorded so the question is not re-derived.
