@@ -18,22 +18,22 @@ transaction on the drainer thread. Issue option 1, chosen by the user.
 
 ## Acceptance criteria
 
-- [ ] **AC-1:** Given a known email, when forgot-password is requested, then the request thread reads
+- [x] **AC-1:** Given a known email, when forgot-password is requested, then the request thread reads
   the account once and touches `CustomerAccountRecovery` not at all; the token is issued only when
   the dispatched task runs. *Seam:* `AccountRecoveryController` over `CustomerAccountDirectory` +
   a recording `MailSender` · *Pinned by:* `ForgotPasswordRequestThreadTest`
-- [ ] **AC-2:** Given an unknown email, when forgot-password is requested, then the request thread
+- [x] **AC-2:** Given an unknown email, when forgot-password is requested, then the request thread
   reads once, dispatches nothing, and answers the same `204` with an empty body as AC-1. *Seam:* as
   AC-1 · *Pinned by:* `ForgotPasswordRequestThreadTest`
-- [ ] **AC-3:** Given the deferred link runs, then it mints a fresh raw token, stores only its hash
+- [x] **AC-3:** Given the deferred link runs, then it mints a fresh raw token, stores only its hash
   with `now + resetTokenTtl`, and yields the `/account/reset?token=` link; an erased account yields
   empty. *Seam:* `CustomerRecovery#sendPasswordResetEmail` → `MailSender` · *Pinned by:*
   `CustomerRecoveryTest`
-- [ ] **AC-4:** Given the dispatched reset task, when the address is suppressed then no token is
+- [x] **AC-4:** Given the dispatched reset task, when the address is suppressed then no token is
   issued; when the link is empty then nothing is sent; when issuance throws then the loss is counted
   as `reason=token-issuance` and logged without the address or the token. *Seam:*
   `TransactionalMailService` (`MailSender`) · *Pinned by:* `TransactionalMailServiceTest`
-- [ ] **AC-5:** Given a dispatcher that runs the task on another thread, when forgot-password is
+- [x] **AC-5:** Given a dispatcher that runs the task on another thread, when forgot-password is
   requested twice for one account, then only the second link redeems (superseded, single-use,
   stored hashed) — the transaction holds off the request thread. *Seam:* the HTTP routes against
   Postgres · *Pinned by:* `OffThreadResetIssuanceIT`
@@ -71,4 +71,5 @@ reset method changes shape (JDK `Supplier`, no new published type). `notificatio
 
 - Phase 1: done (deferred reset link on `MailSender`; `CustomerRecoveryTest`, `TransactionalMailServiceTest` green)
 - Phase 2: done (`ForgotPasswordRequestThreadTest` green; red against on-thread issuance)
-- Phase 3: in progress
+- Phase 3: done (`OffThreadResetIssuanceIT` green on the real dispatcher; Javadoc, RESPONSIBILITIES, runbook)
+- Next: CI green → merge origin/main → ready for review → review + Sonar gates
