@@ -104,7 +104,7 @@ the claim via the availability port, and `BookingCancelled` drives both the refu
 A substantial part of the system sits in the composition root (`ai.riviera.platform`), not in any
 module, and no diagram here shows it — so it is stated instead. The root holds the login machinery
 and the fences: `SecurityConfig` and the filter chain (`RateLimitFilter`,
-`ChallengeVerificationFilter`, `AdminAuditFilter`, `CorrelationIdFilter`), the session principals
+`ChallengeVerificationFilter`, `AdminAuditFilter`; the correlation-id filter is `monitoring`'s), the session principals
 and their revocation, the SSO gateways, the error contract (`ApiErrorHandler`, `ApiProblem`), and
 **nine controllers** — auth, SSO, my-account, account recovery, my-erasure, admin-operator,
 admin-erasure, operator-account, and the profile-guarded mock SSO IdP.

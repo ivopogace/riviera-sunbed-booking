@@ -9,6 +9,6 @@
 @org.springframework.modulith.ApplicationModule(
 	displayName = "Notification",
 	allowedDependencies = { "booking::api", "booking::events", "booking::spi", "booking::vocabulary",
-			"customer::api", "customer::vocabulary", "venue::api", "venue::vocabulary", "shared" }
+			"customer::api", "customer::vocabulary", "venue::api", "venue::vocabulary", "monitoring::vocabulary", "shared" }
 )
 package ai.riviera.platform.notification;

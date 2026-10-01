@@ -1,6 +1,6 @@
-package ai.riviera.platform;
+package ai.riviera.platform.monitoring.adapter.in;
 
-import ai.riviera.platform.shared.ObservabilityMetrics;
+import ai.riviera.platform.monitoring.vocabulary.ObservabilityMetrics;
 import io.micrometer.core.instrument.Gauge;
 import io.micrometer.core.instrument.binder.MeterBinder;
 
@@ -15,12 +15,11 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.simple.JdbcClient;
 
 /**
- * App-level observability wiring — a root-package concern, not a Modulith module
- * (like {@link SecurityConfig}/{@link WebCorsConfig}). It owns the cross-cutting instrumentation the
- * whole app shares: the {@link CorrelationIdFilter} registration and the money-path metrics that back
- * the alert self-check.
+ * App-level observability wiring, the cross-cutting instrumentation the whole app shares: the
+ * {@link CorrelationIdFilter} registration (a servlet filter outside the security chain) and the
+ * money-path metrics that back the alert self-check.
  *
- * <p>Metric names live in {@link ObservabilityMetrics} (a public {@code shared}-kernel vocabulary) so the emitters
+ * <p>Metric names live in {@link ObservabilityMetrics} (this module's published vocabulary) so the emitters
  * and the reader ({@code MoneyPathAlertCheck}) share one source of truth.
  */
 @Configuration

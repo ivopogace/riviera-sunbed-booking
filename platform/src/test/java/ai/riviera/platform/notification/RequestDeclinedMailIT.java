@@ -23,7 +23,7 @@ import ai.riviera.platform.notification.adapter.out.SentEmail;
 import ai.riviera.platform.notification.application.BookingLinks;
 import ai.riviera.platform.notification.application.EmailSuppressions;
 import ai.riviera.platform.notification.application.SuppressionReason;
-import ai.riviera.platform.shared.ObservabilityMetrics;
+import ai.riviera.platform.monitoring.vocabulary.ObservabilityMetrics;
 
 import static org.assertj.core.api.Assertions.assertThat;
 

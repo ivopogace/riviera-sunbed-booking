@@ -48,7 +48,8 @@ Hands off: Java idioms → `riviera-java-conventions`; seams → `codebase-desig
 
 **THIN iff no application service** (the `api/` port is implemented directly by a JDBC adapter);
 otherwise FULL. Every context module in CLAUDE.md's table (the `itinerary` read model included) and
-`challenge` are full; `audit` is thin plus a driving `adapter/in` (its admin controller).
+`challenge` are full; `audit` is thin plus a driving `adapter/in` (its admin controller);
+`monitoring` is `vocabulary` plus `adapter/in` (filter, gauge, alert job), no port.
 `shared` is neither: `@ApplicationModule(type = OPEN)`, flat classes at the module root, no
 published surface, no layers.
 
@@ -95,7 +96,10 @@ listener's parameter to live in its owner's `events` surface):
   `SetBookingFacts`/`VenueRates`, not `VenueCatalog` (a further tourist read on `VenueCatalog`
   is fine; `VenueApiRoleSplitTests` asserts direction, not a method list).
 - `vocabulary/` — ids, value records, enums, sealed outcomes, exceptions, published pure
-  functions (`Emails.normalize`).
+  functions (`Emails.normalize`), a constants holder of published names (`ObservabilityMetrics`)
+  and a stateless helper callers build with `new` (`MdcTaskDecorator`). Never serve a
+  `TaskDecorator` as a bean instead: Boot applies one to its own `applicationTaskExecutor` and
+  scheduler. Grant the surface only where a reference survives compilation (constants inline).
 - `events/` — event records only.
 - `spi/` — cross-module driven ports.
 

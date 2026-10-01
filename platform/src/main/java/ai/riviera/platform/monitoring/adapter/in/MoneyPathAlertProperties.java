@@ -1,4 +1,4 @@
-package ai.riviera.platform;
+package ai.riviera.platform.monitoring.adapter.in;
 
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.boot.context.properties.bind.DefaultValue;

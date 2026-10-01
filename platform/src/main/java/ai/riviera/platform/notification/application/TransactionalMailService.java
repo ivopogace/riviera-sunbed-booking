@@ -10,7 +10,7 @@ import org.springframework.dao.TransientDataAccessException;
 import org.springframework.stereotype.Service;
 
 import ai.riviera.platform.notification.api.MailSender;
-import ai.riviera.platform.shared.ObservabilityMetrics;
+import ai.riviera.platform.monitoring.vocabulary.ObservabilityMetrics;
 
 /**
  * The module's send chokepoint (ADR-0011): every mail leaves here, on one of two opposite vehicles.
