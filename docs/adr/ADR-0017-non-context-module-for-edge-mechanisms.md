@@ -3,11 +3,16 @@
 - **Status:** Accepted — implemented by PR #916 (#913), which moved the proof-of-work challenge
   mechanism into the closed non-context module `challenge`, and by PR #917 (#914), which moved the
   admin audit log into the closed non-context module `audit`. Both instances of Decision 1 now
-  exist; no third is named. *Amended 2026-10-01 by ADR-0028:* the fence of Decision 1 moves from the
-  root to the closed module `web`; the fence/mechanism split, `challenge` and `audit` stand. The
-  "no per-package opt-out" of the considered options is incomplete: `explicitly-annotated` or a
-  custom detection strategy opts a package out, but leaves it checked by nothing, so the rejection
-  stands.
+  exist; no third is named. *Amended 2026-10-01 by ADR-0028:* every "stays in the root" here —
+  the fence of Decision 1, `RateLimitFilter` (Decision 5), `AdminAuditReasons` (Decision 6) and the
+  fence of Decision 8 — moves to the closed module `web` when #1326 lands; until then the code is as
+  this ADR describes. The fence/mechanism split, `challenge` and `audit` stand. Decision 1's test
+  ("owns a table, a scheduled job, a library dependency or a published verdict") stays the test for
+  a *mechanism* module, no longer for every module: ADR-0028 Decision 8 adds adapter-layer modules
+  (`auth`, `web`) and an orchestration module (`remodel`) that own none of these. The considered
+  option's "Modulith has no per-package opt-out" is incomplete — `explicitly-annotated` or a custom
+  detection strategy does opt a package out, but leaves it checked by nothing, so the rejection
+  stands (ADR-0028's research note §3).
 - **Date:** 2026-09-03
 - **Relates to:** ADR-0016 (Decision 3 is amended by this ADR), ADR-0007 (the module templates
   this applies unchanged; Amendment 2 introduced the one non-context module `shared`), invariant

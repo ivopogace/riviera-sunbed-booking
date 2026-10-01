@@ -39,6 +39,8 @@ corrects that note's §1c on one point (finding 3 below).
    holds only the application class and app-wide config, the security filter chain included.
    Login machinery sits in a (shared) user-account module.
 5. **OPEN is a migration aid.** A closed module's flat base package is already its public API.
+6. **A shared module depends on nothing** in every reference project. Ours depends on `customer` and
+   `operator`, which is what keeps it OPEN (§7).
 
 ## 1. The root package is verified as a hidden "root module"
 
@@ -74,7 +76,8 @@ components" (milestone 1.1 RC1, `https://github.com/spring-projects/spring-modul
   - The grant map further limits *which* modules and surfaces the root may use.
 - `#noModuleReachesTheRoot` covers what `verify()` does not check at all.
 - The class Javadoc's "code in the base package is assigned to no module at all, which `verify()`
-  permits" is true for the module → root direction only.
+  permits", as of `28bccaf`, is true for the module → root direction only. #1317's PR corrects
+  it.
 
 ## 2. What an `@ApplicationModuleTest` loads
 
@@ -182,7 +185,7 @@ package outside the application package imported explicitly.
 
 The pattern across all three:
 
-- The root holds the application class and app-wide Spring configuration, two to five classes.
+- The root holds the application class and app-wide Spring configuration only (the table names them).
 - Code that every module calls (value types, the current user) is a shared module.
 - Login machinery sits in a module next to the user accounts.
 - None of them keeps controllers, flows or orchestration in the root.
@@ -192,8 +195,8 @@ The pattern across all three:
 - **Login is not inside the account modules.** `CustomerAuthPlacementTests` and
   `OperatorAuthPlacementTests` forbid Spring Security types in `customer` and `operator`. The
   Salespoint layout, login inside the account module, is therefore not available.
-- **The root holds far more than the references' roots.** It holds 65 classes: about 30 for
-  login/session/SSO/recovery, the security chain and its filters, the remodel composition
+- **The root holds far more than the references' roots.** At `28bccaf` it holds 65 classes: the
+  login/session/SSO/recovery machinery (about 30 of them), the security chain and its filters, the remodel composition
   (ADR-0020), the admin/erasure controllers and the observability jobs.
 
 ## 5. OPEN vs CLOSED for a flat module
@@ -233,6 +236,26 @@ through `shared` exists for OPEN to hide.
   § *Modular HttpSecurity Configuration*): `Customizer<HttpSecurity>` beans are applied to *every*
   `HttpSecurity` bean, ordered by `@Order`. A module can contribute chain configuration that way,
   but it applies to every chain, not one.
+
+## 7. A shared module sits at the bottom of the graph
+
+**[docs]** A module named in `@Modulithic(sharedModules)` is included in every module test's
+bootstrap and allowed to every module (§2, §6). If it depends on any module, every module that uses
+it closes a cycle through that dependency.
+
+**[ref]** The reference projects' shared modules import no other module:
+
+- `grep '^import org.salespointframework'` over Salespoint's `core` returns nothing.
+- Restbucks' `core` holds `Currencies` and two JPA converters.
+- The DDD sample's `useraccount` imports only itself.
+
+**[repo]** Our `shared` reaches `customer::api`/`::vocabulary` and `operator::api`/`::vocabulary`, for
+`CurrentCustomer` and `CurrentOperator` only. Any `customer`/`operator` → `shared` dependency is
+therefore a cycle, hidden today only because `shared` is OPEN (§5). It has already stopped one
+design. `02e30298` (#386): "an Emails helper in the shared OPEN kernel is architecturally impossible:
+shared depends on customer::api/::vocabulary while customer declares allowedDependencies = {}, so the
+three customer-side call sites would have closed customer -> shared -> customer::api, the same cycle
+shape #371 removed."
 
 ## Sources
 
