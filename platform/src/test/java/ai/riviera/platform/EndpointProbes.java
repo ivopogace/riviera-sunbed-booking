@@ -14,15 +14,16 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 
 /**
  * Shared request-synthesis machinery for the endpoint-sweep guards — {@link
- * EndpointRoleGateCoverageTest} (is every mapped endpoint gated <em>at all</em>?) and {@link
- * AdminSurfaceRoleGateTest} (is every {@code /api/admin/**} endpoint gated to <em>ADMIN</em>?).
+ * EndpointRoleGateCoverageTest} (is every mapped endpoint gated <em>at all</em>?), {@link
+ * AdminSurfaceRoleGateTest} (is every {@code /api/admin/**} endpoint gated to <em>ADMIN</em>?) and {@link
+ * EndpointOwnershipCoverageIT} (does every venue-scoped write deny a non-owner?).
  *
- * <p>Both sweeps turn a {@code VERB pattern} string straight from {@code RequestMappingHandlerMapping}
- * into a request that actually resolves to a handler, and both depend on getting that synthesis exactly
+ * <p>Every sweep turns a {@code VERB pattern} string straight from {@code RequestMappingHandlerMapping}
+ * into a request that actually resolves to a handler, and each depends on getting that synthesis exactly
  * right: a mis-synthesized path answers {@code 404} and a mis-synthesized verb {@code 405}, either of
  * which looks like "the filter chain blocked it" to a guard that only asks whether the request was
  * dispatched. Keeping one definition here means that logic is verified once and cannot drift between
- * the two guards — and a new path-variable name is taught to both by editing {@link
+ * the guards — and a new path-variable name is taught to all of them by editing {@link
  * #PATH_VARIABLE_SAMPLES} once.
  *
  * <p>The published surface is deliberately <strong>one method</strong>, {@link #probe}: the verb/pattern

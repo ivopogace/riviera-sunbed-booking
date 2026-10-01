@@ -124,17 +124,19 @@ import ai.riviera.platform.venue.application.LayoutCommand;
 import ai.riviera.platform.venue.application.ListOwnedVenues;
 import ai.riviera.platform.venue.application.ListVenueReviews;
 import ai.riviera.platform.venue.application.OnboardVenue;
+import ai.riviera.platform.venue.application.PhotoAudience;
 import ai.riviera.platform.venue.application.PhotoProcessingResult;
 import ai.riviera.platform.venue.application.PhotoSlotView;
 import ai.riviera.platform.venue.application.PhotoUploadResult;
+import ai.riviera.platform.venue.application.PhotoViewer;
 import ai.riviera.platform.venue.application.ProfileUpdateOutcome;
 import ai.riviera.platform.venue.application.ReopenOutcome;
 import ai.riviera.platform.venue.application.ReplaceLayoutOutcome;
 import ai.riviera.platform.venue.vocabulary.LayoutRejection;
 import ai.riviera.platform.venue.application.SeasonClosureRejection;
+import ai.riviera.platform.venue.application.ServedPhoto;
 import ai.riviera.platform.venue.application.SetCommand;
 import ai.riviera.platform.venue.application.SetRejection;
-import ai.riviera.platform.venue.application.StoredBytes;
 import ai.riviera.platform.venue.application.VenueCommissionAdministration;
 import ai.riviera.platform.venue.application.VenueCommissionView;
 import ai.riviera.platform.venue.application.VenueCreationProperties;
@@ -1225,12 +1227,12 @@ class WebSliceStubs {
 			}
 
 			@Override
-			public boolean exists(VenueId venueId, ContentHash hash) {
-				return false;
+			public Optional<PhotoAudience> exists(PhotoViewer viewer, VenueId venueId, ContentHash hash) {
+				return Optional.empty();
 			}
 
 			@Override
-			public Optional<StoredBytes> serve(VenueId venueId, ContentHash hash) {
+			public Optional<ServedPhoto> serve(PhotoViewer viewer, VenueId venueId, ContentHash hash) {
 				return Optional.empty();
 			}
 		};

@@ -54,9 +54,10 @@ close, the maximum stay, the season closure, and the commission rate over time. 
   `SetBookingFacts` stays **unfenced** and is the one port that answers for a **retired set**
   (ADR-0019): cancel, the booking view, the mails and the staff lookup must keep resolving a hidden
   venue's sets and a spot that left the map. The reserve path fences visibility itself in `booking`;
-  `poolForClaim` is the retired-set fence for both claim paths. Photo serving by hash is unfenced.
+  `poolForClaim` is the retired-set fence for both claim paths. Photo serving is visibility-fenced too.
 - **Venue photos** (ADR-0008): per-slot upload/replace/delete, processing, `bytea` storage behind
-  the module-internal `PhotoStorage` port, the public content-hash serving read. **Each tourist
+  the module-internal `PhotoStorage` port, the content-hash serving read — `404` (bytes and `304`)
+  for a hidden venue except to its owner or an admin, served `private` (ADR-0013). **Each tourist
   surface reads its own slideshow list** — one photo per occupied slot in `PhotoSlot` order, `CARD`
   preferred for the list read's `photos`, `BANNER` for the map read's `photos`, `LIGHTBOX` for
   `lightboxPhotos` — so one list's widest candidate never reaches another. Trap: the slot order is
@@ -700,7 +701,7 @@ I answer *which operator is this principal name?* (`OperatorDirectory`; `NoOpera
 set and `OperatorDirectory`'s may-operate set are `ACTIVE`+`PENDING` (approval gates tourist
 visibility, not console access); the tourist-visible set is `ACTIVE` only, deliberately, and
 `VenueVisibility` is its one home: no ownership row answers no (fail-closed); it fences `venue`'s
-catalogue reads and `booking`'s reserve, never a sold-booking path. A suspension **keeps** the
+catalogue reads and photo serving, and `booking`'s reserve, never a sold-booking path. A suspension **keeps** the
 `operator_venue` rows (reversible) but hides the venues until reinstatement.
 
 **Each transition is a status-guarded `UPDATE … RETURNING`, so only the winner gets the facts:**

@@ -9,6 +9,27 @@ const MAP_DIR = path.resolve(__dirname, '../../../platform/map');
 const FIXTURE_ARCHIVE = path.resolve(__dirname, 'map-fixture/riviera-fixture.pmtiles');
 
 /**
+ * The page's own origin plus the API origin the dev build points at — one origin in production
+ * (Spring serves the SPA), two under `ng serve`. Anything else is a third party.
+ */
+const OUR_HOSTS = new Set(['localhost:4200', 'localhost:8080']);
+
+/**
+ * The ADR-0022 guard: every http(s) request the page makes to a third party, collected from now on.
+ * Meaningful only with the REAL engine (`mockMapResources`): the fake requests no map resource.
+ */
+export function recordOffOriginRequests(page: Page): string[] {
+  const offOrigin: string[] = [];
+  page.on('request', (request) => {
+    const url = new URL(request.url());
+    if (/^https?:$/.test(url.protocol) && !OUR_HOSTS.has(url.host)) {
+      offOrigin.push(request.url());
+    }
+  });
+  return offOrigin;
+}
+
+/**
  * Serves `/map/**` from disk so the REAL MapLibre adapter can run under the mocked suite: the
  * style, sprites and glyphs straight from `platform/map/`, and the tile archive from the fixture,
  * sliced by the `Range` header exactly as the backend does — the pmtiles reader refuses a `200`
