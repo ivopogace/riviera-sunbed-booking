@@ -7,7 +7,7 @@ import ai.riviera.platform.customer.vocabulary.CustomerAccountId;
 import ai.riviera.platform.customer.vocabulary.LiveAccountCredential;
 
 /**
- * Published read port for a customer account's stored credential: the platform edge builds its Spring Security
+ * Published read port for a customer account's stored credential: {@code auth} builds its Spring Security
  * principals from it and re-reads the live account on every request. The module owns credential <em>storage</em>
  * only; it does <strong>not</strong> encode or verify the hash (RV-BE-11; Rationale: {@code RESPONSIBILITIES.md}
  * §customer). Emails are normalized (lower-cased + trimmed) before lookup, so callers may pass them as typed.

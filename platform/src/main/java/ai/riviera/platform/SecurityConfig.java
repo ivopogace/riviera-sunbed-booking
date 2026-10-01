@@ -10,16 +10,9 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.core.annotation.Order;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
-import org.springframework.security.authentication.AuthenticationManager;
-import org.springframework.security.authentication.ProviderManager;
-import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
 import org.springframework.security.config.Customizer;
-import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
-import org.springframework.security.core.userdetails.UserDetailsService;
-import org.springframework.security.crypto.factory.PasswordEncoderFactories;
-import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.access.intercept.AuthorizationFilter;
 import org.springframework.security.web.authentication.AnonymousAuthenticationFilter;
@@ -35,32 +28,30 @@ import org.springframework.session.web.http.DefaultCookieSerializer;
 import org.springframework.web.filter.CorsFilter;
 
 import ai.riviera.platform.audit.api.AdminAuditLog;
+import ai.riviera.platform.auth.api.SessionCredentials;
+import ai.riviera.platform.auth.vocabulary.AuthRoles;
 import ai.riviera.platform.challenge.api.ProofOfWorkChallenges;
-import ai.riviera.platform.customer.api.CustomerAccounts;
-import ai.riviera.platform.operator.api.OperatorAccounts;
 
 /**
  * Application-level security: public tourist reads are permitted; venue writes and the staff/admin
- * surfaces need a <strong>server-side session</strong> (Spring Session JDBC) with a role. Operator
- * credentials are DB-backed ({@link #operatorDetailsService} + {@link #passwordEncoder()}); no JWT, no
- * custom token filter. Per-<em>venue</em> authorization (invariant #13) is object-level and lives in
- * the application services, never here; this class is only the role layer above it.
+ * surfaces need a <strong>server-side session</strong> (Spring Session JDBC) with a role. Credentials and
+ * the authentication managers are {@code auth}'s. Per-<em>venue</em> authorization (invariant #13) is
+ * object-level and lives in the application services, never here; this class is only the role layer above it.
  */
 @Configuration
 @EnableWebSecurity
-@EnableConfigurationProperties({RivieraOperatorProperties.class, RateLimitProperties.class,
-		RecoveryProperties.class})
+@EnableConfigurationProperties(RateLimitProperties.class)
 class SecurityConfig {
 
 	/** The single role that gates the operator write surface. */
-	private static final String OPERATOR_ROLE = "OPERATOR";
+	private static final String OPERATOR_ROLE = AuthRoles.OPERATOR;
 	/** The role gating the signed-in tourist's own-bookings surface. */
-	private static final String CUSTOMER_ROLE = "CUSTOMER";
+	private static final String CUSTOMER_ROLE = AuthRoles.CUSTOMER;
 	/**
 	 * Gates <strong>every</strong> path in {@code /api/admin/**}, with no opt-out allow-list;
 	 * {@code AdminSurfaceRoleGateTest} discovers the mapped admin endpoints, so one with no matcher fails.
 	 */
-	private static final String ADMIN_ROLE = "ADMIN";
+	private static final String ADMIN_ROLE = AuthRoles.ADMIN;
 	/** A single laid-out set (PATCH/DELETE target); session + CSRF token required. */
 	private static final String SET_ITEM_PATH = "/api/venues/*/sets/*";
 	/** The set collection: add one (POST) or batch-apply price/tier/pool to many (PATCH); session + CSRF. */
@@ -277,7 +268,7 @@ class SecurityConfig {
 	@Order(1)
 	SecurityFilterChain apiSecurityFilterChain(HttpSecurity http, RateLimitProperties rateLimitProperties,
 			Clock clock, ObjectMapper objectMapper, AdminAuditLog adminAuditLog,
-			ProofOfWorkChallenges challenges, CustomerAccounts customerAccounts, OperatorAccounts operatorAccounts) {
+			ProofOfWorkChallenges challenges, SessionCredentials sessionCredentials) {
 		// One instance, so the chain and the logout success handler stay in lockstep.
 		CookieCsrfTokenRepository csrfTokenRepository = csrfCookieRepository();
 		http
@@ -288,8 +279,7 @@ class SecurityConfig {
 				// After the rate limiter and the CSRF check, so a 429 wins and the registry claim comes last.
 				.addFilterAfter(new ChallengeVerificationFilter(challenges), CsrfFilter.class)
 				// Before the anonymous filter, so a session with a stale credential proceeds as anonymous (#1306).
-				.addFilterBefore(new SessionCredentialFilter(customerAccounts, operatorAccounts),
-						AnonymousAuthenticationFilter.class)
+				.addFilterBefore(new SessionCredentialFilter(sessionCredentials), AnonymousAuthenticationFilter.class)
 				// After AuthorizationFilter, so only actions past the gate leave an audit row.
 				.addFilterAfter(new AdminAuditFilter(adminAuditLog, ADMIN_AUDIT_NAMESPACE), AuthorizationFilter.class)
 				.csrf(csrf -> csrf
@@ -433,30 +423,6 @@ class SecurityConfig {
 	}
 
 	/**
-	 * The operator authentication manager, built by Spring Security's global
-	 * {@link AuthenticationConfiguration} from {@link #operatorDetailsService} +
-	 * {@link #passwordEncoder()}. No custom filter.
-	 */
-	@Bean
-	AuthenticationManager authenticationManager(AuthenticationConfiguration configuration) {
-		return configuration.getAuthenticationManager();
-	}
-
-	/**
-	 * The CUSTOMER manager, separate from the operator one so a customer credential can never
-	 * authenticate as an operator. {@link CustomerUserDetailsService} is built inline: a second
-	 * {@code UserDetailsService} bean would make {@link AuthenticationConfiguration} ambiguous.
-	 */
-	@Bean
-	AuthenticationManager customerAuthenticationManager(CustomerAccounts customerAccounts,
-			PasswordEncoder passwordEncoder) {
-		DaoAuthenticationProvider provider =
-				new DaoAuthenticationProvider(new CustomerUserDetailsService(customerAccounts));
-		provider.setPasswordEncoder(passwordEncoder);
-		return new ProviderManager(provider);
-	}
-
-	/**
 	 * Where {@code AuthController} saves the authenticated context: the HTTP session, which Spring
 	 * Session transparently persists to Postgres. The chain's default delegating repository reads the
 	 * same attribute back on every later request, so save and load stay in lockstep.
@@ -505,21 +471,6 @@ class SecurityConfig {
 		serializer.setUseSecureCookie(true);
 		serializer.setSameSite("Lax");
 		return serializer;
-	}
-
-	/** Delegating encoder ({@code {bcrypt}} by default) — verifies the stored per-operator hash. */
-	@Bean
-	PasswordEncoder passwordEncoder() {
-		return PasswordEncoderFactories.createDelegatingPasswordEncoder();
-	}
-
-	/**
-	 * The per-operator {@link UserDetailsService}: each login resolves to a DB-backed operator account via
-	 * {@link OperatorAccounts}; defining it replaces Boot's auto-generated default user.
-	 */
-	@Bean
-	UserDetailsService operatorDetailsService(OperatorAccounts accounts) {
-		return new OperatorUserDetailsService(accounts);
 	}
 
 }

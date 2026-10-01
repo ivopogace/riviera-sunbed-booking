@@ -1,7 +1,7 @@
 # Operator credential provisioning & rotation (#74, #115, #326, #344)
 
 Operator logins are **per-operator and DB-backed**. Each `operator` row carries its own hashed
-credential (`operator.password_hash`, V17); login is verified at the edge by
+credential (`operator.password_hash`, V17); login is verified in the `auth` module by
 `OperatorUserDetailsService` (a Spring Security `UserDetailsService`) against the delegating
 `PasswordEncoder`. There is **no shared password** and no JWT. Since **#115** operators can also
 **self-register** (below), and the owns-all bootstrap operator is retired.
@@ -58,7 +58,7 @@ header's *Admin* link when signed in as an admin):
   log in).
 
 The approval surface is role-gated to `ADMIN` and **not** venue-scoped (invariant #13's `/api/admin/**`
-exemption). All login/approval machinery is at the edge (RV-BE-11); the `operator` module owns only the
+exemption). All login/approval machinery is in `auth` (RV-BE-11); the `operator` module owns only the
 account state + the `operator_venue` mapping.
 
 ## Self-service password change (#326)
@@ -123,8 +123,8 @@ Provision operators directly (bypassing self-registration) through the `operator
 - `provision(username, passwordHash)` — create a new `ACTIVE`, per-venue (not an admin) operator.
 - `setPassword(username, passwordHash)` — rotate an existing operator's credential.
 
-Both take an **already-encoded** hash: encode the raw password with the edge `PasswordEncoder`
-(delegating → `{bcrypt}…`) and pass the result, keeping all crypto at the edge (the `operator` module
+Both take an **already-encoded** hash: encode the raw password with `auth`'s `PasswordEncoder`
+(delegating → `{bcrypt}…`) and pass the result, keeping all crypto in `auth` (the `operator` module
 stores an opaque blob — RV-BE-11). Grant a per-venue operator its venues with `operator_venue` rows;
 a per-venue operator owns **only** the venues explicitly mapped to it (invariant #13).
 

@@ -17,6 +17,7 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.context.request.WebRequest;
 import org.springframework.web.servlet.mvc.method.annotation.ResponseEntityExceptionHandler;
 
+import ai.riviera.platform.auth.vocabulary.BlockedPasswordException;
 import ai.riviera.platform.customer.vocabulary.NotSignedInCustomerException;
 import ai.riviera.platform.operator.vocabulary.NoOperableOperatorException;
 import ai.riviera.platform.operator.vocabulary.NotVenueOwnerException;

@@ -12,6 +12,7 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
 
+import ai.riviera.platform.auth.adapter.out.PrincipalSessionRevoker;
 import ai.riviera.platform.notification.api.MailSender;
 import ai.riviera.platform.operator.api.OperatorLifecycle;
 import ai.riviera.platform.operator.vocabulary.ApprovalOutcome;

@@ -13,8 +13,8 @@ Module census and collaboration inventory: `CLAUDE.md`.
 
 **The root package is the composition root; nothing depends on it.** It holds
 `PlatformApplication`, app-wide config (`SecurityConfig`, `WebCorsConfig`, `TimeConfig`) and
-the platform's own adapters (controllers, the SSO/auth edge; no module listeners — pinned by
-`CompositionRootDisciplineTests`). A type modules need goes in `shared`, never at the root.
+the platform's own adapters (the security chain and its filters; no module listeners — pinned by
+`CompositionRootDisciplineTests`). Login and sessions are the `auth` module's. A type modules need goes in `shared`, never at the root.
 Keep `shared` tiny: no business logic, no module-owned state. Moving a bean between the root
 and a module can break every `@ApplicationModuleTest` (`riviera-local-debug` § *Blast radius*).
 
@@ -49,7 +49,8 @@ Hands off: Java idioms → `riviera-java-conventions`; seams → `codebase-desig
 **THIN iff no application service** (the `api/` port is implemented directly by a JDBC adapter);
 otherwise FULL. Every context module in CLAUDE.md's table (the `itinerary` read model and
 `remodel` included) and `challenge` are full; `audit` is thin plus a driving `adapter/in` (its admin controller);
-`monitoring` is `vocabulary` plus `adapter/in` (filter, gauge, alert job), no port.
+`monitoring` is `vocabulary` plus `adapter/in` (filter, gauge, alert job), no port; `auth` is full,
+with `api` (`SessionRevocation`, `SessionCredentials`) and `vocabulary` (`AuthRoles`, a constants holder).
 `shared` is neither: a closed `@ApplicationModule` registered in `@Modulithic(sharedModules)` (so
 Modulith allows it to every module, `{}` grants included), flat classes at the module root as its
 API, no named surface, no layers, `allowedDependencies = {}`. A type that needs a module's `api` is that

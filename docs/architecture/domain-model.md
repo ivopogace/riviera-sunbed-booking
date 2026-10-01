@@ -105,17 +105,17 @@ the claim via the availability port, and `BookingCancelled` drives both the refu
 
 ### 1.1 What is not in a module: the platform edge
 
-A substantial part of the system sits in the composition root (`ai.riviera.platform`), not in any
-module, and no diagram here shows it — so it is stated instead. The root holds the login machinery
-and the fences: `SecurityConfig` and the filter chain (`RateLimitFilter`,
-`ChallengeVerificationFilter`, `AdminAuditFilter`; the correlation-id filter is `monitoring`'s), the session principals
-and their revocation, the SSO gateways, the error contract (`ApiErrorHandler`, `ApiProblem`), and
-the controllers — auth, SSO, my-account, account recovery, my-erasure, admin-operator,
-operator-account, and the profile-guarded mock SSO IdP.
+Part of the system sits outside the context modules, and no diagram here shows it — so it is
+stated instead. The composition root (`ai.riviera.platform`) holds the fences: `SecurityConfig` and
+the filter chain (`RateLimitFilter`, `ChallengeVerificationFilter`, `AdminAuditFilter`,
+`SessionCredentialFilter`; the correlation-id filter is `monitoring`'s) and the error contract
+(`ApiErrorHandler`, `ApiProblem`). The closed `auth` module holds the login machinery: the session
+principals and their revocation, the SSO gateways, and the auth, SSO, my-account, account-recovery,
+my-erasure, admin-operator, operator-account and mock-IdP controllers.
 
 Two consequences a reader of §1 would otherwise miss: `operator` has **no controllers of its own**
 and `customer` only the admin erasure one — everything a person does with their own account is an
-edge endpoint calling those modules' ports — and the rule that keeps this honest runs one way only.
+`auth` endpoint calling those modules' ports — and the rule that keeps this honest runs one way only.
 Modules depend on `shared`, the root depends on modules, and **nothing depends on the root**
 (ADR-0007 Amendment 2, machine-checked by `CompositionRootDisciplineTests`). `RESPONSIBILITIES.md` §
 *Platform edge* is the contract.
@@ -696,7 +696,7 @@ classDiagram
 > No `Operator` class and **no `domain/` package**: the account is a row, ownership is a row in
 > `operator_venue`, and the status lifecycle is the same guarded `UPDATE … WHERE status =
 > :expected` idiom as `booking`'s. `OperatorStatus` is published rather than centralised on
-> purpose — each status predicate lives with its owner: the edge's may-authenticate set, the
+> purpose — each status predicate lives with its owner: `auth`'s may-authenticate set, the
 > module's ownership resolution, and tourist visibility.
 >
 > The module publishes its own `VenueRef` instead of importing `venue.vocabulary.VenueId`, because

@@ -27,7 +27,7 @@ import ai.riviera.platform.notification.application.StayConfirmationMail;
  * under {@code mailer}/{@code smtp4dev}); {@link MockMailerProdGuard} bars this one from {@code prod}:
  * it logs recovery links, whose token is a bearer credential (invariant #7), as a dev-only affordance.
  * Booking kinds log no code or link. Public only for ITs ({@link #sent()}, {@link #lastTo},
- * {@link #clear()}): Modulith walls it off, and the root reaches only {@code notification::api}.
+ * {@link #clear()}): Modulith walls it off, and callers reach only {@code notification::api}.
  */
 @Component
 @Profile("!mailer & !smtp4dev")

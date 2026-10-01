@@ -59,7 +59,7 @@ Consequences kept from the session choice:
   Logout/password-reset truly invalidate server sessions (needs the server-side
   session store — trivial here, a denylist under JWT).
 - RV-BE-11 / `OperatorAuthPlacementTests` remain valid as a *placement* rule
-  (login machinery at the platform edge, not in domain modules) independent of the
+  (login machinery in `auth`, not in domain modules; ADR-0028) independent of the
   mechanism re-decision.
 
 ### D-2: Two principal types, one edge mechanism
@@ -71,11 +71,11 @@ login/register endpoints, sharing the platform-edge machinery. Module ownership
 - `customer` module: customer **account identity** + opaque credential hash + SSO subject
   linkage. The account is a **separate identity** — its own `customer_account` table (own PK,
   **no FK** to the guest `customer` row) — so registration never auto-claims a guest email's
-  past bookings. Login machinery stays at the edge (RV-BE-11, `CustomerAuthPlacementTests`).
+  past bookings. Login machinery stays in `auth` (RV-BE-11, `CustomerAuthPlacementTests`).
 - `operator` module: unchanged ownership (account identity + operator↔venue
   mapping), gains registration/approval state.
-- Platform edge (`ai.riviera.platform`): all login machinery — filter chain,
-  session config, the SSO redirect/callback handling.
+- The `auth` module (ADR-0028): all login machinery — session establishment, the SSO
+  redirect/callback handling; the filter chain and session config stay at the root edge.
 
 ### D-3: SSO flow — OIDC Authorization Code + PKCE, server-side
 
@@ -89,7 +89,7 @@ one port.
 
 Same shape as `StubPaymentGateway` vs `StripePaymentGateway`:
 
-- An **`SsoGateway` port** at the platform edge (provider → verified external
+- An **`SsoGateway` port** in `auth` (provider → verified external
   identity: subject, email, display name).
 - A **mock adapter** (default/demo profile) that completes a fake
   "Continue with Google/Apple" flow end-to-end with canned verified identities —
@@ -193,7 +193,7 @@ prerequisite: the adapters throw until credentials are provisioned.
 - **#13** per-venue authorization; object-level checks stay in application services.
   Reviewed by RV-BE-9.
 - **RV-BE-11** no login machinery inside domain modules — everything
-  authentication-mechanical stays at the platform edge (`OperatorAuthPlacementTests`
+  authentication-mechanical stays in `auth` (`OperatorAuthPlacementTests`
   extends to the customer side).
 - **#1/#11/#12** as always: JDBC-only, ADR-0007 module shape, Flyway migrations
   for the new account/credential/token tables.

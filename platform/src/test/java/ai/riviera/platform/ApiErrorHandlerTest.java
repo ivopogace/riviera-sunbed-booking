@@ -1,5 +1,6 @@
 package ai.riviera.platform;
 
+import ai.riviera.platform.auth.vocabulary.BlockedPasswordException;
 import ai.riviera.platform.shared.ApiProblem;
 import ai.riviera.platform.shared.InvalidApiRequestException;
 import org.junit.jupiter.api.BeforeEach;
