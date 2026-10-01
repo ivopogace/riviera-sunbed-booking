@@ -27,7 +27,7 @@ import ai.riviera.platform.notification.BookingMailFixtures;
 import ai.riviera.platform.notification.BookingMailFixtures.SetRef;
 import ai.riviera.platform.notification.ControllableMailer;
 import ai.riviera.platform.notification.ControllableMailerConfiguration;
-import ai.riviera.platform.shared.ObservabilityMetrics;
+import ai.riviera.platform.monitoring.vocabulary.ObservabilityMetrics;
 
 import static org.assertj.core.api.Assertions.assertThat;
 

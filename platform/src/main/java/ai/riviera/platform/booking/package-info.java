@@ -8,6 +8,6 @@
  */
 @org.springframework.modulith.ApplicationModule(
     displayName = "Booking",
-    allowedDependencies = { "venue::api", "venue::vocabulary", "venue::spi", "availability::api", "availability::vocabulary", "payment::api", "payment::vocabulary", "payment::events", "customer::api", "customer::spi", "customer::vocabulary", "operator::api", "operator::vocabulary", "review::api", "review::spi", "review::vocabulary", "shared" }
+    allowedDependencies = { "venue::api", "venue::vocabulary", "venue::spi", "availability::api", "availability::vocabulary", "payment::api", "payment::vocabulary", "payment::events", "customer::api", "customer::spi", "customer::vocabulary", "operator::api", "operator::vocabulary", "review::api", "review::spi", "review::vocabulary", "monitoring::vocabulary", "shared" }
 )
 package ai.riviera.platform.booking;

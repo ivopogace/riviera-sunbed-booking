@@ -30,7 +30,7 @@ import ai.riviera.platform.challenge.application.ChallengeRegistry;
 import ai.riviera.platform.customer.application.AccountErasureStore;
 import ai.riviera.platform.customer.spi.GuestBookingHistory;
 import ai.riviera.platform.customer.vocabulary.CustomerId;
-import ai.riviera.platform.shared.ObservabilityMetrics;
+import ai.riviera.platform.monitoring.vocabulary.ObservabilityMetrics;
 
 import static org.assertj.core.api.Assertions.assertThat;
 

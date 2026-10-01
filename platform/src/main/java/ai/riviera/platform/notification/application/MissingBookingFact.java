@@ -1,6 +1,6 @@
 package ai.riviera.platform.notification.application;
 
-import ai.riviera.platform.shared.ObservabilityMetrics;
+import ai.riviera.platform.monitoring.vocabulary.ObservabilityMetrics;
 
 /**
  * Which of a booking mail's three facts did not resolve: the {@code reason} tag shared by every

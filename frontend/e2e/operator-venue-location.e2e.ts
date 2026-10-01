@@ -8,7 +8,7 @@ import {
   expectConsoleTheme,
   expectInsetFill,
 } from './support/console-theme';
-import { mockMapResources } from './support/map-resources';
+import { mockMapResources, recordOffOriginRequests } from './support/map-resources';
 
 /**
  * Real-render CI-safe e2e for the venue-location pin placer. Drives sign-in → open the Venue tab →
@@ -477,4 +477,21 @@ test('finds the shore in the real map’s own rendered pixels', async ({ page })
 
   expect(snapped.longitude).toBeLessThan(own.longitude);
   expect(snapped.longitude).toBeGreaterThan(FIXTURE_COAST_LNG);
+});
+
+/** ADR-0022 on the console: the pin placer renders the same real map as Discover, so it carries the same guard. */
+test('the pin placer’s real map makes no request to a third party', async ({ page }) => {
+  await mockVenue(page, null, { real: true });
+  const offOrigin = recordOffOriginRequests(page);
+  let tileRead = false;
+  page.on('request', (request) => {
+    tileRead ||= new URL(request.url()).pathname.endsWith('/map/riviera.pmtiles');
+  });
+  await page.goto('/operator/1');
+  await signInAndOpenVenue(page);
+
+  await expect.poll(() => tileRead, { timeout: 20_000 }).toBe(true);
+  await page.waitForLoadState('networkidle');
+
+  expect(offOrigin, 'every map resource must come from our origin (ADR-0022)').toEqual([]);
 });
