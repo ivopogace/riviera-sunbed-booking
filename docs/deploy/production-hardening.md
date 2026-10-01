@@ -27,7 +27,7 @@ Consequences, enforced by **two independent layers**:
 |---|---|---|---|
 | `GET /actuator/health` | `200 {"status":"UP"}` (no component details) | `200` **with** `components` (db/diskSpace/…) | Render health check + CD poll need it public; details `when-authorized` only |
 | `GET /actuator/prometheus` | `401` (security) | `200` scrape body | Metrics scrape (`docs/runbooks/observability.md`); never public |
-| `env`, `beans`, `mappings`, `configprops`, `heapdump`, `threaddump`, `loggers`, `metrics`, `modulith` | `401` (security) | `404` (not exposed) | Leak config / resolved secrets / bean wiring / internals — never reachable |
+| `env`, `beans`, `mappings`, `configprops`, `heapdump`, `threaddump`, `loggers`, `metrics` | `401` (security) | `404` (not exposed) | Leak config / resolved secrets / bean wiring / internals — never reachable |
 
 - **Layer 1 — exposure allowlist:** an endpoint other than `health`/`prometheus` has no HTTP
   handler → `404` even for an authenticated operator. This is the primary control.

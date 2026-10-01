@@ -57,6 +57,9 @@ dependencies {
 	// declares org.json as `provided`, so the runtime classpath has to carry it explicitly.
 	implementation 'org.altcha:altcha:2.0.3'
 	implementation 'org.json:json:20260814'
+	// Javadoc into the Documenter's module canvases (DocumentationTests); starter-core ships it, but Gradle runs
+	// a processor only from this configuration.
+	annotationProcessor 'org.springframework.modulith:spring-modulith-apt'
 	developmentOnly 'org.springframework.boot:spring-boot-devtools'
 	developmentOnly 'org.springframework.boot:spring-boot-docker-compose'
 	// Prometheus scrape registry (#100 D4 observability). Runtime-only: Micrometer auto-detects it and
@@ -88,6 +91,15 @@ tasks.named('test') {
 	// The full suite holds ~30 cached Spring contexts in one worker; Gradle's 512m default OOMs.
 	maxHeapSize = '1g'
 	finalizedBy tasks.named('jacocoTestReport')
+	// spring-modulith#1762 (fixed in 2.2): the Documenter's BasicJsonParser rejects an escaped quote in the apt's
+	// javadoc.json, failing DocumentationTests; make each one a ' first. Drop this block with the 2.2 upgrade.
+	def javadocJson = layout.buildDirectory.file('generated-spring-modulith/javadoc.json')
+	doFirst {
+		def file = javadocJson.get().asFile
+		if (file.exists()) {
+			file.text = file.text.replaceAll(/(?<!\\)((?:\\\\)*)\\"/, '$1\'')
+		}
+	}
 }
 
 tasks.named('jacocoTestReport') {

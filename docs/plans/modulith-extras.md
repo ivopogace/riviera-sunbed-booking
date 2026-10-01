@@ -46,11 +46,12 @@ actuator and runtime: remove; Documenter: apt plus a CI artifact).
 - **R-1:** dropping the shared pool's decorator changes what the money-path listeners see → it only
   propagated the Micrometer observation, and no tracer consumed it. No MDC moved with it: the
   context-propagation library registers no SLF4J accessor by default.
+- **R-3:** spring-modulith#1762 (fixed in 2.2, not in 2.1.1): the Documenter's `BasicJsonParser` rejects the apt's escaped quotes → `build.gradle`'s `test` task rewrites each to `'` first; drop it with the 2.2 upgrade.
 - **R-2:** a CI cache hit skips the build, so there would be no docs to upload → the docs folder
   joins the cached paths. The key prefix becomes `v2-`, per `ci.yml`'s own rule.
 
 ## Execution status
 
 - [x] Phase 1: AC-1 red against today's classpath, then the dependency drop turns it green (AC-2)
-- [ ] Phase 2: Documenter apt plus the CI artifact (AC-3); runbook and production-hardening docs
+- [x] Phase 2: Documenter apt plus the CI artifact (AC-3); runbook and production-hardening docs
 - [ ] Phase 3: waits for #1326. Merge origin/main, flip `testing.md` (AC-4)

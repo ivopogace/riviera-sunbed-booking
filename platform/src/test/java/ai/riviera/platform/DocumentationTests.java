@@ -5,18 +5,14 @@ import org.springframework.modulith.core.ApplicationModules;
 import org.springframework.modulith.docs.Documenter;
 
 /**
- * Generates the Spring Modulith documentation (C4 component PlantUML diagrams + per-module
- * canvases) from the live module structure. Pure structural analysis — no Spring context, no
- * DB — so it runs anywhere. Output lands in {@code build/spring-modulith-docs}.
+ * Generates the Spring Modulith documentation (C4 component PlantUML diagrams + per-module canvases, their
+ * Javadoc from {@code spring-modulith-apt}) from the live module structure into {@code build/spring-modulith-docs},
+ * which CI uploads as the {@code modulith-docs} artifact. Pure structural analysis: no Spring context, no DB.
  */
 class DocumentationTests {
 
 	@Test
 	void generateModulithDocs() {
-		ApplicationModules modules = ApplicationModules.of(PlatformApplication.class);
-
-		// Writes component PlantUML (all + per-module) and per-module canvases to the default
-		// output folder (build/spring-modulith-docs).
-		new Documenter(modules).writeDocumentation();
+		new Documenter(ApplicationModules.of(PlatformApplication.class)).writeDocumentation();
 	}
 }
