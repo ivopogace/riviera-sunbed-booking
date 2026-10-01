@@ -8,7 +8,7 @@ import java.util.List;
  * wants the row and position of a set the gate kept, nothing written ({@link KeptSetsDisplaced});
  * the save's own probe still found a live claim on a disturbed set after the gate, nothing written
  * ({@link SetsInUse}); or the save's shape and token rejections ({@link Rejected}). Sealed so the
- * edge's switch is exhaustive.
+ * {@code remodel} switch is exhaustive.
  */
 public sealed interface LayoutCommitOutcome
 		permits LayoutCommitOutcome.Committed, LayoutCommitOutcome.Refused, LayoutCommitOutcome.KeptSetsDisplaced,
