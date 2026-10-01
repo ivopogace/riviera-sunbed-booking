@@ -83,7 +83,7 @@ class AdminSurfaceRoleGateTest {
 	/**
 	 * Anchors proving the discovery reached every module that owns admin endpoints — {@code audit},
 	 * {@code venue}, {@code review}, {@code notification}, {@code payout}, {@code booking} and
-	 * {@code customer}.
+	 * {@code auth}.
 	 *
 	 * <p>This is the guard's own vacuity check, and the reason it is not simply a full hand-written
 	 * list: a sweep that discovers <em>nothing</em> passes every assertion below trivially, so if
