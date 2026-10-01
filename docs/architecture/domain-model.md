@@ -32,7 +32,9 @@ The **remaining** modules are not drawn because no domain module collaborates wi
 `venue::api` + `availability::api` for the stay verdict per venue, improvement plan B4, and nothing
 reads it); and the closed ADR-0017 mechanisms, `challenge` (proof of work, owns
 `challenge_registry`) and `audit` (the admin audit trail, owns `admin_audit_record`), both reached
-from the platform edge through a port.
+from the platform edge through a port. `monitoring` (no table) is not drawn either: `booking` and
+`notification` reach only its `vocabulary` (metric names, the MDC task decorator), never a port or an
+event.
 
 ```mermaid
 graph TB

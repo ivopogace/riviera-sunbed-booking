@@ -71,12 +71,13 @@ and scheduler.
 
 ## Execution status
 
-**Stage pointer:** `review`
+**Stage pointer:** `review — findings fixed; Sonar gate next` (PR #1346)
 
-**Next action:** open the draft PR, then run the review gate.
+**Next action:** wait for CI green, then run the Sonar gate.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — move + grants + substrate | ✅ | 85ac1619 |
+| review fixes (domain-model, notification Javadoc) | ✅ | (this commit) |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
