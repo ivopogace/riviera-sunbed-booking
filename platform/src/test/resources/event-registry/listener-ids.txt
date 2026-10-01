@@ -1,0 +1,24 @@
+# <listener_id> <event_type>, one per registry-tracked listener (ListenerIdSnapshotTest).
+# Changing either column strands outstanding event_publication rows: ship a forward Flyway rewrite.
+booking.confirm-on-payment-confirmed ai.riviera.platform.payment.events.PaymentConfirmed
+booking.day-refund-on-booking-day-refunded ai.riviera.platform.booking.events.BookingDayRefunded
+booking.refund-on-booking-cancelled ai.riviera.platform.booking.events.BookingCancelled
+booking.release-on-payment-canceled ai.riviera.platform.payment.events.PaymentCanceled
+booking.release-void-on-booking-cancelled ai.riviera.platform.booking.events.BookingCancelled
+notification.mail-on-booking-cancelled ai.riviera.platform.booking.events.BookingCancelled
+notification.mail-on-booking-confirmed ai.riviera.platform.booking.events.BookingConfirmed
+notification.mail-on-booking-day-refunded ai.riviera.platform.booking.events.BookingDayRefunded
+notification.mail-on-booking-moved ai.riviera.platform.booking.events.BookingMoved
+notification.mail-on-booking-payment-due ai.riviera.platform.booking.events.BookingPaymentDue
+notification.mail-on-booking-request-declined ai.riviera.platform.booking.events.BookingRequestDeclined
+notification.mail-on-booking-request-expired ai.riviera.platform.booking.events.BookingRequestExpired
+notification.mail-on-stay-cancelled ai.riviera.platform.booking.events.StayCancelled
+notification.mail-on-stay-confirmed ai.riviera.platform.booking.events.StayConfirmed
+notification.mail-on-stay-move-due ai.riviera.platform.booking.events.StayMoveDue
+notification.mail-on-stay-payment-due ai.riviera.platform.booking.events.StayPaymentDue
+notification.mail-on-stay-request-declined ai.riviera.platform.booking.events.StayRequestDeclined
+notification.mail-on-stay-request-expired ai.riviera.platform.booking.events.StayRequestExpired
+payout.accrue-on-booking-confirmed ai.riviera.platform.booking.events.BookingConfirmed
+payout.reverse-day-on-booking-day-refunded ai.riviera.platform.booking.events.BookingDayRefunded
+payout.reverse-on-booking-cancelled ai.riviera.platform.booking.events.BookingCancelled
+venue.rating-on-reviews-changed ai.riviera.platform.review.events.ReviewsChanged
