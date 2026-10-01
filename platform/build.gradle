@@ -38,7 +38,6 @@ dependencies {
 	// the default profile keeps the recording MockMailer and never creates a mail session.
 	implementation 'org.springframework.boot:spring-boot-starter-mail'
 	implementation 'org.flywaydb:flyway-database-postgresql'
-	implementation 'org.springframework.modulith:spring-modulith-observability-api'
 	implementation 'org.springframework.modulith:spring-modulith-starter-core'
 	implementation 'org.springframework.modulith:spring-modulith-starter-jdbc'
 	// TargetEventPublication, so #405's mail re-drive can scope by listener (RegistryMailOutbox).
@@ -64,9 +63,6 @@ dependencies {
 	// wires the /actuator/prometheus endpoint; no compile-time API is used. Version is BOM-managed.
 	runtimeOnly 'io.micrometer:micrometer-registry-prometheus'
 	runtimeOnly 'org.postgresql:postgresql'
-	runtimeOnly 'org.springframework.modulith:spring-modulith-actuator'
-	runtimeOnly 'org.springframework.modulith:spring-modulith-observability-core'
-	runtimeOnly 'org.springframework.modulith:spring-modulith-runtime'
 	testImplementation 'org.springframework.boot:spring-boot-starter-actuator-test'
 	testImplementation 'org.springframework.boot:spring-boot-starter-data-jdbc-test'
 	testImplementation 'org.springframework.boot:spring-boot-starter-flyway-test'

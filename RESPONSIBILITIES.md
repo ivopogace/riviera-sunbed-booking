@@ -1058,7 +1058,7 @@ admin action was justified; retention (a named non-goal — rows are kept indefi
   `ObservabilityConfig` as a servlet filter outside the security chain, so not the edge's);
   `MdcTaskDecorator` carries the submitter's MDC onto a pooled worker. Each pool builds the decorator
   with `new`, never as a bean: Boot applies a `TaskDecorator` bean to its own `applicationTaskExecutor`
-  and scheduler, which stay undecorated (`WorkerContextArchitectureTest`).
+  and scheduler, which stay undecorated (`SharedTaskExecutorUndecoratedIT`).
 - **The metric names** (`ObservabilityMetrics`). Emission and tags stay with the module that owns the
   thing measured; this module owns the names, the outbox-backlog gauge and the alerts on them.
 - **The money-path alert check shares the sweeps' single-instance posture.** `MoneyPathAlertCheck`
