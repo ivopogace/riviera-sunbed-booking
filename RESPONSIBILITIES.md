@@ -957,9 +957,9 @@ is the trigger for asking the question, and the answer is always ownership.
   (single-flight, a cooldown from construction so a press cannot race the boot republication); each
   lever module keeps its own scope, window and log noun.
 - `FailedPublicationRetry`, the scheduled re-drive of `FAILED` publications whose redelivery is a
-  no-op (#1340): `booking`, `payout` and `venue` each schedule one over their own exact-id allowlist,
-  and only the platform owns the bounds (`riviera.events.spine-retry.*`), since all three land on
-  Boot's task executor. It filters per row, never by `ResubmissionOptions`, which reads a batch of
+  no-op (#1340). Admitted on ownership: `booking`, `payout` and `venue` each own their exact-id
+  allowlist, but the bounds (`riviera.events.spine-retry.*`) are one platform budget on Boot's
+  shared task executor, which no single module owns. It filters per row, never by `ResubmissionOptions`, which reads a batch of
   all failed rows before filtering and would starve one module behind another's backlog. Refund and
   mail listeners are never on it: they re-ask the gateway or re-send a mail (admin levers).
 

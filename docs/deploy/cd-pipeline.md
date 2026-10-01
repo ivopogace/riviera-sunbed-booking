@@ -158,6 +158,23 @@ After wiring, the next green CI on `main` deploys the one service. Verify:
 - `https://<name>.onrender.com/actuator/health` returns `{"status":"UP"}` (proves Neon + Flyway);
 - operator sign-in reaches the credential check (the same-origin session cookie works — #110's fix).
 
+## Post-deploy steps by release
+
+Render swaps instances with zero downtime, so for a moment the old and new instances both run.
+A release listed here owes one extra step after the old instance has drained.
+
+- **#1340 (Flyway V74, stable event-registry listener ids).** The old instance can write a
+  publication under a pre-V74 listener id after V74 ran; no listener matches it, so it never
+  completes. Once the deploy is live, run against Neon:
+  ```sql
+  SELECT id, listener_id, status, publication_date FROM event_publication
+  WHERE completion_date IS NULL AND listener_id LIKE 'ai.riviera.platform.%';
+  ```
+  Zero rows: done. Any rows: run the statement in
+  `platform/src/main/resources/db/migration/V74__event_publication_stable_listener_ids.sql`
+  against the same database (it is idempotent), re-run the query to confirm zero rows, then
+  restart the service so the restart republish delivers them.
+
 ## Notes & caveats
 
 - **Cold starts:** Render free instances sleep after idle; the first request — now including the

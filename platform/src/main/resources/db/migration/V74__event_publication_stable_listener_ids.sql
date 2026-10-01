@@ -12,8 +12,8 @@
 -- APP back to pre-#1340 code leaves rows under ids the old artifact does not register: this release is
 -- roll-forward-only for pending event publications. A deploy that overlaps the old and new instances
 -- (Render's zero-downtime swap) can leave a row the OLD instance wrote after this ran under its old id;
--- if one is still outstanding once the old instance has drained, re-run this file's statement by hand
--- (it is idempotent) and restart, or the row waits under an id no live listener registers.
+-- the post-deploy step in docs/deploy/cd-pipeline.md finds such rows and re-runs this file's statement
+-- (it is idempotent), or the row waits under an id no live listener registers.
 
 -- One statement, so the mapping is written once: the CTE updates the live table, the outer UPDATE the
 -- archive.

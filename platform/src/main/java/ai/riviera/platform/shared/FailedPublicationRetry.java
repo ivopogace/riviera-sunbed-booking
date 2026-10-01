@@ -17,8 +17,9 @@ import org.springframework.modulith.events.core.TargetEventPublication;
  * One bounded, scheduled re-drive of a module's own {@code FAILED} registry publications, for listeners
  * whose redelivery is a no-op (#1340). The module passes an exact-id allowlist; the bounds are the
  * platform's, since every module's retries land on the same executor. Uses the {@code Predicate}
- * overload: {@code ResubmissionOptions} reads a batch of all failed rows before filtering, so another
- * module's backlog would starve this scope. Rationale: {@code RESPONSIBILITIES.md} §{@code shared}.
+ * overload: {@code ResubmissionOptions} reads a batch of all failed rows before filtering. The listener id is
+ * only on Modulith's core {@link TargetEventPublication}, as for the outbox levers; {@code PayoutSpineRetryIT}
+ * fails if an upgrade stops handing it out. Rationale: {@code RESPONSIBILITIES.md} §{@code shared}.
  */
 public final class FailedPublicationRetry {
 
