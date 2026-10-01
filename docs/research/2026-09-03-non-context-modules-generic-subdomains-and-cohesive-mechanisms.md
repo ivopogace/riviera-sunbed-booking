@@ -3,6 +3,11 @@
 **Status / provenance.** Findings only, no decision (that lands in an ADR). Gathered 2026-09-03
 from primary sources; this revision supersedes an earlier draft whose Evans quotes were
 search-snippet grade — every quote below was re-read against the source named in its citation.
+*Corrected 2026-10-01 (#1317):* §1c's "the only way to keep the default strategy and leave one
+sub-package out is the ignore predicate" holds for the default strategy only. Switching strategy
+(`explicitly-annotated`, or a custom `ApplicationModuleDetectionStrategy`) also leaves a package out,
+and the package is then checked by nothing. See
+`2026-10-01-modulith-root-package-and-module-detection.md` §3.
 
 - **Spring Modulith.** The repo pins **2.1.0** (`platform/build.gradle`,
   `springModulithVersion = "2.1.0"`). `https://docs.spring.io/spring-modulith/reference/` serves
