@@ -4,7 +4,10 @@ import java.net.URI;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.util.Optional;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Supplier;
 
 import ai.riviera.platform.booking.vocabulary.RefundReason;
 import ai.riviera.platform.booking.vocabulary.CancellationWindow;
@@ -56,6 +59,7 @@ class TransactionalMailServiceTest {
 	private static final String EMAIL = "tourist@example.com";
 	private static final String OPERATOR_EMAIL = "owner@vala-beach.example";
 	private static final URI LINK = URI.create("https://riviera.example/account/reset?token=t");
+	private static final Supplier<Optional<URI>> RESET_LINK = () -> Optional.of(LINK);
 	private static final URI SIGN_IN_LINK = URI.create("https://riviera.example/account/sign-in");
 	private static final BookingConfirmationMail CONFIRMATION = new BookingConfirmationMail(
 			"CODE1234", "Vala Beach", LocalDate.of(2026, 8, 1), "A", 3, 4500, "EUR",
@@ -119,7 +123,7 @@ class TransactionalMailServiceTest {
 
 	@Test
 	void doesNoMailWorkOnTheCallersThread() {
-		service.sendPasswordReset(EMAIL, LINK);
+		service.sendPasswordReset(EMAIL, RESET_LINK);
 
 		verify(mailer, never()).sendPasswordReset(any(), any());
 		assertThat(dispatched.get()).as("the send must have been handed to the dispatcher").isNotNull();
@@ -127,10 +131,72 @@ class TransactionalMailServiceTest {
 
 	@Test
 	void sendsThroughTheTransportWhenTheDispatchedTaskRuns() {
-		service.sendPasswordReset(EMAIL, LINK);
+		service.sendPasswordReset(EMAIL, RESET_LINK);
 		dispatched.get().run();
 
 		verify(mailer).sendPasswordReset(EMAIL, LINK);
+	}
+
+	/** #1336: issuing the reset link writes a token, so it runs inside the task, never on the caller's thread. */
+	@Test
+	void resolvesTheResetLinkOnlyInsideTheDispatchedTask() {
+		AtomicInteger issued = new AtomicInteger();
+		service.sendPasswordReset(EMAIL, () -> {
+			issued.incrementAndGet();
+			return Optional.of(LINK);
+		});
+
+		assertThat(issued).as("no token may be issued on the caller's thread").hasValue(0);
+		dispatched.get().run();
+		assertThat(issued).hasValue(1);
+		verify(mailer).sendPasswordReset(EMAIL, LINK);
+	}
+
+	/** A suppressed address gets no mail, so it must not get a live token either. */
+	@Test
+	void aSuppressedAddressIsIssuedNoResetToken() {
+		when(suppressions.isSuppressed(EMAIL)).thenReturn(true);
+		AtomicInteger issued = new AtomicInteger();
+		service.sendPasswordReset(EMAIL, () -> {
+			issued.incrementAndGet();
+			return Optional.of(LINK);
+		});
+		dispatched.get().run();
+
+		assertThat(issued).hasValue(0);
+		verify(mailer, never()).sendPasswordReset(any(), any());
+	}
+
+	/** An empty link (the account was erased meanwhile) sends nothing and is no loss. */
+	@Test
+	void anEmptyResetLinkSendsNothing() {
+		service.sendPasswordReset(EMAIL, Optional::empty);
+		assertThatCode(() -> dispatched.get().run()).doesNotThrowAnyException();
+
+		verify(mailer, never()).sendPasswordReset(any(), any());
+		assertThat(failedTotal()).isZero();
+	}
+
+	/**
+	 * A failed issuance dies in the task under its own reason, so neither the response nor the relay's
+	 * series reflects it; its line carries neither the address nor the exception's message (#7).
+	 */
+	@Test
+	void aFailedIssuanceIsCountedAsItsOwnCauseAndLogsNoCredential() {
+		String secretInMessage = "token=" + LINK.getQuery();
+		service.sendPasswordReset(EMAIL, () -> {
+			throw new IllegalStateException(secretInMessage + " for " + EMAIL);
+		});
+
+		assertThatCode(() -> dispatched.get().run()).doesNotThrowAnyException();
+
+		assertThat(failedFor(MailKind.PASSWORD_RESET.tagValue(),
+				TransactionalMailService.REASON_TOKEN_ISSUANCE)).isEqualTo(1);
+		assertThat(failedTotal()).isEqualTo(1);
+		verify(mailer, never()).sendPasswordReset(any(), any());
+		assertThat(logs.list).isNotEmpty().allSatisfy(event -> assertThat(event.getFormattedMessage())
+				.doesNotContain(EMAIL)
+				.doesNotContain(LINK.getQuery()));
 	}
 
 	@Test
@@ -153,7 +219,7 @@ class TransactionalMailServiceTest {
 		service.sendEmailVerification(EMAIL, LINK);
 		assertThat(dispatchedKind.get()).isEqualTo(MailKind.VERIFICATION);
 
-		service.sendPasswordReset(EMAIL, LINK);
+		service.sendPasswordReset(EMAIL, RESET_LINK);
 		assertThat(dispatchedKind.get()).isEqualTo(MailKind.PASSWORD_RESET);
 
 		service.sendOperatorApproved(OPERATOR_EMAIL, SIGN_IN_LINK);
@@ -172,7 +238,7 @@ class TransactionalMailServiceTest {
 	@Test
 	void aTransportFailureIsCountedAndStillSwallowed() {
 		doThrow(new IllegalStateException("relay down")).when(mailer).sendPasswordReset(any(), any());
-		service.sendPasswordReset(EMAIL, LINK);
+		service.sendPasswordReset(EMAIL, RESET_LINK);
 
 		assertThatCode(() -> dispatched.get().run()).doesNotThrowAnyException();
 
@@ -205,7 +271,7 @@ class TransactionalMailServiceTest {
 		when(suppressions.isSuppressed(EMAIL))
 				.thenThrow(new InvalidDataAccessResourceUsageException("relation does not exist"));
 
-		service.sendPasswordReset(EMAIL, LINK);
+		service.sendPasswordReset(EMAIL, RESET_LINK);
 		assertThatCode(() -> dispatched.get().run()).doesNotThrowAnyException();
 
 		assertThat(failedFor(MailKind.PASSWORD_RESET.tagValue(),
@@ -224,7 +290,7 @@ class TransactionalMailServiceTest {
 	@Test
 	void neitherFailureLineCarriesTheAddressOrTheLink() {
 		doThrow(new IllegalStateException("relay down")).when(mailer).sendPasswordReset(any(), any());
-		service.sendPasswordReset(EMAIL, LINK);
+		service.sendPasswordReset(EMAIL, RESET_LINK);
 		dispatched.get().run();
 
 		when(suppressions.isSuppressed(EMAIL))
@@ -476,7 +542,7 @@ class TransactionalMailServiceTest {
 	void suppressedAddressIsNeverDispatchedToTheTransport() {
 		when(suppressions.isSuppressed(EMAIL)).thenReturn(true);
 
-		service.sendPasswordReset(EMAIL, LINK);
+		service.sendPasswordReset(EMAIL, RESET_LINK);
 		// The skip branch lives inside a catch too — nothing may escape onto the single drainer thread.
 		assertThatCode(() -> dispatched.get().run()).doesNotThrowAnyException();
 		service.sendEmailVerification(EMAIL, LINK);
@@ -491,7 +557,7 @@ class TransactionalMailServiceTest {
 	@Test
 	void theSuppressionReadRunsOffTheCallersThread() {
 		// R-2: a suppression SELECT on the request thread would widen the timing oracle.
-		service.sendPasswordReset(EMAIL, LINK);
+		service.sendPasswordReset(EMAIL, RESET_LINK);
 
 		verify(suppressions, never()).isSuppressed(any());
 		dispatched.get().run();
@@ -512,7 +578,7 @@ class TransactionalMailServiceTest {
 	void aSuppressionReadFailureStillSendsTheRecoveryMail() {
 		when(suppressions.isSuppressed(EMAIL)).thenThrow(new TransientDataAccessResourceException("pool exhausted"));
 
-		service.sendPasswordReset(EMAIL, LINK);
+		service.sendPasswordReset(EMAIL, RESET_LINK);
 		assertThatCode(() -> dispatched.get().run()).doesNotThrowAnyException();
 
 		verify(mailer).sendPasswordReset(EMAIL, LINK);
@@ -532,7 +598,7 @@ class TransactionalMailServiceTest {
 		when(suppressions.isSuppressed(EMAIL))
 				.thenThrow(new InvalidDataAccessResourceUsageException("relation does not exist"));
 
-		service.sendPasswordReset(EMAIL, LINK);
+		service.sendPasswordReset(EMAIL, RESET_LINK);
 		assertThatCode(() -> dispatched.get().run()).doesNotThrowAnyException();
 
 		verify(mailer, never()).sendPasswordReset(any(), any());

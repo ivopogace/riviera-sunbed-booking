@@ -1,6 +1,8 @@
 package ai.riviera.platform.notification.application;
 
 import java.net.URI;
+import java.util.Optional;
+import java.util.function.Supplier;
 
 import io.micrometer.core.instrument.MeterRegistry;
 
@@ -37,6 +39,9 @@ public class TransactionalMailService implements MailSender {
 	/** The suppression read failed non-transiently: a database/grant fault, not a relay one. */
 	static final String REASON_SUPPRESSION_LOOKUP = "suppression-lookup";
 
+	/** The deferred reset link failed to issue its token: a database fault on the drainer, not a relay one. */
+	static final String REASON_TOKEN_ISSUANCE = "token-issuance";
+
 	private final Mailer mailer;
 	private final MailDispatcher dispatcher;
 	private final EmailSuppressions suppressions;
@@ -56,8 +61,18 @@ public class TransactionalMailService implements MailSender {
 	}
 
 	@Override
-	public void sendPasswordReset(String toEmail, URI resetLink) {
-		dispatchQuietly(MailKind.PASSWORD_RESET, toEmail, () -> mailer.sendPasswordReset(toEmail, resetLink));
+	public void sendPasswordReset(String toEmail, Supplier<Optional<URI>> resetLink) {
+		dispatchQuietly(MailKind.PASSWORD_RESET, toEmail, () -> {
+			Optional<URI> link;
+			try {
+				link = resetLink.get();
+			}
+			catch (RuntimeException e) {
+				recordLoss(MailKind.PASSWORD_RESET, REASON_TOKEN_ISSUANCE, e);
+				return;
+			}
+			link.ifPresent(issued -> mailer.sendPasswordReset(toEmail, issued));
+		});
 	}
 
 	@Override
