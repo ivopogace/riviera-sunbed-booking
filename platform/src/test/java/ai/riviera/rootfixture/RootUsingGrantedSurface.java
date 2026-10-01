@@ -1,17 +1,17 @@
 package ai.riviera.rootfixture;
 
-import ai.riviera.rootfixture.notification.api.GrantedSendPort;
+import ai.riviera.rootfixture.auth.api.GrantedSessionPort;
 
 /** The control: a composition-root stand-in reaching only a granted published surface. */
 public class RootUsingGrantedSurface {
 
-	private final GrantedSendPort mailSender;
+	private final GrantedSessionPort sessions;
 
-	public RootUsingGrantedSurface(GrantedSendPort mailSender) {
-		this.mailSender = mailSender;
+	public RootUsingGrantedSurface(GrantedSessionPort sessions) {
+		this.sessions = sessions;
 	}
 
-	public void reset(String toEmail) {
-		mailSender.sendPasswordReset(toEmail);
+	public boolean admit(String principalName) {
+		return sessions.isCurrent(principalName);
 	}
 }

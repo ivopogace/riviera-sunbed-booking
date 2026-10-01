@@ -21,16 +21,17 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * Locks the root-package discipline: the composition root orchestrates the platform
- * edge (auth, sessions, SSO, recovery flows — RV-BE-11) and composes modules, but it is not a home
- * for cross-module <em>domain</em> orchestration. The only module surfaces the root still touches are
- * {@code customer}/{@code operator} (the two principal types), {@code notification::api} (the send
- * port), {@code challenge}'s port and verdict (the abuse mechanism the edge's fence calls),
+ * Locks the root-package discipline: the composition root holds the platform edge's security chain
+ * and composes modules, but it is not a home for cross-module <em>domain</em> orchestration. The only
+ * module surfaces the root still touches are {@code customer}/{@code operator} (the two principal
+ * types), {@code auth}'s port and vocabulary (the session check and role names the chain uses),
+ * {@code challenge}'s port and verdict (the abuse mechanism the edge's fence calls),
  * {@code audit::api} (the trail the admin-audit fence records through) and {@code shared}. The
  * remodel composition is the {@code remodel} module's (ADR-0028). Nothing else of the spine: a root
  * class importing {@code venue}, {@code booking}, {@code payment}, {@code payout} or
  * {@code availability}, or any module's internals, is the shared-kernel cycle pattern reappearing
- * (an edge listener assembling module facts); such a listener belongs in a module — see {@code notification.adapter.in.BookingConfirmationMailListener}, which is exactly
+ * (an edge listener assembling module facts); such a listener belongs in a module — see
+ * {@code notification.adapter.in.BookingConfirmationMailListener}, which is exactly
  * that listener, moved.
  *
  * <p><strong>Stated as an allowlist, deliberately.</strong> This rule used to deny the five
@@ -39,16 +40,15 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * transport, bypassing both suppression enforcement and the off-thread dispatch that closes the
  * D-8 timing oracle) passed, and a ninth module would never have entered the deny set at all.
  * An allowlist is self-maintaining — a new module is out of bounds until someone deliberately
- * grants it — and it makes {@code MockMailer}'s Javadoc claim, that root access here is pinned to
- * {@code notification::api}, actually true.
+ * grants it.
  *
  * <p>The grant is by <em>surface</em>, not merely by module: the root may reach the published
- * {@code api}/{@code vocabulary} of the two principal-type modules, {@code notification}'s
- * {@code api} alone, the {@code challenge} mechanism's {@code api} + {@code vocabulary}, the
- * {@code audit} mechanism's {@code api} alone — its fence appends primitives and never names the
- * published entry — and the flat {@code shared} kernel — never any module's {@code application},
- * {@code domain} or {@code adapter} internals, and never {@code spi} (an "implement-me" port; the
- * root implements nothing for a module).
+ * {@code api}/{@code vocabulary} of the two principal-type modules, the same pair of {@code auth}
+ * (the session check and role names), the {@code challenge} mechanism's {@code api} +
+ * {@code vocabulary}, the {@code audit} mechanism's {@code api} alone — its fence appends primitives
+ * and never names the published entry — and the flat {@code shared} kernel — never any module's
+ * {@code application}, {@code domain} or {@code adapter} internals, and never {@code spi} (an
+ * "implement-me" port; the root implements nothing for a module).
  *
  * <p><strong>The edge runs both ways.</strong> The first rule bounds what the root may reach; the
  * second bounds what may reach the root — no class inside a module may depend on a type sitting
@@ -84,7 +84,7 @@ class CompositionRootDisciplineTests {
 	private static final Map<String, Set<String>> GRANTED_SURFACES = Map.of(
 			"customer", Set.of("api", "vocabulary"),
 			"operator", Set.of("api", "vocabulary"),
-			"notification", Set.of("api"),
+			"auth", Set.of("api", "vocabulary"),
 			"challenge", Set.of("api", "vocabulary"),
 			"audit", Set.of("api"),
 			"shared", Set.of(MODULE_ROOT_SURFACE));

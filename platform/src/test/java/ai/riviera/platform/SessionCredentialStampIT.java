@@ -22,6 +22,8 @@ import org.springframework.session.FindByIndexNameSessionRepository;
 import org.springframework.session.Session;
 import org.springframework.test.web.servlet.MockMvc;
 
+import ai.riviera.platform.auth.application.CredentialStamp;
+import ai.riviera.platform.auth.application.SessionPrincipal;
 import ai.riviera.platform.customer.api.SsoAccountProvisioning;
 import ai.riviera.platform.customer.vocabulary.CustomerAccountId;
 import ai.riviera.platform.customer.vocabulary.SsoProvider;

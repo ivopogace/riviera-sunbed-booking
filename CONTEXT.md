@@ -422,8 +422,8 @@ model in `docs/architecture/domain-model.md`.
   for an SSO-only account) for register / sign-in via a server-side session. Deliberately
   **separate** from the guest-checkout contact row (no foreign key): registering never auto-claims
   a guest email's past bookings — back-linking guest bookings is a **permanent non-goal**. The
-  account's credential hash is stored by `customer`; all login machinery lives at the platform
-  edge (RV-BE-11).
+  account's credential hash is stored by `customer`; all login and session machinery lives in
+  the `auth` module, never in a domain module (RV-BE-11).
 - **Email verification** — a soft, non-blocking signal that a customer account's email was
   proven owned (`email_verified`). Set by visiting a tokenized link mailed at
   registration, or granted automatically when SSO creates or links the account

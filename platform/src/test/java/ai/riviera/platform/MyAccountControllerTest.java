@@ -16,6 +16,8 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
 
+import ai.riviera.platform.auth.adapter.out.PrincipalSessionRevoker;
+import ai.riviera.platform.auth.application.CustomerRecovery;
 import ai.riviera.platform.customer.api.CustomerAccountDirectory;
 import ai.riviera.platform.customer.api.CustomerAccounts;
 import ai.riviera.platform.customer.vocabulary.CustomerAccountCredential;

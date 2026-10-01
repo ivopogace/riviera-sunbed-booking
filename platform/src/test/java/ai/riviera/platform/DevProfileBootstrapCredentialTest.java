@@ -10,6 +10,8 @@ import org.springframework.core.io.support.PropertiesLoaderUtils;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import ai.riviera.platform.auth.application.PasswordPolicy;
+
 /**
  * The {@code dev} profile's default bootstrap credential must clear the same floor the initializer
  * enforces, or a local stack boots with no admin login. Reads the properties file directly — no

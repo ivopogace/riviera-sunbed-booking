@@ -20,7 +20,7 @@ import ai.riviera.platform.operator.vocabulary.PendingOperator;
  * Application service for operator self-registration and the admin-driven lifecycle (approve,
  * reject, suspend, reinstate), package-private behind {@link OperatorRegistration} /
  * {@link OperatorLifecycle} (invariant #11). It owns the state transitions only; the login
- * machinery, the {@code ROLE_ADMIN} mapping and the role gate stay at the platform edge
+ * machinery and the {@code ROLE_ADMIN} mapping stay in {@code auth}, the role gate at the edge
  * (RV-BE-11, {@code OperatorAuthPlacementTests}).
  */
 @Service

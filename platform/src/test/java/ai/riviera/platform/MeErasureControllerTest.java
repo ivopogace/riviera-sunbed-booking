@@ -10,6 +10,7 @@ import org.springframework.dao.DataAccessResourceFailureException;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
+import ai.riviera.platform.auth.adapter.out.PrincipalSessionRevoker;
 import ai.riviera.platform.customer.api.AccountErasure;
 import ai.riviera.platform.customer.api.CustomerAccountDirectory;
 import ai.riviera.platform.customer.vocabulary.CustomerAccountId;

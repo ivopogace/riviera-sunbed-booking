@@ -1,0 +1,33 @@
+package ai.riviera.platform.auth.application;
+
+import java.util.Locale;
+
+import ai.riviera.platform.customer.vocabulary.SsoProvider;
+import ai.riviera.platform.shared.InvalidApiRequestException;
+
+/**
+ * Edge helper mapping between the URL provider <em>slug</em> ({@code google}/{@code apple}) and the
+ * {@code customer::vocabulary} {@link SsoProvider} enum. Parsing an HTTP path segment is
+ * an edge concern, not domain vocabulary, so it lives in {@code auth} with the SSO machinery.
+ *
+ * <p>An unknown slug is a typed {@link InvalidApiRequestException} → {@code 400 INVALID_REQUEST} via
+ * the central {@code ApiErrorHandler} (the message is not leaked to the client).
+ */
+public final class SsoProviders {
+
+	private SsoProviders() {
+	}
+
+	public static SsoProvider parse(String slug) {
+		try {
+			return SsoProvider.valueOf(slug.toUpperCase(Locale.ROOT));
+		}
+		catch (IllegalArgumentException e) {
+			throw new InvalidApiRequestException("unknown SSO provider");
+		}
+	}
+
+	public static String slug(SsoProvider provider) {
+		return provider.name().toLowerCase(Locale.ROOT);
+	}
+}
