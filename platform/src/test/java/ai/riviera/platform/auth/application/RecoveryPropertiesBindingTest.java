@@ -15,9 +15,9 @@ import static org.assertj.core.api.Assertions.assertThatIllegalArgumentException
  * Pins the recovery configuration: the {@code riviera.recovery.link-base-url} binding (mailed links
  * point at the real deployed origin, not {@code localhost:4200}) and the two
  * <em>bound, validated</em> token TTLs — split out of {@code MailerProfileWiringTest} when that class
- * moved into the {@code notification} module: recovery is <em>edge</em> config
- * ({@code RecoveryProperties} stays root-package-private with {@code CustomerRecovery}, which builds the
- * links and stamps {@code expiresAt}), so its binding test stays at the root. Same harness posture as
+ * moved into the {@code notification} module: recovery is {@code auth}'s config
+ * ({@code RecoveryProperties} sits with {@code CustomerRecovery}, which builds the links and stamps
+ * {@code expiresAt}), so its binding test sits with them in {@code auth.application}. Same harness posture as
  * its former host: {@link ApplicationContextRunner} + {@link ConfigDataApplicationContextInitializer},
  * real properties files, no Spring Boot context, no Docker.
  *

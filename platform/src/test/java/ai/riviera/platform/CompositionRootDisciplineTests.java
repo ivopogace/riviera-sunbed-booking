@@ -44,8 +44,9 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * grants it.
  *
  * <p>The grant is by <em>surface</em>, not merely by module: the root may reach the published
- * {@code api}/{@code vocabulary} of the two principal-type modules and of {@code auth}, the {@code challenge} mechanism's {@code api} + {@code vocabulary}, the
- * {@code audit} mechanism's {@code api} alone — its fence appends primitives and never names the
+ * {@code api}/{@code vocabulary} of the two principal-type modules, the same pair of {@code auth}
+ * (the session check and role names), the {@code challenge} mechanism's {@code api} +
+ * {@code vocabulary}, the {@code audit} mechanism's {@code api} alone — its fence appends primitives and never names the
  * published entry — the remodel pair's {@code api} + {@code vocabulary}, and the flat {@code shared}
  * kernel — never any module's {@code application}, {@code domain} or {@code adapter}
  * internals, and never {@code spi} (an "implement-me" port; the root implements nothing for a module).

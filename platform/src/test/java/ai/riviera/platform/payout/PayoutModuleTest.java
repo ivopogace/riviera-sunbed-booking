@@ -88,7 +88,7 @@ class PayoutModuleTest {
 	@MockitoBean
 	AdminAuditLog adminAuditLog;
 
-	// And its session-credential filter calls auth::api, likewise a module bean this test does not bootstrap.
+	// The root edge's session-credential filter calls auth::api, likewise a module bean not bootstrapped here.
 	@MockitoBean
 	SessionCredentials sessionCredentials;
 
