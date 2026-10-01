@@ -24,7 +24,10 @@ import ai.riviera.platform.shared.ApiProblem;
 import ai.riviera.platform.shared.CurrentOperator;
 import ai.riviera.platform.operator.vocabulary.OperatorId;
 import ai.riviera.platform.venue.application.PhotoProcessingResult.Reason;
+import ai.riviera.platform.venue.application.PhotoAudience;
 import ai.riviera.platform.venue.application.PhotoUploadResult;
+import ai.riviera.platform.venue.application.PhotoViewer;
+import ai.riviera.platform.venue.application.ServedPhoto;
 import ai.riviera.platform.venue.application.StoredBytes;
 import ai.riviera.platform.venue.application.VenuePhotos;
 import ai.riviera.platform.venue.vocabulary.ContentHash;
@@ -32,12 +35,12 @@ import ai.riviera.platform.venue.vocabulary.PhotoSlot;
 import ai.riviera.platform.venue.vocabulary.VenueId;
 
 /**
- * Venue photo endpoints: the public content-hash serving GET, apart from the authenticated,
- * venue-scoped writes, where {@link VenuePhotos} asserts ownership of the principal's
- * {@link OperatorId} first (invariant #13, {@code 403}). Errors are RFC-7807 {@link ProblemDetail}.
- * Upload is POST (multipart is reliable on POST) and an idempotent slot replace. Serving sends a
- * strong {@code ETag} under a revalidating directive, and a {@code 304} only while the variant
- * still exists (a blob-free probe), so a takedown reaches shared caches. Rationale: ADR-0008.
+ * Venue photo endpoints: the content-hash serving GET, fenced on tourist visibility in
+ * {@link VenuePhotos} (an owner/admin preview is served {@code private}), and the venue-scoped writes,
+ * which assert ownership of the principal's {@link OperatorId} first (invariant #13, {@code 403}).
+ * Serving sends a strong {@code ETag} under a revalidating directive, and a {@code 304} only while
+ * the variant is still servable (a blob-free probe), so a takedown or a hidden venue reaches shared
+ * caches. Errors are RFC-7807 {@link ProblemDetail}. Rationale: ADR-0008, ADR-0013.
  */
 @RestController
 @RequestMapping("/api/venues")
@@ -45,6 +48,8 @@ class VenuePhotoController {
 
 	/** Public but always revalidated — a removal has to reach shared caches too (ADR-0008). */
 	private static final CacheControl REVALIDATE = CacheControl.noCache().cachePublic();
+	/** A hidden venue's photo previewed by its owner or an admin: never stored by a shared cache. */
+	private static final CacheControl REVALIDATE_PRIVATE = CacheControl.noCache().cachePrivate();
 
 	private final VenuePhotos photos;
 	private final CurrentOperator currentOperator;
@@ -75,7 +80,7 @@ class VenuePhotoController {
 	}
 
 	@GetMapping("/{venueId}/photos/{hash}")
-	ResponseEntity<?> serve(@PathVariable long venueId, @PathVariable String hash,
+	ResponseEntity<?> serve(Authentication authentication, @PathVariable long venueId, @PathVariable String hash,
 			@RequestHeader(value = HttpHeaders.IF_NONE_MATCH, required = false) String ifNoneMatch) {
 		ContentHash contentHash;
 		try {
@@ -83,26 +88,43 @@ class VenuePhotoController {
 		} catch (IllegalArgumentException e) {
 			return ResponseEntity.notFound().build(); // → 404, and no lookup (path-traversal / SSRF safe)
 		}
+		PhotoViewer viewer = viewerOf(authentication);
 		String etag = "\"" + hash + "\"";
 		if (etag.equals(ifNoneMatch)) {
 			// answered from the URL alone, a taken-down photo revalidated as 304 forever.
-			return photos.exists(new VenueId(venueId), contentHash)
-					? ResponseEntity.status(HttpStatus.NOT_MODIFIED)
-							.cacheControl(REVALIDATE)
+			return photos.exists(viewer, new VenueId(venueId), contentHash)
+					.<ResponseEntity<?>>map(audience -> ResponseEntity.status(HttpStatus.NOT_MODIFIED)
+							.cacheControl(cacheControlFor(audience))
 							.header(HttpHeaders.ETAG, etag)
-							.build()
-					: ResponseEntity.notFound().build();
+							.build())
+					.orElseGet(() -> ResponseEntity.notFound().build());
 		}
-		Optional<StoredBytes> found = photos.serve(new VenueId(venueId), contentHash);
+		Optional<ServedPhoto> found = photos.serve(viewer, new VenueId(venueId), contentHash);
 		if (found.isEmpty()) {
 			return ResponseEntity.notFound().build();
 		}
-		StoredBytes bytes = found.get();
+		StoredBytes bytes = found.get().bytes();
 		return ResponseEntity.ok()
 				.contentType(MediaType.parseMediaType(bytes.contentType()))
-				.cacheControl(REVALIDATE)
+				.cacheControl(cacheControlFor(found.get().audience()))
 				.header(HttpHeaders.ETAG, etag)
 				.body(bytes.bytes());
+	}
+
+	/** An admin outranks its own operator role: it may preview any venue, not only the ones it owns. */
+	private PhotoViewer viewerOf(Authentication authentication) {
+		return currentOperator.optional(authentication)
+				.map(operator -> currentOperator.isAdmin(authentication)
+						? PhotoViewer.admin()
+						: PhotoViewer.operator(operator))
+				.orElseGet(PhotoViewer::anonymous);
+	}
+
+	private static CacheControl cacheControlFor(PhotoAudience audience) {
+		return switch (audience) {
+			case PUBLIC -> REVALIDATE;
+			case PRIVATE -> REVALIDATE_PRIVATE;
+		};
 	}
 
 	private static ResponseEntity<ProblemDetail> reject(Reason reason) {

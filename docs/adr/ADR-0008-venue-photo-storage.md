@@ -65,8 +65,10 @@ Serving discipline that keeps Neon out of the tourist hot path (part of this dec
 - **Content-hash URLs, revalidated.** The serving endpoint is keyed by the variant's content hash
   and returns a strong `ETag`, so a client stores the bytes once and thereafter reuses them via
   `304` — the database is hit ≈once per image, not per view. A replaced photo gets a new hash →
-  a new URL. The directive is `Cache-Control: public, no-cache`, and the `304` is gated on the
-  variant still existing (`PhotoStorage#exists`, a blob-free index probe): a takedown (ADR-0013)
+  a new URL. The directive is `Cache-Control: public, no-cache` (`private` for an owner's or an
+  admin's preview of a hidden venue, ADR-0013), and the `304` is gated on the variant still being
+  servable (`PhotoStorage#exists`, a blob-free index probe, behind the same visibility fence as the
+  bytes): a takedown (ADR-0013)
   mints nothing, it deletes, and a year-long `immutable` TTL would leave a removed photo in shared
   caches and in every `ETag` holder's browser. `*.onrender.com` is Cloudflare-fronted on Render's
   own zone, which we cannot purge, so the origin header is the only lever over that edge. What
@@ -100,7 +102,8 @@ affordable again.
   application-service unit tests.
 - Upload/replace/delete are **venue-scoped** (`/api/venues/{venueId}/**`): `assertOwns` runs first
   in the application service (invariant #13), pinned by `CrossVenueDenialIT`. The tourist photo
-  read is **public**. Deletion and the blob-free `listMetadata` read have a second,
+  read is **public** for a tourist-visible venue and `404` for a hidden one, except to its owner or
+  an admin (ADR-0013). Deletion and the blob-free `listMetadata` read have a second,
   **ownership-free** caller — the platform-admin moderation surface
   (`GET`/`DELETE /api/admin/venues/{venueId}/photos…`), role-gated on `is_admin` and exempt from
   invariant #13 like every `/api/admin/**` surface. It is a separate port
@@ -166,3 +169,5 @@ affordable again.
   The flip threshold is re-read and **unchanged**: the worst case is a three-slot venue at ≈3.8 MB
   of incompressible noise and a real photograph stays near 0.7 MB, so none of the four conditions
   is met by one more rendition at Phase-1 scale.
+- #1335 — the serving read is fenced on tourist visibility (`404` for a hidden venue, the `304`
+  included), with an owner/admin preview served `private, no-cache`; ADR-0013 carries the why.
