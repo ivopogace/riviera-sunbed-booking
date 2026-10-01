@@ -23,7 +23,7 @@ import ai.riviera.platform.shared.ObservabilityMetrics;
  * Mails a stitched stay's one cancellation record on {@link StayCancelled}: the stay's code and span with the
  * event's summed refund, on {@link BookingCancellationMailListener}'s terms (after commit, on the mail executor,
  * no {@code @Transactional}, at-least-once, a missing fact skipped and a transport failure propagated).
- * Renaming it orphans outstanding publications. Never log the code (invariant #7).
+ * Never log the code (invariant #7).
  */
 @Component
 class StayCancellationMailListener {
@@ -44,7 +44,7 @@ class StayCancellationMailListener {
 	}
 
 	@Async(RegistryMailExecutorConfig.MAIL_EXECUTOR)
-	@TransactionalEventListener
+	@TransactionalEventListener(id = "notification.mail-on-stay-cancelled")
 	void on(StayCancelled event) {
 		Optional<StayConfirmationFacts> stay = bookings.stayConfirmationFacts(event.stayId());
 		if (stay.isEmpty()) {

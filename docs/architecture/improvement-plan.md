@@ -72,9 +72,7 @@ baseline covers what this project needs. Don't reintroduce one.
 
 The designated first cut when it fires: the refund-execution seam (the `BookingCancelled` listener
 + bounded executor + shed metric + admin re-drive), whose boundary is already the crispest and
-which reuses `payout`'s listener-only shape on `booking::events`. Known first slices: the registry
-listener id is the FQCN (`RegistryRefundOutbox.REFUND_LISTENER_ID`, so a move needs a roll-forward
-registry migration — the `V18` precedent) plus re-keying `RefundListenerExecutorArchitectureTest`,
+which reuses `payout`'s listener-only shape on `booking::events`. Known first slices: re-keying `RefundListenerExecutorArchitectureTest`,
 `RefundOutboxScopeIT` and `allowedDependencies`. The staff/operational read side is **not** part
 of that cut; it belongs to B4. Chart the extraction through the normal SDLC (`to-spec` →
 `to-issues`).

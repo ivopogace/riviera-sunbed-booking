@@ -28,7 +28,7 @@ import ai.riviera.platform.shared.ObservabilityMetrics;
 /**
  * Mails a stitched stay's one confirmation on {@link StayConfirmed}, on {@link BookingConfirmationMailListener}'s
  * terms (after commit, on the mail executor, no {@code @Transactional}, at-least-once, a missing fact
- * skipped and a transport failure propagated); renaming it orphans outstanding publications. The attempt
+ * skipped and a transport failure propagated). The attempt
  * is logged on every stretch the mail covers. Never log the code (invariant #7).
  */
 @Component
@@ -52,7 +52,7 @@ class StayConfirmationMailListener {
 	}
 
 	@Async(RegistryMailExecutorConfig.MAIL_EXECUTOR)
-	@TransactionalEventListener
+	@TransactionalEventListener(id = "notification.mail-on-stay-confirmed")
 	void on(StayConfirmed event) {
 		Optional<StayConfirmationFacts> stay = bookings.stayConfirmationFacts(event.stayId());
 		if (stay.isEmpty()) {

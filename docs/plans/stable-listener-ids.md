@@ -10,8 +10,10 @@ retried automatically, a bounded number of times.
 id that `TransactionalApplicationListener.getListenerId()` returns and the registry stores. One
 forward migration maps every old signature id to its new id. Staleness marks stuck
 `PUBLISHED`/`PROCESSING`/`RESUBMITTED` rows `FAILED`. Each owning module (`booking`, `payout`,
-`venue`) runs its own scheduled `FailedEventPublications.resubmit(ResubmissionOptions)`, filtered
-to its own allowlisted spine ids. Each module scopes its own listeners, as the existing admin
+`venue`) runs its own scheduled re-drive of `FAILED` rows, filtered to its own allowlisted spine ids.
+It uses the `Predicate` overload, not `FailedEventPublications.resubmit(ResubmissionOptions)`: that
+API reads a batch of all failed rows before filtering, so a mail or refund backlog would starve a
+scoped retry (found at plan time by reading the 2.1.0 bytecode). Each module scopes its own listeners, as the existing admin
 levers do. Root placement would collide with ADR-0028's pending `monitoring` move.
 
 **Source of intent:** GitHub issue #1340
@@ -36,9 +38,11 @@ levers do. Root placement would collide with ADR-0028's pending `monitoring` mov
   `completion_attempts` below the cap, when the module's scheduled retry ticks, then it is
   resubmitted. A `FAILED` refund or mail publication, or a spine one at the cap, is not.
   *Seam:* the retry component over `FailedEventPublications` · *Pinned by:*
-  `SpineRetryTest` per module (filter + options) and `SpineRetryIT` (a real FAILED row re-driven)
-- [ ] **AC-5:** `spring.modulith.events.jdbc.schema-initialization.enabled=false` and the staleness
-  keys are committed. *Pinned by:* `EventRegistryConfigurationTest`
+  `FailedPublicationRetryTest`, `ListenerIdSnapshotTest.spineRetriesNameOnlyPinnedIdempotentListeners`,
+  `PayoutSpineRetryIT` (a real FAILED accrual re-driven, a FAILED mail left alone)
+- [x] **AC-5:** `spring.modulith.events.jdbc.schema-initialization.enabled=false` and the staleness
+  keys are committed in `application.properties`. No test: removing the pin falls back to the same
+  default.
 - [ ] **AC-6:** `production-hardening.md` lists `republish-outstanding-events-on-restart=true`
   among the scale-out preconditions, and the staleness monitor plus the new retry jobs under
   *What breaks at two instances*.
@@ -101,16 +105,16 @@ for the levers. `RegistryMailOutbox` scopes by the new id prefix `notification.`
 
 ## Execution status
 
-**Stage pointer:** implement (phase 0)
+**Stage pointer:** implement — local IT verification, then draft PR
 
-**Next action:** write `ListenerIdSnapshotTest`
+**Next action:** confirm the affected ITs green, open the draft PR
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — snapshot red | ⏳ | |
-| 1 — ids + V74 | | |
-| 2 — config | | |
-| 3 — spine retry | | |
-| 4 — docs | | |
+| 0 — snapshot red | ✅ | plan commit |
+| 1 — ids + V74 | ✅ | |
+| 2 — config | ✅ | |
+| 3 — spine retry | ✅ | |
+| 4 — docs | ✅ | |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.

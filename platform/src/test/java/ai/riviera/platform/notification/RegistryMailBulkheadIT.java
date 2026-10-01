@@ -39,9 +39,8 @@ import static org.assertj.core.api.Assertions.assertThat;
  *       booking and still accrues its payout;</li>
  *   <li>a failed send still leaves the publication <em>outstanding</em> and a resubmit still
  *       re-delivers it — losing this silently would turn at-least-once into fire-and-forget;</li>
- *   <li>the registry's {@code listener_id} still reads as the migration wrote it. The id embeds the
- *       listener FQCN and signature, and republication matches it string-equal, so drift here
- *       dead-letters every outstanding row;</li>
+ *   <li>the registry's {@code listener_id} is the listener's explicit id. Republication matches it
+ *       string-equal, so drift here dead-letters every outstanding row;</li>
  *   <li>the send holds no transaction <em>and</em> no bound pooled connection for the duration of the
  *       round-trip. The two are asserted separately on purpose: the connection does not follow from
  *       the transaction, and it is the scarcer resource.</li>

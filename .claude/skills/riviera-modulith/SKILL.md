@@ -100,9 +100,10 @@ listener's parameter to live in its owner's `events` surface):
 - `spi/` — cross-module driven ports.
 
 Grants are least-privilege: a caller lists `<provider>::api` + `::vocabulary`; a listener-only
-consumer lists `::events` + `::vocabulary`. Mechanics: `references/boundaries.md`. Moving or
-renaming an event, or a listener's class, method or parameter type, needs a Flyway `event_type`
-and/or `listener_id` rewrite (`references/events.md`; #1340 would drop the listener half).
+consumer lists `::events` + `::vocabulary`. Mechanics: `references/boundaries.md`. Every
+registry listener declares an explicit `id` (pinned by `ListenerIdSnapshotTest`), so a listener may
+move or be renamed freely; moving or renaming an event, or changing an id, needs a Flyway rewrite
+(`references/events.md`).
 
 ## api vs spi; port vs event
 

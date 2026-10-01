@@ -33,18 +33,15 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * <p><strong>How each id is kept honest, two levels.</strong> This test pins
  * {@link RegistryRefundOutbox#REFUND_LISTENER_ID} and
  * {@link RegistryRefundOutbox#RELEASE_VOID_LISTENER_ID} against {@link BookingListenerIds}, which
- * derives them from the class literals (compile-safe against a rename); {@code RefundBulkheadIT} pins
- * that derivation against the id the live registry writes. A stale string here would otherwise be a
- * silent no-op lever — the V31 failure mode one level up.
+ * reads them from the listeners' explicit ids; {@code RefundBulkheadIT} pins those against the id the
+ * live registry writes. A stale string here would otherwise be a silent no-op lever.
  */
 class RefundOutboxScopeTest {
 
 	/** The invariant-#9 listeners that share this scope's events — out of reach by exact match. */
-	private static final String PAYOUT_ACCRUAL_LISTENER_ID = "ai.riviera.platform.payout.adapter.in."
-			+ "BookingConfirmedPayoutListener.on(ai.riviera.platform.booking.events.BookingConfirmed)";
+	private static final String PAYOUT_ACCRUAL_LISTENER_ID = "payout.accrue-on-booking-confirmed";
 
-	private static final String PAYOUT_REVERSAL_LISTENER_ID = "ai.riviera.platform.payout.adapter.in."
-			+ "BookingCancelledPayoutListener.on(ai.riviera.platform.booking.events.BookingCancelled)";
+	private static final String PAYOUT_REVERSAL_LISTENER_ID = "payout.reverse-on-booking-cancelled";
 
 	@Test
 	@DisplayName("each constant is its listener's real id (level 1 of the two-level pin)")

@@ -2,6 +2,7 @@ package ai.riviera.platform;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
@@ -31,6 +32,11 @@ class ListenerIdSnapshotTest {
 
 	private static final String SNAPSHOT = "/event-registry/listener-ids.txt";
 
+	private static final List<String> SPINE_RETRIES = List.of(
+			"ai.riviera.platform.booking.adapter.in.BookingSpineRetry",
+			"ai.riviera.platform.payout.adapter.in.PayoutSpineRetry",
+			"ai.riviera.platform.venue.adapter.in.VenueSpineRetry");
+
 	@Test
 	void everyRegistryListenerHasAPinnedExplicitId() throws IOException {
 		List<String> violations = new ArrayList<>();
@@ -54,13 +60,34 @@ class ListenerIdSnapshotTest {
 				+ "rewrite of event_publication(_archive) for every changed pair, then update " + SNAPSHOT);
 	}
 
+	/**
+	 * Each module's automatic spine retry names only pinned ids, and never a refund or mail listener: those
+	 * re-ask the gateway or re-send a mail, so they stay on their admin levers (#1340).
+	 */
+	@Test
+	void spineRetriesNameOnlyPinnedIdempotentListeners() throws Exception {
+		Set<String> pinned = snapshot().stream().map(line -> line.split(" ")[0]).collect(Collectors.toSet());
+		Set<String> neverAutomatic = Set.of("booking.refund-on-booking-cancelled",
+				"booking.day-refund-on-booking-day-refunded", "booking.release-void-on-booking-cancelled");
+		for (String retry : SPINE_RETRIES) {
+			Field field = Class.forName(retry).getDeclaredField("LISTENER_IDS");
+			field.setAccessible(true);
+			@SuppressWarnings("unchecked")
+			Set<String> ids = (Set<String>) field.get(null);
+
+			assertTrue(pinned.containsAll(ids), retry + " names an unpinned listener id: " + ids);
+			assertTrue(ids.stream().noneMatch(id -> id.startsWith("notification.") || neverAutomatic.contains(id)),
+					retry + " auto-retries a mail or refund listener: " + ids);
+		}
+	}
+
 	@Test
 	void theScanFindsTheListeners() {
 		assertTrue(registryListeners().size() >= 20,
 				"non-vacuity: a scan finding no listeners would satisfy the snapshot rule trivially");
 	}
 
-	private static List<Method> registryListeners() {
+	static List<Method> registryListeners() {
 		List<Method> listeners = new ArrayList<>();
 		for (JavaClass type : ArchitectureTestSupport.productionClasses()) {
 			Arrays.stream(type.reflect().getDeclaredMethods())
@@ -70,7 +97,7 @@ class ListenerIdSnapshotTest {
 		return listeners;
 	}
 
-	private static String explicitId(Method listener) {
+	static String explicitId(Method listener) {
 		MergedAnnotation<TransactionalEventListener> annotation =
 				MergedAnnotations.from(listener).get(TransactionalEventListener.class);
 		return annotation.getString("id");

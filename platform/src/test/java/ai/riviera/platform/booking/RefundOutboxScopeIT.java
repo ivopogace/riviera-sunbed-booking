@@ -132,8 +132,8 @@ class RefundOutboxScopeIT {
 		publishInTransaction(new PaymentConfirmed(new BookingRef(confirmedBooking), CONFIRMED_PAYMENT_INTENT));
 		Awaitility.await("the payment confirmed its booking and the publication archived").atMost(WAIT)
 				.until(() -> "CONFIRMED".equals(statusOf(confirmedBooking))
-						&& archivedRow("%PaymentEventListener%", CONFIRMED_PAYMENT_INTENT) != null);
-		UUID stuckConfirmation = reopenArchivedRow(archivedRow("%PaymentEventListener%", CONFIRMED_PAYMENT_INTENT));
+						&& archivedRow("booking.confirm-on-payment-confirmed", CONFIRMED_PAYMENT_INTENT) != null);
+		UUID stuckConfirmation = reopenArchivedRow(archivedRow("booking.confirm-on-payment-confirmed", CONFIRMED_PAYMENT_INTENT));
 
 		LocalDate cancelDate = LocalDate.of(2033, 6, 7);
 		long cancelledBooking = seedBooking(set, "RFOSCAN1", cancelDate, "scope-cancel@example.com",
@@ -141,19 +141,19 @@ class RefundOutboxScopeIT {
 		gateway.failEveryRefund(true);
 		publishInTransaction(cancellationOf(set, cancelledBooking, cancelDate, SCOPE_REFUND_MINOR));
 		Awaitility.await("the failed refund and the deferred reversal are both outstanding").atMost(WAIT)
-				.until(() -> outstanding("%BookingRefundListener%", SCOPE_REFUND_MINOR) == 1L
-						&& outstanding("%BookingCancelledPayoutListener%", SCOPE_REFUND_MINOR) == 1L);
+				.until(() -> outstanding("booking.refund-on-booking-cancelled", SCOPE_REFUND_MINOR) == 1L
+						&& outstanding("payout.reverse-on-booking-cancelled", SCOPE_REFUND_MINOR) == 1L);
 		Awaitility.await("the cancellation mail delivered and archived").atMost(WAIT)
-				.until(() -> archivedRow("%BookingCancellationMailListener%", String.valueOf(SCOPE_REFUND_MINOR)) != null);
+				.until(() -> archivedRow("notification.mail-on-booking-cancelled", String.valueOf(SCOPE_REFUND_MINOR)) != null);
 		UUID stuckMail = reopenArchivedRow(
-				archivedRow("%BookingCancellationMailListener%", String.valueOf(SCOPE_REFUND_MINOR)));
+				archivedRow("notification.mail-on-booking-cancelled", String.valueOf(SCOPE_REFUND_MINOR)));
 
 		gateway.failEveryRefund(false);
 		int resubmitted = outbox.resubmitOutstanding();
 
 		Awaitility.await("the refund was re-driven and settled").atMost(WAIT)
 				.until(() -> gateway.completionsFor(cancelledBooking) >= 1L
-						&& outstanding("%BookingRefundListener%", SCOPE_REFUND_MINOR) == 0L);
+						&& outstanding("booking.refund-on-booking-cancelled", SCOPE_REFUND_MINOR) == 0L);
 		assertThat(resubmitted).as("the refund publication was in scope").isPositive();
 		assertThat(isOutstanding(stuckConfirmation))
 				.as("the payment -> confirm spine must not be re-driven by the refund lever (invariant #8)")
@@ -189,7 +189,7 @@ class RefundOutboxScopeIT {
 		publishInTransaction(cancellationOf(set, bookingId, date, SETTLED_REFUND_MINOR));
 		Awaitility.await("the refund settled and its publication completed").atMost(WAIT)
 				.until(() -> gateway.completionsFor(bookingId) == 1L
-						&& outstanding("%BookingRefundListener%", SETTLED_REFUND_MINOR) == 0L);
+						&& outstanding("booking.refund-on-booking-cancelled", SETTLED_REFUND_MINOR) == 0L);
 
 		outbox.resubmitOutstanding();
 

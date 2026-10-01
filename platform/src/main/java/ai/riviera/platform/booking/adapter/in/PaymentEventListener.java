@@ -17,9 +17,9 @@ import ai.riviera.platform.payment.events.PaymentConfirmed;
  * Applies {@code payment}'s webhook-verified events (invariant #8) to bookings, by event because a
  * back-call would cycle (invariant #11): {@link PaymentConfirmed} confirms an {@code AWAITING_PAYMENT}
  * booking; {@link PaymentCanceled} cancels it and, only if it transitioned, releases its claim (#2).
- * Each runs after the webhook commits, in its own transaction; a throw leaves the publication
- * outstanding until restart, so both stay idempotent ({@code RESPONSIBILITIES.md} §booking).
- * Renaming the class or a handler changes its registry {@code listener_id} and orphans stored rows.
+ * Each runs after the webhook commits, in its own transaction; a throw leaves the publication outstanding
+ * for {@code BookingSpineRetry} or a restart, so both stay idempotent ({@code RESPONSIBILITIES.md} §booking).
+ * Both registry ids are pinned by {@code ListenerIdSnapshotTest}; changing one owes a Flyway rewrite.
  */
 @Component
 class PaymentEventListener {
@@ -37,7 +37,7 @@ class PaymentEventListener {
 		this.clock = clock;
 	}
 
-	@ApplicationModuleListener
+	@ApplicationModuleListener(id = "booking.confirm-on-payment-confirmed")
 	void on(PaymentConfirmed event) {
 		long bookingId = event.bookingRef().value();
 		// The confirm seam transitions and publishes BookingConfirmed iff it actually transitioned,
@@ -52,7 +52,7 @@ class PaymentEventListener {
 		}
 	}
 
-	@ApplicationModuleListener
+	@ApplicationModuleListener(id = "booking.release-on-payment-canceled")
 	void on(PaymentCanceled event) {
 		long bookingId = event.bookingRef().value();
 		// Shared guarded transition + release (also driven by the abandoned-payment sweep):

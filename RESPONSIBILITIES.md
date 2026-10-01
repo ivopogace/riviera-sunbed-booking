@@ -411,6 +411,10 @@ any is released on the old, never a swap of my own — so a racing reserve wins 
   venue-day burst; saturation **sheds**
   to `ObservabilityMetrics.REFUNDS_SHED` (never thrown or run on the caller), and the publication
   stays outstanding for the restart republish.
+- **The payment → booking listeners retry themselves; the refund-bulkhead ones never do.**
+  `BookingSpineRetry` re-drives a `FAILED` confirm or cancel (both guarded transitions, #2/#8);
+  staleness (`spring.modulith.events.staleness.*`) turns a stuck one `FAILED` first. A refund,
+  day refund or intent void waits for the admin lever or a restart.
 - **The ADMIN refund-outbox re-drive uses an exact-id allowlist** (`BookingRefundListener`,
   `BookingDayRefundListener`, `RemodelReleasePaymentListener`), never the `booking` package prefix, which would also replay
   `PaymentEventListener`'s payment→confirm spine. It refuses for a cooldown window
@@ -955,6 +959,12 @@ is the trigger for asking the question, and the answer is always ownership.
 - `ResubmissionThrottle` + `ResubmissionOutcome`, an admin outbox-resubmit lever's once-only guard
   (single-flight, a cooldown from construction so a press cannot race the boot republication); each
   lever module keeps its own scope, window and log noun.
+- `FailedPublicationRetry`, the scheduled re-drive of `FAILED` publications whose redelivery is a
+  no-op (#1340): `booking`, `payout` and `venue` each schedule one over their own exact-id allowlist,
+  and only the platform owns the bounds (`riviera.events.spine-retry.*`), since all three land on
+  Boot's task executor. It filters per row, never by `ResubmissionOptions`, which reads a batch of
+  all failed rows before filtering and would starve one module behind another's backlog. Refund and
+  mail listeners are never on it: they re-ask the gateway or re-send a mail (admin levers).
 
 **Not my job:**
 - **Any business logic or module-owned state** → its owner: a change here ripples everywhere.

@@ -259,7 +259,7 @@ class AdminMailDeliveryIT {
 	private void awaitNoOutstandingConfirmationPublication() {
 		Awaitility.await().atMost(WAIT).until(() -> jdbc.sql(
 				"SELECT count(*) FROM event_publication WHERE completion_date IS NULL "
-						+ "AND listener_id LIKE '%BookingConfirmationMailListener%'")
+						+ "AND listener_id LIKE 'notification.mail-on-booking-confirmed'")
 				.query(Long.class).single() == 0L);
 	}
 

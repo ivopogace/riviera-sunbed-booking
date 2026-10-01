@@ -96,8 +96,8 @@ class RefundBulkheadIT {
 	private static final int WEDGED_REFUNDS = 10;
 
 	/**
-	 * The registry's id for the refund listener, class-derived so a rename breaks the compile rather
-	 * than this pin. {@link #keepsTheListenerIdUnchanged} proves the running registry writes it, and is
+	 * The refund listener's explicit registry id, read from its annotation.
+	 * {@link #keepsTheListenerIdUnchanged} proves the running registry writes it, and is
 	 * also level 2 of the admin refund-outbox lever's scope pinning ({@code RefundOutboxScopeTest}
 	 * being level 1).
 	 */

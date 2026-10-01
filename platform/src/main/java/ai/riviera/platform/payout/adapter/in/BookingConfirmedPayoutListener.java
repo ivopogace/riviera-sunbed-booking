@@ -32,7 +32,7 @@ class BookingConfirmedPayoutListener {
 		this.venues = venues;
 	}
 
-	@ApplicationModuleListener
+	@ApplicationModuleListener(id = "payout.accrue-on-booking-confirmed")
 	void on(BookingConfirmed event) {
 		long venueId = event.venueId().value();
 		int commissionBps = venues.commissionBps(event.venueId())

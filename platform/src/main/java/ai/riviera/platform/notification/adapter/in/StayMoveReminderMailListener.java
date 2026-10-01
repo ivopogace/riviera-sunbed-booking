@@ -47,7 +47,7 @@ class StayMoveReminderMailListener {
 	}
 
 	@Async(RegistryMailExecutorConfig.MAIL_EXECUTOR)
-	@TransactionalEventListener
+	@TransactionalEventListener(id = "notification.mail-on-stay-move-due")
 	void on(StayMoveDue event) {
 		bookings.moveReminderFacts(event.bookingId()).ifPresentOrElse(move -> send(event, move),
 				() -> abandon(MissingBookingFact.NO_BOOKING, event));

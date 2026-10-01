@@ -21,12 +21,8 @@ import ai.riviera.platform.notification.application.MailOutbox;
 @Component
 class RegistryMailOutbox implements MailOutbox {
 
-	/**
-	 * Prefix of every listener id this module owns. The registry matches {@code listener_id} (the
-	 * listener's FQCN) string-equal, so renaming or moving a listener orphans outstanding rows unless a
-	 * migration rewrites them.
-	 */
-	static final String NOTIFICATION_LISTENER_PREFIX = "ai.riviera.platform.notification.";
+	/** Prefix of every explicit listener id this module owns (pinned by {@code ListenerIdSnapshotTest}). */
+	static final String NOTIFICATION_LISTENER_PREFIX = "notification.";
 
 	private final EventPublicationRegistry registry;
 
