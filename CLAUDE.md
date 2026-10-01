@@ -98,12 +98,14 @@ Plus `shared` (closed kernel of edge types like `ApiProblem`, registered in
 ownership, never reuse) and the closed non-context modules with `allowedDependencies = {}`:
 `challenge` (proof of work; writes `challenge_registry`), `audit` (admin audit trail; writes
 `admin_audit_record`) and `monitoring` (correlation id, metric names, money-path alert check; writes
-nothing). Also closed and non-context, but an adapter layer depending on the surfaces it needs: `auth`
+nothing). Also closed and non-context, but adapter layers depending on the surfaces they need: `auth`
 (sign-in and sessions: the `UserDetailsService`s, session establishment, credential stamp and revocation,
-SSO, password policy, recovery, the login and self-service controllers; writes nothing). No module writes
-the framework tables: `SPRING_SESSION*` (Spring Session, from `auth` and the edge) and `event_publication*` (Modulith's registry; re-driven by the outbox levers).
-Every module may depend on `shared`, which depends on no module; the root on modules, nothing on the
-root.
+SSO, password policy, recovery, the login and self-service controllers; writes nothing) and `web` (the
+HTTP boundary: `SecurityConfig`'s chains and route policy, the chain's filters, CORS, `ApiErrorHandler`
+as the one advice; publishes nothing, writes nothing). No module writes
+the framework tables: `SPRING_SESSION*` (Spring Session, from `auth` and `web`) and `event_publication*` (Modulith's registry; re-driven by the outbox levers).
+Every module may depend on `shared`, which depends on no module. The root holds only
+`PlatformApplication` and configuration that reaches no module; nothing depends on it.
 
 **Collaboration:** events for state changes, `api/` ports for queries. Synchronous, state-changing
 ports: the availability claim (walked per day by `booking`'s `SpanClaim`), payment collection /
@@ -118,12 +120,12 @@ Events:
 `BookingMoved` → `notification`; `BookingDayRefunded` → `payout`, `notification` and `booking`'s own
 day-refund listener; `ReviewsChanged` → `venue`.
 
-**Platform edge** (`RESPONSIBILITIES.md` § *Platform edge*): server-side sessions carrying an
+**Platform edge** (`RESPONSIBILITIES.md` § *Platform edge*; the fence is `web`'s): server-side sessions carrying an
 operator or a customer principal; login and session machinery in `auth`, never in a domain module;
 customer account and guest row never linked; auth endpoints non-enumerating and constant-time; mocks
 profile-guarded out of prod; revocation orchestrated by `auth`, synchronous; account creation, password recovery
 and booking/stay create fenced by `challenge`'s proof-of-work against a single-use registry; every
-mutating `/api/admin/**` action audited by the edge; map tiles self-hosted under `/map/**`, no
+mutating `/api/admin/**` action audited by `web`'s fence; map tiles self-hosted under `/map/**`, no
 third-party map host.
 
 ## Cross-cutting invariants

@@ -38,8 +38,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * wrong role — so a tourist session grants no operator surface.</li>
  * </ol>
  *
- * <p>Lives in the root test package because the web slice imports the package-private edge config
- * ({@code SecurityConfig} / {@code WebCorsConfig} / {@link WebSliceStubs}), like every other web-slice
+ * <p>Lives in the root test package with the other whole-web-layer slices sharing {@link WebSliceStubs}
+ * (with {@code web}'s {@code SecurityConfig} / {@code WebCorsConfig}), like every other web-slice
  * test here. Runs without Docker or a DB, so it also guards the shared slice against the missing-bean
  * breakage a new controller causes (R-4). The real-schema behaviour — that the rows are genuinely
  * only this operator's — is {@code MyVenuesIT}'s job.

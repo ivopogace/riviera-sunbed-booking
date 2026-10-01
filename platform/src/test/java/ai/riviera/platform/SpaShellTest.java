@@ -25,7 +25,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * <p>A stub {@code index.html} under {@code src/test/resources/static/} lets the slice assert
  * the fallback without a real Angular build. Every assertion is anonymous — the point is that
  * the shell is reachable without a session while the API stays gated — so this is a fast
- * {@code @WebMvcTest} slice (no Testcontainers), the same shape as {@link WebCorsConfigTest}.
+ * {@code @WebMvcTest} slice (no Testcontainers), the same shape as {@code WebCorsConfigTest}.
  */
 @WebMvcTest
 @Import({SecurityConfig.class, WebCorsConfig.class, SpaWebConfig.class, WebSliceStubs.class})

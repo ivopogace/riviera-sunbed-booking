@@ -11,10 +11,12 @@ description: >-
 
 Module census and collaboration inventory: `CLAUDE.md`.
 
-**The root package is the composition root; nothing depends on it.** It holds
-`PlatformApplication`, app-wide config (`SecurityConfig`, `WebCorsConfig`, `TimeConfig`) and
-the platform's own adapters (the security chain and its filters; no module listeners — pinned by
-`CompositionRootDisciplineTests`). Login and sessions are the `auth` module's. A type modules need goes in `shared`, never at the root.
+**The root package is the composition root; it reaches no module and nothing depends on it**
+(ADR-0028 Decision 1, both directions pinned by `CompositionRootDisciplineTests`). It holds
+`PlatformApplication` and app-wide config that names no module (`TimeConfig`, `SpaWebConfig`,
+`MapResourcesConfig`). A class that needs a module surface belongs in a module: the security chain,
+its filters and the one advice are `web`'s; login and sessions `auth`'s. A type modules need goes in
+`shared`, never at the root.
 Keep `shared` tiny: no business logic, no module-owned state. Moving a bean between the root
 and a module can break every `@ApplicationModuleTest` (`riviera-local-debug` § *Blast radius*).
 
@@ -49,7 +51,8 @@ Hands off: Java idioms → `riviera-java-conventions`; seams → `codebase-desig
 **THIN iff no application service** (the `api/` port is implemented directly by a JDBC adapter);
 otherwise FULL. Every context module in CLAUDE.md's table (the `itinerary` read model and
 `remodel` included) and `challenge` are full; `audit` is thin plus a driving `adapter/in` (its admin controller);
-`monitoring` is `vocabulary` plus `adapter/in` (filter, gauge, alert job), no port; `auth` is full,
+`monitoring` is `vocabulary` plus `adapter/in` (filter, gauge, alert job), no port; `web` is
+`adapter/in` alone (the chain, its filters, the advice), publishing nothing; `auth` is full,
 with `api` (`SessionRevocation`, `SessionCredentials`) and `vocabulary` (`AuthRoles`, a constants holder).
 `shared` is neither: a closed `@ApplicationModule` registered in `@Modulithic(sharedModules)` (so
 Modulith allows it to every module, `{}` grants included), flat classes at the module root as its

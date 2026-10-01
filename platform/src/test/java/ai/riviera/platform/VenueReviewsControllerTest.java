@@ -36,8 +36,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * asked, an invisible venue is a {@code 404}, and the path is public <em>without</em> loosening the
  * operator-only reads beside it.
  *
- * <p>Lives in the root test package because the web slice imports the package-private edge config
- * ({@code SecurityConfig} / {@code WebCorsConfig} / {@link WebSliceStubs}), like every other
+ * <p>Lives in the root test package with the other whole-web-layer slices sharing {@link WebSliceStubs}
+ * (with {@code web}'s {@code SecurityConfig} / {@code WebCorsConfig}), like every other
  * web-slice test here.
  */
 @WebMvcTest

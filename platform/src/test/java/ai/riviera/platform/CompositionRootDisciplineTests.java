@@ -22,12 +22,9 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * published {@code api}, belongs in a module: the security chain is {@code web}'s, login {@code auth}'s, the
  * remodel composition {@code remodel}'s, observability {@code monitoring}'s.
  *
- * <p><strong>Why "reaches no module" and not a grant map.</strong> This rule was an allowlist of module
- * surfaces while the root still held the chain; each move in ADR-0028 removed rows from it, and the move
- * of the chain into {@code web} (#1326) removed the last. An empty grant map would leave the old
- * vacuity guard (some surface must be reached) unsatisfiable, so the rule now states the end state
- * directly: no root class depends on a type inside a module. A new module is out of bounds for the root
- * by construction.
+ * <p><strong>Stated as a blanket rule, not a grant map.</strong> No module surface is granted, so a new
+ * module is out of bounds for the root by construction, and the vacuity guard counts the root classes
+ * inspected rather than the surfaces reached.
  *
  * <p><strong>The edge runs both ways.</strong> The first rule bounds what the root may reach; the
  * second bounds what may reach the root — no class inside a module may depend on a type sitting

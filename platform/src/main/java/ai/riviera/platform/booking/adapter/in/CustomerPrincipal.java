@@ -6,7 +6,7 @@ import org.springframework.security.core.Authentication;
  * Reads the session principal for {@code customer::api}'s directory, which never sees a Spring Security
  * type: the principal's name, and whether it holds the customer role. An operator session named like a
  * customer's email must never act as that customer (the invariant #13 posture).
- * Twin of the root's {@code CustomerPrincipal}.
+ * Twin of {@code auth}'s {@code CustomerPrincipal}.
  */
 final class CustomerPrincipal {
 

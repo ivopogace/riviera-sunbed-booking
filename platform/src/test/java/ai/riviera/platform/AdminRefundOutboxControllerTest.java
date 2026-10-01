@@ -43,8 +43,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * wire.</li>
  * </ol>
  *
- * <p>Lives in the root test package, unlike the controller it covers, because {@code WebSliceStubs} is
- * package-private here and the subject is the admin surface <em>through</em> {@code SecurityConfig}.
+ * <p>Lives in the root test package, unlike the controller it covers, because it shares the root's
+ * {@code WebSliceStubs} and the subject is the admin surface <em>through</em> {@code SecurityConfig}.
  * The policy has its own tests ({@code RefundResubmissionServiceTest}), as does the scope
  * ({@code RefundOutboxScopeTest}, {@code RefundOutboxScopeIT}). Docker-free {@code @WebMvcTest} slice.
  */

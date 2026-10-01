@@ -41,8 +41,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * stable {@code code} and never reaches the port.</li>
  * </ol>
  *
- * <p>Lives in the root test package, unlike the controller it covers, because {@code WebSliceStubs}
- * is package-private here and the subject is really the admin surface <em>through</em>
+ * <p>Lives in the root test package, unlike the controller it covers, because it shares
+ * the root's {@code WebSliceStubs} and the subject is really the admin surface <em>through</em>
  * {@code SecurityConfig}. The module-internal behaviour behind the port has its own tests
  * ({@code SuppressionReinstatementServiceTest}, {@code EmailSuppressionReinstatementIT}).
  * Docker-free {@code @WebMvcTest} slice.

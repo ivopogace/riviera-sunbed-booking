@@ -48,8 +48,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * while the attacker's session stayed live. That is the worst place to have it: this flow is most
  * often running <em>because</em> an account is already compromised.
  *
- * <p>Lives in the root test package because the web slice imports the package-private edge config
- * ({@code SecurityConfig} / {@code WebCorsConfig} / {@link WebSliceStubs}). Docker-free. Every request
+ * <p>Lives in the root test package with the other whole-web-layer slices sharing {@link WebSliceStubs}
+ * (with {@code web}'s {@code SecurityConfig} / {@code WebCorsConfig}). Docker-free. Every request
  * carries a unique {@code X-Forwarded-For}: this path rides the recovery per-IP budget, so without it
  * the class would pass alone and {@code 429} inside the full suite.
  */
