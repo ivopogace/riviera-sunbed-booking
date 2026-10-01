@@ -8,7 +8,7 @@ import java.time.ZoneOffset;
 import org.junit.jupiter.api.Test;
 import org.springframework.security.core.Authentication;
 
-import ai.riviera.platform.shared.CurrentOperator;
+import ai.riviera.platform.operator.api.OperatorDirectory;
 import ai.riviera.platform.operator.vocabulary.OperatorId;
 import ai.riviera.platform.payout.application.DailyTakingsView;
 import ai.riviera.platform.payout.application.ViewDailyTakings;
@@ -29,18 +29,18 @@ class VenueTakingsControllerTest {
 	private static final Clock LATE_EVENING_UTC =
 			Clock.fixed(Instant.parse("2026-07-07T22:30:00Z"), ZoneOffset.UTC);
 
-	private final CurrentOperator currentOperator = mock(CurrentOperator.class);
+	private final OperatorDirectory operatorDirectory = mock(OperatorDirectory.class);
 
 	@Test
 	void defaultsToTodayInTiraneWhenNoDate() {
-		when(currentOperator.require(any())).thenReturn(new OperatorId(7));
+		when(operatorDirectory.requireOperator(any())).thenReturn(new OperatorId(7));
 		LocalDate[] captured = new LocalDate[1];
 		ViewDailyTakings capturing = (operator, venue, date) -> {
 			captured[0] = date;
 			return new DailyTakingsView(0, 0, 0, 0, "EUR", date);
 		};
 		VenueTakingsController controller =
-				new VenueTakingsController(capturing, currentOperator, LATE_EVENING_UTC);
+				new VenueTakingsController(capturing, operatorDirectory, LATE_EVENING_UTC);
 
 		controller.takings(mock(Authentication.class), 1L, null);
 
@@ -49,14 +49,14 @@ class VenueTakingsControllerTest {
 
 	@Test
 	void passesAnExplicitDateThroughAndMapsMoney() {
-		when(currentOperator.require(any())).thenReturn(new OperatorId(7));
+		when(operatorDirectory.requireOperator(any())).thenReturn(new OperatorId(7));
 		LocalDate[] captured = new LocalDate[1];
 		ViewDailyTakings capturing = (operator, venue, date) -> {
 			captured[0] = date;
 			return new DailyTakingsView(5000, 750, 4250, 1500, "EUR", date);
 		};
 		VenueTakingsController controller =
-				new VenueTakingsController(capturing, currentOperator, LATE_EVENING_UTC);
+				new VenueTakingsController(capturing, operatorDirectory, LATE_EVENING_UTC);
 
 		LocalDate explicit = LocalDate.of(2026, 6, 1);
 		TakingsResponse response = controller.takings(mock(Authentication.class), 1L, explicit);

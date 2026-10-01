@@ -12,11 +12,11 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import ai.riviera.platform.operator.api.OperatorDirectory;
 import ai.riviera.platform.booking.vocabulary.PreviewToken;
 import ai.riviera.platform.booking.vocabulary.RefundConfirmation;
 import ai.riviera.platform.operator.vocabulary.OperatorId;
 import ai.riviera.platform.shared.ApiProblem;
-import ai.riviera.platform.shared.CurrentOperator;
 import ai.riviera.platform.shared.InvalidApiRequestException;
 import ai.riviera.platform.venue.vocabulary.LayoutCell;
 import ai.riviera.platform.venue.vocabulary.LayoutRejection;
@@ -41,18 +41,18 @@ class RemodelCommitController {
 	static final String PREVIEW_PROPERTY = "preview";
 	static final String SETS_PROPERTY = "sets";
 
-	private final CurrentOperator currentOperator;
+	private final OperatorDirectory operatorDirectory;
 	private final RemodelCommitService commits;
 
-	RemodelCommitController(CurrentOperator currentOperator, RemodelCommitService commits) {
-		this.currentOperator = currentOperator;
+	RemodelCommitController(OperatorDirectory operatorDirectory, RemodelCommitService commits) {
+		this.operatorDirectory = operatorDirectory;
 		this.commits = commits;
 	}
 
 	@PostMapping("/{venueId}/beach-map/commit")
 	ResponseEntity<?> commit(Authentication authentication, @PathVariable long venueId,
 			@RequestBody RemodelCommitRequest request) {
-		OperatorId operator = currentOperator.require(authentication);
+		OperatorId operator = operatorDirectory.requireOperator(authentication.getName());
 		long expectedVersion = InvalidApiRequestException.parsing(request::requireExpectedVersion);
 		List<LayoutCell> cells = InvalidApiRequestException.parsing(request::toCells);
 		PreviewToken token = InvalidApiRequestException.parsing(request::requireToken);

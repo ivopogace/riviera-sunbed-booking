@@ -1,6 +1,5 @@
 package ai.riviera.platform;
 
-import ai.riviera.platform.shared.CurrentCustomer;
 import java.util.Optional;
 
 import org.junit.jupiter.api.Test;
@@ -68,7 +67,7 @@ class MyAccountControllerTest {
 	@Autowired
 	PasswordEncoder passwordEncoder;
 
-	/** Replaces the inert stub so {@link CurrentCustomer} resolves the principal to an account. */
+	/** Replaces the inert stub so a customer principal resolves to an account. */
 	@MockitoBean
 	CustomerAccountDirectory directory;
 
@@ -179,7 +178,7 @@ class MyAccountControllerTest {
 	 */
 	@Test
 	void reportsAWithheldVerificationMailForASuppressedAddress() throws Exception {
-		when(directory.accountFor(EMAIL)).thenReturn(Optional.of(ACCOUNT_ID));
+		when(directory.requireSignedInAccount(EMAIL, true)).thenReturn(ACCOUNT_ID);
 		when(recovery.isVerificationMailWithheld(EMAIL)).thenReturn(true);
 
 		mvc.perform(requestVerification())
@@ -190,7 +189,7 @@ class MyAccountControllerTest {
 
 	@Test
 	void reportsADeliverableVerificationMail() throws Exception {
-		when(directory.accountFor(EMAIL)).thenReturn(Optional.of(ACCOUNT_ID));
+		when(directory.requireSignedInAccount(EMAIL, true)).thenReturn(ACCOUNT_ID);
 		when(recovery.isVerificationMailWithheld(EMAIL)).thenReturn(false);
 
 		mvc.perform(requestVerification())
@@ -201,7 +200,7 @@ class MyAccountControllerTest {
 	}
 
 	private void givenAccountWithPassword() {
-		when(directory.accountFor(EMAIL)).thenReturn(Optional.of(ACCOUNT_ID));
+		when(directory.requireSignedInAccount(EMAIL, true)).thenReturn(ACCOUNT_ID);
 		String storedHash = passwordEncoder.encode(CURRENT_PASSWORD);
 		when(accounts.findByEmail(EMAIL)).thenReturn(Optional.of(new CustomerAccountCredential(EMAIL, storedHash)));
 		when(recovery.changePassword(eq(ACCOUNT_ID), eq(storedHash), anyString())).thenReturn(true);

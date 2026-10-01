@@ -11,8 +11,8 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import ai.riviera.platform.operator.api.OperatorDirectory;
 import ai.riviera.platform.shared.ApiProblem;
-import ai.riviera.platform.shared.CurrentOperator;
 import ai.riviera.platform.booking.vocabulary.BookingId;
 import ai.riviera.platform.booking.vocabulary.StayId;
 import ai.riviera.platform.booking.application.request.AcceptOutcome;
@@ -35,18 +35,18 @@ class BookingRequestController {
 
 	private final PendingRequests pendingRequests;
 	private final RespondToRequest respondToRequest;
-	private final CurrentOperator currentOperator;
+	private final OperatorDirectory operatorDirectory;
 
 	BookingRequestController(PendingRequests pendingRequests, RespondToRequest respondToRequest,
-			CurrentOperator currentOperator) {
+			OperatorDirectory operatorDirectory) {
 		this.pendingRequests = pendingRequests;
 		this.respondToRequest = respondToRequest;
-		this.currentOperator = currentOperator;
+		this.operatorDirectory = operatorDirectory;
 	}
 
 	@GetMapping
 	List<PendingRequestView> list(Authentication authentication, @PathVariable long venueId) {
-		OperatorId operator = currentOperator.require(authentication);
+		OperatorId operator = operatorDirectory.requireOperator(authentication.getName());
 		return pendingRequests.forVenue(operator, new VenueId(venueId)).stream()
 				.map(PendingRequestView::of)
 				.toList();
@@ -55,7 +55,7 @@ class BookingRequestController {
 	@PostMapping("/{bookingId}/accept")
 	ResponseEntity<?> accept(Authentication authentication, @PathVariable long venueId,
 			@PathVariable long bookingId) {
-		OperatorId operator = currentOperator.require(authentication);
+		OperatorId operator = operatorDirectory.requireOperator(authentication.getName());
 		AcceptOutcome outcome =
 				respondToRequest.accept(operator, new VenueId(venueId), new BookingId(bookingId));
 		return switch (outcome) {
@@ -67,7 +67,7 @@ class BookingRequestController {
 
 	@PostMapping("/stays/{stayId}/decline")
 	ResponseEntity<?> declineStay(Authentication authentication, @PathVariable long venueId, @PathVariable long stayId) {
-		OperatorId operator = currentOperator.require(authentication);
+		OperatorId operator = operatorDirectory.requireOperator(authentication.getName());
 		return switch (respondToRequest.declineStay(operator, new VenueId(venueId), new StayId(stayId))) {
 			case DeclineOutcome.Declined ignored -> ResponseEntity.ok(new StayDecisionView(stayId,
 					ai.riviera.platform.booking.domain.BookingStatus.DECLINED.name()));
@@ -92,7 +92,7 @@ class BookingRequestController {
 
 	@PostMapping("/stays/{stayId}/accept")
 	ResponseEntity<?> acceptStay(Authentication authentication, @PathVariable long venueId, @PathVariable long stayId) {
-		OperatorId operator = currentOperator.require(authentication);
+		OperatorId operator = operatorDirectory.requireOperator(authentication.getName());
 		return switch (respondToRequest.acceptStay(operator, new VenueId(venueId), new StayId(stayId))) {
 			case AcceptOutcome.Accepted accepted -> ResponseEntity.ok(new StayDecisionView(stayId, accepted.status().name()));
 			case AcceptOutcome.Rejected rejected -> acceptRejection(rejected);
@@ -102,7 +102,7 @@ class BookingRequestController {
 	@PostMapping("/{bookingId}/decline")
 	ResponseEntity<?> decline(Authentication authentication, @PathVariable long venueId,
 			@PathVariable long bookingId) {
-		OperatorId operator = currentOperator.require(authentication);
+		OperatorId operator = operatorDirectory.requireOperator(authentication.getName());
 		DeclineOutcome outcome =
 				respondToRequest.decline(operator, new VenueId(venueId), new BookingId(bookingId));
 		return switch (outcome) {

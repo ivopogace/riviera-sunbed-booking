@@ -1,6 +1,5 @@
 package ai.riviera.platform;
 
-import ai.riviera.platform.shared.CurrentOperator;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -8,14 +7,15 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.context.annotation.Import;
 import org.springframework.jdbc.core.simple.JdbcClient;
-import org.springframework.test.context.bean.override.mockito.MockitoBean;
+import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
 import org.springframework.test.web.servlet.MockMvc;
 
+import ai.riviera.platform.operator.api.OperatorDirectory;
 import ai.riviera.platform.operator.vocabulary.OperatorId;
 import jakarta.servlet.http.Cookie;
 
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.doReturn;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -28,8 +28,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * <p>Two synthetic operators are seeded, mirroring {@code CrossVenueDenialIT}: <strong>M</strong> owns
  * two venues, <strong>N</strong> owns one, and the backfilled Miramar (venue 1) is owned by neither.
  * The venues are inserted in <em>reverse</em> name order so a pass-through of insertion order would
- * fail the ordering assertion. Only the edge {@link CurrentOperator} (principal → operator id) is
- * mocked; the ownership mapping and the SQL are the real beans.
+ * fail the ordering assertion. Only {@link OperatorDirectory#requireOperator} (principal → operator id) is
+ * stubbed; the ownership mapping and the SQL are the real beans.
  */
 @EnabledIfDockerAvailable
 @Import(TestcontainersConfiguration.class)
@@ -50,9 +50,9 @@ class MyVenuesIT {
 	@Autowired
 	JdbcClient jdbc;
 
-	/** Mock only the identity seam; the ownership mapping and the venue read are the real beans. */
-	@MockitoBean
-	CurrentOperator currentOperator;
+	/** Stub only the identity seam; the ownership mapping and the venue read are the real beans. */
+	@MockitoSpyBean
+	OperatorDirectory operatorDirectory;
 
 	private OperatorId operatorM;
 	private OperatorId operatorN;
@@ -138,6 +138,6 @@ class MyVenuesIT {
 
 	/** Attribute every subsequent request in the test to this operator (bypassing the interim resolver). */
 	private void actingAs(OperatorId operator) {
-		when(currentOperator.require(any())).thenReturn(operator);
+		doReturn(operator).when(operatorDirectory).requireOperator(any());
 	}
 }

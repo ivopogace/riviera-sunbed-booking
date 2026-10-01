@@ -1,7 +1,5 @@
 package ai.riviera.platform;
 
-import ai.riviera.platform.shared.CurrentCustomer;
-import java.util.Optional;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -33,8 +31,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * {@code GET} and the {@code POST /api/me/erasure} that once had dedicated matchers.
  *
  * <p><strong>Why a status assertion would pin nothing.</strong> Every {@code /api/me} controller opens
- * with {@link CurrentCustomer#require}, which throws {@code AccessDeniedException} for a non-customer
- * principal. That reaches {@link ApiErrorHandler#onAccessDenied} and produces
+ * with {@link CustomerAccountDirectory#requireSignedInAccount}, which throws {@code NotSignedInCustomerException}
+ * for a non-customer principal. That reaches {@link ApiErrorHandler#onAccessDenied} and produces
  * {@code 403 ACCESS_DENIED} — <em>byte-identical</em> to what
  * {@link SecurityProblemResponses#writeAccessDenied} emits from inside the filter chain. So neither the
  * status code nor the response body can tell the two layers apart, and a test asserting only
@@ -78,7 +76,7 @@ class MeSurfaceRoleGateTest {
 	@MockitoBean
 	CustomerRecovery recovery;
 
-	/** Replaces the inert stub so {@link CurrentCustomer} can resolve a real customer principal. */
+	/** Replaces the inert stub so a customer principal resolves to an account. */
 	@MockitoBean
 	CustomerAccountDirectory directory;
 
@@ -122,7 +120,7 @@ class MeSurfaceRoleGateTest {
 	 */
 	@Test
 	void customerRequestDoesReachTheController() throws Exception {
-		when(directory.accountFor(CUSTOMER_EMAIL)).thenReturn(Optional.of(ACCOUNT));
+		when(directory.requireSignedInAccount(CUSTOMER_EMAIL, true)).thenReturn(ACCOUNT);
 
 		MvcResult result = mvc.perform(isolated(post(REQUEST_VERIFICATION))
 						.with(user(CUSTOMER_EMAIL).roles("CUSTOMER")))
@@ -137,7 +135,7 @@ class MeSurfaceRoleGateTest {
 
 	@Test
 	void customerCanStillSetItsPassword() throws Exception {
-		when(directory.accountFor(CUSTOMER_EMAIL)).thenReturn(Optional.of(ACCOUNT));
+		when(directory.requireSignedInAccount(CUSTOMER_EMAIL, true)).thenReturn(ACCOUNT);
 		when(recovery.changePassword(eq(ACCOUNT), any(), any())).thenReturn(true);
 
 		mvc.perform(isolated(post(SET_PASSWORD)).with(user(CUSTOMER_EMAIL).roles("CUSTOMER"))
@@ -155,7 +153,7 @@ class MeSurfaceRoleGateTest {
 	private static void assertNeverDispatched(MvcResult result) {
 		assertThat(result.getHandler())
 				.as("the rejection must come from the security filter chain — a non-null handler means "
-						+ "the request reached the controller and CurrentCustomer produced the 403 instead")
+						+ "the request reached the controller and the directory produced the 403 instead")
 				.isNull();
 	}
 }

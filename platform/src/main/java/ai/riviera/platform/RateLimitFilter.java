@@ -1,6 +1,5 @@
 package ai.riviera.platform;
 
-import ai.riviera.platform.shared.CurrentCustomer;
 import ai.riviera.platform.customer.vocabulary.Emails;
 import ai.riviera.platform.shared.ApiProblem;
 import java.io.BufferedReader;
@@ -220,7 +219,7 @@ final class RateLimitFilter extends OncePerRequestFilter {
 	/**
 	 * An auth request's per-IP budget and whether a token is refunded when the chain denies access
 	 * ({@code 401}/{@code 403}). The policy travels with the budget, never filter-wide: on a password
-	 * change those mean the credential check was never reached (as does {@link CurrentCustomer#require}'s
+	 * change those mean the credential check was never reached (as does a non-customer principal's
 	 * {@code 403}), but on a <em>login</em> the same {@code 401} is a wrong password, precisely what must
 	 * be charged. Accepted cost: a CSRF-token-less flood is refunded too, as {@code CsrfFilter} rejects it
 	 * before any DB read, bcrypt or mail.

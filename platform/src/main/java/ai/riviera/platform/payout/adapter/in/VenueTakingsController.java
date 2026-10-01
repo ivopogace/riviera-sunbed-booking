@@ -12,7 +12,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-import ai.riviera.platform.shared.CurrentOperator;
+import ai.riviera.platform.operator.api.OperatorDirectory;
 import ai.riviera.platform.operator.vocabulary.OperatorId;
 import ai.riviera.platform.payout.application.ViewDailyTakings;
 import ai.riviera.platform.venue.vocabulary.VenueId;
@@ -32,19 +32,19 @@ class VenueTakingsController {
 	private static final ZoneId TIRANE = ZoneId.of("Europe/Tirane");
 
 	private final ViewDailyTakings viewDailyTakings;
-	private final CurrentOperator currentOperator;
+	private final OperatorDirectory operatorDirectory;
 	private final Clock clock;
 
-	VenueTakingsController(ViewDailyTakings viewDailyTakings, CurrentOperator currentOperator, Clock clock) {
+	VenueTakingsController(ViewDailyTakings viewDailyTakings, OperatorDirectory operatorDirectory, Clock clock) {
 		this.viewDailyTakings = viewDailyTakings;
-		this.currentOperator = currentOperator;
+		this.operatorDirectory = operatorDirectory;
 		this.clock = clock;
 	}
 
 	@GetMapping("/{venueId}/takings")
 	TakingsResponse takings(Authentication authentication, @PathVariable long venueId,
 			@RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
-		OperatorId operator = currentOperator.require(authentication);
+		OperatorId operator = operatorDirectory.requireOperator(authentication.getName());
 		LocalDate effectiveDate = date != null ? date : LocalDate.ofInstant(clock.instant(), TIRANE);
 		return TakingsResponse.of(viewDailyTakings.forVenueOn(operator, new VenueId(venueId), effectiveDate));
 	}

@@ -65,6 +65,7 @@ import ai.riviera.platform.customer.vocabulary.CustomerAccountCredential;
 import ai.riviera.platform.customer.vocabulary.CustomerAccountId;
 import ai.riviera.platform.customer.vocabulary.EraseOutcome;
 import ai.riviera.platform.customer.vocabulary.LiveAccountCredential;
+import ai.riviera.platform.customer.vocabulary.NotSignedInCustomerException;
 import ai.riviera.platform.customer.vocabulary.RegistrationOutcome;
 import ai.riviera.platform.customer.vocabulary.ResetPasswordOutcome;
 import ai.riviera.platform.customer.vocabulary.SsoProvider;
@@ -108,8 +109,6 @@ import ai.riviera.platform.payout.application.ViewPayoutLedger;
 import ai.riviera.platform.payout.domain.BatchStatus;
 import ai.riviera.platform.payout.domain.PayoutBatch;
 import ai.riviera.platform.payout.domain.PeriodKey;
-import ai.riviera.platform.shared.CurrentCustomer;
-import ai.riviera.platform.shared.CurrentOperator;
 import ai.riviera.platform.shared.ResubmissionOutcome;
 import ai.riviera.platform.venue.api.SetBookingFacts;
 import ai.riviera.platform.venue.api.VenueCatalog;
@@ -295,7 +294,17 @@ class WebSliceStubs {
 	/** Resolve any principal to a fixed operator id — the web slices don't exercise ownership. */
 	@Bean
 	OperatorDirectory operatorDirectory() {
-		return _ -> Optional.of(new OperatorId(1));
+		return new OperatorDirectory() {
+			@Override
+			public Optional<OperatorId> operatorFor(String username) {
+				return Optional.of(new OperatorId(1));
+			}
+
+			@Override
+			public OperatorId requireOperator(String principalName) {
+				return new OperatorId(1);
+			}
+		};
 	}
 
 	/**
@@ -482,25 +491,29 @@ class WebSliceStubs {
 		};
 	}
 
-	/** Same-package (root) construction reaches {@code CurrentOperator}'s package-private constructor. */
-	@Bean
-	CurrentOperator currentOperator(OperatorDirectory operatorDirectory) {
-		return new CurrentOperator(operatorDirectory);
-	}
-
 	/**
-	 * The customer account-id resolver + the edge helper that {@code BookingController}
-	 * (signed-in checkout link) and {@code MyBookingsController} (my-bookings) now depend on. Inert:
-	 * the web slices hit permit-all / role-gated paths, never resolving a real account.
+	 * The customer account-id resolver {@code BookingController} (signed-in checkout link) and the
+	 * {@code /api/me} controllers depend on. Inert: the web slices hit permit-all / role-gated paths,
+	 * never resolving a real account, so {@code requireSignedInAccount} answers {@code 403}.
 	 */
 	@Bean
 	CustomerAccountDirectory customerAccountDirectory() {
-		return _ -> Optional.empty();
-	}
+		return new CustomerAccountDirectory() {
+			@Override
+			public Optional<CustomerAccountId> accountFor(String email) {
+				return Optional.empty();
+			}
 
-	@Bean
-	CurrentCustomer currentCustomer(CustomerAccountDirectory customerAccountDirectory) {
-		return new CurrentCustomer(customerAccountDirectory);
+			@Override
+			public Optional<CustomerAccountId> signedInAccount(String principalName, boolean customerPrincipal) {
+				return Optional.empty();
+			}
+
+			@Override
+			public CustomerAccountId requireSignedInAccount(String principalName, boolean customerPrincipal) {
+				throw new NotSignedInCustomerException();
+			}
+		};
 	}
 
 	/**

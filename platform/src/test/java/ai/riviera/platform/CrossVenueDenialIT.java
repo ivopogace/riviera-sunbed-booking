@@ -1,6 +1,5 @@
 package ai.riviera.platform;
 
-import ai.riviera.platform.shared.CurrentOperator;
 import java.awt.image.BufferedImage;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -17,18 +16,19 @@ import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.mock.web.MockMultipartFile;
-import org.springframework.test.context.bean.override.mockito.MockitoBean;
+import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 
 import com.jayway.jsonpath.JsonPath;
 
+import ai.riviera.platform.operator.api.OperatorDirectory;
 import ai.riviera.platform.operator.vocabulary.OperatorId;
 import jakarta.servlet.http.Cookie;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.doReturn;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -50,8 +50,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * <p>Two synthetic per-venue operators are seeded, each owning its own fresh venue (<strong>A</strong>
  * and <strong>B</strong>); Miramar (venue 1) is owned by neither (it is backfilled to the bootstrap
  * admin), so a non-owner denial can target it too. The real {@code VenueOwnership} runs against
- * the real {@code operator} tables; only the edge {@link CurrentOperator} (principal → operator id)
- * is mocked, so each request is attributed to A or B independently of the
+ * the real {@code operator} tables; only {@link OperatorDirectory#requireOperator} (principal → operator id)
+ * is stubbed on a spy, so each request is attributed to A or B independently of the
  * shared bootstrap login. The session cookie (from one real login) still satisfies the
  * role gate. The staff-availability cases pin the order: an unowned path venue is {@code 403} before
  * any set lookup, and a set foreign to an owned path venue is answered exactly as a missing one, so
@@ -73,9 +73,9 @@ class CrossVenueDenialIT {
 	@Autowired
 	JdbcClient jdbc;
 
-	/** Mock only the identity seam; the ownership check itself is the real DB-backed bean. */
-	@MockitoBean
-	CurrentOperator currentOperator;
+	/** Stub only the identity seam; the ownership check itself is the real DB-backed bean. */
+	@MockitoSpyBean
+	OperatorDirectory operatorDirectory;
 
 	private OperatorId operatorA;
 	private OperatorId operatorB;
@@ -125,7 +125,7 @@ class CrossVenueDenialIT {
 
 	/** Attribute every subsequent request in the test to this operator (bypassing the interim resolver). */
 	private void actingAs(OperatorId operator) {
-		when(currentOperator.require(any())).thenReturn(operator);
+		doReturn(operator).when(operatorDirectory).requireOperator(any());
 	}
 
 	// ---- Denials: operator A (does NOT own Miramar) is 403 on every venue-scoped surface ----
@@ -577,7 +577,7 @@ class CrossVenueDenialIT {
 	 * <p><strong>The actor here is the bootstrap admin, deliberately, and no {@code actingAs} stub
 	 * applies.</strong> Every request in this class rides one real login as {@code operator}, which V29
 	 * demoted to the platform admin ({@code is_admin}) — so the session carries {@code ROLE_ADMIN},
-	 * whatever the mocked {@link CurrentOperator} says. {@code actingAs} swaps the <em>ownership</em>
+	 * whatever the stubbed {@link OperatorDirectory} says. {@code actingAs} swaps the <em>ownership</em>
 	 * identity the application services resolve, not the session's authorities, and this path consults
 	 * no ownership at all; stubbing it here only ever implied an actor the request did not have. The
 	 * surface is ADMIN-gated, so a plain operator is refused outright — pinned by

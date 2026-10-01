@@ -12,9 +12,9 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import ai.riviera.platform.operator.api.OperatorDirectory;
 import ai.riviera.platform.booking.application.refund.RefundVenueDay;
 import ai.riviera.platform.operator.vocabulary.OperatorId;
-import ai.riviera.platform.shared.CurrentOperator;
 import ai.riviera.platform.venue.vocabulary.VenueId;
 
 /**
@@ -30,17 +30,17 @@ import ai.riviera.platform.venue.vocabulary.VenueId;
 class VenueDayRefundController {
 
 	private final RefundVenueDay refundVenueDay;
-	private final CurrentOperator currentOperator;
+	private final OperatorDirectory operatorDirectory;
 
-	VenueDayRefundController(RefundVenueDay refundVenueDay, CurrentOperator currentOperator) {
+	VenueDayRefundController(RefundVenueDay refundVenueDay, OperatorDirectory operatorDirectory) {
 		this.refundVenueDay = refundVenueDay;
-		this.currentOperator = currentOperator;
+		this.operatorDirectory = operatorDirectory;
 	}
 
 	@PostMapping("/{venueId}/bookings/{code}/day-refund")
 	ResponseEntity<?> refund(Authentication authentication, @PathVariable long venueId, @PathVariable String code,
 			@RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
-		OperatorId operator = currentOperator.require(authentication);
+		OperatorId operator = operatorDirectory.requireOperator(authentication.getName());
 		return VenueDayRefundResponses.of(refundVenueDay.refundDay(operator, new VenueId(venueId), code, date), date,
 				URI.create("/api/venues/" + venueId + "/bookings"));
 	}

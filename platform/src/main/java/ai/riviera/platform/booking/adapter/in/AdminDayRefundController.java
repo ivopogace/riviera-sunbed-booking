@@ -14,13 +14,13 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import ai.riviera.platform.operator.api.OperatorDirectory;
 import ai.riviera.platform.booking.application.refund.GuestBooking;
 import ai.riviera.platform.booking.application.refund.GuestBookingDay;
 import ai.riviera.platform.booking.application.refund.GuestDayRefundLookup;
 import ai.riviera.platform.booking.application.refund.RefundVenueDay;
 import ai.riviera.platform.booking.vocabulary.BookingId;
 import ai.riviera.platform.shared.ApiProblem;
-import ai.riviera.platform.shared.CurrentOperator;
 
 /**
  * The admin's venue day refund (ADR-0027 decision 1) under {@code /api/admin/bookings}: ADMIN-gated in
@@ -38,13 +38,13 @@ class AdminDayRefundController {
 
 	private final GuestDayRefundLookup lookup;
 	private final RefundVenueDay refundVenueDay;
-	private final CurrentOperator currentOperator;
+	private final OperatorDirectory operatorDirectory;
 
 	AdminDayRefundController(GuestDayRefundLookup lookup, RefundVenueDay refundVenueDay,
-			CurrentOperator currentOperator) {
+			OperatorDirectory operatorDirectory) {
 		this.lookup = lookup;
 		this.refundVenueDay = refundVenueDay;
-		this.currentOperator = currentOperator;
+		this.operatorDirectory = operatorDirectory;
 	}
 
 	/** Wire DTO: the raw address, canonicalised downstream by {@code customer}'s own rule. */
@@ -81,7 +81,7 @@ class AdminDayRefundController {
 	ResponseEntity<?> refund(Authentication authentication, @PathVariable long bookingId,
 			@PathVariable @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
 		return VenueDayRefundResponses.of(
-				refundVenueDay.refundDayAsAdmin(currentOperator.require(authentication), new BookingId(bookingId), date),
+				refundVenueDay.refundDayAsAdmin(operatorDirectory.requireOperator(authentication.getName()), new BookingId(bookingId), date),
 				date, REFUND_INSTANCE);
 	}
 

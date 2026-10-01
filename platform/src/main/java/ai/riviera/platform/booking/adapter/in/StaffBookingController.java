@@ -18,8 +18,8 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import ai.riviera.platform.operator.api.OperatorDirectory;
 import ai.riviera.platform.shared.ApiProblem;
-import ai.riviera.platform.shared.CurrentOperator;
 import ai.riviera.platform.booking.application.checkin.CheckInBooking;
 import ai.riviera.platform.booking.application.checkin.CheckInResult;
 import ai.riviera.platform.booking.application.view.ListDailyBookings;
@@ -44,21 +44,21 @@ class StaffBookingController {
 
 	private final ListDailyBookings dailyBookings;
 	private final CheckInBooking checkInBooking;
-	private final CurrentOperator currentOperator;
+	private final OperatorDirectory operatorDirectory;
 	private final Clock clock;
 
 	StaffBookingController(ListDailyBookings dailyBookings, CheckInBooking checkInBooking,
-			CurrentOperator currentOperator, Clock clock) {
+			OperatorDirectory operatorDirectory, Clock clock) {
 		this.dailyBookings = dailyBookings;
 		this.checkInBooking = checkInBooking;
-		this.currentOperator = currentOperator;
+		this.operatorDirectory = operatorDirectory;
 		this.clock = clock;
 	}
 
 	@GetMapping("/{venueId}/bookings")
 	List<DailyBookingView> bookings(Authentication authentication, @PathVariable long venueId,
 			@RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
-		OperatorId operator = currentOperator.require(authentication);
+		OperatorId operator = operatorDirectory.requireOperator(authentication.getName());
 		LocalDate effectiveDate = date != null ? date : LocalDate.ofInstant(clock.instant(), TIRANE);
 		return dailyBookings.forVenueOn(operator, new VenueId(venueId), effectiveDate).stream()
 				.map(DailyBookingView::of)
@@ -73,7 +73,7 @@ class StaffBookingController {
 	@PostMapping("/{venueId}/bookings/{code}/check-in")
 	ResponseEntity<?> checkIn(Authentication authentication, @PathVariable long venueId,
 			@PathVariable String code) {
-		OperatorId operator = currentOperator.require(authentication);
+		OperatorId operator = operatorDirectory.requireOperator(authentication.getName());
 		return switch (checkInBooking.checkIn(operator, new VenueId(venueId), code)) {
 			case CheckInResult.CheckedIn(var setId, var bookingDate) ->
 					ResponseEntity.ok(new CheckInView(setId.value(), bookingDate));

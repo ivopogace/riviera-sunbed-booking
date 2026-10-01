@@ -1,6 +1,5 @@
 package ai.riviera.platform;
 
-import ai.riviera.platform.shared.CurrentCustomer;
 import ai.riviera.platform.shared.ApiProblem;
 import java.util.Optional;
 
@@ -13,6 +12,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
 
+import ai.riviera.platform.customer.api.CustomerAccountDirectory;
 import ai.riviera.platform.customer.api.CustomerAccounts;
 import ai.riviera.platform.customer.vocabulary.CustomerAccountCredential;
 import ai.riviera.platform.customer.vocabulary.CustomerAccountId;
@@ -22,7 +22,7 @@ import jakarta.servlet.http.HttpServletResponse;
 /**
  * Signed-in customer account management under {@code /api/me/**}: set/change password, re-request verification.
  * {@link SecurityConfig} gates it to {@code ROLE_CUSTOMER}; the account comes from the session via
- * {@link CurrentCustomer}, never a path id (BOLA-safe). An SSO-only account sets its first password freely — its SSO
+ * {@link CustomerAccountDirectory}, never a path id (BOLA-safe). An SSO-only account sets its first password freely — its SSO
  * session proves a provider-verified email — otherwise the current password is required. Never a register-time UPSERT
  * (a takeover vector): a password is set only from the account's own authenticated session.
  */
@@ -33,19 +33,19 @@ class MyAccountController {
 	private static final String REQUEST_VERIFICATION_PATH = "/api/me/verify-email/request";
 
 	private final CustomerRecovery recovery;
-	private final CurrentCustomer currentCustomer;
+	private final CustomerAccountDirectory customerDirectory;
 	private final CustomerAccounts accounts;
 	private final PasswordEncoder passwordEncoder;
 	private final PrincipalSessionRevoker sessionRevoker;
 	private final SecurityContextRepository securityContextRepository;
 	private final HttpServletRequest httpRequest;
 
-	MyAccountController(CustomerRecovery recovery, CurrentCustomer currentCustomer,
+	MyAccountController(CustomerRecovery recovery, CustomerAccountDirectory customerDirectory,
 			CustomerAccounts accounts, PasswordEncoder passwordEncoder,
 			PrincipalSessionRevoker sessionRevoker, SecurityContextRepository securityContextRepository,
 			HttpServletRequest httpRequest) {
 		this.recovery = recovery;
-		this.currentCustomer = currentCustomer;
+		this.customerDirectory = customerDirectory;
 		this.accounts = accounts;
 		this.passwordEncoder = passwordEncoder;
 		this.sessionRevoker = sessionRevoker;
@@ -70,7 +70,8 @@ class MyAccountController {
 	@PostMapping(SET_PASSWORD_PATH)
 	ResponseEntity<?> setPassword(@RequestBody SetPasswordRequest request, Authentication authentication,
 			HttpServletResponse httpResponse) {
-		CustomerAccountId accountId = currentCustomer.require(authentication);
+		CustomerAccountId accountId = customerDirectory.requireSignedInAccount(CustomerPrincipal.name(authentication),
+				CustomerPrincipal.isCustomer(authentication));
 		PasswordPolicy.validate(request.newPassword(), PasswordPolicy.emailLocalPart(authentication.getName()));
 		// Empty means no local password (null-hash SSO-only rows are filtered), so neither answer below applies.
 		Optional<CustomerAccountCredential> existing = accounts.findByEmail(authentication.getName());
@@ -110,7 +111,8 @@ class MyAccountController {
 	 */
 	@PostMapping(REQUEST_VERIFICATION_PATH)
 	ResponseEntity<VerificationRequestedView> requestVerification(Authentication authentication) {
-		CustomerAccountId accountId = currentCustomer.require(authentication);
+		CustomerAccountId accountId = customerDirectory.requireSignedInAccount(CustomerPrincipal.name(authentication),
+				CustomerPrincipal.isCustomer(authentication));
 		String email = authentication.getName();
 		recovery.sendVerificationEmail(accountId, email);
 		return ResponseEntity.ok(new VerificationRequestedView(recovery.isVerificationMailWithheld(email)));
