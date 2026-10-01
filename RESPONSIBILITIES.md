@@ -645,7 +645,12 @@ the ids my scrubs return; `booking` resolves them, `review` blanks its rows. I n
 
 Own the **canonical form of an email address** (`customer.vocabulary.Emails`), the platform's one
 definition, used by my services, the platform edge and `notification` (the input contract of the
-suppression key's HMAC). It cannot live in `shared`, which depends on `customer::api`.
+suppression key's HMAC). It stays here: a module's published value is its own, never `shared`'s.
+
+I answer *which account is this signed-in customer?* (`CustomerAccountDirectory`;
+`NotSignedInCustomerException` → `403`). The caller reads the session and says whether the principal
+holds the customer role, so an operator session named like a customer's email never resolves; I see
+no Spring Security type.
 
 Email verification is **soft**: it gates no sign-in or booking. `CustomerAccountRecovery` names a
 reset token's account **without consuming** it, so the edge revokes that principal's sessions first.
@@ -687,6 +692,9 @@ bootstrap `operator`, which owns only the venues backfilled to it, the Miramar s
 venue?* (invariant #13), *its username, if in the expected status* (`usernameInStatus`: the edge
 revokes sessions **before** a revoking transition commits) and *does this venue have an `ACTIVE`
 owner?* (`VenueVisibility`).
+
+I answer *which operator is this principal name?* (`OperatorDirectory`; `NoOperableOperatorException`
+→ `403` when it owns nothing). The controllers hand me the name, never a Spring Security type.
 
 **The `ACTIVE` predicate is three explicit sets, each at its owner:** the edge's may-authenticate
 set and `OperatorDirectory`'s may-operate set are `ACTIVE`+`PENDING` (approval gates tourist
@@ -943,8 +951,7 @@ because no module can own it, not because several use it. Nothing else: three mo
 is the trigger for asking the question, and the answer is always ownership.
 
 - `ApiProblem` and `InvalidApiRequestException` (the root advice owns exception→status; module
-  adapters throw), `CurrentOperator` and `CurrentCustomer` (principal → typed id): module adapters
-  need them, and no module may depend on the root.
+  adapters throw): module adapters need them, and no module may depend on the root.
 - `ObservabilityMetrics`, the metric names; emission and tags stay with the module owning the thing
   measured. Admitted only for **naming consistency**, a narrower ground — hold new entries to it.
 - `ShutdownBudget`: pools in several modules drain one after another, so their claims on the
@@ -958,7 +965,9 @@ is the trigger for asking the question, and the answer is always ownership.
 
 **Not my job:**
 - **Any business logic or module-owned state** → its owner: a change here ripples everywhere.
-- **Depending on a module that depends back** → only `customer` and `operator` (`api`/`vocabulary`).
+- **Depending on any module** → `allowedDependencies = {}`. Principal → typed id is
+  `operator::api.OperatorDirectory` and `customer::api.CustomerAccountDirectory`, each throwing its
+  own `403` vocabulary exception.
 - **Being the composition root** (`PlatformApplication`, `SecurityConfig`, the controllers) → the
   root package, which depends on modules; merged with `shared`, it closes `booking → root → booking`.
 

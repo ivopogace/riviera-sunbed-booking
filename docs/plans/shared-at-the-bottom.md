@@ -22,7 +22,7 @@ literal enters `customer` (decided with the user at intake).
 - [ ] **AC-2:** Given a customer principal flag and a known email, `CustomerAccountDirectory.signedInAccount` returns
   the id; given `customerPrincipal = false` or a `null` name it is empty and `requireSignedInAccount` throws
   `NotSignedInCustomerException`. *Seam:* `customer::api.CustomerAccountDirectory` · *Pinned by:*
-  `CustomerAccountDirectoryTest`
+  `CustomerAccountServiceTest`; the edge flag by `CustomerPrincipalTest` (root + `booking.adapter.in`)
 - [ ] **AC-3:** Given an operator session that resolves to no operable operator / a non-customer session on `/api/me`,
   when the controller resolves it, then the response is `403 ACCESS_DENIED`. *Seam:* HTTP · *Pinned by:*
   `VenueWriteRoleGateTest`, `MeSurfaceRoleGateTest`
@@ -60,14 +60,16 @@ literal enters `customer` (decided with the user at intake).
 
 ## Execution status
 
-**Stage pointer:** implement (phase 0)
+**Stage pointer:** PR — draft open, CI pending
 
-**Next action:** red tests for the two ports.
+**Next action:** CI green → merge `origin/main` → ready for review → `/code-review` + overlay, Sonar.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — ports | ⏳ | |
-| 1 — call sites | | |
-| 2 — substrate | | |
+| 0 — ports | ✅ | a88ac3e |
+| 1 — call sites | ✅ | 8dfc131 |
+| 2 — substrate | ✅ | (this commit) |
+
+Note: phase 0's red run was skipped (Maven Central 429 at the time); the tests were written before the code.
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
