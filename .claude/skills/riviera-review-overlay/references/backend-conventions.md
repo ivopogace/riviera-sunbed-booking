@@ -73,8 +73,8 @@ wording is not a finding. `detail` never carries a booking code, secret or excep
 Whenever behaviour is added or moved: each file's logic serves its module's **Job** and is not on
 its **Not My Job** list. The tells no rule catches: refund/cancellation policy in `payment`
 (executor; `booking` decides); commission/payout arithmetic in `venue` or `booking` (`payout`
-computes); `customer` growing login machinery beyond the Spring Security imports
-`CustomerAuthPlacementTests` bans (edge concern); `operator` sitting in every request path. Blocker when the misplacement also breaks a Blocker invariant.
+computes); `customer` or `operator` growing login machinery beyond the Spring Security imports
+`*AuthPlacementTests` ban (it belongs in `auth`); `operator` sitting in every request path. Blocker when the misplacement also breaks a Blocker invariant.
 
 ### RV-BE-12. Package shape (ADR-0007) — Major
 `PackageShapeArchitectureTests` holds the structural half; eyes go to a serviceless module with
@@ -110,7 +110,7 @@ no booking code / secret / PII in logs; no untrusted deserialization without an 
 
 ### RV-BE-18. Session lifecycle bracketing — **Blocker**
 On any credential change, account-lifecycle transition or session machinery: sessions are
-revoked at the edge, synchronously (`PrincipalSessionRevoker`), not via an event; the revoke
+revoked by `auth`, synchronously (`auth.api.SessionRevocation`), not via an event; the revoke
 **brackets** the state change (before, keyed by a status-guarded pre-read such as
 `OperatorLifecycle#usernameInStatus` / `CustomerAccountRecovery#emailForResetToken`, AND after);
 a self-service password change revokes the *other* sessions before the hash write, rotates

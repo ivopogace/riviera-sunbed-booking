@@ -103,17 +103,17 @@ the claim via the availability port, and `BookingCancelled` drives both the refu
 
 ### 1.1 What is not in a module: the platform edge
 
-A substantial part of the system sits in the composition root (`ai.riviera.platform`), not in any
-module, and no diagram here shows it — so it is stated instead. The root holds the login machinery
-and the fences: `SecurityConfig` and the filter chain (`RateLimitFilter`,
-`ChallengeVerificationFilter`, `AdminAuditFilter`; the correlation-id filter is `monitoring`'s), the session principals
-and their revocation, the SSO gateways, the error contract (`ApiErrorHandler`, `ApiProblem`), and
-**nine controllers** — auth, SSO, my-account, account recovery, my-erasure, admin-operator,
-admin-erasure, operator-account, and the profile-guarded mock SSO IdP.
+Part of the system sits outside the context modules, and no diagram here shows it — so it is
+stated instead. The composition root (`ai.riviera.platform`) holds the fences: `SecurityConfig` and
+the filter chain (`RateLimitFilter`, `ChallengeVerificationFilter`, `AdminAuditFilter`,
+`SessionCredentialFilter`; the correlation-id filter is `monitoring`'s), the error contract
+(`ApiErrorHandler`, `ApiProblem`) and the admin-erasure controller. The closed `auth` module holds the
+login machinery: the session principals and their revocation, the SSO gateways, and the auth, SSO,
+my-account, account-recovery, my-erasure, admin-operator, operator-account and mock-IdP controllers.
 
 Two consequences a reader of §1 would otherwise miss: `customer` and `operator` have **no
-controllers of their own** — everything a person does with an account is an edge endpoint calling
-their ports — and the rule that keeps this honest runs one way only. Modules depend on `shared`,
+account controllers of their own** — everything a person does with an account is an `auth` or edge
+endpoint calling their ports — and the rule that keeps this honest runs one way only. Modules depend on `shared`,
 the root depends on modules, and **nothing depends on the root** (ADR-0007 Amendment 2, machine-checked
 by `CompositionRootDisciplineTests`). `RESPONSIBILITIES.md` § *Platform edge* is the contract.
 

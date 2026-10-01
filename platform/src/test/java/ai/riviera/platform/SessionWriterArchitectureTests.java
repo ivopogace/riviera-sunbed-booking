@@ -13,13 +13,16 @@ import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noClasses;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * {@link SessionAuthentication} is the only code that saves a security context through any
- * {@link SecurityContextRepository}, so every stored session principal is a stamped {@link SessionPrincipal} and
+ * {@code auth}'s {@code SessionAuthentication} is the only code that saves a security context through any
+ * {@link SecurityContextRepository}, so every stored session principal is a stamped {@code SessionPrincipal} and
  * {@link SessionCredentialFilter} checks it (#1306).
  */
 class SessionWriterArchitectureTests {
 
 	private static final String FIXTURE_BASE = "ai.riviera.sessionwriterfixture";
+
+	/** By name: the writer is package-private in {@code auth.adapter.in}. A rename fails the rule on the writer itself. */
+	private static final String SESSION_WRITER = "ai.riviera.platform.auth.adapter.in.SessionAuthentication";
 
 	@Test
 	void onlySessionAuthenticationSavesASecurityContext() {
@@ -36,7 +39,7 @@ class SessionWriterArchitectureTests {
 
 	private static ArchRule onlySessionAuthenticationWrites() {
 		return noClasses()
-				.that().doNotHaveFullyQualifiedName(SessionAuthentication.class.getName())
+				.that().doNotHaveFullyQualifiedName(SESSION_WRITER)
 				.should().callMethodWhere(target(name("saveContext"))
 						.and(target(owner(assignableTo(SecurityContextRepository.class)))))
 				.because("a session principal must carry a credential stamp (#1306); SessionAuthentication "

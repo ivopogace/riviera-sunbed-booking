@@ -96,8 +96,10 @@ Plus `shared` (OPEN kernel of edge types like `ApiProblem`, depending on no modu
 ownership, never reuse) and the closed non-context modules with `allowedDependencies = {}`:
 `challenge` (proof of work; writes `challenge_registry`), `audit` (admin audit trail; writes
 `admin_audit_record`) and `monitoring` (correlation id, metric names, money-path alert check; writes
-nothing). No module writes the framework tables: `SPRING_SESSION*` (Spring Session,
-from the edge) and `event_publication*` (Modulith's registry; re-driven by the outbox levers).
+nothing). Also closed and non-context, but an adapter layer depending on the surfaces it needs: `auth`
+(sign-in and sessions: the `UserDetailsService`s, session establishment, credential stamp and revocation,
+SSO, password policy, recovery, the login and self-service controllers; writes nothing). No module writes
+the framework tables: `SPRING_SESSION*` (Spring Session, from `auth` and the edge) and `event_publication*` (Modulith's registry; re-driven by the outbox levers).
 Context modules depend on `shared`, which depends on no module; the root on modules, nothing on the
 root.
 
@@ -115,9 +117,9 @@ Events:
 day-refund listener; `ReviewsChanged` → `venue`.
 
 **Platform edge** (`RESPONSIBILITIES.md` § *Platform edge*): server-side sessions carrying an
-operator or a customer principal; login machinery at the edge, never in modules; customer account
-and guest row never linked; auth endpoints non-enumerating and constant-time; mocks profile-guarded
-out of prod; revocation edge-orchestrated and synchronous; account creation, password recovery
+operator or a customer principal; login and session machinery in `auth`, never in a domain module;
+customer account and guest row never linked; auth endpoints non-enumerating and constant-time; mocks
+profile-guarded out of prod; revocation orchestrated by `auth`, synchronous; account creation, password recovery
 and booking/stay create fenced by `challenge`'s proof-of-work against a single-use registry; every
 mutating `/api/admin/**` action audited by the edge; map tiles self-hosted under `/map/**`, no
 third-party map host.

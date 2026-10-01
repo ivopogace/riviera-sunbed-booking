@@ -22,6 +22,8 @@ import org.springframework.web.servlet.mvc.method.annotation.RequestMappingHandl
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 
+import ai.riviera.platform.auth.vocabulary.AuthRoles;
+
 /**
  * Makes <em>"every {@code /api/admin/**} endpoint is gated to {@code ROLE_ADMIN}"</em> a build failure
  * rather than a review read.
@@ -49,9 +51,9 @@ import static org.springframework.security.test.web.servlet.request.SecurityMock
  * a hand-written list cannot contain the endpoint nobody remembered to gate.
  *
  * <p><strong>The probe principals are the production ones.</strong> Their authorities come from the
- * constants the real {@code UserDetailsService}s grant — {@link OperatorUserDetailsService} hands a
+ * {@link AuthRoles} constants the real {@code UserDetailsService}s grant — the operator one hands a
  * {@code credential.admin() == false} account exactly {@code OPERATOR}, an admin {@code OPERATOR} plus
- * {@code ADMIN}, and {@link CustomerUserDetailsService} hands every customer {@code CUSTOMER} — so
+ * {@code ADMIN}, and the customer one hands every customer {@code CUSTOMER} — so
  * these are authority-identical to real sessions rather than hand-guessed twins, and a change to
  * either grant changes this guard in the same commit. Covering the customer as well as the operator is
  * design D-2's requirement: the two principal types authenticate through separate managers, so
@@ -114,7 +116,7 @@ class AdminSurfaceRoleGateTest {
 	@Test
 	void plainOperatorReachesNoAdminEndpoint() throws Exception {
 		assertNoAdminEndpointIsReachableBy(
-				user(OPERATOR_USER).roles(OperatorUserDetailsService.OPERATOR_ROLE),
+				user(OPERATOR_USER).roles(AuthRoles.OPERATOR),
 				"a plain operator");
 	}
 
@@ -122,7 +124,7 @@ class AdminSurfaceRoleGateTest {
 	@Test
 	void customerReachesNoAdminEndpoint() throws Exception {
 		assertNoAdminEndpointIsReachableBy(
-				user(CUSTOMER_USER).roles(CustomerUserDetailsService.CUSTOMER_ROLE),
+				user(CUSTOMER_USER).roles(AuthRoles.CUSTOMER),
 				"a signed-in customer");
 	}
 
@@ -147,7 +149,7 @@ class AdminSurfaceRoleGateTest {
 	@Test
 	void adminPrincipalReachesEveryAdminEndpoint() throws Exception {
 		RequestPostProcessor admin = user(ADMIN_USER).roles(
-				OperatorUserDetailsService.OPERATOR_ROLE, OperatorUserDetailsService.ADMIN_ROLE);
+				AuthRoles.OPERATOR, AuthRoles.ADMIN);
 		List<String> unreachable = new ArrayList<>();
 
 		for (String endpoint : mappedAdminEndpoints()) {

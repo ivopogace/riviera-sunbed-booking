@@ -22,10 +22,21 @@ import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Import;
 import org.springframework.session.FindByIndexNameSessionRepository;
 import org.springframework.session.Session;
 import org.springframework.test.web.servlet.request.RequestPostProcessor;
 
+import ai.riviera.platform.auth.adapter.in.AuthConfig;
+import ai.riviera.platform.auth.adapter.out.PrincipalSessionRevoker;
+import ai.riviera.platform.auth.application.CustomerRecovery;
+import ai.riviera.platform.auth.application.ExternalIdentity;
+import ai.riviera.platform.auth.application.OperatorApprovalMail;
+import ai.riviera.platform.auth.application.RecoveryProperties;
+import ai.riviera.platform.auth.application.RecoveryTokens;
+import ai.riviera.platform.auth.application.SsoAuthorizationChallenge;
+import ai.riviera.platform.auth.application.SsoGateway;
+import ai.riviera.platform.auth.application.StampedSessionCredentials;
 import ai.riviera.platform.availability.application.MarkOutcome;
 import ai.riviera.platform.availability.application.ReleaseOutcome;
 import ai.riviera.platform.availability.application.StaffAvailability;
@@ -178,6 +189,7 @@ import ai.riviera.platform.venue.vocabulary.VenueSummaryView;
  * pinned purely by {@code TokenBucketTest}).
  */
 @TestConfiguration(proxyBeanMethods = false)
+@Import({AuthConfig.class, StampedSessionCredentials.class})
 class WebSliceStubs {
 
 	/**

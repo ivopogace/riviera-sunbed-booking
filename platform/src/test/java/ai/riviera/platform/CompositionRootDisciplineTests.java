@@ -21,11 +21,11 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * Locks the root-package discipline: the composition root orchestrates the platform
- * edge (auth, sessions, SSO, recovery flows — RV-BE-11) and composes modules, but it is not a home
- * for cross-module <em>domain</em> orchestration. The only module surfaces the root still touches are
- * {@code customer}/{@code operator} (the two principal types), {@code notification::api} (the send
- * port), {@code challenge}'s port and verdict (the abuse mechanism the edge's fence calls),
+ * Locks the root-package discipline: the composition root holds the platform edge's security chain
+ * and composes modules, but it is not a home for cross-module <em>domain</em> orchestration. The only
+ * module surfaces the root still touches are {@code customer}/{@code operator} (the two principal
+ * types), {@code auth}'s port and vocabulary (the session check and role names the chain uses),
+ * {@code challenge}'s port and verdict (the abuse mechanism the edge's fence calls),
  * {@code audit::api} (the trail the admin-audit fence records through), {@code shared}, and — the
  * one granted domain composition, ADR-0020 — the published {@code api}/{@code vocabulary} of
  * {@code venue} and {@code booking}, so the remodel preview and commit can compose the two modules
@@ -41,12 +41,10 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * transport, bypassing both suppression enforcement and the off-thread dispatch that closes the
  * D-8 timing oracle) passed, and a ninth module would never have entered the deny set at all.
  * An allowlist is self-maintaining — a new module is out of bounds until someone deliberately
- * grants it — and it makes {@code MockMailer}'s Javadoc claim, that root access here is pinned to
- * {@code notification::api}, actually true.
+ * grants it.
  *
  * <p>The grant is by <em>surface</em>, not merely by module: the root may reach the published
- * {@code api}/{@code vocabulary} of the two principal-type modules, {@code notification}'s
- * {@code api} alone, the {@code challenge} mechanism's {@code api} + {@code vocabulary}, the
+ * {@code api}/{@code vocabulary} of the two principal-type modules and of {@code auth}, the {@code challenge} mechanism's {@code api} + {@code vocabulary}, the
  * {@code audit} mechanism's {@code api} alone — its fence appends primitives and never names the
  * published entry — the remodel pair's {@code api} + {@code vocabulary}, and the flat {@code shared}
  * kernel — never any module's {@code application}, {@code domain} or {@code adapter}
@@ -86,7 +84,7 @@ class CompositionRootDisciplineTests {
 	private static final Map<String, Set<String>> GRANTED_SURFACES = Map.of(
 			"customer", Set.of("api", "vocabulary"),
 			"operator", Set.of("api", "vocabulary"),
-			"notification", Set.of("api"),
+			"auth", Set.of("api", "vocabulary"),
 			"challenge", Set.of("api", "vocabulary"),
 			"audit", Set.of("api"),
 			"venue", Set.of("api", "vocabulary"),

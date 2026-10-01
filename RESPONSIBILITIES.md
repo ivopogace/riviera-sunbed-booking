@@ -683,7 +683,7 @@ transaction, on the request path too, a timeout fails the whole erasure, and a s
   **`booking`**; blanking a review → **`review`**. Both through `customer.spi` ports `booking`
   implements — an inversion, because a direct `customer → booking` call would cycle
 - Encoding/verifying credentials and all login machinery (`UserDetailsService`, sessions, the auth
-  endpoints, the OIDC exchange, mail transport) → the **platform edge** and **`notification`**
+  endpoints, the OIDC exchange, mail transport) → **`auth`** and **`notification`**
   (RV-BE-11; `CustomerAuthPlacementTests` checks only the Spring Security half); I store the
   identity and an opaque hash
 
@@ -696,14 +696,14 @@ bootstrap `operator`, which owns only the venues backfilled to it, the Miramar s
 `docs/runbooks/operator-credential-provisioning.md`) — and the operator↔venue ownership mapping
 (creator-owns-on-create, in the venue insert's transaction). I answer *does this operator own this
 venue?* (invariant #13), *its username, if in the expected status* (`usernameInStatus`: the edge
-revokes sessions **before** a revoking transition commits) and *does this venue have an `ACTIVE`
+revokes sessions **before** a revoking transition commits, in `auth`) and *does this venue have an `ACTIVE`
 owner?* (`VenueVisibility`).
 
 I answer *which operator is this principal name?* (`OperatorDirectory`; `NoOperableOperatorException`
 → `403` when it owns nothing). The controllers hand me the name, never a Spring Security type.
 
-**The `ACTIVE` predicate is three explicit sets, each at its owner:** the edge's may-authenticate
-set and `OperatorDirectory`'s may-operate set are `ACTIVE`+`PENDING` (approval gates tourist
+**The `ACTIVE` predicate is three explicit sets, each at its owner:** `auth`'s may-authenticate
+set (`AuthRoles.OPERATOR_MAY_AUTHENTICATE`) and `OperatorDirectory`'s may-operate set are `ACTIVE`+`PENDING` (approval gates tourist
 visibility, not console access); the tourist-visible set is `ACTIVE` only, deliberately, and
 `VenueVisibility` is its one home: no ownership row answers no (fail-closed); it fences `venue`'s
 catalogue reads and photo serving, and `booking`'s reserve, never a sold-booking path. A suspension **keeps** the
@@ -716,7 +716,7 @@ live session to revoke). An admin that loses a race receives no address and cann
 **The admin surface always keeps an `ACTIVE` admin** (#1311). A suspend locks every admin row, plus actor and
 target, `FOR NO KEY UPDATE` in id order in a statement of its own, then refuses one that would leave no other active
 admin (`LastActiveAdmin`, 409 `LAST_ACTIVE_ADMIN`) and one by an actor no longer an active admin by then
-(`ActorNotActiveAdmin`, 403): two admins suspending each other leave one. The edge asks `suspendRefusal` before it
+(`ActorNotActiveAdmin`, 403): two admins suspending each other leave one. `auth` asks `suspendRefusal` before it
 revokes, so only a race signs out a target whose suspend is refused. A later path that removes an admin (a demote, a
 delete) takes the same lock and keeps the rule.
 
@@ -726,7 +726,7 @@ delete) takes the same lock and keeps the rule.
 - Login machinery (credential encoding/verifying, the auth, approval and password-change endpoints,
   the `ROLE_ADMIN` mapping), **invalidating live sessions** on suspension, rejection, credential
   rotation or password change (`PrincipalSessionRevoker`), and the "venues are live" mail
-  (`OperatorApprovalMail` → `notification`) → the **platform edge**. I store an opaque hash and
+  (`OperatorApprovalMail` → `notification`) → **`auth`**. I store an opaque hash and
   `is_admin` flag and report *that* and *whose* a transition happened; no Spring Security
   (`OperatorAuthPlacementTests`), `org.springframework.session` or mail type lives in the module
 
@@ -801,8 +801,8 @@ tag names the person, invariant #7):
   `adapter/in`**, never at the composition root, which would need a published `api` port for one
   same-module consumer. Each answers a `200` with counts and a typed token, never a publication:
   serialized events carry booking ids (invariant #7).
-- **The published surface is exactly `notification::api`, two role-split ports consumed by the
-  composition root alone — no module depends on `notification`.** `MailSender` is fire-and-forget
+- **The published surface is exactly `notification::api`, two role-split ports consumed by `auth`
+  alone — no domain module depends on `notification`.** `MailSender` is fire-and-forget
   and moves **neither the triggering response's status nor its latency** (the anonymous
   `forgot-password` flow relies on it). `MailDeliverability` ("withheld now?") is safe only where
   the caller owns the address; its sole consumer is the authenticated verification-resend. I also
@@ -837,14 +837,14 @@ tag names the person, invariant #7):
   the view works cold from an inbox ("Pay now" on an open intent; an expired booking, not a 404),
   while `/booking/pay` resumes in-memory hand-off state and dead-ends. `BookingLinks` builds it
   here because registry listeners have no request in hand.
-- **The link origin is the edge's variable under my own key**: `RIVIERA_RECOVERY_LINK_BASE_URL`
+- **The link origin is `auth`'s variable under my own key**: `RIVIERA_RECOVERY_LINK_BASE_URL`
   binds `riviera.notification.booking-link.base-url` (one deployed origin; a second variable could
-  only drift), never a `riviera.recovery.*` key, which is the edge's namespace.
+  only drift), never a `riviera.recovery.*` key, which is `auth`'s namespace.
 
 **Not My Job:**
 - Deciding **when** to send, minting/hashing recovery tokens, building **tokenized** links → the
-  **platform edge** (`CustomerRecovery`), which hands me fully-formed messages. The line: a link
-  whose token I would mint, hash or time-bound is the edge's; one I *format* from a fact in hand is
+  **`auth`** (`CustomerRecovery`), which hands me fully-formed messages. The line: a link
+  whose token I would mint, hash or time-bound is `auth`'s; one I *format* from a fact in hand is
   mine (`BookingLinks`, from a code read through `booking::api`, never the payload — invariant #7)
 - The recovery-token lifecycle/store → **`customer`** (`CustomerAccountRecovery`)
 - Resolving an address to a guest contact → **`customer`** (`CustomerLookup#findByEmail`); *which
@@ -1041,14 +1041,54 @@ admin action was justified; retention (a named non-goal — rows are kept indefi
 **Not my job:** emitting a module's counters or choosing their tags → the module owning the thing
 measured; the meaning of a crossed threshold and the response → `docs/runbooks/observability.md`.
 
+## `auth` (not a bounded context)
+
+**Sign-in and sessions** (ADR-0028 Decision 2): a closed non-context module, an adapter layer rather
+than a mechanism, owning no table. Depends on `customer` and `operator` (`api` + `vocabulary`),
+`notification::api` and `shared`; publishes `api.SessionRevocation`, `api.SessionCredentials` (the
+per-request check the chain's filter calls) and `vocabulary` (`AuthRoles`, `BlockedPasswordException`).
+
+**Job:** turn a credential into a server-side session and keep it honest: both `UserDetailsService`s
+and their `AuthenticationManager`s, session establishment and rotation, the credential stamp, session
+revocation, SSO, the password policy, account recovery, the login, register, `/me` and self-service
+password endpoints, and the admin-lifecycle and self-erasure endpoints that revoke sessions in the same
+request (a domain module calling `auth` would cycle). `customer` and `operator` supply identity and an
+opaque hash through their `api`; no Spring Security type enters them (`*AuthPlacementTests`).
+
+- **Password policy (D-8)** — one rule, `PasswordPolicy`, wherever a password is *chosen*
+  (never at sign-in), checked before any write — on register, ahead of the timing-equalized
+  branches; modules get only the encoded hash, never the rule. Length → `400 INVALID_REQUEST`, a
+  blocked term → `400 PASSWORD_CONTAINS_BLOCKED_TERM`, distinct so the client can name the rule.
+- **A password reset revokes the account's sessions before and after its write** (not atomic:
+  `customer`'s transaction, Spring Session's deletes). Revoking only after would let a failed revoke
+  answer `500` with the token spent and the attacker's session alive, so `auth` names the account
+  first (`CustomerAccountRecovery#emailForResetToken`, consuming nothing) and revokes; the second
+  revoke ends sessions saved in between, and a login saved later fails its stamp check (next bullet).
+  Encode above the first revoke, or bcrypt widens the gap.
+- **Every session carries a credential stamp, checked on each request (#1306).** Its `SessionPrincipal`
+  holds a SHA-256 of the account (a customer's id, an operator's name) and the hash it was opened against.
+  `api.SessionCredentials` re-reads the account; the chain's `SessionCredentialFilter` ends the session when
+  the stamp, an operator's may-authenticate status or its admin flag no longer matches. `SessionAuthentication`
+  is the only session writer (`SessionWriterArchitectureTests`). A customer's self-service change writes only
+  over the hash it verified, so a reset landing first wins; either self-service change re-stamps the session it
+  keeps. Residual: a request already past the filter completes. Cost: one indexed read per authenticated request.
+- **The bootstrap credential is stamped by `auth`'s runner, and only that one.**
+  `OperatorCredentialInitializer` (full context only; a `@WebMvcTest` slice does not scan it)
+  touches only the bootstrap admin; every other operator self-registers (`OperatorRegistration`,
+  `PENDING` until approved) and sets its own password via `OperatorProvisioning#setPassword`.
+
+**Not my job:** the filter chain, route policy and its problem bodies → the root's edge
+(§ *Platform edge*); account state, the hash and the lifecycle transitions → **`customer`** /
+**`operator`**; mail transport and suppression → **`notification`**.
+
 ## Platform edge (settled)
 
-The edge rules no module owns (per-module consequences: §`customer`, §`operator`): server-side
-sessions (Spring Session JDBC) with **two principal types**; all login/session machinery at the
-edge, never in modules; customer-account identity separate from the guest row — no FK, no
+The edge rules no domain module owns (per-module consequences: §`auth`, §`customer`, §`operator`):
+server-side sessions (Spring Session JDBC) with **two principal types**; all login/session machinery
+in `auth`, never in a domain module; customer-account identity separate from the guest row — no FK, no
 back-linking of past guest bookings, ever; auth endpoints non-enumerating + constant-time, on their
 own rate-limit buckets; mocked externals (SSO IdPs, mailer) profile-guarded out of prod; session
-revocation edge-orchestrated and synchronous, bracketing the state change; every request re-checks the
+revocation orchestrated by `auth` and synchronous, bracketing the state change; every request re-checks the
 session's credential stamp.
 
 **Abuse and accountability split into fence and mechanism** (ADR-0017): the **fence** — filters and
@@ -1057,10 +1097,6 @@ their order, route policy, filter-chain problem bodies, neutralizing client inpu
 library) is a non-context module. So `ChallengeVerificationFilter` and `AdminAuditFilter` (every
 mutating `/api/admin/**` action, §`audit`) stay here; `challenge` and `audit` own what they call.
 
-- **Password policy (D-8)** — one edge rule, `PasswordPolicy`, wherever a password is *chosen*
-  (never at sign-in), checked before any write — on register, ahead of the timing-equalized
-  branches; modules get only the encoded hash, never the rule. Length → `400 INVALID_REQUEST`, a
-  blocked term → `400 PASSWORD_CONTAINS_BLOCKED_TERM`, distinct so the client can name the rule.
 - **Proof-of-work challenge (ADR-0016)** — customer and operator register, forgot-password, and
   booking and stay create (`POST /api/stays`) need a solved, self-hosted ALTCHA challenge (single
   use: §`challenge`). No ALTCHA hosted service is ever called; no domain module knows the challenge
@@ -1102,25 +1138,6 @@ mutating `/api/admin/**` action, §`audit`) stay here; `challenge` and `audit` o
   files sit in `riviera.map.dir`, never on the classpath: the archive is read by HTTP `Range`, and a
   deflated jar entry cannot seek. **Map posters** ship under `/posters/**`, so a phone's first paint
   makes no `/map/**` request. Size budgets: `MapArchiveBudgetTest`, `map-poster-set.spec.ts`.
-- **A password reset revokes the account's sessions before and after its write** (not atomic:
-  `customer`'s transaction, Spring Session's deletes). Revoking only after would let a failed revoke
-  answer `500` with the token spent and the attacker's session alive, so the edge names the account
-  first (`CustomerAccountRecovery#emailForResetToken`, consuming nothing) and revokes; the second
-  revoke ends sessions saved in between, and a login saved later fails its stamp check (next bullet).
-  Encode above the first revoke, or bcrypt widens the gap.
-- **Every session carries a credential stamp, checked on each request (#1306).** Its `SessionPrincipal` holds
-  a SHA-256 of the account (a customer's id, an operator's name) and the hash it was opened against.
-  `SessionCredentialFilter` re-reads the account (`CustomerAccounts#liveCredential`, `OperatorAccounts`) and
-  ends the session when the stamp, an operator's may-authenticate status or its admin flag no longer matches.
-  `SessionAuthentication` is the only session writer (`SessionWriterArchitectureTests`); V72 ended the
-  unstamped sessions. A customer's self-service change writes only over the hash it verified, so a reset landing
-  first wins; either self-service change re-stamps the session it keeps. Residual: a request already past the filter completes. Cost: one
-  indexed read per authenticated request.
-- **The bootstrap credential is stamped by an edge runner, and only that one.**
-  `OperatorCredentialInitializer` (full context only; a `@WebMvcTest` slice does not scan it)
-  touches only the bootstrap admin; every other operator self-registers (`OperatorRegistration`,
-  `PENDING` until approved) and sets its own password via `OperatorProvisioning#setPassword`.
-
 ## Frontend (the SPA, not a module)
 
 The SPA rules whose TSDoc points here; structure is `riviera-frontend`'s, styling `riviera-tailwind`'s.

@@ -1,0 +1,75 @@
+package ai.riviera.platform.auth.application;
+
+import ai.riviera.platform.auth.vocabulary.BlockedPasswordException;
+import ai.riviera.platform.shared.InvalidApiRequestException;
+
+import java.nio.charset.StandardCharsets;
+import java.util.Locale;
+
+/**
+ * The one policy every edge surface accepting a new password enforces (register, reset, set, both
+ * self-service changes), plus the bootstrap credential's length rule: {@value #MIN_LENGTH}
+ * characters to {@value #MAX_BYTES} bytes (bcrypt's input cap), leading and trailing spaces
+ * significant, no composition rules, and neither the service name nor the account's own name,
+ * case-insensitively. Length is checked first ({@link InvalidApiRequestException}); a blocklist hit
+ * throws {@link BlockedPasswordException}. Rationale: RESPONSIBILITIES.md §Platform edge.
+ */
+public final class PasswordPolicy {
+
+	public static final int MIN_LENGTH = 12;
+	public static final int MAX_BYTES = 72;
+	/** An account name shorter than this is not applied as a blocked term — it would match almost anything. */
+	static final int MIN_ACCOUNT_NAME_LENGTH = 3;
+	private static final String SERVICE_NAME = "riviera";
+
+	private PasswordPolicy() {
+	}
+
+	/**
+	 * Whether a current-password field was supplied, as both self-service changes define it. Empty,
+	 * never blank: {@code ""} is under {@value #MIN_LENGTH} characters so never a real password,
+	 * while leading and trailing spaces are significant and must survive.
+	 */
+	public static boolean isSupplied(String password) {
+		return password != null && !password.isEmpty();
+	}
+
+	/** Whether {@code password} is within the length bounds — the check the bootstrap credential shares. */
+	public static boolean hasPermittedLength(String password) {
+		int bytes = password.getBytes(StandardCharsets.UTF_8).length;
+		return password.length() >= MIN_LENGTH && bytes <= MAX_BYTES;
+	}
+
+	/** Enforce the length rule and the service-name block before any encode/write. */
+	public static void validate(String password) {
+		if (!hasPermittedLength(password)) {
+			throw new InvalidApiRequestException("password outside the permitted length");
+		}
+		if (contains(password, SERVICE_NAME)) {
+			throw new BlockedPasswordException();
+		}
+	}
+
+	/**
+	 * {@link #validate(String)} plus the account's own name as a blocked term: the email local part for
+	 * a tourist, the username for an operator. A name under {@value #MIN_ACCOUNT_NAME_LENGTH} characters is skipped.
+	 */
+	public static void validate(String password, String accountName) {
+		validate(password);
+		if (accountName.length() >= MIN_ACCOUNT_NAME_LENGTH && contains(password, accountName)) {
+			throw new BlockedPasswordException();
+		}
+	}
+
+	/** The part of {@code email} before the {@code @}, lower-cased — the tourist's account name. */
+	public static String emailLocalPart(String email) {
+		int at = email.indexOf('@');
+		String localPart = at < 0 ? email : email.substring(0, at);
+		return localPart.toLowerCase(Locale.ROOT);
+	}
+
+	private static boolean contains(String password, String term) {
+		return password.toLowerCase(Locale.ROOT).contains(term.toLowerCase(Locale.ROOT));
+	}
+
+}
