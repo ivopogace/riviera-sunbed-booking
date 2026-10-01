@@ -6,7 +6,7 @@ import java.util.Set;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
-import org.springframework.boot.context.properties.EnableConfigurationProperties;
+import org.springframework.core.env.Environment;
 import org.springframework.modulith.events.IncompleteEventPublications;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
@@ -20,7 +20,6 @@ import ai.riviera.platform.shared.FailedPublicationRetry;
  */
 @Component
 @ConditionalOnProperty(name = "riviera.events.spine-retry.enabled", havingValue = "true", matchIfMissing = true)
-@EnableConfigurationProperties(FailedPublicationRetry.Bounds.class)
 class PayoutSpineRetry {
 
 	/** The explicit ids of this module's listeners whose redelivery is a no-op (ListenerIdSnapshotTest). */
@@ -33,8 +32,9 @@ class PayoutSpineRetry {
 
 	private final FailedPublicationRetry retry;
 
-	PayoutSpineRetry(IncompleteEventPublications publications, FailedPublicationRetry.Bounds bounds, Clock clock) {
-		this.retry = new FailedPublicationRetry(publications, bounds, LISTENER_IDS, clock);
+	PayoutSpineRetry(IncompleteEventPublications publications, Environment environment, Clock clock) {
+		this.retry = new FailedPublicationRetry(publications, FailedPublicationRetry.Bounds.from(environment),
+				LISTENER_IDS, clock);
 	}
 
 	@Scheduled(fixedDelayString = "${riviera.events.spine-retry.interval:PT10M}",

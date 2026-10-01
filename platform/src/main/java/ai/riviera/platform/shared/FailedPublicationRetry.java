@@ -6,8 +6,9 @@ import java.time.Instant;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import org.springframework.boot.context.properties.ConfigurationProperties;
+import org.springframework.boot.context.properties.bind.Binder;
 import org.springframework.boot.context.properties.bind.DefaultValue;
+import org.springframework.core.env.Environment;
 import org.springframework.modulith.events.EventPublication;
 import org.springframework.modulith.events.IncompleteEventPublications;
 import org.springframework.modulith.events.core.TargetEventPublication;
@@ -72,9 +73,15 @@ public final class FailedPublicationRetry {
 	 * {@code riviera.events.spine-retry.*}: rows per sweep, the quiet period after a publication's last
 	 * attempt, and the attempt count past which a row waits for a restart or an operator.
 	 */
-	@ConfigurationProperties("riviera.events.spine-retry")
 	public record Bounds(@DefaultValue("50") int batchSize, @DefaultValue("PT5M") Duration minAge,
 			@DefaultValue("5") int maxAttempts) {
+
+		private static final String PREFIX = "riviera.events.spine-retry";
+
+		/** Binds from the environment, not as a bean: a module test bootstraps no {@code shared} bean. */
+		public static Bounds from(Environment environment) {
+			return Binder.get(environment).bindOrCreate(PREFIX, Bounds.class);
+		}
 
 		public Bounds {
 			if (batchSize < 1 || maxAttempts < 1 || minAge.isNegative()) {

@@ -10,6 +10,7 @@ import java.util.Set;
 import java.util.function.Predicate;
 
 import org.junit.jupiter.api.Test;
+import org.springframework.mock.env.MockEnvironment;
 import org.springframework.modulith.events.EventPublication;
 import org.springframework.modulith.events.IncompleteEventPublications;
 import org.springframework.modulith.events.ResubmissionOptions;
@@ -86,6 +87,17 @@ class FailedPublicationRetryTest {
 
 		assertEquals(2, retry.resubmit());
 		assertEquals(2, publications.accepted.size());
+	}
+
+	@Test
+	void boundsBindTheirDefaultsAndOverrides() {
+		assertEquals(new FailedPublicationRetry.Bounds(50, Duration.ofMinutes(5), 5),
+				FailedPublicationRetry.Bounds.from(new MockEnvironment()));
+		assertEquals(new FailedPublicationRetry.Bounds(10, Duration.ofMinutes(1), 2),
+				FailedPublicationRetry.Bounds.from(new MockEnvironment()
+						.withProperty("riviera.events.spine-retry.batch-size", "10")
+						.withProperty("riviera.events.spine-retry.min-age", "PT1M")
+						.withProperty("riviera.events.spine-retry.max-attempts", "2")));
 	}
 
 	@Test
