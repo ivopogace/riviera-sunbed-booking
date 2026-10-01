@@ -2,7 +2,9 @@
 
 - **Status:** Accepted — implemented by the slices for issues #1033 (the preview; epic #1027, user
   stories 19 and 21), #1034 (the commit's moves; user stories 20, 23–30) and #1035 (the commit's
-  refunds, releases and declines; user stories 22, 31–32 and 35).
+  refunds, releases and declines; user stories 22, 31–32 and 35). *Superseded on placement
+  2026-10-01 by ADR-0028:* Decision 1's home moves from the root to the closed module `remodel`, and
+  Decision 2's grant rows become that module's `allowedDependencies`; Decisions 2–4 otherwise stand.
 - **Date:** 2026-09-09
 - **Relates to:** ADR-0017 (the root as the home of edge mechanisms), ADR-0007 (module structure),
   invariants #2, #11, #13, `RESPONSIBILITIES.md` § *Platform edge*, `CompositionRootDisciplineTests`

@@ -3,7 +3,11 @@
 - **Status:** Accepted — implemented by PR #916 (#913), which moved the proof-of-work challenge
   mechanism into the closed non-context module `challenge`, and by PR #917 (#914), which moved the
   admin audit log into the closed non-context module `audit`. Both instances of Decision 1 now
-  exist; no third is named.
+  exist; no third is named. *Amended 2026-10-01 by ADR-0028:* the fence of Decision 1 moves from the
+  root to the closed module `web`; the fence/mechanism split, `challenge` and `audit` stand. The
+  "no per-package opt-out" of the considered options is incomplete: `explicitly-annotated` or a
+  custom detection strategy opts a package out, but leaves it checked by nothing, so the rejection
+  stands.
 - **Date:** 2026-09-03
 - **Relates to:** ADR-0016 (Decision 3 is amended by this ADR), ADR-0007 (the module templates
   this applies unchanged; Amendment 2 introduced the one non-context module `shared`), invariant

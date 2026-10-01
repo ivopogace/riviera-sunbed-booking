@@ -195,6 +195,9 @@ controllers), which *depends on* modules — and the home of `ApiProblem`, `Curr
 both closes cycles by construction, and did (`booking → root → booking`) the moment an edge
 listener on `booking.events.BookingConfirmed` needed `root → booking`.
 
+*Amended 2026-10-01 by ADR-0028:* `shared` becomes CLOSED (its flat base package is its API) and is
+registered as a Modulith shared module via `@Modulithic(sharedModules = "shared")`; its flat shape stands.
+
 **Decision.** Those types live in `ai.riviera.platform.shared`, declared
 `@ApplicationModule(type = OPEN)`. This is a **Shared Kernel** (Evans, DDD ch. 14), not a bounded
 context: it owns no aggregate, publishes no `api`/`vocabulary`/`events`/`spi` surface (OPEN means
