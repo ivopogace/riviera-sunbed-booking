@@ -11,7 +11,7 @@ import ai.riviera.platform.booking.vocabulary.BookingId;
 import ai.riviera.platform.booking.vocabulary.RefundReason;
 import ai.riviera.platform.payment.api.CancelPaymentPort;
 import ai.riviera.platform.payment.vocabulary.PaymentCancellation;
-import ai.riviera.platform.shared.ObservabilityMetrics;
+import ai.riviera.platform.monitoring.vocabulary.ObservabilityMetrics;
 import ai.riviera.platform.venue.vocabulary.SetId;
 import ai.riviera.platform.venue.vocabulary.VenueId;
 

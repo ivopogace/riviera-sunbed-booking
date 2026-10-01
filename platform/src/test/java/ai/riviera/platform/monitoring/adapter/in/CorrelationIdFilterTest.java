@@ -1,4 +1,4 @@
-package ai.riviera.platform;
+package ai.riviera.platform.monitoring.adapter.in;
 
 import java.util.concurrent.atomic.AtomicReference;
 

@@ -5,7 +5,7 @@ import io.micrometer.core.instrument.MeterRegistry;
 
 import org.springframework.stereotype.Component;
 
-import ai.riviera.platform.shared.ObservabilityMetrics;
+import ai.riviera.platform.monitoring.vocabulary.ObservabilityMetrics;
 
 /**
  * Publishes {@code riviera.refunds.owed} — how many bookings are still owed a refund the gateway

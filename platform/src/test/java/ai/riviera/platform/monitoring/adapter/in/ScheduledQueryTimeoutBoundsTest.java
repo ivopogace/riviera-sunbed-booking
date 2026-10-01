@@ -1,4 +1,4 @@
-package ai.riviera.platform;
+package ai.riviera.platform.monitoring.adapter.in;
 
 import org.junit.jupiter.api.Test;
 
@@ -17,8 +17,8 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
  * floor and a ceiling checked in a constructor — there is no JSR-303 validator on this classpath, so
  * {@code @Min}/{@code @Validated} would validate nothing at all.
  *
- * <p>One guard, at the platform edge: {@link ScheduledQueryTimeout}'s Javadoc records why it is not
- * four (a duplication gate, and no legal shared home for a helper spanning the root and two modules).
+ * <p>One guard, in {@code monitoring}: {@link ScheduledQueryTimeout}'s Javadoc records why it is not
+ * four (a duplication gate, and the readers are module adapters that read the raw property).
  */
 class ScheduledQueryTimeoutBoundsTest {
 

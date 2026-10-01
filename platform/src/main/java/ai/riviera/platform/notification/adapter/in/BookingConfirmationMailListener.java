@@ -18,7 +18,7 @@ import ai.riviera.platform.notification.application.MailAttemptOutcome;
 import ai.riviera.platform.notification.application.MailAttemptSource;
 import ai.riviera.platform.notification.application.MissingBookingFact;
 import ai.riviera.platform.notification.application.TransactionalMailService;
-import ai.riviera.platform.shared.ObservabilityMetrics;
+import ai.riviera.platform.monitoring.vocabulary.ObservabilityMetrics;
 
 /**
  * Mails the booking code on {@link BookingConfirmed}, after commit, via {@link TransactionalMailService}.
