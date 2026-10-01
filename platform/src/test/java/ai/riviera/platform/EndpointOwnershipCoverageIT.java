@@ -63,8 +63,8 @@ class EndpointOwnershipCoverageIT {
 	private static final String APPLICATION_PACKAGE = "ai.riviera.platform";
 	private static final String NOT_VENUE_OWNER = "NOT_VENUE_OWNER";
 
-	/** Mutating venue-scoped endpoints that are not ownership-gated, each with its reason. */
-	private static final Set<String> DECLARED_EXEMPT = Set.of();
+	/** Mutating venue-scoped endpoints that are not ownership-gated, keyed to the reason why. */
+	private static final Map<String, String> DECLARED_EXEMPT = Map.of();
 
 	private static final String SET_BODY = """
 			{"rowLabel":"A","positionNo":1,"tier":"STANDARD","pool":"ONLINE",
@@ -138,11 +138,11 @@ class EndpointOwnershipCoverageIT {
 		List<String> violations = new ArrayList<>();
 		Set<String> endpoints = mutatingVenueScopedEndpoints();
 
-		assertThat(endpoints).as("declared exemptions must still be mapped").containsAll(DECLARED_EXEMPT);
+		assertThat(endpoints).as("declared exemptions must still be mapped").containsAll(DECLARED_EXEMPT.keySet());
 		assertThat(endpoints).as("every VALID_INPUTS key must still be mapped").containsAll(VALID_INPUTS.keySet());
 
 		for (String endpoint : endpoints) {
-			if (DECLARED_EXEMPT.contains(endpoint)) {
+			if (DECLARED_EXEMPT.containsKey(endpoint)) {
 				continue;
 			}
 			RequestBuilder probe = VALID_INPUTS.getOrDefault(endpoint, request -> request)
@@ -153,7 +153,7 @@ class EndpointOwnershipCoverageIT {
 			if (status != HttpStatus.FORBIDDEN.value() || !NOT_VENUE_OWNER.equals(problemCode(body))) {
 				violations.add(endpoint + " answered a non-owner " + status + " " + body
 						+ " — assert ownership first in the service, or give it VALID_INPUTS if the request "
-						+ "failed parsing, or declare it exempt with the reason");
+						+ "failed parsing, or add it to DECLARED_EXEMPT with the reason");
 			}
 		}
 
