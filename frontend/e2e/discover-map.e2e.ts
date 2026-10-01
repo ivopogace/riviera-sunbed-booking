@@ -3,7 +3,7 @@ import { expect, Locator, Page, test } from '@playwright/test';
 import { expectNoSeriousAxeViolations } from './support/axe';
 import { settle } from './support/booking-dialog';
 import { hitTestId } from './support/hit-test';
-import { mockMapResources } from './support/map-resources';
+import { mockMapResources, recordOffOriginRequests } from './support/map-resources';
 import { expectTouchManipulation } from './support/mobile-zoom';
 import { expectTouchTargets } from './support/touch-targets';
 
@@ -121,12 +121,6 @@ const CROWDED_VENUES = [
     location: { latitude: 40.15718, longitude: 19.64038 },
   },
 ];
-
-/**
- * The page's own origin plus the API origin the dev build points at — one origin in production
- * (Spring serves the SPA), two under `ng serve`. Anything else is a third party.
- */
-const OUR_HOSTS = new Set(['localhost:4200', 'localhost:8080']);
 
 /**
  * Sarandë, to six decimals. Deliberately unround: the no-leak guard greps every request, storage
@@ -682,17 +676,10 @@ test.describe('Discover map — real engine', () => {
 
   test('the map open on Discover makes no request to a third party', async ({ page }) => {
     await mockVenues(page, 0, SHEET_VENUES);
-    const offOrigin: string[] = [];
+    const offOrigin = recordOffOriginRequests(page);
     const seen = { style: false, sprite: false, glyph: false, tile: false };
     page.on('request', (request) => {
-      const url = new URL(request.url());
-      if (!/^https?:$/.test(url.protocol)) {
-        return;
-      }
-      if (!OUR_HOSTS.has(url.host)) {
-        offOrigin.push(request.url());
-      }
-      const p = url.pathname;
+      const p = new URL(request.url()).pathname;
       seen.style ||= p.endsWith('/map/style.json');
       seen.sprite ||= p.includes('/map/sprites/');
       seen.glyph ||= p.includes('/map/glyphs/');
@@ -736,7 +723,7 @@ test.describe('Discover map — real engine', () => {
     await context.grantPermissions(['geolocation']);
     await context.setGeolocation(VISITOR);
 
-    const offOrigin: string[] = [];
+    const offOrigin = recordOffOriginRequests(page);
     const carrying: string[] = [];
     const digits = [
       String(VISITOR.latitude),
@@ -750,9 +737,6 @@ test.describe('Discover map — real engine', () => {
       const url = new URL(request.url());
       if (!/^https?:$/.test(url.protocol)) {
         return;
-      }
-      if (!OUR_HOSTS.has(url.host)) {
-        offOrigin.push(request.url());
       }
       const headers = Object.entries(request.headers())
         .map(([name, value]) => `${name}: ${value}`)

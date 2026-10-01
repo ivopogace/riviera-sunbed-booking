@@ -129,6 +129,18 @@ class OperatorRegisterChallengeIT {
 				.andExpect(jsonPath("$.code").value("RATE_LIMITED"));
 	}
 
+	@Test
+	void aCsrfLessRegisterIsRefusedBeforeItSpendsTheChallenge() throws Exception {
+		String payload = solvedFromTheEndpoint();
+
+		mvc.perform(registerRequest(SessionLoginSupport.uniqueClientIp(), "chal-op-gus", payload))
+				.andExpect(status().isForbidden());
+
+		assertEquals(0, registryRows(ChallengeSolving.nonce(payload)), "the CSRF gate runs before the challenge claim");
+		assertEquals(0, operators("chal-op-gus"));
+		register("chal-op-gus", payload).andExpect(status().isAccepted());
+	}
+
 	private String solvedFromTheEndpoint() throws Exception {
 		MvcResult result = mvc.perform(get(CHALLENGE_PATH)
 				.header("X-Forwarded-For", SessionLoginSupport.uniqueClientIp()))
@@ -142,12 +154,21 @@ class OperatorRegisterChallengeIT {
 				.param("u", username).query(Integer.class).single();
 	}
 
+	private int registryRows(String nonce) {
+		return jdbc.sql("SELECT count(*) FROM challenge_registry WHERE challenge_id = :id")
+				.param("id", nonce).query(Integer.class).single();
+	}
+
 	private ResultActions register(String username, String payload) throws Exception {
 		return registerFrom(SessionLoginSupport.uniqueClientIp(), username, payload);
 	}
 
 	private ResultActions registerFrom(String ip, String username, String payload) throws Exception {
-		MockHttpServletRequestBuilder request = post(REGISTER_PATH).with(csrf())
+		return mvc.perform(registerRequest(ip, username, payload).with(csrf()));
+	}
+
+	private MockHttpServletRequestBuilder registerRequest(String ip, String username, String payload) {
+		MockHttpServletRequestBuilder request = post(REGISTER_PATH)
 				.header("X-Forwarded-For", ip)
 				.contentType(MediaType.APPLICATION_JSON)
 				.content("""
@@ -156,6 +177,6 @@ class OperatorRegisterChallengeIT {
 		if (payload != null) {
 			request.header(HEADER, payload);
 		}
-		return mvc.perform(request);
+		return request;
 	}
 }

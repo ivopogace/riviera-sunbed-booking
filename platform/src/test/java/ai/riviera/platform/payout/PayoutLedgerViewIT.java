@@ -156,6 +156,35 @@ class PayoutLedgerViewIT {
 	}
 
 	@Test
+	void aDayReversalDeductsFromTheRunningNetOwed() {
+		long venueId = newVenue();
+		grantToBootstrap(venueId);
+		long bookingId = newBooking(venueId, anySeededSet(), "LEDGERVIEWDAY");
+		// 8500 accrued - 2550 for one refunded day; adding it would answer 11050 (invariant #9).
+		jdbc.sql("""
+				INSERT INTO payout_ledger_entry (venue_id, booking_id, entry_type, gross_minor,
+				                                 commission_minor, net_minor, currency)
+				VALUES (:v, :b, 'ACCRUAL', 10000, 1500, 8500, 'EUR')
+				""").param("v", venueId).param("b", bookingId).update();
+		jdbc.sql("""
+				INSERT INTO payout_ledger_entry (venue_id, booking_id, entry_type, service_date, gross_minor,
+				                                 commission_minor, net_minor, currency, reason)
+				VALUES (:v, :b, 'DAY_REVERSAL', DATE '2031-06-01', 3000, 450, 2550, 'EUR', 'WEATHER')
+				""").param("v", venueId).param("b", bookingId).update();
+
+		VenueLedger ledger = viewPayoutLedger.forVenue(bootstrap(), new VenueId(venueId));
+
+		assertEquals(5950L, ledger.netOwedMinor(), "net owed = 8500 accrued - 2550 for the day");
+		List<LedgerEntryView> entries = ledger.entries();
+		assertEquals(2, entries.size(), "the day reversal is listed like any other entry");
+		LedgerEntryView dayReversal = entries.get(1);
+		assertEquals(EntryType.DAY_REVERSAL, dayReversal.entryType());
+		assertEquals(2550L, dayReversal.netMinor(), "stored as a positive magnitude; the type carries the sign");
+		assertEquals(5950L, dayReversal.runningNetMinor(), "running net owed after the day reversal");
+		assertEquals(RefundReason.WEATHER, dayReversal.reason());
+	}
+
+	@Test
 	void emptyLedgerOwesNothing() {
 		long venueId = newVenue();
 		grantToBootstrap(venueId);
