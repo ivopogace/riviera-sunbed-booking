@@ -641,7 +641,8 @@ registration never auto-claims a guest email's past bookings; back-linking them 
 non-goal** (design D-2, D-6). Own **right-to-erasure**: tombstone account + guest-contact PII in
 place, delete the transient SSO/token children, retain booking/payment/payout rows under the
 **statutory-retention exception** (ADR-0010); the edge authenticates, and the self-service path
-revokes sessions (the admin path leaves them to the credential stamp, #1334).
+revokes sessions. The admin path is mine (`adapter/in.AdminErasureController`, ADMIN-gated by the
+edge) and leaves sessions to the credential stamp (#1334).
 
 Own the **retention policy** — the **retention window**, which guest contacts have no **retention
 basis** left, and the sweep that tombstones them; `booking` supplies only the recency *fact*. Both
@@ -976,9 +977,11 @@ rate → **`payout`**, reached only through `booking`.
 
 ## `shared` (not a bounded context)
 
-The **Shared Kernel** (Evans, DDD ch. 14), an `OPEN` module with no `api`/`vocabulary` surface. The
-name is used for Evans' *discipline* (keep it small, change it only by consultation), not his
-definition — his kernel is a subset of the domain model; this one holds edge types (ADR-0017).
+The **Shared Kernel** (Evans, DDD ch. 14), a closed module registered in `@Modulithic(sharedModules)`:
+Modulith allows it to every module and loads it in every module test; it is flat, its base package
+its API, with no `api`/`vocabulary` surface. The name is used for Evans' *discipline* (keep it
+small, change it only by consultation), not his definition — his kernel is a subset of the domain
+model; this one holds edge types (ADR-0017).
 
 **Job:** hold the few edge types modules share, each admitted on **ownership, never reuse** — here
 because no module can own it, not because several use it. Nothing else: three modules wanting a type
@@ -1028,8 +1031,8 @@ The **admin audit trail** (ADR-0013): a closed non-context module (ADR-0017 deci
 template plus a driving adapter — no one module could own it, as the audited controllers span
 modules and the root. Only writer and reader of `admin_audit_record` (machine-checked); publishes
 `api.AdminAuditLog` and `vocabulary.AdminAuditEntry`, nothing else (the root reaches `api` alone).
-**I know no domain type and depend on nothing, not even `shared`** (`allowedDependencies = {}`): a
-mechanism that knew one would be a domain module in disguise.
+**I know no domain type and depend on no module but the registered `shared`** (`allowedDependencies =
+{}`): a mechanism that knew a domain type would be a domain module in disguise.
 
 **Job:** append one row per mutating `/api/admin/**` action that reached past the security gate —
 the actor a username snapshot, deliberately no FK — and serve the Audit tab's newest-first read.

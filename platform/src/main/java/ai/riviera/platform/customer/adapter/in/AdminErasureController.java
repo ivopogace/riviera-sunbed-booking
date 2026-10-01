@@ -1,4 +1,4 @@
-package ai.riviera.platform;
+package ai.riviera.platform.customer.adapter.in;
 
 import ai.riviera.platform.shared.ApiProblem;
 import org.springframework.http.HttpStatus;
@@ -12,9 +12,9 @@ import ai.riviera.platform.customer.api.AccountErasure;
 
 /**
  * The platform-admin surface for actioning a data-subject erasure request by email — for a guest
- * with no account, or an account holder who cannot self-serve. Drives only {@code customer}'s
- * {@link AccountErasure} port (invariant #11); the scrub lives in the customer application service.
- * Gated to {@code ADMIN} in {@link SecurityConfig}, not venue-scoped (exempt from #13); any other
+ * with no account, or an account holder who cannot self-serve. Drives the {@link AccountErasure} port;
+ * the scrub lives in the customer application service.
+ * Gated to {@code ADMIN} in {@code SecurityConfig}, not venue-scoped (exempt from #13); any other
  * role is {@code 403}. Erased, already-erased and nothing-to-erase are all {@code 204}, never
  * revealing whether the email existed (design D-8); a blank email is {@code 400 INVALID_REQUEST}.
  */
