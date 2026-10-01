@@ -693,7 +693,7 @@ classDiagram
 > No `Operator` class and **no `domain/` package**: the account is a row, ownership is a row in
 > `operator_venue`, and the status lifecycle is the same guarded `UPDATE … WHERE status =
 > :expected` idiom as `booking`'s. `OperatorStatus` is published rather than centralised on
-> purpose — each status predicate lives with its owner: the edge's may-authenticate set, the
+> purpose — each status predicate lives with its owner: `auth`'s may-authenticate set, the
 > module's ownership resolution, and tourist visibility.
 >
 > The module publishes its own `VenueRef` instead of importing `venue.vocabulary.VenueId`, because

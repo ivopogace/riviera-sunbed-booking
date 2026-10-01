@@ -123,8 +123,8 @@ Provision operators directly (bypassing self-registration) through the `operator
 - `provision(username, passwordHash)` — create a new `ACTIVE`, per-venue (not an admin) operator.
 - `setPassword(username, passwordHash)` — rotate an existing operator's credential.
 
-Both take an **already-encoded** hash: encode the raw password with the edge `PasswordEncoder`
-(delegating → `{bcrypt}…`) and pass the result, keeping all crypto at the edge (the `operator` module
+Both take an **already-encoded** hash: encode the raw password with `auth`'s `PasswordEncoder`
+(delegating → `{bcrypt}…`) and pass the result, keeping all crypto in `auth` (the `operator` module
 stores an opaque blob — RV-BE-11). Grant a per-venue operator its venues with `operator_venue` rows;
 a per-venue operator owns **only** the venues explicitly mapped to it (invariant #13).
 

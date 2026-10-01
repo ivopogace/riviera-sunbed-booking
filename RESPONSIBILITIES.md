@@ -650,7 +650,7 @@ erasure flows reach a subject's **review** (the one PII row outside my tables) t
 the ids my scrubs return; `booking` resolves them, `review` blanks its rows. I never see booking ids.
 
 Own the **canonical form of an email address** (`customer.vocabulary.Emails`), the platform's one
-definition, used by my services, the platform edge and `notification` (the input contract of the
+definition, used by my services, `auth` and `notification` (the input contract of the
 suppression key's HMAC). It stays here: a module's published value is its own, never `shared`'s.
 
 I answer *which account is this signed-in customer?* (`CustomerAccountDirectory`;
@@ -659,9 +659,9 @@ holds the customer role, so an operator session named like a customer's email ne
 no Spring Security type.
 
 Email verification is **soft**: it gates no sign-in or booking. `CustomerAccountRecovery` names a
-reset token's account **without consuming** it, so the edge revokes that principal's sessions first.
-`CustomerAccounts#liveCredential` answers the edge's password login, SSO sign-in and per-request session check:
-the live account by email or id, SSO-only included (null hash), never an erased one; the edge owns the stamp.
+reset token's account **without consuming** it, so `auth` revokes that principal's sessions first.
+`CustomerAccounts#liveCredential` answers `auth`'s password login, SSO sign-in and per-request session check:
+the live account by email or id, SSO-only included (null hash), never an erased one; `auth` owns the stamp.
 
 **A write of an account's children locks its live row first** (`CustomerAccountStore#lockLiveAccount`, `FOR NO
 KEY UPDATE` so the child insert's key check passes), in a statement of its own, the order erasure takes them: token
@@ -913,7 +913,7 @@ per booking), who may leave, change or remove it and until when, and the score a
 - Deciding a stay was delivered, or owning `completed_at` → **`booking`**
 - The guest's identity → **`customer`**: a review hangs on a *booking*, not a person; the display
   name is the author's label, its prefill suggestion `booking`'s to derive
-- Login, sessions, CSRF, rate-limit wiring, the ADMIN gate → the **edge**; a takedown's audit record
+- Login and sessions → **`auth`**; CSRF, rate-limit wiring, the ADMIN gate → the **edge**; a takedown's audit record
   → **`audit`**, via the edge's fence
 - Judging a review for takedown → the **platform admin** (publish-first; no queue, no reporting)
 - *That* a subject's reviews are erased, or which bookings are theirs → **`customer`** and
