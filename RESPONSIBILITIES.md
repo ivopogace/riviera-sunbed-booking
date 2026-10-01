@@ -1143,8 +1143,10 @@ mutating `/api/admin/**` action, §`audit`) stay here; `challenge` and `audit` o
   non-enumerating (D-8): a refusal precedes the account lookup, identical for every address.
 - **Forgot-password is constant-time by doing the same work on both branches (#1336):** the request
   thread makes the one account read and answers `204`; a known address only enqueues the send, whose
-  task mints and stores the reset token, then mails it. A token never issued (saturated pool, erasure,
-  failure) is a lost mail the user re-requests, never a response difference.
+  task mints and stores the reset token (under a transaction timeout, as one drainer serves every
+  recovery mail), then mails it. So an earlier link stays redeemable until that task runs. A token
+  never issued (saturated pool, erasure, failure) is a lost mail the user re-requests, never a
+  response difference.
 - **Booking and stay create are fenced for every caller**, guest or signed-in — no auth-state
   branch, since a script holding the online pool costs the same either way. A refusal precedes any
   availability claim, booking row or PaymentIntent (invariant #2 untouched). The SPA solves on the

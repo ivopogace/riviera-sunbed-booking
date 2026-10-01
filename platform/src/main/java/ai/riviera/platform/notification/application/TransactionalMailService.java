@@ -39,7 +39,7 @@ public class TransactionalMailService implements MailSender {
 	/** The suppression read failed non-transiently: a database/grant fault, not a relay one. */
 	static final String REASON_SUPPRESSION_LOOKUP = "suppression-lookup";
 
-	/** The deferred reset link failed to issue its token: a database fault on the drainer, not a relay one. */
+	/** The deferred reset link failed to issue its token: usually a database fault on the drainer, not a relay one. */
 	static final String REASON_TOKEN_ISSUANCE = "token-issuance";
 
 	private final Mailer mailer;

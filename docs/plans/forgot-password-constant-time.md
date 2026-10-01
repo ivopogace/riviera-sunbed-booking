@@ -48,8 +48,7 @@ transaction on the drainer thread. Issue option 1, chosen by the user.
 
 - **R-1:** A saturated or shutting-down dispatcher now drops the token with the mail → no orphan
   token; the user re-requests (recovery kinds self-heal, ADR-0011 decision 5). Counted as today.
-- **R-2:** The issuance's `FOR NO KEY UPDATE` waits on a concurrent erasure/reset of the same row on
-  the single drainer → those transactions are short; the suppression read keeps its own timeout.
+- **R-2:** The issuance's `FOR NO KEY UPDATE` waits on a concurrent erasure/reset of the same row on the single drainer → `@Transactional(timeout)` on `issuePasswordResetToken` bounds it (review finding; pinned by `CustomerAccountRecoveryIT`).
 - **R-3:** A failure log carrying the raw token or address (#7) → the catch logs only kind, reason
   and exception class, pinned by AC-4.
 
@@ -72,4 +71,5 @@ reset method changes shape (JDK `Supplier`, no new published type). `notificatio
 - Phase 1: done (deferred reset link on `MailSender`; `CustomerRecoveryTest`, `TransactionalMailServiceTest` green)
 - Phase 2: done (`ForgotPasswordRequestThreadTest` green; red against on-thread issuance)
 - Phase 3: done (`OffThreadResetIssuanceIT` green on the real dispatcher; Javadoc, RESPONSIBILITIES, runbook)
-- Next: CI green → merge origin/main → ready for review → review + Sonar gates
+- Review: 1 finding (unbounded issuance on the drainer) fixed with a transaction timeout; MailSender header + runbook wording
+- Next: CI green → Sonar gate → delete plan → READY TO MERGE
