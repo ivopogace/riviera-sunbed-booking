@@ -153,6 +153,13 @@ describe('AdminConsoleTabs', () => {
    * accounts, the two outbox levers, moderation, money, records. Pinned as a literal because the
    * order is a maintainer decision, not something the code derives.
    */
+  /** The phone More sheet and the palette tell tabs apart by glyph as well as by label. */
+  it('gives every admin tab a glyph of its own', () => {
+    const glyphs = ADMIN_CONSOLE_TABS.map((tab) => tab.glyph);
+
+    expect(new Set(glyphs).size).toBe(glyphs.length);
+  });
+
   it('pins the amended canonical order (#1007)', () => {
     expect([...ADMIN_CONSOLE_TAB_ORDER]).toEqual([
       'Operators',

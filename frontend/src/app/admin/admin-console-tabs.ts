@@ -12,6 +12,7 @@ import {
   PrivacyGlyph,
   RefundsGlyph,
   ReviewsGlyph,
+  VenueChangesGlyph,
 } from '../shared/console-glyphs';
 import { TAB_RAIL_MATCH, TabRail, TabRailDivider, TabRailTab } from '../shared/tab-rail';
 import { TouchTarget } from '../shared/touch-target';
@@ -104,7 +105,7 @@ export const ADMIN_CONSOLE_TABS: readonly ConsoleDestination[] = [
     '/admin/venue-changes',
     'Venue changes',
     'admin-tab-venue-changes',
-    PayoutsGlyph,
+    VenueChangesGlyph,
     'Venue-caused refunds and fees',
   ),
   shipped('/admin/payouts', 'Payouts', 'admin-tab-payouts', PayoutsGlyph, 'Weekly BKT batches'),
