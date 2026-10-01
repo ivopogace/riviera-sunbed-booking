@@ -335,6 +335,39 @@ class WeatherRefundServiceIT {
 				.filter(e -> e.bookingId().value() == stay.bookingId()).count());
 	}
 
+	/** ADR-0026 §7: a stay whose every day is washed out stays live, its days held, each refunded exactly once. */
+	@Test
+	void aStayWhoseEveryDayIsRefundedStaysLive() {
+		LocalDate first = LocalDate.of(2020, 11, 1);
+		long venueId = venueWithOnlineSets();
+		List<Long> sets = onlineSets(venueId, 1);
+		Seeded stay = confirmedStay(venueId, sets.getFirst(), first, 3, "WXSTAY0006", 10000L);
+		VenueId venue = new VenueId(venueId);
+
+		for (int i = 0; i < 3; i++) {
+			assertEquals(1, refundForWeather.refundForWeather(bootstrap(), venue, first.plusDays(i)).dayRefundCount());
+		}
+		for (int i = 0; i < 3; i++) {
+			WeatherRefundOutcome rerun = refundForWeather.refundForWeather(bootstrap(), venue, first.plusDays(i));
+			assertEquals(0, rerun.dayRefundCount(), "nothing is left to refund");
+			assertEquals(0, rerun.refundedCount(), "the stay is never cancelled");
+		}
+
+		assertEquals("CONFIRMED", status(stay.bookingId()), "the stay stays live");
+		assertNull(jdbc.sql("SELECT refund_minor FROM booking WHERE id = :id").param("id", stay.bookingId())
+				.query(Long.class).optional().orElse(null), "no cancellation refund on top of the days");
+		assertEquals(3334L, dayRefund(stay.bookingId(), first), "the remainder rides the first day");
+		assertEquals(10000L, jdbc.sql("SELECT SUM(refund_minor) FROM booking_day WHERE booking_id = :id")
+				.param("id", stay.bookingId()).query(Long.class).single(), "the days sum to the amount (#5)");
+		for (int i = 0; i < 3; i++) {
+			assertEquals(1, availabilityRows(stay.setId(), first.plusDays(i)), "a weather day keeps its set (#2)");
+		}
+		assertEquals(3, events.stream(BookingDayRefunded.class)
+				.filter(e -> e.bookingId().value() == stay.bookingId()).count(), "one BookingDayRefunded per day");
+		assertEquals(0, events.stream(BookingCancelled.class)
+				.filter(e -> e.bookingId().value() == stay.bookingId()).count(), "no cancel, so no cancellation mail");
+	}
+
 	@Test
 	void rerunRefundsNothingNew() {
 		LocalDate day = LocalDate.of(2020, 7, 2);

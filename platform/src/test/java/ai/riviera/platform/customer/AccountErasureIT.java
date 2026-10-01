@@ -18,6 +18,8 @@ import ai.riviera.platform.TestcontainersConfiguration;
 import ai.riviera.platform.customer.api.AccountErasure;
 import ai.riviera.platform.customer.vocabulary.CustomerAccountId;
 import ai.riviera.platform.customer.vocabulary.EraseOutcome;
+import ai.riviera.platform.notification.application.EmailSuppressions;
+import ai.riviera.platform.notification.application.SuppressionReason;
 import ai.riviera.platform.review.api.VenueRatingSummary;
 import ai.riviera.platform.review.vocabulary.RatingSummary;
 import ai.riviera.platform.review.vocabulary.VenueRef;
@@ -46,6 +48,9 @@ class AccountErasureIT {
 
 	@Autowired
 	VenueRatingSummary ratings;
+
+	@Autowired
+	EmailSuppressions suppressions;
 
 	@Autowired
 	JdbcTemplate jdbc;
@@ -156,6 +161,19 @@ class AccountErasureIT {
 		assertThat(erasure.eraseByEmail("  ERASE-IT-Guest@Example.com ")) // normalized to the stored key
 				.isEqualTo(EraseOutcome.ERASED);
 		assertThat(string("SELECT full_name FROM customer WHERE id = ?", customerId)).isEqualTo("ERASED");
+	}
+
+	/** ADR-0012: the suppression row holds no PII, so erasure leaves it; the erased address stays unmailable. */
+	@Test
+	void erasureLeavesTheSuppressionRowIntact() {
+		String email = "erase-it-suppressed@example.com";
+		insertGuest(email, "Bounced Guest", "+355691110003");
+		long accountId = insertAccount(email, "{bcrypt}$2a$s");
+		suppressions.suppress(email, SuppressionReason.HARD_BOUNCE, Instant.parse("2026-07-01T10:00:00Z"));
+
+		assertThat(erasure.eraseAccount(new CustomerAccountId(accountId))).isEqualTo(EraseOutcome.ERASED);
+
+		assertThat(suppressions.isSuppressed(email)).isTrue();
 	}
 
 	@Test
