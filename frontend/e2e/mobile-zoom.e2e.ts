@@ -223,7 +223,7 @@ test.describe('admin console — mobile zoom', () => {
     await expect(page.getByTestId(marker).first()).toBeVisible();
   }
 
-  // All nine rail destinations, so a raised field on any of them is measured.
+  // Every rail destination, so a raised field on any of them is measured.
   const SURFACES = [
     { path: '/admin', marker: 'admin-op-row', label: 'admin operators', fields: 0 },
     {
@@ -247,6 +247,7 @@ test.describe('admin console — mobile zoom', () => {
       label: 'admin venue changes',
       fields: 0,
     },
+    { path: '/admin/payouts', marker: 'admin-payouts-card', label: 'admin payouts', fields: 1 },
     { path: '/admin/privacy', marker: 'admin-privacy-form', label: 'admin privacy', fields: 1 },
     { path: '/admin/audit', marker: 'admin-audit-card', label: 'admin audit', fields: 0 },
   ];

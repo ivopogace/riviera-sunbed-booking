@@ -9,6 +9,7 @@ import {
   formatIsoDate,
   formatMonthLabel,
   isIsoDate,
+  isoWeekKey,
   monthWeeks,
   parseIsoDate,
   startOfMonth,
@@ -257,5 +258,20 @@ describe('daysBetween', () => {
 
   it('crosses a month and a DST boundary by civil days, not hours', () => {
     expect(daysBetween('2026-03-28', '2026-04-02')).toBe(6);
+  });
+});
+
+describe('isoWeekKey', () => {
+  it('keys a mid-year day by its ISO week', () => {
+    expect(isoWeekKey('2026-06-15')).toBe('2026-W25');
+  });
+
+  it('puts early January in the previous year when its Thursday is there', () => {
+    expect(isoWeekKey('2021-01-03')).toBe('2020-W53');
+    expect(isoWeekKey('2027-01-01')).toBe('2026-W53');
+  });
+
+  it('puts late December in the next year when its Thursday is there', () => {
+    expect(isoWeekKey('2025-12-29')).toBe('2026-W01');
   });
 });

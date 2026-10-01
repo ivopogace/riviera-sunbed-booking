@@ -138,7 +138,7 @@ describe('AdminConsoleTabs', () => {
 
   /**
    * The strip's information architecture is an ORDER rather than a layout: one scrolling rail of
-   * at most nine tabs — the canonical order's ten slots less the reserved one — in that order. Every tab that ships sits in it, so this pins a
+   * the canonical order's tabs, in that order. Every tab that ships sits in it, so this pins a
    * rule rather than a snapshot — a subset in canonical order passes, which is what lets a new tab
    * join the strip without editing an assertion here.
    */
@@ -150,9 +150,8 @@ describe('AdminConsoleTabs', () => {
 
   /**
    * The amended contract (the console-nav spike's grill, answer 8): grouped by what the admin does —
-   * accounts, the two outbox levers, moderation, money, records — with Payouts still a reserved
-   * slot. Pinned as a literal because the order is a maintainer decision, not something the code
-   * derives.
+   * accounts, the two outbox levers, moderation, money, records. Pinned as a literal because the
+   * order is a maintainer decision, not something the code derives.
    */
   it('pins the amended canonical order (#1007)', () => {
     expect([...ADMIN_CONSOLE_TAB_ORDER]).toEqual([
@@ -183,6 +182,7 @@ describe('AdminConsoleTabs', () => {
       '|',
       'Commissions',
       'Venue changes',
+      'Payouts',
       '|',
       'Privacy',
       'Audit',

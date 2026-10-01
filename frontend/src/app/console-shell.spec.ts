@@ -441,13 +441,14 @@ describe('ConsoleShell', () => {
           '/admin/reviews',
           '/admin/commissions',
           '/admin/venue-changes',
+          '/admin/payouts',
           '/admin/privacy',
           '/admin/audit',
           '/operator',
         ]);
         expect(rows().at(-1)!.textContent).toContain('Your venues');
-        expect(rows()[5].getAttribute('aria-current')).toBe('page');
-        expect(rows()[4].getAttribute('aria-current')).toBeNull();
+        expect(rows()[6].getAttribute('aria-current')).toBe('page');
+        expect(rows()[5].getAttribute('aria-current')).toBeNull();
       });
 
       it('opening More focuses the first row; Escape, the backdrop and a row hand focus back to More', async () => {
@@ -657,6 +658,7 @@ describe('ConsoleShell', () => {
         'Reviews',
         'Commissions',
         'Venue changes',
+        'Payouts',
         'Privacy',
         'Audit',
         'Miramar Beach Club',
@@ -666,11 +668,11 @@ describe('ConsoleShell', () => {
       expect(currentLabels()).toEqual(['Operators']);
       expect(
         rows()
-          .slice(9, 11)
+          .slice(10, 12)
           .map((row) => row.getAttribute('href')),
       ).toEqual(['/operator/1/daily', '/operator/2/daily']);
-      expect(rows()[8].getAttribute('href')).toBe('/admin/audit');
-      expect(rows()[8].textContent).toContain('Records');
+      expect(rows()[9].getAttribute('href')).toBe('/admin/audit');
+      expect(rows()[9].textContent).toContain('Records');
 
       await setSection('plain');
       await goTo('/account/operator-password');

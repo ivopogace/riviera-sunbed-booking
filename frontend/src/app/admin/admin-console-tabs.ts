@@ -19,7 +19,7 @@ import { TouchTarget } from '../shared/touch-target';
 /**
  * The console's canonical tab order as GROUPS, a hairline divider at each boundary (see
  * {@link AdminConsoleTabs}): accounts, outbox levers and refunds, moderation, money, records (Audit
- * last). `Payouts` is a reserved slot for a tab that does not ship yet.
+ * last).
  */
 export const ADMIN_CONSOLE_TAB_GROUPS = [
   ['Operators'],
@@ -67,7 +67,7 @@ function shipped(
 /**
  * The shipped tabs in {@link ADMIN_CONSOLE_TAB_ORDER}, each with what the phone rail and its More
  * sheet need beyond the rail's label — the glyph, the one-line hint, the group name — so the two
- * rails and the sheet read one table. Payouts' slot is still reserved, so it is absent here.
+ * rails and the sheet read one table.
  */
 export const ADMIN_CONSOLE_TABS: readonly ConsoleDestination[] = [
   shipped(
@@ -107,6 +107,7 @@ export const ADMIN_CONSOLE_TABS: readonly ConsoleDestination[] = [
     PayoutsGlyph,
     'Venue-caused refunds and fees',
   ),
+  shipped('/admin/payouts', 'Payouts', 'admin-tab-payouts', PayoutsGlyph, 'Weekly BKT batches'),
   shipped('/admin/privacy', 'Privacy', 'admin-tab-privacy', PrivacyGlyph, 'Data-subject erasure'),
   shipped('/admin/audit', 'Audit', 'admin-tab-audit', AuditGlyph, 'Every admin action, in order'),
 ];

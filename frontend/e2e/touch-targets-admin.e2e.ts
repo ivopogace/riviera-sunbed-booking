@@ -52,6 +52,7 @@ test.describe('44px touch targets on the admin console at a phone width', () => 
     { path: '/admin/refunds', marker: 'admin-refunds-card', label: 'admin refund outbox' },
     { path: '/admin/photos', marker: 'admin-photos-venue', label: 'admin venue photos' },
     { path: '/admin/reviews', marker: 'admin-reviews-venue', label: 'admin reviews' },
+    { path: '/admin/payouts', marker: 'admin-payouts-card', label: 'admin payouts' },
     { path: '/admin/privacy', marker: 'admin-privacy-form', label: 'admin privacy' },
     { path: '/admin/audit', marker: 'admin-audit-card', label: 'admin audit' },
   ];

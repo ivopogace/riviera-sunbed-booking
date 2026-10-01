@@ -237,7 +237,13 @@ test('the tab rail marks Privacy in slot 9 and never scrolls sideways at 360px',
   const labels = (await page.getByTestId('oc-more-sheet').getByRole('link').allInnerTexts()).map(
     (text) => text.split('\n')[0],
   );
-  expect(labels.slice(2, 6)).toEqual(['Commissions', 'Venue changes', 'Privacy', 'Audit']);
+  expect(labels.slice(2, 7)).toEqual([
+    'Commissions',
+    'Venue changes',
+    'Payouts',
+    'Privacy',
+    'Audit',
+  ]);
   await page.keyboard.press('Escape');
 
   const scrollsSideways = await page.evaluate(

@@ -173,6 +173,22 @@ const adminTabRoutes: Routes = [
     },
   },
   {
+    path: 'payouts',
+    loadComponent: () => import('./admin/admin-payouts').then((m) => m.AdminPayouts),
+    title: 'Payouts — Riviera',
+    data: {
+      adminTab: {
+        title: 'Payouts',
+        titleId: 'admin-payouts-title',
+        maxWidthClass: 'max-w-[900px]',
+        signInCopy: 'Sign in as an admin to generate and report the weekly payout batches.',
+        restoringTestId: 'admin-payouts-restoring',
+        signedOutTestId: 'admin-payouts-signed-out',
+        forbiddenTestId: 'admin-payouts-forbidden',
+      } satisfies AdminTabRouteData,
+    },
+  },
+  {
     path: 'privacy',
     loadComponent: () => import('./admin/admin-privacy').then((m) => m.AdminPrivacy),
     title: 'Privacy — Riviera',
