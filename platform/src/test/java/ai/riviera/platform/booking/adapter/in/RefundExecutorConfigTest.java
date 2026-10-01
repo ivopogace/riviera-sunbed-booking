@@ -9,7 +9,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 
-import ai.riviera.platform.shared.ObservabilityMetrics;
+import ai.riviera.platform.monitoring.vocabulary.ObservabilityMetrics;
 
 import ch.qos.logback.classic.Level;
 import ch.qos.logback.classic.spi.ILoggingEvent;
@@ -73,7 +73,7 @@ class RefundExecutorConfigTest {
 
 	private static final int SHED_REFUNDS = 5;
 
-	/** {@code CorrelationIdFilter}'s MDC key, spelled out rather than imported: it is root-package. */
+	/** {@code CorrelationIdFilter}'s MDC key, spelled out rather than imported: it is {@code monitoring}-internal. */
 	private static final String CORRELATION_KEY = "correlationId";
 
 	private final MeterRegistry meters = new SimpleMeterRegistry();

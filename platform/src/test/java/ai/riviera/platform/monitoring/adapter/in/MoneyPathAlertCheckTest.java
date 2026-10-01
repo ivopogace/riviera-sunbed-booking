@@ -1,6 +1,6 @@
-package ai.riviera.platform;
+package ai.riviera.platform.monitoring.adapter.in;
 
-import ai.riviera.platform.shared.ObservabilityMetrics;
+import ai.riviera.platform.monitoring.vocabulary.ObservabilityMetrics;
 import java.time.Duration;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicLong;

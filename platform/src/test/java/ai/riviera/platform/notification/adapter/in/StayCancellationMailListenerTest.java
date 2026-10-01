@@ -28,7 +28,7 @@ import ai.riviera.platform.notification.application.BookingMailFactsService;
 import ai.riviera.platform.notification.application.MissingBookingFact;
 import ai.riviera.platform.notification.application.StayCancellationMailFacts;
 import ai.riviera.platform.notification.application.TransactionalMailService;
-import ai.riviera.platform.shared.ObservabilityMetrics;
+import ai.riviera.platform.monitoring.vocabulary.ObservabilityMetrics;
 import ai.riviera.platform.venue.vocabulary.SetId;
 
 import static org.assertj.core.api.Assertions.assertThat;

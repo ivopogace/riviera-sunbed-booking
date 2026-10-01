@@ -5,8 +5,8 @@ import org.springframework.modulith.core.ApplicationModules;
 
 /**
  * Verifies the Spring Modulith structure (invariant #11): the modules in CLAUDE.md's table (the
- * read-model {@code itinerary} among them), the non-context {@code shared}, {@code challenge} and
- * {@code audit}, and their boundaries. Pure structural analysis — no Spring context, no database —
+ * read-model {@code itinerary} among them), the non-context modules CLAUDE.md lists beside it, and
+ * their boundaries. Pure structural analysis — no Spring context, no database —
  * so it runs anywhere, including without Docker.
  */
 class ModularityTests {
