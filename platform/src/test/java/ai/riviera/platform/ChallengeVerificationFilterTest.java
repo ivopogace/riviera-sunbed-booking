@@ -1,6 +1,7 @@
 package ai.riviera.platform;
 
 import java.util.List;
+import java.util.Set;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -15,6 +16,7 @@ import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilde
 
 import static ai.riviera.platform.WebSliceStubs.StubProofOfWorkChallenges.EXPIRED;
 import static ai.riviera.platform.WebSliceStubs.StubProofOfWorkChallenges.SOLVED;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
@@ -42,11 +44,19 @@ class ChallengeVerificationFilterTest {
 	private static final String OPERATOR_REGISTER_PATH = "/api/auth/operator/register";
 	private static final String FORGOT_PASSWORD_PATH = "/api/auth/customer/forgot-password";
 	private static final String BOOKING_CREATE_PATH = "/api/bookings";
+	private static final String STAY_CREATE_PATH = "/api/stays";
 	private static final String HEADER = "X-Altcha-Payload";
 
 	/** A well-formed body per fenced route, so only the challenge decides the answer. */
 	static List<String> fencedRoutes() {
-		return List.of(REGISTER_PATH, OPERATOR_REGISTER_PATH, FORGOT_PASSWORD_PATH, BOOKING_CREATE_PATH);
+		return List.of(REGISTER_PATH, OPERATOR_REGISTER_PATH, FORGOT_PASSWORD_PATH, BOOKING_CREATE_PATH,
+				STAY_CREATE_PATH);
+	}
+
+	/** Spelled out, not read from the filter: a route dropped from the fence must fail the refusals below. */
+	@Test
+	void theFenceCoversExactlyTheContractedRoutes() {
+		assertEquals(Set.copyOf(fencedRoutes()), ChallengeVerificationFilter.FENCED_POSTS);
 	}
 
 	@Autowired
@@ -138,6 +148,9 @@ class ChallengeVerificationFilterTest {
 					{"email":"slice@example.com"}""";
 			case BOOKING_CREATE_PATH -> """
 					{"setId":1,"bookingDate":"2026-12-01",
+					 "contact":{"email":"slice@example.com","fullName":"Slice Guest","phone":"+355699"}}""";
+			case STAY_CREATE_PATH -> """
+					{"stretches":[{"setId":1,"firstDate":"2026-12-01","lastDate":"2026-12-02"}],
 					 "contact":{"email":"slice@example.com","fullName":"Slice Guest","phone":"+355699"}}""";
 			default -> """
 					{"email":"slice@example.com","password":"passphrase-123"}""";

@@ -1,5 +1,6 @@
 package ai.riviera.platform;
 
+import java.net.URI;
 import java.util.List;
 import java.util.Map;
 
@@ -119,6 +120,24 @@ class AdminAuditTrailIT {
 				.query(String.class).list();
 		assertEquals("reported by guest", reasons.getFirst(), "CRLF collapsed to a single space");
 		assertNull(reasons.get(1), "a blank reason is recorded as absent, not as whitespace");
+	}
+
+	/**
+	 * The trail keys on the path Spring routes on, not the bytes the client sent: {@code /api/%61dmin/…}
+	 * passes the ADMIN gate and reaches the controller, so it must leave the same row under the decoded
+	 * path. {@code URI.create}, not {@code post(String)}, which would re-encode {@code %61} into a
+	 * firewall-rejected {@code %2561}.
+	 */
+	@Test
+	void recordsAPercentEncodedSpellingOfTheAdminPathUnderTheRoutedPath() throws Exception {
+		Cookie admin = adminSession();
+
+		mvc.perform(post(URI.create("/api/%61dmin/erasure")).cookie(admin).with(csrf())
+				.contentType(MediaType.APPLICATION_JSON).content(ERASURE_BODY))
+				.andExpect(status().isNoContent());
+
+		List<String> paths = jdbc.sql("SELECT path FROM admin_audit_record").query(String.class).list();
+		assertEquals(List.of(ERASURE_PATH), paths);
 	}
 
 	@Test

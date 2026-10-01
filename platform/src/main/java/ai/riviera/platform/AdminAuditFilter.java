@@ -20,12 +20,11 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 
 /**
- * The edge's fence over {@code audit} (ADR-0013, ADR-0017): records every mutating {@code /api/admin/**}
- * action in the {@link AdminAuditLog} (actor, method, path, status, sanitized
- * {@link AdminAuditReasons#HEADER} grounds), keyed on the path prefix, so a new admin surface is audited
- * the day it ships. After {@code AuthorizationFilter}, only principals past the gate leave a row (the
- * principal check holds if the chain drifts), written after the action with its real status, a throw as
- * 500. A failed write never fails the action, it logs ERROR: {@code RESPONSIBILITIES.md} §audit.
+ * The edge's fence over {@code audit} (ADR-0013, ADR-0017): every mutating {@code /api/admin/**} action, keyed
+ * on the routed path ({@link RequestPaths}, so an encoded spelling too), leaves an {@link AdminAuditLog} row:
+ * actor, method, path, status, sanitized {@link AdminAuditReasons#HEADER} grounds. After
+ * {@code AuthorizationFilter}, only principals past the gate leave one, written after the action with its real
+ * status (a throw as 500). A failed write never fails the action, it logs ERROR: {@code RESPONSIBILITIES.md} §audit.
  */
 final class AdminAuditFilter extends OncePerRequestFilter {
 
@@ -46,7 +45,7 @@ final class AdminAuditFilter extends OncePerRequestFilter {
 
 	@Override
 	protected boolean shouldNotFilter(HttpServletRequest request) {
-		return !(request.getRequestURI().startsWith(auditedPathPrefix)
+		return !(RequestPaths.withinApplication(request).startsWith(auditedPathPrefix)
 				&& MUTATING_METHODS.contains(request.getMethod()));
 	}
 
@@ -70,14 +69,15 @@ final class AdminAuditFilter extends OncePerRequestFilter {
 				|| authentication instanceof AnonymousAuthenticationToken) {
 			return;
 		}
+		String path = RequestPaths.withinApplication(request);
 		try {
-			auditLog.append(authentication.getName(), request.getMethod(), request.getRequestURI(), status,
+			auditLog.append(authentication.getName(), request.getMethod(), path, status,
 					AdminAuditReasons.sanitize(request.getHeader(AdminAuditReasons.HEADER)));
 		}
 		catch (RuntimeException e) {
 			// Broad by contract (class Javadoc): a lost row must never fail or mask the performed action.
-			log.error("Admin audit record lost for {} {} by {} (status {})", request.getMethod(),
-					request.getRequestURI(), authentication.getName(), status, e);
+			log.error("Admin audit record lost for {} {} by {} (status {})", request.getMethod(), path,
+					authentication.getName(), status, e);
 		}
 	}
 }
