@@ -1,10 +1,7 @@
 package ai.riviera.platform.venue;
 
 import java.time.LocalDate;
-import java.time.LocalTime;
-import java.time.ZoneId;
 
-import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
@@ -14,8 +11,10 @@ import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.test.web.servlet.MockMvc;
 
 import ai.riviera.platform.EnabledIfDockerAvailable;
+import ai.riviera.platform.MovableClock;
 import ai.riviera.platform.OwnershipFixtures;
 import ai.riviera.platform.TestcontainersConfiguration;
+import ai.riviera.platform.TiraneNoonClock;
 
 import static org.hamcrest.Matchers.contains;
 import static org.hamcrest.Matchers.empty;
@@ -33,19 +32,21 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * skipped where Docker is absent.
  */
 @EnabledIfDockerAvailable
-@Import(TestcontainersConfiguration.class)
+@Import({ TestcontainersConfiguration.class, TiraneNoonClock.class })
 @SpringBootTest
 @AutoConfigureMockMvc
 class VenueReadControllerIT {
 
 	private static final long MIRAMAR = 1L; // first seeded venue (identity PK)
-	private static final ZoneId TIRANE = ZoneId.of("Europe/Tirane");
 
 	@Autowired
 	MockMvc mvc;
 
 	@Autowired
 	JdbcClient jdbc;
+
+	@Autowired
+	MovableClock clock;
 
 	/** A free ONLINE set on the Miramar map, returned as its id. */
 	private long anyOnlineSet() {
@@ -167,7 +168,7 @@ class VenueReadControllerIT {
 		// AC-3: no date param ⇒ today in Europe/Tirane. Book a set for that exact date and
 		// confirm the param-less read renders it TAKEN.
 		long set = anyOnlineSet();
-		LocalDate today = LocalDate.now(TIRANE);
+		LocalDate today = TiraneNoonClock.today(clock);
 		book(set, today);
 
 		mvc.perform(get("/api/venues/{id}", MIRAMAR))
@@ -206,11 +207,8 @@ class VenueReadControllerIT {
 	@Test
 	void mapCarriesSalesOpenForSelectedDate() throws Exception {
 		// #793 AC-3: a 00:01 opt-out venue's map reads closed for today, open for tomorrow.
-		LocalTime now = LocalTime.now(TIRANE);
-		Assumptions.assumeTrue(now.isAfter(LocalTime.of(0, 2)) && now.isBefore(LocalTime.of(23, 58)),
-				"skipped near midnight — today would roll over or the verdict flip mid-test");
 		long id = insertOptOutVenue();
-		LocalDate today = LocalDate.now(TIRANE);
+		LocalDate today = TiraneNoonClock.today(clock);
 		try {
 			mvc.perform(get("/api/venues/{id}", id).param("date", today.toString()))
 					.andExpect(status().isOk())

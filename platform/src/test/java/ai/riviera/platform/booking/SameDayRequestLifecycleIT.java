@@ -1,11 +1,8 @@
 package ai.riviera.platform.booking;
 
 import java.time.LocalDate;
-import java.time.LocalTime;
-import java.time.ZoneId;
 
 import jakarta.servlet.http.Cookie;
-import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -20,8 +17,10 @@ import org.springframework.test.web.servlet.MockMvc;
 import com.jayway.jsonpath.JsonPath;
 
 import ai.riviera.platform.EnabledIfDockerAvailable;
+import ai.riviera.platform.MovableClock;
 import ai.riviera.platform.SessionLoginSupport;
 import ai.riviera.platform.TestcontainersConfiguration;
+import ai.riviera.platform.TiraneNoonClock;
 import ai.riviera.platform.operator.api.OperatorDirectory;
 import ai.riviera.platform.operator.vocabulary.OperatorId;
 
@@ -37,23 +36,21 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * The same-day Request-to-Book lifecycle end-to-end (issue #792, AC-5): at a {@code 23:59}-close
  * venue a tourist requests a set for <strong>today</strong>, the venue accepts, and — on the stub
  * profile's synchronous collection — the booking reaches {@code CONFIRMED} on the service day
- * itself. The {@code 23:59} close is the R-4 boundary-venue trick: the request leg stays inside
- * the sales window at any run hour except the day's final minutes, which an assumption skips —
- * there "today" would close (or roll over) mid-test and the run would flake, not fail honestly.
+ * itself, at the pinned noon ({@link TiraneNoonClock}) so the request leg is inside the sales window.
  * Testcontainers; skipped where Docker is absent.
  */
 @EnabledIfDockerAvailable
-@Import(TestcontainersConfiguration.class)
+@Import({ TestcontainersConfiguration.class, TiraneNoonClock.class })
 @SpringBootTest(properties = "riviera.operator.password=test-sameday-pw")
 @AutoConfigureMockMvc
 class SameDayRequestLifecycleIT {
-
-	private static final ZoneId TIRANE = ZoneId.of("Europe/Tirane");
 
 	@Autowired
 	MockMvc mvc;
 	@Autowired
 	JdbcClient jdbc;
+	@Autowired
+	MovableClock clock;
 
 	/** Stub only the identity seam (as in RequestAcceptPayIT); ownership + flow are real. */
 	@MockitoSpyBean
@@ -88,10 +85,7 @@ class SameDayRequestLifecycleIT {
 
 	@Test
 	void sameDayRequestAcceptPayConfirms() throws Exception {
-		// The one non-deterministic window: past 23:58 Tirane the 23:59 close (or midnight) crosses mid-test.
-		Assumptions.assumeTrue(LocalTime.now(TIRANE).isBefore(LocalTime.of(23, 58)),
-				"skipped in the day's final minutes — today would close or roll over mid-test");
-		LocalDate today = LocalDate.now(TIRANE);
+		LocalDate today = TiraneNoonClock.today(clock);
 		String body = """
 				{"setId": %d, "bookingDate": "%s",
 				 "contact": {"email": "sameday@e.com", "fullName": "Same Day Guest", "phone": "+355600"}}
