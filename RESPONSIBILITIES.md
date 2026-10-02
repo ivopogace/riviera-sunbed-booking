@@ -95,12 +95,12 @@ close, the maximum stay, the season closure, and the commission rate over time. 
   its row for every booking, mail and payout line naming it; no booking → deleted.
 - **Retired sets — the exclude and exempt lists, machine-held.** Excluded: the tourist list and its
   counts, the map, the availability calendar, the operator's daily view, every layout lock and
-  conflict probe, both claim paths and the reserve on both booking modes (`NO_SUCH_SET`) — each reads
-  `active_set_position`; every set write says `retired_at IS NULL`, so a retired set's label and
-  price stay frozen and its slot and cell are free for a new set. The reserve reads lock the set
-  through the view as `poolForClaim` does, since a single-set retire takes no venue lock. Exempt, as
-  two named constants of `JdbcSetBookingFacts`: `setBookingInfo(s)` (cancel, booking view, mails,
-  staff lookup) and the reserve's venue lock; `RetiredSetExclusionArchitectureTests` holds the rest.
+  conflict probe, both claim paths and the reserve on both booking modes (`NO_SUCH_SET`) — each
+  reads `active_set_position`; every update and delete says `retired_at IS NULL`, so a retired set's
+  label and price stay frozen and its slot and cell free for a new set. The reserve reads lock the
+  set through the view as `poolForClaim` does (a single-set retire takes no venue lock). Exempt, by
+  constant name in `JdbcSetBookingFacts`: `setBookingInfo(s)` (cancel, booking view, mails, staff
+  lookup) and the reserve's venue lock; `RetiredSetExclusionArchitectureTests` holds the rest.
 - **The bulk save (`PUT …/beach-map`) is a diff keyed by grid cell, never a delete-all.** The body
   carries no set ids, so a set that changes cell is a removal plus an insert — the removal question
   is the move question. Only removed sets and kept ones whose position number changes are probed,
