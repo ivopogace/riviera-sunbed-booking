@@ -27,8 +27,8 @@ The single `@RestControllerAdvice`, extending `ResponseEntityExceptionHandler`:
 the framework's logged 500. A controller feeding request input into IAE-throwing guards
 (`toCommand()`, `PeriodKey.of`, enum parses) translates at the conversion boundary via
 `InvalidApiRequestException.parsing(...)`. `ErrorContractArchitectureTests` forbids
-per-controller `@ExceptionHandler`s. `RateLimitFilter` and `SecurityProblemResponses`
-(security-chain 401/403, proof-of-work refusals) mirror the shape by hand (they reject before
+per-controller `@ExceptionHandler`s. `RateLimitFilter` (429, and 413 `PAYLOAD_TOO_LARGE` for a login body past its 8 KiB cap) and
+`SecurityProblemResponses` (security-chain 401/403, proof-of-work refusals) mirror the shape by hand (they reject before
 MVC dispatch).
 
 - Validation: presence/shape/format at the edge (`toCommand()`); domain invariants in the value

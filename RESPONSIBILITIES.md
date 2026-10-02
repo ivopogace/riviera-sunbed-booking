@@ -1212,7 +1212,10 @@ mutating `/api/admin/**` action, §`audit`) live in `web`; `challenge` and `audi
   cost its token. Cheap checks first, so a `429` wins; the registry claim, the fence's one write,
   is the last step before the controller.
 - **Not fenced, deliberately:** login (the per-identity throttle covers it) and token redemption
-  (a reset or verification token is already a bearer credential). Forgot-password stays
+  (a reset or verification token is already a bearer credential). The throttle reads every login
+  body itself, to an 8 KiB cap whatever `Content-Length` says, and answers a larger one `413`
+  before the controller; it decodes the identity in the charset the controller binds with, so
+  neither size, framing nor encoding lets a login skip the per-identity budget (#1288). Forgot-password stays
   non-enumerating (D-8): a refusal precedes the account lookup, identical for every address.
 - **Forgot-password is constant-time by doing the same work on both branches (#1336):** the request
   thread makes the one account read and answers `204`; a known address only enqueues the send, whose
