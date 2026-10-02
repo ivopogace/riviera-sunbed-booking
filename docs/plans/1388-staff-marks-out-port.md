@@ -44,6 +44,6 @@ transaction exactly as before. The primitive remains the unique `(set_id, bookin
 
 ## Execution status
 
-- [ ] Phase 1: rule + fixtures (red on production)
-- [ ] Phase 2: port + adapter, service JDBC-free (green)
-- [ ] Phase 3: docs (RESPONSIBILITIES §availability + machine-checked table)
+- [x] Phase 1: rule + fixtures (red on production)
+- [x] Phase 2: port + adapter, service JDBC-free (green)
+- [x] Phase 3: docs (RESPONSIBILITIES §availability + machine-checked table)
