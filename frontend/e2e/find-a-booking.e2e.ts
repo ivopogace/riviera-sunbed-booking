@@ -206,12 +206,9 @@ test("a slow booking's late reply never repaints the booking found in its place 
   const FOUND = 'BBBBBBBBBB';
   let releaseSlow!: () => void;
   const slowHeld = new Promise<void>((resolve) => (releaseSlow = resolve));
-  let slowAnswered!: () => void;
-  const slowDone = new Promise<void>((resolve) => (slowAnswered = resolve));
   await page.route(new RegExp(`/api/bookings/${SLOW}(\\?.*)?$`), async (route) => {
     await slowHeld;
     await route.fulfill({ json: { ...DETAIL, code: SLOW, venueName: 'Venue Alpha' } });
-    slowAnswered();
   });
   await page.route(new RegExp(`/api/bookings/${FOUND}(\\?.*)?$`), (route) =>
     route.fulfill({ json: { ...DETAIL, code: FOUND, venueName: 'Venue Beta' } }),
@@ -236,8 +233,16 @@ test("a slow booking's late reply never repaints the booking found in its place 
   await page.getByTestId('find-submit').click();
   await expect(page.getByTestId('booking-code')).toContainText(FOUND);
 
+  const slowReply = page.waitForResponse(new RegExp(`/api/bookings/${SLOW}(\\?.*)?$`));
   releaseSlow();
-  await slowDone;
+  await (await slowReply).finished();
+  // Absence holds on the first poll, so let the page handle the reply and render twice before asserting it.
+  await page.evaluate(
+    () =>
+      new Promise<void>((resolve) =>
+        requestAnimationFrame(() => requestAnimationFrame(() => resolve())),
+      ),
+  );
 
   await expect(page.getByTestId('booking-code')).toContainText(FOUND);
   await expect(page.getByText('Venue Alpha')).toHaveCount(0);

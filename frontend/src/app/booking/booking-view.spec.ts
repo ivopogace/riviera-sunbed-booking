@@ -1848,7 +1848,7 @@ describe('BookingView', () => {
     expect(document.activeElement).toBe(host.querySelector('[data-testid="bv-title"]'));
   });
 
-  // A reply for a code the route has since left must write nothing, or the page shows A while its actions target B (#1289).
+  // A reply for a code the route has since left must write nothing, or the page shows A while its actions target B.
   describe('superseded replies (#1289)', () => {
     const A: BookingDetail = { ...DETAIL, code: 'AAAAAAAAAA', venueName: 'Venue Alpha' };
     const B: BookingDetail = { ...DETAIL, code: 'BBBBBBBBBB', venueName: 'Venue Beta' };
@@ -1935,6 +1935,36 @@ describe('BookingView', () => {
       host.querySelector<HTMLButtonElement>('[data-testid="confirm-cancel"]')!.click();
       await settle();
       expect(held.cancelCalls).toEqual([B.code]);
+    });
+
+    it("drops A's first read after A→B→A, keeping the detail A's return rendered", async () => {
+      const reads: Subject<BookingDetail>[] = [];
+      let prefetched: BookingDetail | undefined;
+      const service: Partial<BookingService> = {
+        getByCode: () => {
+          const read = new Subject<BookingDetail>();
+          reads.push(read);
+          return read;
+        },
+        takePrefetched: (code: string) => {
+          const hit = prefetched?.code === code ? prefetched : undefined;
+          prefetched = undefined;
+          return hit;
+        },
+      };
+      const { host, settle, swapTo } = await renderSwappable(service);
+      prefetched = B;
+      await swapTo(B.code);
+      prefetched = A;
+      await swapTo(A.code);
+
+      reads[0].next({ ...A, venueName: 'Stale Alpha' });
+      reads[0].complete();
+      await settle();
+
+      expect(reads).toHaveLength(1);
+      expect(host.textContent).toContain('Venue Alpha');
+      expect(host.textContent).not.toContain('Stale Alpha');
     });
 
     it.each([404, 500])(
