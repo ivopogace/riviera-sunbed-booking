@@ -32,10 +32,10 @@ import ai.riviera.platform.venue.vocabulary.VenueStayFacts;
 
 /**
  * JDBC adapter implementing {@link SetBookingFacts} (invariant #1). Two statements read
- * {@code set_position} bare, so a booking on a retired set still resolves to the spot its guests were
- * told (ADR-0019): {@code SET_BOOKING_INFO_SELECT} and {@code VENUES_OF_SETS_LOCK}, exempt by name in
- * {@code RetiredSetExclusionArchitectureTests}. Every other statement here is held to the rule like
- * any other class's: it reads {@code active_set_position} or says {@code retired_at IS NULL}.
+ * {@code set_position} bare and are exempt by name in {@code RetiredSetExclusionArchitectureTests}
+ * (ADR-0019): {@code SET_BOOKING_INFO_SELECT}, so a booking on a retired set still resolves to the
+ * spot its guests were told, and {@code VENUES_OF_SETS_LOCK}, which hands out no set. Every other
+ * statement here is held like any other class's: the view, or {@code retired_at IS NULL}.
  */
 @Repository
 class JdbcSetBookingFacts implements SetBookingFacts {

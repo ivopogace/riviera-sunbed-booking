@@ -23,34 +23,12 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * A retired set is gone from every read but the one that serves its bookings (ADR-0019,
- * {@code RESPONSIBILITIES.md} §venue). The exclusion is a forever tax on every future query, so it
- * is enforced, not described: every production SQL string that names the {@code set_position}
- * table must either read it through the {@code active_set_position} view or say {@code retired_at
- * IS NULL} — a retire, a delete or a lock on the active rows. A bare mention of the marker (a column
- * in a select list) excludes nothing and does not pass. Two allowances, each stated here because a
- * reader would otherwise look for them in the rule: an {@code INSERT INTO set_position} passes,
- * since a new row is active by construction; and in a class implementing {@link SetBookingFacts}
- * the constants named in {@link #EXEMPT_FACTS_CONSTANTS} pass whatever they read, because a booking
- * on a retired set must still resolve to the spot the guest was told. Every other statement of that
- * class — the claim's pool read, the reserve's fence, the spot reads — is held like any other
- * class's.
- *
- * <p>Keys on {@code CONSTANT_String} entries, one statement at a time
- * ({@link ArchitectureTestSupport#stringConstants}); the exemption keys on the field's
- * {@code ConstantValue} ({@link ArchitectureTestSupport#stringConstantFields}), so an exempt
- * statement is a named {@code static final String}, never an inline literal, and the name alone
- * buys nothing outside the facts port's implementor. The whole-word match keeps
- * {@code active_set_position} and the {@code set_position_*} constraint names from counting as
- * the table. Context-free like its siblings; the negative and positive cases are proven against
- * {@code ai.riviera.retirefixture}, never by breaking production code, and the vacuity guard
- * asserts that the exemption, the per-statement check inside the facts adapter and the view path
- * are all exercised by the production tree.
- *
- * <p>This test names its table and its exempt constants, which the {@code riviera-modulith}
- * skill's structural-net membership rule otherwise excludes; it is the net's one
- * admitted-by-decision member, because a new JDBC adapter anywhere in the tree can break the rule
- * it holds.
+ * A retired set is gone from every read but the ones that serve its bookings (ADR-0019,
+ * {@code RESPONSIBILITIES.md} §venue), enforced per statement: every production SQL string naming
+ * {@code set_position} reads {@code active_set_position} or says {@code retired_at IS NULL}. An
+ * {@code INSERT INTO} passes (a new row is active by construction), and inside a {@link SetBookingFacts}
+ * implementor only the constants named in {@link #EXEMPT_FACTS_CONSTANTS} pass bare. Context-free; the
+ * cases are proven against {@code ai.riviera.retirefixture}; the net's one admitted-by-decision member.
  */
 class RetiredSetExclusionArchitectureTests {
 
@@ -59,9 +37,9 @@ class RetiredSetExclusionArchitectureTests {
 	private static final String RETIRED_MARKER = "retired_at";
 
 	/**
-	 * The facts port's deliberate bare reads, by constant name: the booking-info select that still
-	 * answers for a retired set, and the ForReserve twins' venue lock, which hands out no set. Nothing
-	 * else in an implementor is exempt.
+	 * The facts port's deliberate bare reads, by constant name — the booking-info select that still
+	 * answers for a retired set, and the ForReserve twins' venue lock, which hands out no set — read off
+	 * the field's {@code ConstantValue}, so an exempt statement is a named constant, never a literal.
 	 */
 	private static final Set<String> EXEMPT_FACTS_CONSTANTS = Set.of("SET_BOOKING_INFO_SELECT",
 			"VENUES_OF_SETS_LOCK");
@@ -92,10 +70,9 @@ class RetiredSetExclusionArchitectureTests {
 	}
 
 	/**
-	 * Guards against a vacuously-green rule: the production tree must hold a facts adapter whose
-	 * exempt constants read the bare table (so the exemption is real), a non-exempt statement in that
-	 * adapter reading the view (so the per-statement check inside it holds something) and a view read
-	 * elsewhere (so the sanctioned path is what the excluding reads actually take).
+	 * Guards against a vacuously-green rule: the production tree must hold an exempt constant reading
+	 * the bare table (the exemption is real), a non-exempt statement in the facts adapter reading the
+	 * view (the per-statement check inside it holds something) and a view read elsewhere.
 	 */
 	@Test
 	void theExemptionThePerStatementCheckAndTheViewPathAreAllExercised() {

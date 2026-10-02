@@ -172,11 +172,9 @@ public final class ArchitectureTestSupport {
 	}
 
 	/**
-	 * Every {@code static final} string field of a compiled class with its folded value, by field
-	 * name — the {@code ConstantValue} attribute. What a rule that exempts a statement by the
-	 * constant's name keys on ({@code RetiredSetExclusionArchitectureTests}): an inline literal has
-	 * no name and never appears here, and a name proves nothing about the value, which the caller
-	 * still judges.
+	 * Every string field carrying a {@code ConstantValue} attribute, by name: what a rule that exempts a
+	 * statement by its constant's name keys on ({@code RetiredSetExclusionArchitectureTests}). An inline
+	 * literal has no name and never appears here; the value itself stays the caller's to judge.
 	 */
 	static Map<String, String> stringConstantFields(Path classFile) {
 		try {
