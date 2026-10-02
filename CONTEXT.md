@@ -174,7 +174,7 @@ model in `docs/architecture/domain-model.md`.
   the operator never saw makes the preview **stale**, and the save answers the fresh picture instead.
 - **Commit receipt** — the record of one saved remodel: when it was saved, by whom, every booking it
   moved with the spot the guest was told before, the spot they hold now and the distance, every
-  claim it ended instead — refunded, released or declined — with the amount, the operator's reason
+  claim it ended instead — refunded, released, declined or with **nothing left** — with the amount, the operator's reason
   and the total returned, and every **kept claim** with why it stayed. Kept after the old set is retired, so the guest's page, their mail and the
   console still name the spot they were told; readable from the console as **past remodels**. There
   is no undo — a move is reversed by another remodel.
@@ -192,6 +192,12 @@ model in `docs/architecture/domain-model.md`.
   anything, so neither returns money and the payout ledger is untouched. Distinct from the **weather
   refund**, which is the venue operator's answer to a storm, and from the guest's own **free exit**,
   which is the same reason from the other side.
+- **Nothing left** — a **confirmed** booking every day of which a **day refund** has already given back,
+  as a saved remodel finds it outside the **frozen** zone: ended rather than moved or refunded, since there is
+  nothing to return — no money moves, no **fee**, no mail, and any day it still held is freed for another guest.
+  It has its own group on the preview and the **commit receipt** and never counts toward the refunds the
+  operator types. One day still the guest's, even one whose share is zero, is not nothing left.
+  _Avoid_: zero refund, empty refund, fully refunded.
 - **Moved booking** — a booking a saved remodel re-seated on another set for the same span: its
   code, price and dates are unchanged, the guest is mailed the new spot, and the booking carries
   when it moved and opens a **free exit**.
@@ -375,7 +381,7 @@ model in `docs/architecture/domain-model.md`.
   remodel refunding a booking it could not move, or a **moved booking**'s guest taking their
   **free exit**. Flat, platform-wide, and charged once per booking beside the reversal. It is not
   part of what the guest got back, and it is charged only where money was returned — a release or
-  a decline collected nothing, so neither is charged. Its amount is a **platform setting**: a
+  a decline collected nothing and a booking with **nothing left** returns nothing, so none is charged. Its amount is a **platform setting**: a
   change applies to every fee charged after it, and fees already charged keep what they were
   charged at.
 - **Platform setting** — a value the platform sets for itself, where every other setting belongs to

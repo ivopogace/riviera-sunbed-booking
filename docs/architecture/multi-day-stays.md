@@ -330,7 +330,7 @@ segments-in-one-booking alternative) and how the stitching slice settled the cod
 carries it, a stretch's own row code is derived and never shown.
 
 *Amended 2026-10-02 (#1290):* "a stay cancels whole, judged on the stay's first day" has one
-exception. A remodel ends a stretch on its own (ADR-0020's refund or release leaves the other
+exception. A remodel ends a stretch on its own (ADR-0020's refund, release or nothing left leaves the other
 stretches live), after which the guest's cancel **sets those stretches aside and cancels the live
 remainder, judged on the first live day** — the day a same-set booking of the dates the guest still
 holds would be judged on. What tells a remodel's ending from the guest's own free exit is the commit

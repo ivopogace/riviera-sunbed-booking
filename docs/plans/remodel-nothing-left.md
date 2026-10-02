@@ -78,13 +78,13 @@ is no longer live, so the save's probe passes.
 
 ## Execution status
 
-**Stage pointer:** implement (phase 3)
+**Stage pointer:** PR — merge main, ready for review
 
-**Next action:** docs (ADR-0026, CONTEXT.md, RESPONSIBILITIES.md, listener Javadoc).
+**Next action:** merge origin/main, mark ready, run the review gate (high).
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — classification + commit leg | ✅ | (this commit) |
 | 1 — wire + ITs | ✅ | (this commit) |
 | 2 — frontend | ✅ | (this commit) |
-| 3 — docs | | |
+| 3 — docs | ✅ | (this commit) |

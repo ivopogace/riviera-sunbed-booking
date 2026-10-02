@@ -436,10 +436,10 @@ any is released on the old, never a swap of my own — so a racing reserve wins 
   `CONFIRMED` booking when `payment.api.CollectionGuarantee` says the gateway collects before
   confirming — never a profile string.
 - **Remodel classification** (`RemodelClaims#classify`, ADR-0020) decides each live booking on the
-  disturbed sets in `(service date, id)` order: zone (`RemodelZones`), then a move candidate
-  (`MoveRanking`; a taken one leaves the pool on every day of the span), then status — `CONFIRMED`
-  refunds, `AWAITING_PAYMENT` releases; a frozen claim, or a move-only one without a candidate,
-  blocks. A `PENDING_REQUEST` is no claim: it declines (`SET_UNAVAILABLE`) whatever the zone, never
+  disturbed sets in `(service date, id)` order: zone (`RemodelZones`), nothing left, then a move
+  candidate (`MoveRanking`; a taken one leaves the pool on every day of the span), then status —
+  `CONFIRMED` refunds, `AWAITING_PAYMENT` releases; a frozen claim, or a move-only one without a
+  candidate, blocks. A `PENDING_REQUEST` is no claim: it declines (`SET_UNAVAILABLE`) whatever the zone, never
   moves, releases nothing (ADR-0025). Outcome kinds only, never a status or code (invariant #7);
   advisory and unlocked, so the commit re-derives it.
 - **A released stretch takes its stay's other unpaid stretches with it** (#1292): one intent collects
@@ -461,6 +461,13 @@ any is released on the old, never a swap of my own — so a racing reserve wins 
   guest gets one mail, #1292); a **decline** the venue-scoped one. A `Blocked` claim is **kept** (a
   `remodel_receipt_kept` line with its `BlockReason`; `venue` leaves the set as stored), yet a claim
   that can move off that set still moves. No undo: another remodel reverses a move.
+- **A confirmed claim with no unrefunded day is *nothing left*** (#1300, ADR-0026 §8): in any unfrozen
+  zone, decided before the move search, so it takes no candidate. Its leg is the refund leg's: under the row
+  lock (`Bookings#lockRemainder`) it finds every day refunded, cancels at 0 as `VENUE_CHANGE`, frees the
+  days it still holds and writes a `NOTHING_LEFT` line (amount and fee 0, V75); it publishes no
+  `BookingCancelled`, so no mail, ledger entry or void follows. A refund whose last day was refunded
+  before that lock settles the same way, and the commit answers it as settled. Keyed on no unrefunded
+  day, never on a zero remainder; the typed refund count leaves it out.
 - **The receipt is mine** (`remodel_receipt(_move/_outcome/_kept)`): label snapshots, distance,
   amounts, reasons, so mails and views name the spot after its set retires.
   `BookingPresence#hasBookings` counts a move's from- and to-sets, so a left set retires rather than
@@ -470,8 +477,8 @@ any is released on the old, never a swap of my own — so a racing reserve wins 
 - **A remodel-released booking's intent is voided after commit, never inside it:** the abandoned
   sweep reads only `AWAITING_PAYMENT`, so nothing else reaches it. `RemodelReleasePaymentListener`
   acts only on a `VENUE_CHANGE` cancel with a `RELEASE` receipt line (`RemodelReceipts#releasedByRemodel`),
-  never on a zero refund: a paid booking whose every day was already refunded also returns nothing
-  (#1291). One void per released stretch of a stay; the port answers an already-voided intent
+  never on a zero refund: a moved guest's free exit can be a zero `VENUE_CHANGE` refund of a paid booking
+  (#1291), while a remodel ends a paid one with nothing left without any `BookingCancelled` (#1300). One void per released stretch of a stay; the port answers an already-voided intent
   `Canceled`. It throws on a transient failure. An intent that had collected cannot be undone: it
   counts to `ObservabilityMetrics.REMODEL_RELEASE_COLLECTED` and is refunded by hand, never retried.
 - **A moved booking's free exit is a refund-tier override, never a window change:** until

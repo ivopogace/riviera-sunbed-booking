@@ -417,7 +417,7 @@ classDiagram
     BookingTransition ..> BookingStatus : the lifecycle, stated once
     RefundPolicy ..> CancellationWindow : one tier per window
     booking ..> RefundReason : cancel_reason
-    remodel_receipt "1" o-- "many" booking : what one commit moved, refunded, released or declined
+    remodel_receipt "1" o-- "many" booking : what one commit moved, refunded, released, declined or ended with nothing left
 ```
 
 > The booking **code** is an unguessable bearer credential — ≥ 8 random base32 chars, never
