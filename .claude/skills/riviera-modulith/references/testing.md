@@ -1,9 +1,13 @@
 # Testing (Modulith)
 
-DB-touching tests: `@SpringBootTest` + `@Import(TestcontainersConfiguration.class)` +
-`@EnabledIfDockerAvailable`. ITs sharing a cached context share its container's database, so a
-literal a `UNIQUE` column holds (a refund id, a `BookingRef(99xx)`) is a key across those classes:
-keep it class-unique. A one-class run misses the collision; run the module's DB-backed ITs together.
+DB-touching tests carry `@Import(TestcontainersConfiguration.class)` + `@EnabledIfDockerAvailable`.
+**A module-internal IT is an `@ApplicationModuleTest`** (below). `@SpringBootTest` is for what one
+module cannot show: a flow that must cross a real port of another module (`ReviewSubmitFlowIT`), the
+`web` chain (security, CSRF, role gates), whole-context wiring (`SharedTaskExecutorUndecoratedIT`) and
+the highest-stakes invariants (`ConcurrentReservationIT` for #2). ITs sharing a cached context share
+its container's database, so a literal a `UNIQUE` column holds (a refund id, a `BookingRef(99xx)`)
+is a key across those classes: keep it class-unique. A one-class run misses the collision; run the
+module's DB-backed ITs together.
 
 ## Structural tests
 
@@ -14,16 +18,17 @@ dependency direction on top; don't add jMolecules (package-name rules do it with
 ## `@ApplicationModuleTest`
 
 Bootstraps the module the test sits in plus the root package's beans and the registered `shared`
-module (place the class in the module package). The security chain is `web`'s, so STANDALONE does not
-load it; a port of another module the bootstrapped beans inject still needs a `@MockitoBean`
-(`PayoutModuleTest`; `riviera-local-debug` § *Blast radius*). Use for module-internal wiring;
-the highest-stakes DB invariants get full `@SpringBootTest` ITs (`ConcurrentReservationIT` for
-#2). `@MockitoBean`, never `@MockBean`. Prefer the narrowest bootstrap mode; needing
-`ALL_DEPENDENCIES` signals excess coupling.
+module (place the class in the module package). The root holds only configuration, so STANDALONE (the
+default) needs no root stub: mock exactly the other modules' ports the bootstrapped beans inject, with
+`@MockitoBean`, never `@MockBean` (`PayoutModuleTest`; `riviera-local-debug` § *Blast radius*). Mock
+rather than widen the mode, as the Modulith reference advises; needing `DIRECT_DEPENDENCIES` or
+`ALL_DEPENDENCIES`, or a long mock list, signals coupling an event could replace. It enables the
+`Scenario` DSL without `@EnableScenarios`.
 
 ## Published events
 
-An async listener's effect: the `Scenario` DSL under `@SpringBootTest` + `@EnableScenarios`,
-`scenario.publish(...)` then wait for the DB transition, bounded with `andWaitAtMost(Duration)`
-(`PaymentEventListenerIT`). A publication alone: `@RecordApplicationEvents` +
+An async listener's effect: the `Scenario` DSL, `scenario.publish(...)` then wait for the DB
+transition, bounded with `andWaitAtMost(Duration)`: under `@ApplicationModuleTest` for one module's
+listener (`PayoutModuleTest`), under `@SpringBootTest` + `@EnableScenarios` when the flow crosses
+modules (`PaymentEventListenerIT`). A publication alone: `@RecordApplicationEvents` +
 `ApplicationEvents` (`StripeWebhookIT`).
