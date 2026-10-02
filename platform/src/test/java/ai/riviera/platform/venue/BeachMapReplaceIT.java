@@ -369,6 +369,50 @@ class BeachMapReplaceIT {
 	}
 
 	@Test
+	void shiftsARowDownByOneToAddASetInFront() throws Exception {
+		long venue = createVenue("Shift Club");
+		putLayout(venue, layout(0,
+				cell("A", 1, "STANDARD", "ONLINE", 2000, 2, 1),
+				cell("A", 2, "STANDARD", "ONLINE", 2000, 3, 1)), 204);
+		List<Long> ids = setIds(venue);
+
+		// A new A1 in front: the old A1 takes A2 while the old A2 still holds it, and moves on to A3.
+		putLayout(venue, layout(currentSetVersion(venue),
+				cell("A", 1, "STANDARD", "ONLINE", 2000, 1, 1),
+				cell("A", 2, "STANDARD", "ONLINE", 2000, 2, 1),
+				cell("A", 3, "STANDARD", "ONLINE", 2000, 3, 1)), 204);
+
+		mvc.perform(get("/api/venues/{id}", venue))
+				.andExpect(jsonPath("$.sets.length()").value(3))
+				.andExpect(jsonPath("$.sets[0].positionNo").value(1))
+				.andExpect(jsonPath("$.sets[1].id").value(ids.get(0)))
+				.andExpect(jsonPath("$.sets[1].positionNo").value(2))
+				.andExpect(jsonPath("$.sets[2].id").value(ids.get(1)))
+				.andExpect(jsonPath("$.sets[2].positionNo").value(3));
+	}
+
+	@Test
+	void relabelsAChainOfRowsInOneSave() throws Exception {
+		long venue = createVenue("Relabel Club");
+		putLayout(venue, layout(0,
+				cell("A", 1, "PREMIUM", "ONLINE", 3500, 1, 1),
+				cell("B", 1, "STANDARD", "ONLINE", 2000, 1, 2)), 204);
+		List<Long> ids = setIds(venue);
+		seedBooking(venue, ids.get(0));
+
+		// A becomes B while B still holds it, and B moves on to the free C: a rename, so a booked set takes it.
+		putLayout(venue, layout(currentSetVersion(venue),
+				cell("B", 1, "PREMIUM", "ONLINE", 3500, 1, 1),
+				cell("C", 1, "STANDARD", "ONLINE", 2000, 1, 2)), 204);
+
+		mvc.perform(get("/api/venues/{id}", venue))
+				.andExpect(jsonPath("$.sets[0].id").value(ids.get(0)))
+				.andExpect(jsonPath("$.sets[0].rowLabel").value("B"))
+				.andExpect(jsonPath("$.sets[1].id").value(ids.get(1)))
+				.andExpect(jsonPath("$.sets[1].rowLabel").value("C"));
+	}
+
+	@Test
 	void refusesRenumberingABookedSetAtItsCell() throws Exception {
 		long venue = createVenue("Renumber Club");
 		putLayout(venue, layout(0, cell("A", 1, "PREMIUM", "ONLINE", 3500, 1, 1)), 204);

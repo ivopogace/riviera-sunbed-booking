@@ -30,6 +30,11 @@ record LayoutDiff(List<Update> updates, List<SetCommand> inserts, List<PlacedSet
 		boolean repositions() {
 			return stored.placement().positionNo() != command.positionNo();
 		}
+
+		/** Whether the submission gives the set another row label or position number, so it leaves its slot. */
+		boolean changesSlot() {
+			return repositions() || !stored.placement().rowLabel().equals(command.rowLabel());
+		}
 	}
 
 	static LayoutDiff of(List<PlacedSet> stored, LayoutCommand command) {
@@ -127,24 +132,12 @@ record LayoutDiff(List<Update> updates, List<SetCommand> inserts, List<PlacedSet
 	}
 
 	/**
-	 * The kept sets whose new row label and position another kept set currently holds — a swap or a
-	 * rotation of row names. Their in-place updates would collide on the layout-uniqueness index
-	 * before the other set moves on, so the save parks their labels first.
+	 * The kept sets leaving their slot, in submission order. The save parks all of them before any
+	 * update, since the uniqueness index is not deferrable and a target slot's holder may be one of
+	 * them: a swap, a shifted renumber (A1→A2, A2→A3), a relabel chain (A→B, B→C).
 	 */
-	List<SetId> collidingUpdates() {
-		Map<String, SetId> occupied = new HashMap<>();
-		for (Update update : updates) {
-			SetPlacement at = update.stored().placement();
-			occupied.put(slotKey(at.rowLabel(), at.positionNo()), update.stored().id());
-		}
-		List<SetId> colliding = new ArrayList<>();
-		for (Update update : updates) {
-			SetId holder = occupied.get(slotKey(update.command().rowLabel(), update.command().positionNo()));
-			if (holder != null && !holder.equals(update.stored().id())) {
-				colliding.add(update.stored().id());
-			}
-		}
-		return List.copyOf(colliding);
+	List<SetId> movingUpdates() {
+		return updates.stream().filter(Update::changesSlot).map(update -> update.stored().id()).toList();
 	}
 
 	private static String cellKey(int gridX, int gridY) {

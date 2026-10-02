@@ -391,6 +391,28 @@ class RemodelCommitIT {
 	}
 
 	@Test
+	void aCommitThatShiftsARowDownToAddASetInFrontApplies() throws Exception {
+		long venue = createVenue("Shift Commit Club");
+		putLayout(venue, layout(0, cell("A", 1, 2), cell("A", 2, 3)));
+		List<Long> ids = setIds(venue);
+		long token = currentSetVersion(venue);
+		// The old A1 takes A2 while the old A2 still holds it; the write must park the holder too.
+		String body = layout(token, cell("A", 1, 1), cell("A", 2, 2), cell("A", 3, 3));
+		String previewToken = previewToken(venue, body);
+
+		mvc.perform(commit(venue, body, previewToken))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.moves.length()").value(0));
+
+		List<Long> after = setIds(venue);
+		assertEquals(List.of(ids.get(0), ids.get(1)), after.subList(1, 3), "the kept sets keep their ids");
+		assertEquals(List.of(1, 2, 3), jdbc.sql(
+				"SELECT position_no FROM active_set_position WHERE venue_id = :v ORDER BY grid_x")
+				.param("v", venue).query(Integer.class).list());
+		assertEquals(token + 1, currentSetVersion(venue), "the save spent the token once");
+	}
+
+	@Test
 	void aStaffHoldIsStale() throws Exception {
 		long held = createVenue("Held Club");
 		putLayout(held, layout(0, cell("A", 1, 1), cell("A", 2, 2)));
