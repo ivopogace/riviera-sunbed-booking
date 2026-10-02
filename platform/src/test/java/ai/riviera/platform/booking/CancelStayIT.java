@@ -323,6 +323,30 @@ class CancelStayIT {
 		assertEquals(1L, reversals(venue.id()), "only the live stretch is reversed by the guest's cancel");
 	}
 
+	/** A release ends every unpaid stretch of a stay in one receipt (#1292): each line sets its stretch aside, nothing is live. */
+	@Test
+	void aStayEveryStretchOfWhichARemodelReleasedIsNotCancellable() {
+		Venue venue = StayFixtures.venue(jdbc, "INSTANT", null, true);
+		venues.add(venue.id());
+		SetId a = venue.online().get(0);
+		SetId b = venue.online().get(1);
+		LocalDate first = firstDay();
+		String code = "RLSD" + System.nanoTime() % 100_000_000L;
+		StayFixtures.SeededStay seeded = StayFixtures.insertStay(jdbc, venue, code, first, a, 2, "CANCELLED", b, 2,
+				"CANCELLED");
+		receipts.store(new NewReceipt(new VenueId(venue.id()), StayFixtures.ownerOf(jdbc, venue), java.time.Instant.now(),
+				List.of(), List.of(
+						new ReceiptOutcome(new BookingId(seeded.stretches().get(0)), first, new SpotRef(a, "A", 1),
+								ReceiptOutcomeKind.RELEASE, PRICE, "EUR", 0L),
+						new ReceiptOutcome(new BookingId(seeded.stretches().get(1)), first.plusDays(2), new SpotRef(b, "A", 2),
+								ReceiptOutcomeKind.RELEASE, PRICE, "EUR", 0L)),
+				"", List.of()));
+
+		assertEquals(new CancelOutcome.NotCancellable(BookingStatus.CANCELLED), cancelBooking.cancel(code));
+		assertFalse(viewBooking.byCode(code).orElseThrow().cancellable());
+		assertEquals(0, events.stream(BookingCancelled.class).count(), "nothing live, nothing written or announced");
+	}
+
 	/** Leaves a stretch as a remodel refund does: {@code CANCELLED} as {@code VENUE_CHANGE} with the receipt's outcome line. */
 	private void endAsARemodelRefund(Venue venue, long stretch, SetId set, LocalDate day) {
 		long amount = jdbc.sql("SELECT amount_minor FROM booking WHERE id = :id").param("id", stretch)
