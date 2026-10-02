@@ -664,7 +664,7 @@ reset token's account **without consuming** it, so `auth` revokes that principal
 the live account by email or id, SSO-only included (null hash), never an erased one; `auth` owns the stamp.
 
 **An SSO first sign-in that links onto an account whose email is unverified clears its password** (#1295), one
-guarded statement under the claim's row lock, before it marks the email verified: the provider proved the email, the
+guarded statement in the claim's transaction, before it marks the email verified: the provider proved the email, the
 password's holder never did, so a pre-registered account cannot capture the email's owner. `auth`'s stamp then refuses
 the holder's live sessions on their next request and password login finds no credential; no revoke brackets it, since
 the port names no outcome to key one on (#1295). A verified email's account links and keeps its password; gating the
