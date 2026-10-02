@@ -274,9 +274,13 @@ model in `docs/architecture/domain-model.md`.
   runs) with a **move** between each: a different set on a different morning, never within a day.
   Booked as a **group of bookings**, one per stretch, under one `stay` row that carries the guest's
   one code (ADR-0024); paid once, confirmed by one mail naming every stop, cancelled whole by one mail with the total, refunded
-  per stretch on the stay's first day's window. The plan is the **itinerary search**'s answer: fewest moves, then shortest (same row,
+  per stretch on the stay's first day's window (the **live remainder**'s, once a remodel ended a stretch). The plan is the
+  **itinerary search**'s answer: fewest moves, then shortest (same row,
   closest position, closest row), within the **move budget** (`riviera.itinerary.max-switches`,
   default and ceiling three), anchored on a tapped set when the tourist plans around it.
+- **Live remainder** — the stretches of a stitched stay a guest cancel still reaches: every stretch a
+  remodel has not already ended, judged on the first of them. A stretch ended any other way is not set
+  aside, and the stay refuses whole.
 - **Move reminder** — the one mail a stitched stay's guest gets the evening before each **move**,
   naming tomorrow's set and how far it is from today's (rows and positions, off the live map); the
   booking page carries the same fact as **your spot today**, leading with the set the guest holds
@@ -397,7 +401,7 @@ model in `docs/architecture/domain-model.md`.
   server-side, and only within the **cancellation window**.
 - **Cancellation window** — how long a confirmed booking may be cancelled at all:
   from booking until `00:00 Europe/Tirane` on the first service day (a stitched stay's stretches
-  are all judged on the stay's first day), in the named phases
+  are all judged on the stay's first day, or on its **live remainder**'s), in the named phases
   (`booking.vocabulary.CancellationWindow`): **FREE** (before the cutoff — the *full*
   refund tier), **LATE** (cutoff passed, service day not open — the *partial*/*none*
   tier), **CLOSED** (the service day has opened — the cancellation is refused outright,

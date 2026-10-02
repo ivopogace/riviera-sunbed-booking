@@ -2,11 +2,13 @@ package ai.riviera.platform.booking.application.view;
 
 import ai.riviera.platform.booking.application.BookingCutoff;
 import ai.riviera.platform.booking.application.cancel.CancellationPolicy;
+import ai.riviera.platform.booking.application.cancel.LiveRemainder;
 import ai.riviera.platform.booking.application.remodel.RemodelReceipts;
 import ai.riviera.platform.booking.application.request.RequestWindows;
 import ai.riviera.platform.booking.vocabulary.BookingId;
 
 import java.time.Clock;
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -45,6 +47,7 @@ class ViewBookingService implements ViewBooking {
 	private final CustomerLookup customers;
 	private final RequestWindows windows;
 	private final RemodelReceipts receipts;
+	private final LiveRemainder liveRemainder;
 	private final Clock clock;
 
 	ViewBookingService(Bookings bookings, CancellationPolicy cancellationPolicy, BookingCutoff cutoff,
@@ -53,7 +56,8 @@ class ViewBookingService implements ViewBooking {
 			ai.riviera.platform.payment.api.CollectionGuarantee collection,
 			ai.riviera.platform.payment.api.RefundStatusLookup refundStatus,
 			ai.riviera.platform.review.api.ReviewEligibility reviewEligibility,
-			CustomerLookup customers, RequestWindows windows, RemodelReceipts receipts, Clock clock) {
+			CustomerLookup customers, RequestWindows windows, RemodelReceipts receipts, LiveRemainder liveRemainder,
+			Clock clock) {
 		this.bookings = bookings;
 		this.cancellationPolicy = cancellationPolicy;
 		this.cutoff = cutoff;
@@ -65,6 +69,7 @@ class ViewBookingService implements ViewBooking {
 		this.customers = customers;
 		this.windows = windows;
 		this.receipts = receipts;
+		this.liveRemainder = liveRemainder;
 		this.clock = clock;
 	}
 
@@ -75,20 +80,24 @@ class ViewBookingService implements ViewBooking {
 	}
 
 	/**
-	 * A stay reads as one booking (design D6): code, span, {@link StayStatus}, the first stretch's spot and
-	 * credentials (one intent), money summed, every stretch quoted on the stay's first day, and each stretch
-	 * with its own move; the stay's {@code move} stays null, as its spot is the first stretch's.
+	 * A stay reads as one booking (ADR-0024): code, span, {@link StayStatus}, the first stretch's spot and credentials
+	 * (one intent), money summed, every stretch quoted on the day the cancel judges the {@link LiveRemainder} on, each
+	 * with its own move (the stay's is null: its spot is the first stretch's); cancellable and refund are the remainder's (#10).
 	 */
 	private BookingDetail toStayDetail(StayRecord stay) {
 		List<BookingRecord> stretches = stay.stretches();
 		BookingRecord first = stretches.getFirst();
 		BookingRecord summary = stay.asBooking();
 		BookingStatus status = summary.status();
-		List<RefundQuote> quotes = stretches.stream().map(s -> cancellationPolicy.quote(s, stay.firstDay())).toList();
+		LiveRemainder.Split remainder = liveRemainder.of(stretches);
+		LocalDate windowDay = remainder.firstLiveDay().orElse(stay.firstDay());
+		List<RefundQuote> quotes = stretches.stream().map(s -> cancellationPolicy.quote(s, windowDay)).toList();
 		SetBookingInfo firstSet = quotes.getFirst().set();
-		boolean cancellable = stretches.stream().allMatch(s -> BookingTransition.CANCEL_BY_GUEST.admits(s.status()))
-				&& quotes.stream().allMatch(RefundQuote::cancellationOpen);
-		long refundIfCancelledNow = quotes.stream().mapToLong(RefundQuote::refundMinor).reduce(0L, Math::addExact);
+		List<RefundQuote> liveQuotes = remainder.live().stream().map(s -> quotes.get(stretches.indexOf(s))).toList();
+		boolean cancellable = !remainder.live().isEmpty()
+				&& remainder.live().stream().allMatch(s -> BookingTransition.CANCEL_BY_GUEST.admits(s.status()))
+				&& liveQuotes.stream().allMatch(RefundQuote::cancellationOpen);
+		long refundIfCancelledNow = liveQuotes.stream().mapToLong(RefundQuote::refundMinor).reduce(0L, Math::addExact);
 		boolean refundOutstanding = stretches.stream().anyMatch(s -> s.status() == BookingStatus.CANCELLED
 				&& s.refundMinor() != null && s.refundMinor() > 0
 				&& refundStatus.progressOf(new ai.riviera.platform.payment.vocabulary.BookingRef(s.id()))
@@ -112,7 +121,8 @@ class ViewBookingService implements ViewBooking {
 		}
 		return new BookingDetail(stay.code(), status, stay.venueId(), firstSet.venueName(), firstSet.rowLabel(),
 				firstSet.positionNo(), stay.firstDay(), stay.lastDay(), new MoneyView(summary.amountMinor(), first.currency()),
-				cancellable, status == BookingStatus.PENDING_REQUEST, quotes.getFirst().beforeCutoff(),
+				cancellable, status == BookingStatus.PENDING_REQUEST,
+				liveQuotes.isEmpty() ? quotes.getFirst().beforeCutoff() : liveQuotes.getFirst().beforeCutoff(),
 				new MoneyView(refundIfCancelledNow, first.currency()),
 				summary.refundMinor() == null ? null : new MoneyView(summary.refundMinor(), first.currency()),
 				refundOutstanding, summary.requestExpiresAt(), payment, emailWithheld, payWindowClosed,

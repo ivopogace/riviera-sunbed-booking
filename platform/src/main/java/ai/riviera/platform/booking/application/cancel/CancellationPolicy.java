@@ -52,8 +52,8 @@ public class CancellationPolicy implements QuoteCancellationTerms {
 
 	/**
 	 * The quote with the window judged on {@code windowDay} instead of the booking's own first day: a
-	 * stitched stay's stretches are all judged on the stay's first day, so stitching never changes the
-	 * money a same-set stay of the same dates would refund (invariant #10, design D6).
+	 * stitched stay's stretches are all judged on one day (the stay's first, or its {@link LiveRemainder}'s), so
+	 * stitching never changes the money a same-set stay of the dates still held would refund (#10, ADR-0024 §4).
 	 */
 	public RefundQuote quote(BookingRecord booking, java.time.LocalDate windowDay) {
 		SetBookingInfo set = setFacts.setBookingInfo(booking.setId()).orElseThrow(() ->

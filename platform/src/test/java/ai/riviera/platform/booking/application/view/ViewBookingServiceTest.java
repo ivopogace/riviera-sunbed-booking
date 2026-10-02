@@ -15,6 +15,7 @@ import org.junit.jupiter.params.provider.EnumSource;
 import ai.riviera.platform.booking.application.Bookings;
 import ai.riviera.platform.booking.application.BookingCutoff;
 import ai.riviera.platform.booking.application.cancel.CancellationPolicy;
+import ai.riviera.platform.booking.application.cancel.LiveRemainder;
 import ai.riviera.platform.booking.application.remodel.ReceiptMove;
 import ai.riviera.platform.booking.application.request.RequestWindows;
 import ai.riviera.platform.booking.domain.BookingStatus;
@@ -90,7 +91,7 @@ class ViewBookingServiceTest {
 			mock(ai.riviera.platform.booking.application.remodel.RemodelReceipts.class);
 	private final ViewBookingService service = new ViewBookingService(bookings, cancellationPolicy,
 			cutoff, checkout, mailDelivery, collection, refundStatus, reviewEligibility, customers,
-			WINDOWS, receipts, NOW);
+			WINDOWS, receipts, new LiveRemainder(receipts), NOW);
 
 	@org.junit.jupiter.params.ParameterizedTest
 	@org.junit.jupiter.params.provider.MethodSource("everyPanel")
@@ -258,6 +259,47 @@ class ViewBookingServiceTest {
 		assertThat(detail.refundIfCancelledNow().minorUnits()).isEqualTo(16875L);
 		assertThat(detail.cancellable()).isTrue();
 		verify(receipts, never()).latestMoveOf(new BookingId(1L));
+	}
+
+	/** ADR-0024 §4 as amended (#1290): the view quotes the live remainder on its first day, as the cancel will. */
+	@Test
+	void aStayWithARemodelEndedStretchIsCancellableForItsRemainder() {
+		BookingRecord ended = new BookingRecord(1L, CODE, BookingStatus.CANCELLED, VENUE, SET, GUEST, DATE,
+				DATE.plusDays(2), 13500L, "EUR", NOW.instant(), 13500L, null, RefundReason.VENUE_CHANGE, Instant.EPOCH,
+				null, null);
+		BookingRecord live = stretch(2L, DATE.plusDays(3), DATE.plusDays(5), null);
+		when(bookings.findByCode(CODE)).thenReturn(Optional.empty());
+		when(bookings.findStayByCode(CODE)).thenReturn(Optional.of(
+				new StayRecord(new StayId(4L), CODE, VENUE, DATE, DATE.plusDays(5), List.of(ended, live))));
+		when(receipts.endedByRemodel(new BookingId(1L))).thenReturn(true);
+		when(cancellationPolicy.quote(ended, DATE.plusDays(3))).thenReturn(new CancellationPolicy.RefundQuote(setInfo(),
+				CancellationWindow.FREE, 13500L, RefundReason.POLICY, null));
+		when(cancellationPolicy.quote(live, DATE.plusDays(3))).thenReturn(new CancellationPolicy.RefundQuote(setInfo(),
+				CancellationWindow.FREE, 13500L, RefundReason.POLICY, null));
+
+		BookingDetail detail = service.byCode(CODE).orElseThrow();
+
+		assertThat(detail.cancellable()).isTrue();
+		assertThat(detail.refundIfCancelledNow().minorUnits()).isEqualTo(13500L);
+		assertThat(detail.beforeCutoff()).isTrue();
+		verify(cancellationPolicy, never()).quote(any(), org.mockito.ArgumentMatchers.eq(DATE));
+	}
+
+	/** A stretch cancelled with no receipt line (the weather refund) leaves the stay as before: not cancellable. */
+	@Test
+	void aStayWithAStretchCancelledOutsideARemodelIsNotCancellable() {
+		BookingRecord ended = new BookingRecord(1L, CODE, BookingStatus.CANCELLED, VENUE, SET, GUEST, DATE,
+				DATE.plusDays(2), 13500L, "EUR", NOW.instant(), 0L, null, RefundReason.WEATHER, Instant.EPOCH, null, null);
+		BookingRecord live = stretch(2L, DATE.plusDays(3), DATE.plusDays(5), null);
+		when(bookings.findByCode(CODE)).thenReturn(Optional.empty());
+		when(bookings.findStayByCode(CODE)).thenReturn(Optional.of(
+				new StayRecord(new StayId(4L), CODE, VENUE, DATE, DATE.plusDays(5), List.of(ended, live))));
+		when(cancellationPolicy.quote(any(), any())).thenReturn(new CancellationPolicy.RefundQuote(setInfo(),
+				CancellationWindow.FREE, 13500L, RefundReason.POLICY, null));
+
+		BookingDetail detail = service.byCode(CODE).orElseThrow();
+
+		assertThat(detail.cancellable()).isFalse();
 	}
 
 	private static BookingRecord stretch(long id, LocalDate firstDay, LocalDate lastDay, Instant movedAt) {
@@ -590,7 +632,8 @@ class ViewBookingServiceTest {
 	private ViewBookingService serviceAt(Instant now) {
 		Clock at = Clock.fixed(now, ZoneId.of("UTC"));
 		return new ViewBookingService(bookings, cancellationPolicy, new BookingCutoff(at), checkout,
-				mailDelivery, collection, refundStatus, reviewEligibility, customers, WINDOWS, receipts, at);
+				mailDelivery, collection, refundStatus, reviewEligibility, customers, WINDOWS, receipts,
+				new LiveRemainder(receipts), at);
 	}
 
 	private void givenAwaitingPayment(LocalDate date, Instant createdAt, Instant acceptedAt) {
