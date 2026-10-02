@@ -52,11 +52,14 @@ row reads live for a booked guest today), and nothing for a future move mail to 
    sets still cannot share either.
 6. **The exclusion is enforced, not described.** `RetiredSetExclusionArchitectureTests` holds every
    production `CONSTANT_String` naming the bare `set_position` (an `INSERT INTO` excepted — a new row
-   is active by construction) to naming `retired_at` in the same statement, exempting the class that
-   implements `SetBookingFacts`. That exemption is a class, which is why the facts adapter is its own
-   class (`JdbcSetBookingFacts`) beside `JdbcVenueCatalog`. The test joins the structural net by this
-   decision although it names its table: a new JDBC adapter anywhere in the tree can break the rule
-   it holds, which is the property the net exists to catch.
+   is active by construction) to reading `active_set_position` or saying `retired_at IS NULL` in the
+   same statement. The exemption is per statement, keyed on the constant's name: in the class that
+   implements `SetBookingFacts` (`JdbcSetBookingFacts`, its own class beside `JdbcVenueCatalog`),
+   only `SET_BOOKING_INFO_SELECT` (point 4's bare reads) and `VENUES_OF_SETS_LOCK` (the `ForReserve`
+   twins' venue lock, which hands out no set) read the table bare; every other statement there is
+   held like any other class's. The test joins the structural net by this decision although it names
+   its table: a new JDBC adapter anywhere in the tree can break the rule it holds, which is the
+   property the net exists to catch.
    *Amended 2026-10-01 (#1342):* the exempt class holds more than point 4's bare reads.
    `JdbcSetBookingFacts` also serves reads that must exclude retired sets — `poolForClaim`,
    `activeSetsOf`, `freeOnlineSetsOn` and `stayFactsOf` — and they select from
@@ -66,16 +69,14 @@ row reads live for a booked guest today), and nothing for a future move mail to 
    list. A Request-to-Book request claims nothing (ADR-0025), so `poolForClaim` never fences it; the
    reserve's fence read is the retired-set fence on both booking modes, locking the set through the
    view as `poolForClaim` does. Point 4's bare reads are `setBookingInfo` / `setBookingInfos` only.
-   *Amended 2026-10-02 (#1394):* the exemption is per statement, keyed on the constant's name. In a
-   class implementing `SetBookingFacts`, only `SET_BOOKING_INFO_SELECT` (point 4's bare reads) and
-   `VENUES_OF_SETS_LOCK` (the `ForReserve` twins' venue lock, which hands out no set) are exempt;
-   every other statement there — the six excluding reads of the two notes above — is held like any
-   other class's. A statement passes only by reading `active_set_position` or saying `retired_at IS
-   NULL` (any case and spacing); a bare mention of `retired_at` no longer counts. The constant pool
-   still does not say which method a string belongs to, but a `static final` field's `ConstantValue`
-   does carry its name, which is what the allow-list reads; an exempt statement is therefore a named
-   constant, never an inline literal. The port is not split (owner's decision on #1394), and the
-   class split stands on its own terms: two conversations reading one table with opposite intent.
+   *Amended 2026-10-02 (#1394):* until this note the exemption was the whole class — the reason the
+   facts adapter became its own class — so the six excluding reads of the two notes above held by
+   convention, and a statement passed on a bare mention of `retired_at`. The body above now states
+   the per-statement rule. The constant pool still does not say which method a string belongs to,
+   but a `static final` field's `ConstantValue` carries its name, which is what the allow-list reads;
+   an exempt statement is therefore a named constant, never an inline literal. The port is not split
+   (owner's decision on #1394); the class split stands on its own terms: two conversations reading
+   one table with opposite intent.
 
 ## Considered options
 
