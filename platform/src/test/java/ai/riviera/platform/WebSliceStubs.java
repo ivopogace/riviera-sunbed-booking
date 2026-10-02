@@ -190,7 +190,7 @@ import ai.riviera.platform.venue.vocabulary.VenueSummaryView;
  */
 @TestConfiguration(proxyBeanMethods = false)
 @Import({AuthConfig.class, StampedSessionCredentials.class})
-class WebSliceStubs {
+public class WebSliceStubs {
 
 	/**
 	 * The slice carries no metrics auto-configuration, so a controller that counts something — the
@@ -261,7 +261,7 @@ class WebSliceStubs {
 	}
 
 	/** Stamp a client IP onto a MockMvc request (shared by the rate-limit slices). */
-	static RequestPostProcessor fromIp(String ip) {
+	public static RequestPostProcessor fromIp(String ip) {
 		return request -> {
 			request.setRemoteAddr(ip);
 			return request;
@@ -377,10 +377,10 @@ class WebSliceStubs {
 	}
 
 	/** The payloads the slices submit; anything else is {@link ChallengeVerdict#INVALID}. */
-	static final class StubProofOfWorkChallenges implements ProofOfWorkChallenges {
+	public static final class StubProofOfWorkChallenges implements ProofOfWorkChallenges {
 
-		static final String SOLVED = "stub-solved";
-		static final String EXPIRED = "stub-expired";
+		public static final String SOLVED = "stub-solved";
+		public static final String EXPIRED = "stub-expired";
 
 		private final boolean enabled;
 		private final AtomicLong issued = new AtomicLong();

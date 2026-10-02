@@ -1,5 +1,7 @@
 package ai.riviera.platform;
 
+import ai.riviera.platform.web.adapter.in.WebCorsConfig;
+import ai.riviera.platform.web.adapter.in.SecurityConfig;
 import java.util.Optional;
 
 import org.junit.jupiter.api.Test;
@@ -49,8 +51,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * with the admin's retry drawing {@code 409 WRONG_STATUS}. The fix pre-reads the username through
  * {@link OperatorLifecycle#usernameInStatus} and revokes on <em>both</em> sides (D-1).
  *
- * <p>Lives in the root test package because the web slice imports the package-private edge config
- * ({@code SecurityConfig} / {@code WebCorsConfig} / {@link WebSliceStubs}). Docker-free. Every request
+ * <p>Lives in the root test package with the other whole-web-layer slices sharing {@link WebSliceStubs}
+ * (with {@code web}'s {@code SecurityConfig} / {@code WebCorsConfig}). Docker-free. Every request
  * carries a unique {@code X-Forwarded-For} (rate-bucket isolation) — this surface has no bucket
  * today, and the header keeps that from becoming a full-suite-only surprise if one is ever added.
  */

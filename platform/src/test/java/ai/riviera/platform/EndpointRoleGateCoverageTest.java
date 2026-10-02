@@ -1,5 +1,7 @@
 package ai.riviera.platform;
 
+import ai.riviera.platform.web.adapter.in.WebCorsConfig;
+import ai.riviera.platform.web.adapter.in.SecurityConfig;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
@@ -67,8 +69,8 @@ import static org.springframework.security.test.web.servlet.request.SecurityMock
  *
  * <p>Scope: {@code RequestMappingHandlerMapping} — the annotated controllers. Actuator endpoints are
  * {@code WebMvcEndpointHandlerMapping} entries, are not loaded by {@code @WebMvcTest}, and keep their
- * own exposure lockdown. Lives in the root test package because the web slice imports the
- * package-private {@code SecurityConfig} / {@code WebCorsConfig} / {@link WebSliceStubs}.
+ * own exposure lockdown. Lives in the root test package with the other whole-web-layer slices sharing
+ * {@link WebSliceStubs} (with {@code web}'s {@code SecurityConfig} / {@code WebCorsConfig}).
  */
 @WebMvcTest
 @Import({SecurityConfig.class, WebCorsConfig.class, WebSliceStubs.class})

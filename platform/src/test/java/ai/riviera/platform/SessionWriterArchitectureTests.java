@@ -15,7 +15,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 /**
  * {@code auth}'s {@code SessionAuthentication} is the only code that saves a security context through any
  * {@link SecurityContextRepository}, so every stored session principal is a stamped {@code SessionPrincipal} and
- * {@link SessionCredentialFilter} checks it (#1306).
+ * {@code web}'s {@code SessionCredentialFilter} checks it (#1306).
  */
 class SessionWriterArchitectureTests {
 

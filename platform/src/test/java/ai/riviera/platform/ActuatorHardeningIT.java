@@ -25,7 +25,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * endpoint — {@code env}, {@code beans}, {@code mappings}, {@code configprops}, {@code heapdump},
  * {@code threaddump}, {@code loggers}, {@code metrics}, and the Spring-Modulith {@code modulith}
  * endpoint — must be **unreachable**. Two independent layers back that: the exposure allowlist (a
- * non-exposed endpoint returns {@code 404}) and the security filter chain ({@link SecurityConfig}
+ * non-exposed endpoint returns {@code 404}) and the security filter chain ({@code SecurityConfig}
  * gates everything but {@code health} behind authentication, so an anonymous call is {@code 401}).
  * Health itself stays public for Render's health check + the CD poll, but its component details are
  * shown only {@code when-authorized} (invariant: a public status probe must not leak internal

@@ -9,7 +9,7 @@ import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
-import ai.riviera.platform.ApiErrorHandler;
+import ai.riviera.platform.web.adapter.in.ApiErrorHandler;
 import ai.riviera.platform.payout.application.BatchStatusOutcome;
 import ai.riviera.platform.payout.application.PayoutReport;
 import ai.riviera.platform.payout.domain.BatchStatus;
