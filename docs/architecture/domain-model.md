@@ -34,9 +34,10 @@ venue, improvement plan B4, and nothing reads it); the closed `remodel` composit
 composes `venue::api` with `booking::api` for the beach-map remodel preview and commit, ADR-0028,
 and nothing reads it); and the closed ADR-0017 mechanisms, `challenge` (proof of work, owns
 `challenge_registry`) and `audit` (the admin audit trail, owns `admin_audit_record`), both reached
-from the platform edge through a port. `monitoring` (no table) is not drawn either: `booking` and
-`notification` reach only its `vocabulary` (metric names, the MDC task decorator), never a port or
-an event.
+from `web`'s fence through a port; and `web` itself (the HTTP boundary: the security chain, its
+filters and the one advice, §1.1), which no module calls. `monitoring` (no table) is not drawn
+either: `booking` and `notification` reach only its `vocabulary` (metric names, the MDC task
+decorator), never a port or an event.
 
 ```mermaid
 graph TB
@@ -106,17 +107,18 @@ the claim via the availability port, and `BookingCancelled` drives both the refu
 ### 1.1 What is not in a module: the platform edge
 
 Part of the system sits outside the context modules, and no diagram here shows it — so it is
-stated instead. The composition root (`ai.riviera.platform`) holds the fences: `SecurityConfig` and
-the filter chain (`RateLimitFilter`, `ChallengeVerificationFilter`, `AdminAuditFilter`,
-`SessionCredentialFilter`; the correlation-id filter is `monitoring`'s) and the error contract
-(`ApiErrorHandler`, `ApiProblem`). The closed `auth` module holds the login machinery: the session
+stated instead. The closed `web` module holds the fences: `SecurityConfig` and the filter chain
+(`RateLimitFilter`, `ChallengeVerificationFilter`, `AdminAuditFilter`, `SessionCredentialFilter`; the
+correlation-id filter is `monitoring`'s) and the one advice (`ApiErrorHandler`; `ApiProblem` is
+`shared`'s). The composition root (`ai.riviera.platform`) holds only `PlatformApplication` and
+configuration that reaches no module. The closed `auth` module holds the login machinery: the session
 principals and their revocation, the SSO gateways, and the auth, SSO, my-account, account-recovery,
 my-erasure, admin-operator, operator-account and mock-IdP controllers.
 
 Two consequences a reader of §1 would otherwise miss: `operator` has **no controllers of its own**
 and `customer` only the admin erasure one — everything a person does with their own account is an
 `auth` endpoint calling those modules' ports — and the rule that keeps this honest runs one way only.
-Modules depend on `shared`, the root depends on modules, and **nothing depends on the root**
+Modules depend on `shared`, the root depends on no module, and **nothing depends on the root**
 (ADR-0007 Amendment 2, machine-checked by `CompositionRootDisciplineTests`). `RESPONSIBILITIES.md` §
 *Platform edge* is the contract.
 

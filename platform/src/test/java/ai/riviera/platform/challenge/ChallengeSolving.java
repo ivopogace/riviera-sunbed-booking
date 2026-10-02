@@ -11,8 +11,8 @@ import org.json.JSONObject;
  * verifies with — so no test bypass exists and a payload here is byte-for-byte what the widget
  * sends: base64 of {@code {"challenge":{"parameters":…,"signature":…},"solution":{…}}}.
  *
- * <p>Owned by the module that owns the ALTCHA dependency; public because the composition root's own
- * challenge ITs drive the fence end to end and mint their payloads through it.
+ * <p>Owned by the module that owns the ALTCHA dependency; public because the challenge ITs outside
+ * this module drive {@code web}'s fence end to end and mint their payloads through it.
  */
 public final class ChallengeSolving {
 

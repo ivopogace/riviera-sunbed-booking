@@ -5,7 +5,7 @@
  *
  * <p><strong>Closed, {@code allowedDependencies = {}} (only the registered {@code shared}):</strong> callers reach
  * only {@link ai.riviera.platform.audit.api.AdminAuditLog}; the fence (which requests, the reason
- * header, the ADMIN gate) is the edge's. Rationale: {@code RESPONSIBILITIES.md} §{@code audit}.
+ * header, the ADMIN gate) is {@code web}'s. Rationale: {@code RESPONSIBILITIES.md} §{@code audit}.
  */
 @org.springframework.modulith.ApplicationModule(
 	displayName = "Admin audit trail",

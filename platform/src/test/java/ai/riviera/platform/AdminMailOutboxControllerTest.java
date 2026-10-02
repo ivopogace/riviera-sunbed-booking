@@ -1,5 +1,7 @@
 package ai.riviera.platform;
 
+import ai.riviera.platform.web.adapter.in.WebCorsConfig;
+import ai.riviera.platform.web.adapter.in.SecurityConfig;
 import java.time.Duration;
 
 import org.junit.jupiter.api.Test;
@@ -39,8 +41,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * token, with no address, arrival code or registry payload anywhere.</li>
  * </ol>
  *
- * <p>Lives in the root test package, unlike the controller it covers, because {@code WebSliceStubs} is
- * package-private here and the subject is really the admin surface <em>through</em>
+ * <p>Lives in the root test package, unlike the controller it covers, because it shares the root's
+ * {@code WebSliceStubs} and the subject is really the admin surface <em>through</em>
  * {@code SecurityConfig}. The policy behind the port has its own tests
  * ({@code MailResubmissionServiceTest}), as does the scope ({@code MailOutboxScopeTest},
  * {@code MailOutboxScopeIT}). Docker-free {@code @WebMvcTest} slice.

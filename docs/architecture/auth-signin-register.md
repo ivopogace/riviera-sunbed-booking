@@ -75,7 +75,7 @@ login/register endpoints, sharing the platform-edge machinery. Module ownership
 - `operator` module: unchanged ownership (account identity + operator↔venue
   mapping), gains registration/approval state.
 - The `auth` module (ADR-0028): all login machinery — session establishment, the SSO
-  redirect/callback handling; the filter chain and session config stay at the root edge.
+  redirect/callback handling; the filter chain and session config are the `web` module's.
 
 ### D-3: SSO flow — OIDC Authorization Code + PKCE, server-side
 

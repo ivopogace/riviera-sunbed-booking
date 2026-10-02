@@ -1,5 +1,7 @@
 package ai.riviera.platform;
 
+import ai.riviera.platform.web.adapter.in.WebCorsConfig;
+import ai.riviera.platform.web.adapter.in.SecurityConfig;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -35,8 +37,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * an absent venue is a {@code 404}, and the new path is public <em>without</em> loosening the
  * operator-only {@code /availability} read one segment away from it.
  *
- * <p>Lives in the root test package because the web slice imports the package-private edge config
- * ({@code SecurityConfig} / {@code WebCorsConfig} / {@link WebSliceStubs}), like every other
+ * <p>Lives in the root test package with the other whole-web-layer slices sharing {@link WebSliceStubs}
+ * (with {@code web}'s {@code SecurityConfig} / {@code WebCorsConfig}), like every other
  * web-slice test here. The real-schema counting behaviour is
  * {@code VenueAvailabilityCalendarIT}'s job.
  */

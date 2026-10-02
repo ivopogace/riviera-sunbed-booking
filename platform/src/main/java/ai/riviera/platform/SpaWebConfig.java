@@ -15,7 +15,7 @@ import org.springframework.web.servlet.resource.PathResourceResolver;
  * assets directly, and {@code index.html} for client-side routes so a deep-link refresh boots the
  * app instead of 404ing. An unmapped {@code /api/**} or {@code /actuator/**} request stays a
  * 404/401, never the shell. Same-origin hosting keeps the session and CSRF cookies first-party
- * (ADR-0004); the public-shell authorization is {@link SecurityConfig}'s SPA filter chain, and this
+ * (ADR-0004); the public-shell authorization is {@code SecurityConfig}'s SPA filter chain, and this
  * class only maps request paths to static resources.
  */
 @Component
