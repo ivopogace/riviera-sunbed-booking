@@ -44,6 +44,9 @@ this tree — `domain/` holds choices, calculations and lifecycles, and the aggr
 `CLAUDE.md` and `docs/architecture/domain-model.md` are dropped rather than built out. *Count
 updated 2026-09-26 (#1206 / PR #1250):* thirteen modules since the `itinerary` read model landed;
 the decision is unchanged.
+*Count superseded 2026-10-02 (#1369):* the module list keeps growing (the `auth`, `web`, `remodel`
+and `monitoring` modules of ADR-0028, among others), so this ADR states no count. `CLAUDE.md`
+§ *Modules* is the source of truth.
 
 ---
 
@@ -228,12 +231,20 @@ sitting at a module root — an intentional allowance.
 
 **The rule this restores:** modules depend on `shared`, the root depends on modules, and
 **nothing depends on the root**.
+*Amended 2026-10-02 (PR #1357, #1326; ADR-0028 Decision 1):* "the root depends on modules" no
+longer holds. The root reaches **no** module, not even a published `api`:
+`CompositionRootDisciplineTests` states it as a blanket rule with no surface granted, and the
+security chain moved into the closed module `web`. The other two halves stand: modules depend on
+`shared`, and nothing depends on the root.
 
 **Admission test:** no business logic, no module-owned state, and no dependency on a module that
 depends back. `shared` may reach only `customer::api` and `operator::api`.
 
 **Do not copy this shape for any other module.** A new module is still thin-or-full per the
 mechanical rule; OPEN is reserved for technical shared code, and `shared` is the only instance.
+*Amended 2026-10-02 (PR #1351, #1329):* no module is `Type.OPEN` any more — `shared` is CLOSED and
+registered in `@Modulithic(sharedModules)` (see the 2026-10-01 note above). "Do not copy this
+shape" stands: the flat, surface-less shape is `shared`'s alone.
 
 ## Note — why some id records are copied and `SetId` is not (2026-09-04)
 

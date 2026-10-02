@@ -209,7 +209,7 @@ never sent.
 > substitute for looking.
 
 **Read one increment as: someone was told an action succeeded, and the mail it promised is not
-coming.** For `verification`/`password-reset` that is a person who asked for a link and got a `200`;
+coming.** For `verification`/`password-reset` that is a person who asked for a link and got a success response (forgot-password answers `204`);
 for `operator-approved` it is an operator whose account really is active but who has no way to know —
 it will find out by retrying sign-in, which is precisely the experience #375 set out to remove. All
 three recover only by acting again, and nothing will tell them to. This is the counter's whole

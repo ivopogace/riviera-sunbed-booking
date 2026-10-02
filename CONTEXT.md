@@ -44,7 +44,9 @@ model in `docs/architecture/domain-model.md`.
   `LIGHTBOX` and the operator preview carry one each — the lightbox's near-square box already is a
   high-density size. A double-density or lightbox rendition that would be larger than the upload
   is never made, so a small photo may lack them. Each is a fit-within-resized JPEG served by its
-  **content hash** at a public URL (`/api/venues/{venueId}/photos/{hash}`); a replace mints new
+  **content hash** at a public URL (`/api/venues/{venueId}/photos/{hash}`) while the venue is
+  tourist-visible (a hidden venue's photo answers `404`, a conditional request included, except to
+  its owner or an admin); a replace mints new
   hashes → new URLs, and a removed variant stops being served rather than outliving its removal in
   caches. A photo uploaded before a surface or a density existed keeps the renditions it was
   given: the full-res original is discarded at upload, so nothing can be re-derived from it.

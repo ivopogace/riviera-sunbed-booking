@@ -65,6 +65,12 @@ true only if setup ran for *that* file. It goes red under both regression paths:
 module, and moving it back under the builder's `setupFiles`. Alongside it, the setup file registers
 an `afterEach` that fails the exact test which leaves the clock off the frozen instant, and
 `eslint.config.js` fails the lint on `vi.useRealTimers()` under `src/`.
+*Amended 2026-10-02 (PR #1344, #1339):* "goes red under both regression paths" was too strong for
+one spec. `freeze-clock.spec.ts` passes alone whenever it happens to be the first file in its
+worker, even if setup ran only once. `src/testing/freeze-clock-sentinel.spec.ts` is the second
+sentinel with the same assertion: two sentinels cannot both be first in one worker, so a shared
+setup goes red in at least one. The decision stands; the property is pinned by the pair, and the
+*Consequences* line on `freeze-clock.spec.ts` reads as the pair.
 
 ## Consequences
 

@@ -6,7 +6,8 @@
   exist; no third is named. *Amended 2026-10-01 by ADR-0028:* every "stays in the root" here —
   the fence of Decision 1, `RateLimitFilter` (Decision 5), `AdminAuditReasons` (Decision 6) and the
   fence of Decision 8 — moves to the closed module `web` when #1326 lands; until then the code is as
-  this ADR describes. The fence/mechanism split, `challenge` and `audit` stand. Decision 1's test
+  this ADR describes. *Amended 2026-10-02 (PR #1357, #1326):* it has landed (1a706f0), so the
+  "until then" clause is spent and each of those now sits in `web`. The fence/mechanism split, `challenge` and `audit` stand. Decision 1's test
   ("owns a table, a scheduled job, a library dependency or a published verdict") stays the test for
   a *mechanism* module, no longer for every module: ADR-0028 Decision 8 adds adapter-layer modules
   (`auth`, `web`) and an orchestration module (`remodel`) that own none of these. The considered
@@ -87,7 +88,9 @@ The sources settle it (research note §1–§3):
    `@ApplicationModule` with the full template of ADR-0007, `allowedDependencies = {}` unless it
    demonstrably needs `shared` (Modulith: "Declaring an empty array will allow no dependencies to
    other modules"), a published `api/` port and `vocabulary/`, and a row in
-   `CompositionRootDisciplineTests`' grant map naming exactly the surfaces the root may touch. It
+   `CompositionRootDisciplineTests`' grant map naming exactly the surfaces the root may touch
+   *(amended 2026-10-02, PR #1357, #1326: the grant map is gone; the test is a blanket rule that
+   the root reaches no module surface, so a new module needs no row)*. It
    owns no aggregate a tourist or operator would name, which is why it is not a bounded context
    and gets no row in the CLAUDE.md context table proper; it is listed beneath it, beside
    `shared`, as a non-context module. The category label is the repo's own; the pattern each
@@ -107,6 +110,7 @@ The sources settle it (research note §1–§3):
    `SecurityConfig` keeps registering the filter, injects the port, and refers to the challenge
    path by its own literal, as it does for every other module-owned endpoint. The root's grant
    row is `challenge → {api, vocabulary}`.
+   *Amended 2026-10-02 (PR #1357, #1326):* no grant row exists any more; the root reaches no module.
 3. **The name is `challenge`.** `CONTEXT.md`'s glossary term is *proof-of-work challenge*,
    "shortened to **challenge** in code and issues"; the tree already uses it (`ChallengeController`,
    `challenge.ts`, the `challenge-widget`); captcha, human check and bot check stay on the Avoid
@@ -114,6 +118,8 @@ The sources settle it (research note §1–§3):
    name in the tree; `abuse` because it implies the rate limiter belongs inside (it does not —
    Decision 5); `edge` because it is the docs' word for the root itself. `SsoAuthorizationChallenge`
    (the OIDC `state`/PKCE nonce) is a different noun and keeps its name in the root.
+   *Amended 2026-10-02 (PR #1353, #1325):* it keeps its name, but no longer sits in the root: it is
+   `auth/application/SsoAuthorizationChallenge`.
 4. **Module → root becomes a mechanical rule.** `CompositionRootDisciplineTests` gains a second
    rule: no class inside a module depends on a type sitting directly in `ai.riviera.platform`,
    fixture-proven like its sibling. Spring Modulith cannot supply it (the `allowedDependencies`
@@ -121,7 +127,9 @@ The sources settle it (research note §1–§3):
    repo checks it. First consequence: the registry adapter reads
    `riviera.scheduled.query-timeout-seconds` itself (the `booking` and `customer` sweep adapters'
    precedent) instead of injecting the root's `ScheduledQueryTimeout`, whose own Javadoc keeps
-   it at the root. The `challenge_registry` sole-writer rule joins
+   it at the root *(amended 2026-10-02, PR #1346: it now lives in
+   `monitoring/adapter/in/ScheduledQueryTimeout`; the sweep adapters still read the property
+   themselves)*. The `challenge_registry` sole-writer rule joins
    `ResponsibilitiesArchitectureTests` (the `set_availability` mechanism), and the sweep's
    `DELETE` joins the bounded-entry-query IT it was missing from.
 5. **`RateLimitFilter` stays in the root.** It is the fence itself: no port, no table, no job,
@@ -140,7 +148,8 @@ The sources settle it (research note §1–§3):
    adapter; and the root's grant row is `audit → {api}`, not `{api, vocabulary}`, because with the
    sanitizer left at the edge the root never names the published entry record. `AdminAuditEntry`
    is published vocabulary rather than a record nested in the port, which the ports surface
-   forbids.
+   forbids. *Amended 2026-10-02 (PR #1357, #1326):* the grant row is gone with the grant map, and
+   `AdminAuditReasons` now sits in `web/adapter/in`, not the root.
 7. **Sequencing:** PR #911 merges as reviewed and is not amended; the move is its own refactor
    PR (#913) next, and #906/#907 start after it so their fenced-route additions, ITs and the
    `ChallengeSolving` helper are written once against the final placement.
