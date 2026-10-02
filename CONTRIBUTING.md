@@ -196,6 +196,8 @@ a vendored skill):
   and single-test variants; load before the session's first `./gradlew` or `npm`.
 - **`riviera-docs-freshness`** — the staleness audit for these substrate docs; load
   at every epic close-out.
+- **`riviera-wave`** — orchestrates a wave of issues, one cloud session each: spawn,
+  relay decisions, verify the merge bar, merge in order, close out.
 - **`angular-new-app` / `angular-developer`** — scaffolding and Angular standards.
 
 `CLAUDE.md` is the canonical, always-current list of project skills.
