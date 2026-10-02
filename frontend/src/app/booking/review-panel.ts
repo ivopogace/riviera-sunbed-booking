@@ -208,7 +208,14 @@ function seedFor(panel: ReviewPanelState): ReviewFormModel {
         </section>
       }
       @case ('NOT_COMPLETED') {
-        @if (bookingStatus() === 'CONFIRMED') {
+        @if (nothingLeft() && (bookingStatus() === 'CONFIRMED' || bookingStatus() === 'NO_SHOW')) {
+          <section [class]="cls.section" aria-labelledby="review-title" data-testid="review-panel">
+            <h2 id="review-title" [class]="cls.title">Rating this stay</h2>
+            <p [class]="cls.note" data-testid="review-nothing-left-note">
+              There’s nothing to review: every day of this booking was refunded.
+            </p>
+          </section>
+        } @else if (bookingStatus() === 'CONFIRMED') {
           <section [class]="cls.section" aria-labelledby="review-title" data-testid="review-panel">
             <h2 id="review-title" [class]="cls.title">Rating this stay</h2>
             <p [class]="cls.note" data-testid="review-not-completed-note">
@@ -326,6 +333,8 @@ export class ReviewPanel {
   readonly panel = input.required<ReviewPanelState>();
   /** Consulted for the not-yet-checked-in note alone: an invitation only a live stay should get. */
   readonly bookingStatus = input.required<BookingStatus>();
+  /** Every day refunded (ADR-0026 §7): the note says there is nothing to review instead of promising a check-in. */
+  readonly nothingLeft = input(false);
   readonly venueName = input.required<string>();
   /** A write is in flight upstairs, so the pressed control says so rather than accepting a second. */
   readonly busy = input(false);

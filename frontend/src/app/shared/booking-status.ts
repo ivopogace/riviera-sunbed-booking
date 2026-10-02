@@ -44,6 +44,16 @@ export const STATUS_META: Record<BookingStatus, StatusMeta> = {
 };
 
 /**
+ * The chip of a `CONFIRMED` or `NO_SHOW` booking whose every day was refunded on its own (ADR-0026 §7):
+ * money came back, so it wears the cancelled chip's proven fill under its own label.
+ */
+export const REFUNDED_META: StatusMeta = {
+  label: 'Refunded',
+  chip: 'chip--cancelled',
+  amount: 'Paid',
+};
+
+/**
  * The money figure's label: `Paid` once money moved, else `Amount`. Status alone can't tell a
  * charged `CANCELLED` from one the abandoned-payment sweep released uncharged, so callers holding
  * the refund fact pass it (`null` = never charged); `undefined` keeps the status-only reading.
@@ -64,11 +74,14 @@ export function humanizeStatus(status: string): string {
 }
 
 /**
- * Presentation metadata for a status, tolerant of a status this build doesn't know (a new backend
- * lifecycle state shipped before the FE is redeployed): rather than throw, fall back to a humanized
- * label, a neutral chip, and the conservative `Amount` label (never claim money moved).
+ * Presentation metadata for a status; a `CONFIRMED`/`NO_SHOW` one with `nothingLeft` is {@link REFUNDED_META}.
+ * Tolerant of a status this build doesn't know (a backend state shipped before the FE is redeployed): rather
+ * than throw, a humanized label, a neutral chip and the conservative `Amount` label (never claim money moved).
  */
-export function metaFor(status: string): StatusMeta {
+export function metaFor(status: string, nothingLeft = false): StatusMeta {
+  if (nothingLeft && (status === 'CONFIRMED' || status === 'NO_SHOW')) {
+    return REFUNDED_META;
+  }
   return (
     STATUS_META[status as BookingStatus] ?? {
       label: humanizeStatus(status),
