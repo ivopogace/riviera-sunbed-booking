@@ -1060,7 +1060,7 @@ admin action was justified; retention (a named non-goal — rows are kept indefi
   `ObservabilityConfig` as a servlet filter outside the security chain, so not `web`'s);
   `MdcTaskDecorator` carries the submitter's MDC onto a pooled worker. Each pool builds the decorator
   with `new`, never as a bean: Boot applies a `TaskDecorator` bean to its own `applicationTaskExecutor`
-  and scheduler, which stay undecorated (`WorkerContextArchitectureTest`).
+  and scheduler, which stay undecorated (`SharedTaskExecutorUndecoratedIT`).
 - **The metric names** (`ObservabilityMetrics`). Emission and tags stay with the module that owns the
   thing measured; this module owns the names, the outbox-backlog gauge and the alerts on them.
 - **The money-path alert check shares the sweeps' single-instance posture.** `MoneyPathAlertCheck`
@@ -1355,6 +1355,7 @@ them form the *structural net* is `riviera-modulith` § *The structural net*'s c
 | Mail listeners name their own bounded executors, never Boot's shared `applicationTaskExecutor` | `MailListenerExecutorArchitectureTest` |
 | `booking` listeners reaching `payment::api` run on the bounded refund pool | `RefundListenerExecutorArchitectureTest` |
 | Every self-configured worker pool carries `monitoring`'s MDC decorator | `WorkerContextArchitectureTest` |
+| Boot's shared `applicationTaskExecutor` carries no `TaskDecorator`, and no bean would install one | `SharedTaskExecutorUndecoratedIT` |
 | The draining pools' shutdown claims sum within the SIGTERM grace | `ShutdownDrainArchitectureTest` |
 | Pool tokens live only in `venue.vocabulary.Pool`: no other production class holds an `"ONLINE"` / `"WALK_IN"` literal (invariant #3's operand is the published type) | `PoolTokenArchitectureTest` (`CONSTANT_String` scan, so `Pool.ONLINE` passes) |
 | A retired set is absent from every read but `SetBookingFacts`: production SQL naming `set_position` reads `active_set_position` or names `retired_at`, an `INSERT INTO` excepted (ADR-0019, §`venue`) | `RetiredSetExclusionArchitectureTests` (per-statement `CONSTANT_String` scan; the structural net's one member admitted by decision) |

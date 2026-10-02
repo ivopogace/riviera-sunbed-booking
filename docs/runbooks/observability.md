@@ -22,6 +22,11 @@ metric-native alerting later.
   the correlation id is per-request, so across the async spine grep the **booking id**, which every
   per-booking money-path line already logs (`… booking 1234 …`). Booking **codes** are never logged
   (invariant #7).
+- **No distributed tracing, deliberately** (#1341). There is no tracing backend, and a booking's trace
+  would break anyway: at the Stripe webhook (a new request) and wherever the outbox re-drives from the
+  database (restart republish, spine retry, admin resubmit), since a stored publication carries no trace
+  context. So the booking id stays the handle, and Spring Modulith's observability modules are not on
+  the classpath. Boot's shared `applicationTaskExecutor` stays undecorated (`SharedTaskExecutorUndecoratedIT`).
 
 ## Prometheus metrics
 

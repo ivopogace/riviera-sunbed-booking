@@ -48,7 +48,7 @@ permissions:
 # the expensive steps are conditional on an `actions/cache` restore keyed on the HASH of everything
 # that job's build reads (`platform/**`; `frontend/**` + `.nvmrc` + that design doc). An exact hit
 # means this identical tree already built green in a run this PR can see, so the job re-uploads the
-# restored JaCoCo XML + classes (or lcov) and the `sonar` job below runs as it does today. A miss
+# restored JaCoCo XML + classes and Modulith docs (or lcov) and the `sonar` job below runs as it does today. A miss
 # is today's full build, followed by a save. The hash IS the change detector, and it errs toward
 # building: `main` moving under the PR, a file touched and then reverted, a `.nvmrc` bump — each is
 # answered by content, never by a path list. Restore runs on `pull_request` only: a push to `main`
@@ -56,7 +56,7 @@ permissions:
 # seeds the cache every later PR reads (a PR run may restore its base branch's caches; `main` cannot
 # read a PR's). The key is computed ONCE, right after checkout, into a step output — an expression
 # evaluated at save time would hash `platform/build/**` too and never match the restore. Bump the
-# `v1-` prefix if the artifact layout changes.
+# `v2-` prefix if the artifact layout changes.
 #
 # What this cannot shorten: the `CodeQL` workflow's two `Analyze (…)` jobs and the `CodeQL` check
 # are required contexts that exist only when SARIF is uploaded for the SHA, so they run in full on
@@ -83,7 +83,7 @@ jobs:
         # Once, before anything is built, so `platform/build/**` cannot leak into it (the negation is
         # belt-and-braces for a reused workspace). Restore and save below MUST both read this output —
         # the header comment says why. `hashFiles` resolves from the repo root, not `working-directory`.
-        run: echo "key=v1-backend-sonar-${{ hashFiles('platform/**', '!platform/build/**') }}" >> "$GITHUB_OUTPUT"
+        run: echo "key=v2-backend-sonar-${{ hashFiles('platform/**', '!platform/build/**') }}" >> "$GITHUB_OUTPUT"
 
       - name: Restore the Sonar inputs of an identical, already-green tree (pull requests only)
         id: restore
@@ -93,6 +93,7 @@ jobs:
           path: |
             platform/build/reports/jacoco/test/jacocoTestReport.xml
             platform/build/classes/java/main
+            platform/build/spring-modulith-docs
           key: ${{ steps.key.outputs.key }}
 
       - name: Set up JDK 25
@@ -119,6 +120,7 @@ jobs:
           path: |
             platform/build/reports/jacoco/test/jacocoTestReport.xml
             platform/build/classes/java/main
+            platform/build/spring-modulith-docs
           key: ${{ steps.key.outputs.key }}
 
       - name: Upload backend coverage + classes (for Sonar)
@@ -132,6 +134,15 @@ jobs:
             platform/build/classes/java/main
           if-no-files-found: error
           retention-days: 1
+
+      - name: Upload the Spring Modulith docs (module diagrams + canvases)
+        # Written by DocumentationTests; a cache hit restores them with the Sonar inputs above.
+        uses: actions/upload-artifact@v7
+        with:
+          name: modulith-docs
+          path: platform/build/spring-modulith-docs
+          if-no-files-found: error
+          retention-days: 30
 
   frontend:
     # DO NOT RENAME. Like `Repo hygiene (diff-scoped)` below, this string is a required status-check
