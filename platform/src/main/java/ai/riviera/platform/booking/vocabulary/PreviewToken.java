@@ -56,6 +56,7 @@ public record PreviewToken(String value) {
 			case RemodelOutcome.Refund ignored -> "REFUND";
 			case RemodelOutcome.Release ignored -> "RELEASE";
 			case RemodelOutcome.Decline ignored -> "DECLINE";
+			case RemodelOutcome.NothingLeft ignored -> "NOTHING_LEFT";
 			case RemodelOutcome.Blocked ignored -> "BLOCKED";
 		};
 	}

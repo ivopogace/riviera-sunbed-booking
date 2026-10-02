@@ -21,6 +21,7 @@ import java.util.OptionalLong;
 import ai.riviera.platform.booking.vocabulary.BookingId;
 import ai.riviera.platform.booking.vocabulary.DeclineReason;
 import ai.riviera.platform.booking.application.remodel.LiveClaim;
+import ai.riviera.platform.booking.application.remodel.LockedRemainder;
 import ai.riviera.platform.booking.application.view.DailyBooking;
 import ai.riviera.platform.customer.vocabulary.CustomerAccountId;
 import ai.riviera.platform.venue.vocabulary.SetId;
@@ -351,6 +352,6 @@ public interface Bookings {
 	/** Row-locks the booking for the transaction; what the caller reads of it afterwards counts a day refunded under the lock. */
 	void lockById(long bookingId);
 
-	/** Row-locks the booking, then reads what it still holds (the amount less its refunded days) in a statement of its own. */
-	long lockRemainingMinor(long bookingId);
+	/** Row-locks the booking, then reads what it still holds (amount less refunded days, any day unrefunded) in a statement of its own. */
+	LockedRemainder lockRemainder(long bookingId);
 }

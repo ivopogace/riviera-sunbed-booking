@@ -45,6 +45,7 @@ import ai.riviera.platform.booking.application.view.RefundedDay;
 import ai.riviera.platform.booking.application.refund.DayRefundStamp;
 import ai.riviera.platform.booking.application.refund.DayRefundedBooking;
 import ai.riviera.platform.booking.application.remodel.LiveClaim;
+import ai.riviera.platform.booking.application.remodel.LockedRemainder;
 import ai.riviera.platform.booking.domain.BookingStatus;
 import ai.riviera.platform.booking.domain.BookingTransition;
 import ai.riviera.platform.booking.domain.DayAttendance;
@@ -98,9 +99,15 @@ class JdbcBookings implements Bookings {
 	private static final String COL_CREATED_AT = "created_at";
 	private static final String COL_ACCEPTED_AT = "accepted_at";
 	private static final String COL_DAY_REFUNDED_MINOR = "day_refunded_minor";
+	private static final String COL_EVERY_DAY_REFUNDED = "every_day_refunded";
 	/** The minor units of booking {@code b} already refunded on its days (ADR-0026, ADR-0027), summed off them. */
 	private static final String DAY_REFUNDED_SUM_SQL =
 			"(SELECT COALESCE(SUM(d.refund_minor), 0) FROM booking_day d WHERE d.booking_id = b.id)";
+
+	/** True iff the booking has service days and none is unrefunded; an unconfirmed one has none (V60's trigger). */
+	private static final String EVERY_DAY_REFUNDED_SQL = """
+			(EXISTS (SELECT 1 FROM booking_day d WHERE d.booking_id = b.id)
+			 AND NOT EXISTS (SELECT 1 FROM booking_day d WHERE d.booking_id = b.id AND d.refunded_at IS NULL))""";
 
 	/** The statuses whose washed-out day may be refunded on its own — {@code BookingStatus#stormDayRefundable}'s members. */
 	private static final List<String> STORM_DAY_REFUNDABLE = java.util.stream.Stream.of(BookingStatus.values())
@@ -1278,9 +1285,8 @@ class JdbcBookings implements Bookings {
 	/** The live-claim columns {@link #findLiveOnSets} and {@link #findLiveStretchesOf} read; one mapper for both. */
 	private static final String LIVE_CLAIM_SELECT = """
 			SELECT id, set_id, booking_date, last_date, status, amount_minor, amount_currency, stay_id,
-			       (SELECT COALESCE(SUM(d.refund_minor), 0) FROM booking_day d WHERE d.booking_id = b.id) AS day_refunded_minor
-			FROM booking b
-			""";
+			       """ + DAY_REFUNDED_SUM_SQL + " AS " + COL_DAY_REFUNDED_MINOR + ", "
+			+ EVERY_DAY_REFUNDED_SQL + " AS " + COL_EVERY_DAY_REFUNDED + "\nFROM booking b\n";
 
 	/** The same live filter as {@code JdbcBookingPresence}; {@code booking_set_date_idx} serves the set list. */
 	@Override
@@ -1315,7 +1321,7 @@ class JdbcBookings implements Bookings {
 				rs.getObject(COL_BOOKING_DATE, LocalDate.class), rs.getObject(COL_LAST_DATE, LocalDate.class),
 				BookingStatus.valueOf(rs.getString(PARAM_STATUS)),
 				rs.getLong(COL_AMOUNT_MINOR), rs.getString(COL_AMOUNT_CURRENCY),
-				rs.getLong(COL_DAY_REFUNDED_MINOR), stayIdOf(rs));
+				rs.getLong(COL_DAY_REFUNDED_MINOR), stayIdOf(rs), rs.getBoolean(COL_EVERY_DAY_REFUNDED));
 	}
 
 	@Override
@@ -1324,11 +1330,13 @@ class JdbcBookings implements Bookings {
 	}
 
 	@Override
-	public long lockRemainingMinor(long bookingId) {
+	public LockedRemainder lockRemainder(long bookingId) {
 		lockById(bookingId);
-		return jdbc.sql("SELECT b.amount_minor - " + DAY_REFUNDED_SUM_SQL + " FROM booking b WHERE b.id = :id")
+		return jdbc.sql("SELECT b.amount_minor - " + DAY_REFUNDED_SUM_SQL + " AS remaining_minor, "
+						+ EVERY_DAY_REFUNDED_SQL + " AS " + COL_EVERY_DAY_REFUNDED + " FROM booking b WHERE b.id = :id")
 				.param("id", bookingId)
-				.query(Long.class)
+				.query((rs, rowNum) -> new LockedRemainder(rs.getLong("remaining_minor"),
+						rs.getBoolean(COL_EVERY_DAY_REFUNDED)))
 				.single();
 	}
 }

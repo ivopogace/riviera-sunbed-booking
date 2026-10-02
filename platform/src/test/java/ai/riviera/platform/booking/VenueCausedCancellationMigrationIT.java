@@ -21,9 +21,9 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * V53: {@code remodel_receipt.refund_reason} is present and starts null; every
+ * V53 and V75: {@code remodel_receipt.refund_reason} is present and starts null; every
  * {@link ReceiptOutcomeKind} passes the outcome CHECK and an unknown token does not; a negative
- * amount and an orphan receipt are refused; every FK column carries an index; and the recorded set
+ * amount, a nothing-left line with an amount and an orphan receipt are refused; every FK column carries an index; and the recorded set
  * id survives its set row, because a receipt line outlives the map it describes.
  */
 @EnabledIfDockerAvailable
@@ -44,8 +44,11 @@ class VenueCausedCancellationMigrationIT {
 				.query(String.class).optional().orElse(null));
 
 		for (ReceiptOutcomeKind kind : ReceiptOutcomeKind.values()) {
-			assertDoesNotThrow(() -> insertOutcome(receipt, booking, set, kind.name(), 2000), kind + " is admitted");
+			long amount = kind == ReceiptOutcomeKind.NOTHING_LEFT ? 0 : 2000;
+			assertDoesNotThrow(() -> insertOutcome(receipt, booking, set, kind.name(), amount), kind + " is admitted");
 		}
+		assertThrows(DataIntegrityViolationException.class,
+				() -> insertOutcome(receipt, booking, set, "NOTHING_LEFT", 2000), "a nothing-left line returns nothing (V75)");
 		assertThrows(DataIntegrityViolationException.class,
 				() -> insertOutcome(receipt, booking, set, "FORGIVEN", 2000), "an unknown kind is refused");
 		assertThrows(DataIntegrityViolationException.class,

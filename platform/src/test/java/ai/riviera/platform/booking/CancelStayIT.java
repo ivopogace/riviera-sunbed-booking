@@ -45,6 +45,7 @@ import ai.riviera.platform.booking.vocabulary.RefundConfirmation;
 import ai.riviera.platform.booking.vocabulary.RefundReason;
 import ai.riviera.platform.booking.vocabulary.RemodelClaim;
 import ai.riviera.platform.booking.vocabulary.RemodelCommit;
+import ai.riviera.platform.booking.vocabulary.RemodelOutcome;
 import ai.riviera.platform.booking.vocabulary.SpotRef;
 import ai.riviera.platform.booking.vocabulary.StayId;
 import ai.riviera.platform.operator.vocabulary.OperatorId;
@@ -345,6 +346,49 @@ class CancelStayIT {
 		assertEquals(new CancelOutcome.NotCancellable(BookingStatus.CANCELLED), cancelBooking.cancel(code));
 		assertFalse(viewBooking.byCode(code).orElseThrow().cancellable());
 		assertEquals(0, events.stream(BookingCancelled.class).count(), "nothing live, nothing written or announced");
+	}
+
+	/** A remodel ends a stretch with nothing left (#1300): its receipt line sets it aside, the live stretch still cancels. */
+	@Test
+	void aStayWithANothingLeftStretchStillCancelsItsLiveStretch() {
+		Venue venue = StayFixtures.venue(jdbc, "INSTANT", null, true);
+		venues.add(venue.id());
+		SetId a = venue.online().get(0);
+		SetId b = venue.online().get(1);
+		LocalDate first = firstDay();
+		String code = "NLFT" + System.nanoTime() % 100_000_000L;
+		StayFixtures.SeededStay seeded = StayFixtures.insertStay(jdbc, venue, code, first, a, 2, "CONFIRMED", b, 2,
+				"CONFIRMED");
+		first.datesUntil(first.plusDays(2)).forEach(day -> StayFixtures.take(jdbc, a, day));
+		first.plusDays(2).datesUntil(first.plusDays(4)).forEach(day -> StayFixtures.take(jdbc, b, day));
+		long spent = seeded.stretches().get(0);
+		seeded.stretches().forEach(stretch -> jdbc.sql("""
+				INSERT INTO payout_ledger_entry (venue_id, booking_id, entry_type, gross_minor, commission_minor,
+				                                 net_minor, currency)
+				VALUES (:v, :b, 'ACCRUAL', :gross, 0, :gross, 'EUR')
+				""").param("v", venue.id()).param("b", stretch).param("gross", PRICE).update());
+		jdbc.sql("""
+				UPDATE booking_day SET refunded_at = now(), refund_minor = :half, refund_reason = 'WEATHER'
+				WHERE booking_id = :b
+				""").param("half", PRICE / 2).param("b", spent).update();
+		OperatorId owner = StayFixtures.ownerOf(jdbc, venue);
+		VenueId venueId = new VenueId(venue.id());
+		List<RemodelClaim> claims = remodelClaims.classify(owner, venueId, List.of(a));
+		assertEquals(List.of(RemodelOutcome.NothingLeft.NOTHING_LEFT), claims.stream().map(RemodelClaim::outcome).toList(),
+				"a free set is there, yet a stretch with every day refunded is not moved");
+		assertInstanceOf(RemodelCommit.Applied.class, remodelClaims.commit(owner, venueId, List.of(a),
+				PreviewToken.of(claims), RefundConfirmation.NONE));
+
+		CancelOutcome outcome = cancelBooking.cancel(code);
+
+		assertEquals(new CancelOutcome.Cancelled(PRICE, "EUR", CancelOutcome.Tier.FULL), outcome,
+				"the ended stretch is set aside and the live one is refunded whole");
+		assertEquals(List.of("CANCELLED", "CANCELLED"), statuses(venue.id()));
+		assertEquals(0L, heldDays(jdbc, a, first, first.plusDays(1)), "the remodel freed the ended stretch's held days");
+		assertEquals(0L, heldDays(jdbc, b, first.plusDays(2), first.plusDays(3)));
+		assertEquals(List.of(new BookingId(seeded.stretches().get(1))),
+				events.stream(BookingCancelled.class).map(BookingCancelled::bookingId).toList(),
+				"the nothing-left stretch is never announced cancelled");
 	}
 
 	/** Leaves a stretch as a remodel refund does: {@code CANCELLED} as {@code VENUE_CHANGE} with the receipt's outcome line. */

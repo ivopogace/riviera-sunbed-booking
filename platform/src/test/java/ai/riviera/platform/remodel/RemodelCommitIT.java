@@ -240,6 +240,81 @@ class RemodelCommitIT {
 	}
 
 	@Test
+	void aNothingLeftClaimEndsQuietlyFreesWhatItHeldAndItsSetRetires() throws Exception {
+		long venue = createVenue("Nothing Left Club");
+		putLayout(venue, layout(0, cell("A", 1, 1), cell("A", 2, 2)));
+		List<Long> ids = setIds(venue);
+		long a1 = ids.get(0);
+		long a2 = ids.get(1);
+		LocalDate first = today.plusDays(10);
+		long spent = everyDayRefunded(venue, a1, first);
+		long token = currentSetVersion(venue);
+		String body = layout(token, cell("A", 2, 2));
+
+		MvcResult preview = mvc.perform(post("/api/venues/{v}/beach-map/preview", venue).cookie(operatorSession)
+						.with(csrf()).contentType(MediaType.APPLICATION_JSON).content(body))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.ended.length()").value(1))
+				.andExpect(jsonPath("$.ended[0].bookingId").value(spent))
+				.andExpect(jsonPath("$.ended[0].from.setId").value(a1))
+				.andExpect(jsonPath("$.moves.length()").value(0))
+				.andExpect(jsonPath("$.refunds.length()").value(0))
+				.andExpect(jsonPath("$.releases.length()").value(0))
+				.andExpect(jsonPath("$.feeTotal.minorUnits").value(0))
+				.andReturn();
+		String previewToken = JsonPath.read(preview.getResponse().getContentAsString(), "$.previewToken");
+
+		MvcResult result = mvc.perform(commit(venue, body, previewToken, 0, ""))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.ended.length()").value(1))
+				.andExpect(jsonPath("$.ended[0].bookingId").value(spent))
+				.andExpect(jsonPath("$.refunds.length()").value(0))
+				.andExpect(jsonPath("$.refundedTotal").value(org.hamcrest.Matchers.nullValue()))
+				.andExpect(jsonPath("$.feeTotal").value(org.hamcrest.Matchers.nullValue()))
+				.andReturn();
+		long receipt = ((Number) JsonPath.read(result.getResponse().getContentAsString(), "$.receiptId")).longValue();
+
+		assertEquals("CANCELLED", statusOf(spent));
+		assertEquals("VENUE_CHANGE", reasonOf(spent));
+		assertEquals(0L, refundOf(spent), "nothing was left to refund");
+		for (int day = 0; day < 3; day++) {
+			assertEquals(0, holds(a1, first.plusDays(day)), "every day it still held is freed, the released one stays free");
+			assertEquals(0, holds(a2, first.plusDays(day)), "the free set was never reserved for it");
+		}
+		assertEquals(List.of("NOTHING_LEFT:0:0"), jdbc.sql("""
+				SELECT kind || ':' || amount_minor || ':' || fee_minor FROM remodel_receipt_outcome WHERE receipt_id = :r
+				""").param("r", receipt).query(String.class).list());
+		assertTrue(retired(a1), "no SETS_IN_USE: the ended booking no longer pins the set");
+		assertEquals(0, bookingCancelledPublicationsFor(spent), "no BookingCancelled, so no mail, ledger entry or void");
+		assertEquals(1, ledgerRowsFor(spent), "only the confirmation's accrual: no reversal, no fee (#9)");
+	}
+
+	@Test
+	void aBookingWhoseLastDayIsRefundedAfterThePreviewMakesTheCommitStale() throws Exception {
+		long venue = createVenue("Late Refund Club");
+		putLayout(venue, layout(0, cell("A", 1, 1), cell("A", 2, 2)));
+		List<Long> ids = setIds(venue);
+		LocalDate day = today.plusDays(10);
+		long booking = claimOn(venue, ids.get(0), day, "CONFIRMED");
+		seedHold(ids.get(1), day, "STAFF_MARKED");
+		long token = currentSetVersion(venue);
+		String body = layout(token, cell("A", 2, 2));
+		String previewToken = previewToken(venue, body);
+		jdbc.sql("""
+				UPDATE booking_day SET refunded_at = now(), refund_minor = 2000, refund_reason = 'WEATHER'
+				WHERE booking_id = :b
+				""").param("b", booking).update();
+
+		mvc.perform(commit(venue, body, previewToken, 1, "Re-laying row A"))
+				.andExpect(status().isConflict())
+				.andExpect(jsonPath("$.code").value("STALE_PREVIEW"))
+				.andExpect(jsonPath("$.preview.ended[0].bookingId").value(booking))
+				.andExpect(jsonPath("$.preview.refunds.length()").value(0));
+
+		assertEquals("CONFIRMED", statusOf(booking), "a stale commit writes nothing");
+	}
+
+	@Test
 	void refusesACommitWithRefundsThatIsNotTypedOut() throws Exception {
 		long venue = createVenue("Unconfirmed Club");
 		putLayout(venue, layout(0, cell("A", 1, 1), cellWalkIn("A", 2, 2)));
@@ -459,6 +534,46 @@ class RemodelCommitIT {
 		long id = seedBooking(venueId, setId, "CMT-" + System.nanoTime(), status, date);
 		seedHold(setId, date, "BOOKED_ONLINE");
 		return id;
+	}
+
+	/**
+	 * A confirmed three-day booking on {@code setId} from {@code first} whose every day is refunded: the first and last
+	 * by weather (still held), the middle by the venue (released), plus its accrual (#1300).
+	 */
+	private long everyDayRefunded(long venueId, long setId, LocalDate first) {
+		long customerId = jdbc.sql("INSERT INTO customer (email, full_name, phone) VALUES (:e, 'Guest', '+355000') RETURNING id")
+				.param("e", "spent-" + System.nanoTime() + "@example.test").query(Long.class).single();
+		long id = jdbc.sql("""
+				INSERT INTO booking (code, venue_id, set_id, customer_id, booking_date, last_date,
+				                     amount_minor, amount_currency, status, confirmed_at)
+				VALUES (:code, :v, :s, :c, :first, :last, 6000, 'EUR', 'CONFIRMED', now())
+				RETURNING id
+				""")
+				.param("code", "CMT-" + System.nanoTime()).param("v", venueId).param("s", setId).param("c", customerId)
+				.param("first", first).param("last", first.plusDays(2))
+				.query(Long.class).single();
+		seedHold(setId, first, "BOOKED_ONLINE");
+		seedHold(setId, first.plusDays(2), "BOOKED_ONLINE");
+		jdbc.sql("""
+				UPDATE booking_day
+				SET refunded_at = now(), refund_minor = 2000,
+				    refund_reason = CASE WHEN service_date = :middle THEN 'VENUE' ELSE 'WEATHER' END,
+				    released_at = CASE WHEN service_date = :middle THEN now() END,
+				    refunded_by_operator_id = CASE WHEN service_date = :middle THEN 1 END
+				WHERE booking_id = :b
+				""").param("middle", first.plusDays(1)).param("b", id).update();
+		seedAccrual(venueId, id);
+		return id;
+	}
+
+	/** {@code BookingCancelled} publications for the booking, outstanding or completed. */
+	private int bookingCancelledPublicationsFor(long bookingId) {
+		return jdbc.sql("""
+				SELECT (SELECT COUNT(*) FROM event_publication
+				        WHERE event_type LIKE '%.BookingCancelled' AND serialized_event::jsonb -> 'bookingId' ->> 'value' = :id)
+				     + (SELECT COUNT(*) FROM event_publication_archive
+				        WHERE event_type LIKE '%.BookingCancelled' AND serialized_event::jsonb -> 'bookingId' ->> 'value' = :id)
+				""").param("id", String.valueOf(bookingId)).query(Integer.class).single();
 	}
 
 	/** The accrual a confirmed booking would already carry, so the reversal has its mirror. */

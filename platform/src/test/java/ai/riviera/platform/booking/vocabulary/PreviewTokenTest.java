@@ -52,6 +52,16 @@ class PreviewTokenTest {
 	}
 
 	@Test
+	void aClaimWhoseLastDayWasRefundedSincePreviewIsStale() {
+		PreviewToken token = PreviewToken.of(List.of(claim(9, RemodelOutcome.Refund.REFUND)));
+
+		assertFalse(token.covers(List.of(claim(9, RemodelOutcome.NothingLeft.NOTHING_LEFT))),
+				"refund and nothing left are different kinds, so the operator sees the new picture (#1300)");
+		assertTrue(PreviewToken.of(List.of(claim(9, RemodelOutcome.NothingLeft.NOTHING_LEFT)))
+				.covers(List.of(claim(9, RemodelOutcome.NothingLeft.NOTHING_LEFT))));
+	}
+
+	@Test
 	void aReRankedMoveStillMatchesBecauseTheCandidateIsNeverHashed() {
 		PreviewToken token = PreviewToken.of(List.of(claim(7, new RemodelOutcome.Move(A2, 0, 1))));
 

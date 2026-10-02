@@ -13,15 +13,15 @@ import ai.riviera.platform.venue.vocabulary.MoneyView;
 
 /**
  * A remodel-commit receipt on {@code GET /api/venues/{venueId}/remodels/{receiptId}}: when, every
- * move, every claim ended (refunded, released, declined), every claim kept with its reason, and the
+ * move, every claim ended (refunded, released, declined, nothing left), every claim kept with its reason, and the
  * refund reason. Bookings ride by id, never code (invariant #7); days ISO; spots as they were.
  * {@code refundedTotal}/{@code feeTotal} are {@code null} when nobody was refunded, so a zero never
  * reads as a refund; one currency is sound as collection is EUR-only (invariant #5). Venue-change
  * fees are as charged then, not today's rate. {@link Summary}: list row. Mirrors FE RemodelReceipt.
  */
 record RemodelReceiptView(long receiptId, Instant committedAt, List<MoveView> moves, List<ClaimView> refunds,
-		List<ReleaseView> releases, List<KeptView> kept, String refundReason, MoneyView refundedTotal,
-		MoneyView feeTotal) {
+		List<ReleaseView> releases, List<EndedView> ended, List<KeptView> kept, String refundReason,
+		MoneyView refundedTotal, MoneyView feeTotal) {
 
 	static RemodelReceiptView of(RemodelReceipt receipt) {
 		List<ReceiptOutcome> refunds = receipt.refunds();
@@ -29,8 +29,13 @@ record RemodelReceiptView(long receiptId, Instant committedAt, List<MoveView> mo
 				receipt.moves().stream().map(MoveView::of).toList(),
 				refunds.stream().map(ClaimView::of).toList(),
 				receipt.outcomes().stream()
-						.filter(outcome -> outcome.kind() != ReceiptOutcomeKind.REFUND)
+						.filter(outcome -> outcome.kind() == ReceiptOutcomeKind.RELEASE
+								|| outcome.kind() == ReceiptOutcomeKind.DECLINE)
 						.map(ReleaseView::of)
+						.toList(),
+				receipt.outcomes().stream()
+						.filter(outcome -> outcome.kind() == ReceiptOutcomeKind.NOTHING_LEFT)
+						.map(EndedView::of)
 						.toList(),
 				receipt.kept().stream().map(KeptView::of).toList(),
 				receipt.refundReason(),
@@ -71,6 +76,15 @@ record RemodelReceiptView(long receiptId, Instant committedAt, List<MoveView> mo
 			return new ReleaseView(outcome.bookingId().value(), outcome.bookingDate().toString(),
 					SpotView.of(outcome.spot()), new MoneyView(outcome.amountMinor(), outcome.currency()),
 					outcome.kind().name());
+		}
+	}
+
+	/** A confirmed booking every day of which was already refunded, ended with no refund, fee or mail (#1300). */
+	record EndedView(long bookingId, String bookingDate, SpotView from) {
+
+		static EndedView of(ReceiptOutcome outcome) {
+			return new EndedView(outcome.bookingId().value(), outcome.bookingDate().toString(),
+					SpotView.of(outcome.spot()));
 		}
 	}
 
