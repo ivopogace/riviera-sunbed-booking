@@ -7,9 +7,9 @@ import { environment } from '../../environments/environment';
 /**
  * A mounted Stripe Payment Element the caller can confirm.
  *
- * <p>{@link confirm} returns a **UX-level** result only: on `{ error }` the caller shows it and
- * re-checks the booking's server status once (retry while payable, terminal when not); otherwise
- * it begins polling. **Never** proof of confirmation: that comes only from the signature-verified
+ * <p>{@link confirm} returns a **UX-level** result only: on `{ error }` (a rejection reads as one)
+ * the caller shows it and re-checks the booking's server status once (retry while payable,
+ * terminal when not); otherwise it begins polling. **Never** proof of confirmation: that comes only from the signature-verified
  * webhook, seen via `GET /api/bookings/{code}` (invariant #8). Cards use
  * `redirect: 'if_required'`, so the user stays on the payment page.
  */

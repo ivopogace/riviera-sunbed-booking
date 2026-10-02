@@ -65,9 +65,9 @@ const CLS = {
  * Stripe-profile payment page, reached on `202 AWAITING_PAYMENT`: mounts the Payment Element on
  * `clientSecret`, confirms the card, then polls `GET /api/bookings/{code}` for `CONFIRMED` — only
  * the webhook confirms (#8), never the Stripe.js result. States: `mounting` → `ready` → `error`
- * (retry in place; {@link failCardStep}) or `processing` → `confirmed`, or `awaiting` after ~30 s
- * ("payment received", never "confirmed"); no hand-off → `missing`; a terminal `CANCELLED` stays
- * generic (race and decline look alike). Only the persistent live region announces `emailWithheld`.
+ * (retry in place, or back to `mounting` if it never mounted; {@link failCardStep}) or `processing`
+ * → `confirmed`, or `awaiting` after ~30 s ("payment received", never "confirmed"); no hand-off →
+ * `missing`; a terminal `CANCELLED` stays generic. Only the live region announces `emailWithheld`.
  */
 @Component({
   selector: 'app-booking-pay',
@@ -449,7 +449,7 @@ export class BookingPay {
   /** Mounts the Payment Element; on failure the page offers Try again, which re-runs this. */
   private async mountPaymentElement(): Promise<void> {
     const host = this.peHost()!.nativeElement;
-    // A failed mount may have left a half-built element behind; mount into an empty host.
+    // A retry must not stack onto anything an earlier, rejected mount attempt appended.
     host.replaceChildren();
     try {
       this.checkout = await this.gateway.mountPaymentElement(host, this.booking!.clientSecret);

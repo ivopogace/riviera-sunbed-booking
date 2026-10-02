@@ -20,7 +20,7 @@ focused control is never destroyed (RV-FE-9).
   presses Try again, then the gateway's `mountPaymentElement` is called again and a successful
   re-mount reaches `ready`. *Seam:* `StripePaymentGateway` + the pay button ·
   *Pinned by:* `booking-pay.spec.ts` "Try again after a mount failure re-mounts…"; mocked e2e
-  `booking-flow.e2e.ts` "mount failure → Try again re-mounts".
+  `request-to-book.e2e.ts` "Stripe.js fails to load: Try again re-mounts the card form, then pays".
 - [ ] **AC-2:** Given a re-mount that fails again, then the page is back in the retryable error
   state with the new message. *Pinned by:* `booking-pay.spec.ts`.
 - [ ] **AC-3:** Given the gateway's `confirm()` rejects, when the guest pays, then `paying` is
