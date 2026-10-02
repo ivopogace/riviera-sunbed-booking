@@ -849,9 +849,10 @@ tag names the person, invariant #7):
   the stay mail's attempt is logged on every stretch it covers, and a resend on any stretch resends
   the stay's mail, refused unless every stretch confirmed.
 - **A stay the guest cancels, or a remodel releases whole, gets one cancellation mail, on
-  `StayCancelled`**: the lone booking's cancellation copy under the stay's code and span, with the
-  summed refund, and a rebook link only when a remodel ended a stretch of it
-  (`BookingNotificationFacts#endedByRemodel`; a free exit is the same `VENUE_CHANGE` with none). A
+  `StayCancelled`**: the lone booking's cancellation copy under the stay's code, with the summed refund
+  and the span and first stop of `BookingNotificationFacts#stayCancellationFacts` (the guest cancel's live
+  remainder, the whole stay when nothing is live), and a rebook link only when a remodel ended one of those
+  stretches (`#endedByRemodel`; a free exit is the same `VENUE_CHANGE` with none). A
   stretch's stamped `BookingCancelled` mails nothing; an unstamped one (a remodel ending one stretch
   of a stay that goes on, an older payload) mails that stretch under the stay's code, with a rebook
   link when a remodel ended it.

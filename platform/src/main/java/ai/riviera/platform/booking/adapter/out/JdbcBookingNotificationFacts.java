@@ -5,6 +5,7 @@ import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 import org.springframework.jdbc.core.simple.JdbcClient;
@@ -16,6 +17,7 @@ import ai.riviera.platform.booking.application.Bookings;
 import ai.riviera.platform.booking.application.cancel.CancellationPolicy;
 import ai.riviera.platform.booking.application.cancel.LiveRemainder;
 import ai.riviera.platform.booking.application.remodel.RemodelReceipts;
+import ai.riviera.platform.booking.application.view.BookingRecord;
 import ai.riviera.platform.booking.vocabulary.BookingConfirmationFacts;
 import ai.riviera.platform.booking.vocabulary.BookingId;
 import ai.riviera.platform.booking.vocabulary.BookingMoveFacts;
@@ -210,6 +212,25 @@ class JdbcBookingNotificationFacts implements BookingNotificationFacts {
 				.query(Long.class)
 				.optional()
 				.flatMap(stayId -> stayConfirmationFacts(new StayId(stayId)));
+	}
+
+	@Override
+	public Optional<StayConfirmationFacts> stayCancellationFacts(StayId stayId) {
+		return stayConfirmationFacts(stayId).map(this::narrowedToLiveRemainder);
+	}
+
+	/** The stay's stops cut to its {@link LiveRemainder}, keyed by the stay's code (never carried out, #7); whole when nothing is live. */
+	private StayConfirmationFacts narrowedToLiveRemainder(StayConfirmationFacts stay) {
+		List<BookingRecord> live = bookings.findStayByCode(stay.code()).map(record -> liveRemainder.of(record).live())
+				.orElseThrow(() -> new IllegalStateException("stay " + stay.stayId().value() + " vanished between two reads"));
+		if (live.isEmpty()) {
+			return stay;
+		}
+		Set<BookingId> liveIds = live.stream().map(stretch -> new BookingId(stretch.id())).collect(Collectors.toSet());
+		return new StayConfirmationFacts(stay.stayId(), stay.code(), stay.customerId(),
+				stay.stops().stream().filter(stop -> liveIds.contains(stop.bookingId())).toList(),
+				live.stream().mapToLong(BookingRecord::amountMinor).reduce(0L, Math::addExact), stay.currency(),
+				stay.everConfirmed(), stay.cancellationWindowAtBirth(), stay.lateCancelRefundBps());
 	}
 
 	private record StayRow(String code, StayConfirmationFacts.Stop stop, long amountMinor, String currency,

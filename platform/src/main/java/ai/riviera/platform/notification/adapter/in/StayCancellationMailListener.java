@@ -21,11 +21,11 @@ import ai.riviera.platform.notification.application.TransactionalMailService;
 import ai.riviera.platform.monitoring.vocabulary.ObservabilityMetrics;
 
 /**
- * Mails a stitched stay's one cancellation record on {@link StayCancelled}: the stay's code and span with the
- * event's summed refund, on {@link BookingCancellationMailListener}'s terms (after commit, on the mail executor,
- * no {@code @Transactional}, at-least-once, a missing fact skipped and a transport failure propagated), with a
- * rebook link only when a remodel ended a stretch of it (a {@code VENUE_CHANGE} the guest's free exit shares).
- * Never log the code (invariant #7).
+ * Mails a stitched stay's one cancellation record on {@link StayCancelled}: the stay's code with the span of the
+ * stretches it ended ({@code stayCancellationFacts}) and the event's summed refund, on
+ * {@link BookingCancellationMailListener}'s terms (after commit, on the mail executor, no {@code @Transactional},
+ * at-least-once, a missing fact skipped and a transport failure propagated), with a rebook link only when a remodel
+ * ended one of those stretches (a {@code VENUE_CHANGE} the guest's free exit shares). Never log the code (#7).
  */
 @Component
 class StayCancellationMailListener {
@@ -48,7 +48,7 @@ class StayCancellationMailListener {
 	@Async(RegistryMailExecutorConfig.MAIL_EXECUTOR)
 	@TransactionalEventListener(id = "notification.mail-on-stay-cancelled")
 	void on(StayCancelled event) {
-		Optional<StayConfirmationFacts> stay = bookings.stayConfirmationFacts(event.stayId());
+		Optional<StayConfirmationFacts> stay = bookings.stayCancellationFacts(event.stayId());
 		if (stay.isEmpty()) {
 			abandon(MissingBookingFact.NO_BOOKING, event);
 			return;
