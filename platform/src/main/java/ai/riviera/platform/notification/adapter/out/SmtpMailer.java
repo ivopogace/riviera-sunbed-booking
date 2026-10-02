@@ -410,7 +410,7 @@ class SmtpMailer implements Mailer {
 		};
 	}
 
-	/** The exit a move earned: in full for a lone booking, these days in full for a stretch, none once a stay began. */
+	/** The exit a move earned: in full for a lone booking, these days in full for a stretch, none once the judged day opened. */
 	private static String freeExitLine(BookingMovedMail moved) {
 		if (moved.freeExitUntil() == null) {
 			return "Your stay has already begun, so it can no longer be cancelled. Your booking:";

@@ -285,10 +285,10 @@ any is released on the old, never a swap of my own — so a racing reserve wins 
   is the stay id plus the first stretch's birth window (the day a stay is judged on); each stretch's
   `BookingConfirmed` names its `stayId`, null for a lone booking and every older payload. No stay
   confirms part-way: one PaymentIntent collects every share and the sweep voids it before releasing.
-- **A guest's stay cancel publishes `StayCancelled` once, after every stretch's `BookingCancelled`.**
-  Each stretch's event names the stay in `cancelledWithStay`, so its refund and reversal stay per
+- **A guest's stay cancel publishes `StayCancelled` once, after each live stretch's `BookingCancelled`.**
+  Each such event names the stay in `cancelledWithStay`, so its refund and reversal stay per
   stretch while its mail is left to the stay; the stay event carries the summed refund and
-  `VENUE_CHANGE` only if every stretch took a free exit, else `POLICY`. Every other `BookingCancelled`
+  `VENUE_CHANGE` only if every live stretch took a free exit, else `POLICY`. Every other `BookingCancelled`
   (the remodel legs ending one stretch, a lone booking, an older payload) leaves the stamp null.
 - **Attendance is per service day; I am the sole writer and reader of `booking_day`**
   (`ResponsibilitiesArchitectureTests`' `booking_day` sole-writer scan — other modules ask my
@@ -470,7 +470,7 @@ any is released on the old, never a swap of my own — so a racing reserve wins 
   know why). `CLOSED` is never reopened: the guest may already be consuming the stay. A stay's
   stretch is judged on the day its stay's cancel is (the first day, or the first live day once a remodel
   ended earlier stretches), so its exit ends by that day's opening: the view, the cancel and the move
-  mail read one capped deadline, and a stretch moved once its stay began has none.
+  mail read one capped deadline, and a stretch moved once that day has opened has none.
 
 **Not My Job:**
 - Owning the `(set, date)` availability state → **`availability`** (I *ask* it to claim)

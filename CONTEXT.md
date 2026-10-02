@@ -195,8 +195,8 @@ model in `docs/architecture/domain-model.md`.
   when it moved and opens a **free exit**.
 - **Free exit** — a moved guest's right to cancel for a **full refund whatever the refund tier would
   say**, from the move until the earliest of: the service day opening (for a stitched stay's later
-  stretch, the opening of the day its **live remainder** is judged on), and the later of 12:00 (`Europe/Tirane`) the day before
-  and 24 hours after the move. It lifts the refund tier only — it
+  stretch, the opening of the day the stay's **live remainder** is judged on), and the later of 12:00
+  (`Europe/Tirane`) the day before and 24 hours after the move. It lifts the refund tier only — it
   never reopens a closed **cancellation window** — and a cancellation that takes it is a refund by
   reason **venue change**.
 - **Set** — the bookable unit: **2 loungers + 1 umbrella**, full day, tied to a set

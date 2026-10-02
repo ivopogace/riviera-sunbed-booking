@@ -198,8 +198,8 @@ class BookingMovedMailIT {
 	/** ADR-0024 §4 as amended (#1290): the mail reads the live remainder's day, as the view and the cancel do. */
 	@Test
 	void aStretchMovedAfterARemodelEndedTheFirstPromisesTheLiveRemaindersExit() {
-		LocalDate first = LocalDate.of(2029, 9, 2);
-		Instant movedAt = Instant.parse("2029-09-03T08:00:00Z");
+		LocalDate first = LocalDate.of(2029, 8, 2);
+		Instant movedAt = Instant.parse("2029-08-03T08:00:00Z");
 		String guest = "moved-remainder-" + System.nanoTime() + "@example.com";
 		Stretch moved = seedStitchedStayMovedAt(guest, "MVSTAY03", first, movedAt);
 		long head = jdbc.sql("SELECT id FROM booking WHERE code = 'MVSTAY03A'").query(Long.class).single();
@@ -214,6 +214,8 @@ class BookingMovedMailIT {
 
 		Awaitility.await().atMost(WAIT).until(() -> countTo(guest) == 1L);
 		BookingMovedMail mail = mailer.lastTo(guest).orElseThrow().moved();
+		assertThat(cutoff.serviceDayOpensAt(first)).as("capped on the stay's first day, the exit would be none")
+				.isBefore(movedAt);
 		assertThat(mail.freeExitUntil()).as("the stay's first day has begun, yet the live remainder has not: the exit "
 				+ "is the stretch's own, capped on the remainder's day")
 				.isEqualTo(cutoff.freeExitEndsAt(moved.first(), moved.first(), movedAt));
