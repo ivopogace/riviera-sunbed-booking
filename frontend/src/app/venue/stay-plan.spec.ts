@@ -187,3 +187,41 @@ describe('StayPlan', () => {
     );
   });
 });
+
+describe('StayPlan in a viewer zone west of UTC', () => {
+  const zone = process.env['TZ'];
+  const stretch = PLAN.stretches[0];
+
+  beforeEach(() => {
+    process.env['TZ'] = 'America/New_York';
+  });
+
+  afterEach(() => {
+    if (zone === undefined) {
+      delete process.env['TZ'];
+    } else {
+      process.env['TZ'] = zone;
+    }
+  });
+
+  it('numbers the strip by the civil day, not the viewer’s local day', async () => {
+    // Guards against a vacuous pass: the zone switch took, so UTC midnight 1 Jul is 30 Jun here.
+    expect(new Date(Date.UTC(2026, 6, 1)).getDate()).toBe(30);
+    const fixture = TestBed.createComponent(StayPlan);
+    fixture.componentRef.setInput('plan', {
+      ...PLAN,
+      moves: 0,
+      stretches: [{ ...stretch, firstDate: '2026-07-01', lastDate: '2026-07-03' }],
+      movesBetween: [],
+    });
+    fixture.componentRef.setInput('first', '2026-07-01');
+    fixture.componentRef.setInput('last', '2026-07-03');
+    fixture.detectChanges();
+    await fixture.whenStable();
+
+    const cells = (fixture.nativeElement as HTMLElement).querySelectorAll(
+      '[data-testid="stay-plan-strip"] li',
+    );
+    expect([...cells].map((cell) => cell.textContent.trim())).toEqual(['1', '2', '3']);
+  });
+});

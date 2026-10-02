@@ -15,11 +15,21 @@ const FROZEN_CLOCK = {
     'Restore the frozen clock with freezeClock() from src/testing/freeze-clock; vi.useRealTimers() unfakes Date and leaves every later test in the file on the machine calendar (ADR-0014).',
 };
 
+const LOCAL_ZONE_DATE = {
+  selector:
+    'MemberExpression[property.name=/^(getDate|getDay|getMonth|getFullYear|getHours|getMinutes)$/]',
+  message:
+    "Local-zone Date getter: it reads the viewer's zone, and shared/booking-date.ts anchors civil days at UTC midnight. Use the getUTC* twin, or Intl with an explicit timeZone (invariant #6).",
+};
+
+/** The `no-restricted-syntax` bans on non-spec `src/app` code. */
+const APP_SYNTAX = [FROZEN_CLOCK, LOCAL_ZONE_DATE];
+
 /**
  * RV-FE-8's import direction (`riviera-frontend` § Folder taxonomy): `files` may not import from the
  * `banned` app folders, statically or through `import()`. `except` is a frozen edge: the one module
- * of a banned folder it may import. A block's `no-restricted-syntax` replaces the `src/**` one, so it
- * repeats {@link FROZEN_CLOCK}.
+ * of a banned folder it may import. A block's `no-restricted-syntax` replaces the earlier ones, so it
+ * repeats {@link APP_SYNTAX}.
  */
 function importBoundary(files, banned, { except, ignores = [] } = {}) {
   const lookahead = (folder) => (except?.folder === folder ? `(?!${except.module}$)` : '');
@@ -34,7 +44,7 @@ function importBoundary(files, banned, { except, ignores = [] } = {}) {
       'no-restricted-imports': ['error', { patterns: bans }],
       'no-restricted-syntax': [
         'error',
-        FROZEN_CLOCK,
+        ...APP_SYNTAX,
         ...bans.map(({ regex, message }) => ({
           selector: `ImportExpression[source.value=/${regex.replaceAll('/', '\\/')}/]`,
           message,
@@ -104,6 +114,13 @@ module.exports = defineConfig([
     files: ['src/**/*.ts'],
     rules: {
       'no-restricted-syntax': ['error', FROZEN_CLOCK],
+    },
+  },
+  {
+    files: ['src/app/**/*.ts'],
+    ignores: ['**/*.spec.ts'],
+    rules: {
+      'no-restricted-syntax': ['error', ...APP_SYNTAX],
     },
   },
   {
