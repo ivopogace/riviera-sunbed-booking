@@ -19,7 +19,7 @@ stamped `BookingCancelled`s, which is how the guest-cancel path already gets one
 § `booking` (the commit's legs, the release void), § `payment` (`CancelPaymentPort`); ADR-0020,
 ADR-0024, ADR-0028; `docs/architecture/multi-day-stays.md` D5/D6/D8.
 
-**Branch:** `bugfix/remodel-release-ends-unpaid-stay`
+**Branch:** `bugfix/remodel-release-ends-unpaid-stay` — draft PR #1374
 
 ## Acceptance criteria
 
@@ -91,8 +91,10 @@ ADR-0024, ADR-0028; `docs/architecture/multi-day-stays.md` D5/D6/D8.
 
 ## Open questions
 
-- Whether the other stretches appear on the preview and so in the token — sent to the owner through
-  the orchestrator (`NEEDS USER DECISION`, option A recommended and built). *Owner:* owner.
+### Resolved
+
+- Whether the other stretches appear on the preview and so in the token — **option A** (owner,
+  2026-10-02, recorded on #1292): they do, as built.
 
 ## Availability & concurrency
 
@@ -141,10 +143,10 @@ ADR-0024, ADR-0028; `docs/architecture/multi-day-stays.md` D5/D6/D8.
 > The session-recovery anchor: re-read it (plus the current stage's `riviera-sdlc` reference)
 > after a compaction or when unsure. Update in the same commit window as what it records.
 
-**Stage pointer:** `CI gate — draft PR open, awaiting the owner's preview-token decision (option A built)`
+**Stage pointer:** `CI gate — draft PR #1374 open; owner chose option A (as built)`
 
-**Next action:** fold the owner's answer in (option A: none; B/C: move the sibling fold-in out of
-`classify`), then mark ready for review and run the review gate at high effort.
+**Next action:** CI green → mark ready for review → review gate at high effort → Sonar gate → remove
+this plan in the last commit.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
