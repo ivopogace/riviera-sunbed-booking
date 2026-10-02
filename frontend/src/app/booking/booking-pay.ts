@@ -230,7 +230,11 @@ const CLS = {
                 } @else {
                   <h1 [class]="cls.h1" id="pay-title">Complete your payment</h1>
                   <p [class]="cls.lead">
-                    Your card wasn’t charged. Check the details and try again below.
+                    @if (outcomeUnknown()) {
+                      We couldn’t finish the payment. Check the details and try again below.
+                    } @else {
+                      Your card wasn’t charged. Check the details and try again below.
+                    }
                   </p>
                 }
               }
@@ -371,6 +375,8 @@ export class BookingPay {
 
   protected readonly state = signal<PayState>('mounting');
   protected readonly errorMessage = signal<string | undefined>(undefined);
+  /** `confirm()` threw, so whether the card was charged is unknown: the lead claims nothing. */
+  protected readonly outcomeUnknown = signal(false);
   protected readonly paying = signal(false);
   /** Try again is re-mounting a Payment Element that never mounted; the button stays, busy. */
   protected readonly remounting = signal(false);
@@ -396,9 +402,8 @@ export class BookingPay {
   );
   protected readonly showPayButton = computed(
     () =>
-      this.state() === 'ready' ||
-      this.remounting() ||
-      (this.state() === 'error' && !this.terminalError()),
+      !this.terminalError() &&
+      (this.state() === 'ready' || this.remounting() || this.state() === 'error'),
   );
   /** The one announcement for the persistent live region; it mutates with the state so a screen
    *  reader hears each transition. `computed` is lazy, so the order the poll writes its two
@@ -453,7 +458,10 @@ export class BookingPay {
     host.replaceChildren();
     try {
       this.checkout = await this.gateway.mountPaymentElement(host, this.booking!.clientSecret);
-      this.state.set('ready');
+      // A re-check answer may have moved the page on while the mount was in flight.
+      if (this.state() === 'mounting') {
+        this.state.set('ready');
+      }
     } catch (error) {
       this.failCardStep(
         error instanceof Error
@@ -477,13 +485,13 @@ export class BookingPay {
    * pay-window sweep may have cancelled the intent, and retrying a dead one loops forever. So it
    * re-reads the booking once: it may only go terminal or adopt a webhook-confirmed booking (#8).
    */
-  private failCardStep(message: string): void {
+  private failCardStep(message: string, outcomeUnknown = false): void {
     // One-way past the card step: a late failure must never write backwards over a newer state.
-    const s = this.state();
-    if (this.terminalError() || s === 'processing' || s === 'confirmed' || s === 'awaiting') {
+    if (this.pastCardStep()) {
       return;
     }
     this.errorMessage.set(message);
+    this.outcomeUnknown.set(outcomeUnknown);
     this.state.set('error');
     this.bookings
       .getByCode(this.code)
@@ -492,9 +500,8 @@ export class BookingPay {
         takeUntilDestroyed(this.destroyRef),
       )
       .subscribe((detail) => {
-        // Apply only while still showing THIS failure: a late answer must not write under a retry
-        // that has since moved the page on (processing/confirmed), nor under an earlier terminal.
-        if (this.state() !== 'error' || this.terminalError()) {
+        // Anywhere on the card step (a retry may be mid-mount or mid-confirm), never past it.
+        if (this.pastCardStep()) {
           return;
         }
         if (detail === undefined || detail.status === 'AWAITING_PAYMENT') {
@@ -511,7 +518,14 @@ export class BookingPay {
           'This booking can no longer be paid — its status changed while this page was open.',
         );
         this.terminalError.set(true);
+        this.state.set('error');
       });
+  }
+
+  /** The page has left the card step; a late confirm, mount or re-check must not write over it. */
+  private pastCardStep(): boolean {
+    const s = this.state();
+    return this.terminalError() || s === 'processing' || s === 'confirmed' || s === 'awaiting';
   }
 
   protected async pay(): Promise<void> {
@@ -528,17 +542,23 @@ export class BookingPay {
     this.errorMessage.set(undefined);
     this.paying.set(true);
     let error: string | undefined;
+    let threw = false;
     try {
       ({ error } = await this.checkout.confirm());
     } catch {
       // Stripe.js threw instead of resolving `{ error }` (an integration error): still retryable.
       error = 'Your payment couldn’t be completed. Please try again.';
+      threw = true;
     } finally {
       this.paying.set(false);
     }
     if (error) {
       // A client-side failure (decline / 3DS) is NOT a confirmation — show retry, do not poll.
-      this.failCardStep(error);
+      this.failCardStep(error, threw);
+      return;
+    }
+    // The failure re-check may have confirmed or ended the booking while confirm() was in flight.
+    if (this.pastCardStep()) {
       return;
     }
     // The card step finished. Confirmation is the backend's call (invariant #8) — start polling.
