@@ -22,24 +22,11 @@ import static ai.riviera.platform.ArchitectureTestSupport.assertNoViolations;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * Fails on a declared {@code allowedDependencies} grant that no class of the module uses (invariant
- * #11, ADR-0007). {@link ModularityTests}' {@code verify()} rejects a dependency missing its grant, never a
- * grant missing its dependency, so an unused grant silently widens what a module may reach.
- *
- * <p><strong>Used means used in bytecode.</strong> An import scan is not enough: {@code remodel} reaches
- * {@code venue::spi} through a lambda passed as {@code RemodelGate}, and {@code web} reaches
- * {@code challenge::vocabulary} through a {@code switch} over a {@code ChallengeVerdict} that arrives as a
- * return type, neither ever imported. The used set is Spring Modulith's own dependency model (ArchUnit over
- * class files, the one {@code verify()} judges), which sees the {@code switch}, joined with the parameter and
- * return types of every member a module's classes call, which sees the lambda: ArchUnit does not model an
- * {@code invokedynamic} call site, but the called member's descriptor names its functional interface.
- *
- * <p>A {@code module::interface} grant is used when some dependency targets a type in that named
- * interface; a bare {@code module} grant (such as {@code "shared"}) or {@code module::*} when some dependency
- * targets the module at all. A module declaring no {@code allowedDependencies} grants nothing to check.
- * The negative case runs against the deliberately over-granted fixture tree under
- * {@code ai.riviera.grantfixture}, never by breaking production code; its import admits every location,
- * since Modulith's default import skips test classes and the fixtures are test classes.
+ * Fails on a declared {@code allowedDependencies} grant no class of the module uses in bytecode (invariant
+ * #11): {@code verify()} rejects a missing grant, never an unused one. Used = Modulith's dependency model
+ * plus the parameter types of every called member, which a lambda argument leaves behind. A bare
+ * {@code module} or {@code module::*} grant is used by any dependency on that module. Negative case:
+ * {@code ai.riviera.grantfixture}, imported at every location (test classes). Rationale: RESPONSIBILITIES.md.
  */
 class UnusedAllowedDependencyTests {
 
@@ -88,10 +75,8 @@ class UnusedAllowedDependencyTests {
 	}
 
 	/**
-	 * Per source module, the parameter and return types of every member its
-	 * classes call: the call's descriptor names them in the class file whether or not the source does.
-	 * This is what Modulith's model misses for a lambda passed as a functional-interface argument, whose
-	 * type appears only in the called member's descriptor and the {@code invokedynamic} call site.
+	 * Per source module, the parameter types (arrays unwrapped) of every member its classes call: how a
+	 * lambda passed as a functional-interface argument shows up, since ArchUnit skips {@code invokedynamic}.
 	 */
 	private static Map<String, Set<String>> calledSignatureTypes(JavaClasses classes, ApplicationModules modules) {
 		Map<String, Set<String>> byModule = new HashMap<>();
@@ -103,17 +88,16 @@ class UnusedAllowedDependencyTests {
 			Set<String> targets = byModule.computeIfAbsent(module.get().getIdentifier().toString(),
 					key -> new TreeSet<>());
 			for (JavaCall<?> call : type.getCodeUnitCallsFromSelf()) {
-				call.getTarget().getRawParameterTypes().forEach(parameter -> targets.add(parameter.getName()));
-				targets.add(call.getTarget().getRawReturnType().getName());
+				call.getTarget().getRawParameterTypes()
+						.forEach(parameter -> targets.add(parameter.getBaseComponentType().getName()));
 			}
 		}
 		return byModule;
 	}
 
 	/**
-	 * Every grant spelling the target types satisfy, from {@code source}: the target module's bare name and
-	 * {@code module::*} for any type in another module, plus {@code module::interface} for each named
-	 * interface holding the type.
+	 * The grant spellings the target types satisfy from {@code source}: {@code module} and {@code module::*}
+	 * for any type in another module, {@code module::interface} for each named interface holding it.
 	 */
 	private static Set<String> grantSpellings(String source, Set<String> targetTypes, ApplicationModules modules) {
 		Set<String> used = new TreeSet<>();
@@ -134,9 +118,8 @@ class UnusedAllowedDependencyTests {
 	}
 
 	/**
-	 * The grants as written in the module's {@code @ApplicationModule}, read off its package-info: the
-	 * declared strings, not Modulith's resolved view, so a grant naming nothing resolvable is still
-	 * judged. The annotation's default, the open token, declares no grant.
+	 * The grants as written on the module's package-info, not Modulith's resolved view, so a grant naming
+	 * nothing resolvable is still judged; the default open token is no grant.
 	 */
 	private static List<String> declaredGrants(ApplicationModule module) {
 		String packageInfo = module.getBasePackage().getName() + ".package-info";
@@ -149,7 +132,7 @@ class UnusedAllowedDependencyTests {
 							.toList();
 		}
 		catch (ClassNotFoundException e) {
-			return List.of();
+			throw new IllegalStateException("module " + module.getIdentifier() + " has no package-info", e);
 		}
 	}
 

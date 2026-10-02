@@ -1383,7 +1383,7 @@ them form the *structural net* is `riviera-modulith` § *The structural net*'s c
 | The root reaches no module: it holds only the application and its configuration (ADR-0028 Decision 1) | `CompositionRootDisciplineTests` (root→module rule) |
 | `payment` uses no Stripe **Connect** API (collect-only, ADR-0002) | `NoStripeConnectArchitectureTest` |
 | No module reaches another's `application`/`domain`/`adapter`; `allowedDependencies` hold | `ModularityTests` (`ApplicationModules.verify()`) |
-| Every declared `allowedDependencies` grant is used: some class of the module depends on that module or named interface in bytecode (Modulith's dependency model plus called-member signatures, so a lambda passed as an `spi` type counts) | `UnusedAllowedDependencyTests` (fixture `ai.riviera.grantfixture`) |
+| Every declared `allowedDependencies` grant is used: some class of the module depends on that module or named interface in bytecode (Modulith's dependency model plus the parameter types of called members, so `remodel`'s lambda passed as `venue.spi.RemodelGate` counts; `web`'s `switch` over a returned `ChallengeVerdict` Modulith sees itself) | `UnusedAllowedDependencyTests` (fixture `ai.riviera.grantfixture`) |
 | The ADR-0007 package shape; published-surface kinds; the `VenueCatalog` role split | `PackageShapeArchitectureTests`, `PublishedSurfacePlacementArchitectureTests`, `VenueApiRoleSplitTests` |
 | No JPA/Hibernate on the classpath — invariant #1 | `JdbcOnlyArchitectureTests` |
 | A `domain/` class names only the JDK and published ids, values and rules (ADR-0018 §4) | `DomainPurityArchitectureTests` |

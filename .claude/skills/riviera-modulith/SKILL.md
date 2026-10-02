@@ -110,10 +110,10 @@ listener's parameter to live in its owner's `events` surface):
 - `spi/` — cross-module driven ports.
 
 Grants are least-privilege: a caller lists `<provider>::api` + `::vocabulary`; a listener-only
-consumer lists `::events` + `::vocabulary`. A grant no class uses fails `UnusedAllowedDependencyTests`.
-Mechanics: `references/boundaries.md`. Every
-registry listener declares an explicit `id` (pinned by `ListenerIdSnapshotTest`), so a listener may
-move or be renamed freely; moving or renaming an event, or changing an id, needs a Flyway rewrite
+consumer lists `::events` + `::vocabulary`; a grant no class uses fails
+`UnusedAllowedDependencyTests`. Mechanics: `references/boundaries.md`. Every registry listener
+declares an explicit `id` (pinned by `ListenerIdSnapshotTest`), so a listener may move or be
+renamed freely; moving or renaming an event, or changing an id, needs a Flyway rewrite
 (`references/events.md`).
 
 ## api vs spi; port vs event
@@ -138,9 +138,8 @@ Every venue-scoped application service calls `VenueOwnership.assertOwns` (→ `4
 Run the structural-net command in `CLAUDE.md` § *Commands* after any structure change
 (`riviera-local-debug` has the cloud form). Membership: a test whose one rule holds the whole
 tree to the same standard keyed on package, kind or imports alone, names no target, runs
-without a Spring context, fails on a violation. Every member but one follows from the rule
-(`UnusedAllowedDependencyTests` keys on each module's own grants against its bytecode
-dependencies, so it qualifies); `RetiredSetExclusionArchitectureTests` names its table and is admitted by decision (ADR-0019)
+without a Spring context, fails on a violation. Every member but one follows from the rule;
+`RetiredSetExclusionArchitectureTests` names its table and is admitted by decision (ADR-0019)
 because any new JDBC adapter can break it. Target-naming fitness functions
 (`CompositionRootDisciplineTests`, `ErrorContractArchitectureTests`,
 `ResponsibilitiesArchitectureTests`, `*AuthPlacementTests`, `VenueApiRoleSplitTests`) are not
