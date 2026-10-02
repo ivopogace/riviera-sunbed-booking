@@ -24,9 +24,11 @@ import ai.riviera.platform.booking.application.remodel.ReceiptOutcome;
 import ai.riviera.platform.booking.application.remodel.ReceiptOutcomeKind;
 import ai.riviera.platform.booking.application.remodel.RemodelReceipts;
 import ai.riviera.platform.booking.events.BookingCancelled;
+import ai.riviera.platform.booking.events.StayCancelled;
 import ai.riviera.platform.booking.vocabulary.BookingId;
 import ai.riviera.platform.booking.vocabulary.RefundReason;
 import ai.riviera.platform.booking.vocabulary.SpotRef;
+import ai.riviera.platform.booking.vocabulary.StayId;
 import ai.riviera.platform.notification.adapter.out.MockMailer;
 import ai.riviera.platform.notification.adapter.out.SentEmail;
 import ai.riviera.platform.notification.application.BookingCancellationMail;
@@ -43,9 +45,10 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 /**
  * A stitched stay's cancellation mail end-to-end: a guest cancel by the stay's code publishes one
  * {@code BookingCancelled} per stretch and one {@code StayCancelled}, and the registry delivers exactly one
- * {@code BOOKING_CANCELLATION} under the stay's code, span and summed refund; a stretch a remodel ends on its
- * own still mails that stretch, with its rebook link. Stays are SQL-seeded on the first seeded venue, never
- * claimed, on dates no other IT uses. Testcontainers; skipped where Docker is absent.
+ * {@code BOOKING_CANCELLATION} under the stay's code, span and summed refund; a stay a remodel released whole
+ * (#1292) mails once with no refund and a rebook link; a stretch a remodel ends on its own still mails that
+ * stretch, with its rebook link. Stays are SQL-seeded on the first seeded venue, never claimed, on dates no other
+ * IT uses. Testcontainers; skipped where Docker is absent.
  */
 @EnabledIfDockerAvailable
 @Import(TestcontainersConfiguration.class)
@@ -110,13 +113,37 @@ class StayCancellationMailIT {
 	}
 
 	@Test
+	void mailsAStayARemodelReleasedOnceWithItsRebookLink() {
+		String email = "stay-released@example.com";
+		List<SetRef> sets = twoSetsOfOneVenue();
+		SeededStay stay = seedStay(sets, LocalDate.of(2036, 4, 21), email, "CANCELLED");
+		endedByRemodel(sets.get(0), stay.stretches().get(0), stay.first(), ReceiptOutcomeKind.RELEASE);
+		endedByRemodel(sets.get(1), stay.stretches().get(1), stay.first().plusDays(2), ReceiptOutcomeKind.RELEASE);
+		StayId stayId = new StayId(jdbc.sql("SELECT id FROM stay WHERE code = :code").param("code", stay.code())
+				.query(Long.class).single());
+
+		fixtures.publishInTransaction(new StayCancelled(stayId, 0, "EUR", RefundReason.VENUE_CHANGE));
+
+		Awaitility.await().atMost(WAIT).until(() -> count(email, SentEmail.Kind.BOOKING_CANCELLATION) == 1L);
+		Awaitility.await().during(Duration.ofSeconds(2)).atMost(WAIT)
+				.until(() -> count(email, SentEmail.Kind.BOOKING_CANCELLATION) == 1L);
+		BookingCancellationMail mail = mailer.lastTo(email).orElseThrow().cancellation();
+		assertEquals(stay.code(), mail.bookingCode(), "the stay's code, never a stretch's");
+		assertEquals(stay.first(), mail.bookingDate());
+		assertEquals(stay.first().plusDays(3), mail.lastDate(), "the whole span");
+		assertEquals(0L, mail.refundMinor(), "nothing was collected, so nothing is returned");
+		assertEquals(RefundReason.VENUE_CHANGE, mail.reason());
+		assertNotNull(mail.rebookLink(), "the released stay keeps its way back, as a released lone booking does");
+	}
+
+	@Test
 	void aStretchEndedAloneByARemodelStillMailsWithItsRebookLink() {
 		String email = "stay-remodel@example.com";
 		List<SetRef> sets = twoSetsOfOneVenue();
 		SeededStay stay = seedStay(sets, LocalDate.of(2036, 4, 11), email, "CANCELLED");
 		long ended = stay.stretches().get(1);
 		LocalDate endedFirst = stay.first().plusDays(2);
-		endedByRemodel(sets.get(1), ended, endedFirst);
+		endedByRemodel(sets.get(1), ended, endedFirst, ReceiptOutcomeKind.REFUND);
 
 		fixtures.publishInTransaction(new BookingCancelled(new BookingId(ended), new VenueId(sets.get(1).venueId()),
 				new SetId(sets.get(1).setId()), endedFirst, STRETCH_AMOUNT, "EUR", RefundReason.VENUE_CHANGE,
@@ -168,14 +195,15 @@ class StayCancellationMailIT {
 				.param("status", status).param("stay", stay).query(Long.class).single();
 	}
 
-	/** The receipt line a commit writes for a claim it refunded — what {@code endedByRemodel} reads. */
-	private void endedByRemodel(SetRef set, long bookingId, LocalDate date) {
+	/** The receipt line a commit writes for a claim it refunded or released — what {@code endedByRemodel} reads. */
+	private void endedByRemodel(SetRef set, long bookingId, LocalDate date, ReceiptOutcomeKind kind) {
 		long operator = jdbc.sql("INSERT INTO operator (username, status) VALUES (:u, 'ACTIVE') RETURNING id")
 				.param("u", "stay-remodel-" + System.nanoTime()).query(Long.class).single();
+		boolean refund = kind == ReceiptOutcomeKind.REFUND;
 		receipts.store(new NewReceipt(new VenueId(set.venueId()), new OperatorId(operator), Instant.now(), List.of(),
 				List.of(new ReceiptOutcome(new BookingId(bookingId), date, new SpotRef(new SetId(set.setId()), "A", 1),
-						ReceiptOutcomeKind.REFUND, STRETCH_AMOUNT, "EUR", 500L)),
-				"Re-laying row A", List.of()));
+						kind, STRETCH_AMOUNT, "EUR", refund ? 500L : 0L)),
+				refund ? "Re-laying row A" : "", List.of()));
 	}
 
 	private long count(String email, SentEmail.Kind kind) {

@@ -838,6 +838,12 @@ class CreateBookingServiceTest {
 		}
 
 		@Override
+		public List<ai.riviera.platform.booking.application.remodel.LiveClaim> findLiveStretchesOf(
+				ai.riviera.platform.booking.vocabulary.StayId stayId) {
+			return List.of();
+		}
+
+		@Override
 		public Optional<ai.riviera.platform.booking.application.checkin.CompletedCheckIn> completeConfirmed(
 				String code, ai.riviera.platform.venue.vocabulary.VenueId venueId,
 				java.time.LocalDate serviceDate, Instant completedAt) {

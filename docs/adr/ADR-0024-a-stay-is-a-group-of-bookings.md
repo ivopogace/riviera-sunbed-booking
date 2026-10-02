@@ -57,7 +57,10 @@ concept the ledger cannot express.
    completes the stay also publishes `StayConfirmed`, which the stay's one confirmation mail rides
    (#1255). Refunds stay per stretch against the shared intent, as ADR-0005 and #1207 already say.
    *(ADR-0026: a stretch may be refunded per day and then for its remainder; each refund is its own
-   `payment_refund` row on the stretch's share.)*
+   `payment_refund` row on the stretch's share.)* *Amended 2026-10-02 (#1292):* the one intent is
+   voided whole, so a remodel that releases one unpaid stretch releases every unpaid stretch of the
+   stay in the same commit — the preview names them, the receipt lists them as `RELEASE` lines, and the
+   stay mails once on `StayCancelled`; a `CONFIRMED` stretch is untouched.
 4. **A stay cancels whole, judged on the stay's first day.** Every stretch's refund is quoted with the
    window anchored on the stay's first day, so a stitched stay refunds exactly what a same-set stay of
    the same dates would (invariant #10). Each stretch then transitions, releases its days and

@@ -362,6 +362,10 @@ shape. This is the highest-risk decision in the epic and sits in the module with
 invariants in the tree; it is deliberately confined to the last slice so the first two never touch
 it.
 
+One intent also means one void: a remodel that releases one unpaid stretch cannot leave the others
+payable, so it releases every `AWAITING_PAYMENT` stretch of the stay in its commit, names them on the
+preview and the receipt, and mails the stay once (#1292, ADR-0024 decision 3 as amended).
+
 ### D9 — Prerequisite: per-claim remodel settlement
 
 A remodel used to refuse its **entire** commit if any one claim was blocked, and a `FROZEN` claim

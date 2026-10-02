@@ -34,6 +34,7 @@ import ai.riviera.platform.booking.domain.ServiceDays;
 import ai.riviera.platform.booking.events.BookingCancelled;
 import ai.riviera.platform.booking.events.BookingMoved;
 import ai.riviera.platform.booking.events.BookingRequestDeclined;
+import ai.riviera.platform.booking.events.StayCancelled;
 import ai.riviera.platform.booking.vocabulary.StayId;
 import ai.riviera.platform.booking.events.StayRequestDeclined;
 import ai.riviera.platform.booking.vocabulary.BlockReason;
@@ -60,10 +61,10 @@ import ai.riviera.platform.venue.vocabulary.VenueId;
 /**
  * Serves {@link RemodelClaims}, owner-asserted: classifies the live bookings on the disturbed sets
  * in {@code (service date, id)} order, by zone ({@link RemodelZones}), then a move candidate
- * ({@link MoveRanking}) free on every day of the span and untaken by an earlier claim, then status.
- * {@link #classify} is read-only and advisory; {@link #commit} re-classifies inside {@code venue}'s
- * locked layout write, settles each claim and frees every {@code (set, date)} it ends. Refunds,
- * reversals and mails drain off its events. Rationale: {@code RESPONSIBILITIES.md} §booking.
+ * ({@link MoveRanking}) free on every day of the span and untaken by an earlier claim, then status;
+ * a released stretch takes its stay's other unpaid stretches into the picture (#1292). {@link #classify}
+ * is read-only and advisory; {@link #commit} re-classifies inside {@code venue}'s locked layout write,
+ * settles each claim and frees every {@code (set, date)} it ends. Rationale: {@code RESPONSIBILITIES.md} §booking.
  */
 @Service
 class RemodelClaimsService implements RemodelClaims {
@@ -101,7 +102,7 @@ class RemodelClaimsService implements RemodelClaims {
 	@Transactional(readOnly = true)
 	public List<RemodelClaim> classify(OperatorId operator, VenueId venueId, Collection<SetId> disturbedSets) {
 		ownership.assertOwns(operator, new VenueRef(venueId.value()));
-		return classifyOwned(venueId, disturbedSets);
+		return classifyOwned(venueId, disturbedSets).claims();
 	}
 
 	@Override
@@ -109,23 +110,26 @@ class RemodelClaimsService implements RemodelClaims {
 	public RemodelCommit commit(OperatorId operator, VenueId venueId, Collection<SetId> disturbedSets,
 			PreviewToken token, RefundConfirmation confirmation) {
 		ownership.assertOwns(operator, new VenueRef(venueId.value()));
-		List<RemodelClaim> fresh = classifyOwned(venueId, disturbedSets);
-		if (!token.covers(fresh)) {
-			return new RemodelCommit.Stale(fresh);
+		Classification fresh = classifyOwned(venueId, disturbedSets);
+		if (!token.covers(fresh.claims())) {
+			return new RemodelCommit.Stale(fresh.claims());
 		}
-		int refunds = (int) fresh.stream().filter(claim -> claim.outcome() == RemodelOutcome.Refund.REFUND).count();
+		int refunds = (int) fresh.claims().stream().filter(claim -> claim.outcome() == RemodelOutcome.Refund.REFUND).count();
 		if (!authorises(confirmation, refunds)) {
-			return new RemodelCommit.Unconfirmed(fresh);
+			return new RemodelCommit.Unconfirmed(fresh.claims());
 		}
 		Instant committedAt = clock.instant();
 		long feeMinor = feeRate.perRefund().perRefundMinor();
 		Settled settled = new Settled(new ArrayList<>(), new ArrayList<>(), new ArrayList<>(), new HashSet<>());
-		for (RemodelClaim claim : fresh) {
-			apply(venueId, claim, committedAt, feeMinor, settled);
+		for (RemodelClaim claim : fresh.claims()) {
+			apply(venueId, claim, fresh.stayEndingWith(claim), committedAt, feeMinor, settled);
+		}
+		for (StayId stay : fresh.staysEndingWhole()) {
+			events.publishEvent(new StayCancelled(stay, 0, fresh.currencyOf().get(stay), RefundReason.VENUE_CHANGE));
 		}
 		ReceiptId receipt = receipts.store(new NewReceipt(venueId, operator, committedAt, settled.moves(),
 				settled.outcomes(), confirmation.reason(), settled.kept()));
-		return new RemodelCommit.Applied(receipt, committedAt, fresh);
+		return new RemodelCommit.Applied(receipt, committedAt, fresh.claims());
 	}
 
 	/** A commit that refunds nobody needs no confirmation; one that does needs the count and a reason. */
@@ -134,12 +138,13 @@ class RemodelClaimsService implements RemodelClaims {
 	}
 
 	/** A blocked claim is kept: its booking, its rows and its set are left exactly as they are, and the receipt says why. */
-	private void apply(VenueId venueId, RemodelClaim claim, Instant committedAt, long feeMinor, Settled settled) {
+	private void apply(VenueId venueId, RemodelClaim claim, StayId stayEndingWith, Instant committedAt, long feeMinor,
+			Settled settled) {
 		switch (claim.outcome()) {
 			case RemodelOutcome.Move move -> settled.moves().add(applyMove(venueId, claim, move, committedAt));
 			case RemodelOutcome.Refund ignored ->
 				settled.outcomes().add(applyRefund(venueId, claim, committedAt, feeMinor));
-			case RemodelOutcome.Release ignored -> settled.outcomes().add(applyRelease(venueId, claim));
+			case RemodelOutcome.Release ignored -> settled.outcomes().add(applyRelease(venueId, claim, stayEndingWith));
 			case RemodelOutcome.Decline ignored ->
 				settled.outcomes().add(applyDecline(venueId, claim, settled.declinedStays()));
 			case RemodelOutcome.Blocked(var reason) ->
@@ -172,16 +177,17 @@ class RemodelClaimsService implements RemodelClaims {
 	}
 
 	/**
-	 * Releases an unpaid claim by the guarded transition {@code ClaimReleaseService} runs, kept in step
-	 * by hand: this leg needs the freed spot and publishes {@code BookingCancelled}, which that seam's
-	 * drivers must not. Its zero refund mails the guest, moving no money; a listener voids the intent.
+	 * Releases an unpaid claim by the guarded transition {@code ClaimReleaseService} runs, kept in step by hand: this
+	 * leg needs the freed spot and publishes {@code BookingCancelled} (zero refund, no money; a listener voids the
+	 * intent), stamped with {@code stayEndingWith} when the stay ends whole so the stay's one mail covers it.
 	 */
-	private ReceiptOutcome applyRelease(VenueId venueId, RemodelClaim claim) {
+	private ReceiptOutcome applyRelease(VenueId venueId, RemodelClaim claim, StayId stayEndingWith) {
 		ClaimRef released = bookings.cancelAwaitingPayment(claim.bookingId().value())
 				.orElseThrow(() -> lostUnderLock(claim, "awaiting payment"));
 		releaseSpan(released.setId(), released.bookingDate(), released.lastDate());
 		events.publishEvent(new BookingCancelled(claim.bookingId(), venueId, released.setId(),
-				released.bookingDate(), 0, claim.currency(), RefundReason.VENUE_CHANGE, released.lastDate()));
+				released.bookingDate(), 0, claim.currency(), RefundReason.VENUE_CHANGE, released.lastDate(),
+				stayEndingWith));
 		return outcomeOf(claim, ReceiptOutcomeKind.RELEASE, 0L);
 	}
 
@@ -245,32 +251,105 @@ class RemodelClaimsService implements RemodelClaims {
 				move.positionsAway());
 	}
 
-	private List<RemodelClaim> classifyOwned(VenueId venueId, Collection<SetId> disturbedSets) {
+	/**
+	 * The picture, iterated to a fixpoint over the stays a release ends (#1292): a released stretch brings its
+	 * stay's other {@code AWAITING_PAYMENT} stretches in as releases, which take no candidate, so each pass
+	 * re-allocates the free sets among the rest until no new stay joins.
+	 */
+	private Classification classifyOwned(VenueId venueId, Collection<SetId> disturbedSets) {
 		Set<SetId> disturbed = Set.copyOf(disturbedSets);
 		if (disturbed.isEmpty()) {
-			return List.of();
+			return Classification.EMPTY;
 		}
-		List<LiveClaim> claims = bookings.findLiveOnSets(disturbed).stream()
-				.sorted(Comparator.comparing(LiveClaim::bookingDate).thenComparingLong(LiveClaim::bookingId))
-				.toList();
-		if (claims.isEmpty()) {
-			return List.of();
+		List<LiveClaim> onSets = bookings.findLiveOnSets(disturbed);
+		if (onSets.isEmpty()) {
+			return Classification.EMPTY;
 		}
 		Map<SetId, SetSpot> spots = facts.activeSetsOf(venueId).stream()
 				.collect(Collectors.toMap(SetSpot::setId, Function.identity()));
 		Instant now = clock.instant();
-		FreePools pools = new FreePools(venueId, disturbed);
-		List<RemodelClaim> result = new ArrayList<>(claims.size());
+		FreeSets free = new FreeSets(venueId, disturbed);
+		Map<StayId, List<LiveClaim>> releasedStays = new HashMap<>();
+		while (true) {
+			List<Classified> classified = classifyPass(withUnpaidStretchesOf(onSets, releasedStays.values()), spots, now,
+					new FreePools(free), releasedStays.keySet());
+			List<StayId> joining = classified.stream()
+					.filter(each -> each.claim().outcome() == RemodelOutcome.Release.RELEASE && each.live().stayId() != null)
+					.map(each -> each.live().stayId())
+					.filter(stay -> !releasedStays.containsKey(stay))
+					.distinct()
+					.toList();
+			if (joining.isEmpty()) {
+				return Classification.of(classified, releasedStays);
+			}
+			joining.forEach(stay -> releasedStays.put(stay, bookings.findLiveStretchesOf(stay)));
+		}
+	}
+
+	/** One pass over the claims in order: an unpaid stretch of a released stay is a release, every other claim is decided. */
+	private List<Classified> classifyPass(List<LiveClaim> claims, Map<SetId, SetSpot> spots, Instant now, FreePools pools,
+			Set<StayId> releasedStays) {
+		List<Classified> classified = new ArrayList<>(claims.size());
 		for (LiveClaim claim : claims) {
 			SetSpot from = spots.get(claim.setId());
 			if (from == null) {
 				throw new IllegalStateException("live booking " + claim.bookingId() + " holds a set off the active map");
 			}
-			RemodelOutcome outcome = outcomeOf(claim, from, zones.zoneOf(claim.bookingDate(), now), pools);
-			result.add(new RemodelClaim(new BookingId(claim.bookingId()), refOf(from), claim.bookingDate(),
-					claim.lastDate(), claim.remainingMinor(), claim.currency(), outcome));
+			RemodelOutcome outcome = releasedStays.contains(claim.stayId()) && claim.status() == BookingStatus.AWAITING_PAYMENT
+					? RemodelOutcome.Release.RELEASE
+					: outcomeOf(claim, from, zones.zoneOf(claim.bookingDate(), now), pools);
+			classified.add(new Classified(claim, new RemodelClaim(new BookingId(claim.bookingId()), refOf(from),
+					claim.bookingDate(), claim.lastDate(), claim.remainingMinor(), claim.currency(), outcome)));
 		}
-		return List.copyOf(result);
+		return classified;
+	}
+
+	/** The disturbed claims plus the unpaid stretches of the released stays, each once, in {@code (service date, id)} order. */
+	private static List<LiveClaim> withUnpaidStretchesOf(List<LiveClaim> onSets, Collection<List<LiveClaim>> stays) {
+		Map<Long, LiveClaim> byId = new LinkedHashMap<>();
+		onSets.forEach(claim -> byId.put(claim.bookingId(), claim));
+		stays.stream().flatMap(List::stream)
+				.filter(stretch -> stretch.status() == BookingStatus.AWAITING_PAYMENT)
+				.forEach(stretch -> byId.putIfAbsent(stretch.bookingId(), stretch));
+		return byId.values().stream()
+				.sorted(Comparator.comparing(LiveClaim::bookingDate).thenComparingLong(LiveClaim::bookingId))
+				.toList();
+	}
+
+	/** One claim as read and as answered. */
+	private record Classified(LiveClaim live, RemodelClaim claim) {
+	}
+
+	/**
+	 * One classification: the claims in order, which stay each released stretch belongs to, and the stays every
+	 * live stretch of which is released here, so the commit stamps their stretches and mails each stay once.
+	 */
+	private record Classification(List<RemodelClaim> claims, Map<BookingId, StayId> stayOf, Set<StayId> staysEndingWhole,
+			Map<StayId, String> currencyOf) {
+
+		static final Classification EMPTY = new Classification(List.of(), Map.of(), Set.of(), Map.of());
+
+		static Classification of(List<Classified> classified, Map<StayId, List<LiveClaim>> releasedStays) {
+			Map<BookingId, StayId> stayOf = new HashMap<>();
+			Map<StayId, String> currencyOf = new HashMap<>();
+			for (Classified each : classified) {
+				if (each.claim().outcome() == RemodelOutcome.Release.RELEASE && each.live().stayId() != null) {
+					stayOf.put(each.claim().bookingId(), each.live().stayId());
+					currencyOf.putIfAbsent(each.live().stayId(), each.live().currency());
+				}
+			}
+			Set<StayId> whole = releasedStays.entrySet().stream()
+					.filter(entry -> entry.getValue().stream().allMatch(s -> s.status() == BookingStatus.AWAITING_PAYMENT))
+					.map(Map.Entry::getKey)
+					.collect(Collectors.toSet());
+			return new Classification(classified.stream().map(Classified::claim).toList(), stayOf, whole, currencyOf);
+		}
+
+		/** The stay this released stretch ends with, or {@code null} when the stay goes on or the claim is no release. */
+		StayId stayEndingWith(RemodelClaim claim) {
+			StayId stay = stayOf.get(claim.bookingId());
+			return stay != null && staysEndingWhole.contains(stay) ? stay : null;
+		}
 	}
 
 	private static RemodelOutcome outcomeOf(LiveClaim claim, SetSpot from, RemodelZone zone, FreePools pools) {
@@ -315,19 +394,36 @@ class RemodelClaimsService implements RemodelClaims {
 		return new SpotRef(spot.setId(), spot.placement().rowLabel(), spot.placement().positionNo());
 	}
 
-	/**
-	 * One classification's free online sets per date, less the disturbed ones, each date read once and
-	 * only when a claim's span reaches it; a set an earlier claim takes leaves every day of that span.
-	 */
-	private final class FreePools {
+	/** One classification's free online sets per date, less the disturbed ones, each date read once across its passes. */
+	private final class FreeSets {
 
 		private final VenueId venueId;
 		private final Set<SetId> disturbed;
-		private final Map<LocalDate, Map<SetId, SetSpot>> byDate = new HashMap<>();
+		private final Map<LocalDate, List<SetSpot>> byDate = new HashMap<>();
 
-		FreePools(VenueId venueId, Set<SetId> disturbed) {
+		FreeSets(VenueId venueId, Set<SetId> disturbed) {
 			this.venueId = venueId;
 			this.disturbed = disturbed;
+		}
+
+		List<SetSpot> on(LocalDate date) {
+			return byDate.computeIfAbsent(date, day -> facts.freeOnlineSetsOn(venueId, day).stream()
+					.filter(spot -> !disturbed.contains(spot.setId()))
+					.toList());
+		}
+	}
+
+	/**
+	 * One pass's pools over {@link FreeSets}, read only when a claim's span reaches a date; a set an earlier
+	 * claim takes leaves every day of that span.
+	 */
+	private static final class FreePools {
+
+		private final FreeSets free;
+		private final Map<LocalDate, Map<SetId, SetSpot>> byDate = new HashMap<>();
+
+		FreePools(FreeSets free) {
+			this.free = free;
 		}
 
 		/** The spots free on every day of {@code span}, dated on its first day. */
@@ -344,8 +440,7 @@ class RemodelClaimsService implements RemodelClaims {
 		}
 
 		private Map<SetId, SetSpot> on(LocalDate date) {
-			return byDate.computeIfAbsent(date, day -> facts.freeOnlineSetsOn(venueId, day).stream()
-					.filter(spot -> !disturbed.contains(spot.setId()))
+			return byDate.computeIfAbsent(date, day -> free.on(day).stream()
 					.collect(Collectors.toMap(SetSpot::setId, Function.identity(), (a, b) -> a, LinkedHashMap::new)));
 		}
 	}
