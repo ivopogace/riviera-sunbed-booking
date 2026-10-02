@@ -96,17 +96,7 @@ final class VenueFieldValidation {
 		}
 	}
 
-	/**
-	 * Non-negative money bound on a minor-units amount (invariant #5) — zero is legal (a free row),
-	 * so the bound is {@code >= 0}, mirroring the V2 {@code set_position_price_check} CHECK that
-	 * stays the race-safe backstop.
-	 */
-	static void requireNonNegativeMinor(long amountMinor, String field) {
-		if (amountMinor < 0) {
-			throw new IllegalArgumentException(field + " must be >= 0");
-		}
-	}
-
+	/** Any ISO-4217 code: the payout currency's rule. A set price is {@code SetPrice}'s (EUR only). */
 	static void requireIsoCurrency(String code, String field) {
 		if (code == null || code.isBlank()) {
 			throw new IllegalArgumentException(field + " is required");

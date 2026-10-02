@@ -7,8 +7,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 
 /**
  * The validated intent to reprice one beach-map row. Mirrors the edge-validation
- * discipline of {@link SetCommand}: money is integer minor units + an ISO-4217 currency (invariant
- * #5), and the row label is required — a malformed reprice is rejected at the application boundary
+ * discipline of {@link SetCommand}: money is positive EUR minor units (invariant #5), and the row label is required — a malformed reprice is rejected at the application boundary
  * (→ {@code 400 INVALID_REQUEST} via {@code ApiErrorHandler}, §6b), never reaching persistence.
  */
 class RowPriceCommandTest {
@@ -23,9 +22,13 @@ class RowPriceCommandTest {
 	}
 
 	@Test
-	void acceptsZeroPrice() {
-		// Zero is a legitimate price (a free row); the CHECK constraint is price_minor >= 0.
-		assertEquals(0, new RowPriceCommand("B", 0, "EUR").priceMinor());
+	void acceptsTheSmallestEurPrice() {
+		assertEquals(1, new RowPriceCommand("B", 1, "EUR").priceMinor());
+	}
+
+	@Test
+	void rejectsZeroPrice() {
+		assertThrows(IllegalArgumentException.class, () -> new RowPriceCommand("B", 0, "EUR"));
 	}
 
 	@Test
@@ -40,8 +43,10 @@ class RowPriceCommandTest {
 	}
 
 	@Test
-	void rejectsNonIsoCurrency() {
+	void rejectsAnyCurrencyButEur() {
+		assertThrows(IllegalArgumentException.class, () -> new RowPriceCommand("A", 4200, "ALL"));
 		assertThrows(IllegalArgumentException.class, () -> new RowPriceCommand("A", 4200, "ABC"));
+		assertThrows(IllegalArgumentException.class, () -> new RowPriceCommand("A", 4200, null));
 		assertThrows(IllegalArgumentException.class, () -> new RowPriceCommand("A", 4200, ""));
 	}
 }

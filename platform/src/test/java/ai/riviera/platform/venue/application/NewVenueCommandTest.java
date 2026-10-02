@@ -28,6 +28,12 @@ class NewVenueCommandTest {
 	}
 
 	@Test
+	void keepsAcceptingANonEurPayoutCurrency() {
+		assertEquals("ALL", new NewVenueCommand("Sunset", Beach.DHERMI, "nice", "INSTANT", "ALL",
+				LocalTime.of(18, 0), null).payoutCurrency());
+	}
+
+	@Test
 	void nullBeachIsRejected() {
 		assertThrows(IllegalArgumentException.class, () -> new NewVenueCommand("Sunset", null, "nice",
 				"INSTANT", "EUR", LocalTime.of(18, 0), null));

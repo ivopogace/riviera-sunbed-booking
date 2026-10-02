@@ -629,6 +629,21 @@ class VenueAdminControllerIT {
 	}
 
 	@Test
+	void refusesASetPricedInAnyCurrencyButEurOrAtZero() throws Exception {
+		long venue = createVenue("Lek Price Club");
+		for (String body : new String[] { setBody("Row A", 1, "STANDARD", "ONLINE", 3000, "ALL", 1, 1),
+				setBody("Row A", 1, "STANDARD", "ONLINE", 0, "EUR", 1, 1) }) {
+			mvc.perform(post("/api/venues/{v}/sets", venue).cookie(operatorSession).with(csrf())
+							.contentType(MediaType.APPLICATION_JSON).content(body))
+					.andExpect(status().isBadRequest())
+					.andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
+					.andExpect(jsonPath("$.code").value("INVALID_REQUEST"));
+		}
+		assertEquals(0, jdbc.sql("SELECT COUNT(*) FROM set_position WHERE venue_id = :v").param("v", venue)
+				.query(Integer.class).single());
+	}
+
+	@Test
 	void rejectsNonPositiveCoordinate() throws Exception {
 		long venue = createVenue("Bad Coord Club");
 		mvc.perform(post("/api/venues/{v}/sets", venue).cookie(operatorSession).with(csrf())
