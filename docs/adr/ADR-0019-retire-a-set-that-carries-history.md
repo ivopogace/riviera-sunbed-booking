@@ -66,6 +66,16 @@ row reads live for a booked guest today), and nothing for a future move mail to 
    list. A Request-to-Book request claims nothing (ADR-0025), so `poolForClaim` never fences it; the
    reserve's fence read is the retired-set fence on both booking modes, locking the set through the
    view as `poolForClaim` does. Point 4's bare reads are `setBookingInfo` / `setBookingInfos` only.
+   *Amended 2026-10-02 (#1394):* the exemption is per statement, keyed on the constant's name. In a
+   class implementing `SetBookingFacts`, only `SET_BOOKING_INFO_SELECT` (point 4's bare reads) and
+   `VENUES_OF_SETS_LOCK` (the `ForReserve` twins' venue lock, which hands out no set) are exempt;
+   every other statement there — the six excluding reads of the two notes above — is held like any
+   other class's. A statement passes only by reading `active_set_position` or saying `retired_at IS
+   NULL` (any case and spacing); a bare mention of `retired_at` no longer counts. The constant pool
+   still does not say which method a string belongs to, but a `static final` field's `ConstantValue`
+   does carry its name, which is what the allow-list reads; an exempt statement is therefore a named
+   constant, never an inline literal. The port is not split (owner's decision on #1394), and the
+   class split stands on its own terms: two conversations reading one table with opposite intent.
 
 ## Considered options
 
@@ -82,10 +92,11 @@ statements today and every future one would each restate the rule; the view stat
 the fitness function can tell a view read from a bare one, which it could not do with a predicate
 spelled fifteen ways.
 
-**Exempt statements rather than a class in the fitness function (rejected).** The constant pool
-does not say which method a string belongs to; a class-level exemption is what the tooling can
-see, and it costs one adapter split that is a good split on its own terms — two published
-conversations that read the same table with opposite intent.
+**Exempt statements rather than a class in the fitness function (rejected, then adopted).** The
+constant pool does not say which method a string belongs to; a class-level exemption is what the
+tooling can see, and it costs one adapter split that is a good split on its own terms — two published
+conversations that read the same table with opposite intent. *Superseded 2026-10-02 (#1394):* the
+exemption keys on the constant's name instead (point 6's note); the split stays.
 
 ## Consequences
 

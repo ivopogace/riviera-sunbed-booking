@@ -31,11 +31,11 @@ import ai.riviera.platform.venue.vocabulary.VenueId;
 import ai.riviera.platform.venue.vocabulary.VenueStayFacts;
 
 /**
- * JDBC adapter implementing {@link SetBookingFacts} (invariant #1). Its own class beside
- * {@link JdbcVenueCatalog} because its booking-info reads keep answering for a retired set (ADR-0019):
- * a booking, a mail and the staff lookup still name the spot the guest was told. Every read here that
- * hands out a set to book, claim or move to selects the active map instead. The retired-set fitness
- * function exempts this class.
+ * JDBC adapter implementing {@link SetBookingFacts} (invariant #1). Two statements read
+ * {@code set_position} bare, so a booking on a retired set still resolves to the spot its guests were
+ * told (ADR-0019): {@code SET_BOOKING_INFO_SELECT} and {@code VENUES_OF_SETS_LOCK}, exempt by name in
+ * {@code RetiredSetExclusionArchitectureTests}. Every other statement here is held to the rule like
+ * any other class's: it reads {@code active_set_position} or says {@code retired_at IS NULL}.
  */
 @Repository
 class JdbcSetBookingFacts implements SetBookingFacts {
@@ -55,10 +55,21 @@ class JdbcSetBookingFacts implements SetBookingFacts {
 			       v.max_stay_days
 			""";
 
-	/** The booking-info read that still answers for a retired set: the spot its guests were told. */
+	/** Exempt by name: the booking-info read still answers for a retired set with the spot its guests were told. */
 	private static final String SET_BOOKING_INFO_SELECT = SET_BOOKING_INFO_COLUMNS + """
 			FROM set_position sp
 			JOIN venue v ON v.id = sp.venue_id
+			""";
+
+	/**
+	 * The ForReserve twins' venue lock, exempt by name because it hands out no set: it locks venues, and
+	 * the view read that follows is the retired-set fence.
+	 */
+	private static final String VENUES_OF_SETS_LOCK = """
+			SELECT v.id FROM venue v
+			WHERE v.id IN (SELECT sp.venue_id FROM set_position sp WHERE sp.id IN (:setIds))
+			ORDER BY v.id
+			FOR SHARE
 			""";
 
 	/** The reserve's booking-info read selects the active map: a retired set is no spot to book (#1284). */
@@ -172,12 +183,7 @@ class JdbcSetBookingFacts implements SetBookingFacts {
 		if (setIds.isEmpty()) {
 			return;
 		}
-		jdbc.sql("""
-				SELECT v.id FROM venue v
-				WHERE v.id IN (SELECT sp.venue_id FROM set_position sp WHERE sp.id IN (:setIds))
-				ORDER BY v.id
-				FOR SHARE
-				""")
+		jdbc.sql(VENUES_OF_SETS_LOCK)
 				.param("setIds", setIds.stream().map(SetId::value).toList())
 				.query(Long.class)
 				.list();
