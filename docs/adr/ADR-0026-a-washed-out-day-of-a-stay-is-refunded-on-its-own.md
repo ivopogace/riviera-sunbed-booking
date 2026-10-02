@@ -3,7 +3,8 @@
 - **Status:** Accepted — implemented by the slice for issue #1210 (epic #1096, design D5 option A,
   decided 2026-09-24). *Amended 2026-09-29 by ADR-0027:* §3 holds for weather only; the venue's own
   day refund (reason `VENUE`) releases its day. §7 holds for that reason too. *Amended 2026-10-02 by the
-  slice for issue #1300:* §8, the remodel's complement to §7.
+  slice for issue #1300:* §8, the remodel's complement to §7. *Amended 2026-10-02 by the slice for issue #1381:*
+  §7 names where it is enforced outside the remodel.
 - **Date:** 2026-09-28
 - **Relates to:** `docs/architecture/multi-day-stays.md` § D5, D8, ADR-0020 (§8's *nothing left* is a sixth
   outcome of the remodel it composes), ADR-0005 (the server-side refund
@@ -75,7 +76,11 @@ one-day stretch of a stitched stay is a booking of its own or a day of the stay.
    quoted remainder as the backstop. On the payment side the refunds of one share serialize on its intent's `payment`
    row (`FOR UPDATE` before the write, #1298), so the running sum never loses a concurrent refund.
 7. **A stay whose every day ends up refunded stays live**, with nothing left to refund: no cancel, no
-   release, no cancellation mail; the sweep resolves it as any stay. Rare, and the honest state.
+   release, no cancellation mail; the sweep resolves it as any stay. Rare, and the honest state. *Amended
+   2026-10-02 by the slice for issue #1381:* enforced by the guest cancel (`CancelOutcome.NothingLeft`, a `409`;
+   a stay's such stretch is set aside by `LiveRemainder` as a remodel-ended one is), the code-gated view
+   (`cancellable` false, `nothingLeft` true, shown as "Refunded") and the move reminder (sent only for a move day
+   the guest holds; a refunded departure day drops "instead of today's"). The outcome stays `NO_SHOW`.
 8. **A remodel ends such a booking quietly, as *nothing left*** (*added 2026-10-02, issue #1300*). A
    `CONFIRMED` claim with no unrefunded day, outside the frozen zone, is classified *nothing left* before
    the move search, move-only included, so it never takes a candidate; a frozen one stays kept. The commit
