@@ -100,7 +100,7 @@ close, the maximum stay, the season closure, and the commission rate over time. 
   frozen. The reserve reads lock the set through the view as `poolForClaim` does, since a single-set
   retire takes no venue lock. Exempt: `SetBookingFacts#setBookingInfo(s)` (cancel, booking view, mails,
   staff lookup). Its slot and cell are free for a new set. `RetiredSetExclusionArchitectureTests` holds
-  it outside `JdbcSetBookingFacts`, whose excluding reads hold by their ITs (ADR-0019 point 6).
+  it outside `JdbcSetBookingFacts`; inside, the excluding reads hold by convention (ADR-0019 point 6).
 - **The bulk save (`PUT …/beach-map`) is a diff keyed by grid cell, never a delete-all.** The body
   carries no set ids, so a set that changes cell is a removal plus an insert — the removal question
   is the move question. Only removed sets and kept ones whose position number changes are probed,
@@ -128,7 +128,7 @@ close, the maximum stay, the season closure, and the commission rate over time. 
   The reserve's `setBookingInfoForReserve` and the request accept's `lockVenueForClaim` take the venue row
   `FOR SHARE` (`KEY SHARE` would not conflict with a non-key `UPDATE venue`), venue before set as the
   set-writes lock, so venue writers (closure, profile, commission, rating, layout token) queue behind
-  in-flight reserves and accepts (#1304, #1305).
+  in-flight reserves and accepts (#1304, #1305); the reserve then takes its sets `FOR KEY SHARE` (#1284).
 - **The batch apply (`applyToSets`) is one transaction on the `set_version` token.** Lock order:
   the venue row (`lockAndReadSetVersion`), then the named set rows `FOR UPDATE` — the order every
   set-write takes, so none deadlocks another. A stale token (`STALE_WRITE`) or a set id not on the
