@@ -71,7 +71,7 @@ class SetBookingInfoIT {
 	}
 
 	@Test
-	void answersForARetiredSet() {
+	void answersForARetiredSetExceptToTheReserve() {
 		long venue = jdbc.sql("""
 				INSERT INTO venue (name, beach, booking_mode, commission_bps, payout_currency)
 				VALUES ('Retired Facts Club', 'KSAMIL', 'INSTANT', 1500, 'EUR')
@@ -93,6 +93,10 @@ class SetBookingInfoIT {
 		assertEquals("Retired row", info.get().rowLabel());
 		assertEquals(7, info.get().positionNo());
 		assertTrue(catalog.setBookingInfos(List.of(new SetId(retired))).containsKey(new SetId(retired)));
+		assertTrue(catalog.setBookingInfoForReserve(new SetId(retired)).isEmpty(),
+				"the reserve reads the active map: a retired set is no spot to book (#1284)");
+		assertTrue(catalog.setBookingInfosForReserve(List.of(new SetId(retired))).isEmpty(),
+				"the batch reserve read forgets a retired set too");
 	}
 
 	@Test
