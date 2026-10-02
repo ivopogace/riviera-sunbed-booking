@@ -859,7 +859,24 @@ class RateLimitFilterTest {
 	}
 
 	@Test
-	void aLoginWithAnUnknownCharsetNeverReachesAuthentication() throws Exception {
+	void aUsAsciiDeclaredLoginSharesTheUtf8BucketAsTheControllerReadsBothAsUtf8() throws Exception {
+		byte[] body = "{\"email\": \"jos\u00e9-%d@example.com\", \"password\": \"nope-nope\"}"
+				.formatted(IDENTITY_SEQ.incrementAndGet()).getBytes(StandardCharsets.UTF_8);
+		MediaType asciiJson = new MediaType(MediaType.APPLICATION_JSON, StandardCharsets.US_ASCII);
+		MediaType utf8Json = new MediaType(MediaType.APPLICATION_JSON, StandardCharsets.UTF_8);
+		mvc.perform(post("/api/auth/customer/login").with(fromIp("10.48.0.1")).with(csrf())
+						.contentType(asciiJson).content(body))
+				.andExpect(status().isUnauthorized());
+		mvc.perform(post("/api/auth/customer/login").with(fromIp("10.48.0.2")).with(csrf())
+						.contentType(utf8Json).content(body))
+				.andExpect(status().isUnauthorized());
+		mvc.perform(post("/api/auth/customer/login").with(fromIp("10.48.0.3")).with(csrf())
+						.contentType(asciiJson).content(body))
+				.andExpect(status().isTooManyRequests());
+	}
+
+	@Test
+	void aLoginWithAnUnknownCharsetIsRefused415NotAServerError() throws Exception {
 		mvc.perform(post("/api/auth/operator/login").with(fromIp("10.47.0.1")).with(csrf())
 						.contentType("application/json;charset=no-such-charset")
 						.content("{\"username\": \"%s\", \"password\": \"nope\"}".formatted(uniqueUsername())))

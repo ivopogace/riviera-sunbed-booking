@@ -121,11 +121,11 @@ final class RateLimitFilter extends OncePerRequestFilter {
 	private static final int MAX_CACHED_BODY_BYTES = 8 * 1024;
 
 	/**
-	 * The charsets Jackson decodes from raw bytes; any other declared charset is decoded first, as Spring's
-	 * JSON converter does, so the filter reads the same identity the controller binds.
+	 * The charsets Spring's JSON converter hands Jackson as raw bytes (US-ASCII read as UTF-8); any other is
+	 * decoded first, so the filter reads the same identity the controller binds.
 	 */
-	private static final Set<String> BYTE_DECODED_CHARSETS =
-			Set.of("UTF-8", "UTF-16", "UTF-16BE", "UTF-16LE", "UTF-32", "UTF-32BE", "UTF-32LE");
+	private static final Set<String> BYTE_DECODED_CHARSETS = Set.of(
+			"UTF-8", "UTF-16", "UTF-16BE", "UTF-16LE", "UTF-32", "UTF-32BE", "UTF-32LE", "US-ASCII");
 
 	/** The failed-authentication status — the only outcome that net-spends a per-identity token. */
 	private static final int FAILED_AUTH_STATUS = HttpStatus.UNAUTHORIZED.value();
