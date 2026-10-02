@@ -3,7 +3,8 @@
 A package-private driven adapter in `adapter/out` implements an `api/` port (thin module) or
 an internal `application/` port with named-parameter SQL in a text block. No repository
 interface, no aggregate, no `@Id`/`@Table`. Models: `JdbcBookings`, `JdbcAvailabilityClaim`.
-An `application/` class names no JDBC type (`JdbcOnlyArchitectureTests`).
+An `application/` class names no JDBC type, and no production class names `org.springframework.data`
+(`JdbcOnlyArchitectureTests`).
 Language detail: `riviera-java-conventions` §1; schema craft: `postgres`.
 
 - Typed ids become primitives at the SQL edge; the `RowMapper` reconstructs them.
