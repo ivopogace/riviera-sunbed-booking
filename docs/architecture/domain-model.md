@@ -34,8 +34,9 @@ venue, improvement plan B4, and nothing reads it); the closed `remodel` composit
 composes `venue::api` with `booking::api` for the beach-map remodel preview and commit, ADR-0028,
 and nothing reads it); and the closed ADR-0017 mechanisms, `challenge` (proof of work, owns
 `challenge_registry`) and `audit` (the admin audit trail, owns `admin_audit_record`), both reached
-from `web`'s fence through a port; and `web` itself (the HTTP boundary: the security chain, its
-filters and the one advice, §1.1), which no module calls. `monitoring` (no table) is not drawn
+from `web`'s fence through a port; `web` itself (the HTTP boundary: the security chain, its
+filters and the one advice, §1.1), which no module calls; and `auth` (sign-in and sessions, §1.1),
+which only `web` reaches. `monitoring` (no table) is not drawn
 either: `booking` and `notification` reach only its `vocabulary` (metric names, the MDC task
 decorator), never a port or an event.
 

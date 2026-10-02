@@ -42,7 +42,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
  * {@code MapResourcesConfig}) sits directly under {@code ai.riviera.platform} and is
  * <strong>not</strong> a module — it is excluded from the package-shape assertions. What the root may
  * <em>reach</em> is {@link CompositionRootDisciplineTests}' job. Of the non-context modules,
- * {@code challenge} uses the full template (minus {@code domain}), {@code audit} the thin one
+ * {@code challenge} and {@code auth} use the full template (minus {@code domain}), {@code audit} the thin one
  * plus a driving adapter, {@code monitoring} {@code vocabulary} plus a driving adapter and {@code web} a
  * driving adapter alone, all checked
  * like any other, while the {@code shared} kernel matches
