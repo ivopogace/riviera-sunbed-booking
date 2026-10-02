@@ -1,5 +1,6 @@
 package ai.riviera.platform.booking;
 
+import java.sql.Timestamp;
 import java.time.Duration;
 import java.time.LocalDate;
 import java.time.ZoneId;
@@ -20,7 +21,9 @@ import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 
 import ai.riviera.platform.EnabledIfDockerAvailable;
+import ai.riviera.platform.MovableClock;
 import ai.riviera.platform.TestcontainersConfiguration;
+import ai.riviera.platform.TiraneDaytimeClock;
 import ai.riviera.platform.availability.api.AvailabilityClaim;
 import ai.riviera.platform.availability.vocabulary.ClaimOutcome;
 import ai.riviera.platform.booking.application.request.RequestWindows;
@@ -45,10 +48,11 @@ import static org.mockito.Mockito.when;
  * (which reuses the same shared {@link ReleaseAbandonedBooking}). The {@link StripeClient} is mocked
  * (no live Stripe call); the sweep is driven directly through {@link ExpireAbandonedBookings} for
  * determinism, with the background scheduler pushed past the test via a long {@code initial-delay}.
- * Testcontainers Postgres; skipped where Docker is absent.
+ * {@link TiraneDaytimeClock} is the sweep's clock and this class's "now". Testcontainers; skipped
+ * where Docker is absent.
  */
 @EnabledIfDockerAvailable
-@Import(TestcontainersConfiguration.class)
+@Import({ TestcontainersConfiguration.class, TiraneDaytimeClock.class })
 @SpringBootTest(properties = "booking.no-show.enabled=false")
 @ActiveProfiles("stripe")
 @TestPropertySource(properties = {
@@ -87,6 +91,9 @@ class AbandonedBookingSweepIT {
 
 	@Autowired
 	AvailabilityClaim availability;
+
+	@Autowired
+	MovableClock clock;
 
 	@MockitoBean
 	StripeClient stripeClient;
@@ -147,20 +154,19 @@ class AbandonedBookingSweepIT {
 		return jdbc.sql("""
 				INSERT INTO booking (code, venue_id, set_id, customer_id, booking_date,
 				                     amount_minor, amount_currency, status, created_at)
-				VALUES (:code, :venue, :set, :cust, :date, 4500, 'EUR', :status,
-				        NOW() - (:age * INTERVAL '1 minute'))
+				VALUES (:code, :venue, :set, :cust, :date, 4500, 'EUR', :status, :createdAt)
 				RETURNING id
 				""")
 				.param("code", code).param("venue", set.venueId()).param("set", set.setId())
 				.param("cust", customer).param("date", date).param("status", status)
-				.param("age", ageMinutes).query(Long.class).single();
+				.param("createdAt", minutesAgo(ageMinutes)).query(Long.class).single();
 	}
 
 	/** An {@code AWAITING_PAYMENT} booking on the accept clock — the Request-to-Book arm's shape. */
 	private long insertAcceptedRequest(String code, SetRef set, LocalDate date, int ageMinutes) {
 		long booking = insertBooking(code, set, date, "AWAITING_PAYMENT", ageMinutes);
-		jdbc.sql("UPDATE booking SET accepted_at = NOW() - (:age * INTERVAL '1 minute') WHERE id = :id")
-				.param("age", ageMinutes).param("id", booking).update();
+		jdbc.sql("UPDATE booking SET accepted_at = :acceptedAt WHERE id = :id")
+				.param("acceptedAt", minutesAgo(ageMinutes)).param("id", booking).update();
 		return booking;
 	}
 
@@ -183,11 +189,9 @@ class AbandonedBookingSweepIT {
 				.param("id", bookingId).query(String.class).single();
 	}
 
-	/** A today-dated survival pin cannot straddle Tirane midnight — the day-end arm flips there. */
-	private static void assumeClearOfTiraneMidnight() {
-		org.junit.jupiter.api.Assumptions.assumeTrue(
-				java.time.LocalTime.now(TIRANE).isBefore(java.time.LocalTime.of(23, 58)),
-				"skipped in the day's final minutes — today would end mid-test");
+	/** Ages count back from the sweep's clock, not the database's {@code NOW()}: one instant rules. */
+	private Timestamp minutesAgo(int minutes) {
+		return Timestamp.from(clock.instant().minus(Duration.ofMinutes(minutes)));
 	}
 
 	private long availabilityRows(SetRef set, LocalDate date) {
@@ -342,15 +346,14 @@ class AbandonedBookingSweepIT {
 
 	@Test
 	void sparesAnAcceptedAdvanceBookingInsideItsOpenServiceDay() throws Exception {
-		assumeClearOfTiraneMidnight();
 		// #792: born before D, accepted moments ago, D underway but not over — payable until the deadline.
 		SetRef set = onlineSet();
-		LocalDate today = LocalDate.now(TIRANE);
+		LocalDate today = TiraneDaytimeClock.today(clock);
 		long booking = insertAcceptedRequest("SWEEPAC0009", set, today, FRESH_AGE_MINUTES);
 		insertPayment(booking, "pi_sweep_advopen");
 		claim(set, today);
 		jdbc.sql("UPDATE booking SET created_at = :c WHERE id = :id")
-				.param("c", java.sql.Timestamp.from(
+				.param("c", Timestamp.from(
 						today.atStartOfDay(TIRANE).toInstant().minus(Duration.ofHours(6))))
 				.param("id", booking).update();
 
@@ -364,10 +367,9 @@ class AbandonedBookingSweepIT {
 
 	@Test
 	void sameDayAcceptedBookingSurvivesTheSweep() throws Exception {
-		assumeClearOfTiraneMidnight();
 		// AC-3 (#792): accepted moments ago for TODAY — its pay deadline has not passed.
 		SetRef set = onlineSet();
-		LocalDate today = LocalDate.now(TIRANE);
+		LocalDate today = TiraneDaytimeClock.today(clock);
 		long booking = insertAcceptedRequest("SWEEPAC0010", set, today, FRESH_AGE_MINUTES);
 		insertPayment(booking, "pi_sweep_samedayacc");
 		claim(set, today);
@@ -382,10 +384,9 @@ class AbandonedBookingSweepIT {
 
 	@Test
 	void spareSameDayBornBookingWithinTtl() throws Exception {
-		assumeClearOfTiraneMidnight();
 		// #792: its service day has not ended and its TTL has not run — neither arm may reach it.
 		SetRef set = onlineSet();
-		LocalDate today = LocalDate.now(TIRANE);
+		LocalDate today = TiraneDaytimeClock.today(clock);
 		long booking = insertBooking("SWEEPAC0008", set, today, "AWAITING_PAYMENT", FRESH_AGE_MINUTES);
 		insertPayment(booking, "pi_sweep_sameday");
 		claim(set, today);
