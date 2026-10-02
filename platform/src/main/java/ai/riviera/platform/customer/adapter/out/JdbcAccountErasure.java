@@ -32,6 +32,7 @@ class JdbcAccountErasure implements AccountErasureStore {
 	private static final String ACCOUNT_ID = "accountId";
 	private static final String OLDER_THAN = "olderThan";
 	private static final String LIMIT = "limit";
+	private static final String AFTER = "after";
 
 	/**
 	 * The guest tombstone, shared by both scrub paths (right-to-erasure by email, retention sweep by id) so
@@ -121,9 +122,10 @@ class JdbcAccountErasure implements AccountErasureStore {
 	}
 
 	@Override
-	public List<CustomerId> expiredGuestCandidates(Instant olderThan, int limit) {
-		// sweepJdbc, not jdbc: this read opens a scheduled run and is bounded.
-		return sweepJdbc.sql("SELECT id FROM customer WHERE " + EXPIRED_GUEST + " ORDER BY id LIMIT :limit")
+	public List<CustomerId> expiredGuestCandidates(Instant olderThan, CustomerId after, int limit) {
+		// sweepJdbc, not jdbc: this read is a scheduled run's and is bounded.
+		return sweepJdbc.sql("SELECT id FROM customer WHERE id > :after AND " + EXPIRED_GUEST + " ORDER BY id LIMIT :limit")
+				.param(AFTER, after.value())
 				.param(OLDER_THAN, Timestamp.from(olderThan))
 				.param(LIMIT, limit)
 				.query((rs, rowNum) -> new CustomerId(rs.getLong("id")))

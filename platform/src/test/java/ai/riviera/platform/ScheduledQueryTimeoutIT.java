@@ -149,7 +149,7 @@ class ScheduledQueryTimeoutIT {
 		assertBounded("the request-expiry sweep's candidate read",
 				readWhileLocked("booking", () -> bookings.findOverduePendingRequests(now)));
 		assertBounded("the retention sweep's candidate read",
-				readWhileLocked("customer", () -> erasure.expiredGuestCandidates(now, 100)));
+				readWhileLocked("customer", () -> erasure.expiredGuestCandidates(now, new CustomerId(0), 100)));
 		assertBounded("the retention sweep's retention-basis read",
 				readWhileLocked("booking",
 						() -> guestBookingHistory.withBookingOnOrAfter(List.of(new CustomerId(1L)),

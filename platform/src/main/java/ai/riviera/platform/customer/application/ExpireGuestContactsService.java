@@ -51,7 +51,7 @@ class ExpireGuestContactsService implements ExpireGuestContacts {
 	public int sweep() {
 		LocalDate cutoff = LocalDate.now(clock.withZone(TIRANE)).minus(retention.window());
 		Instant olderThan = cutoff.atStartOfDay(TIRANE).toInstant();
-		List<CustomerId> candidates = store.expiredGuestCandidates(olderThan, retention.batchSize());
+		List<CustomerId> candidates = store.expiredGuestCandidates(olderThan, new CustomerId(0), retention.batchSize());
 		if (candidates.isEmpty()) {
 			return 0;
 		}

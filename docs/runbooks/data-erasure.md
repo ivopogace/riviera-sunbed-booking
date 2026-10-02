@@ -118,6 +118,11 @@ read is kept — every booking's find-or-create touches `updated_at`, which the 
 waiting on that booking's row lock — and this is what covers gate 3 for a booking made mid-sweep. An account
 claimed before the scrub statement starts is seen too; one committing inside that statement is not.
 
+A run **walks the candidates by id** (a keyset on `customer.id`, one `batch-size` page at a time),
+asks gate 3 about each page and scrubs what it can, until it has scrubbed `batch-size` contacts or the
+candidates run out. Contacts a booking keeps never stall the run, however many sit at the lowest ids;
+the next run starts again from the lowest id. One cutoff holds for the whole run.
+
 The boundary is **inclusive-retain**: a booking whose last day is exactly *on* the cutoff date keeps the
 contact. A guest with no bookings at all is swept once its own row ages out — that is the
 abandoned-checkout cleanup case.
@@ -178,7 +183,8 @@ un-erase — see ADR-0010).
 - **No distributed lock needed.** `fixedDelay` means a run never overlaps itself on one instance, and the
   guarded `UPDATE` means at most one runner can tombstone a given row — so an overlap with a Slice-1
   erasure of the same row is safe too, whichever lands first.
-- **Bounded.** `batch-size` caps every run, so a backlog can never produce an unbounded transaction.
+- **Bounded.** `batch-size` caps the scrubs of every run, so a backlog can never produce an unbounded
+  transaction; the walk past kept contacts reads one bounded page at a time and writes nothing for them.
 - **A swept tourist is not broken.** `findOrCreate` is `INSERT … ON CONFLICT (email)`, so a scrubbed row's
   email no longer matches and a returning tourist simply gets a fresh guest row at checkout.
 
