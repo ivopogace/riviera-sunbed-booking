@@ -157,7 +157,7 @@ Cited by number — **never renumber**. Long form: `RESPONSIBILITIES.md` § *Inv
 `riviera-review-overlay` (reviews), `riviera-modulith` + `riviera-java-conventions` (backend),
 `riviera-frontend` + `riviera-tailwind` (frontend), `riviera-stripe-payments`,
 `riviera-local-debug` (before the first build/test), `riviera-docs-freshness` (epic close-out),
-`postgres` (migrations), `playwright-cli` (e2e).
+`postgres` (migrations), `playwright-cli` (e2e), `riviera-wave` (parallel issue waves).
 
 Tracker + labels: `docs/agents/`. Glossary: `CONTEXT.md`. Decisions: `docs/adr/`. Roadmap:
 `docs/architecture/improvement-plan.md`.
