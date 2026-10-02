@@ -1276,26 +1276,46 @@ class JdbcBookings implements Bookings {
 	}
 
 	/** The same live filter as {@code JdbcBookingPresence}; {@code booking_set_date_idx} serves the set list. */
+	/** The live-claim columns {@link #findLiveOnSets} and {@link #findLiveStretchesOf} read; one mapper for both. */
+	private static final String LIVE_CLAIM_SELECT = """
+			SELECT id, set_id, booking_date, last_date, status, amount_minor, amount_currency, stay_id,
+			       (SELECT COALESCE(SUM(d.refund_minor), 0) FROM booking_day d WHERE d.booking_id = b.id) AS day_refunded_minor
+			FROM booking b
+			""";
+
 	@Override
 	public List<LiveClaim> findLiveOnSets(Collection<SetId> setIds) {
 		if (setIds.isEmpty()) {
 			return List.of();
 		}
-		return jdbc.sql("""
-				SELECT id, set_id, booking_date, last_date, status, amount_minor, amount_currency,
-				       (SELECT COALESCE(SUM(d.refund_minor), 0) FROM booking_day d WHERE d.booking_id = b.id) AS day_refunded_minor
-				FROM booking b
+		return jdbc.sql(LIVE_CLAIM_SELECT + """
 				WHERE set_id IN (:ids) AND status IN (:live)
 				ORDER BY booking_date, id
 				""")
 				.param("ids", setIds.stream().map(SetId::value).toList())
 				.param("live", JdbcBookingPresence.LIVE_STATUSES)
-				.query((rs, rowNum) -> new LiveClaim(rs.getLong("id"), new SetId(rs.getLong(COL_SET_ID)),
-						rs.getObject(COL_BOOKING_DATE, LocalDate.class), rs.getObject(COL_LAST_DATE, LocalDate.class),
-						BookingStatus.valueOf(rs.getString(PARAM_STATUS)),
-						rs.getLong(COL_AMOUNT_MINOR), rs.getString(COL_AMOUNT_CURRENCY),
-						rs.getLong(COL_DAY_REFUNDED_MINOR)))
+				.query(JdbcBookings::mapLiveClaim)
 				.list();
+	}
+
+	@Override
+	public List<LiveClaim> findLiveStretchesOf(StayId stayId) {
+		return jdbc.sql(LIVE_CLAIM_SELECT + """
+				WHERE stay_id = :stay AND status IN (:live)
+				ORDER BY booking_date, id
+				""")
+				.param("stay", stayId.value())
+				.param("live", JdbcBookingPresence.LIVE_STATUSES)
+				.query(JdbcBookings::mapLiveClaim)
+				.list();
+	}
+
+	private static LiveClaim mapLiveClaim(java.sql.ResultSet rs, int rowNum) throws java.sql.SQLException {
+		return new LiveClaim(rs.getLong("id"), new SetId(rs.getLong(COL_SET_ID)),
+				rs.getObject(COL_BOOKING_DATE, LocalDate.class), rs.getObject(COL_LAST_DATE, LocalDate.class),
+				BookingStatus.valueOf(rs.getString(PARAM_STATUS)),
+				rs.getLong(COL_AMOUNT_MINOR), rs.getString(COL_AMOUNT_CURRENCY),
+				rs.getLong(COL_DAY_REFUNDED_MINOR), stayIdOf(rs));
 	}
 
 	@Override
