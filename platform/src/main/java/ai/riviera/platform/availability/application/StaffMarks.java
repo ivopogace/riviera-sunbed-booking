@@ -7,7 +7,7 @@ import ai.riviera.platform.venue.vocabulary.SetId;
 /**
  * Staff walk-in holds on {@code set_availability} (invariant #2): the module's own outbound port, implemented
  * only by {@code adapter.out.JdbcStaffMarks}, so neither {@code api} nor {@code spi}. Public only because its
- * adapter sits in a sibling package. Each call joins the caller's transaction.
+ * adapter sits in a sibling package. Call it inside an open transaction: the adapter opens none of its own.
  */
 public interface StaffMarks {
 

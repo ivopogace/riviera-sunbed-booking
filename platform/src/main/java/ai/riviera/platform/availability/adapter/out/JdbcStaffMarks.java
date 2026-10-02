@@ -11,8 +11,8 @@ import ai.riviera.platform.venue.vocabulary.SetId;
 /**
  * {@link StaffMarks} over {@link JdbcClient} (invariant #1). A mark is {@code INSERT … ON CONFLICT
  * (set_id, booking_date) DO NOTHING}, the online claim's primitive, so a mark and a claim cannot both win
- * (invariant #2); a release deletes only a {@code STAFF_MARKED} row. No {@code @Transactional}: the
- * service's transaction spans the ownership check, the retired-set lock and this write.
+ * (invariant #2); a release deletes only a {@code STAFF_MARKED} row. No {@code @Transactional}: each write
+ * runs in the service's, so a mark shares one transaction with the retired-set lock it follows.
  */
 @Repository
 class JdbcStaffMarks implements StaffMarks {
