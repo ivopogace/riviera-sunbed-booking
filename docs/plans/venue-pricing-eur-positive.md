@@ -64,7 +64,9 @@ zero-total bookings; operator UI changes (a 400 already surfaces; the UI default
 
 ## Execution status
 
-- [x] Phase 0 (local run pending: Maven Central 429)
-- [x] Phase 1 (local run pending: Maven Central 429)
-- [x] Phase 2 (local run pending: Maven Central 429)
-- [x] Phase 3 (local run pending: Maven Central 429)
+- [x] Phase 0
+- [x] Phase 1
+- [x] Phase 2
+- [x] Phase 3
+- Local: unit + structural net 69/69, `SetPositionPriceMigrationIT` + `VenueAdminControllerIT` +
+  `VenueRepriceIT` 72/72, skipped 0. Next: CI, then the review gate (high).
