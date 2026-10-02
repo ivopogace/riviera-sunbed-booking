@@ -5,7 +5,8 @@
   day refund (reason `VENUE`) releases its day. §7 holds for that reason too. *Amended 2026-10-02 by the
   slice for issue #1300:* §8, the remodel's complement to §7.
 - **Date:** 2026-09-28
-- **Relates to:** `docs/architecture/multi-day-stays.md` § D5, D8, ADR-0005 (the server-side refund
+- **Relates to:** `docs/architecture/multi-day-stays.md` § D5, D8, ADR-0020 (§8's *nothing left* is a sixth
+  outcome of the remodel it composes), ADR-0005 (the server-side refund
   it leaves whole for the remainder), ADR-0021 (the ledger's sign convention it extends), ADR-0024 (a
   stay is a group of bookings, so a day belongs to one stretch), invariants #2, #5, #7, #8, #9, #10,
   `RESPONSIBILITIES.md` § `booking`, § `payment`, § `payout`, § `notification`.
