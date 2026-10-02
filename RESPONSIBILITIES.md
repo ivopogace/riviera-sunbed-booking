@@ -271,18 +271,24 @@ any is released on the old, never a swap of my own — so a racing reserve wins 
   view, cancel, check-in, staff list, mail facts and review eligibility (once no stretch is live)
   answer the stay's code. The reserve (`CreateStay`, `POST /api/stays`) validates the plan's shape,
   judges every stretch by the shared `ReserveFences`, claims every day of every stretch all or nothing
-  (`ConcurrentStayReservationIT`) and collects once with one share per stretch; a stay cancels whole,
-  each stretch quoted on the stay's first day (invariant #10) and reversed once (#9).
+  (`ConcurrentStayReservationIT`) and collects once with one share per stretch; a stay cancels whole, each
+  stretch quoted on the stay's first day (#10) and reversed once (#9), bar the next bullet's exception.
+- **A guest cancel of a stay sets aside the stretches a remodel already ended** (ADR-0024 §4 as amended,
+  #1290): `LiveRemainder` keeps the live rest, judged on the first live day — what a same-set booking of the
+  dates the guest still holds would be quoted — and the view quotes the same way (#10). The predicate is
+  the receipt's outcome lines (`RemodelReceipts#endedByRemodel`), both endings being `VENUE_CHANGE`; a
+  stretch ended any other way (a weather refund, a concurrent writer) still refuses the stay whole, and a
+  stay with nothing live refuses as cancelled.
 - **A stay is confirmed once: the confirm that leaves no stretch unconfirmed publishes `StayConfirmed`.**
   The webhook confirms each stretch in its own transaction, so `ConfirmBookingService` row-locks the
   `stay` before counting unconfirmed stretches: exactly one confirm sees the stay complete. The payload
   is the stay id plus the first stretch's birth window (the day a stay is judged on); each stretch's
   `BookingConfirmed` names its `stayId`, null for a lone booking and every older payload. No stay
   confirms part-way: one PaymentIntent collects every share and the sweep voids it before releasing.
-- **A guest's stay cancel publishes `StayCancelled` once, after every stretch's `BookingCancelled`.**
-  Each stretch's event names the stay in `cancelledWithStay`, so its refund and reversal stay per
+- **A guest's stay cancel publishes `StayCancelled` once, after each live stretch's `BookingCancelled`.**
+  Each such event names the stay in `cancelledWithStay`, so its refund and reversal stay per
   stretch while its mail is left to the stay; the stay event carries the summed refund and
-  `VENUE_CHANGE` only if every stretch took a free exit, else `POLICY`. A remodel release that ends
+  `VENUE_CHANGE` only if every live stretch took a free exit, else `POLICY`. A remodel release that ends
   every live stretch stamps and publishes the same way (refund 0, `VENUE_CHANGE`, #1292). Every other
   `BookingCancelled` (a remodel leg ending one stretch of a stay that goes on, a lone booking, an
   older payload) leaves the stamp null.
@@ -472,8 +478,9 @@ any is released on the old, never a swap of my own — so a racing reserve wins 
   `BookingCutoff#freeExitEndsAt`, `CancellationPolicy#quote` refunds in full as `VENUE_CHANGE`
   (lifting `LATE`; in `FREE` only the reason changes, so mails and the admin's venue-caused list
   know why). `CLOSED` is never reopened: the guest may already be consuming the stay. A stay's
-  stretch is judged on the stay's first day, so its exit ends by that day's opening: the view, the
-  cancel and the move mail read one capped deadline, and a stretch moved once its stay began has none.
+  stretch is judged on the day its stay's cancel is (the first day, or the first live day once a remodel
+  ended earlier stretches), so its exit ends by that day's opening: the view, the cancel and the move
+  mail read one capped deadline, and a stretch moved once that day has opened has none.
 
 **Not My Job:**
 - Owning the `(set, date)` availability state → **`availability`** (I *ask* it to claim)

@@ -8,7 +8,7 @@ import java.time.LocalDate;
  * What the "your spot changed" email renders, structured so each {@link Mailer} picks its presentation:
  * the arrival code (unchanged; invariant #7: mailed, never logged), the venue, the days, the spot left and
  * the spot held with the distance, the free-exit deadline (UTC, shown in {@code Europe/Tirane}, #6;
- * {@code null} once a stay has begun), whether it is a stay's stretch (the exit then refunds these days,
+ * {@code null} once the day the stay's cancel is judged on has opened), whether it is a stay's stretch (the exit then refunds these days,
  * not the stay) and the code-gated link. Public for its adapters. Rationale: RESPONSIBILITIES.md §notification.
  */
 public record BookingMovedMail(String bookingCode, String venueName, LocalDate bookingDate, LocalDate lastDate,

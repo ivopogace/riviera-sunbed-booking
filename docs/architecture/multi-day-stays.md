@@ -329,6 +329,15 @@ reader who will ask why a stay is not one booking; a genuine trade-off against t
 segments-in-one-booking alternative) and how the stitching slice settled the code: a `stay` row
 carries it, a stretch's own row code is derived and never shown.
 
+*Amended 2026-10-02 (#1290):* "a stay cancels whole, judged on the stay's first day" has one
+exception. A remodel ends a stretch on its own (ADR-0020's refund or release leaves the other
+stretches live), after which the guest's cancel **sets those stretches aside and cancels the live
+remainder, judged on the first live day** — the day a same-set booking of the dates the guest still
+holds would be judged on. What tells a remodel's ending from the guest's own free exit is the commit
+receipt's outcome line, both being `VENUE_CHANGE`; a stretch ended any other way still refuses the
+stay whole. ADR-0024 §4 carries the amendment; `LiveRemainder` in `booking` holds the rule for the
+cancel and the view alike.
+
 The booking **code** becomes stay-level: one bearer credential for the guest (invariant #7
 unchanged), with check-in resolving code → today's segment.
 

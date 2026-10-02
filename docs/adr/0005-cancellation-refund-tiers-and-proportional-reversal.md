@@ -122,3 +122,6 @@ returns the venue's own money behind an `assertOwns` check (invariant #13). Pinn
   cancelled whole and refunded in full. A stay's `VENUE`-refunded day not yet past is released (a
   weather-refunded day stays held, ADR-0026 §3), so "the set is freed" now means the days the
   booking still holds: a later cancel releases `ServiceDays#held`. (Logged 2026-10-01, #1342.)
+- 2026-10-02, #1290 — ADR-0024 §4 amended: a guest cancel of a stay sets aside the stretches a remodel
+  already ended and judges the live remainder on its first day; a moved live stretch's free exit is
+  capped there instead.

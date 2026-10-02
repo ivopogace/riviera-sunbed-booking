@@ -66,6 +66,15 @@ concept the ledger cannot express.
    the same dates would (invariant #10). Each stretch then transitions, releases its days and
    publishes its own `BookingCancelled`, so payout reverses once per stretch (invariant #9); one
    `StayCancelled` then carries the summed refund, which the stay's one cancellation mail rides (#1259).
+   *Amended 2026-10-02 (#1290):* a guest cancel **sets aside the stretches a remodel commit already
+   ended** (a receipt outcome line, whatever its kind: the stretch's own `VENUE_CHANGE` says nothing,
+   since a free exit carries it too) and cancels the **live remainder, judged on the first live day**.
+   This is the decision's own reasoning applied to what the guest still holds: a same-set booking of
+   those dates would be quoted on that day. A stretch ended any other way (a weather refund, a
+   concurrent writer) still refuses the stay whole, and a stay with nothing live refuses as cancelled;
+   the code-gated view quotes the remainder the same way (invariant #10). The one holder of "which
+   stretches are set aside, and which day the rest is judged on" is
+   `booking.application.cancel.LiveRemainder`, so a later ended kind rides the same rule.
 5. **The search is a pure rule in `itinerary/domain`** (`ItinerarySearch`, ADR-0018): a shortest path
    over `(day, set)` with the cost `(moves, row changes, positions, rows)` compared lexicographically,
    mirroring the remodel move rule's distance order; the budget is `riviera.itinerary.max-switches`,
