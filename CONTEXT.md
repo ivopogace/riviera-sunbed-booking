@@ -185,7 +185,9 @@ model in `docs/architecture/domain-model.md`.
   the guest is mailed a link to book again — that venue's map for the same day, or the discovery
   list for it when the venue cannot sell that day. The operator authorises it by typing how many
   refunds the preview named and why; both go on the **commit receipt**. An unpaid booking in the
-  same position is **released** — mailed the same way, link and all — and a pending request is
+  same position is **released** — mailed the same way, link and all; one unpaid stretch of a
+  **stitched stay** takes the stay's other unpaid stretches with it, since one payment collects for
+  the stay, and the stay is mailed once — and a pending request is
   **declined**, which keeps the mail a decline has always sent and no link. Neither collected
   anything, so neither returns money and the payout ledger is untouched. Distinct from the **weather
   refund**, which is the venue operator's answer to a storm, and from the guest's own **free exit**,

@@ -23,6 +23,7 @@ import ai.riviera.platform.booking.domain.BookingStatus;
 import ai.riviera.platform.booking.events.BookingCancelled;
 import ai.riviera.platform.booking.events.BookingMoved;
 import ai.riviera.platform.booking.events.BookingRequestDeclined;
+import ai.riviera.platform.booking.events.StayCancelled;
 import ai.riviera.platform.booking.vocabulary.BlockReason;
 import ai.riviera.platform.booking.vocabulary.BookingId;
 import ai.riviera.platform.booking.vocabulary.DeclineReason;
@@ -34,6 +35,7 @@ import ai.riviera.platform.booking.vocabulary.RemodelClaim;
 import ai.riviera.platform.booking.vocabulary.RemodelCommit;
 import ai.riviera.platform.booking.vocabulary.RemodelOutcome;
 import ai.riviera.platform.booking.vocabulary.SpotRef;
+import ai.riviera.platform.booking.vocabulary.StayId;
 import ai.riviera.platform.booking.vocabulary.VenueChangeFee;
 import ai.riviera.platform.operator.api.VenueOwnership;
 import ai.riviera.platform.operator.vocabulary.NotVenueOwnerException;
@@ -112,6 +114,11 @@ class RemodelClaimsServiceTest {
 
 	private static LiveClaim stay(long bookingId, SetSpot on, LocalDate first, LocalDate last, BookingStatus status) {
 		return new LiveClaim(bookingId, on.setId(), first, last, status, 4500, "EUR");
+	}
+
+	private static LiveClaim stretch(long bookingId, SetSpot on, LocalDate first, LocalDate last, BookingStatus status,
+			StayId stay) {
+		return new LiveClaim(bookingId, on.setId(), first, last, status, 4500, "EUR", 0L, stay);
 	}
 
 	private static SpotRef ref(SetSpot spot) {
@@ -572,5 +579,139 @@ class RemodelClaimsServiceTest {
 		verify(availability, never()).release(any(), any());
 		verify(bookings, never()).moveToSet(any(Long.class), any(), any(), any());
 		verify(receipts, never()).store(any());
+	}
+
+	private static final StayId STAY = new StayId(5);
+
+	/** #1292: one intent collects for the stay, so releasing one unpaid stretch takes every other unpaid stretch with it. */
+	@Test
+	void releasingOneUnpaidStretchReleasesTheStaysOtherUnpaidStretches() {
+		LocalDate switchDay = IN_TEN_DAYS.plusDays(2);
+		LiveClaim disturbed = stretch(220, A1, IN_TEN_DAYS, IN_TEN_DAYS.plusDays(1), BookingStatus.AWAITING_PAYMENT, STAY);
+		LiveClaim sibling = stretch(221, A2, switchDay, switchDay.plusDays(1), BookingStatus.AWAITING_PAYMENT, STAY);
+		when(bookings.findLiveOnSets(Set.of(A1.setId()))).thenReturn(List.of(disturbed));
+		when(bookings.findLiveStretchesOf(STAY)).thenReturn(List.of(disturbed, sibling));
+		when(facts.activeSetsOf(VENUE)).thenReturn(List.of(A1, A2, A3));
+		when(facts.freeOnlineSetsOn(eq(VENUE), any())).thenReturn(List.of());
+
+		List<RemodelClaim> claims = service.classify(OWNER, VENUE, List.of(A1.setId()));
+
+		assertEquals(List.of(
+				new RemodelClaim(new BookingId(220), ref(A1), IN_TEN_DAYS, IN_TEN_DAYS.plusDays(1), 4500, "EUR",
+						RemodelOutcome.Release.RELEASE),
+				new RemodelClaim(new BookingId(221), ref(A2), switchDay, switchDay.plusDays(1), 4500, "EUR",
+						RemodelOutcome.Release.RELEASE)), claims,
+				"the undisturbed stretch is in the picture, on its own spot, released with its stay");
+		verify(facts, never()).freeOnlineSetsOn(VENUE, switchDay);
+		assertTrue(PreviewToken.of(claims).covers(claims), "the token the preview hands out covers the sibling");
+	}
+
+	@Test
+	void aReleasedStaysSiblingOnADisturbedSetIsReleasedNotMovedAndTakesNoCandidate() {
+		LocalDate nextDay = IN_TEN_DAYS.plusDays(1);
+		LiveClaim first = stretch(230, A1, IN_TEN_DAYS, IN_TEN_DAYS, BookingStatus.AWAITING_PAYMENT, STAY);
+		LiveClaim second = stretch(231, A2, nextDay, nextDay, BookingStatus.AWAITING_PAYMENT, STAY);
+		when(bookings.findLiveOnSets(Set.of(A1.setId(), A2.setId())))
+				.thenReturn(List.of(first, second, claim(232, A2, nextDay, BookingStatus.CONFIRMED)));
+		when(bookings.findLiveStretchesOf(STAY)).thenReturn(List.of(first, second));
+		givenMap(List.of(A1, A2, A3), IN_TEN_DAYS, List.of());
+		when(facts.freeOnlineSetsOn(VENUE, nextDay)).thenReturn(List.of(A3));
+
+		List<RemodelOutcome> outcomes = service.classify(OWNER, VENUE, List.of(A1.setId(), A2.setId())).stream()
+				.map(RemodelClaim::outcome).toList();
+
+		assertEquals(List.of(RemodelOutcome.Release.RELEASE, RemodelOutcome.Release.RELEASE,
+				new RemodelOutcome.Move(ref(A3), 0, 1)), outcomes,
+				"the sibling that could have moved releases with its stay, and the candidate it would have taken "
+						+ "goes to the confirmed guest behind it");
+	}
+
+	@Test
+	void commitEndsTheStaysOtherUnpaidStretchesAndMailsTheStayOnce() {
+		LocalDate switchDay = IN_TEN_DAYS.plusDays(2);
+		LiveClaim disturbed = stretch(220, A1, IN_TEN_DAYS, IN_TEN_DAYS.plusDays(1), BookingStatus.AWAITING_PAYMENT, STAY);
+		LiveClaim sibling = stretch(221, A2, switchDay, switchDay.plusDays(1), BookingStatus.AWAITING_PAYMENT, STAY);
+		when(bookings.findLiveOnSets(Set.of(A1.setId()))).thenReturn(List.of(disturbed));
+		when(bookings.findLiveStretchesOf(STAY)).thenReturn(List.of(disturbed, sibling));
+		when(facts.activeSetsOf(VENUE)).thenReturn(List.of(A1, A2, A3));
+		when(facts.freeOnlineSetsOn(eq(VENUE), any())).thenReturn(List.of());
+		when(bookings.cancelAwaitingPayment(220))
+				.thenReturn(java.util.Optional.of(new ClaimRef(A1.setId(), IN_TEN_DAYS, IN_TEN_DAYS.plusDays(1))));
+		when(bookings.cancelAwaitingPayment(221))
+				.thenReturn(java.util.Optional.of(new ClaimRef(A2.setId(), switchDay, switchDay.plusDays(1))));
+		when(receipts.store(any())).thenReturn(RECEIPT);
+		RemodelClaim one = new RemodelClaim(new BookingId(220), ref(A1), IN_TEN_DAYS, IN_TEN_DAYS.plusDays(1), 4500, "EUR",
+				RemodelOutcome.Release.RELEASE);
+		RemodelClaim two = new RemodelClaim(new BookingId(221), ref(A2), switchDay, switchDay.plusDays(1), 4500, "EUR",
+				RemodelOutcome.Release.RELEASE);
+
+		RemodelCommit outcome = service.commit(OWNER, VENUE, List.of(A1.setId()), previewOf(one, two), RefundConfirmation.NONE);
+
+		assertEquals(new RemodelCommit.Applied(RECEIPT, CLOCK.instant(), List.of(one, two)), outcome);
+		for (LocalDate day : List.of(IN_TEN_DAYS, IN_TEN_DAYS.plusDays(1))) {
+			verify(availability, times(1)).release(A1.setId(), day);
+		}
+		for (LocalDate day : List.of(switchDay, switchDay.plusDays(1))) {
+			verify(availability, times(1)).release(A2.setId(), day);
+		}
+		verify(availability, never()).claim(any(), any());
+		InOrder order = inOrder(events);
+		order.verify(events).publishEvent(new BookingCancelled(new BookingId(220), VENUE, A1.setId(), IN_TEN_DAYS, 0, "EUR",
+				RefundReason.VENUE_CHANGE, IN_TEN_DAYS.plusDays(1), STAY));
+		order.verify(events).publishEvent(new BookingCancelled(new BookingId(221), VENUE, A2.setId(), switchDay, 0, "EUR",
+				RefundReason.VENUE_CHANGE, switchDay.plusDays(1), STAY));
+		order.verify(events).publishEvent(new StayCancelled(STAY, 0, "EUR", RefundReason.VENUE_CHANGE));
+		verifyNoMoreInteractions(events);
+		verify(receipts).store(new NewReceipt(VENUE, OWNER, CLOCK.instant(), List.of(), List.of(
+				new ReceiptOutcome(new BookingId(220), IN_TEN_DAYS, ref(A1), ReceiptOutcomeKind.RELEASE, 4500, "EUR", 0L),
+				new ReceiptOutcome(new BookingId(221), switchDay, ref(A2), ReceiptOutcomeKind.RELEASE, 4500, "EUR", 0L)),
+				"", List.of()));
+	}
+
+	@Test
+	void aStayWithAConfirmedStretchLeftMailsTheReleasedStretchAlone() {
+		LocalDate switchDay = IN_TEN_DAYS.plusDays(2);
+		LiveClaim unpaid = stretch(240, A1, IN_TEN_DAYS, IN_TEN_DAYS.plusDays(1), BookingStatus.AWAITING_PAYMENT, STAY);
+		LiveClaim paid = stretch(241, A2, switchDay, switchDay.plusDays(1), BookingStatus.CONFIRMED, STAY);
+		when(bookings.findLiveOnSets(Set.of(A1.setId()))).thenReturn(List.of(unpaid));
+		when(bookings.findLiveStretchesOf(STAY)).thenReturn(List.of(unpaid, paid));
+		when(facts.activeSetsOf(VENUE)).thenReturn(List.of(A1, A2));
+		when(facts.freeOnlineSetsOn(eq(VENUE), any())).thenReturn(List.of());
+		when(bookings.cancelAwaitingPayment(240))
+				.thenReturn(java.util.Optional.of(new ClaimRef(A1.setId(), IN_TEN_DAYS, IN_TEN_DAYS.plusDays(1))));
+		when(receipts.store(any())).thenReturn(RECEIPT);
+		RemodelClaim release = new RemodelClaim(new BookingId(240), ref(A1), IN_TEN_DAYS, IN_TEN_DAYS.plusDays(1), 4500,
+				"EUR", RemodelOutcome.Release.RELEASE);
+
+		assertEquals(List.of(release), service.classify(OWNER, VENUE, List.of(A1.setId())),
+				"a confirmed stretch is never released with an unpaid one");
+		RemodelCommit outcome = service.commit(OWNER, VENUE, List.of(A1.setId()), previewOf(release), RefundConfirmation.NONE);
+
+		assertEquals(new RemodelCommit.Applied(RECEIPT, CLOCK.instant(), List.of(release)), outcome);
+		verify(events).publishEvent(new BookingCancelled(new BookingId(240), VENUE, A1.setId(), IN_TEN_DAYS, 0, "EUR",
+				RefundReason.VENUE_CHANGE, IN_TEN_DAYS.plusDays(1)));
+		verifyNoMoreInteractions(events);
+		verify(bookings, never()).cancelAwaitingPayment(241);
+	}
+
+	@Test
+	void commitIsStaleWhenTheTokenLacksTheStaysSibling() {
+		LocalDate switchDay = IN_TEN_DAYS.plusDays(2);
+		LiveClaim disturbed = stretch(220, A1, IN_TEN_DAYS, IN_TEN_DAYS.plusDays(1), BookingStatus.AWAITING_PAYMENT, STAY);
+		LiveClaim sibling = stretch(221, A2, switchDay, switchDay.plusDays(1), BookingStatus.AWAITING_PAYMENT, STAY);
+		when(bookings.findLiveOnSets(Set.of(A1.setId()))).thenReturn(List.of(disturbed));
+		when(bookings.findLiveStretchesOf(STAY)).thenReturn(List.of(disturbed, sibling));
+		when(facts.activeSetsOf(VENUE)).thenReturn(List.of(A1, A2, A3));
+		when(facts.freeOnlineSetsOn(eq(VENUE), any())).thenReturn(List.of());
+		PreviewToken withoutSibling = previewOf(new RemodelClaim(new BookingId(220), ref(A1), IN_TEN_DAYS,
+				IN_TEN_DAYS.plusDays(1), 4500, "EUR", RemodelOutcome.Release.RELEASE));
+
+		RemodelCommit outcome = service.commit(OWNER, VENUE, List.of(A1.setId()), withoutSibling, RefundConfirmation.NONE);
+
+		assertInstanceOf(RemodelCommit.Stale.class, outcome);
+		assertEquals(List.of(new BookingId(220), new BookingId(221)),
+				((RemodelCommit.Stale) outcome).fresh().stream().map(RemodelClaim::bookingId).toList());
+		verify(bookings, never()).cancelAwaitingPayment(anyLong());
+		verify(events, never()).publishEvent(any());
 	}
 }

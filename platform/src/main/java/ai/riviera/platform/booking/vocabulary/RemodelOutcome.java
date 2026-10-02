@@ -19,7 +19,7 @@ public sealed interface RemodelOutcome
 	/** A confirmed booking is cancelled with a full refund. */
 	enum Refund implements RemodelOutcome { REFUND }
 
-	/** An unpaid booking is released; no money is involved. */
+	/** An unpaid booking is released, a stay's other unpaid stretches with it (#1292); no money is involved. */
 	enum Release implements RemodelOutcome { RELEASE }
 
 	/** A pending request is declined; no money is involved. */

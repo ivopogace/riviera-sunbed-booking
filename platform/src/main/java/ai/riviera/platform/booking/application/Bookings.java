@@ -342,6 +342,12 @@ public interface Bookings {
 	 */
 	List<LiveClaim> findLiveOnSets(Collection<SetId> setIds);
 
+	/**
+	 * Every live stretch ({@code BookingStatus#canStillBeHonoured}) of this stay, whatever its set, in
+	 * service-date-then-id order — the stretches a released one takes with it; empty for an unknown stay.
+	 */
+	List<LiveClaim> findLiveStretchesOf(StayId stayId);
+
 	/** Row-locks the booking for the transaction; what the caller reads of it afterwards counts a day refunded under the lock. */
 	void lockById(long bookingId);
 

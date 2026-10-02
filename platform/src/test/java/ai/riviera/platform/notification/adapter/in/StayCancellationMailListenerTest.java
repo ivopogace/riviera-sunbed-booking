@@ -33,8 +33,10 @@ import ai.riviera.platform.venue.vocabulary.SetId;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
@@ -83,7 +85,7 @@ class StayCancellationMailListenerTest {
 
 	@Test
 	void mailsTheStayOnceWithTheEventsSummedRefund() {
-		when(facts.resolveStayCancellation(FACTS, 6750, "EUR", RefundReason.POLICY))
+		when(facts.resolveStayCancellation(FACTS, 6750, "EUR", RefundReason.POLICY, false))
 				.thenReturn(new StayCancellationMailFacts.Resolved("guest@example.com", MAIL));
 
 		listener.on(EVENT);
@@ -93,8 +95,43 @@ class StayCancellationMailListenerTest {
 	}
 
 	@Test
+	void aGuestsOwnCancelNeverAsksWhetherARemodelEndedIt() {
+		when(facts.resolveStayCancellation(FACTS, 6750, "EUR", RefundReason.POLICY, false))
+				.thenReturn(new StayCancellationMailFacts.Resolved("guest@example.com", MAIL));
+
+		listener.on(EVENT);
+
+		verify(bookings, never()).endedByRemodel(any());
+	}
+
+	/** #1292: a stay a remodel released ends under {@code VENUE_CHANGE} with no refund, and its mail offers the way back. */
+	@Test
+	void aStayARemodelReleasedCarriesARebookLink() {
+		StayCancelled released = new StayCancelled(STAY, 0, "EUR", RefundReason.VENUE_CHANGE);
+		when(bookings.endedByRemodel(new BookingId(41L))).thenReturn(true);
+		when(facts.resolveStayCancellation(FACTS, 0, "EUR", RefundReason.VENUE_CHANGE, true))
+				.thenReturn(new StayCancellationMailFacts.Resolved("guest@example.com", MAIL));
+
+		listener.on(released);
+
+		verify(mails).sendBookingCancellation("guest@example.com", MAIL);
+	}
+
+	@Test
+	void aFreeExitAfterAMoveIsTheSameReasonWithNoWayBack() {
+		StayCancelled freeExit = new StayCancelled(STAY, 18000, "EUR", RefundReason.VENUE_CHANGE);
+		when(bookings.endedByRemodel(new BookingId(41L))).thenReturn(false);
+		when(facts.resolveStayCancellation(FACTS, 18000, "EUR", RefundReason.VENUE_CHANGE, false))
+				.thenReturn(new StayCancellationMailFacts.Resolved("guest@example.com", MAIL));
+
+		listener.on(freeExit);
+
+		verify(mails).sendBookingCancellation("guest@example.com", MAIL);
+	}
+
+	@Test
 	void aTransportFailurePropagatesToKeepThePublicationOpen() {
-		when(facts.resolveStayCancellation(FACTS, 6750, "EUR", RefundReason.POLICY))
+		when(facts.resolveStayCancellation(FACTS, 6750, "EUR", RefundReason.POLICY, false))
 				.thenReturn(new StayCancellationMailFacts.Resolved("guest@example.com", MAIL));
 		doThrow(new IllegalStateException("smtp down")).when(mails).sendBookingCancellation("guest@example.com", MAIL);
 
@@ -103,7 +140,7 @@ class StayCancellationMailListenerTest {
 
 	@Test
 	void aMissingFactIsCountedUnderTheCancellationSeriesAndLogsNoCode() {
-		when(facts.resolveStayCancellation(FACTS, 6750, "EUR", RefundReason.POLICY))
+		when(facts.resolveStayCancellation(FACTS, 6750, "EUR", RefundReason.POLICY, false))
 				.thenReturn(new StayCancellationMailFacts.Missing(MissingBookingFact.NO_CONTACT));
 
 		listener.on(EVENT);
