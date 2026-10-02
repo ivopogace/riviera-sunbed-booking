@@ -285,6 +285,47 @@ class ViewBookingServiceTest {
 		verify(cancellationPolicy, never()).quote(any(), org.mockito.ArgumentMatchers.eq(DATE));
 	}
 
+	/** ADR-0026 §7 (#1381): a confirmed booking with every day refunded offers no cancel and says it has nothing left. */
+	@Test
+	void aConfirmedBookingWithEveryDayRefundedIsNotCancellableAndSaysNothingLeft() {
+		when(collection.provenBeforeConfirmation()).thenReturn(true);
+		BookingRecord record = new BookingRecord(1L, CODE, BookingStatus.CONFIRMED, VENUE, SET, GUEST, DATE, DATE, 4500L,
+				"EUR", null, null, null, null, Instant.EPOCH, null, null, null, 4500L, true);
+		when(bookings.findByCode(CODE)).thenReturn(Optional.of(record));
+		when(cancellationPolicy.quote(record)).thenReturn(new CancellationPolicy.RefundQuote(setInfo(),
+				CancellationWindow.FREE, 0L, RefundReason.POLICY, null));
+
+		BookingDetail detail = service.byCode(CODE).orElseThrow();
+
+		assertThat(detail.cancellable()).isFalse();
+		assertThat(detail.nothingLeft()).isTrue();
+		assertThat(detail.refundIfCancelledNow().minorUnits()).isZero();
+	}
+
+	/** A stay's nothing-left stretch is set aside: the stay cancels for the rest, and only the stretch says nothing left. */
+	@Test
+	void aStayWithANothingLeftStretchIsCancellableForTheRestAndFlagsTheStretch() {
+		BookingRecord spent = new BookingRecord(1L, CODE, BookingStatus.CONFIRMED, VENUE, SET, GUEST, DATE,
+				DATE.plusDays(2), 13500L, "EUR", null, null, null, null, Instant.EPOCH, null, null, null, 13500L, true);
+		BookingRecord live = stretch(2L, DATE.plusDays(3), DATE.plusDays(5), null);
+		when(bookings.findByCode(CODE)).thenReturn(Optional.empty());
+		when(bookings.findStayByCode(CODE)).thenReturn(Optional.of(
+				new StayRecord(new StayId(4L), CODE, VENUE, DATE, DATE.plusDays(5), List.of(spent, live))));
+		when(cancellationPolicy.quote(spent, DATE.plusDays(3))).thenReturn(new CancellationPolicy.RefundQuote(setInfo(),
+				CancellationWindow.FREE, 0L, RefundReason.POLICY, null));
+		when(cancellationPolicy.quote(live, DATE.plusDays(3))).thenReturn(new CancellationPolicy.RefundQuote(setInfo(),
+				CancellationWindow.FREE, 13500L, RefundReason.POLICY, null));
+
+		BookingDetail detail = service.byCode(CODE).orElseThrow();
+
+		assertThat(detail.cancellable()).isTrue();
+		assertThat(detail.nothingLeft()).isFalse();
+		assertThat(detail.refundIfCancelledNow().minorUnits()).isEqualTo(13500L);
+		assertThat(detail.stretches()).extracting(BookingDetail.StayStretch::nothingLeft).containsExactly(true, false);
+		verify(cancellationPolicy, never()).quote(any(), org.mockito.ArgumentMatchers.eq(DATE));
+		verifyNoInteractions(receipts);
+	}
+
 	/** A stretch cancelled with no receipt line (the weather refund) leaves the stay as before: not cancellable. */
 	@Test
 	void aStayWithAStretchCancelledOutsideARemodelIsNotCancellable() {

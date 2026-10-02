@@ -21,6 +21,7 @@ import ai.riviera.platform.TiraneDaytimeClock;
 import com.jayway.jsonpath.JsonPath;
 
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.hamcrest.Matchers.containsString;
@@ -441,6 +442,27 @@ class BookingControllerIT {
 				.andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
 				.andExpect(jsonPath("$.code").value("CANCELLATION_WINDOW_CLOSED"))
 				.andExpect(content().string(not(containsString(code))));
+	}
+
+	/** ADR-0026 §7 (#1381): a booking with every day refunded answers its own code, so the page can explain and re-read. */
+	@Test
+	void nothingLeftRejectionCarriesItsOwnCode() throws Exception {
+		String code = createAndGetCode(onlineSet(), bookable().plusDays(8));
+		jdbc.sql("""
+				UPDATE booking_day SET refunded_at = now(), refund_minor = 0, refund_reason = 'WEATHER'
+				WHERE booking_id = (SELECT id FROM booking WHERE code = :c)
+				""").param("c", code).update();
+
+		mvc.perform(post("/api/bookings/{code}/cancel", code))
+				.andExpect(status().isConflict())
+				.andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
+				.andExpect(jsonPath("$.code").value("NOTHING_LEFT"))
+				.andExpect(content().string(not(containsString(code))));
+		mvc.perform(get("/api/bookings/{code}", code))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.status").value("CONFIRMED"))
+				.andExpect(jsonPath("$.cancellable").value(false))
+				.andExpect(jsonPath("$.nothingLeft").value(true));
 	}
 
 	@Test

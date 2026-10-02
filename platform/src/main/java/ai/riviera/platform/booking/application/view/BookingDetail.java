@@ -13,12 +13,12 @@ import ai.riviera.platform.venue.vocabulary.SetId;
 import ai.riviera.platform.venue.vocabulary.VenueId;
 
 /**
- * The booking-view screen: cancellation terms server-computed (invariant #10), money in minor
- * units (#5), pay deadline computed server-side in {@code Europe/Tirane} (#4, #6). {@code cancellable}
- * ({@code CONFIRMED}, window open) and {@code withdrawable} (a {@code PENDING_REQUEST} retraction, no
- * policy) are never both true; {@code payment} is set only while payable. {@code emailWithheld} is
- * asked only once {@code CONFIRMED}, else this code-gated view is a suppression oracle. {@code reviewPanel}
- * is review's answer, never derived from {@code status}; {@code refundedDays} a storm's days given back (#1210).
+ * The booking-view screen: cancellation terms server-computed (invariant #10), money in minor units (#5), pay
+ * deadline computed server-side in {@code Europe/Tirane} (#4, #6). {@code cancellable} ({@code CONFIRMED}, window
+ * open, something left) and {@code withdrawable} (a {@code PENDING_REQUEST} retraction, no policy) are never both
+ * true; {@code payment} is set only while payable. {@code emailWithheld} is asked only once {@code CONFIRMED}, else
+ * this code-gated view is a suppression oracle. {@code reviewPanel} is review's answer, never derived from {@code status};
+ * {@code refundedDays} a storm's days given back (#1210); {@code nothingLeft} every day refunded (ADR-0026 §7).
  */
 public record BookingDetail(String code, BookingStatus status, VenueId venueId, String venueName,
 		String rowLabel, int positionNo, LocalDate bookingDate, LocalDate lastDate, MoneyView amount,
@@ -30,13 +30,14 @@ public record BookingDetail(String code, BookingStatus status, VenueId venueId, 
 		boolean payWindowClosed, RefundReason cancelReason, DeclineReason declineReason,
 		CancellationWindow cancellationWindowAtBirth, ReviewPanel reviewPanel,
 		String reviewNameSuggestion, BookingMove move, List<StayStretch> stretches,
-		List<RefundedDay> refundedDays) {
+		List<RefundedDay> refundedDays, boolean nothingLeft) {
 
 	/**
 	 * One stretch of a stitched stay (design D6); a lone booking has none. {@code move} is the remodel
-	 * move this stretch went through, {@code null} if none; its spot is this stretch's own.
+	 * move this stretch went through, {@code null} if none; its spot is this stretch's own; {@code nothingLeft}
+	 * says every day of it was refunded on its own.
 	 */
 	public record StayStretch(SetId setId, String rowLabel, int positionNo, LocalDate firstDay, LocalDate lastDay,
-			MoneyView amount, BookingStatus status, BookingMove move) {
+			MoneyView amount, BookingStatus status, BookingMove move, boolean nothingLeft) {
 	}
 }

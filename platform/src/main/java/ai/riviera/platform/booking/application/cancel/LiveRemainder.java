@@ -8,16 +8,17 @@ import org.springframework.stereotype.Component;
 import ai.riviera.platform.booking.application.remodel.RemodelReceipts;
 import ai.riviera.platform.booking.application.view.BookingRecord;
 import ai.riviera.platform.booking.application.view.StayRecord;
+import ai.riviera.platform.booking.domain.BookingStatus;
 import ai.riviera.platform.booking.domain.BookingTransition;
 import ai.riviera.platform.booking.vocabulary.BookingId;
 
 /**
- * The one place that says which stretches of a stay a guest cancel reaches (ADR-0024 §4 as amended, #1290):
- * a stretch a remodel commit already ended (a receipt outcome line, whatever its kind) is set aside, every
- * other stretch, whatever its status, is the <em>live remainder</em>, judged on the first of them. Any other
- * ending (a weather refund, a concurrent writer) is not set aside, so the stay still refuses whole. Port-backed,
- * so it lives in {@code application} (ADR-0018 §2); {@code public} for the view and the move mail, which read
- * the same day (#10).
+ * The one place that says which stretches of a stay a guest cancel reaches (ADR-0024 §4 as amended, #1290): a
+ * stretch a remodel commit already ended (a receipt outcome line, whatever its kind) and a confirmed stretch with
+ * nothing left (every day refunded, ADR-0026 §7, #1381) are set aside; every other stretch, whatever its status, is
+ * the <em>live remainder</em>, judged on the first of them. Any other ending (a weather cancel, a concurrent writer)
+ * is not set aside, so the stay still refuses whole. Port-backed, so it lives in {@code application} (ADR-0018 §2);
+ * {@code public} for the view, the move mail and the stay cancellation mail, which read the same split (#10).
  */
 @Component
 public class LiveRemainder {
@@ -39,8 +40,11 @@ public class LiveRemainder {
 				stretches.stream().filter(this::setAside).toList(), stayFirstDay);
 	}
 
-	/** Whether a guest cancel sets this stretch aside: ended, and by a remodel commit's outcome line. */
+	/** Whether a guest cancel sets this stretch aside: ended by a remodel commit's outcome line, or confirmed with nothing left. */
 	private boolean setAside(BookingRecord stretch) {
+		if (stretch.status() == BookingStatus.CONFIRMED) {
+			return stretch.everyDayRefunded();
+		}
 		return !BookingTransition.CANCEL_BY_GUEST.admits(stretch.status())
 				&& receipts.endedByRemodel(new BookingId(stretch.id()));
 	}

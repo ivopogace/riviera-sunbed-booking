@@ -9,12 +9,12 @@ import java.time.Instant;
 import java.util.List;
 
 /**
- * The {@code 200} body of {@code GET /api/bookings/{code}}, mirroring the FE {@code BookingDetail};
- * money as {@link MoneyView} (invariant #5). {@code refundedAmount} is null unless cancelled;
- * {@code cancelReason} (a {@code RefundReason} name) is null while live or if cancelled uncharged.
- * {@code payWindowClosed}: the pay deadline passed, so {@code payment} is null (#4). {@code refundOutstanding}:
- * refund decided, not yet gateway-accepted. {@code emailWithheld} is true only once {@code CONFIRMED},
- * else this code-gated view would be a suppression oracle. {@code refundedDays}: a storm's days given back.
+ * The {@code 200} body of {@code GET /api/bookings/{code}}, mirroring the FE {@code BookingDetail}; money as
+ * {@link MoneyView} (invariant #5). {@code refundedAmount} is null unless cancelled; {@code cancelReason} (a
+ * {@code RefundReason} name) null while live or if cancelled uncharged. {@code payWindowClosed}: the pay deadline
+ * passed, so {@code payment} is null (#4). {@code refundOutstanding}: refund decided, not yet gateway-accepted.
+ * {@code emailWithheld} is true only once {@code CONFIRMED}, else this code-gated view is a suppression oracle.
+ * {@code refundedDays}: a storm's days given back; {@code nothingLeft}: every day refunded, so no cancel and "Refunded".
  */
 record BookingDetailView(String code, String status, long venueId, String venueName, String rowLabel,
 		int positionNo, String bookingDate, String lastDate, MoneyView amount, boolean cancellable,
@@ -24,7 +24,7 @@ record BookingDetailView(String code, String status, long venueId, String venueN
 		Instant requestExpiresAt, PaymentCredentialsView payment, boolean emailWithheld,
 		boolean payWindowClosed, String cancelReason, String declineReason, String cancellationWindowAtBirth,
 		ReviewPanelView reviewPanel, MoveView move, List<StretchView> stretches,
-		List<RefundedDayView> refundedDays) {
+		List<RefundedDayView> refundedDays, boolean nothingLeft) {
 
 	/** One day refunded while the booking went on: {@code reason} a {@code RefundReason} name, {@code released} per ADR-0027. */
 	record RefundedDayView(String day, MoneyView amount, String reason, boolean released) {
@@ -40,12 +40,12 @@ record BookingDetailView(String code, String status, long venueId, String venueN
 	 * for a lone booking.
 	 */
 	record StretchView(long setId, String rowLabel, int positionNo, String firstDate, String lastDate, MoneyView amount,
-			String status, MoveView move) {
+			String status, MoveView move, boolean nothingLeft) {
 
 		static StretchView of(BookingDetail.StayStretch stretch) {
 			return new StretchView(stretch.setId().value(), stretch.rowLabel(), stretch.positionNo(),
 					stretch.firstDay().toString(), stretch.lastDay().toString(), stretch.amount(), stretch.status().name(),
-					stretch.move() == null ? null : MoveView.of(stretch.move()));
+					stretch.move() == null ? null : MoveView.of(stretch.move()), stretch.nothingLeft());
 		}
 	}
 
@@ -65,7 +65,7 @@ record BookingDetailView(String code, String status, long venueId, String venueN
 				ReviewPanelView.of(d.reviewPanel(), d.reviewNameSuggestion()),
 				d.move() == null ? null : MoveView.of(d.move()),
 				d.stretches().stream().map(StretchView::of).toList(),
-				d.refundedDays().stream().map(RefundedDayView::of).toList());
+				d.refundedDays().stream().map(RefundedDayView::of).toList(), d.nothingLeft());
 	}
 
 	/**
