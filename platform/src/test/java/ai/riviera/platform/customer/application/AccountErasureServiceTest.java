@@ -184,7 +184,7 @@ class AccountErasureServiceTest {
 		}
 
 		@Override
-		public List<CustomerId> expiredGuestCandidates(Instant olderThan, int limit) {
+		public List<CustomerId> expiredGuestCandidates(Instant olderThan, CustomerId after, int limit) {
 			throw new UnsupportedOperationException("retention sweep — see ExpireGuestContactsServiceTest");
 		}
 

@@ -13,7 +13,8 @@ module's DB-backed ITs together.
 
 `ModularityTests` (`verify()`: cycles, internal access, disallowed dependencies) runs with no
 Spring context and no DB; never weaken it. `PackageShapeArchitectureTests` adds the hexagon's
-dependency direction on top; don't add jMolecules (package-name rules do it without annotations).
+dependency direction, root types only in a registered shared module, `@NamedInterface` on every
+published surface and an explicit `allowedDependencies` on every module; don't add jMolecules (package-name rules do it without annotations).
 
 ## `@ApplicationModuleTest`
 
