@@ -49,10 +49,15 @@ class NoStripeConnectArchitectureTest {
 	@Test
 	void flagsEachConnectSymbol() throws IOException {
 		assertEquals(List.of(
-						"ApplicationFeeAmountIntent references ApplicationFee",
 						"BalancePayout references com/stripe/model/Payout",
-						"CollectedApplicationFee references ApplicationFee",
-						"ConnectedAccountHeader references setStripeAccount"),
+						"CommissionInIntent references ApplicationFee",
+						"ConnectedAccountHeader references setStripeAccount",
+						"ConnectedAccountLookup references com/stripe/model/Account",
+						"DestinationChargeIntent references setTransferData",
+						"GroupedChargeIntent references setTransferGroup",
+						"MarketplaceFeeLookup references ApplicationFee",
+						"SettlementMerchantIntent references setOnBehalfOf",
+						"VenueTransferLookup references com/stripe/model/Transfer"),
 				connectReferences(FIXTURE_CLASSES));
 	}
 

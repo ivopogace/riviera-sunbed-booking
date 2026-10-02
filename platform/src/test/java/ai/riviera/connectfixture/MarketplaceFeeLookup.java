@@ -4,9 +4,9 @@ import com.stripe.exception.StripeException;
 import com.stripe.model.ApplicationFee;
 
 /** Reads a marketplace application fee, the model behind a Connect charge's commission. */
-public final class CollectedApplicationFee {
+public final class MarketplaceFeeLookup {
 
-	private CollectedApplicationFee() {
+	private MarketplaceFeeLookup() {
 	}
 
 	public static ApplicationFee find(String applicationFeeId) throws StripeException {
