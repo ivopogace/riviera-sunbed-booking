@@ -60,6 +60,10 @@ a first load still fetches only the tiles in view — see the amendment log.)*
    *Amended 2026-10-01 (#1342):* that guard lives only in the Discover specs
    (`frontend/e2e/discover-map.e2e.ts`); the operator pin placer renders the same map without it.
    Extending it is tracked in #1339.
+   *Amended 2026-10-02 (PR #1344, #1339):* extended. The off-origin recorder moved to the shared
+   helper `frontend/e2e/support/map-resources.ts` (`recordOffOriginRequests`), and
+   `frontend/e2e/operator-venue-location.e2e.ts` asserts it on the operator pin placer as the
+   Discover specs do.
 6. **Attribution** "© OpenMapTiles © OpenStreetMap contributors" is rendered permanently on the
    map — the credit the tiles' two licences require (the OpenMapTiles schema's CC-BY design licence,
    OSM's ODbL) — with each name a link to its licence page: the two outbound references, hyperlinks
