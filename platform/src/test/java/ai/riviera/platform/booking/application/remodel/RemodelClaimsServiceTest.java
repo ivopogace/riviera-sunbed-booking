@@ -577,7 +577,6 @@ class RemodelClaimsServiceTest {
 				claim(214, A1, IN_TEN_DAYS.plusDays(1), BookingStatus.CONFIRMED)));
 		givenMap(List.of(A1), IN_TEN_DAYS, List.of());
 		when(facts.freeOnlineSetsOn(VENUE, IN_TEN_DAYS.plusDays(1))).thenReturn(List.of());
-		when(bookings.lockRemainder(anyLong())).thenReturn(new LockedRemainder(4500, false));
 		when(bookings.cancelConfirmed(eq(213L), any(), eq(4500L), eq(RefundReason.VENUE_CHANGE), eq(4500L)))
 				.thenReturn(java.util.Optional.of(new CancelledBooking(213, VENUE, A1.setId(), IN_TEN_DAYS, IN_TEN_DAYS, 4500, "EUR")));
 		when(bookings.cancelConfirmed(eq(214L), any(), eq(4500L), eq(RefundReason.VENUE_CHANGE), eq(4500L)))
