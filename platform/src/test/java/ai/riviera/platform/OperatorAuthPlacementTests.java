@@ -2,34 +2,25 @@ package ai.riviera.platform;
 
 import org.junit.jupiter.api.Test;
 
-import com.tngtech.archunit.lang.ArchRule;
-
 import static ai.riviera.platform.ArchitectureTestSupport.PRODUCTION_BASE;
 import static ai.riviera.platform.ArchitectureTestSupport.PRODUCTION_CLASSES;
-import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noClasses;
 
 /**
- * Guards the authentication-placement boundary (RV-BE-11, {@code RESPONSIBILITIES.md}): the
- * <em>login/credential-checking machinery</em> is a platform/edge Spring Security concern and must
- * <strong>not</strong> grow inside the {@code operator} domain module. The module owns the account
- * identity and stores an <em>opaque</em> credential hash; it never imports a
- * {@code org.springframework.security.*} type (no {@code UserDetailsService}, no {@code PasswordEncoder},
- * no authentication filter). If a future change moves login into the module, this fails the build —
- * exactly the placement slip RV-BE-11 flags at review, caught earlier here.
- *
- * <p>A fast, context-free ArchUnit rule (sibling to {@link JdbcOnlyArchitectureTests} / {@link
- * ModularityTests} — no Spring context, no DB, runs anywhere).
+ * Keeps login and session machinery and mail transport out of the {@code operator} domain module (RV-BE-11):
+ * no Spring Security, Spring Session, Spring Mail, Jakarta Mail or Angus Mail type, per {@link AuthPlacementRule}.
+ * Fast, context-free ArchUnit; the negative case runs against {@code ai.riviera.authplacementfixture.operator}.
  */
 class OperatorAuthPlacementTests {
 
+	private static final String MODULE = "operator";
+
 	@Test
-	void operatorModuleDependsOnNoSpringSecurityType() {
-		ArchRule rule = noClasses()
-				.that().resideInAPackage(PRODUCTION_BASE + ".operator..")
-				.should().dependOnClassesThat().resideInAnyPackage("org.springframework.security..")
-				.because("authentication/login is a platform/edge concern (#74, RV-BE-11); the operator "
-						+ "module stores an opaque credential hash but never encodes/verifies it, so it must "
-						+ "not import any org.springframework.security type.");
-		rule.check(PRODUCTION_CLASSES);
+	void operatorModuleDependsOnNoLoginSessionOrMailType() {
+		AuthPlacementRule.noLoginMachineryIn(PRODUCTION_BASE, MODULE).check(PRODUCTION_CLASSES);
+	}
+
+	@Test
+	void everyBannedPackageIsRejected() {
+		AuthPlacementRule.assertRejectsEveryBannedPackage(MODULE);
 	}
 }
