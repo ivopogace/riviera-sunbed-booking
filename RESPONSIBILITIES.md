@@ -721,8 +721,8 @@ transaction, on the request path too, a timeout fails the whole erasure, and a s
   implements — an inversion, because a direct `customer → booking` call would cycle
 - Encoding/verifying credentials and all login machinery (`UserDetailsService`, sessions, the auth
   endpoints, the OIDC exchange, mail transport) → **`auth`** and **`notification`**
-  (RV-BE-11; `CustomerAuthPlacementTests` checks only the Spring Security half); I store the
-  identity and an opaque hash
+  (RV-BE-11); I store the identity and an opaque hash, and no Spring Security, Spring Session or
+  mail (Spring Mail, Jakarta Mail, Angus Mail) type lives in the module (`CustomerAuthPlacementTests`)
 
 ---
 
@@ -764,8 +764,9 @@ delete) takes the same lock and keeps the rule.
   the `ROLE_ADMIN` mapping), **invalidating live sessions** on suspension, rejection, credential
   rotation or password change (`PrincipalSessionRevoker`), and the "venues are live" mail
   (`OperatorApprovalMail` → `notification`) → **`auth`**. I store an opaque hash and
-  `is_admin` flag and report *that* and *whose* a transition happened; no Spring Security
-  (`OperatorAuthPlacementTests`), `org.springframework.session` or mail type lives in the module
+  `is_admin` flag and report *that* and *whose* a transition happened; no Spring Security, Spring
+  Session or mail (Spring Mail, Jakarta Mail, Angus Mail) type lives in the module
+  (`OperatorAuthPlacementTests`)
 
 ---
 
@@ -1126,7 +1127,8 @@ and their `AuthenticationManager`s, session establishment and rotation, the cred
 revocation, SSO, the password policy, account recovery, the login, register, `/me` and self-service
 password endpoints, and the admin-lifecycle and both erasure endpoints that revoke sessions in the same
 request (a domain module calling `auth` would cycle). `customer` and `operator` supply identity and an
-opaque hash through their `api`; no Spring Security type enters them (`*AuthPlacementTests`).
+opaque hash through their `api`; no Spring Security, Spring Session or mail type enters them
+(`*AuthPlacementTests`).
 
 - **Password policy (D-8)** — one rule, `PasswordPolicy`, wherever a password is *chosen*
   (never at sign-in), checked before any write — on register, ahead of the timing-equalized
@@ -1391,8 +1393,8 @@ them form the *structural net* is `riviera-modulith` § *The structural net*'s c
 | A `domain/` class names only the JDK and published ids, values and rules (ADR-0018 §4) | `DomainPurityArchitectureTests` |
 | The booking transition table and the guarded `UPDATE`s admit the same statuses (ADR-0018 §1) | `JdbcBookingTransitionTableIT` (every transition × every status; Docker-gated, so it fails the build only where Docker runs — CI) |
 | The view's `cancellable` and the guest cancel's refusal agree with `CANCEL_BY_GUEST`, status by status (ADR-0018 §1) | `ViewBookingServiceTest.onlyAConfirmedBookingIsCancellableWhileTheWindowIsOpen`, `CancelBookingServiceTest` (against the literal `BookingTransitionTest` pins) |
-| No Spring Security type inside `operator` — login machinery's checked half (RV-BE-11) | `OperatorAuthPlacementTests` |
-| No Spring Security type inside `customer` — login machinery's checked half (RV-BE-11) | `CustomerAuthPlacementTests` |
+| No Spring Security, Spring Session or mail (Spring Mail, Jakarta Mail, Angus Mail) type inside `operator`; OIDC/OAuth2 client types fall under Spring Security (RV-BE-11) | `OperatorAuthPlacementTests` |
+| No Spring Security, Spring Session or mail (Spring Mail, Jakarta Mail, Angus Mail) type inside `customer`; OIDC/OAuth2 client types fall under Spring Security (RV-BE-11) | `CustomerAuthPlacementTests` |
 | Mail listeners name their own bounded executors, never Boot's shared `applicationTaskExecutor` | `MailListenerExecutorArchitectureTest` |
 | `booking` listeners reaching `payment::api` run on the bounded refund pool | `RefundListenerExecutorArchitectureTest` |
 | Every self-configured worker pool carries `monitoring`'s MDC decorator | `WorkerContextArchitectureTest` |
