@@ -1,7 +1,7 @@
 import { HttpErrorResponse } from '@angular/common/http';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { ActivatedRoute, convertToParamMap, provideRouter, Router } from '@angular/router';
-import { BehaviorSubject, NEVER, of, throwError } from 'rxjs';
+import { BehaviorSubject, NEVER, of, Subject, throwError } from 'rxjs';
 import { vi } from 'vitest';
 
 import { expectNoAxeViolations } from '../../testing/axe';
@@ -1846,6 +1846,198 @@ describe('BookingView', () => {
 
     expect(host.textContent).toContain('Booking not found');
     expect(document.activeElement).toBe(host.querySelector('[data-testid="bv-title"]'));
+  });
+
+  // A reply for a code the route has since left must write nothing, or the page shows A while its actions target B (#1289).
+  describe('superseded replies (#1289)', () => {
+    const A: BookingDetail = { ...DETAIL, code: 'AAAAAAAAAA', venueName: 'Venue Alpha' };
+    const B: BookingDetail = { ...DETAIL, code: 'BBBBBBBBBB', venueName: 'Venue Beta' };
+
+    /** Every A request is held open on its subject; B is primed as find-a-booking does, then served from `of`. */
+    function heldA() {
+      const getA = new Subject<BookingDetail>();
+      const cancelA = new Subject<Cancellation>();
+      const withdrawA = new Subject<Withdrawal>();
+      const reviewA = new Subject<void>();
+      const getCalls: string[] = [];
+      const cancelCalls: string[] = [];
+      let prefetched: BookingDetail | undefined;
+      const service: Partial<BookingService> = {
+        getByCode: (code: string) => {
+          getCalls.push(code);
+          return code === A.code ? getA : of(B);
+        },
+        cancel: (code: string) => {
+          cancelCalls.push(code);
+          return code === A.code ? cancelA : of(CANCELLATION);
+        },
+        withdraw: (code: string) => (code === A.code ? withdrawA : of(WITHDRAWAL)),
+        review: (code: string) => (code === A.code ? reviewA : of(undefined)),
+        beginPayment: () => undefined,
+        takePrefetched: (code: string) => {
+          if (prefetched?.code === code) {
+            const d = prefetched;
+            prefetched = undefined;
+            return d;
+          }
+          return undefined;
+        },
+      };
+      const prime = (d: BookingDetail) => (prefetched = d);
+      return { service, getA, cancelA, withdrawA, reviewA, getCalls, cancelCalls, prime };
+    }
+
+    async function renderSwappable(service: Partial<BookingService>) {
+      const paramMap$ = new BehaviorSubject(convertToParamMap({ code: A.code }));
+      await TestBed.configureTestingModule({
+        imports: [BookingView],
+        providers: [
+          provideRouter([]),
+          { provide: BookingService, useValue: service },
+          {
+            provide: ActivatedRoute,
+            useValue: { snapshot: { paramMap: paramMap$.value }, paramMap: paramMap$ },
+          },
+        ],
+      }).compileComponents();
+      const fixture = TestBed.createComponent(BookingView);
+      const settle = async () => {
+        fixture.detectChanges();
+        await fixture.whenStable();
+        fixture.detectChanges();
+      };
+      await settle();
+      const swapTo = async (code: string) => {
+        paramMap$.next(convertToParamMap({ code }));
+        await settle();
+      };
+      return { fixture, host: fixture.nativeElement as HTMLElement, settle, swapTo };
+    }
+
+    function text(host: HTMLElement, testId: string): string {
+      return host.querySelector(`[data-testid="${testId}"]`)?.textContent?.trim() ?? '';
+    }
+
+    it("keeps B on screen, and Cancel on B, when A's read lands after the swap", async () => {
+      const held = heldA();
+      const { host, settle, swapTo } = await renderSwappable(held.service);
+      held.prime(B);
+      await swapTo(B.code);
+
+      held.getA.next(A);
+      held.getA.complete();
+      await settle();
+
+      expect(text(host, 'booking-code')).toContain(B.code);
+      expect(host.textContent).not.toContain('Venue Alpha');
+      host.querySelector<HTMLButtonElement>('[data-testid="start-cancel"]')!.click();
+      await settle();
+      host.querySelector<HTMLButtonElement>('[data-testid="confirm-cancel"]')!.click();
+      await settle();
+      expect(held.cancelCalls).toEqual([B.code]);
+    });
+
+    it.each([404, 500])(
+      "keeps B's card when A's read fails with %i after the swap",
+      async (status) => {
+        const held = heldA();
+        const { host, settle, swapTo } = await renderSwappable(held.service);
+        held.prime(B);
+        await swapTo(B.code);
+
+        held.getA.error(new HttpErrorResponse({ status }));
+        await settle();
+
+        expect(text(host, 'booking-code')).toContain(B.code);
+        expect(host.textContent).not.toContain('Booking not found');
+        expect(host.textContent).not.toContain('Couldn’t load your booking');
+      },
+    );
+
+    /** Loads A, presses Cancel and confirms, leaving A's cancel reply held open. */
+    async function cancelOnA(held: ReturnType<typeof heldA>) {
+      const rendered = await renderSwappable(held.service);
+      held.getA.next(A);
+      held.getA.complete();
+      await rendered.settle();
+      rendered.host.querySelector<HTMLButtonElement>('[data-testid="start-cancel"]')!.click();
+      await rendered.settle();
+      rendered.host.querySelector<HTMLButtonElement>('[data-testid="confirm-cancel"]')!.click();
+      await rendered.settle();
+      expect(held.cancelCalls).toEqual([A.code]);
+      return rendered;
+    }
+
+    it("paints no cancellation on B, nor re-reads B, when A's cancel lands after the swap", async () => {
+      const held = heldA();
+      const { host, settle, swapTo } = await cancelOnA(held);
+      held.prime(B);
+      await swapTo(B.code);
+
+      held.cancelA.next(CANCELLATION);
+      held.cancelA.complete();
+      await settle();
+
+      expect(text(host, 'booking-code')).toContain(B.code);
+      expect(text(host, 'cancel-result')).toBe('');
+      expect(held.getCalls).toEqual([A.code]);
+      expect(host.querySelector('[data-testid="start-cancel"]')).not.toBeNull();
+    });
+
+    it("paints no refusal on B, nor re-reads B, when A's cancel fails after the swap", async () => {
+      const held = heldA();
+      const { host, settle, swapTo } = await cancelOnA(held);
+      held.prime(B);
+      await swapTo(B.code);
+
+      held.cancelA.error(new HttpErrorResponse({ status: 500 }));
+      await settle();
+
+      expect(text(host, 'cancel-result')).toBe('');
+      expect(held.getCalls).toEqual([A.code]);
+    });
+
+    it("paints no withdrawal on B when A's withdraw lands after the swap", async () => {
+      const held = heldA();
+      const { host, settle, swapTo } = await renderSwappable(held.service);
+      held.getA.next({ ...PENDING, code: A.code });
+      held.getA.complete();
+      await settle();
+      host.querySelector<HTMLButtonElement>('[data-testid="withdraw-request"]')!.click();
+      await settle();
+      host.querySelector<HTMLButtonElement>('[data-testid="confirm-withdraw"]')!.click();
+      await settle();
+      held.prime(B);
+      await swapTo(B.code);
+
+      held.withdrawA.next(WITHDRAWAL);
+      held.withdrawA.complete();
+      await settle();
+
+      expect(text(host, 'withdraw-result')).toBe('');
+      expect(held.getCalls).toEqual([A.code]);
+    });
+
+    it("paints no review outcome on B when A's review lands after the swap", async () => {
+      const held = heldA();
+      const { host, settle, swapTo } = await renderSwappable(held.service);
+      held.getA.next({ ...REVIEWABLE, code: A.code });
+      held.getA.complete();
+      await settle();
+      host.querySelectorAll<HTMLElement>('[data-testid^="star-"]')[3].click();
+      await settle();
+      host.querySelector<HTMLButtonElement>('[data-testid="submit-review"]')!.click();
+      await settle();
+      held.prime({ ...REVIEWABLE, code: B.code });
+      await swapTo(B.code);
+
+      held.reviewA.next();
+      held.reviewA.complete();
+      await settle();
+
+      expect(text(host, 'review-result')).toBe('');
+      expect(held.getCalls).toEqual([A.code]);
+    });
   });
 
   it('shows the loading card while the fetch is in flight', async () => {
