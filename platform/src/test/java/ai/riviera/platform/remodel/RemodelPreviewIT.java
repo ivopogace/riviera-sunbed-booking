@@ -34,7 +34,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 /**
  * The remodel preview at the HTTP seam — the platform edge composing {@code venue}'s diff with
- * {@code booking}'s classification (ADR-0020): the five groups and the sets to keep for a save
+ * {@code booking}'s classification (ADR-0020): the groups and the sets to keep for a save
  * that drops two booked sets, nothing written and the token untouched; every group empty for a
  * repaint; {@code 409 STALE_WRITE} for a stale token; no booking code anywhere on the wire
  * (invariant #7). Booking dates are relative to today in {@code Europe/Tirane} so the zones fall

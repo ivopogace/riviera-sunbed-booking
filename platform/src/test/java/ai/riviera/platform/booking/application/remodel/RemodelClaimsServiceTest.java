@@ -104,6 +104,10 @@ class RemodelClaimsServiceTest {
 					new RemodelWindows(Duration.ofHours(24), Duration.ofHours(96)), CLOCK),
 			availability, receipts, events, () -> FEE, CLOCK);
 
+	{
+		when(bookings.lockRemainder(anyLong())).thenReturn(new LockedRemainder(4500, false));
+	}
+
 	private static SetSpot spot(long id, String row, int position, int gridY, Tier tier) {
 		return new SetSpot(new SetId(id), new SetPlacement(row, position, position, gridY), tier, Pool.ONLINE);
 	}
@@ -118,7 +122,12 @@ class RemodelClaimsServiceTest {
 
 	private static LiveClaim stretch(long bookingId, SetSpot on, LocalDate first, LocalDate last, BookingStatus status,
 			StayId stay) {
-		return new LiveClaim(bookingId, on.setId(), first, last, status, 4500, "EUR", 0L, stay);
+		return new LiveClaim(bookingId, on.setId(), first, last, status, 4500, "EUR", 0L, stay, false);
+	}
+
+	/** A confirmed {@code first}–{@code last} booking every day of which a day refund already returned (#1300). */
+	private static LiveClaim allRefunded(long bookingId, SetSpot on, LocalDate first, LocalDate last) {
+		return new LiveClaim(bookingId, on.setId(), first, last, BookingStatus.CONFIRMED, 4500, "EUR", 4500L, null, true);
 	}
 
 	private static SpotRef ref(SetSpot spot) {
@@ -349,6 +358,128 @@ class RemodelClaimsServiceTest {
 	}
 
 	@Test
+	void aConfirmedClaimWithEveryDayRefundedIsNothingLeftInEveryUnfrozenZoneAndTakesNoCandidate() {
+		when(bookings.findLiveOnSets(Set.of(A1.setId()))).thenReturn(List.of(
+				allRefunded(300, A1, IN_THREE_DAYS, IN_THREE_DAYS),
+				claim(301, A1, IN_THREE_DAYS, BookingStatus.CONFIRMED),
+				allRefunded(302, A1, IN_TEN_DAYS, IN_TEN_DAYS)));
+		when(facts.activeSetsOf(VENUE)).thenReturn(List.of(A1, A3));
+		when(facts.freeOnlineSetsOn(eq(VENUE), any())).thenReturn(List.of(A3));
+
+		List<RemodelOutcome> outcomes = service.classify(OWNER, VENUE, List.of(A1.setId())).stream()
+				.map(RemodelClaim::outcome).toList();
+
+		assertEquals(List.of(RemodelOutcome.NothingLeft.NOTHING_LEFT, new RemodelOutcome.Move(ref(A3), 0, 2),
+				RemodelOutcome.NothingLeft.NOTHING_LEFT), outcomes,
+				"move-only and move-or-refund alike, decided before the move search, so the candidate stays the next claim's");
+	}
+
+	@Test
+	void aFrozenClaimWithEveryDayRefundedStaysBlockedAndOneUnrefundedDayClassifiesAsToday() {
+		LiveClaim zeroShareLeft = new LiveClaim(304, A1.setId(), IN_TEN_DAYS, IN_TEN_DAYS.plusDays(2),
+				BookingStatus.CONFIRMED, 2, "EUR", 2L, null, false);
+		when(bookings.findLiveOnSets(Set.of(A1.setId()))).thenReturn(List.of(
+				allRefunded(303, A1, TOMORROW, TOMORROW), zeroShareLeft));
+		when(facts.activeSetsOf(VENUE)).thenReturn(List.of(A1));
+		when(facts.freeOnlineSetsOn(eq(VENUE), any())).thenReturn(List.of());
+
+		List<RemodelOutcome> outcomes = service.classify(OWNER, VENUE, List.of(A1.setId())).stream()
+				.map(RemodelClaim::outcome).toList();
+
+		assertEquals(List.of(new RemodelOutcome.Blocked(BlockReason.FROZEN), RemodelOutcome.Refund.REFUND), outcomes,
+				"keyed on no unrefunded day, never on a zero remainder: a €0-share day is still the guest's");
+	}
+
+	@Test
+	void commitEndsANothingLeftClaimQuietlyFreeingEveryDayItStillHoldsWithoutConfirmation() {
+		LocalDate last = IN_TEN_DAYS.plusDays(2);
+		LocalDate released = IN_TEN_DAYS.plusDays(1);
+		RemodelClaim nothingLeft = new RemodelClaim(new BookingId(305), ref(A1), IN_TEN_DAYS, last, 0, "EUR",
+				RemodelOutcome.NothingLeft.NOTHING_LEFT);
+		when(bookings.findLiveOnSets(Set.of(A1.setId()))).thenReturn(List.of(allRefunded(305, A1, IN_TEN_DAYS, last)));
+		when(facts.activeSetsOf(VENUE)).thenReturn(List.of(A1));
+		when(facts.freeOnlineSetsOn(eq(VENUE), any())).thenReturn(List.of());
+		when(bookings.lockRemainder(305)).thenReturn(new LockedRemainder(0, true));
+		when(bookings.cancelConfirmed(305, CLOCK.instant(), 0, RefundReason.VENUE_CHANGE, 0))
+				.thenReturn(java.util.Optional.of(new CancelledBooking(305, VENUE, A1.setId(), IN_TEN_DAYS, last, 4500, "EUR")));
+		when(bookings.findReleasedDays(305)).thenReturn(List.of(released));
+		when(receipts.store(any())).thenReturn(RECEIPT);
+
+		RemodelCommit outcome = service.commit(OWNER, VENUE, List.of(A1.setId()), previewOf(nothingLeft),
+				RefundConfirmation.NONE);
+
+		assertEquals(new RemodelCommit.Applied(RECEIPT, CLOCK.instant(), List.of(nothingLeft)), outcome);
+		InOrder order = inOrder(bookings, availability);
+		order.verify(bookings).lockRemainder(305);
+		order.verify(bookings).cancelConfirmed(305, CLOCK.instant(), 0, RefundReason.VENUE_CHANGE, 0);
+		order.verify(availability).release(A1.setId(), IN_TEN_DAYS);
+		order.verify(availability).release(A1.setId(), last);
+		verify(availability, never()).release(A1.setId(), released);
+		verify(events, never()).publishEvent(any());
+		verify(receipts).store(new NewReceipt(VENUE, OWNER, CLOCK.instant(), List.of(),
+				List.of(new ReceiptOutcome(new BookingId(305), IN_TEN_DAYS, ref(A1), ReceiptOutcomeKind.NOTHING_LEFT,
+						0, "EUR", 0L)),
+				"", List.of()));
+	}
+
+	@Test
+	void aRefundWhoseLastDayWasRefundedBeforeItsLockSettlesAsNothingLeft() {
+		// #1281's window: classified a refund of 1500, the last day's refund lands before the row lock.
+		LiveClaim oneDayLeft = new LiveClaim(306, A1.setId(), IN_TEN_DAYS, IN_TEN_DAYS.plusDays(2),
+				BookingStatus.CONFIRMED, 4500, "EUR", 3000L, null, false);
+		RemodelClaim refund = new RemodelClaim(new BookingId(306), ref(A1), IN_TEN_DAYS, IN_TEN_DAYS.plusDays(2), 1500,
+				"EUR", RemodelOutcome.Refund.REFUND);
+		when(bookings.findLiveOnSets(Set.of(A1.setId()))).thenReturn(List.of(oneDayLeft));
+		when(facts.activeSetsOf(VENUE)).thenReturn(List.of(A1));
+		when(facts.freeOnlineSetsOn(eq(VENUE), any())).thenReturn(List.of());
+		when(bookings.lockRemainder(306)).thenReturn(new LockedRemainder(0, true));
+		when(bookings.cancelConfirmed(306, CLOCK.instant(), 0, RefundReason.VENUE_CHANGE, 0))
+				.thenReturn(java.util.Optional.of(new CancelledBooking(306, VENUE, A1.setId(), IN_TEN_DAYS,
+						IN_TEN_DAYS.plusDays(2), 4500, "EUR")));
+		when(receipts.store(any())).thenReturn(RECEIPT);
+
+		RemodelCommit outcome = service.commit(OWNER, VENUE, List.of(A1.setId()), previewOf(refund), CONFIRMED_ONE);
+
+		assertEquals(new RemodelCommit.Applied(RECEIPT, CLOCK.instant(), List.of(new RemodelClaim(new BookingId(306),
+				ref(A1), IN_TEN_DAYS, IN_TEN_DAYS.plusDays(2), 0, "EUR", RemodelOutcome.NothingLeft.NOTHING_LEFT))),
+				outcome, "the commit answers what it settled, not what it classified");
+		verify(events, never()).publishEvent(any());
+		verify(receipts).store(new NewReceipt(VENUE, OWNER, CLOCK.instant(), List.of(),
+				List.of(new ReceiptOutcome(new BookingId(306), IN_TEN_DAYS, ref(A1), ReceiptOutcomeKind.NOTHING_LEFT,
+						0, "EUR", 0L)),
+				"Re-laying row A", List.of()));
+	}
+
+	@Test
+	void aMoveWhoseLastDayWasRefundedBeforeItsLockEndsAsNothingLeftAndClaimsNothing() {
+		LiveClaim oneDayLeft = new LiveClaim(307, A1.setId(), IN_TEN_DAYS, IN_TEN_DAYS, BookingStatus.CONFIRMED, 4500,
+				"EUR", 0L, null, false);
+		RemodelClaim move = new RemodelClaim(new BookingId(307), ref(A1), IN_TEN_DAYS, IN_TEN_DAYS, 4500, "EUR",
+				new RemodelOutcome.Move(ref(A2), 0, 1));
+		when(bookings.findLiveOnSets(Set.of(A1.setId()))).thenReturn(List.of(oneDayLeft));
+		givenMap(List.of(A1, A2), IN_TEN_DAYS, List.of(A2));
+		when(bookings.lockRemainder(307)).thenReturn(new LockedRemainder(0, true));
+		when(bookings.cancelConfirmed(307, CLOCK.instant(), 0, RefundReason.VENUE_CHANGE, 0))
+				.thenReturn(java.util.Optional.of(new CancelledBooking(307, VENUE, A1.setId(), IN_TEN_DAYS, IN_TEN_DAYS,
+						4500, "EUR")));
+		when(receipts.store(any())).thenReturn(RECEIPT);
+
+		RemodelCommit outcome = service.commit(OWNER, VENUE, List.of(A1.setId()), previewOf(move), RefundConfirmation.NONE);
+
+		assertEquals(RemodelOutcome.NothingLeft.NOTHING_LEFT,
+				assertInstanceOf(RemodelCommit.Applied.class, outcome).settled().getFirst().outcome(),
+				"the move leg decides under the lock too: a booking with nothing left is never moved");
+		verify(availability, never()).claim(any(), any());
+		verify(bookings, never()).moveToSet(anyLong(), any(), any(), any());
+		verify(availability).release(A1.setId(), IN_TEN_DAYS);
+		verify(events, never()).publishEvent(any());
+		verify(receipts).store(new NewReceipt(VENUE, OWNER, CLOCK.instant(), List.of(),
+				List.of(new ReceiptOutcome(new BookingId(307), IN_TEN_DAYS, ref(A1), ReceiptOutcomeKind.NOTHING_LEFT,
+						0, "EUR", 0L)),
+				"", List.of()));
+	}
+
+	@Test
 	void aRefundedDayComesOffTheRemodelRefund() {
 		// A 4500 stretch whose stormy day already returned 1500 (#1210): the remodel refunds the 3000 that remain.
 		LiveClaim stormy = new LiveClaim(211, A1.setId(), IN_TEN_DAYS, IN_TEN_DAYS.plusDays(2), BookingStatus.CONFIRMED,
@@ -357,7 +488,7 @@ class RemodelClaimsServiceTest {
 				"EUR", RemodelOutcome.Refund.REFUND);
 		when(bookings.findLiveOnSets(Set.of(A1.setId()))).thenReturn(List.of(stormy));
 		givenMap(List.of(A1), IN_TEN_DAYS, List.of());
-		when(bookings.lockRemainingMinor(211)).thenReturn(3000L);
+		when(bookings.lockRemainder(211)).thenReturn(new LockedRemainder(3000, false));
 		when(bookings.cancelConfirmed(211, CLOCK.instant(), 3000, RefundReason.VENUE_CHANGE, 3000))
 				.thenReturn(java.util.Optional.of(new CancelledBooking(211, VENUE, A1.setId(), IN_TEN_DAYS,
 						IN_TEN_DAYS.plusDays(2), 4500, "EUR")));
@@ -381,7 +512,7 @@ class RemodelClaimsServiceTest {
 		when(bookings.findLiveOnSets(Set.of(A1.setId())))
 				.thenReturn(List.of(claim(210, A1, IN_TEN_DAYS, BookingStatus.CONFIRMED)));
 		givenMap(List.of(A1), IN_TEN_DAYS, List.of());
-		when(bookings.lockRemainingMinor(210)).thenReturn(4500L);
+		when(bookings.lockRemainder(210)).thenReturn(new LockedRemainder(4500, false));
 		when(bookings.cancelConfirmed(210, CLOCK.instant(), 4500, RefundReason.VENUE_CHANGE, 4500))
 				.thenReturn(java.util.Optional.of(new CancelledBooking(210, VENUE, A1.setId(), IN_TEN_DAYS, IN_TEN_DAYS, 4500, "EUR")));
 		when(receipts.store(any())).thenReturn(RECEIPT);
@@ -390,7 +521,7 @@ class RemodelClaimsServiceTest {
 
 		assertEquals(new RemodelCommit.Applied(RECEIPT, CLOCK.instant(), List.of(refund)), outcome);
 		InOrder order = inOrder(bookings, availability, events, receipts);
-		order.verify(bookings).lockRemainingMinor(210);
+		order.verify(bookings).lockRemainder(210);
 		order.verify(bookings).cancelConfirmed(210, CLOCK.instant(), 4500, RefundReason.VENUE_CHANGE, 4500);
 		order.verify(availability).release(A1.setId(), IN_TEN_DAYS);
 		order.verify(events).publishEvent(new BookingCancelled(new BookingId(210), VENUE, A1.setId(), IN_TEN_DAYS,
@@ -446,7 +577,6 @@ class RemodelClaimsServiceTest {
 				claim(214, A1, IN_TEN_DAYS.plusDays(1), BookingStatus.CONFIRMED)));
 		givenMap(List.of(A1), IN_TEN_DAYS, List.of());
 		when(facts.freeOnlineSetsOn(VENUE, IN_TEN_DAYS.plusDays(1))).thenReturn(List.of());
-		when(bookings.lockRemainingMinor(anyLong())).thenReturn(4500L);
 		when(bookings.cancelConfirmed(eq(213L), any(), eq(4500L), eq(RefundReason.VENUE_CHANGE), eq(4500L)))
 				.thenReturn(java.util.Optional.of(new CancelledBooking(213, VENUE, A1.setId(), IN_TEN_DAYS, IN_TEN_DAYS, 4500, "EUR")));
 		when(bookings.cancelConfirmed(eq(214L), any(), eq(4500L), eq(RefundReason.VENUE_CHANGE), eq(4500L)))
@@ -482,7 +612,7 @@ class RemodelClaimsServiceTest {
 
 		assertEquals(new RemodelCommit.Applied(RECEIPT, CLOCK.instant(), List.of(first, second)), outcome);
 		InOrder order = inOrder(availability, bookings, events, receipts);
-		order.verify(bookings).lockById(203);
+		order.verify(bookings).lockRemainder(203);
 		order.verify(bookings).findReleasedDays(203);
 		order.verify(availability).claim(A2.setId(), IN_TEN_DAYS);
 		order.verify(availability).release(A1.setId(), IN_TEN_DAYS);

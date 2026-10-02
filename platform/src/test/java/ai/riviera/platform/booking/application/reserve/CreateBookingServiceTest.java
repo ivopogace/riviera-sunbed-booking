@@ -1027,7 +1027,7 @@ class CreateBookingServiceTest {
 		}
 
 		@Override
-		public long lockRemainingMinor(long bookingId) {
+		public ai.riviera.platform.booking.application.remodel.LockedRemainder lockRemainder(long bookingId) {
 			throw new UnsupportedOperationException("not exercised by the single-booking reserve");
 		}
 

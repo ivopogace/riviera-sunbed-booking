@@ -33,7 +33,7 @@ import {
 /**
  * The layout editor's remodel `alertdialog`, a sibling of `shared/confirm-panel.ts`, not a variant
  * (`RESPONSIBILITIES.md` §Frontend): every claim a save would disturb, grouped as the server
- * answered (moves, refunds, releases, staff holds, blocked); a staff hold or `displaced` offers
+ * answered (moves, refunds, releases, nothing left, staff holds, blocked); a staff hold or `displaced` offers
  * Back alone. Save arms on refunds only once count and reason are typed (else the server answers
  * `409 REFUND_NOT_CONFIRMED`). Fixed warn skin (`riviera-tailwind`). Keep the `@if` outside: it
  * focuses its first control on mount (WCAG 2.4.3); `focusMover()` undoes it. Bookings by id (#7).
@@ -117,7 +117,7 @@ export class RemodelPreviewPanel {
     });
   }
 
-  /** "Save and move 1, refund 1, release 2, keep 1 bookings" */
+  /** "Save and move 1, refund 1, release 2, end 1, keep 1 bookings" */
   protected saveLabel(): string {
     if (this.committing()) {
       return 'Saving…';
@@ -133,6 +133,9 @@ export class RemodelPreviewPanel {
     if (preview.releases.length > 0) {
       parts.push(`release ${preview.releases.length}`);
     }
+    if (preview.ended.length > 0) {
+      parts.push(`end ${preview.ended.length}`);
+    }
     if (preview.blocks.length > 0) {
       parts.push(`keep ${preview.blocks.length}`);
     }
@@ -140,6 +143,7 @@ export class RemodelPreviewPanel {
       preview.moves.length +
       preview.refunds.length +
       preview.releases.length +
+      preview.ended.length +
       preview.blocks.length;
     return `Save and ${parts.join(', ')} ${total === 1 ? 'booking' : 'bookings'}`;
   }
@@ -190,6 +194,11 @@ export class RemodelPreviewPanel {
     const kind =
       release.kind === 'RELEASE' ? 'unpaid booking released' : 'pending request declined';
     return `${spotLabel(release.from)} · ${when(release)} · ${kind}`;
+  }
+
+  /** "Row A · position 3 · Thu 24 Sept · every day already refunded" — no amount: nothing is left. */
+  protected endedText(claim: RemodelClaim): string {
+    return `${spotLabel(claim.from)} · ${formatCivilDate(claim.bookingDate)} · every day already refunded`;
   }
 
   protected holdText(hold: RemodelStaffHold): string {

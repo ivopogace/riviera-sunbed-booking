@@ -439,10 +439,10 @@ any is released on the old, never a swap of my own — so a racing reserve wins 
   `CONFIRMED` booking when `payment.api.CollectionGuarantee` says the gateway collects before
   confirming — never a profile string.
 - **Remodel classification** (`RemodelClaims#classify`, ADR-0020) decides each live booking on the
-  disturbed sets in `(service date, id)` order: zone (`RemodelZones`), then a move candidate
-  (`MoveRanking`; a taken one leaves the pool on every day of the span), then status — `CONFIRMED`
-  refunds, `AWAITING_PAYMENT` releases; a frozen claim, or a move-only one without a candidate,
-  blocks. A `PENDING_REQUEST` is no claim: it declines (`SET_UNAVAILABLE`) whatever the zone, never
+  disturbed sets in `(service date, id)` order: zone (`RemodelZones`), nothing left, then a move
+  candidate (`MoveRanking`; a taken one leaves the pool on every day of the span), then status —
+  `CONFIRMED` refunds, `AWAITING_PAYMENT` releases; a frozen claim, or a move-only one without a
+  candidate, blocks. A `PENDING_REQUEST` is no claim: it declines (`SET_UNAVAILABLE`) whatever the zone, never
   moves, releases nothing (ADR-0025). Outcome kinds only, never a status or code (invariant #7);
   advisory and unlocked, so the commit re-derives it.
 - **A released stretch takes its stay's other unpaid stretches with it** (#1292): one intent collects
@@ -464,6 +464,13 @@ any is released on the old, never a swap of my own — so a racing reserve wins 
   guest gets one mail, #1292); a **decline** the venue-scoped one. A `Blocked` claim is **kept** (a
   `remodel_receipt_kept` line with its `BlockReason`; `venue` leaves the set as stored), yet a claim
   that can move off that set still moves. No undo: another remodel reverses a move.
+- **A confirmed claim with no unrefunded day is *nothing left*** (#1300, ADR-0026 §8): in any unfrozen
+  zone, decided before the move search, so it takes no candidate. Its leg is the refund leg's: under the row
+  lock (`Bookings#lockRemainder`) it finds every day refunded, cancels at 0 as `VENUE_CHANGE`, frees the
+  days it still holds and writes a `NOTHING_LEFT` line (amount and fee 0, V75); it publishes no
+  `BookingCancelled`, so no mail, ledger entry or void follows. A move or refund whose last day was
+  refunded before that lock settles the same way, and the commit answers it as settled. Keyed on no unrefunded
+  day, never on a zero remainder; the typed refund count leaves it out.
 - **The receipt is mine** (`remodel_receipt(_move/_outcome/_kept)`): label snapshots, distance,
   amounts, reasons, so mails and views name the spot after its set retires.
   `BookingPresence#hasBookings` counts a move's from- and to-sets, so a left set retires rather than
@@ -473,8 +480,8 @@ any is released on the old, never a swap of my own — so a racing reserve wins 
 - **A remodel-released booking's intent is voided after commit, never inside it:** the abandoned
   sweep reads only `AWAITING_PAYMENT`, so nothing else reaches it. `RemodelReleasePaymentListener`
   acts only on a `VENUE_CHANGE` cancel with a `RELEASE` receipt line (`RemodelReceipts#releasedByRemodel`),
-  never on a zero refund: a paid booking whose every day was already refunded also returns nothing
-  (#1291). One void per released stretch of a stay; the port answers an already-voided intent
+  never on a zero refund: a moved guest's free exit can be a zero `VENUE_CHANGE` refund of a paid booking
+  (#1291), while a remodel ends a paid one with nothing left without any `BookingCancelled` (#1300). One void per released stretch of a stay; the port answers an already-voided intent
   `Canceled`. It throws on a transient failure. An intent that had collected cannot be undone: it
   counts to `ObservabilityMetrics.REMODEL_RELEASE_COLLECTED` and is refunded by hand, never retried.
 - **A moved booking's free exit is a refund-tier override, never a window change:** until
@@ -619,7 +626,7 @@ of a stay that goes on (`BookingDayRefunded`, stamped with the event's reason, `
 fee — ADR-0026, ADR-0027), once per `(booking, day)` (`UNIQUE NULLS NOT DISTINCT (booking_id, entry_type,
 service_date)`); every reversal reads what earlier ones took (`Reversed`, under the accrual's lock) and the
 exhausting one returns the commission still held, so a booking reversed in parts nets zero. A **`FEE`** is
-charged when a `VENUE_CHANGE` refund is reversed; a release or decline collected nothing, so none is (ADR-0021).
+charged when a `VENUE_CHANGE` refund is reversed; a release or decline collected nothing and nothing left returns nothing, so none is (ADR-0021).
 
 **I own `platform_setting` — its sole writer and reader — and the venue-change fee it holds.** Both
 readers (the cancelled-booking listener; `booking.spi.VenueChangeFeeRate`, which the remodel preview
@@ -998,7 +1005,7 @@ remodel preview and commit compose the two here, granted `venue::api`, `venue::v
   `REFUND_NOT_CONFIRMED`, each with the fresh picture and its token in `preview`, so the operator
   re-decides on what is true now; or the save's own `SETS_IN_USE`, `STALE_WRITE` and shape errors.
 
-**Job:** `POST /api/venues/{id}/beach-map/preview` and `/commit`: assemble the five groups, the sets
+**Job:** `POST /api/venues/{id}/beach-map/preview` and `/commit`: assemble the groups, the sets
 to keep and the preview token from `venue`'s disturbed sets and `booking`'s classified claims; carry
 the commit's gate into `booking`'s settlement.
 
@@ -1255,7 +1262,7 @@ The SPA rules whose TSDoc points here; structure is `riviera-frontend`'s, stylin
   page, panel and card as three nested rounded surfaces read as a template. Its selected row names the
   booking mode only as the exception (`Request to Book`); if request-mode ever dominates, invert it.
 - **`operator/remodel-preview-panel.ts` is a sibling of `shared/confirm-panel.ts`, not a variant**:
-  it owns lists (moves, refunds, releases, staff holds, blocked claims, and the sets that stay) and
+  it owns lists (moves, refunds, releases, nothing left, staff holds, blocked claims, and the sets that stay) and
   refund fields; the confirm panel is a
   warning, a toned button and Cancel with no projected content. Both wear the amber warn skin.
 - **The withheld-email notice is one component, in `booking/`** (both its surfaces are booking's;

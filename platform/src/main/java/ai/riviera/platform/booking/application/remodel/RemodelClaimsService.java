@@ -60,7 +60,7 @@ import ai.riviera.platform.venue.vocabulary.VenueId;
 
 /**
  * Serves {@link RemodelClaims}, owner-asserted: classifies the live bookings on the disturbed sets
- * in {@code (service date, id)} order, by zone ({@link RemodelZones}), then a move candidate
+ * in {@code (service date, id)} order, by zone ({@link RemodelZones}), nothing left (#1300), then a move candidate
  * ({@link MoveRanking}) free on every day of the span and untaken by an earlier claim, then status;
  * a released stretch takes its stay's other unpaid stretches into the picture (#1292). {@link #classify}
  * is read-only and advisory; {@link #commit} re-classifies inside {@code venue}'s locked layout write,
@@ -121,15 +121,16 @@ class RemodelClaimsService implements RemodelClaims {
 		Instant committedAt = clock.instant();
 		long feeMinor = feeRate.perRefund().perRefundMinor();
 		Settled settled = new Settled(new ArrayList<>(), new ArrayList<>(), new ArrayList<>(), new HashSet<>());
+		List<RemodelClaim> applied = new ArrayList<>(fresh.claims().size());
 		for (RemodelClaim claim : fresh.claims()) {
-			apply(venueId, claim, fresh.stayEndingWith(claim), committedAt, feeMinor, settled);
+			applied.add(apply(venueId, claim, fresh.stayEndingWith(claim), committedAt, feeMinor, settled));
 		}
 		for (StayId stay : fresh.staysEndingWhole()) {
 			events.publishEvent(new StayCancelled(stay, 0, fresh.currencyOf().get(stay), RefundReason.VENUE_CHANGE));
 		}
 		ReceiptId receipt = receipts.store(new NewReceipt(venueId, operator, committedAt, settled.moves(),
 				settled.outcomes(), confirmation.reason(), settled.kept()));
-		return new RemodelCommit.Applied(receipt, committedAt, fresh.claims());
+		return new RemodelCommit.Applied(receipt, committedAt, applied);
 	}
 
 	/** A commit that refunds nobody needs no confirmation; one that does needs the count and a reason. */
@@ -137,19 +138,39 @@ class RemodelClaimsService implements RemodelClaims {
 		return refunds == 0 || (confirmation.refundCount() == refunds && !confirmation.reason().isBlank());
 	}
 
-	/** A blocked claim is kept: its booking, its rows and its set are left exactly as they are, and the receipt says why. */
-	private void apply(VenueId venueId, RemodelClaim claim, StayId stayEndingWith, Instant committedAt, long feeMinor,
-			Settled settled) {
+	/**
+	 * Settles one claim and answers it as settled: a move or refund leg that finds nothing left under its lock answers
+	 * {@link RemodelOutcome.NothingLeft}. A blocked claim is kept: its booking, rows and set as they are, the receipt says why.
+	 */
+	private RemodelClaim apply(VenueId venueId, RemodelClaim claim, StayId stayEndingWith, Instant committedAt,
+			long feeMinor, Settled settled) {
 		switch (claim.outcome()) {
-			case RemodelOutcome.Move move -> settled.moves().add(applyMove(venueId, claim, move, committedAt));
-			case RemodelOutcome.Refund ignored ->
-				settled.outcomes().add(applyRefund(venueId, claim, committedAt, feeMinor));
+			case RemodelOutcome.Move move -> {
+				if (bookings.lockRemainder(claim.bookingId().value()).everyDayRefunded()) {
+					settled.outcomes().add(applyConfirmedEnd(venueId, claim, committedAt, feeMinor));
+					return nothingLeft(claim);
+				}
+				settled.moves().add(applyMove(venueId, claim, move, committedAt));
+			}
+			case RemodelOutcome.Refund ignored -> {
+				ReceiptOutcome ended = applyConfirmedEnd(venueId, claim, committedAt, feeMinor);
+				settled.outcomes().add(ended);
+				return ended.kind() == ReceiptOutcomeKind.NOTHING_LEFT ? nothingLeft(claim) : claim;
+			}
+			case RemodelOutcome.NothingLeft ignored ->
+				settled.outcomes().add(applyConfirmedEnd(venueId, claim, committedAt, feeMinor));
 			case RemodelOutcome.Release ignored -> settled.outcomes().add(applyRelease(venueId, claim, stayEndingWith));
 			case RemodelOutcome.Decline ignored ->
 				settled.outcomes().add(applyDecline(venueId, claim, settled.declinedStays()));
 			case RemodelOutcome.Blocked(var reason) ->
 				settled.kept().add(new ReceiptKept(claim.bookingId(), claim.bookingDate(), claim.from(), reason));
 		}
+		return claim;
+	}
+
+	private static RemodelClaim nothingLeft(RemodelClaim claim) {
+		return new RemodelClaim(claim.bookingId(), claim.from(), claim.bookingDate(), claim.lastDate(), 0L,
+				claim.currency(), RemodelOutcome.NothingLeft.NOTHING_LEFT);
 	}
 
 	/** What one commit settled so far: the receipt's lines, and the stay requests it already declined whole. */
@@ -158,22 +179,30 @@ class RemodelClaimsService implements RemodelClaims {
 	}
 
 	/**
-	 * Cancels a stranded confirmed claim with a {@code VENUE_CHANGE} refund of all that remains, read under its row lock
-	 * (a day refunded meanwhile is counted, #1281); refund, reversal and fee drain after commit off {@code BookingCancelled}.
-	 * {@code feeMinor}, the quoted rate, is recorded on the receipt line, not what the ledger charges (ADR-0021).
+	 * Ends a confirmed claim as {@code VENUE_CHANGE}, decided on what it holds under its row lock (#1281): with every
+	 * day refunded it ends at 0, publishing nothing (#1300); else it refunds the rest, which drains off
+	 * {@code BookingCancelled}. {@code feeMinor}, the quoted rate, is the refund line's, not the ledger's (ADR-0021).
 	 */
-	private ReceiptOutcome applyRefund(VenueId venueId, RemodelClaim claim, Instant cancelledAt, long feeMinor) {
-		long remainingMinor = bookings.lockRemainingMinor(claim.bookingId().value());
+	private ReceiptOutcome applyConfirmedEnd(VenueId venueId, RemodelClaim claim, Instant cancelledAt, long feeMinor) {
+		LockedRemainder held = bookings.lockRemainder(claim.bookingId().value());
+		if (!held.everyDayRefunded() && claim.outcome() == RemodelOutcome.NothingLeft.NOTHING_LEFT) {
+			throw lostUnderLock(claim, "refunded on every day");
+		}
+		long refundMinor = held.everyDayRefunded() ? 0L : held.remainingMinor();
 		CancelledBooking cancelled = bookings
-				.cancelConfirmed(claim.bookingId().value(), cancelledAt, remainingMinor, RefundReason.VENUE_CHANGE,
-						remainingMinor)
+				.cancelConfirmed(claim.bookingId().value(), cancelledAt, refundMinor, RefundReason.VENUE_CHANGE,
+						held.remainingMinor())
 				.orElseThrow(() -> lostUnderLock(claim, "confirmed"));
 		releaseHeld(cancelled.id(), cancelled.setId(), cancelled.bookingDate(), cancelled.lastDate());
+		if (held.everyDayRefunded()) {
+			return new ReceiptOutcome(claim.bookingId(), claim.bookingDate(), claim.from(), ReceiptOutcomeKind.NOTHING_LEFT,
+					0L, claim.currency(), 0L);
+		}
 		events.publishEvent(new BookingCancelled(claim.bookingId(), venueId, cancelled.setId(),
-				cancelled.bookingDate(), remainingMinor, claim.currency(), RefundReason.VENUE_CHANGE,
+				cancelled.bookingDate(), refundMinor, claim.currency(), RefundReason.VENUE_CHANGE,
 				cancelled.lastDate()));
 		return new ReceiptOutcome(claim.bookingId(), claim.bookingDate(), claim.from(), ReceiptOutcomeKind.REFUND,
-				remainingMinor, claim.currency(), feeMinor);
+				refundMinor, claim.currency(), feeMinor);
 	}
 
 	/**
@@ -223,12 +252,11 @@ class RemodelClaimsService implements RemodelClaims {
 	}
 
 	/**
-	 * Claim every day the booking still holds, read under its row lock, on the candidate before releasing the old
-	 * rows (#2; a venue-released day is neither claimed nor freed, ADR-0027, #1281), then re-seat the booking. A day
-	 * not won under the venue lock throws, and the commit's transaction moves nothing.
+	 * Claim every day the booking still holds, read under the row lock {@link #apply} took, on the candidate before
+	 * releasing the old rows (#2; a venue-released day is neither claimed nor freed, ADR-0027, #1281), then re-seat
+	 * the booking. A day not won under the venue lock throws, and the commit's transaction moves nothing.
 	 */
 	private ReceiptMove applyMove(VenueId venueId, RemodelClaim claim, RemodelOutcome.Move move, Instant movedAt) {
-		bookings.lockById(claim.bookingId().value());
 		List<LocalDate> held = ServiceDays.held(claim.bookingDate(), claim.lastDate(),
 				bookings.findReleasedDays(claim.bookingId().value()));
 		for (LocalDate day : held) {
@@ -358,6 +386,9 @@ class RemodelClaimsService implements RemodelClaims {
 		}
 		if (zone == RemodelZone.FROZEN) {
 			return new RemodelOutcome.Blocked(BlockReason.FROZEN);
+		}
+		if (claim.status() == BookingStatus.CONFIRMED && claim.everyDayRefunded()) {
+			return RemodelOutcome.NothingLeft.NOTHING_LEFT;
 		}
 		List<LocalDate> span = ServiceDays.between(claim.bookingDate(), claim.lastDate());
 		Optional<MoveRanking.Move> move = MoveRanking.pick(from, claim.bookingDate(), pools.freeThroughout(span));

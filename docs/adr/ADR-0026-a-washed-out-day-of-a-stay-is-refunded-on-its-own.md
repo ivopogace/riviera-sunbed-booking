@@ -2,7 +2,8 @@
 
 - **Status:** Accepted — implemented by the slice for issue #1210 (epic #1096, design D5 option A,
   decided 2026-09-24). *Amended 2026-09-29 by ADR-0027:* §3 holds for weather only; the venue's own
-  day refund (reason `VENUE`) releases its day. §7 holds for that reason too.
+  day refund (reason `VENUE`) releases its day. §7 holds for that reason too. *Amended 2026-10-02 by the
+  slice for issue #1300:* §8, the remodel's complement to §7.
 - **Date:** 2026-09-28
 - **Relates to:** `docs/architecture/multi-day-stays.md` § D5, D8, ADR-0005 (the server-side refund
   it leaves whole for the remainder), ADR-0021 (the ledger's sign convention it extends), ADR-0024 (a
@@ -74,6 +75,14 @@ one-day stretch of a stitched stay is a booking of its own or a day of the stay.
    row (`FOR UPDATE` before the write, #1298), so the running sum never loses a concurrent refund.
 7. **A stay whose every day ends up refunded stays live**, with nothing left to refund: no cancel, no
    release, no cancellation mail; the sweep resolves it as any stay. Rare, and the honest state.
+8. **A remodel ends such a booking quietly, as *nothing left*** (*added 2026-10-02, issue #1300*). A
+   `CONFIRMED` claim with no unrefunded day, outside the frozen zone, is classified *nothing left* before
+   the move search, move-only included, so it never takes a candidate; a frozen one stays kept. The commit
+   ends it with the guarded `CONFIRMED → CANCELLED` (`VENUE_CHANGE`, refund 0) under its row lock, frees each
+   day it still holds once (#2) and writes a `NOTHING_LEFT` receipt line at amount and fee 0 (V75), which is
+   the audit trail: no `BookingCancelled`, so no mail (in §7's spirit), no ledger entry (#9), no refund or
+   void. The move and refund legs decide under the same lock, so a day refunded after classification
+   settles the same way. Keyed on "no unrefunded day", never on a zero remainder: a €0-share day is still the guest's.
 
 ## Consequences
 
@@ -88,6 +97,11 @@ one-day stretch of a stitched stay is a booking of its own or a day of the stay.
   closes the difference, so the ledger never carries a stray cent for a booking reversed whole.
 
 ## Rejected alternatives
+
+- **A remodel skipping a booking with nothing left** (§8) — the layout write's live probe still sees a
+  `CONFIRMED` booking on the set and refuses the save until the sweep closes it, and its weather-refunded
+  days stay held on a set being removed. Treating it as an ordinary claim refunds €0 with a fee quoted, or
+  moves it, taking a candidate from a real guest and mailing them about days they don't hold.
 
 - **Cancelling the stay for the storm** (the one-day rule applied to a span) — refunds days the venue
   still serves and takes days the guest still wants.

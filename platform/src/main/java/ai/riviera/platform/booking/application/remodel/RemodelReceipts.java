@@ -27,7 +27,7 @@ public interface RemodelReceipts {
 	/** The most recent move of a booking, or empty when no remodel ever moved it. */
 	Optional<ReceiptMove> latestMoveOf(BookingId bookingId);
 
-	/** Whether a remodel commit ended this booking — refunded, released or declined it; a kept booking was not. */
+	/** Whether a remodel commit ended this booking — refunded, released, declined or nothing left; a kept one was not. */
 	boolean endedByRemodel(BookingId bookingId);
 
 	/** Whether a remodel commit released this booking unpaid; a refund line, however small, is not a release (#1291). */

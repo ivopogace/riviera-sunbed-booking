@@ -82,8 +82,8 @@ class RemodelReleasePaymentListenerTest {
 	}
 
 	/**
-	 * A paid stay whose every day the venue or the weather had refunded ends in a remodel refund of the nothing
-	 * left (#1291): the same {@code VENUE_CHANGE}, zero-refund shape as a release, but it collected and was repaid.
+	 * A moved guest's free exit of a paid booking whose every day was already refunded (#1291): the same
+	 * {@code VENUE_CHANGE}, zero-refund shape as a release, but it collected and was repaid.
 	 */
 	@Test
 	void leavesAPaidBookingRefundedToNothingAlone() {

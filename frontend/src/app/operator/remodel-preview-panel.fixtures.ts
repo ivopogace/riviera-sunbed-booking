@@ -47,6 +47,14 @@ export const FULL_PREVIEW: RemodelPreview = {
       kind: 'DECLINE',
     },
   ],
+  ended: [
+    {
+      bookingId: 14,
+      bookingDate: '2026-09-24',
+      amount: { minorUnits: 0, currency: 'EUR' },
+      from: { setId: 1, rowLabel: 'A', positionNo: 3 },
+    },
+  ],
   staffHolds: [{ set: { setId: 2, rowLabel: 'A', positionNo: 2 }, dates: ['2026-09-15'] }],
   blocks: [
     {
@@ -77,6 +85,7 @@ export const MOVES_ONLY_PREVIEW: RemodelPreview = {
   ...FULL_PREVIEW,
   refunds: [],
   releases: [],
+  ended: [],
   staffHolds: [],
   blocks: [],
   keep: [],
@@ -89,6 +98,7 @@ export const BLOCKS_ONLY_PREVIEW: RemodelPreview = {
   moves: [],
   refunds: [],
   releases: [],
+  ended: [],
   staffHolds: [],
   previewToken: 'v1.blocks',
   feeTotal: { minorUnits: 0, currency: 'EUR' },
@@ -105,8 +115,22 @@ export const HELD_PREVIEW: RemodelPreview = {
 /** A picture the commit applies that also refunds a guest — so it needs the typed confirmation. */
 export const REFUNDING_PREVIEW: RemodelPreview = {
   ...FULL_PREVIEW,
+  ended: [],
   staffHolds: [],
   blocks: [],
   keep: [],
   previewToken: 'v1.refunds',
+};
+
+/** A picture the commit applies whose only claim has nothing left to refund — no confirmation, no fee (#1300). */
+export const NOTHING_LEFT_PREVIEW: RemodelPreview = {
+  ...FULL_PREVIEW,
+  moves: [],
+  refunds: [],
+  releases: [],
+  staffHolds: [],
+  blocks: [],
+  keep: [],
+  previewToken: 'v1.ended',
+  feeTotal: { minorUnits: 0, currency: 'EUR' },
 };
