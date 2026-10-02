@@ -1305,7 +1305,8 @@ The SPA rules whose TSDoc points here; structure is `riviera-frontend`'s, stylin
 The mechanism and edge cases behind `CLAUDE.md`'s one-line invariants; its numbering never changes.
 
 1. **No JPA/Hibernate — JDBC only.** No `spring-boot-starter-data-jpa`, no `@Entity`; adapters are
-   hand-written `JdbcClient` SQL, with no `org.springframework.data.*` import in `src/main/java`.
+   hand-written `JdbcClient` SQL, and no production class names `org.springframework.data`
+   (`JdbcOnlyArchitectureTests`).
    The Spring Data JDBC starter is on the classpath, but nothing has earned its aggregate mapping:
    only a cluster of rows loaded, mutated and saved together by one writer would, with the why stated.
 2. **Availability is the single source of truth, per `(set, date)`.** Every channel (online claim,
@@ -1403,8 +1404,9 @@ them form the *structural net* is `riviera-modulith` § *The structural net*'s c
 | Only a module registered in `@Modulithic(sharedModules)` has types directly in its module root | `PackageShapeArchitectureTests` (module-root rule) |
 | Every top-level `api`/`spi`/`vocabulary`/`events` package carries `@NamedInterface` of its own simple name | `PackageShapeArchitectureTests` (named-interface declaration rule) |
 | Every module declares `allowedDependencies`; none is left at the allow-all default | `PackageShapeArchitectureTests` (declared-grants rule; whether each grant is used is not checked here) |
-| No JPA/Hibernate on the classpath — invariant #1 | `JdbcOnlyArchitectureTests` |
+| No JPA/Hibernate on the classpath — invariant #1 | `JdbcOnlyArchitectureTests` (classpath probes; the Hibernate auto-configuration name is Boot 4's and pinned to the running Boot major) |
 | No class in any `application/` package names `org.springframework.jdbc`, `java.sql` or `javax.sql`: SQL sits in `adapter/out` behind a port (ADR-0007) | `JdbcOnlyArchitectureTests` (application-JDBC rule) |
+| No production class names `org.springframework.data`: adapters are hand-written `JdbcClient` SQL, never a Spring Data repository or aggregate mapping (ADR-0001) | `JdbcOnlyArchitectureTests` (Spring Data rule; fixture `ai.riviera.springdatafixture`) |
 | A `domain/` class names only the JDK and published ids, values and rules (ADR-0018 §4) | `DomainPurityArchitectureTests` |
 | The booking transition table and the guarded `UPDATE`s admit the same statuses (ADR-0018 §1) | `JdbcBookingTransitionTableIT` (every transition × every status; Docker-gated, so it fails the build only where Docker runs — CI) |
 | The view's `cancellable` and the guest cancel's refusal agree with `CANCEL_BY_GUEST`, status by status (ADR-0018 §1) | `ViewBookingServiceTest.onlyAConfirmedBookingIsCancellableWhileTheWindowIsOpen`, `CancelBookingServiceTest` (against the literal `BookingTransitionTest` pins) |
