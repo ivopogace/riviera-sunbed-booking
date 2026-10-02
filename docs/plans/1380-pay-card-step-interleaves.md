@@ -19,18 +19,18 @@ about the card after a thrown `confirm()`.
 *Seam:* the `BookingPay` component, driven through `StripePaymentGateway` test doubles and
 `GET /api/bookings/{code}` (`HttpTestingController`).
 
-- [ ] **AC-1:** Given a failed confirm whose re-check is in flight and a deferred second confirm,
+- [x] **AC-1:** Given a failed confirm whose re-check is in flight and a deferred second confirm,
   when the re-check answers `CONFIRMED` and then the second confirm resolves cleanly, then the page
   stays `confirmed` and no poll starts; with `CANCELLED` it stays terminal. *Pinned by:*
   `booking-pay.spec.ts` "a late clean confirm cannot …" (both variants).
-- [ ] **AC-2:** Given a failed mount whose re-check is in flight and a deferred re-mount, when the
+- [x] **AC-2:** Given a failed mount whose re-check is in flight and a deferred re-mount, when the
   re-check answers `CONFIRMED` (or `CANCELLED`) and then the mount resolves, then the page is
   `confirmed` (or terminal), never `ready`. *Pinned by:* `booking-pay.spec.ts` "a re-check answer
   during a re-mount …" (both variants).
-- [ ] **AC-3:** Given `confirm()` throws, then the error lead is neutral (no "wasn't charged");
+- [x] **AC-3:** Given `confirm()` throws, then the error lead is neutral (no "wasn't charged");
   given `confirm()` resolves `{ error }`, then the lead still says "Your card wasn't charged".
   *Pinned by:* `booking-pay.spec.ts` thrown-confirm and decline lead specs.
-- [ ] **AC-4:** The existing interleave specs stay green.
+- [x] **AC-4:** The existing interleave specs stay green.
 
 ## Non-goals
 
@@ -49,4 +49,4 @@ No money moves server-side; the client never confirms (#8).
 
 ## Execution status
 
-- [ ] Phase 1: red specs for AC-1..3, then the fix, lint/format/test/e2e:a11y green.
+- [x] Phase 1: red specs for AC-1..3 (5 red on main, decline pin green), fix, lint/format/test green.

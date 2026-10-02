@@ -105,6 +105,28 @@ class DeferredConfirmGateway extends StripePaymentGateway {
   }
 }
 
+/** A gateway whose first mount fails and whose later mounts resolve only when the test says so. */
+class DeferredRemountGateway extends StripePaymentGateway {
+  private resolveMount?: () => void;
+
+  override mountPaymentElement(host: HTMLElement): Promise<StripeCheckout> {
+    if (!this.resolveMount) {
+      this.resolveMount = () => undefined;
+      return Promise.reject(new Error('Stripe.js failed to load.'));
+    }
+    return new Promise<StripeCheckout>((resolve) => {
+      this.resolveMount = () => {
+        host.appendChild(document.createElement('div'));
+        resolve({ confirm: () => Promise.resolve({}) });
+      };
+    });
+  }
+
+  finishMount(): void {
+    this.resolveMount?.();
+  }
+}
+
 interface PayProbe {
   state(): string;
   errorMessage(): string | undefined;
@@ -486,5 +508,121 @@ describe('BookingPay', () => {
     } finally {
       freezeClock();
     }
+  });
+  it('a late clean confirm cannot pull a page the re-check confirmed back to processing (#1380)', async () => {
+    const gateway = new DeferredConfirmGateway();
+    const { comp, httpMock } = await setup(gateway);
+    vi.useFakeTimers();
+    try {
+      const firstPay = comp.pay();
+      gateway.resolveNextConfirm({ error: 'Your card was declined.' });
+      await firstPay; // error state; the re-check is now in flight
+
+      const secondPay = comp.pay(); // Try again, e.g. a slow 3DS challenge
+      httpMock.expectOne(STATUS_URL).flush({ ...DETAIL, status: 'CONFIRMED' });
+      expect(comp.state()).toBe('confirmed');
+
+      gateway.resolveNextConfirm({});
+      await secondPay;
+      await vi.advanceTimersByTimeAsync(0);
+
+      expect(comp.state()).toBe('confirmed');
+      httpMock.verify(); // no poll started
+    } finally {
+      freezeClock();
+    }
+  });
+
+  it('a late clean confirm cannot revive a page the re-check made terminal (#1380)', async () => {
+    const gateway = new DeferredConfirmGateway();
+    const { comp, httpMock } = await setup(gateway);
+    vi.useFakeTimers();
+    try {
+      const firstPay = comp.pay();
+      gateway.resolveNextConfirm({ error: 'Your card was declined.' });
+      await firstPay;
+
+      const secondPay = comp.pay();
+      httpMock.expectOne(STATUS_URL).flush({ ...DETAIL, status: 'CANCELLED' });
+      expect(comp.terminalError()).toBe(true);
+
+      gateway.resolveNextConfirm({});
+      await secondPay;
+      await vi.advanceTimersByTimeAsync(0);
+
+      expect(comp.state()).toBe('error');
+      expect(comp.terminalError()).toBe(true);
+      httpMock.verify();
+    } finally {
+      freezeClock();
+    }
+  });
+
+  it('a re-check CONFIRMED during a re-mount is adopted, and the late mount keeps it (#1380)', async () => {
+    const gateway = new DeferredRemountGateway();
+    const { comp, httpMock } = await setup(gateway); // mount failed; re-check in flight
+
+    const retry = comp.pay(); // Try again re-mounts
+    expect(comp.state()).toBe('mounting');
+    httpMock.expectOne(STATUS_URL).flush({ ...DETAIL, status: 'CONFIRMED' });
+    expect(comp.state()).toBe('confirmed');
+
+    gateway.finishMount();
+    await retry;
+
+    expect(comp.state()).toBe('confirmed');
+    expect(comp.errorMessage()).toBeUndefined();
+    httpMock.verify();
+  });
+
+  it('a terminal re-check answer during a re-mount is adopted, and the late mount keeps it (#1380)', async () => {
+    const gateway = new DeferredRemountGateway();
+    const { comp, fixture, httpMock } = await setup(gateway);
+
+    const retry = comp.pay();
+    httpMock.expectOne(STATUS_URL).flush({ ...DETAIL, status: 'CANCELLED' });
+    expect(comp.state()).toBe('error');
+    expect(comp.terminalError()).toBe(true);
+
+    gateway.finishMount();
+    await retry;
+    fixture.detectChanges();
+
+    expect(comp.state()).toBe('error');
+    expect(comp.terminalError()).toBe(true);
+    const host = fixture.nativeElement as HTMLElement;
+    expect(host.querySelector('[data-testid="pay-button"]')).toBeNull();
+    expect(host.querySelector('[data-testid="booking-status-link"]')).not.toBeNull();
+    httpMock.verify();
+  });
+
+  it('a thrown confirm makes no claim about the card (#1380)', async () => {
+    const gateway = new FakeGateway();
+    gateway.confirmRejects = new Error('IntegrationError: return_url is required.');
+    const { comp, fixture, httpMock } = await setup(gateway);
+
+    await comp.pay();
+    httpMock.expectOne(STATUS_URL).flush(DETAIL);
+    fixture.detectChanges();
+
+    const text = (fixture.nativeElement as HTMLElement).textContent;
+    expect(text).not.toContain('wasn’t charged');
+    expect(text).toContain('We couldn’t finish the payment.');
+    httpMock.verify();
+  });
+
+  it('a declined card still says the card was not charged (#1380)', async () => {
+    const gateway = new FakeGateway();
+    gateway.confirmResult = { error: 'Your card was declined.' };
+    const { comp, fixture, httpMock } = await setup(gateway);
+
+    await comp.pay();
+    httpMock.expectOne(STATUS_URL).flush(DETAIL);
+    fixture.detectChanges();
+
+    expect((fixture.nativeElement as HTMLElement).textContent).toContain(
+      'Your card wasn’t charged.',
+    );
+    httpMock.verify();
   });
 });
