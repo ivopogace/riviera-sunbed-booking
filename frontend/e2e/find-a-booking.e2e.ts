@@ -198,3 +198,51 @@ test.describe('phone', () => {
     await expect(page.getByTestId('menu-toggle')).toBeFocused();
   });
 });
+
+test("a slow booking's late reply never repaints the booking found in its place (#1289)", async ({
+  page,
+}) => {
+  const SLOW = 'AAAAAAAAAA';
+  const FOUND = 'BBBBBBBBBB';
+  let releaseSlow!: () => void;
+  const slowHeld = new Promise<void>((resolve) => (releaseSlow = resolve));
+  let slowAnswered!: () => void;
+  const slowDone = new Promise<void>((resolve) => (slowAnswered = resolve));
+  await page.route(new RegExp(`/api/bookings/${SLOW}(\\?.*)?$`), async (route) => {
+    await slowHeld;
+    await route.fulfill({ json: { ...DETAIL, code: SLOW, venueName: 'Venue Alpha' } });
+    slowAnswered();
+  });
+  await page.route(new RegExp(`/api/bookings/${FOUND}(\\?.*)?$`), (route) =>
+    route.fulfill({ json: { ...DETAIL, code: FOUND, venueName: 'Venue Beta' } }),
+  );
+  const cancelled: string[] = [];
+  await page.route(/\/api\/bookings\/[A-Z0-9]+\/cancel$/, (route) => {
+    cancelled.push(new URL(route.request().url()).pathname);
+    return route.fulfill({
+      json: {
+        code: FOUND,
+        status: 'CANCELLED',
+        refund: { minorUnits: 4500, currency: 'EUR' },
+        tier: 'FULL',
+      },
+    });
+  });
+
+  await page.goto(`/booking/${SLOW}`);
+  await expect(page.getByTestId('bv-title')).toContainText('Loading your booking');
+  await openFindBooking(page);
+  await page.getByTestId('find-code').fill(FOUND);
+  await page.getByTestId('find-submit').click();
+  await expect(page.getByTestId('booking-code')).toContainText(FOUND);
+
+  releaseSlow();
+  await slowDone;
+
+  await expect(page.getByTestId('booking-code')).toContainText(FOUND);
+  await expect(page.getByText('Venue Alpha')).toHaveCount(0);
+  await page.getByTestId('start-cancel').click();
+  await page.getByTestId('confirm-cancel').click();
+  await expect(page.getByTestId('cancel-result')).toContainText('refunded');
+  expect(cancelled).toEqual([`/api/bookings/${FOUND}/cancel`]);
+});
