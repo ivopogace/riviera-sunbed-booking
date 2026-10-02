@@ -60,6 +60,14 @@ final class RateLimitFilter extends OncePerRequestFilter {
 			{"type":"about:blank","title":"Too Many Requests","status":429,\
 			"detail":"Too many requests.","code":"RATE_LIMITED"}""";
 
+	/** The {@link #RATE_LIMITED_BODY} shape for a login body past {@link #MAX_CACHED_BODY_BYTES}. */
+	private static final String BODY_TOO_LARGE_BODY = """
+			{"type":"about:blank","title":"Content Too Large","status":413,\
+			"detail":"The request body is too large.","code":"PAYLOAD_TOO_LARGE"}""";
+
+	/** 413 by value, as in {@code ApiErrorHandler}: the {@code HttpStatus} constant is mid-rename. */
+	private static final int BODY_TOO_LARGE_STATUS = 413;
+
 	// Mirrors the SecurityConfig matchers for the public booking and stay endpoints.
 	private static final String CREATE_PATH = "/api/bookings";
 	/** A stitched stay's create: as {@link #CREATE_PATH}, no code to key on, per-IP only. */
@@ -105,9 +113,8 @@ final class RateLimitFilter extends OncePerRequestFilter {
 	private static final String CHALLENGE_PATH = "/api/auth/challenge";
 
 	/**
-	 * Upper bound on a login body buffered to read the identity: a real one is ~60 bytes, so this is vast
-	 * headroom while keeping the in-filter buffer bounded. A larger (or unknown-length) body is not
-	 * buffered — the per-IP budget still applies and the controller rejects it.
+	 * Upper bound on a login body, read here whatever Content-Length declares: a real one is ~60 bytes. A
+	 * larger body is refused with {@code 413}, so no login reaches authentication unbudgeted (#1288).
 	 */
 	private static final int MAX_CACHED_BODY_BYTES = 8 * 1024;
 
@@ -383,16 +390,14 @@ final class RateLimitFilter extends OncePerRequestFilter {
 
 	/**
 	 * The per-identity login budget: only a failed authentication ({@code 401}) net-spends a token, so a
-	 * successful login never does. An unbufferable body or absent identity leaves the per-IP budget alone.
+	 * successful login never does. A body past the cap is refused unspent; an absent identity passes unbudgeted.
 	 */
 	private void throttlePerIdentity(LoginEndpoint login, HttpServletRequest request,
 			HttpServletResponse response, FilterChain chain, String ip, Instant now)
 			throws ServletException, IOException {
-		Optional<byte[]> buffered = cacheableBody(request);
+		Optional<byte[]> buffered = boundedBody(request);
 		if (buffered.isEmpty()) {
-			// Logged so the skip is observable in prod: only the per-IP budget applies here.
-			log.debug("Login body not buffered — per-username dimension skipped, from {}", ip);
-			chain.doFilter(request, response);
+			rejectBodyTooLarge(response, ip);
 			return;
 		}
 		byte[] body = buffered.get();
@@ -457,15 +462,15 @@ final class RateLimitFilter extends OncePerRequestFilter {
 	}
 
 	/**
-	 * The login body when its known Content-Length is within {@link #MAX_CACHED_BODY_BYTES}; otherwise
-	 * empty and the stream is left untouched for the controller, so only the per-IP budget bites.
+	 * The login body if it fits {@link #MAX_CACHED_BODY_BYTES}, else empty: a declared length past the cap
+	 * is refused unread, any other body (chunked included) is read to at most one byte beyond it.
 	 */
-	private static Optional<byte[]> cacheableBody(HttpServletRequest request) throws IOException {
-		long length = request.getContentLengthLong();
-		if (length < 0 || length > MAX_CACHED_BODY_BYTES) {
+	private static Optional<byte[]> boundedBody(HttpServletRequest request) throws IOException {
+		if (request.getContentLengthLong() > MAX_CACHED_BODY_BYTES) {
 			return Optional.empty();
 		}
-		return Optional.of(request.getInputStream().readAllBytes());
+		byte[] body = request.getInputStream().readNBytes(MAX_CACHED_BODY_BYTES + 1);
+		return body.length > MAX_CACHED_BODY_BYTES ? Optional.empty() : Optional.of(body);
 	}
 
 	/**
@@ -487,7 +492,7 @@ final class RateLimitFilter extends OncePerRequestFilter {
 	 * A request whose body is buffered in memory and served afresh on each {@code getInputStream()} /
 	 * {@code getReader()} call, so the identity read in this filter does not consume the single-use servlet
 	 * stream the downstream {@code @RequestBody} controller also needs. Wraps only the two login requests,
-	 * and only after their small body was already read into {@code body}.
+	 * and only after their body, within the cap, was already read into {@code body}.
 	 */
 	private static final class CachedBodyRequest extends HttpServletRequestWrapper {
 
@@ -537,11 +542,20 @@ final class RateLimitFilter extends OncePerRequestFilter {
 
 	private void reject(HttpServletResponse response, long retryAfterSeconds, String ip, String dimension)
 			throws IOException {
-		response.setStatus(HttpStatus.TOO_MANY_REQUESTS.value());
 		response.setHeader(HttpHeaders.RETRY_AFTER, Long.toString(retryAfterSeconds));
-		response.setContentType(MediaType.APPLICATION_PROBLEM_JSON_VALUE);
-		response.getWriter().write(RATE_LIMITED_BODY);
+		writeProblem(response, HttpStatus.TOO_MANY_REQUESTS.value(), RATE_LIMITED_BODY);
 		// IP is newline-sanitised by ClientIpResolver; the booking code is NEVER logged (invariant #7).
 		log.debug("Rate-limited request from {} on the {} dimension", ip, dimension);
+	}
+
+	private static void rejectBodyTooLarge(HttpServletResponse response, String ip) throws IOException {
+		writeProblem(response, BODY_TOO_LARGE_STATUS, BODY_TOO_LARGE_BODY);
+		log.debug("Login body over the {}-byte cap refused, from {}", MAX_CACHED_BODY_BYTES, ip);
+	}
+
+	private static void writeProblem(HttpServletResponse response, int status, String body) throws IOException {
+		response.setStatus(status);
+		response.setContentType(MediaType.APPLICATION_PROBLEM_JSON_VALUE);
+		response.getWriter().write(body);
 	}
 }

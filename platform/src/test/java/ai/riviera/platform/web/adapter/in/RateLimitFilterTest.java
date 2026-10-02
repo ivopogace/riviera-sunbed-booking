@@ -7,12 +7,15 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.context.annotation.Import;
+import org.springframework.http.HttpMethod;
 import org.springframework.http.MediaType;
+import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.test.context.TestPropertySource;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.ResultActions;
+import org.springframework.test.web.servlet.request.AbstractMockHttpServletRequestBuilder;
 
 import java.net.URI;
 import java.util.Optional;
@@ -27,6 +30,8 @@ import ch.qos.logback.classic.Level;
 import ch.qos.logback.classic.Logger;
 import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.core.read.ListAppender;
+
+import jakarta.servlet.ServletContext;
 
 import static ai.riviera.platform.WebSliceStubs.fromIp;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -753,15 +758,113 @@ class RateLimitFilterTest {
 		}
 	}
 
+	// ---- The login body is read to the 8 KiB cap whatever Content-Length says; past it, 413 (#1288) ----
+
+	private static final int LOGIN_BODY_CAP = 8 * 1024;
+
+	/** A login body of exactly {@code size} bytes: the JSON padded with trailing whitespace. */
+	private static String loginBodyOfSize(String field, String identity, int size) {
+		String json = "{\"%s\": \"%s\", \"password\": \"nope-nope\"}".formatted(field, identity);
+		return json + " ".repeat(size - json.length());
+	}
+
+	private ResultActions declaredLengthLogin(String path, String ip, String body) throws Exception {
+		return mvc.perform(post(path).with(fromIp(ip)).with(csrf())
+				.contentType(MediaType.APPLICATION_JSON).content(body));
+	}
+
+	private ResultActions chunkedLogin(String path, String ip, String body) throws Exception {
+		return mvc.perform(new ChunkedRequestBuilder(path).with(fromIp(ip)).with(csrf())
+				.header("Transfer-Encoding", "chunked")
+				.contentType(MediaType.APPLICATION_JSON).content(body));
+	}
+
+	private static void expectBodyTooLarge(ResultActions refused) throws Exception {
+		refused.andExpect(status().is(413))
+				.andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
+				.andExpect(jsonPath("$.code").value("PAYLOAD_TOO_LARGE"))
+				.andExpect(jsonPath("$.status").value(413));
+	}
+
 	@Test
-	void oversizedLoginBodySkipsIdentityBufferingButStillAuthenticates() throws Exception {
-		// A login body beyond the 8 KiB buffer cap is not read for an identity (per-IP still applies); the
-		// original, unwrapped stream reaches the controller, which authenticates it (401, empty stub store).
-		String hugePassword = "x".repeat(9000);
-		mvc.perform(post("/api/auth/operator/login").with(fromIp("10.26.0.1")).with(csrf())
-						.contentType(MediaType.APPLICATION_JSON)
-						.content("{\"username\": \"whoever\", \"password\": \"%s\"}".formatted(hugePassword)))
+	void oversizedOperatorLoginIsRefusedWith413AndSpendsNoIdentityToken() throws Exception {
+		String username = uniqueUsername();
+		for (int i = 1; i <= 3; i++) {
+			expectBodyTooLarge(declaredLengthLogin("/api/auth/operator/login", "10.40.0." + i,
+					loginBodyOfSize("username", username, 9000)));
+		}
+		// Never authenticated, so the identity's budget (cap 2) is whole: two failures, then the 429.
+		operatorLogin("10.40.0.4", username).andExpect(status().isUnauthorized());
+		operatorLogin("10.40.0.5", username).andExpect(status().isUnauthorized());
+		operatorLogin("10.40.0.6", username).andExpect(status().isTooManyRequests());
+	}
+
+	@Test
+	void oversizedCustomerLoginIsRefusedWith413() throws Exception {
+		expectBodyTooLarge(declaredLengthLogin("/api/auth/customer/login", "10.41.0.1",
+				loginBodyOfSize("email", uniqueEmail(), 9000)));
+	}
+
+	@Test
+	void aLoginBodyExactlyAtTheCapIsAuthenticatedAndOneByteOverIsRefused() throws Exception {
+		declaredLengthLogin("/api/auth/operator/login", "10.42.0.1",
+				loginBodyOfSize("username", uniqueUsername(), LOGIN_BODY_CAP))
 				.andExpect(status().isUnauthorized());
+		expectBodyTooLarge(declaredLengthLogin("/api/auth/operator/login", "10.42.0.2",
+				loginBodyOfSize("username", uniqueUsername(), LOGIN_BODY_CAP + 1)));
+	}
+
+	@Test
+	void aChunkedOperatorLoginUnderTheCapDrawsOnThePerUsernameBudget() throws Exception {
+		String body = loginBodyOfSize("username", uniqueUsername(), 200);
+		chunkedLogin("/api/auth/operator/login", "10.43.0.1", body).andExpect(status().isUnauthorized());
+		chunkedLogin("/api/auth/operator/login", "10.43.0.2", body).andExpect(status().isUnauthorized());
+		chunkedLogin("/api/auth/operator/login", "10.43.0.3", body)
+				.andExpect(status().isTooManyRequests())
+				.andExpect(jsonPath("$.code").value("RATE_LIMITED"));
+	}
+
+	@Test
+	void aChunkedCustomerLoginUnderTheCapDrawsOnThePerEmailBudget() throws Exception {
+		String body = loginBodyOfSize("email", uniqueEmail(), 200);
+		chunkedLogin("/api/auth/customer/login", "10.44.0.1", body).andExpect(status().isUnauthorized());
+		chunkedLogin("/api/auth/customer/login", "10.44.0.2", body).andExpect(status().isUnauthorized());
+		chunkedLogin("/api/auth/customer/login", "10.44.0.3", body)
+				.andExpect(status().isTooManyRequests())
+				.andExpect(jsonPath("$.code").value("RATE_LIMITED"));
+	}
+
+	@Test
+	void aChunkedLoginOverTheCapIsRefusedWith413OnBothEndpoints() throws Exception {
+		expectBodyTooLarge(chunkedLogin("/api/auth/operator/login", "10.45.0.1",
+				loginBodyOfSize("username", uniqueUsername(), 9000)));
+		expectBodyTooLarge(chunkedLogin("/api/auth/customer/login", "10.45.0.2",
+				loginBodyOfSize("email", uniqueEmail(), 9000)));
+	}
+
+	/** A POST whose request reports no Content-Length, as a chunked body does. */
+	private static final class ChunkedRequestBuilder
+			extends AbstractMockHttpServletRequestBuilder<ChunkedRequestBuilder> {
+
+		ChunkedRequestBuilder(String path) {
+			super(HttpMethod.POST);
+			uri(path);
+		}
+
+		@Override
+		protected MockHttpServletRequest createServletRequest(ServletContext servletContext) {
+			return new MockHttpServletRequest(servletContext) {
+				@Override
+				public int getContentLength() {
+					return -1;
+				}
+
+				@Override
+				public long getContentLengthLong() {
+					return -1;
+				}
+			};
+		}
 	}
 
 	@Test
