@@ -1,5 +1,8 @@
 package ai.riviera.platform;
 
+import ai.riviera.platform.web.adapter.in.SecurityConfig;
+import ai.riviera.platform.web.adapter.in.WebCorsConfig;
+
 import java.net.URI;
 import java.util.Optional;
 import java.util.function.Supplier;
