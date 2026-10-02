@@ -226,8 +226,8 @@ context: it owns no aggregate, publishes no `api`/`vocabulary`/`events`/`spi` su
 consumers reference its types directly), and its classes sit flat at the module root — so it
 matches **neither** the thin nor the full template, deliberately. The decision is the *shape*, not
 the arity; the admission bar that governs what may join is `RESPONSIBILITIES.md` §`shared` and the
-`shared` `package-info`. `PackageShapeArchitectureTests` permits this because it skips types
-sitting at a module root — an intentional allowance.
+`shared` `package-info`. `PackageShapeArchitectureTests` permits this because it exempts the modules
+registered in `@Modulithic(sharedModules)` from its module-root rule — an intentional allowance.
 
 **The rule this restores:** modules depend on `shared`, the root depends on modules, and
 **nothing depends on the root**.
@@ -245,6 +245,9 @@ mechanical rule; OPEN is reserved for technical shared code, and `shared` is the
 *Amended 2026-10-02 (PR #1351, #1329):* no module is `Type.OPEN` any more — `shared` is CLOSED and
 registered in `@Modulithic(sharedModules)` (see the 2026-10-01 note above). "Do not copy this
 shape" stands: the flat, surface-less shape is `shared`'s alone.
+*Amended 2026-10-02 (#1389):* `PackageShapeArchitectureTests` no longer skips module-root types
+wholesale: only a module registered in `@Modulithic(sharedModules)` may hold them, so no unregistered
+module can take the flat shape unnoticed.
 
 ## Note — why some id records are copied and `SetId` is not (2026-09-04)
 
