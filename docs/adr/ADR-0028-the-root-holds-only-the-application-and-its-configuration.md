@@ -127,6 +127,9 @@ architecturally impossible").
      `venue.spi`, and `remodel` is granted `venue::spi`.
    - **Dependencies:** `venue` (`api`, `vocabulary`, `spi`), `booking` (`api` + `vocabulary`),
      `operator::vocabulary` and `shared`.
+     *Amended 2026-10-02 (PR #1347, #1331):* also `operator::api`. `CurrentOperator` dissolved into
+     `operator::api.OperatorDirectory`, which `remodel` now calls for its ownership check
+     (`remodel/package-info.java`; RESPONSIBILITIES.md § `remodel`).
    - **Its shape follows `itinerary`,** which owns no table either.
    - **What carries over from ADR-0020:** Decision 3 (each port asserts ownership itself) and
      Decision 4 (the composition assembles, it does not decide) carry over unchanged. Decision 2's
@@ -183,6 +186,9 @@ architecturally impossible").
    - **What it keeps:** `ApiProblem` and `InvalidApiRequestException` (moving them to `web` would
      close `web` → `auth` → `notification` → `booking` → `web`), plus `ShutdownBudget`,
      `ResubmissionThrottle` and `ResubmissionOutcome` (no owning module, several users).
+     *Amended 2026-10-02 (PR #1350, #1340):* also `FailedPublicationRetry`, the scheduled re-drive of
+     failed event publications, admitted on ownership: its bounds are one platform budget that no
+     single module owns (RESPONSIBILITIES.md § `shared`).
 
 8. **The categories.**
    - `remodel` joins the CLAUDE.md module table beside `itinerary`, owning no table.
