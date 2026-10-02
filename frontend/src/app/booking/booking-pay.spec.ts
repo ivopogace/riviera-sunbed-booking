@@ -64,20 +64,28 @@ const DETAIL: BookingDetail = {
 const CREATE_URL = `${environment.apiBaseUrl}/api/bookings`;
 const STATUS_URL = `${environment.apiBaseUrl}/api/bookings/WXYZ345678`;
 
-/** A fake gateway: no real Stripe.js. `confirmResult` drives success vs decline; `failMount`
- *  simulates a mount/config failure. `mounted` records whether the element was mounted. */
+/** A fake gateway: no real Stripe.js. `confirmResult` drives success vs decline, `confirmRejects`
+ *  a thrown confirm; `failMount` simulates a mount/config failure. `mountCalls` counts attempts. */
 class FakeGateway extends StripePaymentGateway {
   confirmResult: { error?: string } = {};
+  confirmRejects?: Error;
   failMount?: string;
   mounted = false;
+  mountCalls = 0;
 
   override mountPaymentElement(host: HTMLElement): Promise<StripeCheckout> {
+    this.mountCalls++;
     if (this.failMount) {
       return Promise.reject(new Error(this.failMount));
     }
     this.mounted = true;
     host.appendChild(document.createElement('div')); // stand-in for the Stripe iframe
-    return Promise.resolve({ confirm: () => Promise.resolve(this.confirmResult) });
+    return Promise.resolve({
+      confirm: () =>
+        this.confirmRejects
+          ? Promise.reject(this.confirmRejects)
+          : Promise.resolve(this.confirmResult),
+    });
   }
 }
 
@@ -194,6 +202,72 @@ describe('BookingPay', () => {
     expect(comp.state()).toBe('error');
     expect(comp.errorMessage()).toMatch(/publishable key/i);
     // The failure triggers ONE status re-check; still AWAITING_PAYMENT → retry in place.
+    httpMock.expectOne(STATUS_URL).flush(DETAIL);
+    expect(comp.terminalError()).toBe(false);
+    httpMock.verify();
+  });
+
+  it('Try again after a mount failure re-mounts the element and reaches ready (#1286)', async () => {
+    const gateway = new FakeGateway();
+    gateway.failMount = 'Stripe.js failed to load.';
+    const { comp, fixture, httpMock } = await setup(gateway);
+    httpMock.expectOne(STATUS_URL).flush(DETAIL); // still payable → retry in place
+    fixture.detectChanges();
+    const host = fixture.nativeElement as HTMLElement;
+    const button = host.querySelector<HTMLButtonElement>('[data-testid="pay-button"]')!;
+    expect(button.textContent).toContain('Try again');
+
+    gateway.failMount = undefined; // the network came back
+    button.click();
+    await fixture.whenStable();
+
+    expect(gateway.mountCalls).toBe(2);
+    expect(comp.state()).toBe('ready');
+    expect(comp.errorMessage()).toBeUndefined();
+    // The same button stays in the DOM through the re-mount, so focus is never stranded.
+    expect(host.querySelector('[data-testid="pay-button"]')).toBe(button);
+    expect(button.textContent).toContain('Pay');
+    httpMock.verify();
+  });
+
+  it('a re-mount that fails again returns to the retryable error state (#1286)', async () => {
+    const gateway = new FakeGateway();
+    gateway.failMount = 'Stripe.js failed to load.';
+    const { comp, fixture, httpMock } = await setup(gateway);
+    httpMock.expectOne(STATUS_URL).flush(DETAIL);
+    fixture.detectChanges();
+
+    gateway.failMount = 'Still offline.';
+    (fixture.nativeElement as HTMLElement)
+      .querySelector<HTMLButtonElement>('[data-testid="pay-button"]')!
+      .click();
+    await fixture.whenStable();
+
+    expect(gateway.mountCalls).toBe(2);
+    expect(comp.state()).toBe('error');
+    expect(comp.errorMessage()).toBe('Still offline.');
+    httpMock.expectOne(STATUS_URL).flush(DETAIL);
+    expect(comp.terminalError()).toBe(false);
+    httpMock.verify();
+  });
+
+  it('a rejected confirm clears the busy button and shows a retryable error (#1286)', async () => {
+    const gateway = new FakeGateway();
+    gateway.confirmRejects = new Error('IntegrationError: return_url is required.');
+    const { comp, fixture, httpMock } = await setup(gateway);
+
+    await comp.pay();
+    fixture.detectChanges();
+
+    const host = fixture.nativeElement as HTMLElement;
+    const button = host.querySelector<HTMLButtonElement>('[data-testid="pay-button"]')!;
+    expect(button.getAttribute('aria-disabled')).toBeNull();
+    expect(button.textContent).toContain('Try again');
+    expect(comp.state()).toBe('error');
+    expect(host.querySelector('[data-testid="pay-error"]')?.textContent).toMatch(
+      /couldn.t be completed/i,
+    );
+    // One server re-check, never a poll: the client's failure is not the payment's verdict (#8).
     httpMock.expectOne(STATUS_URL).flush(DETAIL);
     expect(comp.terminalError()).toBe(false);
     httpMock.verify();
