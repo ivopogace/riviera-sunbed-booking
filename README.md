@@ -69,14 +69,8 @@ hotspot, ≥80% new-code coverage**.
 ## The system in one picture
 
 The context modules of `CLAUDE.md`'s table collaborate via **domain events** (state
-changes, id-based payloads) and **`api/` ports** (queries):
-
-`venue` · `availability` · `booking` · `payment` · `payout` · `customer` ·
-`operator` · `review` · `notification` · `itinerary` (the stay read model over
-`venue::api` + `availability::api`)
-
-…plus the non-context modules: `shared`, a Shared Kernel of edge/technical types, and the
-closed ADR-0017 mechanisms `challenge` (proof of work) and `audit` (the admin audit trail).
+changes, id-based payloads) and **`api/` ports** (queries). `CLAUDE.md` § *Modules* is the module
+census: that table, plus the `shared` kernel and the closed non-context modules listed under it.
 
 The spine flow: reserving a set **claims it synchronously** through `availability`'s
 `AvailabilityClaim` port (an atomic per-`(set, date)` claim — `availability` has no
