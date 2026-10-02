@@ -708,9 +708,9 @@ A missing row is erased: an issue stores and mails nothing, a redemption redeems
 to a fresh account and takes over an identity left on an erased one. Two issues serialize, so one reset link is
 live, and a reset retires the rest; a first sign-in that loses its subject deletes the account it created.
 
-**Only the retention sweep's entry reads carry a query timeout** (its candidate read, `booking`'s
-`GuestBookingHistory` probe): they run before any write, so a timeout costs one tick. My scrubs and
-`booking`'s `ReviewErasure` reads stay on the shared, unbounded client — inside the erasure's one
+**Only the retention sweep's reads carry a query timeout** (its candidate read, `booking`'s
+`GuestBookingHistory` probe, once per page of the walk): a timeout rolls back the run's one transaction,
+so it costs one tick. My scrubs and `booking`'s `ReviewErasure` reads stay on the shared, unbounded client — inside the erasure's one
 transaction, on the request path too, a timeout fails the whole erasure, and a slow one beats that.
 
 **Not My Job:**

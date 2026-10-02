@@ -41,11 +41,11 @@ public interface AccountErasureStore {
 	List<CustomerId> eraseGuestByEmail(String normalizedEmail);
 
 	/**
-	 * Retention-sweep candidates: live guest rows updated before {@code olderThan} whose email no live
-	 * {@code customer_account} claims, at most {@code limit}, ordered by id. Not the third gate: the
-	 * caller must still drop guests with a recent booking via {@code customer.spi.GuestBookingHistory}.
+	 * Retention-sweep candidates: live guest rows with an id above {@code after}, updated before {@code olderThan},
+	 * whose email no live {@code customer_account} claims; at most {@code limit}, by id. Not the third gate: the
+	 * caller still drops guests with a recent booking via {@code customer.spi.GuestBookingHistory}.
 	 */
-	List<CustomerId> expiredGuestCandidates(Instant olderThan, int limit);
+	List<CustomerId> expiredGuestCandidates(Instant olderThan, CustomerId after, int limit);
 
 	/**
 	 * Tombstone one guest {@code customer} row by id, as {@link #eraseGuestByEmail} does, only while it still
