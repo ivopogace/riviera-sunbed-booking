@@ -22,6 +22,14 @@ The Spring Data JDBC starter is on the classpath, but Spring Data repositories a
 nothing in `src/main/java` imports `org.springframework.data.*`; that ban is prose today
 (`RESPONSIBILITIES.md` § *Invariants, long form*), its build check tracked in #1337.
 
+*Amended 2026-10-02 (#1391):* the "prose today" clause above is spent: `JdbcOnlyArchitectureTests`'
+`noProductionClassNamesASpringDataType` fails the build on any production class depending on
+`org.springframework.data`, proven against the `ai.riviera.springdatafixture` tree. The same test's
+Hibernate probe names Boot 4's `org.springframework.boot.hibernate.autoconfigure.HibernateJpaAutoConfiguration`
+(in `spring-boot-hibernate`, which the JPA starter brings); the Boot 3 name under
+`spring-boot-autoconfigure` is absent from Boot 4's jars, and `theHibernateProbeNamesTheRunningBootMajor`
+fails a Boot major upgrade until the probe is re-verified against that major's jar.
+
 ## Consequences
 
 - Full control over the reservation transaction (`SELECT … FOR UPDATE` /
