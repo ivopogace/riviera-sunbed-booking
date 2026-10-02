@@ -14,8 +14,8 @@ class LayoutCellTest {
 	}
 
 	@Test
-	void theSmallestEurPriceIsAccepted() {
-		assertEquals(1, new LayoutCell("A", 1, "STANDARD", Pool.ONLINE, 1, "EUR", 1, 1).priceMinor());
+	void theMinimumEurPriceIsAccepted() {
+		assertEquals(50, new LayoutCell("A", 1, "STANDARD", Pool.ONLINE, 50, "EUR", 1, 1).priceMinor());
 	}
 
 	@Test
@@ -27,6 +27,7 @@ class LayoutCellTest {
 		assertThrows(IllegalArgumentException.class, () -> new LayoutCell("A", 1, "STANDARD", null, 2000, "EUR", 1, 1));
 		assertThrows(IllegalArgumentException.class, () -> new LayoutCell("A", 1, "STANDARD", Pool.ONLINE, -1, "EUR", 1, 1));
 		assertThrows(IllegalArgumentException.class, () -> new LayoutCell("A", 1, "STANDARD", Pool.ONLINE, 0, "EUR", 1, 1));
+		assertThrows(IllegalArgumentException.class, () -> new LayoutCell("A", 1, "STANDARD", Pool.ONLINE, 49, "EUR", 1, 1));
 		assertThrows(IllegalArgumentException.class, () -> new LayoutCell("A", 1, "STANDARD", Pool.ONLINE, 2000, "EURO", 1, 1));
 		assertThrows(IllegalArgumentException.class, () -> new LayoutCell("A", 1, "STANDARD", Pool.ONLINE, 2000, "ALL", 1, 1));
 		assertThrows(IllegalArgumentException.class, () -> new LayoutCell("A", 1, "STANDARD", Pool.ONLINE, 2000, "EUR", 0, 1));

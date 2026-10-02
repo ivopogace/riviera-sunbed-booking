@@ -542,7 +542,7 @@ describe('SetEditor (#600)', () => {
 
     // No PATCH goes out at all; the panel explains instead of silently repricing to zero.
     http.expectNone((r) => r.method === 'PATCH');
-    expect(byId('set-error').textContent).toMatch(/amount above €0|price is required/i);
+    expect(byId('set-error').textContent).toMatch(/amount of at least €0\.50|price is required/i);
   });
 
   it('re-seeds the draft from the server when the sets input is replaced', () => {

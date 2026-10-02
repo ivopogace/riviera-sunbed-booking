@@ -7,18 +7,20 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
-/** A set price is positive EUR minor units; the message names the field, never the rejected value. */
+/** A set price is EUR minor units of at least €0.50; the message names the field, never the rejected value. */
 class SetPriceTest {
 
 	@Test
-	void acceptsTheSmallestEurPrice() {
-		assertDoesNotThrow(() -> SetPrice.require(1, "EUR"));
+	void acceptsStripesMinimumEurCharge() {
+		assertEquals(50, SetPrice.MIN_PRICE_MINOR);
+		assertDoesNotThrow(() -> SetPrice.require(50, "EUR"));
 	}
 
 	@Test
-	void refusesAZeroOrNegativeAmount() {
-		assertEquals("priceMinor must be > 0",
-				assertThrows(IllegalArgumentException.class, () -> SetPrice.require(0, "EUR")).getMessage());
+	void refusesAnAmountBelowTheMinimum() {
+		assertEquals("priceMinor must be at least 50",
+				assertThrows(IllegalArgumentException.class, () -> SetPrice.require(49, "EUR")).getMessage());
+		assertThrows(IllegalArgumentException.class, () -> SetPrice.require(0, "EUR"));
 		assertThrows(IllegalArgumentException.class, () -> SetPrice.require(-1, "EUR"));
 	}
 

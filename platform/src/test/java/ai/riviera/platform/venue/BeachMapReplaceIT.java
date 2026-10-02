@@ -187,6 +187,21 @@ class BeachMapReplaceIT {
 	}
 
 	@Test
+	void refusesACellPricedBelowFiftyCentsAndAcceptsFifty() throws Exception {
+		long venue = createVenue("Cent Floor Club");
+
+		mvc.perform(put("/api/venues/{v}/beach-map", venue).cookie(operatorSession).with(csrf())
+						.contentType(MediaType.APPLICATION_JSON)
+						.content(layout(0, cell("A", 1, "STANDARD", "ONLINE", 49, 1, 1))))
+				.andExpect(status().isBadRequest())
+				.andExpect(jsonPath("$.code").value("INVALID_REQUEST"));
+		assertEquals(List.of(), setIds(venue));
+
+		putLayout(venue, layout(0, cell("A", 1, "STANDARD", "ONLINE", 50, 1, 1)), 204);
+		mvc.perform(get("/api/venues/{id}", venue)).andExpect(jsonPath("$.sets[0].price.minorUnits").value(50));
+	}
+
+	@Test
 	void overlongRowLabelIs400() throws Exception {
 		// #723 AC-1: a 41-character row name is refused at the command edge (§6b), before the V43 CHECK.
 		long venue = createVenue("Overlong Row Club");

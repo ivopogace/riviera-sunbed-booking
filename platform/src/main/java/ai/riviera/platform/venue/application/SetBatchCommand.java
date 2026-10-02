@@ -10,7 +10,7 @@ import ai.riviera.platform.venue.vocabulary.SetPrice;
  * The validated intent to change price, tier and/or pool on a swept selection of sets in one write
  * ({@link EditBeachMap#applyToSets}). A {@code null} field is <em>untouched</em>: every named set
  * keeps its own value for it. At least one field is touched, the price is stated both-or-neither
- * (positive EUR minor units, {@link SetPrice}, invariant #5), {@code tier} is the exact token the DB
+ * (EUR minor units of at least €0.50, {@link SetPrice}, invariant #5), {@code tier} is the exact token the DB
  * stores, and the id set is non-empty and bounded by {@link #MAX_SETS}. The set is defensively copied.
  */
 public record SetBatchCommand(Set<SetId> setIds, String tier, Pool pool, Long priceMinor,

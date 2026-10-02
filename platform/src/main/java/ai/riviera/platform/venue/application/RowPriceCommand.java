@@ -9,7 +9,7 @@ import ai.riviera.platform.venue.vocabulary.SetPrice;
  *
  * <p>The compact constructor rejects a malformed reprice at the boundary
  * ({@link IllegalArgumentException} → {@code 400 INVALID_REQUEST}, §6b), not as a raw V76 CHECK
- * violation: {@code rowLabel} required, the price positive EUR minor units ({@link SetPrice}, #5).
+ * violation: {@code rowLabel} required, the price at least €0.50 in EUR ({@link SetPrice}, #5).
  */
 public record RowPriceCommand(String rowLabel, long priceMinor, String priceCurrency) {
 

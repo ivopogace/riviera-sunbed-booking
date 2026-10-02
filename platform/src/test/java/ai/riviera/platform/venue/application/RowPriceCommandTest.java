@@ -7,7 +7,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 
 /**
  * The validated intent to reprice one beach-map row. Mirrors the edge-validation
- * discipline of {@link SetCommand}: money is positive EUR minor units (invariant #5), and the row
+ * discipline of {@link SetCommand}: money is EUR minor units of at least €0.50 (invariant #5), and the row
  * label is required — a malformed reprice is rejected at the application boundary
  * (→ {@code 400 INVALID_REQUEST} via {@code ApiErrorHandler}, §6b), never reaching persistence.
  */
@@ -23,12 +23,13 @@ class RowPriceCommandTest {
 	}
 
 	@Test
-	void acceptsTheSmallestEurPrice() {
-		assertEquals(1, new RowPriceCommand("B", 1, "EUR").priceMinor());
+	void acceptsTheMinimumEurPrice() {
+		assertEquals(50, new RowPriceCommand("B", 50, "EUR").priceMinor());
 	}
 
 	@Test
-	void rejectsZeroPrice() {
+	void rejectsAPriceBelowTheMinimum() {
+		assertThrows(IllegalArgumentException.class, () -> new RowPriceCommand("B", 49, "EUR"));
 		assertThrows(IllegalArgumentException.class, () -> new RowPriceCommand("B", 0, "EUR"));
 	}
 

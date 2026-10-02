@@ -108,6 +108,27 @@ class SetBatchApplyIT {
 	}
 
 	@Test
+	void refusesAPriceBelowFiftyCentsAndAcceptsFifty() throws Exception {
+		long venue = createVenue("Batch Floor Club");
+		long a = addSet(venue, 1);
+		long version = currentSetVersion(venue);
+
+		mvc.perform(patch("/api/venues/{v}/sets", venue).cookie(operatorSession).with(csrf())
+						.contentType(MediaType.APPLICATION_JSON)
+						.content(batch("[%d]".formatted(a), "\"price\":{\"minorUnits\":49,\"currency\":\"EUR\"},", version)))
+				.andExpect(status().isBadRequest())
+				.andExpect(jsonPath("$.code").value("INVALID_REQUEST"));
+		mvc.perform(patch("/api/venues/{v}/sets", venue).cookie(operatorSession).with(csrf())
+						.contentType(MediaType.APPLICATION_JSON)
+						.content(batch("[%d]".formatted(a), "\"price\":{\"minorUnits\":50,\"currency\":\"EUR\"},", version)))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.updated").value(1));
+
+		assertEquals(50L, jdbc.sql("SELECT price_minor FROM set_position WHERE id = :s")
+				.param("s", a).query(Long.class).single());
+	}
+
+	@Test
 	void staleVersionRefusesTheWholeBatch() throws Exception {
 		long venue = createVenue("Stale Batch Club");
 		long a = addSet(venue, 1);

@@ -139,8 +139,9 @@ close, the maximum stay, the season closure, and the commission rate over time. 
   class, this module included, holds an `"ONLINE"` / `"WALK_IN"` literal
   (`PoolTokenArchitectureTest`), so both invariant #3 checks compare the published type; the wire
   keeps the tokens, parsed once in `PoolToken`.
-- **A set price is positive EUR minor units** (`venue.vocabulary.SetPrice`, twinned by V76's CHECKs):
-  EUR is the v1 collection currency (invariant #5, long form) and Stripe collects no zero amount.
+- **A set price is EUR minor units of at least €0.50** (Stripe's EUR minimum charge;
+  `venue.vocabulary.SetPrice`, twinned by V76's CHECKs; #1294). EUR is the v1 collection currency
+  (invariant #5, long form).
   Every price write (single set, batch apply, row reprice, bulk save, the remodel's `LayoutCell`)
   refuses anything else with `400`, so a venue never holds two currencies: the itinerary price and a
   stay's charge read one. The venue's **payout** currency is a different field, any ISO-4217 code.
