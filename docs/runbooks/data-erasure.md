@@ -18,7 +18,7 @@ references (`booking.customer_id` / `account_id` are `ON DELETE RESTRICT`).
 | `customer_sso_identity` rows | **deleted** | transient credential (provider subject + email) |
 | `customer_account_token` rows | **deleted** | transient bearer digests |
 | `review.display_name` / `review.comment` on every review of the subject's bookings | tombstoned (`NULL` / `NULL`), the star kept | review PII (#815); the star identifies nobody and keeps counting in the venue's aggregate — the review drops out of the public list (no comment) and reads as "A guest" on the admin list |
-| server-side sessions for the subject | **revoked** (`PrincipalSessionRevoker`), before *and* after the scrub, on the self-service path; the admin path revokes nothing and leaves them to the stamp (#1334) | the subject is signed out everywhere; revoking first means a failed revoke leaves the data intact and the retry works, revoking again afterwards ends a sign-in landing in between at once (#357); the per-request credential stamp would end it on its next request anyway, since the tombstoned account no longer matches (#1306) |
+| server-side sessions for the subject | **revoked** (`PrincipalSessionRevoker`), before *and* after the scrub, on both paths (#1334) | the subject is signed out everywhere; revoking first means a failed revoke leaves the data intact and the retry works, revoking again afterwards ends a sign-in landing in between at once (#357); the per-request credential stamp would end it on its next request anyway, since the tombstoned account no longer matches (#1306) |
 | `booking`, `payment`, `payout_ledger_entry` | **untouched** | statutory-retention exception (tax/accounting; GDPR Art 17(3)(b)); the ledger holds no PII, so auditability (invariant #9) is preserved |
 
 Erasure is **idempotent** — every scrub is guarded on `erased_at IS NULL`. Re-running it is safe.
@@ -49,6 +49,9 @@ Content-Type: application/json
   reveals whether the email existed); a blank email is `400 INVALID_REQUEST`.
 - It erases **any** account **and** guest row sharing that email. A guest row whose email diverges
   from the account email is a separate subject — submit that email too.
+- It signs the subject out everywhere: every session named by that (normalized) email is deleted
+  before and after the scrub, as on the self-service path. Re-submitting is safe and ends any session
+  a failed earlier attempt left behind.
 
 > **Use the console: the Privacy tab at `/admin/privacy`** (A3, epic #348, PR #526) — the endpoint was
 > API-only from #101 Slice 1 until then. It is address → confirm → done, and the irreversible step
