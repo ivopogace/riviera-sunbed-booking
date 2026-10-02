@@ -145,7 +145,7 @@ All under `customer.retention.*` in `application.properties`:
 > booking ending on or after today, irreversibly. A **mixed-sign** period is refused too (`P1M-40D` reads
 > positive by total months yet moves the cutoff *forward*), so express the window plainly — `P2Y`,
 > `P10Y`. There is deliberately **no upper** bound on `window`: a longer window scrubs *less*, which is
-> the safe direction. `batch-size=0` is the mirror — it reaches `LIMIT 0`, so the sweep finds no
+> the safe direction. `batch-size=0` is the mirror — the sweep reads no
 > candidates and returns **without logging anything**, scrubbing nothing for as long as it stays set.
 
 ### Enabling it (the procedure)
@@ -183,8 +183,10 @@ un-erase — see ADR-0010).
 - **No distributed lock needed.** `fixedDelay` means a run never overlaps itself on one instance, and the
   guarded `UPDATE` means at most one runner can tombstone a given row — so an overlap with a Slice-1
   erasure of the same row is safe too, whichever lands first.
-- **Bounded.** `batch-size` caps the scrubs of every run, so a backlog can never produce an unbounded
-  transaction; the walk past kept contacts reads one bounded page at a time and writes nothing for them.
+- **Bounded writes.** `batch-size` caps the scrubs, and so the row locks, of every run. The walk past kept
+  contacts is not capped: it reads page after page in the run's one transaction, so a run lasts as long as
+  the kept head (bounded by the advance-booking lead time), and a query timeout on any page rolls back that
+  run's scrubs; the next run repeats them.
 - **A swept tourist is not broken.** `findOrCreate` is `INSERT … ON CONFLICT (email)`, so a scrubbed row's
   email no longer matches and a returning tourist simply gets a fresh guest row at checkout.
 

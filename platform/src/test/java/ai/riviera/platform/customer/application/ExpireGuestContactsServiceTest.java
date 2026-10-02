@@ -1,6 +1,7 @@
 package ai.riviera.platform.customer.application;
 
 import java.time.Clock;
+import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.Period;
@@ -14,6 +15,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicReference;
 
 import org.junit.jupiter.api.Test;
 
@@ -164,10 +166,14 @@ class ExpireGuestContactsServiceTest {
 			history.lastBooking(store.liveGuest(), LocalDate.of(2099, 1, 1));
 		}
 
-		assertThat(service(2).sweep()).isZero();
+		ExpireGuestContactsService advancingADayPerRead = new ExpireGuestContactsService(store, history, reviews,
+				new RetentionWindow(Period.ofYears(2), 2), new DayPerReadClock(FIXED.instant(), ZoneOffset.UTC));
+
+		assertThat(advancingADayPerRead.sweep()).isZero();
 
 		assertThat(store.candidateReads()).as("three pages, then an empty one").isEqualTo(4);
-		assertThat(store.olderThans()).containsOnly(EXPECTED_CUTOFF.atStartOfDay(TIRANE).toInstant());
+		assertThat(store.olderThans()).as("a cutoff read per page would drift a day a page")
+				.containsOnly(EXPECTED_CUTOFF.atStartOfDay(TIRANE).toInstant());
 	}
 
 	@Test
@@ -276,6 +282,36 @@ class ExpireGuestContactsServiceTest {
 		@Override
 		public List<CustomerId> eraseGuestByEmail(String normalizedEmail) {
 			throw new UnsupportedOperationException("not exercised by the retention spec");
+		}
+	}
+
+	/** A clock whose every read lands a day after the last, so a run that read it twice would see two cutoffs. */
+	private static final class DayPerReadClock extends Clock {
+		private final AtomicReference<Instant> next;
+		private final ZoneId zone;
+
+		DayPerReadClock(Instant first, ZoneId zone) {
+			this(new AtomicReference<>(first), zone);
+		}
+
+		private DayPerReadClock(AtomicReference<Instant> next, ZoneId zone) {
+			this.next = next;
+			this.zone = zone;
+		}
+
+		@Override
+		public ZoneId getZone() {
+			return zone;
+		}
+
+		@Override
+		public Clock withZone(ZoneId other) {
+			return new DayPerReadClock(next, other);
+		}
+
+		@Override
+		public Instant instant() {
+			return next.getAndUpdate(read -> read.plus(Duration.ofDays(1)));
 		}
 	}
 

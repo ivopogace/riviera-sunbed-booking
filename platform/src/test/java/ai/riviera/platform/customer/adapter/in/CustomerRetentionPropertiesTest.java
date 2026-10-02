@@ -16,8 +16,8 @@ import static org.assertj.core.api.Assertions.assertThatIllegalArgumentException
  * The retention sweep's two knobs as <em>bound, validated</em> configuration.
  *
  * <p>Both degenerate values boot cleanly and are invisible, in opposite directions.
- * {@code batch-size=0} reaches {@code LIMIT 0}, so the scheduled sweep finds no candidates and returns
- * on its empty-list branch <strong>without logging anything</strong> — the single {@code log.info} is
+ * {@code batch-size=0} spends the scheduled sweep's budget before its first read, so it returns
+ * <strong>without logging anything</strong> — the single {@code log.info} is
  * guarded by {@code scrubbed > 0} and the scheduler discards the return value — scrubbing nothing for
  * as long as it stays set. Because retention ships disabled, that would most likely be discovered only
  * after enabling it in production, i.e. exactly when the GDPR obligation it implements has started
@@ -68,7 +68,7 @@ class CustomerRetentionPropertiesTest {
 	void aNonPositiveBatchSizeFailsTheContext() {
 		runner.withPropertyValues("customer.retention.batch-size=0")
 				.run(context -> assertThat(context)
-						.as("LIMIT 0 finds no candidates, so the sweep scrubs nothing and logs nothing")
+						.as("a zero budget reads no candidates, so the sweep scrubs nothing and logs nothing")
 						.hasFailed()
 						.getFailure()
 						.rootCause()
