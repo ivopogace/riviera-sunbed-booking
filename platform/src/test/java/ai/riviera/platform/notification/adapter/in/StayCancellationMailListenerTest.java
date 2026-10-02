@@ -71,7 +71,7 @@ class StayCancellationMailListenerTest {
 
 	@BeforeEach
 	void theStayResolves() {
-		when(bookings.stayConfirmationFacts(STAY)).thenReturn(Optional.of(FACTS));
+		when(bookings.stayCancellationFacts(STAY)).thenReturn(Optional.of(FACTS));
 		logger = (ch.qos.logback.classic.Logger) LoggerFactory.getLogger(StayCancellationMailListener.class);
 		logged.start();
 		logger.addAppender(logged);
@@ -155,7 +155,7 @@ class StayCancellationMailListenerTest {
 
 	@Test
 	void anUnknownStayIsCountedAsNoBooking() {
-		when(bookings.stayConfirmationFacts(STAY)).thenReturn(Optional.empty());
+		when(bookings.stayCancellationFacts(STAY)).thenReturn(Optional.empty());
 
 		listener.on(EVENT);
 
