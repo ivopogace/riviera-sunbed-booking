@@ -56,8 +56,8 @@ the next wave's #1300 (a new ended kind) ride the same rule. A stretch cancelled
 
 ## Risks
 
-- **R-1 (#10):** the view quotes one way and the cancel another → both read `LiveRemainder` for the
-  stretches and the window day; `CancelStayIT.theRemainderIsQuotedOnTheFirstLiveDay` reads the view
+- **R-1 (#10):** the view, the move mail and the cancel quote different days → all three read `LiveRemainder`
+  for the stretches and the window day; `CancelStayIT.theRemainderIsQuotedOnTheFirstLiveDay` reads the view
   then cancels and asserts the same figure.
 - **R-2 (#9):** a remodel-ended stretch reversed twice → it is never transitioned or announced
   again: the guest cancel publishes `BookingCancelled` only for the stretches it transitions;
@@ -109,9 +109,9 @@ the next wave's #1300 (a new ended kind) ride the same rule. A stretch cancelled
 
 ## Execution status
 
-**Stage pointer:** `CI gate — draft PR, first push`
+**Stage pointer:** `review — findings fixed, awaiting CI + Sonar on the fix`
 
-**Next action:** open the draft PR, check CI, then merge `origin/main` and mark ready for review.
+**Next action:** Sonar gate on the fix's head, then remove this plan in the last commit and report READY TO MERGE.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -119,5 +119,6 @@ the next wave's #1300 (a new ended kind) ride the same rule. A stretch cancelled
 | 1 — the cancel | ✅ | (first commit) |
 | 2 — the view | ✅ | (first commit) |
 | 3 — docs | ✅ | (first commit) |
+| 4 — review: the move mail reads the same day | ✅ | (review-fix commit) |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.

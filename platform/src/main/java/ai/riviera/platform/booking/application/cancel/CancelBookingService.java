@@ -2,7 +2,6 @@ package ai.riviera.platform.booking.application.cancel;
 
 import java.time.Clock;
 import java.time.Instant;
-import java.time.LocalDate;
 import java.util.Optional;
 import java.util.List;
 
@@ -110,7 +109,7 @@ class CancelBookingService implements CancelBooking {
 	 * refund. A live stretch that cannot cancel, or nothing live, refuses the stay before any write; a failed transition is a bug.
 	 */
 	private CancelOutcome cancelStay(StayRecord stay) {
-		LiveRemainder.Split split = liveRemainder.of(bookings.lockStretches(stay.id()));
+		LiveRemainder.Split split = liveRemainder.of(bookings.lockStretches(stay.id()), stay.firstDay());
 		List<BookingRecord> stretches = split.live();
 		if (stretches.isEmpty()) {
 			return new CancelOutcome.NotCancellable(split.setAside().getFirst().status());
@@ -123,8 +122,7 @@ class CancelBookingService implements CancelBooking {
 		if (notAdmitted.isPresent()) {
 			return new CancelOutcome.NotCancellable(notAdmitted.get().status());
 		}
-		LocalDate windowDay = split.firstLiveDay().orElseThrow();
-		List<RefundQuote> quotes = stretches.stream().map(s -> cancellationPolicy.quote(s, windowDay)).toList();
+		List<RefundQuote> quotes = stretches.stream().map(s -> cancellationPolicy.quote(s, split.windowDay())).toList();
 		if (quotes.stream().anyMatch(quote -> !quote.cancellationOpen())) {
 			return new CancelOutcome.WindowClosed();
 		}

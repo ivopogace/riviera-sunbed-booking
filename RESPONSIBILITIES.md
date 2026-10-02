@@ -271,8 +271,8 @@ any is released on the old, never a swap of my own — so a racing reserve wins 
   view, cancel, check-in, staff list, mail facts and review eligibility (once no stretch is live)
   answer the stay's code. The reserve (`CreateStay`, `POST /api/stays`) validates the plan's shape,
   judges every stretch by the shared `ReserveFences`, claims every day of every stretch all or nothing
-  (`ConcurrentStayReservationIT`) and collects once with one share per stretch; a stay cancels whole,
-  each stretch quoted on the stay's first day (invariant #10) and reversed once (#9).
+  (`ConcurrentStayReservationIT`) and collects once with one share per stretch; a stay cancels whole, each
+  stretch quoted on the stay's first day (#10) and reversed once (#9), bar the next bullet's exception.
 - **A guest cancel of a stay sets aside the stretches a remodel already ended** (ADR-0024 §4 as amended,
   #1290): `LiveRemainder` keeps the live rest, judged on the first live day — what a same-set booking of the
   dates the guest still holds would be quoted — and the view quotes the same way (#10). The predicate is

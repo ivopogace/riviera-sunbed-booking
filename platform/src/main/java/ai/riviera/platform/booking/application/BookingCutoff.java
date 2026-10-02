@@ -146,8 +146,8 @@ public class BookingCutoff {
 	}
 
 	/**
-	 * The free exit of a booking whose cancellation is judged on {@code windowDay} (a stay's later
-	 * stretch, judged on the day its stay is): its own deadline, never past that day's opening.
+	 * The free exit of a booking whose cancellation is judged on {@code windowDay} (a stay's later stretch,
+	 * judged on the day its stay's cancel is judged on): its own deadline, never past that day's opening.
 	 */
 	public java.time.Instant freeExitEndsAt(LocalDate bookingDate, LocalDate windowDay, java.time.Instant movedAt) {
 		java.time.Instant own = freeExitEndsAt(bookingDate, movedAt);

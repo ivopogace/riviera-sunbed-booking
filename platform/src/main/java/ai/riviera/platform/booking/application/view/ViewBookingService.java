@@ -8,7 +8,6 @@ import ai.riviera.platform.booking.application.request.RequestWindows;
 import ai.riviera.platform.booking.vocabulary.BookingId;
 
 import java.time.Clock;
-import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -89,9 +88,8 @@ class ViewBookingService implements ViewBooking {
 		BookingRecord first = stretches.getFirst();
 		BookingRecord summary = stay.asBooking();
 		BookingStatus status = summary.status();
-		LiveRemainder.Split remainder = liveRemainder.of(stretches);
-		LocalDate windowDay = remainder.firstLiveDay().orElse(stay.firstDay());
-		List<RefundQuote> quotes = stretches.stream().map(s -> cancellationPolicy.quote(s, windowDay)).toList();
+		LiveRemainder.Split remainder = liveRemainder.of(stay);
+		List<RefundQuote> quotes = stretches.stream().map(s -> cancellationPolicy.quote(s, remainder.windowDay())).toList();
 		SetBookingInfo firstSet = quotes.getFirst().set();
 		List<RefundQuote> liveQuotes = remainder.live().stream().map(s -> quotes.get(stretches.indexOf(s))).toList();
 		boolean cancellable = !remainder.live().isEmpty()
