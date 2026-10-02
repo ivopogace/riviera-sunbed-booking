@@ -6,7 +6,7 @@
 (guarded cancel, held days freed once, a `NOTHING_LEFT` receipt line at amount 0 and fee 0, no
 `BookingCancelled`), never as a move, a block or a €0 refund.
 
-**Architecture:** a fifth `RemodelOutcome` (`NothingLeft`), decided in `RemodelClaimsService#outcomeOf`
+**Architecture:** a new `RemodelOutcome` (`NothingLeft`), decided in `RemodelClaimsService#outcomeOf`
 after the frozen check and before the move search, off a per-claim "every day refunded" fact read with
 the live claims. The refund leg re-reads that fact under the booking row lock, so a day refunded between
 classification and the lock settles as nothing left too. No `LayoutWriter` change: the cancelled booking
@@ -66,7 +66,7 @@ is no longer live, so the save's probe passes.
 ## FE↔BE contract
 
 - Preview (`POST …/remodel/preview`), the commit's `200` and its refusal pictures, and the receipt
-  (`GET …/remodels/{id}`) gain `ended: [{bookingId, bookingDate, amount, from}]`; `releases` keeps only
+  (`GET …/remodels/{id}`) gain `ended: [{bookingId, bookingDate, amount, from}]` (the receipt's without `amount`); `releases` keeps only
   `RELEASE`/`DECLINE`.
 
 ## Phases
@@ -78,9 +78,9 @@ is no longer live, so the save's probe passes.
 
 ## Execution status
 
-**Stage pointer:** PR — merge main, ready for review
+**Stage pointer:** review — re-review of the move-leg fix
 
-**Next action:** merge origin/main, mark ready, run the review gate (high).
+**Next action:** post the scoped re-review of the move-leg fix, then Sonar and READY TO MERGE.
 
 | Phase | Status | Commits |
 |-------|--------|---------|

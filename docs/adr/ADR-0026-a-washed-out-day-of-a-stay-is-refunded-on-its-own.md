@@ -81,8 +81,8 @@ one-day stretch of a stitched stay is a booking of its own or a day of the stay.
    ends it with the guarded `CONFIRMED → CANCELLED` (`VENUE_CHANGE`, refund 0) under its row lock, frees each
    day it still holds once (#2) and writes a `NOTHING_LEFT` receipt line at amount and fee 0 (V75), which is
    the audit trail: no `BookingCancelled`, so no mail (in §7's spirit), no ledger entry (#9), no refund or
-   void. The refund leg decides under the same lock, so a day refunded after classification settles the
-   same way. Keyed on "no unrefunded day", never on a zero remainder: a €0-share day is still the guest's.
+   void. The move and refund legs decide under the same lock, so a day refunded after classification
+   settles the same way. Keyed on "no unrefunded day", never on a zero remainder: a €0-share day is still the guest's.
 
 ## Consequences
 

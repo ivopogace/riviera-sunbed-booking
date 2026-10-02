@@ -104,6 +104,10 @@ class RemodelClaimsServiceTest {
 					new RemodelWindows(Duration.ofHours(24), Duration.ofHours(96)), CLOCK),
 			availability, receipts, events, () -> FEE, CLOCK);
 
+	{
+		when(bookings.lockRemainder(anyLong())).thenReturn(new LockedRemainder(4500, false));
+	}
+
 	private static SetSpot spot(long id, String row, int position, int gridY, Tier tier) {
 		return new SetSpot(new SetId(id), new SetPlacement(row, position, position, gridY), tier, Pool.ONLINE);
 	}
@@ -447,6 +451,35 @@ class RemodelClaimsServiceTest {
 	}
 
 	@Test
+	void aMoveWhoseLastDayWasRefundedBeforeItsLockEndsAsNothingLeftAndClaimsNothing() {
+		LiveClaim oneDayLeft = new LiveClaim(307, A1.setId(), IN_TEN_DAYS, IN_TEN_DAYS, BookingStatus.CONFIRMED, 4500,
+				"EUR", 0L, null, false);
+		RemodelClaim move = new RemodelClaim(new BookingId(307), ref(A1), IN_TEN_DAYS, IN_TEN_DAYS, 4500, "EUR",
+				new RemodelOutcome.Move(ref(A2), 0, 1));
+		when(bookings.findLiveOnSets(Set.of(A1.setId()))).thenReturn(List.of(oneDayLeft));
+		givenMap(List.of(A1, A2), IN_TEN_DAYS, List.of(A2));
+		when(bookings.lockRemainder(307)).thenReturn(new LockedRemainder(0, true));
+		when(bookings.cancelConfirmed(307, CLOCK.instant(), 0, RefundReason.VENUE_CHANGE, 0))
+				.thenReturn(java.util.Optional.of(new CancelledBooking(307, VENUE, A1.setId(), IN_TEN_DAYS, IN_TEN_DAYS,
+						4500, "EUR")));
+		when(receipts.store(any())).thenReturn(RECEIPT);
+
+		RemodelCommit outcome = service.commit(OWNER, VENUE, List.of(A1.setId()), previewOf(move), RefundConfirmation.NONE);
+
+		assertEquals(RemodelOutcome.NothingLeft.NOTHING_LEFT,
+				assertInstanceOf(RemodelCommit.Applied.class, outcome).settled().getFirst().outcome(),
+				"the move leg decides under the lock too: a booking with nothing left is never moved");
+		verify(availability, never()).claim(any(), any());
+		verify(bookings, never()).moveToSet(anyLong(), any(), any(), any());
+		verify(availability).release(A1.setId(), IN_TEN_DAYS);
+		verify(events, never()).publishEvent(any());
+		verify(receipts).store(new NewReceipt(VENUE, OWNER, CLOCK.instant(), List.of(),
+				List.of(new ReceiptOutcome(new BookingId(307), IN_TEN_DAYS, ref(A1), ReceiptOutcomeKind.NOTHING_LEFT,
+						0, "EUR", 0L)),
+				"", List.of()));
+	}
+
+	@Test
 	void aRefundedDayComesOffTheRemodelRefund() {
 		// A 4500 stretch whose stormy day already returned 1500 (#1210): the remodel refunds the 3000 that remain.
 		LiveClaim stormy = new LiveClaim(211, A1.setId(), IN_TEN_DAYS, IN_TEN_DAYS.plusDays(2), BookingStatus.CONFIRMED,
@@ -580,7 +613,7 @@ class RemodelClaimsServiceTest {
 
 		assertEquals(new RemodelCommit.Applied(RECEIPT, CLOCK.instant(), List.of(first, second)), outcome);
 		InOrder order = inOrder(availability, bookings, events, receipts);
-		order.verify(bookings).lockById(203);
+		order.verify(bookings).lockRemainder(203);
 		order.verify(bookings).findReleasedDays(203);
 		order.verify(availability).claim(A2.setId(), IN_TEN_DAYS);
 		order.verify(availability).release(A1.setId(), IN_TEN_DAYS);

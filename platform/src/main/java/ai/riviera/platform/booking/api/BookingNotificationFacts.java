@@ -53,7 +53,7 @@ public interface BookingNotificationFacts {
 	Optional<StayMoveFacts> moveReminderFacts(BookingId arrivingBookingId);
 
 	/**
-	 * Whether a venue's remodel ended this booking (refund, release or decline), not the guest's free
+	 * Whether a venue's remodel ended this booking (refund, release, decline or nothing left), not the guest's free
 	 * exit: both arrive as {@code BookingCancelled} with {@code VENUE_CHANGE}, and only the commit
 	 * receipt tells them apart. The cancellation mail offers to book again only in the first case.
 	 */

@@ -26,8 +26,8 @@ import ai.riviera.platform.venue.vocabulary.VenueId;
 
 /**
  * The remodel commit: the bulk beach-map save that also settles the claims its layout disturbs,
- * composing {@code venue}'s write with {@code booking}'s moves, refunds, releases and
- * declines (ADR-0020; {@link RemodelCommitService} is the gate). Committed → {@code 200} with the
+ * composing {@code venue}'s write with {@code booking}'s moves, refunds, releases, declines and
+ * nothing-left endings (ADR-0020; {@link RemodelCommitService} is the gate). Committed → {@code 200} with the
  * receipt; {@code 409 STALE_PREVIEW}, {@code REMODEL_REFUSED} and {@code REFUND_NOT_CONFIRMED}
  * carry the fresh {@code preview}, token included; a non-owner → {@code 403} via
  * {@code ApiErrorHandler}. Only {@code 200} writes. Outcomes: RESPONSIBILITIES.md §remodel.

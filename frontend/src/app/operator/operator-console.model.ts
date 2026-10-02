@@ -318,7 +318,7 @@ export interface RemodelReceiptKept {
 
 /**
  * A persisted remodel-commit receipt (`GET /api/venues/{id}/remodels/{receiptId}`), and the
- * `200` of the commit itself, whose moves and kept lines also carry the amount: when it was
+ * `200` of the commit itself, whose moves, ended and kept lines also carry the amount: when it was
  * committed, every booking it moved, every claim it ended instead, every claim it kept where it
  * was, the operator's reason for the refunds and what they returned to guests. `refundedTotal` is
  * null when it refunded nobody (a zero is never rendered as a refund), and `feeTotal` — what those

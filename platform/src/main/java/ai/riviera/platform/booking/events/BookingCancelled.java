@@ -10,9 +10,10 @@ import ai.riviera.platform.booking.vocabulary.RefundReason;
 import ai.riviera.platform.booking.vocabulary.StayId;
 
 /**
- * Published when a booking becomes {@code CANCELLED}. Id-based (#11); days in {@code Europe/Tirane} (#6);
- * {@code refundMinor} is the server's, minor units + ISO currency (#5, #10). {@code payout} reverses in
- * proportion and stamps {@code reason}; {@code notification} mails it; {@code booking} refunds and voids.
+ * Published when a booking becomes {@code CANCELLED}, save a remodel's nothing left (#1300). Id-based (#11);
+ * days in {@code Europe/Tirane} (#6); {@code refundMinor} is the server's, minor units + ISO currency (#5, #10).
+ * {@code payout} reverses in proportion and stamps {@code reason}; {@code notification} mails it; {@code booking}
+ * refunds and voids.
  * {@code availability} and {@code payment} must never subscribe (a cycle). {@code cancelledWithStay} names
  * the stay that ended whole with it ({@link StayCancelled} mails it); null for one that ended on its own.
  */

@@ -134,7 +134,7 @@ describe('RemodelPreviewPanel (#1033, #1034, #1199, #1300)', () => {
     );
   });
 
-  it('is an alertdialog listing the five groups with set labels, dates, amounts and distances', () => {
+  it('is an alertdialog listing every group with set labels, dates, amounts and distances', () => {
     render(FULL_PREVIEW);
 
     expect(host.getAttribute('role')).toBe('alertdialog');

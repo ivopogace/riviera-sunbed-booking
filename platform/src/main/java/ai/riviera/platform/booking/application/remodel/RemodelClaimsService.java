@@ -139,13 +139,19 @@ class RemodelClaimsService implements RemodelClaims {
 	}
 
 	/**
-	 * Settles one claim and answers it as settled: a refund leg that finds nothing left under its lock answers
+	 * Settles one claim and answers it as settled: a move or refund leg that finds nothing left under its lock answers
 	 * {@link RemodelOutcome.NothingLeft}. A blocked claim is kept: its booking, rows and set as they are, the receipt says why.
 	 */
 	private RemodelClaim apply(VenueId venueId, RemodelClaim claim, StayId stayEndingWith, Instant committedAt,
 			long feeMinor, Settled settled) {
 		switch (claim.outcome()) {
-			case RemodelOutcome.Move move -> settled.moves().add(applyMove(venueId, claim, move, committedAt));
+			case RemodelOutcome.Move move -> {
+				if (bookings.lockRemainder(claim.bookingId().value()).everyDayRefunded()) {
+					settled.outcomes().add(applyConfirmedEnd(venueId, claim, committedAt, feeMinor));
+					return nothingLeft(claim);
+				}
+				settled.moves().add(applyMove(venueId, claim, move, committedAt));
+			}
 			case RemodelOutcome.Refund ignored -> {
 				ReceiptOutcome ended = applyConfirmedEnd(venueId, claim, committedAt, feeMinor);
 				settled.outcomes().add(ended);
@@ -173,9 +179,9 @@ class RemodelClaimsService implements RemodelClaims {
 	}
 
 	/**
-	 * Ends a stranded confirmed claim as {@code VENUE_CHANGE}, decided on what it holds under its row lock (#1281): with
-	 * every day refunded it ends at 0, publishing nothing (#1300); else it refunds the rest, which drains off
-	 * {@code BookingCancelled}. {@code feeMinor}, the quoted rate, is the refund line's, not what the ledger charges (ADR-0021).
+	 * Ends a confirmed claim as {@code VENUE_CHANGE}, decided on what it holds under its row lock (#1281): with every
+	 * day refunded it ends at 0, publishing nothing (#1300); else it refunds the rest, which drains off
+	 * {@code BookingCancelled}. {@code feeMinor}, the quoted rate, is the refund line's, not the ledger's (ADR-0021).
 	 */
 	private ReceiptOutcome applyConfirmedEnd(VenueId venueId, RemodelClaim claim, Instant cancelledAt, long feeMinor) {
 		LockedRemainder held = bookings.lockRemainder(claim.bookingId().value());
@@ -246,12 +252,11 @@ class RemodelClaimsService implements RemodelClaims {
 	}
 
 	/**
-	 * Claim every day the booking still holds, read under its row lock, on the candidate before releasing the old
-	 * rows (#2; a venue-released day is neither claimed nor freed, ADR-0027, #1281), then re-seat the booking. A day
-	 * not won under the venue lock throws, and the commit's transaction moves nothing.
+	 * Claim every day the booking still holds, read under the row lock {@link #apply} took, on the candidate before
+	 * releasing the old rows (#2; a venue-released day is neither claimed nor freed, ADR-0027, #1281), then re-seat
+	 * the booking. A day not won under the venue lock throws, and the commit's transaction moves nothing.
 	 */
 	private ReceiptMove applyMove(VenueId venueId, RemodelClaim claim, RemodelOutcome.Move move, Instant movedAt) {
-		bookings.lockById(claim.bookingId().value());
 		List<LocalDate> held = ServiceDays.held(claim.bookingDate(), claim.lastDate(),
 				bookings.findReleasedDays(claim.bookingId().value()));
 		for (LocalDate day : held) {

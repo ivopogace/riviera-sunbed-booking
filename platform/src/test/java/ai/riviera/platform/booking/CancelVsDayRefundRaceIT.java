@@ -186,6 +186,35 @@ class CancelVsDayRefundRaceIT {
 	}
 
 	@Test
+	void aRemodelMoveWaitingOnTheLastDayRefundSettlesAsNothingLeftAndTakesNoCandidate() throws Exception {
+		Venue venue = venue();
+		LocalDate first = firstDay();
+		SetId from = venue.online().get(0);
+		SetId to = venue.online().get(1);
+		long id = insertLone(venue, "RACEMVNL" + System.nanoTime() % 1_000_000, from, first);
+		accrue(venue, id, DAYS * PRICE);
+		for (int day = 0; day < DAYS - 1; day++) {
+			bookings.refundDay(id, first.plusDays(day), PRICE, Instant.now(), DayRefundStamp.weather()).orElseThrow();
+		}
+		first.datesUntil(first.plusDays(DAYS)).forEach(day -> StayFixtures.take(jdbc, venue.online().get(2), day));
+		OperatorId owner = StayFixtures.ownerOf(jdbc, venue);
+		VenueId venueId = new VenueId(venue.id());
+		List<RemodelClaim> claims = remodelClaims.classify(owner, venueId, List.of(from));
+		assertEquals(to, assertInstanceOf(RemodelOutcome.Move.class, claims.getFirst().outcome()).to().setId());
+
+		RemodelCommit outcome = whileADayRefundHoldsTheLock(id, first.plusDays(DAYS - 1L), PRICE,
+				() -> remodelClaims.commit(owner, venueId, List.of(from), PreviewToken.of(claims), RefundConfirmation.NONE));
+
+		assertEquals(RemodelOutcome.NothingLeft.NOTHING_LEFT, assertInstanceOf(RemodelCommit.Applied.class, outcome)
+				.settled().getFirst().outcome(), "the move leg decides on what it finds under the lock");
+		assertEquals(List.of(), heldOn(to), "a booking with nothing left never takes the candidate");
+		assertEquals(List.of(), heldOn(from), "every day it still held is freed (#2)");
+		assertEquals(from.value(), jdbc.sql("SELECT set_id FROM booking WHERE id = :id").param("id", id)
+				.query(Long.class).single(), "not re-seated");
+		assertEquals(0L, cancelRefundOf(id));
+	}
+
+	@Test
 	void aRemodelMoveWaitingOnAVenueDayRefundLeavesTheReleasedDayFree() throws Exception {
 		Venue venue = venue();
 		LocalDate first = firstDay();

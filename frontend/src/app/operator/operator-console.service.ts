@@ -158,7 +158,7 @@ export class OperatorConsoleService {
 
   /**
    * The dry run of {@link replaceLayout}: the same body, and what the save would do to every live
-   * claim on the sets it removes or renumbers, in five groups — nothing written, the token not spent.
+   * claim on the sets it removes or renumbers, in groups — nothing written, the token not spent.
    * Owner-asserted (invariant #13); `STALE_WRITE` and `NO_SUCH_VENUE` answer as the save would.
    */
   previewLayout(venueId: number, request: BeachMapLayoutRequest): Observable<RemodelPreview> {
