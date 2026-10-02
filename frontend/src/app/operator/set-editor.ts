@@ -731,7 +731,7 @@ export class SetEditor {
       case 'NO_SUCH_SET':
         return 'One of the selected sets no longer exists, so nothing was changed. Reload the tab to see the current map.';
       case 'INVALID_REQUEST':
-        return 'That price is not valid. Enter an amount of €0 or more, or leave it blank to leave prices unchanged.';
+        return 'That price is not valid. Enter an amount above €0, or leave it blank to leave prices unchanged.';
       case 'NO_SUCH_VENUE':
         return 'This venue could not be found.';
       case 'NOT_VENUE_OWNER':
@@ -1052,7 +1052,7 @@ export class SetEditor {
       case 'NOT_VENUE_OWNER':
         return 'You do not manage this venue, so its map can’t be changed.';
       case 'INVALID_REQUEST':
-        return 'That price is not valid. Enter an amount of €0 or more.';
+        return 'That price is not valid. Enter an amount above €0.';
       case 'UNAUTHORIZED':
         return 'Your session has expired. Please sign in again.';
       default:

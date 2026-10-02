@@ -8,7 +8,7 @@ import ai.riviera.platform.venue.vocabulary.SetPrice;
  * non-destructive {@code UPDATE} in {@link Venues#repriceRow}.
  *
  * <p>The compact constructor rejects a malformed reprice at the boundary
- * ({@link IllegalArgumentException} → {@code 400 INVALID_REQUEST}, §6b), not as a raw V2 CHECK
+ * ({@link IllegalArgumentException} → {@code 400 INVALID_REQUEST}, §6b), not as a raw V76 CHECK
  * violation: {@code rowLabel} required, the price positive EUR minor units ({@link SetPrice}, #5).
  */
 public record RowPriceCommand(String rowLabel, long priceMinor, String priceCurrency) {

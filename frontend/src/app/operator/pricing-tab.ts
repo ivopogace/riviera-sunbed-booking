@@ -231,7 +231,7 @@ export class PricingTab {
       case 'NO_SUCH_VENUE':
         return 'This venue could not be found.';
       case 'INVALID_REQUEST':
-        return 'That price is not valid. Enter an amount of €0 or more.';
+        return 'That price is not valid. Enter an amount above €0.';
       case 'UNAUTHORIZED':
         return 'Your session has expired. Please sign in again.';
       default:

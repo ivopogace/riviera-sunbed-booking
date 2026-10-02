@@ -7,7 +7,8 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 
 /**
  * The validated intent to reprice one beach-map row. Mirrors the edge-validation
- * discipline of {@link SetCommand}: money is positive EUR minor units (invariant #5), and the row label is required — a malformed reprice is rejected at the application boundary
+ * discipline of {@link SetCommand}: money is positive EUR minor units (invariant #5), and the row
+ * label is required — a malformed reprice is rejected at the application boundary
  * (→ {@code 400 INVALID_REQUEST} via {@code ApiErrorHandler}, §6b), never reaching persistence.
  */
 class RowPriceCommandTest {

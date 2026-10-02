@@ -15,7 +15,7 @@ import ai.riviera.platform.venue.vocabulary.BookingMode;
  * stating the same bound enforce it from one place rather than as duplicated validation blocks.
  * Package-private, static-only; each method throws {@link IllegalArgumentException} on a bad
  * value, which the edge maps to {@code 400 INVALID_REQUEST} (riviera-java-conventions §6b). The
- * DB CHECK constraints (V2) remain the race-safe backstop, not the only guard.
+ * DB CHECK constraints (V2, V76) remain the race-safe backstop, not the only guard.
  */
 final class VenueFieldValidation {
 
