@@ -7,7 +7,8 @@
   the fence of Decision 1, `RateLimitFilter` (Decision 5), `AdminAuditReasons` (Decision 6) and the
   fence of Decision 8 — moves to the closed module `web` when #1326 lands; until then the code is as
   this ADR describes. *Amended 2026-10-02 (PR #1357, #1326):* it has landed (1a706f0), so the
-  "until then" clause is spent and each of those now sits in `web`. The fence/mechanism split, `challenge` and `audit` stand. Decision 1's test
+  "until then" clause is spent and each of those now sits in `web`. The fence/mechanism split,
+  `challenge` and `audit` stand. Decision 1's test
   ("owns a table, a scheduled job, a library dependency or a published verdict") stays the test for
   a *mechanism* module, no longer for every module: ADR-0028 Decision 8 adds adapter-layer modules
   (`auth`, `web`) and an orchestration module (`remodel`) that own none of these. The considered

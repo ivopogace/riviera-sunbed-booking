@@ -178,8 +178,8 @@ own IP warm-up, blocklists, DKIM rotation; operationally wrong for a small team.
 - 2026-07-30, #380 — the synchronous admin re-send exception in decision 5.
 - 2026-07-30, #439 / #442 — the in-memory vehicle's loss justification made per kind; the drop
   counter carries the kind on every reason.
+- 2026-07-30, #451 — the query-timeout bullet named `SELECT … FOR UPDATE`; the claim is an
+  `INSERT … ON CONFLICT`. The decision was unaffected.
 - 2026-10-02, #1369 (PR #1358, #1336) — decision 5: the password-reset token is minted inside the
   dispatched send, not committed before the port is called, and the known-email-branch write
   residual is closed. The decision (in-memory vehicle for bearer payloads) stands.
-- 2026-07-30, #451 — the query-timeout bullet named `SELECT … FOR UPDATE`; the claim is an
-  `INSERT … ON CONFLICT`. The decision was unaffected.
