@@ -174,6 +174,16 @@ class JdbcCustomerAccounts implements CustomerAccountStore {
 	}
 
 	@Override
+	public void clearUnverifiedPassword(CustomerAccountId accountId) {
+		jdbc.sql("""
+				UPDATE customer_account SET password_hash = NULL
+				WHERE id = :id AND email_verified = false AND password_hash IS NOT NULL AND erased_at IS NULL
+				""")
+				.param(ID, accountId.value())
+				.update();
+	}
+
+	@Override
 	public boolean lockLiveAccount(CustomerAccountId accountId) {
 		return jdbc.sql("SELECT id FROM customer_account WHERE id = :id AND erased_at IS NULL FOR NO KEY UPDATE")
 				.param(ID, accountId.value())

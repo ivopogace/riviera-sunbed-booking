@@ -123,7 +123,11 @@ in guest mode are **never** auto-attached to an account; guest bookings stay dev
 Email verification is therefore a **soft, non-blocking** signal: registration issues a
 verification link, visiting it sets `email_verified`, and the flag is informational (a "please
 verify" nudge + email-ownership/anti-spam trust) — it blocks no sign-in or booking. SSO-created
-accounts count as provider-verified. An SSO-only, password-less account gains a password only via
+accounts count as provider-verified. An SSO sign-in that auto-links onto an existing account whose
+email is still **unverified clears that account's password** (#1295): the provider proved the email,
+the password holder never did, so an attacker who pre-registered the victim's email never shares the
+account; the per-request credential stamp ends the holder's sessions. A verified email's account
+links and keeps its password. An SSO-only, password-less account gains a password only via
 an authenticated set-password while signed in **or** the token-proven reset flow — never an
 unauthenticated register-time UPSERT (an account-takeover vector).
 
