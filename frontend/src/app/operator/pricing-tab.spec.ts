@@ -335,6 +335,18 @@ describe('PricingTab (#174)', () => {
     expect(input('A').getAttribute('aria-invalid')).toBe('true');
   });
 
+  it('tells the operator a refused price must be at least €0.50', async () => {
+    render();
+    editRow('A', '0.49');
+    http
+      .expectOne((r) => r.method === 'PUT' && r.url.includes('/api/venues/1/rows/A/price'))
+      .flush({ code: 'INVALID_REQUEST' }, { status: 400, statusText: 'Bad Request' });
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    expect(byId('pricing-error-A').textContent).toContain('Enter an amount of at least €0.50.');
+  });
+
   it('reverts the row, shows the stale banner, and Reload re-loads on a 409 STALE_WRITE', async () => {
     // A stale-write conflict reverts the row's value and shows the recover-and-reload banner, not a per-row error.
     render(SEED, 3); // loaded at set_version 3

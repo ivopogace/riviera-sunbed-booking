@@ -264,6 +264,29 @@ class VenueRepriceIT {
 	}
 
 	@Test
+	void refusesARowPriceInAnyCurrencyButEurOrBelowFiftyCents() throws Exception {
+		long venue = seedVenue("Lek Reprice Club");
+		long version = currentSetVersion(venue);
+		for (String body : new String[] {
+				"{\"price\":{\"minorUnits\":4200,\"currency\":\"ALL\"},\"expectedVersion\":%d}".formatted(version),
+				priceBody(49, version) }) {
+			mvc.perform(put("/api/venues/{v}/rows/{r}/price", venue, "A").cookie(operatorSession).with(csrf())
+							.contentType(MediaType.APPLICATION_JSON).content(body))
+					.andExpect(status().isBadRequest())
+					.andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
+					.andExpect(jsonPath("$.code").value("INVALID_REQUEST"));
+		}
+		mvc.perform(get("/api/venues/{id}", venue))
+				.andExpect(jsonPath("$.sets[0].price.minorUnits").value(3500))
+				.andExpect(jsonPath("$.sets[0].price.currency").value("EUR"));
+
+		mvc.perform(put("/api/venues/{v}/rows/{r}/price", venue, "A").cookie(operatorSession).with(csrf())
+						.contentType(MediaType.APPLICATION_JSON).content(priceBody(50, version)))
+				.andExpect(status().isNoContent());
+		mvc.perform(get("/api/venues/{id}", venue)).andExpect(jsonPath("$.sets[0].price.minorUnits").value(50));
+	}
+
+	@Test
 	void rejectsNonIsoCurrency() throws Exception {
 		long venue = seedVenue("Bad Currency Club");
 		mvc.perform(put("/api/venues/{v}/rows/{r}/price", venue, "A").cookie(operatorSession).with(csrf())
