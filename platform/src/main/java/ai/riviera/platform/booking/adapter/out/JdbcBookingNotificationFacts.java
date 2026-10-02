@@ -219,9 +219,9 @@ class JdbcBookingNotificationFacts implements BookingNotificationFacts {
 		return stayConfirmationFacts(stayId).map(this::narrowedToLiveRemainder);
 	}
 
-	/** The stay's stops cut to its {@link LiveRemainder}, keyed by the stay's code (never carried out, #7); whole when nothing is live. */
+	/** The stay's stops cut to its {@link LiveRemainder}, looked up by the stay's code (never logged, #7); whole when nothing is live. */
 	private StayConfirmationFacts narrowedToLiveRemainder(StayConfirmationFacts stay) {
-		List<BookingRecord> live = bookings.findStayByCode(stay.code()).map(record -> liveRemainder.of(record).live())
+		List<BookingRecord> live = bookings.findStayByCode(stay.code()).map(stored -> liveRemainder.of(stored).live())
 				.orElseThrow(() -> new IllegalStateException("stay " + stay.stayId().value() + " vanished between two reads"));
 		if (live.isEmpty()) {
 			return stay;
