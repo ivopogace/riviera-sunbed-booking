@@ -136,9 +136,9 @@ public class BookingMailFactsService {
 	}
 
 	/**
-	 * The stay's one cancellation mail, under the stay's code and span with the caller's summed refund and, when a
-	 * remodel ended the stay, the {@link RebookLinks} link for its first day; or the first fact that did not
-	 * resolve: the venue (off the first stop's set), then the contact.
+	 * The stay's one cancellation mail under the stay's code and the span of the stops handed in, with the caller's summed
+	 * refund and, when the caller says a remodel ended them, {@link RebookLinks}' link for their first day; or the first
+	 * fact that did not resolve: the venue (off the first stop's set), then the contact.
 	 */
 	public StayCancellationMailFacts resolveStayCancellation(StayConfirmationFacts stay, long refundMinor,
 			String currency, RefundReason reason, boolean endedByRemodel) {

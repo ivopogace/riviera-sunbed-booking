@@ -112,6 +112,38 @@ class StayCancellationMailIT {
 				"the stay's code, never a stretch's row code, with the span and the summed refund");
 	}
 
+	/**
+	 * Mirrors {@code CancelStayIT.aGuestCancelSkipsTheStretchARemodelEndedAndCancelsTheRest}: a remodel refunded stretch
+	 * 1 and moved stretch 2, so the guest's cancel is stretch 2's free exit, a {@code VENUE_CHANGE} with no rebook link.
+	 */
+	@Test
+	void aGuestCancelAfterARemodelEndedAStretchMailsOnlyTheLiveRemainder() {
+		String email = "stay-cancel-remainder@example.com";
+		List<SetRef> sets = twoSetsOfOneVenue();
+		SeededStay stay = seedStay(sets, LocalDate.of(2036, 5, 1), email, "AWAITING_PAYMENT");
+		stay.stretches().forEach(stretch -> fixtures.publishInTransaction(
+				new PaymentConfirmed(new BookingRef(stretch), "pi_stay_remainder_" + stretch)));
+		Awaitility.await().atMost(WAIT).until(() -> count(email, SentEmail.Kind.STAY_CONFIRMATION) == 1L);
+		long ended = stay.stretches().get(0);
+		long live = stay.stretches().get(1);
+		LocalDate liveFirst = stay.first().plusDays(2);
+		jdbc.sql("UPDATE booking SET status = 'CANCELLED', cancelled_at = now() WHERE id = :id").param("id", ended).update();
+		endedByRemodel(sets.get(0), ended, stay.first(), ReceiptOutcomeKind.REFUND);
+		jdbc.sql("UPDATE booking SET moved_at = now() WHERE id = :id").param("id", live).update();
+
+		CancelOutcome.Cancelled cancelled = assertInstanceOf(CancelOutcome.Cancelled.class,
+				cancelBooking.cancel(stay.code()));
+
+		Awaitility.await().atMost(WAIT).until(() -> count(email, SentEmail.Kind.BOOKING_CANCELLATION) == 1L);
+		Awaitility.await().during(Duration.ofSeconds(2)).atMost(WAIT)
+				.until(() -> count(email, SentEmail.Kind.BOOKING_CANCELLATION) == 1L);
+		assertEquals(STRETCH_AMOUNT, cancelled.refundMinor(), "the free exit refunds the live stretch in full");
+		assertEquals(new BookingCancellationMail(stay.code(), sets.get(1).venueName(), liveFirst, liveFirst.plusDays(1),
+						STRETCH_AMOUNT, "EUR", RefundReason.VENUE_CHANGE, null),
+				mailer.lastTo(email).orElseThrow().cancellation(),
+				"the remainder's span and first stop, never the ended stretch's, and no rebook link for a free exit");
+	}
+
 	@Test
 	void mailsAStayARemodelReleasedOnceWithItsRebookLink() {
 		String email = "stay-released@example.com";

@@ -491,7 +491,7 @@ is dead the moment the booking is `CANCELLED`.
 
 A guest's cancel of a stitched stay mails once, from `StayCancellationMailListener` on `StayCancelled`
 (#1259), and counts its losses on this same series: its ERROR line names the **stay** id, and
-`no-booking` there means no stay row resolved (`stayConfirmationFacts`). The stretches' refunds and
+`no-booking` there means no stay row resolved (`stayCancellationFacts`). The stretches' refunds and
 reversals are still per stretch, so point 1 applies to every stretch of the stay.
 
 | Tag | Meaning | Which module to investigate | Alert when |
