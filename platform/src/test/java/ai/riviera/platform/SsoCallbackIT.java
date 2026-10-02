@@ -1,17 +1,19 @@
 package ai.riviera.platform;
 
+import java.util.Objects;
+
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.context.annotation.Import;
+import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.web.util.UriComponentsBuilder;
 
-import ai.riviera.platform.customer.api.CustomerAccountProvisioning;
 import ai.riviera.platform.customer.api.SsoAccountProvisioning;
 import ai.riviera.platform.customer.vocabulary.SsoProvider;
 
@@ -20,7 +22,9 @@ import jakarta.servlet.http.Cookie;
 import static org.hamcrest.Matchers.containsString;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.redirectedUrl;
@@ -43,13 +47,12 @@ class SsoCallbackIT {
 	private static final String SESSION_COOKIE = "SESSION";
 	private static final String GOOGLE_EMAIL = "google.tourist@example.com";
 	private static final String APPLE_EMAIL = "apple.tourist@example.com";
+	private static final String HOLDER_PASSWORD = "holder-passphrase-123";
 
 	@Autowired
 	MockMvc mvc;
 	@Autowired
 	JdbcClient jdbc;
-	@Autowired
-	CustomerAccountProvisioning accounts;
 	@Autowired
 	SsoAccountProvisioning ssoAccounts;
 
@@ -84,15 +87,43 @@ class SsoCallbackIT {
 		assertEquals(1, accountRows(APPLE_EMAIL));
 	}
 
-	/** Auto-linked onto an account that has a password, the session carries that account's stamp (#1306). */
+	/** Linked onto a verified account with a password, the holder's and the SSO session both carry its stamp (#1306). */
 	@Test
-	void anSsoSignInOntoAnAccountWithAPasswordStaysSignedIn() throws Exception {
-		accounts.register(GOOGLE_EMAIL, "{bcrypt}an-existing-password-hash");
+	void anSsoSignInOntoAVerifiedPasswordAccountKeepsBothSessions() throws Exception {
+		Cookie holder = registerSession(GOOGLE_EMAIL);
+		jdbc.sql("UPDATE customer_account SET email_verified = true WHERE email = :email")
+				.param("email", GOOGLE_EMAIL).update();
 		SignedIn google = signIn("google");
 
 		mvc.perform(get("/api/auth/me").cookie(google.session()).header("X-Forwarded-For", google.ip()))
 				.andExpect(status().isOk())
 				.andExpect(jsonPath("$.username").value(GOOGLE_EMAIL));
+		mvc.perform(get("/api/auth/me").cookie(holder).header("X-Forwarded-For", SessionLoginSupport.uniqueClientIp()))
+				.andExpect(status().isOk());
+		assertEquals(0, passwordlessAccountRows(GOOGLE_EMAIL), "a verified email's password is the holder's own");
+	}
+
+	/**
+	 * Linked onto an unverified account, the SSO proof of the email wins (#1295): the password is cleared, so the
+	 * holder's session fails its stamp check on the next request and their password login is refused.
+	 */
+	@Test
+	void anSsoSignInOntoAnUnverifiedPasswordAccountEndsThePasswordHoldersSession() throws Exception {
+		Cookie holder = registerSession(GOOGLE_EMAIL);
+		mvc.perform(get("/api/auth/me").cookie(holder).header("X-Forwarded-For", SessionLoginSupport.uniqueClientIp()))
+				.andExpect(status().isOk());
+
+		SignedIn google = signIn("google");
+
+		mvc.perform(get("/api/auth/me").cookie(holder).header("X-Forwarded-For", SessionLoginSupport.uniqueClientIp()))
+				.andExpect(status().isUnauthorized());
+		mvc.perform(get("/api/auth/me").cookie(google.session()).header("X-Forwarded-For", google.ip()))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.username").value(GOOGLE_EMAIL));
+		assertEquals(1, passwordlessAccountRows(GOOGLE_EMAIL));
+		mvc.perform(SessionLoginSupport.loginRequest("/api/auth/customer/login", """
+				{"email": "%s", "password": "%s"}""".formatted(GOOGLE_EMAIL, HOLDER_PASSWORD)).with(csrf()))
+				.andExpect(status().isUnauthorized());
 	}
 
 	/** A returning subject signs in as its linked account, under that account's email, not the provider's new one. */
@@ -190,6 +221,18 @@ class SsoCallbackIT {
 	}
 
 	private record SignedIn(Cookie session, String ip) {
+	}
+
+	/** Register a password account for {@code email} through the edge and return its signed-in session. */
+	private Cookie registerSession(String email) throws Exception {
+		return Objects.requireNonNull(mvc.perform(post("/api/auth/customer/register").with(csrf())
+						.header(SessionLoginSupport.CHALLENGE_HEADER, SessionLoginSupport.solvedChallenge(mvc))
+						.header("X-Forwarded-For", SessionLoginSupport.uniqueClientIp())
+						.contentType(MediaType.APPLICATION_JSON)
+						.content("""
+								{"email": "%s", "password": "%s"}""".formatted(email, HOLDER_PASSWORD)))
+				.andExpect(status().isCreated())
+				.andReturn().getResponse().getCookie(SESSION_COOKIE), "register set no SESSION cookie");
 	}
 
 	private static String queryParam(String url, String name) {
