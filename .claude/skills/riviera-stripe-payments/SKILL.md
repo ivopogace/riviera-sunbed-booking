@@ -11,10 +11,11 @@ description: >-
 
 **Locked (ADR-0002):** collect all tourist payments via Stripe into the German entity; pay
 venues manually in weekly BKT batches minus commission. **No Stripe Connect** — `Account`,
-`Transfer`, `application_fee`, `on_behalf_of`, destination charges cannot reach Albanian
-venues. If a task wants them, stop and surface it as an open question. ADR-0009 (Proposed)
-would re-decide the gateway; this model stays authoritative until that work starts. Do NOT load
-`stripe:connect-recommend`; ignore Connect sections of `stripe:stripe-best-practices`.
+`Transfer`, `Payout`, `application_fee`, `on_behalf_of`, the `Stripe-Account` header, destination
+charges cannot reach Albanian venues. If a task wants them, stop and surface it as an open
+question. ADR-0009 (Proposed) would re-decide the gateway; this model stays authoritative until
+that work starts. Do NOT load `stripe:connect-recommend`; ignore Connect sections of
+`stripe:stripe-best-practices`.
 
 ## Collection (`payment`)
 
