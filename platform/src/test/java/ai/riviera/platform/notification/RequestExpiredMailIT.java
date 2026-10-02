@@ -152,14 +152,15 @@ class RequestExpiredMailIT {
 
 		long bookingId = fixtures.seedBooking(set, "LISTIDE1", date, guest, 10_014L, "EXPIRED");
 		fixtures.publishInTransaction(fixtures.requestExpiredOf(set, bookingId, date));
-		Awaitility.await().atMost(WAIT).until(() -> mailer.lastTo(guest).isPresent());
 
-		assertThat(jdbc.sql("SELECT DISTINCT listener_id FROM event_publication_archive "
-						+ "WHERE serialized_event LIKE :fragment AND listener_id LIKE :module")
+		Awaitility.await().atMost(WAIT).untilAsserted(() -> assertThat(jdbc.sql(
+						"SELECT DISTINCT listener_id FROM event_publication_archive "
+								+ "WHERE serialized_event LIKE :fragment AND listener_id LIKE :module")
 				.param("fragment", "%" + date + "%")
 				.param("module", "notification.%")
 				.query(String.class).list())
-				.containsExactly(BookingMailFixtures.REQUEST_EXPIRED_LISTENER_ID);
+				.containsExactly(BookingMailFixtures.REQUEST_EXPIRED_LISTENER_ID));
+		assertThat(mailer.lastTo(guest)).isPresent();
 	}
 
 	private double abandonedCount() {

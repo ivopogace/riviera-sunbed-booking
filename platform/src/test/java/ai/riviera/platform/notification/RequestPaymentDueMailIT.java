@@ -253,14 +253,15 @@ class RequestPaymentDueMailIT {
 		fixtures.publishInTransaction(fixtures.paymentDueOf(
 				new BookingMailFixtures.SetRef(set.setId(), set.venueId()), bookingId, date, 8316L,
 				Instant.now().plus(Duration.ofHours(12)).truncatedTo(ChronoUnit.MILLIS)));
-		Awaitility.await().atMost(WAIT).until(() -> countTo(guest) == 1L);
 
-		assertThat(jdbc.sql("SELECT DISTINCT listener_id FROM event_publication_archive "
-						+ "WHERE serialized_event LIKE :fragment AND listener_id LIKE :module")
+		Awaitility.await().atMost(WAIT).untilAsserted(() -> assertThat(jdbc.sql(
+						"SELECT DISTINCT listener_id FROM event_publication_archive "
+								+ "WHERE serialized_event LIKE :fragment AND listener_id LIKE :module")
 				.param("fragment", "%8316%")
 				.param("module", "notification.%")
 				.query(String.class).list())
-				.containsExactly(BookingMailFixtures.PAYMENT_DUE_LISTENER_ID);
+				.containsExactly(BookingMailFixtures.PAYMENT_DUE_LISTENER_ID));
+		assertThat(countTo(guest)).isEqualTo(1L);
 	}
 
 	/**
