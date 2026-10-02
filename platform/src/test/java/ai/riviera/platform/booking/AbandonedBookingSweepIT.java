@@ -42,14 +42,11 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 /**
- * End-to-end proof of the abandoned-payment TTL sweep (issue #51) under the {@code stripe} profile.
- * The sweep cancels the lingering PaymentIntent and frees the held {@code (set, date)} for bookings
- * that have outlived the TTL, idempotently with the {@code payment_intent.canceled} webhook path
- * (which reuses the same shared {@link ReleaseAbandonedBooking}). The {@link StripeClient} is mocked
- * (no live Stripe call); the sweep is driven directly through {@link ExpireAbandonedBookings} for
- * determinism, with the background scheduler pushed past the test via a long {@code initial-delay}.
- * {@link TiraneDaytimeClock} is the sweep's clock and this class's "now". Testcontainers; skipped
- * where Docker is absent.
+ * The abandoned-payment sweep (#51) under the {@code stripe} profile: it voids the lingering
+ * PaymentIntent and frees the held {@code (set, date)}, idempotent with the canceled webhook's shared
+ * {@link ReleaseAbandonedBooking}. Stripe is mocked; {@link ExpireAbandonedBookings} is driven directly,
+ * the scheduler held off by a long {@code initial-delay}. {@link TiraneDaytimeClock} is the clock the
+ * sweep reads and the rows are aged from. Testcontainers; skipped where Docker is absent.
  */
 @EnabledIfDockerAvailable
 @Import({ TestcontainersConfiguration.class, TiraneDaytimeClock.class })
