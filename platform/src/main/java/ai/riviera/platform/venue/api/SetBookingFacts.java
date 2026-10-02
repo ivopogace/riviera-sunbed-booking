@@ -18,8 +18,8 @@ import ai.riviera.platform.venue.vocabulary.VenueStayFacts;
  * {@code availability} and {@code itinerary}; {@link #sellsOnlineOn} lives here because
  * {@code VenueCatalog} is tourist-only. Deliberately <strong>not</strong> visibility-fenced, and the one
  * port that still answers for a retired set (ADR-0019): sold-booking paths must keep resolving them. The
- * reserve path fences visibility itself;
- * {@link #poolForClaim} is the retired-set fence for both claim paths. Rationale: RESPONSIBILITIES.md §venue.
+ * reserve path fences visibility itself; the retired-set fences are {@link #poolForClaim} for both claim
+ * paths and the {@code ForReserve} reads for both booking modes. Rationale: RESPONSIBILITIES.md §venue.
  */
 public interface SetBookingFacts {
 
@@ -44,13 +44,15 @@ public interface SetBookingFacts {
 	Map<SetId, SetBookingInfo> setBookingInfos(Collection<SetId> setIds);
 
 	/**
-	 * {@link #setBookingInfo(SetId)} for the reserve, after taking the set's venue row {@code FOR SHARE} for the
-	 * caller's transaction: a season closure then waits for the reserve, or the reserve sees it (#1304). Must run
-	 * in a transaction, never a read-only one. Rationale: RESPONSIBILITIES.md §venue.
+	 * {@link #setBookingInfo(SetId)} for the reserve, empty for a retired set: venue row {@code FOR SHARE} (#1304),
+	 * then the set {@code FOR KEY SHARE} through the active view (#1284). Read-write transaction only.
 	 */
 	Optional<SetBookingInfo> setBookingInfoForReserve(SetId setId);
 
-	/** {@link #setBookingInfos(Collection)} under the same lock on every venue the sets belong to, in id order. */
+	/**
+	 * {@link #setBookingInfos(Collection)} under the same locks, on every venue the sets belong to and then every
+	 * set, in id order; a retired set is absent.
+	 */
 	Map<SetId, SetBookingInfo> setBookingInfosForReserve(Collection<SetId> setIds);
 
 	/**

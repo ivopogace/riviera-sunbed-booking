@@ -62,6 +62,10 @@ row reads live for a booked guest today), and nothing for a future move mail to 
    `activeSetsOf`, `freeOnlineSetsOn` and `stayFactsOf` — and they select from
    `active_set_position` by convention only, since the exemption covers the whole class. Splitting
    the bare reads out, or exempting per statement, is tracked in #1337.
+   *Amended 2026-10-02 (#1284):* `setBookingInfoForReserve` / `setBookingInfosForReserve` join that
+   list. A Request-to-Book request claims nothing (ADR-0025), so `poolForClaim` never fences it; the
+   reserve's fence read is the retired-set fence on both booking modes, locking the set through the
+   view as `poolForClaim` does. Point 4's bare reads are `setBookingInfo` / `setBookingInfos` only.
 
 ## Considered options
 

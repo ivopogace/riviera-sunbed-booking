@@ -291,7 +291,7 @@ classDiagram
 > (invariant #3) — an online booking can only target an `ONLINE` set.
 >
 > A set that carries booking history is **retired**, never deleted (`retired_at`, ADR-0019): every
-> read that means "the map" — list, map, calendar, daily view, layout locks, both claim paths —
+> read that means "the map" — list, map, calendar, daily view, layout locks, both claim paths, the reserve —
 > selects from `active_set_position`, and only `SetBookingFacts` still answers for a retired set, so
 > its bookings keep naming it. The layout-uniqueness indexes are partial over active rows.
 

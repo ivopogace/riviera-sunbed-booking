@@ -54,7 +54,8 @@ close, the maximum stay, the season closure, and the commission rate over time. 
   `SetBookingFacts` stays **unfenced** and is the one port that answers for a **retired set**
   (ADR-0019): cancel, the booking view, the mails and the staff lookup must keep resolving a hidden
   venue's sets and a spot that left the map. The reserve path fences visibility itself in `booking`;
-  `poolForClaim` is the retired-set fence for both claim paths. Photo serving is visibility-fenced too.
+  the retired-set fences are `poolForClaim` for both claim paths and the `ForReserve` reads for both
+  booking modes (a request claims nothing, ADR-0025). Photo serving is visibility-fenced too.
 - **Venue photos** (ADR-0008): per-slot upload/replace/delete, processing, `bytea` storage behind
   the module-internal `PhotoStorage` port, the content-hash serving read — `404` (bytes and `304`)
   for a hidden venue except to its owner or an admin, served `private` (ADR-0013). **Each tourist
@@ -94,12 +95,12 @@ close, the maximum stay, the season closure, and the commission rate over time. 
   its row for every booking, mail and payout line naming it; no booking → deleted.
 - **Retired sets — the exclude and exempt lists, machine-held.** Excluded: the tourist list and its
   counts, the map, the availability calendar, the operator's daily view, every layout lock and
-  conflict probe, and both claim paths (online reserve and staff mark answer `NO_SUCH_SET`) — each
-  reads the `active_set_position` view, and every set write names the marker, so a retired set's
-  label and price stay frozen at what its guests were told. Exempt:
-  `SetBookingFacts#setBookingInfo(s)` and their `ForReserve` twins (cancel, booking view, mails, staff lookup), as
-  a later move mail must name the old spot. Its slot and cell are free for a new set (partial unique
-  indexes). `RetiredSetExclusionArchitectureTests` enforces all of it (§ *Machine-checked*).
+  conflict probe, both claim paths and the reserve on both booking modes (`NO_SUCH_SET`) — each reads
+  `active_set_position`; every set write names the marker, so a retired set's label and price stay
+  frozen. The reserve reads lock the set through the view as `poolForClaim` does, since a single-set
+  retire takes no venue lock. Exempt: `SetBookingFacts#setBookingInfo(s)` (cancel, booking view, mails,
+  staff lookup). Its slot and cell are free for a new set. `RetiredSetExclusionArchitectureTests` holds
+  it outside `JdbcSetBookingFacts`; inside, the excluding reads hold by convention (ADR-0019 point 6).
 - **The bulk save (`PUT …/beach-map`) is a diff keyed by grid cell, never a delete-all.** The body
   carries no set ids, so a set that changes cell is a removal plus an insert — the removal question
   is the move question. Only removed sets and kept ones whose position number changes are probed,
@@ -128,7 +129,7 @@ close, the maximum stay, the season closure, and the commission rate over time. 
   The reserve's `setBookingInfoForReserve` and the request accept's `lockVenueForClaim` take the venue row
   `FOR SHARE` (`KEY SHARE` would not conflict with a non-key `UPDATE venue`), venue before set as the
   set-writes lock, so venue writers (closure, profile, commission, rating, layout token) queue behind
-  in-flight reserves and accepts (#1304, #1305).
+  in-flight reserves and accepts (#1304, #1305); the reserve then takes its sets `FOR KEY SHARE` (#1284).
 - **The batch apply (`applyToSets`) is one transaction on the `set_version` token.** Lock order:
   the venue row (`lockAndReadSetVersion`), then the named set rows `FOR UPDATE` — the order every
   set-write takes, so none deadlocks another. A stale token (`STALE_WRITE`) or a set id not on the
@@ -254,7 +255,8 @@ any is released on the old, never a swap of my own — so a racing reserve wins 
   closure that does not admit every day is `VENUE_CLOSED` (the venue is deliberately visible); the
   sales close is judged on the first day (invariant #4); a span over the venue's maximum stay is
   `STAY_TOO_LONG`. A stitched plan judges every stretch's set over the whole stay. The fence facts are
-  read through `SetBookingFacts#setBookingInfo(s)ForReserve`, under the venue row lock (#1304).
+  read through `SetBookingFacts#setBookingInfo(s)ForReserve`, under the venue row lock (#1304), and a
+  retired set reads as absent there, so it is `NO_SUCH_SET` on both modes (#1284).
 - **Then it claims every day, all or nothing:** a day that loses gives back every day won, then
   answers `SET_TAKEN` (`ConcurrentRangeReservationIT`). One PaymentIntent for per-day price × days
   (invariant #5); the cancellation window and refund are the first day's, on what remains of the
