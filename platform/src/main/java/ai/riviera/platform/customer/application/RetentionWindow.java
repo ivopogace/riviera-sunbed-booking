@@ -9,7 +9,7 @@ import java.time.Period;
  * @param window    a {@link Period}, not a {@code Duration}, which has no year unit to parse {@code P10Y};
  *                  a booking whose last service day is on or after {@code today − window} (in
  *                  {@code Europe/Tirane}) retains the contact
- * @param batchSize the most rows a single sweep may scrub, so a run stays bounded regardless of backlog
+ * @param batchSize the most contacts one sweep may scrub — its write and row-lock bound, not a cap on the walk
  */
 public record RetentionWindow(Period window, int batchSize) {
 }
