@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
@@ -92,6 +93,9 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  *       stay outcome on {@code booking.status} is derived from it. Same whole-word constant-pool
  *       scan as rule 1, and the bare token is safe because the module's package name is
  *       {@code booking}, not {@code booking_day}.</li>
+ *   <li><strong>Sole-writer, stays:</strong> no class outside the {@code booking} module runs SQL
+ *       against {@code stay} (ADR-0024). SQL-shaped, like rule 4, because the bare word is in prose
+ *       and in {@code max_stay_days}.</li>
  *   <li><strong>Sole-writer, every owned table:</strong> {@link #SOLE_WRITERS} maps each table in
  *       {@code CLAUDE.md}'s "Sole writer of" column (plus {@code challenge_registry} and
  *       {@code admin_audit_record}) to its owning module, and no class outside that module carries a
@@ -102,8 +106,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  *       read or a longer table name. An {@code ON CONFLICT} clause belongs to its {@code INSERT INTO},
  *       which already names the target. The map is held to the Flyway schema both ways: every table
  *       a migration creates is owned or a named framework table, and every owner writes its table.
- *       Rules 1, 4 and 6–10 stay as the stronger "touch" form (reads too) for their tables, and take
- *       their owner from this map, so the two cannot disagree on who owns a table.</li>
+ *       Rules 1, 4 and 6–10 stay as the stronger "touch" form (reads too) for their tables; they and
+ *       rule 5 take their module from this map, so no two rules disagree on who owns a table.</li>
  * </ol>
  *
  * <p><strong>Necessary, not sufficient.</strong> These rules encode only the <em>structural</em>
@@ -118,7 +122,9 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * string can hide behind an alphanumeric length byte. The word-boundary check means a
  * <em>different</em> identifier merely containing the name ({@code reset_availability}) does not
  * false-positive; a class that inlines availability's table-name constant still matches — that
- * coupling is exactly what the rule exists to surface.)
+ * coupling is exactly what the rule exists to surface. Rule 11 judges whole {@code CONSTANT_String}
+ * entries, so it has no length-byte blind spot, but it misses a write whose table name is
+ * concatenated or taken from a constant, and one qualified by a schema other than {@code public}.)
  *
  * <p>The violation collectors are parameterized by {@code (JavaClasses, base)} so the negative
  * cases are proven against the deliberately-violating fixtures under
@@ -647,14 +653,18 @@ class ResponsibilitiesArchitectureTests {
 		assertEquals(Set.of(), stale, "SOLE_WRITERS names tables no migration creates");
 	}
 
-	/** The negative proof (red run): a non-owner {@code UPDATE booking SET} is rejected; a longer
-	 * table name, a package string, a read and prose are not; the owner's own write is not. */
+	/** A non-owner write of each shape is rejected; a longer table name, a package string, a read
+	 * and prose are not; the owner's own write is not. */
 	@Test
 	void foreignWriteFixtureIsRejectedAndMentionsAreNot() {
 		List<String> violations = foreignWriteViolations(FIXTURE_CLASSES, FIXTURE_BASE);
-		assertTrue(violations.stream().anyMatch(v -> v.contains("RogueBookingWriter") && v.contains("'booking'")),
-				"Expected the table-ownership rule to reject the fixture's foreign UPDATE booking SET, but got: "
-						+ violations);
+		for (String shape : List.of("UPDATE booking b SET", "INSERT INTO booking", "DELETE FROM public.booking",
+				"MERGE INTO \"booking\"", "TRUNCATE TABLE booking")) {
+			assertTrue(violations.stream().anyMatch(v -> v.contains("RogueBookingWriter")
+							&& v.contains("'booking' table (\"" + shape + "\")")),
+					"Expected the table-ownership rule to reject the fixture's foreign " + shape + ", but got: "
+							+ violations);
+		}
 		assertFalse(violations.stream().anyMatch(v -> v.contains("BookingNameMentions")),
 				"A longer table name, a package string, a read or prose must not count as a write, but got: "
 						+ violations);
@@ -703,7 +713,7 @@ class ResponsibilitiesArchitectureTests {
 				}
 			}
 		}
-		return Map.copyOf(owners);
+		return Collections.unmodifiableMap(owners);
 	}
 
 	/** Keyword, optional {@code public.} schema and quotes, then the whole-word table name; an
@@ -718,7 +728,7 @@ class ResponsibilitiesArchitectureTests {
 					+ "|TRUNCATE\\s+(?:TABLE\\s+)?(?:ONLY\\s+)?" + name
 					+ "|UPDATE\\s+(?:ONLY\\s+)?" + name + "(?:\\s+(?:AS\\s+)?(?!SET\\b)\\w+)?\\s+SET\\b)"));
 		}
-		return Map.copyOf(patterns);
+		return Collections.unmodifiableMap(patterns);
 	}
 
 	private static Set<String> createdTables() throws IOException {
@@ -733,7 +743,6 @@ class ResponsibilitiesArchitectureTests {
 		}
 		return tables;
 	}
-
 
 	private static List<String> stayTableViolations(JavaClasses classes, String base) {
 		List<String> violations = new ArrayList<>();
