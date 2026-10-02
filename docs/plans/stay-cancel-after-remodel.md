@@ -16,7 +16,7 @@ the next wave's #1300 (a new ended kind) ride the same rule. A stretch cancelled
 
 **Source of intent:** issue #1290 and the owner's decision comment of 2026-10-02.
 
-**Branch:** `bugfix/stay-cancel-after-remodel-refund`
+**Branch:** `bugfix/stay-cancel-after-remodel-refund` — PR #1372
 
 ## Acceptance criteria
 
