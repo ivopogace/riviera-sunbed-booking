@@ -30,9 +30,10 @@ import static org.assertj.core.api.Assertions.assertThat;
  * Verifies the SSO identity linkage slice against real Postgres via Testcontainers — which
  * boots the full Flyway chain, so this also exercises migration <strong>V27</strong>: first SSO sign-in
  * for an unknown {@code (provider, subject)} creates a password-less account and a link row; a returning
- * subject reuses it; a first-seen subject whose (verified) email already has an account auto-links to it
- * without creating a duplicate; an SSO-only account has no password credential (null hash filtered from
- * {@link CustomerAccounts#findByEmail}) yet still resolves as an account id; and the resolve-or-create is
+ * subject reuses it; a first-seen subject whose email already has an account auto-links to it without creating
+ * a duplicate, keeping its password only if the email was verified (#1295); an SSO-only account has no password
+ * credential (null hash filtered from {@link CustomerAccounts#findByEmail}) yet still resolves as an account id; and
+ * the resolve-or-create is
  * race-safe under concurrent first sign-ins (the {@code (provider, subject)} UNIQUE constraint enforces
  * one account per identity — invariant #12).
  */
@@ -75,18 +76,34 @@ class SsoAccountProvisioningIT {
 	}
 
 	@Test
-	void unknownSubjectWithTakenEmailLinksToExistingAccountAndDoesNotOverwrite() {
+	void linkingOntoAnUnverifiedPasswordAccountClearsItsPassword() {
 		RegistrationOutcome registered = provisioning.register("owner@example.com", "{bcrypt}ownerpw");
 		CustomerAccountId passwordAccount = ((RegistrationOutcome.Registered) registered).accountId();
 
 		CustomerAccountId linked = sso.resolveOrCreate(SsoProvider.GOOGLE, "g-sub-2", "Owner@Example.com");
 
-		assertThat(linked).as("auto-link by verified email: no duplicate account").isEqualTo(passwordAccount);
+		assertThat(linked).as("auto-link by email: no duplicate account").isEqualTo(passwordAccount);
 		assertThat(accountRows("owner@example.com")).isEqualTo(1);
 		assertThat(identityRows(SsoProvider.GOOGLE, "g-sub-2")).isEqualTo(1);
 		assertThat(accounts.findByEmail("owner@example.com"))
-				.as("linking an SSO identity must not disturb the existing password")
-				.get().extracting(c -> c.passwordHash()).isEqualTo("{bcrypt}ownerpw");
+				.as("the SSO proof of the email beats a password nobody proved it for (#1295)").isEmpty();
+		assertThat(jdbc.queryForObject(
+				"SELECT password_hash FROM customer_account WHERE id = ?", String.class, passwordAccount.value()))
+				.isNull();
+	}
+
+	@Test
+	void linkingOntoAVerifiedPasswordAccountKeepsItsPassword() {
+		RegistrationOutcome registered = provisioning.register("verified-owner@example.com", "{bcrypt}verifiedpw");
+		CustomerAccountId passwordAccount = ((RegistrationOutcome.Registered) registered).accountId();
+		jdbc.update("UPDATE customer_account SET email_verified = true WHERE id = ?", passwordAccount.value());
+
+		CustomerAccountId linked = sso.resolveOrCreate(SsoProvider.GOOGLE, "g-sub-verified", "verified-owner@example.com");
+
+		assertThat(linked).isEqualTo(passwordAccount);
+		assertThat(accounts.findByEmail("verified-owner@example.com"))
+				.as("a verified email's password is the holder's own")
+				.get().extracting(c -> c.passwordHash()).isEqualTo("{bcrypt}verifiedpw");
 	}
 
 	@Test

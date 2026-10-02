@@ -67,6 +67,12 @@ public interface CustomerAccountStore {
 	void markEmailVerified(CustomerAccountId accountId);
 
 	/**
+	 * Drop the live account's password while its email is still unverified, one guarded statement: an SSO sign-in
+	 * proved the email, a password nobody did (#1295); a verified or password-less account is left alone.
+	 */
+	void clearUnverifiedPassword(CustomerAccountId accountId);
+
+	/**
 	 * Lock the account row {@code FOR NO KEY UPDATE} (a child insert's key check still passes) for the caller's
 	 * transaction, in a statement of its own; false when gone or erased. Before its tokens and identities, as erasure.
 	 */
