@@ -228,7 +228,9 @@ any is released on the old, never a swap of my own — so a racing reserve wins 
   other write path: `StaffAvailabilityService` asserts the operator owns the path venue first
   (invariant #13 — why I depend on `operator::api`), refuses a past `Europe/Tirane` date
   (`DATE_IN_PAST` → `422`), then marks with the claim's `ON CONFLICT DO NOTHING`; release deletes
-  only a `STAFF_MARKED` row.
+  only a `STAFF_MARKED` row. The SQL sits behind the module's own out port `application.StaffMarks`
+  (adapter `JdbcStaffMarks`), joining the service's transaction; no `application/` class names JDBC
+  (`JdbcOnlyArchitectureTests`).
 
 **Not My Job:**
 - The venue layout, which sets exist, their positions or prices → **`venue`**
@@ -1385,6 +1387,7 @@ them form the *structural net* is `riviera-modulith` § *The structural net*'s c
 | No module reaches another's `application`/`domain`/`adapter`; `allowedDependencies` hold | `ModularityTests` (`ApplicationModules.verify()`) |
 | The ADR-0007 package shape; published-surface kinds; the `VenueCatalog` role split | `PackageShapeArchitectureTests`, `PublishedSurfacePlacementArchitectureTests`, `VenueApiRoleSplitTests` |
 | No JPA/Hibernate on the classpath — invariant #1 | `JdbcOnlyArchitectureTests` |
+| No class in any `application/` package names `org.springframework.jdbc`, `java.sql` or `javax.sql`: SQL sits in `adapter/out` behind a port (ADR-0007) | `JdbcOnlyArchitectureTests` (application-JDBC rule) |
 | A `domain/` class names only the JDK and published ids, values and rules (ADR-0018 §4) | `DomainPurityArchitectureTests` |
 | The booking transition table and the guarded `UPDATE`s admit the same statuses (ADR-0018 §1) | `JdbcBookingTransitionTableIT` (every transition × every status; Docker-gated, so it fails the build only where Docker runs — CI) |
 | The view's `cancellable` and the guest cancel's refusal agree with `CANCEL_BY_GUEST`, status by status (ADR-0018 §1) | `ViewBookingServiceTest.onlyAConfirmedBookingIsCancellableWhileTheWindowIsOpen`, `CancelBookingServiceTest` (against the literal `BookingTransitionTest` pins) |
