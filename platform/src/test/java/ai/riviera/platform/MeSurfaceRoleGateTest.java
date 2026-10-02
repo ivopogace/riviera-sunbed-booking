@@ -1,6 +1,8 @@
 package ai.riviera.platform;
 
 
+import ai.riviera.platform.web.adapter.in.WebCorsConfig;
+import ai.riviera.platform.web.adapter.in.SecurityConfig;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
@@ -34,9 +36,9 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  *
  * <p><strong>Why a status assertion would pin nothing.</strong> Every {@code /api/me} controller opens
  * with {@link CustomerAccountDirectory#requireSignedInAccount}, which throws {@code NotSignedInCustomerException}
- * for a non-customer principal. That reaches {@link ApiErrorHandler#onAccessDenied} and produces
+ * for a non-customer principal. That reaches {@code ApiErrorHandler#onAccessDenied} and produces
  * {@code 403 ACCESS_DENIED} — <em>byte-identical</em> to what
- * {@link SecurityProblemResponses#writeAccessDenied} emits from inside the filter chain. So neither the
+ * {@code SecurityProblemResponses#writeAccessDenied} emits from inside the filter chain. So neither the
  * status code nor the response body can tell the two layers apart, and a test asserting only
  * {@code isForbidden()} passes just as happily against a {@code SecurityConfig} with no matcher at all.
  * A {@code verify(collaborator, never())} is no better on its own: {@code requireSignedInAccount} is the
@@ -48,8 +50,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * #customerRequestDoesReachTheController} is the positive control that proves the assertion varies:
  * same endpoint, customer principal, non-{@code null} handler.
  *
- * <p>Lives in the root test package because the web slice imports the package-private edge config
- * ({@code SecurityConfig} / {@code WebCorsConfig} / {@link WebSliceStubs}), like every other web-slice
+ * <p>Lives in the root test package with the other whole-web-layer slices sharing {@link WebSliceStubs}
+ * (with {@code web}'s {@code SecurityConfig} / {@code WebCorsConfig}), like every other web-slice
  * test here. Docker-free. The real-schema behaviour of these endpoints stays {@code SetPasswordIT}'s
  * and {@code EmailVerificationIT}'s job.
  *

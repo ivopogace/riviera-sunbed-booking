@@ -4,7 +4,7 @@
  * each once via the {@code challenge_registry} claim, sweeps expired rows, serves the endpoint.
  * Closed, {@code allowedDependencies = {}} (only the registered {@code shared}); callers see only
  * {@code api.ProofOfWorkChallenges} and {@code vocabulary.ChallengeVerdict}. The fence (routes,
- * filter, ordering, problem bodies) is the edge's. Rationale: RESPONSIBILITIES.md §challenge.
+ * filter, ordering, problem bodies) is {@code web}'s. Rationale: RESPONSIBILITIES.md §challenge.
  */
 @org.springframework.modulith.ApplicationModule(
 	displayName = "Proof-of-work challenge",

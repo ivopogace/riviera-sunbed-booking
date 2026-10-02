@@ -1,6 +1,8 @@
 package ai.riviera.platform;
 
 
+import ai.riviera.platform.web.adapter.in.WebCorsConfig;
+import ai.riviera.platform.web.adapter.in.SecurityConfig;
 import org.junit.jupiter.api.Test;
 import org.mockito.InOrder;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -46,8 +48,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * failed revoke leaves the account unscrubbed.</li>
  * </ol>
  *
- * <p>Lives in the root test package because the web slice imports the package-private edge config
- * ({@code SecurityConfig} / {@code WebCorsConfig} / {@link WebSliceStubs}). Docker-free. The real-schema
+ * <p>Lives in the root test package with the other whole-web-layer slices sharing {@link WebSliceStubs}
+ * (with {@code web}'s {@code SecurityConfig} / {@code WebCorsConfig}). Docker-free. The real-schema
  * scrub behaviour is {@code AccountErasureIT}'s job.
  */
 @WebMvcTest

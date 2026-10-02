@@ -84,12 +84,13 @@ run before building on it.
 ### Blast radius
 
 `@ApplicationModuleTest` bootstraps its module plus the root package's beans and the registered
-`shared` module's, but another module's beans only when that module is bootstrapped. Moving a port
-the root `SecurityConfig` chain needs out of the root fails every other module's
-`@ApplicationModuleTest` with `NoSuchBeanDefinitionException` while web slices stay green (`WebSliceStubs` supplies
-it). Fix: the moved port joins each such test's `@MockitoBean` list. After any bean move
-between root and a module, run `grep -rl '@ApplicationModuleTest' platform/src/test/java` —
-the whole population — and add a stub to `WebSliceStubs` for a new root-edge dependency.
+`shared` module's, but another module's beans only when that module is bootstrapped. A root bean
+that injects a module port fails every other module's `@ApplicationModuleTest` with
+`NoSuchBeanDefinitionException` while web slices stay green (`WebSliceStubs` supplies it); the root
+reaches no module (`CompositionRootDisciplineTests`), so this now bites a bean moved between modules or
+into `shared`. Fix: the port joins each such test's `@MockitoBean` list. After any bean move, run
+`grep -rl '@ApplicationModuleTest' platform/src/test/java` — the whole population — and add a stub to
+`WebSliceStubs` for a new dependency of `web`'s chain.
 
 ## Frontend (`frontend/`)
 

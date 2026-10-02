@@ -15,7 +15,7 @@ phrase: `grep -rn "ApiProblem\." platform/src/main` unrolled through each contro
 `problem(...)`/`error(...)` helper, plus the hand-built JSON in `RateLimitFilter` and
 `SecurityProblemResponses`.
 
-## `ApiErrorHandler` (root package)
+## `ApiErrorHandler` (`web`)
 
 The single `@RestControllerAdvice`, extending `ResponseEntityExceptionHandler`:
 `shared.InvalidApiRequestException` → `400 INVALID_REQUEST`; `BlockedPasswordException` →
