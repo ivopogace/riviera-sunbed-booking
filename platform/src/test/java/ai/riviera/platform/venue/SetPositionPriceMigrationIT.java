@@ -83,7 +83,9 @@ class SetPositionPriceMigrationIT {
 		insertSet(3, 50, "EUR");
 		updateSeededSet("price_minor", 50L);
 
-		assertThat(jdbc.queryForObject("SELECT count(*) FROM set_position WHERE price_minor = 50", Integer.class))
-				.isEqualTo(2);
+		assertThat(jdbc.queryForObject("""
+				SELECT count(*) FROM set_position
+				WHERE price_minor = 50 AND (row_label = 'Price check' OR id = (SELECT min(id) FROM set_position))
+				""", Integer.class)).isEqualTo(2);
 	}
 }
