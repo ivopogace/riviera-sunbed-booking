@@ -787,6 +787,32 @@ describe('BookingView', () => {
     expect(host.querySelector('[data-testid="review-nothing-left-note"]')).not.toBeNull();
   });
 
+  it('marks a stay stop whose every day was refunded, while the stay itself still reads as held', async () => {
+    const [first, second] = STAY_MOVED.stretches!;
+    const fixture = await render(
+      stubService({
+        detail: {
+          ...STAY_MOVED,
+          nothingLeft: false,
+          stretches: [
+            { ...first, nothingLeft: true },
+            { ...second, nothingLeft: false },
+          ],
+        },
+      }),
+    );
+    const host = fixture.nativeElement as HTMLElement;
+    const stops = host.querySelectorAll('[data-testid="view-stops"] li');
+
+    expect(host.querySelector('[data-testid="booking-status"]')?.textContent?.trim()).toBe(
+      'Confirmed',
+    );
+    expect(stops[0].querySelector('[data-testid="view-stop-refunded"]')?.textContent).toBe(
+      'refunded',
+    );
+    expect(stops[1].querySelector('[data-testid="view-stop-refunded"]')).toBeNull();
+  });
+
   // The last day can be refunded between render and confirm; the server then refuses with its own code.
   it('explains a refusal for nothing left and re-reads the booking', async () => {
     const refunded: BookingDetail = { ...DETAIL, cancellable: false, nothingLeft: true };

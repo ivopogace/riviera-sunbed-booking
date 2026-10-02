@@ -115,7 +115,7 @@ class CancelBookingService implements CancelBooking {
 		LiveRemainder.Split split = liveRemainder.of(bookings.lockStretches(stay.id()), stay.firstDay());
 		List<BookingRecord> stretches = split.live();
 		if (stretches.isEmpty()) {
-			return split.setAside().stream().anyMatch(s -> s.status() == BookingStatus.CONFIRMED)
+			return split.nothingLeft()
 					? new CancelOutcome.NothingLeft()
 					: new CancelOutcome.NotCancellable(split.setAside().getFirst().status());
 		}

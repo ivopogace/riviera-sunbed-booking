@@ -959,6 +959,7 @@ class JdbcBookings implements Bookings {
 
 	@Override
 	public Optional<DueMove> stampMoveReminder(long bookingId, Instant at) {
+		lockById(bookingId);
 		return jdbc.sql("""
 				UPDATE booking
 				SET move_reminder_at = :at

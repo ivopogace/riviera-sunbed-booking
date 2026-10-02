@@ -239,8 +239,9 @@ public interface Bookings {
 	List<BookingId> findStayMovesDue(LocalDate moveDay);
 
 	/**
-	 * Guarded stamp of {@code move_reminder_at} on a still-{@code CONFIRMED}, unstamped stretch whose first day
-	 * the guest still holds, returning the move iff this statement stamped it — the caller publishes exactly once (ADR-0018).
+	 * Row-locks the stretch, then the guarded stamp of {@code move_reminder_at} on a still-{@code CONFIRMED}, unstamped one
+	 * whose first day the guest still holds (a day refunded under the lock is seen, #1281), returning the move iff this
+	 * statement stamped it — the caller publishes exactly once (ADR-0018).
 	 */
 	Optional<ai.riviera.platform.booking.application.checkin.DueMove> stampMoveReminder(long bookingId,
 			Instant at);

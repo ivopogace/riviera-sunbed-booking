@@ -128,7 +128,7 @@ class ViewBookingService implements ViewBooking {
 				cutoff.cancellationWindow(firstSet.bookingCutoff(), stay.firstDay(), first.createdAt()),
 				panel, nameSuggestionFor(panel, first), null, stretchViews,
 				stretches.stream().flatMap(s -> bookings.findRefundedDays(s.id()).stream()).toList(),
-				summary.everyDayRefunded());
+				remainder.nothingLeft());
 	}
 
 	/**

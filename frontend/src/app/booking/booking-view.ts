@@ -503,6 +503,12 @@ const CLS = {
                           >moved from {{ move.fromRowLabel }} · spot {{ move.fromPositionNo }}</span
                         >
                       }
+                      @if (stretch.nothingLeft) {
+                        ·
+                        <span [class]="cls.stopMark" data-testid="view-stop-refunded"
+                          >refunded</span
+                        >
+                      }
                       @if (state === 'today') {
                         · <span [class]="cls.stopMark" data-testid="view-stop-today">today</span>
                       } @else if (state === 'next') {

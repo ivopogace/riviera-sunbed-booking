@@ -326,6 +326,27 @@ class ViewBookingServiceTest {
 		verifyNoInteractions(receipts);
 	}
 
+	/** Nothing live, and the one stretch still standing has nothing left: the view says so, as the cancel will answer. */
+	@Test
+	void aStayWithARemodelEndedStretchAndANothingLeftOneSaysNothingLeft() {
+		BookingRecord ended = new BookingRecord(1L, CODE, BookingStatus.CANCELLED, VENUE, SET, GUEST, DATE,
+				DATE.plusDays(2), 13500L, "EUR", NOW.instant(), 13500L, null, RefundReason.VENUE_CHANGE, Instant.EPOCH,
+				null, null);
+		BookingRecord spent = new BookingRecord(2L, CODE, BookingStatus.CONFIRMED, VENUE, SET, GUEST, DATE.plusDays(3),
+				DATE.plusDays(5), 13500L, "EUR", null, null, null, null, Instant.EPOCH, null, null, null, 13500L, true);
+		when(bookings.findByCode(CODE)).thenReturn(Optional.empty());
+		when(bookings.findStayByCode(CODE)).thenReturn(Optional.of(
+				new StayRecord(new StayId(4L), CODE, VENUE, DATE, DATE.plusDays(5), List.of(ended, spent))));
+		when(receipts.endedByRemodel(new BookingId(1L))).thenReturn(true);
+		when(cancellationPolicy.quote(any(), any())).thenReturn(new CancellationPolicy.RefundQuote(setInfo(),
+				CancellationWindow.FREE, 0L, RefundReason.POLICY, null));
+
+		BookingDetail detail = service.byCode(CODE).orElseThrow();
+
+		assertThat(detail.cancellable()).isFalse();
+		assertThat(detail.nothingLeft()).isTrue();
+	}
+
 	/** A stretch cancelled with no receipt line (the weather refund) leaves the stay as before: not cancellable. */
 	@Test
 	void aStayWithAStretchCancelledOutsideARemodelIsNotCancellable() {

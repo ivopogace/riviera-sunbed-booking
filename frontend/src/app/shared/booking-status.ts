@@ -53,6 +53,11 @@ export const REFUNDED_META: StatusMeta = {
   amount: 'Paid',
 };
 
+/** Whether a booking reads as refunded away: held or missed, with nothing left (ADR-0026 §7); the chip's and the review note's one holder. */
+export function readsAsRefunded(status: string, nothingLeft: boolean): boolean {
+  return nothingLeft && (status === 'CONFIRMED' || status === 'NO_SHOW');
+}
+
 /**
  * The money figure's label: `Paid` once money moved, else `Amount`. Status alone can't tell a
  * charged `CANCELLED` from one the abandoned-payment sweep released uncharged, so callers holding
@@ -79,7 +84,7 @@ export function humanizeStatus(status: string): string {
  * than throw, a humanized label, a neutral chip and the conservative `Amount` label (never claim money moved).
  */
 export function metaFor(status: string, nothingLeft = false): StatusMeta {
-  if (nothingLeft && (status === 'CONFIRMED' || status === 'NO_SHOW')) {
+  if (readsAsRefunded(status, nothingLeft)) {
     return REFUNDED_META;
   }
   return (

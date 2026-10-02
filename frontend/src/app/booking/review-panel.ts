@@ -2,7 +2,7 @@ import { NgTemplateOutlet } from '@angular/common';
 import { Component, computed, input, linkedSignal, output, signal } from '@angular/core';
 import { FormField, form, maxLength, required } from '@angular/forms/signals';
 
-import { BookingStatus } from '../shared/booking-status';
+import { BookingStatus, readsAsRefunded } from '../shared/booking-status';
 import { BusyAction } from '../shared/busy-action';
 import { formatDeadline } from '../shared/deadline';
 import { FieldErrorFor } from '../shared/field-error-for';
@@ -208,7 +208,7 @@ function seedFor(panel: ReviewPanelState): ReviewFormModel {
         </section>
       }
       @case ('NOT_COMPLETED') {
-        @if (nothingLeft() && (bookingStatus() === 'CONFIRMED' || bookingStatus() === 'NO_SHOW')) {
+        @if (readsAsRefunded(bookingStatus(), nothingLeft())) {
           <section [class]="cls.section" aria-labelledby="review-title" data-testid="review-panel">
             <h2 id="review-title" [class]="cls.title">Rating this stay</h2>
             <p [class]="cls.note" data-testid="review-nothing-left-note">
@@ -331,13 +331,14 @@ export class ReviewPanel {
 
   /** The server's answer for this stay's review section — the only thing the panel renders on. */
   readonly panel = input.required<ReviewPanelState>();
-  /** Consulted for the not-yet-checked-in note alone: an invitation only a live stay should get. */
+  /** Consulted under `NOT_COMPLETED` alone: the check-in invitation only a live stay gets, or the nothing-left note. */
   readonly bookingStatus = input.required<BookingStatus>();
-  /** Every day refunded (ADR-0026 §7): the note says there is nothing to review instead of promising a check-in. */
-  readonly nothingLeft = input(false);
   readonly venueName = input.required<string>();
   /** A write is in flight upstairs, so the pressed control says so rather than accepting a second. */
   readonly busy = input(false);
+  /** Every day refunded (ADR-0026 §7): the note says there is nothing to review instead of promising a check-in. */
+  readonly nothingLeft = input(false);
+  protected readonly readsAsRefunded = readsAsRefunded;
 
   readonly submitted = output<SubmitReviewRequest>();
   readonly updated = output<SubmitReviewRequest>();

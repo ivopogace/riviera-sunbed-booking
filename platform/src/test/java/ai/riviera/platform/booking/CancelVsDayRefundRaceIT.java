@@ -45,6 +45,7 @@ import ai.riviera.platform.venue.vocabulary.VenueId;
 import static ai.riviera.platform.booking.StayFixtures.PRICE;
 import static ai.riviera.platform.booking.StayFixtures.firstDay;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 
 /**
@@ -102,6 +103,23 @@ class CancelVsDayRefundRaceIT {
 		assertEquals((DAYS - 1) * PRICE, cancelRefundOf(id));
 		assertEquals(DAYS * PRICE, refundedTotalOf(id), "never more refunded than collected");
 		assertEquals((DAYS - 1) * PRICE, reversedGrossOf(id), "the venue is debited only for what the guest gets back (#9)");
+	}
+
+	/** #1381: the reminder stamp locks the row, then reads the move day, so a refund it waited on leaves it unstamped. */
+	@Test
+	void aMoveReminderStampWaitingOnTheMoveDayRefundStampsNothing() throws Exception {
+		Venue venue = venue();
+		LocalDate first = firstDay();
+		SeededStay stay = StayFixtures.insertStay(jdbc, venue, "RACEMOVE" + System.nanoTime() % 1_000_000, first,
+				venue.online().get(0), 2, "CONFIRMED", venue.online().get(1), 2, "CONFIRMED");
+		long arriving = stay.stretches().get(1);
+
+		var stamped = whileADayRefundHoldsTheLock(arriving, first.plusDays(2), PRICE / 2,
+				() -> bookings.stampMoveReminder(arriving, Instant.now()));
+
+		assertTrue(stamped.isEmpty(), "the move day was refunded under the lock, so there is no move to announce");
+		assertTrue(jdbc.sql("SELECT move_reminder_at IS NULL FROM booking WHERE id = :b").param("b", arriving)
+				.query(Boolean.class).single(), "and the stamp is left for no later sweep to spend");
 	}
 
 	@Test

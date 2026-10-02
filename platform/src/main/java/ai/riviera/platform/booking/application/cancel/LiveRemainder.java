@@ -61,5 +61,10 @@ public class LiveRemainder {
 		public LocalDate windowDay() {
 			return live.isEmpty() ? stayFirstDay : live.getFirst().bookingDate();
 		}
+
+		/** Nothing live while a set-aside stretch still stands confirmed: the stay has nothing left (ADR-0026 §7), not ended. */
+		public boolean nothingLeft() {
+			return live.isEmpty() && setAside.stream().anyMatch(stretch -> stretch.status() == BookingStatus.CONFIRMED);
+		}
 	}
 }
