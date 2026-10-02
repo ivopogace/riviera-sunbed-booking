@@ -66,6 +66,10 @@ edit to this rule".
    claim, its move candidate and its refund/release/decline split are `booking`'s; the root maps
    the two answers onto the five wire groups and the `keep` list. A rule that starts to grow at the
    root is the signal that it belongs in a module.
+   *Amended 2026-10-02 (#1382):* the context's outcome list and the "five wire groups" above are the
+   original text and stand as written; since #1300 the preview, commit and receipt carry a sixth
+   group, `ended` (*nothing left*), a `CONFIRMED` booking with no unrefunded day, ended quietly with
+   no mail, ledger entry or refund. It is decided in ADR-0026 §8; the edge still only maps it.
 
 ## Considered options
 
