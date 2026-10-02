@@ -67,8 +67,8 @@ public interface Venues {
 	void updateSet(VenueId venueId, SetId setId, SetCommand command);
 
 	/**
-	 * Give each named active set a transient row label (control char + own id) so a save that swaps
-	 * or rotates row names never collides on the layout-uniqueness index; the final labels follow in
+	 * Give each named active set a transient row label (control char + own id) so a save that swaps,
+	 * shifts or rotates slots never collides on the layout-uniqueness index; the final labels follow in
 	 * the same transaction. Never called with an empty collection.
 	 */
 	void parkRowLabels(VenueId venueId, Collection<SetId> setIds);
