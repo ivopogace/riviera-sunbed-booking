@@ -1,22 +1,30 @@
 package ai.riviera.platform;
 
+import java.lang.reflect.Array;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 import java.util.TreeSet;
 
 import org.junit.jupiter.api.Test;
+import org.springframework.modulith.ApplicationModule;
+import org.springframework.modulith.Modulithic;
+import org.springframework.modulith.NamedInterface;
 
+import com.tngtech.archunit.core.domain.JavaAnnotation;
 import com.tngtech.archunit.core.domain.JavaClass;
 import com.tngtech.archunit.core.domain.JavaClasses;
 import com.tngtech.archunit.lang.ArchRule;
 
 import static ai.riviera.platform.ArchitectureTestSupport.PRODUCTION_BASE;
 import static ai.riviera.platform.ArchitectureTestSupport.assertNoViolations;
+import static ai.riviera.platform.ArchitectureTestSupport.isPackageInfo;
 import static ai.riviera.platform.ArchitectureTestSupport.moduleOf;
 import static ai.riviera.platform.ArchitectureTestSupport.moduleRelativeSegments;
 import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noClasses;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * Locks the two-template package layout so the shape cannot regress — the machine-checkable
@@ -38,18 +46,20 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
  * adapter}}, never on a per-module classification. Which <em>kind</em> of type may live in which
  * published surface is {@link PublishedSurfacePlacementArchitectureTests}' job.
  *
- * <p>Root-level platform config ({@code PlatformApplication}, {@code TimeConfig}, {@code SpaWebConfig},
- * {@code MapResourcesConfig}) sits directly under {@code ai.riviera.platform} and is
- * <strong>not</strong> a module — it is excluded from the package-shape assertions. What the root may
- * <em>reach</em> is {@link CompositionRootDisciplineTests}' job. Of the non-context modules,
- * {@code challenge} and {@code auth} use the full template (minus {@code domain}), {@code audit} the thin one
- * plus a driving adapter, {@code monitoring} {@code vocabulary} plus a driving adapter and {@code web} a
- * driving adapter alone, all checked
- * like any other, while the {@code shared} kernel matches
- * neither template deliberately — flat classes at the module
- * root, no published surface — and passes here because types sitting at a module root are skipped.
+ * <p>Root-level platform config ({@code PlatformApplication} and its configuration) sits directly under
+ * {@code ai.riviera.platform} and is <strong>not</strong> a module — it is excluded from the package-shape
+ * assertions. What the root may <em>reach</em> is {@link CompositionRootDisciplineTests}' job. The
+ * {@code shared} kernel matches neither template deliberately — flat classes at the module root, no
+ * published surface — so it is the one module whose root may hold types: the modules registered in
+ * {@code @Modulithic(sharedModules)} are exempt from the module-root rule, every other module is not.
+ *
+ * <p>Every collector takes its base package as a parameter, so each rule is proven to fail against the
+ * deliberately mis-shaped fixtures under {@code ai.riviera.packageshapefixture} — never by breaking
+ * production code.
  */
 class PackageShapeArchitectureTests {
+
+	private static final String FIXTURE_BASE = "ai.riviera.packageshapefixture";
 
 	/**
 	 * The top-level package set any module may use; a thin module uses the subset
@@ -65,7 +75,18 @@ class PackageShapeArchitectureTests {
 	/** The {@code @NamedInterface} packages, which must appear only as a direct child of a module. */
 	private static final Set<String> NAMED_INTERFACE_PACKAGES = Set.of("api", "spi", "vocabulary", "events");
 
+	/** The module roots that may hold types: the shared kernel(s) the application registers. */
+	private static final Set<String> PRODUCTION_SHARED_MODULES =
+			Set.of(PlatformApplication.class.getAnnotation(Modulithic.class).sharedModules());
+
+	private static final Set<String> FIXTURE_SHARED_MODULES = Set.of("shared");
+
 	private static final JavaClasses PRODUCTION_CLASSES = ArchitectureTestSupport.PRODUCTION_CLASSES;
+
+	/** The fixtures are test classes, so this import deliberately includes test code. */
+	private static final JavaClasses FIXTURE_CLASSES = ArchitectureTestSupport.fixtureClasses(FIXTURE_BASE);
+
+	// ---- the production gates -------------------------------------------------------------
 
 	/**
 	 * Assertion 1 — allowed top-level package set (ADR-0007). Each module's top-level packages (the
@@ -76,31 +97,8 @@ class PackageShapeArchitectureTests {
 	 */
 	@Test
 	void moduleTopLevelPackagesAreInTheAllowedSet() {
-		List<String> violations = new ArrayList<>();
-		Set<String> modules = new TreeSet<>();
-
-		for (JavaClass type : PRODUCTION_CLASSES) {
-			String[] sub = moduleRelativeSegments(type, PRODUCTION_BASE);
-			if (sub == null) {
-				continue; // root-level platform config, not a module
-			}
-			modules.add(moduleOf(type, PRODUCTION_BASE));
-			if (sub.length == 0) {
-				continue; // the module root itself (e.g. package-info)
-			}
-			if (!ALLOWED_TOP_LEVEL.contains(sub[0])) {
-				violations.add(type.getName() + " sits in top-level package '" + sub[0]
-						+ "', outside the allowed set " + new TreeSet<>(ALLOWED_TOP_LEVEL));
-			}
-			if (sub.length >= 2 && "application".equals(sub[0]) && ALLOWED_ADAPTER_CHILDREN.contains(sub[1])) {
-				violations.add(type.getName() + " reintroduces the folded application/" + sub[1]
-						+ " split — internal ports live in application/ next to their service; "
-						+ "direction lives at the adapter layer (ADR-0007 sub-decision 2)");
-			}
-		}
-
-		assertModulesWereInspected(modules);
-		assertNoViolations("ADR-0007 package-shape violations (allowed top-level package set)", violations);
+		assertNoViolations("ADR-0007 package-shape violations (allowed top-level package set)",
+				topLevelPackageViolations(PRODUCTION_CLASSES, PRODUCTION_BASE));
 	}
 
 	/**
@@ -112,28 +110,8 @@ class PackageShapeArchitectureTests {
 	 */
 	@Test
 	void adapterLayerIsSplitByDirectionNotTechnology() {
-		List<String> violations = new ArrayList<>();
-		Set<String> modules = new TreeSet<>();
-
-		for (JavaClass type : PRODUCTION_CLASSES) {
-			String[] sub = moduleRelativeSegments(type, PRODUCTION_BASE);
-			if (sub == null || sub.length == 0 || !"adapter".equals(sub[0])) {
-				continue;
-			}
-			modules.add(moduleOf(type, PRODUCTION_BASE));
-			if (sub.length < 2) {
-				violations.add(type.getName() + " sits directly in adapter/ — a driving/driven adapter "
-						+ "belongs in adapter/in or adapter/out (ADR-0007)");
-			}
-			else if (!ALLOWED_ADAPTER_CHILDREN.contains(sub[1])) {
-				violations.add(type.getName() + " sits in adapter/" + sub[1]
-						+ " — the adapter layer splits by direction (in/out), not technology; "
-						+ "technology nests below, e.g. adapter/in/rest (ADR-0007 sub-decision 1)");
-			}
-		}
-
-		assertModulesWereInspected(modules);
-		assertNoViolations("ADR-0007 package-shape violations (adapter direction split)", violations);
+		assertNoViolations("ADR-0007 package-shape violations (adapter direction split)",
+				adapterDirectionViolations(PRODUCTION_CLASSES, PRODUCTION_BASE));
 	}
 
 	/**
@@ -146,26 +124,8 @@ class PackageShapeArchitectureTests {
 	 */
 	@Test
 	void namedInterfacePackagesAreTopLevel() {
-		List<String> violations = new ArrayList<>();
-		Set<String> modules = new TreeSet<>();
-
-		for (JavaClass type : PRODUCTION_CLASSES) {
-			String[] sub = moduleRelativeSegments(type, PRODUCTION_BASE);
-			if (sub == null) {
-				continue;
-			}
-			modules.add(moduleOf(type, PRODUCTION_BASE));
-			for (int i = 1; i < sub.length; i++) { // i == 0 is the legitimate top-level position
-				if (NAMED_INTERFACE_PACKAGES.contains(sub[i])) {
-					violations.add(type.getName() + " nests a '" + sub[i] + "' package below the module root — "
-							+ "api/spi/vocabulary/events are reserved top-level @NamedInterface package names, "
-							+ "never nested (ADR-0007 + issue #95)");
-				}
-			}
-		}
-
-		assertModulesWereInspected(modules);
-		assertNoViolations("ADR-0007 package-shape violations (api/spi/vocabulary/events are top-level)", violations);
+		assertNoViolations("ADR-0007 package-shape violations (api/spi/vocabulary/events are top-level)",
+				nestedNamedInterfaceViolations(PRODUCTION_CLASSES, PRODUCTION_BASE));
 	}
 
 	/**
@@ -175,19 +135,288 @@ class PackageShapeArchitectureTests {
 	 */
 	@Test
 	void applicationAndDomainDoNotDependOnAdapters() {
-		ArchRule rule = noClasses()
-				.that().resideInAnyPackage(PRODUCTION_BASE + "..application..", PRODUCTION_BASE + "..domain..")
-				.should().dependOnClassesThat().resideInAnyPackage(PRODUCTION_BASE + "..adapter..")
-				.because("the hexagon runs adapter -> application/domain, never back: the inside "
-						+ "(application + domain) must not depend on the outside (adapter.*) (ADR-0007).");
-		rule.check(PRODUCTION_CLASSES);
+		hexagonDirection(PRODUCTION_BASE).check(PRODUCTION_CLASSES);
+	}
+
+	/**
+	 * Assertion 5 — only a registered shared kernel has types directly in its module root (ADR-0007's
+	 * {@code shared} allowance). Any other module keeps its types in its template packages; a
+	 * {@code package-info} at the root is the module's declaration, not a type.
+	 */
+	@Test
+	void onlySharedKernelsHaveTypesAtTheModuleRoot() {
+		assertNoViolations("ADR-0007 package-shape violations (types at a module root)",
+				moduleRootTypeViolations(PRODUCTION_CLASSES, PRODUCTION_BASE, PRODUCTION_SHARED_MODULES));
+	}
+
+	/**
+	 * Assertion 6 — every top-level {@code api}/{@code spi}/{@code vocabulary}/{@code events} package
+	 * declares itself with {@code @NamedInterface("<its simple name>")}, so the grant
+	 * {@code <module>::<name>} means the package of that name (ADR-0007).
+	 */
+	@Test
+	void publishedSurfacesDeclareTheirOwnNamedInterface() {
+		assertNoViolations("ADR-0007 package-shape violations (@NamedInterface declarations)",
+				namedInterfaceDeclarationViolations(PRODUCTION_CLASSES, PRODUCTION_BASE));
+	}
+
+	/**
+	 * Assertion 7 — every module declares {@code @ApplicationModule(allowedDependencies = ...)}
+	 * explicitly. Left out, the attribute's default allows every dependency and {@code verify()} checks
+	 * no grant; {@code {}} is an explicit declaration.
+	 */
+	@Test
+	void everyModuleDeclaresItsAllowedDependencies() {
+		assertNoViolations("Modulith grant violations (allowedDependencies left at its allow-all default)",
+				allowedDependenciesViolations(PRODUCTION_CLASSES, PRODUCTION_BASE));
 	}
 
 	/** Guards against a vacuously-green rule: prove the import actually saw the modules. */
-	private static void assertModulesWereInspected(Set<String> modules) {
-		assertFalse(modules.isEmpty(),
-				"No modules found under " + PRODUCTION_BASE + " — the rule would be vacuously green; "
+	@Test
+	void productionModulesWereInspected() {
+		assertFalse(modulesOf(PRODUCTION_CLASSES, PRODUCTION_BASE).isEmpty(),
+				"No modules found under " + PRODUCTION_BASE + " — the rules would be vacuously green; "
 						+ "check the ClassFileImporter package/import options.");
+		assertFalse(PRODUCTION_SHARED_MODULES.isEmpty(),
+				"PlatformApplication registers no shared module — the module-root rule's exemption is empty.");
 	}
 
+	// ---- the negative proof, against fixtures ---------------------------------------------
+
+	@Test
+	void topLevelPackageOutsideTheAllowedSetIsRejected() {
+		List<String> violations = topLevelPackageViolations(FIXTURE_CLASSES, FIXTURE_BASE);
+		assertReported(violations, "LingeringInfrastructure", "outside the allowed set");
+		assertReported(violations, "FoldedInPort", "folded application/in split");
+		assertCleanModulesUnreported(violations);
+	}
+
+	@Test
+	void adapterLayerSplitByTechnologyIsRejected() {
+		List<String> violations = adapterDirectionViolations(FIXTURE_CLASSES, FIXTURE_BASE);
+		assertReported(violations, "AdapterAtLayerRoot", "sits directly in adapter/");
+		assertReported(violations, "TechnologySplitController", "sits in adapter/rest");
+		assertCleanModulesUnreported(violations);
+	}
+
+	@Test
+	void nestedNamedInterfacePackageIsRejected() {
+		List<String> violations = nestedNamedInterfaceViolations(FIXTURE_CLASSES, FIXTURE_BASE);
+		assertReported(violations, "NestedEvent", "nests a 'events' package");
+		assertCleanModulesUnreported(violations);
+	}
+
+	@Test
+	void applicationDependingOnAnAdapterIsRejected() {
+		List<String> violations = hexagonDirection(FIXTURE_BASE).evaluate(FIXTURE_CLASSES)
+				.getFailureReport().getDetails();
+		assertReported(violations, "ServiceReachingOut", "DrivenAdapter");
+		assertCleanModulesUnreported(violations);
+	}
+
+	@Test
+	void typeAtANonSharedModuleRootIsRejected() {
+		List<String> violations = moduleRootTypeViolations(FIXTURE_CLASSES, FIXTURE_BASE, FIXTURE_SHARED_MODULES);
+		assertReported(violations, "RootLevelHelper", "directly in the module root");
+		assertTrue(violations.stream().noneMatch(v -> v.contains("KernelType")),
+				"Expected the registered shared module's root type to pass, but got: " + violations);
+		assertCleanModulesUnreported(violations);
+	}
+
+	@Test
+	void publishedSurfaceWithoutItsNamedInterfaceIsRejected() {
+		List<String> violations = namedInterfaceDeclarationViolations(FIXTURE_CLASSES, FIXTURE_BASE);
+		assertReported(violations, "unnamed.api", "no @NamedInterface");
+		assertReported(violations, "misnamed.spi", "@NamedInterface named [api]");
+		assertCleanModulesUnreported(violations);
+	}
+
+	@Test
+	void moduleLeftAtTheAllowAllDefaultIsRejected() {
+		List<String> violations = allowedDependenciesViolations(FIXTURE_CLASSES, FIXTURE_BASE);
+		assertReported(violations, "openmodule", "does not declare allowedDependencies");
+		assertReported(violations, "unannotated", "no @ApplicationModule");
+		assertCleanModulesUnreported(violations);
+	}
+
+	// ---- the collectors, parameterised by base package ------------------------------------
+
+	private static List<String> topLevelPackageViolations(JavaClasses classes, String base) {
+		List<String> violations = new ArrayList<>();
+		for (JavaClass type : classes) {
+			String[] sub = moduleRelativeSegments(type, base);
+			if (sub == null || sub.length == 0) {
+				continue;
+			}
+			if (!ALLOWED_TOP_LEVEL.contains(sub[0])) {
+				violations.add(type.getName() + " sits in top-level package '" + sub[0]
+						+ "', outside the allowed set " + new TreeSet<>(ALLOWED_TOP_LEVEL));
+			}
+			if (sub.length >= 2 && "application".equals(sub[0]) && ALLOWED_ADAPTER_CHILDREN.contains(sub[1])) {
+				violations.add(type.getName() + " reintroduces the folded application/" + sub[1]
+						+ " split — internal ports live in application/ next to their service; "
+						+ "direction lives at the adapter layer (ADR-0007 sub-decision 2)");
+			}
+		}
+		return violations;
+	}
+
+	private static List<String> adapterDirectionViolations(JavaClasses classes, String base) {
+		List<String> violations = new ArrayList<>();
+		for (JavaClass type : classes) {
+			String[] sub = moduleRelativeSegments(type, base);
+			if (sub == null || sub.length == 0 || !"adapter".equals(sub[0])) {
+				continue;
+			}
+			if (sub.length < 2) {
+				violations.add(type.getName() + " sits directly in adapter/ — a driving/driven adapter "
+						+ "belongs in adapter/in or adapter/out (ADR-0007)");
+			}
+			else if (!ALLOWED_ADAPTER_CHILDREN.contains(sub[1])) {
+				violations.add(type.getName() + " sits in adapter/" + sub[1]
+						+ " — the adapter layer splits by direction (in/out), not technology; "
+						+ "technology nests below, e.g. adapter/in/rest (ADR-0007 sub-decision 1)");
+			}
+		}
+		return violations;
+	}
+
+	private static List<String> nestedNamedInterfaceViolations(JavaClasses classes, String base) {
+		List<String> violations = new ArrayList<>();
+		for (JavaClass type : classes) {
+			String[] sub = moduleRelativeSegments(type, base);
+			if (sub == null) {
+				continue;
+			}
+			for (int i = 1; i < sub.length; i++) { // i == 0 is the legitimate top-level position
+				if (NAMED_INTERFACE_PACKAGES.contains(sub[i])) {
+					violations.add(type.getName() + " nests a '" + sub[i] + "' package below the module root — "
+							+ "api/spi/vocabulary/events are reserved top-level @NamedInterface package names, "
+							+ "never nested (ADR-0007 + issue #95)");
+				}
+			}
+		}
+		return violations;
+	}
+
+	private static ArchRule hexagonDirection(String base) {
+		return noClasses()
+				.that().resideInAnyPackage(base + "..application..", base + "..domain..")
+				.should().dependOnClassesThat().resideInAnyPackage(base + "..adapter..")
+				.because("the hexagon runs adapter -> application/domain, never back: the inside "
+						+ "(application + domain) must not depend on the outside (adapter.*) (ADR-0007).");
+	}
+
+	private static List<String> moduleRootTypeViolations(JavaClasses classes, String base, Set<String> sharedModules) {
+		List<String> violations = new ArrayList<>();
+		for (JavaClass type : classes) {
+			String[] sub = moduleRelativeSegments(type, base);
+			if (sub == null || sub.length != 0 || isPackageInfo(type)
+					|| sharedModules.contains(moduleOf(type, base))) {
+				continue;
+			}
+			violations.add(type.getName() + " sits directly in the module root — only a shared kernel registered in "
+					+ "@Modulithic(sharedModules) " + new TreeSet<>(sharedModules) + " keeps types there; "
+					+ "everything else lives in the template packages (ADR-0007)");
+		}
+		return violations;
+	}
+
+	private static List<String> namedInterfaceDeclarationViolations(JavaClasses classes, String base) {
+		Set<String> surfaces = new TreeSet<>();
+		for (JavaClass type : classes) {
+			String[] sub = moduleRelativeSegments(type, base);
+			if (sub != null && sub.length >= 1 && NAMED_INTERFACE_PACKAGES.contains(sub[0])) {
+				surfaces.add(base + "." + moduleOf(type, base) + "." + sub[0]);
+			}
+		}
+		List<String> violations = new ArrayList<>();
+		for (String surface : surfaces) {
+			String simpleName = surface.substring(surface.lastIndexOf('.') + 1);
+			Optional<JavaAnnotation<JavaClass>> namedInterface =
+					packageAnnotation(classes, surface, NamedInterface.class);
+			if (namedInterface.isEmpty()) {
+				violations.add(surface + " has no @NamedInterface package-info — a published surface declares "
+						+ "@NamedInterface(\"" + simpleName + "\") (ADR-0007)");
+				continue;
+			}
+			List<String> names = stringValues(namedInterface.get(), "value");
+			names.addAll(stringValues(namedInterface.get(), "name"));
+			if (!names.equals(List.of(simpleName))) {
+				violations.add(surface + " carries a @NamedInterface named " + names + " — it must be exactly ["
+						+ simpleName + "], the package's simple name (ADR-0007)");
+			}
+		}
+		return violations;
+	}
+
+	private static List<String> allowedDependenciesViolations(JavaClasses classes, String base) {
+		List<String> violations = new ArrayList<>();
+		for (String module : modulesOf(classes, base)) {
+			String modulePackage = base + "." + module;
+			Optional<JavaAnnotation<JavaClass>> applicationModule =
+					packageAnnotation(classes, modulePackage, ApplicationModule.class);
+			if (applicationModule.isEmpty()) {
+				violations.add(modulePackage + " has no @ApplicationModule package-info — its allowedDependencies "
+						+ "default to allow-all, so verify() checks no grant");
+			}
+			else if (!applicationModule.get().hasExplicitlyDeclaredProperty("allowedDependencies")) {
+				violations.add(modulePackage + " does not declare allowedDependencies — the default allows every "
+						+ "dependency; declare its grants, or {} for none");
+			}
+		}
+		return violations;
+	}
+
+	// ---- helpers ---------------------------------------------------------------------------
+
+	private static Set<String> modulesOf(JavaClasses classes, String base) {
+		Set<String> modules = new TreeSet<>();
+		for (JavaClass type : classes) {
+			String module = moduleOf(type, base);
+			if (module != null) {
+				modules.add(module);
+			}
+		}
+		return modules;
+	}
+
+	/** The annotation on {@code pkg}'s {@code package-info}; empty when javac emitted none (an unannotated package). */
+	private static Optional<JavaAnnotation<JavaClass>> packageAnnotation(
+			JavaClasses classes, String pkg, Class<?> annotationType) {
+		String packageInfo = pkg + ".package-info";
+		if (!classes.contain(packageInfo)) {
+			return Optional.empty();
+		}
+		return classes.get(packageInfo).tryGetAnnotationOfType(annotationType.getName());
+	}
+
+	/** An annotation property's explicit string value(s), single or array; empty when not declared. */
+	private static List<String> stringValues(JavaAnnotation<?> annotation, String property) {
+		List<String> values = new ArrayList<>();
+		if (!annotation.hasExplicitlyDeclaredProperty(property)) {
+			return values;
+		}
+		Object value = annotation.get(property).orElseThrow();
+		if (value.getClass().isArray()) {
+			for (int i = 0; i < Array.getLength(value); i++) {
+				values.add(String.valueOf(Array.get(value, i)));
+			}
+		}
+		else {
+			values.add(String.valueOf(value));
+		}
+		return values;
+	}
+
+	private static void assertReported(List<String> violations, String subject, String reason) {
+		assertTrue(violations.stream().anyMatch(v -> v.contains(subject) && v.contains(reason)),
+				"Expected a violation naming " + subject + " (" + reason + "), but got: " + violations);
+	}
+
+	/** The fixture controls: {@code clean} breaks no rule and must never be reported. */
+	private static void assertCleanModulesUnreported(List<String> violations) {
+		assertTrue(violations.stream().noneMatch(v -> v.contains(FIXTURE_BASE + ".clean")),
+				"Expected the well-shaped fixture module to pass, but got: " + violations);
+	}
 }

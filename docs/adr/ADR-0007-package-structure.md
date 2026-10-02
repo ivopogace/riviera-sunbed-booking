@@ -245,6 +245,9 @@ mechanical rule; OPEN is reserved for technical shared code, and `shared` is the
 *Amended 2026-10-02 (PR #1351, #1329):* no module is `Type.OPEN` any more — `shared` is CLOSED and
 registered in `@Modulithic(sharedModules)` (see the 2026-10-01 note above). "Do not copy this
 shape" stands: the flat, surface-less shape is `shared`'s alone.
+*Amended 2026-10-02 (#1389):* `PackageShapeArchitectureTests` no longer skips module-root types
+wholesale: only a module registered in `@Modulithic(sharedModules)` may hold them, so "`shared`'s
+alone" is machine-checked.
 
 ## Note — why some id records are copied and `SetId` is not (2026-09-04)
 

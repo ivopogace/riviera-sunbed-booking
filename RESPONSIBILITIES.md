@@ -1384,6 +1384,9 @@ them form the *structural net* is `riviera-modulith` § *The structural net*'s c
 | `payment` uses no Stripe **Connect** API (collect-only, ADR-0002) | `NoStripeConnectArchitectureTest` |
 | No module reaches another's `application`/`domain`/`adapter`; `allowedDependencies` hold | `ModularityTests` (`ApplicationModules.verify()`) |
 | The ADR-0007 package shape; published-surface kinds; the `VenueCatalog` role split | `PackageShapeArchitectureTests`, `PublishedSurfacePlacementArchitectureTests`, `VenueApiRoleSplitTests` |
+| Only a module registered in `@Modulithic(sharedModules)` has types directly in its module root | `PackageShapeArchitectureTests` (module-root rule) |
+| Every top-level `api`/`spi`/`vocabulary`/`events` package carries `@NamedInterface` of its own simple name | `PackageShapeArchitectureTests` (named-interface declaration rule) |
+| Every module declares `allowedDependencies`; none is left at the allow-all default | `PackageShapeArchitectureTests` (declared-grants rule; whether each grant is used is not checked here) |
 | No JPA/Hibernate on the classpath — invariant #1 | `JdbcOnlyArchitectureTests` |
 | A `domain/` class names only the JDK and published ids, values and rules (ADR-0018 §4) | `DomainPurityArchitectureTests` |
 | The booking transition table and the guarded `UPDATE`s admit the same statuses (ADR-0018 §1) | `JdbcBookingTransitionTableIT` (every transition × every status; Docker-gated, so it fails the build only where Docker runs — CI) |
