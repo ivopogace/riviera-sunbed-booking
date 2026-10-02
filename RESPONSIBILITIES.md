@@ -95,12 +95,12 @@ close, the maximum stay, the season closure, and the commission rate over time. 
   its row for every booking, mail and payout line naming it; no booking → deleted.
 - **Retired sets — the exclude and exempt lists, machine-held.** Excluded: the tourist list and its
   counts, the map, the availability calendar, the operator's daily view, every layout lock and
-  conflict probe, both claim paths and the reserve on both booking modes (`NO_SUCH_SET`) — each reads
-  `active_set_position`; every set write names the marker, so a retired set's label and price stay
-  frozen. The reserve reads lock the set through the view as `poolForClaim` does, since a single-set
-  retire takes no venue lock. Exempt: `SetBookingFacts#setBookingInfo(s)` (cancel, booking view, mails,
-  staff lookup). Its slot and cell are free for a new set. `RetiredSetExclusionArchitectureTests` holds
-  it outside `JdbcSetBookingFacts`; inside, the excluding reads hold by convention (ADR-0019 point 6).
+  conflict probe, both claim paths and the reserve on both booking modes (`NO_SUCH_SET`) — each
+  reads `active_set_position`; every update and delete says `retired_at IS NULL`, so a retired set's
+  label and price stay frozen and its slot and cell free for a new set. The reserve reads lock the
+  set through the view as `poolForClaim` does (a single-set retire takes no venue lock). Exempt, by
+  constant name in `JdbcSetBookingFacts`: `setBookingInfo(s)` (cancel, booking view, mails, staff
+  lookup) and the reserve's venue lock; `RetiredSetExclusionArchitectureTests` holds the rest.
 - **The bulk save (`PUT …/beach-map`) is a diff keyed by grid cell, never a delete-all.** The body
   carries no set ids, so a set that changes cell is a removal plus an insert — the removal question
   is the move question. Only removed sets and kept ones whose position number changes are probed,
@@ -1428,7 +1428,7 @@ them form the *structural net* is `riviera-modulith` § *The structural net*'s c
 | Boot's shared `applicationTaskExecutor` carries no `TaskDecorator`, and no bean would install one | `SharedTaskExecutorUndecoratedIT` |
 | The draining pools' shutdown claims sum within the SIGTERM grace | `ShutdownDrainArchitectureTest` |
 | Pool tokens live only in `venue.vocabulary.Pool`: no other production class holds an `"ONLINE"` / `"WALK_IN"` literal (invariant #3's operand is the published type) | `PoolTokenArchitectureTest` (`CONSTANT_String` scan, so `Pool.ONLINE` passes) |
-| A retired set is absent from every read but `SetBookingFacts`: production SQL naming `set_position` reads `active_set_position` or names `retired_at`, an `INSERT INTO` excepted (ADR-0019, §`venue`) | `RetiredSetExclusionArchitectureTests` (per-statement `CONSTANT_String` scan; the structural net's one member admitted by decision) |
+| A retired set is absent from every read but `SetBookingFacts#setBookingInfo(s)`: production SQL naming `set_position` reads `active_set_position` or says `retired_at IS NULL`, an `INSERT INTO` and the facts adapter's two bare constants exempt by name excepted (ADR-0019, §`venue`) | `RetiredSetExclusionArchitectureTests` (per-statement `CONSTANT_String` scan with a per-statement exemption keyed on the field's `ConstantValue`; the structural net's one member admitted by decision) |
 
 Most rules also prove on every build that they can fail, against deliberately-violating fixtures
 (`ai.riviera.responsibilityfixture`, `ai.riviera.placementfixture`, `ai.riviera.retirefixture` and

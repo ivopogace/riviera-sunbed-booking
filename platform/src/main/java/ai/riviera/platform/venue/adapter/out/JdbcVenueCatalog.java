@@ -61,7 +61,7 @@ import ai.riviera.platform.venue.spi.SetAvailabilityLookup;
  * no out-port between (one adapter is a hypothetical seam); explicit SQL, no JPA (invariant #1). The
  * catalogue reads fence on tourist visibility and read sets only from {@code active_set_position}.
  * {@code SetBookingFacts} must keep answering for a retired set, so it stays its own class,
- * {@link JdbcSetBookingFacts}: the retired-set fitness function exempts a class (ADR-0019).
+ * {@link JdbcSetBookingFacts}, whose two bare reads are exempt by constant name (ADR-0019).
  */
 @Repository
 class JdbcVenueCatalog implements VenueCatalog, VenueRates {
