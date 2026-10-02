@@ -62,9 +62,15 @@ public class LiveRemainder {
 			return live.isEmpty() ? stayFirstDay : live.getFirst().bookingDate();
 		}
 
-		/** Nothing live while a set-aside stretch still stands confirmed: the stay has nothing left (ADR-0026 §7), not ended. */
+		/**
+		 * The stay has nothing left (ADR-0026 §7): nothing live while a set-aside stretch still stands confirmed, or every
+		 * live stretch with every day refunded (a missed stretch whose days were washed out). A remodel-ended stay is not.
+		 */
 		public boolean nothingLeft() {
-			return live.isEmpty() && setAside.stream().anyMatch(stretch -> stretch.status() == BookingStatus.CONFIRMED);
+			if (live.isEmpty()) {
+				return setAside.stream().anyMatch(stretch -> stretch.status() == BookingStatus.CONFIRMED);
+			}
+			return live.stream().allMatch(BookingRecord::everyDayRefunded);
 		}
 	}
 }

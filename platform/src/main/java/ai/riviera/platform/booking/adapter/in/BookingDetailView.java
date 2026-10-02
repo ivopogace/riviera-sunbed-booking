@@ -14,7 +14,7 @@ import java.util.List;
  * {@code RefundReason} name) null while live or if cancelled uncharged. {@code payWindowClosed}: the pay deadline
  * passed, so {@code payment} is null (#4). {@code refundOutstanding}: refund decided, not yet gateway-accepted.
  * {@code emailWithheld} is true only once {@code CONFIRMED}, else this code-gated view is a suppression oracle.
- * {@code refundedDays}: a storm's days given back; {@code nothingLeft}: every day refunded, so no cancel and "Refunded".
+ * {@code refundedDays}: a storm's days given back; {@code nothingLeft}: every day the guest still holds refunded, so no cancel and "Refunded".
  */
 record BookingDetailView(String code, String status, long venueId, String venueName, String rowLabel,
 		int positionNo, String bookingDate, String lastDate, MoneyView amount, boolean cancellable,

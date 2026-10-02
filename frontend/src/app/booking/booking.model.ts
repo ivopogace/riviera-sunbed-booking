@@ -245,8 +245,8 @@ export interface BookingDetail {
    */
   readonly refundedDays?: readonly RefundedDayView[];
   /**
-   * Every service day was refunded on its own (ADR-0026 §7), so there is nothing left: no cancel is offered
-   * and the page reads "Refunded" rather than held or missed. Absent on an older payload, which is `false`.
+   * Nothing left (ADR-0026 §7): every service day refunded on its own (a stay's: of what the guest still holds),
+   * so no cancel is offered and the page reads "Refunded" rather than held or missed. Absent on an older payload.
    */
   readonly nothingLeft?: boolean;
 }

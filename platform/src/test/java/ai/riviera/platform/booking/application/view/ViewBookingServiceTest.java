@@ -347,6 +347,26 @@ class ViewBookingServiceTest {
 		assertThat(detail.nothingLeft()).isTrue();
 	}
 
+	/** A stay that resolved NO_SHOW with every day washed out reads as refunded, not missed (ADR-0026 §7). */
+	@Test
+	void aMissedStayWithEveryDayRefundedSaysNothingLeft() {
+		BookingRecord first = new BookingRecord(1L, CODE, BookingStatus.NO_SHOW, VENUE, SET, GUEST, DATE,
+				DATE.plusDays(2), 13500L, "EUR", null, null, null, null, Instant.EPOCH, null, null, null, 13500L, true);
+		BookingRecord second = new BookingRecord(2L, CODE, BookingStatus.NO_SHOW, VENUE, SET, GUEST, DATE.plusDays(3),
+				DATE.plusDays(5), 13500L, "EUR", null, null, null, null, Instant.EPOCH, null, null, null, 13500L, true);
+		when(bookings.findByCode(CODE)).thenReturn(Optional.empty());
+		when(bookings.findStayByCode(CODE)).thenReturn(Optional.of(
+				new StayRecord(new StayId(4L), CODE, VENUE, DATE, DATE.plusDays(5), List.of(first, second))));
+		when(cancellationPolicy.quote(any(), any())).thenReturn(new CancellationPolicy.RefundQuote(setInfo(),
+				CancellationWindow.CLOSED, 0L, RefundReason.POLICY, null));
+
+		BookingDetail detail = service.byCode(CODE).orElseThrow();
+
+		assertThat(detail.status()).isEqualTo(BookingStatus.NO_SHOW);
+		assertThat(detail.cancellable()).isFalse();
+		assertThat(detail.nothingLeft()).isTrue();
+	}
+
 	/** A stretch cancelled with no receipt line (the weather refund) leaves the stay as before: not cancellable. */
 	@Test
 	void aStayWithAStretchCancelledOutsideARemodelIsNotCancellable() {
