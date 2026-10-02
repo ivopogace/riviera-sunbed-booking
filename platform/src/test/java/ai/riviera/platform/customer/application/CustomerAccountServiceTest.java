@@ -120,7 +120,32 @@ class CustomerAccountServiceTest {
 
 		CustomerAccountId linked = service.resolveOrCreate(SsoProvider.APPLE, "a-1", "  OWNER@Example.com ");
 
-		assertThat(linked).as("auto-link by verified email → the existing account").isEqualTo(passwordAccount);
+		assertThat(linked).as("auto-link by email → the existing account").isEqualTo(passwordAccount);
+	}
+
+	@Test
+	void resolveOrCreateClearsThePasswordOfAnUnverifiedAccountItLinksOnto() {
+		CustomerAccountId account = registeredId("unverified@example.com");
+
+		CustomerAccountId linked = service.resolveOrCreate(SsoProvider.GOOGLE, "g-link", "Unverified@Example.com ");
+
+		assertThat(linked).isEqualTo(account);
+		assertThat(service.findByEmail("unverified@example.com"))
+				.as("the SSO proof of the email beats a password nobody proved the email for (#1295)").isEmpty();
+		assertThat(service.emailVerifiedFor("unverified@example.com")).contains(true);
+	}
+
+	@Test
+	void resolveOrCreateKeepsThePasswordOfAVerifiedAccountItLinksOnto() {
+		CustomerAccountId account = registeredId("verified@example.com");
+		service.issueEmailVerificationToken(account, "hash-verified", FUTURE);
+		service.verifyEmail("hash-verified");
+
+		CustomerAccountId linked = service.resolveOrCreate(SsoProvider.GOOGLE, "g-keep", "verified@example.com");
+
+		assertThat(linked).isEqualTo(account);
+		assertThat(service.findByEmail("verified@example.com")).get()
+				.extracting(CustomerAccountCredential::passwordHash).isEqualTo("{bcrypt}pw");
 	}
 
 	@Test
@@ -250,7 +275,7 @@ class CustomerAccountServiceTest {
 
 		@Override
 		public Optional<CustomerAccountCredential> findByEmail(String normalizedEmail) {
-			return Optional.ofNullable(byEmail.get(normalizedEmail));
+			return Optional.ofNullable(byEmail.get(normalizedEmail)).filter(c -> c.passwordHash() != null);
 		}
 
 		@Override
@@ -314,6 +339,14 @@ class CustomerAccountServiceTest {
 		@Override
 		public void markEmailVerified(CustomerAccountId accountId) {
 			verified.add(accountId.value());
+		}
+
+		@Override
+		public void clearUnverifiedPassword(CustomerAccountId accountId) {
+			if (!verified.contains(accountId.value())) {
+				emailForId(accountId.value()).ifPresent(
+						email -> byEmail.put(email, new CustomerAccountCredential(email, null)));
+			}
 		}
 
 		/** Locks refused as if an erasure committed between the claim and the lock. */
