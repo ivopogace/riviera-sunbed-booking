@@ -509,6 +509,7 @@ describe('BookingPay', () => {
       freezeClock();
     }
   });
+
   it('a late clean confirm cannot pull a page the re-check confirmed back to processing (#1380)', async () => {
     const gateway = new DeferredConfirmGateway();
     const { comp, httpMock } = await setup(gateway);
