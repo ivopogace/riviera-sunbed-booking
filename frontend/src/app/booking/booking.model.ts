@@ -51,6 +51,8 @@ export interface StayStretchView {
    * on a creation response.
    */
   readonly move?: BookingMove | null;
+  /** Every day of this stretch was refunded on its own (ADR-0026 §7); absent on a creation response. */
+  readonly nothingLeft?: boolean;
 }
 
 /**
@@ -242,6 +244,11 @@ export interface BookingDetail {
    * (or absent, older payload) when none.
    */
   readonly refundedDays?: readonly RefundedDayView[];
+  /**
+   * Nothing left (ADR-0026 §7): every service day refunded on its own (a stay's: of what the guest still holds),
+   * so no cancel is offered and the page reads "Refunded" rather than held or missed. Absent on an older payload.
+   */
+  readonly nothingLeft?: boolean;
 }
 
 /**

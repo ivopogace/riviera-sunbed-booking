@@ -5,11 +5,11 @@ import ai.riviera.platform.booking.domain.BookingStatus;
 /**
  * The result of attempting a cancellation — a closed, caller-mappable set (typed outcomes for
  * expected flows, not exceptions, invariant idiom). The web adapter {@code switch}es exhaustively:
- * {@link Cancelled} → 200, {@link NotFound} → 404, {@link NotCancellable} and {@link WindowClosed}
- * → 409 under distinct codes.
+ * {@link Cancelled} → 200, {@link NotFound} → 404, {@link NotCancellable}, {@link WindowClosed} and
+ * {@link NothingLeft} → 409 under distinct codes.
  */
 public sealed interface CancelOutcome permits CancelOutcome.Cancelled, CancelOutcome.NotFound,
-		CancelOutcome.NotCancellable, CancelOutcome.WindowClosed {
+		CancelOutcome.NotCancellable, CancelOutcome.WindowClosed, CancelOutcome.NothingLeft {
 
 	/**
 	 * Cancelled. {@code refundMinor} is the server-computed refund issued (integer minor units +
@@ -33,6 +33,13 @@ public sealed interface CancelOutcome permits CancelOutcome.Cancelled, CancelOut
 	 * already-cancelled one in the logs and on the wire.
 	 */
 	record WindowClosed() implements CancelOutcome {
+	}
+
+	/**
+	 * The booking (or every stretch of the stay still standing) is {@code CONFIRMED} with every service day
+	 * refunded on its own (ADR-0026 §7): nothing left to cancel, release or mail, and the row stays as it is.
+	 */
+	record NothingLeft() implements CancelOutcome {
 	}
 
 	/** The refund tier (invariant #10): full before the cutoff, partial or none after. */

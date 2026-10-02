@@ -43,12 +43,14 @@ describe('ReviewPanel', () => {
     panel: ReviewPanelState,
     status: BookingStatus = 'COMPLETED',
     busy = false,
+    nothingLeft = false,
   ): Rendered {
     const fixture = TestBed.createComponent(ReviewPanel);
     fixture.componentRef.setInput('panel', panel);
     fixture.componentRef.setInput('bookingStatus', status);
     fixture.componentRef.setInput('venueName', 'Miramar Beach Club');
     fixture.componentRef.setInput('busy', busy);
+    fixture.componentRef.setInput('nothingLeft', nothingLeft);
     const submitted: SubmitReviewRequest[] = [];
     const updated: SubmitReviewRequest[] = [];
     const deleted: number[] = [];
@@ -380,6 +382,25 @@ describe('ReviewPanel', () => {
 
         expect(r.find('review-panel'), status).toBeNull();
       }
+    });
+
+    // ADR-0026 §7 (#1381): no check-in can follow a booking whose every day was refunded.
+    it('says there is nothing to review when every day was refunded, instead of promising a check-in', async () => {
+      for (const status of ['CONFIRMED', 'NO_SHOW'] as BookingStatus[]) {
+        const r = render({ kind: 'NOT_COMPLETED' }, status, false, true);
+
+        expect(r.find('review-nothing-left-note')?.textContent, status).toContain(
+          'nothing to review',
+        );
+        expect(r.find('review-not-completed-note'), status).toBeNull();
+        await expectNoAxeViolations(r.host);
+      }
+    });
+
+    it('keeps rendering nothing for an ended stay with nothing left', () => {
+      const r = render({ kind: 'NOT_COMPLETED' }, 'CANCELLED', false, true);
+
+      expect(r.find('review-panel')).toBeNull();
     });
   });
 });

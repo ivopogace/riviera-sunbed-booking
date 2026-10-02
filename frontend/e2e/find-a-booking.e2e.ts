@@ -117,6 +117,37 @@ test('a CLOSED-born booking shows the last-minute state and no cancel section (#
   await expectNoSeriousAxeViolations(page, 'booking view (CLOSED-born last-minute)');
 });
 
+test('a booking whose every day was refunded reads "Refunded" with no cancel and nothing to review (#1381)', async ({
+  page,
+}) => {
+  await page.route(new RegExp(`/api/bookings/${CODE}(\\?.*)?$`), (route) =>
+    route.fulfill({
+      json: {
+        ...DETAIL,
+        status: 'NO_SHOW',
+        cancellable: false,
+        refundIfCancelledNow: { minorUnits: 0, currency: 'EUR' },
+        nothingLeft: true,
+        refundedDays: [
+          { day: DETAIL.bookingDate, amount: DETAIL.amount, reason: 'WEATHER', released: false },
+        ],
+      },
+    }),
+  );
+
+  await page.goto('/');
+  await openFindBooking(page);
+  await page.getByTestId('find-code').fill(CODE);
+  await page.getByTestId('find-submit').click();
+
+  await expect(page).toHaveURL(new RegExp(`/booking/${CODE}`));
+  await expect(page.getByTestId('booking-status')).toHaveText('Refunded');
+  await expect(page.getByTestId('start-cancel')).toHaveCount(0);
+  await expect(page.getByTestId('review-nothing-left-note')).toContainText('nothing to review');
+  await settle(page);
+  await expectNoSeriousAxeViolations(page, 'booking view (every day refunded)');
+});
+
 test('audits the open find modal in the porcelain theme', async ({ page }) => {
   await page.goto('/');
   await openThemePicker(page);

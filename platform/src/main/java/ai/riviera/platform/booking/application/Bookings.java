@@ -232,15 +232,16 @@ public interface Bookings {
 			String code, VenueId venueId, LocalDate today);
 
 	/**
-	 * The move-reminder sweep's candidates: {@code CONFIRMED} stretches arriving on {@code moveDay} whose
-	 * stay holds a live ({@code CONFIRMED}/{@code COMPLETED}) stretch on another set ending the day before,
-	 * not yet stamped; each is then stamped via {@link #stampMoveReminder} in its own transaction.
+	 * The move-reminder sweep's candidates: unstamped {@code CONFIRMED} stretches arriving on {@code moveDay}, that day
+	 * still the guest's (neither refunded nor released, #1381), whose stay holds a live ({@code CONFIRMED}/{@code COMPLETED})
+	 * stretch on another set ending the day before; each is then stamped via {@link #stampMoveReminder} in its own transaction.
 	 */
 	List<BookingId> findStayMovesDue(LocalDate moveDay);
 
 	/**
-	 * Guarded stamp of {@code move_reminder_at} on a still-{@code CONFIRMED}, unstamped stretch, returning
-	 * the move iff this statement stamped it — the caller publishes exactly once (ADR-0018).
+	 * Row-locks the stretch, then the guarded stamp of {@code move_reminder_at} on a still-{@code CONFIRMED}, unstamped one
+	 * whose first day the guest still holds (a day refunded under the lock is seen, #1281), returning the move iff this
+	 * statement stamped it — the caller publishes exactly once (ADR-0018).
 	 */
 	Optional<ai.riviera.platform.booking.application.checkin.DueMove> stampMoveReminder(long bookingId,
 			Instant at);

@@ -126,6 +126,28 @@ class StayConfirmationFactsIT {
 		assertTrue(facts.stayCancellationFacts(new StayId(-1)).isEmpty());
 	}
 
+	/** #1381: a confirmed stretch with every day refunded is set aside too, so the stay's cancellation mail names the rest. */
+	@Test
+	void aStretchWithNothingLeftLeavesTheCancellationFacts() {
+		Venue venue = StayFixtures.venue(jdbc, "INSTANT", null, true);
+		venues.add(venue.id());
+		LocalDate first = firstDay();
+		createStay.create(plan(venue.online().get(0), 3, venue.online().get(1), 4, first));
+		StayId stay = new StayId(jdbc.sql("SELECT id FROM stay WHERE venue_id = :v").param("v", venue.id())
+				.query(Long.class).single());
+		long spent = jdbc.sql("SELECT id FROM booking WHERE stay_id = :s ORDER BY booking_date LIMIT 1")
+				.param("s", stay.value()).query(Long.class).single();
+		StayConfirmationFacts whole = facts.stayConfirmationFacts(stay).orElseThrow();
+
+		jdbc.sql("UPDATE booking_day SET refunded_at = now(), refund_minor = :m, refund_reason = 'WEATHER' WHERE booking_id = :b")
+				.param("m", PRICE).param("b", spent).update();
+
+		StayConfirmationFacts remainder = facts.stayCancellationFacts(stay).orElseThrow();
+		assertEquals(List.of(whole.stops().get(1)), remainder.stops());
+		assertEquals(4 * PRICE, remainder.amountMinor());
+		assertEquals(whole, facts.stayConfirmationFacts(stay).orElseThrow(), "the confirmation read stays whole");
+	}
+
 	/** What a remodel commit leaves on a stretch it refunded: the stretch cancelled and a receipt outcome line. */
 	private void endByRemodel(Venue venue, SetId set, long stretch, LocalDate date) {
 		jdbc.sql("UPDATE booking SET status = 'CANCELLED', cancelled_at = now() WHERE id = :id").param("id", stretch)

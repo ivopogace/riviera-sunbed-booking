@@ -336,7 +336,9 @@ model in `docs/architecture/domain-model.md`.
   a delivered stay counts a no-show too. The exceptions are the venue's **weather refund**, which
   reaches a no-show on purpose — on a washed-out day those are the guests who stayed home because
   of the storm — and its own **venue day refund**, which may reach a missed day by decision: a guest
-  who stayed away because of the venue is a day the venue may make good after the fact.
+  who stayed away because of the venue is a day the venue may make good after the fact. A booking whose
+  **every** day was refunded that way still resolves `NO_SHOW` in storage, but has *nothing left*
+  (ADR-0026 §7): the guest page shows it as **Refunded**, offers no cancel and nothing to review.
 - **Sales close** — the moment a venue's online sales for a date close, on the date
   itself: a per-venue setting fixed at one of three wall-clock values (00:01 opts the
   venue out of same-day sales, 16:00 the default, or 23:59), `Europe/Tirane`. The point

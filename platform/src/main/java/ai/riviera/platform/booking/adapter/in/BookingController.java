@@ -94,7 +94,7 @@ class BookingController {
 
 	/**
 	 * Cancel a booking by its code; refund computed server-side (invariant #10), no body.
-	 * {@code Cancelled}→200, {@code NotFound}→404, {@code NotCancellable}/{@code WindowClosed}→409
+	 * {@code Cancelled}→200, {@code NotFound}→404, {@code NotCancellable}/{@code WindowClosed}/{@code NothingLeft}→409
 	 * under distinct codes. The code is the bearer credential (invariant #7), never logged.
 	 */
 	@PostMapping("/{code}/cancel")
@@ -109,6 +109,8 @@ class BookingController {
 			case CancelOutcome.WindowClosed ignored ->
 					error(HttpStatus.CONFLICT, "CANCELLATION_WINDOW_CLOSED",
 							"Cancellation closed when the booking date began.");
+			case CancelOutcome.NothingLeft ignored -> error(HttpStatus.CONFLICT, "NOTHING_LEFT",
+					"Every day of this booking has already been refunded, so there is nothing left to cancel.");
 		};
 	}
 

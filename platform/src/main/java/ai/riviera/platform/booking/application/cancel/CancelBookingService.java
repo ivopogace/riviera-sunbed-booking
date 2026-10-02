@@ -28,10 +28,10 @@ import ai.riviera.platform.booking.vocabulary.RefundReason;
 /**
  * The guest cancel, in one transaction: lock the row, then read and quote the refund server-side
  * ({@link CancellationPolicy}, #10), guarded {@code CONFIRMED → CANCELLED}, free every {@code (set, date)}
- * of the span (#2), publish {@link BookingCancelled}. Never refund in here; {@code BookingRefundListener}
- * refunds after commit. Who may cancel is {@link BookingTransition#CANCEL_BY_GUEST}, never restated;
- * a spent day ({@code NO_SHOW}, {@code COMPLETED}, a closed quote window) answers {@code WindowClosed}
- * before any write. Rationale: {@code RESPONSIBILITIES.md} §booking.
+ * of the span (#2), publish {@link BookingCancelled}; {@code BookingRefundListener} refunds after commit.
+ * Who may cancel is {@link BookingTransition#CANCEL_BY_GUEST}, never restated. Before any write a spent day
+ * ({@code NO_SHOW}, {@code COMPLETED}, a closed window) answers {@code WindowClosed} and every day refunded
+ * {@code NothingLeft} (ADR-0026 §7). Rationale: {@code RESPONSIBILITIES.md} §booking.
  */
 @Service
 class CancelBookingService implements CancelBooking {
@@ -70,6 +70,9 @@ class CancelBookingService implements CancelBooking {
 		if (!BookingTransition.CANCEL_BY_GUEST.admits(booking.status())) {
 			return new CancelOutcome.NotCancellable(booking.status());
 		}
+		if (booking.everyDayRefunded()) {
+			return new CancelOutcome.NothingLeft();
+		}
 
 		RefundQuote quote = cancellationPolicy.quote(booking);
 		if (!quote.cancellationOpen()) {
@@ -104,15 +107,17 @@ class CancelBookingService implements CancelBooking {
 	}
 
 	/**
-	 * A stay cancels whole (ADR-0024 §4): its {@link LiveRemainder} row-locked, each live stretch quoted on the first
-	 * live day, cancelled and announced stamped with the stay (one reversal each, #9); one {@link StayCancelled} sums the
-	 * refund. A live stretch that cannot cancel, or nothing live, refuses the stay before any write; a failed transition is a bug.
+	 * A stay cancels whole (ADR-0024 §4): its {@link LiveRemainder} row-locked, each live stretch quoted on the first live
+	 * day, cancelled and announced stamped with the stay (one reversal each, #9); one {@link StayCancelled} sums the refund.
+	 * A live stretch that cannot cancel, or nothing live ({@code NothingLeft} while a confirmed one stands, ADR-0026 §7), refuses before any write.
 	 */
 	private CancelOutcome cancelStay(StayRecord stay) {
 		LiveRemainder.Split split = liveRemainder.of(bookings.lockStretches(stay.id()), stay.firstDay());
 		List<BookingRecord> stretches = split.live();
 		if (stretches.isEmpty()) {
-			return new CancelOutcome.NotCancellable(split.setAside().getFirst().status());
+			return split.nothingLeft()
+					? new CancelOutcome.NothingLeft()
+					: new CancelOutcome.NotCancellable(split.setAside().getFirst().status());
 		}
 		if (stretches.stream().anyMatch(s -> s.status() == BookingStatus.NO_SHOW || s.status() == BookingStatus.COMPLETED)) {
 			return new CancelOutcome.WindowClosed();

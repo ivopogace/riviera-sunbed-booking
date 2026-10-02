@@ -102,7 +102,7 @@ class MoveReminderMailIT {
 		assertThat(sent.moveReminder()).isEqualTo(new MoveReminderMail(stay.code(), from.venueName(), stay.moveDay(),
 				stay.last(), from.rowLabel(), from.positionNo(), to.rowLabel(), to.positionNo(),
 				Math.abs(to.gridY() - from.gridY()), Math.abs(to.positionNo() - from.positionNo()),
-				URI.create(sent.moveReminder().bookingLink().toString())));
+				URI.create(sent.moveReminder().bookingLink().toString()), true));
 		assertThat(sent.moveReminder().bookingLink().getPath()).endsWith("/booking/" + stay.code());
 		assertThat(fixtures.outstandingPublicationsMatching(BookingMailFixtures.MOVE_REMINDER_LISTENER_ID,
 				String.valueOf(stay.arriving()))).isZero();

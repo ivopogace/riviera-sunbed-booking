@@ -48,10 +48,10 @@ class StayMoveReminderMailListenerTest {
 	private static final LocalDate MOVE_DAY = LocalDate.of(2026, 8, 13);
 	private static final StayMoveDue EVENT = new StayMoveDue(STAY, ARRIVING, MOVE_DAY);
 	private static final StayMoveFacts MOVE = new StayMoveFacts(STAY, "STAYCODE", new CustomerId(5L), MOVE_DAY,
-			MOVE_DAY.plusDays(2), new SetId(1L), new SetId(2L), 1, 3);
+			MOVE_DAY.plusDays(2), new SetId(1L), new SetId(2L), 1, 3, true);
 	private static final URI LINK = URI.create("https://riviera.example/booking/STAYCODE");
 	private static final MoveReminderMail MAIL = new MoveReminderMail("STAYCODE", "Vala Beach", MOVE_DAY,
-			MOVE_DAY.plusDays(2), "A", 3, "B", 6, 1, 3, LINK);
+			MOVE_DAY.plusDays(2), "A", 3, "B", 6, 1, 3, LINK, true);
 
 	private final BookingNotificationFacts bookings = mock(BookingNotificationFacts.class);
 	private final BookingMailFactsService facts = mock(BookingMailFactsService.class);

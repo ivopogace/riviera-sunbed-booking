@@ -52,16 +52,22 @@ class JdbcBookingNotificationFacts implements BookingNotificationFacts {
 			WHERE b.id = :id AND b.moved_at IS NOT NULL
 			""";
 
-	/** The arriving stretch and the live stretch it follows on another set; nothing when either has gone. */
+	/**
+	 * The arriving stretch and the live stretch it follows on another set, with whether the guest holds the day before
+	 * on it; nothing when either has gone or the move day is no longer the guest's ({@code JdbcBookings.HOLDS_DAY_SQL}).
+	 */
 	private static final String MOVE_ROW_SQL = """
 			SELECT s.id AS stay_id, s.code, s.last_date AS stay_last_date, t.customer_id, t.venue_id,
-			       t.booking_date, p.set_id AS from_set, t.set_id AS to_set
+			       t.booking_date, p.set_id AS from_set, t.set_id AS to_set,
+			       """ + JdbcBookings.HOLDS_DAY_SQL.formatted("p", "p.last_date") + """
+			 AS from_day_held
 			FROM booking t
 			JOIN stay s ON s.id = t.stay_id
 			JOIN booking p ON p.stay_id = t.stay_id AND p.id <> t.id AND p.last_date = t.booking_date - 1
 			WHERE t.id = :id AND t.status = :confirmed AND t.set_id <> p.set_id
 			  AND p.status IN (:confirmed, :completed)
-			""";
+			  AND
+			""" + JdbcBookings.HOLDS_DAY_SQL.formatted("t", "t.booking_date");
 
 	private final JdbcClient jdbc;
 	private final CancellationPolicy cancellationPolicy;
@@ -91,7 +97,7 @@ class JdbcBookingNotificationFacts implements BookingNotificationFacts {
 				.query((rs, rowNum) -> new MoveRow(new StayId(rs.getLong("stay_id")), rs.getString("code"),
 						new CustomerId(rs.getLong(COL_CUSTOMER_ID)), new VenueId(rs.getLong("venue_id")),
 						rs.getObject(COL_BOOKING_DATE, LocalDate.class), rs.getObject("stay_last_date", LocalDate.class),
-						new SetId(rs.getLong("from_set")), new SetId(rs.getLong("to_set"))))
+						new SetId(rs.getLong("from_set")), new SetId(rs.getLong("to_set")), rs.getBoolean("from_day_held")))
 				.optional()
 				.flatMap(this::placed);
 	}
@@ -106,11 +112,11 @@ class JdbcBookingNotificationFacts implements BookingNotificationFacts {
 			return Optional.empty();
 		}
 		return Optional.of(new StayMoveFacts(row.stayId(), row.code(), row.customerId(), row.moveDate(),
-				row.stayLastDate(), row.fromSet(), row.toSet(), to.rowsAway(from), to.positionsAway(from)));
+				row.stayLastDate(), row.fromSet(), row.toSet(), to.rowsAway(from), to.positionsAway(from), row.fromDayHeld()));
 	}
 
 	private record MoveRow(StayId stayId, String code, CustomerId customerId, VenueId venueId, LocalDate moveDate,
-			LocalDate stayLastDate, SetId fromSet, SetId toSet) {
+			LocalDate stayLastDate, SetId fromSet, SetId toSet, boolean fromDayHeld) {
 	}
 
 	@Override

@@ -79,9 +79,9 @@ class ViewBookingService implements ViewBooking {
 	}
 
 	/**
-	 * A stay reads as one booking (ADR-0024): code, span, {@link StayStatus}, the first stretch's spot and credentials
-	 * (one intent), money summed, every stretch quoted on the day the cancel judges the {@link LiveRemainder} on, each
-	 * with its own move (the stay's is null: its spot is the first stretch's); cancellable and refund are the remainder's (#10).
+	 * A stay reads as one booking (ADR-0024): code, span, {@link StayStatus}, the first stretch's spot and credentials (one
+	 * intent), money summed, every stretch quoted on the day the cancel judges the {@link LiveRemainder} on, each with its own
+	 * move (the stay's is null: its spot is the first stretch's); cancellable, refund and nothing left are the remainder's (#10).
 	 */
 	private BookingDetail toStayDetail(StayRecord stay) {
 		List<BookingRecord> stretches = stay.stretches();
@@ -115,7 +115,7 @@ class ViewBookingService implements ViewBooking {
 			SetBookingInfo set = quotes.get(i).set();
 			stretchViews.add(new BookingDetail.StayStretch(stretch.setId(), set.rowLabel(), set.positionNo(),
 					stretch.bookingDate(), stretch.lastDate(), new MoneyView(stretch.amountMinor(), stretch.currency()),
-					stretch.status(), moveOf(stretch, quotes.get(i))));
+					stretch.status(), moveOf(stretch, quotes.get(i)), stretch.everyDayRefunded()));
 		}
 		return new BookingDetail(stay.code(), status, stay.venueId(), firstSet.venueName(), firstSet.rowLabel(),
 				firstSet.positionNo(), stay.firstDay(), stay.lastDay(), new MoneyView(summary.amountMinor(), first.currency()),
@@ -127,7 +127,8 @@ class ViewBookingService implements ViewBooking {
 				summary.cancelReason(), summary.declineReason(),
 				cutoff.cancellationWindow(firstSet.bookingCutoff(), stay.firstDay(), first.createdAt()),
 				panel, nameSuggestionFor(panel, first), null, stretchViews,
-				stretches.stream().flatMap(s -> bookings.findRefundedDays(s.id()).stream()).toList());
+				stretches.stream().flatMap(s -> bookings.findRefundedDays(s.id()).stream()).toList(),
+				remainder.nothingLeft());
 	}
 
 	/**
@@ -143,7 +144,8 @@ class ViewBookingService implements ViewBooking {
 		ReviewPanel panel = reviewEligibility.panelFor(b.code());
 		RefundQuote quote = cancellationPolicy.quote(b);
 		SetBookingInfo set = quote.set();
-		boolean cancellable = BookingTransition.CANCEL_BY_GUEST.admits(b.status()) && quote.cancellationOpen();
+		boolean cancellable = BookingTransition.CANCEL_BY_GUEST.admits(b.status()) && quote.cancellationOpen()
+				&& !b.everyDayRefunded();
 		// Its own predicate, not a reuse of cancellable's: see BookingDetail.
 		boolean withdrawable = b.status() == BookingStatus.PENDING_REQUEST;
 		boolean emailWithheld = mayDiscloseMailStatus(b) && confirmationMail.isWithheld(b.customerId());
@@ -171,7 +173,7 @@ class ViewBookingService implements ViewBooking {
 				payWindowClosed, b.cancelReason(), b.declineReason(),
 				cutoff.cancellationWindow(set.bookingCutoff(), b.bookingDate(), b.createdAt()),
 				panel, nameSuggestionFor(panel, b), moveOf(b, quote), List.of(),
-				b.dayRefundedMinor() == 0 ? List.of() : bookings.findRefundedDays(b.id()));
+				b.dayRefundedMinor() == 0 ? List.of() : bookings.findRefundedDays(b.id()), b.everyDayRefunded());
 	}
 
 	/** The latest move of a moved booking, with the exit deadline the quote still holds open; {@code null} otherwise. */
