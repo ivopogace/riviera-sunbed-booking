@@ -78,13 +78,13 @@ is no longer live, so the save's probe passes.
 
 ## Execution status
 
-**Stage pointer:** implement (phase 2)
+**Stage pointer:** implement (phase 3)
 
-**Next action:** frontend model, panels, specs, mocked e2e.
+**Next action:** docs (ADR-0026, CONTEXT.md, RESPONSIBILITIES.md, listener Javadoc).
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — classification + commit leg | ✅ | (this commit) |
 | 1 — wire + ITs | ✅ | (this commit) |
-| 2 — frontend | | |
+| 2 — frontend | ✅ | (this commit) |
 | 3 — docs | | |

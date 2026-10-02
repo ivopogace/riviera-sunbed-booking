@@ -1,10 +1,15 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 
 import { RemodelReceipt } from './operator-console.model';
-import { RECEIPT, RECEIPT_WITH_ENDINGS, RECEIPT_WITH_KEPT } from './remodel-receipt-panel.fixtures';
+import {
+  RECEIPT,
+  RECEIPT_WITH_ENDINGS,
+  RECEIPT_WITH_KEPT,
+  RECEIPT_WITH_NOTHING_LEFT,
+} from './remodel-receipt-panel.fixtures';
 import { RemodelReceiptPanel } from './remodel-receipt-panel';
 
-describe('RemodelReceiptPanel (#1034, #1199)', () => {
+describe('RemodelReceiptPanel (#1034, #1199, #1300)', () => {
   let fixture: ComponentFixture<RemodelReceiptPanel>;
   let host: HTMLElement;
 
@@ -53,6 +58,20 @@ describe('RemodelReceiptPanel (#1034, #1199)', () => {
     expect(host.textContent).not.toMatch(/\bcode\b/i);
   });
 
+  it('reads a nothing-left line back in its own group, with no refund, total, reason or fee (#1300)', () => {
+    render(RECEIPT_WITH_NOTHING_LEFT);
+
+    expect(host.textContent).toMatch(/0 bookings moved, 1 ended with nothing left/);
+    expect(host.textContent).toMatch(/Ended — nothing left to refund \(1\)/);
+    expect(byId('layout-remodel-receipt-ended')!.textContent).toMatch(
+      /Row A · position 1 · Thu 24 Sept 2026 · every day already refunded/,
+    );
+    expect(byId('layout-remodel-receipt-refunds')).toBeNull();
+    expect(byId('layout-remodel-receipt-reason')).toBeNull();
+    expect(byId('layout-remodel-receipt-fee')).toBeNull();
+    expect(host.textContent).not.toMatch(/returned/);
+  });
+
   it('shows the fee charged per refunded booking and the total', () => {
     render(RECEIPT_WITH_ENDINGS);
 
@@ -69,6 +88,7 @@ describe('RemodelReceiptPanel (#1034, #1199)', () => {
     expect(byId('layout-remodel-receipt-reason')).toBeNull();
     expect(byId('layout-remodel-receipt-fee')).toBeNull();
     expect(byId('layout-remodel-receipt-kept')).toBeNull();
+    expect(byId('layout-remodel-receipt-ended')).toBeNull();
     expect(host.textContent).not.toMatch(/kept/);
     expect(host.textContent).not.toMatch(/returned/);
     expect(host.textContent).not.toMatch(/fee/i);

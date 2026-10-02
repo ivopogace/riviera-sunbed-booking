@@ -298,6 +298,13 @@ export interface RemodelReceiptRelease extends RemodelReceiptClaim {
   readonly kind: 'RELEASE' | 'DECLINE';
 }
 
+/** A confirmed booking every day of which was already refunded, ended with no refund, fee or email (#1300). */
+export interface RemodelReceiptEnded {
+  readonly bookingId: number;
+  readonly bookingDate: string;
+  readonly from: RemodelSpot;
+}
+
 /** Why a claim could not be moved or ended, so the save kept its set exactly as stored. */
 export type RemodelBlockReason = 'FROZEN' | 'NO_MOVE_CANDIDATE';
 
@@ -323,6 +330,8 @@ export interface RemodelReceipt {
   readonly moves: readonly RemodelReceiptMove[];
   readonly refunds: readonly RemodelReceiptClaim[];
   readonly releases: readonly RemodelReceiptRelease[];
+  /** Bookings ended with nothing left to refund — outside the refunds, their count and their totals. */
+  readonly ended: readonly RemodelReceiptEnded[];
   readonly kept: readonly RemodelReceiptKept[];
   readonly refundReason: string;
   readonly refundedTotal: MoneyView | null;
@@ -372,7 +381,7 @@ export interface RemodelBlock extends RemodelClaim {
 
 /**
  * The remodel preview (`POST /api/venues/{id}/beach-map/preview`): what the bulk save's body would
- * do to every live claim on the sets it removes or renumbers, in five groups, plus `keep` — the sets
+ * do to every live claim on the sets it removes or renumbers, in groups, plus `keep` — the sets
  * that stay on the map: the blocked claims' (the save keeps them itself) and the staff holds' (the
  * operator must restore them). Nothing is written by the preview; the save re-decides.
  */
@@ -380,6 +389,8 @@ export interface RemodelPreview {
   readonly moves: readonly RemodelMove[];
   readonly refunds: readonly RemodelClaim[];
   readonly releases: readonly RemodelRelease[];
+  /** Confirmed bookings every day of which was already refunded: ended with no refund, fee or email. */
+  readonly ended: readonly RemodelClaim[];
   readonly staffHolds: readonly RemodelStaffHold[];
   readonly blocks: readonly RemodelBlock[];
   readonly keep: readonly RemodelSpot[];
@@ -391,7 +402,7 @@ export interface RemodelPreview {
 
 /**
  * True when the save can settle every claim the preview names — moves, refunds, releases, declines,
- * and blocked claims kept where they are. Only a staff walk-in hold refuses the save as painted.
+ * bookings with nothing left, and blocked claims kept where they are. Only a staff walk-in hold refuses the save as painted.
  */
 export function remodelPreviewIsCommittable(preview: RemodelPreview): boolean {
   return !remodelPreviewIsEmpty(preview) && preview.staffHolds.length === 0;
@@ -410,6 +421,7 @@ export function remodelPreviewIsEmpty(preview: RemodelPreview): boolean {
     preview.moves.length === 0 &&
     preview.refunds.length === 0 &&
     preview.releases.length === 0 &&
+    preview.ended.length === 0 &&
     preview.staffHolds.length === 0 &&
     preview.blocks.length === 0
   );

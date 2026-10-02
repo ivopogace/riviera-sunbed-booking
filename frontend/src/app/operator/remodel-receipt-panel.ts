@@ -9,6 +9,7 @@ import {
   remodelBlockReasonText,
   RemodelReceipt,
   RemodelReceiptClaim,
+  RemodelReceiptEnded,
   RemodelReceiptKept,
   RemodelReceiptMove,
   RemodelReceiptRelease,
@@ -18,7 +19,7 @@ import {
 /**
  * A remodel-commit receipt: when the layout was saved, every booking it moved — each with the spot
  * the guest was told before, the spot they hold now and the distance — every claim it ended
- * instead, with what was refunded and why, and every claim it kept where it was, with why its set
+ * instead, with what was refunded and why (or that nothing was left), every claim it kept, with why its set
  * stayed. Shown after a commit and from the editor's past remodels, to answer a phoning guest.
  * Bookings by id, never by code (invariant #7). The `@if` stays outside; focus in and out is the
  * caller's (`focusMover()` on the heading's test id).
@@ -97,6 +98,19 @@ import {
         }
       </ul>
     }
+    @if (receipt().ended.length > 0) {
+      <h4 class="mt-2 text-[12.5px] font-bold">
+        Ended — nothing left to refund ({{ receipt().ended.length }})
+      </h4>
+      <ul
+        class="mt-1 list-disc pl-4 text-[12px] leading-[1.45]"
+        data-testid="layout-remodel-receipt-ended"
+      >
+        @for (ended of receipt().ended; track ended.bookingId) {
+          <li>{{ endedText(ended) }}</li>
+        }
+      </ul>
+    }
     @if (receipt().kept.length > 0) {
       <h4 class="mt-2 text-[12.5px] font-bold">Kept in place ({{ receipt().kept.length }})</h4>
       <ul
@@ -123,7 +137,7 @@ export class RemodelReceiptPanel {
   readonly receipt = input.required<RemodelReceipt>();
   readonly closed = output<void>();
 
-  /** "Saved Tue 9 Sept, 15:00 · 2 bookings moved, 1 refunded, 2 ended, 1 kept in place" */
+  /** "Saved Tue 9 Sept, 15:00 · 2 bookings moved, 1 refunded, 2 ended, 1 ended with nothing left, 1 kept in place" */
   protected committedText(): string {
     const receipt = this.receipt();
     const moved = receipt.moves.length;
@@ -133,6 +147,9 @@ export class RemodelReceiptPanel {
     }
     if (receipt.releases.length > 0) {
       parts.push(`${receipt.releases.length} ended`);
+    }
+    if (receipt.ended.length > 0) {
+      parts.push(`${receipt.ended.length} ended with nothing left`);
     }
     if (receipt.kept.length > 0) {
       parts.push(`${receipt.kept.length} kept in place`);
@@ -166,6 +183,10 @@ export class RemodelReceiptPanel {
     const kind =
       release.kind === 'RELEASE' ? 'unpaid booking released' : 'pending request declined';
     return `${this.claimText(release)} · ${kind}`;
+  }
+
+  protected endedText(ended: RemodelReceiptEnded): string {
+    return `${spotLabel(ended.from)} · ${formatCivilDate(ended.bookingDate)} · every day already refunded`;
   }
 
   protected keptText(kept: RemodelReceiptKept): string {

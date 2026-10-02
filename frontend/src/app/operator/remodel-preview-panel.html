@@ -22,6 +22,10 @@
       full, an unpaid one released, a pending request declined. Every guest is emailed; a cancelled
       or released booking carries a link to book again.
     }
+    @if (preview().ended.length > 0) {
+      A booking whose every day was already refunded is ended with nothing left to refund: no
+      refund, no fee and no email.
+    }
     There is no undo.
   </p>
   @if (preview().blocks.length > 0) {
@@ -73,6 +77,16 @@
       <ul class="list-disc pl-4">
         @for (release of preview().releases; track release.bookingId) {
           <li>{{ releaseText(release) }}</li>
+        }
+      </ul>
+    </section>
+  }
+  @if (preview().ended.length > 0) {
+    <section data-testid="layout-remodel-ended">
+      <h3 class="font-bold">Ended — nothing left to refund ({{ preview().ended.length }})</h3>
+      <ul class="list-disc pl-4">
+        @for (claim of preview().ended; track claim.bookingId) {
+          <li>{{ endedText(claim) }}</li>
         }
       </ul>
     </section>

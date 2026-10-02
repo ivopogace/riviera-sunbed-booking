@@ -670,7 +670,7 @@ function isRemodelPreview(value: unknown): value is RemodelPreview {
   }
   const preview = value as Record<string, unknown>;
   return (
-    ['moves', 'refunds', 'releases', 'staffHolds', 'blocks', 'keep'].every((group) =>
+    ['moves', 'refunds', 'releases', 'ended', 'staffHolds', 'blocks', 'keep'].every((group) =>
       Array.isArray(preview[group]),
     ) && typeof preview['previewToken'] === 'string'
   );

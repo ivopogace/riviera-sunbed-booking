@@ -3,7 +3,11 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { expectNoAxeViolations } from '../../testing/axe';
 import { RemodelReceipt } from './operator-console.model';
 import { RemodelReceiptPanel } from './remodel-receipt-panel';
-import { RECEIPT, RECEIPT_WITH_ENDINGS } from './remodel-receipt-panel.fixtures';
+import {
+  RECEIPT,
+  RECEIPT_WITH_ENDINGS,
+  RECEIPT_WITH_NOTHING_LEFT,
+} from './remodel-receipt-panel.fixtures';
 
 /**
  * Structural a11y audit for the remodel receipt: a labelled `region`, a heading, one list and a real
@@ -32,5 +36,9 @@ describe('RemodelReceiptPanel a11y (#1034)', () => {
 
   it('has no axe violations with the refund, release and decline lines', async () => {
     await expectNoAxeViolations(render(RECEIPT_WITH_ENDINGS));
+  });
+
+  it('has no axe violations with a nothing-left line under its own sub-heading (#1300)', async () => {
+    await expectNoAxeViolations(render(RECEIPT_WITH_NOTHING_LEFT));
   });
 });

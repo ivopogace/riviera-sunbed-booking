@@ -201,7 +201,15 @@ describe('LayoutEditor a11y (#172)', () => {
     byId('layout-save').click();
     http
       .expectOne((r) => r.method === 'POST' && r.url.includes('/api/venues/1/beach-map/preview'))
-      .flush({ moves: [], refunds: [], releases: [], staffHolds: [], blocks: [], keep: [] });
+      .flush({
+        moves: [],
+        refunds: [],
+        releases: [],
+        ended: [],
+        staffHolds: [],
+        blocks: [],
+        keep: [],
+      });
     await fixture.whenStable();
     http
       .expectOne((r) => r.method === 'PUT' && r.url.includes('/api/venues/1/beach-map'))
