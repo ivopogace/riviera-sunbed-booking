@@ -282,8 +282,10 @@ any is released on the old, never a swap of my own — so a racing reserve wins 
 - **A guest's stay cancel publishes `StayCancelled` once, after every stretch's `BookingCancelled`.**
   Each stretch's event names the stay in `cancelledWithStay`, so its refund and reversal stay per
   stretch while its mail is left to the stay; the stay event carries the summed refund and
-  `VENUE_CHANGE` only if every stretch took a free exit, else `POLICY`. Every other `BookingCancelled`
-  (the remodel legs ending one stretch, a lone booking, an older payload) leaves the stamp null.
+  `VENUE_CHANGE` only if every stretch took a free exit, else `POLICY`. A remodel release that ends
+  every live stretch stamps and publishes the same way (refund 0, `VENUE_CHANGE`, #1292). Every other
+  `BookingCancelled` (a remodel leg ending one stretch of a stay that goes on, a lone booking, an
+  older payload) leaves the stamp null.
 - **Attendance is per service day; I am the sole writer and reader of `booking_day`**
   (`ResponsibilitiesArchitectureTests`' `booking_day` sole-writer scan — other modules ask my
   ports). The schema writes the rows when a booking becomes `CONFIRMED` (trigger
@@ -434,6 +436,12 @@ any is released on the old, never a swap of my own — so a racing reserve wins 
   blocks. A `PENDING_REQUEST` is no claim: it declines (`SET_UNAVAILABLE`) whatever the zone, never
   moves, releases nothing (ADR-0025). Outcome kinds only, never a status or code (invariant #7);
   advisory and unlocked, so the commit re-derives it.
+- **A released stretch takes its stay's other unpaid stretches with it** (#1292): one intent collects
+  for the stay (ADR-0024 decision 3), so its void ends them all, and the picture says so. Every other
+  `AWAITING_PAYMENT` stretch of the stay joins the classification as a release — whatever its set, zone
+  or candidate; it takes no candidate — and the free sets are re-allocated until no new stay joins. The
+  preview shows them, the token covers them, the commit settles each as a release; a `CONFIRMED`
+  stretch of the stay is never touched.
 - **The remodel commit** (`RemodelClaims#commit`) runs in `venue`'s commit transaction behind its
   `RemodelGate`: it re-classifies under the lock; the `PreviewToken` must **cover** the fresh
   picture (an unpreviewed claim or kind is `Stale`), and refunds need the operator's matching
@@ -442,10 +450,11 @@ any is released on the old, never a swap of my own — so a racing reserve wins 
 - **The commit's legs:** a **move** claims the new rows, releases the old, stamps `moved_at`,
   publishes `BookingMoved`; a **refund** is `cancelConfirmed` for the whole amount as
   `VENUE_CHANGE`; a **release** is the unpaid `AWAITING_PAYMENT → CANCELLED`, whose
-  `refundMinor = 0` mails the guest, moving no money; a **decline** the venue-scoped one. A
-  `Blocked` claim is **kept** (a `remodel_receipt_kept` line with its `BlockReason`; `venue` leaves
-  the set as stored), yet a claim that can move off that set still moves. No undo: another remodel
-  reverses a move.
+  `refundMinor = 0` mails the guest, moving no money (a stay every live stretch of which is released
+  here stamps each `BookingCancelled` with the stay and publishes one `StayCancelled`, refund 0, so the
+  guest gets one mail, #1292); a **decline** the venue-scoped one. A `Blocked` claim is **kept** (a
+  `remodel_receipt_kept` line with its `BlockReason`; `venue` leaves the set as stored), yet a claim
+  that can move off that set still moves. No undo: another remodel reverses a move.
 - **The receipt is mine** (`remodel_receipt(_move/_outcome/_kept)`): label snapshots, distance,
   amounts, reasons, so mails and views name the spot after its set retires.
   `BookingPresence#hasBookings` counts a move's from- and to-sets, so a left set retires rather than
@@ -456,8 +465,9 @@ any is released on the old, never a swap of my own — so a racing reserve wins 
   sweep reads only `AWAITING_PAYMENT`, so nothing else reaches it. `RemodelReleasePaymentListener`
   acts only on a `VENUE_CHANGE` cancel with a `RELEASE` receipt line (`RemodelReceipts#releasedByRemodel`),
   never on a zero refund: a paid booking whose every day was already refunded also returns nothing
-  (#1291). It throws on a transient failure. An intent that had collected cannot be undone: it counts to
-  `ObservabilityMetrics.REMODEL_RELEASE_COLLECTED` and is refunded by hand, never retried.
+  (#1291). One void per released stretch of a stay; the port answers an already-voided intent
+  `Canceled`. It throws on a transient failure. An intent that had collected cannot be undone: it
+  counts to `ObservabilityMetrics.REMODEL_RELEASE_COLLECTED` and is refunded by hand, never retried.
 - **A moved booking's free exit is a refund-tier override, never a window change:** until
   `BookingCutoff#freeExitEndsAt`, `CancellationPolicy#quote` refunds in full as `VENUE_CHANGE`
   (lifting `LATE`; in `FREE` only the reason changes, so mails and the admin's venue-caused list
@@ -506,7 +516,8 @@ publishes **once per booking**. `RefundStatusLookup` reads the whole-share refun
 is tagged `bookingRef` and, for a day, `serviceDate`, so adoption after a lost response is per scope.
 
 `CancelPaymentPort.cancel(booking)` voids the intent behind the booking, so an unpaid group is
-cancelled all-or-nothing, never one booking of it.
+cancelled all-or-nothing, never one booking of it (`booking`'s remodel release ends every unpaid
+stretch of the stay with the one it disturbed, #1292).
 
 - **The payment state machine is one guarded SQL statement**, because Stripe promises neither
   ordering nor single delivery. `markStatus` moves only the open states (`REQUIRES_PAYMENT`, the
@@ -813,10 +824,13 @@ tag names the person, invariant #7):
   `stayId`, an older payload, mails as a lone booking's). The delivery log keeps its per-booking grain:
   the stay mail's attempt is logged on every stretch it covers, and a resend on any stretch resends
   the stay's mail, refused unless every stretch confirmed.
-- **A stay the guest cancels gets one cancellation mail, on `StayCancelled`**: the lone booking's
-  cancellation copy under the stay's code and span, with the summed refund. A stretch's stamped
-  `BookingCancelled` mails nothing; an unstamped one (a remodel ending one stretch, an older payload)
-  mails that stretch under the stay's code, with a rebook link when a remodel ended it.
+- **A stay the guest cancels, or a remodel releases whole, gets one cancellation mail, on
+  `StayCancelled`**: the lone booking's cancellation copy under the stay's code and span, with the
+  summed refund, and a rebook link only when a remodel ended a stretch of it
+  (`BookingNotificationFacts#endedByRemodel`; a free exit is the same `VENUE_CHANGE` with none). A
+  stretch's stamped `BookingCancelled` mails nothing; an unstamped one (a remodel ending one stretch
+  of a stay that goes on, an older payload) mails that stretch under the stay's code, with a rebook
+  link when a remodel ended it.
 - **A stay request gets one mail per outcome (#1267)**: `StayRequestDeclined` and `StayRequestExpired`
   send the request record, `StayPaymentDue` the payment-due mail with the stay's total, each under the
   stay's code and whole span and naming no spot, through the lone flows' listeners and abandon counters.
