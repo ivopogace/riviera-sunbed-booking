@@ -1,5 +1,7 @@
 package ai.riviera.platform;
 
+import ai.riviera.platform.web.adapter.in.WebCorsConfig;
+import ai.riviera.platform.web.adapter.in.SecurityConfig;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
@@ -53,8 +55,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * date and outcome tokens — no arrival code, no recipient address.</li>
  * </ol>
  *
- * <p>Lives in the root test package, unlike the controller it covers, because {@code WebSliceStubs} is
- * package-private here and the subject is the admin surface <em>through</em> {@code SecurityConfig}. The
+ * <p>Lives in the root test package, unlike the controller it covers, because it shares the root's
+ * {@code WebSliceStubs} and the subject is the admin surface <em>through</em> {@code SecurityConfig}. The
  * behaviour behind the ports has its own tests ({@code BookingConfirmationResendServiceTest},
  * {@code MailDeliveryLookupServiceTest}); the end-to-end path is {@code AdminMailDeliveryIT}.
  * Docker-free {@code @WebMvcTest} slice.

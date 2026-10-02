@@ -74,12 +74,15 @@ Whenever behaviour is added or moved: each file's logic serves its module's **Jo
 its **Not My Job** list. The tells no rule catches: refund/cancellation policy in `payment`
 (executor; `booking` decides); commission/payout arithmetic in `venue` or `booking` (`payout`
 computes); `customer` or `operator` growing login machinery beyond the Spring Security imports
-`*AuthPlacementTests` ban (it belongs in `auth`); `operator` sitting in every request path. Blocker when the misplacement also breaks a Blocker invariant.
+`*AuthPlacementTests` ban (it belongs in `auth`); a filter, route rule or exception mapping outside
+`web` (the chain and the one advice are `web`'s; `ErrorContractArchitectureTests` catches only a second
+advice); `operator` sitting in every request path. Blocker when the misplacement also breaks a Blocker invariant.
 
 ### RV-BE-12. Package shape (ADR-0007) — Major
 `PackageShapeArchitectureTests` holds the structural half; eyes go to a serviceless module with
 an empty `application/` or `domain/` (or a module with a service still in the thin shape), and
-use-case slicing outside `booking`. `vocabulary` and `events` are allowed — flagging them is a false finding.
+use-case slicing outside `booking`. `vocabulary` and `events` are allowed — flagging them is a false finding;
+so is an adapter-only non-context module (`web`, `monitoring`: no `application/`, everything in `adapter/in`).
 
 ### RV-BE-19. Rule-layer placement (ADR-0018) — Major
 On any new/changed choice, calculation or lifecycle statement. `DomainPurityArchitectureTests`

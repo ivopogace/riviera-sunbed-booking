@@ -1,5 +1,7 @@
 package ai.riviera.platform;
 
+import ai.riviera.platform.web.adapter.in.WebCorsConfig;
+import ai.riviera.platform.web.adapter.in.SecurityConfig;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -66,8 +68,8 @@ import ai.riviera.platform.auth.vocabulary.AuthRoles;
  * already cost time here: the bootstrap {@code operator} account IS the platform admin ({@code
  * is_admin}, V29), so no test riding its session can demonstrate a {@code 403} at all.
  *
- * <p>Lives in the root test package because the web slice imports the package-private {@code
- * SecurityConfig} / {@code WebCorsConfig} / {@link WebSliceStubs} and the two role constants above.
+ * <p>Lives in the root test package with the other whole-web-layer slices sharing {@link WebSliceStubs}
+ * (with {@code web}'s {@code SecurityConfig} / {@code WebCorsConfig}) and the two role constants above.
  */
 @WebMvcTest
 @Import({SecurityConfig.class, WebCorsConfig.class, WebSliceStubs.class})

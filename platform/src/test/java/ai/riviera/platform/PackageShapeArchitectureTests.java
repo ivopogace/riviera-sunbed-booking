@@ -38,12 +38,13 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
  * adapter}}, never on a per-module classification. Which <em>kind</em> of type may live in which
  * published surface is {@link PublishedSurfacePlacementArchitectureTests}' job.
  *
- * <p>Root-level platform config ({@code PlatformApplication}, {@code SecurityConfig},
- * {@code WebCorsConfig}, {@code TimeConfig}, …) sits directly under {@code ai.riviera.platform} and is
+ * <p>Root-level platform config ({@code PlatformApplication}, {@code TimeConfig}, {@code SpaWebConfig},
+ * {@code MapResourcesConfig}) sits directly under {@code ai.riviera.platform} and is
  * <strong>not</strong> a module — it is excluded from the package-shape assertions. What the root may
  * <em>reach</em> is {@link CompositionRootDisciplineTests}' job. Of the non-context modules,
  * {@code challenge} uses the full template (minus {@code domain}), {@code audit} the thin one
- * plus a driving adapter and {@code monitoring} {@code vocabulary} plus a driving adapter, all checked
+ * plus a driving adapter, {@code monitoring} {@code vocabulary} plus a driving adapter and {@code web} a
+ * driving adapter alone, all checked
  * like any other, while the {@code shared} kernel matches
  * neither template deliberately — flat classes at the module
  * root, no published surface — and passes here because types sitting at a module root are skipped.

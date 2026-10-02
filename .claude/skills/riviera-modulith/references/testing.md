@@ -13,8 +13,9 @@ dependency direction on top; don't add jMolecules (package-name rules do it with
 
 ## `@ApplicationModuleTest`
 
-Bootstraps the module the test sits in plus the root package's beans (place the class in the
-module package), so every module port the root edge injects needs a `@MockitoBean`
+Bootstraps the module the test sits in plus the root package's beans and the registered `shared`
+module (place the class in the module package). The security chain is `web`'s, so STANDALONE does not
+load it; a port of another module the bootstrapped beans inject still needs a `@MockitoBean`
 (`PayoutModuleTest`; `riviera-local-debug` § *Blast radius*). Use for module-internal wiring;
 the highest-stakes DB invariants get full `@SpringBootTest` ITs (`ConcurrentReservationIT` for
 #2). `@MockitoBean`, never `@MockBean`. Prefer the narrowest bootstrap mode; needing

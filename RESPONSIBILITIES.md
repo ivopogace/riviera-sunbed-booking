@@ -986,8 +986,9 @@ model; this one holds edge types (ADR-0017).
 because no module can own it, not because several use it. Nothing else: three modules wanting a type
 is the trigger for asking the question, and the answer is always ownership.
 
-- `ApiProblem` and `InvalidApiRequestException` (the root advice owns exception→status; module
-  adapters throw): module adapters need them, and no module may depend on the root.
+- `ApiProblem` and `InvalidApiRequestException` (`web`'s advice owns exception→status; module
+  adapters throw): module adapters need them, and in `web` they would close
+  `web → auth → notification → booking → web`.
 - `ShutdownBudget`: pools in several modules drain one after another, so their claims on the
   SIGTERM grace add and only the platform owns the sum. `ShutdownDrainArchitectureTest` finds them
   from bytecode: the context misses `defaultCandidate = false` and non-bean pools.
@@ -1006,8 +1007,9 @@ is the trigger for asking the question, and the answer is always ownership.
 - **Depending on any module** → `allowedDependencies = {}`. Principal → typed id is
   `operator::api.OperatorDirectory` and `customer::api.CustomerAccountDirectory`, each throwing its
   own `403` vocabulary exception.
-- **Being the composition root** (`PlatformApplication`, `SecurityConfig`, the controllers) → the
-  root package, which depends on modules; merged with `shared`, it closes `booking → root → booking`.
+- **Being the HTTP boundary** (`SecurityConfig`, the chain's filters, the advice) → **`web`**, which
+  depends on modules; merged with `shared`, it would let every module reach the chain and close cycles
+  through `auth`. The root package holds only the application and its configuration (ADR-0028).
 
 ## `challenge` (not a bounded context)
 
@@ -1021,15 +1023,15 @@ expired rows, serve the challenge endpoint. **Single use is a database claim, ne
 not reopen a replay window. Expiry is checked on the server clock; the sweep keeps a row
 `riviera.altcha.clock-skew` past its expiry, which is where instance clock skew is absorbed.
 
-**Not my job:** which routes are fenced, the filter and its ordering, the problem bodies — the
-root's edge (§ *Platform edge*); rate limiting (`RateLimitFilter`, root).
+**Not my job:** which routes are fenced, the filter and its ordering, the problem bodies →
+**`web`** (§ *Platform edge*); rate limiting (`RateLimitFilter`, `web`).
 
 ## `audit` (not a bounded context)
 
 The **admin audit trail** (ADR-0013): a closed non-context module (ADR-0017 decision 6), the thin
 template plus a driving adapter — no one module could own it, as the audited controllers span
-modules and the root. Only writer and reader of `admin_audit_record` (machine-checked); publishes
-`api.AdminAuditLog` and `vocabulary.AdminAuditEntry`, nothing else (the root reaches `api` alone).
+modules. Only writer and reader of `admin_audit_record` (machine-checked); publishes
+`api.AdminAuditLog` and `vocabulary.AdminAuditEntry`, nothing else (`web` reaches `api` alone).
 **I know no domain type and depend on no module but the registered `shared`** (`allowedDependencies =
 {}`): a mechanism that knew a domain type would be a domain module in disguise.
 
@@ -1042,7 +1044,7 @@ destructive attempt is signal), an upstream `401`/`403` does not, a throw is rec
 failure.
 
 **Not my job:** which requests are audited and when in the chain, the `X-Audit-Reason` header and
-its sanitizer, the ADMIN role gate — the root's fence (§ *Platform edge*); judging *whether* an
+its sanitizer, the ADMIN role gate → **`web`**'s fence (§ *Platform edge*); judging *whether* an
 admin action was justified; retention (a named non-goal — rows are kept indefinitely).
 
 ## `monitoring` (not a bounded context)
@@ -1054,7 +1056,7 @@ admin action was justified; retention (a named non-goal — rows are kept indefi
 
 **Job:**
 - **The correlation id, both halves.** `CorrelationIdFilter` stamps each request (registered by
-  `ObservabilityConfig` as a servlet filter outside the security chain, so not the edge's);
+  `ObservabilityConfig` as a servlet filter outside the security chain, so not `web`'s);
   `MdcTaskDecorator` carries the submitter's MDC onto a pooled worker. Each pool builds the decorator
   with `new`, never as a bean: Boot applies a `TaskDecorator` bean to its own `applicationTaskExecutor`
   and scheduler, which stay undecorated (`WorkerContextArchitectureTest`).
@@ -1112,9 +1114,33 @@ opaque hash through their `api`; no Spring Security type enters them (`*AuthPlac
   touches only the bootstrap admin; every other operator self-registers (`OperatorRegistration`,
   `PENDING` until approved) and sets its own password via `OperatorProvisioning#setPassword`.
 
-**Not my job:** the filter chain, route policy and its problem bodies → the root's edge
+**Not my job:** the filter chain, route policy and its problem bodies → **`web`**
 (§ *Platform edge*); account state, the hash and the lifecycle transitions → **`customer`** /
 **`operator`**; mail transport and suppression → **`notification`**.
+
+## `web` (not a bounded context)
+
+**The HTTP boundary** (ADR-0028 Decision 3): a closed non-context module, an adapter layer rather than
+a mechanism, owning no table and publishing nothing. Not a shared module: no module calls it, and a
+module test is better without the chain than with every collaborator mocked. Everything sits in
+`adapter/in`. Depends on the surfaces its imports prove: `auth` (`api` + `vocabulary`), `challenge`
+(`api` + `vocabulary`), `audit::api`, `customer::vocabulary`, `operator::vocabulary` and `shared`;
+Spring Security beans arrive by framework type, which is no module dependency.
+
+**Job:** the fence every request crosses before a controller (§ *Platform edge*):
+- `SecurityConfig`: both chains, the route policy (role gates), CSRF, the session cookie and the
+  `SecurityContextRepository`. Credentials and the authentication managers are `auth`'s.
+- The chain's filters, in order: `RateLimitFilter` (+ `RateLimitProperties`, `TokenBucket`,
+  `ClientIpResolver`), `ChallengeVerificationFilter` (calls `challenge::api`), `SessionCredentialFilter`
+  (calls `auth::api`), `AdminAuditFilter` + `AdminAuditReasons` (calls `audit::api`).
+- The chain's problem bodies (`SecurityProblemResponses`), `RequestPaths`, CORS (`WebCorsConfig`).
+- **`ApiErrorHandler`, the one `@RestControllerAdvice`** (`ErrorContractArchitectureTests`): every
+  exception→status mapping, module vocabulary exceptions included.
+
+**Not my job:** sessions, credentials and login → **`auth`**; what a fence's mechanism does (a
+challenge's single use, an audit row's storage) → **`challenge`**, **`audit`**; per-venue
+authorization (#13) → the application services; the correlation-id filter → **`monitoring`**; the SPA
+and `/map/**` resources → the root's configuration.
 
 ## Platform edge (settled)
 
@@ -1128,9 +1154,9 @@ session's credential stamp.
 
 **Abuse and accountability split into fence and mechanism** (ADR-0017): the **fence** — filters and
 their order, route policy, filter-chain problem bodies, neutralizing client input such as
-`X-Audit-Reason` — is the edge's; a **mechanism** it calls through a port (a table, a job, a
-library) is a non-context module. So `ChallengeVerificationFilter` and `AdminAuditFilter` (every
-mutating `/api/admin/**` action, §`audit`) stay here; `challenge` and `audit` own what they call.
+`X-Audit-Reason` — is **`web`**'s (ADR-0028); a **mechanism** it calls through a port (a table, a
+job, a library) is a non-context module. So `ChallengeVerificationFilter` and `AdminAuditFilter` (every
+mutating `/api/admin/**` action, §`audit`) live in `web`; `challenge` and `audit` own what they call.
 
 - **Proof-of-work challenge (ADR-0016)** — customer and operator register, forgot-password, and
   booking and stay create (`POST /api/stays`) need a solved, self-hosted ALTCHA challenge (single
@@ -1309,7 +1335,7 @@ them form the *structural net* is `riviera-modulith` § *The structural net*'s c
 | `booking` is the only writer (and direct reader) of `booking_day` | `ResponsibilitiesArchitectureTests` (sole-writer scan) |
 | `booking` is the only writer (and direct reader) of `stay` — ADR-0024 | `ResponsibilitiesArchitectureTests` (SQL-shaped scan: the bare word is in prose and in `max_stay_days`) |
 | No class inside a module depends on a type directly in `ai.riviera.platform` — ADR-0017 | `CompositionRootDisciplineTests` (module→root rule; `allowedDependencies` cannot see it) |
-| The root touches only the module surfaces it is granted — never `venue`, `booking`, `payment`, `payout`, `availability` or `review` (ADR-0017, ADR-0028) | `CompositionRootDisciplineTests` (root→module allowlist) |
+| The root reaches no module: it holds only the application and its configuration (ADR-0028 Decision 1) | `CompositionRootDisciplineTests` (root→module rule) |
 | `payment` uses no Stripe **Connect** API (collect-only, ADR-0002) | `NoStripeConnectArchitectureTest` |
 | No module reaches another's `application`/`domain`/`adapter`; `allowedDependencies` hold | `ModularityTests` (`ApplicationModules.verify()`) |
 | The ADR-0007 package shape; published-surface kinds; the `VenueCatalog` role split | `PackageShapeArchitectureTests`, `PublishedSurfacePlacementArchitectureTests`, `VenueApiRoleSplitTests` |
