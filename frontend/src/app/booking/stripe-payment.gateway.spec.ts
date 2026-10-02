@@ -6,6 +6,7 @@ import {
 
 interface FailFlagWindow {
   __RIVIERA_FAKE_STRIPE_FAIL__?: boolean;
+  __RIVIERA_FAKE_STRIPE_MOUNT_FAIL__?: boolean;
 }
 
 /**
@@ -36,6 +37,20 @@ describe('StripeJsPaymentGateway', () => {
 describe('FakeStripePaymentGateway', () => {
   afterEach(() => {
     delete (window as FailFlagWindow).__RIVIERA_FAKE_STRIPE_FAIL__;
+    delete (window as FailFlagWindow).__RIVIERA_FAKE_STRIPE_MOUNT_FAIL__;
+  });
+
+  it('fails the mount while the mount-failure flag is set, and mounts once it is cleared', async () => {
+    const gateway = new FakeStripePaymentGateway();
+    const host = document.createElement('div');
+
+    (window as FailFlagWindow).__RIVIERA_FAKE_STRIPE_MOUNT_FAIL__ = true;
+    await expect(gateway.mountPaymentElement(host)).rejects.toThrow(/failed to load/);
+    expect(host.childElementCount).toBe(0);
+
+    delete (window as FailFlagWindow).__RIVIERA_FAKE_STRIPE_MOUNT_FAIL__;
+    await gateway.mountPaymentElement(host);
+    expect(host.querySelector('[data-testid="fake-card-input"]')).not.toBeNull();
   });
 
   it('mounts a labelled stand-in for the card field, so the page stays auditable', async () => {
