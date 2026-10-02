@@ -124,7 +124,8 @@ class JdbcAccountErasure implements AccountErasureStore {
 	@Override
 	public List<CustomerId> expiredGuestCandidates(Instant olderThan, CustomerId after, int limit) {
 		// sweepJdbc, not jdbc: this read is a scheduled run's and is bounded.
-		return sweepJdbc.sql("SELECT id FROM customer WHERE id > :after AND " + EXPIRED_GUEST + " ORDER BY id LIMIT :limit")
+		return sweepJdbc.sql("SELECT id FROM customer WHERE id > :after AND " + EXPIRED_GUEST
+				+ " ORDER BY id LIMIT :limit")
 				.param(AFTER, after.value())
 				.param(OLDER_THAN, Timestamp.from(olderThan))
 				.param(LIMIT, limit)
