@@ -7,7 +7,7 @@ import ai.riviera.platform.booking.vocabulary.StayId;
 import ai.riviera.platform.venue.vocabulary.SetId;
 
 /**
- * A booking a guest may still turn up on, read off a disturbed set for the remodel classification:
+ * A booking a guest may still turn up on, read for the remodel classification off a disturbed set or a released stay:
  * its id, set, span (first and last service day), status (live by construction), snapshotted
  * amount, the days of it already refunded (invariant #5, ADR-0026, ADR-0027) and the stay it is a
  * stretch of ({@code null} for a lone booking). Module-internal; the published shape is

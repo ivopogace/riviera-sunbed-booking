@@ -1275,7 +1275,6 @@ class JdbcBookings implements Bookings {
 				rs.getObject(COL_LAST_DATE, LocalDate.class));
 	}
 
-	/** The same live filter as {@code JdbcBookingPresence}; {@code booking_set_date_idx} serves the set list. */
 	/** The live-claim columns {@link #findLiveOnSets} and {@link #findLiveStretchesOf} read; one mapper for both. */
 	private static final String LIVE_CLAIM_SELECT = """
 			SELECT id, set_id, booking_date, last_date, status, amount_minor, amount_currency, stay_id,
@@ -1283,6 +1282,7 @@ class JdbcBookings implements Bookings {
 			FROM booking b
 			""";
 
+	/** The same live filter as {@code JdbcBookingPresence}; {@code booking_set_date_idx} serves the set list. */
 	@Override
 	public List<LiveClaim> findLiveOnSets(Collection<SetId> setIds) {
 		if (setIds.isEmpty()) {
