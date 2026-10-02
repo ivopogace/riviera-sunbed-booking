@@ -97,6 +97,7 @@ class PackageShapeArchitectureTests {
 	 */
 	@Test
 	void moduleTopLevelPackagesAreInTheAllowedSet() {
+		assertInspected("modules", modulesOf(PRODUCTION_CLASSES, PRODUCTION_BASE));
 		assertNoViolations("ADR-0007 package-shape violations (allowed top-level package set)",
 				topLevelPackageViolations(PRODUCTION_CLASSES, PRODUCTION_BASE));
 	}
@@ -110,6 +111,7 @@ class PackageShapeArchitectureTests {
 	 */
 	@Test
 	void adapterLayerIsSplitByDirectionNotTechnology() {
+		assertInspected("adapter layers", topLevelPackages(PRODUCTION_CLASSES, PRODUCTION_BASE, Set.of("adapter")));
 		assertNoViolations("ADR-0007 package-shape violations (adapter direction split)",
 				adapterDirectionViolations(PRODUCTION_CLASSES, PRODUCTION_BASE));
 	}
@@ -124,6 +126,7 @@ class PackageShapeArchitectureTests {
 	 */
 	@Test
 	void namedInterfacePackagesAreTopLevel() {
+		assertInspected("modules", modulesOf(PRODUCTION_CLASSES, PRODUCTION_BASE));
 		assertNoViolations("ADR-0007 package-shape violations (api/spi/vocabulary/events are top-level)",
 				nestedNamedInterfaceViolations(PRODUCTION_CLASSES, PRODUCTION_BASE));
 	}
@@ -145,6 +148,8 @@ class PackageShapeArchitectureTests {
 	 */
 	@Test
 	void onlySharedKernelsHaveTypesAtTheModuleRoot() {
+		assertInspected("modules", modulesOf(PRODUCTION_CLASSES, PRODUCTION_BASE));
+		assertInspected("shared modules registered in @Modulithic(sharedModules)", PRODUCTION_SHARED_MODULES);
 		assertNoViolations("ADR-0007 package-shape violations (types at a module root)",
 				moduleRootTypeViolations(PRODUCTION_CLASSES, PRODUCTION_BASE, PRODUCTION_SHARED_MODULES));
 	}
@@ -156,6 +161,8 @@ class PackageShapeArchitectureTests {
 	 */
 	@Test
 	void publishedSurfacesDeclareTheirOwnNamedInterface() {
+		assertInspected("published surfaces",
+				topLevelPackages(PRODUCTION_CLASSES, PRODUCTION_BASE, NAMED_INTERFACE_PACKAGES));
 		assertNoViolations("ADR-0007 package-shape violations (@NamedInterface declarations)",
 				namedInterfaceDeclarationViolations(PRODUCTION_CLASSES, PRODUCTION_BASE));
 	}
@@ -167,18 +174,9 @@ class PackageShapeArchitectureTests {
 	 */
 	@Test
 	void everyModuleDeclaresItsAllowedDependencies() {
+		assertInspected("modules", modulesOf(PRODUCTION_CLASSES, PRODUCTION_BASE));
 		assertNoViolations("Modulith grant violations (allowedDependencies left at its allow-all default)",
 				allowedDependenciesViolations(PRODUCTION_CLASSES, PRODUCTION_BASE));
-	}
-
-	/** Guards against a vacuously-green rule: prove the import actually saw the modules. */
-	@Test
-	void productionModulesWereInspected() {
-		assertFalse(modulesOf(PRODUCTION_CLASSES, PRODUCTION_BASE).isEmpty(),
-				"No modules found under " + PRODUCTION_BASE + " — the rules would be vacuously green; "
-						+ "check the ClassFileImporter package/import options.");
-		assertFalse(PRODUCTION_SHARED_MODULES.isEmpty(),
-				"PlatformApplication registers no shared module — the module-root rule's exemption is empty.");
 	}
 
 	// ---- the negative proof, against fixtures ---------------------------------------------
@@ -323,15 +321,8 @@ class PackageShapeArchitectureTests {
 	}
 
 	private static List<String> namedInterfaceDeclarationViolations(JavaClasses classes, String base) {
-		Set<String> surfaces = new TreeSet<>();
-		for (JavaClass type : classes) {
-			String[] sub = moduleRelativeSegments(type, base);
-			if (sub != null && sub.length >= 1 && NAMED_INTERFACE_PACKAGES.contains(sub[0])) {
-				surfaces.add(base + "." + moduleOf(type, base) + "." + sub[0]);
-			}
-		}
 		List<String> violations = new ArrayList<>();
-		for (String surface : surfaces) {
+		for (String surface : topLevelPackages(classes, base, NAMED_INTERFACE_PACKAGES)) {
 			String simpleName = surface.substring(surface.lastIndexOf('.') + 1);
 			Optional<JavaAnnotation<JavaClass>> namedInterface =
 					packageAnnotation(classes, surface, NamedInterface.class);
@@ -340,9 +331,9 @@ class PackageShapeArchitectureTests {
 						+ "@NamedInterface(\"" + simpleName + "\") (ADR-0007)");
 				continue;
 			}
-			List<String> names = stringValues(namedInterface.get(), "value");
+			Set<String> names = new TreeSet<>(stringValues(namedInterface.get(), "value"));
 			names.addAll(stringValues(namedInterface.get(), "name"));
-			if (!names.equals(List.of(simpleName))) {
+			if (!names.equals(Set.of(simpleName))) {
 				violations.add(surface + " carries a @NamedInterface named " + names + " — it must be exactly ["
 						+ simpleName + "], the package's simple name (ADR-0007)");
 			}
@@ -381,6 +372,24 @@ class PackageShapeArchitectureTests {
 		return modules;
 	}
 
+	/** The {@code <base>.<module>.<name>} packages, for each top-level package whose simple name is in {@code names}. */
+	private static Set<String> topLevelPackages(JavaClasses classes, String base, Set<String> names) {
+		Set<String> packages = new TreeSet<>();
+		for (JavaClass type : classes) {
+			String[] sub = moduleRelativeSegments(type, base);
+			if (sub != null && sub.length >= 1 && names.contains(sub[0])) {
+				packages.add(base + "." + moduleOf(type, base) + "." + sub[0]);
+			}
+		}
+		return packages;
+	}
+
+	/** Guards a production gate against a vacuously-green run: the import must have fed it candidates. */
+	private static void assertInspected(String what, Set<String> seen) {
+		assertFalse(seen.isEmpty(), "No " + what + " found under " + PRODUCTION_BASE
+				+ " — the rule would be vacuously green; check the ClassFileImporter package/import options.");
+	}
+
 	/** The annotation on {@code pkg}'s {@code package-info}; empty when javac emitted none (an unannotated package). */
 	private static Optional<JavaAnnotation<JavaClass>> packageAnnotation(
 			JavaClasses classes, String pkg, Class<?> annotationType) {
@@ -414,9 +423,10 @@ class PackageShapeArchitectureTests {
 				"Expected a violation naming " + subject + " (" + reason + "), but got: " + violations);
 	}
 
-	/** The fixture controls: {@code clean} breaks no rule and must never be reported. */
+	/** The fixture controls: {@code clean} and the registered {@code shared} break no rule and are never reported. */
 	private static void assertCleanModulesUnreported(List<String> violations) {
-		assertTrue(violations.stream().noneMatch(v -> v.contains(FIXTURE_BASE + ".clean")),
-				"Expected the well-shaped fixture module to pass, but got: " + violations);
+		assertTrue(violations.stream().noneMatch(v -> v.contains(FIXTURE_BASE + ".clean")
+						|| v.contains(FIXTURE_BASE + ".shared")),
+				"Expected the well-shaped fixture modules to pass, but got: " + violations);
 	}
 }

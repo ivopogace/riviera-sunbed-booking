@@ -187,6 +187,9 @@ so the root could still reach `JdbcChallengeRegistry`, and `PackageShapeArchitec
 module-root types, so the adapter/application split is unenforced. Modulith's own reference calls
 OPEN a legacy-migration aid that "usually hints at sub-optimal modularization", and ADR-0007
 Amendment 2 reserves it for shared *types*, "`shared` is the only instance".
+*Amended 2026-10-02 (#1389):* `PackageShapeArchitectureTests` now rejects types at the root of any
+module not registered in `@Modulithic(sharedModules)`, so the second premise no longer holds; the
+first, and the rejection, stand.
 
 **A root sub-package excluded from Modulith.** Rejected: Modulith has no per-package opt-out;
 the only exclusion is the ignore predicate at the `ApplicationModules.of(...)` call site, which
