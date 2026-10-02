@@ -1344,6 +1344,7 @@ them form the *structural net* is `riviera-modulith` § *The structural net*'s c
 | Mail listeners name their own bounded executors, never Boot's shared `applicationTaskExecutor` | `MailListenerExecutorArchitectureTest` |
 | `booking` listeners reaching `payment::api` run on the bounded refund pool | `RefundListenerExecutorArchitectureTest` |
 | Every self-configured worker pool carries `monitoring`'s MDC decorator | `WorkerContextArchitectureTest` |
+| Boot's shared `applicationTaskExecutor` carries no `TaskDecorator`, and no bean would install one | `SharedTaskExecutorUndecoratedIT` |
 | The draining pools' shutdown claims sum within the SIGTERM grace | `ShutdownDrainArchitectureTest` |
 | Pool tokens live only in `venue.vocabulary.Pool`: no other production class holds an `"ONLINE"` / `"WALK_IN"` literal (invariant #3's operand is the published type) | `PoolTokenArchitectureTest` (`CONSTANT_String` scan, so `Pool.ONLINE` passes) |
 | A retired set is absent from every read but `SetBookingFacts`: production SQL naming `set_position` reads `active_set_position` or names `retired_at`, an `INSERT INTO` excepted (ADR-0019, §`venue`) | `RetiredSetExclusionArchitectureTests` (per-statement `CONSTANT_String` scan; the structural net's one member admitted by decision) |

@@ -48,7 +48,7 @@ permissions:
 # the expensive steps are conditional on an `actions/cache` restore keyed on the HASH of everything
 # that job's build reads (`platform/**`; `frontend/**` + `.nvmrc` + that design doc). An exact hit
 # means this identical tree already built green in a run this PR can see, so the job re-uploads the
-# restored JaCoCo XML + classes (or lcov) and the `sonar` job below runs as it does today. A miss
+# restored JaCoCo XML + classes and Modulith docs (or lcov) and the `sonar` job below runs as it does today. A miss
 # is today's full build, followed by a save. The hash IS the change detector, and it errs toward
 # building: `main` moving under the PR, a file touched and then reverted, a `.nvmrc` bump — each is
 # answered by content, never by a path list. Restore runs on `pull_request` only: a push to `main`
