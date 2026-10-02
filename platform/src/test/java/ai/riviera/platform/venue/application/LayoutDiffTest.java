@@ -96,7 +96,7 @@ class LayoutDiffTest {
 
 		assertEquals(List.of(stored(A2, "A", 2, 2, 1)), diff.disturbed(),
 				"a guest was told a row and a number: the number changing is a reposition, the label a rename");
-		assertTrue(diff.collidingUpdates().isEmpty());
+		assertEquals(List.of(A1, A2), diff.movingUpdates(), "a new label and a new number both change the slot");
 	}
 
 	@Test
@@ -109,12 +109,12 @@ class LayoutDiffTest {
 	}
 
 	@Test
-	void aRowNameSwapBetweenKeptCellsCollidesBothWays() {
+	void aRowNameSwapBetweenKeptCellsMovesBoth() {
 		List<PlacedSet> stored = List.of(stored(A1, "A", 1, 1, 1), stored(B1, "B", 1, 1, 2));
 
 		LayoutDiff diff = LayoutDiff.of(stored, new LayoutCommand(List.of(cell("B", 1, 1, 1), cell("A", 1, 1, 2))));
 
-		assertEquals(List.of(A1, B1), diff.collidingUpdates(),
+		assertEquals(List.of(A1, B1), diff.movingUpdates(),
 				"each set's new slot is the other's current one; written naively, the first UPDATE would collide");
 		assertTrue(diff.disturbed().isEmpty(), "a swap of names moves no guest");
 	}
@@ -126,7 +126,38 @@ class LayoutDiffTest {
 		LayoutDiff diff = LayoutDiff.of(stored, new LayoutCommand(List.of(cell("B", 1, 1, 1))));
 
 		assertEquals(List.of(B1), diff.removed().stream().map(PlacedSet::id).toList());
-		assertTrue(diff.collidingUpdates().isEmpty(), "the removal runs first and frees the slot");
+		assertEquals(List.of(A1), diff.movingUpdates(), "parked or not, the removal runs first and frees the slot");
+	}
+
+	@Test
+	void aShiftedRenumberMovesTheHolderOfEachTargetSlot() {
+		// A new A1 goes in front: the old A1 becomes A2 while the old A2 still holds A2, and the old A2 becomes A3.
+		List<PlacedSet> stored = List.of(stored(A1, "A", 1, 2, 1), stored(A2, "A", 2, 3, 1));
+
+		LayoutDiff diff = LayoutDiff.of(stored,
+				new LayoutCommand(List.of(cell("A", 1, 1, 1), cell("A", 2, 2, 1), cell("A", 3, 3, 1))));
+
+		assertEquals(List.of(A1, A2), diff.movingUpdates(),
+				"A2 holds the slot A1 moves into, so it is parked too; parking the mover alone would collide");
+	}
+
+	@Test
+	void aRowRelabelChainMovesTheHolderOfEachTargetSlot() {
+		List<PlacedSet> stored = List.of(stored(A1, "A", 1, 1, 1), stored(B1, "B", 1, 1, 2));
+
+		LayoutDiff diff = LayoutDiff.of(stored, new LayoutCommand(List.of(cell("B", 1, 1, 1), cell("C", 1, 1, 2))));
+
+		assertEquals(List.of(A1, B1), diff.movingUpdates(),
+				"B1 holds the slot A1 is relabelled into, so it is parked even though its own target is free");
+	}
+
+	@Test
+	void anUpdateThatKeepsItsSlotIsNotMoving() {
+		List<PlacedSet> stored = List.of(stored(A1, "A", 1, 1, 1));
+
+		LayoutDiff diff = LayoutDiff.of(stored, new LayoutCommand(List.of(renamed("A", 1, 1, 1))));
+
+		assertTrue(diff.movingUpdates().isEmpty(), "a new tier, pool or price leaves the slot alone");
 	}
 
 	@Test

@@ -106,8 +106,9 @@ close, the maximum stay, the season closure, and the commission rate over time. 
   is the move question. Only removed sets and kept ones whose position number changes are probed,
   through `LiveClaims#locksOn`, so a refusal names exactly the sets the editor already pins. A
   refused save writes nothing and spends no token; a successful one advances it once, an unchanged
-  layout included. Write order is load-bearing — removals, parked labels (`Venues#parkRowLabels`),
-  updates, inserts — so the layout-uniqueness index never sees two sets in one slot mid-save.
+  layout included. Write order is load-bearing — removals, every kept set leaving its slot parked
+  (`Venues#parkRowLabels`), updates, inserts — so the non-deferrable uniqueness index never sees two
+  sets in one slot mid-save (swaps, shifted renumbers, relabel chains).
 - **Row names.** A rename is refused only for `ROW_NAME_TAKEN` (another row carries the label); a
   rename to its own label is a no-op that spends no token. The bulk save enforces one label per
   physical row within its batch; the single-set `addSet` and `editSet` do not check it. A row's name
