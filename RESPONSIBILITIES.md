@@ -1212,7 +1212,10 @@ mutating `/api/admin/**` action, §`audit`) live in `web`; `challenge` and `audi
   cost its token. Cheap checks first, so a `429` wins; the registry claim, the fence's one write,
   is the last step before the controller.
 - **Not fenced, deliberately:** login (the per-identity throttle covers it) and token redemption
-  (a reset or verification token is already a bearer credential). Forgot-password stays
+  (a reset or verification token is already a bearer credential). The throttle reads every login
+  body itself, to an 8 KiB cap whatever `Content-Length` says, and answers a larger one `413`
+  before the controller; it decodes the identity in the charset the controller binds with, so
+  neither size, framing nor encoding lets a login skip the per-identity budget (#1288). Forgot-password stays
   non-enumerating (D-8): a refusal precedes the account lookup, identical for every address.
 - **Forgot-password is constant-time by doing the same work on both branches (#1336):** the request
   thread makes the one account read and answers `204`; a known address only enqueues the send, whose
@@ -1384,12 +1387,16 @@ them form the *structural net* is `riviera-modulith` § *The structural net*'s c
 | `payout` is the only writer (and direct reader) of `platform_setting` — ADR-0021 | `ResponsibilitiesArchitectureTests` (sole-writer scan) |
 | `booking` is the only writer (and direct reader) of `booking_day` | `ResponsibilitiesArchitectureTests` (sole-writer scan) |
 | `booking` is the only writer (and direct reader) of `stay` — ADR-0024 | `ResponsibilitiesArchitectureTests` (SQL-shaped scan: the bare word is in prose and in `max_stay_days`) |
+| Every table in `CLAUDE.md`'s "Sole writer of" column, plus `challenge_registry` and `admin_audit_record`, is written only by its owner: `venue`, `set_position`, `venue_amenity`, `venue_photo`, `venue_photo_variant`, `venue_commission_rate`, `set_availability`, `booking`, `stay`, `booking_day`, `remodel_receipt`, `remodel_receipt_move`, `remodel_receipt_outcome`, `remodel_receipt_kept`, `payment`, `payment_booking`, `payment_refund`, `stripe_webhook_event`, `payout_ledger_entry`, `payout_batch`, `platform_setting`, `customer`, `customer_account`, `customer_sso_identity`, `customer_account_token`, `operator`, `operator_venue`, `review`, `email_suppression`, `booking_confirmation_mail_attempt` | `ResponsibilitiesArchitectureTests` (table-ownership map: a SQL-shaped `INSERT INTO`/`UPDATE … SET`/`DELETE FROM`/`MERGE INTO`/`TRUNCATE` per `CONSTANT_String`; the map must cover every table Flyway creates bar the framework tables, and every owner must write its tables) |
 | No class inside a module depends on a type directly in `ai.riviera.platform` — ADR-0017 | `CompositionRootDisciplineTests` (module→root rule; `allowedDependencies` cannot see it) |
 | The root reaches no module: it holds only the application and its configuration (ADR-0028 Decision 1) | `CompositionRootDisciplineTests` (root→module rule) |
 | `payment` uses no Stripe **Connect** API (collect-only, ADR-0002) | `NoStripeConnectArchitectureTest` |
 | No module reaches another's `application`/`domain`/`adapter`; `allowedDependencies` hold | `ModularityTests` (`ApplicationModules.verify()`) |
 | Every declared `allowedDependencies` grant is used: some class of the module depends on that module or named interface in bytecode (Modulith's dependency model plus the parameter types of called members, so `remodel`'s lambda passed as `venue.spi.RemodelGate` counts; `web`'s `switch` over a returned `ChallengeVerdict` Modulith sees itself) | `UnusedAllowedDependencyTests` (fixture `ai.riviera.grantfixture`) |
 | The ADR-0007 package shape; published-surface kinds; the `VenueCatalog` role split | `PackageShapeArchitectureTests`, `PublishedSurfacePlacementArchitectureTests`, `VenueApiRoleSplitTests` |
+| Only a module registered in `@Modulithic(sharedModules)` has types directly in its module root | `PackageShapeArchitectureTests` (module-root rule) |
+| Every top-level `api`/`spi`/`vocabulary`/`events` package carries `@NamedInterface` of its own simple name | `PackageShapeArchitectureTests` (named-interface declaration rule) |
+| Every module declares `allowedDependencies`; none is left at the allow-all default | `PackageShapeArchitectureTests` (declared-grants rule; whether each grant is used is not checked here) |
 | No JPA/Hibernate on the classpath — invariant #1 | `JdbcOnlyArchitectureTests` |
 | No class in any `application/` package names `org.springframework.jdbc`, `java.sql` or `javax.sql`: SQL sits in `adapter/out` behind a port (ADR-0007) | `JdbcOnlyArchitectureTests` (application-JDBC rule) |
 | A `domain/` class names only the JDK and published ids, values and rules (ADR-0018 §4) | `DomainPurityArchitectureTests` |
