@@ -67,7 +67,7 @@ public final class ObservabilityMetrics {
 	/**
 	 * Counter: recovery mails accepted, then not delivered: attempted, unlike those in
 	 * {@link #MAIL_RECOVERY_DROPPED}. Tags {@code kind}, {@code reason} (transport: a relay fault;
-	 * suppression-lookup: a database fault). Read this one first in a suspected relay outage.
+	 * suppression-lookup / token-issuance: usually a database fault). Read this one first in a suspected relay outage.
 	 */
 	public static final String MAIL_RECOVERY_FAILED = "riviera.mail.recovery.failed";
 

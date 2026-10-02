@@ -23,7 +23,10 @@ public interface CustomerAccountRecovery {
 	 */
 	boolean issueEmailVerificationToken(CustomerAccountId accountId, String tokenHash, Instant expiresAt);
 
-	/** {@link #issueEmailVerificationToken}, for a password reset. */
+	/**
+	 * {@link #issueEmailVerificationToken}, for a password reset; bounded by a transaction timeout, so a held
+	 * account lock fails it with a {@code DataAccessException} rather than blocking the caller's thread.
+	 */
 	boolean issuePasswordResetToken(CustomerAccountId accountId, String tokenHash, Instant expiresAt);
 
 	/** Redeem a verification token (single-use): on success mark the account's email verified. */

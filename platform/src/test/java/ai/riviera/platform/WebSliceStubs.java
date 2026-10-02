@@ -15,6 +15,7 @@ import java.util.OptionalLong;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.function.Supplier;
 
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
@@ -571,7 +572,7 @@ public class WebSliceStubs {
 			}
 
 			@Override
-			public void sendPasswordReset(String toEmail, URI resetLink) {
+			public void sendPasswordReset(String toEmail, Supplier<Optional<URI>> resetLink) {
 			}
 
 			@Override

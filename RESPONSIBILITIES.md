@@ -640,9 +640,8 @@ opaque credential hash) behind register / sign-in. The two are **never linked** 
 registration never auto-claims a guest email's past bookings; back-linking them is a **permanent
 non-goal** (design D-2, D-6). Own **right-to-erasure**: tombstone account + guest-contact PII in
 place, delete the transient SSO/token children, retain booking/payment/payout rows under the
-**statutory-retention exception** (ADR-0010); `auth` authenticates, and its self-service path
-revokes sessions. The admin path is mine (`adapter/in.AdminErasureController`, ADMIN-gated by the
-edge) and leaves sessions to the credential stamp (#1334).
+**statutory-retention exception** (ADR-0010); `auth` authenticates and holds both erasure
+endpoints, which revoke the subject's sessions around my scrub (§`auth`). I hold no controller.
 
 Own the **retention policy** — the **retention window**, which guest contacts have no **retention
 basis** left, and the sweep that tombstones them; `booking` supplies only the recency *fact*. Both
@@ -761,7 +760,7 @@ tag names the person, invariant #7):
   (`MAIL_REGISTRY_SHED`). On the best-effort recovery vehicle, `MAIL_RECOVERY_DROPPED` counts a
   send that **never ran** (`saturated` / `shutdown` / `abandoned`; not one caught *running* at
   shutdown, which may have reached the relay) and `MAIL_RECOVERY_FAILED` one accepted but not
-  delivered (`transport` / `suppression-lookup`), both tagged `kind` off one `MailKind`. "Recovery"
+  delivered (`transport` / `suppression-lookup` / `token-issuance`), both tagged `kind` off one `MailKind`. "Recovery"
   names the *vehicle*, which also carries the `operator-approved` notice (ADR-0011 decision 5).
 - **The registry vehicle has no failure twin:** a thrown failure stays outstanding
   (`riviera.outbox.pending`), but a mail **abandoned** for a missing fact completes its publication,
@@ -805,7 +804,8 @@ tag names the person, invariant #7):
 - **The published surface is exactly `notification::api`, two role-split ports consumed by `auth`
   alone — no domain module depends on `notification`.** `MailSender` is fire-and-forget
   and moves **neither the triggering response's status nor its latency** (the anonymous
-  `forgot-password` flow relies on it). `MailDeliverability` ("withheld now?") is safe only where
+  `forgot-password` flow relies on it). The reset link arrives deferred and is resolved inside the
+  send task, after the suppression check, so its token is issued off the request thread too. `MailDeliverability` ("withheld now?") is safe only where
   the caller owns the address; its sole consumer is the authenticated verification-resend. I also
   *implement* `booking.spi.ConfirmationMailDelivery`; the dependency stays `notification → booking`.
 - **A stitched stay gets one confirmation mail, on `StayConfirmed`**: the stay's code, span, every
@@ -1084,7 +1084,7 @@ per-request check the chain's filter calls) and `vocabulary` (`AuthRoles`, `Bloc
 **Job:** turn a credential into a server-side session and keep it honest: both `UserDetailsService`s
 and their `AuthenticationManager`s, session establishment and rotation, the credential stamp, session
 revocation, SSO, the password policy, account recovery, the login, register, `/me` and self-service
-password endpoints, and the admin-lifecycle and self-erasure endpoints that revoke sessions in the same
+password endpoints, and the admin-lifecycle and both erasure endpoints that revoke sessions in the same
 request (a domain module calling `auth` would cycle). `customer` and `operator` supply identity and an
 opaque hash through their `api`; no Spring Security type enters them (`*AuthPlacementTests`).
 
@@ -1098,6 +1098,11 @@ opaque hash through their `api`; no Spring Security type enters them (`*AuthPlac
   first (`CustomerAccountRecovery#emailForResetToken`, consuming nothing) and revokes; the second
   revoke ends sessions saved in between, and a login saved later fails its stamp check (next bullet).
   Encode above the first revoke, or bcrypt widens the gap.
+- **Both erasure paths revoke before and after `customer`'s scrub** (ADR-0010; not atomic, as above).
+  Self-service names the principal from its session. The admin path names it by the canonical form of
+  the submitted email (`customer.vocabulary.Emails`), which every customer principal carries, so no
+  `SPRING_SESSION` row keeps the erased email, and a repeat request ends a session an earlier one missed
+  (#1334). An operator named like that email is signed out too, the revoker's accepted over-revocation.
 - **Every session carries a credential stamp, checked on each request (#1306).** Its `SessionPrincipal`
   holds a SHA-256 of the account (a customer's id, an operator's name) and the hash it was opened against.
   `api.SessionCredentials` re-reads the account; the chain's `SessionCredentialFilter` ends the session when
@@ -1166,6 +1171,12 @@ mutating `/api/admin/**` action, §`audit`) live in `web`; `challenge` and `audi
 - **Not fenced, deliberately:** login (the per-identity throttle covers it) and token redemption
   (a reset or verification token is already a bearer credential). Forgot-password stays
   non-enumerating (D-8): a refusal precedes the account lookup, identical for every address.
+- **Forgot-password is constant-time by doing the same work on both branches (#1336):** the request
+  thread makes the one account read and answers `204`; a known address only enqueues the send, whose
+  task mints and stores the reset token (under a transaction timeout, as one drainer serves every
+  recovery mail), then mails it. So an earlier link stays redeemable until that task runs. A token
+  never issued (saturated pool, erasure, failure) is a lost mail the user re-requests, never a
+  response difference.
 - **Booking and stay create are fenced for every caller**, guest or signed-in — no auth-state
   branch, since a script holding the online pool costs the same either way. A refusal precedes any
   availability claim, booking row or PaymentIntent (invariant #2 untouched). The SPA solves on the

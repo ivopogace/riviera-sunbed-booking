@@ -5,10 +5,13 @@ import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.ZoneOffset;
+import java.util.Optional;
+import java.util.function.Supplier;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
+import org.springframework.web.util.UriComponentsBuilder;
 
 import ai.riviera.platform.customer.api.CustomerAccountRecovery;
 import ai.riviera.platform.customer.vocabulary.CustomerAccountId;
@@ -24,13 +27,11 @@ import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 /**
- * The edge orchestration around a recovery send: {@code CustomerRecovery}
- * mints the raw token, stores only the digest — synchronously, on the caller's thread, because the
- * token store is NOT best-effort — and hands the fully-formed tokenized link to the
- * {@code notification} module's {@link MailSender}. Everything this class previously asserted about
- * <em>how</em> the send then runs (off-thread, failure swallowed — the timing-oracle closure)
- * moved behind that port and is pinned by {@code TransactionalMailServiceTest}; what remains here is
- * the edge's half of the D-8 contract: issue first, then fire-and-forget with the right link.
+ * The edge orchestration around a recovery send: {@code CustomerRecovery} mints the raw token, stores only
+ * the digest and hands the tokenized link to {@code notification}'s {@link MailSender}. A verification token
+ * is stored on the caller's thread; a reset token is minted and stored only when the dispatched task
+ * resolves the deferred link, so forgot-password writes nothing on the request thread (#1336). How the
+ * send then runs is pinned behind the port by {@code TransactionalMailServiceTest}.
  */
 class CustomerRecoveryTest {
 
@@ -54,31 +55,54 @@ class CustomerRecoveryTest {
 	}
 
 	@Test
-	void mailsNoLinkWhenTheAccountWasErased() {
-		when(accounts.issuePasswordResetToken(any(), any(), any())).thenReturn(false);
+	void mailsNoVerificationLinkWhenTheAccountWasErased() {
 		when(accounts.issueEmailVerificationToken(any(), any(), any())).thenReturn(false);
 
-		recovery.sendPasswordResetEmail(ACCOUNT, EMAIL);
 		recovery.sendVerificationEmail(ACCOUNT, EMAIL);
 
 		verifyNoInteractions(mails);
 	}
 
 	@Test
-	void issuesTheTokenOnTheCallersThread() {
-		recovery.sendPasswordResetEmail(ACCOUNT, EMAIL);
+	void resolvesNoResetLinkWhenTheAccountWasErased() {
+		when(accounts.issuePasswordResetToken(any(), any(), any())).thenReturn(false);
 
-		// The token store is NOT best-effort: only the send is fire-and-forget (issue scope, plan R-3).
-		verify(accounts).issuePasswordResetToken(eq(ACCOUNT), any(), any());
+		assertThat(deferredResetLink().get()).isEmpty();
 	}
 
 	@Test
-	void handsTheTokenizedResetLinkToTheSendPort() {
+	void issuesNoResetTokenOnTheCallersThread() {
 		recovery.sendPasswordResetEmail(ACCOUNT, EMAIL);
 
-		ArgumentCaptor<URI> link = ArgumentCaptor.forClass(URI.class);
-		verify(mails).sendPasswordReset(eq(EMAIL), link.capture());
-		assertThat(link.getValue()).asString().startsWith(BASE_URL + CustomerRecovery.RESET_PATH + "?token=");
+		verify(mails).sendPasswordReset(eq(EMAIL), any());
+		verifyNoInteractions(accounts);
+	}
+
+	@Test
+	void theDeferredResetLinkStoresOnlyTheDigestWithTheResetExpiry() {
+		URI link = deferredResetLink().get().orElseThrow();
+
+		String rawToken = UriComponentsBuilder.fromUri(link).build().getQueryParams().getFirst("token");
+		ArgumentCaptor<String> storedHash = ArgumentCaptor.forClass(String.class);
+		verify(accounts).issuePasswordResetToken(eq(ACCOUNT), storedHash.capture(),
+				eq(Instant.parse("2026-07-27T11:00:00Z")));
+		assertThat(storedHash.getValue()).isEqualTo(new RecoveryTokens().hash(rawToken)).isNotEqualTo(rawToken);
+		assertThat(link).asString().startsWith(BASE_URL + CustomerRecovery.RESET_PATH + "?token=");
+	}
+
+	@Test
+	void eachResolutionMintsAFreshToken() {
+		Supplier<Optional<URI>> deferred = deferredResetLink();
+
+		assertThat(deferred.get()).isNotEqualTo(deferred.get());
+	}
+
+	@SuppressWarnings("unchecked")
+	private Supplier<Optional<URI>> deferredResetLink() {
+		recovery.sendPasswordResetEmail(ACCOUNT, EMAIL);
+		ArgumentCaptor<Supplier<Optional<URI>>> deferred = ArgumentCaptor.forClass(Supplier.class);
+		verify(mails).sendPasswordReset(eq(EMAIL), deferred.capture());
+		return deferred.getValue();
 	}
 
 	@Test
