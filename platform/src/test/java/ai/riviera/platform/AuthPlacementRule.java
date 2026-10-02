@@ -63,6 +63,7 @@ final class AuthPlacementRule {
 				.filter(prefix -> violations.stream().noneMatch(v -> v.contains(prefix)))
 				.toList();
 		assertTrue(dead.isEmpty(), "Banned packages with no fixture violation in LoginMachineryInModule: " + dead);
+		fixtures.get(fixturePackage + ".OpaqueCredentialHash");
 		assertTrue(violations.stream().noneMatch(v -> v.contains("OpaqueCredentialHash")),
 				"The control fixture names no banned type, yet was reported: " + violations);
 	}
