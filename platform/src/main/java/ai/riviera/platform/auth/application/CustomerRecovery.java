@@ -15,13 +15,12 @@ import ai.riviera.platform.notification.api.MailDeliverability;
 import ai.riviera.platform.notification.api.MailSender;
 
 /**
- * Edge orchestrator for account recovery, keeping tokens, mail and crypto out of {@code customer}
- * (RV-BE-11): mints and hashes the raw token, hands {@link CustomerAccountRecovery} only the digest,
- * and mails the raw token in a link via {@link MailSender}, which sends off-thread, swallows failures
- * and enforces suppression, so the D-8 non-enumeration and timing guarantees hold behind that seam.
- *
- * <p>Links target the SPA routes {@code /account/verify} and {@code /account/reset}, which issue the
- * {@code POST}: a mail scanner prefetching the link (a GET) must never consume the single-use token.
+ * Edge orchestrator for account recovery, keeping tokens, mail and crypto out of {@code customer} (RV-BE-11):
+ * mints and hashes the raw token, hands {@link CustomerAccountRecovery} only the digest, and mails the link via
+ * {@link MailSender}. A reset token is issued inside that off-thread send, so forgot-password's request thread
+ * does only its account read (D-8 timing); a verification token is issued on the caller's thread.
+ * Links target the SPA's {@code /account/verify} and {@code /account/reset}, which {@code POST}: a scanner's
+ * prefetch (a GET) must never consume the single-use token.
  */
 @Component
 public class CustomerRecovery {
@@ -66,13 +65,19 @@ public class CustomerRecovery {
 		return deliverability.isWithheld(email);
 	}
 
-	/** Issue a fresh password-reset token for the account and (best-effort, off-thread) email its link; no mail once erased. */
+	/**
+	 * Hand the reset mail to {@link MailSender} with a deferred link that issues a fresh token when the
+	 * off-thread send resolves it: nothing touches the token store on this thread. No mail once erased.
+	 */
 	public void sendPasswordResetEmail(CustomerAccountId accountId, String email) {
+		mails.sendPasswordReset(email, () -> issuePasswordResetLink(accountId));
+	}
+
+	private Optional<URI> issuePasswordResetLink(CustomerAccountId accountId) {
 		String rawToken = tokens.generate();
-		if (recovery.issuePasswordResetToken(accountId, tokens.hash(rawToken),
-				clock.instant().plus(properties.resetTokenTtl()))) {
-			mails.sendPasswordReset(email, link(RESET_PATH, rawToken));
-		}
+		boolean issued = recovery.issuePasswordResetToken(accountId, tokens.hash(rawToken),
+				clock.instant().plus(properties.resetTokenTtl()));
+		return issued ? Optional.of(link(RESET_PATH, rawToken)) : Optional.empty();
 	}
 
 	/** Redeem a presented raw verification token (hashes it, then claims it single-use in the module). */

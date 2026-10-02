@@ -761,7 +761,7 @@ tag names the person, invariant #7):
   (`MAIL_REGISTRY_SHED`). On the best-effort recovery vehicle, `MAIL_RECOVERY_DROPPED` counts a
   send that **never ran** (`saturated` / `shutdown` / `abandoned`; not one caught *running* at
   shutdown, which may have reached the relay) and `MAIL_RECOVERY_FAILED` one accepted but not
-  delivered (`transport` / `suppression-lookup`), both tagged `kind` off one `MailKind`. "Recovery"
+  delivered (`transport` / `suppression-lookup` / `token-issuance`), both tagged `kind` off one `MailKind`. "Recovery"
   names the *vehicle*, which also carries the `operator-approved` notice (ADR-0011 decision 5).
 - **The registry vehicle has no failure twin:** a thrown failure stays outstanding
   (`riviera.outbox.pending`), but a mail **abandoned** for a missing fact completes its publication,
@@ -805,7 +805,8 @@ tag names the person, invariant #7):
 - **The published surface is exactly `notification::api`, two role-split ports consumed by `auth`
   alone — no domain module depends on `notification`.** `MailSender` is fire-and-forget
   and moves **neither the triggering response's status nor its latency** (the anonymous
-  `forgot-password` flow relies on it). `MailDeliverability` ("withheld now?") is safe only where
+  `forgot-password` flow relies on it). The reset link arrives deferred and is resolved inside the
+  send task, after the suppression check, so its token is issued off the request thread too. `MailDeliverability` ("withheld now?") is safe only where
   the caller owns the address; its sole consumer is the authenticated verification-resend. I also
   *implement* `booking.spi.ConfirmationMailDelivery`; the dependency stays `notification → booking`.
 - **A stitched stay gets one confirmation mail, on `StayConfirmed`**: the stay's code, span, every
@@ -1166,6 +1167,12 @@ mutating `/api/admin/**` action, §`audit`) live in `web`; `challenge` and `audi
 - **Not fenced, deliberately:** login (the per-identity throttle covers it) and token redemption
   (a reset or verification token is already a bearer credential). Forgot-password stays
   non-enumerating (D-8): a refusal precedes the account lookup, identical for every address.
+- **Forgot-password is constant-time by doing the same work on both branches (#1336):** the request
+  thread makes the one account read and answers `204`; a known address only enqueues the send, whose
+  task mints and stores the reset token (under a transaction timeout, as one drainer serves every
+  recovery mail), then mails it. So an earlier link stays redeemable until that task runs. A token
+  never issued (saturated pool, erasure, failure) is a lost mail the user re-requests, never a
+  response difference.
 - **Booking and stay create are fenced for every caller**, guest or signed-in — no auth-state
   branch, since a script holding the online pool costs the same either way. A refusal precedes any
   availability claim, booking row or PaymentIntent (invariant #2 untouched). The SPA solves on the

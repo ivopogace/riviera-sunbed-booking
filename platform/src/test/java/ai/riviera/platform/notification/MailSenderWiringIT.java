@@ -1,6 +1,7 @@
 package ai.riviera.platform.notification;
 
 import java.net.URI;
+import java.util.Optional;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
@@ -64,7 +65,7 @@ class MailSenderWiringIT {
 	void theEdgeInjectedMailSenderDispatchesOffTheCallersThread() throws Exception {
 		String callerThread = Thread.currentThread().getName();
 
-		mailSender.sendPasswordReset("wiring-proof@example.com", LINK);
+		mailSender.sendPasswordReset("wiring-proof@example.com", () -> Optional.of(LINK));
 
 		assertThat(transport.awaitSend(AWAIT_SECONDS))
 				.as("the send never reached the transport — the wiring is broken, not merely synchronous")

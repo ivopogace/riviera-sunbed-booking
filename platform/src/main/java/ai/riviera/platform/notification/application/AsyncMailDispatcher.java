@@ -22,9 +22,9 @@ import org.springframework.stereotype.Component;
  * Production {@link MailDispatcher}: its own bounded pool (never the shared money-path executor) taking the
  * SMTP round-trip off the request thread to close the account-enumeration timing oracle. Saturated, it
  * <em>drops</em> the send — never runs it on the caller's thread. One drainer, core == max on purpose: a
- * bigger max adds no headroom until the queue is full. So everything run here must be bounded: SMTP timeouts,
- * and the suppression read's adapter-scoped {@code queryTimeout} (never global: invariant #2). Rationale and
- * {@code reason} tags: RESPONSIBILITIES.md §notification.
+ * bigger max adds no headroom until the queue is full. So everything run here must be bounded: SMTP timeouts, the
+ * suppression read's adapter-scoped {@code queryTimeout} (never global: invariant #2), the reset issuance's
+ * transaction timeout. Rationale and {@code reason} tags: RESPONSIBILITIES.md §notification.
  */
 @Component
 class AsyncMailDispatcher implements MailDispatcher, DisposableBean {
