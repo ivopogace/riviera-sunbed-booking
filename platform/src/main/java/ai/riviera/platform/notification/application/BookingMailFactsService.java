@@ -111,7 +111,7 @@ public class BookingMailFactsService {
 		}
 		return new MoveReminderMailFacts.Resolved(contact.get().email(), new MoveReminderMail(move.code(),
 				to.venueName(), move.moveDate(), move.stayLastDate(), from.rowLabel(), from.positionNo(),
-				to.rowLabel(), to.positionNo(), move.rowsAway(), move.positionsAway(), bookingLink));
+				to.rowLabel(), to.positionNo(), move.rowsAway(), move.positionsAway(), bookingLink, move.fromDayHeld()));
 	}
 
 	/**

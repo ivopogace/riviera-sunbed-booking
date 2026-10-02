@@ -109,6 +109,15 @@ class JdbcBookings implements Bookings {
 			(EXISTS (SELECT 1 FROM booking_day d WHERE d.booking_id = b.id)
 			 AND NOT EXISTS (SELECT 1 FROM booking_day d WHERE d.booking_id = b.id AND d.refunded_at IS NULL))""";
 
+	/**
+	 * Whether the guest holds booking {@code %1$s}'s service day {@code %2$s}: its row is neither refunded nor
+	 * released (ADR-0027). The move reminder's rule, in the sweep's read, the stamp and the mail's facts (#1381).
+	 */
+	static final String HOLDS_DAY_SQL = """
+			EXISTS (SELECT 1 FROM booking_day h
+			        WHERE h.booking_id = %1$s.id AND h.service_date = %2$s
+			          AND h.refunded_at IS NULL AND h.released_at IS NULL)""";
+
 	/** The statuses whose washed-out day may be refunded on its own — {@code BookingStatus#stormDayRefundable}'s members. */
 	private static final List<String> STORM_DAY_REFUNDABLE = java.util.stream.Stream.of(BookingStatus.values())
 			.filter(BookingStatus::stormDayRefundable).map(BookingStatus::name).toList();
@@ -543,7 +552,8 @@ class JdbcBookings implements Bookings {
 				SELECT b.id, b.code, b.status, b.venue_id, b.set_id, b.customer_id,
 				       b.booking_date, b.last_date, b.amount_minor, b.amount_currency, b.cancelled_at, b.refund_minor,
 				       b.request_expires_at, b.cancel_reason, b.created_at, b.accepted_at, b.moved_at, b.decline_reason,
-				       (SELECT COALESCE(SUM(d.refund_minor), 0) FROM booking_day d WHERE d.booking_id = b.id) AS day_refunded_minor
+				       """ + DAY_REFUNDED_SUM_SQL + " AS " + COL_DAY_REFUNDED_MINOR + ", "
+				+ EVERY_DAY_REFUNDED_SQL + " AS " + COL_EVERY_DAY_REFUNDED + "\n" + """
 				FROM booking b
 				WHERE b.code = :code AND b.stay_id IS NULL
 				""")
@@ -587,7 +597,8 @@ class JdbcBookings implements Bookings {
 				SELECT b.id, s.code, b.status, b.venue_id, b.set_id, b.customer_id,
 				       b.booking_date, b.last_date, b.amount_minor, b.amount_currency, b.cancelled_at, b.refund_minor,
 				       b.request_expires_at, b.cancel_reason, b.created_at, b.accepted_at, b.moved_at, b.decline_reason,
-				       (SELECT COALESCE(SUM(d.refund_minor), 0) FROM booking_day d WHERE d.booking_id = b.id) AS day_refunded_minor
+				       """ + DAY_REFUNDED_SUM_SQL + " AS " + COL_DAY_REFUNDED_MINOR + ", "
+				+ EVERY_DAY_REFUNDED_SQL + " AS " + COL_EVERY_DAY_REFUNDED + "\n" + """
 				FROM booking b
 				JOIN stay s ON s.id = b.stay_id
 				WHERE b.stay_id = :stay
@@ -609,7 +620,8 @@ class JdbcBookings implements Bookings {
 				       b.booking_date, b.last_date, b.amount_minor, b.amount_currency, b.cancelled_at, b.refund_minor,
 				       b.request_expires_at, b.cancel_reason, b.created_at, b.accepted_at, b.moved_at, b.decline_reason,
 				       s.id AS stay_id, s.first_date AS stay_first_date, s.last_date AS stay_last_date,
-				       (SELECT COALESCE(SUM(d.refund_minor), 0) FROM booking_day d WHERE d.booking_id = b.id) AS day_refunded_minor
+				       """ + DAY_REFUNDED_SUM_SQL + " AS " + COL_DAY_REFUNDED_MINOR + ", "
+				+ EVERY_DAY_REFUNDED_SQL + " AS " + COL_EVERY_DAY_REFUNDED + "\n" + """
 				FROM booking b
 				LEFT JOIN stay s ON s.id = b.stay_id
 				WHERE b.account_id = :account
@@ -673,7 +685,7 @@ class JdbcBookings implements Bookings {
 				acceptedAt == null ? null : acceptedAt.toInstant(),
 				movedAt == null ? null : movedAt.toInstant(),
 				declineReason == null ? null : DeclineReason.valueOf(declineReason),
-				rs.getLong(COL_DAY_REFUNDED_MINOR));
+				rs.getLong(COL_DAY_REFUNDED_MINOR), rs.getBoolean(COL_EVERY_DAY_REFUNDED));
 	}
 
 	/**
@@ -932,6 +944,9 @@ class JdbcBookings implements Bookings {
 				WHERE t.stay_id IS NOT NULL AND t.booking_date = :moveDay AND t.status = :confirmed
 				  AND t.move_reminder_at IS NULL AND t.set_id <> p.set_id
 				  AND p.status IN (:confirmed, :completed)
+				  AND
+				""" + HOLDS_DAY_SQL.formatted("t", ":moveDay") + """
+
 				ORDER BY t.id
 				""")
 				.param("moveDay", moveDay)
@@ -948,6 +963,9 @@ class JdbcBookings implements Bookings {
 				UPDATE booking
 				SET move_reminder_at = :at
 				WHERE id = :id AND status = :confirmed AND move_reminder_at IS NULL
+				  AND
+				""" + HOLDS_DAY_SQL.formatted("booking", "booking.booking_date") + """
+
 				RETURNING stay_id, booking_date
 				""")
 				.param("at", java.sql.Timestamp.from(at))
