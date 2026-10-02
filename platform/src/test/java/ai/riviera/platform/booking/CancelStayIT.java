@@ -391,6 +391,84 @@ class CancelStayIT {
 				"the nothing-left stretch is never announced cancelled");
 	}
 
+	/** ADR-0026 §7 (#1381): a stretch with every day refunded is set aside as a remodel-ended one is; the rest cancels, judged on its first day. */
+	@Test
+	void aStretchWithNothingLeftIsSetAsideAndTheRestCancels() {
+		Venue venue = StayFixtures.venue(jdbc, "INSTANT", null, true);
+		venues.add(venue.id());
+		SetId a = venue.online().get(0);
+		SetId b = venue.online().get(1);
+		LocalDate first = firstDay();
+		String code = "NLSA" + System.nanoTime() % 100_000_000L;
+		StayFixtures.SeededStay seeded = StayFixtures.insertStay(jdbc, venue, code, first, a, 2, "CONFIRMED", b, 2,
+				"CONFIRMED");
+		first.datesUntil(first.plusDays(4)).forEach(day -> StayFixtures.take(jdbc, day.isBefore(first.plusDays(2)) ? a : b, day));
+		seeded.stretches().forEach(stretch -> accrue(venue, stretch));
+		long spent = seeded.stretches().get(0);
+		refundEveryDay(spent, PRICE / 2);
+
+		BookingDetail before = viewBooking.byCode(code).orElseThrow();
+		CancelOutcome outcome = cancelBooking.cancel(code);
+
+		assertTrue(before.cancellable(), "the live stretch is still the guest's to cancel");
+		assertFalse(before.nothingLeft(), "the stay as a whole has something left");
+		assertEquals(List.of(true, false), before.stretches().stream().map(BookingDetail.StayStretch::nothingLeft).toList());
+		assertEquals(new CancelOutcome.Cancelled(PRICE, "EUR", CancelOutcome.Tier.FULL), outcome,
+				"only the live stretch is quoted and refunded");
+		assertEquals(List.of("CONFIRMED", "CANCELLED"), statuses(venue.id()), "the nothing-left stretch stays as it was");
+		assertEquals(2L, heldDays(jdbc, a, first, first.plusDays(1)), "its weather-refunded days stay held (#2)");
+		assertEquals(0L, heldDays(jdbc, b, first.plusDays(2), first.plusDays(3)));
+		assertEquals(List.of(new BookingId(seeded.stretches().get(1))),
+				events.stream(BookingCancelled.class).map(BookingCancelled::bookingId).toList());
+		StayId stay = new StayId(seeded.id());
+		assertEquals(List.of(new StayCancelled(stay, PRICE, "EUR", RefundReason.POLICY)),
+				events.stream(StayCancelled.class).filter(e -> e.stayId().equals(stay)).toList(),
+				"the stay's one cancellation carries the live stretch's refund");
+	}
+
+	@Test
+	void aStayWithNothingLeftOnEveryStretchRefuses() {
+		Venue venue = StayFixtures.venue(jdbc, "INSTANT", null, true);
+		venues.add(venue.id());
+		SetId a = venue.online().get(0);
+		SetId b = venue.online().get(1);
+		LocalDate first = firstDay();
+		String code = "NLAL" + System.nanoTime() % 100_000_000L;
+		StayFixtures.SeededStay seeded = StayFixtures.insertStay(jdbc, venue, code, first, a, 2, "CONFIRMED", b, 2,
+				"CONFIRMED");
+		first.datesUntil(first.plusDays(4)).forEach(day -> StayFixtures.take(jdbc, day.isBefore(first.plusDays(2)) ? a : b, day));
+		seeded.stretches().forEach(stretch -> refundEveryDay(stretch, PRICE / 2));
+
+		BookingDetail before = viewBooking.byCode(code).orElseThrow();
+		CancelOutcome outcome = cancelBooking.cancel(code);
+
+		assertFalse(before.cancellable());
+		assertTrue(before.nothingLeft());
+		assertInstanceOf(CancelOutcome.NothingLeft.class, outcome);
+		assertEquals(List.of("CONFIRMED", "CONFIRMED"), statuses(venue.id()));
+		assertEquals(2L, heldDays(jdbc, a, first, first.plusDays(1)));
+		assertEquals(2L, heldDays(jdbc, b, first.plusDays(2), first.plusDays(3)));
+		assertEquals(0, events.stream(BookingCancelled.class).count());
+		assertEquals(0, events.stream(StayCancelled.class).count());
+	}
+
+	/** The accrual the confirm would have written: without it the payout listener defers a cancellation's reversal forever. */
+	private void accrue(Venue venue, long stretch) {
+		jdbc.sql("""
+				INSERT INTO payout_ledger_entry (venue_id, booking_id, entry_type, gross_minor, commission_minor,
+				                                 net_minor, currency)
+				VALUES (:v, :b, 'ACCRUAL', :gross, 0, :gross, 'EUR')
+				""").param("v", venue.id()).param("b", stretch).param("gross", PRICE).update();
+	}
+
+	/** Weather-refunds every service day of a stretch at {@code dayMinor} each, as the storm would. */
+	private void refundEveryDay(long stretch, long dayMinor) {
+		jdbc.sql("""
+				UPDATE booking_day SET refunded_at = now(), refund_minor = :minor, refund_reason = 'WEATHER'
+				WHERE booking_id = :b
+				""").param("minor", dayMinor).param("b", stretch).update();
+	}
+
 	/** Leaves a stretch as a remodel refund does: {@code CANCELLED} as {@code VENUE_CHANGE} with the receipt's outcome line. */
 	private void endAsARemodelRefund(Venue venue, long stretch, SetId set, LocalDate day) {
 		long amount = jdbc.sql("SELECT amount_minor FROM booking WHERE id = :id").param("id", stretch)

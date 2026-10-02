@@ -233,6 +233,21 @@ class SmtpMailerIT {
 		assertThat(body).doesNotContain("<html", "<img", "http://track", "utm_");
 	}
 
+	/** #1381: a refunded departure day is not "today's spot", so the reminder names tomorrow's spot and the distance alone. */
+	@Test
+	void theMoveReminderDropsTodaysSpotWhenTheGuestDoesNotHoldIt() throws Exception {
+		MoveReminderMail held = moveReminder();
+		mailer().sendMoveReminder(TO, new MoveReminderMail(held.bookingCode(), held.venueName(), held.moveDate(),
+				held.stayLastDate(), held.fromRowLabel(), held.fromPositionNo(), held.toRowLabel(), held.toPositionNo(),
+				held.rowsAway(), held.positionsAway(), held.bookingLink(), false));
+
+		String body = theOnlyReceivedMessage().getContent().toString();
+		assertThat(body).contains(
+				"Tomorrow, 18 August 2026, your spot at Miramar Beach changes: B5, 1 row and 2 positions away.",
+				"Tomorrow:      Row B, position 5");
+		assertThat(body).doesNotContain("instead of today's", "A3");
+	}
+
 	/** ADR-0027 §9: the venue's own refund names who and what, never why; only a released day's copy frees the spot. */
 	@Test
 	void theVenuesDayRefundSaysWhoRefundedAndWhetherTheSpotIsHeld() throws Exception {
@@ -277,7 +292,7 @@ class SmtpMailerIT {
 		mailer().sendMoveReminder(TO, new MoveReminderMail(reminder.bookingCode(), "Miramar\r\nBcc: x@evil.test",
 				reminder.moveDate(), reminder.stayLastDate(), reminder.fromRowLabel(), reminder.fromPositionNo(),
 				reminder.toRowLabel(), reminder.toPositionNo(), reminder.rowsAway(), reminder.positionsAway(),
-				reminder.bookingLink()));
+				reminder.bookingLink(), true));
 
 		MimeMessage message = theOnlyReceivedMessage();
 		assertThat(message.getSubject()).isEqualTo("Tomorrow at Miramar  Bcc: x@evil.test: your spot moves");
@@ -665,7 +680,7 @@ class SmtpMailerIT {
 	/** Three days on A3, then B5 from the 18th to the 20th: one row and two positions away. */
 	private static MoveReminderMail moveReminder() {
 		return new MoveReminderMail(BOOKING_CODE, "Miramar Beach", LocalDate.of(2026, 8, 18), LocalDate.of(2026, 8, 20),
-				"A", 3, "B", 5, 1, 2, PAY_LINK);
+				"A", 3, "B", 5, 1, 2, PAY_LINK, true);
 	}
 
 	private static BookingMovedMail stretchMail(Instant freeExitUntil) {

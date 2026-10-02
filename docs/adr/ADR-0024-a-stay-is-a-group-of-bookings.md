@@ -74,7 +74,9 @@ concept the ledger cannot express.
    concurrent writer) still refuses the stay whole, and a stay with nothing live refuses as cancelled;
    the code-gated view quotes the remainder the same way (invariant #10). The one holder of "which
    stretches are set aside, and which day the rest is judged on" is
-   `booking.application.cancel.LiveRemainder`, so a later ended kind rides the same rule.
+   `booking.application.cancel.LiveRemainder`, so a later ended kind rides the same rule. *Amended
+   2026-10-02 (#1381):* a confirmed stretch with every day refunded is set aside too, and a stay with nothing
+   live refuses as nothing left while such a stretch stands (ADR-0026 §7), else as cancelled.
 5. **The search is a pure rule in `itinerary/domain`** (`ItinerarySearch`, ADR-0018): a shortest path
    over `(day, set)` with the cost `(moves, row changes, positions, rows)` compared lexicographically,
    mirroring the remodel move rule's distance order; the budget is `riviera.itinerary.max-switches`,

@@ -198,8 +198,8 @@ const CLS = {
           <span>
             <!-- Restores the "Status: X" context the removed dl row gave assistive tech. -->
             <span class="sr-only">Booking status:</span>
-            <span [appStatusChip]="chipClass(b.status)" data-testid="booking-status">{{
-              statusLabel(b.status)
+            <span [appStatusChip]="chipClass(b)" data-testid="booking-status">{{
+              statusLabel(b)
             }}</span>
           </span>
         </div>
@@ -503,6 +503,12 @@ const CLS = {
                           >moved from {{ move.fromRowLabel }} · spot {{ move.fromPositionNo }}</span
                         >
                       }
+                      @if (stretch.nothingLeft) {
+                        ·
+                        <span [class]="cls.stopMark" data-testid="view-stop-refunded"
+                          >refunded</span
+                        >
+                      }
                       @if (state === 'today') {
                         · <span [class]="cls.stopMark" data-testid="view-stop-today">today</span>
                       } @else if (state === 'next') {
@@ -602,6 +608,8 @@ const CLS = {
             }}
           } @else if (cancelWindowClosed()) {
             This booking can no longer be cancelled — its date has already begun.
+          } @else if (cancelNothingLeft()) {
+            This booking can’t be cancelled — every day of it has already been refunded.
           } @else if (cancelFailed()) {
             We couldn’t cancel the booking. Please try again.
           }
@@ -681,6 +689,7 @@ const CLS = {
         <app-review-panel
           [panel]="b.reviewPanel"
           [bookingStatus]="b.status"
+          [nothingLeft]="b.nothingLeft ?? false"
           [venueName]="b.venueName"
           [busy]="submittingReview()"
           (submitted)="sendReview($event)"
@@ -714,6 +723,8 @@ export class BookingView {
   protected readonly cancelFailed = signal(false);
   /** The server refused because the service day has begun — a retry can never succeed. */
   protected readonly cancelWindowClosed = signal(false);
+  /** The server refused because every day was already refunded (ADR-0026 §7) — nothing left to cancel. */
+  protected readonly cancelNothingLeft = signal(false);
   protected readonly cancellation = signal<Cancellation | undefined>(undefined);
   protected readonly confirmingWithdraw = signal(false);
   protected readonly withdrawing = signal(false);
@@ -763,6 +774,7 @@ export class BookingView {
       this.cancelling.set(false);
       this.cancelFailed.set(false);
       this.cancelWindowClosed.set(false);
+      this.cancelNothingLeft.set(false);
       this.cancellation.set(undefined);
       this.confirmingWithdraw.set(false);
       this.withdrawing.set(false);
@@ -926,10 +938,12 @@ export class BookingView {
           this.load(true); // refresh to the CANCELLED detail (chip flips + refunded row appears, no reload)
         },
         error: (e: unknown) => {
-          const closed =
-            e instanceof HttpErrorResponse && problemCodeOf(e) === 'CANCELLATION_WINDOW_CLOSED';
+          const code = e instanceof HttpErrorResponse ? problemCodeOf(e) : undefined;
+          const closed = code === 'CANCELLATION_WINDOW_CLOSED';
+          const nothingLeft = code === 'NOTHING_LEFT';
           this.cancelWindowClosed.set(closed);
-          this.cancelFailed.set(!closed);
+          this.cancelNothingLeft.set(nothingLeft);
+          this.cancelFailed.set(!closed && !nothingLeft);
           this.cancelling.set(false);
           this.confirming.set(false);
           // Not the trigger: the re-read below can withdraw it, and a refused cancel explains itself here.
@@ -990,14 +1004,14 @@ export class BookingView {
     );
   }
 
-  /** The display label for a status; drives the header chip. Source of truth: {@link metaFor}. */
-  protected statusLabel(status: string): string {
-    return metaFor(status).label;
+  /** The header chip's label; "Refunded" once every day was refunded (ADR-0026 §7). Source of truth: {@link metaFor}. */
+  protected statusLabel(b: BookingDetail): string {
+    return metaFor(b.status, b.nothingLeft ?? false).label;
   }
 
-  /** The chip CSS-modifier class for a status. */
-  protected chipClass(status: string): string {
-    return metaFor(status).chip;
+  /** The header chip's CSS-modifier class. */
+  protected chipClass(b: BookingDetail): string {
+    return metaFor(b.status, b.nothingLeft ?? false).chip;
   }
 
   /** "Paid" once money has actually moved; "Amount" while open, or when nothing was ever charged. */

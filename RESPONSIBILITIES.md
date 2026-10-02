@@ -284,12 +284,13 @@ any is released on the old, never a swap of my own — so a racing reserve wins 
   judges every stretch by the shared `ReserveFences`, claims every day of every stretch all or nothing
   (`ConcurrentStayReservationIT`) and collects once with one share per stretch; a stay cancels whole, each
   stretch quoted on the stay's first day (#10) and reversed once (#9), bar the next bullet's exception.
-- **A guest cancel of a stay sets aside the stretches a remodel already ended** (ADR-0024 §4 as amended,
-  #1290): `LiveRemainder` keeps the live rest, judged on the first live day — what a same-set booking of the
-  dates the guest still holds would be quoted — and the view quotes the same way (#10). The predicate is
-  the receipt's outcome lines (`RemodelReceipts#endedByRemodel`), both endings being `VENUE_CHANGE`; a
-  stretch ended any other way (a weather refund, a concurrent writer) still refuses the stay whole, and a
-  stay with nothing live refuses as cancelled.
+- **A guest cancel of a stay sets aside the stretches a remodel already ended, and a confirmed stretch with
+  nothing left** (ADR-0024 §4 as amended, #1290; ADR-0026 §7, #1381): `LiveRemainder` keeps the live rest, judged
+  on the first live day — what a same-set booking of the dates the guest still holds would be quoted — and the
+  view and the stay cancellation mail read the same split (#10). The predicates are the receipt's outcome lines
+  (`RemodelReceipts#endedByRemodel`, both endings being `VENUE_CHANGE`) and `BookingRecord#everyDayRefunded`; a
+  stretch ended any other way (a weather cancel, a concurrent writer) still refuses the stay whole. A stay with
+  nothing live refuses: `NothingLeft` while a set-aside stretch still stands confirmed, else as cancelled.
 - **A stay is confirmed once: the confirm that leaves no stretch unconfirmed publishes `StayConfirmed`.**
   The webhook confirms each stretch in its own transaction, so `ConfirmBookingService` row-locks the
   `stay` before counting unconfirmed stretches: exactly one confirm sees the stay complete. The payload
@@ -321,8 +322,10 @@ any is released on the old, never a swap of my own — so a racing reserve wins 
 - **The move-reminder sweep announces each of a stitched stay's moves once, the evening before**
   (design D13; from `booking.move-reminder.send-from`, `Europe/Tirane`, until that day ends): it stamps
   the arriving stretch's `move_reminder_at` under a guarded `UPDATE` and publishes `StayMoveDue` in
-  that transaction, only while that stretch and the live one it follows on another set both stand. A
-  move whose day has already begun is never announced late, so the mail's "tomorrow" stays true.
+  that transaction, only while that stretch and the live one it follows on another set both stand and the
+  guest holds the move day (`JdbcBookings.HOLDS_DAY_SQL`: its `booking_day` neither refunded nor released,
+  #1381) — in the sweep's read, the stamp and the mail's facts, so a day refunded in between announces nothing.
+  A move whose day has already begun is never announced late, so the mail's "tomorrow" stays true.
 - **Lock order: the booking row, then its service-day rows** — check-in and both sweep statements —
   so a scan, a cancel and the sweep serialize on the stay. The sweep never uses `SKIP LOCKED`: a
   short batch reads as drained, so a skipped contended row would be stranded. A whole-booking cancel
@@ -333,6 +336,12 @@ any is released on the old, never a swap of my own — so a racing reserve wins 
 - **Several bookings lock in `(booking_date, id)` order:** the sweep batches, a remodel commit (one at a time
   under the venue lock) and the weather refund, which locks every refundable booking covering the day in one statement
   before it reads them (#1305). So none of the three deadlocks another.
+- **A confirmed booking with every day refunded is *nothing left* for the guest too** (ADR-0026 §7, #1381): the
+  cancel answers `NothingLeft` (`409 NOTHING_LEFT`) before any quote or write — no transition, no release, no
+  `BookingCancelled`, so no mail — and the view says `cancellable = false`, `nothingLeft = true`, so the page reads
+  "Refunded" and promises no check-in. The rule is the remodel's (`EVERY_DAY_REFUNDED_SQL`, read as
+  `everyDayRefunded` on `BookingRecord`, `LiveClaim` and `LockedRemainder`), never a zero remainder: a €0-share
+  day the guest still holds is not nothing left. The outcome still resolves `NO_SHOW` and the review stays blocked.
 - **The guest cancel admits `CONFIRMED` only; the venue's refund (`cancelByVenue`, `VENUE_REFUND`) also `NO_SHOW`** (the storm is
   known afterwards): separate port methods and `BookingTransition` rows, so the asymmetry cannot be
   tidied away. The guest guard's readers (the view's `cancellable`, the cancel's `NotCancellable`)
@@ -870,7 +879,8 @@ tag names the person, invariant #7):
   stay's code and whole span and naming no spot, through the lone flows' listeners and abandon counters.
 - **A stitched stay's move gets one reminder, on `StayMoveDue`**: the stay's code, tomorrow's date,
   today's and tomorrow's spots as the live map labels them, the distance `booking` measured, and the
-  code-gated link. No delivery-log row (that log is the confirmation's); a move the listener finds
+  code-gated link; "instead of today's A1" only while `StayMoveFacts#fromDayHeld` (a refunded day is not
+  today's spot, #1381). No delivery-log row (that log is the confirmation's); a move the listener finds
   no longer standing is abandoned under `riviera.mail.move-reminder.abandoned`, the one abandon
   tag that can mean a race rather than a data fault (`docs/runbooks/observability.md`).
 - The **booking-confirmation delivery log** (`booking_confirmation_mail_attempt`) and its ADMIN

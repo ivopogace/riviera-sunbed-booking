@@ -31,6 +31,7 @@ import ai.riviera.platform.booking.vocabulary.StayId;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * The move-reminder sweep under a fixed clock (design D13, story 22): the evening before a stitched
@@ -74,6 +75,9 @@ class StayMoveReminderIT {
 
 	@Autowired
 	ApplicationEvents events;
+
+	@Autowired
+	ai.riviera.platform.booking.application.Bookings bookings;
 
 	private final List<Long> venues = new ArrayList<>();
 
@@ -136,6 +140,33 @@ class StayMoveReminderIT {
 
 		clock.set(EVENING_BEFORE);
 		assertEquals(1, remindStayMoves.sweep(SEND_FROM), "the same stay is due once the evening before arrives");
+	}
+
+	/** #1381: a move onto a day the guest no longer holds is not announced; a refunded departure day changes nothing here. */
+	@Test
+	void aMoveToADayTheGuestNoLongerHoldsIsNotAnnounced() {
+		Venue venue = venue();
+		SeededStay moveDayRefunded = StayFixtures.insertStay(jdbc, venue, code("RMMR"), FIRST, venue.online().get(0), 3,
+				"CONFIRMED", venue.online().get(1), 3, "CONFIRMED");
+		SeededStay departureRefunded = StayFixtures.insertStay(jdbc, venue, code("RMDR"), FIRST, venue.online().get(2), 3,
+				"CONFIRMED", venue.online().get(0), 3, "CONFIRMED");
+		refundDay(moveDayRefunded.stretches().get(1), MOVE_DAY);
+		refundDay(departureRefunded.stretches().get(0), MOVE_DAY.minusDays(1));
+		clock.set(EVENING_BEFORE);
+
+		assertEquals(1, remindStayMoves.sweep(SEND_FROM));
+
+		assertNull(reminderStamp(moveDayRefunded.stretches().get(1)), "the refunded move day is not announced");
+		assertNotNull(reminderStamp(departureRefunded.stretches().get(1)), "a held move day is, whatever today's day");
+		assertEquals(List.of(new StayId(departureRefunded.id())), events.stream(StayMoveDue.class).map(StayMoveDue::stayId)
+				.filter(id -> List.of(moveDayRefunded.id(), departureRefunded.id()).contains(id.value())).toList());
+		assertTrue(bookings.stampMoveReminder(moveDayRefunded.stretches().get(1), EVENING_BEFORE).isEmpty(),
+				"the stamp refuses it too, so a day refunded between the sweep's read and the stamp announces nothing");
+	}
+
+	private void refundDay(long bookingId, LocalDate day) {
+		jdbc.sql("UPDATE booking_day SET refunded_at = now(), refund_minor = 0, refund_reason = 'WEATHER' "
+				+ "WHERE booking_id = :b AND service_date = :d").param("b", bookingId).param("d", day).update();
 	}
 
 	@Test
