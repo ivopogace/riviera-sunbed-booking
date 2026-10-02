@@ -19,10 +19,9 @@ import ai.riviera.platform.venue.vocabulary.SetId;
 /**
  * The one bulk layout write, shared by the save and the remodel commit: shape checks, venue row
  * lock + token compare, {@code FOR UPDATE} on every active set, the cell-keyed {@link LayoutDiff},
- * the caller's {@link RemodelGate} (asked once with the disturbed sets' walk-in holds), kept sets
- * dropped (a set wanting one's slot refuses), the live-claim probe on what is still disturbed,
- * then removals (retired if booked, else deleted), parked labels, updates, inserts, token bump.
- * In the caller's transaction, ownership asserted (#13). Rationale: RESPONSIBILITIES.md §venue.
+ * the caller's {@link RemodelGate} (once, with walk-in holds), kept sets dropped (a set wanting one's
+ * slot refuses), the live-claim probe, then removals (retired if booked, else deleted), every moving
+ * set parked, updates, inserts, token bump. Caller's transaction, ownership asserted (#13).
  */
 @Component
 class LayoutWriter {
@@ -89,9 +88,9 @@ class LayoutWriter {
 				venues.deleteSet(venueId, gone.id());
 			}
 		}
-		List<SetId> colliding = diff.collidingUpdates();
-		if (!colliding.isEmpty()) {
-			venues.parkRowLabels(venueId, colliding);
+		List<SetId> moving = diff.movingUpdates();
+		if (!moving.isEmpty()) {
+			venues.parkRowLabels(venueId, moving);
 		}
 		for (LayoutDiff.Update kept : diff.updates()) {
 			venues.updateSet(venueId, kept.stored().id(), kept.command());
