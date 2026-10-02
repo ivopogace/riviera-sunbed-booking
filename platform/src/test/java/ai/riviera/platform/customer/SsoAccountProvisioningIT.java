@@ -27,15 +27,14 @@ import ai.riviera.platform.customer.vocabulary.SsoProvider;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * Verifies the SSO identity linkage slice against real Postgres via Testcontainers — which
- * boots the full Flyway chain, so this also exercises migration <strong>V27</strong>: first SSO sign-in
- * for an unknown {@code (provider, subject)} creates a password-less account and a link row; a returning
- * subject reuses it; a first-seen subject whose email already has an account auto-links to it without creating
- * a duplicate, keeping its password only if the email was verified (#1295); an SSO-only account has no password
- * credential (null hash filtered from {@link CustomerAccounts#findByEmail}) yet still resolves as an account id; and
- * the resolve-or-create is
- * race-safe under concurrent first sign-ins (the {@code (provider, subject)} UNIQUE constraint enforces
- * one account per identity — invariant #12).
+ * Verifies the SSO identity linkage slice against real Postgres via Testcontainers — which boots the full Flyway
+ * chain, so this also exercises migration <strong>V27</strong>: first SSO sign-in for an unknown
+ * {@code (provider, subject)} creates a password-less account and a link row; a returning subject reuses it; a
+ * first-seen subject whose email already has an account auto-links to it without creating a duplicate, keeping its
+ * password only if the email was verified (#1295); an SSO-only account has no password credential (null hash filtered
+ * from {@link CustomerAccounts#findByEmail}) yet still resolves as an account id; and the resolve-or-create is
+ * race-safe under concurrent first sign-ins (the {@code (provider, subject)} UNIQUE constraint enforces one account
+ * per identity — invariant #12).
  */
 @EnabledIfDockerAvailable
 @Import(TestcontainersConfiguration.class)

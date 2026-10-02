@@ -67,8 +67,9 @@ public interface CustomerAccountStore {
 	void markEmailVerified(CustomerAccountId accountId);
 
 	/**
-	 * Drop the live account's password while its email is still unverified, one guarded statement: an SSO sign-in
-	 * proved the email, a password nobody did (#1295); a verified or password-less account is left alone.
+	 * Drop the account's password while its email is still unverified, one statement guarded on {@code erased_at IS
+	 * NULL}: the SSO sign-in proved the email and the password's holder never did (#1295). A verified, erased or
+	 * password-less account is left alone.
 	 */
 	void clearUnverifiedPassword(CustomerAccountId accountId);
 

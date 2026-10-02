@@ -666,13 +666,14 @@ the live account by email or id, SSO-only included (null hash), never an erased 
 **An SSO first sign-in that links onto an account whose email is unverified clears its password** (#1295), one
 guarded statement under the claim's row lock, before it marks the email verified: the provider proved the email, the
 password's holder never did, so a pre-registered account cannot capture the email's owner. `auth`'s stamp then refuses
-the holder's live sessions on their next request and password login finds no credential. A verified email's account
-links and keeps its password; gating the link on the provider's `email_verified` claim is the real adapters' job.
+the holder's live sessions on their next request and password login finds no credential; no revoke brackets it, since
+the port names no outcome to key one on (#1295). A verified email's account links and keeps its password; gating the
+link on the provider's `email_verified` claim is the real adapters' job.
 
 **A write of an account's children locks its live row first** (`CustomerAccountStore#lockLiveAccount`, `FOR NO
 KEY UPDATE` so the child insert's key check passes), in a statement of its own, the order erasure takes them: token
 issue and redemption, and an SSO first sign-in's identity link (#1305, #1307). One-statement account writes
-(password change and reset, verification) carry an `erased_at IS NULL` guard instead.
+(password change and reset, verification, the unverified-password clear) carry an `erased_at IS NULL` guard instead.
 A missing row is erased: an issue stores and mails nothing, a redemption redeems nothing, a sign-in re-resolves
 to a fresh account and takes over an identity left on an erased one. Two issues serialize, so one reset link is
 live, and a reset retires the rest; a first sign-in that loses its subject deletes the account it created.

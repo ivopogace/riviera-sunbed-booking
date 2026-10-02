@@ -120,7 +120,7 @@ class CustomerAccountServiceTest {
 
 		CustomerAccountId linked = service.resolveOrCreate(SsoProvider.APPLE, "a-1", "  OWNER@Example.com ");
 
-		assertThat(linked).as("auto-link by verified email → the existing account").isEqualTo(passwordAccount);
+		assertThat(linked).as("auto-link by email → the existing account").isEqualTo(passwordAccount);
 	}
 
 	@Test
