@@ -70,7 +70,7 @@ one spec. `freeze-clock.spec.ts` passes alone whenever it happens to be the firs
 worker, even if setup ran only once. `src/testing/freeze-clock-sentinel.spec.ts` is the second
 sentinel with the same assertion: two sentinels cannot both be first in one worker, so a shared
 setup goes red in at least one. The decision stands; the property is pinned by the pair, and the
-*Consequences* line on `freeze-clock.spec.ts` reads as the pair.
+*Consequences* line naming `freeze-clock.spec.ts` covers both sentinels.
 
 ## Consequences
 
