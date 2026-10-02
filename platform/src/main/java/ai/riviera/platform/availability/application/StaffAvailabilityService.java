@@ -4,7 +4,6 @@ import java.time.Clock;
 import java.time.LocalDate;
 import java.time.ZoneId;
 
-import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -19,23 +18,22 @@ import ai.riviera.platform.venue.api.SetBookingFacts;
  * Staff tap-to-mark writes, the second writer of {@code set_availability} (invariant #2). Ownership (#13) of the
  * path venue is asserted before any set lookup, and a set not on that venue ({@link SetBookingFacts#setBookingInfo})
  * answers as a missing one. Mark takes {@link SetBookingFacts#poolForClaim} (retired → {@code NO_SUCH_SET};
- * pool ignored), refuses a past Europe/Tirane date (#6), then {@code INSERT … ON CONFLICT DO NOTHING} — the
- * online claim's primitive, so a mark and a claim cannot both win. Release deletes only a {@code STAFF_MARKED}
- * row, never {@code BOOKED_ONLINE}.
+ * pool ignored) and refuses a past Europe/Tirane date (#6); {@link StaffMarks} then writes in this method's
+ * transaction with the online claim's primitive. Release frees only a {@code STAFF_MARKED} row.
  */
 @Service
 class StaffAvailabilityService implements StaffAvailability {
 
 	private static final ZoneId TIRANE = ZoneId.of("Europe/Tirane");
 
-	private final JdbcClient jdbc;
+	private final StaffMarks marks;
 	private final SetBookingFacts setFacts;
 	private final VenueOwnership ownership;
 	private final Clock clock;
 
-	StaffAvailabilityService(JdbcClient jdbc, SetBookingFacts setFacts, VenueOwnership ownership,
+	StaffAvailabilityService(StaffMarks marks, SetBookingFacts setFacts, VenueOwnership ownership,
 			Clock clock) {
-		this.jdbc = jdbc;
+		this.marks = marks;
 		this.setFacts = setFacts;
 		this.ownership = ownership;
 		this.clock = clock;
@@ -55,15 +53,7 @@ class StaffAvailabilityService implements StaffAvailability {
 		if (setFacts.poolForClaim(setId).isEmpty()) {
 			return MarkOutcome.NO_SUCH_SET;
 		}
-		int inserted = jdbc.sql("""
-				INSERT INTO set_availability (set_id, booking_date, state)
-				VALUES (:setId, :date, 'STAFF_MARKED')
-				ON CONFLICT (set_id, booking_date) DO NOTHING
-				""")
-				.param("setId", setId.value())
-				.param("date", date)
-				.update();
-		return inserted == 1 ? MarkOutcome.MARKED : MarkOutcome.ALREADY_TAKEN;
+		return marks.mark(setId, date) ? MarkOutcome.MARKED : MarkOutcome.ALREADY_TAKEN;
 	}
 
 	@Override
@@ -73,15 +63,7 @@ class StaffAvailabilityService implements StaffAvailability {
 		if (!isOnVenue(setId, venue)) {
 			return ReleaseOutcome.NOT_MARKED;
 		}
-		// Delete only a staff mark — never an online claim's row (invariant #2). 0 rows ⇒ NOT_MARKED.
-		int deleted = jdbc.sql("""
-				DELETE FROM set_availability
-				WHERE set_id = :setId AND booking_date = :date AND state = 'STAFF_MARKED'
-				""")
-				.param("setId", setId.value())
-				.param("date", date)
-				.update();
-		return deleted == 1 ? ReleaseOutcome.RELEASED : ReleaseOutcome.NOT_MARKED;
+		return marks.release(setId, date) ? ReleaseOutcome.RELEASED : ReleaseOutcome.NOT_MARKED;
 	}
 
 	private boolean isOnVenue(SetId setId, VenueId venue) {

@@ -228,7 +228,9 @@ any is released on the old, never a swap of my own — so a racing reserve wins 
   other write path: `StaffAvailabilityService` asserts the operator owns the path venue first
   (invariant #13 — why I depend on `operator::api`), refuses a past `Europe/Tirane` date
   (`DATE_IN_PAST` → `422`), then marks with the claim's `ON CONFLICT DO NOTHING`; release deletes
-  only a `STAFF_MARKED` row.
+  only a `STAFF_MARKED` row. The SQL sits behind the module's own out port `application.StaffMarks`
+  (adapter `JdbcStaffMarks`), joining the service's transaction; no `application/` class names JDBC
+  (`JdbcOnlyArchitectureTests`).
 
 **Not My Job:**
 - The venue layout, which sets exist, their positions or prices → **`venue`**
@@ -719,8 +721,8 @@ transaction, on the request path too, a timeout fails the whole erasure, and a s
   implements — an inversion, because a direct `customer → booking` call would cycle
 - Encoding/verifying credentials and all login machinery (`UserDetailsService`, sessions, the auth
   endpoints, the OIDC exchange, mail transport) → **`auth`** and **`notification`**
-  (RV-BE-11; `CustomerAuthPlacementTests` checks only the Spring Security half); I store the
-  identity and an opaque hash
+  (RV-BE-11); I store the identity and an opaque hash, and no Spring Security, Spring Session or
+  mail (Spring Mail, Jakarta Mail, Angus Mail) type lives in the module (`CustomerAuthPlacementTests`)
 
 ---
 
@@ -762,8 +764,9 @@ delete) takes the same lock and keeps the rule.
   the `ROLE_ADMIN` mapping), **invalidating live sessions** on suspension, rejection, credential
   rotation or password change (`PrincipalSessionRevoker`), and the "venues are live" mail
   (`OperatorApprovalMail` → `notification`) → **`auth`**. I store an opaque hash and
-  `is_admin` flag and report *that* and *whose* a transition happened; no Spring Security
-  (`OperatorAuthPlacementTests`), `org.springframework.session` or mail type lives in the module
+  `is_admin` flag and report *that* and *whose* a transition happened; no Spring Security, Spring
+  Session or mail (Spring Mail, Jakarta Mail, Angus Mail) type lives in the module
+  (`OperatorAuthPlacementTests`)
 
 ---
 
@@ -849,9 +852,10 @@ tag names the person, invariant #7):
   the stay mail's attempt is logged on every stretch it covers, and a resend on any stretch resends
   the stay's mail, refused unless every stretch confirmed.
 - **A stay the guest cancels, or a remodel releases whole, gets one cancellation mail, on
-  `StayCancelled`**: the lone booking's cancellation copy under the stay's code and span, with the
-  summed refund, and a rebook link only when a remodel ended a stretch of it
-  (`BookingNotificationFacts#endedByRemodel`; a free exit is the same `VENUE_CHANGE` with none). A
+  `StayCancelled`**: the lone booking's cancellation copy under the stay's code, with the summed refund
+  and the span and first stop of `BookingNotificationFacts#stayCancellationFacts` (the guest cancel's live
+  remainder, the whole stay when nothing is live), and a rebook link only when a remodel ended one of those
+  stretches (`#endedByRemodel`; a free exit is the same `VENUE_CHANGE` with none). A
   stretch's stamped `BookingCancelled` mails nothing; an unstamped one (a remodel ending one stretch
   of a stay that goes on, an older payload) mails that stretch under the stay's code, with a rebook
   link when a remodel ended it.
@@ -1124,7 +1128,8 @@ and their `AuthenticationManager`s, session establishment and rotation, the cred
 revocation, SSO, the password policy, account recovery, the login, register, `/me` and self-service
 password endpoints, and the admin-lifecycle and both erasure endpoints that revoke sessions in the same
 request (a domain module calling `auth` would cycle). `customer` and `operator` supply identity and an
-opaque hash through their `api`; no Spring Security type enters them (`*AuthPlacementTests`).
+opaque hash through their `api`; no Spring Security, Spring Session or mail type enters them
+(`*AuthPlacementTests`).
 
 - **Password policy (D-8)** — one rule, `PasswordPolicy`, wherever a password is *chosen*
   (never at sign-in), checked before any write — on register, ahead of the timing-equalized
@@ -1388,11 +1393,12 @@ them form the *structural net* is `riviera-modulith` § *The structural net*'s c
 | No module reaches another's `application`/`domain`/`adapter`; `allowedDependencies` hold | `ModularityTests` (`ApplicationModules.verify()`) |
 | The ADR-0007 package shape; published-surface kinds; the `VenueCatalog` role split | `PackageShapeArchitectureTests`, `PublishedSurfacePlacementArchitectureTests`, `VenueApiRoleSplitTests` |
 | No JPA/Hibernate on the classpath — invariant #1 | `JdbcOnlyArchitectureTests` |
+| No class in any `application/` package names `org.springframework.jdbc`, `java.sql` or `javax.sql`: SQL sits in `adapter/out` behind a port (ADR-0007) | `JdbcOnlyArchitectureTests` (application-JDBC rule) |
 | A `domain/` class names only the JDK and published ids, values and rules (ADR-0018 §4) | `DomainPurityArchitectureTests` |
 | The booking transition table and the guarded `UPDATE`s admit the same statuses (ADR-0018 §1) | `JdbcBookingTransitionTableIT` (every transition × every status; Docker-gated, so it fails the build only where Docker runs — CI) |
 | The view's `cancellable` and the guest cancel's refusal agree with `CANCEL_BY_GUEST`, status by status (ADR-0018 §1) | `ViewBookingServiceTest.onlyAConfirmedBookingIsCancellableWhileTheWindowIsOpen`, `CancelBookingServiceTest` (against the literal `BookingTransitionTest` pins) |
-| No Spring Security type inside `operator` — login machinery's checked half (RV-BE-11) | `OperatorAuthPlacementTests` |
-| No Spring Security type inside `customer` — login machinery's checked half (RV-BE-11) | `CustomerAuthPlacementTests` |
+| No Spring Security, Spring Session or mail (Spring Mail, Jakarta Mail, Angus Mail) type inside `operator`; OIDC/OAuth2 client types fall under Spring Security (RV-BE-11) | `OperatorAuthPlacementTests` |
+| No Spring Security, Spring Session or mail (Spring Mail, Jakarta Mail, Angus Mail) type inside `customer`; OIDC/OAuth2 client types fall under Spring Security (RV-BE-11) | `CustomerAuthPlacementTests` |
 | Mail listeners name their own bounded executors, never Boot's shared `applicationTaskExecutor` | `MailListenerExecutorArchitectureTest` |
 | `booking` listeners reaching `payment::api` run on the bounded refund pool | `RefundListenerExecutorArchitectureTest` |
 | Every self-configured worker pool carries `monitoring`'s MDC decorator | `WorkerContextArchitectureTest` |
