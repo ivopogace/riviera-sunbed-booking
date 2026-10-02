@@ -341,10 +341,10 @@ const CLS = {
                 type="button"
                 class="mt-4 block w-full cursor-pointer rounded-2xl border border-riv-cta-border bg-(image:--riv-cta-grad) p-[15px] text-center text-[15px] font-bold text-white shadow-[0_12px_28px_rgba(11,120,150,0.5),inset_0_1px_0_rgba(255,255,255,0.5)] [transition:filter_0.15s_ease] hover:enabled:brightness-[1.06] focus-visible:outline-[3px] focus-visible:outline-offset-2 focus-visible:outline-riv-accent-ink disabled:cursor-default disabled:opacity-70 motion-reduce:transition-none"
                 (click)="pay()"
-                [appBusy]="paying()"
+                [appBusy]="paying() || remounting()"
                 data-testid="pay-button"
               >
-                {{ paying() ? 'Processing…' : payLabel() }}
+                {{ paying() ? 'Processing…' : remounting() ? 'Loading…' : payLabel() }}
               </button>
             }
             @if (state() === 'processing') {
@@ -372,6 +372,8 @@ export class BookingPay {
   protected readonly state = signal<PayState>('mounting');
   protected readonly errorMessage = signal<string | undefined>(undefined);
   protected readonly paying = signal(false);
+  /** Try again is re-mounting a Payment Element that never mounted; the button stays, busy. */
+  protected readonly remounting = signal(false);
   /** A terminal failure — the poll saw a server-side CANCELLED, or the failure re-check
    *  found the booking unpayable: retrying the same PaymentIntent is futile, so the page
    *  offers the booking-status link and "start over" instead of "Pay". */
@@ -393,7 +395,10 @@ export class BookingPay {
       (this.state() === 'error' && !this.terminalError()),
   );
   protected readonly showPayButton = computed(
-    () => this.state() === 'ready' || (this.state() === 'error' && !this.terminalError()),
+    () =>
+      this.state() === 'ready' ||
+      this.remounting() ||
+      (this.state() === 'error' && !this.terminalError()),
   );
   /** The one announcement for the persistent live region; it mutates with the state so a screen
    *  reader hears each transition. `computed` is lazy, so the order the poll writes its two
@@ -438,23 +443,33 @@ export class BookingPay {
       return;
     }
     // Mount once the host element is in the DOM. The real gateway loads Stripe.js here.
-    afterNextRender({
-      write: async () => {
-        try {
-          this.checkout = await this.gateway.mountPaymentElement(
-            this.peHost()!.nativeElement,
-            this.booking!.clientSecret,
-          );
-          this.state.set('ready');
-        } catch (error) {
-          this.failCardStep(
-            error instanceof Error
-              ? error.message
-              : 'Could not load the payment form. Please try again.',
-          );
-        }
-      },
-    });
+    afterNextRender({ write: () => this.mountPaymentElement() });
+  }
+
+  /** Mounts the Payment Element; on failure the page offers Try again, which re-runs this. */
+  private async mountPaymentElement(): Promise<void> {
+    const host = this.peHost()!.nativeElement;
+    // A failed mount may have left a half-built element behind; mount into an empty host.
+    host.replaceChildren();
+    try {
+      this.checkout = await this.gateway.mountPaymentElement(host, this.booking!.clientSecret);
+      this.state.set('ready');
+    } catch (error) {
+      this.failCardStep(
+        error instanceof Error
+          ? error.message
+          : 'Could not load the payment form. Please try again.',
+      );
+    } finally {
+      this.remounting.set(false);
+    }
+  }
+
+  private async retryMount(): Promise<void> {
+    this.errorMessage.set(undefined);
+    this.remounting.set(true);
+    this.state.set('mounting');
+    await this.mountPaymentElement();
   }
 
   /**
@@ -500,14 +515,27 @@ export class BookingPay {
   }
 
   protected async pay(): Promise<void> {
-    // Guard re-entrancy: ignore a second tap once the card step is under way or done.
-    if (!this.checkout || this.state() === 'processing' || this.terminalError()) {
+    // Only from the card step's resting states: never re-entered while mounting or past the step.
+    const s = this.state();
+    if ((s !== 'ready' && s !== 'error') || this.terminalError()) {
+      return;
+    }
+    if (!this.checkout) {
+      // The element never mounted, so there is nothing to confirm: Try again is the mount itself.
+      await this.retryMount();
       return;
     }
     this.errorMessage.set(undefined);
     this.paying.set(true);
-    const { error } = await this.checkout.confirm();
-    this.paying.set(false);
+    let error: string | undefined;
+    try {
+      ({ error } = await this.checkout.confirm());
+    } catch {
+      // Stripe.js threw instead of resolving `{ error }` (an integration error): still retryable.
+      error = 'Your payment couldn’t be completed. Please try again.';
+    } finally {
+      this.paying.set(false);
+    }
     if (error) {
       // A client-side failure (decline / 3DS) is NOT a confirmation — show retry, do not poll.
       this.failCardStep(error);

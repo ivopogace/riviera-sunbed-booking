@@ -543,3 +543,58 @@ test('the pending view says the set is not held while the venue decides', async 
     'other guests can request it too',
   );
 });
+
+test('Stripe.js fails to load: Try again re-mounts the card form, then pays (#1286)', async ({
+  page,
+}) => {
+  // Fake Stripe whose mount fails like a blocked js.stripe.com, until the test clears the flag.
+  await page.addInitScript(() => {
+    const w = window as unknown as {
+      __RIVIERA_FAKE_STRIPE__?: boolean;
+      __RIVIERA_FAKE_STRIPE_MOUNT_FAIL__?: boolean;
+    };
+    w.__RIVIERA_FAKE_STRIPE__ = true;
+    w.__RIVIERA_FAKE_STRIPE_MOUNT_FAIL__ = true;
+  });
+  let phase: 'accepted' | 'paid' = 'accepted';
+  await page.route(new RegExp(`/api/bookings/${CODE}(\\?.*)?$`), (route) =>
+    route.fulfill({
+      json:
+        phase === 'accepted'
+          ? {
+              ...DETAIL_BASE,
+              status: 'AWAITING_PAYMENT',
+              payment: { clientSecret: 'pi_123_secret_abc', paymentIntentId: 'pi_123' },
+            }
+          : { ...DETAIL_BASE, status: 'CONFIRMED', requestExpiresAt: null },
+    }),
+  );
+
+  await page.goto(`/booking/${CODE}`);
+  await page.getByTestId('pay-now').click();
+  await expect(page).toHaveURL(/\/booking\/pay/);
+
+  // Still payable after the failure re-check → retry in place, never a dead end.
+  await expect(page.getByTestId('pay-error')).toContainText('failed to load');
+  const retry = page.getByTestId('pay-button');
+  await expect(retry).toHaveText(/Try again/);
+  await expect(page.getByTestId('fake-card-input')).toHaveCount(0);
+  await expectNoSeriousAxeViolations(page, 'payment page (mount failed)');
+
+  // The network comes back; Try again mounts the card form on the same, still-focused button.
+  await page.evaluate(() => {
+    delete (window as unknown as { __RIVIERA_FAKE_STRIPE_MOUNT_FAIL__?: boolean })
+      .__RIVIERA_FAKE_STRIPE_MOUNT_FAIL__;
+  });
+  await retry.focus();
+  await page.keyboard.press('Enter');
+  await expect(page.getByTestId('fake-card-input')).toBeVisible();
+  await expect(page.getByTestId('pay-error')).toHaveCount(0);
+  await expect(retry).toHaveText(/Pay/);
+  await expect(retry).toBeFocused();
+
+  // And the remounted element pays; confirmation still comes from the server poll (#8).
+  phase = 'paid';
+  await retry.click();
+  await expect(page.getByRole('heading', { name: /You.re booked/ })).toBeVisible();
+});
