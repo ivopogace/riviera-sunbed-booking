@@ -1,12 +1,17 @@
 package ai.riviera.platform.customer;
 
+import java.sql.Connection;
+import java.sql.PreparedStatement;
 import java.time.Duration;
 import java.time.Instant;
+
+import javax.sql.DataSource;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Import;
+import org.springframework.dao.DataAccessException;
 import org.springframework.jdbc.core.JdbcTemplate;
 
 import ai.riviera.platform.EnabledIfDockerAvailable;
@@ -21,6 +26,8 @@ import ai.riviera.platform.customer.vocabulary.ResetPasswordOutcome;
 import ai.riviera.platform.customer.vocabulary.VerifyEmailOutcome;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.junit.jupiter.api.Assertions.assertTimeoutPreemptively;
 
 /**
  * Verifies the account-recovery token store against real Postgres via Testcontainers — which
@@ -51,6 +58,9 @@ class CustomerAccountRecoveryIT {
 
 	@Autowired
 	JdbcTemplate jdbc;
+
+	@Autowired
+	DataSource dataSource;
 
 	@Test
 	void verifyEmail_firstRedeemsMarksVerified_secondAndExpiredFail() {
@@ -184,6 +194,28 @@ class CustomerAccountRecoveryIT {
 
 		assertThat(recovery.resetPassword("live-link-b", "{bcrypt}again"))
 				.as("the other link died with the reset").isInstanceOf(ResetPasswordOutcome.InvalidOrExpired.class);
+	}
+
+	/**
+	 * The reset issuance runs on the single recovery-mail drainer (#1336), so a held account lock must fail
+	 * it within its transaction timeout instead of stalling every queued recovery mail behind it.
+	 */
+	@Test
+	void resetIssuance_failsWithinItsTimeoutWhileTheAccountRowIsLocked() throws Exception {
+		CustomerAccountId id = register("reset-locked@example.com");
+		try (Connection holder = dataSource.getConnection()) {
+			holder.setAutoCommit(false);
+			try (PreparedStatement lock = holder.prepareStatement(
+					"SELECT id FROM customer_account WHERE id = ? FOR UPDATE")) {
+				lock.setLong(1, id.value());
+				lock.executeQuery().close();
+			}
+			assertTimeoutPreemptively(Duration.ofSeconds(30), () -> assertThatThrownBy(
+					() -> recovery.issuePasswordResetToken(id, "locked-hash", FUTURE))
+					.isInstanceOf(DataAccessException.class));
+			holder.rollback();
+		}
+		assertThat(recovery.issuePasswordResetToken(id, "unlocked-hash", FUTURE)).isTrue();
 	}
 
 	private CustomerAccountId register(String email) {

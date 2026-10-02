@@ -4,6 +4,7 @@ import java.net.URI;
 import java.time.Duration;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Optional;
 
 import ai.riviera.platform.monitoring.vocabulary.ObservabilityMetrics;
 
@@ -88,7 +89,7 @@ class MailKindTest {
 		TransactionalMailService service =
 				new TransactionalMailService(mailer, (kind, send) -> send.run(), suppressions, meters);
 		service.sendEmailVerification(EMAIL, LINK);
-		service.sendPasswordReset(EMAIL, LINK);
+		service.sendPasswordReset(EMAIL, () -> Optional.of(LINK));
 		service.sendOperatorApproved(EMAIL, LINK);
 	}
 

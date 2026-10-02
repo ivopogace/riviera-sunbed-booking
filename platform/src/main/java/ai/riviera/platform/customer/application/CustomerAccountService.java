@@ -121,8 +121,11 @@ class CustomerAccountService implements CustomerAccounts, CustomerAccountProvisi
 		return issue(accountId, TokenPurpose.VERIFY_EMAIL, tokenHash, expiresAt);
 	}
 
+	/** Bounds the reset issuance's lock wait and insert: it runs on the single recovery-mail drainer (#1336). */
+	private static final int RESET_TOKEN_ISSUE_TIMEOUT_SECONDS = 5;
+
 	@Override
-	@Transactional
+	@Transactional(timeout = RESET_TOKEN_ISSUE_TIMEOUT_SECONDS)
 	public boolean issuePasswordResetToken(CustomerAccountId accountId, String tokenHash, Instant expiresAt) {
 		return issue(accountId, TokenPurpose.RESET_PASSWORD, tokenHash, expiresAt);
 	}
