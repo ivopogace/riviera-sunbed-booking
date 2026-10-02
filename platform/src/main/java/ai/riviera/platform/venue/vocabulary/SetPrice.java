@@ -2,8 +2,8 @@ package ai.riviera.platform.venue.vocabulary;
 
 /**
  * The set-price rule every venue price write obeys: integer minor units of at least
- * {@link #MIN_PRICE_MINOR} in {@link #CURRENCY}, the v1 collection currency (invariant #5). The V76
- * {@code set_position_price_check} and {@code set_position_price_currency_check} CHECKs are its database
+ * {@link #MIN_PRICE_MINOR} in {@link #CURRENCY}, the v1 collection currency (invariant #5). The V77
+ * {@code set_position_price_check} and V76 {@code set_position_price_currency_check} CHECKs are its database
  * twin. A breach throws {@link IllegalArgumentException} ({@code 400 INVALID_REQUEST}) naming the field,
  * never the value.
  */
