@@ -18,6 +18,7 @@ import org.springframework.test.web.servlet.ResultActions;
 import org.springframework.test.web.servlet.request.AbstractMockHttpServletRequestBuilder;
 
 import java.net.URI;
+import java.nio.charset.StandardCharsets;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -840,6 +841,29 @@ class RateLimitFilterTest {
 				loginBodyOfSize("username", uniqueUsername(), 9000)));
 		expectBodyTooLarge(chunkedLogin("/api/auth/customer/login", "10.45.0.2",
 				loginBodyOfSize("email", uniqueEmail(), 9000)));
+	}
+
+	@Test
+	void aLatin1LoginBodyDrawsOnThePerUsernameBudgetAsTheControllerDecodesIt() throws Exception {
+		byte[] body = "{\"username\": \"%s\", \"password\": \"caf\u00e9\"}".formatted(uniqueUsername())
+				.getBytes(StandardCharsets.ISO_8859_1);
+		MediaType latin1Json = new MediaType(MediaType.APPLICATION_JSON, StandardCharsets.ISO_8859_1);
+		for (int i = 1; i <= 2; i++) {
+			mvc.perform(post("/api/auth/operator/login").with(fromIp("10.46.0." + i)).with(csrf())
+							.contentType(latin1Json).content(body))
+					.andExpect(status().isUnauthorized());
+		}
+		mvc.perform(post("/api/auth/operator/login").with(fromIp("10.46.0.3")).with(csrf())
+						.contentType(latin1Json).content(body))
+				.andExpect(status().isTooManyRequests());
+	}
+
+	@Test
+	void aLoginWithAnUnknownCharsetNeverReachesAuthentication() throws Exception {
+		mvc.perform(post("/api/auth/operator/login").with(fromIp("10.47.0.1")).with(csrf())
+						.contentType("application/json;charset=no-such-charset")
+						.content("{\"username\": \"%s\", \"password\": \"nope\"}".formatted(uniqueUsername())))
+				.andExpect(result -> assertEquals(415, result.getResponse().getStatus()));
 	}
 
 	/** A POST whose request reports no Content-Length, as a chunked body does. */

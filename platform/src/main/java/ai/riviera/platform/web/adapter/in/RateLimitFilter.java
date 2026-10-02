@@ -24,7 +24,9 @@ import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.InvalidMediaTypeException;
 import org.springframework.http.MediaType;
+import org.springframework.http.server.ServletServerHttpRequest;
 import org.springframework.util.AntPathMatcher;
 import org.springframework.web.filter.OncePerRequestFilter;
 
@@ -114,9 +116,16 @@ final class RateLimitFilter extends OncePerRequestFilter {
 
 	/**
 	 * Upper bound on a login body, read here whatever Content-Length declares: a real one is ~60 bytes. A
-	 * larger body is refused with {@code 413}, so no login reaches authentication unbudgeted (#1288).
+	 * larger body is refused with {@code 413}, so no body escapes the per-identity budget by its size or framing.
 	 */
 	private static final int MAX_CACHED_BODY_BYTES = 8 * 1024;
+
+	/**
+	 * The charsets Jackson decodes from raw bytes; any other declared charset is decoded first, as Spring's
+	 * JSON converter does, so the filter reads the same identity the controller binds.
+	 */
+	private static final Set<String> BYTE_DECODED_CHARSETS =
+			Set.of("UTF-8", "UTF-16", "UTF-16BE", "UTF-16LE", "UTF-32", "UTF-32BE", "UTF-32LE");
 
 	/** The failed-authentication status — the only outcome that net-spends a per-identity token. */
 	private static final int FAILED_AUTH_STATUS = HttpStatus.UNAUTHORIZED.value();
@@ -402,7 +411,7 @@ final class RateLimitFilter extends OncePerRequestFilter {
 		}
 		byte[] body = buffered.get();
 		HttpServletRequest cached = new CachedBodyRequest(request, body);
-		String identityKey = identityKeyOf(login, body);
+		String identityKey = identityKeyOf(login, body, request);
 		if (identityKey == null) {
 			chain.doFilter(cached, response); // no identity to key on — the controller will reject a bad body
 			return;
@@ -438,8 +447,8 @@ final class RateLimitFilter extends OncePerRequestFilter {
 	 * unparseable. The customer email goes through {@link Emails#normalize}; the operator username is raw.
 	 * Hashing keeps any valid username out of the tracking map and the logs.
 	 */
-	private String identityKeyOf(LoginEndpoint login, byte[] body) {
-		String raw = readJsonField(body, login.identityField);
+	private String identityKeyOf(LoginEndpoint login, byte[] body, HttpServletRequest request) {
+		String raw = readJsonField(body, request, login.identityField);
 		if (raw == null || raw.isBlank()) {
 			return null;
 		}
@@ -448,17 +457,28 @@ final class RateLimitFilter extends OncePerRequestFilter {
 	}
 
 	/**
-	 * The scalar value of {@code field} as a string, or {@code null}. Any scalar node, not just a string:
-	 * DTO binding coerces {@code "username": 123} to a {@code String}, so it must key the same bucket.
+	 * The scalar value of {@code field} as a string, or {@code null}, decoded as the controller decodes it. Any
+	 * scalar node: DTO binding coerces {@code "username": 123} to a {@code String}, so it keys the same bucket.
 	 */
-	private String readJsonField(byte[] body, String field) {
+	private String readJsonField(byte[] body, HttpServletRequest request, String field) {
 		try {
-			JsonNode value = objectMapper.readTree(body).path(field);
+			Charset charset = bodyCharset(request);
+			JsonNode tree = BYTE_DECODED_CHARSETS.contains(charset.name())
+					? objectMapper.readTree(body)
+					: objectMapper.readTree(new String(body, charset));
+			JsonNode value = tree.path(field);
 			return value.isValueNode() && !value.isNull() ? value.asString() : null;
 		}
-		catch (JacksonException malformedBody) {
+		catch (JacksonException | InvalidMediaTypeException unreadableBody) {
 			return null;
 		}
+	}
+
+	/** The charset Spring's JSON converter decodes the body with, resolved the same way; UTF-8 if none. */
+	private static Charset bodyCharset(HttpServletRequest request) {
+		MediaType contentType = new ServletServerHttpRequest(request).getHeaders().getContentType();
+		Charset declared = contentType != null ? contentType.getCharset() : null;
+		return declared != null ? declared : StandardCharsets.UTF_8;
 	}
 
 	/**
