@@ -77,6 +77,13 @@ row reads live for a booked guest today), and nothing for a future move mail to 
    an exempt statement is therefore a named constant, never an inline literal. The port is not split
    (owner's decision on #1394); the class split stands on its own terms: two conversations reading
    one table with opposite intent.
+   *Amended 2026-10-03 (#1426):* the sentence above overstates the scan. What is exempt is the
+   *value* of each allow-listed constant, `SET_BOOKING_INFO_SELECT` and `VENUES_OF_SETS_LOCK`; the
+   name picks which fields' values are read, but `RetiredSetExclusionArchitectureTests` matches a
+   statement by its text in the constant pool. javac pools a same-text inline literal with the
+   constant, so such a literal shares the exempt entry and passes; the test does not reject it, and
+   review is what catches it. The vacuity guard pins every allow-list name: each must be a constant
+   of a `SetBookingFacts` implementor that reads the bare table, so a stale entry fails the build.
 
 ## Considered options
 
