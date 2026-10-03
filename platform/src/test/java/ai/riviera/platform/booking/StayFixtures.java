@@ -176,8 +176,8 @@ final class StayFixtures {
 	}
 
 	/**
-	 * Waits for the async listeners (payout, mail) on this venue's own events to finish writing, then deletes
-	 * in dependency order. Another class's pending publication never holds it up (#1444).
+	 * Waits until {@link #pendingPublicationsOf} this venue is zero, so the async listeners (payout, mail) have
+	 * written, then deletes in dependency order.
 	 */
 	static void cleanup(JdbcClient jdbc, long venue) {
 		org.awaitility.Awaitility.await().atMost(java.time.Duration.ofSeconds(10))

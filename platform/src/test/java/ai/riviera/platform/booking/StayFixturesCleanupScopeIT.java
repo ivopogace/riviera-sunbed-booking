@@ -31,9 +31,10 @@ import static ai.riviera.platform.booking.StayFixtures.firstDay;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 /**
- * {@link StayFixtures#cleanup} waits only for the publications naming its own venue's bookings or stays: a
- * pending publication another class left in the shared registry never holds it up (#1444), while one of its
- * own does. Payloads come from the registry's own serializer. Real Postgres via Testcontainers.
+ * {@link StayFixtures#cleanup} waits only on {@link StayFixtures#pendingPublicationsOf}: a pending publication
+ * another class left in the shared registry neither counts nor holds the cleanup up (#1444), while one naming
+ * the venue's booking or stay counts. Payloads come from the registry's own serializer. Real Postgres via
+ * Testcontainers.
  */
 @EnabledIfDockerAvailable
 @Import(TestcontainersConfiguration.class)
@@ -76,7 +77,7 @@ class StayFixturesCleanupScopeIT {
 	}
 
 	@Test
-	void aPendingPublicationNamingTheVenuesBookingOrStayIsWaitedFor() {
+	void aPendingPublicationNamingTheVenuesBookingOrStayCounts() {
 		Venue venue = venue();
 		SeededStay stay = seedStay(venue, "SCOPE-OWN");
 		long booking = stay.stretches().get(0);
