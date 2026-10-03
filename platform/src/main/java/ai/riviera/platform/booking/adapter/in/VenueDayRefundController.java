@@ -20,8 +20,9 @@ import ai.riviera.platform.venue.vocabulary.VenueId;
  * The operator's venue day refund (ADR-0027): {@code POST /api/venues/{venueId}/bookings/{code}/day-refund?date=}
  * refunds that guest's that day through the {@link RefundVenueDay} port (#11), the amount server-decided
  * (#10). {@code date} is required: an implicit today could refund the wrong day. The code travels in the
- * path as check-in's does (ADR-0006) and never comes back in a body (invariant #7). Operator-gated: {@code SecurityConfig} matches this POST to {@code OPERATOR}
- * before the public venue rules; ownership is the service's (#13).
+ * path as check-in's does (ADR-0006) and never comes back in a body (invariant #7). Operator-gated:
+ * {@code SecurityConfig} matches this POST to {@code OPERATOR} before the public venue rules; ownership is the
+ * service's (#13).
  */
 @RestController
 @RequestMapping("/api/venues")

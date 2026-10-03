@@ -743,6 +743,18 @@ class RateLimitFilterTest {
 				.andExpect(jsonPath("$.code").value("RATE_LIMITED"));
 	}
 
+	@Test
+	void contentAfterTheLoginObjectIsRefusedByTheControllerSoItsUnkeyedPassBypassesNothing() throws Exception {
+		// The filter keys no identity on trailing content; that is safe only while binding refuses it too.
+		String username = uniqueUsername();
+		for (int i = 1; i <= 3; i++) {
+			mvc.perform(post("/api/auth/operator/login").with(fromIp("10.50.0." + i)).with(csrf())
+							.contentType(MediaType.APPLICATION_JSON)
+							.content("{\"username\": \"%s\", \"password\": \"nope\"} {}".formatted(username)))
+					.andExpect(status().isBadRequest());
+		}
+	}
+
 	/** An operator login whose {@code username} is the raw JSON {@code value}, number or string. */
 	private ResultActions rawUsernameLogin(String ip, String value) throws Exception {
 		return mvc.perform(post("/api/auth/operator/login").with(fromIp(ip)).with(csrf())

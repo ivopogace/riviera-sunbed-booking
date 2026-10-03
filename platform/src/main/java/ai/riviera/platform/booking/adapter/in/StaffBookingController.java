@@ -67,7 +67,7 @@ class StaffBookingController {
 	/**
 	 * Stamps the scanned or typed code's guest as attended today, exactly once. The code travels in
 	 * the path (ADR-0006) and never comes back: the success view carries set + date, and every
-	 * problem body a date-only detail (invariant #7).
+	 * problem body carries a date-only detail (invariant #7).
 	 */
 	@PostMapping("/{venueId}/bookings/{code}/check-in")
 	ResponseEntity<?> checkIn(Authentication authentication, @PathVariable long venueId,
