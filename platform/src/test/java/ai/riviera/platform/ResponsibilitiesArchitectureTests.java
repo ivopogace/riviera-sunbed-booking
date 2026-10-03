@@ -4,7 +4,6 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
@@ -36,6 +35,7 @@ import static ai.riviera.platform.ArchitectureTestSupport.moduleOf;
 import static ai.riviera.platform.ArchitectureTestSupport.surfaceOf;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
@@ -172,18 +172,29 @@ class ResponsibilitiesArchitectureTests {
 	private static final Pattern SQL_LITERAL_OR_COMMENT =
 			Pattern.compile("'(?:[^']|'')*'|--[^\\n]*|/\\*.*?\\*/", Pattern.DOTALL);
 
-	private static final String TABLE_NAME = "(?:\"?public\"?\\.)?\"?\\w+\"?";
+	/** A bare or quoted identifier; a quoted one may hold any character, {@code ""} escaping a quote. */
+	private static final String IDENTIFIER = "(?:\\w+|\"(?:[^\"]|\"\")*\")";
+
+	private static final String TABLE_NAME = "(?:" + IDENTIFIER + "\\s*\\.\\s*)?" + IDENTIFIER;
+
+	private static final Pattern IDENTIFIER_PART = Pattern.compile(IDENTIFIER);
+
+	private static final Pattern QUALIFIED_NAME = Pattern.compile(TABLE_NAME);
 
 	/** Table DDL in statement order; a rename needs {@code RENAME TO} straight after the name, so
 	 * {@code RENAME [COLUMN] a TO b} and {@code RENAME CONSTRAINT} never match. */
 	private static final Pattern TABLE_DDL = Pattern.compile("(?i)\\b(?:"
-			+ "CREATE\\s+TABLE\\s+(?:IF\\s+NOT\\s+EXISTS\\s+)?(?<created>" + TABLE_NAME + ")"
+			+ "CREATE\\s+(?<unmodelled>(?:(?:GLOBAL|LOCAL)\\s+)?(?:TEMP|TEMPORARY)|UNLOGGED)\\s+TABLE\\b"
+			+ "|CREATE\\s+TABLE\\s+(?:IF\\s+NOT\\s+EXISTS\\s+)?(?<created>" + TABLE_NAME + ")"
 			+ "|DROP\\s+TABLE\\s+(?:IF\\s+EXISTS\\s+)?(?<dropped>" + TABLE_NAME
 			+ "(?:\\s*,\\s*" + TABLE_NAME + ")*)"
 			+ "|ALTER\\s+TABLE\\s+(?:IF\\s+EXISTS\\s+)?(?:ONLY\\s+)?(?<renamedFrom>" + TABLE_NAME + ")"
 			+ "\\s+RENAME\\s+TO\\s+(?<renamedTo>" + TABLE_NAME + "))");
 
-	private static final String PUBLIC_SCHEMA = "public.";
+	private static final String PUBLIC_SCHEMA = "public";
+
+	/** A name PostgreSQL stores as written whether quoted or not: lower case, no special character. */
+	private static final Pattern FOLDED_NAME = Pattern.compile("[a-z_][a-z0-9_]*");
 
 	/** The per-(set, date) source-of-truth table owned by {@code availability} (invariant #2). */
 	private static final String AVAILABILITY_TABLE = "set_availability";
@@ -692,13 +703,47 @@ class ResponsibilitiesArchitectureTests {
 				new Migration(MigrationVersion.fromVersion("2"), """
 						CREATE TABLE gone (id BIGINT);
 						CREATE TABLE IF NOT EXISTS recreated (id BIGINT);
-						CREATE TABLE "Old_Name" (id BIGINT, label TEXT);
+						CREATE TABLE "old_name" (id BIGINT, label TEXT);
 						CREATE TABLE kept (id BIGINT);
 						"""),
 				new Migration(MigrationVersion.fromVersion("9"), """
 						CREATE TABLE versioned (id BIGINT);
 						""")));
 		assertEquals(Set.of("after_literal", "kept", "new_name", "recreated"), tables);
+	}
+
+	/** TEMP and UNLOGGED tables are refused, not read as {@code CREATE TABLE} or skipped. */
+	@Test
+	void theSchemaWalkRefusesTempAndUnloggedTables() {
+		assertRefused("CREATE UNLOGGED TABLE scratch (id BIGINT)", "UNLOGGED tables are not modelled");
+		assertRefused("CREATE TEMP TABLE scratch (id BIGINT)", "TEMP tables are not modelled");
+		assertRefused("CREATE GLOBAL  TEMPORARY TABLE scratch (id BIGINT)", "GLOBAL TEMPORARY tables are not modelled");
+	}
+
+	/** A schema other than {@code public}, bare or quoted, is refused wherever a table name sits. */
+	@Test
+	void theSchemaWalkRefusesANonPublicSchema() {
+		assertRefused("CREATE TABLE audit.trail (id BIGINT)", "schema 'audit' is not public");
+		assertRefused("DROP TABLE IF EXISTS kept, other . gone", "schema 'other' is not public");
+		assertRefused("ALTER TABLE kept RENAME TO \"PUBLIC\".renamed", "schema 'PUBLIC' is not public");
+	}
+
+	/** A quoted name PostgreSQL keeps case-sensitive is refused, not folded onto its lower-case twin. */
+	@Test
+	void theSchemaWalkRefusesACaseSensitiveQuotedName() {
+		assertRefused("CREATE TABLE \"Old_Name\" (id BIGINT)", "quoted name 'Old_Name' is case-sensitive");
+		assertRefused("ALTER TABLE kept RENAME TO public.\"Kept\"", "quoted name 'Kept' is case-sensitive");
+	}
+
+	private static void assertRefused(String statement, String why) {
+		List<Migration> migrations = List.of(
+				new Migration(MigrationVersion.fromVersion("1"), "CREATE TABLE kept (id BIGINT);"),
+				new Migration(MigrationVersion.fromVersion("7"), "CREATE TABLE before (id BIGINT);\n"
+						+ statement + ";\nCREATE TABLE after (id BIGINT);"));
+		IllegalStateException refusal = assertThrows(IllegalStateException.class, () -> tablesAfter(migrations));
+		assertTrue(refusal.getMessage().contains("V7's \"" + statement.replaceAll("\\s+", " ") + "\"")
+						&& refusal.getMessage().contains(why),
+				"expected a refusal naming V7, the statement and \"" + why + "\", but got: " + refusal.getMessage());
 	}
 
 	/** A non-owner write of each shape is rejected; a longer table name, a package string, a read
@@ -799,29 +844,77 @@ class ResponsibilitiesArchitectureTests {
 	}
 
 	/** The tables that exist after the last migration: create, drop and rename applied in version
-	 * order, then statement order; DDL in a {@code DO $$} body counts as if it ran. */
+	 * order, then statement order; DDL in a {@code DO $$} body counts as if it ran. A form the walk
+	 * does not model (TEMP/UNLOGGED, a non-public schema, a case-sensitive quoted name) is refused. */
 	static Set<String> tablesAfter(List<Migration> migrations) {
 		Set<String> tables = new TreeSet<>();
 		for (Migration migration : migrations.stream().sorted(Comparator.comparing(Migration::version)).toList()) {
-			Matcher ddl = TABLE_DDL.matcher(SQL_LITERAL_OR_COMMENT.matcher(migration.sql()).replaceAll(" "));
+			String sql = SQL_LITERAL_OR_COMMENT.matcher(migration.sql()).replaceAll(" ");
+			Matcher ddl = TABLE_DDL.matcher(sql);
 			while (ddl.find()) {
-				if (ddl.group("created") != null) {
-					tables.add(bareName(ddl.group("created")));
+				SchemaStatement statement = new SchemaStatement(migration, sql, ddl.start());
+				if (ddl.group("unmodelled") != null) {
+					throw statement.refused(ddl.group("unmodelled").toUpperCase(Locale.ROOT).replaceAll("\\s+", " ")
+							+ " tables are not modelled");
+				} else if (ddl.group("created") != null) {
+					tables.add(statement.bareName(ddl.group("created")));
 				} else if (ddl.group("dropped") != null) {
-					Arrays.stream(ddl.group("dropped").split(",")).map(String::strip)
-							.map(ResponsibilitiesArchitectureTests::bareName).forEach(tables::remove);
+					splitNames(ddl.group("dropped")).stream().map(statement::bareName).forEach(tables::remove);
 				} else {
-					tables.remove(bareName(ddl.group("renamedFrom")));
-					tables.add(bareName(ddl.group("renamedTo")));
+					tables.remove(statement.bareName(ddl.group("renamedFrom")));
+					tables.add(statement.bareName(ddl.group("renamedTo")));
 				}
 			}
 		}
 		return tables;
 	}
 
-	private static String bareName(String qualified) {
-		String name = qualified.replace("\"", "").toLowerCase(Locale.ROOT);
-		return name.startsWith(PUBLIC_SCHEMA) ? name.substring(PUBLIC_SCHEMA.length()) : name;
+	/** The comma-separated names of a {@code DROP TABLE}, a comma inside quotes kept in its name. */
+	private static List<String> splitNames(String names) {
+		List<String> split = new ArrayList<>();
+		Matcher name = QUALIFIED_NAME.matcher(names);
+		while (name.find()) {
+			split.add(name.group());
+		}
+		return split;
+	}
+
+	/** The statement around one table DDL match, named in a refusal. */
+	private record SchemaStatement(Migration migration, String sql, int at) {
+
+		/** The table name as the walk keys it, refusing a non-public schema or a case-sensitive quoted name. */
+		String bareName(String qualified) {
+			List<String> parts = identifiers(qualified);
+			if (parts.size() == 2 && !PUBLIC_SCHEMA.equals(parts.getFirst())) {
+				throw refused("schema '" + parts.getFirst() + "' is not public");
+			}
+			String name = parts.getLast();
+			if (!FOLDED_NAME.matcher(name).matches()) {
+				throw refused("quoted name '" + name + "' is case-sensitive or not a plain identifier");
+			}
+			return name;
+		}
+
+		IllegalStateException refused(String why) {
+			int start = sql.lastIndexOf(';', at) + 1;
+			int end = sql.indexOf(';', at);
+			String text = sql.substring(start, end < 0 ? sql.length() : end).strip().replaceAll("\\s+", " ");
+			return new IllegalStateException("the schema walk refuses V" + migration.version() + "'s \""
+					+ text + "\": " + why + " (RESPONSIBILITIES.md § Known scan limits)");
+		}
+
+		/** Each part folded as PostgreSQL does: an unquoted one lower-cased, a quoted one kept as written. */
+		private static List<String> identifiers(String qualified) {
+			List<String> parts = new ArrayList<>();
+			Matcher part = IDENTIFIER_PART.matcher(qualified);
+			while (part.find()) {
+				String identifier = part.group();
+				parts.add(identifier.startsWith("\"")
+						? identifier.substring(1, identifier.length() - 1).replace("\"\"", "\"")
+						: identifier.toLowerCase(Locale.ROOT));
+			}
+			return parts;
+		}
 	}
 
 	private static List<String> stayTableViolations(JavaClasses classes, String base) {
