@@ -626,4 +626,140 @@ describe('BookingPay', () => {
     );
     httpMock.verify();
   });
+
+  describe('focus after a transition that removes the focused control (#1410)', () => {
+    function byTestId(fixture: ComponentFixture<BookingPay>, id: string): HTMLElement | null {
+      return (fixture.nativeElement as HTMLElement).querySelector<HTMLElement>(
+        `[data-testid="${id}"]`,
+      );
+    }
+
+    async function render(fixture: ComponentFixture<BookingPay>): Promise<void> {
+      fixture.detectChanges();
+      await fixture.whenStable();
+    }
+
+    function expectFocusOnTitle(fixture: ComponentFixture<BookingPay>, text: string): void {
+      const title = byTestId(fixture, 'pay-title');
+      expect(title?.textContent).toContain(text);
+      expect(document.activeElement).toBe(title);
+    }
+
+    /** Pay pressed on a declined card: the page sits in retry-in-place with Try again focused. */
+    async function declinedWithTryAgainFocused(gateway: FakeGateway) {
+      gateway.confirmResult = { error: 'Your card was declined.' };
+      const ctx = await setup(gateway);
+      byTestId(ctx.fixture, 'pay-button')!.focus();
+      await ctx.comp.pay();
+      await render(ctx.fixture);
+      return ctx;
+    }
+
+    it('Pay → processing focuses the processing heading', async () => {
+      const { comp, fixture } = await setup(new FakeGateway());
+      byTestId(fixture, 'pay-button')!.focus();
+
+      await comp.pay();
+      await render(fixture);
+
+      expect(byTestId(fixture, 'pay-button')).toBeNull();
+      expectFocusOnTitle(fixture, 'Confirming your booking');
+    });
+
+    it('Try again → processing focuses the processing heading', async () => {
+      const gateway = new FakeGateway();
+      const { comp, fixture, httpMock } = await declinedWithTryAgainFocused(gateway);
+      httpMock.expectOne(STATUS_URL).flush(DETAIL);
+
+      gateway.confirmResult = {};
+      await comp.pay();
+      await render(fixture);
+
+      expectFocusOnTitle(fixture, 'Confirming your booking');
+    });
+
+    it('a retry-in-place error keeps focus on the surviving Try again button', async () => {
+      const { fixture, httpMock } = await declinedWithTryAgainFocused(new FakeGateway());
+      httpMock.expectOne(STATUS_URL).flush(DETAIL);
+      await render(fixture);
+
+      expect(document.activeElement).toBe(byTestId(fixture, 'pay-button'));
+    });
+
+    describe('poll legs', () => {
+      afterEach(() => freezeClock());
+
+      async function processing() {
+        const ctx = await setup(new FakeGateway());
+        byTestId(ctx.fixture, 'pay-button')!.focus();
+        vi.useFakeTimers();
+        await ctx.comp.pay();
+        await render(ctx.fixture);
+        await vi.advanceTimersByTimeAsync(0);
+        return ctx;
+      }
+
+      it('poll CONFIRMED focuses the confirmed heading', async () => {
+        const { fixture, httpMock } = await processing();
+
+        httpMock.expectOne(STATUS_URL).flush({ ...DETAIL, status: 'CONFIRMED' });
+        await render(fixture);
+
+        expectFocusOnTitle(fixture, 'You’re booked.');
+      });
+
+      it('poll CANCELLED focuses the terminal heading', async () => {
+        const { fixture, httpMock } = await processing();
+
+        httpMock.expectOne(STATUS_URL).flush({ ...DETAIL, status: 'CANCELLED' });
+        await render(fixture);
+
+        expectFocusOnTitle(fixture, 'Payment couldn’t be completed');
+      });
+
+      it('the poll window lapsing focuses the awaiting heading', async () => {
+        const { comp, fixture, httpMock } = await processing();
+
+        while (comp.state() !== 'awaiting') {
+          httpMock
+            .match(STATUS_URL)
+            .forEach((r) => r.flush({ ...DETAIL, status: 'AWAITING_PAYMENT' }));
+          await vi.advanceTimersByTimeAsync(1500);
+        }
+        await render(fixture);
+
+        expectFocusOnTitle(fixture, 'Payment received');
+      });
+    });
+
+    it('a re-check CONFIRMED focuses the confirmed heading', async () => {
+      const { fixture, httpMock } = await declinedWithTryAgainFocused(new FakeGateway());
+
+      httpMock.expectOne(STATUS_URL).flush({ ...DETAIL, status: 'CONFIRMED' });
+      await render(fixture);
+
+      expectFocusOnTitle(fixture, 'You’re booked.');
+    });
+
+    it('a terminal re-check focuses the terminal heading', async () => {
+      const { fixture, httpMock } = await declinedWithTryAgainFocused(new FakeGateway());
+
+      httpMock.expectOne(STATUS_URL).flush({ ...DETAIL, status: 'CANCELLED' });
+      await render(fixture);
+
+      expect(byTestId(fixture, 'pay-button')).toBeNull();
+      expectFocusOnTitle(fixture, 'Payment couldn’t be completed');
+    });
+
+    it('a terminal re-check leaves focus on the Cancel link it keeps', async () => {
+      const { fixture, httpMock } = await declinedWithTryAgainFocused(new FakeGateway());
+      const cancel = byTestId(fixture, 'pay-cancel')!;
+      cancel.focus();
+
+      httpMock.expectOne(STATUS_URL).flush({ ...DETAIL, status: 'CANCELLED' });
+      await render(fixture);
+
+      expect(document.activeElement).toBe(cancel);
+    });
+  });
 });

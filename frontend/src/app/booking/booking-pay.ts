@@ -19,6 +19,7 @@ import { formatStay } from '../shared/booking-date-label';
 import { formatMoney } from '../shared/money';
 import { PanelGlass } from '../shared/panel-glass';
 import { BusyAction } from '../shared/busy-action';
+import { focusMover } from '../shared/focus-after-render';
 import { WithheldEmailNotice } from './withheld-email-notice';
 import { BookingService } from './booking.service';
 import { CancellationTermsNote } from './cancellation-terms-note';
@@ -95,7 +96,7 @@ const CLS = {
     </output>
     @if (state() === 'missing') {
       <section [class]="cls.standalone" appCardGlass aria-labelledby="pay-title">
-        <h1 [class]="cls.h1" id="pay-title">No payment in progress</h1>
+        <h1 [class]="cls.h1" id="pay-title" data-testid="pay-title">No payment in progress</h1>
         <p [class]="cls.lead">
           Your payment session isn’t available here anymore. Please start a new booking.
         </p>
@@ -119,12 +120,12 @@ const CLS = {
           }
         </div>
         @if (state() === 'confirmed') {
-          <h1 [class]="cls.h1" id="pay-title">You’re booked.</h1>
+          <h1 [class]="cls.h1" id="pay-title" data-testid="pay-title">You’re booked.</h1>
           <p [class]="cls.lead">
             Your payment is complete. Show this code to staff when you arrive.
           </p>
         } @else {
-          <h1 [class]="cls.h1" id="pay-title">Payment received</h1>
+          <h1 [class]="cls.h1" id="pay-title" data-testid="pay-title">Payment received</h1>
           <p [class]="cls.lead">
             We’ve received your payment and are waiting for final confirmation. This can take a
             moment — your booking is saved under the code below, and you can check it any time.
@@ -211,7 +212,9 @@ const CLS = {
                     class="mb-[18px] inline-block h-13 w-13 animate-[pay-spin_0.8s_linear_infinite] rounded-full border-4 border-riv-accent-track border-t-riv-accent-strong motion-reduce:animate-none"
                     aria-hidden="true"
                   ></span>
-                  <h1 [class]="cls.h1" id="pay-title">Confirming your booking…</h1>
+                  <h1 [class]="cls.h1" id="pay-title" data-testid="pay-title">
+                    Confirming your booking…
+                  </h1>
                   <p [class]="cls.lead">
                     Your payment went through. We’re waiting for the confirmation from our payment
                     provider — this takes just a moment. Please don’t close this page.
@@ -226,9 +229,13 @@ const CLS = {
                   >
                     <app-cross-icon />
                   </div>
-                  <h1 [class]="cls.h1" id="pay-title">Payment couldn’t be completed</h1>
+                  <h1 [class]="cls.h1" id="pay-title" data-testid="pay-title">
+                    Payment couldn’t be completed
+                  </h1>
                 } @else {
-                  <h1 [class]="cls.h1" id="pay-title">Complete your payment</h1>
+                  <h1 [class]="cls.h1" id="pay-title" data-testid="pay-title">
+                    Complete your payment
+                  </h1>
                   <p [class]="cls.lead">
                     @if (outcomeUnknown()) {
                       We couldn’t finish the payment. Check the details and try again below.
@@ -239,7 +246,9 @@ const CLS = {
                 }
               }
               @default {
-                <h1 [class]="cls.h1" id="pay-title">Complete your payment</h1>
+                <h1 [class]="cls.h1" id="pay-title" data-testid="pay-title">
+                  Complete your payment
+                </h1>
                 <p [class]="cls.lead">
                   Enter your card to confirm the booking. Payments are processed securely by Stripe
                   — Riviera never sees your card number.
@@ -372,6 +381,9 @@ export class BookingPay {
   private readonly gateway = inject(StripePaymentGateway);
   private readonly destroyRef = inject(DestroyRef);
   private readonly peHost = viewChild<ElementRef<HTMLElement>>('peHost');
+  /** Called before a swap off the card step or a poll's answer: if the render tears down the
+   *  focused control, the new state's heading takes focus (WCAG 2.4.3). */
+  private readonly focusTitleIfLost = focusMover({ onlyIfLost: true });
 
   protected readonly state = signal<PayState>('mounting');
   protected readonly errorMessage = signal<string | undefined>(undefined);
@@ -511,12 +523,14 @@ export class BookingPay {
           // The webhook beat the client's error report — the booking is genuinely paid.
           this.errorMessage.set(undefined);
           this.emailWithheld.set(detail.emailWithheld);
+          this.focusTitleIfLost('pay-title');
           this.state.set('confirmed');
           return;
         }
         this.errorMessage.set(
           'This booking can no longer be paid — its status changed while this page was open.',
         );
+        this.focusTitleIfLost('pay-title');
         this.terminalError.set(true);
         this.state.set('error');
       });
@@ -562,6 +576,7 @@ export class BookingPay {
       return;
     }
     // The card step finished. Confirmation is the backend's call (invariant #8) — start polling.
+    this.focusTitleIfLost('pay-title');
     this.state.set('processing');
     this.startPolling();
   }
@@ -578,6 +593,7 @@ export class BookingPay {
       .subscribe((detail) => {
         if (detail?.status === 'CONFIRMED') {
           this.emailWithheld.set(detail.emailWithheld);
+          this.focusTitleIfLost('pay-title');
           this.state.set('confirmed');
           this.pollSub?.unsubscribe();
         } else if (detail?.status === 'CANCELLED') {
@@ -586,12 +602,14 @@ export class BookingPay {
           this.errorMessage.set(
             'Your payment didn’t go through, so the booking was cancelled. Please try booking again.',
           );
+          this.focusTitleIfLost('pay-title');
           this.terminalError.set(true);
           this.state.set('error');
           this.pollSub?.unsubscribe();
         } else if (++this.polls >= maxPolls) {
           // The webhook hasn't landed in time. Never claim "confirmed" — the booking is saved and
           // the user can re-check it by code.
+          this.focusTitleIfLost('pay-title');
           this.state.set('awaiting');
           this.pollSub?.unsubscribe();
         }
