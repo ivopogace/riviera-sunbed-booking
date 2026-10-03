@@ -4,7 +4,9 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
@@ -16,6 +18,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Stream;
 
+import org.flywaydb.core.api.MigrationVersion;
 import org.junit.jupiter.api.Test;
 
 import com.tngtech.archunit.core.domain.Dependency;
@@ -105,7 +108,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  *       {@code payment}, {@code venue}, {@code operator}) never matches a package string, prose, a
  *       read or a longer table name. An {@code ON CONFLICT} clause belongs to its {@code INSERT INTO},
  *       which already names the target. The map is held to the Flyway schema both ways: every table
- *       a migration creates is owned or a named framework table, and every owner writes its table.
+ *       the latest migration leaves is owned or a named framework table, and every owner writes it.
  *       Rules 1, 4 and 6–10 stay as the stronger "touch" form (reads too) for their tables; they and
  *       rule 5 take their module from this map, so no two rules disagree on who owns a table.</li>
  * </ol>
@@ -163,8 +166,24 @@ class ResponsibilitiesArchitectureTests {
 
 	private static final Path MIGRATIONS = Path.of("src/main/resources/db/migration");
 
-	private static final Pattern CREATE_TABLE =
-			Pattern.compile("(?i)\\bCREATE\\s+TABLE\\s+(?:IF\\s+NOT\\s+EXISTS\\s+)?(?:public\\.)?\"?(\\w+)");
+	private static final Pattern VERSIONED_MIGRATION = Pattern.compile("V(.+?)__.+\\.sql");
+
+	/** A string literal or comment, matched left to right so neither opens inside the other. */
+	private static final Pattern SQL_LITERAL_OR_COMMENT =
+			Pattern.compile("'(?:[^']|'')*'|--[^\\n]*|/\\*.*?\\*/", Pattern.DOTALL);
+
+	private static final String TABLE_NAME = "(?:\"?public\"?\\.)?\"?\\w+\"?";
+
+	/** Table DDL in statement order; a rename needs {@code RENAME TO} straight after the name, so
+	 * {@code RENAME [COLUMN] a TO b} and {@code RENAME CONSTRAINT} never match. */
+	private static final Pattern TABLE_DDL = Pattern.compile("(?i)\\b(?:"
+			+ "CREATE\\s+TABLE\\s+(?:IF\\s+NOT\\s+EXISTS\\s+)?(?<created>" + TABLE_NAME + ")"
+			+ "|DROP\\s+TABLE\\s+(?:IF\\s+EXISTS\\s+)?(?<dropped>" + TABLE_NAME
+			+ "(?:\\s*,\\s*" + TABLE_NAME + ")*)"
+			+ "|ALTER\\s+TABLE\\s+(?:IF\\s+EXISTS\\s+)?(?:ONLY\\s+)?(?<renamedFrom>" + TABLE_NAME + ")"
+			+ "\\s+RENAME\\s+TO\\s+(?<renamedTo>" + TABLE_NAME + "))");
+
+	private static final String PUBLIC_SCHEMA = "public.";
 
 	/** The per-(set, date) source-of-truth table owned by {@code availability} (invariant #2). */
 	private static final String AVAILABILITY_TABLE = "set_availability";
@@ -638,19 +657,48 @@ class ResponsibilitiesArchitectureTests {
 				+ "pattern misses");
 	}
 
-	/** The map tracks the schema: every table a migration creates is owned or a named framework
-	 * table, and the map names no table the schema lacks. */
+	/** The map tracks the schema: every table the latest migration leaves is owned or a named
+	 * framework table, and the map names no table the schema lacks. */
 	@Test
 	void theOwnershipMapCoversEveryTableTheSchemaCreates() throws IOException {
-		Set<String> created = createdTables();
+		Set<String> created = tablesAfter(migrations());
 		Set<String> unowned = new TreeSet<>(created);
 		unowned.removeAll(SOLE_WRITERS.keySet());
 		unowned.removeAll(FRAMEWORK_TABLES);
 		Set<String> stale = new TreeSet<>(SOLE_WRITERS.keySet());
 		stale.removeAll(created);
-		assertEquals(Set.of(), unowned, "tables created by Flyway with no owner in SOLE_WRITERS "
+		assertEquals(Set.of(), unowned, "tables the migrations leave with no owner in SOLE_WRITERS "
 				+ "(add them, mirroring CLAUDE.md's \"Sole writer of\" column)");
-		assertEquals(Set.of(), stale, "SOLE_WRITERS names tables no migration creates");
+		assertEquals(Set.of(), stale, "SOLE_WRITERS names tables the migrations do not leave (never created, dropped or renamed)");
+	}
+
+	/** A dropped table is gone unless re-created, a renamed one answers to its new name only, a
+	 * column rename, a comment or a string literal changes nothing, and V9 applies before V10. */
+	@Test
+	void theSchemaWalkAppliesCreateDropAndRenameInVersionOrder() {
+		Set<String> tables = tablesAfter(List.of(
+				new Migration(MigrationVersion.fromVersion("10"), """
+						DROP TABLE gone;
+						DROP TABLE IF EXISTS public.recreated, "versioned";
+						CREATE TABLE recreated (id BIGINT);
+						ALTER TABLE IF EXISTS ONLY old_name RENAME TO new_name;
+						ALTER TABLE new_name RENAME COLUMN id TO renamed_column;
+						ALTER TABLE new_name RENAME label TO bare_renamed_column;
+						COMMENT ON TABLE kept IS 'it''s fine to drop table kept; see /api/admin/**';
+						CREATE TABLE "public"."after_literal" (id BIGINT);
+						-- DROP TABLE kept; see /api/admin/** for the
+						/* CREATE TABLE commented_out (id BIGINT); */
+						"""),
+				new Migration(MigrationVersion.fromVersion("2"), """
+						CREATE TABLE gone (id BIGINT);
+						CREATE TABLE IF NOT EXISTS recreated (id BIGINT);
+						CREATE TABLE "Old_Name" (id BIGINT, label TEXT);
+						CREATE TABLE kept (id BIGINT);
+						"""),
+				new Migration(MigrationVersion.fromVersion("9"), """
+						CREATE TABLE versioned (id BIGINT);
+						""")));
+		assertEquals(Set.of("after_literal", "kept", "new_name", "recreated"), tables);
 	}
 
 	/** A non-owner write of each shape is rejected; a longer table name, a package string, a read
@@ -731,17 +779,49 @@ class ResponsibilitiesArchitectureTests {
 		return Collections.unmodifiableMap(patterns);
 	}
 
-	private static Set<String> createdTables() throws IOException {
+	/** A versioned migration's SQL, ordered by Flyway's own version comparison (V9 before V10). */
+	record Migration(MigrationVersion version, String sql) {
+	}
+
+	private static List<Migration> migrations() throws IOException {
+		List<Migration> migrations = new ArrayList<>();
+		try (Stream<Path> files = Files.list(MIGRATIONS)) {
+			for (Path file : files.filter(p -> p.toString().endsWith(".sql")).toList()) {
+				Matcher name = VERSIONED_MIGRATION.matcher(file.getFileName().toString());
+				if (!name.matches()) {
+					throw new IllegalStateException("not a V<version>__<description>.sql migration, so the "
+							+ "schema walk cannot order it: " + file);
+				}
+				migrations.add(new Migration(MigrationVersion.fromVersion(name.group(1)), Files.readString(file)));
+			}
+		}
+		return migrations;
+	}
+
+	/** The tables that exist after the last migration: create, drop and rename applied in version
+	 * order, then statement order; DDL in a {@code DO $$} body counts as if it ran. */
+	static Set<String> tablesAfter(List<Migration> migrations) {
 		Set<String> tables = new TreeSet<>();
-		try (Stream<Path> migrations = Files.list(MIGRATIONS)) {
-			for (Path migration : migrations.filter(p -> p.toString().endsWith(".sql")).toList()) {
-				Matcher create = CREATE_TABLE.matcher(Files.readString(migration));
-				while (create.find()) {
-					tables.add(create.group(1).toLowerCase(Locale.ROOT));
+		for (Migration migration : migrations.stream().sorted(Comparator.comparing(Migration::version)).toList()) {
+			Matcher ddl = TABLE_DDL.matcher(SQL_LITERAL_OR_COMMENT.matcher(migration.sql()).replaceAll(" "));
+			while (ddl.find()) {
+				if (ddl.group("created") != null) {
+					tables.add(bareName(ddl.group("created")));
+				} else if (ddl.group("dropped") != null) {
+					Arrays.stream(ddl.group("dropped").split(",")).map(String::strip)
+							.map(ResponsibilitiesArchitectureTests::bareName).forEach(tables::remove);
+				} else {
+					tables.remove(bareName(ddl.group("renamedFrom")));
+					tables.add(bareName(ddl.group("renamedTo")));
 				}
 			}
 		}
 		return tables;
+	}
+
+	private static String bareName(String qualified) {
+		String name = qualified.replace("\"", "").toLowerCase(Locale.ROOT);
+		return name.startsWith(PUBLIC_SCHEMA) ? name.substring(PUBLIC_SCHEMA.length()) : name;
 	}
 
 	private static List<String> stayTableViolations(JavaClasses classes, String base) {

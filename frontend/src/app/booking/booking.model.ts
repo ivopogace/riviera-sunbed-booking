@@ -359,6 +359,8 @@ export interface MyBookingSummary {
   readonly refundedAmount: MoneyView | null;
   /** When a remodel re-seated the booking, so the row can say the spot changed; null otherwise. */
   readonly movedAt: string | null;
+  /** {@link BookingDetail#nothingLeft}, a stay's by the same rule, so the row reads as the detail does. Absent on an older payload. */
+  readonly nothingLeft?: boolean;
 }
 
 /**

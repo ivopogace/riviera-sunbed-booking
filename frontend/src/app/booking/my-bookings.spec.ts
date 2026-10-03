@@ -232,6 +232,65 @@ describe('MyBookings (device-local list, issue #139)', () => {
     ]);
   });
 
+  it.each<BookingStatus>(['CONFIRMED', 'NO_SHOW'])(
+    'reads a %s booking with nothing left as Refunded, every day refunded, no QR — from the detail or the account summary (#1425)',
+    async (status) => {
+      seedCodes(['NOLEFT01']);
+      const fixture = await render(
+        {
+          ...stubService({
+            NOLEFT01: detail('NOLEFT01', status, { bookingDate: '2026-12-03', nothingLeft: true }),
+          }),
+          myBookings: () => of([summary('NOLEFT02', { status, nothingLeft: true })]),
+        },
+        authStub(true),
+      );
+      const host = fixture.nativeElement as HTMLElement;
+
+      const rows = [...host.querySelectorAll('[data-testid="booking-row"]')];
+      expect(rows).toHaveLength(2);
+      for (const row of rows) {
+        expect(row.querySelector('[data-testid="row-status"]')?.textContent?.trim()).toBe(
+          'Refunded',
+        );
+        expect(row.querySelector('[data-testid="row-subline"]')?.textContent?.trim()).toBe(
+          'Every day was refunded',
+        );
+        expect(row.querySelector('[data-testid="row-amount-label"]')?.textContent?.trim()).toBe(
+          'Paid',
+        );
+        expect(row.querySelector('app-booking-qr')).toBeNull();
+      }
+      await expectNoAxeViolations(host);
+    },
+  );
+
+  it('keeps an ordinary CONFIRMED row Confirmed with its QR, and a NO_SHOW one a no-show, when something is left (#1425)', async () => {
+    seedCodes(['HELD0001']);
+    const fixture = await render(
+      {
+        ...stubService({
+          HELD0001: detail('HELD0001', 'CONFIRMED', {
+            bookingDate: '2026-12-03',
+            nothingLeft: false,
+          }),
+        }),
+        myBookings: () => of([summary('MISS0001', { status: 'NO_SHOW', nothingLeft: false })]),
+      },
+      authStub(true),
+    );
+    const host = fixture.nativeElement as HTMLElement;
+
+    const rows = [...host.querySelectorAll('[data-testid="booking-row"]')];
+    expect(
+      rows.map((r) => r.querySelector('[data-testid="row-status"]')?.textContent?.trim()),
+    ).toEqual(['Confirmed', 'No-show']);
+    expect(rows[0].querySelector('app-booking-qr')).not.toBeNull();
+    expect(rows[1].querySelector('[data-testid="row-subline"]')?.textContent?.trim()).toBe(
+      'Marked as no-show',
+    );
+  });
+
   it('renders the PENDING_REQUEST deadline in Europe/Tirane wall-clock (no client date math)', async () => {
     seedCodes(['PEND0001']);
     const fixture = await render(

@@ -30,6 +30,7 @@ import ai.riviera.platform.booking.application.view.DailyBooking;
 import ai.riviera.platform.booking.application.view.BookingRecord;
 import ai.riviera.platform.booking.vocabulary.StayId;
 import ai.riviera.platform.booking.application.view.StayRecord;
+import ai.riviera.platform.booking.application.view.AccountBooking;
 import ai.riviera.platform.booking.application.Bookings;
 import ai.riviera.platform.booking.application.cancel.CancelledBooking;
 import ai.riviera.platform.booking.application.checkin.CheckInFacts;
@@ -610,11 +611,8 @@ class JdbcBookings implements Bookings {
 	}
 
 	@Override
-	public List<BookingRecord> findByAccountId(CustomerAccountId accountId) {
-		// The signed-in customer's bookings, newest first — account-scoped by account_id
-		// (the session principal's id, never a request param). Served by booking_account_id_idx (V26,
-		// partial on the non-NULL slice). Same row shape as findByCode so MyBookingsService enriches
-		// uniformly; a guest booking (NULL account_id) can never match.
+	public List<AccountBooking> findByAccountId(CustomerAccountId accountId) {
+		// Served by booking_account_id_idx (V26, partial on the non-NULL slice): a guest booking never matches.
 		List<AccountRow> rows = jdbc.sql("""
 				SELECT b.id, COALESCE(s.code, b.code) AS code, b.status, b.venue_id, b.set_id, b.customer_id,
 				       b.booking_date, b.last_date, b.amount_minor, b.amount_currency, b.cancelled_at, b.refund_minor,
@@ -634,9 +632,9 @@ class JdbcBookings implements Bookings {
 		return groupedByStay(rows);
 	}
 
-	/** A stitched stay lists once, as one booking (ADR-0024), where its latest stretch fell; a lone booking as itself. */
-	private static List<BookingRecord> groupedByStay(List<AccountRow> rows) {
-		List<BookingRecord> listed = new ArrayList<>();
+	/** A stitched stay lists once (ADR-0024), where its latest stretch fell, its stretches in day order; a lone booking as itself. */
+	private static List<AccountBooking> groupedByStay(List<AccountRow> rows) {
+		List<AccountBooking> listed = new ArrayList<>();
 		Map<Long, Integer> slotOfStay = new HashMap<>();
 		Map<Long, AccountRow> stayOf = new HashMap<>();
 		Map<Long, List<BookingRecord>> stretchesOfStay = new HashMap<>();
@@ -655,7 +653,7 @@ class JdbcBookings implements Bookings {
 		slotOfStay.forEach((stayId, slot) -> {
 			AccountRow stay = stayOf.get(stayId);
 			listed.set(slot, new StayRecord(new StayId(stayId), stay.booking().code(), stay.booking().venueId(),
-					stay.stayFirstDate(), stay.stayLastDate(), stretchesOfStay.get(stayId).reversed()).asBooking());
+					stay.stayFirstDate(), stay.stayLastDate(), stretchesOfStay.get(stayId).reversed()));
 		});
 		return listed;
 	}

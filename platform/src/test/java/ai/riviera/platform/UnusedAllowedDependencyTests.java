@@ -36,27 +36,47 @@ class UnusedAllowedDependencyTests {
 	void everyDeclaredGrantIsUsed() {
 		GrantAudit audit = audit(ModularityTests.modules, ArchitectureTestSupport.PRODUCTION_CLASSES);
 
-		assertThat(audit.grantsChecked())
-				.as("the bytecode-only grants are among those checked; an empty list means a vacuous rule")
-				.contains("remodel → venue::spi", "web → challenge::vocabulary");
+		assertEveryGrantingModuleAudited(audit, ArchitectureTestSupport.PRODUCTION_CLASSES);
 		assertNoViolations("Declared allowedDependencies grants no class of the module uses; drop them from "
 				+ "the module's package-info", audit.unused());
 	}
 
 	@Test
 	void reportsTheUnusedGrantAndOnlyIt() {
-		GrantAudit audit = audit(ApplicationModules.of(FIXTURE_BASE, location -> true),
-				ArchitectureTestSupport.fixtureClasses(FIXTURE_BASE));
+		JavaClasses fixture = ArchitectureTestSupport.fixtureClasses(FIXTURE_BASE);
+		GrantAudit audit = audit(ApplicationModules.of(FIXTURE_BASE, location -> true), fixture);
 
+		assertEveryGrantingModuleAudited(audit, fixture);
 		assertThat(audit.grantsChecked()).containsExactlyInAnyOrder("alpha → beta::api",
 				"alpha → beta::vocabulary", "alpha → beta::spi", "alpha → beta::events");
 		assertThat(audit.unused()).containsExactly("alpha → beta::events");
+	}
+
+	/**
+	 * The vacuity guard: every package whose package-info declares a grant, found by scanning the imported
+	 * classes rather than through {@link ApplicationModules}, had a grant checked by the audit.
+	 */
+	private static void assertEveryGrantingModuleAudited(GrantAudit audit, JavaClasses classes) {
+		Set<String> granting = new TreeSet<>();
+		for (JavaClass type : classes) {
+			if (ArchitectureTestSupport.isPackageInfo(type)
+					&& type.isAnnotatedWith(org.springframework.modulith.ApplicationModule.class)
+					&& !grants(type.getAnnotationOfType(org.springframework.modulith.ApplicationModule.class))
+							.isEmpty()) {
+				granting.add(type.getPackageName());
+			}
+		}
+		assertThat(granting).as("package-infos declaring allowedDependencies; none means a vacuous scan")
+				.isNotEmpty();
+		assertThat(audit.packagesChecked()).as("module packages the audit checked a grant for")
+				.containsAll(granting);
 	}
 
 	private static GrantAudit audit(ApplicationModules modules, JavaClasses classes) {
 		Map<String, Set<String>> calledSignatureTypes = calledSignatureTypes(classes, modules);
 		List<String> checked = new ArrayList<>();
 		List<String> unused = new ArrayList<>();
+		Set<String> packagesChecked = new TreeSet<>();
 		modules.forEach(module -> {
 			String id = module.getIdentifier().toString();
 			Set<String> targetTypes = new TreeSet<>(calledSignatureTypes.getOrDefault(id, Set.of()));
@@ -66,12 +86,13 @@ class UnusedAllowedDependencyTests {
 			for (String grant : declaredGrants(module)) {
 				String entry = id + " → " + grant;
 				checked.add(entry);
+				packagesChecked.add(module.getBasePackage().getName());
 				if (!used.contains(grant)) {
 					unused.add(entry);
 				}
 			}
 		});
-		return new GrantAudit(checked, unused);
+		return new GrantAudit(checked, unused, packagesChecked);
 	}
 
 	/**
@@ -124,18 +145,22 @@ class UnusedAllowedDependencyTests {
 	private static List<String> declaredGrants(ApplicationModule module) {
 		String packageInfo = module.getBasePackage().getName() + ".package-info";
 		try {
-			var annotation = Class.forName(packageInfo)
-					.getAnnotation(org.springframework.modulith.ApplicationModule.class);
-			return annotation == null ? List.of()
-					: Stream.of(annotation.allowedDependencies())
-							.filter(grant -> !org.springframework.modulith.ApplicationModule.OPEN_TOKEN.equals(grant))
-							.toList();
+			return grants(Class.forName(packageInfo)
+					.getAnnotation(org.springframework.modulith.ApplicationModule.class));
 		}
 		catch (ClassNotFoundException e) {
 			throw new IllegalStateException("module " + module.getIdentifier() + " has no package-info", e);
 		}
 	}
 
-	private record GrantAudit(List<String> grantsChecked, List<String> unused) {
+	/** The annotation's grants minus the default open token; none for an absent annotation. */
+	private static List<String> grants(org.springframework.modulith.ApplicationModule annotation) {
+		return annotation == null ? List.of()
+				: Stream.of(annotation.allowedDependencies())
+						.filter(grant -> !org.springframework.modulith.ApplicationModule.OPEN_TOKEN.equals(grant))
+						.toList();
+	}
+
+	private record GrantAudit(List<String> grantsChecked, List<String> unused, Set<String> packagesChecked) {
 	}
 }

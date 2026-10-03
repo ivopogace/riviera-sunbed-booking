@@ -25,6 +25,7 @@ import com.jayway.jsonpath.JsonPath;
 import ai.riviera.platform.EnabledIfDockerAvailable;
 import ai.riviera.platform.SessionLoginSupport;
 import ai.riviera.platform.TestcontainersConfiguration;
+import ai.riviera.platform.venue.vocabulary.SetPrice;
 
 import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.not;
@@ -534,6 +535,40 @@ class RemodelCommitIT {
 		assertEquals(token, currentSetVersion(venue));
 	}
 
+	@Test
+	void aCellPricedBelowTheFloorOrOutsideEurIsRefusedAndWritesNothing() throws Exception {
+		long venue = createVenue("Price Floor Club");
+		putLayout(venue, layout(0, cell("A", 1, 1), cell("A", 2, 2)));
+		long token = currentSetVersion(venue);
+
+		for (String price : List.of("{\"minorUnits\":49,\"currency\":\"EUR\"}",
+				"{\"minorUnits\":3000,\"currency\":\"ALL\"}")) {
+			String body = layout(token, cell("A", 1, 1), pricedCell("A", 2, 2, price));
+			mvc.perform(commit(venue, body, previewToken(venue, body)))
+					.andExpect(status().isBadRequest())
+					.andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
+					.andExpect(jsonPath("$.code").value("INVALID_REQUEST"));
+		}
+
+		assertEquals(token, currentSetVersion(venue));
+		assertEquals(List.of(2000L, 2000L), pricesOf(venue));
+		assertEquals(0, receiptsOf(venue));
+	}
+
+	@Test
+	void aCellPricedAtTheFloorCommits() throws Exception {
+		long venue = createVenue("Floor Price Club");
+		putLayout(venue, layout(0, cell("A", 1, 1), cell("A", 2, 2)));
+		long token = currentSetVersion(venue);
+		String body = layout(token, cell("A", 1, 1),
+				pricedCell("A", 2, 2, "{\"minorUnits\":" + SetPrice.MIN_PRICE_MINOR + ",\"currency\":\"EUR\"}"));
+
+		mvc.perform(commit(venue, body, previewToken(venue, body))).andExpect(status().isOk());
+
+		assertEquals(token + 1, currentSetVersion(venue));
+		assertEquals(List.of(2000L, SetPrice.MIN_PRICE_MINOR), pricesOf(venue));
+	}
+
 	private org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder commit(long venue, String body,
 			String previewToken) {
 		String content = previewToken == null ? body
@@ -642,10 +677,19 @@ class RemodelCommitIT {
 	}
 
 	private static String cell(String rowLabel, int positionNo, int gridX) {
+		return pricedCell(rowLabel, positionNo, gridX, "{\"minorUnits\":2000,\"currency\":\"EUR\"}");
+	}
+
+	private static String pricedCell(String rowLabel, int positionNo, int gridX, String price) {
 		return """
 				{"rowLabel":"%s","positionNo":%d,"tier":"STANDARD","pool":"ONLINE",
-				 "price":{"minorUnits":2000,"currency":"EUR"},"gridX":%d,"gridY":1}
-				""".formatted(rowLabel, positionNo, gridX);
+				 "price":%s,"gridX":%d,"gridY":1}
+				""".formatted(rowLabel, positionNo, price, gridX);
+	}
+
+	private List<Long> pricesOf(long venueId) {
+		return jdbc.sql("SELECT price_minor FROM active_set_position WHERE venue_id = :v ORDER BY grid_y, grid_x")
+				.param("v", venueId).query(Long.class).list();
 	}
 
 	private static String cellWalkIn(String rowLabel, int positionNo, int gridX) {

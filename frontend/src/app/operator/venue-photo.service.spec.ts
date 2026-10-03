@@ -13,7 +13,7 @@ import {
  * The venue-photo client: upload posts ONE multipart `file` part to the slot path (the
  * server replaces the slot, so upload and replace are the same call), remove DELETEs the slot,
  * and the error mapper narrows the RFC-7807 `code` to displayable copy — including the
- * server-side validation rejections the client never second-guesses.
+ * server-side validation rejections.
  */
 describe('VenuePhotoService (#142)', () => {
   let service: VenuePhotoService;

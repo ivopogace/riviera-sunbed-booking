@@ -179,6 +179,11 @@ final class StayFixtures {
 	static void cleanup(JdbcClient jdbc, long venue) {
 		org.awaitility.Awaitility.await().atMost(java.time.Duration.ofSeconds(10)).until(() -> jdbc.sql(
 				"SELECT count(*) FROM event_publication WHERE completion_date IS NULL").query(Long.class).single() == 0L);
+		cleanupNow(jdbc, venue);
+	}
+
+	/** Deletes in dependency order without waiting: for fixtures seeded as stored, which publish nothing. */
+	static void cleanupNow(JdbcClient jdbc, long venue) {
 		List<Long> payments = jdbc.sql("SELECT DISTINCT payment_id FROM payment_booking "
 						+ "WHERE booking_ref IN (SELECT id FROM booking WHERE venue_id = :v)").param("v", venue)
 				.query(Long.class).list();
