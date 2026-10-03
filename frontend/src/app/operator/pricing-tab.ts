@@ -185,11 +185,7 @@ export class PricingTab {
     }
     if (minorUnits < MIN_SET_PRICE_MINOR) {
       // Rounded first, so 0.495 → 50 passes; the server's 400 stays the backstop.
-      this.refusedRows.update((refused) => new Map(refused).set(row.label, input.value));
-      this.savedRow.set(null);
-      if (this.errorRow()?.label === row.label) {
-        this.errorRow.set(null); // the refusal supersedes it; dropping the refusal must not revive it
-      }
+      this.refuseBelowFloor(row.label, input.value);
       return;
     }
     this.dropRefusal(row.label);
@@ -246,6 +242,14 @@ export class PricingTab {
     }
     const err = this.errorRow();
     return err?.label === label ? err.code : null;
+  }
+
+  private refuseBelowFloor(label: string, typed: string): void {
+    this.refusedRows.update((refused) => new Map(refused).set(label, typed));
+    this.savedRow.set(null);
+    if (this.errorRow()?.label === label) {
+      this.errorRow.set(null); // the refusal supersedes it; dropping the refusal must not revive it
+    }
   }
 
   private dropRefusal(label: string): void {
