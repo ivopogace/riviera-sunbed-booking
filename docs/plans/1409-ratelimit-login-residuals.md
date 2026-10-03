@@ -32,6 +32,11 @@ needs a placeholder.
 - [x] **AC-6 (item 6):** Given a Content-Type without charset and an unusable servlet encoding, the login
   reaches the chain unbudgeted. *Pinned by:* `RateLimitFilterCharsetTest`.
 
+- [x] **AC-7 (F-6 supersession, owner decision A):** Given a photo file past 25 MiB, when the operator picks it,
+  then no request is sent and the slot shows the "under 25 MB" copy; a file exactly at the cap is sent.
+  *Seam:* `VenueTab` through `HttpTestingController`; the mocked e2e. *Pinned by:*
+  `venue-tab.spec.ts` (two specs), `operator-venue-photos.e2e.ts` (refuses a file past the 25 MiB cap).
+
 ## Non-goals
 
 - The global body cap (#1414), per-principal budgets (#364).
@@ -60,4 +65,4 @@ needs a placeholder.
 
 ## Execution status
 
-- 2026-10-03: phases 0–2 done locally, green on the scoped tests. Item 2 Javadoc written; review gate next.
+- 2026-10-03: phases 0–2 done; item 2 Javadoc written; review round 1 posted, findings fixed. Owner chose A for F-6: client size pre-check added; scoped re-review next.

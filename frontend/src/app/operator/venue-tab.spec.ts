@@ -14,6 +14,7 @@ import { VenueLocation } from '../shared/venue-views';
 import { VenueLocationField } from './venue-location-field';
 import { VenueProfileView } from './operator-console.model';
 import { VenueTab } from './venue-tab';
+import { MAX_PHOTO_UPLOAD_BYTES } from './venue-photo.service';
 
 interface SentBody {
   name: string;
@@ -665,6 +666,36 @@ describe('VenueTab (#177)', () => {
     expect((byId('photo-preview-cover') as HTMLImageElement).getAttribute('src')).toBe(
       `${API}/api/venues/1/photos/cc03`,
     );
+  });
+
+  /** A JPEG reporting `bytes` as its size; jsdom never reads the content, so none is allocated. */
+  const jpegOfSize = (bytes: number) => {
+    const file = JPEG();
+    Object.defineProperty(file, 'size', { value: bytes });
+    return file;
+  };
+
+  it('refuses a file past the server cap before any request, with the too-large copy', async () => {
+    render();
+
+    pickFile('cover', jpegOfSize(MAX_PHOTO_UPLOAD_BYTES + 1));
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    http.expectNone((r) => r.url.includes('/photos/'));
+    expect(byId('photo-error-cover').textContent).toContain('under 25 MB');
+    expect((byId('photo-preview-cover') as HTMLImageElement).getAttribute('src')).toBe(
+      `${API}/api/venues/1/photos/cc03`,
+    );
+  });
+
+  it('sends a file exactly at the server cap', async () => {
+    render();
+
+    pickFile('sunbeds', jpegOfSize(MAX_PHOTO_UPLOAD_BYTES));
+    await fixture.whenStable();
+
+    http.expectOne((r) => r.method === 'POST' && r.url.endsWith('/api/venues/1/photos/sunbeds'));
   });
 
   it('drops the lost session on a 401 photo upload', async () => {

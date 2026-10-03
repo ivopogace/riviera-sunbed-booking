@@ -217,6 +217,23 @@ test('shows the server-side validation copy when the image is rejected (AC-5)', 
   await expect(page.getByTestId('photo-preview-cover')).toBeHidden();
 });
 
+test('refuses a file past the 25 MiB cap in the browser, before any upload (#1409)', async ({
+  page,
+}) => {
+  const { uploads } = await mockVenuePhotos(page);
+  await signInAndOpenVenue(page);
+
+  // Past the multipart limit the server aborts the connection, so the copy must not need its 413.
+  await page.getByTestId('photo-input-cover').setInputFiles({
+    name: 'huge.jpg',
+    mimeType: 'image/jpeg',
+    buffer: Buffer.alloc(25 * 1024 * 1024 + 1),
+  });
+
+  await expect(page.getByTestId('photo-error-cover')).toContainText(/under 25 MB/);
+  expect(uploads).toHaveLength(0);
+});
+
 test('shows the not-owner message when the upload is denied 403 (invariant #13)', async ({
   page,
 }) => {

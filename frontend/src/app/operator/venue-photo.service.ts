@@ -20,6 +20,13 @@ export interface PhotoVariantView {
   readonly height: number;
 }
 
+/**
+ * The server's photo content cap, `venue.photo.max-upload-bytes` (`PhotoProcessor`), mirrored so a larger
+ * file is refused before it is sent: past the multipart limit the server aborts the connection, so its
+ * `413` may never reach the browser (#1409). The server stays the authority.
+ */
+export const MAX_PHOTO_UPLOAD_BYTES = 25 * 1024 * 1024;
+
 /** The upload response: the slot plus each stored variant's content-addressed serving URL. */
 export interface PhotoUploadView {
   readonly slot: PhotoSlotKey;
