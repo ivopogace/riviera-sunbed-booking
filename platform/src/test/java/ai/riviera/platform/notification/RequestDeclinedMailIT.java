@@ -3,6 +3,8 @@ package ai.riviera.platform.notification;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.util.List;
+import java.util.Optional;
 
 import io.micrometer.core.instrument.MeterRegistry;
 
@@ -186,15 +188,19 @@ class RequestDeclinedMailIT {
 		long bookingId = fixtures.seedBooking(set, "LISTIDD1", date, guest, 9914L, "DECLINED");
 		fixtures.publishInTransaction(fixtures.requestDeclinedOf(set, bookingId, date));
 
-		Awaitility.await().atMost(WAIT).untilAsserted(() -> assertThat(jdbc.sql(
-						"SELECT DISTINCT listener_id FROM event_publication_archive "
-								+ "WHERE event_type = :type AND serialized_event LIKE :fragment AND listener_id LIKE :module")
-				.param("type", BookingRequestDeclined.class.getName())
-				.param("fragment", "%" + date + "%")
-				.param("module", "notification.%")
-				.query(String.class).list())
-				.containsExactly(BookingMailFixtures.REQUEST_DECLINED_LISTENER_ID));
-		assertThat(mailer.lastTo(guest)).isPresent();
+		Awaitility.await().atMost(WAIT).untilAsserted(() -> {
+			List<String> archived = jdbc.sql(
+					"SELECT DISTINCT listener_id FROM event_publication_archive "
+							+ "WHERE event_type = :type AND serialized_event LIKE :fragment AND listener_id LIKE :module")
+					.param("type", BookingRequestDeclined.class.getName())
+					.param("fragment", "%" + date + "%")
+					.param("module", "notification.%")
+					.query(String.class).list();
+			Optional<SentEmail> mail = mailer.lastTo(guest);
+			assertThat(archived).as("archived notification listener ids (mail to %s: %s)", guest, mail)
+					.containsExactly(BookingMailFixtures.REQUEST_DECLINED_LISTENER_ID);
+			assertThat(mail).as("mail to %s, with the archive holding %s", guest, archived).isPresent();
+		});
 	}
 
 	private double abandonedCount() {

@@ -233,8 +233,8 @@ class BookingCancellationMailIT {
 	 *
 	 * <p><strong>Poll {@code event_publication_archive}, not {@code event_publication}.</strong>
 	 * The deployment runs {@code completion-mode=archive} (V8 ships both tables): the row is
-	 * <em>moved</em> once the listener returns, which is after the listener has recorded the mail, so
-	 * the mail being observable does not yet mean the row is archived. {@code RegistryMailBulkheadIT}
+	 * <em>moved</em> once the listener returns. Neither the archive row nor the mail implies the other
+	 * here (#1386), so both are awaited together. {@code RegistryMailBulkheadIT}
 	 * reads the live table instead because it wedges the transport first, deliberately keeping the row
 	 * outstanding; here the send succeeds, so the archive is the only place the id exists — and it is the
 	 * id a <em>completed</em> publication is recorded under.
@@ -251,15 +251,19 @@ class BookingCancellationMailIT {
 				new BookingMailFixtures.SetRef(set.setId(), set.venueId()), bookingId, date, 7334L,
 				RefundReason.POLICY));
 
-		Awaitility.await().atMost(WAIT).untilAsserted(() -> assertThat(jdbc.sql(
-						"SELECT DISTINCT listener_id FROM event_publication_archive "
-								+ "WHERE event_type = :type AND serialized_event LIKE :fragment AND listener_id LIKE :module")
-				.param("type", BookingCancelled.class.getName())
-				.param("fragment", "%7334%")
-				.param("module", "notification.%")
-				.query(String.class).list())
-				.containsExactly(BookingMailFixtures.CANCELLATION_LISTENER_ID));
-		assertThat(countTo(guest)).isEqualTo(1L);
+		Awaitility.await().atMost(WAIT).untilAsserted(() -> {
+			List<String> archived = jdbc.sql(
+					"SELECT DISTINCT listener_id FROM event_publication_archive "
+							+ "WHERE event_type = :type AND serialized_event LIKE :fragment AND listener_id LIKE :module")
+					.param("type", BookingCancelled.class.getName())
+					.param("fragment", "%7334%")
+					.param("module", "notification.%")
+					.query(String.class).list();
+			long mails = countTo(guest);
+			assertThat(archived).as("archived notification listener ids (mails to %s: %s)", guest, mails)
+					.containsExactly(BookingMailFixtures.CANCELLATION_LISTENER_ID);
+			assertThat(mails).as("mails to %s, with the archive holding %s", guest, archived).isEqualTo(1L);
+		});
 	}
 
 	/**
