@@ -1308,7 +1308,9 @@ The SPA rules whose TSDoc points here; structure is `riviera-frontend`'s, stylin
   whole basis points is never unseen: the editor renders the integer the wire carries (invariant #5).
 - **Focus is moved after a confirm-before-destroy** (`shared/focus-after-render.ts`): the surface
   destroys the element just activated, stranding focus on `<body>` (WCAG 2.4.3), and the target
-  rarely exists yet at decision time — hence lookup in `earlyRead`, `focus()` in `write`.
+  rarely exists yet at decision time — hence lookup in `earlyRead`, `focus()` in `write`. A swap the
+  server drives (the pay page's poll and re-check) passes `onlyIfLost`: focus moves only if it was
+  already on `<body>` or the render took its holder, so a control the swap keeps is never robbed.
 - **The venue console lands on the Daily view** (`VENUE_CONSOLE_LANDING_TAB`), what a trading venue
   opens every day; set-up tabs are destinations. A freshly created venue is the exception:
   `operator/venue-create-card.ts` sends it to `beach-map`, as it has no map to run a day on yet.

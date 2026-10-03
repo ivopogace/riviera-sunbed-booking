@@ -358,8 +358,13 @@ test('stripe-profile payment flow is accessible end-to-end (Stripe mocked)', asy
   ).toBe('contain');
 
   // Pay → the page polls the backend and only then shows confirmed (invariant #8).
-  await page.getByTestId('pay-button').click();
+  await page.getByTestId('pay-button').focus();
+  await page.keyboard.press('Enter');
+  // Each swap removes the focused control, so focus lands on the new heading (#1410).
+  await expect(page.getByTestId('pay-title')).toHaveText('Confirming your booking…');
+  await expect(page.getByTestId('pay-title')).toBeFocused();
   await expect(page.getByRole('heading', { name: /You.re booked/ })).toBeVisible();
+  await expect(page.getByTestId('pay-title')).toBeFocused();
   await expect(page).toHaveURL(/\/booking\/pay/); // confirmation is in-place, driven by the poll
   await expect(page.getByTestId('booking-code')).toContainText('WXYZ345678');
   await expectNoSeriousAxeViolations(page, 'payment page (confirmed)');
