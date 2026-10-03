@@ -78,7 +78,7 @@ class PackageShapeArchitectureTests {
 	/** The one shared kernel ADR-0007 admits. */
 	private static final String SHARED_KERNEL = "shared";
 
-	/** The module roots that may hold types: the shared kernel(s) the application registers. */
+	/** The module roots that may hold types: what the application registers in {@code @Modulithic(sharedModules)}. */
 	private static final Set<String> PRODUCTION_SHARED_MODULES =
 			Set.of(PlatformApplication.class.getAnnotation(Modulithic.class).sharedModules());
 
