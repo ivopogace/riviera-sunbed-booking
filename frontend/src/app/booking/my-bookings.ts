@@ -43,7 +43,7 @@ function movedAtOf(b: RowSource): string | null {
   return 'move' in b ? (b.move?.movedAt ?? null) : b.movedAt;
 }
 
-/** The per-status sub-label (server-truth-adjacent); '' for CONFIRMED unless a remodel moved it. */
+/** The per-status sub-label (server-truth-adjacent); '' for CONFIRMED unless a remodel moved it or nothing is left. */
 function subLineOf(b: RowSource): string {
   if (readsAsRefunded(b.status, b.nothingLeft ?? false)) {
     return 'Every day was refunded';

@@ -612,10 +612,7 @@ class JdbcBookings implements Bookings {
 
 	@Override
 	public List<AccountBooking> findByAccountId(CustomerAccountId accountId) {
-		// The signed-in customer's bookings, newest first — account-scoped by account_id
-		// (the session principal's id, never a request param). Served by booking_account_id_idx (V26,
-		// partial on the non-NULL slice). Same row shape as findByCode so MyBookingsService enriches
-		// uniformly; a guest booking (NULL account_id) can never match.
+		// Served by booking_account_id_idx (V26, partial on the non-NULL slice): a guest booking never matches.
 		List<AccountRow> rows = jdbc.sql("""
 				SELECT b.id, COALESCE(s.code, b.code) AS code, b.status, b.venue_id, b.set_id, b.customer_id,
 				       b.booking_date, b.last_date, b.amount_minor, b.amount_currency, b.cancelled_at, b.refund_minor,
