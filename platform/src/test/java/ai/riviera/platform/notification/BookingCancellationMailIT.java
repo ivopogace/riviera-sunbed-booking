@@ -233,8 +233,8 @@ class BookingCancellationMailIT {
 	 *
 	 * <p><strong>Poll {@code event_publication_archive}, not {@code event_publication}.</strong>
 	 * The deployment runs {@code completion-mode=archive} (V8 ships both tables): the row is
-	 * <em>moved</em> once the listener returns, which is after the listener has recorded the mail, so
-	 * the mail being observable does not yet mean the row is archived. {@code RegistryMailBulkheadIT}
+	 * <em>moved</em> once the listener returns. Neither the archive row nor the mail implies the other
+	 * here (#1386), so both are awaited together. {@code RegistryMailBulkheadIT}
 	 * reads the live table instead because it wedges the transport first, deliberately keeping the row
 	 * outstanding; here the send succeeds, so the archive is the only place the id exists — and it is the
 	 * id a <em>completed</em> publication is recorded under.
