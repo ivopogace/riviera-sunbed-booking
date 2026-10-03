@@ -11,8 +11,8 @@ import ai.riviera.platform.customer.vocabulary.VerifyEmailOutcome;
  * Published port for the customer account's email-verification + password-recovery lifecycle. The edge
  * owns all credential material (generates the raw token, hashes it to {@code tokenHash}, encodes the
  * password); this module stores the digest and enforces single-use + expiry atomically in SQL, with no
- * Spring Security type inside (RV-BE-11, {@code CustomerAuthPlacementTests}). Tokens are bearer
- * credentials (the #7 posture): reused, expired and unknown tokens all yield the neutral
+ * Spring Security, Spring Session or mail type inside (RV-BE-11, {@code CustomerAuthPlacementTests}). Tokens
+ * are bearer credentials (the #7 posture): reused, expired and unknown tokens all yield the neutral
  * {@code InvalidOrExpired} (non-enumerating, design D-8). Email verification is soft: it gates nothing.
  */
 public interface CustomerAccountRecovery {

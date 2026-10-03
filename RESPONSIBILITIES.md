@@ -1212,6 +1212,13 @@ own rate-limit buckets; mocked externals (SSO IdPs, mailer) profile-guarded out 
 revocation orchestrated by `auth` and synchronous, bracketing the state change; every request re-checks the
 session's credential stamp.
 
+**Where the edge's types may appear (RV-BE-11):** no Spring Security, Spring Session or mail (Spring
+Mail, Jakarta Mail, Angus Mail) type in `availability`, `booking`, `payment`, `payout`, `review`,
+`itinerary`, `remodel`, `venue`, `notification`, `challenge`, `audit`, `monitoring` or `shared` outside
+the module's `adapter.in`, where a controller reads the signed-in principal; `notification` sends mail,
+so only security and session are checked there. `customer` and `operator` are checked whole,
+`adapter.in` included; `auth` and `web` are the edge (`*AuthPlacementTests`).
+
 **Abuse and accountability split into fence and mechanism** (ADR-0017): the **fence** — filters and
 their order, route policy, filter-chain problem bodies, neutralizing client input such as
 `X-Audit-Reason` — is **`web`**'s (ADR-0028); a **mechanism** it calls through a port (a table, a
@@ -1424,6 +1431,7 @@ them form the *structural net* is `riviera-modulith` § *The structural net*'s c
 | The view's `cancellable` and the guest cancel's refusal agree with `CANCEL_BY_GUEST`, status by status (ADR-0018 §1) | `ViewBookingServiceTest.onlyAConfirmedBookingIsCancellableWhileTheWindowIsOpen`, `CancelBookingServiceTest` (against the literal `BookingTransitionTest` pins) |
 | No Spring Security, Spring Session or mail (Spring Mail, Jakarta Mail, Angus Mail) type inside `operator`; OIDC/OAuth2 client types fall under Spring Security (RV-BE-11) | `OperatorAuthPlacementTests` |
 | No Spring Security, Spring Session or mail (Spring Mail, Jakarta Mail, Angus Mail) type inside `customer`; OIDC/OAuth2 client types fall under Spring Security (RV-BE-11) | `CustomerAuthPlacementTests` |
+| No Spring Security, Spring Session or mail type outside `adapter.in` in `availability`, `booking`, `payment`, `payout`, `review`, `itinerary`, `remodel`, `venue`, `notification` (security and session only: it sends mail), `challenge`, `audit`, `monitoring`, `shared`; every module is classified as so checked, whole-module checked (`customer`, `operator`) or edge (`auth`, `web`) (RV-BE-11) | `DomainModuleAuthPlacementTests` |
 | Mail listeners name their own bounded executors, never Boot's shared `applicationTaskExecutor` | `MailListenerExecutorArchitectureTest` |
 | `booking` listeners reaching `payment::api` run on the bounded refund pool | `RefundListenerExecutorArchitectureTest` |
 | Every self-configured worker pool carries `monitoring`'s MDC decorator | `WorkerContextArchitectureTest` |
