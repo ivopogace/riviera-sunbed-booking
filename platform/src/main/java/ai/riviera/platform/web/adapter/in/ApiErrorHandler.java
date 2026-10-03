@@ -87,10 +87,6 @@ public class ApiErrorHandler extends ResponseEntityExceptionHandler {
 		ResponseEntity<Object> response = super.handleExceptionInternal(ex, body, headers, statusCode, request);
 		if (response != null && response.getBody() instanceof ProblemDetail problem) {
 			problem.setProperty(ApiProblem.CODE_PROPERTY, defaultCode(statusCode));
-			// Framework-built bodies bypass ApiProblem, so the instance redaction (invariant #7 —
-			// Spring would auto-fill the request URI, a booking code on the code-scoped paths)
-			// must be re-applied here.
-			problem.setInstance(ApiProblem.REDACTED_INSTANCE);
 		}
 		return response;
 	}

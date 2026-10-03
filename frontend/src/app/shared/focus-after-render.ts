@@ -7,14 +7,29 @@ import { afterNextRender, ElementRef, inject, Injector } from '@angular/core';
  */
 export function focusMover(options?: {
   readonly preventScroll?: boolean;
+  /** Act only if focus is already on `<body>` at the call, or that render removed or hid the
+   *  host-internal element focused then; focus held outside the host stays put. */
+  readonly onlyIfLost?: boolean;
 }): (testId: string, fallbackTestId?: string) => void {
   const host = inject<ElementRef<HTMLElement>>(ElementRef);
   const injector = inject(Injector);
-  return (testId: string, fallbackTestId?: string) =>
+  return (testId: string, fallbackTestId?: string) => {
+    const held = document.activeElement;
+    const watched =
+      options?.onlyIfLost && held instanceof HTMLElement && held !== document.body ? held : null;
+    if (watched && !host.nativeElement.contains(watched)) {
+      return;
+    }
     afterNextRender(
       {
-        earlyRead: () => landingSpot(host.nativeElement, testId, fallbackTestId),
+        earlyRead: () =>
+          watched && isStillFocusable(watched)
+            ? null
+            : landingSpot(host.nativeElement, testId, fallbackTestId),
         write: (target) => {
+          if (!target) {
+            return;
+          }
           // A landmark is usually a <p>/<span>/host: focusable only once it says so.
           if (target.tabIndex < 0 && !target.hasAttribute('tabindex')) {
             target.tabIndex = -1;
@@ -24,6 +39,11 @@ export function focusMover(options?: {
       },
       { injector },
     );
+  };
+}
+
+function isStillFocusable(element: HTMLElement): boolean {
+  return element.isConnected && element.closest('[hidden]') === null;
 }
 
 function landingSpot(host: HTMLElement, testId: string, fallbackTestId?: string): HTMLElement {
