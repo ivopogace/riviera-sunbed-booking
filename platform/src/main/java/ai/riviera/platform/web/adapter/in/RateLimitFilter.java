@@ -1,10 +1,7 @@
 package ai.riviera.platform.web.adapter.in;
 
 import ai.riviera.platform.customer.vocabulary.Emails;
-import java.io.BufferedReader;
-import java.io.ByteArrayInputStream;
 import java.io.IOException;
-import java.io.InputStreamReader;
 import java.nio.charset.Charset;
 import java.nio.charset.IllegalCharsetNameException;
 import java.nio.charset.StandardCharsets;
@@ -37,11 +34,8 @@ import tools.jackson.core.JsonToken;
 import tools.jackson.databind.ObjectMapper;
 
 import jakarta.servlet.FilterChain;
-import jakarta.servlet.ReadListener;
 import jakarta.servlet.ServletException;
-import jakarta.servlet.ServletInputStream;
 import jakarta.servlet.http.HttpServletRequest;
-import jakarta.servlet.http.HttpServletRequestWrapper;
 import jakarta.servlet.http.HttpServletResponse;
 
 /**
@@ -63,14 +57,6 @@ final class RateLimitFilter extends OncePerRequestFilter {
 	private static final String RATE_LIMITED_BODY = """
 			{"type":"about:blank","title":"Too Many Requests","status":429,\
 			"detail":"Too many requests.","code":"RATE_LIMITED"}""";
-
-	/** The {@link #RATE_LIMITED_BODY} shape for a login body past {@link #MAX_CACHED_BODY_BYTES}. */
-	private static final String BODY_TOO_LARGE_BODY = """
-			{"type":"about:blank","title":"Content Too Large","status":413,\
-			"detail":"The request body is too large.","code":"PAYLOAD_TOO_LARGE"}""";
-
-	/** 413 by value, as in {@code ApiErrorHandler}: the {@code HttpStatus} constant is mid-rename. */
-	private static final int BODY_TOO_LARGE_STATUS = 413;
 
 	// Mirrors the SecurityConfig matchers for the public booking and stay endpoints.
 	private static final String CREATE_PATH = "/api/bookings";
@@ -430,6 +416,11 @@ final class RateLimitFilter extends OncePerRequestFilter {
 		}
 	}
 
+	/** Whether this filter reads and caps {@code request}'s body itself, so no later filter may read it again. */
+	boolean capsBodyOf(HttpServletRequest request) {
+		return props.enabled() && loginEndpointOf(request) != null;
+	}
+
 	/** The login endpoint this request targets, or {@code null} if it is not one of the two. */
 	private static LoginEndpoint loginEndpointOf(HttpServletRequest request) {
 		if (!HttpMethod.POST.matches(request.getMethod())) {
@@ -529,58 +520,6 @@ final class RateLimitFilter extends OncePerRequestFilter {
 		}
 	}
 
-	/**
-	 * A request whose body is buffered in memory and served afresh on each {@code getInputStream()} /
-	 * {@code getReader()} call, so the identity read in this filter does not consume the single-use servlet
-	 * stream the downstream {@code @RequestBody} controller also needs. Wraps only the two login requests,
-	 * and only after their body, within the cap, was already read into {@code body}.
-	 */
-	private static final class CachedBodyRequest extends HttpServletRequestWrapper {
-
-		private final byte[] body;
-
-		CachedBodyRequest(HttpServletRequest request, byte[] body) {
-			super(request);
-			this.body = body;
-		}
-
-		@Override
-		public ServletInputStream getInputStream() {
-			ByteArrayInputStream source = new ByteArrayInputStream(body);
-			return new ServletInputStream() {
-				@Override
-				public int read() {
-					return source.read();
-				}
-
-				@Override
-				public boolean isFinished() {
-					return source.available() == 0;
-				}
-
-				@Override
-				public boolean isReady() {
-					return true;
-				}
-
-				@Override
-				public void setReadListener(ReadListener readListener) {
-					throw new UnsupportedOperationException("async reads are not used on the login path");
-				}
-			};
-		}
-
-		@Override
-		public BufferedReader getReader() {
-			return new BufferedReader(new InputStreamReader(getInputStream(), charset()));
-		}
-
-		private Charset charset() {
-			String encoding = getCharacterEncoding();
-			return encoding != null ? Charset.forName(encoding) : StandardCharsets.UTF_8;
-		}
-	}
-
 	private void reject(HttpServletResponse response, long retryAfterSeconds, String ip, String dimension)
 			throws IOException {
 		response.setHeader(HttpHeaders.RETRY_AFTER, Long.toString(retryAfterSeconds));
@@ -592,7 +531,7 @@ final class RateLimitFilter extends OncePerRequestFilter {
 	private static void rejectBodyTooLarge(HttpServletResponse response, String ip) throws IOException {
 		// Redundant on Tomcat 11, which closes after any 413; kept so the close never hinges on the container.
 		response.setHeader(HttpHeaders.CONNECTION, "close");
-		writeProblem(response, BODY_TOO_LARGE_STATUS, BODY_TOO_LARGE_BODY);
+		SecurityProblemResponses.writeBodyTooLarge(response);
 		log.debug("Login body over the {}-byte cap refused, from {}", MAX_CACHED_BODY_BYTES, ip);
 	}
 

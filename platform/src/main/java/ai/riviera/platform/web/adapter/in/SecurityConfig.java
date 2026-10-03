@@ -271,11 +271,14 @@ public class SecurityConfig {
 			ProofOfWorkChallenges challenges, SessionCredentials sessionCredentials) {
 		// One instance, so the chain and the logout success handler stay in lockstep.
 		CookieCsrfTokenRepository csrfTokenRepository = csrfCookieRepository();
+		RateLimitFilter rateLimitFilter = new RateLimitFilter(rateLimitProperties, clock, objectMapper);
 		http
 				.securityMatcher("/api/**", "/actuator/**")
 				.cors(Customizer.withDefaults())
 				// After CORS (preflight first), before authorization: the 200/404 code oracle needs throttling.
-				.addFilterAfter(new RateLimitFilter(rateLimitProperties, clock, objectMapper), CorsFilter.class)
+				.addFilterAfter(rateLimitFilter, CorsFilter.class)
+				// After the rate limiter, before CSRF and the challenge claim: an oversized body costs neither.
+				.addFilterAfter(new RequestBodyCapFilter(rateLimitFilter::capsBodyOf), RateLimitFilter.class)
 				// After the rate limiter and the CSRF check, so a 429 wins and the registry claim comes last.
 				.addFilterAfter(new ChallengeVerificationFilter(challenges), CsrfFilter.class)
 				// Before the anonymous filter, so a session with a stale credential proceeds as anonymous (#1306).
