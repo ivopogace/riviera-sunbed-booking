@@ -102,7 +102,7 @@ nothing). Also closed and non-context, but adapter layers depending on the surfa
 (sign-in and sessions: the `UserDetailsService`s, session establishment, credential stamp and revocation,
 SSO, password policy, recovery, the login, self-service, admin-lifecycle and erasure controllers; writes nothing) and `web` (the
 HTTP boundary: `SecurityConfig`'s chains and route policy, the chain's filters, CORS, `ApiErrorHandler`
-as the one advice; publishes nothing, writes nothing). No module writes
+as the one advice, `/error`'s problem body; publishes nothing, writes nothing). No module writes
 the framework tables: `SPRING_SESSION*` (Spring Session, from `auth` and `web`) and `event_publication*` (Modulith's registry; re-driven by the outbox levers and the spine retries).
 Every module may depend on `shared`, which depends on no module. The root holds only
 `PlatformApplication` and configuration that reaches no module; nothing depends on it.

@@ -53,7 +53,7 @@ export const REFUNDED_META: StatusMeta = {
   amount: 'Paid',
 };
 
-/** Whether a booking reads as refunded away: held or missed, with nothing left (ADR-0026 §7); the chip's and the review note's one holder. */
+/** Whether a booking reads as refunded away: held or missed, with nothing left (ADR-0026 §7); the one rule every surface asks. */
 export function readsAsRefunded(status: string, nothingLeft: boolean): boolean {
   return nothingLeft && (status === 'CONFIRMED' || status === 'NO_SHOW');
 }
@@ -64,8 +64,8 @@ export function readsAsRefunded(status: string, nothingLeft: boolean): boolean {
  */
 export function amountLabelFor(
   status: string,
-  refundedAmount?: { readonly minorUnits: number } | null,
-  nothingLeft = false,
+  refundedAmount: { readonly minorUnits: number } | null | undefined,
+  nothingLeft: boolean,
 ): StatusMeta['amount'] {
   if (status === 'CANCELLED' && refundedAmount === null) {
     return 'Amount';

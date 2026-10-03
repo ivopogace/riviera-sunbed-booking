@@ -1016,7 +1016,7 @@ export class BookingView {
 
   /** "Paid" once money has actually moved; "Amount" while open, or when nothing was ever charged. */
   protected amountLabel(b: BookingDetail): string {
-    return amountLabelFor(b.status, b.refundedAmount);
+    return amountLabelFor(b.status, b.refundedAmount, b.nothingLeft ?? false);
   }
 
   /** The days the weather refund gave back; a day naming no reason (an older payload) is weather's. */
