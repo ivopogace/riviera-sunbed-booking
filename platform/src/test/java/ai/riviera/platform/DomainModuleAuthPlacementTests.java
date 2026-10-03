@@ -57,20 +57,24 @@ class DomainModuleAuthPlacementTests {
 
 	@Test
 	void inboundAdapterIsExemptAndTheSameTypeElsewhereIsNot() {
-		String module = "booking";
+		String module = "inboundexemption";
 		String fixturePackage = AuthPlacementRule.FIXTURE_BASE + "." + module;
 		JavaClasses fixtures = fixtureClasses(fixturePackage);
-		fixtures.get(fixturePackage + ".adapter.in.PrincipalReadingController");
 		List<String> violations = AuthPlacementRule
 				.noLoginMachineryOutsideInboundAdapter(AuthPlacementRule.FIXTURE_BASE, module,
 						AuthPlacementRule.BANNED_PACKAGES)
 				.evaluate(fixtures).getFailureReport().getDetails();
 
-		String authentication = "<org.springframework.security.core.Authentication>";
-		assertTrue(violations.stream().anyMatch(v -> v.contains(fixturePackage + ".LoginMachineryInModule")
-				&& v.contains(authentication)), "Outside adapter.in, Authentication must be reported: " + violations);
+		fixtures.get(fixturePackage + ".adapter.in.PrincipalReadingController");
 		assertTrue(violations.stream().noneMatch(v -> v.contains("PrincipalReadingController")),
 				"adapter.in may read the principal, yet was reported: " + violations);
+		List<String> unreported = Stream.of("adapter.out.PrincipalReachingAdapter",
+						"adapter.inbound.PrincipalReachingLookalike", "api.PrincipalReachingPort")
+				.map(type -> fixtures.get(fixturePackage + "." + type).getName())
+				.filter(type -> violations.stream().noneMatch(v -> v.contains("<" + type + ".")))
+				.toList();
+		assertTrue(unreported.isEmpty(), "Outside adapter.in the exemption must not reach " + unreported
+				+ ", but got: " + violations);
 	}
 
 	@Test

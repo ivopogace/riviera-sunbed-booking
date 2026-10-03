@@ -1,4 +1,4 @@
-package ai.riviera.authplacementfixture.booking.adapter.in;
+package ai.riviera.authplacementfixture.inboundexemption.adapter.in;
 
 import org.springframework.security.core.Authentication;
 

@@ -24,8 +24,8 @@ module. Test-only plus docs; no production behaviour changes.
   when the rule runs, then every field type is reported, every checked family catches one, and no other
   fixture class (control, `adapter.in` reader, notification's mail transport) is reported. *Pinned by:*
   `DomainModuleAuthPlacementTests.everyCheckedFamilyIsRejected`
-- [ ] **AC-3:** Given an `Authentication` field in `authplacementfixture.booking.adapter.in`, when the rule
-  runs, then it is not reported while the same type in `LoginMachineryInModule` is. *Pinned by:*
+- [ ] **AC-3:** Given an `Authentication` field in `authplacementfixture.inboundexemption`'s `adapter.in`,
+  `adapter.out`, `adapter.inbound` and `api`, when the rule runs, then only the `adapter.in` one is clean. *Pinned by:*
   `DomainModuleAuthPlacementTests.inboundAdapterIsExemptAndTheSameTypeElsewhereIsNot`
 - [ ] **AC-4:** Given a new top-level module, when it is in neither the checked list, the strict pair nor
   the edge pair, then the build fails. *Pinned by:* `DomainModuleAuthPlacementTests.everyModuleIsClassified`
@@ -43,10 +43,11 @@ module. Test-only plus docs; no production behaviour changes.
 ## Phases
 
 - **Phase 0 — rule + fixtures + test:** AC-1..AC-5 · red: fixture proof before the rule overload exists.
-- **Phase 1 — docs:** RESPONSIBILITIES.md §Platform edge, §auth, checks table; `CustomerAccountRecovery` Javadoc.
+- **Phase 1 — docs:** RESPONSIBILITIES.md §Platform edge, checks table; `CustomerAccountRecovery` Javadoc.
 
 ## Execution status
 
 - Phase 0: done — 28 cases green; mutation (exclusion off) fails the 20 adapter.in types.
 - Phase 1: done — RESPONSIBILITIES.md §Platform edge + checks table; CustomerAccountRecovery Javadoc.
-- Next: PR, review gate (medium), Sonar, remove this plan.
+- PR #1435; review round 1 (medium): 2 findings fixed (exemption fixture tree; RV-BE-11 tell).
+- Next: CI, Sonar, remove this plan.
