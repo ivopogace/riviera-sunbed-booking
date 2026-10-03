@@ -223,15 +223,23 @@ describe('focusMover onlyIfLost (#1410)', () => {
     expect(document.activeElement).toBe(byId('keeper'));
   });
 
-  it('leaves focus that was never inside the host where it was', async () => {
+  it('moves focus that an outside overlay already dropped to the body', async () => {
+    (document.activeElement as HTMLElement | null)?.blur();
+
+    await finishFrom(null);
+
+    expect(document.activeElement).toBe(byId('title'));
+  });
+
+  it('leaves focus that was outside the host alone, even when its holder goes away', async () => {
     const outside = document.createElement('button');
     document.body.appendChild(outside);
-    try {
-      await finishFrom(outside);
+    outside.focus();
+    fixture.componentInstance.finish();
+    outside.remove();
+    fixture.detectChanges();
+    await fixture.whenStable();
 
-      expect(document.activeElement).toBe(outside);
-    } finally {
-      outside.remove();
-    }
+    expect(document.activeElement).not.toBe(byId('title'));
   });
 });

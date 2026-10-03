@@ -127,6 +127,19 @@ class DeferredRemountGateway extends StripePaymentGateway {
   }
 }
 
+/** Its confirm blurs the page as Stripe's 3DS modal does: mounted on `<body>`, focus gone on close. */
+class ThreeDsOverlayGateway extends FakeGateway {
+  override async mountPaymentElement(host: HTMLElement): Promise<StripeCheckout> {
+    const checkout = await super.mountPaymentElement(host);
+    return {
+      confirm: () => {
+        (document.activeElement as HTMLElement | null)?.blur();
+        return checkout.confirm();
+      },
+    };
+  }
+}
+
 interface PayProbe {
   state(): string;
   errorMessage(): string | undefined;
@@ -663,6 +676,17 @@ describe('BookingPay', () => {
       await render(fixture);
 
       expect(byTestId(fixture, 'pay-button')).toBeNull();
+      expectFocusOnTitle(fixture, 'Confirming your booking');
+    });
+
+    it('Pay → processing focuses the heading when a 3DS overlay left focus on the body', async () => {
+      const { comp, fixture } = await setup(new ThreeDsOverlayGateway());
+      await render(fixture); // the wrapped mount settles a turn later
+      byTestId(fixture, 'pay-button')!.focus();
+
+      await comp.pay();
+      await render(fixture);
+
       expectFocusOnTitle(fixture, 'Confirming your booking');
     });
 
