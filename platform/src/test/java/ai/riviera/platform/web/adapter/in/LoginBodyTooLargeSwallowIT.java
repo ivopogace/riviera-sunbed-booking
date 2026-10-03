@@ -20,9 +20,9 @@ import org.springframework.context.annotation.Import;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * The login {@code 413} against the shipped Tomcat (#1409): with {@code max-swallow-size=33MB}, the server must
- * close the connection instead of draining a declared-oversized body at the client's pace. Raw socket, so the
- * client sends a few bytes of a body declared at 32 MB and then nothing.
+ * The login {@code 413} against the shipped Tomcat (#1409): {@code OversizedBodyConfig} must make the server close
+ * the connection instead of draining a declared-oversized body, up to {@code max-swallow-size}, at the client's
+ * pace. Raw socket, so the client sends a few bytes of a body declared at 32 MiB and then nothing.
  */
 @EnabledIfDockerAvailable
 @Import(TestcontainersConfiguration.class)
@@ -31,7 +31,7 @@ class LoginBodyTooLargeSwallowIT {
 
 	private static final long DECLARED_LENGTH = 32L * 1024 * 1024;
 
-	/** Far below Tomcat's connection timeout, which is what would end a drain the client never feeds. */
+	/** Far below Tomcat's 60 s connection timeout, which is what ends a drain the client never feeds. */
 	private static final Duration CLOSE_WITHIN = Duration.ofSeconds(5);
 
 	@LocalServerPort
