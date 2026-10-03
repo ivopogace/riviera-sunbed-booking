@@ -20,7 +20,7 @@ needs a placeholder.
   32 MiB body and sends a few bytes, then the `413` arrives with `Connection: close` and the server
   closes the connection within 5 s. *Seam:* the HTTP port. *Pinned by:*
   `LoginBodyTooLargeSwallowIT.declaredOversizedLoginBodyGets413AndTheConnectionClosesWithoutDrainingTheBody`
-- [ ] **AC-2 (item 2):** pending the owner's connection-timeout decision (the timeout is per read, not a body deadline).
+- [x] **AC-2 (item 2):** `boundedBody`'s Javadoc states each read is bounded by `connectionTimeout`, the whole read only by the per-IP login bucket and the thread pool; the total bound is #1439 (owner, 2026-10-03). Comment-only.
 - [x] **AC-3 (item 3):** Given `"username": <n>e2` twice, when `"username": "<n>e2"` follows, then it
   draws on the same bucket (`429`). *Seam:* `RateLimitFilter` through MockMvc. *Pinned by:*
   `RateLimitFilterTest.anExponentNumericUsernameSharesTheBucketOfItsQuotedTextAsTheControllerBindsIt`
@@ -47,7 +47,9 @@ needs a placeholder.
 
 ## Open questions
 
-- Item 2's Javadoc waits on the owner's connection-timeout decision. — *Owner:* the owner, via the orchestrator.
+### Resolved
+
+- Item 2: honest per-read Javadoc; the total slow-body bound is #1439.
 
 ## Phases
 
@@ -58,4 +60,4 @@ needs a placeholder.
 
 ## Execution status
 
-- 2026-10-03: phases 0–2 done locally, green on the scoped tests. Item 2 pending.
+- 2026-10-03: phases 0–2 done locally, green on the scoped tests. Item 2 Javadoc written; review gate next.

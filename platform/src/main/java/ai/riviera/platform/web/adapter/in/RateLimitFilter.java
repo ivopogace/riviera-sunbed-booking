@@ -502,8 +502,9 @@ final class RateLimitFilter extends OncePerRequestFilter {
 	}
 
 	/**
-	 * The login body if it fits {@link #MAX_CACHED_BODY_BYTES}, else empty: a declared length past the cap
-	 * is refused unread, any other body (chunked included) is read to at most one byte beyond it.
+	 * The login body if it fits {@link #MAX_CACHED_BODY_BYTES}, else empty: a declared length past the cap is refused
+	 * unread; any other, chunked too, is read here to one byte past it, each read bounded by {@code connectionTimeout}.
+	 * No total deadline: only the per-IP login bucket and the thread pool bound the hold (#1439).
 	 */
 	private static Optional<byte[]> boundedBody(HttpServletRequest request) throws IOException {
 		if (request.getContentLengthLong() > MAX_CACHED_BODY_BYTES) {
