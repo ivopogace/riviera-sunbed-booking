@@ -1,12 +1,10 @@
 package ai.riviera.platform.booking;
 
-import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 
-import org.awaitility.Awaitility;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -72,8 +70,6 @@ class CreateStayIT {
 
 	@AfterEach
 	void removeFixtures() {
-		Awaitility.await().atMost(Duration.ofSeconds(10)).until(() -> jdbc.sql(
-				"SELECT count(*) FROM event_publication WHERE completion_date IS NULL").query(Long.class).single() == 0L);
 		venues.forEach(venue -> StayFixtures.cleanup(jdbc, venue));
 	}
 
