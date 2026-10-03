@@ -75,7 +75,10 @@ class PackageShapeArchitectureTests {
 	/** The {@code @NamedInterface} packages, which must appear only as a direct child of a module. */
 	private static final Set<String> NAMED_INTERFACE_PACKAGES = Set.of("api", "spi", "vocabulary", "events");
 
-	/** The module roots that may hold types: the shared kernel(s) the application registers. */
+	/** The one shared kernel ADR-0007 admits. */
+	private static final String SHARED_KERNEL = "shared";
+
+	/** The module roots that may hold types: what the application registers in {@code @Modulithic(sharedModules)}. */
 	private static final Set<String> PRODUCTION_SHARED_MODULES =
 			Set.of(PlatformApplication.class.getAnnotation(Modulithic.class).sharedModules());
 
@@ -155,6 +158,16 @@ class PackageShapeArchitectureTests {
 	}
 
 	/**
+	 * Assertion 5a — {@code shared} is the only module registered in {@code @Modulithic(sharedModules)}:
+	 * a second registration would escape assertion 5 and every grant (ADR-0007, amended 2026-10-02 by PR #1351).
+	 */
+	@Test
+	void sharedIsTheOnlyRegisteredSharedModule() {
+		assertNoViolations("ADR-0007 shared-kernel violations (@Modulithic(sharedModules))",
+				sharedModuleRegistrationViolations(PRODUCTION_SHARED_MODULES));
+	}
+
+	/**
 	 * Assertion 6 — every top-level {@code api}/{@code spi}/{@code vocabulary}/{@code events} package
 	 * declares itself with {@code @NamedInterface("<its simple name>")}, so the grant
 	 * {@code <module>::<name>} means the package of that name (ADR-0007).
@@ -219,6 +232,15 @@ class PackageShapeArchitectureTests {
 		assertTrue(violations.stream().noneMatch(v -> v.contains("KernelType")),
 				"Expected the registered shared module's root type to pass, but got: " + violations);
 		assertCleanModulesUnreported(violations);
+	}
+
+	@Test
+	void aSecondRegisteredSharedModuleIsRejected() {
+		assertReported(sharedModuleRegistrationViolations(Set.of("shared", "booking")),
+				"[booking, shared]", "must be exactly [shared]");
+		assertReported(sharedModuleRegistrationViolations(Set.of()), "[]", "must be exactly [shared]");
+		assertTrue(sharedModuleRegistrationViolations(Set.of("shared")).isEmpty(),
+				"Expected the registration {\"shared\"} to pass");
 	}
 
 	@Test
@@ -337,6 +359,17 @@ class PackageShapeArchitectureTests {
 				violations.add(surface + " carries a @NamedInterface named " + names + " — it must be exactly ["
 						+ simpleName + "], the package's simple name (ADR-0007)");
 			}
+		}
+		return violations;
+	}
+
+	private static List<String> sharedModuleRegistrationViolations(Set<String> registered) {
+		List<String> violations = new ArrayList<>();
+		if (!registered.equals(Set.of(SHARED_KERNEL))) {
+			violations.add("@Modulithic(sharedModules) registers " + new TreeSet<>(registered) + " — it must be exactly ["
+					+ SHARED_KERNEL + "]: a registered module escapes the module-root rule and every allowedDependencies "
+					+ "grant, and the flat, surface-less shape is shared's alone (ADR-0007, amended 2026-10-02 by PR #1351); a "
+					+ "second shared kernel needs an ADR amendment, not a silent registration");
 		}
 		return violations;
 	}
