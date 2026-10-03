@@ -1249,7 +1249,7 @@ mutating `/api/admin/**` action, §`audit`) live in `web`; `challenge` and `audi
   PAYLOAD_TOO_LARGE`: unread when the declared length is over, read to cap + 1 and replayed when chunked.
   Each cap fits its routes' largest legitimate request (OWASP REST Security Cheat Sheet): 64 KiB; 256 KiB
   for the beach-map layout save, remodel preview and commit (a full `MAX_SETS` layout is ~223 KB); 1 MiB
-  for the Stripe webhook. Multipart keeps Spring's multipart limits. A login body is read once, by the
+  for the Stripe webhook. The photo upload keeps Spring's multipart limits. A login body is read once, by the
   throttle's 8 KiB rule below (the 64 KiB cap when the limiter is off). A slow body under its cap: #1439.
 - **Not fenced, deliberately:** login (the per-identity throttle covers it) and token redemption
   (a reset or verification token is already a bearer credential). The throttle reads every login

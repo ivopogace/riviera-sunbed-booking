@@ -20,7 +20,7 @@ import jakarta.servlet.http.HttpServletResponse;
 /**
  * Caps a POST, PUT or PATCH body under {@code /api/**} at {@link #MAX_BODY_BYTES} (a layout write at
  * {@link #MAX_LAYOUT_BODY_BYTES}, {@link #WEBHOOK_PATH} at {@link #MAX_WEBHOOK_BODY_BYTES}), refused {@code 413}
- * before CSRF and the proof-of-work claim. Multipart is left to Spring's multipart limits; a body
+ * before CSRF and the proof-of-work claim. The photo upload keeps Spring's multipart limits; a body
  * {@code RateLimitFilter} already caps is never read twice. The path is never logged: it may carry a booking
  * code (invariant #7). Rationale: RESPONSIBILITIES.md §Platform edge.
  */
@@ -42,6 +42,8 @@ final class RequestBodyCapFilter extends OncePerRequestFilter {
 			HttpMethod.PUT.name(), Set.of("/api/venues/{venueId}/beach-map"),
 			HttpMethod.POST.name(), Set.of("/api/venues/{venueId}/beach-map/preview",
 					"/api/venues/{venueId}/beach-map/commit"));
+	/** The one multipart route, as {@code VenuePhotoController} maps it: Spring's multipart limits bound it. */
+	private static final String PHOTO_UPLOAD_TEMPLATE = "/api/venues/{venueId}/photos/{slot}";
 	private static final String MULTIPART_PREFIX = "multipart/";
 	private static final Set<String> BODY_METHODS =
 			Set.of(HttpMethod.POST.name(), HttpMethod.PUT.name(), HttpMethod.PATCH.name());
@@ -81,18 +83,23 @@ final class RequestBodyCapFilter extends OncePerRequestFilter {
 
 	/** The cap on {@code request}'s body, or {@link #UNCAPPED} if this filter leaves it alone. */
 	private int capOf(HttpServletRequest request) {
-		if (!BODY_METHODS.contains(request.getMethod())
-				|| StringUtils.startsWithIgnoreCase(request.getContentType(), MULTIPART_PREFIX)) {
+		if (!BODY_METHODS.contains(request.getMethod())) {
 			return UNCAPPED;
 		}
 		String path = RequestPaths.withinApplication(request);
-		if (!path.startsWith(API_PREFIX) || cappedUpstream.test(request)) {
+		if (!path.startsWith(API_PREFIX) || cappedUpstream.test(request) || isPhotoUpload(request, path)) {
 			return UNCAPPED;
 		}
 		if (WEBHOOK_PATH.equals(path)) {
 			return MAX_WEBHOOK_BODY_BYTES;
 		}
 		return isLayoutWrite(request.getMethod(), path) ? MAX_LAYOUT_BODY_BYTES : MAX_BODY_BYTES;
+	}
+
+	private boolean isPhotoUpload(HttpServletRequest request, String path) {
+		return HttpMethod.POST.matches(request.getMethod())
+				&& StringUtils.startsWithIgnoreCase(request.getContentType(), MULTIPART_PREFIX)
+				&& paths.match(PHOTO_UPLOAD_TEMPLATE, path);
 	}
 
 	private boolean isLayoutWrite(String method, String path) {

@@ -14,8 +14,8 @@ import jakarta.servlet.http.HttpServletResponse;
  * Hand-mirrored RFC-7807 bodies for rejections <em>inside the security filter chain</em>, before
  * MVC dispatch, where {@link ApiErrorHandler}/{@link ApiProblem} never run (as with
  * {@code RateLimitFilter}'s {@code RATE_LIMITED}): {@link SecurityConfig}'s entry point
- * ({@code 401 UNAUTHENTICATED}), {@link ChallengeVerificationFilter}'s three refusals and the edge's
- * {@code 413}, held to the contract by {@code AuthSessionIT} and the filters' own tests.
+ * ({@code 401 UNAUTHENTICATED}, {@code AuthSessionIT}), {@link ChallengeVerificationFilter}'s refusals
+ * ({@code ChallengeVerificationFilterTest}) and the edge's {@code 413} ({@code RequestBodyCapFilterTest}).
  * No {@code instance}: no URI is ever written (invariant #7).
  */
 final class SecurityProblemResponses {

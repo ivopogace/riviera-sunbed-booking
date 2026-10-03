@@ -157,6 +157,12 @@ class RequestBodyCapFilterTest {
 	}
 
 	@Test
+	void aMultipartBodyOnAnyOtherRouteIsCapped() throws Exception {
+		expectBodyTooLarge(mvc.perform(post(CREATE_PATH).with(fromIp(SessionLoginSupport.uniqueClientIp()))
+				.contentType("multipart/form-data; boundary=cap-boundary").content(new byte[CAP + 1])));
+	}
+
+	@Test
 	void aWebhookBodyPastTheGeneralCapReachesTheController() throws Exception {
 		mvc.perform(jsonPost(WEBHOOK_PATH, padded("{\"pad\":\"", CAP * 2)))
 				.andExpect(status().isBadRequest())
