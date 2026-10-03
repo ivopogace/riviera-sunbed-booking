@@ -15,8 +15,8 @@ import ai.riviera.platform.venue.vocabulary.VenueId;
  * in integer minor units + ISO currency (invariant #5). {@code cancelledAt}, {@code refundMinor} and
  * {@code cancelReason} are stamped together, only by a cancellation that decided a refund (pre-V14 rows carry a
  * refund with no reason). It holds the {@code customerId}, never the contact. {@code acceptedAt} feeds the pay
- * deadline (#4); {@code movedAt} the free-exit deadline. {@code everyDayRefunded} is <em>nothing left</em>
- * (ADR-0026 §7, §8): service days, none unrefunded — one rule for the remodel, the cancel and the view, never a zero remainder.
+ * deadline (#4); {@code movedAt} the free-exit deadline. {@code everyDayRefunded} is a booking's <em>nothing left</em>
+ * (ADR-0026 §7, §8): service days, none unrefunded, never a zero remainder; a stay's is {@code LiveRemainder}'s.
  */
 public record BookingRecord(long id, String code, BookingStatus status, VenueId venueId, SetId setId,
 		CustomerId customerId, LocalDate bookingDate, LocalDate lastDate, long amountMinor, String currency,
