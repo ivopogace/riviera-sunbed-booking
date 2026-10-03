@@ -397,6 +397,25 @@ describe('PricingTab (#174)', () => {
     expect(input('A').getAttribute('aria-invalid')).toBe('true');
   });
 
+  it('drops a refusal when a change during an in-flight reprice restores the row (#1449)', async () => {
+    render();
+    editRow('A', '0.2');
+    editRow('B', '25');
+    const reqB = http.expectOne(
+      (r) => r.method === 'PUT' && r.url.includes('/api/venues/1/rows/B/price'),
+    );
+
+    // The readonly lock is the first line; this is the backstop for a change that slips past it.
+    editRow('A', '0.3');
+
+    expect(input('A').value).toBe('35');
+    expect(host.querySelector('[data-testid="pricing-error-A"]')).toBeNull();
+    expect(input('A').hasAttribute('aria-invalid')).toBe(false);
+    expect(input('A').hasAttribute('aria-describedby')).toBe(false);
+    reqB.flush(null);
+    await fixture.whenStable();
+  });
+
   it('drops a refusal when the operator clears the field, restoring the saved price', () => {
     render();
     editRow('A', '0.2');

@@ -4,12 +4,13 @@ import { expectNoSeriousAxeViolations } from './support/axe';
 import { settle } from './support/booking-dialog';
 
 /**
- * Real-render CI-safe e2e for the Pricing tab. Drives sign-in → open the Pricing tab →
- * see one row per label with its tier description and price → edit a row's € input → assert the
- * owner-asserted per-row reprice PUT (path + integer-minor-unit body + concurrency token) and the
- * recomputed projected take. Also the cross-venue (403) failure copy and the stale-write conflict (409
+ * Real-render CI-safe e2e for the Pricing tab. Drives sign-in → open the Pricing tab → see one row
+ * per label with its tier description and price → edit a row's € input → assert the owner-asserted
+ * per-row reprice PUT (path + integer-minor-unit body + concurrency token) and the recomputed
+ * projected take. Also the cross-venue (403) failure copy and the stale-write conflict (409
  * STALE_WRITE reverts the row + offers Reload — co-located here as the venue tab does in
- * operator-venue.e2e.ts), and the client-side €0.50 floor refusing before any request. API mocked via `page.route` (no backend); axe over the tab.
+ * operator-venue.e2e.ts), and the client-side €0.50 floor refusing before any request. API mocked
+ * via `page.route` (no backend); axe over the tab.
  */
 
 const PRINCIPAL = { username: 'operator', principalType: 'OPERATOR' };
