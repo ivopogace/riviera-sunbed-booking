@@ -91,7 +91,7 @@ class MyBookingsIT {
 
 	@AfterEach
 	void removeFixtures() {
-		venues.forEach(venue -> StayFixtures.cleanup(jdbc, venue));
+		venues.forEach(venue -> StayFixtures.cleanupNow(jdbc, venue));
 	}
 
 	@BeforeEach
