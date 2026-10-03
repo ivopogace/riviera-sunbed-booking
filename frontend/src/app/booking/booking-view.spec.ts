@@ -2155,6 +2155,70 @@ describe('BookingView', () => {
       expect(text(host, 'review-result')).toBe('');
       expect(held.getCalls).toEqual([A.code]);
     });
+
+    // The swap's refocus belongs to B's load outcome; a dropped A reply must neither take nor clear it (#1411).
+    describe('focus after the swap', () => {
+      function settleA(getA: Subject<BookingDetail>, outcome: 'resolves' | 'fails'): void {
+        if (outcome === 'resolves') {
+          getA.next(A);
+          getA.complete();
+        } else {
+          getA.error(new HttpErrorResponse({ status: 500 }));
+        }
+      }
+
+      function expectFocusOnBTitle(host: HTMLElement): void {
+        expect(text(host, 'booking-code')).toContain(B.code);
+        expect(document.activeElement).toBe(host.querySelector('[data-testid="bv-title"]'));
+      }
+
+      it.each([
+        { prefetched: true, outcome: 'resolves' },
+        { prefetched: true, outcome: 'fails' },
+        { prefetched: false, outcome: 'resolves' },
+        { prefetched: false, outcome: 'fails' },
+      ] as const)(
+        "keeps focus on B's title when B settled first (prefetched: $prefetched) and A's read $outcome",
+        async ({ prefetched, outcome }) => {
+          const held = heldA();
+          const { host, settle, swapTo } = await renderSwappable(held.service);
+          if (prefetched) {
+            held.prime(B);
+          }
+          await swapTo(B.code);
+
+          settleA(held.getA, outcome);
+          await settle();
+
+          expectFocusOnBTitle(host);
+        },
+      );
+
+      // Only here is the flag still unconsumed when A lands, so only here can a leaky guard strand focus.
+      it.each(['resolves', 'fails'] as const)(
+        "hands focus to B's title when A's read %s while B's read is still in flight",
+        async (outcome) => {
+          const getA = new Subject<BookingDetail>();
+          const getB = new Subject<BookingDetail>();
+          const service: Partial<BookingService> = {
+            getByCode: (code: string) => (code === A.code ? getA : getB),
+            takePrefetched: () => undefined,
+          };
+          const { host, settle, swapTo } = await renderSwappable(service);
+          await swapTo(B.code);
+
+          settleA(getA, outcome);
+          await settle();
+          expect(text(host, 'bv-title')).toBe('Loading your booking…');
+
+          getB.next(B);
+          getB.complete();
+          await settle();
+
+          expectFocusOnBTitle(host);
+        },
+      );
+    });
   });
 
   it('shows the loading card while the fetch is in flight', async () => {
