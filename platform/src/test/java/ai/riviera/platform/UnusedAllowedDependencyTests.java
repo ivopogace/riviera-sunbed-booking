@@ -1,5 +1,11 @@
 package ai.riviera.platform;
 
+import java.io.IOException;
+import java.lang.classfile.ClassFile;
+import java.lang.classfile.MethodModel;
+import java.lang.classfile.instruction.InvokeDynamicInstruction;
+import java.lang.constant.ClassDesc;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -14,7 +20,6 @@ import org.springframework.modulith.core.ApplicationModule;
 import org.springframework.modulith.core.ApplicationModules;
 import org.springframework.modulith.core.NamedInterface;
 
-import com.tngtech.archunit.core.domain.JavaCall;
 import com.tngtech.archunit.core.domain.JavaClass;
 import com.tngtech.archunit.core.domain.JavaClasses;
 
@@ -23,14 +28,16 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 /**
  * Fails on a declared {@code allowedDependencies} grant no class of the module uses in bytecode (invariant
- * #11): {@code verify()} rejects a missing grant, never an unused one. Used = Modulith's dependency model
- * plus the parameter types of every called member, which a lambda argument leaves behind. A bare
- * {@code module} or {@code module::*} grant is used by any dependency on that module. Negative case:
+ * #11): {@code verify()} rejects a missing grant, never an unused one. Used = Modulith's dependency model plus
+ * the type each lambda or method reference produces; a type met only in a called member's descriptor is not.
+ * A bare {@code module} or {@code module::*} grant is used by any dependency on that module. Negative case:
  * {@code ai.riviera.grantfixture}, imported at every location (test classes). Rationale: RESPONSIBILITIES.md.
  */
 class UnusedAllowedDependencyTests {
 
 	private static final String FIXTURE_BASE = "ai.riviera.grantfixture";
+
+	private static final ClassDesc LAMBDA_METAFACTORY = ClassDesc.of("java.lang.invoke.LambdaMetafactory");
 
 	@Test
 	void everyDeclaredGrantIsUsed() {
@@ -48,8 +55,9 @@ class UnusedAllowedDependencyTests {
 
 		assertEveryGrantingModuleAudited(audit, fixture);
 		assertThat(audit.grantsChecked()).containsExactlyInAnyOrder("alpha → beta::api",
-				"alpha → beta::vocabulary", "alpha → beta::spi", "alpha → beta::events");
-		assertThat(audit.unused()).containsExactly("alpha → beta::events");
+				"alpha → beta::vocabulary", "alpha → beta::spi", "alpha → beta::events", "gamma → beta::api",
+				"gamma → beta::spi");
+		assertThat(audit.unused()).containsExactlyInAnyOrder("alpha → beta::events", "gamma → beta::spi");
 	}
 
 	/**
@@ -73,13 +81,13 @@ class UnusedAllowedDependencyTests {
 	}
 
 	private static GrantAudit audit(ApplicationModules modules, JavaClasses classes) {
-		Map<String, Set<String>> calledSignatureTypes = calledSignatureTypes(classes, modules);
+		Map<String, Set<String>> lambdaTypes = lambdaTypes(classes, modules);
 		List<String> checked = new ArrayList<>();
 		List<String> unused = new ArrayList<>();
 		Set<String> packagesChecked = new TreeSet<>();
 		modules.forEach(module -> {
 			String id = module.getIdentifier().toString();
-			Set<String> targetTypes = new TreeSet<>(calledSignatureTypes.getOrDefault(id, Set.of()));
+			Set<String> targetTypes = new TreeSet<>(lambdaTypes.getOrDefault(id, Set.of()));
 			module.getDirectDependencies(modules).stream()
 					.forEach(dependency -> targetTypes.add(dependency.getTargetType().getName()));
 			Set<String> used = grantSpellings(id, targetTypes, modules);
@@ -96,24 +104,41 @@ class UnusedAllowedDependencyTests {
 	}
 
 	/**
-	 * Per source module, the parameter types (arrays unwrapped) of every member its classes call: how a
-	 * lambda passed as a functional-interface argument shows up, since ArchUnit skips {@code invokedynamic}.
+	 * Per source module, the functional-interface type each lambda or method reference its classes create
+	 * produces: a {@code LambdaMetafactory} {@code invokedynamic}, which ArchUnit and so Modulith skip.
 	 */
-	private static Map<String, Set<String>> calledSignatureTypes(JavaClasses classes, ApplicationModules modules) {
+	private static Map<String, Set<String>> lambdaTypes(JavaClasses classes, ApplicationModules modules) {
 		Map<String, Set<String>> byModule = new HashMap<>();
 		for (JavaClass type : classes) {
 			Optional<ApplicationModule> module = modules.getModuleByType(type.getName());
 			if (module.isEmpty()) {
 				continue;
 			}
-			Set<String> targets = byModule.computeIfAbsent(module.get().getIdentifier().toString(),
-					key -> new TreeSet<>());
-			for (JavaCall<?> call : type.getCodeUnitCallsFromSelf()) {
-				call.getTarget().getRawParameterTypes()
-						.forEach(parameter -> targets.add(parameter.getBaseComponentType().getName()));
-			}
+			Path classFile = ArchitectureTestSupport.classFileOf(type)
+					.orElseThrow(() -> new IllegalStateException(type.getName() + " has no class file to read"));
+			byModule.computeIfAbsent(module.get().getIdentifier().toString(), key -> new TreeSet<>())
+					.addAll(lambdaTypes(classFile));
 		}
 		return byModule;
+	}
+
+	private static Set<String> lambdaTypes(Path classFile) {
+		try {
+			Set<String> produced = new TreeSet<>();
+			for (MethodModel method : ClassFile.of().parse(classFile).methods()) {
+				method.code().ifPresent(code -> code.forEach(element -> {
+					if (element instanceof InvokeDynamicInstruction indy
+							&& LAMBDA_METAFACTORY.equals(indy.bootstrapMethod().owner())) {
+						String descriptor = indy.typeSymbol().returnType().descriptorString();
+						produced.add(descriptor.substring(1, descriptor.length() - 1).replace('/', '.'));
+					}
+				}));
+			}
+			return produced;
+		}
+		catch (IOException e) {
+			throw new IllegalStateException("could not read " + classFile, e);
+		}
 	}
 
 	/**
