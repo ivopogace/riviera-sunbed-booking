@@ -42,6 +42,10 @@ past its cap) mirror the shape by hand (they reject before MVC dispatch).
   the request URI, on `/api/bookings/{code}` the bearer credential, so `web`'s
   `ProblemInstanceConfig` clears it on every MVC-written body; the hand-built filter-chain bodies
   omit it. Never set one (`ProblemDetail.setInstance`), not even a constant path.
+- `/error` follows the contract: `web`'s `ProblemErrorController` replaces Boot's `BasicErrorController`, so a
+  filter-thrown exception, a `sendError` or an unmapped exception answers `ApiProblem.of(status,
+  ApiErrorHandler.defaultCode(status), …)` with the dispatched status kept, on every path, never Boot's
+  `path`/`timestamp` map or whitelabel page (`ErrorDispatchProblemIT`).
 
 **Validation is centralized-explicit:** hand-rolled checks in `toCommand()`, translated at the
 controller, mapped once by the advice. No `spring-boot-starter-validation`/`@Valid` — the
