@@ -961,7 +961,7 @@ per booking), who may leave, change or remove it and until when, and the score a
 - **The booking code is the whole authorization** (invariant #7): the resource is the guest's
   booking, the use case mine, so `ReviewController` joins the `permitAll` `/api/bookings/{code}`
   family (and its per-code rate-limit budget) without touching `BookingController`. The code is
-  never logged and never reaches an error body (`instance` is the constant `/api/bookings`).
+  never logged and never reaches an error body (no body carries `instance`, §`web`).
 - **An over-long review text is refused, never truncated** — half a sentence stored silently is
   worse than a no. `SubmitReviewRequest` strips, then holds both texts to `ReviewText`'s bounds
   (`400 INVALID_REQUEST`); V46's CHECKs are backstops.
@@ -1194,6 +1194,15 @@ Spring Security beans arrive by framework type, which is no module dependency.
   `ClientIpResolver`), `ChallengeVerificationFilter` (calls `challenge::api`), `SessionCredentialFilter`
   (calls `auth::api`), `AdminAuditFilter` + `AdminAuditReasons` (calls `audit::api`).
 - The chain's problem bodies (`SecurityProblemResponses`), `RequestPaths`, CORS (`WebCorsConfig`).
+- **No problem body carries `instance`** (`ProblemInstanceConfig`): Spring fills a null one with the
+  request URI, on `/api/bookings/{code}` the bearer credential (#7), so the interceptor clears it after
+  that fill; the hand-built bodies omit it. RFC 9457 makes every member optional.
+- **A `413` aborts the connection, never drains the body** (`OversizedBodyConfig`, Tomcat's
+  `swallowAbortedUploads=false`): a drain would hold a request thread, up to `max-swallow-size`, at the
+  client's pace. App-wide, so an oversized multipart upload is aborted too; a client still sending may
+  see a reset instead of the `413` body. So the console refuses a photo past the 25 MiB cap before
+  sending it (`MAX_PHOTO_UPLOAD_BYTES`): its "too large" copy never needs the `413`, which stays the
+  backstop: the photo flow never relies on a browser reading a mid-upload `413` (#1409).
 - **`ApiErrorHandler`, the one `@RestControllerAdvice`** (`ErrorContractArchitectureTests`): every
   exception→status mapping, module vocabulary exceptions included.
 
@@ -1211,6 +1220,13 @@ back-linking of past guest bookings, ever; auth endpoints non-enumerating + cons
 own rate-limit buckets; mocked externals (SSO IdPs, mailer) profile-guarded out of prod; session
 revocation orchestrated by `auth` and synchronous, bracketing the state change; every request re-checks the
 session's credential stamp.
+
+**Where the edge's types may appear (RV-BE-11):** no Spring Security, Spring Session or mail (Spring
+Mail, Jakarta Mail, Angus Mail) type in `availability`, `booking`, `payment`, `payout`, `review`,
+`itinerary`, `remodel`, `venue`, `notification`, `challenge`, `audit`, `monitoring` or `shared` outside
+the module's `adapter.in`, where a controller reads the signed-in principal; `notification` sends mail,
+so only security and session are checked there. `customer` and `operator` are checked whole,
+`adapter.in` included; `auth` and `web` are the edge (`*AuthPlacementTests`).
 
 **Abuse and accountability split into fence and mechanism** (ADR-0017): the **fence** — filters and
 their order, route policy, filter-chain problem bodies, neutralizing client input such as
@@ -1301,7 +1317,9 @@ The SPA rules whose TSDoc points here; structure is `riviera-frontend`'s, stylin
   whole basis points is never unseen: the editor renders the integer the wire carries (invariant #5).
 - **Focus is moved after a confirm-before-destroy** (`shared/focus-after-render.ts`): the surface
   destroys the element just activated, stranding focus on `<body>` (WCAG 2.4.3), and the target
-  rarely exists yet at decision time — hence lookup in `earlyRead`, `focus()` in `write`.
+  rarely exists yet at decision time — hence lookup in `earlyRead`, `focus()` in `write`. A swap the
+  server drives (the pay page's poll and re-check) passes `onlyIfLost`: focus moves only if it was
+  already on `<body>` or the render took its holder, so a control the swap keeps is never robbed.
 - **The venue console lands on the Daily view** (`VENUE_CONSOLE_LANDING_TAB`), what a trading venue
   opens every day; set-up tabs are destinations. A freshly created venue is the exception:
   `operator/venue-create-card.ts` sends it to `beach-map`, as it has no map to run a day on yet.
@@ -1411,7 +1429,7 @@ them form the *structural net* is `riviera-modulith` § *The structural net*'s c
 | No module reaches another's `application`/`domain`/`adapter`; `allowedDependencies` hold | `ModularityTests` (`ApplicationModules.verify()`) |
 | Every declared `allowedDependencies` grant is used: some class of the module depends on that module or named interface in bytecode (Modulith's dependency model plus the parameter types of called members, so `remodel`'s lambda passed as `venue.spi.RemodelGate` counts; `web`'s `switch` over a returned `ChallengeVerdict` Modulith sees itself) | `UnusedAllowedDependencyTests` (fixture `ai.riviera.grantfixture`) |
 | The ADR-0007 package shape; published-surface kinds; the `VenueCatalog` role split | `PackageShapeArchitectureTests`, `PublishedSurfacePlacementArchitectureTests`, `VenueApiRoleSplitTests` |
-| Only a module registered in `@Modulithic(sharedModules)` has types directly in its module root | `PackageShapeArchitectureTests` (module-root rule) |
+| Only a module registered in `@Modulithic(sharedModules)` has types directly in its module root, and `shared` is the only module registered there (ADR-0007, amended 2026-10-02 by PR #1351) | `PackageShapeArchitectureTests` (module-root rule; shared-registration rule) |
 | Every top-level `api`/`spi`/`vocabulary`/`events` package carries `@NamedInterface` of its own simple name | `PackageShapeArchitectureTests` (named-interface declaration rule) |
 | Every module declares `allowedDependencies`; none is left at the allow-all default | `PackageShapeArchitectureTests` (declared-grants rule; whether each grant is used is not checked here) |
 | No JPA/Hibernate on the classpath — invariant #1 | `JdbcOnlyArchitectureTests` (classpath probes; the Hibernate auto-configuration name is Boot 4's and pinned to the running Boot major) |
@@ -1422,6 +1440,7 @@ them form the *structural net* is `riviera-modulith` § *The structural net*'s c
 | The view's `cancellable` and the guest cancel's refusal agree with `CANCEL_BY_GUEST`, status by status (ADR-0018 §1) | `ViewBookingServiceTest.onlyAConfirmedBookingIsCancellableWhileTheWindowIsOpen`, `CancelBookingServiceTest` (against the literal `BookingTransitionTest` pins) |
 | No Spring Security, Spring Session or mail (Spring Mail, Jakarta Mail, Angus Mail) type inside `operator`; OIDC/OAuth2 client types fall under Spring Security (RV-BE-11) | `OperatorAuthPlacementTests` |
 | No Spring Security, Spring Session or mail (Spring Mail, Jakarta Mail, Angus Mail) type inside `customer`; OIDC/OAuth2 client types fall under Spring Security (RV-BE-11) | `CustomerAuthPlacementTests` |
+| No Spring Security, Spring Session or mail type outside `adapter.in` in `availability`, `booking`, `payment`, `payout`, `review`, `itinerary`, `remodel`, `venue`, `notification` (security and session only: it sends mail), `challenge`, `audit`, `monitoring`, `shared`; every module is classified as so checked, whole-module checked (`customer`, `operator`) or edge (`auth`, `web`) (RV-BE-11) | `DomainModuleAuthPlacementTests` |
 | Mail listeners name their own bounded executors, never Boot's shared `applicationTaskExecutor` | `MailListenerExecutorArchitectureTest` |
 | `booking` listeners reaching `payment::api` run on the bounded refund pool | `RefundListenerExecutorArchitectureTest` |
 | Every self-configured worker pool carries `monitoring`'s MDC decorator | `WorkerContextArchitectureTest` |

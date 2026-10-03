@@ -74,7 +74,8 @@ Whenever behaviour is added or moved: each file's logic serves its module's **Jo
 its **Not My Job** list. The tells no rule catches: refund/cancellation policy in `payment`
 (executor; `booking` decides); commission/payout arithmetic in `venue` or `booking` (`payout`
 computes); `customer` or `operator` growing login machinery beyond the Spring Security, Spring Session and mail imports
-`*AuthPlacementTests` ban (it belongs in `auth`); a security-chain filter, route rule or exception mapping outside
+`*AuthPlacementTests` ban (it belongs in `auth`); any other module's `adapter.in`, which that ban exempts, doing
+more with Spring Security than read the signed-in principal; a security-chain filter, route rule or exception mapping outside
 `web` (the chain and the one advice are `web`'s; `ErrorContractArchitectureTests` catches only a second
 advice); `operator` sitting in every request path. Blocker when the misplacement also breaks a Blocker invariant.
 
