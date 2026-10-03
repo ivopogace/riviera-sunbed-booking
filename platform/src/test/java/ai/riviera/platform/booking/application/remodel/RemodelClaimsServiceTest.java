@@ -415,6 +415,7 @@ class RemodelClaimsServiceTest {
 		order.verify(availability).release(A1.setId(), IN_TEN_DAYS);
 		order.verify(availability).release(A1.setId(), last);
 		verify(availability, never()).release(A1.setId(), released);
+		verify(bookings, times(1)).lockRemainder(305);
 		verify(events, never()).publishEvent(any());
 		verify(receipts).store(new NewReceipt(VENUE, OWNER, CLOCK.instant(), List.of(),
 				List.of(new ReceiptOutcome(new BookingId(305), IN_TEN_DAYS, ref(A1), ReceiptOutcomeKind.NOTHING_LEFT,
@@ -443,6 +444,10 @@ class RemodelClaimsServiceTest {
 		assertEquals(new RemodelCommit.Applied(RECEIPT, CLOCK.instant(), List.of(new RemodelClaim(new BookingId(306),
 				ref(A1), IN_TEN_DAYS, IN_TEN_DAYS.plusDays(2), 0, "EUR", RemodelOutcome.NothingLeft.NOTHING_LEFT))),
 				outcome, "the commit answers what it settled, not what it classified");
+		InOrder order = inOrder(bookings);
+		order.verify(bookings).lockRemainder(306);
+		order.verify(bookings).cancelConfirmed(306, CLOCK.instant(), 0, RefundReason.VENUE_CHANGE, 0);
+		verify(bookings, times(1)).lockRemainder(306);
 		verify(events, never()).publishEvent(any());
 		verify(receipts).store(new NewReceipt(VENUE, OWNER, CLOCK.instant(), List.of(),
 				List.of(new ReceiptOutcome(new BookingId(306), IN_TEN_DAYS, ref(A1), ReceiptOutcomeKind.NOTHING_LEFT,
@@ -472,6 +477,10 @@ class RemodelClaimsServiceTest {
 		verify(availability, never()).claim(any(), any());
 		verify(bookings, never()).moveToSet(anyLong(), any(), any(), any());
 		verify(availability).release(A1.setId(), IN_TEN_DAYS);
+		InOrder order = inOrder(bookings);
+		order.verify(bookings).lockRemainder(307);
+		order.verify(bookings).cancelConfirmed(307, CLOCK.instant(), 0, RefundReason.VENUE_CHANGE, 0);
+		verify(bookings, times(1)).lockRemainder(307);
 		verify(events, never()).publishEvent(any());
 		verify(receipts).store(new NewReceipt(VENUE, OWNER, CLOCK.instant(), List.of(),
 				List.of(new ReceiptOutcome(new BookingId(307), IN_TEN_DAYS, ref(A1), ReceiptOutcomeKind.NOTHING_LEFT,
@@ -532,6 +541,7 @@ class RemodelClaimsServiceTest {
 				"Re-laying row A", List.of()));
 		verify(availability, never()).claim(any(), any());
 		verify(bookings, never()).moveToSet(anyLong(), any(), any(), any());
+		verify(bookings, times(1)).lockRemainder(210);
 	}
 
 	@Test
@@ -625,6 +635,8 @@ class RemodelClaimsServiceTest {
 				new ReceiptMove(new BookingId(203), IN_TEN_DAYS, ref(A1), ref(A2), 0, 1),
 				new ReceiptMove(new BookingId(204), IN_TEN_DAYS.plusDays(1), ref(A1), ref(A3), 0, 2)),
 				List.of(), "", List.of()));
+		verify(bookings, times(1)).lockRemainder(203);
+		verify(bookings, times(1)).lockRemainder(204);
 	}
 
 	/** ADR-0027 (#2): a move neither claims nor frees a day the venue released — that row is another guest's or nobody's. */
