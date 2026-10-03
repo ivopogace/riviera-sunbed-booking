@@ -51,4 +51,4 @@ settlement path in `RemodelClaimsService` takes the booking's remainder lock exa
 ## Execution status
 
 - [x] Phase 0 — remainder passed in; count verifies green
-- [ ] Phase 1
+- [x] Phase 1 — 49 EUR and 3000 ALL → 400, 50 EUR commits; mutant (no `SetPrice.require` in `LayoutCell`) fails the 400 case
