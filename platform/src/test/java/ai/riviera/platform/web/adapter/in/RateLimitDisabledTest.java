@@ -5,16 +5,20 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.context.annotation.Import;
+import org.springframework.http.MediaType;
 import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
 
 import static ai.riviera.platform.WebSliceStubs.fromIp;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
  * The master switch (AC-8): with {@code riviera.ratelimit.enabled=false} no request is ever
- * rate-limited, even with capacity set to 1 — far past which an enabled limiter would 429.
+ * rate-limited, even with capacity set to 1 — far past which an enabled limiter would 429. A login
+ * body then has no 8 KiB throttle cap, so {@code RequestBodyCapFilter}'s general cap bounds it.
  */
 @WebMvcTest
 @Import({SecurityConfig.class, WebCorsConfig.class, WebSliceStubs.class})
@@ -38,5 +42,12 @@ class RateLimitDisabledTest {
 			mvc.perform(get("/api/bookings/{code}", code).with(fromIp(ip)))
 					.andExpect(status().isNotFound()); // capacity 1 would 429 at the 2nd if enabled
 		}
+	}
+
+	@Test
+	void withTheLimiterOffALoginBodyFallsUnderTheGeneralCap() throws Exception {
+		RequestBodyCapFilterTest.expectBodyTooLarge(mvc.perform(post("/api/auth/operator/login").with(csrf())
+				.with(fromIp("198.51.100.2")).contentType(MediaType.APPLICATION_JSON)
+				.content(RequestBodyCapFilterTest.padded("{\"username\":\"", RequestBodyCapFilter.MAX_BODY_BYTES + 1))));
 	}
 }

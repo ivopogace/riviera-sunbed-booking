@@ -109,7 +109,7 @@ the claim via the availability port, and `BookingCancelled` drives both the refu
 
 Part of the system sits outside the context modules, and no diagram here shows it — so it is
 stated instead. The closed `web` module holds the fences: `SecurityConfig` and the filter chain
-(`RateLimitFilter`, `ChallengeVerificationFilter`, `AdminAuditFilter`, `SessionCredentialFilter`; the
+(`RateLimitFilter`, `RequestBodyCapFilter`, `ChallengeVerificationFilter`, `AdminAuditFilter`, `SessionCredentialFilter`; the
 correlation-id filter is `monitoring`'s) and the one advice (`ApiErrorHandler`; `ApiProblem` is
 `shared`'s). The composition root (`ai.riviera.platform`) holds only `PlatformApplication` and
 configuration that reaches no module. The closed `auth` module holds the login machinery: the session
