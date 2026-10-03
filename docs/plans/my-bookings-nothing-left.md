@@ -35,6 +35,6 @@ exactly the detail page's cost for the same stay; zero queries for a stay of onl
 
 ## Execution status
 
-- [ ] Backend: port shape + service + `MyBookingView.nothingLeft` + `MyBookingsIT`
-- [ ] Frontend: model, row builder, spec, mocked e2e
+- [x] Backend (e7008a2): port shape + service + `MyBookingView.nothingLeft` + `MyBookingsIT`
+- [x] Frontend: model, row builder, spec, mocked e2e
 - [ ] PR, review gate (high), Sonar
