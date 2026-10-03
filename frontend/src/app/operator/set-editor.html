@@ -241,11 +241,13 @@
             <input
               appTouchTarget
               type="number"
+              [attr.min]="minPriceEur"
               step="0.5"
               [value]="batchDraft().priceEur"
               (input)="onBatchPriceInput($any($event.target).value)"
               [appBusy]="batchBusy()"
               data-testid="batch-price"
+              #batchPriceControl
               class="w-full rounded-[12px] border border-riv-card-border bg-riv-console-inset/60 px-[11px] py-[9px] text-[16px] text-riv-card-ink"
             />
           </label>
@@ -273,7 +275,16 @@
               </span>
             }
           </output>
-          @if (batchErrorMessage(); as message) {
+          @if (batchErrorCode() === 'INVALID_REQUEST') {
+            <p
+              [appFieldErrorFor]="batchPriceControl"
+              class="mt-2.5 text-[12.5px] font-semibold leading-[1.45] text-riv-error-ink"
+              role="alert"
+              data-testid="batch-error"
+            >
+              {{ batchErrorMessage() }}
+            </p>
+          } @else if (batchErrorMessage(); as message) {
             <p
               class="mt-2.5 text-[12.5px] font-semibold leading-[1.45] text-riv-error-ink"
               role="alert"
@@ -392,6 +403,7 @@
               step="0.5"
               [formField]="draftForm.priceEur"
               data-testid="set-price"
+              #priceControl
               class="w-full rounded-[12px] border border-riv-card-border bg-riv-console-inset/60 px-[11px] py-[9px] text-[16px] text-riv-card-ink"
             />
           </label>
@@ -515,7 +527,17 @@
               </span>
             }
           </output>
-          @if (errorMessage(); as message) {
+          <!-- Only INVALID_REQUEST blames the typed price; every other failure is a panel alert (RV-FE-11). -->
+          @if (errorCode() === 'INVALID_REQUEST') {
+            <p
+              [appFieldErrorFor]="priceControl"
+              class="mt-2.5 text-[12.5px] font-semibold leading-[1.45] text-riv-error-ink"
+              role="alert"
+              data-testid="set-error"
+            >
+              {{ errorMessage() }}
+            </p>
+          } @else if (errorMessage(); as message) {
             <p
               class="mt-2.5 text-[12.5px] font-semibold leading-[1.45] text-riv-error-ink"
               role="alert"

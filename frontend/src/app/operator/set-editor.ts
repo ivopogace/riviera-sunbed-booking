@@ -11,7 +11,14 @@ import {
   output,
   signal,
 } from '@angular/core';
-import { disabled, form, FormField } from '@angular/forms/signals';
+import {
+  createMetadataKey,
+  disabled,
+  form,
+  FormField,
+  metadata,
+  MIN,
+} from '@angular/forms/signals';
 import { firstValueFrom, Observable } from 'rxjs';
 
 import { OperatorAuth } from '../core/operator-auth';
@@ -21,7 +28,14 @@ import { LockIcon } from '../shared/lock-icon';
 import { LoadAnnouncer } from '../shared/load-announcer';
 import { ConfirmPanel } from '../shared/confirm-panel';
 import { focusMover } from '../shared/focus-after-render';
-import { eurosToMinorUnits, formatMoney, minorUnitsToEuros } from '../shared/money';
+import { FieldErrorFor } from '../shared/field-error-for';
+import {
+  eurosToMinorUnits,
+  formatMoney,
+  MIN_SET_PRICE_EUR,
+  MIN_SET_PRICE_MINOR,
+  minorUnitsToEuros,
+} from '../shared/money';
 import { Pool, SetView, Tier } from '../shared/venue-views';
 import { lockDescription, lockReason } from './lock-reason';
 import {
@@ -137,6 +151,12 @@ function draftForNewCell(gridY: number): SetDraft {
 }
 
 /**
+ * The price field's `min` as a string-typed limit: `[formField]` owns the input's `min` attribute
+ * (a template `min` is a compile error), and `MIN_NUMBER` cannot select onto the euros-string draft.
+ */
+const MIN_PRICE_EUR = createMetadataKey<string | undefined>();
+
+/**
  * The per-set beach-map editor: edits one server set by `setId` (a painted cell has no identity) or
  * a swept batch, beside the bulk paint surface; both work on a trading venue. Price, tier and pool
  * are never refused; only a move or remove asks the server's claim question. A single-set save is
@@ -154,6 +174,7 @@ function draftForNewCell(gridY: number): SetDraft {
     BeachCell,
     ConfirmPanel,
     FormField,
+    FieldErrorFor,
     BusyAction,
     LoadAnnouncer,
     TouchTarget,
@@ -210,6 +231,7 @@ export class SetEditor {
   protected readonly saved = signal(false);
   /** The last write failure, mapped to operator-facing copy, or undefined. */
   protected readonly errorCode = signal<SetWriteErrorCode | undefined>(undefined);
+  protected readonly minPriceEur = MIN_SET_PRICE_EUR;
 
   /** Which write {@link errorCode} answers — read only for `SET_IN_USE`, whose breadth varies by action. */
   private readonly attempted = signal<SetWrite | undefined>(undefined);
@@ -425,6 +447,8 @@ export class SetEditor {
    */
   protected readonly draftForm = form(this.draft, (path) => {
     disabled(path.priceEur, { when: () => this.busy() });
+    metadata(path.priceEur, MIN_PRICE_EUR, () => MIN_SET_PRICE_EUR);
+    metadata(path.priceEur, MIN, () => MIN_PRICE_EUR);
   });
 
   /**
@@ -683,7 +707,10 @@ export class SetEditor {
     }
     const draft = this.batchDraft();
     const touchedPrice = draft.priceEur.trim() === '' ? null : eurosToMinorUnits(draft.priceEur);
-    if (draft.priceEur.trim() !== '' && touchedPrice === null) {
+    if (
+      draft.priceEur.trim() !== '' &&
+      (touchedPrice === null || touchedPrice < MIN_SET_PRICE_MINOR)
+    ) {
       this.batchErrorCode.set('INVALID_REQUEST');
       return;
     }
@@ -946,7 +973,7 @@ export class SetEditor {
     }
     const draft = this.draft();
     const minorUnits = eurosToMinorUnits(draft.priceEur);
-    if (minorUnits === null) {
+    if (minorUnits === null || minorUnits < MIN_SET_PRICE_MINOR) {
       this.errorCode.set('INVALID_REQUEST');
       return;
     }
@@ -982,8 +1009,9 @@ export class SetEditor {
     }
     const draft = this.draft();
     const minorUnits = eurosToMinorUnits(draft.priceEur);
-    if (minorUnits === null) {
+    if (minorUnits === null || minorUnits < MIN_SET_PRICE_MINOR) {
       // A cleared or non-numeric field is "no change", never a €0 set — the same rule the Pricing tab keeps.
+      // Below the floor (compared after rounding) is refused here; the server's 400 stays the backstop.
       this.errorCode.set('INVALID_REQUEST');
       return;
     }
