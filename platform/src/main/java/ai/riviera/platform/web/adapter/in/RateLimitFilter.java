@@ -569,6 +569,7 @@ final class RateLimitFilter extends OncePerRequestFilter {
 	}
 
 	private static void rejectBodyTooLarge(HttpServletResponse response, String ip) throws IOException {
+		response.setHeader(HttpHeaders.CONNECTION, "close");
 		writeProblem(response, BODY_TOO_LARGE_STATUS, BODY_TOO_LARGE_BODY);
 		log.debug("Login body over the {}-byte cap refused, from {}", MAX_CACHED_BODY_BYTES, ip);
 	}
