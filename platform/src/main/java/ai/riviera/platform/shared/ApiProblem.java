@@ -9,8 +9,8 @@ import org.springframework.http.ResponseEntity;
  * the token clients switch on ({@code type} stays {@code about:blank}). {@code detail} states the condition,
  * never a remedy, and never carries a booking code (invariant #7), an exception message or internal echo.
  * Never an {@code instance}: {@code web}'s {@code ProblemInstanceConfig} clears Spring's request-URI fill (#7).
- * Nothing else hand-rolls an error body ({@code ErrorContractArchitectureTests}). Rules:
- * riviera-java-conventions references/error-contract.md.
+ * Past it, only the filter chain hand-rolls a body, before MVC; no other {@code @ExceptionHandler}
+ * ({@code ErrorContractArchitectureTests}). Rules: riviera-java-conventions references/error-contract.md.
  */
 public final class ApiProblem {
 

@@ -1,6 +1,5 @@
 package ai.riviera.platform.review.adapter.in;
 
-
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
 import org.springframework.http.ResponseEntity;

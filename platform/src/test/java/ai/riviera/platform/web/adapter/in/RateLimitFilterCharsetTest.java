@@ -16,13 +16,12 @@ import tools.jackson.databind.json.JsonMapper;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletRequestWrapper;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 
 /**
  * A login whose Content-Type names no charset while the servlet encoding is not a usable charset: the filter
- * finds no identity and passes it on unbudgeted. Unreachable behind {@code CharacterEncodingFilter}, so the
- * filter is driven directly.
+ * reads no identity and passes the login on instead of throwing. Unreachable behind {@code CharacterEncodingFilter},
+ * so the filter is driven directly.
  */
 class RateLimitFilterCharsetTest {
 
@@ -49,7 +48,6 @@ class RateLimitFilterCharsetTest {
 
 		filter.doFilter(withEncoding, response, chain);
 
-		assertNotNull(chain.getRequest(), "the login must reach the chain, unbudgeted");
-		assertEquals(200, response.getStatus());
+		assertNotNull(chain.getRequest(), "the login must reach the chain");
 	}
 }

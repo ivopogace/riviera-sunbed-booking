@@ -181,7 +181,9 @@ class ReviewControllerTest {
 		String body = mvc.perform(submit(4)).andReturn().getResponse().getContentAsString();
 
 		assertThat(body).doesNotContain(CODE);
-		mvc.perform(submit(4)).andExpect(jsonPath("$.instance").doesNotExist());
+		mvc.perform(submit(4))
+				.andExpect(jsonPath("$.code").value("REVIEW_ALREADY_SUBMITTED"))
+				.andExpect(jsonPath("$.instance").doesNotExist());
 	}
 
 	/**
@@ -283,7 +285,9 @@ class ReviewControllerTest {
 				.doesNotContain(CODE);
 		assertThat(mvc.perform(delete(REVIEW, CODE).with(csrf())).andReturn().getResponse()
 				.getContentAsString()).doesNotContain(CODE);
-		mvc.perform(edit()).andExpect(jsonPath("$.instance").doesNotExist());
+		mvc.perform(edit())
+				.andExpect(jsonPath("$.code").value("REVIEW_WINDOW_CLOSED"))
+				.andExpect(jsonPath("$.instance").doesNotExist());
 	}
 
 	private static RequestBuilder edit() {
