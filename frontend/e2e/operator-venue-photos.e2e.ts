@@ -212,7 +212,7 @@ test('shows the server-side validation copy when the image is rejected (AC-5)', 
 
   await pickCover(page);
 
-  // The processor's magic-byte rejection (the client never trusts its own pre-checks) → slot copy.
+  // The processor's magic-byte rejection (the client never sniffs bytes) → slot copy.
   await expect(page.getByTestId('photo-error-cover')).toContainText(/JPEG, PNG, or WebP/);
   await expect(page.getByTestId('photo-preview-cover')).toBeHidden();
 });

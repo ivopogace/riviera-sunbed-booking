@@ -1202,7 +1202,7 @@ Spring Security beans arrive by framework type, which is no module dependency.
   client's pace. App-wide, so an oversized multipart upload is aborted too; a client still sending may
   see a reset instead of the `413` body. So the console refuses a photo past the 25 MiB cap before
   sending it (`MAX_PHOTO_UPLOAD_BYTES`): its "too large" copy never needs the `413`, which stays the
-  backstop. This supersedes #142's readable-`413` guarantee (#1409).
+  backstop: the photo flow never relies on a browser reading a mid-upload `413` (#1409).
 - **`ApiErrorHandler`, the one `@RestControllerAdvice`** (`ErrorContractArchitectureTests`): every
   exception→status mapping, module vocabulary exceptions included.
 

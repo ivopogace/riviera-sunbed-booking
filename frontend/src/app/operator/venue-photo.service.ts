@@ -77,8 +77,8 @@ export function previewUrlOf(upload: PhotoUploadView): string | null {
 
 /**
  * A known photo upload/delete failure, mapped from the RFC-7807 `code` for
- * operator-facing copy. The four validation rejections come from the server-side processor
- * (the client never trusts its own pre-checks); `PAYLOAD_TOO_LARGE` is the multipart 413
+ * operator-facing copy. The four validation rejections come from the server-side processor, and
+ * `TOO_LARGE` also from the console's own size check; `PAYLOAD_TOO_LARGE` is the multipart 413
  * backstop; `NO_SUCH_PHOTO` is a delete on an already-empty slot.
  */
 export type PhotoErrorCode =
