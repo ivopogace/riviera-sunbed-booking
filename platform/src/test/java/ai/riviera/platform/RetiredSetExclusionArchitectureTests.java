@@ -29,8 +29,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * {@code RESPONSIBILITIES.md} §venue), enforced per statement: every production SQL string naming
  * {@code set_position} reads {@code active_set_position} or says {@code retired_at IS NULL}. An
  * {@code INSERT INTO} passes (a new row is active by construction), and inside a {@link SetBookingFacts}
- * implementor only the values of the constants named in {@link #EXEMPT_FACTS_CONSTANTS} pass bare. Context-free; the
- * cases are proven against {@code ai.riviera.retirefixture}; the net's one admitted-by-decision member.
+ * implementor only the values of the constants named in {@link #EXEMPT_FACTS_CONSTANTS} pass bare.
+ * Context-free; proven against {@code ai.riviera.retirefixture}; the net's one admitted-by-decision member.
  */
 class RetiredSetExclusionArchitectureTests {
 
@@ -39,10 +39,9 @@ class RetiredSetExclusionArchitectureTests {
 	private static final String RETIRED_MARKER = "retired_at";
 
 	/**
-	 * The facts port's deliberate bare reads, by constant name — the booking-info select that still
-	 * answers for a retired set, and the ForReserve twins' venue lock, which hands out no set. The exempt
-	 * statements are these fields' {@code ConstantValue}s; javac shares that pool entry with a same-text
-	 * inline literal, which the class file cannot tell apart, so that literal is review's to catch.
+	 * The facts port's bare reads: the booking-info select that still answers for a retired set, and the
+	 * ForReserve twins' venue lock, which hands out no set. Exempt are these fields' {@code ConstantValue}s;
+	 * javac pools a same-text inline literal with them, so review, not this scan, catches that literal.
 	 */
 	private static final Set<String> EXEMPT_FACTS_CONSTANTS = Set.of("SET_BOOKING_INFO_SELECT",
 			"VENUES_OF_SETS_LOCK");
