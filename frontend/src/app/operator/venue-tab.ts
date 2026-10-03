@@ -49,6 +49,7 @@ import { VenueLocationField } from './venue-location-field';
 import {
   PhotoErrorCode,
   VenuePhotoService,
+  MAX_PHOTO_UPLOAD_BYTES,
   photoErrorOf,
   previewUrlOf,
 } from './venue-photo.service';
@@ -616,14 +617,18 @@ export class VenueTab {
 
   /**
    * Upload a picked file (the server replaces the slot: pick = upload = replace) and show the
-   * returned PREVIEW variant. Validation is server-side (rejections come back as displayable codes;
-   * the client never second-guesses the bytes); a 401 drops the lost session.
+   * returned PREVIEW variant. Validation is server-side (rejections come back as displayable codes);
+   * the client checks only the size, so a file past the cap is never sent. A 401 drops the lost session.
    */
   protected async onPhotoPicked(slot: PhotoSlotKey, input: HTMLInputElement): Promise<void> {
     const file = input.files?.[0];
     input.value = ''; // re-picking the same file later must re-fire (change)
     const venueId = this.venueId();
     if (!file || this.slotUi()[slot].busy) {
+      return;
+    }
+    if (file.size > MAX_PHOTO_UPLOAD_BYTES) {
+      this.patchSlot(slot, { error: 'TOO_LARGE' });
       return;
     }
     const epoch = this.epoch;

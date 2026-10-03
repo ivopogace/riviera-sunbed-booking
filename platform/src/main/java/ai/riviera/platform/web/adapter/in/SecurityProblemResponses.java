@@ -16,39 +16,33 @@ import jakarta.servlet.http.HttpServletResponse;
  * {@code RateLimitFilter}'s {@code RATE_LIMITED}): {@link SecurityConfig}'s entry point
  * ({@code 401 UNAUTHENTICATED}) and {@link ChallengeVerificationFilter}'s three refusals, held to
  * the contract by {@code AuthSessionIT} and {@code ChallengeVerificationFilterTest}.
- * {@code instance} is pinned to {@code about:blank}: never echo the request URI (#7 posture).
+ * No {@code instance}: no URI is ever written (invariant #7).
  */
 final class SecurityProblemResponses {
 
 	private static final String UNAUTHENTICATED_BODY = """
 			{"type":"about:blank","title":"Unauthorized","status":401,\
-			"detail":"Authentication is required.","code":"UNAUTHENTICATED",\
-			"instance":"about:blank"}""";
+			"detail":"Authentication is required.","code":"UNAUTHENTICATED"}""";
 
 	private static final String INVALID_CSRF_BODY = """
 			{"type":"about:blank","title":"Forbidden","status":403,\
-			"detail":"Missing or invalid CSRF token.","code":"INVALID_CSRF_TOKEN",\
-			"instance":"about:blank"}""";
+			"detail":"Missing or invalid CSRF token.","code":"INVALID_CSRF_TOKEN"}""";
 
 	private static final String ACCESS_DENIED_BODY = """
 			{"type":"about:blank","title":"Forbidden","status":403,\
-			"detail":"Access denied.","code":"ACCESS_DENIED",\
-			"instance":"about:blank"}""";
+			"detail":"Access denied.","code":"ACCESS_DENIED"}""";
 
 	private static final String CHALLENGE_REQUIRED_BODY = """
 			{"type":"about:blank","title":"Bad Request","status":400,\
-			"detail":"A solved proof-of-work challenge is required.","code":"CHALLENGE_REQUIRED",\
-			"instance":"about:blank"}""";
+			"detail":"A solved proof-of-work challenge is required.","code":"CHALLENGE_REQUIRED"}""";
 
 	private static final String CHALLENGE_INVALID_BODY = """
 			{"type":"about:blank","title":"Bad Request","status":400,\
-			"detail":"The proof-of-work solution is not valid.","code":"CHALLENGE_INVALID",\
-			"instance":"about:blank"}""";
+			"detail":"The proof-of-work solution is not valid.","code":"CHALLENGE_INVALID"}""";
 
 	private static final String CHALLENGE_EXPIRED_BODY = """
 			{"type":"about:blank","title":"Bad Request","status":400,\
-			"detail":"The proof-of-work challenge has expired or was already used.","code":"CHALLENGE_EXPIRED",\
-			"instance":"about:blank"}""";
+			"detail":"The proof-of-work challenge has expired or was already used.","code":"CHALLENGE_EXPIRED"}""";
 
 	private SecurityProblemResponses() {
 	}

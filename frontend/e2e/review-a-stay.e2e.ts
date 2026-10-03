@@ -251,7 +251,6 @@ test.describe('rating a delivered stay', () => {
           title: 'Conflict',
           status: 409,
           detail: 'This stay has already been reviewed.',
-          instance: '/api/bookings',
           code: 'REVIEW_ALREADY_SUBMITTED',
         },
       }),
