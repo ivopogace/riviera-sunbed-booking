@@ -18,7 +18,7 @@ import ai.riviera.platform.booking.vocabulary.BookingId;
  * nothing left (every day refunded, ADR-0026 §7, #1381) are set aside; every other stretch, whatever its status, is
  * the <em>live remainder</em>, judged on the first of them. Any other ending (a weather cancel, a concurrent writer)
  * is not set aside, so the stay still refuses whole. Port-backed, so it lives in {@code application} (ADR-0018 §2);
- * {@code public} for the view, the move mail and the stay cancellation mail, which read the same split (#10).
+ * {@code public} for the view, the my-bookings list, the move mail and the stay cancellation mail, which read the same split (#10).
  */
 @Component
 public class LiveRemainder {

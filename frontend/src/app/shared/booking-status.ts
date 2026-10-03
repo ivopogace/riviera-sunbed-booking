@@ -59,18 +59,18 @@ export function readsAsRefunded(status: string, nothingLeft: boolean): boolean {
 }
 
 /**
- * The money figure's label: `Paid` once money moved, else `Amount`. Status alone can't tell a
- * charged `CANCELLED` from one the abandoned-payment sweep released uncharged, so callers holding
- * the refund fact pass it (`null` = never charged); `undefined` keeps the status-only reading.
+ * The money figure's label: `Paid` once money moved, else `Amount`. A `CANCELLED` caller passes the refund fact
+ * (`null` = never charged, which status alone can't tell from a charged one); `nothingLeft` reads as {@link metaFor}'s.
  */
 export function amountLabelFor(
   status: string,
   refundedAmount?: { readonly minorUnits: number } | null,
+  nothingLeft = false,
 ): StatusMeta['amount'] {
   if (status === 'CANCELLED' && refundedAmount === null) {
     return 'Amount';
   }
-  return metaFor(status).amount;
+  return metaFor(status, nothingLeft).amount;
 }
 
 /** Humanize a raw status token ("NO_SHOW" → "No show") — the graceful fallback for FE/BE skew. */

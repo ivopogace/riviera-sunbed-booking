@@ -11,16 +11,16 @@ import ai.riviera.platform.venue.vocabulary.MoneyView;
  * currency, invariant #5); dates as ISO {@code LocalDate} strings. {@code requestExpiresAt} is
  * {@code null} for instant bookings; {@code refundedAmount} is {@code null} unless cancelled with a
  * refund decision (so a never-charged cancellation never reads as paid); {@code movedAt} is set
- * when a remodel re-seated the booking.
+ * when a remodel re-seated the booking; {@code nothingLeft} as on the detail (ADR-0026 §7).
  */
 record MyBookingView(String code, String status, long venueId, String venueName, String rowLabel,
 		int positionNo, String bookingDate, String lastDate, MoneyView amount, Instant requestExpiresAt,
-		MoneyView refundedAmount, Instant movedAt) {
+		MoneyView refundedAmount, Instant movedAt, boolean nothingLeft) {
 
 	static MyBookingView of(MyBookingSummary s) {
 		return new MyBookingView(s.code(), s.status().name(), s.venueId().value(), s.venueName(),
 				s.rowLabel(), s.positionNo(), s.bookingDate().toString(), s.lastDate().toString(), s.amount(),
 				s.requestExpiresAt(),
-				s.refundedAmount(), s.movedAt());
+				s.refundedAmount(), s.movedAt(), s.nothingLeft());
 	}
 }

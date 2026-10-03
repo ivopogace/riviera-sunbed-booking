@@ -1,5 +1,6 @@
 package ai.riviera.platform.booking.application;
 
+import ai.riviera.platform.booking.application.view.AccountBooking;
 import ai.riviera.platform.booking.application.view.BookingRecord;
 import ai.riviera.platform.booking.application.view.StayRecord;
 import ai.riviera.platform.booking.vocabulary.StayId;
@@ -145,11 +146,11 @@ public interface Bookings {
 	List<BookingRecord> lockStretches(StayId stayId);
 
 	/**
-	 * The bookings linked to a customer account, newest first, a stitched stay as one record
-	 * ({@link StayRecord#asBooking}); never a guest booking (NULL {@code account_id}). Pass the session
-	 * principal's id, never a request param (BOLA, invariant #13).
+	 * The bookings linked to a customer account, newest first, a stitched stay as one entry with its stretches in day
+	 * order; never a guest booking (NULL {@code account_id}). Pass the session principal's id, never a request param
+	 * (BOLA, invariant #13).
 	 */
-	List<BookingRecord> findByAccountId(CustomerAccountId accountId);
+	List<AccountBooking> findByAccountId(CustomerAccountId accountId);
 
 	/**
 	 * Strict {@code AWAITING_PAYMENT → CONFIRMED} (anything else throws) for the synchronous stub
