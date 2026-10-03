@@ -15,7 +15,14 @@ import { OperatorAuth } from '../core/operator-auth';
 import { groupSetsByRow } from '../shared/availability-grid';
 import { CardGlass } from '../shared/card-glass';
 import { FieldErrorFor } from '../shared/field-error-for';
-import { eurosToMinorUnits, formatMoney, minorUnitsToEuros, MoneyView } from '../shared/money';
+import {
+  eurosToMinorUnits,
+  formatMoney,
+  MIN_SET_PRICE_EUR,
+  MIN_SET_PRICE_MINOR,
+  minorUnitsToEuros,
+  MoneyView,
+} from '../shared/money';
 import { parentVenueId } from '../shared/parent-venue-id';
 import { todayBookingDate } from '../shared/booking-date';
 import { tierLabel } from '../shared/set-label';
@@ -90,6 +97,10 @@ export class PricingTab {
     return label === null ? '' : `Row ${label} saved. The public beach map reflects the new price.`;
   });
   protected readonly errorRow = signal<{ label: string; code: RepriceErrorCode } | null>(null);
+  /** Rows whose typed price fell below the floor and was never sent, keyed by label to the typed
+   *  euros string, which the input keeps showing (never silently undone) until the row is re-committed. */
+  protected readonly refusedRows = signal<ReadonlyMap<string, string>>(new Map());
+  protected readonly minPriceEur = MIN_SET_PRICE_EUR;
   /** The optimistic-concurrency token loaded with the map (`setVersion`), echoed back on each
    *  reprice and advanced on success; a `409 STALE_WRITE` sets {@link staleConflict}. */
   protected readonly loadedSetVersion = signal<number | null>(null);
@@ -149,6 +160,7 @@ export class PricingTab {
     this.loadError.set(false);
     this.saving.set(false);
     this.errorRow.set(null);
+    this.refusedRows.set(new Map());
     this.loadedSetVersion.set(null);
     this.staleConflict.set(false);
   }
@@ -167,9 +179,17 @@ export class PricingTab {
     }
     const minorUnits = eurosToMinorUnits(input.value);
     if (minorUnits === null) {
+      this.dropRefusal(row.label);
       input.value = row.priceEur; // a cleared/invalid field is not a €0 reprice — restore the shown value
       return;
     }
+    if (minorUnits < MIN_SET_PRICE_MINOR) {
+      // Rounded first, so 0.495 → 50 passes; the server's 400 stays the backstop.
+      this.refusedRows.update((refused) => new Map(refused).set(row.label, input.value));
+      this.savedRow.set(null);
+      return;
+    }
+    this.dropRefusal(row.label);
     const expectedVersion = this.loadedSetVersion();
     if (expectedVersion === null) {
       // Defensive: the token is null only after a failed read (load-error shows) — never reprice without it.
@@ -216,6 +236,25 @@ export class PricingTab {
     }
   }
 
+  /** The row's inline error: a below-floor refusal, else its reprice failure, else none. */
+  protected rowError(label: string): RepriceErrorCode | null {
+    if (this.refusedRows().has(label)) {
+      return 'INVALID_REQUEST';
+    }
+    const err = this.errorRow();
+    return err?.label === label ? err.code : null;
+  }
+
+  private dropRefusal(label: string): void {
+    if (this.refusedRows().has(label)) {
+      this.refusedRows.update((refused) => {
+        const rest = new Map(refused);
+        rest.delete(label);
+        return rest;
+      });
+    }
+  }
+
   /** Whether the reprice failure blames the price the operator typed, rather than the write itself. */
   protected valueIsInvalid(code: RepriceErrorCode): boolean {
     return code === 'INVALID_REQUEST';
@@ -248,6 +287,7 @@ export class PricingTab {
     const venueId = this.venueId();
     this.staleConflict.set(false);
     this.errorRow.set(null);
+    this.refusedRows.set(new Map()); // the reload re-seeds every input, so a typed refusal goes too
     this.savedRow.set(null);
     this.venueMap.reset(); // the snapshot holds the setVersion that lost the race — never re-seed from it
     this.load(venueId);

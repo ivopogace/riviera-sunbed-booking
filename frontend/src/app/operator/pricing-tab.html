@@ -31,9 +31,9 @@
             <span class="text-[14px] text-riv-card-ink-soft" aria-hidden="true">€</span>
             <input
               type="number"
-              min="0"
+              [attr.min]="minPriceEur"
               step="0.5"
-              [value]="row.priceEur"
+              [value]="refusedRows().get(row.label) ?? row.priceEur"
               [readonly]="saving()"
               [attr.placeholder]="row.mixed ? 'Set one price' : null"
               (change)="onPriceChange(row, $any($event.target))"
@@ -55,17 +55,15 @@
             Saved. The public beach map reflects the new price.
           </p>
         }
-        @if (errorRow(); as err) {
-          @if (err.label === row.label) {
-            <span
-              [appFieldErrorFor]="priceControl"
-              [appFieldErrorForInvalidValue]="valueIsInvalid(err.code)"
-              class="block py-1 text-right text-[11.5px] font-semibold text-riv-error-ink"
-              role="alert"
-              [attr.data-testid]="'pricing-error-' + row.label"
-              >{{ errorMessage(err.code) }}</span
-            >
-          }
+        @if (rowError(row.label); as code) {
+          <span
+            [appFieldErrorFor]="priceControl"
+            [appFieldErrorForInvalidValue]="valueIsInvalid(code)"
+            class="block py-1 text-right text-[11.5px] font-semibold text-riv-error-ink"
+            role="alert"
+            [attr.data-testid]="'pricing-error-' + row.label"
+            >{{ errorMessage(code) }}</span
+          >
         }
       }
 
