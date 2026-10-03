@@ -58,5 +58,7 @@ Connector-level settings; per-endpoint caps; changing the login cap; slow-drip b
 
 ## Execution status
 
-- [ ] Phase 0
-- [ ] Phase 1
+- [x] Phase 0 — filter, order, shared 413 body (`RequestBodyCapFilterTest` 15/15)
+- [ ] Phase 1 — `RequestBodyCapIT` done (2/2 on Tomcat); RESPONSIBILITIES.md pending
+- **Blocked on owner:** 64 KiB refuses a 1040-set layout (~138–180 KB) on `PUT …/beach-map`,
+  `POST …/beach-map/preview|commit`; NEEDS USER DECISION sent (recommended: a 256 KiB tier for those).
