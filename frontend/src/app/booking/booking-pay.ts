@@ -381,8 +381,8 @@ export class BookingPay {
   private readonly gateway = inject(StripePaymentGateway);
   private readonly destroyRef = inject(DestroyRef);
   private readonly peHost = viewChild<ElementRef<HTMLElement>>('peHost');
-  /** Called before a swap off the card step or a poll's answer: if the render tears down the
-   *  focused control, the new state's heading takes focus (WCAG 2.4.3). */
+  /** Called before a swap off the card step or a poll's answer: if focus is already on `<body>` or
+   *  the render tears down the focused control, the new state's heading takes it (WCAG 2.4.3). */
   private readonly focusTitleIfLost = focusMover({ onlyIfLost: true });
 
   protected readonly state = signal<PayState>('mounting');

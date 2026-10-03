@@ -240,6 +240,6 @@ describe('focusMover onlyIfLost (#1410)', () => {
     fixture.detectChanges();
     await fixture.whenStable();
 
-    expect(document.activeElement).not.toBe(byId('title'));
+    expect(document.activeElement).toBe(document.body);
   });
 });
