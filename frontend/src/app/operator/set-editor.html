@@ -402,6 +402,7 @@
               type="number"
               step="0.5"
               [formField]="draftForm.priceEur"
+              (input)="onPriceInput($any($event.target).value)"
               data-testid="set-price"
               #priceControl
               class="w-full rounded-[12px] border border-riv-card-border bg-riv-console-inset/60 px-[11px] py-[9px] text-[16px] text-riv-card-ink"

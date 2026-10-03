@@ -174,6 +174,7 @@ export class PricingTab {
     const venueId = this.venueId();
     if (this.saving()) {
       // Backstop for a change slipping past the readonly lock; a second write would false-conflict.
+      this.dropRefusal(row.label);
       input.value = row.priceEur;
       return;
     }

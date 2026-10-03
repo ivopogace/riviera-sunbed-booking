@@ -1478,4 +1478,4 @@ siblings) — never by breaking production code.
 
 Known scan limits (on the tests): a sole-writer scan needs the whole-word table name contiguous in
 the constant pool, so SQL concatenated across it evades the scan (text-block SQL keeps it whole);
-the id-based-events rule unwraps generics and arrays but reads only a component's declared type; the schema walk reads DDL in a `DO $$` body as if it ran.
+the id-based-events rule unwraps generics and arrays but reads only a component's declared type; the schema walk reads DDL in a `DO $$` body as if it ran, and refuses, naming the migration and the statement, a `TEMP`/`UNLOGGED` table, a schema other than `public` and a quoted name that is not plain lower case (#1447), so none shifts the table set silently.

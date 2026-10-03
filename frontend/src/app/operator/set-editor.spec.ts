@@ -636,6 +636,122 @@ describe('SetEditor (#600)', () => {
       expect(batchPatchBody(expectBatchPatch()).price).toEqual({ minorUnits: 50, currency: 'EUR' });
     });
 
+    describe('re-checks a refused price as the operator edits it (#1449)', () => {
+      it('single set: a corrected price releases the field, a still-low one keeps it', () => {
+        render();
+        selectSet(12);
+        typePrice('0.49');
+        click(byId('set-save'));
+        http.expectNone((r) => r.method === 'PATCH');
+
+        typePrice('0.30');
+        expect(byId('set-error').textContent?.trim()).toBe(SINGLE_COPY);
+        expectRefusedField(priceInput(), byId('set-error'), '0.30');
+
+        typePrice('0.50');
+        expectReleasedField(priceInput(), 'set-error');
+      });
+
+      it('single set: a cleared field stays refused, since Save would refuse it', () => {
+        render();
+        selectSet(12);
+        typePrice('0.49');
+        click(byId('set-save'));
+
+        typePrice('');
+        expect(byId('set-error').textContent?.trim()).toBe(SINGLE_COPY);
+      });
+
+      it('single set: a server 400 releases the same way on a valid edit', async () => {
+        render();
+        selectSet(12);
+        typePrice('25');
+        click(byId('set-save'));
+        expectPatch(12).flush(
+          { code: 'INVALID_REQUEST' },
+          { status: 400, statusText: 'Bad Request' },
+        );
+        await fixture.whenStable();
+        fixture.detectChanges();
+        expectRefusedField(priceInput(), byId('set-error'), '25');
+
+        typePrice('0.3');
+        expectRefusedField(priceInput(), byId('set-error'), '0.3');
+
+        typePrice('26');
+        expectReleasedField(priceInput(), 'set-error');
+      });
+
+      it('single set: an edit never clears a failure that is not about the price', async () => {
+        render();
+        selectSet(12);
+        click(byId('set-save'));
+        expectPatch(12).flush(
+          { code: 'NOT_VENUE_OWNER' },
+          { status: 403, statusText: 'Forbidden' },
+        );
+        await fixture.whenStable();
+        fixture.detectChanges();
+
+        typePrice('26');
+        expect(byId('set-error').textContent).toMatch(/do not manage this venue/i);
+      });
+
+      it('add: a corrected price releases the field before Add is pressed again', () => {
+        render();
+        click(byId('set-add-col'));
+        click(emptyCell(3, 1));
+        typePrice('0.49');
+        click(byId('set-add'));
+        http.expectNone((r) => r.method === 'POST');
+
+        typePrice('0.495');
+        expectReleasedField(priceInput(), 'set-error');
+      });
+
+      it('batch: a corrected price releases the field, a still-low one keeps it', () => {
+        const batchPrice = (): HTMLInputElement => byId('batch-price') as HTMLInputElement;
+        render();
+        dragSweep(1, 1, 1, 2);
+        typeBatchPrice('0.49');
+        click(byId('batch-apply'));
+        http.expectNone((r) => r.method === 'PATCH');
+
+        typeBatchPrice('0.30');
+        expectRefusedField(batchPrice(), byId('batch-error'), '0.30');
+
+        typeBatchPrice('0.50');
+        expectReleasedField(batchPrice(), 'batch-error');
+      });
+
+      it('batch: a cleared field releases too, since blank leaves prices unchanged', () => {
+        render();
+        dragSweep(1, 1, 1, 2);
+        typeBatchPrice('0.49');
+        click(byId('batch-apply'));
+
+        typeBatchPrice('');
+        expectReleasedField(byId('batch-price') as HTMLInputElement, 'batch-error');
+      });
+
+      it('batch: a server 400 releases the same way on a valid edit', async () => {
+        render();
+        dragSweep(1, 1, 1, 2);
+        typeBatchPrice('25');
+        click(byId('batch-apply'));
+        expectBatchPatch().flush(
+          { code: 'INVALID_REQUEST' },
+          { status: 400, statusText: 'Bad Request' },
+        );
+        await fixture.whenStable();
+        fixture.detectChanges();
+        expectRefusedField(byId('batch-price') as HTMLInputElement, byId('batch-error'), '25');
+
+        typeBatchPrice('26');
+        expectReleasedField(byId('batch-price') as HTMLInputElement, 'batch-error');
+      });
+    });
+
     it('a write failure that is not about the price stays a panel alert, never marking the field', async () => {
       render();
       selectSet(12);
