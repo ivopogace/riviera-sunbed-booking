@@ -20,6 +20,13 @@ export interface PhotoVariantView {
   readonly height: number;
 }
 
+/**
+ * The server's photo content cap, `venue.photo.max-upload-bytes` (`PhotoProcessor`), mirrored so a larger
+ * file is refused before it is sent: past the multipart limit the server aborts the connection, so its
+ * `413` may never reach the browser (#1409). The server stays the authority.
+ */
+export const MAX_PHOTO_UPLOAD_BYTES = 25 * 1024 * 1024;
+
 /** The upload response: the slot plus each stored variant's content-addressed serving URL. */
 export interface PhotoUploadView {
   readonly slot: PhotoSlotKey;
@@ -70,8 +77,8 @@ export function previewUrlOf(upload: PhotoUploadView): string | null {
 
 /**
  * A known photo upload/delete failure, mapped from the RFC-7807 `code` for
- * operator-facing copy. The four validation rejections come from the server-side processor
- * (the client never trusts its own pre-checks); `PAYLOAD_TOO_LARGE` is the multipart 413
+ * operator-facing copy. The four validation rejections come from the server-side processor, and
+ * `TOO_LARGE` also from the console's own size check; `PAYLOAD_TOO_LARGE` is the multipart 413
  * backstop; `NO_SUCH_PHOTO` is a delete on an already-empty slot.
  */
 export type PhotoErrorCode =

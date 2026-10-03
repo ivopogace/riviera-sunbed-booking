@@ -1,9 +1,11 @@
 package ai.riviera.platform;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.TreeSet;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -27,8 +29,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * {@code RESPONSIBILITIES.md} §venue), enforced per statement: every production SQL string naming
  * {@code set_position} reads {@code active_set_position} or says {@code retired_at IS NULL}. An
  * {@code INSERT INTO} passes (a new row is active by construction), and inside a {@link SetBookingFacts}
- * implementor only the constants named in {@link #EXEMPT_FACTS_CONSTANTS} pass bare. Context-free; the
- * cases are proven against {@code ai.riviera.retirefixture}; the net's one admitted-by-decision member.
+ * implementor only the values of the constants named in {@link #EXEMPT_FACTS_CONSTANTS} pass bare.
+ * Context-free; proven against {@code ai.riviera.retirefixture}; the net's one admitted-by-decision member.
  */
 class RetiredSetExclusionArchitectureTests {
 
@@ -37,9 +39,9 @@ class RetiredSetExclusionArchitectureTests {
 	private static final String RETIRED_MARKER = "retired_at";
 
 	/**
-	 * The facts port's deliberate bare reads, by constant name — the booking-info select that still
-	 * answers for a retired set, and the ForReserve twins' venue lock, which hands out no set — read off
-	 * the field's {@code ConstantValue}, so an exempt statement is a named constant, never a literal.
+	 * The facts port's bare reads: the booking-info select that still answers for a retired set, and the
+	 * ForReserve twins' venue lock, which hands out no set. Exempt are these fields' {@code ConstantValue}s;
+	 * javac pools a same-text inline literal with them, so review, not this scan, catches that literal.
 	 */
 	private static final Set<String> EXEMPT_FACTS_CONSTANTS = Set.of("SET_BOOKING_INFO_SELECT",
 			"VENUES_OF_SETS_LOCK");
@@ -70,23 +72,28 @@ class RetiredSetExclusionArchitectureTests {
 	}
 
 	/**
-	 * Guards against a vacuously-green rule: the production tree must hold an exempt constant reading
-	 * the bare table (the exemption is real), a non-exempt statement in the facts adapter reading the
-	 * view (the per-statement check inside it holds something) and a view read elsewhere.
+	 * Guards against a vacuously-green rule: every exempt name must be a facts implementor's constant
+	 * reading the bare table (no allow-list entry is stale), a non-exempt statement in the facts adapter
+	 * must read the view (the per-statement check inside it holds something), and so must one elsewhere.
 	 */
 	@Test
 	void theExemptionThePerStatementCheckAndTheViewPathAreAllExercised() {
-		boolean exemptBareRead = false;
+		Set<String> exemptNamesReadingBare = new HashSet<>();
 		boolean checkedFactsViewRead = false;
 		boolean viewReadElsewhere = false;
 		for (JavaClass type : PRODUCTION_CLASSES) {
-			Set<String> exempt = exemptStatementsOf(type);
+			Map<String, String> exemptFields = exemptFieldsOf(type);
+			exemptFields.forEach((name, sql) -> {
+				if (!bareOccurrences(sql).isEmpty()) {
+					exemptNamesReadingBare.add(name);
+				}
+			});
 			for (String sql : stringConstantsOf(type)) {
 				boolean readsView = WHOLE_WORD_VIEW.matcher(sql).find();
-				if (exempt.contains(sql)) {
-					exemptBareRead |= !bareOccurrences(sql).isEmpty();
+				if (exemptFields.containsValue(sql)) {
+					continue;
 				}
-				else if (implementsFactsPort(type)) {
+				if (implementsFactsPort(type)) {
 					checkedFactsViewRead |= readsView;
 				}
 				else {
@@ -94,8 +101,11 @@ class RetiredSetExclusionArchitectureTests {
 				}
 			}
 		}
-		assertTrue(exemptBareRead, "expected an exempt constant of the SetBookingFacts adapter to read '"
-				+ SET_TABLE + "' bare — otherwise the exemption proves nothing");
+		Set<String> staleNames = new TreeSet<>(EXEMPT_FACTS_CONSTANTS);
+		staleNames.removeAll(exemptNamesReadingBare);
+		assertTrue(staleNames.isEmpty(), "expected every EXEMPT_FACTS_CONSTANTS name to be a constant of a "
+				+ "production SetBookingFacts implementor reading '" + SET_TABLE + "' bare — these exempt nothing: "
+				+ staleNames);
 		assertTrue(checkedFactsViewRead, "expected a non-exempt statement of the SetBookingFacts adapter to read '"
 				+ ACTIVE_VIEW + "' — otherwise the per-statement check inside it holds nothing");
 		assertTrue(viewReadElsewhere, "expected at least one other production class to read '" + ACTIVE_VIEW
@@ -146,9 +156,9 @@ class RetiredSetExclusionArchitectureTests {
 	private static List<String> violations(JavaClasses classes) {
 		List<String> violations = new ArrayList<>();
 		for (JavaClass type : classes) {
-			Set<String> exempt = exemptStatementsOf(type);
+			Map<String, String> exempt = exemptFieldsOf(type);
 			for (String sql : stringConstantsOf(type)) {
-				if (!exempt.contains(sql) && !bareOccurrences(sql).isEmpty() && !excludesRetiredSets(sql)) {
+				if (!exempt.containsValue(sql) && !bareOccurrences(sql).isEmpty() && !excludesRetiredSets(sql)) {
 					violations.add(type.getName() + " names the '" + SET_TABLE + "' table without excluding "
 							+ "retired sets: \"" + oneLine(sql) + "\" — a read selects from " + ACTIVE_VIEW
 							+ ", a write or lock says " + RETIRED_MARKER + " IS NULL; only the SetBookingFacts "
@@ -168,16 +178,15 @@ class RetiredSetExclusionArchitectureTests {
 		return !type.isInterface() && type.isAssignableTo(SetBookingFacts.class);
 	}
 
-	/** The values of the facts port's named bare reads in {@code type}; empty for any other class. */
-	private static Set<String> exemptStatementsOf(JavaClass type) {
+	/** The facts port's named bare reads in {@code type}, name to statement; empty for any other class. */
+	private static Map<String, String> exemptFieldsOf(JavaClass type) {
 		if (!implementsFactsPort(type)) {
-			return Set.of();
+			return Map.of();
 		}
 		return classFileOf(type).map(ArchitectureTestSupport::stringConstantFields).orElse(Map.of())
 				.entrySet().stream()
 				.filter(field -> EXEMPT_FACTS_CONSTANTS.contains(field.getKey()))
-				.map(Map.Entry::getValue)
-				.collect(Collectors.toSet());
+				.collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
 	}
 
 	/** Start offsets of every whole-word occurrence of the table that is not an insert target. */

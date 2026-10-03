@@ -146,19 +146,21 @@ class RemodelClaimsService implements RemodelClaims {
 			long feeMinor, Settled settled) {
 		switch (claim.outcome()) {
 			case RemodelOutcome.Move move -> {
-				if (bookings.lockRemainder(claim.bookingId().value()).everyDayRefunded()) {
-					settled.outcomes().add(applyConfirmedEnd(venueId, claim, committedAt, feeMinor));
+				LockedRemainder held = bookings.lockRemainder(claim.bookingId().value());
+				if (held.everyDayRefunded()) {
+					settled.outcomes().add(applyConfirmedEnd(venueId, claim, held, committedAt, feeMinor));
 					return nothingLeft(claim);
 				}
 				settled.moves().add(applyMove(venueId, claim, move, committedAt));
 			}
 			case RemodelOutcome.Refund ignored -> {
-				ReceiptOutcome ended = applyConfirmedEnd(venueId, claim, committedAt, feeMinor);
+				ReceiptOutcome ended = applyConfirmedEnd(venueId, claim,
+						bookings.lockRemainder(claim.bookingId().value()), committedAt, feeMinor);
 				settled.outcomes().add(ended);
 				return ended.kind() == ReceiptOutcomeKind.NOTHING_LEFT ? nothingLeft(claim) : claim;
 			}
-			case RemodelOutcome.NothingLeft ignored ->
-				settled.outcomes().add(applyConfirmedEnd(venueId, claim, committedAt, feeMinor));
+			case RemodelOutcome.NothingLeft ignored -> settled.outcomes().add(applyConfirmedEnd(venueId, claim,
+					bookings.lockRemainder(claim.bookingId().value()), committedAt, feeMinor));
 			case RemodelOutcome.Release ignored -> settled.outcomes().add(applyRelease(venueId, claim, stayEndingWith));
 			case RemodelOutcome.Decline ignored ->
 				settled.outcomes().add(applyDecline(venueId, claim, settled.declinedStays()));
@@ -179,12 +181,12 @@ class RemodelClaimsService implements RemodelClaims {
 	}
 
 	/**
-	 * Ends a confirmed claim as {@code VENUE_CHANGE}, decided on what it holds under its row lock (#1281): with every
-	 * day refunded it ends at 0, publishing nothing (#1300); else it refunds the rest, which drains off
+	 * Ends a confirmed claim as {@code VENUE_CHANGE}, decided on {@code held}, read under the caller's row lock (#1281):
+	 * every day refunded ends it at 0, publishing nothing (#1300); else it refunds the rest, which drains off
 	 * {@code BookingCancelled}. {@code feeMinor}, the quoted rate, is the refund line's, not the ledger's (ADR-0021).
 	 */
-	private ReceiptOutcome applyConfirmedEnd(VenueId venueId, RemodelClaim claim, Instant cancelledAt, long feeMinor) {
-		LockedRemainder held = bookings.lockRemainder(claim.bookingId().value());
+	private ReceiptOutcome applyConfirmedEnd(VenueId venueId, RemodelClaim claim, LockedRemainder held,
+			Instant cancelledAt, long feeMinor) {
 		if (!held.everyDayRefunded() && claim.outcome() == RemodelOutcome.NothingLeft.NOTHING_LEFT) {
 			throw lostUnderLock(claim, "refunded on every day");
 		}

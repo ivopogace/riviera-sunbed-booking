@@ -1,6 +1,5 @@
 package ai.riviera.platform.booking.adapter.in;
 
-import java.net.URI;
 import java.time.Clock;
 import java.time.LocalDate;
 import java.time.ZoneId;
@@ -68,7 +67,7 @@ class StaffBookingController {
 	/**
 	 * Stamps the scanned or typed code's guest as attended today, exactly once. The code travels in
 	 * the path (ADR-0006) and never comes back: the success view carries set + date, and every
-	 * problem body keeps the code-free {@code instance} plus a date-only detail (invariant #7).
+	 * problem body carries a date-only detail (invariant #7).
 	 */
 	@PostMapping("/{venueId}/bookings/{code}/check-in")
 	ResponseEntity<?> checkIn(Authentication authentication, @PathVariable long venueId,
@@ -78,31 +77,27 @@ class StaffBookingController {
 			case CheckInResult.CheckedIn(var setId, var bookingDate) ->
 					ResponseEntity.ok(new CheckInView(setId.value(), bookingDate));
 			case CheckInResult.AlreadyCheckedIn(var bookingDate, var setId) ->
-					error(venueId, HttpStatus.CONFLICT, "ALREADY_CHECKED_IN",
+					error(HttpStatus.CONFLICT, "ALREADY_CHECKED_IN",
 							"This booking was already checked in today.", bookingDate, setId);
 			case CheckInResult.WrongServiceDate(var bookingDate) ->
-					error(venueId, HttpStatus.CONFLICT, "WRONG_SERVICE_DATE",
+					error(HttpStatus.CONFLICT, "WRONG_SERVICE_DATE",
 							"This booking is for " + bookingDate + ".", bookingDate, null);
 			case CheckInResult.DayRefunded(var bookingDate, var setId) ->
-					error(venueId, HttpStatus.CONFLICT, "DAY_REFUNDED",
+					error(HttpStatus.CONFLICT, "DAY_REFUNDED",
 							"This day was refunded for weather.", bookingDate, setId);
 			case CheckInResult.DayReleased(var bookingDate, var setId) ->
-					error(venueId, HttpStatus.CONFLICT, "DAY_RELEASED",
+					error(HttpStatus.CONFLICT, "DAY_RELEASED",
 							"This day was refunded by the venue and the spot released.", bookingDate, setId);
 			case CheckInResult.NotFound() ->
-					error(venueId, HttpStatus.NOT_FOUND, "BOOKING_NOT_FOUND",
+					error(HttpStatus.NOT_FOUND, "BOOKING_NOT_FOUND",
 							"No such booking at this venue.", null, null);
 		};
 	}
 
-	/**
-	 * Problem bodies point {@code instance} at the code-free collection path (invariant #7); a repeat scan
-	 * also names today's set, so staff can point the guest to it on a move day.
-	 */
-	private static ResponseEntity<ProblemDetail> error(long venueId, HttpStatus status, String code,
+	/** A repeat scan's problem body also names today's set, so staff can point the guest to it on a move day. */
+	private static ResponseEntity<ProblemDetail> error(HttpStatus status, String code,
 			String detail, LocalDate bookingDate, SetId setId) {
 		ProblemDetail problem = ApiProblem.of(status, code, detail);
-		problem.setInstance(URI.create("/api/venues/" + venueId + "/bookings"));
 		if (bookingDate != null) {
 			problem.setProperty("bookingDate", bookingDate.toString());
 		}

@@ -347,3 +347,45 @@ test("signed in: My bookings unions the account list with this device's codes, d
   await settle(page);
   await expectNoSeriousAxeViolations(page, 'my bookings signed-in union');
 });
+
+test('signed in: a booking with every day refunded reads Refunded in My bookings, with no QR (#1425, a11y)', async ({
+  page,
+}) => {
+  const refundedCode = 'RFND234567';
+  const heldCode = 'HELD234567';
+  await page.route(/\/api\/auth\/me$/, (route) =>
+    route.fulfill({ json: { username: 'tourist@example.com', principalType: 'CUSTOMER' } }),
+  );
+  const row = (code: string, bookingDate: string, nothingLeft: boolean) => ({
+    code,
+    status: 'CONFIRMED',
+    venueId: 1,
+    venueName: 'Miramar Beach Club',
+    rowLabel: 'Front row · Sea view',
+    positionNo: 2,
+    bookingDate,
+    lastDate: bookingDate,
+    amount: { minorUnits: 4500, currency: 'EUR' },
+    requestExpiresAt: null,
+    refundedAmount: null,
+    movedAt: null,
+    nothingLeft,
+  });
+  await page.route(/\/api\/me\/bookings(\?.*)?$/, (route) =>
+    route.fulfill({
+      json: [row(refundedCode, '2026-12-05', true), row(heldCode, '2026-12-01', false)],
+    }),
+  );
+
+  await page.goto('/my-bookings');
+
+  const refunded = page.getByTestId('booking-row').filter({ hasText: refundedCode });
+  await expect(refunded.getByTestId('row-status')).toHaveText('Refunded');
+  await expect(refunded.getByTestId('row-subline')).toHaveText('Every day was refunded');
+  await expect(refunded.locator('app-booking-qr')).toHaveCount(0);
+  const held = page.getByTestId('booking-row').filter({ hasText: heldCode });
+  await expect(held.getByTestId('row-status')).toHaveText('Confirmed');
+  await expect(held.locator('app-booking-qr')).toHaveCount(1);
+  await settle(page);
+  await expectNoSeriousAxeViolations(page, 'my bookings nothing-left row');
+});

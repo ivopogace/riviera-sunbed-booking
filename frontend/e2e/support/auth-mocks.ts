@@ -11,7 +11,6 @@ function problem(status: number, title: string, code: string) {
       status,
       detail: '',
       code,
-      instance: 'about:blank',
     }),
   };
 }
