@@ -307,7 +307,7 @@ test('a venue with sets opens in per-set editing, and one set’s pool + price s
   await expect(cell(page, 1, 2)).toHaveAttribute('data-state', 'walkin');
 });
 
-test('a set price below €0.50 is refused before the PATCH, the typed value kept and marked (#1419, + axe)', async ({
+test('a set price below €0.50 is refused before the PATCH, marked until the typed value is corrected (#1419, #1449, + axe)', async ({
   page,
 }) => {
   const mock = await mockConsole(page);
@@ -336,10 +336,18 @@ test('a set price below €0.50 is refused before the PATCH, the typed value kep
   await settle(page);
   await expectNoSeriousAxeViolations(page, 'set editor below-floor refusal');
 
+  // Re-checked on each edit (#1449): still below the floor keeps the mark, a corrected price drops it.
+  await price.fill('0.3');
+  await expect(error).toBeVisible();
+  await expect(price).toHaveAttribute('aria-invalid', 'true');
   await price.fill('0.50');
+  await expect(error).toBeHidden();
+  await expect(price).not.toHaveAttribute('aria-invalid');
+  await expect(price).not.toHaveAttribute('aria-describedby');
+  expect(patches).toBe(0);
+
   await page.getByTestId('set-save').click();
   await expect(page.getByTestId('set-saved')).toBeVisible();
-  await expect(price).not.toHaveAttribute('aria-invalid');
   expect(patches).toBe(1);
   expect(mock.sets().find((s) => s.id === 12)!.price.minorUnits).toBe(50);
 });
