@@ -166,9 +166,9 @@ export class PricingTab {
   }
 
   /**
-   * Commit a row's € input: convert to integer minor units and reprice the row, reverting THAT row
-   * (not a concurrent edit) on failure. An empty or non-numeric field is ignored — the input is
-   * restored to the row's shown price, never sent as a €0 reprice.
+   * Reprice the row in minor units, reverting only THAT row on failure. An empty or non-numeric field
+   * restores the shown price (never a €0 reprice); below the floor nothing is sent and the typed value
+   * stays, marked invalid ({@link refusedRows}).
    */
   protected async onPriceChange(row: PriceRow, input: HTMLInputElement): Promise<void> {
     const venueId = this.venueId();
@@ -187,6 +187,9 @@ export class PricingTab {
       // Rounded first, so 0.495 → 50 passes; the server's 400 stays the backstop.
       this.refusedRows.update((refused) => new Map(refused).set(row.label, input.value));
       this.savedRow.set(null);
+      if (this.errorRow()?.label === row.label) {
+        this.errorRow.set(null); // the refusal supersedes it; dropping the refusal must not revive it
+      }
       return;
     }
     this.dropRefusal(row.label);

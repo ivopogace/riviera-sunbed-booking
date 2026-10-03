@@ -346,7 +346,7 @@ describe('PricingTab (#174)', () => {
     );
     expect(input('A').getAttribute('aria-invalid')).toBe('true');
     expect(input('A').getAttribute('aria-describedby')).toBe(byId('pricing-error-A').id);
-    // The saved price is unchanged, so the projection still sums €35 for row A.
+    // The saved price is unchanged, so the projection still totals €90.
     expect(byId('pricing-projected').textContent).toContain(
       formatMoney({ minorUnits: 9000, currency: 'EUR' }),
     );
@@ -376,6 +376,8 @@ describe('PricingTab (#174)', () => {
     );
     expect(body(req).price).toEqual({ minorUnits: 50, currency: 'EUR' });
     expect(host.querySelector('[data-testid="pricing-error-A"]')).toBeNull();
+    expect(input('A').hasAttribute('aria-invalid')).toBe(false);
+    expect(input('A').hasAttribute('aria-describedby')).toBe(false);
     req.flush(null);
     await fixture.whenStable();
   });
@@ -403,6 +405,22 @@ describe('PricingTab (#174)', () => {
     expect(input('A').value).toBe('35');
     expect(host.querySelector('[data-testid="pricing-error-A"]')).toBeNull();
     expect(input('A').hasAttribute('aria-invalid')).toBe(false);
+  });
+
+  it('replaces an earlier reprice error with the refusal, which never brings it back', async () => {
+    render();
+    editRow('A', '99');
+    http
+      .expectOne((r) => r.method === 'PUT' && r.url.includes('/api/venues/1/rows/A/price'))
+      .flush({ code: 'NOT_VENUE_OWNER' }, { status: 403, statusText: 'Forbidden' });
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    editRow('A', '0.3');
+    editRow('A', '');
+
+    expect(host.querySelector('[data-testid="pricing-error-A"]')).toBeNull();
+    expect(input('A').hasAttribute('aria-describedby')).toBe(false);
   });
 
   it('states the floor on every row input', () => {

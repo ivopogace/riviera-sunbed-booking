@@ -562,6 +562,12 @@ describe('SetEditor (#600)', () => {
       expect(input.getAttribute('aria-describedby')).toBe(error.id);
     }
 
+    function expectReleasedField(input: HTMLInputElement, errorTestId: string): void {
+      expect(host.querySelector(`[data-testid="${errorTestId}"]`)).toBeNull();
+      expect(input.hasAttribute('aria-invalid')).toBe(false);
+      expect(input.hasAttribute('aria-describedby')).toBe(false);
+    }
+
     it('onSave refuses €0.49 before the PATCH, keeping the typed value marked invalid', () => {
       render();
       selectSet(12);
@@ -607,6 +613,7 @@ describe('SetEditor (#600)', () => {
 
       typePrice('0.50');
       click(byId('set-add'));
+      expectReleasedField(priceInput(), 'set-error');
       const request = http.expectOne((r) => r.method === 'POST');
       expect(sentPrice(request)).toEqual({ minorUnits: 50, currency: 'EUR' });
     });
@@ -625,6 +632,7 @@ describe('SetEditor (#600)', () => {
 
       typeBatchPrice('0.50');
       click(byId('batch-apply'));
+      expectReleasedField(byId('batch-price') as HTMLInputElement, 'batch-error');
       expect(batchPatchBody(expectBatchPatch()).price).toEqual({ minorUnits: 50, currency: 'EUR' });
     });
 
