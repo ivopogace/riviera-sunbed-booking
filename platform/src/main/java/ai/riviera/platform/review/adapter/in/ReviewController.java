@@ -1,6 +1,5 @@
 package ai.riviera.platform.review.adapter.in;
 
-import java.net.URI;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
@@ -73,15 +72,8 @@ class ReviewController {
 		};
 	}
 
-	/**
-	 * The request path carries the booking code — a bearer credential (invariant #7) — so every error
-	 * body answers with the collection path instead, the same answer {@code BookingController} gives
-	 * on the sibling code-gated legs. The override itself lives in {@link ApiProblem#responseAt}.
-	 */
-	private static final URI BOOKINGS_PATH = URI.create("/api/bookings");
-
 	private static ResponseEntity<ProblemDetail> error(HttpStatus status, String code, String detail) {
-		return ApiProblem.responseAt(status, code, detail, BOOKINGS_PATH);
+		return ApiProblem.response(status, code, detail);
 	}
 
 	/**

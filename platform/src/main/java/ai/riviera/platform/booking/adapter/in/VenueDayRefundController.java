@@ -1,6 +1,5 @@
 package ai.riviera.platform.booking.adapter.in;
 
-import java.net.URI;
 import java.time.LocalDate;
 
 import org.springframework.format.annotation.DateTimeFormat;
@@ -21,8 +20,7 @@ import ai.riviera.platform.venue.vocabulary.VenueId;
  * The operator's venue day refund (ADR-0027): {@code POST /api/venues/{venueId}/bookings/{code}/day-refund?date=}
  * refunds that guest's that day through the {@link RefundVenueDay} port (#11), the amount server-decided
  * (#10). {@code date} is required: an implicit today could refund the wrong day. The code travels in the
- * path as check-in's does (ADR-0006) and never comes back: every problem body keeps a code-free {@code
- * instance} (invariant #7). Operator-gated: {@code SecurityConfig} matches this POST to {@code OPERATOR}
+ * path as check-in's does (ADR-0006) and never comes back in a body (invariant #7). Operator-gated: {@code SecurityConfig} matches this POST to {@code OPERATOR}
  * before the public venue rules; ownership is the service's (#13).
  */
 @RestController
@@ -41,7 +39,6 @@ class VenueDayRefundController {
 	ResponseEntity<?> refund(Authentication authentication, @PathVariable long venueId, @PathVariable String code,
 			@RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
 		OperatorId operator = operatorDirectory.requireOperator(authentication.getName());
-		return VenueDayRefundResponses.of(refundVenueDay.refundDay(operator, new VenueId(venueId), code, date), date,
-				URI.create("/api/venues/" + venueId + "/bookings"));
+		return VenueDayRefundResponses.of(refundVenueDay.refundDay(operator, new VenueId(venueId), code, date), date);
 	}
 }

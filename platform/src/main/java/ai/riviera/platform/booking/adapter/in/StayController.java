@@ -1,6 +1,5 @@
 package ai.riviera.platform.booking.adapter.in;
 
-import java.net.URI;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -27,7 +26,6 @@ import ai.riviera.platform.shared.InvalidApiRequestException;
 class StayController {
 
 	static final String STAYS_PATH = "/api/stays";
-	private static final URI STAYS_URI = URI.create(STAYS_PATH);
 
 	private final CreateStay createStay;
 	private final CustomerAccountDirectory customerDirectory;
@@ -50,7 +48,7 @@ class StayController {
 							awaiting.paymentIntentId()));
 			case StayOutcome.Requested requested -> ResponseEntity.status(HttpStatus.ACCEPTED)
 					.body(new StayView.Requested(StayView.of(requested.confirmation()), requested.requestExpiresAt()));
-			case StayOutcome.Rejected rejected -> Rejections.respond(rejected.reason(), STAYS_URI);
+			case StayOutcome.Rejected rejected -> Rejections.respond(rejected.reason());
 		};
 	}
 }

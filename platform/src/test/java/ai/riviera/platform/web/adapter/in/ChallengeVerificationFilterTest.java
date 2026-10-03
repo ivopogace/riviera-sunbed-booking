@@ -86,7 +86,7 @@ class ChallengeVerificationFilterTest {
 				.andExpect(status().isBadRequest())
 				.andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
 				.andExpect(jsonPath("$.code").value("CHALLENGE_REQUIRED"))
-				.andExpect(jsonPath("$.instance").value("about:blank"))
+				.andExpect(jsonPath("$.instance").doesNotExist())
 				.andExpect(cookie().doesNotExist("SESSION"));
 	}
 
