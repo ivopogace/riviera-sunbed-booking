@@ -970,7 +970,7 @@ class CreateBookingServiceTest {
 		}
 
 		@Override
-		public List<ai.riviera.platform.booking.application.view.BookingRecord> findByAccountId(
+		public List<ai.riviera.platform.booking.application.view.AccountBooking> findByAccountId(
 				ai.riviera.platform.customer.vocabulary.CustomerAccountId accountId) {
 			return List.of();
 		}

@@ -22,7 +22,7 @@ public record BookingRecord(long id, String code, BookingStatus status, VenueId 
 		CustomerId customerId, LocalDate bookingDate, LocalDate lastDate, long amountMinor, String currency,
 		Instant cancelledAt, Long refundMinor, Instant requestExpiresAt, RefundReason cancelReason,
 		Instant createdAt, Instant acceptedAt, Instant movedAt, DeclineReason declineReason,
-		long dayRefundedMinor, boolean everyDayRefunded) {
+		long dayRefundedMinor, boolean everyDayRefunded) implements AccountBooking {
 
 	/** A booking with refunded days but one still unrefunded. */
 	public BookingRecord(long id, String code, BookingStatus status, VenueId venueId, SetId setId,
