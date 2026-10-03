@@ -50,8 +50,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * {@code ai.riviera.platform} and is <strong>not</strong> a module — it is excluded from the package-shape
  * assertions. What the root may <em>reach</em> is {@link CompositionRootDisciplineTests}' job. The
  * {@code shared} kernel matches neither template deliberately — flat classes at the module root, no
- * published surface — so it is the one module whose root may hold types: the modules registered in
- * {@code @Modulithic(sharedModules)} are exempt from the module-root rule, every other module is not.
+ * published surface — so it is the one module whose root may hold types: a module registered in
+ * {@code @Modulithic(sharedModules)} is exempt from the module-root rule, every other module is not.
  *
  * <p>Every collector takes its base package as a parameter, so each rule is proven to fail against the
  * deliberately mis-shaped fixtures under {@code ai.riviera.packageshapefixture} — never by breaking
@@ -145,7 +145,7 @@ class PackageShapeArchitectureTests {
 	}
 
 	/**
-	 * Assertion 5 — only a registered shared kernel has types directly in its module root (ADR-0007's
+	 * Assertion 5 — only a registered shared module has types directly in its module root (ADR-0007's
 	 * {@code shared} allowance). Any other module keeps its types in its template packages; a
 	 * {@code package-info} at the root is the module's declaration, not a type.
 	 */
