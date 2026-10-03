@@ -28,6 +28,7 @@ import ai.riviera.platform.booking.application.remodel.NewReceipt;
 import ai.riviera.platform.booking.application.remodel.ReceiptOutcome;
 import ai.riviera.platform.booking.application.remodel.ReceiptOutcomeKind;
 import ai.riviera.platform.booking.application.remodel.RemodelReceipts;
+import ai.riviera.platform.booking.events.BookingCancelled;
 import ai.riviera.platform.booking.vocabulary.BookingId;
 import ai.riviera.platform.booking.vocabulary.RefundReason;
 import ai.riviera.platform.booking.vocabulary.SpotRef;
@@ -252,7 +253,8 @@ class BookingCancellationMailIT {
 
 		Awaitility.await().atMost(WAIT).untilAsserted(() -> assertThat(jdbc.sql(
 						"SELECT DISTINCT listener_id FROM event_publication_archive "
-								+ "WHERE serialized_event LIKE :fragment AND listener_id LIKE :module")
+								+ "WHERE event_type = :type AND serialized_event LIKE :fragment AND listener_id LIKE :module")
+				.param("type", BookingCancelled.class.getName())
 				.param("fragment", "%7334%")
 				.param("module", "notification.%")
 				.query(String.class).list())
