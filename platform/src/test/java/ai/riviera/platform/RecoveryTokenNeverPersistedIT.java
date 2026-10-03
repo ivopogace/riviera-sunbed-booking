@@ -75,6 +75,7 @@ class RecoveryTokenNeverPersistedIT {
 		return token;
 	}
 
+	/** Spans every event type on purpose: the token must be in no payload, and a random token matches no other test's row. */
 	private long publicationRowsMentioning(String table, String rawToken) {
 		return jdbc.sql("select count(*) from " + table + " where position(:token in serialized_event) > 0")
 				.param(TOKEN_PARAM, rawToken)

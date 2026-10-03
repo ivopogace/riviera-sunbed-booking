@@ -683,8 +683,15 @@ export class SetEditor {
     this.batchDraft.update((draft) => ({ ...draft, pool }));
   }
 
+  /** A blank batch price means "no change", so it releases a price refusal like a valid amount does. */
   protected onBatchPriceInput(value: string): void {
     this.batchDraft.update((draft) => ({ ...draft, priceEur: value }));
+    if (
+      this.batchErrorCode() === 'INVALID_REQUEST' &&
+      (value.trim() === '' || meetsPriceFloor(value))
+    ) {
+      this.batchErrorCode.set(undefined);
+    }
   }
 
   /** Whether the batch draft has at least one touched field — Apply is inert until it does. */
@@ -993,6 +1000,13 @@ export class SetEditor {
     );
   }
 
+  /** Re-check a price refusal as the operator types: a corrected amount releases the field at once. */
+  protected onPriceInput(value: string): void {
+    if (this.errorCode() === 'INVALID_REQUEST' && meetsPriceFloor(value)) {
+      this.errorCode.set(undefined);
+    }
+  }
+
   protected chooseTier(tier: Tier): void {
     this.draft.update((draft) => ({ ...draft, tier }));
   }
@@ -1141,6 +1155,12 @@ export class SetEditor {
       this.busy.set(false);
     }
   }
+}
+
+/** Whether a typed euros amount clears {@link MIN_SET_PRICE_MINOR} once rounded to minor units. */
+function meetsPriceFloor(raw: string): boolean {
+  const minorUnits = eurosToMinorUnits(raw);
+  return minorUnits !== null && minorUnits >= MIN_SET_PRICE_MINOR;
 }
 
 function slot(gridX: number, gridY: number): string {

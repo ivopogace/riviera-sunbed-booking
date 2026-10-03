@@ -239,6 +239,8 @@ security chain moved into the closed module `web`. The other two halves stand: m
 
 **Admission test:** no business logic, no module-owned state, and no dependency on a module that
 depends back. `shared` may reach only `customer::api` and `operator::api`.
+*Amended 2026-10-03 (#1442):* `shared` reaches no module (`allowedDependencies = {}`), the
+2026-10-01 amendment above; the "may reach only" clause is superseded.
 
 **Do not copy this shape for any other module.** A new module is still thin-or-full per the
 mechanical rule; OPEN is reserved for technical shared code, and `shared` is the only instance.

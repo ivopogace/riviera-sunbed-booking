@@ -187,24 +187,33 @@ class RefundBulkheadIT {
 		return jdbc.sql("""
 				SELECT COUNT(*) FROM event_publication
 				WHERE completion_date IS NULL AND listener_id = :listener
-				  AND serialized_event LIKE :amountFragment
+				  AND event_type = :type AND serialized_event LIKE :amountFragment
 				""")
-				.param("listener", REFUND_LISTENER_ID)
+				.param("listener", REFUND_LISTENER_ID).param("type", BookingCancelled.class.getName())
 				.param("amountFragment", "%" + refundMinor + "%")
 				.query(Long.class).single();
 	}
 
+	/** Open across listeners by design, so the id itself is under test; pinned to this test's event type. */
 	private List<String> outstandingListenerIds(long refundMinor) {
-		return jdbc.sql("SELECT listener_id FROM event_publication "
-						+ "WHERE completion_date IS NULL AND serialized_event LIKE :amountFragment")
+		return jdbc.sql("""
+				SELECT listener_id FROM event_publication
+				WHERE completion_date IS NULL
+				  AND event_type = :type AND serialized_event LIKE :amountFragment
+				""")
+				.param("type", BookingCancelled.class.getName())
 				.param("amountFragment", "%" + refundMinor + "%")
 				.query(String.class).list();
 	}
 
 	private List<String> outstandingStatus(long refundMinor) {
-		return jdbc.sql("SELECT status FROM event_publication WHERE completion_date IS NULL "
-						+ "AND listener_id = :listener AND serialized_event LIKE :amountFragment")
-				.param("listener", REFUND_LISTENER_ID).param("amountFragment", "%" + refundMinor + "%")
+		return jdbc.sql("""
+				SELECT status FROM event_publication
+				WHERE completion_date IS NULL AND listener_id = :listener
+				  AND event_type = :type AND serialized_event LIKE :amountFragment
+				""")
+				.param("listener", REFUND_LISTENER_ID).param("type", BookingCancelled.class.getName())
+				.param("amountFragment", "%" + refundMinor + "%")
 				.query(String.class).list();
 	}
 

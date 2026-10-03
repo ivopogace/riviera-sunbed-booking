@@ -132,8 +132,10 @@ class RefundOutboxScopeIT {
 		publishInTransaction(new PaymentConfirmed(new BookingRef(confirmedBooking), CONFIRMED_PAYMENT_INTENT));
 		Awaitility.await("the payment confirmed its booking and the publication archived").atMost(WAIT)
 				.until(() -> "CONFIRMED".equals(statusOf(confirmedBooking))
-						&& archivedRow("booking.confirm-on-payment-confirmed", CONFIRMED_PAYMENT_INTENT) != null);
-		UUID stuckConfirmation = reopenArchivedRow(archivedRow("booking.confirm-on-payment-confirmed", CONFIRMED_PAYMENT_INTENT));
+						&& archivedRow("booking.confirm-on-payment-confirmed", PaymentConfirmed.class,
+								CONFIRMED_PAYMENT_INTENT) != null);
+		UUID stuckConfirmation = reopenArchivedRow(archivedRow("booking.confirm-on-payment-confirmed",
+				PaymentConfirmed.class, CONFIRMED_PAYMENT_INTENT));
 
 		LocalDate cancelDate = LocalDate.of(2033, 6, 7);
 		long cancelledBooking = seedBooking(set, "RFOSCAN1", cancelDate, "scope-cancel@example.com",
@@ -144,9 +146,11 @@ class RefundOutboxScopeIT {
 				.until(() -> outstanding("booking.refund-on-booking-cancelled", SCOPE_REFUND_MINOR) == 1L
 						&& outstanding("payout.reverse-on-booking-cancelled", SCOPE_REFUND_MINOR) == 1L);
 		Awaitility.await("the cancellation mail delivered and archived").atMost(WAIT)
-				.until(() -> archivedRow("notification.mail-on-booking-cancelled", String.valueOf(SCOPE_REFUND_MINOR)) != null);
+				.until(() -> archivedRow("notification.mail-on-booking-cancelled", BookingCancelled.class,
+						String.valueOf(SCOPE_REFUND_MINOR)) != null);
 		UUID stuckMail = reopenArchivedRow(
-				archivedRow("notification.mail-on-booking-cancelled", String.valueOf(SCOPE_REFUND_MINOR)));
+				archivedRow("notification.mail-on-booking-cancelled", BookingCancelled.class,
+						String.valueOf(SCOPE_REFUND_MINOR)));
 
 		gateway.failEveryRefund(false);
 		int resubmitted = outbox.resubmitOutstanding();
@@ -260,20 +264,20 @@ class RefundOutboxScopeIT {
 		return jdbc.sql("""
 				SELECT COUNT(*) FROM event_publication
 				WHERE completion_date IS NULL AND listener_id LIKE :listener
-				  AND serialized_event LIKE :marker
+				  AND event_type = :type AND serialized_event LIKE :marker
 				""")
-				.param("listener", listenerLike)
+				.param("listener", listenerLike).param("type", BookingCancelled.class.getName())
 				.param("marker", "%" + amountMarker + "%")
 				.query(Long.class).single();
 	}
 
 	/** This test's archived publication for a listener, or {@code null} until it completes. */
-	private UUID archivedRow(String listenerLike, String marker) {
+	private UUID archivedRow(String listenerLike, Class<?> eventType, String marker) {
 		return jdbc.sql("""
 				SELECT id FROM event_publication_archive
-				WHERE listener_id LIKE :listener AND serialized_event LIKE :marker
+				WHERE listener_id LIKE :listener AND event_type = :type AND serialized_event LIKE :marker
 				""")
-				.param("listener", listenerLike)
+				.param("listener", listenerLike).param("type", eventType.getName())
 				.param("marker", "%" + marker + "%")
 				.query(UUID.class).optional().orElse(null);
 	}

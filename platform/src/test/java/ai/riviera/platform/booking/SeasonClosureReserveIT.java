@@ -1,13 +1,11 @@
 package ai.riviera.platform.booking;
 
-import java.time.Duration;
 import java.time.LocalDate;
 import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.List;
 
-import org.awaitility.Awaitility;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -53,22 +51,7 @@ class SeasonClosureReserveIT {
 
 	@AfterEach
 	void removeFixtures() {
-		// A confirmed reserve fans out after the response; the ledger and mail rows it writes pin the booking.
-		Awaitility.await().atMost(Duration.ofSeconds(10)).until(() -> jdbc.sql(
-				"SELECT count(*) FROM event_publication WHERE completion_date IS NULL")
-				.query(Long.class).single() == 0L);
-		for (long venue : venues) {
-			for (String dependent : List.of("booking_confirmation_mail_attempt", "payout_ledger_entry", "review")) {
-				jdbc.sql("DELETE FROM " + dependent + " WHERE booking_id IN (SELECT id FROM booking WHERE venue_id = :v)")
-						.param("v", venue).update();
-			}
-			jdbc.sql("DELETE FROM booking WHERE venue_id = :v").param("v", venue).update();
-			jdbc.sql("DELETE FROM set_availability WHERE set_id IN (SELECT id FROM set_position WHERE venue_id = :v)")
-					.param("v", venue).update();
-			jdbc.sql("DELETE FROM set_position WHERE venue_id = :v").param("v", venue).update();
-			jdbc.sql("DELETE FROM operator_venue WHERE venue_id = :v").param("v", venue).update();
-			jdbc.sql("DELETE FROM venue WHERE id = :v").param("v", venue).update();
-		}
+		venues.forEach(venue -> StayFixtures.cleanup(jdbc, venue));
 	}
 
 	private static LocalDate reopen() {
