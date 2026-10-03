@@ -64,8 +64,8 @@ export function readsAsRefunded(status: string, nothingLeft: boolean): boolean {
  */
 export function amountLabelFor(
   status: string,
-  refundedAmount?: { readonly minorUnits: number } | null,
-  nothingLeft = false,
+  refundedAmount: { readonly minorUnits: number } | null | undefined,
+  nothingLeft: boolean,
 ): StatusMeta['amount'] {
   if (status === 'CANCELLED' && refundedAmount === null) {
     return 'Amount';

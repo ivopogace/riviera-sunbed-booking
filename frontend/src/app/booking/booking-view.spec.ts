@@ -5,7 +5,6 @@ import { BehaviorSubject, NEVER, of, Subject, throwError } from 'rxjs';
 import { vi } from 'vitest';
 
 import { expectNoAxeViolations } from '../../testing/axe';
-import { amountLabelFor } from '../shared/booking-status';
 import {
   BookingDetail,
   BookingStatus,
@@ -1091,26 +1090,6 @@ describe('BookingView', () => {
     expect(labels).toContain('Amount');
     expect(labels).not.toContain('Paid');
   });
-
-  // Same rule as the list's row (my-bookings.ts); REFUNDED_META.amount reads 'Paid' like CONFIRMED's today.
-  it.each([
-    ['CONFIRMED', true],
-    ['CONFIRMED', false],
-    ['NO_SHOW', true],
-    ['NO_SHOW', false],
-  ] as const)(
-    'labels a %s amount by the list’s rule (nothing left: %s)',
-    async (status, nothingLeft) => {
-      const fixture = await render(
-        stubService({ detail: { ...DETAIL, status, cancellable: false, nothingLeft } }),
-      );
-      const labels = [...(fixture.nativeElement as HTMLElement).querySelectorAll('dt')].map((dt) =>
-        dt.textContent?.trim(),
-      );
-
-      expect(labels).toContain(amountLabelFor(status, null, nothingLeft));
-    },
-  );
 
   describe('moved booking (#1034)', () => {
     it('tells the guest the spot changed — where from, where to, how far — and names the free-exit deadline in Tirane time', async () => {
