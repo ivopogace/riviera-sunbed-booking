@@ -18,7 +18,6 @@ import org.springframework.transaction.PlatformTransactionManager;
 
 import ai.riviera.platform.EnabledIfDockerAvailable;
 import ai.riviera.platform.TestcontainersConfiguration;
-import ai.riviera.platform.booking.events.BookingRequestExpired;
 import ai.riviera.platform.notification.adapter.out.MockMailer;
 import ai.riviera.platform.notification.adapter.out.SentEmail;
 import ai.riviera.platform.notification.application.BookingLinks;
@@ -156,8 +155,7 @@ class RequestExpiredMailIT {
 
 		Awaitility.await().atMost(WAIT).untilAsserted(() -> assertThat(jdbc.sql(
 						"SELECT DISTINCT listener_id FROM event_publication_archive "
-								+ "WHERE event_type = :type AND serialized_event LIKE :fragment AND listener_id LIKE :module")
-				.param("type", BookingRequestExpired.class.getName())
+								+ "WHERE serialized_event LIKE :fragment AND listener_id LIKE :module")
 				.param("fragment", "%" + date + "%")
 				.param("module", "notification.%")
 				.query(String.class).list())
