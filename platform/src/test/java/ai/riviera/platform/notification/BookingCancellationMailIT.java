@@ -251,15 +251,19 @@ class BookingCancellationMailIT {
 				new BookingMailFixtures.SetRef(set.setId(), set.venueId()), bookingId, date, 7334L,
 				RefundReason.POLICY));
 
-		Awaitility.await().atMost(WAIT).untilAsserted(() -> assertThat(jdbc.sql(
-						"SELECT DISTINCT listener_id FROM event_publication_archive "
-								+ "WHERE event_type = :type AND serialized_event LIKE :fragment AND listener_id LIKE :module")
-				.param("type", BookingCancelled.class.getName())
-				.param("fragment", "%7334%")
-				.param("module", "notification.%")
-				.query(String.class).list())
-				.containsExactly(BookingMailFixtures.CANCELLATION_LISTENER_ID));
-		assertThat(countTo(guest)).isEqualTo(1L);
+		Awaitility.await().atMost(WAIT).untilAsserted(() -> {
+			List<String> archived = jdbc.sql(
+					"SELECT DISTINCT listener_id FROM event_publication_archive "
+							+ "WHERE event_type = :type AND serialized_event LIKE :fragment AND listener_id LIKE :module")
+					.param("type", BookingCancelled.class.getName())
+					.param("fragment", "%7334%")
+					.param("module", "notification.%")
+					.query(String.class).list();
+			long mails = countTo(guest);
+			assertThat(archived).as("archived notification listener ids (mails to %s: %s)", guest, mails)
+					.containsExactly(BookingMailFixtures.CANCELLATION_LISTENER_ID);
+			assertThat(mails).as("mails to %s, with the archive holding %s", guest, archived).isEqualTo(1L);
+		});
 	}
 
 	/**

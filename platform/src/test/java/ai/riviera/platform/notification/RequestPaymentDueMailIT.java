@@ -4,6 +4,7 @@ import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;
+import java.util.List;
 
 import io.micrometer.core.instrument.MeterRegistry;
 
@@ -255,15 +256,19 @@ class RequestPaymentDueMailIT {
 				new BookingMailFixtures.SetRef(set.setId(), set.venueId()), bookingId, date, 8316L,
 				Instant.now().plus(Duration.ofHours(12)).truncatedTo(ChronoUnit.MILLIS)));
 
-		Awaitility.await().atMost(WAIT).untilAsserted(() -> assertThat(jdbc.sql(
-						"SELECT DISTINCT listener_id FROM event_publication_archive "
-								+ "WHERE event_type = :type AND serialized_event LIKE :fragment AND listener_id LIKE :module")
-				.param("type", BookingPaymentDue.class.getName())
-				.param("fragment", "%8316%")
-				.param("module", "notification.%")
-				.query(String.class).list())
-				.containsExactly(BookingMailFixtures.PAYMENT_DUE_LISTENER_ID));
-		assertThat(countTo(guest)).isEqualTo(1L);
+		Awaitility.await().atMost(WAIT).untilAsserted(() -> {
+			List<String> archived = jdbc.sql(
+					"SELECT DISTINCT listener_id FROM event_publication_archive "
+							+ "WHERE event_type = :type AND serialized_event LIKE :fragment AND listener_id LIKE :module")
+					.param("type", BookingPaymentDue.class.getName())
+					.param("fragment", "%8316%")
+					.param("module", "notification.%")
+					.query(String.class).list();
+			long mails = countTo(guest);
+			assertThat(archived).as("archived notification listener ids (mails to %s: %s)", guest, mails)
+					.containsExactly(BookingMailFixtures.PAYMENT_DUE_LISTENER_ID);
+			assertThat(mails).as("mails to %s, with the archive holding %s", guest, archived).isEqualTo(1L);
+		});
 	}
 
 	/**
