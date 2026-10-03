@@ -1,6 +1,5 @@
 package ai.riviera.platform.booking.adapter.in;
 
-import java.net.URI;
 import java.time.LocalDate;
 import java.util.List;
 
@@ -32,9 +31,6 @@ import ai.riviera.platform.shared.ApiProblem;
 @RestController
 @RequestMapping("/api/admin/bookings")
 class AdminDayRefundController {
-
-	/** The problem {@code instance} for the refund: a constant, never a value from the request (#7). */
-	private static final URI REFUND_INSTANCE = URI.create("/api/admin/bookings");
 
 	private final GuestDayRefundLookup lookup;
 	private final RefundVenueDay refundVenueDay;
@@ -82,7 +78,7 @@ class AdminDayRefundController {
 			@PathVariable @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
 		return VenueDayRefundResponses.of(
 				refundVenueDay.refundDayAsAdmin(operatorDirectory.requireOperator(authentication.getName()), new BookingId(bookingId), date),
-				date, REFUND_INSTANCE);
+				date);
 	}
 
 	/** A non-empty local part, an {@code @} and a non-empty domain: a shapeless value would hide a typo behind an empty list. */

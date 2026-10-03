@@ -61,7 +61,7 @@ class CsrfProtectionIT {
 				.andExpect(status().isForbidden())
 				.andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
 				.andExpect(jsonPath("$.code").value("INVALID_CSRF_TOKEN"))
-				.andExpect(jsonPath("$.instance").value("about:blank"));
+				.andExpect(jsonPath("$.instance").doesNotExist());
 	}
 
 	@Test

@@ -1,7 +1,5 @@
 package ai.riviera.platform.booking.adapter.in;
 
-import java.net.URI;
-
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
 import org.springframework.http.ResponseEntity;
@@ -18,19 +16,19 @@ final class Rejections {
 	private Rejections() {
 	}
 
-	static ResponseEntity<ProblemDetail> respond(BookingOutcome.Rejected rejected, URI path) {
+	static ResponseEntity<ProblemDetail> respond(BookingOutcome.Rejected rejected) {
 		return switch (rejected) {
-			case SET_TAKEN -> ApiProblem.responseAt(HttpStatus.CONFLICT, "SET_TAKEN",
-					"The set is already taken for this date.", path);
-			case NOT_ONLINE_POOL -> ApiProblem.responseAt(HttpStatus.UNPROCESSABLE_ENTITY, "SET_NOT_BOOKABLE_ONLINE",
-					"This set is not bookable online.", path);
-			case BOOKING_CLOSED -> ApiProblem.responseAt(HttpStatus.UNPROCESSABLE_ENTITY, "BOOKING_CLOSED",
-					"Online booking for this date has closed.", path);
-			case VENUE_CLOSED -> ApiProblem.responseAt(HttpStatus.UNPROCESSABLE_ENTITY, "VENUE_CLOSED",
-					"The venue is closed for the season on this date.", path);
-			case NO_SUCH_SET -> ApiProblem.responseAt(HttpStatus.NOT_FOUND, "NO_SUCH_SET", "No such set.", path);
-			case STAY_TOO_LONG -> ApiProblem.responseAt(HttpStatus.UNPROCESSABLE_ENTITY, "STAY_TOO_LONG",
-					"The stay is longer than this venue's maximum stay length.", path);
+			case SET_TAKEN -> ApiProblem.response(HttpStatus.CONFLICT, "SET_TAKEN",
+					"The set is already taken for this date.");
+			case NOT_ONLINE_POOL -> ApiProblem.response(HttpStatus.UNPROCESSABLE_ENTITY, "SET_NOT_BOOKABLE_ONLINE",
+					"This set is not bookable online.");
+			case BOOKING_CLOSED -> ApiProblem.response(HttpStatus.UNPROCESSABLE_ENTITY, "BOOKING_CLOSED",
+					"Online booking for this date has closed.");
+			case VENUE_CLOSED -> ApiProblem.response(HttpStatus.UNPROCESSABLE_ENTITY, "VENUE_CLOSED",
+					"The venue is closed for the season on this date.");
+			case NO_SUCH_SET -> ApiProblem.response(HttpStatus.NOT_FOUND, "NO_SUCH_SET", "No such set.");
+			case STAY_TOO_LONG -> ApiProblem.response(HttpStatus.UNPROCESSABLE_ENTITY, "STAY_TOO_LONG",
+					"The stay is longer than this venue's maximum stay length.");
 		};
 	}
 }

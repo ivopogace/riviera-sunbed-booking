@@ -38,9 +38,10 @@ MVC dispatch).
   `400` → `INVALID_REQUEST`, `413` → `PAYLOAD_TOO_LARGE` (pinned literally — the base handler is
   `final` and the 413 constant name is unstable), otherwise the HTTP status name
   (`ApiErrorHandlerTest`).
-- `instance` is `about:blank` by construction (Spring would auto-fill the request URI, which
-  on `/api/bookings/{code}` is the bearer credential); a controller may override with a
-  known-safe URI.
+- `instance` is never sent: no per-occurrence URI (#7). Spring auto-fills a null `instance` with
+  the request URI, on `/api/bookings/{code}` the bearer credential, so `web`'s
+  `ProblemInstanceConfig` clears it on every MVC-written body; the hand-built filter-chain bodies
+  omit it. Never set one (`ProblemDetail.setInstance`), not even a constant path.
 
 **Validation is centralized-explicit:** hand-rolled checks in `toCommand()`, translated at the
 controller, mapped once by the advice. No `spring-boot-starter-validation`/`@Valid` — the
