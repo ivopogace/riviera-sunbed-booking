@@ -7,6 +7,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.context.annotation.Import;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.MediaType;
 import org.springframework.mock.web.MockHttpServletRequest;
@@ -137,7 +138,8 @@ class RateLimitFilterTest {
 				.andExpect(header().exists("Retry-After"))
 				.andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
 				.andExpect(jsonPath("$.code").value("RATE_LIMITED"))
-				.andExpect(jsonPath("$.status").value(429));
+				.andExpect(jsonPath("$.status").value(429))
+				.andExpect(jsonPath("$.instance").doesNotExist());
 	}
 
 	@Test
@@ -730,6 +732,24 @@ class RateLimitFilterTest {
 				.andExpect(jsonPath("$.code").value("RATE_LIMITED"));
 	}
 
+	@Test
+	void anExponentNumericUsernameSharesTheBucketOfItsQuotedTextAsTheControllerBindsIt() throws Exception {
+		// The DTO binds a number's original text, so 1e2 keys as "1e2", never as its parsed value "100.0".
+		String exponent = IDENTITY_SEQ.incrementAndGet() + "e2";
+		rawUsernameLogin("10.49.0.1", exponent).andExpect(status().isUnauthorized());
+		rawUsernameLogin("10.49.0.2", exponent).andExpect(status().isUnauthorized());
+		rawUsernameLogin("10.49.0.3", '"' + exponent + '"')
+				.andExpect(status().isTooManyRequests())
+				.andExpect(jsonPath("$.code").value("RATE_LIMITED"));
+	}
+
+	/** An operator login whose {@code username} is the raw JSON {@code value}, number or string. */
+	private ResultActions rawUsernameLogin(String ip, String value) throws Exception {
+		return mvc.perform(post("/api/auth/operator/login").with(fromIp(ip)).with(csrf())
+				.contentType(MediaType.APPLICATION_JSON)
+				.content("{\"username\": %s, \"password\": \"nope\"}".formatted(value)));
+	}
+
 	private ResultActions numericUsernameLogin(String ip) throws Exception {
 		return mvc.perform(post("/api/auth/operator/login").with(fromIp(ip)).with(csrf())
 				.contentType(MediaType.APPLICATION_JSON)
@@ -784,7 +804,9 @@ class RateLimitFilterTest {
 		refused.andExpect(status().is(413))
 				.andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
 				.andExpect(jsonPath("$.code").value("PAYLOAD_TOO_LARGE"))
-				.andExpect(jsonPath("$.status").value(413));
+				.andExpect(jsonPath("$.status").value(413))
+				.andExpect(jsonPath("$.instance").doesNotExist())
+				.andExpect(header().string(HttpHeaders.CONNECTION, "close"));
 	}
 
 	@Test

@@ -1,13 +1,14 @@
 package ai.riviera.platform.web.adapter.in;
 
 import ai.riviera.platform.customer.vocabulary.Emails;
-import ai.riviera.platform.shared.ApiProblem;
 import java.io.BufferedReader;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.nio.charset.Charset;
+import java.nio.charset.IllegalCharsetNameException;
 import java.nio.charset.StandardCharsets;
+import java.nio.charset.UnsupportedCharsetException;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
@@ -31,7 +32,8 @@ import org.springframework.util.AntPathMatcher;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import tools.jackson.core.JacksonException;
-import tools.jackson.databind.JsonNode;
+import tools.jackson.core.JsonParser;
+import tools.jackson.core.JsonToken;
 import tools.jackson.databind.ObjectMapper;
 
 import jakarta.servlet.FilterChain;
@@ -56,7 +58,7 @@ final class RateLimitFilter extends OncePerRequestFilter {
 
 	/**
 	 * Hand-built RFC-7807 body: this filter rejects before MVC, so {@code ApiErrorHandler} never maps it.
-	 * No {@code instance}, so no URI is ever written (invariant #7); the wait is in {@code Retry-After}.
+	 * No {@code instance}, as everywhere (invariant #7); the wait is in {@code Retry-After}.
 	 */
 	private static final String RATE_LIMITED_BODY = """
 			{"type":"about:blank","title":"Too Many Requests","status":429,\
@@ -457,21 +459,39 @@ final class RateLimitFilter extends OncePerRequestFilter {
 	}
 
 	/**
-	 * The scalar value of {@code field} as a string, or {@code null}, decoded as the controller decodes it. Any
-	 * scalar node: DTO binding coerces {@code "username": 123} to a {@code String}, so it keys the same bucket.
+	 * The top-level scalar {@code field}'s original text (the last one wins), or {@code null}, decoded and bound as
+	 * the controller binds its {@code String}: {@code "username": 1e2} keys as {@code "1e2"}. An unreadable body,
+	 * or an unusable charset, yields {@code null}.
 	 */
 	private String readJsonField(byte[] body, HttpServletRequest request, String field) {
 		try {
 			Charset charset = bodyCharset(request);
-			JsonNode tree = BYTE_DECODED_CHARSETS.contains(charset.name())
-					? objectMapper.readTree(body)
-					: objectMapper.readTree(new String(body, charset));
-			JsonNode value = tree.path(field);
-			return value.isValueNode() && !value.isNull() ? value.asString() : null;
+			try (JsonParser parser = BYTE_DECODED_CHARSETS.contains(charset.name())
+					? objectMapper.createParser(body)
+					: objectMapper.createParser(new String(body, charset))) {
+				return topLevelScalarText(parser, field);
+			}
 		}
-		catch (JacksonException | InvalidMediaTypeException unreadableBody) {
+		catch (JacksonException | InvalidMediaTypeException | UnsupportedCharsetException
+				| IllegalCharsetNameException unreadableBody) {
 			return null;
 		}
+	}
+
+	/** Walks the whole document, so a malformed body still throws; {@code null} unless it is one object. */
+	private static String topLevelScalarText(JsonParser parser, String field) {
+		if (parser.nextToken() != JsonToken.START_OBJECT) {
+			return null;
+		}
+		String text = null;
+		for (String name = parser.nextName(); name != null; name = parser.nextName()) {
+			JsonToken value = parser.nextToken();
+			if (field.equals(name)) {
+				text = value.isScalarValue() && value != JsonToken.VALUE_NULL ? parser.getString() : null;
+			}
+			parser.skipChildren();
+		}
+		return parser.nextToken() == null ? text : null;
 	}
 
 	/** The charset Spring's JSON converter decodes the body with, resolved the same way; UTF-8 if none. */
@@ -569,6 +589,7 @@ final class RateLimitFilter extends OncePerRequestFilter {
 	}
 
 	private static void rejectBodyTooLarge(HttpServletResponse response, String ip) throws IOException {
+		// Redundant on Tomcat 11, which closes after any 413; kept so the close never hinges on the container.
 		response.setHeader(HttpHeaders.CONNECTION, "close");
 		writeProblem(response, BODY_TOO_LARGE_STATUS, BODY_TOO_LARGE_BODY);
 		log.debug("Login body over the {}-byte cap refused, from {}", MAX_CACHED_BODY_BYTES, ip);
