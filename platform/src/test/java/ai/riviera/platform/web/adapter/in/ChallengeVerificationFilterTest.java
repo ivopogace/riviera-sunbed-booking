@@ -86,7 +86,7 @@ class ChallengeVerificationFilterTest {
 				.andExpect(status().isBadRequest())
 				.andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
 				.andExpect(jsonPath("$.code").value("CHALLENGE_REQUIRED"))
-				.andExpect(jsonPath("$.instance").value("about:blank"))
+				.andExpect(jsonPath("$.instance").doesNotExist())
 				.andExpect(cookie().doesNotExist("SESSION"));
 	}
 
@@ -104,6 +104,7 @@ class ChallengeVerificationFilterTest {
 		fencedPost(path, "whatever-the-widget-sent")
 				.andExpect(status().isBadRequest())
 				.andExpect(jsonPath("$.code").value("CHALLENGE_INVALID"))
+				.andExpect(jsonPath("$.instance").doesNotExist())
 				.andExpect(cookie().doesNotExist("SESSION"));
 	}
 
@@ -112,7 +113,8 @@ class ChallengeVerificationFilterTest {
 	void anExpiredVerdictIsChallengeExpired(String path) throws Exception {
 		fencedPost(path, EXPIRED)
 				.andExpect(status().isBadRequest())
-				.andExpect(jsonPath("$.code").value("CHALLENGE_EXPIRED"));
+				.andExpect(jsonPath("$.code").value("CHALLENGE_EXPIRED"))
+				.andExpect(jsonPath("$.instance").doesNotExist());
 	}
 
 	@Test

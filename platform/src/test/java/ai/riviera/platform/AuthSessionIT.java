@@ -137,7 +137,7 @@ class AuthSessionIT {
 				.andExpect(status().isUnauthorized())
 				.andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
 				.andExpect(jsonPath("$.code").value("INVALID_CREDENTIALS"))
-				.andExpect(jsonPath("$.instance").value("about:blank"))
+				.andExpect(jsonPath("$.instance").doesNotExist())
 				.andReturn().getResponse().getContentAsString();
 	}
 
@@ -252,7 +252,7 @@ class AuthSessionIT {
 				.andExpect(status().isUnauthorized())
 				.andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
 				.andExpect(jsonPath("$.code").value("UNAUTHENTICATED"))
-				.andExpect(jsonPath("$.instance").value("about:blank"));
+				.andExpect(jsonPath("$.instance").doesNotExist());
 	}
 
 	// ---- The wire principal carries the operator lifecycle status ----

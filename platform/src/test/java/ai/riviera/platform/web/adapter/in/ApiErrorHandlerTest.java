@@ -25,8 +25,6 @@ import ai.riviera.platform.operator.vocabulary.VenueRef;
 
 import jakarta.servlet.ServletException;
 
-import static org.hamcrest.Matchers.containsString;
-import static org.hamcrest.Matchers.not;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -146,19 +144,6 @@ class ApiErrorHandlerTest {
 	}
 
 	/**
-	 * Invariant #7: without the {@code ApiProblem} redaction, Spring auto-fills a null
-	 * {@code instance} with the raw request URI — which on {@code /api/bookings/{code}} paths is
-	 * the bearer credential. Every advice-built body must carry the redaction placeholder, never
-	 * the request path.
-	 */
-	@Test
-	void handlerBuiltProblemNeverEchoesTheRequestUriInInstance() throws Exception {
-		mvc.perform(get("/throw/invalid"))
-				.andExpect(jsonPath("$.instance").value("about:blank"))
-				.andExpect(content().string(not(containsString("/throw/invalid"))));
-	}
-
-	/**
 	 * The multipart max-size backstop: {@code MaxUploadSizeExceededException} is handled by
 	 * the {@code ResponseEntityExceptionHandler} base class (its handler is {@code final}, so a
 	 * same-advice {@code @ExceptionHandler} would be an ambiguous duplicate), and the advice stamps
@@ -169,23 +154,20 @@ class ApiErrorHandlerTest {
 		mvc.perform(get("/throw/too-large"))
 				.andExpect(status().is(413))
 				.andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
-				.andExpect(jsonPath("$.code").value("PAYLOAD_TOO_LARGE"))
-				.andExpect(jsonPath("$.instance").value("about:blank"));
+				.andExpect(jsonPath("$.code").value("PAYLOAD_TOO_LARGE"));
 	}
 
 	/**
-	 * Framework-raised errors (here: 405) bypass {@code ApiProblem}, so the advice re-applies both
-	 * the {@code code} stamp — the HTTP status name, part of the documented vocabulary (§6b) — and
-	 * the instance redaction.
+	 * Framework-raised errors (here: 405) bypass {@code ApiProblem}, so the advice stamps the {@code code}:
+	 * the HTTP status name, part of the documented vocabulary (§6b). The absent {@code instance} is
+	 * {@code ProblemInstanceConfig}'s, which a standalone MockMvc never loads ({@code ReviewControllerTest}).
 	 */
 	@Test
-	void frameworkErrorCarriesStatusNameCodeAndRedactedInstance() throws Exception {
+	void frameworkErrorCarriesStatusNameCode() throws Exception {
 		mvc.perform(post("/throw/invalid"))
 				.andExpect(status().isMethodNotAllowed())
 				.andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
-				.andExpect(jsonPath("$.code").value("METHOD_NOT_ALLOWED"))
-				.andExpect(jsonPath("$.instance").value("about:blank"))
-				.andExpect(content().string(not(containsString("/throw/invalid"))));
+				.andExpect(jsonPath("$.code").value("METHOD_NOT_ALLOWED"));
 	}
 
 	/** MockMvc rethrows an unresolved exception, possibly wrapped in a {@link ServletException}. */

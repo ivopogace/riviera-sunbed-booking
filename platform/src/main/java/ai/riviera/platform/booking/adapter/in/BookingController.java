@@ -1,6 +1,5 @@
 package ai.riviera.platform.booking.adapter.in;
 
-import java.net.URI;
 import java.time.LocalDate;
 
 import org.springframework.format.annotation.DateTimeFormat;
@@ -155,18 +154,11 @@ class BookingController {
 			// accepts. The guest tracks status (and later pays) via the code-gated view.
 			case BookingOutcome.Requested requested -> ResponseEntity.status(HttpStatus.ACCEPTED)
 					.body(RequestedView.of(requested.confirmation(), requested.requestExpiresAt()));
-			case BookingOutcome.Rejected rejected -> Rejections.respond(rejected, BOOKINGS_PATH);
+			case BookingOutcome.Rejected rejected -> Rejections.respond(rejected);
 		};
 	}
 
-	/**
-	 * Code-scoped paths carry the booking code, a bearer credential (invariant #7).
-	 * {@link ApiProblem} redacts {@code instance}; this overrides it with the known-safe collection
-	 * path, more telling than the placeholder. ITs assert the code never appears in an error body.
-	 */
-	private static final URI BOOKINGS_PATH = URI.create("/api/bookings");
-
 	private static ResponseEntity<ProblemDetail> error(HttpStatus status, String code, String detail) {
-		return ApiProblem.responseAt(status, code, detail, BOOKINGS_PATH);
+		return ApiProblem.response(status, code, detail);
 	}
 }

@@ -2,6 +2,8 @@ package ai.riviera.platform;
 
 import ai.riviera.platform.web.adapter.in.WebCorsConfig;
 import ai.riviera.platform.web.adapter.in.SecurityConfig;
+import java.util.List;
+
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
@@ -99,7 +101,7 @@ class ReviewControllerTest {
 				.content("{\"stars\":4,\"comment\":\"Great sunbeds\",\"displayName\":\"Ana\"}"))
 				.andExpect(status().isConflict())
 				.andExpect(jsonPath("$.code").value("REVIEW_HIDDEN"))
-				.andExpect(jsonPath("$.instance").value("/api/bookings"));
+				.andExpect(jsonPath("$.instance").doesNotExist());
 		mvc.perform(delete(REVIEW, "RVWHIDDEN7").with(csrf()))
 				.andExpect(status().isConflict())
 				.andExpect(jsonPath("$.code").value("REVIEW_HIDDEN"));
@@ -179,7 +181,27 @@ class ReviewControllerTest {
 		String body = mvc.perform(submit(4)).andReturn().getResponse().getContentAsString();
 
 		assertThat(body).doesNotContain(CODE);
-		mvc.perform(submit(4)).andExpect(jsonPath("$.instance").value("/api/bookings"));
+		mvc.perform(submit(4))
+				.andExpect(jsonPath("$.code").value("REVIEW_ALREADY_SUBMITTED"))
+				.andExpect(jsonPath("$.instance").doesNotExist());
+	}
+
+	/**
+	 * Advice-built bodies too: an {@code ApiProblem} from a handler and a framework-raised one. Spring fills a
+	 * null {@code instance} with the request URI, the code; {@code ProblemInstanceConfig} must clear it.
+	 */
+	@Test
+	void theBookingCodeNeverAppearsInAnAdviceBuiltErrorBody() throws Exception {
+		String code = "RVWADVICE3"; // its own per-code bucket: the class's other requests share CODE's
+		for (String refused : List.of("{\"stars\":9,\"displayName\":\"Ana\"}", "not-json")) {
+			String body = mvc.perform(post(REVIEW, code).with(csrf()).contentType(MediaType.APPLICATION_JSON)
+							.content(refused))
+					.andExpect(status().isBadRequest())
+					.andExpect(jsonPath("$.code").value("INVALID_REQUEST"))
+					.andExpect(jsonPath("$.instance").doesNotExist())
+					.andReturn().getResponse().getContentAsString();
+			assertThat(body).doesNotContain(code);
+		}
 	}
 
 	@Test
@@ -263,7 +285,9 @@ class ReviewControllerTest {
 				.doesNotContain(CODE);
 		assertThat(mvc.perform(delete(REVIEW, CODE).with(csrf())).andReturn().getResponse()
 				.getContentAsString()).doesNotContain(CODE);
-		mvc.perform(edit()).andExpect(jsonPath("$.instance").value("/api/bookings"));
+		mvc.perform(edit())
+				.andExpect(jsonPath("$.code").value("REVIEW_WINDOW_CLOSED"))
+				.andExpect(jsonPath("$.instance").doesNotExist());
 	}
 
 	private static RequestBuilder edit() {
