@@ -168,9 +168,9 @@ class ResponsibilitiesArchitectureTests {
 
 	private static final Pattern VERSIONED_MIGRATION = Pattern.compile("V(.+?)__.+\\.sql");
 
-	/** A string literal or comment, matched left to right so neither opens inside the other. */
-	private static final Pattern SQL_LITERAL_OR_COMMENT =
-			Pattern.compile("'(?:[^']|'')*'|--[^\\n]*|/\\*.*?\\*/", Pattern.DOTALL);
+	/** A quoted identifier, string literal or comment, matched left to right so none opens inside another. */
+	private static final Pattern SQL_QUOTED_OR_COMMENT =
+			Pattern.compile("\"(?:[^\"]|\"\")*\"|'(?:[^']|'')*'|--[^\\n]*|/\\*.*?\\*/", Pattern.DOTALL);
 
 	/** A bare or quoted identifier; a quoted one may hold any character, {@code ""} escaping a quote. */
 	private static final String IDENTIFIER = "(?:\\w+|\"(?:[^\"]|\"\")*\")";
@@ -733,6 +733,8 @@ class ResponsibilitiesArchitectureTests {
 	void theSchemaWalkRefusesACaseSensitiveQuotedName() {
 		assertRefused("CREATE TABLE \"Old_Name\" (id BIGINT)", "quoted name 'Old_Name' is case-sensitive");
 		assertRefused("ALTER TABLE kept RENAME TO public.\"Kept\"", "quoted name 'Kept' is case-sensitive");
+		assertRefused("CREATE TABLE \"a--b\" (id BIGINT)", "quoted name 'a--b' is case-sensitive");
+		assertRefused("CREATE TABLE \"it's\" (id BIGINT)", "quoted name 'it's' is case-sensitive");
 	}
 
 	private static void assertRefused(String statement, String why) {
@@ -849,7 +851,8 @@ class ResponsibilitiesArchitectureTests {
 	static Set<String> tablesAfter(List<Migration> migrations) {
 		Set<String> tables = new TreeSet<>();
 		for (Migration migration : migrations.stream().sorted(Comparator.comparing(Migration::version)).toList()) {
-			String sql = SQL_LITERAL_OR_COMMENT.matcher(migration.sql()).replaceAll(" ");
+			String sql = SQL_QUOTED_OR_COMMENT.matcher(migration.sql())
+					.replaceAll(m -> m.group().startsWith("\"") ? Matcher.quoteReplacement(m.group()) : " ");
 			Matcher ddl = TABLE_DDL.matcher(sql);
 			while (ddl.find()) {
 				SchemaStatement statement = new SchemaStatement(migration, sql, ddl.start());
