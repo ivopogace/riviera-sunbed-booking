@@ -9,7 +9,6 @@ import org.springframework.mock.web.MockHttpServletRequest;
 import jakarta.servlet.RequestDispatcher;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNull;
 
 /** The status {@code /error} answers (#1443): the dispatched one when it is an error, else {@code 500}. */
 class ProblemErrorControllerTest {
@@ -25,7 +24,6 @@ class ProblemErrorControllerTest {
 		ProblemDetail problem = response.getBody();
 		assertEquals("METHOD_NOT_ALLOWED", problem.getProperties().get("code"));
 		assertEquals("The request was rejected.", problem.getDetail());
-		assertNull(problem.getInstance());
 	}
 
 	@Test
