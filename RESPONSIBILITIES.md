@@ -1191,8 +1191,9 @@ Spring Security beans arrive by framework type, which is no module dependency.
 - `SecurityConfig`: both chains, the route policy (role gates), CSRF, the session cookie and the
   `SecurityContextRepository`. Credentials and the authentication managers are `auth`'s.
 - The chain's filters, in order: `RateLimitFilter` (+ `RateLimitProperties`, `TokenBucket`,
-  `ClientIpResolver`), `ChallengeVerificationFilter` (calls `challenge::api`), `SessionCredentialFilter`
-  (calls `auth::api`), `AdminAuditFilter` + `AdminAuditReasons` (calls `audit::api`).
+  `ClientIpResolver`), `RequestBodyCapFilter`, `ChallengeVerificationFilter` (calls `challenge::api`),
+  `SessionCredentialFilter` (calls `auth::api`), `AdminAuditFilter` + `AdminAuditReasons` (calls
+  `audit::api`); `CachedBodyRequest` replays a body an edge filter read within its cap.
 - The chain's problem bodies (`SecurityProblemResponses`), `RequestPaths`, CORS (`WebCorsConfig`).
 - **No problem body carries `instance`** (`ProblemInstanceConfig`): Spring fills a null one with the
   request URI, on `/api/bookings/{code}` the bearer credential (#7), so the interceptor clears it after
@@ -1243,6 +1244,13 @@ mutating `/api/admin/**` action, §`audit`) live in `web`; `challenge` and `audi
   limiter refunds a `403` on budgets guarding authenticated work, and a refused solution must still
   cost its token. Cheap checks first, so a `429` wins; the registry claim, the fence's one write,
   is the last step before the controller.
+- **Request bodies are capped before CSRF and the challenge claim (#1414):** `RequestBodyCapFilter`, right
+  after `RateLimitFilter`, refuses a `POST`/`PUT`/`PATCH` body under `/api/**` past its cap with `413
+  PAYLOAD_TOO_LARGE`: unread when the declared length is over, read to cap + 1 and replayed when chunked.
+  Each cap fits its routes' largest legitimate request (OWASP REST Security Cheat Sheet): 64 KiB; 256 KiB
+  for the beach-map layout save, remodel preview and commit (a full `MAX_SETS` layout is ~223 KB); 1 MiB
+  for the Stripe webhook. Multipart keeps Spring's multipart limits. A login body is read once, by the
+  throttle's 8 KiB rule below (the 64 KiB cap when the limiter is off). A slow body under its cap: #1439.
 - **Not fenced, deliberately:** login (the per-identity throttle covers it) and token redemption
   (a reset or verification token is already a bearer credential). The throttle reads every login
   body itself, to an 8 KiB cap whatever `Content-Length` says, and answers a larger one `413`

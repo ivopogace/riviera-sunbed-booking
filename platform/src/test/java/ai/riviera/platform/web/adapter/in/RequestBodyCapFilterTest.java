@@ -5,10 +5,14 @@ import ai.riviera.platform.WebSliceStubs;
 import ai.riviera.platform.challenge.api.ProofOfWorkChallenges;
 import ai.riviera.platform.challenge.vocabulary.ChallengeVerdict;
 import java.nio.charset.StandardCharsets;
+import java.util.List;
+import java.util.StringJoiner;
 
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Named;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
@@ -31,6 +35,7 @@ import static ai.riviera.platform.WebSliceStubs.fromIp;
 import static ai.riviera.platform.web.adapter.in.RequestBodyCapFilter.MAX_BODY_BYTES;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertSame;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -60,6 +65,11 @@ class RequestBodyCapFilterTest {
 	private static final String CREATE_PATH = "/api/bookings";
 	private static final String RESET_PASSWORD_PATH = "/api/auth/customer/reset-password";
 	private static final String REVIEW_PATH = "/api/bookings/SOMECODE/review";
+	private static final String LAYOUT_PATH = "/api/venues/1/beach-map";
+	private static final int LAYOUT_CAP = 256 * 1024;
+	private static final int MAX_ROWS = 26;
+	private static final int MAX_POSITIONS = 40;
+	private static final int MAX_ROW_LABEL_LENGTH = 40;
 	private static final String WEBHOOK_PATH = "/api/payments/stripe/webhook";
 	private static final String CHALLENGE_HEADER = "X-Altcha-Payload";
 
@@ -193,6 +203,53 @@ class RequestBodyCapFilterTest {
 		MockFilterChain chain = new MockFilterChain();
 		new RequestBodyCapFilter(ignored -> false).doFilter(request, new MockHttpServletResponse(), chain);
 		assertSame(request, chain.getRequest());
+	}
+
+	static List<Named<MockHttpServletRequestBuilder>> layoutWrites() {
+		return List.of(Named.of("layout save", put(LAYOUT_PATH)),
+				Named.of("remodel preview", post(LAYOUT_PATH + "/preview")),
+				Named.of("remodel commit", post(LAYOUT_PATH + "/commit")));
+	}
+
+	@ParameterizedTest
+	@MethodSource("layoutWrites")
+	void aFullSizeLayoutWithTheLongestRowLabelsIsNotRefused(MockHttpServletRequestBuilder layoutWrite)
+			throws Exception {
+		byte[] body = largestLayout().getBytes(StandardCharsets.UTF_8);
+		assertTrue(body.length > CAP * 3, "a full layout must be well past the general cap");
+		int status = mvc.perform(asOperator(layoutWrite).content(body)).andReturn().getResponse().getStatus();
+		assertNotEquals(413, status);
+	}
+
+	@ParameterizedTest
+	@MethodSource("layoutWrites")
+	void aLayoutBodyPastItsOwnCapIsRefused(MockHttpServletRequestBuilder layoutWrite) throws Exception {
+		expectBodyTooLarge(mvc.perform(asOperator(layoutWrite).content(padded("{\"pad\":\"", LAYOUT_CAP + 1))));
+	}
+
+	@Test
+	void anotherMethodOnTheLayoutPathKeepsTheGeneralCap() throws Exception {
+		expectBodyTooLarge(mvc.perform(asOperator(patch(LAYOUT_PATH)).content(padded("{\"pad\":\"", CAP + 1))));
+	}
+
+	private static MockHttpServletRequestBuilder asOperator(MockHttpServletRequestBuilder request) {
+		return request.with(csrf()).with(user("cap-operator").roles("OPERATOR"))
+				.with(fromIp(SessionLoginSupport.uniqueClientIp())).contentType(MediaType.APPLICATION_JSON);
+	}
+
+	/** {@code LayoutCommand.MAX_SETS} cells on 40-character, two-byte (Albanian) row labels: the largest real layout. */
+	private static String largestLayout() {
+		StringJoiner cells = new StringJoiner(",", "{\"expectedVersion\":1,\"previewToken\":\"" + "t".repeat(64)
+				+ "\",\"refundCount\":0,\"sets\":[", "]}");
+		for (int row = 0; row < MAX_ROWS; row++) {
+			String label = "\u00c7".repeat(MAX_ROW_LABEL_LENGTH - 1) + (char) ('A' + row);
+			for (int position = 1; position <= MAX_POSITIONS; position++) {
+				cells.add(("{\"rowLabel\":\"%s\",\"positionNo\":%d,\"tier\":\"STANDARD\",\"pool\":\"WALK_IN\","
+						+ "\"price\":{\"minorUnits\":250000,\"currency\":\"EUR\"},\"gridX\":%d,\"gridY\":%d}")
+						.formatted(label, position, position, row));
+			}
+		}
+		return cells.toString();
 	}
 
 	private static MockHttpServletRequestBuilder jsonPost(String path, String body) {

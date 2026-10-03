@@ -2,8 +2,8 @@
 
 > Build with `tdd` at the named seams. Invariant numbers: `CLAUDE.md`.
 
-**Goal:** every POST/PUT/PATCH body under `/api/**` is capped at 64 KiB (the Stripe webhook at
-1 MiB, multipart exempt, login on its own 8 KiB rule) and a larger one is refused `413` before
+**Goal:** every POST/PUT/PATCH body under `/api/**` is capped at 64 KiB (the layout writes at
+256 KiB, the Stripe webhook at 1 MiB, multipart exempt, login on its own 8 KiB rule) and a larger one is refused `413` before
 CSRF and the proof-of-work claim.
 
 **Architecture:** one `OncePerRequestFilter` in `web`'s API chain, registered right after
@@ -58,7 +58,8 @@ Connector-level settings; per-endpoint caps; changing the login cap; slow-drip b
 
 ## Execution status
 
-- [x] Phase 0 — filter, order, shared 413 body (`RequestBodyCapFilterTest` 15/15)
-- [ ] Phase 1 — `RequestBodyCapIT` done (2/2 on Tomcat); RESPONSIBILITIES.md pending
-- **Blocked on owner:** 64 KiB refuses a 1040-set layout (~138–180 KB) on `PUT …/beach-map`,
-  `POST …/beach-map/preview|commit`; NEEDS USER DECISION sent (recommended: a 256 KiB tier for those).
+- [x] Phase 0 — filter, order, shared 413 body (`RequestBodyCapFilterTest`)
+- [x] Phase 1 — `RequestBodyCapIT` (2/2 on Tomcat); RESPONSIBILITIES.md §`web` + §Platform edge
+- [x] Owner decision (2026-10-03): 256 KiB for the three layout writes; pinned at a 1040-set layout
+  (~223 KB, two-byte labels) and one past 256 KiB
+- [ ] Review gate (high) · Sonar · plan removed
