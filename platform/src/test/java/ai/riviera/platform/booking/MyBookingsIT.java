@@ -1,6 +1,11 @@
 package ai.riviera.platform.booking;
 
+import java.time.Instant;
 import java.time.LocalDate;
+import java.util.ArrayList;
+import java.util.List;
+
+import org.junit.jupiter.api.AfterEach;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -16,10 +21,22 @@ import org.springframework.test.web.servlet.MockMvc;
 import ai.riviera.platform.EnabledIfDockerAvailable;
 import ai.riviera.platform.SessionLoginSupport;
 import ai.riviera.platform.TestcontainersConfiguration;
+import ai.riviera.platform.booking.StayFixtures.Venue;
+import ai.riviera.platform.booking.application.Bookings;
+import ai.riviera.platform.booking.application.remodel.NewReceipt;
+import ai.riviera.platform.booking.application.remodel.ReceiptOutcome;
+import ai.riviera.platform.booking.application.remodel.ReceiptOutcomeKind;
+import ai.riviera.platform.booking.application.remodel.RemodelReceipts;
+import ai.riviera.platform.booking.vocabulary.BookingId;
+import ai.riviera.platform.booking.vocabulary.RefundReason;
+import ai.riviera.platform.booking.vocabulary.SpotRef;
 import ai.riviera.platform.customer.api.CustomerAccountProvisioning;
 import ai.riviera.platform.operator.api.OperatorProvisioning;
+import ai.riviera.platform.venue.vocabulary.SetId;
+import ai.riviera.platform.venue.vocabulary.VenueId;
 import jakarta.servlet.http.Cookie;
 
+import static org.hamcrest.Matchers.contains;
 import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.not;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
@@ -65,6 +82,18 @@ class MyBookingsIT {
 	private record SetRef(long setId, long venueId) {
 	}
 
+	@Autowired
+	Bookings bookings;
+	@Autowired
+	RemodelReceipts receipts;
+
+	private final List<Long> venues = new ArrayList<>();
+
+	@AfterEach
+	void removeFixtures() {
+		venues.forEach(venue -> StayFixtures.cleanup(jdbc, venue));
+	}
+
 	@BeforeEach
 	void seed() {
 		jdbc.sql("DELETE FROM booking WHERE code IN (:a, :b)").param("a", CODE_A).param("b", CODE_B).update();
@@ -108,6 +137,56 @@ class MyBookingsIT {
 		jdbc.sql("UPDATE booking SET moved_at = NULL WHERE code = :c").param("c", CODE_A).update();
 	}
 
+	/** ADR-0026 §7 (#1425): the row says what the detail page says — a lone booking with every day refunded has nothing left. */
+	@Test
+	void aLoneBookingWithEveryDayRefundedHasNothingLeft() throws Exception {
+		Venue venue = venue();
+		LocalDate first = StayFixtures.firstDay();
+		String code = "MBNL" + System.nanoTime() % 100_000_000L;
+		long booking = insertLone(venue, code, first, first.plusDays(1), 2 * StayFixtures.PRICE);
+		refundDays(booking, first, first.plusDays(1));
+
+		expectNothingLeft(code, true);
+	}
+
+	/** Nothing left is "no day unrefunded", never "nothing left to refund": the first day's refund took the whole amount. */
+	@Test
+	void aLoneBookingWithAnUnrefundedZeroShareDayHasSomethingLeft() throws Exception {
+		Venue venue = venue();
+		LocalDate first = StayFixtures.firstDay();
+		String code = "MBZS" + System.nanoTime() % 100_000_000L;
+		long booking = insertLone(venue, code, first, first.plusDays(1), StayFixtures.PRICE / 2);
+		refundDays(booking, first, first);
+
+		expectNothingLeft(code, false);
+	}
+
+	/** The stay's rule is the detail page's split, not a fold over the stretches: a remodel-ended stretch is set aside. */
+	@Test
+	void aStayARemodelEndedOnOneStretchAndRefundedOnTheOtherHasNothingLeft() throws Exception {
+		Venue venue = venue();
+		LocalDate first = StayFixtures.firstDay();
+		String code = "MBRS" + System.nanoTime() % 100_000_000L;
+		StayFixtures.SeededStay stay = StayFixtures.insertStay(jdbc, venue, code, first, venue.online().get(0), 2,
+				"CONFIRMED", venue.online().get(1), 2, "CONFIRMED");
+		linkToAccount(stay);
+		endAsARemodelRefund(venue, stay.stretches().get(0), venue.online().get(0), first);
+		refundDays(stay.stretches().get(1), first.plusDays(2), first.plusDays(3));
+
+		expectNothingLeft(code, true);
+	}
+
+	@Test
+	void anOrdinaryStayHasSomethingLeft() throws Exception {
+		Venue venue = venue();
+		LocalDate first = StayFixtures.firstDay();
+		String code = "MBOS" + System.nanoTime() % 100_000_000L;
+		linkToAccount(StayFixtures.insertStay(jdbc, venue, code, first, venue.online().get(0), 2, "CONFIRMED",
+				venue.online().get(1), 2, "CONFIRMED"));
+
+		expectNothingLeft(code, false);
+	}
+
 	@Test
 	void anonymousIsUnauthorized() throws Exception {
 		mvc.perform(get("/api/me/bookings")).andExpect(status().isUnauthorized());
@@ -117,6 +196,57 @@ class MyBookingsIT {
 	void operatorSessionIsForbidden() throws Exception {
 		Cookie operator = SessionLoginSupport.operatorSession(mvc, OPERATOR_USERNAME, OPERATOR_PASSWORD);
 		mvc.perform(get("/api/me/bookings").cookie(operator)).andExpect(status().isForbidden());
+	}
+
+	private void expectNothingLeft(String code, boolean nothingLeft) throws Exception {
+		mvc.perform(get("/api/me/bookings").cookie(customerLogin(EMAIL_A)))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$[?(@.code == '%s')].nothingLeft".formatted(code)).value(contains(nothingLeft)))
+				.andExpect(jsonPath("$[?(@.code == '%s')].status".formatted(code)).value(contains("CONFIRMED")));
+	}
+
+	private Venue venue() {
+		Venue venue = StayFixtures.venue(jdbc, "INSTANT", null, true);
+		venues.add(venue.id());
+		return venue;
+	}
+
+	/** A lone {@code CONFIRMED} booking on account A over {@code first..last}; the trigger writes its service days. */
+	private long insertLone(Venue venue, String code, LocalDate first, LocalDate last, long amountMinor) {
+		long guest = jdbc.sql("INSERT INTO customer (email, full_name, phone) VALUES (:e, 'Guest', '+355600') RETURNING id")
+				.param("e", code + "@example.com").query(Long.class).single();
+		return jdbc.sql("""
+				INSERT INTO booking (code, venue_id, set_id, customer_id, account_id, booking_date, last_date,
+				                     amount_minor, amount_currency, status, confirmed_at)
+				VALUES (:code, :venue, :set, :cust, :account, :first, :last, :amount, 'EUR', 'CONFIRMED', now())
+				RETURNING id
+				""").param("code", code).param("venue", venue.id()).param("set", venue.online().get(2).value())
+				.param("cust", guest).param("account", accountId(EMAIL_A)).param("first", first).param("last", last)
+				.param("amount", amountMinor).query(Long.class).single();
+	}
+
+	private void linkToAccount(StayFixtures.SeededStay stay) {
+		jdbc.sql("UPDATE booking SET account_id = :a WHERE stay_id = :s").param("a", accountId(EMAIL_A))
+				.param("s", stay.id()).update();
+	}
+
+	/** Weather-refunds a booking's service days {@code from..to}, as the storm would. */
+	private void refundDays(long booking, LocalDate from, LocalDate to) {
+		jdbc.sql("""
+				UPDATE booking_day SET refunded_at = now(), refund_minor = :minor, refund_reason = 'WEATHER'
+				WHERE booking_id = :b AND service_date BETWEEN :from AND :to
+				""").param("minor", StayFixtures.PRICE / 2).param("b", booking).param("from", from).param("to", to)
+				.update();
+	}
+
+	/** Leaves a stretch as a remodel refund does: {@code CANCELLED} as {@code VENUE_CHANGE} with the receipt's outcome line. */
+	private void endAsARemodelRefund(Venue venue, long stretch, SetId set, LocalDate day) {
+		long amount = jdbc.sql("SELECT amount_minor FROM booking WHERE id = :id").param("id", stretch)
+				.query(Long.class).single();
+		bookings.cancelConfirmed(stretch, Instant.now(), amount, RefundReason.VENUE_CHANGE, amount).orElseThrow();
+		receipts.store(new NewReceipt(new VenueId(venue.id()), StayFixtures.ownerOf(jdbc, venue), Instant.now(),
+				List.of(), List.of(new ReceiptOutcome(new BookingId(stretch), day, new SpotRef(set, "A", 1),
+						ReceiptOutcomeKind.REFUND, amount, "EUR", 0L)), "row A rebuilt", List.of()));
 	}
 
 	private SetRef onlineSet() {

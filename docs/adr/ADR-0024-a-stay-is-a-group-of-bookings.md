@@ -96,8 +96,8 @@ concept the ledger cannot express.
 - "Your spot today", the evening-before move reminder and the staff scan's today-set display build on
   the stay's code resolving (issue #1209).
 - A signed-in guest's booking list shows a stitched stay as one row under the stay's code — the whole
-  span, the summed amount, the first stretch's spot (`StayRecord.asBooking`); listing its stretches
-  there is a later refinement.
+  span, the summed amount, the first stretch's spot (`StayRecord.asBooking`), its nothing left the
+  detail page's `LiveRemainder` split (#1425); listing its stretches there is a later refinement.
 
 ## Rejected alternatives
 
