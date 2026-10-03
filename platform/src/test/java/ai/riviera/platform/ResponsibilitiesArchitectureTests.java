@@ -166,11 +166,13 @@ class ResponsibilitiesArchitectureTests {
 
 	private static final Path MIGRATIONS = Path.of("src/main/resources/db/migration");
 
-	private static final Pattern VERSIONED_MIGRATION = Pattern.compile("V(\\w+?)__\\w*\\.sql");
+	private static final Pattern VERSIONED_MIGRATION = Pattern.compile("V(.+?)__.+\\.sql");
 
-	private static final Pattern SQL_COMMENT = Pattern.compile("--[^\\n]*|/\\*.*?\\*/", Pattern.DOTALL);
+	/** A string literal or comment, matched left to right so neither opens inside the other. */
+	private static final Pattern SQL_LITERAL_OR_COMMENT =
+			Pattern.compile("'(?:[^']|'')*'|--[^\\n]*|/\\*.*?\\*/", Pattern.DOTALL);
 
-	private static final String TABLE_NAME = "(?:public\\.)?\"?\\w+\"?";
+	private static final String TABLE_NAME = "(?:\"?public\"?\\.)?\"?\\w+\"?";
 
 	/** Table DDL in statement order; a rename needs {@code RENAME TO} straight after the name, so
 	 * {@code RENAME [COLUMN] a TO b} and {@code RENAME CONSTRAINT} never match. */
@@ -655,8 +657,8 @@ class ResponsibilitiesArchitectureTests {
 				+ "pattern misses");
 	}
 
-	/** The map tracks the schema: every table a migration creates is owned or a named framework
-	 * table, and the map names no table the schema lacks. */
+	/** The map tracks the schema: every table the latest migration leaves is owned or a named
+	 * framework table, and the map names no table the schema lacks. */
 	@Test
 	void theOwnershipMapCoversEveryTableTheSchemaCreates() throws IOException {
 		Set<String> created = tablesAfter(migrations());
@@ -665,13 +667,13 @@ class ResponsibilitiesArchitectureTests {
 		unowned.removeAll(FRAMEWORK_TABLES);
 		Set<String> stale = new TreeSet<>(SOLE_WRITERS.keySet());
 		stale.removeAll(created);
-		assertEquals(Set.of(), unowned, "tables created by Flyway with no owner in SOLE_WRITERS "
+		assertEquals(Set.of(), unowned, "tables the migrations leave with no owner in SOLE_WRITERS "
 				+ "(add them, mirroring CLAUDE.md's \"Sole writer of\" column)");
-		assertEquals(Set.of(), stale, "SOLE_WRITERS names tables no migration creates");
+		assertEquals(Set.of(), stale, "SOLE_WRITERS names tables the migrations do not leave (never created, dropped or renamed)");
 	}
 
 	/** A dropped table is gone unless re-created, a renamed one answers to its new name only, a
-	 * column rename or a comment changes nothing, and V9 applies before V10. */
+	 * column rename, a comment or a string literal changes nothing, and V9 applies before V10. */
 	@Test
 	void theSchemaWalkAppliesCreateDropAndRenameInVersionOrder() {
 		Set<String> tables = tablesAfter(List.of(
@@ -682,6 +684,8 @@ class ResponsibilitiesArchitectureTests {
 						ALTER TABLE IF EXISTS ONLY old_name RENAME TO new_name;
 						ALTER TABLE new_name RENAME COLUMN id TO renamed_column;
 						ALTER TABLE new_name RENAME label TO bare_renamed_column;
+						COMMENT ON TABLE kept IS 'it''s fine to drop table kept; see /api/admin/**';
+						CREATE TABLE "public"."after_literal" (id BIGINT);
 						-- DROP TABLE kept; see /api/admin/** for the
 						/* CREATE TABLE commented_out (id BIGINT); */
 						"""),
@@ -694,7 +698,7 @@ class ResponsibilitiesArchitectureTests {
 				new Migration(MigrationVersion.fromVersion("9"), """
 						CREATE TABLE versioned (id BIGINT);
 						""")));
-		assertEquals(Set.of("kept", "new_name", "recreated"), tables);
+		assertEquals(Set.of("after_literal", "kept", "new_name", "recreated"), tables);
 	}
 
 	/** A non-owner write of each shape is rejected; a longer table name, a package string, a read
@@ -795,18 +799,19 @@ class ResponsibilitiesArchitectureTests {
 	}
 
 	/** The tables that exist after the last migration: create, drop and rename applied in version
-	 * order, then statement order; DDL inside a {@code DO $$} block is not seen. */
+	 * order, then statement order; DDL in a {@code DO $$} body counts as if it ran. */
 	static Set<String> tablesAfter(List<Migration> migrations) {
 		Set<String> tables = new TreeSet<>();
 		for (Migration migration : migrations.stream().sorted(Comparator.comparing(Migration::version)).toList()) {
-			Matcher ddl = TABLE_DDL.matcher(SQL_COMMENT.matcher(migration.sql()).replaceAll(" "));
+			Matcher ddl = TABLE_DDL.matcher(SQL_LITERAL_OR_COMMENT.matcher(migration.sql()).replaceAll(" "));
 			while (ddl.find()) {
 				if (ddl.group("created") != null) {
 					tables.add(bareName(ddl.group("created")));
 				} else if (ddl.group("dropped") != null) {
 					Arrays.stream(ddl.group("dropped").split(",")).map(String::strip)
 							.map(ResponsibilitiesArchitectureTests::bareName).forEach(tables::remove);
-				} else if (tables.remove(bareName(ddl.group("renamedFrom")))) {
+				} else {
+					tables.remove(bareName(ddl.group("renamedFrom")));
 					tables.add(bareName(ddl.group("renamedTo")));
 				}
 			}
