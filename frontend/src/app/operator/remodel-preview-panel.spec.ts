@@ -8,11 +8,12 @@ import {
   FULL_PREVIEW,
   HELD_PREVIEW,
   MOVES_ONLY_PREVIEW,
+  NOTHING_LEFT_PREVIEW,
   REFUNDING_PREVIEW,
 } from './remodel-preview-panel.fixtures';
 import { RemodelPreviewPanel } from './remodel-preview-panel';
 
-describe('RemodelPreviewPanel (#1033, #1034, #1199)', () => {
+describe('RemodelPreviewPanel (#1033, #1034, #1199, #1300)', () => {
   let fixture: ComponentFixture<RemodelPreviewPanel>;
   let host: HTMLElement;
 
@@ -102,7 +103,38 @@ describe('RemodelPreviewPanel (#1033, #1034, #1199)', () => {
     expect(field.getAttribute('aria-invalid')).toBe('true');
   });
 
-  it('is an alertdialog listing the five groups with set labels, dates, amounts and distances', () => {
+  it('lists a booking with nothing left in its own group, outside the refund count and the fee, and saves it unconfirmed (#1300)', () => {
+    render(NOTHING_LEFT_PREVIEW);
+    const committed = vi.fn();
+    fixture.componentInstance.committed.subscribe(committed);
+
+    expect(byId('layout-remodel-ended')!.textContent).toMatch(
+      /Ended — nothing left to refund \(1\)/,
+    );
+    expect(byId('layout-remodel-ended')!.textContent).toMatch(
+      /Row A · position 3 · Thu 24 Sept 2026 · every day already refunded/,
+    );
+    expect(host.textContent).toMatch(/no\s+refund, no fee and no email/);
+    expect(byId('layout-remodel-refunds')).toBeNull();
+    expect(byId('layout-remodel-fee')).toBeNull();
+    expect(byId('layout-remodel-confirm')).toBeNull();
+    const save = byId('layout-remodel-commit') as HTMLButtonElement;
+    expect(save.textContent).toMatch(/Save and end 1 booking/);
+    save.click();
+
+    expect(committed).toHaveBeenCalledWith({ refundCount: 0, refundReason: '' });
+  });
+
+  it('a refunding picture with a nothing-left booking asks to type only the refunds (#1300)', () => {
+    render({ ...REFUNDING_PREVIEW, ended: NOTHING_LEFT_PREVIEW.ended });
+
+    expect(byId('layout-remodel-confirm')!.textContent).toMatch(/Type 1 to confirm the refunds/);
+    expect(byId('layout-remodel-commit')!.textContent).toMatch(
+      /Save and move 2, refund 1, release 2, end 1 bookings/,
+    );
+  });
+
+  it('is an alertdialog listing every group with set labels, dates, amounts and distances', () => {
     render(FULL_PREVIEW);
 
     expect(host.getAttribute('role')).toBe('alertdialog');

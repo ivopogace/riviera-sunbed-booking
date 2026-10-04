@@ -352,7 +352,7 @@ class SmtpMailer implements Mailer {
 	@Override
 	public void sendMoveReminder(String toEmail, MoveReminderMail reminder) {
 		send(toEmail, MOVE_REMINDER_SUBJECT.formatted(headerSafe(reminder.venueName())), """
-				Tomorrow, %s, your spot at %s changes: %s%d instead of today's %s%d, %s.
+				Tomorrow, %s, your spot at %s changes: %s%d%s, %s.
 				Show the same booking code in the morning and staff will point you to it.
 
 				  Booking code:  %s
@@ -364,10 +364,17 @@ class SmtpMailer implements Mailer {
 
 				%s"""
 				.formatted(DATE_FORMAT.format(reminder.moveDate()), reminder.venueName(), reminder.toRowLabel(),
-						reminder.toPositionNo(), reminder.fromRowLabel(), reminder.fromPositionNo(),
+						reminder.toPositionNo(), todaysSpot(reminder),
 						distance(reminder.rowsAway(), reminder.positionsAway()), reminder.bookingCode(),
 						reminder.venueName(), reminder.toRowLabel(), reminder.toPositionNo(),
 						DATE_FORMAT.format(reminder.stayLastDate()), reminder.bookingLink()));
+	}
+
+	/** "instead of today's A1" only while the guest holds today on that set; a refunded day is not today's spot (#1381). */
+	private static String todaysSpot(MoveReminderMail reminder) {
+		return reminder.fromDayHeld()
+				? " instead of today's %s%d".formatted(reminder.fromRowLabel(), reminder.fromPositionNo())
+				: "";
 	}
 
 	@Override
@@ -410,7 +417,7 @@ class SmtpMailer implements Mailer {
 		};
 	}
 
-	/** The exit a move earned: in full for a lone booking, these days in full for a stretch, none once a stay began. */
+	/** The exit a move earned: in full for a lone booking, these days in full for a stretch, none once the judged day opened. */
 	private static String freeExitLine(BookingMovedMail moved) {
 		if (moved.freeExitUntil() == null) {
 			return "Your stay has already begun, so it can no longer be cancelled. Your booking:";

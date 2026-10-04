@@ -1,6 +1,7 @@
 package ai.riviera.platform.customer.application;
 
 import java.time.Clock;
+import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.Period;
@@ -14,6 +15,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicReference;
 
 import org.junit.jupiter.api.Test;
 
@@ -129,6 +131,52 @@ class ExpireGuestContactsServiceTest {
 	}
 
 	@Test
+	void walksPastAWholePageOfKeptContactsToReachAnExpiredOne() {
+		for (int i = 0; i < 3; i++) {
+			history.lastBooking(store.liveGuest(), LocalDate.of(2099, 1, 1));
+		}
+		CustomerId expired = store.liveGuest();
+
+		assertThat(service(2).sweep()).as("kept contacts at the lowest ids never stall the run (#1293)").isEqualTo(1);
+		assertThat(store.erased(expired)).isTrue();
+		assertThat(store.liveCount()).isEqualTo(3);
+	}
+
+	@Test
+	void stopsAtExactlyTheBatchSizeEvenMidPageAndTheNextRunScrubsTheRest() {
+		history.lastBooking(store.liveGuest(), LocalDate.of(2099, 1, 1));
+		CustomerId first = store.liveGuest();
+		CustomerId second = store.liveGuest();
+		CustomerId third = store.liveGuest();
+		ExpireGuestContactsService batchOfTwo = service(2);
+
+		assertThat(batchOfTwo.sweep()).isEqualTo(2);
+		assertThat(store.erased(first)).isTrue();
+		assertThat(store.erased(second)).isTrue();
+		assertThat(store.eraseAttempts(third)).as("the budget is spent before the page's last row").isZero();
+		assertThat(reviews.guestBatches()).containsExactly(List.of(first, second));
+
+		assertThat(batchOfTwo.sweep()).isEqualTo(1);
+		assertThat(store.erased(third)).isTrue();
+	}
+
+	@Test
+	void everyPageOfOneRunReadsTheSameCutoff() {
+		for (int i = 0; i < 5; i++) {
+			history.lastBooking(store.liveGuest(), LocalDate.of(2099, 1, 1));
+		}
+
+		ExpireGuestContactsService advancingADayPerRead = new ExpireGuestContactsService(store, history, reviews,
+				new RetentionWindow(Period.ofYears(2), 2), new DayPerReadClock(FIXED.instant(), ZoneOffset.UTC));
+
+		assertThat(advancingADayPerRead.sweep()).isZero();
+
+		assertThat(store.candidateReads()).as("three pages, then an empty one").isEqualTo(4);
+		assertThat(store.olderThans()).as("a cutoff read per page would drift a day a page")
+				.containsOnly(EXPECTED_CUTOFF.atStartOfDay(TIRANE).toInstant());
+	}
+
+	@Test
 	void derivesCutoffFromConfiguredWindowInTiraneZone() {
 		store.liveGuest();
 
@@ -151,7 +199,7 @@ class ExpireGuestContactsServiceTest {
 
 	/**
 	 * In-memory store mirroring the adapter's two retention methods: candidates are the live (non-tombstoned)
-	 * guests, capped by the batch limit and returned in insertion order (the SQL's {@code ORDER BY id});
+	 * guests after the cursor id, capped by the limit and returned in insertion order (the SQL's {@code ORDER BY id});
 	 * {@code eraseGuestById} tombstones a live row and is a no-op on an already-tombstoned one (mirrors the
 	 * {@code erased_at IS NULL} guard). The row-age and live-account gates are SQL-level and belong to the IT;
 	 * the fake only records the instants the read and the scrub were asked for.
@@ -160,7 +208,7 @@ class ExpireGuestContactsServiceTest {
 		private final List<CustomerId> guests = new ArrayList<>();
 		private final Map<CustomerId, Boolean> erased = new HashMap<>();
 		private final Map<CustomerId, Integer> eraseAttempts = new HashMap<>();
-		private Instant lastOlderThan;
+		private final List<Instant> olderThans = new ArrayList<>();
 		private Instant lastEraseOlderThan;
 		private long nextId = 1;
 
@@ -184,7 +232,15 @@ class ExpireGuestContactsServiceTest {
 		}
 
 		Instant lastOlderThan() {
-			return lastOlderThan;
+			return olderThans.getLast();
+		}
+
+		List<Instant> olderThans() {
+			return olderThans;
+		}
+
+		int candidateReads() {
+			return olderThans.size();
 		}
 
 		Instant lastEraseOlderThan() {
@@ -192,9 +248,9 @@ class ExpireGuestContactsServiceTest {
 		}
 
 		@Override
-		public List<CustomerId> expiredGuestCandidates(Instant olderThan, int limit) {
-			lastOlderThan = olderThan;
-			return guests.stream().filter(id -> !erased(id)).limit(limit).toList();
+		public List<CustomerId> expiredGuestCandidates(Instant olderThan, CustomerId after, int limit) {
+			olderThans.add(olderThan);
+			return guests.stream().filter(id -> id.value() > after.value() && !erased(id)).limit(limit).toList();
 		}
 
 		@Override
@@ -226,6 +282,36 @@ class ExpireGuestContactsServiceTest {
 		@Override
 		public List<CustomerId> eraseGuestByEmail(String normalizedEmail) {
 			throw new UnsupportedOperationException("not exercised by the retention spec");
+		}
+	}
+
+	/** A clock whose every read lands a day after the last, so a run that read it twice would see two cutoffs. */
+	private static final class DayPerReadClock extends Clock {
+		private final AtomicReference<Instant> next;
+		private final ZoneId zone;
+
+		DayPerReadClock(Instant first, ZoneId zone) {
+			this(new AtomicReference<>(first), zone);
+		}
+
+		private DayPerReadClock(AtomicReference<Instant> next, ZoneId zone) {
+			this.next = next;
+			this.zone = zone;
+		}
+
+		@Override
+		public ZoneId getZone() {
+			return zone;
+		}
+
+		@Override
+		public Clock withZone(ZoneId other) {
+			return new DayPerReadClock(next, other);
+		}
+
+		@Override
+		public Instant instant() {
+			return next.getAndUpdate(read -> read.plus(Duration.ofDays(1)));
 		}
 	}
 

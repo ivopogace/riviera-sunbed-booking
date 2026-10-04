@@ -14,6 +14,11 @@ class LayoutCellTest {
 	}
 
 	@Test
+	void theMinimumEurPriceIsAccepted() {
+		assertEquals(50, new LayoutCell("A", 1, "STANDARD", Pool.ONLINE, 50, "EUR", 1, 1).priceMinor());
+	}
+
+	@Test
 	void everyMalformedFieldIsRefused() {
 		assertThrows(IllegalArgumentException.class, () -> new LayoutCell(" ", 1, "STANDARD", Pool.ONLINE, 2000, "EUR", 1, 1));
 		assertThrows(IllegalArgumentException.class, () -> new LayoutCell("A".repeat(41), 1, "STANDARD", Pool.ONLINE, 2000, "EUR", 1, 1));
@@ -21,7 +26,10 @@ class LayoutCellTest {
 		assertThrows(IllegalArgumentException.class, () -> new LayoutCell("A", 1, "GOLD", Pool.ONLINE, 2000, "EUR", 1, 1));
 		assertThrows(IllegalArgumentException.class, () -> new LayoutCell("A", 1, "STANDARD", null, 2000, "EUR", 1, 1));
 		assertThrows(IllegalArgumentException.class, () -> new LayoutCell("A", 1, "STANDARD", Pool.ONLINE, -1, "EUR", 1, 1));
+		assertThrows(IllegalArgumentException.class, () -> new LayoutCell("A", 1, "STANDARD", Pool.ONLINE, 0, "EUR", 1, 1));
+		assertThrows(IllegalArgumentException.class, () -> new LayoutCell("A", 1, "STANDARD", Pool.ONLINE, 49, "EUR", 1, 1));
 		assertThrows(IllegalArgumentException.class, () -> new LayoutCell("A", 1, "STANDARD", Pool.ONLINE, 2000, "EURO", 1, 1));
+		assertThrows(IllegalArgumentException.class, () -> new LayoutCell("A", 1, "STANDARD", Pool.ONLINE, 2000, "ALL", 1, 1));
 		assertThrows(IllegalArgumentException.class, () -> new LayoutCell("A", 1, "STANDARD", Pool.ONLINE, 2000, "EUR", 0, 1));
 	}
 }

@@ -117,6 +117,37 @@ test('a CLOSED-born booking shows the last-minute state and no cancel section (#
   await expectNoSeriousAxeViolations(page, 'booking view (CLOSED-born last-minute)');
 });
 
+test('a booking whose every day was refunded reads "Refunded" with no cancel and nothing to review (#1381)', async ({
+  page,
+}) => {
+  await page.route(new RegExp(`/api/bookings/${CODE}(\\?.*)?$`), (route) =>
+    route.fulfill({
+      json: {
+        ...DETAIL,
+        status: 'NO_SHOW',
+        cancellable: false,
+        refundIfCancelledNow: { minorUnits: 0, currency: 'EUR' },
+        nothingLeft: true,
+        refundedDays: [
+          { day: DETAIL.bookingDate, amount: DETAIL.amount, reason: 'WEATHER', released: false },
+        ],
+      },
+    }),
+  );
+
+  await page.goto('/');
+  await openFindBooking(page);
+  await page.getByTestId('find-code').fill(CODE);
+  await page.getByTestId('find-submit').click();
+
+  await expect(page).toHaveURL(new RegExp(`/booking/${CODE}`));
+  await expect(page.getByTestId('booking-status')).toHaveText('Refunded');
+  await expect(page.getByTestId('start-cancel')).toHaveCount(0);
+  await expect(page.getByTestId('review-nothing-left-note')).toContainText('nothing to review');
+  await settle(page);
+  await expectNoSeriousAxeViolations(page, 'booking view (every day refunded)');
+});
+
 test('audits the open find modal in the porcelain theme', async ({ page }) => {
   await page.goto('/');
   await openThemePicker(page);
@@ -197,4 +228,57 @@ test.describe('phone', () => {
     await expect(page.getByRole('dialog')).toHaveCount(0);
     await expect(page.getByTestId('menu-toggle')).toBeFocused();
   });
+});
+
+test("a slow booking's late reply never repaints the booking found in its place (#1289)", async ({
+  page,
+}) => {
+  const SLOW = 'AAAAAAAAAA';
+  const FOUND = 'BBBBBBBBBB';
+  let releaseSlow!: () => void;
+  const slowHeld = new Promise<void>((resolve) => (releaseSlow = resolve));
+  await page.route(new RegExp(`/api/bookings/${SLOW}(\\?.*)?$`), async (route) => {
+    await slowHeld;
+    await route.fulfill({ json: { ...DETAIL, code: SLOW, venueName: 'Venue Alpha' } });
+  });
+  await page.route(new RegExp(`/api/bookings/${FOUND}(\\?.*)?$`), (route) =>
+    route.fulfill({ json: { ...DETAIL, code: FOUND, venueName: 'Venue Beta' } }),
+  );
+  const cancelled: string[] = [];
+  await page.route(/\/api\/bookings\/[A-Z0-9]+\/cancel$/, (route) => {
+    cancelled.push(new URL(route.request().url()).pathname);
+    return route.fulfill({
+      json: {
+        code: FOUND,
+        status: 'CANCELLED',
+        refund: { minorUnits: 4500, currency: 'EUR' },
+        tier: 'FULL',
+      },
+    });
+  });
+
+  await page.goto(`/booking/${SLOW}`);
+  await expect(page.getByTestId('bv-title')).toContainText('Loading your booking');
+  await openFindBooking(page);
+  await page.getByTestId('find-code').fill(FOUND);
+  await page.getByTestId('find-submit').click();
+  await expect(page.getByTestId('booking-code')).toContainText(FOUND);
+
+  const slowReply = page.waitForResponse(new RegExp(`/api/bookings/${SLOW}(\\?.*)?$`));
+  releaseSlow();
+  await (await slowReply).finished();
+  // Absence holds on the first poll, so let the page handle the reply and render twice before asserting it.
+  await page.evaluate(
+    () =>
+      new Promise<void>((resolve) =>
+        requestAnimationFrame(() => requestAnimationFrame(() => resolve())),
+      ),
+  );
+
+  await expect(page.getByTestId('booking-code')).toContainText(FOUND);
+  await expect(page.getByText('Venue Alpha')).toHaveCount(0);
+  await page.getByTestId('start-cancel').click();
+  await page.getByTestId('confirm-cancel').click();
+  await expect(page.getByTestId('cancel-result')).toContainText('refunded');
+  expect(cancelled).toEqual([`/api/bookings/${FOUND}/cancel`]);
 });

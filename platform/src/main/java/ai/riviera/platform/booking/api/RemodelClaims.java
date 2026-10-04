@@ -23,9 +23,9 @@ import ai.riviera.platform.venue.vocabulary.VenueId;
 public interface RemodelClaims {
 
 	/**
-	 * Every live booking on the given sets with its outcome, in (service date, booking id) allocation
-	 * order — one free set serves one claim per day. Owner-asserted before any read (invariant #13); an
-	 * empty set list answers an empty list without touching the database.
+	 * Every live booking on the given sets, plus the unpaid stretches a released stretch takes with it (#1292),
+	 * each with its outcome in (service date, booking id) allocation order — one free set serves one claim per
+	 * day. Owner-asserted before any read (invariant #13); an empty set list answers empty without a read.
 	 */
 	List<RemodelClaim> classify(OperatorId operator, VenueId venueId, Collection<SetId> disturbedSets);
 

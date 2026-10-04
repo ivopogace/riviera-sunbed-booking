@@ -57,12 +57,26 @@ concept the ledger cannot express.
    completes the stay also publishes `StayConfirmed`, which the stay's one confirmation mail rides
    (#1255). Refunds stay per stretch against the shared intent, as ADR-0005 and #1207 already say.
    *(ADR-0026: a stretch may be refunded per day and then for its remainder; each refund is its own
-   `payment_refund` row on the stretch's share.)*
+   `payment_refund` row on the stretch's share.)* *Amended 2026-10-02 (#1292):* the one intent is
+   voided whole, so a remodel that releases one unpaid stretch releases every unpaid stretch of the
+   stay in the same commit — the preview names them, the receipt lists them as `RELEASE` lines, and the
+   stay mails once on `StayCancelled`; a `CONFIRMED` stretch is untouched.
 4. **A stay cancels whole, judged on the stay's first day.** Every stretch's refund is quoted with the
    window anchored on the stay's first day, so a stitched stay refunds exactly what a same-set stay of
    the same dates would (invariant #10). Each stretch then transitions, releases its days and
    publishes its own `BookingCancelled`, so payout reverses once per stretch (invariant #9); one
    `StayCancelled` then carries the summed refund, which the stay's one cancellation mail rides (#1259).
+   *Amended 2026-10-02 (#1290):* a guest cancel **sets aside the stretches a remodel commit already
+   ended** (a receipt outcome line, whatever its kind: the stretch's own `VENUE_CHANGE` says nothing,
+   since a free exit carries it too) and cancels the **live remainder, judged on the first live day**.
+   This is the decision's own reasoning applied to what the guest still holds: a same-set booking of
+   those dates would be quoted on that day. A stretch ended any other way (a weather refund, a
+   concurrent writer) still refuses the stay whole, and a stay with nothing live refuses as cancelled;
+   the code-gated view quotes the remainder the same way (invariant #10). The one holder of "which
+   stretches are set aside, and which day the rest is judged on" is
+   `booking.application.cancel.LiveRemainder`, so a later ended kind rides the same rule. *Amended
+   2026-10-02 (#1381):* a confirmed stretch with every day refunded is set aside too, and a stay with nothing
+   live refuses as nothing left while such a stretch stands (ADR-0026 §7), else as cancelled.
 5. **The search is a pure rule in `itinerary/domain`** (`ItinerarySearch`, ADR-0018): a shortest path
    over `(day, set)` with the cost `(moves, row changes, positions, rows)` compared lexicographically,
    mirroring the remodel move rule's distance order; the budget is `riviera.itinerary.max-switches`,
@@ -82,8 +96,8 @@ concept the ledger cannot express.
 - "Your spot today", the evening-before move reminder and the staff scan's today-set display build on
   the stay's code resolving (issue #1209).
 - A signed-in guest's booking list shows a stitched stay as one row under the stay's code — the whole
-  span, the summed amount, the first stretch's spot (`StayRecord.asBooking`); listing its stretches
-  there is a later refinement.
+  span, the summed amount, the first stretch's spot (`StayRecord.asBooking`), with its nothing left
+  judged by the detail page's `LiveRemainder` split (#1425); listing its stretches there is a later refinement.
 
 ## Rejected alternatives
 

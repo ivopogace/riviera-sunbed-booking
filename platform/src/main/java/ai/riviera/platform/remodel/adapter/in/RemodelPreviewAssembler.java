@@ -18,7 +18,7 @@ import ai.riviera.platform.venue.vocabulary.SetId;
 /**
  * The remodel picture on the wire, for the preview and the two commit refusals that answer a fresh
  * one: {@code venue}'s disturbed sets with walk-in holds and {@code booking}'s classified claims
- * become the five groups, {@code keep} (by id: the blocked claims' sets, which the save keeps
+ * become the groups, {@code keep} (by id: the blocked claims' sets, which the save keeps
  * itself, and the held sets, which the operator must keep) and the {@link PreviewToken}. The fee
  * quote reaches here via {@code booking}, keeping this module off {@code payout} (ADR-0020, ADR-0021);
  * its total is rate × refund count, while a commit snapshots what it charged onto its receipt.
@@ -34,6 +34,7 @@ final class RemodelPreviewAssembler {
 		List<RemodelPreviewResponse.MoveView> moves = new ArrayList<>();
 		List<RemodelPreviewResponse.ClaimView> refunds = new ArrayList<>();
 		List<RemodelPreviewResponse.ReleaseView> releases = new ArrayList<>();
+		List<RemodelPreviewResponse.EndedView> ended = new ArrayList<>();
 		List<RemodelPreviewResponse.BlockView> blocks = new ArrayList<>();
 		Map<SetId, RemodelPreviewResponse.SpotView> keep = new TreeMap<>(Comparator.comparingLong(SetId::value));
 		for (RemodelClaim claim : classified) {
@@ -51,6 +52,8 @@ final class RemodelPreviewAssembler {
 					releases.add(new RemodelPreviewResponse.ReleaseView(id, date, amount, from, release.name()));
 				case RemodelOutcome.Decline decline ->
 					releases.add(new RemodelPreviewResponse.ReleaseView(id, date, amount, from, decline.name()));
+				case RemodelOutcome.NothingLeft ignored ->
+					ended.add(new RemodelPreviewResponse.EndedView(id, date, amount, from));
 				case RemodelOutcome.Blocked(var reason) -> {
 					blocks.add(new RemodelPreviewResponse.BlockView(id, date, amount, from, reason.name()));
 					keep.put(claim.from().setId(), from);
@@ -67,7 +70,7 @@ final class RemodelPreviewAssembler {
 				keep.put(set.setId(), spot);
 			}
 		}
-		return new RemodelPreviewResponse(moves, refunds, releases, staffHolds, blocks, List.copyOf(keep.values()),
+		return new RemodelPreviewResponse(moves, refunds, releases, ended, staffHolds, blocks, List.copyOf(keep.values()),
 				PreviewToken.of(classified).value(),
 				new MoneyView(fee.totalFor(refunds.size()), fee.currency()));
 	}

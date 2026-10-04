@@ -55,6 +55,7 @@ const EMPTY_PREVIEW: RemodelPreview = {
   moves: [],
   refunds: [],
   releases: [],
+  ended: [],
   staffHolds: [],
   blocks: [],
   keep: [],

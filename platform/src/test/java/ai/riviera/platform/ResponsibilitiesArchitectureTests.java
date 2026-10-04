@@ -1,11 +1,23 @@
 package ai.riviera.platform;
 
+import java.io.IOException;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
+import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
+import java.util.TreeSet;
+import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.stream.Stream;
 
+import org.flywaydb.core.api.MigrationVersion;
 import org.junit.jupiter.api.Test;
 
 import com.tngtech.archunit.core.domain.Dependency;
@@ -18,9 +30,12 @@ import com.tngtech.archunit.core.domain.Source;
 import static ai.riviera.platform.ArchitectureTestSupport.PRODUCTION_BASE;
 import static ai.riviera.platform.ArchitectureTestSupport.assertNoViolations;
 import static ai.riviera.platform.ArchitectureTestSupport.bytecode;
+import static ai.riviera.platform.ArchitectureTestSupport.classFileOf;
 import static ai.riviera.platform.ArchitectureTestSupport.moduleOf;
 import static ai.riviera.platform.ArchitectureTestSupport.surfaceOf;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
@@ -81,6 +96,21 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  *       stay outcome on {@code booking.status} is derived from it. Same whole-word constant-pool
  *       scan as rule 1, and the bare token is safe because the module's package name is
  *       {@code booking}, not {@code booking_day}.</li>
+ *   <li><strong>Sole-writer, stays:</strong> no class outside the {@code booking} module runs SQL
+ *       against {@code stay} (ADR-0024). SQL-shaped, like rule 4, because the bare word is in prose
+ *       and in {@code max_stay_days}.</li>
+ *   <li><strong>Sole-writer, every owned table:</strong> {@link #SOLE_WRITERS} maps each table in
+ *       {@code CLAUDE.md}'s "Sole writer of" column (plus {@code challenge_registry} and
+ *       {@code admin_audit_record}) to its owning module, and no class outside that module carries a
+ *       write against it. A write is SQL-shaped and judged per {@code CONSTANT_String}:
+ *       {@code INSERT INTO}, {@code UPDATE … SET}, {@code DELETE FROM}, {@code MERGE INTO} or
+ *       {@code TRUNCATE} followed by the whole-word table name, so a bare name ({@code booking},
+ *       {@code payment}, {@code venue}, {@code operator}) never matches a package string, prose, a
+ *       read or a longer table name. An {@code ON CONFLICT} clause belongs to its {@code INSERT INTO},
+ *       which already names the target. The map is held to the Flyway schema both ways: every table
+ *       the latest migration leaves is owned or a named framework table, and every owner writes it.
+ *       Rules 1, 4 and 6–10 stay as the stronger "touch" form (reads too) for their tables; they and
+ *       rule 5 take their module from this map, so no two rules disagree on who owns a table.</li>
  * </ol>
  *
  * <p><strong>Necessary, not sufficient.</strong> These rules encode only the <em>structural</em>
@@ -95,7 +125,9 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * string can hide behind an alphanumeric length byte. The word-boundary check means a
  * <em>different</em> identifier merely containing the name ({@code reset_availability}) does not
  * false-positive; a class that inlines availability's table-name constant still matches — that
- * coupling is exactly what the rule exists to surface.)
+ * coupling is exactly what the rule exists to surface. Rule 11 judges whole {@code CONSTANT_String}
+ * entries, so it has no length-byte blind spot, but it misses a write whose table name is
+ * concatenated or taken from a constant, and one qualified by a schema other than {@code public}.)
  *
  * <p>The violation collectors are parameterized by {@code (JavaClasses, base)} so the negative
  * cases are proven against the deliberately-violating fixtures under
@@ -105,11 +137,70 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  */
 class ResponsibilitiesArchitectureTests {
 
+	/**
+	 * Table → its one writing module: {@code CLAUDE.md}'s "Sole writer of" column, the closed
+	 * non-context modules' tables included. The framework tables ({@link #FRAMEWORK_TABLES}) are
+	 * written by no module and are not here.
+	 */
+	private static final Map<String, String> SOLE_WRITERS = soleWriters(
+			"venue", List.of("venue", "set_position", "venue_amenity", "venue_photo", "venue_photo_variant",
+					"venue_commission_rate"),
+			"availability", List.of("set_availability"),
+			"booking", List.of("booking", "stay", "booking_day", "remodel_receipt", "remodel_receipt_move",
+					"remodel_receipt_outcome", "remodel_receipt_kept"),
+			"payment", List.of("payment", "payment_booking", "payment_refund", "stripe_webhook_event"),
+			"payout", List.of("payout_ledger_entry", "payout_batch", "platform_setting"),
+			"customer", List.of("customer", "customer_account", "customer_sso_identity", "customer_account_token"),
+			"operator", List.of("operator", "operator_venue"),
+			"review", List.of("review"),
+			"notification", List.of("email_suppression", "booking_confirmation_mail_attempt"),
+			"challenge", List.of("challenge_registry"),
+			"audit", List.of("admin_audit_record"));
+
+	/** Tables Flyway creates for a framework, written by no module (Spring Session, Modulith's registry). */
+	private static final Set<String> FRAMEWORK_TABLES = Set.of(
+			"spring_session", "spring_session_attributes", "event_publication", "event_publication_archive");
+
+	/** One SQL-shaped write pattern per owned table (rule 11). */
+	private static final Map<String, Pattern> WRITE_SQL = writePatterns();
+
+	private static final Path MIGRATIONS = Path.of("src/main/resources/db/migration");
+
+	private static final Pattern VERSIONED_MIGRATION = Pattern.compile("V(.+?)__.+\\.sql");
+
+	/** A quoted identifier, string literal or comment, matched left to right so none opens inside another. */
+	private static final Pattern SQL_QUOTED_OR_COMMENT =
+			Pattern.compile("\"(?:[^\"]|\"\")*\"|'(?:[^']|'')*'|--[^\\n]*|/\\*.*?\\*/", Pattern.DOTALL);
+
+	/** A bare or quoted identifier; a quoted one may hold any character, {@code ""} escaping a quote. */
+	private static final String IDENTIFIER = "(?:\\w+|\"(?:[^\"]|\"\")*\")";
+
+	private static final String TABLE_NAME = "(?:" + IDENTIFIER + "\\s*\\.\\s*)?" + IDENTIFIER;
+
+	private static final Pattern IDENTIFIER_PART = Pattern.compile(IDENTIFIER);
+
+	private static final Pattern QUALIFIED_NAME = Pattern.compile(TABLE_NAME);
+
+	/** Table DDL in statement order; a rename needs {@code RENAME TO} straight after the name, so
+	 * {@code RENAME [COLUMN] a TO b} and {@code RENAME CONSTRAINT} never match. */
+	private static final Pattern TABLE_DDL = Pattern.compile("(?i)\\b(?:"
+			+ "CREATE\\s+(?<unmodelled>(?:(?:GLOBAL|LOCAL)\\s+)?(?:TEMP|TEMPORARY)|UNLOGGED)\\s+TABLE\\b"
+			+ "|CREATE\\s+TABLE\\s+(?:IF\\s+NOT\\s+EXISTS\\s+)?(?<created>" + TABLE_NAME + ")"
+			+ "|DROP\\s+TABLE\\s+(?:IF\\s+EXISTS\\s+)?(?<dropped>" + TABLE_NAME
+			+ "(?:\\s*,\\s*" + TABLE_NAME + ")*)"
+			+ "|ALTER\\s+TABLE\\s+(?:IF\\s+EXISTS\\s+)?(?:ONLY\\s+)?(?<renamedFrom>" + TABLE_NAME + ")"
+			+ "\\s+RENAME\\s+TO\\s+(?<renamedTo>" + TABLE_NAME + "))");
+
+	private static final String PUBLIC_SCHEMA = "public";
+
+	/** A name PostgreSQL stores as written whether quoted or not: lower case, no special character. */
+	private static final Pattern FOLDED_NAME = Pattern.compile("[a-z_][a-z0-9_]*");
+
 	/** The per-(set, date) source-of-truth table owned by {@code availability} (invariant #2). */
 	private static final String AVAILABILITY_TABLE = "set_availability";
 
 	/** The one module that may reference {@link #AVAILABILITY_TABLE} (invariant #2). */
-	private static final String AVAILABILITY_MODULE = "availability";
+	private static final String AVAILABILITY_MODULE = SOLE_WRITERS.get(AVAILABILITY_TABLE);
 
 	/** The one module that may touch the Stripe SDK (RESPONSIBILITIES.md / ADR-0002). */
 	private static final String PAYMENT_MODULE = "payment";
@@ -118,7 +209,7 @@ class ResponsibilitiesArchitectureTests {
 	private static final String STRIPE_SDK_ROOT = "com.stripe";
 
 	/** The one module that may run SQL against the {@code review} table (#811, ADR-0015). */
-	private static final String REVIEW_MODULE = "review";
+	private static final String REVIEW_MODULE = SOLE_WRITERS.get("review");
 
 	/** SQL-shaped reference to the {@code review} table: keyword + whole-word table name.
 	 * The bare name would false-positive on the module's own package string in every consumer. */
@@ -126,7 +217,7 @@ class ResponsibilitiesArchitectureTests {
 			Pattern.compile("(?i)\\b(?:from|into|update|join|table)\\s+review(?![_\\p{Alnum}])");
 
 	/** The one module that may name its rating columns (§venue: it stores, {@code review} computes). */
-	private static final String VENUE_MODULE = "venue";
+	private static final String VENUE_MODULE = SOLE_WRITERS.get("venue");
 
 	/** The venue-owned aggregate columns no other module may reference (#811). */
 	private static final List<String> RATING_COLUMNS = List.of("rating_tenths", "reviews_count");
@@ -135,13 +226,13 @@ class ResponsibilitiesArchitectureTests {
 	private static final String CHALLENGE_REGISTRY_TABLE = "challenge_registry";
 
 	/** The one module that may reference {@link #CHALLENGE_REGISTRY_TABLE}. */
-	private static final String CHALLENGE_MODULE = "challenge";
+	private static final String CHALLENGE_MODULE = SOLE_WRITERS.get(CHALLENGE_REGISTRY_TABLE);
 
 	/** The append-only admin audit trail owned by {@code audit} (ADR-0013, ADR-0017). */
 	private static final String ADMIN_AUDIT_TABLE = "admin_audit_record";
 
 	/** The one module that may reference {@link #ADMIN_AUDIT_TABLE}. */
-	private static final String AUDIT_MODULE = "audit";
+	private static final String AUDIT_MODULE = SOLE_WRITERS.get(ADMIN_AUDIT_TABLE);
 
 	/** The platform's own settings, owned by {@code payout} (ADR-0021). */
 	private static final String PLATFORM_SETTING_TABLE = "platform_setting";
@@ -150,7 +241,7 @@ class ResponsibilitiesArchitectureTests {
 	private static final String BOOKING_DAY_TABLE = "booking_day";
 
 	/** The one module that may reference {@link #BOOKING_DAY_TABLE}. */
-	private static final String BOOKING_MODULE = "booking";
+	private static final String BOOKING_MODULE = SOLE_WRITERS.get(BOOKING_DAY_TABLE);
 
 	/** SQL-shaped reference to the {@code stay} table (design D6): keyword + whole-word table name,
 	 * because the bare word appears in prose and in {@code max_stay_days}. */
@@ -158,7 +249,7 @@ class ResponsibilitiesArchitectureTests {
 			Pattern.compile("(?i)\\b(?:from|into|update|join|table)\\s+stay(?![_\\p{Alnum}])");
 
 	/** The one module that may reference {@link #PLATFORM_SETTING_TABLE}. */
-	private static final String PAYOUT_MODULE = "payout";
+	private static final String PAYOUT_MODULE = SOLE_WRITERS.get(PLATFORM_SETTING_TABLE);
 
 	private static final String EVENTS_SURFACE = "events";
 	private static final String VOCABULARY_SURFACE = "vocabulary";
@@ -554,7 +645,280 @@ class ResponsibilitiesArchitectureTests {
 				"The fixture booking module's own SQL must not be flagged, but got: " + violations);
 	}
 
+	// ---- rule 11: every owned table is written only by its owner (CLAUDE.md "Sole writer of") ----
+
+	@Test
+	void everyOwnedTableIsWrittenOnlyByItsOwner() {
+		List<String> violations = foreignWriteViolations(PRODUCTION_CLASSES, PRODUCTION_BASE);
+		assertNoViolations("RESPONSIBILITIES.md fitness-function violations (sole writer per table, "
+				+ "CLAUDE.md \"Sole writer of\")", violations);
+	}
+
+	/** Guards against a vacuously-green scan and a wrong owner in the map: each owner's own
+	 * classes DO carry a write against each of its tables. */
+	@Test
+	void everyOwnerWritesEachOfItsTables() {
+		Set<String> unwritten = new TreeSet<>(SOLE_WRITERS.keySet());
+		for (JavaClass type : PRODUCTION_CLASSES) {
+			String module = moduleOf(type, PRODUCTION_BASE);
+			unwritten.removeIf(table -> SOLE_WRITERS.get(table).equals(module) && !writesIn(type, table).isEmpty());
+		}
+		assertTrue(unwritten.isEmpty(), "expected each owner to carry a write against its tables, but none "
+				+ "was found for " + unwritten + " — a wrong owner in SOLE_WRITERS, or a write shape the "
+				+ "pattern misses");
+	}
+
+	/** The map tracks the schema: every table the latest migration leaves is owned or a named
+	 * framework table, and the map names no table the schema lacks. */
+	@Test
+	void theOwnershipMapCoversEveryTableTheSchemaCreates() throws IOException {
+		Set<String> created = tablesAfter(migrations());
+		Set<String> unowned = new TreeSet<>(created);
+		unowned.removeAll(SOLE_WRITERS.keySet());
+		unowned.removeAll(FRAMEWORK_TABLES);
+		Set<String> stale = new TreeSet<>(SOLE_WRITERS.keySet());
+		stale.removeAll(created);
+		assertEquals(Set.of(), unowned, "tables the migrations leave with no owner in SOLE_WRITERS "
+				+ "(add them, mirroring CLAUDE.md's \"Sole writer of\" column)");
+		assertEquals(Set.of(), stale, "SOLE_WRITERS names tables the migrations do not leave (never created, dropped or renamed)");
+	}
+
+	/** A dropped table is gone unless re-created, a renamed one answers to its new name only, a
+	 * column rename, a comment or a string literal changes nothing, and V9 applies before V10. */
+	@Test
+	void theSchemaWalkAppliesCreateDropAndRenameInVersionOrder() {
+		Set<String> tables = tablesAfter(List.of(
+				new Migration(MigrationVersion.fromVersion("10"), """
+						DROP TABLE gone;
+						DROP TABLE IF EXISTS public.recreated, "versioned";
+						CREATE TABLE recreated (id BIGINT);
+						ALTER TABLE IF EXISTS ONLY old_name RENAME TO new_name;
+						ALTER TABLE new_name RENAME COLUMN id TO renamed_column;
+						ALTER TABLE new_name RENAME label TO bare_renamed_column;
+						COMMENT ON TABLE kept IS 'it''s fine to drop table kept; see /api/admin/**';
+						CREATE TABLE "public"."after_literal" (id BIGINT);
+						-- DROP TABLE kept; see /api/admin/** for the
+						/* CREATE TABLE commented_out (id BIGINT); */
+						"""),
+				new Migration(MigrationVersion.fromVersion("2"), """
+						CREATE TABLE gone (id BIGINT);
+						CREATE TABLE IF NOT EXISTS recreated (id BIGINT);
+						CREATE TABLE "old_name" (id BIGINT, label TEXT);
+						CREATE TABLE kept (id BIGINT);
+						"""),
+				new Migration(MigrationVersion.fromVersion("9"), """
+						CREATE TABLE versioned (id BIGINT);
+						""")));
+		assertEquals(Set.of("after_literal", "kept", "new_name", "recreated"), tables);
+	}
+
+	/** TEMP and UNLOGGED tables are refused, not read as {@code CREATE TABLE} or skipped. */
+	@Test
+	void theSchemaWalkRefusesTempAndUnloggedTables() {
+		assertRefused("CREATE UNLOGGED TABLE scratch (id BIGINT)", "UNLOGGED tables are not modelled");
+		assertRefused("CREATE TEMP TABLE scratch (id BIGINT)", "TEMP tables are not modelled");
+		assertRefused("CREATE GLOBAL  TEMPORARY TABLE scratch (id BIGINT)", "GLOBAL TEMPORARY tables are not modelled");
+	}
+
+	/** A schema other than {@code public}, bare or quoted, is refused wherever a table name sits. */
+	@Test
+	void theSchemaWalkRefusesANonPublicSchema() {
+		assertRefused("CREATE TABLE audit.trail (id BIGINT)", "schema 'audit' is not public");
+		assertRefused("DROP TABLE IF EXISTS kept, other . gone", "schema 'other' is not public");
+		assertRefused("ALTER TABLE kept RENAME TO \"PUBLIC\".renamed", "schema 'PUBLIC' is not public");
+	}
+
+	/** A quoted name PostgreSQL keeps case-sensitive is refused, not folded onto its lower-case twin. */
+	@Test
+	void theSchemaWalkRefusesACaseSensitiveQuotedName() {
+		assertRefused("CREATE TABLE \"Old_Name\" (id BIGINT)", "quoted name 'Old_Name' is case-sensitive");
+		assertRefused("ALTER TABLE kept RENAME TO public.\"Kept\"", "quoted name 'Kept' is case-sensitive");
+		assertRefused("CREATE TABLE \"a--b\" (id BIGINT)", "quoted name 'a--b' is case-sensitive");
+		assertRefused("CREATE TABLE \"it's\" (id BIGINT)", "quoted name 'it's' is case-sensitive");
+	}
+
+	private static void assertRefused(String statement, String why) {
+		List<Migration> migrations = List.of(
+				new Migration(MigrationVersion.fromVersion("1"), "CREATE TABLE kept (id BIGINT);"),
+				new Migration(MigrationVersion.fromVersion("7"), "CREATE TABLE before (id BIGINT);\n"
+						+ statement + ";\nCREATE TABLE after (id BIGINT);"));
+		IllegalStateException refusal = assertThrows(IllegalStateException.class, () -> tablesAfter(migrations));
+		assertTrue(refusal.getMessage().contains("V7's \"" + statement.replaceAll("\\s+", " ") + "\"")
+						&& refusal.getMessage().contains(why),
+				"expected a refusal naming V7, the statement and \"" + why + "\", but got: " + refusal.getMessage());
+	}
+
+	/** A non-owner write of each shape is rejected; a longer table name, a package string, a read
+	 * and prose are not; the owner's own write is not. */
+	@Test
+	void foreignWriteFixtureIsRejectedAndMentionsAreNot() {
+		List<String> violations = foreignWriteViolations(FIXTURE_CLASSES, FIXTURE_BASE);
+		for (String shape : List.of("UPDATE booking b SET", "INSERT INTO booking", "DELETE FROM public.booking",
+				"MERGE INTO \"booking\"", "TRUNCATE TABLE booking")) {
+			assertTrue(violations.stream().anyMatch(v -> v.contains("RogueBookingWriter")
+							&& v.contains("'booking' table (\"" + shape + "\")")),
+					"Expected the table-ownership rule to reject the fixture's foreign " + shape + ", but got: "
+							+ violations);
+		}
+		assertFalse(violations.stream().anyMatch(v -> v.contains("BookingNameMentions")),
+				"A longer table name, a package string, a read or prose must not count as a write, but got: "
+						+ violations);
+		assertFalse(violations.stream().anyMatch(v -> v.contains("FixtureJdbcBookings")),
+				"The fixture booking module's own write must not be flagged, but got: " + violations);
+	}
+
 	// ---- violation collectors (parameterized so fixtures prove the red case) ---------------
+
+	private static List<String> foreignWriteViolations(JavaClasses classes, String base) {
+		List<String> violations = new ArrayList<>();
+		for (JavaClass type : classes) {
+			String module = moduleOf(type, base);
+			SOLE_WRITERS.forEach((table, owner) -> {
+				if (owner.equals(module)) {
+					return;
+				}
+				for (String write : writesIn(type, table)) {
+					violations.add(type.getName() + " writes the '" + table + "' table (\"" + write
+							+ "\") — " + owner + " is its sole writer (CLAUDE.md \"Sole writer of\" / "
+							+ "RESPONSIBILITIES.md §" + owner + "); other modules change it through " + owner
+							+ "'s published ports or events, never at the table");
+				}
+			});
+		}
+		return violations;
+	}
+
+	/** The SQL-shaped writes against {@code table} among the class's string constants. */
+	private static List<String> writesIn(JavaClass type, String table) {
+		Pattern write = WRITE_SQL.get(table);
+		return classFileOf(type).map(ArchitectureTestSupport::stringConstants).orElse(List.of()).stream()
+				.map(write::matcher)
+				.filter(Matcher::find)
+				.map(Matcher::group)
+				.toList();
+	}
+
+	private static Map<String, String> soleWriters(Object... moduleThenTables) {
+		Map<String, String> owners = new LinkedHashMap<>();
+		for (int i = 0; i < moduleThenTables.length; i += 2) {
+			String module = (String) moduleThenTables[i];
+			for (Object table : (List<?>) moduleThenTables[i + 1]) {
+				if (owners.put((String) table, module) != null) {
+					throw new IllegalStateException("table '" + table + "' has two owners in SOLE_WRITERS");
+				}
+			}
+		}
+		return Collections.unmodifiableMap(owners);
+	}
+
+	/** Keyword, optional {@code public.} schema and quotes, then the whole-word table name; an
+	 * {@code UPDATE} must reach its {@code SET} (past an optional alias) so prose like "update
+	 * booking state" is not a write. */
+	private static Map<String, Pattern> writePatterns() {
+		Map<String, Pattern> patterns = new LinkedHashMap<>();
+		for (String table : SOLE_WRITERS.keySet()) {
+			String name = "(?:public\\.)?\"?" + Pattern.quote(table) + "\"?(?![\\w])";
+			patterns.put(table, Pattern.compile("(?i)(?<![\\w])(?:"
+					+ "(?:INSERT\\s+INTO|DELETE\\s+FROM|MERGE\\s+INTO)\\s+(?:ONLY\\s+)?" + name
+					+ "|TRUNCATE\\s+(?:TABLE\\s+)?(?:ONLY\\s+)?" + name
+					+ "|UPDATE\\s+(?:ONLY\\s+)?" + name + "(?:\\s+(?:AS\\s+)?(?!SET\\b)\\w+)?\\s+SET\\b)"));
+		}
+		return Collections.unmodifiableMap(patterns);
+	}
+
+	/** A versioned migration's SQL, ordered by Flyway's own version comparison (V9 before V10). */
+	record Migration(MigrationVersion version, String sql) {
+	}
+
+	private static List<Migration> migrations() throws IOException {
+		List<Migration> migrations = new ArrayList<>();
+		try (Stream<Path> files = Files.list(MIGRATIONS)) {
+			for (Path file : files.filter(p -> p.toString().endsWith(".sql")).toList()) {
+				Matcher name = VERSIONED_MIGRATION.matcher(file.getFileName().toString());
+				if (!name.matches()) {
+					throw new IllegalStateException("not a V<version>__<description>.sql migration, so the "
+							+ "schema walk cannot order it: " + file);
+				}
+				migrations.add(new Migration(MigrationVersion.fromVersion(name.group(1)), Files.readString(file)));
+			}
+		}
+		return migrations;
+	}
+
+	/** The tables that exist after the last migration: create, drop and rename applied in version
+	 * order, then statement order; DDL in a {@code DO $$} body counts as if it ran. A form the walk
+	 * does not model (TEMP/UNLOGGED, a non-public schema, a case-sensitive quoted name) is refused. */
+	static Set<String> tablesAfter(List<Migration> migrations) {
+		Set<String> tables = new TreeSet<>();
+		for (Migration migration : migrations.stream().sorted(Comparator.comparing(Migration::version)).toList()) {
+			String sql = SQL_QUOTED_OR_COMMENT.matcher(migration.sql())
+					.replaceAll(m -> m.group().startsWith("\"") ? Matcher.quoteReplacement(m.group()) : " ");
+			Matcher ddl = TABLE_DDL.matcher(sql);
+			while (ddl.find()) {
+				SchemaStatement statement = new SchemaStatement(migration, sql, ddl.start());
+				if (ddl.group("unmodelled") != null) {
+					throw statement.refused(ddl.group("unmodelled").toUpperCase(Locale.ROOT).replaceAll("\\s+", " ")
+							+ " tables are not modelled");
+				} else if (ddl.group("created") != null) {
+					tables.add(statement.bareName(ddl.group("created")));
+				} else if (ddl.group("dropped") != null) {
+					splitNames(ddl.group("dropped")).stream().map(statement::bareName).forEach(tables::remove);
+				} else {
+					tables.remove(statement.bareName(ddl.group("renamedFrom")));
+					tables.add(statement.bareName(ddl.group("renamedTo")));
+				}
+			}
+		}
+		return tables;
+	}
+
+	/** The comma-separated names of a {@code DROP TABLE}, a comma inside quotes kept in its name. */
+	private static List<String> splitNames(String names) {
+		List<String> split = new ArrayList<>();
+		Matcher name = QUALIFIED_NAME.matcher(names);
+		while (name.find()) {
+			split.add(name.group());
+		}
+		return split;
+	}
+
+	/** The statement around one table DDL match, named in a refusal. */
+	private record SchemaStatement(Migration migration, String sql, int at) {
+
+		/** The table name as the walk keys it, refusing a non-public schema or a case-sensitive quoted name. */
+		String bareName(String qualified) {
+			List<String> parts = identifiers(qualified);
+			if (parts.size() == 2 && !PUBLIC_SCHEMA.equals(parts.getFirst())) {
+				throw refused("schema '" + parts.getFirst() + "' is not public");
+			}
+			String name = parts.getLast();
+			if (!FOLDED_NAME.matcher(name).matches()) {
+				throw refused("quoted name '" + name + "' is case-sensitive or not a plain identifier");
+			}
+			return name;
+		}
+
+		IllegalStateException refused(String why) {
+			int start = sql.lastIndexOf(';', at) + 1;
+			int end = sql.indexOf(';', at);
+			String text = sql.substring(start, end < 0 ? sql.length() : end).strip().replaceAll("\\s+", " ");
+			return new IllegalStateException("the schema walk refuses V" + migration.version() + "'s \""
+					+ text + "\": " + why + " (RESPONSIBILITIES.md § Known scan limits)");
+		}
+
+		/** Each part folded as PostgreSQL does: an unquoted one lower-cased, a quoted one kept as written. */
+		private static List<String> identifiers(String qualified) {
+			List<String> parts = new ArrayList<>();
+			Matcher part = IDENTIFIER_PART.matcher(qualified);
+			while (part.find()) {
+				String identifier = part.group();
+				parts.add(identifier.startsWith("\"")
+						? identifier.substring(1, identifier.length() - 1).replace("\"\"", "\"")
+						: identifier.toLowerCase(Locale.ROOT));
+			}
+			return parts;
+		}
+	}
 
 	private static List<String> stayTableViolations(JavaClasses classes, String base) {
 		List<String> violations = new ArrayList<>();

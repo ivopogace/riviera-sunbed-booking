@@ -335,6 +335,119 @@ describe('PricingTab (#174)', () => {
     expect(input('A').getAttribute('aria-invalid')).toBe('true');
   });
 
+  it('refuses a price below €0.50 before the request, keeping the typed value marked invalid (#1419)', () => {
+    render();
+    editRow('A', '0.49');
+
+    // No PUT: afterEach's verify() fails on any unmatched request.
+    expect(input('A').value).toBe('0.49');
+    expect(byId('pricing-error-A').textContent).toContain(
+      'That price is not valid. Enter an amount of at least €0.50.',
+    );
+    expect(input('A').getAttribute('aria-invalid')).toBe('true');
+    expect(input('A').getAttribute('aria-describedby')).toBe(byId('pricing-error-A').id);
+    // The saved price is unchanged, so the projection still totals €90.
+    expect(byId('pricing-projected').textContent).toContain(
+      formatMoney({ minorUnits: 9000, currency: 'EUR' }),
+    );
+  });
+
+  it('compares after rounding to minor units, so 0.494 is refused and 0.495 rounds up to 50', () => {
+    render();
+    editRow('A', '0.494');
+    expect(byId('pricing-error-A')).toBeTruthy();
+
+    editRow('A', '0.495');
+    const req = http.expectOne(
+      (r) => r.method === 'PUT' && r.url.includes('/api/venues/1/rows/A/price'),
+    );
+    expect(body(req).price.minorUnits).toBe(50);
+    req.flush(null);
+  });
+
+  it('sends exactly €0.50 as 50 minor units and clears the refusal', async () => {
+    render();
+    editRow('A', '0');
+    expect(byId('pricing-error-A')).toBeTruthy();
+
+    editRow('A', '0.50');
+    const req = http.expectOne(
+      (r) => r.method === 'PUT' && r.url.includes('/api/venues/1/rows/A/price'),
+    );
+    expect(body(req).price).toEqual({ minorUnits: 50, currency: 'EUR' });
+    expect(host.querySelector('[data-testid="pricing-error-A"]')).toBeNull();
+    expect(input('A').hasAttribute('aria-invalid')).toBe(false);
+    expect(input('A').hasAttribute('aria-describedby')).toBe(false);
+    req.flush(null);
+    await fixture.whenStable();
+  });
+
+  it('keeps a refused row marked while another row saves', async () => {
+    render();
+    editRow('A', '0.2');
+    editRow('B', '25');
+    http
+      .expectOne((r) => r.method === 'PUT' && r.url.includes('/api/venues/1/rows/B/price'))
+      .flush(null);
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    expect(input('A').value).toBe('0.2');
+    expect(byId('pricing-error-A')).toBeTruthy();
+    expect(input('A').getAttribute('aria-invalid')).toBe('true');
+  });
+
+  it('drops a refusal when a change during an in-flight reprice restores the row (#1449)', async () => {
+    render();
+    editRow('A', '0.2');
+    editRow('B', '25');
+    const reqB = http.expectOne(
+      (r) => r.method === 'PUT' && r.url.includes('/api/venues/1/rows/B/price'),
+    );
+
+    // The readonly lock is the first line; this is the backstop for a change that slips past it.
+    editRow('A', '0.3');
+
+    expect(input('A').value).toBe('35');
+    expect(host.querySelector('[data-testid="pricing-error-A"]')).toBeNull();
+    expect(input('A').hasAttribute('aria-invalid')).toBe(false);
+    expect(input('A').hasAttribute('aria-describedby')).toBe(false);
+    reqB.flush(null);
+    await fixture.whenStable();
+  });
+
+  it('drops a refusal when the operator clears the field, restoring the saved price', () => {
+    render();
+    editRow('A', '0.2');
+    editRow('A', '');
+
+    expect(input('A').value).toBe('35');
+    expect(host.querySelector('[data-testid="pricing-error-A"]')).toBeNull();
+    expect(input('A').hasAttribute('aria-invalid')).toBe(false);
+  });
+
+  it('replaces an earlier reprice error with the refusal, which never brings it back', async () => {
+    render();
+    editRow('A', '99');
+    http
+      .expectOne((r) => r.method === 'PUT' && r.url.includes('/api/venues/1/rows/A/price'))
+      .flush({ code: 'NOT_VENUE_OWNER' }, { status: 403, statusText: 'Forbidden' });
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    editRow('A', '0.3');
+    editRow('A', '');
+
+    expect(host.querySelector('[data-testid="pricing-error-A"]')).toBeNull();
+    expect(input('A').hasAttribute('aria-describedby')).toBe(false);
+  });
+
+  it('states the floor on every row input', () => {
+    render();
+    expect(input('A').getAttribute('min')).toBe('0.5');
+    expect(input('B').getAttribute('min')).toBe('0.5');
+  });
+
   it('reverts the row, shows the stale banner, and Reload re-loads on a 409 STALE_WRITE', async () => {
     // A stale-write conflict reverts the row's value and shows the recover-and-reload banner, not a per-row error.
     render(SEED, 3); // loaded at set_version 3

@@ -157,6 +157,35 @@ class RemodelReceiptIT {
 	}
 
 	@Test
+	void readsANothingLeftLineInItsOwnGroupOutsideTheRefundsAndTheirTotals() throws Exception {
+		long venue = createVenue("Nothing Left Receipt Club");
+		long a1 = insertSet(venue, 1);
+		long spent = seedBooking(venue, a1, "RCP-" + System.nanoTime());
+		OperatorId operator = new OperatorId(jdbc.sql("SELECT id FROM operator WHERE username = 'operator'")
+				.query(Long.class).single());
+		ReceiptId id = receipts.store(new NewReceipt(new VenueId(venue), operator,
+				Instant.parse("2026-09-09T12:00:00Z"), List.of(), List.of(new ReceiptOutcome(new BookingId(spent),
+						LocalDate.of(2027, 7, 12), new SpotRef(new SetId(a1), "A", 1), ReceiptOutcomeKind.NOTHING_LEFT, 0,
+						"EUR", 0L)),
+				"", List.of()));
+
+		mvc.perform(get("/api/venues/{v}/remodels/{r}", venue, id.value()).cookie(operatorSession))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.ended.length()").value(1))
+				.andExpect(jsonPath("$.ended[0].bookingId").value(spent))
+				.andExpect(jsonPath("$.ended[0].bookingDate").value("2027-07-12"))
+				.andExpect(jsonPath("$.ended[0].from.rowLabel").value("A"))
+				.andExpect(jsonPath("$.refunds.length()").value(0))
+				.andExpect(jsonPath("$.releases.length()").value(0))
+				.andExpect(jsonPath("$.refundedTotal").value(nullValue()))
+				.andExpect(jsonPath("$.feeTotal").value(nullValue()));
+
+		mvc.perform(get("/api/venues/{v}/remodels", venue).cookie(operatorSession))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$[0].refundCount").value(0));
+	}
+
+	@Test
 	void readsAKeptLineWithItsReason() throws Exception {
 		long venue = createVenue("Kept Claims Club");
 		long a1 = insertSet(venue, 1);

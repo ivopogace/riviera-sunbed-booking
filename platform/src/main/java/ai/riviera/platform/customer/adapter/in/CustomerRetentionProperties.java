@@ -18,8 +18,8 @@ public record CustomerRetentionProperties(Period window, Integer batchSize) {
 	private static final int DEFAULT_BATCH_SIZE = 500;
 
 	/**
-	 * The sweep is one {@code @Transactional} batch locking a row per candidate, so this is its transaction
-	 * bound; also well under PostgreSQL's 65 535 bind parameters on {@code IN (:guests)}.
+	 * The sweep is one {@code @Transactional} run locking a row per scrub, so this bounds its writes and its page
+	 * size; also well under PostgreSQL's 65 535 bind parameters on {@code IN (:guests)}.
 	 */
 	static final int MAX_BATCH_SIZE = 10_000;
 
@@ -38,10 +38,10 @@ public record CustomerRetentionProperties(Period window, Integer batchSize) {
 		if (batchSize <= 0 || batchSize > MAX_BATCH_SIZE) {
 			throw new IllegalArgumentException(
 					"customer.retention.batch-size must be between 1 and " + MAX_BATCH_SIZE + ", but was "
-							+ batchSize + "; a non-positive size reaches LIMIT 0, so the sweep finds no "
-							+ "candidates and returns without logging anything, scrubbing nothing for as long "
-							+ "as it stays set, while an oversized one is the unbounded transaction this "
-							+ "bound exists to prevent");
+							+ batchSize + "; a non-positive size makes the sweep read no candidates "
+							+ "and return without logging anything, scrubbing nothing for as long as it stays "
+							+ "set, while an oversized one holds the unbounded set of row locks this bound "
+							+ "exists to prevent");
 		}
 	}
 }

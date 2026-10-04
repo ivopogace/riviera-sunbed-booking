@@ -17,7 +17,7 @@ import { EMPTY, Observable, catchError, defer, finalize, from, mergeMap, tap } f
 import { CustomerAuth } from '../core/customer-auth';
 import { DeviceLocalBookings } from '../core/device-local-bookings';
 import { formatStay } from '../shared/booking-date-label';
-import { amountLabelFor, metaFor } from '../shared/booking-status';
+import { amountLabelFor, metaFor, readsAsRefunded } from '../shared/booking-status';
 import { BusyAction } from '../shared/busy-action';
 import { CardGlass } from '../shared/card-glass';
 import { focusMover } from '../shared/focus-after-render';
@@ -43,8 +43,11 @@ function movedAtOf(b: RowSource): string | null {
   return 'move' in b ? (b.move?.movedAt ?? null) : b.movedAt;
 }
 
-/** The per-status sub-label (server-truth-adjacent); '' for CONFIRMED unless a remodel moved it. */
+/** The per-status sub-label (server-truth-adjacent); '' for CONFIRMED unless a remodel moved it or nothing is left. */
 function subLineOf(b: RowSource): string {
+  if (readsAsRefunded(b.status, b.nothingLeft ?? false)) {
+    return 'Every day was refunded';
+  }
   switch (b.status) {
     case 'CONFIRMED':
       return movedAtOf(b) ? 'Spot changed by the venue · see details' : '';
@@ -84,12 +87,13 @@ interface RowView {
   /** 'Paid' once money has moved; 'Amount' while open, or when a cancellation never charged. */
   readonly amountLabel: string;
   readonly amountStr: string;
-  /** CONFIRMED only — gates the row's scannable QR; terminal rows show status text alone. */
+  /** CONFIRMED with something left only — gates the row's scannable QR; other rows show status text alone. */
   readonly showQr: boolean;
 }
 
 function buildView(b: RowSource): RowView {
-  const meta = metaFor(b.status);
+  const nothingLeft = b.nothingLeft ?? false;
+  const meta = metaFor(b.status, nothingLeft);
   return {
     code: b.code,
     venueName: b.venueName,
@@ -98,9 +102,9 @@ function buildView(b: RowSource): RowView {
     subLine: subLineOf(b),
     statusLabel: meta.label,
     chipClass: meta.chip,
-    amountLabel: amountLabelFor(b.status, b.refundedAmount),
+    amountLabel: amountLabelFor(b.status, b.refundedAmount, nothingLeft),
     amountStr: formatMoney(b.amount),
-    showQr: b.status === 'CONFIRMED',
+    showQr: b.status === 'CONFIRMED' && !nothingLeft,
   };
 }
 

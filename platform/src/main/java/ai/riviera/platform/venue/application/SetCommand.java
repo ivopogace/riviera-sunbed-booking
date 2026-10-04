@@ -6,14 +6,15 @@ import java.util.stream.Stream;
 
 import ai.riviera.platform.venue.vocabulary.Pool;
 import ai.riviera.platform.venue.vocabulary.SetPlacement;
+import ai.riviera.platform.venue.vocabulary.SetPrice;
 import ai.riviera.platform.venue.vocabulary.Tier;
 
 /**
  * The validated intent to place or re-place one set position on a venue's beach map, for
  * both {@link EditBeachMap#addSet} and {@link EditBeachMap#editSet}. Its compact constructor
- * enforces the V2/V12/V43 CHECKs at the boundary: {@code tier} is the exact token the DB stores,
+ * enforces the V12/V43/V76/V77 CHECKs at the boundary: {@code tier} is the exact token the DB stores,
  * {@code pool} the typed {@link Pool} (a set is in exactly one pool — invariant #3),
- * {@code priceMinor} integer minor units + an ISO-4217 currency (invariant #5), and grid
+ * the price EUR minor units of at least €0.50 ({@link SetPrice}, invariant #5), and grid
  * coordinates / position number 1-based (the V12 CHECKs).
  */
 public record SetCommand(String rowLabel, int positionNo, String tier, Pool pool,
@@ -40,8 +41,7 @@ public record SetCommand(String rowLabel, int positionNo, String tier, Pool pool
 		if (pool == null) {
 			throw new IllegalArgumentException("pool is required");
 		}
-		VenueFieldValidation.requireNonNegativeMinor(priceMinor, "priceMinor");
-		VenueFieldValidation.requireIsoCurrency(priceCurrency, "priceCurrency");
+		SetPrice.require(priceMinor, priceCurrency);
 		if (gridX < 1 || gridY < 1) {
 			throw new IllegalArgumentException("gridX and gridY must be >= 1");
 		}

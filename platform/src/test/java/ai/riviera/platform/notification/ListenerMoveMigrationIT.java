@@ -18,7 +18,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 /**
  * Pins the V31 listener_id rewrite (AC-7): {@code BookingConfirmationMailListener} moved from
  * the platform root into {@code notification.adapter.in}, and the Event Publication Registry's
- * {@code listener_id} embeds the listener class FQCN — restart republication matches it string-equal
+ * {@code listener_id} embedded the listener class FQCN before V74 — restart republication matches it string-equal
  * against live listeners and dead-letters a row nothing matches (the V18 lesson). Flyway has already
  * run V31 against this container by the time the test starts, so the migration cannot be observed on
  * real pre-deploy rows; instead the test seeds a row in the OLD format and re-executes the V31

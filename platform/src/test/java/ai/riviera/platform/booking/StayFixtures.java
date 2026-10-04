@@ -175,10 +175,33 @@ final class StayFixtures {
 				.param("s", set.value()).param("first", first).param("last", last).query(Long.class).single();
 	}
 
-	/** Waits for the async listeners (payout, mail) to finish writing, then deletes in dependency order. */
+	/**
+	 * Waits until {@link #pendingPublicationsOf} this venue is zero, so the async listeners (payout, mail) have
+	 * written, then deletes in dependency order.
+	 */
 	static void cleanup(JdbcClient jdbc, long venue) {
-		org.awaitility.Awaitility.await().atMost(java.time.Duration.ofSeconds(10)).until(() -> jdbc.sql(
-				"SELECT count(*) FROM event_publication WHERE completion_date IS NULL").query(Long.class).single() == 0L);
+		org.awaitility.Awaitility.await().atMost(java.time.Duration.ofSeconds(10))
+				.until(() -> pendingPublicationsOf(jdbc, venue) == 0L);
+		cleanupNow(jdbc, venue);
+	}
+
+	/**
+	 * Incomplete publications whose event names one of this venue's bookings or stays by id ({@code bookingId},
+	 * {@code bookingRef}, {@code stayId}). A payload that is not JSON names nothing here.
+	 */
+	static long pendingPublicationsOf(JdbcClient jdbc, long venue) {
+		return jdbc.sql("""
+				SELECT count(*) FROM (
+				    SELECT CASE WHEN pg_input_is_valid(serialized_event, 'jsonb') THEN serialized_event::jsonb END AS e
+				    FROM event_publication WHERE completion_date IS NULL) p
+				WHERE p.e -> 'bookingId' ->> 'value' IN (SELECT id::text FROM booking WHERE venue_id = :v)
+				   OR p.e -> 'bookingRef' ->> 'value' IN (SELECT id::text FROM booking WHERE venue_id = :v)
+				   OR p.e -> 'stayId' ->> 'value' IN (SELECT id::text FROM stay WHERE venue_id = :v)
+				""").param("v", venue).query(Long.class).single();
+	}
+
+	/** Deletes in dependency order without waiting: for fixtures seeded as stored, which publish nothing. */
+	static void cleanupNow(JdbcClient jdbc, long venue) {
 		List<Long> payments = jdbc.sql("SELECT DISTINCT payment_id FROM payment_booking "
 						+ "WHERE booking_ref IN (SELECT id FROM booking WHERE venue_id = :v)").param("v", venue)
 				.query(Long.class).list();

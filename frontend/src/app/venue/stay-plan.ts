@@ -206,7 +206,7 @@ export class StayPlan {
     return stretches.flatMap((stretch, index) =>
       stayDays(stretch.firstDate, stretch.lastDate).map((iso, dayIndex) => ({
         iso,
-        day: parseIsoDate(iso).getDate(),
+        day: parseIsoDate(iso).getUTCDate(),
         stretch: index,
         move: index > 0 && dayIndex === 0,
         label: `${formatBookingDate(iso)}: ${spotLabel(stretch.rowLabel, stretch.positionNo)}`,

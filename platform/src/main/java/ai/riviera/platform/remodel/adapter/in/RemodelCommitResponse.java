@@ -12,16 +12,16 @@ import ai.riviera.platform.venue.vocabulary.LockedSet;
 import ai.riviera.platform.venue.vocabulary.MoneyView;
 
 /**
- * A committed remodel on the wire: the receipt id and everything the commit did — moves, full
- * refunds of confirmed bookings, released unpaid ones, declined requests and claims kept in place
- * (their sets left as stored) — in the preview's shapes, with the operator's refund reason.
+ * A committed remodel on the wire: the receipt id and everything the commit did — moves, full refunds of
+ * confirmed bookings, released unpaid ones, declined requests, bookings ended with nothing left and claims kept
+ * in place (their sets as stored) — in the preview's shapes, as settled, with the operator's refund reason.
  * {@code refundedTotal} and {@code feeTotal} (the refunds' cost to the venue at the rate quoted
  * with this commit) are {@code null} when nobody was refunded, so a zero never renders as a refund;
  * one currency suffices as collection is EUR-only (invariant #5). Bookings by id, never code (#7).
  */
 record RemodelCommitResponse(long receiptId, Instant committedAt, List<RemodelPreviewResponse.MoveView> moves,
 		List<RemodelPreviewResponse.ClaimView> refunds, List<RemodelPreviewResponse.ReleaseView> releases,
-		List<RemodelPreviewResponse.BlockView> kept, String refundReason, MoneyView refundedTotal,
+		List<RemodelPreviewResponse.EndedView> ended, List<RemodelPreviewResponse.BlockView> kept, String refundReason, MoneyView refundedTotal,
 		MoneyView feeTotal) {
 
 	static RemodelCommitResponse of(RemodelCommitOutcome.Committed committed, String refundReason,
@@ -30,6 +30,7 @@ record RemodelCommitResponse(long receiptId, Instant committedAt, List<RemodelPr
 		List<RemodelPreviewResponse.MoveView> moves = new ArrayList<>();
 		List<RemodelPreviewResponse.ClaimView> refunds = new ArrayList<>();
 		List<RemodelPreviewResponse.ReleaseView> releases = new ArrayList<>();
+		List<RemodelPreviewResponse.EndedView> ended = new ArrayList<>();
 		List<RemodelPreviewResponse.BlockView> kept = new ArrayList<>();
 		long refundedMinor = 0;
 		String currency = null;
@@ -51,12 +52,14 @@ record RemodelCommitResponse(long receiptId, Instant committedAt, List<RemodelPr
 					releases.add(new RemodelPreviewResponse.ReleaseView(id, date, amount, from, release.name()));
 				case RemodelOutcome.Decline decline ->
 					releases.add(new RemodelPreviewResponse.ReleaseView(id, date, amount, from, decline.name()));
+				case RemodelOutcome.NothingLeft ignored ->
+					ended.add(new RemodelPreviewResponse.EndedView(id, date, amount, from));
 				case RemodelOutcome.Blocked(var reason) ->
 					kept.add(new RemodelPreviewResponse.BlockView(id, date, amount, from, reason.name()));
 			}
 		}
 		return new RemodelCommitResponse(committed.receiptId().value(), committed.committedAt(), moves, refunds,
-				releases, kept, refundReason, currency == null ? null : new MoneyView(refundedMinor, currency),
+				releases, ended, kept, refundReason, currency == null ? null : new MoneyView(refundedMinor, currency),
 				currency == null ? null : new MoneyView(fee.totalFor(refunds.size()), fee.currency()));
 	}
 

@@ -323,10 +323,10 @@ class VenueAdminServiceTest {
 	void everyPositionFieldOnItsOwnDisturbsAClaimedSet() {
 		SetPlacement stored = new SetPlacement("Row A", 1, 2, 1);
 
-		assertTrue(new SetCommand("Row B", 1, "PREMIUM", Pool.ONLINE, 1, "EUR", 2, 1).disturbs(stored), "rowLabel");
-		assertTrue(new SetCommand("Row A", 7, "PREMIUM", Pool.ONLINE, 1, "EUR", 2, 1).disturbs(stored), "positionNo");
-		assertTrue(new SetCommand("Row A", 1, "PREMIUM", Pool.ONLINE, 1, "EUR", 8, 1).disturbs(stored), "gridX");
-		assertTrue(new SetCommand("Row A", 1, "PREMIUM", Pool.ONLINE, 1, "EUR", 2, 8).disturbs(stored), "gridY");
+		assertTrue(new SetCommand("Row B", 1, "PREMIUM", Pool.ONLINE, 4500, "EUR", 2, 1).disturbs(stored), "rowLabel");
+		assertTrue(new SetCommand("Row A", 7, "PREMIUM", Pool.ONLINE, 4500, "EUR", 2, 1).disturbs(stored), "positionNo");
+		assertTrue(new SetCommand("Row A", 1, "PREMIUM", Pool.ONLINE, 4500, "EUR", 8, 1).disturbs(stored), "gridX");
+		assertTrue(new SetCommand("Row A", 1, "PREMIUM", Pool.ONLINE, 4500, "EUR", 2, 8).disturbs(stored), "gridY");
 		assertFalse(new SetCommand("Row A", 1, "STANDARD", Pool.WALK_IN, 9999, "EUR", 2, 1).disturbs(stored),
 				"tier, price and pool never disturb a claim — the charge was snapshotted, the pool governs new reserves");
 	}

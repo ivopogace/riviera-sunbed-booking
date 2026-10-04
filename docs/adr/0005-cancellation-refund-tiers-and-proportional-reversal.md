@@ -65,6 +65,9 @@ for a captured payment, so the accrual is always *coming* — "empty" means **no
 **never**. Accepted cost: a permanently broken accrual parks this publication in the outbox and
 holds the gauge non-zero until someone acts — deliberately preferred to a ledger that quietly
 overstates what the venue is owed. Rationale in full on `BookingCancelledPayoutListener`.
+*Amended 2026-10-02 (PR #1350, #1340):* the retry no longer waits for a restart. `PayoutSpineRetry`
+re-drives a failed `payout.accrue-on-booking-confirmed` or `payout.reverse-*` publication on a
+schedule, up to `riviera.events.spine-retry.max-attempts`. Throw-and-defer is unchanged.
 
 **Scope: the guest path only.** `WeatherRefundService` deliberately stays outside the window
 fence. A storm is only known afterwards, the refund is full rather than a reclaimed share, and it
@@ -122,3 +125,8 @@ returns the venue's own money behind an `assertOwns` check (invariant #13). Pinn
   cancelled whole and refunded in full. A stay's `VENUE`-refunded day not yet past is released (a
   weather-refunded day stays held, ADR-0026 §3), so "the set is freed" now means the days the
   booking still holds: a later cancel releases `ServiceDays#held`. (Logged 2026-10-01, #1342.)
+- 2026-10-02, #1290 — ADR-0024 §4 amended: a guest cancel of a stay sets aside the stretches a remodel
+  already ended and judges the live remainder on its first day; a moved live stretch's free exit is
+  capped there instead.
+- 2026-10-02, #1369 (PR #1350, #1340) — *A missing accrual defers*: the republish is a scheduled
+  `PayoutSpineRetry`, not only the next restart's. The decision stands.

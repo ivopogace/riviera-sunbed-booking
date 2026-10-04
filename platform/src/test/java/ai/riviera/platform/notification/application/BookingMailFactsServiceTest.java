@@ -1,5 +1,6 @@
 package ai.riviera.platform.notification.application;
 
+import java.net.URI;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.List;
@@ -61,7 +62,8 @@ class BookingMailFactsServiceTest {
 	private final SetBookingFacts sets = mock(SetBookingFacts.class);
 	private final CustomerLookup customers = mock(CustomerLookup.class);
 
-	private final BookingMailFactsService facts = new BookingMailFactsService(bookings, sets, customers);
+	private final RebookLinks rebookLinks = mock(RebookLinks.class);
+	private final BookingMailFactsService facts = new BookingMailFactsService(bookings, sets, customers, rebookLinks);
 
 	@Test
 	void resolvesEveryFactAMailRenders() {
@@ -167,17 +169,32 @@ class BookingMailFactsServiceTest {
 		when(sets.setBookingInfo(SET_ID)).thenReturn(Optional.of(SET));
 		when(customers.findById(CUSTOMER_ID)).thenReturn(Optional.of(CONTACT));
 
-		assertThat(facts.resolveStayCancellation(STAY, 6750, "EUR", RefundReason.POLICY))
+		assertThat(facts.resolveStayCancellation(STAY, 6750, "EUR", RefundReason.POLICY, false))
 				.isEqualTo(new StayCancellationMailFacts.Resolved("tourist@example.com", new BookingCancellationMail(
 						"STAYCODE", "Vala Beach", LocalDate.of(2026, 8, 1), LocalDate.of(2026, 8, 3), 6750, "EUR",
 						RefundReason.POLICY, null)));
+		verifyNoInteractions(rebookLinks);
+	}
+
+	/** #1292: a stay a remodel released is mailed once, with the same way back a released lone booking gets. */
+	@Test
+	void aStayARemodelEndedCarriesTheRebookLinkForItsFirstDay() {
+		when(sets.setBookingInfo(SET_ID)).thenReturn(Optional.of(SET));
+		when(customers.findById(CUSTOMER_ID)).thenReturn(Optional.of(CONTACT));
+		URI rebook = URI.create("https://riviera.example/venues/3?date=2026-08-01");
+		when(rebookLinks.forDate(new VenueId(3L), LocalDate.of(2026, 8, 1))).thenReturn(rebook);
+
+		assertThat(facts.resolveStayCancellation(STAY, 0, "EUR", RefundReason.VENUE_CHANGE, true))
+				.isEqualTo(new StayCancellationMailFacts.Resolved("tourist@example.com", new BookingCancellationMail(
+						"STAYCODE", "Vala Beach", LocalDate.of(2026, 8, 1), LocalDate.of(2026, 8, 3), 0, "EUR",
+						RefundReason.VENUE_CHANGE, rebook)));
 	}
 
 	@Test
 	void aStaysCancellationWithoutItsVenueIsNamedAndStopsTheContactRead() {
 		when(sets.setBookingInfo(SET_ID)).thenReturn(Optional.empty());
 
-		assertThat(facts.resolveStayCancellation(STAY, 0, "EUR", RefundReason.POLICY))
+		assertThat(facts.resolveStayCancellation(STAY, 0, "EUR", RefundReason.POLICY, false))
 				.isEqualTo(new StayCancellationMailFacts.Missing(MissingBookingFact.NO_SET));
 		verifyNoInteractions(customers);
 	}
@@ -187,7 +204,7 @@ class BookingMailFactsServiceTest {
 		when(sets.setBookingInfo(SET_ID)).thenReturn(Optional.of(SET));
 		when(customers.findById(CUSTOMER_ID)).thenReturn(Optional.empty());
 
-		assertThat(facts.resolveStayCancellation(STAY, 0, "EUR", RefundReason.POLICY))
+		assertThat(facts.resolveStayCancellation(STAY, 0, "EUR", RefundReason.POLICY, false))
 				.isEqualTo(new StayCancellationMailFacts.Missing(MissingBookingFact.NO_CONTACT));
 	}
 }

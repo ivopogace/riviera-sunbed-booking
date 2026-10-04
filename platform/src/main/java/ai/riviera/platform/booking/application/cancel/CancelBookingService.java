@@ -28,10 +28,10 @@ import ai.riviera.platform.booking.vocabulary.RefundReason;
 /**
  * The guest cancel, in one transaction: lock the row, then read and quote the refund server-side
  * ({@link CancellationPolicy}, #10), guarded {@code CONFIRMED → CANCELLED}, free every {@code (set, date)}
- * of the span (#2), publish {@link BookingCancelled}. Never refund in here; {@code BookingRefundListener}
- * refunds after commit. Who may cancel is {@link BookingTransition#CANCEL_BY_GUEST}, never restated;
- * a spent day ({@code NO_SHOW}, {@code COMPLETED}, a closed quote window) answers {@code WindowClosed}
- * before any write. Rationale: {@code RESPONSIBILITIES.md} §booking.
+ * of the span (#2), publish {@link BookingCancelled}; {@code BookingRefundListener} refunds after commit.
+ * Who may cancel is {@link BookingTransition#CANCEL_BY_GUEST}, never restated. Before any write a spent day
+ * ({@code NO_SHOW}, {@code COMPLETED}, a closed window) answers {@code WindowClosed} and every day refunded
+ * {@code NothingLeft} (ADR-0026 §7). Rationale: {@code RESPONSIBILITIES.md} §booking.
  */
 @Service
 class CancelBookingService implements CancelBooking {
@@ -42,14 +42,16 @@ class CancelBookingService implements CancelBooking {
 	private final CancellationPolicy cancellationPolicy;
 	private final AvailabilityClaim availability;
 	private final ApplicationEventPublisher events;
+	private final LiveRemainder liveRemainder;
 	private final Clock clock;
 
-	CancelBookingService(Bookings bookings, CancellationPolicy cancellationPolicy,
-			AvailabilityClaim availability, ApplicationEventPublisher events, Clock clock) {
+	CancelBookingService(Bookings bookings, CancellationPolicy cancellationPolicy, AvailabilityClaim availability,
+			ApplicationEventPublisher events, LiveRemainder liveRemainder, Clock clock) {
 		this.bookings = bookings;
 		this.cancellationPolicy = cancellationPolicy;
 		this.availability = availability;
 		this.events = events;
+		this.liveRemainder = liveRemainder;
 		this.clock = clock;
 	}
 
@@ -67,6 +69,9 @@ class CancelBookingService implements CancelBooking {
 		}
 		if (!BookingTransition.CANCEL_BY_GUEST.admits(booking.status())) {
 			return new CancelOutcome.NotCancellable(booking.status());
+		}
+		if (booking.everyDayRefunded()) {
+			return new CancelOutcome.NothingLeft();
 		}
 
 		RefundQuote quote = cancellationPolicy.quote(booking);
@@ -102,12 +107,18 @@ class CancelBookingService implements CancelBooking {
 	}
 
 	/**
-	 * A stay cancels whole (D6): stretches row-locked, each quoted on the stay's first day, then cancelled and
-	 * announced stamped with the stay (one reversal each, #9); one {@link StayCancelled} carries the summed
-	 * refund. A stretch that cannot be cancelled refuses the stay before any write; a failed transition is a bug.
+	 * A stay cancels whole (ADR-0024 §4): its {@link LiveRemainder} row-locked, each live stretch quoted on the first live
+	 * day, cancelled and announced stamped with the stay (one reversal each, #9); one {@link StayCancelled} sums the refund.
+	 * A live stretch that cannot cancel, or nothing live ({@code NothingLeft} while a confirmed one stands, ADR-0026 §7), refuses before any write.
 	 */
 	private CancelOutcome cancelStay(StayRecord stay) {
-		List<BookingRecord> stretches = bookings.lockStretches(stay.id());
+		LiveRemainder.Split split = liveRemainder.of(bookings.lockStretches(stay.id()), stay.firstDay());
+		List<BookingRecord> stretches = split.live();
+		if (stretches.isEmpty()) {
+			return split.nothingLeft()
+					? new CancelOutcome.NothingLeft()
+					: new CancelOutcome.NotCancellable(split.setAside().getFirst().status());
+		}
 		if (stretches.stream().anyMatch(s -> s.status() == BookingStatus.NO_SHOW || s.status() == BookingStatus.COMPLETED)) {
 			return new CancelOutcome.WindowClosed();
 		}
@@ -116,7 +127,7 @@ class CancelBookingService implements CancelBooking {
 		if (notAdmitted.isPresent()) {
 			return new CancelOutcome.NotCancellable(notAdmitted.get().status());
 		}
-		List<RefundQuote> quotes = stretches.stream().map(s -> cancellationPolicy.quote(s, stay.firstDay())).toList();
+		List<RefundQuote> quotes = stretches.stream().map(s -> cancellationPolicy.quote(s, split.windowDay())).toList();
 		if (quotes.stream().anyMatch(quote -> !quote.cancellationOpen())) {
 			return new CancelOutcome.WindowClosed();
 		}

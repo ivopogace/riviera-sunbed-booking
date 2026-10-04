@@ -29,6 +29,7 @@ import ai.riviera.platform.TestcontainersConfiguration;
 import ai.riviera.platform.customer.api.CustomerDirectory;
 import ai.riviera.platform.customer.application.AccountErasureStore;
 import ai.riviera.platform.customer.application.ExpireGuestContacts;
+import ai.riviera.platform.customer.application.RetentionWindow;
 import ai.riviera.platform.customer.spi.GuestBookingHistory;
 import ai.riviera.platform.customer.vocabulary.CustomerId;
 import ai.riviera.platform.customer.vocabulary.GuestContact;
@@ -72,6 +73,9 @@ class GuestContactRetentionIT {
 
 	@Autowired
 	PlatformTransactionManager txManager;
+
+	@Autowired
+	RetentionWindow retention;
 
 	@Test
 	void reportsOnlyGuestsWithABookingOnOrAfterTheCutoff() {
@@ -161,6 +165,38 @@ class GuestContactRetentionIT {
 	}
 
 	@Test
+	void aRunWalksPastMoreKeptContactsThanOneBatchToReachAnExpiredOne() {
+		long venueId = seededVenueId();
+		try {
+			jdbc.update("""
+					INSERT INTO customer (email, full_name, phone, created_at, updated_at)
+					SELECT 'retention-it-kept-' || n || '@example.com', 'Retention Guest', '+355691110900',
+					       TIMESTAMPTZ '2015-01-01', TIMESTAMPTZ '2015-01-01'
+					FROM generate_series(1, ?) AS n
+					""", retention.batchSize() + 1);
+			jdbc.update("""
+					INSERT INTO booking (code, venue_id, set_id, customer_id, booking_date,
+					                     amount_minor, amount_currency, status)
+					SELECT 'RETKEPT' || c.id, ?, ?, c.id, DATE '2099-08-01', 4500, 'EUR', 'CANCELLED'
+					FROM customer c WHERE c.email LIKE 'retention-it-kept-%'
+					""", venueId, seededSetId(venueId));
+			long expired = insertAgedGuest("retention-it-behind-kept@example.com");
+
+			sweep.sweep();
+
+			assertThat(timestamp("SELECT erased_at FROM customer WHERE id = ?", expired))
+					.as("more than a batch of kept contacts at lower ids must not stall the run (#1293)")
+					.isNotNull();
+			assertThat(count("SELECT count(*) FROM customer WHERE email LIKE 'retention-it-kept-%' AND erased_at IS NULL"))
+					.isEqualTo(retention.batchSize() + 1);
+		}
+		finally {
+			jdbc.update("DELETE FROM booking WHERE code LIKE 'RETKEPT%'");
+			jdbc.update("DELETE FROM customer WHERE email LIKE 'retention-it-kept-%'");
+		}
+	}
+
+	@Test
 	void skipsGuestContactClaimedByALiveAccount() {
 		String email = "retention-it-claimed@example.com";
 		long customerId = insertAgedGuest(email);
@@ -231,7 +267,7 @@ class GuestContactRetentionIT {
 		String email = "retention-it-late-signup@example.com";
 		long customerId = insertAgedGuest(email);
 		Instant olderThan = Instant.parse("2020-01-01T00:00:00Z");
-		assertThat(store.expiredGuestCandidates(olderThan, Integer.MAX_VALUE)).contains(new CustomerId(customerId));
+		assertThat(store.expiredGuestCandidates(olderThan, new CustomerId(0), Integer.MAX_VALUE)).contains(new CustomerId(customerId));
 
 		insertAccount(email);
 

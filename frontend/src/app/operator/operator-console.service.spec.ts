@@ -776,6 +776,7 @@ describe('remodel commit error mapping (#1034)', () => {
     moves: [],
     refunds: [],
     releases: [],
+    ended: [],
     staffHolds: [],
     blocks: [],
     keep: [],

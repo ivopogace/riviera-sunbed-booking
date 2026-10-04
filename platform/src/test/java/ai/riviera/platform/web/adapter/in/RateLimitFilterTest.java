@@ -7,14 +7,19 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.context.annotation.Import;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpMethod;
 import org.springframework.http.MediaType;
+import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.test.context.TestPropertySource;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.ResultActions;
+import org.springframework.test.web.servlet.request.AbstractMockHttpServletRequestBuilder;
 
 import java.net.URI;
+import java.nio.charset.StandardCharsets;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -27,6 +32,8 @@ import ch.qos.logback.classic.Level;
 import ch.qos.logback.classic.Logger;
 import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.core.read.ListAppender;
+
+import jakarta.servlet.ServletContext;
 
 import static ai.riviera.platform.WebSliceStubs.fromIp;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -131,7 +138,8 @@ class RateLimitFilterTest {
 				.andExpect(header().exists("Retry-After"))
 				.andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
 				.andExpect(jsonPath("$.code").value("RATE_LIMITED"))
-				.andExpect(jsonPath("$.status").value(429));
+				.andExpect(jsonPath("$.status").value(429))
+				.andExpect(jsonPath("$.instance").doesNotExist());
 	}
 
 	@Test
@@ -724,6 +732,36 @@ class RateLimitFilterTest {
 				.andExpect(jsonPath("$.code").value("RATE_LIMITED"));
 	}
 
+	@Test
+	void anExponentNumericUsernameSharesTheBucketOfItsQuotedTextAsTheControllerBindsIt() throws Exception {
+		// The DTO binds a number's original text, so 1e2 keys as "1e2", never as its parsed value "100.0".
+		String exponent = IDENTITY_SEQ.incrementAndGet() + "e2";
+		rawUsernameLogin("10.49.0.1", exponent).andExpect(status().isUnauthorized());
+		rawUsernameLogin("10.49.0.2", exponent).andExpect(status().isUnauthorized());
+		rawUsernameLogin("10.49.0.3", '"' + exponent + '"')
+				.andExpect(status().isTooManyRequests())
+				.andExpect(jsonPath("$.code").value("RATE_LIMITED"));
+	}
+
+	@Test
+	void contentAfterTheLoginObjectIsRefusedByTheControllerSoItsUnkeyedPassBypassesNothing() throws Exception {
+		// The filter keys no identity on trailing content; that is safe only while binding refuses it too.
+		String username = uniqueUsername();
+		for (int i = 1; i <= 3; i++) {
+			mvc.perform(post("/api/auth/operator/login").with(fromIp("10.50.0." + i)).with(csrf())
+							.contentType(MediaType.APPLICATION_JSON)
+							.content("{\"username\": \"%s\", \"password\": \"nope\"} {}".formatted(username)))
+					.andExpect(status().isBadRequest());
+		}
+	}
+
+	/** An operator login whose {@code username} is the raw JSON {@code value}, number or string. */
+	private ResultActions rawUsernameLogin(String ip, String value) throws Exception {
+		return mvc.perform(post("/api/auth/operator/login").with(fromIp(ip)).with(csrf())
+				.contentType(MediaType.APPLICATION_JSON)
+				.content("{\"username\": %s, \"password\": \"nope\"}".formatted(value)));
+	}
+
 	private ResultActions numericUsernameLogin(String ip) throws Exception {
 		return mvc.perform(post("/api/auth/operator/login").with(fromIp(ip)).with(csrf())
 				.contentType(MediaType.APPLICATION_JSON)
@@ -753,15 +791,155 @@ class RateLimitFilterTest {
 		}
 	}
 
+	// ---- The login body is read to the 8 KiB cap whatever Content-Length says; past it, 413 (#1288) ----
+
+	private static final int LOGIN_BODY_CAP = 8 * 1024;
+
+	/** A login body of exactly {@code size} bytes: the JSON padded with trailing whitespace. */
+	private static String loginBodyOfSize(String field, String identity, int size) {
+		String json = "{\"%s\": \"%s\", \"password\": \"nope-nope\"}".formatted(field, identity);
+		return json + " ".repeat(size - json.length());
+	}
+
+	private ResultActions declaredLengthLogin(String path, String ip, String body) throws Exception {
+		return mvc.perform(post(path).with(fromIp(ip)).with(csrf())
+				.contentType(MediaType.APPLICATION_JSON).content(body));
+	}
+
+	private ResultActions chunkedLogin(String path, String ip, String body) throws Exception {
+		return mvc.perform(new ChunkedRequestBuilder(path).with(fromIp(ip)).with(csrf())
+				.header("Transfer-Encoding", "chunked")
+				.contentType(MediaType.APPLICATION_JSON).content(body));
+	}
+
+	private static void expectBodyTooLarge(ResultActions refused) throws Exception {
+		refused.andExpect(status().is(413))
+				.andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
+				.andExpect(jsonPath("$.code").value("PAYLOAD_TOO_LARGE"))
+				.andExpect(jsonPath("$.status").value(413))
+				.andExpect(jsonPath("$.instance").doesNotExist())
+				.andExpect(header().string(HttpHeaders.CONNECTION, "close"));
+	}
+
 	@Test
-	void oversizedLoginBodySkipsIdentityBufferingButStillAuthenticates() throws Exception {
-		// A login body beyond the 8 KiB buffer cap is not read for an identity (per-IP still applies); the
-		// original, unwrapped stream reaches the controller, which authenticates it (401, empty stub store).
-		String hugePassword = "x".repeat(9000);
-		mvc.perform(post("/api/auth/operator/login").with(fromIp("10.26.0.1")).with(csrf())
-						.contentType(MediaType.APPLICATION_JSON)
-						.content("{\"username\": \"whoever\", \"password\": \"%s\"}".formatted(hugePassword)))
+	void oversizedOperatorLoginIsRefusedWith413AndSpendsNoIdentityToken() throws Exception {
+		String username = uniqueUsername();
+		for (int i = 1; i <= 3; i++) {
+			expectBodyTooLarge(declaredLengthLogin("/api/auth/operator/login", "10.40.0." + i,
+					loginBodyOfSize("username", username, 9000)));
+		}
+		// Never authenticated, so the identity's budget (cap 2) is whole: two failures, then the 429.
+		operatorLogin("10.40.0.4", username).andExpect(status().isUnauthorized());
+		operatorLogin("10.40.0.5", username).andExpect(status().isUnauthorized());
+		operatorLogin("10.40.0.6", username).andExpect(status().isTooManyRequests());
+	}
+
+	@Test
+	void oversizedCustomerLoginIsRefusedWith413() throws Exception {
+		expectBodyTooLarge(declaredLengthLogin("/api/auth/customer/login", "10.41.0.1",
+				loginBodyOfSize("email", uniqueEmail(), 9000)));
+	}
+
+	@Test
+	void aLoginBodyExactlyAtTheCapIsAuthenticatedAndOneByteOverIsRefused() throws Exception {
+		declaredLengthLogin("/api/auth/operator/login", "10.42.0.1",
+				loginBodyOfSize("username", uniqueUsername(), LOGIN_BODY_CAP))
 				.andExpect(status().isUnauthorized());
+		expectBodyTooLarge(declaredLengthLogin("/api/auth/operator/login", "10.42.0.2",
+				loginBodyOfSize("username", uniqueUsername(), LOGIN_BODY_CAP + 1)));
+	}
+
+	@Test
+	void aChunkedOperatorLoginUnderTheCapDrawsOnThePerUsernameBudget() throws Exception {
+		String body = loginBodyOfSize("username", uniqueUsername(), 200);
+		chunkedLogin("/api/auth/operator/login", "10.43.0.1", body).andExpect(status().isUnauthorized());
+		chunkedLogin("/api/auth/operator/login", "10.43.0.2", body).andExpect(status().isUnauthorized());
+		chunkedLogin("/api/auth/operator/login", "10.43.0.3", body)
+				.andExpect(status().isTooManyRequests())
+				.andExpect(jsonPath("$.code").value("RATE_LIMITED"));
+	}
+
+	@Test
+	void aChunkedCustomerLoginUnderTheCapDrawsOnThePerEmailBudget() throws Exception {
+		String body = loginBodyOfSize("email", uniqueEmail(), 200);
+		chunkedLogin("/api/auth/customer/login", "10.44.0.1", body).andExpect(status().isUnauthorized());
+		chunkedLogin("/api/auth/customer/login", "10.44.0.2", body).andExpect(status().isUnauthorized());
+		chunkedLogin("/api/auth/customer/login", "10.44.0.3", body)
+				.andExpect(status().isTooManyRequests())
+				.andExpect(jsonPath("$.code").value("RATE_LIMITED"));
+	}
+
+	@Test
+	void aChunkedLoginOverTheCapIsRefusedWith413OnBothEndpoints() throws Exception {
+		expectBodyTooLarge(chunkedLogin("/api/auth/operator/login", "10.45.0.1",
+				loginBodyOfSize("username", uniqueUsername(), 9000)));
+		expectBodyTooLarge(chunkedLogin("/api/auth/customer/login", "10.45.0.2",
+				loginBodyOfSize("email", uniqueEmail(), 9000)));
+	}
+
+	@Test
+	void aLatin1LoginBodyDrawsOnThePerUsernameBudgetAsTheControllerDecodesIt() throws Exception {
+		byte[] body = "{\"username\": \"%s\", \"password\": \"caf\u00e9\"}".formatted(uniqueUsername())
+				.getBytes(StandardCharsets.ISO_8859_1);
+		MediaType latin1Json = new MediaType(MediaType.APPLICATION_JSON, StandardCharsets.ISO_8859_1);
+		for (int i = 1; i <= 2; i++) {
+			mvc.perform(post("/api/auth/operator/login").with(fromIp("10.46.0." + i)).with(csrf())
+							.contentType(latin1Json).content(body))
+					.andExpect(status().isUnauthorized());
+		}
+		mvc.perform(post("/api/auth/operator/login").with(fromIp("10.46.0.3")).with(csrf())
+						.contentType(latin1Json).content(body))
+				.andExpect(status().isTooManyRequests());
+	}
+
+	@Test
+	void aUsAsciiDeclaredLoginSharesTheUtf8BucketAsTheControllerReadsBothAsUtf8() throws Exception {
+		byte[] body = "{\"email\": \"jos\u00e9-%d@example.com\", \"password\": \"nope-nope\"}"
+				.formatted(IDENTITY_SEQ.incrementAndGet()).getBytes(StandardCharsets.UTF_8);
+		MediaType asciiJson = new MediaType(MediaType.APPLICATION_JSON, StandardCharsets.US_ASCII);
+		MediaType utf8Json = new MediaType(MediaType.APPLICATION_JSON, StandardCharsets.UTF_8);
+		mvc.perform(post("/api/auth/customer/login").with(fromIp("10.48.0.1")).with(csrf())
+						.contentType(asciiJson).content(body))
+				.andExpect(status().isUnauthorized());
+		mvc.perform(post("/api/auth/customer/login").with(fromIp("10.48.0.2")).with(csrf())
+						.contentType(utf8Json).content(body))
+				.andExpect(status().isUnauthorized());
+		mvc.perform(post("/api/auth/customer/login").with(fromIp("10.48.0.3")).with(csrf())
+						.contentType(asciiJson).content(body))
+				.andExpect(status().isTooManyRequests());
+	}
+
+	@Test
+	void aLoginWithAnUnknownCharsetIsRefused415NotAServerError() throws Exception {
+		mvc.perform(post("/api/auth/operator/login").with(fromIp("10.47.0.1")).with(csrf())
+						.contentType("application/json;charset=no-such-charset")
+						.content("{\"username\": \"%s\", \"password\": \"nope\"}".formatted(uniqueUsername())))
+				.andExpect(result -> assertEquals(415, result.getResponse().getStatus()));
+	}
+
+	/** A POST whose request reports no Content-Length, as a chunked body does. */
+	private static final class ChunkedRequestBuilder
+			extends AbstractMockHttpServletRequestBuilder<ChunkedRequestBuilder> {
+
+		ChunkedRequestBuilder(String path) {
+			super(HttpMethod.POST);
+			uri(path);
+		}
+
+		@Override
+		protected MockHttpServletRequest createServletRequest(ServletContext servletContext) {
+			return new MockHttpServletRequest(servletContext) {
+				@Override
+				public int getContentLength() {
+					return -1;
+				}
+
+				@Override
+				public long getContentLengthLong() {
+					return -1;
+				}
+			};
+		}
 	}
 
 	@Test

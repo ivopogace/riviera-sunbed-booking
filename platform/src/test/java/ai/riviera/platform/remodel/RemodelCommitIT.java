@@ -25,6 +25,7 @@ import com.jayway.jsonpath.JsonPath;
 import ai.riviera.platform.EnabledIfDockerAvailable;
 import ai.riviera.platform.SessionLoginSupport;
 import ai.riviera.platform.TestcontainersConfiguration;
+import ai.riviera.platform.venue.vocabulary.SetPrice;
 
 import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.not;
@@ -240,6 +241,81 @@ class RemodelCommitIT {
 	}
 
 	@Test
+	void aNothingLeftClaimEndsQuietlyFreesWhatItHeldAndItsSetRetires() throws Exception {
+		long venue = createVenue("Nothing Left Club");
+		putLayout(venue, layout(0, cell("A", 1, 1), cell("A", 2, 2)));
+		List<Long> ids = setIds(venue);
+		long a1 = ids.get(0);
+		long a2 = ids.get(1);
+		LocalDate first = today.plusDays(10);
+		long spent = everyDayRefunded(venue, a1, first);
+		long token = currentSetVersion(venue);
+		String body = layout(token, cell("A", 2, 2));
+
+		MvcResult preview = mvc.perform(post("/api/venues/{v}/beach-map/preview", venue).cookie(operatorSession)
+						.with(csrf()).contentType(MediaType.APPLICATION_JSON).content(body))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.ended.length()").value(1))
+				.andExpect(jsonPath("$.ended[0].bookingId").value(spent))
+				.andExpect(jsonPath("$.ended[0].from.setId").value(a1))
+				.andExpect(jsonPath("$.moves.length()").value(0))
+				.andExpect(jsonPath("$.refunds.length()").value(0))
+				.andExpect(jsonPath("$.releases.length()").value(0))
+				.andExpect(jsonPath("$.feeTotal.minorUnits").value(0))
+				.andReturn();
+		String previewToken = JsonPath.read(preview.getResponse().getContentAsString(), "$.previewToken");
+
+		MvcResult result = mvc.perform(commit(venue, body, previewToken, 0, ""))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.ended.length()").value(1))
+				.andExpect(jsonPath("$.ended[0].bookingId").value(spent))
+				.andExpect(jsonPath("$.refunds.length()").value(0))
+				.andExpect(jsonPath("$.refundedTotal").value(org.hamcrest.Matchers.nullValue()))
+				.andExpect(jsonPath("$.feeTotal").value(org.hamcrest.Matchers.nullValue()))
+				.andReturn();
+		long receipt = ((Number) JsonPath.read(result.getResponse().getContentAsString(), "$.receiptId")).longValue();
+
+		assertEquals("CANCELLED", statusOf(spent));
+		assertEquals("VENUE_CHANGE", reasonOf(spent));
+		assertEquals(0L, refundOf(spent), "nothing was left to refund");
+		for (int day = 0; day < 3; day++) {
+			assertEquals(0, holds(a1, first.plusDays(day)), "every day it still held is freed, the released one stays free");
+			assertEquals(0, holds(a2, first.plusDays(day)), "the free set was never reserved for it");
+		}
+		assertEquals(List.of("NOTHING_LEFT:0:0"), jdbc.sql("""
+				SELECT kind || ':' || amount_minor || ':' || fee_minor FROM remodel_receipt_outcome WHERE receipt_id = :r
+				""").param("r", receipt).query(String.class).list());
+		assertTrue(retired(a1), "no SETS_IN_USE: the ended booking no longer pins the set");
+		assertEquals(0, bookingCancelledPublicationsFor(spent), "no BookingCancelled, so no mail, ledger entry or void");
+		assertEquals(1, ledgerRowsFor(spent), "only the confirmation's accrual: no reversal, no fee (#9)");
+	}
+
+	@Test
+	void aBookingWhoseLastDayIsRefundedAfterThePreviewMakesTheCommitStale() throws Exception {
+		long venue = createVenue("Late Refund Club");
+		putLayout(venue, layout(0, cell("A", 1, 1), cell("A", 2, 2)));
+		List<Long> ids = setIds(venue);
+		LocalDate day = today.plusDays(10);
+		long booking = claimOn(venue, ids.get(0), day, "CONFIRMED");
+		seedHold(ids.get(1), day, "STAFF_MARKED");
+		long token = currentSetVersion(venue);
+		String body = layout(token, cell("A", 2, 2));
+		String previewToken = previewToken(venue, body);
+		jdbc.sql("""
+				UPDATE booking_day SET refunded_at = now(), refund_minor = 2000, refund_reason = 'WEATHER'
+				WHERE booking_id = :b
+				""").param("b", booking).update();
+
+		mvc.perform(commit(venue, body, previewToken, 1, "Re-laying row A"))
+				.andExpect(status().isConflict())
+				.andExpect(jsonPath("$.code").value("STALE_PREVIEW"))
+				.andExpect(jsonPath("$.preview.ended[0].bookingId").value(booking))
+				.andExpect(jsonPath("$.preview.refunds.length()").value(0));
+
+		assertEquals("CONFIRMED", statusOf(booking), "a stale commit writes nothing");
+	}
+
+	@Test
 	void refusesACommitWithRefundsThatIsNotTypedOut() throws Exception {
 		long venue = createVenue("Unconfirmed Club");
 		putLayout(venue, layout(0, cell("A", 1, 1), cellWalkIn("A", 2, 2)));
@@ -391,6 +467,28 @@ class RemodelCommitIT {
 	}
 
 	@Test
+	void aCommitThatShiftsARowDownToAddASetInFrontApplies() throws Exception {
+		long venue = createVenue("Shift Commit Club");
+		putLayout(venue, layout(0, cell("A", 1, 2), cell("A", 2, 3)));
+		List<Long> ids = setIds(venue);
+		long token = currentSetVersion(venue);
+		// The old A1 takes A2 while the old A2 still holds it; the write must park the holder too.
+		String body = layout(token, cell("A", 1, 1), cell("A", 2, 2), cell("A", 3, 3));
+		String previewToken = previewToken(venue, body);
+
+		mvc.perform(commit(venue, body, previewToken))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.moves.length()").value(0));
+
+		List<Long> after = setIds(venue);
+		assertEquals(List.of(ids.get(0), ids.get(1)), after.subList(1, 3), "the kept sets keep their ids");
+		assertEquals(List.of(1, 2, 3), jdbc.sql(
+				"SELECT position_no FROM active_set_position WHERE venue_id = :v ORDER BY grid_x")
+				.param("v", venue).query(Integer.class).list());
+		assertEquals(token + 1, currentSetVersion(venue), "the save spent the token once");
+	}
+
+	@Test
 	void aStaffHoldIsStale() throws Exception {
 		long held = createVenue("Held Club");
 		putLayout(held, layout(0, cell("A", 1, 1), cell("A", 2, 2)));
@@ -437,6 +535,40 @@ class RemodelCommitIT {
 		assertEquals(token, currentSetVersion(venue));
 	}
 
+	@Test
+	void aCellPricedBelowTheFloorOrOutsideEurIsRefusedAndWritesNothing() throws Exception {
+		long venue = createVenue("Price Floor Club");
+		putLayout(venue, layout(0, cell("A", 1, 1), cell("A", 2, 2)));
+		long token = currentSetVersion(venue);
+
+		for (String price : List.of("{\"minorUnits\":49,\"currency\":\"EUR\"}",
+				"{\"minorUnits\":3000,\"currency\":\"ALL\"}")) {
+			String body = layout(token, cell("A", 1, 1), pricedCell("A", 2, 2, price));
+			mvc.perform(commit(venue, body, previewToken(venue, body)))
+					.andExpect(status().isBadRequest())
+					.andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
+					.andExpect(jsonPath("$.code").value("INVALID_REQUEST"));
+		}
+
+		assertEquals(token, currentSetVersion(venue));
+		assertEquals(List.of(2000L, 2000L), pricesOf(venue));
+		assertEquals(0, receiptsOf(venue));
+	}
+
+	@Test
+	void aCellPricedAtTheFloorCommits() throws Exception {
+		long venue = createVenue("Floor Price Club");
+		putLayout(venue, layout(0, cell("A", 1, 1), cell("A", 2, 2)));
+		long token = currentSetVersion(venue);
+		String body = layout(token, cell("A", 1, 1),
+				pricedCell("A", 2, 2, "{\"minorUnits\":" + SetPrice.MIN_PRICE_MINOR + ",\"currency\":\"EUR\"}"));
+
+		mvc.perform(commit(venue, body, previewToken(venue, body))).andExpect(status().isOk());
+
+		assertEquals(token + 1, currentSetVersion(venue));
+		assertEquals(List.of(2000L, SetPrice.MIN_PRICE_MINOR), pricesOf(venue));
+	}
+
 	private org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder commit(long venue, String body,
 			String previewToken) {
 		String content = previewToken == null ? body
@@ -459,6 +591,46 @@ class RemodelCommitIT {
 		long id = seedBooking(venueId, setId, "CMT-" + System.nanoTime(), status, date);
 		seedHold(setId, date, "BOOKED_ONLINE");
 		return id;
+	}
+
+	/**
+	 * A confirmed three-day booking on {@code setId} from {@code first} whose every day is refunded: the first and last
+	 * by weather (still held), the middle by the venue (released), plus its accrual (#1300).
+	 */
+	private long everyDayRefunded(long venueId, long setId, LocalDate first) {
+		long customerId = jdbc.sql("INSERT INTO customer (email, full_name, phone) VALUES (:e, 'Guest', '+355000') RETURNING id")
+				.param("e", "spent-" + System.nanoTime() + "@example.test").query(Long.class).single();
+		long id = jdbc.sql("""
+				INSERT INTO booking (code, venue_id, set_id, customer_id, booking_date, last_date,
+				                     amount_minor, amount_currency, status, confirmed_at)
+				VALUES (:code, :v, :s, :c, :first, :last, 6000, 'EUR', 'CONFIRMED', now())
+				RETURNING id
+				""")
+				.param("code", "CMT-" + System.nanoTime()).param("v", venueId).param("s", setId).param("c", customerId)
+				.param("first", first).param("last", first.plusDays(2))
+				.query(Long.class).single();
+		seedHold(setId, first, "BOOKED_ONLINE");
+		seedHold(setId, first.plusDays(2), "BOOKED_ONLINE");
+		jdbc.sql("""
+				UPDATE booking_day
+				SET refunded_at = now(), refund_minor = 2000,
+				    refund_reason = CASE WHEN service_date = :middle THEN 'VENUE' ELSE 'WEATHER' END,
+				    released_at = CASE WHEN service_date = :middle THEN now() END,
+				    refunded_by_operator_id = CASE WHEN service_date = :middle THEN 1 END
+				WHERE booking_id = :b
+				""").param("middle", first.plusDays(1)).param("b", id).update();
+		seedAccrual(venueId, id);
+		return id;
+	}
+
+	/** {@code BookingCancelled} publications for the booking, outstanding or completed. */
+	private int bookingCancelledPublicationsFor(long bookingId) {
+		return jdbc.sql("""
+				SELECT (SELECT COUNT(*) FROM event_publication
+				        WHERE event_type LIKE '%.BookingCancelled' AND serialized_event::jsonb -> 'bookingId' ->> 'value' = :id)
+				     + (SELECT COUNT(*) FROM event_publication_archive
+				        WHERE event_type LIKE '%.BookingCancelled' AND serialized_event::jsonb -> 'bookingId' ->> 'value' = :id)
+				""").param("id", String.valueOf(bookingId)).query(Integer.class).single();
 	}
 
 	/** The accrual a confirmed booking would already carry, so the reversal has its mirror. */
@@ -505,10 +677,19 @@ class RemodelCommitIT {
 	}
 
 	private static String cell(String rowLabel, int positionNo, int gridX) {
+		return pricedCell(rowLabel, positionNo, gridX, "{\"minorUnits\":2000,\"currency\":\"EUR\"}");
+	}
+
+	private static String pricedCell(String rowLabel, int positionNo, int gridX, String price) {
 		return """
 				{"rowLabel":"%s","positionNo":%d,"tier":"STANDARD","pool":"ONLINE",
-				 "price":{"minorUnits":2000,"currency":"EUR"},"gridX":%d,"gridY":1}
-				""".formatted(rowLabel, positionNo, gridX);
+				 "price":%s,"gridX":%d,"gridY":1}
+				""".formatted(rowLabel, positionNo, price, gridX);
+	}
+
+	private List<Long> pricesOf(long venueId) {
+		return jdbc.sql("SELECT price_minor FROM active_set_position WHERE venue_id = :v ORDER BY grid_y, grid_x")
+				.param("v", venueId).query(Long.class).list();
 	}
 
 	private static String cellWalkIn(String rowLabel, int positionNo, int gridX) {

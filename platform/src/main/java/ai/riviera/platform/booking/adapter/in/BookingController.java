@@ -1,6 +1,5 @@
 package ai.riviera.platform.booking.adapter.in;
 
-import java.net.URI;
 import java.time.LocalDate;
 
 import org.springframework.format.annotation.DateTimeFormat;
@@ -94,7 +93,7 @@ class BookingController {
 
 	/**
 	 * Cancel a booking by its code; refund computed server-side (invariant #10), no body.
-	 * {@code Cancelled}→200, {@code NotFound}→404, {@code NotCancellable}/{@code WindowClosed}→409
+	 * {@code Cancelled}→200, {@code NotFound}→404, {@code NotCancellable}/{@code WindowClosed}/{@code NothingLeft}→409
 	 * under distinct codes. The code is the bearer credential (invariant #7), never logged.
 	 */
 	@PostMapping("/{code}/cancel")
@@ -109,6 +108,8 @@ class BookingController {
 			case CancelOutcome.WindowClosed ignored ->
 					error(HttpStatus.CONFLICT, "CANCELLATION_WINDOW_CLOSED",
 							"Cancellation closed when the booking date began.");
+			case CancelOutcome.NothingLeft ignored -> error(HttpStatus.CONFLICT, "NOTHING_LEFT",
+					"Every day of this booking has already been refunded, so there is nothing left to cancel.");
 		};
 	}
 
@@ -153,18 +154,11 @@ class BookingController {
 			// accepts. The guest tracks status (and later pays) via the code-gated view.
 			case BookingOutcome.Requested requested -> ResponseEntity.status(HttpStatus.ACCEPTED)
 					.body(RequestedView.of(requested.confirmation(), requested.requestExpiresAt()));
-			case BookingOutcome.Rejected rejected -> Rejections.respond(rejected, BOOKINGS_PATH);
+			case BookingOutcome.Rejected rejected -> Rejections.respond(rejected);
 		};
 	}
 
-	/**
-	 * Code-scoped paths carry the booking code, a bearer credential (invariant #7).
-	 * {@link ApiProblem} redacts {@code instance}; this overrides it with the known-safe collection
-	 * path, more telling than the placeholder. ITs assert the code never appears in an error body.
-	 */
-	private static final URI BOOKINGS_PATH = URI.create("/api/bookings");
-
 	private static ResponseEntity<ProblemDetail> error(HttpStatus status, String code, String detail) {
-		return ApiProblem.responseAt(status, code, detail, BOOKINGS_PATH);
+		return ApiProblem.response(status, code, detail);
 	}
 }

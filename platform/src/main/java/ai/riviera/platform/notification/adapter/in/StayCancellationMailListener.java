@@ -12,6 +12,7 @@ import org.springframework.transaction.event.TransactionalEventListener;
 
 import ai.riviera.platform.booking.api.BookingNotificationFacts;
 import ai.riviera.platform.booking.events.StayCancelled;
+import ai.riviera.platform.booking.vocabulary.RefundReason;
 import ai.riviera.platform.booking.vocabulary.StayConfirmationFacts;
 import ai.riviera.platform.notification.application.BookingMailFactsService;
 import ai.riviera.platform.notification.application.MissingBookingFact;
@@ -20,10 +21,11 @@ import ai.riviera.platform.notification.application.TransactionalMailService;
 import ai.riviera.platform.monitoring.vocabulary.ObservabilityMetrics;
 
 /**
- * Mails a stitched stay's one cancellation record on {@link StayCancelled}: the stay's code and span with the
- * event's summed refund, on {@link BookingCancellationMailListener}'s terms (after commit, on the mail executor,
- * no {@code @Transactional}, at-least-once, a missing fact skipped and a transport failure propagated).
- * Never log the code (invariant #7).
+ * Mails a stitched stay's one cancellation record on {@link StayCancelled}: the stay's code with the span of its live
+ * remainder, the whole stay when nothing is live ({@code stayCancellationFacts}), and the event's summed refund, on
+ * {@link BookingCancellationMailListener}'s terms (after commit, on the mail executor, no {@code @Transactional},
+ * at-least-once, a missing fact skipped and a transport failure propagated), with a rebook link only when a remodel
+ * ended a stretch of that span (a {@code VENUE_CHANGE} the guest's free exit shares). Never log the code (#7).
  */
 @Component
 class StayCancellationMailListener {
@@ -46,16 +48,22 @@ class StayCancellationMailListener {
 	@Async(RegistryMailExecutorConfig.MAIL_EXECUTOR)
 	@TransactionalEventListener(id = "notification.mail-on-stay-cancelled")
 	void on(StayCancelled event) {
-		Optional<StayConfirmationFacts> stay = bookings.stayConfirmationFacts(event.stayId());
+		Optional<StayConfirmationFacts> stay = bookings.stayCancellationFacts(event.stayId());
 		if (stay.isEmpty()) {
 			abandon(MissingBookingFact.NO_BOOKING, event);
 			return;
 		}
-		switch (facts.resolveStayCancellation(stay.get(), event.refundMinor(), event.currency(), event.reason())) {
+		switch (facts.resolveStayCancellation(stay.get(), event.refundMinor(), event.currency(), event.reason(),
+				endedByRemodel(event, stay.get()))) {
 			case StayCancellationMailFacts.Missing(MissingBookingFact fact) -> abandon(fact, event);
 			case StayCancellationMailFacts.Resolved resolved -> mails.sendBookingCancellation(resolved.toEmail(),
 					resolved.mail());
 		}
+	}
+
+	private boolean endedByRemodel(StayCancelled event, StayConfirmationFacts stay) {
+		return event.reason() == RefundReason.VENUE_CHANGE
+				&& stay.stops().stream().anyMatch(stop -> bookings.endedByRemodel(stop.bookingId()));
 	}
 
 	/** Returning normally completes the publication: the counter and the line are the only record. */

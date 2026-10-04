@@ -28,6 +28,7 @@ import ai.riviera.platform.booking.application.remodel.NewReceipt;
 import ai.riviera.platform.booking.application.remodel.ReceiptOutcome;
 import ai.riviera.platform.booking.application.remodel.ReceiptOutcomeKind;
 import ai.riviera.platform.booking.application.remodel.RemodelReceipts;
+import ai.riviera.platform.booking.events.BookingCancelled;
 import ai.riviera.platform.booking.vocabulary.BookingId;
 import ai.riviera.platform.booking.vocabulary.RefundReason;
 import ai.riviera.platform.booking.vocabulary.SpotRef;
@@ -230,13 +231,13 @@ class BookingCancellationMailIT {
 	 * needed — a constant that drifts from reality makes the admin re-drive silently skip every
 	 * cancellation mail it is supposed to reach.
 	 *
-	 * <p><strong>Read from {@code event_publication_archive}, not {@code event_publication}.</strong>
-	 * The deployment runs {@code completion-mode=archive} (V8 ships both tables), so a delivered mail's
-	 * row is <em>moved</em> the moment the listener returns and the live table is empty by the time
-	 * this asserts. {@code RegistryMailBulkheadIT} reads the live table instead because it wedges the
-	 * transport first, deliberately keeping the row outstanding; here the send succeeds, so the archive
-	 * is the only place the id exists — and it is the better one to check, since it is the id a
-	 * <em>completed</em> publication is recorded under.
+	 * <p><strong>Poll {@code event_publication_archive}, not {@code event_publication}.</strong>
+	 * The deployment runs {@code completion-mode=archive} (V8 ships both tables): the row is
+	 * <em>moved</em> once the listener returns. Neither the archive row nor the mail implies the other
+	 * here (#1386), so both are awaited together. {@code RegistryMailBulkheadIT}
+	 * reads the live table instead because it wedges the transport first, deliberately keeping the row
+	 * outstanding; here the send succeeds, so the archive is the only place the id exists — and it is the
+	 * id a <em>completed</em> publication is recorded under.
 	 */
 	@Test
 	void theRegistryWritesTheListenerIdTheReDriveScopesOn() {
@@ -249,14 +250,20 @@ class BookingCancellationMailIT {
 		fixtures.publishInTransaction(fixtures.cancellationOf(
 				new BookingMailFixtures.SetRef(set.setId(), set.venueId()), bookingId, date, 7334L,
 				RefundReason.POLICY));
-		Awaitility.await().atMost(WAIT).until(() -> countTo(guest) == 1L);
 
-		assertThat(jdbc.sql("SELECT DISTINCT listener_id FROM event_publication_archive "
-						+ "WHERE serialized_event LIKE :fragment AND listener_id LIKE :module")
-				.param("fragment", "%7334%")
-				.param("module", "notification.%")
-				.query(String.class).list())
-				.containsExactly(BookingMailFixtures.CANCELLATION_LISTENER_ID);
+		Awaitility.await().atMost(WAIT).untilAsserted(() -> {
+			List<String> archived = jdbc.sql(
+					"SELECT DISTINCT listener_id FROM event_publication_archive "
+							+ "WHERE event_type = :type AND serialized_event LIKE :fragment AND listener_id LIKE :module")
+					.param("type", BookingCancelled.class.getName())
+					.param("fragment", "%7334%")
+					.param("module", "notification.%")
+					.query(String.class).list();
+			long mails = countTo(guest);
+			assertThat(archived).as("archived notification listener ids (mails to %s: %s)", guest, mails)
+					.containsExactly(BookingMailFixtures.CANCELLATION_LISTENER_ID);
+			assertThat(mails).as("mails to %s, with the archive holding %s", guest, archived).isEqualTo(1L);
+		});
 	}
 
 	/**

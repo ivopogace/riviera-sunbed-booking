@@ -44,7 +44,9 @@ model in `docs/architecture/domain-model.md`.
   `LIGHTBOX` and the operator preview carry one each — the lightbox's near-square box already is a
   high-density size. A double-density or lightbox rendition that would be larger than the upload
   is never made, so a small photo may lack them. Each is a fit-within-resized JPEG served by its
-  **content hash** at a public URL (`/api/venues/{venueId}/photos/{hash}`); a replace mints new
+  **content hash** at a public URL (`/api/venues/{venueId}/photos/{hash}`) while the venue is
+  tourist-visible (a hidden venue's photo answers `404`, a conditional request included, except to
+  its owner or an admin); a replace mints new
   hashes → new URLs, and a removed variant stops being served rather than outliving its removal in
   caches. A photo uploaded before a surface or a density existed keeps the renditions it was
   given: the full-res original is discarded at upload, so nothing can be re-derived from it.
@@ -174,7 +176,7 @@ model in `docs/architecture/domain-model.md`.
   the operator never saw makes the preview **stale**, and the save answers the fresh picture instead.
 - **Commit receipt** — the record of one saved remodel: when it was saved, by whom, every booking it
   moved with the spot the guest was told before, the spot they hold now and the distance, every
-  claim it ended instead — refunded, released or declined — with the amount, the operator's reason
+  claim it ended instead — refunded, released, declined or with **nothing left** — with the amount, the operator's reason
   and the total returned, and every **kept claim** with why it stayed. Kept after the old set is retired, so the guest's page, their mail and the
   console still name the spot they were told; readable from the console as **past remodels**. There
   is no undo — a move is reversed by another remodel.
@@ -185,18 +187,26 @@ model in `docs/architecture/domain-model.md`.
   the guest is mailed a link to book again — that venue's map for the same day, or the discovery
   list for it when the venue cannot sell that day. The operator authorises it by typing how many
   refunds the preview named and why; both go on the **commit receipt**. An unpaid booking in the
-  same position is **released** — mailed the same way, link and all — and a pending request is
+  same position is **released** — mailed the same way, link and all; one unpaid stretch of a
+  **stitched stay** takes the stay's other unpaid stretches with it, since one payment collects for
+  the stay, and the stay is mailed once — and a pending request is
   **declined**, which keeps the mail a decline has always sent and no link. Neither collected
   anything, so neither returns money and the payout ledger is untouched. Distinct from the **weather
   refund**, which is the venue operator's answer to a storm, and from the guest's own **free exit**,
   which is the same reason from the other side.
+- **Nothing left** — a **confirmed** booking every day of which a **day refund** has already given back,
+  as a saved remodel finds it outside the **frozen** zone: ended rather than moved or refunded, since there is
+  nothing to return — no money moves, no **fee**, no mail, and any day it still held is freed for another guest.
+  It has its own group on the preview and the **commit receipt** and never counts toward the refunds the
+  operator types. One day still the guest's, even one whose share is zero, is not nothing left.
+  _Avoid_: zero refund, empty refund, fully refunded.
 - **Moved booking** — a booking a saved remodel re-seated on another set for the same span: its
   code, price and dates are unchanged, the guest is mailed the new spot, and the booking carries
   when it moved and opens a **free exit**.
 - **Free exit** — a moved guest's right to cancel for a **full refund whatever the refund tier would
   say**, from the move until the earliest of: the service day opening (for a stitched stay's later
-  stretch, the stay's first day opening), and the later of 12:00 (`Europe/Tirane`) the day before
-  and 24 hours after the move. It lifts the refund tier only — it
+  stretch, the opening of the day the stay's **live remainder** is judged on), and the later of 12:00
+  (`Europe/Tirane`) the day before and 24 hours after the move. It lifts the refund tier only — it
   never reopens a closed **cancellation window** — and a cancellation that takes it is a refund by
   reason **venue change**.
 - **Set** — the bookable unit: **2 loungers + 1 umbrella**, full day, tied to a set
@@ -274,9 +284,13 @@ model in `docs/architecture/domain-model.md`.
   runs) with a **move** between each: a different set on a different morning, never within a day.
   Booked as a **group of bookings**, one per stretch, under one `stay` row that carries the guest's
   one code (ADR-0024); paid once, confirmed by one mail naming every stop, cancelled whole by one mail with the total, refunded
-  per stretch on the stay's first day's window. The plan is the **itinerary search**'s answer: fewest moves, then shortest (same row,
+  per stretch on the stay's first day's window (the **live remainder**'s, once a remodel ended a stretch). The plan is the
+  **itinerary search**'s answer: fewest moves, then shortest (same row,
   closest position, closest row), within the **move budget** (`riviera.itinerary.max-switches`,
   default and ceiling three), anchored on a tapped set when the tourist plans around it.
+- **Live remainder** — the stretches of a stitched stay a guest cancel still reaches: every stretch a
+  remodel has not already ended, judged on the first of them. A stretch ended any other way is not set
+  aside, and the stay refuses whole.
 - **Move reminder** — the one mail a stitched stay's guest gets the evening before each **move**,
   naming tomorrow's set and how far it is from today's (rows and positions, off the live map); the
   booking page carries the same fact as **your spot today**, leading with the set the guest holds
@@ -322,7 +336,9 @@ model in `docs/architecture/domain-model.md`.
   a delivered stay counts a no-show too. The exceptions are the venue's **weather refund**, which
   reaches a no-show on purpose — on a washed-out day those are the guests who stayed home because
   of the storm — and its own **venue day refund**, which may reach a missed day by decision: a guest
-  who stayed away because of the venue is a day the venue may make good after the fact.
+  who stayed away because of the venue is a day the venue may make good after the fact. A booking whose
+  **every** day was refunded that way still resolves `NO_SHOW` in storage, but has *nothing left*
+  (ADR-0026 §7): the guest page shows it as **Refunded**, offers no cancel and nothing to review.
 - **Sales close** — the moment a venue's online sales for a date close, on the date
   itself: a per-venue setting fixed at one of three wall-clock values (00:01 opts the
   venue out of same-day sales, 16:00 the default, or 23:59), `Europe/Tirane`. The point
@@ -369,7 +385,7 @@ model in `docs/architecture/domain-model.md`.
   remodel refunding a booking it could not move, or a **moved booking**'s guest taking their
   **free exit**. Flat, platform-wide, and charged once per booking beside the reversal. It is not
   part of what the guest got back, and it is charged only where money was returned — a release or
-  a decline collected nothing, so neither is charged. Its amount is a **platform setting**: a
+  a decline collected nothing and a booking with **nothing left** returns nothing, so none is charged. Its amount is a **platform setting**: a
   change applies to every fee charged after it, and fees already charged keep what they were
   charged at.
 - **Platform setting** — a value the platform sets for itself, where every other setting belongs to
@@ -397,7 +413,7 @@ model in `docs/architecture/domain-model.md`.
   server-side, and only within the **cancellation window**.
 - **Cancellation window** — how long a confirmed booking may be cancelled at all:
   from booking until `00:00 Europe/Tirane` on the first service day (a stitched stay's stretches
-  are all judged on the stay's first day), in the named phases
+  are all judged on the stay's first day, or on its **live remainder**'s), in the named phases
   (`booking.vocabulary.CancellationWindow`): **FREE** (before the cutoff — the *full*
   refund tier), **LATE** (cutoff passed, service day not open — the *partial*/*none*
   tier), **CLOSED** (the service day has opened — the cancellation is refused outright,

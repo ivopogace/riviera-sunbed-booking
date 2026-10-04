@@ -15,16 +15,16 @@ import ai.riviera.platform.venue.vocabulary.VenueId;
 
 /** A stay as stored: the group's code (invariant #7), venue and span, and its stretches' bookings in day order. */
 public record StayRecord(StayId id, String code, VenueId venueId, LocalDate firstDay, LocalDate lastDay,
-		List<BookingRecord> stretches) {
+		List<BookingRecord> stretches) implements AccountBooking {
 
 	public StayRecord {
 		stretches = List.copyOf(stretches);
 	}
 
 	/**
-	 * The stay read as one booking: its code and span, {@link StayStatus} over the stretches, the first
-	 * stretch's spot, birth and request deadline and reason (answered whole, #1267), money and refunds
-	 * summed, the latest cancellation or move.
+	 * The stay read as one booking: code, span, {@link StayStatus}, the first stretch's spot, birth, request deadline and
+	 * reason (#1267), money and refunds summed, the latest cancellation or move; never nothing left, which for a stay is
+	 * {@link ai.riviera.platform.booking.application.cancel.LiveRemainder.Split#nothingLeft()}'s.
 	 */
 	public BookingRecord asBooking() {
 		BookingRecord first = stretches.getFirst();
@@ -36,7 +36,7 @@ public record StayRecord(StayId id, String code, VenueId venueId, LocalDate firs
 		return new BookingRecord(first.id(), code, status, venueId, first.setId(), first.customerId(), firstDay, lastDay,
 				amount, first.currency(), latest(BookingRecord::cancelledAt), refund, first.requestExpiresAt(),
 				latestCancelReason(), first.createdAt(), first.acceptedAt(), latest(BookingRecord::movedAt),
-				first.declineReason(), dayRefunded);
+				first.declineReason(), dayRefunded, false);
 	}
 
 	private RefundReason latestCancelReason() {

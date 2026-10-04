@@ -31,12 +31,11 @@ import ai.riviera.platform.venue.vocabulary.VenueId;
 import ai.riviera.platform.venue.vocabulary.VenueStayFacts;
 
 /**
- * JDBC adapter implementing the {@link SetBookingFacts} port directly (invariant #1, no JPA; a
- * single adapter is a hypothetical seam). Its own class rather than a third surface on
- * {@link JdbcVenueCatalog} because the two read the set table differently: every catalogue read
- * forgets a retired set, while the facts reads must keep answering for one — a booking, a mail
- * and the staff lookup still name the spot the guest was told (ADR-0019). The fitness function
- * that holds every other set read to the active view exempts the class implementing this port.
+ * JDBC adapter implementing {@link SetBookingFacts} (invariant #1). Two statements read
+ * {@code set_position} bare and are exempt by name in {@code RetiredSetExclusionArchitectureTests}
+ * (ADR-0019): {@code SET_BOOKING_INFO_SELECT}, so a booking on a retired set still resolves to the
+ * spot its guests were told, and {@code VENUES_OF_SETS_LOCK}, which hands out no set. Every other
+ * statement here is held like any other class's: the view, or {@code retired_at IS NULL}.
  */
 @Repository
 class JdbcSetBookingFacts implements SetBookingFacts {
@@ -48,15 +47,42 @@ class JdbcSetBookingFacts implements SetBookingFacts {
 	private static final String COL_PRICE_MINOR = "price_minor";
 	private static final String COL_PRICE_CURRENCY = "price_currency";
 
-	/** The set-facts row shared by the single-id and batch reads — one SQL shape, one mapper. */
-	private static final String SET_BOOKING_INFO_SELECT = """
+	/** The set-facts columns shared by every booking-info read — one SQL shape, one mapper. */
+	private static final String SET_BOOKING_INFO_COLUMNS = """
 			SELECT sp.id AS set_id, sp.venue_id, v.name AS venue_name, sp.row_label,
 			       sp.position_no, sp.pool, sp.price_minor, sp.price_currency, v.booking_cutoff,
 			       v.sales_close, v.booking_mode, v.closed_at, v.reopen_on, v.advance_sales,
 			       v.max_stay_days
+			""";
+
+	/** Exempt by name: the booking-info read still answers for a retired set with the spot its guests were told. */
+	private static final String SET_BOOKING_INFO_SELECT = SET_BOOKING_INFO_COLUMNS + """
 			FROM set_position sp
 			JOIN venue v ON v.id = sp.venue_id
 			""";
+
+	/**
+	 * The ForReserve twins' venue lock, exempt by name because it hands out no set: it locks venues, and
+	 * the view read that follows is the retired-set fence.
+	 */
+	private static final String VENUES_OF_SETS_LOCK = """
+			SELECT v.id FROM venue v
+			WHERE v.id IN (SELECT sp.venue_id FROM set_position sp WHERE sp.id IN (:setIds))
+			ORDER BY v.id
+			FOR SHARE
+			""";
+
+	/** The reserve's booking-info read selects the active map: a retired set is no spot to book (#1284). */
+	private static final String ACTIVE_SET_BOOKING_INFO_SELECT = SET_BOOKING_INFO_COLUMNS + """
+			FROM active_set_position sp
+			JOIN venue v ON v.id = sp.venue_id
+			""";
+
+	/**
+	 * The reserve's set lock, as {@link #poolForClaim}'s: a single-set retire holds the row {@code FOR UPDATE}
+	 * without the venue lock, so the reserve waits for it here and the view predicate is re-checked after the wait.
+	 */
+	private static final String RESERVE_SET_LOCK = " FOR KEY SHARE OF sp";
 
 	/** The spot reads select the active map: a retired set is neither a claim's spot nor a candidate. */
 	private static final String ACTIVE_SPOTS_SELECT = """
@@ -106,34 +132,42 @@ class JdbcSetBookingFacts implements SetBookingFacts {
 
 	@Override
 	public Optional<SetBookingInfo> setBookingInfo(SetId setId) {
-		return jdbc.sql(SET_BOOKING_INFO_SELECT + "WHERE sp.id = :id")
-				.param("id", setId.value())
-				.query(JdbcSetBookingFacts::mapSetBookingInfo)
-				.optional();
+		return bookingInfo(SET_BOOKING_INFO_SELECT, setId, "");
 	}
 
 	@Override
 	public Map<SetId, SetBookingInfo> setBookingInfos(Collection<SetId> setIds) {
-		if (setIds.isEmpty()) {
-			return Map.of();
-		}
-		return jdbc.sql(SET_BOOKING_INFO_SELECT + "WHERE sp.id IN (:setIds)")
-				.param("setIds", setIds.stream().map(SetId::value).toList())
-				.query(JdbcSetBookingFacts::mapSetBookingInfo)
-				.list().stream()
-				.collect(Collectors.toMap(SetBookingInfo::setId, info -> info));
+		return bookingInfos(SET_BOOKING_INFO_SELECT, setIds, "");
 	}
 
 	@Override
 	public Optional<SetBookingInfo> setBookingInfoForReserve(SetId setId) {
 		lockVenuesOf(List.of(setId));
-		return setBookingInfo(setId);
+		return bookingInfo(ACTIVE_SET_BOOKING_INFO_SELECT, setId, RESERVE_SET_LOCK);
 	}
 
 	@Override
 	public Map<SetId, SetBookingInfo> setBookingInfosForReserve(Collection<SetId> setIds) {
 		lockVenuesOf(setIds);
-		return setBookingInfos(setIds);
+		return bookingInfos(ACTIVE_SET_BOOKING_INFO_SELECT, setIds, " ORDER BY sp.id" + RESERVE_SET_LOCK);
+	}
+
+	private Optional<SetBookingInfo> bookingInfo(String select, SetId setId, String tail) {
+		return jdbc.sql(select + "WHERE sp.id = :id" + tail)
+				.param("id", setId.value())
+				.query(JdbcSetBookingFacts::mapSetBookingInfo)
+				.optional();
+	}
+
+	private Map<SetId, SetBookingInfo> bookingInfos(String select, Collection<SetId> setIds, String tail) {
+		if (setIds.isEmpty()) {
+			return Map.of();
+		}
+		return jdbc.sql(select + "WHERE sp.id IN (:setIds)" + tail)
+				.param("setIds", setIds.stream().map(SetId::value).toList())
+				.query(JdbcSetBookingFacts::mapSetBookingInfo)
+				.list().stream()
+				.collect(Collectors.toMap(SetBookingInfo::setId, info -> info));
 	}
 
 	@Override
@@ -149,12 +183,7 @@ class JdbcSetBookingFacts implements SetBookingFacts {
 		if (setIds.isEmpty()) {
 			return;
 		}
-		jdbc.sql("""
-				SELECT v.id FROM venue v
-				WHERE v.id IN (SELECT sp.venue_id FROM set_position sp WHERE sp.id IN (:setIds))
-				ORDER BY v.id
-				FOR SHARE
-				""")
+		jdbc.sql(VENUES_OF_SETS_LOCK)
 				.param("setIds", setIds.stream().map(SetId::value).toList())
 				.query(Long.class)
 				.list();
