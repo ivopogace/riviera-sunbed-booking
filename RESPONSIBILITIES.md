@@ -54,7 +54,8 @@ close, the maximum stay, the season closure, and the commission rate over time. 
   `SetBookingFacts` stays **unfenced** and is the one port that answers for a **retired set**
   (ADR-0019): cancel, the booking view, the mails and the staff lookup must keep resolving a hidden
   venue's sets and a spot that left the map. The reserve path fences visibility itself in `booking`;
-  `poolForClaim` is the retired-set fence for both claim paths. Photo serving is visibility-fenced too.
+  the retired-set fences are `poolForClaim` for both claim paths and the `ForReserve` reads for both
+  booking modes (a request claims nothing, ADR-0025). Photo serving is visibility-fenced too.
 - **Venue photos** (ADR-0008): per-slot upload/replace/delete, processing, `bytea` storage behind
   the module-internal `PhotoStorage` port, the content-hash serving read — `404` (bytes and `304`)
   for a hidden venue except to its owner or an admin, served `private` (ADR-0013). **Each tourist
@@ -94,19 +95,20 @@ close, the maximum stay, the season closure, and the commission rate over time. 
   its row for every booking, mail and payout line naming it; no booking → deleted.
 - **Retired sets — the exclude and exempt lists, machine-held.** Excluded: the tourist list and its
   counts, the map, the availability calendar, the operator's daily view, every layout lock and
-  conflict probe, and both claim paths (online reserve and staff mark answer `NO_SUCH_SET`) — each
-  reads the `active_set_position` view, and every set write names the marker, so a retired set's
-  label and price stay frozen at what its guests were told. Exempt:
-  `SetBookingFacts#setBookingInfo(s)` and their `ForReserve` twins (cancel, booking view, mails, staff lookup), as
-  a later move mail must name the old spot. Its slot and cell are free for a new set (partial unique
-  indexes). `RetiredSetExclusionArchitectureTests` enforces all of it (§ *Machine-checked*).
+  conflict probe, both claim paths and the reserve on both booking modes (`NO_SUCH_SET`) — each
+  reads `active_set_position`; every update and delete says `retired_at IS NULL`, so a retired set's
+  label and price stay frozen and its slot and cell free for a new set. The reserve reads lock the
+  set through the view as `poolForClaim` does (a single-set retire takes no venue lock). Exempt, by
+  constant name in `JdbcSetBookingFacts`: `setBookingInfo(s)` (cancel, booking view, mails, staff
+  lookup) and the reserve's venue lock; `RetiredSetExclusionArchitectureTests` holds the rest.
 - **The bulk save (`PUT …/beach-map`) is a diff keyed by grid cell, never a delete-all.** The body
   carries no set ids, so a set that changes cell is a removal plus an insert — the removal question
   is the move question. Only removed sets and kept ones whose position number changes are probed,
   through `LiveClaims#locksOn`, so a refusal names exactly the sets the editor already pins. A
   refused save writes nothing and spends no token; a successful one advances it once, an unchanged
-  layout included. Write order is load-bearing — removals, parked labels (`Venues#parkRowLabels`),
-  updates, inserts — so the layout-uniqueness index never sees two sets in one slot mid-save.
+  layout included. Write order is load-bearing — removals, every kept set leaving its slot parked
+  (`Venues#parkRowLabels`), updates, inserts — so the non-deferrable uniqueness index never sees two
+  sets in one slot mid-save (swaps, shifted renumbers, relabel chains).
 - **Row names.** A rename is refused only for `ROW_NAME_TAKEN` (another row carries the label); a
   rename to its own label is a no-op that spends no token. The bulk save enforces one label per
   physical row within its batch; the single-set `addSet` and `editSet` do not check it. A row's name
@@ -127,7 +129,7 @@ close, the maximum stay, the season closure, and the commission rate over time. 
   The reserve's `setBookingInfoForReserve` and the request accept's `lockVenueForClaim` take the venue row
   `FOR SHARE` (`KEY SHARE` would not conflict with a non-key `UPDATE venue`), venue before set as the
   set-writes lock, so venue writers (closure, profile, commission, rating, layout token) queue behind
-  in-flight reserves and accepts (#1304, #1305).
+  in-flight reserves and accepts (#1304, #1305); the reserve then takes its sets `FOR KEY SHARE` (#1284).
 - **The batch apply (`applyToSets`) is one transaction on the `set_version` token.** Lock order:
   the venue row (`lockAndReadSetVersion`), then the named set rows `FOR UPDATE` — the order every
   set-write takes, so none deadlocks another. A stale token (`STALE_WRITE`) or a set id not on the
@@ -137,6 +139,12 @@ close, the maximum stay, the season closure, and the commission rate over time. 
   class, this module included, holds an `"ONLINE"` / `"WALK_IN"` literal
   (`PoolTokenArchitectureTest`), so both invariant #3 checks compare the published type; the wire
   keeps the tokens, parsed once in `PoolToken`.
+- **A set price is EUR minor units of at least €0.50** (Stripe's EUR minimum charge;
+  `venue.vocabulary.SetPrice`, twinned by V76's currency and V77's floor CHECKs; #1294). EUR is the
+  v1 collection currency (invariant #5, long form).
+  Every price write (single set, batch apply, row reprice, bulk save, the remodel's `LayoutCell`)
+  refuses anything else with `400`, so a venue never holds two currencies: the itinerary price and a
+  stay's charge read one. The venue's **payout** currency is a different field, any ISO-4217 code.
 - **The commission rate over time, not just its current value.** `venue_commission_rate` is the
   effective-dated schedule behind `VenueRates#commissionBpsOn` (reports on a served date), while
   `commissionBps` is the live rate every *decision* re-reads; `payout` keeps the arithmetic. The
@@ -226,7 +234,9 @@ any is released on the old, never a swap of my own — so a racing reserve wins 
   other write path: `StaffAvailabilityService` asserts the operator owns the path venue first
   (invariant #13 — why I depend on `operator::api`), refuses a past `Europe/Tirane` date
   (`DATE_IN_PAST` → `422`), then marks with the claim's `ON CONFLICT DO NOTHING`; release deletes
-  only a `STAFF_MARKED` row.
+  only a `STAFF_MARKED` row. The SQL sits behind the module's own out port `application.StaffMarks`
+  (adapter `JdbcStaffMarks`), joining the service's transaction; no `application/` class names JDBC
+  (`JdbcOnlyArchitectureTests`).
 
 **Not My Job:**
 - The venue layout, which sets exist, their positions or prices → **`venue`**
@@ -253,7 +263,8 @@ any is released on the old, never a swap of my own — so a racing reserve wins 
   closure that does not admit every day is `VENUE_CLOSED` (the venue is deliberately visible); the
   sales close is judged on the first day (invariant #4); a span over the venue's maximum stay is
   `STAY_TOO_LONG`. A stitched plan judges every stretch's set over the whole stay. The fence facts are
-  read through `SetBookingFacts#setBookingInfo(s)ForReserve`, under the venue row lock (#1304).
+  read through `SetBookingFacts#setBookingInfo(s)ForReserve`, under the venue row lock (#1304), and a
+  retired set reads as absent there, so it is `NO_SUCH_SET` on both modes (#1284).
 - **Then it claims every day, all or nothing:** a day that loses gives back every day won, then
   answers `SET_TAKEN` (`ConcurrentRangeReservationIT`). One PaymentIntent for per-day price × days
   (invariant #5); the cancellation window and refund are the first day's, on what remains of the
@@ -271,19 +282,28 @@ any is released on the old, never a swap of my own — so a racing reserve wins 
   view, cancel, check-in, staff list, mail facts and review eligibility (once no stretch is live)
   answer the stay's code. The reserve (`CreateStay`, `POST /api/stays`) validates the plan's shape,
   judges every stretch by the shared `ReserveFences`, claims every day of every stretch all or nothing
-  (`ConcurrentStayReservationIT`) and collects once with one share per stretch; a stay cancels whole,
-  each stretch quoted on the stay's first day (invariant #10) and reversed once (#9).
+  (`ConcurrentStayReservationIT`) and collects once with one share per stretch; a stay cancels whole, each
+  stretch quoted on the stay's first day (#10) and reversed once (#9), bar the next bullet's exception.
+- **A guest cancel of a stay sets aside the stretches a remodel already ended, and a confirmed stretch with
+  nothing left** (ADR-0024 §4 as amended, #1290; ADR-0026 §7, #1381): `LiveRemainder` keeps the live rest, judged
+  on the first live day — what a same-set booking of the dates the guest still holds would be quoted — and the
+  view and the stay cancellation mail read the same split (#10). The predicates are the receipt's outcome lines
+  (`RemodelReceipts#endedByRemodel`, both endings being `VENUE_CHANGE`) and `BookingRecord#everyDayRefunded`; a
+  stretch ended any other way (a weather cancel, a concurrent writer) still refuses the stay whole. A stay with
+  nothing live refuses: `NothingLeft` while a set-aside stretch still stands confirmed, else as cancelled.
 - **A stay is confirmed once: the confirm that leaves no stretch unconfirmed publishes `StayConfirmed`.**
   The webhook confirms each stretch in its own transaction, so `ConfirmBookingService` row-locks the
   `stay` before counting unconfirmed stretches: exactly one confirm sees the stay complete. The payload
   is the stay id plus the first stretch's birth window (the day a stay is judged on); each stretch's
   `BookingConfirmed` names its `stayId`, null for a lone booking and every older payload. No stay
   confirms part-way: one PaymentIntent collects every share and the sweep voids it before releasing.
-- **A guest's stay cancel publishes `StayCancelled` once, after every stretch's `BookingCancelled`.**
-  Each stretch's event names the stay in `cancelledWithStay`, so its refund and reversal stay per
+- **A guest's stay cancel publishes `StayCancelled` once, after each live stretch's `BookingCancelled`.**
+  Each such event names the stay in `cancelledWithStay`, so its refund and reversal stay per
   stretch while its mail is left to the stay; the stay event carries the summed refund and
-  `VENUE_CHANGE` only if every stretch took a free exit, else `POLICY`. Every other `BookingCancelled`
-  (the remodel legs ending one stretch, a lone booking, an older payload) leaves the stamp null.
+  `VENUE_CHANGE` only if every live stretch took a free exit, else `POLICY`. A remodel release that ends
+  every live stretch stamps and publishes the same way (refund 0, `VENUE_CHANGE`, #1292). Every other
+  `BookingCancelled` (a remodel leg ending one stretch of a stay that goes on, a lone booking, an
+  older payload) leaves the stamp null.
 - **Attendance is per service day; I am the sole writer and reader of `booking_day`**
   (`ResponsibilitiesArchitectureTests`' `booking_day` sole-writer scan — other modules ask my
   ports). The schema writes the rows when a booking becomes `CONFIRMED` (trigger
@@ -302,8 +322,10 @@ any is released on the old, never a swap of my own — so a racing reserve wins 
 - **The move-reminder sweep announces each of a stitched stay's moves once, the evening before**
   (design D13; from `booking.move-reminder.send-from`, `Europe/Tirane`, until that day ends): it stamps
   the arriving stretch's `move_reminder_at` under a guarded `UPDATE` and publishes `StayMoveDue` in
-  that transaction, only while that stretch and the live one it follows on another set both stand. A
-  move whose day has already begun is never announced late, so the mail's "tomorrow" stays true.
+  that transaction, only while that stretch and the live one it follows on another set both stand and the
+  guest holds the move day (`JdbcBookings.HOLDS_DAY_SQL`: its `booking_day` neither refunded nor released,
+  #1381) — in the sweep's read, the stamp and the mail's facts, so a day refunded in between announces nothing.
+  A move whose day has already begun is never announced late, so the mail's "tomorrow" stays true.
 - **Lock order: the booking row, then its service-day rows** — check-in and both sweep statements —
   so a scan, a cancel and the sweep serialize on the stay. The sweep never uses `SKIP LOCKED`: a
   short batch reads as drained, so a skipped contended row would be stranded. A whole-booking cancel
@@ -314,6 +336,12 @@ any is released on the old, never a swap of my own — so a racing reserve wins 
 - **Several bookings lock in `(booking_date, id)` order:** the sweep batches, a remodel commit (one at a time
   under the venue lock) and the weather refund, which locks every refundable booking covering the day in one statement
   before it reads them (#1305). So none of the three deadlocks another.
+- **A confirmed booking with every day refunded is *nothing left* for the guest too** (ADR-0026 §7, #1381): the
+  cancel answers `NothingLeft` (`409 NOTHING_LEFT`) before any quote or write — no transition, no release, no
+  `BookingCancelled`, so no mail — and the view says `cancellable = false`, `nothingLeft = true`, so the page reads
+  "Refunded" and promises no check-in. The rule is the remodel's (`EVERY_DAY_REFUNDED_SQL`, read as
+  `everyDayRefunded` on `BookingRecord`, `LiveClaim` and `LockedRemainder`), never a zero remainder: a €0-share
+  day the guest still holds is not nothing left. The outcome still resolves `NO_SHOW` and the review stays blocked.
 - **The guest cancel admits `CONFIRMED` only; the venue's refund (`cancelByVenue`, `VENUE_REFUND`) also `NO_SHOW`** (the storm is
   known afterwards): separate port methods and `BookingTransition` rows, so the asymmetry cannot be
   tidied away. The guest guard's readers (the view's `cancellable`, the cancel's `NotCancellable`)
@@ -428,12 +456,18 @@ any is released on the old, never a swap of my own — so a racing reserve wins 
   `CONFIRMED` booking when `payment.api.CollectionGuarantee` says the gateway collects before
   confirming — never a profile string.
 - **Remodel classification** (`RemodelClaims#classify`, ADR-0020) decides each live booking on the
-  disturbed sets in `(service date, id)` order: zone (`RemodelZones`), then a move candidate
-  (`MoveRanking`; a taken one leaves the pool on every day of the span), then status — `CONFIRMED`
-  refunds, `AWAITING_PAYMENT` releases; a frozen claim, or a move-only one without a candidate,
-  blocks. A `PENDING_REQUEST` is no claim: it declines (`SET_UNAVAILABLE`) whatever the zone, never
+  disturbed sets in `(service date, id)` order: zone (`RemodelZones`), nothing left, then a move
+  candidate (`MoveRanking`; a taken one leaves the pool on every day of the span), then status —
+  `CONFIRMED` refunds, `AWAITING_PAYMENT` releases; a frozen claim, or a move-only one without a
+  candidate, blocks. A `PENDING_REQUEST` is no claim: it declines (`SET_UNAVAILABLE`) whatever the zone, never
   moves, releases nothing (ADR-0025). Outcome kinds only, never a status or code (invariant #7);
   advisory and unlocked, so the commit re-derives it.
+- **A released stretch takes its stay's other unpaid stretches with it** (#1292): one intent collects
+  for the stay (ADR-0024 decision 3), so its void ends them all, and the picture says so. Every other
+  `AWAITING_PAYMENT` stretch of the stay joins the classification as a release — whatever its set, zone
+  or candidate; it takes no candidate — and the free sets are re-allocated until no new stay joins. The
+  preview shows them, the token covers them, the commit settles each as a release; a `CONFIRMED`
+  stretch of the stay is never touched.
 - **The remodel commit** (`RemodelClaims#commit`) runs in `venue`'s commit transaction behind its
   `RemodelGate`: it re-classifies under the lock; the `PreviewToken` must **cover** the fresh
   picture (an unpreviewed claim or kind is `Stale`), and refunds need the operator's matching
@@ -442,10 +476,18 @@ any is released on the old, never a swap of my own — so a racing reserve wins 
 - **The commit's legs:** a **move** claims the new rows, releases the old, stamps `moved_at`,
   publishes `BookingMoved`; a **refund** is `cancelConfirmed` for the whole amount as
   `VENUE_CHANGE`; a **release** is the unpaid `AWAITING_PAYMENT → CANCELLED`, whose
-  `refundMinor = 0` mails the guest, moving no money; a **decline** the venue-scoped one. A
-  `Blocked` claim is **kept** (a `remodel_receipt_kept` line with its `BlockReason`; `venue` leaves
-  the set as stored), yet a claim that can move off that set still moves. No undo: another remodel
-  reverses a move.
+  `refundMinor = 0` mails the guest, moving no money (a stay every live stretch of which is released
+  here stamps each `BookingCancelled` with the stay and publishes one `StayCancelled`, refund 0, so the
+  guest gets one mail, #1292); a **decline** the venue-scoped one. A `Blocked` claim is **kept** (a
+  `remodel_receipt_kept` line with its `BlockReason`; `venue` leaves the set as stored), yet a claim
+  that can move off that set still moves. No undo: another remodel reverses a move.
+- **A confirmed claim with no unrefunded day is *nothing left*** (#1300, ADR-0026 §8): in any unfrozen
+  zone, decided before the move search, so it takes no candidate. Its leg is the refund leg's: under the row
+  lock (`Bookings#lockRemainder`) it finds every day refunded, cancels at 0 as `VENUE_CHANGE`, frees the
+  days it still holds and writes a `NOTHING_LEFT` line (amount and fee 0, V75); it publishes no
+  `BookingCancelled`, so no mail, ledger entry or void follows. A move or refund whose last day was
+  refunded before that lock settles the same way, and the commit answers it as settled. Keyed on no unrefunded
+  day, never on a zero remainder; the typed refund count leaves it out.
 - **The receipt is mine** (`remodel_receipt(_move/_outcome/_kept)`): label snapshots, distance,
   amounts, reasons, so mails and views name the spot after its set retires.
   `BookingPresence#hasBookings` counts a move's from- and to-sets, so a left set retires rather than
@@ -455,15 +497,17 @@ any is released on the old, never a swap of my own — so a racing reserve wins 
 - **A remodel-released booking's intent is voided after commit, never inside it:** the abandoned
   sweep reads only `AWAITING_PAYMENT`, so nothing else reaches it. `RemodelReleasePaymentListener`
   acts only on a `VENUE_CHANGE` cancel with a `RELEASE` receipt line (`RemodelReceipts#releasedByRemodel`),
-  never on a zero refund: a paid booking whose every day was already refunded also returns nothing
-  (#1291). It throws on a transient failure. An intent that had collected cannot be undone: it counts to
-  `ObservabilityMetrics.REMODEL_RELEASE_COLLECTED` and is refunded by hand, never retried.
+  never on a zero refund: a moved guest's free exit can be a zero `VENUE_CHANGE` refund of a paid booking
+  (#1291), while a remodel ends a paid one with nothing left without any `BookingCancelled` (#1300). One void per released stretch of a stay; the port answers an already-voided intent
+  `Canceled`. It throws on a transient failure. An intent that had collected cannot be undone: it
+  counts to `ObservabilityMetrics.REMODEL_RELEASE_COLLECTED` and is refunded by hand, never retried.
 - **A moved booking's free exit is a refund-tier override, never a window change:** until
   `BookingCutoff#freeExitEndsAt`, `CancellationPolicy#quote` refunds in full as `VENUE_CHANGE`
   (lifting `LATE`; in `FREE` only the reason changes, so mails and the admin's venue-caused list
   know why). `CLOSED` is never reopened: the guest may already be consuming the stay. A stay's
-  stretch is judged on the stay's first day, so its exit ends by that day's opening: the view, the
-  cancel and the move mail read one capped deadline, and a stretch moved once its stay began has none.
+  stretch is judged on the day its stay's cancel is (the first day, or the first live day once a remodel
+  ended earlier stretches), so its exit ends by that day's opening: the view, the cancel and the move
+  mail read one capped deadline, and a stretch moved once that day has opened has none.
 
 **Not My Job:**
 - Owning the `(set, date)` availability state → **`availability`** (I *ask* it to claim)
@@ -506,7 +550,8 @@ publishes **once per booking**. `RefundStatusLookup` reads the whole-share refun
 is tagged `bookingRef` and, for a day, `serviceDate`, so adoption after a lost response is per scope.
 
 `CancelPaymentPort.cancel(booking)` voids the intent behind the booking, so an unpaid group is
-cancelled all-or-nothing, never one booking of it.
+cancelled all-or-nothing, never one booking of it (`booking`'s remodel release ends every unpaid
+stretch of the stay with the one it disturbed, #1292).
 
 - **The payment state machine is one guarded SQL statement**, because Stripe promises neither
   ordering nor single delivery. `markStatus` moves only the open states (`REQUIRES_PAYMENT`, the
@@ -598,7 +643,7 @@ of a stay that goes on (`BookingDayRefunded`, stamped with the event's reason, `
 fee — ADR-0026, ADR-0027), once per `(booking, day)` (`UNIQUE NULLS NOT DISTINCT (booking_id, entry_type,
 service_date)`); every reversal reads what earlier ones took (`Reversed`, under the accrual's lock) and the
 exhausting one returns the commission still held, so a booking reversed in parts nets zero. A **`FEE`** is
-charged when a `VENUE_CHANGE` refund is reversed; a release or decline collected nothing, so none is (ADR-0021).
+charged when a `VENUE_CHANGE` refund is reversed; a release or decline collected nothing and nothing left returns nothing, so none is (ADR-0021).
 
 **I own `platform_setting` — its sole writer and reader — and the venue-change fee it holds.** Both
 readers (the cancelled-booking listener; `booking.spi.VenueChangeFeeRate`, which the remodel preview
@@ -663,17 +708,24 @@ reset token's account **without consuming** it, so `auth` revokes that principal
 `CustomerAccounts#liveCredential` answers `auth`'s password login, SSO sign-in and per-request session check:
 the live account by email or id, SSO-only included (null hash), never an erased one; `auth` owns the stamp.
 
+**An SSO first sign-in that links onto an account whose email is unverified clears its password** (#1295), one
+guarded statement in the claim's transaction, before it marks the email verified: the provider proved the email, the
+password's holder never did, so a pre-registered account cannot capture the email's owner. `auth`'s stamp then refuses
+the holder's live sessions on their next request and password login finds no credential; no revoke brackets it, since
+the port names no outcome to key one on (#1295). A verified email's account links and keeps its password; gating the
+link on the provider's `email_verified` claim is the real adapters' job.
+
 **A write of an account's children locks its live row first** (`CustomerAccountStore#lockLiveAccount`, `FOR NO
 KEY UPDATE` so the child insert's key check passes), in a statement of its own, the order erasure takes them: token
 issue and redemption, and an SSO first sign-in's identity link (#1305, #1307). One-statement account writes
-(password change and reset, verification) carry an `erased_at IS NULL` guard instead.
+(password change and reset, verification, the unverified-password clear) carry an `erased_at IS NULL` guard instead.
 A missing row is erased: an issue stores and mails nothing, a redemption redeems nothing, a sign-in re-resolves
 to a fresh account and takes over an identity left on an erased one. Two issues serialize, so one reset link is
 live, and a reset retires the rest; a first sign-in that loses its subject deletes the account it created.
 
-**Only the retention sweep's entry reads carry a query timeout** (its candidate read, `booking`'s
-`GuestBookingHistory` probe): they run before any write, so a timeout costs one tick. My scrubs and
-`booking`'s `ReviewErasure` reads stay on the shared, unbounded client — inside the erasure's one
+**Only the retention sweep's reads carry a query timeout** (its candidate read, `booking`'s
+`GuestBookingHistory` probe, once per page of the walk): a timeout rolls back the run's one transaction,
+so it costs one tick. My scrubs and `booking`'s `ReviewErasure` reads stay on the shared, unbounded client — inside the erasure's one
 transaction, on the request path too, a timeout fails the whole erasure, and a slow one beats that.
 
 **Not My Job:**
@@ -684,8 +736,8 @@ transaction, on the request path too, a timeout fails the whole erasure, and a s
   implements — an inversion, because a direct `customer → booking` call would cycle
 - Encoding/verifying credentials and all login machinery (`UserDetailsService`, sessions, the auth
   endpoints, the OIDC exchange, mail transport) → **`auth`** and **`notification`**
-  (RV-BE-11; `CustomerAuthPlacementTests` checks only the Spring Security half); I store the
-  identity and an opaque hash
+  (RV-BE-11); I store the identity and an opaque hash, and no Spring Security, Spring Session or
+  mail (Spring Mail, Jakarta Mail, Angus Mail) type lives in the module (`CustomerAuthPlacementTests`)
 
 ---
 
@@ -727,8 +779,9 @@ delete) takes the same lock and keeps the rule.
   the `ROLE_ADMIN` mapping), **invalidating live sessions** on suspension, rejection, credential
   rotation or password change (`PrincipalSessionRevoker`), and the "venues are live" mail
   (`OperatorApprovalMail` → `notification`) → **`auth`**. I store an opaque hash and
-  `is_admin` flag and report *that* and *whose* a transition happened; no Spring Security
-  (`OperatorAuthPlacementTests`), `org.springframework.session` or mail type lives in the module
+  `is_admin` flag and report *that* and *whose* a transition happened; no Spring Security, Spring
+  Session or mail (Spring Mail, Jakarta Mail, Angus Mail) type lives in the module
+  (`OperatorAuthPlacementTests`)
 
 ---
 
@@ -813,16 +866,21 @@ tag names the person, invariant #7):
   `stayId`, an older payload, mails as a lone booking's). The delivery log keeps its per-booking grain:
   the stay mail's attempt is logged on every stretch it covers, and a resend on any stretch resends
   the stay's mail, refused unless every stretch confirmed.
-- **A stay the guest cancels gets one cancellation mail, on `StayCancelled`**: the lone booking's
-  cancellation copy under the stay's code and span, with the summed refund. A stretch's stamped
-  `BookingCancelled` mails nothing; an unstamped one (a remodel ending one stretch, an older payload)
-  mails that stretch under the stay's code, with a rebook link when a remodel ended it.
+- **A stay the guest cancels, or a remodel releases whole, gets one cancellation mail, on
+  `StayCancelled`**: the lone booking's cancellation copy under the stay's code, with the summed refund
+  and the span and first stop of `BookingNotificationFacts#stayCancellationFacts` (the guest cancel's live
+  remainder, the whole stay when nothing is live), and a rebook link only when a remodel ended one of those
+  stretches (`#endedByRemodel`; a free exit is the same `VENUE_CHANGE` with none). A
+  stretch's stamped `BookingCancelled` mails nothing; an unstamped one (a remodel ending one stretch
+  of a stay that goes on, an older payload) mails that stretch under the stay's code, with a rebook
+  link when a remodel ended it.
 - **A stay request gets one mail per outcome (#1267)**: `StayRequestDeclined` and `StayRequestExpired`
   send the request record, `StayPaymentDue` the payment-due mail with the stay's total, each under the
   stay's code and whole span and naming no spot, through the lone flows' listeners and abandon counters.
 - **A stitched stay's move gets one reminder, on `StayMoveDue`**: the stay's code, tomorrow's date,
   today's and tomorrow's spots as the live map labels them, the distance `booking` measured, and the
-  code-gated link. No delivery-log row (that log is the confirmation's); a move the listener finds
+  code-gated link; "instead of today's A1" only while `StayMoveFacts#fromDayHeld` (a refunded day is not
+  today's spot, #1381). No delivery-log row (that log is the confirmation's); a move the listener finds
   no longer standing is abandoned under `riviera.mail.move-reminder.abandoned`, the one abandon
   tag that can mean a race rather than a data fault (`docs/runbooks/observability.md`).
 - The **booking-confirmation delivery log** (`booking_confirmation_mail_attempt`) and its ADMIN
@@ -903,7 +961,7 @@ per booking), who may leave, change or remove it and until when, and the score a
 - **The booking code is the whole authorization** (invariant #7): the resource is the guest's
   booking, the use case mine, so `ReviewController` joins the `permitAll` `/api/bookings/{code}`
   family (and its per-code rate-limit budget) without touching `BookingController`. The code is
-  never logged and never reaches an error body (`instance` is the constant `/api/bookings`).
+  never logged and never reaches an error body (no body carries `instance`, §`web`).
 - **An over-long review text is refused, never truncated** — half a sentence stored silently is
   worse than a no. `SubmitReviewRequest` strips, then holds both texts to `ReviewText`'s bounds
   (`400 INVALID_REQUEST`); V46's CHECKs are backstops.
@@ -967,7 +1025,7 @@ remodel preview and commit compose the two here, granted `venue::api`, `venue::v
   `REFUND_NOT_CONFIRMED`, each with the fresh picture and its token in `preview`, so the operator
   re-decides on what is true now; or the save's own `SETS_IN_USE`, `STALE_WRITE` and shape errors.
 
-**Job:** `POST /api/venues/{id}/beach-map/preview` and `/commit`: assemble the five groups, the sets
+**Job:** `POST /api/venues/{id}/beach-map/preview` and `/commit`: assemble the groups, the sets
 to keep and the preview token from `venue`'s disturbed sets and `booking`'s classified claims; carry
 the commit's gate into `booking`'s settlement.
 
@@ -1086,7 +1144,8 @@ and their `AuthenticationManager`s, session establishment and rotation, the cred
 revocation, SSO, the password policy, account recovery, the login, register, `/me` and self-service
 password endpoints, and the admin-lifecycle and both erasure endpoints that revoke sessions in the same
 request (a domain module calling `auth` would cycle). `customer` and `operator` supply identity and an
-opaque hash through their `api`; no Spring Security type enters them (`*AuthPlacementTests`).
+opaque hash through their `api`; no Spring Security, Spring Session or mail type enters them
+(`*AuthPlacementTests`).
 
 - **Password policy (D-8)** — one rule, `PasswordPolicy`, wherever a password is *chosen*
   (never at sign-in), checked before any write — on register, ahead of the timing-equalized
@@ -1132,11 +1191,27 @@ Spring Security beans arrive by framework type, which is no module dependency.
 - `SecurityConfig`: both chains, the route policy (role gates), CSRF, the session cookie and the
   `SecurityContextRepository`. Credentials and the authentication managers are `auth`'s.
 - The chain's filters, in order: `RateLimitFilter` (+ `RateLimitProperties`, `TokenBucket`,
-  `ClientIpResolver`), `ChallengeVerificationFilter` (calls `challenge::api`), `SessionCredentialFilter`
-  (calls `auth::api`), `AdminAuditFilter` + `AdminAuditReasons` (calls `audit::api`).
+  `ClientIpResolver`), `RequestBodyCapFilter`, `ChallengeVerificationFilter` (calls `challenge::api`),
+  `SessionCredentialFilter` (calls `auth::api`), `AdminAuditFilter` + `AdminAuditReasons` (calls
+  `audit::api`); `CachedBodyRequest` replays a body an edge filter read within its cap.
 - The chain's problem bodies (`SecurityProblemResponses`), `RequestPaths`, CORS (`WebCorsConfig`).
+- **No problem body carries `instance`** (`ProblemInstanceConfig`): Spring fills a null one with the
+  request URI, on `/api/bookings/{code}` the bearer credential (#7), so the interceptor clears it after
+  that fill; the hand-built bodies omit it. RFC 9457 makes every member optional.
+- **A `413` aborts the connection, never drains the body** (`OversizedBodyConfig`, Tomcat's
+  `swallowAbortedUploads=false`): a drain would hold a request thread, up to `max-swallow-size`, at the
+  client's pace. App-wide, so an oversized multipart upload is aborted too; a client still sending may
+  see a reset instead of the `413` body. So the console refuses a photo past the 25 MiB cap before
+  sending it (`MAX_PHOTO_UPLOAD_BYTES`): its "too large" copy never needs the `413`, which stays the
+  backstop: the photo flow never relies on a browser reading a mid-upload `413` (#1409).
 - **`ApiErrorHandler`, the one `@RestControllerAdvice`** (`ErrorContractArchitectureTests`): every
   exception→status mapping, module vocabulary exceptions included.
+- **`/error` answers the same contract** (`ProblemErrorController`, replacing Boot's `BasicErrorController`): a
+  filter-thrown exception, a `sendError` (the firewall's `400`) or an exception no handler maps ends on the
+  container's error dispatch, whose default body echoes the request URI as `path`, the bearer credential on
+  `/api/bookings/{code}` and the SPA's `/booking/{code}` (#7). Every path, the SPA's included, gets the problem
+  body with the status kept and the code `ApiErrorHandler` gives that status: no `path`, `instance`,
+  `timestamp` or exception message, and no whitelabel HTML (`ErrorDispatchProblemIT`).
 
 **Not my job:** sessions, credentials and login → **`auth`**; what a fence's mechanism does (a
 challenge's single use, an audit row's storage) → **`challenge`**, **`audit`**; per-venue
@@ -1153,6 +1228,13 @@ own rate-limit buckets; mocked externals (SSO IdPs, mailer) profile-guarded out 
 revocation orchestrated by `auth` and synchronous, bracketing the state change; every request re-checks the
 session's credential stamp.
 
+**Where the edge's types may appear (RV-BE-11):** no Spring Security, Spring Session or mail (Spring
+Mail, Jakarta Mail, Angus Mail) type in `availability`, `booking`, `payment`, `payout`, `review`,
+`itinerary`, `remodel`, `venue`, `notification`, `challenge`, `audit`, `monitoring` or `shared` outside
+the module's `adapter.in`, where a controller reads the signed-in principal; `notification` sends mail,
+so only security and session are checked there. `customer` and `operator` are checked whole,
+`adapter.in` included; `auth` and `web` are the edge (`*AuthPlacementTests`).
+
 **Abuse and accountability split into fence and mechanism** (ADR-0017): the **fence** — filters and
 their order, route policy, filter-chain problem bodies, neutralizing client input such as
 `X-Audit-Reason` — is **`web`**'s (ADR-0028); a **mechanism** it calls through a port (a table, a
@@ -1168,8 +1250,18 @@ mutating `/api/admin/**` action, §`audit`) live in `web`; `challenge` and `audi
   limiter refunds a `403` on budgets guarding authenticated work, and a refused solution must still
   cost its token. Cheap checks first, so a `429` wins; the registry claim, the fence's one write,
   is the last step before the controller.
+- **Request bodies are capped before CSRF and the challenge claim (#1414):** `RequestBodyCapFilter`, right
+  after `RateLimitFilter`, refuses a `POST`/`PUT`/`PATCH` body under `/api/**` past its cap with `413
+  PAYLOAD_TOO_LARGE`: unread when the declared length is over, read to cap + 1 and replayed when chunked.
+  Each cap fits its routes' largest legitimate request (OWASP REST Security Cheat Sheet): 64 KiB; 256 KiB
+  for the beach-map layout save, remodel preview and commit (a full `MAX_SETS` layout is ~223 KB); 1 MiB
+  for the Stripe webhook. The photo upload keeps Spring's multipart limits. A login body is read once, by the
+  throttle's 8 KiB rule below (the 64 KiB cap when the limiter is off). A slow body under its cap: #1439.
 - **Not fenced, deliberately:** login (the per-identity throttle covers it) and token redemption
-  (a reset or verification token is already a bearer credential). Forgot-password stays
+  (a reset or verification token is already a bearer credential). The throttle reads every login
+  body itself, to an 8 KiB cap whatever `Content-Length` says, and answers a larger one `413`
+  before the controller; it decodes the identity in the charset the controller binds with, so
+  neither size, framing nor encoding lets a login skip the per-identity budget (#1288). Forgot-password stays
   non-enumerating (D-8): a refusal precedes the account lookup, identical for every address.
 - **Forgot-password is constant-time by doing the same work on both branches (#1336):** the request
   thread makes the one account read and answers `204`; a known address only enqueues the send, whose
@@ -1224,7 +1316,7 @@ The SPA rules whose TSDoc points here; structure is `riviera-frontend`'s, stylin
   page, panel and card as three nested rounded surfaces read as a template. Its selected row names the
   booking mode only as the exception (`Request to Book`); if request-mode ever dominates, invert it.
 - **`operator/remodel-preview-panel.ts` is a sibling of `shared/confirm-panel.ts`, not a variant**:
-  it owns lists (moves, refunds, releases, staff holds, blocked claims, and the sets that stay) and
+  it owns lists (moves, refunds, releases, nothing left, staff holds, blocked claims, and the sets that stay) and
   refund fields; the confirm panel is a
   warning, a toned button and Cancel with no projected content. Both wear the amber warn skin.
 - **The withheld-email notice is one component, in `booking/`** (both its surfaces are booking's;
@@ -1239,7 +1331,9 @@ The SPA rules whose TSDoc points here; structure is `riviera-frontend`'s, stylin
   whole basis points is never unseen: the editor renders the integer the wire carries (invariant #5).
 - **Focus is moved after a confirm-before-destroy** (`shared/focus-after-render.ts`): the surface
   destroys the element just activated, stranding focus on `<body>` (WCAG 2.4.3), and the target
-  rarely exists yet at decision time — hence lookup in `earlyRead`, `focus()` in `write`.
+  rarely exists yet at decision time — hence lookup in `earlyRead`, `focus()` in `write`. A swap the
+  server drives (the pay page's poll and re-check) passes `onlyIfLost`: focus moves only if it was
+  already on `<body>` or the render took its holder, so a control the swap keeps is never robbed.
 - **The venue console lands on the Daily view** (`VENUE_CONSOLE_LANDING_TAB`), what a trading venue
   opens every day; set-up tabs are destinations. A freshly created venue is the exception:
   `operator/venue-create-card.ts` sends it to `beach-map`, as it has no map to run a day on yet.
@@ -1253,7 +1347,8 @@ The SPA rules whose TSDoc points here; structure is `riviera-frontend`'s, stylin
 The mechanism and edge cases behind `CLAUDE.md`'s one-line invariants; its numbering never changes.
 
 1. **No JPA/Hibernate — JDBC only.** No `spring-boot-starter-data-jpa`, no `@Entity`; adapters are
-   hand-written `JdbcClient` SQL, with no `org.springframework.data.*` import in `src/main/java`.
+   hand-written `JdbcClient` SQL, and no production class names `org.springframework.data`
+   (`JdbcOnlyArchitectureTests`).
    The Spring Data JDBC starter is on the classpath, but nothing has earned its aggregate mapping:
    only a cluster of rows loaded, mutated and saved together by one writer would, with the why stated.
 2. **Availability is the single source of truth, per `(set, date)`.** Every channel (online claim,
@@ -1341,24 +1436,32 @@ them form the *structural net* is `riviera-modulith` § *The structural net*'s c
 | `payout` is the only writer (and direct reader) of `platform_setting` — ADR-0021 | `ResponsibilitiesArchitectureTests` (sole-writer scan) |
 | `booking` is the only writer (and direct reader) of `booking_day` | `ResponsibilitiesArchitectureTests` (sole-writer scan) |
 | `booking` is the only writer (and direct reader) of `stay` — ADR-0024 | `ResponsibilitiesArchitectureTests` (SQL-shaped scan: the bare word is in prose and in `max_stay_days`) |
+| Every table in `CLAUDE.md`'s "Sole writer of" column, plus `challenge_registry` and `admin_audit_record`, is written only by its owner: `venue`, `set_position`, `venue_amenity`, `venue_photo`, `venue_photo_variant`, `venue_commission_rate`, `set_availability`, `booking`, `stay`, `booking_day`, `remodel_receipt`, `remodel_receipt_move`, `remodel_receipt_outcome`, `remodel_receipt_kept`, `payment`, `payment_booking`, `payment_refund`, `stripe_webhook_event`, `payout_ledger_entry`, `payout_batch`, `platform_setting`, `customer`, `customer_account`, `customer_sso_identity`, `customer_account_token`, `operator`, `operator_venue`, `review`, `email_suppression`, `booking_confirmation_mail_attempt` | `ResponsibilitiesArchitectureTests` (table-ownership map: a SQL-shaped `INSERT INTO`/`UPDATE … SET`/`DELETE FROM`/`MERGE INTO`/`TRUNCATE` per `CONSTANT_String`; the map must cover every table the migrations leave (create, drop and rename walked in Flyway version order) bar the framework tables, and every owner must write its tables) |
 | No class inside a module depends on a type directly in `ai.riviera.platform` — ADR-0017 | `CompositionRootDisciplineTests` (module→root rule; `allowedDependencies` cannot see it) |
 | The root reaches no module: it holds only the application and its configuration (ADR-0028 Decision 1) | `CompositionRootDisciplineTests` (root→module rule) |
 | `payment` uses no Stripe **Connect** API (collect-only, ADR-0002) | `NoStripeConnectArchitectureTest` |
 | No module reaches another's `application`/`domain`/`adapter`; `allowedDependencies` hold | `ModularityTests` (`ApplicationModules.verify()`) |
+| Every declared `allowedDependencies` grant is used: some class of the module depends on that module or named interface in bytecode (Modulith's dependency model plus the functional-interface type each `LambdaMetafactory` `invokedynamic` produces, so `remodel`'s lambda passed as `venue.spi.RemodelGate` counts while a type met only in a called member's descriptor, such as a `null` argument, does not; `web`'s `switch` over a returned `ChallengeVerdict` Modulith sees itself) | `UnusedAllowedDependencyTests` (fixture `ai.riviera.grantfixture`) |
 | The ADR-0007 package shape; published-surface kinds; the `VenueCatalog` role split | `PackageShapeArchitectureTests`, `PublishedSurfacePlacementArchitectureTests`, `VenueApiRoleSplitTests` |
-| No JPA/Hibernate on the classpath — invariant #1 | `JdbcOnlyArchitectureTests` |
+| Only a module registered in `@Modulithic(sharedModules)` has types directly in its module root, and `shared` is the only module registered there (ADR-0007, amended 2026-10-02 by PR #1351) | `PackageShapeArchitectureTests` (module-root rule; shared-registration rule) |
+| Every top-level `api`/`spi`/`vocabulary`/`events` package carries `@NamedInterface` of its own simple name | `PackageShapeArchitectureTests` (named-interface declaration rule) |
+| Every module declares `allowedDependencies`; none is left at the allow-all default | `PackageShapeArchitectureTests` (declared-grants rule; whether each grant is used is not checked here) |
+| No JPA/Hibernate on the classpath — invariant #1 | `JdbcOnlyArchitectureTests` (classpath probes; the Hibernate auto-configuration name is Boot 4's and pinned to the running Boot major) |
+| No class in any `application/` package names `org.springframework.jdbc`, `java.sql` or `javax.sql`: SQL sits in `adapter/out` behind a port (ADR-0007) | `JdbcOnlyArchitectureTests` (application-JDBC rule) |
+| No production class names `org.springframework.data`: adapters are hand-written `JdbcClient` SQL, never a Spring Data repository or aggregate mapping (ADR-0001) | `JdbcOnlyArchitectureTests` (Spring Data rule; fixture `ai.riviera.springdatafixture`) |
 | A `domain/` class names only the JDK and published ids, values and rules (ADR-0018 §4) | `DomainPurityArchitectureTests` |
 | The booking transition table and the guarded `UPDATE`s admit the same statuses (ADR-0018 §1) | `JdbcBookingTransitionTableIT` (every transition × every status; Docker-gated, so it fails the build only where Docker runs — CI) |
 | The view's `cancellable` and the guest cancel's refusal agree with `CANCEL_BY_GUEST`, status by status (ADR-0018 §1) | `ViewBookingServiceTest.onlyAConfirmedBookingIsCancellableWhileTheWindowIsOpen`, `CancelBookingServiceTest` (against the literal `BookingTransitionTest` pins) |
-| No Spring Security type inside `operator` — login machinery's checked half (RV-BE-11) | `OperatorAuthPlacementTests` |
-| No Spring Security type inside `customer` — login machinery's checked half (RV-BE-11) | `CustomerAuthPlacementTests` |
+| No Spring Security, Spring Session or mail (Spring Mail, Jakarta Mail, Angus Mail) type inside `operator`; OIDC/OAuth2 client types fall under Spring Security (RV-BE-11) | `OperatorAuthPlacementTests` |
+| No Spring Security, Spring Session or mail (Spring Mail, Jakarta Mail, Angus Mail) type inside `customer`; OIDC/OAuth2 client types fall under Spring Security (RV-BE-11) | `CustomerAuthPlacementTests` |
+| No Spring Security, Spring Session or mail type outside `adapter.in` in `availability`, `booking`, `payment`, `payout`, `review`, `itinerary`, `remodel`, `venue`, `notification` (security and session only: it sends mail), `challenge`, `audit`, `monitoring`, `shared`; every module is classified as so checked, whole-module checked (`customer`, `operator`) or edge (`auth`, `web`) (RV-BE-11) | `DomainModuleAuthPlacementTests` |
 | Mail listeners name their own bounded executors, never Boot's shared `applicationTaskExecutor` | `MailListenerExecutorArchitectureTest` |
 | `booking` listeners reaching `payment::api` run on the bounded refund pool | `RefundListenerExecutorArchitectureTest` |
 | Every self-configured worker pool carries `monitoring`'s MDC decorator | `WorkerContextArchitectureTest` |
 | Boot's shared `applicationTaskExecutor` carries no `TaskDecorator`, and no bean would install one | `SharedTaskExecutorUndecoratedIT` |
 | The draining pools' shutdown claims sum within the SIGTERM grace | `ShutdownDrainArchitectureTest` |
 | Pool tokens live only in `venue.vocabulary.Pool`: no other production class holds an `"ONLINE"` / `"WALK_IN"` literal (invariant #3's operand is the published type) | `PoolTokenArchitectureTest` (`CONSTANT_String` scan, so `Pool.ONLINE` passes) |
-| A retired set is absent from every read but `SetBookingFacts`: production SQL naming `set_position` reads `active_set_position` or names `retired_at`, an `INSERT INTO` excepted (ADR-0019, §`venue`) | `RetiredSetExclusionArchitectureTests` (per-statement `CONSTANT_String` scan; the structural net's one member admitted by decision) |
+| A retired set is absent from every read but `SetBookingFacts#setBookingInfo(s)`: production SQL naming `set_position` reads `active_set_position` or says `retired_at IS NULL`, an `INSERT INTO` and the facts adapter's two bare constants exempt by name excepted (ADR-0019, §`venue`) | `RetiredSetExclusionArchitectureTests` (per-statement `CONSTANT_String` scan with a per-statement exemption keyed on the field's `ConstantValue`; the structural net's one member admitted by decision) |
 
 Most rules also prove on every build that they can fail, against deliberately-violating fixtures
 (`ai.riviera.responsibilityfixture`, `ai.riviera.placementfixture`, `ai.riviera.retirefixture` and
@@ -1375,4 +1478,4 @@ siblings) — never by breaking production code.
 
 Known scan limits (on the tests): a sole-writer scan needs the whole-word table name contiguous in
 the constant pool, so SQL concatenated across it evades the scan (text-block SQL keeps it whole);
-the id-based-events rule unwraps generics and arrays but reads only a component's declared type.
+the id-based-events rule unwraps generics and arrays but reads only a component's declared type; the schema walk reads DDL in a `DO $$` body as if it ran, and refuses, naming the migration and the statement, a `TEMP`/`UNLOGGED` table, a schema other than `public` and a quoted name that is not plain lower case (#1447), so none shifts the table set silently.

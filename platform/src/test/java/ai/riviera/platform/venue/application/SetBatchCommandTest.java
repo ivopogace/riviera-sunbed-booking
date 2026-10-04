@@ -12,8 +12,8 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 
 /**
  * Pins {@link SetBatchCommand}'s boundary: a non-empty, bounded id set; at least one touched field;
- * a tier from the stored vocabulary; a price that is both-or-neither and non-negative minor units
- * with an ISO currency (invariant #5). A violation is an {@link IllegalArgumentException} at the
+ * a tier from the stored vocabulary; a price that is both-or-neither and EUR minor units of at least
+ * €0.50 (invariant #5). A violation is an {@link IllegalArgumentException} at the
  * application boundary (→ {@code 400 INVALID_REQUEST}, §6b).
  */
 class SetBatchCommandTest {
@@ -41,6 +41,11 @@ class SetBatchCommandTest {
 
 		assertEquals(4000L, command.priceMinor());
 		assertEquals("EUR", command.priceCurrency());
+	}
+
+	@Test
+	void acceptsTheMinimumEurPrice() {
+		assertEquals(50L, new SetBatchCommand(IDS, null, null, 50L, "EUR").priceMinor());
 	}
 
 	@Test
@@ -75,8 +80,11 @@ class SetBatchCommandTest {
 	}
 
 	@Test
-	void rejectsANegativePriceAndABadCurrency() {
+	void rejectsAPriceBelowTheMinimumAndANonEurCurrency() {
 		assertThrows(IllegalArgumentException.class, () -> new SetBatchCommand(IDS, null, null, -1L, "EUR"));
+		assertThrows(IllegalArgumentException.class, () -> new SetBatchCommand(IDS, null, null, 0L, "EUR"));
+		assertThrows(IllegalArgumentException.class, () -> new SetBatchCommand(IDS, null, null, 49L, "EUR"));
+		assertThrows(IllegalArgumentException.class, () -> new SetBatchCommand(IDS, null, null, 100L, "ALL"));
 		assertThrows(IllegalArgumentException.class, () -> new SetBatchCommand(IDS, null, null, 100L, "euro"));
 	}
 }

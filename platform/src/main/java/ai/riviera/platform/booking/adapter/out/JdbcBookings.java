@@ -30,6 +30,7 @@ import ai.riviera.platform.booking.application.view.DailyBooking;
 import ai.riviera.platform.booking.application.view.BookingRecord;
 import ai.riviera.platform.booking.vocabulary.StayId;
 import ai.riviera.platform.booking.application.view.StayRecord;
+import ai.riviera.platform.booking.application.view.AccountBooking;
 import ai.riviera.platform.booking.application.Bookings;
 import ai.riviera.platform.booking.application.cancel.CancelledBooking;
 import ai.riviera.platform.booking.application.checkin.CheckInFacts;
@@ -45,6 +46,7 @@ import ai.riviera.platform.booking.application.view.RefundedDay;
 import ai.riviera.platform.booking.application.refund.DayRefundStamp;
 import ai.riviera.platform.booking.application.refund.DayRefundedBooking;
 import ai.riviera.platform.booking.application.remodel.LiveClaim;
+import ai.riviera.platform.booking.application.remodel.LockedRemainder;
 import ai.riviera.platform.booking.domain.BookingStatus;
 import ai.riviera.platform.booking.domain.BookingTransition;
 import ai.riviera.platform.booking.domain.DayAttendance;
@@ -98,9 +100,24 @@ class JdbcBookings implements Bookings {
 	private static final String COL_CREATED_AT = "created_at";
 	private static final String COL_ACCEPTED_AT = "accepted_at";
 	private static final String COL_DAY_REFUNDED_MINOR = "day_refunded_minor";
+	private static final String COL_EVERY_DAY_REFUNDED = "every_day_refunded";
 	/** The minor units of booking {@code b} already refunded on its days (ADR-0026, ADR-0027), summed off them. */
 	private static final String DAY_REFUNDED_SUM_SQL =
 			"(SELECT COALESCE(SUM(d.refund_minor), 0) FROM booking_day d WHERE d.booking_id = b.id)";
+
+	/** True iff the booking has service days and none is unrefunded; an unconfirmed one has none (V60's trigger). */
+	private static final String EVERY_DAY_REFUNDED_SQL = """
+			(EXISTS (SELECT 1 FROM booking_day d WHERE d.booking_id = b.id)
+			 AND NOT EXISTS (SELECT 1 FROM booking_day d WHERE d.booking_id = b.id AND d.refunded_at IS NULL))""";
+
+	/**
+	 * Whether the guest holds booking {@code %1$s}'s service day {@code %2$s}: its row is neither refunded nor
+	 * released (ADR-0027). The move reminder's rule, in the sweep's read, the stamp and the mail's facts (#1381).
+	 */
+	static final String HOLDS_DAY_SQL = """
+			EXISTS (SELECT 1 FROM booking_day h
+			        WHERE h.booking_id = %1$s.id AND h.service_date = %2$s
+			          AND h.refunded_at IS NULL AND h.released_at IS NULL)""";
 
 	/** The statuses whose washed-out day may be refunded on its own — {@code BookingStatus#stormDayRefundable}'s members. */
 	private static final List<String> STORM_DAY_REFUNDABLE = java.util.stream.Stream.of(BookingStatus.values())
@@ -536,7 +553,8 @@ class JdbcBookings implements Bookings {
 				SELECT b.id, b.code, b.status, b.venue_id, b.set_id, b.customer_id,
 				       b.booking_date, b.last_date, b.amount_minor, b.amount_currency, b.cancelled_at, b.refund_minor,
 				       b.request_expires_at, b.cancel_reason, b.created_at, b.accepted_at, b.moved_at, b.decline_reason,
-				       (SELECT COALESCE(SUM(d.refund_minor), 0) FROM booking_day d WHERE d.booking_id = b.id) AS day_refunded_minor
+				       """ + DAY_REFUNDED_SUM_SQL + " AS " + COL_DAY_REFUNDED_MINOR + ", "
+				+ EVERY_DAY_REFUNDED_SQL + " AS " + COL_EVERY_DAY_REFUNDED + "\n" + """
 				FROM booking b
 				WHERE b.code = :code AND b.stay_id IS NULL
 				""")
@@ -580,7 +598,8 @@ class JdbcBookings implements Bookings {
 				SELECT b.id, s.code, b.status, b.venue_id, b.set_id, b.customer_id,
 				       b.booking_date, b.last_date, b.amount_minor, b.amount_currency, b.cancelled_at, b.refund_minor,
 				       b.request_expires_at, b.cancel_reason, b.created_at, b.accepted_at, b.moved_at, b.decline_reason,
-				       (SELECT COALESCE(SUM(d.refund_minor), 0) FROM booking_day d WHERE d.booking_id = b.id) AS day_refunded_minor
+				       """ + DAY_REFUNDED_SUM_SQL + " AS " + COL_DAY_REFUNDED_MINOR + ", "
+				+ EVERY_DAY_REFUNDED_SQL + " AS " + COL_EVERY_DAY_REFUNDED + "\n" + """
 				FROM booking b
 				JOIN stay s ON s.id = b.stay_id
 				WHERE b.stay_id = :stay
@@ -592,17 +611,15 @@ class JdbcBookings implements Bookings {
 	}
 
 	@Override
-	public List<BookingRecord> findByAccountId(CustomerAccountId accountId) {
-		// The signed-in customer's bookings, newest first — account-scoped by account_id
-		// (the session principal's id, never a request param). Served by booking_account_id_idx (V26,
-		// partial on the non-NULL slice). Same row shape as findByCode so MyBookingsService enriches
-		// uniformly; a guest booking (NULL account_id) can never match.
+	public List<AccountBooking> findByAccountId(CustomerAccountId accountId) {
+		// Served by booking_account_id_idx (V26, partial on the non-NULL slice): a guest booking never matches.
 		List<AccountRow> rows = jdbc.sql("""
 				SELECT b.id, COALESCE(s.code, b.code) AS code, b.status, b.venue_id, b.set_id, b.customer_id,
 				       b.booking_date, b.last_date, b.amount_minor, b.amount_currency, b.cancelled_at, b.refund_minor,
 				       b.request_expires_at, b.cancel_reason, b.created_at, b.accepted_at, b.moved_at, b.decline_reason,
 				       s.id AS stay_id, s.first_date AS stay_first_date, s.last_date AS stay_last_date,
-				       (SELECT COALESCE(SUM(d.refund_minor), 0) FROM booking_day d WHERE d.booking_id = b.id) AS day_refunded_minor
+				       """ + DAY_REFUNDED_SUM_SQL + " AS " + COL_DAY_REFUNDED_MINOR + ", "
+				+ EVERY_DAY_REFUNDED_SQL + " AS " + COL_EVERY_DAY_REFUNDED + "\n" + """
 				FROM booking b
 				LEFT JOIN stay s ON s.id = b.stay_id
 				WHERE b.account_id = :account
@@ -615,9 +632,9 @@ class JdbcBookings implements Bookings {
 		return groupedByStay(rows);
 	}
 
-	/** A stitched stay lists once, as one booking (ADR-0024), where its latest stretch fell; a lone booking as itself. */
-	private static List<BookingRecord> groupedByStay(List<AccountRow> rows) {
-		List<BookingRecord> listed = new ArrayList<>();
+	/** A stitched stay lists once (ADR-0024), where its latest stretch fell, its stretches in day order; a lone booking as itself. */
+	private static List<AccountBooking> groupedByStay(List<AccountRow> rows) {
+		List<AccountBooking> listed = new ArrayList<>();
 		Map<Long, Integer> slotOfStay = new HashMap<>();
 		Map<Long, AccountRow> stayOf = new HashMap<>();
 		Map<Long, List<BookingRecord>> stretchesOfStay = new HashMap<>();
@@ -636,7 +653,7 @@ class JdbcBookings implements Bookings {
 		slotOfStay.forEach((stayId, slot) -> {
 			AccountRow stay = stayOf.get(stayId);
 			listed.set(slot, new StayRecord(new StayId(stayId), stay.booking().code(), stay.booking().venueId(),
-					stay.stayFirstDate(), stay.stayLastDate(), stretchesOfStay.get(stayId).reversed()).asBooking());
+					stay.stayFirstDate(), stay.stayLastDate(), stretchesOfStay.get(stayId).reversed()));
 		});
 		return listed;
 	}
@@ -666,7 +683,7 @@ class JdbcBookings implements Bookings {
 				acceptedAt == null ? null : acceptedAt.toInstant(),
 				movedAt == null ? null : movedAt.toInstant(),
 				declineReason == null ? null : DeclineReason.valueOf(declineReason),
-				rs.getLong(COL_DAY_REFUNDED_MINOR));
+				rs.getLong(COL_DAY_REFUNDED_MINOR), rs.getBoolean(COL_EVERY_DAY_REFUNDED));
 	}
 
 	/**
@@ -925,6 +942,9 @@ class JdbcBookings implements Bookings {
 				WHERE t.stay_id IS NOT NULL AND t.booking_date = :moveDay AND t.status = :confirmed
 				  AND t.move_reminder_at IS NULL AND t.set_id <> p.set_id
 				  AND p.status IN (:confirmed, :completed)
+				  AND
+				""" + HOLDS_DAY_SQL.formatted("t", ":moveDay") + """
+
 				ORDER BY t.id
 				""")
 				.param("moveDay", moveDay)
@@ -937,10 +957,14 @@ class JdbcBookings implements Bookings {
 
 	@Override
 	public Optional<DueMove> stampMoveReminder(long bookingId, Instant at) {
+		lockById(bookingId);
 		return jdbc.sql("""
 				UPDATE booking
 				SET move_reminder_at = :at
 				WHERE id = :id AND status = :confirmed AND move_reminder_at IS NULL
+				  AND
+				""" + HOLDS_DAY_SQL.formatted("booking", "booking.booking_date") + """
+
 				RETURNING stay_id, booking_date
 				""")
 				.param("at", java.sql.Timestamp.from(at))
@@ -1275,27 +1299,46 @@ class JdbcBookings implements Bookings {
 				rs.getObject(COL_LAST_DATE, LocalDate.class));
 	}
 
+	/** The live-claim columns {@link #findLiveOnSets} and {@link #findLiveStretchesOf} read; one mapper for both. */
+	private static final String LIVE_CLAIM_SELECT = """
+			SELECT id, set_id, booking_date, last_date, status, amount_minor, amount_currency, stay_id,
+			       """ + DAY_REFUNDED_SUM_SQL + " AS " + COL_DAY_REFUNDED_MINOR + ", "
+			+ EVERY_DAY_REFUNDED_SQL + " AS " + COL_EVERY_DAY_REFUNDED + "\nFROM booking b\n";
+
 	/** The same live filter as {@code JdbcBookingPresence}; {@code booking_set_date_idx} serves the set list. */
 	@Override
 	public List<LiveClaim> findLiveOnSets(Collection<SetId> setIds) {
 		if (setIds.isEmpty()) {
 			return List.of();
 		}
-		return jdbc.sql("""
-				SELECT id, set_id, booking_date, last_date, status, amount_minor, amount_currency,
-				       (SELECT COALESCE(SUM(d.refund_minor), 0) FROM booking_day d WHERE d.booking_id = b.id) AS day_refunded_minor
-				FROM booking b
+		return jdbc.sql(LIVE_CLAIM_SELECT + """
 				WHERE set_id IN (:ids) AND status IN (:live)
 				ORDER BY booking_date, id
 				""")
 				.param("ids", setIds.stream().map(SetId::value).toList())
 				.param("live", JdbcBookingPresence.LIVE_STATUSES)
-				.query((rs, rowNum) -> new LiveClaim(rs.getLong("id"), new SetId(rs.getLong(COL_SET_ID)),
-						rs.getObject(COL_BOOKING_DATE, LocalDate.class), rs.getObject(COL_LAST_DATE, LocalDate.class),
-						BookingStatus.valueOf(rs.getString(PARAM_STATUS)),
-						rs.getLong(COL_AMOUNT_MINOR), rs.getString(COL_AMOUNT_CURRENCY),
-						rs.getLong(COL_DAY_REFUNDED_MINOR)))
+				.query(JdbcBookings::mapLiveClaim)
 				.list();
+	}
+
+	@Override
+	public List<LiveClaim> findLiveStretchesOf(StayId stayId) {
+		return jdbc.sql(LIVE_CLAIM_SELECT + """
+				WHERE stay_id = :stay AND status IN (:live)
+				ORDER BY booking_date, id
+				""")
+				.param("stay", stayId.value())
+				.param("live", JdbcBookingPresence.LIVE_STATUSES)
+				.query(JdbcBookings::mapLiveClaim)
+				.list();
+	}
+
+	private static LiveClaim mapLiveClaim(java.sql.ResultSet rs, int rowNum) throws java.sql.SQLException {
+		return new LiveClaim(rs.getLong("id"), new SetId(rs.getLong(COL_SET_ID)),
+				rs.getObject(COL_BOOKING_DATE, LocalDate.class), rs.getObject(COL_LAST_DATE, LocalDate.class),
+				BookingStatus.valueOf(rs.getString(PARAM_STATUS)),
+				rs.getLong(COL_AMOUNT_MINOR), rs.getString(COL_AMOUNT_CURRENCY),
+				rs.getLong(COL_DAY_REFUNDED_MINOR), stayIdOf(rs), rs.getBoolean(COL_EVERY_DAY_REFUNDED));
 	}
 
 	@Override
@@ -1304,11 +1347,13 @@ class JdbcBookings implements Bookings {
 	}
 
 	@Override
-	public long lockRemainingMinor(long bookingId) {
+	public LockedRemainder lockRemainder(long bookingId) {
 		lockById(bookingId);
-		return jdbc.sql("SELECT b.amount_minor - " + DAY_REFUNDED_SUM_SQL + " FROM booking b WHERE b.id = :id")
+		return jdbc.sql("SELECT b.amount_minor - " + DAY_REFUNDED_SUM_SQL + " AS remaining_minor, "
+						+ EVERY_DAY_REFUNDED_SQL + " AS " + COL_EVERY_DAY_REFUNDED + " FROM booking b WHERE b.id = :id")
 				.param("id", bookingId)
-				.query(Long.class)
+				.query((rs, rowNum) -> new LockedRemainder(rs.getLong("remaining_minor"),
+						rs.getBoolean(COL_EVERY_DAY_REFUNDED)))
 				.single();
 	}
 }

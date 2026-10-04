@@ -27,9 +27,9 @@ The single `@RestControllerAdvice`, extending `ResponseEntityExceptionHandler`:
 the framework's logged 500. A controller feeding request input into IAE-throwing guards
 (`toCommand()`, `PeriodKey.of`, enum parses) translates at the conversion boundary via
 `InvalidApiRequestException.parsing(...)`. `ErrorContractArchitectureTests` forbids
-per-controller `@ExceptionHandler`s. `RateLimitFilter` and `SecurityProblemResponses`
-(security-chain 401/403, proof-of-work refusals) mirror the shape by hand (they reject before
-MVC dispatch).
+per-controller `@ExceptionHandler`s. `RateLimitFilter` (429) and
+`SecurityProblemResponses` (security-chain 401/403, proof-of-work refusals, the edge's 413 `PAYLOAD_TOO_LARGE` for a body
+past its cap) mirror the shape by hand (they reject before MVC dispatch).
 
 - Validation: presence/shape/format at the edge (`toCommand()`); domain invariants in the value
   object's constructor and the application service; no HTTP status in the domain.
@@ -38,9 +38,14 @@ MVC dispatch).
   `400` → `INVALID_REQUEST`, `413` → `PAYLOAD_TOO_LARGE` (pinned literally — the base handler is
   `final` and the 413 constant name is unstable), otherwise the HTTP status name
   (`ApiErrorHandlerTest`).
-- `instance` is `about:blank` by construction (Spring would auto-fill the request URI, which
-  on `/api/bookings/{code}` is the bearer credential); a controller may override with a
-  known-safe URI.
+- `instance` is never sent: no per-occurrence URI (#7). Spring auto-fills a null `instance` with
+  the request URI, on `/api/bookings/{code}` the bearer credential, so `web`'s
+  `ProblemInstanceConfig` clears it on every MVC-written body; the hand-built filter-chain bodies
+  omit it. Never set one (`ProblemDetail.setInstance`), not even a constant path.
+- `/error` follows the contract: `web`'s `ProblemErrorController` replaces Boot's `BasicErrorController`, so a
+  filter-thrown exception, a `sendError` or an unmapped exception answers `ApiProblem.of(status,
+  ApiErrorHandler.defaultCode(status), …)` with the dispatched status kept, on every path, never Boot's
+  `path`/`timestamp` map or whitelabel page (`ErrorDispatchProblemIT`).
 
 **Validation is centralized-explicit:** hand-rolled checks in `toCommand()`, translated at the
 controller, mapped once by the advice. No `spring-boot-starter-validation`/`@Valid` — the

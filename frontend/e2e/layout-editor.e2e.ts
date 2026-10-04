@@ -46,6 +46,7 @@ const EMPTY_PREVIEW = {
   moves: [],
   refunds: [],
   releases: [],
+  ended: [],
   staffHolds: [],
   blocks: [],
   keep: [],
@@ -410,6 +411,7 @@ const BLOCKED_PREVIEW = {
       kind: 'DECLINE',
     },
   ],
+  ended: [],
   staffHolds: [{ set: { setId: 2, rowLabel: 'B', positionNo: 1 }, dates: ['2026-09-15'] }],
   blocks: [
     {
@@ -453,6 +455,7 @@ const RECEIPT = {
   ],
   refunds: [],
   releases: [],
+  ended: [],
   kept: [],
   refundReason: '',
   refundedTotal: null,
@@ -520,6 +523,42 @@ const REFUNDING_RECEIPT = {
   refundReason: 'Re-laying row B for the season',
   refundedTotal: { minorUnits: 2000, currency: 'EUR' },
   feeTotal: { minorUnits: 500, currency: 'EUR' },
+};
+
+/** The same save when B1's only guest had every day refunded already: ended, nothing to type (#1300). */
+const NOTHING_LEFT_PREVIEW = {
+  ...BLOCKED_PREVIEW,
+  moves: [],
+  refunds: [],
+  releases: [],
+  ended: [
+    {
+      bookingId: 11,
+      bookingDate: '2026-09-24',
+      amount: { minorUnits: 0, currency: 'EUR' },
+      from: { setId: 2, rowLabel: 'B', positionNo: 1 },
+    },
+  ],
+  staffHolds: [],
+  blocks: [],
+  keep: [],
+  previewToken: 'v1.ended',
+  feeTotal: { minorUnits: 0, currency: 'EUR' },
+};
+
+/** The receipt the commit of {@link NOTHING_LEFT_PREVIEW} answers. */
+const NOTHING_LEFT_RECEIPT = {
+  ...RECEIPT,
+  receiptId: 45,
+  moves: [],
+  ended: [
+    {
+      bookingId: 11,
+      bookingDate: '2026-09-24',
+      amount: { minorUnits: 0, currency: 'EUR' },
+      from: { setId: 2, rowLabel: 'B', positionNo: 1 },
+    },
+  ],
 };
 
 test('holds both surfaces until the map read settles (#721)', async ({ page }) => {
@@ -1069,6 +1108,56 @@ test('a commit refused for a displaced kept set re-renders the picture with Back
   await expect(page.getByTestId('layout-remodel-preview').getByRole('button')).toHaveCount(1);
   await expect(page.getByTestId('layout-remodel-back')).toBeFocused();
   await expect(page.getByTestId('layout-error')).toHaveCount(0);
+});
+
+test('a booking with nothing left to refund is ended without a typed confirmation or fee, and the receipt lists it (#1300, + axe)', async ({
+  page,
+}) => {
+  await mockEditor(page, [], SEEDED_SETS, [], NOTHING_LEFT_PREVIEW);
+  const commits: Request[] = [];
+  await page.route(/\/api\/venues\/1\/beach-map\/commit$/, (route) => {
+    commits.push(route.request());
+    return route.fulfill({ json: NOTHING_LEFT_RECEIPT });
+  });
+  await page.goto('/operator/1/beach-map');
+  await signIn(page);
+  await page.getByTestId('layout-tool-gap').click();
+  await page.locator('[data-testid="layout-cell"][data-grid-row="1"][data-grid-col="0"]').click();
+  await page.getByTestId('layout-save').click();
+
+  const dialog = page.getByTestId('layout-remodel-preview');
+  await expect(dialog).toBeVisible();
+  await expect(page.getByTestId('layout-remodel-ended')).toContainText(
+    'Ended — nothing left to refund (1)',
+  );
+  await expect(page.getByTestId('layout-remodel-ended')).toContainText(
+    'Row B · position 1 · Thu 24 Sept 2026 · every day already refunded',
+  );
+  await expect(dialog).toContainText('no refund, no fee and no email');
+  await expect(page.getByTestId('layout-remodel-refunds')).toHaveCount(0);
+  await expect(page.getByTestId('layout-remodel-fee')).toHaveCount(0);
+  await expect(page.getByTestId('layout-remodel-confirm')).toHaveCount(0);
+  const save = page.getByTestId('layout-remodel-commit');
+  await expect(save).toHaveText('Save and end 1 booking');
+  await expect(save).toBeEnabled();
+  await settle(page);
+  await expectNoSeriousAxeViolations(page, 'layout editor, remodel with nothing left');
+  await save.click();
+
+  const body = commits[0].postDataJSON() as { refundCount: number; refundReason: string };
+  expect(body.refundCount).toBe(0);
+  expect(body.refundReason).toBe('');
+
+  const receipt = page.getByTestId('layout-remodel-receipt');
+  await expect(receipt).toBeVisible();
+  await expect(receipt).toContainText('1 ended with nothing left');
+  await expect(page.getByTestId('layout-remodel-receipt-ended')).toContainText(
+    'Row B · position 1 · Thu 24 Sept 2026 · every day already refunded',
+  );
+  await expect(page.getByTestId('layout-remodel-receipt-refunds')).toHaveCount(0);
+  await expect(page.getByTestId('layout-remodel-receipt-fee')).toHaveCount(0);
+  await settle(page);
+  await expectNoSeriousAxeViolations(page, 'layout editor, remodel receipt with nothing left');
 });
 
 test('a picture with refunds commits once the count and reason are typed, and the receipt lists them (#1035, + axe)', async ({

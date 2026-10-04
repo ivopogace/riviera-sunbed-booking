@@ -29,6 +29,25 @@ describe('booking-status presentation metadata (shared chip source)', () => {
     ]);
   });
 
+  // ADR-0026 §7 (#1381): every day refunded reads as refunded, not as a held set or a missed stay.
+  it.each(['CONFIRMED', 'NO_SHOW'])(
+    'reads a %s booking with nothing left as Refunded',
+    (status) => {
+      expect(metaFor(status, true)).toEqual({
+        label: 'Refunded',
+        chip: 'chip--cancelled',
+        amount: 'Paid',
+      });
+    },
+  );
+
+  it.each(['CANCELLED', 'COMPLETED', 'AWAITING_PAYMENT'])(
+    'keeps the %s chip even when nothing is left',
+    (status) => {
+      expect(metaFor(status, true)).toEqual(metaFor(status));
+    },
+  );
+
   it('falls back gracefully for a status this build does not know (FE/BE skew)', () => {
     expect(metaFor('ON_HOLD')).toEqual({
       label: 'On hold',

@@ -174,8 +174,9 @@ class MailOutboxScopeIT {
 		return jdbc.sql("""
 				SELECT id FROM event_publication_archive
 				WHERE listener_id LIKE 'payout.accrue-on-booking-confirmed'
-				  AND serialized_event LIKE :amountFragment
+				  AND event_type = :type AND serialized_event LIKE :amountFragment
 				""")
+				.param("type", BookingConfirmed.class.getName())
 				.param("amountFragment", "%" + ACCRUAL_AMOUNT_MINOR + "%")
 				.query(UUID.class).optional().orElse(null);
 	}

@@ -4,6 +4,7 @@ import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;
+import java.util.List;
 
 import io.micrometer.core.instrument.MeterRegistry;
 
@@ -20,6 +21,7 @@ import org.springframework.transaction.PlatformTransactionManager;
 
 import ai.riviera.platform.EnabledIfDockerAvailable;
 import ai.riviera.platform.TestcontainersConfiguration;
+import ai.riviera.platform.booking.events.BookingPaymentDue;
 import ai.riviera.platform.booking.vocabulary.CancellationWindow;
 import ai.riviera.platform.notification.adapter.out.MockMailer;
 import ai.riviera.platform.notification.adapter.out.SentEmail;
@@ -253,14 +255,20 @@ class RequestPaymentDueMailIT {
 		fixtures.publishInTransaction(fixtures.paymentDueOf(
 				new BookingMailFixtures.SetRef(set.setId(), set.venueId()), bookingId, date, 8316L,
 				Instant.now().plus(Duration.ofHours(12)).truncatedTo(ChronoUnit.MILLIS)));
-		Awaitility.await().atMost(WAIT).until(() -> countTo(guest) == 1L);
 
-		assertThat(jdbc.sql("SELECT DISTINCT listener_id FROM event_publication_archive "
-						+ "WHERE serialized_event LIKE :fragment AND listener_id LIKE :module")
-				.param("fragment", "%8316%")
-				.param("module", "notification.%")
-				.query(String.class).list())
-				.containsExactly(BookingMailFixtures.PAYMENT_DUE_LISTENER_ID);
+		Awaitility.await().atMost(WAIT).untilAsserted(() -> {
+			List<String> archived = jdbc.sql(
+					"SELECT DISTINCT listener_id FROM event_publication_archive "
+							+ "WHERE event_type = :type AND serialized_event LIKE :fragment AND listener_id LIKE :module")
+					.param("type", BookingPaymentDue.class.getName())
+					.param("fragment", "%8316%")
+					.param("module", "notification.%")
+					.query(String.class).list();
+			long mails = countTo(guest);
+			assertThat(archived).as("archived notification listener ids (mails to %s: %s)", guest, mails)
+					.containsExactly(BookingMailFixtures.PAYMENT_DUE_LISTENER_ID);
+			assertThat(mails).as("mails to %s, with the archive holding %s", guest, archived).isEqualTo(1L);
+		});
 	}
 
 	/**

@@ -31,7 +31,7 @@ daemon). In a cloud session load `riviera-local-debug` before the first `./gradl
 ./gradlew test --tests "*ModularityTests*" --tests "*JdbcOnlyArchitectureTests*" \
   --tests "*PackageShapeArchitectureTests*" --tests "*DomainPurityArchitectureTests*" \
   --tests "*PublishedSurfacePlacementArchitectureTests*" \
-  --tests "*RetiredSetExclusionArchitectureTests*"
+  --tests "*RetiredSetExclusionArchitectureTests*" --tests "*UnusedAllowedDependencyTests*"
                                        # the structural net — run after any backend structure change
 ./gradlew bootRun                      # API on :8080
 ```
@@ -100,10 +100,10 @@ ownership, never reuse) and the closed non-context modules with `allowedDependen
 `admin_audit_record`) and `monitoring` (correlation id, metric names, money-path alert check; writes
 nothing). Also closed and non-context, but adapter layers depending on the surfaces they need: `auth`
 (sign-in and sessions: the `UserDetailsService`s, session establishment, credential stamp and revocation,
-SSO, password policy, recovery, the login and self-service controllers; writes nothing) and `web` (the
+SSO, password policy, recovery, the login, self-service, admin-lifecycle and erasure controllers; writes nothing) and `web` (the
 HTTP boundary: `SecurityConfig`'s chains and route policy, the chain's filters, CORS, `ApiErrorHandler`
-as the one advice; publishes nothing, writes nothing). No module writes
-the framework tables: `SPRING_SESSION*` (Spring Session, from `auth` and `web`) and `event_publication*` (Modulith's registry; re-driven by the outbox levers).
+as the one advice, `/error`'s problem body; publishes nothing, writes nothing). No module writes
+the framework tables: `SPRING_SESSION*` (Spring Session, from `auth` and `web`) and `event_publication*` (Modulith's registry; re-driven by the outbox levers and the spine retries).
 Every module may depend on `shared`, which depends on no module. The root holds only
 `PlatformApplication` and configuration that reaches no module; nothing depends on it.
 
@@ -157,7 +157,7 @@ Cited by number — **never renumber**. Long form: `RESPONSIBILITIES.md` § *Inv
 `riviera-review-overlay` (reviews), `riviera-modulith` + `riviera-java-conventions` (backend),
 `riviera-frontend` + `riviera-tailwind` (frontend), `riviera-stripe-payments`,
 `riviera-local-debug` (before the first build/test), `riviera-docs-freshness` (epic close-out),
-`postgres` (migrations), `playwright-cli` (e2e).
+`postgres` (migrations), `playwright-cli` (e2e), `riviera-wave` (parallel issue waves).
 
 Tracker + labels: `docs/agents/`. Glossary: `CONTEXT.md`. Decisions: `docs/adr/`. Roadmap:
 `docs/architecture/improvement-plan.md`.

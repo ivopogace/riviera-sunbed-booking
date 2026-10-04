@@ -5,6 +5,7 @@ import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 import org.springframework.jdbc.core.simple.JdbcClient;
@@ -12,8 +13,11 @@ import org.springframework.stereotype.Repository;
 
 import ai.riviera.platform.booking.api.BookingNotificationFacts;
 import ai.riviera.platform.booking.application.BookingCutoff;
+import ai.riviera.platform.booking.application.Bookings;
 import ai.riviera.platform.booking.application.cancel.CancellationPolicy;
+import ai.riviera.platform.booking.application.cancel.LiveRemainder;
 import ai.riviera.platform.booking.application.remodel.RemodelReceipts;
+import ai.riviera.platform.booking.application.view.BookingRecord;
 import ai.riviera.platform.booking.vocabulary.BookingConfirmationFacts;
 import ai.riviera.platform.booking.vocabulary.BookingId;
 import ai.riviera.platform.booking.vocabulary.BookingMoveFacts;
@@ -33,8 +37,8 @@ import ai.riviera.platform.venue.vocabulary.VenueId;
  * JDBC adapter for {@link BookingNotificationFacts} over {@link JdbcClient} (invariant #1): by primary
  * key, bar the stay reads, which walk {@code booking_stay_id_idx}. {@code confirmationFacts} and the stay
  * facts re-derive the birth window a resend has no payload for; {@code moveFacts} adds the free-exit
- * deadline {@link BookingCutoff} derives. Package-private; only the {@code api/} port is referenced
- * cross-module (invariant #11). Read-only.
+ * deadline {@link BookingCutoff} derives on the {@link LiveRemainder}'s day, read at send time as the view
+ * reads it. Package-private; only the {@code api/} port is referenced cross-module (invariant #11). Read-only.
  */
 @Repository
 class JdbcBookingNotificationFacts implements BookingNotificationFacts {
@@ -42,36 +46,46 @@ class JdbcBookingNotificationFacts implements BookingNotificationFacts {
 	private static final String COL_CUSTOMER_ID = "customer_id";
 	private static final String COL_BOOKING_DATE = "booking_date";
 	private static final String MOVED_ROW_SQL = """
-			SELECT b.moved_at, s.first_date AS stay_first_date
+			SELECT b.moved_at, s.code AS stay_code
 			FROM booking b
 			LEFT JOIN stay s ON s.id = b.stay_id
 			WHERE b.id = :id AND b.moved_at IS NOT NULL
 			""";
 
-	/** The arriving stretch and the live stretch it follows on another set; nothing when either has gone. */
+	/**
+	 * The arriving stretch and the live stretch it follows on another set, with whether the guest holds the day before
+	 * on it; nothing when either has gone or the move day is no longer the guest's ({@code JdbcBookings.HOLDS_DAY_SQL}).
+	 */
 	private static final String MOVE_ROW_SQL = """
 			SELECT s.id AS stay_id, s.code, s.last_date AS stay_last_date, t.customer_id, t.venue_id,
-			       t.booking_date, p.set_id AS from_set, t.set_id AS to_set
+			       t.booking_date, p.set_id AS from_set, t.set_id AS to_set,
+			       """ + JdbcBookings.HOLDS_DAY_SQL.formatted("p", "p.last_date") + """
+			 AS from_day_held
 			FROM booking t
 			JOIN stay s ON s.id = t.stay_id
 			JOIN booking p ON p.stay_id = t.stay_id AND p.id <> t.id AND p.last_date = t.booking_date - 1
 			WHERE t.id = :id AND t.status = :confirmed AND t.set_id <> p.set_id
 			  AND p.status IN (:confirmed, :completed)
-			""";
+			  AND
+			""" + JdbcBookings.HOLDS_DAY_SQL.formatted("t", "t.booking_date");
 
 	private final JdbcClient jdbc;
 	private final CancellationPolicy cancellationPolicy;
 	private final RemodelReceipts receipts;
 	private final BookingCutoff cutoff;
 	private final SetBookingFacts sets;
+	private final Bookings bookings;
+	private final LiveRemainder liveRemainder;
 
 	JdbcBookingNotificationFacts(JdbcClient jdbc, CancellationPolicy cancellationPolicy, RemodelReceipts receipts,
-			BookingCutoff cutoff, SetBookingFacts sets) {
+			BookingCutoff cutoff, SetBookingFacts sets, Bookings bookings, LiveRemainder liveRemainder) {
 		this.jdbc = jdbc;
 		this.cancellationPolicy = cancellationPolicy;
 		this.receipts = receipts;
 		this.cutoff = cutoff;
 		this.sets = sets;
+		this.bookings = bookings;
+		this.liveRemainder = liveRemainder;
 	}
 
 	@Override
@@ -83,7 +97,7 @@ class JdbcBookingNotificationFacts implements BookingNotificationFacts {
 				.query((rs, rowNum) -> new MoveRow(new StayId(rs.getLong("stay_id")), rs.getString("code"),
 						new CustomerId(rs.getLong(COL_CUSTOMER_ID)), new VenueId(rs.getLong("venue_id")),
 						rs.getObject(COL_BOOKING_DATE, LocalDate.class), rs.getObject("stay_last_date", LocalDate.class),
-						new SetId(rs.getLong("from_set")), new SetId(rs.getLong("to_set"))))
+						new SetId(rs.getLong("from_set")), new SetId(rs.getLong("to_set")), rs.getBoolean("from_day_held")))
 				.optional()
 				.flatMap(this::placed);
 	}
@@ -98,31 +112,39 @@ class JdbcBookingNotificationFacts implements BookingNotificationFacts {
 			return Optional.empty();
 		}
 		return Optional.of(new StayMoveFacts(row.stayId(), row.code(), row.customerId(), row.moveDate(),
-				row.stayLastDate(), row.fromSet(), row.toSet(), to.rowsAway(from), to.positionsAway(from)));
+				row.stayLastDate(), row.fromSet(), row.toSet(), to.rowsAway(from), to.positionsAway(from), row.fromDayHeld()));
 	}
 
 	private record MoveRow(StayId stayId, String code, CustomerId customerId, VenueId venueId, LocalDate moveDate,
-			LocalDate stayLastDate, SetId fromSet, SetId toSet) {
+			LocalDate stayLastDate, SetId fromSet, SetId toSet, boolean fromDayHeld) {
 	}
 
 	@Override
 	public Optional<BookingMoveFacts> moveFacts(BookingId bookingId) {
 		return receipts.latestMoveOf(bookingId).flatMap(move -> jdbc.sql(MOVED_ROW_SQL)
 				.param("id", bookingId.value())
-				.query((rs, rowNum) -> new MovedRow(rs.getTimestamp("moved_at").toInstant(),
-						rs.getObject("stay_first_date", LocalDate.class)))
+				.query((rs, rowNum) -> new MovedRow(rs.getTimestamp("moved_at").toInstant(), rs.getString("stay_code")))
 				.optional()
 				.map(row -> {
-					LocalDate windowDay = row.stayFirstDay() != null ? row.stayFirstDay() : move.bookingDate();
-					Instant exit = cutoff.freeExitEndsAt(move.bookingDate(), windowDay, row.movedAt());
+					Instant exit = cutoff.freeExitEndsAt(move.bookingDate(), windowDayOf(bookingId, row, move.bookingDate()),
+							row.movedAt());
 					return new BookingMoveFacts(move.bookingDate(), move.from().rowLabel(), move.from().positionNo(),
 							move.to().rowLabel(), move.to().positionNo(), move.rowsAway(), move.positionsAway(),
-							row.movedAt(), exit.isAfter(row.movedAt()) ? exit : null, row.stayFirstDay() != null);
+							row.movedAt(), exit.isAfter(row.movedAt()) ? exit : null, row.stayCode() != null);
 				}));
 	}
 
-	/** A moved booking's move instant and, for a stay's stretch, the stay's first day (the day it is judged on). */
-	private record MovedRow(Instant movedAt, LocalDate stayFirstDay) {
+	/** The day a stay's cancel is judged on ({@link LiveRemainder}); a lone booking's own day. A stay row the stretch just named is never absent. */
+	private LocalDate windowDayOf(BookingId bookingId, MovedRow row, LocalDate bookingDate) {
+		if (row.stayCode() == null) {
+			return bookingDate;
+		}
+		return bookings.findStayByCode(row.stayCode()).map(stay -> liveRemainder.of(stay).windowDay())
+				.orElseThrow(() -> new IllegalStateException("the stay of booking " + bookingId.value() + " vanished between two reads"));
+	}
+
+	/** A moved booking's move instant and, for a stay's stretch, the stay's code: it keys the stay read, never carried out or logged (#7). */
+	private record MovedRow(Instant movedAt, String stayCode) {
 	}
 
 	@Override
@@ -196,6 +218,25 @@ class JdbcBookingNotificationFacts implements BookingNotificationFacts {
 				.query(Long.class)
 				.optional()
 				.flatMap(stayId -> stayConfirmationFacts(new StayId(stayId)));
+	}
+
+	@Override
+	public Optional<StayConfirmationFacts> stayCancellationFacts(StayId stayId) {
+		return stayConfirmationFacts(stayId).map(this::narrowedToLiveRemainder);
+	}
+
+	/** The stay's stops cut to its {@link LiveRemainder}, looked up by the stay's code (never logged, #7); whole when nothing is live. */
+	private StayConfirmationFacts narrowedToLiveRemainder(StayConfirmationFacts stay) {
+		List<BookingRecord> live = bookings.findStayByCode(stay.code()).map(stored -> liveRemainder.of(stored).live())
+				.orElseThrow(() -> new IllegalStateException("stay " + stay.stayId().value() + " vanished between two reads"));
+		if (live.isEmpty()) {
+			return stay;
+		}
+		Set<BookingId> liveIds = live.stream().map(stretch -> new BookingId(stretch.id())).collect(Collectors.toSet());
+		return new StayConfirmationFacts(stay.stayId(), stay.code(), stay.customerId(),
+				stay.stops().stream().filter(stop -> liveIds.contains(stop.bookingId())).toList(),
+				live.stream().mapToLong(BookingRecord::amountMinor).reduce(0L, Math::addExact), stay.currency(),
+				stay.everConfirmed(), stay.cancellationWindowAtBirth(), stay.lateCancelRefundBps());
 	}
 
 	private record StayRow(String code, StayConfirmationFacts.Stop stop, long amountMinor, String currency,

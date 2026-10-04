@@ -23,9 +23,11 @@ import ai.riviera.platform.booking.application.Bookings;
 import ai.riviera.platform.booking.application.reserve.CreateStay;
 import ai.riviera.platform.booking.application.reserve.CreateStayCommand;
 import ai.riviera.platform.booking.application.reserve.StayOutcome;
+import ai.riviera.platform.booking.application.view.AccountBooking;
 import ai.riviera.platform.booking.application.view.BookingDetail;
 import ai.riviera.platform.booking.application.view.BookingMove;
 import ai.riviera.platform.booking.application.view.BookingRecord;
+import ai.riviera.platform.booking.application.view.StayRecord;
 import ai.riviera.platform.booking.application.view.ViewBooking;
 import ai.riviera.platform.booking.domain.BookingStatus;
 import ai.riviera.platform.booking.vocabulary.BookingId;
@@ -238,10 +240,10 @@ class ViewStayIT {
 				plan(a, 3, venue.online().get(1), 4, first).stretches(), GUEST, new CustomerAccountId(account))))
 				.confirmation().code();
 
-		List<BookingRecord> rows = bookings.findByAccountId(new CustomerAccountId(account));
+		List<AccountBooking> rows = bookings.findByAccountId(new CustomerAccountId(account));
 
 		assertEquals(1, rows.size(), "one row for the stay, not one per stretch");
-		BookingRecord row = rows.getFirst();
+		BookingRecord row = assertInstanceOf(StayRecord.class, rows.getFirst()).asBooking();
 		assertEquals(code, row.code());
 		assertEquals(BookingStatus.CONFIRMED, row.status());
 		assertEquals(first, row.bookingDate());

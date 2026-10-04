@@ -24,6 +24,7 @@ import ai.riviera.platform.availability.vocabulary.ClaimOutcome;
 import ai.riviera.platform.booking.application.refund.ExpireAbandonedBookings;
 import ai.riviera.platform.booking.application.request.RequestWindows;
 import ai.riviera.platform.customer.application.AccountErasureStore;
+import ai.riviera.platform.customer.vocabulary.CustomerId;
 import ai.riviera.platform.venue.vocabulary.SetId;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -122,7 +123,7 @@ class AbandonedSweepSurvivesWedgedJobIT {
 			CountDownLatch wedgeRunning = new CountDownLatch(1);
 			taskScheduler.schedule(() -> {
 				wedgeRunning.countDown();
-				erasure.expiredGuestCandidates(Instant.now(), 100);
+				erasure.expiredGuestCandidates(Instant.now(), new CustomerId(0), 100);
 			}, Instant.now());
 			assertThat(wedgeRunning.await(SWEEP_MUST_FINISH_WITHIN_SECONDS, TimeUnit.SECONDS))
 					.as("the wedged job must actually be occupying a scheduler thread before we measure")

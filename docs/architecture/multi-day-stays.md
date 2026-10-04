@@ -329,6 +329,15 @@ reader who will ask why a stay is not one booking; a genuine trade-off against t
 segments-in-one-booking alternative) and how the stitching slice settled the code: a `stay` row
 carries it, a stretch's own row code is derived and never shown.
 
+*Amended 2026-10-02 (#1290):* "a stay cancels whole, judged on the stay's first day" has one
+exception. A remodel ends a stretch on its own (ADR-0020's refund, release or nothing left leaves the other
+stretches live), after which the guest's cancel **sets those stretches aside and cancels the live
+remainder, judged on the first live day** — the day a same-set booking of the dates the guest still
+holds would be judged on. What tells a remodel's ending from the guest's own free exit is the commit
+receipt's outcome line, both being `VENUE_CHANGE`; a stretch ended any other way still refuses the
+stay whole. ADR-0024 §4 carries the amendment; `LiveRemainder` in `booking` holds the rule for the
+cancel and the view alike.
+
 The booking **code** becomes stay-level: one bearer credential for the guest (invariant #7
 unchanged), with check-in resolving code → today's segment.
 
@@ -361,6 +370,10 @@ The whole-share key stays `booking-<id>-refund`; a day refund adds `booking-<id>
 shape. This is the highest-risk decision in the epic and sits in the module with the most careful
 invariants in the tree; it is deliberately confined to the last slice so the first two never touch
 it.
+
+One intent also means one void: a remodel that releases one unpaid stretch cannot leave the others
+payable, so it releases every `AWAITING_PAYMENT` stretch of the stay in its commit, names them on the
+preview and the receipt, and mails the stay once (#1292, ADR-0024 decision 3 as amended).
 
 ### D9 — Prerequisite: per-claim remodel settlement
 

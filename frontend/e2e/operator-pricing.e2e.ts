@@ -4,12 +4,13 @@ import { expectNoSeriousAxeViolations } from './support/axe';
 import { settle } from './support/booking-dialog';
 
 /**
- * Real-render CI-safe e2e for the Pricing tab. Drives sign-in → open the Pricing tab →
- * see one row per label with its tier description and price → edit a row's € input → assert the
- * owner-asserted per-row reprice PUT (path + integer-minor-unit body + concurrency token) and the
- * recomputed projected take. Also the cross-venue (403) failure copy and the stale-write conflict (409
+ * Real-render CI-safe e2e for the Pricing tab. Drives sign-in → open the Pricing tab → see one row
+ * per label with its tier description and price → edit a row's € input → assert the owner-asserted
+ * per-row reprice PUT (path + integer-minor-unit body + concurrency token) and the recomputed
+ * projected take. Also the cross-venue (403) failure copy and the stale-write conflict (409
  * STALE_WRITE reverts the row + offers Reload — co-located here as the venue tab does in
- * operator-venue.e2e.ts). API mocked via `page.route` (no backend); axe over the tab.
+ * operator-venue.e2e.ts), and the client-side €0.50 floor refusing before any request. API mocked
+ * via `page.route` (no backend); axe over the tab.
  */
 
 const PRINCIPAL = { username: 'operator', principalType: 'OPERATOR' };
@@ -254,6 +255,40 @@ test('shows the not-owner message and reverts the projection when the reprice is
     ((await error.textContent()) ?? '').trim(),
   );
   await expect(page.getByTestId('pricing-input-A')).not.toHaveAttribute('aria-invalid');
+});
+
+test('refuses a price below €0.50 before any request, keeping the typed value (#1419, + axe)', async ({
+  page,
+}) => {
+  const { puts } = await mockPricing(page);
+  await page.goto('/operator/1');
+  await signInAndOpenPricing(page);
+
+  const input = page.getByTestId('pricing-input-A');
+  await expect(input).toHaveAttribute('min', '0.5');
+  await input.fill('0.49');
+  await input.blur();
+
+  const error = page.getByTestId('pricing-error-A');
+  await expect(error).toHaveText('That price is not valid. Enter an amount of at least €0.50.');
+  await expect(input).toHaveValue('0.49');
+  await expect(input).toHaveAttribute('aria-invalid', 'true');
+  await expect(input).toHaveAccessibleDescription(((await error.textContent()) ?? '').trim());
+  await expect(page.getByTestId('pricing-projected')).toHaveText('€90');
+  expect(puts).toHaveLength(0);
+  await settle(page);
+  await expectNoSeriousAxeViolations(page, 'pricing tab below-floor refusal');
+
+  // The floor itself goes out, as 50 minor units, and the refusal clears.
+  await input.fill('0.50');
+  await input.blur();
+  await expect(page.getByTestId('pricing-saved-A')).toBeVisible();
+  await expect(error).toBeHidden();
+  expect(puts).toHaveLength(1);
+  expect(puts[0].postDataJSON()).toEqual({
+    price: { minorUnits: 50, currency: 'EUR' },
+    expectedVersion: 0,
+  });
 });
 
 test('a stale reprice is rejected 409, reverts the row + shows Reload, then recovers (#226, + axe)', async ({

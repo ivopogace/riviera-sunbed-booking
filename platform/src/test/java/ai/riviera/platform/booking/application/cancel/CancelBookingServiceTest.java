@@ -11,12 +11,14 @@ import java.util.Optional;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
+import org.mockito.ArgumentMatchers;
 import org.mockito.InOrder;
 import org.springframework.context.ApplicationEventPublisher;
 
 import ai.riviera.platform.availability.api.AvailabilityClaim;
 import ai.riviera.platform.booking.application.Bookings;
 import ai.riviera.platform.booking.application.cancel.CancellationPolicy.RefundQuote;
+import ai.riviera.platform.booking.application.remodel.RemodelReceipts;
 import ai.riviera.platform.booking.application.view.BookingRecord;
 import ai.riviera.platform.booking.application.view.StayRecord;
 import ai.riviera.platform.booking.domain.BookingStatus;
@@ -39,6 +41,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.never;
@@ -69,9 +72,10 @@ class CancelBookingServiceTest {
 	private final CancellationPolicy cancellationPolicy = mock(CancellationPolicy.class);
 	private final AvailabilityClaim availability = mock(AvailabilityClaim.class);
 	private final ApplicationEventPublisher events = mock(ApplicationEventPublisher.class);
+	private final RemodelReceipts receipts = mock(RemodelReceipts.class);
 
-	private final CancelBookingService service =
-			new CancelBookingService(bookings, cancellationPolicy, availability, events, NOW);
+	private final CancelBookingService service = new CancelBookingService(bookings, cancellationPolicy, availability,
+			events, new LiveRemainder(receipts), NOW);
 
 	/**
 	 * Both terminal statuses a service day leaves a booking in render the "its date has already
@@ -196,26 +200,156 @@ class CancelBookingServiceTest {
 		verify(events).publishEvent(new StayCancelled(stay, 9000L, "EUR", RefundReason.VENUE_CHANGE));
 	}
 
+	/**
+	 * ADR-0024 §4 as amended (#1290): the stretch a remodel ended (a receipt outcome line) is set aside, the live
+	 * rest cancels, judged on the first live day — the second stretch's own day, not the stay's first.
+	 */
+	@Test
+	void aStayCancelSkipsTheStretchARemodelEndedAndQuotesTheRestOnItsFirstLiveDay() {
+		StayId stay = givenStay(BookingStatus.CANCELLED, BookingStatus.CONFIRMED);
+		when(receipts.endedByRemodel(new BookingId(11L))).thenReturn(true);
+		when(cancellationPolicy.quote(second(), DATE.plusDays(1)))
+				.thenReturn(new RefundQuote(setInfo(), CancellationWindow.FREE, 4500L, RefundReason.POLICY, null));
+		when(bookings.cancelConfirmed(12L, NOW.instant(), 4500L, RefundReason.POLICY, 4500L)).thenReturn(Optional.of(
+				new CancelledBooking(12L, VENUE, OTHER_SET, DATE.plusDays(1), DATE.plusDays(1), 4500L, "EUR")));
+
+		CancelOutcome outcome = service.cancel(STAY_CODE);
+
+		assertEquals(new CancelOutcome.Cancelled(4500L, "EUR", CancelOutcome.Tier.FULL), outcome);
+		verify(bookings, never()).cancelConfirmed(eq(11L), any(), anyLong(), any(), anyLong());
+		verify(cancellationPolicy, never()).quote(any(), eq(DATE));
+		verify(availability).release(OTHER_SET, DATE.plusDays(1));
+		verify(availability, never()).release(SET, DATE);
+		verify(events).publishEvent(new BookingCancelled(new BookingId(12L), VENUE, OTHER_SET, DATE.plusDays(1),
+				4500L, "EUR", RefundReason.POLICY, DATE.plusDays(1), stay));
+		verify(events, never()).publishEvent(ArgumentMatchers.<Object>argThat(
+				event -> event instanceof BookingCancelled cancelled && cancelled.bookingId().value() == 11L));
+		verify(events).publishEvent(new StayCancelled(stay, 4500L, "EUR", RefundReason.POLICY));
+	}
+
+	/** Only a remodel's ending is set aside: a stretch cancelled with no receipt line still refuses the whole stay. */
+	@Test
+	void aStretchCancelledWithoutAReceiptLineStillRefusesTheStay() {
+		givenStay(BookingStatus.CANCELLED, BookingStatus.CONFIRMED);
+		when(receipts.endedByRemodel(new BookingId(11L))).thenReturn(false);
+
+		CancelOutcome outcome = service.cancel(STAY_CODE);
+
+		assertEquals(new CancelOutcome.NotCancellable(BookingStatus.CANCELLED), outcome);
+		verifyNoInteractions(cancellationPolicy, availability, events);
+		verify(bookings, never()).cancelConfirmed(anyLong(), any(), anyLong(), any(), anyLong());
+	}
+
+	@Test
+	void aStayEveryStretchOfWhichARemodelEndedIsNotCancellable() {
+		givenStay(BookingStatus.CANCELLED, BookingStatus.CANCELLED);
+		when(receipts.endedByRemodel(any())).thenReturn(true);
+
+		CancelOutcome outcome = service.cancel(STAY_CODE);
+
+		assertEquals(new CancelOutcome.NotCancellable(BookingStatus.CANCELLED), outcome);
+		verifyNoInteractions(cancellationPolicy, availability, events);
+		verify(bookings, never()).cancelConfirmed(anyLong(), any(), anyLong(), any(), anyLong());
+	}
+
+	/** ADR-0026 §7 (#1381): a confirmed booking with every day refunded is refused as nothing left, before any quote or write. */
+	@Test
+	void aConfirmedBookingWithEveryDayRefundedHasNothingLeft() {
+		when(bookings.findByCode(CODE)).thenReturn(Optional.of(refundedOnEveryDay(1L, SET, DATE)));
+
+		CancelOutcome outcome = service.cancel(CODE);
+
+		assertInstanceOf(CancelOutcome.NothingLeft.class, outcome);
+		verifyNoInteractions(cancellationPolicy, availability, events);
+		verify(bookings, never()).cancelConfirmed(anyLong(), any(), anyLong(), any(), anyLong());
+	}
+
+	/** A confirmed stretch with nothing left is set aside like a remodel-ended one: the rest cancels, judged on its own first day. */
+	@Test
+	void aStayStretchWithEveryDayRefundedIsSetAside() {
+		StayId stay = givenStay(List.of(refundedOnEveryDay(11L, SET, DATE), second()));
+		when(cancellationPolicy.quote(second(), DATE.plusDays(1)))
+				.thenReturn(new RefundQuote(setInfo(), CancellationWindow.FREE, 4500L, RefundReason.POLICY, null));
+		when(bookings.cancelConfirmed(12L, NOW.instant(), 4500L, RefundReason.POLICY, 4500L)).thenReturn(Optional.of(
+				new CancelledBooking(12L, VENUE, OTHER_SET, DATE.plusDays(1), DATE.plusDays(1), 4500L, "EUR")));
+
+		CancelOutcome outcome = service.cancel(STAY_CODE);
+
+		assertEquals(new CancelOutcome.Cancelled(4500L, "EUR", CancelOutcome.Tier.FULL), outcome);
+		verify(bookings, never()).cancelConfirmed(eq(11L), any(), anyLong(), any(), anyLong());
+		verify(cancellationPolicy, never()).quote(any(), eq(DATE));
+		verify(availability, never()).release(SET, DATE);
+		verify(events, never()).publishEvent(ArgumentMatchers.<Object>argThat(
+				event -> event instanceof BookingCancelled cancelled && cancelled.bookingId().value() == 11L));
+		verify(events).publishEvent(new StayCancelled(stay, 4500L, "EUR", RefundReason.POLICY));
+		verifyNoInteractions(receipts);
+	}
+
+	@Test
+	void aStayWithNothingLeftOnEveryStretchIsRefused() {
+		givenStay(List.of(refundedOnEveryDay(11L, SET, DATE), refundedOnEveryDay(12L, OTHER_SET, DATE.plusDays(1))));
+
+		CancelOutcome outcome = service.cancel(STAY_CODE);
+
+		assertInstanceOf(CancelOutcome.NothingLeft.class, outcome);
+		verifyNoInteractions(cancellationPolicy, availability, events);
+		verify(bookings, never()).cancelConfirmed(anyLong(), any(), anyLong(), any(), anyLong());
+	}
+
+	/** Nothing live, and the only stretch still standing has nothing left: the guest holds something, so it is nothing left, not cancelled. */
+	@Test
+	void aStayWithARemodelEndedStretchAndANothingLeftOneIsRefusedAsNothingLeft() {
+		givenStay(List.of(stretch(11L, BookingStatus.CANCELLED, SET, DATE), refundedOnEveryDay(12L, OTHER_SET, DATE.plusDays(1))));
+		when(receipts.endedByRemodel(new BookingId(11L))).thenReturn(true);
+
+		assertInstanceOf(CancelOutcome.NothingLeft.class, service.cancel(STAY_CODE));
+	}
+
+	/** A confirmed one-day stretch on {@code day} whose one day is refunded: the remainder is 0 and no day is unrefunded. */
+	private static BookingRecord refundedOnEveryDay(long id, SetId set, LocalDate day) {
+		return new BookingRecord(id, STAY_CODE, BookingStatus.CONFIRMED, VENUE, set, GUEST, day, day, 4500L, "EUR", null,
+				null, null, null, Instant.EPOCH, null, null, null, 4500L, true);
+	}
+
 	/** Two one-day stretches on {@code DATE} and the day after, quoted with {@code firstReason} and {@code secondReason}. */
 	private StayId givenStay(RefundReason firstReason, long firstRefund, RefundReason secondReason, long secondRefund) {
-		StayId stay = new StayId(5L);
-		BookingRecord first = new BookingRecord(11L, STAY_CODE, BookingStatus.CONFIRMED, VENUE, SET, GUEST, DATE, 4500L,
-				"EUR", null, null, null, null, Instant.EPOCH, null, null);
-		BookingRecord second = new BookingRecord(12L, STAY_CODE, BookingStatus.CONFIRMED, VENUE, OTHER_SET, GUEST,
-				DATE.plusDays(1), 4500L, "EUR", null, null, null, null, Instant.EPOCH, null, null);
-		when(bookings.findByCode(STAY_CODE)).thenReturn(Optional.empty());
-		when(bookings.findStayByCode(STAY_CODE)).thenReturn(Optional.of(
-				new StayRecord(stay, STAY_CODE, VENUE, DATE, DATE.plusDays(1), List.of(first, second))));
-		when(bookings.lockStretches(stay)).thenReturn(List.of(first, second));
-		when(cancellationPolicy.quote(first, DATE)).thenReturn(
+		StayId stay = givenStay(BookingStatus.CONFIRMED, BookingStatus.CONFIRMED);
+		when(cancellationPolicy.quote(first(), DATE)).thenReturn(
 				new RefundQuote(setInfo(), CancellationWindow.FREE, firstRefund, firstReason, null));
-		when(cancellationPolicy.quote(second, DATE)).thenReturn(
+		when(cancellationPolicy.quote(second(), DATE)).thenReturn(
 				new RefundQuote(setInfo(), CancellationWindow.FREE, secondRefund, secondReason, null));
 		when(bookings.cancelConfirmed(11L, NOW.instant(), firstRefund, firstReason, 4500L))
 				.thenReturn(Optional.of(new CancelledBooking(11L, VENUE, SET, DATE, DATE, 4500L, "EUR")));
 		when(bookings.cancelConfirmed(12L, NOW.instant(), secondRefund, secondReason, 4500L)).thenReturn(Optional.of(
 				new CancelledBooking(12L, VENUE, OTHER_SET, DATE.plusDays(1), DATE.plusDays(1), 4500L, "EUR")));
 		return stay;
+	}
+
+	/** Two one-day stretches on {@code DATE} and the day after, in the given statuses, found and locked by the stay's code. */
+	private StayId givenStay(BookingStatus firstStatus, BookingStatus secondStatus) {
+		return givenStay(List.of(stretch(11L, firstStatus, SET, DATE), stretch(12L, secondStatus, OTHER_SET, DATE.plusDays(1))));
+	}
+
+	private StayId givenStay(List<BookingRecord> stretches) {
+		StayId stay = new StayId(5L);
+		when(bookings.findByCode(STAY_CODE)).thenReturn(Optional.empty());
+		when(bookings.findStayByCode(STAY_CODE)).thenReturn(Optional.of(
+				new StayRecord(stay, STAY_CODE, VENUE, DATE, DATE.plusDays(1), stretches)));
+		when(bookings.lockStretches(stay)).thenReturn(stretches);
+		return stay;
+	}
+
+	private static BookingRecord first() {
+		return stretch(11L, BookingStatus.CONFIRMED, SET, DATE);
+	}
+
+	private static BookingRecord second() {
+		return stretch(12L, BookingStatus.CONFIRMED, OTHER_SET, DATE.plusDays(1));
+	}
+
+	private static BookingRecord stretch(long id, BookingStatus status, SetId set, LocalDate day) {
+		return new BookingRecord(id, STAY_CODE, status, VENUE, set, GUEST, day, 4500L, "EUR", null, null, null, null,
+				Instant.EPOCH, null, null);
 	}
 
 	private BookingRecord givenBooking(BookingStatus status) {

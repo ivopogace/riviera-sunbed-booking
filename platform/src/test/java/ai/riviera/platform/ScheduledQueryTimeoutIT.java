@@ -35,7 +35,8 @@ import ai.riviera.platform.monitoring.vocabulary.ObservabilityMetrics;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * Every query a {@code @Scheduled} job issues before it starts mutating is <strong>bounded</strong>
+ * Every query a {@code @Scheduled} job issues before it starts mutating, and every read of the retention sweep's
+ * walk, is <strong>bounded</strong>
  * — the second half of the fix, the first being the thread-per-job isolation
  * {@code ScheduledWorkArchitectureTest} pins.
  *
@@ -60,9 +61,9 @@ import static org.assertj.core.api.Assertions.assertThat;
  *
  * <p><strong>More statements than scheduled jobs.</strong> The obvious count is one entry query per
  * scheduled job; it is wrong in both directions. The retention sweep has two — the candidate read
- * against {@code customer} and the retention-basis read against {@code booking} — and both run
- * before it writes anything, so bounding only the first would have left the sweep able to wedge on
- * the second. The no-show sweep has no candidate read at all: its entry statement <em>is</em> its
+ * against {@code customer} and the retention-basis read against {@code booking} — repeated per page of
+ * its walk, later pages after earlier pages' scrubs, so bounding only the first would have left the sweep
+ * able to wedge on the second. The no-show sweep has no candidate read at all: its entry statement <em>is</em> its
  * write, a single guarded bulk {@code UPDATE}, and it is bounded on the same client for the same
  * reason. What the rule tracks is each job's first statement, whatever its shape — walk each job's call
  * graph down to its first database round-trip. The challenge sweep is a third shape again: it takes
@@ -149,7 +150,7 @@ class ScheduledQueryTimeoutIT {
 		assertBounded("the request-expiry sweep's candidate read",
 				readWhileLocked("booking", () -> bookings.findOverduePendingRequests(now)));
 		assertBounded("the retention sweep's candidate read",
-				readWhileLocked("customer", () -> erasure.expiredGuestCandidates(now, 100)));
+				readWhileLocked("customer", () -> erasure.expiredGuestCandidates(now, new CustomerId(0), 100)));
 		assertBounded("the retention sweep's retention-basis read",
 				readWhileLocked("booking",
 						() -> guestBookingHistory.withBookingOnOrAfter(List.of(new CustomerId(1L)),

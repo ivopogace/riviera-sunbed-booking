@@ -9,6 +9,7 @@ import java.util.TreeSet;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.webmvc.error.ErrorController;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.HttpStatus;
@@ -129,9 +130,9 @@ class EndpointRoleGateCoverageTest {
 			"GET /api/auth/me");
 
 	/**
-	 * Only this application's controllers are probed. Boot contributes {@code BasicErrorController}
-	 * ({@code /error}, no explicit verb), which is the servlet ERROR-dispatch target rather than an
-	 * endpoint a client calls, and is outside the {@code /api/**} security chain entirely.
+	 * Only this application's controllers are probed, never an {@link ErrorController}: {@code web}'s
+	 * {@code ProblemErrorController} ({@code /error}, every verb) is the servlet ERROR-dispatch target rather
+	 * than an endpoint a client calls, and is outside the {@code /api/**} security chain entirely.
 	 */
 	private static final String APPLICATION_PACKAGE = "ai.riviera.platform";
 	/** A principal that authenticates but holds no authority the application grants anywhere. */
@@ -187,8 +188,9 @@ class EndpointRoleGateCoverageTest {
 	private Set<String> mappedEndpoints() {
 		Set<String> endpoints = new TreeSet<>();
 		handlerMapping.getHandlerMethods().forEach((info, handler) -> {
-			if (!handler.getBeanType().getPackageName().startsWith(APPLICATION_PACKAGE)) {
-				return; // framework-supplied, e.g. Boot's BasicErrorController on /error
+			if (!handler.getBeanType().getPackageName().startsWith(APPLICATION_PACKAGE)
+					|| ErrorController.class.isAssignableFrom(handler.getBeanType())) {
+				return;
 			}
 			Set<String> patterns = info.getPatternValues();
 			Set<RequestMethod> methods = info.getMethodsCondition().getMethods();

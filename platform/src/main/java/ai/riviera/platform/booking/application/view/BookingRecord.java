@@ -11,18 +11,29 @@ import ai.riviera.platform.venue.vocabulary.SetId;
 import ai.riviera.platform.venue.vocabulary.VenueId;
 
 /**
- * The booking row {@link Bookings#findByCode} loads for the view and cancel use cases; a flat
- * read DTO, money in integer minor units + ISO currency (invariant #5). {@code cancelledAt},
- * {@code refundMinor} and {@code cancelReason} are stamped together, only by a cancellation that
- * decided a refund: all null when it never charged; pre-V14 rows carry a refund with no reason. It
- * holds the {@code customerId}, never the contact. {@code acceptedAt} (null until accepted) feeds the
- * pay deadline (invariant #4); {@code movedAt} (null unless moved) feeds the free-exit deadline.
+ * The booking row {@link Bookings#findByCode} loads for the view and cancel use cases; a flat read DTO, money
+ * in integer minor units + ISO currency (invariant #5). {@code cancelledAt}, {@code refundMinor} and
+ * {@code cancelReason} are stamped together, only by a cancellation that decided a refund (pre-V14 rows carry a
+ * refund with no reason). It holds the {@code customerId}, never the contact. {@code acceptedAt} feeds the pay
+ * deadline (#4); {@code movedAt} the free-exit deadline. {@code everyDayRefunded} is a booking's <em>nothing left</em>
+ * (ADR-0026 §7, §8): service days, none unrefunded, never a zero remainder; a stay's is {@code LiveRemainder}'s.
  */
 public record BookingRecord(long id, String code, BookingStatus status, VenueId venueId, SetId setId,
 		CustomerId customerId, LocalDate bookingDate, LocalDate lastDate, long amountMinor, String currency,
 		Instant cancelledAt, Long refundMinor, Instant requestExpiresAt, RefundReason cancelReason,
 		Instant createdAt, Instant acceptedAt, Instant movedAt, DeclineReason declineReason,
-		long dayRefundedMinor) {
+		long dayRefundedMinor, boolean everyDayRefunded) implements AccountBooking {
+
+	/** A booking with refunded days but one still unrefunded. */
+	public BookingRecord(long id, String code, BookingStatus status, VenueId venueId, SetId setId,
+			CustomerId customerId, LocalDate bookingDate, LocalDate lastDate, long amountMinor, String currency,
+			Instant cancelledAt, Long refundMinor, Instant requestExpiresAt, RefundReason cancelReason,
+			Instant createdAt, Instant acceptedAt, Instant movedAt, DeclineReason declineReason,
+			long dayRefundedMinor) {
+		this(id, code, status, venueId, setId, customerId, bookingDate, lastDate, amountMinor, currency,
+				cancelledAt, refundMinor, requestExpiresAt, cancelReason, createdAt, acceptedAt, movedAt, declineReason,
+				dayRefundedMinor, false);
+	}
 
 	/** A booking none of whose days was refunded on its own. */
 	public BookingRecord(long id, String code, BookingStatus status, VenueId venueId, SetId setId,

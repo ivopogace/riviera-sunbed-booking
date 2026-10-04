@@ -154,3 +154,92 @@ describe('focusMover (#604)', () => {
     }
   });
 });
+
+/** A state swap that may or may not tear down the focused control (#1410's pay page shape). */
+@Component({
+  selector: 'app-swap-host',
+  template: `
+    <a href="/" data-testid="keeper">Cancel</a>
+    @if (step() === 'card') {
+      <button type="button" data-testid="action">Pay</button>
+    } @else {
+      <h1 data-testid="title">Done</h1>
+    }
+    <div data-testid="frame-host" [hidden]="step() !== 'card'">
+      <button type="button" data-testid="framed">Card field</button>
+    </div>
+  `,
+})
+class SwapHost {
+  readonly step = signal<'card' | 'done'>('card');
+  readonly focus = focusMover({ onlyIfLost: true });
+
+  finish(): void {
+    this.focus('title');
+    this.step.set('done');
+  }
+}
+
+describe('focusMover onlyIfLost (#1410)', () => {
+  let fixture: ComponentFixture<SwapHost>;
+  let host: HTMLElement;
+
+  beforeEach(() => {
+    TestBed.configureTestingModule({ imports: [SwapHost] });
+    fixture = TestBed.createComponent(SwapHost);
+    fixture.detectChanges();
+    host = fixture.nativeElement as HTMLElement;
+    document.body.appendChild(host);
+  });
+
+  afterEach(() => host.remove());
+
+  function byId(testId: string): HTMLElement | null {
+    return host.querySelector<HTMLElement>(`[data-testid="${testId}"]`);
+  }
+
+  async function finishFrom(focused: HTMLElement | null): Promise<void> {
+    focused?.focus();
+    fixture.componentInstance.finish();
+    fixture.detectChanges();
+    await fixture.whenStable();
+  }
+
+  it('moves focus when the render removed the focused control', async () => {
+    await finishFrom(byId('action'));
+
+    expect(document.activeElement).toBe(byId('title'));
+  });
+
+  it('moves focus when the render hid the focused control', async () => {
+    await finishFrom(byId('framed'));
+
+    expect(document.activeElement).toBe(byId('title'));
+  });
+
+  it('leaves focus on a control the render kept', async () => {
+    await finishFrom(byId('keeper'));
+
+    expect(document.activeElement).toBe(byId('keeper'));
+  });
+
+  it('moves focus that an outside overlay already dropped to the body', async () => {
+    (document.activeElement as HTMLElement | null)?.blur();
+
+    await finishFrom(null);
+
+    expect(document.activeElement).toBe(byId('title'));
+  });
+
+  it('leaves focus that was outside the host alone, even when its holder goes away', async () => {
+    const outside = document.createElement('button');
+    document.body.appendChild(outside);
+    outside.focus();
+    fixture.componentInstance.finish();
+    outside.remove();
+    fixture.detectChanges();
+    await fixture.whenStable();
+
+    expect(document.activeElement).toBe(document.body);
+  });
+});

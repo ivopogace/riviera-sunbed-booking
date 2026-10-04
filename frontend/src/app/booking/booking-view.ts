@@ -3,7 +3,7 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 
 import { HttpErrorResponse } from '@angular/common/http';
-import { Observable } from 'rxjs';
+import { Observable, Observer } from 'rxjs';
 
 import { problemCodeOf } from '../shared/api-error';
 import { addDays, todayBookingDate } from '../shared/booking-date';
@@ -55,6 +55,8 @@ interface StayToday {
 
 /** How a stop reads against today: gone by, the one the guest holds, the one they move to, or later. */
 type StopState = 'past' | 'today' | 'next' | 'later';
+
+type ReplyHandlers<T> = Pick<Observer<T>, 'next' | 'error'>;
 
 /** The card-glass EXTRAS `appCardGlass` deliberately doesn't carry (radius stays with the consumer). */
 const CARD_SURFACE =
@@ -196,8 +198,8 @@ const CLS = {
           <span>
             <!-- Restores the "Status: X" context the removed dl row gave assistive tech. -->
             <span class="sr-only">Booking status:</span>
-            <span [appStatusChip]="chipClass(b.status)" data-testid="booking-status">{{
-              statusLabel(b.status)
+            <span [appStatusChip]="chipClass(b)" data-testid="booking-status">{{
+              statusLabel(b)
             }}</span>
           </span>
         </div>
@@ -501,6 +503,12 @@ const CLS = {
                           >moved from {{ move.fromRowLabel }} · spot {{ move.fromPositionNo }}</span
                         >
                       }
+                      @if (stretch.nothingLeft) {
+                        ·
+                        <span [class]="cls.stopMark" data-testid="view-stop-refunded"
+                          >refunded</span
+                        >
+                      }
                       @if (state === 'today') {
                         · <span [class]="cls.stopMark" data-testid="view-stop-today">today</span>
                       } @else if (state === 'next') {
@@ -600,6 +608,8 @@ const CLS = {
             }}
           } @else if (cancelWindowClosed()) {
             This booking can no longer be cancelled — its date has already begun.
+          } @else if (cancelNothingLeft()) {
+            This booking can’t be cancelled — every day of it has already been refunded.
           } @else if (cancelFailed()) {
             We couldn’t cancel the booking. Please try again.
           }
@@ -679,6 +689,7 @@ const CLS = {
         <app-review-panel
           [panel]="b.reviewPanel"
           [bookingStatus]="b.status"
+          [nothingLeft]="b.nothingLeft ?? false"
           [venueName]="b.venueName"
           [busy]="submittingReview()"
           (submitted)="sendReview($event)"
@@ -712,6 +723,8 @@ export class BookingView {
   protected readonly cancelFailed = signal(false);
   /** The server refused because the service day has begun — a retry can never succeed. */
   protected readonly cancelWindowClosed = signal(false);
+  /** The server refused because every day was already refunded (ADR-0026 §7) — nothing left to cancel. */
+  protected readonly cancelNothingLeft = signal(false);
   protected readonly cancellation = signal<Cancellation | undefined>(undefined);
   protected readonly confirmingWithdraw = signal(false);
   protected readonly withdrawing = signal(false);
@@ -735,6 +748,9 @@ export class BookingView {
 
   private code = '';
 
+  /** Bumped per route code: a reply checks it, never the code itself — A→B→A would pass again. */
+  private epoch = 0;
+
   /** Today in Europe/Tirane (invariant #6), captured once per load so the whole page reads one day. */
   private today = todayBookingDate(new Date());
 
@@ -746,6 +762,7 @@ export class BookingView {
     let initialEmit = true;
     this.route.paramMap.pipe(takeUntilDestroyed()).subscribe((params) => {
       this.code = params.get('code') ?? '';
+      this.epoch++;
       // A swap tears down whatever held focus, so the next settled card's title takes it.
       this.refocusTitle = !initialEmit;
       initialEmit = false;
@@ -757,6 +774,7 @@ export class BookingView {
       this.cancelling.set(false);
       this.cancelFailed.set(false);
       this.cancelWindowClosed.set(false);
+      this.cancelNothingLeft.set(false);
       this.cancellation.set(undefined);
       this.confirmingWithdraw.set(false);
       this.withdrawing.set(false);
@@ -798,23 +816,42 @@ export class BookingView {
         return;
       }
     }
-    this.bookings.getByCode(this.code).subscribe({
-      next: (b) => {
-        this.booking.set(b);
-        this.refocusTitleIfSwapped();
-      },
-      error: (e: unknown) => {
-        if (isRefresh) {
-          return;
+    this.bookings.getByCode(this.code).subscribe(
+      this.forThisCode({
+        next: (b) => {
+          this.booking.set(b);
+          this.refocusTitleIfSwapped();
+        },
+        error: (e: unknown) => {
+          if (isRefresh) {
+            return;
+          }
+          if (typeof e === 'object' && e !== null && (e as { status?: number }).status === 404) {
+            this.notFound.set(true);
+          } else {
+            this.failed.set(true);
+          }
+          this.refocusTitleIfSwapped();
+        },
+      }),
+    );
+  }
+
+  /** The reply's handlers, dropped whole once the route has moved to another code (#1289). */
+  private forThisCode<T>(handlers: ReplyHandlers<T>): ReplyHandlers<T> {
+    const epoch = this.epoch;
+    return {
+      next: (value) => {
+        if (this.epoch === epoch) {
+          handlers.next(value);
         }
-        if (typeof e === 'object' && e !== null && (e as { status?: number }).status === 404) {
-          this.notFound.set(true);
-        } else {
-          this.failed.set(true);
-        }
-        this.refocusTitleIfSwapped();
       },
-    });
+      error: (e) => {
+        if (this.epoch === epoch) {
+          handlers.error(e);
+        }
+      },
+    };
   }
 
   /**
@@ -860,56 +897,62 @@ export class BookingView {
     this.reviewRejection.set(undefined);
     this.reviewSuccess.set(undefined);
     this.submittingReview.set(true);
-    write.subscribe({
-      next: () => {
-        this.reviewSuccess.set(success);
-        this.submittingReview.set(false);
-        // Not left to the re-read: a refresh may fail, and its edit/confirm mode would outlive the write.
-        this.reviewPanel()?.settle();
-        // The refresh below is async, so focus aims at the result this write populates synchronously.
-        this.focusAfterRender('review-result');
-        this.load(true);
-      },
-      error: (e: unknown) => {
-        const refusal = reviewRefusal(e);
-        this.reviewRejection.set(refusal ?? REVIEW_RETRY);
-        this.submittingReview.set(false);
-        if (refusal) {
-          // The server moved on, so the panel on screen is stale — re-read rather than offer it again.
+    write.subscribe(
+      this.forThisCode({
+        next: () => {
+          this.reviewSuccess.set(success);
+          this.submittingReview.set(false);
+          // Not left to the re-read: a refresh may fail, and its edit/confirm mode would outlive the write.
           this.reviewPanel()?.settle();
-          this.load(true);
+          // The refresh below is async, so focus aims at the result this write populates synchronously.
           this.focusAfterRender('review-result');
-        }
-        // A retryable failure keeps the pressed control alive; the polite region announces unmoved.
-      },
-    });
+          this.load(true);
+        },
+        error: (e: unknown) => {
+          const refusal = reviewRefusal(e);
+          this.reviewRejection.set(refusal ?? REVIEW_RETRY);
+          this.submittingReview.set(false);
+          if (refusal) {
+            // The server moved on, so the panel on screen is stale — re-read rather than offer it again.
+            this.reviewPanel()?.settle();
+            this.load(true);
+            this.focusAfterRender('review-result');
+          }
+          // A retryable failure keeps the pressed control alive; the polite region announces unmoved.
+        },
+      }),
+    );
   }
 
   protected confirmCancel(): void {
     this.cancelling.set(true);
     this.cancelFailed.set(false);
-    this.bookings.cancel(this.code).subscribe({
-      next: (c) => {
-        this.cancellation.set(c);
-        this.confirming.set(false);
-        this.cancelling.set(false);
-        // The refresh below is async, so focus aims at the result this write populates synchronously.
-        this.focusAfterRender('cancel-result');
-        this.load(true); // refresh to the CANCELLED detail (chip flips + refunded row appears, no reload)
-      },
-      error: (e: unknown) => {
-        const closed =
-          e instanceof HttpErrorResponse && problemCodeOf(e) === 'CANCELLATION_WINDOW_CLOSED';
-        this.cancelWindowClosed.set(closed);
-        this.cancelFailed.set(!closed);
-        this.cancelling.set(false);
-        this.confirming.set(false);
-        // Not the trigger: the re-read below can withdraw it, and a refused cancel explains itself here.
-        this.focusAfterRender('cancel-result');
-        // Re-read: the window may have closed since load, and only the server knows.
-        this.load(true);
-      },
-    });
+    this.bookings.cancel(this.code).subscribe(
+      this.forThisCode({
+        next: (c) => {
+          this.cancellation.set(c);
+          this.confirming.set(false);
+          this.cancelling.set(false);
+          // The refresh below is async, so focus aims at the result this write populates synchronously.
+          this.focusAfterRender('cancel-result');
+          this.load(true); // refresh to the CANCELLED detail (chip flips + refunded row appears, no reload)
+        },
+        error: (e: unknown) => {
+          const code = e instanceof HttpErrorResponse ? problemCodeOf(e) : undefined;
+          const closed = code === 'CANCELLATION_WINDOW_CLOSED';
+          const nothingLeft = code === 'NOTHING_LEFT';
+          this.cancelWindowClosed.set(closed);
+          this.cancelNothingLeft.set(nothingLeft);
+          this.cancelFailed.set(!closed && !nothingLeft);
+          this.cancelling.set(false);
+          this.confirming.set(false);
+          // Not the trigger: the re-read below can withdraw it, and a refused cancel explains itself here.
+          this.focusAfterRender('cancel-result');
+          // Re-read: the window may have closed since load, and only the server knows.
+          this.load(true);
+        },
+      }),
+    );
   }
 
   protected startWithdraw(): void {
@@ -937,41 +980,43 @@ export class BookingView {
   protected confirmWithdraw(): void {
     this.withdrawing.set(true);
     this.clearWithdrawResult();
-    this.bookings.withdraw(this.code).subscribe({
-      next: () => {
-        this.withdrawn.set(true);
-        this.confirmingWithdraw.set(false);
-        this.withdrawing.set(false);
-        this.focusAfterRender('withdraw-result');
-        this.load(true);
-      },
-      error: (e: unknown) => {
-        const answered =
-          e instanceof HttpErrorResponse && problemCodeOf(e) === 'REQUEST_NOT_PENDING';
-        this.withdrawNotPending.set(answered);
-        this.withdrawFailed.set(!answered);
-        this.withdrawing.set(false);
-        this.confirmingWithdraw.set(false);
-        this.focusAfterRender('withdraw-result');
-        // Re-read for the same reason the cancel leg does: a refusal usually means it moved on.
-        this.load(true);
-      },
-    });
+    this.bookings.withdraw(this.code).subscribe(
+      this.forThisCode({
+        next: () => {
+          this.withdrawn.set(true);
+          this.confirmingWithdraw.set(false);
+          this.withdrawing.set(false);
+          this.focusAfterRender('withdraw-result');
+          this.load(true);
+        },
+        error: (e: unknown) => {
+          const answered =
+            e instanceof HttpErrorResponse && problemCodeOf(e) === 'REQUEST_NOT_PENDING';
+          this.withdrawNotPending.set(answered);
+          this.withdrawFailed.set(!answered);
+          this.withdrawing.set(false);
+          this.confirmingWithdraw.set(false);
+          this.focusAfterRender('withdraw-result');
+          // Re-read for the same reason the cancel leg does: a refusal usually means it moved on.
+          this.load(true);
+        },
+      }),
+    );
   }
 
-  /** The display label for a status; drives the header chip. Source of truth: {@link metaFor}. */
-  protected statusLabel(status: string): string {
-    return metaFor(status).label;
+  /** The header chip's label; "Refunded" once every day was refunded (ADR-0026 §7). Source of truth: {@link metaFor}. */
+  protected statusLabel(b: BookingDetail): string {
+    return metaFor(b.status, b.nothingLeft ?? false).label;
   }
 
-  /** The chip CSS-modifier class for a status. */
-  protected chipClass(status: string): string {
-    return metaFor(status).chip;
+  /** The header chip's CSS-modifier class. */
+  protected chipClass(b: BookingDetail): string {
+    return metaFor(b.status, b.nothingLeft ?? false).chip;
   }
 
   /** "Paid" once money has actually moved; "Amount" while open, or when nothing was ever charged. */
   protected amountLabel(b: BookingDetail): string {
-    return amountLabelFor(b.status, b.refundedAmount);
+    return amountLabelFor(b.status, b.refundedAmount, b.nothingLeft ?? false);
   }
 
   /** The days the weather refund gave back; a day naming no reason (an older payload) is weather's. */

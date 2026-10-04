@@ -1,5 +1,6 @@
 package ai.riviera.platform.booking;
 
+import java.time.Instant;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
@@ -15,14 +16,20 @@ import ai.riviera.platform.EnabledIfDockerAvailable;
 import ai.riviera.platform.TestcontainersConfiguration;
 import ai.riviera.platform.booking.StayFixtures.Venue;
 import ai.riviera.platform.booking.api.BookingNotificationFacts;
+import ai.riviera.platform.booking.application.remodel.NewReceipt;
+import ai.riviera.platform.booking.application.remodel.ReceiptOutcome;
+import ai.riviera.platform.booking.application.remodel.ReceiptOutcomeKind;
+import ai.riviera.platform.booking.application.remodel.RemodelReceipts;
 import ai.riviera.platform.booking.application.reserve.CreateStay;
 import ai.riviera.platform.booking.application.reserve.StayOutcome;
 import ai.riviera.platform.booking.vocabulary.BookingId;
 import ai.riviera.platform.booking.vocabulary.CancellationWindow;
+import ai.riviera.platform.booking.vocabulary.SpotRef;
 import ai.riviera.platform.booking.vocabulary.StayConfirmationFacts;
 import ai.riviera.platform.booking.vocabulary.StayId;
 import ai.riviera.platform.customer.vocabulary.CustomerId;
 import ai.riviera.platform.venue.vocabulary.SetId;
+import ai.riviera.platform.venue.vocabulary.VenueId;
 
 import static ai.riviera.platform.booking.StayFixtures.PRICE;
 import static ai.riviera.platform.booking.StayFixtures.firstDay;
@@ -51,6 +58,9 @@ class StayConfirmationFactsIT {
 
 	@Autowired
 	JdbcClient jdbc;
+
+	@Autowired
+	RemodelReceipts receipts;
 
 	private final List<Long> venues = new ArrayList<>();
 
@@ -85,6 +95,67 @@ class StayConfirmationFactsIT {
 		assertEquals(first.plusDays(6), byStay.lastDate());
 		assertEquals(byStay, facts.stayConfirmationFactsOf(new BookingId(stretches.get(1))).orElseThrow(),
 				"any stretch resolves its stay");
+	}
+
+	@Test
+	void theCancellationFactsAreTheLiveRemainderOrTheWholeStayWhenNothingIsLive() {
+		Venue venue = StayFixtures.venue(jdbc, "INSTANT", null, true);
+		venues.add(venue.id());
+		SetId a = venue.online().get(0);
+		SetId b = venue.online().get(1);
+		LocalDate first = firstDay();
+		createStay.create(plan(a, 3, b, 4, first));
+		StayId stay = new StayId(jdbc.sql("SELECT id FROM stay WHERE venue_id = :v").param("v", venue.id())
+				.query(Long.class).single());
+		List<Long> stretches = jdbc.sql("SELECT id FROM booking WHERE stay_id = :s ORDER BY booking_date")
+				.param("s", stay.value()).query(Long.class).list();
+		StayConfirmationFacts whole = facts.stayConfirmationFacts(stay).orElseThrow();
+		assertEquals(whole, facts.stayCancellationFacts(stay).orElseThrow(), "nothing set aside: the whole stay");
+
+		endByRemodel(venue, a, stretches.get(0), first);
+
+		StayConfirmationFacts remainder = facts.stayCancellationFacts(stay).orElseThrow();
+		assertEquals(List.of(whole.stops().get(1)), remainder.stops(), "the stretch a remodel ended is set aside");
+		assertEquals(4 * PRICE, remainder.amountMinor(), "the remainder's own amount");
+		assertEquals(whole.code(), remainder.code());
+		assertEquals(whole, facts.stayConfirmationFacts(stay).orElseThrow(), "the confirmation read stays whole");
+
+		endByRemodel(venue, b, stretches.get(1), first.plusDays(3));
+
+		assertEquals(whole, facts.stayCancellationFacts(stay).orElseThrow(), "nothing live: the whole stay");
+		assertTrue(facts.stayCancellationFacts(new StayId(-1)).isEmpty());
+	}
+
+	/** #1381: a confirmed stretch with every day refunded is set aside too, so the stay's cancellation mail names the rest. */
+	@Test
+	void aStretchWithNothingLeftLeavesTheCancellationFacts() {
+		Venue venue = StayFixtures.venue(jdbc, "INSTANT", null, true);
+		venues.add(venue.id());
+		LocalDate first = firstDay();
+		createStay.create(plan(venue.online().get(0), 3, venue.online().get(1), 4, first));
+		StayId stay = new StayId(jdbc.sql("SELECT id FROM stay WHERE venue_id = :v").param("v", venue.id())
+				.query(Long.class).single());
+		long spent = jdbc.sql("SELECT id FROM booking WHERE stay_id = :s ORDER BY booking_date LIMIT 1")
+				.param("s", stay.value()).query(Long.class).single();
+		StayConfirmationFacts whole = facts.stayConfirmationFacts(stay).orElseThrow();
+
+		jdbc.sql("UPDATE booking_day SET refunded_at = now(), refund_minor = :m, refund_reason = 'WEATHER' WHERE booking_id = :b")
+				.param("m", PRICE).param("b", spent).update();
+
+		StayConfirmationFacts remainder = facts.stayCancellationFacts(stay).orElseThrow();
+		assertEquals(List.of(whole.stops().get(1)), remainder.stops());
+		assertEquals(4 * PRICE, remainder.amountMinor());
+		assertEquals(whole, facts.stayConfirmationFacts(stay).orElseThrow(), "the confirmation read stays whole");
+	}
+
+	/** What a remodel commit leaves on a stretch it refunded: the stretch cancelled and a receipt outcome line. */
+	private void endByRemodel(Venue venue, SetId set, long stretch, LocalDate date) {
+		jdbc.sql("UPDATE booking SET status = 'CANCELLED', cancelled_at = now() WHERE id = :id").param("id", stretch)
+				.update();
+		receipts.store(new NewReceipt(new VenueId(venue.id()), StayFixtures.ownerOf(jdbc, venue), Instant.now(), List.of(),
+				List.of(new ReceiptOutcome(new BookingId(stretch), date, new SpotRef(set, "A", 1),
+						ReceiptOutcomeKind.REFUND, PRICE, "EUR", 0L)),
+				"row rebuilt", List.of()));
 	}
 
 	@Test

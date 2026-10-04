@@ -15,16 +15,30 @@ import ai.riviera.platform.venue.vocabulary.VenueId;
 import ai.riviera.platform.venue.vocabulary.VenueStayFacts;
 
 /**
- * The exempt port's adapter: it implements {@link SetBookingFacts} and reads the bare table, because
- * a booking on a retired set must still resolve to its spot. Must pass despite the bare read.
+ * The facts port's adapter: it implements {@link SetBookingFacts} and reads the bare table only in
+ * the two constants exempt by name, because a booking on a retired set must still resolve to its
+ * spot; its spot read takes the view like any other class's. Must pass.
  */
-final class FixtureSetFacts implements SetBookingFacts {
+class FixtureSetFacts implements SetBookingFacts {
 
-	static final String FACTS_SQL = """
+	static final String SET_BOOKING_INFO_SELECT = """
 			SELECT sp.id, sp.row_label, sp.position_no
 			FROM set_position sp
 			JOIN venue v ON v.id = sp.venue_id
 			WHERE sp.id = :id
+			""";
+
+	static final String VENUES_OF_SETS_LOCK = """
+			SELECT v.id FROM venue v
+			WHERE v.id IN (SELECT sp.venue_id FROM set_position sp WHERE sp.id IN (:setIds))
+			ORDER BY v.id
+			FOR SHARE
+			""";
+
+	static final String ACTIVE_SPOTS_SELECT = """
+			SELECT id, row_label, position_no, grid_x, grid_y, tier, pool
+			FROM active_set_position
+			WHERE venue_id = :venue
 			""";
 
 	@Override

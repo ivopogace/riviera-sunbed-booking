@@ -1,5 +1,6 @@
 package ai.riviera.platform.booking.application;
 
+import ai.riviera.platform.booking.application.view.AccountBooking;
 import ai.riviera.platform.booking.application.view.BookingRecord;
 import ai.riviera.platform.booking.application.view.StayRecord;
 import ai.riviera.platform.booking.vocabulary.StayId;
@@ -21,6 +22,7 @@ import java.util.OptionalLong;
 import ai.riviera.platform.booking.vocabulary.BookingId;
 import ai.riviera.platform.booking.vocabulary.DeclineReason;
 import ai.riviera.platform.booking.application.remodel.LiveClaim;
+import ai.riviera.platform.booking.application.remodel.LockedRemainder;
 import ai.riviera.platform.booking.application.view.DailyBooking;
 import ai.riviera.platform.customer.vocabulary.CustomerAccountId;
 import ai.riviera.platform.venue.vocabulary.SetId;
@@ -144,11 +146,11 @@ public interface Bookings {
 	List<BookingRecord> lockStretches(StayId stayId);
 
 	/**
-	 * The bookings linked to a customer account, newest first, a stitched stay as one record
-	 * ({@link StayRecord#asBooking}); never a guest booking (NULL {@code account_id}). Pass the session
-	 * principal's id, never a request param (BOLA, invariant #13).
+	 * The bookings linked to a customer account, newest first, a stitched stay as one entry with its stretches in day
+	 * order; never a guest booking (NULL {@code account_id}). Pass the session principal's id, never a request param
+	 * (BOLA, invariant #13).
 	 */
-	List<BookingRecord> findByAccountId(CustomerAccountId accountId);
+	List<AccountBooking> findByAccountId(CustomerAccountId accountId);
 
 	/**
 	 * Strict {@code AWAITING_PAYMENT → CONFIRMED} (anything else throws) for the synchronous stub
@@ -231,15 +233,16 @@ public interface Bookings {
 			String code, VenueId venueId, LocalDate today);
 
 	/**
-	 * The move-reminder sweep's candidates: {@code CONFIRMED} stretches arriving on {@code moveDay} whose
-	 * stay holds a live ({@code CONFIRMED}/{@code COMPLETED}) stretch on another set ending the day before,
-	 * not yet stamped; each is then stamped via {@link #stampMoveReminder} in its own transaction.
+	 * The move-reminder sweep's candidates: unstamped {@code CONFIRMED} stretches arriving on {@code moveDay}, that day
+	 * still the guest's (neither refunded nor released, #1381), whose stay holds a live ({@code CONFIRMED}/{@code COMPLETED})
+	 * stretch on another set ending the day before; each is then stamped via {@link #stampMoveReminder} in its own transaction.
 	 */
 	List<BookingId> findStayMovesDue(LocalDate moveDay);
 
 	/**
-	 * Guarded stamp of {@code move_reminder_at} on a still-{@code CONFIRMED}, unstamped stretch, returning
-	 * the move iff this statement stamped it — the caller publishes exactly once (ADR-0018).
+	 * Row-locks the stretch, then the guarded stamp of {@code move_reminder_at} on a still-{@code CONFIRMED}, unstamped one
+	 * whose first day the guest still holds (a day refunded under the lock is seen, #1281), returning the move iff this
+	 * statement stamped it — the caller publishes exactly once (ADR-0018).
 	 */
 	Optional<ai.riviera.platform.booking.application.checkin.DueMove> stampMoveReminder(long bookingId,
 			Instant at);
@@ -342,9 +345,15 @@ public interface Bookings {
 	 */
 	List<LiveClaim> findLiveOnSets(Collection<SetId> setIds);
 
+	/**
+	 * Every live stretch ({@code BookingStatus#canStillBeHonoured}) of this stay, whatever its set, in
+	 * service-date-then-id order — the stretches a released one takes with it; empty for an unknown stay.
+	 */
+	List<LiveClaim> findLiveStretchesOf(StayId stayId);
+
 	/** Row-locks the booking for the transaction; what the caller reads of it afterwards counts a day refunded under the lock. */
 	void lockById(long bookingId);
 
-	/** Row-locks the booking, then reads what it still holds (the amount less its refunded days) in a statement of its own. */
-	long lockRemainingMinor(long bookingId);
+	/** Row-locks the booking, then reads what it still holds (amount less refunded days, any day unrefunded) in a statement of its own. */
+	LockedRemainder lockRemainder(long bookingId);
 }

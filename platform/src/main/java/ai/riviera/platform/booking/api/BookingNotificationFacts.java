@@ -39,6 +39,12 @@ public interface BookingNotificationFacts {
 	Optional<StayConfirmationFacts> stayConfirmationFactsOf(BookingId bookingId);
 
 	/**
+	 * What the stay cancellation mail renders: {@link #stayConfirmationFacts} narrowed to the live remainder's stops
+	 * and their summed amount, the stretches a guest cancel reaches (ADR-0024 §4); the whole stay when nothing is live.
+	 */
+	Optional<StayConfirmationFacts> stayCancellationFacts(StayId stayId);
+
+	/**
 	 * This booking's latest remodel move (both spots as they were, distance, when, exit deadline), or
 	 * empty if none. The moved mail reads it here: {@code BookingMoved} carries ids and days only, and
 	 * the old label is a receipt snapshot, since the live set may be renamed or retired.
@@ -53,9 +59,9 @@ public interface BookingNotificationFacts {
 	Optional<StayMoveFacts> moveReminderFacts(BookingId arrivingBookingId);
 
 	/**
-	 * Whether a venue's remodel ended this booking (refund, release or decline), not the guest's free
-	 * exit: both arrive as {@code BookingCancelled} with {@code VENUE_CHANGE}, and only the commit
-	 * receipt tells them apart. The cancellation mail offers to book again only in the first case.
+	 * Whether a venue's remodel ended this booking (refund, release, decline or nothing left), not the guest's free
+	 * exit: a remodel refund or release and a free exit both arrive as {@code BookingCancelled} with
+	 * {@code VENUE_CHANGE}, and only the commit receipt tells them apart. The cancellation mail offers to book again only in the first case.
 	 */
 	boolean endedByRemodel(BookingId bookingId);
 }

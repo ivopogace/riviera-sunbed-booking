@@ -5,16 +5,15 @@ import java.util.List;
 import ai.riviera.platform.venue.vocabulary.MoneyView;
 
 /**
- * The remodel preview on the wire: the five groups the operator confirms against, {@code keep}
- * (the sets that stay, by id: the blocked claims', which the save keeps itself, and the staff
- * holds', which the operator must keep) and {@code previewToken}, which the commit carries back to
- * prove the operator confirmed this picture. {@code feeTotal} is the refunds' cost to the venue at
- * the current rate. Dates ISO {@code YYYY-MM-DD} (invariant #6), minor units (#5), ids never codes
- * (#7).
+ * The remodel preview on the wire: the groups the operator confirms against ({@code ended}: nothing left to
+ * refund, #1300), {@code keep} (the sets that stay, by id: the blocked claims', which the save keeps itself,
+ * and the staff holds', which the operator must keep) and {@code previewToken}, which the commit carries
+ * back as proof. {@code feeTotal} is the refunds' cost to the venue at the current rate. Dates ISO
+ * {@code YYYY-MM-DD} (invariant #6), minor units (#5), ids never codes (#7).
  */
 record RemodelPreviewResponse(List<MoveView> moves, List<ClaimView> refunds, List<ReleaseView> releases,
-		List<StaffHoldView> staffHolds, List<BlockView> blocks, List<SpotView> keep, String previewToken,
-		MoneyView feeTotal) {
+		List<EndedView> ended, List<StaffHoldView> staffHolds, List<BlockView> blocks, List<SpotView> keep,
+		String previewToken, MoneyView feeTotal) {
 
 	record SpotView(long setId, String rowLabel, int positionNo) {
 	}
@@ -29,6 +28,10 @@ record RemodelPreviewResponse(List<MoveView> moves, List<ClaimView> refunds, Lis
 
 	/** {@code kind} is {@code RELEASE} for an unpaid booking, {@code DECLINE} for a pending request. */
 	record ReleaseView(long bookingId, String bookingDate, MoneyView amount, SpotView from, String kind) {
+	}
+
+	/** A confirmed booking every day of which is already refunded: it ends with no refund, fee or mail. */
+	record EndedView(long bookingId, String bookingDate, MoneyView amount, SpotView from) {
 	}
 
 	record StaffHoldView(SpotView set, List<String> dates) {

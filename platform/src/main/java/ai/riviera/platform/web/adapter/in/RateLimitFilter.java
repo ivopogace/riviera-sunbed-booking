@@ -1,13 +1,11 @@
 package ai.riviera.platform.web.adapter.in;
 
 import ai.riviera.platform.customer.vocabulary.Emails;
-import ai.riviera.platform.shared.ApiProblem;
-import java.io.BufferedReader;
-import java.io.ByteArrayInputStream;
 import java.io.IOException;
-import java.io.InputStreamReader;
 import java.nio.charset.Charset;
+import java.nio.charset.IllegalCharsetNameException;
 import java.nio.charset.StandardCharsets;
+import java.nio.charset.UnsupportedCharsetException;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
@@ -24,20 +22,20 @@ import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.InvalidMediaTypeException;
 import org.springframework.http.MediaType;
+import org.springframework.http.server.ServletServerHttpRequest;
 import org.springframework.util.AntPathMatcher;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import tools.jackson.core.JacksonException;
-import tools.jackson.databind.JsonNode;
+import tools.jackson.core.JsonParser;
+import tools.jackson.core.JsonToken;
 import tools.jackson.databind.ObjectMapper;
 
 import jakarta.servlet.FilterChain;
-import jakarta.servlet.ReadListener;
 import jakarta.servlet.ServletException;
-import jakarta.servlet.ServletInputStream;
 import jakarta.servlet.http.HttpServletRequest;
-import jakarta.servlet.http.HttpServletRequestWrapper;
 import jakarta.servlet.http.HttpServletResponse;
 
 /**
@@ -54,7 +52,7 @@ final class RateLimitFilter extends OncePerRequestFilter {
 
 	/**
 	 * Hand-built RFC-7807 body: this filter rejects before MVC, so {@code ApiErrorHandler} never maps it.
-	 * No {@code instance}, so no URI is ever written (invariant #7); the wait is in {@code Retry-After}.
+	 * No {@code instance}, as everywhere (invariant #7); the wait is in {@code Retry-After}.
 	 */
 	private static final String RATE_LIMITED_BODY = """
 			{"type":"about:blank","title":"Too Many Requests","status":429,\
@@ -105,11 +103,17 @@ final class RateLimitFilter extends OncePerRequestFilter {
 	private static final String CHALLENGE_PATH = "/api/auth/challenge";
 
 	/**
-	 * Upper bound on a login body buffered to read the identity: a real one is ~60 bytes, so this is vast
-	 * headroom while keeping the in-filter buffer bounded. A larger (or unknown-length) body is not
-	 * buffered — the per-IP budget still applies and the controller rejects it.
+	 * Upper bound on a login body, read here whatever Content-Length declares: a real one is ~60 bytes. A
+	 * larger body is refused with {@code 413}, so no body escapes the per-identity budget by its size or framing.
 	 */
 	private static final int MAX_CACHED_BODY_BYTES = 8 * 1024;
+
+	/**
+	 * The charsets Spring's JSON converter hands Jackson as raw bytes (US-ASCII read as UTF-8); any other is
+	 * decoded first, so the filter reads the same identity the controller binds.
+	 */
+	private static final Set<String> BYTE_DECODED_CHARSETS = Set.of(
+			"UTF-8", "UTF-16", "UTF-16BE", "UTF-16LE", "UTF-32", "UTF-32BE", "UTF-32LE", "US-ASCII");
 
 	/** The failed-authentication status — the only outcome that net-spends a per-identity token. */
 	private static final int FAILED_AUTH_STATUS = HttpStatus.UNAUTHORIZED.value();
@@ -383,21 +387,19 @@ final class RateLimitFilter extends OncePerRequestFilter {
 
 	/**
 	 * The per-identity login budget: only a failed authentication ({@code 401}) net-spends a token, so a
-	 * successful login never does. An unbufferable body or absent identity leaves the per-IP budget alone.
+	 * successful login never does. A body past the cap is refused unspent; an absent identity passes unbudgeted.
 	 */
 	private void throttlePerIdentity(LoginEndpoint login, HttpServletRequest request,
 			HttpServletResponse response, FilterChain chain, String ip, Instant now)
 			throws ServletException, IOException {
-		Optional<byte[]> buffered = cacheableBody(request);
+		Optional<byte[]> buffered = boundedBody(request);
 		if (buffered.isEmpty()) {
-			// Logged so the skip is observable in prod: only the per-IP budget applies here.
-			log.debug("Login body not buffered — per-username dimension skipped, from {}", ip);
-			chain.doFilter(request, response);
+			rejectBodyTooLarge(response, ip);
 			return;
 		}
 		byte[] body = buffered.get();
 		HttpServletRequest cached = new CachedBodyRequest(request, body);
-		String identityKey = identityKeyOf(login, body);
+		String identityKey = identityKeyOf(login, body, request);
 		if (identityKey == null) {
 			chain.doFilter(cached, response); // no identity to key on — the controller will reject a bad body
 			return;
@@ -412,6 +414,11 @@ final class RateLimitFilter extends OncePerRequestFilter {
 		if (response.getStatus() != FAILED_AUTH_STATUS) {
 			bucket.release(now);
 		}
+	}
+
+	/** Whether this filter reads and caps {@code request}'s body itself, so no later filter may read it again. */
+	boolean capsBodyOf(HttpServletRequest request) {
+		return props.enabled() && loginEndpointOf(request) != null;
 	}
 
 	/** The login endpoint this request targets, or {@code null} if it is not one of the two. */
@@ -433,8 +440,8 @@ final class RateLimitFilter extends OncePerRequestFilter {
 	 * unparseable. The customer email goes through {@link Emails#normalize}; the operator username is raw.
 	 * Hashing keeps any valid username out of the tracking map and the logs.
 	 */
-	private String identityKeyOf(LoginEndpoint login, byte[] body) {
-		String raw = readJsonField(body, login.identityField);
+	private String identityKeyOf(LoginEndpoint login, byte[] body, HttpServletRequest request) {
+		String raw = readJsonField(body, request, login.identityField);
 		if (raw == null || raw.isBlank()) {
 			return null;
 		}
@@ -443,29 +450,59 @@ final class RateLimitFilter extends OncePerRequestFilter {
 	}
 
 	/**
-	 * The scalar value of {@code field} as a string, or {@code null}. Any scalar node, not just a string:
-	 * DTO binding coerces {@code "username": 123} to a {@code String}, so it must key the same bucket.
+	 * The top-level scalar {@code field}'s original text (the last one wins), or {@code null}, decoded and bound as
+	 * the controller binds its {@code String}: {@code "username": 1e2} keys as {@code "1e2"}. An unreadable body,
+	 * or an unusable charset, yields {@code null}.
 	 */
-	private String readJsonField(byte[] body, String field) {
+	private String readJsonField(byte[] body, HttpServletRequest request, String field) {
 		try {
-			JsonNode value = objectMapper.readTree(body).path(field);
-			return value.isValueNode() && !value.isNull() ? value.asString() : null;
+			Charset charset = bodyCharset(request);
+			try (JsonParser parser = BYTE_DECODED_CHARSETS.contains(charset.name())
+					? objectMapper.createParser(body)
+					: objectMapper.createParser(new String(body, charset))) {
+				return topLevelScalarText(parser, field);
+			}
 		}
-		catch (JacksonException malformedBody) {
+		catch (JacksonException | InvalidMediaTypeException | UnsupportedCharsetException
+				| IllegalCharsetNameException unreadableBody) {
 			return null;
 		}
 	}
 
+	/** Walks the whole document, so a malformed body still throws; {@code null} unless it is one object. */
+	private static String topLevelScalarText(JsonParser parser, String field) {
+		if (parser.nextToken() != JsonToken.START_OBJECT) {
+			return null;
+		}
+		String text = null;
+		for (String name = parser.nextName(); name != null; name = parser.nextName()) {
+			JsonToken value = parser.nextToken();
+			if (field.equals(name)) {
+				text = value.isScalarValue() && value != JsonToken.VALUE_NULL ? parser.getString() : null;
+			}
+			parser.skipChildren();
+		}
+		return parser.nextToken() == null ? text : null;
+	}
+
+	/** The charset Spring's JSON converter decodes the body with, resolved the same way; UTF-8 if none. */
+	private static Charset bodyCharset(HttpServletRequest request) {
+		MediaType contentType = new ServletServerHttpRequest(request).getHeaders().getContentType();
+		Charset declared = contentType != null ? contentType.getCharset() : null;
+		return declared != null ? declared : StandardCharsets.UTF_8;
+	}
+
 	/**
-	 * The login body when its known Content-Length is within {@link #MAX_CACHED_BODY_BYTES}; otherwise
-	 * empty and the stream is left untouched for the controller, so only the per-IP budget bites.
+	 * The login body if it fits {@link #MAX_CACHED_BODY_BYTES}, else empty: a declared length past the cap is refused
+	 * unread; any other, chunked too, is read here to one byte past it, each read bounded by {@code connectionTimeout}.
+	 * No total deadline: only the per-IP login bucket and the thread pool bound the hold (#1439).
 	 */
-	private static Optional<byte[]> cacheableBody(HttpServletRequest request) throws IOException {
-		long length = request.getContentLengthLong();
-		if (length < 0 || length > MAX_CACHED_BODY_BYTES) {
+	private static Optional<byte[]> boundedBody(HttpServletRequest request) throws IOException {
+		if (request.getContentLengthLong() > MAX_CACHED_BODY_BYTES) {
 			return Optional.empty();
 		}
-		return Optional.of(request.getInputStream().readAllBytes());
+		byte[] body = request.getInputStream().readNBytes(MAX_CACHED_BODY_BYTES + 1);
+		return body.length > MAX_CACHED_BODY_BYTES ? Optional.empty() : Optional.of(body);
 	}
 
 	/**
@@ -483,65 +520,24 @@ final class RateLimitFilter extends OncePerRequestFilter {
 		}
 	}
 
-	/**
-	 * A request whose body is buffered in memory and served afresh on each {@code getInputStream()} /
-	 * {@code getReader()} call, so the identity read in this filter does not consume the single-use servlet
-	 * stream the downstream {@code @RequestBody} controller also needs. Wraps only the two login requests,
-	 * and only after their small body was already read into {@code body}.
-	 */
-	private static final class CachedBodyRequest extends HttpServletRequestWrapper {
-
-		private final byte[] body;
-
-		CachedBodyRequest(HttpServletRequest request, byte[] body) {
-			super(request);
-			this.body = body;
-		}
-
-		@Override
-		public ServletInputStream getInputStream() {
-			ByteArrayInputStream source = new ByteArrayInputStream(body);
-			return new ServletInputStream() {
-				@Override
-				public int read() {
-					return source.read();
-				}
-
-				@Override
-				public boolean isFinished() {
-					return source.available() == 0;
-				}
-
-				@Override
-				public boolean isReady() {
-					return true;
-				}
-
-				@Override
-				public void setReadListener(ReadListener readListener) {
-					throw new UnsupportedOperationException("async reads are not used on the login path");
-				}
-			};
-		}
-
-		@Override
-		public BufferedReader getReader() {
-			return new BufferedReader(new InputStreamReader(getInputStream(), charset()));
-		}
-
-		private Charset charset() {
-			String encoding = getCharacterEncoding();
-			return encoding != null ? Charset.forName(encoding) : StandardCharsets.UTF_8;
-		}
-	}
-
 	private void reject(HttpServletResponse response, long retryAfterSeconds, String ip, String dimension)
 			throws IOException {
-		response.setStatus(HttpStatus.TOO_MANY_REQUESTS.value());
 		response.setHeader(HttpHeaders.RETRY_AFTER, Long.toString(retryAfterSeconds));
-		response.setContentType(MediaType.APPLICATION_PROBLEM_JSON_VALUE);
-		response.getWriter().write(RATE_LIMITED_BODY);
+		writeProblem(response, HttpStatus.TOO_MANY_REQUESTS.value(), RATE_LIMITED_BODY);
 		// IP is newline-sanitised by ClientIpResolver; the booking code is NEVER logged (invariant #7).
 		log.debug("Rate-limited request from {} on the {} dimension", ip, dimension);
+	}
+
+	private static void rejectBodyTooLarge(HttpServletResponse response, String ip) throws IOException {
+		// Redundant on Tomcat 11, which closes after any 413; kept so the close never hinges on the container.
+		response.setHeader(HttpHeaders.CONNECTION, "close");
+		SecurityProblemResponses.writeBodyTooLarge(response);
+		log.debug("Login body over the {}-byte cap refused, from {}", MAX_CACHED_BODY_BYTES, ip);
+	}
+
+	private static void writeProblem(HttpServletResponse response, int status, String body) throws IOException {
+		response.setStatus(status);
+		response.setContentType(MediaType.APPLICATION_PROBLEM_JSON_VALUE);
+		response.getWriter().write(body);
 	}
 }

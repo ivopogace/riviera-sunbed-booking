@@ -90,6 +90,7 @@ name the members or point at the source of truth, so growth never makes a doc fa
 - `gh` is proxy-restricted (`references/pr-gates.md` §1); GitHub MCP tools substitute. If an
   instruction is impossible in the toolset, do the nearest honest thing and say so.
 - `PushNotification` before any `AskUserQuestion` and when work finishes.
+- Several issues at once, one cloud session each: `riviera-wave` orchestrates the wave.
 
 ## IntelliJ (`idea` MCP)
 

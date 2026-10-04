@@ -1,14 +1,19 @@
 package ai.riviera.platform;
 
 import java.io.IOException;
+import java.lang.classfile.Attributes;
 import java.lang.classfile.ClassFile;
+import java.lang.classfile.FieldModel;
+import java.lang.classfile.attribute.ConstantValueAttribute;
 import java.lang.classfile.constantpool.PoolEntry;
 import java.lang.classfile.constantpool.StringEntry;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 import com.tngtech.archunit.core.domain.JavaClass;
@@ -160,6 +165,30 @@ public final class ArchitectureTestSupport {
 				}
 			}
 			return strings;
+		}
+		catch (IOException e) {
+			throw new IllegalStateException("could not read " + classFile, e);
+		}
+	}
+
+	/**
+	 * Every string field carrying a {@code ConstantValue} attribute, by name: what a rule that exempts a
+	 * statement by its constant's name keys on ({@code RetiredSetExclusionArchitectureTests}). An inline
+	 * literal has no name and never appears here; the value itself stays the caller's to judge.
+	 */
+	static Map<String, String> stringConstantFields(Path classFile) {
+		try {
+			Map<String, String> fields = new LinkedHashMap<>();
+			for (FieldModel field : ClassFile.of().parse(classFile).fields()) {
+				field.findAttribute(Attributes.constantValue())
+						.map(ConstantValueAttribute::constant)
+						.ifPresent(value -> {
+							if (value instanceof StringEntry literal) {
+								fields.put(field.fieldName().stringValue(), literal.stringValue());
+							}
+						});
+			}
+			return fields;
 		}
 		catch (IOException e) {
 			throw new IllegalStateException("could not read " + classFile, e);

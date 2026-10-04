@@ -24,6 +24,7 @@ export const RECEIPT: RemodelReceipt = {
   ],
   refunds: [],
   releases: [],
+  ended: [],
   kept: [],
   refundReason: '',
   refundedTotal: null,
@@ -82,4 +83,18 @@ export const RECEIPT_WITH_ENDINGS: RemodelReceipt = {
   refundReason: 'Re-laying row A for the season',
   refundedTotal: { minorUnits: 4500, currency: 'EUR' },
   feeTotal: { minorUnits: 500, currency: 'EUR' },
+};
+
+/** The receipt of a commit whose only ending had nothing left to refund — no refund line, total or fee (#1300). */
+export const RECEIPT_WITH_NOTHING_LEFT: RemodelReceipt = {
+  ...RECEIPT,
+  receiptId: 45,
+  moves: [],
+  ended: [
+    {
+      bookingId: 14,
+      bookingDate: '2026-09-24',
+      from: { setId: 3, rowLabel: 'A', positionNo: 1 },
+    },
+  ],
 };

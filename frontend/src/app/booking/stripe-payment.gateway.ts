@@ -7,11 +7,11 @@ import { environment } from '../../environments/environment';
 /**
  * A mounted Stripe Payment Element the caller can confirm.
  *
- * <p>{@link confirm} returns a **UX-level** result only: on `{ error }` the caller shows it and
- * re-checks the booking's server status once (retry while payable, terminal when not); otherwise
- * it begins polling. **Never** proof of confirmation: that comes only from the signature-verified
- * webhook, seen via `GET /api/bookings/{code}` (invariant #8). Cards use
- * `redirect: 'if_required'`, so the user stays on the payment page.
+ * <p>{@link confirm} returns a **UX-level** result only: on `{ error }` (a rejection reads as one)
+ * the caller shows it and re-checks the booking's server status once (retry while payable,
+ * terminal when not); otherwise it begins polling. **Never** proof of confirmation: that comes
+ * only from the signature-verified webhook, seen via `GET /api/bookings/{code}` (invariant #8).
+ * Cards use `redirect: 'if_required'`, so the user stays on the payment page.
  */
 export interface StripeCheckout {
   confirm(): Promise<{ readonly error?: string }>;
@@ -78,16 +78,22 @@ export class StripeJsPaymentGateway extends StripePaymentGateway {
 }
 
 /**
- * Deterministic fake for Playwright a11y runs: real Stripe.js is non-deterministic and loads from
- * js.stripe.com, which would make CI flaky. Active **only** when the harness sets
- * `window.__RIVIERA_FAKE_STRIPE__` (see app.config), so inert in production. Renders a labelled
- * stand-in card field (audited honestly) and confirms; the page then polls the mocked backend as in
- * production. `__RIVIERA_FAKE_STRIPE_FAIL__` makes confirm fail like a dead PaymentIntent — read
- * at confirm time, so a test can flip it after mount.
+ * Deterministic fake for the Playwright a11y runs (real Stripe.js loads from js.stripe.com and would
+ * make CI flaky), active **only** when the harness sets `window.__RIVIERA_FAKE_STRIPE__`. Renders a
+ * labelled stand-in card field and confirms; the page then polls the mocked backend.
+ * `__RIVIERA_FAKE_STRIPE_FAIL__` fails confirm like a dead PaymentIntent and
+ * `__RIVIERA_FAKE_STRIPE_MOUNT_FAIL__` fails the mount like a blocked js.stripe.com; each is read
+ * when called, so a test can flip it mid-page.
  */
 @Injectable()
 export class FakeStripePaymentGateway extends StripePaymentGateway {
   override mountPaymentElement(host: HTMLElement): Promise<StripeCheckout> {
+    if (
+      (window as unknown as { __RIVIERA_FAKE_STRIPE_MOUNT_FAIL__?: boolean })
+        .__RIVIERA_FAKE_STRIPE_MOUNT_FAIL__
+    ) {
+      return Promise.reject(new Error('Stripe.js failed to load.'));
+    }
     const input = document.createElement('input');
     input.type = 'text';
     input.value = '4242 4242 4242 4242';

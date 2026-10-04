@@ -102,6 +102,7 @@ class CustomerAccountService implements CustomerAccounts, CustomerAccountProvisi
 			Optional<CustomerAccountId> linked = claim
 					.flatMap(claimed -> store.linkSsoIdentity(claimed.accountId(), provider, subject, normalized));
 			if (linked.isPresent()) {
+				store.clearUnverifiedPassword(linked.get());
 				store.markEmailVerified(linked.get()); // an SSO email is provider-verified (design D-6)
 				return keepOnly(linked.get(), createdHere);
 			}

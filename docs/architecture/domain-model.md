@@ -34,8 +34,9 @@ venue, improvement plan B4, and nothing reads it); the closed `remodel` composit
 composes `venue::api` with `booking::api` for the beach-map remodel preview and commit, ADR-0028,
 and nothing reads it); and the closed ADR-0017 mechanisms, `challenge` (proof of work, owns
 `challenge_registry`) and `audit` (the admin audit trail, owns `admin_audit_record`), both reached
-from `web`'s fence through a port; and `web` itself (the HTTP boundary: the security chain, its
-filters and the one advice, §1.1), which no module calls. `monitoring` (no table) is not drawn
+from `web`'s fence through a port; `web` itself (the HTTP boundary: the security chain, its
+filters and the one advice, §1.1), which no module calls; and `auth` (sign-in and sessions, §1.1),
+which only `web` reaches. `monitoring` (no table) is not drawn
 either: `booking` and `notification` reach only its `vocabulary` (metric names, the MDC task
 decorator), never a port or an event.
 
@@ -108,7 +109,7 @@ the claim via the availability port, and `BookingCancelled` drives both the refu
 
 Part of the system sits outside the context modules, and no diagram here shows it — so it is
 stated instead. The closed `web` module holds the fences: `SecurityConfig` and the filter chain
-(`RateLimitFilter`, `ChallengeVerificationFilter`, `AdminAuditFilter`, `SessionCredentialFilter`; the
+(`RateLimitFilter`, `RequestBodyCapFilter`, `ChallengeVerificationFilter`, `AdminAuditFilter`, `SessionCredentialFilter`; the
 correlation-id filter is `monitoring`'s) and the one advice (`ApiErrorHandler`; `ApiProblem` is
 `shared`'s). The composition root (`ai.riviera.platform`) holds only `PlatformApplication` and
 configuration that reaches no module. The closed `auth` module holds the login machinery: the session
@@ -290,7 +291,7 @@ classDiagram
 > (invariant #3) — an online booking can only target an `ONLINE` set.
 >
 > A set that carries booking history is **retired**, never deleted (`retired_at`, ADR-0019): every
-> read that means "the map" — list, map, calendar, daily view, layout locks, both claim paths —
+> read that means "the map" — list, map, calendar, daily view, layout locks, both claim paths, the reserve —
 > selects from `active_set_position`, and only `SetBookingFacts` still answers for a retired set, so
 > its bookings keep naming it. The layout-uniqueness indexes are partial over active rows.
 
@@ -416,7 +417,7 @@ classDiagram
     BookingTransition ..> BookingStatus : the lifecycle, stated once
     RefundPolicy ..> CancellationWindow : one tier per window
     booking ..> RefundReason : cancel_reason
-    remodel_receipt "1" o-- "many" booking : what one commit moved, refunded, released or declined
+    remodel_receipt "1" o-- "many" booking : what one commit moved, refunded, released, declined or ended with nothing left
 ```
 
 > The booking **code** is an unguessable bearer credential — ≥ 8 random base32 chars, never

@@ -16,6 +16,7 @@ import org.springframework.transaction.PlatformTransactionManager;
 
 import ai.riviera.platform.EnabledIfDockerAvailable;
 import ai.riviera.platform.TestcontainersConfiguration;
+import ai.riviera.platform.booking.events.BookingConfirmed;
 import ai.riviera.platform.notification.BookingMailFixtures;
 import ai.riviera.platform.notification.BookingMailFixtures.SetRef;
 import ai.riviera.platform.notification.ControllableMailerConfiguration;
@@ -84,9 +85,10 @@ class PayoutSpineRetryIT {
 	private UUID archived(String listenerId) {
 		return jdbc.sql("""
 				SELECT id FROM event_publication_archive
-				WHERE listener_id = :listener AND serialized_event LIKE :amount
+				WHERE listener_id = :listener AND event_type = :type AND serialized_event LIKE :amount
 				""")
-				.param("listener", listenerId).param("amount", "%" + AMOUNT_MINOR + "%")
+				.param("listener", listenerId).param("type", BookingConfirmed.class.getName())
+				.param("amount", "%" + AMOUNT_MINOR + "%")
 				.query(UUID.class).optional().orElse(null);
 	}
 

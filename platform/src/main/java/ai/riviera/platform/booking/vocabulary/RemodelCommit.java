@@ -13,7 +13,7 @@ import java.util.List;
 public sealed interface RemodelCommit permits RemodelCommit.Applied, RemodelCommit.Stale, RemodelCommit.Unconfirmed {
 
 	/**
-	 * Every claim the commit settled, as receipted — moves, refunds, releases, declines and the
+	 * Every claim the commit settled, as receipted — moves, refunds, releases, declines, nothing left and the
 	 * {@link RemodelOutcome.Blocked} claims kept where they are — in the order they were classified.
 	 * The caller keeps every kept claim's set as stored.
 	 */

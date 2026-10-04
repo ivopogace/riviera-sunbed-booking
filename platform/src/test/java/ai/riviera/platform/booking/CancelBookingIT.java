@@ -17,6 +17,7 @@ import ai.riviera.platform.booking.events.BookingCancelled;
 import ai.riviera.platform.booking.application.reserve.BookingOutcome;
 import ai.riviera.platform.booking.application.cancel.CancelBooking;
 import ai.riviera.platform.booking.application.cancel.CancelOutcome;
+import ai.riviera.platform.booking.application.refund.DayRefundStamp;
 import ai.riviera.platform.booking.application.reserve.CreateBooking;
 import ai.riviera.platform.booking.application.reserve.CreateBookingCommand;
 import ai.riviera.platform.booking.application.view.BookingDetail;
@@ -26,6 +27,7 @@ import ai.riviera.platform.customer.vocabulary.GuestContact;
 import ai.riviera.platform.venue.vocabulary.SetId;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -279,5 +281,83 @@ class CancelBookingIT {
 				"the spent day is not released back into the pool");
 		assertEquals(0, events.stream(BookingCancelled.class).count(),
 				"no BookingCancelled means no Stripe refund and no payout reversal");
+	}
+
+	/**
+	 * A {@code CONFIRMED} booking over {@code days} days of {@code amountMinor}, every day claimed, as the reserve
+	 * leaves one (dates in 2036, this class's own).
+	 */
+	private Created confirmedSpan(String code, LocalDate first, int days, long amountMinor) {
+		long setId = VisibleOnlineSets.newest(jdbc).id();
+		long venueId = jdbc.sql("SELECT venue_id FROM set_position WHERE id = :s").param("s", setId)
+				.query(Long.class).single();
+		long customer = jdbc.sql("INSERT INTO customer (email, full_name, phone) VALUES (:e, 'Guest', '+355600') RETURNING id")
+				.param("e", code + "@example.com").query(Long.class).single();
+		long id = jdbc.sql("""
+				INSERT INTO booking (code, venue_id, set_id, customer_id, booking_date, last_date,
+				                     amount_minor, amount_currency, status, confirmed_at)
+				VALUES (:code, :venue, :set, :cust, :first, :last, :amount, 'EUR', 'CONFIRMED', NOW())
+				RETURNING id
+				""").param("code", code).param("venue", venueId).param("set", setId).param("cust", customer)
+				.param("first", first).param("last", first.plusDays(days - 1L)).param("amount", amountMinor)
+				.query(Long.class).single();
+		for (int day = 0; day < days; day++) {
+			jdbc.sql("INSERT INTO set_availability (set_id, booking_date, state) VALUES (:s, :d, 'BOOKED_ONLINE')")
+					.param("s", setId).param("d", first.plusDays(day)).update();
+		}
+		return new Created(code, id, setId, amountMinor);
+	}
+
+	private void refundDay(long bookingId, LocalDate day, long refundMinor) {
+		bookings.refundDay(bookingId, day, refundMinor, java.time.Instant.now(), DayRefundStamp.weather()).orElseThrow();
+	}
+
+	private long heldDays(Created booking, LocalDate first, int days) {
+		long held = 0;
+		for (int day = 0; day < days; day++) {
+			held += availabilityRows(booking.setId(), first.plusDays(day));
+		}
+		return held;
+	}
+
+	/** ADR-0026 §7 (#1381): with every day refunded there is nothing left — no cancel, no release, no mail, the row as it was. */
+	@Test
+	void aBookingWithEveryDayRefundedHasNothingLeftToCancel() {
+		LocalDate first = LocalDate.of(2036, 7, 11);
+		Created booking = confirmedSpan("CANCELNL01", first, 3, 9000L);
+		for (int day = 0; day < 3; day++) {
+			refundDay(booking.id(), first.plusDays(day), 3000L);
+		}
+
+		BookingDetail before = viewBooking.byCode(booking.code()).orElseThrow();
+		CancelOutcome outcome = cancelBooking.cancel(booking.code());
+
+		assertFalse(before.cancellable(), "the view offers no cancel");
+		assertTrue(before.nothingLeft(), "and says why");
+		assertInstanceOf(CancelOutcome.NothingLeft.class, outcome);
+		assertEquals("CONFIRMED", jdbc.sql("SELECT status FROM booking WHERE id = :id").param("id", booking.id())
+				.query(String.class).single(), "no transition");
+		assertEquals(3L, heldDays(booking, first, 3), "no release (#2): a weather-refunded day stays the guest's");
+		assertEquals(0L, events.stream(BookingCancelled.class).filter(e -> e.bookingId().value() == booking.id()).count(),
+				"nothing announced, so no refund or mail follows");
+	}
+
+	/**
+	 * #1381, the rule: a day whose share is €0 and which is not refunded is still the guest's, so a remainder of 0
+	 * is not <em>nothing left</em> (ADR-0026 §8) — the cancel proceeds as a cancel.
+	 */
+	@Test
+	void aZeroShareDayStillHeldIsNotNothingLeft() {
+		LocalDate first = LocalDate.of(2036, 7, 1);
+		Created booking = confirmedSpan("CANCELNL02", first, 3, 2L);
+		refundDay(booking.id(), first, 2L);
+		refundDay(booking.id(), first.plusDays(1), 0L);
+
+		var record = bookings.findByCode(booking.code()).orElseThrow();
+		assertEquals(0L, record.remainingMinor(), "nothing is left to refund in money");
+		assertFalse(record.everyDayRefunded(), "yet the third day is still the guest's");
+		assertInstanceOf(CancelOutcome.Cancelled.class, cancelBooking.cancel(booking.code()),
+				"so the cancel is a cancel, releasing the day the guest gives back");
+		assertEquals(0L, heldDays(booking, first, 3));
 	}
 }

@@ -87,20 +87,16 @@ public class ApiErrorHandler extends ResponseEntityExceptionHandler {
 		ResponseEntity<Object> response = super.handleExceptionInternal(ex, body, headers, statusCode, request);
 		if (response != null && response.getBody() instanceof ProblemDetail problem) {
 			problem.setProperty(ApiProblem.CODE_PROPERTY, defaultCode(statusCode));
-			// Framework-built bodies bypass ApiProblem, so the instance redaction (invariant #7 —
-			// Spring would auto-fill the request URI, a booking code on the code-scoped paths)
-			// must be re-applied here.
-			problem.setInstance(ApiProblem.REDACTED_INSTANCE);
 		}
 		return response;
 	}
 
 	/**
-	 * Framework-raised errors: client-input faults share {@code INVALID_REQUEST}, the rest carry the HTTP
-	 * status name. 413 is pinned literally: the base class's handler is {@code final} and the {@code HttpStatus}
-	 * constant is mid-rename across versions, so the wire code must not drift with it.
+	 * The code for a framework-raised status, shared with {@link ProblemErrorController}: {@code 400} is
+	 * {@code INVALID_REQUEST}, {@code 413} is pinned literally (its {@code HttpStatus} constant is mid-rename,
+	 * the base handler {@code final}), the rest carry the status name.
 	 */
-	private static String defaultCode(HttpStatusCode statusCode) {
+	static String defaultCode(HttpStatusCode statusCode) {
 		if (statusCode.equals(HttpStatus.BAD_REQUEST)) {
 			return "INVALID_REQUEST";
 		}

@@ -82,10 +82,11 @@ class PaymentDueAnnouncerIT {
 	private long publicationsForThisEvent() {
 		return jdbc.sql("""
 				SELECT (SELECT COUNT(*) FROM event_publication
-				        WHERE listener_id LIKE :listener AND serialized_event LIKE :amount)
+				        WHERE listener_id LIKE :listener AND event_type = :type AND serialized_event LIKE :amount)
 				     + (SELECT COUNT(*) FROM event_publication_archive
-				        WHERE listener_id LIKE :listener AND serialized_event LIKE :amount)
+				        WHERE listener_id LIKE :listener AND event_type = :type AND serialized_event LIKE :amount)
 				""")
+				.param("type", BookingPaymentDue.class.getName())
 				.param("listener", "notification.mail-on-%payment-due")
 				.param("amount", "%" + AMOUNT_MINOR + "%")
 				.query(Long.class).single();

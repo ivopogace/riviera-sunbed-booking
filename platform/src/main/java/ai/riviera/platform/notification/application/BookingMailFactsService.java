@@ -36,12 +36,14 @@ public class BookingMailFactsService {
 	private final BookingNotificationFacts bookings;
 	private final SetBookingFacts sets;
 	private final CustomerLookup customers;
+	private final RebookLinks rebookLinks;
 
 	BookingMailFactsService(BookingNotificationFacts bookings, SetBookingFacts sets,
-			CustomerLookup customers) {
+			CustomerLookup customers, RebookLinks rebookLinks) {
 		this.bookings = bookings;
 		this.sets = sets;
 		this.customers = customers;
+		this.rebookLinks = rebookLinks;
 	}
 
 	/**
@@ -109,7 +111,7 @@ public class BookingMailFactsService {
 		}
 		return new MoveReminderMailFacts.Resolved(contact.get().email(), new MoveReminderMail(move.code(),
 				to.venueName(), move.moveDate(), move.stayLastDate(), from.rowLabel(), from.positionNo(),
-				to.rowLabel(), to.positionNo(), move.rowsAway(), move.positionsAway(), bookingLink));
+				to.rowLabel(), to.positionNo(), move.rowsAway(), move.positionsAway(), bookingLink, move.fromDayHeld()));
 	}
 
 	/**
@@ -134,11 +136,12 @@ public class BookingMailFactsService {
 	}
 
 	/**
-	 * The stay's one cancellation mail, under the stay's code and span with the caller's summed refund, or the
-	 * first fact that did not resolve: the venue (off the first stop's set), then the contact.
+	 * The stay's one cancellation mail under the stay's code and the span of the stops handed in, with the caller's summed
+	 * refund and, when the caller says a remodel ended them, {@link RebookLinks}' link for their first day; or the first
+	 * fact that did not resolve: the venue (off the first stop's set), then the contact.
 	 */
 	public StayCancellationMailFacts resolveStayCancellation(StayConfirmationFacts stay, long refundMinor,
-			String currency, RefundReason reason) {
+			String currency, RefundReason reason, boolean endedByRemodel) {
 		Optional<SetBookingInfo> set = sets.setBookingInfo(stay.stops().getFirst().setId());
 		if (set.isEmpty()) {
 			return new StayCancellationMailFacts.Missing(MissingBookingFact.NO_SET);
@@ -147,7 +150,8 @@ public class BookingMailFactsService {
 		if (contact.isEmpty()) {
 			return new StayCancellationMailFacts.Missing(MissingBookingFact.NO_CONTACT);
 		}
+		URI rebookLink = endedByRemodel ? rebookLinks.forDate(set.get().venueId(), stay.firstDate()) : null;
 		return new StayCancellationMailFacts.Resolved(contact.get().email(), new BookingCancellationMail(stay.code(),
-				set.get().venueName(), stay.firstDate(), stay.lastDate(), refundMinor, currency, reason, null));
+				set.get().venueName(), stay.firstDate(), stay.lastDate(), refundMinor, currency, reason, rebookLink));
 	}
 }

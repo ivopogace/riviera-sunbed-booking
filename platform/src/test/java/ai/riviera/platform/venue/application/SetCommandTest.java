@@ -10,8 +10,8 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 /**
  * Pins {@link SetCommand}'s edge bounds: the row label is limited to
  * {@link VenueFieldValidation#MAX_ROW_LABEL_LENGTH} code points — matching Postgres
- * {@code char_length}, so the V43 CHECK stays the backstop — and the price is non-negative minor
- * units (invariant #5), mirroring the V2 {@code set_position_price_check} CHECK — and the pool is
+ * {@code char_length}, so the V43 CHECK stays the backstop — and the price is EUR minor units of at
+ * least €0.50 ({@link ai.riviera.platform.venue.vocabulary.SetPrice}, invariant #5) — and the pool is
  * presence-only, an off-vocabulary value being unrepresentable in {@link Pool}. A violation is
  * rejected at the application boundary (→ {@code 400 INVALID_REQUEST}, §6b).
  */
@@ -61,9 +61,22 @@ class SetCommandTest {
 	}
 
 	@Test
-	void acceptsAZeroPrice() {
-		// Zero is a legitimate price (a free row); the CHECK constraint is price_minor >= 0.
-		assertEquals(0, new SetCommand("A", 1, "PREMIUM", Pool.ONLINE, 0, "EUR", 1, 1).priceMinor());
+	void acceptsTheMinimumEurPrice() {
+		assertEquals(50, new SetCommand("A", 1, "PREMIUM", Pool.ONLINE, 50, "EUR", 1, 1).priceMinor());
+	}
+
+	@Test
+	void rejectsAPriceBelowTheMinimum() {
+		assertThrows(IllegalArgumentException.class,
+				() -> new SetCommand("A", 1, "PREMIUM", Pool.ONLINE, 49, "EUR", 1, 1));
+		assertThrows(IllegalArgumentException.class,
+				() -> new SetCommand("A", 1, "PREMIUM", Pool.ONLINE, 0, "EUR", 1, 1));
+	}
+
+	@Test
+	void rejectsANonEurCurrency() {
+		assertThrows(IllegalArgumentException.class,
+				() -> new SetCommand("A", 1, "PREMIUM", Pool.ONLINE, 4500, "ALL", 1, 1));
 	}
 
 	@Test

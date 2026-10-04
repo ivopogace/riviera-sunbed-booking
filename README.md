@@ -1,5 +1,14 @@
 # Riviera Sunbed Booking
 
+[![CI](https://github.com/ivopogace/riviera-sunbed-booking/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/ivopogace/riviera-sunbed-booking/actions/workflows/ci.yml)
+[![CodeQL](https://github.com/ivopogace/riviera-sunbed-booking/actions/workflows/codeql.yml/badge.svg?branch=main)](https://github.com/ivopogace/riviera-sunbed-booking/actions/workflows/codeql.yml)
+[![CD](https://github.com/ivopogace/riviera-sunbed-booking/actions/workflows/deploy.yml/badge.svg?branch=main)](https://github.com/ivopogace/riviera-sunbed-booking/actions/workflows/deploy.yml)
+[![Quality Gate](https://sonarcloud.io/api/project_badges/measure?project=ivopogace_riviera-sunbed-booking&metric=alert_status)](https://sonarcloud.io/summary/new_code?id=ivopogace_riviera-sunbed-booking)
+[![Coverage](https://sonarcloud.io/api/project_badges/measure?project=ivopogace_riviera-sunbed-booking&metric=coverage)](https://sonarcloud.io/summary/new_code?id=ivopogace_riviera-sunbed-booking)
+[![Security Rating](https://sonarcloud.io/api/project_badges/measure?project=ivopogace_riviera-sunbed-booking&metric=security_rating)](https://sonarcloud.io/summary/new_code?id=ivopogace_riviera-sunbed-booking)
+[![Maintainability Rating](https://sonarcloud.io/api/project_badges/measure?project=ivopogace_riviera-sunbed-booking&metric=sqale_rating)](https://sonarcloud.io/summary/new_code?id=ivopogace_riviera-sunbed-booking)
+[![License: Proprietary](https://img.shields.io/badge/license-proprietary-lightgrey)](LICENSE)
+
 Pre-book a specific sunbed **set** (2 loungers + umbrella, full day) at an
 Albanian-riviera beach venue — pick the exact spot from a visual beach map and pay
 in-app. A two-sided marketplace: tourists are demand, venues are supply, the
@@ -69,14 +78,8 @@ hotspot, ≥80% new-code coverage**.
 ## The system in one picture
 
 The context modules of `CLAUDE.md`'s table collaborate via **domain events** (state
-changes, id-based payloads) and **`api/` ports** (queries):
-
-`venue` · `availability` · `booking` · `payment` · `payout` · `customer` ·
-`operator` · `review` · `notification` · `itinerary` (the stay read model over
-`venue::api` + `availability::api`)
-
-…plus the non-context modules: `shared`, a Shared Kernel of edge/technical types, and the
-closed ADR-0017 mechanisms `challenge` (proof of work) and `audit` (the admin audit trail).
+changes, id-based payloads) and **`api/` ports** (queries). `CLAUDE.md` § *Modules* is the module
+census: that table, plus the `shared` kernel and the closed non-context modules listed under it.
 
 The spine flow: reserving a set **claims it synchronously** through `availability`'s
 `AvailabilityClaim` port (an atomic per-`(set, date)` claim — `availability` has no

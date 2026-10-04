@@ -52,3 +52,9 @@ export function eurosToMinorUnits(raw: string): number | null {
 export function minorUnitsToEuros(minorUnits: number): string {
   return (minorUnits / 100).toString();
 }
+
+/** The set-price floor (€0.50, Stripe's minimum EUR charge), mirroring the backend `SetPrice.MIN_PRICE_MINOR`. */
+export const MIN_SET_PRICE_MINOR = 50;
+
+/** {@link MIN_SET_PRICE_MINOR} as a number input's `min`. */
+export const MIN_SET_PRICE_EUR = minorUnitsToEuros(MIN_SET_PRICE_MINOR);

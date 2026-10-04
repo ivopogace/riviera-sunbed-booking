@@ -103,6 +103,33 @@ class JdbcCustomerAccountsIT {
 	}
 
 	@Test
+	void clearingAnUnverifiedPasswordLeavesVerifiedAndErasedAccountsAlone() {
+		CustomerAccountId unverified = registered("clear-unverified@example.com");
+		CustomerAccountId verified = registered("clear-verified@example.com");
+		jdbc.update("UPDATE customer_account SET email_verified = true WHERE id = ?", verified.value());
+		CustomerAccountId erased = registered("clear-erased@example.com");
+		jdbc.update("UPDATE customer_account SET email = 'erased+' || id || '@erased.invalid', erased_at = NOW()"
+				+ " WHERE id = ?", erased.value());
+
+		store.clearUnverifiedPassword(unverified);
+		store.clearUnverifiedPassword(verified);
+		store.clearUnverifiedPassword(erased);
+
+		assertThat(storedHash(unverified)).as("an unverified account loses its password (#1295)").isNull();
+		assertThat(storedHash(verified)).as("a verified account keeps it").isEqualTo("{bcrypt}clear");
+		assertThat(storedHash(erased)).as("an erased row is never written").isEqualTo("{bcrypt}clear");
+	}
+
+	private CustomerAccountId registered(String email) {
+		return ((RegistrationOutcome.Registered) provisioning.register(email, "{bcrypt}clear")).accountId();
+	}
+
+	private String storedHash(CustomerAccountId accountId) {
+		return jdbc.queryForObject("SELECT password_hash FROM customer_account WHERE id = ?", String.class,
+				accountId.value());
+	}
+
+	@Test
 	void duplicateEmailIsAlreadyRegisteredAndWritesNoSecondRow() {
 		provisioning.register("carol@example.com", "{bcrypt}first");
 

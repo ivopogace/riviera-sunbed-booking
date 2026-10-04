@@ -3,6 +3,7 @@ package ai.riviera.platform.notification;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Map;
 
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.jdbc.core.simple.JdbcClient;
@@ -11,9 +12,12 @@ import org.springframework.transaction.support.TransactionTemplate;
 
 import ai.riviera.platform.booking.events.BookingCancelled;
 import ai.riviera.platform.booking.events.BookingConfirmed;
+import ai.riviera.platform.booking.events.BookingDayRefunded;
+import ai.riviera.platform.booking.events.BookingMoved;
 import ai.riviera.platform.booking.events.BookingPaymentDue;
 import ai.riviera.platform.booking.events.BookingRequestDeclined;
 import ai.riviera.platform.booking.events.BookingRequestExpired;
+import ai.riviera.platform.booking.events.StayMoveDue;
 import ai.riviera.platform.booking.vocabulary.BookingId;
 import ai.riviera.platform.booking.vocabulary.CancellationWindow;
 import ai.riviera.platform.booking.vocabulary.RefundReason;
@@ -72,6 +76,17 @@ public final class BookingMailFixtures {
 
 	/** The request-expired listener's explicit registry id. */
 	public static final String REQUEST_EXPIRED_LISTENER_ID = "notification.mail-on-booking-request-expired";
+
+	/** The event each listener above consumes: every registry read pins {@code event_type} beside its fragment. */
+	private static final Map<String, Class<?>> EVENT_TYPE_BY_LISTENER = Map.of(
+			LISTENER_ID, BookingConfirmed.class,
+			CANCELLATION_LISTENER_ID, BookingCancelled.class,
+			PAYMENT_DUE_LISTENER_ID, BookingPaymentDue.class,
+			REQUEST_DECLINED_LISTENER_ID, BookingRequestDeclined.class,
+			MOVE_REMINDER_LISTENER_ID, StayMoveDue.class,
+			DAY_REFUND_LISTENER_ID, BookingDayRefunded.class,
+			BOOKING_MOVED_LISTENER_ID, BookingMoved.class,
+			REQUEST_EXPIRED_LISTENER_ID, BookingRequestExpired.class);
 
 	private final JdbcClient jdbc;
 	private final TransactionTemplate transactions;
@@ -219,17 +234,33 @@ public final class BookingMailFixtures {
 		return jdbc.sql("""
 				SELECT COUNT(*) FROM event_publication
 				WHERE completion_date IS NULL AND listener_id = :listener
-				  AND serialized_event LIKE :fragment
+				  AND event_type = :type AND serialized_event LIKE :fragment
 				""")
-				.param("listener", listenerId).param("fragment", "%" + fragment + "%")
+				.param("listener", listenerId).param("type", eventTypeOf(listenerId))
+				.param("fragment", "%" + fragment + "%")
 				.query(Long.class).single();
 	}
 
-	/** Every listener with an outstanding row for one test's event, whatever its id reads as. */
+	/**
+	 * Every listener with an outstanding row for one test's confirmation, whatever its id reads as:
+	 * open across listeners by design, pinned to {@code BookingConfirmed} so no other event matches.
+	 */
 	public List<String> outstandingListenerIds(long amountMinor) {
-		return jdbc.sql("SELECT listener_id FROM event_publication "
-						+ "WHERE completion_date IS NULL AND serialized_event LIKE :amountFragment")
+		return jdbc.sql("""
+				SELECT listener_id FROM event_publication
+				WHERE completion_date IS NULL
+				  AND event_type = :type AND serialized_event LIKE :amountFragment
+				""")
+				.param("type", BookingConfirmed.class.getName())
 				.param("amountFragment", "%" + amountMinor + "%")
 				.query(String.class).list();
+	}
+
+	private static String eventTypeOf(String listenerId) {
+		Class<?> type = EVENT_TYPE_BY_LISTENER.get(listenerId);
+		if (type == null) {
+			throw new IllegalArgumentException("No event type registered for listener " + listenerId);
+		}
+		return type.getName();
 	}
 }

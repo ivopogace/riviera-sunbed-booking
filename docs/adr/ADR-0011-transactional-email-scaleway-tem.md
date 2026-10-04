@@ -84,6 +84,11 @@ own IP warm-up, blocklists, DKIM rotation; operationally wrong for a small team.
    - **The recovery pair (verification, password reset) self-heals.** The durable half — the
      token — is already committed when the edge calls the port, and the person can ask again. A
      lost send costs one round trip.
+     *Amended 2026-10-02 (PR #1358, #1336):* for **password reset** the token is no longer
+     committed before the port is called: `CustomerRecovery#sendPasswordResetEmail` hands the
+     mailer a supplier, and the token is minted and stored inside the dispatched send
+     (`issuePasswordResetLink`), off the request thread. A lost send therefore loses the token
+     with it; the cost is unchanged, one round trip, because the person asks again.
    - **The operator-approval notice does not.** It carries no token, nothing re-sends it, and the
      operator learns its account is live only by trying to sign in. This kind is accepted as the
      **knowingly weaker case**: the loss is unrecoverable in the product and mitigated
@@ -103,6 +108,10 @@ own IP warm-up, blocklists, DKIM rotation; operationally wrong for a small team.
    against the ~100 ms SMTP round-trip this closes; on `register` the branch asymmetry is
    structural, and D-8 answers that class with bcrypt-cost equalization rather than write-count
    equalization.
+   *Amended 2026-10-02 (PR #1358, #1336):* the residual is **closed for forgot-password**. The
+   token is minted inside the dispatched send, so the request thread does one account read
+   (`directory.accountFor`) on the known and the unknown branch alike and writes nothing;
+   `ForgotPasswordRequestThreadTest` pins it. The `register` asymmetry above is unchanged.
 6. **One platform sending domain.** SPF + DKIM (2048-bit) + DMARC (`p=none` → tighten) on the
    platform domain; shared IP pool. Mail "from" an operator's own domain is out until an operator
    demands it; a per-tenant `Reply-To` can cover the near need if one arises. *(Amended
@@ -171,3 +180,6 @@ own IP warm-up, blocklists, DKIM rotation; operationally wrong for a small team.
   counter carries the kind on every reason.
 - 2026-07-30, #451 — the query-timeout bullet named `SELECT … FOR UPDATE`; the claim is an
   `INSERT … ON CONFLICT`. The decision was unaffected.
+- 2026-10-02, #1369 (PR #1358, #1336) — decision 5: the password-reset token is minted inside the
+  dispatched send, not committed before the port is called, and the known-email-branch write
+  residual is closed. The decision (in-memory vehicle for bearer payloads) stands.
