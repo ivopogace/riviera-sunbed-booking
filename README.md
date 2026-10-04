@@ -5,6 +5,8 @@
 [![CD](https://github.com/ivopogace/riviera-sunbed-booking/actions/workflows/deploy.yml/badge.svg?branch=main)](https://github.com/ivopogace/riviera-sunbed-booking/actions/workflows/deploy.yml)
 [![Quality Gate](https://sonarcloud.io/api/project_badges/measure?project=ivopogace_riviera-sunbed-booking&metric=alert_status)](https://sonarcloud.io/summary/new_code?id=ivopogace_riviera-sunbed-booking)
 [![Coverage](https://sonarcloud.io/api/project_badges/measure?project=ivopogace_riviera-sunbed-booking&metric=coverage)](https://sonarcloud.io/summary/new_code?id=ivopogace_riviera-sunbed-booking)
+[![Security Rating](https://sonarcloud.io/api/project_badges/measure?project=ivopogace_riviera-sunbed-booking&metric=security_rating)](https://sonarcloud.io/summary/new_code?id=ivopogace_riviera-sunbed-booking)
+[![Maintainability Rating](https://sonarcloud.io/api/project_badges/measure?project=ivopogace_riviera-sunbed-booking&metric=sqale_rating)](https://sonarcloud.io/summary/new_code?id=ivopogace_riviera-sunbed-booking)
 [![License: Proprietary](https://img.shields.io/badge/license-proprietary-lightgrey)](LICENSE)
 
 Pre-book a specific sunbed **set** (2 loungers + umbrella, full day) at an
