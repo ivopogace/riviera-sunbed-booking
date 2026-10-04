@@ -1,5 +1,11 @@
 # Riviera Sunbed Booking
 
+[![CI](https://github.com/ivopogace/riviera-sunbed-booking/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/ivopogace/riviera-sunbed-booking/actions/workflows/ci.yml)
+[![CodeQL](https://github.com/ivopogace/riviera-sunbed-booking/actions/workflows/codeql.yml/badge.svg?branch=main)](https://github.com/ivopogace/riviera-sunbed-booking/actions/workflows/codeql.yml)
+[![Quality Gate](https://sonarcloud.io/api/project_badges/measure?project=ivopogace_riviera-sunbed-booking&metric=alert_status)](https://sonarcloud.io/summary/new_code?id=ivopogace_riviera-sunbed-booking)
+[![Coverage](https://sonarcloud.io/api/project_badges/measure?project=ivopogace_riviera-sunbed-booking&metric=coverage)](https://sonarcloud.io/summary/new_code?id=ivopogace_riviera-sunbed-booking)
+[![License: Proprietary](https://img.shields.io/badge/license-proprietary-lightgrey)](LICENSE)
+
 Pre-book a specific sunbed **set** (2 loungers + umbrella, full day) at an
 Albanian-riviera beach venue — pick the exact spot from a visual beach map and pay
 in-app. A two-sided marketplace: tourists are demand, venues are supply, the
