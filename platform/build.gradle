@@ -44,14 +44,14 @@ dependencies {
 	implementation 'org.springframework.modulith:spring-modulith-events-core'
 	// Stripe collection only (PaymentIntents + webhook signature verification) — NO Connect
 	// (ADR-0002 / invariant #8). Lives behind the payment module's outbound PaymentGateway.
-	implementation 'com.stripe:stripe-java:33.4.1'
+	implementation 'com.stripe:stripe-java:34.0.0'
 	// Venue photo pipeline (#142): TwelveMonkeys ImageIO plugins (JPEG + WebP readers, auto-registered
 	// via ServiceLoader) for robust decode of real-world uploads, and Thumbnailator for high-quality
 	// resize + EXIF-orientation. Output is re-encoded JPEG, which drops all source metadata incl. GPS
 	// EXIF (ADR-0008 / privacy). Behind the venue module's PhotoProcessor.
 	implementation 'net.coobird:thumbnailator:0.4.21'
-	implementation 'com.twelvemonkeys.imageio:imageio-jpeg:3.15.0'
-	implementation 'com.twelvemonkeys.imageio:imageio-webp:3.15.0'
+	implementation 'com.twelvemonkeys.imageio:imageio-jpeg:3.15.2'
+	implementation 'com.twelvemonkeys.imageio:imageio-webp:3.15.2'
 	// Proof-of-work challenge (ADR-0016): the official ALTCHA v2 library issues and verifies the
 	// challenges the bundled widget solves; self-hosted, no ALTCHA service is ever called. Its pom
 	// declares org.json as `provided`, so the runtime classpath has to carry it explicitly.
@@ -76,7 +76,7 @@ dependencies {
 	testImplementation 'org.testcontainers:testcontainers-junit-jupiter'
 	testImplementation 'org.testcontainers:testcontainers-postgresql'
 	// In-JVM SMTP sink for SmtpMailerIT (#368) — jakarta-mail 2.x line; no Docker needed.
-	testImplementation 'com.icegreen:greenmail-junit5:2.1.13'
+	testImplementation 'com.icegreen:greenmail-junit5:2.1.14'
 	testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 }
 
