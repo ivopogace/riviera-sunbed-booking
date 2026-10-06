@@ -300,6 +300,35 @@ test('a raw-text element leaves the exemption stack balanced', () => {
   }
 });
 
+/**
+ * #1486: Angular's `_consumeTagClose` skips whitespace, a line end included, between `</` and the
+ * name, so `</ div>` closes the inner `<div>` and the exempt ancestor closes at its own end tag: the
+ * button inside it stays exempt and the button after it is judged.
+ */
+test('an end tag with whitespace before its name closes its element', () => {
+  for (const inner of [['<div>x</ div>'], ['<div>x</', 'div>'], ['<div>x</\u00a0', '  div', '>']]) {
+    const lines = [
+      '<div data-touch-exempt="r">',
+      ...inner,
+      '<button type="button">x</button>',
+      '</div>',
+      '<button type="button">y</button>',
+    ];
+
+    assert.deepEqual(
+      scan(HTML, lines).map((v) => [v.rule, v.line]),
+      [['TT-1', lines.length]],
+      inner.join('⏎'),
+    );
+  }
+  assert.deepEqual(
+    scan(HTML, ['<div data-touch-exempt="r"><div>x</ div></div><button>y</button>']).map(
+      (v) => [v.rule, v.line],
+    ),
+    [['TT-1', 1]],
+  );
+});
+
 /** #529's posture: a phantom named for a control is no control, wherever its read ends. */
 test('a phantom named for a control fails no build', () => {
   for (const line of [

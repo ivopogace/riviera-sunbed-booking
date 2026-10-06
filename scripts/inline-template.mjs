@@ -271,12 +271,13 @@ function blank(chars, at, length) {
 const TAG_NAME_END = /[\s/>]/;
 
 /**
- * The element name starting at `from`, just past a tag's `<` (or its `</`), lower-cased; null when
- * that `<` opens no tag — no letter starts the name, or no `TAG_NAME_END` follows it. A name at the
- * line's end is a real one: a start tag that spans lines puts its first attribute on the next.
+ * The element name starting at `from`, just past a tag's `<` (or its `</` and any whitespace),
+ * lower-cased; null when that `<` opens no tag — no letter starts the name, or no `TAG_NAME_END`
+ * follows it. A name at the line's end is a real one: a start tag that spans lines puts its first
+ * attribute on the next.
  *
  * @param {string} line the masked template line
- * @param {number} from the index after the `<` or `</`
+ * @param {number} from the index after the `<`, or after the `</` and its whitespace
  * @returns {string | null} the element name, or null for template text
  */
 export function tagNameAt(line, from) {
@@ -502,12 +503,10 @@ export function walkTags(lines) {
  */
 function tagAt(lines, i, c) {
   if (lines[i][c] !== '<') return null;
-  const closing = lines[i][c + 1] === '/';
-  const from = closing ? c + 2 : c + 1;
-  const name = tagNameAt(lines[i], from);
+  if (lines[i][c + 1] === '/') return endTagAt(lines, i, c + 2);
+  const name = tagNameAt(lines[i], c + 1);
   if (name === null) return null;
-  if (closing) return { tags: [{ kind: 'close', name }], line: i, column: from + name.length - 1 };
-  const read = readAttributes(lines, i, from + name.length);
+  const read = readAttributes(lines, i, c + 1 + name.length);
   const open = {
     kind: 'open',
     name,
@@ -524,6 +523,37 @@ function tagAt(lines, i, c) {
   return { tags: [open, { kind: 'close', name }], ...end };
 }
 
+/** Angular's `isWhitespace`: TAB through SPACE, and NBSP; a line end is one of them. */
+const LEXER_WHITESPACE = /[\t-\x20\xa0]/;
+
+/**
+ * The end tag read from just past its `</` at line `i`, column `from`, as `_consumeTagClose` reads
+ * it: whitespace, the name, whitespace, `>`, where either whitespace may cross line ends; null when
+ * no name follows. The position is that `>`. When anything else follows the name, Angular emits no
+ * end tag and the template never builds, but the entry stands and the walk resumes after the name.
+ */
+function endTagAt(lines, i, from) {
+  const start = pastWhitespace(lines, i, from);
+  const name = tagNameAt(lines[start.line], start.column);
+  if (name === null) return null;
+  const nameEnd = start.column + name.length;
+  const end = pastWhitespace(lines, start.line, nameEnd);
+  const at = lines[end.line][end.column] === '>' ? end : { line: start.line, column: nameEnd - 1 };
+  return { tags: [{ kind: 'close', name }], ...at };
+}
+
+/** The first position from line `i`, column `c` that is no lexer whitespace, or the region's end. */
+function pastWhitespace(lines, i, c) {
+  let line = i;
+  let column = c;
+  for (;;) {
+    while (LEXER_WHITESPACE.test(lines[line][column] ?? '')) column++;
+    if (column < lines[line].length || line === lines.length - 1) return { line, column };
+    line++;
+    column = 0;
+  }
+}
+
 /**
  * The position of the `>` that ends a raw-text element's end tag, searching from line `line`,
  * column `column`, as `_consumeRawTextWithTagClose` finds it: `</`, whitespace, the name in any
@@ -532,7 +562,8 @@ function tagAt(lines, i, c) {
  */
 function rawTextEnd(lines, line, column, name) {
   const text = lines.slice(line).join('\n');
-  const close = new RegExp(String.raw`</[\t-\x20\xa0]*${name}[\t-\x20\xa0]*>`, 'gi');
+  const space = `${LEXER_WHITESPACE.source}*`;
+  const close = new RegExp(`</${space}${name}${space}>`, 'gi');
   close.lastIndex = column;
   if (close.exec(text) === null) return null;
   let at = close.lastIndex - 1;
