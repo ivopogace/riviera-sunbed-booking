@@ -10,10 +10,10 @@
  * feeds the code it walks into a `CodeTail`, asks at a backtick, and steps a `${…}` with
  * `interpolationStep`. `check-focus-posture` and `check-touch-target` judge markup, so they take the
  * whole walk: `typescriptRegions` masks a file down to its inline templates and its code,
- * `maskHtmlComments` masks an external template's comments, and `readAttributes` reads one start
- * tag's attributes. Beside `git-diff.mjs` because that is the guards' shared module, and
- * dependency-free for the same reason it is: the hygiene CI job runs the suites with no install
- * step.
+ * `maskHtmlComments` masks an external template's comments, `tagNameAt` decides where in the masked
+ * markup an element tag opens, and `readAttributes` reads one start tag's attributes. Beside
+ * `git-diff.mjs` because that is the guards' shared module, and dependency-free for the same reason
+ * it is: the hygiene CI job runs the suites with no install step.
  */
 
 /** The extensions whose `template:` literal is an inline template. A `.js` key is a string. */
@@ -254,13 +254,42 @@ function blank(chars, at, length) {
 }
 
 /**
+ * What may follow an element name in a real tag: whitespace, the self-closing slash, or `>`.
+ *
+ * A subset of Angular's own name end (its lexer also ends a name at `<`, a quote or `=`), and the
+ * subset is the point: `@if (count()<limit)` and `{{ i<select.length }}` open no tag, because the
+ * operand runs on into `)` or `.`. An operand followed by a space, as in `{{ n<max }}`, still opens
+ * one; `readAttributes` ends it at the next `<`, so it never takes the real control after it as its
+ * own attributes (#1475). In `check-touch-target` a phantom named for a control would also fail a
+ * build on a line holding none (#529's lesson). Shared through `tagNameAt`.
+ */
+const TAG_NAME_END = /[\s/>]/;
+
+/**
+ * The element name starting at `from`, just past a tag's `<` (or its `</`), lower-cased; null when
+ * that `<` opens no tag — no letter starts the name, or no `TAG_NAME_END` follows it. A name at the
+ * line's end is a real one: a start tag that spans lines puts its first attribute on the next.
+ *
+ * @param {string} line the masked template line
+ * @param {number} from the index after the `<` or `</`
+ * @returns {string | null} the element name, or null for template text
+ */
+export function tagNameAt(line, from) {
+  if (!/[A-Za-z]/.test(line[from] ?? '')) return null;
+  const name = /^[\w-]+/.exec(line.slice(from))[0];
+  return TAG_NAME_END.test(line[from + name.length] ?? ' ') ? name.toLowerCase() : null;
+}
+
+/**
  * The attributes of the start tag whose name ends at `column`, and where its `>` is: a map of
  * attribute name to its value and the 0-based line the name sits on. A tag legitimately spans
  * lines, so the read does too.
  *
  * `selfClosed` is whether a `/` stood last before the `>`; a bare value's trailing `/` is that
  * marker, not value. A read that runs off the end without a `>` stops past the last character of
- * the last line, so a walk resuming there ends rather than finding the same `<` again (#1473).
+ * the last line, so a walk resuming there ends rather than finding the same `<` again (#1473). A
+ * `<` where an attribute should start ends the tag as Angular's lexer does, and the read stops just
+ * before it, so a walk resuming there reads that `<` as the next tag (#1475).
  */
 export function readAttributes(lines, line, column) {
   const attributes = new Map();
@@ -281,8 +310,9 @@ export function readAttributes(lines, line, column) {
       c++;
       continue;
     }
+    if (ch === '<') return { attributes, line: i, column: c - 1, selfClosed: slash };
     // `{{ a<b ? 'x' : 'y' }}` reads as a start tag, and its quote is where a name should be.
-    const name = /^[^\s=>/'"]+/.exec(lines[i].slice(c));
+    const name = /^[^\s=>/'"<]+/.exec(lines[i].slice(c));
     if (name === null) return { attributes, line: i, column: c, selfClosed: slash };
     slash = false;
     c += name[0].length;

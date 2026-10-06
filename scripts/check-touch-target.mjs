@@ -30,7 +30,12 @@ import {
   repoRoot,
 } from './git-diff.mjs';
 import { adviser, report, tally } from './guard-report.mjs';
-import { maskHtmlComments, readAttributes, typescriptRegions } from './inline-template.mjs';
+import {
+  maskHtmlComments,
+  readAttributes,
+  tagNameAt,
+  typescriptRegions,
+} from './inline-template.mjs';
 
 /** Angular templates only; a spec's fixtures are allowed to build the non-compliant forms. */
 const IN_SCOPE = /^frontend\/src\/app\/.*(?<!\.spec)\.(ts|html)$/;
@@ -110,16 +115,6 @@ function templateRegion(path, lines) {
 }
 
 /**
- * What may follow an element name in a real tag: whitespace, the self-closing slash, or `>`.
- *
- * Without this, `{{ i<select.length }}` parses as a `<select>` and the guard fails a build on a
- * line holding no control — the false-positive direction #529's lesson rules out. The sibling
- * `check-focus-posture.mjs` shares the misparse harmlessly, because its walk is flat and its rules
- * read one tag's own attributes; here a phantom tag also joins the ancestor-exemption stack.
- */
-const TAG_NAME_END = /[\s/>]/;
-
-/**
  * Walks the template and returns one entry per element tag — start and end alike, in document
  * order — with a start tag's attributes and the line it opens on.
  *
@@ -153,10 +148,8 @@ function tagAt(lines, i, c) {
   if (lines[i][c] !== '<') return null;
   const closing = lines[i][c + 1] === '/';
   const from = closing ? c + 2 : c + 1;
-  if (!/[A-Za-z]/.test(lines[i][from] ?? '')) return null;
-  const name = /^[\w-]+/.exec(lines[i].slice(from))[0].toLowerCase();
-  // `{{ i<select.length }}` is a comparison, not a <select>: a real tag name ends the name.
-  if (!TAG_NAME_END.test(lines[i][from + name.length] ?? ' ')) return null;
+  const name = tagNameAt(lines[i], from);
+  if (name === null) return null;
   if (closing) return { tag: { kind: 'close', name }, line: i, column: from + name.length - 1 };
   const read = readAttributes(lines, i, from + name.length);
   const tag = {

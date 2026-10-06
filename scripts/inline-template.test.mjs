@@ -6,6 +6,7 @@ import {
   INLINE_TEMPLATE_EXTENSIONS,
   interpolationStep,
   readAttributes,
+  tagNameAt,
   typescriptRegions,
 } from './inline-template.mjs';
 
@@ -215,5 +216,43 @@ test('readAttributes that runs off the end stops past the last character', () =>
     const last = lines.length - 1;
 
     assert.deepEqual([read.line, read.column], [last, lines[last].length]);
+  }
+});
+
+/**
+ * A `<` where an attribute should start ends the tag, as in Angular's lexer, and the read stops one
+ * before it: a walk resumes after the position returned, so it reads that `<` as the next tag (#1475).
+ */
+test('readAttributes ends a start tag at a `<` and stops just before it', () => {
+  for (const [lines, line, column, end] of [
+    [['{{ n<max }} <button [disabled]="s()">'], 0, 8, [0, 11]],
+    [['{{ n<max }}', '<button [disabled]="s()">'], 0, 8, [1, -1]],
+  ]) {
+    const read = readAttributes(lines, line, column);
+
+    assert.deepEqual([...read.attributes.keys()], ['}}']);
+    assert.deepEqual([read.line, read.column], end);
+  }
+});
+
+/**
+ * The tag-name rule both markup guards apply (#1475): a `<` opens an element only when a letter
+ * starts the name and whitespace, `/`, `>` or the line's end follows it — so a comparison such as
+ * `count()<limit)` or `i<select.length` is text.
+ */
+test('tagNameAt reads an element name only where a real tag name ends', () => {
+  const cases = [
+    ['<button type="button">', 1, 'button'],
+    ['<app-pay-panel/>', 1, 'app-pay-panel'],
+    ['<SELECT>', 1, 'select'],
+    ['</button>', 2, 'button'],
+    ['<button', 1, 'button'],
+    ['@if (count()<limit) {', 13, null],
+    ['{{ i<select.length }}', 5, null],
+    ['{{ a<1 }}', 5, null],
+    ['{{ a< b }}', 4, null],
+  ];
+  for (const [line, from, expected] of cases) {
+    assert.equal(tagNameAt(line, from), expected, line);
   }
 });

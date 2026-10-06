@@ -210,6 +210,40 @@ test('survives a less-than inside an interpolation', () => {
   assert.equal(violations[0].line, 2);
 });
 
+/**
+ * #1475: a `<` comparison is never a start tag that reads on to the next `>` and takes the busy
+ * control after it as its attributes; that misparse passes a build the gate has to fail.
+ */
+test('a less-than comparison in a block condition leaves the busy control after it reported', () => {
+  const lines = [
+    '@if (count()<limit) {',
+    '  <button (click)="save()" [disabled]="saving()">Save</button>',
+    '}',
+  ];
+
+  const violations = scan(HTML, lines);
+
+  assert.deepEqual(
+    violations.map((v) => [v.rule, v.line]),
+    [['BUSY-1', 2]],
+  );
+});
+
+test('a less-than comparison in an interpolation leaves the busy control after it reported', () => {
+  for (const lines of [
+    ['<p>', '  {{ n<max }}', '  <button (click)="save()" [disabled]="saving()">Save</button>', '</p>'],
+    ['<p>{{ n<max }} <button (click)="save()" [disabled]="saving()">Save</button></p>'],
+  ]) {
+    const violations = scan(HTML, lines);
+
+    assert.deepEqual(
+      violations.map((v) => v.rule),
+      ['BUSY-1'],
+      lines.join('\n'),
+    );
+  }
+});
+
 test('does not judge a control inside an HTML comment, on one line or across several', () => {
   const lines = [
     '<!-- <button [disabled]="saving()">Old</button> --><button [disabled]="saving()">S</button>',

@@ -40,7 +40,12 @@ import {
   repoRoot,
 } from './git-diff.mjs';
 import { adviser, report, tally } from './guard-report.mjs';
-import { maskHtmlComments, readAttributes, typescriptRegions } from './inline-template.mjs';
+import {
+  maskHtmlComments,
+  readAttributes,
+  tagNameAt,
+  typescriptRegions,
+} from './inline-template.mjs';
 
 /** Angular templates only; a spec's fixtures are allowed to build the non-compliant forms. */
 const IN_SCOPE = /^frontend\/src\/app\/.*(?<!\.spec)\.(ts|html)$/;
@@ -678,10 +683,10 @@ function startTags(lines) {
       c = 0;
       continue;
     }
-    if (lines[i][c] === '<' && /[A-Za-z]/.test(lines[i][c + 1] ?? '')) {
-      const name = /^[\w-]+/.exec(lines[i].slice(c + 1))[0];
+    const name = lines[i][c] === '<' ? tagNameAt(lines[i], c + 1) : null;
+    if (name !== null) {
       const tag = readAttributes(lines, i, c + 1 + name.length);
-      tags.push({ name: name.toLowerCase(), attributes: tag.attributes });
+      tags.push({ name, attributes: tag.attributes });
       i = tag.line;
       c = tag.column;
     }

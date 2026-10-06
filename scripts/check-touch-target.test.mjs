@@ -166,6 +166,18 @@ test('an expression that reads as a tag does not swallow the controls after it',
   );
 });
 
+/** #1475: Angular's lexer abandons a start tag at a `<`, and so does the walk. */
+test('an expression that reads as a tag ends at the next tag, so the control is still judged', () => {
+  const lines = ['<p>', '  {{ n<max }}', '  <button type="button" (click)="more()">More</button>', '</p>'];
+
+  const violations = scan(HTML, lines);
+
+  assert.deepEqual(
+    violations.map((v) => v.line),
+    [3],
+  );
+});
+
 test('an unquoted value glued to the self-closing slash does not leak its exemption', () => {
   const lines = [
     '<app-badge data-touch-exempt="control inside a sentence" mode=compact/>',
