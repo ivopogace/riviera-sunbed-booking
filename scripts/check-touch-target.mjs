@@ -70,6 +70,10 @@ const VOID = new Set([
  * puts the reason on the `<p>` that *is* the sentence and leaves the `<button>` inside it bare. So
  * the walk carries a stack rather than judging each tag alone.
  *
+ * <p>An incomplete start tag (`readAttributes`) is skipped: it is a phantom such as `{{ n<div }}`'s.
+ * Judged, one named for a control fails a build on a line holding none (#529); pushed, it takes a
+ * real ancestor's end tag and leaves that ancestor's exemption open over what follows (#1478).
+ *
  * @param {{ path: string, lines: string[], added: Set<number> }} input the file's new content and
  *   the 1-based line numbers the diff added
  * @returns {{ path: string, line: number, rule: string, text: string }[]} one entry per violation
@@ -84,8 +88,6 @@ export function findViolations({ path, lines, added }) {
       if (at !== -1) open.length = at;
       continue;
     }
-    // A phantom such as `{{ n<div }}`'s: judged, it fails a build on a line holding no control
-    // (#529); pushed, it takes a real ancestor's end tag and leaves that exemption open (#1478).
     if (tag.incomplete) continue;
     const marker = tag.attributes.get('data-touch-exempt');
     const exempt = marker !== undefined;
