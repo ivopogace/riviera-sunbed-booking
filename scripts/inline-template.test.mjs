@@ -236,6 +236,38 @@ test('readAttributes ends a start tag at a `<` and stops just before it', () => 
 });
 
 /**
+ * A start tag is complete only when its `>` ends the read. One ended at a `<`, at a quote where a
+ * name should be, or by the region's end is incomplete, as Angular's lexer marks it (#1478).
+ */
+test('readAttributes says whether the start tag reached its `>`', () => {
+  for (const [lines, line, column, incomplete] of [
+    [['<button type="button">'], 0, 7, false],
+    [['<img', '  src=/a/b/', '  alt="x"/>'], 0, 4, false],
+    [['{{ n<max }} <button>'], 0, 8, true],
+    [["{{ a<b ? 'x' : 'y' }}"], 0, 6, true],
+    [['x <div'], 0, 6, true],
+    [['<a x="foo'], 0, 2, true],
+  ]) {
+    assert.equal(readAttributes(lines, line, column).incomplete, incomplete, lines.join('\n'));
+  }
+});
+
+/** #1478: a bare value ends at a `<`, as Angular's lexer's `isNameEnd` ends one. */
+test('readAttributes ends a bare value at a `<` and the tag just before it', () => {
+  const read = readAttributes(['{{ a<b c=<button type="button">'], 0, 6);
+
+  assert.deepEqual(Object.fromEntries(read.attributes), { c: { value: '', line: 0 } });
+  assert.deepEqual([read.line, read.column, read.incomplete], [0, 8, true]);
+});
+
+test('readAttributes still takes a bare value\'s trailing slash as the self-close marker', () => {
+  const read = readAttributes(['<app-badge mode=compact/>'], 0, 10);
+
+  assert.deepEqual(Object.fromEntries(read.attributes), { mode: { value: 'compact', line: 0 } });
+  assert.deepEqual([read.selfClosed, read.incomplete], [true, false]);
+});
+
+/**
  * The tag-name rule both markup guards apply (#1475): a `<` opens an element only when a letter
  * starts the name and whitespace, `/`, `>` or the line's end follows it — so a comparison such as
  * `count()<limit)` or `i<select.length` is text.

@@ -244,6 +244,21 @@ test('a less-than comparison in an interpolation leaves the busy control after i
   }
 });
 
+/**
+ * #1478: a bare value ends at a `<`, as Angular's lexer ends one (`isNameEnd`), so a phantom tag's
+ * unquoted value glued to the busy control never takes that control as its value.
+ */
+test('a phantom tag whose bare value is glued to the busy control leaves it reported', () => {
+  const lines = ['<p>{{ a<b c=<button (click)="go()" [disabled]="saving()">Go</button></p>'];
+
+  const violations = scan(HTML, lines);
+
+  assert.deepEqual(
+    violations.map((v) => [v.rule, v.line]),
+    [['BUSY-1', 1]],
+  );
+});
+
 test('does not judge a control inside an HTML comment, on one line or across several', () => {
   const lines = [
     '<!-- <button [disabled]="saving()">Old</button> --><button [disabled]="saving()">S</button>',
