@@ -178,6 +178,48 @@ test('an expression that reads as a tag ends at the next tag, so the control is 
   );
 });
 
+/** #1478: a bare value ends at a `<`, as Angular's lexer ends one, so it never swallows a control. */
+test('a phantom tag whose bare value is glued to a control leaves the control judged', () => {
+  const lines = ['<p>{{ a<b c=<button type="button" (click)="go()">Go</button></p>'];
+
+  assert.deepEqual(
+    scan(HTML, lines).map((v) => [v.rule, v.line]),
+    [['TT-1', 1]],
+  );
+});
+
+/**
+ * #1478: Angular's parser pushes an unterminated start tag and pops it at once, so it never encloses
+ * anything; a phantom named after an exempt ancestor must not take that ancestor's end tag.
+ */
+test('a phantom named after an exempt ancestor does not keep its exemption open', () => {
+  for (const phantom of ['{{ n<div }}', '{{ n<max }}']) {
+    const lines = [
+      '<div data-touch-exempt="inline link in a sentence">',
+      `  ${phantom}`,
+      '</div>',
+      '<button type="button" (click)="go()">Go</button>',
+    ];
+
+    assert.deepEqual(
+      scan(HTML, lines).map((v) => [v.rule, v.line]),
+      [['TT-1', 4]],
+      phantom,
+    );
+  }
+});
+
+/** #529's posture: a phantom named for a control is no control, wherever its read ends. */
+test('a phantom named for a control fails no build', () => {
+  for (const line of [
+    '<p>{{ n<button }} more</p>',
+    '<p>{{ n<select ? "a" : "b" }}</p>',
+    '<p>{{ n<input',
+  ]) {
+    assert.deepEqual(scan(HTML, [line]), [], line);
+  }
+});
+
 test('an unquoted value glued to the self-closing slash does not leak its exemption', () => {
   const lines = [
     '<app-badge data-touch-exempt="control inside a sentence" mode=compact/>',

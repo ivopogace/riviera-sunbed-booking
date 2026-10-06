@@ -70,6 +70,10 @@ const VOID = new Set([
  * puts the reason on the `<p>` that *is* the sentence and leaves the `<button>` inside it bare. So
  * the walk carries a stack rather than judging each tag alone.
  *
+ * <p>An incomplete start tag (`readAttributes`) is skipped: it is a phantom such as `{{ n<div }}`'s.
+ * Judged, one named for a control fails a build on a line holding none (#529); pushed, it takes a
+ * real ancestor's end tag and leaves that ancestor's exemption open over what follows (#1478).
+ *
  * @param {{ path: string, lines: string[], added: Set<number> }} input the file's new content and
  *   the 1-based line numbers the diff added
  * @returns {{ path: string, line: number, rule: string, text: string }[]} one entry per violation
@@ -84,22 +88,24 @@ export function findViolations({ path, lines, added }) {
       if (at !== -1) open.length = at;
       continue;
     }
-    const marker = tag.attributes.get('data-touch-exempt');
-    const exempt = marker !== undefined;
-    if (exempt && marker.value.trim() === '' && added.has(tag.line)) {
-      violations.push({ path, line: tag.line, rule: 'TT-2', text: lines[tag.line - 1].trim() });
-    } else if (
-      JUDGED.has(tag.name) &&
-      added.has(tag.line) &&
-      !exempt &&
-      !tag.attributes.has('appTouchTarget') &&
-      !open.some((element) => element.exempt)
-    ) {
-      violations.push({ path, line: tag.line, rule: 'TT-1', text: lines[tag.line - 1].trim() });
+    if (tag.incomplete) continue;
+    const exempt = tag.attributes.has('data-touch-exempt');
+    const rule = added.has(tag.line) ? ruleBroken(tag, open) : null;
+    if (rule !== null) {
+      violations.push({ path, line: tag.line, rule, text: lines[tag.line - 1].trim() });
     }
     if (!tag.selfClosed && !VOID.has(tag.name)) open.push({ name: tag.name, exempt });
   }
   return violations;
+}
+
+/** TT-2 for an exemption that gives no reason, TT-1 for an undeclared control, else null. */
+function ruleBroken(tag, open) {
+  const marker = tag.attributes.get('data-touch-exempt');
+  if (marker !== undefined) return marker.value.trim() === '' ? 'TT-2' : null;
+  const declared =
+    tag.attributes.has('appTouchTarget') || open.some((element) => element.exempt);
+  return JUDGED.has(tag.name) && !declared ? 'TT-1' : null;
 }
 
 /**
@@ -157,6 +163,7 @@ function tagAt(lines, i, c) {
     name,
     attributes: read.attributes,
     selfClosed: read.selfClosed,
+    incomplete: read.incomplete,
     line: i + 1,
   };
   return { tag, line: read.line, column: read.column };
