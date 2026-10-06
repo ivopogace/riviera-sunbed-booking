@@ -5,6 +5,7 @@ import {
   CodeTail,
   INLINE_TEMPLATE_EXTENSIONS,
   interpolationStep,
+  readAttributes,
   typescriptRegions,
 } from './inline-template.mjs';
 
@@ -190,4 +191,29 @@ test('typescriptRegions carries a block comment and a template across lines', ()
   assert.equal(template[4].trim(), `<p>${blank('${ "}')}" }</p>`);
   assert.equal(code[4].trim(), ', selector:     })');
   assert.equal(code[5].trim(), 'class A {}');
+});
+
+test('readAttributes reads a start tag across lines up to its `>`', () => {
+  const read = readAttributes(['<img', '  src=/a/b/', '  alt="x"/>'], 0, 4);
+
+  assert.deepEqual(Object.fromEntries(read.attributes), {
+    src: { value: '/a/b', line: 1 },
+    alt: { value: 'x', line: 2 },
+  });
+  assert.deepEqual([read.line, read.column, read.selfClosed], [2, 10, true]);
+});
+
+/** A walk resumes after the position returned; column 0 of the last line re-read the same tag (#1473). */
+test('readAttributes that runs off the end stops past the last character', () => {
+  for (const [lines, line, column] of [
+    [['x <div'], 0, 6],
+    [['<a x="foo'], 0, 2],
+    [['<a x="foo', 'bar'], 0, 2],
+    [['<p>', '  <div a b'], 1, 6],
+  ]) {
+    const read = readAttributes(lines, line, column);
+    const last = lines.length - 1;
+
+    assert.deepEqual([read.line, read.column], [last, lines[last].length]);
+  }
 });

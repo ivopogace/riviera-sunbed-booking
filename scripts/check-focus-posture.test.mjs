@@ -1172,3 +1172,13 @@ test('reports the surface that hid behind the weather-confirm legs', () => {
   assert.equal(violations[0].rule, 'FOCUS-1');
   assert.equal(violations[0].line, 12);
 });
+
+/**
+ * A template region whose last line ends inside a start tag once rewound the walk to that line's
+ * column 0, where it found the same `<` or `name="` again and pushed it forever (#1473).
+ */
+test('a template that ends inside a start tag still returns', () => {
+  for (const lines of [['x <div'], ['<a x="foo'], ['<p>', '  <div']]) {
+    assert.deepEqual(scan(HTML, lines), []);
+  }
+});
