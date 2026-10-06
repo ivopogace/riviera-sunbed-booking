@@ -447,6 +447,64 @@ test('walkTags finds a raw-text end tag across lines, and reads none past the en
 });
 
 /**
+ * #1487: a start tag `_consumePrefixAndName` reads as `prefix:name` is raw text when
+ * `getHtmlTagDefinition(name).getContentType(prefix)` says so: `script`, `style`, `textarea` and
+ * `title` under any prefix, but `title` under exactly `svg`, which is parsed. The name is matched in
+ * any case and the prefix exactly, as the lexer does. `_consumeRawTextWithTagClose` ends the content
+ * at the bare name's end tag only, so `</svg:style>` ends nothing. The element is no walk entry, as
+ * no prefixed tag is, and a prefix the lexer does not read (`svg-x:`, a second `:`, a name that runs
+ * on past `style`) is no raw text. Each row is `HtmlParser`'s reading.
+ */
+test('walkTags steps over a prefixed raw-text element\'s content to its bare-name end tag', () => {
+  const cases = [
+    ['<svg:style><b></style><i>', ['<i']],
+    ['<xhtml:textarea appTouchTarget><b></textarea><i>', ['<i']],
+    ['<math:title><b></title><i>', ['<i']],
+    ['<SVG:title><b></title><i>', ['<i']],
+    ['<svg:STYLE><b></STYLE><i>', ['<i']],
+    ['<svg:script><b></script><i>', ['<i']],
+    ['<svg:textarea><b></textarea><i>', ['<i']],
+    ['<x1:textarea><b></textarea><i>', ['<i']],
+    ['<svg:style x="a>b"><b></style><i>', ['<i']],
+    ['<svg:style><b></ style ><i>', ['<i']],
+    ['<svg:style/><b></style><i>', ['<i']],
+    ['<svg:style><b></svg:style><i>', []],
+    ['<svg:title><b>x</b></svg:title>', ['<b', '</b']],
+    ['<svg:TITLE><b></b></svg:TITLE>', ['<b', '</b']],
+    ['<a:b:style><b></b>', ['<b', '</b']],
+    ['<svg-x:style><b></b>', ['<b', '</b']],
+    ['<svg:style.x><b></b>', ['<b', '</b']],
+    ['<svg:style<b></style><i>', ['<b', '</style', '<i']],
+  ];
+  for (const [line, expected] of cases) {
+    assert.deepEqual(walked([line]), expected, line);
+  }
+});
+
+test('walkTags finds a prefixed raw-text end tag across lines, and reads none past the end', () => {
+  assert.deepEqual(
+    walked(['<svg:style', '  media="x">', '<b>', '</style', '>', '<button>']),
+    ['<button'],
+  );
+  assert.deepEqual(walked(['<svg:style>', '<b>']), []);
+});
+
+/**
+ * #1487: no block or `@let` opens inside a prefixed raw-text element, and the ones after it still
+ * do (`HtmlParser`: `:svg:style[Text "@if (a<b) {x}"], Block`).
+ */
+test('maskBlockExpressions masks nothing inside a prefixed raw-text element', () => {
+  const cases = [
+    ['<svg:style>@if (a<b) {x}</style>@if (c<d) {y}', '<svg:style>@if (a<b) {x}</style>@if (   ) {y}'],
+    ['<xhtml:textarea>@let x = a>b</textarea>@let y = a>b;', '<xhtml:textarea>@let x = a>b</textarea>@let y =    ;'],
+  ];
+  for (const [line, expected] of cases) {
+    assert.equal(expected.length, line.length, line);
+    assert.deepEqual(maskBlockExpressions([line]), [expected], line);
+  }
+});
+
+/**
  * #1486: an end tag as `_consumeTagClose` reads it: `</`, whitespace, the name, whitespace, `>`,
  * where whitespace is the lexer's `isWhitespace` (TAB through SPACE, NBSP) and so spans lines. An
  * EM SPACE is no lexer whitespace, and a `</` with no name after it is no end tag.

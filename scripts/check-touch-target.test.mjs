@@ -276,6 +276,53 @@ test('markup inside a raw-text element is no control', () => {
 });
 
 /**
+ * #1487: a prefixed `style`, `script`, `textarea` or `title` is raw text too, up to its bare-name end
+ * tag (`HtmlParser`: `:svg:style[Text "<button>"]`), so the `<button>` in it is no control and the
+ * control after it is still judged. `<svg:title>` alone is parsed, and its button stays judged
+ * (`:svg:title[:svg:button[Text "a"]]`).
+ */
+test('markup inside a prefixed raw-text element is no control', () => {
+  for (const element of [
+    '<svg:style><button></style>',
+    '<xhtml:textarea appTouchTarget><button></textarea>',
+    '<math:title><button></title>',
+  ]) {
+    assert.deepEqual(scan(HTML, [element]), [], element);
+    assert.deepEqual(
+      scan(HTML, [element, '<button type="button">Go</button>']).map((v) => [v.rule, v.line]),
+      [['TT-1', 2]],
+      element,
+    );
+  }
+  assert.deepEqual(
+    scan(HTML, ['<svg><svg:title><button>a</button></svg:title></svg>']).map((v) => [
+      v.rule,
+      v.line,
+    ]),
+    [['TT-1', 1]],
+  );
+});
+
+/**
+ * #1487: a prefixed raw-text element is no walk entry, so it leaves the exemption stack as it found
+ * it: the exempt ancestor closes at its own end tag, and a `</div>` in the content closes nothing.
+ */
+test('a prefixed raw-text element leaves the exemption stack balanced', () => {
+  const lines = [
+    '<div data-touch-exempt="r">',
+    '  <svg:style>Use </div> here</style>',
+    '  <button type="button">x</button>',
+    '</div>',
+    '<button type="button">y</button>',
+  ];
+
+  assert.deepEqual(
+    scan(HTML, lines).map((v) => [v.rule, v.line]),
+    [['TT-1', 5]],
+  );
+});
+
+/**
  * #1484: the raw-text element's end tag still closes it, in any form Angular's lexer accepts, and
  * a `<div>` or `</div>` in its content opens or closes nothing, so the exempt ancestor closes at
  * its own end tag: the button inside it stays exempt and the button after it is judged.
