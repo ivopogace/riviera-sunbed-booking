@@ -259,10 +259,12 @@ function blank(chars, at, length) {
  * A subset of Angular's own name end (its lexer also ends a name at `<`, a quote or `=`), and the
  * subset is the point: `@if (count()<limit)` and `{{ i<select.length }}` open no tag, because the
  * operand runs on into `)` or `.`. An operand followed by a space, as in `{{ n<max }}`, still opens
- * one; `readAttributes` ends it at the next `<`, so it never takes the real control after it as its
- * own attributes (#1475), and marks it incomplete, so `check-touch-target` neither judges it — a
- * phantom named for a control would fail a build on a line holding none (#529's lesson) — nor lets
- * it enclose anything (#1478). Shared through `tagNameAt`.
+ * one; when a `<` comes before any `>`, `readAttributes` ends it there, so it never takes the real
+ * control after it as its own attributes (#1475), and marks it incomplete, so `check-touch-target`
+ * neither judges it — a phantom named for a control would fail a build on a line holding none
+ * (#529's lesson) — nor lets it enclose anything (#1478). A phantom whose read reaches a `>` first,
+ * as in a block parameter `@if (n<div && a>b)`, still reads as a complete tag (#1480). Shared
+ * through `tagNameAt`.
  */
 const TAG_NAME_END = /[\s/>]/;
 
@@ -319,10 +321,14 @@ export function readAttributes(lines, line, column) {
       c++;
       continue;
     }
-    if (ch === '<') return { attributes, line: i, column: c - 1, selfClosed: slash, incomplete: true };
+    if (ch === '<') {
+      return { attributes, line: i, column: c - 1, selfClosed: slash, incomplete: true };
+    }
     // `{{ a<b ? 'x' : 'y' }}` reads as a start tag, and its quote is where a name should be.
     const name = /^[^\s=>/'"<]+/.exec(lines[i].slice(c));
-    if (name === null) return { attributes, line: i, column: c, selfClosed: slash, incomplete: true };
+    if (name === null) {
+      return { attributes, line: i, column: c, selfClosed: slash, incomplete: true };
+    }
     slash = false;
     c += name[0].length;
     if (lines[i][c] !== '=') {
