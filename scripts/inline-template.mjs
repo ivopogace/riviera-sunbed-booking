@@ -9,10 +9,11 @@
  * only the decision: a scanner keeps its loop, its string and escape rules and its comment handling,
  * feeds the code it walks into a `CodeTail`, asks at a backtick, and steps a `${…}` with
  * `interpolationStep`. `check-focus-posture` and `check-touch-target` judge markup, so they take the
- * whole walk: `typescriptRegions` masks a file down to its inline templates and its code, and
- * `maskHtmlComments` masks an external template's comments. Beside
- * `git-diff.mjs` because that is the guards' shared module, and dependency-free for the same reason
- * it is: the hygiene CI job runs the suites with no install step.
+ * whole walk: `typescriptRegions` masks a file down to its inline templates and its code,
+ * `maskHtmlComments` masks an external template's comments, and `readAttributes` reads one start
+ * tag's attributes. Beside `git-diff.mjs` because that is the guards' shared module, and
+ * dependency-free for the same reason it is: the hygiene CI job runs the suites with no install
+ * step.
  */
 
 /** The extensions whose `template:` literal is an inline template. A `.js` key is a string. */
@@ -250,4 +251,76 @@ function startsWith(chars, token, at) {
 
 function blank(chars, at, length) {
   for (let i = at; i < at + length; i++) chars[i] = ' ';
+}
+
+/**
+ * The attributes of the start tag whose name ends at `column`, and where its `>` is: a map of
+ * attribute name to its value and the 0-based line the name sits on. A tag legitimately spans
+ * lines, so the read does too.
+ *
+ * `selfClosed` is whether a `/` stood last before the `>`; a bare value's trailing `/` is that
+ * marker, not value. A read that runs off the end without a `>` stops past the last character of
+ * the last line, so a walk resuming there ends rather than finding the same `<` again (#1473).
+ */
+export function readAttributes(lines, line, column) {
+  const attributes = new Map();
+  let i = line;
+  let c = column;
+  let slash = false;
+
+  while (i < lines.length) {
+    if (c >= lines[i].length) {
+      i++;
+      c = 0;
+      continue;
+    }
+    const ch = lines[i][c];
+    if (ch === '>') return { attributes, line: i, column: c, selfClosed: slash };
+    if (/[\s/]/.test(ch)) {
+      slash ||= ch === '/';
+      c++;
+      continue;
+    }
+    // `{{ a<b ? 'x' : 'y' }}` reads as a start tag, and its quote is where a name should be.
+    const name = /^[^\s=>/'"]+/.exec(lines[i].slice(c));
+    if (name === null) return { attributes, line: i, column: c, selfClosed: slash };
+    slash = false;
+    c += name[0].length;
+    if (lines[i][c] !== '=') {
+      attributes.set(name[0], { value: '', line: i });
+      continue;
+    }
+    const read = readValue(lines, i, c + 1);
+    attributes.set(name[0], { value: read.value, line: i });
+    i = read.line;
+    c = read.column;
+  }
+  return { attributes, ...pastEnd(lines), selfClosed: slash };
+}
+
+function readValue(lines, line, column) {
+  const quote = lines[line][column];
+  if (quote !== '"' && quote !== "'") {
+    const raw = /^[^\s>]*/.exec(lines[line].slice(column))[0];
+    // Only a trailing slash is the self-close marker; one inside `data-href=/legal/terms` is value.
+    const bare = raw.endsWith('/') ? raw.slice(0, -1) : raw;
+    return { value: bare, line, column: column + bare.length };
+  }
+  let value = '';
+  for (let i = line; i < lines.length; i++) {
+    const from = i === line ? column + 1 : 0;
+    const end = lines[i].indexOf(quote, from);
+    if (end === -1) {
+      value += `${lines[i].slice(from)}\n`;
+      continue;
+    }
+    return { value: value + lines[i].slice(from, end), line: i, column: end + 1 };
+  }
+  return { value, ...pastEnd(lines) };
+}
+
+/** The position just past the region's last character. */
+function pastEnd(lines) {
+  const line = lines.length - 1;
+  return { line, column: lines[line].length };
 }

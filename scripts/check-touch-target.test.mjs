@@ -229,3 +229,18 @@ test('flags an exemption that gives no reason', () => {
     ],
   );
 });
+
+/**
+ * A template region whose last line ends inside a start tag once rewound the walk to that line's
+ * column 0, where it found the same `<` or `name="` again and pushed it forever (#1473).
+ */
+test('a template that ends inside a start tag still returns', () => {
+  for (const tail of ['x <div', '  <div', '<p x="foo']) {
+    const lines = ['<button type="button">Go</button>', tail];
+
+    assert.deepEqual(
+      scan(HTML, lines).map((v) => [v.line, v.rule]),
+      [[1, 'TT-1']],
+    );
+  }
+});
