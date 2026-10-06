@@ -29,14 +29,14 @@ set -u
 ALIAS="ccr-agent-proxy"
 CACERTS_PW="changeit"   # the JDK cacerts default password (not a secret)
 
-log() { echo "trust-proxy-ca-java: $*" >&2; }
+log() { echo "trust-proxy-ca-java: $*" >&2; return 0; }
 
 # ── 0. Locate the proxy CA. No CA → not a proxied env → nothing to do. ─────
 PROXY_CA=""
 for c in /root/.ccr/agent-proxy-ca.crt /root/.ccr/ca-bundle.crt; do
-  [ -f "$c" ] && { PROXY_CA="$c"; break; }
+  [[ -f "$c" ]] && { PROXY_CA="$c"; break; }
 done
-if [ -z "$PROXY_CA" ]; then
+if [[ -z "$PROXY_CA" ]]; then
   log "no agent-proxy CA found under /root/.ccr — not a proxied session; nothing to do."
   exit 0
 fi
@@ -44,16 +44,16 @@ fi
 # ── 1. Locate the JDK cacerts (prefer the session JDK, then JAVA_HOME). ────
 CACERTS=""
 for j in /opt/jdk-25 "${JAVA_HOME:-}"; do
-  [ -n "$j" ] && [ -f "$j/lib/security/cacerts" ] && { CACERTS="$j/lib/security/cacerts"; break; }
+  [[ -n "$j" ]] && [[ -f "$j/lib/security/cacerts" ]] && { CACERTS="$j/lib/security/cacerts"; break; }
 done
-if [ -z "$CACERTS" ]; then
+if [[ -z "$CACERTS" ]]; then
   log "no JDK cacerts found (looked in /opt/jdk-25, \$JAVA_HOME) — skipping."
   exit 0
 fi
 
 KEYTOOL="$(dirname "$(dirname "$CACERTS")")/../bin/keytool"
-[ -x "$KEYTOOL" ] || KEYTOOL="$(command -v keytool || true)"
-if [ -z "$KEYTOOL" ] || [ ! -x "$KEYTOOL" ]; then
+[[ -x "$KEYTOOL" ]] || KEYTOOL="$(command -v keytool || true)"
+if [[ -z "$KEYTOOL" ]] || [[ ! -x "$KEYTOOL" ]]; then
   log "keytool not found — skipping."
   exit 0
 fi

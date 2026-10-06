@@ -17,7 +17,7 @@ OPERATOR_PW=e2e-operator-secret
 
 mkdir -p "$PGRUN"; chown postgres:postgres "$PGRUN"
 
-if [ ! -f "$PGDATA/PG_VERSION" ]; then
+if [[ ! -f "$PGDATA/PG_VERSION" ]]; then
   printf 'secret' > /tmp/e2e-pgpw; chown postgres:postgres /tmp/e2e-pgpw; chmod 644 /tmp/e2e-pgpw
   rm -rf "$PGDATA"; mkdir -p "$PGDATA"; chown -R postgres:postgres "$PGDATA"
   su postgres -c "$PGBIN/initdb -D $PGDATA -U myuser --auth=scram-sha-256 --pwfile=/tmp/e2e-pgpw"
