@@ -506,23 +506,29 @@ function blockEnd(text, at, out) {
 function parametersEnd(text, from) {
   let at = skipParameterSeparators(text, from);
   while (at < text.length && text[at] !== ')') {
-    let quote = null;
-    let parens = 0;
-    while (at < text.length && (text[at] !== ';' || quote !== null)) {
-      const ch = text[at];
-      if (ch === '\\') at++;
-      else if (ch === quote) quote = null;
-      else if (quote === null && isQuote(ch)) quote = ch;
-      else if (quote === null && ch === '(') parens++;
-      else if (quote === null && ch === ')') {
-        if (parens === 0) break;
-        parens--;
-      }
-      at++;
-    }
-    at = skipParameterSeparators(text, at);
+    at = skipParameterSeparators(text, parameterEnd(text, at));
   }
   return Math.min(at, text.length);
+}
+
+/** The offset one parameter ends at: its `;`, or the `)` outside a string and its own parentheses. */
+function parameterEnd(text, from) {
+  let quote = null;
+  let parens = 0;
+  let at = from;
+  while (at < text.length && (text[at] !== ';' || quote !== null)) {
+    const ch = text[at];
+    if (ch === '\\') at++;
+    else if (ch === quote) quote = null;
+    else if (quote === null && isQuote(ch)) quote = ch;
+    else if (quote === null && ch === '(') parens++;
+    else if (quote === null && ch === ')') {
+      if (parens === 0) return at;
+      parens--;
+    }
+    at++;
+  }
+  return at;
 }
 
 function skipParameterSeparators(text, at) {
