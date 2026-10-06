@@ -5,6 +5,7 @@ import {
   CodeTail,
   INLINE_TEMPLATE_EXTENSIONS,
   interpolationStep,
+  tagNameAt,
   typescriptRegions,
 } from './inline-template.mjs';
 
@@ -190,4 +191,26 @@ test('typescriptRegions carries a block comment and a template across lines', ()
   assert.equal(template[4].trim(), `<p>${blank('${ "}')}" }</p>`);
   assert.equal(code[4].trim(), ', selector:     })');
   assert.equal(code[5].trim(), 'class A {}');
+});
+
+/**
+ * The tag-name rule both markup guards apply (#1475): a `<` opens an element only when a letter
+ * starts the name and whitespace, `/`, `>` or the line's end follows it — so a comparison such as
+ * `count()<limit)` or `i<select.length` is text.
+ */
+test('tagNameAt reads an element name only where a real tag name ends', () => {
+  const cases = [
+    ['<button type="button">', 1, 'button'],
+    ['<app-pay-panel/>', 1, 'app-pay-panel'],
+    ['<SELECT>', 1, 'select'],
+    ['</button>', 2, 'button'],
+    ['<button', 1, 'button'],
+    ['@if (count()<limit) {', 13, null],
+    ['{{ i<select.length }}', 5, null],
+    ['{{ a<1 }}', 5, null],
+    ['{{ a< b }}', 4, null],
+  ];
+  for (const [line, from, expected] of cases) {
+    assert.equal(tagNameAt(line, from), expected, line);
+  }
 });
