@@ -398,7 +398,8 @@ const BLOCKS = [
  * `@let name = …;`, as expressions, never as markup, so a `<` there opens no tag. Unmasked, the walk
  * opened one at `@if (n<div && a>b)` that reached the `>` and read as complete (#1480). The mask
  * follows the lexer: a block or `@let` opens only in text — the walk steps over a tag as
- * `readAttributes` reads it, and over an interpolation as `_consumeInterpolation` does — a block's
+ * `readAttributes` reads it, over a raw-text element's content as `_consumeRawTextWithTagClose`
+ * does (`RAW_TEXT`, #1482), and over an interpolation as `_consumeInterpolation` does — a block's
  * parameters run from its `(` to the `)` `_consumeBlockParameters` stops at, and a `@let` value from
  * its `=` to the `;` `_consumeLetDeclarationValue` stops at. A guard that reads a block's condition
  * keeps reading the unmasked template.
@@ -434,7 +435,19 @@ function lineStarts(lines) {
   return starts;
 }
 
-/** The offset just past the tag a `<` at `at` opens or closes, as the guards' walk reads it; else null. */
+/**
+ * The elements whose content Angular's lexer reads as text up to their end tag, so no block or `@let`
+ * opens inside one: `getHtmlTagDefinition`'s `RAW_TEXT` (`script`, `style`) and
+ * `ESCAPABLE_RAW_TEXT` (`textarea`, `title`), the WHATWG raw-text and escapable raw-text elements.
+ * The lexer judges a tag by its name and prefix, never its parent, so a `<title>` inside `<svg>` is
+ * raw text too; only a prefixed `<svg:title>` is parsed, and `tagNameAt` reads no prefixed name.
+ */
+const RAW_TEXT = new Set(['script', 'style', 'textarea', 'title']);
+
+/**
+ * The offset just past the tag a `<` at `at` opens or closes, as the guards' walk reads it, and past
+ * a raw-text element's content and end tag too; else null.
+ */
 function tagEnd(lines, starts, text, at) {
   if (text[at] !== '<') return null;
   const line = starts.findLastIndex((start) => start <= at);
@@ -445,7 +458,20 @@ function tagEnd(lines, starts, text, at) {
   if (name === null) return null;
   if (closing) return starts[line] + from + name.length;
   const read = readAttributes(lines, line, from + name.length);
-  return starts[read.line] + read.column + 1;
+  const end = starts[read.line] + read.column + 1;
+  return RAW_TEXT.has(name) && !read.incomplete ? rawTextEnd(text, end, name) : end;
+}
+
+/**
+ * The offset past the end tag that closes a raw-text element's content at `from`, as
+ * `_consumeRawTextWithTagClose` finds it: `</`, whitespace, the name in any case, whitespace, `>`.
+ * With none, the lexer reads the content to the region's end, and so does the mask.
+ */
+function rawTextEnd(text, from, name) {
+  const close = new RegExp(`</[\\t-\\x20\\xa0]*${name}[\\t-\\x20\\xa0]*>`, 'gi');
+  close.lastIndex = from;
+  const found = close.exec(text);
+  return found === null ? text.length : close.lastIndex;
 }
 
 /**
