@@ -29,8 +29,8 @@ import {
   readText,
   repoRoot,
 } from './git-diff.mjs';
-import { adviser, report } from './guard-report.mjs';
-import { typescriptRegions } from './inline-template.mjs';
+import { adviser, report, tally } from './guard-report.mjs';
+import { maskHtmlComments, typescriptRegions } from './inline-template.mjs';
 
 /** Angular templates only; a spec's fixtures are allowed to build the non-compliant forms. */
 const IN_SCOPE = /^frontend\/src\/app\/.*(?<!\.spec)\.(ts|html)$/;
@@ -109,41 +109,6 @@ function templateRegion(path, lines) {
   return path.endsWith('.html') ? maskHtmlComments(lines) : typescriptRegions(lines).template;
 }
 
-function maskHtmlComments(lines) {
-  const out = lines.map((line) => line.split(''));
-  let open = false;
-
-  for (let i = 0; i < out.length; i++) {
-    for (let c = 0; c < out[i].length; c++) {
-      if (open) {
-        if (startsWith(out[i], '-->', c)) {
-          blank(out[i], c, 3);
-          c += 2;
-          open = false;
-        } else {
-          out[i][c] = ' ';
-        }
-      } else if (startsWith(out[i], '<!--', c)) {
-        blank(out[i], c, 4);
-        c += 3;
-        open = true;
-      }
-    }
-  }
-  return out.map((chars) => chars.join(''));
-}
-
-function startsWith(chars, token, at) {
-  for (let i = 0; i < token.length; i++) {
-    if (chars[at + i] !== token[i]) return false;
-  }
-  return true;
-}
-
-function blank(chars, at, length) {
-  for (let i = at; i < at + length; i++) chars[i] = ' ';
-}
-
 /**
  * What may follow an element name in a real tag: whitespace, the self-closing slash, or `>`.
  *
@@ -163,34 +128,45 @@ const TAG_NAME_END = /[\s/>]/;
  */
 function walkTags(lines) {
   const tags = [];
+  let i = 0;
+  let c = 0;
 
-  for (let i = 0; i < lines.length; i++) {
-    for (let c = 0; c < lines[i].length; c++) {
-      if (lines[i][c] !== '<') continue;
-      const closing = lines[i][c + 1] === '/';
-      const from = closing ? c + 2 : c + 1;
-      if (!/[A-Za-z]/.test(lines[i][from] ?? '')) continue;
-      const name = /^[\w-]+/.exec(lines[i].slice(from))[0].toLowerCase();
-      // `{{ i<select.length }}` is a comparison, not a <select>: a real tag name ends the name.
-      if (!TAG_NAME_END.test(lines[i][from + name.length] ?? ' ')) continue;
-      if (closing) {
-        tags.push({ kind: 'close', name });
-        c = from + name.length - 1;
-        continue;
-      }
-      const tag = readAttributes(lines, i, from + name.length);
-      tags.push({
-        kind: 'open',
-        name,
-        attributes: tag.attributes,
-        selfClosed: tag.selfClosed,
-        line: i + 1,
-      });
-      i = tag.line;
-      c = tag.column;
+  while (i < lines.length) {
+    if (c >= lines[i].length) {
+      i++;
+      c = 0;
+      continue;
     }
+    const found = tagAt(lines, i, c);
+    if (found !== null) {
+      tags.push(found.tag);
+      i = found.line;
+      c = found.column;
+    }
+    c++;
   }
   return tags;
+}
+
+/** The tag a `<` at this position opens or closes, and the position reading it stopped at. */
+function tagAt(lines, i, c) {
+  if (lines[i][c] !== '<') return null;
+  const closing = lines[i][c + 1] === '/';
+  const from = closing ? c + 2 : c + 1;
+  if (!/[A-Za-z]/.test(lines[i][from] ?? '')) return null;
+  const name = /^[\w-]+/.exec(lines[i].slice(from))[0].toLowerCase();
+  // `{{ i<select.length }}` is a comparison, not a <select>: a real tag name ends the name.
+  if (!TAG_NAME_END.test(lines[i][from + name.length] ?? ' ')) return null;
+  if (closing) return { tag: { kind: 'close', name }, line: i, column: from + name.length - 1 };
+  const read = readAttributes(lines, i, from + name.length);
+  const tag = {
+    kind: 'open',
+    name,
+    attributes: read.attributes,
+    selfClosed: read.selfClosed,
+    line: i + 1,
+  };
+  return { tag, line: read.line, column: read.column };
 }
 
 function readAttributes(lines, line, column) {
@@ -304,7 +280,8 @@ export function sweep() {
 
 let appPathsIndex;
 function appPaths() {
-  return (appPathsIndex ??= changedPaths(git(['ls-files', '-z', 'frontend/src/app'])));
+  appPathsIndex ??= changedPaths(git(['ls-files', '-z', 'frontend/src/app']));
+  return appPathsIndex;
 }
 
 /** Checks one path; `added` of null lifts the diff scoping, which is what `sweep()` wants. */
@@ -387,11 +364,7 @@ function main(argv) {
   }
 
   if (mode === '--all') {
-    const violations = sweep();
-    const counts = ['TT-1', 'TT-2']
-      .map((rule) => `${rule}: ${violations.filter((v) => v.rule === rule).length}`)
-      .join('  ');
-    process.stdout.write(`${violations.length ? `${report(violations)}\n` : ''}${counts}\n`);
+    process.stdout.write(tally(sweep(), ['TT-1', 'TT-2']));
     return 0;
   }
 

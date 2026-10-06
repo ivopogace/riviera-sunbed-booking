@@ -39,8 +39,8 @@ import {
   readText,
   repoRoot,
 } from './git-diff.mjs';
-import { adviser, report } from './guard-report.mjs';
-import { typescriptRegions } from './inline-template.mjs';
+import { adviser, report, tally } from './guard-report.mjs';
+import { maskHtmlComments, typescriptRegions } from './inline-template.mjs';
 
 /** Angular templates only; a spec's fixtures are allowed to build the non-compliant forms. */
 const IN_SCOPE = /^frontend\/src\/app\/.*(?<!\.spec)\.(ts|html)$/;
@@ -227,30 +227,6 @@ function codeOf(source) {
   return typescriptRegions(source.split('\n')).code;
 }
 
-function maskHtmlComments(lines) {
-  const out = lines.map((line) => line.split(''));
-  let open = false;
-
-  for (let i = 0; i < out.length; i++) {
-    for (let c = 0; c < out[i].length; c++) {
-      if (open) {
-        if (startsWith(out[i], '-->', c)) {
-          blank(out[i], c, 3);
-          c += 2;
-          open = false;
-        } else {
-          out[i][c] = ' ';
-        }
-      } else if (startsWith(out[i], '<!--', c)) {
-        blank(out[i], c, 4);
-        c += 3;
-        open = true;
-      }
-    }
-  }
-  return out.map((chars) => chars.join(''));
-}
-
 /** The closing quote's index on the same line, or -1 when the quote at `c` has no mate there. */
 function stringEnd(chars, c) {
   const quote = chars[c];
@@ -268,7 +244,7 @@ function busyViolations(path, lines, added, template) {
     const disabled = tag.attributes.get('[disabled]');
     if (!disabled || !isBusyFlag(disabled.value)) continue;
     if (!added.has(disabled.line + 1)) continue;
-    const rule = ACTIONABLE.has(tag.name) ? 'BUSY-1' : selfCommits(tag) ? 'BUSY-2' : null;
+    const rule = busyRule(tag);
     if (rule === null) continue;
     violations.push({
       path,
@@ -278,6 +254,12 @@ function busyViolations(path, lines, added, template) {
     });
   }
   return violations;
+}
+
+/** BUSY-1 for an actionable element, BUSY-2 for a field that starts its own write, else null. */
+function busyRule(tag) {
+  if (ACTIONABLE.has(tag.name)) return 'BUSY-1';
+  return selfCommits(tag) ? 'BUSY-2' : null;
 }
 
 /**
@@ -416,7 +398,7 @@ function trapSurfaces(lines, spans, isFocusTrap) {
 
   for (let i = 0; i < lines.length; i++) {
     for (const column of trapColumns(lines[i], isFocusTrap)) {
-      const innermost = spans.filter((span) => contains(span, bodyEnd(lines, span), i, column)).at(-1);
+      const innermost = spans.findLast((span) => contains(span, bodyEnd(lines, span), i, column));
       if (innermost !== undefined) traps.add(innermost);
     }
   }
@@ -466,7 +448,7 @@ function bodyEnd(lines, span) {
  * `reported`, so the same surface was reported a second time at its flip (#629).
  */
 function gatingSignal(condition) {
-  return /^\(\s*!?\s*([A-Za-z_$][\w$]*)\s*\(/.exec(condition)?.[1] ?? null;
+  return /^\(\s*(?:!\s*)?([A-Za-z_$][\w$]*)\s*\(/.exec(condition)?.[1] ?? null;
 }
 
 /**
@@ -477,7 +459,7 @@ function gatingSignal(condition) {
  * as `BUSY_STEMS` is for BUSY-1. Widen this rather than route around it.
  */
 function flipSites(code, signal) {
-  const flip = new RegExp(`(?<![\\w$])${RegExp.escape(signal)}\\s*\\.set\\(\\s*(?:false|undefined|null)\\s*\\)`);
+  const flip = new RegExp(String.raw`(?<![\w$])${RegExp.escape(signal)}\s*\.set\(\s*(?:false|undefined|null)\s*\)`);
   const sites = [];
 
   for (let i = 0; i < code.length; i++) {
@@ -489,7 +471,7 @@ function flipSites(code, signal) {
 
 /** The field names bound to `focusMover()`, since the mover's name is the component's to choose. */
 function moverNames(code) {
-  return [...code.matchAll(/([A-Za-z_$][\w$]*)\s*=\s*focusMover\s*\(/g)].map((match) => match[1]);
+  return [...code.matchAll(/(?<![\w$])([A-Za-z_$][\w$]*)\s*=\s*focusMover\s*\(/g)].map((match) => match[1]);
 }
 
 /**
@@ -501,7 +483,7 @@ function moverNames(code) {
 function movesFocusIn(member, movers) {
   return (
     /\.focus\s*\(/.test(member) ||
-    movers.some((name) => new RegExp(`(?<![\\w$])${RegExp.escape(name)}\\s*\\(`).test(member))
+    movers.some((name) => new RegExp(String.raw`(?<![\w$])${RegExp.escape(name)}\s*\(`).test(member))
   );
 }
 
@@ -597,7 +579,8 @@ function closingBrace(lines, from) {
   let armed = false;
 
   for (let i = from.line; i < lines.length; i++) {
-    for (let c = i === from.line ? from.column : 0; c < lines[i].length; c++) {
+    let c = i === from.line ? from.column : 0;
+    while (c < lines[i].length) {
       const ch = lines[i][c];
       if (ch === '"' || (ch === "'" && parens > 0)) {
         const end = stringEnd(lines[i], c);
@@ -621,10 +604,12 @@ function closingBrace(lines, from) {
       } else {
         if (armed && !/[A-Za-z\s]/.test(ch)) armed = false;
         if (ch === '{') depth++;
-        else if (ch !== '}') continue;
-        else if (depth === 0) return null;
-        else if (--depth === 0) return { line: i, column: c };
+        else if (ch === '}') {
+          if (depth === 0) return null;
+          if (--depth === 0) return { line: i, column: c };
+        }
       }
+      c++;
     }
   }
   return null;
@@ -684,16 +669,23 @@ function isBusyFlag(expression) {
  */
 function startTags(lines) {
   const tags = [];
+  let i = 0;
+  let c = 0;
 
-  for (let i = 0; i < lines.length; i++) {
-    for (let c = 0; c < lines[i].length; c++) {
-      if (lines[i][c] !== '<' || !/[A-Za-z]/.test(lines[i][c + 1] ?? '')) continue;
+  while (i < lines.length) {
+    if (c >= lines[i].length) {
+      i++;
+      c = 0;
+      continue;
+    }
+    if (lines[i][c] === '<' && /[A-Za-z]/.test(lines[i][c + 1] ?? '')) {
       const name = /^[\w-]+/.exec(lines[i].slice(c + 1))[0];
       const tag = readAttributes(lines, i, c + 1 + name.length);
       tags.push({ name: name.toLowerCase(), attributes: tag.attributes });
       i = tag.line;
       c = tag.column;
     }
+    c++;
   }
   return tags;
 }
@@ -748,17 +740,6 @@ function readValue(lines, line, column) {
     return { value: value + lines[i].slice(from, end), line: i, column: end + 1 };
   }
   return { value, line: lines.length - 1, column: 0 };
-}
-
-function startsWith(chars, token, at) {
-  for (let i = 0; i < token.length; i++) {
-    if (chars[at + i] !== token[i]) return false;
-  }
-  return true;
-}
-
-function blank(chars, at, length) {
-  for (let i = at; i < at + length; i++) chars[i] = ' ';
 }
 
 /**
@@ -829,7 +810,8 @@ export function sweep() {
  */
 let appPathsIndex;
 function appPaths() {
-  return (appPathsIndex ??= changedPaths(git(['ls-files', '-z', 'frontend/src/app'])));
+  appPathsIndex ??= changedPaths(git(['ls-files', '-z', 'frontend/src/app']));
+  return appPathsIndex;
 }
 
 /** Checks one path; `added` of null lifts the diff scoping, which is what `sweep()` wants. */
@@ -994,11 +976,7 @@ function main(argv) {
   }
 
   if (mode === '--all') {
-    const violations = sweep();
-    const counts = ['BUSY-1', 'BUSY-2', 'FOCUS-1']
-      .map((rule) => `${rule}: ${violations.filter((v) => v.rule === rule).length}`)
-      .join('  ');
-    process.stdout.write(`${violations.length ? `${report(violations)}\n` : ''}${counts}\n`);
+    process.stdout.write(tally(sweep(), ['BUSY-1', 'BUSY-2', 'FOCUS-1']));
     return 0;
   }
 
