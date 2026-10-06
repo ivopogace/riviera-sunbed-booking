@@ -31,6 +31,7 @@ import {
 } from './git-diff.mjs';
 import { adviser, report, tally } from './guard-report.mjs';
 import {
+  maskBlockExpressions,
   maskHtmlComments,
   readAttributes,
   tagNameAt,
@@ -82,7 +83,7 @@ export function findViolations({ path, lines, added }) {
   const violations = [];
   const open = [];
 
-  for (const tag of walkTags(templateRegion(path, lines))) {
+  for (const tag of walkTags(maskBlockExpressions(templateRegion(path, lines)))) {
     if (tag.kind === 'close') {
       const at = open.findLastIndex((element) => element.name === tag.name);
       if (at !== -1) open.length = at;

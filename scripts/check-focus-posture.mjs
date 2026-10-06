@@ -41,6 +41,7 @@ import {
 } from './git-diff.mjs';
 import { adviser, report, tally } from './guard-report.mjs';
 import {
+  maskBlockExpressions,
   maskHtmlComments,
   readAttributes,
   tagNameAt,
@@ -245,7 +246,7 @@ function stringEnd(chars, c) {
 function busyViolations(path, lines, added, template) {
   const violations = [];
 
-  for (const tag of startTags(template)) {
+  for (const tag of startTags(maskBlockExpressions(template))) {
     const disabled = tag.attributes.get('[disabled]');
     if (!disabled || !isBusyFlag(disabled.value)) continue;
     if (!added.has(disabled.line + 1)) continue;
