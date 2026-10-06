@@ -11,8 +11,9 @@
  * `interpolationStep`. `check-focus-posture` and `check-touch-target` judge markup, so they take the
  * whole walk: `typescriptRegions` masks a file down to its inline templates and its code,
  * `maskHtmlComments` masks an external template's comments, and `readAttributes` reads one start
- * tag's attributes. Beside `git-diff.mjs` because that is the guards' shared module, and dependency-free for the same reason
- * it is: the hygiene CI job runs the suites with no install step.
+ * tag's attributes. Beside `git-diff.mjs` because that is the guards' shared module, and
+ * dependency-free for the same reason it is: the hygiene CI job runs the suites with no install
+ * step.
  */
 
 /** The extensions whose `template:` literal is an inline template. A `.js` key is a string. */
