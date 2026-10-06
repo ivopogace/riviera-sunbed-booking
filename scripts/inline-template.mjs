@@ -469,7 +469,7 @@ function tagEnd(lines, starts, text, at) {
  * With none, the lexer reads the content to the region's end, and so does the mask.
  */
 function rawTextEnd(text, from, name) {
-  const close = new RegExp(`</[\\t-\\x20\\xa0]*${name}[\\t-\\x20\\xa0]*>`, 'gi');
+  const close = new RegExp(String.raw`</[\t-\x20\xa0]*${name}[\t-\x20\xa0]*>`, 'gi');
   close.lastIndex = from;
   const found = close.exec(text);
   return found === null ? text.length : close.lastIndex;
