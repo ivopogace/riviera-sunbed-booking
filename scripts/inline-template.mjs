@@ -9,7 +9,8 @@
  * only the decision: a scanner keeps its loop, its string and escape rules and its comment handling,
  * feeds the code it walks into a `CodeTail`, asks at a backtick, and steps a `${…}` with
  * `interpolationStep`. `check-focus-posture` and `check-touch-target` judge markup, so they take the
- * whole walk: `typescriptRegions` masks a file down to its inline templates and its code. Beside
+ * whole walk: `typescriptRegions` masks a file down to its inline templates and its code, and
+ * `maskHtmlComments` masks an external template's comments. Beside
  * `git-diff.mjs` because that is the guards' shared module, and dependency-free for the same reason
  * it is: the hygiene CI job runs the suites with no install step.
  */
@@ -210,4 +211,43 @@ function quotedEnd(line, at) {
     c += line[c] === '\\' ? 2 : 1;
   }
   return line.length;
+}
+
+/**
+ * An external template with every `<!-- … -->` blanked to spaces, line and column geometry kept, so
+ * a control inside a comment is never judged as markup.
+ */
+export function maskHtmlComments(lines) {
+  const out = lines.map((line) => line.split(''));
+  let open = false;
+
+  for (const chars of out) {
+    for (let c = 0; c < chars.length; c++) {
+      if (open) {
+        if (startsWith(chars, '-->', c)) {
+          blank(chars, c, 3);
+          c += 2;
+          open = false;
+        } else {
+          chars[c] = ' ';
+        }
+      } else if (startsWith(chars, '<!--', c)) {
+        blank(chars, c, 4);
+        c += 3;
+        open = true;
+      }
+    }
+  }
+  return out.map((chars) => chars.join(''));
+}
+
+function startsWith(chars, token, at) {
+  for (let i = 0; i < token.length; i++) {
+    if (chars[at + i] !== token[i]) return false;
+  }
+  return true;
+}
+
+function blank(chars, at, length) {
+  for (let i = at; i < at + length; i++) chars[i] = ' ';
 }

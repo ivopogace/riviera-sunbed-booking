@@ -29,8 +29,8 @@ import {
   readText,
   repoRoot,
 } from './git-diff.mjs';
-import { adviser, report } from './guard-report.mjs';
-import { typescriptRegions } from './inline-template.mjs';
+import { adviser, report, tally } from './guard-report.mjs';
+import { maskHtmlComments, typescriptRegions } from './inline-template.mjs';
 
 /** Angular templates only; a spec's fixtures are allowed to build the non-compliant forms. */
 const IN_SCOPE = /^frontend\/src\/app\/.*(?<!\.spec)\.(ts|html)$/;
@@ -107,41 +107,6 @@ export function findViolations({ path, lines, added }) {
  */
 function templateRegion(path, lines) {
   return path.endsWith('.html') ? maskHtmlComments(lines) : typescriptRegions(lines).template;
-}
-
-function maskHtmlComments(lines) {
-  const out = lines.map((line) => line.split(''));
-  let open = false;
-
-  for (const chars of out) {
-    for (let c = 0; c < chars.length; c++) {
-      if (open) {
-        if (startsWith(chars, '-->', c)) {
-          blank(chars, c, 3);
-          c += 2;
-          open = false;
-        } else {
-          chars[c] = ' ';
-        }
-      } else if (startsWith(chars, '<!--', c)) {
-        blank(chars, c, 4);
-        c += 3;
-        open = true;
-      }
-    }
-  }
-  return out.map((chars) => chars.join(''));
-}
-
-function startsWith(chars, token, at) {
-  for (let i = 0; i < token.length; i++) {
-    if (chars[at + i] !== token[i]) return false;
-  }
-  return true;
-}
-
-function blank(chars, at, length) {
-  for (let i = at; i < at + length; i++) chars[i] = ' ';
 }
 
 /**
@@ -399,12 +364,7 @@ function main(argv) {
   }
 
   if (mode === '--all') {
-    const violations = sweep();
-    const counts = ['TT-1', 'TT-2']
-      .map((rule) => `${rule}: ${violations.filter((v) => v.rule === rule).length}`)
-      .join('  ');
-    const listing = violations.length ? `${report(violations)}\n` : '';
-    process.stdout.write(`${listing}${counts}\n`);
+    process.stdout.write(tally(sweep(), ['TT-1', 'TT-2']));
     return 0;
   }
 

@@ -39,8 +39,8 @@ import {
   readText,
   repoRoot,
 } from './git-diff.mjs';
-import { adviser, report } from './guard-report.mjs';
-import { typescriptRegions } from './inline-template.mjs';
+import { adviser, report, tally } from './guard-report.mjs';
+import { maskHtmlComments, typescriptRegions } from './inline-template.mjs';
 
 /** Angular templates only; a spec's fixtures are allowed to build the non-compliant forms. */
 const IN_SCOPE = /^frontend\/src\/app\/.*(?<!\.spec)\.(ts|html)$/;
@@ -225,30 +225,6 @@ function sourceOf(source) {
 /** Strips a sibling component's comments and strings so `movesFocus` sees call sites only. */
 function codeOf(source) {
   return typescriptRegions(source.split('\n')).code;
-}
-
-function maskHtmlComments(lines) {
-  const out = lines.map((line) => line.split(''));
-  let open = false;
-
-  for (const chars of out) {
-    for (let c = 0; c < chars.length; c++) {
-      if (open) {
-        if (startsWith(chars, '-->', c)) {
-          blank(chars, c, 3);
-          c += 2;
-          open = false;
-        } else {
-          chars[c] = ' ';
-        }
-      } else if (startsWith(chars, '<!--', c)) {
-        blank(chars, c, 4);
-        c += 3;
-        open = true;
-      }
-    }
-  }
-  return out.map((chars) => chars.join(''));
 }
 
 /** The closing quote's index on the same line, or -1 when the quote at `c` has no mate there. */
@@ -766,17 +742,6 @@ function readValue(lines, line, column) {
   return { value, line: lines.length - 1, column: 0 };
 }
 
-function startsWith(chars, token, at) {
-  for (let i = 0; i < token.length; i++) {
-    if (chars[at + i] !== token[i]) return false;
-  }
-  return true;
-}
-
-function blank(chars, at, length) {
-  for (let i = at; i < at + length; i++) chars[i] = ' ';
-}
-
 /**
  * Runs the detector over every in-scope file a diff touches.
  *
@@ -1011,12 +976,7 @@ function main(argv) {
   }
 
   if (mode === '--all') {
-    const violations = sweep();
-    const counts = ['BUSY-1', 'BUSY-2', 'FOCUS-1']
-      .map((rule) => `${rule}: ${violations.filter((v) => v.rule === rule).length}`)
-      .join('  ');
-    const listing = violations.length ? `${report(violations)}\n` : '';
-    process.stdout.write(`${listing}${counts}\n`);
+    process.stdout.write(tally(sweep(), ['BUSY-1', 'BUSY-2', 'FOCUS-1']));
     return 0;
   }
 
