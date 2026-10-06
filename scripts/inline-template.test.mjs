@@ -459,6 +459,7 @@ test('walkTags reads an end tag with whitespace around its name', () => {
     ['<p>x</ p', '  ><i>'],
     ['<p>x</', 'p><i>'],
     ['<p>x</ ', '', '  p', '>', '<i>'],
+    ['<p>x</ p q><i>'],
   ]) {
     assert.deepEqual(walked(lines), ['<p', '</p', '<i'], lines.join('⏎'));
   }
