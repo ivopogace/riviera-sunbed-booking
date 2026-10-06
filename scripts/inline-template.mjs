@@ -277,7 +277,7 @@ const TAG_NAME_END = /[\s/>]/;
  * attribute on the next.
  *
  * @param {string} line the masked template line
- * @param {number} from the index after the `<` or `</`
+ * @param {number} from the index after the `<`, or after the `</` and its whitespace
  * @returns {string | null} the element name, or null for template text
  */
 export function tagNameAt(line, from) {
@@ -527,9 +527,10 @@ function tagAt(lines, i, c) {
 const LEXER_WHITESPACE = /[\t-\x20\xa0]/;
 
 /**
- * The end tag whose `</` ends just before line `i`, column `from`, as `_consumeTagClose` reads it:
- * whitespace, the name, whitespace, `>`, the whitespace spanning lines (#1486). The position is
- * that `>`, or the name's last character when something else follows it, an error in Angular.
+ * The end tag read from just past its `</` at line `i`, column `from`, as `_consumeTagClose` reads
+ * it: whitespace, the name, whitespace, `>`, where either whitespace may cross line ends; null when
+ * no name follows. The position is that `>`. When anything else follows the name, Angular emits no
+ * end tag and the template never builds, but the entry stands and the walk resumes after the name.
  */
 function endTagAt(lines, i, from) {
   const start = pastWhitespace(lines, i, from);

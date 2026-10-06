@@ -376,7 +376,10 @@ test('maskBlockExpressions finds a raw-text element\'s end tag across lines', ()
   ]);
 });
 
-/** #1486: the mask steps over an end tag with whitespace before its name, so a block after it opens. */
+/**
+ * #1486: a block after an end tag with whitespace before its name is still masked. A pin, not a
+ * proof: before the fix the walk read that end tag as text, which masks the same.
+ */
 test('maskBlockExpressions masks a block after an end tag with whitespace before its name', () => {
   assert.deepEqual(maskBlockExpressions(['<p>x</ p>@if (a<b) {']), ['<p>x</ p>@if (   ) {']);
   assert.deepEqual(maskBlockExpressions(['<p>x</', '  p', '>@let y = a>b;']), [
