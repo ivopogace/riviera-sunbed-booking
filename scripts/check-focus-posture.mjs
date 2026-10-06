@@ -40,7 +40,7 @@ import {
   repoRoot,
 } from './git-diff.mjs';
 import { adviser, report, tally } from './guard-report.mjs';
-import { maskHtmlComments, typescriptRegions } from './inline-template.mjs';
+import { maskHtmlComments, tagNameAt, typescriptRegions } from './inline-template.mjs';
 
 /** Angular templates only; a spec's fixtures are allowed to build the non-compliant forms. */
 const IN_SCOPE = /^frontend\/src\/app\/.*(?<!\.spec)\.(ts|html)$/;
@@ -678,10 +678,10 @@ function startTags(lines) {
       c = 0;
       continue;
     }
-    if (lines[i][c] === '<' && /[A-Za-z]/.test(lines[i][c + 1] ?? '')) {
-      const name = /^[\w-]+/.exec(lines[i].slice(c + 1))[0];
+    const name = lines[i][c] === '<' ? tagNameAt(lines[i], c + 1) : null;
+    if (name !== null) {
       const tag = readAttributes(lines, i, c + 1 + name.length);
-      tags.push({ name: name.toLowerCase(), attributes: tag.attributes });
+      tags.push({ name, attributes: tag.attributes });
       i = tag.line;
       c = tag.column;
     }
@@ -707,8 +707,10 @@ function readAttributes(lines, line, column) {
       c++;
       continue;
     }
+    // As in Angular's lexer, a `<` ends the tag, so `{{ n<max }}` cannot swallow the next control.
+    if (ch === '<') return { attributes, line: i, column: c - 1 };
     // `{{ a<b ? 'x' : 'y' }}` reads as a start tag, and its quote is where a name should be.
-    const name = /^[^\s=>/'"]+/.exec(lines[i].slice(c));
+    const name = /^[^\s=>/'"<]+/.exec(lines[i].slice(c));
     if (name === null) return { attributes, line: i, column: c };
     c += name[0].length;
     if (lines[i][c] !== '=') {

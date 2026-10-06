@@ -211,8 +211,8 @@ test('survives a less-than inside an interpolation', () => {
 });
 
 /**
- * #1475: a `<` comparison read as a start tag used to read on to the next `>`, taking the busy
- * control after it as its own attributes — the gate passed a build it had to fail.
+ * #1475: a `<` comparison is never a start tag that reads on to the next `>` and takes the busy
+ * control after it as its attributes; that misparse passes a build the gate has to fail.
  */
 test('a less-than comparison in a block condition leaves the busy control after it reported', () => {
   const lines = [
