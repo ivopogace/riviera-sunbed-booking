@@ -326,6 +326,26 @@ test('a busy control spelled inside a raw-text element is no control', () => {
   }
 });
 
+/**
+ * #1487: a prefixed raw-text element is raw text to Angular too (`HtmlParser`:
+ * `:svg:style[Text "<button [disabled]=\"saving()\">"]`), so the busy `<button>` in it is no control.
+ */
+test('a busy control spelled inside a prefixed raw-text element is no control', () => {
+  for (const element of [
+    '<svg:style><button [disabled]="saving()"></style>',
+    '<xhtml:textarea><button [disabled]="saving()"></textarea>',
+  ]) {
+    assert.deepEqual(scan(HTML, [element]), [], element);
+    const lines = [element, '<button (click)="save()" [disabled]="saving()">Save</button>'];
+
+    assert.deepEqual(
+      scan(HTML, lines).map((v) => [v.rule, v.line]),
+      [['BUSY-1', 2]],
+      element,
+    );
+  }
+});
+
 test('does not judge a control inside an HTML comment, on one line or across several', () => {
   const lines = [
     '<!-- <button [disabled]="saving()">Old</button> --><button [disabled]="saving()">S</button>',

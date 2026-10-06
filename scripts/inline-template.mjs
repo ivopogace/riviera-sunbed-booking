@@ -266,7 +266,7 @@ function blank(chars, at, length) {
  * neither judges it — a phantom named for a control would fail a build on a line holding none
  * (#529's lesson) — nor lets it enclose anything (#1478). A block parameter or `@let` value, where
  * such a read could reach a `>` and read as complete, is blanked first by `maskBlockExpressions`
- * (#1480). Shared through `tagNameAt`.
+ * (#1480). Shared through `tagNameAt` and `prefixedRawTextAt`.
  */
 const TAG_NAME_END = /[\s/>]/;
 
@@ -442,10 +442,19 @@ function lineStarts(lines) {
  * `@let` opens inside one: `getHtmlTagDefinition`'s `RAW_TEXT` (`script`, `style`) and
  * `ESCAPABLE_RAW_TEXT` (`textarea`, `title`), the WHATWG raw-text and escapable raw-text elements.
  * The lexer judges a tag by its name and prefix, never its parent, so a `<title>` inside `<svg>` is
- * raw text too. A prefixed tag is never stepped over, because `tagNameAt` reads no prefixed name:
- * right for `<svg:title>`, which Angular parses, but a `<svg:style>` or `<x:title>` stays raw there.
+ * raw text too, and so is a prefixed one such as `<svg:style>` or `<x:title>` (`isRawText`).
  */
 const RAW_TEXT = new Set(['script', 'style', 'textarea', 'title']);
+
+/**
+ * Whether a start tag's content is raw text, as `getHtmlTagDefinition(name).getContentType(prefix)`
+ * answers: every `RAW_TEXT` name under any prefix or none, but `title` under the prefix `svg`, which
+ * `title`'s definition overrides to parsed. The name arrives lower-cased, as the definition lookup
+ * falls back to; the prefix is compared exactly, as the override is, so `<SVG:title>` is raw text.
+ */
+function isRawText(prefix, name) {
+  return RAW_TEXT.has(name) && !(prefix === 'svg' && name === 'title');
+}
 
 /**
  * The offset just past the tag a `<` at `at` opens or closes, as `tagAt` reads it, and past a
@@ -493,7 +502,8 @@ export function walkTags(lines) {
 
 /**
  * The tags a `<` at line `i`, column `c` opens or closes, and the last position reading them took;
- * null when that `<` opens no tag.
+ * null when that `<` opens no tag. A prefixed raw-text element returns no tags and the position past
+ * its end tag (`prefixedRawTextAt`); any other prefixed tag returns null.
  *
  * A complete start tag named in `RAW_TEXT` is followed by its content, which `_consumeTagOpen` hands
  * to `_consumeRawTextWithTagClose` as text: the read runs on to the element's end tag and returns it
@@ -505,7 +515,7 @@ function tagAt(lines, i, c) {
   if (lines[i][c] !== '<') return null;
   if (lines[i][c + 1] === '/') return endTagAt(lines, i, c + 2);
   const name = tagNameAt(lines[i], c + 1);
-  if (name === null) return null;
+  if (name === null) return prefixedRawTextAt(lines, i, c);
   const read = readAttributes(lines, i, c + 1 + name.length);
   const open = {
     kind: 'open',
@@ -515,12 +525,42 @@ function tagAt(lines, i, c) {
     incomplete: read.incomplete,
     line: i + 1,
   };
-  if (!RAW_TEXT.has(name) || read.incomplete) {
+  if (!isRawText('', name) || read.incomplete) {
     return { tags: [open], line: read.line, column: read.column };
   }
   const end = rawTextEnd(lines, read.line, read.column + 1, name);
   if (end === null) return { tags: [open], ...pastEnd(lines) };
   return { tags: [open, { kind: 'close', name }], ...end };
+}
+
+/**
+ * A start tag's prefix and name as `_consumePrefixAndName` reads them: the prefix is an ASCII letter
+ * and then ASCII letters and digits up to a `:`, and the name runs on from there. A `-` before any
+ * `:` ends the prefix read, so `<svg-x:style>` has no prefix, and its name is all of `svg-x:style`.
+ */
+const PREFIXED_NAME = /^([A-Za-z][A-Za-z\d]*):([\w-]+)/;
+
+/**
+ * The step over a prefixed raw-text element whose `<` is at line `i`, column `c`, to the `>` of its
+ * end tag, or to the region's end when there is none; null when that `<` opens none.
+ *
+ * Angular reads `<svg:style>` as an element whose content is raw text (`isRawText`), and
+ * `_consumeRawTextWithTagClose` matches only the bare name's end tag: `<svg:style>…</style>` builds,
+ * and `<svg:style>…</svg:style>` runs to the template's end. The walk takes no prefixed tag as an
+ * entry, `tagNameAt` reading no prefixed name, so this one is none either: it returns no tags, the
+ * stack of a guard is left as it was, and the content's markup is never read. A prefixed tag that
+ * is not raw text, `<svg:title>` among them, is no tag to the walk, and its content is read.
+ */
+function prefixedRawTextAt(lines, i, c) {
+  const read = PREFIXED_NAME.exec(lines[i].slice(c + 1));
+  if (read === null) return null;
+  const [whole, prefix, raw] = read;
+  const nameEnd = c + 1 + whole.length;
+  const name = raw.toLowerCase();
+  if (!TAG_NAME_END.test(lines[i][nameEnd] ?? ' ') || !isRawText(prefix, name)) return null;
+  const start = readAttributes(lines, i, nameEnd);
+  if (start.incomplete) return null;
+  return { tags: [], ...(rawTextEnd(lines, start.line, start.column + 1, name) ?? pastEnd(lines)) };
 }
 
 /** Angular's `isWhitespace`: TAB through SPACE, and NBSP; a line end is one of them. */
