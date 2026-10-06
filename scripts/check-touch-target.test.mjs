@@ -277,24 +277,26 @@ test('markup inside a raw-text element is no control', () => {
 
 /**
  * #1484: the raw-text element's end tag still closes it, in any form Angular's lexer accepts, and
- * an unclosed `<div>` in its content opens nothing, so the exempt ancestor closes at its own end
- * tag and the button after it is judged.
+ * a `<div>` or `</div>` in its content opens or closes nothing, so the exempt ancestor closes at
+ * its own end tag: the button inside it stays exempt and the button after it is judged.
  */
 test('a raw-text element leaves the exemption stack balanced', () => {
-  for (const end of ['</textarea>', '</ textarea >', '</TextArea>']) {
-    const lines = [
-      '<div data-touch-exempt="r">',
-      `  <textarea>Use <div> here${end}`,
-      '  <button type="button">x</button>',
-      '</div>',
-      '<button type="button">y</button>',
-    ];
+  for (const content of ['Use <div> here', 'Use </div> here']) {
+    for (const end of ['</textarea>', '</ textarea >', '</TextArea>']) {
+      const lines = [
+        '<div data-touch-exempt="r">',
+        `  <textarea>${content}${end}`,
+        '  <button type="button">x</button>',
+        '</div>',
+        '<button type="button">y</button>',
+      ];
 
-    assert.deepEqual(
-      scan(HTML, lines).map((v) => [v.rule, v.line]),
-      [['TT-1', 5]],
-      end,
-    );
+      assert.deepEqual(
+        scan(HTML, lines).map((v) => [v.rule, v.line]),
+        [['TT-1', 5]],
+        `${content}${end}`,
+      );
+    }
   }
 });
 
