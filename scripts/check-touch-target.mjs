@@ -33,9 +33,8 @@ import { adviser, report, tally } from './guard-report.mjs';
 import {
   maskBlockExpressions,
   maskHtmlComments,
-  readAttributes,
-  tagNameAt,
   typescriptRegions,
+  walkTags,
 } from './inline-template.mjs';
 
 /** Angular templates only; a spec's fixtures are allowed to build the non-compliant forms. */
@@ -119,55 +118,6 @@ function ruleBroken(tag, open) {
  */
 function templateRegion(path, lines) {
   return path.endsWith('.html') ? maskHtmlComments(lines) : typescriptRegions(lines).template;
-}
-
-/**
- * Walks the template and returns one entry per element tag — start and end alike, in document
- * order — with a start tag's attributes and the line it opens on.
- *
- * A start tag legitimately spans lines — every multi-line binding in the app is written that way —
- * so this tracks position across the whole region rather than per line.
- */
-function walkTags(lines) {
-  const tags = [];
-  let i = 0;
-  let c = 0;
-
-  while (i < lines.length) {
-    if (c >= lines[i].length) {
-      i++;
-      c = 0;
-      continue;
-    }
-    const found = tagAt(lines, i, c);
-    if (found !== null) {
-      tags.push(found.tag);
-      i = found.line;
-      c = found.column;
-    }
-    c++;
-  }
-  return tags;
-}
-
-/** The tag a `<` at this position opens or closes, and the position reading it stopped at. */
-function tagAt(lines, i, c) {
-  if (lines[i][c] !== '<') return null;
-  const closing = lines[i][c + 1] === '/';
-  const from = closing ? c + 2 : c + 1;
-  const name = tagNameAt(lines[i], from);
-  if (name === null) return null;
-  if (closing) return { tag: { kind: 'close', name }, line: i, column: from + name.length - 1 };
-  const read = readAttributes(lines, i, from + name.length);
-  const tag = {
-    kind: 'open',
-    name,
-    attributes: read.attributes,
-    selfClosed: read.selfClosed,
-    incomplete: read.incomplete,
-    line: i + 1,
-  };
-  return { tag, line: read.line, column: read.column };
 }
 
 /**

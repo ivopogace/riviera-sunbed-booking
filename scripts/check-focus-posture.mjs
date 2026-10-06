@@ -43,9 +43,8 @@ import { adviser, report, tally } from './guard-report.mjs';
 import {
   maskBlockExpressions,
   maskHtmlComments,
-  readAttributes,
-  tagNameAt,
   typescriptRegions,
+  walkTags,
 } from './inline-template.mjs';
 
 /** Angular templates only; a spec's fixtures are allowed to build the non-compliant forms. */
@@ -247,7 +246,8 @@ function busyViolations(path, lines, added, template) {
   const violations = [];
 
   // Masked for the tag walk alone: `blocks` reads each `@if` condition from the unmasked template.
-  for (const tag of startTags(maskBlockExpressions(template))) {
+  for (const tag of walkTags(maskBlockExpressions(template))) {
+    if (tag.kind !== 'open') continue;
     const disabled = tag.attributes.get('[disabled]');
     if (!disabled || !isBusyFlag(disabled.value)) continue;
     if (!added.has(disabled.line + 1)) continue;
@@ -666,35 +666,6 @@ function isBusyFlag(expression) {
   return identifiers.some((name) =>
     BUSY_STEMS.some((stem) => name.toLowerCase().includes(stem)),
   );
-}
-
-/**
- * Walks the masked template and returns one entry per element start tag, with its attributes.
- *
- * A start tag legitimately spans lines — every multi-line binding in the app is written that way —
- * so this tracks position across the whole region rather than per line.
- */
-function startTags(lines) {
-  const tags = [];
-  let i = 0;
-  let c = 0;
-
-  while (i < lines.length) {
-    if (c >= lines[i].length) {
-      i++;
-      c = 0;
-      continue;
-    }
-    const name = lines[i][c] === '<' ? tagNameAt(lines[i], c + 1) : null;
-    if (name !== null) {
-      const tag = readAttributes(lines, i, c + 1 + name.length);
-      tags.push({ name, attributes: tag.attributes });
-      i = tag.line;
-      c = tag.column;
-    }
-    c++;
-  }
-  return tags;
 }
 
 /**

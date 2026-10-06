@@ -394,7 +394,7 @@ test('maskBlockExpressions leaves an `@` outside text alone', () => {
   }
 });
 
-/** The walk's entries in a form a test can compare: `<name` for a start tag, `</name` for an end tag. */
+/** The walk's entries as a test compares them: `<name` for a start tag, `</name` for an end tag. */
 function walked(lines) {
   return walkTags(lines).map((tag) => (tag.kind === 'close' ? `</${tag.name}` : `<${tag.name}`));
 }
@@ -425,7 +425,7 @@ test('walkTags steps over a raw-text element\'s content to its end tag', () => {
   }
 });
 
-test('walkTags finds a raw-text element\'s end tag across lines, and reads none past the end', () => {
+test('walkTags finds a raw-text end tag across lines, and reads none past the end', () => {
   assert.deepEqual(
     walked(['<textarea', '  rows="4">', '<b>', '</', 'textarea', '>', '<button>']),
     ['<textarea', '</textarea', '<button'],
@@ -435,7 +435,8 @@ test('walkTags finds a raw-text element\'s end tag across lines, and reads none 
 
 /** A start tag's entry carries what the guards judge; the 1-based line is where its `<` is. */
 test('walkTags reports a start tag\'s attributes, line and form', () => {
-  const [open, close, after] = walkTags(['<p>', '<textarea', '  [disabled]="saving()">x</textarea><i/>']).slice(1);
+  const lines = ['<p>', '<textarea', '  [disabled]="saving()">x</textarea><i/>'];
+  const [open, close, after] = walkTags(lines).slice(1);
 
   assert.equal(open.name, 'textarea');
   assert.equal(open.line, 2);
