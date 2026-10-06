@@ -309,6 +309,8 @@ test('maskBlockExpressions blanks block parameters and `@let` values as Angular 
     ['} @loading (after 100ms; minimum 1s) {', '} @loading (                       ) {'],
     ['@let ok = n<div && a>b;', '@let ok =             ;'],
     ["@let s = 'a;b>' + x; <p></p>", '@let s =           ; <p></p>'],
+    ['@if (a<b', '@if (   '],
+    ['@let x = a<b', '@let x =    '],
   ];
   for (const [line, expected] of cases) {
     assert.equal(expected.length, line.length, line);
@@ -339,6 +341,7 @@ test('maskBlockExpressions leaves an `@` outside text alone', () => {
   for (const line of [
     '<p title="@if (a<b)" [x]="@let y = a>b;">x</p>',
     "{{ '@if (' }} <b>a > b</b>",
+    "{{ 'it\\'s @if (' + a > b",
     '&#64;if (a<b) <i>x</i>',
     '@letter = a>b;',
     '@let ok a>b;',

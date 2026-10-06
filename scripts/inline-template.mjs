@@ -10,8 +10,9 @@
  * feeds the code it walks into a `CodeTail`, asks at a backtick, and steps a `${…}` with
  * `interpolationStep`. `check-focus-posture` and `check-touch-target` judge markup, so they take the
  * whole walk: `typescriptRegions` masks a file down to its inline templates and its code,
- * `maskHtmlComments` masks an external template's comments, `tagNameAt` decides where in the masked
- * markup an element tag opens, and `readAttributes` reads one start tag's attributes. Beside
+ * `maskHtmlComments` masks an external template's comments, `maskBlockExpressions` masks block
+ * parameters and `@let` values out of the tag walk, `tagNameAt` decides where in the masked markup an
+ * element tag opens, and `readAttributes` reads one start tag's attributes. Beside
  * `git-diff.mjs` because that is the guards' shared module, and dependency-free for the same reason
  * it is: the hygiene CI job runs the suites with no install step.
  */
@@ -262,9 +263,9 @@ function blank(chars, at, length) {
  * one; when a `<` comes before any `>`, `readAttributes` ends it there, so it never takes the real
  * control after it as its own attributes (#1475), and marks it incomplete, so `check-touch-target`
  * neither judges it — a phantom named for a control would fail a build on a line holding none
- * (#529's lesson) — nor lets it enclose anything (#1478). A phantom whose read reaches a `>` first,
- * as in a block parameter `@if (n<div && a>b)`, still reads as a complete tag (#1480). Shared
- * through `tagNameAt`.
+ * (#529's lesson) — nor lets it enclose anything (#1478). A block parameter or `@let` value, where
+ * such a read could reach a `>` and read as complete, is blanked first by `maskBlockExpressions`
+ * (#1480). Shared through `tagNameAt`.
  */
 const TAG_NAME_END = /[\s/>]/;
 

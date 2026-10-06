@@ -246,6 +246,7 @@ function stringEnd(chars, c) {
 function busyViolations(path, lines, added, template) {
   const violations = [];
 
+  // Masked for the tag walk alone: `blocks` reads each `@if` condition from the unmasked template.
   for (const tag of startTags(maskBlockExpressions(template))) {
     const disabled = tag.attributes.get('[disabled]');
     if (!disabled || !isBusyFlag(disabled.value)) continue;
