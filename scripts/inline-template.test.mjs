@@ -9,6 +9,7 @@ import {
   readAttributes,
   tagNameAt,
   typescriptRegions,
+  walkTags,
 } from './inline-template.mjs';
 
 /** A tail fed one string at a time, the way a scanner feeds it as it walks code. */
@@ -391,4 +392,57 @@ test('maskBlockExpressions leaves an `@` outside text alone', () => {
   ]) {
     assert.deepEqual(maskBlockExpressions([line]), [line], line);
   }
+});
+
+/** The walk's entries as a test compares them: `<name` for a start tag, `</name` for an end tag. */
+function walked(lines) {
+  return walkTags(lines).map((tag) => (tag.kind === 'close' ? `</${tag.name}` : `<${tag.name}`));
+}
+
+/**
+ * #1484: the walk reads a raw-text element's start tag and its end tag, and nothing between, as
+ * `_consumeTagOpen` hands a complete `script`/`style`/`textarea`/`title` start tag to
+ * `_consumeRawTextWithTagClose`. The end tag reaches the walk as a close entry in every form that
+ * lexer accepts, so a guard's open-element stack stays balanced.
+ */
+test('walkTags steps over a raw-text element\'s content to its end tag', () => {
+  const cases = [
+    ['<textarea>Use <button> here</textarea><i>', ['<textarea', '</textarea', '<i']],
+    ['<title><b>x</b></title><i>', ['<title', '</title', '<i']],
+    ['<style>a::after{content:"<select>"}</style><i>', ['<style', '</style', '<i']],
+    ['<script><input></script><i>', ['<script', '</script', '<i']],
+    ['<svg><title><button></title></svg>', ['<svg', '<title', '</title', '</svg']],
+    ['<svg:title><b>x</b></svg:title>', ['<b', '</b']],
+    ['<TEXTAREA rows="4"><b></TextArea><i>', ['<textarea', '</textarea', '<i']],
+    ['<title data-x="a>b"><b></title><i>', ['<title', '</title', '<i']],
+    ['<textarea><b></ textarea ><i>', ['<textarea', '</textarea', '<i']],
+    ['<textarea><b></textareax><i>', ['<textarea']],
+    ['<textarea/><b></textarea><i>', ['<textarea', '</textarea', '<i']],
+    ['<p>n<title < <b>x</b>', ['<p', '<title', '<b', '</b']],
+  ];
+  for (const [line, expected] of cases) {
+    assert.deepEqual(walked([line]), expected, line);
+  }
+});
+
+test('walkTags finds a raw-text end tag across lines, and reads none past the end', () => {
+  assert.deepEqual(
+    walked(['<textarea', '  rows="4">', '<b>', '</', 'textarea', '>', '<button>']),
+    ['<textarea', '</textarea', '<button'],
+  );
+  assert.deepEqual(walked(['<textarea>', '<b>', '<button>']), ['<textarea']);
+});
+
+/** A start tag's entry carries what the guards judge; the 1-based line is where its `<` is. */
+test('walkTags reports a start tag\'s attributes, line and form', () => {
+  const lines = ['<p>', '<textarea', '  [disabled]="saving()">x</textarea><i/>'];
+  const [open, close, after] = walkTags(lines).slice(1);
+
+  assert.equal(open.name, 'textarea');
+  assert.equal(open.line, 2);
+  assert.deepEqual(open.attributes.get('[disabled]'), { value: 'saving()', line: 2 });
+  assert.equal(open.selfClosed, false);
+  assert.equal(open.incomplete, false);
+  assert.deepEqual(close, { kind: 'close', name: 'textarea' });
+  assert.equal(after.selfClosed, true);
 });

@@ -11,8 +11,9 @@
  * `interpolationStep`. `check-focus-posture` and `check-touch-target` judge markup, so they take the
  * whole walk: `typescriptRegions` masks a file down to its inline templates and its code,
  * `maskHtmlComments` masks an external template's comments, `maskBlockExpressions` masks block
- * parameters and `@let` values out of the tag walk, `tagNameAt` decides where in the masked markup an
- * element tag opens, and `readAttributes` reads one start tag's attributes. Beside
+ * parameters and `@let` values out of the tag walk, and `walkTags` is that walk: where in the masked
+ * markup an element tag opens (`tagNameAt`), one start tag's attributes (`readAttributes`), and a
+ * raw-text element's content stepped over as text. Beside
  * `git-diff.mjs` because that is the guards' shared module, and dependency-free for the same reason
  * it is: the hygiene CI job runs the suites with no install step.
  */
@@ -397,11 +398,11 @@ const BLOCKS = [
  * Angular reads `@if (…)`, `@for (…; track …)`, `@defer (on …)` and the rest, and the value of
  * `@let name = …;`, as expressions, never as markup, so a `<` there opens no tag. Unmasked, the walk
  * opened one at `@if (n<div && a>b)` that reached the `>` and read as complete (#1480). The mask
- * follows the lexer: a block or `@let` opens only in text — the walk steps over a tag as
- * `readAttributes` reads it, over a raw-text element's content as `_consumeRawTextWithTagClose`
- * does (`RAW_TEXT`, #1482), and over an interpolation as `_consumeInterpolation` does — a block's
- * parameters run from its `(` to the `)` `_consumeBlockParameters` stops at, and a `@let` value from
- * its `=` to the `;` `_consumeLetDeclarationValue` stops at. A guard that reads a block's condition
+ * follows the lexer: a block or `@let` opens only in text — the walk steps over a tag as `walkTags`
+ * reads it, a raw-text element's content and end tag included (`RAW_TEXT`, #1482), and over an
+ * interpolation as `_consumeInterpolation` does — a block's parameters run from its `(` to the `)`
+ * `_consumeBlockParameters` stops at, and a `@let` value from its `=` to the `;`
+ * `_consumeLetDeclarationValue` stops at. A guard that reads a block's condition
  * keeps reading the unmasked template.
  *
  * @param {string[]} lines the comment-masked template region
@@ -436,8 +437,8 @@ function lineStarts(lines) {
 }
 
 /**
- * The elements whose content Angular's lexer reads as text up to their end tag, so no block or `@let`
- * opens inside one: `getHtmlTagDefinition`'s `RAW_TEXT` (`script`, `style`) and
+ * The elements whose content Angular's lexer reads as text up to their end tag, so no tag, block or
+ * `@let` opens inside one: `getHtmlTagDefinition`'s `RAW_TEXT` (`script`, `style`) and
  * `ESCAPABLE_RAW_TEXT` (`textarea`, `title`), the WHATWG raw-text and escapable raw-text elements.
  * The lexer judges a tag by its name and prefix, never its parent, so a `<title>` inside `<svg>` is
  * raw text too. A prefixed tag is never stepped over, because `tagNameAt` reads no prefixed name:
@@ -446,33 +447,101 @@ function lineStarts(lines) {
 const RAW_TEXT = new Set(['script', 'style', 'textarea', 'title']);
 
 /**
- * The offset just past the tag a `<` at `at` opens or closes, as the guards' walk reads it, and past
- * a raw-text element's content and end tag too; else null.
+ * The offset just past the tag a `<` at `at` opens or closes, as `tagAt` reads it, and past a
+ * raw-text element's content and end tag too; else null.
  */
 function tagEnd(lines, starts, text, at) {
   if (text[at] !== '<') return null;
   const line = starts.findLastIndex((start) => start <= at);
-  const column = at - starts[line];
-  const closing = lines[line][column + 1] === '/';
-  const from = closing ? column + 2 : column + 1;
-  const name = tagNameAt(lines[line], from);
-  if (name === null) return null;
-  if (closing) return starts[line] + from + name.length;
-  const read = readAttributes(lines, line, from + name.length);
-  const end = starts[read.line] + read.column + 1;
-  return RAW_TEXT.has(name) && !read.incomplete ? rawTextEnd(text, end, name) : end;
+  const found = tagAt(lines, line, at - starts[line]);
+  return found === null ? null : starts[found.line] + found.column + 1;
 }
 
 /**
- * The offset past the end tag that closes a raw-text element's content at `from`, as
- * `_consumeRawTextWithTagClose` finds it: `</`, whitespace, the name in any case, whitespace, `>`.
- * With none, the lexer reads the content to the region's end, and so does the mask.
+ * Walks the masked template and returns one entry per element tag, start and end alike, in
+ * document order: `{ kind: 'open', name, attributes, selfClosed, incomplete, line }` with the
+ * 1-based line its `<` is on, or `{ kind: 'close', name }`. The one walk both markup guards judge
+ * and `maskBlockExpressions` steps by, so the three read the same tags.
+ *
+ * A start tag legitimately spans lines — every multi-line binding in the app is written that way —
+ * so this tracks position across the whole region rather than per line.
+ *
+ * @param {string[]} lines the masked template region
  */
-function rawTextEnd(text, from, name) {
+export function walkTags(lines) {
+  const tags = [];
+  let i = 0;
+  let c = 0;
+
+  while (i < lines.length) {
+    if (c >= lines[i].length) {
+      i++;
+      c = 0;
+      continue;
+    }
+    const found = tagAt(lines, i, c);
+    if (found !== null) {
+      tags.push(...found.tags);
+      i = found.line;
+      c = found.column;
+    }
+    c++;
+  }
+  return tags;
+}
+
+/**
+ * The tags a `<` at line `i`, column `c` opens or closes, and the last position reading them took;
+ * null when that `<` opens no tag.
+ *
+ * A complete start tag named in `RAW_TEXT` is followed by its content, which `_consumeTagOpen` hands
+ * to `_consumeRawTextWithTagClose` as text: the read runs on to the element's end tag and returns it
+ * as a close entry beside the start tag, so a guard's open-element stack stays balanced, or to the
+ * region's end when there is none. An incomplete start tag returns before that in the lexer, so it
+ * starts no raw text, and nor does it here.
+ */
+function tagAt(lines, i, c) {
+  if (lines[i][c] !== '<') return null;
+  const closing = lines[i][c + 1] === '/';
+  const from = closing ? c + 2 : c + 1;
+  const name = tagNameAt(lines[i], from);
+  if (name === null) return null;
+  if (closing) return { tags: [{ kind: 'close', name }], line: i, column: from + name.length - 1 };
+  const read = readAttributes(lines, i, from + name.length);
+  const open = {
+    kind: 'open',
+    name,
+    attributes: read.attributes,
+    selfClosed: read.selfClosed,
+    incomplete: read.incomplete,
+    line: i + 1,
+  };
+  if (!RAW_TEXT.has(name) || read.incomplete) {
+    return { tags: [open], line: read.line, column: read.column };
+  }
+  const end = rawTextEnd(lines, read.line, read.column + 1, name);
+  if (end === null) return { tags: [open], ...pastEnd(lines) };
+  return { tags: [open, { kind: 'close', name }], ...end };
+}
+
+/**
+ * The position of the `>` that ends a raw-text element's end tag, searching from line `line`,
+ * column `column`, as `_consumeRawTextWithTagClose` finds it: `</`, whitespace, the name in any
+ * case, whitespace, `>`, where whitespace is the lexer's `isWhitespace` and so spans lines. With
+ * none, null: the lexer reads the content to the region's end.
+ */
+function rawTextEnd(lines, line, column, name) {
+  const text = lines.slice(line).join('\n');
   const close = new RegExp(String.raw`</[\t-\x20\xa0]*${name}[\t-\x20\xa0]*>`, 'gi');
-  close.lastIndex = from;
-  const found = close.exec(text);
-  return found === null ? text.length : close.lastIndex;
+  close.lastIndex = column;
+  if (close.exec(text) === null) return null;
+  let at = close.lastIndex - 1;
+  let i = line;
+  while (at >= lines[i].length) {
+    at -= lines[i].length + 1;
+    i++;
+  }
+  return { line: i, column: at };
 }
 
 /**
