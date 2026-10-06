@@ -11,9 +11,9 @@
  * `interpolationStep`. `check-focus-posture` and `check-touch-target` judge markup, so they take the
  * whole walk: `typescriptRegions` masks a file down to its inline templates and its code,
  * `maskHtmlComments` masks an external template's comments, and `tagNameAt` decides where in the
- * masked markup an element tag opens. Beside
- * `git-diff.mjs` because that is the guards' shared module, and dependency-free for the same reason
- * it is: the hygiene CI job runs the suites with no install step.
+ * masked markup an element tag opens. Beside `git-diff.mjs` because that is the guards' shared
+ * module, and dependency-free for the same reason it is: the hygiene CI job runs the suites with no
+ * install step.
  */
 
 /** The extensions whose `template:` literal is an inline template. A `.js` key is a string. */
@@ -257,11 +257,11 @@ function blank(chars, at, length) {
  * What may follow an element name in a real tag: whitespace, the self-closing slash, or `>`.
  *
  * A subset of Angular's own name end (its lexer also ends a name at `<`, a quote or `=`), and the
- * subset is the point: a `<` that a template expression uses as a comparison is followed by an
- * operand, so `@if (count()<limit)` and `{{ i<select.length }}` open no tag. A phantom tag misleads
- * both guards in both directions: named `select`, it is a control that fails a build on a line
- * holding none (#529's lesson); read on to the next `>`, it takes the real control after it as its
- * own attributes and passes a build the guard has to fail (#1475). Shared through `tagNameAt`.
+ * subset is the point: `@if (count()<limit)` and `{{ i<select.length }}` open no tag, because the
+ * operand runs on into `)` or `.`. An operand followed by a space, as in `{{ n<max }}`, still opens
+ * one; each guard's `readAttributes` ends it at the next `<`, so it never takes the real control
+ * after it as its own attributes (#1475). In `check-touch-target` a phantom named for a control
+ * would also fail a build on a line holding none (#529's lesson). Shared through `tagNameAt`.
  */
 const TAG_NAME_END = /[\s/>]/;
 
