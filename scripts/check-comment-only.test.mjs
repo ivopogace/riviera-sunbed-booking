@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 
 import { strip } from './check-comment-only.mjs';
 
@@ -155,4 +156,63 @@ test('an interpolation inside an inline template is code, even when it carries `
     strip(inlineTemplate('    <p>${cond ? `a` : `b`}</p>', '    <!-- gone -->'), '.ts'),
     strip(inlineTemplate('    <p>${cond ? `a` : `b`}</p>'), '.ts'),
   );
+});
+
+/**
+ * A `${…}` in a plain template literal holds code, as it does in an inline template: a backtick,
+ * quote or comment inside it opens what it would open in code, and its own `}` returns to the
+ * literal (#1489).
+ */
+test('a backtick inside a plain template interpolation does not hide a later code change', () => {
+  const file = (value) =>
+    ['const t = `${f("`it\'s")}`;', "const g = '/*';", `const x = ${value};`, "const h = '*/';"].join('\n');
+
+  assert.notEqual(strip(file(1), '.mjs'), strip(file(2), '.mjs'));
+  assert.notEqual(strip(file(1), '.ts'), strip(file(2), '.ts'));
+});
+
+test('a comment after a plain template with a backtick in its interpolation is still a comment', () => {
+  const file = (comment) =>
+    ['const label = `readonly label = ${blank("`it\'s <b>bold</b>`")};`;', comment, 'go();'].join('\n');
+
+  assert.equal(strip(file('/** One line. */'), '.mjs'), strip(file('/**\n * Three\n * lines.\n */'), '.mjs'));
+  assert.equal(strip(file('// gone'), '.mjs'), 'const label = `readonly label = ${blank("`it\'s <b>bold</b>`")};`;\ngo();');
+});
+
+test('the #1488 shape: a JSDoc-only change in inline-template.test.mjs verifies comment-only', () => {
+  const before = readFileSync(new URL('./inline-template.test.mjs', import.meta.url), 'utf8');
+  const doc = before.indexOf('\n/**', before.indexOf("`it's <b>bold</b>`"));
+  assert.ok(doc > 0, 'the fixture keeps a backtick inside an interpolation and a JSDoc after it');
+  const close = before.indexOf('*/', doc);
+  const after = `${before.slice(0, doc)}\n/**\n * Rewritten\n * over three lines.\n */${before.slice(close + 2)}`;
+
+  assert.notEqual(before, after);
+  assert.equal(strip(before, '.mjs'), strip(after, '.mjs'));
+});
+
+test('strings, comments and braces inside a plain template interpolation are read as code', () => {
+  const file = (inner) => `const t = \`a \${${inner}} b\`; // tail`;
+
+  assert.equal(strip(file('x /* c */ + "}" + \'`\''), '.mjs'), 'const t = `a ${x + "}" + \'`\'} b`;');
+  assert.equal(strip(file('{ k: 1 }.k // c\n'), '.mjs'), 'const t = `a ${{ k: 1 }.k\n} b`;');
+  assert.equal(strip(file('/[}`]/.test(s)'), '.mjs'), 'const t = `a ${/[}`]/.test(s)} b`;');
+  assert.notEqual(strip(file('"}" + a'), '.mjs'), strip(file('"}" + b'), '.mjs'));
+});
+
+test('a template nested in a plain template interpolation closes before the outer one', () => {
+  const file = (inner, tail) => `const t = \`\${cond ? \`\${${inner}}\` : '/*'}\`;\nconst y = 1; ${tail}`;
+
+  assert.equal(strip(file('a', '// gone'), '.mjs'), "const t = `${cond ? `${a}` : '/*'}`;\nconst y = 1;");
+  assert.notEqual(strip(file('a', ''), '.mjs'), strip(file('b', ''), '.mjs'));
+  assert.equal(strip('const t = `${`${`${a}`}`}`; // c', '.mjs'), 'const t = `${`${`${a}`}`}`;');
+});
+
+test('an escaped `${` and a lone `$` in a plain template stay template text', () => {
+  assert.equal(strip('const t = `\\${ /* text */ } $ {x}`; // c', '.mjs'), 'const t = `\\${ /* text */ } $ {x}`;');
+});
+
+test('an interpolation inside an inline template keeps the shared brace-count rule', () => {
+  const component = (comment) => inlineTemplate(`    <p>\${label(${comment})}</p>`);
+
+  assert.notEqual(strip(component('/* a */'), '.ts'), strip(component('/* b */'), '.ts'));
 });
