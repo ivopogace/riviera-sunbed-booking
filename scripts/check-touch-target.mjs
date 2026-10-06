@@ -84,6 +84,9 @@ export function findViolations({ path, lines, added }) {
       if (at !== -1) open.length = at;
       continue;
     }
+    // A phantom such as `{{ n<div }}`'s: judged, it fails a build on a line holding no control
+    // (#529); pushed, it takes a real ancestor's end tag and leaves that exemption open (#1478).
+    if (tag.incomplete) continue;
     const marker = tag.attributes.get('data-touch-exempt');
     const exempt = marker !== undefined;
     if (exempt && marker.value.trim() === '' && added.has(tag.line)) {
@@ -157,6 +160,7 @@ function tagAt(lines, i, c) {
     name,
     attributes: read.attributes,
     selfClosed: read.selfClosed,
+    incomplete: read.incomplete,
     line: i + 1,
   };
   return { tag, line: read.line, column: read.column };

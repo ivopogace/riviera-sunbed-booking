@@ -260,8 +260,9 @@ function blank(chars, at, length) {
  * subset is the point: `@if (count()<limit)` and `{{ i<select.length }}` open no tag, because the
  * operand runs on into `)` or `.`. An operand followed by a space, as in `{{ n<max }}`, still opens
  * one; `readAttributes` ends it at the next `<`, so it never takes the real control after it as its
- * own attributes (#1475). In `check-touch-target` a phantom named for a control would also fail a
- * build on a line holding none (#529's lesson). Shared through `tagNameAt`.
+ * own attributes (#1475), and marks it incomplete, so `check-touch-target` neither judges it — a
+ * phantom named for a control would fail a build on a line holding none (#529's lesson) — nor lets
+ * it enclose anything (#1478). Shared through `tagNameAt`.
  */
 const TAG_NAME_END = /[\s/>]/;
 
@@ -286,10 +287,18 @@ export function tagNameAt(line, from) {
  * lines, so the read does too.
  *
  * `selfClosed` is whether a `/` stood last before the `>`; a bare value's trailing `/` is that
- * marker, not value. A read that runs off the end without a `>` stops past the last character of
- * the last line, so a walk resuming there ends rather than finding the same `<` again (#1473). A
- * `<` where an attribute should start ends the tag as Angular's lexer does, and the read stops just
- * before it, so a walk resuming there reads that `<` as the next tag (#1475).
+ * marker, not value. A bare value ends at a `<` as well, as Angular's lexer ends one (`isNameEnd`),
+ * so a phantom's `c=` glued to a real tag never takes it as its value (#1478). A read that runs off
+ * the end without a `>` stops past the last character of the last line, so a walk resuming there
+ * ends rather than finding the same `<` again (#1473). A `<` where an attribute should start ends
+ * the tag as Angular's lexer does, and the read stops just before it, so a walk resuming there reads
+ * that `<` as the next tag (#1475).
+ *
+ * `incomplete` is whether the read ended anywhere but at the tag's `>` — a `<`, a quote where a name
+ * should be, the region's end. Angular's lexer marks such a tag incomplete, and its parser pushes it
+ * and pops it at once (`_consumeElementStartTag`), reporting it unterminated: it encloses nothing,
+ * and no template that builds holds one. So the walk meets an incomplete tag only as a phantom, such
+ * as the `<max` of `{{ n<max }}` (#1478).
  */
 export function readAttributes(lines, line, column) {
   const attributes = new Map();
@@ -304,16 +313,16 @@ export function readAttributes(lines, line, column) {
       continue;
     }
     const ch = lines[i][c];
-    if (ch === '>') return { attributes, line: i, column: c, selfClosed: slash };
+    if (ch === '>') return { attributes, line: i, column: c, selfClosed: slash, incomplete: false };
     if (/[\s/]/.test(ch)) {
       slash ||= ch === '/';
       c++;
       continue;
     }
-    if (ch === '<') return { attributes, line: i, column: c - 1, selfClosed: slash };
+    if (ch === '<') return { attributes, line: i, column: c - 1, selfClosed: slash, incomplete: true };
     // `{{ a<b ? 'x' : 'y' }}` reads as a start tag, and its quote is where a name should be.
     const name = /^[^\s=>/'"<]+/.exec(lines[i].slice(c));
-    if (name === null) return { attributes, line: i, column: c, selfClosed: slash };
+    if (name === null) return { attributes, line: i, column: c, selfClosed: slash, incomplete: true };
     slash = false;
     c += name[0].length;
     if (lines[i][c] !== '=') {
@@ -325,13 +334,13 @@ export function readAttributes(lines, line, column) {
     i = read.line;
     c = read.column;
   }
-  return { attributes, ...pastEnd(lines), selfClosed: slash };
+  return { attributes, ...pastEnd(lines), selfClosed: slash, incomplete: true };
 }
 
 function readValue(lines, line, column) {
   const quote = lines[line][column];
   if (quote !== '"' && quote !== "'") {
-    const raw = /^[^\s>]*/.exec(lines[line].slice(column))[0];
+    const raw = /^[^\s><]*/.exec(lines[line].slice(column))[0];
     // Only a trailing slash is the self-close marker; one inside `data-href=/legal/terms` is value.
     const bare = raw.endsWith('/') ? raw.slice(0, -1) : raw;
     return { value: bare, line, column: column + bare.length };
