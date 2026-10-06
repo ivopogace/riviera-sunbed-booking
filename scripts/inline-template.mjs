@@ -266,7 +266,7 @@ function blank(chars, at, length) {
  * neither judges it — a phantom named for a control would fail a build on a line holding none
  * (#529's lesson) — nor lets it enclose anything (#1478). A block parameter or `@let` value, where
  * such a read could reach a `>` and read as complete, is blanked first by `maskBlockExpressions`
- * (#1480). Shared through `tagNameAt`.
+ * (#1480). Shared through `tagNameAt` and `prefixedRawTextAt`.
  */
 const TAG_NAME_END = /[\s/>]/;
 
@@ -502,13 +502,14 @@ export function walkTags(lines) {
 
 /**
  * The tags a `<` at line `i`, column `c` opens or closes, and the last position reading them took;
- * null when that `<` opens no tag.
+ * null when that `<` opens no tag. A prefixed raw-text element returns no tags and the position past
+ * its end tag (`prefixedRawTextAt`); any other prefixed tag returns null.
  *
  * A complete start tag named in `RAW_TEXT` is followed by its content, which `_consumeTagOpen` hands
  * to `_consumeRawTextWithTagClose` as text: the read runs on to the element's end tag and returns it
  * as a close entry beside the start tag, so a guard's open-element stack stays balanced, or to the
  * region's end when there is none. An incomplete start tag returns before that in the lexer, so it
- * starts no raw text, and nor does it here. A prefixed start tag is `prefixedRawTextAt`'s.
+ * starts no raw text, and nor does it here.
  */
 function tagAt(lines, i, c) {
   if (lines[i][c] !== '<') return null;

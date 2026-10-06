@@ -453,7 +453,9 @@ test('walkTags finds a raw-text end tag across lines, and reads none past the en
  * any case and the prefix exactly, as the lexer does. `_consumeRawTextWithTagClose` ends the content
  * at the bare name's end tag only, so `</svg:style>` ends nothing. The element is no walk entry, as
  * no prefixed tag is, and a prefix the lexer does not read (`svg-x:`, a second `:`, a name that runs
- * on past `style`) is no raw text. Each row is `HtmlParser`'s reading.
+ * on past `style`) is no raw text. Each row is the tree `HtmlParser` builds; a self-closed
+ * `<svg:style/>`, a `</svg:style>` and an incomplete start tag are each a build error too, and pin
+ * only the lexer's reading.
  */
 test('walkTags steps over a prefixed raw-text element\'s content to its bare-name end tag', () => {
   const cases = [
