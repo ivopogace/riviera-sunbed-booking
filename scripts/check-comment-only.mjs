@@ -106,7 +106,8 @@ function readUnquotedUrl(src, i) {
  * template, and how an interpolation is stepped, is `inline-template.mjs`'s decision: in a TypeScript
  * file only, because in any other template literal an `<!-- … -->` is string content — a spec's HTML
  * fixture is code, and reporting a change to it as comment-only is the false clean this tool must never
- * give.
+ * give. A `${…}` in any other template literal is code too, read by this scanner's own code rules
+ * (`openSubstitution`), so a backtick, quote or comment inside one opens what it would in code (#1489).
  *
  * <p>Known limitation: the final normalization collapses whitespace on every line, including inside a
  * Java text block, whose compiled value depends on its minimum common indentation. A re-indent of a text
@@ -126,6 +127,7 @@ export function strip(src, extension = '') {
     state: 'code',
     quote: '',
     interpolation: 0,
+    substitutions: [],
     inlineTemplates: INLINE_TEMPLATE_EXTENSIONS.has(extension),
     tail: new CodeTail(),
   };
@@ -144,10 +146,14 @@ export function strip(src, extension = '') {
     .join('\n');
 }
 
-/** One step in code: a comment or a quote opens, or one code token is copied through. */
+/** One step in code: a comment or quote opens, a substitution's brace steps, or one code token is copied. */
 function stripCode(scan) {
   const { src, i } = scan;
   const two = src.slice(i, i + 2);
+  if (scan.substitutions.length > 0 && (src[i] === '{' || src[i] === '}')) {
+    stepSubstitutionBrace(scan);
+    return;
+  }
   if (src.startsWith('"""', i)) {
     scan.state = 'text';
     scan.out += '"""';
@@ -199,6 +205,10 @@ function stripQuoted(scan) {
     return;
   }
   if (state === 'template' && (copyInterpolation(scan) || skipHtmlComment(scan))) return;
+  if (state === 'str' && scan.quote === '`' && src.startsWith('${', i)) {
+    openSubstitution(scan);
+    return;
+  }
   if (state !== 'text' && src[i] === scan.quote) scan.state = 'code';
   scan.out += src[i];
   scan.i++;
@@ -213,6 +223,40 @@ function copyInterpolation(scan) {
   scan.out += src.slice(i, step.next);
   scan.i = step.next;
   return true;
+}
+
+/**
+ * Opens a `${…}` in a plain template literal: what follows is code, read by the code rules — a
+ * backtick, quote, regex or comment in it opens what it would open anywhere else, and a nested
+ * template pushes a substitution of its own. Each open substitution is one entry on the stack,
+ * counting the `{` its code has opened, so the `}` that closes it is the one that resumes the
+ * literal (ECMA-262 §12.9.6: a `TemplateMiddle` or `TemplateTail` starts at that `}`). TypeScript's
+ * parser-free classifier keeps the same stack of template heads and braces.
+ *
+ * An inline template keeps `copyInterpolation`'s brace count instead, its shared rule.
+ */
+function openSubstitution(scan) {
+  scan.substitutions.push(0);
+  scan.state = 'code';
+  scan.out += '${';
+  scan.tail.reset();
+  scan.i += 2;
+}
+
+/** Counts a brace in the code of the innermost open substitution; at its own `}` the literal resumes. */
+function stepSubstitutionBrace(scan) {
+  const top = scan.substitutions.length - 1;
+  if (scan.src[scan.i] === '{') scan.substitutions[top]++;
+  else if (scan.substitutions[top] > 0) scan.substitutions[top]--;
+  else {
+    scan.substitutions.pop();
+    scan.state = 'str';
+    scan.quote = '`';
+    scan.tail.reset();
+  }
+  scan.out += scan.src[scan.i];
+  if (scan.state === 'code') scan.tail.push(scan.src[scan.i]);
+  scan.i++;
 }
 
 /** Drops an `<!-- … -->` where the scan stands; false when none opens there. */
