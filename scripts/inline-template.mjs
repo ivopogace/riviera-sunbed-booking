@@ -440,7 +440,8 @@ function lineStarts(lines) {
  * opens inside one: `getHtmlTagDefinition`'s `RAW_TEXT` (`script`, `style`) and
  * `ESCAPABLE_RAW_TEXT` (`textarea`, `title`), the WHATWG raw-text and escapable raw-text elements.
  * The lexer judges a tag by its name and prefix, never its parent, so a `<title>` inside `<svg>` is
- * raw text too; only a prefixed `<svg:title>` is parsed, and `tagNameAt` reads no prefixed name.
+ * raw text too. A prefixed tag is never stepped over, because `tagNameAt` reads no prefixed name:
+ * right for `<svg:title>`, which Angular parses, but a `<svg:style>` or `<x:title>` stays raw there.
  */
 const RAW_TEXT = new Set(['script', 'style', 'textarea', 'title']);
 
