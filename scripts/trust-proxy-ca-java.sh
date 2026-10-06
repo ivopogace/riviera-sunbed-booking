@@ -29,7 +29,7 @@ set -u
 ALIAS="ccr-agent-proxy"
 CACERTS_PW="changeit"   # the JDK cacerts default password (not a secret)
 
-log() { echo "trust-proxy-ca-java: $*" >&2; return 0; }
+log() { echo "trust-proxy-ca-java: $*" >&2; return $?; }
 
 # ── 0. Locate the proxy CA. No CA → not a proxied env → nothing to do. ─────
 PROXY_CA=""

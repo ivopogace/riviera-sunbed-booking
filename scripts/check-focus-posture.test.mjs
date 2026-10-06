@@ -210,6 +210,20 @@ test('survives a less-than inside an interpolation', () => {
   assert.equal(violations[0].line, 2);
 });
 
+test('does not judge a control inside an HTML comment, on one line or across several', () => {
+  const lines = [
+    '<!-- <button [disabled]="saving()">Old</button> --><button [disabled]="saving()">S</button>',
+    '<!--',
+    '  <button [disabled]="busy()">Draft</button>',
+    '-->',
+  ];
+
+  const violations = scan(HTML, lines);
+
+  assert.equal(violations.length, 1);
+  assert.equal(violations[0].line, 1);
+});
+
 test('finds a confirm surface in an @else if branch', () => {
   const lines = [
     '@if (loaded()) {',

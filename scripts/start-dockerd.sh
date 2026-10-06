@@ -33,7 +33,7 @@ PROXY_CA_SRC="/root/.ccr/ca-bundle.crt"
 PROXY_CA_DEST="/usr/local/share/ca-certificates/ccr-proxy.crt"
 READY_TIMEOUT_SECS=30
 
-log() { echo "start-dockerd: $*" >&2; return 0; }
+log() { echo "start-dockerd: $*" >&2; return $?; }
 
 # ── 0. Idempotent guard: already up? ──────────────────────────────────────
 if docker info >/dev/null 2>&1; then
