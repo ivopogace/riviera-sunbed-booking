@@ -475,6 +475,7 @@ test('walkTags steps over a prefixed raw-text element\'s content to its bare-nam
     ['<svg-x:style><b></b>', ['<b', '</b']],
     ['<svg:style.x><b></b>', ['<b', '</b']],
     ['<svg:style<b></style><i>', ['<b', '</style', '<i']],
+    ['<svg:style a<b></style><i>', ['<b', '</style', '<i']],
   ];
   for (const [line, expected] of cases) {
     assert.deepEqual(walked([line]), expected, line);
