@@ -40,7 +40,12 @@ import {
   repoRoot,
 } from './git-diff.mjs';
 import { adviser, report, tally } from './guard-report.mjs';
-import { maskHtmlComments, tagNameAt, typescriptRegions } from './inline-template.mjs';
+import {
+  maskHtmlComments,
+  readAttributes,
+  tagNameAt,
+  typescriptRegions,
+} from './inline-template.mjs';
 
 /** Angular templates only; a spec's fixtures are allowed to build the non-compliant forms. */
 const IN_SCOPE = /^frontend\/src\/app\/.*(?<!\.spec)\.(ts|html)$/;
@@ -688,60 +693,6 @@ function startTags(lines) {
     c++;
   }
   return tags;
-}
-
-function readAttributes(lines, line, column) {
-  const attributes = new Map();
-  let i = line;
-  let c = column;
-
-  while (i < lines.length) {
-    if (c >= lines[i].length) {
-      i++;
-      c = 0;
-      continue;
-    }
-    const ch = lines[i][c];
-    if (ch === '>') return { attributes, line: i, column: c };
-    if (/[\s/]/.test(ch)) {
-      c++;
-      continue;
-    }
-    // As in Angular's lexer, a `<` ends the tag, so `{{ n<max }}` cannot swallow the next control.
-    if (ch === '<') return { attributes, line: i, column: c - 1 };
-    // `{{ a<b ? 'x' : 'y' }}` reads as a start tag, and its quote is where a name should be.
-    const name = /^[^\s=>/'"<]+/.exec(lines[i].slice(c));
-    if (name === null) return { attributes, line: i, column: c };
-    c += name[0].length;
-    if (lines[i][c] !== '=') {
-      attributes.set(name[0], { value: '', line: i });
-      continue;
-    }
-    const read = readValue(lines, i, c + 1);
-    attributes.set(name[0], { value: read.value, line: i });
-    i = read.line;
-    c = read.column;
-  }
-  return { attributes, line: lines.length - 1, column: 0 };
-}
-
-function readValue(lines, line, column) {
-  const quote = lines[line][column];
-  if (quote !== '"' && quote !== "'") {
-    const bare = /^[^\s>]*/.exec(lines[line].slice(column))[0];
-    return { value: bare, line, column: column + bare.length };
-  }
-  let value = '';
-  for (let i = line; i < lines.length; i++) {
-    const from = i === line ? column + 1 : 0;
-    const end = lines[i].indexOf(quote, from);
-    if (end === -1) {
-      value += `${lines[i].slice(from)}\n`;
-      continue;
-    }
-    return { value: value + lines[i].slice(from, end), line: i, column: end + 1 };
-  }
-  return { value, line: lines.length - 1, column: 0 };
 }
 
 /**
