@@ -259,6 +259,37 @@ test('a phantom tag whose bare value is glued to the busy control leaves it repo
   );
 });
 
+/**
+ * #1480: the tag walk reads a masked template, and the block reads keep the unmasked one, so a
+ * branch whose condition holds a `<`/`>` comparison is still gated on its signal and the busy
+ * control inside it is still judged.
+ */
+test('a comparison in a block condition leaves the gate read and the busy control reported', () => {
+  const lines = [
+    '@Component({',
+    '  template: `',
+    '    @if (statementOpen() && n<div && a>b) {',
+    '      <app-payout-statement (dismissed)="close()" />',
+    '      <button (click)="save()" [disabled]="saving()">Save</button>',
+    '    }',
+    '  `,',
+    '})',
+    'export class PayoutsTab {',
+    '  close() { this.statementOpen.set(false); }',
+    '}',
+  ];
+
+  const violations = scan(TS, lines, { isFocusTrap: (tag) => tag === 'app-payout-statement' });
+
+  assert.deepEqual(
+    violations.map((v) => [v.rule, v.line]),
+    [
+      ['BUSY-1', 5],
+      ['FOCUS-1', 10],
+    ],
+  );
+});
+
 test('does not judge a control inside an HTML comment, on one line or across several', () => {
   const lines = [
     '<!-- <button [disabled]="saving()">Old</button> --><button [disabled]="saving()">S</button>',
