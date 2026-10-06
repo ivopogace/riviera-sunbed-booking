@@ -107,8 +107,7 @@ function readUnquotedUrl(src, i) {
  * file only, because in any other template literal an `<!-- … -->` is string content — a spec's HTML
  * fixture is code, and reporting a change to it as comment-only is the false clean this tool must never
  * give. A `${…}` in any other template literal is code too, read by this scanner's own code rules
- * (`openSubstitution`): a backtick inside one that closed the literal early used to leave every later
- * string and comment misread, down to a `/*` in a string swallowing a real change (#1489).
+ * (`openSubstitution`), so a backtick, quote or comment inside one opens what it would in code (#1489).
  *
  * <p>Known limitation: the final normalization collapses whitespace on every line, including inside a
  * Java text block, whose compiled value depends on its minimum common indentation. A re-indent of a text

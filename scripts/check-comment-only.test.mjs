@@ -200,10 +200,10 @@ test('strings, comments and braces inside a plain template interpolation are rea
 });
 
 test('a template nested in a plain template interpolation closes before the outer one', () => {
-  const file = (inner, tail) => `const t = \`\${cond ? \`\${${inner}}\` : '/*'}\`;\nconst y = 1; ${tail}`;
+  const file = (value) =>
+    ["const t = `${f(`it's ${a}`)}`;", "const g = '/*';", `const x = ${value};`, "const h = '*/';"].join('\n');
 
-  assert.equal(strip(file('a', '// gone'), '.mjs'), "const t = `${cond ? `${a}` : '/*'}`;\nconst y = 1;");
-  assert.notEqual(strip(file('a', ''), '.mjs'), strip(file('b', ''), '.mjs'));
+  assert.notEqual(strip(file(1), '.mjs'), strip(file(2), '.mjs'));
   assert.equal(strip('const t = `${`${`${a}`}`}`; // c', '.mjs'), 'const t = `${`${`${a}`}`}`;');
 });
 
