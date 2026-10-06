@@ -89,22 +89,23 @@ export function findViolations({ path, lines, added }) {
       continue;
     }
     if (tag.incomplete) continue;
-    const marker = tag.attributes.get('data-touch-exempt');
-    const exempt = marker !== undefined;
-    if (exempt && marker.value.trim() === '' && added.has(tag.line)) {
-      violations.push({ path, line: tag.line, rule: 'TT-2', text: lines[tag.line - 1].trim() });
-    } else if (
-      JUDGED.has(tag.name) &&
-      added.has(tag.line) &&
-      !exempt &&
-      !tag.attributes.has('appTouchTarget') &&
-      !open.some((element) => element.exempt)
-    ) {
-      violations.push({ path, line: tag.line, rule: 'TT-1', text: lines[tag.line - 1].trim() });
+    const exempt = tag.attributes.has('data-touch-exempt');
+    const rule = added.has(tag.line) ? ruleBroken(tag, open) : null;
+    if (rule !== null) {
+      violations.push({ path, line: tag.line, rule, text: lines[tag.line - 1].trim() });
     }
     if (!tag.selfClosed && !VOID.has(tag.name)) open.push({ name: tag.name, exempt });
   }
   return violations;
+}
+
+/** TT-2 for an exemption that gives no reason, TT-1 for an undeclared control, else null. */
+function ruleBroken(tag, open) {
+  const marker = tag.attributes.get('data-touch-exempt');
+  if (marker !== undefined) return marker.value.trim() === '' ? 'TT-2' : null;
+  const declared =
+    tag.attributes.has('appTouchTarget') || open.some((element) => element.exempt);
+  return JUDGED.has(tag.name) && !declared ? 'TT-1' : null;
 }
 
 /**
