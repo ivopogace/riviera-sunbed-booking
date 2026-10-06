@@ -253,6 +253,51 @@ test('an `@` in raw text leaves the control after the element judged', () => {
   }
 });
 
+/**
+ * #1484: Angular reads a raw-text element's content as text up to its end tag, so a `<button>`
+ * spelled there is no control (`HtmlParser`: `textarea[Text "Use <button> here"]`), and the control
+ * after the element is still judged.
+ */
+test('markup inside a raw-text element is no control', () => {
+  for (const element of [
+    '<textarea appTouchTarget>Use <button> here</textarea>',
+    '<title>Use <button> here</title>',
+    '<style>button::after { content: "<select>" }</style>',
+    '<script><input></script>',
+    '<svg><title><button>You are here</button></title></svg>',
+  ]) {
+    assert.deepEqual(scan(HTML, [element]), [], element);
+    assert.deepEqual(
+      scan(HTML, [element, '<button type="button">Go</button>']).map((v) => [v.rule, v.line]),
+      [['TT-1', 2]],
+      element,
+    );
+  }
+});
+
+/**
+ * #1484: the raw-text element's end tag still closes it, in any form Angular's lexer accepts, and
+ * an unclosed `<div>` in its content opens nothing, so the exempt ancestor closes at its own end
+ * tag and the button after it is judged.
+ */
+test('a raw-text element leaves the exemption stack balanced', () => {
+  for (const end of ['</textarea>', '</ textarea >', '</TextArea>']) {
+    const lines = [
+      '<div data-touch-exempt="r">',
+      `  <textarea>Use <div> here${end}`,
+      '  <button type="button">x</button>',
+      '</div>',
+      '<button type="button">y</button>',
+    ];
+
+    assert.deepEqual(
+      scan(HTML, lines).map((v) => [v.rule, v.line]),
+      [['TT-1', 5]],
+      end,
+    );
+  }
+});
+
 /** #529's posture: a phantom named for a control is no control, wherever its read ends. */
 test('a phantom named for a control fails no build', () => {
   for (const line of [

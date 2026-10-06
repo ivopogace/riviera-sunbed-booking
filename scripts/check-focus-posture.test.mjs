@@ -306,6 +306,26 @@ test('an `@` in raw text leaves the busy control after the element reported', ()
   }
 });
 
+/**
+ * #1484: a raw-text element's content is text to Angular, so a busy `<button>` spelled there is no
+ * control, and the busy control after the element is still reported.
+ */
+test('a busy control spelled inside a raw-text element is no control', () => {
+  for (const element of [
+    '<textarea><button [disabled]="saving()"></textarea>',
+    '<title><button [disabled]="saving()">Save</button></title>',
+  ]) {
+    assert.deepEqual(scan(HTML, [element]), [], element);
+    const lines = [element, '<button (click)="save()" [disabled]="saving()">Save</button>'];
+
+    assert.deepEqual(
+      scan(HTML, lines).map((v) => [v.rule, v.line]),
+      [['BUSY-1', 2]],
+      element,
+    );
+  }
+});
+
 test('does not judge a control inside an HTML comment, on one line or across several', () => {
   const lines = [
     '<!-- <button [disabled]="saving()">Old</button> --><button [disabled]="saving()">S</button>',
