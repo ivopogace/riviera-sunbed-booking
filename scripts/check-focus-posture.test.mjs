@@ -290,6 +290,22 @@ test('a comparison in a block condition leaves the gate read and the busy contro
   );
 });
 
+/**
+ * #1482: a `<textarea>` or `<title>` holds raw text in Angular, so an `@if (` or `@let` there opens
+ * nothing that could hide the busy control after the element.
+ */
+test('an `@` in raw text leaves the busy control after the element reported', () => {
+  for (const element of ['<textarea>Write @if (you like</textarea>', '<title>Mail @let x = 1</title>']) {
+    const lines = [element, '<button (click)="save()" [disabled]="saving()">Save</button>'];
+
+    assert.deepEqual(
+      scan(HTML, lines).map((v) => [v.rule, v.line]),
+      [['BUSY-1', 2]],
+      element,
+    );
+  }
+});
+
 test('does not judge a control inside an HTML comment, on one line or across several', () => {
   const lines = [
     '<!-- <button [disabled]="saving()">Old</button> --><button [disabled]="saving()">S</button>',
