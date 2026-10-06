@@ -376,6 +376,16 @@ test('maskBlockExpressions finds a raw-text element\'s end tag across lines', ()
   ]);
 });
 
+/** #1486: the mask steps over an end tag with whitespace before its name, so a block after it opens. */
+test('maskBlockExpressions masks a block after an end tag with whitespace before its name', () => {
+  assert.deepEqual(maskBlockExpressions(['<p>x</ p>@if (a<b) {']), ['<p>x</ p>@if (   ) {']);
+  assert.deepEqual(maskBlockExpressions(['<p>x</', '  p', '>@let y = a>b;']), [
+    '<p>x</',
+    '  p',
+    '>@let y =    ;',
+  ]);
+});
+
 /**
  * A block opens only in text: an `@` inside a tag, an interpolation or an escaped `&#64;` opens none,
  * as Angular's lexer reads them, and a malformed `@let` masks nothing.
@@ -431,6 +441,31 @@ test('walkTags finds a raw-text end tag across lines, and reads none past the en
     ['<textarea', '</textarea', '<button'],
   );
   assert.deepEqual(walked(['<textarea>', '<b>', '<button>']), ['<textarea']);
+});
+
+/**
+ * #1486: an end tag as `_consumeTagClose` reads it: `</`, whitespace, the name, whitespace, `>`,
+ * where whitespace is the lexer's `isWhitespace` (TAB through SPACE, NBSP) and so spans lines. An
+ * EM SPACE is no lexer whitespace, and a `</` with no name after it is no end tag.
+ */
+test('walkTags reads an end tag with whitespace around its name', () => {
+  for (const lines of [
+    ['<p>x</ p><i>'],
+    ['<p>x</\tp><i>'],
+    ['<p>x</\u00a0p><i>'],
+    ['<p>x</\fp><i>'],
+    ['<p>x</\vp><i>'],
+    ['<p>x</p \t><i>'],
+    ['<p>x</ p', '  ><i>'],
+    ['<p>x</', 'p><i>'],
+    ['<p>x</ ', '', '  p', '>', '<i>'],
+  ]) {
+    assert.deepEqual(walked(lines), ['<p', '</p', '<i'], lines.join('⏎'));
+  }
+  for (const lines of [['<p>x</ ><i>'], ['<p>x</\u2003p><i>'], ['<p>a </ 3<i>']]) {
+    assert.deepEqual(walked(lines), ['<p', '<i'], lines.join('⏎'));
+  }
+  assert.deepEqual(walked(['<p>x</ ', '']), ['<p']);
 });
 
 /** A start tag's entry carries what the guards judge; the 1-based line is where its `<` is. */
