@@ -10,8 +10,9 @@
  * feeds the code it walks into a `CodeTail`, asks at a backtick, and steps a `${…}` with
  * `interpolationStep`. `check-focus-posture` and `check-touch-target` judge markup, so they take the
  * whole walk: `typescriptRegions` masks a file down to its inline templates and its code,
- * `maskHtmlComments` masks an external template's comments, `tagNameAt` decides where in the masked
- * markup an element tag opens, and `readAttributes` reads one start tag's attributes. Beside
+ * `maskHtmlComments` masks an external template's comments, `maskBlockExpressions` masks block
+ * parameters and `@let` values out of the tag walk, `tagNameAt` decides where in the masked markup an
+ * element tag opens, and `readAttributes` reads one start tag's attributes. Beside
  * `git-diff.mjs` because that is the guards' shared module, and dependency-free for the same reason
  * it is: the hygiene CI job runs the suites with no install step.
  */
@@ -262,9 +263,9 @@ function blank(chars, at, length) {
  * one; when a `<` comes before any `>`, `readAttributes` ends it there, so it never takes the real
  * control after it as its own attributes (#1475), and marks it incomplete, so `check-touch-target`
  * neither judges it — a phantom named for a control would fail a build on a line holding none
- * (#529's lesson) — nor lets it enclose anything (#1478). A phantom whose read reaches a `>` first,
- * as in a block parameter `@if (n<div && a>b)`, still reads as a complete tag (#1480). Shared
- * through `tagNameAt`.
+ * (#529's lesson) — nor lets it enclose anything (#1478). A block parameter or `@let` value, where
+ * such a read could reach a `>` and read as complete, is blanked first by `maskBlockExpressions`
+ * (#1480). Shared through `tagNameAt`.
  */
 const TAG_NAME_END = /[\s/>]/;
 
@@ -368,4 +369,197 @@ function readValue(lines, line, column) {
 function pastEnd(lines) {
   const line = lines.length - 1;
   return { line, column: lines[line].length };
+}
+
+/**
+ * Angular's block names (the compiler's `SUPPORTED_BLOCKS`). Its lexer opens a block at any text `@`
+ * these start, so `@iffy` opens one too; a literal `@` in text is written `&#64;`.
+ */
+const BLOCKS = [
+  '@if',
+  '@else',
+  '@for',
+  '@switch',
+  '@case',
+  '@default',
+  '@empty',
+  '@defer',
+  '@placeholder',
+  '@loading',
+  '@error',
+  '@content',
+];
+
+/**
+ * The template with every block's parameters and every `@let` value blanked to spaces, line and
+ * column geometry kept, for the guards' tag walk only.
+ *
+ * Angular reads `@if (…)`, `@for (…; track …)`, `@defer (on …)` and the rest, and the value of
+ * `@let name = …;`, as expressions, never as markup, so a `<` there opens no tag. Unmasked, the walk
+ * opened one at `@if (n<div && a>b)` that reached the `>` and read as complete (#1480). The mask
+ * follows the lexer: a block or `@let` opens only in text — the walk steps over a tag as
+ * `readAttributes` reads it, and over an interpolation as `_consumeInterpolation` does — a block's
+ * parameters run from its `(` to the `)` `_consumeBlockParameters` stops at, and a `@let` value from
+ * its `=` to the `;` `_consumeLetDeclarationValue` stops at. A guard that reads a block's condition
+ * keeps reading the unmasked template.
+ *
+ * @param {string[]} lines the comment-masked template region
+ * @returns {string[]} the same lines with block parameters and `@let` values blanked
+ */
+export function maskBlockExpressions(lines) {
+  const text = lines.join('\n');
+  const out = text.split('');
+  const starts = lineStarts(lines);
+  let at = 0;
+
+  while (at < text.length) {
+    const step = text.startsWith('{{', at)
+      ? interpolationEnd(text, at + 2)
+      : (tagEnd(lines, starts, text, at) ??
+        letEnd(text, at, out) ??
+        blockEnd(text, at, out) ??
+        at + 1);
+    at = step;
+  }
+  return out.join('').split('\n');
+}
+
+function lineStarts(lines) {
+  const starts = [];
+  let offset = 0;
+  for (const line of lines) {
+    starts.push(offset);
+    offset += line.length + 1;
+  }
+  return starts;
+}
+
+/** The offset just past the tag a `<` at `at` opens or closes, as the guards' walk reads it; else null. */
+function tagEnd(lines, starts, text, at) {
+  if (text[at] !== '<') return null;
+  const line = starts.findLastIndex((start) => start <= at);
+  const column = at - starts[line];
+  const closing = lines[line][column + 1] === '/';
+  const from = closing ? column + 2 : column + 1;
+  const name = tagNameAt(lines[line], from);
+  if (name === null) return null;
+  if (closing) return starts[line] + from + name.length;
+  const read = readAttributes(lines, line, from + name.length);
+  return starts[read.line] + read.column + 1;
+}
+
+/**
+ * The offset an interpolation opened before `from` ends at: past its `}}` outside a string, or at a
+ * `<` that starts a tag, where Angular's lexer ends one early (`_isTagStart`).
+ */
+function interpolationEnd(text, from) {
+  let quote = null;
+  for (let at = from; at < text.length; at++) {
+    const ch = text[at];
+    if (quote === null && /^<[A-Za-z/!?]/.test(text.slice(at, at + 2))) return at;
+    if (quote === null && text.startsWith('}}', at)) return at + 2;
+    if (ch === '\\') at++;
+    else if (ch === quote) quote = null;
+    else if (quote === null && isQuote(ch)) quote = ch;
+  }
+  return text.length;
+}
+
+/**
+ * The offset past a `@let` at `at`, with its value blanked in `out`; null when no `@let` starts
+ * there. Angular's `_consumeLetDeclaration`: whitespace, a name, `=`, then the value up to a `;`
+ * outside a string. A malformed one masks nothing.
+ */
+function letEnd(text, at, out) {
+  if (!text.startsWith('@let', at)) return null;
+  let c = at + 4;
+  if (!/\s/.test(text[c] ?? '')) return c;
+  c = skipWhitespace(text, c);
+  c += /^(?:[A-Za-z$_][\w$]*)?/.exec(text.slice(c))[0].length;
+  c = skipWhitespace(text, c);
+  if (text[c] !== '=') return c;
+  const end = untilOutsideQuotes(text, c + 1, ';');
+  blankRange(out, c + 1, end);
+  return end;
+}
+
+/**
+ * The offset past a block's parameters at `at`, blanked in `out`; null when no block starts there.
+ * The name is read as `_getBlockName` reads it (`@else if` included), and the parameters as
+ * `_consumeBlockParameters` reads them: `;`-separated, each ending at a `;` or at a `)` outside a
+ * string and outside the parentheses it opened.
+ */
+function blockEnd(text, at, out) {
+  if (!BLOCKS.some((block) => text.startsWith(block, at))) return null;
+  let c = at + 1;
+  let named = false;
+  while (c < text.length && (/\w/.test(text[c]) || (named && /\s/.test(text[c])))) {
+    named ||= /\w/.test(text[c]);
+    c++;
+  }
+  if (text[c] !== '(') return c;
+  const end = parametersEnd(text, c + 1);
+  blankRange(out, c + 1, end);
+  return end;
+}
+
+function parametersEnd(text, from) {
+  let at = skipParameterSeparators(text, from);
+  while (at < text.length && text[at] !== ')') {
+    at = skipParameterSeparators(text, parameterEnd(text, at));
+  }
+  return Math.min(at, text.length);
+}
+
+/** The offset one parameter ends at: its `;`, or the `)` outside a string and its own parentheses. */
+function parameterEnd(text, from) {
+  let quote = null;
+  let parens = 0;
+  let at = from;
+  while (at < text.length && (text[at] !== ';' || quote !== null)) {
+    const ch = text[at];
+    if (ch === '\\') at++;
+    else if (ch === quote) quote = null;
+    else if (quote === null && isQuote(ch)) quote = ch;
+    else if (quote === null && ch === '(') parens++;
+    else if (quote === null && ch === ')') {
+      if (parens === 0) return at;
+      parens--;
+    }
+    at++;
+  }
+  return at;
+}
+
+function skipParameterSeparators(text, at) {
+  while (at < text.length && (text[at] === ';' || /\s/.test(text[at]))) at++;
+  return at;
+}
+
+function untilOutsideQuotes(text, from, stop) {
+  let at = from;
+  while (at < text.length && text[at] !== stop) {
+    if (isQuote(text[at])) {
+      const quote = text[at];
+      at++;
+      while (at < text.length && text[at] !== quote) at += text[at] === '\\' ? 2 : 1;
+    }
+    at++;
+  }
+  return Math.min(at, text.length);
+}
+
+function skipWhitespace(text, at) {
+  while (at < text.length && /\s/.test(text[at])) at++;
+  return at;
+}
+
+/** Angular's `isQuote`: a backtick quotes a string in an expression too. */
+function isQuote(ch) {
+  return ch === '"' || ch === "'" || ch === '`';
+}
+
+/** Blanks `out[from, to)` to spaces, keeping each line end so the geometry holds. */
+function blankRange(out, from, to) {
+  for (let i = from; i < to; i++) if (out[i] !== '\n') out[i] = ' ';
 }

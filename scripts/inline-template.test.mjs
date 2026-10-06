@@ -5,6 +5,7 @@ import {
   CodeTail,
   INLINE_TEMPLATE_EXTENSIONS,
   interpolationStep,
+  maskBlockExpressions,
   readAttributes,
   tagNameAt,
   typescriptRegions,
@@ -286,5 +287,66 @@ test('tagNameAt reads an element name only where a real tag name ends', () => {
   ];
   for (const [line, from, expected] of cases) {
     assert.equal(tagNameAt(line, from), expected, line);
+  }
+});
+
+/**
+ * #1480: Angular's lexer reads a block's parameters (`_consumeBlockParameters`) and a `@let` value
+ * (`_consumeLetDeclarationValue`) as expressions, never as markup, so the walk must not find a tag
+ * there. Each case is the template before and after; the mask keeps every line's length.
+ */
+test('maskBlockExpressions blanks block parameters and `@let` values as Angular reads them', () => {
+  const cases = [
+    ['@if (n<div && a>b) {x}', '@if (            ) {x}'],
+    ['} @else if (n<div && a>b) {', '} @else if (            ) {'],
+    ['@if(a>b){<b>x</b>}', '@if(   ){<b>x</b>}'],
+    ['@if (f(a, g(b))<c > d) {', '@if (                ) {'],
+    ["@if (label() === ')' && a>b) {", '@if (                      ) {'],
+    ["@switch (k) { @case ('a;b>') { <i></i> } }", "@switch ( ) { @case (      ) { <i></i> } }"],
+    ['@for (s of sets(); track s.id; let i = $index) {', '@for (                                       ) {'],
+    ['@defer (on viewport; prefetch on idle) {', '@defer (                             ) {'],
+    ['} @placeholder (minimum 500ms) {', '} @placeholder (             ) {'],
+    ['} @loading (after 100ms; minimum 1s) {', '} @loading (                       ) {'],
+    ['@let ok = n<div && a>b;', '@let ok =             ;'],
+    ["@let s = 'a;b>' + x; <p></p>", '@let s =           ; <p></p>'],
+    ['@if (a<b', '@if (   '],
+    ['@let x = a<b', '@let x =    '],
+  ];
+  for (const [line, expected] of cases) {
+    assert.equal(expected.length, line.length, line);
+    assert.deepEqual(maskBlockExpressions([line]), [expected], line);
+  }
+});
+
+test('maskBlockExpressions keeps line geometry across multi-line parameters and values', () => {
+  const lines = ['@if (', '  n<div &&', '  a>b', ') {', '@let x =', '  n<y >', '  z;', '<button>'];
+
+  assert.deepEqual(maskBlockExpressions(lines), [
+    '@if (',
+    '          ',
+    '     ',
+    ') {',
+    '@let x =',
+    '       ',
+    '   ;',
+    '<button>',
+  ]);
+});
+
+/**
+ * A block opens only in text: an `@` inside a tag, an interpolation or an escaped `&#64;` opens none,
+ * as Angular's lexer reads them, and a malformed `@let` masks nothing.
+ */
+test('maskBlockExpressions leaves an `@` outside text alone', () => {
+  for (const line of [
+    '<p title="@if (a<b)" [x]="@let y = a>b;">x</p>',
+    "{{ '@if (' }} <b>a > b</b>",
+    "{{ 'it\\'s @if (' + a > b",
+    '&#64;if (a<b) <i>x</i>',
+    '@letter = a>b;',
+    '@let ok a>b;',
+    'mail@example.com <i>x</i>',
+  ]) {
+    assert.deepEqual(maskBlockExpressions([line]), [line], line);
   }
 });

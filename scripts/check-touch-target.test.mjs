@@ -209,6 +209,31 @@ test('a phantom named after an exempt ancestor does not keep its exemption open'
   }
 });
 
+/**
+ * #1480: Angular reads a block parameter and a `@let` value as an expression, never as markup, so a
+ * `<` comparison there opens no tag even when a `>` follows it; the shapes build with no error.
+ */
+test('a comparison in a block parameter or a `@let` value takes no ancestor\'s end tag', () => {
+  for (const expression of ['@if (n<div && a>b) {x}', '@let ok = n<div && a>b;']) {
+    const lines = [
+      '<div data-touch-exempt="inline link in a sentence">',
+      `  ${expression}`,
+      '</div>',
+      '<button type="button">Go</button>',
+    ];
+
+    assert.deepEqual(
+      scan(HTML, lines).map((v) => [v.rule, v.line]),
+      [['TT-1', 4]],
+      expression,
+    );
+  }
+});
+
+test('a comparison in a block parameter is no control', () => {
+  assert.deepEqual(scan(HTML, ['<p>@if (n<button && a>b) {x}</p>']), []);
+});
+
 /** #529's posture: a phantom named for a control is no control, wherever its read ends. */
 test('a phantom named for a control fails no build', () => {
   for (const line of [
