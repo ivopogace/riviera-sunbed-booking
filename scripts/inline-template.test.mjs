@@ -334,6 +334,48 @@ test('maskBlockExpressions keeps line geometry across multi-line parameters and 
 });
 
 /**
+ * #1482: Angular's lexer reads the content of `script` and `style` (raw text) and of `textarea` and
+ * `title` (escapable raw text) up to the element's end tag (`_consumeRawTextWithTagClose`), so no
+ * block or `@let` opens there; the blocks after the element still do. The lexer judges a `<title>`
+ * by its name and prefix alone, so one inside `<svg>` is raw text too, and only `<svg:title>` is
+ * parsed.
+ */
+test('maskBlockExpressions masks nothing inside a raw-text element', () => {
+  const cases = [
+    ['<textarea>Write @if (a<b</textarea> @if (c<d) {x}', '<textarea>Write @if (a<b</textarea> @if (   ) {x}'],
+    ['<title>Mail @let x = a>b</title>@let y = a>b;', '<title>Mail @let x = a>b</title>@let y =    ;'],
+    ['<style>@if (a<b</style>@if (c<d) {', '<style>@if (a<b</style>@if (   ) {'],
+    ['<script>@let x = a</script>@let y = b;', '<script>@let x = a</script>@let y =  ;'],
+    ['<svg><title>@if (a<b) {x}</title></svg>', '<svg><title>@if (a<b) {x}</title></svg>'],
+    ['<svg:title>@if (a<b) {x}</svg:title>', '<svg:title>@if (   ) {x}</svg:title>'],
+    ['<TEXTAREA rows="4">@if (a</TextArea>@if (b) {', '<TEXTAREA rows="4">@if (a</TextArea>@if ( ) {'],
+    ['<title data-x="a>b">@if (a</title>@if (b) {', '<title data-x="a>b">@if (a</title>@if ( ) {'],
+    ['<textarea>@if (a</ textarea >@if (b) {', '<textarea>@if (a</ textarea >@if ( ) {'],
+    ['<textarea>@if (a</textareax>@if (b) {', '<textarea>@if (a</textareax>@if (b) {'],
+    ['<textarea>@if (a<b', '<textarea>@if (a<b'],
+    ['<textarea>@if (a<b) {x} @let y = c;', '<textarea>@if (a<b) {x} @let y = c;'],
+    ['<p>n<title < @if (a<b) {x}', '<p>n<title < @if (   ) {x}'],
+  ];
+  for (const [line, expected] of cases) {
+    assert.equal(expected.length, line.length, line);
+    assert.deepEqual(maskBlockExpressions([line]), [expected], line);
+  }
+});
+
+test('maskBlockExpressions finds a raw-text element\'s end tag across lines', () => {
+  const lines = ['<textarea', '  rows="4">', '@if (a<b', '</textarea', '>', '@if (c<d) {'];
+
+  assert.deepEqual(maskBlockExpressions(lines), [
+    '<textarea',
+    '  rows="4">',
+    '@if (a<b',
+    '</textarea',
+    '>',
+    '@if (   ) {',
+  ]);
+});
+
+/**
  * A block opens only in text: an `@` inside a tag, an interpolation or an escaped `&#64;` opens none,
  * as Angular's lexer reads them, and a malformed `@let` masks nothing.
  */

@@ -234,6 +234,25 @@ test('a comparison in a block parameter is no control', () => {
   assert.deepEqual(scan(HTML, ['<p>@if (n<button && a>b) {x}</p>']), []);
 });
 
+/**
+ * #1482: Angular reads a `<textarea>` or `<title>` as raw text (`_consumeRawTextWithTagClose`), so
+ * an `@if (` or `@let` there opens nothing, and the control after the element is still judged.
+ */
+test('an `@` in raw text leaves the control after the element judged', () => {
+  for (const element of [
+    '<textarea data-touch-exempt="r">Write @if (you like</textarea>',
+    '<title>Mail @let x = 1</title>',
+  ]) {
+    const lines = [element, '<button type="button">Go</button>'];
+
+    assert.deepEqual(
+      scan(HTML, lines).map((v) => [v.rule, v.line]),
+      [['TT-1', 2]],
+      element,
+    );
+  }
+});
+
 /** #529's posture: a phantom named for a control is no control, wherever its read ends. */
 test('a phantom named for a control fails no build', () => {
   for (const line of [
