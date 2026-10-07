@@ -96,10 +96,14 @@ export function findViolations({ path, lines, added }) {
     if (rule !== null) {
       violations.push({ path, line: tag.line, rule, text: lines[tag.line - 1].trim() });
     }
-    const isVoid = tag.prefix === '' && VOID.has(tag.name);
-    if (!tag.selfClosed && !isVoid) open.push({ name: tag.name, exempt });
+    if (encloses(tag)) open.push({ name: tag.name, exempt });
   }
   return violations;
+}
+
+/** Whether a start tag opens a scope its end tag closes: neither self-closed nor `VOID`. */
+function encloses(tag) {
+  return !tag.selfClosed && !(tag.prefix === '' && VOID.has(tag.name));
 }
 
 /**
