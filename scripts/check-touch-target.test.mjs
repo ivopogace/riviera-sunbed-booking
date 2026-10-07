@@ -667,3 +667,23 @@ test('a void element\'s exemption covers an ICU right after it, and nothing more
   ];
   assert.deepEqual(scan(HTML, lines).map((v) => [v.rule, v.line]), [['TT-1', 1]]);
 });
+
+/**
+ * #1497: a comment in an inline template is one token to Angular, so a brace or a block in it neither
+ * ends an exemption nor hides the controls after it (`HtmlParser`: `@if{li["x", Comment,
+ * button["y"]]}`; `Comment, "x", button["y"]`).
+ */
+test('a comment in an inline template neither ends an exemption nor hides a control', () => {
+  const component = (markup) => ['@Component({', '  template: `', ...markup, '  `,', '})'];
+  const exempt = component([
+    '@if (a) {',
+    '<li data-touch-exempt="r">x',
+    '<!-- } -->',
+    '<button>y</button>',
+    '}',
+  ]);
+  assert.deepEqual(scan(TS, exempt), []);
+
+  const judged = component(['<!-- {a, b, -->', 'x', '<button>y</button>']);
+  assert.deepEqual(scan(TS, judged).map((v) => [v.rule, v.line]), [['TT-1', 5]]);
+});

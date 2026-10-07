@@ -883,3 +883,30 @@ test('walkTags closes each element at exactly the children Angular\'s definition
     }
   }
 });
+
+/**
+ * #1497: an HTML comment is one token to Angular's lexer (`_consumeComment`), so nothing in it opens
+ * or closes a container: no tag, block, ICU or `}`, which an inline `.ts` template leaves unmasked
+ * (`HtmlParser`: `@if{li["x", Comment, button["y"]]}`; `Comment, "x", button["y"]`; `p[Comment],
+ * div[]`). Like any token, it closes a void element; an unterminated one fails a build and is
+ * stepped over at its `<!--` alone.
+ */
+test('walkTags steps over an HTML comment as one token', () => {
+  const cases = [
+    ['@if (a) {<li>x<!-- } --><button>y</button>}', ['<li', '<button', '</button', '~li']],
+    ['<!-- {a, b, -->x<button>y</button>', ['<button', '</button']],
+    ['<p><!-- @if (a) { --><div>', ['<p', '~p', '<div']],
+    ['<!-- <button> --><p>', ['<p']],
+    ['<p><input><!-- c --><div>', ['<p', '<input', '~input', '~p', '<div']],
+    ['<!--><button>', ['<button']],
+    ['<!-- x <button>', ['<button']],
+  ];
+  for (const [line, expected] of cases) {
+    assert.deepEqual(closes(maskBlockExpressions([line])), expected, line);
+  }
+});
+
+/** #1497: an ICU form whose case never opens fails a build, and the tags after it are still read. */
+test('walkTags reads on past an ICU form with no case', () => {
+  assert.deepEqual(closes(['{a, b, x <button>']), ['<button']);
+});
