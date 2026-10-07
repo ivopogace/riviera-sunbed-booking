@@ -328,6 +328,24 @@ test('typescriptRegions opens a comment only where Angular\'s lexer does', () =>
   }
 });
 
+/**
+ * #1496: a start tag the walk cannot read to its `>` (`readAttributes` marks it incomplete, or no
+ * name it knows follows the `<`) is a build error in Angular or a misread, so the scan stops
+ * reading comments there, as at an escape. `HtmlParser` builds each `div` below with its `role`:
+ * a spaced `=` or a `//` or `/* … *\/` comment in a start tag is no `<!--` to it.
+ */
+test('typescriptRegions reads no comment past a start tag it cannot read', () => {
+  for (const body of [
+    '<div title = "<!--" role="dialog">x</div><!-- end -->',
+    '<div // <!--\n role="dialog" -->>x</div>',
+    '<div /* <!-- */ role="dialog" -->>x</div>',
+    '<a[a]="<!--" role="dialog">x</a><!-- end -->',
+  ]) {
+    const lines = `@Component({ template: \`${body}\` })`.split('\n');
+    assert.match(typescriptRegions(lines).template.join('\n'), /role="dialog"/, body);
+  }
+});
+
 test('readAttributes reads a start tag across lines up to its `>`', () => {
   const read = readAttributes(['<img', '  src=/a/b/', '  alt="x"/>'], 0, 4);
 
@@ -448,32 +466,6 @@ test('maskBlockExpressions blanks block parameters and `@let` values as Angular 
   for (const [line, expected] of cases) {
     assert.equal(expected.length, line.length, line);
     assert.deepEqual(maskBlockExpressions([line]), [expected], line);
-  }
-});
-
-/**
- * #1496: a comment is one token to the lexer, and `walkTags` steps over it (`OPAQUE`), so the mask
- * steps over it too: an `@let` or `@if (` inside one never blanks the `-->` and the real control
- * after it up to a `;` or `)` beyond. Each tree builds and holds the control (`HtmlParser`). Past a
- * `<!--` with no `-->`, or one Angular reads as no comment (in a processing instruction, a doctype
- * or an attribute value), the mask reads on as anywhere else.
- */
-test('maskBlockExpressions steps over a comment as walkTags does', () => {
-  for (const line of [
-    '<p>·</p><!-- @let x = --><button>x</button><i>;</i>',
-    '<!-- @if ( --><button>x</button><i>)</i>',
-  ]) {
-    assert.deepEqual(maskBlockExpressions([line]), [line], line);
-    assert.ok(walkTags(maskBlockExpressions([line])).some((tag) => tag.name === 'button'), line);
-  }
-  assert.deepEqual(maskBlockExpressions(['<!-- @let x = a<b;']), ['<!-- @let x =    ;']);
-  const declared = [
-    `<?a "<!--" ?><input/>@let z = '-->' ;`,
-    `<!x "<!--"><input/>@let z = '-->' ;`,
-    `{{ 'a {{ a ? "b" : 'c' }} <div a="x" b='<!-- '> <input>@let z = '-->' ; =`,
-  ];
-  for (const line of declared) {
-    assert.deepEqual(maskBlockExpressions([line]), [line.replace("'-->' ", blank("'-->' "))], line);
   }
 });
 

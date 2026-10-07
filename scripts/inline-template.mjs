@@ -11,11 +11,11 @@
  * `interpolationStep`. `check-focus-posture` and `check-touch-target` judge markup, so they take the
  * whole walk: `typescriptRegions` masks a file down to its inline templates and its code,
  * `maskHtmlComments` masks an external template's comments, `maskBlockExpressions` masks block
- * parameters and `@let` values out of the tag walk, stepping over a comment as the walk does, and
- * `walkTags` is that walk: where in the masked markup an element tag opens (`elementNameAt`), one
- * start tag's attributes (`readAttributes`), and a raw-text element's content stepped over as
- * text. Beside `git-diff.mjs` because that is the guards' shared module, and dependency-free for
- * the same reason it is: the hygiene CI job runs the suites with no install step.
+ * parameters and `@let` values out of the tag walk, and `walkTags` is that walk: where in the masked
+ * markup an element tag opens (`elementNameAt`), one start tag's attributes (`readAttributes`), and a
+ * raw-text element's content stepped over as text. Beside
+ * `git-diff.mjs` because that is the guards' shared module, and dependency-free for the same reason
+ * it is: the hygiene CI job runs the suites with no install step.
  */
 
 /** The extensions whose `template:` literal is an inline template. A `.js` key is a string. */
@@ -445,14 +445,11 @@ const BLOCKS = [
  * `@let name = …;`, as expressions, never as markup, so a `<` there opens no tag. Unmasked, the walk
  * opened one at `@if (n<div && a>b)` that reached the `>` and read as complete (#1480). The mask
  * follows the lexer: a block or `@let` opens only in text — the walk steps over a tag as `walkTags`
- * reads it, a raw-text element's content and end tag included (`RAW_TEXT`, #1482), over an
- * interpolation as `_consumeInterpolation` does, and over a comment as `walkTags` does (`OPAQUE`),
- * so an `@let` or `@if (` inside one never blanks its `-->` (#1496) — though only over one Angular
- * reads as a comment (`commentSpans`): where the walk misreads a `<!--` in a declaration or an
- * attribute value as one, the mask reads on as anywhere else — a block's parameters run from its
- * `(` to the `)` `_consumeBlockParameters` stops at, and a `@let` value from its `=` to the `;`
- * `_consumeLetDeclarationValue` stops at. A guard that reads a block's condition keeps reading the
- * unmasked template.
+ * reads it, a raw-text element's content and end tag included (`RAW_TEXT`, #1482), and over an
+ * interpolation as `_consumeInterpolation` does — a block's parameters run from its `(` to the `)`
+ * `_consumeBlockParameters` stops at, and a `@let` value from its `=` to the `;`
+ * `_consumeLetDeclarationValue` stops at. A guard that reads a block's condition
+ * keeps reading the unmasked template.
  *
  * @param {string[]} lines the comment-masked template region
  * @returns {string[]} the same lines with block parameters and `@let` values blanked
@@ -461,14 +458,12 @@ export function maskBlockExpressions(lines) {
   const text = lines.join('\n');
   const out = text.split('');
   const starts = lineStarts(lines);
-  const comments = commentSpans(lines, text.length);
   let at = 0;
 
   while (at < text.length) {
     const step = text.startsWith('{{', at)
       ? interpolationEnd(text, at + 2)
-      : (comments.get(at) ??
-        tagEnd(lines, starts, text, at) ??
+      : (tagEnd(lines, starts, text, at) ??
         letEnd(text, at, out) ??
         blockEnd(text, at, out) ??
         at + 1);
@@ -511,7 +506,8 @@ function maskComments(lines, stop) {
  * over a tag as `tagEnd` reads it, an interpolation to where `_consumeInterpolation` ends it
  * (`lexerInterpolationEnd`), a CDATA section, doctype or processing instruction (`declarationEnd`),
  * a block's parameters and a `@let` value, so a `<!--` in any of them opens none; a comment ends as
- * `commentEnd` reads it.
+ * `commentEnd` reads it. The read stops at a start tag the walk cannot read (`misreadTag`), as at
+ * `limit`: past it the context is unknown.
  */
 function commentSpans(lines, limit) {
   const text = lines.join('\n');
@@ -520,7 +516,7 @@ function commentSpans(lines, limit) {
   const spans = new Map();
   let at = 0;
 
-  while (at < limit) {
+  while (at < limit && !misreadTag(lines, starts, text, at)) {
     const comment = commentEnd(text, at);
     if (comment !== null && comment > at + 4 && comment <= limit) spans.set(at, comment);
     at =
@@ -534,6 +530,18 @@ function commentSpans(lines, limit) {
           at + 1));
   }
   return spans;
+}
+
+/**
+ * Whether a `<` at `at` opens a start tag the walk cannot read to its `>`: one `readAttributes`
+ * marks incomplete (a `<` before its `>`, a build error to Angular, or a spaced `=` or a `//` or
+ * `/* … *\/` comment in the tag, which it misreads), or one whose name `elementNameAt` cannot read.
+ */
+function misreadTag(lines, starts, text, at) {
+  if (!/^<[A-Za-z]/.test(text.slice(at, at + 2))) return false;
+  const line = starts.findLastIndex((start) => start <= at);
+  const found = tagAt(lines, line, at - starts[line]);
+  return found === null || found.tags[0].incomplete;
 }
 
 /**
