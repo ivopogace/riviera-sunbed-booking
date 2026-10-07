@@ -382,19 +382,19 @@ test('a prefixed element leaves the exemption stack balanced', () => {
  * #1492: only an unprefixed void element is void. Angular looks a prefixed tag's definition up by its
  * full name (`:xhtml:input`), finds the default one, and lets it enclose what follows until its end
  * tag (`HtmlParser`: `:xhtml:input[:xhtml:button[Text "x"]]`), so an exemption on it covers that.
+ * An unprefixed `<input>` stays void with or without its `/`, and its exemption covers nothing after.
  */
 test('a prefixed void-named element encloses its content, exemption included', () => {
   assert.deepEqual(
     scan(HTML, ['<xhtml:input data-touch-exempt="r"><button>x</button></xhtml:input>']),
     [],
   );
-  assert.deepEqual(
-    scan(HTML, ['<xhtml:input data-touch-exempt="r"/><button>x</button>']).map((v) => [
-      v.rule,
-      v.line,
-    ]),
-    [['TT-1', 1]],
-  );
+  for (const element of [
+    '<xhtml:input data-touch-exempt="r"/><button>x</button>',
+    '<input data-touch-exempt="r"><button>x</button>',
+  ]) {
+    assert.deepEqual(scan(HTML, [element]).map((v) => [v.rule, v.line]), [['TT-1', 1]], element);
+  }
 });
 
 /**
