@@ -514,11 +514,12 @@ export function walkTags(lines) {
  * The entry `tag` with its namespace, kept in step with `open`, the elements open around it, each
  * with its local name as written and its namespace. A complete start tag that is not self-closed is
  * pushed, and an end tag pops back to the last open element of its lower-cased local name, as
- * `check-touch-target`'s stack does (#1492 settled that match); an end tag with none pops nothing.
- * Blocks are no entries, as `_getClosestElementLikeParent` skips them. An element Angular closes
- * without an end tag (a void one, or a `<p>` its child closes) stays open here until an ancestor's
- * end tag, which changes no namespace: Angular closes so only an element in the HTML namespace,
- * whose children inherit `''` either way.
+ * `check-touch-target`'s stack does: a superset of `_popContainer`'s full-name match whose extra
+ * pairs are build errors; an end tag with none pops nothing. Blocks are no entries, as
+ * `_getClosestElementLikeParent` skips them. An element Angular closes without an end tag (a void
+ * one, or a `<p>` its child closes) stays open here until an ancestor's end tag, which changes no
+ * namespace: Angular closes one implicitly only in the HTML namespace, whose children inherit `''`
+ * either way.
  */
 function nested(tag, local, open) {
   if (tag.kind === 'close') {

@@ -566,7 +566,8 @@ test('walkTags marks a lone start tag html by its own spelling', () => {
  * `implicitNamespacePrefix` (`svg`, `foreignObject` → `svg`, `math` → `math`, looked up exactly and
  * then lower-cased), else its closest open element's, unless that element's local name is exactly
  * `foreignObject` (`preventNamespaceInheritance`). Blocks are no parent, and a self-closed or
- * incomplete tag encloses nothing. Each row's `HtmlParser` tree: `:svg:svg[:svg:button]`,
+ * incomplete tag encloses nothing, and an end tag closes the open elements it skips. Each row's
+ * `HtmlParser` tree: `:svg:svg[:svg:button]`,
  * `:svg:svg[:svg:foreignObject[button]]`, `:svg:svg[:svg:foreignobject[:svg:button]]`, and so on.
  */
 test('walkTags gives a start tag the namespace Angular\'s parser does, inherited included', () => {
@@ -582,6 +583,10 @@ test('walkTags gives a start tag the namespace Angular\'s parser does, inherited
     ['<svg><x:foreignObject><BUTTON>', [['svg', false], ['x', false], ['', true]]],
     ['<foreignObject><p>', [['svg', false], ['', true]]],
     ['<svg></svg><button>', [['svg', false], ['', true]]],
+    [
+      '<svg><foreignObject><p></foreignObject><button>',
+      [['svg', false], ['svg', false], ['', true], ['svg', false]],
+    ],
     ['<svg/><button>', [['svg', false], ['', true]]],
     ['<svg <button>', [['svg', false], ['', true]]],
     ['<svg>@if (a) {<button></button>}</svg>', [['svg', false], ['svg', false]]],
