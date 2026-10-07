@@ -613,3 +613,52 @@ test('a template that ends inside a start tag still returns', () => {
     );
   }
 });
+
+/**
+ * #1497: an exemption ends where Angular closes its element, with or without an end tag: at a child
+ * its definition is closed by (`<ul>` closes a `<p>`, `<li>` an `<li>`), and at its block's `}`
+ * (`HtmlParser` 22.1.6: `p["a"], ul[], button["x"]`; `@if{p["x"]}, button["y"]`;
+ * `ul[li["a"], li[button["x"]]]`).
+ */
+test('an exemption ends where Angular closes its element implicitly', () => {
+  for (const line of [
+    '<p data-touch-exempt="r">a<ul></ul><button>x</button>',
+    '@if (a) {<p data-touch-exempt="r">x}<button>y</button>',
+    '<ul><li data-touch-exempt="r">a<li><button>x</button></ul>',
+    '<table><tr><td data-touch-exempt="r">a<td><button>x</button></table>',
+    '<select><option data-touch-exempt="r">a<option><button>x</button></select>',
+    '{n, select, x {<p data-touch-exempt="r">a}}<button>x</button>',
+  ]) {
+    assert.deepEqual(scan(HTML, [line]).map((v) => [v.rule, v.line]), [['TT-1', 1]], line);
+  }
+});
+
+/**
+ * #1497: an exemption Angular keeps open still covers its subtree: a child its definition is not
+ * closed by, a block or an ICU case between it and the child, a non-HTML namespace, and a void
+ * element, which the start tag right after it closes alone (`HtmlParser`: `p[b[div[]], button[]]`;
+ * `p[@if{div[]}, button[]]`; `p[input[], div[], button[]]`; `p[ICU(div[]), button[]]`).
+ */
+test('an exemption Angular keeps open still covers its subtree', () => {
+  for (const line of [
+    '<p data-touch-exempt="r"><b><div></div></b><button>x</button></p>',
+    '<p data-touch-exempt="r">@if (a) {<div></div>}<button>x</button></p>',
+    '<p data-touch-exempt="r"><input><div></div><button>x</button></p>',
+    '<p data-touch-exempt="r">{n, select, x {<div></div>}}<button>x</button></p>',
+    '<p data-touch-exempt="r"><svg></svg><button>x</button></p>',
+    '<xhtml:p data-touch-exempt="r"><div></div><xhtml:button>x</xhtml:button></xhtml:p>',
+    '<li data-touch-exempt="r">{{ a }}<button>x</button></li>',
+  ]) {
+    assert.deepEqual(scan(HTML, [line]), [], line);
+  }
+});
+
+/**
+ * #1497: a void element closes at the next token, but an ICU right after it builds inside it, so
+ * its exemption covers that ICU's controls and nothing after (`HtmlParser`:
+ * `input[ICU(button[])], button[]`).
+ */
+test('a void element\'s exemption covers an ICU right after it, and nothing more', () => {
+  const lines = ['<input data-touch-exempt="r">{n, select, x {<button>x</button>}}<button>y</button>'];
+  assert.deepEqual(scan(HTML, lines).map((v) => [v.rule, v.line]), [['TT-1', 1]]);
+});

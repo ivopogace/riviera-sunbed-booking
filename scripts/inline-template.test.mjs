@@ -714,3 +714,104 @@ test('walkTags reports a start tag\'s attributes, line and form', () => {
   assert.deepEqual(close, { kind: 'close', prefix: '', name: 'textarea' });
   assert.equal(after.selfClosed, true);
 });
+
+/** The walk's entries as `<name`, `</name` and `~name` for a close Angular makes with no end tag. */
+function closes(lines) {
+  return walkTags(lines).map((tag) => {
+    const name = tag.prefix === '' ? tag.name : `${tag.prefix}:${tag.name}`;
+    if (tag.kind === 'open') return `<${name}`;
+    return tag.implicit ? `~${name}` : `</${name}`;
+  });
+}
+
+/**
+ * #1497: the walk emits a close where Angular's tree builder closes an element with no end tag of
+ * its own. `_pushContainer` pops the current container when its definition `isClosedByChild` the
+ * new element's lower-cased full name (22.1.6 `closedByChildren`), so only an HTML-namespace parent
+ * and child, and only the top element, never one under a block, an ICU case or another element
+ * (`HtmlParser`: `p["a"], ul[]`; `p[b[div[]]]`; `p[:svg:svg[]]`; `table[tr[td["a"], td["b",
+ * tr[td[]]]]]`).
+ */
+test('walkTags closes an element its child closes, as Angular\'s tag definitions do', () => {
+  const cases = [
+    ['<p>a<ul></ul><button>', ['<p', '~p', '<ul', '</ul', '<button']],
+    ['<p><p>', ['<p', '~p', '<p']],
+    ['<P><DIV>', ['<p', '~p', '<div']],
+    ['<p><hr/><button>', ['<p', '~p', '<hr', '<button']],
+    ['<ul><li>a<li><button>x</button></ul>', ['<ul', '<li', '~li', '<li', '<button', '</button', '</ul']],
+    ['<table><tr><td>a<td>b<tr><td>', ['<table', '<tr', '<td', '~td', '<td', '<tr', '<td']],
+    ['<tbody><tbody><thead><tfoot>', ['<tbody', '~tbody', '<tbody', '<thead', '<tfoot']],
+    ['<select><option>a<option>b<optgroup><option>',
+      ['<select', '<option', '~option', '<option', '~option', '<optgroup', '<option']],
+    ['<dl><dt>a<dd>b<dt>', ['<dl', '<dt', '~dt', '<dd', '~dd', '<dt']],
+    ['<ruby><rb>a<rt>b<rp>c<rtc>d', ['<ruby', '<rb', '~rb', '<rt', '~rt', '<rp', '~rp', '<rtc']],
+    ['<p>{{ a }}<div>', ['<p', '~p', '<div']],
+    ['<p><svg>', ['<p', '<svg']],
+    ['<p><b><div>', ['<p', '<b', '<div']],
+    ['<p><xhtml:div>', ['<p', '<xhtml:div']],
+    ['<xhtml:p><div>', ['<xhtml:p', '<div']],
+    ['<svg><p><div>', ['<svg', '<p', '<div']],
+    ['<p>@if (a) {<div></div>}', ['<p', '<div', '</div']],
+    ['<p>@if (a) <div>', ['<p', '~p', '<div']],
+    ['<p>@default never;<div>', ['<p', '~p', '<div']],
+    ['<p>{n, plural, =0 {<div>x</div>} other {y}}<button>', ['<p', '<div', '</div', '<button']],
+  ];
+  for (const [line, expected] of cases) {
+    assert.deepEqual(closes(maskBlockExpressions([line])), expected, line);
+  }
+});
+
+/**
+ * #1497: a block's `}` pops everything above the block (`_popContainer(null, Block, …)`), and an
+ * ICU case's `}` everything above the case, which `_parseExpansionCase` builds as a tree of its own;
+ * a `}` inside an interpolation or with no block open closes nothing (`HtmlParser`: `@if{p["x"]},
+ * button[]`; `@if{p[ICU("y"), button[]]}`; `ICU(p["a"]), button[]`).
+ */
+test('walkTags closes what a block or an ICU case leaves open at its `}`', () => {
+  const cases = [
+    ['@if (a) {<p>x}<button>', ['<p', '~p', '<button']],
+    ['@if (a) {<li>x} @else {<li>y}', ['<li', '~li', '<li', '~li']],
+    ['@if (a) {<p>{{ b }}x}<button>', ['<p', '~p', '<button']],
+    ['@if (a)\n{<p>x}', ['<p', '~p']],
+    ['@switch (a) { @case (1) {<p>x} @case (2) @case (3) {<p>y}}<div>',
+      ['<p', '~p', '<p', '~p', '<div']],
+    ['@if (a) {<p>{n, select, x {y}}<button></button>}', ['<p', '<button', '</button', '~p']],
+    ['@if (a) {<li><p>x}', ['<li', '<p', '~p', '~li']],
+    ['{n, select, x {<p>a}}<button>', ['<p', '~p', '<button']],
+    ['{n, select, x {<p>a<div>b</div>}}', ['<p', '~p', '<div', '</div']],
+    ['<p>}<button>', ['<p', '<button']],
+  ];
+  for (const [line, expected] of cases) {
+    assert.deepEqual(closes(maskBlockExpressions(line.split('\n'))), expected, line);
+  }
+});
+
+/**
+ * #1497: a void element is closed by the next token (`_closeVoidElement`), or by the start tag
+ * after it, which `isClosedByChild` lets close the void element alone. An ICU right after it is no
+ * such token, so it builds inside the void element (`HtmlParser`: `p[input[], div[]]`; `p[input[],
+ * " "], div[]`; `p[input[ICU(div[])], div[]]`).
+ */
+test('walkTags closes a void element at the next token, and only the void element', () => {
+  const cases = [
+    ['<p><input><div>', ['<p', '<input', '~input', '<div']],
+    ['<p><input> <div>', ['<p', '<input', '~input', '~p', '<div']],
+    ['<p><input></p>', ['<p', '<input', '</p']],
+    ['<p><input>{n, select, x {<div>}}<div>', ['<p', '<input', '<div', '~div', '~input', '<div']],
+    ['<p><br>@if (a) {x}<div>', ['<p', '<br', '~br', '~p', '<div']],
+    ['<input/><div>', ['<input', '<div']],
+    ['<svg><input><g>', ['<svg', '<input', '<g']],
+  ];
+  for (const [line, expected] of cases) {
+    assert.deepEqual(closes(maskBlockExpressions([line])), expected, line);
+  }
+});
+
+/** #1497: an ICU case is built by a tree builder of its own, so its elements inherit no namespace. */
+test('walkTags gives an element in an ICU case no parent namespace', () => {
+  const opens = walkTags(['<svg>{n, select, x {<button>}}<g>']).filter((tag) => tag.kind === 'open');
+  assert.deepEqual(
+    opens.map((tag) => [tag.name, tag.namespace, tag.html]),
+    [['svg', 'svg', false], ['button', '', true], ['g', 'svg', false]],
+  );
+});
