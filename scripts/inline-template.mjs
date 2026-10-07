@@ -488,7 +488,7 @@ function tagEnd(lines, starts, text, at) {
 
 /**
  * Walks the masked template and returns one entry per element tag, start and end alike, in
- * document order: `{ kind: 'open', prefix, name, namespace, html, attributes, selfClosed,
+ * document order: `{ kind: 'open', prefix, name, namespace, html, void, attributes, selfClosed,
  * incomplete, line }` with the 1-based line its `<` is on, or `{ kind: 'close', prefix, name }`.
  * The one walk both markup guards judge and `maskBlockExpressions` steps by, so the three read the
  * same tags.
@@ -498,7 +498,8 @@ function tagEnd(lines, starts, text, at) {
  * namespace inheritance makes its end tag (`_getPrefix`). `namespace` is the prefix the element is
  * built under, inherited included (`namespaceOf`), and `html` whether that builds the HTML element
  * `name` names (`isHtml`); a guard judges a control by it, so `<svg:button>` and the bare
- * `<button>` inside `<svg>` are no buttons.
+ * `<button>` inside `<svg>` are no buttons. `void` is whether Angular closes the element at the next
+ * token (`isVoid`), so nothing after it is its content.
  *
  * A start tag legitimately spans lines — every multi-line binding in the app is written that way —
  * so this tracks position across the whole region rather than per line.
@@ -535,9 +536,9 @@ export function walkTags(lines) {
  * `check-touch-target`'s stack does: a superset of `_popContainer`'s full-name match whose extra
  * pairs are build errors; an end tag with none pops nothing. Blocks are no entries, as
  * `_getClosestElementLikeParent` skips them. An element Angular closes without an end tag (a void
- * one, or a `<p>` its child closes) stays open here until an ancestor's end tag, which changes no
- * namespace: Angular closes one implicitly only in the HTML namespace, whose children inherit `''`
- * either way.
+ * one, marked `void` for the guards, or a `<p>` its child closes) stays open on this stack until an
+ * ancestor's end tag, which changes no namespace: Angular closes one implicitly only in the HTML
+ * namespace, whose children inherit `''` either way.
  */
 function nested(tag, local, open) {
   if (tag.kind === 'close') {
@@ -547,7 +548,7 @@ function nested(tag, local, open) {
   }
   const namespace = namespaceOf(tag.prefix, local, open.at(-1));
   if (!tag.selfClosed && !tag.incomplete) open.push({ name: tag.name, local, namespace });
-  return { ...tag, namespace, html: isHtml(namespace, local) };
+  return { ...tag, namespace, html: isHtml(namespace, local), void: isVoid(namespace, tag.name) };
 }
 
 /**
@@ -571,6 +572,38 @@ function namespaceOf(prefix, local, parent) {
   if (own) return own;
   if (parent === undefined || parent.local === 'foreignObject') return '';
   return parent.namespace;
+}
+
+/**
+ * The names `getHtmlTagDefinition` gives `isVoid: true` (`@angular/compiler` 22.1.6): elements
+ * `_closeVoidElement` closes at the next token, so they never enclose what follows. `param` is
+ * obsolete in WHATWG HTML but still void to the parser.
+ */
+const VOID = new Set([
+  'area',
+  'base',
+  'br',
+  'col',
+  'embed',
+  'hr',
+  'img',
+  'input',
+  'link',
+  'meta',
+  'param',
+  'source',
+  'track',
+  'wbr',
+]);
+
+/**
+ * Whether Angular closes an element built under `namespace` at the next token. Only in the
+ * namespace `''`: Angular looks a definition up by full name (`:xhtml:input`, or `:svg:input` for a
+ * bare one inside `<svg>`), finds the default one, and lets the element enclose up to its end tag.
+ * `name` is lower-cased, as the definition lookup's fallback is.
+ */
+function isVoid(namespace, name) {
+  return namespace === '' && VOID.has(name);
 }
 
 /**
