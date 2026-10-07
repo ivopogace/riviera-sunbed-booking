@@ -455,7 +455,8 @@ test('maskBlockExpressions blanks block parameters and `@let` values as Angular 
  * #1496: a comment is one token to the lexer, and `walkTags` steps over it (`OPAQUE`), so the mask
  * steps over it too: an `@let` or `@if (` inside one never blanks the `-->` and the real control
  * after it up to a `;` or `)` beyond. Each tree builds and holds the control (`HtmlParser`). With
- * no `-->` only the opener is stepped, as the walk steps it.
+ * no `-->` only the opener is stepped, as the walk steps it. A `<!--` in a processing instruction or
+ * doctype opens none, and the mask reads on there as before.
  */
 test('maskBlockExpressions steps over a comment as walkTags does', () => {
   for (const line of [
@@ -466,6 +467,9 @@ test('maskBlockExpressions steps over a comment as walkTags does', () => {
     assert.ok(walkTags(maskBlockExpressions([line])).some((tag) => tag.name === 'button'), line);
   }
   assert.deepEqual(maskBlockExpressions(['<!-- @let x = a<b;']), ['<!-- @let x =    ;']);
+  for (const line of [`<?a "<!--" ?><input/>@let z = '-->' ;`, `<!x "<!--"><input/>@let z = '-->' ;`]) {
+    assert.deepEqual(maskBlockExpressions([line]), [line.replace("'-->' ", blank("'-->' "))], line);
+  }
 });
 
 test('maskBlockExpressions keeps line geometry across multi-line parameters and values', () => {
