@@ -533,15 +533,33 @@ function commentSpans(lines, limit) {
 }
 
 /**
- * Whether a `<` at `at` opens a start tag the walk cannot read to its `>`: one `readAttributes`
- * marks incomplete (a `<` before its `>`, a build error to Angular, or a spaced `=` or a `//` or
- * `/* … *\/` comment in the tag, which it misreads), or one whose name `elementNameAt` cannot read.
+ * Whether a `<` at `at` opens a start tag the walk cannot read: one `readAttributes` marks
+ * incomplete (a `<` before its `>`: a build error to Angular, or a spaced `=` it misreads), one
+ * whose name `elementNameAt` cannot read, or one holding a `//` or `/*` outside quotes, a start-tag
+ * comment (`_consumeSingleLineComment`, `_consumeMultiLineComment`) whose `>` ends no tag; a
+ * raw-text element is read with its content, so a CSS comment in a `<style>` stops the read too.
  */
 function misreadTag(lines, starts, text, at) {
   if (!/^<[A-Za-z]/.test(text.slice(at, at + 2))) return false;
   const line = starts.findLastIndex((start) => start <= at);
   const found = tagAt(lines, line, at - starts[line]);
-  return found === null || found.tags[0].incomplete;
+  if (found === null || found.tags[0].incomplete) return true;
+  return holdsTagComment(text.slice(at, starts[found.line] + found.column + 1));
+}
+
+/** Whether a start tag's source holds a `//` or `/*` outside its quoted values. */
+function holdsTagComment(tag) {
+  let quote = null;
+  for (let at = 0; at < tag.length; at++) {
+    if (quote !== null) {
+      if (tag[at] === quote) quote = null;
+    } else if (isQuote(tag[at])) {
+      quote = tag[at];
+    } else if (tag.startsWith('//', at) || tag.startsWith('/*', at)) {
+      return true;
+    }
+  }
+  return false;
 }
 
 /**
