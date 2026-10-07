@@ -453,8 +453,8 @@ const BLOCKS = [
  * reads a block's condition keeps reading the unmasked template.
  *
  * From `stop` on, an inline template's first `${…}` or escape (`unread`), the cooked text is
- * unknown: the mask blanks only block parameters and `@let` values there, and steps over an
- * interpolation unblanked.
+ * unknown: the mask blanks only block parameters and `@let` values there, and steps over a comment,
+ * an interpolation or a declaration, even one that began before it, unblanked from `stop` on.
  *
  * @param {string[]} lines the comment-masked template region
  * @param {{ row: number, column: number }} [stop] the template's `unread` position, if any
@@ -463,12 +463,8 @@ const BLOCKS = [
  */
 export function maskBlockExpressions(lines, stop) {
   const out = lines.join('\n').split('');
-  const at = walkText(lines, 0, offsetOf(lines, stop) ?? out.length, {
-    comments: [...out],
-    code: out,
-    spans: out,
-  });
-  walkText(lines, at, out.length, { code: out });
+  const ignored = [...out];
+  walkText(lines, out.length, { comments: ignored, code: out, spans: out }, offsetOf(lines, stop));
   return out.join('').split('\n');
 }
 
@@ -486,11 +482,8 @@ export function maskBlockExpressions(lines, stop) {
 function maskComments(lines, stop) {
   const out = lines.join('\n').split('');
   const ignored = [...out];
-  walkText(lines, 0, offsetOf(lines, stop) ?? out.length, {
-    comments: out,
-    code: ignored,
-    spans: ignored,
-  });
+  const limit = offsetOf(lines, stop) ?? out.length;
+  walkText(lines, limit, { comments: out, code: ignored, spans: ignored });
   return out.join('').split('\n');
 }
 
@@ -500,45 +493,34 @@ function offsetOf(lines, position) {
 }
 
 /**
- * Walks a template from `from` until `limit` the way Angular's lexer reads it, and returns where it
- * stopped. Each span it steps over is blanked in the array its kind names: a comment in `comments`;
- * an interpolation, up to where `_consumeInterpolation` ends it, and a CDATA section, doctype or
- * processing instruction in `spans`, up to `limit` at most, where a declaration's step ends too; a
- * block's parameters and a `@let` value in `code`. Without `comments` no comment is read, and
- * without `spans` no declaration, and an interpolation is stepped over unblanked. A tag is stepped
- * over as `walkTags` reads it, a raw-text element's content and end tag included (`RAW_TEXT`,
- * #1482), and blanked in none. So a `<!--`, a block or a `@let` opens only in text, never in a
- * tag, its quoted values included, raw text, an interpolation, a declaration, a block's parameters
- * or a `@let` value.
+ * Walks a template until `limit` the way Angular's lexer reads it, blanking each span it steps over
+ * in the array its kind names: a comment in `comments`; an interpolation, up to where
+ * `_consumeInterpolation` ends it, and a CDATA section, doctype or processing instruction in
+ * `spans`, though only before `spanLimit`; a block's parameters and a `@let` value in `code`. A
+ * tag is stepped over as `walkTags` reads it, a raw-text element's content and end tag included
+ * (`RAW_TEXT`, #1482), and blanked in none. So a `<!--`, a block or a `@let` opens only in text,
+ * never in a tag, its quoted values included, raw text, a comment, an interpolation, a declaration,
+ * a block's parameters or a `@let` value.
  */
-function walkText(lines, from, limit, { comments, code, spans }) {
+function walkText(lines, limit, { comments, code, spans }, spanLimit = limit) {
   const text = lines.join('\n');
   const starts = lineStarts(lines);
-  let at = from;
+  const span = (at, end) => {
+    if (end !== null) blankRange(spans, at, Math.min(end, spanLimit));
+    return end;
+  };
+  let at = 0;
   while (at < limit) {
     at =
-      (comments && commentEnd(text, at, comments, limit)) ??
-      (spans && blanked(spans, at, declarationEnd(text, at), limit)) ??
+      commentEnd(text, at, comments, limit) ??
+      span(at, declarationEnd(text, at)) ??
       (text.startsWith('{{', at)
-        ? stepped(spans, at, interpolationEnd(text, at + 2), limit)
+        ? span(at, interpolationEnd(text, at + 2))
         : (tagEnd(lines, starts, text, at) ??
           letEnd(text, at, code) ??
           blockEnd(text, at, code) ??
           at + 1));
   }
-  return at;
-}
-
-/** `end`, or `limit` when it comes first, after blanking `spans` up to it; null when `end` is. */
-function blanked(spans, from, end, limit) {
-  if (end === null) return null;
-  return stepped(spans, from, Math.min(end, limit), limit);
-}
-
-/** `end`, after blanking `spans`, when there are some, from `from` up to it or to `limit`. */
-function stepped(spans, from, end, limit) {
-  if (spans !== undefined) blankRange(spans, from, Math.min(end, limit));
-  return end;
 }
 
 /**
