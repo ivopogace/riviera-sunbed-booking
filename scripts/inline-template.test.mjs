@@ -906,6 +906,20 @@ test('walkTags steps over an HTML comment as one token', () => {
   }
 });
 
+/**
+ * #1497: a CDATA section is one token as well (`_consumeCdata`), so a `<!--` or a tag in it opens
+ * nothing (`HtmlParser`: `" <!-- ", button["x"], Comment`; `" <button> "`; `p[input[], "x"],
+ * div[]`).
+ */
+test('walkTags steps over a CDATA section as one token', () => {
+  const cases = [
+    ['<![CDATA[ <!-- ]]><button>x</button><!-- -->', ['<button', '</button']],
+    ['<![CDATA[ <button> ]]>', []],
+    ['<p><input><![CDATA[x]]><div>', ['<p', '<input', '~input', '~p', '<div']],
+  ];
+  for (const [line, expected] of cases) assert.deepEqual(closes([line]), expected, line);
+});
+
 /** #1497: an ICU form whose case never opens fails a build, and the tags after it are still read. */
 test('walkTags reads on past an ICU form with no case', () => {
   assert.deepEqual(closes(['{a, b, x <button>']), ['<button']);
