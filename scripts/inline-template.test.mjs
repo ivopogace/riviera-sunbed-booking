@@ -715,7 +715,7 @@ test('walkTags reports a start tag\'s attributes, line and form', () => {
   assert.equal(after.selfClosed, true);
 });
 
-/** The walk's entries as `<name`, `</name` and `~name` for a close Angular makes with no end tag. */
+/** The walk's entries as `<name`, `</name`, and `~name` for a close with no end tag of its own. */
 function closes(lines) {
   return walkTags(lines).map((tag) => {
     const name = tag.prefix === '' ? tag.name : `${tag.prefix}:${tag.name}`;
@@ -764,7 +764,7 @@ test('walkTags closes an element its child closes, as Angular\'s tag definitions
 
 /**
  * #1497: a block's `}` pops everything above the block (`_popContainer(null, Block, …)`), and an
- * ICU case's `}` everything above the case, which `_parseExpansionCase` builds as a tree of its own;
+ * ICU case's `}` everything above the case, which `_parseExpansionCase` builds as its own tree;
  * a `}` inside an interpolation or with no block open closes nothing (`HtmlParser`: `@if{p["x"]},
  * button[]`; `@if{p[ICU("y"), button[]]}`; `ICU(p["a"]), button[]`). An ICU's head and a case's
  * value are raw text, a form's `{` opens a case even before `{{`, and inside an ICU no block opens
@@ -817,9 +817,11 @@ test('walkTags closes a void element at the next token, and only the void elemen
   }
 });
 
-/** #1497: an ICU case is built by a tree builder of its own, so its elements inherit no namespace. */
+/** #1497: an ICU case is built by its own tree builder, so its elements inherit no namespace. */
 test('walkTags gives an element in an ICU case no parent namespace', () => {
-  const opens = walkTags(['<svg>{n, select, x {<button>}}<g>']).filter((tag) => tag.kind === 'open');
+  const opens = walkTags(['<svg>{n, select, x {<button>}}<g>']).filter(
+    (tag) => tag.kind === 'open',
+  );
   assert.deepEqual(
     opens.map((tag) => [tag.name, tag.namespace, tag.html]),
     [['svg', 'svg', false], ['button', '', true], ['g', 'svg', false]],
@@ -874,7 +876,9 @@ test('walkTags closes each element at exactly the children Angular\'s definition
     for (const child of names) {
       const closed = rows[parent]?.includes(child) === true;
       const line = `<${parent}><${child}>`;
-      const expected = closed ? [`<${parent}`, `~${parent}`, `<${child}`] : [`<${parent}`, `<${child}`];
+      const expected = closed
+        ? [`<${parent}`, `~${parent}`, `<${child}`]
+        : [`<${parent}`, `<${child}`];
       assert.deepEqual(closes([line]), expected, line);
     }
   }

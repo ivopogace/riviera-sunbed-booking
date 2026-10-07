@@ -89,7 +89,8 @@ function regionViolations(path, lines, added, region) {
 /**
  * Whether a start tag opens a scope: any that is not self-closed. The walk emits a close entry
  * wherever Angular ends the element, its own end tag or an implicit one (a void element at the next
- * token, a `<p>` at the child that closes it, an `<li>` at its block's `}`), so the scope ends there.
+ * token, a `<p>` at the child that closes it, an `<li>` at its block's `}`), so the scope ends
+ * there.
  */
 function encloses(tag) {
   return !tag.selfClosed;

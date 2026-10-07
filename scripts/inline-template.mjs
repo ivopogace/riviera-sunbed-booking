@@ -491,8 +491,9 @@ function tagEnd(lines, starts, text, at) {
  * document order: `{ kind: 'open', prefix, name, namespace, html, void, attributes, selfClosed,
  * incomplete, line }` with the 1-based line its `<` is on, or `{ kind: 'close', prefix, name }`,
  * marked `implicit: true` where Angular closes the element with no end tag of its own (`BLOCK`).
- * The one walk both markup guards judge and `maskBlockExpressions` steps by, so the three read the
- * same tags.
+ * The one walk both markup guards judge. `maskBlockExpressions` reads tags with the same `tagAt`,
+ * so the three read the same tags, bar an ICU's head and case values, which only this walk reads as
+ * raw text (`icuStart`).
  *
  * `prefix` is the namespace prefix as written, `''` when there is none, and `name` the local name
  * lower-cased, so a guard's stack balances `<svg:g>` against `</svg:g>` and against the bare `</g>`
@@ -531,18 +532,19 @@ export function walkTags(lines) {
 
 /**
  * The tree builder's container stack, as the walk keeps it in `open`: an element entry (`element:
- * true`, its prefix, its lower-cased and as-written names, its namespace, `void`), a block (`BLOCK`),
- * or an ICU form (`ICU_FORM`) or case (`ICU_CASE`), which the lexer's expansion stack keeps. Every
- * pop of an element without its own end tag is emitted as an implicit close entry, so a guard's
- * stack, which pops on close entries, stays in step with this one without modelling a close itself:
+ * true`, its prefix, its lower-cased and as-written names, its namespace, `void`), a block
+ * (`BLOCK`), or an ICU form (`ICU_FORM`) or case (`ICU_CASE`), which the lexer's expansion stack
+ * keeps. Every pop of an element without its own end tag is emitted as an implicit close entry, so
+ * a guard's stack, which pops on close entries, stays in step with this one without modelling a
+ * close itself:
  *
  * - a start tag pops the current container when that is a void element, or an element whose
  *   definition `isClosedByChild` the new one (`_pushContainer`), so only the top one;
  * - any other token pops a void element (`_closeVoidElement`), but an ICU's `{` does not, so the
  *   ICU builds inside it (`_consumeExpansion`);
  * - a `}` pops the innermost ICU form or case while one is open, the lexer reading the `}` as the
- *   ICU's own, and else the innermost block (`_popContainer(null, Block, …)`), each with everything
- *   above it; with neither, it pops nothing.
+ *   ICU's own, and else the innermost block (`_popContainer(null, Block, …)`), each with
+ *   everything above it; with neither, it pops nothing.
  *
  * An end tag pops back to the element of its full name (`endTagMatch`), and the elements above
  * that one each get an implicit close before its own close entry, so the guard's lower-cased name
@@ -553,8 +555,8 @@ const ICU_FORM = { element: false, icu: true };
 const ICU_CASE = { element: false, icu: true };
 
 /**
- * Adds `tag`'s entries to the walk: the implicit closes it causes, then itself, a start tag with its
- * namespace. `local` is the tag's local name as written.
+ * Adds `tag`'s entries to the walk: the implicit closes it causes, then itself, a start tag with
+ * its namespace. `local` is the tag's local name as written.
  */
 function enter(tag, local, walk) {
   const { tags, open } = walk;
@@ -596,8 +598,8 @@ function endTagMatch(tag, local, open) {
 
 /**
  * The open element a start tag takes its namespace from: the last one above the innermost ICU, as
- * `_getClosestElementLikeParent` finds it, skipping blocks, in the tree builder `_parseExpansionCase`
- * starts for each case.
+ * `_getClosestElementLikeParent` finds it, skipping blocks, in the tree builder
+ * `_parseExpansionCase` starts for each case.
  */
 function closestElement(open) {
   for (let at = open.length - 1; at >= 0 && open[at] !== ICU_CASE; at--) {
@@ -616,7 +618,8 @@ function closeTop({ tags, open }) {
  * The offset after one step of the text at `at`, keeping `walk.open` as Angular's lexer and tree
  * builder do (`BLOCK`): an interpolation is stepped over whole, as `interpolationEnd` reads it;
  * a block opens a container at its `{` and an incomplete one opens none; a `{` opens an ICU form
- * (`isExpansionFormStart`: one that starts no interpolation), and in a form a case; a `}` closes one.
+ * (`isExpansionFormStart`: one that starts no interpolation), and in a form a case; a `}` closes
+ * one.
  * Block parameters arrive masked. Inside an ICU no block opens: the lexer ends a text token at one
  * only outside an expansion (`_isTextEnd`), and one that starts a token there never closes, since
  * every `}` is the ICU's (`Unclosed block`), so no template that builds has one.
@@ -708,8 +711,8 @@ function namespaceOf(prefix, local, parent) {
 
 /**
  * The names `getHtmlTagDefinition` gives `isVoid: true` (`@angular/compiler` 22.1.6): elements
- * `_closeVoidElement` closes at the next token, so they never enclose what follows. `param` is
- * obsolete in WHATWG HTML but still void to the parser.
+ * `_closeVoidElement` closes at the next token, so they enclose nothing after them but an ICU that
+ * follows at once (`textStep`). `param` is obsolete in WHATWG HTML but still void to the parser.
  */
 const VOID = new Set([
   'area',
@@ -796,8 +799,9 @@ const CLOSED_BY_CHILDREN = new Map([
  * Whether `isClosedByChild` closes the open element `parent` at a start tag named `child` that is
  * built in the namespace `''`, as the caller checks. Angular matches the child's full name
  * lower-cased, so a prefixed or inherited namespace (`:xhtml:div`, `:svg:div`) finds no row; and a
- * child named in a row inherits `''` only from a parent built there, whose definition is the row its
- * lower-cased name finds. `name` is lower-cased on both sides, as the definition lookup's fallback is.
+ * child named in a row inherits `''` only from a parent built there, whose definition is the row
+ * its lower-cased name finds. `name` is lower-cased on both sides, as the definition lookup's
+ * fallback is.
  */
 function isClosedByChild(parent, child) {
   return CLOSED_BY_CHILDREN.get(parent.name)?.has(child) === true;

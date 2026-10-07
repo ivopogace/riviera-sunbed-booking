@@ -400,8 +400,9 @@ test('a prefixed void-named element encloses its content, exemption included', (
 
 /**
  * #1498: every element Angular's `getHtmlTagDefinition` marks `isVoid` closes at the next token
- * (`_closeVoidElement`), so its exemption covers nothing after it, whatever its case (`HtmlParser`:
- * `param, button[Text "x"]`). `<param>` is the one the guard's own list once lacked.
+ * (`_closeVoidElement`), so its exemption covers nothing after it but an ICU that follows at once
+ * (#1497), whatever its case (`HtmlParser`: `param, button[Text "x"]`). `<param>` is the one the
+ * guard's own list once lacked.
  */
 test('a void element\'s exemption covers nothing after it, `<param>` included', () => {
   const angularVoid = ['area', 'base', 'br', 'col', 'embed', 'hr', 'img', 'input', 'link', 'meta',
@@ -661,6 +662,8 @@ test('an exemption Angular keeps open still covers its subtree', () => {
  * `input[ICU(button[])], button[]`).
  */
 test('a void element\'s exemption covers an ICU right after it, and nothing more', () => {
-  const lines = ['<input data-touch-exempt="r">{n, select, x {<button>x</button>}}<button>y</button>'];
+  const lines = [
+    '<input data-touch-exempt="r">{n, select, x {<button>x</button>}}<button>y</button>',
+  ];
   assert.deepEqual(scan(HTML, lines).map((v) => [v.rule, v.line]), [['TT-1', 1]]);
 });
