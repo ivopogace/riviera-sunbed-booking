@@ -304,8 +304,9 @@ test('markup inside a prefixed raw-text element is no control', () => {
 });
 
 /**
- * #1487: a prefixed raw-text element is no walk entry, so it leaves the exemption stack as it found
- * it: the exempt ancestor closes at its own end tag, and a `</div>` in the content closes nothing.
+ * #1487, #1492: a prefixed raw-text element is a walk entry closed by its bare-name end tag, so it
+ * leaves the exemption stack as it found it: the exempt ancestor closes at its own end tag, and a
+ * `</div>` in the content closes nothing.
  */
 test('a prefixed raw-text element leaves the exemption stack balanced', () => {
   const lines = [
@@ -319,6 +320,80 @@ test('a prefixed raw-text element leaves the exemption stack balanced', () => {
   assert.deepEqual(
     scan(HTML, lines).map((v) => [v.rule, v.line]),
     [['TT-1', 5]],
+  );
+});
+
+/**
+ * #1492: a prefixed control in the HTML namespace is a control (`HtmlParser`:
+ * `:xhtml:button[Text "Go"]`, built by `createElementNS` as an `HTMLButtonElement`), and is judged
+ * like an unprefixed one, exempted like one by itself or an ancestor. A prefix that builds no HTML
+ * element is no control: `<svg:button>` is an SVG-namespace element, `<XHTML:button>` is in the
+ * namespace `XHTML`, and `<xhtml:BUTTON>` is an `HTMLUnknownElement`, the case kept by
+ * `createElementNS`.
+ */
+test('a control in the HTML namespace by its xhtml: prefix is judged, any other prefix is not', () => {
+  for (const control of [
+    '<xhtml:button>Go</xhtml:button>',
+    '<xhtml:input/>',
+    '<xhtml:select></xhtml:select>',
+    '<xhtml:textarea></textarea>',
+  ]) {
+    assert.deepEqual(scan(HTML, [control]).map((v) => [v.rule, v.line]), [['TT-1', 1]], control);
+  }
+  for (const declared of [
+    '<xhtml:button appTouchTarget>Go</xhtml:button>',
+    '<xhtml:button data-touch-exempt="r">Go</xhtml:button>',
+    '<p data-touch-exempt="r"><xhtml:button>Go</xhtml:button></p>',
+    '<xhtml:p data-touch-exempt="r"><button>Go</button></xhtml:p>',
+    '<svg:button>x</svg:button>',
+    '<XHTML:button>x</XHTML:button>',
+    '<xhtml:BUTTON>x</xhtml:BUTTON>',
+    '<math:input/>',
+  ]) {
+    assert.deepEqual(scan(HTML, [declared]), [], declared);
+  }
+});
+
+/**
+ * #1492: a prefixed element is an entry on the exemption stack, so the bare `</div>` that namespace
+ * inheritance makes the end tag of an `<xhtml:div>` closes it, not the exempt `<div>` around it
+ * (`HtmlParser`: `div[:xhtml:div, button]`), and `</svg:g>` closes the `<svg:g>` it ends.
+ */
+test('a prefixed element leaves the exemption stack balanced', () => {
+  assert.deepEqual(
+    scan(HTML, ['<div data-touch-exempt="r"><xhtml:div></div><button>x</button></div>']),
+    [],
+  );
+  const lines = [
+    '<svg:g data-touch-exempt="r">',
+    '  <svg:g></svg:g>',
+    '  <button type="button">x</button>',
+    '</svg:g>',
+    '<button type="button">y</button>',
+  ];
+
+  assert.deepEqual(
+    scan(HTML, lines).map((v) => [v.rule, v.line]),
+    [['TT-1', 5]],
+  );
+});
+
+/**
+ * #1492: only an unprefixed void element is void. Angular looks a prefixed tag's definition up by its
+ * full name (`:xhtml:input`), finds the default one, and lets it enclose what follows until its end
+ * tag (`HtmlParser`: `:xhtml:input[:xhtml:button[Text "x"]]`), so an exemption on it covers that.
+ */
+test('a prefixed void-named element encloses its content, exemption included', () => {
+  assert.deepEqual(
+    scan(HTML, ['<xhtml:input data-touch-exempt="r"><button>x</button></xhtml:input>']),
+    [],
+  );
+  assert.deepEqual(
+    scan(HTML, ['<xhtml:input data-touch-exempt="r"/><button>x</button>']).map((v) => [
+      v.rule,
+      v.line,
+    ]),
+    [['TT-1', 1]],
   );
 });
 

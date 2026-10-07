@@ -346,6 +346,33 @@ test('a busy control spelled inside a prefixed raw-text element is no control', 
   }
 });
 
+/**
+ * #1492: a busy control in the HTML namespace by its `xhtml:` prefix is a control, and one under any
+ * other prefix is not (`<svg:button>` is an SVG element, `<xhtml:BUTTON>` an `HTMLUnknownElement`).
+ */
+test('a busy control is judged under the xhtml: prefix and no other', () => {
+  assert.deepEqual(
+    scan(HTML, ['<xhtml:button (click)="save()" [disabled]="saving()">Save</xhtml:button>']).map(
+      (v) => [v.rule, v.line],
+    ),
+    [['BUSY-1', 1]],
+  );
+  assert.deepEqual(
+    scan(HTML, ['<xhtml:textarea (blur)="save()" [disabled]="saving()"></textarea>']).map((v) => [
+      v.rule,
+      v.line,
+    ]),
+    [['BUSY-2', 1]],
+  );
+  for (const element of [
+    '<svg:button (click)="save()" [disabled]="saving()">Save</svg:button>',
+    '<xhtml:BUTTON (click)="save()" [disabled]="saving()">Save</xhtml:BUTTON>',
+    '<svg:textarea (blur)="save()" [disabled]="saving()"></textarea>',
+  ]) {
+    assert.deepEqual(scan(HTML, [element]), [], element);
+  }
+});
+
 test('does not judge a control inside an HTML comment, on one line or across several', () => {
   const lines = [
     '<!-- <button [disabled]="saving()">Old</button> --><button [disabled]="saving()">S</button>',
