@@ -233,8 +233,9 @@ test('typescriptRegions carries a block comment and a template across lines', ()
 
 /**
  * #1496: Angular's lexer reads `<!--` to the first `-->` after it as a `Comment` node
- * (`_consumeComment`), so an inline template's comment is blanked as an external one is, and a
- * control spelled inside it is no control. `<!-->`, `<!--->` and `--!>` end nothing.
+ * (`_consumeComment`), so `template` blanks an inline template's comment as an external one is
+ * blanked, and a control spelled inside it is no control. `<!-->`, `<!--->` and `--!>` end nothing.
+ * `templates`, the tag walk's input, keeps it: the walk steps over a comment itself.
  */
 test('typescriptRegions blanks a template comment where Angular\'s lexer ends it', () => {
   const lines = [
@@ -249,7 +250,10 @@ test('typescriptRegions blanks a template comment where Angular\'s lexer ends it
 
   const { template, templates, code } = typescriptRegions(lines);
 
-  assert.deepEqual(template, templates[0]);
+  assert.deepEqual(templates[0].slice(1, 3), [
+    '             <!-- <button>x</button> --><p>ok</p> <!--',
+    '<input />',
+  ]);
   assert.deepEqual(template.map((line) => line.length), lines.map((line) => line.length));
   assert.deepEqual(kept(template), ['<p>ok</p>', '<i></i>', ', , <br>']);
   assert.deepEqual(kept(code), ['@Component({', 'template:', ',', '})']);
@@ -270,9 +274,9 @@ test('typescriptRegions keeps a comment it cannot end as Angular would', () => {
     '@Component({ template: `<?x "> <!-- <button>e</button> -->` })',
   ];
 
-  const { templates } = typescriptRegions(lines);
+  const { template } = typescriptRegions(lines);
 
-  assert.deepEqual(templates.map((mask) => mask[templates.indexOf(mask)].trim()), [
+  assert.deepEqual(template.map((line) => line.trim()), [
     '<!-- <button>a</button>',
     '<button>b</button> -->',
     `<!-- ${blank('${x}')} <button>c</button> -->`,
@@ -311,15 +315,16 @@ test('typescriptRegions opens a comment only where Angular\'s lexer does', () =>
     '<p>{{ a // " }}<!-- <button>x</button> --></p>',
     '{{ "@if (" }}<!-- <button>x</button> -->)',
     '<!DOCTYPE ">" <!-- <button>x</button> -->',
+    '<!><!-- <button>x</button> -->',
   ];
 
   for (const body of kept) {
-    const [mask] = typescriptRegions([`@Component({ template: \`${body}\` })`]).templates;
-    assert.match(mask[0], /<button>x<\/button>/, body);
+    const { template } = typescriptRegions([`@Component({ template: \`${body}\` })`]);
+    assert.match(template[0], /<button>x<\/button>/, body);
   }
   for (const body of blanked) {
-    const [mask] = typescriptRegions([`@Component({ template: \`${body}\` })`]).templates;
-    assert.doesNotMatch(mask[0], /button/, body);
+    const { template } = typescriptRegions([`@Component({ template: \`${body}\` })`]);
+    assert.doesNotMatch(template[0], /button/, body);
   }
 });
 
@@ -447,88 +452,20 @@ test('maskBlockExpressions blanks block parameters and `@let` values as Angular 
 });
 
 /**
- * #1496: an interpolation, up to where `_consumeInterpolation` ends it, and a CDATA section,
- * doctype or processing instruction are never markup to the lexer, so the walk-only mask blanks
- * them too: a `<b title="` or `<title>` read inside one opened a phantom that swallowed the real
- * control after it. A comment left in the mask is stepped over, its text read as nothing, and kept.
+ * #1496: a comment is one token to the lexer, and `walkTags` steps over it (`OPAQUE`), so the mask
+ * steps over it too: an `@let` or `@if (` inside one never blanks the `-->` and the real control
+ * after it up to a `;` or `)` beyond. Each tree builds and holds the control (`HtmlParser`). With
+ * no `-->` only the opener is stepped, as the walk steps it.
  */
-test('maskBlockExpressions blanks interpolations and declarations, which hold no markup', () => {
-  const cases = [
-    ['{{ a < b }}<i></i>', `${blank('{{ a < b }}')}<i></i>`],
-    ['{{ a //<b title=" }}<input>', `${blank('{{ a //<b title=" }}')}<input>`],
-    ['{{ "<i>" }}', `${blank('{{ "')}<i>" }}`],
-    ['<![CDATA[<title>]]><input>', `${blank('<![CDATA[<title>]]>')}<input>`],
-    ['<!x<title>><input>', `${blank('<!x<title>')}><input>`],
-    ['<!><input>', `${blank('<!>')}<input>`],
-    ['<?x "a"><input>', `${blank('<?x "a">')}<input>`],
-    ["{{ '@if (' }} <b>a > b</b>", `${blank("{{ '@if (' }}")} <b>a > b</b>`],
-    ["{{ 'it\\'s @if (' + a > b", blank("{{ 'it\\'s @if (' + a > b")],
-    ['<?x "?" <title>?><input>', `${blank('<?x "?" <title>')}?><input>`],
-    ['<!-- @let x = --><b>;</b>', '<!-- @let x = --><b>;</b>'],
-  ];
-  for (const [line, expected] of cases) {
-    assert.equal(expected.length, line.length, line);
-    assert.deepEqual(maskBlockExpressions([line]), [expected], line);
-  }
-  const quoted = maskBlockExpressions(['<?x "\\" ?><title>" ?><input>']);
-  assert.deepEqual(
-    walkTags(quoted).map((tag) => tag.name),
-    ['input'],
-  );
-  for (const body of [
-    '{{ a //<b title="<!--" --> <input>',
-    '<![CDATA[<title>]]><!-- </title> --><input>',
-    '<!<title><!--</title>--><input>',
-    '<?<title>?><!-- </title> --><input>',
-    '<!x<title>><!-- </title> --><input>',
-    '{{ a //<style> <input/>',
+test('maskBlockExpressions steps over a comment as walkTags does', () => {
+  for (const line of [
+    '<p>·</p><!-- @let x = --><button>x</button><i>;</i>',
+    '<!-- @if ( --><button>x</button><i>)</i>',
   ]) {
-    const [mask] = typescriptRegions([`@Component({ template: \`${body}\` })`]).templates;
-    const tags = walkTags(maskBlockExpressions(mask)).filter((tag) => tag.kind === 'open');
-    assert.deepEqual(
-      tags.map((tag) => tag.name),
-      ['input'],
-      body,
-    );
+    assert.deepEqual(maskBlockExpressions([line]), [line], line);
+    assert.ok(walkTags(maskBlockExpressions([line])).some((tag) => tag.name === 'button'), line);
   }
-});
-
-/**
- * #1496: from an inline template's first `${…}` or escape (`unread`) the cooked text is unknown, so
- * the walk-only mask blanks only block parameters and `@let` values past it: a span that reaches
- * past that point is blanked only up to it, and none after it is, but each is still stepped over
- * whole, so nothing in it reads as a `@let`.
- */
-test('maskBlockExpressions blanks no interpolation or declaration past `stop`', () => {
-  assert.deepEqual(maskBlockExpressions(['<![CDATA[<b>]]>'], { row: 0, column: 0 }), [
-    '<![CDATA[<b>]]>',
-  ]);
-  assert.deepEqual(maskBlockExpressions(['{{ a }}<![CDATA[<b>]]>'], { row: 0, column: 12 }), [
-    `${blank('{{ a }}<![CD')}ATA[<b>]]>`,
-  ]);
-  assert.deepEqual(maskBlockExpressions(['@if (a<b) {', '<!x>'], { row: 1, column: 0 }), [
-    '@if (   ) {',
-    '<!x>',
-  ]);
-  assert.deepEqual(maskBlockExpressions(['<!x>@if (a<b) {'], { row: 0, column: 0 }), [
-    '<!x>@if (   ) {',
-  ]);
-  const cdata = ['<![CDATA[ x @let y = a<b; ]]>'];
-  assert.deepEqual(maskBlockExpressions(cdata, { row: 0, column: 12 }), [
-    `${blank('<![CDATA[ x ')}@let y = a<b; ]]>`,
-  ]);
-  const interpolation = ['{{ "}}"> @let w = 3', '<button>'];
-  assert.deepEqual(maskBlockExpressions(interpolation, { row: 0, column: 3 }), [
-    '   "}}"> @let w = 3',
-    '<button>',
-  ]);
-  const lines = ["@Component({ template: `{{ 'a\\\\<!x <button>x</button>>` })"];
-  const { templates, unread } = typescriptRegions(lines);
-  assert.deepEqual(unread, [{ row: 0, column: 29 }]);
-  assert.deepEqual(
-    walkTags(maskBlockExpressions(templates[0], unread[0])).map((tag) => tag.name),
-    ['button', 'button'],
-  );
+  assert.deepEqual(maskBlockExpressions(['<!-- @let x = a<b;']), ['<!-- @let x =    ;']);
 });
 
 test('maskBlockExpressions keeps line geometry across multi-line parameters and values', () => {

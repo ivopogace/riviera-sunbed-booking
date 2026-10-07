@@ -438,8 +438,7 @@ test('does not judge a control inside an HTML comment, on one line or across sev
 });
 
 /**
- * #1496: an inline template's comment is a `Comment` node to Angular, as an external one is; a
- * control past an escape is still judged, where no doctype is read.
+ * #1496: an inline template's comment is a `Comment` node to Angular, as an external one is.
  */
 test('does not judge a control inside an inline template\'s HTML comment', () => {
   const lines = [
@@ -449,14 +448,6 @@ test('does not judge a control inside an inline template\'s HTML comment', () =>
   ];
 
   assert.deepEqual(scan(TS, lines), []);
-  const escaped = [
-    "@Component({ template: `{{ 'a\\\\<!x " +
-      '<button (click)="save()" [disabled]="saving()">S</button>>` })',
-  ];
-  assert.deepEqual(
-    scan(TS, escaped).map((v) => [v.rule, v.line]),
-    [['BUSY-1', 1]],
-  );
 });
 
 test('finds a confirm surface in an @else if branch', () => {
@@ -664,6 +655,30 @@ function component(body) {
     '}',
   ];
 }
+
+/**
+ * #1496: FOCUS-1 reads an inline template's `template` mask, where a comment is blanked as an
+ * external one is: a confirm surface commented out is no surface, as Angular builds none.
+ */
+test('does not read a confirm surface inside an inline template\'s HTML comment', () => {
+  const lines = [
+    '@Component({',
+    "  selector: 'app-payouts-tab',",
+    '  template: `',
+    '    <!--',
+    '    @if (weatherConfirm()) {',
+    '      <button data-testid="weather-confirm-btn" (click)="go()">Issue refund</button>',
+    '    }',
+    '    -->',
+    '  `,',
+    '})',
+    'export class PayoutsTab {',
+    '  protected readonly weatherConfirm = signal(false);',
+    '}',
+  ];
+
+  assert.deepEqual(scan(TS, lines), []);
+});
 
 test('flags a confirm surface with no focus leg', () => {
   const lines = component(['  protected readonly weatherConfirm = signal(false);']);

@@ -101,19 +101,17 @@ function braceDelta(ch) {
  *
  * - `template` — the contents of inline templates, and nothing else. A `<button [disabled]>` that a
  *   TSDoc spells out to document a convention, or that a fixture string holds, is not markup; nor
- *   is one inside an `<!-- … -->` of the template, which Angular reads as a `Comment` node.
+ *   is one inside an `<!-- … -->` of the template, which Angular reads as a `Comment` node
+ *   (`maskComments`).
  * - `code` — executable source with comments, strings and template literals removed, so a helper
  *   named in a comment cannot pass for a call site.
  *
- * `templates` is `template` once per literal, in source order: each is its own template to
- * Angular, which builds an element left open at its end, so a walk that keeps open elements walks
- * each apart. `unread` is each literal's first `${…}` or escape, or undefined: from there the text
- * Angular reads, and so the lexer's context, is unknown, so `maskBlockExpressions` takes it as its
- * `stop`.
+ * `templates` is each literal's contents, in source order, its comments kept: each is its own
+ * template to Angular, which builds an element left open at its end, so a walk that keeps open
+ * elements walks each apart, and `walkTags` steps over a comment itself (`OPAQUE`).
  *
  * @param {string[]} lines the file's lines
- * @returns {{ template: string[], templates: string[][], unread: ({ row: number, column: number } |
- *   undefined)[], code: string[] }} the masks, line for line, and each literal's `unread`
+ * @returns {{ template: string[], templates: string[][], code: string[] }} the masks, line for line
  */
 export function typescriptRegions(lines) {
   const scan = {
@@ -134,11 +132,13 @@ export function typescriptRegions(lines) {
     while (scan.at < scan.line.length) MASK[scan.state](scan);
     if (scan.state === 'code') scan.tail.push('\n');
   }
-  const templates = scan.templates.map((mask, n) => maskComments(mask.map(joined), scan.unread[n]));
+  const templates = scan.templates.map((mask) => mask.map(joined));
   return {
-    template: overlaid(lines, templates),
+    template: overlaid(
+      lines,
+      templates.map((mask, n) => maskComments(mask, scan.unread[n])),
+    ),
     templates,
-    unread: scan.templates.map((_, n) => scan.unread[n]),
     code: scan.code.map(joined),
   };
 }
@@ -220,7 +220,7 @@ function maskString(scan) {
 /**
  * Inside an inline template: an escape or an interpolation is stepped over, and text joins the
  * mask. The first of either is the literal's `unread` position, which `maskComments` reads no
- * further than and `maskBlockExpressions` takes as its `stop`.
+ * further than.
  */
 function maskTemplate(scan) {
   const { line, at } = scan;
@@ -445,94 +445,84 @@ const BLOCKS = [
  * Angular reads `@if (…)`, `@for (…; track …)`, `@defer (on …)` and the rest, and the value of
  * `@let name = …;`, as expressions, never as markup, so a `<` there opens no tag. Unmasked, the walk
  * opened one at `@if (n<div && a>b)` that reached the `>` and read as complete (#1480). The mask
- * follows the lexer (`walkText`): a block's parameters run from its `(` to the `)`
- * `_consumeBlockParameters` stops at, and a `@let` value from its `=` to the `;`
- * `_consumeLetDeclarationValue` stops at. An interpolation and a CDATA section, doctype or
- * processing instruction hold no markup either, and are blanked too: a `<b title="` or `<title>`
- * read inside one opened a phantom that swallowed the real control after it (#1496). A guard that
- * reads a block's condition keeps reading the unmasked template.
- *
- * From `stop` on, an inline template's first `${…}` or escape (`unread`), the cooked text is
- * unknown: the mask blanks only block parameters and `@let` values there, and steps over a comment,
- * an interpolation or a declaration, even one that began before it, unblanked from `stop` on.
+ * follows the lexer: a block or `@let` opens only in text — the walk steps over a tag as `walkTags`
+ * reads it, a raw-text element's content and end tag included (`RAW_TEXT`, #1482), over an
+ * interpolation as `_consumeInterpolation` does, and over a comment as `walkTags` does (`OPAQUE`),
+ * so an `@let` or `@if (` inside one never blanks its `-->` (#1496) — a block's parameters run from
+ * its `(` to the `)` `_consumeBlockParameters` stops at, and a `@let` value from its `=` to the `;`
+ * `_consumeLetDeclarationValue` stops at. A guard that reads a block's condition
+ * keeps reading the unmasked template.
  *
  * @param {string[]} lines the comment-masked template region
- * @param {{ row: number, column: number }} [stop] the template's `unread` position, if any
- * @returns {string[]} the same lines with block parameters, `@let` values, interpolations and
- *   declarations blanked
+ * @returns {string[]} the same lines with block parameters and `@let` values blanked
  */
-export function maskBlockExpressions(lines, stop) {
-  const out = lines.join('\n').split('');
-  const ignored = [...out];
-  walkText(lines, out.length, { comments: ignored, code: out, spans: out }, offsetOf(lines, stop));
+export function maskBlockExpressions(lines) {
+  const text = lines.join('\n');
+  const out = text.split('');
+  const starts = lineStarts(lines);
+  let at = 0;
+
+  while (at < text.length) {
+    const step = text.startsWith('{{', at)
+      ? interpolationEnd(text, at + 2)
+      : (commentEnd(text, at) ??
+        tagEnd(lines, starts, text, at) ??
+        letEnd(text, at, out) ??
+        blockEnd(text, at, out) ??
+        at + 1);
+    at = step;
+  }
   return out.join('').split('\n');
 }
 
 /**
- * One inline template's mask with its `<!-- … -->` comments blanked, as `_consumeComment` reads
- * them: from a `<!--` the lexer reads as markup (`walkText`) to the first `-->` after it, so
- * `<!-->` ends nothing. Nothing is read from `stop` on: a `${…}` or an escape there is text the
+ * The offset past a comment opening at `at`, as `_consumeComment` reads it: to the first `-->`
+ * after its `<!--`, so `<!-->` ends nothing, or just past the `<!--` when none follows, a build
+ * error, as `walkTags` steps it; null when no `<!--` opens there.
+ */
+function commentEnd(text, at) {
+  if (!text.startsWith('<!--', at)) return null;
+  const end = text.indexOf('-->', at + 4);
+  return end === -1 ? at + 4 : end + 3;
+}
+
+/**
+ * One inline template's mask with its `<!-- … -->` comments blanked, for `typescriptRegions`'
+ * `template`. A comment opens where the lexer reads markup, as `maskBlockExpressions` walks it,
+ * so a `<!--` in a tag, its quoted values included, in raw text, an interpolation (to where
+ * `_consumeInterpolation` ends it, `lexerInterpolationEnd`), a CDATA section, doctype or processing
+ * instruction (`declarationEnd`), a block's parameters or a `@let` value opens none, and it ends as
+ * `commentEnd` reads it. Nothing is read from `stop` on: a `${…}` or an escape there is text the
  * mask does not hold, and may change the context or end a comment. An unterminated comment, a build
  * error, is left as markup.
  *
  * @param {string[]} lines the literal's mask
- * @param {{ row: number, column: number } | undefined} stop its first `${…}` or escape (`unread`)
+ * @param {{ row: number, column: number } | undefined} stop the literal's `unread` position
  * @returns {string[]} the same lines with each comment blanked
  */
 function maskComments(lines, stop) {
-  const out = lines.join('\n').split('');
-  const ignored = [...out];
-  const limit = offsetOf(lines, stop) ?? out.length;
-  walkText(lines, limit, { comments: out, code: ignored, spans: ignored });
-  return out.join('').split('\n');
-}
-
-/** The offset of a `{ row, column }` in `lines` joined by line ends, if one is given. */
-function offsetOf(lines, position) {
-  return position && lineStarts(lines)[position.row] + position.column;
-}
-
-/**
- * Walks a template until `limit` the way Angular's lexer reads it, blanking each span it steps over
- * in the array its kind names: a comment in `comments`; an interpolation, up to where
- * `_consumeInterpolation` ends it, and a CDATA section, doctype or processing instruction in
- * `spans`, though only before `spanLimit`; a block's parameters and a `@let` value in `code`. A
- * tag is stepped over as `walkTags` reads it, a raw-text element's content and end tag included
- * (`RAW_TEXT`, #1482), and blanked in none. So a `<!--`, a block or a `@let` opens only in text,
- * never in a tag, its quoted values included, raw text, a comment, an interpolation, a declaration,
- * a block's parameters or a `@let` value.
- */
-function walkText(lines, limit, { comments, code, spans }, spanLimit = limit) {
   const text = lines.join('\n');
+  const out = text.split('');
+  const ignored = [...out];
   const starts = lineStarts(lines);
-  const span = (at, end) => {
-    if (end !== null) blankRange(spans, at, Math.min(end, spanLimit));
-    return end;
-  };
+  const limit = stop === undefined ? text.length : starts[stop.row] + stop.column;
   let at = 0;
+
   while (at < limit) {
+    const comment = commentEnd(text, at);
+    const closed = comment !== null && comment > at + 4 && comment <= limit;
+    if (closed) blankRange(out, at, comment);
     at =
-      commentEnd(text, at, comments, limit) ??
-      span(at, declarationEnd(text, at)) ??
+      comment ??
+      declarationEnd(text, at) ??
       (text.startsWith('{{', at)
-        ? span(at, interpolationEnd(text, at + 2))
+        ? lexerInterpolationEnd(text, at + 2)
         : (tagEnd(lines, starts, text, at) ??
-          letEnd(text, at, code) ??
-          blockEnd(text, at, code) ??
+          letEnd(text, at, ignored) ??
+          blockEnd(text, at, ignored) ??
           at + 1));
   }
-}
-
-/**
- * The offset past a comment opening at `at`, blanked in `out` when its `-->` comes before `limit`;
- * null when no `<!--` opens there.
- */
-function commentEnd(text, at, out, limit) {
-  if (!text.startsWith('<!--', at)) return null;
-  const end = text.indexOf('-->', at + 4);
-  if (end === -1 || end + 3 > limit) return at + 4;
-  blankRange(out, at, end + 3);
-  return end + 3;
+  return out.join('').split('\n');
 }
 
 /**
@@ -1088,12 +1078,29 @@ function rawTextEnd(lines, line, column, name) {
 }
 
 /**
- * The offset an interpolation opened before `from` ends at, as `_consumeInterpolation` reads it:
- * past its `}}` outside a string, or at a `<` that starts a tag (`_isTagStart`), inside a string
- * too, where the lexer ends one early. After a `//` no quote opens, and the character after it is
- * read unchecked.
+ * The offset an interpolation opened before `from` ends at: past its `}}` outside a string, or at a
+ * `<` that starts a tag, where Angular's lexer ends one early (`_isTagStart`).
  */
 function interpolationEnd(text, from) {
+  let quote = null;
+  for (let at = from; at < text.length; at++) {
+    const ch = text[at];
+    if (quote === null && /^<[A-Za-z/!?]/.test(text.slice(at, at + 2))) return at;
+    if (quote === null && text.startsWith('}}', at)) return at + 2;
+    if (ch === '\\') at++;
+    else if (ch === quote) quote = null;
+    else if (quote === null && isQuote(ch)) quote = ch;
+  }
+  return text.length;
+}
+
+/**
+ * `interpolationEnd` as `_consumeInterpolation` itself reads it, for `maskComments`, where the end
+ * decides whether a `<!--` after it opens a comment: past its `}}` outside a string, or at a `<`
+ * that starts a tag (`_isTagStart`), inside a string too, where the lexer ends one early. After a
+ * `//` no quote opens, and the character after it is read unchecked.
+ */
+function lexerInterpolationEnd(text, from) {
   let quote = null;
   let comment = false;
   let at = from;
