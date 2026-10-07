@@ -421,6 +421,26 @@ test('a control in an inherited SVG or MathML namespace is no control', () => {
 });
 
 /**
+ * #1494: each inline template is its own tree, so an element one leaves open (Angular builds
+ * `<svg><g>` and `<div data-touch-exempt="r">` with no error) neither gives the next template's
+ * control its namespace nor exempts it.
+ */
+test('an element left open in one inline template does not reach the next', () => {
+  for (const opener of ['<svg><g>', '<div data-touch-exempt="r">']) {
+    const lines = [
+      `@Component({ template: \`${opener}\` })`,
+      'export class Chart {}',
+      '@Component({',
+      '  template: `<button>x</button>`,',
+      '})',
+      'export class Panel {}',
+    ];
+
+    assert.deepEqual(scan(TS, lines).map((v) => [v.rule, v.line]), [['TT-1', 4]], opener);
+  }
+});
+
+/**
  * #1494: void is judged on the namespace a tag builds in, as Angular looks its definition up by
  * full name: an unprefixed `<input>` inside `<svg>` is `:svg:input`, encloses what follows up to
  * its end tag, and its exemption covers the `<foreignObject>`'s button in it (`HtmlParser`:

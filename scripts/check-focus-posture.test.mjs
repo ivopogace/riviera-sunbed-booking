@@ -395,6 +395,23 @@ test('a busy control is judged by the namespace it inherits', () => {
   );
 });
 
+/** #1494: an `<svg>` one inline template leaves open gives no namespace to the next template. */
+test('a busy control is judged though an earlier inline template left an svg open', () => {
+  const lines = [
+    '@Component({ template: `<svg><g>` })',
+    'export class Chart {}',
+    '@Component({',
+    '  template: `<button (click)="save()" [disabled]="saving()">Save</button>`,',
+    '})',
+    'export class Panel {}',
+  ];
+
+  assert.deepEqual(
+    scan(TS, lines).map((v) => [v.rule, v.line]),
+    [['BUSY-1', 4]],
+  );
+});
+
 test('does not judge a control inside an HTML comment, on one line or across several', () => {
   const lines = [
     '<!-- <button [disabled]="saving()">Old</button> --><button [disabled]="saving()">S</button>',

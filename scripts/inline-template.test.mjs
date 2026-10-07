@@ -167,6 +167,36 @@ test('typescriptRegions masks a component down to its inline template and its co
   assert.equal(code[10].trim(), 'go() { this.el.focus(); }');
 });
 
+/**
+ * #1494: each `template:` literal is its own template to Angular, which builds an element left open
+ * at its end (`<svg><g>` parses with no error), so `templates` masks each literal apart, geometry
+ * kept, for a walk that must not carry one template's open elements into the next.
+ */
+test('typescriptRegions masks each inline template apart as well', () => {
+  const lines = [
+    '@Component({ template: `<svg><g>` })',
+    'export class Chart {}',
+    '@Component({',
+    '  template: `<button>x</button>`,',
+    '})',
+    'export class Panel {}',
+  ];
+
+  const { template, templates } = typescriptRegions(lines);
+
+  assert.equal(templates.length, 2);
+  for (const mask of templates) {
+    assert.deepEqual(mask.map((line) => line.length), lines.map((line) => line.length));
+  }
+  assert.deepEqual(templates[0].map((line) => line.trim()).filter(Boolean), ['<svg><g>']);
+  assert.deepEqual(templates[1].map((line) => line.trim()).filter(Boolean), ['<button>x</button>']);
+  assert.deepEqual(template.map((line) => line.trim()).filter(Boolean), [
+    '<svg><g>',
+    '<button>x</button>',
+  ]);
+  assert.deepEqual(typescriptRegions(['const a = 1;']).templates, []);
+});
+
 test('typescriptRegions reads only a `template:` literal as an inline template', () => {
   const lines = ['const fixtures = {', '  xtemplate: `', '    <button>Go</button>', '  `,', '};'];
 
