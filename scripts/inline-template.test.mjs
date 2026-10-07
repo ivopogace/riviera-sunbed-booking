@@ -689,6 +689,29 @@ test('walkTags gives a start tag the namespace Angular\'s parser does, inherited
 });
 
 /**
+ * #1498: a start tag is `void` when Angular closes it at the next token: its name, lower-cased, is
+ * one `getHtmlTagDefinition` marks `isVoid` (22.1.6: the fourteen below), and it builds in the
+ * namespace `''`. A prefixed or inherited one is looked up by its full name (`:xhtml:param`,
+ * `:svg:param`), finds the default definition and encloses (`HtmlParser`:
+ * `:svg:svg[:svg:param[:svg:foreignObject[button]]]`).
+ */
+test('walkTags marks a start tag void as Angular\'s tag definitions do', () => {
+  for (const name of ['area', 'base', 'br', 'col', 'embed', 'hr', 'img', 'input', 'link', 'meta',
+    'param', 'source', 'track', 'wbr']) {
+    assert.equal(walkTags([`<${name}>`])[0].void, true, name);
+    assert.equal(walkTags([`<${name}/>`])[0].void, true, `${name}/`);
+  }
+  for (const line of ['<PARAM>', '<Img src="x">', '<div><param>']) {
+    assert.equal(walkTags([line]).at(-1).void, true, line);
+  }
+  for (const line of ['<button>', '<p>', '<keygen>', '<xhtml:param>', '<svg:input>',
+    '<svg><param>', '<math><input>', '<svg><foreignObject><div><x:param>']) {
+    assert.equal(walkTags([line]).at(-1).void, false, line);
+  }
+  assert.equal(walkTags(['<svg><foreignObject><param>']).at(-1).void, true);
+});
+
+/**
  * #1487: no block or `@let` opens inside a prefixed raw-text element, and the ones after it still
  * do (`HtmlParser`: `:svg:style[Text "@if (a<b) {x}"], Block`).
  */
