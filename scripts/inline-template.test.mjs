@@ -316,6 +316,7 @@ test('typescriptRegions opens a comment only where Angular\'s lexer does', () =>
     '{{ "@if (" }}<!-- <button>x</button> -->)',
     '<!DOCTYPE ">" <!-- <button>x</button> -->',
     '<!><!-- <button>x</button> -->',
+    '<a href="https://x.y/z"></a><!-- <button>x</button> -->',
   ];
 
   for (const body of markup) {
@@ -331,8 +332,9 @@ test('typescriptRegions opens a comment only where Angular\'s lexer does', () =>
 /**
  * #1496: a start tag the walk cannot read to its `>` (`readAttributes` marks it incomplete, or no
  * name it knows follows the `<`) is a build error in Angular or a misread, so the scan stops
- * reading comments there, as at an escape. `HtmlParser` builds each `div` below with its `role`:
- * a spaced `=` or a `//` or `/* … *\/` comment in a start tag is no `<!--` to it.
+ * reading comments there, as at an escape; so does one holding a `//` or `/*` outside quotes, a
+ * start-tag comment (`_consumeSingleLineComment`, `_consumeMultiLineComment`) the walk reads as
+ * attributes. `HtmlParser` builds each `div` below with its `role`.
  */
 test('typescriptRegions reads no comment past a start tag it cannot read', () => {
   for (const body of [
@@ -340,6 +342,8 @@ test('typescriptRegions reads no comment past a start tag it cannot read', () =>
     '<div // <!--\n role="dialog" -->>x</div>',
     '<div /* <!-- */ role="dialog" -->>x</div>',
     '<a[a]="<!--" role="dialog">x</a><!-- end -->',
+    '<div //><!-- \n role="dialog">x</div><!-- end -->',
+    '<div /*><!--*/ role="dialog">x</div><!-- end -->',
   ]) {
     const lines = `@Component({ template: \`${body}\` })`.split('\n');
     assert.match(typescriptRegions(lines).template.join('\n'), /role="dialog"/, body);
