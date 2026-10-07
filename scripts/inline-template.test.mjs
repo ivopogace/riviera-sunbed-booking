@@ -511,7 +511,15 @@ test('maskBlockExpressions blanks no interpolation or declaration past `stop`', 
     '@if (   ) {',
     '<!x>',
   ]);
-  assert.deepEqual(maskBlockExpressions(['{{ "}}"> @let w = 3', '<button>'], { row: 0, column: 3 }), [
+  assert.deepEqual(maskBlockExpressions(['<!x>@if (a<b) {'], { row: 0, column: 0 }), [
+    '<!x>@if (   ) {',
+  ]);
+  const cdata = ['<![CDATA[ x @let y = a<b; ]]>'];
+  assert.deepEqual(maskBlockExpressions(cdata, { row: 0, column: 12 }), [
+    `${blank('<![CDATA[ x ')}@let y =    ; ]]>`,
+  ]);
+  const interpolation = ['{{ "}}"> @let w = 3', '<button>'];
+  assert.deepEqual(maskBlockExpressions(interpolation, { row: 0, column: 3 }), [
     '   "}}"> @let w = 3',
     '<button>',
   ]);

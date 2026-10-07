@@ -491,7 +491,7 @@ function maskComments(lines, stop) {
   return out.join('').split('\n');
 }
 
-/** The offset of a `{ row, column }` position in `lines` joined by line ends; undefined for none. */
+/** The offset of a `{ row, column }` in `lines` joined by line ends, if one is given. */
 function offsetOf(lines, position) {
   return position && lineStarts(lines)[position.row] + position.column;
 }
@@ -500,24 +500,24 @@ function offsetOf(lines, position) {
  * Walks a template from `from` until `limit` the way Angular's lexer reads it, and returns where it
  * stopped. Each span it steps over is blanked in the array its kind names: a comment in `comments`;
  * an interpolation, up to where `_consumeInterpolation` ends it, and a CDATA section, doctype or
- * processing instruction in `spans`, up to `limit` at most; a block's parameters and a `@let` value
- * in `code`. Without `comments` no comment is read, and without `spans` no declaration, and an
- * interpolation is stepped over unblanked. A tag is stepped over as `walkTags` reads it, a raw-text
- * element's content and end tag included (`RAW_TEXT`, #1482), and blanked in none. So a `<!--`, a
- * block or a `@let` opens only in text, never in a tag, its quoted values included, raw text, an
- * interpolation, a declaration, a block's parameters or a `@let` value.
+ * processing instruction in `spans`, up to `limit` at most, where a declaration's step ends too; a
+ * block's parameters and a `@let` value in `code`. Without `comments` no comment is read, and
+ * without `spans` no declaration, and an interpolation is stepped over unblanked. A tag is stepped
+ * over as `walkTags` reads it, a raw-text element's content and end tag included (`RAW_TEXT`,
+ * #1482), and blanked in none. So a `<!--`, a block or a `@let` opens only in text, never in a
+ * tag, its quoted values included, raw text, an interpolation, a declaration, a block's parameters
+ * or a `@let` value.
  */
 function walkText(lines, from, limit, { comments, code, spans }) {
   const text = lines.join('\n');
   const starts = lineStarts(lines);
-  const span = (at, end) => blanked(spans, at, end === null ? null : Math.min(end, limit));
   let at = from;
   while (at < limit) {
     at =
       (comments && commentEnd(text, at, comments, limit)) ??
-      (spans && span(at, declarationEnd(text, at))) ??
+      (spans && blanked(spans, at, declarationEnd(text, at), limit)) ??
       (text.startsWith('{{', at)
-        ? span(at, interpolationEnd(text, at + 2))
+        ? stepped(spans, at, interpolationEnd(text, at + 2), limit)
         : (tagEnd(lines, starts, text, at) ??
           letEnd(text, at, code) ??
           blockEnd(text, at, code) ??
@@ -526,9 +526,15 @@ function walkText(lines, from, limit, { comments, code, spans }) {
   return at;
 }
 
-/** `end`, after blanking `out`, when there is one, from `from` up to it; null when `end` is. */
-function blanked(out, from, end) {
-  if (out !== undefined && end !== null) blankRange(out, from, end);
+/** `end`, or `limit` when it comes first, after blanking `spans` up to it; null when `end` is. */
+function blanked(spans, from, end, limit) {
+  if (end === null) return null;
+  return stepped(spans, from, Math.min(end, limit), limit);
+}
+
+/** `end`, after blanking `spans`, when there are some, from `from` up to it or to `limit`. */
+function stepped(spans, from, end, limit) {
+  if (spans !== undefined) blankRange(spans, from, Math.min(end, limit));
   return end;
 }
 
