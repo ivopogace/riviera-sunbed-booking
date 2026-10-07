@@ -428,7 +428,7 @@ test('walkTags steps over a raw-text element\'s content to its end tag', () => {
     ['<style>a::after{content:"<select>"}</style><i>', ['<style', '</style', '<i']],
     ['<script><input></script><i>', ['<script', '</script', '<i']],
     ['<svg><title><button></title></svg>', ['<svg', '<title', '</title', '</svg']],
-    ['<svg:title><b>x</b></svg:title>', ['<b', '</b']],
+    ['<svg:title><b>x</b></svg:title>', ['<svg:title', '<b', '</b', '</svg:title']],
     ['<TEXTAREA rows="4"><b></TextArea><i>', ['<textarea', '</textarea', '<i']],
     ['<title data-x="a>b"><b></title><i>', ['<title', '</title', '<i']],
     ['<textarea><b></ textarea ><i>', ['<textarea', '</textarea', '<i']],
@@ -456,8 +456,8 @@ test('walkTags finds a raw-text end tag across lines, and reads none past the en
  * any case and the prefix exactly, as the lexer does. `_consumeRawTextWithTagClose` ends the content
  * at the bare name's end tag only, so `</svg:style>` ends nothing. Since #1492 the element is a walk
  * entry, its end tag a bare-name close entry, as an unprefixed raw-text element's is (#1484). A
- * prefix the lexer does not read (`svg-x:`, a second `:`, a name that runs on past `style`) opens no
- * entry and no raw text. Each row is the tree `HtmlParser` builds; a self-closed `<svg:style/>`, a
+ * name the walk does not read (`svg-x:`, a second `:`, a name that runs on past `style`) opens no
+ * entry and no raw text, nor does a start tag glued to the next `<`. Each row is the tree `HtmlParser` builds; a self-closed `<svg:style/>`, a
  * `</svg:style>` and an incomplete start tag are each a build error too, and pin only the lexer's
  * reading.
  */
@@ -480,7 +480,7 @@ test('walkTags steps over a prefixed raw-text element\'s content to its bare-nam
     ['<a:b:style><b></b>', ['<b', '</b']],
     ['<svg-x:style><b></b>', ['<b', '</b']],
     ['<svg:style.x><b></b>', ['<b', '</b']],
-    ['<svg:style<b></style><i>', ['<svg:style', '<b', '</style', '<i']],
+    ['<svg:style<b></style><i>', ['<b', '</style', '<i']],
     ['<svg:style a<b></style><i>', ['<svg:style', '<b', '</style', '<i']],
   ];
   for (const [line, expected] of cases) {
@@ -511,7 +511,7 @@ test('walkTags reads a prefixed element\'s start and end tags as entries named b
     ['<svg:g><b></b></g><i>', ['<svg:g', '<b', '</b', '</g', '<i']],
     ['<xhtml:DIV></ xhtml:DIV\t>', ['<xhtml:div', '</xhtml:div']],
     ['<x1:div/><i>', ['<x1:div', '<i']],
-    ['<svg:g<b></b>', ['<svg:g', '<b', '</b']],
+    ['<svg:g<b></b>', ['<b', '</b']],
     ['<a:b:c></a:b:c><i>', ['<i']],
     ['<1:div></1:div><i>', ['<i']],
   ];
@@ -601,10 +601,11 @@ test('walkTags reports a start tag\'s attributes, line and form', () => {
   const [open, close, after] = walkTags(lines).slice(1);
 
   assert.equal(open.name, 'textarea');
+  assert.equal(open.prefix, '');
   assert.equal(open.line, 2);
   assert.deepEqual(open.attributes.get('[disabled]'), { value: 'saving()', line: 2 });
   assert.equal(open.selfClosed, false);
   assert.equal(open.incomplete, false);
-  assert.deepEqual(close, { kind: 'close', name: 'textarea' });
+  assert.deepEqual(close, { kind: 'close', prefix: '', name: 'textarea' });
   assert.equal(after.selfClosed, true);
 });

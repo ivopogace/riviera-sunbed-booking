@@ -263,8 +263,12 @@ function busyViolations(path, lines, added, template) {
   return violations;
 }
 
-/** BUSY-1 for an actionable element, BUSY-2 for a field that starts its own write, else null. */
+/**
+ * BUSY-1 for an actionable element, BUSY-2 for a field that starts its own write, else null. Only a
+ * tag spelled in the HTML namespace (`html`) is either: `<xhtml:button>` is one, `<svg:button>` none.
+ */
 function busyRule(tag) {
+  if (!tag.html) return null;
   if (ACTIONABLE.has(tag.name)) return 'BUSY-1';
   return selfCommits(tag) ? 'BUSY-2' : null;
 }
