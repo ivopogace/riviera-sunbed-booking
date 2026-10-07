@@ -45,7 +45,9 @@ const JUDGED = new Set(['button', 'input', 'select', 'textarea']);
 
 /**
  * Elements that never have an end tag, per the HTML spec, and so can never open an exemption scope.
- * `<input>` is both judged and void — it is exempted by an ancestor, never by its own subtree.
+ * `<input>` is both judged and void — it is exempted by an ancestor, never by its own subtree. Only
+ * unprefixed: Angular looks a prefixed tag up by its full name (`:xhtml:input`), finds no void
+ * definition, and lets it enclose what follows up to its end tag.
  */
 const VOID = new Set([
   'area',
@@ -94,18 +96,27 @@ export function findViolations({ path, lines, added }) {
     if (rule !== null) {
       violations.push({ path, line: tag.line, rule, text: lines[tag.line - 1].trim() });
     }
-    if (!tag.selfClosed && !VOID.has(tag.name)) open.push({ name: tag.name, exempt });
+    if (encloses(tag)) open.push({ name: tag.name, exempt });
   }
   return violations;
 }
 
-/** TT-2 for an exemption that gives no reason, TT-1 for an undeclared control, else null. */
+/** Whether a start tag opens a scope its end tag closes: neither self-closed nor `VOID`. */
+function encloses(tag) {
+  return !tag.selfClosed && !(tag.prefix === '' && VOID.has(tag.name));
+}
+
+/**
+ * TT-2 for an exemption that gives no reason, TT-1 for an undeclared control, else null. A control is
+ * a `JUDGED` name its tag spells in the HTML namespace (`html`): `<xhtml:button>` is one,
+ * `<svg:button>` none.
+ */
 function ruleBroken(tag, open) {
   const marker = tag.attributes.get('data-touch-exempt');
   if (marker !== undefined) return marker.value.trim() === '' ? 'TT-2' : null;
   const declared =
     tag.attributes.has('appTouchTarget') || open.some((element) => element.exempt);
-  return JUDGED.has(tag.name) && !declared ? 'TT-1' : null;
+  return tag.html && JUDGED.has(tag.name) && !declared ? 'TT-1' : null;
 }
 
 /**

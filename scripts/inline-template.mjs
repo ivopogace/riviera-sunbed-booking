@@ -12,7 +12,7 @@
  * whole walk: `typescriptRegions` masks a file down to its inline templates and its code,
  * `maskHtmlComments` masks an external template's comments, `maskBlockExpressions` masks block
  * parameters and `@let` values out of the tag walk, and `walkTags` is that walk: where in the masked
- * markup an element tag opens (`tagNameAt`), one start tag's attributes (`readAttributes`), and a
+ * markup an element tag opens (`elementNameAt`), one start tag's attributes (`readAttributes`), and a
  * raw-text element's content stepped over as text. Beside
  * `git-diff.mjs` because that is the guards' shared module, and dependency-free for the same reason
  * it is: the hygiene CI job runs the suites with no install step.
@@ -266,14 +266,15 @@ function blank(chars, at, length) {
  * neither judges it — a phantom named for a control would fail a build on a line holding none
  * (#529's lesson) — nor lets it enclose anything (#1478). A block parameter or `@let` value, where
  * such a read could reach a `>` and read as complete, is blanked first by `maskBlockExpressions`
- * (#1480). Shared through `tagNameAt` and `prefixedRawTextAt`.
+ * (#1480). Shared through `tagNameAt` and `elementNameAt`.
  */
 const TAG_NAME_END = /[\s/>]/;
 
 /**
- * The element name starting at `from`, just past a tag's `<` (or its `</` and any whitespace),
- * lower-cased; null when that `<` opens no tag — no letter starts the name, or no `TAG_NAME_END`
- * follows it. A name at the line's end is a real one: a start tag that spans lines puts its first
+ * The unprefixed element name starting at `from`, just past a tag's `<` (or its `</` and any
+ * whitespace), lower-cased; null when that `<` opens no unprefixed tag — no letter starts the name,
+ * or no `TAG_NAME_END` follows it, as a `:` does in `<svg:g>`, whose name `elementNameAt` reads
+ * instead. A name at the line's end is a real one: a start tag that spans lines puts its first
  * attribute on the next.
  *
  * @param {string} line the masked template line
@@ -469,9 +470,15 @@ function tagEnd(lines, starts, text, at) {
 
 /**
  * Walks the masked template and returns one entry per element tag, start and end alike, in
- * document order: `{ kind: 'open', name, attributes, selfClosed, incomplete, line }` with the
- * 1-based line its `<` is on, or `{ kind: 'close', name }`. The one walk both markup guards judge
- * and `maskBlockExpressions` steps by, so the three read the same tags.
+ * document order: `{ kind: 'open', prefix, name, html, attributes, selfClosed, incomplete, line }`
+ * with the 1-based line its `<` is on, or `{ kind: 'close', prefix, name }`. The one walk both
+ * markup guards judge and `maskBlockExpressions` steps by, so the three read the same tags.
+ *
+ * `prefix` is the namespace prefix as written, `''` when there is none, and `name` the local name
+ * lower-cased, so a guard's stack balances `<svg:g>` against `</svg:g>` and against the bare `</g>`
+ * namespace inheritance makes its end tag (`_getPrefix`). `html` is whether the tag's own spelling
+ * builds the HTML element `name` names (`elementNameAt`); a guard judges a control by it, so
+ * `<svg:button>` is no button.
  *
  * A start tag legitimately spans lines — every multi-line binding in the app is written that way —
  * so this tracks position across the whole region rather than per line.
@@ -502,65 +509,75 @@ export function walkTags(lines) {
 
 /**
  * The tags a `<` at line `i`, column `c` opens or closes, and the last position reading them took;
- * null when that `<` opens no tag. A prefixed raw-text element returns no tags and the position past
- * its end tag (`prefixedRawTextAt`); any other prefixed tag returns null.
+ * null when that `<` opens no tag.
  *
- * A complete start tag named in `RAW_TEXT` is followed by its content, which `_consumeTagOpen` hands
- * to `_consumeRawTextWithTagClose` as text: the read runs on to the element's end tag and returns it
- * as a close entry beside the start tag, so a guard's open-element stack stays balanced, or to the
- * region's end when there is none. An incomplete start tag returns before that in the lexer, so it
- * starts no raw text, and nor does it here.
+ * A complete start tag whose content is raw text (`isRawText`, by prefix and name) is followed by
+ * that content, which `_consumeTagOpen` hands to `_consumeRawTextWithTagClose` as text: the read
+ * runs on to the element's end tag and returns it as a close entry beside the start tag, so a
+ * guard's open-element stack stays balanced, or to the region's end when there is none. That lexer
+ * matches only the bare name's end tag, so `<svg:style>…</style>` closes and `<svg:style>…
+ * </svg:style>` runs to the region's end, and the close entry has no prefix. An incomplete start tag
+ * returns before that in the lexer, so it starts no raw text, and nor does it here.
  */
 function tagAt(lines, i, c) {
   if (lines[i][c] !== '<') return null;
   if (lines[i][c + 1] === '/') return endTagAt(lines, i, c + 2);
-  const name = tagNameAt(lines[i], c + 1);
-  if (name === null) return prefixedRawTextAt(lines, i, c);
-  const read = readAttributes(lines, i, c + 1 + name.length);
+  const tag = elementNameAt(lines[i], c + 1);
+  if (tag === null) return null;
+  const { prefix, name } = tag;
+  const read = readAttributes(lines, i, c + 1 + tag.length);
   const open = {
     kind: 'open',
+    prefix,
     name,
+    html: tag.html,
     attributes: read.attributes,
     selfClosed: read.selfClosed,
     incomplete: read.incomplete,
     line: i + 1,
   };
-  if (!isRawText('', name) || read.incomplete) {
+  if (!isRawText(prefix, name) || read.incomplete) {
     return { tags: [open], line: read.line, column: read.column };
   }
   const end = rawTextEnd(lines, read.line, read.column + 1, name);
   if (end === null) return { tags: [open], ...pastEnd(lines) };
-  return { tags: [open, { kind: 'close', name }], ...end };
+  return { tags: [open, { kind: 'close', prefix: '', name }], ...end };
 }
 
 /**
- * A start tag's prefix and name as `_consumePrefixAndName` reads them: the prefix is an ASCII letter
- * and then ASCII letters and digits up to a `:`, and the name runs on from there. A `-` before any
- * `:` ends the prefix read, so `<svg-x:style>` has no prefix, and its name is all of `svg-x:style`.
+ * A tag's prefix and name as `_consumePrefixAndName` reads them: the prefix is an ASCII letter and
+ * then ASCII letters and digits up to a `:`, and the name runs on from there. A `-` before any `:`
+ * ends the prefix read, so `<svg-x:style>` has no prefix, and its name is all of `svg-x:style`.
  */
 const PREFIXED_NAME = /^([A-Za-z][A-Za-z\d]*):([\w-]+)/;
 
 /**
- * The step over a prefixed raw-text element whose `<` is at line `i`, column `c`, to the `>` of its
- * end tag, or to the region's end when there is none; null when that `<` opens none.
+ * The prefix and name of the tag whose name starts at `from`, as `_consumePrefixAndName` reads them,
+ * with the name's length in the line; null when that `<` opens no tag. An unprefixed name is
+ * `tagNameAt`'s, its prefix `''`. A prefixed one is read by `PREFIXED_NAME` and ended by a
+ * `TAG_NAME_END`; a name with a second `:` (`<a:b:c>`, Angular's `:a:b:c`) or a `:` after a `-`
+ * (`<svg-x:style>`) is read by neither, and is no tag to the walk, its end tag no more than its start.
  *
- * Angular reads `<svg:style>` as an element whose content is raw text (`isRawText`), and
- * `_consumeRawTextWithTagClose` matches only the bare name's end tag: `<svg:style>…</style>` builds,
- * and `<svg:style>…</svg:style>` runs to the template's end. The walk takes no prefixed tag as an
- * entry, `tagNameAt` reading no prefixed name, so this one is none either: it returns no tags, the
- * stack of a guard is left as it was, and the content's markup is never read. A prefixed tag that
- * is not raw text, `<svg:title>` among them, is no tag to the walk, and its content is read.
+ * `html` is whether the tag's own spelling builds the HTML element its lower-cased name names.
+ * Angular's renderer creates an unprefixed tag with `createElement`, which lower-cases the name in an
+ * HTML document, and a prefixed one with `createElementNS(NAMESPACE_URIS[prefix] || prefix, name)`,
+ * which keeps its case: only the exact prefix `xhtml` maps to the HTML namespace, and only a
+ * lower-case name there is the element it spells (`<xhtml:BUTTON>` is an `HTMLUnknownElement`).
+ * Namespace inheritance is not followed: an unprefixed tag inside `<svg>` builds an SVG element, but
+ * is judged as it always was.
+ *
+ * @param {string} line the masked template line
+ * @param {number} from the index after the `<`, or after the `</` and its whitespace
+ * @returns {{ prefix: string, name: string, html: boolean, length: number } | null}
  */
-function prefixedRawTextAt(lines, i, c) {
-  const read = PREFIXED_NAME.exec(lines[i].slice(c + 1));
-  if (read === null) return null;
-  const [whole, prefix, raw] = read;
-  const nameEnd = c + 1 + whole.length;
-  const name = raw.toLowerCase();
-  if (!TAG_NAME_END.test(lines[i][nameEnd] ?? ' ') || !isRawText(prefix, name)) return null;
-  const start = readAttributes(lines, i, nameEnd);
-  if (start.incomplete) return null;
-  return { tags: [], ...(rawTextEnd(lines, start.line, start.column + 1, name) ?? pastEnd(lines)) };
+function elementNameAt(line, from) {
+  const bare = tagNameAt(line, from);
+  if (bare !== null) return { prefix: '', name: bare, html: true, length: bare.length };
+  const read = PREFIXED_NAME.exec(line.slice(from));
+  if (read === null || !TAG_NAME_END.test(line[from + read[0].length] ?? ' ')) return null;
+  const [whole, prefix, local] = read;
+  const name = local.toLowerCase();
+  return { prefix, name, html: prefix === 'xhtml' && local === name, length: whole.length };
 }
 
 /** Angular's `isWhitespace`: TAB through SPACE, and NBSP; a line end is one of them. */
@@ -568,18 +585,20 @@ const LEXER_WHITESPACE = /[\t-\x20\xa0]/;
 
 /**
  * The end tag read from just past its `</` at line `i`, column `from`, as `_consumeTagClose` reads
- * it: whitespace, the name, whitespace, `>`, where either whitespace may cross line ends; null when
- * no name follows. The position is that `>`. When anything else follows the name, Angular emits no
- * end tag and the template never builds, but the entry stands and the walk resumes after the name.
+ * it: whitespace, the prefix and name (`elementNameAt`, so a prefix starts with a letter, though the
+ * lexer reads `</1:div>` too, a build error either way), whitespace, `>`, where either whitespace may
+ * cross line ends; null when no name follows. The position is that `>`. When anything else follows
+ * the name, Angular emits no end tag and the template never builds, but the entry stands and the
+ * walk resumes after the name.
  */
 function endTagAt(lines, i, from) {
   const start = pastWhitespace(lines, i, from);
-  const name = tagNameAt(lines[start.line], start.column);
-  if (name === null) return null;
-  const nameEnd = start.column + name.length;
+  const tag = elementNameAt(lines[start.line], start.column);
+  if (tag === null) return null;
+  const nameEnd = start.column + tag.length;
   const end = pastWhitespace(lines, start.line, nameEnd);
   const at = lines[end.line][end.column] === '>' ? end : { line: start.line, column: nameEnd - 1 };
-  return { tags: [{ kind: 'close', name }], ...at };
+  return { tags: [{ kind: 'close', prefix: tag.prefix, name: tag.name }], ...at };
 }
 
 /** The first position from line `i`, column `c` that is no lexer whitespace, or the region's end. */
