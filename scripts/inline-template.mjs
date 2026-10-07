@@ -11,7 +11,8 @@
  * `interpolationStep`. `check-focus-posture` and `check-touch-target` judge markup, so they take the
  * whole walk: `typescriptRegions` masks a file down to its inline templates, their comments
  * blanked, and its code, `maskHtmlComments` masks an external template's comments,
- * `maskBlockExpressions` masks block parameters and `@let` values out of the tag walk, and
+ * `maskBlockExpressions` masks block parameters, `@let` values, interpolations and declarations out
+ * of the tag walk, and
  * `walkTags` is that walk: where in the masked markup an element tag opens (`elementNameAt`), one
  * start tag's attributes (`readAttributes`), and a raw-text element's content stepped over as
  * text. Beside `git-diff.mjs` because that is the guards' shared module, and dependency-free for
@@ -106,8 +107,9 @@ function braceDelta(ch) {
  *
  * `templates` is `template` once per literal, in source order: each is its own template to
  * Angular, which builds an element left open at its end, so a walk that keeps open elements walks
- * each apart. `unread` is each literal's first `${…}` or escape, or undefined: the mask holds no
- * text from there that Angular reads, so `maskBlockExpressions` takes it as its `stop`.
+ * each apart. `unread` is each literal's first `${…}` or escape, or undefined: from there the text
+ * Angular reads, and so the lexer's context, is unknown, so `maskBlockExpressions` takes it as its
+ * `stop`.
  *
  * @param {string[]} lines the file's lines
  * @returns {{ template: string[], templates: string[][], unread: ({ row: number, column: number } |
@@ -218,7 +220,7 @@ function maskString(scan) {
 /**
  * Inside an inline template: an escape or an interpolation is stepped over, and text joins the
  * mask. The first of either is the literal's `unread` position, which `maskComments` reads no
- * further than.
+ * further than and `maskBlockExpressions` takes as its `stop`.
  */
 function maskTemplate(scan) {
   const { line, at } = scan;
@@ -451,7 +453,8 @@ const BLOCKS = [
  * reads a block's condition keeps reading the unmasked template.
  *
  * From `stop` on, an inline template's first `${…}` or escape (`unread`), the cooked text is
- * unknown: the mask blanks only block parameters and `@let` values there, as before #1496.
+ * unknown: the mask blanks only block parameters and `@let` values there, and steps over an
+ * interpolation unblanked.
  *
  * @param {string[]} lines the comment-masked template region
  * @param {{ row: number, column: number }} [stop] the template's `unread` position, if any
@@ -551,9 +554,10 @@ function commentEnd(text, at, out, limit) {
 }
 
 /**
- * The offset past a CDATA section (`_consumeCdata`, to its `]]>`), a doctype (`_consumeDocType`, to
- * its first `>`) or a processing instruction (`_consumeProcessingInstruction`, to its first `?` or
- * `>` outside quotes) opening at `at`; null for none. One that never closes is a build error, and
+ * The offset past a CDATA section (`_consumeCdata`, to its `]]>`) or a doctype (`_consumeDocType`,
+ * to its first `>`), or just past the first `?` or `>` outside quotes that ends a processing
+ * instruction (`_consumeProcessingInstruction`; the `>` after a `?` is then read as text), opening
+ * at `at`; null for none. One that never closes is a build error, and
  * runs to the text's end here, so nothing after it opens a comment.
  */
 function declarationEnd(text, at) {

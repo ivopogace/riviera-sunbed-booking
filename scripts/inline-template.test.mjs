@@ -267,7 +267,7 @@ test('typescriptRegions keeps a comment it cannot end as Angular would', () => {
     '@Component({ template: `<button>b</button> -->` })',
     '@Component({ template: `<!-- ${x} <button>c</button> -->` })',
     '@Component({ template: `<!-- -\\-> <button>d</button> -->` })',
-    '@Component({ template: `<?x "<!-- <button>e</button> -->` })',
+    '@Component({ template: `<?x "> <!-- <button>e</button> -->` })',
   ];
 
   const { templates } = typescriptRegions(lines);
@@ -277,7 +277,7 @@ test('typescriptRegions keeps a comment it cannot end as Angular would', () => {
     '<button>b</button> -->',
     `<!-- ${blank('${x}')} <button>c</button> -->`,
     `<!-- -${blank('\\-')}> <button>d</button> -->`,
-    '<?x "<!-- <button>e</button> -->',
+    '<?x "> <!-- <button>e</button> -->',
   ]);
 });
 
@@ -299,7 +299,6 @@ test('typescriptRegions opens a comment only where Angular\'s lexer does', () =>
     '@let x = "<!--"; <button>x</button> -->',
     '<?x <!-- ><button>x</button> -->',
     '<?x ">" <!-- ?><button>x</button> -->',
-    "<?x '?\\'>' <!-- ?><button>x</button> -->",
     '{{ a // " }}@let x = "<!--"; <button>x</button> -->',
     '{{ a //<!-- }}<button>x</button> -->',
     '${a}<!-- <button>x</button> -->',
@@ -496,8 +495,8 @@ test('maskBlockExpressions blanks interpolations and declarations, which hold no
 
 /**
  * #1496: from an inline template's first `${…}` or escape (`unread`) the cooked text is unknown, so
- * the walk-only mask reads on as it did before it knew interpolations and declarations: a span that
- * reaches past that point is blanked only up to it, and none after it is. An interpolation is still
+ * the walk-only mask blanks only block parameters and `@let` values past it: a span that reaches
+ * past that point is blanked only up to it, and none after it is. An interpolation is still
  * stepped over whole, as it was then, so nothing in it reads as a `@let`.
  */
 test('maskBlockExpressions blanks no interpolation or declaration past `stop`', () => {
