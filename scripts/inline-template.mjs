@@ -9,10 +9,9 @@
  * only the decision: a scanner keeps its loop, its string and escape rules and its comment handling,
  * feeds the code it walks into a `CodeTail`, asks at a backtick, and steps a `${…}` with
  * `interpolationStep`. `check-focus-posture` and `check-touch-target` judge markup, so they take the
- * whole walk: `typescriptRegions` masks a file down to its inline templates, their comments
- * blanked, and its code, `maskHtmlComments` masks an external template's comments,
- * `maskBlockExpressions` masks block parameters, `@let` values, interpolations and declarations out
- * of the tag walk, and
+ * whole walk: `typescriptRegions` masks a file down to its inline templates and its code,
+ * `maskHtmlComments` masks an external template's comments, `maskBlockExpressions` masks block
+ * parameters and `@let` values out of the tag walk, stepping over a comment as the walk does, and
  * `walkTags` is that walk: where in the masked markup an element tag opens (`elementNameAt`), one
  * start tag's attributes (`readAttributes`), and a raw-text element's content stepped over as
  * text. Beside `git-diff.mjs` because that is the guards' shared module, and dependency-free for
@@ -540,9 +539,10 @@ function commentSpans(lines, limit) {
 /**
  * The offset past a CDATA section (`_consumeCdata`, to its `]]>`) or a doctype (`_consumeDocType`,
  * to its first `>`), or just past the first `?` or `>` outside quotes that ends a processing
- * instruction (`_consumeProcessingInstruction`; the `>` after a `?` is then read as text), opening
- * at `at`; null for none. One that never closes is a build error, and runs to the text's end here,
- * so nothing after it opens a comment.
+ * instruction (`_consumeProcessingInstruction`, which consumes the `>` a `?` must have after it;
+ * here that `>` is read as text, which opens nothing), opening at `at`; null for none. One that
+ * never closes is a build error, and runs to the text's end here, so nothing after it opens a
+ * comment.
  */
 function declarationEnd(text, at) {
   if (text.startsWith('<?', at)) return instructionEnd(text, at + 2);
@@ -805,7 +805,8 @@ function icuFormStep(text, at, walk) {
  * The constructs Angular's lexer reads as raw text from their opener to their closer, an HTML
  * comment (`_consumeComment`) and a CDATA section (`_consumeCdata`), each of which the tree builder
  * takes as one node after `_closeVoidElement`. An `.html` template arrives with its comments
- * masked, an inline one without (#1496); the masks still read into a CDATA section (#1502).
+ * masked, an inline one without: `typescriptRegions` masks them in `template` alone (#1496). The
+ * masks still read into a CDATA section (#1502).
  */
 const OPAQUE = [
   ['<!--', '-->'],

@@ -289,11 +289,11 @@ test('typescriptRegions keeps a comment it cannot end as Angular would', () => {
  * #1496: the lexer opens a comment only where it reads markup, in text or at an interpolation's
  * early end. In a quoted attribute value, raw text, CDATA, a doctype, a processing instruction, a
  * block's parameters or a `@let` value a `<!--` is text, so none of these blanks the control after
- * it: `HtmlParser` builds each `kept` tree with its `button`, and each `blanked` one with none.
- * After a `${…}` or an escape the cooked text is unknown, so the last two `kept` stay markup.
+ * it: `HtmlParser` builds each `markup` tree with its `button`, and each `blanked` one with none.
+ * After a `${…}` or an escape the cooked text is unknown, so the last two `markup` entries stay.
  */
 test('typescriptRegions opens a comment only where Angular\'s lexer does', () => {
-  const kept = [
+  const markup = [
     '<div title="<!--"><button>x</button></div><!-- c -->',
     '<textarea><!-- </textarea><button>x</button> -->',
     '<svg><style><!-- </style><button>x</button> --></svg>',
@@ -318,7 +318,7 @@ test('typescriptRegions opens a comment only where Angular\'s lexer does', () =>
     '<!><!-- <button>x</button> -->',
   ];
 
-  for (const body of kept) {
+  for (const body of markup) {
     const { template } = typescriptRegions([`@Component({ template: \`${body}\` })`]);
     assert.match(template[0], /<button>x<\/button>/, body);
   }
@@ -554,6 +554,8 @@ test('maskBlockExpressions masks a block after an end tag with whitespace before
 test('maskBlockExpressions leaves an `@` outside text alone', () => {
   for (const line of [
     '<p title="@if (a<b)" [x]="@let y = a>b;">x</p>',
+    "{{ '@if (' }} <b>a > b</b>",
+    "{{ 'it\\'s @if (' + a > b",
     '&#64;if (a<b) <i>x</i>',
     '@letter = a>b;',
     '@let ok a>b;',
