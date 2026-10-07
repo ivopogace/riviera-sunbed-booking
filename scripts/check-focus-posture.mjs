@@ -265,7 +265,8 @@ function busyViolations(path, lines, added, template) {
 
 /**
  * BUSY-1 for an actionable element, BUSY-2 for a field that starts its own write, else null. Only a
- * tag spelled in the HTML namespace (`html`) is either: `<xhtml:button>` is one, `<svg:button>` none.
+ * tag built in the HTML namespace (`html`) is either: `<xhtml:button>` is one, `<svg:button>` and a
+ * bare `<button>` inside `<svg>` none.
  */
 function busyRule(tag) {
   if (!tag.html) return null;
