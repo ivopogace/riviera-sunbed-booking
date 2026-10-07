@@ -448,10 +448,10 @@ test('maskBlockExpressions blanks block parameters and `@let` values as Angular 
 });
 
 /**
- * #1496: an interpolation, up to where `_consumeInterpolation` ends it, and a CDATA section, doctype
- * or processing instruction are never markup to the lexer, so the walk-only mask blanks them too: a
- * `<b title="` or `<title>` read inside one opened a phantom that swallowed the real control after
- * it. A comment left in the mask is stepped over, its text read as nothing, and kept.
+ * #1496: an interpolation, up to where `_consumeInterpolation` ends it, and a CDATA section,
+ * doctype or processing instruction are never markup to the lexer, so the walk-only mask blanks
+ * them too: a `<b title="` or `<title>` read inside one opened a phantom that swallowed the real
+ * control after it. A comment left in the mask is stepped over, its text read as nothing, and kept.
  */
 test('maskBlockExpressions blanks interpolations and declarations, which hold no markup', () => {
   const cases = [
@@ -459,14 +459,23 @@ test('maskBlockExpressions blanks interpolations and declarations, which hold no
     ['{{ a //<b title=" }}<input>', `${blank('{{ a //<b title=" }}')}<input>`],
     ['{{ "<i>" }}', `${blank('{{ "')}<i>" }}`],
     ['<![CDATA[<title>]]><input>', `${blank('<![CDATA[<title>]]>')}<input>`],
-    ['<!x<title>><input>', `${blank('<!x<title>>')}<input>`],
-    ['<?x "?" <title>?><input>', `${blank('<?x "?" <title>?>')}<input>`],
+    ['<!x<title>><input>', `${blank('<!x<title>')}><input>`],
+    ['<!><input>', `${blank('<!>')}<input>`],
+    ['<?x "a"><input>', `${blank('<?x "a">')}<input>`],
+    ["{{ '@if (' }} <b>a > b</b>", `${blank("{{ '@if (' }}")} <b>a > b</b>`],
+    ["{{ 'it\\'s @if (' + a > b", blank("{{ 'it\\'s @if (' + a > b")],
+    ['<?x "?" <title>?><input>', `${blank('<?x "?" <title>')}?><input>`],
     ['<!-- @let x = --><b>;</b>', '<!-- @let x = --><b>;</b>'],
   ];
   for (const [line, expected] of cases) {
     assert.equal(expected.length, line.length, line);
     assert.deepEqual(maskBlockExpressions([line]), [expected], line);
   }
+  const quoted = maskBlockExpressions(['<?x "\\" ?><title>" ?><input>']);
+  assert.deepEqual(
+    walkTags(quoted).map((tag) => tag.name),
+    ['input'],
+  );
   for (const body of [
     '{{ a //<b title="<!--" --> <input>',
     '<![CDATA[<title>]]><!-- </title> --><input>',
@@ -483,6 +492,31 @@ test('maskBlockExpressions blanks interpolations and declarations, which hold no
       body,
     );
   }
+});
+
+/**
+ * #1496: from an inline template's first `${…}` or escape (`unread`) the cooked text is unknown, so
+ * the walk-only mask reads on as it did before it knew interpolations and declarations: a span that
+ * reaches past that point is blanked only up to it, and none after it is.
+ */
+test('maskBlockExpressions blanks no interpolation or declaration past `stop`', () => {
+  assert.deepEqual(maskBlockExpressions(['<![CDATA[<b>]]>'], { row: 0, column: 0 }), [
+    '<![CDATA[<b>]]>',
+  ]);
+  assert.deepEqual(maskBlockExpressions(['{{ a }}<![CDATA[<b>]]>'], { row: 0, column: 12 }), [
+    `${blank('{{ a }}<![CD')}ATA[<b>]]>`,
+  ]);
+  assert.deepEqual(maskBlockExpressions(['@if (a<b) {', '<!x>'], { row: 1, column: 0 }), [
+    '@if (   ) {',
+    '<!x>',
+  ]);
+  const lines = ["@Component({ template: `{{ 'a\\\\<![CDATA[<button>x</button>]]>` })"];
+  const { templates, unread } = typescriptRegions(lines);
+  assert.deepEqual(unread, [{ row: 0, column: 29 }]);
+  assert.deepEqual(
+    walkTags(maskBlockExpressions(templates[0], unread[0])).map((tag) => tag.name),
+    ['button', 'button'],
+  );
 });
 
 test('maskBlockExpressions keeps line geometry across multi-line parameters and values', () => {
@@ -562,8 +596,6 @@ test('maskBlockExpressions masks a block after an end tag with whitespace before
 test('maskBlockExpressions leaves an `@` outside text alone', () => {
   for (const line of [
     '<p title="@if (a<b)" [x]="@let y = a>b;">x</p>',
-    "{{ '@if (' }} <b>a > b</b>",
-    "{{ 'it\\'s @if (' + a > b",
     '&#64;if (a<b) <i>x</i>',
     '@letter = a>b;',
     '@let ok a>b;',
