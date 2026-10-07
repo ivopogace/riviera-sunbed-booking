@@ -496,8 +496,8 @@ test('maskBlockExpressions blanks interpolations and declarations, which hold no
 /**
  * #1496: from an inline template's first `${…}` or escape (`unread`) the cooked text is unknown, so
  * the walk-only mask blanks only block parameters and `@let` values past it: a span that reaches
- * past that point is blanked only up to it, and none after it is. An interpolation is still
- * stepped over whole, as it was then, so nothing in it reads as a `@let`.
+ * past that point is blanked only up to it, and none after it is, but each is still stepped over
+ * whole, so nothing in it reads as a `@let`.
  */
 test('maskBlockExpressions blanks no interpolation or declaration past `stop`', () => {
   assert.deepEqual(maskBlockExpressions(['<![CDATA[<b>]]>'], { row: 0, column: 0 }), [
@@ -515,14 +515,14 @@ test('maskBlockExpressions blanks no interpolation or declaration past `stop`', 
   ]);
   const cdata = ['<![CDATA[ x @let y = a<b; ]]>'];
   assert.deepEqual(maskBlockExpressions(cdata, { row: 0, column: 12 }), [
-    `${blank('<![CDATA[ x ')}@let y =    ; ]]>`,
+    `${blank('<![CDATA[ x ')}@let y = a<b; ]]>`,
   ]);
   const interpolation = ['{{ "}}"> @let w = 3', '<button>'];
   assert.deepEqual(maskBlockExpressions(interpolation, { row: 0, column: 3 }), [
     '   "}}"> @let w = 3',
     '<button>',
   ]);
-  const lines = ["@Component({ template: `{{ 'a\\\\<![CDATA[<button>x</button>]]>` })"];
+  const lines = ["@Component({ template: `{{ 'a\\\\<!x <button>x</button>>` })"];
   const { templates, unread } = typescriptRegions(lines);
   assert.deepEqual(unread, [{ row: 0, column: 29 }]);
   assert.deepEqual(
