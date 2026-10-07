@@ -407,7 +407,7 @@ test('maskBlockExpressions leaves an `@` outside text alone', () => {
   }
 });
 
-/** The walk's entries as a test compares them: `<name` for a start tag, `</name` for an end tag. */
+/** The walk's entries as a test compares them: `<name` or `<prefix:name`, and `</` likewise. */
 function walked(lines) {
   return walkTags(lines).map((tag) => {
     const name = tag.prefix === '' ? tag.name : `${tag.prefix}:${tag.name}`;
@@ -454,12 +454,12 @@ test('walkTags finds a raw-text end tag across lines, and reads none past the en
  * `getHtmlTagDefinition(name).getContentType(prefix)` says so: `script`, `style`, `textarea` and
  * `title` under any prefix, but `title` under exactly `svg`, which is parsed. The name is matched in
  * any case and the prefix exactly, as the lexer does. `_consumeRawTextWithTagClose` ends the content
- * at the bare name's end tag only, so `</svg:style>` ends nothing. Since #1492 the element is a walk
- * entry, its end tag a bare-name close entry, as an unprefixed raw-text element's is (#1484). A
- * name the walk does not read (`svg-x:`, a second `:`, a name that runs on past `style`) opens no
- * entry and no raw text, nor does a start tag glued to the next `<`. Each row is the tree `HtmlParser` builds; a self-closed `<svg:style/>`, a
- * `</svg:style>` and an incomplete start tag are each a build error too, and pin only the lexer's
- * reading.
+ * at the bare name's end tag only, so `</svg:style>` ends nothing. The element is a walk entry, its
+ * end tag a bare-name close entry, as an unprefixed raw-text element's is (#1484). A name the walk
+ * does not read (`svg-x:`, a second `:`, a name that runs on past `style`, one glued to the next
+ * `<`) opens no entry and no raw text; an incomplete start tag opens an entry but no raw text. Each
+ * row is the tree `HtmlParser` builds; a self-closed `<svg:style/>`, a `</svg:style>` and an
+ * incomplete start tag are each a build error too, and pin only the lexer's reading.
  */
 test('walkTags steps over a prefixed raw-text element\'s content to its bare-name end tag', () => {
   const cases = [
@@ -499,15 +499,20 @@ test('walkTags finds a prefixed raw-text end tag across lines, and reads none pa
 /**
  * #1492: every start tag `_consumePrefixAndName` reads as `prefix:name` is a walk entry, as Angular
  * builds it (`HtmlParser`: `:xhtml:button[Text "Go"]`, `div[:xhtml:div, button]`). The entry
- * carries the prefix as written and the local name lower-cased, as an unprefixed entry's name is, so
- * a guard's stack balances it against `</prefix:name>` and against the bare `</name>` that namespace
- * inheritance makes its end tag (`_getPrefix`). `_consumeTagClose` reads an end tag's prefix the same
- * way, whitespace around it included. An unprefixed entry's prefix is `''`.
+ * carries the prefix as written and the local name lower-cased, as an unprefixed entry's name is,
+ * so a guard's stack balances it against `</prefix:name>` and against the bare `</name>` that
+ * namespace inheritance makes its end tag (`_getPrefix`). `_consumeTagClose` reads an end tag's
+ * prefix the same way, whitespace around it included. An unprefixed entry's prefix is `''`. The
+ * last three rows are build errors or names the walk does not read (`elementNameAt`), and pin only
+ * the walk's reading.
  */
-test('walkTags reads a prefixed element\'s start and end tags as entries named by the local name', () => {
+test('walkTags reads a prefixed element\'s start and end tags, named by the local name', () => {
   const cases = [
     ['<xhtml:button>Go</xhtml:button>', ['<xhtml:button', '</xhtml:button']],
-    ['<div><xhtml:div></div><button>x</button></div>', ['<div', '<xhtml:div', '</div', '<button', '</button', '</div']],
+    [
+      '<div><xhtml:div></div><button>x</button></div>',
+      ['<div', '<xhtml:div', '</div', '<button', '</button', '</div'],
+    ],
     ['<svg:g><b></b></g><i>', ['<svg:g', '<b', '</b', '</g', '<i']],
     ['<xhtml:DIV></ xhtml:DIV\t>', ['<xhtml:div', '</xhtml:div']],
     ['<x1:div/><i>', ['<x1:div', '<i']],
@@ -526,17 +531,20 @@ test('walkTags reads a prefixed element\'s start and end tags as entries named b
   assert.equal(open.prefix, '');
   assert.equal(close.prefix, '');
   const [svg] = walkTags(['<svg:g class="x" />']);
-  assert.deepEqual([svg.attributes.has('class'), svg.selfClosed, svg.incomplete, svg.line], [true, true, false, 1]);
+  assert.deepEqual(
+    [[...svg.attributes.keys()], svg.selfClosed, svg.incomplete, svg.line],
+    [['class'], true, false, 1],
+  );
 });
 
 /**
  * #1492: `html` is whether the tag's own spelling builds the HTML element its `name` names. An
  * unprefixed tag is created with `createElement`, which lower-cases its name in an HTML document; a
- * prefixed one with `createElementNS(NAMESPACE_URIS[prefix] || prefix, name)`, which keeps the case,
- * and only the exact prefix `xhtml` maps to the HTML namespace. So `<xhtml:button>` is an
- * `HTMLButtonElement`, while `<svg:button>`, `<XHTML:button>` and `<xhtml:BUTTON>` are not. Namespace
- * inheritance is not followed: an unprefixed tag is `html` wherever it stands, as it was judged
- * before.
+ * prefixed one with `createElementNS(NAMESPACE_URIS[prefix] || prefix, name)`, which keeps the
+ * case, and only the exact prefix `xhtml` maps to the HTML namespace. So `<xhtml:button>` is an
+ * `HTMLButtonElement`, while `<svg:button>`, `<XHTML:button>` and `<xhtml:BUTTON>` are not.
+ * Namespace inheritance is not followed: an unprefixed tag is `html` wherever it stands, as it was
+ * judged before.
  */
 test('walkTags marks the start tags whose own spelling builds an HTML element', () => {
   const cases = [

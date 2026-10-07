@@ -12,7 +12,7 @@
  * whole walk: `typescriptRegions` masks a file down to its inline templates and its code,
  * `maskHtmlComments` masks an external template's comments, `maskBlockExpressions` masks block
  * parameters and `@let` values out of the tag walk, and `walkTags` is that walk: where in the masked
- * markup an element tag opens (`tagNameAt`), one start tag's attributes (`readAttributes`), and a
+ * markup an element tag opens (`elementNameAt`), one start tag's attributes (`readAttributes`), and a
  * raw-text element's content stepped over as text. Beside
  * `git-diff.mjs` because that is the guards' shared module, and dependency-free for the same reason
  * it is: the hygiene CI job runs the suites with no install step.
@@ -271,9 +271,10 @@ function blank(chars, at, length) {
 const TAG_NAME_END = /[\s/>]/;
 
 /**
- * The element name starting at `from`, just past a tag's `<` (or its `</` and any whitespace),
- * lower-cased; null when that `<` opens no tag — no letter starts the name, or no `TAG_NAME_END`
- * follows it. A name at the line's end is a real one: a start tag that spans lines puts its first
+ * The unprefixed element name starting at `from`, just past a tag's `<` (or its `</` and any
+ * whitespace), lower-cased; null when that `<` opens no unprefixed tag — no letter starts the name,
+ * or no `TAG_NAME_END` follows it, as a `:` does in `<svg:g>`, whose name `elementNameAt` reads
+ * instead. A name at the line's end is a real one: a start tag that spans lines puts its first
  * attribute on the next.
  *
  * @param {string} line the masked template line
@@ -584,7 +585,8 @@ const LEXER_WHITESPACE = /[\t-\x20\xa0]/;
 
 /**
  * The end tag read from just past its `</` at line `i`, column `from`, as `_consumeTagClose` reads
- * it: whitespace, the prefix and name (`elementNameAt`), whitespace, `>`, where either whitespace may
+ * it: whitespace, the prefix and name (`elementNameAt`, so a prefix starts with a letter, though the
+ * lexer reads `</1:div>` too, a build error either way), whitespace, `>`, where either whitespace may
  * cross line ends; null when no name follows. The position is that `>`. When anything else follows
  * the name, Angular emits no end tag and the template never builds, but the entry stands and the
  * walk resumes after the name.
