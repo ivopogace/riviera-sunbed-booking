@@ -278,6 +278,35 @@ test('typescriptRegions keeps a comment it cannot end as Angular would', () => {
   ]);
 });
 
+/**
+ * #1496: the lexer opens a comment only where it reads markup, in text or at an interpolation's
+ * early end. In a quoted attribute value, raw text, CDATA, a doctype, a block's parameters or a
+ * `@let` value a `<!--` is text, and after a `${…}` or an escape the context is unknown, so none of
+ * these blanks the control after it. Each tree here builds and holds a `button` (`HtmlParser`).
+ */
+test('typescriptRegions opens a comment only where Angular\'s lexer does', () => {
+  const kept = [
+    '<div title="<!--"><button>x</button></div><!-- c -->',
+    '<textarea><!-- </textarea><button>x</button> -->',
+    '<svg><style><!-- </style><button>x</button> --></svg>',
+    '<![CDATA[ <!-- ]]><button>x</button> -->',
+    '<!DOCTYPE <!-- ><button>x</button> -->',
+    '@if (a == "<!--") {<button>x</button>} -->',
+    '@let x = "<!--"; <button>x</button> -->',
+    '${a}<!-- <button>x</button> -->',
+  ];
+  const blanked = ['<p>{{ a }}<!-- <button>x</button> --></p>', '<p>{{ a <!-- b }}<button>x</button> --></p>'];
+
+  for (const body of kept) {
+    const [mask] = typescriptRegions([`@Component({ template: \`${body}\` })`]).templates;
+    assert.match(mask[0], /<button>x<\/button>/, body);
+  }
+  for (const body of blanked) {
+    const [mask] = typescriptRegions([`@Component({ template: \`${body}\` })`]).templates;
+    assert.doesNotMatch(mask[0], /button/, body);
+  }
+});
+
 test('readAttributes reads a start tag across lines up to its `>`', () => {
   const read = readAttributes(['<img', '  src=/a/b/', '  alt="x"/>'], 0, 4);
 
