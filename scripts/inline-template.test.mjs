@@ -132,6 +132,11 @@ function blank(text) {
   return ' '.repeat(text.length);
 }
 
+/** A mask's non-blank lines, each with its runs of blanks read as one space. */
+function kept(mask) {
+  return mask.map((line) => line.replace(/\s+/g, ' ').trim()).filter(Boolean);
+}
+
 /**
  * The masks keep every line's length, so a finding in either reads off the original file's
  * coordinates. The template mask holds an inline template's text and nothing else; the code mask
@@ -224,6 +229,54 @@ test('typescriptRegions carries a block comment and a template across lines', ()
   assert.equal(template[4].trim(), `<p>${blank('${ "}')}" }</p>`);
   assert.equal(code[4].trim(), ', selector:     })');
   assert.equal(code[5].trim(), 'class A {}');
+});
+
+/**
+ * #1496: Angular's lexer reads `<!--` to the first `-->` after it as a `Comment` node
+ * (`_consumeComment`), so an inline template's comment is blanked as an external one is, and a
+ * control spelled inside it is no control. `<!-->`, `<!--->` and `--!>` end nothing.
+ */
+test('typescriptRegions blanks an inline template\'s HTML comment where Angular\'s lexer ends it', () => {
+  const lines = [
+    '@Component({',
+    '  template: `<!-- <button>x</button> --><p>ok</p>',
+    '    <!--',
+    '      <input />',
+    '    --><i></i>',
+    '    <!--><b>-->,<!---><u>-->,<!-- --!><s> --><br>',
+    '  `,',
+    '})',
+  ];
+
+  const { template, templates, code } = typescriptRegions(lines);
+
+  assert.deepEqual(template, templates[0]);
+  assert.deepEqual(template.map((line) => line.length), lines.map((line) => line.length));
+  assert.deepEqual(kept(template), ['<p>ok</p>', '<i></i>', ', , <br>']);
+  assert.deepEqual(kept(code), ['@Component({', ',', '})']);
+});
+
+/**
+ * #1496: a comment is blanked only when the scan reads its whole span as the text Angular reads.
+ * One that its literal ends before closing is a build error, and one that spans an interpolation or
+ * an escape may end inside it, so neither hides what follows: the scan keeps it as markup.
+ */
+test('typescriptRegions keeps a comment it cannot end as Angular would', () => {
+  const lines = [
+    '@Component({ template: `<!-- <button>a</button>` })',
+    '@Component({ template: `<button>b</button> -->` })',
+    '@Component({ template: `<!-- ${x} <button>c</button> -->` })',
+    '@Component({ template: `<!-- -\\-> <button>d</button> -->` })',
+  ];
+
+  const { templates } = typescriptRegions(lines);
+
+  assert.deepEqual(templates.map((mask) => mask[templates.indexOf(mask)].trim()), [
+    '<!-- <button>a</button>',
+    '<button>b</button> -->',
+    `<!-- ${blank('${x}')} <button>c</button> -->`,
+    `<!-- -${blank('\\-')}> <button>d</button> -->`,
+  ]);
 });
 
 test('readAttributes reads a start tag across lines up to its `>`', () => {

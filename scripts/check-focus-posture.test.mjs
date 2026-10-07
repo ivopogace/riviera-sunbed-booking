@@ -437,6 +437,29 @@ test('does not judge a control inside an HTML comment, on one line or across sev
   assert.equal(violations[0].line, 1);
 });
 
+/**
+ * #1496: an inline template's comment is a `Comment` node to Angular, as an external one is; one
+ * spanning an interpolation may end inside it, so the control after it is still judged.
+ */
+test('does not judge a control inside an inline template\'s HTML comment', () => {
+  const lines = [
+    '@Component({',
+    '  template: `<!-- <button (click)="save()" [disabled]="saving()">S</button> -->`,',
+    '})',
+  ];
+  const spanning = [
+    '@Component({',
+    '  template: `<!-- ${note} <button (click)="save()" [disabled]="saving()">S</button> -->`,',
+    '})',
+  ];
+
+  assert.deepEqual(scan(TS, lines), []);
+  assert.deepEqual(
+    scan(TS, spanning).map((v) => [v.rule, v.line]),
+    [['BUSY-1', 2]],
+  );
+});
+
 test('finds a confirm surface in an @else if branch', () => {
   const lines = [
     '@if (loaded()) {',
