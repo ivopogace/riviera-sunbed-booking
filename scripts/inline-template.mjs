@@ -448,7 +448,9 @@ const BLOCKS = [
  * follows the lexer: a block or `@let` opens only in text — the walk steps over a tag as `walkTags`
  * reads it, a raw-text element's content and end tag included (`RAW_TEXT`, #1482), over an
  * interpolation as `_consumeInterpolation` does, and over a comment as `walkTags` does (`OPAQUE`),
- * so an `@let` or `@if (` inside one never blanks its `-->` (#1496) — a block's parameters run from
+ * so an `@let` or `@if (` inside one never blanks its `-->` (#1496), though not over a `<!--` in a
+ * CDATA section, doctype or processing instruction (`declarationEnd`), which opens none, and where
+ * the mask reads on as it would anywhere else — a block's parameters run from
  * its `(` to the `)` `_consumeBlockParameters` stops at, and a `@let` value from its `=` to the `;`
  * `_consumeLetDeclarationValue` stops at. A guard that reads a block's condition
  * keeps reading the unmasked template.
@@ -460,12 +462,14 @@ export function maskBlockExpressions(lines) {
   const text = lines.join('\n');
   const out = text.split('');
   const starts = lineStarts(lines);
+  let declaration = 0;
   let at = 0;
 
   while (at < text.length) {
+    if (at >= declaration) declaration = declarationEnd(text, at) ?? 0;
     const step = text.startsWith('{{', at)
       ? interpolationEnd(text, at + 2)
-      : (commentEnd(text, at) ??
+      : ((at >= declaration ? commentEnd(text, at) : null) ??
         tagEnd(lines, starts, text, at) ??
         letEnd(text, at, out) ??
         blockEnd(text, at, out) ??
