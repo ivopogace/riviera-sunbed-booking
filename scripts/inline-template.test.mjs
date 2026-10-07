@@ -258,7 +258,8 @@ test('typescriptRegions blanks a template comment where Angular\'s lexer ends it
 /**
  * #1496: a comment is blanked only when the scan reads its whole span as the text Angular reads.
  * One that its literal ends before closing is a build error, and one that spans an interpolation or
- * an escape may end inside it, so neither hides what follows: the scan keeps it as markup.
+ * an escape may end inside it, so neither hides what follows: the scan keeps it as markup. So does
+ * a processing instruction whose quote never closes, a build error that runs to the literal's end.
  */
 test('typescriptRegions keeps a comment it cannot end as Angular would', () => {
   const lines = [
@@ -266,6 +267,7 @@ test('typescriptRegions keeps a comment it cannot end as Angular would', () => {
     '@Component({ template: `<button>b</button> -->` })',
     '@Component({ template: `<!-- ${x} <button>c</button> -->` })',
     '@Component({ template: `<!-- -\\-> <button>d</button> -->` })',
+    '@Component({ template: `<?x "<!-- <button>e</button> -->` })',
   ];
 
   const { templates } = typescriptRegions(lines);
@@ -275,6 +277,7 @@ test('typescriptRegions keeps a comment it cannot end as Angular would', () => {
     '<button>b</button> -->',
     `<!-- ${blank('${x}')} <button>c</button> -->`,
     `<!-- -${blank('\\-')}> <button>d</button> -->`,
+    '<?x "<!-- <button>e</button> -->',
   ]);
 });
 

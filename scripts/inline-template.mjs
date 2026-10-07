@@ -470,20 +470,20 @@ export function maskBlockExpressions(lines) {
  * nothing. The walk is `maskBlockExpressions`'s, so a `<!--` in a tag, its quoted values
  * included, in raw text, an interpolation's `{{ … }}` up to the `<` that ends it early, a block's
  * parameters or a `@let` value opens none, nor does one in CDATA, a doctype or a processing
- * instruction. Nothing is read from `unread` on: a `${…}` or an escape there is text the mask does
+ * instruction. Nothing is read from `stop` on: a `${…}` or an escape there is text the mask does
  * not hold, and may change the context or end a comment. An unterminated comment, a build error,
  * is left as markup.
  *
  * @param {string[]} lines the literal's mask
- * @param {{ row: number, column: number } | undefined} unread its first interpolation or escape
+ * @param {{ row: number, column: number } | undefined} stop its first interpolation or escape (`unread`)
  * @returns {string[]} the same lines with each comment blanked
  */
-function maskComments(lines, unread) {
+function maskComments(lines, stop) {
   const text = lines.join('\n');
   const out = text.split('');
   const ignored = text.split('');
   const starts = lineStarts(lines);
-  const limit = unread === undefined ? text.length : starts[unread.row] + unread.column;
+  const limit = stop === undefined ? text.length : starts[stop.row] + stop.column;
   let at = 0;
 
   while (at < limit) {
@@ -513,16 +513,33 @@ function commentEnd(text, at, out, limit) {
 }
 
 /**
- * The offset past a CDATA section (`_consumeCdata`, to its `]]>`), or a doctype or processing
- * instruction (to its `>`), opening at `at`, or the text's end when it never closes; null for none.
+ * The offset past a CDATA section (`_consumeCdata`, to its `]]>`), a doctype (`_consumeDocType`, to
+ * its first `>`) or a processing instruction (`_consumeProcessingInstruction`, to its first `?` or
+ * `>` outside quotes) opening at `at`; null for none. One that never closes is a build error, and
+ * runs to the text's end here, so nothing after it opens a comment.
  */
 function declarationEnd(text, at) {
+  if (text.startsWith('<?', at)) return instructionEnd(text, at + 2);
   const [token, close] = text.startsWith('<![CDATA[', at)
     ? ['<![CDATA[', ']]>']
-    : [/^<(?:![^-[]|\?)/.exec(text.slice(at, at + 3))?.[0], '>'];
+    : [/^<![^-[]/.exec(text.slice(at, at + 3))?.[0], '>'];
   if (token === undefined) return null;
   const end = text.indexOf(close, at + token.length);
   return end === -1 ? text.length : end + close.length;
+}
+
+/**
+ * The offset just past a processing instruction's end from `from`, as `_attemptUntilIgnoreQuotes`
+ * reads it: a quote is stepped over to its mate. The backslash it also steps over never reaches a
+ * template's mask: in a literal it is an escape, and `maskComments` reads no further.
+ */
+function instructionEnd(text, from) {
+  for (let at = from; at < text.length; at++) {
+    if (text[at] === '?' || text[at] === '>') return at + 1;
+    if (isQuote(text[at])) at = text.indexOf(text[at], at + 1);
+    if (at === -1) break;
+  }
+  return text.length;
 }
 
 function lineStarts(lines) {
