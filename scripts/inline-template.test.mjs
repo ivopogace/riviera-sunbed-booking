@@ -280,9 +280,10 @@ test('typescriptRegions keeps a comment it cannot end as Angular would', () => {
 
 /**
  * #1496: the lexer opens a comment only where it reads markup, in text or at an interpolation's
- * early end. In a quoted attribute value, raw text, CDATA, a doctype, a block's parameters or a
- * `@let` value a `<!--` is text, and after a `${…}` or an escape the context is unknown, so none of
- * these blanks the control after it. Each tree here builds and holds a `button` (`HtmlParser`).
+ * early end. In a quoted attribute value, raw text, CDATA, a doctype, a processing instruction, a
+ * block's parameters or a `@let` value a `<!--` is text, so none of these blanks the control after
+ * it: `HtmlParser` builds each `kept` tree with its `button`, and each `blanked` one with none.
+ * After a `${…}` or an escape the cooked text is unknown, so the last two `kept` stay markup.
  */
 test('typescriptRegions opens a comment only where Angular\'s lexer does', () => {
   const kept = [
@@ -294,6 +295,8 @@ test('typescriptRegions opens a comment only where Angular\'s lexer does', () =>
     '@if (a == "<!--") {<button>x</button>} -->',
     '@let x = "<!--"; <button>x</button> -->',
     '<?x <!-- ><button>x</button> -->',
+    '<?x ">" <!-- ?><button>x</button> -->',
+    "<?x '?\\'>' <!-- ?><button>x</button> -->",
     '{{ a // " }}@let x = "<!--"; <button>x</button> -->',
     '{{ a //<!-- }}<button>x</button> -->',
     '${a}<!-- <button>x</button> -->',
@@ -305,6 +308,7 @@ test('typescriptRegions opens a comment only where Angular\'s lexer does', () =>
     '<p>{{ "<!-- }}" }}<button>x</button> --></p>',
     '<p>{{ a // " }}<!-- <button>x</button> --></p>',
     '{{ "@if (" }}<!-- <button>x</button> -->)',
+    '<!DOCTYPE ">" <!-- <button>x</button> -->',
   ];
 
   for (const body of kept) {
