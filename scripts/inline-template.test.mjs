@@ -239,9 +239,8 @@ test('typescriptRegions carries a block comment and a template across lines', ()
 test('typescriptRegions blanks an inline template\'s HTML comment where Angular\'s lexer ends it', () => {
   const lines = [
     '@Component({',
-    '  template: `<!-- <button>x</button> --><p>ok</p>',
-    '    <!--',
-    '      <input />',
+    '  template: `<!-- <button>x</button> --><p>ok</p> <!--',
+    '<input />',
     '    --><i></i>',
     '    <!--><b>-->,<!---><u>-->,<!-- --!><s> --><br>',
     '  `,',
@@ -253,7 +252,7 @@ test('typescriptRegions blanks an inline template\'s HTML comment where Angular\
   assert.deepEqual(template, templates[0]);
   assert.deepEqual(template.map((line) => line.length), lines.map((line) => line.length));
   assert.deepEqual(kept(template), ['<p>ok</p>', '<i></i>', ', , <br>']);
-  assert.deepEqual(kept(code), ['@Component({', ',', '})']);
+  assert.deepEqual(kept(code), ['@Component({', 'template:', ',', '})']);
 });
 
 /**

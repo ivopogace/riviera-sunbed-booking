@@ -9,8 +9,8 @@
  * only the decision: a scanner keeps its loop, its string and escape rules and its comment handling,
  * feeds the code it walks into a `CodeTail`, asks at a backtick, and steps a `${…}` with
  * `interpolationStep`. `check-focus-posture` and `check-touch-target` judge markup, so they take the
- * whole walk: `typescriptRegions` masks a file down to its inline templates and its code,
- * `maskHtmlComments` masks an external template's comments, `maskBlockExpressions` masks block
+ * whole walk: `typescriptRegions` masks a file down to its inline templates, their comments blanked,
+ * and its code, `maskHtmlComments` masks an external template's comments, `maskBlockExpressions` masks block
  * parameters and `@let` values out of the tag walk, and `walkTags` is that walk: where in the masked
  * markup an element tag opens (`elementNameAt`), one start tag's attributes (`readAttributes`), and a
  * raw-text element's content stepped over as text. Beside
@@ -99,7 +99,8 @@ function braceDelta(ch) {
  * reports its real position:
  *
  * - `template` — the contents of inline templates, and nothing else. A `<button [disabled]>` that a
- *   TSDoc spells out to document a convention, or that a fixture string holds, is not markup.
+ *   TSDoc spells out to document a convention, or that a fixture string holds, is not markup; nor
+ *   is one inside an `<!-- … -->` of the template, which Angular reads as a `Comment` node.
  * - `code` — executable source with comments, strings and template literals removed, so a helper
  *   named in a comment cannot pass for a call site.
  *
@@ -117,6 +118,7 @@ export function typescriptRegions(lines) {
     at: 0,
     state: 'code',
     depth: 0,
+    comment: null,
     tail: new CodeTail(),
     template: lines.map(blankOf),
     templates: [],
@@ -199,26 +201,62 @@ function maskString(scan) {
   scan.at += ch === '\\' ? 2 : 1;
 }
 
-/** Inside an inline template: an escape or an interpolation is stepped over, and text joins the mask. */
+/**
+ * Inside an inline template: an escape or an interpolation is stepped over, text joins the mask, and
+ * an HTML comment is blanked once its `-->` is read. An escape, an interpolation or the literal's end
+ * drops a comment still open: Angular reads the cooked text, where its end may lie, so it stays markup.
+ */
 function maskTemplate(scan) {
   const { line, at } = scan;
   if (line[at] === '\\') {
+    scan.comment = null;
     scan.at += 2;
     return;
   }
   const step = interpolationStep(line, at, scan.depth);
   if (step !== null) {
+    scan.comment = null;
     scan.depth = step.depth;
     scan.at = step.next;
     return;
   }
   if (line[at] === '`') {
+    scan.comment = null;
     scan.state = 'code';
+    scan.at++;
+  } else if (scan.comment === null && line.startsWith('<!--', at)) {
+    scan.comment = { row: scan.row, at };
+    copyText(scan, at + 4);
+  } else if (scan.comment !== null && line.startsWith('-->', at)) {
+    blankComment(scan, at + 3);
+    scan.comment = null;
+    scan.at += 3;
   } else {
-    scan.template[scan.row][at] = line[at];
-    scan.templates.at(-1)[scan.row][at] = line[at];
+    copyText(scan, at + 1);
   }
-  scan.at++;
+}
+
+/** Copies the template text up to `end` into both template masks. */
+function copyText(scan, end) {
+  for (; scan.at < end; scan.at++) {
+    scan.template[scan.row][scan.at] = scan.line[scan.at];
+    scan.templates.at(-1)[scan.row][scan.at] = scan.line[scan.at];
+  }
+}
+
+/**
+ * Blanks the open comment, `<!--` to just before `end`, in both template masks: the first `-->`
+ * after its `<!--` ends it, as `_consumeComment` reads it, so `<!-->` and `<!--->` end nothing.
+ */
+function blankComment(scan, end) {
+  for (let row = scan.comment.row; row <= scan.row; row++) {
+    const from = row === scan.comment.row ? scan.comment.at : 0;
+    const to = row === scan.row ? end : scan.template[row].length;
+    for (let c = from; c < to; c++) {
+      scan.template[row][c] = ' ';
+      scan.templates.at(-1)[row][c] = ' ';
+    }
+  }
 }
 
 const MASK = { code: maskCode, block: maskBlock, string: maskString, template: maskTemplate };
