@@ -616,9 +616,10 @@ test('a template that ends inside a start tag still returns', () => {
 
 /**
  * #1497: an exemption ends where Angular closes its element, with or without an end tag: at a child
- * its definition is closed by (`<ul>` closes a `<p>`, `<li>` an `<li>`), and at its block's `}`
- * (`HtmlParser` 22.1.6: `p["a"], ul[], button["x"]`; `@if{p["x"]}, button["y"]`;
- * `ul[li["a"], li[button["x"]]]`).
+ * its definition is closed by (`<ul>` closes a `<p>`, `<li>` an `<li>`), at its block's or ICU
+ * case's `}`, and at the end tag of its full name (`HtmlParser` 22.1.6: `p["a"], ul[],
+ * button["x"]`; `@if{p["x"]}, button["y"]`; `ul[li["a"], li[button["x"]]]`; `P[li[p[]]],
+ * button["x"]`).
  */
 test('an exemption ends where Angular closes its element implicitly', () => {
   for (const line of [
@@ -626,8 +627,9 @@ test('an exemption ends where Angular closes its element implicitly', () => {
     '@if (a) {<p data-touch-exempt="r">x}<button>y</button>',
     '<ul><li data-touch-exempt="r">a<li><button>x</button></ul>',
     '<table><tr><td data-touch-exempt="r">a<td><button>x</button></table>',
-    '<select><option data-touch-exempt="r">a<option><button>x</button></select>',
+    '<select appTouchTarget><option data-touch-exempt="r">a<option><button>x</button></select>',
     '{n, select, x {<p data-touch-exempt="r">a}}<button>x</button>',
+    '<P data-touch-exempt="r"><li><p></P><button>x</button>',
   ]) {
     assert.deepEqual(scan(HTML, [line]).map((v) => [v.rule, v.line]), [['TT-1', 1]], line);
   }

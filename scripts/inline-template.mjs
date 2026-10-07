@@ -489,7 +489,8 @@ function tagEnd(lines, starts, text, at) {
 /**
  * Walks the masked template and returns one entry per element tag, start and end alike, in
  * document order: `{ kind: 'open', prefix, name, namespace, html, void, attributes, selfClosed,
- * incomplete, line }` with the 1-based line its `<` is on, or `{ kind: 'close', prefix, name }`.
+ * incomplete, line }` with the 1-based line its `<` is on, or `{ kind: 'close', prefix, name }`,
+ * marked `implicit: true` where Angular closes the element with no end tag of its own (`BLOCK`).
  * The one walk both markup guards judge and `maskBlockExpressions` steps by, so the three read the
  * same tags.
  *
@@ -499,56 +500,187 @@ function tagEnd(lines, starts, text, at) {
  * built under, inherited included (`namespaceOf`), and `html` whether that builds the HTML element
  * `name` names (`isHtml`); a guard judges a control by it, so `<svg:button>` and the bare
  * `<button>` inside `<svg>` are no buttons. `void` is whether Angular closes the element at the next
- * token (`isVoid`), so nothing after it is its content.
+ * token (`isVoid`); that close is an implicit entry like any other.
  *
  * A start tag legitimately spans lines — every multi-line binding in the app is written that way —
- * so this tracks position across the whole region rather than per line.
+ * so this tracks position across the whole region rather than per line. Between tags the text is
+ * read as Angular's lexer reads it for what opens or closes a container: an interpolation, a block
+ * and its `{`, an ICU's `{`, and a `}` (`textStep`).
  *
  * @param {string[]} lines the masked template region
  */
 export function walkTags(lines) {
-  const tags = [];
-  const open = [];
+  const text = lines.join('\n');
+  const starts = lineStarts(lines);
+  const walk = { tags: [], open: [] };
   let i = 0;
-  let c = 0;
+  let at = 0;
 
-  while (i < lines.length) {
-    if (c >= lines[i].length) {
-      i++;
-      c = 0;
+  while (at < text.length) {
+    while (i + 1 < starts.length && starts[i + 1] <= at) i++;
+    const found = text[at] === '<' ? tagAt(lines, i, at - starts[i]) : null;
+    if (found === null) {
+      at = textStep(text, at, walk);
       continue;
     }
-    const found = tagAt(lines, i, c);
-    if (found !== null) {
-      for (const tag of found.tags) tags.push(nested(tag, found.local, open));
-      i = found.line;
-      c = found.column;
-    }
-    c++;
+    for (const tag of found.tags) enter(tag, found.local, walk);
+    at = starts[found.line] + found.column + 1;
   }
-  return tags;
+  return walk.tags;
 }
 
 /**
- * The entry `tag` with its namespace, kept in step with `open`, the elements open around it, each
- * with its local name as written and its namespace. A complete start tag that is not self-closed is
- * pushed, and an end tag pops back to the last open element of its lower-cased local name, as
- * `check-touch-target`'s stack does: a superset of `_popContainer`'s full-name match whose extra
- * pairs are build errors; an end tag with none pops nothing. Blocks are no entries, as
- * `_getClosestElementLikeParent` skips them. An element Angular closes without an end tag (a void
- * one, marked `void` for the guards, or a `<p>` its child closes) stays open on this stack until an
- * ancestor's end tag, which changes no namespace: Angular closes one implicitly only in the HTML
- * namespace, whose children inherit `''` either way.
+ * The tree builder's container stack, as the walk keeps it in `open`: an element entry (`element:
+ * true`, its prefix, its lower-cased and as-written names, its namespace, `void`), a block (`BLOCK`),
+ * or an ICU form (`ICU_FORM`) or case (`ICU_CASE`), which the lexer's expansion stack keeps. Every
+ * pop of an element without its own end tag is emitted as an implicit close entry, so a guard's
+ * stack, which pops on close entries, stays in step with this one without modelling a close itself:
+ *
+ * - a start tag pops the current container when that is a void element, or an element whose
+ *   definition `isClosedByChild` the new one (`_pushContainer`), so only the top one;
+ * - any other token pops a void element (`_closeVoidElement`), but an ICU's `{` does not, so the
+ *   ICU builds inside it (`_consumeExpansion`);
+ * - a `}` pops the innermost ICU form or case while one is open, the lexer reading the `}` as the
+ *   ICU's own, and else the innermost block (`_popContainer(null, Block, …)`), each with everything
+ *   above it; with neither, it pops nothing.
+ *
+ * An end tag pops back to the element of its full name (`endTagMatch`), and the elements above
+ * that one each get an implicit close before its own close entry, so the guard's lower-cased name
+ * match then finds the element on top: `</P>` pops past a `<li>` and a `<p>` to the `<P>` it names.
  */
-function nested(tag, local, open) {
+const BLOCK = { element: false };
+const ICU_FORM = { element: false, icu: true };
+const ICU_CASE = { element: false, icu: true };
+
+/**
+ * Adds `tag`'s entries to the walk: the implicit closes it causes, then itself, a start tag with its
+ * namespace. `local` is the tag's local name as written.
+ */
+function enter(tag, local, walk) {
+  const { tags, open } = walk;
   if (tag.kind === 'close') {
-    const at = open.findLastIndex((element) => element.name === tag.name);
-    if (at !== -1) open.length = at;
-    return tag;
+    const at = endTagMatch(tag, local, open);
+    if (at !== -1) {
+      while (open.length > at + 1) closeTop(walk);
+      open.pop();
+    }
+    tags.push(tag);
+    return;
   }
-  const namespace = namespaceOf(tag.prefix, local, open.at(-1));
-  if (!tag.selfClosed && !tag.incomplete) open.push({ name: tag.name, local, namespace });
-  return { ...tag, namespace, html: isHtml(namespace, local), void: isVoid(namespace, tag.name) };
+  const namespace = namespaceOf(tag.prefix, local, closestElement(open));
+  const top = open.at(-1);
+  if (top?.element && (top.void || (namespace === '' && isClosedByChild(top, tag.name)))) {
+    closeTop(walk);
+  }
+  const element = { element: true, prefix: tag.prefix, name: tag.name, local, namespace };
+  element.void = isVoid(namespace, tag.name);
+  if (!tag.selfClosed && !tag.incomplete) open.push(element);
+  tags.push({ ...tag, namespace, html: isHtml(namespace, local), void: element.void });
+}
+
+/**
+ * The index in `open` of the element an end tag closes: the last one of its full name, namespace
+ * and local name as written (`_popContainer`), its namespace given as a start tag's is. A raw-text
+ * element's end tag, which the lexer gives the start tag's own name, inherits from that element and
+ * so names it. Only a template that fails to build has an end tag with no such element; there the
+ * match falls back to the last one of its lower-cased local name, the guards' match, or none.
+ */
+function endTagMatch(tag, local, open) {
+  const namespace = namespaceOf(tag.prefix, local, closestElement(open));
+  const exact = open.findLastIndex(
+    (entry) => entry.element && entry.namespace === namespace && entry.local === local,
+  );
+  if (exact !== -1) return exact;
+  return open.findLastIndex((entry) => entry.element && entry.name === tag.name);
+}
+
+/**
+ * The open element a start tag takes its namespace from: the last one above the innermost ICU, as
+ * `_getClosestElementLikeParent` finds it, skipping blocks, in the tree builder `_parseExpansionCase`
+ * starts for each case.
+ */
+function closestElement(open) {
+  for (let at = open.length - 1; at >= 0 && open[at] !== ICU_CASE; at--) {
+    if (open[at].element) return open[at];
+  }
+  return undefined;
+}
+
+/** Pops the top container, emitting an element's implicit close. */
+function closeTop({ tags, open }) {
+  const top = open.pop();
+  if (top.element) tags.push({ kind: 'close', prefix: top.prefix, name: top.name, implicit: true });
+}
+
+/**
+ * The offset after one step of the text at `at`, keeping `walk.open` as Angular's lexer and tree
+ * builder do (`BLOCK`): an interpolation is stepped over whole, as `interpolationEnd` reads it;
+ * a block opens a container at its `{` and an incomplete one opens none; a `{` opens an ICU form
+ * (`isExpansionFormStart`: one that starts no interpolation), and in a form a case; a `}` closes one.
+ * Block parameters arrive masked. Inside an ICU no block opens: the lexer ends a text token at one
+ * only outside an expansion (`_isTextEnd`), and one that starts a token there never closes, since
+ * every `}` is the ICU's (`Unclosed block`), so no template that builds has one.
+ */
+function textStep(text, at, walk) {
+  const { open } = walk;
+  if (open.at(-1) === ICU_FORM) return icuFormStep(text, at, walk);
+  if (text[at] === '{' && text[at + 1] !== '{') return icuStart(text, at, walk);
+  if (open.at(-1)?.void) closeTop(walk);
+  const icu = open.findLast((entry) => entry.icu === true);
+  if (text[at] === '}') {
+    closeContainer(walk, icu ?? BLOCK);
+    return at + 1;
+  }
+  if (text.startsWith('{{', at)) return interpolationEnd(text, at + 2);
+  const block = icu === undefined ? blockAt(text, at) : null;
+  if (block === null) return at + 1;
+  const brace = text[block.end] === ')' ? pastLexerWhitespace(text, block.end + 1) : block.end;
+  if (text[brace] !== '{') return block.end;
+  open.push(BLOCK);
+  return brace + 1;
+}
+
+/**
+ * An ICU form's start at `at`, as `_consumeExpansionFormStart` reads it: the `{`, then its switch
+ * value and its type, each read as raw text up to a `,`, so no tag opens in either. Without both
+ * commas the template builds no ICU, and the `{` is read as text.
+ */
+function icuStart(text, at, walk) {
+  const comma = text.indexOf(',', at + 1);
+  const type = comma === -1 ? -1 : text.indexOf(',', comma + 1);
+  if (type === -1) return at + 1;
+  walk.open.push(ICU_FORM);
+  return type + 1;
+}
+
+/**
+ * One step inside an ICU form, between its cases, where `walkTags` has already read any tag: lexer
+ * whitespace is skipped, a `}` ends the form, and anything else is a case's value, read as raw text
+ * up to the `{` that opens the case (`_consumeExpansionCaseStart`).
+ */
+function icuFormStep(text, at, walk) {
+  if (LEXER_WHITESPACE.test(text[at])) return at + 1;
+  if (text[at] === '}') {
+    walk.open.pop();
+    return at + 1;
+  }
+  const brace = text.indexOf('{', at);
+  if (brace === -1) return text.length;
+  walk.open.push(ICU_CASE);
+  return brace + 1;
+}
+
+/** Pops everything above the innermost `kind` container, and that container; with none, nothing. */
+function closeContainer(walk, kind) {
+  if (!walk.open.includes(kind)) return;
+  while (walk.open.at(-1) !== kind) closeTop(walk);
+  walk.open.pop();
+}
+
+function pastLexerWhitespace(text, from) {
+  let at = from;
+  while (LEXER_WHITESPACE.test(text[at] ?? '')) at++;
+  return at;
 }
 
 /**
@@ -604,6 +736,71 @@ const VOID = new Set([
  */
 function isVoid(namespace, name) {
   return namespace === '' && VOID.has(name);
+}
+
+/**
+ * `getHtmlTagDefinition`'s `closedByChildren` (`@angular/compiler` 22.1.6): the names of the
+ * children that close each element when it is the current container. Every other definition has
+ * none, and the void ones close at any child (`isVoid`).
+ */
+const CLOSED_BY_CHILDREN = new Map([
+  [
+    'p',
+    new Set([
+      'address',
+      'article',
+      'aside',
+      'blockquote',
+      'div',
+      'dl',
+      'fieldset',
+      'footer',
+      'form',
+      'h1',
+      'h2',
+      'h3',
+      'h4',
+      'h5',
+      'h6',
+      'header',
+      'hgroup',
+      'hr',
+      'main',
+      'nav',
+      'ol',
+      'p',
+      'pre',
+      'section',
+      'table',
+      'ul',
+    ]),
+  ],
+  ['thead', new Set(['tbody', 'tfoot'])],
+  ['tbody', new Set(['tbody', 'tfoot'])],
+  ['tfoot', new Set(['tbody'])],
+  ['tr', new Set(['tr'])],
+  ['td', new Set(['td', 'th'])],
+  ['th', new Set(['td', 'th'])],
+  ['li', new Set(['li'])],
+  ['dt', new Set(['dt', 'dd'])],
+  ['dd', new Set(['dt', 'dd'])],
+  ['rb', new Set(['rb', 'rt', 'rtc', 'rp'])],
+  ['rt', new Set(['rb', 'rt', 'rtc', 'rp'])],
+  ['rtc', new Set(['rb', 'rtc', 'rp'])],
+  ['rp', new Set(['rb', 'rt', 'rtc', 'rp'])],
+  ['optgroup', new Set(['optgroup'])],
+  ['option', new Set(['option', 'optgroup'])],
+]);
+
+/**
+ * Whether `isClosedByChild` closes the open element `parent` at a start tag named `child` that is
+ * built in the namespace `''`, as the caller checks. Angular matches the child's full name
+ * lower-cased, so a prefixed or inherited namespace (`:xhtml:div`, `:svg:div`) finds no row; and a
+ * child named in a row inherits `''` only from a parent built there, whose definition is the row its
+ * lower-cased name finds. `name` is lower-cased on both sides, as the definition lookup's fallback is.
+ */
+function isClosedByChild(parent, child) {
+  return CLOSED_BY_CHILDREN.get(parent.name)?.has(child) === true;
 }
 
 /**
@@ -702,7 +899,7 @@ function endTagAt(lines, i, from) {
   const nameEnd = start.column + tag.length;
   const end = pastWhitespace(lines, start.line, nameEnd);
   const at = lines[end.line][end.column] === '>' ? end : { line: start.line, column: nameEnd - 1 };
-  return { tags: [{ kind: 'close', prefix: tag.prefix, name: tag.name }], ...at };
+  return { tags: [{ kind: 'close', prefix: tag.prefix, name: tag.name }], local: tag.local, ...at };
 }
 
 /** The first position from line `i`, column `c` that is no lexer whitespace, or the region's end. */
@@ -774,12 +971,24 @@ function letEnd(text, at, out) {
 }
 
 /**
- * The offset past a block's parameters at `at`, blanked in `out`; null when no block starts there.
- * The name is read as `_getBlockName` reads it (`@else if` included), and the parameters as
- * `_consumeBlockParameters` reads them: `;`-separated, each ending at a `;` or at a `)` outside a
- * string and outside the parentheses it opened.
+ * The offset past a block's parameters at `at`, blanked in `out`; null when no block starts there
+ * (`blockAt`).
  */
 function blockEnd(text, at, out) {
+  const block = blockAt(text, at);
+  if (block === null) return null;
+  if (block.parameters !== undefined) blankRange(out, block.parameters, block.end);
+  return block.end;
+}
+
+/**
+ * The block that starts at `at`, null when none does: `end` is the offset its name ends at, or its
+ * parameters' `)`, and `parameters` the offset they start at, if it has any. The name is read as
+ * `_getBlockName` reads it (`@else if` included), and the parameters as `_consumeBlockParameters`
+ * reads them: `;`-separated, each ending at a `;` or at a `)` outside a string and outside the
+ * parentheses it opened.
+ */
+function blockAt(text, at) {
   if (!BLOCKS.some((block) => text.startsWith(block, at))) return null;
   let c = at + 1;
   let named = false;
@@ -787,10 +996,8 @@ function blockEnd(text, at, out) {
     named ||= /\w/.test(text[c]);
     c++;
   }
-  if (text[c] !== '(') return c;
-  const end = parametersEnd(text, c + 1);
-  blankRange(out, c + 1, end);
-  return end;
+  if (text[c] !== '(') return { end: c };
+  return { end: parametersEnd(text, c + 1), parameters: c + 1 };
 }
 
 function parametersEnd(text, from) {
