@@ -448,12 +448,11 @@ const BLOCKS = [
  * follows the lexer: a block or `@let` opens only in text — the walk steps over a tag as `walkTags`
  * reads it, a raw-text element's content and end tag included (`RAW_TEXT`, #1482), over an
  * interpolation as `_consumeInterpolation` does, and over a comment as `walkTags` does (`OPAQUE`),
- * so an `@let` or `@if (` inside one never blanks its `-->` (#1496), though not over a `<!--` in a
- * CDATA section, doctype or processing instruction (`declarationEnd`), which opens none, and where
- * the mask reads on as it would anywhere else — a block's parameters run from
- * its `(` to the `)` `_consumeBlockParameters` stops at, and a `@let` value from its `=` to the `;`
- * `_consumeLetDeclarationValue` stops at. A guard that reads a block's condition
- * keeps reading the unmasked template.
+ * so an `@let` or `@if (` inside one never blanks its `-->` (#1496); a `<!--` in a CDATA section,
+ * doctype or processing instruction (`declarationEnd`) opens none, and the mask reads on there as
+ * anywhere else — a block's parameters run from its `(` to the `)` `_consumeBlockParameters` stops
+ * at, and a `@let` value from its `=` to the `;` `_consumeLetDeclarationValue` stops at. A guard
+ * that reads a block's condition keeps reading the unmasked template.
  *
  * @param {string[]} lines the comment-masked template region
  * @returns {string[]} the same lines with block parameters and `@let` values blanked
@@ -492,10 +491,10 @@ function commentEnd(text, at) {
 
 /**
  * One inline template's mask with its `<!-- … -->` comments blanked, for `typescriptRegions`'
- * `template`. A comment opens where the lexer reads markup, as `maskBlockExpressions` walks it,
- * so a `<!--` in a tag, its quoted values included, in raw text, an interpolation (to where
- * `_consumeInterpolation` ends it, `lexerInterpolationEnd`), a CDATA section, doctype or processing
- * instruction (`declarationEnd`), a block's parameters or a `@let` value opens none, and it ends as
+ * `template`. A comment opens only where the lexer reads markup: the walk steps over a tag as
+ * `tagEnd` reads it, an interpolation to where `_consumeInterpolation` ends it
+ * (`lexerInterpolationEnd`), a CDATA section, doctype or processing instruction (`declarationEnd`),
+ * a block's parameters and a `@let` value, so a `<!--` in any of them opens none; a comment ends as
  * `commentEnd` reads it. Nothing is read from `stop` on: a `${…}` or an escape there is text the
  * mask does not hold, and may change the context or end a comment. An unterminated comment, a build
  * error, is left as markup.
@@ -533,8 +532,8 @@ function maskComments(lines, stop) {
  * The offset past a CDATA section (`_consumeCdata`, to its `]]>`) or a doctype (`_consumeDocType`,
  * to its first `>`), or just past the first `?` or `>` outside quotes that ends a processing
  * instruction (`_consumeProcessingInstruction`; the `>` after a `?` is then read as text), opening
- * at `at`; null for none. One that never closes is a build error, and
- * runs to the text's end here, so nothing after it opens a comment.
+ * at `at`; null for none. One that never closes is a build error, and runs to the text's end here,
+ * so nothing after it opens a comment.
  */
 function declarationEnd(text, at) {
   if (text.startsWith('<?', at)) return instructionEnd(text, at + 2);
