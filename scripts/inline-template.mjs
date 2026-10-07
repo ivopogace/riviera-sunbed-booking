@@ -95,7 +95,7 @@ function braceDelta(ch) {
 }
 
 /**
- * The two masks of a TypeScript file, each keeping line and column geometry so a finding still
+ * The masks of a TypeScript file, each keeping line and column geometry so a finding still
  * reports its real position:
  *
  * - `template` — the contents of inline templates, and nothing else. A `<button [disabled]>` that a

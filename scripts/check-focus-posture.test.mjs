@@ -410,6 +410,17 @@ test('a busy control is judged though an earlier inline template left an svg ope
     scan(TS, lines).map((v) => [v.rule, v.line]),
     [['BUSY-1', 4]],
   );
+  const first = [
+    '@Component({ template: `<button (click)="save()" [disabled]="saving()">Save</button>` })',
+    'export class Panel {}',
+    '@Component({ template: `<p>ok</p>` })',
+    'export class Note {}',
+  ];
+
+  assert.deepEqual(
+    scan(TS, first).map((v) => [v.rule, v.line]),
+    [['BUSY-1', 1]],
+  );
 });
 
 test('does not judge a control inside an HTML comment, on one line or across several', () => {
