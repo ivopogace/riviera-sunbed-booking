@@ -684,7 +684,7 @@ function icuFormStep(text, at, walk) {
  * The constructs Angular's lexer reads as raw text from their opener to their closer, an HTML
  * comment (`_consumeComment`) and a CDATA section (`_consumeCdata`), each of which the tree builder
  * takes as one node after `_closeVoidElement`. An `.html` template arrives with its comments
- * masked, an inline one without (#1496), and the block mask still reads into one.
+ * masked, an inline one without (#1496); the masks still read into a CDATA section (#1502).
  */
 const OPAQUE = [
   ['<!--', '-->'],
