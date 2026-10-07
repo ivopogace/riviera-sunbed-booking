@@ -113,8 +113,9 @@ function ruleBroken(tag, open) {
  * column geometry so a violation still reports its real position.
  *
  * An `.html` file is one template, all of it but its comments; a `.ts` file holds one per
- * `template:` literal, its comments blanked by `typescriptRegions`. Without the second, `touch-target.ts`'s own TSDoc — which spells out
- * `<button appTouchTarget>` to document the convention — would read as markup.
+ * `template:` literal, its comments blanked by `typescriptRegions`. Without the second,
+ * `touch-target.ts`'s own TSDoc — which spells out `<button appTouchTarget>` to document the
+ * convention — would read as markup.
  */
 function templateRegions(path, lines) {
   return path.endsWith('.html') ? [maskHtmlComments(lines)] : typescriptRegions(lines).templates;

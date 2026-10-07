@@ -236,7 +236,7 @@ test('typescriptRegions carries a block comment and a template across lines', ()
  * (`_consumeComment`), so an inline template's comment is blanked as an external one is, and a
  * control spelled inside it is no control. `<!-->`, `<!--->` and `--!>` end nothing.
  */
-test('typescriptRegions blanks an inline template\'s HTML comment where Angular\'s lexer ends it', () => {
+test('typescriptRegions blanks a template comment where Angular\'s lexer ends it', () => {
   const lines = [
     '@Component({',
     '  template: `<!-- <button>x</button> --><p>ok</p> <!--',
@@ -293,9 +293,19 @@ test('typescriptRegions opens a comment only where Angular\'s lexer does', () =>
     '<!DOCTYPE <!-- ><button>x</button> -->',
     '@if (a == "<!--") {<button>x</button>} -->',
     '@let x = "<!--"; <button>x</button> -->',
+    '<?x <!-- ><button>x</button> -->',
+    '{{ a // " }}@let x = "<!--"; <button>x</button> -->',
+    '{{ a //<!-- }}<button>x</button> -->',
     '${a}<!-- <button>x</button> -->',
+    '\\n<!-- <button>x</button> -->${a}',
   ];
-  const blanked = ['<p>{{ a }}<!-- <button>x</button> --></p>', '<p>{{ a <!-- b }}<button>x</button> --></p>'];
+  const blanked = [
+    '<p>{{ a }}<!-- <button>x</button> --></p>',
+    '<p>{{ a <!-- b }}<button>x</button> --></p>',
+    '<p>{{ "<!-- }}" }}<button>x</button> --></p>',
+    '<p>{{ a // " }}<!-- <button>x</button> --></p>',
+    '{{ "@if (" }}<!-- <button>x</button> -->)',
+  ];
 
   for (const body of kept) {
     const [mask] = typescriptRegions([`@Component({ template: \`${body}\` })`]).templates;
