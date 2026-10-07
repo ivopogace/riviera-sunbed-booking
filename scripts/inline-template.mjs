@@ -448,11 +448,12 @@ const BLOCKS = [
  * follows the lexer: a block or `@let` opens only in text — the walk steps over a tag as `walkTags`
  * reads it, a raw-text element's content and end tag included (`RAW_TEXT`, #1482), over an
  * interpolation as `_consumeInterpolation` does, and over a comment as `walkTags` does (`OPAQUE`),
- * so an `@let` or `@if (` inside one never blanks its `-->` (#1496); a `<!--` in a CDATA section,
- * doctype or processing instruction (`declarationEnd`) opens none, and the mask reads on there as
- * anywhere else — a block's parameters run from its `(` to the `)` `_consumeBlockParameters` stops
- * at, and a `@let` value from its `=` to the `;` `_consumeLetDeclarationValue` stops at. A guard
- * that reads a block's condition keeps reading the unmasked template.
+ * so an `@let` or `@if (` inside one never blanks its `-->` (#1496) — though only over one Angular
+ * reads as a comment (`commentSpans`): where the walk misreads a `<!--` in a declaration or an
+ * attribute value as one, the mask reads on as anywhere else — a block's parameters run from its
+ * `(` to the `)` `_consumeBlockParameters` stops at, and a `@let` value from its `=` to the `;`
+ * `_consumeLetDeclarationValue` stops at. A guard that reads a block's condition keeps reading the
+ * unmasked template.
  *
  * @param {string[]} lines the comment-masked template region
  * @returns {string[]} the same lines with block parameters and `@let` values blanked
@@ -461,14 +462,13 @@ export function maskBlockExpressions(lines) {
   const text = lines.join('\n');
   const out = text.split('');
   const starts = lineStarts(lines);
-  let declaration = 0;
+  const comments = commentSpans(lines, text.length);
   let at = 0;
 
   while (at < text.length) {
-    if (at >= declaration) declaration = declarationEnd(text, at) ?? 0;
     const step = text.startsWith('{{', at)
       ? interpolationEnd(text, at + 2)
-      : ((at >= declaration ? commentEnd(text, at) : null) ??
+      : (comments.get(at) ??
         tagEnd(lines, starts, text, at) ??
         letEnd(text, at, out) ??
         blockEnd(text, at, out) ??
@@ -490,31 +490,40 @@ function commentEnd(text, at) {
 }
 
 /**
- * One inline template's mask with its `<!-- … -->` comments blanked, for `typescriptRegions`'
- * `template`. A comment opens only where the lexer reads markup: the walk steps over a tag as
- * `tagEnd` reads it, an interpolation to where `_consumeInterpolation` ends it
- * (`lexerInterpolationEnd`), a CDATA section, doctype or processing instruction (`declarationEnd`),
- * a block's parameters and a `@let` value, so a `<!--` in any of them opens none; a comment ends as
- * `commentEnd` reads it. Nothing is read from `stop` on: a `${…}` or an escape there is text the
- * mask does not hold, and may change the context or end a comment. An unterminated comment, a build
- * error, is left as markup.
+ * One inline template's mask with its `<!-- … -->` comments (`commentSpans`) blanked, for
+ * `typescriptRegions`' `template`. Nothing is read from `stop` on: a `${…}` or an escape there is
+ * text the mask does not hold, and may change the context or end a comment. An unterminated
+ * comment, a build error, is left as markup.
  *
  * @param {string[]} lines the literal's mask
  * @param {{ row: number, column: number } | undefined} stop the literal's `unread` position
  * @returns {string[]} the same lines with each comment blanked
  */
 function maskComments(lines, stop) {
+  const out = lines.join('\n').split('');
+  const limit = stop === undefined ? out.length : lineStarts(lines)[stop.row] + stop.column;
+  for (const [from, to] of commentSpans(lines, limit)) blankRange(out, from, to);
+  return out.join('').split('\n');
+}
+
+/**
+ * The comments that close before `limit`, each start offset mapped to the offset past its `-->`, as
+ * Angular's lexer reads them. A comment opens only where the lexer reads markup: the walk steps
+ * over a tag as `tagEnd` reads it, an interpolation to where `_consumeInterpolation` ends it
+ * (`lexerInterpolationEnd`), a CDATA section, doctype or processing instruction (`declarationEnd`),
+ * a block's parameters and a `@let` value, so a `<!--` in any of them opens none; a comment ends as
+ * `commentEnd` reads it.
+ */
+function commentSpans(lines, limit) {
   const text = lines.join('\n');
-  const out = text.split('');
-  const ignored = [...out];
+  const ignored = text.split('');
   const starts = lineStarts(lines);
-  const limit = stop === undefined ? text.length : starts[stop.row] + stop.column;
+  const spans = new Map();
   let at = 0;
 
   while (at < limit) {
     const comment = commentEnd(text, at);
-    const closed = comment !== null && comment > at + 4 && comment <= limit;
-    if (closed) blankRange(out, at, comment);
+    if (comment !== null && comment > at + 4 && comment <= limit) spans.set(at, comment);
     at =
       comment ??
       declarationEnd(text, at) ??
@@ -525,7 +534,7 @@ function maskComments(lines, stop) {
           blockEnd(text, at, ignored) ??
           at + 1));
   }
-  return out.join('').split('\n');
+  return spans;
 }
 
 /**
