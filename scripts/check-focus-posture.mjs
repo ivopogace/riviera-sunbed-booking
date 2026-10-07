@@ -198,7 +198,7 @@ export function findViolations({
   const inline = html || scanned.template.some((line) => line.trim() !== '');
   const template = inline ? scanned.template : maskHtmlComments(sourceOf(templateSource).split('\n'));
   const violations = [
-    ...busyViolations(path, lines, added, scanned.template),
+    ...scanned.templates.flatMap((region) => busyViolations(path, lines, added, region)),
     ...focusViolations({
       path,
       lines,
@@ -213,9 +213,10 @@ export function findViolations({
   return violations.sort((a, b) => a.line - b.line);
 }
 
-/** An `.html` file is all template but for its comments, and carries no TypeScript at all. */
+/** An `.html` file is one template, all but its comments, and carries no TypeScript at all. */
 function htmlRegions(lines) {
-  return { template: maskHtmlComments(lines), code: [] };
+  const template = maskHtmlComments(lines);
+  return { template, templates: [template], code: [] };
 }
 
 /**

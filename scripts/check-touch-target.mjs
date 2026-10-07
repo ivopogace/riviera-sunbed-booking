@@ -82,10 +82,17 @@ const VOID = new Set([
  * @returns {{ path: string, line: number, rule: string, text: string }[]} one entry per violation
  */
 export function findViolations({ path, lines, added }) {
+  return templateRegions(path, lines).flatMap((region) =>
+    regionViolations(path, lines, added, region),
+  );
+}
+
+/** One template's violations, on a stack of its own: an element left open reaches no other. */
+function regionViolations(path, lines, added, region) {
   const violations = [];
   const open = [];
 
-  for (const tag of walkTags(maskBlockExpressions(templateRegion(path, lines)))) {
+  for (const tag of walkTags(maskBlockExpressions(region))) {
     if (tag.kind === 'close') {
       const at = open.findLastIndex((element) => element.name === tag.name);
       if (at !== -1) open.length = at;
@@ -121,15 +128,15 @@ function ruleBroken(tag, open) {
 }
 
 /**
- * Blanks everything that is not template markup, keeping line and column geometry so a violation
- * still reports its real position.
+ * The file's templates, each with everything that is not its markup blanked, keeping line and
+ * column geometry so a violation still reports its real position.
  *
- * An `.html` file is all template but for its comments; a `.ts` file is template only inside its
- * `template:` literals. Without the second, `touch-target.ts`'s own TSDoc — which spells out
+ * An `.html` file is one template, all of it but its comments; a `.ts` file holds one per
+ * `template:` literal. Without the second, `touch-target.ts`'s own TSDoc — which spells out
  * `<button appTouchTarget>` to document the convention — would read as markup.
  */
-function templateRegion(path, lines) {
-  return path.endsWith('.html') ? maskHtmlComments(lines) : typescriptRegions(lines).template;
+function templateRegions(path, lines) {
+  return path.endsWith('.html') ? [maskHtmlComments(lines)] : typescriptRegions(lines).templates;
 }
 
 /**

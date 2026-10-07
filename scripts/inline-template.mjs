@@ -103,8 +103,12 @@ function braceDelta(ch) {
  * - `code` — executable source with comments, strings and template literals removed, so a helper
  *   named in a comment cannot pass for a call site.
  *
+ * `templates` is `template` once per literal, in source order: each is its own template to
+ * Angular, which builds an element left open at its end, so a walk that keeps open elements walks
+ * each apart.
+ *
  * @param {string[]} lines the file's lines
- * @returns {{ template: string[], code: string[] }} the two masks, line for line
+ * @returns {{ template: string[], templates: string[][], code: string[] }} the masks, line for line
  */
 export function typescriptRegions(lines) {
   const scan = {
@@ -115,6 +119,7 @@ export function typescriptRegions(lines) {
     depth: 0,
     tail: new CodeTail(),
     template: lines.map(blankOf),
+    templates: [],
     code: lines.map(blankOf),
   };
   for (let row = 0; row < lines.length; row++) {
@@ -124,11 +129,19 @@ export function typescriptRegions(lines) {
     while (scan.at < scan.line.length) MASK[scan.state](scan);
     if (scan.state === 'code') scan.tail.push('\n');
   }
-  return { template: scan.template.map(joined), code: scan.code.map(joined) };
+  return {
+    template: scan.template.map(joined),
+    templates: scan.templates.map((mask) => mask.map(joined)),
+    code: scan.code.map(joined),
+  };
 }
 
 function blankOf(line) {
   return ' '.repeat(line.length).split('');
+}
+
+function blankRow(chars) {
+  return chars.map(() => ' ');
 }
 
 function joined(chars) {
@@ -148,6 +161,7 @@ function maskCode(scan) {
     scan.tail.reset();
   } else if (ch === '`') {
     scan.state = scan.tail.opensInlineTemplate() ? 'template' : 'string';
+    if (scan.state === 'template') scan.templates.push(scan.template.map(blankRow));
     scan.depth = 0;
     scan.at++;
   } else {
@@ -198,8 +212,12 @@ function maskTemplate(scan) {
     scan.at = step.next;
     return;
   }
-  if (line[at] === '`') scan.state = 'code';
-  else scan.template[scan.row][at] = line[at];
+  if (line[at] === '`') {
+    scan.state = 'code';
+  } else {
+    scan.template[scan.row][at] = line[at];
+    scan.templates.at(-1)[scan.row][at] = line[at];
+  }
   scan.at++;
 }
 
