@@ -120,6 +120,31 @@ test('does not judge a control inside an HTML comment', () => {
   assert.deepEqual(scan(HTML, lines), []);
 });
 
+/**
+ * #1496: an inline template's comment is a `Comment` node to Angular, as an external one is; one
+ * its literal leaves open is a build error and hides nothing in the next literal, and a `<!--` in
+ * an attribute value opens none.
+ */
+test('does not judge a control inside an inline template\'s HTML comment', () => {
+  const lines = ['@Component({', '  template: `<!-- <button>x</button> --><p>ok</p>`,', '})'];
+  const unterminated = [
+    '@Component({ template: `<!-- <p>draft</p>` })',
+    '@Component({ template: `<button>x</button>` })',
+  ];
+
+  assert.deepEqual(scan(TS, lines), []);
+  assert.deepEqual(
+    scan(TS, unterminated).map((v) => [v.rule, v.line]),
+    [['TT-1', 2]],
+  );
+  assert.deepEqual(
+    scan(TS, ['@Component({ template: `<i title="<!--"></i><button>x</button><!-- c -->` })']).map(
+      (v) => [v.rule, v.line],
+    ),
+    [['TT-1', 1]],
+  );
+});
+
 test('carries an exemption across control flow, self-closing tags and void elements', () => {
   const lines = [
     '<p data-touch-exempt="control inside a sentence (WCAG 2.5.5 inline exception)">',

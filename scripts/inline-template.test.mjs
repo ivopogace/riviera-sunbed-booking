@@ -132,6 +132,11 @@ function blank(text) {
   return ' '.repeat(text.length);
 }
 
+/** A mask's non-blank lines, each with its runs of blanks read as one space. */
+function kept(mask) {
+  return mask.map((line) => line.replace(/\s+/g, ' ').trim()).filter(Boolean);
+}
+
 /**
  * The masks keep every line's length, so a finding in either reads off the original file's
  * coordinates. The template mask holds an inline template's text and nothing else; the code mask
@@ -224,6 +229,126 @@ test('typescriptRegions carries a block comment and a template across lines', ()
   assert.equal(template[4].trim(), `<p>${blank('${ "}')}" }</p>`);
   assert.equal(code[4].trim(), ', selector:     })');
   assert.equal(code[5].trim(), 'class A {}');
+});
+
+/**
+ * #1496: Angular's lexer reads `<!--` to the first `-->` after it as a `Comment` node
+ * (`_consumeComment`), so `template` blanks an inline template's comment as an external one is
+ * blanked, and a control spelled inside it is no control. `<!-->`, `<!--->` and `--!>` end nothing.
+ * `templates`, the tag walk's input, keeps it: the walk steps over a comment itself.
+ */
+test('typescriptRegions blanks a template comment where Angular\'s lexer ends it', () => {
+  const lines = [
+    '@Component({',
+    '  template: `<!-- <button>x</button> --><p>ok</p> <!--',
+    '<input />',
+    '    --><i></i>',
+    '    <!--><b>-->,<!---><u>-->,<!-- --!><s> --><br>',
+    '  `,',
+    '})',
+  ];
+
+  const { template, templates, code } = typescriptRegions(lines);
+
+  assert.deepEqual(templates[0].slice(1, 3), [
+    '             <!-- <button>x</button> --><p>ok</p> <!--',
+    '<input />',
+  ]);
+  assert.deepEqual(template.map((line) => line.length), lines.map((line) => line.length));
+  assert.deepEqual(kept(template), ['<p>ok</p>', '<i></i>', ', , <br>']);
+  assert.deepEqual(kept(code), ['@Component({', 'template:', ',', '})']);
+});
+
+/**
+ * #1496: a comment is blanked only when the scan reads its whole span as the text Angular reads.
+ * One that its literal ends before closing is a build error, and one that spans an interpolation or
+ * an escape may end inside it, so neither hides what follows: the scan keeps it as markup. So does
+ * a processing instruction whose quote never closes, a build error that runs to the literal's end.
+ */
+test('typescriptRegions keeps a comment it cannot end as Angular would', () => {
+  const lines = [
+    '@Component({ template: `<!-- <button>a</button>` })',
+    '@Component({ template: `<button>b</button> -->` })',
+    '@Component({ template: `<!-- ${x} <button>c</button> -->` })',
+    '@Component({ template: `<!-- -\\-> <button>d</button> -->` })',
+    '@Component({ template: `<?x "> <!-- <button>e</button> -->` })',
+  ];
+
+  const { template } = typescriptRegions(lines);
+
+  assert.deepEqual(template.map((line) => line.trim()), [
+    '<!-- <button>a</button>',
+    '<button>b</button> -->',
+    `<!-- ${blank('${x}')} <button>c</button> -->`,
+    `<!-- -${blank('\\-')}> <button>d</button> -->`,
+    '<?x "> <!-- <button>e</button> -->',
+  ]);
+});
+
+/**
+ * #1496: the lexer opens a comment only where it reads markup, in text or at an interpolation's
+ * early end. In a quoted attribute value, raw text, CDATA, a doctype, a processing instruction, a
+ * block's parameters or a `@let` value a `<!--` is text, so none of these blanks the control after
+ * it: `HtmlParser` builds each `markup` tree with its `button`, and each `blanked` one with none.
+ * After a `${…}` or an escape the cooked text is unknown, so the last two `markup` entries stay.
+ */
+test('typescriptRegions opens a comment only where Angular\'s lexer does', () => {
+  const markup = [
+    '<div title="<!--"><button>x</button></div><!-- c -->',
+    '<textarea><!-- </textarea><button>x</button> -->',
+    '<svg><style><!-- </style><button>x</button> --></svg>',
+    '<![CDATA[ <!-- ]]><button>x</button> -->',
+    '<!DOCTYPE <!-- ><button>x</button> -->',
+    '@if (a == "<!--") {<button>x</button>} -->',
+    '@let x = "<!--"; <button>x</button> -->',
+    '<?x <!-- ><button>x</button> -->',
+    '<?x ">" <!-- ?><button>x</button> -->',
+    '{{ a // " }}@let x = "<!--"; <button>x</button> -->',
+    '{{ a //<!-- }}<button>x</button> -->',
+    '${a}<!-- <button>x</button> -->',
+    '\\n<!-- <button>x</button> -->${a}',
+  ];
+  const blanked = [
+    '<p>{{ a }}<!-- <button>x</button> --></p>',
+    '<p>{{ a <!-- b }}<button>x</button> --></p>',
+    '<p>{{ "<!-- }}" }}<button>x</button> --></p>',
+    '<p>{{ a // " }}<!-- <button>x</button> --></p>',
+    '{{ "@if (" }}<!-- <button>x</button> -->)',
+    '<!DOCTYPE ">" <!-- <button>x</button> -->',
+    '<!><!-- <button>x</button> -->',
+    '<a href="https://x.y/z"></a><!-- <button>x</button> -->',
+  ];
+
+  for (const body of markup) {
+    const { template } = typescriptRegions([`@Component({ template: \`${body}\` })`]);
+    assert.match(template[0], /<button>x<\/button>/, body);
+  }
+  for (const body of blanked) {
+    const { template } = typescriptRegions([`@Component({ template: \`${body}\` })`]);
+    assert.doesNotMatch(template[0], /button/, body);
+  }
+});
+
+/**
+ * #1496: a start tag the walk cannot read to its `>` (`readAttributes` marks it incomplete, or no
+ * name it knows follows the `<`) is a build error in Angular or a misread, so the scan stops
+ * reading comments there, as at an escape; so does one holding a `//` or `/*` outside quotes, a
+ * start-tag comment (`_consumeSingleLineComment`, `_consumeMultiLineComment`) the walk reads as
+ * attributes. `HtmlParser` builds each `div` below with its `role`; the `a[a]` one is a build
+ * error, where stopping costs nothing.
+ */
+test('typescriptRegions reads no comment past a start tag it cannot read', () => {
+  for (const body of [
+    '<div title = "<!--" role="dialog">x</div><!-- end -->',
+    '<div // <!--\n role="dialog" -->>x</div>',
+    '<div /* <!-- */ role="dialog" -->>x</div>',
+    '<a[a]="<!--" role="dialog">x</a><!-- end -->',
+    '<div //><!-- \n role="dialog">x</div><!-- end -->',
+    '<div /*><!--*/ role="dialog">x</div><!-- end -->',
+  ]) {
+    const lines = `@Component({ template: \`${body}\` })`.split('\n');
+    assert.match(typescriptRegions(lines).template.join('\n'), /role="dialog"/, body);
+  }
 });
 
 test('readAttributes reads a start tag across lines up to its `>`', () => {
