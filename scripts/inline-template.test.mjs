@@ -167,6 +167,36 @@ test('typescriptRegions masks a component down to its inline template and its co
   assert.equal(code[10].trim(), 'go() { this.el.focus(); }');
 });
 
+/**
+ * #1494: each `template:` literal is its own template to Angular, which builds an element left open
+ * at its end (`<svg><g>` parses with no error), so `templates` masks each literal apart, geometry
+ * kept, for a walk that must not carry one template's open elements into the next.
+ */
+test('typescriptRegions masks each inline template apart as well', () => {
+  const lines = [
+    '@Component({ template: `<svg><g>` })',
+    'export class Chart {}',
+    '@Component({',
+    '  template: `<button>x</button>`,',
+    '})',
+    'export class Panel {}',
+  ];
+
+  const { template, templates } = typescriptRegions(lines);
+
+  assert.equal(templates.length, 2);
+  for (const mask of templates) {
+    assert.deepEqual(mask.map((line) => line.length), lines.map((line) => line.length));
+  }
+  assert.deepEqual(templates[0].map((line) => line.trim()).filter(Boolean), ['<svg><g>']);
+  assert.deepEqual(templates[1].map((line) => line.trim()).filter(Boolean), ['<button>x</button>']);
+  assert.deepEqual(template.map((line) => line.trim()).filter(Boolean), [
+    '<svg><g>',
+    '<button>x</button>',
+  ]);
+  assert.deepEqual(typescriptRegions(['const a = 1;']).templates, []);
+});
+
 test('typescriptRegions reads only a `template:` literal as an inline template', () => {
   const lines = ['const fixtures = {', '  xtemplate: `', '    <button>Go</button>', '  `,', '};'];
 
@@ -538,15 +568,14 @@ test('walkTags reads a prefixed element\'s start and end tags, named by the loca
 });
 
 /**
- * #1492: `html` is whether the tag's own spelling builds the HTML element its `name` names. An
- * unprefixed tag is created with `createElement`, which lower-cases its name in an HTML document; a
- * prefixed one with `createElementNS(NAMESPACE_URIS[prefix] || prefix, name)`, which keeps the
- * case, and only the exact prefix `xhtml` maps to the HTML namespace. So `<xhtml:button>` is an
- * `HTMLButtonElement`, while `<svg:button>`, `<XHTML:button>` and `<xhtml:BUTTON>` are not.
- * Namespace inheritance is not followed: an unprefixed tag is `html` wherever it stands, as it was
- * judged before.
+ * #1492: with no namespace inherited, `html` is whether the tag's own spelling builds the HTML
+ * element its `name` names. An unprefixed tag is created with `createElement`, which lower-cases
+ * its name in an HTML document; a prefixed one with `createElementNS(NAMESPACE_URIS[prefix] ||
+ * prefix, name)`, which keeps the case, and only the exact prefix `xhtml` maps to the HTML
+ * namespace. So `<xhtml:button>` is an `HTMLButtonElement`, while `<svg:button>`, `<XHTML:button>`
+ * and `<xhtml:BUTTON>` are not.
  */
-test('walkTags marks the start tags whose own spelling builds an HTML element', () => {
+test('walkTags marks a lone start tag html by its own spelling', () => {
   const cases = [
     ['<button>', true],
     ['<BUTTON>', true],
@@ -559,6 +588,51 @@ test('walkTags marks the start tags whose own spelling builds an HTML element', 
   ];
   for (const [line, html] of cases) {
     assert.equal(walkTags([line])[0].html, html, line);
+  }
+});
+
+/**
+ * #1494: a tag's namespace is the one `_getPrefix` gives it: its own prefix, else its name's
+ * `implicitNamespacePrefix` (`svg`, `foreignObject` → `svg`, `math` → `math`, looked up exactly and
+ * then lower-cased), else its closest open element's, unless that element's local name is exactly
+ * `foreignObject` (`preventNamespaceInheritance`). Blocks are no parent, and a self-closed or
+ * incomplete tag encloses nothing, and an end tag closes the open elements it skips. Each row's
+ * `HtmlParser` tree: `:svg:svg[:svg:button]`,
+ * `:svg:svg[:svg:foreignObject[button]]`, `:svg:svg[:svg:foreignobject[:svg:button]]`, and so on.
+ */
+test('walkTags gives a start tag the namespace Angular\'s parser does, inherited included', () => {
+  const cases = [
+    ['<svg><button></button></svg>', [['svg', false], ['svg', false]]],
+    ['<math><button></button></math>', [['math', false], ['math', false]]],
+    ['<SVG><Math><button>', [['svg', false], ['math', false], ['math', false]]],
+    [
+      '<svg><foreignObject><button></button></foreignObject></svg>',
+      [['svg', false], ['svg', false], ['', true]],
+    ],
+    ['<svg><foreignobject><button>', [['svg', false], ['svg', false], ['svg', false]]],
+    ['<svg><x:foreignObject><BUTTON>', [['svg', false], ['x', false], ['', true]]],
+    ['<foreignObject><p>', [['svg', false], ['', true]]],
+    ['<svg></svg><button>', [['svg', false], ['', true]]],
+    [
+      '<svg><foreignObject><p></foreignObject><button>',
+      [['svg', false], ['svg', false], ['', true], ['svg', false]],
+    ],
+    ['<svg/><button>', [['svg', false], ['', true]]],
+    ['<svg <button>', [['svg', false], ['', true]]],
+    ['<svg>@if (a) {<button></button>}</svg>', [['svg', false], ['svg', false]]],
+    ['<svg><g></g><button>', [['svg', false], ['svg', false], ['svg', false]]],
+    ['<svg><xhtml:button>', [['svg', false], ['xhtml', true]]],
+    ['<xhtml:div><button><BUTTON>', [['xhtml', true], ['xhtml', true], ['xhtml', false]]],
+    ['<svg:g><button>', [['svg', false], ['svg', false]]],
+    ['<svg:style></style><button>', [['svg', false], ['', true]]],
+  ];
+  for (const [line, expected] of cases) {
+    const opens = walkTags([line]).filter((tag) => tag.kind === 'open');
+    assert.deepEqual(
+      opens.map((tag) => [tag.namespace, tag.html]),
+      expected,
+      line,
+    );
   }
 });
 

@@ -46,8 +46,9 @@ const JUDGED = new Set(['button', 'input', 'select', 'textarea']);
 /**
  * Elements that never have an end tag, per the HTML spec, and so can never open an exemption scope.
  * `<input>` is both judged and void — it is exempted by an ancestor, never by its own subtree. Only
- * unprefixed: Angular looks a prefixed tag up by its full name (`:xhtml:input`), finds no void
- * definition, and lets it enclose what follows up to its end tag.
+ * in the namespace `''`: Angular looks a tag up by its full name (`:xhtml:input`, or `:svg:input`
+ * for a bare one inside `<svg>`), finds no void definition, and lets it enclose what follows up to
+ * its end tag.
  */
 const VOID = new Set([
   'area',
@@ -81,10 +82,17 @@ const VOID = new Set([
  * @returns {{ path: string, line: number, rule: string, text: string }[]} one entry per violation
  */
 export function findViolations({ path, lines, added }) {
+  return templateRegions(path, lines).flatMap((region) =>
+    regionViolations(path, lines, added, region),
+  );
+}
+
+/** One template's violations, on a stack of its own: an element left open reaches no other. */
+function regionViolations(path, lines, added, region) {
   const violations = [];
   const open = [];
 
-  for (const tag of walkTags(maskBlockExpressions(templateRegion(path, lines)))) {
+  for (const tag of walkTags(maskBlockExpressions(region))) {
     if (tag.kind === 'close') {
       const at = open.findLastIndex((element) => element.name === tag.name);
       if (at !== -1) open.length = at;
@@ -103,13 +111,13 @@ export function findViolations({ path, lines, added }) {
 
 /** Whether a start tag opens a scope its end tag closes: neither self-closed nor `VOID`. */
 function encloses(tag) {
-  return !tag.selfClosed && !(tag.prefix === '' && VOID.has(tag.name));
+  return !tag.selfClosed && !(tag.namespace === '' && VOID.has(tag.name));
 }
 
 /**
  * TT-2 for an exemption that gives no reason, TT-1 for an undeclared control, else null. A control is
- * a `JUDGED` name its tag spells in the HTML namespace (`html`): `<xhtml:button>` is one,
- * `<svg:button>` none.
+ * a `JUDGED` name built in the HTML namespace (`html`): `<xhtml:button>` is one, `<svg:button>` and
+ * a bare `<button>` inside `<svg>` none.
  */
 function ruleBroken(tag, open) {
   const marker = tag.attributes.get('data-touch-exempt');
@@ -120,15 +128,15 @@ function ruleBroken(tag, open) {
 }
 
 /**
- * Blanks everything that is not template markup, keeping line and column geometry so a violation
- * still reports its real position.
+ * The file's templates, each with everything that is not its markup blanked, keeping line and
+ * column geometry so a violation still reports its real position.
  *
- * An `.html` file is all template but for its comments; a `.ts` file is template only inside its
- * `template:` literals. Without the second, `touch-target.ts`'s own TSDoc — which spells out
+ * An `.html` file is one template, all of it but its comments; a `.ts` file holds one per
+ * `template:` literal. Without the second, `touch-target.ts`'s own TSDoc — which spells out
  * `<button appTouchTarget>` to document the convention — would read as markup.
  */
-function templateRegion(path, lines) {
-  return path.endsWith('.html') ? maskHtmlComments(lines) : typescriptRegions(lines).template;
+function templateRegions(path, lines) {
+  return path.endsWith('.html') ? [maskHtmlComments(lines)] : typescriptRegions(lines).templates;
 }
 
 /**

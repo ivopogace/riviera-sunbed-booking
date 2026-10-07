@@ -278,8 +278,8 @@ test('markup inside a raw-text element is no control', () => {
 /**
  * #1487: a prefixed `style`, `script`, `textarea` or `title` is raw text too, up to its bare-name end
  * tag (`HtmlParser`: `:svg:style[Text "<button>"]`), so the `<button>` in it is no control and the
- * control after it is still judged. `<svg:title>` alone is parsed, and its button stays judged
- * (`:svg:title[:svg:button[Text "a"]]`).
+ * control after it is still judged. `<svg:title>` alone is parsed, and an `<xhtml:button>` in it
+ * stays judged (`:svg:title[:xhtml:button[Text "a"]]`).
  */
 test('markup inside a prefixed raw-text element is no control', () => {
   for (const element of [
@@ -295,7 +295,7 @@ test('markup inside a prefixed raw-text element is no control', () => {
     );
   }
   assert.deepEqual(
-    scan(HTML, ['<svg><svg:title><button>a</button></svg:title></svg>']).map((v) => [
+    scan(HTML, ['<svg><svg:title><xhtml:button>a</xhtml:button></svg:title></svg>']).map((v) => [
       v.rule,
       v.line,
     ]),
@@ -379,10 +379,11 @@ test('a prefixed element leaves the exemption stack balanced', () => {
 });
 
 /**
- * #1492: only an unprefixed void element is void. Angular looks a prefixed tag's definition up by its
- * full name (`:xhtml:input`), finds the default one, and lets it enclose what follows until its end
- * tag (`HtmlParser`: `:xhtml:input[:xhtml:button[Text "x"]]`), so an exemption on it covers that.
- * An unprefixed `<input>` stays void with or without its `/`, and its exemption covers nothing after.
+ * #1492: only a void element in the namespace `''` is void. Angular looks a prefixed tag's
+ * definition up by its full name (`:xhtml:input`), finds the default one, and lets it enclose what
+ * follows until its end tag (`HtmlParser`: `:xhtml:input[:xhtml:button[Text "x"]]`), so an
+ * exemption on it covers that. A bare `<input>` outside `<svg>` stays void with or without its `/`,
+ * and its exemption covers nothing after.
  */
 test('a prefixed void-named element encloses its content, exemption included', () => {
   assert.deepEqual(
@@ -395,6 +396,64 @@ test('a prefixed void-named element encloses its content, exemption included', (
   ]) {
     assert.deepEqual(scan(HTML, [element]).map((v) => [v.rule, v.line]), [['TT-1', 1]], element);
   }
+});
+
+/**
+ * #1494: an unprefixed tag inherits its parent's namespace (`_getPrefix`), so a bare `<button>`
+ * inside `<svg>` or `<math>` is no control (`HtmlParser`: `:svg:svg[:svg:button[Text "x"]]`), while
+ * one inside a `<foreignObject>`, which stops inheritance, or after the `</svg>` is a real button.
+ */
+test('a control in an inherited SVG or MathML namespace is no control', () => {
+  for (const element of [
+    '<svg><button>x</button></svg>',
+    '<math><button>x</button></math>',
+    '<svg><g><input/><select></select></g></svg>',
+  ]) {
+    assert.deepEqual(scan(HTML, [element]), [], element);
+  }
+  for (const element of [
+    '<svg><foreignObject><button>x</button></foreignObject></svg>',
+    '<svg></svg><button>x</button>',
+    '<svg/><button>x</button>',
+  ]) {
+    assert.deepEqual(scan(HTML, [element]).map((v) => [v.rule, v.line]), [['TT-1', 1]], element);
+  }
+});
+
+/**
+ * #1494: each inline template is its own tree, so an element one leaves open (Angular builds
+ * `<svg><g>` and `<div data-touch-exempt="r">` with no error) neither gives the next template's
+ * control its namespace nor exempts it.
+ */
+test('an element left open in one inline template does not reach the next', () => {
+  for (const opener of ['<svg><g>', '<div data-touch-exempt="r">']) {
+    const lines = [
+      `@Component({ template: \`${opener}\` })`,
+      'export class Chart {}',
+      '@Component({',
+      '  template: `<button>x</button>`,',
+      '})',
+      'export class Panel {}',
+    ];
+
+    assert.deepEqual(scan(TS, lines).map((v) => [v.rule, v.line]), [['TT-1', 4]], opener);
+  }
+});
+
+/**
+ * #1494: void is judged on the namespace a tag builds in, as Angular looks its definition up by
+ * full name: an unprefixed `<input>` inside `<svg>` is `:svg:input`, encloses what follows up to
+ * its end tag, and its exemption covers the `<foreignObject>`'s button in it (`HtmlParser`:
+ * `:svg:svg[:svg:input[:svg:foreignObject[button]]]`).
+ */
+test('a void-named element in an inherited namespace encloses its content', () => {
+  const lines = [
+    '<svg><input data-touch-exempt="r">',
+    '  <foreignObject><button>x</button></foreignObject>',
+    '</input></svg>',
+  ];
+
+  assert.deepEqual(scan(HTML, lines), []);
 });
 
 /**

@@ -95,7 +95,7 @@ function braceDelta(ch) {
 }
 
 /**
- * The two masks of a TypeScript file, each keeping line and column geometry so a finding still
+ * The masks of a TypeScript file, each keeping line and column geometry so a finding still
  * reports its real position:
  *
  * - `template` — the contents of inline templates, and nothing else. A `<button [disabled]>` that a
@@ -103,8 +103,12 @@ function braceDelta(ch) {
  * - `code` — executable source with comments, strings and template literals removed, so a helper
  *   named in a comment cannot pass for a call site.
  *
+ * `templates` is `template` once per literal, in source order: each is its own template to
+ * Angular, which builds an element left open at its end, so a walk that keeps open elements walks
+ * each apart.
+ *
  * @param {string[]} lines the file's lines
- * @returns {{ template: string[], code: string[] }} the two masks, line for line
+ * @returns {{ template: string[], templates: string[][], code: string[] }} the masks, line for line
  */
 export function typescriptRegions(lines) {
   const scan = {
@@ -115,6 +119,7 @@ export function typescriptRegions(lines) {
     depth: 0,
     tail: new CodeTail(),
     template: lines.map(blankOf),
+    templates: [],
     code: lines.map(blankOf),
   };
   for (let row = 0; row < lines.length; row++) {
@@ -124,11 +129,19 @@ export function typescriptRegions(lines) {
     while (scan.at < scan.line.length) MASK[scan.state](scan);
     if (scan.state === 'code') scan.tail.push('\n');
   }
-  return { template: scan.template.map(joined), code: scan.code.map(joined) };
+  return {
+    template: scan.template.map(joined),
+    templates: scan.templates.map((mask) => mask.map(joined)),
+    code: scan.code.map(joined),
+  };
 }
 
 function blankOf(line) {
   return ' '.repeat(line.length).split('');
+}
+
+function blankRow(chars) {
+  return chars.map(() => ' ');
 }
 
 function joined(chars) {
@@ -148,6 +161,7 @@ function maskCode(scan) {
     scan.tail.reset();
   } else if (ch === '`') {
     scan.state = scan.tail.opensInlineTemplate() ? 'template' : 'string';
+    if (scan.state === 'template') scan.templates.push(scan.template.map(blankRow));
     scan.depth = 0;
     scan.at++;
   } else {
@@ -198,8 +212,12 @@ function maskTemplate(scan) {
     scan.at = step.next;
     return;
   }
-  if (line[at] === '`') scan.state = 'code';
-  else scan.template[scan.row][at] = line[at];
+  if (line[at] === '`') {
+    scan.state = 'code';
+  } else {
+    scan.template[scan.row][at] = line[at];
+    scan.templates.at(-1)[scan.row][at] = line[at];
+  }
   scan.at++;
 }
 
@@ -470,15 +488,17 @@ function tagEnd(lines, starts, text, at) {
 
 /**
  * Walks the masked template and returns one entry per element tag, start and end alike, in
- * document order: `{ kind: 'open', prefix, name, html, attributes, selfClosed, incomplete, line }`
- * with the 1-based line its `<` is on, or `{ kind: 'close', prefix, name }`. The one walk both
- * markup guards judge and `maskBlockExpressions` steps by, so the three read the same tags.
+ * document order: `{ kind: 'open', prefix, name, namespace, html, attributes, selfClosed,
+ * incomplete, line }` with the 1-based line its `<` is on, or `{ kind: 'close', prefix, name }`.
+ * The one walk both markup guards judge and `maskBlockExpressions` steps by, so the three read the
+ * same tags.
  *
  * `prefix` is the namespace prefix as written, `''` when there is none, and `name` the local name
  * lower-cased, so a guard's stack balances `<svg:g>` against `</svg:g>` and against the bare `</g>`
- * namespace inheritance makes its end tag (`_getPrefix`). `html` is whether the tag's own spelling
- * builds the HTML element `name` names (`elementNameAt`); a guard judges a control by it, so
- * `<svg:button>` is no button.
+ * namespace inheritance makes its end tag (`_getPrefix`). `namespace` is the prefix the element is
+ * built under, inherited included (`namespaceOf`), and `html` whether that builds the HTML element
+ * `name` names (`isHtml`); a guard judges a control by it, so `<svg:button>` and the bare
+ * `<button>` inside `<svg>` are no buttons.
  *
  * A start tag legitimately spans lines — every multi-line binding in the app is written that way —
  * so this tracks position across the whole region rather than per line.
@@ -487,6 +507,7 @@ function tagEnd(lines, starts, text, at) {
  */
 export function walkTags(lines) {
   const tags = [];
+  const open = [];
   let i = 0;
   let c = 0;
 
@@ -498,7 +519,7 @@ export function walkTags(lines) {
     }
     const found = tagAt(lines, i, c);
     if (found !== null) {
-      tags.push(...found.tags);
+      for (const tag of found.tags) tags.push(nested(tag, found.local, open));
       i = found.line;
       c = found.column;
     }
@@ -508,8 +529,64 @@ export function walkTags(lines) {
 }
 
 /**
- * The tags a `<` at line `i`, column `c` opens or closes, and the last position reading them took;
- * null when that `<` opens no tag.
+ * The entry `tag` with its namespace, kept in step with `open`, the elements open around it, each
+ * with its local name as written and its namespace. A complete start tag that is not self-closed is
+ * pushed, and an end tag pops back to the last open element of its lower-cased local name, as
+ * `check-touch-target`'s stack does: a superset of `_popContainer`'s full-name match whose extra
+ * pairs are build errors; an end tag with none pops nothing. Blocks are no entries, as
+ * `_getClosestElementLikeParent` skips them. An element Angular closes without an end tag (a void
+ * one, or a `<p>` its child closes) stays open here until an ancestor's end tag, which changes no
+ * namespace: Angular closes one implicitly only in the HTML namespace, whose children inherit `''`
+ * either way.
+ */
+function nested(tag, local, open) {
+  if (tag.kind === 'close') {
+    const at = open.findLastIndex((element) => element.name === tag.name);
+    if (at !== -1) open.length = at;
+    return tag;
+  }
+  const namespace = namespaceOf(tag.prefix, local, open.at(-1));
+  if (!tag.selfClosed && !tag.incomplete) open.push({ name: tag.name, local, namespace });
+  return { ...tag, namespace, html: isHtml(namespace, local) };
+}
+
+/**
+ * `getHtmlTagDefinition`'s `implicitNamespacePrefix`, looked up as it is: by the name as written,
+ * then lower-cased, so `<SVG>` is `svg` but `<foreignobject>` none.
+ */
+const IMPLICIT_NAMESPACE = new Map([
+  ['svg', 'svg'],
+  ['foreignObject', 'svg'],
+  ['math', 'math'],
+]);
+
+/**
+ * The prefix `_getPrefix` gives a start tag: its own, else its name's implicit one, else its
+ * closest open element's, unless that element's local name is exactly `foreignObject`, the one
+ * definition that sets `preventNamespaceInheritance`; `''` for the HTML namespace.
+ */
+function namespaceOf(prefix, local, parent) {
+  const own =
+    prefix || IMPLICIT_NAMESPACE.get(local) || IMPLICIT_NAMESPACE.get(local.toLowerCase());
+  if (own) return own;
+  if (parent === undefined || parent.local === 'foreignObject') return '';
+  return parent.namespace;
+}
+
+/**
+ * Whether an element built under `namespace` is the HTML element its lower-cased name names.
+ * Angular's renderer creates one with no namespace by `createElement`, which lower-cases the name
+ * in an HTML document, and any other by `createElementNS(NAMESPACE_URIS[namespace] || namespace,
+ * name)`, which keeps its case: only `xhtml` maps to the HTML namespace, and only a lower-case name
+ * there is the element it spells (`<xhtml:BUTTON>` is an `HTMLUnknownElement`).
+ */
+function isHtml(namespace, local) {
+  return namespace === '' || (namespace === 'xhtml' && local === local.toLowerCase());
+}
+
+/**
+ * The tags a `<` at line `i`, column `c` opens or closes, the start tag's local name as written
+ * (`local`), and the last position reading them took; null when that `<` opens no tag.
  *
  * A complete start tag whose content is raw text (`isRawText`, by prefix and name) is followed by
  * that content, which `_consumeTagOpen` hands to `_consumeRawTextWithTagClose` as text: the read
@@ -524,24 +601,23 @@ function tagAt(lines, i, c) {
   if (lines[i][c + 1] === '/') return endTagAt(lines, i, c + 2);
   const tag = elementNameAt(lines[i], c + 1);
   if (tag === null) return null;
-  const { prefix, name } = tag;
+  const { prefix, name, local } = tag;
   const read = readAttributes(lines, i, c + 1 + tag.length);
   const open = {
     kind: 'open',
     prefix,
     name,
-    html: tag.html,
     attributes: read.attributes,
     selfClosed: read.selfClosed,
     incomplete: read.incomplete,
     line: i + 1,
   };
   if (!isRawText(prefix, name) || read.incomplete) {
-    return { tags: [open], line: read.line, column: read.column };
+    return { tags: [open], local, line: read.line, column: read.column };
   }
   const end = rawTextEnd(lines, read.line, read.column + 1, name);
-  if (end === null) return { tags: [open], ...pastEnd(lines) };
-  return { tags: [open, { kind: 'close', prefix: '', name }], ...end };
+  if (end === null) return { tags: [open], local, ...pastEnd(lines) };
+  return { tags: [open, { kind: 'close', prefix: '', name }], local, ...end };
 }
 
 /**
@@ -557,27 +633,22 @@ const PREFIXED_NAME = /^([A-Za-z][A-Za-z\d]*):([\w-]+)/;
  * `tagNameAt`'s, its prefix `''`. A prefixed one is read by `PREFIXED_NAME` and ended by a
  * `TAG_NAME_END`; a name with a second `:` (`<a:b:c>`, Angular's `:a:b:c`) or a `:` after a `-`
  * (`<svg-x:style>`) is read by neither, and is no tag to the walk, its end tag no more than its start.
- *
- * `html` is whether the tag's own spelling builds the HTML element its lower-cased name names.
- * Angular's renderer creates an unprefixed tag with `createElement`, which lower-cases the name in an
- * HTML document, and a prefixed one with `createElementNS(NAMESPACE_URIS[prefix] || prefix, name)`,
- * which keeps its case: only the exact prefix `xhtml` maps to the HTML namespace, and only a
- * lower-case name there is the element it spells (`<xhtml:BUTTON>` is an `HTMLUnknownElement`).
- * Namespace inheritance is not followed: an unprefixed tag inside `<svg>` builds an SVG element, but
- * is judged as it always was.
+ * `name` is the local name lower-cased, `local` the same as written, which the namespace reads.
  *
  * @param {string} line the masked template line
  * @param {number} from the index after the `<`, or after the `</` and its whitespace
- * @returns {{ prefix: string, name: string, html: boolean, length: number } | null}
+ * @returns {{ prefix: string, name: string, local: string, length: number } | null}
  */
 function elementNameAt(line, from) {
   const bare = tagNameAt(line, from);
-  if (bare !== null) return { prefix: '', name: bare, html: true, length: bare.length };
+  if (bare !== null) {
+    const local = line.slice(from, from + bare.length);
+    return { prefix: '', name: bare, local, length: bare.length };
+  }
   const read = PREFIXED_NAME.exec(line.slice(from));
   if (read === null || !TAG_NAME_END.test(line[from + read[0].length] ?? ' ')) return null;
   const [whole, prefix, local] = read;
-  const name = local.toLowerCase();
-  return { prefix, name, html: prefix === 'xhtml' && local === name, length: whole.length };
+  return { prefix, name: local.toLowerCase(), local, length: whole.length };
 }
 
 /** Angular's `isWhitespace`: TAB through SPACE, and NBSP; a line end is one of them. */
