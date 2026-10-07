@@ -885,10 +885,10 @@ test('walkTags closes each element at exactly the children Angular\'s definition
 });
 
 /**
- * #1497: an HTML comment is one token to Angular's lexer (`_consumeComment`), so nothing in it opens
- * or closes a container: no tag, block, ICU or `}`, which an inline `.ts` template leaves unmasked
+ * #1497: an HTML comment is one node to Angular (`_consumeComment`), so nothing in it opens or
+ * closes a container: no tag, block, ICU or `}`, which an inline `.ts` template leaves unmasked
  * (`HtmlParser`: `@if{li["x", Comment, button["y"]]}`; `Comment, "x", button["y"]`; `p[Comment],
- * div[]`). Like any token, it closes a void element; an unterminated one fails a build and is
+ * div[]`). Like any node, it closes a void element; an unterminated one fails a build and is
  * stepped over at its `<!--` alone.
  */
 test('walkTags steps over an HTML comment as one token', () => {
@@ -920,7 +920,7 @@ test('walkTags steps over a CDATA section as one token', () => {
   for (const [line, expected] of cases) assert.deepEqual(closes([line]), expected, line);
 });
 
-/** #1497: an ICU form whose case never opens fails a build, and the tags after it are still read. */
+/** #1497: an ICU form whose case never opens fails a build; the tags after it are still read. */
 test('walkTags reads on past an ICU form with no case', () => {
   assert.deepEqual(closes(['{a, b, x <button>']), ['<button']);
 });

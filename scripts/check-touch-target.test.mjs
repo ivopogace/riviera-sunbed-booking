@@ -669,9 +669,10 @@ test('a void element\'s exemption covers an ICU right after it, and nothing more
 });
 
 /**
- * #1497: a comment in an inline template is one token to Angular, so a brace or a block in it neither
- * ends an exemption nor hides the controls after it (`HtmlParser`: `@if{li["x", Comment,
- * button["y"]]}`; `Comment, "x", button["y"]`).
+ * #1497: a comment in an inline template is one node to Angular, so the walk lets no brace or
+ * ICU head in it end an exemption or hide the controls after it (`HtmlParser`: `@if{li["x",
+ * Comment, button["y"]]}`; `Comment, "x", button["y"]`). The block mask still reads into one: an
+ * unclosed `@let` or `@if (` there is #1496's, which masks an inline template's comments.
  */
 test('a comment in an inline template neither ends an exemption nor hides a control', () => {
   const component = (markup) => ['@Component({', '  template: `', ...markup, '  `,', '})'];

@@ -505,8 +505,9 @@ function tagEnd(lines, starts, text, at) {
  *
  * A start tag legitimately spans lines — every multi-line binding in the app is written that way —
  * so this tracks position across the whole region rather than per line. Between tags the text is
- * read as Angular's lexer reads it for what opens or closes a container: an interpolation, a block
- * and its `{`, an ICU's `{`, and a `}` (`textStep`).
+ * read as Angular's lexer reads it for what opens or closes a container: a comment or CDATA section
+ * as one token (`OPAQUE`), an interpolation, a block and its `{`, an ICU's `{`, and a `}`
+ * (`textStep`).
  *
  * @param {string[]} lines the masked template region
  */
@@ -519,8 +520,9 @@ export function walkTags(lines) {
 
   while (at < text.length) {
     while (i + 1 < starts.length && starts[i + 1] <= at) i++;
-    if (text.startsWith('<!--', at)) {
-      at = commentEnd(text, at, walk);
+    const opaque = OPAQUE.find(([open]) => text.startsWith(open, at));
+    if (opaque !== undefined) {
+      at = opaqueEnd(text, at, opaque, walk);
       continue;
     }
     const found = text[at] === '<' ? tagAt(lines, i, at - starts[i]) : null;
@@ -679,15 +681,25 @@ function icuFormStep(text, at, walk) {
 }
 
 /**
- * The offset past an HTML comment at `at`, which Angular's lexer reads as one token
- * (`_consumeComment`) up to its `-->`, so nothing in it opens or closes a container; like any token,
- * it closes a void element. An `.html` template arrives with its comments masked, an inline one
- * without. With no `-->` the template fails to build, and only the `<!--` is stepped over.
+ * The constructs Angular's lexer reads as raw text from their opener to their closer, an HTML
+ * comment (`_consumeComment`) and a CDATA section (`_consumeCdata`), each of which the tree builder
+ * takes as one node after `_closeVoidElement`. An `.html` template arrives with its comments
+ * masked, an inline one without (#1496), and the block mask still reads into one.
  */
-function commentEnd(text, at, walk) {
+const OPAQUE = [
+  ['<!--', '-->'],
+  ['<![CDATA[', ']]>'],
+];
+
+/**
+ * The offset past the `OPAQUE` construct at `at`, so nothing in it opens or closes a container; it
+ * closes a void element, as any node does. With no closer the template fails to build, and only the
+ * opener is stepped over.
+ */
+function opaqueEnd(text, at, [open, close], walk) {
   if (walk.open.at(-1)?.void) closeTop(walk);
-  const end = text.indexOf('-->', at + 4);
-  return end === -1 ? at + 4 : end + 3;
+  const end = text.indexOf(close, at + open.length);
+  return end === -1 ? at + open.length : end + close.length;
 }
 
 /** Pops everything above the innermost `kind` container, and that container; with none, nothing. */
