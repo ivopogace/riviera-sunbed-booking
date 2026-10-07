@@ -788,7 +788,7 @@ test('walkTags closes what a block or an ICU case leaves open at its `}`', () =>
     ['{n, select, x {<p>a} =1 <b> {c}}<button>', ['<p', '~p', '<button']],
     ['{n<b>, select, x {y}}', []],
     ['{n, select, x {x@if (a) {<img>n, select, y {}}}}<button>', ['<button']],
-    ['{n, select, x {a} }<p><div>', ['<p', '~p', '<div']],
+    ['{n, select, x {a} }<p><div>{m, select, y {z}}', ['<p', '~p', '<div']],
     ['<p>{ a }<div>', ['<p', '~p', '<div']],
   ];
   for (const [line, expected] of cases) {
