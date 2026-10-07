@@ -44,29 +44,6 @@ const IN_SCOPE = /^frontend\/src\/app\/.*(?<!\.spec)\.(ts|html)$/;
 const JUDGED = new Set(['button', 'input', 'select', 'textarea']);
 
 /**
- * Elements that never have an end tag, per the HTML spec, and so can never open an exemption scope.
- * `<input>` is both judged and void — it is exempted by an ancestor, never by its own subtree. Only
- * in the namespace `''`: Angular looks a tag up by its full name (`:xhtml:input`, or `:svg:input`
- * for a bare one inside `<svg>`), finds no void definition, and lets it enclose what follows up to
- * its end tag.
- */
-const VOID = new Set([
-  'area',
-  'base',
-  'br',
-  'col',
-  'embed',
-  'hr',
-  'img',
-  'input',
-  'link',
-  'meta',
-  'source',
-  'track',
-  'wbr',
-]);
-
-/**
  * Finds every undeclared control the diff wrote in one file.
  *
  * <p>An exemption is inherited, because that is how the shipped markup expresses it: `auth-page.ts`
@@ -109,9 +86,13 @@ function regionViolations(path, lines, added, region) {
   return violations;
 }
 
-/** Whether a start tag opens a scope its end tag closes: neither self-closed nor `VOID`. */
+/**
+ * Whether a start tag opens a scope its end tag closes: neither self-closed nor `void`, which the
+ * walk decides. `<input>` is both judged and void: it is exempted by an ancestor, never by its own
+ * subtree.
+ */
 function encloses(tag) {
-  return !tag.selfClosed && !(tag.namespace === '' && VOID.has(tag.name));
+  return !tag.selfClosed && !tag.void;
 }
 
 /**

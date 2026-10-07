@@ -399,6 +399,20 @@ test('a prefixed void-named element encloses its content, exemption included', (
 });
 
 /**
+ * #1498: every element Angular's `getHtmlTagDefinition` marks `isVoid` closes at the next token
+ * (`_closeVoidElement`), so its exemption covers nothing after it, whatever its case (`HtmlParser`:
+ * `param, button[Text "x"]`). `<param>` is the one the guard's own list once lacked.
+ */
+test('a void element\'s exemption covers nothing after it, `<param>` included', () => {
+  const angularVoid = ['area', 'base', 'br', 'col', 'embed', 'hr', 'img', 'input', 'link', 'meta',
+    'param', 'source', 'track', 'wbr'];
+  for (const name of [...angularVoid, 'PARAM']) {
+    const element = `<${name} data-touch-exempt="r"><button>x</button>`;
+    assert.deepEqual(scan(HTML, [element]).map((v) => [v.rule, v.line]), [['TT-1', 1]], element);
+  }
+});
+
+/**
  * #1494: an unprefixed tag inherits its parent's namespace (`_getPrefix`), so a bare `<button>`
  * inside `<svg>` or `<math>` is no control (`HtmlParser`: `:svg:svg[:svg:button[Text "x"]]`), while
  * one inside a `<foreignObject>`, which stops inheritance, or after the `</svg>` is a real button.
