@@ -542,9 +542,8 @@ test('walkTags reads a prefixed element\'s start and end tags, named by the loca
  * unprefixed tag is created with `createElement`, which lower-cases its name in an HTML document; a
  * prefixed one with `createElementNS(NAMESPACE_URIS[prefix] || prefix, name)`, which keeps the
  * case, and only the exact prefix `xhtml` maps to the HTML namespace. So `<xhtml:button>` is an
- * `HTMLButtonElement`, while `<svg:button>`, `<XHTML:button>` and `<xhtml:BUTTON>` are not.
- * Namespace inheritance is not followed: an unprefixed tag is `html` wherever it stands, as it was
- * judged before.
+ * `HTMLButtonElement`, while `<svg:button>`, `<XHTML:button>` and `<xhtml:BUTTON>` are not. These
+ * stand alone, so no namespace is inherited.
  */
 test('walkTags marks the start tags whose own spelling builds an HTML element', () => {
   const cases = [
@@ -559,6 +558,46 @@ test('walkTags marks the start tags whose own spelling builds an HTML element', 
   ];
   for (const [line, html] of cases) {
     assert.equal(walkTags([line])[0].html, html, line);
+  }
+});
+
+/**
+ * #1494: a tag's namespace is the one `_getPrefix` gives it: its own prefix, else its name's
+ * `implicitNamespacePrefix` (`svg`, `foreignObject` → `svg`, `math` → `math`, looked up exactly and
+ * then lower-cased), else its closest open element's, unless that element's local name is exactly
+ * `foreignObject` (`preventNamespaceInheritance`). Blocks are no parent, and a self-closed or
+ * incomplete tag encloses nothing. Each row's `HtmlParser` tree: `:svg:svg[:svg:button]`,
+ * `:svg:svg[:svg:foreignObject[button]]`, `:svg:svg[:svg:foreignobject[:svg:button]]`, and so on.
+ */
+test('walkTags gives a start tag the namespace Angular\'s parser does, inherited included', () => {
+  const cases = [
+    ['<svg><button></button></svg>', [['svg', false], ['svg', false]]],
+    ['<math><button></button></math>', [['math', false], ['math', false]]],
+    ['<SVG><Math><button>', [['svg', false], ['math', false], ['math', false]]],
+    [
+      '<svg><foreignObject><button></button></foreignObject></svg>',
+      [['svg', false], ['svg', false], ['', true]],
+    ],
+    ['<svg><foreignobject><button>', [['svg', false], ['svg', false], ['svg', false]]],
+    ['<svg><x:foreignObject><BUTTON>', [['svg', false], ['x', false], ['', true]]],
+    ['<foreignObject><p>', [['svg', false], ['', true]]],
+    ['<svg></svg><button>', [['svg', false], ['', true]]],
+    ['<svg/><button>', [['svg', false], ['', true]]],
+    ['<svg <button>', [['svg', false], ['', true]]],
+    ['<svg>@if (a) {<button></button>}</svg>', [['svg', false], ['svg', false]]],
+    ['<svg><g></g><button>', [['svg', false], ['svg', false], ['svg', false]]],
+    ['<svg><xhtml:button>', [['svg', false], ['xhtml', true]]],
+    ['<xhtml:div><button><BUTTON>', [['xhtml', true], ['xhtml', true], ['xhtml', false]]],
+    ['<svg:g><button>', [['svg', false], ['svg', false]]],
+    ['<svg:style></style><button>', [['svg', false], ['', true]]],
+  ];
+  for (const [line, expected] of cases) {
+    const opens = walkTags([line]).filter((tag) => tag.kind === 'open');
+    assert.deepEqual(
+      opens.map((tag) => [tag.namespace, tag.html]),
+      expected,
+      line,
+    );
   }
 });
 

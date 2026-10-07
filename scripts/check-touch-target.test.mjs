@@ -295,7 +295,7 @@ test('markup inside a prefixed raw-text element is no control', () => {
     );
   }
   assert.deepEqual(
-    scan(HTML, ['<svg><svg:title><button>a</button></svg:title></svg>']).map((v) => [
+    scan(HTML, ['<svg><svg:title><xhtml:button>a</xhtml:button></svg:title></svg>']).map((v) => [
       v.rule,
       v.line,
     ]),
@@ -395,6 +395,44 @@ test('a prefixed void-named element encloses its content, exemption included', (
   ]) {
     assert.deepEqual(scan(HTML, [element]).map((v) => [v.rule, v.line]), [['TT-1', 1]], element);
   }
+});
+
+/**
+ * #1494: an unprefixed tag inherits its parent's namespace (`_getPrefix`), so a bare `<button>`
+ * inside `<svg>` or `<math>` is no control (`HtmlParser`: `:svg:svg[:svg:button[Text "x"]]`), while
+ * one inside a `<foreignObject>`, which stops inheritance, or after the `</svg>` is a real button.
+ */
+test('a control in an inherited SVG or MathML namespace is no control', () => {
+  for (const element of [
+    '<svg><button>x</button></svg>',
+    '<math><button>x</button></math>',
+    '<svg><g><input/><select></select></g></svg>',
+  ]) {
+    assert.deepEqual(scan(HTML, [element]), [], element);
+  }
+  for (const element of [
+    '<svg><foreignObject><button>x</button></foreignObject></svg>',
+    '<svg></svg><button>x</button>',
+    '<svg/><button>x</button>',
+  ]) {
+    assert.deepEqual(scan(HTML, [element]).map((v) => [v.rule, v.line]), [['TT-1', 1]], element);
+  }
+});
+
+/**
+ * #1494: void is judged on the namespace a tag builds in, as Angular looks its definition up by
+ * full name: an unprefixed `<input>` inside `<svg>` is `:svg:input`, encloses what follows up to
+ * its end tag, and its exemption covers the `<foreignObject>`'s button in it (`HtmlParser`:
+ * `:svg:svg[:svg:input[:svg:foreignObject[button]]]`).
+ */
+test('a void-named element in an inherited namespace encloses its content', () => {
+  const lines = [
+    '<svg><input data-touch-exempt="r">',
+    '  <foreignObject><button>x</button></foreignObject>',
+    '</input></svg>',
+  ];
+
+  assert.deepEqual(scan(HTML, lines), []);
 });
 
 /**

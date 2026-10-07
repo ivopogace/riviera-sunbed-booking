@@ -373,6 +373,28 @@ test('a busy control is judged under the xhtml: prefix and no other', () => {
   }
 });
 
+/**
+ * #1494: a busy control in a namespace its tag inherits from `<svg>` is no control, and one inside
+ * a `<foreignObject>`, which stops that inheritance, is (`HtmlParser`:
+ * `:svg:svg[:svg:foreignObject[button]]`).
+ */
+test('a busy control is judged by the namespace it inherits', () => {
+  assert.deepEqual(
+    scan(HTML, ['<svg><button (click)="save()" [disabled]="saving()">Save</button></svg>']),
+    [],
+  );
+  const lines = [
+    '<svg><foreignObject>',
+    '  <button (click)="save()" [disabled]="saving()">Save</button>',
+    '</foreignObject></svg>',
+  ];
+
+  assert.deepEqual(
+    scan(HTML, lines).map((v) => [v.rule, v.line]),
+    [['BUSY-1', 2]],
+  );
+});
+
 test('does not judge a control inside an HTML comment, on one line or across several', () => {
   const lines = [
     '<!-- <button [disabled]="saving()">Old</button> --><button [disabled]="saving()">S</button>',
