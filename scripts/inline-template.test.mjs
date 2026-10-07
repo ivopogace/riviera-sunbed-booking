@@ -447,6 +447,44 @@ test('maskBlockExpressions blanks block parameters and `@let` values as Angular 
   }
 });
 
+/**
+ * #1496: an interpolation, up to where `_consumeInterpolation` ends it, and a CDATA section, doctype
+ * or processing instruction are never markup to the lexer, so the walk-only mask blanks them too: a
+ * `<b title="` or `<title>` read inside one opened a phantom that swallowed the real control after
+ * it. A comment left in the mask is stepped over, its text read as nothing, and kept.
+ */
+test('maskBlockExpressions blanks interpolations and declarations, which hold no markup', () => {
+  const cases = [
+    ['{{ a < b }}<i></i>', `${blank('{{ a < b }}')}<i></i>`],
+    ['{{ a //<b title=" }}<input>', `${blank('{{ a //<b title=" }}')}<input>`],
+    ['{{ "<i>" }}', `${blank('{{ "')}<i>" }}`],
+    ['<![CDATA[<title>]]><input>', `${blank('<![CDATA[<title>]]>')}<input>`],
+    ['<!x<title>><input>', `${blank('<!x<title>>')}<input>`],
+    ['<?x "?" <title>?><input>', `${blank('<?x "?" <title>?>')}<input>`],
+    ['<!-- @let x = --><b>;</b>', '<!-- @let x = --><b>;</b>'],
+  ];
+  for (const [line, expected] of cases) {
+    assert.equal(expected.length, line.length, line);
+    assert.deepEqual(maskBlockExpressions([line]), [expected], line);
+  }
+  for (const body of [
+    '{{ a //<b title="<!--" --> <input>',
+    '<![CDATA[<title>]]><!-- </title> --><input>',
+    '<!<title><!--</title>--><input>',
+    '<?<title>?><!-- </title> --><input>',
+    '<!x<title>><!-- </title> --><input>',
+    '{{ a //<style> <input/>',
+  ]) {
+    const [mask] = typescriptRegions([`@Component({ template: \`${body}\` })`]).templates;
+    const tags = walkTags(maskBlockExpressions(mask)).filter((tag) => tag.kind === 'open');
+    assert.deepEqual(
+      tags.map((tag) => tag.name),
+      ['input'],
+      body,
+    );
+  }
+});
+
 test('maskBlockExpressions keeps line geometry across multi-line parameters and values', () => {
   const lines = ['@if (', '  n<div &&', '  a>b', ') {', '@let x =', '  n<y >', '  z;', '<button>'];
 
