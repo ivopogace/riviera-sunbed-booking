@@ -571,9 +571,10 @@ function declarationEnd(text, at) {
  * reads it: a quote is stepped over to its mate, a backslash in it escaping the character after.
  */
 function instructionEnd(text, from) {
-  for (let at = from; at < text.length; at++) {
+  let at = from;
+  while (at < text.length) {
     if (text[at] === '?' || text[at] === '>') return at + 1;
-    if (isQuote(text[at])) at = quotedEnd(text, at) - 1;
+    at = isQuote(text[at]) ? quotedEnd(text, at) : at + 1;
   }
   return text.length;
 }
