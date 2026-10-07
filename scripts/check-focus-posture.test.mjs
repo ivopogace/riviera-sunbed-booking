@@ -439,7 +439,8 @@ test('does not judge a control inside an HTML comment, on one line or across sev
 
 /**
  * #1496: an inline template's comment is a `Comment` node to Angular, as an external one is; one
- * spanning an interpolation may end inside it, so the control after it is still judged.
+ * spanning an interpolation may end inside it, so the control after it is still judged, as is one
+ * past an escape, where no CDATA is read.
  */
 test('does not judge a control inside an inline template\'s HTML comment', () => {
   const lines = [
@@ -457,6 +458,14 @@ test('does not judge a control inside an inline template\'s HTML comment', () =>
   assert.deepEqual(
     scan(TS, spanning).map((v) => [v.rule, v.line]),
     [['BUSY-1', 2]],
+  );
+  const escaped = [
+    "@Component({ template: `{{ 'a\\\\<![CDATA[" +
+      '<button (click)="save()" [disabled]="saving()">S</button>]]>` })',
+  ];
+  assert.deepEqual(
+    scan(TS, escaped).map((v) => [v.rule, v.line]),
+    [['BUSY-1', 1]],
   );
 });
 

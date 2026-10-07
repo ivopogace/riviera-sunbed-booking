@@ -59,17 +59,17 @@ const JUDGED = new Set(['button', 'input', 'select', 'textarea']);
  * @returns {{ path: string, line: number, rule: string, text: string }[]} one entry per violation
  */
 export function findViolations({ path, lines, added }) {
-  return templateRegions(path, lines).flatMap((region) =>
-    regionViolations(path, lines, added, region),
+  return templateRegions(path, lines).flatMap(({ region, stop }) =>
+    regionViolations(path, lines, added, region, stop),
   );
 }
 
 /** One template's violations, on a stack of its own: an element left open reaches no other. */
-function regionViolations(path, lines, added, region) {
+function regionViolations(path, lines, added, region, stop) {
   const violations = [];
   const open = [];
 
-  for (const tag of walkTags(maskBlockExpressions(region))) {
+  for (const tag of walkTags(maskBlockExpressions(region, stop))) {
     if (tag.kind === 'close') {
       const at = open.findLastIndex((element) => element.name === tag.name);
       if (at !== -1) open.length = at;
@@ -110,7 +110,8 @@ function ruleBroken(tag, open) {
 
 /**
  * The file's templates, each with everything that is not its markup blanked, keeping line and
- * column geometry so a violation still reports its real position.
+ * column geometry so a violation still reports its real position, and an inline one with its
+ * `unread` position as the `stop` its tag walk's mask takes.
  *
  * An `.html` file is one template, all of it but its comments; a `.ts` file holds one per
  * `template:` literal, its comments blanked by `typescriptRegions`. Without the second,
@@ -118,7 +119,9 @@ function ruleBroken(tag, open) {
  * convention — would read as markup.
  */
 function templateRegions(path, lines) {
-  return path.endsWith('.html') ? [maskHtmlComments(lines)] : typescriptRegions(lines).templates;
+  if (path.endsWith('.html')) return [{ region: maskHtmlComments(lines) }];
+  const { templates, unread } = typescriptRegions(lines);
+  return templates.map((region, n) => ({ region, stop: unread[n] }));
 }
 
 /**

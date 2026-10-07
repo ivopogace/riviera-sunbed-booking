@@ -198,7 +198,9 @@ export function findViolations({
   const inline = html || scanned.template.some((line) => line.trim() !== '');
   const template = inline ? scanned.template : maskHtmlComments(sourceOf(templateSource).split('\n'));
   const violations = [
-    ...scanned.templates.flatMap((region) => busyViolations(path, lines, added, region)),
+    ...scanned.templates.flatMap((region, n) =>
+      busyViolations(path, lines, added, region, scanned.unread[n]),
+    ),
     ...focusViolations({
       path,
       lines,
@@ -216,7 +218,7 @@ export function findViolations({
 /** An `.html` file is one template, all but its comments, and carries no TypeScript at all. */
 function htmlRegions(lines) {
   const template = maskHtmlComments(lines);
-  return { template, templates: [template], code: [] };
+  return { template, templates: [template], unread: [undefined], code: [] };
 }
 
 /**
@@ -243,11 +245,11 @@ function stringEnd(chars, c) {
   return -1;
 }
 
-function busyViolations(path, lines, added, template) {
+function busyViolations(path, lines, added, template, stop) {
   const violations = [];
 
   // Masked for the tag walk alone: `blocks` reads each `@if` condition from the unmasked template.
-  for (const tag of walkTags(maskBlockExpressions(template))) {
+  for (const tag of walkTags(maskBlockExpressions(template, stop))) {
     if (tag.kind !== 'open') continue;
     const disabled = tag.attributes.get('[disabled]');
     if (!disabled || !isBusyFlag(disabled.value)) continue;

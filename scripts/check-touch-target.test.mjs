@@ -123,7 +123,7 @@ test('does not judge a control inside an HTML comment', () => {
 /**
  * #1496: an inline template's comment is a `Comment` node to Angular, as an external one is; one
  * its literal leaves open is a build error and hides nothing in the next literal, and a `<!--` in
- * an attribute value opens none.
+ * an attribute value opens none. Past an escape the cooked text is unknown, so no CDATA is read.
  */
 test('does not judge a control inside an inline template\'s HTML comment', () => {
   const lines = ['@Component({', '  template: `<!-- <button>x</button> --><p>ok</p>`,', '})'];
@@ -141,6 +141,11 @@ test('does not judge a control inside an inline template\'s HTML comment', () =>
     scan(TS, ['@Component({ template: `<i title="<!--"></i><button>x</button><!-- c -->` })']).map(
       (v) => [v.rule, v.line],
     ),
+    [['TT-1', 1]],
+  );
+  const escaped = ["@Component({ template: `{{ 'a\\\\<![CDATA[<button>x</button>]]>` })"];
+  assert.deepEqual(
+    scan(TS, escaped).map((v) => [v.rule, v.line]),
     [['TT-1', 1]],
   );
 });
