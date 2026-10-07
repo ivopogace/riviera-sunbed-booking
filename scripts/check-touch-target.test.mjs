@@ -278,8 +278,8 @@ test('markup inside a raw-text element is no control', () => {
 /**
  * #1487: a prefixed `style`, `script`, `textarea` or `title` is raw text too, up to its bare-name end
  * tag (`HtmlParser`: `:svg:style[Text "<button>"]`), so the `<button>` in it is no control and the
- * control after it is still judged. `<svg:title>` alone is parsed, and its button stays judged
- * (`:svg:title[:svg:button[Text "a"]]`).
+ * control after it is still judged. `<svg:title>` alone is parsed, and an `<xhtml:button>` in it
+ * stays judged (`:svg:title[:xhtml:button[Text "a"]]`).
  */
 test('markup inside a prefixed raw-text element is no control', () => {
   for (const element of [
@@ -379,10 +379,11 @@ test('a prefixed element leaves the exemption stack balanced', () => {
 });
 
 /**
- * #1492: only an unprefixed void element is void. Angular looks a prefixed tag's definition up by its
- * full name (`:xhtml:input`), finds the default one, and lets it enclose what follows until its end
- * tag (`HtmlParser`: `:xhtml:input[:xhtml:button[Text "x"]]`), so an exemption on it covers that.
- * An unprefixed `<input>` stays void with or without its `/`, and its exemption covers nothing after.
+ * #1492: only a void element in the namespace `''` is void. Angular looks a prefixed tag's
+ * definition up by its full name (`:xhtml:input`), finds the default one, and lets it enclose what
+ * follows until its end tag (`HtmlParser`: `:xhtml:input[:xhtml:button[Text "x"]]`), so an
+ * exemption on it covers that. A bare `<input>` outside `<svg>` stays void with or without its `/`,
+ * and its exemption covers nothing after.
  */
 test('a prefixed void-named element encloses its content, exemption included', () => {
   assert.deepEqual(

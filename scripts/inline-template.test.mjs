@@ -538,14 +538,14 @@ test('walkTags reads a prefixed element\'s start and end tags, named by the loca
 });
 
 /**
- * #1492: `html` is whether the tag's own spelling builds the HTML element its `name` names. An
- * unprefixed tag is created with `createElement`, which lower-cases its name in an HTML document; a
- * prefixed one with `createElementNS(NAMESPACE_URIS[prefix] || prefix, name)`, which keeps the
- * case, and only the exact prefix `xhtml` maps to the HTML namespace. So `<xhtml:button>` is an
- * `HTMLButtonElement`, while `<svg:button>`, `<XHTML:button>` and `<xhtml:BUTTON>` are not. These
- * stand alone, so no namespace is inherited.
+ * #1492: with no namespace inherited, `html` is whether the tag's own spelling builds the HTML
+ * element its `name` names. An unprefixed tag is created with `createElement`, which lower-cases
+ * its name in an HTML document; a prefixed one with `createElementNS(NAMESPACE_URIS[prefix] ||
+ * prefix, name)`, which keeps the case, and only the exact prefix `xhtml` maps to the HTML
+ * namespace. So `<xhtml:button>` is an `HTMLButtonElement`, while `<svg:button>`, `<XHTML:button>`
+ * and `<xhtml:BUTTON>` are not.
  */
-test('walkTags marks the start tags whose own spelling builds an HTML element', () => {
+test('walkTags marks a lone start tag html by its own spelling', () => {
   const cases = [
     ['<button>', true],
     ['<BUTTON>', true],
