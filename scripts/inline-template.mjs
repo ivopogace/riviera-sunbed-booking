@@ -519,6 +519,10 @@ export function walkTags(lines) {
 
   while (at < text.length) {
     while (i + 1 < starts.length && starts[i + 1] <= at) i++;
+    if (text.startsWith('<!--', at)) {
+      at = commentEnd(text, at, walk);
+      continue;
+    }
     const found = text[at] === '<' ? tagAt(lines, i, at - starts[i]) : null;
     if (found === null) {
       at = textStep(text, at, walk);
@@ -659,7 +663,8 @@ function icuStart(text, at, walk) {
 /**
  * One step inside an ICU form, between its cases, where `walkTags` has already read any tag: lexer
  * whitespace is skipped, a `}` ends the form, and anything else is a case's value, read as raw text
- * up to the `{` that opens the case (`_consumeExpansionCaseStart`).
+ * up to the `{` that opens the case (`_consumeExpansionCaseStart`). With no `{` the template fails
+ * to build, and the walk reads on.
  */
 function icuFormStep(text, at, walk) {
   if (LEXER_WHITESPACE.test(text[at])) return at + 1;
@@ -668,9 +673,21 @@ function icuFormStep(text, at, walk) {
     return at + 1;
   }
   const brace = text.indexOf('{', at);
-  if (brace === -1) return text.length;
+  if (brace === -1) return at + 1;
   walk.open.push(ICU_CASE);
   return brace + 1;
+}
+
+/**
+ * The offset past an HTML comment at `at`, which Angular's lexer reads as one token
+ * (`_consumeComment`) up to its `-->`, so nothing in it opens or closes a container; like any token,
+ * it closes a void element. An `.html` template arrives with its comments masked, an inline one
+ * without. With no `-->` the template fails to build, and only the `<!--` is stepped over.
+ */
+function commentEnd(text, at, walk) {
+  if (walk.open.at(-1)?.void) closeTop(walk);
+  const end = text.indexOf('-->', at + 4);
+  return end === -1 ? at + 4 : end + 3;
 }
 
 /** Pops everything above the innermost `kind` container, and that container; with none, nothing. */
