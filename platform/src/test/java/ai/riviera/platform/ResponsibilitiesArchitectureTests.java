@@ -172,8 +172,11 @@ class ResponsibilitiesArchitectureTests {
 	private static final Pattern SQL_QUOTED_OR_COMMENT =
 			Pattern.compile("\"(?:[^\"]|\"\")*\"|'(?:[^']|'')*'|--[^\\n]*|/\\*.*?\\*/", Pattern.DOTALL);
 
-	/** A bare or quoted identifier; a quoted one may hold any character, {@code ""} escaping a quote. */
-	private static final String IDENTIFIER = "(?:\\w+|\"(?:[^\"]|\"\")*\")";
+	/** An unquoted identifier as PostgreSQL's lexer reads it ({@code scan.l}): every non-ASCII character is a letter. */
+	private static final String UNQUOTED = "[A-Za-z_\\x{80}-\\x{10FFFF}][A-Za-z0-9_$\\x{80}-\\x{10FFFF}]*";
+
+	/** A Unicode-escaped, bare or quoted identifier; a quoted one may hold any character, {@code ""} escaping a quote. */
+	private static final String IDENTIFIER = "(?:[uU]&\"(?:[^\"]|\"\")*\"|" + UNQUOTED + "|\"(?:[^\"]|\"\")*\")";
 
 	private static final String TABLE_NAME = "(?:" + IDENTIFIER + "\\s*\\.\\s*)?" + IDENTIFIER;
 
@@ -189,9 +192,13 @@ class ResponsibilitiesArchitectureTests {
 			+ "|DROP\\s+TABLE\\s+(?:IF\\s+EXISTS\\s+)?(?<dropped>" + TABLE_NAME
 			+ "(?:\\s*,\\s*" + TABLE_NAME + ")*)"
 			+ "|ALTER\\s+TABLE\\s+(?:IF\\s+EXISTS\\s+)?(?:ONLY\\s+)?(?<renamedFrom>" + TABLE_NAME + ")"
-			+ "\\s+RENAME\\s+TO\\s+(?<renamedTo>" + TABLE_NAME + "))");
+			+ "\\s+RENAME\\s+TO\\s+(?<renamedTo>" + TABLE_NAME + ")"
+			+ "|ALTER\\s+TABLE\\s+(?:IF\\s+EXISTS\\s+)?(?:ONLY\\s+)?" + TABLE_NAME + "\\s+(?<setSchema>SET\\s+SCHEMA)\\b)");
 
 	private static final String PUBLIC_SCHEMA = "public";
+
+	/** An unquoted name the walk folds as PostgreSQL does: past {@code A-Z}, folding depends on encoding and locale. */
+	private static final Pattern PLAIN_UNQUOTED = Pattern.compile("[A-Za-z_][A-Za-z0-9_]*");
 
 	/** A name PostgreSQL stores as written whether quoted or not: lower case, no special character. */
 	private static final Pattern FOLDED_NAME = Pattern.compile("[a-z_][a-z0-9_]*");
@@ -737,6 +744,33 @@ class ResponsibilitiesArchitectureTests {
 		assertRefused("CREATE TABLE \"it's\" (id BIGINT)", "quoted name 'it's' is case-sensitive");
 	}
 
+	/** An unquoted name past plain ASCII is refused in every DDL position, never truncated or folded:
+	 * PostgreSQL's folding past {@code A-Z} depends on encoding and locale (#1447). */
+	@Test
+	void theSchemaWalkRefusesAnUnquotedNameThatIsNotPlainAscii() {
+		assertRefused("CREATE TABLE café (id BIGINT)", "unquoted name 'café' is not a plain ASCII identifier");
+		assertRefused("CREATE TABLE IF NOT EXISTS public.ΣΤΟΙΧΕΙΑ(id BIGINT)",
+				"unquoted name 'ΣΤΟΙΧΕΙΑ' is not a plain ASCII identifier");
+		assertRefused("DROP TABLE IF EXISTS kept, plaža", "unquoted name 'plaža' is not a plain ASCII identifier");
+		assertRefused("ALTER TABLE kept RENAME TO kept$2", "unquoted name 'kept$2' is not a plain ASCII identifier");
+		assertRefused("ALTER TABLE \u212Aept RENAME TO renamed",
+				"unquoted name '\u212Aept' is not a plain ASCII identifier");
+	}
+
+	/** A Unicode-escaped {@code U&"…"} name is refused, not read as the table {@code u}. */
+	@Test
+	void theSchemaWalkRefusesAUnicodeEscapedName() {
+		assertRefused("CREATE TABLE U&\"d\\0061t\\+000061\" (id BIGINT)",
+				"Unicode-escaped name U&\"d\\0061t\\+000061\" is not modelled");
+		assertRefused("DROP TABLE kept, u&\"gone\"", "Unicode-escaped name u&\"gone\" is not modelled");
+	}
+
+	/** {@code SET SCHEMA} moves a table out of the walk's schema, so it is refused rather than ignored. */
+	@Test
+	void theSchemaWalkRefusesSetSchema() {
+		assertRefused("ALTER TABLE IF EXISTS kept SET SCHEMA archive", "SET SCHEMA is not modelled");
+	}
+
 	private static void assertRefused(String statement, String why) {
 		List<Migration> migrations = List.of(
 				new Migration(MigrationVersion.fromVersion("1"), "CREATE TABLE kept (id BIGINT);"),
@@ -847,7 +881,8 @@ class ResponsibilitiesArchitectureTests {
 
 	/** The tables that exist after the last migration: create, drop and rename applied in version
 	 * order, then statement order; DDL in a {@code DO $$} body counts as if it ran. A form the walk
-	 * does not model (TEMP/UNLOGGED, a non-public schema, a case-sensitive quoted name) is refused. */
+	 * does not model (TEMP/UNLOGGED, a non-public schema, a case-sensitive quoted name, an unquoted
+	 * name past plain ASCII, a Unicode-escaped name, {@code SET SCHEMA}) is refused. */
 	static Set<String> tablesAfter(List<Migration> migrations) {
 		Set<String> tables = new TreeSet<>();
 		for (Migration migration : migrations.stream().sorted(Comparator.comparing(Migration::version)).toList()) {
@@ -859,6 +894,8 @@ class ResponsibilitiesArchitectureTests {
 				if (ddl.group("unmodelled") != null) {
 					throw statement.refused(ddl.group("unmodelled").toUpperCase(Locale.ROOT).replaceAll("\\s+", " ")
 							+ " tables are not modelled");
+				} else if (ddl.group("setSchema") != null) {
+					throw statement.refused("SET SCHEMA is not modelled");
 				} else if (ddl.group("created") != null) {
 					tables.add(statement.bareName(ddl.group("created")));
 				} else if (ddl.group("dropped") != null) {
@@ -885,7 +922,7 @@ class ResponsibilitiesArchitectureTests {
 	/** The statement around one table DDL match, named in a refusal. */
 	private record SchemaStatement(Migration migration, String sql, int at) {
 
-		/** The table name as the walk keys it, refusing a non-public schema or a case-sensitive quoted name. */
+		/** The table name as the walk keys it, refusing a non-public schema or a name it cannot fold exactly. */
 		String bareName(String qualified) {
 			List<String> parts = identifiers(qualified);
 			if (parts.size() == 2 && !PUBLIC_SCHEMA.equals(parts.getFirst())) {
@@ -907,14 +944,20 @@ class ResponsibilitiesArchitectureTests {
 		}
 
 		/** Each part folded as PostgreSQL does: an unquoted one lower-cased, a quoted one kept as written. */
-		private static List<String> identifiers(String qualified) {
+		private List<String> identifiers(String qualified) {
 			List<String> parts = new ArrayList<>();
 			Matcher part = IDENTIFIER_PART.matcher(qualified);
 			while (part.find()) {
 				String identifier = part.group();
-				parts.add(identifier.startsWith("\"")
-						? identifier.substring(1, identifier.length() - 1).replace("\"\"", "\"")
-						: identifier.toLowerCase(Locale.ROOT));
+				if (identifier.startsWith("\"")) {
+					parts.add(identifier.substring(1, identifier.length() - 1).replace("\"\"", "\""));
+				} else if (identifier.endsWith("\"")) {
+					throw refused("Unicode-escaped name " + identifier + " is not modelled");
+				} else if (!PLAIN_UNQUOTED.matcher(identifier).matches()) {
+					throw refused("unquoted name '" + identifier + "' is not a plain ASCII identifier");
+				} else {
+					parts.add(identifier.toLowerCase(Locale.ROOT));
+				}
 			}
 			return parts;
 		}
