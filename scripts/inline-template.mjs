@@ -607,9 +607,9 @@ function lexerSpans(lines, limit) {
  * Whether a `<` at `at` opens a start tag the comment read stops at: one `readAttributes` marks
  * incomplete (a `<` before its `>` or the region's end: a build error to Angular), one whose name
  * `elementNameAt` cannot read, or one holding a `//` or `/*` outside quotes. `readAttributes` reads
- * such a start-tag comment as Angular does, but an unquoted value holding `//`, such as
- * `href=https://…`, opens one too, so the stop stays conservative; a raw-text element is read with
- * its content, so a CSS comment in a `<style>` stops the read too.
+ * a start-tag comment between attributes, but not the one Angular opens inside an unquoted value
+ * such as `href=https://…`, so the stop stays; a raw-text element is read with its content, so a
+ * CSS comment in a `<style>` stops the read too.
  */
 function misreadTag(lines, starts, text, at) {
   if (!/^<[A-Za-z]/.test(text.slice(at, at + 2))) return false;
