@@ -722,7 +722,9 @@ test('a CDATA section hides no control after it', () => {
  * #1502: a `<![CDATA[` opens a section only where Angular's lexer reads text, so one inside a
  * comment, a quoted value, a `@let` value or a block's parameters reveals no `@let` value or
  * comment as markup (`HtmlParser`, 0 errors: `Comment, @let x`; `b["x"], Comment`; `@let y,
- * Comment`).
+ * Comment`). One in an interpolation's string does open a section, the lexer ending the
+ * interpolation at its `<!` (`_isTagStart`), and its content is no markup (`"{{ \"", "\"
+ * }}<input>"`).
  */
 test('a CDATA opener Angular reads as no section reveals no markup', () => {
   const component = (markup) => ['@Component({', '  template: `', markup, '`,', '})'];
@@ -731,6 +733,7 @@ test('a CDATA opener Angular reads as no section reveals no markup', () => {
     '<i title="<![CDATA["></i>@let x = a <button>;]]>',
     '@let y = "<![CDATA[";@let x = a <button>;]]>',
     '@if (a == "<![CDATA[") {}@let x = a <button>;]]>',
+    '{{ "<![CDATA[" }}<input>]]>',
   ]) {
     assert.deepEqual(scan(TS, component(markup)), [], markup);
   }
@@ -738,6 +741,7 @@ test('a CDATA opener Angular reads as no section reveals no markup', () => {
     '<b title="<![CDATA[">x</b><!-- <button>x</button> ]]><!-->',
     '@let y = "<![CDATA[";<!-- <button>x</button> ]]><!-->',
     '@if (a == "<![CDATA[") {}<!-- <button>x</button> ]]><!-->',
+    '{{ "<![CDATA[" }}<input>]]>',
   ]) {
     assert.deepEqual(scan(HTML, [line]), [], line);
   }

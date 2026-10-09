@@ -563,24 +563,26 @@ test('maskBlockExpressions leaves an `@` outside text alone', () => {
 });
 
 /**
- * #1502: a CDATA section is raw text to its `]]>` (`_consumeCdata`), so no block or `@let` opens in
- * it, and the mask blanks nothing past it on its account (`HtmlParser`: `" @let a = ", b["x"],
- * ";"`; `" @if ( ", b["x"], ")"`). The blocks after the section are masked as anywhere.
+ * #1502: a CDATA section is raw text to its `]]>` (`_consumeCdata`), so its content is blanked, its
+ * delimiters kept, and no block or `@let` opens in it (`HtmlParser`: `" @let a = ", b["x"], ";"`;
+ * `" @if ( ", b["x"], ")"`). The blocks after the section are masked as anywhere, and a
+ * `<![CDATA[` in a comment opens no section (`Comment, @let x, "]]>"`).
  */
-test('maskBlockExpressions masks nothing inside a CDATA section', () => {
-  for (const line of ['<![CDATA[ @let a = ]]><b>x</b>;', '<![CDATA[ @if ( ]]><b>x</b>)']) {
-    assert.deepEqual(maskBlockExpressions([line]), [line], line);
+test('maskBlockExpressions blanks a CDATA section\'s content and reads nothing in it', () => {
+  const cases = [
+    ['<![CDATA[ @let a = ]]><b>x</b>;', '<![CDATA[          ]]><b>x</b>;'],
+    ['<![CDATA[ @if ( ]]><b>x</b>)', '<![CDATA[       ]]><b>x</b>)'],
+    ['<![CDATA[x]]>@if (a<b) {', '<![CDATA[ ]]>@if (   ) {'],
+    ['<!-- <![CDATA[ -->@let x = a<b;]]>', '<!-- <![CDATA[ -->@let x =    ;]]>'],
+  ];
+  for (const [line, expected] of cases) {
+    assert.equal(expected.length, line.length, line);
+    assert.deepEqual(maskBlockExpressions([line]), [expected], line);
   }
-  assert.deepEqual(maskBlockExpressions(['<![CDATA[x]]>@if (a<b) {']), [
-    '<![CDATA[x]]>@if (   ) {',
-  ]);
   assert.deepEqual(maskBlockExpressions(['<![CDATA[', '@let a =', ']]>@let b = a>c;']), [
     '<![CDATA[',
-    '@let a =',
+    '        ',
     ']]>@let b =    ;',
-  ]);
-  assert.deepEqual(maskBlockExpressions(['<!-- <![CDATA[ -->@let x = a<b;]]>']), [
-    '<!-- <![CDATA[ -->@let x =    ;]]>',
   ]);
 });
 
