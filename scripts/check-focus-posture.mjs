@@ -213,10 +213,12 @@ export function findViolations({
   return violations.sort((a, b) => a.line - b.line);
 }
 
-/** An `.html` file is one template, all but its comments, and carries no TypeScript at all. */
+/**
+ * An `.html` file is one template and carries no TypeScript at all: the walk reads it whole, as it
+ * reads an inline template (#1503), and FOCUS-1 reads it with its comments masked.
+ */
 function htmlRegions(lines) {
-  const template = maskHtmlComments(lines);
-  return { template, templates: [template], code: [] };
+  return { template: maskHtmlComments(lines), templates: [lines], code: [] };
 }
 
 /**

@@ -32,7 +32,6 @@ import {
 import { adviser, report, tally } from './guard-report.mjs';
 import {
   maskBlockExpressions,
-  maskHtmlComments,
   typescriptRegions,
   walkTags,
 } from './inline-template.mjs';
@@ -113,12 +112,13 @@ function ruleBroken(tag, open) {
  * The file's templates, each with everything that is not its markup blanked, keeping line and
  * column geometry so a violation still reports its real position.
  *
- * An `.html` file is one template, all of it but its comments; a `.ts` file holds one per
+ * An `.html` file is one template, all of it, the walk stepping its comments as it does an inline
+ * template's (#1503); a `.ts` file holds one per
  * `template:` literal. Without the second, `touch-target.ts`'s own TSDoc — which spells out
  * `<button appTouchTarget>` to document the convention — would read as markup.
  */
 function templateRegions(path, lines) {
-  return path.endsWith('.html') ? [maskHtmlComments(lines)] : typescriptRegions(lines).templates;
+  return path.endsWith('.html') ? [lines] : typescriptRegions(lines).templates;
 }
 
 /**

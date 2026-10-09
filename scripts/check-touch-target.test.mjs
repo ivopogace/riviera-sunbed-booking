@@ -699,8 +699,8 @@ test('a void element\'s exemption covers an ICU right after it, and nothing more
  * = ", button["x"], ";"`; `" @if ( ", button["x"]`; `" <!-- ", button["x"], Comment`). An
  * interpolation ends at a tag start even inside its string (`_isTagStart`), so the `<![CDATA[` of
  * `{{ "<i title="<![CDATA[">` is a quoted value, and the comment after it is masked (`"{{ \"",
- * i[], Comment, input[]`); where the walk reads an interpolation's string as Angular does not, as
- * in `{{ "<![CDATA[" }}`, the masks read as before (`"{{ \"", "\" }}<![CDATA[", input[]`).
+ * i[], Comment, input[]`), while the one of `{{ "<![CDATA[" }}` opens a section (`"{{ \"", "\"
+ * }}<![CDATA[", input[]`).
  */
 test('a CDATA section hides no control after it', () => {
   const component = (markup) => ['@Component({', '  template: `', markup, '`,', '})'];
