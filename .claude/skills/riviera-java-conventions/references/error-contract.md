@@ -59,7 +59,9 @@ past its cap) mirror the shape by hand (they reject before MVC dispatch).
 - `/error` follows the contract: `web`'s `ProblemErrorController` replaces Boot's `BasicErrorController`, so a
   filter-thrown exception, a `sendError` or an unmapped exception answers `ApiProblem.of(status,
   ApiErrorHandler.defaultCode(status), …)` with the dispatched status kept, on every path, never Boot's
-  `path`/`timestamp` map or whitelabel page (`ErrorDispatchProblemIT`).
+  `path`/`timestamp` map or whitelabel page (`ErrorDispatchProblemIT`); a non-standard `4xx`/`5xx` is kept
+  too, `ApiProblem.of` taking any `HttpStatusCode` (`ProblemErrorControllerTest`). A request Tomcat refuses
+  before any servlet keeps Tomcat's URI-free HTML (RESPONSIBILITIES.md § web).
 
 **Validation is centralized-explicit:** hand-rolled checks in `toCommand()`, translated at the
 controller, mapped once by the advice — save a refusal whose body names its field (§ *Extension
