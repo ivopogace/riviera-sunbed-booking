@@ -94,7 +94,7 @@ public class ApiErrorHandler extends ResponseEntityExceptionHandler {
 	/**
 	 * The code for a framework-raised status, shared with {@link ProblemErrorController}: {@code 400} is
 	 * {@code INVALID_REQUEST}, {@code 413} is pinned literally (its {@code HttpStatus} constant is mid-rename,
-	 * the base handler {@code final}), the rest carry the status name.
+	 * the base handler {@code final}), the rest carry the status name, a non-standard code {@code ERROR}.
 	 */
 	static String defaultCode(HttpStatusCode statusCode) {
 		if (statusCode.equals(HttpStatus.BAD_REQUEST)) {
