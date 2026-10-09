@@ -478,6 +478,13 @@ test('judges a busy control after a doctype holding a `<!--`', () => {
   assert.deepEqual(scan(TS, ts).map((v) => [v.rule, v.line]), [['BUSY-1', 2]]);
 });
 
+/** #1503: a binding whose `=` stands apart, as `_consumeAttribute` allows, reports on its name's line. */
+test('reads a busy binding whose `=` stands on its own line', () => {
+  const lines = ['<button', '  [disabled]', '  =', '  "saving()"', '>S</button>'];
+
+  assert.deepEqual(scan(HTML, lines).map((v) => [v.rule, v.line]), [['BUSY-1', 2]]);
+});
+
 test('finds a confirm surface in an @else if branch', () => {
   const lines = [
     '@if (loaded()) {',
