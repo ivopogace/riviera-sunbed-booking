@@ -331,11 +331,11 @@ test('typescriptRegions opens a comment only where Angular\'s lexer does', () =>
 });
 
 /**
- * #1496: a start tag the walk cannot read to its `>` (`readAttributes` marks it incomplete, or no
- * name it knows follows the `<`) is a build error in Angular or a misread, so the scan stops
- * reading comments there, as at an escape; so does one holding a `//` or `/*` outside quotes, a
- * start-tag comment (`_consumeSingleLineComment`, `_consumeMultiLineComment`). `HtmlParser` builds
- * each `div` below with its `role`; the `a[a]` one is a build error, where stopping costs nothing.
+ * #1496: no comment is read across a start tag's `role`: a spaced `=` and a start-tag comment
+ * (`_consumeSingleLineComment`, `_consumeMultiLineComment`) are read as Angular reads them (#1503,
+ * #1504), and a start tag the walk cannot read to its `>` stops the scan, as an escape does.
+ * `HtmlParser` builds each `div` below with its `role`; the `a[a]` one is a build error, where
+ * stopping costs nothing.
  */
 test('typescriptRegions reads no comment past a start tag it cannot read', () => {
   for (const body of [
