@@ -6,6 +6,7 @@ import {
   INLINE_TEMPLATE_EXTENSIONS,
   interpolationStep,
   maskBlockExpressions,
+  maskHtmlComments,
   readAttributes,
   tagNameAt,
   typescriptRegions,
@@ -625,6 +626,34 @@ test('maskBlockExpressions blanks a CDATA section\'s content and reads nothing i
     '<![CDATA[',
     '        ',
     ']]>@let b =    ;',
+  ]);
+});
+
+/**
+ * #1504: an external template's comments are blanked where Angular's lexer opens one, as an
+ * inline template's are (`commentSpans`): a `<!--` in a quoted value, raw text, a doctype, a
+ * processing instruction or a `@let` value opens none (`HtmlParser`: `div[], p["x"], Comment`;
+ * `textarea["<!--"], p["x"], Comment`; `p["x"], Comment`; `p["x"], Comment`; `@let y, p["x"],
+ * Comment`), and one in an interpolation's string does (`"{{ \"", Comment, p["x"]`). A start-tag
+ * comment is read as one (`div[Comment, p[]]`). An unterminated comment, a build error, is kept,
+ * and so is all past an unquoted value holding `//`, where the lexer opens a start-tag comment
+ * `readAttributes` reads as value.
+ */
+test('maskHtmlComments blanks a comment where Angular\'s lexer opens one', () => {
+  const cases = [
+    ['<div title="<!--"></div><p>x</p><!-- c -->', '<div title="<!--"></div><p>x</p>          '],
+    ['<textarea><!--</textarea><p>x</p><!-- c -->', '<textarea><!--</textarea><p>x</p>          '],
+    ['<!DOCTYPE html "<!--"><p>x</p><!-- c -->', '<!DOCTYPE html "<!--"><p>x</p>          '],
+    ['<?x "<!--" ?><p>x</p><!-- c -->', '<?x "<!--" ?><p>x</p>          '],
+    ['@let y = "<!--";<p>x</p><!-- c -->', '@let y = "<!--";<p>x</p>          '],
+    ['{{ "<!-- c --><p>x</p>', '{{ "          <p>x</p>'],
+    ['<!-- x <p>y</p>', '<!-- x <p>y</p>'],
+  ];
+  for (const [line, expected] of cases) assert.deepEqual(maskHtmlComments([line]), [expected], line);
+  assert.deepEqual(maskHtmlComments(['<div // c', '><!-- c --><p>']), ['<div // c', '>          <p>']);
+  assert.deepEqual(maskHtmlComments(['<a href=https://x', '><!-- c --><p>']), [
+    '<a href=https://x',
+    '><!-- c --><p>',
   ]);
 });
 

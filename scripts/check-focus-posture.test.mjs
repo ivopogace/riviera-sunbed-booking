@@ -495,6 +495,40 @@ test('does not read a confirm surface inside an external template\'s HTML commen
   assert.deepEqual(scan(HTML, lines, { componentSource: '' }), []);
 });
 
+/**
+ * #1504: a `<!--` in a quoted value, raw text, a doctype or a block's parameters opens no comment
+ * to Angular, so FOCUS-1 reads the confirm surface after it (`HtmlParser`, 0 errors, each with
+ * the `@if` block and the closing `Comment`); a mask that blanked to the next `-->` hid it.
+ */
+test('reads a confirm surface after a `<!--` that opens no comment in an external template', () => {
+  for (const context of [
+    '<div title="<!--"></div>',
+    '<textarea><!--</textarea>',
+    '<!DOCTYPE html "<!--">',
+    '@if (a === "<!--") {}',
+  ]) {
+    const lines = [context, '@if (confirmRemove()) {', '  <button data-testid="rm">Remove</button>', '}', '<!-- c -->'];
+
+    const violations = scan(HTML, lines, { componentSource: '' });
+
+    assert.deepEqual(violations.map((v) => [v.rule, v.line]), [['FOCUS-1', 2]], context);
+  }
+});
+
+/**
+ * #1504: a component's external template is read for its focus trap with only its real comments
+ * masked, so a `role="dialog"` after a `<!--` in a quoted value still makes it one.
+ */
+test('calls a component a focus trap past a `<!--` that opens no comment', () => {
+  const files = {
+    'frontend/src/app/shared/sheet.ts': "@Component({ selector: 'app-sheet', templateUrl: './sheet.html' })",
+    'frontend/src/app/shared/sheet.html': '<i title="<!--"></i><div role="dialog"></div><!-- c -->',
+  };
+  const traps = focusTraps((path) => files[path] ?? null, () => Object.keys(files));
+
+  assert.equal(traps('app-sheet'), true);
+});
+
 test('finds a confirm surface in an @else if branch', () => {
   const lines = [
     '@if (loaded()) {',
