@@ -85,13 +85,15 @@ export interface SetBatchResult {
  * `NO_SUCH_SET` means a swept id is not on the venue (removed from another tab — per-set writes do
  * not bump `setVersion`), and the whole batch was refused so the count is never a lie;
  * `STALE_WRITE` is the venue-level 409 the editor's reload banner owns. There is no claim guard:
- * price, tier and pool are never refused on any set.
+ * price, tier and pool are never refused on any set. `INVALID_PRICE` is a 400 naming the price (or the
+ * client's own floor check); any other 400 is `INVALID_REQUEST`.
  */
 export type SetBatchErrorCode =
   | 'STALE_WRITE'
   | 'NO_SUCH_SET'
   | 'NO_SUCH_VENUE'
   | 'NOT_VENUE_OWNER'
+  | 'INVALID_PRICE'
   | 'INVALID_REQUEST'
   | 'UNAUTHORIZED'
   | 'UNKNOWN';
@@ -107,6 +109,7 @@ export interface CreatedSet {
  * a set with a live hold or non-terminal booking (price, tier, pool never refused; a finished
  * booking refuses nothing — removal retires the set). {@link OperatorBeachMap} names those sets in
  * advance so the editor disables them, but the server's answer decides: a claim can land between.
+ * `INVALID_PRICE` / `INVALID_REQUEST` split the 400 as on {@link SetBatchErrorCode}.
  */
 export type SetWriteErrorCode =
   | 'SET_IN_USE'
@@ -115,6 +118,7 @@ export type SetWriteErrorCode =
   | 'NO_SUCH_SET'
   | 'NO_SUCH_VENUE'
   | 'NOT_VENUE_OWNER'
+  | 'INVALID_PRICE'
   | 'INVALID_REQUEST'
   | 'UNAUTHORIZED'
   | 'UNKNOWN';
