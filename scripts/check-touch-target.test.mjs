@@ -724,6 +724,28 @@ test('a CDATA section hides no control after it', () => {
 });
 
 /**
+ * #1502: a `<![CDATA[` in a quoted value, a `@let` value, a block's parameters or a comment is no
+ * section to Angular or to the walk, so the real section after it is still read as one, and the
+ * control after that is judged (`HtmlParser`, 0 errors: `b[" <!-- ", button["x"], Comment]`).
+ */
+test('a section after a CDATA opener that opens none still hides no control', () => {
+  for (const line of [
+    '<b title="<![CDATA["><![CDATA[ <!-- ]]><button>x</button><!-- -->',
+    '@let y = "<![CDATA[";<![CDATA[ <!-- ]]><button>x</button><!-- -->',
+    '@if (a == "<![CDATA[") {}<![CDATA[ <!-- ]]><button>x</button><!-- -->',
+    '<!-- <![CDATA[ --><![CDATA[ <!-- ]]><button>x</button><!-- -->',
+  ]) {
+    assert.deepEqual(scan(HTML, [line]).map((v) => [v.rule, v.line]), [['TT-1', 1]], line);
+  }
+  const lines = [
+    '@Component({',
+    '  template: `<!-- <![CDATA[ --><![CDATA[ @let a = ]]><button>x</button>;`,',
+    '})',
+  ];
+  assert.deepEqual(scan(TS, lines).map((v) => [v.rule, v.line]), [['TT-1', 2]]);
+});
+
+/**
  * #1502: a `<![CDATA[` opens a section only where Angular's lexer reads text, so one inside a
  * comment, a quoted value, a `@let` value or a block's parameters reveals no `@let` value or
  * comment as markup (`HtmlParser`, 0 errors: `Comment, @let x`; `b["x"], Comment`; `@let y,
