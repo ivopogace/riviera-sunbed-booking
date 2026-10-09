@@ -23,7 +23,8 @@ to `shared` (admission by ownership: `RESPONSIBILITIES.md` § `shared`). Current
 
 - `sets` on `venue`'s `409 SETS_IN_USE` (layout replace): the removed sets a live claim pins.
 - `field` on `venue`'s set-write `400 INVALID_REQUEST` (`POST …/sets`, `PATCH …/sets/{id}`, the
-  batch `PATCH …/sets`): `"price"` when the price broke `SetPrice` or was missing, so the editor
+  batch `PATCH …/sets`): `"price"` when the price broke `SetPrice` (or, on a single-set write, was
+  missing; a batch without one leaves prices untouched), so the editor
   binds the error to its price input (#1463). Any other 400 on those routes (an unknown pool, a
   missing `expectedVersion`, a grid field) comes from the advice and carries no `field`.
 
@@ -60,6 +61,7 @@ past its cap) mirror the shape by hand (they reject before MVC dispatch).
   `path`/`timestamp` map or whitelabel page (`ErrorDispatchProblemIT`).
 
 **Validation is centralized-explicit:** hand-rolled checks in `toCommand()`, translated at the
-controller, mapped once by the advice. No `spring-boot-starter-validation`/`@Valid` — the
-checks are parse/cross-field logic, and annotations would split validation across two
-mechanisms.
+controller, mapped once by the advice — save a refusal whose body names its field (§ *Extension
+members past `code`*), which its controller checks and answers before `toCommand()`.
+No `spring-boot-starter-validation`/`@Valid` — the checks are parse/cross-field logic, and
+annotations would split validation across two mechanisms.
