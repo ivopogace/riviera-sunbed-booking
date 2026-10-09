@@ -507,9 +507,8 @@ function maskComments(lines, stop) {
  * The template with the content of each CDATA section (`cdataSections`) blanked, its `<![CDATA[`
  * and `]]>` kept, line and column geometry too, for both masks to read on. The content is text to
  * Angular (`_consumeCdata`), so blanking it hides nothing Angular builds, and no mask or walk reads
- * a `<!--`, a `@let`, a block or a tag in it, whether it steps the section or misreads its way in,
- * as through `{{ "<![CDATA[" }}`. The delimiters still end an interpolation early and let
- * `walkTags` step the section (`OPAQUE`).
+ * a `<!--`, a `@let`, a block or a tag in it. The delimiters still end an interpolation early and
+ * let `walkTags` step the section (`OPAQUE`).
  */
 function blankSections(lines) {
   const out = lines.join('\n').split('');
@@ -525,14 +524,48 @@ function commentSpans(lines, limit) {
 }
 
 /**
- * The CDATA sections `lexerSpans` reads, each start offset mapped to the offset past it as
- * `walkTags` steps it (`opaqueEnd`), for `blankSections`. Only these: a `<![CDATA[` in a tag, an
- * interpolation, a comment, a block's parameters or a `@let` value is no section to Angular's
- * lexer, and past a start tag the walk cannot read the context is unknown, so there nothing is
- * blanked.
+ * The CDATA sections both Angular's lexer (`lexerSpans`) and the walk (`walkSections`) read, each
+ * start offset mapped to the offset past it as `walkTags` steps it (`opaqueEnd`), for
+ * `blankSections`. A `<![CDATA[` in a tag, a comment, a block's parameters or a `@let` value is no
+ * section to the lexer, and past a start tag the walk cannot read the context is unknown. Where
+ * the two readings part, as at `{{ "<![CDATA[" }}`, which the lexer reads as a section and the
+ * walk's string-aware `interpolationEnd` as a string, the walk misreads (#1503), and nothing is
+ * blanked, so the masks read as they did before they knew sections.
  */
 function cdataSections(lines) {
-  return lexerSpans(lines, lines.join('\n').length).sections;
+  const walked = walkSections(lines);
+  const sections = lexerSpans(lines, lines.join('\n').length).sections;
+  return new Map([...sections].filter(([at]) => walked.has(at)));
+}
+
+/**
+ * The offsets of the `<![CDATA[`s the walk meets as one, reading as `walkTags` and
+ * `maskBlockExpressions` do: a comment or CDATA section (`OPAQUE`), an interpolation
+ * (`interpolationEnd`), a tag (`tagEnd`), a `@let` value and a block's parameters are stepped.
+ */
+function walkSections(lines) {
+  const text = lines.join('\n');
+  const starts = lineStarts(lines);
+  const ignored = text.split('');
+  const walked = new Set();
+  let at = 0;
+
+  while (at < text.length) {
+    const opaque = OPAQUE.find(([open]) => text.startsWith(open, at));
+    if (opaque === CDATA) walked.add(at);
+    if (opaque !== undefined) {
+      at = opaqueEnd(text, at, opaque);
+    } else if (text.startsWith('{{', at)) {
+      at = interpolationEnd(text, at + 2);
+    } else {
+      at =
+        tagEnd(lines, starts, text, at) ??
+        letEnd(text, at, ignored) ??
+        blockEnd(text, at, ignored) ??
+        at + 1;
+    }
+  }
+  return walked;
 }
 
 /**
