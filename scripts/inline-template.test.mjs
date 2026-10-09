@@ -333,9 +333,8 @@ test('typescriptRegions opens a comment only where Angular\'s lexer does', () =>
  * #1496: a start tag the walk cannot read to its `>` (`readAttributes` marks it incomplete, or no
  * name it knows follows the `<`) is a build error in Angular or a misread, so the scan stops
  * reading comments there, as at an escape; so does one holding a `//` or `/*` outside quotes, a
- * start-tag comment (`_consumeSingleLineComment`, `_consumeMultiLineComment`) the walk reads as
- * attributes. `HtmlParser` builds each `div` below with its `role`; the `a[a]` one is a build
- * error, where stopping costs nothing.
+ * start-tag comment (`_consumeSingleLineComment`, `_consumeMultiLineComment`). `HtmlParser` builds
+ * each `div` below with its `role`; the `a[a]` one is a build error, where stopping costs nothing.
  */
 test('typescriptRegions reads no comment past a start tag it cannot read', () => {
   for (const body of [
@@ -359,6 +358,33 @@ test('readAttributes reads a start tag across lines up to its `>`', () => {
     alt: { value: 'x', line: 2 },
   });
   assert.deepEqual([read.line, read.column, read.selfClosed], [2, 10, true]);
+});
+
+/**
+ * #1503: Angular's lexer reads whitespace around an attribute's `=` (`_consumeAttribute`) and a
+ * `//` to its line's end or a `/* … *\/` between attributes as a start-tag comment
+ * (`_consumeTagOpen`), so `readAttributes` reads them too; a `/*` that never closes ends no tag.
+ */
+test('readAttributes reads a spaced `=` and steps over start-tag comments', () => {
+  const read = (lines) => {
+    const tag = readAttributes(lines, 0, 4);
+    return [Object.fromEntries(tag.attributes), tag.line, tag.column, tag.incomplete];
+  };
+  assert.deepEqual(read(['<div a = "x" b', '=', "'y' c =z>"]), [
+    { a: { value: 'x', line: 0 }, b: { value: 'y', line: 0 }, c: { value: 'z', line: 2 } },
+    2,
+    8,
+    false,
+  ]);
+  assert.deepEqual(read(['<div // a="x" >', '  b="y">']), [{ b: { value: 'y', line: 1 } }, 1, 7, false]);
+  assert.deepEqual(read(['<div /* > a="x" */ b="y">']), [{ b: { value: 'y', line: 0 } }, 0, 24, false]);
+  assert.deepEqual(read(['<div /* a="x"']), [{}, 0, 13, true]);
+  assert.deepEqual(read(['<div a', '  b>']), [
+    { a: { value: '', line: 0 }, b: { value: '', line: 1 } },
+    1,
+    3,
+    false,
+  ]);
 });
 
 /** A walk resumes after the position returned; column 0 of the last line re-read the same tag (#1473). */
@@ -557,6 +583,22 @@ test('maskBlockExpressions leaves an `@` outside text alone', () => {
     '@letter = a>b;',
     '@let ok a>b;',
     'mail@example.com <i>x</i>',
+  ]) {
+    assert.deepEqual(maskBlockExpressions([line]), [line], line);
+  }
+});
+
+/**
+ * #1503: a comment, a doctype or a processing instruction is one token to Angular's lexer, so no
+ * block or `@let` opens in one, and the mask blanks nothing on its account (`HtmlParser`: `Comment,
+ * b[";"]`; `b[";"]`; `b[")"]`).
+ */
+test('maskBlockExpressions reads no block or `@let` in a comment, doctype or processing instruction', () => {
+  for (const line of [
+    '<!-- @let x = --><b>;</b>',
+    '<!-- @if ( --><b>)</b>',
+    '<!DOCTYPE "@let x = "><b>;</b>',
+    '<?x @if ( ?><b>)</b>',
   ]) {
     assert.deepEqual(maskBlockExpressions([line]), [line], line);
   }
@@ -1035,7 +1077,7 @@ test('walkTags closes each element at exactly the children Angular\'s definition
 
 /**
  * #1497: an HTML comment is one node to Angular (`_consumeComment`), so nothing in it opens or
- * closes a container: no tag, block, ICU or `}`, which an inline `.ts` template leaves unmasked
+ * closes a container: no tag, block, ICU or `}`, which the walk's input keeps on either path
  * (`HtmlParser`: `@if{li["x", Comment, button["y"]]}`; `Comment, "x", button["y"]`; `p[Comment],
  * div[]`). Like any node, it closes a void element; an unterminated one fails a build and is
  * stepped over at its `<!--` alone.
@@ -1067,6 +1109,34 @@ test('walkTags steps over a CDATA section as one token', () => {
     ['<p><input><![CDATA[x]]><div>', ['<p', '<input', '~input', '~p', '<div']],
   ];
   for (const [line, expected] of cases) assert.deepEqual(closes([line]), expected, line);
+});
+
+/**
+ * #1503: a doctype (`_consumeDocType`, to its first `>`) and a processing instruction
+ * (`_consumeProcessingInstruction`, to a `?` or `>` outside quotes) are one token each, so no tag
+ * or `<!--` in one opens; neither is a node, so neither closes a void element, and an ICU right
+ * after one still builds inside the `<input>` before it (`HtmlParser`: `">", p[]`; `p[]`; `" ?>",
+ * p[]`; `input[Expansion]`).
+ */
+test('walkTags steps over a doctype or processing instruction as one token', () => {
+  const cases = [
+    ['<!DOCTYPE <button>><p>', ['<p']],
+    ['<?x "<!--" ?><p>', ['<p']],
+    ["<?x '>' <b> ?><p>", ['<p']],
+    ['<input><!x>{a, select, b {<b>}}', ['<input', '<b', '~b']],
+  ];
+  for (const [line, expected] of cases) assert.deepEqual(closes([line]), expected, line);
+});
+
+/**
+ * #1503: `_consumeInterpolation` ends an interpolation at a tag start before it looks at quotes, so
+ * a `<!--` in its string opens a comment and the tag after it is read (`HtmlParser`: `"{{ \"",
+ * Comment, p[]`; `"{{ a // \"", Comment, p[]`).
+ */
+test('walkTags ends an interpolation at a tag start inside its string, as Angular\'s lexer does', () => {
+  for (const line of ['{{ "<!-- c --><p>', '{{ a // "<!-- c --><p>']) {
+    assert.deepEqual(closes([line]), ['<p'], line);
+  }
 });
 
 /** #1497: an ICU form whose case never opens fails a build; the tags after it are still read. */

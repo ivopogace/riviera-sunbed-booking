@@ -466,6 +466,35 @@ test('judges a busy control after a CDATA section', () => {
   assert.deepEqual(scan(TS, ts).map((v) => [v.rule, v.line]), [['BUSY-1', 2]]);
 });
 
+/**
+ * #1503: a `<!--` in a doctype opens no comment, so the busy control after it is judged
+ * (`HtmlParser`, 0 errors: `button["S"], Comment`).
+ */
+test('judges a busy control after a doctype holding a `<!--`', () => {
+  const markup = '<!DOCTYPE html "<!--"><button [disabled]="saving()">S</button><!-- c -->';
+  const ts = ['@Component({', `  template: \`${markup}\`,`, '})'];
+
+  assert.deepEqual(scan(HTML, [markup]).map((v) => [v.rule, v.line]), [['BUSY-1', 1]]);
+  assert.deepEqual(scan(TS, ts).map((v) => [v.rule, v.line]), [['BUSY-1', 2]]);
+});
+
+/** #1503: a binding whose `=` stands apart, as `_consumeAttribute` allows, reports on its name's line. */
+test('reads a busy binding whose `=` stands on its own line', () => {
+  const lines = ['<button', '  [disabled]', '  =', '  "saving()"', '>S</button>'];
+
+  assert.deepEqual(scan(HTML, lines).map((v) => [v.rule, v.line]), [['BUSY-1', 2]]);
+});
+
+/**
+ * #1503: an `.html` file reaches the walk whole, but FOCUS-1 still reads it with its comments
+ * masked, so a confirm surface commented out is no surface (`HtmlParser`: one `Comment`).
+ */
+test('does not read a confirm surface inside an external template\'s HTML comment', () => {
+  const lines = ['<!-- @if (confirmRemove()) {', '  <button data-testid="rm">Remove</button>', '} -->'];
+
+  assert.deepEqual(scan(HTML, lines, { componentSource: '' }), []);
+});
+
 test('finds a confirm surface in an @else if branch', () => {
   const lines = [
     '@if (loaded()) {',

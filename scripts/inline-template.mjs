@@ -10,9 +10,9 @@
  * feeds the code it walks into a `CodeTail`, asks at a backtick, and steps a `${…}` with
  * `interpolationStep`. `check-focus-posture` and `check-touch-target` judge markup, so they take the
  * whole walk: `typescriptRegions` masks a file down to its inline templates and its code,
- * `maskHtmlComments` masks an external template's comments, `maskBlockExpressions` masks block
- * parameters and `@let` values out of the tag walk, both after blanking each CDATA section's
- * content (`blankSections`), and `walkTags` is that walk: where in the masked
+ * `maskHtmlComments` masks an external template's comments for FOCUS-1, `maskBlockExpressions`
+ * masks block parameters and `@let` values out of the tag walk, both after blanking each CDATA
+ * section's content (`blankSections`), and `walkTags` is that walk: where in the masked
  * markup an element tag opens (`elementNameAt`), one start tag's attributes (`readAttributes`), and a
  * raw-text element's content stepped over as text. Beside
  * `git-diff.mjs` because that is the guards' shared module, and dependency-free for the same reason
@@ -344,7 +344,8 @@ export function tagNameAt(line, from) {
  * the end without a `>` stops past the last character of the last line, so a walk resuming there
  * ends rather than finding the same `<` again (#1473). A `<` where an attribute should start ends
  * the tag as Angular's lexer does, and the read stops just before it, so a walk resuming there reads
- * that `<` as the next tag (#1475).
+ * that `<` as the next tag (#1475). Whitespace around an attribute's `=` (`_consumeAttribute`) and a
+ * start-tag comment between attributes (`startTagCommentEnd`) are read as Angular reads them (#1503).
  *
  * `incomplete` is whether the read ended anywhere but at the tag's `>` — a `<`, a quote where a name
  * should be, the region's end. Angular's lexer marks such a tag incomplete, and its parser pushes it
@@ -366,6 +367,11 @@ export function readAttributes(lines, line, column) {
     }
     const ch = lines[i][c];
     if (ch === '>') return { attributes, line: i, column: c, selfClosed: slash, incomplete: false };
+    const comment = startTagCommentEnd(lines, i, c);
+    if (comment !== null) {
+      ({ line: i, column: c } = comment);
+      continue;
+    }
     if (/[\s/]/.test(ch)) {
       slash ||= ch === '/';
       c++;
@@ -380,17 +386,34 @@ export function readAttributes(lines, line, column) {
       return { attributes, line: i, column: c, selfClosed: slash, incomplete: true };
     }
     slash = false;
-    c += name[0].length;
+    const nameLine = i;
+    ({ line: i, column: c } = pastWhitespace(lines, i, c + name[0].length));
     if (lines[i][c] !== '=') {
-      attributes.set(name[0], { value: '', line: i });
+      attributes.set(name[0], { value: '', line: nameLine });
       continue;
     }
-    const read = readValue(lines, i, c + 1);
-    attributes.set(name[0], { value: read.value, line: i });
+    const value = pastWhitespace(lines, i, c + 1);
+    const read = readValue(lines, value.line, value.column);
+    attributes.set(name[0], { value: read.value, line: nameLine });
     i = read.line;
     c = read.column;
   }
   return { attributes, ...pastEnd(lines), selfClosed: slash, incomplete: true };
+}
+
+/**
+ * The position past a start-tag comment at line `i`, column `c`, as `_consumeTagOpen` reads one
+ * between attributes: a `//` to its line's end (`_consumeSingleLineComment`), a `/*` past its
+ * `*\/` or to the region's end (`_consumeMultiLineComment`); null when none starts there.
+ */
+function startTagCommentEnd(lines, i, c) {
+  if (lines[i].startsWith('//', c)) return { line: i, column: lines[i].length };
+  if (!lines[i].startsWith('/*', c)) return null;
+  for (let line = i; line < lines.length; line++) {
+    const end = lines[line].indexOf('*/', line === i ? c + 2 : 0);
+    if (end !== -1) return { line, column: end + 2 };
+  }
+  return pastEnd(lines);
 }
 
 function readValue(lines, line, column) {
@@ -446,15 +469,15 @@ const BLOCKS = [
  * Angular reads `@if (…)`, `@for (…; track …)`, `@defer (on …)` and the rest, and the value of
  * `@let name = …;`, as expressions, never as markup, so a `<` there opens no tag. Unmasked, the walk
  * opened one at `@if (n<div && a>b)` that reached the `>` and read as complete (#1480). The mask
- * follows the lexer: a block or `@let` opens only in text — the walk steps over a tag as `walkTags`
- * reads it, a raw-text element's content and end tag included (`RAW_TEXT`, #1482), and over an
- * interpolation as `_consumeInterpolation` does — a block's parameters run from its `(` to the `)`
- * `_consumeBlockParameters` stops at, and a `@let` value from its `=` to the `;`
- * `_consumeLetDeclarationValue` stops at. A CDATA section's content is blanked first
- * (`blankSections`, #1502), so no block or `@let` opens in it. A guard that reads a block's
- * condition keeps reading the unmasked template.
+ * follows the lexer: a block or `@let` opens only in text, the read stepping as `walkTags` steps
+ * (`markupStep`), so none opens in a tag, a raw-text element (`RAW_TEXT`, #1482), a comment, a
+ * doctype or processing instruction, or an interpolation (#1503) — a block's parameters run from
+ * its `(` to the `)` `_consumeBlockParameters` stops at, and a `@let` value from its `=` to the
+ * `;` `_consumeLetDeclarationValue` stops at. A CDATA section's content is blanked first
+ * (`blankSections`, #1502). A guard that reads a block's condition keeps reading the unmasked
+ * template.
  *
- * @param {string[]} lines the comment-masked template region
+ * @param {string[]} lines the template region
  * @returns {string[]} the same lines with block parameters, `@let` values and CDATA content blanked
  */
 export function maskBlockExpressions(lines) {
@@ -464,16 +487,27 @@ export function maskBlockExpressions(lines) {
   const starts = lineStarts(masked);
   let at = 0;
 
-  while (at < text.length) {
-    const step = text.startsWith('{{', at)
-      ? interpolationEnd(text, at + 2)
-      : (tagEnd(masked, starts, text, at) ??
-        letEnd(text, at, out) ??
-        blockEnd(text, at, out) ??
-        at + 1);
-    at = step;
-  }
+  while (at < text.length) at = markupStep(masked, starts, text, at, out);
   return out.join('').split('\n');
+}
+
+/**
+ * One step of the read `walkTags` makes, from `at`, blanking a block's parameters and a `@let`
+ * value in `out`: past a comment or CDATA section (`OPAQUE`), a doctype or processing instruction
+ * (`declarationEnd`), an interpolation (`interpolationEnd`), a tag (`tagEnd`), a `@let` value or
+ * a block's parameters; else one character.
+ */
+function markupStep(lines, starts, text, at, out) {
+  const opaque = OPAQUE.find(([open]) => text.startsWith(open, at));
+  if (opaque !== undefined) return opaqueEnd(text, at, opaque);
+  if (text.startsWith('{{', at)) return interpolationEnd(text, at + 2);
+  return (
+    declarationEnd(text, at) ??
+    tagEnd(lines, starts, text, at) ??
+    letEnd(text, at, out) ??
+    blockEnd(text, at, out) ??
+    at + 1
+  );
 }
 
 /**
@@ -527,59 +561,23 @@ function commentSpans(lines, limit) {
 }
 
 /**
- * The CDATA sections both Angular's lexer (`lexerSpans`) and the walk (`walkSections`) read, each
- * start offset mapped to the offset past it as `walkTags` steps it (`opaqueEnd`), for
- * `blankSections`. A `<![CDATA[` in a tag, a comment, a block's parameters or a `@let` value is no
- * section to the lexer, and past a start tag the walk cannot read the context is unknown. Where
- * the two readings part, as at `{{ "<![CDATA[" }}`, which the lexer reads as a section and the
- * walk's string-aware `interpolationEnd` as a string, the walk misreads (#1503), and that section
- * is not blanked, so the masks read it as they did before they knew sections.
+ * The CDATA sections Angular's lexer reads (`lexerSpans`), each start offset mapped to the offset
+ * past it as `walkTags` steps it (`opaqueEnd`), for `blankSections`. A `<![CDATA[` in a tag, a
+ * comment, an interpolation, a block's parameters or a `@let` value opens none, and past a start
+ * tag the walk cannot read the context is unknown, so nothing there is blanked.
  */
 function cdataSections(lines) {
-  const walked = walkSections(lines);
-  const sections = lexerSpans(lines, lines.join('\n').length).sections;
-  return new Map([...sections].filter(([at]) => walked.has(at)));
-}
-
-/**
- * The offsets of the `<![CDATA[`s the walk meets as one, reading as `walkTags` and
- * `maskBlockExpressions` do: a comment or CDATA section (`OPAQUE`), an interpolation
- * (`interpolationEnd`), a tag (`tagEnd`), a `@let` value and a block's parameters are stepped.
- */
-function walkSections(lines) {
-  const text = lines.join('\n');
-  const starts = lineStarts(lines);
-  const ignored = text.split('');
-  const walked = new Set();
-  let at = 0;
-
-  while (at < text.length) {
-    const opaque = OPAQUE.find(([open]) => text.startsWith(open, at));
-    if (opaque === CDATA) walked.add(at);
-    if (opaque !== undefined) {
-      at = opaqueEnd(text, at, opaque);
-    } else if (text.startsWith('{{', at)) {
-      at = interpolationEnd(text, at + 2);
-    } else {
-      at =
-        tagEnd(lines, starts, text, at) ??
-        letEnd(text, at, ignored) ??
-        blockEnd(text, at, ignored) ??
-        at + 1;
-    }
-  }
-  return walked;
+  return lexerSpans(lines, lines.join('\n').length).sections;
 }
 
 /**
  * The comments that close before `limit`, each start offset mapped to the offset past its `-->`,
  * and the CDATA sections that open before it, as Angular's lexer reads them. Either opens only
  * where the lexer reads markup: the read steps over a tag as `tagEnd` reads it, an interpolation to
- * where `_consumeInterpolation` ends it (`lexerInterpolationEnd`), a CDATA section, doctype or
+ * where `_consumeInterpolation` ends it (`interpolationEnd`), a CDATA section, doctype or
  * processing instruction (`declarationEnd`), a block's parameters and a `@let` value, so a `<!--`
  * or `<![CDATA[` in any of them opens none; a comment ends as `commentEnd` reads it. The read stops
- * at a start tag the walk cannot read (`misreadTag`), as at `limit`: past it the context is
- * unknown.
+ * at a start tag `misreadTag` names, as at `limit`: past it the context is unknown.
  */
 function lexerSpans(lines, limit) {
   const text = lines.join('\n');
@@ -596,7 +594,7 @@ function lexerSpans(lines, limit) {
       comment ??
       declarationEnd(text, at) ??
       (text.startsWith('{{', at)
-        ? lexerInterpolationEnd(text, at + 2)
+        ? interpolationEnd(text, at + 2)
         : (tagEnd(lines, starts, text, at) ??
           letEnd(text, at, ignored) ??
           blockEnd(text, at, ignored) ??
@@ -606,11 +604,12 @@ function lexerSpans(lines, limit) {
 }
 
 /**
- * Whether a `<` at `at` opens a start tag the walk cannot read: one `readAttributes` marks
- * incomplete (a `<` before its `>`: a build error to Angular, or a spaced `=` it misreads), one
- * whose name `elementNameAt` cannot read, or one holding a `//` or `/*` outside quotes, a start-tag
- * comment (`_consumeSingleLineComment`, `_consumeMultiLineComment`) whose `>` ends no tag; a
- * raw-text element is read with its content, so a CSS comment in a `<style>` stops the read too.
+ * Whether a `<` at `at` opens a start tag the comment read stops at: one `readAttributes` marks
+ * incomplete (a `<` before its `>` or the region's end: a build error to Angular), one whose name
+ * `elementNameAt` cannot read, or one holding a `//` or `/*` outside quotes. `readAttributes` reads
+ * a start-tag comment between attributes, but not the one Angular opens inside an unquoted value
+ * such as `href=https://…`, so the stop stays; a raw-text element is read with its content, so a
+ * CSS comment in a `<style>` stops the read too.
  */
 function misreadTag(lines, starts, text, at) {
   if (!/^<[A-Za-z]/.test(text.slice(at, at + 2))) return false;
@@ -726,8 +725,9 @@ function tagEnd(lines, starts, text, at) {
  * A start tag legitimately spans lines — every multi-line binding in the app is written that way —
  * so this tracks position across the whole region rather than per line. Between tags the text is
  * read as Angular's lexer reads it for what opens or closes a container: a comment or CDATA section
- * as one token (`OPAQUE`), an interpolation, a block and its `{`, an ICU's `{`, and a `}`
- * (`textStep`).
+ * as one token (`OPAQUE`), a doctype or processing instruction as one token that closes nothing
+ * (`declarationEnd`; the tree builder makes no node of it), an interpolation, a block and its `{`,
+ * an ICU's `{`, and a `}` (`textStep`).
  *
  * @param {string[]} lines the masked template region
  */
@@ -740,10 +740,9 @@ export function walkTags(lines) {
 
   while (at < text.length) {
     while (i + 1 < starts.length && starts[i + 1] <= at) i++;
-    const opaque = OPAQUE.find(([open]) => text.startsWith(open, at));
-    if (opaque !== undefined) {
-      if (walk.open.at(-1)?.void) closeTop(walk);
-      at = opaqueEnd(text, at, opaque);
+    const token = tokenEnd(text, at, walk);
+    if (token !== null) {
+      at = token;
       continue;
     }
     const found = text[at] === '<' ? tagAt(lines, i, at - starts[i]) : null;
@@ -755,6 +754,19 @@ export function walkTags(lines) {
     at = starts[found.line] + found.column + 1;
   }
   return walk.tags;
+}
+
+/**
+ * The offset past the comment, CDATA section, doctype or processing instruction at `at`, each one
+ * token to the lexer; null for none. A comment or CDATA section is a node, so it closes a void
+ * element first (`_closeVoidElement`); a doctype or processing instruction is none, and closes
+ * nothing.
+ */
+function tokenEnd(text, at, walk) {
+  const opaque = OPAQUE.find(([open]) => text.startsWith(open, at));
+  if (opaque === undefined) return declarationEnd(text, at);
+  if (walk.open.at(-1)?.void) closeTop(walk);
+  return opaqueEnd(text, at, opaque);
 }
 
 /**
@@ -904,9 +916,9 @@ function icuFormStep(text, at, walk) {
 /**
  * The constructs Angular's lexer reads as raw text from their opener to their closer, an HTML
  * comment (`_consumeComment`) and a CDATA section (`_consumeCdata`), each of which the tree builder
- * takes as one node after `_closeVoidElement`. An `.html` template arrives with its comments
- * masked, an inline one without: `typescriptRegions` masks them in `template` alone (#1496). Both
- * masks blank a CDATA section's content first (`blankSections`, #1502).
+ * takes as one node after `_closeVoidElement`. Both an `.html` and an inline template arrive with
+ * their comments in place: only FOCUS-1's `template` masks them (#1496, #1503). Both masks blank a
+ * CDATA section's content first (`blankSections`, #1502).
  */
 const CDATA = ['<![CDATA[', ']]>'];
 const OPAQUE = [['<!--', '-->'], CDATA];
@@ -1187,29 +1199,12 @@ function rawTextEnd(lines, line, column, name) {
 }
 
 /**
- * The offset an interpolation opened before `from` ends at: past its `}}` outside a string, or at a
- * `<` that starts a tag, where Angular's lexer ends one early (`_isTagStart`).
+ * The offset an interpolation opened before `from` ends at, as `_consumeInterpolation` reads it:
+ * past its `}}` outside a string, or at a `<` that starts a tag (`_isTagStart`), inside a string
+ * too, where the lexer ends one early. After a `//` no quote opens, and the character after it is
+ * read unchecked.
  */
 function interpolationEnd(text, from) {
-  let quote = null;
-  for (let at = from; at < text.length; at++) {
-    const ch = text[at];
-    if (quote === null && /^<[A-Za-z/!?]/.test(text.slice(at, at + 2))) return at;
-    if (quote === null && text.startsWith('}}', at)) return at + 2;
-    if (ch === '\\') at++;
-    else if (ch === quote) quote = null;
-    else if (quote === null && isQuote(ch)) quote = ch;
-  }
-  return text.length;
-}
-
-/**
- * `interpolationEnd` as `_consumeInterpolation` itself reads it, for `maskComments`, where the end
- * decides whether a `<!--` after it opens a comment: past its `}}` outside a string, or at a `<`
- * that starts a tag (`_isTagStart`), inside a string too, where the lexer ends one early. After a
- * `//` no quote opens, and the character after it is read unchecked.
- */
-function lexerInterpolationEnd(text, from) {
   let quote = null;
   let comment = false;
   let at = from;
