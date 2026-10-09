@@ -89,7 +89,7 @@ class DayRefundMailIT {
 		assertThat(mail).isEqualTo(new DayRefundMail("DAYWX0001", venueNameOf(set.venueId()), day, 3000L, "EUR",
 				RefundReason.WEATHER, false, mail.bookingLink()));
 		assertThat(mail.bookingLink().getPath()).endsWith("/booking/DAYWX0001");
-		assertThat(fixtures.outstandingPublicationsMatching(BookingMailFixtures.DAY_REFUND_LISTENER_ID, "3000"))
+		assertThat(fixtures.outstandingPublicationsFor(BookingMailFixtures.DAY_REFUND_LISTENER_ID, new BookingId(bookingId)))
 				.as("the publication completes once the mail left").isZero();
 	}
 
@@ -104,8 +104,8 @@ class DayRefundMailIT {
 		fixtures.publishInTransaction(new BookingDayRefunded(new BookingId(bookingId), new VenueId(set.venueId()),
 				new SetId(set.setId()), day, 3001L, "EUR", null, RefundReason.WEATHER, false));
 
-		Awaitility.await().atMost(WAIT).until(() -> fixtures.outstandingPublicationsMatching(
-				BookingMailFixtures.DAY_REFUND_LISTENER_ID, "3001") == 0L);
+		Awaitility.await().atMost(WAIT).until(() -> fixtures.outstandingPublicationsFor(
+				BookingMailFixtures.DAY_REFUND_LISTENER_ID, new BookingId(bookingId)) == 0L);
 		assertThat(countTo(guest)).isZero();
 	}
 }

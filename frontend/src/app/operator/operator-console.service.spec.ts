@@ -529,6 +529,14 @@ describe('setBatchErrorOf', () => {
     expect(setBatchErrorOf(problem(401, 'STALE_WRITE'))).toBe('UNAUTHORIZED');
   });
 
+  it('tells a price refusal from any other 400 by the field the body names (#1463)', () => {
+    const invalid = (body: object): HttpErrorResponse =>
+      new HttpErrorResponse({ status: 400, error: { code: 'INVALID_REQUEST', ...body } });
+    expect(setBatchErrorOf(invalid({ field: 'price' }))).toBe('INVALID_PRICE');
+    expect(setBatchErrorOf(invalid({}))).toBe('INVALID_REQUEST');
+    expect(setBatchErrorOf(invalid({ field: 'pool' }))).toBe('INVALID_REQUEST');
+  });
+
   it('passes through every code the batch panel explains', () => {
     for (const code of [
       'STALE_WRITE',
@@ -593,6 +601,14 @@ describe('setWriteErrorOf (#600)', () => {
 
   it('maps 401 to UNAUTHORIZED before reading the body', () => {
     expect(setWriteErrorOf(problem(401, 'SET_IN_USE'))).toBe('UNAUTHORIZED');
+  });
+
+  it('tells a price refusal from any other 400 by the field the body names (#1463)', () => {
+    const invalid = (body: object): HttpErrorResponse =>
+      new HttpErrorResponse({ status: 400, error: { code: 'INVALID_REQUEST', ...body } });
+    expect(setWriteErrorOf(invalid({ field: 'price' }))).toBe('INVALID_PRICE');
+    expect(setWriteErrorOf(invalid({}))).toBe('INVALID_REQUEST');
+    expect(setWriteErrorOf(invalid({ field: 'pool' }))).toBe('INVALID_REQUEST');
   });
 
   it('passes through every code the panel explains', () => {

@@ -275,7 +275,7 @@
               </span>
             }
           </output>
-          @if (batchErrorCode() === 'INVALID_REQUEST') {
+          @if (batchErrorCode() === 'INVALID_PRICE') {
             <p
               [appFieldErrorFor]="batchPriceControl"
               class="mt-2.5 text-[12.5px] font-semibold leading-[1.45] text-riv-error-ink"
@@ -528,8 +528,8 @@
               </span>
             }
           </output>
-          <!-- Only INVALID_REQUEST blames the typed price; every other failure is a panel alert (RV-FE-11). -->
-          @if (errorCode() === 'INVALID_REQUEST') {
+          <!-- Only INVALID_PRICE blames the typed price; every other failure is a panel alert (RV-FE-11). -->
+          @if (errorCode() === 'INVALID_PRICE') {
             <p
               [appFieldErrorFor]="priceControl"
               class="mt-2.5 text-[12.5px] font-semibold leading-[1.45] text-riv-error-ink"
