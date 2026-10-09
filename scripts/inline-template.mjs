@@ -11,7 +11,8 @@
  * `interpolationStep`. `check-focus-posture` and `check-touch-target` judge markup, so they take the
  * whole walk: `typescriptRegions` masks a file down to its inline templates and its code,
  * `maskHtmlComments` masks an external template's comments, `maskBlockExpressions` masks block
- * parameters and `@let` values out of the tag walk, and `walkTags` is that walk: where in the masked
+ * parameters and `@let` values out of the tag walk, both after blanking each CDATA section's
+ * content (`blankSections`), and `walkTags` is that walk: where in the masked
  * markup an element tag opens (`elementNameAt`), one start tag's attributes (`readAttributes`), and a
  * raw-text element's content stepped over as text. Beside
  * `git-diff.mjs` because that is the guards' shared module, and dependency-free for the same reason
@@ -447,11 +448,11 @@ const BLOCKS = [
  * opened one at `@if (n<div && a>b)` that reached the `>` and read as complete (#1480). The mask
  * follows the lexer: a block or `@let` opens only in text — the walk steps over a tag as `walkTags`
  * reads it, a raw-text element's content and end tag included (`RAW_TEXT`, #1482), and over an
- * interpolation as `_consumeInterpolation` does, and a CDATA section's content is blanked first
- * (`blankSections`, #1502) — a block's parameters run from its `(` to the `)`
+ * interpolation as `_consumeInterpolation` does — a block's parameters run from its `(` to the `)`
  * `_consumeBlockParameters` stops at, and a `@let` value from its `=` to the `;`
- * `_consumeLetDeclarationValue` stops at. A guard that reads a block's condition
- * keeps reading the unmasked template.
+ * `_consumeLetDeclarationValue` stops at. A CDATA section's content is blanked first
+ * (`blankSections`, #1502), so no block or `@let` opens in it. A guard that reads a block's
+ * condition keeps reading the unmasked template.
  *
  * @param {string[]} lines the comment-masked template region
  * @returns {string[]} the same lines with block parameters, `@let` values and CDATA content blanked
@@ -508,9 +509,11 @@ function maskComments(lines, stop) {
  * and `]]>` kept, line and column geometry too, for both masks to read on. The content is text to
  * Angular (`_consumeCdata`), so blanking it hides nothing Angular builds, and no mask or walk reads
  * a `<!--`, a `@let`, a block or a tag in it. The delimiters still end an interpolation early and
- * let `walkTags` step the section (`OPAQUE`).
+ * let `walkTags` step the section (`OPAQUE`). A template with no `<![CDATA[` is returned as is,
+ * unread.
  */
 function blankSections(lines) {
+  if (!lines.some((line) => line.includes(CDATA[0]))) return lines;
   const out = lines.join('\n').split('');
   for (const [from, to] of cdataSections(lines)) {
     blankRange(out, from + CDATA[0].length, to - CDATA[1].length);
@@ -529,8 +532,8 @@ function commentSpans(lines, limit) {
  * `blankSections`. A `<![CDATA[` in a tag, a comment, a block's parameters or a `@let` value is no
  * section to the lexer, and past a start tag the walk cannot read the context is unknown. Where
  * the two readings part, as at `{{ "<![CDATA[" }}`, which the lexer reads as a section and the
- * walk's string-aware `interpolationEnd` as a string, the walk misreads (#1503), and nothing is
- * blanked, so the masks read as they did before they knew sections.
+ * walk's string-aware `interpolationEnd` as a string, the walk misreads (#1503), and that section
+ * is not blanked, so the masks read it as they did before they knew sections.
  */
 function cdataSections(lines) {
   const walked = walkSections(lines);
