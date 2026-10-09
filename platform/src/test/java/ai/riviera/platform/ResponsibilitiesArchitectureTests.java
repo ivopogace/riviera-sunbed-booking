@@ -197,11 +197,11 @@ class ResponsibilitiesArchitectureTests {
 
 	private static final String PUBLIC_SCHEMA = "public";
 
-	/** An unquoted name the walk folds as PostgreSQL does: past {@code A-Z}, folding depends on encoding and locale. */
-	private static final Pattern PLAIN_UNQUOTED = Pattern.compile("[A-Za-z_][A-Za-z0-9_]*");
+	/** An unquoted name the walk folds as PostgreSQL does: past ASCII, folding depends on encoding and locale. */
+	private static final Pattern PLAIN_UNQUOTED = Pattern.compile("[A-Za-z_][A-Za-z0-9_$]*");
 
 	/** A name PostgreSQL stores as written whether quoted or not: lower case, no special character. */
-	private static final Pattern FOLDED_NAME = Pattern.compile("[a-z_][a-z0-9_]*");
+	private static final Pattern FOLDED_NAME = Pattern.compile("[a-z_][a-z0-9_$]*");
 
 	/** The per-(set, date) source-of-truth table owned by {@code availability} (invariant #2). */
 	private static final String AVAILABILITY_TABLE = "set_availability";
@@ -691,7 +691,8 @@ class ResponsibilitiesArchitectureTests {
 	}
 
 	/** A dropped table is gone unless re-created, a renamed one answers to its new name only, a
-	 * column rename, a comment or a string literal changes nothing, and V9 applies before V10. */
+	 * column rename, a comment or a string literal changes nothing, an unquoted {@code $} name is read
+	 * whole and folded, and V9 applies before V10. */
 	@Test
 	void theSchemaWalkAppliesCreateDropAndRenameInVersionOrder() {
 		Set<String> tables = tablesAfter(List.of(
@@ -704,6 +705,7 @@ class ResponsibilitiesArchitectureTests {
 						ALTER TABLE new_name RENAME label TO bare_renamed_column;
 						COMMENT ON TABLE kept IS 'it''s fine to drop table kept; see /api/admin/**';
 						CREATE TABLE "public"."after_literal" (id BIGINT);
+						CREATE TABLE Kept$2(id BIGINT);
 						-- DROP TABLE kept; see /api/admin/** for the
 						/* CREATE TABLE commented_out (id BIGINT); */
 						"""),
@@ -716,7 +718,7 @@ class ResponsibilitiesArchitectureTests {
 				new Migration(MigrationVersion.fromVersion("9"), """
 						CREATE TABLE versioned (id BIGINT);
 						""")));
-		assertEquals(Set.of("after_literal", "kept", "new_name", "recreated"), tables);
+		assertEquals(Set.of("after_literal", "kept", "kept$2", "new_name", "recreated"), tables);
 	}
 
 	/** TEMP and UNLOGGED tables are refused, not read as {@code CREATE TABLE} or skipped. */
@@ -752,7 +754,6 @@ class ResponsibilitiesArchitectureTests {
 		assertRefused("CREATE TABLE IF NOT EXISTS public.ΣΤΟΙΧΕΙΑ(id BIGINT)",
 				"unquoted name 'ΣΤΟΙΧΕΙΑ' is not a plain ASCII identifier");
 		assertRefused("DROP TABLE IF EXISTS kept, plaža", "unquoted name 'plaža' is not a plain ASCII identifier");
-		assertRefused("ALTER TABLE kept RENAME TO kept$2", "unquoted name 'kept$2' is not a plain ASCII identifier");
 		assertRefused("ALTER TABLE \u212Aept RENAME TO renamed",
 				"unquoted name '\u212Aept' is not a plain ASCII identifier");
 	}
@@ -943,7 +944,8 @@ class ResponsibilitiesArchitectureTests {
 					+ text + "\": " + why + " (RESPONSIBILITIES.md § Known scan limits)");
 		}
 
-		/** Each part folded as PostgreSQL does: an unquoted one lower-cased, a quoted one kept as written. */
+		/** Each part folded as PostgreSQL does: an unquoted one lower-cased, a quoted one kept as written;
+		 * a Unicode-escaped name or an unquoted one past ASCII is refused. */
 		private List<String> identifiers(String qualified) {
 			List<String> parts = new ArrayList<>();
 			Matcher part = IDENTIFIER_PART.matcher(qualified);
