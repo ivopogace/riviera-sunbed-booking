@@ -696,7 +696,9 @@ test('a void element\'s exemption covers an ICU right after it, and nothing more
 /**
  * #1502: a CDATA section is raw text to its `]]>` (`_consumeCdata`), so neither mask reads a `@let`,
  * a block or a `<!--` in it, and the control after it is judged (`HtmlParser`, 0 errors: `" @let a
- * = ", button["x"], ";"`; `" @if ( ", button["x"]`; `" <!-- ", button["x"], Comment`).
+ * = ", button["x"], ";"`; `" @if ( ", button["x"]`; `" <!-- ", button["x"], Comment`). An
+ * interpolation ends at a tag start even inside its string (`_isTagStart`), so the last `<![CDATA[`
+ * is a quoted value, and the comment after it is masked (`"{{ \"", i[], Comment, input[]`).
  */
 test('a CDATA section hides no control after it', () => {
   const component = (markup) => ['@Component({', '  template: `', markup, '`,', '})'];
@@ -709,6 +711,10 @@ test('a CDATA section hides no control after it', () => {
   assert.deepEqual(
     scan(HTML, ['<![CDATA[', '<!-- ]]>', '<button>x</button>', '<!-- -->']).map((v) => [v.rule, v.line]),
     [['TT-1', 3]],
+  );
+  assert.deepEqual(
+    scan(HTML, ['{{ "<i title="<![CDATA["></i><!-- ]]><!-->', '<input>']).map((v) => [v.rule, v.line]),
+    [['TT-1', 2]],
   );
 });
 
