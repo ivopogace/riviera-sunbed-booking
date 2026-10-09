@@ -263,7 +263,7 @@ function quotedEnd(line, at) {
 /**
  * An external template with every `<!-- … -->` blanked to spaces, line and column geometry kept, so
  * a control inside a comment is never judged as markup. A comment runs to the first `-->` after its
- * `<!--`, or to the template's end. A CDATA section the walk reads is stepped over whole
+ * `<!--`, or to the template's end. A CDATA section Angular's lexer reads is stepped over whole
  * (`cdataSections`), so a `<!--` in one opens no comment (#1502).
  */
 export function maskHtmlComments(lines) {
@@ -432,7 +432,7 @@ const BLOCKS = [
  * opened one at `@if (n<div && a>b)` that reached the `>` and read as complete (#1480). The mask
  * follows the lexer: a block or `@let` opens only in text — the walk steps over a tag as `walkTags`
  * reads it, a raw-text element's content and end tag included (`RAW_TEXT`, #1482), over a CDATA
- * section the walk reads (`cdataSections`, #1502), and over an interpolation as
+ * section as Angular's lexer reads one (`cdataSections`, #1502), and over an interpolation as
  * `_consumeInterpolation` does — a block's parameters run from its `(` to the `)`
  * `_consumeBlockParameters` stops at, and a `@let` value from its `=` to the `;`
  * `_consumeLetDeclarationValue` stops at. A guard that reads a block's condition
@@ -449,49 +449,17 @@ export function maskBlockExpressions(lines) {
   let at = 0;
 
   while (at < text.length) {
-    at = sections.get(at) ?? expressionStep(lines, starts, text, at, out);
+    const step =
+      sections.get(at) ??
+      (text.startsWith('{{', at)
+        ? interpolationEnd(text, at + 2)
+        : (tagEnd(lines, starts, text, at) ??
+          letEnd(text, at, out) ??
+          blockEnd(text, at, out) ??
+          at + 1));
+    at = step;
   }
   return out.join('').split('\n');
-}
-
-/**
- * One step of `maskBlockExpressions`' read at `at`, blanking in `out`: past an interpolation
- * (`interpolationEnd`), a tag (`tagEnd`), a `@let` value or a block's parameters; else one
- * character.
- */
-function expressionStep(lines, starts, text, at, out) {
-  if (text.startsWith('{{', at)) return interpolationEnd(text, at + 2);
-  return (
-    tagEnd(lines, starts, text, at) ?? letEnd(text, at, out) ?? blockEnd(text, at, out) ?? at + 1
-  );
-}
-
-/**
- * The CDATA sections `walkTags` reads as one token, each start offset mapped to the offset past
- * it (`opaqueEnd`). A `<![CDATA[` opens one only in text, the one place `_consumeCdata` is
- * reached: the read steps over what the walk steps over, a comment (`OPAQUE`) and
- * `expressionStep`'s interpolations, tags, `@let` values and block parameters, so a `<![CDATA[`
- * in any of them opens none. Both masks read the sections from this map, so neither steps over a
- * section the walk reads as text, nor reads into one it steps over.
- */
-function cdataSections(lines) {
-  const text = lines.join('\n');
-  const starts = lineStarts(lines);
-  const ignored = text.split('');
-  const sections = new Map();
-  let at = 0;
-
-  while (at < text.length) {
-    const opaque = OPAQUE.find(([open]) => text.startsWith(open, at));
-    if (opaque === undefined) {
-      at = expressionStep(lines, starts, text, at, ignored);
-      continue;
-    }
-    const end = opaqueEnd(text, at, opaque);
-    if (opaque === CDATA) sections.set(at, end);
-    at = end;
-  }
-  return sections;
 }
 
 /**
@@ -522,25 +490,43 @@ function maskComments(lines, stop) {
   return out.join('').split('\n');
 }
 
-/**
- * The comments that close before `limit`, each start offset mapped to the offset past its `-->`, as
- * Angular's lexer reads them. A comment opens only where the lexer reads markup: the walk steps
- * over a tag as `tagEnd` reads it, an interpolation to where `_consumeInterpolation` ends it
- * (`lexerInterpolationEnd`), a CDATA section, doctype or processing instruction (`declarationEnd`),
- * a block's parameters and a `@let` value, so a `<!--` in any of them opens none; a comment ends as
- * `commentEnd` reads it. The read stops at a start tag the walk cannot read (`misreadTag`), as at
- * `limit`: past it the context is unknown.
- */
+/** The comments `lexerSpans` reads before `limit`. */
 function commentSpans(lines, limit) {
+  return lexerSpans(lines, limit).comments;
+}
+
+/**
+ * The CDATA sections `lexerSpans` reads, each start offset mapped to the offset past it as
+ * `walkTags` steps it (`opaqueEnd`), for the masks to step over (#1502). Only these: a
+ * `<![CDATA[` in a tag, an interpolation, a comment, a block's parameters or a `@let` value is no
+ * section to Angular's lexer, and past a start tag the walk cannot read the context is unknown, so
+ * there the masks read as they did before they knew sections.
+ */
+function cdataSections(lines) {
+  return lexerSpans(lines, lines.join('\n').length).sections;
+}
+
+/**
+ * The comments that close before `limit`, each start offset mapped to the offset past its `-->`,
+ * and the CDATA sections that open before it, as Angular's lexer reads them. Either opens only
+ * where the lexer reads markup: the read steps over a tag as `tagEnd` reads it, an interpolation to
+ * where `_consumeInterpolation` ends it (`lexerInterpolationEnd`), a CDATA section, doctype or
+ * processing instruction (`declarationEnd`), a block's parameters and a `@let` value, so a `<!--`
+ * or `<![CDATA[` in any of them opens none; a comment ends as `commentEnd` reads it. The read stops
+ * at a start tag the walk cannot read (`misreadTag`), as at `limit`: past it the context is
+ * unknown.
+ */
+function lexerSpans(lines, limit) {
   const text = lines.join('\n');
   const ignored = text.split('');
   const starts = lineStarts(lines);
-  const spans = new Map();
+  const spans = { comments: new Map(), sections: new Map() };
   let at = 0;
 
   while (at < limit && !misreadTag(lines, starts, text, at)) {
     const comment = commentEnd(text, at);
-    if (comment !== null && comment > at + 4 && comment <= limit) spans.set(at, comment);
+    if (comment !== null && comment > at + 4 && comment <= limit) spans.comments.set(at, comment);
+    if (text.startsWith(CDATA[0], at)) spans.sections.set(at, opaqueEnd(text, at, CDATA));
     at =
       comment ??
       declarationEnd(text, at) ??
@@ -855,7 +841,7 @@ function icuFormStep(text, at, walk) {
  * comment (`_consumeComment`) and a CDATA section (`_consumeCdata`), each of which the tree builder
  * takes as one node after `_closeVoidElement`. An `.html` template arrives with its comments
  * masked, an inline one without: `typescriptRegions` masks them in `template` alone (#1496). Both
- * masks step over the CDATA sections the walk reads (`cdataSections`, #1502).
+ * masks step over the CDATA sections Angular's lexer reads (`cdataSections`, #1502).
  */
 const CDATA = ['<![CDATA[', ']]>'];
 const OPAQUE = [['<!--', '-->'], CDATA];
