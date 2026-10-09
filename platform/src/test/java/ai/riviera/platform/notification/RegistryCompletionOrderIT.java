@@ -15,6 +15,7 @@ import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.transaction.PlatformTransactionManager;
 
 import ai.riviera.platform.EnabledIfDockerAvailable;
+import ai.riviera.platform.RegistryRows;
 import ai.riviera.platform.TestcontainersConfiguration;
 import ai.riviera.platform.booking.events.BookingRequestExpired;
 
@@ -83,26 +84,20 @@ class RegistryCompletionOrderIT {
 	}
 
 	private long archived(long bookingId) {
-		return jdbc.sql("""
-				SELECT count(*) FROM event_publication_archive
-				WHERE event_type = :type AND listener_id = :listener
-				  AND serialized_event::jsonb -> 'bookingId' ->> 'value' = :id
-				""")
+		return jdbc.sql("SELECT count(*) FROM event_publication_archive "
+						+ "WHERE event_type = :type AND listener_id = :listener AND " + RegistryRows.NAMES_BOOKING)
 				.param("type", BookingRequestExpired.class.getName())
 				.param("listener", BookingMailFixtures.REQUEST_EXPIRED_LISTENER_ID)
-				.param("id", Long.toString(bookingId))
+				.param("bookingId", RegistryRows.bookingIdParam(bookingId))
 				.query(Long.class).single();
 	}
 
 	private String liveStatus(long bookingId) {
-		return jdbc.sql("""
-				SELECT status FROM event_publication
-				WHERE event_type = :type AND listener_id = :listener AND completion_date IS NULL
-				  AND serialized_event::jsonb -> 'bookingId' ->> 'value' = :id
-				""")
+		return jdbc.sql("SELECT status FROM event_publication WHERE event_type = :type AND listener_id = :listener "
+						+ "AND completion_date IS NULL AND " + RegistryRows.NAMES_BOOKING)
 				.param("type", BookingRequestExpired.class.getName())
 				.param("listener", BookingMailFixtures.REQUEST_EXPIRED_LISTENER_ID)
-				.param("id", Long.toString(bookingId))
+				.param("bookingId", RegistryRows.bookingIdParam(bookingId))
 				.query(String.class).single();
 	}
 }

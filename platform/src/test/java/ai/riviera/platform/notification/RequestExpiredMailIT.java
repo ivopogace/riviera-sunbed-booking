@@ -152,8 +152,8 @@ class RequestExpiredMailIT {
 	}
 
 	/**
-	 * The admin re-drive scopes on the listener id the running registry actually writes — pin it. Keep
-	 * {@code event_type} beside the date: another IT's range confirmation ending on this date matched without it (#1465).
+	 * The admin re-drive scopes on the listener id the running registry actually writes — pin it. Keep the
+	 * {@code event_type} and booking match: a date-fragment query caught another IT's range confirmation (#1465).
 	 */
 	@Test
 	void theRegistryWritesTheListenerIdTheReDriveScopesOn() {
