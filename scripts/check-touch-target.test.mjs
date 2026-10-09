@@ -694,6 +694,25 @@ test('a void element\'s exemption covers an ICU right after it, and nothing more
 });
 
 /**
+ * #1502: a CDATA section is raw text to its `]]>` (`_consumeCdata`), so neither mask reads a `@let`,
+ * a block or a `<!--` in it, and the control after it is judged (`HtmlParser`, 0 errors: `" @let a
+ * = ", button["x"], ";"`; `" @if ( ", button["x"]`; `" <!-- ", button["x"], Comment`).
+ */
+test('a CDATA section hides no control after it', () => {
+  const component = (markup) => ['@Component({', '  template: `', markup, '`,', '})'];
+  for (const markup of ['<![CDATA[ @let a = ]]><button>x</button>;', '<![CDATA[ @if ( ]]><button>x</button>']) {
+    assert.deepEqual(scan(TS, component(markup)).map((v) => [v.rule, v.line]), [['TT-1', 3]], markup);
+  }
+  for (const line of ['<![CDATA[ <!-- ]]><button>x</button><!-- -->', '<![CDATA[ @let a = ]]><button>x</button>;']) {
+    assert.deepEqual(scan(HTML, [line]).map((v) => [v.rule, v.line]), [['TT-1', 1]], line);
+  }
+  assert.deepEqual(
+    scan(HTML, ['<![CDATA[', '<!-- ]]>', '<button>x</button>', '<!-- -->']).map((v) => [v.rule, v.line]),
+    [['TT-1', 3]],
+  );
+});
+
+/**
  * #1497: a comment in an inline template is one node to Angular, so the walk lets no brace or
  * ICU head in it end an exemption or hide the controls after it (`HtmlParser`: `@if{li["x",
  * Comment, button["y"]]}`; `Comment, "x", button["y"]`). The block mask still reads into one: an

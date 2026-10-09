@@ -562,6 +562,25 @@ test('maskBlockExpressions leaves an `@` outside text alone', () => {
   }
 });
 
+/**
+ * #1502: a CDATA section is raw text to its `]]>` (`_consumeCdata`), so no block or `@let` opens in
+ * it, and the mask blanks nothing past it on its account (`HtmlParser`: `" @let a = ", b["x"],
+ * ";"`; `" @if ( ", b["x"], ")"`). The blocks after the section are masked as anywhere.
+ */
+test('maskBlockExpressions masks nothing inside a CDATA section', () => {
+  for (const line of ['<![CDATA[ @let a = ]]><b>x</b>;', '<![CDATA[ @if ( ]]><b>x</b>)']) {
+    assert.deepEqual(maskBlockExpressions([line]), [line], line);
+  }
+  assert.deepEqual(maskBlockExpressions(['<![CDATA[x]]>@if (a<b) {']), [
+    '<![CDATA[x]]>@if (   ) {',
+  ]);
+  assert.deepEqual(maskBlockExpressions(['<![CDATA[', '@let a =', ']]>@let b = a>c;']), [
+    '<![CDATA[',
+    '@let a =',
+    ']]>@let b =    ;',
+  ]);
+});
+
 /** The walk's entries as a test compares them: `<name` or `<prefix:name`, and `</` likewise. */
 function walked(lines) {
   return walkTags(lines).map((tag) => {
