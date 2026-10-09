@@ -697,8 +697,10 @@ test('a void element\'s exemption covers an ICU right after it, and nothing more
  * #1502: a CDATA section is raw text to its `]]>` (`_consumeCdata`), so neither mask reads a `@let`,
  * a block or a `<!--` in it, and the control after it is judged (`HtmlParser`, 0 errors: `" @let a
  * = ", button["x"], ";"`; `" @if ( ", button["x"]`; `" <!-- ", button["x"], Comment`). An
- * interpolation ends at a tag start even inside its string (`_isTagStart`), so the last `<![CDATA[`
- * is a quoted value, and the comment after it is masked (`"{{ \"", i[], Comment, input[]`).
+ * interpolation ends at a tag start even inside its string (`_isTagStart`), so the `<![CDATA[` of
+ * `{{ "<i title="<![CDATA[">` is a quoted value, and the comment after it is masked (`"{{ \"",
+ * i[], Comment, input[]`); where the walk reads an interpolation's string as Angular does not, as
+ * in `{{ "<![CDATA[" }}`, the masks read as before (`"{{ \"", "\" }}<![CDATA[", input[]`).
  */
 test('a CDATA section hides no control after it', () => {
   const component = (markup) => ['@Component({', '  template: `', markup, '`,', '})'];
@@ -716,15 +718,16 @@ test('a CDATA section hides no control after it', () => {
     scan(HTML, ['{{ "<i title="<![CDATA["></i><!-- ]]><!-->', '<input>']).map((v) => [v.rule, v.line]),
     [['TT-1', 2]],
   );
+  const misread = '{{ "<![CDATA[" }}<![CDATA[]]><input/>';
+  assert.deepEqual(scan(HTML, [misread]).map((v) => [v.rule, v.line]), [['TT-1', 1]]);
+  assert.deepEqual(scan(TS, component(misread)).map((v) => [v.rule, v.line]), [['TT-1', 3]]);
 });
 
 /**
  * #1502: a `<![CDATA[` opens a section only where Angular's lexer reads text, so one inside a
  * comment, a quoted value, a `@let` value or a block's parameters reveals no `@let` value or
  * comment as markup (`HtmlParser`, 0 errors: `Comment, @let x`; `b["x"], Comment`; `@let y,
- * Comment`). One in an interpolation's string does open a section, the lexer ending the
- * interpolation at its `<!` (`_isTagStart`), and its content is no markup (`"{{ \"", "\"
- * }}<input>"`).
+ * Comment`).
  */
 test('a CDATA opener Angular reads as no section reveals no markup', () => {
   const component = (markup) => ['@Component({', '  template: `', markup, '`,', '})'];
@@ -733,7 +736,6 @@ test('a CDATA opener Angular reads as no section reveals no markup', () => {
     '<i title="<![CDATA["></i>@let x = a <button>;]]>',
     '@let y = "<![CDATA[";@let x = a <button>;]]>',
     '@if (a == "<![CDATA[") {}@let x = a <button>;]]>',
-    '{{ "<![CDATA[" }}<input>]]>',
   ]) {
     assert.deepEqual(scan(TS, component(markup)), [], markup);
   }
@@ -741,7 +743,6 @@ test('a CDATA opener Angular reads as no section reveals no markup', () => {
     '<b title="<![CDATA[">x</b><!-- <button>x</button> ]]><!-->',
     '@let y = "<![CDATA[";<!-- <button>x</button> ]]><!-->',
     '@if (a == "<![CDATA[") {}<!-- <button>x</button> ]]><!-->',
-    '{{ "<![CDATA[" }}<input>]]>',
   ]) {
     assert.deepEqual(scan(HTML, [line]), [], line);
   }
