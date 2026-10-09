@@ -15,6 +15,18 @@ phrase: `grep -rn "ApiProblem\." platform/src/main` unrolled through each contro
 `problem(...)`/`error(...)` helper, plus the hand-built JSON in `RateLimitFilter` and
 `SecurityProblemResponses`.
 
+### Extension members past `code`
+
+A body may carry an RFC 9457 extension member past `code` only where the module that writes it
+owns its meaning, so it is built in that module's controller on `ApiProblem.of(...)`, never added
+to `shared` (admission by ownership: `RESPONSIBILITIES.md` § `shared`). Current members:
+
+- `sets` on `venue`'s `409 SETS_IN_USE` (layout replace): the removed sets a live claim pins.
+- `field` on `venue`'s set-write `400 INVALID_REQUEST` (`POST …/sets`, `PATCH …/sets/{id}`, the
+  batch `PATCH …/sets`): `"price"` when the price broke `SetPrice` or was missing, so the editor
+  binds the error to its price input (#1463). Any other 400 on those routes (an unknown pool, a
+  missing `expectedVersion`, a grid field) comes from the advice and carries no `field`.
+
 ## `ApiErrorHandler` (`web`)
 
 The single `@RestControllerAdvice`, extending `ResponseEntityExceptionHandler`:

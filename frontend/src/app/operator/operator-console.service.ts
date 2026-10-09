@@ -3,7 +3,7 @@ import { Service, inject } from '@angular/core';
 import { Observable, map, switchMap } from 'rxjs';
 
 import { environment } from '../../environments/environment';
-import { problemCodeOf } from '../shared/api-error';
+import { problemCodeOf, problemFieldOf } from '../shared/api-error';
 import { apiPhotoUrl } from '../shared/photo-url';
 import { MoneyView } from '../shared/money';
 import {
@@ -530,8 +530,9 @@ export function setWriteErrorOf(error: unknown): SetWriteErrorCode {
       case 'NO_SUCH_SET':
       case 'NO_SUCH_VENUE':
       case 'NOT_VENUE_OWNER':
-      case 'INVALID_REQUEST':
         return code;
+      case 'INVALID_REQUEST':
+        return invalidSetFieldOf(error);
       default:
         return 'UNKNOWN';
     }
@@ -551,13 +552,19 @@ export function setBatchErrorOf(error: unknown): SetBatchErrorCode {
       case 'NO_SUCH_SET':
       case 'NO_SUCH_VENUE':
       case 'NOT_VENUE_OWNER':
-      case 'INVALID_REQUEST':
         return code;
+      case 'INVALID_REQUEST':
+        return invalidSetFieldOf(error);
       default:
         return 'UNKNOWN';
     }
   }
   return 'UNKNOWN';
+}
+
+/** A set-write 400 that names the price binds to the price input; any other stays a panel alert (#1463). */
+function invalidSetFieldOf(error: HttpErrorResponse): 'INVALID_PRICE' | 'INVALID_REQUEST' {
+  return problemFieldOf(error) === 'price' ? 'INVALID_PRICE' : 'INVALID_REQUEST';
 }
 
 /** Map an HTTP failure of the per-row reprice to a known {@link RepriceErrorCode} (RFC-7807 `code`). */
