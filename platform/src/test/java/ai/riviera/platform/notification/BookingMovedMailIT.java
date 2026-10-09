@@ -120,8 +120,8 @@ class BookingMovedMailIT {
 		assertThat(sent.moved()).isEqualTo(new BookingMovedMail("MOVED001", venueName, date, "A", 3, "Z", 87, 0, 84,
 				deadline, URI.create(sent.moved().bookingLink().toString())));
 		assertThat(sent.moved().bookingLink().getPath()).endsWith("/booking/MOVED001");
-		assertThat(fixtures.outstandingPublicationsMatching(BookingMailFixtures.BOOKING_MOVED_LISTENER_ID,
-				String.valueOf(booking))).isZero();
+		assertThat(fixtures.outstandingPublicationsFor(BookingMailFixtures.BOOKING_MOVED_LISTENER_ID,
+				new BookingId(booking))).isZero();
 
 		Cookie operator = SessionLoginSupport.operatorSession(mvc, "operator", "test-operator-pw");
 		mvc.perform(get("/api/mock-mail/booking-mails").param("to", guest).cookie(operator))
@@ -263,8 +263,8 @@ class BookingMovedMailIT {
 
 		fixtures.publishInTransaction(fixtures.movedOf(from, to, booking, date));
 
-		Awaitility.await().atMost(WAIT).until(() -> fixtures.outstandingPublicationsMatching(
-				BookingMailFixtures.BOOKING_MOVED_LISTENER_ID, String.valueOf(booking)) == 0L);
+		Awaitility.await().atMost(WAIT).until(() -> fixtures.outstandingPublicationsFor(
+				BookingMailFixtures.BOOKING_MOVED_LISTENER_ID, new BookingId(booking)) == 0L);
 		assertThat(countTo(suppressed)).isZero();
 	}
 

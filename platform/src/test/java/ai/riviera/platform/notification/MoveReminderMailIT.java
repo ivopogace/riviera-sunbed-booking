@@ -104,8 +104,8 @@ class MoveReminderMailIT {
 				Math.abs(to.gridY() - from.gridY()), Math.abs(to.positionNo() - from.positionNo()),
 				URI.create(sent.moveReminder().bookingLink().toString()), true));
 		assertThat(sent.moveReminder().bookingLink().getPath()).endsWith("/booking/" + stay.code());
-		assertThat(fixtures.outstandingPublicationsMatching(BookingMailFixtures.MOVE_REMINDER_LISTENER_ID,
-				String.valueOf(stay.arriving()))).isZero();
+		assertThat(fixtures.outstandingPublicationsFor(BookingMailFixtures.MOVE_REMINDER_LISTENER_ID,
+				new BookingId(stay.arriving()))).isZero();
 
 		Cookie operator = SessionLoginSupport.operatorSession(mvc, "operator", "test-operator-pw");
 		mvc.perform(get("/api/mock-mail/booking-mails").param("to", guest).cookie(operator))
@@ -128,8 +128,8 @@ class MoveReminderMailIT {
 
 		fixtures.publishInTransaction(new StayMoveDue(new StayId(stay.id()), new BookingId(stay.arriving()), stay.moveDay()));
 
-		Awaitility.await().atMost(WAIT).until(() -> fixtures.outstandingPublicationsMatching(
-				BookingMailFixtures.MOVE_REMINDER_LISTENER_ID, String.valueOf(stay.arriving())) == 0L);
+		Awaitility.await().atMost(WAIT).until(() -> fixtures.outstandingPublicationsFor(
+				BookingMailFixtures.MOVE_REMINDER_LISTENER_ID, new BookingId(stay.arriving())) == 0L);
 		assertThat(countTo(guest)).isZero();
 	}
 

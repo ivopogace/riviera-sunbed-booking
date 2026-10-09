@@ -23,6 +23,7 @@ import org.springframework.transaction.PlatformTransactionManager;
 import ai.riviera.platform.EnabledIfDockerAvailable;
 import ai.riviera.platform.TestcontainersConfiguration;
 import ai.riviera.platform.booking.events.BookingConfirmed;
+import ai.riviera.platform.booking.vocabulary.BookingId;
 import ai.riviera.platform.notification.BookingMailFixtures;
 import ai.riviera.platform.notification.BookingMailFixtures.SetRef;
 import ai.riviera.platform.notification.ControllableMailer;
@@ -81,10 +82,6 @@ class RegistryMailShedDurabilityIT {
 
 	private static final int SHRUNK_QUEUE_CAPACITY = 1;
 
-	/**
-	 * Improbable amounts, one per booking, because a publication is matched on its serialized amount
-	 * rather than on an id — see {@link BookingMailFixtures}.
-	 */
 	private static final long WEDGE_AMOUNT_MINOR = 407_000_701L;
 
 	private static final long QUEUED_AMOUNT_MINOR = 407_000_702L;
@@ -211,7 +208,7 @@ class RegistryMailShedDurabilityIT {
 		assertThat(transport.attemptsMatching(SHED_CONTACT))
 				.as("a shed send is dropped, not deferred: an idle pool never picks it up")
 				.isZero();
-		assertThat(fixtures.outstandingMailPublications(SHED_AMOUNT_MINOR))
+		assertThat(fixtures.outstandingMailPublications(new BookingId(shedBooking)))
 				.as("shedding is only lossless because the publication is still outstanding — this is the "
 						+ "half of the contract nothing proved in a Spring context before #407")
 				.isEqualTo(1L);
@@ -223,6 +220,6 @@ class RegistryMailShedDurabilityIT {
 		Awaitility.await("the resubmit delivers the mail the pool shed").atMost(WAIT)
 				.until(() -> transport.deliveriesMatching(SHED_CONTACT) == 1L);
 		Awaitility.await("and the registry no longer owes it").atMost(WAIT)
-				.until(() -> fixtures.outstandingMailPublications(SHED_AMOUNT_MINOR) == 0L);
+				.until(() -> fixtures.outstandingMailPublications(new BookingId(shedBooking)) == 0L);
 	}
 }
