@@ -47,7 +47,9 @@ class ProbeCompletionOrderIT {
 		Object listener = context.getBean("requestExpiredMailListener");
 		List<String> chain = Arrays.stream(((Advised) listener).getAdvisors())
 				.map(a -> a.getClass().getName()).toList();
-		System.out.println("PROBE advisor chain: " + chain);
+		int async = indexOf(chain, "AsyncAnnotationAdvisor");
+		int completion = indexOf(chain, "CompletionRegisteringAdvisor");
+		assertThat(async).as("advisor chain %s", chain).isNotNegative().isLessThan(completion);
 	}
 
 	@Test
@@ -66,12 +68,21 @@ class ProbeCompletionOrderIT {
 				+ "WHERE serialized_event LIKE :f AND listener_id = :l")
 				.param("f", "%" + date + "%").param("l", BookingMailFixtures.REQUEST_EXPIRED_LISTENER_ID)
 				.query(String.class).single();
-		System.out.println("PROBE live row while wedged: " + live);
+		assertThat(live).as("the live row while the send is wedged").startsWith("PROCESSING:null");
 		assertThat(transport.deliveriesMatching(guest)).isZero();
 
 		transport.release();
 		Awaitility.await().atMost(Duration.ofSeconds(15)).until(() -> archived(date) == 1L);
 		assertThat(transport.deliveriesMatching(guest)).isEqualTo(1);
+	}
+
+	private static int indexOf(List<String> chain, String simpleName) {
+		for (int i = 0; i < chain.size(); i++) {
+			if (chain.get(i).endsWith("." + simpleName)) {
+				return i;
+			}
+		}
+		return -1;
 	}
 
 	private long archived(LocalDate date) {
