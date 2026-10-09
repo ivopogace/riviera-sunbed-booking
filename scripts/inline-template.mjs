@@ -262,41 +262,26 @@ function quotedEnd(line, at) {
 
 /**
  * An external template with every `<!-- … -->` blanked to spaces, line and column geometry kept, so
- * a control inside a comment is never judged as markup.
+ * a control inside a comment is never judged as markup. A comment runs to the first `-->` after its
+ * `<!--`, or to the template's end. A CDATA section is stepped over as `walkTags` steps it
+ * (`cdataEnd`), so a `<!--` in one opens no comment (#1502).
  */
 export function maskHtmlComments(lines) {
-  const out = lines.map((line) => line.split(''));
-  let open = false;
+  const text = lines.join('\n');
+  const out = text.split('');
+  let at = 0;
 
-  for (const chars of out) {
-    for (let c = 0; c < chars.length; c++) {
-      if (open) {
-        if (startsWith(chars, '-->', c)) {
-          blank(chars, c, 3);
-          c += 2;
-          open = false;
-        } else {
-          chars[c] = ' ';
-        }
-      } else if (startsWith(chars, '<!--', c)) {
-        blank(chars, c, 4);
-        c += 3;
-        open = true;
-      }
+  while (at < text.length) {
+    if (text.startsWith('<!--', at)) {
+      const end = text.indexOf('-->', at + 4);
+      const to = end === -1 ? text.length : end + 3;
+      blankRange(out, at, to);
+      at = to;
+    } else {
+      at = cdataEnd(text, at) ?? at + 1;
     }
   }
-  return out.map((chars) => chars.join(''));
-}
-
-function startsWith(chars, token, at) {
-  for (let i = 0; i < token.length; i++) {
-    if (chars[at + i] !== token[i]) return false;
-  }
-  return true;
-}
-
-function blank(chars, at, length) {
-  for (let i = at; i < at + length; i++) chars[i] = ' ';
+  return out.join('').split('\n');
 }
 
 /**
@@ -445,8 +430,9 @@ const BLOCKS = [
  * `@let name = …;`, as expressions, never as markup, so a `<` there opens no tag. Unmasked, the walk
  * opened one at `@if (n<div && a>b)` that reached the `>` and read as complete (#1480). The mask
  * follows the lexer: a block or `@let` opens only in text — the walk steps over a tag as `walkTags`
- * reads it, a raw-text element's content and end tag included (`RAW_TEXT`, #1482), and over an
- * interpolation as `_consumeInterpolation` does — a block's parameters run from its `(` to the `)`
+ * reads it, a raw-text element's content and end tag included (`RAW_TEXT`, #1482), over a CDATA
+ * section as `cdataEnd` reads it (#1502), and over an interpolation as `_consumeInterpolation`
+ * does — a block's parameters run from its `(` to the `)`
  * `_consumeBlockParameters` stops at, and a `@let` value from its `=` to the `;`
  * `_consumeLetDeclarationValue` stops at. A guard that reads a block's condition
  * keeps reading the unmasked template.
@@ -463,7 +449,8 @@ export function maskBlockExpressions(lines) {
   while (at < text.length) {
     const step = text.startsWith('{{', at)
       ? interpolationEnd(text, at + 2)
-      : (tagEnd(lines, starts, text, at) ??
+      : (cdataEnd(text, at) ??
+        tagEnd(lines, starts, text, at) ??
         letEnd(text, at, out) ??
         blockEnd(text, at, out) ??
         at + 1);
@@ -669,7 +656,8 @@ export function walkTags(lines) {
     while (i + 1 < starts.length && starts[i + 1] <= at) i++;
     const opaque = OPAQUE.find(([open]) => text.startsWith(open, at));
     if (opaque !== undefined) {
-      at = opaqueEnd(text, at, opaque, walk);
+      if (walk.open.at(-1)?.void) closeTop(walk);
+      at = opaqueEnd(text, at, opaque);
       continue;
     }
     const found = text[at] === '<' ? tagAt(lines, i, at - starts[i]) : null;
@@ -831,23 +819,24 @@ function icuFormStep(text, at, walk) {
  * The constructs Angular's lexer reads as raw text from their opener to their closer, an HTML
  * comment (`_consumeComment`) and a CDATA section (`_consumeCdata`), each of which the tree builder
  * takes as one node after `_closeVoidElement`. An `.html` template arrives with its comments
- * masked, an inline one without: `typescriptRegions` masks them in `template` alone (#1496). The
- * masks still read into a CDATA section (#1502).
+ * masked, an inline one without: `typescriptRegions` masks them in `template` alone (#1496). Both
+ * masks step over a CDATA section as the walk does (`cdataEnd`, #1502).
  */
-const OPAQUE = [
-  ['<!--', '-->'],
-  ['<![CDATA[', ']]>'],
-];
+const CDATA = ['<![CDATA[', ']]>'];
+const OPAQUE = [['<!--', '-->'], CDATA];
 
 /**
- * The offset past the `OPAQUE` construct at `at`, so nothing in it opens or closes a container; it
- * closes a void element, as any node does. With no closer the template fails to build, and only the
- * opener is stepped over.
+ * The offset past the `OPAQUE` construct at `at`, so nothing in it opens or closes a container.
+ * With no closer the template fails to build, and only the opener is stepped over.
  */
-function opaqueEnd(text, at, [open, close], walk) {
-  if (walk.open.at(-1)?.void) closeTop(walk);
+function opaqueEnd(text, at, [open, close]) {
   const end = text.indexOf(close, at + open.length);
   return end === -1 ? at + open.length : end + close.length;
+}
+
+/** The offset past a CDATA section opening at `at`, as `opaqueEnd` reads it; null for none. */
+function cdataEnd(text, at) {
+  return text.startsWith(CDATA[0], at) ? opaqueEnd(text, at, CDATA) : null;
 }
 
 /** Pops everything above the innermost `kind` container, and that container; with none, nothing. */
