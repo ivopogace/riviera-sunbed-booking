@@ -15,6 +15,20 @@ phrase: `grep -rn "ApiProblem\." platform/src/main` unrolled through each contro
 `problem(...)`/`error(...)` helper, plus the hand-built JSON in `RateLimitFilter` and
 `SecurityProblemResponses`.
 
+### Extension members past `code`
+
+A body may carry an RFC 9457 extension member past `code` only where the module that writes it
+owns its meaning, so it is built in that module's controller on `ApiProblem.of(...)`, never added
+to `shared` (admission by ownership: `RESPONSIBILITIES.md` § `shared`). Enumerate them with
+`grep -rn "setProperty(" platform/src/main` (e.g. `sets` on `venue`'s and `remodel`'s `409
+SETS_IN_USE`). The one a client binds to an input:
+
+- `field` on `venue`'s set-write `400 INVALID_REQUEST` (`POST …/sets`, `PATCH …/sets/{id}`, the
+  batch `PATCH …/sets`): `"price"` when the price broke `SetPrice` (or, on a single-set write, was
+  missing; a batch without one leaves prices untouched), so the editor
+  binds the error to its price input (#1463). Any other 400 on those routes (an unknown pool, a
+  missing `expectedVersion`, a grid field) comes from the advice and carries no `field`.
+
 ## `ApiErrorHandler` (`web`)
 
 The single `@RestControllerAdvice`, extending `ResponseEntityExceptionHandler`:
@@ -50,6 +64,7 @@ past its cap) mirror the shape by hand (they reject before MVC dispatch).
   before any servlet keeps Tomcat's URI-free HTML (RESPONSIBILITIES.md § web).
 
 **Validation is centralized-explicit:** hand-rolled checks in `toCommand()`, translated at the
-controller, mapped once by the advice. No `spring-boot-starter-validation`/`@Valid` — the
-checks are parse/cross-field logic, and annotations would split validation across two
-mechanisms.
+controller, mapped once by the advice — save a refusal whose body names its field (§ *Extension
+members past `code`*), which its controller checks and answers before `toCommand()`.
+No `spring-boot-starter-validation`/`@Valid` — the checks are parse/cross-field logic, and
+annotations would split validation across two mechanisms.

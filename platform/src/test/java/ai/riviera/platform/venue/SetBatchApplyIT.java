@@ -117,7 +117,8 @@ class SetBatchApplyIT {
 						.contentType(MediaType.APPLICATION_JSON)
 						.content(batch("[%d]".formatted(a), "\"price\":{\"minorUnits\":49,\"currency\":\"EUR\"},", version)))
 				.andExpect(status().isBadRequest())
-				.andExpect(jsonPath("$.code").value("INVALID_REQUEST"));
+				.andExpect(jsonPath("$.code").value("INVALID_REQUEST"))
+				.andExpect(jsonPath("$.field").value("price"));
 		mvc.perform(patch("/api/venues/{v}/sets", venue).cookie(operatorSession).with(csrf())
 						.contentType(MediaType.APPLICATION_JSON)
 						.content(batch("[%d]".formatted(a), "\"price\":{\"minorUnits\":50,\"currency\":\"EUR\"},", version)))
@@ -179,7 +180,8 @@ class SetBatchApplyIT {
 						.contentType(MediaType.APPLICATION_JSON)
 						.content(batch("[%d]".formatted(a), "", version)))
 				.andExpect(status().isBadRequest())
-				.andExpect(jsonPath("$.code").value("INVALID_REQUEST"));
+				.andExpect(jsonPath("$.code").value("INVALID_REQUEST"))
+				.andExpect(jsonPath("$.field").doesNotExist());
 		mvc.perform(patch("/api/venues/{v}/sets", venue).cookie(operatorSession).with(csrf())
 						.contentType(MediaType.APPLICATION_JSON)
 						.content(batch("[]", "\"tier\":\"PREMIUM\",", version)))
@@ -189,7 +191,8 @@ class SetBatchApplyIT {
 						.contentType(MediaType.APPLICATION_JSON)
 						.content("{\"setIds\":[%d],\"tier\":\"PREMIUM\"}".formatted(a)))
 				.andExpect(status().isBadRequest())
-				.andExpect(jsonPath("$.code").value("INVALID_REQUEST"));
+				.andExpect(jsonPath("$.code").value("INVALID_REQUEST"))
+				.andExpect(jsonPath("$.field").doesNotExist());
 	}
 
 	@Test
