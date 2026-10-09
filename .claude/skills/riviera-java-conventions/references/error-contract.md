@@ -19,9 +19,10 @@ phrase: `grep -rn "ApiProblem\." platform/src/main` unrolled through each contro
 
 A body may carry an RFC 9457 extension member past `code` only where the module that writes it
 owns its meaning, so it is built in that module's controller on `ApiProblem.of(...)`, never added
-to `shared` (admission by ownership: `RESPONSIBILITIES.md` § `shared`). Current members:
+to `shared` (admission by ownership: `RESPONSIBILITIES.md` § `shared`). Enumerate them with
+`grep -rn "setProperty(" platform/src/main` (e.g. `sets` on `venue`'s and `remodel`'s `409
+SETS_IN_USE`). The one a client binds to an input:
 
-- `sets` on `venue`'s `409 SETS_IN_USE` (layout replace): the removed sets a live claim pins.
 - `field` on `venue`'s set-write `400 INVALID_REQUEST` (`POST …/sets`, `PATCH …/sets/{id}`, the
   batch `PATCH …/sets`): `"price"` when the price broke `SetPrice` (or, on a single-set write, was
   missing; a batch without one leaves prices untouched), so the editor

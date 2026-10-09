@@ -668,6 +668,13 @@ class VenueAdminControllerIT {
 				.andExpect(status().isBadRequest())
 				.andExpect(jsonPath("$.code").value("INVALID_REQUEST"))
 				.andExpect(jsonPath("$.field").doesNotExist());
+		mvc.perform(post("/api/venues/{v}/sets", venue).cookie(operatorSession).with(csrf())
+						.contentType(MediaType.APPLICATION_JSON)
+						.content("""
+								{"rowLabel":"Row A","positionNo":2,"tier":"STANDARD","pool":"ONLINE","gridX":2,"gridY":1}
+								"""))
+				.andExpect(status().isBadRequest())
+				.andExpect(jsonPath("$.field").value("price"));
 	}
 
 	@Test
