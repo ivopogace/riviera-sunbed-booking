@@ -12,6 +12,7 @@ import org.springframework.context.annotation.Import;
 import org.springframework.jdbc.core.simple.JdbcClient;
 
 import ai.riviera.platform.EnabledIfDockerAvailable;
+import ai.riviera.platform.RegistryRows;
 import ai.riviera.platform.TestcontainersConfiguration;
 import ai.riviera.platform.booking.events.BookingPaymentDue;
 import ai.riviera.platform.booking.vocabulary.BookingId;
@@ -56,7 +57,9 @@ import static org.assertj.core.api.Assertions.assertThat;
 @SpringBootTest
 class PaymentDueAnnouncerIT {
 
-	/** Improbable, and this class's alone — the publication is matched on it (BookingMailFixtures' rule). */
+	/** No booking row carries it, and no other IT publishes {@code BookingPaymentDue} for it. */
+	private static final long BOOKING_ID = 876_543_210L;
+
 	private static final long AMOUNT_MINOR = 6_190_237L;
 
 	@Autowired
@@ -67,7 +70,7 @@ class PaymentDueAnnouncerIT {
 
 	@Test
 	void announcingPersistsAnEventPublication() {
-		announcer.announce(new BookingPaymentDue(new BookingId(876_543_210L), new VenueId(1),
+		announcer.announce(new BookingPaymentDue(new BookingId(BOOKING_ID), new VenueId(1),
 				new SetId(1), LocalDate.of(2029, 9, 9), LocalDate.of(2029, 9, 9),
 				Instant.now().plus(Duration.ofHours(12)).truncatedTo(ChronoUnit.MILLIS),
 				AMOUNT_MINOR, "EUR", CancellationWindow.CLOSED, 0));
@@ -82,13 +85,13 @@ class PaymentDueAnnouncerIT {
 	private long publicationsForThisEvent() {
 		return jdbc.sql("""
 				SELECT (SELECT COUNT(*) FROM event_publication
-				        WHERE listener_id LIKE :listener AND event_type = :type AND serialized_event LIKE :amount)
+				        WHERE listener_id LIKE :listener AND event_type = :type AND %1$s)
 				     + (SELECT COUNT(*) FROM event_publication_archive
-				        WHERE listener_id LIKE :listener AND event_type = :type AND serialized_event LIKE :amount)
-				""")
+				        WHERE listener_id LIKE :listener AND event_type = :type AND %1$s)
+				""".formatted(RegistryRows.NAMES_BOOKING))
 				.param("type", BookingPaymentDue.class.getName())
 				.param("listener", "notification.mail-on-%payment-due")
-				.param("amount", "%" + AMOUNT_MINOR + "%")
+				.param("bookingId", RegistryRows.bookingIdParam(BOOKING_ID))
 				.query(Long.class).single();
 	}
 }

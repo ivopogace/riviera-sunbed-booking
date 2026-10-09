@@ -352,6 +352,38 @@ test('a set price below €0.50 is refused before the PATCH, marked until the ty
   expect(mock.sets().find((s) => s.id === 12)!.price.minorUnits).toBe(50);
 });
 
+test('a server 400 that names no price stays a panel alert a price edit leaves (#1463)', async ({
+  page,
+}) => {
+  await mockConsole(page);
+  // Registered last, so it answers this set's PATCH ahead of the stateful mock.
+  await page.route(/\/api\/venues\/1\/sets\/12$/, (route) =>
+    route.request().method() === 'PATCH'
+      ? route.fulfill({
+          status: 400,
+          contentType: 'application/problem+json',
+          body: JSON.stringify({ code: 'INVALID_REQUEST', detail: 'Request validation failed.' }),
+        })
+      : route.fallback(),
+  );
+  await page.goto('/operator/1/beach-map');
+  await signIn(page);
+  await cell(page, 1, 2).click();
+
+  const price = page.getByTestId('set-price');
+  await price.fill('25');
+  await page.getByTestId('set-save').click();
+
+  const error = page.getByTestId('set-error');
+  await expect(error).toHaveText(
+    'This set could not be saved as entered. Reload the tab and try again.',
+  );
+  await expect(price).not.toHaveAttribute('aria-invalid');
+  await price.fill('26');
+  await expect(error).toBeVisible();
+  await expect(price).not.toHaveAttribute('aria-describedby');
+});
+
 test('a booked set changes pool freely but cannot be moved or removed, and says so', async ({
   page,
 }) => {

@@ -23,6 +23,7 @@ import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
 
 import ai.riviera.platform.EnabledIfDockerAvailable;
+import ai.riviera.platform.RegistryRows;
 import ai.riviera.platform.TestcontainersConfiguration;
 import ai.riviera.platform.booking.application.refund.RefundOutbox;
 import ai.riviera.platform.booking.events.BookingCancelled;
@@ -73,7 +74,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  * against a controllable clock (R-7).
  *
  * <p>The nested {@link ControllableRefundConfiguration} gives this class its own context; assertions
- * are keyed to this test's bookings via improbable amounts. Testcontainers; skipped without Docker.
+ * are keyed to this test's bookings by id ({@link RegistryRows}). Testcontainers; skipped without Docker.
  */
 @EnabledIfDockerAvailable
 @Import({ TestcontainersConfiguration.class, RefundOutboxScopeIT.ControllableRefundConfiguration.class })
@@ -82,7 +83,6 @@ class RefundOutboxScopeIT {
 
 	private static final Duration WAIT = Duration.ofSeconds(20);
 
-	/** Improbable enough to identify one test's rows in a database shared across this class's tests. */
 	private static final long SCOPE_REFUND_MINOR = 454_000_701L;
 
 	private static final long CONFIRMED_AMOUNT_MINOR = 454_000_702L;
@@ -133,9 +133,9 @@ class RefundOutboxScopeIT {
 		Awaitility.await("the payment confirmed its booking and the publication archived").atMost(WAIT)
 				.until(() -> "CONFIRMED".equals(statusOf(confirmedBooking))
 						&& archivedRow("booking.confirm-on-payment-confirmed", PaymentConfirmed.class,
-								CONFIRMED_PAYMENT_INTENT) != null);
+								"bookingRef", confirmedBooking) != null);
 		UUID stuckConfirmation = reopenArchivedRow(archivedRow("booking.confirm-on-payment-confirmed",
-				PaymentConfirmed.class, CONFIRMED_PAYMENT_INTENT));
+				PaymentConfirmed.class, "bookingRef", confirmedBooking));
 
 		LocalDate cancelDate = LocalDate.of(2033, 6, 7);
 		long cancelledBooking = seedBooking(set, "RFOSCAN1", cancelDate, "scope-cancel@example.com",
@@ -143,21 +143,21 @@ class RefundOutboxScopeIT {
 		gateway.failEveryRefund(true);
 		publishInTransaction(cancellationOf(set, cancelledBooking, cancelDate, SCOPE_REFUND_MINOR));
 		Awaitility.await("the failed refund and the deferred reversal are both outstanding").atMost(WAIT)
-				.until(() -> outstanding("booking.refund-on-booking-cancelled", SCOPE_REFUND_MINOR) == 1L
-						&& outstanding("payout.reverse-on-booking-cancelled", SCOPE_REFUND_MINOR) == 1L);
+				.until(() -> outstanding("booking.refund-on-booking-cancelled", cancelledBooking) == 1L
+						&& outstanding("payout.reverse-on-booking-cancelled", cancelledBooking) == 1L);
 		Awaitility.await("the cancellation mail delivered and archived").atMost(WAIT)
 				.until(() -> archivedRow("notification.mail-on-booking-cancelled", BookingCancelled.class,
-						String.valueOf(SCOPE_REFUND_MINOR)) != null);
+						"bookingId", cancelledBooking) != null);
 		UUID stuckMail = reopenArchivedRow(
 				archivedRow("notification.mail-on-booking-cancelled", BookingCancelled.class,
-						String.valueOf(SCOPE_REFUND_MINOR)));
+						"bookingId", cancelledBooking));
 
 		gateway.failEveryRefund(false);
 		int resubmitted = outbox.resubmitOutstanding();
 
 		Awaitility.await("the refund was re-driven and settled").atMost(WAIT)
 				.until(() -> gateway.completionsFor(cancelledBooking) >= 1L
-						&& outstanding("booking.refund-on-booking-cancelled", SCOPE_REFUND_MINOR) == 0L);
+						&& outstanding("booking.refund-on-booking-cancelled", cancelledBooking) == 0L);
 		assertThat(resubmitted).as("the refund publication was in scope").isPositive();
 		assertThat(isOutstanding(stuckConfirmation))
 				.as("the payment -> confirm spine must not be re-driven by the refund lever (invariant #8)")
@@ -193,7 +193,7 @@ class RefundOutboxScopeIT {
 		publishInTransaction(cancellationOf(set, bookingId, date, SETTLED_REFUND_MINOR));
 		Awaitility.await("the refund settled and its publication completed").atMost(WAIT)
 				.until(() -> gateway.completionsFor(bookingId) == 1L
-						&& outstanding("booking.refund-on-booking-cancelled", SETTLED_REFUND_MINOR) == 0L);
+						&& outstanding("booking.refund-on-booking-cancelled", bookingId) == 0L);
 
 		outbox.resubmitOutstanding();
 
@@ -260,25 +260,25 @@ class RefundOutboxScopeIT {
 				.param("id", bookingId).query(Long.class).single();
 	}
 
-	private long outstanding(String listenerLike, long amountMarker) {
+	private long outstanding(String listenerLike, long bookingId) {
 		return jdbc.sql("""
 				SELECT COUNT(*) FROM event_publication
 				WHERE completion_date IS NULL AND listener_id LIKE :listener
-				  AND event_type = :type AND serialized_event LIKE :marker
-				""")
+				  AND event_type = :type AND %s
+				""".formatted(RegistryRows.NAMES_BOOKING))
 				.param("listener", listenerLike).param("type", BookingCancelled.class.getName())
-				.param("marker", "%" + amountMarker + "%")
+				.param("bookingId", RegistryRows.bookingIdParam(bookingId))
 				.query(Long.class).single();
 	}
 
-	/** This test's archived publication for a listener, or {@code null} until it completes. */
-	private UUID archivedRow(String listenerLike, Class<?> eventType, String marker) {
+	/** This test's archived publication for a listener, or {@code null} until it completes; {@code idField} names the booking. */
+	private UUID archivedRow(String listenerLike, Class<?> eventType, String idField, long bookingId) {
 		return jdbc.sql("""
 				SELECT id FROM event_publication_archive
-				WHERE listener_id LIKE :listener AND event_type = :type AND serialized_event LIKE :marker
-				""")
+				WHERE listener_id LIKE :listener AND event_type = :type AND %s
+				""".formatted(RegistryRows.namesBooking(idField)))
 				.param("listener", listenerLike).param("type", eventType.getName())
-				.param("marker", "%" + marker + "%")
+				.param("bookingId", RegistryRows.bookingIdParam(bookingId))
 				.query(UUID.class).optional().orElse(null);
 	}
 

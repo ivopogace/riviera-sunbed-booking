@@ -19,8 +19,10 @@ import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.transaction.PlatformTransactionManager;
 
 import ai.riviera.platform.EnabledIfDockerAvailable;
+import ai.riviera.platform.RegistryRows;
 import ai.riviera.platform.TestcontainersConfiguration;
 import ai.riviera.platform.booking.events.BookingRequestExpired;
+import ai.riviera.platform.booking.vocabulary.BookingId;
 import ai.riviera.platform.notification.adapter.out.MockMailer;
 import ai.riviera.platform.notification.adapter.out.SentEmail;
 import ai.riviera.platform.notification.application.BookingLinks;
@@ -36,8 +38,8 @@ import static org.assertj.core.api.Assertions.assertThat;
  * unchanged. The one behavioural difference lives upstream and is pinned in {@code booking}: a
  * clean sweep publishes nothing, so a clean sweep also mails nothing.
  *
- * <p><strong>Dates are unique to this class</strong> (2029-10-xx), and unique per test within it —
- * the date is the fragment publications are matched on, this payload carrying no amount.
+ * <p><strong>Dates are unique to this class</strong> (2029-10-xx), so its seeded bookings never
+ * compete with another class's for a date.
  *
  * <p>Testcontainers; skipped where Docker is absent.
  */
@@ -47,6 +49,9 @@ import static org.assertj.core.api.Assertions.assertThat;
 class RequestExpiredMailIT {
 
 	private static final Duration WAIT = Duration.ofSeconds(15);
+
+	/** No booking row carries it, and no other IT publishes {@code BookingRequestExpired} for it. */
+	private static final long UNRESOLVABLE_BOOKING = 987_654_322L;
 
 	@Autowired
 	JdbcClient jdbc;
@@ -125,8 +130,8 @@ class RequestExpiredMailIT {
 		long bookingId = fixtures.seedBooking(set, "SUPPEXP1", date, suppressed, 10_012L, "EXPIRED");
 		fixtures.publishInTransaction(fixtures.requestExpiredOf(set, bookingId, date));
 
-		Awaitility.await().atMost(WAIT).until(() -> fixtures.outstandingPublicationsMatching(
-				BookingMailFixtures.REQUEST_EXPIRED_LISTENER_ID, date.toString()) == 0L);
+		Awaitility.await().atMost(WAIT).until(() -> fixtures.outstandingPublicationsFor(
+				BookingMailFixtures.REQUEST_EXPIRED_LISTENER_ID, new BookingId(bookingId)) == 0L);
 		assertThat(mailer.lastTo(suppressed)).isEmpty();
 	}
 
@@ -137,11 +142,11 @@ class RequestExpiredMailIT {
 		LocalDate date = LocalDate.of(2029, 10, 13);
 		double before = abandonedCount();
 
-		fixtures.publishInTransaction(fixtures.requestExpiredOf(set, 987_654_322L, date));
+		fixtures.publishInTransaction(fixtures.requestExpiredOf(set, UNRESOLVABLE_BOOKING, date));
 
 		Awaitility.await().atMost(WAIT).until(() -> abandonedCount() == before + 1);
-		assertThat(fixtures.outstandingPublicationsMatching(
-				BookingMailFixtures.REQUEST_EXPIRED_LISTENER_ID, date.toString()))
+		assertThat(fixtures.outstandingPublicationsFor(
+				BookingMailFixtures.REQUEST_EXPIRED_LISTENER_ID, new BookingId(UNRESOLVABLE_BOOKING)))
 				.as("abandoning completes the publication — the fact cannot appear later")
 				.isZero();
 	}
@@ -159,9 +164,9 @@ class RequestExpiredMailIT {
 		Awaitility.await().atMost(WAIT).untilAsserted(() -> {
 			List<String> archived = jdbc.sql(
 					"SELECT DISTINCT listener_id FROM event_publication_archive "
-							+ "WHERE event_type = :type AND serialized_event LIKE :fragment AND listener_id LIKE :module")
+							+ "WHERE event_type = :type AND " + RegistryRows.NAMES_BOOKING + " AND listener_id LIKE :module")
 					.param("type", BookingRequestExpired.class.getName())
-					.param("fragment", "%" + date + "%")
+					.param("bookingId", RegistryRows.bookingIdParam(bookingId))
 					.param("module", "notification.%")
 					.query(String.class).list();
 			Optional<SentEmail> mail = mailer.lastTo(guest);
