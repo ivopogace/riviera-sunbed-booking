@@ -1077,7 +1077,7 @@ test('walkTags closes each element at exactly the children Angular\'s definition
 
 /**
  * #1497: an HTML comment is one node to Angular (`_consumeComment`), so nothing in it opens or
- * closes a container: no tag, block, ICU or `}`, which an inline `.ts` template leaves unmasked
+ * closes a container: no tag, block, ICU or `}`, which the walk's input keeps on either path
  * (`HtmlParser`: `@if{li["x", Comment, button["y"]]}`; `Comment, "x", button["y"]`; `p[Comment],
  * div[]`). Like any node, it closes a void element; an unterminated one fails a build and is
  * stepped over at its `<!--` alone.
@@ -1114,8 +1114,9 @@ test('walkTags steps over a CDATA section as one token', () => {
 /**
  * #1503: a doctype (`_consumeDocType`, to its first `>`) and a processing instruction
  * (`_consumeProcessingInstruction`, to a `?` or `>` outside quotes) are one token each, so no tag
- * or `<!--` in one opens; neither is a node, so neither closes a void element (`HtmlParser`: `">",
- * p[]`; `p[]`; `" ?>", p[]`; `input[Expansion]`).
+ * or `<!--` in one opens; neither is a node, so neither closes a void element, and an ICU right
+ * after one still builds inside the `<input>` before it (`HtmlParser`: `">", p[]`; `p[]`; `" ?>",
+ * p[]`; `input[Expansion]`).
  */
 test('walkTags steps over a doctype or processing instruction as one token', () => {
   const cases = [

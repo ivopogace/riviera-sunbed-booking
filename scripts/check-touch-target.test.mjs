@@ -812,8 +812,7 @@ test('a start tag is read past a spaced `=` and its start-tag comments', () => {
 /**
  * #1497: a comment in an inline template is one node to Angular, so the walk lets no brace or
  * ICU head in it end an exemption or hide the controls after it (`HtmlParser`: `@if{li["x",
- * Comment, button["y"]]}`; `Comment, "x", button["y"]`). The block mask still reads into one: an
- * unclosed `@let` or `@if (` there is #1496's, which masks an inline template's comments.
+ * Comment, button["y"]]}`; `Comment, "x", button["y"]`).
  */
 test('a comment in an inline template neither ends an exemption nor hides a control', () => {
   const component = (markup) => ['@Component({', '  template: `', ...markup, '  `,', '})'];

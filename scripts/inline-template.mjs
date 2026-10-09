@@ -344,7 +344,8 @@ export function tagNameAt(line, from) {
  * the end without a `>` stops past the last character of the last line, so a walk resuming there
  * ends rather than finding the same `<` again (#1473). A `<` where an attribute should start ends
  * the tag as Angular's lexer does, and the read stops just before it, so a walk resuming there reads
- * that `<` as the next tag (#1475).
+ * that `<` as the next tag (#1475). Whitespace around an attribute's `=` (`_consumeAttribute`) and a
+ * start-tag comment between attributes (`startTagCommentEnd`) are read as Angular reads them (#1503).
  *
  * `incomplete` is whether the read ended anywhere but at the tag's `>` — a `<`, a quote where a name
  * should be, the region's end. Angular's lexer marks such a tag incomplete, and its parser pushes it
@@ -576,8 +577,7 @@ function cdataSections(lines) {
  * where `_consumeInterpolation` ends it (`interpolationEnd`), a CDATA section, doctype or
  * processing instruction (`declarationEnd`), a block's parameters and a `@let` value, so a `<!--`
  * or `<![CDATA[` in any of them opens none; a comment ends as `commentEnd` reads it. The read stops
- * at a start tag the walk cannot read (`misreadTag`), as at `limit`: past it the context is
- * unknown.
+ * at a start tag `misreadTag` names, as at `limit`: past it the context is unknown.
  */
 function lexerSpans(lines, limit) {
   const text = lines.join('\n');
@@ -604,11 +604,12 @@ function lexerSpans(lines, limit) {
 }
 
 /**
- * Whether a `<` at `at` opens a start tag the walk cannot read: one `readAttributes` marks
- * incomplete (a `<` before its `>` or the region's end: a build error to Angular), one
- * whose name `elementNameAt` cannot read, or one holding a `//` or `/*` outside quotes, a start-tag
- * comment (`_consumeSingleLineComment`, `_consumeMultiLineComment`) whose `>` ends no tag; a
- * raw-text element is read with its content, so a CSS comment in a `<style>` stops the read too.
+ * Whether a `<` at `at` opens a start tag the comment read stops at: one `readAttributes` marks
+ * incomplete (a `<` before its `>` or the region's end: a build error to Angular), one whose name
+ * `elementNameAt` cannot read, or one holding a `//` or `/*` outside quotes. `readAttributes` reads
+ * such a start-tag comment as Angular does, but an unquoted value holding `//`, such as
+ * `href=https://…`, opens one too, so the stop stays conservative; a raw-text element is read with
+ * its content, so a CSS comment in a `<style>` stops the read too.
  */
 function misreadTag(lines, starts, text, at) {
   if (!/^<[A-Za-z]/.test(text.slice(at, at + 2))) return false;
@@ -739,15 +740,9 @@ export function walkTags(lines) {
 
   while (at < text.length) {
     while (i + 1 < starts.length && starts[i + 1] <= at) i++;
-    const opaque = OPAQUE.find(([open]) => text.startsWith(open, at));
-    if (opaque !== undefined) {
-      if (walk.open.at(-1)?.void) closeTop(walk);
-      at = opaqueEnd(text, at, opaque);
-      continue;
-    }
-    const declaration = declarationEnd(text, at);
-    if (declaration !== null) {
-      at = declaration;
+    const token = tokenEnd(text, at, walk);
+    if (token !== null) {
+      at = token;
       continue;
     }
     const found = text[at] === '<' ? tagAt(lines, i, at - starts[i]) : null;
@@ -759,6 +754,19 @@ export function walkTags(lines) {
     at = starts[found.line] + found.column + 1;
   }
   return walk.tags;
+}
+
+/**
+ * The offset past the comment, CDATA section, doctype or processing instruction at `at`, each one
+ * token to the lexer; null for none. A comment or CDATA section is a node, so it closes a void
+ * element first (`_closeVoidElement`); a doctype or processing instruction is none, and closes
+ * nothing.
+ */
+function tokenEnd(text, at, walk) {
+  const opaque = OPAQUE.find(([open]) => text.startsWith(open, at));
+  if (opaque === undefined) return declarationEnd(text, at);
+  if (walk.open.at(-1)?.void) closeTop(walk);
+  return opaqueEnd(text, at, opaque);
 }
 
 /**
