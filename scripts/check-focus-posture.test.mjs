@@ -466,6 +466,18 @@ test('judges a busy control after a CDATA section', () => {
   assert.deepEqual(scan(TS, ts).map((v) => [v.rule, v.line]), [['BUSY-1', 2]]);
 });
 
+/**
+ * #1503: a `<!--` in a doctype opens no comment, so the busy control after it is judged
+ * (`HtmlParser`, 0 errors: `button["S"], Comment`).
+ */
+test('judges a busy control after a doctype holding a `<!--`', () => {
+  const markup = '<!DOCTYPE html "<!--"><button [disabled]="saving()">S</button><!-- c -->';
+  const ts = ['@Component({', `  template: \`${markup}\`,`, '})'];
+
+  assert.deepEqual(scan(HTML, [markup]).map((v) => [v.rule, v.line]), [['BUSY-1', 1]]);
+  assert.deepEqual(scan(TS, ts).map((v) => [v.rule, v.line]), [['BUSY-1', 2]]);
+});
+
 test('finds a confirm surface in an @else if branch', () => {
   const lines = [
     '@if (loaded()) {',

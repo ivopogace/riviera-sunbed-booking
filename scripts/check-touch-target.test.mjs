@@ -771,6 +771,45 @@ test('a CDATA opener Angular reads as no section reveals no markup', () => {
 });
 
 /**
+ * #1503: the walk reads a comment, a doctype, a processing instruction and an interpolation as
+ * Angular's lexer does, so a `<!--` in a doctype, an instruction, an interpolation's string or a
+ * value after a spaced `=` opens no comment, and an `@let` or `@if (` inside a comment blanks
+ * nothing, on either path (`HtmlParser`, 0 errors, each with the `button` judged here).
+ */
+test('a comment Angular does not open hides no control, nor does one it opens', () => {
+  const component = (markup) => ['@Component({', '  template: `', markup, '`,', '})'];
+  for (const markup of [
+    '<p>·</p><!-- @let x = --><button>x</button><i>;</i>',
+    '<!-- @if ( --><button>x</button><i>)</i>',
+    '<!DOCTYPE html "<!--"><button>x</button><!-- c -->',
+    '<?x "<!--" ?><button>x</button><!-- c -->',
+    '{{ "<!-- c --><button>x</button>',
+    '<div a = "<!-- y"><button>x</button></div><!-- c -->',
+  ]) {
+    assert.deepEqual(scan(TS, component(markup)).map((v) => [v.rule, v.line]), [['TT-1', 3]], markup);
+    assert.deepEqual(scan(HTML, [markup]).map((v) => [v.rule, v.line]), [['TT-1', 1]], markup);
+  }
+});
+
+/**
+ * #1503: an exemption written with a spaced `=` covers its subtree, and one inside a start-tag
+ * comment is no exemption (`_consumeAttribute`, `_consumeSingleLineComment`; `HtmlParser`, 0
+ * errors: `div[button["x"]]`, the `div` without `data-touch-exempt` in the second).
+ */
+test('a start tag is read past a spaced `=` and its start-tag comments', () => {
+  for (const lines of [
+    ['<div data-touch-exempt = "r"><button>x</button></div>'],
+    ['<div data-touch-exempt', '=', '"r"><button>x</button></div>'],
+  ]) {
+    assert.deepEqual(scan(HTML, lines), [], lines.join('⏎'));
+  }
+  assert.deepEqual(
+    scan(HTML, ['<div // data-touch-exempt="r"', '><button>x</button></div>']).map((v) => [v.rule, v.line]),
+    [['TT-1', 2]],
+  );
+});
+
+/**
  * #1497: a comment in an inline template is one node to Angular, so the walk lets no brace or
  * ICU head in it end an exemption or hide the controls after it (`HtmlParser`: `@if{li["x",
  * Comment, button["y"]]}`; `Comment, "x", button["y"]`). The block mask still reads into one: an
