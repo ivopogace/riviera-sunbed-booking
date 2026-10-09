@@ -221,7 +221,7 @@ class BookingCancellationMailIT {
 				RefundReason.POLICY));
 
 		Awaitility.await().atMost(WAIT).until(() -> fixtures.outstandingPublicationsFor(
-				BookingMailFixtures.CANCELLATION_LISTENER_ID, 7333L) == 0L);
+				BookingMailFixtures.CANCELLATION_LISTENER_ID, new BookingId(bookingId)) == 0L);
 		assertThat(countTo(suppressed)).isZero();
 	}
 
@@ -311,7 +311,7 @@ class BookingCancellationMailIT {
 				RefundReason.VENUE_CHANGE));
 
 		Awaitility.await().atMost(WAIT).until(() -> fixtures.outstandingPublicationsFor(
-				BookingMailFixtures.CANCELLATION_LISTENER_ID, 7337L) == 0L);
+				BookingMailFixtures.CANCELLATION_LISTENER_ID, new BookingId(bookingId)) == 0L);
 		assertThat(countTo(suppressed)).isZero();
 	}
 
