@@ -379,6 +379,12 @@ test('readAttributes reads a spaced `=` and steps over start-tag comments', () =
   assert.deepEqual(read(['<div // a="x" >', '  b="y">']), [{ b: { value: 'y', line: 1 } }, 1, 7, false]);
   assert.deepEqual(read(['<div /* > a="x" */ b="y">']), [{ b: { value: 'y', line: 0 } }, 0, 24, false]);
   assert.deepEqual(read(['<div /* a="x"']), [{}, 0, 13, true]);
+  assert.deepEqual(read(['<div a', '  b>']), [
+    { a: { value: '', line: 0 }, b: { value: '', line: 1 } },
+    1,
+    3,
+    false,
+  ]);
 });
 
 /** A walk resumes after the position returned; column 0 of the last line re-read the same tag (#1473). */
