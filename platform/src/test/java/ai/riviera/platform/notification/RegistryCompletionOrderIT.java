@@ -4,6 +4,7 @@ import java.time.Duration;
 import java.time.LocalDate;
 
 import org.awaitility.Awaitility;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -21,8 +22,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 /**
  * The registry archives a mail publication only after its send returns, never while it is in flight (#1465):
- * {@code @Async} wraps Modulith's completion advisor, so completion runs on the mail thread. The re-drive's
- * "archived means delivered" and ADR-0011's at-least-once rest on that order; an advisor reorder fails here.
+ * {@code @Async} wraps Modulith's completion advisor, so completion runs on the mail thread. ADR-0011's
+ * at-least-once and the mail re-drive's skip of archived rows rest on that order; an advisor reorder fails here.
  * Testcontainers; skipped where Docker is absent.
  */
 @EnabledIfDockerAvailable
@@ -53,6 +54,12 @@ class RegistryCompletionOrderIT {
 	void resetTransport() {
 		fixtures = new BookingMailFixtures(jdbc, txManager, publisher);
 		transport.reset();
+	}
+
+	/** Unconditional, so a failure while wedged never hands a parked mail thread to this context's next class. */
+	@AfterEach
+	void releaseTransport() {
+		transport.release();
 	}
 
 	@Test
