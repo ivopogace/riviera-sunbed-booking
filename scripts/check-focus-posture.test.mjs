@@ -450,6 +450,22 @@ test('does not judge a control inside an inline template\'s HTML comment', () =>
   assert.deepEqual(scan(TS, lines), []);
 });
 
+/**
+ * #1502: a CDATA section is raw text to its `]]>` (`_consumeCdata`), so a `<!--` or a `@let` in it
+ * hides no busy control after it (`HtmlParser`, 0 errors: `" <!-- ", button["S"], Comment`).
+ */
+test('judges a busy control after a CDATA section', () => {
+  const html = ['<![CDATA[ <!-- ]]><button [disabled]="saving()">S</button><!-- -->'];
+  const ts = [
+    '@Component({',
+    '  template: `<![CDATA[ @let a = ]]><button [disabled]="saving()">S</button>;`,',
+    '})',
+  ];
+
+  assert.deepEqual(scan(HTML, html).map((v) => [v.rule, v.line]), [['BUSY-1', 1]]);
+  assert.deepEqual(scan(TS, ts).map((v) => [v.rule, v.line]), [['BUSY-1', 2]]);
+});
+
 test('finds a confirm surface in an @else if branch', () => {
   const lines = [
     '@if (loaded()) {',

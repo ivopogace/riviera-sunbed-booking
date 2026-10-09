@@ -694,6 +694,83 @@ test('a void element\'s exemption covers an ICU right after it, and nothing more
 });
 
 /**
+ * #1502: a CDATA section is raw text to its `]]>` (`_consumeCdata`), so neither mask reads a `@let`,
+ * a block or a `<!--` in it, and the control after it is judged (`HtmlParser`, 0 errors: `" @let a
+ * = ", button["x"], ";"`; `" @if ( ", button["x"]`; `" <!-- ", button["x"], Comment`). An
+ * interpolation ends at a tag start even inside its string (`_isTagStart`), so the `<![CDATA[` of
+ * `{{ "<i title="<![CDATA[">` is a quoted value, and the comment after it is masked (`"{{ \"",
+ * i[], Comment, input[]`); where the walk reads an interpolation's string as Angular does not, as
+ * in `{{ "<![CDATA[" }}`, the masks read as before (`"{{ \"", "\" }}<![CDATA[", input[]`).
+ */
+test('a CDATA section hides no control after it', () => {
+  const component = (markup) => ['@Component({', '  template: `', markup, '`,', '})'];
+  for (const markup of ['<![CDATA[ @let a = ]]><button>x</button>;', '<![CDATA[ @if ( ]]><button>x</button>']) {
+    assert.deepEqual(scan(TS, component(markup)).map((v) => [v.rule, v.line]), [['TT-1', 3]], markup);
+  }
+  for (const line of ['<![CDATA[ <!-- ]]><button>x</button><!-- -->', '<![CDATA[ @let a = ]]><button>x</button>;']) {
+    assert.deepEqual(scan(HTML, [line]).map((v) => [v.rule, v.line]), [['TT-1', 1]], line);
+  }
+  assert.deepEqual(
+    scan(HTML, ['<![CDATA[', '<!-- ]]>', '<button>x</button>', '<!-- -->']).map((v) => [v.rule, v.line]),
+    [['TT-1', 3]],
+  );
+  assert.deepEqual(
+    scan(HTML, ['{{ "<i title="<![CDATA["></i><!-- ]]><!-->', '<input>']).map((v) => [v.rule, v.line]),
+    [['TT-1', 2]],
+  );
+  const misread = '{{ "<![CDATA[" }}<![CDATA[]]><input/>';
+  assert.deepEqual(scan(HTML, [misread]).map((v) => [v.rule, v.line]), [['TT-1', 1]]);
+  assert.deepEqual(scan(TS, component(misread)).map((v) => [v.rule, v.line]), [['TT-1', 3]]);
+});
+
+/**
+ * #1502: a `<![CDATA[` in a quoted value, a `@let` value, a block's parameters or a comment is no
+ * section to Angular or to the walk, so the real section after it is still read as one, and the
+ * control after that is judged (`HtmlParser`, 0 errors: `b[" <!-- ", button["x"], Comment]`).
+ */
+test('a section after a CDATA opener that opens none still hides no control', () => {
+  for (const line of [
+    '<b title="<![CDATA["><![CDATA[ <!-- ]]><button>x</button><!-- -->',
+    '@let y = "<![CDATA[";<![CDATA[ <!-- ]]><button>x</button><!-- -->',
+    '@if (a == "<![CDATA[") {}<![CDATA[ <!-- ]]><button>x</button><!-- -->',
+    '<!-- <![CDATA[ --><![CDATA[ <!-- ]]><button>x</button><!-- -->',
+  ]) {
+    assert.deepEqual(scan(HTML, [line]).map((v) => [v.rule, v.line]), [['TT-1', 1]], line);
+  }
+  const lines = [
+    '@Component({',
+    '  template: `<!-- <![CDATA[ --><![CDATA[ @let a = ]]><button>x</button>;`,',
+    '})',
+  ];
+  assert.deepEqual(scan(TS, lines).map((v) => [v.rule, v.line]), [['TT-1', 2]]);
+});
+
+/**
+ * #1502: a `<![CDATA[` opens a section only where Angular's lexer reads text, so one inside a
+ * comment, a quoted value, a `@let` value or a block's parameters reveals no `@let` value or
+ * comment as markup (`HtmlParser`, 0 errors: `Comment, @let x`; `b["x"], Comment`; `@let y,
+ * Comment`).
+ */
+test('a CDATA opener Angular reads as no section reveals no markup', () => {
+  const component = (markup) => ['@Component({', '  template: `', markup, '`,', '})'];
+  for (const markup of [
+    '<!-- <![CDATA[ -->@let x = a <button>;]]>',
+    '<i title="<![CDATA["></i>@let x = a <button>;]]>',
+    '@let y = "<![CDATA[";@let x = a <button>;]]>',
+    '@if (a == "<![CDATA[") {}@let x = a <button>;]]>',
+  ]) {
+    assert.deepEqual(scan(TS, component(markup)), [], markup);
+  }
+  for (const line of [
+    '<b title="<![CDATA[">x</b><!-- <button>x</button> ]]><!-->',
+    '@let y = "<![CDATA[";<!-- <button>x</button> ]]><!-->',
+    '@if (a == "<![CDATA[") {}<!-- <button>x</button> ]]><!-->',
+  ]) {
+    assert.deepEqual(scan(HTML, [line]), [], line);
+  }
+});
+
+/**
  * #1497: a comment in an inline template is one node to Angular, so the walk lets no brace or
  * ICU head in it end an exemption or hide the controls after it (`HtmlParser`: `@if{li["x",
  * Comment, button["y"]]}`; `Comment, "x", button["y"]`). The block mask still reads into one: an
