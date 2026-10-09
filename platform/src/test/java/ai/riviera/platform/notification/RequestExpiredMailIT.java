@@ -146,7 +146,10 @@ class RequestExpiredMailIT {
 				.isZero();
 	}
 
-	/** The admin re-drive scopes on the listener id the running registry actually writes — pin it. */
+	/**
+	 * The admin re-drive scopes on the listener id the running registry actually writes — pin it. Keep
+	 * {@code event_type} beside the date: another IT's range confirmation ending on this date matched without it (#1465).
+	 */
 	@Test
 	void theRegistryWritesTheListenerIdTheReDriveScopesOn() {
 		BookingMailFixtures.SetRef set = fixtures.onlineSet();
