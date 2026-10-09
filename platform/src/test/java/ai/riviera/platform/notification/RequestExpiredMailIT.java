@@ -19,6 +19,7 @@ import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.transaction.PlatformTransactionManager;
 
 import ai.riviera.platform.EnabledIfDockerAvailable;
+import ai.riviera.platform.RegistryRows;
 import ai.riviera.platform.TestcontainersConfiguration;
 import ai.riviera.platform.booking.events.BookingRequestExpired;
 import ai.riviera.platform.booking.vocabulary.BookingId;
@@ -37,8 +38,8 @@ import static org.assertj.core.api.Assertions.assertThat;
  * unchanged. The one behavioural difference lives upstream and is pinned in {@code booking}: a
  * clean sweep publishes nothing, so a clean sweep also mails nothing.
  *
- * <p><strong>Dates are unique to this class</strong> (2029-10-xx), and unique per test within it —
- * the date is the fragment publications are matched on, this payload carrying no amount.
+ * <p><strong>Dates are unique to this class</strong> (2029-10-xx), so its seeded bookings never
+ * compete with another class's for a date.
  *
  * <p>Testcontainers; skipped where Docker is absent.
  */
@@ -163,9 +164,9 @@ class RequestExpiredMailIT {
 		Awaitility.await().atMost(WAIT).untilAsserted(() -> {
 			List<String> archived = jdbc.sql(
 					"SELECT DISTINCT listener_id FROM event_publication_archive "
-							+ "WHERE event_type = :type AND serialized_event LIKE :fragment AND listener_id LIKE :module")
+							+ "WHERE event_type = :type AND " + RegistryRows.NAMES_BOOKING + " AND listener_id LIKE :module")
 					.param("type", BookingRequestExpired.class.getName())
-					.param("fragment", "%" + date + "%")
+					.param("bookingId", RegistryRows.bookingIdParam(bookingId))
 					.param("module", "notification.%")
 					.query(String.class).list();
 			Optional<SentEmail> mail = mailer.lastTo(guest);

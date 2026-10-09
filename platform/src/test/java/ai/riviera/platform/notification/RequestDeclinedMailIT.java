@@ -19,6 +19,7 @@ import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.transaction.PlatformTransactionManager;
 
 import ai.riviera.platform.EnabledIfDockerAvailable;
+import ai.riviera.platform.RegistryRows;
 import ai.riviera.platform.TestcontainersConfiguration;
 import ai.riviera.platform.booking.events.BookingRequestDeclined;
 import ai.riviera.platform.booking.vocabulary.BookingId;
@@ -41,8 +42,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  * a fact that cannot be resolved abandoned loudly under this flow's own counter.
  *
  * <p><strong>Dates are unique to this class</strong> (2029-09-xx; the sibling ITs hold 06/07/08
- * and the expiry IT 10) — and each test's date is also unique <em>within</em> the class, because
- * with no amount on this payload the date is the fragment publications are matched on.
+ * and the expiry IT 10), so its seeded bookings never compete with another class's for a date.
  *
  * <p>Testcontainers; skipped where Docker is absent.
  */
@@ -195,9 +195,9 @@ class RequestDeclinedMailIT {
 		Awaitility.await().atMost(WAIT).untilAsserted(() -> {
 			List<String> archived = jdbc.sql(
 					"SELECT DISTINCT listener_id FROM event_publication_archive "
-							+ "WHERE event_type = :type AND serialized_event LIKE :fragment AND listener_id LIKE :module")
+							+ "WHERE event_type = :type AND " + RegistryRows.NAMES_BOOKING + " AND listener_id LIKE :module")
 					.param("type", BookingRequestDeclined.class.getName())
-					.param("fragment", "%" + date + "%")
+					.param("bookingId", RegistryRows.bookingIdParam(bookingId))
 					.param("module", "notification.%")
 					.query(String.class).list();
 			Optional<SentEmail> mail = mailer.lastTo(guest);

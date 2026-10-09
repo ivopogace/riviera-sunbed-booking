@@ -57,8 +57,8 @@ import static org.assertj.core.api.Assertions.assertThat;
  * has its own tests against a controllable clock.
  *
  * <p>The database is shared with other IT classes in this context, so every assertion is keyed to
- * this test's own booking or publication id rather than to a global count; the distinct amounts below
- * exist to make those rows identifiable. Testcontainers; skipped where Docker is absent.
+ * this test's own booking or publication id rather than to a global count. Testcontainers; skipped
+ * where Docker is absent.
  */
 @EnabledIfDockerAvailable
 @Import({ TestcontainersConfiguration.class, ControllableMailerConfiguration.class })
