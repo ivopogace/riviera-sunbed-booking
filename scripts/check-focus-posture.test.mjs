@@ -485,6 +485,16 @@ test('reads a busy binding whose `=` stands on its own line', () => {
   assert.deepEqual(scan(HTML, lines).map((v) => [v.rule, v.line]), [['BUSY-1', 2]]);
 });
 
+/**
+ * #1503: an `.html` file reaches the walk whole, but FOCUS-1 still reads it with its comments
+ * masked, so a confirm surface commented out is no surface (`HtmlParser`: one `Comment`).
+ */
+test('does not read a confirm surface inside an external template\'s HTML comment', () => {
+  const lines = ['<!-- @if (confirmRemove()) {', '  <button data-testid="rm">Remove</button>', '} -->'];
+
+  assert.deepEqual(scan(HTML, lines, { componentSource: '' }), []);
+});
+
 test('finds a confirm surface in an @else if branch', () => {
   const lines = [
     '@if (loaded()) {',
