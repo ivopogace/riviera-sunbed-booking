@@ -263,12 +263,13 @@ function quotedEnd(line, at) {
 /**
  * An external template with every `<!-- … -->` blanked to spaces, line and column geometry kept, so
  * a control inside a comment is never judged as markup. A comment runs to the first `-->` after its
- * `<!--`, or to the template's end. A CDATA section is stepped over as `walkTags` steps it
- * (`cdataEnd`), so a `<!--` in one opens no comment (#1502).
+ * `<!--`, or to the template's end. A CDATA section the walk reads is stepped over whole
+ * (`cdataSections`), so a `<!--` in one opens no comment (#1502).
  */
 export function maskHtmlComments(lines) {
   const text = lines.join('\n');
   const out = text.split('');
+  const sections = cdataSections(lines);
   let at = 0;
 
   while (at < text.length) {
@@ -278,7 +279,7 @@ export function maskHtmlComments(lines) {
       blankRange(out, at, to);
       at = to;
     } else {
-      at = cdataEnd(text, at) ?? at + 1;
+      at = sections.get(at) ?? at + 1;
     }
   }
   return out.join('').split('\n');
@@ -431,8 +432,8 @@ const BLOCKS = [
  * opened one at `@if (n<div && a>b)` that reached the `>` and read as complete (#1480). The mask
  * follows the lexer: a block or `@let` opens only in text — the walk steps over a tag as `walkTags`
  * reads it, a raw-text element's content and end tag included (`RAW_TEXT`, #1482), over a CDATA
- * section as `cdataEnd` reads it (#1502), and over an interpolation as `_consumeInterpolation`
- * does — a block's parameters run from its `(` to the `)`
+ * section the walk reads (`cdataSections`, #1502), and over an interpolation as
+ * `_consumeInterpolation` does — a block's parameters run from its `(` to the `)`
  * `_consumeBlockParameters` stops at, and a `@let` value from its `=` to the `;`
  * `_consumeLetDeclarationValue` stops at. A guard that reads a block's condition
  * keeps reading the unmasked template.
@@ -444,19 +445,53 @@ export function maskBlockExpressions(lines) {
   const text = lines.join('\n');
   const out = text.split('');
   const starts = lineStarts(lines);
+  const sections = cdataSections(lines);
   let at = 0;
 
   while (at < text.length) {
-    const step = text.startsWith('{{', at)
-      ? interpolationEnd(text, at + 2)
-      : (cdataEnd(text, at) ??
-        tagEnd(lines, starts, text, at) ??
-        letEnd(text, at, out) ??
-        blockEnd(text, at, out) ??
-        at + 1);
-    at = step;
+    at = sections.get(at) ?? expressionStep(lines, starts, text, at, out);
   }
   return out.join('').split('\n');
+}
+
+/**
+ * One step of `maskBlockExpressions`' read at `at`, blanking in `out`: past an interpolation
+ * (`interpolationEnd`), a tag (`tagEnd`), a `@let` value or a block's parameters; else one
+ * character.
+ */
+function expressionStep(lines, starts, text, at, out) {
+  if (text.startsWith('{{', at)) return interpolationEnd(text, at + 2);
+  return (
+    tagEnd(lines, starts, text, at) ?? letEnd(text, at, out) ?? blockEnd(text, at, out) ?? at + 1
+  );
+}
+
+/**
+ * The CDATA sections `walkTags` reads as one token, each start offset mapped to the offset past
+ * it (`opaqueEnd`). A `<![CDATA[` opens one only in text, the one place `_consumeCdata` is
+ * reached: the read steps over what the walk steps over, a comment (`OPAQUE`) and
+ * `expressionStep`'s interpolations, tags, `@let` values and block parameters, so a `<![CDATA[`
+ * in any of them opens none. Both masks read the sections from this map, so neither steps over a
+ * section the walk reads as text, nor reads into one it steps over.
+ */
+function cdataSections(lines) {
+  const text = lines.join('\n');
+  const starts = lineStarts(lines);
+  const ignored = text.split('');
+  const sections = new Map();
+  let at = 0;
+
+  while (at < text.length) {
+    const opaque = OPAQUE.find(([open]) => text.startsWith(open, at));
+    if (opaque === undefined) {
+      at = expressionStep(lines, starts, text, at, ignored);
+      continue;
+    }
+    const end = opaqueEnd(text, at, opaque);
+    if (opaque === CDATA) sections.set(at, end);
+    at = end;
+  }
+  return sections;
 }
 
 /**
@@ -820,7 +855,7 @@ function icuFormStep(text, at, walk) {
  * comment (`_consumeComment`) and a CDATA section (`_consumeCdata`), each of which the tree builder
  * takes as one node after `_closeVoidElement`. An `.html` template arrives with its comments
  * masked, an inline one without: `typescriptRegions` masks them in `template` alone (#1496). Both
- * masks step over a CDATA section as the walk does (`cdataEnd`, #1502).
+ * masks step over the CDATA sections the walk reads (`cdataSections`, #1502).
  */
 const CDATA = ['<![CDATA[', ']]>'];
 const OPAQUE = [['<!--', '-->'], CDATA];
@@ -832,11 +867,6 @@ const OPAQUE = [['<!--', '-->'], CDATA];
 function opaqueEnd(text, at, [open, close]) {
   const end = text.indexOf(close, at + open.length);
   return end === -1 ? at + open.length : end + close.length;
-}
-
-/** The offset past a CDATA section opening at `at`, as `opaqueEnd` reads it; null for none. */
-function cdataEnd(text, at) {
-  return text.startsWith(CDATA[0], at) ? opaqueEnd(text, at, CDATA) : null;
 }
 
 /** Pops everything above the innermost `kind` container, and that container; with none, nothing. */
