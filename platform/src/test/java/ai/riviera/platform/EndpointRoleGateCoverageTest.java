@@ -129,12 +129,13 @@ class EndpointRoleGateCoverageTest {
 			// serves BOTH principal types by design, so no single role gate fits (SecurityConfig ~L217).
 			"GET /api/auth/me");
 
-	/**
-	 * Only this application's controllers are probed, never an {@link ErrorController}: {@code web}'s
-	 * {@code ProblemErrorController} ({@code /error}, every verb) is the servlet ERROR-dispatch target rather
-	 * than an endpoint a client calls, and is outside the {@code /api/**} security chain entirely.
-	 */
 	private static final String APPLICATION_PACKAGE = "ai.riviera.platform";
+	/**
+	 * The one {@link ErrorController} left unprobed: {@code /error} (every verb) is the servlet ERROR-dispatch
+	 * target, not an endpoint a client calls, and outside the {@code /api/**} chain. A second one fails (#1464).
+	 */
+	private static final Set<String> UNPROBED_ERROR_CONTROLLERS = Set.of(
+			"ai.riviera.platform.web.adapter.in.ProblemErrorController");
 	/** A principal that authenticates but holds no authority the application grants anywhere. */
 	private static final String PROBE_ROLE = "NOBODY";
 	private static final String PROBE_USER = "probe";
@@ -187,9 +188,13 @@ class EndpointRoleGateCoverageTest {
 	/** Every mapped {@code VERB pattern}, sorted so a failure list reads the same on every run. */
 	private Set<String> mappedEndpoints() {
 		Set<String> endpoints = new TreeSet<>();
+		Set<String> errorControllers = new TreeSet<>();
 		handlerMapping.getHandlerMethods().forEach((info, handler) -> {
-			if (!handler.getBeanType().getPackageName().startsWith(APPLICATION_PACKAGE)
-					|| ErrorController.class.isAssignableFrom(handler.getBeanType())) {
+			if (!handler.getBeanType().getPackageName().startsWith(APPLICATION_PACKAGE)) {
+				return;
+			}
+			if (ErrorController.class.isAssignableFrom(handler.getBeanType())) {
+				errorControllers.add(handler.getBeanType().getName());
 				return;
 			}
 			Set<String> patterns = info.getPatternValues();
@@ -204,6 +209,10 @@ class EndpointRoleGateCoverageTest {
 				.as("the handler mapping is empty — the web slice did not register the controllers, so a "
 						+ "green run here would prove nothing")
 				.isNotEmpty();
+		assertThat(errorControllers)
+				.as("only ProblemErrorController skips the probe — a new ErrorController is a mapped endpoint "
+						+ "like any other: gate it, or name it in UNPROBED_ERROR_CONTROLLERS with the reason")
+				.isEqualTo(UNPROBED_ERROR_CONTROLLERS);
 		return endpoints;
 	}
 }
