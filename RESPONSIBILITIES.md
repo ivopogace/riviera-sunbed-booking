@@ -1210,10 +1210,10 @@ Spring Security beans arrive by framework type, which is no module dependency.
   filter-thrown exception, a `sendError` (the firewall's `400`) or an exception no handler maps ends on the
   container's error dispatch, whose default body echoes the request URI as `path`, the bearer credential on
   `/api/bookings/{code}` and the SPA's `/booking/{code}` (#7). Every path, the SPA's included, gets the problem
-  body with the status kept, a non-standard `4xx`/`5xx` too (its code `ERROR`), and the code `ApiErrorHandler`
-  gives that status: no `path`, `instance`, `timestamp` or exception message, and no whitelabel HTML
-  (`ErrorDispatchProblemIT`). It is the one `ErrorController` the role-gate probe skips
-  (`EndpointRoleGateCoverageTest`).
+  body with the status kept and the code `ApiErrorHandler` gives that status: no `path`, `instance`,
+  `timestamp` or exception message, and no whitelabel HTML (`ErrorDispatchProblemIT`). A non-standard
+  `4xx`/`5xx` is kept too, its code `ERROR` (`ProblemErrorControllerTest`). It is the one `ErrorController`
+  the role-gate probe skips (`EndpointRoleGateCoverageTest`).
 - **Tomcat's own pre-servlet rejections keep Tomcat's minimal HTML** (a raw `{` in the request target): they
   never reach `/error`, and the problem shape there would take a custom `ErrorReportValve`, a container-level
   customization one contract on every response does not buy (#1464). Boot hides the report, so the page
