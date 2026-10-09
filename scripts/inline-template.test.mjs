@@ -579,6 +579,9 @@ test('maskBlockExpressions masks nothing inside a CDATA section', () => {
     '@let a =',
     ']]>@let b =    ;',
   ]);
+  assert.deepEqual(maskBlockExpressions(['<!-- <![CDATA[ -->@let x = a<b;]]>']), [
+    '<!-- <![CDATA[ -->@let x =    ;]]>',
+  ]);
 });
 
 /** The walk's entries as a test compares them: `<name` or `<prefix:name`, and `</` likewise. */

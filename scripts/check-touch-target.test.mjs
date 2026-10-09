@@ -713,6 +713,24 @@ test('a CDATA section hides no control after it', () => {
 });
 
 /**
+ * #1502: a `<![CDATA[` opens a section only where Angular's lexer reads text, so one inside a
+ * comment, a quoted value, a `@let` value or a block's parameters reveals no `@let` value or
+ * comment as markup (`HtmlParser`, 0 errors: `Comment, @let x`; `b["x"], Comment`).
+ */
+test('a CDATA opener Angular reads as no section reveals no markup', () => {
+  const component = (markup) => ['@Component({', '  template: `', markup, '`,', '})'];
+  for (const markup of [
+    '<!-- <![CDATA[ -->@let x = a <button>;]]>',
+    '<i title="<![CDATA["></i>@let x = a <button>;]]>',
+    '@let y = "<![CDATA[";@let x = a <button>;]]>',
+    '@if (a == "<![CDATA[") {}@let x = a <button>;]]>',
+  ]) {
+    assert.deepEqual(scan(TS, component(markup)), [], markup);
+  }
+  assert.deepEqual(scan(HTML, ['<b title="<![CDATA[">x</b><!-- <button>x</button> ]]><!-->']), []);
+});
+
+/**
  * #1497: a comment in an inline template is one node to Angular, so the walk lets no brace or
  * ICU head in it end an exemption or hide the controls after it (`HtmlParser`: `@if{li["x",
  * Comment, button["y"]]}`; `Comment, "x", button["y"]`). The block mask still reads into one: an
