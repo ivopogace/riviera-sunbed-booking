@@ -614,6 +614,7 @@
 <!-- Page level, outside the sheet and the desk panel: their glass backdrop-filters would contain a fixed child. -->
 @if (stayPickerOpen()) {
   <app-availability-calendar
+    opensInStayMode
     [selectedDate]="selectedDate()"
     [selectedLastDate]="selectedLastDate()"
     [minDate]="minDate"
