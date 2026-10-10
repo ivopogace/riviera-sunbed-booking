@@ -73,8 +73,8 @@ not a test failure, and the tests are not the thing to fix.
    any failure as a test result.
 2. Check whether the image is already cached in the hook's daemon: `docker images | grep postgres`.
    One context that pulled it is enough; the daemon keeps it for the session.
-3. Re-run the same scoped `--tests` selection. With the image cached the pull is skipped. One
-   session went from 7 of 20 classes failing to 20 classes, 0 failed, on a plain re-run.
+3. Re-run the same scoped `--tests` selection. With the image cached the pull is skipped. In the
+   session behind #1514 a plain re-run went from 7 of 20 classes failing to 20 classes, 0 failed.
 
 If no context manages a pull, wait for the limit window to pass rather than re-running in a loop.
 

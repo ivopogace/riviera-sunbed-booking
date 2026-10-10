@@ -110,14 +110,22 @@ gradle --no-daemon --console=plain compileJava compileTestJava \
 # → BUILD SUCCESSFUL; the structural + JDBC-only rules run on JDK 25.
 ```
 
+The backend Testcontainers ITs are `@EnabledIfDockerAvailable`: in a cloud session a
+`dockerd` **is normally provided by the SessionStart hook** (see
+`docker-testcontainers.md`), so targeted ITs *can* run; without a daemon they skip
+cleanly. Either way, keep local runs **scoped** (the bare `test` task can OOM the
+sandbox — see `riviera-local-debug`); CI runs the full IT suite on every tree it has not
+already built green. `compile*` + the
+structural test classes are the minimum meaningful local check.
+
 ### Maven Central returns 429
 
 Symptom: `Received status code 429 from server: Too Many Requests` on `repo.maven.apache.org` or
 `repo1.maven.org`, in plugin resolution, in `compileTestJava` dependency resolution, or for
-`org.jacoco:org.jacoco.agent` on the `test` task. One session saw it persist across about ten
-retries over forty minutes. Disabling JaCoCo (`-x jacocoTestReport`, or an init script setting
-`jacoco.enabled = false` on every `Test` task) does not help: the `test` task still resolves the
-agent configuration.
+`org.jacoco:org.jacoco.agent` on the `test` task. The session behind #1514 saw it persist across
+about ten retries over forty minutes. Disabling JaCoCo (`-x jacocoTestReport`, or an init script
+setting `jacoco.enabled = false` on every `Test` task) does not help: the `test` task still
+resolves the agent configuration.
 
 1. **Confirm it is Central, not the proxy.** `curl -sS "$HTTPS_PROXY/__agentproxy/status"` should
    be healthy; then compare Central with Google's mirror for the failing artifact:
@@ -170,11 +178,3 @@ What this fallback is, and is not (owner decision, #1514):
   (`gradle/verification-metadata.xml`), so nothing checks that the mirror's bytes match Central's.
   That is why it stays a last-resort local fallback (`supply-chain-security.md`).
 - Drop the `-I` as soon as Central answers again.
-
-The backend Testcontainers ITs are `@EnabledIfDockerAvailable`: in a cloud session a
-`dockerd` **is normally provided by the SessionStart hook** (see
-`docker-testcontainers.md`), so targeted ITs *can* run; without a daemon they skip
-cleanly. Either way, keep local runs **scoped** (the bare `test` task can OOM the
-sandbox — see `riviera-local-debug`); CI runs the full IT suite on every tree it has not
-already built green. `compile*` + the
-structural test classes are the minimum meaningful local check.
