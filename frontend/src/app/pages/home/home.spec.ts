@@ -1185,7 +1185,7 @@ describe('Home (the riviera map sheet — what `/` renders)', () => {
       expect(rows.map(text)).toEqual(['Sarandë 2 venues from €25', 'Ksamil 2 venues from €25']);
     });
 
-    it('counts a no-set venue whose sales have also closed once, as one non-seller', async () => {
+    it('counts a no-set venue whose sales have also closed as one non-seller, never subtracted twice', async () => {
       const fixture = await landed(sarande({ salesOpen: false }));
 
       expect(text(byTestId(fixture, 'head-subtitle'))).toBe('1 of 2 selling today');
