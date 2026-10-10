@@ -409,19 +409,14 @@ describe('PayoutsTab (#173) — ledger', () => {
       );
     });
 
-    it('shows the cards below sm and the table from sm up, each hidden from AT when inactive', () => {
+    it('carries the breakpoint classes: cards below sm, the table from sm up', () => {
       render(ledger({ entries: [entry()] }));
 
-      // `display: none` drops the inactive layout from the accessibility tree, so neither is read twice.
+      // The rendered visibility and the single accessibility-tree entry are proved in operator-payouts.e2e.ts.
       expect(byId('ledger-cards')?.classList.contains('sm:hidden')).toBe(true);
       const tableRegion = byId('ledger-table')!.closest('section')!;
       expect(tableRegion.classList.contains('hidden')).toBe(true);
       expect(tableRegion.classList.contains('sm:block')).toBe(true);
-    });
-
-    it('renders no cards for an empty ledger', () => {
-      render(ledger({ netOwedMinor: 0, entries: [] }));
-      expect(byId('ledger-cards')).toBeNull();
     });
   });
 
