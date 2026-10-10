@@ -55,8 +55,8 @@ user-facing surfaces, `<domain>.model.ts`, `<domain>.service.ts` (`@Service()`, 
 - Navigation errors: `provideRouter(routes, withNavigationErrorHandler(chunkLoadErrorHandler))`.
   `core/chunk-load-recovery.ts` answers a chunk-load failure only — one full reload, unless the
   tab reloaded for that page within the minute (a one-slot `sessionStorage` stamp), then the
-  card under the target's URL via `RedirectCommand` + `browserUrl` — behind the
-  `core/page-reload.ts` seam; any other navigation error stays loud. Rationale:
+  card under the target's URL via `RedirectCommand` + `browserUrl` — through
+  `core/page-navigation.ts`'s `reload`; any other navigation error stays loud. Rationale:
   `RESPONSIBILITIES.md` §Frontend.
 - The operator console (`/operator/:venueId`) and admin console (`/admin`) are nested
   child-route trees, one child per tab; follow that shape. A route with `data.console`
@@ -80,8 +80,8 @@ token: `StripePaymentGateway` (abstract class) with `StripeJsPaymentGateway` vs
 `FakeStripePaymentGateway`, swapped by a factory reading a `window.__RIVIERA_FAKE_*__` flag
 only the e2e sets — reuse for any dependency **the e2e cannot drive for real**
 (`booking/stripe-payment.gateway.ts`, `operator/qr-scanner.ts`, `shared/map-engine.ts`). When
-the e2e can drive it (`SsoRedirect`, `shared/geolocation.ts`), keep the token + unit-spec fake
-but a plain `useClass` and no flag. Unit specs override the token directly.
+the e2e can drive it (`core/page-navigation.ts`, `shared/geolocation.ts`), keep the token +
+unit-spec fake but a plain provider and no flag. Unit specs override the token directly.
 
 ## Theming (Liquid Glass)
 
