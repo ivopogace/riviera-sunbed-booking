@@ -121,6 +121,50 @@ describe('PricingTab (#174)', () => {
     expect(input('B').value).toBe('20');
   });
 
+  it('names a stored row label as it is in the chip, the input name and the saved announcement — a bare letter reads "Row C" (#1524)', async () => {
+    render([
+      seat(1, 'Front row · Sea view', 1, 'PREMIUM', 'ONLINE', 3500, 1, 1),
+      seat(2, 'Row 2', 1, 'STANDARD', 'ONLINE', 2000, 1, 2),
+      seat(3, 'C', 1, 'STANDARD', 'ONLINE', 2000, 1, 3),
+    ]);
+
+    const chips = Array.from(host.querySelectorAll('[data-testid="pricing-row-label"]'));
+    expect(chips.map((c) => c.textContent?.trim())).toEqual(['Front row · Sea view', 'Row 2', 'C']);
+    expect(input('Front row · Sea view').getAttribute('aria-label')).toBe(
+      'Full-day price for Front row · Sea view, in euros',
+    );
+    expect(input('Row 2').getAttribute('aria-label')).toBe('Full-day price for Row 2, in euros');
+    expect(input('C').getAttribute('aria-label')).toBe('Full-day price for Row C, in euros');
+
+    editRow('Row 2', '25');
+    http
+      .expectOne(
+        (r) =>
+          r.method === 'PUT' &&
+          r.url.includes(`/api/venues/1/rows/${encodeURIComponent('Row 2')}/price`),
+      )
+      .flush(null);
+    await fixture.whenStable();
+    fixture.detectChanges();
+    expect(byId('pricing-saved-announce').textContent?.trim()).toBe(
+      'Row 2 saved. The public beach map reflects the new price.',
+    );
+
+    editRow('Front row · Sea view', '40');
+    http
+      .expectOne(
+        (r) =>
+          r.method === 'PUT' &&
+          r.url.includes(`/api/venues/1/rows/${encodeURIComponent('Front row · Sea view')}/price`),
+      )
+      .flush(null);
+    await fixture.whenStable();
+    fixture.detectChanges();
+    expect(byId('pricing-saved-announce').textContent?.trim()).toBe(
+      'Front row · Sea view saved. The public beach map reflects the new price.',
+    );
+  });
+
   it('projects the full-day take from ONLY the online-pool sets, rendered from minor units', () => {
     render();
     // 3500 + 3500 (row A online) + 2000 (row B online) = 9000; the WALK_IN 3500 is excluded.

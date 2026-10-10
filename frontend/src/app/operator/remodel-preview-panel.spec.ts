@@ -134,6 +134,23 @@ describe('RemodelPreviewPanel (#1033, #1034, #1199, #1300)', () => {
     );
   });
 
+  it('names a move and a refund by the stored row labels, never "Row Row 2" (#1524)', () => {
+    const [move] = FULL_PREVIEW.moves;
+    const [refund] = FULL_PREVIEW.refunds;
+    render({
+      ...FULL_PREVIEW,
+      moves: [{ ...move, to: { ...move.to, rowLabel: 'Row 2' } }],
+      refunds: [{ ...refund, from: { ...refund.from, rowLabel: 'Front row · Sea view' } }],
+    });
+
+    expect(byId('layout-remodel-moves')!.textContent).toMatch(
+      /Row A · position 3 → Row 2 · position 7/,
+    );
+    expect(byId('layout-remodel-refunds')!.textContent).toMatch(
+      /Front row · Sea view · position 3 · Tue 22 Sept 2026/,
+    );
+  });
+
   it('is an alertdialog listing every group with set labels, dates, amounts and distances', () => {
     render(FULL_PREVIEW);
 

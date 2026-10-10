@@ -36,6 +36,7 @@ import {
 import { BeachMapCanvas, BeachMapCanvasRow, BeachMapRowDef } from '../shared/beach-map-canvas';
 import { MapSkeletonGrid } from '../shared/map-skeleton-grid';
 import { LockIcon } from '../shared/lock-icon';
+import { rowName } from '../shared/set-label';
 import { SetView } from '../shared/venue-views';
 import { ConsoleVenueMap } from './console-venue-map';
 import { lockDescription, lockReason } from './lock-reason';
@@ -278,7 +279,7 @@ export class LayoutEditor {
    */
   protected readonly renamedRowMessage = computed(() => {
     const y = this.renamedRow();
-    return y === null ? '' : `Row ${this.rowCode(y)} name saved.`;
+    return y === null ? '' : `${this.namedRow(y)} name saved.`;
   });
   /** The last write failure, mapped to operator-facing copy, or undefined. */
   protected readonly errorCode = signal<LayoutErrorCode | undefined>(undefined);
@@ -449,7 +450,7 @@ export class LayoutEditor {
       tileCount: row.length,
       cells: row.map((state, x) => ({
         state,
-        label: `Row ${gridRowLabel(y)} position ${x + 1}, ${CELL_STATE_DESC[state]}`,
+        label: `${this.namedRow(y)} position ${x + 1}, ${CELL_STATE_DESC[state]}`,
         lock: this.lockByCoord().get(coordKey(x + 1, y + 1)),
       })),
     })),
@@ -648,6 +649,11 @@ export class LayoutEditor {
     return gridRowLabel(y);
   }
 
+  /** Row {@code y} as its sentences name it: the name the operator typed, else "Row <letter>". */
+  private namedRow(y: number): string {
+    return rowName(this.effectiveRowNames()[y]);
+  }
+
   protected onRowNameInput(y: number, value: string): void {
     this.rowNames.update((names) => names.map((name, i) => (i === y ? value : name)));
     this.savedNotice.set(false);
@@ -776,19 +782,19 @@ export class LayoutEditor {
     if (tool === 'gap' && lock !== undefined) {
       if (heldByStaff(lock)) {
         this.lockNotice.set(
-          `Row ${gridRowLabel(r)} · position ${c + 1} is ${lockReason(lock)} — it can’t become a gap. Its tier and pool can still change.`,
+          `${this.namedRow(r)} · position ${c + 1} is ${lockReason(lock)} — it can’t become a gap. Its tier and pool can still change.`,
         );
         return;
       }
       this.lockNotice.set(
-        `Row ${gridRowLabel(r)} · position ${c + 1} is ${lockReason(lock)} — saving will first show where its bookings would move.`,
+        `${this.namedRow(r)} · position ${c + 1} is ${lockReason(lock)} — saving will first show where its bookings would move.`,
       );
     }
     this.grid.update((g) =>
       g.map((row, ri) => (ri !== r ? row : row.map((cell, ci) => (ci !== c ? cell : tool)))),
     );
     this.savedNotice.set(false);
-    this.lastChange.set(`Row ${gridRowLabel(r)} · position ${c + 1} → ${TOOL_LABEL[tool]}`);
+    this.lastChange.set(`${this.namedRow(r)} · position ${c + 1} → ${TOOL_LABEL[tool]}`);
   }
 
   /** The lock on the cell at 0-based row `r`, column `c`, if a live claim pins its set. */
@@ -833,8 +839,9 @@ export class LayoutEditor {
       ),
     );
     this.savedNotice.set(false);
-    this.lastChange.set(`Row ${gridRowLabel(r)} → ${TOOL_LABEL[tool]}`);
-    this.noteKeptLocks(kept, `Row ${gridRowLabel(r)}`);
+    const row = this.namedRow(r);
+    this.lastChange.set(`${row} → ${TOOL_LABEL[tool]}`);
+    this.noteKeptLocks(kept, row);
   }
 
   /** {@link fillRow}'s column counterpart — the column-header's fill button. */
@@ -1194,7 +1201,7 @@ export class LayoutEditor {
   private blockedMessage(): string {
     const blocked = this.blockedSets();
     const named = blocked
-      .map((set) => `Row ${set.rowLabel} · position ${set.positionNo} (${lockReason(set)})`)
+      .map((set) => `${rowName(set.rowLabel)} · position ${set.positionNo} (${lockReason(set)})`)
       .join(', ');
     const count = blocked.length === 1 ? 'a set that is' : `${blocked.length} sets that are`;
     const them = blocked.length === 1 ? 'it' : 'them';

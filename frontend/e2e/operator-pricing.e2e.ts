@@ -69,6 +69,7 @@ test.use({ colorScheme: 'dark' });
 async function mockPricing(
   page: Page,
   deny = false,
+  map = VENUE_MAP,
 ): Promise<{ puts: Request[]; bump: () => void; mapReads: () => number }> {
   const puts: Request[] = [];
   let sessionLive = false;
@@ -116,7 +117,7 @@ async function mockPricing(
   // reprice route (disjoint anyway).
   await page.route(/\/api\/venues\/1(\?.*)?$/, (route) => {
     mapReads += 1;
-    return route.fulfill({ json: { ...VENUE_MAP, setVersion: serverSetVersion } });
+    return route.fulfill({ json: { ...map, setVersion: serverSetVersion } });
   });
   await page.route(/\/api\/venues\/1\/booking-requests(\?.*)?$/, (route) =>
     route.fulfill({ json: [] }),
@@ -180,6 +181,57 @@ test('lists rows, projects the online-only take, and commits a minor-unit repric
 
   // Projected recomputes from the new online prices: 4250 + 4250 + 2000 = 10500 → €105.
   await expect(page.getByTestId('pricing-projected')).toHaveText('€105');
+});
+
+// The seeded venue's labels: a phrase, a label that already starts with "Row", and a bare letter.
+const NAMED_ROWS_MAP = {
+  ...VENUE_MAP,
+  sets: [
+    seat(1, 'Front row · Sea view', 1, 'PREMIUM', 'ONLINE', 3500, 1, 1),
+    seat(2, 'Front row · Sea view', 2, 'PREMIUM', 'ONLINE', 3500, 2, 1),
+    seat(3, 'Row 2', 1, 'STANDARD', 'ONLINE', 2000, 1, 2),
+    seat(4, 'C', 1, 'STANDARD', 'ONLINE', 2000, 1, 3),
+  ],
+};
+
+test('a full row label hugs its chip on one line at desktop and phone widths, and the saved announcement names the row as stored (#1524, + axe)', async ({
+  page,
+}) => {
+  await mockPricing(page, false, NAMED_ROWS_MAP);
+  await page.goto('/operator/1');
+  await signInAndOpenPricing(page);
+
+  const chips = page.getByTestId('pricing-row-label');
+  await expect(chips).toHaveText(['Front row · Sea view', 'Row 2', 'C']);
+
+  // One line of 12px text is well under 40px tall; the broken 26px box stacked the phrase four lines high.
+  const phrase = chips.first();
+  const letter = chips.last();
+  for (const width of [1280, 390]) {
+    await page.setViewportSize({ width, height: 800 });
+    const box = (await phrase.boundingBox())!;
+    expect(box.height, `${width}px wide`).toBeLessThan(40);
+    expect(box.width, `${width}px wide`).toBeGreaterThan(100);
+    // The letter chip keeps its 26px square and the € input stays inside the card.
+    const square = (await letter.boundingBox())!;
+    expect(square.width).toBeGreaterThanOrEqual(26);
+    expect(square.height).toBeGreaterThanOrEqual(26);
+    const card = (await page.getByTestId('pricing-tab').boundingBox())!;
+    const input = (await page.getByTestId('pricing-input-Front row · Sea view').boundingBox())!;
+    expect(input.x + input.width, `${width}px wide`).toBeLessThanOrEqual(card.x + card.width);
+  }
+
+  await page.getByTestId('pricing-input-Row 2').fill('25');
+  await page.getByTestId('pricing-input-Row 2').blur();
+  await expect(page.getByTestId('pricing-saved-Row 2')).toBeVisible();
+  await expect(page.getByTestId('pricing-saved-announce')).toHaveText(
+    'Row 2 saved. The public beach map reflects the new price.',
+  );
+  await expect(page.getByTestId('pricing-input-C')).toHaveAccessibleName(
+    'Full-day price for Row C, in euros',
+  );
+  await settle(page);
+  await expectNoSeriousAxeViolations(page, 'pricing tab with named rows');
 });
 
 test('opens the Pricing tab on ONE venue-map read, not two (#486)', async ({ page }) => {

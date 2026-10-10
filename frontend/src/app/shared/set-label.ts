@@ -30,6 +30,15 @@ export function spotLabel(rowLabel: string, positionNo: number): string {
   return `${rowLabel} · spot ${positionNo}`;
 }
 
+/**
+ * The row as a sentence names it: a bare grid letter (the default label a new row takes) reads
+ * "Row A"; any other stored label ("Row 2", "Front row · Sea view") already names itself, so a
+ * prefix would double it (#1524).
+ */
+export function rowName(rowLabel: string): string {
+  return /^[A-Z]$/.test(rowLabel) ? `Row ${rowLabel}` : rowLabel;
+}
+
 /** The operator-surface tier label — request cards, pricing-row descriptions. */
 export function tierLabel(tier: Tier): string {
   return tier === 'PREMIUM' ? 'Front row' : 'Standard';

@@ -25,7 +25,7 @@ import {
 } from '../shared/money';
 import { parentVenueId } from '../shared/parent-venue-id';
 import { todayBookingDate } from '../shared/booking-date';
-import { tierLabel } from '../shared/set-label';
+import { rowName, tierLabel } from '../shared/set-label';
 import { SetView } from '../shared/venue-views';
 import { TouchTarget } from '../shared/touch-target';
 import { ConsoleVenueMap } from './console-venue-map';
@@ -94,13 +94,16 @@ export class PricingTab {
    */
   protected readonly savedRowMessage = computed(() => {
     const label = this.savedRow();
-    return label === null ? '' : `Row ${label} saved. The public beach map reflects the new price.`;
+    return label === null
+      ? ''
+      : `${rowName(label)} saved. The public beach map reflects the new price.`;
   });
   protected readonly errorRow = signal<{ label: string; code: RepriceErrorCode } | null>(null);
   /** Rows whose typed price fell below the floor and was never sent, keyed by label to the typed
    *  euros string, which the input keeps showing (never silently undone) until the row is re-committed. */
   protected readonly refusedRows = signal<ReadonlyMap<string, string>>(new Map());
   protected readonly minPriceEur = MIN_SET_PRICE_EUR;
+  protected readonly rowName = rowName;
   /** The optimistic-concurrency token loaded with the map (`setVersion`), echoed back on each
    *  reprice and advanced on success; a `409 STALE_WRITE` sets {@link staleConflict}. */
   protected readonly loadedSetVersion = signal<number | null>(null);

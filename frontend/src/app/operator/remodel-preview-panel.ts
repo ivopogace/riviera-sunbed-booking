@@ -15,6 +15,7 @@ import { formatCivilDate } from '../shared/booking-date';
 import { BusyAction } from '../shared/busy-action';
 import { FieldErrorFor } from '../shared/field-error-for';
 import { formatMoney } from '../shared/money';
+import { rowName } from '../shared/set-label';
 import { setDistanceText } from '../shared/set-distance';
 import { TouchTarget } from '../shared/touch-target';
 import {
@@ -211,7 +212,7 @@ export class RemodelPreviewPanel {
 }
 
 function spotLabel(spot: RemodelSpot): string {
-  return `Row ${spot.rowLabel} · position ${spot.positionNo}`;
+  return `${rowName(spot.rowLabel)} · position ${spot.positionNo}`;
 }
 
 /** "A, B and C" */
