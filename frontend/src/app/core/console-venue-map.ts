@@ -20,11 +20,11 @@ interface OwnerBeachMap {
 
 /**
  * The operator console's shared beach-map snapshot: one owner's read (`GET /api/venues/{id}/beach-map`, its
- * `map`; the tourist read hides a PENDING owner's venue, #1531) for {@code venueAccessGuard}, the shell,
- * {@code RequestsTab} and {@code PricingTab} — `core/`, as the guard asks too. Opt-in per call site: {@code DailyViewTab}
- * and {@code LayoutEditor} need server truth. One slot; a changed venue or a Tirane day rollover evicts it. Call
- * {@link reset} on sign-out, after every successful map write (layout, reprice, rename, per-set edits; a walk-in
- * mark/release via {@code AvailabilityChanges#announce}) and BEFORE a `409 STALE_WRITE` recovery read, or tabs go stale.
+ * `map`; the tourist read hides a PENDING owner's venue, #1531) for {@code venueAccessGuard}, the shell, the console
+ * page, {@code RequestsTab} and {@code PricingTab} — `core/`, as the guard asks too. Opt-in per call site: {@code DailyViewTab}
+ * and {@code LayoutEditor} need server truth. One slot; a changed venue or a Tirane day rollover evicts it, and
+ * {@code OperatorAuth} drops it with the session. Call {@link reset} after every successful map write (layout, reprice,
+ * rename, per-set edits; a walk-in via {@code AvailabilityChanges#announce}) and BEFORE a `409 STALE_WRITE` recovery read.
  */
 @Service()
 export class ConsoleVenueMap {

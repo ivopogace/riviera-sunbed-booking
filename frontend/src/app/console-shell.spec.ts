@@ -790,7 +790,6 @@ describe('ConsoleShell', () => {
     await fixture.whenStable();
 
     expect(operatorAuth.signOut).toHaveBeenCalledTimes(1);
-    expect(venueMapStore.reset).toHaveBeenCalledTimes(1);
     expect(TestBed.inject(PendingRequestsStore).count()).toBe(0);
     expect(navigate).toHaveBeenCalledWith(['/account/sign-in'], {
       queryParams: { audience: 'operator' },

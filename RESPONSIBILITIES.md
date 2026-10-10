@@ -1353,12 +1353,12 @@ The SPA rules whose TSDoc points here; structure is `riviera-frontend`'s, stylin
   `operator/venue-create-card.ts` sends it to `beach-map`, as it has no map to run a day on yet.
 - **A venue the owner's read refuses never mounts the console** (`core/venue-access.guard.ts`, third on
   `/operator/:venueId`): `403 NOT_VENUE_OWNER` and `404 NO_SUCH_VENUE` both land on `/operator/venue-not-found`,
-  the page a malformed id lands on, and nothing says which it was — the owner's read asserts ownership before
-  existence (invariant #13), so the SPA enumerates no more than the API does. A 401, 5xx or network failure
-  activates the console instead: the tabs' retry and session-lost paths answer a read that may succeed next
-  time, and a gate that bounced on them would turn a blip into a dead end. One array's guards run concurrently,
-  so the gate awaits the restore itself and reads nothing for a malformed id or a signed-out visitor; its read
-  is the shared snapshot (`core/console-venue-map.ts`), so the shell and the tabs replay it, fetching nothing twice.
+  the malformed-id page, and nothing says which — the read asserts ownership before existence (invariant #13), so
+  the SPA enumerates no more than the API. A 401, 5xx or network failure activates the console instead: the tabs'
+  retry and session-lost paths answer a read that may succeed next time; bouncing on them turns a blip into a dead end.
+  One array's guards run concurrently, so the gate awaits the restore itself and reads nothing for a malformed id or
+  a signed-out visitor. Its read is the shared snapshot (`core/console-venue-map.ts`; the Daily view and layout editor
+  keep their server-truth read), which `OperatorAuth` drops with the session: a cache that admits must not outlive its principal.
 - **Admin tabs load with plain `HttpClient`, never `httpResource`**: a tab's first read fires from an
   `effect` once the session is confirmed (restore settled, `ROLE_ADMIN` present) and it owns its
   loading line, error card and Retry; `httpResource` fetches eagerly and throws on `value()` in error.

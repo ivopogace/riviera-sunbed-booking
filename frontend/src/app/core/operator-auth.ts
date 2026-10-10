@@ -15,6 +15,7 @@ import {
   PASSWORD_LENGTH_MESSAGE,
 } from '../shared/password-policy';
 import { CURRENT_PASSWORD_REQUIRED_MESSAGE } from './customer-auth';
+import { ConsoleVenueMap } from './console-venue-map';
 import { OwnedVenues } from './owned-venues';
 import {
   AUTH_API,
@@ -116,15 +117,27 @@ export class OperatorAuth extends SessionAuth {
   protected readonly restoreOnStartup = this.restore();
 
   private readonly ownedVenues = inject(OwnedVenues);
+  private readonly venueMap = inject(ConsoleVenueMap);
 
   /**
-   * Sign out, then drop the cached owned-venues list. Without this the next operator to
-   * sign in on this device would be routed by — and shown — the previous operator's venues.
+   * Sign out, then drop the per-session caches: the next operator to sign in on this device would
+   * otherwise be routed by, shown — and let into the console of — the previous operator's venues.
    */
   override async signOut(): Promise<SignOutResult> {
     const result = await super.signOut();
-    this.ownedVenues.reset();
+    this.dropSessionCaches();
     return result;
+  }
+
+  /** A 401 mid-flow ends the session the caches belong to, exactly as a sign-out does. */
+  override sessionLost(): void {
+    super.sessionLost();
+    this.dropSessionCaches();
+  }
+
+  private dropSessionCaches(): void {
+    this.ownedVenues.reset();
+    this.venueMap.reset();
   }
 
   /**

@@ -662,8 +662,7 @@ export class ConsoleShell {
   /** Sign out, then leave for the operator sign-in — see the class doc. */
   protected async onSignOut(): Promise<void> {
     this.document.querySelector<HTMLElement>('main')?.focus();
-    await this.operator.signOut();
-    this.venueMap.reset();
+    await this.operator.signOut(); // drops the venue-map snapshot with the session
     this.requests.reset();
     await this.router.navigate(['/account/sign-in'], { queryParams: { audience: 'operator' } });
   }
