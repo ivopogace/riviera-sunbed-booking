@@ -39,10 +39,11 @@ const RAIL =
   'motion-safe:[transition:opacity_0.18s_ease,translate_0.18s_ease]';
 const RAIL_LEAVE = 'opacity-0 -translate-y-1';
 /**
- * The week wraps from `sm`, where a mouse has no swipe and the hidden scrollbar leaves the last
- * chips, the stay chip among them, out of reach; a phone keeps the one swipeable row.
+ * A chip rail wraps from `sm`, where a mouse has no swipe and the hidden scrollbar leaves the last
+ * chips, the stay chip or a region's southern beaches, out of reach; a phone keeps the one
+ * swipeable row. The Near me note keeps the plain {@link RAIL}: one line that wraps inside itself.
  */
-const DAY_RAIL = RAIL + ' sm:flex-wrap sm:overflow-x-visible';
+const CHIP_RAIL = RAIL + ' sm:flex-wrap sm:overflow-x-visible';
 
 /**
  * A chip in the field skin, lit as the accent pair when `aria-current`. The `group` lets the
@@ -145,7 +146,7 @@ const COUNT =
     </div>
     @if (railsShown()) {
       @if (dayOpen()) {
-        <div [class]="DAY_RAIL" [animate.leave]="RAIL_LEAVE" role="group" aria-label="Day">
+        <div [class]="CHIP_RAIL" [animate.leave]="RAIL_LEAVE" role="group" aria-label="Day">
           @for (day of days(); track day.date) {
             <button
               type="button"
@@ -169,7 +170,7 @@ const COUNT =
           </button>
         </div>
       } @else if (beachesOpen()) {
-        <div [class]="RAIL" [animate.leave]="RAIL_LEAVE" role="group" aria-label="Beach">
+        <div [class]="CHIP_RAIL" [animate.leave]="RAIL_LEAVE" role="group" aria-label="Beach">
           <button
             type="button"
             appTouchTarget
@@ -224,7 +225,7 @@ export class DiscoverHead {
   protected readonly CHIP = CHIP;
   protected readonly COUNT = COUNT;
   protected readonly RAIL = RAIL;
-  protected readonly DAY_RAIL = DAY_RAIL;
+  protected readonly CHIP_RAIL = CHIP_RAIL;
   protected readonly RAIL_LEAVE = RAIL_LEAVE;
 
   /** The place as the tourist reads it: the beach, the region, or where they stand. */
