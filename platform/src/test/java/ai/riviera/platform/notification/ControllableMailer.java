@@ -48,7 +48,7 @@ public final class ControllableMailer implements Mailer {
 
 	/**
 	 * How long a wedged send stays wedged if the owning test's release somehow never runs; the
-	 * importers' {@code @AfterEach} releases unconditionally, so this only backstops a deadlock. It must
+	 * wedging importers' {@code @AfterEach} releases unconditionally, so this only backstops a deadlock. It must
 	 * comfortably outlast every wait in a single test — a gate that reopens on its own part-way
 	 * through unwedges the pool and lets the money-path assertions pass for the wrong reason, which is
 	 * how the first draft of {@code RegistryMailBulkheadIT} went green against the unfixed listener. It
