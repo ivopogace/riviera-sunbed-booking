@@ -276,11 +276,10 @@ export class LayoutEditor {
   /**
    * The row-rename outcome as one sentence, or ''. One region serves the whole editor rather than
    * one per row, so the sentence names the row — renaming A then B must change the text to speak.
-   * It names the row as saved, never the input's live draft: the input stays open during the write.
    */
   protected readonly renamedRowMessage = computed(() => {
     const y = this.renamedRow();
-    return y === null ? '' : `${rowName(this.storedRowNames()[y] ?? gridRowLabel(y))} name saved.`;
+    return y === null ? '' : `Row ${this.rowCode(y)} name saved.`;
   });
   /** The last write failure, mapped to operator-facing copy, or undefined. */
   protected readonly errorCode = signal<LayoutErrorCode | undefined>(undefined);
@@ -451,7 +450,7 @@ export class LayoutEditor {
       tileCount: row.length,
       cells: row.map((state, x) => ({
         state,
-        label: `${this.namedRow(y)} position ${x + 1}, ${CELL_STATE_DESC[state]}`,
+        label: `Row ${gridRowLabel(y)} position ${x + 1}, ${CELL_STATE_DESC[state]}`,
         lock: this.lockByCoord().get(coordKey(x + 1, y + 1)),
       })),
     })),
@@ -645,18 +644,17 @@ export class LayoutEditor {
     this.lastChange.set(`Generated a ${rows}×${cols} grid`);
   }
 
-  /** The derived grid letter for row {@code y} — the row-name input's default and visual anchor. */
+  /**
+   * The derived grid letter for row {@code y} — the row-name input's default and visual anchor. The
+   * editor's cells and notices name a row by this letter, not its stored label: positional identity
+   * beside a grid being painted, kept on purpose (#723, #724, reaffirmed in #1524).
+   */
   protected rowCode(y: number): string {
     return gridRowLabel(y);
   }
 
   /** {@link rowName} for the template — the save-name button names the stored row. */
   protected readonly rowName = rowName;
-
-  /** Row {@code y} as its sentences name it: the name the operator typed, else "Row <letter>". */
-  private namedRow(y: number): string {
-    return rowName(this.effectiveRowNames()[y]);
-  }
 
   protected onRowNameInput(y: number, value: string): void {
     this.rowNames.update((names) => names.map((name, i) => (i === y ? value : name)));
@@ -786,19 +784,19 @@ export class LayoutEditor {
     if (tool === 'gap' && lock !== undefined) {
       if (heldByStaff(lock)) {
         this.lockNotice.set(
-          `${this.namedRow(r)} · position ${c + 1} is ${lockReason(lock)} — it can’t become a gap. Its tier and pool can still change.`,
+          `Row ${gridRowLabel(r)} · position ${c + 1} is ${lockReason(lock)} — it can’t become a gap. Its tier and pool can still change.`,
         );
         return;
       }
       this.lockNotice.set(
-        `${this.namedRow(r)} · position ${c + 1} is ${lockReason(lock)} — saving will first show where its bookings would move.`,
+        `Row ${gridRowLabel(r)} · position ${c + 1} is ${lockReason(lock)} — saving will first show where its bookings would move.`,
       );
     }
     this.grid.update((g) =>
       g.map((row, ri) => (ri !== r ? row : row.map((cell, ci) => (ci !== c ? cell : tool)))),
     );
     this.savedNotice.set(false);
-    this.lastChange.set(`${this.namedRow(r)} · position ${c + 1} → ${TOOL_LABEL[tool]}`);
+    this.lastChange.set(`Row ${gridRowLabel(r)} · position ${c + 1} → ${TOOL_LABEL[tool]}`);
   }
 
   /** The lock on the cell at 0-based row `r`, column `c`, if a live claim pins its set. */
@@ -843,9 +841,8 @@ export class LayoutEditor {
       ),
     );
     this.savedNotice.set(false);
-    const row = this.namedRow(r);
-    this.lastChange.set(`${row} → ${TOOL_LABEL[tool]}`);
-    this.noteKeptLocks(kept, row);
+    this.lastChange.set(`Row ${gridRowLabel(r)} → ${TOOL_LABEL[tool]}`);
+    this.noteKeptLocks(kept, `Row ${gridRowLabel(r)}`);
   }
 
   /** {@link fillRow}'s column counterpart — the column-header's fill button. */

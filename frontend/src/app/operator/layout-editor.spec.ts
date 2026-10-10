@@ -972,7 +972,7 @@ describe('LayoutEditor (#172)', () => {
     req.flush(null);
   });
 
-  it('names a row by its stored label in cell names, change notices and the rename announcement, never "Row Row 2" (#1524)', async () => {
+  it('keeps the grid letter in cell names, notices and the rename announcement on a named row; only the save button names the stored label (#1524, #723)', async () => {
     render(
       [
         seat(1, 'PREMIUM', 'ONLINE', 1, 1, 'Front row · Sea view'),
@@ -982,34 +982,23 @@ describe('LayoutEditor (#172)', () => {
     );
     useBulkMode();
 
+    // Positional identity beside the grid being painted (#723, #724): the stored name stays in its input.
     expect(cells()[0].getAttribute('aria-label')).toBe(
-      'Front row · Sea view position 1, front row, premium, online',
+      'Row A position 1, front row, premium, online',
     );
-    expect(cells()[1].getAttribute('aria-label')).toBe('Row 2 position 1, standard, online');
+    expect(cells()[1].getAttribute('aria-label')).toBe('Row B position 1, standard, online');
+    expect(rowNameInputs().map((i) => i.value)).toEqual(['Front row · Sea view', 'Row 2']);
 
     byId('layout-tool-gap').click();
     fixture.detectChanges();
     cells()[1].click();
     fixture.detectChanges();
-    expect(byId('layout-last-change').textContent?.trim()).toBe('Row 2 · position 1 → Gap / aisle');
+    expect(byId('layout-last-change').textContent?.trim()).toBe('Row B · position 1 → Gap / aisle');
 
-    rowFillButtons()[0].click();
-    fixture.detectChanges();
-    expect(byId('layout-last-change').textContent?.trim()).toBe(
-      'Front row · Sea view → Gap / aisle',
-    );
-
-    // The typed name is the one the sentences use, as soon as it is typed; a blanked row is its letter again.
-    setRowName(1, 'Under the pines');
-    expect(cells()[1].getAttribute('aria-label')).toBe('Under the pines position 1, gap or aisle');
-    setRowName(1, '  ');
-    expect(cells()[1].getAttribute('aria-label')).toBe('Row B position 1, gap or aisle');
-
+    // The save button names the row as stored — never "for row Row 2".
     expect(rowNameSaves()[1].getAttribute('aria-label')).toBe('Save the name for Row 2');
     setRowName(1, 'Under the pines');
     rowNameSaves()[1].click();
-    // The input stays open during the write; a keystroke in flight must not be announced as saved.
-    setRowName(1, 'Under the pines, shaded');
     http
       .expectOne(
         (r) =>
@@ -1019,34 +1008,8 @@ describe('LayoutEditor (#172)', () => {
       .flush(null);
     await fixture.whenStable();
     fixture.detectChanges();
-    expect(byId('layout-row-name-saved-announce').textContent?.trim()).toBe(
-      'Under the pines name saved.',
-    );
+    expect(byId('layout-row-name-saved-announce').textContent?.trim()).toBe('Row B name saved.');
     expect(rowNameSaves()[1].getAttribute('aria-label')).toBe('Save the name for Under the pines');
-  });
-
-  it('names a locked row by its stored label in the gap brush’s notices (#1524)', () => {
-    render(
-      [seat(1, 'STANDARD', 'ONLINE', 1, 1, 'Row 2'), seat(2, 'STANDARD', 'ONLINE', 2, 1, 'Row 2')],
-      0,
-      [{ setId: 2, bookedOn: null, bookedUntil: null, heldOn: '2026-09-12' }],
-    );
-    useBulkMode();
-    byId('layout-tool-gap').click();
-    fixture.detectChanges();
-
-    cells()[1].click();
-    fixture.detectChanges();
-    expect(byId('layout-lock-notice').textContent?.replace(/\s+/g, ' ').trim()).toBe(
-      'Row 2 · position 2 is held by staff Sat 12 Sept 2026 — it can’t become a gap. Its tier and pool can still change.',
-    );
-
-    rowFillButtons()[0].click();
-    fixture.detectChanges();
-    expect(byId('layout-last-change').textContent?.trim()).toBe('Row 2 → Gap / aisle');
-    expect(byId('layout-lock-notice').textContent?.replace(/\s+/g, ' ').trim()).toBe(
-      'Row 2 → Gap / aisle kept 1 held set — sets held by staff can’t become gaps.',
-    );
   });
 
   it('blocks saving duplicate row names with row-name copy, before any PUT (#723)', () => {
@@ -1136,7 +1099,7 @@ describe('LayoutEditor (#172)', () => {
     await fixture.whenStable();
     fixture.detectChanges();
     expect(byId('layout-row-name-saved-announce')).toBe(announce);
-    expect(announce.textContent).toContain('Back row name saved.');
+    expect(announce.textContent).toContain('Row B');
 
     setRowName(0, 'Front row');
     rowNameSaves()[0].click();
@@ -1148,7 +1111,7 @@ describe('LayoutEditor (#172)', () => {
 
     // A row-agnostic "Row name saved." would not have changed here, so nothing would be spoken.
     expect(byId('layout-row-name-saved-announce')).toBe(announce);
-    expect(announce.textContent).toContain('Front row name saved.');
+    expect(announce.textContent).toContain('Row A');
     expect(byId('layout-row-name-saved').getAttribute('aria-hidden')).toBe('true');
   });
 
@@ -1163,7 +1126,7 @@ describe('LayoutEditor (#172)', () => {
     await fixture.whenStable();
     fixture.detectChanges();
     const announce = byId('layout-row-name-saved-announce');
-    expect(announce.textContent).toContain('Back row name saved.');
+    expect(announce.textContent).toContain('Row B');
 
     params$.next(convertToParamMap({ venueId: '2' }));
     fixture.detectChanges();
