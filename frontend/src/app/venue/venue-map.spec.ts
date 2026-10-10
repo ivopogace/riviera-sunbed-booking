@@ -1473,6 +1473,9 @@ describe('VenueMap', () => {
     fixture.detectChanges();
     pickDay(first);
     pickDay(last);
+    httpMock.expectNone((req) => req.url.endsWith('/api/venues/1'));
+    el().querySelector<HTMLButtonElement>('[data-testid="calendar-apply"]')!.click();
+    fixture.detectChanges();
 
     const request = venueRequest();
     expect(request.request.params.get('date')).toBe(first);
@@ -1487,6 +1490,13 @@ describe('VenueMap', () => {
     expect(el().querySelector('[data-testid="availability"]')?.textContent).toContain(
       'free for all 3 days',
     );
+
+    await openPicker();
+    expect(
+      el().querySelector('[data-testid="calendar-mode-stay"]')!.getAttribute('aria-checked'),
+    ).toBe('true');
+    expect(calendarDay(first).closest('td')!.getAttribute('aria-selected')).toBe('true');
+    expect(calendarDay(last).closest('td')!.getAttribute('aria-selected')).toBe('true');
   });
 
   it('offers the stay mode at a Request-to-Book venue too: a range is one request', async () => {

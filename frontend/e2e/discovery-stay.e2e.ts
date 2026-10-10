@@ -1,6 +1,7 @@
 import { expect, Page, test } from '@playwright/test';
 
 import { expectNoSeriousAxeViolations } from './support/axe';
+import { expectTouchTargets } from './support/touch-targets';
 import { settle } from './support/booking-dialog';
 
 /**
@@ -131,6 +132,13 @@ test('picks a stay from the rail, reads every venue’s verdict, and carries the
   );
   await calendar.locator(`button[data-date="${FIRST}"]`).click();
   await calendar.locator(`button[data-date="${LAST}"]`).click();
+  // The range waits for Apply, shown with its length.
+  await expect(calendar.getByTestId('calendar-stay-hint')).toHaveText(
+    'Thu, 13 Aug – Sun 16 Aug 2026 · 4 days',
+  );
+  await expectNoSeriousAxeViolations(page, 'stay picker with a range to apply');
+  await expectTouchTargets(page, 'stay picker with a range to apply');
+  await calendar.getByTestId('calendar-apply').click();
   const request = await coastRead;
   expect(new URL(request.url()).searchParams.get('date')).toBe(FIRST);
   expect(calendarReads).toBe(0);

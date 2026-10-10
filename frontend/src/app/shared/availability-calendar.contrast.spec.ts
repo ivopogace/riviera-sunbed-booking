@@ -17,6 +17,8 @@ import {
   calendarTokenValues,
 } from '../../testing/calendar-tints';
 import {
+  CTA_BORDER,
+  CTA_GRAD_STOPS,
   DARK_POP_INK_DISABLED,
   Glass,
   POP_INK_DISABLED,
@@ -182,6 +184,29 @@ describe('Availability calendar contrast (WCAG AA) — venue/day-availability.ts
         palette.surface,
         palette.stops,
       );
+    });
+
+    /**
+     * The stay's Apply wears the primary CTA skin (`retry-button.ts`), proved there against the card
+     * glass; here against the popover it sits on, by the adjacency rule of
+     * `docs/design/non-text-contrast.md` rule 1: the fill or the white hairline, whichever abuts.
+     */
+    it('the Apply button reads against the popover surface over every stop', () => {
+      expect(read('shared/availability-calendar.html')).toContain(
+        'border border-riv-cta-border bg-(image:--riv-cta-grad)',
+      );
+      for (const stop of palette.stops) {
+        const behind = rgbToHex(surfaceOver(palette.surface, stop));
+        for (const fill of CTA_GRAD_STOPS) {
+          const hairline = composite([255, 255, 255], CTA_BORDER.alpha, fill);
+          const boundary = Math.max(
+            contrastRatio(rgbToHex(fill), behind),
+            contrastRatio(rgbToHex(hairline), behind),
+          );
+          expect(boundary, `over ${rgbToHex(stop)}`).toBeGreaterThanOrEqual(AA_LARGE);
+          expect(contrastRatio('#ffffff', rgbToHex(fill))).toBeGreaterThanOrEqual(AA_NORMAL);
+        }
+      }
     });
 
     /**
