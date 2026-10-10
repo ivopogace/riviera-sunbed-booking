@@ -1,7 +1,6 @@
 import { Component, inject, input } from '@angular/core';
 
-import { CustomerAuth } from '../core/customer-auth';
-import { SsoProviderId } from '../core/sso-redirect';
+import { CustomerAuth, SsoProviderId } from '../core/customer-auth';
 
 import { TouchTarget } from '../shared/touch-target';
 
