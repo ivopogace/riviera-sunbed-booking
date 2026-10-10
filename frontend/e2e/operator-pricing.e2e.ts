@@ -9,8 +9,9 @@ import { settle } from './support/booking-dialog';
  * per-row reprice PUT (path + integer-minor-unit body + concurrency token) and the recomputed
  * projected take. Also the cross-venue (403) failure copy and the stale-write conflict (409
  * STALE_WRITE reverts the row + offers Reload — co-located here as the venue tab does in
- * operator-venue.e2e.ts), and the client-side €0.50 floor refusing before any request. API mocked
- * via `page.route` (no backend); axe over the tab.
+ * operator-venue.e2e.ts), the client-side €0.50 floor refusing before any request, and the row-label
+ * chip's rendered box for a stored phrase label. API mocked via `page.route` (no backend); axe over
+ * the tab.
  */
 
 const PRINCIPAL = { username: 'operator', principalType: 'OPERATOR' };
@@ -61,7 +62,8 @@ const VENUE_MAP = {
 test.use({ colorScheme: 'dark' });
 
 /**
- * Session + shell reads mocked; `puts` collects the reprice PUTs; `deny` makes the reprice 403. STATEFUL
+ * Session + shell reads mocked; `puts` collects the reprice PUTs; `deny` makes the reprice 403; `map`
+ * is the venue the tab loads. STATEFUL
  * on the `setVersion` token: the map GET hands out the current token, the reprice PUT enforces it (a
  * mismatch is 409 STALE_WRITE) and bumps it on success. `bump()` simulates a concurrent writer moving the
  * prices on behind the tab's back, so a subsequent stale reprice is genuinely rejected.
@@ -69,6 +71,7 @@ test.use({ colorScheme: 'dark' });
 async function mockPricing(
   page: Page,
   deny = false,
+  map = VENUE_MAP,
 ): Promise<{ puts: Request[]; bump: () => void; mapReads: () => number }> {
   const puts: Request[] = [];
   let sessionLive = false;
@@ -116,7 +119,7 @@ async function mockPricing(
   // reprice route (disjoint anyway).
   await page.route(/\/api\/venues\/1(\?.*)?$/, (route) => {
     mapReads += 1;
-    return route.fulfill({ json: { ...VENUE_MAP, setVersion: serverSetVersion } });
+    return route.fulfill({ json: { ...map, setVersion: serverSetVersion } });
   });
   await page.route(/\/api\/venues\/1\/booking-requests(\?.*)?$/, (route) =>
     route.fulfill({ json: [] }),
@@ -180,6 +183,63 @@ test('lists rows, projects the online-only take, and commits a minor-unit repric
 
   // Projected recomputes from the new online prices: 4250 + 4250 + 2000 = 10500 → €105.
   await expect(page.getByTestId('pricing-projected')).toHaveText('€105');
+});
+
+// The seeded venue's labels: a phrase, a label that already starts with "Row", and a bare letter.
+const NAMED_ROWS_MAP = {
+  ...VENUE_MAP,
+  sets: [
+    seat(1, 'Front row · Sea view', 1, 'PREMIUM', 'ONLINE', 3500, 1, 1),
+    seat(2, 'Front row · Sea view', 2, 'PREMIUM', 'ONLINE', 3500, 2, 1),
+    seat(3, 'Row 2', 1, 'STANDARD', 'ONLINE', 2000, 1, 2),
+    seat(4, 'C', 1, 'STANDARD', 'ONLINE', 2000, 1, 3),
+  ],
+};
+
+test('a full row label hugs its chip on one line at desktop and phone widths, and the saved announcement names the row as stored (#1524, + axe)', async ({
+  page,
+}) => {
+  await mockPricing(page, false, NAMED_ROWS_MAP);
+  await page.goto('/operator/1');
+  await signInAndOpenPricing(page);
+
+  const chips = page.getByTestId('pricing-row-label');
+  await expect(chips).toHaveText(['Front row · Sea view', 'Row 2', 'C']);
+
+  // A fixed 26px box still reports 26px tall while its words pile up below it: assert no overflow.
+  const phrase = chips.first();
+  const letter = chips.last();
+  for (const width of [1280, 390]) {
+    await page.setViewportSize({ width, height: 800 });
+    await expect(phrase).toBeInViewport();
+    const box = (await phrase.boundingBox())!;
+    expect(box.width, `${width}px wide`).toBeGreaterThan(100);
+    expect(box.height, `${width}px wide`).toBeLessThan(40);
+    expect(
+      await phrase.evaluate((el) => el.scrollHeight - el.clientHeight),
+      `${width}px wide`,
+    ).toBeLessThanOrEqual(0);
+    const square = (await letter.boundingBox())!;
+    expect(square.width).toBeGreaterThanOrEqual(26);
+    expect(square.width).toBeLessThan(32);
+    expect(square.height).toBeGreaterThanOrEqual(26);
+    expect(square.height).toBeLessThan(32);
+    const card = (await page.getByTestId('pricing-card').boundingBox())!;
+    const input = (await page.getByTestId('pricing-input-Front row · Sea view').boundingBox())!;
+    expect(input.x + input.width, `${width}px wide`).toBeLessThanOrEqual(card.x + card.width);
+  }
+
+  await page.getByTestId('pricing-input-Row 2').fill('25');
+  await page.getByTestId('pricing-input-Row 2').blur();
+  await expect(page.getByTestId('pricing-saved-Row 2')).toBeVisible();
+  await expect(page.getByTestId('pricing-saved-announce')).toHaveText(
+    'Row 2 saved. The public beach map reflects the new price.',
+  );
+  await expect(page.getByTestId('pricing-input-C')).toHaveAccessibleName(
+    'Full-day price for Row C, in euros',
+  );
+  await settle(page);
+  await expectNoSeriousAxeViolations(page, 'pricing tab with named rows');
 });
 
 test('opens the Pricing tab on ONE venue-map read, not two (#486)', async ({ page }) => {

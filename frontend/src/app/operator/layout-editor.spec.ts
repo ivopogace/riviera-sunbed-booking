@@ -972,6 +972,46 @@ describe('LayoutEditor (#172)', () => {
     req.flush(null);
   });
 
+  it('keeps the grid letter in cell names, notices and the rename announcement on a named row; only the save button names the stored label (#1524, #723)', async () => {
+    render(
+      [
+        seat(1, 'PREMIUM', 'ONLINE', 1, 1, 'Front row · Sea view'),
+        seat(2, 'STANDARD', 'ONLINE', 1, 2, 'Row 2'),
+      ],
+      3,
+    );
+    useBulkMode();
+
+    // Positional identity beside the grid being painted (#723, #724): the stored name stays in its input.
+    expect(cells()[0].getAttribute('aria-label')).toBe(
+      'Row A position 1, front row, premium, online',
+    );
+    expect(cells()[1].getAttribute('aria-label')).toBe('Row B position 1, standard, online');
+    expect(rowNameInputs().map((i) => i.value)).toEqual(['Front row · Sea view', 'Row 2']);
+
+    byId('layout-tool-gap').click();
+    fixture.detectChanges();
+    cells()[1].click();
+    fixture.detectChanges();
+    expect(byId('layout-last-change').textContent?.trim()).toBe('Row B · position 1 → Gap / aisle');
+
+    // The save button names the row as stored — never "for row Row 2".
+    expect(rowNameSaves()[1].getAttribute('aria-label')).toBe('Save the name for Row 2');
+    setRowName(1, 'Under the pines');
+    rowNameSaves()[1].click();
+    http
+      .expectOne(
+        (r) =>
+          r.method === 'PUT' &&
+          r.url.endsWith(`/api/venues/1/rows/${encodeURIComponent('Row 2')}/name`),
+      )
+      .flush(null);
+    await fixture.whenStable();
+    fixture.detectChanges();
+    expect(byId('layout-row-name-saved-announce').textContent?.trim()).toBe('Row B name saved.');
+    expect(rowNameSaves()[1].getAttribute('aria-label')).toBe('Save the name for Under the pines');
+  });
+
   it('blocks saving duplicate row names with row-name copy, before any PUT (#723)', () => {
     render();
     generate('2', '2');
