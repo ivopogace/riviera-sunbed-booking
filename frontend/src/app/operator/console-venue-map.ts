@@ -15,9 +15,9 @@ const SNAPSHOT_TTL_MS = 30_000;
  * The operator console's shared `(venue, date)` beach-map snapshot: one request for the shell's,
  * console page's, {@code RequestsTab}'s and {@code PricingTab}'s identical venue-map read. Opt-in
  * per call site, never inside {@link VenueService}: {@code DailyViewTab}, {@code LayoutEditor} and
- * the tourist map need server truth. One slot; a changed key evicts it. Call {@link reset} on
- * sign-out, after every successful map write (layout, reprice, rename, per-set add/edit/move/remove)
- * and BEFORE a `409 STALE_WRITE` recovery read, or tabs render stale sets and the conflict sticks.
+ * the tourist map need server truth. One slot; a changed key evicts it. Call {@link reset} on sign-out,
+ * after every successful map write (layout, reprice, rename, per-set edits; a walk-in mark/release via
+ * {@code AvailabilityChanges#announce}) and BEFORE a `409 STALE_WRITE` recovery read, or tabs go stale.
  */
 @Service()
 export class ConsoleVenueMap {

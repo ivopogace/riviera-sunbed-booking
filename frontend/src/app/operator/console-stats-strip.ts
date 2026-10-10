@@ -1,21 +1,22 @@
 import { Component, computed, effect, inject, input, signal, untracked } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 
 import { formatCommissionPercent } from '../shared/commission-rate';
 import { formatMoney, MoneyView } from '../shared/money';
 import { StatTile } from '../shared/stat-tile';
 import { VenueMapView } from '../shared/venue-views';
 import { todayBookingDate } from '../shared/booking-date';
+import { AvailabilityChanges } from './availability-changes';
 import { SetDayState, TakingsView } from './operator-console.model';
 import { OperatorConsoleService } from './operator-console.service';
 
 /**
- * The operator console's stats strip — four glass tiles above the tab nav, live for
- * the operator's venue today (Europe/Tirane, invariant #6): Free today `{free}/{total}`, Booked
- * online, Walk-ins marked, and Online takings today (gross + net after commission).
- *
- * <p>Sources: free/total from the shell's shared venue map ({@link venue}), booked-online from the
- * day's CONFIRMED bookings, walk-ins as the exact `STAFF_MARKED` count. Net is server-side (#9),
- * only formatted (#5). Reads are best-effort: a failure leaves that tile at its zero/dash default.
+ * The operator console's stats strip — four glass tiles above the tab nav, live for the operator's
+ * venue today (Europe/Tirane, #6): Free today `{free}/{total}` from the console page's shared venue
+ * map ({@link venue}), Booked online from the day's CONFIRMED bookings, Walk-ins marked as the exact
+ * `STAFF_MARKED` count (re-read when the Daily view settles a mark/release, {@link AvailabilityChanges}),
+ * and Online takings today — net is server-side (#9), only formatted (#5). Reads are best-effort: a
+ * failed read here renders that tile's dash, never a count that may be stale; the map is the page's.
  */
 @Component({
   selector: 'app-console-stats-strip',
@@ -24,10 +25,11 @@ import { OperatorConsoleService } from './operator-console.service';
 })
 export class ConsoleStatsStrip {
   private readonly console = inject(OperatorConsoleService);
+  private readonly changes = inject(AvailabilityChanges);
 
   /** The venue this strip summarizes — required (the strip only renders inside the signed-in shell). */
   readonly venueId = input.required<number>();
-  /** The venue map the shell loads per venue and shares — the source of free/total (undefined until loaded). */
+  /** The venue map the console page loads per venue and shares — the source of free/total (undefined until loaded). */
   readonly venue = input<VenueMapView | undefined>(undefined);
 
   /**
@@ -46,6 +48,9 @@ export class ConsoleStatsStrip {
   /** Bumped per venue context: an identity guard — a venueId value check passes again
    *  after an A→B→A switch, so continuations compare this instead. */
   private epoch = 0;
+  /** Bumped per states read: only the latest read may land, so an older, slower answer (or its
+   *  failure) never overwrites a newer count. */
+  private heldRead = 0;
 
   /** Total sets across both pools; renders as "Free today {free}/{total}". */
   protected readonly total = computed(() => this.venue()?.sets.length ?? 0);
@@ -82,6 +87,11 @@ export class ConsoleStatsStrip {
       const id = this.venueId();
       untracked(() => this.load(id));
     });
+    // A walk-in marked or released for this venue today moved the count — re-read the states only.
+    this.changes
+      .todayAt(this.venueId)
+      .pipe(takeUntilDestroyed())
+      .subscribe((change) => this.loadHeld(change.venueId, change.date));
   }
 
   protected money(amount: MoneyView): string {
@@ -117,14 +127,24 @@ export class ConsoleStatsStrip {
         // best-effort — the takings tile shows a dash
       },
     });
+    this.loadHeld(venueId, date);
+  }
+
+  /** The states read behind the walk-ins tile: the shown count stands until this read lands, a
+   *  failure clears it to "—", and only the latest read may do either. */
+  private loadHeld(venueId: number, date: string): void {
+    const read = ++this.heldRead;
     this.console.dailyAvailability(venueId, date).subscribe({
       next: (states) => {
-        if (this.epoch === epoch) {
+        if (this.heldRead === read) {
           this.held.set(states);
         }
       },
       error: () => {
-        // best-effort — walk-ins render "—", never a phantom count
+        // best-effort — walk-ins render "—", never a phantom (or pre-write) count
+        if (this.heldRead === read) {
+          this.held.set(undefined);
+        }
       },
     });
   }
