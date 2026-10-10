@@ -2,19 +2,13 @@ import { TestBed } from '@angular/core/testing';
 import { NavigationError, RedirectCommand, Router, provideRouter } from '@angular/router';
 
 import { installFakeStorage, removeFakeStorage } from '../../testing/fake-storage';
+import { RecordingPageNavigation } from '../../testing/recording-page-navigation';
 import { ChunkLoadRecovery, chunkLoadErrorHandler, isChunkLoadError } from './chunk-load-recovery';
-import { PageReload } from './page-reload';
+import { PageNavigation } from './page-navigation';
 
 const STAMP_KEY = 'riviera-chunk-reload';
 const TARGET = '/legal/privacy?from=footer';
 const TARGET_PATH = '/legal/privacy';
-
-class RecordingReload extends PageReload {
-  readonly urls: string[] = [];
-  to(url: string): void {
-    this.urls.push(url);
-  }
-}
 
 /** The error Chromium raises for a chunk that could not be fetched, as the router wraps it. */
 function chunkFailure(url = TARGET): NavigationError {
@@ -26,16 +20,16 @@ function chunkFailure(url = TARGET): NavigationError {
 }
 
 describe('ChunkLoadRecovery (#1543)', () => {
-  let reload: RecordingReload;
+  let reload: RecordingPageNavigation;
   let session: Map<string, string>;
   let recovery: ChunkLoadRecovery;
   let router: Router;
 
   beforeEach(() => {
     session = installFakeStorage('sessionStorage');
-    reload = new RecordingReload();
+    reload = new RecordingPageNavigation();
     TestBed.configureTestingModule({
-      providers: [provideRouter([]), { provide: PageReload, useValue: reload }],
+      providers: [provideRouter([]), { provide: PageNavigation, useValue: reload }],
     });
     recovery = TestBed.inject(ChunkLoadRecovery);
     router = TestBed.inject(Router);
@@ -46,7 +40,7 @@ describe('ChunkLoadRecovery (#1543)', () => {
   it('reloads the target once, stamping the tab first, and redirects to the card leaving the address bar alone', () => {
     const command = recovery.recover(chunkFailure());
 
-    expect(reload.urls).toEqual([TARGET]);
+    expect(reload.reloaded).toEqual([TARGET]);
     expect(recovery.reloading()).toBe(true);
     // Keyed on the path: a `?token=` query never lands in storage.
     expect(JSON.parse(session.get(STAMP_KEY)!)).toEqual({ path: TARGET_PATH, at: Date.now() });
@@ -60,7 +54,7 @@ describe('ChunkLoadRecovery (#1543)', () => {
 
     const command = recovery.recover(chunkFailure());
 
-    expect(reload.urls).toEqual([]);
+    expect(reload.reloaded).toEqual([]);
     expect(recovery.reloading()).toBe(false);
     expect(command).toBeInstanceOf(RedirectCommand);
     expect(router.serializeUrl(command!.redirectTo)).toBe('/page-load-failed');
@@ -73,7 +67,7 @@ describe('ChunkLoadRecovery (#1543)', () => {
     session.set(STAMP_KEY, JSON.stringify({ path: '/my-bookings', at: Date.now() }));
     recovery.recover(chunkFailure());
 
-    expect(reload.urls).toEqual([TARGET, TARGET]);
+    expect(reload.reloaded).toEqual([TARGET, TARGET]);
   });
 
   it('never reloads automatically when the stamp cannot be written (no loop without a brake)', () => {
@@ -81,7 +75,7 @@ describe('ChunkLoadRecovery (#1543)', () => {
 
     const command = recovery.recover(chunkFailure());
 
-    expect(reload.urls).toEqual([]);
+    expect(reload.reloaded).toEqual([]);
     expect(command).toBeInstanceOf(RedirectCommand);
   });
 
@@ -89,7 +83,7 @@ describe('ChunkLoadRecovery (#1543)', () => {
     const command = recovery.recover(new NavigationError(8, TARGET, new Error('guard threw')));
 
     expect(command).toBeUndefined();
-    expect(reload.urls).toEqual([]);
+    expect(reload.reloaded).toEqual([]);
     expect(session.has(STAMP_KEY)).toBe(false);
   });
 
@@ -100,7 +94,7 @@ describe('ChunkLoadRecovery (#1543)', () => {
 
     recovery.retry();
 
-    expect(reload.urls).toEqual([TARGET]);
+    expect(reload.reloaded).toEqual([TARGET]);
     expect(recovery.reloading()).toBe(true);
     expect(JSON.parse(session.get(STAMP_KEY)!)).toEqual({ path: TARGET_PATH, at: Date.now() });
   });
@@ -110,35 +104,35 @@ describe('ChunkLoadRecovery (#1543)', () => {
 
     recovery.recover(chunkFailure('/legal/privacy?from=menu'));
 
-    expect(reload.urls).toEqual([]);
+    expect(reload.reloaded).toEqual([]);
   });
 
   it('loads a document afresh when it comes back from the back/forward cache mid-reload', () => {
     recovery.recover(chunkFailure());
-    reload.urls.length = 0;
+    reload.reloaded.length = 0;
 
     window.dispatchEvent(Object.assign(new Event('pageshow'), { persisted: true }));
 
-    expect(reload.urls).toEqual([window.location.href]);
+    expect(reload.reloaded).toEqual([window.location.href]);
   });
 
   it('ignores a back/forward-cache restore when no reload was asked for', () => {
     window.dispatchEvent(Object.assign(new Event('pageshow'), { persisted: true }));
 
-    expect(reload.urls).toEqual([]);
+    expect(reload.reloaded).toEqual([]);
   });
 
   it('retries to the home page when no chunk failure was recorded (the card opened by its own URL)', () => {
     recovery.retry();
 
-    expect(reload.urls).toEqual(['/']);
+    expect(reload.reloaded).toEqual(['/']);
   });
 
   it('is what the router feature calls, inside the injection context', () => {
     const command = TestBed.runInInjectionContext(() => chunkLoadErrorHandler(chunkFailure()));
 
     expect(command).toBeInstanceOf(RedirectCommand);
-    expect(reload.urls).toEqual([TARGET]);
+    expect(reload.reloaded).toEqual([TARGET]);
   });
 });
 

@@ -12,12 +12,11 @@ import { FakeQrScanner } from './operator/fake-qr-scanner';
 import { QrScanner } from './operator/qr-scanner';
 import { apiSessionInterceptor } from './core/api-session.interceptor';
 import { chunkLoadErrorHandler } from './core/chunk-load-recovery';
-import { PageReload, WindowPageReload } from './core/page-reload';
+import { PageNavigation, WindowPageNavigation } from './core/page-navigation';
 import { BrowserGeolocationGateway, GeolocationGateway } from './shared/geolocation';
 import { FakeMapEngine } from './shared/fake-map-engine';
 import { MapEngine } from './shared/map-engine';
 import { MapLibreMapEngine } from './shared/maplibre-map-engine';
-import { SsoRedirect, WindowSsoRedirect } from './core/sso-redirect';
 import { ThemeService } from './core/theme';
 
 import {
@@ -83,11 +82,7 @@ export const appConfig: ApplicationConfig = {
     { provide: MapEngine, useFactory: mapEngineFactory },
     // No fake to swap in: the e2e drives the real prompt through Playwright's permissions.
     { provide: GeolocationGateway, useClass: BrowserGeolocationGateway },
-    // SSO start is a full-page navigation out of the SPA; the seam lets unit specs record the
-    // URL without a real navigation (mirrors the Stripe adapter swap). The e2e uses the real redirect and
-    // intercepts the navigation with page.route.
-    { provide: SsoRedirect, useClass: WindowSsoRedirect },
-    // The full page load a failed chunk needs; unit specs record the URL instead.
-    { provide: PageReload, useFactory: () => new WindowPageReload(window) },
+    // No fake to swap in: the e2e drives the real page loads (SSO start via page.route, chunk reload).
+    { provide: PageNavigation, useFactory: () => new WindowPageNavigation(window) },
   ],
 };

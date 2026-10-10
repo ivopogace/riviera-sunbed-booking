@@ -1345,8 +1345,8 @@ The SPA rules whose TSDoc points here; structure is `riviera-frontend`'s, stylin
   module fetch, so an in-app retry of the same `import()` fails without refetching, and the router
   keeps its own URL in `history.state` whenever the address bar shows another (`browserUrl`), which
   a load landing on the same entry keeps — so the reload path redirects with `skipLocationChange`
-  and `core/page-reload.ts` clears the entry's state before navigating. Any other navigation error
-  stays loud: a guard or resolver that throws is a bug, not a page to retry.
+  and `core/page-navigation.ts`'s `reload` clears the entry's state before navigating. Any other
+  navigation error stays loud: a guard or resolver that throws is a bug, not a page to retry.
 - **The Daily view's phone rail ellipsizes the stored row name at the tourist cap, and shows two
   tiles per row** (`shared/beach-map-canvas.ts`, the `labels` rail below `sm`): at 390px the gutters,
   the frame and the price rail leave the rail 25px for a third whole tile, which only the row's grid

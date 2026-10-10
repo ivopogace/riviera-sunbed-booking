@@ -22,10 +22,13 @@ import {
   SignInResult,
   signInResultFor,
 } from './session-auth';
-import { SsoProviderId, SsoRedirect } from './sso-redirect';
+import { PageNavigation } from './page-navigation';
 
 /** The `/api/me` surface for the signed-in customer's own account writes. */
 const ME_API = `${environment.apiBaseUrl}/api/me`;
+
+/** The SSO providers a customer can start a sign-in with. */
+export type SsoProviderId = 'google' | 'apple';
 
 /**
  * Shown when a current password is required but none was supplied (`MISSING_CURRENT_PASSWORD`),
@@ -107,16 +110,16 @@ export class CustomerAuth extends SessionAuth {
   /** The signed-in customer's email, or undefined when signed out (the base's principal name). */
   readonly email = this.principalName;
 
-  private readonly ssoRedirect = inject(SsoRedirect);
+  private readonly navigation = inject(PageNavigation);
   protected readonly restoreOnStartup = this.restore();
 
   /**
-   * Start "Continue with Google/Apple": a full-page navigation (via {@link SsoRedirect}, not
+   * Start "Continue with Google/Apple": a full-page navigation (via {@link PageNavigation}, not
    * `HttpClient`) to the backend authorize endpoint. OIDC + PKCE completes server-side and returns
    * with the form-login session cookie, which `restore()` picks up on the return load.
    */
   startSso(provider: SsoProviderId): void {
-    this.ssoRedirect.go(`${AUTH_API}/sso/${provider}/authorize`);
+    this.navigation.leaveTo(`${AUTH_API}/sso/${provider}/authorize`);
   }
 
   /** Server-validated sign-in: a wrong credential is a generic 401 (the backend never says why, D-8). */
