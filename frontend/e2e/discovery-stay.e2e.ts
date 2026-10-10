@@ -228,6 +228,8 @@ for (const viewport of [
     await page.getByTestId('head-day').click();
     const rail = page.locator('[role="group"][aria-label="Day"]');
     await expect(rail).toHaveCSS('flex-wrap', 'wrap');
+    // The rail's entry translate is still running: a box read mid-transition is sub-pixel short.
+    await settle(page);
 
     const { clientWidth, scrollWidth } = await rail.evaluate((el) => ({
       clientWidth: el.clientWidth,
