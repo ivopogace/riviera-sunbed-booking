@@ -326,3 +326,53 @@ test('keeps focus off body across the weather-refund confirm (WCAG 2.4.3)', asyn
   await settle(page);
   await expectNoSeriousAxeViolations(page, 'weather refund focus legs');
 });
+
+test('a phone stacks each ledger line as a card, period total last, and never scrolls sideways (#1533)', async ({
+  page,
+}) => {
+  await mockPayouts(page);
+  await signInAndOpenPayouts(page);
+  // Resized after navigating: the phone console swaps the tab rail the sign-in helper clicks.
+  await page.setViewportSize({ width: 390, height: 844 });
+
+  const cards = page.getByTestId('ledger-cards');
+  await expect(cards).toBeVisible();
+  await expect(page.getByTestId('ledger-table')).toBeHidden();
+  await expect(page.getByTestId('ledger-card')).toHaveCount(4);
+  // Commission and Net, the columns the table cut off, are on screen for every line.
+  const fee = page.getByTestId('ledger-card').nth(3);
+  await fee.scrollIntoViewIfNeeded();
+  await expect(fee.getByText('Commission', { exact: true })).toBeInViewport({ ratio: 1 });
+  await expect(fee.getByTestId('ledger-card-net')).toBeInViewport({ ratio: 1 });
+  await expect(fee.getByTestId('ledger-card-net')).toContainText('-€5');
+  await expect(fee.getByTestId('ledger-card-reason')).toContainText('Venue change fee');
+  await expect(page.getByTestId('period-owed-card')).toContainText('€61.50');
+  expect(await cards.evaluate((el) => el.lastElementChild?.getAttribute('data-testid'))).toBe(
+    'period-total-card',
+  );
+
+  const fits = await page
+    .getByTestId('ledger-card')
+    .evaluateAll((els) => els.every((el) => el.scrollWidth <= el.clientWidth));
+  expect(fits).toBe(true);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
+
+  // The hidden table is out of the accessibility tree, so the ledger is read once.
+  await expect(page.getByRole('table')).toHaveCount(0);
+  await expect(page.getByRole('list', { name: /Payout ledger/ })).toHaveCount(1);
+  await settle(page);
+  await expectNoSeriousAxeViolations(page, 'payout ledger cards (phone)');
+});
+
+test('from sm up the ledger stays a table and the cards are out of the accessibility tree (#1533)', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 640, height: 900 });
+  await mockPayouts(page);
+  await signInAndOpenPayouts(page);
+
+  await expect(page.getByTestId('ledger-table')).toBeVisible();
+  await expect(page.getByTestId('ledger-cards')).toBeHidden();
+  await expect(page.getByRole('table', { name: /Payout ledger/ })).toHaveCount(1);
+  await expect(page.getByRole('list', { name: /Payout ledger/ })).toHaveCount(0);
+});

@@ -1,3 +1,4 @@
+import { NgTemplateOutlet } from '@angular/common';
 import { Component, computed, effect, inject, signal, untracked } from '@angular/core';
 import { ActivatedRoute } from '@angular/router';
 
@@ -42,6 +43,7 @@ import { RainIcon } from '../shared/rain-icon';
     TouchTarget,
     ConfirmPanel,
     RainIcon,
+    NgTemplateOutlet,
   ],
   templateUrl: './payouts-tab.html',
 })
