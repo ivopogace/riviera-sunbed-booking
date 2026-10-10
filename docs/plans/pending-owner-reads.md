@@ -22,13 +22,13 @@ the console banner and the spec's approval wording stay.
 
 - [ ] **AC-1:** Given an operator in status `PENDING` owning venue V with sets, when it reads
   `GET /api/venues/V/beach-map`, then it is `200` with V's map and locks. *Seam:* `ViewBeachMap`
-  over HTTP · *Pinned by:* `PendingOwnerConsoleReadsIT.pendingOwnerReadsItsOwnBeachMap`
+  over HTTP · *Pinned by:* `PendingOperatorConsoleIT.aPendingOperatorCreatesAndWorksItsOwnVenue`
 - [ ] **AC-2:** Given the same venue V, when a tourist reads `GET /api/venues/V`, then it is
   `404` (the `VenueCatalog` fence is unchanged). *Seam:* `VenueCatalog` over HTTP ·
-  *Pinned by:* `PendingOwnerConsoleReadsIT.touristReadsKeepTheFence`
+  *Pinned by:* `PendingOperatorConsoleIT.aPendingOperatorsVenueStaysHiddenFromTouristsUntilApproval`
 - [ ] **AC-3:** Given another operator (any status), when it reads V's beach map, then `403`
   before any existence probe. *Seam:* `ViewBeachMap` · *Pinned by:*
-  `PendingOwnerConsoleReadsIT.anotherOperatorIsDeniedBeforeExistence`,
+  `PendingOperatorConsoleIT.aPendingOperatorCreatesAndWorksItsOwnVenue`,
   `BeachMapReadServiceTest.deniesNonOwnerBeforeAnyProbe`
 - [ ] **AC-4:** Given ownership passed, when the module composes the owner's map, then it reads
   through the unfenced `OwnerVenueMap` port and never `VenueCatalog`. *Seam:* `OwnerVenueMap` ·
@@ -40,7 +40,7 @@ the console banner and the spec's approval wording stay.
   `daily-view-tab.spec`, `operator-console.spec`, `pricing-tab.spec`, `requests-tab.spec`
 - [ ] **AC-6:** Given a freshly registered (PENDING) operator creating a venue, when it opens the
   console's Beach map and Pricing tabs, then both load from the owner's read. *Seam:* mocked e2e ·
-  *Pinned by:* `operator-onboarding.e2e.ts`
+  *Pinned by:* `operator-registration.e2e.ts`
 
 ## Non-goals
 
@@ -55,7 +55,7 @@ the console banner and the spec's approval wording stay.
   unchanged (ownership → map → locks), `deniesNonOwnerBeforeAnyProbe` verifies no interaction.
 - **R-2 (tourist leak):** the new port must not be reachable from the tourist controller → it is
   module-internal (`application/`), and `VenueCatalog`'s fence stays; `VenueCatalogVisibilityIT`
-  and `PendingOwnerConsoleReadsIT.touristReadsKeepTheFence` pin it.
+  and `PendingOperatorConsoleIT.aPendingOperatorsVenueStaysHiddenFromTouristsUntilApproval` pin it.
 - **R-3 (e2e drift):** console specs only mocked the tourist URL → each console spec gains the
   owner-read mock; tourist specs untouched.
 
@@ -84,12 +84,12 @@ the console banner and the spec's approval wording stay.
 
 ## Execution status
 
-**Stage pointer:** implement (phase 1)
+**Stage pointer:** PR — draft, CI gate
 
-**Next action:** console unit specs green, then the e2e mocks
+**Next action:** CI green on the head, then ready-for-review + the review gate (high)
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — backend | ✅ | phase-0 |
-| 1 — frontend | ⏳ | |
-| 2 — e2e + docs | | |
+| 1 — frontend | ✅ | phase-1 |
+| 2 — e2e + docs | ✅ | phase-1 |

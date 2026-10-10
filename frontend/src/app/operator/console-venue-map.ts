@@ -1,8 +1,8 @@
 import { inject, Service } from '@angular/core';
-import { catchError, Observable, shareReplay, tap, throwError } from 'rxjs';
+import { catchError, map, Observable, shareReplay, tap, throwError } from 'rxjs';
 
 import { VenueMapView } from '../shared/venue-views';
-import { VenueService } from '../venue/venue.service';
+import { OperatorConsoleService } from './operator-console.service';
 
 /**
  * Snapshot reuse window, timed from when the read SETTLES (timed from send, a slow read would
@@ -12,35 +12,34 @@ import { VenueService } from '../venue/venue.service';
 const SNAPSHOT_TTL_MS = 30_000;
 
 /**
- * The operator console's shared `(venue, date)` beach-map snapshot: one request for the shell's,
- * console page's, {@code RequestsTab}'s and {@code PricingTab}'s identical venue-map read. Opt-in
- * per call site, never inside {@link VenueService}: {@code DailyViewTab}, {@code LayoutEditor} and
- * the tourist map need server truth. One slot; a changed key evicts it. Call {@link reset} on sign-out,
- * after every successful map write (layout, reprice, rename, per-set edits; a walk-in mark/release via
+ * The operator console's shared beach-map snapshot: one owner's read ({@link OperatorConsoleService#beachMap},
+ * its `map`; the tourist read hides a PENDING owner's venue, #1531) for the shell's, {@code RequestsTab}'s
+ * and {@code PricingTab}'s identical ask. Opt-in per call site: {@code DailyViewTab} and {@code LayoutEditor}
+ * need server truth. One slot; a changed venue evicts it. Call {@link reset} on sign-out, after every
+ * successful map write (layout, reprice, rename, per-set edits; a walk-in mark/release via
  * {@code AvailabilityChanges#announce}) and BEFORE a `409 STALE_WRITE` recovery read, or tabs go stale.
  */
 @Service()
 export class ConsoleVenueMap {
-  private readonly venues = inject(VenueService);
+  private readonly console = inject(OperatorConsoleService);
 
-  private key?: string;
+  private key?: number;
   private snapshot?: Observable<VenueMapView>;
   private expiresAt = 0;
   /** Identifies the current fetch, so a superseded one cannot invalidate the snapshot that replaced it. */
   private generation = 0;
 
   /**
-   * The venue map for `(venueId, date)`, shared within {@link SNAPSHOT_TTL_MS}: concurrent callers
+   * The owner's venue map for today, shared within {@link SNAPSHOT_TTL_MS}: concurrent callers
    * join one in-flight request, later ones replay the settled snapshot. A failed read is never
    * retained, so the caller's error handling runs and the next ask refetches.
    */
-  load(venueId: number, date: string): Observable<VenueMapView> {
-    const key = `${venueId}@${date}`;
-    if (this.key !== key || this.snapshot === undefined || Date.now() >= this.expiresAt) {
-      this.key = key;
+  load(venueId: number): Observable<VenueMapView> {
+    if (this.key !== venueId || this.snapshot === undefined || Date.now() >= this.expiresAt) {
+      this.key = venueId;
       // An in-flight read is about to answer, so it never ages out; the window opens when it settles.
       this.expiresAt = Number.POSITIVE_INFINITY;
-      this.snapshot = this.fetch(venueId, date, ++this.generation);
+      this.snapshot = this.fetch(venueId, ++this.generation);
     }
     return this.snapshot;
   }
@@ -52,8 +51,9 @@ export class ConsoleVenueMap {
     this.expiresAt = 0;
   }
 
-  private fetch(venueId: number, date: string, generation: number): Observable<VenueMapView> {
-    return this.venues.getVenueMap(venueId, date).pipe(
+  private fetch(venueId: number, generation: number): Observable<VenueMapView> {
+    return this.console.beachMap(venueId).pipe(
+      map((view) => view.map),
       tap(() => {
         if (this.generation === generation) {
           this.expiresAt = Date.now() + SNAPSHOT_TTL_MS;

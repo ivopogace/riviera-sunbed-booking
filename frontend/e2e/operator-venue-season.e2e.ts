@@ -142,9 +142,9 @@ async function mockSeason(page: Page, refuseDate = false): Promise<{ writes: Req
       },
     });
   });
-  // The map read (`?date=`) and the list read are disjoint paths; the list sorts closed venues last.
-  await page.route(/\/api\/venues\/1(\?.*)?$/, (route) =>
-    route.fulfill({ json: venueMap(closure) }),
+  // The owner's map read and the tourist list read are disjoint paths; the list sorts closed venues last.
+  await page.route(/\/api\/venues\/1\/beach-map$/, (route) =>
+    route.fulfill({ json: { map: venueMap(closure), locks: [] } }),
   );
   await page.route(/\/api\/venues(\?.*)?$/, (route) => {
     const miramar = summary(1, 'Miramar Beach Club', closure);

@@ -94,10 +94,12 @@ async function mockVenue(
     route.fulfill({ json: { ...profile, version: serverVersion } }),
   );
 
-  // The widened profile PATCH (no query) AND the shell/tourist map GET (`?date=`) share the
-  // `/api/venues/1` path — one handler, branched on method. PATCH is captured (204, or 403 when
-  // denied); on success the edit is folded into the stateful profile + map so the tourist re-render
-  // assertion is genuine. The `(\?.*)?$` tail matches the dated GET too (it never matches `/1/profile`).
+  // The owner's map read (shell header/stats): the current, possibly edited, map.
+  await page.route(/\/api\/venues\/1\/beach-map$/, (route) =>
+    route.fulfill({ json: { map: currentMap, locks: [] } }),
+  );
+  // The widened profile PATCH is captured (204, or 403 when denied); on success the edit is folded
+  // into the stateful profile + map so the re-render assertion is genuine.
   await page.route(/\/api\/venues\/1(\?.*)?$/, (route) => {
     if (route.request().method() === 'PATCH') {
       patches.push(route.request());
@@ -126,8 +128,7 @@ async function mockVenue(
       currentMap = venueMap(profile.name, profile.bookingMode);
       return route.fulfill({ status: 204, body: '' });
     }
-    // GET /api/venues/1 (shell header/stats + tourist map) — the current (possibly edited) map.
-    return route.fulfill({ json: currentMap });
+    return route.fallback();
   });
 
   // Shell stats-strip reads (kept simple/empty — the tab under test doesn't need real values).

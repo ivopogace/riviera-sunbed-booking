@@ -148,17 +148,6 @@ async function mockEditor(
     serverSetVersion += 1;
     return route.fulfill({ status: 204, body: '' });
   });
-  // The venue map (editor seed + shell header/stats) — carries the current setVersion; GET only, kept
-  // below the PUT route.
-  await page.route(/\/api\/venues\/1(\?.*)?$/, async (route) => {
-    if (route.request().method() !== 'GET') {
-      return route.fallback();
-    }
-    await mapGate;
-    return route.fulfill({
-      json: { ...VENUE_MAP, sets: seededSets, setVersion: serverSetVersion },
-    });
-  });
   // The per-row rename: enforces the same setVersion token the bulk PUT does, and bumps it on success.
   await page.route(/\/api\/venues\/1\/rows\/[^/]+\/name$/, (route) => {
     renames.push(route.request());

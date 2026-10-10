@@ -100,7 +100,9 @@ async function mockConsole(
     sessionLive = false;
     return route.fulfill({ status: 204, body: '' });
   });
-  await page.route(/\/api\/venues\/1(\?.*)?$/, (route) => route.fulfill({ json: VENUE_MAP }));
+  await page.route(/\/api\/venues\/1\/beach-map$/, (route) =>
+    route.fulfill({ json: { map: VENUE_MAP, locks: [] } }),
+  );
   await page.route(/\/api\/venues\/1\/booking-requests(\?.*)?$/, (route) =>
     route.fulfill({ json: Array.from({ length: pending }, (_, i) => ({ bookingId: i + 1 })) }),
   );

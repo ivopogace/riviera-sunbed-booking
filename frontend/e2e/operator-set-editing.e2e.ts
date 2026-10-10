@@ -235,9 +235,6 @@ async function mockConsole(
     return route.fulfill({ status: 204, body: '' });
   });
 
-  await page.route(/\/api\/venues\/1(\?.*)?$/, (route) =>
-    route.request().method() === 'GET' ? route.fulfill({ json: venueMap() }) : route.fallback(),
-  );
   await page.route(/\/api\/venues\/1\/booking-requests(\?.*)?$/, (route) =>
     route.fulfill({ json: [] }),
   );

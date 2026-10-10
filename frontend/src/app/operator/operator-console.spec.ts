@@ -62,7 +62,7 @@ function baseProviders(route: Partial<ActivatedRoute> = routeStub(String(VENUE))
   ];
 }
 
-/** The venue-title read the console fires once a session exists (best-effort, date-independent). */
+/** The owner's map read the console fires once a session exists (best-effort; #1531: never the tourist read). */
 function flushVenue(
   httpMock: HttpTestingController,
   name: string,
@@ -70,8 +70,8 @@ function flushVenue(
   sets: SetView[] = [],
 ): void {
   httpMock
-    .expectOne((r) => r.url === `${BASE}/api/venues/${venue}` && r.method === 'GET')
-    .flush(venueMap(name, venue, sets));
+    .expectOne((r) => r.url === `${BASE}/api/venues/${venue}/beach-map` && r.method === 'GET')
+    .flush({ map: venueMap(name, venue, sets), locks: [] });
 }
 
 /** The Requests-badge count read the console fires once a session exists (owner-asserted server-side,
@@ -254,14 +254,12 @@ describe('OperatorConsole — an announced walk-in change (#1525)', () => {
     fixture.detectChanges();
 
     expect(freeTile()).toBe('2 / 3'); // no "0 / 0" flash while the fresh read is out
-    // The snapshot was dropped by the announce, so this is a real server read, dated today.
-    const req = httpMock.expectOne(
-      (r) => r.url === `${BASE}/api/venues/${VENUE}` && r.method === 'GET',
-    );
-    expect(req.request.params.get('date')).toBe(TODAY);
-    req.flush(
-      venueMap('Miramar Beach Club', VENUE, [set(1, 'TAKEN'), set(2, 'FREE'), set(3, 'TAKEN')]),
-    );
+    // The snapshot was dropped by the announce, so this is a real server read of the owner's map.
+    flushVenue(httpMock, 'Miramar Beach Club', VENUE, [
+      set(1, 'TAKEN'),
+      set(2, 'FREE'),
+      set(3, 'TAKEN'),
+    ]);
     // The strip's own held re-read (pinned in its spec); answered so verify() stays clean.
     httpMock
       .expectOne((r) => r.url === `${BASE}/api/venues/${VENUE}/availability` && r.method === 'GET')
@@ -281,7 +279,7 @@ describe('OperatorConsole — an announced walk-in change (#1525)', () => {
     TestBed.inject(AvailabilityChanges).announce({ venueId: VENUE, date: TODAY });
     await fixture.whenStable();
     httpMock
-      .expectOne((r) => r.url === `${BASE}/api/venues/${VENUE}` && r.method === 'GET')
+      .expectOne((r) => r.url === `${BASE}/api/venues/${VENUE}/beach-map` && r.method === 'GET')
       .flush({}, { status: 500, statusText: 'Server Error' });
     httpMock
       .expectOne((r) => r.url === `${BASE}/api/venues/${VENUE}/availability` && r.method === 'GET')
@@ -297,14 +295,24 @@ describe('OperatorConsole — an announced walk-in change (#1525)', () => {
     TestBed.inject(AvailabilityChanges).announce({ venueId: VENUE, date: TODAY });
     await fixture.whenStable();
     const [first, second] = httpMock.match(
-      (r) => r.url === `${BASE}/api/venues/${VENUE}` && r.method === 'GET',
+      (r) => r.url === `${BASE}/api/venues/${VENUE}/beach-map` && r.method === 'GET',
     );
-    second.flush(
-      venueMap('Miramar Beach Club', VENUE, [set(1, 'TAKEN'), set(2, 'TAKEN'), set(3, 'TAKEN')]),
-    );
-    first.flush(
-      venueMap('Miramar Beach Club', VENUE, [set(1, 'TAKEN'), set(2, 'FREE'), set(3, 'TAKEN')]),
-    );
+    second.flush({
+      map: venueMap('Miramar Beach Club', VENUE, [
+        set(1, 'TAKEN'),
+        set(2, 'TAKEN'),
+        set(3, 'TAKEN'),
+      ]),
+      locks: [],
+    });
+    first.flush({
+      map: venueMap('Miramar Beach Club', VENUE, [
+        set(1, 'TAKEN'),
+        set(2, 'FREE'),
+        set(3, 'TAKEN'),
+      ]),
+      locks: [],
+    });
     // The strip's two held re-reads (pinned in its spec); answered so verify() stays clean.
     httpMock
       .match((r) => r.url === `${BASE}/api/venues/${VENUE}/availability` && r.method === 'GET')
@@ -320,7 +328,7 @@ describe('OperatorConsole — an announced walk-in change (#1525)', () => {
     TestBed.inject(AvailabilityChanges).announce({ venueId: VENUE, date: addDays(TODAY, 1) });
     await fixture.whenStable();
 
-    httpMock.expectNone((r) => r.url === `${BASE}/api/venues/${VENUE}`);
+    httpMock.expectNone((r) => r.url === `${BASE}/api/venues/${VENUE}/beach-map`);
     expect(freeTile()).toBe('2 / 3');
   });
 });

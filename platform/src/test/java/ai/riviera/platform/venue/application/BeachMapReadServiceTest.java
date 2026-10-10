@@ -32,7 +32,7 @@ import static org.mockito.Mockito.when;
  * unfenced read composes plus the locked sets ordered by id, ownership asserted <strong>before</strong>
  * any map or claim probe so a non-owner learns nothing (invariant #13), and the empty-Optional
  * signal the controller maps to 404. Collaborators are mocked — the JDBC truths are pinned by
- * {@code VenueAdminControllerIT} and {@code PendingOwnerConsoleReadsIT}.
+ * {@code VenueAdminControllerIT} and {@code PendingOperatorConsoleIT}.
  */
 class BeachMapReadServiceTest {
 
