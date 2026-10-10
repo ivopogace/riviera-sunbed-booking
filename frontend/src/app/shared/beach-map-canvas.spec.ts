@@ -265,28 +265,81 @@ describe('BeachMapCanvas (#672)', () => {
 
   it('reserves the same rail width loading and loaded, for either label vocabulary (#749)', () => {
     const { component, host, detect } = render();
-    for (const codes of ['labels', 'capped-labels'] as const) {
+    // A minimum, not the full cap: the cap-sized rail costs the desktop map its fits-whole margin.
+    // The operator vocabulary reserves per tier (#1532): the letter chip's 24px below `sm`.
+    for (const [codes, column, placeholder] of [
+      ['labels', ['min-w-6', 'sm:min-w-[54px]'], ['w-6', 'sm:w-[54px]']],
+      ['capped-labels', ['min-w-[54px]'], ['w-[54px]']],
+    ] as const) {
       component.railCodes.set(codes);
       component.loading.set(false);
       detect();
-      // A minimum, not the full cap: the cap-sized rail costs the desktop map its fits-whole margin.
-      const loaded = railColumn(host).className;
-      expect(loaded, codes).toContain('min-w-[54px]');
+      const loaded = railColumn(host);
+      for (const cls of column) {
+        expect(loaded.classList.contains(cls), `${codes} column ${cls}`).toBe(true);
+      }
 
       component.loading.set(true);
       detect();
-      expect(railColumn(host).className, codes).toBe(loaded);
+      expect(railColumn(host).className, codes).toBe(loaded.className);
       const chip = host.querySelector('[data-testid="row-code-placeholder"]')!;
-      expect(chip.classList.contains('w-[54px]'), codes).toBe(true);
+      for (const cls of placeholder) {
+        expect(chip.classList.contains(cls), `${codes} placeholder ${cls}`).toBe(true);
+      }
     }
   });
 
-  it('caps only the tourist rail, so operator labels stay whole (#724, #749)', () => {
+  it('caps only the tourist rail, so operator labels stay whole from sm up (#724, #749)', () => {
     const { component, host, detect } = render();
     component.railCodes.set('labels');
     detect();
     expect(host.querySelector('[data-testid="row-code"] .truncate')).toBeNull();
-    expect(railColumn(host).className).toContain('min-w-[54px]');
+    expect(railColumn(host).classList.contains('sm:min-w-[54px]')).toBe(true);
+    expect(railColumn(host).className).not.toContain('max-w');
+  });
+
+  it('renders the phone code below sm and the whole label from sm up on an operator rail (#1532)', () => {
+    const { component, host, detect } = render();
+    component.railCodes.set('labels');
+    component.rows.set([
+      { ...row('Front row · Sea view', '€35.00', true, ['1', '2']), phoneCode: 'A' },
+      { ...row('Row 2', '€20.00', true, ['1']), phoneCode: 'B' },
+    ]);
+    detect();
+    const chips = Array.from(host.querySelectorAll('[data-testid="row-code"]'));
+    expect(chips.length).toBe(2);
+    const tiers = chips.map((chip) => ({
+      phone: chip.querySelector('.sm\\:hidden')?.textContent?.trim(),
+      wide: chip.querySelector('.max-sm\\:hidden')?.textContent?.trim(),
+    }));
+    expect(tiers).toEqual([
+      { phone: 'A', wide: 'Front row · Sea view' },
+      { phone: 'B', wide: 'Row 2' },
+    ]);
+    // Neither tier ellipsizes: the letter fits its 24px chip, the name renders whole beside a 54px rail.
+    expect(host.querySelector('[data-testid="row-code"] .truncate')).toBeNull();
+  });
+
+  it('renders the label on both tiers when an operator row carries no phone code (#1532)', () => {
+    const { component, host, detect } = render();
+    component.railCodes.set('labels');
+    detect();
+    const chip = host.querySelector('[data-testid="row-code"]')!;
+    expect(chip.querySelector('.sm\\:hidden')).toBeNull();
+    expect(chip.querySelector('.max-sm\\:hidden')).toBeNull();
+    expect(chip.textContent?.trim()).toBe('A');
+  });
+
+  it('ignores a phone code on the tourist and editor rails (#1532)', () => {
+    const { component, host, detect } = render();
+    component.rows.set([{ ...row('Front row', '€35.00', true, ['1']), phoneCode: 'A' }]);
+    for (const codes of ['letters', 'capped-labels'] as const) {
+      component.railCodes.set(codes);
+      detect();
+      const chip = host.querySelector('[data-testid="row-code"]')!;
+      expect(chip.querySelector('.sm\\:hidden'), codes).toBeNull();
+      expect(chip.textContent?.trim(), codes).toBe('Front row');
+    }
   });
 
   it('reserves nothing for a letters rail, so the editor surfaces are unchanged (#749)', () => {
@@ -324,8 +377,12 @@ describe('BeachMapCanvas (#672)', () => {
     component.loading.set(true);
     detect();
     expect(priceColumn(host).className).toBe(loaded);
-    // The cell's own floor is what sizes this rail, and it is untouched by the reservation.
-    expect(priceColumn(host).firstElementChild!.className).toContain('min-w-[52px]');
+    // The cell's own floor is what sizes this rail, and it is untouched by the reservation:
+    // 52px from `sm` up, 44px below it, where a phone's bare amount is narrower still (#1532).
+    const cell = priceColumn(host).firstElementChild!;
+    expect(cell.classList.contains('sm:min-w-[52px]')).toBe(true);
+    expect(cell.classList.contains('min-w-11')).toBe(true);
+    expect(cell.className).not.toContain(' min-w-[52px]');
   });
 
   it('sizes every row wrapper and rail cell from the identical fixed --riv-tile height (#685)', () => {

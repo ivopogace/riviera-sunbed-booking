@@ -41,6 +41,7 @@ import { SetView, VenueMapView } from '../shared/venue-views';
 import { VenueService } from '../venue/venue.service';
 import { BeachMapCanvas, BeachMapCanvasRow, BeachMapRowDef } from '../shared/beach-map-canvas';
 import { AvailabilityChanges } from './availability-changes';
+import { gridRowLabel } from './beach-cell';
 import {
   ConsoleDailyBooking,
   DayRefundErrorCode,
@@ -366,6 +367,8 @@ export class DailyViewTab {
     const prices = rows.map((r) => formatMoneyRange(r.sets.map((s) => s.price)));
     return rows.map((row, i) => ({
       code: row.label,
+      // The Beach map tab's letter for the row's grid row — what the phone rail shows (#1532).
+      phoneCode: gridRowLabel(row.sets[0].gridY - 1),
       priceLabel: prices[i],
       zoneStart: i === 0 || prices[i] !== prices[i - 1],
       tileCount: row.sets.length,

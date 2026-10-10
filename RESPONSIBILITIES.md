@@ -1347,6 +1347,14 @@ The SPA rules whose TSDoc points here; structure is `riviera-frontend`'s, stylin
   a load landing on the same entry keeps — so the reload path redirects with `skipLocationChange`
   and `core/page-reload.ts` clears the entry's state before navigating. Any other navigation error
   stays loud: a guard or resolver that throws is a bug, not a page to retry.
+- **The Daily view's phone rail reads the grid letter, not the stored row name**
+  (`BeachMapCanvasRow.phoneCode`, the Daily view's `gridRowLabel(gridY − 1)`): at 390px the gutters,
+  the frame and the price rail leave the left rail 25px for three whole tiles per row, which no
+  ellipsized name fits, so below `sm` the chip is the Beach map tab's letter in a 24px rail and the
+  price cell floor is 44px. From `sm` up the stored name renders whole in a 54px rail, and the tile
+  accessible names carry it on every width (#724). A row renamed to another row's letter collides on
+  the phone rail only; the owner took that over rows all reading "Ro…" (#1532). Never
+  "consistency-fix" the tourist rail to letters: #724 retired them there.
 - **The venue console lands on the Daily view** (`VENUE_CONSOLE_LANDING_TAB`), what a trading venue
   opens every day; set-up tabs are destinations. A freshly created venue is the exception:
   `operator/venue-create-card.ts` sends it to `beach-map`, as it has no map to run a day on yet.

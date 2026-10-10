@@ -28,6 +28,10 @@ export interface BeachMapCanvasRow {
    *  its own: the tourist map and the Daily view pass the stored `rowLabel` (uniqueness
    *  from grouping rows by it), the layout editor its grid letters (a grid being painted). */
   readonly code: string;
+  /** What the `labels` rail shows in place of {@link code} below `sm`, where a stored row name
+   *  would leave one tile per row in view (#1532): the Daily view passes the row's grid letter.
+   *  Absent, the label renders on both tiers; the other vocabularies never read it. */
+  readonly phoneCode?: string;
   /** The zone chip's text; `null` renders no chip even on a zone start. The rail caps the chip's
    *  width and ellipsizes what does not fit (92px below `sm`, 128px above), so this may be a
    *  phrase — a price plus what it buys — and not only an amount. */
@@ -110,13 +114,13 @@ export class BeachMapCanvas {
   readonly viewportLabel = input<string>('');
   /** Mouse drag-to-pan; a surface whose drag gesture is its own (paint) switches it off. */
   readonly dragPan = input<boolean>(true);
-  /** Rail chip vocabulary, which fixes the rail's reserved width in loading AND loaded states:
-   *  `letters` (editors) reserves nothing, `labels` a minimum a longer name still widens, and
-   *  `capped-labels` (tourist) also ellipsizes so the phone rail cannot move. */
+  /** Rail chip vocabulary, fixing the rail's reserved width loading AND loaded: `letters` (editors)
+   *  reserves nothing; `labels` (Daily view) a 54px minimum from `sm`, the 24px letter chip of
+   *  {@link BeachMapCanvasRow.phoneCode} below; `capped-labels` (tourist) also ellipsizes. */
   readonly railCodes = input<'letters' | 'labels' | 'capped-labels'>('letters');
   /** Price-rail chip vocabulary, fixing its reserved width in both states: `amounts` (operator)
-   *  reserves nothing beyond the 52px floor — a min–max span may still widen it, by choice;
-   *  `capped-phrases` (tourist) reserves the 92px phone cap. Independent of {@link railCodes}. */
+   *  reserves only the cell floor (52px, 44px below `sm`) — a min–max span still widens it, by
+   *  choice; `capped-phrases` (tourist) reserves the 92px phone cap. Independent of {@link railCodes}. */
   readonly priceChips = input<'amounts' | 'capped-phrases'>('amounts');
   /** Draw a placeholder grid: rails reserve their columns but state nothing, and every gesture cue
    *  is withheld. Surfaces render skeletons THROUGH the canvas to inherit `--riv-tile` and frame
@@ -193,14 +197,21 @@ export class BeachMapCanvas {
   }
 
   /** Rail width reserved by vocabulary in BOTH states — content-derived, the grid slides on load.
-   *  A 54px minimum (the mobile cap), not the full cap: that would push a 14-column desktop venue
-   *  into a pan. Only a label wider than 54px still shifts the grid. */
+   *  A 54px minimum (the mobile cap), not the full cap, which would push a 14-column desktop venue
+   *  into a pan; the `labels` rail's 24px below `sm` is its letter chip (#1532). */
   protected readonly railColumnClass = computed(() => {
     // A fill button needs the 44px floor in both axes, not just the chip's min-w-6.
     if (this.rowRailInteractive()) {
       return 'min-w-11';
     }
-    return this.railCodes() === 'letters' ? '' : 'min-w-[54px]';
+    switch (this.railCodes()) {
+      case 'letters':
+        return '';
+      case 'labels':
+        return 'min-w-6 sm:min-w-[54px]';
+      case 'capped-labels':
+        return 'min-w-[54px]';
+    }
   });
 
   /** The price rail's reservation, on {@link railColumnClass}'s terms: without it the viewport
@@ -216,9 +227,16 @@ export class BeachMapCanvas {
   );
 
   /** The loading chip fills whatever the rail reserves, so the placeholder is the rail, not a pill in it. */
-  protected readonly railPlaceholderClass = computed(() =>
-    this.railCodes() === 'letters' ? 'min-w-6' : 'w-[54px]',
-  );
+  protected readonly railPlaceholderClass = computed(() => {
+    switch (this.railCodes()) {
+      case 'letters':
+        return 'min-w-6';
+      case 'labels':
+        return 'w-6 sm:w-[54px]';
+      case 'capped-labels':
+        return 'w-[54px]';
+    }
+  });
 
   protected readonly rowDef = contentChild.required<BeachMapRowDef>(BeachMapRowDef);
   protected readonly rows = computed<readonly BeachMapCanvasRow[]>(() =>

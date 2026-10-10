@@ -341,9 +341,10 @@ test('the operator Daily view’s loading state is axe-clean (#744)', async ({ p
  * (`venue-map-pan.e2e.ts`, #700) clears its viewport by ~31px on a 14-column venue, and a
  * cap-sized rail spends 39px of it — measured, as a pan that map is not supposed to need. So the
  * residual survives, and these tests state its size rather than hide it: 0.00px wherever the rail
- * fits the reservation (every tourist phone case, since #724 caps the label there), 9.14px on the
- * `Front row` fixture, and as much as the label is wide on an operator rail, which renders labels
- * whole by that same #724 decision.
+ * fits the reservation (every tourist phone case, since #724 caps the label there, and every Daily
+ * phone case, where the rail is the 24px letter chip, #1532), 9.14px on the `Front row` fixture,
+ * and as much as the label is wide on an operator rail from `sm` up, which renders labels whole
+ * by that same #724 decision.
  *
  * <p>What the rail SAYS while loading is the unit specs' claim; what it MEASURES is only knowable
  * here.

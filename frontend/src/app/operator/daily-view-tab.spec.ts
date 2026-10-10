@@ -231,6 +231,26 @@ describe('DailyViewTab (#175)', () => {
     expect(visible(4)).toBe('1'); // B1 — the position number, never the set id
   });
 
+  it('gives each rail chip the row’s grid letter for a phone beside its stored name (#1532)', () => {
+    // Named rows on grid rows 1 and 3 — a walkway at row 2 — so the letter is the grid's, not the index's.
+    const named = SEED.map((s) =>
+      s.rowLabel === 'A'
+        ? { ...s, rowLabel: 'Front row · Sea view', gridY: 1 }
+        : { ...s, rowLabel: 'Row 3 · Back', gridY: 3 },
+    );
+    render(named);
+    const chips = [...host.querySelectorAll('[data-testid="row-code"]')].map((chip) => ({
+      phone: chip.querySelector('.sm\\:hidden')?.textContent?.trim(),
+      wide: chip.querySelector('.max-sm\\:hidden')?.textContent?.trim(),
+    }));
+    expect(chips).toEqual([
+      { phone: 'A', wide: 'Front row · Sea view' },
+      { phone: 'C', wide: 'Row 3 · Back' },
+    ]);
+    // The tile's accessible name keeps the stored row name on every width (#724).
+    expect(tile(1).getAttribute('aria-label')).toMatch(/^Set Front row · Sea view 1,/);
+  });
+
   it('renders a mixed-price row as its min–max span on the zone rail (#689)', () => {
     // Row A mixes €25 + €30 (a supported state); row B stays uniform at €30.
     const mixed = SEED.map((s) =>
