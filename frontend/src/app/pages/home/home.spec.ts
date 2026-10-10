@@ -1941,7 +1941,7 @@ describe('Home (a stay)', () => {
     expect(card(oneDay, 'Aurora Bay').getAttribute('href')).toBe('/venues/11?date=2027-07-04');
   });
 
-  it('opens the stay picker from the head, re-reads the coast for the picked days, and hands focus back', async () => {
+  it('opens the stay picker from the head in "Several days", re-reads the coast for the picked days, and hands focus back', async () => {
     const fixture = render({ date: '2027-07-04' });
     listRequest().flush(stayVenues());
     fixture.detectChanges();
@@ -1956,9 +1956,17 @@ describe('Home (a stay)', () => {
     const picker = el(fixture).querySelector<HTMLElement>('[data-testid="availability-calendar"]')!;
     expect(picker).not.toBeNull();
     httpMock.expectNone((r) => r.url.includes('/availability-calendar'));
+    // The chip named the mode, so the picker opens in it with the stay rule up, nothing selected yet.
+    expect(
+      picker.querySelector('[data-testid="calendar-mode-stay"]')!.getAttribute('aria-checked'),
+    ).toBe('true');
+    expect(text(picker.querySelector('[data-testid="calendar-stay-rule"]'))).toBe(
+      'Stays of any length this season.',
+    );
+    expect(text(picker.querySelector('[data-testid="calendar-stay-hint"]'))).toBe(
+      'Tap your first day, then your last.',
+    );
 
-    picker.querySelector<HTMLButtonElement>('[data-testid="calendar-mode-stay"]')!.click();
-    fixture.detectChanges();
     picker.querySelector<HTMLButtonElement>('button[data-date="2027-07-10"]')!.click();
     fixture.detectChanges();
     picker.querySelector<HTMLButtonElement>('button[data-date="2027-07-12"]')!.click();
