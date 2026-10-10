@@ -25,6 +25,7 @@ const MIN_DATE = '2026-06-15';
       [selectedLastDate]="selectedLastDate()"
       [minDate]="minDate()"
       [maxStayDays]="maxStayDays()"
+      [opensInStayMode]="opensInStayMode()"
       (chosen)="chosen.push($event)"
       (dismissed)="dismissals = dismissals + 1"
     />
@@ -44,6 +45,7 @@ class Host {
   readonly selectedLastDate = signal<string | undefined>(undefined);
   readonly minDate = signal(MIN_DATE);
   readonly maxStayDays = signal<number | null | undefined>(undefined);
+  readonly opensInStayMode = signal(false);
   readonly chosen: DateRange[] = [];
   dismissals = 0;
 }
@@ -546,6 +548,29 @@ describe('AvailabilityCalendar', () => {
         expect(dayButton(iso)!.closest('td')!.getAttribute('aria-selected')).toBe('true');
       }
       expect(dayButton('2026-06-25')!.closest('td')!.getAttribute('aria-selected')).toBe('false');
+    });
+
+    it('opens in stay mode on one shown day when the host asks, hint and rule up, until One day is picked', async () => {
+      host.opensInStayMode.set(true);
+      fixture.detectChanges();
+      await flushCalendar();
+
+      expect(modeOption('calendar-mode-stay')!.getAttribute('aria-checked')).toBe('true');
+      expect(
+        dom().querySelector('[data-testid="availability-calendar"]')!.getAttribute('aria-label'),
+      ).toBe('Choose your days');
+      expect(hint()).toBe('Tap your first day, then your last.');
+      expect(dom().querySelector('[data-testid="calendar-stay-rule"]')!.textContent).toContain(
+        'Stays of any length this season.',
+      );
+      expect(dayButton('2026-06-20')!.closest('td')!.getAttribute('aria-selected')).toBe('true');
+      expect(dayButton('2026-06-21')!.closest('td')!.getAttribute('aria-selected')).toBe('false');
+
+      modeOption('calendar-mode-day')!.click();
+      fixture.detectChanges();
+      dayButton('2026-06-25')!.click();
+
+      expect(host.chosen).toEqual([{ first: '2026-06-25', last: '2026-06-25' }]);
     });
   });
 
