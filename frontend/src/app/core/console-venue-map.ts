@@ -53,7 +53,7 @@ export class ConsoleVenueMap {
     return this.snapshot;
   }
 
-  /** Drop the snapshot so the next {@link load} refetches — sign-out, and after any map write. */
+  /** Drop the snapshot so the next {@link load} refetches — after any map write; `OperatorAuth` does the session's end. */
   reset(): void {
     this.key = undefined;
     this.snapshot = undefined;

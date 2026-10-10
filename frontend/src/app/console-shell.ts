@@ -199,7 +199,7 @@ const CLS = {
  * `fixed` dialog to the row. Admin rail and palette render only past the admin gate.
  * Below `sm` the phone rail replaces the text rail; a current page under More lends that slot its
  * glyph, label and `aria-current`. Sign-out parks focus on `<main>` before the chip unmounts
- * (WCAG 2.4.3) and resets the console stores. The `contents` host keeps sticky's containing block.
+ * (WCAG 2.4.3) and resets the pending-requests store. The `contents` host keeps sticky's containing block.
  */
 @Component({
   selector: 'app-console-shell',

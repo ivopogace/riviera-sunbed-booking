@@ -65,7 +65,6 @@ const venueMapStore = {
     venueMapStore.reads.push({ venueId, subject });
     return subject.asObservable();
   }),
-  reset: vi.fn(),
 };
 
 @Component({
@@ -92,7 +91,6 @@ describe('ConsoleShell', () => {
     owned.load.mockClear();
     venueMapStore.reads = [];
     venueMapStore.load.mockClear();
-    venueMapStore.reset.mockClear();
     await TestBed.configureTestingModule({
       providers: [
         provideRouter([
@@ -776,7 +774,7 @@ describe('ConsoleShell', () => {
     }
   });
 
-  it('Sign out parks focus on main, signs out, drops the console stores and leaves for the operator sign-in', async () => {
+  it('Sign out parks focus on main, signs out, drops the pending-requests store and leaves for the operator sign-in', async () => {
     const navigate = vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
     TestBed.inject(PendingRequestsStore).seed(3);
     byId('oc-account')!.click();
