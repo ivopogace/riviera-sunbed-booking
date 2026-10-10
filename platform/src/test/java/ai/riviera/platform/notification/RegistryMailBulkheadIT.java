@@ -19,6 +19,7 @@ import org.springframework.transaction.PlatformTransactionManager;
 import ai.riviera.platform.EnabledIfDockerAvailable;
 import ai.riviera.platform.TestcontainersConfiguration;
 import ai.riviera.platform.booking.events.BookingConfirmed;
+import ai.riviera.platform.booking.vocabulary.BookingId;
 import ai.riviera.platform.notification.BookingMailFixtures.SetRef;
 import ai.riviera.platform.payment.events.PaymentConfirmed;
 import ai.riviera.platform.payment.vocabulary.BookingRef;
@@ -47,14 +48,15 @@ import static org.assertj.core.api.Assertions.assertThat;
  * </ul>
  *
  * <p>What a <em>shed</em> send costs is not asked here: this class wedges the transport, it never
- * overflows the queue. {@code RegistryMailShedDurabilityIT} owns that, in its own context, for the
- * isolation reason below.
+ * overflows the queue. {@code RegistryMailShedDurabilityIT} owns that, in a context of its own,
+ * for the isolation reason below.
  *
- * <p>The imported {@link ControllableMailerConfiguration} gives this class its <strong>own</strong>
- * Spring context rather than the suite's shared one — deliberate: a test that deliberately wedges a
- * thread pool must not hand that pool to the next class in the run. The gate is released
- * unconditionally in {@link #releaseTransport()}. Bookings are SQL-seeded on dates no other IT uses
- * via {@link BookingMailFixtures}, and never claimed through {@code availability}.
+ * <p>The imported {@link ControllableMailerConfiguration} keeps this class off the suite's shared
+ * Spring context — deliberate: a test that wedges a thread pool must not hand that pool to the
+ * suite's other classes. Other importers share this context, so the gate is released
+ * unconditionally in {@link #releaseTransport()}, which keeps a parked thread from reaching them.
+ * Bookings are SQL-seeded on dates no other IT uses via {@link BookingMailFixtures}, and never
+ * claimed through {@code availability}.
  * Testcontainers; skipped where Docker is absent.
  */
 @EnabledIfDockerAvailable
@@ -71,7 +73,6 @@ class RegistryMailBulkheadIT {
 	 */
 	private static final int WEDGED_SENDS = 10;
 
-	/** Improbable enough to identify one test's publication in a database several IT classes write to. */
 	private static final long RETRY_AMOUNT_MINOR = 383_000_601L;
 
 	private static final long LISTENER_ID_AMOUNT_MINOR = 383_000_602L;
@@ -170,7 +171,7 @@ class RegistryMailBulkheadIT {
 		Awaitility.await("the failing send was attempted").atMost(WAIT)
 				.until(() -> transport.attemptsMatching(contact) >= 1);
 		Awaitility.await("the publication is still outstanding, so a restart would retry it").atMost(WAIT)
-				.until(() -> fixtures.outstandingMailPublications(RETRY_AMOUNT_MINOR) == 1L);
+				.until(() -> fixtures.outstandingMailPublications(new BookingId(bookingId)) == 1L);
 
 		transport.failEverySend(false);
 		incompletePublications.resubmitIncompletePublications(publication ->
@@ -180,7 +181,7 @@ class RegistryMailBulkheadIT {
 		Awaitility.await("the retry delivered").atMost(WAIT)
 				.until(() -> transport.deliveriesMatching(contact) == 1L);
 		Awaitility.await("and the publication is now complete").atMost(WAIT)
-				.until(() -> fixtures.outstandingMailPublications(RETRY_AMOUNT_MINOR) == 0L);
+				.until(() -> fixtures.outstandingMailPublications(new BookingId(bookingId)) == 0L);
 	}
 
 	/**
@@ -199,9 +200,9 @@ class RegistryMailBulkheadIT {
 		fixtures.publishInTransaction(fixtures.confirmationOf(set, bookingId, date, LISTENER_ID_AMOUNT_MINOR));
 
 		Awaitility.await("an outstanding row exists under the explicit listener id").atMost(WAIT)
-				.until(() -> fixtures.outstandingMailPublications(LISTENER_ID_AMOUNT_MINOR) == 1L);
+				.until(() -> fixtures.outstandingMailPublications(new BookingId(bookingId)) == 1L);
 
-		List<String> ids = fixtures.outstandingListenerIds(LISTENER_ID_AMOUNT_MINOR);
+		List<String> ids = fixtures.outstandingListenerIds(new BookingId(bookingId));
 		assertThat(ids)
 				.as("republication matches listener_id string-equal; drift dead-letters every outstanding row")
 				.contains(BookingMailFixtures.LISTENER_ID);

@@ -1,6 +1,7 @@
 package ai.riviera.platform.shared;
 
 import org.springframework.http.HttpStatus;
+import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ProblemDetail;
 import org.springframework.http.ResponseEntity;
 
@@ -20,7 +21,8 @@ public final class ApiProblem {
 	private ApiProblem() {
 	}
 
-	public static ProblemDetail of(HttpStatus status, String code, String detail) {
+	/** Any status code, a non-standard one included ({@code web}'s {@code /error} keeps a dispatched {@code 499}). */
+	public static ProblemDetail of(HttpStatusCode status, String code, String detail) {
 		ProblemDetail problem = ProblemDetail.forStatusAndDetail(status, detail);
 		problem.setProperty(CODE_PROPERTY, code);
 		return problem;

@@ -668,7 +668,7 @@ describe('SetEditor (#600)', () => {
         typePrice('25');
         click(byId('set-save'));
         expectPatch(12).flush(
-          { code: 'INVALID_REQUEST' },
+          { code: 'INVALID_REQUEST', field: 'price' },
           { status: 400, statusText: 'Bad Request' },
         );
         await fixture.whenStable();
@@ -740,7 +740,7 @@ describe('SetEditor (#600)', () => {
         typeBatchPrice('25');
         click(byId('batch-apply'));
         expectBatchPatch().flush(
-          { code: 'INVALID_REQUEST' },
+          { code: 'INVALID_REQUEST', field: 'price' },
           { status: 400, statusText: 'Bad Request' },
         );
         await fixture.whenStable();
@@ -749,6 +749,48 @@ describe('SetEditor (#600)', () => {
 
         typeBatchPrice('26');
         expectReleasedField(byId('batch-price') as HTMLInputElement, 'batch-error');
+      });
+    });
+
+    describe('a server 400 that does not name the price (#1463)', () => {
+      it('single set: stays a panel alert that a price edit leaves', async () => {
+        render();
+        selectSet(12);
+        typePrice('25');
+        click(byId('set-save'));
+        expectPatch(12).flush(
+          { code: 'INVALID_REQUEST' },
+          { status: 400, statusText: 'Bad Request' },
+        );
+        await fixture.whenStable();
+        fixture.detectChanges();
+        expect(byId('set-error').textContent).toMatch(/could not be saved as entered/i);
+        expect(priceInput().hasAttribute('aria-invalid')).toBe(false);
+
+        typePrice('26');
+        expect(byId('set-error').textContent).toMatch(/could not be saved as entered/i);
+        expect(priceInput().hasAttribute('aria-describedby')).toBe(false);
+      });
+
+      it('batch: stays a panel alert that a price edit or a blank leaves', async () => {
+        const batchPrice = (): HTMLInputElement => byId('batch-price') as HTMLInputElement;
+        render();
+        dragSweep(1, 1, 1, 2);
+        typeBatchPrice('25');
+        click(byId('batch-apply'));
+        expectBatchPatch().flush(
+          { code: 'INVALID_REQUEST', field: 'expectedVersion' },
+          { status: 400, statusText: 'Bad Request' },
+        );
+        await fixture.whenStable();
+        fixture.detectChanges();
+        expect(byId('batch-error').textContent).toMatch(/could not be applied as entered/i);
+        expect(batchPrice().hasAttribute('aria-invalid')).toBe(false);
+
+        typeBatchPrice('26');
+        typeBatchPrice('');
+        expect(byId('batch-error').textContent).toMatch(/could not be applied as entered/i);
+        expect(batchPrice().hasAttribute('aria-describedby')).toBe(false);
       });
     });
 

@@ -20,8 +20,10 @@ import org.springframework.modulith.events.IncompleteEventPublications;
 import org.springframework.transaction.PlatformTransactionManager;
 
 import ai.riviera.platform.EnabledIfDockerAvailable;
+import ai.riviera.platform.RegistryRows;
 import ai.riviera.platform.TestcontainersConfiguration;
 import ai.riviera.platform.booking.events.BookingPaymentDue;
+import ai.riviera.platform.booking.vocabulary.BookingId;
 import ai.riviera.platform.booking.vocabulary.CancellationWindow;
 import ai.riviera.platform.notification.adapter.out.MockMailer;
 import ai.riviera.platform.notification.adapter.out.SentEmail;
@@ -47,8 +49,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  * <p><strong>Dates are unique to this class, deliberately.</strong> Classes sharing this context
  * share one container and one online set, and a claimed {@code (set, date)} is never released
  * (invariant #2). {@code BookingConfirmationMailIT} sits on 2029-06-xx and
- * {@code BookingCancellationMailIT} on 2029-07-xx; this class takes 2029-08-xx. The amounts are
- * likewise its own, because {@code BookingMailFixtures} matches publications on the amount fragment.
+ * {@code BookingCancellationMailIT} on 2029-07-xx; this class takes 2029-08-xx.
  *
  * <p>Testcontainers; skipped where Docker is absent.
  */
@@ -58,6 +59,9 @@ import static org.assertj.core.api.Assertions.assertThat;
 class RequestPaymentDueMailIT {
 
 	private static final Duration WAIT = Duration.ofSeconds(15);
+
+	/** No booking row carries it, and no other IT publishes {@code BookingPaymentDue} for it. */
+	private static final long UNRESOLVABLE_BOOKING = 987_654_321L;
 
 	@Autowired
 	JdbcClient jdbc;
@@ -210,7 +214,7 @@ class RequestPaymentDueMailIT {
 				Instant.now().plus(Duration.ofHours(12)).truncatedTo(ChronoUnit.MILLIS)));
 
 		Awaitility.await().atMost(WAIT).until(() -> fixtures.outstandingPublicationsFor(
-				BookingMailFixtures.PAYMENT_DUE_LISTENER_ID, 8314L) == 0L);
+				BookingMailFixtures.PAYMENT_DUE_LISTENER_ID, new BookingId(bookingId)) == 0L);
 		assertThat(countTo(suppressed)).isZero();
 	}
 
@@ -228,12 +232,12 @@ class RequestPaymentDueMailIT {
 		double before = abandonedCount();
 
 		fixtures.publishInTransaction(fixtures.paymentDueOf(
-				new BookingMailFixtures.SetRef(set.setId(), set.venueId()), 987_654_321L, date, 8315L,
+				new BookingMailFixtures.SetRef(set.setId(), set.venueId()), UNRESOLVABLE_BOOKING, date, 8315L,
 				Instant.now().plus(Duration.ofHours(12)).truncatedTo(ChronoUnit.MILLIS)));
 
 		Awaitility.await().atMost(WAIT).until(() -> abandonedCount() == before + 1);
 		assertThat(fixtures.outstandingPublicationsFor(
-				BookingMailFixtures.PAYMENT_DUE_LISTENER_ID, 8315L))
+				BookingMailFixtures.PAYMENT_DUE_LISTENER_ID, new BookingId(UNRESOLVABLE_BOOKING)))
 				.as("abandoning completes the publication — the fact cannot appear later")
 				.isZero();
 	}
@@ -259,9 +263,9 @@ class RequestPaymentDueMailIT {
 		Awaitility.await().atMost(WAIT).untilAsserted(() -> {
 			List<String> archived = jdbc.sql(
 					"SELECT DISTINCT listener_id FROM event_publication_archive "
-							+ "WHERE event_type = :type AND serialized_event LIKE :fragment AND listener_id LIKE :module")
+							+ "WHERE event_type = :type AND " + RegistryRows.NAMES_BOOKING + " AND listener_id LIKE :module")
 					.param("type", BookingPaymentDue.class.getName())
-					.param("fragment", "%8316%")
+					.param("bookingId", RegistryRows.bookingIdParam(bookingId))
 					.param("module", "notification.%")
 					.query(String.class).list();
 			long mails = countTo(guest);

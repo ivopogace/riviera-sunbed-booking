@@ -10,6 +10,7 @@ import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
 
+import ai.riviera.platform.RegistryRows;
 import ai.riviera.platform.booking.events.BookingCancelled;
 import ai.riviera.platform.booking.events.BookingConfirmed;
 import ai.riviera.platform.booking.events.BookingDayRefunded;
@@ -41,12 +42,10 @@ import ai.riviera.platform.venue.vocabulary.VenueId;
  * claimed {@code (set, date)} row is never released (invariant #2), so classes that seed bookings
  * must not compete for dates; each caller picks dates no other IT uses.
  *
- * <p><strong>Publications are matched on the amount, not the booking id.</strong> A
- * {@code BookingConfirmed} payload carries {@code bookingId}, {@code venueId} and {@code setId} as
- * identically-shaped {@code {"value":n}} records, so matching a bare {@code "value":<id>} also
- * matches another test's row whose venue or set happens to share the number — and ids here are small
- * integers in a database several IT classes write to. Callers pass a deliberately-improbable amount
- * per test; the lesson is {@code EventRegistryDurabilityIT}'s, paid for once already.
+ * <p><strong>Publications are matched on the event's {@code bookingId} field</strong>
+ * ({@link RegistryRows#NAMES_BOOKING}) beside the listener's pinned {@code event_type}. A seeded
+ * booking's id is the database's own, so no other IT's row carries it; a test publishing for an id
+ * nothing resolves picks one no other IT publishes for that event type.
  */
 public final class BookingMailFixtures {
 
@@ -77,7 +76,7 @@ public final class BookingMailFixtures {
 	/** The request-expired listener's explicit registry id. */
 	public static final String REQUEST_EXPIRED_LISTENER_ID = "notification.mail-on-booking-request-expired";
 
-	/** The event each listener above consumes: every registry read pins {@code event_type} beside its fragment. */
+	/** The event each listener above consumes: every registry read pins {@code event_type} beside the booking. */
 	private static final Map<String, Class<?>> EVENT_TYPE_BY_LISTENER = Map.of(
 			LISTENER_ID, BookingConfirmed.class,
 			CANCELLATION_LISTENER_ID, BookingCancelled.class,
@@ -141,22 +140,14 @@ public final class BookingMailFixtures {
 				new SetId(set.setId()), date, amountMinor, "EUR", windowAtBirth, lateCancelRefundBps);
 	}
 
-	/**
-	 * The cancellation an IT publishes to drive the mail. {@code refundMinor} doubles as the
-	 * amount fragment {@link #outstandingPublicationsFor} matches on, so callers pass an improbable
-	 * value here for the same reason confirmations do.
-	 */
+	/** The cancellation an IT publishes to drive the mail. */
 	public BookingCancelled cancellationOf(SetRef set, long bookingId, LocalDate date, long refundMinor,
 			RefundReason reason) {
 		return new BookingCancelled(new BookingId(bookingId), new VenueId(set.venueId()),
 				new SetId(set.setId()), date, refundMinor, "EUR", reason);
 	}
 
-	/**
-	 * The payment-due fact an IT publishes to drive the mail. {@code amountMinor} doubles as the
-	 * fragment {@link #outstandingPublicationsFor} matches on, so callers pass an improbable value for
-	 * the reason the class Javadoc gives.
-	 */
+	/** The payment-due fact an IT publishes to drive the mail. */
 	public BookingPaymentDue paymentDueOf(SetRef set, long bookingId, LocalDate date, long amountMinor,
 			Instant payBy) {
 		return paymentDueOf(set, bookingId, date, amountMinor, payBy, CancellationWindow.FREE, 0);
@@ -176,7 +167,7 @@ public final class BookingMailFixtures {
 				new SetId(set.setId()), date, date, payBy, amountMinor, "EUR", windowAtBirth, lateCancelRefundBps);
 	}
 
-	/** The decline fact an IT publishes to drive the mail; the date is the matching fragment. */
+	/** The decline fact an IT publishes to drive the mail. */
 	public BookingRequestDeclined requestDeclinedOf(SetRef set, long bookingId, LocalDate date) {
 		return requestDeclinedOf(set, bookingId, date, date);
 	}
@@ -205,7 +196,7 @@ public final class BookingMailFixtures {
 				new SetId(from.setId()), new SetId(toSetId), first, last);
 	}
 
-	/** The expiry fact an IT publishes to drive the mail; the date is the matching fragment. */
+	/** The expiry fact an IT publishes to drive the mail. */
 	public BookingRequestExpired requestExpiredOf(SetRef set, long bookingId, LocalDate date) {
 		return requestExpiredOf(set, bookingId, date, date);
 	}
@@ -215,44 +206,35 @@ public final class BookingMailFixtures {
 		return new BookingRequestExpired(new BookingId(bookingId), new SetId(set.setId()), first, last);
 	}
 
-	/** How much the registry still owes the confirmation listener for one test's event. */
-	public long outstandingMailPublications(long amountMinor) {
-		return outstandingPublicationsFor(LISTENER_ID, amountMinor);
+	/** How much the registry still owes the confirmation listener for one test's booking. */
+	public long outstandingMailPublications(BookingId bookingId) {
+		return outstandingPublicationsFor(LISTENER_ID, bookingId);
 	}
 
-	/** The same read for any one listener — the cancellation listener needs it too. */
-	public long outstandingPublicationsFor(String listenerId, long amountMinor) {
-		return outstandingPublicationsMatching(listenerId, String.valueOf(amountMinor));
-	}
-
-	/**
-	 * The amount-fragment read, generalized: the request-outcome events carry no amount, so
-	 * their ITs match on the booking-<em>date</em> fragment instead — unique by this class's
-	 * dates-per-IT discipline, and just as improbable to collide as an amount.
-	 */
-	public long outstandingPublicationsMatching(String listenerId, String fragment) {
+	/** How much the registry still owes one listener for one test's booking, on {@link RegistryRows#NAMES_BOOKING}. */
+	public long outstandingPublicationsFor(String listenerId, BookingId bookingId) {
 		return jdbc.sql("""
 				SELECT COUNT(*) FROM event_publication
 				WHERE completion_date IS NULL AND listener_id = :listener
-				  AND event_type = :type AND serialized_event LIKE :fragment
-				""")
+				  AND event_type = :type AND %s
+				""".formatted(RegistryRows.NAMES_BOOKING))
 				.param("listener", listenerId).param("type", eventTypeOf(listenerId))
-				.param("fragment", "%" + fragment + "%")
+				.param("bookingId", RegistryRows.bookingIdParam(bookingId.value()))
 				.query(Long.class).single();
 	}
 
 	/**
 	 * Every listener with an outstanding row for one test's confirmation, whatever its id reads as:
-	 * open across listeners by design, pinned to {@code BookingConfirmed} so no other event matches.
+	 * open across listeners by design, pinned to {@code BookingConfirmed} and the booking.
 	 */
-	public List<String> outstandingListenerIds(long amountMinor) {
+	public List<String> outstandingListenerIds(BookingId bookingId) {
 		return jdbc.sql("""
 				SELECT listener_id FROM event_publication
 				WHERE completion_date IS NULL
-				  AND event_type = :type AND serialized_event LIKE :amountFragment
-				""")
+				  AND event_type = :type AND %s
+				""".formatted(RegistryRows.NAMES_BOOKING))
 				.param("type", BookingConfirmed.class.getName())
-				.param("amountFragment", "%" + amountMinor + "%")
+				.param("bookingId", RegistryRows.bookingIdParam(bookingId.value()))
 				.query(String.class).list();
 	}
 

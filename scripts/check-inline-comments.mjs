@@ -179,12 +179,10 @@ function violationAt(path, lines, startLine, endLine) {
  * Only the comment's own text is read: the code before a trailing comment never counts.
  */
 function tellViolations(path, lines, added, region) {
-  const touched = [];
-  for (let i = region.startLine; i <= region.endLine; i++) {
-    if (added.has(i + 1)) touched.push(i);
-  }
+  const spanned = range(region.startLine, region.endLine);
+  const touched = spanned.filter((i) => added.has(i + 1));
   if (touched.length === 0) return [];
-  const judged = region.isDoc ? range(region.startLine, region.endLine) : touched;
+  const judged = region.isDoc ? spanned : touched;
 
   const violations = [];
   for (const i of judged) {
