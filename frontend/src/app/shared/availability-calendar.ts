@@ -29,6 +29,7 @@ import {
   startOfWeek,
 } from './booking-date';
 import { formatStay } from './booking-date-label';
+import { plural } from './plural';
 import { DailyAvailability } from './venue-views';
 import { LoadAnnouncer } from './load-announcer';
 import { SegmentedControl, SegmentedOption } from './segmented-control';
@@ -177,7 +178,7 @@ export class AvailabilityCalendar {
     if (range !== undefined) {
       const label = formatStay(range.first, range.last, { withYear: true });
       // formatStay names one day without a length; the picker always states it.
-      return range.first === range.last ? `${label} · 1 day` : label;
+      return range.first === range.last ? `${label} · ${plural(1, 'day')}` : label;
     }
     const first = this.pendingFirst();
     return first === undefined
