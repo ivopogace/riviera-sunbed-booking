@@ -11,8 +11,9 @@ import ai.riviera.platform.venue.vocabulary.VenueId;
  * are operator data and stay off the public surface. Module-internal, so {@code application}, not
  * {@code api/} (invariant #11), like {@link ViewDailyAvailability}.
  *
- * <p>Asserts ownership first (invariant #13) → {@code NotVenueOwnerException} (403). Empty — the
- * venue vanished or is tourist-hidden (the map read's fence, kept) — maps to 404 in the controller.
+ * <p>Asserts ownership first (invariant #13) → {@code NotVenueOwnerException} (403); a venue hidden
+ * from tourists ({@code PENDING} owner) still answers its owner. Empty — the venue vanished after
+ * the grant — maps to 404 in the controller.
  */
 public interface ViewBeachMap {
 

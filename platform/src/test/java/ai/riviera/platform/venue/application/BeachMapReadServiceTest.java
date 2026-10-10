@@ -11,7 +11,6 @@ import ai.riviera.platform.operator.api.VenueOwnership;
 import ai.riviera.platform.operator.vocabulary.NotVenueOwnerException;
 import ai.riviera.platform.operator.vocabulary.OperatorId;
 import ai.riviera.platform.operator.vocabulary.VenueRef;
-import ai.riviera.platform.venue.api.VenueCatalog;
 import ai.riviera.platform.venue.vocabulary.MoneyView;
 import ai.riviera.platform.venue.vocabulary.Pool;
 import ai.riviera.platform.venue.vocabulary.BookedSpan;
@@ -29,11 +28,11 @@ import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 /**
- * Unit-tests the owner-asserted beach-map read at the application boundary: the map the catalogue
- * composes plus the locked sets ordered by id, ownership asserted <strong>before</strong> any
- * catalogue or claim probe so a non-owner learns nothing (invariant #13), and the empty-Optional
+ * Unit-tests the owner-asserted beach-map read at the application boundary: the map the owner's
+ * unfenced read composes plus the locked sets ordered by id, ownership asserted <strong>before</strong>
+ * any map or claim probe so a non-owner learns nothing (invariant #13), and the empty-Optional
  * signal the controller maps to 404. Collaborators are mocked — the JDBC truths are pinned by
- * {@code VenueAdminControllerIT}.
+ * {@code VenueAdminControllerIT} and {@code PendingOwnerConsoleReadsIT}.
  */
 class BeachMapReadServiceTest {
 
@@ -43,9 +42,9 @@ class BeachMapReadServiceTest {
 	private static final MoneyView PRICE = new MoneyView(3000, "EUR");
 
 	private final VenueOwnership ownership = mock(VenueOwnership.class);
-	private final VenueCatalog catalog = mock(VenueCatalog.class);
+	private final OwnerVenueMap ownerMap = mock(OwnerVenueMap.class);
 	private final LiveClaims claims = mock(LiveClaims.class);
-	private final BeachMapReadService service = new BeachMapReadService(ownership, catalog, claims);
+	private final BeachMapReadService service = new BeachMapReadService(ownership, ownerMap, claims);
 
 	private static SetView set(long id, int position) {
 		return new SetView(id, "A", position, "STANDARD", Pool.ONLINE, PRICE, position, 1, "FREE", 1, List.of());
@@ -61,7 +60,7 @@ class BeachMapReadServiceTest {
 	void answersTheMapAndItsLockedSetsOrderedBySetId() {
 		VenueMapView map = map(List.of(set(9L, 1), set(3L, 2), set(5L, 3)));
 		when(claims.today()).thenReturn(TODAY);
-		when(catalog.findVenueMap(VENUE, StaySpan.oneDay(TODAY))).thenReturn(Optional.of(map));
+		when(ownerMap.mapFor(VENUE, StaySpan.oneDay(TODAY))).thenReturn(Optional.of(map));
 		SetLock nine = new SetLock(new SetId(9L), BookedSpan.oneDay(TODAY.plusDays(2)), null);
 		SetLock three = new SetLock(new SetId(3L), null, TODAY);
 		when(claims.locksOn(List.of(new SetId(9L), new SetId(3L), new SetId(5L))))
@@ -70,7 +69,7 @@ class BeachMapReadServiceTest {
 		Optional<OperatorBeachMap> read = service.beachMapFor(OWNER, VENUE);
 
 		assertEquals(Optional.of(new OperatorBeachMap(map, List.of(three, nine))), read,
-				"the catalogue's map rides untouched; locks sort by set id and the free set 5 is absent");
+				"the owner's map rides untouched; locks sort by set id and the free set 5 is absent");
 	}
 
 	@Test
@@ -81,13 +80,13 @@ class BeachMapReadServiceTest {
 		assertThrows(NotVenueOwnerException.class, () -> service.beachMapFor(OWNER, VENUE));
 
 		// 403 outranks 404 (invariant #13): nothing about the venue may be probed for a non-owner.
-		verifyNoInteractions(catalog, claims);
+		verifyNoInteractions(ownerMap, claims);
 	}
 
 	@Test
 	void aVenueTheMapReadAnswersNothingForIsEmptyAfterOwnershipPassed() {
 		when(claims.today()).thenReturn(TODAY);
-		when(catalog.findVenueMap(VENUE, StaySpan.oneDay(TODAY))).thenReturn(Optional.empty());
+		when(ownerMap.mapFor(VENUE, StaySpan.oneDay(TODAY))).thenReturn(Optional.empty());
 
 		assertEquals(Optional.empty(), service.beachMapFor(OWNER, VENUE),
 				"owned-but-unanswered venue signals empty (the controller's 404), never a phantom map");
