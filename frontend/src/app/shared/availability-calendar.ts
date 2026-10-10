@@ -28,6 +28,7 @@ import {
   startOfMonth,
   startOfWeek,
 } from './booking-date';
+import { formatStay } from './booking-date-label';
 import { DailyAvailability } from './venue-views';
 import { LoadAnnouncer } from './load-announcer';
 import { SegmentedControl, SegmentedOption } from './segmented-control';
@@ -137,8 +138,23 @@ export class AvailabilityCalendar {
    */
   protected readonly mode = linkedSignal<StayMode>(() => (this.showsStay() ? 'stay' : 'day'));
 
-  /** In stay mode, the first day tapped while the last is still to come. */
-  protected readonly pendingFirst = signal<string | undefined>(undefined);
+  /**
+   * In stay mode, the days tapped but not yet applied: a first day while the last is still to come,
+   * then the whole range until Apply commits it.
+   */
+  protected readonly pending = signal<{ first: string; last?: string } | undefined>(undefined);
+
+  /** The pending first day while its last day is still to come. */
+  protected readonly pendingFirst = computed(() => {
+    const pending = this.pending();
+    return pending?.last === undefined ? pending?.first : undefined;
+  });
+
+  /** The picked range waiting for Apply. */
+  protected readonly pendingRange = computed<DateRange | undefined>(() => {
+    const pending = this.pending();
+    return pending?.last === undefined ? undefined : { first: pending.first, last: pending.last };
+  });
 
   /** The most days a stay may run: the venue's maximum where it has one, else {@link MAX_STAY_DAYS}. */
   private readonly ceilingDays = computed(() => {
@@ -146,7 +162,7 @@ export class AvailabilityCalendar {
     return max != null && max < MAX_STAY_DAYS ? max : MAX_STAY_DAYS;
   });
 
-  /** The last day the stay may run to once a first day is tapped — {@link ceilingDays} in all. */
+  /** The last day the stay may run to while its last day is awaited — {@link ceilingDays} in all. */
   private readonly lastDayCeiling = computed(() => {
     const first = this.pendingFirst();
     return first === undefined ? undefined : addDays(first, this.ceilingDays() - 1);
@@ -155,8 +171,12 @@ export class AvailabilityCalendar {
   /** The venue's stay rule, stated beside the stay-mode hint. */
   protected readonly stayRule = computed(() => stayRule(this.maxStayDays()));
 
-  /** What the stay mode asks for next. */
+  /** What the stay mode asks for next, or the picked range and its length once both days are in. */
   protected readonly stayHint = computed(() => {
+    const range = this.pendingRange();
+    if (range !== undefined) {
+      return formatStay(range.first, range.last, { withYear: true });
+    }
     const first = this.pendingFirst();
     return first === undefined
       ? 'Tap your first day, then your last.'
@@ -208,11 +228,11 @@ export class AvailabilityCalendar {
     return iso >= this.minDate();
   }
 
-  /** The days drawn as selected: a pending first day alone, else the stay the map shows. */
+  /** The days drawn as selected: what is pending, else the stay the map shows. */
   private readonly highlightedRange = computed<DateRange>(() => {
-    const pending = this.pendingFirst();
+    const pending = this.pending();
     if (pending !== undefined) {
-      return { first: pending, last: pending };
+      return { first: pending.first, last: pending.last ?? pending.first };
     }
     const first = this.selectedDate();
     return { first, last: this.selectedLastDate() ?? first };
@@ -327,8 +347,8 @@ export class AvailabilityCalendar {
 
   /**
    * Commit a day, ignoring one that cannot be booked — the aria-disabled cells still take clicks.
-   * In stay mode the first tap only remembers the first day; a tap on an earlier day restarts there;
-   * the tap on or after it commits the range.
+   * In stay mode a tap only picks: the first day, then (on or after it) the last, which waits for
+   * {@link apply}; a tap before the first day, or once the range is in, starts over there.
    */
   protected choose(cell: CalendarCell): void {
     if (!cell.selectable) {
@@ -340,24 +360,32 @@ export class AvailabilityCalendar {
     }
     const first = this.pendingFirst();
     if (first === undefined || cell.iso < first) {
-      this.pendingFirst.set(cell.iso);
+      this.pending.set({ first: cell.iso });
       return;
     }
-    this.pendingFirst.set(undefined);
-    this.chosen.emit({ first, last: cell.iso });
+    this.pending.set({ first, last: cell.iso });
   }
 
   /** Switching modes forgets a half-picked stay. */
   protected onModeChange(mode: StayMode): void {
     this.mode.set(mode);
-    this.pendingFirst.set(undefined);
+    this.pending.set(undefined);
+  }
+
+  /** Commit the picked range. */
+  protected apply(): void {
+    const range = this.pendingRange();
+    if (range !== undefined) {
+      this.pending.set(undefined);
+      this.chosen.emit(range);
+    }
   }
 
   /** Commit the pending first day as a one-day pick. */
   protected justThisDay(): void {
     const first = this.pendingFirst();
     if (first !== undefined) {
-      this.pendingFirst.set(undefined);
+      this.pending.set(undefined);
       this.chosen.emit({ first, last: first });
     }
   }

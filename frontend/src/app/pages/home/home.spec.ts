@@ -1897,6 +1897,9 @@ describe('Home (a stay)', () => {
     fixture.detectChanges();
     picker.querySelector<HTMLButtonElement>('button[data-date="2027-07-12"]')!.click();
     fixture.detectChanges();
+    httpMock.expectNone((r) => r.url === `${environment.apiBaseUrl}/api/venues`);
+    picker.querySelector<HTMLButtonElement>('[data-testid="calendar-apply"]')!.click();
+    fixture.detectChanges();
 
     const req = listRequest();
     expect(req.request.params.get('date')).toBe('2027-07-10');
@@ -1910,6 +1913,39 @@ describe('Home (a stay)', () => {
       '10 – 12 Jul · 3 days',
     );
     expect(document.activeElement?.getAttribute('data-testid')).toBe('head-day');
+  });
+
+  it('reopens on a picked stay in "Several days", and a discarded re-pick leaves the stay alone', async () => {
+    const fixture = render({ date: '2027-07-10', lastDate: '2027-07-12' });
+    listRequest().flush(stayVenues());
+    fixture.detectChanges();
+    await fixture.whenStable();
+    await whenSheetOpened(fixture);
+    fixture.detectChanges();
+
+    el(fixture).querySelector<HTMLButtonElement>('[data-testid="head-day"]')!.click();
+    fixture.detectChanges();
+    el(fixture).querySelector<HTMLButtonElement>('[data-testid="head-stay"]')!.click();
+    fixture.detectChanges();
+    const picker = el(fixture).querySelector<HTMLElement>('[data-testid="availability-calendar"]')!;
+    expect(
+      picker.querySelector('[data-testid="calendar-mode-stay"]')!.getAttribute('aria-checked'),
+    ).toBe('true');
+
+    picker.querySelector<HTMLButtonElement>('button[data-date="2027-07-14"]')!.click();
+    fixture.detectChanges();
+    picker.querySelector<HTMLButtonElement>('button[data-date="2027-07-15"]')!.click();
+    fixture.detectChanges();
+    picker
+      .querySelector<HTMLButtonElement>('button[data-date="2027-07-15"]')!
+      .dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+    fixture.detectChanges();
+
+    httpMock.expectNone((r) => r.url === `${environment.apiBaseUrl}/api/venues`);
+    expect(el(fixture).querySelector('[data-testid="availability-calendar"]')).toBeNull();
+    expect(text(el(fixture).querySelector('[data-testid="head-day"]'))).toBe(
+      '10 – 12 Jul · 3 days',
+    );
   });
 
   it('keeps the one-day card exactly: the free count, no stay line, no dusk from a verdict', async () => {

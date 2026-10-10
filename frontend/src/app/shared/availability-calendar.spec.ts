@@ -322,6 +322,14 @@ describe('AvailabilityCalendar', () => {
       return dom().querySelector<HTMLButtonElement>(`[data-testid="${testId}"]`);
     }
 
+    function applyButton(): HTMLButtonElement | null {
+      return dom().querySelector<HTMLButtonElement>('[data-testid="calendar-apply"]');
+    }
+
+    function hint(): string {
+      return dom().querySelector('[data-testid="calendar-stay-hint"]')!.textContent.trim();
+    }
+
     it('opens in day mode with no stay hint until stay mode is picked', async () => {
       await flushCalendar();
 
@@ -338,7 +346,7 @@ describe('AvailabilityCalendar', () => {
       expect(host.chosen).toEqual([{ first: '2026-06-25', last: '2026-06-25' }]);
     });
 
-    it('emits the range after a first and a last tap in stay mode', async () => {
+    it('holds the range after a first and a last tap, showing it with its length, until Apply', async () => {
       await flushCalendar();
       modeOption('calendar-mode-stay')!.click();
       fixture.detectChanges();
@@ -347,14 +355,82 @@ describe('AvailabilityCalendar', () => {
       fixture.detectChanges();
 
       expect(host.chosen).toEqual([]);
-      expect(dom().querySelector('[data-testid="calendar-stay-hint"]')!.textContent).toContain(
-        'Mon 22 Jun 2026',
-      );
+      expect(hint()).toContain('Mon 22 Jun 2026');
       expect(dayButton('2026-06-22')!.closest('td')!.getAttribute('aria-selected')).toBe('true');
+      expect(applyButton()).toBeNull();
 
       dayButton('2026-06-26')!.click();
+      fixture.detectChanges();
+
+      expect(host.chosen).toEqual([]);
+      expect(hint()).toBe('Mon, 22 Jun – Fri 26 Jun 2026 · 5 days');
+      for (const iso of ['2026-06-22', '2026-06-24', '2026-06-26']) {
+        expect(dayButton(iso)!.closest('td')!.getAttribute('aria-selected')).toBe('true');
+      }
+      expect(dom().querySelector('[data-testid="calendar-just-this-day"]')).toBeNull();
+
+      applyButton()!.click();
 
       expect(host.chosen).toEqual([{ first: '2026-06-22', last: '2026-06-26' }]);
+    });
+
+    it('restarts the pick from a day tapped once the range is set', async () => {
+      await flushCalendar();
+      modeOption('calendar-mode-stay')!.click();
+      fixture.detectChanges();
+      dayButton('2026-06-22')!.click();
+      fixture.detectChanges();
+      dayButton('2026-06-26')!.click();
+      fixture.detectChanges();
+
+      dayButton('2026-06-24')!.click();
+      fixture.detectChanges();
+
+      expect(hint()).toContain('Wed 24 Jun 2026 → tap your last day');
+      expect(applyButton()).toBeNull();
+      expect(dayButton('2026-06-26')!.closest('td')!.getAttribute('aria-selected')).toBe('false');
+
+      dayButton('2026-06-25')!.click();
+      fixture.detectChanges();
+      applyButton()!.click();
+
+      expect(host.chosen).toEqual([{ first: '2026-06-24', last: '2026-06-25' }]);
+    });
+
+    it('lets a restart tap land past the old stay ceiling: it is a new first day', async () => {
+      host.maxStayDays.set(3);
+      fixture.detectChanges();
+      await flushCalendar();
+      modeOption('calendar-mode-stay')!.click();
+      fixture.detectChanges();
+      dayButton('2026-06-20')!.click();
+      fixture.detectChanges();
+      dayButton('2026-06-22')!.click();
+      fixture.detectChanges();
+
+      expect(dayButton('2026-06-27')!.getAttribute('aria-disabled')).toBeNull();
+      dayButton('2026-06-27')!.click();
+      fixture.detectChanges();
+
+      expect(hint()).toContain('Sat 27 Jun 2026 → tap your last day');
+    });
+
+    it('discards a pending range on Escape and on a tap outside, committing nothing', async () => {
+      await flushCalendar();
+      modeOption('calendar-mode-stay')!.click();
+      fixture.detectChanges();
+      dayButton('2026-06-22')!.click();
+      fixture.detectChanges();
+      dayButton('2026-06-26')!.click();
+      fixture.detectChanges();
+
+      dayButton('2026-06-26')!.dispatchEvent(
+        new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }),
+      );
+      dom().querySelector<HTMLElement>('app-availability-calendar')!.click();
+
+      expect(host.dismissals).toBe(2);
+      expect(host.chosen).toEqual([]);
     });
 
     it('restarts from an earlier day tapped after the first', async () => {
@@ -367,6 +443,8 @@ describe('AvailabilityCalendar', () => {
       dayButton('2026-06-22')!.click();
       fixture.detectChanges();
       dayButton('2026-06-23')!.click();
+      fixture.detectChanges();
+      applyButton()!.click();
 
       expect(host.chosen).toEqual([{ first: '2026-06-22', last: '2026-06-23' }]);
     });
@@ -414,8 +492,11 @@ describe('AvailabilityCalendar', () => {
       expect(dayButton('2026-06-22')!.getAttribute('aria-disabled')).toBeNull();
       expect(dayButton('2026-06-23')!.getAttribute('aria-disabled')).toBe('true');
       dayButton('2026-06-23')!.click();
-      expect(host.chosen).toEqual([]);
+      fixture.detectChanges();
+      expect(applyButton()).toBeNull();
       dayButton('2026-06-22')!.click();
+      fixture.detectChanges();
+      applyButton()!.click();
       expect(host.chosen).toEqual([{ first: '2026-06-20', last: '2026-06-22' }]);
     });
 
@@ -747,7 +828,7 @@ describe('AvailabilityCalendar', () => {
       expect(dom().querySelector('app-load-announcer')).toBeNull();
     });
 
-    it('still commits a stay from a first and a last tap', async () => {
+    it('still commits a stay from a first and a last tap and Apply', async () => {
       await withoutLoader();
 
       control('calendar-mode-stay').click();
@@ -756,6 +837,7 @@ describe('AvailabilityCalendar', () => {
       fixture.detectChanges();
       dayButton('2026-06-23')!.click();
       fixture.detectChanges();
+      control('calendar-apply').click();
 
       expect(host.chosen).toEqual([{ first: '2026-06-20', last: '2026-06-23' }]);
     });
