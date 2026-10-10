@@ -1915,7 +1915,7 @@ describe('Home (a stay)', () => {
     expect(document.activeElement?.getAttribute('data-testid')).toBe('head-day');
   });
 
-  it('reopens on a picked stay in "Several days", and a discarded re-pick leaves the stay alone', async () => {
+  it('reopens on a stay in "Several days", and a discarded re-pick leaves the stay alone', async () => {
     const fixture = render({ date: '2027-07-10', lastDate: '2027-07-12' });
     listRequest().flush(stayVenues());
     fixture.detectChanges();

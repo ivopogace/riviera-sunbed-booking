@@ -133,8 +133,8 @@ export class AvailabilityCalendar {
   protected readonly modeOptions = MODE_OPTIONS;
 
   /**
-   * Day mode is the one-tap pick the picker always had; stay mode takes a first and a last tap. It
-   * opens in stay mode only when the map already shows a stay.
+   * Day mode is the one-tap pick the picker always had; stay mode takes a first and a last tap, then
+   * Apply. It opens in stay mode only when the map already shows a stay.
    */
   protected readonly mode = linkedSignal<StayMode>(() => (this.showsStay() ? 'stay' : 'day'));
 
@@ -175,7 +175,9 @@ export class AvailabilityCalendar {
   protected readonly stayHint = computed(() => {
     const range = this.pendingRange();
     if (range !== undefined) {
-      return formatStay(range.first, range.last, { withYear: true });
+      const label = formatStay(range.first, range.last, { withYear: true });
+      // formatStay names one day without a length; the picker always states it.
+      return range.first === range.last ? `${label} · 1 day` : label;
     }
     const first = this.pendingFirst();
     return first === undefined
@@ -191,7 +193,7 @@ export class AvailabilityCalendar {
   private readonly hostRef = inject<ElementRef<HTMLElement>>(ElementRef);
 
   /**
-   * The roving-tabindex position (arrows move it; only Enter/Space/click commits). Opens on the
+   * The roving-tabindex position (arrows move it; only Enter/Space/click picks). Opens on the
    * chosen day, else the floor if that is past; a chosen day the server marks unsellable stays the
    * stop — a season closure may leave no bookable day to fall to, and the month must not jump.
    */
@@ -366,7 +368,7 @@ export class AvailabilityCalendar {
     this.pending.set({ first, last: cell.iso });
   }
 
-  /** Switching modes forgets a half-picked stay. */
+  /** Switching modes forgets an unapplied stay. */
   protected onModeChange(mode: StayMode): void {
     this.mode.set(mode);
     this.pending.set(undefined);

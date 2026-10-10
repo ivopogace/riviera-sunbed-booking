@@ -374,6 +374,22 @@ describe('AvailabilityCalendar', () => {
       expect(host.chosen).toEqual([{ first: '2026-06-22', last: '2026-06-26' }]);
     });
 
+    it('states a one-day range with its length too, and applies it', async () => {
+      await flushCalendar();
+      modeOption('calendar-mode-stay')!.click();
+      fixture.detectChanges();
+      dayButton('2026-06-22')!.click();
+      fixture.detectChanges();
+      dayButton('2026-06-22')!.click();
+      fixture.detectChanges();
+
+      expect(host.chosen).toEqual([]);
+      expect(hint()).toBe('Mon 22 Jun 2026 · 1 day');
+      applyButton()!.click();
+
+      expect(host.chosen).toEqual([{ first: '2026-06-22', last: '2026-06-22' }]);
+    });
+
     it('restarts the pick from a day tapped once the range is set', async () => {
       await flushCalendar();
       modeOption('calendar-mode-stay')!.click();
@@ -408,6 +424,7 @@ describe('AvailabilityCalendar', () => {
       dayButton('2026-06-22')!.click();
       fixture.detectChanges();
 
+      expect(host.chosen).toEqual([]);
       expect(dayButton('2026-06-27')!.getAttribute('aria-disabled')).toBeNull();
       dayButton('2026-06-27')!.click();
       fixture.detectChanges();
