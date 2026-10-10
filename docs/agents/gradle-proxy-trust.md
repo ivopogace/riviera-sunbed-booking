@@ -110,6 +110,67 @@ gradle --no-daemon --console=plain compileJava compileTestJava \
 # → BUILD SUCCESSFUL; the structural + JDBC-only rules run on JDK 25.
 ```
 
+### Maven Central returns 429
+
+Symptom: `Received status code 429 from server: Too Many Requests` on `repo.maven.apache.org` or
+`repo1.maven.org`, in plugin resolution, in `compileTestJava` dependency resolution, or for
+`org.jacoco:org.jacoco.agent` on the `test` task. One session saw it persist across about ten
+retries over forty minutes. Disabling JaCoCo (`-x jacocoTestReport`, or an init script setting
+`jacoco.enabled = false` on every `Test` task) does not help: the `test` task still resolves the
+agent configuration.
+
+1. **Confirm it is Central, not the proxy.** `curl -sS "$HTTPS_PROXY/__agentproxy/status"` should
+   be healthy; then compare Central with Google's mirror for the failing artifact:
+
+   ```bash
+   p=org/jacoco/org.jacoco.agent/0.8.15/org.jacoco.agent-0.8.15.pom   # the artifact in the error
+   curl -s -o /dev/null -w '%{http_code} central\n' "https://repo.maven.apache.org/maven2/$p"
+   curl -s -o /dev/null -w '%{http_code} mirror\n'  "https://maven-central.storage-download.googleapis.com/maven2/$p"
+   ```
+
+   Go on when Gradle keeps getting 429 from Central and the mirror answers 200. Central's 429 can
+   be per request (measured 2026-10-10: Gradle got 429 while this `curl` got 200 for another
+   artifact), so a lone `200 central` does not rule it out. A proxy 403/407 or a TLS error is the
+   sections above, not this.
+2. **Pass a session-local init script that lists the mirror first.** Write it to the session's
+   scratchpad (never into the repo) and pass it with `-I` on each invocation:
+
+   ```groovy
+   // <scratchpad>/central-mirror.gradle
+   def mirror = 'https://maven-central.storage-download.googleapis.com/maven2/'
+   beforeSettings { settings ->
+       settings.pluginManagement.repositories {
+           maven { url = mirror }
+           gradlePluginPortal()
+       }
+   }
+   allprojects {
+       repositories {
+           maven { url = mirror }
+       }
+   }
+   ```
+
+   The `beforeSettings` block is needed too (measured 2026-10-10 on the pinned wrapper): the Plugin
+   Portal redirects the `plugins {}` block's dependencies (e.g. `commons-parent`) to
+   `repo.maven.apache.org`, so a 429 can hit plugin resolution before any project repository is
+   consulted. With both blocks, `compileJava compileTestJava` resolved and built through the mirror.
+
+   ```bash
+   ./gradlew -I <scratchpad>/central-mirror.gradle --console=plain test --tests "*<ClassName>*"
+   ```
+
+What this fallback is, and is not (owner decision, #1514):
+
+- **Local, in a cloud session, only.** Never committed, never used in CI; `build.gradle`'s
+  `repositories`, the wrapper and its `distributionUrl` are never edited for it. CI resolves from
+  Central as committed.
+- **Unsupported and unverified.** The mirror's own index page says it is not an officially
+  supported Google product, and this repo commits no Gradle dependency verification
+  (`gradle/verification-metadata.xml`), so nothing checks that the mirror's bytes match Central's.
+  That is why it stays a last-resort local fallback (`supply-chain-security.md`).
+- Drop the `-I` as soon as Central answers again.
+
 The backend Testcontainers ITs are `@EnabledIfDockerAvailable`: in a cloud session a
 `dockerd` **is normally provided by the SessionStart hook** (see
 `docker-testcontainers.md`), so targeted ITs *can* run; without a daemon they skip

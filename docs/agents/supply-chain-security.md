@@ -37,6 +37,10 @@ behavior and should be chosen deliberately.
 - No secrets in the repo or in build artifacts; secrets come from env / the platform secret
   store (the #75 actuator/secrets/TLS hardening posture). Bytecode/config is readable (see `gradle-proxy-trust.md` neighbours and
   the AI-reverse-engineering reality) — a committed secret is a leaked secret.
+- `build.gradle` lists Maven Central as its only repository. Google's Central mirror is a
+  session-local fallback for a Central 429, never committed or used in CI: it is not a supported
+  Google product and, with no committed dependency verification, its bytes are unchecked
+  (`gradle-proxy-trust.md` § *Maven Central returns 429*).
 
 ## Decisions for a human (behavior changes — choose deliberately)
 

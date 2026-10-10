@@ -68,6 +68,19 @@ A `dockerd` is normally provided by the hook (`scripts/start-dockerd.sh`;
 they skip (`@EnabledIfDockerAvailable`). CI owns the full suite. Contributor laptop: `./gradlew
 test` is fine.
 
+### External rate limits
+
+- **`Received status code 429 from server: Too Many Requests`** from `repo.maven.apache.org` /
+  `repo1.maven.org` (plugin or dependency resolution, `org.jacoco.agent` on `test`). Confirm
+  Central, not the proxy, is refusing, then pass a session-local mirror init script with `-I`:
+  recipe and its limits in `docs/agents/gradle-proxy-trust.md` § *Maven Central returns 429*.
+  Never commit it, use it in CI, or edit `build.gradle` repositories or the wrapper. Skipping
+  JaCoCo does not avoid it: `test` still resolves the agent.
+- **`ContainerFetchException` / `toomanyrequests`**, often surfacing as `ApplicationContext
+  failure threshold exceeded` across many tests: Docker Hub's pull limit on `postgres:17`, not a
+  test failure. Read the cause chain first; re-run once the image is cached (`docker images |
+  grep postgres`). Detail: `docs/agents/docker-testcontainers.md` § *Docker Hub pull limit*.
+
 ### Full-suite-only failures
 
 CI runs every test through cached, long-lived contexts in one JVM, so shared-state
