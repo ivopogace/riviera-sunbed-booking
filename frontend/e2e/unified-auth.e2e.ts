@@ -31,6 +31,9 @@ test('the audience toggle is a keyboard-operable radiogroup', async ({ page }) =
   await expect(options).toHaveCount(2);
   await expect(options.first()).toHaveAttribute('aria-checked', 'true');
   await expect(page.getByTestId('auth-identifier-label')).toHaveText('Email');
+  await expect(page.locator('#auth-intro')).toHaveText(
+    'Sign in to manage your bookings and codes.',
+  );
 
   // Arrow keys move selection AND focus — the radiogroup pattern, not a plain button row.
   await options.first().focus();
@@ -39,6 +42,8 @@ test('the audience toggle is a keyboard-operable radiogroup', async ({ page }) =
   await expect(options.nth(1)).toHaveAttribute('aria-checked', 'true');
   await expect(options.nth(1)).toBeFocused();
   await expect(page.getByTestId('auth-identifier-label')).toHaveText('Username');
+  // The subtitle follows the audience in sign-in mode (#1527).
+  await expect(page.locator('#auth-intro')).toHaveText('Sign in to run your venue.');
 
   await expectNoSeriousAxeViolations(page, 'unified auth card — operator tab');
 });
@@ -204,6 +209,7 @@ test('an operator surface visited while signed out redirects to the operator tab
   // The guard awaits the session restore before deciding, then redirects with the return address.
   await expect(page).toHaveURL(/\/account\/sign-in\?audience=operator&returnUrl=/);
   await expect(page.getByTestId('auth-identifier-label')).toHaveText('Username');
+  await expect(page.locator('#auth-intro')).toHaveText('Sign in to run your venue.');
 });
 
 test('a credential never survives the audience switch, and a mode toggle keeps it (#1120)', async ({

@@ -192,6 +192,52 @@ describe('AuthPage', () => {
    * all `keeps the password`, the negative leg. The clear legs sit with their own flows: the
    * password's above, the challenge solution's in the two proof-of-work blocks below.
    */
+  describe('subtitle follows the audience in sign-in mode (#1527)', () => {
+    const TOURIST_SIGN_IN = 'Sign in to manage your bookings and codes.';
+    const OPERATOR_SIGN_IN = 'Sign in to run your venue.';
+    const REGISTER = 'Join Riviera in a minute — pick what you’re here to do.';
+
+    function subtitle(): string {
+      return (
+        (fixture.nativeElement as HTMLElement).querySelector('#auth-intro')?.textContent?.trim() ??
+        ''
+      );
+    }
+
+    it('shows the tourist line by default', async () => {
+      await render();
+      expect(subtitle()).toBe(TOURIST_SIGN_IN);
+    });
+
+    it('switches to the operator line when the radio picks Venue operator, and back', async () => {
+      await render();
+      await chooseAudience('audience-operator');
+      expect(subtitle()).toBe(OPERATOR_SIGN_IN);
+
+      await chooseAudience('audience-tourist');
+      expect(subtitle()).toBe(TOURIST_SIGN_IN);
+    });
+
+    it('seeds the operator line from ?audience=operator (guard redirect, post-sign-out landing)', async () => {
+      await render({ audience: 'operator' });
+      expect(subtitle()).toBe(OPERATOR_SIGN_IN);
+    });
+
+    it('follows a live audience query-param change', async () => {
+      await render();
+      await navigateQueryParams({ audience: 'operator' });
+      expect(subtitle()).toBe(OPERATOR_SIGN_IN);
+    });
+
+    it('keeps the register line whichever audience is picked', async () => {
+      await render({ mode: 'register', audience: 'operator' });
+      expect(subtitle()).toBe(REGISTER);
+
+      await chooseAudience('audience-tourist');
+      expect(subtitle()).toBe(REGISTER);
+    });
+  });
+
   describe('resets what the card changed out from under', () => {
     it('keeps the password when only the mode changes', async () => {
       // The in-card toggle and a live mode nav are separate legs: only the former has a handler.
