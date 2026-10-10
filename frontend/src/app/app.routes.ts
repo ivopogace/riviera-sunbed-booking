@@ -389,4 +389,10 @@ export const routes: Routes = [
     title: 'Your booking — Riviera',
     data: { section: 'bookings' } satisfies TouristRouteData,
   },
+  {
+    // MUST stay last: first match wins. No redirect, so the typed URL stays in the address bar.
+    path: '**',
+    loadComponent: () => import('./pages/not-found/not-found').then((m) => m.NotFound),
+    title: 'Page not found — Riviera',
+  },
 ];
