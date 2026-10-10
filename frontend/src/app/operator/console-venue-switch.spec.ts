@@ -59,12 +59,30 @@ describe('Operator console — in-place venue switch over the real routes (#180)
     fixture.detectChanges();
   });
 
-  /** Navigates and settles, as the retired router harness did. */
-  async function navigate(url: string): Promise<void> {
-    await router.navigateByUrl(url);
+  /**
+   * Navigates and settles. `venueAccessGuard` holds the navigation on the owner's read, so it is answered
+   * in flight ({@link answerGuardRead}); that primes the shared snapshot the shell and strip then replay.
+   */
+  async function navigate(url: string, venue: { id: number; name: string }): Promise<void> {
+    const navigation = router.navigateByUrl(url);
+    await answerGuardRead(venue.id, venue.name);
+    await navigation;
     fixture.detectChanges();
     await fixture.whenStable();
     fixture.detectChanges();
+  }
+
+  /** Answer the one owner's read the access guard fires for `id` — issued a macrotask after the session restore settles. */
+  async function answerGuardRead(id: number, name: string): Promise<void> {
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    http.expectOne(`${BASE}/api/venues/${id}/beach-map`).flush(ownerMap(id, name));
+  }
+
+  function ownerMap(id: number, name: string) {
+    return {
+      map: { id, name, beach: 'KSAMIL', region: 'SARANDE', sets: [], setVersion: 1 },
+      locks: [],
+    };
   }
 
   afterEach(() => http.verify());
@@ -83,15 +101,10 @@ describe('Operator console — in-place venue switch over the real routes (#180)
 
   /** Flush every read the shell + strip + layout tab fire for a venue (order-independent). */
   function flushVenueReads(id: number, name: string, pending = 1): void {
-    // Every console map read is the owner's one (the shared snapshot and the layout editor's own read).
+    // The layout editor's own owner's read; the shell and strip replay the snapshot the guard primed.
     http
       .match((r) => r.method === 'GET' && r.url === `${BASE}/api/venues/${id}/beach-map`)
-      .forEach((req) =>
-        req.flush({
-          map: { id, name, beach: 'KSAMIL', region: 'SARANDE', sets: [], setVersion: 1 },
-          locks: [],
-        }),
-      );
+      .forEach((req) => req.flush(ownerMap(id, name)));
     http
       .match((r) => r.url === `${BASE}/api/venues/${id}/booking-requests`)
       .forEach((req) =>
@@ -133,7 +146,7 @@ describe('Operator console — in-place venue switch over the real routes (#180)
   }
 
   it('reuses the page + tab instances yet re-loads everything for the new venue', async () => {
-    await navigate('/operator/1/beach-map');
+    await navigate('/operator/1/beach-map', { id: 1, name: 'First Venue' });
     flushVenueReads(1, 'First Venue');
     flushOwned();
     fixture.detectChanges();
@@ -142,7 +155,7 @@ describe('Operator console — in-place venue switch over the real routes (#180)
     const firstShell = shell();
     const firstTab = tab();
 
-    await navigate('/operator/2/beach-map');
+    await navigate('/operator/2/beach-map', { id: 2, name: 'Second Venue' });
     flushVenueReads(2, 'Second Venue');
     fixture.detectChanges();
 
@@ -164,7 +177,7 @@ describe('Operator console — in-place venue switch over the real routes (#180)
    * for venue 2 — the invariant #13 pin at the unit seam.
    */
   it('switches venue from the section row, keeping the tab and reusing the page (#1009)', async () => {
-    await navigate('/operator/1/beach-map');
+    await navigate('/operator/1/beach-map', { id: 1, name: 'First Venue' });
     flushVenueReads(1, 'First Venue');
     flushOwned();
     await fixture.whenStable(); // the owned list lands a microtask after its flush
@@ -182,6 +195,7 @@ describe('Operator console — in-place venue switch over the real routes (#180)
     row.focus();
 
     row.click();
+    await answerGuardRead(2, 'Second Venue');
     await fixture.whenStable();
     fixture.detectChanges();
     flushVenueReads(2, 'Second Venue', 2);
