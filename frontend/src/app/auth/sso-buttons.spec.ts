@@ -1,8 +1,7 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { Mock, vi } from 'vitest';
 
-import { CustomerAuth } from '../core/customer-auth';
-import { SsoProviderId } from '../core/sso-redirect';
+import { CustomerAuth, SsoProviderId } from '../core/customer-auth';
 import { SsoButtons } from './sso-buttons';
 
 /** A CustomerAuth stub exposing only startSso — the rest of the service is inert. */
