@@ -55,6 +55,10 @@ LF and checks it out LF in any fresh clone, so don't set `core.autocrlf` — on 
 stock `true` is exactly what used to make `npm run format:check` report all 361 files as
 unformatted (#636).
 
+CI's `Repo hygiene (diff-scoped)` job fails when any text file is *stored* CRLF in the index,
+which a commit made outside `git add` (a Dependabot Gradle-wrapper bump of `gradlew.bat`) can
+do; `git add --renormalize <path>` fixes it (#1510).
+
 A clone made **before** that file landed keeps whatever is already on disk. An attribute
 doesn't rewrite existing files, and neither `git checkout` nor `git add --renormalize` will,
 because git reads a CRLF working file as *equal* to its LF blob. To renormalize the whole
