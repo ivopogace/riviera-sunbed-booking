@@ -6,10 +6,10 @@ import { settle } from './support/booking-dialog';
 
 /**
  * Real-render journey of a stay on the discovery page: the day rail's last chip opens the range
- * calendar in "Several days" (the mode it names), the picked days re-read the coast, every card says whether its venue can host the stay
- * and why not, a venue that fits with moves sits between the same-set hosts and the ones that can't,
- * which sink in their beach group and wear dusk, a lone pin for one
- * hollows by shape, the venue link carries the stay, and a single day is exactly today's page.
+ * calendar in "Several days", the picked days re-read the coast, every card says whether its venue
+ * can host the stay and why not, a venue that fits with moves sits between the same-set hosts and
+ * the ones that can't, which sink in their beach group and wear dusk, a lone pin for one hollows
+ * by shape, the venue link carries the stay, and a single day is exactly today's page.
  * From `sm` the day rail wraps so a mouse reaches the stay chip; a phone keeps one swipeable row.
  * The API is mocked; axe runs on the stay page and the wrapped rail.
  */
