@@ -262,43 +262,14 @@ function quotedEnd(line, at) {
 }
 
 /**
- * An external template with every `<!-- … -->` blanked to spaces, line and column geometry kept, so
- * a control inside a comment is never judged as markup. A CDATA section's content is blanked first
- * (`blankSections`), so a `<!--` in one opens no comment (#1502).
+ * An external template with its comments blanked, line and column geometry kept, for FOCUS-1, so
+ * a surface inside a comment is never judged as markup. The comments are those Angular's lexer
+ * opens (`commentSpans`), as an inline template's are, so a `<!--` in a quoted value, raw text, a
+ * declaration, a block's parameters or a `@let` value opens none (#1504); a CDATA section's content
+ * is blanked first (`blankSections`, #1502).
  */
 export function maskHtmlComments(lines) {
-  const out = blankSections(lines).map((line) => line.split(''));
-  let open = false;
-
-  for (const chars of out) {
-    for (let c = 0; c < chars.length; c++) {
-      if (open) {
-        if (startsWith(chars, '-->', c)) {
-          blank(chars, c, 3);
-          c += 2;
-          open = false;
-        } else {
-          chars[c] = ' ';
-        }
-      } else if (startsWith(chars, '<!--', c)) {
-        blank(chars, c, 4);
-        c += 3;
-        open = true;
-      }
-    }
-  }
-  return out.map((chars) => chars.join(''));
-}
-
-function startsWith(chars, token, at) {
-  for (let i = 0; i < token.length; i++) {
-    if (chars[at + i] !== token[i]) return false;
-  }
-  return true;
-}
-
-function blank(chars, at, length) {
-  for (let i = at; i < at + length; i++) chars[i] = ' ';
+  return maskComments(blankSections(lines), undefined);
 }
 
 /**
@@ -522,13 +493,14 @@ function commentEnd(text, at) {
 }
 
 /**
- * One inline template's mask with its `<!-- … -->` comments (`commentSpans`) blanked, for
- * `typescriptRegions`' `template`. Nothing is read from `stop` on: a `${…}` or an escape there is
- * text the mask does not hold, and may change the context or end a comment. An unterminated
- * comment, a build error, is left as markup.
+ * A template with its `<!-- … -->` comments (`commentSpans`) blanked: an inline one's mask, for
+ * `typescriptRegions`' `template`, or an external one (`maskHtmlComments`). Nothing is read from
+ * `stop` on: a `${…}` or an escape there is text the mask does not hold, and may change the context
+ * or end a comment. An unterminated comment, a build error, is left as markup.
  *
- * @param {string[]} lines the literal's mask
- * @param {{ row: number, column: number } | undefined} stop the literal's `unread` position
+ * @param {string[]} lines the literal's mask, or the external template
+ * @param {{ row: number, column: number } | undefined} stop the literal's `unread` position; none
+ *   for an external template
  * @returns {string[]} the same lines with each comment blanked
  */
 function maskComments(lines, stop) {
@@ -606,29 +578,41 @@ function lexerSpans(lines, limit) {
 /**
  * Whether a `<` at `at` opens a start tag the comment read stops at: one `readAttributes` marks
  * incomplete (a `<` before its `>` or the region's end: a build error to Angular), one whose name
- * `elementNameAt` cannot read, or one holding a `//` or `/*` outside quotes. `readAttributes` reads
- * a start-tag comment between attributes, but not the one Angular opens inside an unquoted value
- * such as `href=https://…`, so the stop stays; a raw-text element is read with its content, so a
- * CSS comment in a `<style>` stops the read too.
+ * `elementNameAt` cannot read, or one holding a `//` or `/*` in an unquoted value
+ * (`holdsValueComment`), such as `href=https://…`, where Angular opens a start-tag comment that
+ * `readAttributes` reads as value. A start-tag comment between attributes `readAttributes` reads as
+ * Angular does (#1503), so it stops nothing (#1504).
  */
 function misreadTag(lines, starts, text, at) {
   if (!/^<[A-Za-z]/.test(text.slice(at, at + 2))) return false;
-  const line = starts.findLastIndex((start) => start <= at);
+  const line = lineAt(starts, at);
   const found = tagAt(lines, line, at - starts[line]);
   if (found === null || found.tags[0].incomplete) return true;
-  return holdsTagComment(text.slice(at, starts[found.line] + found.column + 1));
+  return holdsValueComment(text.slice(at, starts[found.line] + found.column + 1));
 }
 
-/** Whether a start tag's source holds a `//` or `/*` outside its quoted values. */
-function holdsTagComment(tag) {
+/**
+ * Whether a start tag's source holds a `//` or `/*` in an unquoted value, where Angular's lexer
+ * opens a start-tag comment (`isNameEnd` ends the value at its `/`) and `readAttributes` reads value.
+ */
+function holdsValueComment(tag) {
   let quote = null;
+  let state = 'none';
   for (let at = 0; at < tag.length; at++) {
+    const ch = tag[at];
     if (quote !== null) {
-      if (tag[at] === quote) quote = null;
-    } else if (isQuote(tag[at])) {
-      quote = tag[at];
-    } else if (tag.startsWith('//', at) || tag.startsWith('/*', at)) {
+      if (ch === quote) quote = null;
+    } else if (isQuote(ch)) {
+      quote = ch;
+      state = 'none';
+    } else if (ch === '=') {
+      state = 'equals';
+    } else if (LEXER_WHITESPACE.test(ch) || ch === '>') {
+      if (state === 'value') state = 'none';
+    } else if (state !== 'none' && (tag.startsWith('//', at) || tag.startsWith('/*', at))) {
       return true;
+    } else if (state === 'equals') {
+      state = 'value';
     }
   }
   return false;
@@ -663,6 +647,18 @@ function instructionEnd(text, from) {
     at = isQuote(text[at]) ? quotedEnd(text, at) : at + 1;
   }
   return text.length;
+}
+
+/** The index of the line holding offset `at`, by binary search over `lineStarts`' offsets. */
+function lineAt(starts, at) {
+  let low = 0;
+  let high = starts.length - 1;
+  while (low < high) {
+    const middle = (low + high + 1) >> 1;
+    if (starts[middle] <= at) low = middle;
+    else high = middle - 1;
+  }
+  return low;
 }
 
 function lineStarts(lines) {
@@ -700,7 +696,7 @@ function isRawText(prefix, name) {
  */
 function tagEnd(lines, starts, text, at) {
   if (text[at] !== '<') return null;
-  const line = starts.findLastIndex((start) => start <= at);
+  const line = lineAt(starts, at);
   const found = tagAt(lines, line, at - starts[line]);
   return found === null ? null : starts[found.line] + found.column + 1;
 }

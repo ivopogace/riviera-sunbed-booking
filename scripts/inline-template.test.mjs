@@ -6,6 +6,7 @@ import {
   INLINE_TEMPLATE_EXTENSIONS,
   interpolationStep,
   maskBlockExpressions,
+  maskHtmlComments,
   readAttributes,
   tagNameAt,
   typescriptRegions,
@@ -330,11 +331,11 @@ test('typescriptRegions opens a comment only where Angular\'s lexer does', () =>
 });
 
 /**
- * #1496: a start tag the walk cannot read to its `>` (`readAttributes` marks it incomplete, or no
- * name it knows follows the `<`) is a build error in Angular or a misread, so the scan stops
- * reading comments there, as at an escape; so does one holding a `//` or `/*` outside quotes, a
- * start-tag comment (`_consumeSingleLineComment`, `_consumeMultiLineComment`). `HtmlParser` builds
- * each `div` below with its `role`; the `a[a]` one is a build error, where stopping costs nothing.
+ * #1496: no comment is read across a start tag's `role`: a spaced `=` and a start-tag comment
+ * (`_consumeSingleLineComment`, `_consumeMultiLineComment`) are read as Angular reads them (#1503,
+ * #1504), and a start tag the walk cannot read to its `>` stops the scan, as an escape does.
+ * `HtmlParser` builds each `div` below with its `role`; the `a[a]` one is a build error, where
+ * stopping costs nothing.
  */
 test('typescriptRegions reads no comment past a start tag it cannot read', () => {
   for (const body of [
@@ -625,6 +626,36 @@ test('maskBlockExpressions blanks a CDATA section\'s content and reads nothing i
     '<![CDATA[',
     '        ',
     ']]>@let b =    ;',
+  ]);
+});
+
+/**
+ * #1504: an external template's comments are blanked where Angular's lexer opens one, as an
+ * inline template's are (`commentSpans`): a `<!--` in a quoted value, raw text, a doctype, a
+ * processing instruction or a `@let` value opens none (`HtmlParser`: `div[], p["x"], Comment`;
+ * `textarea["<!--"], p["x"], Comment`; `p["x"], Comment`; `p["x"], Comment`; `@let y, p["x"],
+ * Comment`), and one in an interpolation's string does (`"{{ \"", Comment, p["x"]`). A start-tag
+ * comment after a tag's name, a quoted value or a bare one is read as one (`div[Comment, p[]]`). An
+ * unterminated comment, a build error, is kept, and so is all past an unquoted value holding `//`,
+ * where the lexer opens a start-tag comment `readAttributes` reads as value.
+ */
+test('maskHtmlComments blanks a comment where Angular\'s lexer opens one', () => {
+  const cases = [
+    ['<div title="<!--"></div><p>x</p><!-- c -->', '<div title="<!--"></div><p>x</p>          '],
+    ['<textarea><!--</textarea><p>x</p><!-- c -->', '<textarea><!--</textarea><p>x</p>          '],
+    ['<!DOCTYPE html "<!--"><p>x</p><!-- c -->', '<!DOCTYPE html "<!--"><p>x</p>          '],
+    ['<?x "<!--" ?><p>x</p><!-- c -->', '<?x "<!--" ?><p>x</p>          '],
+    ['@let y = "<!--";<p>x</p><!-- c -->', '@let y = "<!--";<p>x</p>          '],
+    ['{{ "<!-- c --><p>x</p>', '{{ "          <p>x</p>'],
+    ['<!-- x <p>y</p>', '<!-- x <p>y</p>'],
+  ];
+  for (const [line, expected] of cases) assert.deepEqual(maskHtmlComments([line]), [expected], line);
+  for (const tag of ['<div // c', '<div a="x"// c', '<div a=b // c']) {
+    assert.deepEqual(maskHtmlComments([tag, '><!-- c --><p>']), [tag, '>          <p>'], tag);
+  }
+  assert.deepEqual(maskHtmlComments(['<a href=https://x', '><!-- c --><p>']), [
+    '<a href=https://x',
+    '><!-- c --><p>',
   ]);
 });
 
