@@ -9,7 +9,8 @@ import { settle } from './support/booking-dialog';
  * and why not, a venue that fits with moves sits between the same-set hosts and the ones that can't,
  * which sink in their beach group and wear dusk, a lone pin for one
  * hollows by shape, the venue link carries the stay, and a single day is exactly today's page.
- * The API is mocked; axe runs on the stay page.
+ * From `sm` the day rail wraps so a mouse reaches the stay chip; a phone keeps one swipeable row.
+ * The API is mocked; axe runs on the stay page and the wrapped rail.
  */
 
 const NOW = new Date('2026-08-10T10:00:00Z');
@@ -228,6 +229,8 @@ for (const viewport of [
       expect(chipBox.x + chipBox.width).toBeLessThanOrEqual(box.x + box.width);
       expect(chipBox.height).toBeGreaterThanOrEqual(44);
     }
+    await expect(rail.getByRole('button').last()).toHaveText('Several days…');
+    await expect(page.getByTestId('head-stay')).toBeInViewport({ ratio: 1 });
     await settle(page);
     await expectNoSeriousAxeViolations(page, `the wrapped day rail at ${viewport.width} px`);
   });
