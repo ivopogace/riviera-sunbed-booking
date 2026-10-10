@@ -217,8 +217,10 @@ async function mockConsoleForPricing(page: Page): Promise<void> {
     setVersion += 1;
     return route.fulfill({ status: 204, body: '' });
   });
-  await page.route(/\/api\/venues\/1(\?.*)?$/, (route) =>
-    route.fulfill({ json: { ...CONSOLE_MAP, setVersion } }),
+  await page.route(/\/api\/venues\/1\/beach-map$/, (route) =>
+    route.request().method() === 'GET'
+      ? route.fulfill({ json: { map: { ...CONSOLE_MAP, setVersion }, locks: [] } })
+      : route.fallback(),
   );
   await page.route(/\/api\/venues\/1\/booking-requests(\?.*)?$/, (route) =>
     route.fulfill({ json: [] }),

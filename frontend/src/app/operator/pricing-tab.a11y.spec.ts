@@ -48,8 +48,8 @@ describe('PricingTab a11y (#174)', () => {
   function render(sets: SetView[]): void {
     configure('1');
     http
-      .expectOne((r) => r.method === 'GET' && r.url.includes('/api/venues/1'))
-      .flush({ id: 1, name: 'V', sets });
+      .expectOne((r) => r.method === 'GET' && r.url.includes('/api/venues/1/beach-map'))
+      .flush({ map: { id: 1, name: 'V', sets }, locks: [] });
     fixture.detectChanges();
   }
 

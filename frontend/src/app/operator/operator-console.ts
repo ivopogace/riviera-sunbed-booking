@@ -4,7 +4,6 @@ import { ActivatedRoute, RouterOutlet } from '@angular/router';
 import { Observable } from 'rxjs';
 
 import { OperatorAuth } from '../core/operator-auth';
-import { todayBookingDate } from '../shared/booking-date';
 import { venueIdParam } from '../shared/parent-venue-id';
 import { VenueMapView } from '../shared/venue-views';
 import { AvailabilityChanges } from './availability-changes';
@@ -61,7 +60,7 @@ export class OperatorConsole {
     this.changes
       .todayAt(this.venueId)
       .pipe(takeUntilDestroyed())
-      .subscribe((change) => this.loadMap(change.venueId, change.date));
+      .subscribe((change) => this.loadMap(change.venueId));
   }
 
   /**
@@ -77,7 +76,7 @@ export class OperatorConsole {
     // visited, takes authority over this store via `set`; this page only ever seeds it.
     this.requests.reset();
     // Continuations re-check the venue so a superseded venue's reads never land here.
-    this.loadMap(venueId, todayBookingDate(new Date()));
+    this.loadMap(venueId);
     this.bestEffort(this.console.pendingRequestCount(venueId), (count) => {
       if (this.epoch === epoch) {
         this.requests.seed(count);
@@ -87,9 +86,9 @@ export class OperatorConsole {
 
   /** The shared map read behind the strip's free/total: whatever map is shown stands until this
    *  read lands (a failure keeps it), and only the latest read may land. */
-  private loadMap(venueId: number, date: string): void {
+  private loadMap(venueId: number): void {
     const read = ++this.mapRead;
-    this.bestEffort(this.venueMap.load(venueId, date), (venue) => {
+    this.bestEffort(this.venueMap.load(venueId), (venue) => {
       if (this.mapRead === read) {
         this.venue.set(venue);
       }

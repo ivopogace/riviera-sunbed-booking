@@ -23,7 +23,7 @@ import { formatDeadline, isUrgent, timeLeftLabel } from '../shared/deadline';
 import { focusMover } from '../shared/focus-after-render';
 import { formatMoney } from '../shared/money';
 import { parentVenueId } from '../shared/parent-venue-id';
-import { formatCivilDate, todayBookingDate } from '../shared/booking-date';
+import { formatCivilDate } from '../shared/booking-date';
 import { formatStay } from '../shared/booking-date-label';
 import { setLabel, setsById, tierLabel } from '../shared/set-label';
 import { VenueMapView } from '../shared/venue-views';
@@ -380,7 +380,7 @@ export class RequestsTab {
     this.refreshNow();
     const epoch = this.epoch;
     // Best-effort labels/tiers, read once per venue — a failure degrades to "Set {id}".
-    this.venueMap.load(venueId, todayBookingDate(new Date())).subscribe({
+    this.venueMap.load(venueId).subscribe({
       next: (v) => {
         if (this.epoch === epoch) {
           this.venue.set(v); // a superseded venue's labels never dress the new venue's queue

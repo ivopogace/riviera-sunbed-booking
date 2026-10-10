@@ -75,8 +75,8 @@ describe('OperatorConsole accessibility (axe, #170)', () => {
     fixture = TestBed.createComponent(OperatorConsole);
     await fixture.whenStable();
     httpMock
-      .expectOne((r) => r.url === `${BASE}/api/venues/${VENUE}` && r.method === 'GET')
-      .flush(venueMap());
+      .expectOne((r) => r.url === `${BASE}/api/venues/${VENUE}/beach-map` && r.method === 'GET')
+      .flush({ map: venueMap(), locks: [] });
     httpMock
       .expectOne(
         (r) => r.url === `${BASE}/api/venues/${VENUE}/booking-requests` && r.method === 'GET',

@@ -27,6 +27,7 @@ import org.springframework.stereotype.Repository;
 
 import ai.riviera.platform.operator.api.VenueVisibility;
 import ai.riviera.platform.operator.vocabulary.VenueRef;
+import ai.riviera.platform.venue.application.OwnerVenueMap;
 import ai.riviera.platform.venue.application.PhotoServingUrls;
 import ai.riviera.platform.venue.vocabulary.Amenity;
 import ai.riviera.platform.venue.vocabulary.AvailabilitySummary;
@@ -57,14 +58,15 @@ import ai.riviera.platform.venue.spi.SalesWindow;
 import ai.riviera.platform.venue.spi.SetAvailabilityLookup;
 
 /**
- * JDBC adapter implementing the {@link VenueCatalog} and {@link VenueRates} read ports directly, with
- * no out-port between (one adapter is a hypothetical seam); explicit SQL, no JPA (invariant #1). The
- * catalogue reads fence on tourist visibility and read sets only from {@code active_set_position}.
+ * JDBC adapter implementing the {@link VenueCatalog}, {@link VenueRates} and {@link OwnerVenueMap} read
+ * ports directly, with no out-port between (one adapter is a hypothetical seam); explicit SQL, no JPA
+ * (invariant #1). The catalogue reads fence on tourist visibility, the owner's map read does not, and
+ * all read sets only from {@code active_set_position}.
  * {@code SetBookingFacts} must keep answering for a retired set, so it stays its own class,
  * {@link JdbcSetBookingFacts}, whose two bare reads are exempt by constant name (ADR-0019).
  */
 @Repository
-class JdbcVenueCatalog implements VenueCatalog, VenueRates {
+class JdbcVenueCatalog implements VenueCatalog, VenueRates, OwnerVenueMap {
 
 	private static final String AVAILABILITY_FREE = "FREE";
 	private static final String AVAILABILITY_TAKEN = "TAKEN";
@@ -110,12 +112,26 @@ class JdbcVenueCatalog implements VenueCatalog, VenueRates {
 		this.clock = clock;
 	}
 
+	/** The tourist read: the fence first, then the one composition the owner's read shares. */
 	@Override
 	public Optional<VenueMapView> findVenueMap(VenueId id, StaySpan stay) {
 		// The tourist-visibility fence: a venue without an ACTIVE owner is absent, not partially rendered.
 		if (!visibility.isVisible(new VenueRef(id.value()))) {
 			return Optional.empty();
 		}
+		return composeVenueMap(id, stay);
+	}
+
+	/**
+	 * The owner's read ({@link OwnerVenueMap}): the same composition with no fence, so a {@code PENDING}
+	 * owner's hidden venue still answers. The caller asserted ownership first (invariant #13).
+	 */
+	@Override
+	public Optional<VenueMapView> mapFor(VenueId id, StaySpan stay) {
+		return composeVenueMap(id, stay);
+	}
+
+	private Optional<VenueMapView> composeVenueMap(VenueId id, StaySpan stay) {
 		Optional<VenueRow> venue = jdbc.sql("""
 				SELECT id, name, beach, description, rating_tenths, reviews_count, booking_mode,
 				       distance_to_water_m, set_version, sales_close, closed_at, reopen_on, advance_sales,

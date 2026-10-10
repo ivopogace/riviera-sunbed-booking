@@ -32,7 +32,6 @@ if `shared/`- or `core/`-directed); shrink this table and the config together:
 
 | Edge | What crosses |
 |---|---|
-| `operator/` → `venue/` (`console-venue-map.ts`, `daily-view-tab.ts`) | `venue.service` |
 | `pages/home` → `venue/` | `venue.service` |
 | `venue/venue-map` → `booking/` | `booking-dialog` (the one component edge) |
 
