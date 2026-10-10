@@ -42,7 +42,7 @@ test('the audience toggle is a keyboard-operable radiogroup', async ({ page }) =
   await expect(options.nth(1)).toHaveAttribute('aria-checked', 'true');
   await expect(options.nth(1)).toBeFocused();
   await expect(page.getByTestId('auth-identifier-label')).toHaveText('Username');
-  // The subtitle follows the audience in sign-in mode (#1527).
+  // The subtitle follows the audience in sign-in mode.
   await expect(page.locator('#auth-intro')).toHaveText('Sign in to run your venue.');
 
   await expectNoSeriousAxeViolations(page, 'unified auth card — operator tab');

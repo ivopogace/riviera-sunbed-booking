@@ -184,14 +184,6 @@ describe('AuthPage', () => {
     });
   });
 
-  /**
-   * The card resets three things when it changes shape, and the rule is asymmetric: `error` and the
-   * challenge solution go on EITHER a mode or an audience change, while the password goes only on
-   * an audience change — carrying a credential across principal types is the security problem, and
-   * a sign-in/register toggle is not that. This block pins the legs no other block covers — above
-   * all `keeps the password`, the negative leg. The clear legs sit with their own flows: the
-   * password's above, the challenge solution's in the two proof-of-work blocks below.
-   */
   describe('subtitle follows the audience in sign-in mode (#1527)', () => {
     const TOURIST_SIGN_IN = 'Sign in to manage your bookings and codes.';
     const OPERATOR_SIGN_IN = 'Sign in to run your venue.';
@@ -238,6 +230,14 @@ describe('AuthPage', () => {
     });
   });
 
+  /**
+   * The card resets three things when it changes shape, and the rule is asymmetric: `error` and the
+   * challenge solution go on EITHER a mode or an audience change, while the password goes only on
+   * an audience change — carrying a credential across principal types is the security problem, and
+   * a sign-in/register toggle is not that. This block pins the legs no other block covers — above
+   * all `keeps the password`, the negative leg. The clear legs sit with their own flows: the
+   * password's above, the challenge solution's in the two proof-of-work blocks below.
+   */
   describe('resets what the card changed out from under', () => {
     it('keeps the password when only the mode changes', async () => {
       // The in-card toggle and a live mode nav are separate legs: only the former has a handler.
