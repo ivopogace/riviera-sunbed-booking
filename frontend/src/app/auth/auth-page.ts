@@ -385,11 +385,14 @@ export class AuthPage {
   protected readonly title = computed(() =>
     this.mode() === 'register' ? 'Create your account' : 'Welcome back',
   );
-  protected readonly subtitle = computed(() =>
-    this.mode() === 'register'
-      ? 'Join Riviera in a minute — pick what you’re here to do.'
-      : 'Sign in to manage your bookings and codes.',
-  );
+  protected readonly subtitle = computed(() => {
+    if (this.mode() === 'register') {
+      return 'Join Riviera in a minute — pick what you’re here to do.';
+    }
+    return this.audience() === 'operator'
+      ? 'Sign in to run your venue.'
+      : 'Sign in to manage your bookings and codes.';
+  });
   protected readonly identifierLabel = computed(() =>
     this.audience() === 'operator' ? 'Username' : 'Email',
   );
