@@ -5,12 +5,14 @@ import {
   provideBrowserGlobalErrorListeners,
 } from '@angular/core';
 import { provideHttpClient, withInterceptors } from '@angular/common/http';
-import { provideRouter } from '@angular/router';
+import { provideRouter, withNavigationErrorHandler } from '@angular/router';
 
 import { CameraQrScanner } from './operator/camera-qr-scanner';
 import { FakeQrScanner } from './operator/fake-qr-scanner';
 import { QrScanner } from './operator/qr-scanner';
 import { apiSessionInterceptor } from './core/api-session.interceptor';
+import { chunkLoadErrorHandler } from './core/chunk-load-recovery';
+import { PageReload, WindowPageReload } from './core/page-reload';
 import { BrowserGeolocationGateway, GeolocationGateway } from './shared/geolocation';
 import { FakeMapEngine } from './shared/fake-map-engine';
 import { MapEngine } from './shared/map-engine';
@@ -69,7 +71,8 @@ export const appConfig: ApplicationConfig = {
     // apiSessionInterceptor rides the operator session: withCredentials + CSRF header on API
     // calls (replaces the retired Basic-credential interceptor).
     provideHttpClient(withInterceptors([apiSessionInterceptor])),
-    provideRouter(routes),
+    // A chunk that fails to load gets one reload, then the page-load-failed card; other errors stay loud.
+    provideRouter(routes, withNavigationErrorHandler(chunkLoadErrorHandler)),
     // The stored/OS theme must apply at bootstrap regardless of which components render —
     // don't rely on the shell happening to inject ThemeService.
     provideAppInitializer(() => {
@@ -84,5 +87,7 @@ export const appConfig: ApplicationConfig = {
     // URL without a real navigation (mirrors the Stripe adapter swap). The e2e uses the real redirect and
     // intercepts the navigation with page.route.
     { provide: SsoRedirect, useClass: WindowSsoRedirect },
+    // The full page load a failed chunk needs; unit specs record the URL instead.
+    { provide: PageReload, useFactory: () => new WindowPageReload(window) },
   ],
 };

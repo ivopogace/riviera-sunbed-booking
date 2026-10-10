@@ -4,6 +4,7 @@ import { appConfig } from './app.config';
 import { CameraQrScanner } from './operator/camera-qr-scanner';
 import { FakeQrScanner } from './operator/fake-qr-scanner';
 import { QrScanner } from './operator/qr-scanner';
+import { PageReload, WindowPageReload } from './core/page-reload';
 import { BrowserGeolocationGateway, GeolocationGateway } from './shared/geolocation';
 import { FakeMapEngine } from './shared/fake-map-engine';
 import { MapEngine } from './shared/map-engine';
@@ -108,5 +109,12 @@ describe('appConfig GeolocationGateway provider', () => {
     );
 
     expect(entry?.useClass).toBe(BrowserGeolocationGateway);
+  });
+});
+
+/** No fake to swap in: the mocked Playwright suite drives the real reload (`chunk-load-failure.e2e.ts`). */
+describe('appConfig PageReload provider (#1543)', () => {
+  it('serves the window adapter', () => {
+    expect(factoryFor(PageReload)()).toBeInstanceOf(WindowPageReload);
   });
 });

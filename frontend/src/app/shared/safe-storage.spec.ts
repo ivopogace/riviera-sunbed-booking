@@ -1,5 +1,12 @@
 import { installFakeStorage, removeFakeStorage } from '../../testing/fake-storage';
-import { readJson, readStorage, writeJson, writeStorage } from './safe-storage';
+import {
+  readJson,
+  readSessionJson,
+  readStorage,
+  writeJson,
+  writeSessionJson,
+  writeStorage,
+} from './safe-storage';
 
 const KEY = 'safe-storage.spec';
 
@@ -76,5 +83,24 @@ describe('safe-storage (guarded localStorage, issue #163)', () => {
       expect(() => writeStorage(KEY, 'x')).not.toThrow();
       expect(() => writeJson(KEY, { a: 1 })).not.toThrow();
     });
+  });
+});
+
+describe('safe-storage — the sessionStorage twins (#1543)', () => {
+  afterEach(() => removeFakeStorage('sessionStorage'));
+
+  it('round-trips JSON through the per-tab store, never the local one', () => {
+    const session = installFakeStorage('sessionStorage');
+
+    writeSessionJson(KEY, { url: '/legal/privacy' });
+
+    expect(readSessionJson(KEY)).toEqual({ url: '/legal/privacy' });
+    expect(session.has(KEY)).toBe(true);
+    expect(readJson(KEY)).toBeNull();
+  });
+
+  it('reads null and writes nothing without a sessionStorage global', () => {
+    expect(() => writeSessionJson(KEY, 1)).not.toThrow();
+    expect(readSessionJson(KEY)).toBeNull();
   });
 });
