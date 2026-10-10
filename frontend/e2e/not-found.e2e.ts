@@ -36,17 +36,25 @@ for (const path of ['/does-not-exist', '/venues', '/admin/whatever', '/operator/
   });
 }
 
-test('the not-found page is axe-clean in all three themes and meets the touch floor', async ({
-  page,
-}) => {
-  for (const theme of ['porcelain', 'riviera', 'dark']) {
+for (const theme of ['porcelain', 'riviera', 'dark']) {
+  test(`the not-found page is axe-clean in ${theme}`, async ({ page }) => {
     await page.addInitScript((t) => localStorage.setItem('riviera-theme', t), theme);
     await page.goto('/does-not-exist');
     await expect(page.locator('html')).toHaveAttribute('data-riv-theme', theme);
     await expect(page.getByTestId('not-found-home')).toBeVisible();
     await expectNoSeriousAxeViolations(page, `not-found (${theme})`);
-  }
+  });
+}
+
+test('at a phone width the tab bar stays and every control meets the touch floor', async ({
+  page,
+}) => {
   await page.setViewportSize({ width: 390, height: 780 });
+  await page.goto('/does-not-exist');
+  await expect(page.getByTestId('not-found-home')).toBeVisible();
+  // The shell's own way out besides the card link: no tab lit, but the bar is there.
+  await expect(page.getByTestId('tab-bar')).toBeVisible();
+  await expect(page.getByTestId('tab-beaches')).not.toHaveAttribute('aria-current', 'page');
   await expectTouchTargets(page, 'not-found');
 });
 
