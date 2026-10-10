@@ -156,12 +156,20 @@ async function holdVenueRead(page: Page, json: object): Promise<() => void> {
   return release;
 }
 
-/** The Daily view's map read is the owner's (#1531): hold that one open instead of the tourist read. */
+/**
+ * The Daily view's map read is the owner's (#1531): hold that one open instead of the tourist read.
+ * The route's first answer is immediate — `venueAccessGuard` holds the navigation on it (#1526), and a
+ * skeleton can only show once the console has activated; the Daily view's own read, the second, is held.
+ */
 async function holdOwnerMapRead(page: Page, json: object): Promise<() => void> {
   let release!: () => void;
   const held = new Promise<void>((resolve) => (release = resolve));
+  let gateAnswered = false;
   await page.route(/\/api\/venues\/1\/beach-map$/, async (route) => {
-    await held;
+    if (gateAnswered) {
+      await held;
+    }
+    gateAnswered = true;
     await route.fulfill({ json: { map: json, locks: [] } });
   });
   return release;

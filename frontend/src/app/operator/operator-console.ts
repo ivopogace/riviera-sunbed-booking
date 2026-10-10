@@ -8,7 +8,7 @@ import { venueIdParam } from '../shared/parent-venue-id';
 import { VenueMapView } from '../shared/venue-views';
 import { AvailabilityChanges } from './availability-changes';
 import { ConsoleStatsStrip } from './console-stats-strip';
-import { ConsoleVenueMap } from './console-venue-map';
+import { ConsoleVenueMap } from '../core/console-venue-map';
 import { OperatorConsoleService } from './operator-console.service';
 import { PendingApprovalBanner } from './pending-approval-banner';
 import { PendingRequestsStore } from './pending-requests-store';
@@ -17,8 +17,8 @@ import { PendingRequestsStore } from './pending-requests-store';
  * The venue console's page at `/operator/:venueId`: the stats strip, the pending-approval banner
  * and the tab outlet hosting each tab as a child route. Its chrome is `console-shell.ts`'s; this
  * component publishes nothing to it and owns only the per-venue seeding: the shared venue-map
- * snapshot (one request for the strip, the shell and the tabs; re-read when the Daily view settles a walk-in,
- * {@link AvailabilityChanges}) and the Requests badge count (`PendingRequestsStore`). No sign-in
+ * snapshot ({@code venueAccessGuard} primes it before this activates; replayed here for the strip, re-read when
+ * the Daily view settles a walk-in, {@link AvailabilityChanges}) and the Requests badge count (`PendingRequestsStore`). No sign-in
  * gate: {@code operatorSessionGuard} awaits the restore, so this only renders signed-in.
  */
 @Component({

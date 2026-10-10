@@ -7,7 +7,7 @@ import { vi } from 'vitest';
 import { ConsoleSection, ConsoleShell } from './console-shell';
 import { OperatorAuth } from './core/operator-auth';
 import { OwnedVenue, OwnedVenues, OwnedVenuesResult } from './core/owned-venues';
-import { ConsoleVenueMap } from './operator/console-venue-map';
+import { ConsoleVenueMap } from './core/console-venue-map';
 import { PendingRequestsStore } from './operator/pending-requests-store';
 import { VenueMapView } from './shared/venue-views';
 
@@ -65,7 +65,6 @@ const venueMapStore = {
     venueMapStore.reads.push({ venueId, subject });
     return subject.asObservable();
   }),
-  reset: vi.fn(),
 };
 
 @Component({
@@ -92,7 +91,6 @@ describe('ConsoleShell', () => {
     owned.load.mockClear();
     venueMapStore.reads = [];
     venueMapStore.load.mockClear();
-    venueMapStore.reset.mockClear();
     await TestBed.configureTestingModule({
       providers: [
         provideRouter([
@@ -776,7 +774,7 @@ describe('ConsoleShell', () => {
     }
   });
 
-  it('Sign out parks focus on main, signs out, drops the console stores and leaves for the operator sign-in', async () => {
+  it('Sign out parks focus on main, signs out, drops the pending-requests store and leaves for the operator sign-in', async () => {
     const navigate = vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
     TestBed.inject(PendingRequestsStore).seed(3);
     byId('oc-account')!.click();
@@ -790,7 +788,6 @@ describe('ConsoleShell', () => {
     await fixture.whenStable();
 
     expect(operatorAuth.signOut).toHaveBeenCalledTimes(1);
-    expect(venueMapStore.reset).toHaveBeenCalledTimes(1);
     expect(TestBed.inject(PendingRequestsStore).count()).toBe(0);
     expect(navigate).toHaveBeenCalledWith(['/account/sign-in'], {
       queryParams: { audience: 'operator' },

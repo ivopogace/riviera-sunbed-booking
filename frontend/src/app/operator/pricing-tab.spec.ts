@@ -6,7 +6,7 @@ import { BehaviorSubject } from 'rxjs';
 
 import { formatMoney } from '../shared/money';
 import { Pool, SetView, Tier } from '../shared/venue-views';
-import { ConsoleVenueMap } from './console-venue-map';
+import { ConsoleVenueMap } from '../core/console-venue-map';
 import { PricingTab } from './pricing-tab';
 
 interface SentBody {

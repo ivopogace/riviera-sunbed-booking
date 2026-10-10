@@ -16,7 +16,7 @@ Owns the *where*. Technique: `angular-developer` + the angular-cli MCP (`get_bes
 
 | Folder | Owns | May import from |
 |---|---|---|
-| `core/` | stateful cross-cutting singletons: auth state, interceptors, guards, current principal, theme (`operator-auth.ts`, `api-session.interceptor.ts`, `theme.ts`) | `shared/` only |
+| `core/` | stateful cross-cutting singletons: auth state, interceptors, guards, current principal, theme, the console's shared venue-map snapshot (`operator-auth.ts`, `api-session.interceptor.ts`, `theme.ts`, `console-venue-map.ts` — a guard reads it, so it cannot live in `operator/`) | `shared/` only |
 | `shared/` | pure, stateless utilities and presentational primitives; no `HttpClient`, no app state; includes the API-view vocabulary mirrors (`venue-views.ts`, `money.ts`, `booking-date.ts`, `photo-url.ts`, `amenities.ts`, `booking-status.ts`) | nothing app-internal |
 | `pages/` | top-level routes no feature owns: the Discover home (`pages/home`), the legal pages, the `**` not-found page and the `page-load-failed` card | `core/`, `shared/` |
 | feature folders (`booking/`, `venue/`, `operator/`, `auth/`, `admin/`, …) | one domain area: components, models, HTTP service | `core/`, `shared/` — never another feature |
@@ -71,7 +71,11 @@ user-facing surfaces, `<domain>.model.ts`, `<domain>.service.ts` (`@Service()`, 
 - Guards live in `core/`, applied in `app.routes.ts`. Order on `/operator/:venueId` is
   load-bearing: `core/venue-id.guard.ts` first (malformed `:venueId` → `/operator/venue-not-found`),
   then `core/operator-session.guard.ts` (awaits `SessionAuth.whenReady()`; on `/operator`,
-  `/operator/:venueId`, `/operator/venue-not-found`, `/account/operator-password`).
+  `/operator/:venueId`, `/operator/venue-not-found`, `/account/operator-password`), then
+  `core/venue-access.guard.ts` (the owner's beach-map read through the shared snapshot:
+  `403 NOT_VENUE_OWNER` / `404 NO_SUCH_VENUE` → the same not-found page, nothing else bounces).
+  One array's guards run concurrently and the order is priority, so each decides for itself: the
+  access guard awaits the restore and reads nothing for a malformed id or a signed-out visitor.
 
 ## `app.config.ts` (composition root)
 

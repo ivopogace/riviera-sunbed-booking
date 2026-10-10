@@ -27,7 +27,7 @@ import { parentVenueId } from '../shared/parent-venue-id';
 import { rowName, tierLabel } from '../shared/set-label';
 import { SetView } from '../shared/venue-views';
 import { TouchTarget } from '../shared/touch-target';
-import { ConsoleVenueMap } from './console-venue-map';
+import { ConsoleVenueMap } from '../core/console-venue-map';
 import { RepriceErrorCode } from './operator-console.model';
 import { OperatorConsoleService, repriceErrorOf } from './operator-console.service';
 import { StaleWriteBanner } from './stale-write-banner';

@@ -8,7 +8,7 @@ import { expectNoAxeViolations } from '../testing/axe';
 import { ConsoleSection, ConsoleShell } from './console-shell';
 import { OperatorAuth } from './core/operator-auth';
 import { OwnedVenue, OwnedVenues, OwnedVenuesResult } from './core/owned-venues';
-import { ConsoleVenueMap } from './operator/console-venue-map';
+import { ConsoleVenueMap } from './core/console-venue-map';
 
 const TWO: readonly OwnedVenue[] = [
   { id: 1, name: 'Miramar Beach Club', beach: 'KSAMIL' },

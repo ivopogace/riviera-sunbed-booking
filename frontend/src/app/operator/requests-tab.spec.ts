@@ -8,7 +8,7 @@ import { vi } from 'vitest';
 import { freezeClock } from '../../testing/freeze-clock';
 import { MoneyView } from '../shared/money';
 import { SetView, Tier } from '../shared/venue-views';
-import { ConsoleVenueMap } from './console-venue-map';
+import { ConsoleVenueMap } from '../core/console-venue-map';
 import { PendingRequestsStore } from './pending-requests-store';
 import { RequestsTab } from './requests-tab';
 

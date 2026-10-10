@@ -27,7 +27,7 @@ import { formatCivilDate } from '../shared/booking-date';
 import { formatStay } from '../shared/booking-date-label';
 import { setLabel, setsById, tierLabel } from '../shared/set-label';
 import { VenueMapView } from '../shared/venue-views';
-import { ConsoleVenueMap } from './console-venue-map';
+import { ConsoleVenueMap } from '../core/console-venue-map';
 import { PendingRequestItem, RequestDecision, RequestErrorCode } from './operator-console.model';
 import { OperatorConsoleService, requestErrorOf } from './operator-console.service';
 import { PendingRequestsStore } from './pending-requests-store';
