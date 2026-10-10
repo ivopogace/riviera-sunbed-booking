@@ -1,12 +1,10 @@
 /**
- * Guarded `localStorage` access, shared by the core singletons that persist to the browser
- * (`ThemeService`, `DeviceLocalBookings`), plus the `sessionStorage` twins for per-tab state
- * (`ChunkLoadRecovery`'s reload stamp). Every path degrades instead of throwing:
- * a blocked store (private mode), a quota-exceeded write, a corrupt/malformed value, or the
- * absence of the store entirely (SSR / the unit-test jsdom) resolves to a null read or a
- * no-op write, so callers fall back to session-only state and never see an exception.
- *
- * <p>This is the single home for the storage-safety try/catch, so it can't diverge between consumers.
+ * Guarded `localStorage` access for the core singletons that persist to the browser
+ * (`ThemeService`, `DeviceLocalBookings`), plus `sessionStorage` twins for per-tab state
+ * (`ChunkLoadRecovery`'s reload stamp). Every path degrades instead of throwing: a blocked store
+ * (private mode), a quota-exceeded write, a malformed value or no store at all (SSR / jsdom)
+ * resolves to a null read or a no-op write, so callers keep session-only state. The single
+ * home for the storage-safety try/catch, so it can't diverge between consumers.
  */
 
 type Store = 'localStorage' | 'sessionStorage';
