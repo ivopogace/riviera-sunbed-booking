@@ -6,6 +6,7 @@ import {
   TestRequest,
 } from '@angular/common/http/testing';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { By } from '@angular/platform-browser';
 import {
   ActivatedRoute,
   convertToParamMap,
@@ -24,6 +25,7 @@ import { formatBookingDate } from '../shared/booking-date-label';
 import { addDays, defaultBookingDate, formatCivilDate } from '../shared/booking-date';
 import { ItineraryView, SetView, VenueMapView } from '../shared/venue-views';
 import { VenueMap } from './venue-map';
+import { VenueReviews } from './venue-reviews';
 import { ProofOfWork } from '../core/proof-of-work';
 
 /** A 24-set fixture mirroring the Miramar seed: 4 rows × 6, 6 taken (18 free), front row premium.
@@ -799,6 +801,14 @@ describe('VenueMap', () => {
     expect(header.textContent).not.toContain('0 reviews');
   });
 
+  it("hands the reviews section the venue read's count, so its empty state agrees with the header (#1528)", async () => {
+    venueRequest().flush({ ...miramar(), ratingTenths: 0, reviewsCount: 0 });
+    await settle();
+
+    const reviews = fixture.debugElement.query(By.directive(VenueReviews));
+    expect((reviews.componentInstance as VenueReviews).reviewsCount()).toBe(0);
+  });
+
   it('agrees the review noun with the count — a venue\'s first rating reads "1 review"', async () => {
     // V45 zeroed every seeded count, so one review is the first rated state any venue reaches.
     venueRequest().flush({ ...miramar(), ratingTenths: 50, reviewsCount: 1 });
@@ -1463,6 +1473,9 @@ describe('VenueMap', () => {
     fixture.detectChanges();
     pickDay(first);
     pickDay(last);
+    httpMock.expectNone((req) => req.url.endsWith('/api/venues/1'));
+    el().querySelector<HTMLButtonElement>('[data-testid="calendar-apply"]')!.click();
+    fixture.detectChanges();
 
     const request = venueRequest();
     expect(request.request.params.get('date')).toBe(first);
@@ -1477,6 +1490,13 @@ describe('VenueMap', () => {
     expect(el().querySelector('[data-testid="availability"]')?.textContent).toContain(
       'free for all 3 days',
     );
+
+    await openPicker();
+    expect(
+      el().querySelector('[data-testid="calendar-mode-stay"]')!.getAttribute('aria-checked'),
+    ).toBe('true');
+    expect(calendarDay(first).closest('td')!.getAttribute('aria-selected')).toBe('true');
+    expect(calendarDay(last).closest('td')!.getAttribute('aria-selected')).toBe('true');
   });
 
   it('offers the stay mode at a Request-to-Book venue too: a range is one request', async () => {
