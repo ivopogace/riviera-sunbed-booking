@@ -29,7 +29,7 @@ export class ConsoleStatsStrip {
 
   /** The venue this strip summarizes — required (the strip only renders inside the signed-in shell). */
   readonly venueId = input.required<number>();
-  /** The venue map the shell loads per venue and shares — the source of free/total (undefined until loaded). */
+  /** The venue map the console page loads per venue and shares — the source of free/total (undefined until loaded). */
   readonly venue = input<VenueMapView | undefined>(undefined);
 
   /**

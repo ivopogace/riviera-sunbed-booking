@@ -18,7 +18,7 @@ import { PendingRequestsStore } from './pending-requests-store';
  * The venue console's page at `/operator/:venueId`: the stats strip, the pending-approval banner
  * and the tab outlet hosting each tab as a child route. Its chrome is `console-shell.ts`'s; this
  * component publishes nothing to it and owns only the per-venue seeding: the shared venue-map
- * snapshot (one request for the strip and the tabs; re-read when the Daily view settles a walk-in,
+ * snapshot (one request for the strip, the shell and the tabs; re-read when the Daily view settles a walk-in,
  * {@link AvailabilityChanges}) and the Requests badge count (`PendingRequestsStore`). No sign-in
  * gate: {@code operatorSessionGuard} awaits the restore, so this only renders signed-in.
  */
