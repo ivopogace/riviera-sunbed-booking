@@ -247,7 +247,7 @@ describe('BeachMapCanvas (#672)', () => {
     expect(viewport(host).querySelector('[data-testid="row-code"]')).toBeNull();
   });
 
-  it('leaves rail labels uncapped by default — operator surfaces render them whole (#724)', () => {
+  it('leaves rail labels uncapped by default — the editors’ letters rail renders them whole (#724)', () => {
     const { host } = render();
     expect(host.querySelector('[data-testid="row-code"] .truncate')).toBeNull();
   });

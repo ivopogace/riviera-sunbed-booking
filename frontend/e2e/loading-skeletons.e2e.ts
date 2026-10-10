@@ -405,8 +405,9 @@ async function expectSlideIsWhatTheReservationAllows(
 
 /**
  * The other extreme of the rail's own vocabulary: both names exactly 40 characters, the limit
- * `V43__set_position_row_label_length.sql` and the editor's `maxlength` allow. The uncapped
- * operator rail's worst case is a real number, not an adjective, and it belongs in the matrix.
+ * `V43__set_position_row_label_length.sql` and the editor's `maxlength` allow. The operator rail's
+ * worst case from `sm` up, where it is uncapped, is a real number, not an adjective, and it
+ * belongs in the matrix.
  */
 const LONG_LABEL_VENUE = {
   ...RICH_VENUE,
