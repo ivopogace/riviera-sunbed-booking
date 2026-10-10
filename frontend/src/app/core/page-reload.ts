@@ -9,9 +9,14 @@ export abstract class PageReload {
   abstract to(url: string): void;
 }
 
-/** Production reloader: a real full-page navigation. */
+/**
+ * Production reloader: a real full-page navigation. The router keeps its own URL in
+ * `history.state` whenever the address bar shows another (`browserUrl`), and a same-URL load keeps
+ * that state, so the fresh document would boot straight back into the card: the entry is cleared first.
+ */
 export class WindowPageReload extends PageReload {
   to(url: string): void {
+    window.history.replaceState(null, '', url);
     window.location.assign(url);
   }
 }

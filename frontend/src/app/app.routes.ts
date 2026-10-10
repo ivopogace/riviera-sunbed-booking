@@ -4,8 +4,10 @@ import { Router, Routes } from '@angular/router';
 import type { AdminTabRouteData } from './admin/admin-console';
 import type { TouristRouteData } from './app';
 import type { ConsoleRouteData } from './console-shell';
+import { PAGE_LOAD_FAILED_PATH } from './core/chunk-load-recovery';
 import { operatorSessionGuard } from './core/operator-session.guard';
 import { venueIdGuard, VENUE_NOT_FOUND_PATH } from './core/venue-id.guard';
+import { PageLoadFailed } from './pages/page-load-failed/page-load-failed';
 import { VENUE_CONSOLE_LANDING_TAB } from './shared/console-destination';
 
 /**
@@ -388,6 +390,12 @@ export const routes: Routes = [
     loadComponent: () => import('./booking/booking-view').then((m) => m.BookingView),
     title: 'Your booking — Riviera',
     data: { section: 'bookings' } satisfies TouristRouteData,
+  },
+  {
+    // The one EAGER route: the answer to a chunk that failed to load must not need a chunk itself.
+    path: PAGE_LOAD_FAILED_PATH,
+    component: PageLoadFailed,
+    title: 'Couldn’t load this page — Riviera',
   },
   {
     // MUST stay last: first match wins. No redirect, so the typed URL stays in the address bar.

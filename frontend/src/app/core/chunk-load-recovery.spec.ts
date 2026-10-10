@@ -42,7 +42,7 @@ describe('ChunkLoadRecovery (#1543)', () => {
 
   afterEach(() => removeFakeStorage('sessionStorage'));
 
-  it('reloads the target once, stamping the tab first, and redirects to the card under the target URL', () => {
+  it('reloads the target once, stamping the tab first, and redirects to the card leaving the address bar alone', () => {
     const command = recovery.recover(chunkFailure());
 
     expect(reload.urls).toEqual([TARGET]);
@@ -50,10 +50,10 @@ describe('ChunkLoadRecovery (#1543)', () => {
     expect(JSON.parse(session.get(STAMP_KEY)!)).toEqual({ url: TARGET, at: Date.now() });
     expect(command).toBeInstanceOf(RedirectCommand);
     expect(router.serializeUrl(command!.redirectTo)).toBe('/page-load-failed');
-    expect(command!.navigationBehaviorOptions).toEqual({ browserUrl: TARGET });
+    expect(command!.navigationBehaviorOptions).toEqual({ skipLocationChange: true });
   });
 
-  it('shows the card instead of a second reload while the stamp for that URL is fresh', () => {
+  it('shows the card under the target URL instead of a second reload while the stamp for that URL is fresh', () => {
     session.set(STAMP_KEY, JSON.stringify({ url: TARGET, at: Date.now() - 59_000 }));
 
     const command = recovery.recover(chunkFailure());
@@ -61,6 +61,8 @@ describe('ChunkLoadRecovery (#1543)', () => {
     expect(reload.urls).toEqual([]);
     expect(recovery.reloading()).toBe(false);
     expect(command).toBeInstanceOf(RedirectCommand);
+    expect(router.serializeUrl(command!.redirectTo)).toBe('/page-load-failed');
+    expect(command!.navigationBehaviorOptions).toEqual({ browserUrl: TARGET });
   });
 
   it('reloads again once the stamp is a minute old, or is for another URL', () => {

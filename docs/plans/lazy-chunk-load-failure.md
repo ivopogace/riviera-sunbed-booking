@@ -26,28 +26,28 @@ Scope notes.
 
 ## Acceptance criteria
 
-- [ ] **AC-1:** Given a lazy route whose chunk fails on the first attempt only (a stale deploy),
+- [x] **AC-1:** Given a lazy route whose chunk fails on the first attempt only (a stale deploy),
   when the visitor opens it, then the page reloads once to the target URL and renders.
   *Seam:* the navigation error handler → `PageReload`. *Pinned by:*
   `chunk-load-failure.e2e.ts › a chunk that fails once is recovered by one reload` and
   `chunk-load-recovery.spec.ts › reloads the target once`.
-- [ ] **AC-2:** Given the chunk still fails after that reload, when the visitor opens the route
+- [x] **AC-2:** Given the chunk still fails after that reload, when the visitor opens the route
   directly, then the outlet shows the "Couldn't load this page" card with "Try again", the
   address bar keeps the target URL, no second automatic reload happens and no uncaught error or
   console `ERROR` is raised. *Seam:* `withNavigationErrorHandler` → `RedirectCommand`.
   *Pinned by:* the e2e `a direct load whose chunk keeps failing reloads once, then shows the
   retry card` and `chunk-load-recovery.spec.ts › shows the card instead of a second reload`.
-- [ ] **AC-3:** Given the card, when "Try again" is pressed and the chunk now loads, then the
+- [x] **AC-3:** Given the card, when "Try again" is pressed and the chunk now loads, then the
   target page renders under its URL. *Seam:* `ChunkLoadRecovery.retry()` → `PageReload`.
   *Pinned by:* the e2e `"Try again" reloads the page…` and `page-load-failed.spec.ts`.
-- [ ] **AC-4:** Given an in-app navigation (a header link) whose chunk fails, then the same
+- [x] **AC-4:** Given an in-app navigation (a header link) whose chunk fails, then the same
   recovery runs under the target URL. *Pinned by:* the e2e `an in-app navigation…`.
-- [ ] **AC-5:** A navigation error that is not a chunk-load failure is untouched by the handler.
+- [x] **AC-5:** A navigation error that is not a chunk-load failure is untouched by the handler.
   *Pinned by:* `chunk-load-recovery.spec.ts › leaves other navigation errors alone`.
-- [ ] **AC-6:** Accessible: axe-clean in the three themes, AA contrast, the 44 px touch floor,
+- [x] **AC-6:** Accessible: axe-clean in the three themes, AA contrast, the 44 px touch floor,
   `role="alert"` on the card. *Pinned by:* the e2e theme/touch cases,
   `page-load-failed.a11y.spec.ts`, `page-load-failed.contrast.spec.ts`.
-- [ ] **AC-7:** Route table pins: `page-load-failed` is the one eager route, before `**`; the
+- [x] **AC-7:** Route table pins: `page-load-failed` is the one eager route, before `**`; the
   lazy-target count stays 36. *Pinned by:* `app.routes.spec.ts`.
 
 ## Non-goals
@@ -84,14 +84,20 @@ Scope notes.
 
 ## Execution status
 
-**Stage pointer:** implement (phase 0)
+**Stage pointer:** PR — draft open, CI gate
 
-**Next action:** phase 1 core spec red → green
+**Next action:** CI green on the head → ready for review → review gate (high)
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — reproduction | ⏳ | |
-| 1 — core | | |
-| 2 — page + wiring | | |
+| 0 — reproduction | ✅ | 942325d |
+| 1 — core | ✅ | 3580d49 |
+| 2 — page + wiring | ✅ | (this commit) |
+
+Found while building phase 2: the router keeps its own URL in `history.state` (`ɵrouterUrl`) when
+`browserUrl` differs from it, and a same-URL load keeps that state, so a reload booted straight
+back into the card without trying the chunk. The reload-path redirect therefore uses
+`skipLocationChange` (nothing written), and `WindowPageReload` clears the history entry's state
+before navigating (the retry path, where the card's state is already written).
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.

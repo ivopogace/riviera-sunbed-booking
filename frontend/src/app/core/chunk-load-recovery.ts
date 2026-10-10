@@ -53,18 +53,24 @@ export class ChunkLoadRecovery {
   /** True from the moment a reload was asked for until the document unloads: the card stays neutral. */
   readonly reloading = signal(false);
 
-  /** The `withNavigationErrorHandler` body: a redirect for a chunk failure, `undefined` for anything else. */
+  /**
+   * The `withNavigationErrorHandler` body: a redirect for a chunk failure, `undefined` for anything
+   * else. With a reload in flight the address bar is left alone: `browserUrl` would store the card's
+   * route in `history.state`, which a same-URL load keeps, and the fresh document would boot into the card.
+   */
   recover(error: NavigationError): RedirectCommand | undefined {
     if (!isChunkLoadError(error.error)) {
       return undefined;
     }
     this.failedUrl = error.url;
-    if (!this.reloadedRecently(error.url) && this.stamp(error.url)) {
+    const reloadNow = !this.reloadedRecently(error.url) && this.stamp(error.url);
+    if (reloadNow) {
       this.reloadTo(error.url);
     }
-    return new RedirectCommand(this.router.parseUrl(`/${PAGE_LOAD_FAILED_PATH}`), {
-      browserUrl: error.url,
-    });
+    return new RedirectCommand(
+      this.router.parseUrl(`/${PAGE_LOAD_FAILED_PATH}`),
+      reloadNow ? { skipLocationChange: true } : { browserUrl: error.url },
+    );
   }
 
   /** The card's "Try again": a fresh load of the failed URL, stamped so it isn't followed by an automatic one. */

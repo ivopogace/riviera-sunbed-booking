@@ -18,7 +18,7 @@ Owns the *where*. Technique: `angular-developer` + the angular-cli MCP (`get_bes
 |---|---|---|
 | `core/` | stateful cross-cutting singletons: auth state, interceptors, guards, current principal, theme (`operator-auth.ts`, `api-session.interceptor.ts`, `theme.ts`) | `shared/` only |
 | `shared/` | pure, stateless utilities and presentational primitives; no `HttpClient`, no app state; includes the API-view vocabulary mirrors (`venue-views.ts`, `money.ts`, `booking-date.ts`, `photo-url.ts`, `amenities.ts`, `booking-status.ts`) | nothing app-internal |
-| `pages/` | top-level routes no feature owns: the Discover home (`pages/home`), the legal pages and the `**` not-found page | `core/`, `shared/` |
+| `pages/` | top-level routes no feature owns: the Discover home (`pages/home`), the legal pages, the `**` not-found page and the `page-load-failed` card | `core/`, `shared/` |
 | feature folders (`booking/`, `venue/`, `operator/`, `auth/`, `admin/`, …) | one domain area: components, models, HTTP service | `core/`, `shared/` — never another feature |
 | `environments/` (sibling of `app/`) | `apiBaseUrl` + public config; any stratum may read it | — |
 
@@ -50,7 +50,14 @@ user-facing surfaces, `<domain>.model.ts`, `<domain>.service.ts` (`@Service()`, 
 
 - All routes in `app.routes.ts`, every one lazy (`loadComponent`) with a `title`; literal
   segments above `:param` siblings. `app.routes.spec.ts` resolves every lazy target, so a new
-  route needs no per-component deep-link spec for coverage.
+  route needs no per-component deep-link spec for coverage. The one eager route is
+  `page-load-failed` (`pages/page-load-failed`): the answer to a chunk that failed to load must
+  not need a chunk itself.
+- Navigation errors: `provideRouter(routes, withNavigationErrorHandler(chunkLoadErrorHandler))`.
+  `core/chunk-load-recovery.ts` answers a chunk-load failure only — one full reload of the
+  target per tab (a `sessionStorage` stamp), then the card under the target's URL via
+  `RedirectCommand` + `browserUrl` — behind the `core/page-reload.ts` seam; any other
+  navigation error stays loud.
 - The operator console (`/operator/:venueId`) and admin console (`/admin`) are nested
   child-route trees, one child per tab; follow that shape. A route with `data.console`
   (`venue` · `admin` · `plain`) wears the root-level `console-shell.ts` (root-level because it
