@@ -40,6 +40,7 @@ import { setLabel, setsById, tierSentenceLabel } from '../shared/set-label';
 import { SetView, VenueMapView } from '../shared/venue-views';
 import { VenueService } from '../venue/venue.service';
 import { BeachMapCanvas, BeachMapCanvasRow, BeachMapRowDef } from '../shared/beach-map-canvas';
+import { AvailabilityChanges } from './availability-changes';
 import {
   ConsoleDailyBooking,
   DayRefundErrorCode,
@@ -182,6 +183,7 @@ export class DailyViewTab {
   private readonly route = inject(ActivatedRoute);
   private readonly venues = inject(VenueService);
   private readonly console = inject(OperatorConsoleService);
+  private readonly changes = inject(AvailabilityChanges);
   protected readonly operator = inject(OperatorAuth);
 
   /** The venue this tab manages, from the parent `/operator/:venueId` route — always a
@@ -509,12 +511,15 @@ export class DailyViewTab {
       return; // BOOKED_ONLINE — locked
     }
     const marking = action === 'mark';
+    const date = this.selectedDate();
     this.applyOverride(set.id, marking ? 'STAFF_MARKED' : 'FREE');
     const write = marking
-      ? this.console.markSet(venueId, set.id, this.selectedDate())
-      : this.console.releaseSet(venueId, set.id, this.selectedDate());
+      ? this.console.markSet(venueId, set.id, date)
+      : this.console.releaseSet(venueId, set.id, date);
     write.subscribe({
       next: () => {
+        // The row changed server-side whatever this tab shows now: the strip and the shared map follow (#1525).
+        this.changes.announce({ venueId, date });
         if (this.epoch === epoch) {
           this.reconcile(set.id); // skip if a venue switch superseded this write
         }

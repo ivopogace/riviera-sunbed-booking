@@ -17,6 +17,7 @@ import {
   todayBookingDate,
 } from '../shared/booking-date';
 import { Pool, SetView, Tier } from '../shared/venue-views';
+import { AvailabilityChange, AvailabilityChanges } from './availability-changes';
 import { ConsoleVenueMap } from './console-venue-map';
 import { ConsoleDailyBooking } from './operator-console.model';
 import { DailyViewTab } from './daily-view-tab';
@@ -907,6 +908,91 @@ describe('DailyViewTab (#175)', () => {
     ]);
 
     expect(tile(1).getAttribute('data-state')).toBe('STAFF_MARKED');
+  });
+
+  /** Every change the tab announces to the console's today-counting surfaces (#1525). */
+  function announced(): AvailabilityChange[] {
+    const seen: AvailabilityChange[] = [];
+    TestBed.inject(AvailabilityChanges).changes.subscribe((c) => seen.push(c));
+    return seen;
+  }
+
+  it('announces a successful mark and a successful release to the console, once each, for the tapped day (#1525 AC-1)', () => {
+    render();
+    const seen = announced();
+
+    (tile(1) as HTMLButtonElement).click();
+    fixture.detectChanges();
+    const post = http.expectOne(
+      (r) => r.method === 'POST' && r.url.includes('/api/venues/1/sets/1/availability'),
+    );
+    expect(seen).toEqual([]); // optimistic flip only — the server has not said yes yet
+    post.flush(null);
+    expect(seen).toEqual([{ venueId: 1, date: TODAY }]);
+    flushLoad([seat(1, 'A', 1, 'PREMIUM', 'ONLINE', 'TAKEN'), ...SEED.slice(1)], BOOKINGS, [
+      { setId: 1, state: 'STAFF_MARKED' },
+      ...STATES,
+    ]);
+    expect(seen).toHaveLength(1); // the reconcile reads announce nothing of their own
+
+    (tile(3) as HTMLButtonElement).click();
+    fixture.detectChanges();
+    http
+      .expectOne(
+        (r) => r.method === 'DELETE' && r.url.includes('/api/venues/1/sets/3/availability'),
+      )
+      .flush(null);
+    expect(seen).toEqual([
+      { venueId: 1, date: TODAY },
+      { venueId: 1, date: TODAY },
+    ]);
+    flushLoad(SEED, BOOKINGS, [{ setId: 2, state: 'BOOKED_ONLINE' }]);
+  });
+
+  it('announces the picked day, not today, when the mark is for another date (#1525)', () => {
+    render();
+    const seen = announced();
+    const tomorrow = addDays(TODAY, 1);
+    const picker = byId('daily-date') as HTMLInputElement;
+    picker.value = tomorrow;
+    picker.dispatchEvent(new Event('change'));
+    fixture.detectChanges();
+    flushLoad();
+
+    (tile(1) as HTMLButtonElement).click();
+    fixture.detectChanges();
+    http
+      .expectOne((r) => r.method === 'POST' && r.url.includes('/api/venues/1/sets/1/availability'))
+      .flush(null);
+    flushLoad([seat(1, 'A', 1, 'PREMIUM', 'ONLINE', 'TAKEN'), ...SEED.slice(1)], BOOKINGS, [
+      { setId: 1, state: 'STAFF_MARKED' },
+      ...STATES,
+    ]);
+
+    expect(seen).toEqual([{ venueId: 1, date: tomorrow }]);
+  });
+
+  it('announces nothing when the server refuses the mark or release (#1525 AC-2)', () => {
+    render();
+    const seen = announced();
+
+    (tile(1) as HTMLButtonElement).click();
+    fixture.detectChanges();
+    http
+      .expectOne((r) => r.method === 'POST' && r.url.includes('/api/venues/1/sets/1/availability'))
+      .flush({ code: 'ALREADY_TAKEN' }, { status: 409, statusText: 'Conflict' });
+    flushLoad();
+
+    (tile(3) as HTMLButtonElement).click();
+    fixture.detectChanges();
+    http
+      .expectOne(
+        (r) => r.method === 'DELETE' && r.url.includes('/api/venues/1/sets/3/availability'),
+      )
+      .flush({ code: 'NOT_MARKED' }, { status: 409, statusText: 'Conflict' });
+    flushLoad();
+
+    expect(seen).toEqual([]);
   });
 
   it('shows the not-owner notice when a mark is 403 (invariant #13) and reconciles', () => {
