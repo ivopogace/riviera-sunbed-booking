@@ -125,9 +125,11 @@ describe('RemodelReceiptPanel (#1034, #1199, #1300)', () => {
       ],
     });
 
-    const moves = byId('layout-remodel-receipt-moves')!;
-    expect(moves.textContent).toMatch(/Row A · position 3 → Row 2 · position 7/);
-    expect(moves.textContent).toMatch(/Front row · Sea view · position 2 → Row B · position 1/);
+    const lines = Array.from(byId('layout-remodel-receipt-moves')!.querySelectorAll('li')).map(
+      (li) => li.textContent?.trim(),
+    );
+    expect(lines[0]).toMatch(/^Row A · position 3 → Row 2 · position 7/);
+    expect(lines[1]).toMatch(/^Front row · Sea view · position 2 → Row B · position 1/);
   });
 
   it('singularises one move and says so when nothing moved', () => {

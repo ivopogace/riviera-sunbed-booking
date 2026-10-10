@@ -143,11 +143,10 @@ describe('RemodelPreviewPanel (#1033, #1034, #1199, #1300)', () => {
       refunds: [{ ...refund, from: { ...refund.from, rowLabel: 'Front row · Sea view' } }],
     });
 
-    expect(byId('layout-remodel-moves')!.textContent).toMatch(
-      /Row A · position 3 → Row 2 · position 7/,
-    );
-    expect(byId('layout-remodel-refunds')!.textContent).toMatch(
-      /Front row · Sea view · position 3 · Tue 22 Sept 2026/,
+    const line = (id: string) => byId(id)!.querySelector('li')!.textContent?.trim();
+    expect(line('layout-remodel-moves')).toMatch(/^Row A · position 3 → Row 2 · position 7/);
+    expect(line('layout-remodel-refunds')).toMatch(
+      /^Front row · Sea view · position 3 · Tue 22 Sept 2026/,
     );
   });
 

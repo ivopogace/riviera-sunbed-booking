@@ -1005,8 +1005,11 @@ describe('LayoutEditor (#172)', () => {
     setRowName(1, '  ');
     expect(cells()[1].getAttribute('aria-label')).toBe('Row B position 1, gap or aisle');
 
+    expect(rowNameSaves()[1].getAttribute('aria-label')).toBe('Save the name for Row 2');
     setRowName(1, 'Under the pines');
     rowNameSaves()[1].click();
+    // The input stays open during the write; a keystroke in flight must not be announced as saved.
+    setRowName(1, 'Under the pines, shaded');
     http
       .expectOne(
         (r) =>
@@ -1018,6 +1021,31 @@ describe('LayoutEditor (#172)', () => {
     fixture.detectChanges();
     expect(byId('layout-row-name-saved-announce').textContent?.trim()).toBe(
       'Under the pines name saved.',
+    );
+    expect(rowNameSaves()[1].getAttribute('aria-label')).toBe('Save the name for Under the pines');
+  });
+
+  it('names a locked row by its stored label in the gap brush’s notices (#1524)', () => {
+    render(
+      [seat(1, 'STANDARD', 'ONLINE', 1, 1, 'Row 2'), seat(2, 'STANDARD', 'ONLINE', 2, 1, 'Row 2')],
+      0,
+      [{ setId: 2, bookedOn: null, bookedUntil: null, heldOn: '2026-09-12' }],
+    );
+    useBulkMode();
+    byId('layout-tool-gap').click();
+    fixture.detectChanges();
+
+    cells()[1].click();
+    fixture.detectChanges();
+    expect(byId('layout-lock-notice').textContent?.replace(/\s+/g, ' ').trim()).toBe(
+      'Row 2 · position 2 is held by staff Sat 12 Sept 2026 — it can’t become a gap. Its tier and pool can still change.',
+    );
+
+    rowFillButtons()[0].click();
+    fixture.detectChanges();
+    expect(byId('layout-last-change').textContent?.trim()).toBe('Row 2 → Gap / aisle');
+    expect(byId('layout-lock-notice').textContent?.replace(/\s+/g, ' ').trim()).toBe(
+      'Row 2 → Gap / aisle kept 1 held set — sets held by staff can’t become gaps.',
     );
   });
 

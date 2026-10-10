@@ -276,10 +276,11 @@ export class LayoutEditor {
   /**
    * The row-rename outcome as one sentence, or ''. One region serves the whole editor rather than
    * one per row, so the sentence names the row — renaming A then B must change the text to speak.
+   * It names the row as saved, never the input's live draft: the input stays open during the write.
    */
   protected readonly renamedRowMessage = computed(() => {
     const y = this.renamedRow();
-    return y === null ? '' : `${this.namedRow(y)} name saved.`;
+    return y === null ? '' : `${rowName(this.storedRowNames()[y] ?? gridRowLabel(y))} name saved.`;
   });
   /** The last write failure, mapped to operator-facing copy, or undefined. */
   protected readonly errorCode = signal<LayoutErrorCode | undefined>(undefined);
@@ -653,6 +654,8 @@ export class LayoutEditor {
   private namedRow(y: number): string {
     return rowName(this.effectiveRowNames()[y]);
   }
+
+  protected readonly rowName = rowName;
 
   protected onRowNameInput(y: number, value: string): void {
     this.rowNames.update((names) => names.map((name, i) => (i === y ? value : name)));

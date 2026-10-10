@@ -9,8 +9,9 @@ import { settle } from './support/booking-dialog';
  * per-row reprice PUT (path + integer-minor-unit body + concurrency token) and the recomputed
  * projected take. Also the cross-venue (403) failure copy and the stale-write conflict (409
  * STALE_WRITE reverts the row + offers Reload — co-located here as the venue tab does in
- * operator-venue.e2e.ts), and the client-side €0.50 floor refusing before any request. API mocked
- * via `page.route` (no backend); axe over the tab.
+ * operator-venue.e2e.ts), the client-side €0.50 floor refusing before any request, and the row-label
+ * chip's rendered box for a stored phrase label. API mocked via `page.route` (no backend); axe over
+ * the tab.
  */
 
 const PRINCIPAL = { username: 'operator', principalType: 'OPERATOR' };
@@ -61,7 +62,8 @@ const VENUE_MAP = {
 test.use({ colorScheme: 'dark' });
 
 /**
- * Session + shell reads mocked; `puts` collects the reprice PUTs; `deny` makes the reprice 403. STATEFUL
+ * Session + shell reads mocked; `puts` collects the reprice PUTs; `deny` makes the reprice 403; `map`
+ * is the venue the tab loads. STATEFUL
  * on the `setVersion` token: the map GET hands out the current token, the reprice PUT enforces it (a
  * mismatch is 409 STALE_WRITE) and bumps it on success. `bump()` simulates a concurrent writer moving the
  * prices on behind the tab's back, so a subsequent stale reprice is genuinely rejected.
@@ -204,19 +206,24 @@ test('a full row label hugs its chip on one line at desktop and phone widths, an
   const chips = page.getByTestId('pricing-row-label');
   await expect(chips).toHaveText(['Front row · Sea view', 'Row 2', 'C']);
 
-  // One line of 12px text is well under 40px tall; the broken 26px box stacked the phrase four lines high.
+  // A fixed 26px box still reports 26px tall while its words pile up below it: assert no overflow.
   const phrase = chips.first();
   const letter = chips.last();
   for (const width of [1280, 390]) {
     await page.setViewportSize({ width, height: 800 });
+    await expect(phrase).toBeInViewport();
     const box = (await phrase.boundingBox())!;
-    expect(box.height, `${width}px wide`).toBeLessThan(40);
     expect(box.width, `${width}px wide`).toBeGreaterThan(100);
-    // The letter chip keeps its 26px square and the € input stays inside the card.
+    expect(
+      await phrase.evaluate((el) => el.scrollHeight - el.clientHeight),
+      `${width}px wide`,
+    ).toBeLessThanOrEqual(0);
     const square = (await letter.boundingBox())!;
     expect(square.width).toBeGreaterThanOrEqual(26);
+    expect(square.width).toBeLessThan(32);
     expect(square.height).toBeGreaterThanOrEqual(26);
-    const card = (await page.getByTestId('pricing-tab').boundingBox())!;
+    expect(square.height).toBeLessThan(32);
+    const card = (await page.getByTestId('pricing-card').boundingBox())!;
     const input = (await page.getByTestId('pricing-input-Front row · Sea view').boundingBox())!;
     expect(input.x + input.width, `${width}px wide`).toBeLessThanOrEqual(card.x + card.width);
   }
