@@ -493,13 +493,14 @@ function commentEnd(text, at) {
 }
 
 /**
- * One inline template's mask with its `<!-- … -->` comments (`commentSpans`) blanked, for
- * `typescriptRegions`' `template`. Nothing is read from `stop` on: a `${…}` or an escape there is
- * text the mask does not hold, and may change the context or end a comment. An unterminated
- * comment, a build error, is left as markup.
+ * A template with its `<!-- … -->` comments (`commentSpans`) blanked: an inline one's mask, for
+ * `typescriptRegions`' `template`, or an external one (`maskHtmlComments`). Nothing is read from
+ * `stop` on: a `${…}` or an escape there is text the mask does not hold, and may change the context
+ * or end a comment. An unterminated comment, a build error, is left as markup.
  *
- * @param {string[]} lines the literal's mask
- * @param {{ row: number, column: number } | undefined} stop the literal's `unread` position
+ * @param {string[]} lines the literal's mask, or the external template
+ * @param {{ row: number, column: number } | undefined} stop the literal's `unread` position; none
+ *   for an external template
  * @returns {string[]} the same lines with each comment blanked
  */
 function maskComments(lines, stop) {
@@ -584,7 +585,7 @@ function lexerSpans(lines, limit) {
  */
 function misreadTag(lines, starts, text, at) {
   if (!/^<[A-Za-z]/.test(text.slice(at, at + 2))) return false;
-  const line = starts.findLastIndex((start) => start <= at);
+  const line = lineAt(starts, at);
   const found = tagAt(lines, line, at - starts[line]);
   if (found === null || found.tags[0].incomplete) return true;
   return holdsValueComment(text.slice(at, starts[found.line] + found.column + 1));
@@ -648,6 +649,18 @@ function instructionEnd(text, from) {
   return text.length;
 }
 
+/** The index of the line holding offset `at`, by binary search over `lineStarts`' offsets. */
+function lineAt(starts, at) {
+  let low = 0;
+  let high = starts.length - 1;
+  while (low < high) {
+    const middle = (low + high + 1) >> 1;
+    if (starts[middle] <= at) low = middle;
+    else high = middle - 1;
+  }
+  return low;
+}
+
 function lineStarts(lines) {
   const starts = [];
   let offset = 0;
@@ -683,7 +696,7 @@ function isRawText(prefix, name) {
  */
 function tagEnd(lines, starts, text, at) {
   if (text[at] !== '<') return null;
-  const line = starts.findLastIndex((start) => start <= at);
+  const line = lineAt(starts, at);
   const found = tagAt(lines, line, at - starts[line]);
   return found === null ? null : starts[found.line] + found.column + 1;
 }
