@@ -32,7 +32,7 @@
 set -u
 
 # Cloud-only: CLAUDE_CODE_REMOTE is "true" in Claude Code on the web.
-[ "${CLAUDE_CODE_REMOTE:-}" = "true" ] || exit 0
+[[ "${CLAUDE_CODE_REMOTE:-}" = "true" ]] || exit 0
 
 # Ensure the env-setup-script's pinned Node 26 / npm win on PATH.
 export PATH="$HOME/.local/bin:$PATH"
@@ -51,7 +51,7 @@ curl_https() {
 # context, and npm's install summary is noise there.
 FRONTEND_DIR="$PROJECT_DIR/frontend"
 NPM_CI_PID=
-if [ ! -d "$FRONTEND_DIR/node_modules" ] && [ -f "$FRONTEND_DIR/package-lock.json" ]; then
+if [[ ! -d "$FRONTEND_DIR/node_modules" ]] && [[ -f "$FRONTEND_DIR/package-lock.json" ]]; then
   echo "cloud-session-setup: installing frontend deps (npm ci) in $FRONTEND_DIR ..." >&2
   {
     npm --prefix "$FRONTEND_DIR" ci >&2 \
@@ -69,7 +69,7 @@ fi
 # Falling through to 2b is normal, not a degradation (vendor is free at languageVersion=25).
 # Which hosts a session can reach varies; measurements: docs/agents/gradle-proxy-trust.md.
 JDK_DIR=/opt/jdk-25
-if ! { [ -x "$JDK_DIR/bin/java" ] && "$JDK_DIR/bin/java" -version 2>&1 | grep -q 'version "25'; }; then
+if ! { [[ -x "$JDK_DIR/bin/java" ]] && "$JDK_DIR/bin/java" -version 2>&1 | grep -q 'version "25'; }; then
   echo "cloud-session-setup: installing Temurin JDK 25 (backend toolchain) ..." >&2
   # GitHub release assets are allowlisted (github.com / *.githubusercontent.com);
   # api.adoptium.net is NOT, so a direct Adoptium-API download 403s. Resolve the
@@ -77,7 +77,7 @@ if ! { [ -x "$JDK_DIR/bin/java" ] && "$JDK_DIR/bin/java" -version 2>&1 | grep -q
   asset=$(curl_https -fsSL \
     "https://api.github.com/repos/adoptium/temurin25-binaries/releases/latest" \
     | grep -oE 'https://[^"]+OpenJDK25U-jdk_x64_linux_hotspot_[0-9._]+\.tar\.gz' | head -1)
-  if [ -n "$asset" ]; then
+  if [[ -n "$asset" ]]; then
     tmp=$(mktemp)
     if curl_https -fsSL --retry 2 -o "$tmp" "$asset"; then
       rm -rf "$JDK_DIR" && mkdir -p "$JDK_DIR"
@@ -98,7 +98,7 @@ fi
 #     only to the network allowlist, not the GitHub repo-scope proxy. Any JDK 25 satisfies
 #     build.gradle (languageVersion=25, vendor=any). Requires corretto.aws on the env
 #     network allowlist. See docs/agents/gradle-proxy-trust.md.
-if ! { [ -x "$JDK_DIR/bin/java" ] && "$JDK_DIR/bin/java" -version 2>&1 | grep -q 'version "25'; }; then
+if ! { [[ -x "$JDK_DIR/bin/java" ]] && "$JDK_DIR/bin/java" -version 2>&1 | grep -q 'version "25'; }; then
   echo "cloud-session-setup: GitHub/Temurin JDK path unavailable; falling back to Amazon Corretto 25 (corretto.aws) ..." >&2
   tmp=$(mktemp)
   if curl_https -fsSL --retry 3 \
@@ -115,7 +115,7 @@ fi
 # Make JDK 25 the session default. Gradle auto-detects JDKs in /opt, but set
 # JAVA_HOME + PATH so `java`/`./gradlew` use it too. Persist for subsequent Bash
 # commands via $CLAUDE_ENV_FILE (keeps the Node-26 dir ahead of the image node).
-if [ -x "$JDK_DIR/bin/java" ] && [ -n "${CLAUDE_ENV_FILE:-}" ]; then
+if [[ -x "$JDK_DIR/bin/java" ]] && [[ -n "${CLAUDE_ENV_FILE:-}" ]]; then
   {
     echo "JAVA_HOME=$JDK_DIR"
     echo "PATH=$JDK_DIR/bin:$PATH"
@@ -129,7 +129,7 @@ fi
 # AFTER the JDK step so it targets the freshly-installed cacerts. Best-effort.
 # See scripts/trust-proxy-ca-java.sh and docs/agents/gradle-proxy-trust.md.
 TRUST_SCRIPT="$PROJECT_DIR/scripts/trust-proxy-ca-java.sh"
-if [ -x "$TRUST_SCRIPT" ]; then
+if [[ -x "$TRUST_SCRIPT" ]]; then
   echo "cloud-session-setup: trusting agent-proxy CA for the JDK ..." >&2
   "$TRUST_SCRIPT" \
     || echo "cloud-session-setup: trust-proxy-ca-java failed; ./gradlew may hit PKIX (run 'bash scripts/trust-proxy-ca-java.sh' to retry)" >&2
@@ -143,7 +143,7 @@ fi
 # not a hard dependency of the session). See scripts/start-dockerd.sh and
 # docs/agents/docker-testcontainers.md.
 DOCKERD_SCRIPT="$PROJECT_DIR/scripts/start-dockerd.sh"
-if [ -x "$DOCKERD_SCRIPT" ]; then
+if [[ -x "$DOCKERD_SCRIPT" ]]; then
   echo "cloud-session-setup: starting Docker daemon for backend ITs ..." >&2
   "$DOCKERD_SCRIPT" \
     || echo "cloud-session-setup: start-dockerd failed; backend ITs will skip (run 'bash scripts/start-dockerd.sh' to retry)" >&2
@@ -158,7 +158,7 @@ fi
 # it is the cheapest step (a local copy out of the marketplace clone).
 # See scripts/ensure-plugins.sh for the full mechanism.
 PLUGINS_SCRIPT="$PROJECT_DIR/scripts/ensure-plugins.sh"
-if [ -x "$PLUGINS_SCRIPT" ]; then
+if [[ -x "$PLUGINS_SCRIPT" ]]; then
   echo "cloud-session-setup: ensuring enabled plugin payloads are on disk ..." >&2
   "$PLUGINS_SCRIPT" \
     || echo "cloud-session-setup: ensure-plugins failed; /code-review may be missing (run 'bash scripts/ensure-plugins.sh' to retry)" >&2

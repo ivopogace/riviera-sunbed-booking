@@ -15,6 +15,7 @@ import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.transaction.PlatformTransactionManager;
 
 import ai.riviera.platform.EnabledIfDockerAvailable;
+import ai.riviera.platform.RegistryRows;
 import ai.riviera.platform.TestcontainersConfiguration;
 import ai.riviera.platform.booking.events.BookingConfirmed;
 import ai.riviera.platform.notification.BookingMailFixtures;
@@ -61,11 +62,11 @@ class PayoutSpineRetryIT {
 		fixtures.publishInTransaction(fixtures.confirmationOf(set, bookingId, date, AMOUNT_MINOR));
 		Awaitility.await("the accrual and the mail ran, so both publications are archived").atMost(WAIT)
 				.until(() -> accrualsFor(bookingId) == 1L
-						&& archived("payout.accrue-on-booking-confirmed") != null
-						&& archived(BookingMailFixtures.LISTENER_ID) != null);
+						&& archived("payout.accrue-on-booking-confirmed", bookingId) != null
+						&& archived(BookingMailFixtures.LISTENER_ID, bookingId) != null);
 
-		UUID failedAccrual = reopenAsFailed(archived("payout.accrue-on-booking-confirmed"));
-		UUID failedMail = reopenAsFailed(archived(BookingMailFixtures.LISTENER_ID));
+		UUID failedAccrual = reopenAsFailed(archived("payout.accrue-on-booking-confirmed", bookingId));
+		UUID failedMail = reopenAsFailed(archived(BookingMailFixtures.LISTENER_ID, bookingId));
 		jdbc.sql("DELETE FROM payout_ledger_entry WHERE booking_id = :id AND entry_type = 'ACCRUAL'")
 				.param("id", bookingId).update();
 
@@ -82,13 +83,13 @@ class PayoutSpineRetryIT {
 		}
 	}
 
-	private UUID archived(String listenerId) {
+	private UUID archived(String listenerId, long bookingId) {
 		return jdbc.sql("""
 				SELECT id FROM event_publication_archive
-				WHERE listener_id = :listener AND event_type = :type AND serialized_event LIKE :amount
-				""")
+				WHERE listener_id = :listener AND event_type = :type AND %s
+				""".formatted(RegistryRows.NAMES_BOOKING))
 				.param("listener", listenerId).param("type", BookingConfirmed.class.getName())
-				.param("amount", "%" + AMOUNT_MINOR + "%")
+				.param("bookingId", RegistryRows.bookingIdParam(bookingId))
 				.query(UUID.class).optional().orElse(null);
 	}
 

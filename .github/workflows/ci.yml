@@ -414,6 +414,22 @@ jobs:
         if: ${{ !cancelled() }}
         run: node scripts/check-cloud-node-pin.mjs
 
+      - name: Check no text file is stored CRLF in the index (#1510, hard gate)
+        # Standing-tree, like the Node pin: the tree is clean, so a red is a real regression and not
+        # a pre-existing row the diff happened to touch. `eol=crlf` (gradlew.bat) is a checkout-side
+        # attribute; the blob is still LF. A commit made through the API rather than `git add` —
+        # Dependabot's wrapper bump writes gradlew.bat that way — skips normalization and stores
+        # CRLF, after which every fresh clone shows the file modified (#1510). `attr/-text` rows
+        # are binaries by declaration and never normalized, so they are excluded.
+        if: ${{ !cancelled() }}
+        run: |
+          bad=$(git ls-files --eol | awk '$1 ~ /^i\/(crlf|mixed)$/ && $3 != "attr/-text"')
+          if [ -n "$bad" ]; then
+            echo "$bad"
+            echo "::error::Text file(s) stored CRLF in the index. Fix: git add --renormalize <path> && git commit"
+            exit 1
+          fi
+
   sonar:
     name: SonarCloud scan
     needs: [backend, frontend]

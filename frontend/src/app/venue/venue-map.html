@@ -519,7 +519,7 @@
       </app-beach-map-canvas>
 
       <!-- The header's aggregate anchors this section: the score up there, the words down here. -->
-      <app-venue-reviews [venueId]="v.id" />
+      <app-venue-reviews [venueId]="v.id" [reviewsCount]="v.reviewsCount" />
     </article>
 
     <!-- Outside the glass header: its backdrop-filter would contain, and its overflow clip, a fixed child (#134). -->

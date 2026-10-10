@@ -29,7 +29,7 @@ import {
  * surfaces use `appCardGlass` (`--riv-card-glass` = white @ 0.55). Text pairs: the heading, ledger ink
  * (`#<bookingId>` reference, gross), period-total label and statement ink use `--riv-card-ink`; the
  * intro/dates/commission/empty sub-copy use `--riv-card-ink-soft` (0.78); the "Owed to you" label,
- * column headers and footnote use `--riv-card-ink-faint` (0.72). The owed figure + accrual net use the
+ * column headers, the phone cards' figure labels (#1533) and footnote use `--riv-card-ink-faint` (0.72). The owed figure + accrual net use the
  * console accent ink `--riv-console-accent-ink`; reversal net + the reason chip use the console's negative ink
  * `--riv-console-negative-ink` (the chip also over its own tint of that same value at 0.10 — the lowest
  * pair that ink lands in anywhere, which is why the measurement lives here; the tab's own lowest is the weather

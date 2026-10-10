@@ -64,7 +64,7 @@ command -v claude >/dev/null 2>&1 || {
   echo "ensure-plugins: no 'claude' CLI on PATH; skipping." >&2
   exit 0
 }
-[ -f "$SETTINGS" ] || {
+[[ -f "$SETTINGS" ]] || {
   echo "ensure-plugins: $SETTINGS not found; nothing to do." >&2
   exit 0
 }
@@ -81,7 +81,7 @@ except Exception as exc:                       # malformed settings must not abo
 print("\n".join(name for name, on in enabled.items() if on))
 ' "$SETTINGS" 2>/dev/null)
 
-[ -n "$PLUGINS" ] || {
+[[ -n "$PLUGINS" ]] || {
   echo "ensure-plugins: no enabled plugins declared; nothing to do." >&2
   exit 0
 }
@@ -93,7 +93,7 @@ REFRESHED=""
 for id in $PLUGINS; do
   marketplace="${id##*@}"
   if ! claude plugin marketplace list 2>/dev/null | grep -q "$marketplace"; then
-    if [ "$marketplace" = "claude-plugins-official" ]; then
+    if [[ "$marketplace" = "claude-plugins-official" ]]; then
       echo "ensure-plugins: registering marketplace $marketplace ..." >&2
       claude plugin marketplace add anthropics/claude-plugins-official >/dev/null 2>&1 \
         || echo "ensure-plugins: could not add $marketplace; ${id%%@*} will be unavailable." >&2

@@ -687,7 +687,7 @@ export class SetEditor {
   protected onBatchPriceInput(value: string): void {
     this.batchDraft.update((draft) => ({ ...draft, priceEur: value }));
     if (
-      this.batchErrorCode() === 'INVALID_REQUEST' &&
+      this.batchErrorCode() === 'INVALID_PRICE' &&
       (value.trim() === '' || meetsPriceFloor(value))
     ) {
       this.batchErrorCode.set(undefined);
@@ -718,7 +718,7 @@ export class SetEditor {
       draft.priceEur.trim() !== '' &&
       (touchedPrice === null || touchedPrice < MIN_SET_PRICE_MINOR)
     ) {
-      this.batchErrorCode.set('INVALID_REQUEST');
+      this.batchErrorCode.set('INVALID_PRICE');
       return;
     }
     const request: SetBatchRequest = {
@@ -764,8 +764,10 @@ export class SetEditor {
         return undefined; // rendered by the parent's stale-write banner instead
       case 'NO_SUCH_SET':
         return 'One of the selected sets no longer exists, so nothing was changed. Reload the tab to see the current map.';
-      case 'INVALID_REQUEST':
+      case 'INVALID_PRICE':
         return 'That price is not valid. Enter an amount of at least €0.50, or leave it blank to leave prices unchanged.';
+      case 'INVALID_REQUEST':
+        return 'The change could not be applied as entered. Reload the tab and try again.';
       case 'NO_SUCH_VENUE':
         return 'This venue could not be found.';
       case 'NOT_VENUE_OWNER':
@@ -981,7 +983,7 @@ export class SetEditor {
     const draft = this.draft();
     const minorUnits = eurosToMinorUnits(draft.priceEur);
     if (minorUnits === null || minorUnits < MIN_SET_PRICE_MINOR) {
-      this.errorCode.set('INVALID_REQUEST');
+      this.errorCode.set('INVALID_PRICE');
       return;
     }
     await this.write(
@@ -1002,7 +1004,7 @@ export class SetEditor {
 
   /** Re-check a price refusal as the operator types: a corrected amount releases the field at once. */
   protected onPriceInput(value: string): void {
-    if (this.errorCode() === 'INVALID_REQUEST' && meetsPriceFloor(value)) {
+    if (this.errorCode() === 'INVALID_PRICE' && meetsPriceFloor(value)) {
       this.errorCode.set(undefined);
     }
   }
@@ -1026,7 +1028,7 @@ export class SetEditor {
     if (minorUnits === null || minorUnits < MIN_SET_PRICE_MINOR) {
       // A cleared or non-numeric field is "no change", never a €0 set — the same rule the Pricing tab keeps.
       // Below the floor (compared after rounding) is refused here; the server's 400 stays the backstop.
-      this.errorCode.set('INVALID_REQUEST');
+      this.errorCode.set('INVALID_PRICE');
       return;
     }
     const request: SetWriteRequest = {
@@ -1093,8 +1095,10 @@ export class SetEditor {
         return 'This venue could not be found.';
       case 'NOT_VENUE_OWNER':
         return 'You do not manage this venue, so its map can’t be changed.';
-      case 'INVALID_REQUEST':
+      case 'INVALID_PRICE':
         return 'That price is not valid. Enter an amount of at least €0.50.';
+      case 'INVALID_REQUEST':
+        return 'This set could not be saved as entered. Reload the tab and try again.';
       case 'UNAUTHORIZED':
         return 'Your session has expired. Please sign in again.';
       default:

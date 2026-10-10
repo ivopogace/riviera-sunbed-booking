@@ -615,7 +615,8 @@ class VenueAdminControllerIT {
 						.content(setBody("Row A", 1, "STANDARD", "GOLD", 3000, "EUR", 1, 1)))
 				.andExpect(status().isBadRequest())
 				.andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
-				.andExpect(jsonPath("$.code").value("INVALID_REQUEST"));
+				.andExpect(jsonPath("$.code").value("INVALID_REQUEST"))
+				.andExpect(jsonPath("$.field").doesNotExist());
 	}
 
 	@Test
@@ -625,7 +626,8 @@ class VenueAdminControllerIT {
 						.contentType(MediaType.APPLICATION_JSON)
 						.content(setBody("Row A", 1, "STANDARD", "ONLINE", 3000, "ABC", 1, 1)))
 				.andExpect(status().isBadRequest())
-				.andExpect(jsonPath("$.code").value("INVALID_REQUEST"));
+				.andExpect(jsonPath("$.code").value("INVALID_REQUEST"))
+				.andExpect(jsonPath("$.field").value("price"));
 	}
 
 	@Test
@@ -637,7 +639,8 @@ class VenueAdminControllerIT {
 							.contentType(MediaType.APPLICATION_JSON).content(body))
 					.andExpect(status().isBadRequest())
 					.andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
-					.andExpect(jsonPath("$.code").value("INVALID_REQUEST"));
+					.andExpect(jsonPath("$.code").value("INVALID_REQUEST"))
+					.andExpect(jsonPath("$.field").value("price"));
 		}
 		assertEquals(0, jdbc.sql("SELECT COUNT(*) FROM set_position WHERE venue_id = :v").param("v", venue)
 				.query(Integer.class).single());
@@ -648,13 +651,41 @@ class VenueAdminControllerIT {
 	}
 
 	@Test
+	void namesThePriceOnlyWhenAnEditRefusesThePrice() throws Exception {
+		// #1463: the operator UI binds a 400 to the price input only when the body names the price.
+		long venue = createVenue("Edit Floor Club");
+		long setId = addSet(venue, setBody("Row A", 1, "STANDARD", "ONLINE", 3000, "EUR", 1, 1));
+		mvc.perform(patch("/api/venues/{v}/sets/{s}", venue, setId).cookie(operatorSession).with(csrf())
+						.contentType(MediaType.APPLICATION_JSON)
+						.content(setBody("Row A", 1, "STANDARD", "ONLINE", 49, "EUR", 1, 1)))
+				.andExpect(status().isBadRequest())
+				.andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
+				.andExpect(jsonPath("$.code").value("INVALID_REQUEST"))
+				.andExpect(jsonPath("$.field").value("price"));
+		mvc.perform(patch("/api/venues/{v}/sets/{s}", venue, setId).cookie(operatorSession).with(csrf())
+						.contentType(MediaType.APPLICATION_JSON)
+						.content(setBody("Row A", 1, "STANDARD", "GOLD", 3000, "EUR", 1, 1)))
+				.andExpect(status().isBadRequest())
+				.andExpect(jsonPath("$.code").value("INVALID_REQUEST"))
+				.andExpect(jsonPath("$.field").doesNotExist());
+		mvc.perform(post("/api/venues/{v}/sets", venue).cookie(operatorSession).with(csrf())
+						.contentType(MediaType.APPLICATION_JSON)
+						.content("""
+								{"rowLabel":"Row A","positionNo":2,"tier":"STANDARD","pool":"ONLINE","gridX":2,"gridY":1}
+								"""))
+				.andExpect(status().isBadRequest())
+				.andExpect(jsonPath("$.field").value("price"));
+	}
+
+	@Test
 	void rejectsNonPositiveCoordinate() throws Exception {
 		long venue = createVenue("Bad Coord Club");
 		mvc.perform(post("/api/venues/{v}/sets", venue).cookie(operatorSession).with(csrf())
 						.contentType(MediaType.APPLICATION_JSON)
 						.content(setBody("Row A", 1, "STANDARD", "ONLINE", 3000, "EUR", 0, 1)))
 				.andExpect(status().isBadRequest())
-				.andExpect(jsonPath("$.code").value("INVALID_REQUEST"));
+				.andExpect(jsonPath("$.code").value("INVALID_REQUEST"))
+				.andExpect(jsonPath("$.field").doesNotExist());
 	}
 
 	@Test

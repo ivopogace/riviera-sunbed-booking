@@ -16,8 +16,10 @@ import org.springframework.modulith.events.IncompleteEventPublications;
 import org.springframework.transaction.PlatformTransactionManager;
 
 import ai.riviera.platform.EnabledIfDockerAvailable;
+import ai.riviera.platform.RegistryRows;
 import ai.riviera.platform.TestcontainersConfiguration;
 import ai.riviera.platform.booking.events.BookingConfirmed;
+import ai.riviera.platform.booking.vocabulary.BookingId;
 import ai.riviera.platform.notification.BookingMailFixtures.SetRef;
 import ai.riviera.platform.notification.application.MailOutbox;
 
@@ -55,8 +57,8 @@ import static org.assertj.core.api.Assertions.assertThat;
  * has its own tests against a controllable clock.
  *
  * <p>The database is shared with other IT classes in this context, so every assertion is keyed to
- * this test's own booking or publication id rather than to a global count; the distinct amounts below
- * exist to make those rows identifiable. Testcontainers; skipped where Docker is absent.
+ * this test's own booking or publication id rather than to a global count. Testcontainers; skipped
+ * where Docker is absent.
  */
 @EnabledIfDockerAvailable
 @Import({ TestcontainersConfiguration.class, ControllableMailerConfiguration.class })
@@ -65,7 +67,6 @@ class MailOutboxScopeIT {
 
 	private static final Duration WAIT = Duration.ofSeconds(20);
 
-	/** Improbable enough to identify one test's rows in a database several IT classes write to. */
 	private static final long MAIL_AMOUNT_MINOR = 405_000_801L;
 
 	private static final long ACCRUAL_AMOUNT_MINOR = 405_000_802L;
@@ -112,9 +113,9 @@ class MailOutboxScopeIT {
 
 		fixtures.publishInTransaction(fixtures.confirmationOf(set, accrualBooking, accrualDate, ACCRUAL_AMOUNT_MINOR));
 		Awaitility.await("the accrual ran, so its publication is completed and archived").atMost(WAIT)
-				.until(() -> accrualsFor(accrualBooking) == 1L && archivedAccrual() != null);
+				.until(() -> accrualsFor(accrualBooking) == 1L && archivedAccrual(accrualBooking) != null);
 
-		UUID stuckAccrual = reopenArchivedAccrual(archivedAccrual());
+		UUID stuckAccrual = reopenArchivedAccrual(archivedAccrual(accrualBooking));
 		clearAccrual(accrualBooking);
 
 		LocalDate mailDate = LocalDate.of(2032, 6, 7);
@@ -123,7 +124,7 @@ class MailOutboxScopeIT {
 		transport.failEverySend(true);
 		fixtures.publishInTransaction(fixtures.confirmationOf(set, mailBooking, mailDate, MAIL_AMOUNT_MINOR));
 		Awaitility.await("the failing send left the mail publication outstanding").atMost(WAIT)
-				.until(() -> fixtures.outstandingMailPublications(MAIL_AMOUNT_MINOR) == 1L);
+				.until(() -> fixtures.outstandingMailPublications(new BookingId(mailBooking)) == 1L);
 
 		transport.reset();
 		int resubmitted = outbox.resubmitOutstanding();
@@ -160,7 +161,7 @@ class MailOutboxScopeIT {
 		fixtures.publishInTransaction(fixtures.confirmationOf(set, bookingId, date, COMPLETED_AMOUNT_MINOR));
 		Awaitility.await("the mail was delivered and its publication completed").atMost(WAIT)
 				.until(() -> transport.deliveriesMatching(contact) == 1L
-						&& fixtures.outstandingMailPublications(COMPLETED_AMOUNT_MINOR) == 0L);
+						&& fixtures.outstandingMailPublications(new BookingId(bookingId)) == 0L);
 
 		outbox.resubmitOutstanding();
 
@@ -170,14 +171,14 @@ class MailOutboxScopeIT {
 	}
 
 	/** This test's archived payout-accrual publication, or {@code null} until the accrual completes. */
-	private UUID archivedAccrual() {
+	private UUID archivedAccrual(long bookingId) {
 		return jdbc.sql("""
 				SELECT id FROM event_publication_archive
-				WHERE listener_id LIKE 'payout.accrue-on-booking-confirmed'
-				  AND event_type = :type AND serialized_event LIKE :amountFragment
-				""")
+				WHERE listener_id = 'payout.accrue-on-booking-confirmed'
+				  AND event_type = :type AND %s
+				""".formatted(RegistryRows.NAMES_BOOKING))
 				.param("type", BookingConfirmed.class.getName())
-				.param("amountFragment", "%" + ACCRUAL_AMOUNT_MINOR + "%")
+				.param("bookingId", RegistryRows.bookingIdParam(bookingId))
 				.query(UUID.class).optional().orElse(null);
 	}
 

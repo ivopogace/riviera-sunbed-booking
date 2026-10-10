@@ -39,8 +39,13 @@ import {
   readText,
   repoRoot,
 } from './git-diff.mjs';
-import { adviser, report } from './guard-report.mjs';
-import { typescriptRegions } from './inline-template.mjs';
+import { adviser, report, tally } from './guard-report.mjs';
+import {
+  maskBlockExpressions,
+  maskHtmlComments,
+  typescriptRegions,
+  walkTags,
+} from './inline-template.mjs';
 
 /** Angular templates only; a spec's fixtures are allowed to build the non-compliant forms. */
 const IN_SCOPE = /^frontend\/src\/app\/.*(?<!\.spec)\.(ts|html)$/;
@@ -193,7 +198,7 @@ export function findViolations({
   const inline = html || scanned.template.some((line) => line.trim() !== '');
   const template = inline ? scanned.template : maskHtmlComments(sourceOf(templateSource).split('\n'));
   const violations = [
-    ...busyViolations(path, lines, added, scanned.template),
+    ...scanned.templates.flatMap((region) => busyViolations(path, lines, added, region)),
     ...focusViolations({
       path,
       lines,
@@ -208,9 +213,12 @@ export function findViolations({
   return violations.sort((a, b) => a.line - b.line);
 }
 
-/** An `.html` file is all template but for its comments, and carries no TypeScript at all. */
+/**
+ * An `.html` file is one template and carries no TypeScript at all: the walk reads it whole, as it
+ * reads an inline template (#1503), and FOCUS-1 reads it with its comments masked.
+ */
 function htmlRegions(lines) {
-  return { template: maskHtmlComments(lines), code: [] };
+  return { template: maskHtmlComments(lines), templates: [lines], code: [] };
 }
 
 /**
@@ -227,30 +235,6 @@ function codeOf(source) {
   return typescriptRegions(source.split('\n')).code;
 }
 
-function maskHtmlComments(lines) {
-  const out = lines.map((line) => line.split(''));
-  let open = false;
-
-  for (let i = 0; i < out.length; i++) {
-    for (let c = 0; c < out[i].length; c++) {
-      if (open) {
-        if (startsWith(out[i], '-->', c)) {
-          blank(out[i], c, 3);
-          c += 2;
-          open = false;
-        } else {
-          out[i][c] = ' ';
-        }
-      } else if (startsWith(out[i], '<!--', c)) {
-        blank(out[i], c, 4);
-        c += 3;
-        open = true;
-      }
-    }
-  }
-  return out.map((chars) => chars.join(''));
-}
-
 /** The closing quote's index on the same line, or -1 when the quote at `c` has no mate there. */
 function stringEnd(chars, c) {
   const quote = chars[c];
@@ -264,11 +248,13 @@ function stringEnd(chars, c) {
 function busyViolations(path, lines, added, template) {
   const violations = [];
 
-  for (const tag of startTags(template)) {
+  // Masked for the tag walk alone: `blocks` reads each `@if` condition from the unmasked template.
+  for (const tag of walkTags(maskBlockExpressions(template))) {
+    if (tag.kind !== 'open') continue;
     const disabled = tag.attributes.get('[disabled]');
     if (!disabled || !isBusyFlag(disabled.value)) continue;
     if (!added.has(disabled.line + 1)) continue;
-    const rule = ACTIONABLE.has(tag.name) ? 'BUSY-1' : selfCommits(tag) ? 'BUSY-2' : null;
+    const rule = busyRule(tag);
     if (rule === null) continue;
     violations.push({
       path,
@@ -278,6 +264,17 @@ function busyViolations(path, lines, added, template) {
     });
   }
   return violations;
+}
+
+/**
+ * BUSY-1 for an actionable element, BUSY-2 for a field that starts its own write, else null. Only a
+ * tag built in the HTML namespace (`html`) is either: `<xhtml:button>` is one, `<svg:button>` and a
+ * bare `<button>` inside `<svg>` none.
+ */
+function busyRule(tag) {
+  if (!tag.html) return null;
+  if (ACTIONABLE.has(tag.name)) return 'BUSY-1';
+  return selfCommits(tag) ? 'BUSY-2' : null;
 }
 
 /**
@@ -416,7 +413,7 @@ function trapSurfaces(lines, spans, isFocusTrap) {
 
   for (let i = 0; i < lines.length; i++) {
     for (const column of trapColumns(lines[i], isFocusTrap)) {
-      const innermost = spans.filter((span) => contains(span, bodyEnd(lines, span), i, column)).at(-1);
+      const innermost = spans.findLast((span) => contains(span, bodyEnd(lines, span), i, column));
       if (innermost !== undefined) traps.add(innermost);
     }
   }
@@ -466,7 +463,7 @@ function bodyEnd(lines, span) {
  * `reported`, so the same surface was reported a second time at its flip (#629).
  */
 function gatingSignal(condition) {
-  return /^\(\s*!?\s*([A-Za-z_$][\w$]*)\s*\(/.exec(condition)?.[1] ?? null;
+  return /^\(\s*(?:!\s*)?([A-Za-z_$][\w$]*)\s*\(/.exec(condition)?.[1] ?? null;
 }
 
 /**
@@ -477,7 +474,7 @@ function gatingSignal(condition) {
  * as `BUSY_STEMS` is for BUSY-1. Widen this rather than route around it.
  */
 function flipSites(code, signal) {
-  const flip = new RegExp(`(?<![\\w$])${RegExp.escape(signal)}\\s*\\.set\\(\\s*(?:false|undefined|null)\\s*\\)`);
+  const flip = new RegExp(String.raw`(?<![\w$])${RegExp.escape(signal)}\s*\.set\(\s*(?:false|undefined|null)\s*\)`);
   const sites = [];
 
   for (let i = 0; i < code.length; i++) {
@@ -489,7 +486,7 @@ function flipSites(code, signal) {
 
 /** The field names bound to `focusMover()`, since the mover's name is the component's to choose. */
 function moverNames(code) {
-  return [...code.matchAll(/([A-Za-z_$][\w$]*)\s*=\s*focusMover\s*\(/g)].map((match) => match[1]);
+  return [...code.matchAll(/(?<![\w$])([A-Za-z_$][\w$]*)\s*=\s*focusMover\s*\(/g)].map((match) => match[1]);
 }
 
 /**
@@ -501,7 +498,7 @@ function moverNames(code) {
 function movesFocusIn(member, movers) {
   return (
     /\.focus\s*\(/.test(member) ||
-    movers.some((name) => new RegExp(`(?<![\\w$])${RegExp.escape(name)}\\s*\\(`).test(member))
+    movers.some((name) => new RegExp(String.raw`(?<![\w$])${RegExp.escape(name)}\s*\(`).test(member))
   );
 }
 
@@ -597,7 +594,8 @@ function closingBrace(lines, from) {
   let armed = false;
 
   for (let i = from.line; i < lines.length; i++) {
-    for (let c = i === from.line ? from.column : 0; c < lines[i].length; c++) {
+    let c = i === from.line ? from.column : 0;
+    while (c < lines[i].length) {
       const ch = lines[i][c];
       if (ch === '"' || (ch === "'" && parens > 0)) {
         const end = stringEnd(lines[i], c);
@@ -621,10 +619,12 @@ function closingBrace(lines, from) {
       } else {
         if (armed && !/[A-Za-z\s]/.test(ch)) armed = false;
         if (ch === '{') depth++;
-        else if (ch !== '}') continue;
-        else if (depth === 0) return null;
-        else if (--depth === 0) return { line: i, column: c };
+        else if (ch === '}') {
+          if (depth === 0) return null;
+          if (--depth === 0) return { line: i, column: c };
+        }
       }
+      c++;
     }
   }
   return null;
@@ -674,91 +674,6 @@ function isBusyFlag(expression) {
   return identifiers.some((name) =>
     BUSY_STEMS.some((stem) => name.toLowerCase().includes(stem)),
   );
-}
-
-/**
- * Walks the masked template and returns one entry per element start tag, with its attributes.
- *
- * A start tag legitimately spans lines — every multi-line binding in the app is written that way —
- * so this tracks position across the whole region rather than per line.
- */
-function startTags(lines) {
-  const tags = [];
-
-  for (let i = 0; i < lines.length; i++) {
-    for (let c = 0; c < lines[i].length; c++) {
-      if (lines[i][c] !== '<' || !/[A-Za-z]/.test(lines[i][c + 1] ?? '')) continue;
-      const name = /^[\w-]+/.exec(lines[i].slice(c + 1))[0];
-      const tag = readAttributes(lines, i, c + 1 + name.length);
-      tags.push({ name: name.toLowerCase(), attributes: tag.attributes });
-      i = tag.line;
-      c = tag.column;
-    }
-  }
-  return tags;
-}
-
-function readAttributes(lines, line, column) {
-  const attributes = new Map();
-  let i = line;
-  let c = column;
-
-  while (i < lines.length) {
-    if (c >= lines[i].length) {
-      i++;
-      c = 0;
-      continue;
-    }
-    const ch = lines[i][c];
-    if (ch === '>') return { attributes, line: i, column: c };
-    if (/[\s/]/.test(ch)) {
-      c++;
-      continue;
-    }
-    // `{{ a<b ? 'x' : 'y' }}` reads as a start tag, and its quote is where a name should be.
-    const name = /^[^\s=>/'"]+/.exec(lines[i].slice(c));
-    if (name === null) return { attributes, line: i, column: c };
-    c += name[0].length;
-    if (lines[i][c] !== '=') {
-      attributes.set(name[0], { value: '', line: i });
-      continue;
-    }
-    const read = readValue(lines, i, c + 1);
-    attributes.set(name[0], { value: read.value, line: i });
-    i = read.line;
-    c = read.column;
-  }
-  return { attributes, line: lines.length - 1, column: 0 };
-}
-
-function readValue(lines, line, column) {
-  const quote = lines[line][column];
-  if (quote !== '"' && quote !== "'") {
-    const bare = /^[^\s>]*/.exec(lines[line].slice(column))[0];
-    return { value: bare, line, column: column + bare.length };
-  }
-  let value = '';
-  for (let i = line; i < lines.length; i++) {
-    const from = i === line ? column + 1 : 0;
-    const end = lines[i].indexOf(quote, from);
-    if (end === -1) {
-      value += `${lines[i].slice(from)}\n`;
-      continue;
-    }
-    return { value: value + lines[i].slice(from, end), line: i, column: end + 1 };
-  }
-  return { value, line: lines.length - 1, column: 0 };
-}
-
-function startsWith(chars, token, at) {
-  for (let i = 0; i < token.length; i++) {
-    if (chars[at + i] !== token[i]) return false;
-  }
-  return true;
-}
-
-function blank(chars, at, length) {
-  for (let i = at; i < at + length; i++) chars[i] = ' ';
 }
 
 /**
@@ -829,7 +744,8 @@ export function sweep() {
  */
 let appPathsIndex;
 function appPaths() {
-  return (appPathsIndex ??= changedPaths(git(['ls-files', '-z', 'frontend/src/app'])));
+  appPathsIndex ??= changedPaths(git(['ls-files', '-z', 'frontend/src/app']));
+  return appPathsIndex;
 }
 
 /** Checks one path; `added` of null lifts the diff scoping, which is what `sweep()` wants. */
@@ -994,11 +910,7 @@ function main(argv) {
   }
 
   if (mode === '--all') {
-    const violations = sweep();
-    const counts = ['BUSY-1', 'BUSY-2', 'FOCUS-1']
-      .map((rule) => `${rule}: ${violations.filter((v) => v.rule === rule).length}`)
-      .join('  ');
-    process.stdout.write(`${violations.length ? `${report(violations)}\n` : ''}${counts}\n`);
+    process.stdout.write(tally(sweep(), ['BUSY-1', 'BUSY-2', 'FOCUS-1']));
     return 0;
   }
 

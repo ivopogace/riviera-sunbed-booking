@@ -29,6 +29,7 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
 import org.springframework.transaction.support.TransactionTemplate;
 
 import ai.riviera.platform.EnabledIfDockerAvailable;
+import ai.riviera.platform.RegistryRows;
 import ai.riviera.platform.TestcontainersConfiguration;
 import ai.riviera.platform.booking.adapter.in.BookingListenerIds;
 import ai.riviera.platform.booking.events.BookingCancelled;
@@ -103,7 +104,6 @@ class RefundBulkheadIT {
 	 */
 	private static final String REFUND_LISTENER_ID = BookingListenerIds.REFUND;
 
-	/** Improbable enough to identify one test's publication in a database several IT classes write to. */
 	private static final long RETRY_REFUND_MINOR = 404_000_601L;
 
 	private static final long LISTENER_ID_REFUND_MINOR = 404_000_602L;
@@ -183,37 +183,37 @@ class RefundBulkheadIT {
 				.param("id", bookingId).query(Long.class).single();
 	}
 
-	private long outstandingRefundPublications(long refundMinor) {
+	private long outstandingRefundPublications(long bookingId) {
 		return jdbc.sql("""
 				SELECT COUNT(*) FROM event_publication
 				WHERE completion_date IS NULL AND listener_id = :listener
-				  AND event_type = :type AND serialized_event LIKE :amountFragment
-				""")
+				  AND event_type = :type AND %s
+				""".formatted(RegistryRows.NAMES_BOOKING))
 				.param("listener", REFUND_LISTENER_ID).param("type", BookingCancelled.class.getName())
-				.param("amountFragment", "%" + refundMinor + "%")
+				.param("bookingId", RegistryRows.bookingIdParam(bookingId))
 				.query(Long.class).single();
 	}
 
 	/** Open across listeners by design, so the id itself is under test; pinned to this test's event type. */
-	private List<String> outstandingListenerIds(long refundMinor) {
+	private List<String> outstandingListenerIds(long bookingId) {
 		return jdbc.sql("""
 				SELECT listener_id FROM event_publication
 				WHERE completion_date IS NULL
-				  AND event_type = :type AND serialized_event LIKE :amountFragment
-				""")
+				  AND event_type = :type AND %s
+				""".formatted(RegistryRows.NAMES_BOOKING))
 				.param("type", BookingCancelled.class.getName())
-				.param("amountFragment", "%" + refundMinor + "%")
+				.param("bookingId", RegistryRows.bookingIdParam(bookingId))
 				.query(String.class).list();
 	}
 
-	private List<String> outstandingStatus(long refundMinor) {
+	private List<String> outstandingStatus(long bookingId) {
 		return jdbc.sql("""
 				SELECT status FROM event_publication
 				WHERE completion_date IS NULL AND listener_id = :listener
-				  AND event_type = :type AND serialized_event LIKE :amountFragment
-				""")
+				  AND event_type = :type AND %s
+				""".formatted(RegistryRows.NAMES_BOOKING))
 				.param("listener", REFUND_LISTENER_ID).param("type", BookingCancelled.class.getName())
-				.param("amountFragment", "%" + refundMinor + "%")
+				.param("bookingId", RegistryRows.bookingIdParam(bookingId))
 				.query(String.class).list();
 	}
 
@@ -308,7 +308,7 @@ class RefundBulkheadIT {
 		Awaitility.await("the failing refund was attempted").atMost(WAIT)
 				.until(() -> gateway.attemptsFor(bookingId) >= 1);
 		Awaitility.await("the publication is still outstanding, so a restart would retry it").atMost(WAIT)
-				.until(() -> outstandingRefundPublications(RETRY_REFUND_MINOR) == 1L);
+				.until(() -> outstandingRefundPublications(bookingId) == 1L);
 
 		gateway.failEveryRefund(false);
 		incompletePublications.resubmitIncompletePublications(publication ->
@@ -318,7 +318,7 @@ class RefundBulkheadIT {
 		Awaitility.await("the retry issued the refund").atMost(WAIT)
 				.until(() -> gateway.completionsFor(bookingId) >= 1L);
 		Awaitility.await("and the publication is now complete").atMost(WAIT)
-				.until(() -> outstandingRefundPublications(RETRY_REFUND_MINOR) == 0L);
+				.until(() -> outstandingRefundPublications(bookingId) == 0L);
 	}
 
 	/**
@@ -336,15 +336,15 @@ class RefundBulkheadIT {
 		publishInTransaction(cancellationOf(set, bookingId, date, LISTENER_ID_REFUND_MINOR));
 
 		Awaitility.await("an outstanding row exists under the refund listener id").atMost(WAIT)
-				.until(() -> outstandingRefundPublications(LISTENER_ID_REFUND_MINOR) == 1L);
+				.until(() -> outstandingRefundPublications(bookingId) == 1L);
 
-		assertThat(outstandingListenerIds(LISTENER_ID_REFUND_MINOR))
+		assertThat(outstandingListenerIds(bookingId))
 				.as("republication matches listener_id string-equal; drift dead-letters every outstanding "
 						+ "refund and owes a Flyway rewrite")
 				.contains(REFUND_LISTENER_ID);
 		Awaitility.await("a listener that threw leaves its row FAILED, which the spine retry filters on (#1340)")
 				.atMost(WAIT)
-				.until(() -> outstandingStatus(LISTENER_ID_REFUND_MINOR).equals(List.of("FAILED")));
+				.until(() -> outstandingStatus(bookingId).equals(List.of("FAILED")));
 	}
 
 	// ---- the controllable gateway ------------------------------------------------------------

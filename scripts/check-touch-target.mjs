@@ -29,8 +29,12 @@ import {
   readText,
   repoRoot,
 } from './git-diff.mjs';
-import { adviser, report } from './guard-report.mjs';
-import { typescriptRegions } from './inline-template.mjs';
+import { adviser, report, tally } from './guard-report.mjs';
+import {
+  maskBlockExpressions,
+  typescriptRegions,
+  walkTags,
+} from './inline-template.mjs';
 
 /** Angular templates only; a spec's fixtures are allowed to build the non-compliant forms. */
 const IN_SCOPE = /^frontend\/src\/app\/.*(?<!\.spec)\.(ts|html)$/;
@@ -39,215 +43,80 @@ const IN_SCOPE = /^frontend\/src\/app\/.*(?<!\.spec)\.(ts|html)$/;
 const JUDGED = new Set(['button', 'input', 'select', 'textarea']);
 
 /**
- * Elements that never have an end tag, per the HTML spec, and so can never open an exemption scope.
- * `<input>` is both judged and void — it is exempted by an ancestor, never by its own subtree.
- */
-const VOID = new Set([
-  'area',
-  'base',
-  'br',
-  'col',
-  'embed',
-  'hr',
-  'img',
-  'input',
-  'link',
-  'meta',
-  'source',
-  'track',
-  'wbr',
-]);
-
-/**
  * Finds every undeclared control the diff wrote in one file.
  *
  * <p>An exemption is inherited, because that is how the shipped markup expresses it: `auth-page.ts`
  * puts the reason on the `<p>` that *is* the sentence and leaves the `<button>` inside it bare. So
  * the walk carries a stack rather than judging each tag alone.
  *
+ * <p>An incomplete start tag (`readAttributes`) is skipped: it is a phantom such as `{{ n<div }}`'s.
+ * Judged, one named for a control fails a build on a line holding none (#529); pushed, it takes a
+ * real ancestor's end tag and leaves that ancestor's exemption open over what follows (#1478).
+ *
  * @param {{ path: string, lines: string[], added: Set<number> }} input the file's new content and
  *   the 1-based line numbers the diff added
  * @returns {{ path: string, line: number, rule: string, text: string }[]} one entry per violation
  */
 export function findViolations({ path, lines, added }) {
+  return templateRegions(path, lines).flatMap((region) =>
+    regionViolations(path, lines, added, region),
+  );
+}
+
+/** One template's violations, on a stack of its own: an element left open reaches no other. */
+function regionViolations(path, lines, added, region) {
   const violations = [];
   const open = [];
 
-  for (const tag of walkTags(templateRegion(path, lines))) {
+  for (const tag of walkTags(maskBlockExpressions(region))) {
     if (tag.kind === 'close') {
       const at = open.findLastIndex((element) => element.name === tag.name);
       if (at !== -1) open.length = at;
       continue;
     }
-    const marker = tag.attributes.get('data-touch-exempt');
-    const exempt = marker !== undefined;
-    if (exempt && marker.value.trim() === '' && added.has(tag.line)) {
-      violations.push({ path, line: tag.line, rule: 'TT-2', text: lines[tag.line - 1].trim() });
-    } else if (
-      JUDGED.has(tag.name) &&
-      added.has(tag.line) &&
-      !exempt &&
-      !tag.attributes.has('appTouchTarget') &&
-      !open.some((element) => element.exempt)
-    ) {
-      violations.push({ path, line: tag.line, rule: 'TT-1', text: lines[tag.line - 1].trim() });
+    if (tag.incomplete) continue;
+    const exempt = tag.attributes.has('data-touch-exempt');
+    const rule = added.has(tag.line) ? ruleBroken(tag, open) : null;
+    if (rule !== null) {
+      violations.push({ path, line: tag.line, rule, text: lines[tag.line - 1].trim() });
     }
-    if (!tag.selfClosed && !VOID.has(tag.name)) open.push({ name: tag.name, exempt });
+    if (encloses(tag)) open.push({ name: tag.name, exempt });
   }
   return violations;
 }
 
 /**
- * Blanks everything that is not template markup, keeping line and column geometry so a violation
- * still reports its real position.
- *
- * An `.html` file is all template but for its comments; a `.ts` file is template only inside its
- * `template:` literals. Without the second, `touch-target.ts`'s own TSDoc — which spells out
+ * Whether a start tag opens a scope: any that is not self-closed. The walk emits a close entry
+ * wherever Angular ends the element, its own end tag or an implicit one (a void element at the next
+ * token, a `<p>` at the child that closes it, an `<li>` at its block's `}`), so the scope ends
+ * there.
+ */
+function encloses(tag) {
+  return !tag.selfClosed;
+}
+
+/**
+ * TT-2 for an exemption that gives no reason, TT-1 for an undeclared control, else null. A control is
+ * a `JUDGED` name built in the HTML namespace (`html`): `<xhtml:button>` is one, `<svg:button>` and
+ * a bare `<button>` inside `<svg>` none.
+ */
+function ruleBroken(tag, open) {
+  const marker = tag.attributes.get('data-touch-exempt');
+  if (marker !== undefined) return marker.value.trim() === '' ? 'TT-2' : null;
+  const declared =
+    tag.attributes.has('appTouchTarget') || open.some((element) => element.exempt);
+  return tag.html && JUDGED.has(tag.name) && !declared ? 'TT-1' : null;
+}
+
+/**
+ * The file's templates, keeping line and column geometry so a violation still reports its real
+ * position. An `.html` file is one template, read whole, its comments stepped by the walk as an
+ * inline template's are (#1503). A `.ts` file holds one per `template:` literal, everything else
+ * in it blanked: without that, `touch-target.ts`'s own TSDoc — which spells out
  * `<button appTouchTarget>` to document the convention — would read as markup.
  */
-function templateRegion(path, lines) {
-  return path.endsWith('.html') ? maskHtmlComments(lines) : typescriptRegions(lines).template;
-}
-
-function maskHtmlComments(lines) {
-  const out = lines.map((line) => line.split(''));
-  let open = false;
-
-  for (let i = 0; i < out.length; i++) {
-    for (let c = 0; c < out[i].length; c++) {
-      if (open) {
-        if (startsWith(out[i], '-->', c)) {
-          blank(out[i], c, 3);
-          c += 2;
-          open = false;
-        } else {
-          out[i][c] = ' ';
-        }
-      } else if (startsWith(out[i], '<!--', c)) {
-        blank(out[i], c, 4);
-        c += 3;
-        open = true;
-      }
-    }
-  }
-  return out.map((chars) => chars.join(''));
-}
-
-function startsWith(chars, token, at) {
-  for (let i = 0; i < token.length; i++) {
-    if (chars[at + i] !== token[i]) return false;
-  }
-  return true;
-}
-
-function blank(chars, at, length) {
-  for (let i = at; i < at + length; i++) chars[i] = ' ';
-}
-
-/**
- * What may follow an element name in a real tag: whitespace, the self-closing slash, or `>`.
- *
- * Without this, `{{ i<select.length }}` parses as a `<select>` and the guard fails a build on a
- * line holding no control — the false-positive direction #529's lesson rules out. The sibling
- * `check-focus-posture.mjs` shares the misparse harmlessly, because its walk is flat and its rules
- * read one tag's own attributes; here a phantom tag also joins the ancestor-exemption stack.
- */
-const TAG_NAME_END = /[\s/>]/;
-
-/**
- * Walks the template and returns one entry per element tag — start and end alike, in document
- * order — with a start tag's attributes and the line it opens on.
- *
- * A start tag legitimately spans lines — every multi-line binding in the app is written that way —
- * so this tracks position across the whole region rather than per line.
- */
-function walkTags(lines) {
-  const tags = [];
-
-  for (let i = 0; i < lines.length; i++) {
-    for (let c = 0; c < lines[i].length; c++) {
-      if (lines[i][c] !== '<') continue;
-      const closing = lines[i][c + 1] === '/';
-      const from = closing ? c + 2 : c + 1;
-      if (!/[A-Za-z]/.test(lines[i][from] ?? '')) continue;
-      const name = /^[\w-]+/.exec(lines[i].slice(from))[0].toLowerCase();
-      // `{{ i<select.length }}` is a comparison, not a <select>: a real tag name ends the name.
-      if (!TAG_NAME_END.test(lines[i][from + name.length] ?? ' ')) continue;
-      if (closing) {
-        tags.push({ kind: 'close', name });
-        c = from + name.length - 1;
-        continue;
-      }
-      const tag = readAttributes(lines, i, from + name.length);
-      tags.push({
-        kind: 'open',
-        name,
-        attributes: tag.attributes,
-        selfClosed: tag.selfClosed,
-        line: i + 1,
-      });
-      i = tag.line;
-      c = tag.column;
-    }
-  }
-  return tags;
-}
-
-function readAttributes(lines, line, column) {
-  const attributes = new Map();
-  let i = line;
-  let c = column;
-  let slash = false;
-
-  while (i < lines.length) {
-    if (c >= lines[i].length) {
-      i++;
-      c = 0;
-      continue;
-    }
-    const ch = lines[i][c];
-    if (ch === '>') return { attributes, line: i, column: c, selfClosed: slash };
-    if (/[\s/]/.test(ch)) {
-      slash ||= ch === '/';
-      c++;
-      continue;
-    }
-    // `{{ a<b ? 'x' : 'y' }}` reads as a start tag, and its quote is where a name should be.
-    const name = /^[^\s=>/'"]+/.exec(lines[i].slice(c));
-    if (name === null) return { attributes, line: i, column: c, selfClosed: slash };
-    slash = false;
-    c += name[0].length;
-    if (lines[i][c] !== '=') {
-      attributes.set(name[0], { value: '', line: i });
-      continue;
-    }
-    const read = readValue(lines, i, c + 1);
-    attributes.set(name[0], { value: read.value, line: i });
-    i = read.line;
-    c = read.column;
-  }
-  return { attributes, line: lines.length - 1, column: 0, selfClosed: slash };
-}
-
-function readValue(lines, line, column) {
-  const quote = lines[line][column];
-  if (quote !== '"' && quote !== "'") {
-    const raw = /^[^\s>]*/.exec(lines[line].slice(column))[0];
-    // Only a trailing slash is the self-close marker; one inside `data-href=/legal/terms` is value.
-    const bare = raw.endsWith('/') ? raw.slice(0, -1) : raw;
-    return { value: bare, line, column: column + bare.length };
-  }
-  let value = '';
-  for (let i = line; i < lines.length; i++) {
-    const from = i === line ? column + 1 : 0;
-    const end = lines[i].indexOf(quote, from);
-    if (end === -1) {
-      value += `${lines[i].slice(from)}\n`;
-      continue;
-    }
-    return { value: value + lines[i].slice(from, end), line: i, column: end + 1 };
-  }
-  return { value, line: lines.length - 1, column: 0 };
+function templateRegions(path, lines) {
+  return path.endsWith('.html') ? [lines] : typescriptRegions(lines).templates;
 }
 
 /**
@@ -304,7 +173,8 @@ export function sweep() {
 
 let appPathsIndex;
 function appPaths() {
-  return (appPathsIndex ??= changedPaths(git(['ls-files', '-z', 'frontend/src/app'])));
+  appPathsIndex ??= changedPaths(git(['ls-files', '-z', 'frontend/src/app']));
+  return appPathsIndex;
 }
 
 /** Checks one path; `added` of null lifts the diff scoping, which is what `sweep()` wants. */
@@ -387,11 +257,7 @@ function main(argv) {
   }
 
   if (mode === '--all') {
-    const violations = sweep();
-    const counts = ['TT-1', 'TT-2']
-      .map((rule) => `${rule}: ${violations.filter((v) => v.rule === rule).length}`)
-      .join('  ');
-    process.stdout.write(`${violations.length ? `${report(violations)}\n` : ''}${counts}\n`);
+    process.stdout.write(tally(sweep(), ['TT-1', 'TT-2']));
     return 0;
   }
 
