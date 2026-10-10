@@ -36,6 +36,7 @@ import {
   MIN_SET_PRICE_MINOR,
   minorUnitsToEuros,
 } from '../shared/money';
+import { rowName } from '../shared/set-label';
 import { Pool, SetView, Tier } from '../shared/venue-views';
 import { lockDescription, lockReason } from './lock-reason';
 import {
@@ -546,7 +547,7 @@ export class SetEditor {
   protected readonly selectedLabel = computed(() => {
     const selected = this.selectedSet();
     if (selected !== undefined) {
-      return `Row ${selected.rowLabel} · position ${selected.positionNo}`;
+      return `${rowName(selected.rowLabel)} · position ${selected.positionNo}`;
     }
     const cell = this.selectedCell();
     return cell === undefined ? '' : `Row ${gridRowLabel(cell.gridY - 1)} · position ${cell.gridX}`;

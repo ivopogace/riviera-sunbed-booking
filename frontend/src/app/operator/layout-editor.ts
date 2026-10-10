@@ -36,6 +36,7 @@ import {
 import { BeachMapCanvas, BeachMapCanvasRow, BeachMapRowDef } from '../shared/beach-map-canvas';
 import { MapSkeletonGrid } from '../shared/map-skeleton-grid';
 import { LockIcon } from '../shared/lock-icon';
+import { rowName } from '../shared/set-label';
 import { SetView } from '../shared/venue-views';
 import { ConsoleVenueMap } from './console-venue-map';
 import { lockDescription, lockReason } from './lock-reason';
@@ -643,10 +644,17 @@ export class LayoutEditor {
     this.lastChange.set(`Generated a ${rows}×${cols} grid`);
   }
 
-  /** The derived grid letter for row {@code y} — the row-name input's default and visual anchor. */
+  /**
+   * The derived grid letter for row {@code y} — the row-name input's default and visual anchor. The
+   * editor's cells and notices name a row by this letter, not its stored label: positional identity
+   * beside a grid being painted, kept on purpose (#723, #724, reaffirmed in #1524).
+   */
   protected rowCode(y: number): string {
     return gridRowLabel(y);
   }
+
+  /** {@link rowName} for the template — the save-name button names the stored row. */
+  protected readonly rowName = rowName;
 
   protected onRowNameInput(y: number, value: string): void {
     this.rowNames.update((names) => names.map((name, i) => (i === y ? value : name)));
@@ -1194,7 +1202,7 @@ export class LayoutEditor {
   private blockedMessage(): string {
     const blocked = this.blockedSets();
     const named = blocked
-      .map((set) => `Row ${set.rowLabel} · position ${set.positionNo} (${lockReason(set)})`)
+      .map((set) => `${rowName(set.rowLabel)} · position ${set.positionNo} (${lockReason(set)})`)
       .join(', ');
     const count = blocked.length === 1 ? 'a set that is' : `${blocked.length} sets that are`;
     const them = blocked.length === 1 ? 'it' : 'them';
