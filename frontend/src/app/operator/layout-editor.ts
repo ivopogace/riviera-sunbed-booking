@@ -650,12 +650,13 @@ export class LayoutEditor {
     return gridRowLabel(y);
   }
 
+  /** {@link rowName} for the template — the save-name button names the stored row. */
+  protected readonly rowName = rowName;
+
   /** Row {@code y} as its sentences name it: the name the operator typed, else "Row <letter>". */
   private namedRow(y: number): string {
     return rowName(this.effectiveRowNames()[y]);
   }
-
-  protected readonly rowName = rowName;
 
   protected onRowNameInput(y: number, value: string): void {
     this.rowNames.update((names) => names.map((name, i) => (i === y ? value : name)));

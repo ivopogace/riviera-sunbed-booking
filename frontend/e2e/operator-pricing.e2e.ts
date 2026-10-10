@@ -214,6 +214,7 @@ test('a full row label hugs its chip on one line at desktop and phone widths, an
     await expect(phrase).toBeInViewport();
     const box = (await phrase.boundingBox())!;
     expect(box.width, `${width}px wide`).toBeGreaterThan(100);
+    expect(box.height, `${width}px wide`).toBeLessThan(40);
     expect(
       await phrase.evaluate((el) => el.scrollHeight - el.clientHeight),
       `${width}px wide`,
