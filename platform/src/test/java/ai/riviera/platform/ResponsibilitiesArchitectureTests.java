@@ -885,7 +885,7 @@ class ResponsibilitiesArchitectureTests {
 	 * does not model (TEMP/UNLOGGED, a non-public schema, a case-sensitive quoted name, an unquoted
 	 * name past plain ASCII, a Unicode-escaped name, {@code SET SCHEMA}) is refused. Two limits are
 	 * documented, not modelled: {@code SELECT … INTO new_table} and a {@code $$} closer glued to a table
-	 * name (RESPONSIBILITIES.md § Known scan limits). */
+	 * name, which the walk reads into the name (RESPONSIBILITIES.md § Known scan limits). */
 	static Set<String> tablesAfter(List<Migration> migrations) {
 		Set<String> tables = new TreeSet<>();
 		for (Migration migration : migrations.stream().sorted(Comparator.comparing(Migration::version)).toList()) {
