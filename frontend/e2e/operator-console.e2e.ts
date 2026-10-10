@@ -123,8 +123,8 @@ async function mockConsole(
 
 /** Venue 2's five console reads, for the switch case: one pending request, nothing booked. */
 async function mockSecondVenue(page: import('@playwright/test').Page): Promise<void> {
-  await page.route(/\/api\/venues\/2(\?.*)?$/, (route) =>
-    route.fulfill({ json: SECOND_VENUE_MAP }),
+  await page.route(/\/api\/venues\/2\/beach-map$/, (route) =>
+    route.fulfill({ json: { map: SECOND_VENUE_MAP, locks: [] } }),
   );
   await page.route(/\/api\/venues\/2\/booking-requests(\?.*)?$/, (route) =>
     route.fulfill({ json: [{ bookingId: 21 }] }),
