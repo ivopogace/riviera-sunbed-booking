@@ -146,6 +146,8 @@ async function pickStay(page: Page): Promise<void> {
   await calendar.locator(`button[data-date="${FIRST}"]`).click();
   await expect(calendar.getByTestId('calendar-stay-hint')).toContainText('tap your last day');
   await calendar.locator(`button[data-date="${LAST}"]`).click();
+  await expect(calendar.getByTestId('calendar-stay-hint')).toContainText('3 days');
+  await calendar.getByTestId('calendar-apply').click();
   await expect(page.getByTestId('map-date')).toContainText('3 days');
 }
 
