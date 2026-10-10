@@ -102,9 +102,12 @@ async function mockVenue(
     route.fulfill({ json: { ...profile, version: serverVersion } }),
   );
 
+  await page.route(/\/api\/venues\/1\/beach-map$/, (route) =>
+    route.fulfill({ json: { map: { id: 1, name: profile.name, sets: [] }, locks: [] } }),
+  );
   await page.route(/\/api\/venues\/1(\?.*)?$/, (route) => {
     if (route.request().method() !== 'PATCH') {
-      return route.fulfill({ json: { id: 1, name: profile.name, sets: [] } });
+      return route.fallback();
     }
     patches.push(route.request());
     const body = route.request().postDataJSON() as Partial<typeof INITIAL_PROFILE> & {

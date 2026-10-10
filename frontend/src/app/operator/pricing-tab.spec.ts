@@ -5,7 +5,6 @@ import { ActivatedRoute, convertToParamMap, ParamMap, provideRouter } from '@ang
 import { BehaviorSubject } from 'rxjs';
 
 import { formatMoney } from '../shared/money';
-import { todayBookingDate } from '../shared/booking-date';
 import { Pool, SetView, Tier } from '../shared/venue-views';
 import { ConsoleVenueMap } from './console-venue-map';
 import { PricingTab } from './pricing-tab';
@@ -73,8 +72,8 @@ describe('PricingTab (#174)', () => {
   function render(sets: SetView[] = SEED, setVersion = 0): void {
     configure();
     http
-      .expectOne((r) => r.method === 'GET' && r.url.includes('/api/venues/1'))
-      .flush({ id: 1, name: 'V', sets, setVersion });
+      .expectOne((r) => r.method === 'GET' && r.url.includes('/api/venues/1/beach-map'))
+      .flush({ map: { id: 1, name: 'V', sets, setVersion }, locks: [] });
     fixture.detectChanges();
     host = fixture.nativeElement as HTMLElement;
   }
@@ -82,7 +81,7 @@ describe('PricingTab (#174)', () => {
   function renderWithLoadError(): void {
     configure();
     http
-      .expectOne((r) => r.method === 'GET' && r.url.includes('/api/venues/1'))
+      .expectOne((r) => r.method === 'GET' && r.url.includes('/api/venues/1/beach-map'))
       .flush({ code: 'INTERNAL' }, { status: 500, statusText: 'Server Error' });
     fixture.detectChanges();
     host = fixture.nativeElement as HTMLElement;
@@ -246,8 +245,8 @@ describe('PricingTab (#174)', () => {
     expect(byId('pricing-saved-announce')).toBe(announce);
     expect(announce.textContent?.trim()).toBe('');
     http
-      .expectOne((r) => r.method === 'GET' && r.url.includes('/api/venues/2'))
-      .flush({ id: 2, name: 'W', sets: [], setVersion: 2 });
+      .expectOne((r) => r.method === 'GET' && r.url.includes('/api/venues/2/beach-map'))
+      .flush({ map: { id: 2, name: 'W', sets: [], setVersion: 2 }, locks: [] });
   });
 
   it('rounds a whole-euro edit to exact minor units', () => {
@@ -510,12 +509,15 @@ describe('PricingTab (#174)', () => {
     // Reload pulls the latest server prices (row A now €50) + token and clears the banner.
     byId('pricing-stale-reload').click();
     http
-      .expectOne((r) => r.method === 'GET' && r.url.includes('/api/venues/1'))
+      .expectOne((r) => r.method === 'GET' && r.url.includes('/api/venues/1/beach-map'))
       .flush({
-        id: 1,
-        name: 'V',
-        sets: [seat(1, 'A', 1, 'PREMIUM', 'ONLINE', 5000, 1, 1)],
-        setVersion: 4,
+        map: {
+          id: 1,
+          name: 'V',
+          sets: [seat(1, 'A', 1, 'PREMIUM', 'ONLINE', 5000, 1, 1)],
+          setVersion: 4,
+        },
+        locks: [],
       });
     fixture.detectChanges();
 
@@ -577,13 +579,13 @@ describe('PricingTab (#174)', () => {
   });
 
   it('reuses the shell snapshot instead of re-fetching the venue map (#486)', () => {
-    // The shell warms (venue, today) first; expectOne throws if the tab issues its own GET.
+    // The shell warms the venue first; expectOne throws if the tab issues its own GET.
     configure(() => {
-      TestBed.inject(ConsoleVenueMap).load(1, todayBookingDate(new Date())).subscribe();
+      TestBed.inject(ConsoleVenueMap).load(1).subscribe();
     });
     http
-      .expectOne((r) => r.method === 'GET' && r.url.includes('/api/venues/1'))
-      .flush({ id: 1, name: 'V', sets: SEED, setVersion: 3 });
+      .expectOne((r) => r.method === 'GET' && r.url.includes('/api/venues/1/beach-map'))
+      .flush({ map: { id: 1, name: 'V', sets: SEED, setVersion: 3 }, locks: [] });
     fixture.detectChanges();
     host = fixture.nativeElement as HTMLElement;
 
@@ -609,11 +611,11 @@ describe('PricingTab (#174)', () => {
     // The write invalidated the console's snapshot, so the next tab to ask goes back to the server.
     let refetched: number | undefined;
     TestBed.inject(ConsoleVenueMap)
-      .load(1, todayBookingDate(new Date()))
+      .load(1)
       .subscribe((venue) => (refetched = venue.setVersion));
     http
-      .expectOne((r) => r.method === 'GET' && r.url.includes('/api/venues/1'))
-      .flush({ id: 1, name: 'V', sets: SEED, setVersion: 4 });
+      .expectOne((r) => r.method === 'GET' && r.url.includes('/api/venues/1/beach-map'))
+      .flush({ map: { id: 1, name: 'V', sets: SEED, setVersion: 4 }, locks: [] });
 
     expect(refetched).toBe(4);
   });
@@ -621,11 +623,11 @@ describe('PricingTab (#174)', () => {
   it('bypasses the shared snapshot on stale-write recovery (#486 AC-6)', async () => {
     // Reload escapes a 409; re-seeding from the snapshot that lost the race would never recover.
     configure(() => {
-      TestBed.inject(ConsoleVenueMap).load(1, todayBookingDate(new Date())).subscribe();
+      TestBed.inject(ConsoleVenueMap).load(1).subscribe();
     });
     http
-      .expectOne((r) => r.method === 'GET' && r.url.includes('/api/venues/1'))
-      .flush({ id: 1, name: 'V', sets: SEED, setVersion: 3 });
+      .expectOne((r) => r.method === 'GET' && r.url.includes('/api/venues/1/beach-map'))
+      .flush({ map: { id: 1, name: 'V', sets: SEED, setVersion: 3 }, locks: [] });
     fixture.detectChanges();
     host = fixture.nativeElement as HTMLElement;
 
@@ -639,12 +641,15 @@ describe('PricingTab (#174)', () => {
     byId('pricing-stale-reload').click();
     // expectOne is the assertion: a cache hit would issue no request at all and this would throw.
     http
-      .expectOne((r) => r.method === 'GET' && r.url.includes('/api/venues/1'))
+      .expectOne((r) => r.method === 'GET' && r.url.includes('/api/venues/1/beach-map'))
       .flush({
-        id: 1,
-        name: 'V',
-        sets: [seat(1, 'A', 1, 'PREMIUM', 'ONLINE', 5000, 1, 1)],
-        setVersion: 4,
+        map: {
+          id: 1,
+          name: 'V',
+          sets: [seat(1, 'A', 1, 'PREMIUM', 'ONLINE', 5000, 1, 1)],
+          setVersion: 4,
+        },
+        locks: [],
       });
     fixture.detectChanges();
 
@@ -662,12 +667,15 @@ describe('PricingTab (#174)', () => {
     // Venue 1's rows must not render against venue 2 while its read is in flight.
     expect(rows()).toHaveLength(0);
     http
-      .expectOne((r) => r.method === 'GET' && r.url.includes('/api/venues/2'))
+      .expectOne((r) => r.method === 'GET' && r.url.includes('/api/venues/2/beach-map'))
       .flush({
-        id: 2,
-        name: 'W',
-        sets: [seat(9, 'C', 1, 'STANDARD', 'ONLINE', 1500, 1, 1)],
-        setVersion: 2,
+        map: {
+          id: 2,
+          name: 'W',
+          sets: [seat(9, 'C', 1, 'STANDARD', 'ONLINE', 1500, 1, 1)],
+          setVersion: 2,
+        },
+        locks: [],
       });
     fixture.detectChanges();
 
@@ -682,17 +690,20 @@ describe('PricingTab (#174)', () => {
     fixture.detectChanges();
 
     http
-      .expectOne((r) => r.method === 'GET' && r.url.includes('/api/venues/2'))
+      .expectOne((r) => r.method === 'GET' && r.url.includes('/api/venues/2/beach-map'))
       .flush({
-        id: 2,
-        name: 'W',
-        sets: [seat(9, 'C', 1, 'STANDARD', 'ONLINE', 1500, 1, 1)],
-        setVersion: 2,
+        map: {
+          id: 2,
+          name: 'W',
+          sets: [seat(9, 'C', 1, 'STANDARD', 'ONLINE', 1500, 1, 1)],
+          setVersion: 2,
+        },
+        locks: [],
       });
     // The superseded venue-1 response resolves late — it must not replace venue 2's rows.
     http
-      .expectOne((r) => r.method === 'GET' && r.url.includes('/api/venues/1'))
-      .flush({ id: 1, name: 'V', sets: SEED, setVersion: 7 });
+      .expectOne((r) => r.method === 'GET' && r.url.includes('/api/venues/1/beach-map'))
+      .flush({ map: { id: 1, name: 'V', sets: SEED, setVersion: 7 }, locks: [] });
     fixture.detectChanges();
     host = fixture.nativeElement as HTMLElement;
 
@@ -707,8 +718,8 @@ describe('PricingTab (#174)', () => {
     params$.next(convertToParamMap({ venueId: '2' }));
     fixture.detectChanges();
     http
-      .expectOne((r) => r.method === 'GET' && r.url.includes('/api/venues/2'))
-      .flush({ id: 2, name: 'W', sets, setVersion: 2 });
+      .expectOne((r) => r.method === 'GET' && r.url.includes('/api/venues/2/beach-map'))
+      .flush({ map: { id: 2, name: 'W', sets, setVersion: 2 }, locks: [] });
     fixture.detectChanges();
   }
 
@@ -759,7 +770,7 @@ describe('PricingTab (#174)', () => {
     switchToVenue2([]);
     // The superseded venue-1 read fails late — venue 2's empty state stays, never a load error.
     http
-      .expectOne((r) => r.method === 'GET' && r.url.includes('/api/venues/1'))
+      .expectOne((r) => r.method === 'GET' && r.url.includes('/api/venues/1/beach-map'))
       .flush({ code: 'INTERNAL' }, { status: 500, statusText: 'Server Error' });
     fixture.detectChanges();
 

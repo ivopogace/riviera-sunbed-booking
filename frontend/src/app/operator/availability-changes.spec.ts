@@ -17,7 +17,7 @@ import { ConsoleVenueMap } from './console-venue-map';
 describe('AvailabilityChanges (#1525)', () => {
   const VENUE = 1;
   const TODAY = todayBookingDate(new Date());
-  const MAP_URL = `${environment.apiBaseUrl}/api/venues/${VENUE}?date=${TODAY}`;
+  const MAP_URL = `${environment.apiBaseUrl}/api/venues/${VENUE}/beach-map`;
 
   let changes: AvailabilityChanges;
   let snapshot: ConsoleVenueMap;
@@ -34,14 +34,14 @@ describe('AvailabilityChanges (#1525)', () => {
 
   afterEach(() => http.verify());
 
-  it('drops the shared snapshot, so the next load of the same key hits the server (AC-7)', () => {
-    snapshot.load(VENUE, TODAY).subscribe();
-    http.expectOne(MAP_URL).flush({ id: VENUE, name: 'Miramar', sets: [] });
+  it('drops the shared snapshot, so the next load of the same venue hits the server (AC-7)', () => {
+    snapshot.load(VENUE).subscribe();
+    http.expectOne(MAP_URL).flush({ map: { id: VENUE, name: 'Miramar', sets: [] }, locks: [] });
 
     changes.announce({ venueId: VENUE, date: TODAY });
 
-    snapshot.load(VENUE, TODAY).subscribe();
-    http.expectOne(MAP_URL).flush({ id: VENUE, name: 'Miramar', sets: [] });
+    snapshot.load(VENUE).subscribe();
+    http.expectOne(MAP_URL).flush({ map: { id: VENUE, name: 'Miramar', sets: [] }, locks: [] });
   });
 
   it('reaches a live subscriber and never a late one (AC-7)', () => {

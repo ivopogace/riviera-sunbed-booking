@@ -204,12 +204,13 @@ close, the maximum stay, the season closure, and the commission rate over time. 
 - **The owner's per-set daily availability read** (`…/availability?date=`; owner-asserted, 403
   before existence): `availability` answers the state tokens (`SetAvailabilityLookup#statesOn`);
   I compose. The public map stays state-agnostic — hold type never reaches a public surface.
-- **The owner's beach-map read** (`…/beach-map`; owner-asserted, 403 before existence; the layout
-  editor's seed): the tourist map, fence included, plus a sparse `locks` list — per pinned set, the
-  span its live bookings hold (`BookingPresence#nearestLiveBookings`: earliest first day to latest
-  last day) and the nearest hold — by the same `LiveClaims` predicate the write guards ask. A lock
-  means *cannot move or remove*, never *cannot repaint*: the editor still edits a locked set's
-  price, tier and pool. Which sets a venue's guests hold never reaches the public map.
+- **The owner's beach-map read** (`…/beach-map`; owner-asserted, 403 before existence; every
+  console map read): the tourist map's shape through `OwnerVenueMap`, **no visibility fence** — a
+  `PENDING` owner lays out and prices the venue tourists cannot see yet (#1531); ownership is the
+  whole fence — plus a sparse `locks` list: per pinned set, the span its live bookings hold
+  (`BookingPresence#nearestLiveBookings`) and the nearest hold, by the same `LiveClaims` predicate
+  the write guards ask. A lock means *cannot move or remove*, never *cannot repaint*: the editor
+  still edits a locked set's price, tier and pool. Which sets guests hold never reaches the public map.
 
 **Not My Job:**
 - Knowing whether a specific set is free on a date → **`availability`**

@@ -156,6 +156,17 @@ async function holdVenueRead(page: Page, json: object): Promise<() => void> {
   return release;
 }
 
+/** The Daily view's map read is the owner's (#1531): hold that one open instead of the tourist read. */
+async function holdOwnerMapRead(page: Page, json: object): Promise<() => void> {
+  let release!: () => void;
+  const held = new Promise<void>((resolve) => (release = resolve));
+  await page.route(/\/api\/venues\/1\/beach-map$/, async (route) => {
+    await held;
+    await route.fulfill({ json: { map: json, locks: [] } });
+  });
+  return release;
+}
+
 for (const [shape, venue, settled] of [
   ['a venue carrying every optional header block', RICH_VENUE, 'set-tile'],
   ['a venue carrying none of them', BARE_VENUE, 'set-tile'],
@@ -232,7 +243,7 @@ test('no tab stop hides inside the tourist skeleton (#744)', async ({ page }) =>
 test('no tab stop hides inside the Daily view skeleton (#744)', async ({ page }) => {
   await page.setViewportSize(PHONE);
   await mockWholeConsole(page);
-  const release = await holdVenueRead(page, RICH_VENUE);
+  const release = await holdOwnerMapRead(page, RICH_VENUE);
 
   await page.goto('/operator/1/daily');
   await signInAsOperator(page);
@@ -264,8 +275,8 @@ for (const [size, viewport] of [
   }) => {
     await page.setViewportSize(viewport);
     await mockWholeConsole(page);
-    // Registered last, so it wins over the whole-console venue read and can be held open.
-    const release = await holdVenueRead(page, RICH_VENUE);
+    // Registered last, so it wins over the whole-console owner's read and can be held open.
+    const release = await holdOwnerMapRead(page, RICH_VENUE);
 
     await page.goto('/operator/1/daily');
     await signInAsOperator(page);
@@ -289,7 +300,7 @@ test('the Daily view’s grid frame holds for a venue with no mapped sets (#744)
   page,
 }) => {
   await mockWholeConsole(page);
-  const release = await holdVenueRead(page, EMPTY_VENUE);
+  const release = await holdOwnerMapRead(page, EMPTY_VENUE);
 
   await page.goto('/operator/1/daily');
   await signInAsOperator(page);
@@ -306,7 +317,7 @@ test('the Daily view’s grid frame holds for a venue with no mapped sets (#744)
 
 test('the operator Daily view’s loading state is axe-clean (#744)', async ({ page }) => {
   await mockWholeConsole(page);
-  const release = await holdVenueRead(page, RICH_VENUE);
+  const release = await holdOwnerMapRead(page, RICH_VENUE);
 
   await page.goto('/operator/1/daily');
   await signInAsOperator(page);
@@ -448,7 +459,7 @@ for (const [labels, venue] of [
     }) => {
       await page.setViewportSize(viewport);
       await mockWholeConsole(page);
-      const release = await holdVenueRead(page, venue);
+      const release = await holdOwnerMapRead(page, venue);
 
       await page.goto('/operator/1/daily');
       await signInAsOperator(page);
@@ -494,7 +505,10 @@ for (const [surface, tileTestid, gridTestid, open] of [
     if (open === 'operator') {
       await mockWholeConsole(page);
     }
-    const release = await holdVenueRead(page, RICH_VENUE);
+    const release =
+      open === 'operator'
+        ? await holdOwnerMapRead(page, RICH_VENUE)
+        : await holdVenueRead(page, RICH_VENUE);
 
     await page.goto(open === 'operator' ? '/operator/1/daily' : '/venues/1');
     if (open === 'operator') {

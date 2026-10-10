@@ -6,7 +6,6 @@ import { BehaviorSubject } from 'rxjs';
 import { vi } from 'vitest';
 
 import { freezeClock } from '../../testing/freeze-clock';
-import { todayBookingDate } from '../shared/booking-date';
 import { MoneyView } from '../shared/money';
 import { SetView, Tier } from '../shared/venue-views';
 import { ConsoleVenueMap } from './console-venue-map';
@@ -90,13 +89,8 @@ describe('RequestsTab (#176)', () => {
       .expectOne((r) => r.method === 'GET' && r.url.endsWith('/api/venues/1/booking-requests'))
       .flush(requests);
     http
-      .expectOne(
-        (r) =>
-          r.method === 'GET' &&
-          r.url.includes('/api/venues/1') &&
-          !r.url.includes('/booking-requests'),
-      )
-      .flush({ id: 1, name: 'V', beach: 'KSAMIL', region: 'SARANDE', sets });
+      .expectOne((r) => r.method === 'GET' && r.url.endsWith('/api/venues/1/beach-map'))
+      .flush({ map: { id: 1, name: 'V', beach: 'KSAMIL', region: 'SARANDE', sets }, locks: [] });
     fixture.detectChanges();
   }
 
@@ -380,13 +374,11 @@ describe('RequestsTab (#176)', () => {
     expect(notice?.textContent?.trim()).toBe('');
     // Venue 2's own map + queue reads, which the switch starts.
     http
-      .expectOne(
-        (r) =>
-          r.method === 'GET' &&
-          r.url.includes('/api/venues/2') &&
-          !r.url.includes('/booking-requests'),
-      )
-      .flush({ id: 2, name: 'W', beach: 'KSAMIL', region: 'SARANDE', sets: SEED_SETS });
+      .expectOne((r) => r.method === 'GET' && r.url.includes('/api/venues/2/beach-map'))
+      .flush({
+        map: { id: 2, name: 'W', beach: 'KSAMIL', region: 'SARANDE', sets: SEED_SETS },
+        locks: [],
+      });
     http
       .expectOne((r) => r.method === 'GET' && r.url.endsWith('/api/venues/2/booking-requests'))
       .flush([]);
@@ -712,13 +704,11 @@ describe('RequestsTab (#176)', () => {
       .expectOne((r) => r.method === 'GET' && r.url.endsWith('/api/venues/1/booking-requests'))
       .flush({ code: 'INTERNAL' }, { status: 500, statusText: 'Server Error' });
     http
-      .expectOne(
-        (r) =>
-          r.method === 'GET' &&
-          r.url.includes('/api/venues/1') &&
-          !r.url.includes('/booking-requests'),
-      )
-      .flush({ id: 1, name: 'V', beach: 'KSAMIL', region: 'SARANDE', sets: SEED_SETS });
+      .expectOne((r) => r.method === 'GET' && r.url.endsWith('/api/venues/1/beach-map'))
+      .flush({
+        map: { id: 1, name: 'V', beach: 'KSAMIL', region: 'SARANDE', sets: SEED_SETS },
+        locks: [],
+      });
     fixture.detectChanges();
     host = fixture.nativeElement as HTMLElement;
     expect(byId('requests-load-error')).toBeTruthy();
@@ -726,11 +716,11 @@ describe('RequestsTab (#176)', () => {
   });
 
   it('reuses the shell snapshot instead of re-fetching the venue map (#486)', () => {
-    // The shell warms (venue, today) first; flushLoad's expectOne throws on a second identical GET.
+    // The shell warms the venue first; flushLoad's expectOne throws on a second identical GET.
     let shellSnapshot: SetView[] | undefined;
     configure(() => {
       TestBed.inject(ConsoleVenueMap)
-        .load(1, todayBookingDate(new Date()))
+        .load(1)
         .subscribe((venue) => (shellSnapshot = [...venue.sets]));
     });
     flushLoad([request()]);
@@ -747,12 +737,7 @@ describe('RequestsTab (#176)', () => {
       .expectOne((r) => r.method === 'GET' && r.url.endsWith('/api/venues/1/booking-requests'))
       .flush([request()]);
     http
-      .expectOne(
-        (r) =>
-          r.method === 'GET' &&
-          r.url.includes('/api/venues/1') &&
-          !r.url.includes('/booking-requests'),
-      )
+      .expectOne((r) => r.method === 'GET' && r.url.includes('/api/venues/1/beach-map'))
       .flush({ code: 'INTERNAL' }, { status: 500, statusText: 'Server Error' });
     fixture.detectChanges();
     host = fixture.nativeElement as HTMLElement;
@@ -775,13 +760,11 @@ describe('RequestsTab (#176)', () => {
       .expectOne((r) => r.method === 'GET' && r.url.endsWith('/api/venues/2/booking-requests'))
       .flush([request({ bookingId: 21 }), request({ bookingId: 22, setId: 2 })]);
     http
-      .expectOne(
-        (r) =>
-          r.method === 'GET' &&
-          r.url.includes('/api/venues/2') &&
-          !r.url.includes('/booking-requests'),
-      )
-      .flush({ id: 2, name: 'W', beach: 'DHERMI', region: 'HIMARE', sets: SEED_SETS });
+      .expectOne((r) => r.method === 'GET' && r.url.includes('/api/venues/2/beach-map'))
+      .flush({
+        map: { id: 2, name: 'W', beach: 'DHERMI', region: 'HIMARE', sets: SEED_SETS },
+        locks: [],
+      });
     fixture.detectChanges();
 
     expect(cards()).toHaveLength(2);
@@ -849,13 +832,11 @@ describe('RequestsTab (#176)', () => {
       .expectOne((r) => r.method === 'GET' && r.url.endsWith('/api/venues/2/booking-requests'))
       .flush([]);
     http
-      .expectOne(
-        (r) =>
-          r.method === 'GET' &&
-          r.url.includes('/api/venues/2') &&
-          !r.url.includes('/booking-requests'),
-      )
-      .flush({ id: 2, name: 'W', beach: 'DHERMI', region: 'HIMARE', sets: SEED_SETS });
+      .expectOne((r) => r.method === 'GET' && r.url.includes('/api/venues/2/beach-map'))
+      .flush({
+        map: { id: 2, name: 'W', beach: 'DHERMI', region: 'HIMARE', sets: SEED_SETS },
+        locks: [],
+      });
     await settle();
 
     // The switch destroyed the confirm focus was sitting in — a teardown owes a leg too (RV-FE-9).
@@ -871,25 +852,21 @@ describe('RequestsTab (#176)', () => {
       .expectOne((r) => r.method === 'GET' && r.url.endsWith('/api/venues/2/booking-requests'))
       .flush([request({ bookingId: 21 })]);
     http
-      .expectOne(
-        (r) =>
-          r.method === 'GET' &&
-          r.url.includes('/api/venues/2') &&
-          !r.url.includes('/booking-requests'),
-      )
-      .flush({ id: 2, name: 'W', beach: 'DHERMI', region: 'HIMARE', sets: SEED_SETS });
+      .expectOne((r) => r.method === 'GET' && r.url.includes('/api/venues/2/beach-map'))
+      .flush({
+        map: { id: 2, name: 'W', beach: 'DHERMI', region: 'HIMARE', sets: SEED_SETS },
+        locks: [],
+      });
     // The superseded venue-1 reads resolve late — they must not replace venue 2's queue or badge.
     http
       .expectOne((r) => r.method === 'GET' && r.url.endsWith('/api/venues/1/booking-requests'))
       .flush([request({ bookingId: 11 }), request({ bookingId: 12, setId: 2 })]);
     http
-      .expectOne(
-        (r) =>
-          r.method === 'GET' &&
-          r.url.includes('/api/venues/1') &&
-          !r.url.includes('/booking-requests'),
-      )
-      .flush({ id: 1, name: 'V', beach: 'KSAMIL', region: 'SARANDE', sets: SEED_SETS });
+      .expectOne((r) => r.method === 'GET' && r.url.endsWith('/api/venues/1/beach-map'))
+      .flush({
+        map: { id: 1, name: 'V', beach: 'KSAMIL', region: 'SARANDE', sets: SEED_SETS },
+        locks: [],
+      });
     fixture.detectChanges();
     host = fixture.nativeElement as HTMLElement;
 
@@ -905,13 +882,11 @@ describe('RequestsTab (#176)', () => {
       .expectOne((r) => r.method === 'GET' && r.url.endsWith('/api/venues/2/booking-requests'))
       .flush(queue);
     http
-      .expectOne(
-        (r) =>
-          r.method === 'GET' &&
-          r.url.includes('/api/venues/2') &&
-          !r.url.includes('/booking-requests'),
-      )
-      .flush({ id: 2, name: 'W', beach: 'DHERMI', region: 'HIMARE', sets: SEED_SETS });
+      .expectOne((r) => r.method === 'GET' && r.url.includes('/api/venues/2/beach-map'))
+      .flush({
+        map: { id: 2, name: 'W', beach: 'DHERMI', region: 'HIMARE', sets: SEED_SETS },
+        locks: [],
+      });
     fixture.detectChanges();
   }
 
@@ -943,13 +918,11 @@ describe('RequestsTab (#176)', () => {
       .expectOne((r) => r.method === 'GET' && r.url.endsWith('/api/venues/1/booking-requests'))
       .flush({ code: 'INTERNAL' }, { status: 500, statusText: 'Server Error' });
     http
-      .expectOne(
-        (r) =>
-          r.method === 'GET' &&
-          r.url.includes('/api/venues/1') &&
-          !r.url.includes('/booking-requests'),
-      )
-      .flush({ id: 1, name: 'V', beach: 'KSAMIL', region: 'SARANDE', sets: SEED_SETS });
+      .expectOne((r) => r.method === 'GET' && r.url.endsWith('/api/venues/1/beach-map'))
+      .flush({
+        map: { id: 1, name: 'V', beach: 'KSAMIL', region: 'SARANDE', sets: SEED_SETS },
+        locks: [],
+      });
     fixture.detectChanges();
 
     expect(byId('requests-load-error')).toBeNull();
