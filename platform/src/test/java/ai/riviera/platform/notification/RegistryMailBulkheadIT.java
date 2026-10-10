@@ -51,12 +51,12 @@ import static org.assertj.core.api.Assertions.assertThat;
  * overflows the queue. {@code RegistryMailShedDurabilityIT} owns that, in a context of its own,
  * for the isolation reason below.
  *
- * <p>The imported {@link ControllableMailerConfiguration} keeps this class off the suite's
- * shared Spring context — deliberate: a test that wedges a thread pool must not hand that pool to
- * the suite's other classes. Other importers share this context, so the gate is released
+ * <p>The imported {@link ControllableMailerConfiguration} keeps this class off the suite's shared
+ * Spring context — deliberate: a test that wedges a thread pool must not hand that pool to the
+ * suite's other classes. Other importers share this context, so the gate is released
  * unconditionally in {@link #releaseTransport()}, which keeps a parked thread from reaching them.
- * Bookings are SQL-seeded on dates no other IT uses
- * via {@link BookingMailFixtures}, and never claimed through {@code availability}.
+ * Bookings are SQL-seeded on dates no other IT uses via {@link BookingMailFixtures}, and never
+ * claimed through {@code availability}.
  * Testcontainers; skipped where Docker is absent.
  */
 @EnabledIfDockerAvailable
