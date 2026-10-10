@@ -1340,6 +1340,13 @@ The SPA rules whose TSDoc points here; structure is `riviera-frontend`'s, stylin
   rarely exists yet at decision time — hence lookup in `earlyRead`, `focus()` in `write`. A swap the
   server drives (the pay page's poll and re-check) passes `onlyIfLost`: focus moves only if it was
   already on `<body>` or the render took its holder, so a control the swap keeps is never robbed.
+- **A lazy chunk that fails to load is answered with one full reload, then a card**
+  (`core/chunk-load-recovery.ts`, the eager `pages/page-load-failed`): a browser memoises a failed
+  module fetch, so an in-app retry of the same `import()` fails without refetching, and the router
+  keeps its own URL in `history.state` whenever the address bar shows another (`browserUrl`), which
+  a load landing on the same entry keeps — so the reload path redirects with `skipLocationChange`
+  and `core/page-reload.ts` clears the entry's state before navigating. Any other navigation error
+  stays loud: a guard or resolver that throws is a bug, not a page to retry.
 - **The venue console lands on the Daily view** (`VENUE_CONSOLE_LANDING_TAB`), what a trading venue
   opens every day; set-up tabs are destinations. A freshly created venue is the exception:
   `operator/venue-create-card.ts` sends it to `beach-map`, as it has no map to run a day on yet.

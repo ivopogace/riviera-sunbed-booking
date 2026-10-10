@@ -41,7 +41,7 @@ describe('WindowPageReload', () => {
     expect(calls).toEqual(['replaceState null http://riviera.test/legal/privacy#data', 'reload']);
   });
 
-  it('treats a query or fragment difference on the same page as a reload of the target', () => {
+  it('treats a fragment-only difference as the same page and reloads the target', () => {
     const { win, calls } = fakeWindow('http://riviera.test/legal/privacy?from=footer');
 
     new WindowPageReload(win as unknown as Window).to('/legal/privacy?from=footer#top');
@@ -49,6 +49,17 @@ describe('WindowPageReload', () => {
     expect(calls).toEqual([
       'replaceState null http://riviera.test/legal/privacy?from=footer#top',
       'reload',
+    ]);
+  });
+
+  it('treats a query difference as another page and assigns it', () => {
+    const { win, calls } = fakeWindow('http://riviera.test/legal/privacy?from=footer');
+
+    new WindowPageReload(win as unknown as Window).to('/legal/privacy?from=menu');
+
+    expect(calls).toEqual([
+      'replaceState null http://riviera.test/legal/privacy?from=footer',
+      'assign http://riviera.test/legal/privacy?from=menu',
     ]);
   });
 });

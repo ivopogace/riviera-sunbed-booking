@@ -45,8 +45,8 @@ function pathOf(url: string): string {
 /**
  * What happens when a lazy route's chunk fails to load (#1543): a deploy replaced the hashed
  * chunks under an open tab, or the network dropped mid-navigation. {@link recover} answers the
- * router's navigation error with one full reload of the target — stamped per tab and page so it
- * can't loop — and, if the chunk still fails, a redirect to the `page-load-failed` card, which
+ * router's navigation error with one full reload of the target — stamped per tab, so the page that
+ * last failed can't loop — and, if the chunk still fails, a redirect to the `page-load-failed` card, which
  * keeps the target's URL in the address bar. Any other navigation error is left to the router.
  * `core/`, as the stamp is state.
  */
@@ -56,7 +56,7 @@ export class ChunkLoadRecovery {
   private readonly reload = inject(PageReload);
   private failedUrl: string | undefined;
 
-  /** True from the moment a reload was asked for until the document unloads: the card stays neutral. */
+  /** True from the moment a reload was asked for until a fresh load replaces the document: the card stays neutral. */
   readonly reloading = signal(false);
 
   constructor() {

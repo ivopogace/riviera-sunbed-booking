@@ -18,8 +18,8 @@ function pageOf(href: string): string {
  * Production reloader. The router keeps its own URL in `history.state` whenever the address bar
  * shows another (`browserUrl`), and a load that lands on the same entry keeps that state, so the
  * fresh document would boot straight back into the card: the current entry's state is cleared
- * first, its URL kept so Back still works. A target on the current page is reloaded, not
- * assigned: assigning the current URL with a fragment only scrolls.
+ * first — its URL kept when another page is loaded, so Back still works; set to the target on the
+ * current page, which is then reloaded, not assigned: assigning the current URL with a fragment only scrolls.
  */
 export class WindowPageReload extends PageReload {
   constructor(private readonly win: Window) {
