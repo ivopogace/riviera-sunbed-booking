@@ -635,9 +635,9 @@ test('maskBlockExpressions blanks a CDATA section\'s content and reads nothing i
  * processing instruction or a `@let` value opens none (`HtmlParser`: `div[], p["x"], Comment`;
  * `textarea["<!--"], p["x"], Comment`; `p["x"], Comment`; `p["x"], Comment`; `@let y, p["x"],
  * Comment`), and one in an interpolation's string does (`"{{ \"", Comment, p["x"]`). A start-tag
- * comment is read as one (`div[Comment, p[]]`). An unterminated comment, a build error, is kept,
- * and so is all past an unquoted value holding `//`, where the lexer opens a start-tag comment
- * `readAttributes` reads as value.
+ * comment after a tag's name, a quoted value or a bare one is read as one (`div[Comment, p[]]`). An
+ * unterminated comment, a build error, is kept, and so is all past an unquoted value holding `//`,
+ * where the lexer opens a start-tag comment `readAttributes` reads as value.
  */
 test('maskHtmlComments blanks a comment where Angular\'s lexer opens one', () => {
   const cases = [
@@ -650,7 +650,9 @@ test('maskHtmlComments blanks a comment where Angular\'s lexer opens one', () =>
     ['<!-- x <p>y</p>', '<!-- x <p>y</p>'],
   ];
   for (const [line, expected] of cases) assert.deepEqual(maskHtmlComments([line]), [expected], line);
-  assert.deepEqual(maskHtmlComments(['<div // c', '><!-- c --><p>']), ['<div // c', '>          <p>']);
+  for (const tag of ['<div // c', '<div a="x"// c', '<div a=b // c']) {
+    assert.deepEqual(maskHtmlComments([tag, '><!-- c --><p>']), [tag, '>          <p>'], tag);
+  }
   assert.deepEqual(maskHtmlComments(['<a href=https://x', '><!-- c --><p>']), [
     '<a href=https://x',
     '><!-- c --><p>',

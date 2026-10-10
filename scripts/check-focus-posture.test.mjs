@@ -516,6 +516,16 @@ test('reads a confirm surface after a `<!--` that opens no comment in an externa
 });
 
 /**
+ * #1502, #1504: a CDATA section is text to Angular (`HtmlParser`: one `Text` node), so a confirm
+ * surface spelled inside one in an external template is no surface to FOCUS-1.
+ */
+test('does not read a confirm surface inside a CDATA section of an external template', () => {
+  const lines = ['<![CDATA[ @if (confirmRemove()) { <button>Remove</button> } ]]>'];
+
+  assert.deepEqual(scan(HTML, lines, { componentSource: '' }), []);
+});
+
+/**
  * #1504: a component's external template is read for its focus trap with only its real comments
  * masked, so a `role="dialog"` after a `<!--` in a quoted value still makes it one.
  */
