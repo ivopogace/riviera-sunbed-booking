@@ -48,9 +48,8 @@ const CLS = {
 } as const;
 
 /**
- * The venue page's review section: past guests' reviews (stars, display name, month of stay,
- * words), newest first, a page at a time behind "Show more reviews". The header's aggregate is the
- * score, so a venue whose ratings all came without a comment shows a quiet empty state here.
+ * The venue page's review section: past guests' reviews, newest first, a page at a time behind
+ * "Show more reviews"; empty, it says whether the venue's ratings (`reviewsCount`) came wordless.
  *
  * Pages append, so the section owns its fetch (the venue map's epoch-guarded `subscribe` idiom),
  * not a `resource`. When the last page or a retry removes the pressed control, focus moves onto the
@@ -100,7 +99,11 @@ const CLS = {
         </ul>
       } @else if (loadedOnce() && !failed()) {
         <p [class]="cls.note" data-testid="venue-reviews-empty">
-          No written reviews yet — ratings so far came without a comment.
+          @if (rated()) {
+            No written reviews yet — ratings so far came without a comment.
+          } @else {
+            No reviews yet.
+          }
         </p>
       }
 
@@ -135,6 +138,8 @@ const CLS = {
 })
 export class VenueReviews {
   readonly venueId = input.required<number>();
+  /** The venue read's aggregate count — every rating, commented or not; the page passes it in. */
+  readonly reviewsCount = input.required<number>();
 
   protected readonly cls = CLS;
 
@@ -148,6 +153,8 @@ export class VenueReviews {
   /** True once any page has landed for the current venue — what separates "empty" from "not yet". */
   protected readonly loadedOnce = signal(false);
 
+  protected readonly rated = computed(() => this.reviewsCount() > 0);
+
   /** What the live region says: the load in flight, else what has landed; silent on a failure. */
   protected readonly status = computed(() => {
     if (this.loading()) {
@@ -157,7 +164,10 @@ export class VenueReviews {
       return '';
     }
     const listed = this.entries().length;
-    return listed === 0 ? 'No written reviews yet.' : `Showing ${reviewsLabel(listed)}.`;
+    if (listed > 0) {
+      return `Showing ${reviewsLabel(listed)}.`;
+    }
+    return this.rated() ? 'No written reviews yet.' : 'No reviews yet.';
   });
 
   /** The per-dispatch generation: any later dispatch or venue change supersedes this response. */

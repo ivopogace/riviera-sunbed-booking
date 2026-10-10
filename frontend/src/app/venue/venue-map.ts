@@ -105,6 +105,7 @@ interface VenueHeader {
   readonly bookingMode: VenueMapView['bookingMode'];
   readonly modeLabel: string;
   readonly isRated: boolean;
+  readonly reviewsCount: number;
   readonly rating: string;
   /** The count with its noun already agreed — "1 review", "2 reviews" (shared/rating.ts). */
   readonly reviewsLabel: string;
@@ -372,6 +373,7 @@ export class VenueMap {
       bookingMode: v.bookingMode,
       modeLabel: v.bookingMode === 'INSTANT' ? 'Instant Book' : 'Request to Book',
       isRated: isRated(v),
+      reviewsCount: v.reviewsCount,
       rating: ratingScore(v.ratingTenths),
       reviewsLabel: reviewsLabel(v.reviewsCount),
       priceLabel: v.fromPrice ? formatMoney(v.fromPrice) : null,
