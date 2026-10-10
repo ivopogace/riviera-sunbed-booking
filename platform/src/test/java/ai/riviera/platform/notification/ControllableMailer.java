@@ -26,12 +26,13 @@ import ai.riviera.platform.notification.application.StayConfirmationMail;
  * mailer" AC-1 asks for. It also records the sending thread's transactional context, which
  * is {@code RegistryMailBulkheadIT}'s AC-7 assertion.
  *
- * <p>Shared by the two ITs that drive the registry mail vehicle (extracted from the bulkhead class —
- * behaviour identical, visibility widened to cross the package boundary):
- * {@code RegistryMailBulkheadIT} wedges it to prove the money path overtakes a
- * hanging relay, and {@code RegistryMailShedDurabilityIT} wedges it to fill the bulkhead's pool and
- * queue so the next send is shed. One implementation rather than two near-copies, because the
- * subtleties below are the kind a second copy quietly loses.
+ * <p>Shared by every IT that drives the registry mail vehicle through
+ * {@link ControllableMailerConfiguration}. Those that wedge it release the gate unconditionally in
+ * their {@code @AfterEach}: {@code RegistryMailBulkheadIT} proves the money path overtakes a hanging
+ * relay, {@code RegistryCompletionOrderIT} holds a send to pin completion order, and
+ * {@code RegistryMailShedDurabilityIT} fills the bulkhead's pool and queue so the next send is shed.
+ * One implementation rather than several near-copies, because the subtleties below are the kind a
+ * copy quietly loses.
  *
  * <p><strong>Two flags, not one, because the weaker one alone can be satisfied while the harm
  * remains.</strong> {@code isActualTransactionActive()} goes false under
@@ -46,7 +47,8 @@ import ai.riviera.platform.notification.application.StayConfirmationMail;
 public final class ControllableMailer implements Mailer {
 
 	/**
-	 * How long a wedged send stays wedged if the owning test's release somehow never runs. It must
+	 * How long a wedged send stays wedged if the owning test's release somehow never runs; the
+	 * importers' {@code @AfterEach} releases unconditionally, so this only backstops a deadlock. It must
 	 * comfortably outlast every wait in a single test — a gate that reopens on its own part-way
 	 * through unwedges the pool and lets the money-path assertions pass for the wrong reason, which is
 	 * how the first draft of {@code RegistryMailBulkheadIT} went green against the unfixed listener. It
