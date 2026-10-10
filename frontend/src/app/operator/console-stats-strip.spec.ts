@@ -6,6 +6,7 @@ import { vi } from 'vitest';
 import { environment } from '../../environments/environment';
 import { todayBookingDate } from '../shared/booking-date';
 import { Pool, SeatAvailability, SetView, VenueMapView } from '../shared/venue-views';
+import { AvailabilityChanges } from './availability-changes';
 import { ConsoleStatsStrip } from './console-stats-strip';
 import { SetDayState, TakingsView } from './operator-console.model';
 
@@ -181,6 +182,87 @@ describe('ConsoleStatsStrip (#171, O2)', () => {
     expect(text('oc-stat-free')).toBe('1 / 3');
     expect(text('oc-stat-booked')).toBe('1'); // the independent bookings read still renders
     expect(text('oc-stat-walkins')).toBe('—');
+  });
+
+  const HELD_URL = `${BASE}/api/venues/${VENUE}/availability`;
+
+  it('re-reads today’s held states on an announced change for its venue today — walk-ins only (#1525 AC-3)', async () => {
+    const map = venueMap([set(1, 'FREE'), set(2, 'FREE'), set(3, 'TAKEN')]);
+    await render(map, 1, TAKINGS, [{ setId: 3, state: 'BOOKED_ONLINE' }]);
+    expect(text('oc-stat-walkins')).toBe('0');
+
+    TestBed.inject(AvailabilityChanges).announce({
+      venueId: VENUE,
+      date: todayBookingDate(new Date()),
+    });
+    await fixture.whenStable();
+    // The old count stands until the fresh read lands — no dash flicker on every tap.
+    expect(text('oc-stat-walkins')).toBe('0');
+    const req = httpMock.expectOne((r) => r.url === HELD_URL && r.method === 'GET');
+    expect(req.request.params.get('date')).toBe(todayBookingDate(new Date()));
+    req.flush([
+      { setId: 3, state: 'BOOKED_ONLINE' },
+      { setId: 1, state: 'STAFF_MARKED' },
+    ]);
+    await fixture.whenStable();
+
+    expect(text('oc-stat-walkins')).toBe('1');
+    expect(text('oc-stat-booked')).toBe('1'); // not re-read: httpMock.verify() fails on a stray GET
+  });
+
+  it('ignores a change for another day or another venue (#1525 AC-4)', async () => {
+    await render(venueMap([set(1, 'FREE')]), 0, TAKINGS, [{ setId: 9, state: 'STAFF_MARKED' }]);
+
+    TestBed.inject(AvailabilityChanges).announce({ venueId: VENUE, date: '2026-06-16' });
+    TestBed.inject(AvailabilityChanges).announce({
+      venueId: 2,
+      date: todayBookingDate(new Date()),
+    });
+    await fixture.whenStable();
+
+    httpMock.expectNone((r) => r.url === HELD_URL);
+    expect(text('oc-stat-walkins')).toBe('1');
+  });
+
+  it('degrades walk-ins to a dash when the refresh read fails — never the pre-write count (#1525 AC-5)', async () => {
+    await render(venueMap([set(1, 'FREE')]), 0, TAKINGS, [{ setId: 9, state: 'STAFF_MARKED' }]);
+
+    TestBed.inject(AvailabilityChanges).announce({
+      venueId: VENUE,
+      date: todayBookingDate(new Date()),
+    });
+    await fixture.whenStable();
+    httpMock
+      .expectOne((r) => r.url === HELD_URL && r.method === 'GET')
+      .flush({}, { status: 500, statusText: 'Server Error' });
+    await fixture.whenStable();
+
+    expect(text('oc-stat-walkins')).toBe('—');
+  });
+
+  it('drops a refresh that lands after a venue switch (#1525, #180)', async () => {
+    await render(venueMap([set(1, 'FREE')]), 0, TAKINGS, []);
+    TestBed.inject(AvailabilityChanges).announce({
+      venueId: VENUE,
+      date: todayBookingDate(new Date()),
+    });
+    await fixture.whenStable();
+    const stale = httpMock.expectOne((r) => r.url === HELD_URL && r.method === 'GET');
+
+    fixture.componentRef.setInput('venueId', 2);
+    fixture.componentRef.setInput('venue', undefined);
+    await fixture.whenStable();
+    stale.flush([{ setId: 1, state: 'STAFF_MARKED' }]); // venue 1's late answer
+    await fixture.whenStable();
+    expect(text('oc-stat-walkins')).toBe('—'); // venue 2's read is still out
+
+    for (const path of ['bookings', 'takings', 'availability']) {
+      httpMock
+        .expectOne((r) => r.url === `${BASE}/api/venues/2/${path}` && r.method === 'GET')
+        .flush(path === 'takings' ? TAKINGS : []);
+    }
+    await fixture.whenStable();
+    expect(text('oc-stat-walkins')).toBe('0');
   });
 
   it('resets the tiles when the venueId input changes, then loads the new venue (#180)', async () => {

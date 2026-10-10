@@ -1,10 +1,12 @@
 import { Component, computed, effect, inject, input, signal, untracked } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 
 import { formatCommissionPercent } from '../shared/commission-rate';
 import { formatMoney, MoneyView } from '../shared/money';
 import { StatTile } from '../shared/stat-tile';
 import { VenueMapView } from '../shared/venue-views';
 import { todayBookingDate } from '../shared/booking-date';
+import { AvailabilityChanges } from './availability-changes';
 import { SetDayState, TakingsView } from './operator-console.model';
 import { OperatorConsoleService } from './operator-console.service';
 
@@ -16,6 +18,7 @@ import { OperatorConsoleService } from './operator-console.service';
  * <p>Sources: free/total from the shell's shared venue map ({@link venue}), booked-online from the
  * day's CONFIRMED bookings, walk-ins as the exact `STAFF_MARKED` count. Net is server-side (#9),
  * only formatted (#5). Reads are best-effort: a failure leaves that tile at its zero/dash default.
+ * The walk-ins tile follows the Daily view's settled mark/release ({@link AvailabilityChanges}, #1525).
  */
 @Component({
   selector: 'app-console-stats-strip',
@@ -24,6 +27,7 @@ import { OperatorConsoleService } from './operator-console.service';
 })
 export class ConsoleStatsStrip {
   private readonly console = inject(OperatorConsoleService);
+  private readonly changes = inject(AvailabilityChanges);
 
   /** The venue this strip summarizes — required (the strip only renders inside the signed-in shell). */
   readonly venueId = input.required<number>();
@@ -82,6 +86,11 @@ export class ConsoleStatsStrip {
       const id = this.venueId();
       untracked(() => this.load(id));
     });
+    // A walk-in marked or released for this venue today moved the count — re-read the states only.
+    this.changes
+      .todayAt(this.venueId)
+      .pipe(takeUntilDestroyed())
+      .subscribe((change) => this.loadHeld(change.venueId, change.date, this.epoch));
   }
 
   protected money(amount: MoneyView): string {
@@ -117,6 +126,12 @@ export class ConsoleStatsStrip {
         // best-effort — the takings tile shows a dash
       },
     });
+    this.loadHeld(venueId, date, epoch);
+  }
+
+  /** The states read behind the walk-ins tile — the last count stands until it lands; `epoch` names
+   *  the venue context it may still land in. */
+  private loadHeld(venueId: number, date: string, epoch: number): void {
     this.console.dailyAvailability(venueId, date).subscribe({
       next: (states) => {
         if (this.epoch === epoch) {
@@ -124,7 +139,10 @@ export class ConsoleStatsStrip {
         }
       },
       error: () => {
-        // best-effort — walk-ins render "—", never a phantom count
+        // best-effort — walk-ins render "—", never a phantom (or pre-write) count
+        if (this.epoch === epoch) {
+          this.held.set(undefined);
+        }
       },
     });
   }
