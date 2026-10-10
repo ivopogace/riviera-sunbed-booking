@@ -243,7 +243,7 @@ test('no tab stop hides inside the tourist skeleton (#744)', async ({ page }) =>
 test('no tab stop hides inside the Daily view skeleton (#744)', async ({ page }) => {
   await page.setViewportSize(PHONE);
   await mockWholeConsole(page);
-  const release = await holdVenueRead(page, RICH_VENUE);
+  const release = await holdOwnerMapRead(page, RICH_VENUE);
 
   await page.goto('/operator/1/daily');
   await signInAsOperator(page);
@@ -317,7 +317,7 @@ test('the Daily view’s grid frame holds for a venue with no mapped sets (#744)
 
 test('the operator Daily view’s loading state is axe-clean (#744)', async ({ page }) => {
   await mockWholeConsole(page);
-  const release = await holdVenueRead(page, RICH_VENUE);
+  const release = await holdOwnerMapRead(page, RICH_VENUE);
 
   await page.goto('/operator/1/daily');
   await signInAsOperator(page);
