@@ -338,6 +338,88 @@ describe('PayoutsTab (#173) — ledger', () => {
     expect(total).toContain(formatMoney({ minorUnits: -500, currency: 'EUR' }));
   });
 
+  describe('phone card layout (#1533)', () => {
+    function cards(): HTMLElement[] {
+      return Array.from(host.querySelectorAll<HTMLElement>('[data-testid="ledger-card"]'));
+    }
+
+    it('stacks each line as a card: date, booking, then gross / commission / net', () => {
+      render(
+        ledger({
+          netOwedMinor: 1700,
+          entries: [
+            entry({ bookingId: 11, grossMinor: 4500, commissionMinor: 675, netMinor: 3825 }),
+            entry({
+              type: 'REVERSAL',
+              bookingId: 12,
+              grossMinor: 2500,
+              commissionMinor: 375,
+              netMinor: 2125,
+              reason: 'WEATHER',
+              createdAt: '2026-07-02T09:00:00Z',
+            }),
+          ],
+        }),
+      );
+
+      expect(cards()).toHaveLength(2);
+      const [accrual, reversal] = cards();
+      expect(accrual.querySelector('[data-testid="ledger-card-date"]')?.textContent).toContain(
+        rows()[0].querySelector('td')?.textContent?.trim(),
+      );
+      expect(accrual.querySelector('[data-testid="ledger-card-ref"]')?.textContent).toContain(
+        '#11',
+      );
+      const figures = Array.from(accrual.querySelectorAll('dl > div')).map((d) => [
+        d.querySelector('dt')?.textContent?.trim(),
+        d.querySelector('dd')?.textContent?.trim(),
+      ]);
+      expect(figures).toEqual([
+        ['Gross', formatMoney({ minorUnits: 4500, currency: 'EUR' })],
+        ['Commission', formatMoney({ minorUnits: 675, currency: 'EUR' })],
+        ['Net', formatMoney({ minorUnits: 3825, currency: 'EUR' })],
+      ]);
+      expect(accrual.querySelector('[data-testid="ledger-card-reason"]')).toBeNull();
+
+      expect(reversal.querySelector('[data-testid="ledger-card-reason"]')?.textContent).toContain(
+        'Weather',
+      );
+      const net = reversal.querySelector('[data-testid="ledger-card-net"]');
+      expect(net?.textContent).toContain(formatMoney({ minorUnits: -2125, currency: 'EUR' }));
+      expect(net?.className).toContain('text-riv-console-negative-ink');
+    });
+
+    it('puts the period total last, carrying the SERVER owed figure (invariant #9)', () => {
+      render(
+        ledger({
+          netOwedMinor: 1700,
+          entries: [
+            entry({ bookingId: 11, netMinor: 3825 }),
+            entry({ type: 'REVERSAL', bookingId: 12, netMinor: 2125, reason: 'WEATHER' }),
+          ],
+        }),
+      );
+
+      const stack = byId('ledger-cards')!;
+      const total = byId('period-total-card')!;
+      expect(stack.lastElementChild).toBe(total);
+      expect(total.textContent).toContain('Period total (owed to you)');
+      expect(byId('period-owed-card')?.textContent).toContain(
+        formatMoney({ minorUnits: 1700, currency: 'EUR' }),
+      );
+    });
+
+    it('carries the breakpoint classes: cards below sm, the table from sm up', () => {
+      render(ledger({ entries: [entry()] }));
+
+      // The rendered visibility and the single accessibility-tree entry are proved in operator-payouts.e2e.ts.
+      expect(byId('ledger-cards')?.classList.contains('sm:hidden')).toBe(true);
+      const tableRegion = byId('ledger-table')!.closest('section')!;
+      expect(tableRegion.classList.contains('hidden')).toBe(true);
+      expect(tableRegion.classList.contains('sm:block')).toBe(true);
+    });
+  });
+
   it('renders the empty state (nothing owed) for an empty ledger', () => {
     render(ledger({ netOwedMinor: 0, entries: [] }));
     expect(byId('payouts-empty')).toBeTruthy();

@@ -181,6 +181,7 @@ test('Sign out from the chip on /admin ends the session and lands on the operato
   await expect(page).toHaveURL(/\/account\/sign-in\?audience=operator/);
   // Back on the auth card, with the operator tab preselected.
   await expect(page.getByRole('radio', { name: 'Venue operator' })).toBeChecked();
+  await expect(page.locator('#auth-intro')).toHaveText('Sign in to run your venue.');
 });
 
 test('a signed-out visitor on /admin/audit sees the section row with Sign in and no tab link anywhere (#1011)', async ({
