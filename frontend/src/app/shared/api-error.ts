@@ -8,7 +8,10 @@ import { HttpErrorResponse } from '@angular/common/http';
  */
 interface ProblemBody {
   readonly code?: string;
-  /** The request field a `400 INVALID_REQUEST` refused, when the server can name one. */
+  /**
+   * The request field a `400 INVALID_REQUEST` refused, when the server can name one; see
+   * error-contract.md § Extension members past `code`.
+   */
   readonly field?: string;
 }
 

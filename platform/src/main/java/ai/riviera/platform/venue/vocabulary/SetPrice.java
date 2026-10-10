@@ -5,7 +5,8 @@ package ai.riviera.platform.venue.vocabulary;
  * {@link #MIN_PRICE_MINOR} in {@link #CURRENCY}, the v1 collection currency (invariant #5). The V77
  * {@code set_position_price_check} and V76 {@code set_position_price_currency_check} CHECKs are its database
  * twin. A breach throws {@link IllegalArgumentException} ({@code 400 INVALID_REQUEST}) naming the field,
- * never the value.
+ * never the value. On the wire only the venue admin controller's set-write refusal carries the field (the
+ * {@code field} extension, {@code price}); elsewhere the field is in the message alone.
  */
 public final class SetPrice {
 
