@@ -12,7 +12,7 @@ import { vi } from 'vitest';
 import { expectCellsFillCanvasRow } from '../../testing/beach-map-height';
 import { BeachMapCanvas } from '../shared/beach-map-canvas';
 import { SetView } from '../shared/venue-views';
-import { ConsoleVenueMap } from './console-venue-map';
+import { ConsoleVenueMap } from '../core/console-venue-map';
 import { LayoutEditor } from './layout-editor';
 import { RemodelPreview } from './operator-console.model';
 import {

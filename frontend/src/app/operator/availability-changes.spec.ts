@@ -7,7 +7,7 @@ import { vi } from 'vitest';
 import { environment } from '../../environments/environment';
 import { todayBookingDate } from '../shared/booking-date';
 import { AvailabilityChange, AvailabilityChanges } from './availability-changes';
-import { ConsoleVenueMap } from './console-venue-map';
+import { ConsoleVenueMap } from '../core/console-venue-map';
 
 /**
  * The carrier between the Daily view's successful walk-in mark/release and the console surfaces

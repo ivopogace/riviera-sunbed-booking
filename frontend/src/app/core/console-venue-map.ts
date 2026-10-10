@@ -1,9 +1,10 @@
+import { HttpClient } from '@angular/common/http';
 import { inject, Service } from '@angular/core';
 import { catchError, map, Observable, shareReplay, tap, throwError } from 'rxjs';
 
+import { environment } from '../../environments/environment';
 import { todayBookingDate } from '../shared/booking-date';
 import { VenueMapView } from '../shared/venue-views';
-import { OperatorConsoleService } from './operator-console.service';
 
 /**
  * Snapshot reuse window, timed from when the read SETTLES (timed from send, a slow read would
@@ -12,17 +13,22 @@ import { OperatorConsoleService } from './operator-console.service';
  */
 const SNAPSHOT_TTL_MS = 30_000;
 
+/** The owner's read `GET /api/venues/{id}/beach-map`, the member this snapshot keeps (the locks are the layout editor's). */
+interface OwnerBeachMap {
+  readonly map: VenueMapView;
+}
+
 /**
- * The operator console's shared beach-map snapshot: one owner's read ({@link OperatorConsoleService#beachMap},
- * its `map`; the tourist read hides a PENDING owner's venue, #1531) for the shell's, {@code RequestsTab}'s
- * and {@code PricingTab}'s identical ask. Opt-in per call site: {@code DailyViewTab} and {@code LayoutEditor}
- * need server truth. One slot; a changed venue or a Tirane day rollover evicts it. Call {@link reset} on sign-out, after every
- * successful map write (layout, reprice, rename, per-set edits; a walk-in mark/release via
- * {@code AvailabilityChanges#announce}) and BEFORE a `409 STALE_WRITE` recovery read, or tabs go stale.
+ * The operator console's shared beach-map snapshot: one owner's read (`GET /api/venues/{id}/beach-map`, its
+ * `map`; the tourist read hides a PENDING owner's venue, #1531) for {@code venueAccessGuard}, the shell,
+ * {@code RequestsTab} and {@code PricingTab} — `core/`, as the guard asks too. Opt-in per call site: {@code DailyViewTab}
+ * and {@code LayoutEditor} need server truth. One slot; a changed venue or a Tirane day rollover evicts it. Call
+ * {@link reset} on sign-out, after every successful map write (layout, reprice, rename, per-set edits; a walk-in
+ * mark/release via {@code AvailabilityChanges#announce}) and BEFORE a `409 STALE_WRITE` recovery read, or tabs go stale.
  */
 @Service()
 export class ConsoleVenueMap {
-  private readonly console = inject(OperatorConsoleService);
+  private readonly http = inject(HttpClient);
 
   private key?: string;
   private snapshot?: Observable<VenueMapView>;
@@ -55,22 +61,24 @@ export class ConsoleVenueMap {
   }
 
   private fetch(venueId: number, generation: number): Observable<VenueMapView> {
-    return this.console.beachMap(venueId).pipe(
-      map((view) => view.map),
-      tap(() => {
-        if (this.generation === generation) {
-          this.expiresAt = Date.now() + SNAPSHOT_TTL_MS;
-        }
-      }),
-      catchError((error: unknown) => {
-        // Identity, not key: the key recurs after a reset, so a value check drops the replacement.
-        if (this.generation === generation) {
-          this.reset();
-        }
-        return throwError(() => error);
-      }),
-      // refCount:false — an unsubscribing tab must not cancel the request another consumer awaits.
-      shareReplay({ bufferSize: 1, refCount: false }),
-    );
+    return this.http
+      .get<OwnerBeachMap>(`${environment.apiBaseUrl}/api/venues/${venueId}/beach-map`)
+      .pipe(
+        map((view) => view.map),
+        tap(() => {
+          if (this.generation === generation) {
+            this.expiresAt = Date.now() + SNAPSHOT_TTL_MS;
+          }
+        }),
+        catchError((error: unknown) => {
+          // Identity, not key: the key recurs after a reset, so a value check drops the replacement.
+          if (this.generation === generation) {
+            this.reset();
+          }
+          return throwError(() => error);
+        }),
+        // refCount:false — an unsubscribing tab must not cancel the request another consumer awaits.
+        shareReplay({ bufferSize: 1, refCount: false }),
+      );
   }
 }

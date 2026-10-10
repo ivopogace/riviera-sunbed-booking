@@ -7,7 +7,7 @@ import { vi } from 'vitest';
 import { ConsoleSection, ConsoleShell } from './console-shell';
 import { OperatorAuth } from './core/operator-auth';
 import { OwnedVenue, OwnedVenues, OwnedVenuesResult } from './core/owned-venues';
-import { ConsoleVenueMap } from './operator/console-venue-map';
+import { ConsoleVenueMap } from './core/console-venue-map';
 import { PendingRequestsStore } from './operator/pending-requests-store';
 import { VenueMapView } from './shared/venue-views';
 

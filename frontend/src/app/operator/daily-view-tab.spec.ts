@@ -18,7 +18,7 @@ import {
 } from '../shared/booking-date';
 import { Pool, SetView, Tier } from '../shared/venue-views';
 import { AvailabilityChange, AvailabilityChanges } from './availability-changes';
-import { ConsoleVenueMap } from './console-venue-map';
+import { ConsoleVenueMap } from '../core/console-venue-map';
 import { ConsoleDailyBooking } from './operator-console.model';
 import { DailyViewTab } from './daily-view-tab';
 import { FakeQrScanner } from './fake-qr-scanner';
