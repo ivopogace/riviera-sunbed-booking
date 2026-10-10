@@ -22,23 +22,23 @@ enumeration of which it was), PR #1570 (the owner's read: 403 before any existen
 
 ## Acceptance criteria
 
-- [ ] **AC-1:** Given a signed-in operator and a venue id whose owner's read answers
+- [x] **AC-1:** Given a signed-in operator and a venue id whose owner's read answers
   `403 NOT_VENUE_OWNER`, when they navigate to any console URL under it, then the navigation ends
   on `/operator/venue-not-found` and no console component mounts. *Seam:* the route table
   (`provideRouter(routes)` + `HttpTestingController`) · *Pinned by:* `venue-access.guard.spec.ts`,
   `venue-id-route-gate.e2e.ts`
-- [ ] **AC-2:** Given the same, answered `404 NO_SUCH_VENUE`, then the same page, with no
+- [x] **AC-2:** Given the same, answered `404 NO_SUCH_VENUE`, then the same page, with no
   difference an operator could read. *Seam:* as AC-1 · *Pinned by:* `venue-access.guard.spec.ts`,
   `venue-id-route-gate.e2e.ts`
-- [ ] **AC-3:** Given the read fails transiently (5xx, network) or with 401, when the operator
+- [x] **AC-3:** Given the read fails transiently (5xx, network) or with 401, when the operator
   navigates, then the console mounts as today (retry alerts; the session-lost path untouched).
   *Seam:* as AC-1 · *Pinned by:* `venue-access.guard.spec.ts`, `venue-id-route-gate.e2e.ts`
-- [ ] **AC-4:** Given the read succeeds, then the console mounts and the snapshot is primed: the
+- [x] **AC-4:** Given the read succeeds, then the console mounts and the snapshot is primed: the
   shell's and the tabs' first `load` make no second request. *Seam:* `ConsoleVenueMap#load` ·
   *Pinned by:* `venue-access.guard.spec.ts`
-- [ ] **AC-5:** Given a malformed id or a signed-out visitor, then no beach-map request is made
+- [x] **AC-5:** Given a malformed id or a signed-out visitor, then no beach-map request is made
   and the earlier guards' redirects stand. *Seam:* as AC-1 · *Pinned by:* `venue-access.guard.spec.ts`
-- [ ] **AC-6:** Given the console is open on venue A, when the URL changes in place to venue B
+- [x] **AC-6:** Given the console is open on venue A, when the URL changes in place to venue B
   the operator does not own, then the not-found page. *Seam:* as AC-1 · *Pinned by:*
   `venue-access.guard.spec.ts`
 
@@ -79,15 +79,15 @@ enumeration of which it was), PR #1570 (the owner's read: 403 before any existen
 
 ## Execution status
 
-**Stage pointer:** `implement (phase 0)`
+**Stage pointer:** `PR — draft open, CI due; then ready for review`
 
-**Next action:** move `console-venue-map.ts` to `core/`.
+**Next action:** push, open the draft PR, mark ready once CI is green, run the review gate at high.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — snapshot to core/ | ⏳ | |
-| 1 — the guard | | |
-| 2 — e2e | | |
-| 3 — substrate | | |
+| 0 — snapshot to core/ | ✅ | efc3612 |
+| 1 — the guard | ✅ | (this PR) |
+| 2 — e2e | ✅ | (this PR) |
+| 3 — substrate | ✅ | (this PR) |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
