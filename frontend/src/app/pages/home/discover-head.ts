@@ -41,7 +41,7 @@ const RAIL_LEAVE = 'opacity-0 -translate-y-1';
 /**
  * A chip rail wraps from `sm`, where a mouse has no swipe and the hidden scrollbar leaves the last
  * chips, the stay chip or a region's southern beaches, out of reach; a phone keeps the one
- * swipeable row. The Near me note keeps the plain {@link RAIL}: one line that wraps inside itself.
+ * swipeable row. The Near me note stays on {@link RAIL}: its text wraps inside its paragraph.
  */
 const CHIP_RAIL = RAIL + ' sm:flex-wrap sm:overflow-x-visible';
 
