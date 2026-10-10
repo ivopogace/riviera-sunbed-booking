@@ -883,8 +883,8 @@ class ResponsibilitiesArchitectureTests {
 	/** The tables that exist after the last migration: create, drop and rename applied in version
 	 * order, then statement order; DDL in a {@code DO $$} body counts as if it ran. A form the walk
 	 * does not model (TEMP/UNLOGGED, a non-public schema, a case-sensitive quoted name, an unquoted
-	 * name past plain ASCII, a Unicode-escaped name, {@code SET SCHEMA}) is refused. Two limits are
-	 * documented, not modelled: {@code SELECT … INTO new_table} and a {@code $$} closer glued to a table
+	 * name past plain ASCII, a Unicode-escaped name, {@code SET SCHEMA}) is refused. Documented, not
+	 * modelled: {@code SELECT … INTO new_table} and a {@code $$} closer glued to a table
 	 * name, which the walk reads into the name (RESPONSIBILITIES.md § Known scan limits). */
 	static Set<String> tablesAfter(List<Migration> migrations) {
 		Set<String> tables = new TreeSet<>();
