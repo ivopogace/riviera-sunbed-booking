@@ -3,27 +3,34 @@ import { RouterLink } from '@angular/router';
 
 import { ChunkLoadRecovery } from '../../core/chunk-load-recovery';
 import { AlertIcon } from '../../shared/alert-icon';
+import { CardGlass } from '../../shared/card-glass';
 import { FAILURE_DIRECTIVES } from '../../shared/failure-panel';
+import { focusMover } from '../../shared/focus-after-render';
 import { RetryButton } from '../../shared/retry-button';
 import { TouchTarget } from '../../shared/touch-target';
 
 /**
- * The answer to a lazy route whose chunk failed to load (#1543), rendered in the outlet under the
- * target's own URL by `core/chunk-load-recovery.ts`. Neutral while the one automatic reload is in
- * flight; otherwise the shared failure panel with "Try again" (a fresh load of the target) and the
- * way back to the beaches. Eager in `app.routes.ts`: this page must never need a chunk itself.
+ * The answer to a lazy route whose chunk failed to load (#1543), rendered in the outlet by
+ * `core/chunk-load-recovery.ts`. Neutral while a reload is in flight; otherwise, under the
+ * target's own URL, the shared failure panel with "Try again" (a fresh load of the target) and
+ * the way back to the beaches. Eager in `app.routes.ts`: this page must never need a chunk itself.
  */
 @Component({
   selector: 'app-page-load-failed',
-  imports: [RouterLink, AlertIcon, RetryButton, TouchTarget, ...FAILURE_DIRECTIVES],
+  imports: [RouterLink, AlertIcon, CardGlass, RetryButton, TouchTarget, ...FAILURE_DIRECTIVES],
   template: `
     @if (recovery.reloading()) {
-      <p
-        class="mx-auto my-8 max-w-[460px] text-center text-[14.5px] text-riv-ink-soft"
-        data-testid="page-load-failed-reloading"
+      <section
+        appCardGlass
+        class="mx-auto my-8 max-w-[460px] rounded-[28px] px-[30px] py-10 text-center shadow-[0_14px_44px_rgba(7,42,58,0.28),inset_0_1px_0_rgba(255,255,255,0.8)] backdrop-blur-[26px] backdrop-saturate-[170%]"
       >
-        Loading this page again…
-      </p>
+        <p
+          class="m-0 text-[14.5px] leading-[1.5] text-riv-card-ink-soft"
+          data-testid="page-load-failed-reloading"
+        >
+          Loading this page again…
+        </p>
+      </section>
     } @else {
       <section
         appFailurePanel
@@ -38,7 +45,7 @@ import { TouchTarget } from '../../shared/touch-target';
           Part of Riviera didn’t arrive — the connection dropped, or the app was just updated. Try
           again, or head back to the beaches.
         </p>
-        <app-retry-button testId="page-load-failed-retry" (retry)="recovery.retry()" />
+        <app-retry-button testId="page-load-failed-retry" (retry)="retry()" />
         <p class="mt-5 mb-0">
           <a
             appTouchTarget
@@ -54,4 +61,11 @@ import { TouchTarget } from '../../shared/touch-target';
 })
 export class PageLoadFailed {
   protected readonly recovery = inject(ChunkLoadRecovery);
+  private readonly focus = focusMover();
+
+  /** The pressed button goes with the card, so focus moves to the line that replaces it. */
+  protected retry(): void {
+    this.recovery.retry();
+    this.focus('page-load-failed-reloading');
+  }
 }

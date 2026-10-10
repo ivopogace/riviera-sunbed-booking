@@ -88,6 +88,6 @@ export const appConfig: ApplicationConfig = {
     // intercepts the navigation with page.route.
     { provide: SsoRedirect, useClass: WindowSsoRedirect },
     // The full page load a failed chunk needs; unit specs record the URL instead.
-    { provide: PageReload, useClass: WindowPageReload },
+    { provide: PageReload, useFactory: () => new WindowPageReload(window) },
   ],
 };

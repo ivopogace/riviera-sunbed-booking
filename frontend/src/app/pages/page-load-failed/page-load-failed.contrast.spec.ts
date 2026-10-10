@@ -18,8 +18,9 @@ import {
 
 /**
  * WCAG-AA for the page-load-failed card: the shared failure panel's inks over the card glass
- * composited on each theme's worst-case stops (the not-found card's proof). The "Try again"
- * button's white on the CTA gradient is theme-invariant and pinned by `home.contrast.spec.ts`.
+ * composited on each theme's worst-case stops (the not-found card's proof); the reloading line
+ * is the same soft ink on the same glass. The "Try again" button's white on the CTA gradient is
+ * theme-invariant and pinned by `home.contrast.spec.ts`.
  */
 const THEMES: readonly [string, Glass, readonly Rgb[], Rgb, Rgb, Rgb][] = [
   ['riviera', RIVIERA_CARD_GLASS, RIVIERA_STOPS, INK_DARK, CARD_INK, ACCENT_INK],
@@ -34,7 +35,7 @@ describe.each(THEMES)(
       expectAaOverStops(ink, 1, glass, stops);
     });
 
-    it('card ink-soft (lead) meets AA on the card glass', () => {
+    it('card ink-soft (lead, and the reloading line) meets AA on the card glass', () => {
       expectAaOverStops(inkBase, CARD_INK_SOFT_ALPHA, glass, stops);
     });
 

@@ -108,6 +108,12 @@ test('an in-app navigation whose chunk fails shows the retry card under the targ
   await expect(page).toHaveURL('/my-bookings');
   expect(abortCount()).toBe(2);
   expect(errors).toEqual([]);
+
+  // The reload kept the history entry the visitor came from.
+  await page.unroute(CHUNK_URL);
+  await page.goBack();
+  await expect(page).toHaveURL('/');
+  await expect(page.getByRole('heading', FAILED_HEADING)).toHaveCount(0);
 });
 
 for (const theme of ['porcelain', 'riviera', 'dark']) {

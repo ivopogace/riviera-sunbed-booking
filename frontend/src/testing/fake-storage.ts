@@ -1,3 +1,5 @@
+export type FakeStore = 'localStorage' | 'sessionStorage';
+
 /**
  * The unit-test environment (Vitest + jsdom via `@angular/build:unit-test`) has no `localStorage`
  * or `sessionStorage` global, so any service that persists through them (`ThemeService`,
@@ -7,8 +9,6 @@
  * Call {@link installFakeStorage} in `beforeEach` (it returns the backing Map for seeding/asserting)
  * and {@link removeFakeStorage} in `afterEach` so the global doesn't leak between suites.
  */
-export type FakeStore = 'localStorage' | 'sessionStorage';
-
 export function installFakeStorage(which: FakeStore = 'localStorage'): Map<string, string> {
   const store = new Map<string, string>();
   (globalThis as unknown as Record<FakeStore, unknown>)[which] = {

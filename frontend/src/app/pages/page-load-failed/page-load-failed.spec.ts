@@ -1,5 +1,5 @@
 import { Component } from '@angular/core';
-import { TestBed } from '@angular/core/testing';
+import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { NavigationError, provideRouter, Router, Routes } from '@angular/router';
 
 import { routes } from '../../app.routes';
@@ -20,14 +20,22 @@ class RecordingReload extends PageReload {
 describe('PageLoadFailed', () => {
   let reload: RecordingReload;
 
-  function render(): { host: HTMLElement; detect: () => void } {
+  function render(): {
+    host: HTMLElement;
+    detect: () => void;
+    fixture: ComponentFixture<PageLoadFailed>;
+  } {
     reload = new RecordingReload();
     TestBed.configureTestingModule({
       providers: [provideRouter([]), { provide: PageReload, useValue: reload }],
     });
     const fixture = TestBed.createComponent(PageLoadFailed);
     fixture.detectChanges();
-    return { host: fixture.nativeElement as HTMLElement, detect: () => fixture.detectChanges() };
+    return {
+      host: fixture.nativeElement as HTMLElement,
+      detect: () => fixture.detectChanges(),
+      fixture,
+    };
   }
 
   it('names the failure, offers a retry and links back to the beaches', () => {
@@ -41,22 +49,25 @@ describe('PageLoadFailed', () => {
     expect(back?.textContent?.trim()).toBe('Back to the beaches');
   });
 
-  it('"Try again" loads the URL whose chunk failed as a fresh document', () => {
-    const { host, detect } = render();
+  it('"Try again" loads the URL whose chunk failed as a fresh document, moving focus to the neutral line', async () => {
+    const { host, detect, fixture } = render();
     const recovery = TestBed.inject(ChunkLoadRecovery);
     recovery.recover(new NavigationError(3, '/my-bookings', chunkError()));
     reload.urls.length = 0;
     recovery.reloading.set(false);
     detect();
+    const retry = host.querySelector<HTMLButtonElement>('[data-testid="page-load-failed-retry"]')!;
+    retry.focus();
 
-    host.querySelector<HTMLButtonElement>('[data-testid="page-load-failed-retry"]')!.click();
+    retry.click();
     detect();
+    await fixture.whenStable();
 
     expect(reload.urls).toEqual(['/my-bookings']);
     expect(host.querySelector('[data-testid="page-load-failed"]')).toBeNull();
-    expect(host.querySelector('[data-testid="page-load-failed-reloading"]')?.textContent).toContain(
-      'Loading this page again',
-    );
+    const reloading = host.querySelector('[data-testid="page-load-failed-reloading"]');
+    expect(reloading?.textContent).toContain('Loading this page again');
+    expect(document.activeElement).toBe(reloading);
   });
 });
 

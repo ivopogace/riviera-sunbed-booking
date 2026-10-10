@@ -7,6 +7,7 @@ import { PageReload } from './page-reload';
 
 const STAMP_KEY = 'riviera-chunk-reload';
 const TARGET = '/legal/privacy?from=footer';
+const TARGET_PATH = '/legal/privacy';
 
 class RecordingReload extends PageReload {
   readonly urls: string[] = [];
@@ -47,14 +48,15 @@ describe('ChunkLoadRecovery (#1543)', () => {
 
     expect(reload.urls).toEqual([TARGET]);
     expect(recovery.reloading()).toBe(true);
-    expect(JSON.parse(session.get(STAMP_KEY)!)).toEqual({ url: TARGET, at: Date.now() });
+    // Keyed on the path: a `?token=` query never lands in storage.
+    expect(JSON.parse(session.get(STAMP_KEY)!)).toEqual({ path: TARGET_PATH, at: Date.now() });
     expect(command).toBeInstanceOf(RedirectCommand);
     expect(router.serializeUrl(command!.redirectTo)).toBe('/page-load-failed');
     expect(command!.navigationBehaviorOptions).toEqual({ skipLocationChange: true });
   });
 
   it('shows the card under the target URL instead of a second reload while the stamp for that URL is fresh', () => {
-    session.set(STAMP_KEY, JSON.stringify({ url: TARGET, at: Date.now() - 59_000 }));
+    session.set(STAMP_KEY, JSON.stringify({ path: TARGET_PATH, at: Date.now() - 59_000 }));
 
     const command = recovery.recover(chunkFailure());
 
@@ -66,9 +68,9 @@ describe('ChunkLoadRecovery (#1543)', () => {
   });
 
   it('reloads again once the stamp is a minute old, or is for another URL', () => {
-    session.set(STAMP_KEY, JSON.stringify({ url: TARGET, at: Date.now() - 60_000 }));
+    session.set(STAMP_KEY, JSON.stringify({ path: TARGET_PATH, at: Date.now() - 60_000 }));
     recovery.recover(chunkFailure());
-    session.set(STAMP_KEY, JSON.stringify({ url: '/my-bookings', at: Date.now() }));
+    session.set(STAMP_KEY, JSON.stringify({ path: '/my-bookings', at: Date.now() }));
     recovery.recover(chunkFailure());
 
     expect(reload.urls).toEqual([TARGET, TARGET]);
@@ -92,15 +94,38 @@ describe('ChunkLoadRecovery (#1543)', () => {
   });
 
   it('retries with a fresh load of the failed URL and stamps it so no automatic reload follows', () => {
-    session.set(STAMP_KEY, JSON.stringify({ url: TARGET, at: Date.now() - 59_000 }));
+    session.set(STAMP_KEY, JSON.stringify({ path: TARGET_PATH, at: Date.now() - 59_000 }));
     recovery.recover(chunkFailure());
-    session.set(STAMP_KEY, JSON.stringify({ url: TARGET, at: Date.now() - 120_000 }));
+    session.set(STAMP_KEY, JSON.stringify({ path: TARGET_PATH, at: Date.now() - 120_000 }));
 
     recovery.retry();
 
     expect(reload.urls).toEqual([TARGET]);
     expect(recovery.reloading()).toBe(true);
-    expect(JSON.parse(session.get(STAMP_KEY)!)).toEqual({ url: TARGET, at: Date.now() });
+    expect(JSON.parse(session.get(STAMP_KEY)!)).toEqual({ path: TARGET_PATH, at: Date.now() });
+  });
+
+  it('treats the same page with another query as already reloaded', () => {
+    session.set(STAMP_KEY, JSON.stringify({ path: TARGET_PATH, at: Date.now() }));
+
+    recovery.recover(chunkFailure('/legal/privacy?from=menu'));
+
+    expect(reload.urls).toEqual([]);
+  });
+
+  it('loads a document afresh when it comes back from the back/forward cache mid-reload', () => {
+    recovery.recover(chunkFailure());
+    reload.urls.length = 0;
+
+    window.dispatchEvent(Object.assign(new Event('pageshow'), { persisted: true }));
+
+    expect(reload.urls).toEqual([window.location.href]);
+  });
+
+  it('ignores a back/forward-cache restore when no reload was asked for', () => {
+    window.dispatchEvent(Object.assign(new Event('pageshow'), { persisted: true }));
+
+    expect(reload.urls).toEqual([]);
   });
 
   it('retries to the home page when no chunk failure was recorded (the card opened by its own URL)', () => {

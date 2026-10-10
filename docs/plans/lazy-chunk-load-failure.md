@@ -8,7 +8,7 @@ the address bar keeps the target URL and the router raises no uncaught error.
 
 **Architecture:** `withNavigationErrorHandler` in `app.config.ts` (the composition root) hands
 every navigation error to `core/chunk-load-recovery.ts`. The handler answers only a chunk-load
-`TypeError` (the three engines' messages); anything else stays loud as today. For a chunk error
+error (the three engines' `import()` failure messages); anything else stays loud as today. For a chunk error
 it returns a `RedirectCommand` to an **eager** `page-load-failed` route with `browserUrl` set to
 the failed URL, so the outlet shows the card while the address bar keeps the target. The
 reload-once guard is a `sessionStorage` stamp `{url, at}`: no stamp for this URL inside the last
@@ -63,7 +63,7 @@ Scope notes.
 - **R-2 the failure page's own chunk fails** → the route is eager (`component:`, in the main
   bundle), the one justified exception to "every route lazy" (skill line updated).
 - **R-3 masking a real bug as a chunk failure** → the handler keys on the chunk-load
-  `TypeError` messages only (Chromium, Firefox, WebKit); everything else falls through.
+  `import()` failure messages only (Chromium, Firefox, WebKit); everything else falls through.
 - **R-4 the card flashing before the automatic reload** → the card renders a neutral
   "Loading this page again…" state while a reload is in flight.
 
@@ -84,9 +84,9 @@ Scope notes.
 
 ## Execution status
 
-**Stage pointer:** PR — draft open, CI gate
+**Stage pointer:** review — sub-bar minors folded in, re-review of the fix due
 
-**Next action:** CI green on the head → ready for review → review gate (high)
+**Next action:** re-review the fold-in at high effort, Sonar gate, remove this plan, READY TO MERGE
 
 | Phase | Status | Commits |
 |-------|--------|---------|

@@ -54,8 +54,8 @@ user-facing surfaces, `<domain>.model.ts`, `<domain>.service.ts` (`@Service()`, 
   `page-load-failed` (`pages/page-load-failed`): the answer to a chunk that failed to load must
   not need a chunk itself.
 - Navigation errors: `provideRouter(routes, withNavigationErrorHandler(chunkLoadErrorHandler))`.
-  `core/chunk-load-recovery.ts` answers a chunk-load failure only — one full reload of the
-  target per tab (a `sessionStorage` stamp), then the card under the target's URL via
+  `core/chunk-load-recovery.ts` answers a chunk-load failure only — one full reload per target
+  page per minute and tab (a `sessionStorage` stamp), then the card under the target's URL via
   `RedirectCommand` + `browserUrl` — behind the `core/page-reload.ts` seam; any other
   navigation error stays loud.
 - The operator console (`/operator/:venueId`) and admin console (`/admin`) are nested

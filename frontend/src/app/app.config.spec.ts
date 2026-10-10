@@ -115,10 +115,6 @@ describe('appConfig GeolocationGateway provider', () => {
 /** No fake to swap in: the mocked Playwright suite drives the real reload (`chunk-load-failure.e2e.ts`). */
 describe('appConfig PageReload provider (#1543)', () => {
   it('serves the window adapter', () => {
-    const entry = (appConfig.providers as ClassProvider[]).find(
-      (provider) => provider.provide === PageReload,
-    );
-
-    expect(entry?.useClass).toBe(WindowPageReload);
+    expect(factoryFor(PageReload)()).toBeInstanceOf(WindowPageReload);
   });
 });
