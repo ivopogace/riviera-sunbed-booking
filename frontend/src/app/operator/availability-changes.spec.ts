@@ -67,7 +67,7 @@ describe('AvailabilityChanges (#1525)', () => {
 
     expect(seen).toEqual([{ venueId: VENUE, date: TODAY }]);
 
-    // Venue switched in place: the old venue's change no longer counts, the new one's does.
+    // After an in-place venue switch only the current venue's changes pass.
     venueId.set(2);
     changes.announce({ venueId: VENUE, date: TODAY });
     changes.announce({ venueId: 2, date: TODAY });

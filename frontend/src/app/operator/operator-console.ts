@@ -16,12 +16,11 @@ import { PendingRequestsStore } from './pending-requests-store';
 
 /**
  * The venue console's page at `/operator/:venueId`: the stats strip, the pending-approval banner
- * and the tab outlet hosting each tab as a child route. Its chrome (venue switcher, tab rail,
- * footer) is `console-shell.ts`'s; this component publishes nothing to it and owns only the
- * per-venue seeding: the shared venue-map snapshot (strip and shell share one request; re-read when
- * the Daily view settles a walk-in, {@link AvailabilityChanges}) and the Requests badge count
- * (`PendingRequestsStore`). No sign-in gate or session-restore state:
- * {@code operatorSessionGuard} awaits the restore, so this only renders for a signed-in operator.
+ * and the tab outlet hosting each tab as a child route. Its chrome is `console-shell.ts`'s; this
+ * component publishes nothing to it and owns only the per-venue seeding: the shared venue-map
+ * snapshot (one request for strip and shell; re-read when the Daily view settles a walk-in,
+ * {@link AvailabilityChanges}) and the Requests badge count (`PendingRequestsStore`). No sign-in
+ * gate: {@code operatorSessionGuard} awaits the restore, so this only renders signed-in.
  */
 @Component({
   selector: 'app-operator-console',
@@ -55,8 +54,7 @@ export class OperatorConsole {
         untracked(() => this.load(id));
       }
     });
-    // A walk-in marked or released today moved a set's availability: re-read the map only — the badge
-    // seed stays, the Requests tab may own it by now. The announce already dropped the snapshot.
+    // A settled walk-in moved today's availability: re-read the map only — the Requests tab may own the badge.
     this.changes
       .todayAt(this.venueId)
       .pipe(takeUntilDestroyed())

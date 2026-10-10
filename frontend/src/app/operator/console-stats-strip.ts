@@ -11,14 +11,12 @@ import { SetDayState, TakingsView } from './operator-console.model';
 import { OperatorConsoleService } from './operator-console.service';
 
 /**
- * The operator console's stats strip — four glass tiles above the tab nav, live for
- * the operator's venue today (Europe/Tirane, invariant #6): Free today `{free}/{total}`, Booked
- * online, Walk-ins marked, and Online takings today (gross + net after commission).
- *
- * <p>Sources: free/total from the shell's shared venue map ({@link venue}), booked-online from the
- * day's CONFIRMED bookings, walk-ins as the exact `STAFF_MARKED` count. Net is server-side (#9),
- * only formatted (#5). Reads are best-effort: a failure leaves that tile at its zero/dash default.
- * The walk-ins tile follows the Daily view's settled mark/release ({@link AvailabilityChanges}, #1525).
+ * The operator console's stats strip — four glass tiles above the tab nav, live for the operator's
+ * venue today (Europe/Tirane, #6): Free today `{free}/{total}` from the shell's shared venue map
+ * ({@link venue}), Booked online from the day's CONFIRMED bookings, Walk-ins marked as the exact
+ * `STAFF_MARKED` count (re-read when the Daily view settles a mark/release, {@link AvailabilityChanges}),
+ * and Online takings today — net is server-side (#9), only formatted (#5). Reads are best-effort:
+ * a failure leaves that tile at its zero/dash default.
  */
 @Component({
   selector: 'app-console-stats-strip',
