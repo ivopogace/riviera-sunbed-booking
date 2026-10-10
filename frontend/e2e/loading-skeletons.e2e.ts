@@ -360,9 +360,9 @@ test('the operator Daily view’s loading state is axe-clean (#744)', async ({ p
  * (`venue-map-pan.e2e.ts`, #700) clears its viewport by ~31px on a 14-column venue, and a
  * cap-sized rail spends 39px of it — measured, as a pan that map is not supposed to need. So the
  * residual survives, and these tests state its size rather than hide it: 0.00px wherever the rail
- * fits the reservation (every tourist phone case, since #724 caps the label there), 9.14px on the
- * `Front row` fixture, and as much as the label is wide on an operator rail, which renders labels
- * whole by that same #724 decision.
+ * fits the reservation (every phone case, since #724 caps the tourist label there and #1532 the
+ * Daily one), 9.14px on the `Front row` fixture, and as much as the label is wide on an operator
+ * rail from `sm` up, which renders labels whole by that same #724 decision.
  *
  * <p>What the rail SAYS while loading is the unit specs' claim; what it MEASURES is only knowable
  * here.
@@ -424,8 +424,9 @@ async function expectSlideIsWhatTheReservationAllows(
 
 /**
  * The other extreme of the rail's own vocabulary: both names exactly 40 characters, the limit
- * `V43__set_position_row_label_length.sql` and the editor's `maxlength` allow. The uncapped
- * operator rail's worst case is a real number, not an adjective, and it belongs in the matrix.
+ * `V43__set_position_row_label_length.sql` and the editor's `maxlength` allow. The operator rail's
+ * worst case from `sm` up, where it is uncapped, is a real number, not an adjective, and it
+ * belongs in the matrix.
  */
 const LONG_LABEL_VENUE = {
   ...RICH_VENUE,
