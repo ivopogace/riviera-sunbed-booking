@@ -12,8 +12,9 @@ import {
 /**
  * Real-render CI-safe e2e for the Daily view tab. Drives sign-in → open the Daily view tab
  * → see the three tile states (free / booked-online-locked) + the arrivals code chips → tap a free
- * set to mark a walk-in → assert the owner-asserted mark POST and that the tile flips to walk-in
- * marked after the reconcile. API mocked via `page.route` (no backend); axe over the tab.
+ * set to mark a walk-in → assert the owner-asserted mark POST, that the tile flips to walk-in
+ * marked after the reconcile, and that the console's stats strip follows the mark and the release
+ * without a reload (#1525). API mocked via `page.route` (no backend); axe over the tab.
  */
 
 const PRINCIPAL = { username: 'operator', principalType: 'OPERATOR' };
@@ -265,11 +266,24 @@ test('shows tile states + arrival codes, and marks a walk-in that survives the r
   await settle(page);
   await expectNoSeriousAxeViolations(page, 'daily view tab');
 
+  // The strip above agrees with the grid before any tap: sets 1 and 3 free of 4.
+  await expect(page.getByTestId('oc-stat-free')).toHaveText(/2\s*\/\s*4/);
+
   // Tap the free set 1 → mark walk-in; after the reconcile it stays walk-in marked.
   await page.locator('[data-set-id="1"]').click();
   await expect(page.locator('[data-set-id="1"]')).toHaveAttribute('data-state', 'STAFF_MARKED');
   await expect(visibleTileText(1)).toHaveText(['1']);
   await expect(stateMark(1, 'check')).toBeVisible();
+
+  // The strip follows the settled mark without a reload (#1525): one walk-in, one set fewer free.
+  await expect(page.getByTestId('oc-stat-walkins')).toHaveText('1');
+  await expect(page.getByTestId('oc-stat-free')).toHaveText(/1\s*\/\s*4/);
+
+  // Tap it again → release; the strip comes back down with it.
+  await page.locator('[data-set-id="1"]').click();
+  await expect(page.locator('[data-set-id="1"]')).toHaveAttribute('data-state', 'FREE');
+  await expect(page.getByTestId('oc-stat-walkins')).toHaveText('0');
+  await expect(page.getByTestId('oc-stat-free')).toHaveText(/2\s*\/\s*4/);
 });
 
 test('paints the console theme: the date field, the sales-close control and the tiles under porcelain and dark console (#1010, + axe)', async ({

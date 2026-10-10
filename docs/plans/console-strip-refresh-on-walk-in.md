@@ -116,16 +116,16 @@ smallest carrier `riviera-frontend` allows (one feature → stays in `operator/`
 
 ## Execution status
 
-**Stage pointer:** `plan — committed; implement (phase 0) next`
+**Stage pointer:** `PR — draft open; CI gate, then ready-for-review → review gate (high) + Sonar`
 
-**Next action:** red test for `AvailabilityChanges`
+**Next action:** check the draft's CI run; merge origin/main; mark ready; run `/code-review` + overlay at high
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — the carrier | | |
-| 1 — the Daily view announces | | |
-| 2 — the strip follows | | |
-| 3 — the page follows | | |
-| 4 — e2e | | |
+| 0 — the carrier | ✅ | 31436e9b |
+| 1 — the Daily view announces | ✅ | 92de4482 |
+| 2 — the strip follows | ✅ | b43dc23e |
+| 3 — the page follows | ✅ | 22fd1d1b |
+| 4 — e2e | ✅ | (this commit) |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
