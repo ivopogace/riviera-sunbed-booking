@@ -6,6 +6,7 @@ import {
   TestRequest,
 } from '@angular/common/http/testing';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { By } from '@angular/platform-browser';
 import {
   ActivatedRoute,
   convertToParamMap,
@@ -24,6 +25,7 @@ import { formatBookingDate } from '../shared/booking-date-label';
 import { addDays, defaultBookingDate, formatCivilDate } from '../shared/booking-date';
 import { ItineraryView, SetView, VenueMapView } from '../shared/venue-views';
 import { VenueMap } from './venue-map';
+import { VenueReviews } from './venue-reviews';
 import { ProofOfWork } from '../core/proof-of-work';
 
 /** A 24-set fixture mirroring the Miramar seed: 4 rows × 6, 6 taken (18 free), front row premium.
@@ -797,6 +799,14 @@ describe('VenueMap', () => {
     expect(chip.getAttribute('aria-label')).toBe('No reviews yet');
     expect(header.textContent).not.toContain('0.0');
     expect(header.textContent).not.toContain('0 reviews');
+  });
+
+  it("hands the reviews section the venue read's count, so its empty state agrees with the header (#1528)", async () => {
+    venueRequest().flush({ ...miramar(), ratingTenths: 0, reviewsCount: 0 });
+    await settle();
+
+    const reviews = fixture.debugElement.query(By.directive(VenueReviews));
+    expect((reviews.componentInstance as VenueReviews).reviewsCount()).toBe(0);
   });
 
   it('agrees the review noun with the count — a venue\'s first rating reads "1 review"', async () => {

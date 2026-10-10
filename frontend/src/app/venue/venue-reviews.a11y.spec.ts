@@ -31,6 +31,7 @@ describe('VenueReviews accessibility (axe)', () => {
     }).compileComponents();
     fixture = TestBed.createComponent(VenueReviews);
     fixture.componentRef.setInput('venueId', 1);
+    fixture.componentRef.setInput('reviewsCount', 3);
     httpMock = TestBed.inject(HttpTestingController);
   });
 
@@ -55,6 +56,15 @@ describe('VenueReviews accessibility (axe)', () => {
   });
 
   it('the empty state has no violations', async () => {
+    fixture.detectChanges();
+    request().flush({ reviews: [], nextCursor: null });
+    fixture.detectChanges();
+    await fixture.whenStable();
+    await expectNoAxeViolations(host());
+  });
+
+  it('the no-ratings empty state has no violations', async () => {
+    fixture.componentRef.setInput('reviewsCount', 0);
     fixture.detectChanges();
     request().flush({ reviews: [], nextCursor: null });
     fixture.detectChanges();
