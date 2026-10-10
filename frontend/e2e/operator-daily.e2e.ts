@@ -654,8 +654,8 @@ test('a long row name ellipsizes on the phone rail so two tiles fit per row; des
   page,
 }) => {
   await mockDaily(page);
-  await page.route(/\/api\/venues\/1(\?.*)?$/, (route) =>
-    route.fulfill({ json: namedRowsVenue() }),
+  await page.route(/\/api\/venues\/1\/beach-map$/, (route) =>
+    route.fulfill({ json: { map: namedRowsVenue(), locks: [] } }),
   );
   await page.setViewportSize({ width: 390, height: 780 });
   await page.goto('/operator/1');
