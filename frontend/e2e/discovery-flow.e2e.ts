@@ -317,6 +317,32 @@ test('discovery shows an accessible empty state when no venues match', async ({ 
   await expectNoSeriousAxeViolations(page, 'discovery empty state');
 });
 
+test('a venue with no sets is listed but not counted as selling today (#1530)', async ({
+  page,
+}) => {
+  // An approved operator's venue with no beach map yet: listed as #717 decided, but it sells nothing.
+  const emptyCove = {
+    ...VENUES[1],
+    id: 3,
+    name: 'Empty Cove',
+    fromPrice: null,
+    availability: { free: 0, total: 0 },
+    salesOpen: true,
+  };
+  await page.route(/\/api\/venues(\?.*)?$/, (route) =>
+    route.fulfill({ json: [...VENUES, emptyCove] }),
+  );
+  await page.setViewportSize(PHONE);
+  await page.goto('/');
+
+  const cards = page.getByTestId('venue-card');
+  await expect(cards).toHaveCount(3);
+  await expect(cards.filter({ hasText: 'Empty Cove' })).toContainText('No sets yet');
+  await expect(page.getByTestId('head-subtitle')).toHaveText('2 of 3 selling today');
+  await expect(page.getByTestId('sheet-outcome')).toContainText('2 of 3 selling today');
+  await expectNoSeriousAxeViolations(page, 'discovery sheet (a venue with no sets)');
+});
+
 test('a hidden venue answers a not-available state with a way back, not a retry loop (#693)', async ({
   page,
 }) => {

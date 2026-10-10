@@ -72,13 +72,13 @@ API and no other surface changes.
 
 ## Execution status
 
-**Stage pointer:** `implement (phase 1)`
+**Stage pointer:** `CI gate → ready for review`
 
-**Next action:** run the mocked e2e in a real Chromium, open the draft PR, then the CI gate.
+**Next action:** CI green on the head → mark PR #1546 ready → review gate at high effort (pr-gates §1).
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — the selling line | ✅ | phase-0 commit |
-| 1 — real render | ⏳ | |
+| 0 — the selling line | ✅ | d3f5b1d |
+| 1 — real render | ✅ | phase-1 commit |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
