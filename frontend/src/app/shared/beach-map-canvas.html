@@ -49,7 +49,7 @@
       data-riv-scroller
     >
       <div class="flex items-start gap-2.5" [style.--riv-map-cols]="mapCols()">
-        <!-- Left rail: row codes. Decorative (aria-hidden) unless the consumer opts into fill buttons (#713); each surface's tile names already carry the row otherwise. While loading the chip carries no text: the placeholder reserves the rail, it never states a row name nobody has fetched (#749, F-3). A `labels` row with a phone code renders both tiers and lets the breakpoint pick, so no JS media query has to agree with Tailwind's `sm` (#1532). -->
+        <!-- Left rail: row codes. Decorative (aria-hidden) unless the consumer opts into fill buttons (#713); each surface's tile names already carry the row otherwise. While loading the chip carries no text: the placeholder reserves the rail, it never states a row name nobody has fetched (#749, F-3). -->
         <div
           class="flex flex-col gap-1.5 shrink-0"
           [class]="railColumnClass()"
@@ -86,14 +86,8 @@
                 <span
                   class="inline-flex items-center justify-center min-w-6 h-6 px-[3px] rounded-lg bg-riv-map-rail-fill text-[10.5px] font-bold text-riv-map-rail-ink"
                   data-testid="row-code"
+                  ><span [class]="railCodeTextClass()">{{ row.code }}</span></span
                 >
-                  @if (railCodes() === 'labels' && row.phoneCode) {
-                    <span class="sm:hidden">{{ row.phoneCode }}</span
-                    ><span class="max-sm:hidden">{{ row.code }}</span>
-                  } @else {
-                    <span [class]="railCodeTextClass()">{{ row.code }}</span>
-                  }
-                </span>
               }
             </span>
           }
@@ -150,7 +144,7 @@
           </div>
         </div>
 
-        <!-- Right rail: the chip, once per zone (aria-hidden; surfaces carry price in tile names where it matters). The tourist map's chip carries what the price buys beside its price — only the tier or the channel, the two facts the left rail's row name cannot state — so the cell is capped and the chip ellipsizes: past the cap a longer phrase costs the tile viewport (flex-1 min-w-0 — it is what gives, not the shrink-0 rail) nothing. The cap is 128px, narrowed below sm where 390px has none to spare. Operator rails render a bare formatMoney string, far under either cap, so they are unchanged. A phrase rail also RESERVES the 92px phone cap in both states, because a column sized from whatever the read returned narrows the tile viewport from the right on every load. The cell floor is 52px, 44px below sm: a two-digit bare amount is 41px wide, and the 8px are what lets the Daily view show a third tile per row on a phone (#1532). -->
+        <!-- Right rail: the chip, once per zone (aria-hidden; surfaces carry price in tile names where it matters). The tourist map's chip carries what the price buys beside its price — only the tier or the channel, the two facts the left rail's row name cannot state — so the cell is capped and the chip ellipsizes: past the cap a longer phrase costs the tile viewport (flex-1 min-w-0 — it is what gives, not the shrink-0 rail) nothing. The cap is 128px, narrowed below sm where 390px has none to spare. Operator rails render a bare formatMoney string, far under either cap, so they are unchanged. A phrase rail also RESERVES the 92px phone cap in both states, because a column sized from whatever the read returned narrows the tile viewport from the right on every load. -->
         <div
           class="flex flex-col gap-1.5 shrink-0"
           [class]="priceColumnClass()"
@@ -162,7 +156,7 @@
           }
           @for (row of rows(); track row.code; let i = $index) {
             <span
-              class="h-[var(--riv-tile)] flex items-center justify-end min-w-11 max-w-[92px] sm:min-w-[52px] sm:max-w-[128px]"
+              class="h-[var(--riv-tile)] flex items-center justify-end min-w-[52px] max-w-[92px] sm:max-w-[128px]"
               [class.mt-3]="row.zoneStart && i > 0"
             >
               @if (!loading() && row.zoneStart && row.priceLabel; as price) {

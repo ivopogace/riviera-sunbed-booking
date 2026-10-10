@@ -626,31 +626,24 @@ async function fullyVisibleTiles(page: Page, y: number): Promise<number> {
   }, y);
 }
 
-/** The first rail chip as the browser shows it: its visible text, and whether that text ellipsizes. */
-async function firstRailChip(page: Page): Promise<{ text: string; truncated: boolean }> {
-  return page
-    .getByTestId('row-code')
-    .first()
-    .evaluate((chip) => {
-      const shown = [...chip.querySelectorAll('span')].find(
-        (span) => getComputedStyle(span).display !== 'none',
-      )!;
-      return {
-        text: shown.textContent?.trim() ?? '',
-        truncated: shown.scrollWidth > shown.clientWidth,
-      };
-    });
+/** A rail chip's text and whether its inner span ellipsizes. */
+async function railChip(page: Page, nth: number): Promise<{ text: string; truncated: boolean }> {
+  const chip = page.getByTestId('row-code').nth(nth);
+  return {
+    text: (await chip.textContent())?.trim() ?? '',
+    truncated: await chip.locator('span').evaluate((el) => el.scrollWidth > el.clientWidth),
+  };
 }
 
 /**
  * Staff mark walk-ins from a phone at the gate, and a stored row name is as long as the operator
  * typed it: rendered whole on the left rail at 390px, "Front row · Sea view" left one tile per row
- * in view (#1532). Below `sm` the rail shows the row's grid letter instead — the Beach map tab's
- * own vocabulary — and the price rail hugs its bare amount, so at least three tiles fit per row;
- * from `sm` up the name renders whole, as before. The tile accessible names keep the stored name
- * on every width (#724).
+ * in view (#1532). Below `sm` the rail now ellipsizes the name at the tourist map's cap, inside the
+ * 54px the rail reserves anyway (#749), so two whole tiles fit per row — the tourist map's own
+ * count; three would need the row's grid letter, which #724 rules out beside stored names. From
+ * `sm` up the name renders whole, as before.
  */
-test('the phone rail shows the grid letter so three tiles fit per row; desktop renders the name whole (#1532)', async ({
+test('a long row name ellipsizes on the phone rail so two tiles fit per row; desktop renders it whole (#1532)', async ({
   page,
 }) => {
   await mockDaily(page);
@@ -663,43 +656,38 @@ test('the phone rail shows the grid letter so three tiles fit per row; desktop r
   await expect(page.getByTestId('daily-tile')).toHaveCount(24);
   await expectGridScrolls(page);
 
-  // The chip reads the grid letter, whole — never an ellipsized fragment of the name…
-  expect(await firstRailChip(page)).toEqual({ text: 'A', truncated: false });
-  const letters = await page
-    .getByTestId('row-code')
-    .evaluateAll((chips) =>
-      chips.map((chip) =>
-        [...chip.querySelectorAll('span')]
-          .find((span) => getComputedStyle(span).display !== 'none')
-          ?.textContent?.trim(),
-      ),
-    );
-  expect(letters).toEqual(['A', 'B', 'C', 'D']);
-  // …inside a rail no wider than the letter chip, so what it gives up, the tiles get: three whole
-  // tiles per row before any swipe.
+  // The chip still reads the venue's own row name — ellipsized inside the chip, never overflowing it…
+  const long = await railChip(page, 0);
+  expect(long.text).toBe('Front row · Sea view');
+  expect(long.truncated, 'the long name ellipsizes at 390px').toBe(true);
   const chip = (await page.getByTestId('row-code').first().boundingBox())!;
-  expect(chip.width, 'the letter chip').toBeLessThanOrEqual(24);
+  expect(chip.width, 'the chip holds the 54px reservation').toBeLessThanOrEqual(54);
+  const card = (await page.getByTestId('daily-grid-frame').boundingBox())!;
+  expect(chip.x + chip.width).toBeLessThanOrEqual(card.x + card.width);
+  // …and only overflowing text: a short name renders whole, so rows stay distinct.
+  expect(await railChip(page, 1)).toEqual({ text: 'Row 2', truncated: false });
+  // What the rail gives up, the tiles get: two whole tiles per row before any swipe.
   for (const y of [1, 2, 3, 4]) {
     expect(
       await fullyVisibleTiles(page, y),
       `row ${y} tiles in view at 390px`,
-    ).toBeGreaterThanOrEqual(3);
+    ).toBeGreaterThanOrEqual(2);
   }
-  // The stored name is still what a screen reader hears on the tile (#724).
+  // The stored name is what a screen reader hears on the tile, on every width (#724).
   await expect(page.locator('[data-set-id="1"]')).toHaveAttribute(
     'aria-label',
     /^Set Front row · Sea view 1,/,
   );
 
   await settle(page);
-  await expectNoSeriousAxeViolations(page, 'daily view, grid letters at 390px');
+  await expectNoSeriousAxeViolations(page, 'daily view, long row names at 390px');
 
   // From `sm` up nothing changed: the name renders whole, and every tile of the row is in view.
   await page.setViewportSize({ width: 1280, height: 800 });
   await expect
-    .poll(async () => (await firstRailChip(page)).text, { message: 'the name at 1280px' })
-    .toBe('Front row · Sea view');
-  expect((await firstRailChip(page)).truncated).toBe(false);
+    .poll(async () => (await railChip(page, 0)).truncated, { message: 'whole at 1280px' })
+    .toBe(false);
+  expect((await railChip(page, 0)).text).toBe('Front row · Sea view');
   expect(await fullyVisibleTiles(page, 1), 'row 1 tiles in view at 1280px').toBe(6);
 });
 

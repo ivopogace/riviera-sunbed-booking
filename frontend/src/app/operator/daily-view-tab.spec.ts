@@ -231,23 +231,15 @@ describe('DailyViewTab (#175)', () => {
     expect(visible(4)).toBe('1'); // B1 — the position number, never the set id
   });
 
-  it('gives each rail chip the row’s grid letter for a phone beside its stored name (#1532)', () => {
-    // Named rows on grid rows 1 and 3 — a walkway at row 2 — so the letter is the grid's, not the index's.
-    const named = SEED.map((s) =>
-      s.rowLabel === 'A'
-        ? { ...s, rowLabel: 'Front row · Sea view', gridY: 1 }
-        : { ...s, rowLabel: 'Row 3 · Back', gridY: 3 },
-    );
-    render(named);
-    const chips = [...host.querySelectorAll('[data-testid="row-code"]')].map((chip) => ({
-      phone: chip.querySelector('.sm\\:hidden')?.textContent?.trim(),
-      wide: chip.querySelector('.max-sm\\:hidden')?.textContent?.trim(),
-    }));
-    expect(chips).toEqual([
-      { phone: 'A', wide: 'Front row · Sea view' },
-      { phone: 'C', wide: 'Row 3 · Back' },
-    ]);
-    // The tile's accessible name keeps the stored row name on every width (#724).
+  it('caps a long row name on the rail below sm only; the tile name keeps it whole (#1532)', () => {
+    render(SEED.map((s) => (s.rowLabel === 'A' ? { ...s, rowLabel: 'Front row · Sea view' } : s)));
+    const inner = host.querySelector('[data-testid="row-code"] > span')!;
+    expect(inner.textContent).toBe('Front row · Sea view');
+    // The tourist map's phone cap, scoped to the phone: from `sm` up the name renders whole (#724).
+    expect(inner.classList.contains('max-sm:max-w-12')).toBe(true);
+    expect(inner.classList.contains('max-sm:truncate')).toBe(true);
+    expect(inner.classList.contains('truncate')).toBe(false);
+    // The tile's accessible name carries the stored row name on every width.
     expect(tile(1).getAttribute('aria-label')).toMatch(/^Set Front row · Sea view 1,/);
   });
 
