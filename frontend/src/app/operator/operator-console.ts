@@ -18,7 +18,7 @@ import { PendingRequestsStore } from './pending-requests-store';
  * The venue console's page at `/operator/:venueId`: the stats strip, the pending-approval banner
  * and the tab outlet hosting each tab as a child route. Its chrome is `console-shell.ts`'s; this
  * component publishes nothing to it and owns only the per-venue seeding: the shared venue-map
- * snapshot (one request for strip and shell; re-read when the Daily view settles a walk-in,
+ * snapshot (one request for the strip and the tabs; re-read when the Daily view settles a walk-in,
  * {@link AvailabilityChanges}) and the Requests badge count (`PendingRequestsStore`). No sign-in
  * gate: {@code operatorSessionGuard} awaits the restore, so this only renders signed-in.
  */
@@ -45,6 +45,9 @@ export class OperatorConsole {
   /** Bumped per venue context: an identity guard — a venueId value check passes again
    *  after an A→B→A switch, so continuations compare this instead. */
   private epoch = 0;
+  /** Bumped per map read: only the latest read may land, so an older, slower answer never
+   *  overwrites a newer map. */
+  private mapRead = 0;
 
   constructor() {
     // Load per session (the async /me restore resolves late) AND per venue param.
@@ -54,11 +57,11 @@ export class OperatorConsole {
         untracked(() => this.load(id));
       }
     });
-    // A settled walk-in moved today's availability: re-read the map only — the Requests tab may own the badge.
+    // A settled walk-in moves no pending count, and load() would reset the badge store: the map only.
     this.changes
       .todayAt(this.venueId)
       .pipe(takeUntilDestroyed())
-      .subscribe((change) => this.loadMap(change.venueId, change.date, this.epoch));
+      .subscribe((change) => this.loadMap(change.venueId, change.date));
   }
 
   /**
@@ -74,7 +77,7 @@ export class OperatorConsole {
     // visited, takes authority over this store via `set`; this page only ever seeds it.
     this.requests.reset();
     // Continuations re-check the venue so a superseded venue's reads never land here.
-    this.loadMap(venueId, todayBookingDate(new Date()), epoch);
+    this.loadMap(venueId, todayBookingDate(new Date()));
     this.bestEffort(this.console.pendingRequestCount(venueId), (count) => {
       if (this.epoch === epoch) {
         this.requests.seed(count);
@@ -82,11 +85,12 @@ export class OperatorConsole {
     });
   }
 
-  /** The shared map read behind the strip's free/total; the current map stands until it lands, and
-   *  only while `epoch` is still the venue context it was sent for. */
-  private loadMap(venueId: number, date: string, epoch: number): void {
+  /** The shared map read behind the strip's free/total: whatever map is shown stands until this
+   *  read lands (a failure keeps it), and only the latest read may land. */
+  private loadMap(venueId: number, date: string): void {
+    const read = ++this.mapRead;
     this.bestEffort(this.venueMap.load(venueId, date), (venue) => {
-      if (this.epoch === epoch) {
+      if (this.mapRead === read) {
         this.venue.set(venue);
       }
     });

@@ -275,7 +275,7 @@ test('shows tile states + arrival codes, and marks a walk-in that survives the r
   await expect(visibleTileText(1)).toHaveText(['1']);
   await expect(stateMark(1, 'check')).toBeVisible();
 
-  // The strip follows the settled mark without a reload (#1525): one walk-in, one set fewer free.
+  // The strip follows the settled mark without a reload: one walk-in, one set fewer free.
   await expect(page.getByTestId('oc-stat-walkins')).toHaveText('1');
   await expect(page.getByTestId('oc-stat-free')).toHaveText(/1\s*\/\s*4/);
 

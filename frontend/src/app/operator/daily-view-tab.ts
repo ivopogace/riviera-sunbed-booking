@@ -518,7 +518,7 @@ export class DailyViewTab {
       : this.console.releaseSet(venueId, set.id, date);
     write.subscribe({
       next: () => {
-        // The row changed server-side whatever this tab shows now: the strip and the shared map follow (#1525).
+        // The row changed server-side whatever this tab shows now: the strip and the shared map follow.
         this.changes.announce({ venueId, date });
         if (this.epoch === epoch) {
           this.reconcile(set.id); // skip if a venue switch superseded this write

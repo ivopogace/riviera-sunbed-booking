@@ -4,7 +4,7 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { vi } from 'vitest';
 
 import { environment } from '../../environments/environment';
-import { todayBookingDate } from '../shared/booking-date';
+import { addDays, todayBookingDate } from '../shared/booking-date';
 import { Pool, SeatAvailability, SetView, VenueMapView } from '../shared/venue-views';
 import { AvailabilityChanges } from './availability-changes';
 import { ConsoleStatsStrip } from './console-stats-strip';
@@ -213,7 +213,10 @@ describe('ConsoleStatsStrip (#171, O2)', () => {
   it('ignores a change for another day or another venue (#1525 AC-4)', async () => {
     await render(venueMap([set(1, 'FREE')]), 0, TAKINGS, [{ setId: 9, state: 'STAFF_MARKED' }]);
 
-    TestBed.inject(AvailabilityChanges).announce({ venueId: VENUE, date: '2026-06-16' });
+    TestBed.inject(AvailabilityChanges).announce({
+      venueId: VENUE,
+      date: addDays(todayBookingDate(new Date()), 1),
+    });
     TestBed.inject(AvailabilityChanges).announce({
       venueId: 2,
       date: todayBookingDate(new Date()),
@@ -238,6 +241,42 @@ describe('ConsoleStatsStrip (#171, O2)', () => {
     await fixture.whenStable();
 
     expect(text('oc-stat-walkins')).toBe('—');
+  });
+
+  it('latest read wins when two refreshes overlap — an older answer never lands over a newer one (#1525, R-3)', async () => {
+    await render(venueMap([set(1, 'FREE'), set(2, 'FREE')]), 0, TAKINGS, []);
+    const today = todayBookingDate(new Date());
+
+    // Two quick taps: two announces, two reads in flight; the first answers last.
+    TestBed.inject(AvailabilityChanges).announce({ venueId: VENUE, date: today });
+    TestBed.inject(AvailabilityChanges).announce({ venueId: VENUE, date: today });
+    await fixture.whenStable();
+    const [first, second] = httpMock.match((r) => r.url === HELD_URL && r.method === 'GET');
+    second.flush([
+      { setId: 1, state: 'STAFF_MARKED' },
+      { setId: 2, state: 'STAFF_MARKED' },
+    ]);
+    await fixture.whenStable();
+    expect(text('oc-stat-walkins')).toBe('2');
+
+    first.flush([{ setId: 1, state: 'STAFF_MARKED' }]); // the pre-second-mark truth, late
+    await fixture.whenStable();
+    expect(text('oc-stat-walkins')).toBe('2');
+  });
+
+  it('an older refresh failing late never blanks a newer count (#1525, R-3)', async () => {
+    await render(venueMap([set(1, 'FREE')]), 0, TAKINGS, []);
+    const today = todayBookingDate(new Date());
+
+    TestBed.inject(AvailabilityChanges).announce({ venueId: VENUE, date: today });
+    TestBed.inject(AvailabilityChanges).announce({ venueId: VENUE, date: today });
+    await fixture.whenStable();
+    const [first, second] = httpMock.match((r) => r.url === HELD_URL && r.method === 'GET');
+    second.flush([{ setId: 1, state: 'STAFF_MARKED' }]);
+    first.flush({}, { status: 500, statusText: 'Server Error' });
+    await fixture.whenStable();
+
+    expect(text('oc-stat-walkins')).toBe('1');
   });
 
   it('drops a refresh that lands after a venue switch (#1525, #180)', async () => {

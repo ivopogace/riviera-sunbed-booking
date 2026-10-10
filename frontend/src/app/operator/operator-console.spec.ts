@@ -6,7 +6,7 @@ import { BehaviorSubject } from 'rxjs';
 
 import { environment } from '../../environments/environment';
 import { OperatorAuth } from '../core/operator-auth';
-import { todayBookingDate } from '../shared/booking-date';
+import { addDays, todayBookingDate } from '../shared/booking-date';
 import { SeatAvailability, SetView, VenueMapView } from '../shared/venue-views';
 import { AvailabilityChanges } from './availability-changes';
 import { OperatorConsole } from './operator-console';
@@ -292,9 +292,32 @@ describe('OperatorConsole — an announced walk-in change (#1525)', () => {
     expect(freeTile()).toBe('2 / 3');
   });
 
+  it('latest map read wins when two refreshes overlap (R-3)', async () => {
+    TestBed.inject(AvailabilityChanges).announce({ venueId: VENUE, date: TODAY });
+    TestBed.inject(AvailabilityChanges).announce({ venueId: VENUE, date: TODAY });
+    await fixture.whenStable();
+    const [first, second] = httpMock.match(
+      (r) => r.url === `${BASE}/api/venues/${VENUE}` && r.method === 'GET',
+    );
+    second.flush(
+      venueMap('Miramar Beach Club', VENUE, [set(1, 'TAKEN'), set(2, 'TAKEN'), set(3, 'TAKEN')]),
+    );
+    first.flush(
+      venueMap('Miramar Beach Club', VENUE, [set(1, 'TAKEN'), set(2, 'FREE'), set(3, 'TAKEN')]),
+    );
+    // The strip's two held re-reads (pinned in its spec); answered so verify() stays clean.
+    httpMock
+      .match((r) => r.url === `${BASE}/api/venues/${VENUE}/availability` && r.method === 'GET')
+      .forEach((req) => req.flush([]));
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    expect(freeTile()).toBe('0 / 3');
+  });
+
   it('ignores a change for another venue or another day (AC-6, R-2)', async () => {
     TestBed.inject(AvailabilityChanges).announce({ venueId: 2, date: TODAY });
-    TestBed.inject(AvailabilityChanges).announce({ venueId: VENUE, date: '2026-06-16' });
+    TestBed.inject(AvailabilityChanges).announce({ venueId: VENUE, date: addDays(TODAY, 1) });
     await fixture.whenStable();
 
     httpMock.expectNone((r) => r.url === `${BASE}/api/venues/${VENUE}`);

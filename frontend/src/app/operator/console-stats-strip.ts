@@ -12,11 +12,11 @@ import { OperatorConsoleService } from './operator-console.service';
 
 /**
  * The operator console's stats strip — four glass tiles above the tab nav, live for the operator's
- * venue today (Europe/Tirane, #6): Free today `{free}/{total}` from the shell's shared venue map
- * ({@link venue}), Booked online from the day's CONFIRMED bookings, Walk-ins marked as the exact
+ * venue today (Europe/Tirane, #6): Free today `{free}/{total}` from the console page's shared venue
+ * map ({@link venue}), Booked online from the day's CONFIRMED bookings, Walk-ins marked as the exact
  * `STAFF_MARKED` count (re-read when the Daily view settles a mark/release, {@link AvailabilityChanges}),
- * and Online takings today — net is server-side (#9), only formatted (#5). Reads are best-effort:
- * a failure leaves that tile at its zero/dash default.
+ * and Online takings today — net is server-side (#9), only formatted (#5). Reads are best-effort: a
+ * failed read here renders that tile's dash, never a count that may be stale; the map is the page's.
  */
 @Component({
   selector: 'app-console-stats-strip',
@@ -48,6 +48,9 @@ export class ConsoleStatsStrip {
   /** Bumped per venue context: an identity guard — a venueId value check passes again
    *  after an A→B→A switch, so continuations compare this instead. */
   private epoch = 0;
+  /** Bumped per states read: only the latest read may land, so an older, slower answer (or its
+   *  failure) never overwrites a newer count. */
+  private heldRead = 0;
 
   /** Total sets across both pools; renders as "Free today {free}/{total}". */
   protected readonly total = computed(() => this.venue()?.sets.length ?? 0);
@@ -88,7 +91,7 @@ export class ConsoleStatsStrip {
     this.changes
       .todayAt(this.venueId)
       .pipe(takeUntilDestroyed())
-      .subscribe((change) => this.loadHeld(change.venueId, change.date, this.epoch));
+      .subscribe((change) => this.loadHeld(change.venueId, change.date));
   }
 
   protected money(amount: MoneyView): string {
@@ -124,21 +127,22 @@ export class ConsoleStatsStrip {
         // best-effort — the takings tile shows a dash
       },
     });
-    this.loadHeld(venueId, date, epoch);
+    this.loadHeld(venueId, date);
   }
 
-  /** The states read behind the walk-ins tile — the last count stands until it lands; `epoch` names
-   *  the venue context it may still land in. */
-  private loadHeld(venueId: number, date: string, epoch: number): void {
+  /** The states read behind the walk-ins tile: the shown count stands until this read lands, a
+   *  failure clears it to "—", and only the latest read may do either. */
+  private loadHeld(venueId: number, date: string): void {
+    const read = ++this.heldRead;
     this.console.dailyAvailability(venueId, date).subscribe({
       next: (states) => {
-        if (this.epoch === epoch) {
+        if (this.heldRead === read) {
           this.held.set(states);
         }
       },
       error: () => {
         // best-effort — walk-ins render "—", never a phantom (or pre-write) count
-        if (this.epoch === epoch) {
+        if (this.heldRead === read) {
           this.held.set(undefined);
         }
       },
