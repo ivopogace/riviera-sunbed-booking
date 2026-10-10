@@ -598,6 +598,98 @@ test('a fully-sold day keeps the scrolling map keyboard-reachable (#605)', async
   await expectNoSeriousAxeViolations(page, 'daily view, fully sold at 390px');
 });
 
+/** The seeded demo venue's shape: four six-set rows under the row names the Beach map tab stores. */
+function namedRowsVenue() {
+  const names = ['Front row · Sea view', 'Row 2', 'Row 3', 'Row 4 · Back'];
+  return {
+    ...wideVenue('Named Rows Bay', 'FREE'),
+    sets: names.flatMap((rowLabel, y) =>
+      Array.from({ length: 6 }, (_, x) => ({
+        ...seat(y * 6 + x + 1, x + 1, 'ONLINE', 'FREE'),
+        rowLabel,
+        gridY: y + 1,
+        tier: y === 0 ? ('PREMIUM' as const) : ('STANDARD' as const),
+      })),
+    ),
+  };
+}
+
+/** The tiles of row `y` (1-based) whose box lies wholly inside the pan viewport's. */
+async function fullyVisibleTiles(page: Page, y: number): Promise<number> {
+  return page.getByTestId('daily-grid').evaluate((viewport, row) => {
+    const frame = viewport.getBoundingClientRect();
+    const tiles = viewport.querySelectorAll(`[data-map-row]:nth-of-type(${row}) [data-set-id]`);
+    return [...tiles].filter((tile) => {
+      const box = tile.getBoundingClientRect();
+      return box.left >= frame.left && box.right <= frame.right;
+    }).length;
+  }, y);
+}
+
+/** The first rail chip's text and whether its inner span ellipsizes. */
+async function firstRailChip(page: Page): Promise<{ text: string; truncated: boolean }> {
+  const chip = page.getByTestId('row-code').first();
+  return {
+    text: (await chip.textContent())?.trim() ?? '',
+    truncated: await chip.locator('span').evaluate((el) => el.scrollWidth > el.clientWidth),
+  };
+}
+
+/**
+ * Staff mark walk-ins from a phone at the gate, and a stored row name is as long as the operator
+ * typed it: rendered whole on the left rail at 390px, "Front row · Sea view" left one tile per row
+ * in view (#1532). The rail ellipsizes below `sm` the way the tourist map's does, so at least three
+ * tiles fit per row; from `sm` up the name renders whole, as before.
+ */
+test('a long row name ellipsizes on the phone rail so three tiles fit per row; desktop renders it whole (#1532)', async ({
+  page,
+}) => {
+  await mockDaily(page);
+  await page.route(/\/api\/venues\/1(\?.*)?$/, (route) =>
+    route.fulfill({ json: namedRowsVenue() }),
+  );
+  await page.setViewportSize({ width: 390, height: 780 });
+  await page.goto('/operator/1');
+  await signInAndOpenDaily(page);
+  await expect(page.getByTestId('daily-tile')).toHaveCount(24);
+  await expectGridScrolls(page);
+
+  // The chip still reads the venue's own row name — ellipsized inside the chip, never overflowing it…
+  const phone = await firstRailChip(page);
+  expect(phone.text).toBe('Front row · Sea view');
+  expect(phone.truncated, 'the long name ellipsizes at 390px').toBe(true);
+  // …and only overflowing text: a short name renders whole, so rows stay distinct.
+  await expect(page.getByTestId('row-code').nth(1)).toHaveText('Row 2');
+  expect(
+    await page
+      .getByTestId('row-code')
+      .nth(1)
+      .locator('span')
+      .evaluate((el) => el.scrollWidth > el.clientWidth),
+  ).toBe(false);
+  // What the rail gives up, the tiles get: three whole tiles per row before any swipe.
+  for (const y of [1, 2, 3, 4]) {
+    expect(
+      await fullyVisibleTiles(page, y),
+      `row ${y} tiles in view at 390px`,
+    ).toBeGreaterThanOrEqual(3);
+  }
+  const card = (await page.getByTestId('daily-grid-frame').boundingBox())!;
+  const chip = (await page.getByTestId('row-code').first().boundingBox())!;
+  expect(chip.x + chip.width).toBeLessThanOrEqual(card.x + card.width);
+
+  await settle(page);
+  await expectNoSeriousAxeViolations(page, 'daily view, long row names at 390px');
+
+  // Desktop is unchanged: the same name renders whole, and every tile of the row is in view.
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await expect
+    .poll(async () => (await firstRailChip(page)).truncated, { message: 'whole at 1280px' })
+    .toBe(false);
+  expect((await firstRailChip(page)).text).toBe('Front row · Sea view');
+  expect(await fullyVisibleTiles(page, 1), 'row 1 tiles in view at 1280px').toBe(6);
+});
+
 /**
  * A venue whose operator has drawn no layout renders 0 sets, and the map card framed that with the
  * canvas's two orientation banners and nothing between them. This is the state every newly
