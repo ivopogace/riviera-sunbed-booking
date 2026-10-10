@@ -8,6 +8,11 @@ import { HttpErrorResponse } from '@angular/common/http';
  */
 interface ProblemBody {
   readonly code?: string;
+  /**
+   * The request field a `400 INVALID_REQUEST` refused, when the server can name one; see
+   * error-contract.md § Extension members past `code`.
+   */
+  readonly field?: string;
 }
 
 /**
@@ -17,4 +22,9 @@ interface ProblemBody {
  */
 export function problemCodeOf(error: HttpErrorResponse): string | undefined {
   return (error.error as ProblemBody | null)?.code;
+}
+
+/** The request field a refusal names (the `field` extension), or `undefined` when it names none. */
+export function problemFieldOf(error: HttpErrorResponse): string | undefined {
+  return (error.error as ProblemBody | null)?.field;
 }

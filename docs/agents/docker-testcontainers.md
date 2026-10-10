@@ -61,6 +61,23 @@ cd platform && ./gradlew cleanTest test --tests "ai.riviera.platform.venue.*"
   reliably survive across calls, so the script launches it with `setsid` + redirected
   stdio so it reparents to init and stays up for the whole session.
 
+## Docker Hub pull limit
+
+Symptom: several IT classes fail at once with `ContainerFetchException`, and the rest of the
+class's tests report `ApplicationContext failure threshold exceeded`, so a handful of failed
+pulls reads as dozens of failing tests. Further down the cause chain is Docker Hub's
+unauthenticated pull limit (`toomanyrequests`) on Testcontainers' `postgres:17` pull. It is
+not a test failure, and the tests are not the thing to fix.
+
+1. Read the cause chain of the first failure (the test report or `--info` output) before reading
+   any failure as a test result.
+2. Check whether the image is already cached in the hook's daemon: `docker images | grep postgres`.
+   One context that pulled it is enough; the daemon keeps it for the session.
+3. Re-run the same scoped `--tests` selection. With the image cached the pull is skipped. In the
+   session behind #1514 a plain re-run went from 7 of 20 classes failing to 20 classes, 0 failed.
+
+If no context manages a pull, wait for the limit window to pass rather than re-running in a loop.
+
 ## Lifecycle — stopping the daemon
 
 **Never `pkill -f dockerd`.** That pattern matches the launching shell's *own* command

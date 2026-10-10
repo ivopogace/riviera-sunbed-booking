@@ -184,6 +184,52 @@ describe('AuthPage', () => {
     });
   });
 
+  describe('subtitle follows the audience in sign-in mode (#1527)', () => {
+    const TOURIST_SIGN_IN = 'Sign in to manage your bookings and codes.';
+    const OPERATOR_SIGN_IN = 'Sign in to run your venue.';
+    const REGISTER = 'Join Riviera in a minute — pick what you’re here to do.';
+
+    function subtitle(): string {
+      return (
+        (fixture.nativeElement as HTMLElement).querySelector('#auth-intro')?.textContent?.trim() ??
+        ''
+      );
+    }
+
+    it('shows the tourist line by default', async () => {
+      await render();
+      expect(subtitle()).toBe(TOURIST_SIGN_IN);
+    });
+
+    it('switches to the operator line when the radio picks Venue operator, and back', async () => {
+      await render();
+      await chooseAudience('audience-operator');
+      expect(subtitle()).toBe(OPERATOR_SIGN_IN);
+
+      await chooseAudience('audience-tourist');
+      expect(subtitle()).toBe(TOURIST_SIGN_IN);
+    });
+
+    it('seeds the operator line from ?audience=operator (guard redirect, post-sign-out landing)', async () => {
+      await render({ audience: 'operator' });
+      expect(subtitle()).toBe(OPERATOR_SIGN_IN);
+    });
+
+    it('follows a live audience query-param change', async () => {
+      await render();
+      await navigateQueryParams({ audience: 'operator' });
+      expect(subtitle()).toBe(OPERATOR_SIGN_IN);
+    });
+
+    it('keeps the register line whichever audience is picked', async () => {
+      await render({ mode: 'register', audience: 'operator' });
+      expect(subtitle()).toBe(REGISTER);
+
+      await chooseAudience('audience-tourist');
+      expect(subtitle()).toBe(REGISTER);
+    });
+  });
+
   /**
    * The card resets three things when it changes shape, and the rule is asymmetric: `error` and the
    * challenge solution go on EITHER a mode or an audience change, while the password goes only on

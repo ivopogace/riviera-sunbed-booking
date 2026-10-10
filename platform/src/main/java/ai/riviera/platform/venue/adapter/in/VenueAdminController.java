@@ -24,7 +24,9 @@ import ai.riviera.platform.operator.api.OperatorDirectory;
 import ai.riviera.platform.shared.ApiProblem;
 import ai.riviera.platform.shared.InvalidApiRequestException;
 import ai.riviera.platform.operator.vocabulary.OperatorId;
+import ai.riviera.platform.venue.vocabulary.MoneyView;
 import ai.riviera.platform.venue.vocabulary.SetId;
+import ai.riviera.platform.venue.vocabulary.SetPrice;
 import ai.riviera.platform.venue.vocabulary.VenueId;
 import ai.riviera.platform.venue.application.AddSetOutcome;
 import ai.riviera.platform.venue.application.ChangeOutcome;
@@ -41,11 +43,11 @@ import ai.riviera.platform.venue.application.ViewVenueProfile;
 
 /**
  * The operator's venue console (onboarding, beach-map and profile edits, the owner's reads) on the
- * module's ports only (invariant #11), behind role {@code OPERATOR} in {@code SecurityConfig}. Each
- * {@code venueId} call hands the resolved {@link OperatorId} to a port that asserts ownership
- * before acting (invariant #13, {@code 403} via {@code ApiErrorHandler}); {@code create} records
- * the creator as owner. Outcomes map to HTTP by exhaustive {@code switch}; malformed input (400)
- * and the {@code DuplicateKeyException} race backstop (409) map centrally in {@code ApiErrorHandler}.
+ * module's ports only (#11), behind role {@code OPERATOR}. Each {@code venueId} call hands the resolved
+ * {@link OperatorId} to a port asserting ownership (#13, {@code 403} via {@code ApiErrorHandler});
+ * {@code create} records the creator as owner. Outcomes map by exhaustive {@code switch}; a refused set
+ * price is a 400 built here to name its field, other malformed input (400) and the duplicate-key race
+ * backstop (409) map centrally in {@code ApiErrorHandler}.
  */
 @RestController
 @RequestMapping("/api/venues")
@@ -54,6 +56,10 @@ class VenueAdminController {
 	/** The bulk save's set-naming refusal and the extension property carrying the named sets. */
 	private static final String SETS_IN_USE_CODE = "SETS_IN_USE";
 	private static final String SETS_PROPERTY = "sets";
+
+	/** The set writes' price refusal: a {@code 400 INVALID_REQUEST} whose {@code field} member names the price. */
+	private static final String FIELD_PROPERTY = "field";
+	private static final String PRICE_FIELD = "price";
 
 	/** The 404 code and detail shared by every NO_SUCH_VENUE outcome (profile write, owner reads, beach-map edits). */
 	private static final String NO_SUCH_VENUE_CODE = "NO_SUCH_VENUE";
@@ -177,6 +183,9 @@ class VenueAdminController {
 	ResponseEntity<?> addSet(Authentication authentication, @PathVariable long venueId,
 			@RequestBody SetPositionRequest request) {
 		OperatorId operator = operatorDirectory.requireOperator(authentication.getName());
+		if (refusesPrice(request.price())) {
+			return priceRefused();
+		}
 		var command = InvalidApiRequestException.parsing(request::toCommand);
 		return switch (editBeachMap.addSet(operator, new VenueId(venueId), command)) {
 			case AddSetOutcome.Added added -> ResponseEntity
@@ -190,6 +199,9 @@ class VenueAdminController {
 	ResponseEntity<?> editSet(Authentication authentication, @PathVariable long venueId,
 			@PathVariable long setId, @RequestBody SetPositionRequest request) {
 		OperatorId operator = operatorDirectory.requireOperator(authentication.getName());
+		if (refusesPrice(request.price())) {
+			return priceRefused();
+		}
 		var command = InvalidApiRequestException.parsing(request::toCommand);
 		return toResponse(editBeachMap.editSet(operator, new VenueId(venueId), new SetId(setId), command));
 	}
@@ -208,6 +220,9 @@ class VenueAdminController {
 		// A missing token is a 400 before the write, never a silent 0 — as on the replace below.
 		long expectedVersion = InvalidApiRequestException
 				.parsing(() -> ExpectedVersion.require(request.expectedVersion()));
+		if (request.price() != null && refusesPrice(request.price())) {
+			return priceRefused();
+		}
 		var command = InvalidApiRequestException.parsing(request::toCommand);
 		return switch (editBeachMap.applyToSets(operator, new VenueId(venueId), expectedVersion, command)) {
 			case SetBatchOutcome.Applied applied -> ResponseEntity.ok(Map.of("updated", applied.updated()));
@@ -292,6 +307,26 @@ class VenueAdminController {
 				"Sets this save would remove are booked or held.");
 		problem.setProperty(SETS_PROPERTY, inUse.sets().stream().map(BlockedSetView::of).toList());
 		return ResponseEntity.status(HttpStatus.CONFLICT).body(problem);
+	}
+
+	/** Whether a set write's price breaks {@link SetPrice}, a missing one included: checked first, so the 400 names it. */
+	private static boolean refusesPrice(MoneyView price) {
+		if (price == null) {
+			return true;
+		}
+		try {
+			SetPrice.require(price.minorUnits(), price.currency());
+			return false;
+		}
+		catch (IllegalArgumentException refused) {
+			return true;
+		}
+	}
+
+	private static ResponseEntity<ProblemDetail> priceRefused() {
+		ProblemDetail problem = ApiProblem.of(HttpStatus.BAD_REQUEST, "INVALID_REQUEST", "The set price is not valid.");
+		problem.setProperty(FIELD_PROPERTY, PRICE_FIELD);
+		return ResponseEntity.badRequest().body(problem);
 	}
 
 	private static ResponseEntity<ProblemDetail> error(LayoutRejection reason) {

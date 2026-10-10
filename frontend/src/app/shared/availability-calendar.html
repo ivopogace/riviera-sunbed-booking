@@ -134,7 +134,17 @@
       >
         {{ stayHint() }}
       </p>
-      @if (pendingFirst()) {
+      @if (pendingRange()) {
+        <button
+          appTouchTarget
+          type="button"
+          class="shrink-0 cursor-pointer rounded-[12px] border border-riv-cta-border bg-(image:--riv-cta-grad) px-4 text-[13px] font-bold text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.5)] hover:brightness-[1.06] focus-visible:outline-offset-2"
+          data-testid="calendar-apply"
+          (click)="apply()"
+        >
+          Apply
+        </button>
+      } @else if (pendingFirst()) {
         <button
           appTouchTarget
           type="button"

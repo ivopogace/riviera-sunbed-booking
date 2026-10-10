@@ -117,13 +117,11 @@ export function parseAddedLines(diff) {
       continue;
     }
     if (next === 0 && line.startsWith('+++ ')) {
-      const target = line.slice(4).trim();
-      path = target === '/dev/null' ? null : target.replace(/^b\//, '');
+      path = newSidePath(line);
       continue;
     }
     if (line.startsWith('@@')) {
-      const hunk = /^@@ -\d+(?:,\d+)? \+(\d+)/.exec(line);
-      next = hunk ? Number(hunk[1]) : 0;
+      next = hunkStart(line);
       continue;
     }
     if (path && next && line.startsWith('+')) {
@@ -133,6 +131,18 @@ export function parseAddedLines(diff) {
     }
   }
   return added;
+}
+
+/** The path a `+++ ` header names, or null for a deleted file's `/dev/null`. */
+function newSidePath(header) {
+  const target = header.slice(4).trim();
+  return target === '/dev/null' ? null : target.replace(/^b\//, '');
+}
+
+/** The new-side line a `@@` hunk header starts at, or 0 when it names none. */
+function hunkStart(header) {
+  const hunk = /^@@ -\d+(?:,\d+)? \+(\d+)/.exec(header);
+  return hunk ? Number(hunk[1]) : 0;
 }
 
 /**

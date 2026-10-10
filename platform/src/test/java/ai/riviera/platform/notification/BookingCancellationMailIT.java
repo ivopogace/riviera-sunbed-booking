@@ -22,6 +22,7 @@ import org.springframework.transaction.PlatformTransactionManager;
 import com.jayway.jsonpath.JsonPath;
 
 import ai.riviera.platform.EnabledIfDockerAvailable;
+import ai.riviera.platform.RegistryRows;
 import ai.riviera.platform.SessionLoginSupport;
 import ai.riviera.platform.TestcontainersConfiguration;
 import ai.riviera.platform.booking.application.remodel.NewReceipt;
@@ -221,7 +222,7 @@ class BookingCancellationMailIT {
 				RefundReason.POLICY));
 
 		Awaitility.await().atMost(WAIT).until(() -> fixtures.outstandingPublicationsFor(
-				BookingMailFixtures.CANCELLATION_LISTENER_ID, 7333L) == 0L);
+				BookingMailFixtures.CANCELLATION_LISTENER_ID, new BookingId(bookingId)) == 0L);
 		assertThat(countTo(suppressed)).isZero();
 	}
 
@@ -254,9 +255,9 @@ class BookingCancellationMailIT {
 		Awaitility.await().atMost(WAIT).untilAsserted(() -> {
 			List<String> archived = jdbc.sql(
 					"SELECT DISTINCT listener_id FROM event_publication_archive "
-							+ "WHERE event_type = :type AND serialized_event LIKE :fragment AND listener_id LIKE :module")
+							+ "WHERE event_type = :type AND " + RegistryRows.NAMES_BOOKING + " AND listener_id LIKE :module")
 					.param("type", BookingCancelled.class.getName())
-					.param("fragment", "%7334%")
+					.param("bookingId", RegistryRows.bookingIdParam(bookingId))
 					.param("module", "notification.%")
 					.query(String.class).list();
 			long mails = countTo(guest);
@@ -311,7 +312,7 @@ class BookingCancellationMailIT {
 				RefundReason.VENUE_CHANGE));
 
 		Awaitility.await().atMost(WAIT).until(() -> fixtures.outstandingPublicationsFor(
-				BookingMailFixtures.CANCELLATION_LISTENER_ID, 7337L) == 0L);
+				BookingMailFixtures.CANCELLATION_LISTENER_ID, new BookingId(bookingId)) == 0L);
 		assertThat(countTo(suppressed)).isZero();
 	}
 

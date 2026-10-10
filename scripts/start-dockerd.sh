@@ -33,7 +33,7 @@ PROXY_CA_SRC="/root/.ccr/ca-bundle.crt"
 PROXY_CA_DEST="/usr/local/share/ca-certificates/ccr-proxy.crt"
 READY_TIMEOUT_SECS=30
 
-log() { echo "start-dockerd: $*" >&2; }
+log() { echo "start-dockerd: $*" >&2; return $?; }
 
 # ── 0. Idempotent guard: already up? ──────────────────────────────────────
 if docker info >/dev/null 2>&1; then
@@ -42,7 +42,7 @@ if docker info >/dev/null 2>&1; then
 fi
 
 # dockerd needs root (for the daemon, the CA copy, update-ca-certificates).
-if [ "$(id -u)" != "0" ]; then
+if [[ "$(id -u)" != "0" ]]; then
   log "ERROR — must run as root to start dockerd (uid=$(id -u))."
   exit 1
 fi
@@ -56,8 +56,8 @@ fi
 # The proxy terminates TLS, so dockerd must trust its CA to pull images. Copy
 # the bundle into the system trust store and refresh it (idempotent: only when
 # absent or changed).
-if [ -f "$PROXY_CA_SRC" ]; then
-  if [ ! -f "$PROXY_CA_DEST" ] || ! cmp -s "$PROXY_CA_SRC" "$PROXY_CA_DEST"; then
+if [[ -f "$PROXY_CA_SRC" ]]; then
+  if [[ ! -f "$PROXY_CA_DEST" ]] || ! cmp -s "$PROXY_CA_SRC" "$PROXY_CA_DEST"; then
     log "Trusting agent-proxy CA ($PROXY_CA_DEST) ..."
     cp "$PROXY_CA_SRC" "$PROXY_CA_DEST"
     update-ca-certificates >/dev/null 2>&1 \
@@ -74,7 +74,7 @@ PROXY_URL="${HTTPS_PROXY:-${https_proxy:-}}"
 NO_PROXY_VAL="${NO_PROXY:-${no_proxy:-localhost,127.0.0.1,::1,host.docker.internal}}"
 
 PROXY_ENV=()
-if [ -n "$PROXY_URL" ]; then
+if [[ -n "$PROXY_URL" ]]; then
   PROXY_ENV+=("HTTP_PROXY=$PROXY_URL" "HTTPS_PROXY=$PROXY_URL")
   PROXY_ENV+=("http_proxy=$PROXY_URL" "https_proxy=$PROXY_URL")
   PROXY_ENV+=("NO_PROXY=$NO_PROXY_VAL" "no_proxy=$NO_PROXY_VAL")

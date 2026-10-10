@@ -210,6 +210,335 @@ test('survives a less-than inside an interpolation', () => {
   assert.equal(violations[0].line, 2);
 });
 
+/**
+ * #1475: a `<` comparison is never a start tag that reads on to the next `>` and takes the busy
+ * control after it as its attributes; that misparse passes a build the gate has to fail.
+ */
+test('a less-than comparison in a block condition leaves the busy control after it reported', () => {
+  const lines = [
+    '@if (count()<limit) {',
+    '  <button (click)="save()" [disabled]="saving()">Save</button>',
+    '}',
+  ];
+
+  const violations = scan(HTML, lines);
+
+  assert.deepEqual(
+    violations.map((v) => [v.rule, v.line]),
+    [['BUSY-1', 2]],
+  );
+});
+
+test('a less-than comparison in an interpolation leaves the busy control after it reported', () => {
+  for (const lines of [
+    ['<p>', '  {{ n<max }}', '  <button (click)="save()" [disabled]="saving()">Save</button>', '</p>'],
+    ['<p>{{ n<max }} <button (click)="save()" [disabled]="saving()">Save</button></p>'],
+  ]) {
+    const violations = scan(HTML, lines);
+
+    assert.deepEqual(
+      violations.map((v) => v.rule),
+      ['BUSY-1'],
+      lines.join('\n'),
+    );
+  }
+});
+
+/**
+ * #1478: a bare value ends at a `<`, as Angular's lexer ends one (`isNameEnd`), so a phantom tag's
+ * unquoted value glued to the busy control never takes that control as its value.
+ */
+test('a phantom tag whose bare value is glued to the busy control leaves it reported', () => {
+  const lines = ['<p>{{ a<b c=<button (click)="go()" [disabled]="saving()">Go</button></p>'];
+
+  const violations = scan(HTML, lines);
+
+  assert.deepEqual(
+    violations.map((v) => [v.rule, v.line]),
+    [['BUSY-1', 1]],
+  );
+});
+
+/**
+ * #1480: the tag walk reads a masked template, and the block reads keep the unmasked one, so a
+ * branch whose condition holds a `<`/`>` comparison is still gated on its signal and the busy
+ * control inside it is still judged.
+ */
+test('a comparison in a block condition leaves the gate read and the busy control reported', () => {
+  const lines = [
+    '@Component({',
+    '  template: `',
+    '    @if (statementOpen() && n<div && a>b) {',
+    '      <app-payout-statement (dismissed)="close()" />',
+    '      <button (click)="save()" [disabled]="saving()">Save</button>',
+    '    }',
+    '  `,',
+    '})',
+    'export class PayoutsTab {',
+    '  close() { this.statementOpen.set(false); }',
+    '}',
+  ];
+
+  const violations = scan(TS, lines, { isFocusTrap: (tag) => tag === 'app-payout-statement' });
+
+  assert.deepEqual(
+    violations.map((v) => [v.rule, v.line]),
+    [
+      ['BUSY-1', 5],
+      ['FOCUS-1', 10],
+    ],
+  );
+});
+
+/**
+ * #1482: a `<textarea>` or `<title>` holds raw text in Angular, so an `@if (` or `@let` there opens
+ * nothing that could hide the busy control after the element.
+ */
+test('an `@` in raw text leaves the busy control after the element reported', () => {
+  for (const element of ['<textarea>Write @if (you like</textarea>', '<title>Mail @let x = 1</title>']) {
+    const lines = [element, '<button (click)="save()" [disabled]="saving()">Save</button>'];
+
+    assert.deepEqual(
+      scan(HTML, lines).map((v) => [v.rule, v.line]),
+      [['BUSY-1', 2]],
+      element,
+    );
+  }
+});
+
+/**
+ * #1484: a raw-text element's content is text to Angular, so a busy `<button>` spelled there is no
+ * control, and the busy control after the element is still reported.
+ */
+test('a busy control spelled inside a raw-text element is no control', () => {
+  for (const element of [
+    '<textarea><button [disabled]="saving()"></textarea>',
+    '<title><button [disabled]="saving()">Save</button></title>',
+  ]) {
+    assert.deepEqual(scan(HTML, [element]), [], element);
+    const lines = [element, '<button (click)="save()" [disabled]="saving()">Save</button>'];
+
+    assert.deepEqual(
+      scan(HTML, lines).map((v) => [v.rule, v.line]),
+      [['BUSY-1', 2]],
+      element,
+    );
+  }
+});
+
+/**
+ * #1487: a prefixed raw-text element is raw text to Angular too (`HtmlParser`:
+ * `:svg:style[Text "<button [disabled]=\"saving()\">"]`), so the busy `<button>` in it is no control.
+ */
+test('a busy control spelled inside a prefixed raw-text element is no control', () => {
+  for (const element of [
+    '<svg:style><button [disabled]="saving()"></style>',
+    '<xhtml:textarea><button [disabled]="saving()"></textarea>',
+  ]) {
+    assert.deepEqual(scan(HTML, [element]), [], element);
+    const lines = [element, '<button (click)="save()" [disabled]="saving()">Save</button>'];
+
+    assert.deepEqual(
+      scan(HTML, lines).map((v) => [v.rule, v.line]),
+      [['BUSY-1', 2]],
+      element,
+    );
+  }
+});
+
+/**
+ * #1492: a busy control in the HTML namespace by its `xhtml:` prefix is a control, and one under any
+ * other prefix is not (`<svg:button>` is an SVG element, `<xhtml:BUTTON>` an `HTMLUnknownElement`).
+ */
+test('a busy control is judged under the xhtml: prefix and no other', () => {
+  assert.deepEqual(
+    scan(HTML, ['<xhtml:button (click)="save()" [disabled]="saving()">Save</xhtml:button>']).map(
+      (v) => [v.rule, v.line],
+    ),
+    [['BUSY-1', 1]],
+  );
+  assert.deepEqual(
+    scan(HTML, ['<xhtml:textarea (blur)="save()" [disabled]="saving()"></textarea>']).map((v) => [
+      v.rule,
+      v.line,
+    ]),
+    [['BUSY-2', 1]],
+  );
+  for (const element of [
+    '<svg:button (click)="save()" [disabled]="saving()">Save</svg:button>',
+    '<xhtml:BUTTON (click)="save()" [disabled]="saving()">Save</xhtml:BUTTON>',
+    '<svg:textarea (blur)="save()" [disabled]="saving()"></textarea>',
+  ]) {
+    assert.deepEqual(scan(HTML, [element]), [], element);
+  }
+});
+
+/**
+ * #1494: a busy control in a namespace its tag inherits from `<svg>` is no control, and one inside
+ * a `<foreignObject>`, which stops that inheritance, is (`HtmlParser`:
+ * `:svg:svg[:svg:foreignObject[button]]`).
+ */
+test('a busy control is judged by the namespace it inherits', () => {
+  assert.deepEqual(
+    scan(HTML, ['<svg><button (click)="save()" [disabled]="saving()">Save</button></svg>']),
+    [],
+  );
+  const lines = [
+    '<svg><foreignObject>',
+    '  <button (click)="save()" [disabled]="saving()">Save</button>',
+    '</foreignObject></svg>',
+  ];
+
+  assert.deepEqual(
+    scan(HTML, lines).map((v) => [v.rule, v.line]),
+    [['BUSY-1', 2]],
+  );
+});
+
+/** #1494: an `<svg>` one inline template leaves open gives no namespace to the next template. */
+test('a busy control is judged though an earlier inline template left an svg open', () => {
+  const lines = [
+    '@Component({ template: `<svg><g>` })',
+    'export class Chart {}',
+    '@Component({',
+    '  template: `<button (click)="save()" [disabled]="saving()">Save</button>`,',
+    '})',
+    'export class Panel {}',
+  ];
+
+  assert.deepEqual(
+    scan(TS, lines).map((v) => [v.rule, v.line]),
+    [['BUSY-1', 4]],
+  );
+  const first = [
+    '@Component({ template: `<button (click)="save()" [disabled]="saving()">Save</button>` })',
+    'export class Panel {}',
+    '@Component({ template: `<p>ok</p>` })',
+    'export class Note {}',
+  ];
+
+  assert.deepEqual(
+    scan(TS, first).map((v) => [v.rule, v.line]),
+    [['BUSY-1', 1]],
+  );
+});
+
+test('does not judge a control inside an HTML comment, on one line or across several', () => {
+  const lines = [
+    '<!-- <button [disabled]="saving()">Old</button> --><button [disabled]="saving()">S</button>',
+    '<!--',
+    '  <button [disabled]="busy()">Draft</button>',
+    '-->',
+  ];
+
+  const violations = scan(HTML, lines);
+
+  assert.equal(violations.length, 1);
+  assert.equal(violations[0].line, 1);
+});
+
+/**
+ * #1496: an inline template's comment is a `Comment` node to Angular, as an external one is.
+ */
+test('does not judge a control inside an inline template\'s HTML comment', () => {
+  const lines = [
+    '@Component({',
+    '  template: `<!-- <button (click)="save()" [disabled]="saving()">S</button> -->`,',
+    '})',
+  ];
+
+  assert.deepEqual(scan(TS, lines), []);
+});
+
+/**
+ * #1502: a CDATA section is raw text to its `]]>` (`_consumeCdata`), so a `<!--` or a `@let` in it
+ * hides no busy control after it (`HtmlParser`, 0 errors: `" <!-- ", button["S"], Comment`).
+ */
+test('judges a busy control after a CDATA section', () => {
+  const html = ['<![CDATA[ <!-- ]]><button [disabled]="saving()">S</button><!-- -->'];
+  const ts = [
+    '@Component({',
+    '  template: `<![CDATA[ @let a = ]]><button [disabled]="saving()">S</button>;`,',
+    '})',
+  ];
+
+  assert.deepEqual(scan(HTML, html).map((v) => [v.rule, v.line]), [['BUSY-1', 1]]);
+  assert.deepEqual(scan(TS, ts).map((v) => [v.rule, v.line]), [['BUSY-1', 2]]);
+});
+
+/**
+ * #1503: a `<!--` in a doctype opens no comment, so the busy control after it is judged
+ * (`HtmlParser`, 0 errors: `button["S"], Comment`).
+ */
+test('judges a busy control after a doctype holding a `<!--`', () => {
+  const markup = '<!DOCTYPE html "<!--"><button [disabled]="saving()">S</button><!-- c -->';
+  const ts = ['@Component({', `  template: \`${markup}\`,`, '})'];
+
+  assert.deepEqual(scan(HTML, [markup]).map((v) => [v.rule, v.line]), [['BUSY-1', 1]]);
+  assert.deepEqual(scan(TS, ts).map((v) => [v.rule, v.line]), [['BUSY-1', 2]]);
+});
+
+/** #1503: a binding whose `=` stands apart, as `_consumeAttribute` allows, reports on its name's line. */
+test('reads a busy binding whose `=` stands on its own line', () => {
+  const lines = ['<button', '  [disabled]', '  =', '  "saving()"', '>S</button>'];
+
+  assert.deepEqual(scan(HTML, lines).map((v) => [v.rule, v.line]), [['BUSY-1', 2]]);
+});
+
+/**
+ * #1503: an `.html` file reaches the walk whole, but FOCUS-1 still reads it with its comments
+ * masked, so a confirm surface commented out is no surface (`HtmlParser`: one `Comment`).
+ */
+test('does not read a confirm surface inside an external template\'s HTML comment', () => {
+  const lines = ['<!-- @if (confirmRemove()) {', '  <button data-testid="rm">Remove</button>', '} -->'];
+
+  assert.deepEqual(scan(HTML, lines, { componentSource: '' }), []);
+});
+
+/**
+ * #1504: a `<!--` in a quoted value, raw text, a doctype or a block's parameters opens no comment
+ * to Angular, so FOCUS-1 reads the confirm surface after it (`HtmlParser`, 0 errors, each with
+ * the `@if` block and the closing `Comment`); a mask that blanked to the next `-->` hid it.
+ */
+test('reads a confirm surface after a `<!--` that opens no comment in an external template', () => {
+  for (const context of [
+    '<div title="<!--"></div>',
+    '<textarea><!--</textarea>',
+    '<!DOCTYPE html "<!--">',
+    '@if (a === "<!--") {}',
+  ]) {
+    const lines = [context, '@if (confirmRemove()) {', '  <button data-testid="rm">Remove</button>', '}', '<!-- c -->'];
+
+    const violations = scan(HTML, lines, { componentSource: '' });
+
+    assert.deepEqual(violations.map((v) => [v.rule, v.line]), [['FOCUS-1', 2]], context);
+  }
+});
+
+/**
+ * #1502, #1504: a CDATA section is text to Angular (`HtmlParser`: one `Text` node), so a confirm
+ * surface spelled inside one in an external template is no surface to FOCUS-1.
+ */
+test('does not read a confirm surface inside a CDATA section of an external template', () => {
+  const lines = ['<![CDATA[ @if (confirmRemove()) { <button>Remove</button> } ]]>'];
+
+  assert.deepEqual(scan(HTML, lines, { componentSource: '' }), []);
+});
+
+/**
+ * #1504: a component's external template is read for its focus trap with only its real comments
+ * masked, so a `role="dialog"` after a `<!--` in a quoted value still makes it one.
+ */
+test('calls a component a focus trap past a `<!--` that opens no comment', () => {
+  const files = {
+    'frontend/src/app/shared/sheet.ts': "@Component({ selector: 'app-sheet', templateUrl: './sheet.html' })",
+    'frontend/src/app/shared/sheet.html': '<i title="<!--"></i><div role="dialog"></div><!-- c -->',
+  };
+  const traps = focusTraps((path) => files[path] ?? null, () => Object.keys(files));
+
+  assert.equal(traps('app-sheet'), true);
+});
+
 test('finds a confirm surface in an @else if branch', () => {
   const lines = [
     '@if (loaded()) {',
@@ -415,6 +744,30 @@ function component(body) {
     '}',
   ];
 }
+
+/**
+ * #1496: FOCUS-1 reads an inline template's `template` mask, where a comment is blanked as an
+ * external one is: a confirm surface commented out is no surface, as Angular builds none.
+ */
+test('does not read a confirm surface inside an inline template\'s HTML comment', () => {
+  const lines = [
+    '@Component({',
+    "  selector: 'app-payouts-tab',",
+    '  template: `',
+    '    <!--',
+    '    @if (weatherConfirm()) {',
+    '      <button data-testid="weather-confirm-btn" (click)="go()">Issue refund</button>',
+    '    }',
+    '    -->',
+    '  `,',
+    '})',
+    'export class PayoutsTab {',
+    '  protected readonly weatherConfirm = signal(false);',
+    '}',
+  ];
+
+  assert.deepEqual(scan(TS, lines), []);
+});
 
 test('flags a confirm surface with no focus leg', () => {
   const lines = component(['  protected readonly weatherConfirm = signal(false);']);
@@ -1157,4 +1510,14 @@ test('reports the surface that hid behind the weather-confirm legs', () => {
   assert.equal(violations.length, 1);
   assert.equal(violations[0].rule, 'FOCUS-1');
   assert.equal(violations[0].line, 12);
+});
+
+/**
+ * A template region whose last line ends inside a start tag once rewound the walk to that line's
+ * column 0, where it found the same `<` or `name="` again and pushed it forever (#1473).
+ */
+test('a template that ends inside a start tag still returns', () => {
+  for (const lines of [['x <div'], ['<a x="foo'], ['<p>', '  <div']]) {
+    assert.deepEqual(scan(HTML, lines), []);
+  }
 });

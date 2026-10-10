@@ -8,9 +8,9 @@ import { settle } from './support/booking-dialog';
  * lists the first page of commented reviews newest first, "Show more reviews" appends the next
  * page and steps aside when the list ends (focus landing on the first review just listed), a rated
  * venue whose reviews all came without a comment shows its score up top and a quiet empty state
- * down here, and a failed load offers a retry that recovers. The API is mocked (`page.route`), so
- * the suite is CI-safe with no backend; the page mock branches on the `cursor` param the way the
- * server does.
+ * down here, an unrated venue says it has no reviews yet, and a failed load offers a retry that
+ * recovers. The API is mocked (`page.route`), so the suite is CI-safe with no backend; the page
+ * mock branches on the `cursor` param the way the server does.
  */
 
 /** A venue whose aggregate already moved — 4.3 over 12 reviews — so the header has a score. */
@@ -128,6 +128,25 @@ test.describe('reading a venue’s reviews', () => {
     await expect(section.getByRole('button', { name: 'Show more reviews' })).toHaveCount(0);
     await settle(page);
     await expectNoSeriousAxeViolations(page, 'venue page with no written reviews');
+  });
+
+  test('a venue with no ratings says "No reviews yet", agreeing with its "New" header', async ({
+    page,
+  }) => {
+    const unrated = { ...RATED_VENUE, ratingTenths: 0, reviewsCount: 0 };
+    await page.route(/\/api\/venues\/1(\?.*)?$/, (route) => route.fulfill({ json: unrated }));
+    await page.route(REVIEWS_ROUTE, (route) =>
+      route.fulfill({ json: { reviews: [], nextCursor: null } }),
+    );
+
+    await page.goto('/venues/1');
+
+    await expect(page.locator('.map-head').getByTestId('new-chip')).toBeVisible();
+    const empty = page.getByTestId('venue-reviews').getByTestId('venue-reviews-empty');
+    await expect(empty).toHaveText('No reviews yet.');
+    await expect(empty).not.toContainText('without a comment');
+    await settle(page);
+    await expectNoSeriousAxeViolations(page, 'venue page with no reviews at all');
   });
 
   test('a failed load offers a retry that recovers', async ({ page }) => {

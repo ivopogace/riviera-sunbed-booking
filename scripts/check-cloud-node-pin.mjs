@@ -96,7 +96,8 @@ function main(argv) {
 
   const { problems, pinned, matched } = check(readText(NVMRC), readText(DOC));
   if (problems.length > 0) {
-    process.stderr.write(`${problems.map((problem) => `  ${problem}`).join('\n')}\n`);
+    const listing = problems.map((problem) => `  ${problem}`).join('\n');
+    process.stderr.write(`${listing}\n`);
     return 1;
   }
   process.stdout.write(`Cloud setup script records Node ${pinned} in ${matched} place(s), matching ${NVMRC}.\n`);

@@ -61,9 +61,10 @@ describe('VenueReviews', () => {
     document.body.innerHTML = '';
   });
 
-  function render(venueId = 1): Rendered {
+  function render(venueId = 1, reviewsCount = 3): Rendered {
     const fixture = TestBed.createComponent(VenueReviews);
     fixture.componentRef.setInput('venueId', venueId);
+    fixture.componentRef.setInput('reviewsCount', reviewsCount);
     fixture.detectChanges();
     const host = fixture.nativeElement as HTMLElement;
     // Attached, so focus moves are observable through document.activeElement.
@@ -175,14 +176,39 @@ describe('VenueReviews', () => {
     expect(r.find('review-name')?.textContent?.trim()).toBe('A guest');
   });
 
-  it('renders the quiet empty state on an empty first page', async () => {
-    const r = render();
+  it('a rated venue with no commented review says its ratings came without a comment', async () => {
+    const r = render(1, 3);
 
     await r.flush({ reviews: [], nextCursor: null });
 
-    expect(r.find('venue-reviews-empty')?.textContent).toContain('No written reviews yet');
+    expect(r.find('venue-reviews-empty')?.textContent?.trim()).toBe(
+      'No written reviews yet — ratings so far came without a comment.',
+    );
+    expect(r.find('venue-reviews-status')?.textContent?.trim()).toBe('No written reviews yet.');
     expect(r.find('venue-reviews-list')).toBeNull();
     expect(r.find('venue-reviews-more')).toBeNull();
+  });
+
+  it('a venue with no ratings at all says it has no reviews yet, claiming no ratings', async () => {
+    const r = render(1, 0);
+
+    await r.flush({ reviews: [], nextCursor: null });
+
+    expect(r.find('venue-reviews-empty')?.textContent?.trim()).toBe('No reviews yet.');
+    expect(r.find('venue-reviews-status')?.textContent?.trim()).toBe('No reviews yet.');
+    expect(r.find('venue-reviews-list')).toBeNull();
+  });
+
+  it('follows the count when the page moves to another venue', async () => {
+    const r = render(1, 0);
+    await r.flush({ reviews: [], nextCursor: null });
+
+    r.fixture.componentRef.setInput('venueId', 2);
+    r.fixture.componentRef.setInput('reviewsCount', 4);
+    r.fixture.detectChanges();
+    await r.flush({ reviews: [], nextCursor: null }, undefined, 2);
+
+    expect(r.find('venue-reviews-empty')?.textContent).toContain('came without a comment');
   });
 
   it('shows the failure line with a retry that re-fetches, and focuses the list once it lands', async () => {

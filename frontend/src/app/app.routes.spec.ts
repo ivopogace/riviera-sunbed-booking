@@ -126,9 +126,9 @@ describe('app.routes — every lazy route target resolves its module', () => {
     return names;
   }
 
-  it('resolves all 35 loadComponent targets, including the nested tab-route trees (#999)', async () => {
+  it('resolves all 36 loadComponent targets, including the nested tab-route trees (#999)', async () => {
     const names = await loadedComponentNames(routes);
-    expect(names).toHaveLength(35);
+    expect(names).toHaveLength(36);
     expect(names.every((name) => name.length > 0)).toBe(true);
   });
 });
@@ -150,6 +150,7 @@ describe('app.routes — the phone tab bar reads its section and checkout flag o
     'account/password': 'account',
     'legal/privacy': undefined,
     'legal/terms': undefined,
+    '**': undefined,
     'account/operator-password': undefined,
     operator: undefined,
     admin: undefined,

@@ -1211,7 +1211,13 @@ Spring Security beans arrive by framework type, which is no module dependency.
   container's error dispatch, whose default body echoes the request URI as `path`, the bearer credential on
   `/api/bookings/{code}` and the SPA's `/booking/{code}` (#7). Every path, the SPA's included, gets the problem
   body with the status kept and the code `ApiErrorHandler` gives that status: no `path`, `instance`,
-  `timestamp` or exception message, and no whitelabel HTML (`ErrorDispatchProblemIT`).
+  `timestamp` or exception message, and no whitelabel HTML (`ErrorDispatchProblemIT`). A non-standard
+  `4xx`/`5xx` is kept too, its code `ERROR` (`ProblemErrorControllerTest`). It is the one `ErrorController`
+  the role-gate probe skips (`EndpointRoleGateCoverageTest`).
+- **Tomcat's own pre-servlet rejections keep Tomcat's minimal HTML** (a raw `{` in the request target): they
+  never reach `/error`, and the problem shape there would take a custom `ErrorReportValve`, a container-level
+  customization one contract on every response does not buy (#1464). Boot hides the report, so the page
+  carries no URI and never echoes a booking code (`ErrorDispatchProblemIT`).
 
 **Not my job:** sessions, credentials and login → **`auth`**; what a fence's mechanism does (a
 challenge's single use, an audit row's storage) → **`challenge`**, **`audit`**; per-venue
@@ -1478,4 +1484,4 @@ siblings) — never by breaking production code.
 
 Known scan limits (on the tests): a sole-writer scan needs the whole-word table name contiguous in
 the constant pool, so SQL concatenated across it evades the scan (text-block SQL keeps it whole);
-the id-based-events rule unwraps generics and arrays but reads only a component's declared type; the schema walk reads DDL in a `DO $$` body as if it ran, and refuses, naming the migration and the statement, a `TEMP`/`UNLOGGED` table, a schema other than `public` and a quoted name that is not plain lower case (#1447), so none shifts the table set silently.
+the id-based-events rule unwraps generics and arrays but reads only a component's declared type; the schema walk reads DDL in a `DO $$` body as if it ran, and refuses, naming the migration and the statement, a `TEMP`/`UNLOGGED` table, a schema other than `public`, a quoted name that is not plain lower case (#1447), an unquoted name holding a non-ASCII character (PostgreSQL's folding there depends on encoding and locale), a `U&"…"` name and `ALTER TABLE … SET SCHEMA` (#1461), so none shifts the table set silently. Documented, not modelled, with no parsing added (#1512): `SELECT … INTO new_table` creates a table the walk does not see, because in PL/pgSQL `SELECT … INTO variable` has the same shape and only the surrounding context tells them apart, so review catches it (write `CREATE TABLE … AS SELECT`); and DDL whose table name runs straight into a `$$` closer (`DROP TABLE t$$`) fails loudly but falsely, since PostgreSQL reads `$` as part of an unquoted name: the walk keys the table as `t$$`, so the ownership test reports `t$$` unowned and `t` stale, cured by a space before the `$$`.

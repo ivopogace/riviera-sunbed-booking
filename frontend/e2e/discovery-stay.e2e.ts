@@ -1,6 +1,7 @@
 import { expect, Page, test } from '@playwright/test';
 
 import { expectNoSeriousAxeViolations } from './support/axe';
+import { expectTouchTargets } from './support/touch-targets';
 import { settle } from './support/booking-dialog';
 
 /**
@@ -9,7 +10,8 @@ import { settle } from './support/booking-dialog';
  * and why not, a venue that fits with moves sits between the same-set hosts and the ones that can't,
  * which sink in their beach group and wear dusk, a lone pin for one
  * hollows by shape, the venue link carries the stay, and a single day is exactly today's page.
- * The API is mocked; axe runs on the stay page.
+ * From `sm` the day rail wraps so a mouse reaches the stay chip; a phone keeps one swipeable row.
+ * The API is mocked; axe runs on the stay page and the wrapped rail.
  */
 
 const NOW = new Date('2026-08-10T10:00:00Z');
@@ -131,6 +133,13 @@ test('picks a stay from the rail, reads every venue’s verdict, and carries the
   );
   await calendar.locator(`button[data-date="${FIRST}"]`).click();
   await calendar.locator(`button[data-date="${LAST}"]`).click();
+  // The range waits for Apply, shown with its length.
+  await expect(calendar.getByTestId('calendar-stay-hint')).toHaveText(
+    'Thu, 13 Aug – Sun 16 Aug 2026 · 4 days',
+  );
+  await expectNoSeriousAxeViolations(page, 'stay picker with a range to apply');
+  await expectTouchTargets(page, 'stay picker with a range to apply');
+  await calendar.getByTestId('calendar-apply').click();
   const request = await coastRead;
   expect(new URL(request.url()).searchParams.get('date')).toBe(FIRST);
   expect(calendarReads).toBe(0);
@@ -200,4 +209,51 @@ test('a single day is today’s page: the day alone is asked for, the free count
     'href',
     `/venues/12?date=${FIRST}`,
   );
+});
+
+for (const viewport of [
+  { width: 640, height: 900 },
+  { width: 1280, height: 900 },
+]) {
+  test(`the day rail wraps at ${viewport.width} px, so a mouse reaches the stay chip without scrolling`, async ({
+    page,
+  }) => {
+    await page.setViewportSize(viewport);
+    await page.goto('/');
+    await expect(page.getByTestId('sheet-rows').or(page.getByTestId('desk-rows'))).toBeVisible();
+    await page.getByTestId('head-day').click();
+    const rail = page.locator('[role="group"][aria-label="Day"]');
+    await expect(rail).toHaveCSS('flex-wrap', 'wrap');
+
+    const { clientWidth, scrollWidth } = await rail.evaluate((el) => ({
+      clientWidth: el.clientWidth,
+      scrollWidth: el.scrollWidth,
+    }));
+    expect(scrollWidth).toBeLessThanOrEqual(clientWidth);
+    const box = (await rail.boundingBox())!;
+    for (const chip of await rail.getByRole('button').all()) {
+      const chipBox = (await chip.boundingBox())!;
+      expect(chipBox.x).toBeGreaterThanOrEqual(box.x);
+      expect(chipBox.x + chipBox.width).toBeLessThanOrEqual(box.x + box.width);
+      expect(chipBox.height).toBeGreaterThanOrEqual(44);
+    }
+    await expect(rail.getByRole('button').last()).toHaveText('Several days…');
+    await expect(page.getByTestId('head-stay')).toBeInViewport({ ratio: 1 });
+    await settle(page);
+    await expectNoSeriousAxeViolations(page, `the wrapped day rail at ${viewport.width} px`);
+  });
+}
+
+test('on a phone the day rail stays one swipeable row', async ({ page }) => {
+  await page.setViewportSize(PHONE);
+  await page.goto('/');
+  await expect(page.getByTestId('sheet-rows')).toBeVisible();
+  await page.getByTestId('head-day').click();
+  const rail = page.locator('[role="group"][aria-label="Day"]');
+  await expect(rail).toHaveCSS('flex-wrap', 'nowrap');
+  await expect(rail).toHaveCSS('overflow-x', 'auto');
+  const tops = await rail
+    .getByRole('button')
+    .evaluateAll((chips) => new Set(chips.map((chip) => chip.getBoundingClientRect().top)).size);
+  expect(tops).toBe(1);
 });

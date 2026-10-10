@@ -19,8 +19,10 @@ import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.transaction.PlatformTransactionManager;
 
 import ai.riviera.platform.EnabledIfDockerAvailable;
+import ai.riviera.platform.RegistryRows;
 import ai.riviera.platform.TestcontainersConfiguration;
 import ai.riviera.platform.booking.events.BookingRequestDeclined;
+import ai.riviera.platform.booking.vocabulary.BookingId;
 import ai.riviera.platform.notification.adapter.out.MockMailer;
 import ai.riviera.platform.notification.adapter.out.SentEmail;
 import ai.riviera.platform.notification.application.BookingLinks;
@@ -40,8 +42,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  * a fact that cannot be resolved abandoned loudly under this flow's own counter.
  *
  * <p><strong>Dates are unique to this class</strong> (2029-09-xx; the sibling ITs hold 06/07/08
- * and the expiry IT 10) — and each test's date is also unique <em>within</em> the class, because
- * with no amount on this payload the date is the fragment publications are matched on.
+ * and the expiry IT 10), so its seeded bookings never compete with another class's for a date.
  *
  * <p>Testcontainers; skipped where Docker is absent.
  */
@@ -51,6 +52,9 @@ import static org.assertj.core.api.Assertions.assertThat;
 class RequestDeclinedMailIT {
 
 	private static final Duration WAIT = Duration.ofSeconds(15);
+
+	/** No booking row carries it, and no other IT publishes {@code BookingRequestDeclined} for it. */
+	private static final long UNRESOLVABLE_BOOKING = 987_654_321L;
 
 	@Autowired
 	JdbcClient jdbc;
@@ -152,8 +156,8 @@ class RequestDeclinedMailIT {
 		long bookingId = fixtures.seedBooking(set, "SUPPDEC1", date, suppressed, 9912L, "DECLINED");
 		fixtures.publishInTransaction(fixtures.requestDeclinedOf(set, bookingId, date));
 
-		Awaitility.await().atMost(WAIT).until(() -> fixtures.outstandingPublicationsMatching(
-				BookingMailFixtures.REQUEST_DECLINED_LISTENER_ID, date.toString()) == 0L);
+		Awaitility.await().atMost(WAIT).until(() -> fixtures.outstandingPublicationsFor(
+				BookingMailFixtures.REQUEST_DECLINED_LISTENER_ID, new BookingId(bookingId)) == 0L);
 		assertThat(mailer.lastTo(suppressed)).isEmpty();
 	}
 
@@ -169,11 +173,11 @@ class RequestDeclinedMailIT {
 		LocalDate date = LocalDate.of(2029, 9, 13);
 		double before = abandonedCount();
 
-		fixtures.publishInTransaction(fixtures.requestDeclinedOf(set, 987_654_321L, date));
+		fixtures.publishInTransaction(fixtures.requestDeclinedOf(set, UNRESOLVABLE_BOOKING, date));
 
 		Awaitility.await().atMost(WAIT).until(() -> abandonedCount() == before + 1);
-		assertThat(fixtures.outstandingPublicationsMatching(
-				BookingMailFixtures.REQUEST_DECLINED_LISTENER_ID, date.toString()))
+		assertThat(fixtures.outstandingPublicationsFor(
+				BookingMailFixtures.REQUEST_DECLINED_LISTENER_ID, new BookingId(UNRESOLVABLE_BOOKING)))
 				.as("abandoning completes the publication — the fact cannot appear later")
 				.isZero();
 	}
@@ -191,9 +195,9 @@ class RequestDeclinedMailIT {
 		Awaitility.await().atMost(WAIT).untilAsserted(() -> {
 			List<String> archived = jdbc.sql(
 					"SELECT DISTINCT listener_id FROM event_publication_archive "
-							+ "WHERE event_type = :type AND serialized_event LIKE :fragment AND listener_id LIKE :module")
+							+ "WHERE event_type = :type AND " + RegistryRows.NAMES_BOOKING + " AND listener_id LIKE :module")
 					.param("type", BookingRequestDeclined.class.getName())
-					.param("fragment", "%" + date + "%")
+					.param("bookingId", RegistryRows.bookingIdParam(bookingId))
 					.param("module", "notification.%")
 					.query(String.class).list();
 			Optional<SentEmail> mail = mailer.lastTo(guest);
