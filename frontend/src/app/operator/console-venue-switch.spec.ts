@@ -72,7 +72,7 @@ describe('Operator console — in-place venue switch over the real routes (#180)
     fixture.detectChanges();
   }
 
-  /** Answer the one owner's read the access guard fires for `id` — issued a macrotask after the session restore settles. */
+  /** Answer the one owner's read the access guard fires for `id`, after a yield that lets the router's guard stage issue it. */
   async function answerGuardRead(id: number, name: string): Promise<void> {
     await new Promise((resolve) => setTimeout(resolve, 0));
     http.expectOne(`${BASE}/api/venues/${id}/beach-map`).flush(ownerMap(id, name));

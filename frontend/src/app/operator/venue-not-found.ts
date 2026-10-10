@@ -4,7 +4,8 @@ import { RouterLink } from '@angular/router';
 /**
  * The one surface that answers a bad operator-console link, at `/operator/venue-not-found`.
  *
- * <p>`core/venue-id.guard.ts` redirects every malformed `/operator/:venueId` here. The card is the
+ * <p>`core/venue-id.guard.ts` redirects every malformed `/operator/:venueId` here and
+ * `core/venue-access.guard.ts` every venue the owner's read refuses (one page, nothing says which). The card is the
  * console shell's retired invalid-venue arm verbatim — same utilities, same test ids, so the
  * surface did not change, only where it lives — and it offers BOTH destinations the shell's copy
  * and the retired tab copies disagreed about (ADR-0023).

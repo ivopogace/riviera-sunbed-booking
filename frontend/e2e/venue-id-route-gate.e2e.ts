@@ -4,10 +4,11 @@ import { expectNoSeriousAxeViolations } from './support/axe';
 import { mockWholeConsole, signInAsOperator } from './support/operator-console.mocks';
 
 /**
- * Real-render coverage of the route gate on `/operator/:venueId`. `venueIdGuard` redirects a
+ * Real-render coverage of the route gates on `/operator/:venueId`. `venueIdGuard` redirects a
  * segment that does not spell a venue to the venue-not-found page, which is what makes the
  * invalid-link surface reachable by a navigation at all: while the console shell's template owned
- * it, no Playwright spec in either suite could drive it.
+ * it, no Playwright spec in either suite could drive it. `venueAccessGuard` sends a venue the
+ * owner's read refuses to the same page (#1526).
  *
  * <p>APIs are mocked, so the suite is CI-safe.
  */
@@ -54,8 +55,9 @@ test('a tab deep link under a malformed venue id is redirected too, and a real o
 });
 
 /**
- * The owner's beach-map read for a venue this operator does not own — or that does not exist: the
- * read asserts ownership before any existence probe (invariant #13), so both answer the same way.
+ * The owner's beach-map read refusing the venue. A venue the operator does not own and an id that
+ * does not exist both answer `403 NOT_VENUE_OWNER` (ownership is asserted before any existence probe,
+ * invariant #13); `404 NO_SUCH_VENUE` stands for a venue that vanished after the grant.
  */
 async function refuseVenue(
   page: Page,
@@ -85,7 +87,7 @@ test('a venue the owner’s read refuses lands on the venue-not-found page — 4
   const card = page.getByTestId('oc-invalid-venue-card');
   await expect(card).toBeVisible();
   await expect(page).toHaveURL(new RegExp(`${NOT_FOUND}$`));
-  // The console never mounted: no rail, no stats strip, no Daily alert offering a retry that cannot succeed.
+  // A guard decided before activation: no rail, no stats strip, no Daily alert offering a retry that cannot succeed.
   await expect(page.getByTestId('oc-tabs')).toHaveCount(0);
   await expect(page.getByTestId('oc-stats')).toHaveCount(0);
   await expect(page.getByTestId('daily-load-error')).toHaveCount(0);

@@ -79,9 +79,9 @@ enumeration of which it was), PR #1570 (the owner's read: 403 before any existen
 
 ## Execution status
 
-**Stage pointer:** `PR — draft open, CI due; then ready for review`
+**Stage pointer:** `review — round 1 posted (nothing at the bar); behaviour fix (OperatorAuth drops the caches with the session) awaiting its scoped re-review`
 
-**Next action:** push, open the draft PR, mark ready once CI is green, run the review gate at high.
+**Next action:** re-review the fix at high, then Sonar, then remove this plan in the last commit.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -89,5 +89,6 @@ enumeration of which it was), PR #1570 (the owner's read: 403 before any existen
 | 1 — the guard | ✅ | (this PR) |
 | 2 — e2e | ✅ | (this PR) |
 | 3 — substrate | ✅ | (this PR) |
+| 4 — review round 1 hygiene + OperatorAuth cache drop | ✅ | (this PR) |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.

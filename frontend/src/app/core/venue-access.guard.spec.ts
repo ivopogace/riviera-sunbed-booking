@@ -105,7 +105,7 @@ describe('venueAccessGuard — the owner’s read decides the venue, one page fo
     answer: (request: TestRequest) => void,
   ): Promise<void> {
     const navigation = router.navigateByUrl(url);
-    // The guard subscribes after awaiting the session restore, so the read is one macrotask away.
+    // One yield lets the router's guard stage run, so the guard's read is in flight before it is answered.
     await new Promise((resolve) => setTimeout(resolve, 0));
     answer(http.expectOne(mapUrl(venueId)));
     await navigation;
@@ -148,6 +148,11 @@ describe('venueAccessGuard — the owner’s read decides the venue, one page fo
     ['a 5xx', (request: TestRequest) => request.flush('down', { status: 503, statusText: 'Down' })],
     ['a network failure', (request: TestRequest) => request.error(new ProgressEvent('error'))],
     ['a lost session (401)', refuse(401, 'UNAUTHENTICATED')],
+    ['a 403 that is not the ownership refusal', refuse(403, 'ACCESS_DENIED')],
+    [
+      'a 404 with no problem body',
+      (request: TestRequest) => request.flush('', { status: 404, statusText: 'Not Found' }),
+    ],
   ])(
     'keeps today’s console on %s — the tabs’ retry and session-lost paths still own it',
     async (_, answer) => {
