@@ -1,4 +1,5 @@
 import { Component, effect, inject, signal, untracked } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, RouterOutlet } from '@angular/router';
 import { Observable } from 'rxjs';
 
@@ -6,6 +7,7 @@ import { OperatorAuth } from '../core/operator-auth';
 import { todayBookingDate } from '../shared/booking-date';
 import { venueIdParam } from '../shared/parent-venue-id';
 import { VenueMapView } from '../shared/venue-views';
+import { AvailabilityChanges } from './availability-changes';
 import { ConsoleStatsStrip } from './console-stats-strip';
 import { ConsoleVenueMap } from './console-venue-map';
 import { OperatorConsoleService } from './operator-console.service';
@@ -16,8 +18,9 @@ import { PendingRequestsStore } from './pending-requests-store';
  * The venue console's page at `/operator/:venueId`: the stats strip, the pending-approval banner
  * and the tab outlet hosting each tab as a child route. Its chrome (venue switcher, tab rail,
  * footer) is `console-shell.ts`'s; this component publishes nothing to it and owns only the
- * per-venue seeding: the shared venue-map snapshot (strip and shell share one request)
- * and the Requests badge count (`PendingRequestsStore`). No sign-in gate or session-restore state:
+ * per-venue seeding: the shared venue-map snapshot (strip and shell share one request; re-read when
+ * the Daily view settles a walk-in, {@link AvailabilityChanges}) and the Requests badge count
+ * (`PendingRequestsStore`). No sign-in gate or session-restore state:
  * {@code operatorSessionGuard} awaits the restore, so this only renders for a signed-in operator.
  */
 @Component({
@@ -31,6 +34,7 @@ export class OperatorConsole {
   private readonly venueMap = inject(ConsoleVenueMap);
   private readonly console = inject(OperatorConsoleService);
   private readonly requests = inject(PendingRequestsStore);
+  private readonly changes = inject(AvailabilityChanges);
   private readonly operator = inject(OperatorAuth);
 
   /** The venue this console manages — reactive to in-place `:venueId` changes: the router
@@ -51,6 +55,12 @@ export class OperatorConsole {
         untracked(() => this.load(id));
       }
     });
+    // A walk-in marked or released today moved a set's availability: re-read the map only — the badge
+    // seed stays, the Requests tab may own it by now. The announce already dropped the snapshot.
+    this.changes
+      .todayAt(this.venueId)
+      .pipe(takeUntilDestroyed())
+      .subscribe((change) => this.loadMap(change.venueId, change.date, this.epoch));
   }
 
   /**
@@ -66,14 +76,20 @@ export class OperatorConsole {
     // visited, takes authority over this store via `set`; this page only ever seeds it.
     this.requests.reset();
     // Continuations re-check the venue so a superseded venue's reads never land here.
-    this.bestEffort(this.venueMap.load(venueId, todayBookingDate(new Date())), (venue) => {
-      if (this.epoch === epoch) {
-        this.venue.set(venue);
-      }
-    });
+    this.loadMap(venueId, todayBookingDate(new Date()), epoch);
     this.bestEffort(this.console.pendingRequestCount(venueId), (count) => {
       if (this.epoch === epoch) {
         this.requests.seed(count);
+      }
+    });
+  }
+
+  /** The shared map read behind the strip's free/total; the current map stands until it lands, and
+   *  only while `epoch` is still the venue context it was sent for. */
+  private loadMap(venueId: number, date: string, epoch: number): void {
+    this.bestEffort(this.venueMap.load(venueId, date), (venue) => {
+      if (this.epoch === epoch) {
+        this.venue.set(venue);
       }
     });
   }

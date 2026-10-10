@@ -6,14 +6,16 @@ import { BehaviorSubject } from 'rxjs';
 
 import { environment } from '../../environments/environment';
 import { OperatorAuth } from '../core/operator-auth';
-import { VenueMapView } from '../shared/venue-views';
+import { todayBookingDate } from '../shared/booking-date';
+import { SeatAvailability, SetView, VenueMapView } from '../shared/venue-views';
+import { AvailabilityChanges } from './availability-changes';
 import { OperatorConsole } from './operator-console';
 import { PendingRequestsStore } from './pending-requests-store';
 
 const BASE = environment.apiBaseUrl;
 const VENUE = 1;
 
-function venueMap(name: string, id = VENUE): VenueMapView {
+function venueMap(name: string, id = VENUE, sets: SetView[] = []): VenueMapView {
   return {
     id,
     name,
@@ -24,7 +26,21 @@ function venueMap(name: string, id = VENUE): VenueMapView {
     reviewsCount: 12,
     bookingMode: 'INSTANT',
     fromPrice: null,
-    sets: [],
+    sets,
+  };
+}
+
+function set(id: number, availability: SeatAvailability): SetView {
+  return {
+    id,
+    rowLabel: 'A',
+    positionNo: id,
+    tier: 'STANDARD',
+    pool: 'ONLINE',
+    price: { minorUnits: 4000, currency: 'EUR' },
+    gridX: id,
+    gridY: 0,
+    availability,
   };
 }
 
@@ -47,10 +63,15 @@ function baseProviders(route: Partial<ActivatedRoute> = routeStub(String(VENUE))
 }
 
 /** The venue-title read the console fires once a session exists (best-effort, date-independent). */
-function flushVenue(httpMock: HttpTestingController, name: string, venue = VENUE): void {
+function flushVenue(
+  httpMock: HttpTestingController,
+  name: string,
+  venue = VENUE,
+  sets: SetView[] = [],
+): void {
   httpMock
     .expectOne((r) => r.url === `${BASE}/api/venues/${venue}` && r.method === 'GET')
-    .flush(venueMap(name, venue));
+    .flush(venueMap(name, venue, sets));
 }
 
 /** The Requests-badge count read the console fires once a session exists (owner-asserted server-side,
@@ -179,6 +200,105 @@ describe('OperatorConsole — signed-in page (#170, guard-gated since #277)', ()
 
     expect(host().querySelector('app-console-stats-strip')).not.toBeNull();
     expect(TestBed.inject(PendingRequestsStore).count()).toBe(0);
+  });
+});
+
+describe('OperatorConsole — an announced walk-in change (#1525)', () => {
+  let fixture: ComponentFixture<OperatorConsole>;
+  let httpMock: HttpTestingController;
+  const TODAY = todayBookingDate(new Date());
+
+  beforeEach(async () => {
+    document.documentElement.removeAttribute('data-riv-theme');
+    TestBed.configureTestingModule({ imports: [OperatorConsole], providers: baseProviders() });
+    TestBed.inject(OperatorAuth);
+    httpMock = TestBed.inject(HttpTestingController);
+    httpMock
+      .expectOne(`${BASE}/api/auth/me`)
+      .flush({ username: 'operator', principalType: 'OPERATOR' });
+    await Promise.resolve();
+    await Promise.resolve();
+
+    fixture = TestBed.createComponent(OperatorConsole);
+    await fixture.whenStable();
+    // Two of three free before the mark.
+    flushVenue(httpMock, 'Miramar Beach Club', VENUE, [
+      set(1, 'FREE'),
+      set(2, 'FREE'),
+      set(3, 'TAKEN'),
+    ]);
+    flushRequests(httpMock, 3);
+    flushStrip(httpMock);
+    await fixture.whenStable();
+    fixture.detectChanges();
+  });
+
+  afterEach(() => httpMock.verify());
+
+  function freeTile(): string {
+    return (
+      (fixture.nativeElement as HTMLElement)
+        .querySelector('[data-testid="oc-stat-free"]')
+        ?.textContent?.replace(/\s+/g, ' ')
+        .trim() ?? ''
+    );
+  }
+
+  it('re-reads the shared map from the server, keeping the current one up meanwhile, and never re-seeds the badge (AC-6)', async () => {
+    expect(freeTile()).toBe('2 / 3');
+    // The Requests tab has taken authority since; a refresh must not clobber it back to the seed.
+    TestBed.inject(PendingRequestsStore).set(1);
+
+    TestBed.inject(AvailabilityChanges).announce({ venueId: VENUE, date: TODAY });
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    expect(freeTile()).toBe('2 / 3'); // no "0 / 0" flash while the fresh read is out
+    // The snapshot was dropped by the announce, so this is a real server read, dated today.
+    const req = httpMock.expectOne(
+      (r) => r.url === `${BASE}/api/venues/${VENUE}` && r.method === 'GET',
+    );
+    expect(req.request.params.get('date')).toBe(TODAY);
+    req.flush(
+      venueMap('Miramar Beach Club', VENUE, [set(1, 'TAKEN'), set(2, 'FREE'), set(3, 'TAKEN')]),
+    );
+    // The strip's own held re-read (pinned in its spec); answered so verify() stays clean.
+    httpMock
+      .expectOne((r) => r.url === `${BASE}/api/venues/${VENUE}/availability` && r.method === 'GET')
+      .flush([
+        { setId: 1, state: 'STAFF_MARKED' },
+        { setId: 3, state: 'BOOKED_ONLINE' },
+      ]);
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    expect(freeTile()).toBe('1 / 3');
+    expect(TestBed.inject(PendingRequestsStore).count()).toBe(1);
+    httpMock.expectNone((r) => r.url === `${BASE}/api/venues/${VENUE}/booking-requests`);
+  });
+
+  it('keeps the current map when the refresh read fails — free/total are one object, so neither goes blank', async () => {
+    TestBed.inject(AvailabilityChanges).announce({ venueId: VENUE, date: TODAY });
+    await fixture.whenStable();
+    httpMock
+      .expectOne((r) => r.url === `${BASE}/api/venues/${VENUE}` && r.method === 'GET')
+      .flush({}, { status: 500, statusText: 'Server Error' });
+    httpMock
+      .expectOne((r) => r.url === `${BASE}/api/venues/${VENUE}/availability` && r.method === 'GET')
+      .flush([]);
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    expect(freeTile()).toBe('2 / 3');
+  });
+
+  it('ignores a change for another venue or another day (AC-6, R-2)', async () => {
+    TestBed.inject(AvailabilityChanges).announce({ venueId: 2, date: TODAY });
+    TestBed.inject(AvailabilityChanges).announce({ venueId: VENUE, date: '2026-06-16' });
+    await fixture.whenStable();
+
+    httpMock.expectNone((r) => r.url === `${BASE}/api/venues/${VENUE}`);
+    expect(freeTile()).toBe('2 / 3');
   });
 });
 
