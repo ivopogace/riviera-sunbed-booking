@@ -201,3 +201,48 @@ test('a single day is today’s page: the day alone is asked for, the free count
     `/venues/12?date=${FIRST}`,
   );
 });
+
+for (const viewport of [
+  { width: 640, height: 900 },
+  { width: 1280, height: 900 },
+]) {
+  test(`the day rail wraps at ${viewport.width} px, so a mouse reaches the stay chip without scrolling`, async ({
+    page,
+  }) => {
+    await page.setViewportSize(viewport);
+    await page.goto('/');
+    await expect(page.getByTestId('sheet-rows').or(page.getByTestId('desk-rows'))).toBeVisible();
+    await page.getByTestId('head-day').click();
+    const rail = page.locator('[role="group"][aria-label="Day"]');
+    await expect(rail).toHaveCSS('flex-wrap', 'wrap');
+
+    const { clientWidth, scrollWidth } = await rail.evaluate((el) => ({
+      clientWidth: el.clientWidth,
+      scrollWidth: el.scrollWidth,
+    }));
+    expect(scrollWidth).toBeLessThanOrEqual(clientWidth);
+    const box = (await rail.boundingBox())!;
+    for (const chip of await rail.getByRole('button').all()) {
+      const chipBox = (await chip.boundingBox())!;
+      expect(chipBox.x).toBeGreaterThanOrEqual(box.x);
+      expect(chipBox.x + chipBox.width).toBeLessThanOrEqual(box.x + box.width);
+      expect(chipBox.height).toBeGreaterThanOrEqual(44);
+    }
+    await settle(page);
+    await expectNoSeriousAxeViolations(page, `the wrapped day rail at ${viewport.width} px`);
+  });
+}
+
+test('on a phone the day rail stays one swipeable row', async ({ page }) => {
+  await page.setViewportSize(PHONE);
+  await page.goto('/');
+  await expect(page.getByTestId('sheet-rows')).toBeVisible();
+  await page.getByTestId('head-day').click();
+  const rail = page.locator('[role="group"][aria-label="Day"]');
+  await expect(rail).toHaveCSS('flex-wrap', 'nowrap');
+  await expect(rail).toHaveCSS('overflow-x', 'auto');
+  const tops = await rail
+    .getByRole('button')
+    .evaluateAll((chips) => new Set(chips.map((chip) => chip.getBoundingClientRect().top)).size);
+  expect(tops).toBe(1);
+});

@@ -38,6 +38,11 @@ const RAIL =
   'flex gap-1.5 overflow-x-auto px-3 pt-1 pb-2 scrollbar-none starting:-translate-y-1 starting:opacity-0 ' +
   'motion-safe:[transition:opacity_0.18s_ease,translate_0.18s_ease]';
 const RAIL_LEAVE = 'opacity-0 -translate-y-1';
+/**
+ * The week wraps from `sm`, where a mouse has no swipe and the hidden scrollbar leaves the last
+ * chips, the stay chip among them, out of reach; a phone keeps the one swipeable row.
+ */
+const DAY_RAIL = RAIL + ' sm:flex-wrap sm:overflow-x-visible';
 
 /**
  * A chip in the field skin, lit as the accent pair when `aria-current`. The `group` lets the
@@ -140,7 +145,7 @@ const COUNT =
     </div>
     @if (railsShown()) {
       @if (dayOpen()) {
-        <div [class]="RAIL" [animate.leave]="RAIL_LEAVE" role="group" aria-label="Day">
+        <div [class]="DAY_RAIL" [animate.leave]="RAIL_LEAVE" role="group" aria-label="Day">
           @for (day of days(); track day.date) {
             <button
               type="button"
@@ -219,6 +224,7 @@ export class DiscoverHead {
   protected readonly CHIP = CHIP;
   protected readonly COUNT = COUNT;
   protected readonly RAIL = RAIL;
+  protected readonly DAY_RAIL = DAY_RAIL;
   protected readonly RAIL_LEAVE = RAIL_LEAVE;
 
   /** The place as the tourist reads it: the beach, the region, or where they stand. */
