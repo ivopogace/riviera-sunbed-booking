@@ -115,11 +115,14 @@ async function mockPricing(
     serverSetVersion += 1;
     return route.fulfill({ status: 204, body: '' });
   });
-  // The venue map (tab source + shell header/stats) — carries the current setVersion. Keep below the
-  // reprice route (disjoint anyway).
-  await page.route(/\/api\/venues\/1(\?.*)?$/, (route) => {
+  // The owner's map read (tab source + shell header/stats) — carries the current setVersion; GET only,
+  // the PUT on this path is the bulk save.
+  await page.route(/\/api\/venues\/1\/beach-map$/, (route) => {
+    if (route.request().method() !== 'GET') return route.fallback();
     mapReads += 1;
-    return route.fulfill({ json: { ...map, setVersion: serverSetVersion } });
+    return route.fulfill({
+      json: { map: { ...map, setVersion: serverSetVersion }, locks: [] },
+    });
   });
   await page.route(/\/api\/venues\/1\/booking-requests(\?.*)?$/, (route) =>
     route.fulfill({ json: [] }),

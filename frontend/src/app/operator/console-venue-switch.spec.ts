@@ -83,30 +83,13 @@ describe('Operator console — in-place venue switch over the real routes (#180)
 
   /** Flush every read the shell + strip + layout tab fire for a venue (order-independent). */
   function flushVenueReads(id: number, name: string, pending = 1): void {
-    // The shared venue-map snapshot (the shell's name + the strip); the layout editor reads the owner's map below.
+    // Every console map read is the owner's one (the shared snapshot and the layout editor's own read).
     http
       .match((r) => r.method === 'GET' && r.url === `${BASE}/api/venues/${id}/beach-map`)
       .forEach((req) =>
         req.flush({
           map: { id, name, beach: 'KSAMIL', region: 'SARANDE', sets: [], setVersion: 1 },
           locks: [],
-        }),
-      );
-    http
-      .match((r) => r.method === 'GET' && r.url === `${BASE}/api/venues/${id}`)
-      .forEach((req) =>
-        req.flush({
-          id,
-          name,
-          beach: 'KSAMIL',
-          region: 'SARANDE',
-          description: '',
-          ratingTenths: 40,
-          reviewsCount: 1,
-          bookingMode: 'INSTANT',
-          fromPrice: null,
-          sets: [],
-          setVersion: 1,
         }),
       );
     http

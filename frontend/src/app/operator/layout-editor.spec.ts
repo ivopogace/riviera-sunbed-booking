@@ -10,7 +10,6 @@ import { BehaviorSubject } from 'rxjs';
 import { vi } from 'vitest';
 
 import { expectCellsFillCanvasRow } from '../../testing/beach-map-height';
-import { todayBookingDate } from '../shared/booking-date';
 import { BeachMapCanvas } from '../shared/beach-map-canvas';
 import { SetView } from '../shared/venue-views';
 import { ConsoleVenueMap } from './console-venue-map';
@@ -1586,10 +1585,10 @@ describe('LayoutEditor (#172)', () => {
     // The PUT retires the sets the shell's warm snapshot describes, so leaving it stales both tabs.
     render();
     const snapshots = TestBed.inject(ConsoleVenueMap);
-    snapshots.load(1, todayBookingDate(new Date())).subscribe();
+    snapshots.load(1).subscribe();
     http
-      .expectOne((r) => r.method === 'GET' && r.url.endsWith('/api/venues/1'))
-      .flush({ id: 1, name: 'V', sets: [], setVersion: 0 });
+      .expectOne((r) => r.method === 'GET' && r.url.endsWith('/api/venues/1/beach-map'))
+      .flush({ map: { id: 1, name: 'V', sets: [], setVersion: 0 }, locks: [] });
 
     generate('1', '1');
     byId('layout-save').click();
@@ -1600,10 +1599,10 @@ describe('LayoutEditor (#172)', () => {
 
     // The snapshot was invalidated, so the next tab to ask goes back to the server for the new layout.
     let refetched: number | undefined;
-    snapshots.load(1, todayBookingDate(new Date())).subscribe((v) => (refetched = v.setVersion));
+    snapshots.load(1).subscribe((v) => (refetched = v.setVersion));
     http
-      .expectOne((r) => r.method === 'GET' && r.url.endsWith('/api/venues/1'))
-      .flush({ id: 1, name: 'V', sets: [], setVersion: 1 });
+      .expectOne((r) => r.method === 'GET' && r.url.endsWith('/api/venues/1/beach-map'))
+      .flush({ map: { id: 1, name: 'V', sets: [], setVersion: 1 }, locks: [] });
 
     expect(refetched).toBe(1);
   });

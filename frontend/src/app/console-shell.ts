@@ -25,7 +25,6 @@ import { OperatorAccountChip } from './operator/operator-account-chip';
 import { OperatorVenueSwitch } from './operator/operator-venue-switch';
 import { PendingRequestsStore } from './operator/pending-requests-store';
 import { beachLabel } from './shared/beaches';
-import { todayBookingDate } from './shared/booking-date';
 import { ConsoleDestination, VENUE_CONSOLE_LANDING_TAB } from './shared/console-destination';
 import {
   AdminGlyph,
@@ -704,7 +703,7 @@ export class ConsoleShell {
     if (venueId === undefined) {
       return;
     }
-    this.venueMap.load(venueId, todayBookingDate(new Date())).subscribe({
+    this.venueMap.load(venueId).subscribe({
       next: (venue) => {
         if (this.epoch === epoch) {
           this.venueName.set(venue.name);

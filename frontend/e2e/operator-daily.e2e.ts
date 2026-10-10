@@ -163,36 +163,43 @@ async function mockDaily(page: Page): Promise<{ patches: import('@playwright/tes
       },
     }),
   );
-  // The venue map GET (sets 2 + 4 online-held); a PATCH here is the kill switch's write → 204.
+  // The kill switch's write (a profile PATCH on the venue path) → 204.
   await page.route(/\/api\/venues\/1(\?.*)?$/, (route) => {
-    if (route.request().method() === 'PATCH') {
-      patches.push(route.request());
-      salesClose = (route.request().postDataJSON() as { salesClose: string }).salesClose;
-      return route.fulfill({ status: 204, body: '' });
+    if (route.request().method() !== 'PATCH') {
+      return route.fallback();
     }
-    return route.fulfill({
-      json: {
-        id: 1,
-        name: 'Miramar Beach Club',
-        beach: 'KSAMIL',
-        region: 'SARANDE',
-        description: 'Loungers on the shore.',
-        ratingTenths: 48,
-        reviewsCount: 12,
-        bookingMode: 'INSTANT',
-        fromPrice: { minorUnits: 3000, currency: 'EUR' },
-        salesOpen: salesClose !== '00:01',
-        sets: [1, 2, 3, 4].map((id) =>
-          seat(
-            id,
-            id,
-            id === 3 ? 'WALK_IN' : 'ONLINE',
-            id === 2 || id === 4 || marked.has(id) ? 'TAKEN' : 'FREE',
-          ),
-        ),
-      },
-    });
+    patches.push(route.request());
+    salesClose = (route.request().postDataJSON() as { salesClose: string }).salesClose;
+    return route.fulfill({ status: 204, body: '' });
   });
+  // The owner's map read (sets 2 + 4 online-held).
+  await page.route(/\/api\/venues\/1\/beach-map$/, (route) =>
+    route.fulfill({
+      json: {
+        map: {
+          id: 1,
+          name: 'Miramar Beach Club',
+          beach: 'KSAMIL',
+          region: 'SARANDE',
+          description: 'Loungers on the shore.',
+          ratingTenths: 48,
+          reviewsCount: 12,
+          bookingMode: 'INSTANT',
+          fromPrice: { minorUnits: 3000, currency: 'EUR' },
+          salesOpen: salesClose !== '00:01',
+          sets: [1, 2, 3, 4].map((id) =>
+            seat(
+              id,
+              id,
+              id === 3 ? 'WALK_IN' : 'ONLINE',
+              id === 2 || id === 4 || marked.has(id) ? 'TAKEN' : 'FREE',
+            ),
+          ),
+        },
+        locks: [],
+      },
+    }),
+  );
   await page.route(/\/api\/venues\/1\/booking-requests(\?.*)?$/, (route) =>
     route.fulfill({ json: [] }),
   );
@@ -539,8 +546,8 @@ test('a wide venue keeps every tile tappable and scrolls inside its frame (#605)
 }) => {
   await mockDaily(page);
   // Registered after mockDaily's, so this wide-venue payload wins the route match.
-  await page.route(/\/api\/venues\/1(\?.*)?$/, (route) =>
-    route.fulfill({ json: wideVenue('Wide Bay', 'FREE') }),
+  await page.route(/\/api\/venues\/1\/beach-map$/, (route) =>
+    route.fulfill({ json: { map: wideVenue('Wide Bay', 'FREE'), locks: [] } }),
   );
   await page.setViewportSize({ width: 390, height: 780 });
   await page.goto('/operator/1');
@@ -575,8 +582,8 @@ test('a wide venue keeps every tile tappable and scrolls inside its frame (#605)
  */
 test('a fully-sold day keeps the scrolling map keyboard-reachable (#605)', async ({ page }) => {
   await mockDaily(page);
-  await page.route(/\/api\/venues\/1(\?.*)?$/, (route) =>
-    route.fulfill({ json: wideVenue('Sold Out Bay', 'TAKEN') }),
+  await page.route(/\/api\/venues\/1\/beach-map$/, (route) =>
+    route.fulfill({ json: { map: wideVenue('Sold Out Bay', 'TAKEN'), locks: [] } }),
   );
   await page.route(/\/api\/venues\/1\/availability(\?.*)?$/, (route) =>
     route.fulfill({
@@ -699,8 +706,8 @@ test('a long row name ellipsizes on the phone rail so two tiles fit per row; des
  */
 test('explains a zero-set day and links to the Beach map tab (#718)', async ({ page }) => {
   await mockDaily(page);
-  await page.route(/\/api\/venues\/1(\?.*)?$/, (route) =>
-    route.fulfill({ json: { ...wideVenue('Blank Bay', 'FREE'), sets: [] } }),
+  await page.route(/\/api\/venues\/1\/beach-map$/, (route) =>
+    route.fulfill({ json: { map: { ...wideVenue('Blank Bay', 'FREE'), sets: [] }, locks: [] } }),
   );
   await page.route(/\/api\/venues\/1\/availability(\?.*)?$/, (route) =>
     route.fulfill({ json: [] }),
