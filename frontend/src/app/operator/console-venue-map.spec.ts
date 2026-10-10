@@ -164,6 +164,20 @@ describe('ConsoleVenueMap (#486)', () => {
     expect(joined).toBe('One slow read');
   });
 
+  it('refetches past Tirane midnight inside the TTL — the day is part of the key (#6)', () => {
+    // 23:59:50 Europe/Tirane (CEST): a snapshot settles, then the day rolls over 20s later.
+    vi.setSystemTime(new Date('2026-06-15T21:59:50Z'));
+    cache.load(VENUE).subscribe();
+    flushMap(venueMap('Yesterday'));
+
+    vi.setSystemTime(new Date('2026-06-15T22:00:10Z'));
+    let today: string | undefined;
+    cache.load(VENUE).subscribe((v) => (today = v.name));
+    flushMap(venueMap('Today'));
+
+    expect(today).toBe('Today');
+  });
+
   it('refetches when the venue changes — a venue switch evicts the slot', () => {
     cache.load(VENUE).subscribe();
     flushMap(venueMap());

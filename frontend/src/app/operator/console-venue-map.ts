@@ -1,6 +1,7 @@
 import { inject, Service } from '@angular/core';
 import { catchError, map, Observable, shareReplay, tap, throwError } from 'rxjs';
 
+import { todayBookingDate } from '../shared/booking-date';
 import { VenueMapView } from '../shared/venue-views';
 import { OperatorConsoleService } from './operator-console.service';
 
@@ -15,7 +16,7 @@ const SNAPSHOT_TTL_MS = 30_000;
  * The operator console's shared beach-map snapshot: one owner's read ({@link OperatorConsoleService#beachMap},
  * its `map`; the tourist read hides a PENDING owner's venue, #1531) for the shell's, {@code RequestsTab}'s
  * and {@code PricingTab}'s identical ask. Opt-in per call site: {@code DailyViewTab} and {@code LayoutEditor}
- * need server truth. One slot; a changed venue evicts it. Call {@link reset} on sign-out, after every
+ * need server truth. One slot; a changed venue or a Tirane day rollover evicts it. Call {@link reset} on sign-out, after every
  * successful map write (layout, reprice, rename, per-set edits; a walk-in mark/release via
  * {@code AvailabilityChanges#announce}) and BEFORE a `409 STALE_WRITE` recovery read, or tabs go stale.
  */
@@ -23,7 +24,7 @@ const SNAPSHOT_TTL_MS = 30_000;
 export class ConsoleVenueMap {
   private readonly console = inject(OperatorConsoleService);
 
-  private key?: number;
+  private key?: string;
   private snapshot?: Observable<VenueMapView>;
   private expiresAt = 0;
   /** Identifies the current fetch, so a superseded one cannot invalidate the snapshot that replaced it. */
@@ -35,8 +36,10 @@ export class ConsoleVenueMap {
    * retained, so the caller's error handling runs and the next ask refetches.
    */
   load(venueId: number): Observable<VenueMapView> {
-    if (this.key !== venueId || this.snapshot === undefined || Date.now() >= this.expiresAt) {
-      this.key = venueId;
+    // The server composes today's overlay, so a snapshot from yesterday is evicted by the key, not the TTL.
+    const key = `${venueId}@${todayBookingDate(new Date())}`;
+    if (this.key !== key || this.snapshot === undefined || Date.now() >= this.expiresAt) {
+      this.key = key;
       // An in-flight read is about to answer, so it never ages out; the window opens when it settles.
       this.expiresAt = Number.POSITIVE_INFINITY;
       this.snapshot = this.fetch(venueId, ++this.generation);

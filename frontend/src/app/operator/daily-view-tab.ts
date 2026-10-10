@@ -650,7 +650,7 @@ export class DailyViewTab {
     });
   }
 
-  /** Fetch the map + bookings + availability states for the selected date; `onSettled` runs after ALL settle. */
+  /** Fetch the owner's map (today's) + the selected date's bookings and availability states; `onSettled` runs after ALL settle. */
   private load(onSettled?: () => void): void {
     const venueId = this.venueId();
     const requested = this.selectedDate();
