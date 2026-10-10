@@ -225,6 +225,18 @@ describe('DailyViewTab (#175)', () => {
     expect(visible(4)).toBe('1'); // B1 — the position number, never the set id
   });
 
+  it('caps a long row name on the rail below sm only; the tile name keeps it whole (#1532)', () => {
+    render(SEED.map((s) => (s.rowLabel === 'A' ? { ...s, rowLabel: 'Front row · Sea view' } : s)));
+    const inner = host.querySelector('[data-testid="row-code"] > span')!;
+    expect(inner.textContent).toBe('Front row · Sea view');
+    // The tourist map's phone cap, scoped to the phone: from `sm` up the name renders whole (#724).
+    expect(inner.classList.contains('max-sm:max-w-12')).toBe(true);
+    expect(inner.classList.contains('max-sm:truncate')).toBe(true);
+    expect(inner.classList.contains('truncate')).toBe(false);
+    // The tile's accessible name carries the stored row name on every width.
+    expect(tile(1).getAttribute('aria-label')).toMatch(/^Set Front row · Sea view 1,/);
+  });
+
   it('renders a mixed-price row as its min–max span on the zone rail (#689)', () => {
     // Row A mixes €25 + €30 (a supported state); row B stays uniform at €30.
     const mixed = SEED.map((s) =>
