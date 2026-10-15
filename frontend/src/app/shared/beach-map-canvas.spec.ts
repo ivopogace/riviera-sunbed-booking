@@ -247,7 +247,7 @@ describe('BeachMapCanvas (#672)', () => {
     expect(viewport(host).querySelector('[data-testid="row-code"]')).toBeNull();
   });
 
-  it('leaves rail labels uncapped by default — operator surfaces render them whole (#724)', () => {
+  it('leaves rail labels uncapped by default — the editors’ letters rail renders them whole (#724)', () => {
     const { host } = render();
     expect(host.querySelector('[data-testid="row-code"] .truncate')).toBeNull();
   });
@@ -281,11 +281,18 @@ describe('BeachMapCanvas (#672)', () => {
     }
   });
 
-  it('caps only the tourist rail, so operator labels stay whole (#724, #749)', () => {
+  it('caps an operator label below sm only, so it stays whole from sm up (#724, #1532)', () => {
     const { component, host, detect } = render();
     component.railCodes.set('labels');
     detect();
-    expect(host.querySelector('[data-testid="row-code"] .truncate')).toBeNull();
+    const inner = host.querySelector('[data-testid="row-code"] > span')!;
+    // The phone tier: the tourist rail's 48px of text, ellipsized inside the 54px reservation…
+    expect(inner.classList.contains('max-sm:max-w-12')).toBe(true);
+    expect(inner.classList.contains('max-sm:truncate')).toBe(true);
+    // …and no cap at all from `sm`: neither the tourist's 96px tier nor an unscoped ellipsis.
+    expect(inner.className).not.toMatch(/(^|\s)(sm:)?max-w/);
+    expect(inner.classList.contains('truncate')).toBe(false);
+    expect(inner.textContent).toBe('A');
     expect(railColumn(host).className).toContain('min-w-[54px]');
   });
 

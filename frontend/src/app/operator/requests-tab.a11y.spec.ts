@@ -73,18 +73,16 @@ describe('RequestsTab a11y (#176)', () => {
       .expectOne((r) => r.method === 'GET' && r.url.endsWith('/api/venues/1/booking-requests'))
       .flush(requests);
     http
-      .expectOne(
-        (r) =>
-          r.method === 'GET' &&
-          r.url.includes('/api/venues/1') &&
-          !r.url.includes('/booking-requests'),
-      )
+      .expectOne((r) => r.method === 'GET' && r.url.includes('/api/venues/1/beach-map'))
       .flush({
-        id: 1,
-        name: 'V',
-        beach: 'KSAMIL',
-        region: 'SARANDE',
-        sets: [seat(1, 'A', 1, 'PREMIUM')],
+        map: {
+          id: 1,
+          name: 'V',
+          beach: 'KSAMIL',
+          region: 'SARANDE',
+          sets: [seat(1, 'A', 1, 'PREMIUM')],
+        },
+        locks: [],
       });
     fixture.detectChanges();
   }

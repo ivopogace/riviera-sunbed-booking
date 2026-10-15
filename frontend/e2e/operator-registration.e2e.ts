@@ -22,6 +22,50 @@ const NEW_OP = {
   contactEmail: 'newop@venue.example',
 };
 
+/**
+ * The new venue's console reads, for the PENDING owner: the owner's beach-map read answers, the
+ * tourist read is deliberately unmocked — it hides a PENDING owner's venue (#1531), so a console
+ * surface still loading through it would fail here.
+ */
+async function mockPendingVenueConsole(page: import('@playwright/test').Page): Promise<void> {
+  await page.route(/\/api\/venues\/100\/beach-map$/, (route) =>
+    route.fulfill({
+      json: {
+        map: {
+          id: 100,
+          name: 'Sunset Club',
+          beach: 'KSAMIL',
+          region: 'SARANDE',
+          ratingTenths: 0,
+          reviewsCount: 0,
+          bookingMode: 'INSTANT',
+          fromPrice: null,
+          sets: [],
+          setVersion: 0,
+        },
+        locks: [],
+      },
+    }),
+  );
+  await page.route(/\/api\/venues\/100\/booking-requests(\?.*)?$/, (route) =>
+    route.fulfill({ json: [] }),
+  );
+  await page.route(/\/api\/venues\/100\/bookings(\?.*)?$/, (route) => route.fulfill({ json: [] }));
+  await page.route(/\/api\/venues\/100\/availability(\?.*)?$/, (route) =>
+    route.fulfill({ json: [] }),
+  );
+  await page.route(/\/api\/venues\/100\/takings(\?.*)?$/, (route) =>
+    route.fulfill({
+      json: {
+        gross: { minorUnits: 0, currency: 'EUR' },
+        net: { minorUnits: 0, currency: 'EUR' },
+        commissionBps: 500,
+        date: '2026-07-08',
+      },
+    }),
+  );
+}
+
 async function register(
   page: import('@playwright/test').Page,
   op: { username: string; password: string; contactEmail: string },
@@ -37,6 +81,7 @@ test('a registering operator lands straight in the console and works it while PE
   page,
 }) => {
   await mockOperatorLifecycleApi(page, { admin: ADMIN });
+  await mockPendingVenueConsole(page);
   const signIn = new OperatorSignInPage(page);
 
   // 1. Self-register → session-less 202 → auto-sign-in → the zero-state home, under the notice.
@@ -56,7 +101,14 @@ test('a registering operator lands straight in the console and works it while PE
   await page.getByRole('button', { name: 'Create venue' }).click();
   await expect(page).toHaveURL(/\/operator\/100\/beach-map/);
   await expect(page.getByTestId('pending-approval-banner')).toBeVisible();
+  // The layout editor and the Pricing tab load from the owner's read while still PENDING (#1531).
+  await expect(page.getByTestId('layout-empty')).toBeVisible();
+  await expect(page.getByTestId('layout-load-failed')).toHaveCount(0);
   await expectNoSeriousAxeViolations(page, 'pending operator console');
+  await page.getByTestId('oc-tabs').getByRole('link', { name: 'Pricing' }).click();
+  await expect(page).toHaveURL(/\/operator\/100\/pricing/);
+  await expect(page.getByTestId('pricing-empty')).toBeVisible();
+  await expect(page.getByTestId('pricing-load-error')).toHaveCount(0);
 
   // 3. The admin approves the registration; the queue reconciles from the server to empty.
   await openOperatorAccountMenu(page);

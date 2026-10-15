@@ -110,9 +110,9 @@ export class BeachMapCanvas {
   readonly viewportLabel = input<string>('');
   /** Mouse drag-to-pan; a surface whose drag gesture is its own (paint) switches it off. */
   readonly dragPan = input<boolean>(true);
-  /** Rail chip vocabulary, which fixes the rail's reserved width in loading AND loaded states:
-   *  `letters` (editors) reserves nothing, `labels` a minimum a longer name still widens, and
-   *  `capped-labels` (tourist) also ellipsizes so the phone rail cannot move. */
+  /** Rail chip vocabulary, fixing the rail's reserved width loading AND loaded: `letters` (editors)
+   *  reserves nothing; `labels` (Daily view) a minimum a longer name widens from `sm` up, capped
+   *  below it (#1532); `capped-labels` (tourist) is capped on both tiers, so its phone rail cannot move. */
   readonly railCodes = input<'letters' | 'labels' | 'capped-labels'>('letters');
   /** Price-rail chip vocabulary, fixing its reserved width in both states: `amounts` (operator)
    *  reserves nothing beyond the 52px floor — a min–max span may still widen it, by choice;
@@ -194,7 +194,7 @@ export class BeachMapCanvas {
 
   /** Rail width reserved by vocabulary in BOTH states — content-derived, the grid slides on load.
    *  A 54px minimum (the mobile cap), not the full cap: that would push a 14-column desktop venue
-   *  into a pan. Only a label wider than 54px still shifts the grid. */
+   *  into a pan. Only a label wider than 54px still shifts the grid, and only from `sm` up (#1532). */
   protected readonly railColumnClass = computed(() => {
     // A fill button needs the 44px floor in both axes, not just the chip's min-w-6.
     if (this.rowRailInteractive()) {
@@ -210,10 +210,19 @@ export class BeachMapCanvas {
     this.priceChips() === 'amounts' ? '' : 'min-w-[92px]',
   );
 
-  /** The rail-code ellipsis, tourist rail only: two tiers, 48px of text and 96px from `sm`. */
-  protected readonly railCodeTextClass = computed(() =>
-    this.railCodes() === 'capped-labels' ? 'max-w-12 sm:max-w-[96px] truncate' : '',
-  );
+  /** The rail-code ellipsis: 48px of text below `sm` on both label rails — a phone has no rail to
+   *  spare, and 54px of rail is the reservation (#749) — and 96px from `sm` on the tourist rail
+   *  only; the operator rail renders the name whole there (#724). */
+  protected readonly railCodeTextClass = computed(() => {
+    switch (this.railCodes()) {
+      case 'letters':
+        return '';
+      case 'labels':
+        return 'max-sm:max-w-12 max-sm:truncate';
+      case 'capped-labels':
+        return 'max-w-12 sm:max-w-[96px] truncate';
+    }
+  });
 
   /** The loading chip fills whatever the rail reserves, so the placeholder is the rail, not a pill in it. */
   protected readonly railPlaceholderClass = computed(() =>

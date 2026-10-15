@@ -26,8 +26,8 @@ export type OwnedVenuesResult =
  * has no parameters and nothing to authorize client-side.
  *
  * Cached for the session: the sign-in page's landing decision, the `/operator` picker and the
- * console's venue switcher all ask for the same list. {@link reset} clears it — call it on sign-out, or
- * the next operator to sign in on this device would be shown the previous one's venues.
+ * console's venue switcher all ask for the same list. `OperatorAuth` {@link reset}s it on sign-out and session
+ * loss, or the next operator to sign in on this device would be shown the previous one's venues.
  */
 @Service()
 export class OwnedVenues {
@@ -44,7 +44,7 @@ export class OwnedVenues {
     return this.inFlight;
   }
 
-  /** Drop the cache so the next {@link load} refetches (sign-out, or after creating a venue). */
+  /** Drop the cache so the next {@link load} refetches (the session ending, or after creating a venue). */
   reset(): void {
     this.inFlight = undefined;
     this.loaded.set(undefined);
