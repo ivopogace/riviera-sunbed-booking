@@ -148,17 +148,6 @@ async function mockEditor(
     serverSetVersion += 1;
     return route.fulfill({ status: 204, body: '' });
   });
-  // The venue map (editor seed + shell header/stats) — carries the current setVersion; GET only, kept
-  // below the PUT route.
-  await page.route(/\/api\/venues\/1(\?.*)?$/, async (route) => {
-    if (route.request().method() !== 'GET') {
-      return route.fallback();
-    }
-    await mapGate;
-    return route.fulfill({
-      json: { ...VENUE_MAP, sets: seededSets, setVersion: serverSetVersion },
-    });
-  });
   // The per-row rename: enforces the same setVersion token the bulk PUT does, and bumps it on success.
   await page.route(/\/api\/venues\/1\/rows\/[^/]+\/name$/, (route) => {
     renames.push(route.request());
@@ -998,7 +987,7 @@ test('a moves-only preview commits: Save and move POSTs the token, the receipt r
   await expect(dialog).toBeHidden();
   expect(previews).toHaveLength(1);
   expect(puts).toHaveLength(0);
-  expect(commits).toHaveLength(1);
+  await expect.poll(() => commits).toHaveLength(1);
   const body = commits[0].postDataJSON() as {
     sets: { gridX: number; gridY: number }[];
     expectedVersion: number;
@@ -1065,7 +1054,7 @@ test('a blocked picture commits: the kept set stays on the map and the receipt l
   await save.click();
   await expect(page.getByTestId('layout-remodel-receipt')).toBeVisible();
   expect(puts).toHaveLength(0);
-  expect(commits).toHaveLength(1);
+  await expect.poll(() => commits).toHaveLength(1);
   expect((commits[0].postDataJSON() as { previewToken: string }).previewToken).toBe('v1.kept');
   await expect(page.getByTestId('layout-remodel-receipt-title')).toHaveText(
     'Remodel saved · receipt #44',
@@ -1144,6 +1133,7 @@ test('a booking with nothing left to refund is ended without a typed confirmatio
   await expectNoSeriousAxeViolations(page, 'layout editor, remodel with nothing left');
   await save.click();
 
+  await expect.poll(() => commits).toHaveLength(1);
   const body = commits[0].postDataJSON() as { refundCount: number; refundReason: string };
   expect(body.refundCount).toBe(0);
   expect(body.refundReason).toBe('');
@@ -1212,6 +1202,7 @@ test('a picture with refunds commits once the count and reason are typed, and th
   await expect(save).toBeEnabled();
   await save.click();
 
+  await expect.poll(() => commits).toHaveLength(1);
   const body = commits[0].postDataJSON() as { refundCount: number; refundReason: string };
   expect(body.refundCount).toBe(1);
   expect(body.refundReason).toBe('Re-laying row B for the season');
@@ -1273,7 +1264,7 @@ test('a commit that finds the bookings changed re-renders the fresh picture stal
   await expect(page.getByTestId('layout-remodel-preview').getByRole('button')).toHaveCount(1);
   await expect(page.getByTestId('layout-remodel-back')).toBeFocused();
   await expect(page.getByTestId('layout-error')).toHaveCount(0);
-  expect(tokens).toEqual(['v1.moves']);
+  await expect.poll(() => tokens).toEqual(['v1.moves']);
   expect(puts).toHaveLength(0);
 
   // Back, then a second Save: the new preview is moves-only again but carries the fresh token.
@@ -1286,7 +1277,7 @@ test('a commit that finds the bookings changed re-renders the fresh picture stal
   await expect(page.getByTestId('layout-remodel-stale')).toBeEmpty();
   await page.getByTestId('layout-remodel-commit').click();
   await expect(page.getByTestId('layout-remodel-receipt')).toBeVisible();
-  expect(tokens).toEqual(['v1.moves', 'v1.fresh']);
+  await expect.poll(() => tokens).toEqual(['v1.moves', 'v1.fresh']);
 });
 
 test('a stale-tab save is rejected 409, keeps the painted grid, and Reload recovers (#226, + axe)', async ({

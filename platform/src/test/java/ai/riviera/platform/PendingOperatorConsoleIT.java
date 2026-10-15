@@ -28,10 +28,10 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 /**
  * The PENDING-operator console proof: a freshly-registered operator signs in
  * <em>before approval</em>, creates a venue it owns (creator-owns-on-create), and every console
- * surface answers for it — while the venue stays invisible to tourists until an admin approves the
- * account, with no operator action in between. Runs the real edge (register → session login →
- * venue-scoped reads) over Testcontainers Postgres, so the may-authenticate set, the may-operate
- * ownership resolution, and the ACTIVE-only tourist fence are all exercised together.
+ * surface answers for it, the owner's beach-map read included (#1531) — while the venue stays invisible
+ * to tourists until an admin approves the account, with no operator action in between. Runs the real
+ * edge (register → session login → venue-scoped reads) over Testcontainers Postgres, so the
+ * may-authenticate set, the may-operate ownership resolution, and the ACTIVE-only tourist fence meet.
  */
 @EnabledIfDockerAvailable
 @Import(TestcontainersConfiguration.class)
@@ -80,6 +80,18 @@ class PendingOperatorConsoleIT {
 				.andExpect(status().isOk());
 		mvc.perform(get("/api/venues/{v}/booking-requests", venueId).cookie(session))
 				.andExpect(status().isOk());
+		// The owner's map read is unfenced (OwnerVenueMap): the hidden venue's layout still answers its owner.
+		mvc.perform(get("/api/venues/{v}/beach-map", venueId).cookie(session))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.map.id").value(venueId))
+				.andExpect(jsonPath("$.map.sets.length()").value(1))
+				.andExpect(jsonPath("$.map.setVersion").isNumber())
+				.andExpect(jsonPath("$.locks.length()").value(0));
+		// ...and only its owner: another operator is 403 before any existence probe (invariant #13).
+		Cookie admin = SessionLoginSupport.operatorSession(mvc, BOOTSTRAP_ADMIN, BOOTSTRAP_PASSWORD);
+		mvc.perform(get("/api/venues/{v}/beach-map", venueId).cookie(admin))
+				.andExpect(status().isForbidden())
+				.andExpect(jsonPath("$.code").value("NOT_VENUE_OWNER"));
 	}
 
 	@Test
@@ -92,11 +104,13 @@ class PendingOperatorConsoleIT {
 		mvc.perform(get("/api/venues"))
 				.andExpect(status().isOk())
 				.andExpect(jsonPath("$[?(@.id == %d)]".formatted(venueId)).doesNotExist());
+		mvc.perform(get("/api/venues/{v}/beach-map", venueId).cookie(session)).andExpect(status().isOk());
 
 		approve();
 
-		// Approval alone flips the venue live — no operator action between.
+		// Approval alone flips the venue live — no operator action between; the owner's read is unchanged.
 		mvc.perform(get("/api/venues/{v}", venueId)).andExpect(status().isOk());
+		mvc.perform(get("/api/venues/{v}/beach-map", venueId).cookie(session)).andExpect(status().isOk());
 		mvc.perform(get("/api/venues"))
 				.andExpect(status().isOk())
 				.andExpect(jsonPath("$[?(@.id == %d)]".formatted(venueId)).exists());
@@ -115,6 +129,7 @@ class PendingOperatorConsoleIT {
 		return SessionLoginSupport.operatorSession(mvc, USERNAME, PASSWORD);
 	}
 
+	/** Create the venue and lay out one set, so the owner's map read answers a real layout. */
 	private long createVenue(Cookie session) throws Exception {
 		MvcResult created = mvc.perform(post("/api/venues").cookie(session).with(csrf())
 						.contentType(MediaType.APPLICATION_JSON)
@@ -123,7 +138,14 @@ class PendingOperatorConsoleIT {
 								 "bookingMode": "INSTANT", "payoutCurrency": "EUR"}""".formatted(VENUE_NAME)))
 				.andExpect(status().isCreated())
 				.andReturn();
-		return ((Number) JsonPath.read(created.getResponse().getContentAsString(), "$.id")).longValue();
+		long venueId = ((Number) JsonPath.read(created.getResponse().getContentAsString(), "$.id")).longValue();
+		mvc.perform(post("/api/venues/{v}/sets", venueId).cookie(session).with(csrf())
+						.contentType(MediaType.APPLICATION_JSON)
+						.content("""
+								{"rowLabel":"A","positionNo":1,"tier":"STANDARD","pool":"ONLINE",
+								 "price":{"minorUnits":3000,"currency":"EUR"},"gridX":1,"gridY":1}"""))
+				.andExpect(status().isCreated());
+		return venueId;
 	}
 
 	private void approve() throws Exception {

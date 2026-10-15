@@ -38,7 +38,7 @@ import { MapSkeletonGrid } from '../shared/map-skeleton-grid';
 import { LockIcon } from '../shared/lock-icon';
 import { rowName } from '../shared/set-label';
 import { SetView } from '../shared/venue-views';
-import { ConsoleVenueMap } from './console-venue-map';
+import { ConsoleVenueMap } from '../core/console-venue-map';
 import { lockDescription, lockReason } from './lock-reason';
 import {
   BlockedSet,

@@ -24,11 +24,10 @@ import {
   MoneyView,
 } from '../shared/money';
 import { parentVenueId } from '../shared/parent-venue-id';
-import { todayBookingDate } from '../shared/booking-date';
 import { rowName, tierLabel } from '../shared/set-label';
 import { SetView } from '../shared/venue-views';
 import { TouchTarget } from '../shared/touch-target';
-import { ConsoleVenueMap } from './console-venue-map';
+import { ConsoleVenueMap } from '../core/console-venue-map';
 import { RepriceErrorCode } from './operator-console.model';
 import { OperatorConsoleService, repriceErrorOf } from './operator-console.service';
 import { StaleWriteBanner } from './stale-write-banner';
@@ -306,7 +305,7 @@ export class PricingTab {
 
   private load(venueId: number): void {
     const epoch = this.epoch;
-    this.venueMap.load(venueId, todayBookingDate(new Date())).subscribe({
+    this.venueMap.load(venueId).subscribe({
       next: (venue) => {
         if (this.epoch !== epoch) {
           return; // a venue switch superseded this load

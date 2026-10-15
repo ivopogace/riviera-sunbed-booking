@@ -7,7 +7,7 @@ import { vi } from 'vitest';
 import { ConsoleSection, ConsoleShell } from './console-shell';
 import { OperatorAuth } from './core/operator-auth';
 import { OwnedVenue, OwnedVenues, OwnedVenuesResult } from './core/owned-venues';
-import { ConsoleVenueMap } from './operator/console-venue-map';
+import { ConsoleVenueMap } from './core/console-venue-map';
 import { PendingRequestsStore } from './operator/pending-requests-store';
 import { VenueMapView } from './shared/venue-views';
 
@@ -59,13 +59,12 @@ const owned = {
 
 /** The coalesced venue snapshot: a controllable subject per call, so a slow read can be sequenced. */
 const venueMapStore = {
-  reads: [] as { venueId: number; date: string; subject: Subject<VenueMapView> }[],
-  load: vi.fn((venueId: number, date: string) => {
+  reads: [] as { venueId: number; subject: Subject<VenueMapView> }[],
+  load: vi.fn((venueId: number) => {
     const subject = new Subject<VenueMapView>();
-    venueMapStore.reads.push({ venueId, date, subject });
+    venueMapStore.reads.push({ venueId, subject });
     return subject.asObservable();
   }),
-  reset: vi.fn(),
 };
 
 @Component({
@@ -92,7 +91,6 @@ describe('ConsoleShell', () => {
     owned.load.mockClear();
     venueMapStore.reads = [];
     venueMapStore.load.mockClear();
-    venueMapStore.reset.mockClear();
     await TestBed.configureTestingModule({
       providers: [
         provideRouter([
@@ -224,7 +222,7 @@ describe('ConsoleShell', () => {
   });
 
   it('reads the venue name through the shared snapshot, Your venue until it lands', () => {
-    expect(venueMapStore.load).toHaveBeenCalledWith(1, '2026-06-15');
+    expect(venueMapStore.load).toHaveBeenCalledWith(1);
     expect(byId('oc-venue-title')!.textContent).toContain('Your venue');
 
     answerVenue('Miramar Beach Club');
@@ -235,7 +233,7 @@ describe('ConsoleShell', () => {
     answerVenue('Miramar Beach Club');
     await setSection('venue', 2);
     expect(byId('oc-venue-title')!.textContent).toContain('Your venue');
-    expect(venueMapStore.load).toHaveBeenLastCalledWith(2, '2026-06-15');
+    expect(venueMapStore.load).toHaveBeenLastCalledWith(2);
 
     // Venue 1's read lands late: it must not overwrite venue 2's row.
     venueMapStore.reads[0].subject.next(venueMap(1, 'Miramar Beach Club'));
@@ -776,7 +774,7 @@ describe('ConsoleShell', () => {
     }
   });
 
-  it('Sign out parks focus on main, signs out, drops the console stores and leaves for the operator sign-in', async () => {
+  it('Sign out parks focus on main, signs out, drops the pending-requests store and leaves for the operator sign-in', async () => {
     const navigate = vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
     TestBed.inject(PendingRequestsStore).seed(3);
     byId('oc-account')!.click();
@@ -790,7 +788,6 @@ describe('ConsoleShell', () => {
     await fixture.whenStable();
 
     expect(operatorAuth.signOut).toHaveBeenCalledTimes(1);
-    expect(venueMapStore.reset).toHaveBeenCalledTimes(1);
     expect(TestBed.inject(PendingRequestsStore).count()).toBe(0);
     expect(navigate).toHaveBeenCalledWith(['/account/sign-in'], {
       queryParams: { audience: 'operator' },

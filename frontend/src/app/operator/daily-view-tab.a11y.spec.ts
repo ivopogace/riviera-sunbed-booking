@@ -73,14 +73,8 @@ describe('DailyViewTab a11y (#175)', () => {
       .expectOne((r) => r.method === 'GET' && r.url.includes('/api/venues/1/availability'))
       .flush(states);
     http
-      .expectOne(
-        (r) =>
-          r.method === 'GET' &&
-          r.url.includes('/api/venues/1') &&
-          !r.url.includes('/bookings') &&
-          !r.url.includes('/availability'),
-      )
-      .flush({ id: 1, name: 'V', beach: 'KSAMIL', region: 'SARANDE', sets });
+      .expectOne((r) => r.method === 'GET' && r.url.includes('/api/venues/1/beach-map'))
+      .flush({ map: { id: 1, name: 'V', beach: 'KSAMIL', region: 'SARANDE', sets }, locks: [] });
     fixture.detectChanges();
   }
 

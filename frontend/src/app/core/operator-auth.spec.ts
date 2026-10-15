@@ -9,9 +9,11 @@ import {
   operatorPasswordChangeMessage,
   operatorRegisterMessage,
 } from './operator-auth';
+import { ConsoleVenueMap } from './console-venue-map';
 import { OwnedVenues } from './owned-venues';
 
 const AUTH_API = `${environment.apiBaseUrl}/api/auth`;
+const MAP_URL = `${environment.apiBaseUrl}/api/venues/7/beach-map`;
 const PROBLEM_401 = {
   status: 401,
   statusText: 'Unauthorized',
@@ -162,6 +164,49 @@ describe('OperatorAuth (session-aware, issue #109)', () => {
     auth.sessionLost();
 
     expect(auth.signedIn()).toBe(false); // httpMock.verify() proves no request went out
+  });
+
+  /** Prime the console's venue-map snapshot for venue 7 — the cache `venueAccessGuard` admits from. */
+  function primeSnapshot(): ConsoleVenueMap {
+    const venueMap = TestBed.inject(ConsoleVenueMap);
+    venueMap.load(7).subscribe();
+    httpMock.expectOne(MAP_URL).flush({ map: { id: 7, name: 'Theirs', sets: [] }, locks: [] });
+    return venueMap;
+  }
+
+  /** The snapshot was dropped: the next ask goes back to the server instead of replaying. */
+  function expectSnapshotRefetch(venueMap: ConsoleVenueMap): void {
+    venueMap.load(7).subscribe();
+    httpMock.expectOne(MAP_URL).flush({ map: { id: 7, name: 'Fresh', sets: [] }, locks: [] });
+  }
+
+  it('signOut drops the venue-map snapshot — the next operator never replays this one’s venue (#1526)', async () => {
+    const auth = serviceWithRestore({ username: 'operator' });
+    await Promise.resolve();
+    const venueMap = primeSnapshot();
+
+    const done = auth.signOut();
+    httpMock.expectOne(`${AUTH_API}/logout`).flush(null, { status: 204, statusText: 'No Content' });
+    await done;
+
+    expectSnapshotRefetch(venueMap);
+  });
+
+  it('sessionLost drops the venue-map snapshot and the owned-venues list — a 401 ends their session too (#1526)', async () => {
+    const auth = serviceWithRestore({ username: 'operator' });
+    await Promise.resolve();
+    const venueMap = primeSnapshot();
+    const owned = TestBed.inject(OwnedVenues);
+    const first = owned.load();
+    httpMock.expectOne(`${environment.apiBaseUrl}/api/venues/mine`).flush([]);
+    await first;
+
+    auth.sessionLost();
+
+    expectSnapshotRefetch(venueMap);
+    const second = owned.load();
+    httpMock.expectOne(`${environment.apiBaseUrl}/api/venues/mine`).flush([]);
+    await second;
   });
 
   describe('register (self-registration, S6 #115)', () => {

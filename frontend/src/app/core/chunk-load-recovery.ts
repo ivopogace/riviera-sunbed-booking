@@ -2,7 +2,7 @@ import { DestroyRef, Service, inject, signal } from '@angular/core';
 import { NavigationError, RedirectCommand, Router } from '@angular/router';
 
 import { readSessionJson, writeSessionJson } from '../shared/safe-storage';
-import { PageReload } from './page-reload';
+import { PageNavigation } from './page-navigation';
 
 /** Where a failed chunk load lands; `app.routes.ts` registers the card at this path, eagerly. */
 export const PAGE_LOAD_FAILED_PATH = 'page-load-failed';
@@ -53,7 +53,7 @@ function pathOf(url: string): string {
 @Service()
 export class ChunkLoadRecovery {
   private readonly router = inject(Router);
-  private readonly reload = inject(PageReload);
+  private readonly navigation = inject(PageNavigation);
   private failedUrl: string | undefined;
 
   /** True from the moment a reload was asked for until a fresh load replaces the document: the card stays neutral. */
@@ -63,7 +63,7 @@ export class ChunkLoadRecovery {
     // A document that asked for a reload and comes back from the back/forward cache is stale: load it afresh.
     const onPageShow = (event: PageTransitionEvent) => {
       if (event.persisted && this.reloading()) {
-        this.reload.to(window.location.href);
+        this.navigation.reload(window.location.href);
       }
     };
     window.addEventListener('pageshow', onPageShow);
@@ -99,7 +99,7 @@ export class ChunkLoadRecovery {
 
   private reloadTo(url: string): void {
     this.reloading.set(true);
-    this.reload.to(url);
+    this.navigation.reload(url);
   }
 
   private reloadedRecently(url: string): boolean {
