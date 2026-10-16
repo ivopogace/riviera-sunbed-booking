@@ -11,7 +11,7 @@ import { routes } from './app.routes';
 import { CustomerAuth } from './core/customer-auth';
 import { OperatorAuth } from './core/operator-auth';
 import { OwnedVenue, OwnedVenues, OwnedVenuesResult } from './core/owned-venues';
-import { ConsoleVenueMap } from './operator/console-venue-map';
+import { ConsoleVenueMap } from './core/console-venue-map';
 import { SessionAuth } from './core/session-auth';
 import { SignOutNotice } from './core/sign-out-notice';
 import { ConsoleTheme } from './core/console-theme';

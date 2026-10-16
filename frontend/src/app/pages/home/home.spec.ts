@@ -1142,6 +1142,72 @@ describe('Home (the riviera map sheet — what `/` renders)', () => {
     expect(text(outcome)).toBe('Dhërmi: 1 venue');
   });
 
+  /**
+   * A venue with no beach map yet is listed (#717) and counted as a venue, but it has nothing to
+   * sell: it leaves N and stays in M (#1530). Only Sarandë venues, so the sheet opens on them.
+   */
+  describe('the selling line (#1530)', () => {
+    function sarande(emptyCove: Partial<VenueSummary>): VenueSummary[] {
+      const [miramar] = venues();
+      return [
+        { ...miramar, salesOpen: true, location: { latitude: 39.7712, longitude: 20.0021 } },
+        {
+          ...miramar,
+          id: 3,
+          name: 'Empty Cove',
+          fromPrice: null,
+          availability: { free: 0, total: 0 },
+          salesOpen: true,
+          ...emptyCove,
+        },
+      ];
+    }
+
+    async function landed(list: VenueSummary[]): Promise<ComponentFixture<Home>> {
+      const fixture = render({});
+      httpMock.expectOne((r) => r.url === `${environment.apiBaseUrl}/api/venues`).flush(list);
+      await settle(fixture);
+      await whenSheetOpened(fixture);
+      return fixture;
+    }
+
+    it('counts a venue with no sets as listed, not selling: it leaves N, stays in M and in the picker’s count', async () => {
+      const fixture = await landed(sarande({}));
+
+      expect(cardNames(fixture)).toEqual(['Miramar Beach Club', 'Empty Cove']);
+      expect(text(byTestId(fixture, 'head-subtitle'))).toBe('1 of 2 selling today');
+      expect(text(byTestId(fixture, 'sheet-outcome'))).toBe('Sarandë: 1 of 2 selling today');
+      expect(groupHeads(fixture)).toEqual(['Ksamil 2 venues']);
+
+      byTestId(fixture, 'head-place')!.click();
+      await settle(fixture);
+      const rows = [...el(fixture).querySelectorAll<HTMLElement>('[data-testid="picker-row"]')];
+      expect(rows.map(text)).toEqual(['Sarandë 2 venues from €25', 'Ksamil 2 venues from €25']);
+    });
+
+    it('counts a no-set venue whose sales have also closed as one non-seller, never subtracted twice', async () => {
+      const fixture = await landed(sarande({ salesOpen: false }));
+
+      expect(text(byTestId(fixture, 'head-subtitle'))).toBe('1 of 2 selling today');
+    });
+
+    it('counts a day other than today by venues alone, no-set venue included', async () => {
+      const fixture = await landed(sarande({}));
+      byTestId(fixture, 'head-day')!.click();
+      await settle(fixture);
+      el(fixture)
+        .querySelectorAll<HTMLButtonElement>('[role="group"][aria-label="Day"] button')[1]
+        .click();
+      await settle(fixture);
+      httpMock
+        .expectOne((r) => r.url === `${environment.apiBaseUrl}/api/venues`)
+        .flush(sarande({}));
+      await settle(fixture);
+
+      expect(text(byTestId(fixture, 'head-subtitle'))).toBe('2 venues');
+    });
+  });
+
   it('Escape clears the lit row and closes an open rail', async () => {
     const fixture = await sheetPage();
     el(fixture).querySelector<HTMLButtonElement>('[data-pin="2"]')!.click();
@@ -1875,7 +1941,7 @@ describe('Home (a stay)', () => {
     expect(card(oneDay, 'Aurora Bay').getAttribute('href')).toBe('/venues/11?date=2027-07-04');
   });
 
-  it('opens the stay picker from the head, re-reads the coast for the picked days, and hands focus back', async () => {
+  it('opens the stay picker from the head in "Several days", re-reads the coast for the picked days, and hands focus back', async () => {
     const fixture = render({ date: '2027-07-04' });
     listRequest().flush(stayVenues());
     fixture.detectChanges();
@@ -1890,9 +1956,17 @@ describe('Home (a stay)', () => {
     const picker = el(fixture).querySelector<HTMLElement>('[data-testid="availability-calendar"]')!;
     expect(picker).not.toBeNull();
     httpMock.expectNone((r) => r.url.includes('/availability-calendar'));
+    // The chip named the mode, so the picker opens in it with the stay rule up, nothing selected yet.
+    expect(
+      picker.querySelector('[data-testid="calendar-mode-stay"]')!.getAttribute('aria-checked'),
+    ).toBe('true');
+    expect(text(picker.querySelector('[data-testid="calendar-stay-rule"]'))).toBe(
+      'Stays of any length this season.',
+    );
+    expect(text(picker.querySelector('[data-testid="calendar-stay-hint"]'))).toBe(
+      'Tap your first day, then your last.',
+    );
 
-    picker.querySelector<HTMLButtonElement>('[data-testid="calendar-mode-stay"]')!.click();
-    fixture.detectChanges();
     picker.querySelector<HTMLButtonElement>('button[data-date="2027-07-10"]')!.click();
     fixture.detectChanges();
     picker.querySelector<HTMLButtonElement>('button[data-date="2027-07-12"]')!.click();

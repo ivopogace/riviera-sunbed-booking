@@ -983,6 +983,18 @@ describe('SetEditor (#600)', () => {
     await fixture.whenStable();
   });
 
+  it('the sheet names a set by its stored row label, never "Row Row 2" (#1524)', () => {
+    render([
+      set({ id: 10, rowLabel: 'Row 2', positionNo: 1, gridX: 1, gridY: 1 }),
+      set({ id: 12, rowLabel: 'B', positionNo: 1, gridX: 1, gridY: 2 }),
+    ]);
+
+    selectSet(10);
+    expect(byId('set-selected').textContent?.trim()).toBe('Row 2 · position 1');
+    selectSet(12);
+    expect(byId('set-selected').textContent?.trim()).toBe('Row B · position 1');
+  });
+
   it('a set moved into a named row takes that row’s label (#723)', async () => {
     render([
       set({

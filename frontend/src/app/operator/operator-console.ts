@@ -1,24 +1,25 @@
 import { Component, effect, inject, signal, untracked } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, RouterOutlet } from '@angular/router';
 import { Observable } from 'rxjs';
 
 import { OperatorAuth } from '../core/operator-auth';
-import { todayBookingDate } from '../shared/booking-date';
 import { venueIdParam } from '../shared/parent-venue-id';
 import { VenueMapView } from '../shared/venue-views';
+import { AvailabilityChanges } from './availability-changes';
 import { ConsoleStatsStrip } from './console-stats-strip';
-import { ConsoleVenueMap } from './console-venue-map';
+import { ConsoleVenueMap } from '../core/console-venue-map';
 import { OperatorConsoleService } from './operator-console.service';
 import { PendingApprovalBanner } from './pending-approval-banner';
 import { PendingRequestsStore } from './pending-requests-store';
 
 /**
  * The venue console's page at `/operator/:venueId`: the stats strip, the pending-approval banner
- * and the tab outlet hosting each tab as a child route. Its chrome (venue switcher, tab rail,
- * footer) is `console-shell.ts`'s; this component publishes nothing to it and owns only the
- * per-venue seeding: the shared venue-map snapshot (strip and shell share one request)
- * and the Requests badge count (`PendingRequestsStore`). No sign-in gate or session-restore state:
- * {@code operatorSessionGuard} awaits the restore, so this only renders for a signed-in operator.
+ * and the tab outlet hosting each tab as a child route. Its chrome is `console-shell.ts`'s; this
+ * component publishes nothing to it and owns only the per-venue seeding: the shared venue-map
+ * snapshot ({@code venueAccessGuard} primes it before this activates; replayed here for the strip, re-read when
+ * the Daily view settles a walk-in, {@link AvailabilityChanges}) and the Requests badge count (`PendingRequestsStore`). No sign-in
+ * gate: {@code operatorSessionGuard} awaits the restore, so this only renders signed-in.
  */
 @Component({
   selector: 'app-operator-console',
@@ -31,6 +32,7 @@ export class OperatorConsole {
   private readonly venueMap = inject(ConsoleVenueMap);
   private readonly console = inject(OperatorConsoleService);
   private readonly requests = inject(PendingRequestsStore);
+  private readonly changes = inject(AvailabilityChanges);
   private readonly operator = inject(OperatorAuth);
 
   /** The venue this console manages — reactive to in-place `:venueId` changes: the router
@@ -42,6 +44,9 @@ export class OperatorConsole {
   /** Bumped per venue context: an identity guard — a venueId value check passes again
    *  after an A→B→A switch, so continuations compare this instead. */
   private epoch = 0;
+  /** Bumped per map read: only the latest read may land, so an older, slower answer never
+   *  overwrites a newer map. */
+  private mapRead = 0;
 
   constructor() {
     // Load per session (the async /me restore resolves late) AND per venue param.
@@ -51,6 +56,11 @@ export class OperatorConsole {
         untracked(() => this.load(id));
       }
     });
+    // A settled walk-in moves no pending count, and load() would reset the badge store: the map only.
+    this.changes
+      .todayAt(this.venueId)
+      .pipe(takeUntilDestroyed())
+      .subscribe((change) => this.loadMap(change.venueId));
   }
 
   /**
@@ -66,14 +76,21 @@ export class OperatorConsole {
     // visited, takes authority over this store via `set`; this page only ever seeds it.
     this.requests.reset();
     // Continuations re-check the venue so a superseded venue's reads never land here.
-    this.bestEffort(this.venueMap.load(venueId, todayBookingDate(new Date())), (venue) => {
-      if (this.epoch === epoch) {
-        this.venue.set(venue);
-      }
-    });
+    this.loadMap(venueId);
     this.bestEffort(this.console.pendingRequestCount(venueId), (count) => {
       if (this.epoch === epoch) {
         this.requests.seed(count);
+      }
+    });
+  }
+
+  /** The shared map read behind the strip's free/total: whatever map is shown stands until this
+   *  read lands (a failure keeps it), and only the latest read may land. */
+  private loadMap(venueId: number): void {
+    const read = ++this.mapRead;
+    this.bestEffort(this.venueMap.load(venueId), (venue) => {
+      if (this.mapRead === read) {
+        this.venue.set(venue);
       }
     });
   }

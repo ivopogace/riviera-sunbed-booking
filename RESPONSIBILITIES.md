@@ -204,12 +204,13 @@ close, the maximum stay, the season closure, and the commission rate over time. 
 - **The owner's per-set daily availability read** (`…/availability?date=`; owner-asserted, 403
   before existence): `availability` answers the state tokens (`SetAvailabilityLookup#statesOn`);
   I compose. The public map stays state-agnostic — hold type never reaches a public surface.
-- **The owner's beach-map read** (`…/beach-map`; owner-asserted, 403 before existence; the layout
-  editor's seed): the tourist map, fence included, plus a sparse `locks` list — per pinned set, the
-  span its live bookings hold (`BookingPresence#nearestLiveBookings`: earliest first day to latest
-  last day) and the nearest hold — by the same `LiveClaims` predicate the write guards ask. A lock
-  means *cannot move or remove*, never *cannot repaint*: the editor still edits a locked set's
-  price, tier and pool. Which sets a venue's guests hold never reaches the public map.
+- **The owner's beach-map read** (`…/beach-map`; owner-asserted, 403 before existence; every
+  console map read): the tourist map's shape through `OwnerVenueMap`, **no visibility fence** — a
+  `PENDING` owner lays out and prices the venue tourists cannot see yet (#1531); ownership is the
+  whole fence — plus a sparse `locks` list: per pinned set, the span its live bookings hold
+  (`BookingPresence#nearestLiveBookings`) and the nearest hold, by the same `LiveClaims` predicate
+  the write guards ask. A lock means *cannot move or remove*, never *cannot repaint*: the editor
+  still edits a locked set's price, tier and pool. Which sets guests hold never reaches the public map.
 
 **Not My Job:**
 - Knowing whether a specific set is free on a date → **`availability`**
@@ -1340,9 +1341,31 @@ The SPA rules whose TSDoc points here; structure is `riviera-frontend`'s, stylin
   rarely exists yet at decision time — hence lookup in `earlyRead`, `focus()` in `write`. A swap the
   server drives (the pay page's poll and re-check) passes `onlyIfLost`: focus moves only if it was
   already on `<body>` or the render took its holder, so a control the swap keeps is never robbed.
+- **A lazy chunk that fails to load is answered with one full reload, then a card**
+  (`core/chunk-load-recovery.ts`, the eager `pages/page-load-failed`): a browser memoises a failed
+  module fetch, so an in-app retry of the same `import()` fails without refetching, and the router
+  keeps its own URL in `history.state` whenever the address bar shows another (`browserUrl`), which
+  a load landing on the same entry keeps — so the reload path redirects with `skipLocationChange`
+  and `core/page-navigation.ts`'s `reload` clears the entry's state before navigating. Any other
+  navigation error stays loud: a guard or resolver that throws is a bug, not a page to retry.
+- **The Daily view's phone rail ellipsizes the stored row name at the tourist cap, and shows two
+  tiles per row** (`shared/beach-map-canvas.ts`, the `labels` rail below `sm`): at 390px the gutters,
+  the frame and the price rail leave the rail 23px for a third whole tile, which only the row's grid
+  letter fits — and #724 retired derived letters from the rails beside stored names, because a row
+  renamed to another row's letter sends a guest to the wrong set. So the cap, two tiles and the
+  tourist map's own count are the bar (#1532); from `sm` up the name renders whole, and the tile
+  accessible names carry it on every width. Never "fix" the phone count with letters or a tighter cap.
 - **The venue console lands on the Daily view** (`VENUE_CONSOLE_LANDING_TAB`), what a trading venue
   opens every day; set-up tabs are destinations. A freshly created venue is the exception:
   `operator/venue-create-card.ts` sends it to `beach-map`, as it has no map to run a day on yet.
+- **A venue the owner's read refuses never mounts the console** (`core/venue-access.guard.ts`, third on
+  `/operator/:venueId`): `403 NOT_VENUE_OWNER` and `404 NO_SUCH_VENUE` both land on `/operator/venue-not-found`,
+  the malformed-id page, and nothing says which — the read asserts ownership before existence (invariant #13), so
+  the SPA enumerates no more than the API. A 401, 5xx or network failure activates the console instead: the tabs'
+  retry and session-lost paths answer a read that may succeed next time; bouncing on them turns a blip into a dead end.
+  One array's guards run concurrently, so the gate awaits the restore itself and reads nothing for a malformed id or
+  a signed-out visitor. Its read is the shared snapshot (`core/console-venue-map.ts`; the Daily view and layout editor
+  keep their server-truth read), which `OperatorAuth` drops with the session: a cache that admits must not outlive its principal.
 - **Admin tabs load with plain `HttpClient`, never `httpResource`**: a tab's first read fires from an
   `effect` once the session is confirmed (restore settled, `ROLE_ADMIN` present) and it owns its
   loading line, error card and Retry; `httpResource` fetches eagerly and throws on `value()` in error.

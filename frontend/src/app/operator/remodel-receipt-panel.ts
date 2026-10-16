@@ -2,6 +2,7 @@ import { Component, input, output } from '@angular/core';
 
 import { formatCivilDate } from '../shared/booking-date';
 import { formatDeadline } from '../shared/deadline';
+import { rowName } from '../shared/set-label';
 import { setDistanceText } from '../shared/set-distance';
 import { TouchTarget } from '../shared/touch-target';
 import { formatMoney } from '../shared/money';
@@ -199,5 +200,5 @@ export class RemodelReceiptPanel {
 }
 
 function spotLabel(spot: RemodelSpot): string {
-  return `Row ${spot.rowLabel} · position ${spot.positionNo}`;
+  return `${rowName(spot.rowLabel)} · position ${spot.positionNo}`;
 }

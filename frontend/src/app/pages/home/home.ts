@@ -552,7 +552,8 @@ export class Home {
   private readonly isToday = computed(() => this.selectedDate() === this.minDate);
   /**
    * The selling line: `8 of 11 selling today` (invariant #4 as the head's light, from the
-   * server's per-date verdict), or the count on another day.
+   * server's per-date verdict), or the count on another day. A venue with no sets yet is listed
+   * (#717) and counted among the M, but sells nothing, so it is never among the N (#1530).
    */
   protected readonly subtitle = computed(() => {
     const cards = this.focus().cards;
@@ -560,7 +561,7 @@ export class Home {
     if (!this.isToday()) {
       return `${n} ${n === 1 ? 'venue' : 'venues'}`;
     }
-    const selling = cards.filter((card) => !card.salesClosed).length;
+    const selling = cards.filter((card) => !card.salesClosed && card.total > 0).length;
     return `${selling} of ${n} selling today`;
   });
   /** The region's beaches with a venue, in coast order, each with its count. */

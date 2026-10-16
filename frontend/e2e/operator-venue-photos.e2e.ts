@@ -111,22 +111,25 @@ async function mockVenuePhotos(
   );
 
   // Shell reads (header/stats) — kept minimal; this spec exercises only the photo slots.
-  await page.route(/\/api\/venues\/1(\?.*)?$/, (route) =>
+  await page.route(/\/api\/venues\/1\/beach-map$/, (route) =>
     route.fulfill({
       json: {
-        id: 1,
-        name: PROFILE.name,
-        beach: PROFILE.beach,
-        region: PROFILE.region,
-        description: PROFILE.description,
-        ratingTenths: 48,
-        reviewsCount: 12,
-        bookingMode: PROFILE.bookingMode,
-        fromPrice: { minorUnits: 2000, currency: 'EUR' },
-        amenities: ['WIFI'],
-        distanceToWaterM: 20,
-        sets: [],
-        coverPhoto: null,
+        map: {
+          id: 1,
+          name: PROFILE.name,
+          beach: PROFILE.beach,
+          region: PROFILE.region,
+          description: PROFILE.description,
+          ratingTenths: 48,
+          reviewsCount: 12,
+          bookingMode: PROFILE.bookingMode,
+          fromPrice: { minorUnits: 2000, currency: 'EUR' },
+          amenities: ['WIFI'],
+          distanceToWaterM: 20,
+          sets: [],
+          coverPhoto: null,
+        },
+        locks: [],
       },
     }),
   );

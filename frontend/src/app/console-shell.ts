@@ -20,12 +20,11 @@ import { filter } from 'rxjs';
 import { ADMIN_CONSOLE_TABS, AdminConsoleTabs } from './admin/admin-console-tabs';
 import { OperatorAuth } from './core/operator-auth';
 import { OwnedVenues } from './core/owned-venues';
-import { ConsoleVenueMap } from './operator/console-venue-map';
+import { ConsoleVenueMap } from './core/console-venue-map';
 import { OperatorAccountChip } from './operator/operator-account-chip';
 import { OperatorVenueSwitch } from './operator/operator-venue-switch';
 import { PendingRequestsStore } from './operator/pending-requests-store';
 import { beachLabel } from './shared/beaches';
-import { todayBookingDate } from './shared/booking-date';
 import { ConsoleDestination, VENUE_CONSOLE_LANDING_TAB } from './shared/console-destination';
 import {
   AdminGlyph,
@@ -200,7 +199,7 @@ const CLS = {
  * `fixed` dialog to the row. Admin rail and palette render only past the admin gate.
  * Below `sm` the phone rail replaces the text rail; a current page under More lends that slot its
  * glyph, label and `aria-current`. Sign-out parks focus on `<main>` before the chip unmounts
- * (WCAG 2.4.3) and resets the console stores. The `contents` host keeps sticky's containing block.
+ * (WCAG 2.4.3) and resets the pending-requests store. The `contents` host keeps sticky's containing block.
  */
 @Component({
   selector: 'app-console-shell',
@@ -663,8 +662,7 @@ export class ConsoleShell {
   /** Sign out, then leave for the operator sign-in — see the class doc. */
   protected async onSignOut(): Promise<void> {
     this.document.querySelector<HTMLElement>('main')?.focus();
-    await this.operator.signOut();
-    this.venueMap.reset();
+    await this.operator.signOut(); // drops the venue-map snapshot with the session
     this.requests.reset();
     await this.router.navigate(['/account/sign-in'], { queryParams: { audience: 'operator' } });
   }
@@ -704,7 +702,7 @@ export class ConsoleShell {
     if (venueId === undefined) {
       return;
     }
-    this.venueMap.load(venueId, todayBookingDate(new Date())).subscribe({
+    this.venueMap.load(venueId).subscribe({
       next: (venue) => {
         if (this.epoch === epoch) {
           this.venueName.set(venue.name);

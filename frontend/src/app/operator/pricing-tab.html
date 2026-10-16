@@ -3,7 +3,7 @@
   <output aria-live="polite" class="sr-only" data-testid="pricing-saved-announce">{{
     savedRowMessage()
   }}</output>
-  <section appCardGlass class="rounded-[24px] px-[22px] py-5">
+  <section appCardGlass class="rounded-[24px] px-[22px] py-5" data-testid="pricing-card">
     <h2 class="text-[16px] font-bold text-riv-card-ink">Row pricing</h2>
     <p class="mt-1 mb-3.5 text-[12.5px] leading-[1.5] text-riv-card-ink-soft">
       Full-day price per set (2 loungers + umbrella), charged in EUR. Applies to every set in the
@@ -17,16 +17,19 @@
           data-testid="pricing-row"
           [attr.data-row]="row.label"
         >
-          <span
-            class="inline-flex h-[26px] w-[26px] flex-shrink-0 items-center justify-center rounded-[8px] bg-riv-chip-bg text-[12px] font-bold text-riv-card-ink"
-            >{{ row.label }}</span
-          >
-          <span class="flex-1 text-[13px] text-riv-card-ink-soft"
-            >{{ row.desc }}
-            @if (row.mixed) {
-              <strong class="text-riv-card-ink"> · mixed prices</strong>
-            }
-          </span>
+          <div class="flex min-w-0 flex-1 flex-wrap items-center gap-x-3 gap-y-1">
+            <span
+              class="inline-flex min-h-[26px] min-w-[26px] wrap-anywhere items-center justify-center rounded-[8px] bg-riv-chip-bg px-2 text-[12px] font-bold text-riv-card-ink"
+              data-testid="pricing-row-label"
+              >{{ row.label }}</span
+            >
+            <span class="flex-auto text-[13px] text-riv-card-ink-soft"
+              >{{ row.desc }}
+              @if (row.mixed) {
+                <strong class="text-riv-card-ink"> · mixed prices</strong>
+              }
+            </span>
+          </div>
           <div class="flex items-center gap-1.5">
             <span class="text-[14px] text-riv-card-ink-soft" aria-hidden="true">€</span>
             <input
@@ -38,7 +41,7 @@
               [attr.placeholder]="row.mixed ? 'Set one price' : null"
               (change)="onPriceChange(row, $any($event.target))"
               [attr.data-testid]="'pricing-input-' + row.label"
-              [attr.aria-label]="'Full-day price for row ' + row.label + ', in euros'"
+              [attr.aria-label]="'Full-day price for ' + rowName(row.label) + ', in euros'"
               appTouchTarget
               class="w-[88px] rounded-[11px] border border-riv-card-border bg-riv-console-inset/60 px-2.5 py-2 text-right text-[16px] font-semibold text-riv-card-ink read-only:opacity-60"
               #priceControl

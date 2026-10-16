@@ -27,20 +27,24 @@ async function mockNewVenueConsole(page: import('@playwright/test').Page): Promi
       ? route.fulfill({ status: 201, json: { id: NEW_VENUE_ID } })
       : route.fallback(),
   );
-  await page.route(new RegExp(`/api/venues/${NEW_VENUE_ID}(\\?.*)?$`), (route) =>
+  // The owner's map read, the only map read a console makes (#1531): the tourist read stays unmocked.
+  await page.route(new RegExp(`/api/venues/${NEW_VENUE_ID}/beach-map$`), (route) =>
     route.fulfill({
       json: {
-        id: NEW_VENUE_ID,
-        name: 'Sunset Bar',
-        beach: 'KSAMIL',
-        region: 'SARANDE',
-        description: 'Loungers on the shore.',
-        ratingTenths: 0,
-        reviewsCount: 0,
-        bookingMode: 'INSTANT',
-        fromPrice: null,
-        sets: [],
-        setVersion: 0,
+        map: {
+          id: NEW_VENUE_ID,
+          name: 'Sunset Bar',
+          beach: 'KSAMIL',
+          region: 'SARANDE',
+          description: 'Loungers on the shore.',
+          ratingTenths: 0,
+          reviewsCount: 0,
+          bookingMode: 'INSTANT',
+          fromPrice: null,
+          sets: [],
+          setVersion: 0,
+        },
+        locks: [],
       },
     }),
   );

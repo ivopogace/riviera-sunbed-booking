@@ -10,16 +10,15 @@ import org.springframework.transaction.annotation.Transactional;
 import ai.riviera.platform.operator.api.VenueOwnership;
 import ai.riviera.platform.operator.vocabulary.OperatorId;
 import ai.riviera.platform.operator.vocabulary.VenueRef;
-import ai.riviera.platform.venue.api.VenueCatalog;
 import ai.riviera.platform.venue.vocabulary.SetId;
 import ai.riviera.platform.venue.vocabulary.SetView;
 import ai.riviera.platform.venue.vocabulary.StaySpan;
 import ai.riviera.platform.venue.vocabulary.VenueId;
 
 /**
- * Serves {@link ViewBeachMap}: assert ownership, compose the map through this module's own
- * {@link VenueCatalog} (the tourist read, fence included), then ask {@link LiveClaims} which of
- * the map's sets are pinned. Package-private behind its port (invariant #11).
+ * Serves {@link ViewBeachMap}: assert ownership, compose the map through {@link OwnerVenueMap}
+ * (the tourist shape, no visibility fence — ownership is the whole fence), then ask
+ * {@link LiveClaims} which of the map's sets are pinned. Package-private behind its port (#11).
  *
  * <p>Ownership asserts <strong>first</strong> (invariant #13, BOLA): a non-owner is
  * {@code NotVenueOwnerException} → 403 before any existence probe, so the read discloses nothing
@@ -29,12 +28,12 @@ import ai.riviera.platform.venue.vocabulary.VenueId;
 class BeachMapReadService implements ViewBeachMap {
 
 	private final VenueOwnership ownership;
-	private final VenueCatalog catalog;
+	private final OwnerVenueMap ownerMap;
 	private final LiveClaims claims;
 
-	BeachMapReadService(VenueOwnership ownership, VenueCatalog catalog, LiveClaims claims) {
+	BeachMapReadService(VenueOwnership ownership, OwnerVenueMap ownerMap, LiveClaims claims) {
 		this.ownership = ownership;
-		this.catalog = catalog;
+		this.ownerMap = ownerMap;
 		this.claims = claims;
 	}
 
@@ -43,7 +42,7 @@ class BeachMapReadService implements ViewBeachMap {
 	public Optional<OperatorBeachMap> beachMapFor(OperatorId operator, VenueId venueId) {
 		// Ownership first — 403 outranks 404, so a non-owner never learns whether the venue exists.
 		ownership.assertOwns(operator, new VenueRef(venueId.value()));
-		return catalog.findVenueMap(venueId, StaySpan.oneDay(claims.today())).map(map -> {
+		return ownerMap.mapFor(venueId, StaySpan.oneDay(claims.today())).map(map -> {
 			List<SetId> setIds = map.sets().stream().map(SetView::id).map(SetId::new).toList();
 			List<SetLock> locks = claims.locksOn(setIds).values().stream()
 					.sorted(Comparator.comparingLong(lock -> lock.setId().value()))
