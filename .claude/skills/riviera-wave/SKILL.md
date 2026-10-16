@@ -47,7 +47,7 @@ authorization) travels in the child prompt, since nothing else sets it.
 - Schedule with `send_later`, never `CronCreate`: a cron job lives in the container's memory and
   dies when the idle container is reclaimed. Each check-in re-arms the next link first; an hourly
   `send_later` safety net re-arms the chain if a link went missing.
-- Read a child with `get_session` (`status_bucket`, `task_summary`), then `list_events` with
+- Read a child with `get_session` (`status_bucket`, `post_turn_summary`), then `list_events` with
   `kinds: ["result"]` for its last turn end. An unfiltered page overflows the tool-result limit.
 - When nothing changed, say nothing.
 
