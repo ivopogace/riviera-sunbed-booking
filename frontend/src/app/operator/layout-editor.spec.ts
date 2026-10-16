@@ -10,10 +10,9 @@ import { BehaviorSubject } from 'rxjs';
 import { vi } from 'vitest';
 
 import { expectCellsFillCanvasRow } from '../../testing/beach-map-height';
-import { todayBookingDate } from '../shared/booking-date';
 import { BeachMapCanvas } from '../shared/beach-map-canvas';
 import { SetView } from '../shared/venue-views';
-import { ConsoleVenueMap } from './console-venue-map';
+import { ConsoleVenueMap } from '../core/console-venue-map';
 import { LayoutEditor } from './layout-editor';
 import { RemodelPreview } from './operator-console.model';
 import {
@@ -972,6 +971,46 @@ describe('LayoutEditor (#172)', () => {
     req.flush(null);
   });
 
+  it('keeps the grid letter in cell names, notices and the rename announcement on a named row; only the save button names the stored label (#1524, #723)', async () => {
+    render(
+      [
+        seat(1, 'PREMIUM', 'ONLINE', 1, 1, 'Front row · Sea view'),
+        seat(2, 'STANDARD', 'ONLINE', 1, 2, 'Row 2'),
+      ],
+      3,
+    );
+    useBulkMode();
+
+    // Positional identity beside the grid being painted (#723, #724): the stored name stays in its input.
+    expect(cells()[0].getAttribute('aria-label')).toBe(
+      'Row A position 1, front row, premium, online',
+    );
+    expect(cells()[1].getAttribute('aria-label')).toBe('Row B position 1, standard, online');
+    expect(rowNameInputs().map((i) => i.value)).toEqual(['Front row · Sea view', 'Row 2']);
+
+    byId('layout-tool-gap').click();
+    fixture.detectChanges();
+    cells()[1].click();
+    fixture.detectChanges();
+    expect(byId('layout-last-change').textContent?.trim()).toBe('Row B · position 1 → Gap / aisle');
+
+    // The save button names the row as stored — never "for row Row 2".
+    expect(rowNameSaves()[1].getAttribute('aria-label')).toBe('Save the name for Row 2');
+    setRowName(1, 'Under the pines');
+    rowNameSaves()[1].click();
+    http
+      .expectOne(
+        (r) =>
+          r.method === 'PUT' &&
+          r.url.endsWith(`/api/venues/1/rows/${encodeURIComponent('Row 2')}/name`),
+      )
+      .flush(null);
+    await fixture.whenStable();
+    fixture.detectChanges();
+    expect(byId('layout-row-name-saved-announce').textContent?.trim()).toBe('Row B name saved.');
+    expect(rowNameSaves()[1].getAttribute('aria-label')).toBe('Save the name for Under the pines');
+  });
+
   it('blocks saving duplicate row names with row-name copy, before any PUT (#723)', () => {
     render();
     generate('2', '2');
@@ -1546,10 +1585,10 @@ describe('LayoutEditor (#172)', () => {
     // The PUT retires the sets the shell's warm snapshot describes, so leaving it stales both tabs.
     render();
     const snapshots = TestBed.inject(ConsoleVenueMap);
-    snapshots.load(1, todayBookingDate(new Date())).subscribe();
+    snapshots.load(1).subscribe();
     http
-      .expectOne((r) => r.method === 'GET' && r.url.endsWith('/api/venues/1'))
-      .flush({ id: 1, name: 'V', sets: [], setVersion: 0 });
+      .expectOne((r) => r.method === 'GET' && r.url.endsWith('/api/venues/1/beach-map'))
+      .flush({ map: { id: 1, name: 'V', sets: [], setVersion: 0 }, locks: [] });
 
     generate('1', '1');
     byId('layout-save').click();
@@ -1560,10 +1599,10 @@ describe('LayoutEditor (#172)', () => {
 
     // The snapshot was invalidated, so the next tab to ask goes back to the server for the new layout.
     let refetched: number | undefined;
-    snapshots.load(1, todayBookingDate(new Date())).subscribe((v) => (refetched = v.setVersion));
+    snapshots.load(1).subscribe((v) => (refetched = v.setVersion));
     http
-      .expectOne((r) => r.method === 'GET' && r.url.endsWith('/api/venues/1'))
-      .flush({ id: 1, name: 'V', sets: [], setVersion: 1 });
+      .expectOne((r) => r.method === 'GET' && r.url.endsWith('/api/venues/1/beach-map'))
+      .flush({ map: { id: 1, name: 'V', sets: [], setVersion: 1 }, locks: [] });
 
     expect(refetched).toBe(1);
   });

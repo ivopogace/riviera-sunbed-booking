@@ -1,5 +1,6 @@
 import { SetView } from './venue-views';
 import {
+  rowName,
   setLabel,
   setsById,
   spotLabel,
@@ -34,6 +35,20 @@ describe('set-label', () => {
   describe('spotLabel', () => {
     it("renders the booking surfaces' identity phrase (#724)", () => {
       expect(spotLabel('Front row · Sea view', 1)).toBe('Front row · Sea view · spot 1');
+    });
+  });
+
+  describe('rowName', () => {
+    it('prefixes a bare grid letter, the default label of a new row (#1524)', () => {
+      expect(rowName('A')).toBe('Row A');
+      expect(rowName('Z')).toBe('Row Z');
+    });
+
+    it('leaves a label that already names the row alone, never "Row Row 2" (#1524)', () => {
+      expect(rowName('Row 2')).toBe('Row 2');
+      expect(rowName('Front row · Sea view')).toBe('Front row · Sea view');
+      expect(rowName('a')).toBe('a');
+      expect(rowName('AB')).toBe('AB');
     });
   });
 

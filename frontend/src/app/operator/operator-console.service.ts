@@ -129,9 +129,9 @@ export class OperatorConsoleService {
   }
 
   /**
-   * The owner's beach map with its locked sets — the layout editor's seed read. Owner-asserted
-   * server-side (invariant #13): the map is the public read's shape, the `locks` beside it name the
-   * sets a live claim pins and why, which the public map never carries. A free set has no entry.
+   * The owner's beach map with its locked sets — the layout editor's and the Daily view's read; the shared snapshot
+   * (`core/console-venue-map.ts`) reads the same URL itself. Owner-asserted server-side (invariant #13): the map is
+   * the public read's shape, the `locks` beside it name the sets a live claim pins and why. A free set has no entry.
    */
   beachMap(venueId: number): Observable<OperatorBeachMap> {
     return this.http.get<OperatorBeachMap>(`${this.base}/api/venues/${venueId}/beach-map`);

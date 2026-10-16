@@ -16,9 +16,9 @@ Owns the *where*. Technique: `angular-developer` + the angular-cli MCP (`get_bes
 
 | Folder | Owns | May import from |
 |---|---|---|
-| `core/` | stateful cross-cutting singletons: auth state, interceptors, guards, current principal, theme (`operator-auth.ts`, `api-session.interceptor.ts`, `theme.ts`) | `shared/` only |
+| `core/` | stateful cross-cutting singletons: auth state, interceptors, guards, current principal, theme, the console's shared venue-map snapshot (`operator-auth.ts`, `api-session.interceptor.ts`, `theme.ts`, `console-venue-map.ts` — a guard reads it, so it cannot live in `operator/`) | `shared/` only |
 | `shared/` | pure, stateless utilities and presentational primitives; no `HttpClient`, no app state; includes the API-view vocabulary mirrors (`venue-views.ts`, `money.ts`, `booking-date.ts`, `photo-url.ts`, `amenities.ts`, `booking-status.ts`) | nothing app-internal |
-| `pages/` | top-level routes no feature owns: the Discover home (`pages/home`), the legal pages and the `**` not-found page | `core/`, `shared/` |
+| `pages/` | top-level routes no feature owns: the Discover home (`pages/home`), the legal pages, the `**` not-found page and the `page-load-failed` card | `core/`, `shared/` |
 | feature folders (`booking/`, `venue/`, `operator/`, `auth/`, `admin/`, …) | one domain area: components, models, HTTP service | `core/`, `shared/` — never another feature |
 | `environments/` (sibling of `app/`) | `apiBaseUrl` + public config; any stratum may read it | — |
 
@@ -32,7 +32,6 @@ if `shared/`- or `core/`-directed); shrink this table and the config together:
 
 | Edge | What crosses |
 |---|---|
-| `operator/` → `venue/` (`console-venue-map.ts`, `daily-view-tab.ts`) | `venue.service` |
 | `pages/home` → `venue/` | `venue.service` |
 | `venue/venue-map` → `booking/` | `booking-dialog` (the one component edge) |
 
@@ -50,7 +49,15 @@ user-facing surfaces, `<domain>.model.ts`, `<domain>.service.ts` (`@Service()`, 
 
 - All routes in `app.routes.ts`, every one lazy (`loadComponent`) with a `title`; literal
   segments above `:param` siblings. `app.routes.spec.ts` resolves every lazy target, so a new
-  route needs no per-component deep-link spec for coverage.
+  route needs no per-component deep-link spec for coverage. The one eager route is
+  `page-load-failed` (`pages/page-load-failed`): the answer to a chunk that failed to load must
+  not need a chunk itself.
+- Navigation errors: `provideRouter(routes, withNavigationErrorHandler(chunkLoadErrorHandler))`.
+  `core/chunk-load-recovery.ts` answers a chunk-load failure only — one full reload, unless the
+  tab reloaded for that page within the minute (a one-slot `sessionStorage` stamp), then the
+  card under the target's URL via `RedirectCommand` + `browserUrl` — through
+  `core/page-navigation.ts`'s `reload`; any other navigation error stays loud. Rationale:
+  `RESPONSIBILITIES.md` §Frontend.
 - The operator console (`/operator/:venueId`) and admin console (`/admin`) are nested
   child-route trees, one child per tab; follow that shape. A route with `data.console`
   (`venue` · `admin` · `plain`) wears the root-level `console-shell.ts` (root-level because it
@@ -64,7 +71,11 @@ user-facing surfaces, `<domain>.model.ts`, `<domain>.service.ts` (`@Service()`, 
 - Guards live in `core/`, applied in `app.routes.ts`. Order on `/operator/:venueId` is
   load-bearing: `core/venue-id.guard.ts` first (malformed `:venueId` → `/operator/venue-not-found`),
   then `core/operator-session.guard.ts` (awaits `SessionAuth.whenReady()`; on `/operator`,
-  `/operator/:venueId`, `/operator/venue-not-found`, `/account/operator-password`).
+  `/operator/:venueId`, `/operator/venue-not-found`, `/account/operator-password`), then
+  `core/venue-access.guard.ts` (the owner's beach-map read through the shared snapshot:
+  `403 NOT_VENUE_OWNER` / `404 NO_SUCH_VENUE` → the same not-found page, nothing else bounces).
+  One array's guards run concurrently and the order is priority, so each decides for itself: the
+  access guard awaits the restore and reads nothing for a malformed id or a signed-out visitor.
 
 ## `app.config.ts` (composition root)
 
@@ -73,8 +84,8 @@ token: `StripePaymentGateway` (abstract class) with `StripeJsPaymentGateway` vs
 `FakeStripePaymentGateway`, swapped by a factory reading a `window.__RIVIERA_FAKE_*__` flag
 only the e2e sets — reuse for any dependency **the e2e cannot drive for real**
 (`booking/stripe-payment.gateway.ts`, `operator/qr-scanner.ts`, `shared/map-engine.ts`). When
-the e2e can drive it (`SsoRedirect`, `shared/geolocation.ts`), keep the token + unit-spec fake
-but a plain `useClass` and no flag. Unit specs override the token directly.
+the e2e can drive it (`core/page-navigation.ts`, `shared/geolocation.ts`), keep the token +
+unit-spec fake but a plain provider and no flag. Unit specs override the token directly.
 
 ## Theming (Liquid Glass)
 

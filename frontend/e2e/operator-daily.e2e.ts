@@ -12,8 +12,9 @@ import {
 /**
  * Real-render CI-safe e2e for the Daily view tab. Drives sign-in → open the Daily view tab
  * → see the three tile states (free / booked-online-locked) + the arrivals code chips → tap a free
- * set to mark a walk-in → assert the owner-asserted mark POST and that the tile flips to walk-in
- * marked after the reconcile. API mocked via `page.route` (no backend); axe over the tab.
+ * set to mark a walk-in → assert the owner-asserted mark POST, that the tile flips to walk-in
+ * marked after the reconcile, and that the console's stats strip follows the mark and the release
+ * without a reload (#1525). API mocked via `page.route` (no backend); axe over the tab.
  */
 
 const PRINCIPAL = { username: 'operator', principalType: 'OPERATOR' };
@@ -162,36 +163,43 @@ async function mockDaily(page: Page): Promise<{ patches: import('@playwright/tes
       },
     }),
   );
-  // The venue map GET (sets 2 + 4 online-held); a PATCH here is the kill switch's write → 204.
+  // The kill switch's write (a profile PATCH on the venue path) → 204.
   await page.route(/\/api\/venues\/1(\?.*)?$/, (route) => {
-    if (route.request().method() === 'PATCH') {
-      patches.push(route.request());
-      salesClose = (route.request().postDataJSON() as { salesClose: string }).salesClose;
-      return route.fulfill({ status: 204, body: '' });
+    if (route.request().method() !== 'PATCH') {
+      return route.fallback();
     }
-    return route.fulfill({
-      json: {
-        id: 1,
-        name: 'Miramar Beach Club',
-        beach: 'KSAMIL',
-        region: 'SARANDE',
-        description: 'Loungers on the shore.',
-        ratingTenths: 48,
-        reviewsCount: 12,
-        bookingMode: 'INSTANT',
-        fromPrice: { minorUnits: 3000, currency: 'EUR' },
-        salesOpen: salesClose !== '00:01',
-        sets: [1, 2, 3, 4].map((id) =>
-          seat(
-            id,
-            id,
-            id === 3 ? 'WALK_IN' : 'ONLINE',
-            id === 2 || id === 4 || marked.has(id) ? 'TAKEN' : 'FREE',
-          ),
-        ),
-      },
-    });
+    patches.push(route.request());
+    salesClose = (route.request().postDataJSON() as { salesClose: string }).salesClose;
+    return route.fulfill({ status: 204, body: '' });
   });
+  // The owner's map read (sets 2 + 4 online-held).
+  await page.route(/\/api\/venues\/1\/beach-map$/, (route) =>
+    route.fulfill({
+      json: {
+        map: {
+          id: 1,
+          name: 'Miramar Beach Club',
+          beach: 'KSAMIL',
+          region: 'SARANDE',
+          description: 'Loungers on the shore.',
+          ratingTenths: 48,
+          reviewsCount: 12,
+          bookingMode: 'INSTANT',
+          fromPrice: { minorUnits: 3000, currency: 'EUR' },
+          salesOpen: salesClose !== '00:01',
+          sets: [1, 2, 3, 4].map((id) =>
+            seat(
+              id,
+              id,
+              id === 3 ? 'WALK_IN' : 'ONLINE',
+              id === 2 || id === 4 || marked.has(id) ? 'TAKEN' : 'FREE',
+            ),
+          ),
+        },
+        locks: [],
+      },
+    }),
+  );
   await page.route(/\/api\/venues\/1\/booking-requests(\?.*)?$/, (route) =>
     route.fulfill({ json: [] }),
   );
@@ -265,11 +273,24 @@ test('shows tile states + arrival codes, and marks a walk-in that survives the r
   await settle(page);
   await expectNoSeriousAxeViolations(page, 'daily view tab');
 
+  // The strip above agrees with the grid before any tap: sets 1 and 3 free of 4.
+  await expect(page.getByTestId('oc-stat-free')).toHaveText(/2\s*\/\s*4/);
+
   // Tap the free set 1 → mark walk-in; after the reconcile it stays walk-in marked.
   await page.locator('[data-set-id="1"]').click();
   await expect(page.locator('[data-set-id="1"]')).toHaveAttribute('data-state', 'STAFF_MARKED');
   await expect(visibleTileText(1)).toHaveText(['1']);
   await expect(stateMark(1, 'check')).toBeVisible();
+
+  // The strip follows the settled mark without a reload: one walk-in, one set fewer free.
+  await expect(page.getByTestId('oc-stat-walkins')).toHaveText('1');
+  await expect(page.getByTestId('oc-stat-free')).toHaveText(/1\s*\/\s*4/);
+
+  // Tap it again → release; the strip comes back down with it.
+  await page.locator('[data-set-id="1"]').click();
+  await expect(page.locator('[data-set-id="1"]')).toHaveAttribute('data-state', 'FREE');
+  await expect(page.getByTestId('oc-stat-walkins')).toHaveText('0');
+  await expect(page.getByTestId('oc-stat-free')).toHaveText(/2\s*\/\s*4/);
 });
 
 test('paints the console theme: the date field, the sales-close control and the tiles under porcelain and dark console (#1010, + axe)', async ({
@@ -525,8 +546,8 @@ test('a wide venue keeps every tile tappable and scrolls inside its frame (#605)
 }) => {
   await mockDaily(page);
   // Registered after mockDaily's, so this wide-venue payload wins the route match.
-  await page.route(/\/api\/venues\/1(\?.*)?$/, (route) =>
-    route.fulfill({ json: wideVenue('Wide Bay', 'FREE') }),
+  await page.route(/\/api\/venues\/1\/beach-map$/, (route) =>
+    route.fulfill({ json: { map: wideVenue('Wide Bay', 'FREE'), locks: [] } }),
   );
   await page.setViewportSize({ width: 390, height: 780 });
   await page.goto('/operator/1');
@@ -561,8 +582,8 @@ test('a wide venue keeps every tile tappable and scrolls inside its frame (#605)
  */
 test('a fully-sold day keeps the scrolling map keyboard-reachable (#605)', async ({ page }) => {
   await mockDaily(page);
-  await page.route(/\/api\/venues\/1(\?.*)?$/, (route) =>
-    route.fulfill({ json: wideVenue('Sold Out Bay', 'TAKEN') }),
+  await page.route(/\/api\/venues\/1\/beach-map$/, (route) =>
+    route.fulfill({ json: { map: wideVenue('Sold Out Bay', 'TAKEN'), locks: [] } }),
   );
   await page.route(/\/api\/venues\/1\/availability(\?.*)?$/, (route) =>
     route.fulfill({
@@ -584,6 +605,99 @@ test('a fully-sold day keeps the scrolling map keyboard-reachable (#605)', async
   await expectNoSeriousAxeViolations(page, 'daily view, fully sold at 390px');
 });
 
+/** The seeded demo venue's shape: four six-set rows under the row names the Beach map tab stores. */
+function namedRowsVenue() {
+  const names = ['Front row · Sea view', 'Row 2', 'Row 3', 'Row 4 · Back'];
+  return {
+    ...wideVenue('Named Rows Bay', 'FREE'),
+    sets: names.flatMap((rowLabel, y) =>
+      Array.from({ length: 6 }, (_, x) => ({
+        ...seat(y * 6 + x + 1, x + 1, 'ONLINE', 'FREE'),
+        rowLabel,
+        gridY: y + 1,
+        tier: y === 0 ? ('PREMIUM' as const) : ('STANDARD' as const),
+      })),
+    ),
+  };
+}
+
+/** The tiles of row `y` (1-based) whose box lies wholly inside the pan viewport's. */
+async function fullyVisibleTiles(page: Page, y: number): Promise<number> {
+  return page.getByTestId('daily-grid').evaluate((viewport, row) => {
+    const frame = viewport.getBoundingClientRect();
+    const tiles = viewport.querySelectorAll(`[data-map-row]:nth-of-type(${row}) [data-set-id]`);
+    return [...tiles].filter((tile) => {
+      const box = tile.getBoundingClientRect();
+      return box.left >= frame.left && box.right <= frame.right;
+    }).length;
+  }, y);
+}
+
+/** A rail chip's text and whether its inner span ellipsizes. */
+async function railChip(page: Page, nth: number): Promise<{ text: string; truncated: boolean }> {
+  const chip = page.getByTestId('row-code').nth(nth);
+  return {
+    text: (await chip.textContent())?.trim() ?? '',
+    truncated: await chip.locator('span').evaluate((el) => el.scrollWidth > el.clientWidth),
+  };
+}
+
+/**
+ * Staff mark walk-ins from a phone at the gate, and a stored row name is as long as the operator
+ * typed it: rendered whole on the left rail at 390px, "Front row · Sea view" left one tile per row
+ * in view (#1532). Below `sm` the rail now ellipsizes the name at the tourist map's cap, inside the
+ * 54px the rail reserves anyway (#749), so two whole tiles fit per row — the tourist map's own
+ * count; three would need the row's grid letter, which #724 rules out beside stored names. From
+ * `sm` up the name renders whole, as before.
+ */
+test('a long row name ellipsizes on the phone rail so two tiles fit per row; desktop renders it whole (#1532)', async ({
+  page,
+}) => {
+  await mockDaily(page);
+  await page.route(/\/api\/venues\/1\/beach-map$/, (route) =>
+    route.fulfill({ json: { map: namedRowsVenue(), locks: [] } }),
+  );
+  await page.setViewportSize({ width: 390, height: 780 });
+  await page.goto('/operator/1');
+  await signInAndOpenDaily(page);
+  await expect(page.getByTestId('daily-tile')).toHaveCount(24);
+  await expectGridScrolls(page);
+
+  // The chip still reads the venue's own row name — ellipsized inside the chip, never overflowing it…
+  const long = await railChip(page, 0);
+  expect(long.text).toBe('Front row · Sea view');
+  expect(long.truncated, 'the long name ellipsizes at 390px').toBe(true);
+  const chip = (await page.getByTestId('row-code').first().boundingBox())!;
+  expect(chip.width, 'the chip holds the 54px reservation').toBeLessThanOrEqual(54);
+  const card = (await page.getByTestId('daily-grid-frame').boundingBox())!;
+  expect(chip.x + chip.width).toBeLessThanOrEqual(card.x + card.width);
+  // …and only overflowing text: a short name renders whole, so rows stay distinct.
+  expect(await railChip(page, 1)).toEqual({ text: 'Row 2', truncated: false });
+  // What the rail gives up, the tiles get: two whole tiles per row before any swipe.
+  for (const y of [1, 2, 3, 4]) {
+    expect(
+      await fullyVisibleTiles(page, y),
+      `row ${y} tiles in view at 390px`,
+    ).toBeGreaterThanOrEqual(2);
+  }
+  // The stored name is what a screen reader hears on the tile, on every width (#724).
+  await expect(page.locator('[data-set-id="1"]')).toHaveAttribute(
+    'aria-label',
+    /^Set Front row · Sea view 1,/,
+  );
+
+  await settle(page);
+  await expectNoSeriousAxeViolations(page, 'daily view, long row names at 390px');
+
+  // From `sm` up nothing changed: the name renders whole, and every tile of the row is in view.
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await expect
+    .poll(async () => (await railChip(page, 0)).truncated, { message: 'whole at 1280px' })
+    .toBe(false);
+  expect((await railChip(page, 0)).text).toBe('Front row · Sea view');
+  expect(await fullyVisibleTiles(page, 1), 'row 1 tiles in view at 1280px').toBe(6);
+});
+
 /**
  * A venue whose operator has drawn no layout renders 0 sets, and the map card framed that with the
  * canvas's two orientation banners and nothing between them. This is the state every newly
@@ -592,8 +706,8 @@ test('a fully-sold day keeps the scrolling map keyboard-reachable (#605)', async
  */
 test('explains a zero-set day and links to the Beach map tab (#718)', async ({ page }) => {
   await mockDaily(page);
-  await page.route(/\/api\/venues\/1(\?.*)?$/, (route) =>
-    route.fulfill({ json: { ...wideVenue('Blank Bay', 'FREE'), sets: [] } }),
+  await page.route(/\/api\/venues\/1\/beach-map$/, (route) =>
+    route.fulfill({ json: { map: { ...wideVenue('Blank Bay', 'FREE'), sets: [] }, locks: [] } }),
   );
   await page.route(/\/api\/venues\/1\/availability(\?.*)?$/, (route) =>
     route.fulfill({ json: [] }),

@@ -4,17 +4,10 @@ import { TestBed } from '@angular/core/testing';
 
 import { environment } from '../../environments/environment';
 import { CustomerAuth } from './customer-auth';
-import { SsoRedirect } from './sso-redirect';
+import { RecordingPageNavigation } from '../../testing/recording-page-navigation';
+import { PageNavigation } from './page-navigation';
 
 const AUTH_API = `${environment.apiBaseUrl}/api/auth`;
-
-/** Records SSO start URLs instead of navigating (no `window.location` in jsdom). */
-class RecordingSsoRedirect extends SsoRedirect {
-  readonly urls: string[] = [];
-  go(url: string): void {
-    this.urls.push(url);
-  }
-}
 
 /** Let the service's async continuations (firstValueFrom → signal.set) run before asserting. */
 function tick(): Promise<void> {
@@ -23,15 +16,15 @@ function tick(): Promise<void> {
 
 describe('CustomerAuth', () => {
   let http: HttpTestingController;
-  let redirect: RecordingSsoRedirect;
+  let navigation: RecordingPageNavigation;
 
   beforeEach(() => {
-    redirect = new RecordingSsoRedirect();
+    navigation = new RecordingPageNavigation();
     TestBed.configureTestingModule({
       providers: [
         provideHttpClient(),
         provideHttpClientTesting(),
-        { provide: SsoRedirect, useValue: redirect },
+        { provide: PageNavigation, useValue: navigation },
       ],
     });
     http = TestBed.inject(HttpTestingController);
@@ -230,7 +223,7 @@ describe('CustomerAuth', () => {
     auth.startSso('google');
     auth.startSso('apple');
 
-    expect(redirect.urls).toEqual([
+    expect(navigation.left).toEqual([
       `${AUTH_API}/sso/google/authorize`,
       `${AUTH_API}/sso/apple/authorize`,
     ]);

@@ -3,6 +3,7 @@ import {
   DestroyRef,
   ElementRef,
   afterRenderEffect,
+  booleanAttribute,
   computed,
   effect,
   inject,
@@ -126,6 +127,12 @@ export class AvailabilityCalendar {
   /** The venue's maximum stay in days; `null` or absent means any length this season. */
   readonly maxStayDays = input<number | null | undefined>(undefined);
 
+  /**
+   * Open in stay mode even on a one-day page: the home head's "Several days…" chip names the mode,
+   * so the picker lands in it. The venue page's Date button leaves it off and gets the day-mode open.
+   */
+  readonly opensInStayMode = input(false, { transform: booleanAttribute });
+
   /** The chosen days; `first === last` for one day, which is every pick in day mode. */
   readonly chosen = output<DateRange>();
   readonly dismissed = output<void>();
@@ -135,9 +142,12 @@ export class AvailabilityCalendar {
 
   /**
    * Day mode is the one-tap pick the picker always had; stay mode takes a first and a last tap, then
-   * Apply. It opens in stay mode only when the map already shows a stay.
+   * Apply. It opens in stay mode when the map already shows a stay or the host asks for it
+   * ({@link opensInStayMode}); the segmented control can still switch either way.
    */
-  protected readonly mode = linkedSignal<StayMode>(() => (this.showsStay() ? 'stay' : 'day'));
+  protected readonly mode = linkedSignal<StayMode>(() =>
+    this.showsStay() || this.opensInStayMode() ? 'stay' : 'day',
+  );
 
   /**
    * In stay mode, the days tapped but not yet applied: a first day while the last is still to come,

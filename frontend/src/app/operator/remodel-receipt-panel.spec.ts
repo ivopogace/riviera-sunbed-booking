@@ -115,6 +115,23 @@ describe('RemodelReceiptPanel (#1034, #1199, #1300)', () => {
     expect(host.textContent).not.toMatch(/\bcode\b/i);
   });
 
+  it('names a move by the stored row labels, never "Row Row 2" (#1524)', () => {
+    const [first, second] = RECEIPT.moves;
+    render({
+      ...RECEIPT,
+      moves: [
+        { ...first, to: { ...first.to, rowLabel: 'Row 2' } },
+        { ...second, from: { ...second.from, rowLabel: 'Front row · Sea view' } },
+      ],
+    });
+
+    const lines = Array.from(byId('layout-remodel-receipt-moves')!.querySelectorAll('li')).map(
+      (li) => li.textContent?.trim(),
+    );
+    expect(lines[0]).toMatch(/^Row A · position 3 → Row 2 · position 7/);
+    expect(lines[1]).toMatch(/^Front row · Sea view · position 2 → Row B · position 1/);
+  });
+
   it('singularises one move and says so when nothing moved', () => {
     render({ ...RECEIPT, moves: [RECEIPT.moves[0]] });
     expect(host.textContent).toMatch(/1 booking moved/);

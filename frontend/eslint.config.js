@@ -54,7 +54,6 @@ function importBoundary(files, banned, { except, ignores = [] } = {}) {
   };
 }
 
-const OPERATOR_VENUE_EDGE = ['src/app/operator/console-venue-map.ts', 'src/app/operator/daily-view-tab.ts'];
 const HOME_VENUE_EDGE = ['src/app/pages/home/home.ts'];
 const VENUE_BOOKING_EDGE = ['src/app/venue/venue-map.ts'];
 const others = (feature) => ['pages', ...FEATURES.filter((f) => f !== feature)];
@@ -137,8 +136,7 @@ module.exports = defineConfig([
   importBoundary(['src/app/admin/**/*.ts'], others('admin')),
   importBoundary(['src/app/auth/**/*.ts'], others('auth')),
   importBoundary(['src/app/booking/**/*.ts'], others('booking')),
-  importBoundary(['src/app/operator/**/*.ts'], others('operator'), { ignores: OPERATOR_VENUE_EDGE }),
-  importBoundary(OPERATOR_VENUE_EDGE, others('operator'), { except: { folder: 'venue', module: 'venue\\.service' } }),
+  importBoundary(['src/app/operator/**/*.ts'], others('operator')),
   importBoundary(['src/app/venue/**/*.ts'], others('venue'), { ignores: VENUE_BOOKING_EDGE }),
   importBoundary(VENUE_BOOKING_EDGE, others('venue'), { except: { folder: 'booking', module: 'booking-dialog' } }),
   {

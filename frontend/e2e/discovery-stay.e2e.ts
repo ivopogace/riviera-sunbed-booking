@@ -6,12 +6,12 @@ import { settle } from './support/booking-dialog';
 
 /**
  * Real-render journey of a stay on the discovery page: the day rail's last chip opens the range
- * calendar, the picked days re-read the coast, every card says whether its venue can host the stay
- * and why not, a venue that fits with moves sits between the same-set hosts and the ones that can't,
- * which sink in their beach group and wear dusk, a lone pin for one
- * hollows by shape, the venue link carries the stay, and a single day is exactly today's page.
- * From `sm` the day rail wraps so a mouse reaches the stay chip; a phone keeps one swipeable row.
- * The API is mocked; axe runs on the stay page and the wrapped rail.
+ * calendar in "Several days", the picked days re-read the coast, every card says whether its venue
+ * can host the stay and why not, a venue that fits with moves sits between the same-set hosts and
+ * the ones that can't, which sink in their beach group and wear dusk, a lone pin for one hollows
+ * by shape, the venue link carries the stay, and a single day is exactly today's page.
+ * From `sm` the day and beach rails wrap so a mouse reaches the last chip; a phone keeps one
+ * swipeable row. The API is mocked; axe runs on the stay page and the wrapped rails.
  */
 
 const NOW = new Date('2026-08-10T10:00:00Z');
@@ -105,7 +105,7 @@ test('picks a stay from the rail, reads every venue’s verdict, and carries the
     }
   });
 
-  // The rail ends in the stay chip; the picker it opens asks no venue for its counts.
+  // The rail ends in the stay chip; the picker opens in the mode it names, asking no venue for counts.
   await page.getByTestId('head-day').click();
   const chips = page.locator('[role="group"][aria-label="Day"] button');
   await expect(chips).toHaveCount(8);
@@ -113,8 +113,15 @@ test('picks a stay from the rail, reads every venue’s verdict, and carries the
   await page.getByTestId('head-stay').click();
   const calendar = page.getByTestId('availability-calendar');
   await expect(calendar).toBeVisible();
+  await expect(calendar).toHaveAttribute('aria-label', 'Choose your days');
+  await expect(calendar.getByTestId('calendar-mode-stay')).toHaveAttribute('aria-checked', 'true');
+  await expect(calendar.getByTestId('calendar-stay-rule')).toHaveText(
+    'Stays of any length this season.',
+  );
+  await expect(calendar.getByTestId('calendar-stay-hint')).toHaveText(
+    'Tap your first day, then your last.',
+  );
   await expect(calendar.getByTestId('day-bar').first()).toBeHidden();
-  await expect(calendar.getByTestId('calendar-stay-rule')).toHaveCount(0);
 
   // Escape hands focus back to the chip that opened it (WCAG 2.4.3).
   await page.keyboard.press('Escape');
@@ -123,10 +130,7 @@ test('picks a stay from the rail, reads every venue’s verdict, and carries the
 
   await page.getByTestId('head-day').click();
   await page.getByTestId('head-stay').click();
-  await calendar.getByTestId('calendar-mode-stay').click();
-  await expect(calendar.getByTestId('calendar-stay-rule')).toHaveText(
-    'Stays of any length this season.',
-  );
+  await expect(calendar.getByTestId('calendar-mode-stay')).toHaveAttribute('aria-checked', 'true');
   const coastRead = page.waitForRequest(
     (request) =>
       request.url().includes('/api/venues?') && request.url().includes(`lastDate=${LAST}`),
@@ -211,49 +215,94 @@ test('a single day is today’s page: the day alone is asked for, the free count
   );
 });
 
-for (const viewport of [
-  { width: 640, height: 900 },
-  { width: 1280, height: 900 },
-]) {
-  test(`the day rail wraps at ${viewport.width} px, so a mouse reaches the stay chip without scrolling`, async ({
-    page,
-  }) => {
-    await page.setViewportSize(viewport);
-    await page.goto('/');
-    await expect(page.getByTestId('sheet-rows').or(page.getByTestId('desk-rows'))).toBeVisible();
-    await page.getByTestId('head-day').click();
-    const rail = page.locator('[role="group"][aria-label="Day"]');
-    await expect(rail).toHaveCSS('flex-wrap', 'wrap');
+/** Himarë's catalogue, one venue per beach: the region whose beach rail runs longest. */
+const HIMARE_BEACHES = [
+  'PALASE',
+  'DRYMADES',
+  'DHERMI',
+  'GJIPE',
+  'JALE',
+  'LIVADHI',
+  'HIMARE',
+  'POTAM',
+  'LLAMANI',
+  'QEPARO',
+  'BORSH',
+  'LUKOVE',
+  'BUNEC',
+  'KAKOME',
+];
 
-    const { clientWidth, scrollWidth } = await rail.evaluate((el) => ({
-      clientWidth: el.clientWidth,
-      scrollWidth: el.scrollWidth,
-    }));
-    expect(scrollWidth).toBeLessThanOrEqual(clientWidth);
-    const box = (await rail.boundingBox())!;
-    for (const chip of await rail.getByRole('button').all()) {
-      const chipBox = (await chip.boundingBox())!;
-      expect(chipBox.x).toBeGreaterThanOrEqual(box.x);
-      expect(chipBox.x + chipBox.width).toBeLessThanOrEqual(box.x + box.width);
-      expect(chipBox.height).toBeGreaterThanOrEqual(44);
-    }
-    await expect(rail.getByRole('button').last()).toHaveText('Several days…');
-    await expect(page.getByTestId('head-stay')).toBeInViewport({ ratio: 1 });
-    await settle(page);
-    await expectNoSeriousAxeViolations(page, `the wrapped day rail at ${viewport.width} px`);
-  });
+/** The two chip rails: the chip that opens each, and the chip that sits last, past the clipped edge before the wrap. */
+const RAILS = [
+  { label: 'Day', opener: 'head-day', lastChip: 'Several days…', coast: VENUES },
+  {
+    label: 'Beach',
+    opener: 'head-beaches',
+    lastChip: 'Kakome 1',
+    coast: HIMARE_BEACHES.map((beach, i) => ({
+      ...venue(20 + i, `${beach} venue`, 45, DHERMI),
+      beach,
+    })),
+  },
+] as const;
+
+/** Opens one rail over the given coast; a route registered after `mockCoast`'s is matched first. */
+async function openRail(page: Page, rail: (typeof RAILS)[number]) {
+  await page.route(/\/api\/venues(\?.*)?$/, (route) => route.fulfill({ json: rail.coast }));
+  await page.goto('/');
+  await expect(page.getByTestId('sheet-rows').or(page.getByTestId('desk-rows'))).toBeVisible();
+  await page.getByTestId(rail.opener).click();
+  return page.locator(`[role="group"][aria-label="${rail.label}"]`);
 }
 
-test('on a phone the day rail stays one swipeable row', async ({ page }) => {
-  await page.setViewportSize(PHONE);
-  await page.goto('/');
-  await expect(page.getByTestId('sheet-rows')).toBeVisible();
-  await page.getByTestId('head-day').click();
-  const rail = page.locator('[role="group"][aria-label="Day"]');
-  await expect(rail).toHaveCSS('flex-wrap', 'nowrap');
-  await expect(rail).toHaveCSS('overflow-x', 'auto');
-  const tops = await rail
-    .getByRole('button')
-    .evaluateAll((chips) => new Set(chips.map((chip) => chip.getBoundingClientRect().top)).size);
-  expect(tops).toBe(1);
-});
+for (const rail of RAILS) {
+  for (const viewport of [
+    { width: 640, height: 900 },
+    { width: 1280, height: 900 },
+  ]) {
+    test(`the ${rail.label.toLowerCase()} rail wraps at ${viewport.width} px, so a mouse reaches "${rail.lastChip}" without scrolling`, async ({
+      page,
+    }) => {
+      await page.setViewportSize(viewport);
+      const group = await openRail(page, rail);
+      await expect(group).toHaveCSS('flex-wrap', 'wrap');
+      // The rail's entry translate is still running: a box read mid-transition is sub-pixel short.
+      await settle(page);
+
+      const { clientWidth, scrollWidth } = await group.evaluate((el) => ({
+        clientWidth: el.clientWidth,
+        scrollWidth: el.scrollWidth,
+      }));
+      expect(scrollWidth).toBeLessThanOrEqual(clientWidth);
+      const box = (await group.boundingBox())!;
+      for (const chip of await group.getByRole('button').all()) {
+        const chipBox = (await chip.boundingBox())!;
+        expect(chipBox.x).toBeGreaterThanOrEqual(box.x);
+        expect(chipBox.x + chipBox.width).toBeLessThanOrEqual(box.x + box.width);
+        expect(chipBox.height).toBeGreaterThanOrEqual(44);
+      }
+      const last = group.getByRole('button').last();
+      await expect(last).toHaveText(rail.lastChip);
+      await expect(last).toBeInViewport({ ratio: 1 });
+      await settle(page);
+      await expectNoSeriousAxeViolations(
+        page,
+        `the wrapped ${rail.label.toLowerCase()} rail at ${viewport.width} px`,
+      );
+    });
+  }
+
+  test(`on a phone the ${rail.label.toLowerCase()} rail stays one swipeable row`, async ({
+    page,
+  }) => {
+    await page.setViewportSize(PHONE);
+    const group = await openRail(page, rail);
+    await expect(group).toHaveCSS('flex-wrap', 'nowrap');
+    await expect(group).toHaveCSS('overflow-x', 'auto');
+    const tops = await group
+      .getByRole('button')
+      .evaluateAll((chips) => new Set(chips.map((chip) => chip.getBoundingClientRect().top)).size);
+    expect(tops).toBe(1);
+  });
+}

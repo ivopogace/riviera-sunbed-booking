@@ -150,6 +150,7 @@ describe('app.routes — the phone tab bar reads its section and checkout flag o
     'account/password': 'account',
     'legal/privacy': undefined,
     'legal/terms': undefined,
+    'page-load-failed': undefined,
     '**': undefined,
     'account/operator-password': undefined,
     operator: undefined,
