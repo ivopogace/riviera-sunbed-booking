@@ -15,8 +15,8 @@ class a spec queries is retained as an inert marker; a restyle proves no drift w
 computed-style diff (contrast specs are pure maths); interactive controls meet 44 × 44 px.
 `check-touch-target.mjs` proves only a declaration and ignores `<a>`;
 `frontend/e2e/touch-targets*.e2e.ts` measures.
-Surface directives carry no `border-radius`. A `border-width` of `"1px"` for a `1.5px` border
-is Chromium snapping, not a regression.
+Surface directives carry no `border-radius` or padding (rule 3). A `border-width` of `"1px"`
+for a `1.5px` border is Chromium snapping, not a regression.
 
 ### RV-FE-6. Forms — Major for Template-driven or `any`-typed contract values
 Signal Forms preferred, Reactive acceptable, never Template-driven; explicit types on
@@ -37,7 +37,7 @@ display only.
 Stripe Elements/Checkout with the publishable key only; confirmed state comes from the server
 (show "finalizing" and reconcile). Grep the bundle/config for secret keys.
 
-### RV-FE-5. Seat picker accessibility — Major
+### RV-FE-5. Beach-map accessibility — Major
 Sets keyboard-focusable and activatable; taken vs available not by colour alone; each set has
 an accessible name (row/position, price, status); no `<canvas>`/SVG without a semantic fallback.
 

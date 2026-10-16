@@ -8,7 +8,8 @@ Angular 22 idioms for `frontend/`. Structure is `riviera-frontend`'s; styling `r
 
 - Standalone components; do NOT write `standalone: true` or `changeDetection: OnPush` (both defaults).
 - Host bindings in the decorator's `host` object, not `@HostBinding`/`@HostListener`.
-- `NgOptimizedImage` for static images.
+- `NgOptimizedImage` for new `<img>`, API photos included, unless it can't serve the image (a data
+  URL, or a `sizes`/`srcset` it rejects, as in `venue-row.html`).
 - Unsure how an Angular API behaves? Verify via the angular-cli MCP's `search_documentation`
   (v22), never from memory — also for a review finding that hinges on framework behaviour.
 - Small components; inline templates when small. `input()`/`output()`/`model()`, not decorators.

@@ -59,9 +59,8 @@ authorization) travels in the child prompt, since nothing else sets it.
   that arrives first closes it unanswered: re-ask in the reply text. Record the answer in the
   roster verbatim either way. Two questions stay in the reply text, answered by a typed message:
   the merge go and a refusal (§5), because a tap is not the "real message" the go rule needs.
-- Every message to a child tells it to re-read the governing docs (CLAUDE.md, the module's
-  `RESPONSIBILITIES.md` §, the ADRs, the routed skills, current framework reference docs) and to
-  take the practice they state.
+- A message that sends a child into a new stage or area repeats the child prompt's
+  governing-docs line (`references/child-prompt.md`, How to work).
 
 ## 5. Merge
 

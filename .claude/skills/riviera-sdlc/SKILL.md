@@ -20,7 +20,7 @@ a re-review of the changed surface. A comment, naming or test-only fix needs onl
 | **Refine** | Sharpen a fuzzy idea into a sliceable use case, grounded in the substrate docs and the real code. A foggy epic (destination clear, route not) is charted first with `wayfinder`. | `grilling`, `domain-modeling`; `wayfinder` |
 | **Issue** | Vertical-slice tracer-bullet issues on GitHub. A multi-slice epic may first commit an epic spec with `to-spec`. Any document the issues reference is committed before or with them. | `to-spec` (optional) → `to-issues` |
 | **Plan** | Plan doc: testable ACs, risks, how the invariant holds if booking/availability/money is touched. Map the affected surface by grepping modules and published surfaces (Explore agent for anything broad). Entering at an existing issue → `references/issue-intake-gate.md` first. A question the slice can answer → `research` or `prototype`; a cross-session decision → `wayfinder`. | `riviera-plan-doc` + `grilling` + `research`/`prototype` |
-| **Implement** | Test-first, one behaviour at a time, at the seams the plan names. Load the routed skills for each area. `/implement` is human-only; never route to it. | `tdd` + the routing table |
+| **Implement** | Test-first, one behaviour at a time, at the seams the plan names. Load the routed skills for each area. | `tdd` + the routing table |
 | **CI gate** | Every push to an open PR runs every CI job; build/test steps re-run only when that job's inputs changed since a green build (content-hash cache), the scans always. After a push that claims a phase green, check that run before the next phase (red-TDD and labeled-partial pushes exempt). | GitHub Actions; red → `diagnosing-bugs` |
 | **PR** | Open a **draft as soon as the first phase commit exists** — CI fires on `pull_request` only. When built: merge latest `origin/main` in (scoped tests for what the integration touches), then mark **ready for review**, which makes the Review and Sonar gates due. | `triage` (issues only) |
 | **Review** | Mandatory at ready-for-review: `/code-review` on the PR number plus the overlay (`references/pr-gates.md` §1). | `riviera-review-overlay` + `/code-review` |
@@ -80,7 +80,7 @@ name the members or point at the source of truth, so growth never makes a doc fa
 - After a compaction or when unsure of the stage: re-read Execution status **and** the current
   stage's reference file; never run a gate from a summary's memory.
 - Delegate heavy reading to subagents (review, Sonar triage, exploration). Scope test runs per
-  `riviera-local-debug`; read ranges, not whole files.
+  `riviera-local-debug`; scan large files by range, but read whole what a skill says to read whole.
 - Near a gate with high context: finish the phase, commit Execution status, continue fresh.
 
 ## Cloud sessions

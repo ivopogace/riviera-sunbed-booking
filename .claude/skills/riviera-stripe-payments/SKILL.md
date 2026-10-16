@@ -49,7 +49,8 @@ that work starts. Do NOT load `stripe:connect-recommend`; ignore Connect section
   of the service day (#4, `RESPONSIBILITIES.md` §`booking`). `ExpireRequestsService` +
   `RequestSweepScheduler` run lockless (guarded `UPDATE … RETURNING`); ShedLock only when scaling
   out.
-- Never model this as auth-and-capture; a doc implying manual capture/void is stale.
+- Never model this as auth-and-capture: there is no manual capture. The one void is
+  `CancelPaymentPort` cancelling an intent that was never paid; a doc implying a capture step is stale.
 
 ## Refunds and payout
 
@@ -71,10 +72,11 @@ that work starts. Do NOT load `stripe:connect-recommend`; ignore Connect section
 
 `BookingConfirmed`/`BookingCancelled` fan out to `payout` and `notification` (a stitched stay mails
 once, on `StayConfirmed`/`StayCancelled`); `BookingDayRefunded` fans out the same way plus
-`booking`'s own day-refund listener; `booking`'s listeners drive `payment.api` — `RefundPort` for a
-whole-share or one-day refund, `CancelPaymentPort` to void a remodel-released unpaid booking's
-intent. `availability` consumes no events. Stripe SDK and webhook controller live only in
-`payment`'s adapters (`adapter/in/StripeWebhookController`, `adapter/out/StripePaymentGateway`).
+`booking`'s own day-refund listener; `booking` drives `payment.api` — `RefundPort` (its refund
+listeners) for a whole-share or one-day refund, `CancelPaymentPort` to void an unpaid booking's
+intent (its remodel-release listener and the abandoned-payment sweep). `availability` consumes no
+events. Stripe SDK and webhook controller live only in `payment`'s adapters
+(`adapter/in/StripeWebhookController`, `adapter/out/StripePaymentGateway`).
 
 ## Testing
 
