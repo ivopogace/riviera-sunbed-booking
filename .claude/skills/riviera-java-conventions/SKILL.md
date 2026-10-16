@@ -31,7 +31,8 @@ to have one (`codebase-design`).
 ### 6. Errors
 
 Expected outcomes are values (`ClaimOutcome`), not exceptions — a lost race is normal flow.
-Never an empty `catch`; never `catch (Exception)`/`Throwable`. `@Transactional`
+Never an empty `catch`; never `catch (Exception)`/`Throwable`, except around a library call that
+declares a checked `Exception`, wrapped and rethrown at once. `@Transactional`
 (`org.springframework.transaction.annotation`) on the write method, kept small.
 
 ### 6a. Named literals

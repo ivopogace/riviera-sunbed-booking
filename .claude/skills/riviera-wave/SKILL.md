@@ -47,7 +47,7 @@ authorization) travels in the child prompt, since nothing else sets it.
 - Schedule with `send_later`, never `CronCreate`: a cron job lives in the container's memory and
   dies when the idle container is reclaimed. Each check-in re-arms the next link first; an hourly
   `send_later` safety net re-arms the chain if a link went missing.
-- Read a child with `get_session` (`status_bucket`, `post_turn_summary`), then `list_events` with
+- Read a child with `get_session` (`status_bucket`, `task_summary`), then `list_events` with
   `kinds: ["result"]` for its last turn end. An unfiltered page overflows the tool-result limit.
 - When nothing changed, say nothing.
 
@@ -59,9 +59,8 @@ authorization) travels in the child prompt, since nothing else sets it.
   that arrives first closes it unanswered: re-ask in the reply text. Record the answer in the
   roster verbatim either way. Two questions stay in the reply text, answered by a typed message:
   the merge go and a refusal (§5), because a tap is not the "real message" the go rule needs.
-- Every message to a child tells it to re-read the governing docs (CLAUDE.md, the module's
-  `RESPONSIBILITIES.md` §, the ADRs, the routed skills, current framework reference docs) and to
-  take the practice they state.
+- A message that sends a child into a new stage or area repeats the child prompt's
+  governing-docs line (`references/child-prompt.md`, How to work).
 
 ## 5. Merge
 

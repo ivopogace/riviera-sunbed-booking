@@ -42,8 +42,10 @@ refetches it. Always: `git fetch --unshallow` if shallow, `git fetch --no-tags o
      .claude/skills
    ```
 
-   A hit in historical narrative is fine; a present-tense fact is a finding. `platform/src` and
-   `docs/plans` are deliberately absent. A doc that states a count ("the two X", "thirteen
+   A hit in historical narrative is fine; a present-tense fact is a finding. `docs/plans` is
+   deliberately absent. Grep `platform/src` and `frontend/src` separately and read only the
+   prose hits (Javadoc/TSDoc, `package-info.java`, test descriptions); a code hit is the
+   compiler's job. A doc that states a count ("the two X", "thirteen
    modules") is itself the finding: rewrite it to name the members or point at the source of
    truth, so the next addition cannot falsify it.
 3. Walk the map top-down: does the diff falsify any stated sentence in its area even where
