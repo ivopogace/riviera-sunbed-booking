@@ -2,7 +2,7 @@ import { inject, Service, Signal } from '@angular/core';
 import { filter, Observable, Subject } from 'rxjs';
 
 import { todayBookingDate } from '../shared/booking-date';
-import { ConsoleVenueMap } from './console-venue-map';
+import { ConsoleVenueMap } from '../core/console-venue-map';
 
 /** One settled staff write to a venue's `(set, date)` availability — the day it changed, not the set. */
 export interface AvailabilityChange {

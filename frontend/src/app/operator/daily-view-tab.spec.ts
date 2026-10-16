@@ -18,7 +18,7 @@ import {
 } from '../shared/booking-date';
 import { Pool, SetView, Tier } from '../shared/venue-views';
 import { AvailabilityChange, AvailabilityChanges } from './availability-changes';
-import { ConsoleVenueMap } from './console-venue-map';
+import { ConsoleVenueMap } from '../core/console-venue-map';
 import { ConsoleDailyBooking } from './operator-console.model';
 import { DailyViewTab } from './daily-view-tab';
 import { FakeQrScanner } from './fake-qr-scanner';
@@ -110,14 +110,8 @@ describe('DailyViewTab (#175)', () => {
       .expectOne((r) => r.method === 'GET' && r.url.includes('/api/venues/1/availability'))
       .flush(states);
     http
-      .expectOne(
-        (r) =>
-          r.method === 'GET' &&
-          r.url.includes('/api/venues/1') &&
-          !r.url.includes('/bookings') &&
-          !r.url.includes('/availability'),
-      )
-      .flush({ id: 1, name: 'V', beach: 'KSAMIL', region: 'SARANDE', sets });
+      .expectOne((r) => r.method === 'GET' && r.url.includes('/api/venues/1/beach-map'))
+      .flush({ map: { id: 1, name: 'V', beach: 'KSAMIL', region: 'SARANDE', sets }, locks: [] });
     fixture.detectChanges();
   }
 
@@ -229,6 +223,18 @@ describe('DailyViewTab (#175)', () => {
     expect(visible(2)).toBe('2'); // BOOKED_ONLINE: state mark + number
     expect(mark(2)).toBe('app-dot-icon');
     expect(visible(4)).toBe('1'); // B1 — the position number, never the set id
+  });
+
+  it('caps a long row name on the rail below sm only; the tile name keeps it whole (#1532)', () => {
+    render(SEED.map((s) => (s.rowLabel === 'A' ? { ...s, rowLabel: 'Front row · Sea view' } : s)));
+    const inner = host.querySelector('[data-testid="row-code"] > span')!;
+    expect(inner.textContent).toBe('Front row · Sea view');
+    // The tourist map's phone cap, scoped to the phone: from `sm` up the name renders whole (#724).
+    expect(inner.classList.contains('max-sm:max-w-12')).toBe(true);
+    expect(inner.classList.contains('max-sm:truncate')).toBe(true);
+    expect(inner.classList.contains('truncate')).toBe(false);
+    // The tile's accessible name carries the stored row name on every width.
+    expect(tile(1).getAttribute('aria-label')).toMatch(/^Set Front row · Sea view 1,/);
   });
 
   it('renders a mixed-price row as its min–max span on the zone rail (#689)', () => {
@@ -840,13 +846,8 @@ describe('DailyViewTab (#175)', () => {
     http.expectOne((r) => r.url.includes('/api/venues/2/bookings')).flush([]);
     http.expectOne((r) => r.url.includes('/api/venues/2/availability')).flush([]);
     http
-      .expectOne(
-        (r) =>
-          r.url.includes('/api/venues/2') &&
-          !r.url.includes('/bookings') &&
-          !r.url.includes('/availability'),
-      )
-      .flush({ id: 2, name: 'V2', beach: 'B', region: 'R', sets: [] });
+      .expectOne((r) => r.url.includes('/api/venues/2/beach-map'))
+      .flush({ map: { id: 2, name: 'V2', beach: 'B', region: 'R', sets: [] }, locks: [] });
   });
 
   it('shows an empty arrivals state when there are no confirmed bookings', () => {
@@ -883,17 +884,14 @@ describe('DailyViewTab (#175)', () => {
   });
 
   it('never serves the console snapshot — its reads are excluded from the shared cache (#486 AC-3)', () => {
-    // Warm on this tab's own key, yet both flushLoad calls below still demand a real request.
+    // Warm on this tab's own venue, yet both flushLoad calls below still demand a real request.
     configure(() => {
-      TestBed.inject(ConsoleVenueMap).load(1, todayBookingDate(new Date())).subscribe();
+      TestBed.inject(ConsoleVenueMap).load(1).subscribe();
       http
-        .expectOne(
-          (r) =>
-            r.method === 'GET' && r.url.includes('/api/venues/1') && !r.url.includes('/bookings'),
-        )
-        .flush({ id: 1, name: 'V', sets: SEED });
+        .expectOne((r) => r.method === 'GET' && r.url.includes('/api/venues/1/beach-map'))
+        .flush({ map: { id: 1, name: 'V', sets: SEED }, locks: [] });
     });
-    flushLoad(); // the tab's own opening (venue, today) read still reaches the server
+    flushLoad(); // the tab's own opening read still reaches the server
     host = fixture.nativeElement as HTMLElement;
 
     (tile(1) as HTMLButtonElement).click();
@@ -1055,14 +1053,11 @@ describe('DailyViewTab (#175)', () => {
     expect(host.querySelector('[data-testid="daily-view-tab"]')).toBeNull();
 
     http
-      .expectOne(
-        (r) =>
-          r.method === 'GET' &&
-          r.url.includes('/api/venues/1') &&
-          !r.url.includes('/bookings') &&
-          !r.url.includes('/availability'),
-      )
-      .flush({ id: 1, name: 'V', beach: 'KSAMIL', region: 'SARANDE', sets: SEED });
+      .expectOne((r) => r.method === 'GET' && r.url.includes('/api/venues/1/beach-map'))
+      .flush({
+        map: { id: 1, name: 'V', beach: 'KSAMIL', region: 'SARANDE', sets: SEED },
+        locks: [],
+      });
     fixture.detectChanges();
     expect(host.querySelector('[data-testid="daily-view-tab"]')).toBeTruthy();
   });
@@ -1074,13 +1069,7 @@ describe('DailyViewTab (#175)', () => {
       .expectOne((r) => r.method === 'GET' && r.url.includes('/api/venues/1/availability'))
       .flush([]);
     http
-      .expectOne(
-        (r) =>
-          r.method === 'GET' &&
-          r.url.includes('/api/venues/1') &&
-          !r.url.includes('/bookings') &&
-          !r.url.includes('/availability'),
-      )
+      .expectOne((r) => r.method === 'GET' && r.url.includes('/api/venues/1/beach-map'))
       .flush({ code: 'INTERNAL' }, { status: 500, statusText: 'Server Error' });
     fixture.detectChanges();
     host = fixture.nativeElement as HTMLElement;
@@ -1096,14 +1085,11 @@ describe('DailyViewTab (#175)', () => {
       .expectOne((r) => r.method === 'GET' && r.url.includes('/api/venues/1/availability'))
       .flush({ code: 'INTERNAL' }, { status: 500, statusText: 'Server Error' });
     http
-      .expectOne(
-        (r) =>
-          r.method === 'GET' &&
-          r.url.includes('/api/venues/1') &&
-          !r.url.includes('/bookings') &&
-          !r.url.includes('/availability'),
-      )
-      .flush({ id: 1, name: 'V', beach: 'KSAMIL', region: 'SARANDE', sets: SEED });
+      .expectOne((r) => r.method === 'GET' && r.url.includes('/api/venues/1/beach-map'))
+      .flush({
+        map: { id: 1, name: 'V', beach: 'KSAMIL', region: 'SARANDE', sets: SEED },
+        locks: [],
+      });
     fixture.detectChanges();
     host = fixture.nativeElement as HTMLElement;
     expect(byId('daily-load-error')).toBeTruthy();
@@ -1123,19 +1109,16 @@ describe('DailyViewTab (#175)', () => {
       .expectOne((r) => r.method === 'GET' && r.url.includes('/api/venues/2/availability'))
       .flush([]);
     http
-      .expectOne(
-        (r) =>
-          r.method === 'GET' &&
-          r.url.includes('/api/venues/2') &&
-          !r.url.includes('/bookings') &&
-          !r.url.includes('/availability'),
-      )
+      .expectOne((r) => r.method === 'GET' && r.url.includes('/api/venues/2/beach-map'))
       .flush({
-        id: 2,
-        name: 'W',
-        beach: 'DHERMI',
-        region: 'HIMARE',
-        sets: [seat(9, 'A', 1, 'STANDARD', 'ONLINE', 'FREE')],
+        map: {
+          id: 2,
+          name: 'W',
+          beach: 'DHERMI',
+          region: 'HIMARE',
+          sets: [seat(9, 'A', 1, 'STANDARD', 'ONLINE', 'FREE')],
+        },
+        locks: [],
       });
     fixture.detectChanges();
 
@@ -1153,19 +1136,16 @@ describe('DailyViewTab (#175)', () => {
       .expectOne((r) => r.method === 'GET' && r.url.includes('/api/venues/2/availability'))
       .flush([]);
     http
-      .expectOne(
-        (r) =>
-          r.method === 'GET' &&
-          r.url.includes('/api/venues/2') &&
-          !r.url.includes('/bookings') &&
-          !r.url.includes('/availability'),
-      )
+      .expectOne((r) => r.method === 'GET' && r.url.includes('/api/venues/2/beach-map'))
       .flush({
-        id: 2,
-        name: 'W',
-        beach: 'DHERMI',
-        region: 'HIMARE',
-        sets: [seat(9, 'A', 1, 'STANDARD', 'ONLINE', 'FREE')],
+        map: {
+          id: 2,
+          name: 'W',
+          beach: 'DHERMI',
+          region: 'HIMARE',
+          sets: [seat(9, 'A', 1, 'STANDARD', 'ONLINE', 'FREE')],
+        },
+        locks: [],
       });
     // The superseded venue-1 reads resolve late — they must not replace venue 2's grid.
     http
@@ -1175,14 +1155,11 @@ describe('DailyViewTab (#175)', () => {
       .expectOne((r) => r.method === 'GET' && r.url.includes('/api/venues/1/availability'))
       .flush(STATES);
     http
-      .expectOne(
-        (r) =>
-          r.method === 'GET' &&
-          r.url.includes('/api/venues/1') &&
-          !r.url.includes('/bookings') &&
-          !r.url.includes('/availability'),
-      )
-      .flush({ id: 1, name: 'V', beach: 'KSAMIL', region: 'SARANDE', sets: SEED });
+      .expectOne((r) => r.method === 'GET' && r.url.includes('/api/venues/1/beach-map'))
+      .flush({
+        map: { id: 1, name: 'V', beach: 'KSAMIL', region: 'SARANDE', sets: SEED },
+        locks: [],
+      });
     fixture.detectChanges();
     host = fixture.nativeElement as HTMLElement;
 
@@ -1283,20 +1260,17 @@ describe('DailyViewTab (#175)', () => {
       .expectOne((r) => r.method === 'GET' && r.url.includes('/api/venues/1/availability'))
       .flush(STATES);
     http
-      .expectOne(
-        (r) =>
-          r.method === 'GET' &&
-          r.url.includes('/api/venues/1') &&
-          !r.url.includes('/bookings') &&
-          !r.url.includes('/availability'),
-      )
+      .expectOne((r) => r.method === 'GET' && r.url.includes('/api/venues/1/beach-map'))
       .flush({
-        id: 1,
-        name: 'V',
-        beach: 'KSAMIL',
-        region: 'SARANDE',
-        sets: SEED,
-        salesOpen: false,
+        map: {
+          id: 1,
+          name: 'V',
+          beach: 'KSAMIL',
+          region: 'SARANDE',
+          sets: SEED,
+          salesOpen: false,
+        },
+        locks: [],
       });
     fixture.detectChanges();
     host = fixture.nativeElement as HTMLElement;
@@ -1434,19 +1408,16 @@ describe('DailyViewTab (#175)', () => {
       .expectOne((r) => r.method === 'GET' && r.url.includes('/api/venues/2/availability'))
       .flush([]);
     http
-      .expectOne(
-        (r) =>
-          r.method === 'GET' &&
-          r.url.includes('/api/venues/2') &&
-          !r.url.includes('/bookings') &&
-          !r.url.includes('/availability'),
-      )
+      .expectOne((r) => r.method === 'GET' && r.url.includes('/api/venues/2/beach-map'))
       .flush({
-        id: 2,
-        name: 'W',
-        beach: 'DHERMI',
-        region: 'HIMARE',
-        sets: [seat(9, 'A', 1, 'STANDARD', 'ONLINE', 'FREE')],
+        map: {
+          id: 2,
+          name: 'W',
+          beach: 'DHERMI',
+          region: 'HIMARE',
+          sets: [seat(9, 'A', 1, 'STANDARD', 'ONLINE', 'FREE')],
+        },
+        locks: [],
       });
     fixture.detectChanges();
   }
@@ -1455,7 +1426,7 @@ describe('DailyViewTab (#175)', () => {
   function expectVenue2Untouched(): void {
     fixture.detectChanges();
     expect(host.querySelector('[data-testid="daily-notice"]')).toBeNull();
-    http.expectNone((r) => r.method === 'GET' && r.url.includes('/api/venues/2'));
+    http.expectNone((r) => r.method === 'GET' && r.url.includes('/api/venues/2/beach-map'));
     expect(host.querySelectorAll('[data-set-id]')).toHaveLength(1);
     expect(tile(9).getAttribute('data-state')).toBe('FREE');
   }

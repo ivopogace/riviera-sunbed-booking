@@ -156,6 +156,25 @@ async function holdVenueRead(page: Page, json: object): Promise<() => void> {
   return release;
 }
 
+/**
+ * The Daily view's map read is the owner's (#1531): hold that one open instead of the tourist read.
+ * The route's first answer is immediate — `venueAccessGuard` holds the navigation on it (#1526), and a
+ * skeleton can only show once the console has activated; the Daily view's own read, the second, is held.
+ */
+async function holdOwnerMapRead(page: Page, json: object): Promise<() => void> {
+  let release!: () => void;
+  const held = new Promise<void>((resolve) => (release = resolve));
+  let gateAnswered = false;
+  await page.route(/\/api\/venues\/1\/beach-map$/, async (route) => {
+    if (gateAnswered) {
+      await held;
+    }
+    gateAnswered = true;
+    await route.fulfill({ json: { map: json, locks: [] } });
+  });
+  return release;
+}
+
 for (const [shape, venue, settled] of [
   ['a venue carrying every optional header block', RICH_VENUE, 'set-tile'],
   ['a venue carrying none of them', BARE_VENUE, 'set-tile'],
@@ -232,7 +251,7 @@ test('no tab stop hides inside the tourist skeleton (#744)', async ({ page }) =>
 test('no tab stop hides inside the Daily view skeleton (#744)', async ({ page }) => {
   await page.setViewportSize(PHONE);
   await mockWholeConsole(page);
-  const release = await holdVenueRead(page, RICH_VENUE);
+  const release = await holdOwnerMapRead(page, RICH_VENUE);
 
   await page.goto('/operator/1/daily');
   await signInAsOperator(page);
@@ -264,8 +283,8 @@ for (const [size, viewport] of [
   }) => {
     await page.setViewportSize(viewport);
     await mockWholeConsole(page);
-    // Registered last, so it wins over the whole-console venue read and can be held open.
-    const release = await holdVenueRead(page, RICH_VENUE);
+    // Registered last, so it wins over the whole-console owner's read and can be held open.
+    const release = await holdOwnerMapRead(page, RICH_VENUE);
 
     await page.goto('/operator/1/daily');
     await signInAsOperator(page);
@@ -289,7 +308,7 @@ test('the Daily view’s grid frame holds for a venue with no mapped sets (#744)
   page,
 }) => {
   await mockWholeConsole(page);
-  const release = await holdVenueRead(page, EMPTY_VENUE);
+  const release = await holdOwnerMapRead(page, EMPTY_VENUE);
 
   await page.goto('/operator/1/daily');
   await signInAsOperator(page);
@@ -306,7 +325,7 @@ test('the Daily view’s grid frame holds for a venue with no mapped sets (#744)
 
 test('the operator Daily view’s loading state is axe-clean (#744)', async ({ page }) => {
   await mockWholeConsole(page);
-  const release = await holdVenueRead(page, RICH_VENUE);
+  const release = await holdOwnerMapRead(page, RICH_VENUE);
 
   await page.goto('/operator/1/daily');
   await signInAsOperator(page);
@@ -341,9 +360,9 @@ test('the operator Daily view’s loading state is axe-clean (#744)', async ({ p
  * (`venue-map-pan.e2e.ts`, #700) clears its viewport by ~31px on a 14-column venue, and a
  * cap-sized rail spends 39px of it — measured, as a pan that map is not supposed to need. So the
  * residual survives, and these tests state its size rather than hide it: 0.00px wherever the rail
- * fits the reservation (every tourist phone case, since #724 caps the label there), 9.14px on the
- * `Front row` fixture, and as much as the label is wide on an operator rail, which renders labels
- * whole by that same #724 decision.
+ * fits the reservation (every phone case, since #724 caps the tourist label there and #1532 the
+ * Daily one), 9.14px on the `Front row` fixture, and as much as the label is wide on an operator
+ * rail from `sm` up, which renders labels whole by that same #724 decision.
  *
  * <p>What the rail SAYS while loading is the unit specs' claim; what it MEASURES is only knowable
  * here.
@@ -405,8 +424,9 @@ async function expectSlideIsWhatTheReservationAllows(
 
 /**
  * The other extreme of the rail's own vocabulary: both names exactly 40 characters, the limit
- * `V43__set_position_row_label_length.sql` and the editor's `maxlength` allow. The uncapped
- * operator rail's worst case is a real number, not an adjective, and it belongs in the matrix.
+ * `V43__set_position_row_label_length.sql` and the editor's `maxlength` allow. The operator rail's
+ * worst case from `sm` up, where it is uncapped, is a real number, not an adjective, and it
+ * belongs in the matrix.
  */
 const LONG_LABEL_VENUE = {
   ...RICH_VENUE,
@@ -448,7 +468,7 @@ for (const [labels, venue] of [
     }) => {
       await page.setViewportSize(viewport);
       await mockWholeConsole(page);
-      const release = await holdVenueRead(page, venue);
+      const release = await holdOwnerMapRead(page, venue);
 
       await page.goto('/operator/1/daily');
       await signInAsOperator(page);
@@ -494,7 +514,10 @@ for (const [surface, tileTestid, gridTestid, open] of [
     if (open === 'operator') {
       await mockWholeConsole(page);
     }
-    const release = await holdVenueRead(page, RICH_VENUE);
+    const release =
+      open === 'operator'
+        ? await holdOwnerMapRead(page, RICH_VENUE)
+        : await holdVenueRead(page, RICH_VENUE);
 
     await page.goto(open === 'operator' ? '/operator/1/daily' : '/venues/1');
     if (open === 'operator') {

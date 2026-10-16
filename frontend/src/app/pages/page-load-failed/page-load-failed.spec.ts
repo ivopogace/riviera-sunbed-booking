@@ -2,32 +2,26 @@ import { Component } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { NavigationError, provideRouter, Router, Routes } from '@angular/router';
 
+import { RecordingPageNavigation } from '../../../testing/recording-page-navigation';
 import { routes } from '../../app.routes';
 import { ChunkLoadRecovery, PAGE_LOAD_FAILED_PATH } from '../../core/chunk-load-recovery';
-import { PageReload } from '../../core/page-reload';
+import { PageNavigation } from '../../core/page-navigation';
 import { PageLoadFailed } from './page-load-failed';
 
 @Component({ template: '' })
 class BlankPage {}
 
-class RecordingReload extends PageReload {
-  readonly urls: string[] = [];
-  to(url: string): void {
-    this.urls.push(url);
-  }
-}
-
 describe('PageLoadFailed', () => {
-  let reload: RecordingReload;
+  let reload: RecordingPageNavigation;
 
   function render(): {
     host: HTMLElement;
     detect: () => void;
     fixture: ComponentFixture<PageLoadFailed>;
   } {
-    reload = new RecordingReload();
+    reload = new RecordingPageNavigation();
     TestBed.configureTestingModule({
-      providers: [provideRouter([]), { provide: PageReload, useValue: reload }],
+      providers: [provideRouter([]), { provide: PageNavigation, useValue: reload }],
     });
     const fixture = TestBed.createComponent(PageLoadFailed);
     fixture.detectChanges();
@@ -53,7 +47,7 @@ describe('PageLoadFailed', () => {
     const { host, detect, fixture } = render();
     const recovery = TestBed.inject(ChunkLoadRecovery);
     recovery.recover(new NavigationError(3, '/my-bookings', chunkError()));
-    reload.urls.length = 0;
+    reload.reloaded.length = 0;
     recovery.reloading.set(false);
     detect();
     const retry = host.querySelector<HTMLButtonElement>('[data-testid="page-load-failed-retry"]')!;
@@ -63,7 +57,7 @@ describe('PageLoadFailed', () => {
     detect();
     await fixture.whenStable();
 
-    expect(reload.urls).toEqual(['/my-bookings']);
+    expect(reload.reloaded).toEqual(['/my-bookings']);
     expect(host.querySelector('[data-testid="page-load-failed"]')).toBeNull();
     const reloading = host.querySelector('[data-testid="page-load-failed-reloading"]');
     expect(reloading?.textContent).toContain('Loading this page again');
@@ -104,7 +98,7 @@ describe('app.routes — the page-load-failed route is eager and sits before the
     TestBed.configureTestingModule({
       providers: [
         provideRouter(blank(routes)),
-        { provide: PageReload, useValue: new RecordingReload() },
+        { provide: PageNavigation, useValue: new RecordingPageNavigation() },
       ],
     });
     const router = TestBed.inject(Router);

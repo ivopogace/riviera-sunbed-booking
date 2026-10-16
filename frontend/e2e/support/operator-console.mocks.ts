@@ -87,13 +87,12 @@ export async function mockWholeConsole(page: Page): Promise<void> {
     setVersion: 0,
     coverPhoto: null,
   };
-  // The owner's map read the layout editor seeds from: the same map, no set pinned.
+  // The owner's map read every console surface loads (#1531): the map, no set pinned.
   await page.route(/\/api\/venues\/1\/beach-map$/, (route) =>
     route.request().method() === 'GET'
       ? route.fulfill({ json: { map: venueMap, locks: [] } })
       : route.fallback(),
   );
-  await page.route(/\/api\/venues\/1(\?.*)?$/, (route) => route.fulfill({ json: venueMap }));
 }
 
 /**

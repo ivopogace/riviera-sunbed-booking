@@ -102,9 +102,14 @@ segment a venue?" a question every component downstream must be able to answer.
 - **`/operator/<malformed>` now changes the URL.** The address bar reads
   `/operator/venue-not-found`, not what was typed, so the page's copy cannot tell the operator to
   "check the address" against it — it names the two places to go instead.
-- **A valid-but-unknown id is unchanged.** `/operator/999` where the backend does not know 999
-  still mounts the console and shows each tab's load-error state. The guard judges the URL, not the
-  database.
+- **A valid-but-unknown id lands on the same page** (*amended 2026-10-10, #1526*; until then
+  `/operator/999` where the backend did not know 999 mounted the console and showed each tab's
+  load-error state, the guard judging the URL alone). A third guard, `core/venue-access.guard.ts`,
+  asks the database through the owner's beach-map read and sends a `403 NOT_VENUE_OWNER` or
+  `404 NO_SUCH_VENUE` to the same page — one page for both, by the owner's decision, so the SPA
+  enumerates no more than the API does (invariant #13 answers 403 before any existence probe).
+  Anything else (401, 5xx, network) still mounts the console. Rationale: `RESPONSIBILITIES.md`
+  § Frontend.
 - **A non-canonical id that used to work now does not.** `/operator/0x10` opened venue 16 and
   `/operator/7e2` opened venue 700; both are now the not-found page. No in-app link ever produced
   such a URL, and a bookmark holding one was already showing a venue its address did not name.

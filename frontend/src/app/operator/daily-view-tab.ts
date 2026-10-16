@@ -11,7 +11,7 @@ import {
   viewChild,
 } from '@angular/core';
 import { ActivatedRoute, RouterLink } from '@angular/router';
-import { catchError, forkJoin, of, tap } from 'rxjs';
+import { catchError, forkJoin, map, of, tap } from 'rxjs';
 
 import { TouchTarget } from '../shared/touch-target';
 import { OperatorAuth, SESSION_EXPIRED_MESSAGE } from '../core/operator-auth';
@@ -38,7 +38,6 @@ import { metaFor } from '../shared/booking-status';
 import { plural } from '../shared/plural';
 import { setLabel, setsById, tierSentenceLabel } from '../shared/set-label';
 import { SetView, VenueMapView } from '../shared/venue-views';
-import { VenueService } from '../venue/venue.service';
 import { BeachMapCanvas, BeachMapCanvasRow, BeachMapRowDef } from '../shared/beach-map-canvas';
 import { AvailabilityChanges } from './availability-changes';
 import {
@@ -181,7 +180,6 @@ interface CheckInNotice {
 })
 export class DailyViewTab {
   private readonly route = inject(ActivatedRoute);
-  private readonly venues = inject(VenueService);
   private readonly console = inject(OperatorConsoleService);
   private readonly changes = inject(AvailabilityChanges);
   protected readonly operator = inject(OperatorAuth);
@@ -652,14 +650,16 @@ export class DailyViewTab {
     });
   }
 
-  /** Fetch the map + bookings + availability states for the selected date; `onSettled` runs after ALL settle. */
+  /** Fetch the owner's map (today's) + the selected date's bookings and availability states; `onSettled` runs after ALL settle. */
   private load(onSettled?: () => void): void {
     const venueId = this.venueId();
     const requested = this.selectedDate();
     const epoch = this.epoch;
     // Continuations re-check venue + date so a superseded venue/day never writes here.
     const current = (): boolean => this.epoch === epoch && this.selectedDate() === requested;
-    const venue$ = this.venues.getVenueMap(venueId, requested).pipe(
+    // The owner's read: the grid needs the layout only; tile states come from the dated availability read.
+    const venue$ = this.console.beachMap(venueId).pipe(
+      map((view) => view.map),
       tap((v) => {
         if (current()) {
           this.venue.set(v);
