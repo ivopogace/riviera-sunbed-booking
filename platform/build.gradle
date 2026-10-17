@@ -95,35 +95,6 @@ tasks.named('test') {
 	// Two forks each hold their own context cache and containers; the runner has the cores and memory.
 	maxParallelForks = 2
 	finalizedBy tasks.named('jacocoTestReport')
-	// #1599 measurement: the last context-cache statistics per test class and the container starts,
-	// as a summary at the end of the run. Temporary; removed before the PR leaves draft.
-	systemProperty 'logging.level.org.springframework.test.context.cache', 'DEBUG'
-	def cacheStats = new java.util.LinkedHashMap<String, String>()
-	def containerStarts = new java.util.concurrent.atomic.AtomicInteger()
-	onOutput { descriptor, event ->
-		event.message.eachLine { line ->
-			def stats = (line =~ /size = (\d+), maxSize = (\d+).*?hitCount = (\d+), missCount = (\d+)/)
-			if (stats.find()) {
-				cacheStats[descriptor.className] = "size=${stats.group(1)}/${stats.group(2)} hit=${stats.group(3)} miss=${stats.group(4)}"
-			}
-			if (line.contains('Container postgres:17 started')) {
-				containerStarts.incrementAndGet()
-			}
-		}
-	}
-	def failures = []
-	afterTest { descriptor, result ->
-		if (result.resultType == TestResult.ResultType.FAILURE) {
-			failures << "FAILED ${descriptor.className} > ${descriptor.name}: ${result.exception}"
-		}
-	}
-	afterSuite { descriptor, result ->
-		if (descriptor.parent == null) {
-			cacheStats.each { name, stats -> println "CTX ${name} ${stats}" }
-			println "CTX-CONTAINERS postgres:17 started: ${containerStarts.get()}"
-			failures.each { println it }
-		}
-	}
 	// spring-modulith#1762 (fixed in 2.2): the Documenter's BasicJsonParser rejects an escaped quote in the apt's
 	// javadoc.json, failing DocumentationTests; make each one a ' first. Drop this block with the 2.2 upgrade.
 	def javadocJson = layout.buildDirectory.file('generated-spring-modulith/javadoc.json')
