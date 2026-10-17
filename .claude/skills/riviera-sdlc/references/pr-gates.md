@@ -15,6 +15,13 @@ built-in `Skill("code-review")` on the PR number with the overlay and say in the
 degraded. If nothing starts, leave the PR's review checkbox unticked and say why. The subagent
 fan-out is pre-authorized for this gate.
 
+**Which skill runs which round.** The plugin's first step stops without reviewing when the PR is a
+draft, looks trivial, or already carries a code review from this account. A run that stops there
+is not a round. So the plugin runs once, for round 1, after the PR leaves draft. Every later round
+(the re-review after a fix), and any round it declines, runs the built-in `Skill("code-review")`
+on the PR number at the same effort, with the overlay. The PR body's review-gate line names the
+skill that ran each round.
+
 **`gh` in cloud sessions** (`GH_TOKEN` in env; the proxy serves repo-scoped REST only, no GraphQL):
 `gh pr diff N` and `gh api repos/{owner}/{repo}/...` work. `gh pr list`/`gh pr checks`/`gh search`
 403 → `gh api "repos/O/R/pulls?state=open"`, `gh api repos/O/R/commits/{sha}/check-runs`, `gh api

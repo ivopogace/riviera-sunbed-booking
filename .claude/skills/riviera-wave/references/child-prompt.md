@@ -16,6 +16,8 @@ issue needs from a sibling, and what to do until that sibling merges>
   § in RESPONSIBILITIES.md, the ADRs it names, the routed skills, and the current framework
   reference docs rather than memory. Take the best practice they state, and name what you
   relied on in the PR body.
+- Mark the PR ready for review before the first review round (`riviera-sdlc` § PR): the review
+  plugin skips a draft (pr-gates §1).
 - Run the review gate at pr-gates §1's effort: <high for anything touching availability, the
   booking lifecycle, money or authorization; medium for a pure move or no-behaviour-change slice
   with the structural net green, a doc-only slice included; unsure → high>. The PR body's
