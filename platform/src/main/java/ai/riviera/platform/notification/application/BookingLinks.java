@@ -33,6 +33,11 @@ public record BookingLinks(String baseUrl) {
 					"riviera.notification.booking-link.base-url must be set — it is the origin every "
 							+ "booking mail's link is built on");
 		}
+		if (baseUrl.contains("${")) {
+			throw new IllegalArgumentException(
+					"riviera.notification.booking-link.base-url is unresolved (" + baseUrl
+							+ "): set RIVIERA_RECOVERY_LINK_BASE_URL");
+		}
 		URI parsed = URI.create(baseUrl.strip());
 		if (!parsed.isAbsolute() || parsed.getHost() == null) {
 			throw new IllegalArgumentException(
