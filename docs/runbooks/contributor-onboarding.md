@@ -21,7 +21,7 @@ message to send.
    work, get that party's written release first. This is the most common way an assignment
    fails.
 5. **Grant access.** Collaborator access to the repo, or accept fork PRs. Either way the
-   `Riviera Rule Set` still gates `main` on the seven required checks.
+   `Riviera Rule Set` still gates `main` on the required checks `CONTRIBUTING.md` lists.
 6. **On every PR** the "Contribution terms" checkbox in the PR template must be ticked and
    any third-party material named with its licence. Review as usual (`riviera-sdlc`).
 7. **Attribution is the Owner's call.** No credit is owed (`CLA.md` §5), but git records the
