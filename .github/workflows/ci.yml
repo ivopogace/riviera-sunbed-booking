@@ -3,8 +3,9 @@ name: CI
 # The job names marked "Required context" below are status-check contexts the `Riviera Rule Set`
 # requires by exact string (CONTRIBUTING.md lists them all, with `SonarCloud Code Analysis`, which the
 # SonarCloud app posts). Renaming one, or letting a path filter skip its workflow, leaves the PR waiting
-# on a check that never reports (#413/#420/#539); a job-level `if` that skips one posts `skipped`, and
-# whether the ruleset reads that as passing is a bet not taken (#955).
+# on a check that never reports (#413/#420/#539); a job-level `if` that skips one on a pull request
+# posts `skipped`, and whether the ruleset reads that as passing is a bet not taken (#955; the `if`s
+# on `repo-hygiene` and `sonar` hold on every pull request).
 on:
   # `main` only: a wider `push` fires two runs per PR SHA under the same check names, and the ruleset
   # honours whichever finishes last (#417). A branch therefore has no CI until its PR exists.
@@ -103,18 +104,17 @@ jobs:
           retention-days: 30
 
   a11y-e2e:
-    # The API-mocked a11y Playwright suite over three runners (#1597). Not a required context: it
-    # blocks merge through `frontend`'s `needs` and its "every shard green" step. Change `shard` and
-    # `total` together.
-    name: A11y e2e (shard ${{ matrix.shard }} of ${{ matrix.total }})
+    # The API-mocked a11y Playwright suite over the runners `matrix.shard` lists (#1597). Not a
+    # required context: it blocks merge through `frontend`'s `needs` and its "every shard green" step.
+    name: A11y e2e (shard ${{ matrix.shard }} of ${{ strategy.job-total }})
     runs-on: ubuntu-latest
     timeout-minutes: 15
     strategy:
       fail-fast: false
       matrix:
         shard: [1, 2, 3]
-        total: [3]
     outputs:
+      # `frontend` restores and saves under this same key, so the cache's identity has one source.
       key: ${{ steps.key.outputs.key }}
     defaults:
       run:
@@ -123,9 +123,12 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v7
 
-      - name: Compute the build-input hash (the cache key)
+      - name: Compute the build-input hash (the frontend cache key)
         id: key
-        # Byte-for-byte `frontend`'s expression; that job fails when the two disagree.
+        # What `frontend` and these shards read outside `frontend/`: `setup-node` reads the root
+        # `.nvmrc`, `focus-ring-baseline.spec.ts` the design doc, `map-water.spec.ts` and the e2e
+        # `support/map-resources.ts` the map style, sprites and glyphs. A spec that starts reading
+        # elsewhere joins this list, or a hit is a wrong green.
         run: echo "key=v1-frontend-sonar-${{ hashFiles('frontend/**', '.nvmrc', 'docs/design/non-text-contrast.md', 'platform/map/**', '!frontend/node_modules/**', '!frontend/coverage/**', '!frontend/dist/**', '!frontend/.angular/**') }}" >> "$GITHUB_OUTPUT"
 
       - name: Look up whether an identical tree already passed the whole frontend gate (pull requests only)
@@ -161,7 +164,7 @@ jobs:
       - name: A11y e2e (real-render axe over the booking flow), this shard
         # The real-backend suite (`npm run test:e2e`) needs a JDK and Docker and is not run in CI.
         if: steps.restore.outputs.cache-hit != 'true'
-        run: npm run test:e2e:a11y -- --shard=${{ matrix.shard }}/${{ matrix.total }}
+        run: npm run test:e2e:a11y -- --shard=${{ matrix.shard }}/${{ strategy.job-total }}
 
   frontend:
     name: Frontend (lint + test + build) # Required context (header above): do not rename.
@@ -178,19 +181,15 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v7
 
-      - name: Compute the build-input hash (the cache key)
+      - name: Take the cache key the a11y shards computed
         id: key
-        # What this job and the a11y shards read outside `frontend/`: `setup-node` reads the root
-        # `.nvmrc`, `focus-ring-baseline.spec.ts` the design doc, `map-water.spec.ts` and the e2e
-        # `support/map-resources.ts` the map style, sprites and glyphs. A spec that starts reading
-        # elsewhere joins this list, or a hit is a wrong green.
-        run: echo "key=v1-frontend-sonar-${{ hashFiles('frontend/**', '.nvmrc', 'docs/design/non-text-contrast.md', 'platform/map/**', '!frontend/node_modules/**', '!frontend/coverage/**', '!frontend/dist/**', '!frontend/.angular/**') }}" >> "$GITHUB_OUTPUT"
-
-      - name: Check the a11y shards hashed the same tree (the two key expressions have not drifted)
-        if: ${{ needs.a11y-e2e.result == 'success' && needs.a11y-e2e.outputs.key != steps.key.outputs.key }}
+        # One expression for the whole frontend gate, in `a11y-e2e`. Empty only if no shard reached
+        # its key step, which a green matrix rules out; fail here rather than restore under no key.
+        env:
+          KEY: ${{ needs.a11y-e2e.outputs.key }}
         run: |
-          echo "::error::a11y-e2e computed '${{ needs.a11y-e2e.outputs.key }}' but this job computed '${{ steps.key.outputs.key }}': align the two hashFiles expressions in ci.yml"
-          exit 1
+          test -n "$KEY" || { echo "::error::a11y-e2e produced no cache key"; exit 1; }
+          echo "key=$KEY" >> "$GITHUB_OUTPUT"
 
       - name: Restore the Sonar inputs of an identical, already-green tree (pull requests only)
         id: restore
@@ -248,7 +247,8 @@ jobs:
         run: npm run build
 
       - name: Require every a11y shard green
-        # After this job's own gates so one push surfaces every red. Skipped shards report `success`.
+        # After this job's own gates so one push surfaces every red. On a cache hit the shards skip
+        # their steps and still end `success`.
         if: ${{ !cancelled() && needs.a11y-e2e.result != 'success' }}
         run: |
           echo "::error::the a11y e2e shards ended '${{ needs.a11y-e2e.result }}'; see the A11y e2e (shard k of N) jobs"
