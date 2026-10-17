@@ -18,13 +18,13 @@ fan-out is pre-authorized for this gate.
 **Which skill runs which round.** The plugin's step 1 stops without reviewing when the PR is a
 draft, looks trivial or already carries a code review from this account, and a run that stops
 there is not a round. So the plugin runs once, for round 1, after the PR leaves draft; every later
-round (the re-review after a fix), and a round 1 it declines, runs the built-in
-`Skill("code-review")` without `--comment` on the PR number, with the overlay, at the **Effort**
-below. Each round leaves one `### Code review` PR comment naming the round, head sha and skill,
-its findings and the overlay items checked. Post it yourself (the comment route below) whenever
-the skill posted none: the built-in never does, and the plugin doesn't when nothing reaches its
-threshold or its `gh pr comment` gets a 403. The PR body's review-gate line names the skill that
-ran each round.
+round (the re-review after a fix), and a round 1 it declines or cannot complete, runs the built-in
+`Skill("code-review")` without `--comment` on the PR number, with the overlay, at the slice's
+**Effort** (below). Each round leaves one `### Code review` PR comment with its findings. When the
+skill posted none (the built-in never does; the plugin doesn't when nothing reaches its threshold
+or its `gh pr comment` gets a 403), post it yourself via the comment route below, naming the
+round, head sha, skill, its findings and the overlay items checked. The PR body's review-gate line
+names the skill that ran each round.
 
 **`gh` in cloud sessions** (`GH_TOKEN` in env; the proxy serves repo-scoped REST only, no GraphQL):
 `gh pr diff N` and `gh api repos/{owner}/{repo}/...` work. `gh pr list`/`gh pr checks`/`gh search`
@@ -32,9 +32,9 @@ ran each round.
 "repos/O/R/issues?labels=<l>&state=all"`. Review threads, auto-merge and draft/ready-for-review go
 through `repos/O/R/pulls/N/ccr/...` (the 403 body lists the routes). Comment: `gh api -X POST
 repos/O/R/issues/N/comments -F body=@<file>`. `gh pr view` 403s; use `gh api repos/O/R/pulls/N`
-for the PR and `gh api --paginate repos/O/R/issues/N/comments` for its comments. Job logs: the
-GitHub MCP `get_job_logs` (`return_content: true` + `tail_lines`) — the `gh` redirect to Azure is
-denied.
+for the PR and `gh api --paginate repos/O/R/issues/N/comments --jq '.[]'` for its comments
+(one JSON object per line). Job logs: the GitHub MCP `get_job_logs` (`return_content: true` +
+`tail_lines`) — the `gh` redirect to Azure is denied.
 
 **Effort:** medium for a pure move/no-behaviour-change slice with the structural net green;
 **high** for anything touching availability, the booking lifecycle, money or authorization.
