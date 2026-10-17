@@ -91,6 +91,14 @@ tasks.named('test') {
 	// The full suite holds ~30 cached Spring contexts in one worker; Gradle's 512m default OOMs.
 	maxHeapSize = '1g'
 	finalizedBy tasks.named('jacocoTestReport')
+	// #1599 baseline measurement: the context-cache statistics and container starts on the CI log.
+	// Temporary; removed before the PR leaves draft.
+	systemProperty 'logging.level.root', 'WARN'
+	systemProperty 'logging.level.ai.riviera.platform', 'INFO'
+	systemProperty 'logging.level.org.springframework.test.context.cache', 'DEBUG'
+	systemProperty 'logging.level.org.testcontainers', 'INFO'
+	systemProperty 'logging.level.tc', 'INFO'
+	testLogging { showStandardStreams = true }
 	// spring-modulith#1762 (fixed in 2.2): the Documenter's BasicJsonParser rejects an escaped quote in the apt's
 	// javadoc.json, failing DocumentationTests; make each one a ' first. Drop this block with the 2.2 upgrade.
 	def javadocJson = layout.buildDirectory.file('generated-spring-modulith/javadoc.json')
