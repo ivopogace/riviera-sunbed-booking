@@ -127,11 +127,14 @@ jobs:
 
       - name: Look up whether an identical tree already passed the whole frontend gate (pull requests only)
         id: restore
-        # `frontend` saves this key only after every gate, this suite included.
+        # `frontend` saves this key only after every gate, this suite included. The `path` list is
+        # part of the entry's identity, so it must match that save exactly or the lookup never hits.
         if: github.event_name == 'pull_request'
         uses: actions/cache/restore@v6
         with:
-          path: frontend/coverage/frontend/lcov.info
+          path: |
+            frontend/coverage/frontend/lcov.info
+            frontend/coverage/eslint-rules/lcov.info
           key: ${{ steps.key.outputs.key }}
           lookup-only: true
 
