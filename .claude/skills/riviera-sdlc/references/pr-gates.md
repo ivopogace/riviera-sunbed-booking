@@ -19,11 +19,12 @@ fan-out is pre-authorized for this gate.
 draft, looks trivial or already carries a code review from this account, and a run that stops
 there is not a round. So the plugin runs once, for round 1, after the PR leaves draft. Every later
 round (the re-review after a fix), and a round 1 it declines, runs the built-in
-`Skill("code-review")` on the PR number at the **Effort** below, with the overlay; only a refused
-plugin makes a round degraded. A round that ends with no `### Code review` PR comment (the
-built-in posts none, `--comment` only inline ones; the plugin none when nothing reaches its
-threshold or its `gh pr comment` is refused) gets one posted by hand via the comment route below,
-naming the round, head sha, skill and the overlay items checked. The PR body's review-gate line
+`Skill("code-review")` without `--comment` on the PR number, with the overlay, at the **Effort**
+below (the same for every round). Only a plugin that still cannot start after the repair above
+makes a round degraded. A round that posts no `### Code review` PR comment of its own (the
+built-in never does; the plugin not when nothing reaches its threshold or its `gh pr comment`
+gets a 403) gets one posted by hand via the comment route below: the round, head sha and skill,
+each finding with its severity, and the overlay items checked. The PR body's review-gate line
 names the skill that ran each round.
 
 **`gh` in cloud sessions** (`GH_TOKEN` in env; the proxy serves repo-scoped REST only, no GraphQL):
@@ -31,9 +32,9 @@ names the skill that ran each round.
 403 → `gh api "repos/O/R/pulls?state=open"`, `gh api repos/O/R/commits/{sha}/check-runs`, `gh api
 "repos/O/R/issues?labels=<l>&state=all"`. Review threads, auto-merge and draft/ready-for-review go
 through `repos/O/R/pulls/N/ccr/...` (the 403 body lists the routes). Comment: `gh api -X POST
-repos/O/R/issues/N/comments -f body='...'`. `gh pr view --json comments` 403s; use `gh api
-repos/O/R/pulls/N`. Job logs: the GitHub MCP `get_job_logs` (`return_content: true` + `tail_lines`)
-— the `gh` redirect to Azure is denied.
+repos/O/R/issues/N/comments -F body=@<file>`. `gh pr view --json comments` 403s; use `gh api
+repos/O/R/issues/N/comments`. Job logs: the GitHub MCP `get_job_logs` (`return_content: true` +
+`tail_lines`) — the `gh` redirect to Azure is denied.
 
 **Effort:** medium for a pure move/no-behaviour-change slice with the structural net green;
 **high** for anything touching availability, the booking lifecycle, money or authorization.
