@@ -44,9 +44,12 @@ class TestContextDriftArchitectureTests {
 		Scan scan = scan(ArchitectureTestSupport.fixtureClasses(FIXTURE_BASE));
 
 		assertEquals(2, scan.declaring(), "both fixture classes declare properties");
-		assertEquals(1, scan.violations().size(), () -> "exactly the restating fixture: " + scan.violations());
-		assertTrue(scan.violations().getFirst().contains("RestatesASharedValue")
-				&& scan.violations().getFirst().contains("booking.no-show.enabled=false"), scan.violations()::toString);
+		assertEquals(List.of(
+				"ai.riviera.driftfixture.RestatesASharedValue restates booking.no-show.enabled=false"
+						+ " (SharedTestProperties already sets it)",
+				"ai.riviera.driftfixture.RestatesASharedValue restates booking.request.initial-delay=PT2H"
+						+ " (SharedTestProperties already sets it)"),
+				scan.violations(), "one violation per restated entry, from either annotation, and none for the opt-out");
 	}
 
 	private record Scan(int declaring, List<String> violations) {

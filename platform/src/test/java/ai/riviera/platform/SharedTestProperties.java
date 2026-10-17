@@ -17,13 +17,12 @@ import org.springframework.test.context.MergedContextConfiguration;
  * the bootstrap admin's password, the no-show sweep off, the request and abandoned-payment sweeps held
  * outside the test window. Registered in {@code META-INF/spring.factories}, so it reaches every test
  * class under any profile; placed above the application's configuration and below a class's own
- * {@code @SpringBootTest(properties)} / {@code @TestPropertySource}, so a class whose subject is one of
- * these keys declares it, and only then (restating a shared value is a wasted context,
- * {@code TestContextDriftArchitectureTests}).
+ * {@code @SpringBootTest(properties)} / {@code @TestPropertySource}, so a class declares one of these
+ * keys only to opt out ({@code TestContextDriftArchitectureTests} fails a restated shared value).
  */
 public final class SharedTestProperties implements ContextCustomizerFactory {
 
-	/** The bootstrap admin's credential in every test context; the literal tests log in with. */
+	/** The bootstrap admin's credential the suite starts from; the literal the ITs log in with. */
 	public static final String OPERATOR_PASSWORD = "test-operator-pw";
 
 	static final Map<String, Object> VALUES = Map.of(

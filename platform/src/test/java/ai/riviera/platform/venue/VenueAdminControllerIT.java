@@ -27,10 +27,9 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * Verifies the U7 venue write API (issue #7) end to end against Testcontainers Postgres: a venue
  * is created and its beach map laid out via the operator endpoints, and the layout round-trips
  * unchanged through the U1 read API ({@code GET /api/venues/{id}}) — the core integration AC.
- * Also pins the operator auth gate (invariant: write requires an operator session cookie, read
- * stays public), the
+ * Also pins the operator auth gate (write requires an operator session cookie, read stays public), the
  * editable pool split (invariant #3), integer-minor-unit money (invariant #5), and the
- * coordinate/position uniqueness rejections (invariant #12).
+ * coordinate/position uniqueness rejections.
  */
 @EnabledIfDockerAvailable
 @Import(TestcontainersConfiguration.class)
