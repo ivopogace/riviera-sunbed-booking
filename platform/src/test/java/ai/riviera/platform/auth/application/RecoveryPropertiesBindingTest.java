@@ -7,6 +7,7 @@ import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.boot.test.context.ConfigDataApplicationContextInitializer;
 import org.springframework.boot.test.context.runner.ApplicationContextRunner;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.core.env.StandardEnvironment;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatIllegalArgumentException;
@@ -164,6 +165,8 @@ class RecoveryPropertiesBindingTest {
 
 	private static ApplicationContextRunner recoveryRunner() {
 		return new ApplicationContextRunner()
+				.withInitializer(context -> context.getEnvironment().getPropertySources()
+						.remove(StandardEnvironment.SYSTEM_ENVIRONMENT_PROPERTY_SOURCE_NAME))
 				.withInitializer(new ConfigDataApplicationContextInitializer())
 				.withUserConfiguration(RecoveryBindOnly.class);
 	}

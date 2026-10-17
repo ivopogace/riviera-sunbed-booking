@@ -3,6 +3,7 @@ package ai.riviera.platform.notification.adapter.in;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.ConfigDataApplicationContextInitializer;
 import org.springframework.boot.test.context.runner.ApplicationContextRunner;
+import org.springframework.core.env.StandardEnvironment;
 
 import ai.riviera.platform.notification.application.BookingLinks;
 
@@ -16,6 +17,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 class BookingLinkOriginWiringTest {
 
 	private final ApplicationContextRunner runner = new ApplicationContextRunner()
+			.withInitializer(context -> context.getEnvironment().getPropertySources()
+					.remove(StandardEnvironment.SYSTEM_ENVIRONMENT_PROPERTY_SOURCE_NAME))
 			.withInitializer(new ConfigDataApplicationContextInitializer())
 			.withUserConfiguration(BookingLinkConfig.class);
 
