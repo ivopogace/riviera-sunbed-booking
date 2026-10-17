@@ -7,6 +7,7 @@ import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.boot.test.context.ConfigDataApplicationContextInitializer;
 import org.springframework.boot.test.context.runner.ApplicationContextRunner;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.core.env.StandardEnvironment;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatIllegalArgumentException;
@@ -49,6 +50,21 @@ class RecoveryPropertiesBindingTest {
 		recoveryRunner().withSystemProperties("RIVIERA_RECOVERY_LINK_BASE_URL=https://app.example")
 				.run(context -> assertThat(context.getBean(RecoveryProperties.class).linkBaseUrl())
 						.isEqualTo("https://app.example"));
+	}
+
+	@Test
+	void mailerProfileWithoutTheLinkOriginFailsAtBootNamingTheVariable() {
+		recoveryRunner().withPropertyValues("spring.profiles.active=mailer")
+				.run(context -> assertThat(context).hasFailed().getFailure().rootCause()
+						.hasMessageContaining("RIVIERA_RECOVERY_LINK_BASE_URL"));
+	}
+
+	@Test
+	void mailerProfileAcceptsAnExplicitLoopbackLinkOrigin() {
+		recoveryRunner().withPropertyValues("spring.profiles.active=mailer")
+				.withSystemProperties("RIVIERA_RECOVERY_LINK_BASE_URL=http://localhost:8080")
+				.run(context -> assertThat(context.getBean(RecoveryProperties.class).linkBaseUrl())
+						.isEqualTo("http://localhost:8080"));
 	}
 
 	@Test
@@ -149,6 +165,8 @@ class RecoveryPropertiesBindingTest {
 
 	private static ApplicationContextRunner recoveryRunner() {
 		return new ApplicationContextRunner()
+				.withInitializer(context -> context.getEnvironment().getPropertySources()
+						.remove(StandardEnvironment.SYSTEM_ENVIRONMENT_PROPERTY_SOURCE_NAME))
 				.withInitializer(new ConfigDataApplicationContextInitializer())
 				.withUserConfiguration(RecoveryBindOnly.class);
 	}
