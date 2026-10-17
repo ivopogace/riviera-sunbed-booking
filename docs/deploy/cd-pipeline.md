@@ -108,8 +108,8 @@ must include `frontend/`, so:
     link is built on. **Deployed value: the backend's own origin** (the app serves the SPA
     same-origin since #110), i.e. `https://<name>.onrender.com` today. **Required under the
     `mailer` profile; boot aborts without it** (#1581). Without `mailer` an unset variable falls
-    back to `http://localhost:4200`, which is only right for local dev; an explicit value,
-    loopback included, is accepted as is.
+    back to `http://localhost:4200`, which is only right for local dev; an explicit absolute
+    origin, loopback included, is accepted as is, and a blank or relative value aborts boot (#1590).
   - **SMTP relay (#368, ADR-0011) — only with the `mailer` profile** (production runs
     `prod,mailer`; without these the profile aborts at boot, by design):
     `RIVIERA_SMTP_HOST` (Scaleway TEM: `smtp.tem.scw.cloud`), `RIVIERA_SMTP_PORT` (default
