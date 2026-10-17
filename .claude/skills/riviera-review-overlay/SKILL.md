@@ -70,8 +70,9 @@ stores the blob LF; only a wrong working-tree EOL is a finding.
 
 ## Output
 
-Findings join the host review's numbered list (the `code-review` plugin's one `### Code review`
-PR comment), each prefixed with its RV id and severity (`RV-BE-9 (Blocker): …`), cited and
-linked like the host's own and counted in its "Found N issues". Done when every scope-loaded item
-is checked; RV-BE-11 whenever behaviour is added/moved, RV-BE-19 on any choice/calculation/
-lifecycle change, RV-TEST-1 on every changed test, RV-PROC-2 whenever its trigger fires.
+Findings join the host review's numbered list (the round's one `### Code review` PR comment,
+`riviera-sdlc` pr-gates §1), each prefixed with its RV id and severity (`RV-BE-9 (Blocker): …`),
+cited and linked like the host's own and counted in its "Found N issues". Done when every
+scope-loaded item is checked; RV-BE-11 whenever behaviour is added/moved, RV-BE-19 on any
+choice/calculation/lifecycle change, RV-TEST-1 on every changed test, RV-PROC-2 whenever its
+trigger fires.

@@ -11,16 +11,19 @@ gate are not the review.
 project scope via `.claude/settings.json` → `enabledPlugins`), plus `riviera-review-overlay`. The
 plugin reads the diff from GitHub (`gh pr diff`), so there is no local range to get stale. If the
 plugin is refused, `bash scripts/ensure-plugins.sh` repairs its payload; failing that, run the
-built-in `Skill("code-review")` on the PR number with the overlay and say in the PR that it ran
-degraded. If nothing starts, leave the PR's review checkbox unticked and say why. The subagent
+built-in `Skill("code-review")` on the PR number with the overlay and say in the PR that round 1
+ran degraded. If nothing starts, leave the PR's review checkbox unticked and say why. The subagent
 fan-out is pre-authorized for this gate.
 
-**Which skill runs which round.** The plugin's first step stops without reviewing when the PR is a
-draft, looks trivial, or already carries a code review from this account. A run that stops there
-is not a round. So the plugin runs once, for round 1, after the PR leaves draft. Every later round
-(the re-review after a fix), and any round it declines, runs the built-in `Skill("code-review")`
-on the PR number at the same effort, with the overlay. The PR body's review-gate line names the
-skill that ran each round.
+**Which skill runs which round.** The plugin's step 1 stops without reviewing when the PR is a
+draft, looks trivial or already carries a code review from this account, and a run that stops
+there is not a round. So the plugin runs once, for round 1, after the PR leaves draft. Every later
+round (the re-review after a fix), and a round 1 it declines, runs the built-in
+`Skill("code-review")` on the PR number at the same effort, with the overlay: the routine path,
+not a degraded one. Every round leaves one `### Code review` PR comment (the comment route below)
+naming the round, head sha, skill, findings by severity and the overlay items checked. The
+built-in posts none itself, and the plugin posts none when no finding reaches its threshold, so
+post it yourself then. The PR body's review-gate line names the skill that ran each round.
 
 **`gh` in cloud sessions** (`GH_TOKEN` in env; the proxy serves repo-scoped REST only, no GraphQL):
 `gh pr diff N` and `gh api repos/{owner}/{repo}/...` work. `gh pr list`/`gh pr checks`/`gh search`
