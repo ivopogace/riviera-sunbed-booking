@@ -19,11 +19,12 @@ fan-out is pre-authorized for this gate.
 draft, looks trivial or already carries a code review from this account, and a run that stops
 there is not a round. So the plugin runs once, for round 1, after the PR leaves draft. Every later
 round (the re-review after a fix), and a round 1 it declines, runs the built-in
-`Skill("code-review")` on the PR number at the same effort, with the overlay: the routine path,
-not a degraded one. Every round leaves one `### Code review` PR comment (the comment route below)
-naming the round, head sha, skill, findings by severity and the overlay items checked. The
-built-in posts none itself, and the plugin posts none when no finding reaches its threshold, so
-post it yourself then. The PR body's review-gate line names the skill that ran each round.
+`Skill("code-review")` on the PR number at the **Effort** below, with the overlay; only a refused
+plugin makes a round degraded. A round that ends with no `### Code review` PR comment (the
+built-in posts none, `--comment` only inline ones; the plugin none when nothing reaches its
+threshold or its `gh pr comment` is refused) gets one posted by hand via the comment route below,
+naming the round, head sha, skill and the overlay items checked. The PR body's review-gate line
+names the skill that ran each round.
 
 **`gh` in cloud sessions** (`GH_TOKEN` in env; the proxy serves repo-scoped REST only, no GraphQL):
 `gh pr diff N` and `gh api repos/{owner}/{repo}/...` work. `gh pr list`/`gh pr checks`/`gh search`
