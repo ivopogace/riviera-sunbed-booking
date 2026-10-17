@@ -92,8 +92,8 @@ tasks.named('test') {
 	// count down); the cache holds them all so none is rebuilt, and the heap is sized for that.
 	maxHeapSize = '3g'
 	systemProperty 'spring.test.context.cache.maxSize', '96'
-	// C1 only: a context-heavy suite spends its time in start-up code that never gets hot.
-	jvmArgs '-XX:TieredStopAtLevel=1'
+	// Two forks each hold their own context cache and containers; the runner has the cores and memory.
+	maxParallelForks = 2
 	finalizedBy tasks.named('jacocoTestReport')
 	// #1599 measurement: the last context-cache statistics per test class and the container starts,
 	// as a summary at the end of the run. Temporary; removed before the PR leaves draft.
