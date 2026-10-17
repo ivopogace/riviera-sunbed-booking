@@ -4,7 +4,8 @@ description: >-
   Orchestrate a wave of riviera-sunbed-booking issues in parallel cloud sessions: spawn one
   child session per issue, check in, relay decisions, verify the merge bar first-hand, merge in
   order, close out and archive. Load when the user hands over several issues to run in parallel
-  ("wave N", "in parallel", a list of `Sdlc #N: …` prompts) or invokes /riviera-wave.
+  ("wave N", "in parallel", a list of `Sdlc #N: …` prompts) or a message begins with
+  "/riviera-wave" — from a phone or an MCP seed it arrives as plain text, not a command.
 ---
 
 # Riviera wave orchestration

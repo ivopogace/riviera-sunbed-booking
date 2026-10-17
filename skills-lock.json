@@ -6,14 +6,8 @@
       "sourceType": "github",
       "skillPath": "angular-developer/SKILL.md",
       "ref": "936dcd7763a9877a555d8fb41fa077c2dcc0e19b",
-      "vendored": "verbatim — the whole skill dir (SKILL.md + references/), refreshed 2026-08-31 from angular/skills@936dcd77, the last upstream commit touching angular-developer/. computedHash = sha256 of SKILL.md with LF endings (the pre-refresh value came from the original installer and was not reproducible).",
+      "vendored": "verbatim below a Riviera banner at the top of SKILL.md — the whole skill dir (SKILL.md + references/), refreshed 2026-08-31 from angular/skills@936dcd77, the last upstream commit touching angular-developer/. computedHash = sha256 of upstream SKILL.md (the text below the banner) with LF endings (the pre-refresh value came from the original installer and was not reproducible).",
       "computedHash": "ec5e3a0b1ef218c0d7d40e35c40e5255e7319d7d595c5a6036d8bdac2532c782"
-    },
-    "angular-new-app": {
-      "source": "angular/skills",
-      "sourceType": "github",
-      "skillPath": "angular-new-app/SKILL.md",
-      "computedHash": "d9f712544847ab80ef7ed20043820afd275c394ca05340c2f20a0f051e35d945"
     },
     "grilling": {
       "source": "mattpocock/skills",
@@ -62,14 +56,14 @@
       "sourceType": "github",
       "skillPath": "skills/engineering/tdd/SKILL.md",
       "ref": "6654f6b60cd9d5be8b54c6fafe44346dabeb3b76",
-      "vendored": "verbatim — SKILL.md + mocking.md + tests.md. refactoring.md was deleted upstream (refactoring moved out of the red-green loop into the review stage) and is deleted here too; CONTRIBUTING.md and riviera-plan-doc were reworded to match."
+      "vendored": "verbatim below a Riviera banner — SKILL.md + mocking.md + tests.md. refactoring.md was deleted upstream (refactoring moved out of the red-green loop into the review stage) and is deleted here too; CONTRIBUTING.md and riviera-plan-doc were reworded to match."
     },
     "diagnosing-bugs": {
       "source": "mattpocock/skills",
       "sourceType": "github",
       "skillPath": "skills/engineering/diagnosing-bugs/SKILL.md",
       "ref": "6654f6b60cd9d5be8b54c6fafe44346dabeb3b76",
-      "vendored": true
+      "vendored": "verbatim body; disable-model-invocation: true added here (2026-10-17) — a person's /diagnosing-bugs ritual, not a routed skill: 0 loads across 59 cloud sessions, 18 of them bug fixes, and the sessions diagnosed without the script."
     },
     "codebase-design": {
       "source": "mattpocock/skills",
@@ -118,7 +112,7 @@
       "sourceType": "github",
       "skillPath": "skills/postgres/SKILL.md",
       "ref": "73b20b7eb64716d8c7100c054f0677c0c6e77e30",
-      "vendored": "trimmed — generic-Postgres subset; the seven PlanetScale-product references (pgbouncer-configuration, ps-*) dropped, SKILL.md and query-patterns.md de-branded, upstream LICENSE copied in, and two references written here rather than vendored: concurrency-and-locking.md and connection-pooling.md. Audited 2026-08-31: all 15 shared reference files are byte-identical to upstream HEAD, and the only upstream postgres commit since vendoring (a9b2585e, do not session-SET on PgBouncer's port 6432) landed entirely in dropped ps-* files — nothing to port, and no exposure here (the backend sets no session state; timeouts are per-adapter)."
+      "vendored": "trimmed — generic-Postgres subset (the seven ops references — process-architecture, memory-management-ops, wal-operations, replication, storage-layout, monitoring, backup-recovery — dropped 2026-10-17: hosting is managed, no migration task reads them); the seven PlanetScale-product references (pgbouncer-configuration, ps-*) dropped, SKILL.md and query-patterns.md de-branded, upstream LICENSE copied in, and two references written here rather than vendored: concurrency-and-locking.md and connection-pooling.md. Audited 2026-08-31: all 15 shared reference files are byte-identical to upstream HEAD, and the only upstream postgres commit since vendoring (a9b2585e, do not session-SET on PgBouncer's port 6432) landed entirely in dropped ps-* files — nothing to port, and no exposure here (the backend sets no session state; timeouts are per-adapter)."
     },
     "playwright-cli": {
       "source": "@playwright/cli",

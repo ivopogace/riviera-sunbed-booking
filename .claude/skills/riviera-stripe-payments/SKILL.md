@@ -3,8 +3,8 @@ name: riviera-stripe-payments
 description: >-
   The locked collect-only, no-Stripe-Connect payment model and its conventions
   (PaymentIntents, webhooks as truth, idempotency, refunds, the payout ledger). Load for
-  any work in payment or payout, any Stripe integration, or whenever a task mentions
-  charge, refund, payout, commission, or webhook.
+  any change to payment or payout code, a Stripe call, a refund, commission or ledger rule,
+  or a webhook â€” not for a screen that merely shows payouts.
 ---
 
 # Riviera Stripe Payments
@@ -14,8 +14,8 @@ venues manually in weekly BKT batches minus commission. **No Stripe Connect** â€
 `Transfer`, `Payout`, `application_fee`, `on_behalf_of`, the `Stripe-Account` header, destination
 charges cannot reach Albanian venues. If a task wants them, stop and surface it as an open
 question. ADR-0009 (Proposed) would re-decide the gateway; this model stays authoritative until
-that work starts. Do NOT load `stripe:connect-recommend`; ignore Connect sections of
-`stripe:stripe-best-practices`.
+that work starts. If a `stripe` plugin is enabled, do NOT load its `connect-recommend` skill
+and ignore the Connect sections of its `stripe-best-practices`.
 
 ## Collection (`payment`)
 
@@ -80,7 +80,7 @@ events. Stripe SDK and webhook controller live only in `payment`'s adapters
 
 ## Testing
 
-Stripe test mode (`stripe:test-cards`, `stripe:explain-error`). Test signature verification,
+Stripe test mode (a `stripe` plugin's `test-cards`/`explain-error` when enabled). Test signature verification,
 duplicate delivery, and out-of-order events.
 
 | Thought | Reality |

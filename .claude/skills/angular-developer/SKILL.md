@@ -7,6 +7,13 @@ metadata:
   version: '1.0'
 ---
 
+> **Riviera:** the app exists — skip *Creating New Projects* and the `ng new` steps. Never
+> `ng generate` (files are flat, per `riviera-frontend`) and never `ng build` after a change
+> (`npm run build` only when production-build risk is in play, `riviera-local-debug`). Forms
+> and idioms are `frontend/.claude/CLAUDE.md`'s: Signal Forms, else Reactive, never
+> Template-driven. Use this skill for the `references/` API detail the angular-cli MCP's
+> `search_documentation` cannot answer; the upstream text below is otherwise verbatim.
+
 # Angular Developer Guidelines
 
 1. Always analyze the project's Angular version before providing guidance, as best practices and available features can vary significantly between versions. If creating a new project with Angular CLI, do not specify a version unless prompted by the user.

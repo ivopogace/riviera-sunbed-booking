@@ -3,7 +3,8 @@
 A written issue is a snapshot; the code, sibling slices and ADRs may have moved. "The issue
 looked complete" never skips this.
 
-1. Load `grilling` and interrogate the ticket against the tree:
+1. Interrogate the ticket against the tree (`grilling`'s frontier method applied to the code,
+   not an interview — a cloud child has no user to wait on):
    - Are the ACs still correct, complete and testable? Cross-check against code/spec.
    - What did it miss — states, edge cases, invariants (#2, #4, #5, #8)?
    - **What is in flight?** List open PRs and session branches; check shared files
