@@ -3,6 +3,7 @@ package ai.riviera.platform.payout;
 import java.util.List;
 import java.util.Map;
 
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -42,12 +43,12 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  */
 @EnabledIfDockerAvailable
 @Import(TestcontainersConfiguration.class)
-@SpringBootTest(properties = "riviera.operator.password=fee-admin-pw")
+@SpringBootTest
 @AutoConfigureMockMvc
 class AdminVenueChangeFeeIT {
 
 	private static final String ADMIN = "operator";
-	private static final String ADMIN_PW = "fee-admin-pw";
+	private static final String ADMIN_PW = "test-operator-pw";
 	private static final String PLAIN_OPERATOR = "fee-plain-op";
 	private static final String PLAIN_OPERATOR_PW = "fee-plain-op-pw";
 	private static final String FEE_PATH = "/api/admin/venue-change-fee";
@@ -64,16 +65,22 @@ class AdminVenueChangeFeeIT {
 
 	@BeforeEach
 	void resetTheFeeAndProvisionAPlainOperator() {
-		jdbc.sql("""
-				INSERT INTO platform_setting (setting_key, amount_minor, currency)
-				VALUES ('VENUE_CHANGE_FEE', :amount, 'EUR')
-				ON CONFLICT (setting_key) DO UPDATE SET amount_minor = EXCLUDED.amount_minor
-				""").param("amount", SEEDED_MINOR).update();
+		resetTheFee();
 		jdbc.sql("DELETE FROM admin_audit_record WHERE path = :path").param("path", FEE_PATH).update();
 		jdbc.sql("DELETE FROM operator_venue WHERE operator_id IN "
 				+ "(SELECT id FROM operator WHERE username = :u)").param("u", PLAIN_OPERATOR).update();
 		jdbc.sql("DELETE FROM operator WHERE username = :u").param("u", PLAIN_OPERATOR).update();
 		provisioning.provision(PLAIN_OPERATOR, encoder.encode(PLAIN_OPERATOR_PW));
+	}
+
+	/** The setting is platform-wide and the context is shared: the fee a test wrote must not outlive the class. */
+	@AfterEach
+	void resetTheFee() {
+		jdbc.sql("""
+				INSERT INTO platform_setting (setting_key, amount_minor, currency)
+				VALUES ('VENUE_CHANGE_FEE', :amount, 'EUR')
+				ON CONFLICT (setting_key) DO UPDATE SET amount_minor = EXCLUDED.amount_minor
+				""").param("amount", SEEDED_MINOR).update();
 	}
 
 	private Cookie adminSession() throws Exception {

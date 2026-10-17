@@ -38,13 +38,13 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  */
 @EnabledIfDockerAvailable
 @Import(TestcontainersConfiguration.class)
-@SpringBootTest(properties = "riviera.operator.password=venue-change-admin-pw")
+@SpringBootTest
 @AutoConfigureMockMvc
 class AdminVenueChangeRefundsIT {
 
 	private static final String PATH = "/api/admin/venue-change-refunds";
 	private static final String ADMIN = "operator";
-	private static final String ADMIN_PW = "venue-change-admin-pw";
+	private static final String ADMIN_PW = "test-operator-pw";
 	private static final String PLAIN_OPERATOR = "venue-change-plain-op";
 	private static final String PLAIN_OPERATOR_PW = "plain-op-pw-123";
 

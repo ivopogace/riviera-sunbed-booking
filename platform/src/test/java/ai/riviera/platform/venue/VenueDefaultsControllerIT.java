@@ -24,10 +24,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  */
 @EnabledIfDockerAvailable
 @Import(TestcontainersConfiguration.class)
-@SpringBootTest(properties = {
-		"riviera.operator.password=defaults-test-pw",
-		"riviera.venue.creation.default-commission-bps=650"
-})
+@SpringBootTest(properties = "riviera.venue.creation.default-commission-bps=650")
 @AutoConfigureMockMvc
 class VenueDefaultsControllerIT {
 
@@ -37,7 +34,7 @@ class VenueDefaultsControllerIT {
 	@Test
 	void servesConfiguredDefaultToOperators() throws Exception {
 		// A non-500 override proves the endpoint reads configuration, not a literal (AC-5).
-		Cookie session = SessionLoginSupport.operatorSession(mvc, "operator", "defaults-test-pw");
+		Cookie session = SessionLoginSupport.operatorSession(mvc, "operator", "test-operator-pw");
 
 		mvc.perform(get("/api/venue-defaults").cookie(session))
 				.andExpect(status().isOk())

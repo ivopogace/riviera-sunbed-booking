@@ -33,7 +33,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  */
 @EnabledIfDockerAvailable
 @Import(TestcontainersConfiguration.class)
-@SpringBootTest(properties = "riviera.operator.password=csrf-test-pw")
+@SpringBootTest
 @AutoConfigureMockMvc
 class CsrfProtectionIT {
 
@@ -49,7 +49,7 @@ class CsrfProtectionIT {
 
 	@BeforeEach
 	void logIn() throws Exception {
-		operatorSession = SessionLoginSupport.operatorSession(mvc, "operator", "csrf-test-pw");
+		operatorSession = SessionLoginSupport.operatorSession(mvc, "operator", "test-operator-pw");
 	}
 
 	// ---- Session-authenticated writes REQUIRE the token ----
@@ -88,7 +88,7 @@ class CsrfProtectionIT {
 						.header("X-Forwarded-For", SessionLoginSupport.uniqueClientIp())
 						.contentType(MediaType.APPLICATION_JSON)
 						.content("""
-								{"username": "operator", "password": "csrf-test-pw"}"""))
+								{"username": "operator", "password": "test-operator-pw"}"""))
 				.andExpect(status().isForbidden())
 				.andExpect(jsonPath("$.code").value("INVALID_CSRF_TOKEN"));
 	}

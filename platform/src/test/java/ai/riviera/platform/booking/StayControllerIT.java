@@ -33,7 +33,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  */
 @EnabledIfDockerAvailable
 @Import(TestcontainersConfiguration.class)
-@SpringBootTest(properties = "booking.no-show.enabled=false")
+@SpringBootTest
 @AutoConfigureMockMvc
 class StayControllerIT {
 

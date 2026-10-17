@@ -40,7 +40,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  */
 @EnabledIfDockerAvailable
 @Import(TestcontainersConfiguration.class)
-@SpringBootTest(properties = "booking.no-show.enabled=false")
+@SpringBootTest
 class AccountErasureIT {
 
 	@Autowired

@@ -36,7 +36,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
  */
 @EnabledIfDockerAvailable
 @Import(TestcontainersConfiguration.class)
-@SpringBootTest(properties = "booking.no-show.enabled=false")
+@SpringBootTest
 class JdbcBookingTransitionTableIT {
 
 	private static final Instant NOW = Instant.parse("2001-05-05T10:00:00Z");

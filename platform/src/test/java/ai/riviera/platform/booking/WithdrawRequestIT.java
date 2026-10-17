@@ -44,7 +44,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  */
 @EnabledIfDockerAvailable
 @Import(TestcontainersConfiguration.class)
-@SpringBootTest(properties = "riviera.operator.password=withdraw-test-pw")
+@SpringBootTest
 @AutoConfigureMockMvc
 class WithdrawRequestIT {
 
@@ -58,7 +58,7 @@ class WithdrawRequestIT {
 	private static final String NOT_PENDING_DETAIL = "This booking is not awaiting a venue response.";
 
 	private static final String OPERATOR = "operator";
-	private static final String PASSWORD = "withdraw-test-pw";
+	private static final String PASSWORD = "test-operator-pw";
 
 	@Autowired
 	MockMvc mvc;

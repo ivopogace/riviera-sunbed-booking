@@ -35,7 +35,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
  */
 @EnabledIfDockerAvailable
 @Import(TestcontainersConfiguration.class)
-@SpringBootTest(properties = "booking.no-show.enabled=false")
+@SpringBootTest
 class NoShowSweepIT {
 
 	private static final ZoneId TIRANE = ZoneId.of("Europe/Tirane");

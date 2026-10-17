@@ -43,8 +43,9 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  */
 @EnabledIfDockerAvailable
 @Import(TestcontainersConfiguration.class)
-@SpringBootTest(properties = { "riviera.operator.password=test-operator-pw", "riviera.altcha.enabled=false",
-		"booking.no-show.enabled=false", "logging.level.ai.riviera.platform=DEBUG" })
+@SpringBootTest(properties = {
+		"riviera.altcha.enabled=false",
+		"logging.level.ai.riviera.platform=DEBUG" })
 @AutoConfigureMockMvc
 class BookingCodeLogGuardIT {
 

@@ -44,11 +44,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  */
 @EnabledIfDockerAvailable
 @Import(TestcontainersConfiguration.class)
-@SpringBootTest(properties = {
-		"booking.no-show.enabled=false",
-		"booking.request.initial-delay=PT2H",
-		"booking.awaiting-payment.initial-delay=PT2H"
-})
+@SpringBootTest
 class RequestHoldsNothingIT {
 
 	private static final ZoneId TIRANE = ZoneId.of("Europe/Tirane");
