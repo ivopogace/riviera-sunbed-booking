@@ -12,7 +12,7 @@ import org.springframework.stereotype.Component;
 
 /**
  * Fail-fast guard, the link-origin sibling of {@code SuppressionPepperProdGuard}: under {@code prod}
- * the origin behind {@code riviera.recovery.link-base-url} must not be blank or a loopback host
+ * the origin behind {@code riviera.recovery.link-base-url} must not be blank, relative, unparsable or a loopback host
  * ({@code localhost}, {@code 127.0.0.0/8}, {@code ::1}), or every mailed link points at a dead origin.
  * Guards only this module's own key. Package-private (invariant #11); pinned by {@code RecoveryLinkOriginProdGuardTest}.
  */
@@ -23,17 +23,22 @@ class RecoveryLinkOriginProdGuard {
 	private static final Pattern IPV4_LITERAL = Pattern.compile("((25[0-5]|2[0-4]\\d|1?\\d?\\d)(\\.|$)){4}");
 
 	RecoveryLinkOriginProdGuard(@Value("${riviera.recovery.link-base-url:}") String baseUrl) {
-		if (baseUrl.isBlank() || isLoopback(baseUrl.strip())) {
+		if (baseUrl.isBlank() || isUnusable(baseUrl.strip())) {
 			throw new IllegalStateException(
-					"riviera.recovery.link-base-url must be a real, non-loopback origin under the 'prod' profile — set "
+					"riviera.recovery.link-base-url must be a real, absolute, non-loopback origin under the 'prod' profile — set "
 							+ "RIVIERA_RECOVERY_LINK_BASE_URL to the deployed origin (was '" + baseUrl + "')");
 		}
 	}
 
-	private static boolean isLoopback(String baseUrl) {
-		String host = URI.create(baseUrl).getHost();
+	private static boolean isUnusable(String baseUrl) {
+		String host;
+		try {
+			host = URI.create(baseUrl).getHost();
+		} catch (IllegalArgumentException e) {
+			return true;
+		}
 		if (host == null) {
-			return false;
+			return true;
 		}
 		String bare = host.toLowerCase(Locale.ROOT);
 		bare = bare.endsWith(".") ? bare.substring(0, bare.length() - 1) : bare;

@@ -24,7 +24,7 @@ class RecoveryLinkOriginProdGuardTest {
 	@ParameterizedTest
 	@ValueSource(strings = {"http://localhost:4200", "https://LOCALHOST", "http://localhost.:8080",
 			"http://127.0.0.1:8080", "http://127.1.2.3", "http://[::1]:4200", "http://[0:0:0:0:0:0:0:1]",
-			"  http://localhost:4200  ", ""})
+			"localhost:4200", "//localhost:4200", "http://exa mple.com", ""})
 	void prodWithALoopbackOrBlankOriginAbortsStartup(String origin) {
 		runner.withPropertyValues(KEY + "=" + origin)
 				.withInitializer(context -> context.getEnvironment().setActiveProfiles("prod"))
@@ -73,6 +73,9 @@ class RecoveryLinkOriginProdGuardTest {
 				.withUserConfiguration(RecoveryLinkOriginProdGuard.class)
 				.withInitializer(new ConfigDataApplicationContextInitializer())
 				.withInitializer(context -> context.getEnvironment().setActiveProfiles("prod"))
-				.run(context -> assertThat(context).hasFailed());
+				.run(context -> {
+					assertThat(context).hasFailed();
+					assertThat(context).getFailure().rootCause().hasMessageContaining("localhost:4200");
+				});
 	}
 }
