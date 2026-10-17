@@ -104,11 +104,13 @@ must include `frontend/`, so:
     (the Stripe-key posture) and **long-lived**: rotating it orphans every stored suppression
     row (accepted ADR-0012 consequence), so treat it like a KMS root key. Generate once, e.g.
     `openssl rand -base64 48`. Ops recipes: [`docs/runbooks/suppression-list-ops.md`](../runbooks/suppression-list-ops.md).
-  - `RIVIERA_RECOVERY_LINK_BASE_URL` (#368) — the absolute origin every emailed verify/reset
-    link is built on. **Deployed value: the backend's own origin** (the app serves the SPA
-    same-origin since #110), i.e. `https://<name>.onrender.com` today. Unset ⇒ the shipped
-    default `http://localhost:4200`, which is only right for local dev — with the real mailer
-    active every emailed link would point at a dead origin.
+  - `RIVIERA_RECOVERY_LINK_BASE_URL` (#368, #1581) — **required under the `prod` profile; boot
+    aborts without it** (or with a loopback host: `localhost`, `127.0.0.0/8`, `::1`), once per
+    key it feeds (`RecoveryLinkOriginProdGuard`, `BookingLinkOriginProdGuard`). The absolute origin
+    every emailed verify/reset, approval and booking link is built on. **Deployed value: the
+    backend's own origin** (the app serves the SPA same-origin since #110), i.e.
+    `https://<name>.onrender.com` today. Outside `prod` the shipped default
+    `http://localhost:4200` stays, which is right for local dev and the `mailer` smoke test.
   - **SMTP relay (#368, ADR-0011) — only with the `mailer` profile** (production runs
     `prod,mailer`; without these the profile aborts at boot, by design):
     `RIVIERA_SMTP_HOST` (Scaleway TEM: `smtp.tem.scw.cloud`), `RIVIERA_SMTP_PORT` (default
