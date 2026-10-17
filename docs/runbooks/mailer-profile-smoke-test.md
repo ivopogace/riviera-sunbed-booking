@@ -36,12 +36,12 @@ SPRING_PROFILES_ACTIVE=mailer \
 ```
 
 **Negative check first (fail-at-boot, AC):** run once with the env vars **unset** — boot must
-abort on an unresolved `RIVIERA_SMTP_*`/`RIVIERA_MAIL_FROM` placeholder, not start and fail on
+abort on an unresolved `RIVIERA_SMTP_*`/`RIVIERA_MAIL_FROM`/`RIVIERA_RECOVERY_LINK_BASE_URL` placeholder, not start and fail on
 first send.
 
 > `RIVIERA_RECOVERY_LINK_BASE_URL` points the emailed links at the origin serving the SPA —
-> same-origin `:8080` when running the bundled build; `http://localhost:4200` (the default) when
-> the dev SPA server is up. Deployed: the backend's own origin (`docs/deploy/cd-pipeline.md`).
+> same-origin `:8080` when running the bundled build; `http://localhost:4200` when
+> the dev SPA server is up. Required under `mailer`: there is no default. Deployed: the backend's own origin (`docs/deploy/cd-pipeline.md`).
 
 ## 2. Smoke send via the sign-in page
 

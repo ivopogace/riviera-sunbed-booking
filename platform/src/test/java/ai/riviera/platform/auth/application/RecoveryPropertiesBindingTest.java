@@ -52,6 +52,21 @@ class RecoveryPropertiesBindingTest {
 	}
 
 	@Test
+	void mailerProfileWithoutTheLinkOriginFailsNamingTheVariable() {
+		recoveryRunner().withPropertyValues("spring.profiles.active=mailer")
+				.run(context -> assertThat(context).hasFailed().getFailure()
+						.hasStackTraceContaining("RIVIERA_RECOVERY_LINK_BASE_URL"));
+	}
+
+	@Test
+	void mailerProfileAcceptsAnExplicitLoopbackOrigin() {
+		recoveryRunner().withPropertyValues("spring.profiles.active=mailer")
+				.withSystemProperties("RIVIERA_RECOVERY_LINK_BASE_URL=http://localhost:8080")
+				.run(context -> assertThat(context.getBean(RecoveryProperties.class).linkBaseUrl())
+						.isEqualTo("http://localhost:8080"));
+	}
+
+	@Test
 	void bindsTheShippedTokenTtls() {
 		recoveryRunner().run(context -> {
 			RecoveryProperties props = context.getBean(RecoveryProperties.class);

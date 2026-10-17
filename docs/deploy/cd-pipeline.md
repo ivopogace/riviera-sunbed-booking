@@ -108,7 +108,8 @@ must include `frontend/`, so:
     link is built on. **Deployed value: the backend's own origin** (the app serves the SPA
     same-origin since #110), i.e. `https://<name>.onrender.com` today. Unset ⇒ the shipped
     default `http://localhost:4200`, which is only right for local dev — with the real mailer
-    active every emailed link would point at a dead origin.
+    active every emailed link would point at a dead origin, so the `mailer` profile aborts at
+    boot when it is unset (#1581); an explicit value, loopback included, is accepted.
   - **SMTP relay (#368, ADR-0011) — only with the `mailer` profile** (production runs
     `prod,mailer`; without these the profile aborts at boot, by design):
     `RIVIERA_SMTP_HOST` (Scaleway TEM: `smtp.tem.scw.cloud`), `RIVIERA_SMTP_PORT` (default

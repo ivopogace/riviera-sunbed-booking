@@ -43,6 +43,15 @@ public record RecoveryProperties(
 		requireInRange("riviera.recovery.verification-token-ttl", verificationTokenTtl,
 				MAX_VERIFICATION_TOKEN_TTL);
 		requireInRange("riviera.recovery.reset-token-ttl", resetTokenTtl, MAX_RESET_TOKEN_TTL);
+		requireResolved(linkBaseUrl);
+	}
+
+	/** Boot's binder keeps an unresolvable placeholder as literal text; the {@code mailer} profile relies on this to abort. */
+	private static void requireResolved(String linkBaseUrl) {
+		if (linkBaseUrl.contains("${")) {
+			throw new IllegalArgumentException("riviera.recovery.link-base-url is the unresolved placeholder "
+					+ linkBaseUrl + "; set RIVIERA_RECOVERY_LINK_BASE_URL to the origin emailed links point at");
+		}
 	}
 
 	private static void requireInRange(String property, Duration ttl, Duration max) {
