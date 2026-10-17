@@ -40,13 +40,14 @@ permissions:
 #   new door.
 # - NOT a job-level `if:` on the build jobs. A skipped job does post a check run, but whether the
 #   ruleset counts `skipped` as passing is a bet on GitHub's semantics, and the place it would be
-#   lost is a PR that then cannot merge. Not taken (#955).
+#   lost is a PR that then cannot merge. Not taken (#955). (`frontend`'s `if: !cancelled()` is the
+#   opposite move: it runs the job where a red `needs` would otherwise skip it, #1597.)
 # - NOT a git-diff path filter deciding "docs-only". That is a list to keep right by hand, and it is
 #   already wrong on day one: a Vitest spec reads `docs/design/non-text-contrast.md`.
 #
-# What it IS: every job runs on every push, exactly as before, and inside `backend` and `frontend`
-# the expensive steps are conditional on an `actions/cache` restore keyed on the HASH of everything
-# that job's build reads (`platform/**`; `frontend/**` + `.nvmrc` + that design doc). An exact hit
+# What it IS: every job runs on every push, exactly as before, and inside `backend`, `frontend` and
+# the `a11y-e2e` shards the expensive steps are conditional on an `actions/cache` restore keyed on the
+# HASH of everything that job's build reads (`platform/**`; `frontend/**` + `.nvmrc` + that design doc). An exact hit
 # means this identical tree already built green in a run this PR can see, so the job re-uploads the
 # restored JaCoCo XML + classes and Modulith docs (or lcov) and the `sonar` job below runs as it does today. A miss
 # is today's full build, followed by a save. The hash IS the change detector, and it errs toward
@@ -61,9 +62,9 @@ permissions:
 # What this cannot shorten: the `CodeQL` workflow's two `Analyze (…)` jobs and the `CodeQL` check
 # are required contexts that exist only when SARIF is uploaded for the SHA, so they run in full on
 # every push (observed 2-4 min) and bound the whole check suite. Inside this workflow the floor is
-# the Sonar scan (~1 min) plus runner start-ups — four jobs, two of them on the critical path (a build
-# job, then `sonar`). Observed on this change's own cache-hit pushes: 1 min 17 s, 2 min 00 s and 2 min 27 s
-# wall time, the spread being runner queueing; each build job's own work on a hit was 7-10 s.
+# the Sonar scan (~1 min) plus runner start-ups, three of them in series on the critical path (an
+# `a11y-e2e` shard, then `frontend`, then `sonar`); each job's own work on a hit is seconds (#955
+# measured 7-10 s per build job, and 1 min 17 s to 2 min 27 s wall time, the spread being queueing).
 jobs:
   backend:
     name: Backend (build + test)
@@ -144,6 +145,77 @@ jobs:
           if-no-files-found: error
           retention-days: 30
 
+  a11y-e2e:
+    # The API-mocked a11y Playwright suite, dealt over three runners by `--shard` (#1597): on one
+    # runner it had grown to 11.6 min for 826 tests and was the critical path of every full run. Not a
+    # required context — it blocks merge through `frontend`'s `needs` and its "every shard green"
+    # step, so the ruleset is untouched. To change the shard count, edit `shard` and `total` together.
+    name: A11y e2e (shard ${{ matrix.shard }} of ${{ matrix.total }})
+    runs-on: ubuntu-latest
+    # Observed green: ~5 min (npm ci + Playwright install ~1 min, then ~275 tests on 2 workers); a
+    # cache hit is under a minute (checkout and the lookup).
+    timeout-minutes: 15
+    strategy:
+      # Every shard reports, so one red file does not hide a second one on the next push.
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3]
+        total: [3]
+    outputs:
+      # Every shard writes the same value; `frontend` compares it with its own key to catch a drift
+      # between the two copies of the hash expression.
+      key: ${{ steps.key.outputs.key }}
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Compute the build-input hash (the cache key)
+        id: key
+        # Byte-for-byte the `frontend` job's expression (its comment says what the list enumerates);
+        # that job fails when the two disagree.
+        run: echo "key=v1-frontend-sonar-${{ hashFiles('frontend/**', '.nvmrc', 'docs/design/non-text-contrast.md', '!frontend/node_modules/**', '!frontend/coverage/**', '!frontend/dist/**', '!frontend/.angular/**') }}" >> "$GITHUB_OUTPUT"
+
+      - name: Look up whether an identical tree already passed the whole frontend gate (pull requests only)
+        id: restore
+        # `frontend` saves this key only after every gate, this suite included, so an entry under it
+        # is the proof the shard would otherwise produce. `lookup-only` asks without downloading.
+        if: github.event_name == 'pull_request'
+        uses: actions/cache/restore@v6
+        with:
+          path: frontend/coverage/frontend/lcov.info
+          key: ${{ steps.key.outputs.key }}
+          lookup-only: true
+
+      - name: Set up Node (from .nvmrc)
+        if: steps.restore.outputs.cache-hit != 'true'
+        uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies
+        if: steps.restore.outputs.cache-hit != 'true'
+        run: npm ci
+
+      - name: Install Playwright Chromium
+        if: steps.restore.outputs.cache-hit != 'true'
+        # Its own cap, well under the job's: this step is two network fetches (the browser from
+        # Playwright's CDN, apt deps from Ubuntu's mirrors) and is the one that hung in #430. A step
+        # timeout names the culprit in the failed step rather than killing the job at some later
+        # point, and leaves the job's remaining budget for the work that follows.
+        timeout-minutes: 6
+        run: npx playwright install --with-deps chromium
+
+      - name: A11y e2e (real-render axe over the booking flow), this shard
+        # No backend needed. The real-backend U7 editor suite (`npm run test:e2e`) boots Spring Boot +
+        # Postgres and is intentionally NOT run here (no JDK/Docker); see frontend/playwright.config.ts.
+        if: steps.restore.outputs.cache-hit != 'true'
+        run: npm run test:e2e:a11y -- --shard=${{ matrix.shard }}/${{ matrix.total }}
+
   frontend:
     # DO NOT RENAME. Like `Repo hygiene (diff-scoped)` below, this string is a required status-check
     # CONTEXT in the `Riviera Rule Set` ruleset (`CONTRIBUTING.md` records the list), so a
@@ -153,11 +225,16 @@ jobs:
     # same change, which is a repository setting and not expressible in a diff (#539 records the
     # sequencing that lands the pair without an unmergeable window).
     name: Frontend (lint + test + build)
+    # Waits for the `a11y-e2e` shards and, below, fails unless every one passed — that is how the suite
+    # keeps blocking merge under this required name without a new context (#1597). `!cancelled()`
+    # rather than the default so a red shard still runs this job and fails it legibly, instead of
+    # skipping it and betting on how the ruleset reads `skipped` (#955).
+    needs: [a11y-e2e]
+    if: ${{ !cancelled() }}
     runs-on: ubuntu-latest
-    # Observed green: ~9-10 min (npm ci + lint + Vitest + Playwright install + prod build are ~2.5 min
-    # together; the a11y e2e step is ~7-7.5 min on 2 workers, down from ~8.7 min on one — 4 workers
-    # measured the same, the runner's vCPUs saturate at two Chromiums). A cache hit is under a minute.
-    timeout-minutes: 20
+    # Observed green: ~2.5-3 min of its own (npm ci + lint + eslint-rules suite + Prettier + Vitest +
+    # prod build); the a11y suite runs in the shards above. A cache hit is under a minute.
+    timeout-minutes: 15
     defaults:
       run:
         working-directory: frontend
@@ -174,6 +251,15 @@ jobs:
         # spec or config starts reading outside the folder — a hit against a stale hash is a wrong
         # green. The negations keep build outputs out of the hash on a reused workspace.
         run: echo "key=v1-frontend-sonar-${{ hashFiles('frontend/**', '.nvmrc', 'docs/design/non-text-contrast.md', '!frontend/node_modules/**', '!frontend/coverage/**', '!frontend/dist/**', '!frontend/.angular/**') }}" >> "$GITHUB_OUTPUT"
+
+      - name: Check the a11y shards hashed the same tree (the two key expressions have not drifted)
+        # The shards skip on a hit under THIS key, so a shard hashing a different file set could skip
+        # a suite this tree never passed. Checked on a green matrix only: a red shard is reported by
+        # the step after the build, not by a second, misleading red here.
+        if: ${{ needs.a11y-e2e.result == 'success' && needs.a11y-e2e.outputs.key != steps.key.outputs.key }}
+        run: |
+          echo "::error::a11y-e2e computed '${{ needs.a11y-e2e.outputs.key }}' but this job computed '${{ steps.key.outputs.key }}': align the two hashFiles expressions in ci.yml"
+          exit 1
 
       - name: Restore the Sonar inputs of an identical, already-green tree (pull requests only)
         id: restore
@@ -246,28 +332,21 @@ jobs:
         if: steps.restore.outputs.cache-hit != 'true'
         run: npm run test:coverage
 
-      - name: Install Playwright Chromium (for the a11y e2e)
-        if: steps.restore.outputs.cache-hit != 'true'
-        # Its own cap, well under the job's: this step is two network fetches (the browser from
-        # Playwright's CDN, apt deps from Ubuntu's mirrors) and is the one that hung in #430. A step
-        # timeout names the culprit in the failed step rather than killing the job at some later
-        # point, and leaves the job's remaining budget for the work that follows.
-        timeout-minutes: 6
-        run: npx playwright install --with-deps chromium
-
-      - name: A11y e2e (real-render axe over the booking flow)
-        # The API-mocked a11y suite — no backend needed. The real-backend U7 editor suite
-        # (`npm run test:e2e`) boots Spring Boot + Postgres and is intentionally NOT run here
-        # (this job has no JDK/Docker); see frontend/playwright.config.ts.
-        if: steps.restore.outputs.cache-hit != 'true'
-        run: npm run test:e2e:a11y
-
       - name: Build (production)
         if: steps.restore.outputs.cache-hit != 'true'
         run: npm run build
 
+      - name: Require every a11y shard green
+        # After this job's own gates, not before them, so one push surfaces every red at once. On a
+        # cache hit the shards skipped under the same key and still report `success`.
+        if: ${{ !cancelled() && needs.a11y-e2e.result != 'success' }}
+        run: |
+          echo "::error::the a11y e2e shards ended '${{ needs.a11y-e2e.result }}'; see the A11y e2e (shard k of N) jobs"
+          exit 1
+
       - name: Save the Sonar inputs for the next push of this tree
-        # Reached only through a green run of every gate above, so a hit restores only what passed.
+        # Reached only through a green run of every gate above, the a11y shards included, so a hit
+        # restores only what passed — and lets the shards skip under this key.
         if: steps.restore.outputs.cache-hit != 'true'
         uses: actions/cache/save@v6
         with:

@@ -21,7 +21,9 @@ import { defineConfig, devices } from '@playwright/test';
  * headroom. Pinned rather than left to Playwright's half-the-cores default so a machine with more
  * cores does not silently re-create the 4-worker case; `--workers` overrides for a local
  * experiment. Tests within one file stay in order (`fullyParallel: false`): the suite was authored
- * under a single worker, and the intra-file split adds ~2% for a wider timing surface.
+ * under a single worker, and the intra-file split adds ~2% for a wider timing surface. The suite
+ * since grew to 826 tests (11.6 min on one runner), so CI deals it over three runners with
+ * `--shard` (`.github/workflows/ci.yml`, #1597); a local run still takes the whole suite.
  *
  * Projects: every spec runs once on `chromium` at its own viewport, except the two touch-target
  * sweeps, which set no viewport of their own and run under `phone` (390×780) and `fold` (344×882,
