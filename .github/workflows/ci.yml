@@ -5,7 +5,9 @@ name: CI
 # SonarCloud app posts). Renaming one, or letting a path filter skip its workflow, leaves the PR waiting
 # on a check that never reports (#413/#420/#539); a job-level `if` that skips one on a pull request
 # posts `skipped`, and whether the ruleset reads that as passing is a bet not taken (#955; the `if`s
-# on `repo-hygiene` and `sonar` hold on every pull request).
+# on `repo-hygiene` and `sonar` hold on every pull request). A context joins the ruleset only after the
+# job reporting it is on `main` (`A11y e2e (all shards)`, #1600): required first, it would hold every
+# open PR on a check its head never reports (#534/#539).
 on:
   # `main` only: a wider `push` fires two runs per PR SHA under the same check names, and the ruleset
   # honours whichever finishes last (#417). A branch therefore has no CI until its PR exists.
@@ -105,7 +107,7 @@ jobs:
 
   a11y-e2e:
     # The API-mocked a11y Playwright suite over the runners `matrix.shard` lists (#1597). Not a
-    # required context: it blocks merge through `frontend`'s `needs` and its "every shard green" step.
+    # required context: it blocks merge through `a11y-e2e-gate`, which fails unless every shard passed.
     name: A11y e2e (shard ${{ matrix.shard }} of ${{ strategy.job-total }})
     runs-on: ubuntu-latest
     timeout-minutes: 15
@@ -114,7 +116,7 @@ jobs:
       matrix:
         shard: [1, 2, 3]
     outputs:
-      # `frontend` restores and saves under this same key, so the cache's identity has one source.
+      # `a11y-e2e-gate` saves the marker under this key, so the cache's identity has one source.
       key: ${{ steps.key.outputs.key }}
     defaults:
       run:
@@ -123,24 +125,20 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v7
 
-      - name: Compute the build-input hash (the frontend cache key)
+      - name: Compute the build-input hash (the suite's cache key)
         id: key
-        # What `frontend` and these shards read outside `frontend/`: `setup-node` reads the root
-        # `.nvmrc`, `focus-ring-baseline.spec.ts` the design doc, `map-water.spec.ts` and the e2e
-        # `support/map-resources.ts` the map style, sprites and glyphs. A spec that starts reading
-        # elsewhere joins this list, or a hit is a wrong green.
-        run: echo "key=v1-frontend-sonar-${{ hashFiles('frontend/**', '.nvmrc', 'docs/design/non-text-contrast.md', 'platform/map/**', '!frontend/node_modules/**', '!frontend/coverage/**', '!frontend/dist/**', '!frontend/.angular/**') }}" >> "$GITHUB_OUTPUT"
+        # The same `hashFiles` arguments as `frontend`'s key step, whose comment lists what is read
+        # outside `frontend/`; a file joins or leaves both lists together.
+        run: echo "key=v1-a11y-e2e-${{ hashFiles('frontend/**', '.nvmrc', 'docs/design/non-text-contrast.md', 'platform/map/**', '!frontend/node_modules/**', '!frontend/coverage/**', '!frontend/dist/**', '!frontend/.angular/**') }}" >> "$GITHUB_OUTPUT"
 
-      - name: Look up whether an identical tree already passed the whole frontend gate (pull requests only)
+      - name: Look up whether an identical tree already passed every shard (pull requests only)
         id: restore
-        # `frontend` saves this key only after every gate, this suite included. The `path` list is
-        # part of the entry's identity, so it must match that save exactly or the lookup never hits.
+        # `a11y-e2e-gate` saves this key only after every shard passed. The `path` list is part of the
+        # entry's identity, so it must match that save exactly or the lookup never hits.
         if: github.event_name == 'pull_request'
         uses: actions/cache/restore@v6
         with:
-          path: |
-            frontend/coverage/frontend/lcov.info
-            frontend/coverage/eslint-rules/lcov.info
+          path: a11y-e2e-passed
           key: ${{ steps.key.outputs.key }}
           lookup-only: true
 
@@ -166,12 +164,42 @@ jobs:
         if: steps.restore.outputs.cache-hit != 'true'
         run: npm run test:e2e:a11y -- --shard=${{ matrix.shard }}/${{ strategy.job-total }}
 
-  frontend:
-    name: Frontend (lint + test + build) # Required context (header above): do not rename.
-    # `!cancelled()` runs this job after a red shard so `Require every a11y shard green` fails it under
-    # the required name, instead of a `skipped` the ruleset might read as passing (#955, #1597).
+  a11y-e2e-gate:
+    name: A11y e2e (all shards) # Required context (header above): do not rename.
+    # `!cancelled()` runs this job after a red shard so it fails under the required name, instead of a
+    # `skipped` the ruleset might read as passing (#955, #1597).
     needs: [a11y-e2e]
     if: ${{ !cancelled() }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Require every a11y shard green
+        # On a cache hit the shards skip their steps and still end `success`.
+        if: ${{ needs.a11y-e2e.result != 'success' }}
+        run: |
+          echo "::error::the a11y e2e shards ended '${{ needs.a11y-e2e.result }}'; see the A11y e2e (shard k of N) jobs"
+          exit 1
+
+      - name: Write the marker the shards look up
+        # The shards' key, not a hash of its own: this job checks nothing out. Empty only if no shard
+        # reached its key step, which a green matrix rules out; fail here rather than save under no key.
+        id: key
+        env:
+          KEY: ${{ needs.a11y-e2e.outputs.key }}
+        run: |
+          test -n "$KEY" || { echo "::error::a11y-e2e produced no cache key"; exit 1; }
+          echo "key=$KEY" >> "$GITHUB_OUTPUT"
+          echo "$GITHUB_SHA" > a11y-e2e-passed
+
+      - name: Save the marker for the next push of this tree
+        # Reached only through a green matrix, so a hit can only certify a tree every shard passed.
+        uses: actions/cache/save@v6
+        with:
+          path: a11y-e2e-passed
+          key: ${{ steps.key.outputs.key }}
+
+  frontend:
+    name: Frontend (lint + test + build) # Required context (header above): do not rename.
     runs-on: ubuntu-latest
     timeout-minutes: 15
     defaults:
@@ -181,15 +209,14 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v7
 
-      - name: Take the cache key the a11y shards computed
+      - name: Compute the build-input hash (the cache key)
         id: key
-        # One expression for the whole frontend gate, in `a11y-e2e`. Empty only if no shard reached
-        # its key step, which a green matrix rules out; fail here rather than restore under no key.
-        env:
-          KEY: ${{ needs.a11y-e2e.outputs.key }}
-        run: |
-          test -n "$KEY" || { echo "::error::a11y-e2e produced no cache key"; exit 1; }
-          echo "key=$KEY" >> "$GITHUB_OUTPUT"
+        # What this job and the `a11y-e2e` shards read outside `frontend/`: `setup-node` reads the root
+        # `.nvmrc`, `focus-ring-baseline.spec.ts` the design doc, `map-water.spec.ts` and the e2e
+        # `support/map-resources.ts` the map style, sprites and glyphs. A spec that starts reading
+        # elsewhere joins this list, or a hit is a wrong green. The shards hash the same arguments
+        # under their own prefix; a file joins or leaves both lists together.
+        run: echo "key=v1-frontend-sonar-${{ hashFiles('frontend/**', '.nvmrc', 'docs/design/non-text-contrast.md', 'platform/map/**', '!frontend/node_modules/**', '!frontend/coverage/**', '!frontend/dist/**', '!frontend/.angular/**') }}" >> "$GITHUB_OUTPUT"
 
       - name: Restore the Sonar inputs of an identical, already-green tree (pull requests only)
         id: restore
@@ -246,16 +273,8 @@ jobs:
         if: steps.restore.outputs.cache-hit != 'true'
         run: npm run build
 
-      - name: Require every a11y shard green
-        # After this job's own gates so one push surfaces every red. On a cache hit the shards skip
-        # their steps and still end `success`.
-        if: ${{ !cancelled() && needs.a11y-e2e.result != 'success' }}
-        run: |
-          echo "::error::the a11y e2e shards ended '${{ needs.a11y-e2e.result }}'; see the A11y e2e (shard k of N) jobs"
-          exit 1
-
       - name: Save the Sonar inputs for the next push of this tree
-        # Reached only through a green run of every gate above, the shards included.
+        # Reached only through a green run of every gate above.
         if: steps.restore.outputs.cache-hit != 'true'
         uses: actions/cache/save@v6
         with:
