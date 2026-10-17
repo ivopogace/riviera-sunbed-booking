@@ -46,8 +46,8 @@ Pinned by `platform/src/test/java/ai/riviera/platform/ActuatorHardeningIT.java`.
 
 | Secret | Source | Where referenced | Default when unset |
 |---|---|---|---|
-| `STRIPE_API_KEY` | env (`stripe.api-key`) | Stripe collection (payment module) | empty → in-process stub gateway (no Stripe) |
-| `STRIPE_WEBHOOK_SECRET` | env (`stripe.webhook-secret`) | webhook signature verification (invariant #8) | empty |
+| `STRIPE_API_KEY` | env (`stripe.api-key`) | Stripe collection (payment module) | empty → in-process stub gateway (no Stripe); required non-blank under `stripe` (boot aborts otherwise) |
+| `STRIPE_WEBHOOK_SECRET` | env (`stripe.webhook-secret`) | webhook signature verification (invariant #8) | empty; required non-blank under `stripe` (boot aborts otherwise) |
 | `SPRING_DATASOURCE_URL` / `_USERNAME` / `_PASSWORD` | env | Spring datasource auto-config | supplied entirely by the deploy target (Neon over `sslmode=require`) |
 | `RIVIERA_OPERATOR_PASSWORD` | env (`riviera.operator.password`) | the seeded `operator` account's credential — **the platform admin** since #115 (was the owns-all bootstrap; unchanged variable, no new secret) | empty → admin login disabled, cannot approve registrations (logged at WARN, never the value); a value under 12 characters or over 72 bytes is refused the same way — held to the password floor (D-8) |
 | `RIVIERA_ALTCHA_HMAC_SECRET` | env (`riviera.altcha.hmac-secret`) | signs every proof-of-work challenge (ADR-0016); the verifier accepts only solutions to challenges signed with it | empty → a random boot-time key, valid for this process alone (logged at WARN): a restart invalidates challenges in flight and a second instance can verify none of them — set it on every instance before scaling out |

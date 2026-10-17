@@ -20,11 +20,22 @@ import org.springframework.context.annotation.Profile;
 @EnableConfigurationProperties(StripeProperties.class)
 class StripeConfig {
 
-	/** The Stripe API client, built from the secret key. Only active when collecting via Stripe. */
+	/**
+	 * The Stripe API client, built from the secret key. Only active when collecting via Stripe, where a
+	 * blank key or webhook secret aborts the boot instead of failing the first PaymentIntent or webhook.
+	 */
 	@Bean
 	@Profile("stripe")
 	StripeClient stripeClient(StripeProperties properties) {
+		requireConfigured("STRIPE_API_KEY", properties.apiKey());
+		requireConfigured("STRIPE_WEBHOOK_SECRET", properties.webhookSecret());
 		return clientBuilder(properties).build();
+	}
+
+	private static void requireConfigured(String variable, String value) {
+		if (value.isBlank()) {
+			throw new IllegalStateException("The stripe profile requires " + variable + " to be set and non-blank");
+		}
 	}
 
 	/**
