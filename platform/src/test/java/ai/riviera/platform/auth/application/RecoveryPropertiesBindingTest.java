@@ -94,6 +94,15 @@ class RecoveryPropertiesBindingTest {
 	}
 
 	@Test
+	void surroundingWhitespaceOnTheLinkBaseUrlIsStripped() {
+		recoveryRunner().withInitializer(context -> context.getEnvironment().getPropertySources()
+				.addFirst(new MapPropertySource("padded-link-origin",
+						Map.of("RIVIERA_RECOVERY_LINK_BASE_URL", " https://app.example "))))
+				.run(context -> assertThat(context.getBean(RecoveryProperties.class).linkBaseUrl())
+						.isEqualTo("https://app.example"));
+	}
+
+	@Test
 	void bindsTheShippedTokenTtls() {
 		recoveryRunner().run(context -> {
 			RecoveryProperties props = context.getBean(RecoveryProperties.class);
