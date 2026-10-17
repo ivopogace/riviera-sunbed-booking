@@ -23,7 +23,8 @@ class BookingLinkOriginWiringTest {
 	void mailerProfileWithoutTheLinkOriginFailsAtBootNamingTheVariable() {
 		runner.withPropertyValues("spring.profiles.active=mailer")
 				.run(context -> assertThat(context).hasFailed().getFailure().rootCause()
-						.hasMessageContaining("RIVIERA_RECOVERY_LINK_BASE_URL"));
+						.hasMessageContaining("is unresolved")
+						.hasMessageContaining("set RIVIERA_RECOVERY_LINK_BASE_URL"));
 	}
 
 	@Test
