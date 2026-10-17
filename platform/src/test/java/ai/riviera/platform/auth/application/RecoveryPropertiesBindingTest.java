@@ -106,6 +106,19 @@ class RecoveryPropertiesBindingTest {
 	}
 
 	@Test
+	void aNullLinkOriginFailsTheRecordDirectly() {
+		assertThatIllegalArgumentException()
+				.isThrownBy(() -> new RecoveryProperties(Duration.ofHours(24), Duration.ofHours(1), null))
+				.withMessageContaining("riviera.recovery.link-base-url");
+	}
+
+	@Test
+	void aPaddedAbsoluteOriginIsStoredStripped() {
+		assertThat(new RecoveryProperties(Duration.ofHours(24), Duration.ofHours(1), " https://app.example ")
+				.linkBaseUrl()).isEqualTo("https://app.example");
+	}
+
+	@Test
 	void anUnparseableLinkOriginFailsTheBindNamingTheKey() {
 		assertThatIllegalArgumentException()
 				.isThrownBy(() -> new RecoveryProperties(Duration.ofHours(24), Duration.ofHours(1), "http://a b"))

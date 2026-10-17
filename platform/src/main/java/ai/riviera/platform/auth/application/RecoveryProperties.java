@@ -48,24 +48,26 @@ public record RecoveryProperties(
 			throw new IllegalArgumentException(
 					"riviera.recovery.link-base-url is unresolved (" + linkBaseUrl + "): set RIVIERA_RECOVERY_LINK_BASE_URL");
 		}
-		requireAbsoluteOrigin(linkBaseUrl);
+		linkBaseUrl = requireAbsoluteOrigin(linkBaseUrl);
 	}
 
-	private static void requireAbsoluteOrigin(String linkBaseUrl) {
+	private static String requireAbsoluteOrigin(String linkBaseUrl) {
 		String problem = "riviera.recovery.link-base-url must be an absolute URL with a host (e.g. "
 				+ "https://riviera-sunbed-booking.onrender.com): set RIVIERA_RECOVERY_LINK_BASE_URL, but was ";
 		if (linkBaseUrl == null || linkBaseUrl.isBlank()) {
 			throw new IllegalArgumentException(problem + "blank");
 		}
+		String stripped = linkBaseUrl.strip();
 		URI parsed;
 		try {
-			parsed = URI.create(linkBaseUrl.strip());
+			parsed = URI.create(stripped);
 		} catch (IllegalArgumentException e) {
 			throw new IllegalArgumentException(problem + linkBaseUrl, e);
 		}
 		if (!parsed.isAbsolute() || parsed.getHost() == null) {
 			throw new IllegalArgumentException(problem + linkBaseUrl);
 		}
+		return stripped;
 	}
 
 	private static void requireInRange(String property, Duration ttl, Duration max) {
