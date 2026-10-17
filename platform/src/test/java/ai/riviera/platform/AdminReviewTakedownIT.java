@@ -42,12 +42,12 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  */
 @EnabledIfDockerAvailable
 @Import(TestcontainersConfiguration.class)
-@SpringBootTest(properties = "riviera.operator.password=review-admin-pw")
+@SpringBootTest
 @AutoConfigureMockMvc
 class AdminReviewTakedownIT {
 
 	private static final String ADMIN = "operator";
-	private static final String ADMIN_PW = "review-admin-pw";
+	private static final String ADMIN_PW = "test-operator-pw";
 	private static final String PLAIN_OPERATOR = "review-takedown-plain-op";
 	private static final String PLAIN_OPERATOR_PW = "plain-op-pw-123";
 	private static final String LIST_PATH = "/api/admin/venues/{v}/reviews";

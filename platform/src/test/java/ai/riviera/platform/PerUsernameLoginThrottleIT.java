@@ -34,10 +34,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @EnabledIfDockerAvailable
 @Import(TestcontainersConfiguration.class)
 @SpringBootTest(properties = {
-		"riviera.operator.password=bootstrap-pw",
 		"riviera.ratelimit.username.capacity=2",
-		"riviera.ratelimit.username.refill-period=PT1H",
-})
+		"riviera.ratelimit.username.refill-period=PT1H" })
 @AutoConfigureMockMvc
 class PerUsernameLoginThrottleIT {
 

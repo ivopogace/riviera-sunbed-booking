@@ -35,7 +35,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  */
 @EnabledIfDockerAvailable
 @Import(TestcontainersConfiguration.class)
-@SpringBootTest(properties = "riviera.operator.password=bootstrap-pw")
+@SpringBootTest
 @AutoConfigureMockMvc
 class PendingOperatorConsoleIT {
 
@@ -44,7 +44,7 @@ class PendingOperatorConsoleIT {
 	private static final String PASSWORD = "pending-console-pw-1";
 	private static final String VENUE_NAME = "Pending Console Venue";
 	private static final String BOOTSTRAP_ADMIN = "operator";
-	private static final String BOOTSTRAP_PASSWORD = "bootstrap-pw";
+	private static final String BOOTSTRAP_PASSWORD = "test-operator-pw";
 
 	@Autowired
 	MockMvc mvc;

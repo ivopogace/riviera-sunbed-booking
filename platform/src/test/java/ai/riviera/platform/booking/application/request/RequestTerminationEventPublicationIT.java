@@ -38,12 +38,12 @@ import static org.assertj.core.api.Assertions.assertThat;
  * <p>The withdraw case is this slice's stated non-event: guest-initiated, so no notice
  * — pinned here so a future "complete the set" refactor fails a test, not a product expectation.
  *
- * <p>The background sweep is pushed out of the test window ({@code initial-delay=PT2H}) — this IT
- * seeds overdue rows and must be the one to sweep them.
+ * <p>This IT seeds overdue rows and must be the one to sweep them; {@code SharedTestProperties} holds
+ * the background sweep outside the test window.
  */
 @EnabledIfDockerAvailable
 @Import({TestcontainersConfiguration.class, RequestTerminationEventPublicationIT.RecordedFacts.class})
-@SpringBootTest(properties = "booking.request.initial-delay=PT2H")
+@SpringBootTest
 class RequestTerminationEventPublicationIT {
 
 	@Autowired

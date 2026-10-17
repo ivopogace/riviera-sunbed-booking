@@ -41,11 +41,7 @@ import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 @RecordApplicationEvents
 @EnabledIfDockerAvailable
 @Import(TestcontainersConfiguration.class)
-@SpringBootTest(properties = {
-		"booking.no-show.enabled=false",
-		"booking.request.initial-delay=PT2H",
-		"booking.awaiting-payment.initial-delay=PT2H"
-})
+@SpringBootTest
 class RemodelStayRequestIT {
 
 	@Autowired

@@ -48,12 +48,12 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  */
 @EnabledIfDockerAvailable
 @Import({TestcontainersConfiguration.class, SessionCredentialRaceIT.PausingSave.class})
-@SpringBootTest(properties = "riviera.operator.password=bootstrap-pw")
+@SpringBootTest
 @AutoConfigureMockMvc
 class SessionCredentialRaceIT {
 
 	private static final String BOOTSTRAP_ADMIN = "operator";
-	private static final String BOOTSTRAP_PASSWORD = "bootstrap-pw";
+	private static final String BOOTSTRAP_PASSWORD = "test-operator-pw";
 	private static final String TARGET = "stamp-race-admin";
 	private static final String TARGET_PASSWORD = "stamp-race-pw-1";
 	private static final String ME_PATH = "/api/auth/me";

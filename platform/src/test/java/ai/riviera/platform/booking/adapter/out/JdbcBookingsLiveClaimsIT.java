@@ -31,7 +31,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  */
 @EnabledIfDockerAvailable
 @Import(TestcontainersConfiguration.class)
-@SpringBootTest(properties = "booking.no-show.enabled=false")
+@SpringBootTest
 class JdbcBookingsLiveClaimsIT {
 
 	private static final LocalDate JULY_1 = LocalDate.of(2035, 7, 1);

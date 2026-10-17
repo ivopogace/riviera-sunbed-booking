@@ -40,7 +40,7 @@ import static org.junit.jupiter.api.Assertions.assertNull;
  */
 @EnabledIfDockerAvailable
 @Import(TestcontainersConfiguration.class)
-@SpringBootTest(properties = "booking.no-show.enabled=false")
+@SpringBootTest
 @RecordApplicationEvents
 class StayConfirmedPublicationIT {
 

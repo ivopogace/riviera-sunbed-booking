@@ -9,6 +9,14 @@ its container's database, so a literal a `UNIQUE` column holds (a refund id, a `
 is a key across those classes: keep it class-unique. A one-class run misses the collision; run the
 module's DB-backed ITs together.
 
+Every distinct `@SpringBootTest` property set is a context, a container and a Flyway run of its own, so
+the suite's wall time is the count of distinct sets (#1599). `SharedTestProperties` (registered in
+`META-INF/spring.factories`) gives every context the bootstrap admin's password, the no-show sweep off
+and the request and abandoned-payment sweeps outside the test window; a class declares one of those
+keys only to opt out, and `TestContextDriftArchitectureTests` fails a restated value. Log in with
+`SharedTestProperties.OPERATOR_PASSWORD`. Before adding `properties`, `@MockitoBean` or a new
+`@Import`, look for an existing class whose set already fits.
+
 ## Structural tests
 
 `ModularityTests` (`verify()`: cycles, internal access, disallowed dependencies) runs with no

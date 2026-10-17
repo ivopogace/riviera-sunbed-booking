@@ -50,7 +50,7 @@ import static org.mockito.Mockito.verify;
  */
 @EnabledIfDockerAvailable
 @Import(TestcontainersConfiguration.class)
-@SpringBootTest(properties = "booking.no-show.enabled=false")
+@SpringBootTest
 @RecordApplicationEvents
 class CreateStayIT {
 

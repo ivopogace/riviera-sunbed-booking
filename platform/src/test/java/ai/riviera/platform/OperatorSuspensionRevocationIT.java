@@ -34,12 +34,12 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  */
 @EnabledIfDockerAvailable
 @Import(TestcontainersConfiguration.class)
-@SpringBootTest(properties = "riviera.operator.password=bootstrap-pw")
+@SpringBootTest
 @AutoConfigureMockMvc
 class OperatorSuspensionRevocationIT {
 
 	private static final String BOOTSTRAP_ADMIN = "operator";
-	private static final String BOOTSTRAP_PASSWORD = "bootstrap-pw";
+	private static final String BOOTSTRAP_PASSWORD = "test-operator-pw";
 	private static final String TARGET = "revoke-target";
 	private static final String TARGET_PASSWORD = "revoke-pw-12345";
 	private static final String ME_PATH = "/api/auth/me";

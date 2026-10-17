@@ -49,7 +49,7 @@ import static org.mockito.Mockito.when;
  */
 @EnabledIfDockerAvailable
 @Import(TestcontainersConfiguration.class)
-@SpringBootTest(properties = "booking.no-show.enabled=false")
+@SpringBootTest
 @ActiveProfiles("stripe")
 @TestPropertySource(properties = {"stripe.api-key=sk_test_dummy", "stripe.webhook-secret=whsec_test"})
 class CreateStayCheckoutIT {

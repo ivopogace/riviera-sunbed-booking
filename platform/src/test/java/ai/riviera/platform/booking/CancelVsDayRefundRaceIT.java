@@ -57,7 +57,7 @@ import static org.junit.jupiter.api.Assertions.assertInstanceOf;
  */
 @EnabledIfDockerAvailable
 @Import(TestcontainersConfiguration.class)
-@SpringBootTest(properties = "booking.no-show.enabled=false")
+@SpringBootTest
 class CancelVsDayRefundRaceIT {
 
 	private static final int DAYS = 3;

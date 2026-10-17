@@ -64,11 +64,7 @@ import static org.mockito.Mockito.when;
 @RecordApplicationEvents
 @EnabledIfDockerAvailable
 @Import(TestcontainersConfiguration.class)
-@SpringBootTest(properties = {
-		"booking.no-show.enabled=false",
-		"booking.request.initial-delay=PT2H",
-		"booking.awaiting-payment.initial-delay=PT2H"
-})
+@SpringBootTest
 @ActiveProfiles("stripe")
 @TestPropertySource(properties = {"stripe.api-key=sk_test_dummy", "stripe.webhook-secret=whsec_test"})
 class StayRequestAcceptPayIT {

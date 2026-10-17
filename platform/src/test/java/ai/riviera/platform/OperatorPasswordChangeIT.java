@@ -49,7 +49,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  */
 @EnabledIfDockerAvailable
 @Import(TestcontainersConfiguration.class)
-@SpringBootTest(properties = "riviera.operator.password=bootstrap-pw")
+@SpringBootTest
 @AutoConfigureMockMvc
 class OperatorPasswordChangeIT {
 
@@ -57,7 +57,7 @@ class OperatorPasswordChangeIT {
 	private static final String LOGIN_PATH = "/api/auth/operator/login";
 	private static final String ME_PATH = "/api/auth/me";
 	private static final String BOOTSTRAP_ADMIN = "operator";
-	private static final String BOOTSTRAP_PASSWORD = "bootstrap-pw";
+	private static final String BOOTSTRAP_PASSWORD = "test-operator-pw";
 	private static final String TARGET = "pwchange-target";
 	private static final String OLD_PASSWORD = "old-operator-pw";
 	private static final String NEW_PASSWORD = "new-operator-pw";

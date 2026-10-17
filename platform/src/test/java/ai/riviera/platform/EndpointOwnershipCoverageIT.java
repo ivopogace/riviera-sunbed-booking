@@ -52,7 +52,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
  */
 @EnabledIfDockerAvailable
 @Import(TestcontainersConfiguration.class)
-@SpringBootTest(properties = {"riviera.operator.password=test-operator-pw", "riviera.altcha.enabled=false"})
+@SpringBootTest(properties = "riviera.altcha.enabled=false")
 @AutoConfigureMockMvc
 class EndpointOwnershipCoverageIT {
 

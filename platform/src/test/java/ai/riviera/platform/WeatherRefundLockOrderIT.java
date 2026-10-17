@@ -35,7 +35,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  */
 @EnabledIfDockerAvailable
 @Import({TestcontainersConfiguration.class, PausingPorts.class})
-@SpringBootTest(properties = {"booking.no-show.enabled=false", "booking.awaiting-payment.initial-delay=PT2H"})
+@SpringBootTest
 class WeatherRefundLockOrderIT {
 
 	private static final ZoneId TIRANE = ZoneId.of("Europe/Tirane");
