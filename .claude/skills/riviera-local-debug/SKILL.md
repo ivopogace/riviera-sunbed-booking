@@ -121,6 +121,6 @@ No supported single-command stack in a cloud sandbox; `scripts/e2e-local-stack.s
 Postgres + backend in the container) is the one workaround, container-local only. Deployed
 checks: `docs/deploy/`, `docs/runbooks/`.
 
-Not for CI config questions or diagnosing a failure's cause (`diagnosing-bugs`). Related:
+Not for CI config questions or diagnosing a failure's cause. Related:
 `docs/agents/gradle-proxy-trust.md`, `docs/agents/docker-testcontainers.md`,
 `docs/agents/cloud-environment.md`.

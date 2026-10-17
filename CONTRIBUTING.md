@@ -202,7 +202,7 @@ a vendored skill):
   at every epic close-out.
 - **`riviera-wave`** — orchestrates a wave of issues, one cloud session each: spawn,
   relay decisions, verify the merge bar, merge in order, close out.
-- **`angular-new-app` / `angular-developer`** — scaffolding and Angular standards.
+- **`angular-developer`** — Angular standards and API references (behind a Riviera banner).
 
 `CLAUDE.md` is the canonical, always-current list of project skills.
 
