@@ -114,7 +114,7 @@ unit-spec fake but a plain provider and no flag. Unit specs override the token d
 values only (`pk_…`), never a secret; deploy-time values are rewritten by CD
 (`docs/deploy/cd-pipeline.md`). Empty keys fail loudly.
 
-## e2e split (authoring: `playwright-cli`; placement: RV-FE-E2E)
+## e2e split (authoring and placement: RV-FE-E2E)
 
 `frontend/e2e/*.e2e.ts` — CI-safe, API mocked via `page.route`, axe via
 `frontend/e2e/support/axe.ts` (`expectNoSeriousAxeViolations`; await
