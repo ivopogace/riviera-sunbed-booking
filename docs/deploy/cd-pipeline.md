@@ -106,9 +106,11 @@ must include `frontend/`, so:
     `openssl rand -base64 48`. Ops recipes: [`docs/runbooks/suppression-list-ops.md`](../runbooks/suppression-list-ops.md).
   - `RIVIERA_RECOVERY_LINK_BASE_URL` (#368) — the absolute origin every emailed verify/reset
     link is built on. **Deployed value: the backend's own origin** (the app serves the SPA
-    same-origin since #110), i.e. `https://<name>.onrender.com` today. Unset ⇒ the shipped
-    default `http://localhost:4200`, which is only right for local dev — with the real mailer
-    active every emailed link would point at a dead origin.
+    same-origin since #110), i.e. `https://<name>.onrender.com` today. **Required under the `prod`
+    profile; boot aborts without it** (#1581): `RecoveryLinkProdGuard` (`auth`) and
+    `BookingLinkProdGuard` (`notification`) reject a blank or loopback host (`localhost`,
+    `127.0.0.0/8`, `::1`), which includes the shipped default `http://localhost:4200`. Outside `prod`
+    that default stays, for local dev and the `mailer` smoke test.
   - **SMTP relay (#368, ADR-0011) — only with the `mailer` profile** (production runs
     `prod,mailer`; without these the profile aborts at boot, by design):
     `RIVIERA_SMTP_HOST` (Scaleway TEM: `smtp.tem.scw.cloud`), `RIVIERA_SMTP_PORT` (default

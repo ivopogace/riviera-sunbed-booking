@@ -899,7 +899,8 @@ tag names the person, invariant #7):
   here because registry listeners have no request in hand.
 - **The link origin is `auth`'s variable under my own key**: `RIVIERA_RECOVERY_LINK_BASE_URL`
   binds `riviera.notification.booking-link.base-url` (one deployed origin; a second variable could
-  only drift), never a `riviera.recovery.*` key, which is `auth`'s namespace.
+  only drift), never a `riviera.recovery.*` key, which is `auth`'s namespace. Under `prod`, `BookingLinkProdGuard`
+  aborts boot on a blank or loopback origin (`auth` guards its own key the same way; #1581).
 
 **Not My Job:**
 - Deciding **when** to send, minting/hashing recovery tokens, building **tokenized** links → the
