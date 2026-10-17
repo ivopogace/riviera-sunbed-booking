@@ -1,9 +1,10 @@
 name: CI
 
-# Four job names are required status-check contexts in the `Riviera Rule Set` (CONTRIBUTING.md lists
-# the seven): `Backend (build + test)`, `Frontend (lint + test + build)`, `Repo hygiene (diff-scoped)`
-# and `SonarCloud scan`'s `SonarCloud Code Analysis`. Renaming one, or letting a path filter or a
-# job-level `if` skip it, leaves the PR waiting on a check that never reports (#413/#420/#539/#955).
+# The job names marked "Required context" below are status-check contexts the `Riviera Rule Set`
+# requires by exact string (CONTRIBUTING.md lists them all, with `SonarCloud Code Analysis`, which the
+# SonarCloud app posts). Renaming one, or letting a path filter skip its workflow, leaves the PR waiting
+# on a check that never reports (#413/#420/#539); a job-level `if` that skips one posts `skipped`, and
+# whether the ruleset reads that as passing is a bet not taken (#955).
 on:
   # `main` only: a wider `push` fires two runs per PR SHA under the same check names, and the ruleset
   # honours whichever finishes last (#417). A branch therefore has no CI until its PR exists.
@@ -19,16 +20,18 @@ concurrency:
 permissions:
   contents: read
 
-# Every job and every network-bound step carries a `timeout-minutes` of roughly five times a green
-# run; GitHub's six-hour default let a hung download block the merge gate for a day (#430).
+# Every job carries a `timeout-minutes`, well above a green run, because GitHub's six-hour default let
+# a hung download block the merge gate for a day (#430); the download that hung carries its own. Raise
+# a value if a job's real work grows into it; do not remove one.
 #
 # `backend`, `frontend` and the `a11y-e2e` shards skip their build on a `pull_request` whose inputs
-# hash to a key an earlier green run saved (#955). The hash, not a path list, is the change detector:
-# the one spec that reads outside `frontend/` is in the key. A push to `main` always builds and seeds
-# the cache. The key is computed right after checkout, before any build output exists to hash.
+# hash to a key an earlier green run saved (#955). The hash, not a path list, is the change detector,
+# so every file a job's build or tests read is in its key, including the ones outside its folder. A
+# push to `main` always builds and seeds the cache. The key is computed right after checkout, before
+# any build output exists to hash.
 jobs:
   backend:
-    name: Backend (build + test)
+    name: Backend (build + test) # Required context (header above): do not rename.
     runs-on: ubuntu-latest
     timeout-minutes: 30
     defaults:
@@ -123,7 +126,7 @@ jobs:
       - name: Compute the build-input hash (the cache key)
         id: key
         # Byte-for-byte `frontend`'s expression; that job fails when the two disagree.
-        run: echo "key=v1-frontend-sonar-${{ hashFiles('frontend/**', '.nvmrc', 'docs/design/non-text-contrast.md', '!frontend/node_modules/**', '!frontend/coverage/**', '!frontend/dist/**', '!frontend/.angular/**') }}" >> "$GITHUB_OUTPUT"
+        run: echo "key=v1-frontend-sonar-${{ hashFiles('frontend/**', '.nvmrc', 'docs/design/non-text-contrast.md', 'platform/map/**', '!frontend/node_modules/**', '!frontend/coverage/**', '!frontend/dist/**', '!frontend/.angular/**') }}" >> "$GITHUB_OUTPUT"
 
       - name: Look up whether an identical tree already passed the whole frontend gate (pull requests only)
         id: restore
@@ -161,9 +164,9 @@ jobs:
         run: npm run test:e2e:a11y -- --shard=${{ matrix.shard }}/${{ matrix.total }}
 
   frontend:
-    name: Frontend (lint + test + build)
-    # `!cancelled()` runs this job after a red shard so its last step fails it under the required
-    # name, instead of a `skipped` the ruleset might read as passing (#955, #1597).
+    name: Frontend (lint + test + build) # Required context (header above): do not rename.
+    # `!cancelled()` runs this job after a red shard so `Require every a11y shard green` fails it under
+    # the required name, instead of a `skipped` the ruleset might read as passing (#955, #1597).
     needs: [a11y-e2e]
     if: ${{ !cancelled() }}
     runs-on: ubuntu-latest
@@ -177,10 +180,11 @@ jobs:
 
       - name: Compute the build-input hash (the cache key)
         id: key
-        # Everything this job and the a11y shards read, by mechanism: `setup-node` reads the root
-        # `.nvmrc`; `focus-ring-baseline.spec.ts` reads the design doc. A spec that starts reading
-        # outside `frontend/` joins this list, or a hit is a wrong green.
-        run: echo "key=v1-frontend-sonar-${{ hashFiles('frontend/**', '.nvmrc', 'docs/design/non-text-contrast.md', '!frontend/node_modules/**', '!frontend/coverage/**', '!frontend/dist/**', '!frontend/.angular/**') }}" >> "$GITHUB_OUTPUT"
+        # What this job and the a11y shards read outside `frontend/`: `setup-node` reads the root
+        # `.nvmrc`, `focus-ring-baseline.spec.ts` the design doc, `map-water.spec.ts` and the e2e
+        # `support/map-resources.ts` the map style, sprites and glyphs. A spec that starts reading
+        # elsewhere joins this list, or a hit is a wrong green.
+        run: echo "key=v1-frontend-sonar-${{ hashFiles('frontend/**', '.nvmrc', 'docs/design/non-text-contrast.md', 'platform/map/**', '!frontend/node_modules/**', '!frontend/coverage/**', '!frontend/dist/**', '!frontend/.angular/**') }}" >> "$GITHUB_OUTPUT"
 
       - name: Check the a11y shards hashed the same tree (the two key expressions have not drifted)
         if: ${{ needs.a11y-e2e.result == 'success' && needs.a11y-e2e.outputs.key != steps.key.outputs.key }}
@@ -272,9 +276,10 @@ jobs:
           retention-days: 1
 
   repo-hygiene:
-    name: Repo hygiene (diff-scoped)
-    # The guards judge what a DIFF wrote (each `scripts/check-*.mjs` header says what and why), so a
-    # push to `main` has no base. Skipping is safe only while `push` is `main`-only (#417).
+    name: Repo hygiene (diff-scoped) # Required context (header above): do not rename.
+    # The `--diff` guards judge what a DIFF wrote (each `scripts/check-*.mjs` header says what and
+    # why), so a push to `main` has no base; the standing-tree checks ride along under this name.
+    # Skipping is safe only while `push` is `main`-only (#417).
     if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
     timeout-minutes: 10
