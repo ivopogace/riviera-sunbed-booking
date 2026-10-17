@@ -2,7 +2,6 @@ package ai.riviera.platform;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 import java.util.stream.Stream;
 
 import org.junit.jupiter.api.Test;
@@ -14,15 +13,19 @@ import com.tngtech.archunit.core.domain.JavaClasses;
 import com.tngtech.archunit.core.importer.ClassFileImporter;
 import com.tngtech.archunit.core.importer.ImportOption;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * Every distinct {@code @SpringBootTest} property set is a Spring context of its own, and with the Postgres
  * container context-scoped, a container and a Flyway run too (#1599). A test class that restates a
  * {@link SharedTestProperties} key at the shared value therefore buys nothing and costs a context; it
- * declares one of those keys only to opt out of it.
+ * declares one of those keys only to opt out of it. The rule is proven against the fixture tree under
+ * {@code ai.riviera.driftfixture}, never by breaking a real test class.
  */
 class TestContextDriftArchitectureTests {
+
+	private static final String FIXTURE_BASE = "ai.riviera.driftfixture";
 
 	private static final JavaClasses TEST_CLASSES = new ClassFileImporter()
 			.withImportOption(ImportOption.Predefined.ONLY_INCLUDE_TESTS)
@@ -30,9 +33,29 @@ class TestContextDriftArchitectureTests {
 
 	@Test
 	void noTestRestatesASharedPropertyAtItsSharedValue() {
+		Scan scan = scan(TEST_CLASSES);
+
+		assertTrue(scan.declaring() > 0, "No test class declaring properties was found — the rule would be vacuously green.");
+		assertTrue(scan.violations().isEmpty(), () -> "Shared test property restated:\n  " + String.join("\n  ", scan.violations()));
+	}
+
+	@Test
+	void aRestatedSharedValueIsRejectedAndAnOptOutIsNot() {
+		Scan scan = scan(ArchitectureTestSupport.fixtureClasses(FIXTURE_BASE));
+
+		assertEquals(2, scan.declaring(), "both fixture classes declare properties");
+		assertEquals(1, scan.violations().size(), () -> "exactly the restating fixture: " + scan.violations());
+		assertTrue(scan.violations().getFirst().contains("RestatesASharedValue")
+				&& scan.violations().getFirst().contains("booking.no-show.enabled=false"), scan.violations()::toString);
+	}
+
+	private record Scan(int declaring, List<String> violations) {
+	}
+
+	private static Scan scan(JavaClasses classes) {
 		List<String> violations = new ArrayList<>();
 		int declaring = 0;
-		for (JavaClass type : TEST_CLASSES) {
+		for (JavaClass type : classes) {
 			List<String> declared = declaredProperties(type);
 			if (declared.isEmpty()) {
 				continue;
@@ -47,8 +70,7 @@ class TestContextDriftArchitectureTests {
 				}
 			}
 		}
-		assertTrue(declaring > 0, "No test class declaring properties was found — the rule would be vacuously green.");
-		assertTrue(violations.isEmpty(), () -> "Shared test property restated:\n  " + String.join("\n  ", violations));
+		return new Scan(declaring, violations);
 	}
 
 	private static List<String> declaredProperties(JavaClass type) {
@@ -60,8 +82,4 @@ class TestContextDriftArchitectureTests {
 				: Stream.empty();
 		return Stream.concat(springBootTest, testPropertySource).toList();
 	}
-
-	/** Keeps {@link SharedTestProperties#VALUES} the type the rule reads. */
-	@SuppressWarnings("unused")
-	private static final Map<String, Object> SHARED = SharedTestProperties.VALUES;
 }

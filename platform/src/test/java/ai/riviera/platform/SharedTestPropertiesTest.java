@@ -6,13 +6,14 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.env.Environment;
+import org.springframework.test.context.TestPropertySource;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 /**
  * {@link SharedTestProperties} wins over {@code application.properties} (which ships the no-show sweep on)
- * and loses to a class's own {@code @SpringBootTest(properties)}. A bare configuration class, so the
- * context is the property sources alone.
+ * and loses to a class's own {@code @SpringBootTest(properties)} and {@code @TestPropertySource}. A bare
+ * configuration class, so the context is the property sources alone.
  */
 @SpringBootTest(classes = SharedTestPropertiesTest.Bare.class)
 class SharedTestPropertiesTest {
@@ -40,6 +41,20 @@ class SharedTestPropertiesTest {
 		void aClassDeclaringTheKeyWins() {
 			assertEquals("true", environment.getProperty("booking.no-show.enabled"));
 			assertEquals("PT2H", environment.getProperty("booking.request.initial-delay"), "the rest still apply");
+		}
+	}
+
+	@Nested
+	@SpringBootTest(classes = Bare.class)
+	@TestPropertySource(properties = "booking.request.initial-delay=PT1M")
+	class OptingBackInThroughTestPropertySource {
+
+		@Autowired
+		Environment environment;
+
+		@Test
+		void aClassDeclaringTheKeyWins() {
+			assertEquals("PT1M", environment.getProperty("booking.request.initial-delay"));
 		}
 	}
 }

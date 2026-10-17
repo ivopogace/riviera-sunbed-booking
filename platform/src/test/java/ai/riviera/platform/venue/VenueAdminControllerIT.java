@@ -30,8 +30,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * Also pins the operator auth gate (invariant: write requires an operator session cookie, read
  * stays public), the
  * editable pool split (invariant #3), integer-minor-unit money (invariant #5), and the
- * coordinate/position uniqueness rejections (invariant #12). The operator password is set per-test
- * so it never shadows the main {@code application.properties}.
+ * coordinate/position uniqueness rejections (invariant #12).
  */
 @EnabledIfDockerAvailable
 @Import(TestcontainersConfiguration.class)

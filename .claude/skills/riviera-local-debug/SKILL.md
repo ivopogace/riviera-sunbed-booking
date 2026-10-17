@@ -83,7 +83,7 @@ test` is fine.
 
 ### Full-suite-only failures
 
-CI runs every test through cached, long-lived contexts in one JVM, so shared-state
+CI runs every test through cached, long-lived contexts in two forked JVMs, so shared-state
 infrastructure fails only there. Known: the per-IP login rate limiter (every MockMvc login
 shares one client IP) — each test login presents a unique `X-Forwarded-For` via
 `SessionLoginSupport.uniqueClientIp()`, which mints `198.18.x.y` because RFC1918/loopback
