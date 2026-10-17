@@ -4,8 +4,9 @@ description: Test-driven development. Use when the user wants to build features 
 ---
 
 > **Riviera:** the plan doc's AC list (*Seam* · *Pinned by*) is the seam agreement; a small fix
-> that skips the plan names its seam in the PR body and goes — there is no user to confirm
-> with in a cloud child session. Upstream text below is verbatim.
+> that skips the plan names its seam in the PR body and goes. A cloud child does not wait on
+> interactive confirmation: a seam only the owner can settle goes up as `NEEDS USER DECISION`
+> (`riviera-wave`). Upstream text below is verbatim.
 
 # Test-Driven Development
 

@@ -6,7 +6,7 @@
       "sourceType": "github",
       "skillPath": "angular-developer/SKILL.md",
       "ref": "936dcd7763a9877a555d8fb41fa077c2dcc0e19b",
-      "vendored": "verbatim below a Riviera banner at the top of SKILL.md — the whole skill dir (SKILL.md + references/), refreshed 2026-08-31 from angular/skills@936dcd77, the last upstream commit touching angular-developer/. computedHash = sha256 of upstream SKILL.md (the text below the banner) with LF endings (the pre-refresh value came from the original installer and was not reproducible).",
+      "vendored": "verbatim below a Riviera banner at the top of SKILL.md — the whole skill dir (SKILL.md + references/), refreshed 2026-08-31 from angular/skills@936dcd77, the last upstream commit touching angular-developer/. computedHash = sha256 of SKILL.md with the banner block and its trailing blank line removed, frontmatter kept, LF endings (the pre-refresh value came from the original installer and was not reproducible).",
       "computedHash": "ec5e3a0b1ef218c0d7d40e35c40e5255e7319d7d595c5a6036d8bdac2532c782"
     },
     "grilling": {
@@ -112,7 +112,7 @@
       "sourceType": "github",
       "skillPath": "skills/postgres/SKILL.md",
       "ref": "73b20b7eb64716d8c7100c054f0677c0c6e77e30",
-      "vendored": "trimmed — generic-Postgres subset (the seven ops references — process-architecture, memory-management-ops, wal-operations, replication, storage-layout, monitoring, backup-recovery — dropped 2026-10-17: hosting is managed, no migration task reads them); the seven PlanetScale-product references (pgbouncer-configuration, ps-*) dropped, SKILL.md and query-patterns.md de-branded, upstream LICENSE copied in, and two references written here rather than vendored: concurrency-and-locking.md and connection-pooling.md. Audited 2026-08-31: all 15 shared reference files are byte-identical to upstream HEAD, and the only upstream postgres commit since vendoring (a9b2585e, do not session-SET on PgBouncer's port 6432) landed entirely in dropped ps-* files — nothing to port, and no exposure here (the backend sets no session state; timeouts are per-adapter)."
+      "vendored": "trimmed — generic-Postgres subset (the seven ops references — process-architecture, memory-management-ops, wal-operations, replication, storage-layout, monitoring, backup-recovery — dropped 2026-10-17: hosting is managed, no migration task reads them); the seven PlanetScale-product references (pgbouncer-configuration, ps-*) dropped, SKILL.md and query-patterns.md de-branded, upstream LICENSE copied in, and two references written here rather than vendored: concurrency-and-locking.md and connection-pooling.md. Audited 2026-08-31, before the ops drop: all 15 shared reference files then vendored were byte-identical to upstream HEAD, and the only upstream postgres commit since vendoring (a9b2585e, do not session-SET on PgBouncer's port 6432) landed entirely in dropped ps-* files — nothing to port, and no exposure here (the backend sets no session state; timeouts are per-adapter)."
     },
     "playwright-cli": {
       "source": "@playwright/cli",

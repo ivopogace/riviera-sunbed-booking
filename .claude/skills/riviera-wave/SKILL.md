@@ -33,7 +33,7 @@ issue (`#N: <the owner's prompt>`), plus any precondition ("after wave K merges"
 
 `create_session` per issue: the repo as `source_url`, title `Sdlc #N: <scope>`, tags `issue:N`
 and `wave-K`, prompt from `references/child-prompt.md`. Put in the prompt what the owner already
-decided for that issue ("the owner chose option 1"), so the intake grill does not ask again.
+decided for that issue ("the owner chose option 1"), so the intake gate does not ask again.
 
 `create_session` takes a model override but no reasoning effort: a child inherits the calling
 session's model and the environment's default effort. Keep the children on the orchestrator's model

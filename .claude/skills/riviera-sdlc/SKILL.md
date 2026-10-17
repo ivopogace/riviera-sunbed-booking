@@ -19,7 +19,7 @@ a re-review of the changed surface. A comment, naming or test-only fix needs onl
 |---|---|---|
 | **Refine** | Sharpen a fuzzy idea into a sliceable use case, grounded in the substrate docs and the real code. A foggy epic (destination clear, route not) is charted first with `wayfinder`. | `grilling`, `domain-modeling`; `wayfinder` |
 | **Issue** | Vertical-slice tracer-bullet issues on GitHub. A multi-slice epic may first commit an epic spec with `to-spec`. Any document the issues reference is committed before or with them. | `to-spec` (optional) → `to-issues` |
-| **Plan** | Plan doc: testable ACs, risks, how the invariant holds if booking/availability/money is touched. Map the affected surface by grepping modules and published surfaces (Explore agent for anything broad). Entering at an existing issue → `references/issue-intake-gate.md` first. A question the slice can answer → `research` or `prototype`; a cross-session decision → `wayfinder`. | `riviera-plan-doc` + `grilling` + `research`/`prototype` |
+| **Plan** | Plan doc: testable ACs, risks, how the invariant holds if booking/availability/money is touched. Map the affected surface by grepping modules and published surfaces (Explore agent for anything broad). Entering at an existing issue → `references/issue-intake-gate.md` first. A question the slice can answer → `research` or `prototype`; a cross-session decision → `wayfinder`. | `riviera-plan-doc` + `research`/`prototype`; `grilling` when the owner is in the session |
 | **Implement** | Test-first, one behaviour at a time, at the seams the plan names. Load the routed skills for each area. | `tdd` + the routing table |
 | **CI gate** | Every push to an open PR runs every CI job; build/test steps re-run only when that job's inputs changed since a green build (content-hash cache), the scans always. After a push that claims a phase green, check that run before the next phase (red-TDD and labeled-partial pushes exempt). | GitHub Actions |
 | **PR** | Open a **draft as soon as the first phase commit exists** — CI fires on `pull_request` only. When built: merge latest `origin/main` in (scoped tests for what the integration touches), then mark **ready for review**, which makes the Review and Sonar gates due. | `triage` (issues only) |
@@ -41,7 +41,7 @@ doc's Execution status is the state store, not the map.
 | A Postgres table / Flyway migration / index / SQL query | `postgres` |
 | Backend structure (module, `api/`/`spi/` port, service, event, adapter, controller, package move) | `riviera-modulith`; `codebase-design` when the seam or interface shape is in question; `domain-modeling` when a glossary term or ADR changes |
 | Any backend Java | `riviera-java-conventions` (+ `riviera-modulith` when a class, package, port, event or grant is added or moved) |
-| A venue-scoped endpoint/service or the `operator` module | `riviera-modulith` + `riviera-java-conventions` — invariant #13, RV-BE-9 |
+| A venue-scoped endpoint/service or the `operator` module | `riviera-java-conventions`; the ownership check is `riviera-modulith` § `operator` — invariant #13, RV-BE-9 |
 | `payment`/`payout`, Stripe, charge/refund/commission/payout | `riviera-stripe-payments` (+ `postgres` if a ledger table changes) |
 | The Angular frontend | `riviera-frontend` + `angular-developer` + angular-cli MCP; `riviera-tailwind` for any styling |
 | A user-facing frontend flow or anything under `frontend/e2e/` | `playwright-cli` — a user-facing behaviour change ships e2e coverage (suite: RV-FE-E2E) |
@@ -58,7 +58,7 @@ area or a context compaction means loading again.
 2. Branch per issue: `feature/<slug>` or `bugfix/<slug>` off `main`; `#NN` in commits.
 3. If the slice touches booking, availability or money, the plan states how the invariant holds.
 4. A small fix (one behaviour, no invariant touched) skips the plan doc, never the review.
-5. An existing issue is grilled before planned (`references/issue-intake-gate.md`).
+5. An existing issue is interrogated before planned (`references/issue-intake-gate.md`).
 6. Source-of-intent documents are committed to the repo (`docs/architecture/`), never left in
    the conversation. Durable artifacts never cite a plan path.
 7. Multi-session work keeps its state in the plan's Execution status, not the conversation.
