@@ -42,9 +42,6 @@ class BookingLinkOriginProdGuard {
 		}
 		String bare = host.toLowerCase(Locale.ROOT);
 		bare = bare.endsWith(".") ? bare.substring(0, bare.length() - 1) : bare;
-		if (bare.startsWith("[") && bare.endsWith("]")) {
-			bare = bare.substring(1, bare.length() - 1);
-		}
 		if ("localhost".equals(bare)) {
 			return true;
 		}
