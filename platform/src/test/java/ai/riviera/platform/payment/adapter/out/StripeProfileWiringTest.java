@@ -3,59 +3,75 @@ package ai.riviera.platform.payment.adapter.out;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.ConfigDataApplicationContextInitializer;
 import org.springframework.boot.test.context.runner.ApplicationContextRunner;
+import org.springframework.core.env.StandardEnvironment;
 
 import com.stripe.StripeClient;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * Pins the SHIPPED {@code stripe}-profile boot posture (#378): activating the profile without
- * {@code STRIPE_API_KEY} or {@code STRIPE_WEBHOOK_SECRET} (unset or blank) aborts at boot naming the
- * variable, never on the first PaymentIntent; the default profile stays hermetic with the properties bound
- * and no {@link StripeClient}. Real properties files, no web layer, no Docker. Each test pins both bound
- * {@code stripe.*} values, so a {@code STRIPE_API_KEY} in the process environment never leaks in.
+ * Pins the shipped {@code stripe}-profile boot posture: a missing or empty {@code STRIPE_API_KEY} or
+ * {@code STRIPE_WEBHOOK_SECRET} aborts the boot naming the variable, never the first PaymentIntent or
+ * webhook; the default profile builds no {@link StripeClient}. The credentials flow through the real
+ * {@code application.properties} placeholders; the machine's own environment is removed so it never leaks in.
  */
 class StripeProfileWiringTest {
 
 	private final ApplicationContextRunner runner = new ApplicationContextRunner()
+			.withInitializer(context -> context.getEnvironment().getPropertySources()
+					.remove(StandardEnvironment.SYSTEM_ENVIRONMENT_PROPERTY_SOURCE_NAME))
 			.withInitializer(new ConfigDataApplicationContextInitializer())
 			.withUserConfiguration(StripeConfig.class);
 
 	@Test
-	void stripeProfileWithoutApiKeyFailsAtBootNamingIt() {
-		runner.withPropertyValues("spring.profiles.active=stripe",
-					"stripe.api-key=", "stripe.webhook-secret=whsec_test")
-				.run(context -> assertThat(context).hasFailed().getFailure()
-						.rootCause().hasMessageContaining("STRIPE_API_KEY"));
+	void stripeProfileWithoutApiKeyFailsAtBoot() {
+		runner.withPropertyValues("spring.profiles.active=stripe")
+				.withSystemProperties("STRIPE_WEBHOOK_SECRET=whsec_test")
+				.run(context -> assertThat(context).getFailure().rootCause().hasMessageContaining("STRIPE_API_KEY"));
 	}
 
 	@Test
-	void stripeProfileWithoutWebhookSecretFailsAtBootNamingIt() {
-		runner.withPropertyValues("spring.profiles.active=stripe",
-					"stripe.api-key=sk_test_123", "stripe.webhook-secret=")
-				.run(context -> assertThat(context).hasFailed().getFailure()
-						.rootCause().hasMessageContaining("STRIPE_WEBHOOK_SECRET"));
+	void stripeProfileWithoutWebhookSecretFailsAtBoot() {
+		runner.withPropertyValues("spring.profiles.active=stripe")
+				.withSystemProperties("STRIPE_API_KEY=sk_test_123")
+				.run(context -> assertThat(context).getFailure().rootCause()
+						.hasMessageContaining("STRIPE_WEBHOOK_SECRET"));
 	}
 
 	@Test
-	void stripeProfileWithBlankCredentialsFailsAtBoot() {
-		runner.withPropertyValues("spring.profiles.active=stripe",
-					"stripe.api-key= ", "stripe.webhook-secret=")
-				.run(context -> assertThat(context).hasFailed());
+	void stripeProfileWithEmptyApiKeyFailsAtBootNamingIt() {
+		runner.withPropertyValues("spring.profiles.active=stripe")
+				.withSystemProperties("STRIPE_API_KEY=", "STRIPE_WEBHOOK_SECRET=whsec_test")
+				.run(context -> assertThat(context).getFailure().rootCause().hasMessageContaining("STRIPE_API_KEY"));
 	}
 
 	@Test
-	void stripeProfileWithBothCredentialsBootsTheClient() {
-		runner.withPropertyValues("spring.profiles.active=stripe",
-					"stripe.api-key=sk_test_123", "stripe.webhook-secret=whsec_test")
-				.run(context -> assertThat(context).hasSingleBean(StripeClient.class));
+	void stripeProfileWithEmptyWebhookSecretFailsAtBootNamingIt() {
+		runner.withPropertyValues("spring.profiles.active=stripe")
+				.withSystemProperties("STRIPE_API_KEY=sk_test_123", "STRIPE_WEBHOOK_SECRET=")
+				.run(context -> assertThat(context).getFailure().rootCause()
+						.hasMessageContaining("STRIPE_WEBHOOK_SECRET"));
 	}
 
 	@Test
-	void defaultProfileBindsPropertiesWithoutCredentialsAndBuildsNoClient() {
-		runner.withPropertyValues("stripe.api-key=", "stripe.webhook-secret=").run(context -> {
-			assertThat(context).doesNotHaveBean(StripeClient.class);
-			assertThat(context.getBean(StripeProperties.class).apiKey()).isEmpty();
+	void stripeProfileWithBothSetBootsTheClient() {
+		runner.withPropertyValues("spring.profiles.active=stripe")
+				.withSystemProperties("STRIPE_API_KEY=sk_test_123", "STRIPE_WEBHOOK_SECRET=whsec_test")
+				.run(context -> {
+					assertThat(context).hasSingleBean(StripeClient.class);
+					StripeProperties props = context.getBean(StripeProperties.class);
+					assertThat(props.apiKey()).isEqualTo("sk_test_123");
+					assertThat(props.webhookSecret()).isEqualTo("whsec_test");
+				});
+	}
+
+	@Test
+	void defaultProfileBuildsNoClientAndBindsEmptyCredentials() {
+		runner.run(context -> {
+			assertThat(context).hasNotFailed().doesNotHaveBean(StripeClient.class);
+			StripeProperties props = context.getBean(StripeProperties.class);
+			assertThat(props.apiKey()).isEmpty();
+			assertThat(props.webhookSecret()).isEmpty();
 		});
 	}
 }
