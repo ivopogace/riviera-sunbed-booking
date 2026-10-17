@@ -54,7 +54,7 @@ npm run build
 ```
 
 **CI** (`.github/workflows/ci.yml`): backend build/test, frontend lint/format/test/build +
-mocked e2e + eslint-rules suite, the `scripts/check-*.mjs` guards (`check-inline-comments`,
+eslint-rules suite, the mocked e2e on sharded runners, the `scripts/check-*.mjs` guards (`check-inline-comments`,
 `check-focus-posture` and `check-touch-target` also run as a local `PostToolUse` hook;
 `check-comment-only.mjs` is by-hand only), SonarCloud per PR. Sonar bar: **no new bug,
 vulnerability or unreviewed hotspot, ≥80% new-code coverage**; smells and duplication judged.

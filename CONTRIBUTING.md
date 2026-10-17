@@ -118,7 +118,7 @@ requires these status-check contexts by exact name: `Backend (build + test)`,
 `Frontend (lint + test + build)`, `Repo hygiene (diff-scoped)`, `Analyze (java-kotlin)`,
 `Analyze (javascript-typescript)`, `CodeQL`, and `SonarCloud Code Analysis`. Renaming a
 job in `ci.yml` without the matching ruleset edit makes every PR unmergeable (#413/#420,
-#539), which is why those job names carry DO-NOT-RENAME comments.
+#539), which is why those job names carry a do-not-rename marker.
 
 **CI runs guards you can't guess from the framework docs.** Alongside the backend
 and frontend jobs, a `Repo hygiene (diff-scoped)` job gates your diff with the
