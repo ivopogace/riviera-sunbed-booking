@@ -44,7 +44,7 @@ doc's Execution status is the state store, not the map.
 | A venue-scoped endpoint/service or the `operator` module | `riviera-java-conventions`; the ownership check is `riviera-modulith` § `operator` — invariant #13, RV-BE-9 |
 | `payment`/`payout`, Stripe, charge/refund/commission/payout | `riviera-stripe-payments` (+ `postgres` if a ledger table changes) |
 | The Angular frontend | `riviera-frontend` + `angular-developer` + angular-cli MCP; `riviera-tailwind` for any styling |
-| A user-facing frontend flow or anything under `frontend/e2e/` | `playwright-cli` — a user-facing behaviour change ships e2e coverage (suite: RV-FE-E2E) |
+| A user-facing frontend flow or anything under `frontend/e2e/` | `riviera-frontend` § e2e split + RV-FE-E2E (`riviera-review-overlay`) — a user-facing behaviour change ships e2e coverage; to drive a browser by hand, the `playwright` MCP server in `.mcp.json` |
 | The session's first `./gradlew`/`npm test`, or a local build failure | `riviera-local-debug` |
 | A plan doc is due (rule 4) | `riviera-plan-doc` |
 | Always | `riviera-review-overlay` (review) |

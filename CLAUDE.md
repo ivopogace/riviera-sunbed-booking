@@ -155,9 +155,10 @@ Cited by number — **never renumber**. Long form: `RESPONSIBILITIES.md` § *Inv
 
 `riviera-sdlc` routes all feature work — start there. `riviera-plan-doc` (plans),
 `riviera-review-overlay` (reviews), `riviera-modulith` + `riviera-java-conventions` (backend),
-`riviera-frontend` + `riviera-tailwind` (frontend), `riviera-stripe-payments`,
-`riviera-local-debug` (before the first build/test), `riviera-docs-freshness` (epic close-out),
-`postgres` (migrations), `playwright-cli` (e2e), `riviera-wave` (parallel issue waves).
+`riviera-frontend` + `riviera-tailwind` (frontend; e2e authoring: `riviera-frontend` § e2e split +
+RV-FE-E2E), `riviera-stripe-payments`, `riviera-local-debug` (before the first build/test),
+`riviera-docs-freshness` (epic close-out), `postgres` (migrations), `riviera-wave` (parallel issue
+waves). To drive a browser by hand, use the `playwright` MCP server in `.mcp.json`.
 
 Tracker + labels: `docs/agents/`. Glossary: `CONTEXT.md`. Decisions: `docs/adr/`. Roadmap:
 `docs/architecture/improvement-plan.md`.
