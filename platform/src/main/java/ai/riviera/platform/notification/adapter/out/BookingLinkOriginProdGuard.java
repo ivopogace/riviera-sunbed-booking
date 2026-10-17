@@ -20,7 +20,7 @@ import org.springframework.stereotype.Component;
 @Profile("prod")
 class BookingLinkOriginProdGuard {
 
-	private static final Pattern IPV4_LITERAL = Pattern.compile("\\d{1,3}(\\.\\d{1,3}){3}");
+	private static final Pattern IPV4_LITERAL = Pattern.compile("((25[0-5]|2[0-4]\\d|1?\\d?\\d)(\\.|$)){4}");
 
 	BookingLinkOriginProdGuard(@Value("${riviera.notification.booking-link.base-url:}") String baseUrl) {
 		if (baseUrl.isBlank() || isLoopback(baseUrl.strip())) {
@@ -43,7 +43,7 @@ class BookingLinkOriginProdGuard {
 		if ("localhost".equals(bare)) {
 			return true;
 		}
-		// Only literals are resolved, so no DNS lookup can happen.
+		// Only IP literals are handed to InetAddress, so no DNS lookup can happen.
 		if (bare.indexOf(':') >= 0 || IPV4_LITERAL.matcher(bare).matches()) {
 			try {
 				return InetAddress.getByName(bare).isLoopbackAddress();
