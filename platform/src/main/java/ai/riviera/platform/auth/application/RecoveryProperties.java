@@ -1,5 +1,6 @@
 package ai.riviera.platform.auth.application;
 
+import java.net.URI;
 import java.time.Duration;
 
 import org.springframework.boot.context.properties.ConfigurationProperties;
@@ -46,6 +47,24 @@ public record RecoveryProperties(
 		if (linkBaseUrl != null && linkBaseUrl.contains("${")) {
 			throw new IllegalArgumentException(
 					"riviera.recovery.link-base-url is unresolved (" + linkBaseUrl + "): set RIVIERA_RECOVERY_LINK_BASE_URL");
+		}
+		requireAbsoluteOrigin(linkBaseUrl);
+	}
+
+	private static void requireAbsoluteOrigin(String linkBaseUrl) {
+		String problem = "riviera.recovery.link-base-url must be an absolute URL with a host (e.g. "
+				+ "https://riviera-sunbed-booking.onrender.com): set RIVIERA_RECOVERY_LINK_BASE_URL, but was ";
+		if (linkBaseUrl == null || linkBaseUrl.isBlank()) {
+			throw new IllegalArgumentException(problem + "blank");
+		}
+		URI parsed;
+		try {
+			parsed = URI.create(linkBaseUrl.strip());
+		} catch (IllegalArgumentException e) {
+			throw new IllegalArgumentException(problem + linkBaseUrl, e);
+		}
+		if (!parsed.isAbsolute() || parsed.getHost() == null) {
+			throw new IllegalArgumentException(problem + linkBaseUrl);
 		}
 	}
 

@@ -68,6 +68,59 @@ class RecoveryPropertiesBindingTest {
 	}
 
 	@Test
+	void aBlankLinkOriginFailsTheBindNamingTheKeyAndTheVariable() {
+		for (String blank : new String[] { "", "   " }) {
+			recoveryRunner().withPropertyValues("spring.profiles.active=mailer")
+					.withSystemProperties("RIVIERA_RECOVERY_LINK_BASE_URL=" + blank)
+					.run(context -> assertThat(context)
+							.as("a set-but-empty variable resolves the placeholder to blank [%s]", blank)
+							.hasFailed()
+							.getFailure()
+							.rootCause()
+							.isInstanceOf(IllegalArgumentException.class)
+							.hasMessageContaining("riviera.recovery.link-base-url")
+							.hasMessageContaining("RIVIERA_RECOVERY_LINK_BASE_URL"));
+		}
+	}
+
+	@Test
+	void aNonAbsoluteLinkOriginFailsTheBindNamingTheKeyAndTheVariable() {
+		for (String relative : new String[] { "/app", "example.com", "localhost:4200", "http:///app" }) {
+			recoveryRunner().withSystemProperties("RIVIERA_RECOVERY_LINK_BASE_URL=" + relative)
+					.run(context -> assertThat(context)
+							.as("%s would mail a link a mail client cannot open", relative)
+							.hasFailed()
+							.getFailure()
+							.rootCause()
+							.isInstanceOf(IllegalArgumentException.class)
+							.hasMessageContaining("riviera.recovery.link-base-url")
+							.hasMessageContaining("RIVIERA_RECOVERY_LINK_BASE_URL"));
+		}
+	}
+
+	@Test
+	void aBlankLinkOriginFailsTheRecordDirectly() {
+		assertThatIllegalArgumentException()
+				.isThrownBy(() -> new RecoveryProperties(Duration.ofHours(24), Duration.ofHours(1), " "))
+				.withMessageContaining("riviera.recovery.link-base-url");
+	}
+
+	@Test
+	void anUnparseableLinkOriginFailsTheBindNamingTheKey() {
+		assertThatIllegalArgumentException()
+				.isThrownBy(() -> new RecoveryProperties(Duration.ofHours(24), Duration.ofHours(1), "http://a b"))
+				.withMessageContaining("riviera.recovery.link-base-url");
+	}
+
+	@Test
+	void anyAbsoluteOriginBinds() {
+		for (String origin : new String[] { "http://localhost:4200", "http://localhost:8080", "https://app.example" }) {
+			assertThat(new RecoveryProperties(Duration.ofHours(24), Duration.ofHours(1), origin).linkBaseUrl())
+					.isEqualTo(origin);
+		}
+	}
+
+	@Test
 	void bindsTheShippedTokenTtls() {
 		recoveryRunner().run(context -> {
 			RecoveryProperties props = context.getBean(RecoveryProperties.class);
