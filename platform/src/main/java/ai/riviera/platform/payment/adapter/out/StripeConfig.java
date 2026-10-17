@@ -24,7 +24,19 @@ class StripeConfig {
 	@Bean
 	@Profile("stripe")
 	StripeClient stripeClient(StripeProperties properties) {
+		requireCredentials(properties);
 		return clientBuilder(properties).build();
+	}
+
+	/** Aborts the boot when a {@code stripe}-profile credential is blank, never at the first call. */
+	static void requireCredentials(StripeProperties properties) {
+		if (properties.apiKey().isBlank()) {
+			throw new IllegalStateException("The stripe profile requires STRIPE_API_KEY (stripe.api-key) to be set");
+		}
+		if (properties.webhookSecret().isBlank()) {
+			throw new IllegalStateException(
+					"The stripe profile requires STRIPE_WEBHOOK_SECRET (stripe.webhook-secret) to be set");
+		}
 	}
 
 	/**

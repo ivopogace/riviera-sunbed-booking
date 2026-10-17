@@ -17,7 +17,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
  * hard-coded — and default to empty when unset (the default/stub profile, where Stripe is
  * dormant). Binds {@link StripeProperties} from a property source via {@link Binder}; no Spring
  * context, no network. The same {@code stripe.*} keys are wired from {@code STRIPE_API_KEY} /
- * {@code STRIPE_WEBHOOK_SECRET} env placeholders in {@code application.properties}.
+ * {@code STRIPE_WEBHOOK_SECRET} env placeholders in {@code application-stripe.properties}.
  *
  * <p>Also pins the explicit short {@link StripeClient} connect/read timeouts:
  * the bound defaults (5s / 20s) and the wiring into the client builder.
