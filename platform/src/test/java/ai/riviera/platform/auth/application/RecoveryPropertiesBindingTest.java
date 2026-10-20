@@ -1,12 +1,17 @@
 package ai.riviera.platform.auth.application;
 
 import java.time.Duration;
+import java.util.Map;
 
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.boot.test.context.ConfigDataApplicationContextInitializer;
 import org.springframework.boot.test.context.runner.ApplicationContextRunner;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.core.env.MapPropertySource;
+import org.springframework.core.env.StandardEnvironment;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatIllegalArgumentException;
@@ -47,6 +52,52 @@ class RecoveryPropertiesBindingTest {
 	@Test
 	void theEnvironmentOverridesTheLinkBaseUrl() {
 		recoveryRunner().withSystemProperties("RIVIERA_RECOVERY_LINK_BASE_URL=https://app.example")
+				.run(context -> assertThat(context.getBean(RecoveryProperties.class).linkBaseUrl())
+						.isEqualTo("https://app.example"));
+	}
+
+	@Test
+	void mailerProfileWithoutTheLinkOriginFailsAtBootNamingTheVariable() {
+		recoveryRunner().withPropertyValues("spring.profiles.active=mailer")
+				.run(context -> assertThat(context).hasFailed().getFailure().rootCause()
+						.hasMessageContaining("RIVIERA_RECOVERY_LINK_BASE_URL"));
+	}
+
+	@Test
+	void mailerProfileAcceptsAnExplicitLoopbackLinkOrigin() {
+		recoveryRunner().withPropertyValues("spring.profiles.active=mailer")
+				.withSystemProperties("RIVIERA_RECOVERY_LINK_BASE_URL=http://localhost:8080")
+				.run(context -> assertThat(context.getBean(RecoveryProperties.class).linkBaseUrl())
+						.isEqualTo("http://localhost:8080"));
+	}
+
+	@ParameterizedTest
+	@ValueSource(strings = { "", "   " })
+	void aBlankLinkBaseUrlFailsTheBindNamingTheKeyAndTheVariable(String blank) {
+		recoveryRunner().withInitializer(context -> context.getEnvironment().getPropertySources()
+				.addFirst(new MapPropertySource("blank-link-origin",
+						Map.of("RIVIERA_RECOVERY_LINK_BASE_URL", blank))))
+				.run(context -> assertThat(context).hasFailed().getFailure().rootCause()
+						.isInstanceOf(IllegalArgumentException.class)
+						.hasMessageContaining("riviera.recovery.link-base-url")
+						.hasMessageContaining("RIVIERA_RECOVERY_LINK_BASE_URL"));
+	}
+
+	@ParameterizedTest
+	@ValueSource(strings = { "/app", "example.com", "https:///app", "http://bad host" })
+	void aNonAbsoluteLinkBaseUrlFailsTheBindNamingTheKeyAndTheVariable(String value) {
+		recoveryRunner().withSystemProperties("RIVIERA_RECOVERY_LINK_BASE_URL=" + value)
+				.run(context -> assertThat(context).hasFailed().getFailure().rootCause()
+						.isInstanceOf(IllegalArgumentException.class)
+						.hasMessageContaining("riviera.recovery.link-base-url")
+						.hasMessageContaining("RIVIERA_RECOVERY_LINK_BASE_URL"));
+	}
+
+	@Test
+	void surroundingWhitespaceOnTheLinkBaseUrlIsStripped() {
+		recoveryRunner().withInitializer(context -> context.getEnvironment().getPropertySources()
+				.addFirst(new MapPropertySource("padded-link-origin",
+						Map.of("RIVIERA_RECOVERY_LINK_BASE_URL", " https://app.example "))))
 				.run(context -> assertThat(context.getBean(RecoveryProperties.class).linkBaseUrl())
 						.isEqualTo("https://app.example"));
 	}
@@ -149,6 +200,8 @@ class RecoveryPropertiesBindingTest {
 
 	private static ApplicationContextRunner recoveryRunner() {
 		return new ApplicationContextRunner()
+				.withInitializer(context -> context.getEnvironment().getPropertySources()
+						.remove(StandardEnvironment.SYSTEM_ENVIRONMENT_PROPERTY_SOURCE_NAME))
 				.withInitializer(new ConfigDataApplicationContextInitializer())
 				.withUserConfiguration(RecoveryBindOnly.class);
 	}

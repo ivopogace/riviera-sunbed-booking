@@ -84,7 +84,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 		"booking.request.initial-delay=PT30M",
 		"booking.awaiting-payment.initial-delay=PT30M",
 		"customer.retention.initial-delay=PT30M",
-		"booking.no-show.initial-delay=PT30M",
 		"riviera.observability.alert.initial-delay=PT30M" })
 class ScheduledQueryTimeoutIT {
 

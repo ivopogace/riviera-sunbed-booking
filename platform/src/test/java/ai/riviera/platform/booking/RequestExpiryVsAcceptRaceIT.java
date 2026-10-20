@@ -41,10 +41,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  */
 @EnabledIfDockerAvailable
 @Import(TestcontainersConfiguration.class)
-// Push the background RequestSweepScheduler far out: this IT seeds OVERDUE pending requests and
-// races them deliberately — a scheduler tick from the (cached, long-lived) test context could
-// expire a fixture before the code under test does and flake the assertions.
-@SpringBootTest(properties = "booking.request.initial-delay=PT2H")
+// Seeds OVERDUE requests and races them; SharedTestProperties holds the sweep out of the window.
+@SpringBootTest
 class RequestExpiryVsAcceptRaceIT {
 
 	@Autowired

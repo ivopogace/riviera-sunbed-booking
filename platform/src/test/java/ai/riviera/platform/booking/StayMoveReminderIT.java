@@ -42,7 +42,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  */
 @EnabledIfDockerAvailable
 @Import({TestcontainersConfiguration.class, StayMoveReminderIT.ClockOverride.class})
-@SpringBootTest(properties = {"booking.no-show.enabled=false", "booking.move-reminder.enabled=false"})
+@SpringBootTest(properties = "booking.move-reminder.enabled=false")
 @RecordApplicationEvents
 class StayMoveReminderIT {
 

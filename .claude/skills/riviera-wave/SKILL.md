@@ -4,7 +4,8 @@ description: >-
   Orchestrate a wave of riviera-sunbed-booking issues in parallel cloud sessions: spawn one
   child session per issue, check in, relay decisions, verify the merge bar first-hand, merge in
   order, close out and archive. Load when the user hands over several issues to run in parallel
-  ("wave N", "in parallel", a list of `Sdlc #N: …` prompts) or invokes /riviera-wave.
+  ("wave N", "in parallel", a list of `Sdlc #N: …` prompts) or a message begins with
+  "/riviera-wave" — from a phone or an MCP seed it arrives as plain text, not a command.
 ---
 
 # Riviera wave orchestration
@@ -32,7 +33,7 @@ issue (`#N: <the owner's prompt>`), plus any precondition ("after wave K merges"
 
 `create_session` per issue: the repo as `source_url`, title `Sdlc #N: <scope>`, tags `issue:N`
 and `wave-K`, prompt from `references/child-prompt.md`. Put in the prompt what the owner already
-decided for that issue ("the owner chose option 1"), so the intake grill does not ask again.
+decided for that issue ("the owner chose option 1"), so the intake gate does not ask again.
 
 `create_session` takes a model override but no reasoning effort: a child inherits the calling
 session's model and the environment's default effort. Keep the children on the orchestrator's model
@@ -59,9 +60,8 @@ authorization) travels in the child prompt, since nothing else sets it.
   that arrives first closes it unanswered: re-ask in the reply text. Record the answer in the
   roster verbatim either way. Two questions stay in the reply text, answered by a typed message:
   the merge go and a refusal (§5), because a tap is not the "real message" the go rule needs.
-- Every message to a child tells it to re-read the governing docs (CLAUDE.md, the module's
-  `RESPONSIBILITIES.md` §, the ADRs, the routed skills, current framework reference docs) and to
-  take the practice they state.
+- A message that sends a child into a new stage or area repeats the child prompt's
+  governing-docs line (`references/child-prompt.md`, How to work).
 
 ## 5. Merge
 
@@ -80,9 +80,10 @@ Never route around a refusal: ask the owner in the reply text.
 - the review gate (pr-gates §1) ran at the right effort, its findings resolved, and a behaviour
   fix made after it re-reviewed, with no exception: `riviera-sdlc` draws the line (a fix that
   changes behaviour re-enters at Implement; a comment, naming or test-only fix needs only green
-  CI), and the wave does not redraw it. The `### Code review` comment proves each round ran; the
-  effort and the overlay items checked are read from the PR body's review-gate line and the
-  child's `READY TO MERGE`, and a child whose body names neither is sent back to fill them in;
+  CI), and the wave does not redraw it. Each round's `### Code review` comment proves it ran; the
+  effort, the skill per round and the overlay items checked are read from the PR body's
+  review-gate line and the child's `READY TO MERGE`, and a child whose body omits them is sent
+  back to fill them in;
 - the plan doc is gone from the head (pr-gates §3 item 4): a squash merge would land it on `main`;
 - the PR template is whole. A child that skipped Gates or Contribution terms gets them filled
   from what was verified; tick Contribution terms only on the owner's instruction. Ask once per

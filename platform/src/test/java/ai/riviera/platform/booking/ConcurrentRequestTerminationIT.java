@@ -40,13 +40,13 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * its guard against the new status, matches 0 rows, and releases nothing — exactly one terminal
  * state, exactly one release (invariant #2).
  *
- * <p>The background {@code RequestSweepScheduler} is pushed far out ({@code initial-delay=PT2H}):
- * this IT seeds OVERDUE pending requests and races them deliberately, so a scheduler tick from the
- * cached test context could terminate a fixture before the code under test does (the #98 lesson).
+ * <p>This IT seeds OVERDUE pending requests and races them deliberately: a {@code RequestSweepScheduler}
+ * tick from the cached test context could terminate a fixture before the code under test does (the #98
+ * lesson), which is why {@code SharedTestProperties} holds the sweep outside the test window.
  */
 @EnabledIfDockerAvailable
 @Import(TestcontainersConfiguration.class)
-@SpringBootTest(properties = "booking.request.initial-delay=PT2H")
+@SpringBootTest
 class ConcurrentRequestTerminationIT {
 
 	@Autowired

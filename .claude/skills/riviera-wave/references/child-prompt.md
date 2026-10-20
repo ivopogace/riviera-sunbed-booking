@@ -16,11 +16,13 @@ issue needs from a sibling, and what to do until that sibling merges>
   § in RESPONSIBILITIES.md, the ADRs it names, the routed skills, and the current framework
   reference docs rather than memory. Take the best practice they state, and name what you
   relied on in the PR body.
+- Mark the PR ready for review before the first review round (the PR row of `riviera-sdlc`'s
+  loop): the review plugin skips a draft (pr-gates §1).
 - Run the review gate at pr-gates §1's effort: <high for anything touching availability, the
   booking lifecycle, money or authorization; medium for a pure move or no-behaviour-change slice
   with the structural net green, a doc-only slice included; unsure → high>. The PR body's
-  review-gate line names the effort and the overlay items checked, so the orchestrator can verify
-  them; the `### Code review` comment proves the round ran.
+  review-gate line names the effort, the skill that ran each round and the overlay items checked,
+  so the orchestrator can verify them; each round's `### Code review` comment proves it ran.
 - A behaviour fix after the review gate re-enters Implement and gets its own re-review posted on
   the PR before `READY TO MERGE`, scoped to what the fix changed, at the same effort. The line is
   `riviera-sdlc`'s: a comment, naming or test-only fix needs only green CI; anything else that
@@ -36,10 +38,10 @@ issue needs from a sibling, and what to do until that sibling merges>
   `@parent`:
   - `NEEDS USER DECISION`: the question, 2–4 options with trade-offs, and your
     recommendation. Don't use AskUserQuestion.
-  - `READY TO MERGE`: the PR, head sha, checks, each review round with its effort, the overlay
-    items checked and the commit that resolved its findings, and the Sonar measures (pr-gates §2;
-    "gate did not apply" when the diff adds no line under `sonar.sources`). Send it once CI is
-    green on the head, the review has run with its findings resolved (a behaviour fix
+  - `READY TO MERGE`: the PR, head sha, checks, each review round with its skill and effort,
+    the overlay items checked and the commit that resolved its findings, and the Sonar measures
+    (pr-gates §2; "gate did not apply" when the diff adds no line under `sonar.sources`). Send
+    it once CI is green on the head, the review has run with its findings resolved (a behaviour fix
     re-reviewed), the Sonar measures meet the bar, and the plan doc is removed (pr-gates §3
     item 4, the last commit before merge).
   - `BLOCKED`: exactly what is wrong and what you need.

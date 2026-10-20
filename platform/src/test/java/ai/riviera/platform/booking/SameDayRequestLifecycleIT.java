@@ -41,7 +41,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  */
 @EnabledIfDockerAvailable
 @Import({ TestcontainersConfiguration.class, TiraneDaytimeClock.class })
-@SpringBootTest(properties = "riviera.operator.password=test-sameday-pw")
+@SpringBootTest
 @AutoConfigureMockMvc
 class SameDayRequestLifecycleIT {
 
@@ -62,7 +62,7 @@ class SameDayRequestLifecycleIT {
 
 	@BeforeEach
 	void seedLateCloseRequestVenueWithOwner() throws Exception {
-		operatorSession = SessionLoginSupport.operatorSession(mvc, "operator", "test-sameday-pw");
+		operatorSession = SessionLoginSupport.operatorSession(mvc, "operator", "test-operator-pw");
 		venueId = jdbc.sql("""
 				INSERT INTO venue (name, beach, booking_mode, commission_bps, payout_currency,
 				                   sales_close)

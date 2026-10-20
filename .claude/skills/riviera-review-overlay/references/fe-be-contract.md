@@ -3,9 +3,8 @@
 Activates on Full-stack scope or any contract change. Invariant numbers: `CLAUDE.md`.
 
 ### RV-CT-1. API typing — Major
-The Angular client consumes the API through generated or explicitly typed services with the
-backend DTO as the single source of shape; no `as any` on a response; a generated client is
-regenerated and committed with its consumer, never hand-edited. The linter already fails
+The Angular client consumes the API through explicitly typed services with the backend DTO as
+the single source of shape; no `as any` on a response. The linter already fails
 `no-explicit-any` and the unsafe-`any` family, so review effort goes to whether the FE type is
 *truthful* about the DTO — compare field by field.
 

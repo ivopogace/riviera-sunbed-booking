@@ -41,18 +41,6 @@ PlanetScale's database-skills, trimmed to the provider-agnostic subset — see
 | Concurrency & Locking  | [references/concurrency-and-locking.md](references/concurrency-and-locking.md) | Short transactions, `FOR UPDATE [SKIP LOCKED]`, `INSERT … ON CONFLICT` claims, advisory locks, deadlock prevention (invariant #2) |
 | Connection Pooling     | [references/connection-pooling.md](references/connection-pooling.md) | HikariCP sizing, the pool as the real concurrency ceiling (virtual-threads caveat), `max_connections`/`work_mem`, `pg_stat_activity` |
 
-## Operations and Architecture (reference for later)
-
-| Topic                  | Reference                                                       | Use for                                                      |
-| ---------------------- | -------------------------------------------------------------- | ------------------------------------------------------------ |
-| Process Architecture   | [references/process-architecture.md](references/process-architecture.md)     | Multi-process model, connection handling, aux processes      |
-| Memory Architecture    | [references/memory-management-ops.md](references/memory-management-ops.md)   | Shared/private memory layout, OS page cache, OOM prevention  |
-| WAL and Checkpoints    | [references/wal-operations.md](references/wal-operations.md)                 | WAL internals, checkpoint tuning, durability, crash recovery |
-| Replication            | [references/replication.md](references/replication.md)                       | Streaming replication, slots, sync commit, failover          |
-| Storage Layout         | [references/storage-layout.md](references/storage-layout.md)                | PGDATA structure, TOAST, fillfactor, tablespaces             |
-| Monitoring             | [references/monitoring.md](references/monitoring.md)                         | pg_stat views, logging, pg_stat_statements, host metrics     |
-| Backup and Recovery    | [references/backup-recovery.md](references/backup-recovery.md)              | pg_dump, pg_basebackup, PITR, WAL archiving                  |
-
 ## How it fits our schema decisions
 
 The schema-design guidance aligns with choices already locked here — keep it in mind:

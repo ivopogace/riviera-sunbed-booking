@@ -113,12 +113,13 @@ can be followed as it lands, and deleted in the PR's last commit before merge, s
 reaches `main`. Rationale worth keeping moves first to `RESPONSIBILITIES.md` or an ADR, with a
 one-line pointer from the Javadoc/TSDoc it constrains, or to the issue.
 
-**Merging needs seven green required checks.** The `Riviera Rule Set` ruleset on `main`
+**Merging needs eight green required checks.** The `Riviera Rule Set` ruleset on `main`
 requires these status-check contexts by exact name: `Backend (build + test)`,
-`Frontend (lint + test + build)`, `Repo hygiene (diff-scoped)`, `Analyze (java-kotlin)`,
-`Analyze (javascript-typescript)`, `CodeQL`, and `SonarCloud Code Analysis`. Renaming a
-job in `ci.yml` without the matching ruleset edit makes every PR unmergeable (#413/#420,
-#539), which is why those job names carry DO-NOT-RENAME comments.
+`Frontend (lint + test + build)`, `A11y e2e (all shards)`, `Repo hygiene (diff-scoped)`,
+`Analyze (java-kotlin)`, `Analyze (javascript-typescript)`, `CodeQL`, and
+`SonarCloud Code Analysis`. Renaming a job in `ci.yml` without the matching ruleset edit makes
+every PR unmergeable (#413/#420, #539), which is why those job names carry a do-not-rename
+marker; a new context is added to the ruleset only after the job reporting it is on `main`.
 
 **CI runs guards you can't guess from the framework docs.** Alongside the backend
 and frontend jobs, a `Repo hygiene (diff-scoped)` job gates your diff with the
@@ -202,7 +203,7 @@ a vendored skill):
   at every epic close-out.
 - **`riviera-wave`** — orchestrates a wave of issues, one cloud session each: spawn,
   relay decisions, verify the merge bar, merge in order, close out.
-- **`angular-new-app` / `angular-developer`** — scaffolding and Angular standards.
+- **`angular-developer`** — Angular standards and API references (behind a Riviera banner).
 
 `CLAUDE.md` is the canonical, always-current list of project skills.
 

@@ -83,16 +83,17 @@ test` is fine.
 
 ### Full-suite-only failures
 
-CI runs every test through cached, long-lived contexts in one JVM, so shared-state
+CI runs every test through cached, long-lived contexts in two forked JVMs, so shared-state
 infrastructure fails only there. Known: the per-IP login rate limiter (every MockMvc login
 shares one client IP) — each test login presents a unique `X-Forwarded-For` via
 `SessionLoginSupport.uniqueClientIp()`, which mints `198.18.x.y` because RFC1918/loopback
 values are skipped as trusted proxy hops; the ITs never set the `CF-Connecting-IP` header,
-which would take over the key — never set both in one test. An unconditional `@Scheduled`
-sweep interfering with a race IT's window — fix with a long `initial-delay`. When a change touches
-a filter, rate limiter, `@Scheduled` job, cache or shared bean in the web chain, design the
-tests to isolate (unique key per test, initial-delay, per-test reset) and check the push's CI
-run before building on it.
+which would take over the key — never set both in one test. A `@Scheduled` sweep interfering
+with a race IT's window — `SharedTestProperties` already holds the request, abandoned-payment and
+no-show sweeps out of it; a new sweep's `initial-delay` joins that map, not a per-class `properties`
+(every distinct property set is one more context and container). When a change touches a filter,
+rate limiter, `@Scheduled` job, cache or shared bean in the web chain, design the tests to isolate
+(unique key per test, per-test reset) and check the push's CI run before building on it.
 
 ### Blast radius
 
@@ -100,7 +101,7 @@ run before building on it.
 `shared` module's, but another module's beans only when that module is bootstrapped. A root bean
 that injects a module port fails every other module's `@ApplicationModuleTest` with
 `NoSuchBeanDefinitionException` while web slices stay green (`WebSliceStubs` supplies it); the root
-reaches no module (`CompositionRootDisciplineTests`), so this now bites a bean moved between modules or
+reaches no module (`CompositionRootDisciplineTests`), so this bites only a bean moved between modules or
 into `shared`. Fix: the port joins each such test's `@MockitoBean` list. After any bean move, run
 `grep -rl '@ApplicationModuleTest' platform/src/test/java` — the whole population — and add a stub to
 `WebSliceStubs` for a new dependency of `web`'s chain.
@@ -121,6 +122,6 @@ No supported single-command stack in a cloud sandbox; `scripts/e2e-local-stack.s
 Postgres + backend in the container) is the one workaround, container-local only. Deployed
 checks: `docs/deploy/`, `docs/runbooks/`.
 
-Not for CI config questions or diagnosing a failure's cause (`diagnosing-bugs`). Related:
+Not for CI config questions or diagnosing a failure's cause. Related:
 `docs/agents/gradle-proxy-trust.md`, `docs/agents/docker-testcontainers.md`,
 `docs/agents/cloud-environment.md`.

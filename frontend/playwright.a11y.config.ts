@@ -5,13 +5,13 @@ import { defineConfig, devices } from '@playwright/test';
  * real Chromium and runs @axe-core/playwright — the layer jsdom can't provide (keyboard
  * focus, modal focus management, true colour contrast over gradients). The app is served by
  * `ng serve`; the API is mocked in-test via `page.route`, so NO backend is needed — which is why
- * this is the suite CI runs (`npm run test:e2e:a11y`; the CI frontend job has no JDK/Docker).
+ * this is the suite CI runs (`npm run test:e2e:a11y`; the CI a11y jobs have no JDK/Docker).
  *
  * The real-backend U7 editor suite lives under `e2e/real-backend/` with its own
  * `playwright.config.ts` (it boots the backend + Postgres); `testIgnore` keeps it out of here.
  *
  * Browser resolution: locally the pre-installed Chromium is found via
- * `PLAYWRIGHT_BROWSERS_PATH`; CI runs `npx playwright install chromium` first.
+ * `PLAYWRIGHT_BROWSERS_PATH`; CI runs `npx playwright install --with-deps chromium` first.
  *
  * Parallelism: every spec mocks its API per page and shares nothing, so files run on 2 parallel
  * workers everywhere. Measured on both 4-vCPU environments the suite runs in: the
@@ -21,7 +21,9 @@ import { defineConfig, devices } from '@playwright/test';
  * headroom. Pinned rather than left to Playwright's half-the-cores default so a machine with more
  * cores does not silently re-create the 4-worker case; `--workers` overrides for a local
  * experiment. Tests within one file stay in order (`fullyParallel: false`): the suite was authored
- * under a single worker, and the intra-file split adds ~2% for a wider timing surface.
+ * under a single worker, and the intra-file split adds ~2% for a wider timing surface. CI deals
+ * the suite over several runners with `--shard` (`.github/workflows/ci.yml`, #1597); a local run
+ * takes the whole suite.
  *
  * Projects: every spec runs once on `chromium` at its own viewport, except the two touch-target
  * sweeps, which set no viewport of their own and run under `phone` (390×780) and `fold` (344×882,

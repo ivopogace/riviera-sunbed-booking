@@ -49,7 +49,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  */
 @EnabledIfDockerAvailable
 @Import(TestcontainersConfiguration.class)
-@SpringBootTest(properties = "riviera.operator.password=bootstrap-pw")
+@SpringBootTest
 @AutoConfigureMockMvc
 class AuthSessionIT {
 

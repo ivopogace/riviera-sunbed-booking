@@ -35,12 +35,12 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  */
 @EnabledIfDockerAvailable
 @Import(TestcontainersConfiguration.class)
-@SpringBootTest(properties = "riviera.operator.password=admin-test-pw1")
+@SpringBootTest
 @AutoConfigureMockMvc
 class OperatorApprovalIT {
 
 	private static final String ADMIN = "operator";
-	private static final String ADMIN_PW = "admin-test-pw1";
+	private static final String ADMIN_PW = "test-operator-pw";
 	private static final String PENDING_PW = "pending-op-pw-123";
 
 	@Autowired

@@ -41,12 +41,12 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  */
 @EnabledIfDockerAvailable
 @Import(TestcontainersConfiguration.class)
-@SpringBootTest(properties = "riviera.operator.password=bootstrap-pw")
+@SpringBootTest
 @AutoConfigureMockMvc
 class PerOperatorLoginIT {
 
 	private static final long MIRAMAR = 1L; // seeded venue, backfilled to the bootstrap admin (V29)
-	private static final String BOOTSTRAP_PW = "bootstrap-pw";
+	private static final String BOOTSTRAP_PW = "test-operator-pw";
 
 	@Autowired
 	MockMvc mvc;

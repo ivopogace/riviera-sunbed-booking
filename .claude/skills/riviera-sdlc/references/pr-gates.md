@@ -11,18 +11,30 @@ gate are not the review.
 project scope via `.claude/settings.json` → `enabledPlugins`), plus `riviera-review-overlay`. The
 plugin reads the diff from GitHub (`gh pr diff`), so there is no local range to get stale. If the
 plugin is refused, `bash scripts/ensure-plugins.sh` repairs its payload; failing that, run the
-built-in `Skill("code-review")` on the PR number with the overlay and say in the PR that it ran
-degraded. If nothing starts, leave the PR's review checkbox unticked and say why. The subagent
+built-in `Skill("code-review")` on the PR number with the overlay and say in the PR that round 1
+ran degraded. If nothing starts, leave the PR's review checkbox unticked and say why. The subagent
 fan-out is pre-authorized for this gate.
+
+**Which skill runs which round.** The plugin's step 1 stops without reviewing when the PR is a
+draft, looks trivial or already carries a code review from this account, and a run that stops
+there is not a round. So the plugin runs once, for round 1, after the PR leaves draft; every later
+round (the re-review after a fix), and a round 1 it declines or cannot complete, runs the built-in
+`Skill("code-review")` without `--comment` on the PR number, with the overlay, at the slice's
+**Effort** (below). Each round leaves one `### Code review` PR comment with its findings. When the
+skill posted none (the built-in never does; the plugin doesn't when nothing reaches its threshold
+or its `gh pr comment` gets a 403), post it yourself via the comment route below, naming the
+round, head sha, skill, its findings and the overlay items checked. The PR body's review-gate line
+names the skill that ran each round.
 
 **`gh` in cloud sessions** (`GH_TOKEN` in env; the proxy serves repo-scoped REST only, no GraphQL):
 `gh pr diff N` and `gh api repos/{owner}/{repo}/...` work. `gh pr list`/`gh pr checks`/`gh search`
 403 → `gh api "repos/O/R/pulls?state=open"`, `gh api repos/O/R/commits/{sha}/check-runs`, `gh api
 "repos/O/R/issues?labels=<l>&state=all"`. Review threads, auto-merge and draft/ready-for-review go
 through `repos/O/R/pulls/N/ccr/...` (the 403 body lists the routes). Comment: `gh api -X POST
-repos/O/R/issues/N/comments -f body='...'`. `gh pr view --json comments` 403s; use `gh api
-repos/O/R/pulls/N`. Job logs: the GitHub MCP `get_job_logs` (`return_content: true` + `tail_lines`)
-— the `gh` redirect to Azure is denied.
+repos/O/R/issues/N/comments -F body=@<file>`. `gh pr view` 403s; use `gh api repos/O/R/pulls/N`
+for the PR and `gh api --paginate repos/O/R/issues/N/comments --jq '.[]'` for its comments
+(one JSON object per line). Job logs: the GitHub MCP `get_job_logs` (`return_content: true` +
+`tail_lines`) — the `gh` redirect to Azure is denied.
 
 **Effort:** medium for a pure move/no-behaviour-change slice with the structural net green;
 **high** for anything touching availability, the booking lifecycle, money or authorization.

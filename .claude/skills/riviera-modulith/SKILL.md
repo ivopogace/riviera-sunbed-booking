@@ -3,8 +3,10 @@ name: riviera-modulith
 description: >-
   Spring Modulith structure authority for platform/: module layout, published surfaces
   (api/vocabulary/events/spi), allowedDependencies + verify(), port-vs-event. Load BEFORE
-  creating or modifying any backend Java — "add a module", "expose this to another
-  module", "where does this class go", "why does ModularityTests fail".
+  adding or moving a class, package, port, event, grant or module under platform/, or when
+  ModularityTests or the structural net fails — "add a module", "expose this to another
+  module", "where does this class go". A fix inside an existing method needs only
+  `riviera-java-conventions`.
 ---
 
 # Riviera Spring Modulith

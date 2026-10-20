@@ -1,5 +1,7 @@
 package ai.riviera.platform.auth.application;
 
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.time.Duration;
 
 import org.springframework.boot.context.properties.ConfigurationProperties;
@@ -8,10 +10,9 @@ import org.springframework.boot.context.properties.bind.DefaultValue;
 /**
  * Account-recovery tunables from {@code riviera.recovery.*}. The reset TTL (default 1h) stays shorter than the
  * verification TTL (24h): a leaked reset link is account takeover. {@code linkBaseUrl} is the absolute origin emailed
- * links point at — set {@code RIVIERA_RECOVERY_LINK_BASE_URL} in demo/prod, or every link points at a dead origin.
- * Both TTLs are bounded at bind time: {@link CustomerRecovery} stamps {@code now + ttl}, so a zero TTL makes every token
- * born expired while every send succeeds. Checked in the compact constructor, not with {@code @Min}: there is no JSR-303
- * implementation on the classpath, so an annotation would validate nothing.
+ * links point at; blank or without scheme and host fails the bind. Set {@code RIVIERA_RECOVERY_LINK_BASE_URL} in
+ * demo/prod. Both TTLs are bounded at bind time ({@link CustomerRecovery} stamps {@code now + ttl}, so zero is born
+ * expired), in the compact constructor: no JSR-303 implementation is on the classpath, so {@code @Min} validates nothing.
  */
 @ConfigurationProperties("riviera.recovery")
 public record RecoveryProperties(
@@ -43,6 +44,35 @@ public record RecoveryProperties(
 		requireInRange("riviera.recovery.verification-token-ttl", verificationTokenTtl,
 				MAX_VERIFICATION_TOKEN_TTL);
 		requireInRange("riviera.recovery.reset-token-ttl", resetTokenTtl, MAX_RESET_TOKEN_TTL);
+		linkBaseUrl = requireAbsoluteOrigin(linkBaseUrl);
+	}
+
+	private static String requireAbsoluteOrigin(String linkBaseUrl) {
+		if (linkBaseUrl == null || linkBaseUrl.isBlank()) {
+			throw new IllegalArgumentException(
+					"riviera.recovery.link-base-url must be set: set RIVIERA_RECOVERY_LINK_BASE_URL to the "
+							+ "absolute origin every emailed link is built on");
+		}
+		if (linkBaseUrl.contains("${")) {
+			throw new IllegalArgumentException(
+					"riviera.recovery.link-base-url is unresolved (" + linkBaseUrl + "): set RIVIERA_RECOVERY_LINK_BASE_URL");
+		}
+		String stripped = linkBaseUrl.strip();
+		if (!hasSchemeAndHost(stripped)) {
+			throw new IllegalArgumentException(
+					"riviera.recovery.link-base-url must be an absolute URL with a host (e.g. https://app.example), "
+							+ "but was " + linkBaseUrl + ": set RIVIERA_RECOVERY_LINK_BASE_URL");
+		}
+		return stripped;
+	}
+
+	private static boolean hasSchemeAndHost(String value) {
+		try {
+			URI parsed = new URI(value);
+			return parsed.isAbsolute() && parsed.getHost() != null;
+		} catch (URISyntaxException e) {
+			return false;
+		}
 	}
 
 	private static void requireInRange(String property, Duration ttl, Duration max) {

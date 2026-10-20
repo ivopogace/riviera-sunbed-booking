@@ -54,7 +54,7 @@ npm run build
 ```
 
 **CI** (`.github/workflows/ci.yml`): backend build/test, frontend lint/format/test/build +
-mocked e2e + eslint-rules suite, the `scripts/check-*.mjs` guards (`check-inline-comments`,
+eslint-rules suite, the mocked e2e on sharded runners, the `scripts/check-*.mjs` guards (`check-inline-comments`,
 `check-focus-posture` and `check-touch-target` also run as a local `PostToolUse` hook;
 `check-comment-only.mjs` is by-hand only), SonarCloud per PR. Sonar bar: **no new bug,
 vulnerability or unreviewed hotspot, ≥80% new-code coverage**; smells and duplication judged.
@@ -155,9 +155,10 @@ Cited by number — **never renumber**. Long form: `RESPONSIBILITIES.md` § *Inv
 
 `riviera-sdlc` routes all feature work — start there. `riviera-plan-doc` (plans),
 `riviera-review-overlay` (reviews), `riviera-modulith` + `riviera-java-conventions` (backend),
-`riviera-frontend` + `riviera-tailwind` (frontend), `riviera-stripe-payments`,
-`riviera-local-debug` (before the first build/test), `riviera-docs-freshness` (epic close-out),
-`postgres` (migrations), `playwright-cli` (e2e), `riviera-wave` (parallel issue waves).
+`riviera-frontend` + `riviera-tailwind` (frontend; e2e authoring: `riviera-frontend` § e2e split +
+RV-FE-E2E), `riviera-stripe-payments`, `riviera-local-debug` (before the first build/test),
+`riviera-docs-freshness` (epic close-out), `postgres` (migrations), `riviera-wave` (parallel issue
+waves). To drive a browser by hand, use the `playwright` MCP server in `.mcp.json`.
 
 Tracker + labels: `docs/agents/`. Glossary: `CONTEXT.md`. Decisions: `docs/adr/`. Roadmap:
 `docs/architecture/improvement-plan.md`.

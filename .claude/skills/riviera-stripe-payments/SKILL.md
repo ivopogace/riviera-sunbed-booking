@@ -3,8 +3,8 @@ name: riviera-stripe-payments
 description: >-
   The locked collect-only, no-Stripe-Connect payment model and its conventions
   (PaymentIntents, webhooks as truth, idempotency, refunds, the payout ledger). Load for
-  any work in payment or payout, any Stripe integration, or whenever a task mentions
-  charge, refund, payout, commission, or webhook.
+  any change to payment or payout code, a Stripe call, a refund, commission or ledger rule,
+  or a webhook — not for a screen that merely shows payouts.
 ---
 
 # Riviera Stripe Payments
@@ -14,8 +14,8 @@ venues manually in weekly BKT batches minus commission. **No Stripe Connect** �
 `Transfer`, `Payout`, `application_fee`, `on_behalf_of`, the `Stripe-Account` header, destination
 charges cannot reach Albanian venues. If a task wants them, stop and surface it as an open
 question. ADR-0009 (Proposed) would re-decide the gateway; this model stays authoritative until
-that work starts. Do NOT load `stripe:connect-recommend`; ignore Connect sections of
-`stripe:stripe-best-practices`.
+that work starts. If a `stripe` plugin is enabled, do NOT load its `connect-recommend` skill
+and ignore the Connect sections of its `stripe-best-practices`.
 
 ## Collection (`payment`)
 
@@ -49,7 +49,8 @@ that work starts. Do NOT load `stripe:connect-recommend`; ignore Connect section
   of the service day (#4, `RESPONSIBILITIES.md` §`booking`). `ExpireRequestsService` +
   `RequestSweepScheduler` run lockless (guarded `UPDATE … RETURNING`); ShedLock only when scaling
   out.
-- Never model this as auth-and-capture; a doc implying manual capture/void is stale.
+- Never model this as auth-and-capture: there is no manual capture. The one void is
+  `CancelPaymentPort` cancelling an intent that was never paid; a doc implying a capture step is stale.
 
 ## Refunds and payout
 
@@ -71,14 +72,15 @@ that work starts. Do NOT load `stripe:connect-recommend`; ignore Connect section
 
 `BookingConfirmed`/`BookingCancelled` fan out to `payout` and `notification` (a stitched stay mails
 once, on `StayConfirmed`/`StayCancelled`); `BookingDayRefunded` fans out the same way plus
-`booking`'s own day-refund listener; `booking`'s listeners drive `payment.api` — `RefundPort` for a
-whole-share or one-day refund, `CancelPaymentPort` to void a remodel-released unpaid booking's
-intent. `availability` consumes no events. Stripe SDK and webhook controller live only in
-`payment`'s adapters (`adapter/in/StripeWebhookController`, `adapter/out/StripePaymentGateway`).
+`booking`'s own day-refund listener; `booking` drives `payment.api` — `RefundPort` (its refund
+listeners) for a whole-share or one-day refund, `CancelPaymentPort` to void an unpaid booking's
+intent (its remodel-release listener and the abandoned-payment sweep). `availability` consumes no
+events. Stripe SDK and webhook controller live only in `payment`'s adapters
+(`adapter/in/StripeWebhookController`, `adapter/out/StripePaymentGateway`).
 
 ## Testing
 
-Stripe test mode (`stripe:test-cards`, `stripe:explain-error`). Test signature verification,
+Stripe test mode (a `stripe` plugin's `test-cards`/`explain-error` when enabled). Test signature verification,
 duplicate delivery, and out-of-order events.
 
 | Thought | Reality |

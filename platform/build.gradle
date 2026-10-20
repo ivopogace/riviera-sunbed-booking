@@ -88,8 +88,12 @@ dependencyManagement {
 
 tasks.named('test') {
 	useJUnitPlatform()
-	// The full suite holds ~30 cached Spring contexts in one worker; Gradle's 512m default OOMs.
-	maxHeapSize = '1g'
+	// Every distinct test configuration is a cached Spring context (SharedTestProperties keeps the
+	// count down); the cache holds them all so none is rebuilt, and the heap is sized for that.
+	maxHeapSize = '3g'
+	systemProperty 'spring.test.context.cache.maxSize', '96'
+	// Two forks each hold their own context cache and containers; the runner has the cores and memory.
+	maxParallelForks = 2
 	finalizedBy tasks.named('jacocoTestReport')
 	// spring-modulith#1762 (fixed in 2.2): the Documenter's BasicJsonParser rejects an escaped quote in the apt's
 	// javadoc.json, failing DocumentationTests; make each one a ' first. Drop this block with the 2.2 upgrade.

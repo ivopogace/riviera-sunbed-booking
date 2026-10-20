@@ -26,12 +26,11 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 /**
  * HTTP contract for the staff mark/release endpoints (AC-10): the operator gate
  * (writes require an operator session cookie, role OPERATOR) and the outcome→status mapping (MARKED→200,
- * ALREADY_TAKEN→409, NO_SUCH_SET→404, DATE_IN_PAST→422, RELEASED→204). Testcontainers Postgres; the
- * operator password is set per-test so it never shadows {@code application.properties}.
+ * ALREADY_TAKEN→409, NO_SUCH_SET→404, DATE_IN_PAST→422, RELEASED→204). Testcontainers Postgres.
  */
 @EnabledIfDockerAvailable
 @Import(TestcontainersConfiguration.class)
-@SpringBootTest(properties = "riviera.operator.password=test-operator-pw")
+@SpringBootTest
 @AutoConfigureMockMvc
 class StaffAvailabilityControllerIT {
 

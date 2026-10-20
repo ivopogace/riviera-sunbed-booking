@@ -51,8 +51,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  */
 @EnabledIfDockerAvailable
 @Import(TestcontainersConfiguration.class)
-@SpringBootTest(properties = {"riviera.operator.password=logout-login-pw",
-		"riviera.logout-login-csrf-it.marker=isolated-context"})
+@SpringBootTest(properties = "riviera.logout-login-csrf-it.marker=isolated-context")
 @AutoConfigureMockMvc
 class LogoutThenLoginCsrfIT {
 
@@ -135,7 +134,7 @@ class LogoutThenLoginCsrfIT {
 	private ResultActions operatorLogin(BrowserJar jar) throws Exception {
 		return login(jar, OPERATOR_LOGIN,
 				"""
-						{"username": "operator", "password": "logout-login-pw"}""");
+						{"username": "operator", "password": "test-operator-pw"}""");
 	}
 
 	private ResultActions customerLogin(BrowserJar jar) throws Exception {

@@ -1,17 +1,21 @@
 name: CI
 
+# The job names marked "Required context" below are status-check contexts the `Riviera Rule Set`
+# requires by exact string (CONTRIBUTING.md lists them all, with `SonarCloud Code Analysis`, which the
+# SonarCloud app posts). Renaming one, or letting a path filter skip its workflow, leaves the PR waiting
+# on a check that never reports (#413/#420/#539); a job-level `if` that skips one on a pull request
+# posts `skipped`, and whether the ruleset reads that as passing is a bet not taken (#955; the `if`s
+# on `repo-hygiene` and `sonar` hold on every pull request). A context joins the ruleset only after the
+# job reporting it is on `main` (`A11y e2e (all shards)`, #1600): required first, it would hold every
+# open PR on a check its head never reports (#534/#539).
 on:
-  # Do NOT re-broaden `push` to all branches: a PR branch would then fire two runs per SHA
-  # publishing the SAME check names, and branch protection honours only the last to finish —
-  # so a skipped duplicate masks a real success (#417). `concurrency` cannot dedupe them;
-  # the events carry different `github.ref`. Consequence: a branch has no CI until its PR
-  # exists, so open the PR (draft is fine) at the start of implementation.
+  # `main` only: a wider `push` fires two runs per PR SHA under the same check names, and the ruleset
+  # honours whichever finishes last (#417). A branch therefore has no CI until its PR exists.
   push:
     branches: [main]
   pull_request:
     branches: [main]
 
-# Cancel superseded runs on the same ref (consecutive pushes to one PR, or to main).
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
@@ -19,57 +23,19 @@ concurrency:
 permissions:
   contents: read
 
-# Every job carries an explicit `timeout-minutes`, and the network-bound steps carry their own.
-# GitHub's default job cap is SIX HOURS, which is not a timeout so much as an absence of one: a
-# wedged download reads as "still running" for a working day, and because `sonar` needs both build
-# jobs, it takes the Sonar gate down with it — the PR simply never reaches a mergeable state and
-# nothing goes red to say why (incident: PR #430, `playwright install` hung ~11 min into a 4-minute
-# job with lint and Vitest already green). The values below are ~4-6x the observed green durations:
-# loose enough that a slow runner or a cold cache never trips them, tight enough that a hang becomes
-# a fast, legible red. Raise a value if a job's real work grows into it; do not remove one.
+# Every job carries a `timeout-minutes`, well above a green run, because GitHub's six-hour default let
+# a hung download block the merge gate for a day (#430); the download that hung carries its own. Raise
+# a value if a job's real work grows into it; do not remove one.
 #
-# The two build jobs restore their Sonar inputs from a cache before they build, and skip the build on
-# an exact hit, so a push that changes nothing under `platform/` or `frontend/` (a plan-doc close-out,
-# a skill edit) costs a runner start-up per job instead of the full ~10 minutes (#955, measured on
-# PR #953 whose last three pushes were docs-only). What this deliberately is NOT:
-#
-# - NOT `paths-ignore` on the workflow, nor `paths` on a job. The `Riviera Rule Set` requires seven
-#   status-check contexts BY NAME (CONTRIBUTING.md lists them). A workflow a path filter skips never
-#   posts them — they sit at "Expected — Waiting for status to be reported" and the PR is permanently
-#   unmergeable: the `405 … N of N required status checks are expected` failure of #413/#420 through a
-#   new door.
-# - NOT a job-level `if:` on the build jobs. A skipped job does post a check run, but whether the
-#   ruleset counts `skipped` as passing is a bet on GitHub's semantics, and the place it would be
-#   lost is a PR that then cannot merge. Not taken (#955).
-# - NOT a git-diff path filter deciding "docs-only". That is a list to keep right by hand, and it is
-#   already wrong on day one: a Vitest spec reads `docs/design/non-text-contrast.md`.
-#
-# What it IS: every job runs on every push, exactly as before, and inside `backend` and `frontend`
-# the expensive steps are conditional on an `actions/cache` restore keyed on the HASH of everything
-# that job's build reads (`platform/**`; `frontend/**` + `.nvmrc` + that design doc). An exact hit
-# means this identical tree already built green in a run this PR can see, so the job re-uploads the
-# restored JaCoCo XML + classes and Modulith docs (or lcov) and the `sonar` job below runs as it does today. A miss
-# is today's full build, followed by a save. The hash IS the change detector, and it errs toward
-# building: `main` moving under the PR, a file touched and then reverted, a `.nvmrc` bump — each is
-# answered by content, never by a path list. Restore runs on `pull_request` only: a push to `main`
-# always builds (the CD gate and the Sonar main-branch analysis read a fresh build) and its save
-# seeds the cache every later PR reads (a PR run may restore its base branch's caches; `main` cannot
-# read a PR's). The key is computed ONCE, right after checkout, into a step output — an expression
-# evaluated at save time would hash `platform/build/**` too and never match the restore. Bump the
-# `v2-` prefix if the artifact layout changes.
-#
-# What this cannot shorten: the `CodeQL` workflow's two `Analyze (…)` jobs and the `CodeQL` check
-# are required contexts that exist only when SARIF is uploaded for the SHA, so they run in full on
-# every push (observed 2-4 min) and bound the whole check suite. Inside this workflow the floor is
-# the Sonar scan (~1 min) plus runner start-ups — four jobs, two of them on the critical path (a build
-# job, then `sonar`). Observed on this change's own cache-hit pushes: 1 min 17 s, 2 min 00 s and 2 min 27 s
-# wall time, the spread being runner queueing; each build job's own work on a hit was 7-10 s.
+# `backend`, `frontend` and the `a11y-e2e` shards skip their build on a `pull_request` whose inputs
+# hash to a key an earlier green run saved (#955). The hash, not a path list, is the change detector,
+# so every file a job's build or tests read is in its key, including the ones outside its folder. A
+# push to `main` always builds and seeds the cache. The key is computed right after checkout, before
+# any build output exists to hash.
 jobs:
   backend:
-    name: Backend (build + test)
+    name: Backend (build + test) # Required context (header above): do not rename.
     runs-on: ubuntu-latest
-    # Observed green: ~3.5-5.5 min (Gradle build + full test suite incl. Testcontainers ITs); a cache
-    # hit is under a minute (checkout, restore, upload).
     timeout-minutes: 30
     defaults:
       run:
@@ -80,9 +46,7 @@ jobs:
 
       - name: Compute the build-input hash (the cache key)
         id: key
-        # Once, before anything is built, so `platform/build/**` cannot leak into it (the negation is
-        # belt-and-braces for a reused workspace). Restore and save below MUST both read this output —
-        # the header comment says why. `hashFiles` resolves from the repo root, not `working-directory`.
+        # `hashFiles` resolves from the repo root, not `working-directory`.
         run: echo "key=v2-backend-sonar-${{ hashFiles('platform/**', '!platform/build/**') }}" >> "$GITHUB_OUTPUT"
 
       - name: Restore the Sonar inputs of an identical, already-green tree (pull requests only)
@@ -112,8 +76,7 @@ jobs:
         run: ./gradlew build jacocoTestReport --no-daemon
 
       - name: Save the Sonar inputs for the next push of this tree
-        # Reached only through a green build: a red step above ends the job before this one, so a hit
-        # can only ever restore what once passed.
+        # Reached only through a green build, so a hit can only restore what once passed.
         if: steps.restore.outputs.cache-hit != 'true'
         uses: actions/cache/save@v6
         with:
@@ -124,8 +87,7 @@ jobs:
           key: ${{ steps.key.outputs.key }}
 
       - name: Upload backend coverage + classes (for Sonar)
-        # Unconditional, and `if-no-files-found: error` is now load-bearing twice over: an empty
-        # restore fails THIS job legibly instead of handing the Sonar job nothing to scan.
+        # `if-no-files-found: error` turns an empty restore into a red here, not in `sonar`.
         uses: actions/upload-artifact@v7
         with:
           name: backend-sonar
@@ -136,7 +98,6 @@ jobs:
           retention-days: 1
 
       - name: Upload the Spring Modulith docs (module diagrams + canvases)
-        # Written by DocumentationTests; a cache hit restores them with the Sonar inputs above.
         uses: actions/upload-artifact@v7
         with:
           name: modulith-docs
@@ -144,20 +105,103 @@ jobs:
           if-no-files-found: error
           retention-days: 30
 
-  frontend:
-    # DO NOT RENAME. Like `Repo hygiene (diff-scoped)` below, this string is a required status-check
-    # CONTEXT in the `Riviera Rule Set` ruleset (`CONTRIBUTING.md` records the list), so a
-    # rename here removes a check the ruleset still expects and every pull request becomes
-    # unmergeable — the #413/#420 failure. Since #615 the job also runs a hard formatting gate, so
-    # the name now undersells it; that is deliberate. Correcting it means editing the ruleset in the
-    # same change, which is a repository setting and not expressible in a diff (#539 records the
-    # sequencing that lands the pair without an unmergeable window).
-    name: Frontend (lint + test + build)
+  a11y-e2e:
+    # The API-mocked a11y Playwright suite over the runners `matrix.shard` lists (#1597). Not a
+    # required context: it blocks merge through `a11y-e2e-gate`, which fails unless every shard passed.
+    name: A11y e2e (shard ${{ matrix.shard }} of ${{ strategy.job-total }})
     runs-on: ubuntu-latest
-    # Observed green: ~9-10 min (npm ci + lint + Vitest + Playwright install + prod build are ~2.5 min
-    # together; the a11y e2e step is ~7-7.5 min on 2 workers, down from ~8.7 min on one — 4 workers
-    # measured the same, the runner's vCPUs saturate at two Chromiums). A cache hit is under a minute.
-    timeout-minutes: 20
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3]
+    outputs:
+      # `a11y-e2e-gate` saves the marker under this key, so the cache's identity has one source.
+      key: ${{ steps.key.outputs.key }}
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Compute the build-input hash (the suite's cache key)
+        id: key
+        # The same `hashFiles` arguments as `frontend`'s key step, whose comment lists what is read
+        # outside `frontend/`; a file joins or leaves both lists together.
+        run: echo "key=v1-a11y-e2e-${{ hashFiles('frontend/**', '.nvmrc', 'docs/design/non-text-contrast.md', 'platform/map/**', '!frontend/node_modules/**', '!frontend/coverage/**', '!frontend/dist/**', '!frontend/.angular/**') }}" >> "$GITHUB_OUTPUT"
+
+      - name: Look up whether an identical tree already passed every shard (pull requests only)
+        id: restore
+        # `a11y-e2e-gate` saves this key only after every shard passed. The `path` list is part of the
+        # entry's identity, so it must match that save exactly or the lookup never hits.
+        if: github.event_name == 'pull_request'
+        uses: actions/cache/restore@v6
+        with:
+          path: a11y-e2e-passed
+          key: ${{ steps.key.outputs.key }}
+          lookup-only: true
+
+      - name: Set up Node (from .nvmrc)
+        if: steps.restore.outputs.cache-hit != 'true'
+        uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies
+        if: steps.restore.outputs.cache-hit != 'true'
+        run: npm ci
+
+      - name: Install Playwright Chromium
+        if: steps.restore.outputs.cache-hit != 'true'
+        timeout-minutes: 6
+        run: npx playwright install --with-deps chromium
+
+      - name: A11y e2e (real-render axe over the booking flow), this shard
+        # The real-backend suite (`npm run test:e2e`) needs a JDK and Docker and is not run in CI.
+        if: steps.restore.outputs.cache-hit != 'true'
+        run: npm run test:e2e:a11y -- --shard=${{ matrix.shard }}/${{ strategy.job-total }}
+
+  a11y-e2e-gate:
+    name: A11y e2e (all shards) # Required context (header above): do not rename.
+    # `!cancelled()` runs this job after a red shard so it fails under the required name, instead of a
+    # `skipped` the ruleset might read as passing (#955, #1597).
+    needs: [a11y-e2e]
+    if: ${{ !cancelled() }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Require every a11y shard green
+        # On a cache hit the shards skip their steps and still end `success`.
+        if: ${{ needs.a11y-e2e.result != 'success' }}
+        run: |
+          echo "::error::the a11y e2e shards ended '${{ needs.a11y-e2e.result }}'; see the A11y e2e (shard k of N) jobs"
+          exit 1
+
+      - name: Write the marker the shards look up
+        # The shards' key, not a hash of its own: this job checks nothing out. Empty only if no shard
+        # reached its key step, which a green matrix rules out; fail here rather than save under no key.
+        id: key
+        env:
+          KEY: ${{ needs.a11y-e2e.outputs.key }}
+        run: |
+          test -n "$KEY" || { echo "::error::a11y-e2e produced no cache key"; exit 1; }
+          echo "key=$KEY" >> "$GITHUB_OUTPUT"
+          echo "$GITHUB_SHA" > a11y-e2e-passed
+
+      - name: Save the marker for the next push of this tree
+        # Reached only through a green matrix, so a hit can only certify a tree every shard passed.
+        uses: actions/cache/save@v6
+        with:
+          path: a11y-e2e-passed
+          key: ${{ steps.key.outputs.key }}
+
+  frontend:
+    name: Frontend (lint + test + build) # Required context (header above): do not rename.
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
     defaults:
       run:
         working-directory: frontend
@@ -167,13 +211,12 @@ jobs:
 
       - name: Compute the build-input hash (the cache key)
         id: key
-        # Everything this job's steps read, enumerated by mechanism (which files does a spec, a
-        # config or an action input reach outside `frontend/`?): `setup-node` reads the root `.nvmrc`;
-        # `focus-ring-baseline.spec.ts` reads `docs/design/non-text-contrast.md`; the real-backend
-        # Playwright config reaches `../platform` but does not run here. Add to this list whenever a
-        # spec or config starts reading outside the folder — a hit against a stale hash is a wrong
-        # green. The negations keep build outputs out of the hash on a reused workspace.
-        run: echo "key=v1-frontend-sonar-${{ hashFiles('frontend/**', '.nvmrc', 'docs/design/non-text-contrast.md', '!frontend/node_modules/**', '!frontend/coverage/**', '!frontend/dist/**', '!frontend/.angular/**') }}" >> "$GITHUB_OUTPUT"
+        # What this job and the `a11y-e2e` shards read outside `frontend/`: `setup-node` reads the root
+        # `.nvmrc`, `focus-ring-baseline.spec.ts` the design doc, `map-water.spec.ts` and the e2e
+        # `support/map-resources.ts` the map style, sprites and glyphs. A spec that starts reading
+        # elsewhere joins this list, or a hit is a wrong green. The shards hash the same arguments
+        # under their own prefix; a file joins or leaves both lists together.
+        run: echo "key=v1-frontend-sonar-${{ hashFiles('frontend/**', '.nvmrc', 'docs/design/non-text-contrast.md', 'platform/map/**', '!frontend/node_modules/**', '!frontend/coverage/**', '!frontend/dist/**', '!frontend/.angular/**') }}" >> "$GITHUB_OUTPUT"
 
       - name: Restore the Sonar inputs of an identical, already-green tree (pull requests only)
         id: restore
@@ -189,9 +232,7 @@ jobs:
         if: steps.restore.outputs.cache-hit != 'true'
         uses: actions/setup-node@v7
         with:
-          # .nvmrc lives at the REPO ROOT. `uses:` steps resolve paths from the repo
-          # root, not the job's `working-directory: frontend`, so this is correct —
-          # do NOT change it to `frontend/.nvmrc` or add one there.
+          # `uses:` paths resolve from the repo root, where `.nvmrc` lives.
           node-version-file: .nvmrc
           cache: npm
           cache-dependency-path: frontend/package-lock.json
@@ -206,13 +247,8 @@ jobs:
         run: npm run lint
 
       - name: Test the lint rules themselves (with coverage, for Sonar)
-        # Beside the frontend gates rather than in `Repo hygiene (diff-scoped)` because the suite
-        # drives ESLint itself, and that job installs nothing. It runs with coverage for the same
-        # reason `scripts/` does: the rules are merge-gate machinery, whose defects never fail a
-        # build and instead make a gate report clean (sonar-project.properties says so).
-        #
-        # Unlike the `scripts/` lcov, this one is written from `frontend/`, so its SF paths are
-        # relative to that — hence the sed, the mirror of the frontend lcov's below.
+        # Here, not in `repo-hygiene`, because it drives ESLint and that job installs nothing. The
+        # sed makes the SF paths repo-relative, like the frontend lcov's below.
         if: steps.restore.outputs.cache-hit != 'true'
         run: >-
           mkdir -p coverage/eslint-rules &&
@@ -224,21 +260,8 @@ jobs:
           sed -i 's#^SF:eslint-rules/#SF:frontend/eslint-rules/#' coverage/eslint-rules/lcov.info
 
       - name: Format (Prettier, hard gate)
-        # Bare `prettier --check` over the whole scope — the tree has been clean since the one-time
-        # reformat (#631, PR #634, recorded in .git-blame-ignore-revs), which retired the
-        # diff-scoped wrapper (#615) whose line-scoping existed only for the drifted tree.
-        #
-        # It lives here rather than in `Repo hygiene (diff-scoped)` because it needs the pinned
-        # Prettier from frontend/node_modules, which only this job installs — and this job is
-        # already a required context (a NEW job would report without blocking until a maintainer
-        # added it to the ruleset, #534).
-        #
-        # Runs even when Lint failed, so one push surfaces both style gates rather than trickling
-        # them over two round trips — but NOT when `npm ci` failed, where the check would crash on
-        # a missing Prettier and report a second, misleading red (`!cancelled()` excludes
-        # cancellation, not failure). No diff base needed, so it also runs on `main` pushes as a
-        # cheap post-merge invariant. On a cache hit the install step is `skipped`, which is not
-        # `success`, so this gate skips with the rest — the identical tree already passed it.
+        # Runs after a red Lint so one push surfaces both, but not after a failed or skipped install,
+        # where it would crash on a missing Prettier or re-check a tree a cache hit already passed.
         if: ${{ !cancelled() && steps.install.outcome == 'success' }}
         run: npx prettier --check src e2e eslint-rules
 
@@ -246,28 +269,12 @@ jobs:
         if: steps.restore.outputs.cache-hit != 'true'
         run: npm run test:coverage
 
-      - name: Install Playwright Chromium (for the a11y e2e)
-        if: steps.restore.outputs.cache-hit != 'true'
-        # Its own cap, well under the job's: this step is two network fetches (the browser from
-        # Playwright's CDN, apt deps from Ubuntu's mirrors) and is the one that hung in #430. A step
-        # timeout names the culprit in the failed step rather than killing the job at some later
-        # point, and leaves the job's remaining budget for the work that follows.
-        timeout-minutes: 6
-        run: npx playwright install --with-deps chromium
-
-      - name: A11y e2e (real-render axe over the booking flow)
-        # The API-mocked a11y suite — no backend needed. The real-backend U7 editor suite
-        # (`npm run test:e2e`) boots Spring Boot + Postgres and is intentionally NOT run here
-        # (this job has no JDK/Docker); see frontend/playwright.config.ts.
-        if: steps.restore.outputs.cache-hit != 'true'
-        run: npm run test:e2e:a11y
-
       - name: Build (production)
         if: steps.restore.outputs.cache-hit != 'true'
         run: npm run build
 
       - name: Save the Sonar inputs for the next push of this tree
-        # Reached only through a green run of every gate above, so a hit restores only what passed.
+        # Reached only through a green run of every gate above.
         if: steps.restore.outputs.cache-hit != 'true'
         uses: actions/cache/save@v6
         with:
@@ -277,13 +284,10 @@ jobs:
           key: ${{ steps.key.outputs.key }}
 
       - name: Upload frontend coverage (for Sonar)
-        # Unconditional; `if-no-files-found: error` turns an empty restore into a red here, not in Sonar.
         uses: actions/upload-artifact@v7
         with:
           name: frontend-sonar
-          # Two paths, so the artifact's root is their common ancestor `frontend/coverage` and it
-          # holds `frontend/lcov.info` + `eslint-rules/lcov.info`. The sonar job's download path
-          # moved up one level to match.
+          # Two paths, so the artifact root is `frontend/coverage`; `sonar` downloads to match.
           path: |
             frontend/coverage/frontend/lcov.info
             frontend/coverage/eslint-rules/lcov.info
@@ -291,51 +295,17 @@ jobs:
           retention-days: 1
 
   repo-hygiene:
-    # DO NOT RENAME. This string is a required status-check CONTEXT in the `Riviera Rule Set`
-    # ruleset (#534 added the seventh context as `Inline comments (RV-STYLE-1)`; #539 renamed it
-    # to this string; `CONTRIBUTING.md` records the list). A ruleset names its contexts
-    # explicitly, so renaming the job here removes a check the ruleset still expects, and EVERY
-    # pull request becomes unmergeable — the `405 … N of N required status checks are expected`
-    # failure #413/#420 already paid for once. Renaming means editing the ruleset in the same
-    # change, which is a repository setting and not expressible in a diff — #539 records the
-    # swap sequencing that lands the pair without an unmergeable window.
-    name: Repo hygiene (diff-scoped)
-    # Several diff-scoped repo-hygiene guards, not one: RV-STYLE-1 comments and skill prose (#529, #956),
-    # the two stranded-focus postures (#621), and the touch-target declaration (#648). They share
-    # this job because they share a shape — judge what a DIFF wrote, not the standing tree — and
-    # because the name above is the enforcement handle.
-    #
-    # One standing-tree check rides along since #659 — the cloud Node pin — and the job name is why
-    # it is a comment rather than a rename: `Repo hygiene (diff-scoped)` is a required-status-check
-    # context (see above), so the accurate name costs a ruleset edit this check does not justify.
-    # Its own step says why it cannot be diff-scoped.
-    #
-    # The authoring-time guard's backstop (#529). The hook in .claude/settings.json is the
-    # primary control — it fires on the edit itself — but hooks are per-machine and an author
-    # can disable them, so the rule also has to hold somewhere the merge gate can read.
-    #
-    # Pull requests only, deliberately. The rule governs what a DIFF writes, and a push to main
-    # has no base to diff against that means anything here (the tree carries many pre-existing
-    # multi-line inline comments by design; see the guard's header).
-    #
-    # Same #417 trap as the sonar job below, and for the same reason: when this `if` is false the
-    # job is SKIPPED, and a skipped job still publishes a check run under this name. What makes
-    # that harmless today is not the `if` — it is that `push` is scoped to `branches: [main]`, so
-    # a push run and a PR run never share a head SHA, and masking needs a same-SHA collision.
-    # Broaden the `push` trigger and this job masks its own PR result exactly as #417 described.
+    name: Repo hygiene (diff-scoped) # Required context (header above): do not rename.
+    # The `--diff` guards judge what a DIFF wrote (each `scripts/check-*.mjs` header says what and
+    # why), so a push to `main` has no base; the standing-tree checks ride along under this name.
+    # Skipping is safe only while `push` is `main`-only (#417).
     if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
-    # Observed green: well under a minute (no install step — the guards have no dependencies).
-    #
-    # That is a constraint, not just a fact: `scripts/*.test.mjs` runs HERE, so nothing a guard
-    # module imports may reach `node_modules`. (It is also why the Prettier check — which needs
-    # the pinned Prettier from frontend/node_modules — runs in the frontend job instead.)
     timeout-minutes: 10
     steps:
       - name: Checkout
         uses: actions/checkout@v7
         with:
-          # The guard diffs against the PR's base commit, which a depth-1 clone does not contain.
           fetch-depth: 0
 
       - name: Set up Node (from .nvmrc)
@@ -344,83 +314,35 @@ jobs:
           node-version-file: .nvmrc
 
       - name: Fetch the base branch (the diff-scoped guards' base)
-        # NOT `github.event.pull_request.base.sha`, which is the base branch's tip when the PR was
-        # opened. CI checks out the PR's MERGE ref, so once `main` moves the merge commit contains
-        # commits the stale sha predates, `git merge-base` resolves to that stale sha, and the diff
-        # hands this PR everything main gained meanwhile — other people's merged lines, reported as
-        # yours. Caught on PR #618 the moment #617 landed mid-flight. The base branch's CURRENT tip
-        # is the first parent of the merge ref, so diffing it yields exactly what this PR adds.
+        # The base branch's CURRENT tip, not `base.sha`: once `main` moves under the PR, diffing the
+        # stale sha reports other people's merged lines as this PR's (#618).
         run: git fetch --no-tags origin ${{ github.event.pull_request.base.ref }}
 
       - name: Test the guards themselves
-        # Globs every guard suite; a new scripts/*.test.mjs is picked up with no edit here. Two
-        # kinds run under it since #619: the per-guard detector suites, and one that spawns each
-        # guard's CLI against a throwaway `git init` repository to cover the front-end the
-        # detectors cannot see. Both obey the no-node_modules constraint above.
+        # No install step: nothing a guard imports may reach `node_modules`.
         run: node --test "scripts/*.test.mjs"
 
       - name: Check the diff's comments and skill prose (RV-STYLE-1, hard gate)
-        # A multi-line inline comment the diff added to production source, and a touched doc comment
-        # or RESPONSIBILITIES.md block over §6d's line budget, fail the step; a multi-line comment in
-        # test source and history phrasing are printed as advisory. The step NAME is free to change —
-        # only the job name above is a required context.
         run: node scripts/check-inline-comments.mjs --diff origin/${{ github.event.pull_request.base.ref }}
 
       - name: Check doc comments and RESPONSIBILITIES.md over budget did not grow (§6d ratchet, hard gate)
-        # Standing-tree: the total lines over budget may only fall, and a PR that lowers it commits
-        # the lower scripts/doc-budget-baseline.json (`--update`), so every trim stays trimmed.
         if: ${{ !cancelled() }}
         run: node scripts/check-doc-budget.mjs
 
       - name: Check the diff for stranded-focus postures (#621, BUSY-1 gates)
-        # The CI half of the authoring-time hook, same as the RV-STYLE-1 guard above. Diff-scoped:
-        # ~12 legitimate `[disabled]` bindings stand in the tree by design, so a repo-wide gate would
-        # go red on day one. `--all` sweeps them for an audit.
-        #
-        # Only BUSY-1 fails the build. FOCUS-1 prints to the log and returns 0 — it asks whether a
-        # component MOVES FOCUS, a runtime property approximated over source, and three review passes
-        # each found a fresh false positive in that predicate. A gate that fails correct code is the
-        # one error direction this job cannot afford (#529's lesson), so the
-        # rule advises instead. Rationale: #621.
         if: ${{ !cancelled() }}
         run: node scripts/check-focus-posture.mjs --diff origin/${{ github.event.pull_request.base.ref }}
 
       - name: Check the diff declares its touch targets (#648, both rules gate)
-        # The static half of the 44px floor (#605): does every <button>/<input>/<select>/<textarea>
-        # carry [appTouchTarget] or a reasoned data-touch-exempt? It never measures a rendered box —
-        # frontend/e2e/touch-targets*.e2e.ts does that and stays the proof. This covers the surfaces
-        # no sweep visits, which is where #605's misses actually were.
-        #
-        # BOTH rules gate, unlike the guard above, because both are element names and attributes with
-        # no runtime property approximated. The bar that earned it is the one BUSY-1/BUSY-2 cleared:
-        # `--all` over the whole tree reports zero, so a diff-scoped red is a real regression rather
-        # than a pre-existing violation the diff happened to touch.
-        #
-        # <a> is out of scope entirely (min-height is a no-op on an inline box, so a directive there
-        # can be a false declaration) — 53 anchors stay the measured sweep's and RV-FE's job.
         if: ${{ !cancelled() }}
         run: node scripts/check-touch-target.mjs --diff origin/${{ github.event.pull_request.base.ref }}
 
       - name: Check the cloud setup script's Node pin still matches .nvmrc (#659, hard gate)
-        # The odd one out: standing-tree, no `--diff`. The thing it guards — the environment's Setup
-        # script field on claude.ai — is not in version control, so there is no diff that can carry
-        # its drift; docs/agents/cloud-environment.md is the reviewable mirror and this proves the
-        # mirror still says what .nvmrc says. Diff-scoping it would mean the bump PR is the only run
-        # that could ever catch the bump PR's omission.
-        #
-        # No day-one red to avoid (#529's constraint on the guards above): the two agree the moment
-        # the doc is written, and a red is a seconds-long fix. What it CANNOT prove is that the field
-        # itself was updated — the doc spells the bump out as three steps for that reason.
         if: ${{ !cancelled() }}
         run: node scripts/check-cloud-node-pin.mjs
 
       - name: Check no text file is stored CRLF in the index (#1510, hard gate)
-        # Standing-tree, like the Node pin: the tree is clean, so a red is a real regression and not
-        # a pre-existing row the diff happened to touch. `eol=crlf` (gradlew.bat) is a checkout-side
-        # attribute; the blob is still LF. A commit made through the API rather than `git add` —
-        # Dependabot's wrapper bump writes gradlew.bat that way — skips normalization and stores
-        # CRLF, after which every fresh clone shows the file modified (#1510). `attr/-text` rows
-        # are binaries by declaration and never normalized, so they are excluded.
+        # An API commit (Dependabot's wrapper bump) skips normalization; `attr/-text` rows are binaries.
         if: ${{ !cancelled() }}
         run: |
           bad=$(git ls-files --eol | awk '$1 ~ /^i\/(crlf|mixed)$/ && $3 != "attr/-text"')
@@ -433,37 +355,21 @@ jobs:
   sonar:
     name: SonarCloud scan
     needs: [backend, frontend]
-    # SonarCloud's plan analyzes the main branch and pull requests only; a push to a
-    # feature branch triggers a (disallowed) branch analysis that fails with "Organization
-    # is not allowed to access data from non main branches", leaving a spurious red check.
-    # Since #417 the triggers above admit only those two cases, so this guard is defence in
-    # depth — keep it. Trap if you ever add a trigger that reaches this job: it would be
-    # SKIPPED there, and a skipped job still publishes a `SonarCloud scan` check run that can
-    # mask the PR run's successful one on the same SHA (#417, by the back door).
+    # SonarCloud's plan analyses `main` and pull requests only; any other ref fails the scan. Keep
+    # the guard even though the triggers already admit only those two (#417).
     if: ${{ github.event_name == 'pull_request' || github.ref == 'refs/heads/main' }}
     runs-on: ubuntu-latest
-    # Observed green: ~1 min (artifact downloads + the scanner). Its own cap matters as much as the
-    # build jobs': this is the job the merge gate reads, so a hang here is indistinguishable from
-    # "analysis pending" and blocks the Sonar gate silently.
-    #
-    # Runs in full on every push, cache hit or not, and that is not an oversight. The required context
-    # is `SonarCloud Code Analysis` — posted by the SonarCloud app for a SHA only when an analysis is
-    # uploaded for it — so a push with "nothing new to analyse" still has to analyse, or the PR waits
-    # forever on a check that never arrives. On a hit the inputs it consumes are the build jobs'
-    # RESTORED artifacts: the JaCoCo XML, classes and lcov of the identical tree, which yield the same
-    # coverage the tree produced when it was built (#955).
+    # Runs on every push, cache hit or not: the `SonarCloud Code Analysis` context exists for a SHA
+    # only when an analysis is uploaded for it (#955).
     timeout-minutes: 15
-    # One combined scan for the single SonarCloud project. SONAR_TOKEN is configured,
-    # so the scan runs and reports the quality gate on every PR. The `SONAR_TOKEN != ''`
-    # guards on the steps below are a safety fallback that keeps the job green on
-    # secret-less runs (e.g. forks), not a "skipped by default" state.
+    # The `SONAR_TOKEN != ''` guards keep secret-less runs (forks) green; the token is configured.
     env:
       SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
     steps:
       - name: Checkout
         uses: actions/checkout@v7
         with:
-          fetch-depth: 0  # full history for accurate Sonar new-code / blame
+          fetch-depth: 0
 
       - name: Download backend coverage + classes
         if: ${{ env.SONAR_TOKEN != '' }}
@@ -490,18 +396,8 @@ jobs:
           node-version-file: .nvmrc
 
       - name: Run the guard suites with coverage (the scripts/ lcov for Sonar)
-        # `scripts/` is in `sonar.sources` (sonar-project.properties says what that covers), so the
-        # scan needs a coverage report for it or every touched guard line reads as 0% covered. The
-        # suites run HERE, a second time on a pull request, rather than once in the hygiene job with
-        # an artifact hand-off: that job is `pull_request`-only, and a `needs:` on a skipped job
-        # would skip this one on every push to `main` — the main-branch analysis would then carry no
-        # scripts coverage at all. ~17 s measured; the hygiene job stays the gate on the suites.
-        #
-        # Node's runner hands `NODE_V8_COVERAGE` to the CLIs the harness spawns, so the guards'
-        # front-ends are covered too, not only the detector modules the suites import. The lcov
-        # reporter writes repo-root-relative SF paths, which is why there is no sed step like the
-        # frontend's above. The `spec` reporter keeps failures legible in the log. The reporter does
-        # not create its destination's directory — hence the mkdir.
+        # `scripts/` is in `sonar.sources`. Run here, not handed off from `repo-hygiene`: that job is
+        # `pull_request`-only, and a `needs:` on it would skip this job on `main`.
         if: ${{ env.SONAR_TOKEN != '' }}
         run: >-
           mkdir -p scripts/coverage &&
