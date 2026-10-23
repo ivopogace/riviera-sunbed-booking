@@ -3,9 +3,9 @@ import { expect, test, type Page } from '@playwright/test';
 import { mockWholeConsole, signInAsOperator } from './support/operator-console.mocks';
 
 /**
- * The console's one page box (#1589): every tab, the stats strip and the pending-approval banner
- * start at the header's content edge (the wordmark's left), so switching tabs never moves it; the
- * beach map alone stays wider. Rendered geometry, so jsdom can't pin it.
+ * The console's one page box (#1589): the stats strip spans the header's box, and every tab and
+ * the pending-approval banner start at its content edge (the wordmark's left), so switching tabs
+ * never moves it; the beach map alone stays wider. Rendered geometry, so jsdom can't pin it.
  */
 
 const PENDING = { username: 'operator', principalType: 'OPERATOR', operatorStatus: 'PENDING' };
@@ -31,21 +31,24 @@ async function left(page: Page, testId: string): Promise<number> {
   return (await page.getByTestId(testId).boundingBox())!.x;
 }
 
-// 900 and 1200 take the clamp and the 1120–1300 band; 1440 and 1700 the wide case.
-for (const width of [900, 1200, 1440, 1700]) {
-  test(`at ${width}px every tab, the strip and the banner share the header's 1120px box`, async ({
-    page,
-  }) => {
+// 900: the clamp (beach-map frame = box there); 1200: the 1120–1300px band; 1440/1700: wide.
+test('at every desktop width the tabs, the strip and the banner share the header box', async ({
+  page,
+}) => {
+  await mockPendingConsole(page);
+  await page.goto('/operator/1/requests');
+  await signInAsOperator(page);
+  await expect(page.getByTestId('requests-tab')).toBeVisible();
+
+  for (const width of [900, 1200, 1440, 1700]) {
     await page.setViewportSize({ width, height: 900 });
-    await mockPendingConsole(page);
-    await page.goto('/operator/1/requests');
-    await signInAsOperator(page);
+    await page.getByTestId('oc-tabs').getByRole('link', { name: 'Requests' }).click();
     await expect(page.getByTestId('requests-tab')).toBeVisible();
 
     const box = Math.min(width, BOX);
     const boxEdge = (width - box) / 2;
     const contentEdge = boxEdge + GUTTER;
-    expect(await left(page, 'oc-brand')).toBe(contentEdge);
+    expect(await left(page, 'oc-brand'), `${width}px`).toBe(contentEdge);
 
     const banner = (await page.getByTestId('pending-approval-banner').boundingBox())!;
     expect(banner.x).toBe(contentEdge);
@@ -65,19 +68,19 @@ for (const width of [900, 1200, 1440, 1700]) {
     ] as const) {
       await tabs.getByRole('link', { name: tab }).click();
       await expect(page.getByTestId(testId)).toBeVisible();
-      expect(await left(page, testId), tab).toBe(contentEdge);
+      expect(await left(page, testId), `${tab} at ${width}px`).toBe(contentEdge);
     }
     const daily = (await page.getByTestId('daily-view-tab').boundingBox())!;
     expect(daily.width).toBe(box - 2 * GUTTER);
 
-    // The beach map keeps its wider fit-to-width frame: `.oc-main`'s 1300px less its gutters.
+    // The beach map keeps `.oc-main`'s wider fit-to-width frame: the viewport up to 1300px, less its gutters.
     await tabs.getByRole('link', { name: 'Beach map' }).click();
     const frame = Math.min(width, 1300);
     const editor = (await page.getByTestId('layout-editor').boundingBox())!;
     expect(editor.width).toBe(frame - 2 * GUTTER);
     expect(editor.x).toBe((width - frame) / 2 + GUTTER);
-  });
-}
+  }
+});
 
 test('on a phone the tabs keep their 24 + 20px gutter and nothing scrolls sideways', async ({
   page,
