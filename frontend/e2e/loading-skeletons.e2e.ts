@@ -582,26 +582,27 @@ const BARE_PRICE_VENUE = {
 };
 
 /**
- * The other extreme: a four-digit min–max span plus a qualifier, which ellipsizes at either cap.
+ * The other extreme: a six-digit min–max span, which ellipsizes at either cap — the chip
+ * is the price alone (#1587), so only the amounts can carry it past 128px.
  *
  * <p>The prices alternate WITHIN each row on purpose. Priced uniformly per row — which is what
  * this fixture used to do — `rowPriceLabel` renders one amount and the span never appears, so the
  * widest chip the rail can carry went unexercised while the docstring claimed it. Alternating
  * makes the row's sets differ, which is `formatMoneyRange`'s own condition for a span: the chip
- * renders `€125–€9,995 · Front row` and measures the full 128px desktop cap.
+ * renders `€125,000–€999,995` and measures the full 128px desktop cap.
  */
 const WIDE_PRICE_VENUE = {
   ...RICH_VENUE,
   sets: sets().map((s, i) => ({
     ...s,
     tier: 'PREMIUM',
-    price: { minorUnits: i % 2 === 0 ? 12500 : 999500, currency: 'EUR' },
+    price: { minorUnits: i % 2 === 0 ? 12500000 : 99999500, currency: 'EUR' },
   })),
 };
 
 for (const [prices, venue, chip] of [
   ['bare amounts, under the reservation', BARE_PRICE_VENUE, /^€30$/],
-  ['price phrases past the cap', WIDE_PRICE_VENUE, /^€125–€9,995 · Front row$/],
+  ['price spans past the cap', WIDE_PRICE_VENUE, /^€125,000–€999,995$/],
 ] as const) {
   for (const [size, viewport] of [
     ['desktop', DESKTOP],
