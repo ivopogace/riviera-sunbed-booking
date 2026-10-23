@@ -50,10 +50,11 @@ npm run test:eslint-rules # the local ESLint rules' own suite
 npm run test:a11y        # axe + contrast unit specs
 npm run test:e2e         # Playwright, local-only REAL-backend suite (frontend/e2e/real-backend/)
 npm run test:e2e:a11y    # Playwright, CI-safe mocked suite (frontend/e2e/) — what CI runs
+npm run typecheck:e2e    # tsc over frontend/e2e/ (Playwright transpiles without checking)
 npm run build
 ```
 
-**CI** (`.github/workflows/ci.yml`): backend build/test, frontend lint/format/test/build +
+**CI** (`.github/workflows/ci.yml`): backend build/test, frontend lint/format/e2e-typecheck/test/build +
 eslint-rules suite, the mocked e2e on sharded runners, the `scripts/check-*.mjs` guards (`check-inline-comments`,
 `check-focus-posture` and `check-touch-target` also run as a local `PostToolUse` hook;
 `check-comment-only.mjs` is by-hand only), SonarCloud per PR. Sonar bar: **no new bug,
@@ -89,7 +90,7 @@ aggregate-root classes: `domain/` holds rules, state is in tables, lifecycles ar
 | `customer` | guest contact, customer account (sign-in, SSO, verification, password), GDPR erasure + retention sweep, canonical email form | `customer`, `customer_account`, `customer_sso_identity`, `customer_account_token` |
 | `operator` | operator accounts, operator↔venue ownership (#13), admin lifecycle + `is_admin`, tourist-visibility answer | `operator`, `operator_venue` |
 | `review` | one review per booking, eligibility + window, aggregate rating, admin takedown, erasure tombstone; a leaf (ADR-0015) | `review` |
-| `notification` | transactional mail, hashed suppression list, delivery log + admin resend | `email_suppression`, `booking_confirmation_mail_attempt` |
+| `notification` | transactional mail, hashed suppression list, delivery log + admin resend, the emailed-link origin rule | `email_suppression`, `booking_confirmation_mail_attempt` |
 | `itinerary` | the stay read model (D7/D11): the whole-coast verdict per venue for a span (same set · fits with N moves · can't host), served on `GET /api/venues`; the per-venue stitched plan on `GET /api/venues/{id}/itinerary`; the move budget `riviera.itinerary.max-switches` | nothing — a read model over `venue::api` + `availability::api` |
 | `remodel` | the beach-map remodel preview + commit (ADR-0020/ADR-0028): composes `venue`'s layout diff and write with `booking`'s claim classification and settlement, supplying `venue.spi.RemodelGate`; assembles, never decides | nothing — a composition over `venue::api` + `booking::api` |
 

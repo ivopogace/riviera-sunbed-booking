@@ -115,6 +115,19 @@ class CustomerRecoveryTest {
 		assertThat(link.getValue()).asString().startsWith(BASE_URL + CustomerRecovery.VERIFY_PATH + "?token=");
 	}
 
+	@Test
+	void buildsTheVerificationLinkOnAnUnderscoredOrigin() {
+		new CustomerRecovery(accounts, mails, deliverability, new RecoveryTokens(),
+				new RecoveryProperties(Duration.ofHours(24), Duration.ofHours(1), "http://riviera_backend:8080/"),
+				Clock.fixed(Instant.parse("2026-07-27T10:00:00Z"), ZoneOffset.UTC))
+				.sendVerificationEmail(ACCOUNT, EMAIL);
+
+		ArgumentCaptor<URI> link = ArgumentCaptor.forClass(URI.class);
+		verify(mails).sendEmailVerification(eq(EMAIL), link.capture());
+		assertThat(link.getValue()).asString()
+				.startsWith("http://riviera_backend:8080" + CustomerRecovery.VERIFY_PATH + "?token=");
+	}
+
 	/**
 	 * AC-3: the regression guard the review round added — sending consults the do-not-mail list
 	 * <strong>not at all</strong>. {@code sendVerificationEmail}'s other caller is anonymous registration

@@ -50,6 +50,7 @@ const VENUE = {
   bookingMode: 'INSTANT',
   fromPrice: { minorUnits: 4500, currency: 'EUR' },
   salesOpen: true,
+  maxStayDays: null as number | null,
 };
 
 /** One day: every set free. */
