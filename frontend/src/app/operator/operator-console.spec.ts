@@ -203,7 +203,7 @@ describe('OperatorConsole — signed-in page (#170, guard-gated since #277)', ()
   });
 });
 
-describe('OperatorConsole — an announced walk-in change (#1525)', () => {
+describe('OperatorConsole — an announced availability change (#1525, #1551)', () => {
   let fixture: ComponentFixture<OperatorConsole>;
   let httpMock: HttpTestingController;
   const TODAY = todayBookingDate(new Date());
@@ -249,7 +249,7 @@ describe('OperatorConsole — an announced walk-in change (#1525)', () => {
     // The Requests tab has taken authority since; a refresh must not clobber it back to the seed.
     TestBed.inject(PendingRequestsStore).set(1);
 
-    TestBed.inject(AvailabilityChanges).announce({ venueId: VENUE, date: TODAY });
+    TestBed.inject(AvailabilityChanges).announce({ venueId: VENUE, date: TODAY, cause: 'WALK_IN' });
     await fixture.whenStable();
     fixture.detectChanges();
 
@@ -275,8 +275,38 @@ describe('OperatorConsole — an announced walk-in change (#1525)', () => {
     httpMock.expectNone((r) => r.url === `${BASE}/api/venues/${VENUE}/booking-requests`);
   });
 
+  it('a day refund that released today’s set refreshes Free today and Booked online together (#1551)', async () => {
+    const bookedTile = (): string =>
+      (fixture.nativeElement as HTMLElement)
+        .querySelector('[data-testid="oc-stat-booked"]')
+        ?.textContent?.trim() ?? '';
+    const bookedBefore = bookedTile();
+
+    TestBed.inject(AvailabilityChanges).announce({
+      venueId: VENUE,
+      date: TODAY,
+      cause: 'DAY_REFUND',
+    });
+    await fixture.whenStable();
+    flushVenue(httpMock, 'Miramar Beach Club', VENUE, [
+      set(1, 'FREE'),
+      set(2, 'FREE'),
+      set(3, 'FREE'),
+    ]);
+    // The strip re-reads the day's CONFIRMED bookings, never the held states (verify() pins it).
+    httpMock
+      .expectOne((r) => r.url === `${BASE}/api/venues/${VENUE}/bookings` && r.method === 'GET')
+      .flush([{ setId: 2, code: 'X' }]);
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    expect(freeTile()).toBe('3 / 3');
+    expect(bookedBefore).toBe('0'); // the seeded strip read
+    expect(bookedTile()).toBe('1');
+  });
+
   it('keeps the current map when the refresh read fails — free/total are one object, so neither goes blank', async () => {
-    TestBed.inject(AvailabilityChanges).announce({ venueId: VENUE, date: TODAY });
+    TestBed.inject(AvailabilityChanges).announce({ venueId: VENUE, date: TODAY, cause: 'WALK_IN' });
     await fixture.whenStable();
     httpMock
       .expectOne((r) => r.url === `${BASE}/api/venues/${VENUE}/beach-map` && r.method === 'GET')
@@ -291,8 +321,8 @@ describe('OperatorConsole — an announced walk-in change (#1525)', () => {
   });
 
   it('latest map read wins when two refreshes overlap (R-3)', async () => {
-    TestBed.inject(AvailabilityChanges).announce({ venueId: VENUE, date: TODAY });
-    TestBed.inject(AvailabilityChanges).announce({ venueId: VENUE, date: TODAY });
+    TestBed.inject(AvailabilityChanges).announce({ venueId: VENUE, date: TODAY, cause: 'WALK_IN' });
+    TestBed.inject(AvailabilityChanges).announce({ venueId: VENUE, date: TODAY, cause: 'WALK_IN' });
     await fixture.whenStable();
     const [first, second] = httpMock.match(
       (r) => r.url === `${BASE}/api/venues/${VENUE}/beach-map` && r.method === 'GET',
@@ -324,8 +354,12 @@ describe('OperatorConsole — an announced walk-in change (#1525)', () => {
   });
 
   it('ignores a change for another venue or another day (AC-6, R-2)', async () => {
-    TestBed.inject(AvailabilityChanges).announce({ venueId: 2, date: TODAY });
-    TestBed.inject(AvailabilityChanges).announce({ venueId: VENUE, date: addDays(TODAY, 1) });
+    TestBed.inject(AvailabilityChanges).announce({ venueId: 2, date: TODAY, cause: 'WALK_IN' });
+    TestBed.inject(AvailabilityChanges).announce({
+      venueId: VENUE,
+      date: addDays(TODAY, 1),
+      cause: 'WALK_IN',
+    });
     await fixture.whenStable();
 
     httpMock.expectNone((r) => r.url === `${BASE}/api/venues/${VENUE}/beach-map`);

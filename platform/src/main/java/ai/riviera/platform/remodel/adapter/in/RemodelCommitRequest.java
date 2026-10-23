@@ -19,14 +19,14 @@ import ai.riviera.platform.venue.vocabulary.Pool;
 record RemodelCommitRequest(List<Cell> sets, Long expectedVersion, String previewToken, Integer refundCount,
 		String refundReason) {
 
-	record Cell(String rowLabel, Integer positionNo, String tier, String pool, MoneyView price, Integer gridX,
+	record Cell(Integer positionNo, String tier, String pool, MoneyView price, Integer gridX,
 			Integer gridY) {
 
 		LayoutCell toCell() {
 			if (positionNo == null || gridX == null || gridY == null || price == null || pool == null) {
 				throw new IllegalArgumentException("positionNo, pool, price, gridX and gridY are required");
 			}
-			return new LayoutCell(rowLabel, positionNo, tier, Pool.valueOf(pool), price.minorUnits(),
+			return new LayoutCell(positionNo, tier, Pool.valueOf(pool), price.minorUnits(),
 					price.currency(), gridX, gridY);
 		}
 	}

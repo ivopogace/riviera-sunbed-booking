@@ -12,13 +12,13 @@ import ai.riviera.platform.venue.vocabulary.SetPlacement;
  */
 record RemodelPreviewRequest(List<Cell> sets, Long expectedVersion) {
 
-	record Cell(String rowLabel, Integer positionNo, Integer gridX, Integer gridY) {
+	record Cell(Integer positionNo, Integer gridX, Integer gridY) {
 
 		SetPlacement toPlacement() {
 			if (positionNo == null || gridX == null || gridY == null) {
 				throw new IllegalArgumentException("positionNo, gridX and gridY are required");
 			}
-			return new SetPlacement(rowLabel, positionNo, gridX, gridY);
+			return new SetPlacement(SetPlacement.rowLabelOf(gridY), positionNo, gridX, gridY);
 		}
 	}
 

@@ -422,6 +422,10 @@ export class DailyViewTab {
     this.refundBusy.set(true);
     this.console.dayRefund(venueId, code, date).subscribe({
       next: (result) => {
+        if (releasesClaim(result)) {
+          // The set is free and a CONFIRMED booking gone whatever this tab shows now (#1551).
+          this.changes.announce({ venueId, date: result.serviceDate, cause: 'DAY_REFUND' });
+        }
         if (this.epoch !== epoch) {
           return; // a venue switch superseded this write's UI state
         }
@@ -519,7 +523,7 @@ export class DailyViewTab {
     write.subscribe({
       next: () => {
         // The row changed server-side whatever this tab shows now: the strip and the shared map follow.
-        this.changes.announce({ venueId, date });
+        this.changes.announce({ venueId, date, cause: 'WALK_IN' });
         if (this.epoch === epoch) {
           this.reconcile(set.id); // skip if a venue switch superseded this write
         }
@@ -864,6 +868,11 @@ function checkInMessage(error: unknown, sets: ReadonlyMap<number, SetView>): str
     default:
       return 'Couldn’t check in. Try again.';
   }
+}
+
+/** A refund that freed its day's claim: a released day, or a lone booking cancelled whole (ADR-0027). */
+function releasesClaim(result: VenueDayRefundResult): boolean {
+  return result.released || result.kind === 'BOOKING_CANCELLED';
 }
 
 /** The operator-facing notice for a venue day refund the server carried out (money in minor units, #5). */

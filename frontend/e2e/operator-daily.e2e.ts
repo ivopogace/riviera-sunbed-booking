@@ -14,7 +14,8 @@ import {
  * → see the three tile states (free / booked-online-locked) + the arrivals code chips → tap a free
  * set to mark a walk-in → assert the owner-asserted mark POST, that the tile flips to walk-in
  * marked after the reconcile, and that the console's stats strip follows the mark and the release
- * without a reload (#1525). API mocked via `page.route` (no backend); axe over the tab.
+ * without a reload (#1525), as it follows a day refund that releases today's set (#1551). API
+ * mocked via `page.route` (no backend); axe over the tab.
  */
 
 const PRINCIPAL = { username: 'operator', principalType: 'OPERATOR' };
@@ -454,6 +455,29 @@ test('refunds one guest’s day from the row behind a two-step confirm, and the 
       ],
     }),
   );
+  // The stay holds set 3 today until the refund releases it (sets 2 + 4 stay online-held).
+  await page.route(/\/api\/venues\/1\/beach-map$/, (route) =>
+    route.fulfill({
+      json: {
+        map: {
+          id: 1,
+          name: 'Miramar Beach Club',
+          beach: 'KSAMIL',
+          region: 'SARANDE',
+          description: 'Loungers on the shore.',
+          ratingTenths: 48,
+          reviewsCount: 12,
+          bookingMode: 'INSTANT',
+          fromPrice: { minorUnits: 3000, currency: 'EUR' },
+          salesOpen: true,
+          sets: [1, 2, 3, 4].map((id) =>
+            seat(id, id, 'ONLINE', id === 1 || (id === 3 && refunded) ? 'FREE' : 'TAKEN'),
+          ),
+        },
+        locks: [],
+      },
+    }),
+  );
   await page.route(/\/api\/venues\/1\/bookings\/STAY00001\/day-refund(\?.*)?$/, (route) => {
     refunds.push(route.request());
     refunded = true;
@@ -469,6 +493,8 @@ test('refunds one guest’s day from the row behind a two-step confirm, and the 
   });
   await page.goto('/operator/1');
   await signInAndOpenDaily(page);
+  await expect(page.getByTestId('oc-stat-free')).toHaveText(/1\s*\/\s*4/);
+  await expect(page.getByTestId('oc-stat-booked')).toHaveText('1');
 
   // The row action opens the amber confirm; nothing is posted until confirmed.
   await page.getByTestId('refund-day-STAY00001').click();
@@ -490,6 +516,9 @@ test('refunds one guest’s day from the row behind a two-step confirm, and the 
   await expect(page.getByTestId('arrival-day-released')).toHaveText('Day released');
   await expect(page.getByTestId('daily-arrival-row')).toHaveCount(1);
   await expect(page.getByTestId('refund-day-STAY00001')).toHaveCount(0);
+  // The strip follows without a reload: the set is free and the released day is not booked (#1551).
+  await expect(page.getByTestId('oc-stat-free')).toHaveText(/2\s*\/\s*4/);
+  await expect(page.getByTestId('oc-stat-booked')).toHaveText('0');
   await settle(page);
   await expectNoSeriousAxeViolations(page, 'daily view tab after a day refund');
 });
@@ -605,7 +634,7 @@ test('a fully-sold day keeps the scrolling map keyboard-reachable (#605)', async
   await expectNoSeriousAxeViolations(page, 'daily view, fully sold at 390px');
 });
 
-/** The seeded demo venue's shape: four six-set rows under the row names the Beach map tab stores. */
+/** Four six-set rows under labels longer than the rail's cap (the demo seed before V78). */
 function namedRowsVenue() {
   const names = ['Front row · Sea view', 'Row 2', 'Row 3', 'Row 4 · Back'];
   return {
@@ -643,12 +672,10 @@ async function railChip(page: Page, nth: number): Promise<{ text: string; trunca
 }
 
 /**
- * Staff mark walk-ins from a phone at the gate, and a stored row name is as long as the operator
- * typed it: rendered whole on the left rail at 390px, "Front row · Sea view" left one tile per row
- * in view (#1532). Below `sm` the rail now ellipsizes the name at the tourist map's cap, inside the
- * 54px the rail reserves anyway (#749), so two whole tiles fit per row — the tourist map's own
- * count; three would need the row's grid letter, which #724 rules out beside stored names. From
- * `sm` up the name renders whole, as before.
+ * The phone rail's cap for a stored label longer than it. Since #1586 (V78) a live row's label is its
+ * one grid letter, so no live map reaches the cap; this pins the rail's defensive path. Below `sm` the
+ * rail ellipsizes at the tourist map's cap inside the 54px it reserves (#749), so two whole tiles fit
+ * per row, the tourist map's own count (#1532); from `sm` up the label renders whole.
  */
 test('a long row name ellipsizes on the phone rail so two tiles fit per row; desktop renders it whole (#1532)', async ({
   page,
