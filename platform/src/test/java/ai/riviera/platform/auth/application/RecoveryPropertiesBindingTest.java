@@ -118,7 +118,7 @@ class RecoveryPropertiesBindingTest {
 					}
 					assertThat(bind).isNotNull();
 					assertThat(bind.getProperty())
-							.as("Boot's failure analyzer reads the outermost one and prints 'Value:' only for a named property")
+							.as("Boot's failure analyzer prints a 'Value:' line only for a named property")
 							.isNull();
 				});
 	}

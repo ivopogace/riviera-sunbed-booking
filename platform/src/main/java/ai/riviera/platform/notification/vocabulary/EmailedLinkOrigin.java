@@ -40,8 +40,9 @@ public final class EmailedLinkOrigin {
 		}
 		String stripped = value.strip();
 		if (!isOrigin(stripped)) {
-			throw new IllegalArgumentException(key + " must be an absolute http or https URL with a host and no "
-					+ "user info, query, fragment or percent-escape (e.g. https://app.example): set " + variable);
+			throw new IllegalArgumentException(key + " must be an absolute http or https URL with a host (no trailing "
+					+ "dot), a port in 1..65535 if any, and no user info, query, fragment or percent-escape (e.g. "
+					+ "https://app.example): set " + variable);
 		}
 		return trimTrailingSlashes(stripped);
 	}

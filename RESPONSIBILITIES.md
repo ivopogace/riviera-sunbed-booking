@@ -904,8 +904,8 @@ tag names the person, invariant #7):
 - **I own the emailed-link origin rule, `vocabulary.EmailedLinkOrigin`**, and `auth` takes it for its
   recovery key, so the two keys cannot drift: http(s), a host (inner underscores allowed, no trailing
   dot), a port in 1..65535, no user info, query, fragment or percent-escape, trailing slashes trimmed,
-  and a rejection never echoes the value. Mine, not `shared`'s: an emailed link is mail, and `auth` already depends
-  on me, while I can never depend on `auth`.
+  and a rejection never echoes the value. Mine, not `shared`'s: an emailed link is mail, and `auth`
+  already depends on me, while I can never depend on `auth`.
 
 **Not My Job:**
 - Deciding **when** to send, minting/hashing recovery tokens, building **tokenized** links → the
