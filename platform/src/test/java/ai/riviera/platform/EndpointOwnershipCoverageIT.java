@@ -93,8 +93,6 @@ class EndpointOwnershipCoverageIT {
 					Map.entry("POST /api/venues/{venueId}/beach-map/commit", json(LAYOUT_BODY)),
 					Map.entry("PUT /api/venues/{venueId}/rows/{rowLabel}/price",
 							json("{\"price\":{\"minorUnits\":9999,\"currency\":\"EUR\"},\"expectedVersion\":0}")),
-					Map.entry("PUT /api/venues/{venueId}/rows/{rowLabel}/name",
-							json("{\"newLabel\":\"Back row\",\"expectedVersion\":0}")),
 					Map.entry("POST /api/venues/{venueId}/sets/{setId}/availability",
 							json("{\"date\":\"" + SAMPLE_DATE + "\"}")),
 					Map.entry("DELETE /api/venues/{venueId}/sets/{setId}/availability", dateParam()),

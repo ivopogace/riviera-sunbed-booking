@@ -82,7 +82,7 @@ close, the maximum stay, the season closure, and the commission rate over time. 
   for their one set (`SET_IN_USE`), the bulk save for every set it removes or renumbers
   (`SETS_IN_USE`, naming each). **Price, tier and pool are never refused, on any set** — single-set
   edit, batch apply and bulk save alike (a booking's charge is snapshotted at reserve); the
-  row-scoped `repriceRow` and `renameRow` destroy nothing and ask no claim question either.
+  row-scoped `repriceRow` destroys nothing and asks no claim question either.
 - **The pool is a sales-channel attribute, not a physical one**, and invariant #3 is reserve-time:
   a set switched to walk-in stops new online reserves for every date, its booked dates stay claimed
   (a staff mark on one is still refused), and the staff daily view still lists the online booking.
@@ -108,12 +108,13 @@ close, the maximum stay, the season closure, and the commission rate over time. 
   refused save writes nothing and spends no token; a successful one advances it once, an unchanged
   layout included. Write order is load-bearing — removals, every kept set leaving its slot parked
   (`Venues#parkRowLabels`), updates, inserts — so the non-deferrable uniqueness index never sees two
-  sets in one slot mid-save (swaps, shifted renumbers, relabel chains).
-- **Row names.** A rename is refused only for `ROW_NAME_TAKEN` (another row carries the label); a
-  rename to its own label is a no-op that spends no token. The bulk save enforces one label per
-  physical row within its batch; the single-set `addSet` and `editSet` do not check it. A row's name
-  stays editable on a claimed set (the rename, the bulk save): `row_label` lives on `set_position`
-  alone, so a booked guest reads the new name live while the mail in their inbox keeps the old one.
+  sets in one slot mid-save (position swaps, shifted renumbers).
+- **Rows are labelled by grid letter, never named** (#1586). Every set write — the bulk save, the
+  remodel preview and commit, `addSet`/`editSet` — derives `row_label` from `grid_y`
+  (`SetPlacement.rowLabelOf`, `A` to `Z`; row 27 is a `400`) and ignores a body's `rowLabel`, so one
+  label per physical row holds by construction and a set's label changes only when its row does. A
+  retired set keeps the label it left with; every surface renders the letter as "Row A"
+  (`shared/set-label.ts`).
 - **The remodel preview and commit are the bulk save's diff, without and with a gate.**
   `BeachMapRemodel#preview` takes no row lock (so it never queues a claim's FK lock) and writes
   nothing: a snapshot the save re-decides. `#commit` runs the one `LayoutWriter` and, between the
@@ -1355,13 +1356,11 @@ The SPA rules whose TSDoc points here; structure is `riviera-frontend`'s, stylin
   a load landing on the same entry keeps — so the reload path redirects with `skipLocationChange`
   and `core/page-navigation.ts`'s `reload` clears the entry's state before navigating. Any other
   navigation error stays loud: a guard or resolver that throws is a bug, not a page to retry.
-- **The Daily view's phone rail ellipsizes the stored row name at the tourist cap, and shows two
-  tiles per row** (`shared/beach-map-canvas.ts`, the `labels` rail below `sm`): at 390px the gutters,
-  the frame and the price rail leave the rail 23px for a third whole tile, which only the row's grid
-  letter fits — and #724 retired derived letters from the rails beside stored names, because a row
-  renamed to another row's letter sends a guest to the wrong set. So the cap, two tiles and the
-  tourist map's own count are the bar (#1532); from `sm` up the name renders whole, and the tile
-  accessible names carry it on every width. Never "fix" the phone count with letters or a tighter cap.
+- **The Daily view's phone rail shows the stored row label at the tourist cap, two tiles per row**
+  (`shared/beach-map-canvas.ts`, the `labels` rail below `sm`): at 390px the gutters, the frame and the
+  price rail leave the rail 23px for a third tile. Two tiles and the cap match the tourist map's own
+  count (#1532); the tile accessible names carry the label on every width. Since #1586 the label is
+  always the row's grid letter (§ `venue`, rows by grid letter), so the cap never ellipsizes a real map.
 - **The venue console lands on the Daily view** (`VENUE_CONSOLE_LANDING_TAB`), what a trading venue
   opens every day; set-up tabs are destinations. A freshly created venue is the exception:
   `operator/venue-create-card.ts` sends it to `beach-map`, as it has no map to run a day on yet.

@@ -99,28 +99,6 @@ describe('LayoutEditor a11y (#172)', () => {
     fixture.detectChanges();
   });
 
-  it('has no axe violations with the per-row rename control present (#726)', async () => {
-    // With a Save-name button per stored row, each row's input must stay its own labelled control.
-    render([
-      {
-        id: 1,
-        rowLabel: 'A',
-        positionNo: 1,
-        tier: 'PREMIUM',
-        pool: 'ONLINE',
-        price: { minorUnits: 2000, currency: 'EUR' },
-        gridX: 1,
-        gridY: 1,
-        available: true,
-      },
-    ]);
-    byId('layout-tool-premium').click();
-    fixture.detectChanges();
-
-    expect(byId('layout-row-name-save')).toBeTruthy();
-    await expectNoAxeViolations(host());
-  });
-
   it('has no axe violations in Edit-sets mode with no sets (#718)', async () => {
     render();
     byId('layout-tool-select').click();

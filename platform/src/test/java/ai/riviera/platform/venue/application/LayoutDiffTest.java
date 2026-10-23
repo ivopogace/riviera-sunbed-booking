@@ -15,8 +15,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 /**
  * The coordinate-keyed diff behind the bulk beach-map save: a stored set whose grid cell the
  * submitted layout still names is updated in place under its own id, one whose cell is absent is
- * removed, and a cell no stored set occupies is inserted. The row label, position number, tier,
- * pool and price at a kept cell are whatever the submission says — none of them changes identity.
+ * removed, and a cell no stored set occupies is inserted. The position number, tier, pool and price
+ * at a kept cell are whatever the submission says — none of them changes identity.
  */
 class LayoutDiffTest {
 
@@ -29,24 +29,24 @@ class LayoutDiffTest {
 		return new PlacedSet(id, new SetPlacement(row, position, x, y));
 	}
 
-	private static SetCommand cell(String row, int position, int x, int y) {
-		return new SetCommand(row, position, "STANDARD", Pool.ONLINE, 2000, "EUR", x, y);
+	private static SetCommand cell(int position, int x, int y) {
+		return new SetCommand(position, "STANDARD", Pool.ONLINE, 2000, "EUR", x, y);
 	}
 
-	private static SetCommand renamed(String row, int position, int x, int y) {
-		return new SetCommand(row, position, "PREMIUM", Pool.WALK_IN, 9900, "EUR", x, y);
+	private static SetCommand repainted(int position, int x, int y) {
+		return new SetCommand(position, "PREMIUM", Pool.WALK_IN, 9900, "EUR", x, y);
 	}
 
 	@Test
 	void aKeptCellIsAnUpdateUnderTheStoredId() {
 		List<PlacedSet> stored = List.of(stored(A1, "A", 1, 1, 1));
-		SetCommand repainted = renamed("Front", 1, 1, 1);
+		SetCommand repainted = repainted(1, 1, 1);
 
 		LayoutDiff diff = LayoutDiff.of(stored, new LayoutCommand(List.of(repainted)));
 
 		assertEquals(List.of(new LayoutDiff.Update(stored.getFirst(), repainted)), diff.updates(),
-				"same cell, new label, tier, pool and price: the set keeps its id");
-		assertTrue(diff.disturbed().isEmpty(), "a rename in place disturbs nobody");
+				"same cell, new tier, pool and price: the set keeps its id");
+		assertTrue(diff.disturbed().isEmpty(), "a repaint in place disturbs nobody");
 		assertTrue(diff.inserts().isEmpty());
 		assertTrue(diff.removed().isEmpty());
 	}
@@ -54,8 +54,8 @@ class LayoutDiffTest {
 	@Test
 	void aNewCellIsAnInsertAndAnAbsentCellARemoval() {
 		List<PlacedSet> stored = List.of(stored(A1, "A", 1, 1, 1), stored(A2, "A", 2, 2, 1));
-		SetCommand keptA1 = cell("A", 1, 1, 1);
-		SetCommand newB1 = cell("B", 1, 1, 2);
+		SetCommand keptA1 = cell(1, 1, 1);
+		SetCommand newB1 = cell(1, 1, 2);
 
 		LayoutDiff diff = LayoutDiff.of(stored, new LayoutCommand(List.of(keptA1, newB1)));
 
@@ -71,7 +71,7 @@ class LayoutDiffTest {
 		List<PlacedSet> stored = List.of(stored(A1, "A", 1, 1, 1), stored(A2, "A", 2, 2, 1),
 				stored(B1, "B", 1, 1, 2), stored(B2, "B", 2, 2, 2));
 
-		LayoutDiff diff = LayoutDiff.of(stored, new LayoutCommand(List.of(cell("A", 1, 1, 1))));
+		LayoutDiff diff = LayoutDiff.of(stored, new LayoutCommand(List.of(cell(1, 1, 1))));
 
 		assertEquals(1, diff.updates().size());
 		assertTrue(diff.inserts().isEmpty());
@@ -81,7 +81,7 @@ class LayoutDiffTest {
 
 	@Test
 	void anEmptyMapIsAllInserts() {
-		LayoutDiff diff = LayoutDiff.of(List.of(), new LayoutCommand(List.of(cell("A", 1, 1, 1), cell("A", 2, 2, 1))));
+		LayoutDiff diff = LayoutDiff.of(List.of(), new LayoutCommand(List.of(cell(1, 1, 1), cell(2, 2, 1))));
 
 		assertEquals(2, diff.inserts().size());
 		assertTrue(diff.updates().isEmpty());
@@ -89,44 +89,33 @@ class LayoutDiffTest {
 	}
 
 	@Test
-	void aPositionChangeAtAKeptCellIsADisturbanceARenameIsNot() {
+	void aPositionChangeAtAKeptCellIsADisturbance() {
 		List<PlacedSet> stored = List.of(stored(A1, "A", 1, 1, 1), stored(A2, "A", 2, 2, 1));
 
-		LayoutDiff diff = LayoutDiff.of(stored, new LayoutCommand(List.of(cell("Front", 1, 1, 1), cell("A", 7, 2, 1))));
+		LayoutDiff diff = LayoutDiff.of(stored, new LayoutCommand(List.of(cell(1, 1, 1), cell(7, 2, 1))));
 
 		assertEquals(List.of(stored(A2, "A", 2, 2, 1)), diff.disturbed(),
-				"a guest was told a row and a number: the number changing is a reposition, the label a rename");
-		assertEquals(List.of(A1, A2), diff.movingUpdates(), "a new label and a new number both change the slot");
+				"a guest was told a row and a number: the number changing is a reposition");
+		assertEquals(List.of(A2), diff.movingUpdates(), "only the new number changes a slot");
 	}
 
 	@Test
 	void disturbedListsRemovedAndRepositionedSetsInStoredOrder() {
 		List<PlacedSet> stored = List.of(stored(A1, "A", 1, 1, 1), stored(A2, "A", 2, 2, 1), stored(B1, "B", 1, 1, 2));
 
-		LayoutDiff diff = LayoutDiff.of(stored, new LayoutCommand(List.of(cell("A", 1, 1, 1), cell("B", 9, 1, 2))));
+		LayoutDiff diff = LayoutDiff.of(stored, new LayoutCommand(List.of(cell(1, 1, 1), cell(9, 1, 2))));
 
 		assertEquals(List.of(A2, B1), diff.disturbed().stream().map(PlacedSet::id).toList());
 	}
 
 	@Test
-	void aRowNameSwapBetweenKeptCellsMovesBoth() {
-		List<PlacedSet> stored = List.of(stored(A1, "A", 1, 1, 1), stored(B1, "B", 1, 1, 2));
+	void aRenumberIntoASlotARemovedSetHeldDoesNotCollide() {
+		List<PlacedSet> stored = List.of(stored(A1, "A", 1, 1, 1), stored(A2, "A", 2, 2, 1));
 
-		LayoutDiff diff = LayoutDiff.of(stored, new LayoutCommand(List.of(cell("B", 1, 1, 1), cell("A", 1, 1, 2))));
+		LayoutDiff diff = LayoutDiff.of(stored, new LayoutCommand(List.of(cell(1, 2, 1))));
 
-		assertEquals(List.of(A1, B1), diff.movingUpdates(),
-				"each set's new slot is the other's current one; written naively, the first UPDATE would collide");
-		assertTrue(diff.disturbed().isEmpty(), "a swap of names moves no guest");
-	}
-
-	@Test
-	void aRenameIntoASlotARemovedSetHeldDoesNotCollide() {
-		List<PlacedSet> stored = List.of(stored(A1, "A", 1, 1, 1), stored(B1, "B", 1, 1, 2));
-
-		LayoutDiff diff = LayoutDiff.of(stored, new LayoutCommand(List.of(cell("B", 1, 1, 1))));
-
-		assertEquals(List.of(B1), diff.removed().stream().map(PlacedSet::id).toList());
-		assertEquals(List.of(A1), diff.movingUpdates(), "parked or not, the removal runs first and frees the slot");
+		assertEquals(List.of(A1), diff.removed().stream().map(PlacedSet::id).toList());
+		assertEquals(List.of(A2), diff.movingUpdates(), "parked or not, the removal runs first and frees the slot");
 	}
 
 	@Test
@@ -135,27 +124,17 @@ class LayoutDiffTest {
 		List<PlacedSet> stored = List.of(stored(A1, "A", 1, 2, 1), stored(A2, "A", 2, 3, 1));
 
 		LayoutDiff diff = LayoutDiff.of(stored,
-				new LayoutCommand(List.of(cell("A", 1, 1, 1), cell("A", 2, 2, 1), cell("A", 3, 3, 1))));
+				new LayoutCommand(List.of(cell(1, 1, 1), cell(2, 2, 1), cell(3, 3, 1))));
 
 		assertEquals(List.of(A1, A2), diff.movingUpdates(),
 				"A2 holds the slot A1 moves into, so it is parked too; parking the mover alone would collide");
 	}
 
 	@Test
-	void aRowRelabelChainMovesTheHolderOfEachTargetSlot() {
-		List<PlacedSet> stored = List.of(stored(A1, "A", 1, 1, 1), stored(B1, "B", 1, 1, 2));
-
-		LayoutDiff diff = LayoutDiff.of(stored, new LayoutCommand(List.of(cell("B", 1, 1, 1), cell("C", 1, 1, 2))));
-
-		assertEquals(List.of(A1, B1), diff.movingUpdates(),
-				"B1 holds the slot A1 is relabelled into, so it is parked even though its own target is free");
-	}
-
-	@Test
 	void anUpdateThatKeepsItsSlotIsNotMoving() {
 		List<PlacedSet> stored = List.of(stored(A1, "A", 1, 1, 1));
 
-		LayoutDiff diff = LayoutDiff.of(stored, new LayoutCommand(List.of(renamed("A", 1, 1, 1))));
+		LayoutDiff diff = LayoutDiff.of(stored, new LayoutCommand(List.of(repainted(1, 1, 1))));
 
 		assertTrue(diff.movingUpdates().isEmpty(), "a new tier, pool or price leaves the slot alone");
 	}
@@ -165,7 +144,7 @@ class LayoutDiffTest {
 		List<PlacedSet> stored = List.of(stored(A1, "A", 1, 1, 1), stored(A2, "A", 2, 2, 1), stored(B1, "B", 1, 1, 2));
 		// A1 removed, A2 renumbered to A5, B1 untouched; a new set at (3,1) takes A1's label.
 		LayoutDiff diff = LayoutDiff.of(stored,
-				new LayoutCommand(List.of(cell("A", 5, 2, 1), cell("B", 1, 1, 2), cell("A", 1, 3, 1))));
+				new LayoutCommand(List.of(cell(5, 2, 1), cell(1, 1, 2), cell(1, 3, 1))));
 		assertEquals(List.of(A1, A2), diff.disturbed().stream().map(PlacedSet::id).toList());
 
 		LayoutDiff kept = diff.keeping(Set.of(A1, A2));
@@ -184,20 +163,20 @@ class LayoutDiffTest {
 	void disturbedByAnswersTheRemovedAndRepositionedSetsOfASubmittedPlacementList() {
 		List<PlacedSet> stored = List.of(stored(A1, "A", 1, 1, 1), stored(A2, "A", 2, 2, 1),
 				stored(B1, "B", 1, 1, 2));
-		List<SetPlacement> cells = List.of(new SetPlacement("Front", 1, 1, 1), new SetPlacement("A", 5, 2, 1),
+		List<SetPlacement> cells = List.of(new SetPlacement("A", 1, 1, 1), new SetPlacement("A", 5, 2, 1),
 				new SetPlacement("C", 1, 1, 3));
 
 		List<PlacedSet> disturbed = LayoutDiff.disturbedBy(stored, cells);
 
 		assertEquals(List.of(stored(A2, "A", 2, 2, 1), stored(B1, "B", 1, 1, 2)), disturbed,
-				"A1 is renamed in place; A2 is renumbered; B1 is absent; C1 is new — in stored id order");
+				"A1 is kept in place; A2 is renumbered; B1 is absent; C1 is new — in stored id order");
 	}
 
 	@Test
 	void thePreviewAndTheSaveDisturbTheSameSetsForOneLayout() {
 		List<PlacedSet> stored = List.of(stored(A1, "A", 1, 1, 1), stored(A2, "A", 2, 2, 1),
 				stored(B1, "B", 1, 1, 2), stored(B2, "B", 2, 2, 2));
-		List<SetCommand> commands = List.of(renamed("Front", 1, 1, 1), cell("A", 9, 2, 1), cell("C", 1, 1, 3));
+		List<SetCommand> commands = List.of(repainted(1, 1, 1), cell(9, 2, 1), cell(1, 1, 3));
 
 		List<PlacedSet> saveWould = LayoutDiff.of(stored, new LayoutCommand(commands)).disturbed();
 		List<PlacedSet> previewSays = LayoutDiff.disturbedBy(stored, commands.stream().map(SetCommand::placement).toList());

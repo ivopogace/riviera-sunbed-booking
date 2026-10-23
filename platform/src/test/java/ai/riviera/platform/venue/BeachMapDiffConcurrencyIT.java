@@ -162,7 +162,7 @@ class BeachMapDiffConcurrencyIT {
 	}
 
 	private static SetCommand cell(long priceMinor, int position) {
-		return new SetCommand("A", position, "PREMIUM", Pool.ONLINE, priceMinor, "EUR", position, 1);
+		return new SetCommand(position, "PREMIUM", Pool.ONLINE, priceMinor, "EUR", position, 1);
 	}
 
 	private long insertVenue(String name) {

@@ -532,6 +532,12 @@ class RemodelCommitIT {
 				+ token + ",\"previewToken\":\"v1\"}", null))
 				.andExpect(status().isBadRequest())
 				.andExpect(jsonPath("$.code").value("INVALID_REQUEST"));
+		// Row 27 has no letter (#1586): an edge 400, never left to V78's CHECK.
+		mvc.perform(commit(venue, "{\"sets\":[{\"positionNo\":1,\"tier\":\"STANDARD\",\"pool\":\"ONLINE\","
+				+ "\"price\":{\"minorUnits\":2000,\"currency\":\"EUR\"},\"gridX\":1,\"gridY\":27}],\"expectedVersion\":"
+				+ token + ",\"previewToken\":\"v1\"}", null))
+				.andExpect(status().isBadRequest())
+				.andExpect(jsonPath("$.code").value("INVALID_REQUEST"));
 		assertEquals(token, currentSetVersion(venue));
 	}
 

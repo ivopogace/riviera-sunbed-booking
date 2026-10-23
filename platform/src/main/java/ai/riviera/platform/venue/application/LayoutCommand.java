@@ -1,18 +1,16 @@
 package ai.riviera.platform.venue.application;
 
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 
 /**
  * The validated intent to replace a venue's whole beach-map layout in one bulk PUT. Each
  * {@link SetCommand} validated itself; this adds the whole-layout rules: non-empty, at most
- * {@link #MAX_SETS}, no two sets on one grid cell or row+position, no row label spanning two grid
- * rows. It persists exactly what the client built; generate-time defaults (row A premium) are the
- * frontend's. The list is defensively copied and unmodifiable.
+ * {@link #MAX_SETS}, no two sets on one grid cell or row+position. It persists what the client built,
+ * each row labelled by its grid letter; generate-time defaults (row A premium) are the frontend's. The
+ * list is defensively copied and unmodifiable.
  */
 public record LayoutCommand(List<SetCommand> sets) {
 
@@ -26,7 +24,7 @@ public record LayoutCommand(List<SetCommand> sets) {
 	/** The remodel commit's cells as the save's commands; each {@link SetCommand} re-validates its cell. */
 	public static LayoutCommand of(List<ai.riviera.platform.venue.vocabulary.LayoutCell> cells) {
 		return new LayoutCommand(cells.stream()
-				.map(cell -> new SetCommand(cell.rowLabel(), cell.positionNo(), cell.tier(), cell.pool(),
+				.map(cell -> new SetCommand(cell.positionNo(), cell.tier(), cell.pool(),
 						cell.priceMinor(), cell.priceCurrency(), cell.gridX(), cell.gridY()))
 				.toList());
 	}
@@ -57,21 +55,5 @@ public record LayoutCommand(List<SetCommand> sets) {
 			}
 		}
 		return Optional.empty();
-	}
-
-	/**
-	 * Whether one {@code rowLabel} spans two {@code gridY} rows, which label-grouping surfaces
-	 * would merge. The batch twin of {@code ROW_NAME_TAKEN}; not a {@link Venues.Conflict} as no DB
-	 * constraint sees it (gap-cell numbering keeps each {@code (row_label, position_no)} unique).
-	 */
-	boolean splitsRowLabel() {
-		Map<String, Integer> rowOf = new HashMap<>();
-		for (SetCommand c : sets) {
-			Integer first = rowOf.putIfAbsent(c.rowLabel(), c.gridY());
-			if (first != null && first != c.gridY()) {
-				return true;
-			}
-		}
-		return false;
 	}
 }

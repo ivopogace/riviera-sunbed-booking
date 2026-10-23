@@ -53,9 +53,6 @@ class LayoutWriter {
 		if (internal.isPresent()) {
 			return new LayoutWrite.Rejected(toRejection(internal.get()));
 		}
-		if (command.splitsRowLabel()) {
-			return new LayoutWrite.Rejected(LayoutRejection.ROW_NAME_TAKEN);
-		}
 		// Venue row lock + token read before the set locks (venue before set rows, as every set-write); advanced only on success.
 		if (venues.lockAndReadSetVersion(venueId) != expectedVersion) {
 			return new LayoutWrite.Rejected(LayoutRejection.STALE_WRITE);

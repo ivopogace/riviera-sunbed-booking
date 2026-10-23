@@ -54,7 +54,7 @@ class LayoutWriterTest {
 	private static final SetPlacement AT_A1 = new SetPlacement("A", 1, 1, 1);
 	private static final SetPlacement AT_A2 = new SetPlacement("A", 2, 2, 1);
 	private static final LayoutCommand KEEP_A2_ONLY = new LayoutCommand(List.of(
-			new SetCommand("A", 2, "STANDARD", Pool.ONLINE, 2000, "EUR", 2, 1)));
+			new SetCommand(2, "STANDARD", Pool.ONLINE, 2000, "EUR", 2, 1)));
 
 	private final Venues venues = mock(Venues.class);
 	private final SetAvailabilityLookup availability = mock(SetAvailabilityLookup.class);
@@ -135,8 +135,8 @@ class LayoutWriterTest {
 	void aRepaintAsksTheGateWithNoDisturbedSetsAndReadsNoHolds() {
 		givenLockedMap();
 		LayoutCommand repaint = new LayoutCommand(List.of(
-				new SetCommand("Front", 1, "PREMIUM", Pool.WALK_IN, 9900, "EUR", 1, 1),
-				new SetCommand("Front", 2, "PREMIUM", Pool.ONLINE, 9900, "EUR", 2, 1)));
+				new SetCommand(1, "PREMIUM", Pool.WALK_IN, 9900, "EUR", 1, 1),
+				new SetCommand(2, "PREMIUM", Pool.ONLINE, 9900, "EUR", 2, 1)));
 		AtomicReference<List<DisturbedSet>> seen = new AtomicReference<>();
 
 		assertEquals(LayoutWrite.Written.WRITTEN, writer.write(VENUE, 4, repaint, disturbed -> {
@@ -166,8 +166,8 @@ class LayoutWriterTest {
 	@Test
 	void aKeptRenumberedSetKeepsItsStoredRow() {
 		givenLockedMap();
-		SetCommand a1AsThree = new SetCommand("A", 3, "PREMIUM", Pool.WALK_IN, 9900, "EUR", 1, 1);
-		SetCommand a2Unchanged = new SetCommand("A", 2, "STANDARD", Pool.ONLINE, 2000, "EUR", 2, 1);
+		SetCommand a1AsThree = new SetCommand(3, "PREMIUM", Pool.WALK_IN, 9900, "EUR", 1, 1);
+		SetCommand a2Unchanged = new SetCommand(2, "STANDARD", Pool.ONLINE, 2000, "EUR", 2, 1);
 
 		LayoutWrite outcome = writer.write(VENUE, 4, new LayoutCommand(List.of(a1AsThree, a2Unchanged)),
 				disturbed -> new GateVerdict.Proceed(List.of(A1)));
@@ -181,7 +181,7 @@ class LayoutWriterTest {
 	@Test
 	void aSubmittedSetOnAKeptSetsLabelRefusesTheWholeWrite() {
 		givenLockedMap();
-		SetCommand a2RenumberedToOne = new SetCommand("A", 1, "STANDARD", Pool.ONLINE, 2000, "EUR", 2, 1);
+		SetCommand a2RenumberedToOne = new SetCommand(1, "STANDARD", Pool.ONLINE, 2000, "EUR", 2, 1);
 
 		LayoutWrite outcome = writer.write(VENUE, 4, new LayoutCommand(List.of(a2RenumberedToOne)),
 				disturbed -> new GateVerdict.Proceed(List.of(A1)));

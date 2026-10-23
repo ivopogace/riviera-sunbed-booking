@@ -93,18 +93,6 @@ public interface Venues {
 	int repriceRow(VenueId venueId, RowPriceCommand command);
 
 	/**
-	 * Every distinct {@code row_label} on the venue's map — one read answers both of a rename's
-	 * questions (does the row exist, is the new label taken), so the two cannot disagree.
-	 */
-	Set<String> distinctRowLabels(VenueId venueId);
-
-	/**
-	 * Overwrite {@code row_label} on every set in {@code command.rowLabel()}, touching no other column.
-	 * Returns rows changed; {@code 0} means no such row ({@code NO_SUCH_ROW}).
-	 */
-	int renameRow(VenueId venueId, RowNameCommand command);
-
-	/**
 	 * Ids of every active set, <strong>without locking</strong> (empty when none), for reads. The bulk
 	 * save uses {@link #lockSetsOfVenue}, whose {@code FOR UPDATE} a read must never take.
 	 */
