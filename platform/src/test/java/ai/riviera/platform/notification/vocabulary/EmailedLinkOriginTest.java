@@ -68,7 +68,7 @@ class EmailedLinkOriginTest {
 	void rejectsAnythingButAnHttpOrHttpsOriginWithAHost(String value) {
 		IllegalArgumentException rejected = reject(value);
 
-		assertTrue(rejected.getMessage().contains("is not an http or https URL with a host"), rejected.getMessage());
+		assertTrue(rejected.getMessage().contains("is not a valid emailed-link origin"), rejected.getMessage());
 		assertTrue(rejected.getMessage().contains("RIVIERA_RECOVERY_LINK_BASE_URL in docs/deploy/cd-pipeline.md"),
 				rejected.getMessage());
 	}
