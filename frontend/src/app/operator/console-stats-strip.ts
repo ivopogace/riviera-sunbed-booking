@@ -11,12 +11,11 @@ import { SetDayState, TakingsView } from './operator-console.model';
 import { OperatorConsoleService } from './operator-console.service';
 
 /**
- * The operator console's stats strip — four glass tiles above the tab nav, live for the operator's
- * venue today (Europe/Tirane, #6): Free today `{free}/{total}` from the console page's shared venue
- * map ({@link venue}), Booked online from the day's CONFIRMED bookings (re-read on a claim-releasing day
- * refund), Walk-ins marked as the exact `STAFF_MARKED` count (re-read on a walk-in mark/release; both
- * announced by the Daily view via {@link AvailabilityChanges}), and Online takings today — net is server-side (#9), only formatted (#5). Reads are best-effort: a
- * failed read here renders that tile's dash, never a count that may be stale; the map is the page's.
+ * The operator console's stats strip, live for the venue today (Europe/Tirane, #6): Free today from
+ * the page's shared map ({@link venue}), Booked online from the day's bookings holding a set (re-read
+ * on a claim-releasing day refund), Walk-ins as the exact `STAFF_MARKED` count (re-read on a walk-in;
+ * both via {@link AvailabilityChanges}), and Online takings today (net server-side, #9; formatted, #5).
+ * Reads are best-effort: a failed read renders that tile's dash, never a count that may be stale.
  */
 @Component({
   selector: 'app-console-stats-strip',
@@ -33,7 +32,7 @@ export class ConsoleStatsStrip {
   readonly venue = input<VenueMapView | undefined>(undefined);
 
   /**
-   * Confirmed online bookings for the venue today (the "Booked online" tile), or `undefined` until
+   * Online bookings holding a set at the venue today (the "Booked online" tile), or `undefined` until
    * the read resolves — a failed read stays `undefined` (rendered "—"), distinct from a real 0, so a
    * blip never shows a misleading count nor inflates the walk-ins remainder below.
    */
@@ -113,7 +112,7 @@ export class ConsoleStatsStrip {
     this.takings.set(undefined);
     this.held.set(undefined);
     this.loadBooked(venueId, date);
-    // Continuations re-check the venue so a superseded venue's reads never land here.
+    // The continuation re-checks the venue so a superseded venue's takings never land here.
     this.console.dailyTakings(venueId, date).subscribe({
       next: (value) => {
         if (this.epoch === epoch) {

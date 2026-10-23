@@ -18,7 +18,7 @@ import { PendingRequestsStore } from './pending-requests-store';
  * and the tab outlet hosting each tab as a child route. Its chrome is `console-shell.ts`'s; this
  * component publishes nothing to it and owns only the per-venue seeding: the shared venue-map
  * snapshot ({@code venueAccessGuard} primes it before this activates; replayed here for the strip, re-read when
- * the Daily view settles a walk-in, {@link AvailabilityChanges}) and the Requests badge count (`PendingRequestsStore`). No sign-in
+ * the Daily view settles a walk-in or a claim-releasing day refund, {@link AvailabilityChanges}) and the Requests badge count (`PendingRequestsStore`). No sign-in
  * gate: {@code operatorSessionGuard} awaits the restore, so this only renders signed-in.
  */
 @Component({

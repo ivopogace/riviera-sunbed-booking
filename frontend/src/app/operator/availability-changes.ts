@@ -6,8 +6,8 @@ import { ConsoleVenueMap } from '../core/console-venue-map';
 
 /**
  * One settled staff write to a venue's `(set, date)` availability — the day it changed, not the set —
- * and what moved it: a walk-in mark/release, or a venue day refund that released a booking's claim
- * (ADR-0027), the only one that also moves the day's CONFIRMED bookings (#1551).
+ * and its cause, which says what else moved: a walk-in mark/release moves the held states, a day
+ * refund that released a booking's claim (ADR-0027) moves the day's booked-online count.
  */
 export interface AvailabilityChange {
   readonly venueId: number;
@@ -17,9 +17,8 @@ export interface AvailabilityChange {
 
 /**
  * The carrier between the Daily view's **successful** walk-in mark/release or claim-releasing day
- * refund and the console surfaces that count the day (#1525, #1551): the console page's shared venue
- * map and the strip's counts. An
- * announce first drops {@link ConsoleVenueMap}'s snapshot (its per-set availability is now stale) and
+ * refund and the console surfaces that count the day: the console page's shared venue map and the
+ * strip's counts. An announce first drops {@link ConsoleVenueMap}'s snapshot (its per-set availability is now stale) and
  * then reaches whoever listens *now* — events, never replayed state, so a surface mounted later does
  * not refetch on a mark that already happened. Intra-feature (page + strip + tab), hence `operator/`.
  */
