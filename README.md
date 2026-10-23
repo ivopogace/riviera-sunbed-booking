@@ -67,10 +67,11 @@ npm run format:check                # Prettier over src + e2e + eslint-rules + v
 npm test                            # unit tests (Vitest, jsdom)
 npm run test:e2e:a11y               # Playwright — the CI-safe mocked suite (frontend/e2e/)
 npm run test:e2e                    # Playwright — the local-only REAL-backend suite
+npm run typecheck:e2e               # tsc over frontend/e2e/ (Playwright transpiles without checking)
 ```
 
 CI (`.github/workflows/`) runs the same backend build/test, the frontend
-lint/format/test/build, the mocked e2e suite on sharded runners, most of the `scripts/check-*.mjs`
+lint/format/e2e-typecheck/test/build, the mocked e2e suite on sharded runners, most of the `scripts/check-*.mjs`
 hygiene checks (`check-comment-only.mjs` is a by-hand verifier, not a CI gate), CodeQL, and a
 SonarCloud scan on every PR. The Sonar merge bar: **no new bug, vulnerability or unreviewed
 hotspot, ≥80% new-code coverage**.

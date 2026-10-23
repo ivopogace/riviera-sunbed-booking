@@ -156,8 +156,9 @@ function countVenueRequests(page: Page): () => number {
 }
 
 /**
- * The wire shape of one `GET /api/venues` row (`VenueSummary`), so a fixture that drifts from the
- * real read fails the e2e typecheck. The optional members are the ones the read may omit.
+ * The wire shape of one `GET /api/venues` row (`VenueSummary`), so a fixture missing or misnaming a
+ * field fails the e2e typecheck. Codes are plain strings, so a wrong code value is not caught; the
+ * optional members are the ones a fixture may leave out.
  */
 interface MockVenueSummary {
   readonly id: number;
