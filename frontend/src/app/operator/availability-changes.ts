@@ -4,16 +4,21 @@ import { filter, Observable, Subject } from 'rxjs';
 import { todayBookingDate } from '../shared/booking-date';
 import { ConsoleVenueMap } from '../core/console-venue-map';
 
-/** One settled staff write to a venue's `(set, date)` availability — the day it changed, not the set. */
+/**
+ * One settled staff write to a venue's `(set, date)` availability — the day it changed, not the set —
+ * and its cause, which says what else moved: a walk-in mark/release moves the held states, a day
+ * refund that released a booking's claim (ADR-0027) moves the day's booked-online count.
+ */
 export interface AvailabilityChange {
   readonly venueId: number;
   readonly date: string;
+  readonly cause: 'WALK_IN' | 'DAY_REFUND';
 }
 
 /**
- * The carrier between the Daily view's **successful** walk-in mark/release and the console surfaces
- * that count the day (#1525): the console page's shared venue map and the strip's held set. An
- * announce first drops {@link ConsoleVenueMap}'s snapshot (its per-set availability is now stale) and
+ * The carrier between the Daily view's **successful** walk-in mark/release or claim-releasing day
+ * refund and the console surfaces that count the day: the console page's shared venue map and the
+ * strip's counts. An announce first drops {@link ConsoleVenueMap}'s snapshot (its per-set availability is now stale) and
  * then reaches whoever listens *now* — events, never replayed state, so a surface mounted later does
  * not refetch on a mark that already happened. Intra-feature (page + strip + tab), hence `operator/`.
  */
@@ -25,7 +30,7 @@ export class AvailabilityChanges {
   /** Every announced change, for listeners with their own venue/date rule. */
   readonly changes: Observable<AvailabilityChange> = this.subject.asObservable();
 
-  /** Tell the console a staff mark or release for `change` settled on the server. */
+  /** Tell the console a staff write for `change` settled on the server. */
   announce(change: AvailabilityChange): void {
     this.venueMap.reset();
     this.subject.next(change);
