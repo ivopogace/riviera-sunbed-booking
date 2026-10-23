@@ -272,7 +272,13 @@ export interface VenueSummary {
    * the list and is simply not drawn. Optional because test doubles and older payloads may omit it.
    */
   readonly location?: VenueLocation | null;
+  /** Free of total sets on the day, both pools: a coarse "how busy" signal, not what sells online. */
   readonly availability: AvailabilitySummary;
+  /**
+   * Whether the venue has an online-pool set at all (invariant #3) — the home head's "selling" test.
+   * Optional because test doubles and older payloads may omit it; only an explicit `false` excludes.
+   */
+  readonly sellsOnline?: boolean;
   /** The cover photo's serving URLs, or `null`/absent — the card then keeps its gradient. */
   readonly coverPhoto?: CoverPhotoView | null;
   /**

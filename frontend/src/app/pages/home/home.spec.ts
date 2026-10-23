@@ -1143,8 +1143,9 @@ describe('Home (the riviera map sheet — what `/` renders)', () => {
   });
 
   /**
-   * A venue with no beach map yet is listed (#717) and counted as a venue, but it has nothing to
-   * sell: it leaves N and stays in M (#1530). Only Sarandë venues, so the sheet opens on them.
+   * A venue with no beach map yet (#717), or only walk-in sets (#1550), is listed and counted as a
+   * venue, but sells nothing online: it leaves N and stays in M (#1530). Only Sarandë venues, so the
+   * sheet opens on them.
    */
   describe('the selling line (#1530)', () => {
     function sarande(emptyCove: Partial<VenueSummary>): VenueSummary[] {
@@ -1183,6 +1184,16 @@ describe('Home (the riviera map sheet — what `/` renders)', () => {
       await settle(fixture);
       const rows = [...el(fixture).querySelectorAll<HTMLElement>('[data-testid="picker-row"]')];
       expect(rows.map(text)).toEqual(['Sarandë 2 venues from €25', 'Ksamil 2 venues from €25']);
+    });
+
+    it('counts a walk-in-only venue as listed, not selling: its sets sell at the beach, not online (#1550)', async () => {
+      const fixture = await landed(
+        sarande({ name: 'Walk-in Cove', availability: { free: 4, total: 4 }, sellsOnline: false }),
+      );
+
+      expect(cardNames(fixture)).toEqual(['Miramar Beach Club', 'Walk-in Cove']);
+      expect(text(byTestId(fixture, 'head-subtitle'))).toBe('1 of 2 selling today');
+      expect(text(byTestId(fixture, 'sheet-outcome'))).toBe('Sarandë: 1 of 2 selling today');
     });
 
     it('counts a no-set venue whose sales have also closed as one non-seller, never subtracted twice', async () => {

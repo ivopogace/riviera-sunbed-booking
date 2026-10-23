@@ -39,6 +39,7 @@ const VENUES = [
     amenities: ['SHOWERS', 'BEACH_BAR', 'FREE_PARKING', 'WIFI'],
     distanceToWaterM: 15,
     availability: { free: 18, total: 24 },
+    sellsOnline: true,
     salesOpen: true,
   },
   {
@@ -51,6 +52,7 @@ const VENUES = [
     bookingMode: 'REQUEST',
     fromPrice: { minorUnits: 3000, currency: 'EUR' },
     availability: { free: 5, total: 10 },
+    sellsOnline: true,
     salesOpen: true,
   },
 ];
@@ -327,6 +329,7 @@ test('a venue with no sets is listed but not counted as selling today (#1530)', 
     name: 'Empty Cove',
     fromPrice: null,
     availability: { free: 0, total: 0 },
+    sellsOnline: false,
     salesOpen: true,
   };
   await page.route(/\/api\/venues(\?.*)?$/, (route) =>
@@ -341,6 +344,30 @@ test('a venue with no sets is listed but not counted as selling today (#1530)', 
   await expect(page.getByTestId('head-subtitle')).toHaveText('2 of 3 selling today');
   await expect(page.getByTestId('sheet-outcome')).toContainText('2 of 3 selling today');
   await expectNoSeriousAxeViolations(page, 'discovery sheet (a venue with no sets)');
+});
+
+test('a walk-in-only venue is listed but not counted as selling today (#1550)', async ({
+  page,
+}) => {
+  // Every set on its map is held for guests at the beach (invariant #3): nothing sells online.
+  const walkInCove = {
+    ...VENUES[1],
+    id: 4,
+    name: 'Walk-in Cove',
+    availability: { free: 6, total: 6 },
+    sellsOnline: false,
+    salesOpen: true,
+  };
+  await page.route(/\/api\/venues(\?.*)?$/, (route) =>
+    route.fulfill({ json: [...VENUES, walkInCove] }),
+  );
+  await page.setViewportSize(PHONE);
+  await page.goto('/');
+
+  await expect(page.getByTestId('venue-card')).toHaveCount(3);
+  await expect(page.getByTestId('head-subtitle')).toHaveText('2 of 3 selling today');
+  await expect(page.getByTestId('sheet-outcome')).toContainText('2 of 3 selling today');
+  await expectNoSeriousAxeViolations(page, 'discovery sheet (a walk-in-only venue)');
 });
 
 test('a hidden venue answers a not-available state with a way back, not a retry loop (#693)', async ({

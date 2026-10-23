@@ -96,8 +96,8 @@ model in `docs/architecture/domain-model.md`.
   **venue panel**. No query parameter selects either: the width alone decides.
   _Avoid_: drawer, bottom sheet (as a term), modal.
 - **Sheet head** — the venue sheet's one row carrying the query: the **place** (a press opens the
-  **coast picker**) over the selling line (`8 of 11 selling today`, each venue's sales close for
-  today), the region's beaches gathered into one chip, and the day. A press on a chip opens its
+  **coast picker**) over the selling line (`8 of 11 selling today`: venues with an online set whose
+  sales are still open today), the region's beaches gathered into one chip, and the day. A press on a chip opens its
   rail of chips under the row; at peek the sheet rises to half first. The answer to Near me when
   it is not a position stands in the same slot. On the venue sheet the **row is the pin's
   preview**: a pin press lights the venue's row and brings it into view, and no card opens over
