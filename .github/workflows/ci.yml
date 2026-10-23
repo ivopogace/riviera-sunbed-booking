@@ -265,6 +265,12 @@ jobs:
         if: ${{ !cancelled() && steps.install.outcome == 'success' }}
         run: npx prettier --check src e2e eslint-rules
 
+      - name: Typecheck the e2e specs (hard gate)
+        # Playwright transpiles the specs without checking them, so only this catches a fixture
+        # drifting from its wire type. Gated like Format, so a red Lint still surfaces it.
+        if: ${{ !cancelled() && steps.install.outcome == 'success' }}
+        run: npm run typecheck:e2e
+
       - name: Test (Vitest, once, with coverage)
         if: steps.restore.outputs.cache-hit != 'true'
         run: npm run test:coverage
