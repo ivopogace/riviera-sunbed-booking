@@ -111,11 +111,13 @@ class RecoveryPropertiesBindingTest {
 					assertThat(context).hasFailed().getFailure().rootCause()
 							.isInstanceOf(IllegalArgumentException.class)
 							.hasMessageContaining("riviera.recovery.link-base-url");
+					BindException bind = null;
 					for (Throwable cause = context.getStartupFailure(); cause != null; cause = cause.getCause()) {
 						assertThat(cause.getMessage()).doesNotContain("hunter2");
+						bind = cause instanceof BindException found ? found : bind;
 					}
-					assertThat(context.getStartupFailure()).hasCauseInstanceOf(BindException.class);
-					assertThat(((BindException) context.getStartupFailure().getCause()).getProperty())
+					assertThat(bind).isNotNull();
+					assertThat(bind.getProperty())
 							.as("Boot's failure analyzer prints a 'Value:' line only for a named property")
 							.isNull();
 				});

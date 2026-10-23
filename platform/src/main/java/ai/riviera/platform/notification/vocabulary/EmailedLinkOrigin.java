@@ -4,6 +4,7 @@ import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.Locale;
 import java.util.Set;
+import java.util.regex.Pattern;
 
 /**
  * The one rule for the deployed origin every emailed link is built on, bound under each consumer's own key: an
@@ -15,6 +16,12 @@ import java.util.Set;
 public final class EmailedLinkOrigin {
 
 	private static final Set<String> SCHEMES = Set.of("http", "https");
+
+	/**
+	 * Underscores inside a label, which {@link URI} reads as a registry authority: read as letters, an underscored
+	 * host passes exactly when the hostname grammar admits it, so a label that is or edges on {@code _} still fails.
+	 */
+	private static final Pattern INNER_UNDERSCORES = Pattern.compile("(?<=[A-Za-z0-9])_+(?=[A-Za-z0-9])");
 
 	/** {@link URI} parses any digit run as a port, so the TCP range is bounded here. */
 	private static final int MAX_PORT = 65_535;
@@ -50,17 +57,8 @@ public final class EmailedLinkOrigin {
 				|| parsed.getRawQuery() != null || parsed.getRawFragment() != null) {
 			return false;
 		}
-		URI server = parsed.getHost() != null ? parsed : underscoresAsLetters(value, authority);
-		return server != null && (server.getPort() == -1 || isPort(server.getPort()));
-	}
-
-	/** A registry-style host is one {@link URI} parses as a hostname once its underscores count as letters. */
-	private static URI underscoresAsLetters(String value, String authority) {
-		if (!authority.contains("_")) {
-			return null;
-		}
-		URI server = parse(value.replace('_', 'a'));
-		return server != null && server.getHost() != null ? server : null;
+		URI server = parsed.getHost() != null ? parsed : parse(INNER_UNDERSCORES.matcher(value).replaceAll("a"));
+		return server != null && server.getHost() != null && (server.getPort() == -1 || isPort(server.getPort()));
 	}
 
 	private static URI parse(String value) {

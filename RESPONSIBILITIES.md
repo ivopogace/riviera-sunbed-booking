@@ -902,7 +902,7 @@ tag names the person, invariant #7):
   binds `riviera.notification.booking-link.base-url` (one deployed origin; a second variable could
   only drift), never a `riviera.recovery.*` key, which is `auth`'s namespace.
 - **I own the emailed-link origin rule, `vocabulary.EmailedLinkOrigin`**, and `auth` takes it for its
-  recovery key, so the two keys cannot drift: http(s), a host (registry-style included), a port in
+  recovery key, so the two keys cannot drift: http(s), a host (underscored included), a port in
   1..65535, no user info, query, fragment or percent-escape, trailing slashes trimmed, and a rejection
   never echoes the value. Mine, not `shared`'s: an emailed link is mail, and `auth` already depends
   on me, while I can never depend on `auth`.
