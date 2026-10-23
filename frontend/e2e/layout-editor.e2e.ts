@@ -1360,7 +1360,7 @@ test('the paint grid, which cannot be drag-panned, still offers a pointer route 
  * drag gesture is now the batch-select rectangle sweep (#714), so its canvas — like the bulk
  * paint grid's — is no longer drag-pannable and shows the same slim scrollbar affordance instead.
  */
-/** Two rows of twelve — the widest layout the console's 1300px page box must show whole at 1280px. */
+/** Two rows of twelve — the widest layout the console's 1300px `.oc-main` must show whole at 1280px. */
 const TWELVE_COLUMNS = Array.from({ length: 24 }, (_, i) => ({
   id: i + 1,
   rowLabel: i < 12 ? 'A' : 'B',

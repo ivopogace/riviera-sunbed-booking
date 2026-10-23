@@ -31,7 +31,8 @@ async function left(page: Page, testId: string): Promise<number> {
   return (await page.getByTestId(testId).boundingBox())!.x;
 }
 
-for (const width of [1440, 1700]) {
+// 900 and 1200 take the clamp and the 1120–1300 band; 1440 and 1700 the wide case.
+for (const width of [900, 1200, 1440, 1700]) {
   test(`at ${width}px every tab, the strip and the banner share the header's 1120px box`, async ({
     page,
   }) => {
@@ -41,17 +42,18 @@ for (const width of [1440, 1700]) {
     await signInAsOperator(page);
     await expect(page.getByTestId('requests-tab')).toBeVisible();
 
-    const boxEdge = (width - BOX) / 2;
+    const box = Math.min(width, BOX);
+    const boxEdge = (width - box) / 2;
     const contentEdge = boxEdge + GUTTER;
     expect(await left(page, 'oc-brand')).toBe(contentEdge);
 
     const banner = (await page.getByTestId('pending-approval-banner').boundingBox())!;
     expect(banner.x).toBe(contentEdge);
-    expect(banner.width).toBe(BOX - 2 * GUTTER);
+    expect(banner.width).toBe(box - 2 * GUTTER);
 
     const strip = (await page.getByTestId('oc-stats').locator(':scope > div').boundingBox())!;
     expect(strip.x).toBe(boxEdge);
-    expect(strip.width).toBe(BOX);
+    expect(strip.width).toBe(box);
 
     const tabs = page.getByTestId('oc-tabs');
     for (const [tab, testId] of [
@@ -66,17 +68,18 @@ for (const width of [1440, 1700]) {
       expect(await left(page, testId), tab).toBe(contentEdge);
     }
     const daily = (await page.getByTestId('daily-view-tab').boundingBox())!;
-    expect(daily.width).toBe(BOX - 2 * GUTTER);
+    expect(daily.width).toBe(box - 2 * GUTTER);
 
     // The beach map keeps its wider fit-to-width frame: `.oc-main`'s 1300px less its gutters.
     await tabs.getByRole('link', { name: 'Beach map' }).click();
+    const frame = Math.min(width, 1300);
     const editor = (await page.getByTestId('layout-editor').boundingBox())!;
-    expect(editor.width).toBe(1300 - 2 * GUTTER);
-    expect(editor.x).toBe((width - 1300) / 2 + GUTTER);
+    expect(editor.width).toBe(frame - 2 * GUTTER);
+    expect(editor.x).toBe((width - frame) / 2 + GUTTER);
   });
 }
 
-test('on a phone the tabs keep their 44px gutter and nothing scrolls sideways', async ({
+test('on a phone the tabs keep their 24 + 20px gutter and nothing scrolls sideways', async ({
   page,
 }) => {
   await page.setViewportSize({ width: 390, height: 844 });

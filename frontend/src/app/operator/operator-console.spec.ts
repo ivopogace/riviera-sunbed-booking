@@ -156,7 +156,7 @@ describe('OperatorConsole — signed-in page (#170, guard-gated since #277)', ()
     expect(host().querySelector('main')).toBeNull();
     expect(host().querySelector('[data-testid="oc-venue-title"]')).toBeNull();
     expect(host().querySelector('[data-testid="oc-account"]')).toBeNull();
-    // What it does render: the strip, the banner and the tab outlet, in the wide page box.
+    // What it does render: the strip, the banner and the tab outlet; `.oc-main` stays wide for the beach map.
     expect(host().querySelector('app-console-stats-strip')).not.toBeNull();
     expect(host().querySelector('app-pending-approval-banner')).not.toBeNull();
     expect(host().querySelector('router-outlet')).not.toBeNull();
