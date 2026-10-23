@@ -855,8 +855,9 @@ tag names the person, invariant #7):
   `adapter/in`**, never at the composition root, which would need a published `api` port for one
   same-module consumer. Each answers a `200` with counts and a typed token, never a publication:
   serialized events carry booking ids (invariant #7).
-- **The published surface is exactly `notification::api`, two role-split ports consumed by `auth`
-  alone — no domain module depends on `notification`.** `MailSender` is fire-and-forget
+- **The published surface is exactly `notification::api`, two role-split ports, and
+  `notification::vocabulary` (`EmailedLinkOrigin`), consumed by `auth` alone — no domain module
+  depends on `notification`.** `MailSender` is fire-and-forget
   and moves **neither the triggering response's status nor its latency** (the anonymous
   `forgot-password` flow relies on it). The reset link arrives deferred and is resolved inside the
   send task, after the suppression check, so its token is issued off the request thread too. `MailDeliverability` ("withheld now?") is safe only where
@@ -900,6 +901,12 @@ tag names the person, invariant #7):
 - **The link origin is `auth`'s variable under my own key**: `RIVIERA_RECOVERY_LINK_BASE_URL`
   binds `riviera.notification.booking-link.base-url` (one deployed origin; a second variable could
   only drift), never a `riviera.recovery.*` key, which is `auth`'s namespace.
+- **I own the emailed-link origin rule, `vocabulary.EmailedLinkOrigin`**, and `auth` takes it for its
+  recovery key, so the two keys cannot drift: http(s), a host (inner underscores allowed, no trailing
+  dot), a port in 1..65535 if given, an optional path, no user info, query, fragment or percent-escape,
+  trailing slashes trimmed, and a rejection never echoes the value. Stated whole for operators in
+  `docs/deploy/cd-pipeline.md`, which the rejection cites. Mine, not `shared`'s: an emailed link is mail, and `auth`
+  already depends on me, while I can never depend on `auth`.
 
 **Not My Job:**
 - Deciding **when** to send, minting/hashing recovery tokens, building **tokenized** links → the
@@ -1137,7 +1144,7 @@ measured; the meaning of a crossed threshold and the response → `docs/runbooks
 
 **Sign-in and sessions** (ADR-0028 Decision 2): a closed non-context module, an adapter layer rather
 than a mechanism, owning no table. Depends on `customer` and `operator` (`api` + `vocabulary`),
-`notification::api` and `shared`; publishes `api.SessionRevocation`, `api.SessionCredentials` (the
+`notification` (`api` + `vocabulary`) and `shared`; publishes `api.SessionRevocation`, `api.SessionCredentials` (the
 per-request check the chain's filter calls) and `vocabulary` (`AuthRoles`, `BlockedPasswordException`).
 
 **Job:** turn a credential into a server-side session and keep it honest: both `UserDetailsService`s

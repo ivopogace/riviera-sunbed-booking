@@ -17,7 +17,7 @@ Owns the *where*. Technique: `angular-developer` + the angular-cli MCP (`get_bes
 
 | Folder | Owns | May import from |
 |---|---|---|
-| `core/` | stateful cross-cutting singletons: auth state, interceptors, guards, current principal, theme, the console's shared venue-map snapshot (`operator-auth.ts`, `api-session.interceptor.ts`, `theme.ts`, `console-venue-map.ts` — a guard reads it, so it cannot live in `operator/`) | `shared/` only |
+| `core/` | stateful cross-cutting singletons and the app-wide browser seams (`page-navigation.ts`): auth state, interceptors, guards, current principal, theme, the console's shared venue-map snapshot (`operator-auth.ts`, `api-session.interceptor.ts`, `theme.ts`, `console-venue-map.ts` — a guard reads it, so it cannot live in `operator/`) | `shared/` only |
 | `shared/` | pure, stateless utilities and presentational primitives; no `HttpClient`, no app state; includes the API-view vocabulary mirrors (`venue-views.ts`, `money.ts`, `booking-date.ts`, `photo-url.ts`, `amenities.ts`, `booking-status.ts`) | nothing app-internal |
 | `pages/` | top-level routes no feature owns: the Discover home (`pages/home`), the legal pages, the `**` not-found page and the `page-load-failed` card | `core/`, `shared/` |
 | feature folders (`booking/`, `venue/`, `operator/`, `auth/`, `admin/`, …) | one domain area: components, models, HTTP service | `core/`, `shared/` — never another feature |

@@ -18,13 +18,7 @@ function pageOf(href: string): string {
   return href.split('#', 1)[0];
 }
 
-/**
- * Production adapter. On {@link reload}: the router keeps its own URL in `history.state` whenever
- * the address bar shows another (`browserUrl`), and a load that lands on the same entry keeps that
- * state, so the fresh document would boot straight back into the card: the current entry's state is
- * cleared first — its URL kept when another page is loaded, so Back still works; set to the target
- * on the current page, which is then reloaded, not assigned: assigning the current URL with a fragment only scrolls.
- */
+/** Production adapter: real `window.location` navigation. */
 export class WindowPageNavigation extends PageNavigation {
   constructor(private readonly win: Window) {
     super();
@@ -34,6 +28,11 @@ export class WindowPageNavigation extends PageNavigation {
     this.win.location.href = url;
   }
 
+  /**
+   * Clears the current entry's `history.state` first (the router's `browserUrl` would otherwise
+   * boot the fresh document back into the card): the entry keeps its URL for another page (Back
+   * works), else takes the target, which is reloaded, not assigned: a fragment-only assign scrolls.
+   */
   reload(url: string): void {
     const target = new URL(url, this.win.location.href).href;
     const samePage = pageOf(target) === pageOf(this.win.location.href);
