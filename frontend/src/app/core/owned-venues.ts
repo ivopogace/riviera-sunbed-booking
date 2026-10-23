@@ -46,7 +46,7 @@ export class OwnedVenues {
     return this.inFlight;
   }
 
-  /** Drop the cache so the next {@link load} refetches (the session ending, or after creating a venue). */
+  /** Drop the cache so the next {@link load} refetches (a session boundary, or after creating a venue). */
   reset(): void {
     this.generation++;
     this.inFlight = undefined;
