@@ -193,7 +193,7 @@ describe('Availability calendar contrast (WCAG AA) — venue/day-availability.ts
      */
     it('the Apply button reads against the popover surface over every stop', () => {
       expect(read('shared/availability-calendar.html')).toMatch(
-        /<button\s+appPrimaryCta[^>]*data-testid="calendar-apply"/,
+        /<button\b(?=[^>]*\bappPrimaryCta\b)[^>]*data-testid="calendar-apply"/,
       );
       for (const stop of palette.stops) {
         const behind = rgbToHex(surfaceOver(palette.surface, stop));

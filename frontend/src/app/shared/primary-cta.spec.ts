@@ -8,6 +8,7 @@ import { PrimaryCta } from './primary-cta';
   template: `
     <button appPrimaryCta type="button" class="rounded-2xl px-4" data-testid="button">Go</button>
     <a appPrimaryCta href="/" [class]="extra" data-testid="link">Go</a>
+    <button appPrimaryCta type="button" data-testid="bare">Go</button>
   `,
 })
 class Host {
@@ -47,8 +48,8 @@ describe('PrimaryCta', () => {
   });
 
   it('carries no radius, padding or drop shadow, which stay the call site’s', () => {
-    const skin = SKIN.join(' ');
+    const bare = render().querySelector<HTMLElement>('[data-testid="bare"]')!;
 
-    expect(skin).not.toMatch(/(^|\s)(rounded|p[xytrbl]?-|shadow-)/);
+    expect(bare.className).not.toMatch(/(^|\s)(rounded|p[xytrbl]?-|shadow-)/);
   });
 });
