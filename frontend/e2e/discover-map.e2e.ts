@@ -171,6 +171,7 @@ interface MockVenueSummary {
   readonly fromPrice: { readonly minorUnits: number; readonly currency: string } | null;
   readonly amenities?: readonly string[];
   readonly availability: { readonly free: number; readonly total: number };
+  readonly sellsOnline?: boolean;
   readonly salesOpen?: boolean;
   readonly location?: { readonly latitude: number; readonly longitude: number } | null;
   readonly coverPhoto?: { readonly card: MockPhotoView; readonly banner: MockPhotoView } | null;
