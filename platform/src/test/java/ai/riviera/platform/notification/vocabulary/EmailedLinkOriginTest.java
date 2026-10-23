@@ -58,8 +58,9 @@ class EmailedLinkOriginTest {
 			"https://app.example/?a=b", "https://app.example#top", "https://app.example/#/", "http://bad,host",
 			"http://riviera_backend:80a", "https://", "https://:8080", "http://riviera_backend:99999",
 			"http://riviera_backend:0", "https://app.example:65536", "https://app.example:0", "http://..", "http://-",
-			"http://~", "http://999.999.999.999", "http://-riviera_backend", "http://riviera_backend.",
-			"https://app.example/my%20app" })
+			"http://~", "http://999.999.999.999", "http://-riviera_backend", "http://999_.1",
+			"https://app.example/my%20app", "http://[fe80::1%25eth0]:8080", "https://app.example:",
+			"http://riviera_backend:" })
 	void rejectsAnythingButAnHttpOrHttpsOriginWithAHost(String value) {
 		IllegalArgumentException rejected = reject(value);
 

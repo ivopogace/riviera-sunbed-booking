@@ -86,7 +86,7 @@ class RecoveryPropertiesBindingTest {
 
 	@ParameterizedTest
 	@ValueSource(strings = { "/app", "example.com", "https:///app", "http://bad host", "ftp://app.example",
-			"https://app.example/?a=b", "https://app.example#top" })
+			"https://app.example/?a=b", "https://app.example#top", "https://app.example/my%20app" })
 	void aNonOriginLinkBaseUrlFailsTheBindNamingTheKeyAndTheVariable(String value) {
 		recoveryRunner().withSystemProperties("RIVIERA_RECOVERY_LINK_BASE_URL=" + value)
 				.run(context -> assertThat(context).hasFailed().getFailure().rootCause()
@@ -113,12 +113,11 @@ class RecoveryPropertiesBindingTest {
 							.hasMessageContaining("riviera.recovery.link-base-url");
 					for (Throwable cause = context.getStartupFailure(); cause != null; cause = cause.getCause()) {
 						assertThat(cause.getMessage()).doesNotContain("hunter2");
-						if (cause instanceof BindException bind) {
-							assertThat(bind.getProperty())
-									.as("Boot's failure analyzer prints a 'Value:' line only for a named property")
-									.isNull();
-						}
 					}
+					assertThat(context.getStartupFailure()).hasCauseInstanceOf(BindException.class);
+					assertThat(((BindException) context.getStartupFailure().getCause()).getProperty())
+							.as("Boot's failure analyzer prints a 'Value:' line only for a named property")
+							.isNull();
 				});
 	}
 

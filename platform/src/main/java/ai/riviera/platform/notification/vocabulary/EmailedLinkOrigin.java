@@ -4,25 +4,17 @@ import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.Locale;
 import java.util.Set;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 /**
  * The one rule for the deployed origin every emailed link is built on, bound under each consumer's own key: an
- * absolute {@code http}/{@code https} URL with a host (registry-style {@code riviera_backend:8080} too), any port
- * within 1..65535, no user info, query, fragment or percent-escape; stripped, trailing slashes trimmed. A rejection
- * names the key and variable, never the value, which may carry credentials into the boot log. Placement:
+ * absolute {@code http}/{@code https} URL with a host (an underscored hostname such as {@code riviera_backend} too),
+ * any port within 1..65535, no user info, query, fragment or percent-escape; stripped, trailing slashes trimmed. A
+ * rejection names the key and variable, never the value, which may carry credentials into the boot log. Placement:
  * RESPONSIBILITIES.md §notification.
  */
 public final class EmailedLinkOrigin {
 
 	private static final Set<String> SCHEMES = Set.of("http", "https");
-
-	private static final String LABEL = "[A-Za-z0-9_](?:[A-Za-z0-9_-]*[A-Za-z0-9_])?";
-
-	/** An underscored {@code host[:port]}, the one authority {@link URI#getHost()} reports as null that may pass. */
-	private static final Pattern REGISTRY_AUTHORITY =
-			Pattern.compile("(?=[^:]*_)" + LABEL + "(?:\\." + LABEL + ")*(?::(\\d{1,5}))?");
 
 	/** {@link URI} parses any digit run as a port, so the TCP range is bounded here. */
 	private static final int MAX_PORT = 65_535;
@@ -48,23 +40,35 @@ public final class EmailedLinkOrigin {
 	}
 
 	private static boolean isOrigin(String value) {
-		URI parsed;
-		try {
-			parsed = new URI(value);
-		} catch (URISyntaxException e) {
+		URI parsed = parse(value);
+		if (parsed == null || value.contains("%")) {
 			return false;
 		}
 		String authority = parsed.getRawAuthority();
 		if (parsed.getScheme() == null || !SCHEMES.contains(parsed.getScheme().toLowerCase(Locale.ROOT))
-				|| authority == null || authority.contains("@") || parsed.getRawQuery() != null
-				|| parsed.getRawFragment() != null || parsed.getRawPath().contains("%")) {
+				|| authority == null || authority.contains("@") || authority.endsWith(":")
+				|| parsed.getRawQuery() != null || parsed.getRawFragment() != null) {
 			return false;
 		}
-		if (parsed.getHost() != null) {
-			return parsed.getPort() == -1 || isPort(parsed.getPort());
+		URI server = parsed.getHost() != null ? parsed : underscoresAsLetters(value, authority);
+		return server != null && (server.getPort() == -1 || isPort(server.getPort()));
+	}
+
+	/** A registry-style host is one {@link URI} parses as a hostname once its underscores count as letters. */
+	private static URI underscoresAsLetters(String value, String authority) {
+		if (!authority.contains("_")) {
+			return null;
 		}
-		Matcher registry = REGISTRY_AUTHORITY.matcher(authority);
-		return registry.matches() && (registry.group(1) == null || isPort(Integer.parseInt(registry.group(1))));
+		URI server = parse(value.replace('_', 'a'));
+		return server != null && server.getHost() != null ? server : null;
+	}
+
+	private static URI parse(String value) {
+		try {
+			return new URI(value);
+		} catch (URISyntaxException e) {
+			return null;
+		}
 	}
 
 	private static boolean isPort(int port) {
