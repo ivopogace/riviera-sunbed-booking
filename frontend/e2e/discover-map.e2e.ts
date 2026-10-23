@@ -5,6 +5,7 @@ import { settle } from './support/booking-dialog';
 import { hitTestId } from './support/hit-test';
 import { mockMapResources, recordOffOriginRequests } from './support/map-resources';
 import { expectTouchManipulation } from './support/mobile-zoom';
+import { MockPhotoView } from './support/photo-views';
 import { expectTouchTargets } from './support/touch-targets';
 
 /**
@@ -154,7 +155,32 @@ function countVenueRequests(page: Page): () => number {
   return () => seen;
 }
 
-async function mockVenues(page: Page, delayMs = 0, list = VENUES): Promise<void> {
+/**
+ * The wire shape of one `GET /api/venues` row (`VenueSummary`), so a fixture that drifts from the
+ * real read fails the e2e typecheck. The optional members are the ones the read may omit.
+ */
+interface MockVenueSummary {
+  readonly id: number;
+  readonly name: string;
+  readonly beach: string;
+  readonly region: string;
+  readonly ratingTenths: number;
+  readonly reviewsCount: number;
+  readonly bookingMode: string;
+  readonly fromPrice: { readonly minorUnits: number; readonly currency: string } | null;
+  readonly amenities?: readonly string[];
+  readonly availability: { readonly free: number; readonly total: number };
+  readonly salesOpen?: boolean;
+  readonly location?: { readonly latitude: number; readonly longitude: number } | null;
+  readonly coverPhoto?: { readonly card: MockPhotoView; readonly banner: MockPhotoView } | null;
+  readonly photos?: readonly MockPhotoView[];
+}
+
+async function mockVenues(
+  page: Page,
+  delayMs = 0,
+  list: readonly MockVenueSummary[] = VENUES,
+): Promise<void> {
   await page.route(/\/api\/auth\/me$/, (route) =>
     route.fulfill({ status: 401, json: { code: 'UNAUTHENTICATED' } }),
   );
@@ -802,7 +828,7 @@ function mapVenue(
   minorUnits: number,
   salesOpen = true,
   reviewsCount = 143,
-): Record<string, unknown> {
+): MockVenueSummary {
   return {
     id,
     name,
@@ -1100,7 +1126,7 @@ test.describe('Discover map — the desktop panel', () => {
   });
 
   test('a pin with no price draws its dot, centred at 14 px, open or closed', async ({ page }) => {
-    const unpriced = (venue: Record<string, unknown>) => ({ ...venue, fromPrice: null });
+    const unpriced = (venue: MockVenueSummary): MockVenueSummary => ({ ...venue, fromPrice: null });
     await mockVenues(page, 0, [
       unpriced(mapVenue(42, 'Unpriced Venue', 'DHERMI', 'HIMARE', 40.176, 19.586, 0)),
       unpriced(mapVenue(43, 'Closed Unpriced', 'BORSH', 'HIMARE', 40.06, 19.86, 0, false)),
@@ -1179,7 +1205,7 @@ test.describe('Discover map — the desktop panel', () => {
   }) => {
     await openMap(page, { width: 1440, height: 900 });
     await settleAnimations(page.getByTestId('desk-panel'));
-    await expectNoSeriousAxeViolations(page);
+    await expectNoSeriousAxeViolations(page, 'the desktop panel');
     await expectTouchTargets(page, 'the desktop panel');
 
     await expectTouchManipulation(page, '[data-testid="desk-near-me"]', 'the panel’s Near me');
@@ -1187,7 +1213,7 @@ test.describe('Discover map — the desktop panel', () => {
     await page.getByTestId('head-place').click();
     await expect(page.getByTestId('coast-picker')).toBeVisible();
     await settleAnimations(page.getByTestId('coast-picker'));
-    await expectNoSeriousAxeViolations(page);
+    await expectNoSeriousAxeViolations(page, 'the desktop panel with its coast picker');
     await expectTouchTargets(page, 'the desktop panel with its coast picker');
   });
 });
