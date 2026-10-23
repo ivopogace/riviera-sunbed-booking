@@ -116,7 +116,7 @@ class CustomerRecoveryTest {
 	}
 
 	@Test
-	void buildsTheVerificationLinkOnAUnderscoredOrigin() {
+	void buildsTheVerificationLinkOnAnUnderscoredOrigin() {
 		new CustomerRecovery(accounts, mails, deliverability, new RecoveryTokens(),
 				new RecoveryProperties(Duration.ofHours(24), Duration.ofHours(1), "http://riviera_backend:8080/"),
 				Clock.fixed(Instant.parse("2026-07-27T10:00:00Z"), ZoneOffset.UTC))

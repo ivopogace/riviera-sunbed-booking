@@ -48,7 +48,7 @@ class BookingLinksTest {
 	}
 
 	@Test
-	void buildsEveryLinkOnAUnderscoredOrigin() {
+	void buildsEveryLinkOnAnUnderscoredOrigin() {
 		BookingLinks onComposeHost = new BookingLinks("http://riviera_backend:8080/");
 
 		assertEquals(URI.create("http://riviera_backend:8080/booking/K7Q2M9XR"), onComposeHost.forBooking("K7Q2M9XR"));
