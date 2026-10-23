@@ -16,7 +16,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * origin, no doubled or missing slash, and a code that survives into the path unmangled.
  *
  * <p>Validation is at construction rather than per send, because the failure it prevents is a
- * deployment mistake — a blank or relative {@code riviera.notification.booking-link.base-url} — and a
+ * deployment mistake — a {@code riviera.notification.booking-link.base-url} that is no http(s) origin — and a
  * mail path is the worst place to discover one: the send is asynchronous, the caller is long gone,
  * and the guest simply never receives a working link. Failing at boot is the same posture
  * {@code SmtpMailer} takes on a missing {@code riviera.mail.from}.

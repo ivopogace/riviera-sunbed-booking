@@ -106,10 +106,14 @@ class RecoveryPropertiesBindingTest {
 	@Test
 	void aLinkBaseUrlCarryingUserInfoFailsTheBindWithoutEchoingIt() {
 		recoveryRunner().withSystemProperties("RIVIERA_RECOVERY_LINK_BASE_URL=https://admin:hunter2@app.example")
-				.run(context -> assertThat(context).hasFailed().getFailure().rootCause()
-						.isInstanceOf(IllegalArgumentException.class)
-						.hasMessageContaining("riviera.recovery.link-base-url")
-						.hasMessageNotContaining("hunter2"));
+				.run(context -> {
+					assertThat(context).hasFailed().getFailure().rootCause()
+							.isInstanceOf(IllegalArgumentException.class)
+							.hasMessageContaining("riviera.recovery.link-base-url");
+					for (Throwable cause = context.getStartupFailure(); cause != null; cause = cause.getCause()) {
+						assertThat(cause.getMessage()).doesNotContain("hunter2");
+					}
+				});
 	}
 
 	@Test

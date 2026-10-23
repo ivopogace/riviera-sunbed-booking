@@ -27,8 +27,9 @@ class BookingLinkConfig {
 
 	/**
 	 * @param baseUrl absolute origin the booking links point at (the SPA's, which is the
-	 *        backend's own); validated by {@link BookingLinks}, so a blank or relative value aborts at
-	 *        boot rather than mailing an unusable link from an async send whose caller is long gone
+	 *        backend's own); validated by {@link BookingLinks} through {@code EmailedLinkOrigin},
+	 *        so a value that is not an http(s) origin aborts at boot rather than mailing an
+	 *        unusable link from an async send whose caller is long gone
 	 */
 	@ConfigurationProperties("riviera.notification.booking-link")
 	record BookingLinkProperties(@DefaultValue("http://localhost:4200") String baseUrl) {

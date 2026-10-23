@@ -1,23 +1,28 @@
-package ai.riviera.platform.shared;
+package ai.riviera.platform.notification.vocabulary;
 
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.Locale;
 import java.util.Set;
+import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
  * The one rule for the deployed origin every emailed link is built on, bound under each consumer's own key: an
- * absolute {@code http}/{@code https} URL with a host (registry-style {@code riviera_backend:8080} too), no user
- * info, query or fragment; stripped, trailing slashes trimmed. A rejection names the key and variable, never the
- * value, which may carry credentials into the boot log. Admission and rationale: RESPONSIBILITIES.md §shared.
+ * absolute {@code http}/{@code https} URL with a host (registry-style {@code riviera_backend:8080} too), any port
+ * within 1..65535, no user info, query or fragment; stripped, trailing slashes trimmed. A rejection names the key
+ * and variable, never the value, which may carry credentials into the boot log. Placement: RESPONSIBILITIES.md
+ * §notification.
  */
 public final class EmailedLinkOrigin {
 
 	private static final Set<String> SCHEMES = Set.of("http", "https");
 
 	/** A registry-style {@code host[:port]}, which {@link URI#getHost()} reports as null (underscores). */
-	private static final Pattern REGISTRY_AUTHORITY = Pattern.compile("[A-Za-z0-9._~-]+(:\\d{1,5})?");
+	private static final Pattern REGISTRY_AUTHORITY = Pattern.compile("[A-Za-z0-9._~-]+(?::(\\d{1,5}))?");
+
+	/** {@link URI} parses any digit run as a port, so the TCP range is bounded here. */
+	private static final int MAX_PORT = 65_535;
 
 	private EmailedLinkOrigin() {
 	}
@@ -47,10 +52,20 @@ public final class EmailedLinkOrigin {
 			return false;
 		}
 		String authority = parsed.getRawAuthority();
-		return parsed.getScheme() != null && SCHEMES.contains(parsed.getScheme().toLowerCase(Locale.ROOT))
-				&& !parsed.isOpaque() && authority != null && !authority.contains("@")
-				&& (parsed.getHost() != null || REGISTRY_AUTHORITY.matcher(authority).matches())
-				&& parsed.getRawQuery() == null && parsed.getRawFragment() == null;
+		if (parsed.getScheme() == null || !SCHEMES.contains(parsed.getScheme().toLowerCase(Locale.ROOT))
+				|| authority == null || authority.contains("@") || parsed.getRawQuery() != null
+				|| parsed.getRawFragment() != null) {
+			return false;
+		}
+		if (parsed.getHost() != null) {
+			return parsed.getPort() == -1 || isPort(parsed.getPort());
+		}
+		Matcher registry = REGISTRY_AUTHORITY.matcher(authority);
+		return registry.matches() && (registry.group(1) == null || isPort(Integer.parseInt(registry.group(1))));
+	}
+
+	private static boolean isPort(int port) {
+		return port >= 1 && port <= MAX_PORT;
 	}
 
 	private static String trimTrailingSlashes(String value) {

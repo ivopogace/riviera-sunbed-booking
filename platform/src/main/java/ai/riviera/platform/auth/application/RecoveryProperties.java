@@ -5,7 +5,7 @@ import java.time.Duration;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.boot.context.properties.bind.DefaultValue;
 
-import ai.riviera.platform.shared.EmailedLinkOrigin;
+import ai.riviera.platform.notification.vocabulary.EmailedLinkOrigin;
 
 /**
  * Account-recovery tunables from {@code riviera.recovery.*}. The reset TTL (default 1h) stays shorter than the

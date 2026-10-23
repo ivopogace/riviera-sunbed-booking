@@ -5,7 +5,7 @@ import java.time.LocalDate;
 
 import org.springframework.web.util.UriComponentsBuilder;
 
-import ai.riviera.platform.shared.EmailedLinkOrigin;
+import ai.riviera.platform.notification.vocabulary.EmailedLinkOrigin;
 import ai.riviera.platform.venue.vocabulary.VenueId;
 
 /**

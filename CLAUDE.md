@@ -89,7 +89,7 @@ aggregate-root classes: `domain/` holds rules, state is in tables, lifecycles ar
 | `customer` | guest contact, customer account (sign-in, SSO, verification, password), GDPR erasure + retention sweep, canonical email form | `customer`, `customer_account`, `customer_sso_identity`, `customer_account_token` |
 | `operator` | operator accounts, operator↔venue ownership (#13), admin lifecycle + `is_admin`, tourist-visibility answer | `operator`, `operator_venue` |
 | `review` | one review per booking, eligibility + window, aggregate rating, admin takedown, erasure tombstone; a leaf (ADR-0015) | `review` |
-| `notification` | transactional mail, hashed suppression list, delivery log + admin resend | `email_suppression`, `booking_confirmation_mail_attempt` |
+| `notification` | transactional mail, hashed suppression list, delivery log + admin resend, the emailed-link origin rule | `email_suppression`, `booking_confirmation_mail_attempt` |
 | `itinerary` | the stay read model (D7/D11): the whole-coast verdict per venue for a span (same set · fits with N moves · can't host), served on `GET /api/venues`; the per-venue stitched plan on `GET /api/venues/{id}/itinerary`; the move budget `riviera.itinerary.max-switches` | nothing — a read model over `venue::api` + `availability::api` |
 | `remodel` | the beach-map remodel preview + commit (ADR-0020/ADR-0028): composes `venue`'s layout diff and write with `booking`'s claim classification and settlement, supplying `venue.spi.RemodelGate`; assembles, never decides | nothing — a composition over `venue::api` + `booking::api` |
 
