@@ -56,7 +56,7 @@ export class OperatorConsole {
         untracked(() => this.load(id));
       }
     });
-    // A settled walk-in moves no pending count, and load() would reset the badge store: the map only.
+    // A walk-in or a day refund moves no pending count, and load() resets the badge store: the map only.
     this.changes
       .todayAt(this.venueId)
       .pipe(takeUntilDestroyed())

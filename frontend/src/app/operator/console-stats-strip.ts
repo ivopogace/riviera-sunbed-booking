@@ -13,9 +13,9 @@ import { OperatorConsoleService } from './operator-console.service';
 /**
  * The operator console's stats strip — four glass tiles above the tab nav, live for the operator's
  * venue today (Europe/Tirane, #6): Free today `{free}/{total}` from the console page's shared venue
- * map ({@link venue}), Booked online from the day's CONFIRMED bookings, Walk-ins marked as the exact
- * `STAFF_MARKED` count (re-read when the Daily view settles a mark/release, {@link AvailabilityChanges}),
- * and Online takings today — net is server-side (#9), only formatted (#5). Reads are best-effort: a
+ * map ({@link venue}), Booked online from the day's CONFIRMED bookings (re-read on a claim-releasing day
+ * refund), Walk-ins marked as the exact `STAFF_MARKED` count (re-read on a walk-in mark/release; both
+ * announced by the Daily view via {@link AvailabilityChanges}), and Online takings today — net is server-side (#9), only formatted (#5). Reads are best-effort: a
  * failed read here renders that tile's dash, never a count that may be stale; the map is the page's.
  */
 @Component({
@@ -51,6 +51,8 @@ export class ConsoleStatsStrip {
   /** Bumped per states read: only the latest read may land, so an older, slower answer (or its
    *  failure) never overwrites a newer count. */
   private heldRead = 0;
+  /** Bumped per bookings read, the same latest-wins guard for Booked online. */
+  private bookedRead = 0;
 
   /** Total sets across both pools; renders as "Free today {free}/{total}". */
   protected readonly total = computed(() => this.venue()?.sets.length ?? 0);
@@ -87,11 +89,15 @@ export class ConsoleStatsStrip {
       const id = this.venueId();
       untracked(() => this.load(id));
     });
-    // A walk-in marked or released for this venue today moved the count — re-read the states only.
+    // A change for this venue today moved one count: a walk-in the states, a day refund the bookings.
     this.changes
       .todayAt(this.venueId)
       .pipe(takeUntilDestroyed())
-      .subscribe((change) => this.loadHeld(change.venueId, change.date));
+      .subscribe((change) =>
+        change.cause === 'DAY_REFUND'
+          ? this.loadBooked(change.venueId, change.date)
+          : this.loadHeld(change.venueId, change.date),
+      );
   }
 
   protected money(amount: MoneyView): string {
@@ -106,17 +112,8 @@ export class ConsoleStatsStrip {
     this.bookedOnline.set(undefined);
     this.takings.set(undefined);
     this.held.set(undefined);
+    this.loadBooked(venueId, date);
     // Continuations re-check the venue so a superseded venue's reads never land here.
-    this.console.dailyBookingCount(venueId, date).subscribe({
-      next: (count) => {
-        if (this.epoch === epoch) {
-          this.bookedOnline.set(count);
-        }
-      },
-      error: () => {
-        // best-effort — leave bookedOnline undefined so the tile (and walk-ins) render "—", not 0
-      },
-    });
     this.console.dailyTakings(venueId, date).subscribe({
       next: (value) => {
         if (this.epoch === epoch) {
@@ -128,6 +125,24 @@ export class ConsoleStatsStrip {
       },
     });
     this.loadHeld(venueId, date);
+  }
+
+  /** The bookings read behind Booked online, latest-wins like {@link loadHeld}. */
+  private loadBooked(venueId: number, date: string): void {
+    const read = ++this.bookedRead;
+    this.console.dailyBookingCount(venueId, date).subscribe({
+      next: (count) => {
+        if (this.bookedRead === read) {
+          this.bookedOnline.set(count);
+        }
+      },
+      error: () => {
+        // best-effort — the tile renders "—", never a pre-refund count
+        if (this.bookedRead === read) {
+          this.bookedOnline.set(undefined);
+        }
+      },
+    });
   }
 
   /** The states read behind the walk-ins tile: the shown count stands until this read lands, a
