@@ -24,9 +24,11 @@ export async function hitTestId(page: Page, testId: string): Promise<string | un
       throw new Error(`hitTestId: no element carries data-testid="${id}"`);
     }
     const box = target.getBoundingClientRect();
-    return document
-      .elementFromPoint(box.left + box.width / 2, box.top + box.height / 2)
-      ?.closest('[data-testid]')
-      ?.getAttribute('data-testid');
+    return (
+      document
+        .elementFromPoint(box.left + box.width / 2, box.top + box.height / 2)
+        ?.closest('[data-testid]')
+        ?.getAttribute('data-testid') ?? undefined
+    );
   }, testId);
 }
