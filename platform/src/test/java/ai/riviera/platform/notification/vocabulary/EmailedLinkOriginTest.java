@@ -18,7 +18,7 @@ class EmailedLinkOriginTest {
 	@ParameterizedTest
 	@ValueSource(strings = { "https://app.example", "http://localhost:4200", "HTTPS://App.Example",
 			"http://riviera_backend:8080", "http://riviera_backend:65535", "https://app.example:443",
-			"http://[::1]:8080", "http://10.0.0.7", "https://app.example/riviera" })
+			"http://[::1]:8080", "http://10.0.0.7", "https://app.example/riviera", "http://riviera_backend.internal:8080" })
 	void acceptsAnHttpOrHttpsOrigin(String value) {
 		assertEquals(value, EmailedLinkOrigin.require(KEY, VARIABLE, value));
 	}
@@ -57,7 +57,9 @@ class EmailedLinkOriginTest {
 			"file:///etc/passwd", "mailto:ops@app.example", "javascript://app.example", "https://app.example?a=b",
 			"https://app.example/?a=b", "https://app.example#top", "https://app.example/#/", "http://bad,host",
 			"http://riviera_backend:80a", "https://", "https://:8080", "http://riviera_backend:99999",
-			"http://riviera_backend:0", "https://app.example:65536", "https://app.example:0" })
+			"http://riviera_backend:0", "https://app.example:65536", "https://app.example:0", "http://..", "http://-",
+			"http://~", "http://999.999.999.999", "http://-riviera_backend", "http://riviera_backend.",
+			"https://app.example/my%20app" })
 	void rejectsAnythingButAnHttpOrHttpsOriginWithAHost(String value) {
 		IllegalArgumentException rejected = reject(value);
 

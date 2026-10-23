@@ -10,16 +10,19 @@ import java.util.regex.Pattern;
 /**
  * The one rule for the deployed origin every emailed link is built on, bound under each consumer's own key: an
  * absolute {@code http}/{@code https} URL with a host (registry-style {@code riviera_backend:8080} too), any port
- * within 1..65535, no user info, query or fragment; stripped, trailing slashes trimmed. A rejection names the key
- * and variable, never the value, which may carry credentials into the boot log. Placement: RESPONSIBILITIES.md
- * §notification.
+ * within 1..65535, no user info, query, fragment or percent-escape; stripped, trailing slashes trimmed. A rejection
+ * names the key and variable, never the value, which may carry credentials into the boot log. Placement:
+ * RESPONSIBILITIES.md §notification.
  */
 public final class EmailedLinkOrigin {
 
 	private static final Set<String> SCHEMES = Set.of("http", "https");
 
-	/** A registry-style {@code host[:port]}, which {@link URI#getHost()} reports as null (underscores). */
-	private static final Pattern REGISTRY_AUTHORITY = Pattern.compile("[A-Za-z0-9._~-]+(?::(\\d{1,5}))?");
+	private static final String LABEL = "[A-Za-z0-9_](?:[A-Za-z0-9_-]*[A-Za-z0-9_])?";
+
+	/** An underscored {@code host[:port]}, the one authority {@link URI#getHost()} reports as null that may pass. */
+	private static final Pattern REGISTRY_AUTHORITY =
+			Pattern.compile("(?=[^:]*_)" + LABEL + "(?:\\." + LABEL + ")*(?::(\\d{1,5}))?");
 
 	/** {@link URI} parses any digit run as a port, so the TCP range is bounded here. */
 	private static final int MAX_PORT = 65_535;
@@ -27,7 +30,7 @@ public final class EmailedLinkOrigin {
 	private EmailedLinkOrigin() {
 	}
 
-	/** {@code value} validated and normalised; a rejection names {@code key} and {@code variable}, never the value. */
+	/** {@code value} stripped and trailing-slash-trimmed; a rejection names {@code key} and {@code variable} only. */
 	public static String require(String key, String variable, String value) {
 		if (value == null || value.isBlank()) {
 			throw new IllegalArgumentException(key + " must be set: set " + variable
@@ -39,7 +42,7 @@ public final class EmailedLinkOrigin {
 		String stripped = value.strip();
 		if (!isOrigin(stripped)) {
 			throw new IllegalArgumentException(key + " must be an absolute http or https URL with a host and no "
-					+ "user info, query or fragment (e.g. https://app.example): set " + variable);
+					+ "user info, query, fragment or percent-escape (e.g. https://app.example): set " + variable);
 		}
 		return trimTrailingSlashes(stripped);
 	}
@@ -54,7 +57,7 @@ public final class EmailedLinkOrigin {
 		String authority = parsed.getRawAuthority();
 		if (parsed.getScheme() == null || !SCHEMES.contains(parsed.getScheme().toLowerCase(Locale.ROOT))
 				|| authority == null || authority.contains("@") || parsed.getRawQuery() != null
-				|| parsed.getRawFragment() != null) {
+				|| parsed.getRawFragment() != null || parsed.getRawPath().contains("%")) {
 			return false;
 		}
 		if (parsed.getHost() != null) {

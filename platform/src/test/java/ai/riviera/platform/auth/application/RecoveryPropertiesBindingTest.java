@@ -7,6 +7,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
+import org.springframework.boot.context.properties.bind.BindException;
 import org.springframework.boot.test.context.ConfigDataApplicationContextInitializer;
 import org.springframework.boot.test.context.runner.ApplicationContextRunner;
 import org.springframework.context.annotation.Configuration;
@@ -112,6 +113,11 @@ class RecoveryPropertiesBindingTest {
 							.hasMessageContaining("riviera.recovery.link-base-url");
 					for (Throwable cause = context.getStartupFailure(); cause != null; cause = cause.getCause()) {
 						assertThat(cause.getMessage()).doesNotContain("hunter2");
+						if (cause instanceof BindException bind) {
+							assertThat(bind.getProperty())
+									.as("Boot's failure analyzer prints a 'Value:' line only for a named property")
+									.isNull();
+						}
 					}
 				});
 	}
