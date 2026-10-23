@@ -30,8 +30,8 @@ export class WindowPageNavigation extends PageNavigation {
 
   /**
    * Clears the current entry's `history.state` first (the router's `browserUrl` would otherwise
-   * boot the fresh document back into the card), keeping its URL for another page so Back works.
-   * The same page is reloaded, not assigned: assigning the current URL with a fragment only scrolls.
+   * boot the fresh document back into the card): the entry keeps its URL for another page (Back
+   * works), else takes the target, which is reloaded, not assigned: a fragment-only assign scrolls.
    */
   reload(url: string): void {
     const target = new URL(url, this.win.location.href).href;
