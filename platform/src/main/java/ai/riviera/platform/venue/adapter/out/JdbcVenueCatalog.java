@@ -505,7 +505,7 @@ class JdbcVenueCatalog implements VenueCatalog, VenueRates, OwnerVenueMap {
 			LocalTime salesClose, SeasonClosure seasonClosure, VenueLocation location) {
 	}
 
-	/** A set's id, owning venue, and price — all the list view needs to count and price a venue. */
+	/** A set's id, owning venue, pool and price — all the list view needs to count, price and pool-check a venue. */
 	private record SetPriceRow(long id, long venueId, Pool pool, long priceMinor, String priceCurrency) {
 	}
 
