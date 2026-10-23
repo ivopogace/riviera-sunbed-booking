@@ -68,7 +68,7 @@ class EmailedLinkOriginTest {
 	void rejectsAnythingButAnHttpOrHttpsOriginWithAHost(String value) {
 		IllegalArgumentException rejected = reject(value);
 
-		assertTrue(rejected.getMessage().contains("absolute http or https URL"), rejected.getMessage());
+		assertTrue(rejected.getMessage().contains("is not a plain http or https origin"), rejected.getMessage());
 	}
 
 	@ParameterizedTest

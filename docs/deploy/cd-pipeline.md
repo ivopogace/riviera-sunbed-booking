@@ -110,9 +110,9 @@ must include `frontend/`, so:
     `mailer` profile; boot aborts without it** (#1581). Without `mailer` an unset variable falls
     back to `http://localhost:4200`, which is only right for local dev. In every profile the value
     must be an `http`/`https` URL with a host (loopback included, and hosts with underscores
-    between letters or digits, such as `riviera_backend`; no trailing dot), a port in 1..65535, and
-    no user info, query, fragment or percent-escape, or boot aborts naming the key and the
-    variable, never the value; a trailing slash is trimmed (#1592).
+    between letters or digits, such as `riviera_backend`; no trailing dot), a port in 1..65535 if
+    one is given (a bare `:` aborts), and no user info, query, fragment or percent-escape, or boot
+    aborts naming the key and the variable, never the value; a trailing slash is trimmed (#1592).
   - **SMTP relay (#368, ADR-0011) — only with the `mailer` profile** (production runs
     `prod,mailer`; without these the profile aborts at boot, by design):
     `RIVIERA_SMTP_HOST` (Scaleway TEM: `smtp.tem.scw.cloud`), `RIVIERA_SMTP_PORT` (default
