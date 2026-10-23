@@ -230,8 +230,8 @@
   --riv-cta-grad: linear-gradient(180deg, #0c7288, #0a5f74);
   --riv-bar-grad: linear-gradient(90deg, #2bb8d4, #0e8aa8);
 
-  /** The CTA button's white hairline bevel (class R) — 16 positions across auth/, booking/
-      and shared/, on --riv-cta-grad above and on booking-dialog's #31798a close button.
+  /** The CTA button's white hairline bevel (class R) — worn through shared/primary-cta.ts's
+      [appPrimaryCta] skin, on --riv-cta-grad above and on booking-dialog's #31798a close button.
 
       Do NOT reach for --riv-inset-fill, whose value it equals: that is a FILL, and it resolves
       white 0.08 in the dark theme, so a border pointed at it would confuse the role AND move the

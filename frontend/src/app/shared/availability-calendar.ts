@@ -45,6 +45,7 @@ import {
   freeFraction,
 } from './day-availability';
 import { stayRule } from './stay-rule';
+import { PrimaryCta } from './primary-cta';
 
 /** One rendered day, or `undefined` for a grid position outside the visible month. */
 export interface CalendarCell {
@@ -102,7 +103,7 @@ const WEEKDAYS: readonly { readonly short: string; readonly long: string }[] = [
  */
 @Component({
   selector: 'app-availability-calendar',
-  imports: [TouchTarget, LoadAnnouncer, SegmentedControl],
+  imports: [PrimaryCta, TouchTarget, LoadAnnouncer, SegmentedControl],
   templateUrl: './availability-calendar.html',
   host: {
     class:

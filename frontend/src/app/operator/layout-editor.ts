@@ -67,6 +67,7 @@ import { RemodelPreviewPanel } from './remodel-preview-panel';
 import { RemodelReceiptPanel } from './remodel-receipt-panel';
 
 import { TouchTarget } from '../shared/touch-target';
+import { PrimaryCta } from '../shared/primary-cta';
 
 /** Which editing surface the tab is showing: the whole-map replace, or one set at a time. */
 type EditorMode = 'bulk' | 'sets';
@@ -151,6 +152,7 @@ const SWATCH_CLASS: Record<CellState, string> = {
 @Component({
   selector: 'app-layout-editor',
   imports: [
+    PrimaryCta,
     CardGlass,
     BeachCell,
     BeachMapCanvas,

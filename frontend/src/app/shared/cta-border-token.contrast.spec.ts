@@ -19,8 +19,8 @@ import { baseBlock, declarationsOf } from '../../testing/stylesheet-tokens';
 
 /**
  * Guard for `--riv-cta-border` (class R row 1 of the colour-literal audit) — the white
- * hairline bevel on the primary CTA button, worn at 16 positions across `auth/`, `booking/` and
- * `shared/`.
+ * hairline bevel on the primary CTA button, worn through `shared/primary-cta.ts`'s
+ * `[appPrimaryCta]` skin (and on `booking-dialog`'s close button).
  *
  * <p><strong>Why its own token and not `--riv-inset-fill`.</strong> The value coincides exactly,
  * the role does not: that one is a FILL, and it resolves `rgba(255,255,255,0.08)` in the dark
@@ -112,6 +112,12 @@ const HISTORICAL_834: readonly { path: string; phrase: string }[] = [
   { path: 'testing/glass-tokens.ts', phrase: "see the contrast spec's header" },
   { path: 'app/admin/admin-console.contrast.spec.ts', phrase: 'deliberately left unasserted' },
 ];
+
+/** The one directive that paints the primary CTA skin, and the utilities that make it this proof's. */
+const SKIN = {
+  path: 'shared/primary-cta.ts',
+  utilities: ['border', 'border-riv-cta-border', 'bg-(image:--riv-cta-grad)', 'text-white'],
+} as const;
 
 /** This file, the one source that may legitimately name the retired positions — it is the sweep. */
 const SELF = 'shared/cta-border-token.contrast.spec.ts';
@@ -302,6 +308,25 @@ describe('--riv-cta-border — the CTA hairline (#853)', () => {
     );
 
     expect(offenders).toEqual([]);
+  });
+
+  it('the primary CTA skin is the [appPrimaryCta] directive, carrying the proven hairline and fill', () => {
+    const hostClass = /class:\s*'([^']*)'/.exec(read(SKIN.path))?.[1].split(/\s+/) ?? [];
+
+    for (const utility of SKIN.utilities) {
+      expect(hostClass, `${SKIN.path} host class`).toContain(utility);
+    }
+  });
+
+  it('no call site hand-copies the skin: the CTA fill is painted only by the directive', () => {
+    const copies = allSources().filter(
+      (path) =>
+        !path.endsWith('.spec.ts') &&
+        path.replaceAll('\\', '/') !== SKIN.path &&
+        read(path).includes('bg-(image:--riv-cta-grad)'),
+    );
+
+    expect(copies).toEqual([]);
   });
 
   it('leaves the inset-highlight ramp alone, which is a different family', () => {

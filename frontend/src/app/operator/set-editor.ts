@@ -66,6 +66,7 @@ import {
 
 import { TouchTarget } from '../shared/touch-target';
 import { CrossIcon } from '../shared/cross-icon';
+import { PrimaryCta } from '../shared/primary-cta';
 
 /** One editor row on the shared canvas's row contract, plus the cells the panel selects from. */
 interface SetRow extends BeachMapCanvasRow {
@@ -168,6 +169,7 @@ const MIN_PRICE_EUR = createMetadataKey<string | undefined>();
 @Component({
   selector: 'app-set-editor',
   imports: [
+    PrimaryCta,
     CardGlass,
     BeachMapCanvas,
     BeachMapRowDef,
