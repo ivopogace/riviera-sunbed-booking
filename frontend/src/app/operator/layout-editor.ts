@@ -18,7 +18,6 @@ import { OperatorAuth } from '../core/operator-auth';
 import { BusyAction } from '../shared/busy-action';
 import { CardGlass } from '../shared/card-glass';
 import { ConfirmPanel } from '../shared/confirm-panel';
-import { FieldErrorFor } from '../shared/field-error-for';
 import { formatDeadline } from '../shared/deadline';
 import { focusMover } from '../shared/focus-after-render';
 import { formatMoney, MoneyView } from '../shared/money';
@@ -51,7 +50,6 @@ import {
   remodelPreviewIsEmpty,
   RemodelReceipt,
   RemodelReceiptSummary,
-  RowNameErrorCode,
   SetLock,
 } from './operator-console.model';
 import {
@@ -59,7 +57,6 @@ import {
   layoutErrorOf,
   OperatorConsoleService,
   remodelPreviewOf,
-  rowNameErrorOf,
 } from './operator-console.service';
 import { SetEditor } from './set-editor';
 import { StaleWriteBanner } from './stale-write-banner';
@@ -156,7 +153,6 @@ const SWATCH_CLASS: Record<CellState, string> = {
     BeachMapCanvas,
     BeachMapRowDef,
     ConfirmPanel,
-    FieldErrorFor,
     SetEditor,
     MapSkeletonGrid,
     StaleWriteBanner,
@@ -200,12 +196,6 @@ export class LayoutEditor {
 
   /** The current grid, row-major with row 0 sea-facing. Empty until generated or loaded. */
   protected readonly grid = signal<CellState[][]>([]);
-  /**
-   * The operator's name per grid row — what `row_label` saves as, so the tourist rail can
-   * speak the venue's own words. Seeded with the loaded labels (or the grid letters on generate);
-   * a blanked entry falls back to its grid letter at save time.
-   */
-  protected readonly rowNames = signal<readonly string[]>([]);
   /** The venue's saved sets from the last map read — what {@link SetEditor} edits, by id. */
   protected readonly loadedSets = signal<readonly SetView[]>([]);
   /**
@@ -222,26 +212,6 @@ export class LayoutEditor {
    */
   protected readonly blockedSets = signal<readonly BlockedSet[]>([]);
 
-  /**
-   * The label each grid row carries **on the server** — the rename's source, and `undefined` for a
-   * row with no saved sets. Only a stored row can be renamed; an unsaved one is created by the bulk
-   * save, which writes its label anyway.
-   */
-  protected readonly storedRowNames = signal<readonly (string | undefined)[]>([]);
-  /** The grid row whose rename is in flight, or null — drives `[appBusy]` on that row's button. */
-  protected readonly renamingRow = signal<number | null>(null);
-  /** The grid row whose rename last succeeded, cleared on the next edit of any row name. Derived on
-   *  the venue: a notice that recomputes from `venueId` cannot outlive the venue it describes. */
-  protected readonly renamedRow = linkedSignal({
-    source: this.venueId,
-    computation: (): number | null => null,
-  });
-  /** The last per-row rename failure. `STALE_WRITE` never lands here — the reload banner owns it.
-   *  Derived on the venue for {@link renamedRow}'s reason: same shape, same venue-scoped lifetime. */
-  protected readonly rowNameError = linkedSignal({
-    source: this.venueId,
-    computation: (): { y: number; code: RowNameErrorCode } | null => null,
-  });
   /** The operator's explicit tool-rail choice, or null while the venue's own state decides. */
   private readonly armedTool = signal<EditorTool | null>(null);
   /** The brush painting will use once a brush is (re-)armed — survives arming Select, so
@@ -251,8 +221,6 @@ export class LayoutEditor {
   /** The grid as last loaded, reloaded or successfully saved — what {@link dirtyCount} diffs
    *  {@link grid} against, and what {@link discard} restores. */
   private readonly baselineGrid = signal<CellState[][]>([]);
-  /** {@link rowNames} as last loaded, reloaded or successfully saved — {@link discard}'s other half. */
-  private readonly baselineRowNames = signal<readonly string[]>([]);
   /** A one-line description of the latest paint/generate action, cleared by a successful save or a
    *  discard — the save bar's "what changed" line. */
   protected readonly lastChange = signal<string | null>(null);
@@ -273,14 +241,6 @@ export class LayoutEditor {
     this.savedNotice() ? 'Saved. The public beach map reflects your changes.' : '',
   );
 
-  /**
-   * The row-rename outcome as one sentence, or ''. One region serves the whole editor rather than
-   * one per row, so the sentence names the row — renaming A then B must change the text to speak.
-   */
-  protected readonly renamedRowMessage = computed(() => {
-    const y = this.renamedRow();
-    return y === null ? '' : `Row ${this.rowCode(y)} name saved.`;
-  });
   /** The last write failure, mapped to operator-facing copy, or undefined. */
   protected readonly errorCode = signal<LayoutErrorCode | undefined>(undefined);
   /** True while awaiting confirmation of a destructive regenerate over an existing grid. */
@@ -352,22 +312,6 @@ export class LayoutEditor {
    */
   protected readonly mapUnavailable = computed(() => this.loadFailed() && !this.mapLoaded());
 
-  /** The name each row saves with: the operator's trimmed words, or the row's grid letter. */
-  private readonly effectiveRowNames = computed<readonly string[]>(() =>
-    this.grid().map((_, y) => (this.rowNames()[y] ?? '').trim() || gridRowLabel(y)),
-  );
-
-  /** The first name two rows share, if any — blocked because the map and pricing tab group rows by label. */
-  protected readonly duplicateRowName = computed<string | undefined>(() => {
-    const seen = new Set<string>();
-    for (const name of this.effectiveRowNames()) {
-      if (seen.has(name)) {
-        return name;
-      }
-      seen.add(name);
-    }
-    return undefined;
-  });
   protected readonly genTotal = computed(
     () => clampGrid(this.genRows(), 1, MAX_ROWS) * clampGrid(this.genCols(), 1, MAX_COLS),
   );
@@ -510,13 +454,11 @@ export class LayoutEditor {
   /**
    * Drop every venue-scoped draft, read and remodel preview/receipt so nothing leaks into the next
    * venue context — a surviving `pendingRemodel` would make {@link commitRemodel} post one venue's
-   * sets to another. The rename notices derive from `venueId`, so they need no reset.
+   * sets to another.
    */
   private clearVenueState(): void {
     this.epoch++;
     this.grid.set([]);
-    this.rowNames.set([]);
-    this.storedRowNames.set([]);
     this.loadedSets.set([]);
     this.locks.set([]);
     this.lockNotice.set(null);
@@ -533,10 +475,8 @@ export class LayoutEditor {
     this.loadFailed.set(false);
     this.mapLoaded.set(false);
     this.baselineGrid.set([]);
-    this.baselineRowNames.set([]);
     this.lastChange.set(null);
     this.lastSavedAt.set(null);
-    this.renamingRow.set(null);
     this.reading.set(false);
     this.previewing.set(false);
     this.remodelPreview.set(null);
@@ -633,138 +573,12 @@ export class LayoutEditor {
       grid.push(row);
     }
     this.grid.set(grid);
-    this.rowNames.set(grid.map((_, y) => gridRowLabel(y)));
-    this.storedRowNames.set([]); // a regenerated grid is unsaved: nothing to rename until it is
     this.savedNotice.set(false);
     this.errorCode.set(undefined);
     this.blockedSets.set([]);
-    this.clearRenameNotices();
     // A regenerate replaces the whole grid, so every cell is unsaved surface against an empty baseline.
     this.baselineGrid.set([]);
     this.lastChange.set(`Generated a ${rows}×${cols} grid`);
-  }
-
-  /**
-   * The derived grid letter for row {@code y} — the row-name input's default and visual anchor. The
-   * editor's cells and notices name a row by this letter, not its stored label: positional identity
-   * beside a grid being painted, kept on purpose (#723, #724, reaffirmed in #1524).
-   */
-  protected rowCode(y: number): string {
-    return gridRowLabel(y);
-  }
-
-  /** {@link rowName} for the template — the save-name button names the stored row. */
-  protected readonly rowName = rowName;
-
-  protected onRowNameInput(y: number, value: string): void {
-    this.rowNames.update((names) => names.map((name, i) => (i === y ? value : name)));
-    this.savedNotice.set(false);
-    this.clearRenameNotices();
-  }
-
-  /** Drop both per-row notices. They are pinned to a grid index, so anything that re-indexes the
-   *  rows must clear them or they describe another row: the in-venue paths call this, and a
-   *  venue-context change is covered by the notices' own `venueId` derivation. */
-  private clearRenameNotices(): void {
-    this.renamedRow.set(null);
-    this.rowNameError.set(null);
-  }
-
-  /** The stored label for grid row `y`, or undefined when the row has never been saved. */
-  protected storedRowName(y: number): string | undefined {
-    return this.storedRowNames()[y];
-  }
-
-  /**
-   * Rename one stored row: a display-only write on its own PUT, which names the row by its
-   * **stored** label, never the draft, so a second rename of the same row still addresses it. On
-   * success the shared `set_version` token advances by one, exactly as a reprice or a bulk save does.
-   */
-  protected async onRenameRow(y: number): Promise<void> {
-    const venueId = this.venueId();
-    const from = this.storedRowName(y);
-    const typed = (this.rowNames()[y] ?? '').trim();
-    const expectedVersion = this.loadedSetVersion();
-    if (from === undefined || expectedVersion === null) {
-      return; // defensive: the button renders only for a stored row, which implies a loaded token
-    }
-    if (typed === '') {
-      // A cleared field reads as "cancel", not "rename me to my grid letter" — restore what is stored.
-      this.rowNames.update((names) => names.map((name, i) => (i === y ? from : name)));
-      this.clearRenameNotices();
-      return;
-    }
-    const to = typed;
-    if (to === from) {
-      // The server no-ops this without spending set_version, so sending it would stale our token.
-      this.rowNameError.set(null);
-      this.renamedRow.set(y);
-      return;
-    }
-    if (this.renamingRow() !== null || this.saving()) {
-      return; // the shared set_version admits one writer: a rename cannot race another or the bulk save
-    }
-    const epoch = this.epoch;
-    this.renamedRow.set(null);
-    this.rowNameError.set(null);
-    this.renamingRow.set(y);
-    try {
-      await firstValueFrom(this.console.renameRow(venueId, from, to, expectedVersion));
-      if (this.epoch !== epoch) {
-        return; // a venue switch superseded this rename
-      }
-      this.storedRowNames.update((names) => names.map((name, i) => (i === y ? to : name)));
-      // A rename saves independently of the bulk save, so a later Discard mustn't revert it too.
-      this.baselineRowNames.update((names) =>
-        names.length > y ? names.map((name, i) => (i === y ? to : name)) : names,
-      );
-      this.loadedSets.update((sets) =>
-        sets.map((set) => (set.gridY === y + 1 ? { ...set, rowLabel: to } : set)),
-      );
-      this.loadedSetVersion.set(expectedVersion + 1);
-      this.renamedRow.set(y);
-      this.venueMap.reset(); // this row's label just moved server-side — the shared snapshot is stale
-    } catch (error) {
-      if (this.epoch !== epoch) {
-        return; // a venue switch superseded this rename
-      }
-      const code = rowNameErrorOf(error);
-      if (code === 'STALE_WRITE') {
-        this.errorCode.set('STALE_WRITE'); // a venue-level conflict — the reload banner owns recovery
-      } else {
-        this.rowNameError.set({ y, code });
-      }
-      if (code === 'UNAUTHORIZED') {
-        this.operator.sessionLost();
-      }
-    } finally {
-      this.renamingRow.set(null);
-    }
-  }
-
-  /** The operator-facing message for a per-row rename failure. */
-  /** Whether the rename failure blames the name the operator typed, rather than the write itself. */
-  protected rowNameValueIsInvalid(code: RowNameErrorCode): boolean {
-    return code === 'ROW_NAME_TAKEN' || code === 'INVALID_REQUEST';
-  }
-
-  protected rowNameErrorMessage(code: RowNameErrorCode): string {
-    switch (code) {
-      case 'ROW_NAME_TAKEN':
-        return 'Another row already has that name. Give this row a name of its own.';
-      case 'NO_SUCH_ROW':
-        return 'This row no longer exists. Reload the tab and try again.';
-      case 'NOT_VENUE_OWNER':
-        return 'You do not manage this venue, so its rows can’t be renamed.';
-      case 'NO_SUCH_VENUE':
-        return 'This venue could not be found.';
-      case 'INVALID_REQUEST':
-        return 'That name is not valid. Use up to 40 characters.';
-      case 'UNAUTHORIZED':
-        return 'Your session has expired. Please sign in again.';
-      default:
-        return 'Something went wrong saving the name. Please try again.';
-    }
   }
 
   // ---- Paint (click + drag; keyboard via the button's native click) ----
@@ -950,9 +764,6 @@ export class LayoutEditor {
 
   protected async onSave(): Promise<void> {
     const venueId = this.venueId();
-    if (this.duplicateRowName() !== undefined) {
-      return; // the row-names panel is already showing the clash; the server would refuse it anyway
-    }
     const sets = this.toRequest();
     if (sets.length === 0) {
       this.errorCode.set('EMPTY_LAYOUT');
@@ -964,9 +775,6 @@ export class LayoutEditor {
       // silently no-op (review finding) — surface it and prompt a refresh, which re-loads the token.
       this.loadFailed.set(true);
       return;
-    }
-    if (this.renamingRow() !== null) {
-      return; // the other half of the shared-token guard: a rename in flight owns the version
     }
     if (this.saving() || this.previewing() || this.remodelPreview() !== null) {
       return;
@@ -1166,15 +974,10 @@ export class LayoutEditor {
   /** What a saved layout means for the editor's own state — the PUT's and the commit's shared tail. */
   private afterSaved(sets: LayoutCellRequest[], expectedVersion: number): void {
     this.savedNotice.set(true);
-    // Only rows that contributed a set exist server-side; an all-gap row has nothing to rename.
-    const written = new Set(sets.map((set) => set.gridY - 1));
-    const saved = this.effectiveRowNames();
-    this.storedRowNames.set(saved.map((label, y) => (written.has(y) ? label : undefined)));
     // The layout was replaced, so the console's shared snapshot now describes retired sets.
     this.venueMap.reset();
     this.loadedSetVersion.set(expectedVersion + 1);
     this.baselineGrid.set(cloneGrid(this.grid()));
-    this.baselineRowNames.set(this.effectiveRowNames());
     this.lastChange.set(null);
     this.lastSavedAt.set(new Date());
   }
@@ -1265,7 +1068,6 @@ export class LayoutEditor {
         this.priceByCoord.clear();
         this.grid.set([]); // hasLayout() → false, so seedFrom re-seeds (or leaves the empty state)
         this.baselineGrid.set([]);
-        this.baselineRowNames.set([]);
         this.lastChange.set(null);
         this.loadedSetVersion.set(venue.setVersion ?? null);
         this.loadFailed.set(false);
@@ -1295,7 +1097,6 @@ export class LayoutEditor {
 
   private toRequest(): LayoutCellRequest[] {
     const sets: LayoutCellRequest[] = [];
-    const rowLabels = this.effectiveRowNames();
     this.grid().forEach((row, y) => {
       row.forEach((state, x) => {
         if (state === 'gap') {
@@ -1303,7 +1104,7 @@ export class LayoutEditor {
         }
         const premium = state === 'premium';
         sets.push({
-          rowLabel: rowLabels[y],
+          rowLabel: gridRowLabel(y),
           positionNo: x + 1,
           tier: premium ? 'PREMIUM' : 'STANDARD',
           pool: state === 'walkin' ? 'WALK_IN' : 'ONLINE',
@@ -1355,7 +1156,6 @@ export class LayoutEditor {
   }
 
   private seedFrom(sets: readonly SetView[]): void {
-    this.clearRenameNotices(); // above the early return: an emptied venue re-indexes the rows too
     if (sets.length === 0 || this.hasLayout()) {
       // Empty venue, or the async read resolved after the operator already generated/painted — don't
       // clobber their in-progress work with the loaded layout.
@@ -1372,34 +1172,22 @@ export class LayoutEditor {
     }
     this.grid.set(grid);
     this.baselineGrid.set(cloneGrid(grid)); // a freshly-loaded grid is, by definition, all saved
-    // One pass for both arrays: two independent scans could drift, and the layout can be 1040 sets.
-    const storedByRow = new Map<number, string>();
-    for (const s of sets) {
-      storedByRow.set(s.gridY - 1, s.rowLabel);
-    }
-    // Preserve each row's loaded label for a lossless save; an all-gap row takes its letter.
-    const names = grid.map((_, y) => storedByRow.get(y) ?? gridRowLabel(y));
-    this.rowNames.set(names);
-    this.baselineRowNames.set(names);
-    this.storedRowNames.set(grid.map((_, y) => storedByRow.get(y)));
     this.genRows.set(clampGrid(maxY, 1, MAX_ROWS));
     this.genCols.set(clampGrid(maxX, 1, MAX_COLS));
   }
 
-  /** Discard the unsaved draft, restoring the grid and row names to {@link baselineGrid} /
-   *  {@link baselineRowNames} — a no-op while nothing is dirty or a save is already in flight. */
+  /** Discard the unsaved draft, restoring the grid to {@link baselineGrid} — a no-op while nothing
+   *  is dirty or a save is already in flight. */
   protected discard(): void {
     if (!this.isDirty() || this.saving()) {
       return;
     }
     this.grid.set(cloneGrid(this.baselineGrid()));
-    this.rowNames.set([...this.baselineRowNames()]);
     this.lastChange.set(null);
     this.lockNotice.set(null);
     this.savedNotice.set(false);
     this.errorCode.set(undefined);
     this.blockedSets.set([]);
-    this.clearRenameNotices();
   }
 
   /** The per-row price string: the price the row's first set would save with (preserved or tier default). */

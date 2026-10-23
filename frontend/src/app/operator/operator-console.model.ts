@@ -138,23 +138,6 @@ export type RepriceErrorCode =
   | 'UNKNOWN';
 
 /**
- * A known per-row rename failure, mapped from the RFC-7807 `code` for operator-facing copy.
- * `ROW_NAME_TAKEN` is the rename path's 409 — another row already carries the requested label, which
- * would merge the two wherever sets are grouped by label (the bulk replace answers the same code for
- * a label split within its batch); `STALE_WRITE` is the venue-level 409 the editor's reload banner
- * owns, not a per-row error.
- */
-export type RowNameErrorCode =
-  | 'NOT_VENUE_OWNER'
-  | 'NO_SUCH_ROW'
-  | 'NO_SUCH_VENUE'
-  | 'INVALID_REQUEST'
-  | 'ROW_NAME_TAKEN'
-  | 'STALE_WRITE'
-  | 'UNAUTHORIZED'
-  | 'UNKNOWN';
-
-/**
  * One service day's attendance: unresolved, scanned in, passed unscanned (the sweep's stamp), or given
  * back by a day refund while the stay went on (neither attended nor missed).
  */

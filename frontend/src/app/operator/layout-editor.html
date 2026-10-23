@@ -3,10 +3,6 @@
   <output aria-live="polite" class="sr-only" data-testid="layout-saved-announce">{{
     savedMessage()
   }}</output>
-  <!-- One region for the editor, never one per row: RV-FE-10 rules a live region per list row out. -->
-  <output aria-live="polite" class="sr-only" data-testid="layout-row-name-saved-announce">{{
-    renamedRowMessage()
-  }}</output>
   <!-- Mode-independent, so it sits above the branch: neither surface has a map when the read failed. -->
   @if (loadFailed()) {
     <p
@@ -156,86 +152,6 @@
           />
         }
       </section>
-
-      @if (mode() === 'bulk' && hasLayout()) {
-        <section appCardGlass class="rounded-[20px] px-[18px] py-4">
-          <h2 class="text-[15px] font-bold text-riv-card-ink">Row names</h2>
-          <p class="mt-1 mb-3 text-[12.5px] leading-[1.45] text-riv-card-ink-soft">
-            What a row’s price chip says on the public map — “Under the pines”, “Back row”. Leave
-            the letter to keep the automatic label. Renaming a saved row takes effect on its own,
-            without the rest of your draft — guests already booked into that row see the new name,
-            so make it match the signage on the beach.
-          </p>
-          <div class="flex flex-col gap-2">
-            @for (name of rowNames(); track $index; let y = $index) {
-              <div class="flex items-center gap-2">
-                <label class="flex min-w-0 flex-1 items-center gap-2">
-                  <span
-                    class="w-6 shrink-0 text-center text-[11px] font-bold uppercase text-riv-card-ink-faint"
-                    >{{ rowCode(y) }}</span
-                  >
-                  <input
-                    appTouchTarget
-                    type="text"
-                    maxlength="40"
-                    [value]="name"
-                    (input)="onRowNameInput(y, $any($event.target).value)"
-                    [attr.aria-label]="'Row ' + rowCode(y) + ' name'"
-                    data-testid="layout-row-name"
-                    class="w-full min-w-0 rounded-[12px] border border-riv-card-border bg-riv-console-inset/60 px-[11px] py-[9px] text-[16px] text-riv-card-ink"
-                    #rowNameControl
-                  />
-                </label>
-                @if (storedRowName(y); as stored) {
-                  <button
-                    appTouchTarget
-                    type="button"
-                    [appBusy]="renamingRow() === y || saving()"
-                    (click)="onRenameRow(y)"
-                    [attr.aria-label]="'Save the name for ' + rowName(stored)"
-                    data-testid="layout-row-name-save"
-                    class="shrink-0 rounded-[12px] border border-riv-card-border px-[13px] py-[9px] text-[13px] font-semibold text-riv-card-ink aria-disabled:opacity-60 hover:bg-riv-console-inset/50 [transition:background_0.15s_ease]"
-                  >
-                    {{ renamingRow() === y ? 'Saving…' : 'Save name' }}
-                  </button>
-                }
-              </div>
-              @if (renamedRow() === y) {
-                <!-- Visible copy only; the persistent announcer above owns the announcement. -->
-                <p
-                  class="ml-8 text-[12.5px] font-semibold text-riv-card-ink-soft"
-                  aria-hidden="true"
-                  data-testid="layout-row-name-saved"
-                >
-                  Row name saved.
-                </p>
-              }
-              @if (rowNameError(); as failure) {
-                @if (failure.y === y) {
-                  <p
-                    [appFieldErrorFor]="rowNameControl"
-                    [appFieldErrorForInvalidValue]="rowNameValueIsInvalid(failure.code)"
-                    class="ml-8 text-[12.5px] font-semibold text-riv-error-ink"
-                    role="alert"
-                    data-testid="layout-row-name-write-error"
-                  >
-                    {{ rowNameErrorMessage(failure.code) }}
-                  </p>
-                }
-              }
-            }
-          </div>
-          @if (duplicateRowName(); as clash) {
-            <p
-              class="mt-2 text-[12.5px] font-semibold text-riv-error-ink"
-              role="alert"
-              data-testid="layout-row-name-error"
-            >
-              Two rows are both named “{{ clash }}”. Give each row its own name before saving.
-            </p>
-          }
-        </section>
-      }
     </div>
 
     <!-- The mode-switched surface: the paint grid, or the per-set editor with S1's selection state. -->
@@ -399,13 +315,7 @@
                 type="button"
                 (click)="onSave()"
                 [disabled]="!hasLayout()"
-                [appBusy]="
-                  saving() ||
-                  previewing() ||
-                  committing() ||
-                  remodelPreview() !== null ||
-                  renamingRow() !== null
-                "
+                [appBusy]="saving() || previewing() || committing() || remodelPreview() !== null"
                 data-testid="layout-save"
                 class="rounded-[14px] bg-(image:--riv-cta-grad) px-5 py-2.5 text-[14px] font-bold text-white shadow-[0_8px_22px_rgba(11,120,150,0.35)] disabled:opacity-50 aria-disabled:opacity-50"
               >

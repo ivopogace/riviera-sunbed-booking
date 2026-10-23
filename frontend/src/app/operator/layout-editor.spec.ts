@@ -899,79 +899,23 @@ describe('LayoutEditor (#172)', () => {
     expect(byId('layout-dirty-count').textContent).toContain('1 unsaved change');
   });
 
-  it('discard never reverts a row rename that already saved on its own PUT (#712 review)', async () => {
-    render([seat(1, 'PREMIUM', 'ONLINE', 1, 1, 'A'), seat(2, 'STANDARD', 'ONLINE', 1, 2, 'B')], 3);
-    useBulkMode();
-
-    // Paint an unrelated cell dirty — row B, currently 'standard', to the default 'premium' brush.
-    cells()[1].click();
-    fixture.detectChanges();
-    expect(byId('layout-dirty-count').textContent).not.toContain('No unsaved changes');
-
-    setRowName(1, 'Back row');
-    rowNameSaves()[1].click();
-    http
-      .expectOne((r) => r.method === 'PUT' && r.url.endsWith('/api/venues/1/rows/B/name'))
-      .flush(null);
-    await fixture.whenStable();
-    fixture.detectChanges();
-
-    byId('layout-discard').click();
-    fixture.detectChanges();
-
-    // The unrelated paint is undone, but the already-saved rename is not.
-    expect(rowNameInputs()[1].value).toBe('Back row');
-  });
-
-  function rowNameInputs(): HTMLInputElement[] {
-    return Array.from(host.querySelectorAll<HTMLInputElement>('[data-testid="layout-row-name"]'));
-  }
-
-  function setRowName(index: number, value: string): void {
-    const input = rowNameInputs()[index];
-    input.value = value;
-    input.dispatchEvent(new Event('input'));
-    fixture.detectChanges();
-  }
-
-  it('saves the operator’s row name; untouched and blanked rows keep grid letters (#723)', () => {
-    render();
-    generate('2', '2');
-
-    setRowName(0, ' Under the pines ');
-    setRowName(1, '   '); // a blanked name falls back to the derived grid letter
-
-    byId('layout-save').click();
-    const req = http.expectOne(
-      (r) => r.method === 'PUT' && r.url.includes('/api/venues/1/beach-map'),
-    );
-    expect(body(req).sets.map((s) => s.rowLabel)).toEqual([
-      'Under the pines',
-      'Under the pines',
-      'B',
-      'B',
-    ]);
-    req.flush(null);
-  });
-
-  it('preserves loaded row labels on an untouched save (#723)', () => {
+  it('saves every row by its grid letter, whatever label was loaded, and offers no row names (#1586)', () => {
     render([
       seat(1, 'PREMIUM', 'ONLINE', 1, 1, 'Front row · Sea view'),
       seat(2, 'STANDARD', 'ONLINE', 1, 2, 'Row 2'),
     ]);
     useBulkMode();
 
-    expect(rowNameInputs().map((i) => i.value)).toEqual(['Front row · Sea view', 'Row 2']);
-
+    expect(host.querySelector('input[aria-label$=" name"]')).toBeNull();
     byId('layout-save').click();
     const req = http.expectOne(
       (r) => r.method === 'PUT' && r.url.includes('/api/venues/1/beach-map'),
     );
-    expect(body(req).sets.map((s) => s.rowLabel)).toEqual(['Front row · Sea view', 'Row 2']);
+    expect(body(req).sets.map((s) => s.rowLabel)).toEqual(['A', 'B']);
     req.flush(null);
   });
 
-  it('keeps the grid letter in cell names, notices and the rename announcement on a named row; only the save button names the stored label (#1524, #723)', async () => {
+  it('names rows by grid letter in cell names and notices, even over a loaded authored label (#1524)', () => {
     render(
       [
         seat(1, 'PREMIUM', 'ONLINE', 1, 1, 'Front row · Sea view'),
@@ -981,231 +925,43 @@ describe('LayoutEditor (#172)', () => {
     );
     useBulkMode();
 
-    // Positional identity beside the grid being painted (#723, #724): the stored name stays in its input.
     expect(cells()[0].getAttribute('aria-label')).toBe(
       'Row A position 1, front row, premium, online',
     );
     expect(cells()[1].getAttribute('aria-label')).toBe('Row B position 1, standard, online');
-    expect(rowNameInputs().map((i) => i.value)).toEqual(['Front row · Sea view', 'Row 2']);
 
     byId('layout-tool-gap').click();
     fixture.detectChanges();
     cells()[1].click();
     fixture.detectChanges();
     expect(byId('layout-last-change').textContent?.trim()).toBe('Row B · position 1 → Gap / aisle');
-
-    // The save button names the row as stored — never "for row Row 2".
-    expect(rowNameSaves()[1].getAttribute('aria-label')).toBe('Save the name for Row 2');
-    setRowName(1, 'Under the pines');
-    rowNameSaves()[1].click();
-    http
-      .expectOne(
-        (r) =>
-          r.method === 'PUT' &&
-          r.url.endsWith(`/api/venues/1/rows/${encodeURIComponent('Row 2')}/name`),
-      )
-      .flush(null);
-    await fixture.whenStable();
-    fixture.detectChanges();
-    expect(byId('layout-row-name-saved-announce').textContent?.trim()).toBe('Row B name saved.');
-    expect(rowNameSaves()[1].getAttribute('aria-label')).toBe('Save the name for Under the pines');
   });
 
-  it('blocks saving duplicate row names with row-name copy, before any PUT (#723)', () => {
-    render();
-    generate('2', '2');
-
-    setRowName(0, 'Pines');
-    setRowName(1, ' Pines ');
-
-    byId('layout-save').click();
-    http.expectNone((r) => r.method === 'PUT');
-    expect(byId('layout-row-name-error').textContent).toContain('name');
-
-    // Fixing the clash clears the message and lets the save through.
-    setRowName(1, 'Back');
-    expect(byId('layout-row-name-error')).toBeFalsy();
-    byId('layout-save').click();
-    http
-      .expectOne((r) => r.method === 'PUT' && r.url.includes('/api/venues/1/beach-map'))
-      .flush(null);
-  });
-
-  it('a confirmed regenerate resets row names to the grid-letter defaults (#723)', () => {
-    render();
-    generate('2', '2');
-    setRowName(0, 'Pines');
-
-    byId('layout-generate').click();
-    fixture.detectChanges();
-    byId('layout-confirm-yes').click();
-    fixture.detectChanges();
-
-    expect(rowNameInputs().map((i) => i.value)).toEqual(['A', 'B']);
-  });
-
-  function rowNameSaves(): HTMLButtonElement[] {
-    return Array.from(
-      host.querySelectorAll<HTMLButtonElement>('[data-testid="layout-row-name-save"]'),
-    );
-  }
-
-  /** A trading venue: two saved rows, so the bulk save is locked but each row is renameable. */
+  /** A trading venue: two saved rows. */
   function renderSaved(): void {
     render([seat(1, 'PREMIUM', 'ONLINE', 1, 1, 'A'), seat(2, 'STANDARD', 'ONLINE', 1, 2, 'B')], 3);
     useBulkMode();
   }
 
-  it('saves one row’s name without the bulk save (#726)', async () => {
+  it("clears the previous venue's grid when the venue switches", () => {
     renderSaved();
-
-    setRowName(1, 'Back row');
-    rowNameSaves()[1].click();
-
-    const req = http.expectOne(
-      (r) => r.method === 'PUT' && r.url.endsWith('/api/venues/1/rows/B/name'),
-    );
-    expect(req.request.body).toEqual({ newLabel: 'Back row', expectedVersion: 3 });
-    req.flush(null);
-    await fixture.whenStable();
-    fixture.detectChanges();
-
-    expect(byId('layout-row-name-saved')).toBeTruthy();
-    // The write bumped set_version, so a follow-up rename must not carry the spent token.
-    setRowName(0, 'Front row');
-    rowNameSaves()[0].click();
-    const next = http.expectOne(
-      (r) => r.method === 'PUT' && r.url.endsWith('/api/venues/1/rows/A/name'),
-    );
-    expect(next.request.body).toEqual({ newLabel: 'Front row', expectedVersion: 4 });
-    next.flush(null);
-    await fixture.whenStable();
-  });
-
-  it('re-announces a second row rename by naming the row (#1078)', async () => {
-    renderSaved();
-
-    // One region for the editor, never one per row: the sentence names the row instead.
-    const announce = byId('layout-row-name-saved-announce');
-    expect(announce).toBeTruthy();
-    expect(announce.textContent?.trim()).toBe('');
-
-    setRowName(1, 'Back row');
-    rowNameSaves()[1].click();
-    http
-      .expectOne((r) => r.method === 'PUT' && r.url.endsWith('/api/venues/1/rows/B/name'))
-      .flush(null);
-    await fixture.whenStable();
-    fixture.detectChanges();
-    expect(byId('layout-row-name-saved-announce')).toBe(announce);
-    expect(announce.textContent).toContain('Row B');
-
-    setRowName(0, 'Front row');
-    rowNameSaves()[0].click();
-    http
-      .expectOne((r) => r.method === 'PUT' && r.url.endsWith('/api/venues/1/rows/A/name'))
-      .flush(null);
-    await fixture.whenStable();
-    fixture.detectChanges();
-
-    // A row-agnostic "Row name saved." would not have changed here, so nothing would be spoken.
-    expect(byId('layout-row-name-saved-announce')).toBe(announce);
-    expect(announce.textContent).toContain('Row A');
-    expect(byId('layout-row-name-saved').getAttribute('aria-hidden')).toBe('true');
-  });
-
-  it('drops the row-name notice when the venue is switched in place (#1122)', async () => {
-    renderSaved();
-
-    setRowName(1, 'Back row');
-    rowNameSaves()[1].click();
-    http
-      .expectOne((r) => r.method === 'PUT' && r.url.endsWith('/api/venues/1/rows/B/name'))
-      .flush(null);
-    await fixture.whenStable();
-    fixture.detectChanges();
-    const announce = byId('layout-row-name-saved-announce');
-    expect(announce.textContent).toContain('Row B');
-
-    params$.next(convertToParamMap({ venueId: '2' }));
-    fixture.detectChanges();
-    http
-      .expectOne((r) => r.method === 'GET' && r.url.includes('/api/venues/2'))
-      .flush({ map: { id: 2, name: 'W', sets: [], setVersion: 0 }, locks: [] });
-    fixture.detectChanges();
-
-    // Emptied, never unmounted: a live region must keep outliving the branch it describes.
-    expect(byId('layout-row-name-saved-announce')).toBe(announce);
-    expect(announce.textContent?.trim()).toBe('');
-  });
-
-  it("clears the previous venue's grid and row names when the venue switches", () => {
-    renderSaved();
-    setRowName(1, 'Back terrace');
     expect(cells().length).toBe(2);
-    expect(rowNameInputs().length).toBe(2);
 
     params$.next(convertToParamMap({ venueId: '2' }));
     fixture.detectChanges();
 
     // Asserted mid-flight: the draft drops on the switch, not on venue 2's response.
     expect(host.querySelector('[data-testid="layout-cell"]')).toBeNull();
-    expect(host.querySelector('[data-testid="layout-row-name"]')).toBeNull();
     // The DOM above is unmounted either way; the draft itself is the seam that sees the reset.
     const draft = fixture.componentInstance as unknown as {
       grid: () => readonly unknown[];
-      rowNames: () => readonly string[];
       loadedSets: () => readonly unknown[];
-      storedRowNames: () => readonly unknown[];
     };
     expect(draft.grid()).toEqual([]);
-    expect(draft.rowNames()).toEqual([]);
     expect(draft.loadedSets()).toEqual([]);
-    expect(draft.storedRowNames()).toEqual([]);
     http
       .expectOne((r) => r.method === 'GET' && r.url.includes('/api/venues/2'))
       .flush({ map: { id: 2, name: 'W', sets: [], setVersion: 0 }, locks: [] });
-  });
-
-  it('drops a row-name write error when the venue switches, and never resurrects it (#1125)', async () => {
-    renderSaved();
-
-    setRowName(1, 'A');
-    rowNameSaves()[1].click();
-    http
-      .expectOne((r) => r.method === 'PUT' && r.url.endsWith('/api/venues/1/rows/B/name'))
-      .flush({ code: 'ROW_NAME_TAKEN' }, { status: 409, statusText: 'Conflict' });
-    await fixture.whenStable();
-    fixture.detectChanges();
-    expect(byId('layout-row-name-write-error')).toBeTruthy();
-
-    params$.next(convertToParamMap({ venueId: '2' }));
-    fixture.detectChanges();
-
-    expect(host.querySelector('[data-testid="layout-row-name-write-error"]')).toBeNull();
-    http
-      .expectOne((r) => r.method === 'GET' && r.url.includes('/api/venues/2'))
-      .flush({ map: { id: 2, name: 'W', sets: [], setVersion: 0 }, locks: [] });
-
-    // Back on the first venue the rows render again; the stale failure must not ride back in.
-    params$.next(convertToParamMap({ venueId: '1' }));
-    fixture.detectChanges();
-    http
-      .expectOne((r) => r.method === 'GET' && r.url.includes('/api/venues/1'))
-      .flush({
-        map: {
-          id: 1,
-          name: 'V',
-          sets: [seat(1, 'PREMIUM', 'ONLINE', 1, 1, 'A'), seat(2, 'STANDARD', 'ONLINE', 1, 2, 'B')],
-          setVersion: 4,
-        },
-        locks: [],
-      });
-    fixture.detectChanges();
-    useBulkMode();
-
-    expect(rowNameInputs().length).toBe(2);
-    expect(host.querySelector('[data-testid="layout-row-name-write-error"]')).toBeNull();
   });
 
   it("drops venue A's remodel receipt and preview when the venue switches (#1125)", async () => {
@@ -1259,326 +1015,6 @@ describe('LayoutEditor (#172)', () => {
     useBulkMode();
 
     expect(cells().length).toBe(1);
-    expect(rowNameInputs().length).toBe(1);
-  });
-
-  it('renames the row the URL names even after the draft changed twice (#726)', async () => {
-    renderSaved();
-
-    setRowName(1, 'Back');
-    setRowName(1, 'Back row');
-    rowNameSaves()[1].click();
-
-    // The path carries the STORED label, never the draft — otherwise the second save 404s.
-    http
-      .expectOne((r) => r.method === 'PUT' && r.url.endsWith('/api/venues/1/rows/B/name'))
-      .flush(null);
-    await fixture.whenStable();
-    fixture.detectChanges();
-
-    setRowName(1, 'Back terrace');
-    rowNameSaves()[1].click();
-    const req = http.expectOne(
-      (r) => r.method === 'PUT' && r.url.endsWith('/api/venues/1/rows/Back%20row/name'),
-    );
-    req.flush(null);
-    await fixture.whenStable();
-  });
-
-  it('describes only the failing row\u2019s name input', async () => {
-    renderSaved();
-
-    setRowName(1, 'A');
-    rowNameSaves()[1].click();
-    http
-      .expectOne((r) => r.method === 'PUT' && r.url.endsWith('/api/venues/1/rows/B/name'))
-      .flush({ code: 'ROW_NAME_TAKEN' }, { status: 409, statusText: 'Conflict' });
-    await fixture.whenStable();
-    fixture.detectChanges();
-
-    const failing = rowNameInputs()[1];
-    expect(failing.getAttribute('aria-describedby')).toBe(byId('layout-row-name-write-error').id);
-    expect(failing.getAttribute('aria-invalid')).toBe('true');
-
-    // R-2: the ref is declared inside the @for body, so the sibling row must be untouched.
-    expect(rowNameInputs()[0].hasAttribute('aria-describedby')).toBe(false);
-    expect(rowNameInputs()[0].hasAttribute('aria-invalid')).toBe(false);
-  });
-
-  it('describes a refused rename without calling the typed name invalid', async () => {
-    renderSaved();
-
-    setRowName(1, 'A');
-    rowNameSaves()[1].click();
-    http
-      .expectOne((r) => r.method === 'PUT' && r.url.endsWith('/api/venues/1/rows/B/name'))
-      .flush({ code: 'NOT_VENUE_OWNER' }, { status: 403, statusText: 'Forbidden' });
-    await fixture.whenStable();
-    fixture.detectChanges();
-
-    const failing = rowNameInputs()[1];
-    expect(failing.getAttribute('aria-describedby')).toBe(byId('layout-row-name-write-error').id);
-    // The name is fine; the write was refused. Only a taken or malformed name is a bad value.
-    expect(failing.hasAttribute('aria-invalid')).toBe(false);
-  });
-
-  it('surfaces a taken row name against the row that asked, keeping the draft (#726)', async () => {
-    renderSaved();
-
-    setRowName(1, 'A');
-    rowNameSaves()[1].click();
-    http
-      .expectOne((r) => r.method === 'PUT' && r.url.endsWith('/api/venues/1/rows/B/name'))
-      .flush({ code: 'ROW_NAME_TAKEN' }, { status: 409, statusText: 'Conflict' });
-    await fixture.whenStable();
-    fixture.detectChanges();
-
-    expect(byId('layout-row-name-write-error').textContent).toContain('name');
-    // The typed draft survives so the operator can correct it rather than retype from scratch.
-    expect(rowNameInputs()[1].value).toBe('A');
-    // A per-row conflict is not the venue-level stale banner.
-    expect(host.querySelector('[data-testid="layout-stale-banner"]')).toBeNull();
-  });
-
-  it('routes a stale rename into the reload banner, not the row error (#726)', async () => {
-    renderSaved();
-
-    setRowName(1, 'Back row');
-    rowNameSaves()[1].click();
-    http
-      .expectOne((r) => r.method === 'PUT' && r.url.endsWith('/api/venues/1/rows/B/name'))
-      .flush({ code: 'STALE_WRITE' }, { status: 409, statusText: 'Conflict' });
-    await fixture.whenStable();
-    fixture.detectChanges();
-
-    expect(byId('layout-stale-banner')).toBeTruthy();
-    expect(host.querySelector('[data-testid="layout-row-name-write-error"]')).toBeNull();
-  });
-
-  it('explains every rename failure the panel can receive (#726)', async () => {
-    // One case per rowNameErrorMessage arm: an unexplained code falls back to generic copy.
-    const cases: [string, string][] = [
-      ['ROW_NAME_TAKEN', 'Another row already has that name'],
-      ['NO_SUCH_ROW', 'no longer exists'],
-      ['NOT_VENUE_OWNER', 'do not manage this venue'],
-      ['NO_SUCH_VENUE', 'could not be found'],
-      ['INVALID_REQUEST', 'up to 40 characters'],
-      ['WHAT_IS_THIS', 'Something went wrong'],
-    ];
-    for (const [code, expected] of cases) {
-      renderSaved();
-      setRowName(1, 'Back row');
-      rowNameSaves()[1].click();
-      http
-        .expectOne((r) => r.method === 'PUT' && r.url.endsWith('/api/venues/1/rows/B/name'))
-        .flush({ code }, { status: 409, statusText: 'Conflict' });
-      await fixture.whenStable();
-      fixture.detectChanges();
-
-      expect(byId('layout-row-name-write-error').textContent).toContain(expected);
-      http.verify();
-      TestBed.resetTestingModule();
-    }
-  });
-
-  it('signs the operator out when a rename comes back 401 (#726)', async () => {
-    renderSaved();
-
-    setRowName(1, 'Back row');
-    rowNameSaves()[1].click();
-    http
-      .expectOne((r) => r.method === 'PUT' && r.url.endsWith('/api/venues/1/rows/B/name'))
-      .flush({ code: 'UNAUTHENTICATED' }, { status: 401, statusText: 'Unauthorized' });
-    await fixture.whenStable();
-    fixture.detectChanges();
-
-    expect(byId('layout-row-name-write-error').textContent).toContain('session has expired');
-  });
-
-  it('ignores a rename that a venue switch superseded (#726, #180)', async () => {
-    renderSaved();
-
-    setRowName(1, 'Back row');
-    rowNameSaves()[1].click();
-    const req = http.expectOne(
-      (r) => r.method === 'PUT' && r.url.endsWith('/api/venues/1/rows/B/name'),
-    );
-
-    // A venue switch mid-flight: the rename's outcome must not land on the new venue's editor.
-    params$.next(convertToParamMap({ venueId: '2' }));
-    fixture.detectChanges();
-    http
-      .expectOne((r) => r.method === 'GET' && r.url.includes('/api/venues/2'))
-      .flush({ map: { id: 2, name: 'W', sets: [], setVersion: 0 }, locks: [] });
-    req.flush(null);
-    await fixture.whenStable();
-    fixture.detectChanges();
-
-    expect(host.querySelector('[data-testid="layout-row-name-saved"]')).toBeNull();
-  });
-
-  it('drops a superseded rename failure after a venue switch too (#726, #180)', async () => {
-    renderSaved();
-
-    setRowName(1, 'Back row');
-    rowNameSaves()[1].click();
-    const req = http.expectOne(
-      (r) => r.method === 'PUT' && r.url.endsWith('/api/venues/1/rows/B/name'),
-    );
-
-    params$.next(convertToParamMap({ venueId: '2' }));
-    fixture.detectChanges();
-    http
-      .expectOne((r) => r.method === 'GET' && r.url.includes('/api/venues/2'))
-      .flush({ map: { id: 2, name: 'W', sets: [], setVersion: 0 }, locks: [] });
-    req.flush({ code: 'ROW_NAME_TAKEN' }, { status: 409, statusText: 'Conflict' });
-    await fixture.whenStable();
-    fixture.detectChanges();
-
-    expect(host.querySelector('[data-testid="layout-row-name-write-error"]')).toBeNull();
-  });
-
-  it('ignores a second rename while one is already in flight (#726)', async () => {
-    renderSaved();
-
-    setRowName(1, 'Back row');
-    rowNameSaves()[1].click();
-    const req = http.expectOne(
-      (r) => r.method === 'PUT' && r.url.endsWith('/api/venues/1/rows/B/name'),
-    );
-
-    // The shared token cannot admit two concurrent writes, so the second click is dropped.
-    rowNameSaves()[0].click();
-    http.expectNone((r) => r.method === 'PUT' && r.url.endsWith('/api/venues/1/rows/A/name'));
-
-    req.flush(null);
-    await fixture.whenStable();
-  });
-
-  it('does not rename a row when the map read never yielded a token (#726)', () => {
-    renderWithFailedLoad();
-
-    // No setVersion and no stored rows: the same guard seen from both sides.
-    expect(rowNameSaves()).toHaveLength(0);
-    http.expectNone((r) => r.method === 'PUT');
-  });
-
-  it('clears a rename notice when the venue switches in place (#726 review F-6)', async () => {
-    renderSaved();
-    setRowName(1, 'Back row');
-    rowNameSaves()[1].click();
-    http
-      .expectOne((r) => r.method === 'PUT' && r.url.endsWith('/api/venues/1/rows/B/name'))
-      .flush(null);
-    await fixture.whenStable();
-    fixture.detectChanges();
-    expect(byId('layout-row-name-saved')).toBeTruthy();
-
-    params$.next(convertToParamMap({ venueId: '2' }));
-    fixture.detectChanges();
-    http
-      .expectOne((r) => r.method === 'GET' && r.url.includes('/api/venues/2'))
-      .flush({
-        map: { id: 2, name: 'W', sets: [seat(9, 'STANDARD', 'ONLINE', 1, 1, 'Z')], setVersion: 0 },
-        locks: [],
-      });
-    fixture.detectChanges();
-    useBulkMode();
-
-    // The notice was pinned to a grid index on venue 1; venue 2's row never was renamed.
-    expect(host.querySelector('[data-testid="layout-row-name-saved"]')).toBeNull();
-  });
-
-  it('clears a rename error when a stale reload re-indexes the rows (#726 review F-11)', async () => {
-    renderSaved();
-    // Not a LOCAL duplicate, so the duplicate-name guard passes the bulk save; the server refuses.
-    setRowName(1, 'Front row');
-    rowNameSaves()[1].click();
-    http
-      .expectOne((r) => r.method === 'PUT' && r.url.endsWith('/api/venues/1/rows/B/name'))
-      .flush({ code: 'ROW_NAME_TAKEN' }, { status: 409, statusText: 'Conflict' });
-    await fixture.whenStable();
-    fixture.detectChanges();
-    expect(byId('layout-row-name-write-error')).toBeTruthy();
-
-    // A bulk-save conflict's Reload re-seeds the grid; the row at index 1 may now be a different row.
-    byId('layout-save').click();
-    http
-      .expectOne((r) => r.method === 'PUT' && r.url.includes('/api/venues/1/beach-map'))
-      .flush({ code: 'STALE_WRITE' }, { status: 409, statusText: 'Conflict' });
-    await fixture.whenStable();
-    fixture.detectChanges();
-    byId('layout-stale-reload').click();
-    http
-      .expectOne((r) => r.method === 'GET' && r.url.includes('/api/venues/1'))
-      .flush({
-        map: { id: 1, name: 'V', sets: [seat(1, 'PREMIUM', 'ONLINE', 1, 1, 'A')], setVersion: 9 },
-        locks: [],
-      });
-    fixture.detectChanges();
-
-    expect(host.querySelector('[data-testid="layout-row-name-write-error"]')).toBeNull();
-  });
-
-  it('does not race a rename against an in-flight bulk save (#726 review F-7)', async () => {
-    renderSaved();
-
-    byId('layout-save').click();
-    const save = http.expectOne(
-      (r) => r.method === 'PUT' && r.url.includes('/api/venues/1/beach-map'),
-    );
-
-    // Both writes turn on the one set_version token, so the rename must wait rather than false-conflict.
-    setRowName(1, 'Back row');
-    rowNameSaves()[1].click();
-    http.expectNone((r) => r.method === 'PUT' && r.url.endsWith('/api/venues/1/rows/B/name'));
-
-    save.flush(null);
-    await fixture.whenStable();
-  });
-
-  it('treats a cleared name field as cancel, not a rename to the grid letter (#726 review R2-10)', async () => {
-    renderSaved();
-
-    setRowName(1, '');
-    rowNameSaves()[1].click();
-    await fixture.whenStable();
-    fixture.detectChanges();
-
-    // Renaming row B to "B" would be a visible change for guests already booked into it.
-    http.expectNone((r) => r.method === 'PUT');
-    expect(rowNameInputs()[1].value).toBe('B');
-  });
-
-  it('never sends a same-label rename, so the token cannot run ahead of the server (#726)', async () => {
-    renderSaved();
-
-    // The server would no-op without bumping, leaving this tab a version ahead of it.
-    rowNameSaves()[1].click();
-    await fixture.whenStable();
-    fixture.detectChanges();
-    http.expectNone((r) => r.method === 'PUT');
-    expect(byId('layout-row-name-saved')).toBeTruthy();
-
-    // The token is untouched, so a real rename right after still carries the loaded value.
-    setRowName(1, 'Back row');
-    rowNameSaves()[1].click();
-    const req = http.expectOne(
-      (r) => r.method === 'PUT' && r.url.endsWith('/api/venues/1/rows/B/name'),
-    );
-    expect(req.request.body).toEqual({ newLabel: 'Back row', expectedVersion: 3 });
-    req.flush(null);
-    await fixture.whenStable();
-  });
-
-  it('offers no per-row rename on a grid that was never saved (#726)', () => {
-    render();
-    generate('2', '2');
-
-    setRowName(0, 'Pines');
-
-    // Nothing is stored yet, so there is no row to rename — the bulk save creates these labels.
-    expect(rowNameSaves()).toHaveLength(0);
   });
 
   it('drops the shared console snapshot after a successful save (#486 AC-4)', async () => {

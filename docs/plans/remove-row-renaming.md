@@ -95,16 +95,16 @@ data-preservation step).
 
 ## Execution status
 
-**Stage pointer:** implement (phase 3)
+**Stage pointer:** PR — CI on the full slice, then ready for review
 
-**Next action:** layout editor: drop the Row names panel and state.
+**Next action:** check CI, mark ready, run the review gate (high).
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — derive the label | ✅ | backend commit |
 | 1 — delete rename chain | ✅ | backend commit |
 | 2 — migration V78 | ✅ | backend commit |
-| 3 — frontend | ⏳ | |
-| 4 — docs | | |
+| 3 — frontend | ✅ | frontend commit |
+| 4 — docs | ✅ | frontend commit |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
