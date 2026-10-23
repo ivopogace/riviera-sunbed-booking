@@ -72,7 +72,7 @@ interface MockLock {
 async function mockEditor(
   page: Page,
   refusing: (MockLock & { rowLabel: string; positionNo: number })[] = [],
-  seededSets: typeof VENUE_MAP.sets = [],
+  seededSets: typeof SEEDED_SETS = [],
   locks: MockLock[] = [],
   preview: object = EMPTY_PREVIEW,
 ): Promise<{
