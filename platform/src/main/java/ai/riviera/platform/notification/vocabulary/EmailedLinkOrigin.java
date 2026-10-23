@@ -8,7 +8,7 @@ import java.util.regex.Pattern;
 
 /**
  * The one rule for the deployed origin every emailed link is built on, bound under each consumer's own key: an
- * absolute {@code http}/{@code https} URL with a host (an underscored hostname such as {@code riviera_backend} too),
+ * absolute {@code http}/{@code https} URL with a host, no trailing dot (underscores between letters or digits allowed),
  * any port within 1..65535, no user info, query, fragment or percent-escape; stripped, trailing slashes trimmed. A
  * rejection names the key and variable, never the value, which may carry credentials into the boot log. Placement:
  * RESPONSIBILITIES.md §notification.
@@ -18,8 +18,8 @@ public final class EmailedLinkOrigin {
 	private static final Set<String> SCHEMES = Set.of("http", "https");
 
 	/**
-	 * Underscores inside a label, which {@link URI} reads as a registry authority: read as letters, an underscored
-	 * host passes exactly when the hostname grammar admits it, so a label that is or edges on {@code _} still fails.
+	 * Underscores between letters or digits. An authority holding one is not a {@link URI} server authority, so it is
+	 * re-parsed with them read as letters: it passes when that hostname does, and an edge or lone {@code _} fails.
 	 */
 	private static final Pattern INNER_UNDERSCORES = Pattern.compile("(?<=[A-Za-z0-9])_+(?=[A-Za-z0-9])");
 
@@ -57,8 +57,10 @@ public final class EmailedLinkOrigin {
 				|| parsed.getRawQuery() != null || parsed.getRawFragment() != null) {
 			return false;
 		}
-		URI server = parsed.getHost() != null ? parsed : parse(INNER_UNDERSCORES.matcher(value).replaceAll("a"));
-		return server != null && server.getHost() != null && (server.getPort() == -1 || isPort(server.getPort()));
+		URI server = parsed.getHost() != null ? parsed
+				: parse(parsed.getScheme() + "://" + INNER_UNDERSCORES.matcher(authority).replaceAll("a"));
+		return server != null && server.getHost() != null && !server.getHost().endsWith(".")
+				&& (server.getPort() == -1 || isPort(server.getPort()));
 	}
 
 	private static URI parse(String value) {

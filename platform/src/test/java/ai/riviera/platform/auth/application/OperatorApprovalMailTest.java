@@ -45,7 +45,7 @@ class OperatorApprovalMailTest {
 	}
 
 	@Test
-	void buildsTheSignInLinkOnATrailingSlashedRegistryStyleOrigin() {
+	void buildsTheSignInLinkOnATrailingSlashedUnderscoredOrigin() {
 		new OperatorApprovalMail(mails, new RecoveryProperties(Duration.ofHours(24), Duration.ofHours(1),
 				"http://riviera_backend:8080/")).notifyApproved(new ApprovalOutcome.Approved(EMAIL));
 

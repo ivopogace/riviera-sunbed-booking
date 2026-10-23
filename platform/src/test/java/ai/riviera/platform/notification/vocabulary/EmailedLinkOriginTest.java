@@ -19,8 +19,8 @@ class EmailedLinkOriginTest {
 	@ValueSource(strings = { "https://app.example", "http://localhost:4200", "HTTPS://App.Example",
 			"http://riviera_backend:8080", "http://riviera_backend:65535", "https://app.example:443",
 			"http://[::1]:8080", "http://10.0.0.7", "https://app.example/riviera", "http://riviera_backend.internal:8080",
-			"http://riviera_backend:8080/riviera", "http://riviera__backend", "https://app.example.",
-			"http://riviera_backend." })
+			"http://riviera_backend:8080/riviera", "http://riviera__backend", "http://riviera-backend_1:8080",
+			"http://riviera_backend.internal_net" })
 	void acceptsAnHttpOrHttpsOrigin(String value) {
 		assertEquals(value, EmailedLinkOrigin.require(KEY, VARIABLE, value));
 	}
@@ -62,6 +62,7 @@ class EmailedLinkOriginTest {
 			"http://riviera_backend:0", "https://app.example:65536", "https://app.example:0", "http://..", "http://-",
 			"http://~", "http://999.999.999.999", "http://-riviera_backend", "http://999_.1", "http://_",
 			"http://_._", "http://a._", "http://_.example", "http://_-a", "http://a-_", "http://riviera_backend_",
+			"https://app.example.", "http://riviera_backend.",
 			"https://app.example/my%20app", "http://[fe80::1%25eth0]:8080", "https://app.example:",
 			"http://riviera_backend:" })
 	void rejectsAnythingButAnHttpOrHttpsOriginWithAHost(String value) {

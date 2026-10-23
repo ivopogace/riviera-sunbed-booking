@@ -113,18 +113,18 @@ class RecoveryPropertiesBindingTest {
 							.hasMessageContaining("riviera.recovery.link-base-url");
 					BindException bind = null;
 					for (Throwable cause = context.getStartupFailure(); cause != null; cause = cause.getCause()) {
-						assertThat(cause.getMessage()).doesNotContain("hunter2");
-						bind = cause instanceof BindException found ? found : bind;
+						assertThat(String.valueOf(cause.getMessage())).doesNotContain("hunter2");
+						bind = bind == null && cause instanceof BindException found ? found : bind;
 					}
 					assertThat(bind).isNotNull();
 					assertThat(bind.getProperty())
-							.as("Boot's failure analyzer prints a 'Value:' line only for a named property")
+							.as("Boot's failure analyzer reads the outermost one and prints 'Value:' only for a named property")
 							.isNull();
 				});
 	}
 
 	@Test
-	void aTrailingSlashedRegistryStyleLinkBaseUrlBindsTrimmed() {
+	void aTrailingSlashedUnderscoredLinkBaseUrlBindsTrimmed() {
 		recoveryRunner().withSystemProperties("RIVIERA_RECOVERY_LINK_BASE_URL=http://riviera_backend:8080/")
 				.run(context -> assertThat(context.getBean(RecoveryProperties.class).linkBaseUrl())
 						.isEqualTo("http://riviera_backend:8080"));
