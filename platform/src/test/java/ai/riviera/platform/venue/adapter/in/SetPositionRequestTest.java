@@ -17,7 +17,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 class SetPositionRequestTest {
 
 	private static SetPositionRequest withPool(String pool) {
-		return new SetPositionRequest("Row A", 1, "STANDARD", pool, new MoneyView(3000, "EUR"), 1, 1);
+		return new SetPositionRequest(1, "STANDARD", pool, new MoneyView(3000, "EUR"), 1, 1);
 	}
 
 	@Test

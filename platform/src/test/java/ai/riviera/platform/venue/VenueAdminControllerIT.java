@@ -451,12 +451,11 @@ class VenueAdminControllerIT {
 		addSet(venue, setBody("Front row", 1, "PREMIUM", "ONLINE", 4500, "EUR", 1, 1));
 		addSet(venue, setBody("Front row", 2, "STANDARD", "WALK_IN", 2500, "EUR", 2, 1));
 
-		// AC-2: both sets appear in the read API with the exact field values entered, ordered for
-		// rendering (grid_y, grid_x), and from-price is the cheapest.
+		// AC-2: read back in (grid_y, grid_x) order, row label the grid letter (#1586), cheapest from-price.
 		mvc.perform(get("/api/venues/{id}", venue))
 				.andExpect(status().isOk())
 				.andExpect(jsonPath("$.sets.length()").value(2))
-				.andExpect(jsonPath("$.sets[0].rowLabel").value("Front row"))
+				.andExpect(jsonPath("$.sets[0].rowLabel").value("A"))
 				.andExpect(jsonPath("$.sets[0].tier").value("PREMIUM"))
 				.andExpect(jsonPath("$.sets[0].pool").value("ONLINE"))
 				.andExpect(jsonPath("$.sets[0].price.minorUnits").value(4500))
@@ -706,10 +705,10 @@ class VenueAdminControllerIT {
 		long venue = createVenue("Position Club");
 		addSet(venue, setBody("Row A", 1, "STANDARD", "ONLINE", 3000, "EUR", 1, 1));
 
-		// Same (row_label, position_no), different cell → 409 DUPLICATE_POSITION.
+		// Same row (grid row 1, so row A) and position number, different cell → 409 DUPLICATE_POSITION.
 		mvc.perform(post("/api/venues/{v}/sets", venue).cookie(operatorSession).with(csrf())
 						.contentType(MediaType.APPLICATION_JSON)
-						.content(setBody("Row A", 1, "STANDARD", "ONLINE", 3000, "EUR", 5, 5)))
+						.content(setBody("Row A", 1, "STANDARD", "ONLINE", 3000, "EUR", 5, 1)))
 				.andExpect(status().isConflict())
 				.andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
 				.andExpect(jsonPath("$.code").value("DUPLICATE_POSITION"));

@@ -156,7 +156,7 @@ class SetWriteVsClaimConcurrencyIT {
 				() -> {
 					start(gate, ordering, Ordering.WRITE_FIRST);
 					return editBeachMap.editSet(owner, venue, new SetId(setId),
-							new SetCommand("A", 1, "PREMIUM", Pool.WALK_IN, 3500, "EUR", 1, 1));
+							new SetCommand(1, "PREMIUM", Pool.WALK_IN, 3500, "EUR", 1, 1));
 				},
 				gate);
 		ClaimOutcome claimed = outcomes.claim();
