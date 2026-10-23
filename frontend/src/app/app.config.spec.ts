@@ -98,7 +98,7 @@ describe('appConfig MapEngine factory', () => {
 });
 
 /**
- * No fake to swap in: the mocked Playwright suite drives the real adapter through
+ * No e2e-flag fake: the mocked Playwright suite drives the real adapter through
  * `context.grantPermissions` + `setGeolocation`, and jsdom has no `navigator.geolocation` at all,
  * so the adapter reports itself unsupported there and no near-me control renders.
  */
@@ -112,7 +112,7 @@ describe('appConfig GeolocationGateway provider', () => {
   });
 });
 
-/** No fake to swap in: the mocked Playwright suite drives the real adapter (`chunk-load-failure.e2e.ts`, the SSO start). */
+/** No e2e-flag fake: the mocked Playwright suite drives the real adapter (`chunk-load-failure.e2e.ts`, the SSO start). */
 describe('appConfig PageNavigation provider', () => {
   it('serves the window adapter', () => {
     expect(factoryFor(PageNavigation)()).toBeInstanceOf(WindowPageNavigation);

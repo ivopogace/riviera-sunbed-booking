@@ -117,6 +117,7 @@ public class CustomerRecovery {
 				.path(path)
 				.queryParam(TOKEN_PARAM, rawToken)
 				.build()
+				.encode()
 				.toUri();
 	}
 }
