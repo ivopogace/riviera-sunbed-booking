@@ -24,7 +24,7 @@ interface OwnerBeachMap {
  * page, {@code RequestsTab} and {@code PricingTab} — `core/`, as the guard asks too. Opt-in per call site: {@code DailyViewTab}
  * and {@code LayoutEditor} need server truth. One slot; a changed venue or a Tirane day rollover evicts it, and
  * {@code OperatorAuth} drops it with the session. Call {@link reset} after every successful map write (layout, reprice,
- * per-set edits; a walk-in via {@code AvailabilityChanges#announce}) and BEFORE a `409 STALE_WRITE` recovery read.
+ * per-set edits; a walk-in or day refund via {@code AvailabilityChanges#announce}) and BEFORE a `409 STALE_WRITE` recovery read.
  */
 @Service()
 export class ConsoleVenueMap {

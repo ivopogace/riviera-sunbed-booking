@@ -79,13 +79,11 @@ function wideVenue() {
 /**
  * A venue that FITS the #700 desktop breakout: 14 columns is the width the issue names, and the
  * 1100px card renders it whole — 15 is the first width that pans, measured at 1280 (14 clears by
- * 13px, 15 misses by 49px). Five rows keeps it under the wash scroller's 532px cap, so "no hint"
- * means no hint on either axis.
+ * 34px, 15 misses by 28px, both on the 92px reservation). Five rows keeps it under the wash
+ * scroller's 532px cap, so "no hint" means no hint on either axis.
  *
- * <p>That boundary is now the SAME for every price vocabulary, which is what {@link bareFitVenue}
- * pins. It did not use to be: before #751 a bare-amount rail measured 52px rather than this
- * fixture's 112.66px chip, so such a venue fit at 15 and panned only at 16 while this one already
- * panned at 15. The reservation costs the bare venue that extra column and buys one boundary.
+ * <p>Its chips are bare amounts (`€50`, `€30`; #1587), far under the reservation, so its rail is
+ * the reservation — the same boundary {@link bareFitVenue} pins with one price everywhere.
  */
 function fitVenue() {
   const sets: MapSet[] = [];
@@ -159,11 +157,9 @@ function labelledVenue(id: number, name: string, frontRowLabel: string) {
 }
 
 /**
- * The fits-whole venue that actually PAYS for the price rail's 92px reservation (#751): 14
- * columns, and every zone a bare amount, so its rail is the reservation rather than a chip. The
- * premium front row of {@link fitVenue} rails at 112.66px and is therefore already wider than the
- * floor — it would pass this test without the reservation ever being spent, which is exactly the
- * fixture-shaped blind spot that lets a widened rail land unnoticed.
+ * The fits-whole venue that PAYS for the price rail's 92px reservation (#751): 14 columns, one
+ * price in every row, so one zone and one ~41px chip — its rail is the reservation rather than a
+ * chip, and its margin is the number a widened reservation has to spend.
  */
 function bareFitVenue() {
   const sets: MapSet[] = [];
@@ -349,14 +345,8 @@ test('a plain click on a free tile opens the booking dialog (and the map is acce
     .evaluate((el) => getComputedStyle(el).boxShadow);
   expect(frameShadow).toContain('rgba(7, 42, 58, 0.28)');
 
-  // One chip per zone (#672), Row 3's span (#689); a chip adds only tier/channel words (#724).
-  await expect(page.getByTestId('row-price')).toHaveText([
-    '€50 · Front row',
-    '€40',
-    '€35–€45',
-    '€30',
-    '€30 · at venue',
-  ]);
+  // One chip per zone, price only (#672, #689, #1587); the walk-in €30 row is its own zone (#702).
+  await expect(page.getByTestId('row-price')).toHaveText(['€50', '€40', '€35–€45', '€30', '€30']);
 
   // Taken sets are ghosts (#672): translucent FILL + dashed outline — group opacity broke AA.
   const ghost = await page

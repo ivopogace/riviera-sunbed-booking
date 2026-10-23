@@ -856,20 +856,20 @@ describe('VenueMap', () => {
     expect(column.classList.contains('min-w-[54px]')).toBe(true);
   });
 
-  it("renders the price once per zone, carrying the row's meaning (#672, #702)", async () => {
+  it('renders the price once per zone, and only the price (#672, #1587)', async () => {
     flushVenue();
     await settle();
     const prices = [...el().querySelectorAll('[data-testid="row-price"]')].map((n) =>
       n.textContent?.trim(),
     );
     // Rows B and C share €35 — one zone, one chip: 4 rows render 3 chips, from minor units.
-    // Each chip now says what the price buys: the named front row, the back row's channel.
-    expect(prices).toEqual(['€45 · Front row', '€35', '€25 · at venue']);
+    // The chip is the amount alone: the tiles and the legend carry front row and walk-in.
+    expect(prices).toEqual(['€45', '€35', '€25']);
   });
 
-  it('splits an equally-priced walk-in row into its own zone (#702)', async () => {
+  it('splits an equally-priced walk-in row into its own zone (#702, #1587)', async () => {
     const base = miramar();
-    // At row B/C's €35, price alone would fold row D into their zone and render no chip.
+    // At row B/C's €35, the walk-in flag in the zone key alone keeps row D its own zone.
     const sets = base.sets.map((s) =>
       s.pool === 'WALK_IN' ? { ...s, price: { minorUnits: 3500, currency: 'EUR' } } : s,
     );
@@ -879,7 +879,7 @@ describe('VenueMap', () => {
     const prices = [...el().querySelectorAll('[data-testid="row-price"]')].map((n) =>
       n.textContent?.trim(),
     );
-    expect(prices).toEqual(['€45 · Front row', '€35', '€35 · at venue']);
+    expect(prices).toEqual(['€45', '€35', '€35']);
     // …and the split is spatial too: D opens a zone, so the gap lands on all three columns.
     const zoneGaps = [false, true, false, true];
     expect(
@@ -910,7 +910,7 @@ describe('VenueMap', () => {
     const prices = [...el().querySelectorAll('[data-testid="row-price"]')].map((n) =>
       n.textContent?.trim(),
     );
-    expect(prices).toEqual(['€45 · Front row', '€35', '€25 · at venue']);
+    expect(prices).toEqual(['€45', '€35', '€25']);
     // Tiles announce only the stored label — "Set B1, C, …" can no longer be spoken.
     const names = [...el().querySelectorAll('[data-testid="set-tile"]')].map(
       (t) =>
@@ -936,7 +936,7 @@ describe('VenueMap', () => {
     const prices = [...el().querySelectorAll('[data-testid="row-price"]')].map((n) =>
       n.textContent?.trim(),
     );
-    expect(prices).toEqual(['€45 · Front row', '€35', '€25 · at venue']);
+    expect(prices).toEqual(['€45', '€35', '€25']);
     expect(
       [...el().querySelectorAll('[data-map-row]')].map((r) => r.classList.contains('mt-3')),
     ).toEqual([false, false, true, true]);
@@ -990,7 +990,7 @@ describe('VenueMap', () => {
       n.textContent?.trim(),
     );
     // Row 2 mixes €35 + €45: its chip is the span, so it no longer shares Row 3's €35 zone.
-    expect(prices).toEqual(['€45 · Front row', '€35–€45', '€35', '€25 · at venue']);
+    expect(prices).toEqual(['€45', '€35–€45', '€35', '€25']);
   });
 
   it('renders the venue description in the header', async () => {
