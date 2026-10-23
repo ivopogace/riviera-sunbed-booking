@@ -1,17 +1,16 @@
 -- A beach-map row is labelled by its grid letter, never named (issue #1586): every active set's row_label
 -- becomes chr(64 + grid_y), the label every set write derives (venue.vocabulary.SetPlacement.rowLabelOf).
 -- Retired sets keep theirs, as do the snapshot columns (remodel_commit, venue_caused_cancellation,
--- remodel_receipt_kept): they are history. Two statements, because set_position_cell_uniq is checked per
--- row: a swap (row 1 labelled B, row 2 A) collides mid-UPDATE, so every active label is parked first, as
--- the layout save parks a moving set. Two sets on one grid row sharing a position number under different
--- labels fail this migration loudly on that index; no editor path builds one. So does an active set past
--- row 26, which has no letter (SetPlacement.MAX_GRID_ROWS); the editors cap rows there.
-DO $$
-BEGIN
-    IF EXISTS (SELECT 1 FROM set_position WHERE retired_at IS NULL AND grid_y > 26) THEN
-        RAISE EXCEPTION 'V78: an active set sits past grid row 26, which has no row letter';
-    END IF;
-END
-$$;
+-- remodel_receipt_kept): they are history.
+
+-- An active set lives on one of the 26 lettered rows (SetPlacement.MAX_GRID_ROWS, the editors' cap). Added
+-- validated and first, so a live set past row 26 fails this migration loudly before any label is rewritten.
+-- The label itself gets no CHECK: the layout save parks a moving set's label mid-transaction.
+ALTER TABLE set_position
+    ADD CONSTRAINT set_position_grid_y_lettered_check CHECK (retired_at IS NOT NULL OR grid_y <= 26);
+
+-- Parked first, as the layout save parks a moving set: set_position_cell_uniq is checked per row, so a
+-- swap (row 1 labelled B, row 2 A) would collide mid-UPDATE. Two sets on one grid row sharing a position
+-- number under different labels fail loudly on that index; no editor path builds one.
 UPDATE set_position SET row_label = chr(1) || id::text WHERE retired_at IS NULL;
 UPDATE set_position SET row_label = chr(64 + grid_y) WHERE retired_at IS NULL;

@@ -104,7 +104,7 @@ class SmtpMailerIT {
 		assertThat(body).contains(BOOKING_CODE, "Miramar Beach", "15 August 2026",
 				"Front row · Sea view, position 3", "EUR 25.00");
 		assertThat(body)
-				.as("the spot line renders the row label as the operator wrote it (#723) — no 'Row ' prefix")
+				.as("the spot line renders a stored non-letter label whole (#723) — no 'Row ' prefix")
 				.doesNotContain("Row Front row");
 		assertThat(body).doesNotContain("<html", "<img", "http://track", "utm_");
 		assertThat(body)

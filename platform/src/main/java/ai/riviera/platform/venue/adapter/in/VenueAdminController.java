@@ -75,7 +75,8 @@ class VenueAdminController {
 
 	/**
 	 * The STALE_WRITE detail shared by every token-guarded set-write — the row reprice, the batch
-	 * apply and the bulk layout replace turn on one {@code venue.set_version} token (V23), so any can lose to another and the wording may attribute the change to none.
+	 * apply and the bulk layout replace turn on one {@code venue.set_version} token (V23), so any
+	 * can lose to another and the wording may attribute the change to none.
 	 */
 	private static final String STALE_SETS_DETAIL =
 			"This venue's sets have changed since the version this request carries.";

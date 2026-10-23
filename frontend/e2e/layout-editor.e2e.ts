@@ -275,7 +275,7 @@ test('paints the console theme: the tool rail and the tiles under porcelain and 
   await expectNoSeriousAxeViolations(page, `layout editor in the ${theme} console`);
 });
 
-test('saves every row by its grid letter and offers no row names (#1586)', async ({ page }) => {
+test('sends no row label and offers no row names (#1586)', async ({ page }) => {
   const { puts } = await mockEditor(page);
   await page.goto('/operator/1/beach-map');
   await signIn(page);
@@ -289,8 +289,14 @@ test('saves every row by its grid letter and offers no row names (#1586)', async
   await page.getByTestId('layout-save').click();
   await expect(page.getByTestId('layout-saved')).toBeVisible();
   expect(puts).toHaveLength(1);
-  const body = puts[0].postDataJSON() as { sets: { rowLabel: string }[] };
-  expect(body.sets.map((s) => s.rowLabel)).toEqual(['A', 'A', 'B', 'B']);
+  const body = puts[0].postDataJSON() as { sets: { rowLabel?: string; gridY: number }[] };
+  // The server labels each row by its grid letter; the editor sends none.
+  expect(body.sets.map((s) => [s.gridY, s.rowLabel])).toEqual([
+    [1, undefined],
+    [1, undefined],
+    [2, undefined],
+    [2, undefined],
+  ]);
 
   await settle(page);
   await expectNoSeriousAxeViolations(page, 'layout editor after a lettered save');
@@ -768,14 +774,14 @@ test('adds a row on a trading venue in one PUT that keeps every seeded cell (#10
 
   expect(puts).toHaveLength(1);
   const body = puts[0].postDataJSON() as {
-    sets: { gridX: number; gridY: number; rowLabel: string }[];
+    sets: { gridX: number; gridY: number }[];
     expectedVersion: number;
   };
   expect(body.expectedVersion).toBe(0);
-  expect(body.sets.map((set) => [set.rowLabel, set.gridX, set.gridY])).toEqual([
-    ['A', 1, 1],
-    ['B', 1, 2],
-    ['C', 1, 3],
+  expect(body.sets.map((set) => [set.gridX, set.gridY])).toEqual([
+    [1, 1],
+    [1, 2],
+    [1, 3],
   ]);
   await settle(page);
   await expectNoSeriousAxeViolations(page, 'layout editor, row added on a trading venue');

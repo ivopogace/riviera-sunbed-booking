@@ -8,7 +8,7 @@ package ai.riviera.platform.venue.vocabulary;
  */
 public record SetPlacement(String rowLabel, int positionNo, int gridX, int gridY) {
 
-	/** Grid rows a beach map may have: one per letter, the layout editor's cap. */
+	/** Grid rows a beach map may have: one per letter, the editors' cap; twin of V78's {@code set_position_grid_y_lettered_check}. */
 	public static final int MAX_GRID_ROWS = 26;
 
 	/** The label every set on 1-based grid row {@code gridY} takes, {@code A} to {@code Z}; rows are never named (#1586). */

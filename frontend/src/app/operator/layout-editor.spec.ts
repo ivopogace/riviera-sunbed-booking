@@ -26,7 +26,7 @@ import { SetLock } from './operator-console.model';
 
 interface SentBody {
   sets: {
-    rowLabel: string;
+    rowLabel?: string;
     positionNo: number;
     tier: string;
     pool: string;
@@ -773,7 +773,6 @@ describe('LayoutEditor (#172)', () => {
     );
     expect(body(req).sets).toHaveLength(1);
     expect(body(req).sets[0]).toMatchObject({
-      rowLabel: 'A',
       positionNo: 1,
       tier: 'PREMIUM',
       pool: 'ONLINE',
@@ -899,7 +898,7 @@ describe('LayoutEditor (#172)', () => {
     expect(byId('layout-dirty-count').textContent).toContain('1 unsaved change');
   });
 
-  it('saves every row by its grid letter, whatever label was loaded, and offers no row names (#1586)', () => {
+  it('sends no row label, whatever label was loaded, and offers no row names (#1586)', () => {
     render([
       seat(1, 'PREMIUM', 'ONLINE', 1, 1, 'Front row · Sea view'),
       seat(2, 'STANDARD', 'ONLINE', 1, 2, 'Row 2'),
@@ -911,7 +910,10 @@ describe('LayoutEditor (#172)', () => {
     const req = http.expectOne(
       (r) => r.method === 'PUT' && r.url.includes('/api/venues/1/beach-map'),
     );
-    expect(body(req).sets.map((s) => s.rowLabel)).toEqual(['A', 'B']);
+    expect(body(req).sets.map((s) => [s.gridY, s.rowLabel])).toEqual([
+      [1, undefined],
+      [2, undefined],
+    ]);
     req.flush(null);
   });
 

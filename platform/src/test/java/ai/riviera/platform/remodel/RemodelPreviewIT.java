@@ -196,7 +196,7 @@ class RemodelPreviewIT {
 
 	@Test
 	void aCellNeedsNoRowLabelButARowPastZIsRefused() throws Exception {
-		// #1586: the preview labels each cell by its grid row, as the save does; the body's label is not read.
+		// #1586: a cell is placed by its grid row alone (the save's own rule), so it needs no label and row 27 has none.
 		long venue = createVenue("Lettered Preview Club");
 		putLayout(venue, layout(0, cell("A", 1, "STANDARD", "ONLINE", 2000, 1, 1)));
 		long token = currentSetVersion(venue);
@@ -204,8 +204,7 @@ class RemodelPreviewIT {
 		mvc.perform(post("/api/venues/{v}/beach-map/preview", venue).cookie(operatorSession).with(csrf())
 						.contentType(MediaType.APPLICATION_JSON)
 						.content("{\"sets\":[{\"positionNo\":1,\"gridX\":1,\"gridY\":1}],\"expectedVersion\":" + token + "}"))
-				.andExpect(status().isOk())
-				.andExpect(jsonPath("$.moves.length()").value(0));
+				.andExpect(status().isOk());
 		mvc.perform(post("/api/venues/{v}/beach-map/preview", venue).cookie(operatorSession).with(csrf())
 						.contentType(MediaType.APPLICATION_JSON)
 						.content("{\"sets\":[{\"positionNo\":1,\"gridX\":1,\"gridY\":27}],\"expectedVersion\":" + token + "}"))

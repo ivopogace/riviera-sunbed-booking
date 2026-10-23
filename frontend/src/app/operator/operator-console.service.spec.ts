@@ -411,7 +411,6 @@ describe('OperatorConsoleService — per-set beach-map writes (#600)', () => {
   afterEach(() => httpMock.verify());
 
   const SET: SetWriteRequest = {
-    rowLabel: 'B',
     positionNo: 3,
     tier: 'STANDARD',
     pool: 'ONLINE',
@@ -811,7 +810,6 @@ describe('OperatorConsoleService — remodel commit + receipts (#1034)', () => {
     const request: RemodelCommitRequest = {
       sets: [
         {
-          rowLabel: 'A',
           positionNo: 1,
           tier: 'PREMIUM',
           pool: 'ONLINE',

@@ -81,13 +81,13 @@ class BeachMapLayoutMigrationIT {
 
 	@Test
 	void rejectsAnOverlongRowLabel() {
-		// #723: row_label is operator-authored, so V43 bounds it — char_length(row_label) <= 40.
+		// V43 bounds row_label at char_length 40, a backstop now that every write sends one letter (#1586).
 		String overlong = "x".repeat(41);
 		DataIntegrityViolationException rejected = assertThrows(DataIntegrityViolationException.class,
 				() -> jdbc.update("""
 						INSERT INTO set_position (venue_id, row_label, position_no, tier, pool,
 						                          price_minor, price_currency, grid_x, grid_y)
-						VALUES (?, ?, 96, 'STANDARD', 'ONLINE', 2500, 'EUR', 30, 30)
+						VALUES (?, ?, 96, 'STANDARD', 'ONLINE', 2500, 'EUR', 30, 20)
 						""", MIRAMAR, overlong));
 		assertThat(rejected.getMessage()).contains("set_position_row_label_check");
 	}

@@ -18,11 +18,10 @@ export interface TakingsView {
 
 /**
  * One set of a beach-map layout write: tier + pool tokens, integer minor-unit price (invariant #5), and
- * 1-based grid coordinates. Reuses the shared {@link Tier}/{@link Pool}/{@link MoneyView} read-contract
+ * 1-based grid coordinates; no row label, as the server labels each row by its grid letter. Reuses the shared {@link Tier}/{@link Pool}/{@link MoneyView} read-contract
  * types so a written layout round-trips unchanged through the public map read.
  */
 export interface LayoutCellRequest {
-  readonly rowLabel: string;
   readonly positionNo: number;
   readonly tier: Tier;
   readonly pool: Pool;
@@ -51,7 +50,6 @@ export interface BeachMapLayoutRequest {
  * `set_version` optimistic-concurrency token the bulk replace and the row reprice share.
  */
 export interface SetWriteRequest {
-  readonly rowLabel: string;
   readonly positionNo: number;
   readonly tier: Tier;
   readonly pool: Pool;

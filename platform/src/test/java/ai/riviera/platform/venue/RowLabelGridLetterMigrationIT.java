@@ -16,6 +16,7 @@ import ai.riviera.platform.TestcontainersConfiguration;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * V78 against a database that stopped at V77: a live set past row 26 fails it (rolled back); then the
@@ -45,6 +46,7 @@ class RowLabelGridLetterMigrationIT {
 				                          price_minor, price_currency, grid_x, grid_y, retired_at)
 				VALUES (:v, 'B', 1, 'PREMIUM', 'ONLINE', 3500, 'EUR', 1, 1, NULL),
 				       (:v, 'A', 1, 'STANDARD', 'ONLINE', 3000, 'EUR', 1, 2, NULL),
+				       (:v, 'Last', 1, 'STANDARD', 'ONLINE', 3000, 'EUR', 1, 26, NULL),
 				       (:v, 'Old front row', 1, 'PREMIUM', 'ONLINE', 3500, 'EUR', 1, 1, now())
 				""").param("v", swapped).update();
 
@@ -56,7 +58,13 @@ class RowLabelGridLetterMigrationIT {
 		Flyway latest = Flyway.configure().configuration(flyway.getConfiguration())
 				.target(MigrationVersion.LATEST).load();
 
-		assertThrows(FlywayException.class, latest::migrate, "a live set past row Z has no letter: V78 refuses");
+		FlywayException refused = assertThrows(FlywayException.class, latest::migrate,
+				"a live set past row Z has no letter: V78 refuses");
+		assertTrue(refused.getMessage().contains("set_position_grid_y_lettered_check"), refused.getMessage());
+		assertEquals(0L, jdbc.sql("SELECT COUNT(*) FROM flyway_schema_history WHERE version = '78' AND success")
+				.query(Long.class).single(), "the refused run leaves no V78 behind");
+		assertEquals(6L, jdbc.sql("SELECT COUNT(*) FROM set_position WHERE row_label = 'Front row · Sea view'")
+				.query(Long.class).single(), "and rewrote no label: the run rolled back whole");
 		jdbc.sql("DELETE FROM set_position WHERE id = :id").param("id", pastZ).update();
 		latest.migrate();
 
@@ -68,8 +76,8 @@ class RowLabelGridLetterMigrationIT {
 				WHERE v.name = 'Miramar Beach Club' AND sp.retired_at IS NULL
 				GROUP BY sp.row_label ORDER BY sp.row_label
 				""").query(String.class).list(), "the seed's Front row · Sea view … Row 4 · Back read A to D");
-		assertEquals(List.of("A", "B", "Old front row"), jdbc.sql("""
+		assertEquals(List.of("A", "B", "Z", "Old front row"), jdbc.sql("""
 				SELECT row_label FROM set_position WHERE venue_id = :v ORDER BY retired_at NULLS FIRST, grid_y
-				""").param("v", swapped).query(String.class).list(), "swapped rows untangle; history stays");
+				""").param("v", swapped).query(String.class).list(), "swapped rows untangle, row 26 is Z; history stays");
 	}
 }

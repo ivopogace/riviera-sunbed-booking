@@ -464,7 +464,6 @@ describe('SetEditor (#600)', () => {
 
     const request = expectPatch(12);
     expect(request.request.body).toEqual({
-      rowLabel: 'B',
       positionNo: 1,
       tier: 'STANDARD',
       pool: 'WALK_IN',
@@ -936,7 +935,6 @@ describe('SetEditor (#600)', () => {
       (r) => r.method === 'POST' && r.url.endsWith('/api/venues/1/sets'),
     );
     expect(request.request.body).toEqual({
-      rowLabel: 'A',
       positionNo: 3,
       tier: 'PREMIUM',
       pool: 'ONLINE',
@@ -951,7 +949,7 @@ describe('SetEditor (#600)', () => {
     expect(changed).toBe(1);
   });
 
-  it('a set added beside a legacy-named set takes its grid row’s letter (#1586)', async () => {
+  it('a set added beside a legacy-named set sends no row label for the server to letter (#1586)', async () => {
     render([
       set({
         id: 10,
@@ -972,8 +970,8 @@ describe('SetEditor (#600)', () => {
     const request = http.expectOne(
       (r) => r.method === 'POST' && r.url.endsWith('/api/venues/1/sets'),
     );
+    expect(request.request.body).not.toHaveProperty('rowLabel');
     expect(request.request.body).toMatchObject({
-      rowLabel: 'A',
       positionNo: 2,
       gridX: 2,
       gridY: 1,
@@ -995,7 +993,7 @@ describe('SetEditor (#600)', () => {
     expect(byId('set-selected').textContent?.trim()).toBe('Row B · position 1');
   });
 
-  it('a set moved beside a legacy-named set takes its grid row’s letter (#1586)', async () => {
+  it('a set moved beside a legacy-named set sends no row label for the server to letter (#1586)', async () => {
     render([
       set({
         id: 10,
@@ -1017,8 +1015,8 @@ describe('SetEditor (#600)', () => {
     const request = http.expectOne(
       (r) => r.method === 'PATCH' && r.url.endsWith('/api/venues/1/sets/12'),
     );
+    expect(request.request.body).not.toHaveProperty('rowLabel');
     expect(request.request.body).toMatchObject({
-      rowLabel: 'A',
       positionNo: 2,
       gridX: 2,
       gridY: 1,
@@ -1038,7 +1036,7 @@ describe('SetEditor (#600)', () => {
     const body = http.expectOne((r) => r.method === 'POST').request.body as {
       price: { minorUnits: number; currency: string };
     };
-    expect(body).toMatchObject({ rowLabel: 'C', positionNo: 1, tier: 'STANDARD', gridY: 3 });
+    expect(body).toMatchObject({ positionNo: 1, tier: 'STANDARD', gridY: 3 });
     expect(body.price).toEqual({ minorUnits: 2000, currency: 'EUR' });
   });
 
@@ -1066,7 +1064,6 @@ describe('SetEditor (#600)', () => {
       (r) => r.method === 'PATCH' && r.url.endsWith('/api/venues/1/sets/12'),
     );
     expect(request.request.body).toEqual({
-      rowLabel: 'A',
       positionNo: 3,
       tier: 'STANDARD',
       pool: 'ONLINE',

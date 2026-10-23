@@ -1033,7 +1033,6 @@ export class SetEditor {
       return;
     }
     const request: SetWriteRequest = {
-      rowLabel: selected.rowLabel,
       positionNo: selected.positionNo,
       tier: draft.tier,
       pool: draft.pool,
@@ -1189,13 +1188,12 @@ function boundingRect(coords: ReadonlySet<string>): SweepRect {
   };
 }
 
-/** The row label and position number a grid cell implies: the row is always its grid letter (#1586). */
+/** The position number a grid cell implies; the server labels the row by its grid letter (#1586). */
 function placementAt(
   gridX: number,
   gridY: number,
-): Pick<SetWriteRequest, 'rowLabel' | 'positionNo' | 'gridX' | 'gridY'> {
+): Pick<SetWriteRequest, 'positionNo' | 'gridX' | 'gridY'> {
   return {
-    rowLabel: gridRowLabel(gridY - 1),
     positionNo: gridX,
     gridX,
     gridY,

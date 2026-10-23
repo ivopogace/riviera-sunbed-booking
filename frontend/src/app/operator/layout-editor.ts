@@ -1104,7 +1104,6 @@ export class LayoutEditor {
         }
         const premium = state === 'premium';
         sets.push({
-          rowLabel: gridRowLabel(y),
           positionNo: x + 1,
           tier: premium ? 'PREMIUM' : 'STANDARD',
           pool: state === 'walkin' ? 'WALK_IN' : 'ONLINE',

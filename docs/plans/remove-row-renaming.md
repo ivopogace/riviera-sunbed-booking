@@ -40,8 +40,8 @@ data-preservation step).
   `A`) → park every active label to `chr(1) || id` first, then write the letter (the save's own
   `parkRowLabels` trick).
 - **R-2:** two active sets on one grid row sharing a position number under different labels would
-  collide after the rewrite → the layout editor names labels per grid row and `addSet` copies the
-  sibling's label, so no UI path builds it; if a dev DB holds one, the migration aborts on the unique
+  collide after the rewrite → the layout editor named labels per grid row and the set editor copied a
+  sibling's label, so no UI path built it; if a dev DB holds one, the migration aborts on the unique
   index (Flyway rolls back, loudly) rather than corrupting a slot.
 - **R-3:** preview and commit classify differently → both now derive the label; the preview's diff
   already keys on cell + position only (`LayoutDiff.disturbedBy`).

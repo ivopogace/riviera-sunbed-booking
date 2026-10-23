@@ -605,7 +605,7 @@ test('a fully-sold day keeps the scrolling map keyboard-reachable (#605)', async
   await expectNoSeriousAxeViolations(page, 'daily view, fully sold at 390px');
 });
 
-/** The seeded demo venue's shape: four six-set rows under the row names the Beach map tab stores. */
+/** The demo venue's pre-#1586 shape: four six-set rows under long stored row labels. */
 function namedRowsVenue() {
   const names = ['Front row · Sea view', 'Row 2', 'Row 3', 'Row 4 · Back'];
   return {
@@ -643,9 +643,9 @@ async function railChip(page: Page, nth: number): Promise<{ text: string; trunca
 }
 
 /**
- * Staff mark walk-ins from a phone at the gate, and a stored row name is as long as the operator
- * typed it: rendered whole on the left rail at 390px, "Front row · Sea view" left one tile per row
- * in view (#1532). Below `sm` the rail now ellipsizes the name at the tourist map's cap, inside the
+ * Staff mark walk-ins from a phone at the gate, and a stored row label can be long (data from before
+ * #1586's grid letters): rendered whole on the left rail at 390px, "Front row · Sea view" left one
+ * tile per row in view (#1532). Below `sm` the rail now ellipsizes the name at the tourist map's cap, inside the
  * 54px the rail reserves anyway (#749), so two whole tiles fit per row — the tourist map's own
  * count; three would need the row's grid letter, which #724 rules out beside stored names. From
  * `sm` up the name renders whole, as before.
