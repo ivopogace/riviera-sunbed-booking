@@ -59,7 +59,7 @@ public class SecurityConfig {
 	/** A single venue item (PATCH profile edit — amenities + distance-to-water); session + CSRF. */
 	private static final String VENUE_ITEM_PATH = "/api/venues/*";
 	/**
-	 * The operator-only venue-write {@code PUT}s (layout replace, row reprice/rename), gated per-verb
+	 * The operator-only venue-write {@code PUT}s (layout replace, row reprice), gated per-verb
 	 * because {@code /api/venues/**} also serves the public {@code GET};
 	 * {@code EndpointRoleGateCoverageTest} catches a newly mapped verb falling through.
 	 */
@@ -72,7 +72,6 @@ public class SecurityConfig {
 	private static final String REMODEL_RECEIPTS_PATH = "/api/venues/*/remodels";
 	private static final String REMODEL_RECEIPT_PATH = "/api/venues/*/remodels/*";
 	private static final String ROW_PRICE_PATH = "/api/venues/*/rows/*/price";
-	private static final String ROW_NAME_PATH = "/api/venues/*/rows/*/name";
 	/**
 	 * A single venue photo slot: POST upload / DELETE remove, operator-only. The public GET serving path
 	 * falls under {@code GET /api/venues/**} below.
@@ -371,7 +370,7 @@ public class SecurityConfig {
 						.requestMatchers(HttpMethod.POST, SETS_PATH).hasRole(OPERATOR_ROLE)
 						.requestMatchers(HttpMethod.PATCH, SETS_PATH, SET_ITEM_PATH).hasRole(OPERATOR_ROLE)
 						.requestMatchers(HttpMethod.DELETE, SET_ITEM_PATH).hasRole(OPERATOR_ROLE)
-						.requestMatchers(HttpMethod.PUT, BEACH_MAP_PATH, ROW_PRICE_PATH, ROW_NAME_PATH)
+						.requestMatchers(HttpMethod.PUT, BEACH_MAP_PATH, ROW_PRICE_PATH)
 						.hasRole(OPERATOR_ROLE)
 						// The remodel dry run reads which sets guests hold (ADR-0020); owner-asserted in the modules.
 						.requestMatchers(HttpMethod.POST, BEACH_MAP_PREVIEW_PATH).hasRole(OPERATOR_ROLE)

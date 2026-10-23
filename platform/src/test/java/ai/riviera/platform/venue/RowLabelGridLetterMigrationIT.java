@@ -3,6 +3,7 @@ package ai.riviera.platform.venue;
 import java.util.List;
 
 import org.flywaydb.core.Flyway;
+import org.flywaydb.core.api.FlywayException;
 import org.flywaydb.core.api.MigrationVersion;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -14,12 +15,13 @@ import ai.riviera.platform.EnabledIfDockerAvailable;
 import ai.riviera.platform.TestcontainersConfiguration;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 /**
- * V78 against a database that stopped at V77: the seeded Miramar venue's authored row names and a
- * venue whose rows carry each other's letters become their grid letters, and a retired set keeps its
- * label. Its own Spring context (the Flyway target) gives it its own container, so the pre-V78 shape
- * is real rather than assumed.
+ * V78 against a database that stopped at V77: a live set past row 26 fails it (rolled back); then the
+ * seeded Miramar venue's authored row names and a venue whose rows carry each other's letters become
+ * their grid letters, and a retired set keeps its label. Its own Spring context (the Flyway target)
+ * gives it its own container, so the pre-V78 shape is real rather than assumed.
  */
 @EnabledIfDockerAvailable
 @Import(TestcontainersConfiguration.class)
@@ -46,8 +48,17 @@ class RowLabelGridLetterMigrationIT {
 				       (:v, 'Old front row', 1, 'PREMIUM', 'ONLINE', 3500, 'EUR', 1, 1, now())
 				""").param("v", swapped).update();
 
-		Flyway.configure().configuration(flyway.getConfiguration()).target(MigrationVersion.LATEST)
-				.load().migrate();
+		long pastZ = jdbc.sql("""
+				INSERT INTO set_position (venue_id, row_label, position_no, tier, pool,
+				                          price_minor, price_currency, grid_x, grid_y)
+				VALUES (:v, 'Far', 1, 'STANDARD', 'ONLINE', 3000, 'EUR', 1, 27) RETURNING id
+				""").param("v", swapped).query(Long.class).single();
+		Flyway latest = Flyway.configure().configuration(flyway.getConfiguration())
+				.target(MigrationVersion.LATEST).load();
+
+		assertThrows(FlywayException.class, latest::migrate, "a live set past row Z has no letter: V78 refuses");
+		jdbc.sql("DELETE FROM set_position WHERE id = :id").param("id", pastZ).update();
+		latest.migrate();
 
 		assertEquals(0L, jdbc.sql("""
 				SELECT COUNT(*) FROM set_position WHERE retired_at IS NULL AND row_label <> chr(64 + grid_y)

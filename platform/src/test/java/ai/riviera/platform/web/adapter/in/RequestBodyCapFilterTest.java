@@ -243,7 +243,7 @@ class RequestBodyCapFilterTest {
 				.with(fromIp(SessionLoginSupport.uniqueClientIp())).contentType(MediaType.APPLICATION_JSON);
 	}
 
-	/** {@code LayoutCommand.MAX_SETS} cells on 40-character, two-byte (Albanian) row labels: the largest real layout. */
+	/** {@code LayoutCommand.MAX_SETS} cells, each with a 40-character two-byte (Albanian) row label the server ignores. */
 	private static String largestLayout() {
 		StringJoiner cells = new StringJoiner(",", "{\"expectedVersion\":1,\"previewToken\":\"" + "t".repeat(64)
 				+ "\",\"refundCount\":0,\"sets\":[", "]}");

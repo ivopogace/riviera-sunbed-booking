@@ -20,7 +20,7 @@ import ai.riviera.platform.venue.vocabulary.VenueId;
 
 /**
  * The beach-map edits behind {@link EditBeachMap} (invariant #11): single-set edits, row
- * reprice/rename, batch price/tier/pool, and the bulk save ({@link LayoutWriter}'s diff under an
+ * reprice, batch price/tier/pool, and the bulk save ({@link LayoutWriter}'s diff under an
  * always-proceed gate; the remodel commit passes its own). Commands self-validate; this owns
  * existence checks, row locks, claim probes, {@link SetRejection} mapping and the {@link Venues}
  * write, DB UNIQUE constraints the backstop. {@link VenueOwnership#assertOwns} runs first on every

@@ -31,6 +31,5 @@ class LayoutCellTest {
 		assertThrows(IllegalArgumentException.class, () -> new LayoutCell(1, "STANDARD", Pool.ONLINE, 2000, "EUR", 0, 1));
 		assertThrows(IllegalArgumentException.class, () -> new LayoutCell(1, "STANDARD", Pool.ONLINE, 2000, "EUR", 1, 0));
 		assertThrows(IllegalArgumentException.class, () -> new LayoutCell(1, "STANDARD", Pool.ONLINE, 2000, "EUR", 1, 27));
-		assertThrows(IllegalArgumentException.class, () -> new LayoutCell(1, "STANDARD", Pool.ONLINE, 2000, "EUR", 1, 27));
 	}
 }

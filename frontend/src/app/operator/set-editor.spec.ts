@@ -951,7 +951,7 @@ describe('SetEditor (#600)', () => {
     expect(changed).toBe(1);
   });
 
-  it('a set added into a named row inherits the row’s label, not a bare letter (#723)', async () => {
+  it('a set added beside a legacy-named set takes its grid row’s letter (#1586)', async () => {
     render([
       set({
         id: 10,
@@ -973,7 +973,7 @@ describe('SetEditor (#600)', () => {
       (r) => r.method === 'POST' && r.url.endsWith('/api/venues/1/sets'),
     );
     expect(request.request.body).toMatchObject({
-      rowLabel: 'Under the pines',
+      rowLabel: 'A',
       positionNo: 2,
       gridX: 2,
       gridY: 1,
@@ -995,7 +995,7 @@ describe('SetEditor (#600)', () => {
     expect(byId('set-selected').textContent?.trim()).toBe('Row B · position 1');
   });
 
-  it('a set moved into a named row takes that row’s label (#723)', async () => {
+  it('a set moved beside a legacy-named set takes its grid row’s letter (#1586)', async () => {
     render([
       set({
         id: 10,
@@ -1018,7 +1018,7 @@ describe('SetEditor (#600)', () => {
       (r) => r.method === 'PATCH' && r.url.endsWith('/api/venues/1/sets/12'),
     );
     expect(request.request.body).toMatchObject({
-      rowLabel: 'Under the pines',
+      rowLabel: 'A',
       positionNo: 2,
       gridX: 2,
       gridY: 1,

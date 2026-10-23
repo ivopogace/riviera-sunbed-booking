@@ -194,6 +194,25 @@ class RemodelPreviewIT {
 				.andExpect(jsonPath("$.code").value("INVALID_REQUEST"));
 	}
 
+	@Test
+	void aCellNeedsNoRowLabelButARowPastZIsRefused() throws Exception {
+		// #1586: the preview labels each cell by its grid row, as the save does; the body's label is not read.
+		long venue = createVenue("Lettered Preview Club");
+		putLayout(venue, layout(0, cell("A", 1, "STANDARD", "ONLINE", 2000, 1, 1)));
+		long token = currentSetVersion(venue);
+
+		mvc.perform(post("/api/venues/{v}/beach-map/preview", venue).cookie(operatorSession).with(csrf())
+						.contentType(MediaType.APPLICATION_JSON)
+						.content("{\"sets\":[{\"positionNo\":1,\"gridX\":1,\"gridY\":1}],\"expectedVersion\":" + token + "}"))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.moves.length()").value(0));
+		mvc.perform(post("/api/venues/{v}/beach-map/preview", venue).cookie(operatorSession).with(csrf())
+						.contentType(MediaType.APPLICATION_JSON)
+						.content("{\"sets\":[{\"positionNo\":1,\"gridX\":1,\"gridY\":27}],\"expectedVersion\":" + token + "}"))
+				.andExpect(status().isBadRequest())
+				.andExpect(jsonPath("$.code").value("INVALID_REQUEST"));
+	}
+
 	private static String cell(String rowLabel, int positionNo, String tier, String pool,
 			long minor, int gridX, int gridY) {
 		return """
