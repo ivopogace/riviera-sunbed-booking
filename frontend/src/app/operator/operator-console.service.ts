@@ -108,13 +108,16 @@ export class OperatorConsoleService {
     );
   }
 
-  /** The count of confirmed online bookings for the venue on `date` — the "Booked online" tile. */
+  /**
+   * The count of online bookings holding a set at the venue on `date` — the "Booked online" tile. A
+   * day the venue refunded and released (ADR-0027) still lists in the guest list but holds no set.
+   */
   dailyBookingCount(venueId: number, date: string): Observable<number> {
     return this.http
-      .get<readonly unknown[]>(`${this.base}/api/venues/${venueId}/bookings`, {
+      .get<readonly ConsoleDailyBooking[]>(`${this.base}/api/venues/${venueId}/bookings`, {
         params: new HttpParams().set('date', date),
       })
-      .pipe(map((bookings) => bookings.length));
+      .pipe(map((bookings) => bookings.filter((b) => b.released !== true).length));
   }
 
   /**

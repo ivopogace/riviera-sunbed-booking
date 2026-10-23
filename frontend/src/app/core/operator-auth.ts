@@ -122,6 +122,7 @@ export class OperatorAuth extends SessionAuth {
   /**
    * Sign out, then drop the per-session caches: the next operator to sign in on this device would
    * otherwise be routed by, shown — and let into the console of — the previous operator's venues.
+   * {@link signIn} drops them again on success, so the guarantee never rests on this path alone.
    */
   override async signOut(): Promise<SignOutResult> {
     const result = await super.signOut();
@@ -149,6 +150,7 @@ export class OperatorAuth extends SessionAuth {
       const principal = await firstValueFrom(
         this.http.post<AuthPrincipal>(`${AUTH_API}/operator/login`, { username, password }),
       );
+      this.dropSessionCaches();
       this.setPrincipal(principal);
       return 'signed-in';
     } catch (error) {

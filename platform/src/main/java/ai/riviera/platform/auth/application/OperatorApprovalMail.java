@@ -35,6 +35,7 @@ public class OperatorApprovalMail {
 		this.signInLink = UriComponentsBuilder.fromUriString(properties.linkBaseUrl())
 				.path(SIGN_IN_PATH)
 				.build()
+				.encode()
 				.toUri();
 	}
 

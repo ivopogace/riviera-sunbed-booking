@@ -38,7 +38,7 @@ describe('AvailabilityChanges (#1525)', () => {
     snapshot.load(VENUE).subscribe();
     http.expectOne(MAP_URL).flush({ map: { id: VENUE, name: 'Miramar', sets: [] }, locks: [] });
 
-    changes.announce({ venueId: VENUE, date: TODAY });
+    changes.announce({ venueId: VENUE, date: TODAY, cause: 'WALK_IN' });
 
     snapshot.load(VENUE).subscribe();
     http.expectOne(MAP_URL).flush({ map: { id: VENUE, name: 'Miramar', sets: [] }, locks: [] });
@@ -48,11 +48,11 @@ describe('AvailabilityChanges (#1525)', () => {
     const seen: AvailabilityChange[] = [];
     changes.changes.subscribe((c) => seen.push(c));
 
-    changes.announce({ venueId: VENUE, date: TODAY });
+    changes.announce({ venueId: VENUE, date: TODAY, cause: 'WALK_IN' });
 
     const late: AvailabilityChange[] = [];
     changes.changes.subscribe((c) => late.push(c));
-    expect(seen).toEqual([{ venueId: VENUE, date: TODAY }]);
+    expect(seen).toEqual([{ venueId: VENUE, date: TODAY, cause: 'WALK_IN' }]);
     expect(late).toEqual([]);
   });
 
@@ -61,18 +61,18 @@ describe('AvailabilityChanges (#1525)', () => {
     const seen: AvailabilityChange[] = [];
     changes.todayAt(venueId).subscribe((c) => seen.push(c));
 
-    changes.announce({ venueId: 2, date: TODAY });
-    changes.announce({ venueId: VENUE, date: '2026-06-16' });
-    changes.announce({ venueId: VENUE, date: TODAY });
+    changes.announce({ venueId: 2, date: TODAY, cause: 'WALK_IN' });
+    changes.announce({ venueId: VENUE, date: '2026-06-16', cause: 'WALK_IN' });
+    changes.announce({ venueId: VENUE, date: TODAY, cause: 'WALK_IN' });
 
-    expect(seen).toEqual([{ venueId: VENUE, date: TODAY }]);
+    expect(seen).toEqual([{ venueId: VENUE, date: TODAY, cause: 'WALK_IN' }]);
 
     // After an in-place venue switch only the current venue's changes pass.
     venueId.set(2);
-    changes.announce({ venueId: VENUE, date: TODAY });
-    changes.announce({ venueId: 2, date: TODAY });
+    changes.announce({ venueId: VENUE, date: TODAY, cause: 'WALK_IN' });
+    changes.announce({ venueId: 2, date: TODAY, cause: 'WALK_IN' });
     expect(seen).toHaveLength(2);
-    expect(seen[1]).toEqual({ venueId: 2, date: TODAY });
+    expect(seen[1]).toEqual({ venueId: 2, date: TODAY, cause: 'WALK_IN' });
   });
 
   it('todayAt re-derives today per change: past Tirane midnight, yesterday’s mark is not today’s (#6)', () => {
@@ -84,10 +84,10 @@ describe('AvailabilityChanges (#1525)', () => {
       const tomorrow = todayBookingDate(new Date());
       expect(tomorrow).not.toBe(TODAY);
 
-      changes.announce({ venueId: VENUE, date: TODAY });
-      changes.announce({ venueId: VENUE, date: tomorrow });
+      changes.announce({ venueId: VENUE, date: TODAY, cause: 'WALK_IN' });
+      changes.announce({ venueId: VENUE, date: tomorrow, cause: 'WALK_IN' });
 
-      expect(seen).toEqual([{ venueId: VENUE, date: tomorrow }]);
+      expect(seen).toEqual([{ venueId: VENUE, date: tomorrow, cause: 'WALK_IN' }]);
     } finally {
       vi.setSystemTime(frozen);
     }
