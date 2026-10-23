@@ -9,6 +9,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Import;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.jdbc.core.simple.JdbcClient;
 
 import ai.riviera.platform.EnabledIfDockerAvailable;
@@ -19,10 +20,11 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * V78 against a database that stopped at V77: a live set past row 26 fails it (rolled back); then the
- * seeded Miramar venue's authored row names and a venue whose rows carry each other's letters become
- * their grid letters, and a retired set keeps its label. Its own Spring context (the Flyway target)
- * gives it its own container, so the pre-V78 shape is real rather than assumed.
+ * V78 against a database that stopped at V77: a live set past row 26 refuses it, recording nothing;
+ * then the seed's authored row names and rows carrying each other's letters become their grid
+ * letters, retired sets (one past row 26) keep theirs, and the new CHECK refuses a live set past row
+ * 26 while admitting a retired one. Its own Spring context (the Flyway target) gives it its own
+ * container, so the pre-V78 shape is real rather than assumed.
  */
 @EnabledIfDockerAvailable
 @Import(TestcontainersConfiguration.class)
@@ -47,7 +49,8 @@ class RowLabelGridLetterMigrationIT {
 				VALUES (:v, 'B', 1, 'PREMIUM', 'ONLINE', 3500, 'EUR', 1, 1, NULL),
 				       (:v, 'A', 1, 'STANDARD', 'ONLINE', 3000, 'EUR', 1, 2, NULL),
 				       (:v, 'Last', 1, 'STANDARD', 'ONLINE', 3000, 'EUR', 1, 26, NULL),
-				       (:v, 'Old front row', 1, 'PREMIUM', 'ONLINE', 3500, 'EUR', 1, 1, now())
+				       (:v, 'Old front row', 1, 'PREMIUM', 'ONLINE', 3500, 'EUR', 1, 1, now()),
+				       (:v, 'Old far row', 1, 'STANDARD', 'ONLINE', 3000, 'EUR', 1, 40, now())
 				""").param("v", swapped).update();
 
 		long pastZ = jdbc.sql("""
@@ -61,10 +64,8 @@ class RowLabelGridLetterMigrationIT {
 		FlywayException refused = assertThrows(FlywayException.class, latest::migrate,
 				"a live set past row Z has no letter: V78 refuses");
 		assertTrue(refused.getMessage().contains("set_position_grid_y_lettered_check"), refused.getMessage());
-		assertEquals(0L, jdbc.sql("SELECT COUNT(*) FROM flyway_schema_history WHERE version = '78' AND success")
-				.query(Long.class).single(), "the refused run leaves no V78 behind");
-		assertEquals(6L, jdbc.sql("SELECT COUNT(*) FROM set_position WHERE row_label = 'Front row · Sea view'")
-				.query(Long.class).single(), "and rewrote no label: the run rolled back whole");
+		assertEquals(0L, jdbc.sql("SELECT COUNT(*) FROM flyway_schema_history WHERE version = '78'")
+				.query(Long.class).single(), "the refused run leaves no V78 row behind, failed or not");
 		jdbc.sql("DELETE FROM set_position WHERE id = :id").param("id", pastZ).update();
 		latest.migrate();
 
@@ -76,8 +77,19 @@ class RowLabelGridLetterMigrationIT {
 				WHERE v.name = 'Miramar Beach Club' AND sp.retired_at IS NULL
 				GROUP BY sp.row_label ORDER BY sp.row_label
 				""").query(String.class).list(), "the seed's Front row · Sea view … Row 4 · Back read A to D");
-		assertEquals(List.of("A", "B", "Z", "Old front row"), jdbc.sql("""
-				SELECT row_label FROM set_position WHERE venue_id = :v ORDER BY retired_at NULLS FIRST, grid_y
-				""").param("v", swapped).query(String.class).list(), "swapped rows untangle, row 26 is Z; history stays");
+		assertEquals(List.of("A", "B", "Z", "Old front row", "Old far row"), jdbc.sql("""
+				SELECT row_label FROM set_position WHERE venue_id = :v ORDER BY retired_at IS NOT NULL, grid_y
+				""").param("v", swapped).query(String.class).list(), "swapped rows untangle, row 26 is Z; history, past row 26 too, stays");
+
+		String pastZOn = """
+				INSERT INTO set_position (venue_id, row_label, position_no, tier, pool,
+				                          price_minor, price_currency, grid_x, grid_y, retired_at)
+				VALUES (:v, '[', 2, 'STANDARD', 'ONLINE', 3000, 'EUR', 2, 27, %s)
+				""";
+		DataIntegrityViolationException live = assertThrows(DataIntegrityViolationException.class,
+				() -> jdbc.sql(pastZOn.formatted("NULL")).param("v", swapped).update());
+		assertTrue(live.getMessage().contains("set_position_grid_y_lettered_check"), live.getMessage());
+		assertEquals(1, jdbc.sql(pastZOn.formatted("now()")).param("v", swapped).update(),
+				"a retired set is exempt");
 	}
 }

@@ -81,7 +81,7 @@ class BeachMapLayoutMigrationIT {
 
 	@Test
 	void rejectsAnOverlongRowLabel() {
-		// V43 bounds row_label at char_length 40, a backstop now that every write sends one letter (#1586).
+		// V43 bounds row_label at char_length 40, a backstop now that the server writes one letter per row (#1586).
 		String overlong = "x".repeat(41);
 		DataIntegrityViolationException rejected = assertThrows(DataIntegrityViolationException.class,
 				() -> jdbc.update("""

@@ -605,7 +605,7 @@ test('a fully-sold day keeps the scrolling map keyboard-reachable (#605)', async
   await expectNoSeriousAxeViolations(page, 'daily view, fully sold at 390px');
 });
 
-/** The demo venue's pre-#1586 shape: four six-set rows under long stored row labels. */
+/** Four six-set rows under labels longer than the rail's cap (the demo seed before V78). */
 function namedRowsVenue() {
   const names = ['Front row · Sea view', 'Row 2', 'Row 3', 'Row 4 · Back'];
   return {
@@ -643,12 +643,10 @@ async function railChip(page: Page, nth: number): Promise<{ text: string; trunca
 }
 
 /**
- * Staff mark walk-ins from a phone at the gate, and a stored row label can be long (data from before
- * #1586's grid letters): rendered whole on the left rail at 390px, "Front row · Sea view" left one
- * tile per row in view (#1532). Below `sm` the rail now ellipsizes the name at the tourist map's cap, inside the
- * 54px the rail reserves anyway (#749), so two whole tiles fit per row — the tourist map's own
- * count; three would need the row's grid letter, which #724 rules out beside stored names. From
- * `sm` up the name renders whole, as before.
+ * The phone rail's cap for a stored label longer than it. Since #1586 (V78) a live row's label is its
+ * one grid letter, so no live map reaches the cap; this pins the rail's defensive path. Below `sm` the
+ * rail ellipsizes at the tourist map's cap inside the 54px it reserves (#749), so two whole tiles fit
+ * per row, the tourist map's own count (#1532); from `sm` up the label renders whole.
  */
 test('a long row name ellipsizes on the phone rail so two tiles fit per row; desktop renders it whole (#1532)', async ({
   page,

@@ -686,6 +686,23 @@ class VenueAdminControllerIT {
 	}
 
 	@Test
+	void rejectsARowPastTheAlphabetAsInvalidNotAConstraintFailure() throws Exception {
+		// Row 27 has no letter (#1586): refused at the edge, never left to V78's CHECK as a 500.
+		long venue = createVenue("Row Twenty-Seven Set Club");
+		mvc.perform(post("/api/venues/{v}/sets", venue).cookie(operatorSession).with(csrf())
+						.contentType(MediaType.APPLICATION_JSON)
+						.content(setBody("A", 1, "STANDARD", "ONLINE", 3000, "EUR", 1, 27)))
+				.andExpect(status().isBadRequest())
+				.andExpect(jsonPath("$.code").value("INVALID_REQUEST"));
+		long setId = addSet(venue, setBody("A", 1, "STANDARD", "ONLINE", 3000, "EUR", 1, 1));
+		mvc.perform(patch("/api/venues/{v}/sets/{s}", venue, setId).cookie(operatorSession).with(csrf())
+						.contentType(MediaType.APPLICATION_JSON)
+						.content(setBody("A", 1, "STANDARD", "ONLINE", 3000, "EUR", 1, 27)))
+				.andExpect(status().isBadRequest())
+				.andExpect(jsonPath("$.code").value("INVALID_REQUEST"));
+	}
+
+	@Test
 	void rejectsDuplicateGridCell() throws Exception {
 		long venue = createVenue("Grid Club");
 		addSet(venue, setBody("Row A", 1, "STANDARD", "ONLINE", 3000, "EUR", 2, 1));
