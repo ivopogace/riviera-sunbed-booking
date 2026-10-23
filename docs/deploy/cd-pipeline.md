@@ -109,10 +109,12 @@ must include `frontend/`, so:
     same-origin since #110), i.e. `https://<name>.onrender.com` today. **Required under the
     `mailer` profile; boot aborts without it** (#1581). Without `mailer` an unset variable falls
     back to `http://localhost:4200`, which is only right for local dev. In every profile the value
-    must be an `http`/`https` URL with a host (loopback included, and hosts with underscores
-    between letters or digits, such as `riviera_backend`; no trailing dot), a port in 1..65535 if
-    one is given (a bare `:` aborts), and no user info, query, fragment or percent-escape, or boot
-    aborts naming the key and the variable, never the value; a trailing slash is trimmed (#1592).
+    must be an `http`/`https` URL (scheme in any case) with a host (loopback included, and hosts
+    with underscores between letters or digits, such as `riviera_backend`; no trailing dot), a
+    port in 1..65535 if one is given (a bare `:` aborts), an optional path, and no user info,
+    query, fragment or percent-escape. Otherwise boot aborts naming the key
+    (`riviera.recovery.link-base-url` or `riviera.notification.booking-link.base-url`) and this
+    variable, never the value. Surrounding whitespace is stripped and a trailing slash trimmed (#1592).
   - **SMTP relay (#368, ADR-0011) — only with the `mailer` profile** (production runs
     `prod,mailer`; without these the profile aborts at boot, by design):
     `RIVIERA_SMTP_HOST` (Scaleway TEM: `smtp.tem.scw.cloud`), `RIVIERA_SMTP_PORT` (default

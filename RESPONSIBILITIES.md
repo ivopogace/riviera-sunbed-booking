@@ -903,8 +903,9 @@ tag names the person, invariant #7):
   only drift), never a `riviera.recovery.*` key, which is `auth`'s namespace.
 - **I own the emailed-link origin rule, `vocabulary.EmailedLinkOrigin`**, and `auth` takes it for its
   recovery key, so the two keys cannot drift: http(s), a host (inner underscores allowed, no trailing
-  dot), a port in 1..65535, no user info, query, fragment or percent-escape, trailing slashes trimmed,
-  and a rejection never echoes the value. Mine, not `shared`'s: an emailed link is mail, and `auth`
+  dot), a port in 1..65535 if given, an optional path, no user info, query, fragment or percent-escape,
+  trailing slashes trimmed, and a rejection never echoes the value. Stated whole for operators in
+  `docs/deploy/cd-pipeline.md`, which the rejection cites. Mine, not `shared`'s: an emailed link is mail, and `auth`
   already depends on me, while I can never depend on `auth`.
 
 **Not My Job:**

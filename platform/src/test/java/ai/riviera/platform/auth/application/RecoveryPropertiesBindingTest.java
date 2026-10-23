@@ -118,7 +118,7 @@ class RecoveryPropertiesBindingTest {
 					}
 					assertThat(bind).isNotNull();
 					assertThat(bind.getProperty())
-							.as("the outermost BindException names no property, so it carries no value to print")
+							.as("a null bound property is what keeps a 'Value:' line out of Boot's failure analysis")
 							.isNull();
 				});
 	}

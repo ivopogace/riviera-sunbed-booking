@@ -8,10 +8,10 @@ import java.util.regex.Pattern;
 
 /**
  * The one rule for the deployed origin every emailed link is built on, bound under each consumer's own key: an
- * absolute {@code http}/{@code https} URL with a host, no trailing dot (underscores between letters or digits allowed),
- * any port within 1..65535, no user info, query, fragment or percent-escape; stripped, trailing slashes trimmed. A
- * rejection names the key and variable, never the value, which may carry credentials into the boot log. Placement:
- * RESPONSIBILITIES.md §notification.
+ * {@code http}/{@code https} URL with a host, no trailing dot (underscores between letters or digits allowed), a port
+ * in 1..65535 if given (a bare {@code :} fails), an optional path, no user info, query, fragment or percent-escape;
+ * stripped, trailing slashes trimmed. A rejection names the key and variable, never the value, which may carry
+ * credentials into the boot log. Placement: RESPONSIBILITIES.md §notification.
  */
 public final class EmailedLinkOrigin {
 
@@ -40,8 +40,9 @@ public final class EmailedLinkOrigin {
 		}
 		String stripped = value.strip();
 		if (!isOrigin(stripped)) {
-			throw new IllegalArgumentException(key + " is not a plain http or https origin such as https://app.example "
-					+ "(the rule: docs/deploy/cd-pipeline.md): set " + variable);
+			throw new IllegalArgumentException(key + " is not an http or https URL with a host, such as "
+					+ "https://app.example (the rule: RIVIERA_RECOVERY_LINK_BASE_URL in docs/deploy/cd-pipeline.md): set "
+					+ variable);
 		}
 		return trimTrailingSlashes(stripped);
 	}
