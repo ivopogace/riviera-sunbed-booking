@@ -84,8 +84,9 @@ class RecoveryPropertiesBindingTest {
 	}
 
 	@ParameterizedTest
-	@ValueSource(strings = { "/app", "example.com", "https:///app", "http://bad host" })
-	void aNonAbsoluteLinkBaseUrlFailsTheBindNamingTheKeyAndTheVariable(String value) {
+	@ValueSource(strings = { "/app", "example.com", "https:///app", "http://bad host", "ftp://app.example",
+			"https://app.example/?a=b", "https://app.example#top" })
+	void aNonOriginLinkBaseUrlFailsTheBindNamingTheKeyAndTheVariable(String value) {
 		recoveryRunner().withSystemProperties("RIVIERA_RECOVERY_LINK_BASE_URL=" + value)
 				.run(context -> assertThat(context).hasFailed().getFailure().rootCause()
 						.isInstanceOf(IllegalArgumentException.class)
@@ -100,6 +101,22 @@ class RecoveryPropertiesBindingTest {
 						Map.of("RIVIERA_RECOVERY_LINK_BASE_URL", " https://app.example "))))
 				.run(context -> assertThat(context.getBean(RecoveryProperties.class).linkBaseUrl())
 						.isEqualTo("https://app.example"));
+	}
+
+	@Test
+	void aLinkBaseUrlCarryingUserInfoFailsTheBindWithoutEchoingIt() {
+		recoveryRunner().withSystemProperties("RIVIERA_RECOVERY_LINK_BASE_URL=https://admin:hunter2@app.example")
+				.run(context -> assertThat(context).hasFailed().getFailure().rootCause()
+						.isInstanceOf(IllegalArgumentException.class)
+						.hasMessageContaining("riviera.recovery.link-base-url")
+						.hasMessageNotContaining("hunter2"));
+	}
+
+	@Test
+	void aTrailingSlashedRegistryStyleLinkBaseUrlBindsTrimmed() {
+		recoveryRunner().withSystemProperties("RIVIERA_RECOVERY_LINK_BASE_URL=http://riviera_backend:8080/")
+				.run(context -> assertThat(context.getBean(RecoveryProperties.class).linkBaseUrl())
+						.isEqualTo("http://riviera_backend:8080"));
 	}
 
 	@Test

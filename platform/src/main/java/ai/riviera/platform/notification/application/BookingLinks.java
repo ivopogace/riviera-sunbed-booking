@@ -5,6 +5,7 @@ import java.time.LocalDate;
 
 import org.springframework.web.util.UriComponentsBuilder;
 
+import ai.riviera.platform.shared.EmailedLinkOrigin;
 import ai.riviera.platform.venue.vocabulary.VenueId;
 
 /**
@@ -13,7 +14,7 @@ import ai.riviera.platform.venue.vocabulary.VenueId;
  * picks). The first is a bearer URL, code in the path per ADR-0006: never log it (invariant #7). Not
  * {@code /booking/pay}: that resumes in-memory hand-off state and dead-ends from an inbox. It formats
  * a code already read, minting nothing ({@code RESPONSIBILITIES.md} §notification). Validated at
- * construction, so a bad origin fails at boot rather than mailing an unusable link.
+ * construction by {@link EmailedLinkOrigin}, so a bad origin fails at boot rather than mailing an unusable link.
  */
 public record BookingLinks(String baseUrl) {
 
@@ -28,23 +29,8 @@ public record BookingLinks(String baseUrl) {
 	private static final String DATE_PARAM = "date";
 
 	public BookingLinks {
-		if (baseUrl == null || baseUrl.isBlank()) {
-			throw new IllegalArgumentException(
-					"riviera.notification.booking-link.base-url must be set — it is the origin every "
-							+ "booking mail's link is built on");
-		}
-		if (baseUrl.contains("${")) {
-			throw new IllegalArgumentException(
-					"riviera.notification.booking-link.base-url is unresolved (" + baseUrl
-							+ "): set RIVIERA_RECOVERY_LINK_BASE_URL");
-		}
-		URI parsed = URI.create(baseUrl.strip());
-		if (!parsed.isAbsolute() || parsed.getHost() == null) {
-			throw new IllegalArgumentException(
-					"riviera.notification.booking-link.base-url must be an absolute URL with a host "
-							+ "(e.g. https://riviera-sunbed-booking.onrender.com), but was " + baseUrl);
-		}
-		baseUrl = trimTrailingSlash(baseUrl.strip());
+		baseUrl = EmailedLinkOrigin.require("riviera.notification.booking-link.base-url",
+				"RIVIERA_RECOVERY_LINK_BASE_URL", baseUrl);
 	}
 
 	/** The code-gated view for this booking — where an accepted request's guest goes to pay. */
@@ -52,6 +38,7 @@ public record BookingLinks(String baseUrl) {
 		return UriComponentsBuilder.fromUriString(baseUrl)
 				.pathSegment(BOOKING_SEGMENT, bookingCode)
 				.build()
+				.encode()
 				.toUri();
 	}
 
@@ -61,6 +48,7 @@ public record BookingLinks(String baseUrl) {
 				.pathSegment(VENUES_SEGMENT, String.valueOf(venueId.value()))
 				.queryParam(DATE_PARAM, date)
 				.build()
+				.encode()
 				.toUri();
 	}
 
@@ -70,10 +58,7 @@ public record BookingLinks(String baseUrl) {
 				.path("/")
 				.queryParam(DATE_PARAM, date)
 				.build()
+				.encode()
 				.toUri();
-	}
-
-	private static String trimTrailingSlash(String value) {
-		return value.endsWith("/") ? value.substring(0, value.length() - 1) : value;
 	}
 }

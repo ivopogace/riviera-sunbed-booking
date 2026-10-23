@@ -899,7 +899,8 @@ tag names the person, invariant #7):
   here because registry listeners have no request in hand.
 - **The link origin is `auth`'s variable under my own key**: `RIVIERA_RECOVERY_LINK_BASE_URL`
   binds `riviera.notification.booking-link.base-url` (one deployed origin; a second variable could
-  only drift), never a `riviera.recovery.*` key, which is `auth`'s namespace.
+  only drift), never a `riviera.recovery.*` key, which is `auth`'s namespace. Both keys are validated
+  by `shared.EmailedLinkOrigin`.
 
 **Not My Job:**
 - Deciding **when** to send, minting/hashing recovery tokens, building **tokenized** links → the
@@ -1061,6 +1062,11 @@ is the trigger for asking the question, and the answer is always ownership.
   shared task executor, which no single module owns. It filters per row, never by `ResubmissionOptions`, which reads a batch of
   all failed rows before filtering and would starve one module behind another's backlog. Refund and
   mail listeners are never on it: they re-ask the gateway or re-send a mail (admin levers).
+- `EmailedLinkOrigin`, the rule for the origin emailed links are built on (http(s), a host, registry-style
+  included, no user info, query or fragment; trailing slashes trimmed; a rejection never echoes the value).
+  Admitted on ownership: it validates one deployed origin, `RIVIERA_RECOVERY_LINK_BASE_URL`, that `auth`
+  and `notification` each bind under their own key, and `auth`, the variable's holder, cannot publish to
+  `notification` (`auth → notification::api` would cycle). One rule, so the two keys cannot drift apart.
 
 **Not my job:**
 - **Any business logic or module-owned state** → its owner: a change here ripples everywhere.
