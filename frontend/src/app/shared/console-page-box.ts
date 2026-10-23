@@ -1,10 +1,9 @@
 import { Directive } from '@angular/core';
 
 /**
- * The console's one page box (#1589): 1120px, the width the header row and the tab rail sit in.
- * Every 1120px utility lives in this file; `operator-venue-switch.ts`'s popover `536px` is derived
- * from it by hand. The box's content edge is its edge plus the row's `px-6` gutter: where the
- * header's wordmark and the rail's first tab start.
+ * The console's one 1120px page box (#1589), the header row's and tab rail's; every 1120px utility
+ * is here (`operator-venue-switch.ts`'s popover `536px` derives from it by hand). Its content edge
+ * is the box's plus the row's `px-6`: where the wordmark and the rail's first tab start.
  */
 export const CONSOLE_PAGE_ROW = 'mx-auto w-full max-w-[1120px]';
 
