@@ -349,14 +349,8 @@ test('a plain click on a free tile opens the booking dialog (and the map is acce
     .evaluate((el) => getComputedStyle(el).boxShadow);
   expect(frameShadow).toContain('rgba(7, 42, 58, 0.28)');
 
-  // One chip per zone (#672), Row 3's span (#689); a chip adds only tier/channel words (#724).
-  await expect(page.getByTestId('row-price')).toHaveText([
-    '€50 · Front row',
-    '€40',
-    '€35–€45',
-    '€30',
-    '€30 · at venue',
-  ]);
+  // One chip per zone, price only (#672, #689, #1587); the walk-in €30 row is its own zone (#702).
+  await expect(page.getByTestId('row-price')).toHaveText(['€50', '€40', '€35–€45', '€30', '€30']);
 
   // Taken sets are ghosts (#672): translucent FILL + dashed outline — group opacity broke AA.
   const ghost = await page
