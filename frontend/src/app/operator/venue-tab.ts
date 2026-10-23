@@ -53,6 +53,7 @@ import {
   photoErrorOf,
   previewUrlOf,
 } from './venue-photo.service';
+import { ConsolePageColumn } from '../shared/console-page-box';
 
 /** The editable venue-details fields, bound to the Signal Form (the read-only commission + payout
  *  currency are display-only signals, never part of the form/write). */
@@ -165,6 +166,7 @@ const EMPTY_SLOTS: Readonly<Record<PhotoSlotKey, SlotUi>> = {
 @Component({
   selector: 'app-venue-tab',
   imports: [
+    ConsolePageColumn,
     BeachField,
     BookingCutoffField,
     BookingModeField,

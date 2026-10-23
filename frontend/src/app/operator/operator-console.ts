@@ -12,6 +12,7 @@ import { ConsoleVenueMap } from '../core/console-venue-map';
 import { OperatorConsoleService } from './operator-console.service';
 import { PendingApprovalBanner } from './pending-approval-banner';
 import { PendingRequestsStore } from './pending-requests-store';
+import { ConsolePageBox } from '../shared/console-page-box';
 
 /**
  * The venue console's page at `/operator/:venueId`: the stats strip, the pending-approval banner
@@ -23,7 +24,7 @@ import { PendingRequestsStore } from './pending-requests-store';
  */
 @Component({
   selector: 'app-operator-console',
-  imports: [RouterOutlet, ConsoleStatsStrip, PendingApprovalBanner],
+  imports: [ConsolePageBox, RouterOutlet, ConsoleStatsStrip, PendingApprovalBanner],
   templateUrl: './operator-console.html',
   host: { class: 'block' },
 })

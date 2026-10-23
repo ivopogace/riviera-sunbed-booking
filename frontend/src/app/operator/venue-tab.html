@@ -1,4 +1,4 @@
-<section class="mx-auto w-full max-w-[920px] px-5 py-4" data-testid="venue-tab">
+<section appConsolePageColumn class="w-full max-w-[920px] py-4 max-sm:px-5" data-testid="venue-tab">
   <!-- Above every branch on purpose: a live region must outlive the branch it describes, and the visible copy below sits in a gapped flex column where an empty element would still spend its gap. -->
   <output aria-live="polite" class="sr-only" data-testid="venue-saved-announce">{{
     savedMessage()
