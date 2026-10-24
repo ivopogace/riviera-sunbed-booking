@@ -271,9 +271,9 @@ jobs:
         id: key
         # What this job and the `a11y-e2e` shards read outside `frontend/`, besides this file (header):
         # `setup-node` reads the root `.nvmrc`, `focus-ring-baseline.spec.ts` the design doc,
-        # `map-water.spec.ts` and the e2e `support/map-resources.ts` the map style, sprites and glyphs. A spec that starts reading
-        # elsewhere joins this list, or a hit is a wrong green. The shards hash the same arguments
-        # under their own prefix; a file joins or leaves both lists together.
+        # `map-water.spec.ts` and the e2e `support/map-resources.ts` the map style, sprites and glyphs.
+        # A spec that starts reading elsewhere joins this list, or a hit is a wrong green. The shards
+        # hash the same arguments under their own prefix; a file joins or leaves both lists together.
         run: echo "key=frontend-sonar-${{ hashFiles('frontend/**', '.nvmrc', '.github/workflows/ci.yml', 'docs/design/non-text-contrast.md', 'platform/map/**', '!frontend/node_modules/**', '!frontend/coverage/**', '!frontend/dist/**', '!frontend/.angular/**') }}" >> "$GITHUB_OUTPUT"
 
       - name: Restore the Sonar inputs of an identical, already-green tree (pull requests only)
