@@ -84,9 +84,9 @@ Never route around a refusal: ask the owner in the reply text.
   effort, the skill per round and the overlay items checked are read from the PR body's
   review-gate line and the child's `READY TO MERGE`, and a child whose body omits them is sent
   back to fill them in;
-- optionally, that round 1 ran the plugin's step 5 (pr-gates §1): `list_events` on the child
-  session with `kinds: ["assistant"]` over the review turn shows one Haiku scorer `Agent` call per
-  step-4 finding;
+- optionally, when the review-gate line names the plugin for round 1, that it ran step 5 (pr-gates
+  §1): `list_events` on the child session with `kinds: ["assistant"]` over the review turn shows
+  one Haiku scorer `Agent` call per step-4 finding; a missing one sends the child back;
 - the plan doc is gone from the head (pr-gates §3 item 4): a squash merge would land it on `main`;
 - the PR template is whole. A child that skipped Gates or Contribution terms gets them filled
   from what was verified; tick Contribution terms only on the owner's instruction. Ask once per

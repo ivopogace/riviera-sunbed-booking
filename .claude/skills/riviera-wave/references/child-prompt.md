@@ -25,7 +25,7 @@ issue needs from a sibling, and what to do until that sibling merges>
   CLAUDE.md-paths and summary agents; five Sonnet reviewers; one Haiku scorer per finding; the
   80 cutoff; the Haiku recheck). Never run steps inline, never self-judge the cutoff, and post
   no `### Code review` comment before the plugin round: a hand-written comment makes the plugin
-  decline (pr-gates §1). The PR body's
+  decline; a round 1 it declines runs the built-in fallback (pr-gates §1). The PR body's
   review-gate line names the effort, the skill that ran each round and the overlay items checked,
   so the orchestrator can verify them; each round's `### Code review` comment proves it ran.
 - A behaviour fix after the review gate re-enters Implement and gets its own re-review posted on
