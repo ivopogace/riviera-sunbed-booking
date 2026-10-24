@@ -4,6 +4,7 @@ import { mockChallengeFence } from './support/auth-mocks';
 import { expectNoSeriousAxeViolations } from './support/axe';
 import { openThemePicker } from './support/shell';
 import { completeDialog, settle } from './support/booking-dialog';
+import type { MockVenueMapView } from './support/venue-views';
 
 /**
  * Real-render a11y + behaviour audit of the device-local "My bookings" list: a booking
@@ -15,7 +16,7 @@ import { completeDialog, settle } from './support/booking-dialog';
 
 const CODE = 'ABCD234567';
 
-const VENUE = {
+const VENUE: MockVenueMapView = {
   id: 1,
   name: 'Miramar Beach Club',
   beach: 'KSAMIL',

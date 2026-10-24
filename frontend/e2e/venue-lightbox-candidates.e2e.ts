@@ -1,6 +1,7 @@
 import { expect, test, type Locator, type Page } from '@playwright/test';
 
 import { bannerPhotoView, lightboxPhotoView } from './support/photo-views';
+import type { MockVenueMapView } from './support/venue-views';
 
 /**
  * Real-render CI-safe e2e for the candidate the lightbox fetches, and for the two surfaces that
@@ -30,7 +31,7 @@ const FRESH_LIGHTBOX = lightboxPhotoView('/api/venues/1/photos/bb02');
 const LEGACY_SECOND = bannerPhotoView('/api/venues/1/photos/cc03');
 const LEGACY_THIRD = bannerPhotoView('/api/venues/1/photos/dd04');
 
-const VENUE_MAP = {
+const VENUE_MAP: MockVenueMapView = {
   id: 1,
   name: 'Miramar Beach Club',
   beach: 'KSAMIL',
