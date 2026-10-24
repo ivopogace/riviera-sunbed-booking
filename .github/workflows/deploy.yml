@@ -56,7 +56,7 @@ jobs:
             echo "::error::CD deploys main only: run the workflow from main, not $GITHUB_REF_NAME."
             exit 1
           fi
-          echo "Gate passed ($GITHUB_EVENT_NAME); the deploy job decides whether this commit deploys."
+          echo "Gate passed ($GITHUB_EVENT_NAME)."
 
   backend-render:
     name: Deploy backend (serves SPA + /api) → Render
@@ -75,28 +75,13 @@ jobs:
       # head at dispatch on the manual one.
       DEPLOY_SHA: ${{ github.event.workflow_run.head_sha || github.sha }}
     steps:
-      - name: Checkout the live poll (scripts/ only)
-        uses: actions/checkout@v7
-        with:
-          ref: ${{ env.DEPLOY_SHA }}
-          sparse-checkout: scripts
-          persist-credentials: false
-
-      - name: Set up Node (from .nvmrc, as CI tests the poll)
-        uses: actions/setup-node@v7
-        with:
-          node-version-file: .nvmrc
-
+      # First: it needs neither the checkout nor Node, so a superseded run does no other work.
       - name: Trigger Render deploy of exactly this commit (Render git-builds the Docker image — SPA + jar)
         id: trigger
         env:
           RENDER_DEPLOY_HOOK_URL: ${{ secrets.RENDER_DEPLOY_HOOK_URL }}
           GH_TOKEN: ${{ github.token }}
         run: |
-          if [ -z "$RENDER_DEPLOY_HOOK_URL" ]; then
-            echo "::error::Backend deploy requested but the RENDER_DEPLOY_HOOK_URL secret is not set."
-            exit 1
-          fi
           # Read just before the POST, and inside this job so a re-run re-reads it: a commit main has moved
           # past (an older CI run re-run, two quick merges) never rolls the service back.
           head=$(gh api "repos/$GITHUB_REPOSITORY/commits/main" --jq .sha)
@@ -104,6 +89,10 @@ jobs:
             echo "::notice::Not deploying $DEPLOY_SHA: main is at $head, whose own CD run deploys it."
             echo "superseded=true" >> "$GITHUB_OUTPUT"
             exit 0
+          fi
+          if [ -z "$RENDER_DEPLOY_HOOK_URL" ]; then
+            echo "::error::Backend deploy requested but the RENDER_DEPLOY_HOOK_URL secret is not set."
+            exit 1
           fi
           # ref= pins the deploy to the commit CI judged green; without it Render builds the branch head,
           # which may be a later commit, and the live poll would wait for a commit never deployed.
@@ -113,14 +102,32 @@ jobs:
           status=${response##*$'\n'}
           # Only the deploy id is echoed: the rest of the answer is Render's text, not vetted for the log.
           deploy_id=$(printf '%s' "${response%$'\n'*}" | grep -o 'dep-[a-z0-9]\{1,\}' | head -n 1 || true)
-          if [ "$status" = 202 ]; then
-            # Render's documented answer when the deploy is queued behind a running one (overlap policy Wait).
-            echo "Render queued the deploy of $DEPLOY_SHA behind a running deploy (HTTP 202, no deploy id)."
-          else
-            echo "Render deploy ${deploy_id:-(no deploy id in the answer)} triggered for $DEPLOY_SHA (HTTP $status)."
-          fi
+          # Statuses per https://render.com/docs/deploy-hooks: 202 is a deploy queued behind a running one.
+          case "$status" in
+            200 | 201) echo "Render deploy ${deploy_id:-(no deploy id in the answer)} triggered for $DEPLOY_SHA." ;;
+            202) echo "Render queued the deploy of $DEPLOY_SHA behind a running deploy (HTTP 202, no deploy id)." ;;
+            *)
+              echo "::error::The deploy hook answered HTTP $status, not a queued deploy; check the RENDER_DEPLOY_HOOK_URL secret."
+              exit 1
+              ;;
+          esac
 
-      # The one gate: a wrong output name runs the poll, which fails red waiting for an undeployed commit.
+      - name: Checkout the live poll (scripts/ only)
+        if: steps.trigger.outputs.superseded != 'true'
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ env.DEPLOY_SHA }}
+          sparse-checkout: scripts
+          persist-credentials: false
+
+      - name: Set up Node (from .nvmrc, as CI tests the poll)
+        if: steps.trigger.outputs.superseded != 'true'
+        uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+
+      # Each step after the trigger is gated on its output; a misnamed one runs them, so the poll waits for a
+      # commit never deployed and fails red, unless that commit is the one already live.
       - name: Wait for the new build to be live (#1632)
         if: steps.trigger.outputs.superseded != 'true'
         env:

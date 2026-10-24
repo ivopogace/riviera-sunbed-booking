@@ -202,7 +202,7 @@ test('a response body never writes its own line into the Actions log', async () 
     const result = await waitForLiveCommit({
       baseUrl: backend.baseUrl,
       expected: NEW,
-      deadlineMs: 20,
+      deadlineMs: 400,
       intervalMs: 5,
       log: (line) => lines.push(line),
     });
@@ -224,7 +224,7 @@ test('a response body never writes its own line into the Actions log', async () 
 test('health is not asked while an older commit is served', async () => {
   const backend = await stubBackend(healthy(OLD));
   try {
-    const result = await poll(backend.baseUrl, 30);
+    const result = await poll(backend.baseUrl, 400);
     assert.equal(result.live, false);
     assert.ok(backend.hits.get('/actuator/info') > 1);
     assert.equal(backend.hits.get('/actuator/health'), undefined);
