@@ -35,7 +35,7 @@ permissions:
   contents: read
 
 jobs:
-  # Single decision point for whether this run may deploy at all; the deploy job then still skips a commit
+  # Decides whether this run may deploy at all; the deploy job's trigger step then declines a commit
   # `main` has moved past. For the automatic path, CI must have SUCCEEDED on `main`; if not, the deploy
   # job is skipped and nothing turns red. Manual dispatch is itself an explicit opt-in, from `main` only:
   # the hook's ref= would otherwise deploy another branch's untested commit, so a dispatch from elsewhere
@@ -76,7 +76,7 @@ jobs:
       # head at dispatch on the manual one.
       DEPLOY_SHA: ${{ github.event.workflow_run.head_sha || github.sha }}
     steps:
-      # Before the trigger, so nothing that can fail runs after the hook's POST.
+      # Before the trigger, so no setup step can fail after the hook's POST; only the poll judges it.
       - name: Checkout the live poll (scripts/ only)
         uses: actions/checkout@v7
         with:
@@ -121,7 +121,7 @@ jobs:
             200 | 201) echo "Render deploy ${deploy_id:-(no deploy id in the answer)} triggered for $DEPLOY_SHA." ;;
             202) echo "Render queued the deploy of $DEPLOY_SHA behind a running deploy (HTTP 202, no deploy id)." ;;
             *)
-              echo "::error::The deploy hook answered HTTP $status, not a queued deploy (4xx: check the RENDER_DEPLOY_HOOK_URL secret; 5xx: Render's status)."
+              echo "::error::The deploy hook answered HTTP $status, not a queued deploy (3xx: the hook URL moved; 4xx: check the RENDER_DEPLOY_HOOK_URL secret; 5xx: Render failed, retry later)."
               exit 1
               ;;
           esac

@@ -39,18 +39,28 @@ const healthy = (commit) => (path) =>
   path === '/actuator/info' ? { body: commit ? { commit } : {} } : { body: { status: 'UP' } };
 
 /**
- * A clock that advances 10 ms per read, so a poll over `TICKED_DEADLINE_MS` makes exactly
- * `TICKED_ATTEMPTS` attempts whatever the runner's speed (one read sets the deadline, one follows each attempt).
+ * A clock that advances `TICK_MS` per read: one read sets the deadline and one follows each attempt, which
+ * stops once `now + POLL_INTERVAL_MS > deadline`, so a poll over `TICKED_DEADLINE_MS` makes exactly
+ * `TICKED_ATTEMPTS` attempts whatever the runner's speed.
  */
+const TICK_MS = 10;
+const POLL_INTERVAL_MS = 5;
+const TICKED_DEADLINE_MS = 35;
+const TICKED_ATTEMPTS = Math.floor((TICKED_DEADLINE_MS - POLL_INTERVAL_MS) / TICK_MS) + 1;
 const ticking = () => {
   let t = 0;
-  return () => (t += 10);
+  return () => (t += TICK_MS);
 };
-const TICKED_DEADLINE_MS = 35;
-const TICKED_ATTEMPTS = 4;
 
 const poll = (baseUrl, deadlineMs = 2_000, now = Date.now) =>
-  waitForLiveCommit({ baseUrl, expected: NEW, deadlineMs, intervalMs: 5, now, log: () => {} });
+  waitForLiveCommit({
+    baseUrl,
+    expected: NEW,
+    deadlineMs,
+    intervalMs: POLL_INTERVAL_MS,
+    now,
+    log: () => {},
+  });
 
 test('a deploy already live passes on the first attempt', async () => {
   const backend = await stubBackend(healthy(NEW));
@@ -215,7 +225,7 @@ test('a response body never writes its own line into the Actions log', async () 
       expected: NEW,
       deadlineMs: TICKED_DEADLINE_MS,
       now: ticking(),
-      intervalMs: 5,
+      intervalMs: POLL_INTERVAL_MS,
       log: (line) => lines.push(line),
     });
     assert.equal(
@@ -223,7 +233,7 @@ test('a response body never writes its own line into the Actions log', async () 
       null,
       'a commit field that is not a bare commit id is not read as one',
     );
-    assert.ok(lines.length >= 2, 'both shapes were logged');
+    assert.equal(lines.length, TICKED_ATTEMPTS, 'both shapes, alternating, were logged');
     for (const line of lines) {
       assert.ok(!line.includes('\n'), line);
       assert.match(line, /^attempt \d+: live commit unknown, /);
@@ -255,7 +265,7 @@ test('a body that answered but is not JSON is logged as such, not as unreachable
       baseUrl: backend.baseUrl,
       expected: NEW,
       deadlineMs: 10,
-      intervalMs: 5,
+      intervalMs: POLL_INTERVAL_MS,
       log: (line) => lines.push(line),
     });
     assert.match(lines[0], /\(info: not JSON \("<html>waking up<\/html>"\)\)$/);
@@ -276,7 +286,7 @@ test('a forged health body never writes its own line once the commit is live', a
       baseUrl: backend.baseUrl,
       expected: NEW,
       deadlineMs: 10,
-      intervalMs: 5,
+      intervalMs: POLL_INTERVAL_MS,
       log: (line) => lines.push(line),
     });
     assert.ok(backend.hits.get('/actuator/health') >= 1, 'health was asked');
