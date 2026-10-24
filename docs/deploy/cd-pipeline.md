@@ -31,23 +31,27 @@ commit and `/actuator/health` is `UP`**, and fails the job after 15 min (the col
 measured Render deploy takes ~4–5 min). Each attempt logs the commit live at that moment; the
 passing one logs `live commit <sha>, health UP`. A failed run's error names the commit still serving.
 
-- The commit is `head_sha` of the CI run (automatic path) or the dispatched ref's head (manual);
-  the hook's `ref=` makes Render build exactly that one, never a later `main` head.
+- The commit is `head_sha` of the CI run (automatic path) or `main`'s head at dispatch (manual, which
+  the guard allows from `main` only); the hook's `ref=` makes Render build exactly that one.
+- **Only `main`'s current head deploys.** A run whose commit `main` has moved past (a re-run of an
+  older green CI run, or two merges in quick succession) skips with a notice, green, so it never
+  rolls the service back; the newer commit's own CD run deploys it. A red head therefore deploys
+  nothing until a green one follows it.
 - The app publishes Render's runtime `RENDER_GIT_COMMIT` (the deploy's commit SHA) as
   `{"commit":"<sha>"}` on the public `/actuator/info`, and nothing else
   ([production-hardening.md](./production-hardening.md#actuator-endpoints)). No secret is needed. A
   human can read the same URL to see which build is live.
-- **Limit:** a manual dispatch of the commit already live passes on attempt 1, since the old instance
-  names the same SHA; there the check proves only that the commit is still served, not that the
-  re-deploy booted. Check Render's deploy status for that run.
+- **Limit:** re-deploying the commit already live (a manual dispatch, or a CI re-run of `main`'s
+  head) passes on attempt 1, since the old instance names the same SHA; there the check proves only
+  that the commit is still served, not that the re-deploy booted. Check Render's deploy status then.
 - `BACKEND_API_URL` unset now **fails** the job: an unverified deploy is not a green one.
 - Proving it locally: `node --test scripts/wait-for-live-commit.test.mjs` runs the poll against a
   stub backend (the old commit outlasting the deadline is the red case).
 
 The job is **opt-in via a repository variable** (`DEPLOY_BACKEND_RENDER=true`), so until you
 wire the account below the workflow runs green as a no-op (no red `main`). A **manual**
-`workflow_dispatch` (Actions → CD → *Run workflow*) does an on-demand re-deploy; dispatching
-is itself the opt-in.
+`workflow_dispatch` (Actions → CD → *Run workflow*, on `main`) does an on-demand re-deploy;
+dispatching is itself the opt-in.
 
 ## Required GitHub configuration
 

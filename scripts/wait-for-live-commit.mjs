@@ -28,30 +28,41 @@ const COMMIT_ID = /^[0-9a-f]{7,64}$/;
 const NOTE_LIMIT = 200;
 
 /**
- * One probe: the live commit (null when info is unreadable or has none) and whether health reads UP.
+ * One probe: the live commit (null when info is unreadable or has none) and, once it is `expected`,
+ * whether health reads UP; an older commit's health cannot change the answer, so it is not asked.
  *
  * @param {string} baseUrl backend origin, no trailing slash
+ * @param {string} expected the commit being waited for
  * @param {typeof fetch} fetchImpl
  * @returns {Promise<{ commit: string | null, up: boolean, note: string }>}
  */
-export async function probe(baseUrl, fetchImpl = fetch) {
+export async function probe(baseUrl, expected, fetchImpl = fetch) {
   const info = await readJson(`${baseUrl}/actuator/info`, fetchImpl);
-  const health = await readJson(`${baseUrl}/actuator/health`, fetchImpl);
   // The body is the backend's to write, and the log is the runner's: only a commit id reaches it unquoted.
   const reported = info.body?.commit;
   const commit = typeof reported === 'string' && COMMIT_ID.test(reported) ? reported : null;
-  const up = health.body?.status === 'UP';
-  return { commit, up, note: `info: ${info.note}; health: ${health.note}` };
+  if (commit !== expected) return { commit, up: false, note: `info: ${info.note}` };
+  const health = await readJson(`${baseUrl}/actuator/health`, fetchImpl);
+  return {
+    commit,
+    up: health.body?.status === 'UP',
+    note: `info: ${info.note}; health: ${health.note}`,
+  };
 }
 
 async function readJson(url, fetchImpl) {
+  let text;
   try {
     const response = await fetchImpl(url, { signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS) });
-    const text = await response.text();
+    text = await response.text();
     if (!response.ok) return { body: null, note: `HTTP ${response.status}` };
-    return { body: JSON.parse(text), note: quoted(text) };
   } catch (error) {
     return { body: null, note: `unreachable (${quoted(error.message)})` };
+  }
+  try {
+    return { body: JSON.parse(text), note: quoted(text) };
+  } catch {
+    return { body: null, note: `not JSON (${quoted(text)})` };
   }
 }
 
@@ -81,7 +92,7 @@ export async function waitForLiveCommit({
   let commit = null;
   for (;;) {
     attempts += 1;
-    const result = await probe(baseUrl, fetchImpl);
+    const result = await probe(baseUrl, expected, fetchImpl);
     commit = result.commit;
     if (commit === expected && result.up) {
       log(`attempt ${attempts}: live commit ${commit}, health UP — the new build is live.`);

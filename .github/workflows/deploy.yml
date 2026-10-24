@@ -36,7 +36,8 @@ permissions:
 
 jobs:
   # Single decision point. For the automatic path, CI must have SUCCEEDED on `main`.
-  # Manual dispatch is itself an explicit opt-in, so it passes the gate directly. If
+  # Manual dispatch is itself an explicit opt-in, so it passes the gate directly — from `main`
+  # only, since the hook's ref= would otherwise deploy another branch's untested commit. If
   # the gate fails, the deploy job is skipped and nothing turns red.
   guard:
     name: Gate on green CI on main
@@ -47,7 +48,7 @@ jobs:
       ${{ (github.event_name == 'workflow_run'
             && github.event.workflow_run.conclusion == 'success'
             && github.event.workflow_run.head_branch == 'main')
-          || github.event_name == 'workflow_dispatch' }}
+          || (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main') }}
     steps:
       - name: Confirm gate
         run: |
@@ -68,8 +69,8 @@ jobs:
     # still a bound — before it, a deploy that never reported healthy could sit for six hours.
     timeout-minutes: 25
     env:
-      # The commit this run deploys and then waits to see live: CI's head on the automatic path, the
-      # dispatched ref's head on the manual one.
+      # The commit this run deploys and then waits to see live: CI's head on the automatic path, `main`'s
+      # head at dispatch on the manual one.
       DEPLOY_SHA: ${{ github.event.workflow_run.head_sha || github.sha }}
     steps:
       - name: Checkout the live poll (scripts/ only)
@@ -79,7 +80,26 @@ jobs:
           sparse-checkout: scripts
           persist-credentials: false
 
+      - name: Set up Node (from .nvmrc, as CI tests the poll)
+        uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+
+      # A re-run of an older green CI run, or a run main has already moved past, must not roll the service
+      # back: only main's current head deploys, and the newer commit's own CD run deploys it.
+      - name: Skip a commit main has moved past
+        id: current
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          head=$(gh api "repos/$GITHUB_REPOSITORY/commits/main" --jq .sha)
+          if [ "$head" != "$DEPLOY_SHA" ]; then
+            echo "::notice::Not deploying $DEPLOY_SHA: main is at $head, whose own CD run deploys it."
+            echo "superseded=true" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Trigger Render deploy of exactly this commit (Render git-builds the Docker image — SPA + jar)
+        if: steps.current.outputs.superseded != 'true'
         env:
           RENDER_DEPLOY_HOOK_URL: ${{ secrets.RENDER_DEPLOY_HOOK_URL }}
         run: |
@@ -92,9 +112,12 @@ jobs:
           case "$RENDER_DEPLOY_HOOK_URL" in *\?*) sep='&' ;; *) sep='?' ;; esac
           # --max-time: the hook returns immediately, so anything slower is a hang, not a slow deploy.
           response=$(curl -fsS --max-time 30 -X POST "${RENDER_DEPLOY_HOOK_URL}${sep}ref=${DEPLOY_SHA}")
-          echo "Render deploy triggered for $DEPLOY_SHA: ${response:-(no deploy id: another deploy is running)}"
+          # Only the deploy id is echoed: the rest of the answer is Render's text, not vetted for the log.
+          deploy_id=$(printf '%s' "$response" | grep -o 'dep-[a-z0-9]*' | head -n 1 || true)
+          echo "Render deploy ${deploy_id:-(no deploy id in the answer)} triggered for $DEPLOY_SHA."
 
       - name: Wait for the new build to be live (#1632)
+        if: steps.current.outputs.superseded != 'true'
         env:
           # The backend's public URL — also the app origin. Unset fails the job: an unverified deploy is not green.
           BACKEND_API_URL: ${{ vars.BACKEND_API_URL }}

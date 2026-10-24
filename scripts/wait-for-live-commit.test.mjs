@@ -216,3 +216,34 @@ test('a response body never writes its own line into the Actions log', async () 
     await backend.close();
   }
 });
+
+test('health is not asked while an older commit is served', async () => {
+  const backend = await stubBackend(healthy(OLD));
+  try {
+    const result = await poll(backend.baseUrl, 30);
+    assert.equal(result.live, false);
+    assert.ok(backend.hits.get('/actuator/info') > 1);
+    assert.equal(backend.hits.get('/actuator/health'), undefined);
+  } finally {
+    await backend.close();
+  }
+});
+
+test('a body that answered but is not JSON is logged as such, not as unreachable', async () => {
+  const backend = await stubBackend((path) =>
+    path === '/actuator/info' ? { body: '<html>waking up</html>' } : { body: { status: 'UP' } },
+  );
+  const lines = [];
+  try {
+    await waitForLiveCommit({
+      baseUrl: backend.baseUrl,
+      expected: NEW,
+      deadlineMs: 10,
+      intervalMs: 5,
+      log: (line) => lines.push(line),
+    });
+    assert.match(lines[0], /\(info: not JSON \("<html>waking up<\/html>"\)\)$/);
+  } finally {
+    await backend.close();
+  }
+});
