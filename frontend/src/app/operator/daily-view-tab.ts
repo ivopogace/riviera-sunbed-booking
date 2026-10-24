@@ -65,6 +65,7 @@ import { StayDayGroup, stayDayGroupOf } from './stay-day-group';
 import { CheckIcon } from '../shared/check-icon';
 import { DotIcon } from '../shared/dot-icon';
 import { PrimaryCta } from '../shared/primary-cta';
+import { ConsolePageBox } from '../shared/console-page-box';
 
 /**
  * One guest row: set label, display-only arrival code (invariant #7), the guest's span when the
@@ -164,6 +165,7 @@ interface CheckInNotice {
   selector: 'app-daily-view-tab',
   imports: [
     PrimaryCta,
+    ConsolePageBox,
     CardGlass,
     LoadAnnouncer,
     BeachMapCanvas,

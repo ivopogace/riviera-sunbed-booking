@@ -54,6 +54,7 @@ import {
   previewUrlOf,
 } from './venue-photo.service';
 import { PrimaryCta } from '../shared/primary-cta';
+import { ConsolePageColumn } from '../shared/console-page-box';
 
 /** The editable venue-details fields, bound to the Signal Form (the read-only commission + payout
  *  currency are display-only signals, never part of the form/write). */
@@ -167,6 +168,7 @@ const EMPTY_SLOTS: Readonly<Record<PhotoSlotKey, SlotUi>> = {
   selector: 'app-venue-tab',
   imports: [
     PrimaryCta,
+    ConsolePageColumn,
     BeachField,
     BookingCutoffField,
     BookingModeField,
