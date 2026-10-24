@@ -200,7 +200,7 @@ async function mockDaily(page: Page): Promise<{ patches: import('@playwright/tes
               id === 2 || id === 4 || marked.has(id) ? 'TAKEN' : 'FREE',
             ),
           ),
-        },
+        } satisfies MockVenueMapView,
         locks: [],
       },
     }),
@@ -481,7 +481,7 @@ test('refunds one guest’s day from the row behind a two-step confirm, and the 
           sets: [1, 2, 3, 4].map((id) =>
             seat(id, id, 'ONLINE', id === 1 || (id === 3 && refunded) ? 'FREE' : 'TAKEN'),
           ),
-        },
+        } satisfies MockVenueMapView,
         locks: [],
       },
     }),
