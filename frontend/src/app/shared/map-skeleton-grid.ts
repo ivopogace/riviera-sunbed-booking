@@ -42,7 +42,7 @@ export class MapSkeletonGrid {
   readonly tileTestid = input.required<string>();
   readonly tileRadiusClass = input.required<string>();
   readonly railCodes = input<'letters' | 'labels' | 'capped-labels'>('letters');
-  readonly priceChips = input<'amounts' | 'capped-phrases'>('amounts');
+  readonly priceChips = input<'amounts' | 'capped-spans'>('amounts');
   readonly fitWidth = input(false);
 
   protected readonly rows = MAP_SKELETON_ROWS;

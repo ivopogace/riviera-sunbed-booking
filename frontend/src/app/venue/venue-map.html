@@ -405,7 +405,7 @@
         class="mt-[18px] min-[1280px]:[margin-inline:calc((100%_-_1100px)/2)]"
         label="Beach map — {{ v.name }}"
         railCodes="capped-labels"
-        priceChips="capped-phrases"
+        priceChips="capped-spans"
       >
         <!-- The legend leads the card (#701): the tourist decodes the colours BEFORE reading the tiles, so it is projected above the grid rather than trailing it. Swatches wear the SAME appMapTile appearance as the tiles they stand for AND sit on the wash's own first stop, so a translucent swatch composites over the same ground its tiles do — matching computed styles is not the same as looking alike. The canvas owns the band's vertical spacing. -->
         <ul
@@ -680,7 +680,7 @@
         tileTestid="map-skeleton-tile"
         tileRadiusClass="rounded-[10px]"
         railCodes="capped-labels"
-        priceChips="capped-phrases"
+        priceChips="capped-spans"
       />
     </div>
   }
