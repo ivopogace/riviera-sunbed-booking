@@ -192,7 +192,7 @@ test('a response body never writes its own line into the Actions log', async () 
   const backend = await stubBackend((path) =>
     path === '/actuator/info'
       ? { body: { commit: `${OLD}\n::error::forged`, note: '\n::warning::forged' } }
-      : { body: '{"status":"DOWN"}\n::add-mask::x' },
+      : { body: { status: 'UP' } },
   );
   const lines = [];
   try {
@@ -264,7 +264,14 @@ test('a forged health body never writes its own line once the commit is live', a
       log: (line) => lines.push(line),
     });
     assert.ok(backend.hits.get('/actuator/health') >= 1, 'health was asked');
-    for (const line of lines) assert.ok(!line.includes('\n'), line);
+    assert.ok(lines.length > 0, 'the attempts were logged');
+    for (const line of lines) {
+      assert.ok(!line.includes('\n'), line);
+      assert.match(
+        line,
+        /^attempt \d+: live commit 2{40}, waiting for 2{40} \(info: .*; health: not JSON \(".*"\)\)$/,
+      );
+    }
   } finally {
     await backend.close();
   }
