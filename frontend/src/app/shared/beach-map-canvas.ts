@@ -28,9 +28,9 @@ export interface BeachMapCanvasRow {
    *  its own: the tourist map and the Daily view pass the stored `rowLabel` (uniqueness
    *  from grouping rows by it), the layout editor its grid letters (a grid being painted). */
   readonly code: string;
-  /** The zone chip's text; `null` renders no chip even on a zone start. The rail caps the chip's
-   *  width and ellipsizes what does not fit (92px below `sm`, 128px above), so this may be a
-   *  phrase — a price plus what it buys — and not only an amount. */
+  /** The zone chip's text — an amount or a min–max span; `null` renders no chip even on a zone
+   *  start. The rail caps the chip's width and ellipsizes what does not fit (92px below `sm`,
+   *  128px above), so a wide span still holds the column. */
   readonly priceLabel: string | null;
   /** True where this row starts a new price zone — draws the zone gap + the price chip. */
   readonly zoneStart: boolean;

@@ -14,6 +14,11 @@ import { settle } from './support/booking-dialog';
 
 const PRINCIPAL = { username: 'operator', principalType: 'OPERATOR' };
 
+/** The server's row label for a 1-based grid row (#1586): `A` for 1. */
+function rowLetter(gridY: number): string {
+  return String.fromCharCode(64 + gridY);
+}
+
 interface MockSet {
   id: number;
   rowLabel: string;
@@ -162,18 +167,21 @@ async function mockConsole(
     }
     const setId = Number(itemId ?? 0);
     if (request.method() === 'POST') {
-      const body = request.postDataJSON() as Omit<MockSet, 'id' | 'availability'>;
-      sets = [...sets, { ...body, id: nextId++, availability: 'FREE' }];
+      const body = request.postDataJSON() as Omit<MockSet, 'id' | 'availability' | 'rowLabel'>;
+      // As the server does (#1586): the row is labelled by its grid letter, never by the body.
+      const rowLabel = rowLetter(body.gridY);
+      sets = [...sets, { ...body, rowLabel, id: nextId++, availability: 'FREE' }];
       return route.fulfill({ status: 201, json: { id: nextId - 1 } });
     }
     if (request.method() === 'PATCH') {
-      const body = request.postDataJSON() as Omit<MockSet, 'id' | 'availability'>;
+      const body = request.postDataJSON() as Omit<MockSet, 'id' | 'availability' | 'rowLabel'>;
       const current = sets.find((s) => s.id === setId)!;
       const moved = body.gridX !== current.gridX || body.gridY !== current.gridY;
       if (setId === CLAIMED_SET_ID && moved) {
         return conflict(route);
       }
-      sets = sets.map((s) => (s.id === setId ? { ...s, ...body } : s));
+      const rowLabel = rowLetter(body.gridY);
+      sets = sets.map((s) => (s.id === setId ? { ...s, ...body, rowLabel } : s));
       return route.fulfill({ status: 204, body: '' });
     }
     if (request.method() === 'DELETE') {
@@ -187,7 +195,6 @@ async function mockConsole(
   });
 
   interface LayoutCellBody {
-    rowLabel: string;
     positionNo: number;
     tier: 'PREMIUM' | 'STANDARD';
     pool: 'ONLINE' | 'WALK_IN';
@@ -487,7 +494,7 @@ test('a mostly-vertical drag sweeps a column of sets instead of panning the map 
     for (let c = 1; c <= 2; c++) {
       tallSets.push({
         id: id++,
-        rowLabel: String.fromCharCode(64 + r),
+        rowLabel: rowLetter(r),
         positionNo: c,
         tier: 'STANDARD',
         pool: 'ONLINE',

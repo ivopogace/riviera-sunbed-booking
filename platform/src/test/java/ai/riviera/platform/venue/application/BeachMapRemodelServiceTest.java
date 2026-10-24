@@ -131,7 +131,7 @@ class BeachMapRemodelServiceTest {
 	}
 
 	private static final List<LayoutCell> CELLS = List.of(
-			new LayoutCell("A", 1, "STANDARD", Pool.ONLINE, 2000, "EUR", 1, 1));
+			new LayoutCell(1, "STANDARD", Pool.ONLINE, 2000, "EUR", 1, 1));
 	private static final RemodelGate PROCEED = disturbed -> GateVerdict.proceed();
 
 	@Test

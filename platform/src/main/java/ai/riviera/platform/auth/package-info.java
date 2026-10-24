@@ -9,6 +9,6 @@
 @org.springframework.modulith.ApplicationModule(
 	displayName = "Auth",
 	allowedDependencies = { "customer::api", "customer::vocabulary", "operator::api", "operator::vocabulary",
-			"notification::api", "shared" }
+			"notification::api", "notification::vocabulary", "shared" }
 )
 package ai.riviera.platform.auth;

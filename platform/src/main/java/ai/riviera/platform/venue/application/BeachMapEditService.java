@@ -20,7 +20,7 @@ import ai.riviera.platform.venue.vocabulary.VenueId;
 
 /**
  * The beach-map edits behind {@link EditBeachMap} (invariant #11): single-set edits, row
- * reprice/rename, batch price/tier/pool, and the bulk save ({@link LayoutWriter}'s diff under an
+ * reprice, batch price/tier/pool, and the bulk save ({@link LayoutWriter}'s diff under an
  * always-proceed gate; the remodel commit passes its own). Commands self-validate; this owns
  * existence checks, row locks, claim probes, {@link SetRejection} mapping and the {@link Venues}
  * write, DB UNIQUE constraints the backstop. {@link VenueOwnership#assertOwns} runs first on every
@@ -126,40 +126,6 @@ class BeachMapEditService implements EditBeachMap {
 			return new ChangeOutcome.Rejected(SetRejection.NO_SUCH_ROW);
 		}
 		venues.incrementSetVersion(venueId); // advance the token iff a row was actually repriced
-		return ChangeOutcome.Applied.APPLIED;
-	}
-
-	@Override
-	@Transactional
-	public ChangeOutcome renameRow(OperatorId operator, VenueId venueId, long expectedVersion,
-			RowNameCommand command) {
-		// Ownership first — fail closed before any read/write (invariant #13, BOLA).
-		ownership.assertOwns(operator, new VenueRef(venueId.value()));
-		if (!venues.venueExists(venueId)) {
-			return new ChangeOutcome.Rejected(SetRejection.NO_SUCH_VENUE);
-		}
-		// Same token, lock and order as repriceRow — no new lock edge, and only one racer off a value wins.
-		if (venues.lockAndReadSetVersion(venueId) != expectedVersion) {
-			return new ChangeOutcome.Rejected(SetRejection.STALE_WRITE);
-		}
-		Set<String> labels = venues.distinctRowLabels(venueId);
-		// Existence first: a rename of a row that is gone must say so, not blame the target label.
-		if (!labels.contains(command.rowLabel())) {
-			return new ChangeOutcome.Rejected(SetRejection.NO_SUCH_ROW);
-		}
-		if (command.newLabel().equals(command.rowLabel())) {
-			// Nothing to write: spending the shared token here would stale every other tab for free.
-			return ChangeOutcome.Applied.APPLIED;
-		}
-		// Broader than the UNIQUE index, which misses a shared label whose position numbers never collide.
-		if (labels.contains(command.newLabel())) {
-			return new ChangeOutcome.Rejected(SetRejection.ROW_NAME_TAKEN);
-		}
-		// Rows-affected still guards: a concurrent removeSet can empty the row after the label read.
-		if (venues.renameRow(venueId, command) == 0) {
-			return new ChangeOutcome.Rejected(SetRejection.NO_SUCH_ROW);
-		}
-		venues.incrementSetVersion(venueId); // advance the token iff a row was actually renamed
 		return ChangeOutcome.Applied.APPLIED;
 	}
 

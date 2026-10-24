@@ -12,18 +12,19 @@ import { ConsoleVenueMap } from '../core/console-venue-map';
 import { OperatorConsoleService } from './operator-console.service';
 import { PendingApprovalBanner } from './pending-approval-banner';
 import { PendingRequestsStore } from './pending-requests-store';
+import { ConsolePageBox } from '../shared/console-page-box';
 
 /**
  * The venue console's page at `/operator/:venueId`: the stats strip, the pending-approval banner
  * and the tab outlet hosting each tab as a child route. Its chrome is `console-shell.ts`'s; this
  * component publishes nothing to it and owns only the per-venue seeding: the shared venue-map
  * snapshot ({@code venueAccessGuard} primes it before this activates; replayed here for the strip, re-read when
- * the Daily view settles a walk-in, {@link AvailabilityChanges}) and the Requests badge count (`PendingRequestsStore`). No sign-in
+ * the Daily view settles a walk-in or a claim-releasing day refund, {@link AvailabilityChanges}) and the Requests badge count (`PendingRequestsStore`). No sign-in
  * gate: {@code operatorSessionGuard} awaits the restore, so this only renders signed-in.
  */
 @Component({
   selector: 'app-operator-console',
-  imports: [RouterOutlet, ConsoleStatsStrip, PendingApprovalBanner],
+  imports: [ConsolePageBox, RouterOutlet, ConsoleStatsStrip, PendingApprovalBanner],
   templateUrl: './operator-console.html',
   host: { class: 'block' },
 })
@@ -56,7 +57,7 @@ export class OperatorConsole {
         untracked(() => this.load(id));
       }
     });
-    // A settled walk-in moves no pending count, and load() would reset the badge store: the map only.
+    // A walk-in or a day refund moves no pending count, and load() resets the badge store: the map only.
     this.changes
       .todayAt(this.venueId)
       .pipe(takeUntilDestroyed())

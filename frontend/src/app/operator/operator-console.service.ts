@@ -28,7 +28,6 @@ import {
   RepriceErrorCode,
   RequestDecision,
   RequestErrorCode,
-  RowNameErrorCode,
   SeasonClosureErrorCode,
   SeasonClosureRequest,
   SeasonClosureResult,
@@ -108,13 +107,16 @@ export class OperatorConsoleService {
     );
   }
 
-  /** The count of confirmed online bookings for the venue on `date` — the "Booked online" tile. */
+  /**
+   * The count of online bookings holding a set at the venue on `date` — the "Booked online" tile. A
+   * day the venue refunded and released (ADR-0027) still lists in the guest list but holds no set.
+   */
   dailyBookingCount(venueId: number, date: string): Observable<number> {
     return this.http
-      .get<readonly unknown[]>(`${this.base}/api/venues/${venueId}/bookings`, {
+      .get<readonly ConsoleDailyBooking[]>(`${this.base}/api/venues/${venueId}/bookings`, {
         params: new HttpParams().set('date', date),
       })
-      .pipe(map((bookings) => bookings.length));
+      .pipe(map((bookings) => bookings.filter((b) => b.released !== true).length));
   }
 
   /**
@@ -241,23 +243,6 @@ export class OperatorConsoleService {
     return this.http.put<void>(
       `${this.base}/api/venues/${venueId}/rows/${encodeURIComponent(rowLabel)}/price`,
       { price, expectedVersion },
-    );
-  }
-
-  /**
-   * Rename one row — display-only, so the layout locks never refuse it on a venue that has sold.
-   * `rowLabel` is the label currently STORED (the typed draft is `newLabel`); `expectedVersion` is
-   * the `setVersion` token the reprice and the bulk replace share.
-   */
-  renameRow(
-    venueId: number,
-    rowLabel: string,
-    newLabel: string,
-    expectedVersion: number,
-  ): Observable<void> {
-    return this.http.put<void>(
-      `${this.base}/api/venues/${venueId}/rows/${encodeURIComponent(rowLabel)}/name`,
-      { newLabel, expectedVersion },
     );
   }
 
@@ -579,28 +564,6 @@ export function repriceErrorOf(error: unknown): RepriceErrorCode {
       case 'NO_SUCH_ROW':
       case 'NO_SUCH_VENUE':
       case 'INVALID_REQUEST':
-      case 'STALE_WRITE':
-        return code;
-      default:
-        return 'UNKNOWN';
-    }
-  }
-  return 'UNKNOWN';
-}
-
-/** Map an HTTP failure of the per-row rename to a known {@link RowNameErrorCode} (RFC-7807 `code`). */
-export function rowNameErrorOf(error: unknown): RowNameErrorCode {
-  if (error instanceof HttpErrorResponse) {
-    if (error.status === 401) {
-      return 'UNAUTHORIZED';
-    }
-    const code = problemCodeOf(error);
-    switch (code) {
-      case 'NOT_VENUE_OWNER':
-      case 'NO_SUCH_ROW':
-      case 'NO_SUCH_VENUE':
-      case 'INVALID_REQUEST':
-      case 'ROW_NAME_TAKEN':
       case 'STALE_WRITE':
         return code;
       default:

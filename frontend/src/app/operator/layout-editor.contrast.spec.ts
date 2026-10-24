@@ -194,7 +194,7 @@ describe.each(CONSOLE_THEMES)(
       );
     });
 
-    it('the rows / positions fields and the row-name field (card ink on the inset/60) meet AA', () => {
+    it('the rows / positions fields (card ink on the inset/60) meet AA', () => {
       expectAaOnSurfaces(theme, theme.ink, 1, (stop) => insetOver(theme, 0.6, stop));
     });
 

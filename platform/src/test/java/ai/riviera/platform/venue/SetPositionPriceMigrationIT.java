@@ -33,7 +33,7 @@ class SetPositionPriceMigrationIT {
 		jdbc.update("""
 				INSERT INTO set_position (venue_id, row_label, position_no, tier, pool,
 				                          price_minor, price_currency, grid_x, grid_y)
-				VALUES (?, 'Price check', ?, 'STANDARD', 'ONLINE', ?, ?, 40, ?)
+				VALUES (?, 'Price check', ?, 'STANDARD', 'ONLINE', ?, ?, ?, 20)
 				""", MIRAMAR, positionNo, priceMinor, priceCurrency, 40 + positionNo);
 	}
 

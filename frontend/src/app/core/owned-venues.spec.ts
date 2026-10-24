@@ -87,4 +87,34 @@ describe('OwnedVenues', () => {
       venues: [{ id: 20, name: 'Aurora', beach: 'BORSH' }],
     });
   });
+
+  it('a read that settles after reset never writes the list — the previous operator’s venues stay gone (#1573)', async () => {
+    const superseded = service.load();
+    const pending = http.expectOne(MINE);
+
+    service.reset();
+    pending.flush(VENUES);
+    await superseded;
+
+    expect(service.venues()).toBeUndefined();
+    const reloaded = service.load();
+    http.expectOne(MINE).flush([]);
+    expect(await reloaded).toEqual({ status: 'loaded', venues: [] });
+  });
+
+  it('a read that fails after reset leaves the replacement read in flight (#1573)', async () => {
+    const superseded = service.load();
+    service.reset();
+    const current = service.load();
+    const [stale, fresh] = http.match(MINE);
+
+    stale.flush(null, { status: 500, statusText: 'Server Error' });
+    await superseded;
+    const joined = service.load(); // still shares the replacement — no third GET (http.verify())
+    fresh.flush(VENUES);
+
+    expect(await current).toEqual({ status: 'loaded', venues: VENUES });
+    expect(await joined).toEqual({ status: 'loaded', venues: VENUES });
+    expect(service.venues()).toEqual(VENUES);
+  });
 });

@@ -216,7 +216,7 @@ class MoveVsReserveConcurrencyIT {
 	}
 
 	private static LayoutCell cell(int position) {
-		return new LayoutCell("A", position, "STANDARD", Pool.ONLINE, 2000, "EUR", position, 1);
+		return new LayoutCell(position, "STANDARD", Pool.ONLINE, 2000, "EUR", position, 1);
 	}
 
 	private long insertVenue(String name) {

@@ -9,7 +9,8 @@
 @if (!loaded()) {
   <!-- Mirrors the loaded day so nothing jumps when it lands; the announcer above owns the words (#744). -->
   <section
-    class="mx-auto w-full max-w-[1100px] px-5 py-4"
+    appConsolePageBox
+    class="py-4 max-sm:px-5"
     aria-hidden="true"
     inert
     data-testid="daily-loading"
@@ -80,7 +81,7 @@
     Sorry — we couldn’t load this venue’s day. Please try again.
   </p>
 } @else {
-  <section class="mx-auto w-full max-w-[1100px] px-5 py-4" data-testid="daily-view-tab">
+  <section appConsolePageBox class="py-4 max-sm:px-5" data-testid="daily-view-tab">
     <!-- Date + live availability summary -->
     <section appCardGlass class="mb-3.5 rounded-[20px] px-[18px] py-4">
       <div class="flex flex-wrap items-end justify-between gap-3">

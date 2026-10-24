@@ -967,7 +967,7 @@ export class SetEditor {
     this.moving.set(false);
     await this.write('move', () =>
       this.console.editSet(this.venueId(), selected.id, {
-        ...placementAt(gridX, gridY, this.sets()),
+        ...placementAt(gridX, gridY),
         tier: selected.tier,
         pool: selected.pool,
         price: selected.price,
@@ -991,7 +991,7 @@ export class SetEditor {
       'add',
       () =>
         this.console.addSet(this.venueId(), {
-          ...placementAt(cell.gridX, cell.gridY, this.sets()),
+          ...placementAt(cell.gridX, cell.gridY),
           tier: draft.tier,
           pool: draft.pool,
           price: { minorUnits, currency: draft.currency },
@@ -1033,7 +1033,6 @@ export class SetEditor {
       return;
     }
     const request: SetWriteRequest = {
-      rowLabel: selected.rowLabel,
       positionNo: selected.positionNo,
       tier: draft.tier,
       pool: draft.pool,
@@ -1189,19 +1188,12 @@ function boundingRect(coords: ReadonlySet<string>): SweepRect {
   };
 }
 
-/**
- * The row label and position number a grid cell implies. A row that already has sets keeps its own
- * label — an operator-named row must not be split by a bare-letter newcomer; an empty row
- * takes the same grid-letter derivation the bulk editor defaults to.
- */
+/** The position number a grid cell implies; the server labels the row by its grid letter (#1586). */
 function placementAt(
   gridX: number,
   gridY: number,
-  siblings: readonly SetView[],
-): Pick<SetWriteRequest, 'rowLabel' | 'positionNo' | 'gridX' | 'gridY'> {
-  const sibling = siblings.find((s) => s.gridY === gridY);
+): Pick<SetWriteRequest, 'positionNo' | 'gridX' | 'gridY'> {
   return {
-    rowLabel: sibling?.rowLabel ?? gridRowLabel(gridY - 1),
     positionNo: gridX,
     gridX,
     gridY,

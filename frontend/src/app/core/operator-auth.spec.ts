@@ -209,6 +209,26 @@ describe('OperatorAuth (session-aware, issue #109)', () => {
     await second;
   });
 
+  it('a successful signIn drops the session caches — a principal swap never inherits the previous list (#1573)', async () => {
+    const auth = serviceWithRestore('signed-out');
+    const venueMap = primeSnapshot();
+    const owned = TestBed.inject(OwnedVenues);
+    const first = owned.load();
+    httpMock
+      .expectOne(`${environment.apiBaseUrl}/api/venues/mine`)
+      .flush([{ id: 7, name: 'Theirs', beach: 'JALE' }]);
+    await first;
+
+    const result = auth.signIn('operator', 'pw');
+    httpMock
+      .expectOne(`${AUTH_API}/operator/login`)
+      .flush({ username: 'operator', principalType: 'OPERATOR' });
+    await result;
+
+    expect(owned.venues()).toBeUndefined();
+    expectSnapshotRefetch(venueMap);
+  });
+
   describe('register (self-registration, S6 #115)', () => {
     it('posts the fields and resolves submitted on 202 — never a session, never a /me', async () => {
       const auth = serviceWithRestore('signed-out');

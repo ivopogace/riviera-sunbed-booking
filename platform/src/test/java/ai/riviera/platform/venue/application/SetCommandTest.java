@@ -8,86 +8,65 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 /**
- * Pins {@link SetCommand}'s edge bounds: the row label is limited to
- * {@link VenueFieldValidation#MAX_ROW_LABEL_LENGTH} code points — matching Postgres
- * {@code char_length}, so the V43 CHECK stays the backstop — and the price is EUR minor units of at
- * least €0.50 ({@link ai.riviera.platform.venue.vocabulary.SetPrice}, invariant #5) — and the pool is
- * presence-only, an off-vocabulary value being unrepresentable in {@link Pool}. A violation is
- * rejected at the application boundary (→ {@code 400 INVALID_REQUEST}, §6b).
+ * Pins {@link SetCommand}'s edge bounds: the row label is the grid row's letter and nothing else, a
+ * row past {@code Z} is refused, the price is EUR minor units of at least €0.50
+ * ({@link ai.riviera.platform.venue.vocabulary.SetPrice}, invariant #5), and the pool is
+ * presence-only. A violation is rejected at the application boundary (→ {@code 400 INVALID_REQUEST}, §6b).
  */
 class SetCommandTest {
 
-	private static SetCommand withRowLabel(String rowLabel) {
-		return new SetCommand(rowLabel, 1, "PREMIUM", Pool.ONLINE, 4500, "EUR", 1, 1);
+	private static SetCommand onRow(int gridY) {
+		return new SetCommand(1, "PREMIUM", Pool.ONLINE, 4500, "EUR", 1, gridY);
 	}
 
 	@Test
-	void acceptsADescriptiveRowLabel() {
-		assertEquals("Front row · Sea view", withRowLabel("Front row · Sea view").rowLabel());
+	void theRowLabelIsTheGridRowsLetter() {
+		assertEquals("A", onRow(1).rowLabel());
+		assertEquals("C", onRow(3).rowLabel());
+		assertEquals("Z", onRow(26).rowLabel());
+		assertEquals("C", onRow(3).placement().rowLabel());
 	}
 
 	@Test
-	void acceptsARowLabelAtTheLengthBound() {
-		String atBound = "ë".repeat(VenueFieldValidation.MAX_ROW_LABEL_LENGTH);
-
-		assertEquals(atBound, withRowLabel(atBound).rowLabel());
-	}
-
-	@Test
-	void rejectsARowLabelOverTheLengthBound() {
-		String overBound = "a".repeat(VenueFieldValidation.MAX_ROW_LABEL_LENGTH + 1);
-
-		assertThrows(IllegalArgumentException.class, () -> withRowLabel(overBound));
-	}
-
-	@Test
-	void countsTheBoundInCodePointsLikeCharLength() {
-		// 40 code points that exceed 40 UTF-16 units — must still pass, as Postgres char_length would.
-		String astral = "🌴".repeat(VenueFieldValidation.MAX_ROW_LABEL_LENGTH);
-
-		assertEquals(astral, withRowLabel(astral).rowLabel());
+	void rejectsARowPastTheAlphabet() {
+		assertThrows(IllegalArgumentException.class, () -> onRow(27));
+		assertThrows(IllegalArgumentException.class, () -> onRow(0));
 	}
 
 	@Test
 	void carriesTheTypedPool() {
 		assertEquals(Pool.WALK_IN,
-				new SetCommand("A", 1, "PREMIUM", Pool.WALK_IN, 4500, "EUR", 1, 1).pool());
+				new SetCommand(1, "PREMIUM", Pool.WALK_IN, 4500, "EUR", 1, 1).pool());
 	}
 
 	@Test
 	void rejectsAMissingPool() {
 		assertThrows(IllegalArgumentException.class,
-				() -> new SetCommand("A", 1, "PREMIUM", null, 4500, "EUR", 1, 1));
+				() -> new SetCommand(1, "PREMIUM", null, 4500, "EUR", 1, 1));
 	}
 
 	@Test
 	void acceptsTheMinimumEurPrice() {
-		assertEquals(50, new SetCommand("A", 1, "PREMIUM", Pool.ONLINE, 50, "EUR", 1, 1).priceMinor());
+		assertEquals(50, new SetCommand(1, "PREMIUM", Pool.ONLINE, 50, "EUR", 1, 1).priceMinor());
 	}
 
 	@Test
 	void rejectsAPriceBelowTheMinimum() {
 		assertThrows(IllegalArgumentException.class,
-				() -> new SetCommand("A", 1, "PREMIUM", Pool.ONLINE, 49, "EUR", 1, 1));
+				() -> new SetCommand(1, "PREMIUM", Pool.ONLINE, 49, "EUR", 1, 1));
 		assertThrows(IllegalArgumentException.class,
-				() -> new SetCommand("A", 1, "PREMIUM", Pool.ONLINE, 0, "EUR", 1, 1));
+				() -> new SetCommand(1, "PREMIUM", Pool.ONLINE, 0, "EUR", 1, 1));
 	}
 
 	@Test
 	void rejectsANonEurCurrency() {
 		assertThrows(IllegalArgumentException.class,
-				() -> new SetCommand("A", 1, "PREMIUM", Pool.ONLINE, 4500, "ALL", 1, 1));
+				() -> new SetCommand(1, "PREMIUM", Pool.ONLINE, 4500, "ALL", 1, 1));
 	}
 
 	@Test
 	void rejectsANegativePrice() {
 		assertThrows(IllegalArgumentException.class,
-				() -> new SetCommand("A", 1, "PREMIUM", Pool.ONLINE, -1, "EUR", 1, 1));
-	}
-
-	@Test
-	void rejectsABlankRowLabel() {
-		assertThrows(IllegalArgumentException.class, () -> withRowLabel("  "));
-		assertThrows(IllegalArgumentException.class, () -> withRowLabel(null));
+				() -> new SetCommand(1, "PREMIUM", Pool.ONLINE, -1, "EUR", 1, 1));
 	}
 }
