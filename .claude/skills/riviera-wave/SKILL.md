@@ -81,9 +81,9 @@ Never route around a refusal: ask the owner in the reply text.
   fix made after it re-reviewed, with no exception: `riviera-sdlc` draws the line (a fix that
   changes behaviour re-enters at Implement; a comment, naming or test-only fix needs only green
   CI), and the wave does not redraw it. Each round's `### Code review` comment (a trivial
-  decline's quoted verdict) proves it ran; the effort, the skill per round and the overlay items checked are read from the PR body's
-  review-gate line and the child's `READY TO MERGE`, and a child whose body omits them is sent
-  back to fill them in;
+  decline's quoted verdict) proves it ran; the effort, the skill per round and the overlay items
+  checked are read from the PR body's review-gate line and the child's `READY TO MERGE`, and a
+  child whose body omits them is sent back to fill them in;
 - optionally, when the review-gate line says the plugin got past step 4 in round 1, that it ran
   step 5 (pr-gates §1): `list_events` on the child session with `kinds: ["assistant"]` over the
   review turn shows one Haiku scorer `Agent` call per step-4 finding; a missing one sends the
