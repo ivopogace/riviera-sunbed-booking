@@ -206,11 +206,17 @@ describe('OperatorConsole — signed-in page (#170, guard-gated since #277)', ()
 describe('OperatorConsole — an announced availability change (#1525, #1551)', () => {
   let fixture: ComponentFixture<OperatorConsole>;
   let httpMock: HttpTestingController;
+  let params$: BehaviorSubject<ParamMap>;
   const TODAY = todayBookingDate(new Date());
 
   beforeEach(async () => {
     document.documentElement.removeAttribute('data-riv-theme');
-    TestBed.configureTestingModule({ imports: [OperatorConsole], providers: baseProviders() });
+    const stub = routeStub(String(VENUE));
+    params$ = stub.params$;
+    TestBed.configureTestingModule({
+      imports: [OperatorConsole],
+      providers: baseProviders(stub.route),
+    });
     TestBed.inject(OperatorAuth);
     httpMock = TestBed.inject(HttpTestingController);
     httpMock
@@ -353,6 +359,104 @@ describe('OperatorConsole — an announced availability change (#1525, #1551)', 
     fixture.detectChanges();
 
     expect(freeTile()).toBe('0 / 3');
+  });
+
+  function mapReads(venue: number) {
+    return httpMock.match(
+      (r) => r.url === `${BASE}/api/venues/${venue}/beach-map` && r.method === 'GET',
+    );
+  }
+
+  function failRead(req: ReturnType<typeof mapReads>[number]): void {
+    req.flush({}, { status: 500, statusText: 'Server Error' });
+  }
+
+  /** Venue 2's badge and strip reads after an in-place switch, plus the strip's held re-read per announce. */
+  function flushSwitchedVenue(): void {
+    flushRequests(httpMock, 0, 2);
+    httpMock
+      .expectOne((r) => r.url === `${BASE}/api/venues/2/bookings/count` && r.method === 'GET')
+      .flush({ date: '2026-06-15', count: 0 });
+    httpMock
+      .expectOne((r) => r.url === `${BASE}/api/venues/2/takings` && r.method === 'GET')
+      .flush({
+        gross: { minorUnits: 0, currency: 'EUR' },
+        net: { minorUnits: 0, currency: 'EUR' },
+        commissionBps: 1500,
+        date: '2026-07-07',
+      });
+    httpMock
+      .match((r) => r.url === `${BASE}/api/venues/2/availability` && r.method === 'GET')
+      .forEach((req) => req.flush([]));
+  }
+
+  it('a venue switch’s read still lands when the newer refresh read fails — Free today never goes blank (#1654)', async () => {
+    params$.next(convertToParamMap({ venueId: '2' }));
+    fixture.detectChanges();
+    await fixture.whenStable();
+    // A walk-in on venue 2 settles while its switch read is still out.
+    TestBed.inject(AvailabilityChanges).announce({ venueId: 2, date: TODAY, cause: 'WALK_IN' });
+    await fixture.whenStable();
+    const [switchRead, refresh] = mapReads(2);
+    failRead(refresh);
+    switchRead.flush({
+      map: venueMap('Second Venue', 2, [set(1, 'FREE'), set(2, 'TAKEN')]),
+      locks: [],
+    });
+    flushSwitchedVenue();
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    expect(freeTile()).toBe('1 / 2');
+  });
+
+  it('the older refresh still lands when the newer one fails (#1654)', async () => {
+    TestBed.inject(AvailabilityChanges).announce({ venueId: VENUE, date: TODAY, cause: 'WALK_IN' });
+    TestBed.inject(AvailabilityChanges).announce({ venueId: VENUE, date: TODAY, cause: 'WALK_IN' });
+    await fixture.whenStable();
+    const [first, second] = mapReads(VENUE);
+    failRead(second);
+    first.flush({
+      map: venueMap('Miramar Beach Club', VENUE, [
+        set(1, 'TAKEN'),
+        set(2, 'FREE'),
+        set(3, 'TAKEN'),
+      ]),
+      locks: [],
+    });
+    httpMock
+      .match((r) => r.url === `${BASE}/api/venues/${VENUE}/availability` && r.method === 'GET')
+      .forEach((req) => req.flush([]));
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    expect(freeTile()).toBe('1 / 3');
+  });
+
+  it('a read for the venue switched away from never lands, even before the new venue’s read (#1654)', async () => {
+    TestBed.inject(AvailabilityChanges).announce({ venueId: VENUE, date: TODAY, cause: 'WALK_IN' });
+    await fixture.whenStable();
+    const [oldVenueRead] = mapReads(VENUE);
+    params$.next(convertToParamMap({ venueId: '2' }));
+    fixture.detectChanges();
+    await fixture.whenStable();
+
+    oldVenueRead.flush({
+      map: venueMap('Miramar Beach Club', VENUE, [set(1, 'FREE')]),
+      locks: [],
+    });
+    httpMock
+      .match((r) => r.url === `${BASE}/api/venues/${VENUE}/availability` && r.method === 'GET')
+      .forEach((req) => req.flush([]));
+    await fixture.whenStable();
+    fixture.detectChanges();
+    expect(freeTile()).toBe('0 / 0');
+
+    flushVenue(httpMock, 'Second Venue', 2, [set(1, 'TAKEN'), set(2, 'TAKEN')]);
+    flushSwitchedVenue();
+    await fixture.whenStable();
+    fixture.detectChanges();
+    expect(freeTile()).toBe('0 / 2');
   });
 
   it('ignores a change for another venue or another day (AC-6, R-2)', async () => {
