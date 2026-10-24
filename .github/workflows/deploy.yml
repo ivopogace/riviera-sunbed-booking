@@ -63,12 +63,23 @@ jobs:
       ${{ (github.event_name == 'workflow_run' && vars.DEPLOY_BACKEND_RENDER == 'true')
           || github.event_name == 'workflow_dispatch' }}
     runs-on: ubuntu-latest
-    # Deliberately the loosest cap here: the health poll below is allowed ~15 min on purpose (Render's
+    # Deliberately the loosest cap here: the live poll below is allowed ~15 min on purpose (Render's
     # free tier cold-starts), so this must clear that plus the trigger and Render's own build. It is
     # still a bound — before it, a deploy that never reported healthy could sit for six hours.
     timeout-minutes: 25
+    env:
+      # The commit this run deploys and then waits to see live: CI's head on the automatic path, the
+      # dispatched ref's head on the manual one.
+      DEPLOY_SHA: ${{ github.event.workflow_run.head_sha || github.sha }}
     steps:
-      - name: Trigger Render deploy (Render git-builds the Docker image — SPA + jar)
+      - name: Checkout the live poll (scripts/ only)
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ env.DEPLOY_SHA }}
+          sparse-checkout: scripts
+          persist-credentials: false
+
+      - name: Trigger Render deploy of exactly this commit (Render git-builds the Docker image — SPA + jar)
         env:
           RENDER_DEPLOY_HOOK_URL: ${{ secrets.RENDER_DEPLOY_HOOK_URL }}
         run: |
@@ -76,29 +87,18 @@ jobs:
             echo "::error::Backend deploy requested but the RENDER_DEPLOY_HOOK_URL secret is not set."
             exit 1
           fi
+          # ref= pins the deploy to the commit CI judged green; without it Render builds the branch head,
+          # which may be a later commit, and the live poll would wait for a commit never deployed.
+          case "$RENDER_DEPLOY_HOOK_URL" in *\?*) sep='&' ;; *) sep='?' ;; esac
           # --max-time: the hook returns immediately, so anything slower is a hang, not a slow deploy.
-          curl -fsS --max-time 30 -X POST "$RENDER_DEPLOY_HOOK_URL" > /dev/null
-          echo "Render deploy triggered."
+          response=$(curl -fsS --max-time 30 -X POST "${RENDER_DEPLOY_HOOK_URL}${sep}ref=${DEPLOY_SHA}")
+          echo "Render deploy triggered for $DEPLOY_SHA: ${response:-(no deploy id: another deploy is running)}"
 
-      - name: Wait for backend health (AC-1 / AC-2)
+      - name: Wait for the new build to be live (#1632)
         env:
-          # The backend's public URL — now also the app origin. Used only for the health poll.
+          # The backend's public URL — also the app origin. Unset fails the job: an unverified deploy is not green.
           BACKEND_API_URL: ${{ vars.BACKEND_API_URL }}
-        run: |
-          if [ -z "$BACKEND_API_URL" ]; then
-            echo "::warning::BACKEND_API_URL not set — skipping post-deploy health check."
-            exit 0
-          fi
-          url="$BACKEND_API_URL/actuator/health"
-          echo "Polling $url for {\"status\":\"UP\"} (Render free tier cold-starts; up to ~15 min)…"
-          for i in $(seq 1 90); do
-            body=$(curl -fsS --max-time 10 "$url" 2>/dev/null || true)
-            if echo "$body" | grep -q '"status":"UP"'; then
-              echo "attempt $i: $body — backend healthy."
-              exit 0
-            fi
-            echo "attempt $i: not ready yet ($body)"
-            sleep 10
-          done
-          echo "::error::Backend did not report UP within the timeout (check Render build/boot logs)."
-          exit 1
+          EXPECTED_SHA: ${{ env.DEPLOY_SHA }}
+        # Render keeps the old instance serving until the new one passes its health check, so health alone
+        # is answered by the old build: wait for /actuator/info to name this commit (docs/deploy/cd-pipeline.md).
+        run: node scripts/wait-for-live-commit.mjs
