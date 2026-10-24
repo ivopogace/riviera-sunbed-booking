@@ -6,7 +6,7 @@ package ai.riviera.platform.venue.application;
  * cell, a duplicate position) is normal flow, returned as a value, not thrown
  * (riviera-java-conventions: typed outcomes). The REST adapter maps each to one HTTP status:
  * {@code NO_SUCH_VENUE}/{@code NO_SUCH_SET}/{@code NO_SUCH_ROW}→404, {@code CELL_TAKEN}/
- * {@code DUPLICATE_POSITION}/{@code STALE_WRITE}/{@code SET_IN_USE}/{@code ROW_NAME_TAKEN}→409.
+ * {@code DUPLICATE_POSITION}/{@code STALE_WRITE}/{@code SET_IN_USE}→409.
  */
 public enum SetRejection {
 
@@ -14,11 +14,11 @@ public enum SetRejection {
 	NO_SUCH_VENUE,
 	/** No set with the given id belongs to the venue. */
 	NO_SUCH_SET,
-	/** No set on the venue carries the given row label (the reprice and the rename share it). */
+	/** No set on the venue carries the given row label (the row reprice). */
 	NO_SUCH_ROW,
 	/**
 	 * Another writer bumped the venue's {@code set_version} since the tab loaded the map (optimistic
-	 * concurrency). Reached by the token-guarded writes — reprice, rename, batch apply — never by the
+	 * concurrency). Reached by the token-guarded writes — reprice, batch apply — never by the
 	 * per-set {@code addSet}/{@code editSet}/{@code removeSet}. Maps to 409 {@code STALE_WRITE}.
 	 */
 	STALE_WRITE,
@@ -31,11 +31,5 @@ public enum SetRejection {
 	/** Another set already occupies the target {@code (grid_x, grid_y)} cell. */
 	CELL_TAKEN,
 	/** Another set already occupies the target {@code (row_label, position_no)} slot. */
-	DUPLICATE_POSITION,
-	/**
-	 * Another row on the venue already carries the label a rename asks for. Broader than
-	 * {@link #DUPLICATE_POSITION}: the DB accepts two rows sharing a label, but the tourist map, price
-	 * rail and pricing tab group by label and would merge them. Renaming to its own label is a no-op.
-	 */
-	ROW_NAME_TAKEN
+	DUPLICATE_POSITION
 }

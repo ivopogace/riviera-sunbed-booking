@@ -109,8 +109,9 @@ exemption keys on the constant's name instead (point 6's note); the split stays.
 ## Consequences
 
 - A set with finished bookings can be removed; its bookings, mails and payout lines keep resolving.
-  A retired set's label and price are frozen: the row-scoped rename and reprice skip it, because it
-  has no live guest to re-read a renamed row and a later mail must name what the guest was told.
+  A retired set's label and price are frozen: the row-scoped reprice skips it, because a later mail
+  must name what the guest was told. *Since #1586 rows are never renamed: V78's grid-letter rewrite
+  skips a retired set for the same reason.*
 - Every future read of the beach map must select from `active_set_position`; the build fails
   otherwise. A column a future read needs is a visible `CREATE OR REPLACE VIEW` in its migration.
 - The bulk save is a diff keyed by grid cell: it retires or deletes only the sets it removes, by this

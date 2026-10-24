@@ -1157,12 +1157,6 @@ public class WebSliceStubs {
 			}
 
 			@Override
-			public ChangeOutcome renameRow(OperatorId operator, VenueId venueId, long expectedVersion,
-					ai.riviera.platform.venue.application.RowNameCommand command) {
-				return new ChangeOutcome.Rejected(SetRejection.NO_SUCH_VENUE);
-			}
-
-			@Override
 			public ai.riviera.platform.venue.application.SetBatchOutcome applyToSets(OperatorId operator,
 					VenueId venueId, long expectedVersion,
 					ai.riviera.platform.venue.application.SetBatchCommand command) {

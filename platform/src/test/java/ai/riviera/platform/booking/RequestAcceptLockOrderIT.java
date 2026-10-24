@@ -111,7 +111,7 @@ class RequestAcceptLockOrderIT {
 				SELECT row_label, position_no, tier, pool, price_minor, price_currency, grid_x, grid_y
 				FROM set_position WHERE venue_id = :v AND retired_at IS NULL ORDER BY id
 				""").param("v", venue.id())
-				.query((rs, rowNum) -> new SetCommand(rs.getString("row_label"), rs.getInt("position_no"),
+				.query((rs, rowNum) -> new SetCommand(rs.getInt("position_no"),
 						rs.getString("tier"), Pool.valueOf(rs.getString("pool")), rs.getLong("price_minor"),
 						rs.getString("price_currency"), rs.getInt("grid_x"), rs.getInt("grid_y")))
 				.list());

@@ -188,7 +188,7 @@ class SetRetireIT {
 		mvc.perform(get("/api/bookings/{code}", "HISTCLUB1"))
 				.andExpect(status().isOk())
 				.andExpect(jsonPath("$.status").value("COMPLETED"))
-				.andExpect(jsonPath("$.rowLabel").value("Row A"))
+				.andExpect(jsonPath("$.rowLabel").value("A"))
 				.andExpect(jsonPath("$.positionNo").value(3));
 
 		mvc.perform(get("/api/venues/{v}/bookings", venue).cookie(operatorSession)

@@ -67,7 +67,7 @@ class SetBookingInfoIT {
 		assertEquals(LocalTime.of(18, 0), i.bookingCutoff(), "Miramar cutoff is 18:00 Europe/Tirane");
 		assertEquals(LocalTime.of(16, 0), i.salesClose(), "Miramar sales close backfilled to 16:00 (#791)");
 		assertEquals("Miramar Beach Club", i.venueName());
-		assertEquals("Front row · Sea view", i.rowLabel());
+		assertEquals("A", i.rowLabel(), "the front row reads by its grid letter (V78)");
 	}
 
 	@Test

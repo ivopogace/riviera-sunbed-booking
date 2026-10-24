@@ -38,7 +38,6 @@ import ai.riviera.platform.venue.application.OwnedVenueView;
 import ai.riviera.platform.venue.application.PhotoServingUrls;
 import ai.riviera.platform.venue.application.PhotoSlotView;
 import ai.riviera.platform.venue.application.PlacedSet;
-import ai.riviera.platform.venue.application.RowNameCommand;
 import ai.riviera.platform.venue.application.RowPriceCommand;
 import ai.riviera.platform.venue.application.SetBatchCommand;
 import ai.riviera.platform.venue.application.SetCommand;
@@ -64,7 +63,6 @@ class JdbcVenues implements Venues, CommissionRateStore, VenueRatings {
 	private static final String P_SET_ID = "setId";
 	private static final String P_VENUE = "venue";
 	private static final String P_ROW_LABEL = "rowLabel";
-	private static final String P_NEW_LABEL = "newLabel";
 	private static final String P_PRICE_MINOR = "priceMinor";
 	private static final String P_PRICE_CURRENCY = "priceCurrency";
 	/** Venue text-column / bind-param names, reused across insert / profile-update / profile-read
@@ -339,28 +337,6 @@ class JdbcVenues implements Venues, CommissionRateStore, VenueRatings {
 				""")
 				.param(P_PRICE_MINOR, c.priceMinor())
 				.param(P_PRICE_CURRENCY, c.priceCurrency())
-				.param(P_VENUE, venueId.value())
-				.param(P_ROW_LABEL, c.rowLabel())
-				.update();
-	}
-
-	@Override
-	public Set<String> distinctRowLabels(VenueId venueId) {
-		return Set.copyOf(jdbc.sql("SELECT DISTINCT row_label FROM active_set_position WHERE venue_id = :venue")
-				.param(P_VENUE, venueId.value())
-				.query(String.class)
-				.list());
-	}
-
-	@Override
-	public int renameRow(VenueId venueId, RowNameCommand c) {
-		// Display-only: only row_label is written, active sets only (a retired set keeps its label). 0 ⇒ unknown row.
-		return jdbc.sql("""
-				UPDATE set_position
-				SET row_label = :newLabel
-				WHERE venue_id = :venue AND row_label = :rowLabel AND retired_at IS NULL
-				""")
-				.param(P_NEW_LABEL, c.newLabel())
 				.param(P_VENUE, venueId.value())
 				.param(P_ROW_LABEL, c.rowLabel())
 				.update();

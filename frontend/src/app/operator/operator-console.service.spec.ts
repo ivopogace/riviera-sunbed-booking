@@ -30,7 +30,6 @@ import {
   layoutErrorOf,
   remodelPreviewOf,
   setBatchErrorOf,
-  rowNameErrorOf,
   seasonClosureErrorOf,
 } from './operator-console.service';
 
@@ -412,7 +411,6 @@ describe('OperatorConsoleService — per-set beach-map writes (#600)', () => {
   afterEach(() => httpMock.verify());
 
   const SET: SetWriteRequest = {
-    rowLabel: 'B',
     positionNo: 3,
     tier: 'STANDARD',
     pool: 'ONLINE',
@@ -553,39 +551,6 @@ describe('setBatchErrorOf', () => {
     expect(setBatchErrorOf(problem(409, 'SOMETHING_ELSE'))).toBe('UNKNOWN');
     expect(setBatchErrorOf(problem(500))).toBe('UNKNOWN');
     expect(setBatchErrorOf(new Error('offline'))).toBe('UNKNOWN');
-  });
-});
-
-/**
- * The per-row rename error mapper. `ROW_NAME_TAKEN` is the one code the Row names panel
- * explains in its own words: it is the ordinary outcome of picking a name another row already has.
- */
-describe('rowNameErrorOf (#726)', () => {
-  function problem(status: number, code?: string): HttpErrorResponse {
-    return new HttpErrorResponse({ status, error: code ? { code } : null });
-  }
-
-  it('maps 401 to UNAUTHORIZED before reading the body', () => {
-    expect(rowNameErrorOf(problem(401, 'ROW_NAME_TAKEN'))).toBe('UNAUTHORIZED');
-  });
-
-  it('passes through every code the Row names panel explains', () => {
-    for (const code of [
-      'ROW_NAME_TAKEN',
-      'STALE_WRITE',
-      'NO_SUCH_ROW',
-      'NO_SUCH_VENUE',
-      'NOT_VENUE_OWNER',
-      'INVALID_REQUEST',
-    ]) {
-      expect(rowNameErrorOf(problem(409, code))).toBe(code);
-    }
-  });
-
-  it('maps an unknown code and a non-HTTP failure to UNKNOWN', () => {
-    expect(rowNameErrorOf(problem(500, 'SOMETHING_ELSE'))).toBe('UNKNOWN');
-    expect(rowNameErrorOf(problem(500))).toBe('UNKNOWN');
-    expect(rowNameErrorOf(new Error('offline'))).toBe('UNKNOWN');
   });
 });
 
@@ -845,7 +810,6 @@ describe('OperatorConsoleService — remodel commit + receipts (#1034)', () => {
     const request: RemodelCommitRequest = {
       sets: [
         {
-          rowLabel: 'A',
           positionNo: 1,
           tier: 'PREMIUM',
           pool: 'ONLINE',
