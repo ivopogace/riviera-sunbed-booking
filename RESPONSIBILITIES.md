@@ -1268,10 +1268,11 @@ mutating `/api/admin/**` action, §`audit`) live in `web`; `challenge` and `audi
 - **Request bodies are capped before CSRF and the challenge claim (#1414):** `RequestBodyCapFilter`, right
   after `RateLimitFilter`, refuses a `POST`/`PUT`/`PATCH` body under `/api/**` past its cap with `413
   PAYLOAD_TOO_LARGE`: unread when the declared length is over, read to cap + 1 and replayed when chunked.
-  Each cap fits its routes' largest legitimate request (OWASP REST Security Cheat Sheet): 64 KiB; 256 KiB
-  for the beach-map layout save, remodel preview and commit (a full `MAX_SETS` layout is ~223 KB); 1 MiB
-  for the Stripe webhook. The photo upload keeps Spring's multipart limits. A login body is read once, by the
-  throttle's 8 KiB rule below (the 64 KiB cap when the limiter is off). A slow body under its cap: #1439.
+  Each cap fits its routes' largest legitimate request (OWASP REST Security Cheat Sheet): 64 KiB; 1 MiB for
+  the Stripe webhook; 256 KiB for the layout save, remodel preview and commit, kept at ~2x a label-less full
+  `MAX_SETS` layout (~123 KiB, #1626) so a new cell field needs no cap change (`RequestBodyCapFilterTest`).
+  The photo upload keeps Spring's multipart limits. A login body is read once, by the throttle's 8 KiB rule
+  below (the 64 KiB cap when the limiter is off). A slow body under its cap: #1439.
 - **Not fenced, deliberately:** login (the per-identity throttle covers it) and token redemption
   (a reset or verification token is already a bearer credential). The throttle reads every login
   body itself, to an 8 KiB cap whatever `Content-Length` says, and answers a larger one `413`
@@ -1356,11 +1357,16 @@ The SPA rules whose TSDoc points here; structure is `riviera-frontend`'s, stylin
   a load landing on the same entry keeps — so the reload path redirects with `skipLocationChange`
   and `core/page-navigation.ts`'s `reload` clears the entry's state before navigating. Any other
   navigation error stays loud: a guard or resolver that throws is a bug, not a page to retry.
-- **The Daily view's phone rail shows the stored row label at the tourist cap, two tiles per row**
-  (`shared/beach-map-canvas.ts`, the `labels` rail below `sm`): at 390px the gutters, the frame and the
-  price rail leave the rail 23px for a third tile. Two tiles and the cap match the tourist map's own
-  count (#1532); the tile accessible names carry the label on every width. Since #1586 the label is
-  always the row's grid letter (§ `venue`, rows by grid letter), so the cap never ellipsizes a real map.
+- **The Daily view's phone rail keeps two tiles per row** (`shared/beach-map-canvas.ts`, the `labels`
+  rail below `sm`), kept on purpose (#1626): since #1586 a row's label is its one grid letter (§ `venue`,
+  rows by grid letter), so the count no longer serves a long name; it stays because it is the tourist
+  map's own count (#1532), so the operator's phone shows a row as a guest's does. The tile accessible
+  names carry the label on every width.
+- **The rails' label ellipsis and `rowName()`'s non-letter branch stay, defensive only** (#1626): the
+  rails render active sets only (`active_set_position`, `JdbcVenueCatalog`), so no rail reaches a long
+  label and no e2e pins its ellipsis; the unit specs keep the classes. A retired set or a receipt snapshot
+  (`operator/remodel-receipt-panel.ts`) may still carry a pre-V78 name, which `shared/set-label.ts` prints
+  as is.
 - **The venue console lands on the Daily view** (`VENUE_CONSOLE_LANDING_TAB`), what a trading venue
   opens every day; set-up tabs are destinations. A freshly created venue is the exception:
   `operator/venue-create-card.ts` sends it to `beach-map`, as it has no map to run a day on yet.
