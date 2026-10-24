@@ -5,6 +5,7 @@ import { settle } from './support/booking-dialog';
 import { mockMapResources } from './support/map-resources';
 import { expectTouchManipulation } from './support/mobile-zoom';
 import { expectTouchTargets } from './support/touch-targets';
+import type { MockBeachCode, MockRegionCode, MockVenueSummary } from './support/venue-views';
 
 /**
  * The riviera map sheet — what Discover renders: the map as the ground under the
@@ -61,13 +62,13 @@ const VENUES = [
 function venue(
   id: number,
   name: string,
-  beach: string,
-  region: string,
+  beach: MockBeachCode,
+  region: MockRegionCode,
   latitude: number,
   longitude: number,
   minorUnits: number,
   salesOpen = true,
-): Record<string, unknown> {
+): MockVenueSummary {
   return {
     id,
     name,
@@ -78,6 +79,7 @@ function venue(
     bookingMode: 'INSTANT',
     fromPrice: { minorUnits, currency: 'EUR' },
     availability: { free: 5, total: 10 },
+    sellsOnline: true,
     salesOpen,
     location: { latitude, longitude },
   };
