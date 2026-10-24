@@ -8,6 +8,7 @@ import {
   expectConsoleTheme,
   expectInsetFill,
 } from './support/console-theme';
+import type { MockVenueMapView } from './support/venue-views';
 
 /**
  * Real-render CI-safe e2e for the Daily view tab. Drives sign-in → open the Daily view tab
@@ -62,7 +63,7 @@ async function expectGridScrolls(page: Page): Promise<void> {
 }
 
 /** A twelve-set single row — wide enough that a 44px tile per column cannot fit a 390px viewport. */
-function wideVenue(name: string, availability: 'FREE' | 'TAKEN') {
+function wideVenue(name: string, availability: 'FREE' | 'TAKEN'): MockVenueMapView {
   return {
     id: 1,
     name,
@@ -199,7 +200,7 @@ async function mockDaily(page: Page): Promise<{ patches: import('@playwright/tes
               id === 2 || id === 4 || marked.has(id) ? 'TAKEN' : 'FREE',
             ),
           ),
-        },
+        } satisfies MockVenueMapView,
         locks: [],
       },
     }),
@@ -480,7 +481,7 @@ test('refunds one guest’s day from the row behind a two-step confirm, and the 
           sets: [1, 2, 3, 4].map((id) =>
             seat(id, id, 'ONLINE', id === 1 || (id === 3 && refunded) ? 'FREE' : 'TAKEN'),
           ),
-        },
+        } satisfies MockVenueMapView,
         locks: [],
       },
     }),
