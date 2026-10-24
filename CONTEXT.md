@@ -326,6 +326,10 @@ model in `docs/architecture/domain-model.md`.
   stay is grouped by the stay's span, so a move day reads as staying on the new set. Each row
   carries the day's attendance, not the stay outcome, and today's list counts who has not yet
   checked in.
+- **Booked online** — the online bookings holding a set at a venue on a date: `CONFIRMED`,
+  `COMPLETED` or `NO_SHOW` bookings covering it whose day is not released. A day refund that kept
+  the claim still counts; a released day (**Venue day refund**) and a whole cancellation do not.
+  The console's count of it is the server's, never a client filter over the **Guest list**.
 - **Stay outcome** — what a confirmed booking becomes once its last service day has passed or been
   checked in: `COMPLETED` if any service day was attended, `NO_SHOW` if none was. Written once, by
   the check-in (last service day) or the scheduled sweep, never by hand.

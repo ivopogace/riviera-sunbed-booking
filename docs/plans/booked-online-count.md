@@ -83,14 +83,14 @@ attendance just to count them.
 
 ## Execution status
 
-**Stage pointer:** implement (phase 2)
+**Stage pointer:** PR — merge main, ready for review
 
-**Next action:** CONTEXT.md term, RESPONSIBILITIES.md § booking, daily-view-tab.spec.ts tidy.
+**Next action:** merge origin/main, mark ready, run the review gate (high).
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — backend count read | ✅ | 5ab20774 |
-| 1 — strip reads the count | ✅ | (this commit) |
-| 2 — docs + spec tidy | ⏳ | |
+| 1 — strip reads the count | ✅ | b0639e40 |
+| 2 — docs + spec tidy | ✅ | (this commit) |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.

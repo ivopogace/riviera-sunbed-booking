@@ -275,6 +275,9 @@ any is released on the old, never a swap of my own — so a racing reserve wins 
   whole span (a stitched stay's, not the stretch's) and the day's own `booking_day` attendance;
   takings count each covering booking's **day share** (`DayShare`: the amount split over its days,
   remainder on the first), so a fortnight's money lands on the days it serves (design D4).
+- **I serve the day's Booked online count** (`…/bookings/count?date=`, owner-asserted, #13): the
+  staff daily list's rows minus a released day (ADR-0027), a kept-claim refund still counted. A
+  number, not rows, so the console strip never downloads guests' codes to count them.
 - **The reserve commits before any payment call** (no row lock spans the gateway round-trip), and
   that does not weaken invariant #2: the guard is `UNIQUE (set_id, booking_date)` plus the atomic
   `INSERT … ON CONFLICT DO NOTHING` claim, which holds however long the lock is held.
