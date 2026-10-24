@@ -75,12 +75,44 @@ class VenueReadControllerIT {
 
 	@Test
 	void pricesAreIntegerMinorUnits() throws Exception {
+		// #1647: Miramar's €25 row is walk-in, so the map's "from" price is its cheapest online set, €30.
 		mvc.perform(get("/api/venues/{id}", MIRAMAR))
 				.andExpect(status().isOk())
-				.andExpect(jsonPath("$.fromPrice.minorUnits").value(2500))
+				.andExpect(jsonPath("$.fromPrice.minorUnits").value(3000))
 				.andExpect(jsonPath("$.fromPrice.currency").value("EUR"))
 				.andExpect(jsonPath("$.sets[0].price.minorUnits").isNumber())
 				.andExpect(jsonPath("$.sets[0].price.currency").value("EUR"));
+	}
+
+	@Test
+	void fromPriceIsTheCheapestOnlinePoolSetAndNullWithoutOne() throws Exception {
+		// #1647, the #1628 rule on the map read: a "from €X" is a price the tourist can book online (#3).
+		long venue = insertVenueWithAmenities(40);
+		insertSet(venue, 1, "ONLINE", 4000);
+		long walkIn = insertSet(venue, 2, "WALK_IN", 2000);
+
+		mvc.perform(get("/api/venues/{id}", venue))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.fromPrice.minorUnits").value(4000))
+				.andExpect(jsonPath("$.fromPrice.currency").value("EUR"));
+
+		jdbc.sql("UPDATE set_position SET pool = 'WALK_IN' WHERE venue_id = :v AND id <> :id")
+				.param("v", venue).param("id", walkIn).update();
+		mvc.perform(get("/api/venues/{id}", venue))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.sets.length()").value(2))
+				.andExpect(jsonPath("$.fromPrice").value(nullValue()));
+	}
+
+	private long insertSet(long venueId, int positionNo, String pool, long priceMinor) {
+		return jdbc.sql("""
+				INSERT INTO set_position (venue_id, row_label, position_no, tier, pool, price_minor,
+				                          price_currency, grid_x, grid_y)
+				VALUES (:v, 'A', :pos, 'STANDARD', :pool, :price, 'EUR', :pos, 1)
+				RETURNING id
+				""")
+				.param("v", venueId).param("pos", positionNo).param("pool", pool).param("price", priceMinor)
+				.query(Long.class).single();
 	}
 
 	@Test

@@ -809,6 +809,35 @@ describe('VenueMap', () => {
     expect((reviews.componentInstance as VenueReviews).reviewsCount()).toBe(0);
   });
 
+  it('prices the header from the online set the read names, "from €25 / set" (#1647)', async () => {
+    venueRequest().flush(miramar());
+    await settle();
+
+    const header = el().querySelector('header')!;
+    expect(header.textContent?.replace(/\s+/g, ' ')).toContain('from €25 / set');
+    expect(header.querySelector('[data-testid="unpriced-label"]')).toBeNull();
+  });
+
+  it('reads "Walk-in only" in the price\'s place when no set sells online, as the Discover card does (#1647)', async () => {
+    venueRequest().flush({ ...miramar(), fromPrice: null });
+    await settle();
+
+    const header = el().querySelector('header')!;
+    expect(header.querySelector('[data-testid="unpriced-label"]')?.textContent?.trim()).toBe(
+      'Walk-in only',
+    );
+    expect(header.textContent).not.toContain('/ set');
+  });
+
+  it('keeps the no-price header for a venue with no sets — neither a price nor "Walk-in only"', async () => {
+    venueRequest().flush(mapless());
+    await settle();
+
+    const header = el().querySelector('header')!;
+    expect(header.querySelector('[data-testid="unpriced-label"]')).toBeNull();
+    expect(header.textContent).not.toContain('/ set');
+  });
+
   it('agrees the review noun with the count — a venue\'s first rating reads "1 review"', async () => {
     // V45 zeroed every seeded count, so one review is the first rated state any venue reaches.
     venueRequest().flush({ ...miramar(), ratingTenths: 50, reviewsCount: 1 });

@@ -77,6 +77,7 @@ export interface VenueMapView {
   readonly ratingTenths: number;
   readonly reviewsCount: number;
   readonly bookingMode: BookingMode;
+  /** The cheapest online-pool set (invariant #3); `null` when walk-in-only or set-less (#1647). */
   readonly fromPrice: MoneyView | null;
   /**
    * The venue's amenities in canonical catalogue order, or absent/empty when none. The
