@@ -8,6 +8,7 @@ import { apiPhotoUrl } from '../shared/photo-url';
 import { MoneyView } from '../shared/money';
 import {
   BeachMapLayoutRequest,
+  BookedOnlineView,
   BlockedSet,
   CheckInErrorCode,
   CheckInResultView,
@@ -108,15 +109,15 @@ export class OperatorConsoleService {
   }
 
   /**
-   * The count of online bookings holding a set at the venue on `date` — the "Booked online" tile. A
-   * day the venue refunded and released (ADR-0027) still lists in the guest list but holds no set.
+   * The "Booked online" tile's count for the venue on `date`, served as-is: what counts (a released
+   * day does not, ADR-0027) is the server's rule. Owner-asserted (invariant #13).
    */
   dailyBookingCount(venueId: number, date: string): Observable<number> {
     return this.http
-      .get<readonly ConsoleDailyBooking[]>(`${this.base}/api/venues/${venueId}/bookings`, {
+      .get<BookedOnlineView>(`${this.base}/api/venues/${venueId}/bookings/count`, {
         params: new HttpParams().set('date', date),
       })
-      .pipe(map((bookings) => bookings.filter((b) => b.released !== true).length));
+      .pipe(map((view) => view.count));
   }
 
   /**

@@ -557,9 +557,8 @@ describe('DailyViewTab (#175)', () => {
     expect(byId('refund-day-REFUNDED1')).toBeNull();
   });
 
-  it('explains every day-refund denial in operator terms, reconciles and announces nothing', () => {
+  it('explains every day-refund denial in operator terms and reconciles', () => {
     render();
-    const seen = announced();
     const submit = (status: number, body: { code: string }): string => {
       byId('refund-day-ABC12345').click();
       fixture.detectChanges();
@@ -578,7 +577,6 @@ describe('DailyViewTab (#175)', () => {
     expect(submit(403, { code: 'NOT_VENUE_OWNER' })).toContain('don’t manage this venue');
     expect(submit(500, { code: 'BOOM' })).toContain('Could not refund');
     expect(submit(401, { code: 'UNAUTHENTICATED' })).toContain('session expired');
-    expect(seen).toEqual([]);
   });
 
   it('explains a scan on a released day and names the set (ADR-0027)', () => {

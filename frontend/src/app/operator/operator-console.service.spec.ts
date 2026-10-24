@@ -305,6 +305,34 @@ describe('OperatorConsoleService — payout ledger + weather refund (#173)', () 
   });
 });
 
+describe('OperatorConsoleService — Booked online count (#1624)', () => {
+  let service: OperatorConsoleService;
+  let httpMock: HttpTestingController;
+
+  beforeEach(() => {
+    TestBed.configureTestingModule({
+      providers: [provideHttpClient(), provideHttpClientTesting(), OperatorConsoleService],
+    });
+    service = TestBed.inject(OperatorConsoleService);
+    httpMock = TestBed.inject(HttpTestingController);
+  });
+
+  afterEach(() => httpMock.verify());
+
+  it('GETs the server’s count for the date and passes it through, never counting rows', () => {
+    let actual: number | undefined;
+    service.dailyBookingCount(1, '2026-07-05').subscribe((n) => (actual = n));
+
+    const req = httpMock.expectOne(
+      (r) => r.url === `${BASE}/api/venues/1/bookings/count` && r.method === 'GET',
+    );
+    expect(req.request.params.get('date')).toBe('2026-07-05');
+    req.flush({ date: '2026-07-05', count: 4 });
+
+    expect(actual).toBe(4);
+  });
+});
+
 describe('OperatorConsoleService — venue day refund (ADR-0027)', () => {
   let service: OperatorConsoleService;
   let httpMock: HttpTestingController;

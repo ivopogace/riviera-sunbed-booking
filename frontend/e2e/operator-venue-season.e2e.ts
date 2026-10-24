@@ -160,6 +160,9 @@ async function mockSeason(page: Page, refuseDate = false): Promise<{ writes: Req
     route.fulfill({ json: [] }),
   );
   await page.route(/\/api\/venues\/1\/bookings(\?.*)?$/, (route) => route.fulfill({ json: [] }));
+  await page.route(/\/api\/venues\/1\/bookings\/count(\?.*)?$/, (route) =>
+    route.fulfill({ json: { date: '2026-07-08', count: 0 } }),
+  );
   await page.route(/\/api\/venues\/1\/takings(\?.*)?$/, (route) =>
     route.fulfill({
       json: {

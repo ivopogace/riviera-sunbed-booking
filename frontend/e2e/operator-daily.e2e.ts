@@ -119,6 +119,9 @@ async function mockDaily(page: Page): Promise<{ patches: import('@playwright/tes
       ],
     }),
   );
+  await page.route(/\/api\/venues\/1\/bookings\/count(\?.*)?$/, (route) =>
+    route.fulfill({ json: { date: '2026-07-08', count: 1 } }),
+  );
   // Check-in (#583): first scan completes, any further scan answers the single-use 409.
   await page.route(/\/api\/venues\/1\/bookings\/[A-Z0-9]+\/check-in$/, (route) => {
     if (guestArrived) {
@@ -455,6 +458,10 @@ test('refunds one guest’s day from the row behind a two-step confirm, and the 
       ],
     }),
   );
+  // The server's count follows the release: a released day holds no set (#1624).
+  await page.route(/\/api\/venues\/1\/bookings\/count(\?.*)?$/, (route) =>
+    route.fulfill({ json: { date: TODAY, count: refunded ? 0 : 1 } }),
+  );
   // The stay holds set 3 today until the refund releases it (sets 2 + 4 stay online-held).
   await page.route(/\/api\/venues\/1\/beach-map$/, (route) =>
     route.fulfill({
@@ -649,6 +656,9 @@ test('explains a zero-set day and links to the Beach map tab (#718)', async ({ p
     route.fulfill({ json: [] }),
   );
   await page.route(/\/api\/venues\/1\/bookings(\?.*)?$/, (route) => route.fulfill({ json: [] }));
+  await page.route(/\/api\/venues\/1\/bookings\/count(\?.*)?$/, (route) =>
+    route.fulfill({ json: { date: '2026-07-08', count: 0 } }),
+  );
   await page.goto('/operator/1');
   await signInAndOpenDaily(page);
 

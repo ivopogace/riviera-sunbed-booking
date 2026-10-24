@@ -92,8 +92,8 @@ function flushRequests(httpMock: HttpTestingController, pending: number, venue =
  */
 function flushStrip(httpMock: HttpTestingController, venue = VENUE): void {
   httpMock
-    .expectOne((r) => r.url === `${BASE}/api/venues/${venue}/bookings` && r.method === 'GET')
-    .flush([]);
+    .expectOne((r) => r.url === `${BASE}/api/venues/${venue}/bookings/count` && r.method === 'GET')
+    .flush({ date: '2026-06-15', count: 0 });
   httpMock
     .expectOne((r) => r.url === `${BASE}/api/venues/${venue}/takings` && r.method === 'GET')
     .flush({
@@ -293,10 +293,12 @@ describe('OperatorConsole — an announced availability change (#1525, #1551)', 
       set(2, 'FREE'),
       set(3, 'FREE'),
     ]);
-    // The strip re-reads the day's CONFIRMED bookings, never the held states (verify() pins it).
+    // The strip re-reads the day's Booked online count, never the held states (verify() pins it).
     httpMock
-      .expectOne((r) => r.url === `${BASE}/api/venues/${VENUE}/bookings` && r.method === 'GET')
-      .flush([{ setId: 2, code: 'X' }]);
+      .expectOne(
+        (r) => r.url === `${BASE}/api/venues/${VENUE}/bookings/count` && r.method === 'GET',
+      )
+      .flush({ date: '2026-06-15', count: 1 });
     await fixture.whenStable();
     fixture.detectChanges();
 

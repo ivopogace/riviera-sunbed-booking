@@ -81,6 +81,8 @@ public class SecurityConfig {
 	private static final String SET_AVAILABILITY_PATH = "/api/venues/*/sets/*/availability";
 	/** The operator-only staff daily-bookings read. Order-sensitive — see the ordering rule below. */
 	private static final String STAFF_BOOKINGS_PATH = "/api/venues/*/bookings";
+	/** The day's "Booked online" count beside it, operator-only like the list. Order-sensitive the same way. */
+	private static final String STAFF_BOOKINGS_COUNT_PATH = "/api/venues/*/bookings/count";
 
 	/** Staff check-in: flips lifecycle state off a bearer code — operator-gated (invariant #7). */
 	private static final String BOOKING_CHECK_IN_PATH = "/api/venues/*/bookings/*/check-in";
@@ -306,7 +308,7 @@ public class SecurityConfig {
 								VERIFY_EMAIL_PATH).permitAll()
 						.requestMatchers(HttpMethod.GET, SSO_PATHS).permitAll()
 						// Order-sensitive: booking codes are bearer credentials (invariant #7).
-						.requestMatchers(HttpMethod.GET, STAFF_BOOKINGS_PATH).hasRole(OPERATOR_ROLE)
+						.requestMatchers(HttpMethod.GET, STAFF_BOOKINGS_PATH, STAFF_BOOKINGS_COUNT_PATH).hasRole(OPERATOR_ROLE)
 						.requestMatchers(HttpMethod.POST, BOOKING_CHECK_IN_PATH).hasRole(OPERATOR_ROLE)
 						.requestMatchers(HttpMethod.POST, BOOKING_DAY_REFUND_PATH).hasRole(OPERATOR_ROLE)
 						// Order-sensitive: venue financial data.

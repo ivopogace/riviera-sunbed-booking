@@ -1051,6 +1051,11 @@ class CreateBookingServiceTest {
 		}
 
 		@Override
+		public int countBookedOnlineOn(ai.riviera.platform.venue.vocabulary.VenueId venueId, java.time.LocalDate date) {
+			return 0;
+		}
+
+		@Override
 		public void lockRefundableForWeather(ai.riviera.platform.venue.vocabulary.VenueId venueId,
 				java.time.LocalDate date) {
 		}

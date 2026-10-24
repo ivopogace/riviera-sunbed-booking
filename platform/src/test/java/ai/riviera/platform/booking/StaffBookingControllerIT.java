@@ -284,6 +284,65 @@ class StaffBookingControllerIT {
 				.andExpect(jsonPath("$[?(@.code == 'U8RELEASE1')].released").value(false));
 	}
 
+	/** "Booked online" (#1624): the settled bookings covering the day; awaiting payment and a whole cancel are not. */
+	@Test
+	void bookedOnlineCountsSettledBookingsHoldingASet() throws Exception {
+		LocalDate day = LocalDate.of(2035, 7, 10);
+		List<Long> sets = venueSets(5);
+		long customer = newCustomer("count-" + day + "@e.com");
+		seedBookingOn("U8COUNTCF1", sets.get(0), customer, "CONFIRMED", day);
+		seedBookingOn("U8COUNTCO1", sets.get(1), customer, "COMPLETED", day);
+		seedBookingOn("U8COUNTNS1", sets.get(2), customer, "NO_SHOW", day);
+		seedBookingOn("U8COUNTAW1", sets.get(3), customer, "AWAITING_PAYMENT", day);
+		seedBookingOn("U8COUNTCX1", sets.get(4), customer, "CANCELLED", day);
+
+		mvc.perform(get("/api/venues/{id}/bookings/count", MIRAMAR).cookie(operatorSession)
+						.param("date", day.toString()))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.date").value(day.toString()))
+				.andExpect(jsonPath("$.count").value(3));
+	}
+
+	/** ADR-0027: a released day holds no set, so it is not booked online; a refund that kept the claim still is. */
+	@Test
+	void bookedOnlineDropsAReleasedDayAndKeepsAKeptClaim() throws Exception {
+		LocalDate first = LocalDate.of(2035, 8, 1);
+		List<Long> sets = venueSets(1);
+		long customer = newCustomer("count-released-" + first + "@e.com");
+		seedSpan("U8COUNTRL1", sets.get(0), customer, "CONFIRMED", first, first.plusDays(1), null);
+		jdbc.sql("""
+				UPDATE booking_day SET refunded_at = now(), refund_minor = 2250, refund_reason = 'WEATHER'
+				WHERE service_date = :d AND booking_id = (SELECT id FROM booking WHERE code = 'U8COUNTRL1')
+				""").param("d", first).update();
+		jdbc.sql("""
+				UPDATE booking_day SET refunded_at = now(), refund_minor = 2250, refund_reason = 'VENUE', released_at = now(),
+				                       refunded_by_operator_id = 1
+				WHERE service_date = :d AND booking_id = (SELECT id FROM booking WHERE code = 'U8COUNTRL1')
+				""").param("d", first.plusDays(1)).update();
+
+		mvc.perform(get("/api/venues/{id}/bookings/count", MIRAMAR).cookie(operatorSession)
+						.param("date", first.toString()))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.count").value(1));
+		mvc.perform(get("/api/venues/{id}/bookings/count", MIRAMAR).cookie(operatorSession)
+						.param("date", first.plusDays(1).toString()))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.count").value(0));
+	}
+
+	@Test
+	void bookedOnlineDefaultsToTodayInTirane() throws Exception {
+		mvc.perform(get("/api/venues/{id}/bookings/count", MIRAMAR).cookie(operatorSession))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.date").value(LocalDate.now(ZoneId.of("Europe/Tirane")).toString()));
+	}
+
+	@Test
+	void bookedOnlineCountRequiresOperator() throws Exception {
+		mvc.perform(get("/api/venues/{id}/bookings/count", MIRAMAR).param("date", DAY.toString()))
+				.andExpect(status().isUnauthorized());
+	}
+
 	@Test
 	void bookingsListRequiresOperator() throws Exception {
 		// AC-9: no operator credential → 401, never a public read of booking codes (invariant #7).

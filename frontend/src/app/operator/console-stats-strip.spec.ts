@@ -74,6 +74,18 @@ describe('ConsoleStatsStrip (#171, O2)', () => {
     );
   }
 
+  function bookedOnline(count: number): { date: string; count: number } {
+    return { date: todayBookingDate(new Date()), count };
+  }
+
+  /** The flush for one of the strip's per-venue reads: the count, takings, or no held states. */
+  function stripRead(path: string, booked: number): object {
+    if (path === 'bookings/count') {
+      return bookedOnline(booked);
+    }
+    return path === 'takings' ? TAKINGS : [];
+  }
+
   async function render(
     venue: VenueMapView | undefined,
     booked: number | 'fail',
@@ -85,12 +97,12 @@ describe('ConsoleStatsStrip (#171, O2)', () => {
     fixture.componentRef.setInput('venue', venue);
     await fixture.whenStable();
     const bookingsReq = httpMock.expectOne(
-      (r) => r.url === `${BASE}/api/venues/${VENUE}/bookings` && r.method === 'GET',
+      (r) => r.url === `${BASE}/api/venues/${VENUE}/bookings/count` && r.method === 'GET',
     );
     if (booked === 'fail') {
       bookingsReq.flush({}, { status: 500, statusText: 'Server Error' });
     } else {
-      bookingsReq.flush(Array.from({ length: booked }, (_, i) => ({ setId: i + 1, code: 'X' })));
+      bookingsReq.flush(bookedOnline(booked));
     }
     const takingsReq = httpMock.expectOne(
       (r) => r.url === `${BASE}/api/venues/${VENUE}/takings` && r.method === 'GET',
@@ -300,23 +312,19 @@ describe('ConsoleStatsStrip (#171, O2)', () => {
     await fixture.whenStable();
     expect(text('oc-stat-walkins')).toBe('—'); // venue 2's read is still out
 
-    for (const path of ['bookings', 'takings', 'availability']) {
+    for (const path of ['bookings/count', 'takings', 'availability']) {
       httpMock
         .expectOne((r) => r.url === `${BASE}/api/venues/2/${path}` && r.method === 'GET')
-        .flush(path === 'takings' ? TAKINGS : []);
+        .flush(stripRead(path, 0));
     }
     await fixture.whenStable();
     expect(text('oc-stat-walkins')).toBe('0');
   });
 
-  const BOOKINGS_URL = `${BASE}/api/venues/${VENUE}/bookings`;
+  const BOOKINGS_URL = `${BASE}/api/venues/${VENUE}/bookings/count`;
 
   function refund(venueId = VENUE, date = todayBookingDate(new Date())): void {
     TestBed.inject(AvailabilityChanges).announce({ venueId, date, cause: 'DAY_REFUND' });
-  }
-
-  function confirmed(count: number): { setId: number; code: string }[] {
-    return Array.from({ length: count }, (_, i) => ({ setId: i + 1, code: 'X' }));
   }
 
   it('re-reads today’s bookings on a day refund for its venue today — Booked online only (#1551)', async () => {
@@ -330,11 +338,8 @@ describe('ConsoleStatsStrip (#171, O2)', () => {
     expect(text('oc-stat-booked')).toBe('2');
     const req = httpMock.expectOne((r) => r.url === BOOKINGS_URL && r.method === 'GET');
     expect(req.request.params.get('date')).toBe(todayBookingDate(new Date()));
-    // A stay's released day still lists (badged released) but holds no set: not booked online.
-    req.flush([
-      { setId: 1, code: 'X', released: true },
-      { setId: 2, code: 'Y', released: false },
-    ]);
+    // The server's count is the rule (a released day excluded): the strip shows it verbatim.
+    req.flush(bookedOnline(1));
     await fixture.whenStable();
 
     expect(text('oc-stat-booked')).toBe('1');
@@ -372,8 +377,8 @@ describe('ConsoleStatsStrip (#171, O2)', () => {
     refund();
     await fixture.whenStable();
     const [first, second] = httpMock.match((r) => r.url === BOOKINGS_URL && r.method === 'GET');
-    second.flush(confirmed(0));
-    first.flush(confirmed(1)); // the pre-second-refund truth, late
+    second.flush(bookedOnline(0));
+    first.flush(bookedOnline(1)); // the pre-second-refund truth, late
     await fixture.whenStable();
 
     expect(text('oc-stat-booked')).toBe('0');
@@ -388,14 +393,14 @@ describe('ConsoleStatsStrip (#171, O2)', () => {
     fixture.componentRef.setInput('venueId', 2);
     fixture.componentRef.setInput('venue', undefined);
     await fixture.whenStable();
-    stale.flush(confirmed(0)); // venue 1's late answer
+    stale.flush(bookedOnline(0)); // venue 1's late answer
     await fixture.whenStable();
     expect(text('oc-stat-booked')).toBe('—'); // venue 2's read is still out
 
-    for (const path of ['bookings', 'takings', 'availability']) {
+    for (const path of ['bookings/count', 'takings', 'availability']) {
       httpMock
         .expectOne((r) => r.url === `${BASE}/api/venues/2/${path}` && r.method === 'GET')
-        .flush(path === 'takings' ? TAKINGS : confirmed(3));
+        .flush(stripRead(path, 3));
     }
     await fixture.whenStable();
     expect(text('oc-stat-booked')).toBe('3');
@@ -413,8 +418,8 @@ describe('ConsoleStatsStrip (#171, O2)', () => {
     expect(text('oc-stat-takings')).toBe('—');
 
     httpMock
-      .expectOne((r) => r.url === `${BASE}/api/venues/2/bookings` && r.method === 'GET')
-      .flush([{ setId: 1, code: 'X' }]);
+      .expectOne((r) => r.url === `${BASE}/api/venues/2/bookings/count` && r.method === 'GET')
+      .flush(bookedOnline(1));
     httpMock
       .expectOne((r) => r.url === `${BASE}/api/venues/2/takings` && r.method === 'GET')
       .flush({ ...TAKINGS, gross: { minorUnits: 5000, currency: 'EUR' } });
@@ -442,12 +447,12 @@ describe('ConsoleStatsStrip (#171, O2)', () => {
       fixture.componentRef.setInput('venue', undefined);
       await fixture.whenStable();
 
-      for (const path of ['bookings', 'takings', 'availability']) {
+      for (const path of ['bookings/count', 'takings', 'availability']) {
         const req = httpMock.expectOne(
           (r) => r.url === `${BASE}/api/venues/2/${path}` && r.method === 'GET',
         );
         expect(req.request.params.get('date')).toBe(today);
-        req.flush(path === 'takings' ? TAKINGS : []);
+        req.flush(stripRead(path, 0));
       }
       await fixture.whenStable();
     } finally {
