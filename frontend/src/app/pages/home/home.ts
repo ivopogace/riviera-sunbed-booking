@@ -1149,7 +1149,14 @@ export class Home {
     const closedForSeason = venue.closedForSeason === true;
     const reopensOn = closedForSeason ? (venue.reopensOn ?? null) : null;
 
-    const price = priceLabel ? `, from ${priceLabel} per set` : '';
+    // A priceless venue with sets holds them for walk-ins alone: the server prices online sets only.
+    const unpricedLabel = total === 0 ? 'No sets yet' : 'Walk-in only';
+    let price = '';
+    if (priceLabel) {
+      price = `, from ${priceLabel} per set`;
+    } else if (total > 0) {
+      price = ', walk-in only';
+    }
     const waterText = water ? `${water}. ` : '';
     const amenitiesText = amenities.length
       ? `Amenities: ${amenities.map((a) => a.label).join(', ')}. `
@@ -1188,10 +1195,11 @@ export class Home {
       amenities,
       freePercent,
       priceLabel,
+      unpricedLabel,
       fromPrice: venue.fromPrice ?? null,
       free,
       total,
-      sellsOnline: total > 0 && venue.sellsOnline !== false,
+      sellsOnline: venue.sellsOnline,
       salesClosed,
       closedForSeason,
       reopensOn,

@@ -27,6 +27,7 @@ function card(
     amenities: [],
     freePercent: 0,
     priceLabel: null,
+    unpricedLabel: 'No sets yet',
     fromPrice: null,
     free: 0,
     total: 0,

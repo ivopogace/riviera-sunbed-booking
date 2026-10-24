@@ -354,6 +354,7 @@ test('a walk-in-only venue is listed but not counted as selling today (#1550)', 
     ...VENUES[1],
     id: 4,
     name: 'Walk-in Cove',
+    fromPrice: null,
     availability: { free: 6, total: 6 },
     sellsOnline: false,
     salesOpen: true,
@@ -364,7 +365,13 @@ test('a walk-in-only venue is listed but not counted as selling today (#1550)', 
   await page.setViewportSize(PHONE);
   await page.goto('/');
 
-  await expect(page.getByTestId('venue-card')).toHaveCount(3);
+  const cards = page.getByTestId('venue-card');
+  await expect(cards).toHaveCount(3);
+  // No online set prices it (#1628): the card says so, never a "from" price.
+  const walkIn = cards.filter({ hasText: 'Walk-in Cove' });
+  await expect(walkIn.locator('.price')).toHaveText('Walk-in only');
+  await expect(walkIn).toHaveAccessibleName(/, walk-in only, 6 of 6 sets free/);
+  await expect(walkIn).not.toHaveAccessibleName(/from/);
   await expect(page.getByTestId('head-subtitle')).toHaveText('2 of 3 selling today');
   await expect(page.getByTestId('sheet-outcome')).toContainText('2 of 3 selling today');
   await expectNoSeriousAxeViolations(page, 'discovery sheet (a walk-in-only venue)');
