@@ -415,6 +415,7 @@ class JdbcVenueCatalog implements VenueCatalog, VenueRates, OwnerVenueMap {
 		int total = sets.size();
 		int free = (int) sets.stream().filter(s -> !taken.contains(new SetId(s.id()))).count();
 		MoneyView fromPrice = sets.stream()
+				.filter(s -> s.pool() == Pool.ONLINE)
 				.min(Comparator.comparingLong(SetPriceRow::priceMinor))
 				.map(s -> new MoneyView(s.priceMinor(), s.priceCurrency()))
 				.orElse(null);

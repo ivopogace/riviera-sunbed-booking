@@ -23,6 +23,7 @@ import ai.riviera.platform.TestcontainersConfiguration;
 import ai.riviera.platform.TiraneDaytimeClock;
 
 import static org.hamcrest.Matchers.contains;
+import static org.hamcrest.Matchers.nullValue;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -203,6 +204,22 @@ class VenueListControllerIT {
 				.andExpect(jsonPath("$[?(@.id == " + zephyr + ")].sellsOnline").value(contains(false)))
 				.andExpect(jsonPath("$[?(@.id == " + zephyr + ")].availability.total").value(contains(1)))
 				.andExpect(jsonPath("$[?(@.id == " + empty + ")].sellsOnline").value(contains(false)));
+	}
+
+	@Test
+	void fromPriceIsTheCheapestOnlinePoolSetAndNullWithoutOne() throws Exception {
+		// #1628: a "from €X" is a price the tourist can book online (#3); a walk-in set never sets it.
+		long cheapest = jdbc.sql("SELECT id FROM set_position WHERE venue_id = :v AND price_minor = 3000")
+				.param("v", aurora).query(Long.class).single();
+		jdbc.sql("UPDATE set_position SET pool = 'WALK_IN' WHERE id = :id").param("id", cheapest).update();
+		jdbc.sql("UPDATE set_position SET pool = 'WALK_IN' WHERE venue_id = :v").param("v", zephyr).update();
+
+		mvc.perform(get("/api/venues").param("region", IT_REGION).param("date", "2026-11-20"))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$[?(@.id == " + aurora + ")].fromPrice.minorUnits").value(contains(3500)))
+				.andExpect(jsonPath("$[?(@.id == " + aurora + ")].availability.total").value(contains(3)))
+				.andExpect(jsonPath("$[?(@.id == " + zephyr + ")].fromPrice").value(contains(nullValue())))
+				.andExpect(jsonPath("$[?(@.id == " + zephyr + ")].availability.total").value(contains(1)));
 	}
 
 	@Test
