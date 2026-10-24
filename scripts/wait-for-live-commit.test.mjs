@@ -305,7 +305,10 @@ test('a forged health body never writes its own line once the commit is live', a
   }
 });
 
-/** The note one attempt logs against a backend whose info names `commit` and whose health is `health`. */
+/**
+ * The note one attempt logs when the stub answers info with `info` and health with `health` (each a stub
+ * answer, `{ status?, body }`). The live-commit slot must be `unknown` or the expected commit, never other text.
+ */
 async function noteFor(info, health = { body: { status: 'UP' } }) {
   const backend = await stubBackend((path) => (path === '/actuator/info' ? info : health));
   const lines = [];
@@ -320,17 +323,16 @@ async function noteFor(info, health = { body: { status: 'UP' } }) {
   } finally {
     await backend.close();
   }
-  return lines[0].replace(/^attempt 1: live commit \S+, waiting for 2{40} /, '');
+  const prefix = /^attempt 1: live commit (unknown|2{40}), waiting for 2{40} /;
+  assert.match(lines[0], prefix);
+  return lines[0].replace(prefix, '');
 }
 
 test('each failure logs its own fixed note', async () => {
   assert.equal(await noteFor({ status: 503, body: 'down\n::error::x' }), '(info: HTTP 503)');
   assert.equal(await noteFor({ body: 'null' }), '(info: no commit id)');
   assert.equal(await noteFor({ body: {} }), '(info: no commit id)');
-  assert.equal(
-    await noteFor({ body: { commit: 'A'.repeat(40) } }),
-    '(info: malformed commit id)',
-  );
+  assert.equal(await noteFor({ body: { commit: 'A'.repeat(40) } }), '(info: malformed commit id)');
   assert.equal(
     await noteFor({ body: { commit: NEW } }, { body: { status: 'DOWN' } }),
     '(info: ok; health: not UP)',
@@ -346,7 +348,11 @@ test('each failure logs its own fixed note', async () => {
 });
 
 test('a timeout and an unreachable backend log different fixed words, never the error text', async () => {
-  const failing = (error) => () => Promise.reject(error);
+  // Each request carries the AbortSignal whose expiry is the real TimeoutError.
+  const failing = (error) => (url, options) => {
+    assert.ok(options.signal instanceof AbortSignal, 'the request is bounded by an AbortSignal');
+    return Promise.reject(error);
+  };
   for (const [error, word] of [
     [Object.assign(new Error('aborted\n::error::x'), { name: 'TimeoutError' }), 'timed out'],
     [new TypeError('fetch failed\n::error::x'), 'unreachable'],
