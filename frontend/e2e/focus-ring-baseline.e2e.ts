@@ -3,6 +3,7 @@ import { expect, test, type Page } from '@playwright/test';
 import { mockWholeConsole, signInAsOperator } from './support/operator-console.mocks';
 import { openShellOverlay } from './support/shell';
 import { photoView, photoViews } from './support/photo-views';
+import type { MockVenueMapView } from './support/venue-views';
 
 /**
  * Real-render proof for the focus-ring baseline (#890): the `@layer base` rule in `tailwind.css`
@@ -36,7 +37,7 @@ const PHOTOS = photoViews([
 ]);
 
 /** The three-photo venue, which is what makes the header render the gallery grid (2+ photos). */
-const VENUE_MAP = {
+const VENUE_MAP: MockVenueMapView = {
   id: 1,
   name: 'Miramar Beach Club',
   beach: 'KSAMIL',
