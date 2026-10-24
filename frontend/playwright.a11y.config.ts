@@ -11,7 +11,8 @@ import { defineConfig, devices } from '@playwright/test';
  * `playwright.config.ts` (it boots the backend + Postgres); `testIgnore` keeps it out of here.
  *
  * Browser resolution: locally the pre-installed Chromium is found via
- * `PLAYWRIGHT_BROWSERS_PATH`; CI installs Chromium and its missing system packages first.
+ * `PLAYWRIGHT_BROWSERS_PATH`; CI installs Chromium and the system packages the runner image lacks,
+ * both cached per Playwright version.
  *
  * Parallelism: every spec mocks its API per page and shares nothing, so files run on 2 parallel
  * workers everywhere. Measured on both 4-vCPU environments the suite runs in: the
