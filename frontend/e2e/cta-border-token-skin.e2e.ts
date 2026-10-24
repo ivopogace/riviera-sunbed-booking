@@ -21,7 +21,7 @@ import { mockCustomerAuthApi } from './support/auth-mocks';
  * theme. `/account/sign-in` is the cheapest render of the skin — two of the `[appPrimaryCta]`
  * sites, the submit button and the signed-in card's CTA, on one route with no booking state.
  *
- * <p>One test here does what no other proof in this family can. The migration is BYTE-IDENTICAL —
+ * <p>One test here does what no other proof in this family can. The #853 migration is BYTE-IDENTICAL —
  * the literal and the token resolve to the same colour in every theme — so a plain `toHaveCSS`
  * cannot tell an element that consumes the token from one that still carries the literal. Re-pointing
  * `--riv-cta-border` at a sentinel colour at the document root separates them: only a consumer
