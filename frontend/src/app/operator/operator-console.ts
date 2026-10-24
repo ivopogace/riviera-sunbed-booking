@@ -4,6 +4,7 @@ import { ActivatedRoute, RouterOutlet } from '@angular/router';
 import { Observable } from 'rxjs';
 
 import { OperatorAuth } from '../core/operator-auth';
+import { ConsolePageBox } from '../shared/console-page-box';
 import { venueIdParam } from '../shared/parent-venue-id';
 import { VenueMapView } from '../shared/venue-views';
 import { AvailabilityChanges } from './availability-changes';
@@ -12,7 +13,6 @@ import { ConsoleVenueMap } from '../core/console-venue-map';
 import { OperatorConsoleService } from './operator-console.service';
 import { PendingApprovalBanner } from './pending-approval-banner';
 import { PendingRequestsStore } from './pending-requests-store';
-import { ConsolePageBox } from '../shared/console-page-box';
 
 /**
  * The venue console's page at `/operator/:venueId`: the stats strip, the pending-approval banner

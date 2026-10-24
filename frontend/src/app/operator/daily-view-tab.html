@@ -73,13 +73,15 @@
     </div>
   </section>
 } @else if (loadError()) {
-  <p
-    class="mx-auto mt-6 max-w-md rounded-[16px] border border-riv-alert-tint/30 bg-riv-console-inset/70 px-5 py-4 text-center text-[13px] font-semibold text-riv-error-ink"
-    role="alert"
-    data-testid="daily-load-error"
-  >
-    Sorry — we couldn’t load this venue’s day. Please try again.
-  </p>
+  <div appConsolePageBox class="max-sm:px-5">
+    <p
+      class="mr-auto mt-6 max-w-md rounded-[16px] border border-riv-alert-tint/30 bg-riv-console-inset/70 px-5 py-4 text-center text-[13px] font-semibold text-riv-error-ink"
+      role="alert"
+      data-testid="daily-load-error"
+    >
+      Sorry — we couldn’t load this venue’s day. Please try again.
+    </p>
+  </div>
 } @else {
   <section appConsolePageBox class="py-4 max-sm:px-5" data-testid="daily-view-tab">
     <!-- Date + live availability summary -->

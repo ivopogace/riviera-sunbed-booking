@@ -17,6 +17,7 @@ import { TouchTarget } from '../shared/touch-target';
 import { OperatorAuth, SESSION_EXPIRED_MESSAGE } from '../core/operator-auth';
 import { BusyAction } from '../shared/busy-action';
 import { CardGlass } from '../shared/card-glass';
+import { ConsolePageColumn } from '../shared/console-page-box';
 import { LoadAnnouncer } from '../shared/load-announcer';
 import { SkeletonBlock } from '../shared/skeleton-block';
 import { formatDeadline, isUrgent, timeLeftLabel } from '../shared/deadline';
@@ -34,7 +35,6 @@ import { PendingRequestsStore } from './pending-requests-store';
 import { CheckIcon } from '../shared/check-icon';
 import { AlertIcon } from '../shared/alert-icon';
 import { ClockIcon } from '../shared/clock-icon';
-import { ConsolePageColumn } from '../shared/console-page-box';
 
 /**
  * One pending-request card's static display fields; the transient accept/decline/expired state is per

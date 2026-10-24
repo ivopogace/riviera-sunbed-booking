@@ -25,6 +25,7 @@ import {
 import { BusyAction } from '../shared/busy-action';
 import { CardGlass } from '../shared/card-glass';
 import { ConfirmPanel } from '../shared/confirm-panel';
+import { ConsolePageBox } from '../shared/console-page-box';
 import { focusMover } from '../shared/focus-after-render';
 import { LoadAnnouncer } from '../shared/load-announcer';
 import { MapSkeletonGrid } from '../shared/map-skeleton-grid';
@@ -65,7 +66,6 @@ import { StayDayGroup, stayDayGroupOf } from './stay-day-group';
 import { CheckIcon } from '../shared/check-icon';
 import { DotIcon } from '../shared/dot-icon';
 import { PrimaryCta } from '../shared/primary-cta';
-import { ConsolePageBox } from '../shared/console-page-box';
 
 /**
  * One guest row: set label, display-only arrival code (invariant #7), the guest's span when the

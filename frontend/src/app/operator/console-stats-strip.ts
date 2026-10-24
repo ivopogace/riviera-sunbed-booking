@@ -2,6 +2,7 @@ import { Component, computed, effect, inject, input, signal, untracked } from '@
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 
 import { formatCommissionPercent } from '../shared/commission-rate';
+import { ConsolePageRow } from '../shared/console-page-box';
 import { formatMoney, MoneyView } from '../shared/money';
 import { StatTile } from '../shared/stat-tile';
 import { VenueMapView } from '../shared/venue-views';
@@ -9,7 +10,6 @@ import { todayBookingDate } from '../shared/booking-date';
 import { AvailabilityChanges } from './availability-changes';
 import { SetDayState, TakingsView } from './operator-console.model';
 import { OperatorConsoleService } from './operator-console.service';
-import { ConsolePageRow } from '../shared/console-page-box';
 
 /**
  * The operator console's stats strip, live for the venue today (Europe/Tirane, #6): Free today from

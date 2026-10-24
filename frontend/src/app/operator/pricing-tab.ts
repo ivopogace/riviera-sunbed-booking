@@ -14,6 +14,7 @@ import { firstValueFrom } from 'rxjs';
 import { OperatorAuth } from '../core/operator-auth';
 import { groupSetsByRow } from '../shared/availability-grid';
 import { CardGlass } from '../shared/card-glass';
+import { ConsolePageColumn } from '../shared/console-page-box';
 import { FieldErrorFor } from '../shared/field-error-for';
 import {
   eurosToMinorUnits,
@@ -31,7 +32,6 @@ import { ConsoleVenueMap } from '../core/console-venue-map';
 import { RepriceErrorCode } from './operator-console.model';
 import { OperatorConsoleService, repriceErrorOf } from './operator-console.service';
 import { StaleWriteBanner } from './stale-write-banner';
-import { ConsolePageColumn } from '../shared/console-page-box';
 
 /**
  * One editable pricing row. {@link priceEur} is the euros string bound to the input — empty when the
