@@ -95,7 +95,7 @@ function miramar(): VenueMapView {
     ratingTenths: 48,
     reviewsCount: 326,
     bookingMode: 'INSTANT',
-    fromPrice: { minorUnits: 2500, currency: 'EUR' },
+    fromPrice: { minorUnits: 3500, currency: 'EUR' }, // the cheapest ONLINE row; Row 4's walk-in €25 never prices it
     // Amenities out of catalogue order → the header renders the FULL row catalogue-ordered (Beach bar, Free parking, WiFi); plus a to-water distance.
     amenities: ['WIFI', 'BEACH_BAR', 'FREE_PARKING'],
     distanceToWaterM: 8,
@@ -809,12 +809,12 @@ describe('VenueMap', () => {
     expect((reviews.componentInstance as VenueReviews).reviewsCount()).toBe(0);
   });
 
-  it('prices the header from the online set the read names, "from €25 / set" (#1647)', async () => {
+  it('prices the header from the fromPrice the read names, "from €35 / set" (#1647)', async () => {
     venueRequest().flush(miramar());
     await settle();
 
     const header = el().querySelector('header')!;
-    expect(header.textContent?.replace(/\s+/g, ' ')).toContain('from €25 / set');
+    expect(header.textContent?.replace(/\s+/g, ' ')).toContain('from €35 / set');
     expect(header.querySelector('[data-testid="unpriced-label"]')).toBeNull();
   });
 

@@ -88,20 +88,26 @@ class VenueReadControllerIT {
 	void fromPriceIsTheCheapestOnlinePoolSetAndNullWithoutOne() throws Exception {
 		// #1647, the #1628 rule on the map read: a "from €X" is a price the tourist can book online (#3).
 		long venue = insertVenueWithAmenities(40);
-		insertSet(venue, 1, "ONLINE", 4000);
-		long walkIn = insertSet(venue, 2, "WALK_IN", 2000);
+		try {
+			insertSet(venue, 1, "ONLINE", 4000);
+			long walkIn = insertSet(venue, 2, "WALK_IN", 2000);
 
-		mvc.perform(get("/api/venues/{id}", venue))
-				.andExpect(status().isOk())
-				.andExpect(jsonPath("$.fromPrice.minorUnits").value(4000))
-				.andExpect(jsonPath("$.fromPrice.currency").value("EUR"));
+			mvc.perform(get("/api/venues/{id}", venue))
+					.andExpect(status().isOk())
+					.andExpect(jsonPath("$.fromPrice.minorUnits").value(4000))
+					.andExpect(jsonPath("$.fromPrice.currency").value("EUR"));
 
-		jdbc.sql("UPDATE set_position SET pool = 'WALK_IN' WHERE venue_id = :v AND id <> :id")
-				.param("v", venue).param("id", walkIn).update();
-		mvc.perform(get("/api/venues/{id}", venue))
-				.andExpect(status().isOk())
-				.andExpect(jsonPath("$.sets.length()").value(2))
-				.andExpect(jsonPath("$.fromPrice").value(nullValue()));
+			jdbc.sql("UPDATE set_position SET pool = 'WALK_IN' WHERE venue_id = :v AND id <> :id")
+					.param("v", venue).param("id", walkIn).update();
+			mvc.perform(get("/api/venues/{id}", venue))
+					.andExpect(status().isOk())
+					.andExpect(jsonPath("$.sets.length()").value(2))
+					.andExpect(jsonPath("$.fromPrice").value(nullValue()));
+		} finally {
+			jdbc.sql("DELETE FROM set_position WHERE venue_id = :id").param("id", venue).update();
+			jdbc.sql("DELETE FROM operator_venue WHERE venue_id = :id").param("id", venue).update();
+			jdbc.sql("DELETE FROM venue WHERE id = :id").param("id", venue).update();
+		}
 	}
 
 	private long insertSet(long venueId, int positionNo, String pool, long priceMinor) {
