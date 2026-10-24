@@ -2,6 +2,7 @@ import { expect, test, type Page, type Request } from '@playwright/test';
 
 import { expectNoSeriousAxeViolations } from './support/axe';
 import { settle } from './support/booking-dialog';
+import type { MockBookingMode, MockVenueMapView } from './support/venue-views';
 
 /**
  * Real-render CI-safe e2e for the Venue & commodities tab. Drives sign-in → open the tab →
@@ -19,7 +20,7 @@ const INITIAL_PROFILE = {
   beach: 'KSAMIL',
   region: 'SARANDE',
   description: 'Loungers on the shore.',
-  bookingMode: 'INSTANT',
+  bookingMode: 'INSTANT' as MockBookingMode,
   bookingCutoff: '18:00',
   salesClose: '16:00',
   commissionBps: 1500,
@@ -35,7 +36,7 @@ const INITIAL_PROFILE = {
   },
 };
 
-function venueMap(name: string, bookingMode: string) {
+function venueMap(name: string, bookingMode: MockBookingMode): MockVenueMapView {
   return {
     id: 1,
     name,
