@@ -45,9 +45,11 @@ export class OperatorConsole {
   /** Bumped per venue context: an identity guard — a venueId value check passes again
    *  after an A→B→A switch, so continuations compare this instead. */
   private epoch = 0;
-  /** Bumped per map read: only the latest read may land, so an older, slower answer never
-   *  overwrites a newer map. */
+  /** Bumped per map read. */
   private mapRead = 0;
+  /** The newest read whose map is shown: a read lands only if newer, so a slower, older answer
+   *  never overwrites a newer map, yet still lands when every newer read failed (#1654). */
+  private landedRead = 0;
 
   constructor() {
     // Load per session (the async /me restore resolves late) AND per venue param.
@@ -77,6 +79,7 @@ export class OperatorConsole {
     // visited, takes authority over this store via `set`; this page only ever seeds it.
     this.requests.reset();
     // Continuations re-check the venue so a superseded venue's reads never land here.
+    this.landedRead = this.mapRead;
     this.loadMap(venueId);
     this.bestEffort(this.console.pendingRequestCount(venueId), (count) => {
       if (this.epoch === epoch) {
@@ -86,11 +89,12 @@ export class OperatorConsole {
   }
 
   /** The shared map read behind the strip's free/total: whatever map is shown stands until this
-   *  read lands (a failure keeps it), and only the latest read may land. */
+   *  read lands (a failure keeps it), and only a read newer than the shown one may land. */
   private loadMap(venueId: number): void {
     const read = ++this.mapRead;
     this.bestEffort(this.venueMap.load(venueId), (venue) => {
-      if (this.mapRead === read) {
+      if (read > this.landedRead) {
+        this.landedRead = read;
         this.venue.set(venue);
       }
     });
