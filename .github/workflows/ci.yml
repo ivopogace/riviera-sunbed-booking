@@ -154,10 +154,45 @@ jobs:
         if: steps.restore.outputs.cache-hit != 'true'
         run: npm ci
 
+      - name: Key the browser cache on the installed Playwright
+        # The version `npm ci` installed, not a literal, so a Playwright bump busts the cache; the image
+        # name too, since the binaries link against its libraries.
+        id: browsers-key
+        if: steps.restore.outputs.cache-hit != 'true'
+        run: echo "key=playwright-browsers-${ImageOS}-$(node -p "require('playwright-core/package.json').version")" >> "$GITHUB_OUTPUT"
+
+      - name: Restore the Playwright browsers (saved at job end on a miss)
+        if: steps.restore.outputs.cache-hit != 'true'
+        uses: actions/cache@v6
+        with:
+          path: ~/.cache/ms-playwright
+          key: ${{ steps.browsers-key.outputs.key }}
+
       - name: Install Playwright Chromium
+        # Not `--with-deps`: its `apt-get install` also upgrades libraries the image already ships, and
+        # a slow apt mirror timed this step out (#1629). Playwright's dry run lists Chromium's packages
+        # that apt would touch; only those dpkg does not show installed are fetched.
         if: steps.restore.outputs.cache-hit != 'true'
         timeout-minutes: 6
-        run: npx playwright install --with-deps chromium
+        run: |
+          npx playwright install chromium
+          if report=$(npx playwright install-deps --dry-run chromium 2>&1); then
+            echo "$report"
+            exit 0
+          fi
+          echo "$report"
+          listed=$(printf '%s\n' "$report" | sed -n 's/^  \([^ ]\+\)$/\1/p')
+          if [ -z "$listed" ]; then
+            npx playwright install-deps chromium
+            exit 0
+          fi
+          missing=$(for pkg in $listed; do
+            dpkg-query -W -f='${Status}' "$pkg" 2>/dev/null | grep -q 'ok installed' || echo "$pkg"
+          done)
+          if [ -n "$missing" ]; then
+            sudo apt-get update
+            sudo apt-get install -y --no-install-recommends $missing
+          fi
 
       - name: A11y e2e (real-render axe over the booking flow), this shard
         # The real-backend suite (`npm run test:e2e`) needs a JDK and Docker and is not run in CI.
