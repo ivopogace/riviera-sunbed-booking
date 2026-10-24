@@ -1,12 +1,20 @@
 import { provideHttpClient } from '@angular/common/http';
-import { provideHttpClientTesting } from '@angular/common/http/testing';
+import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
+import { signal } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { ActivatedRoute, convertToParamMap, provideRouter, Router } from '@angular/router';
 import { BehaviorSubject } from 'rxjs';
 import { vi } from 'vitest';
 
+import { environment } from '../../environments/environment';
+import { OperatorAuth } from '../core/operator-auth';
 import { OwnedVenues, OwnedVenuesResult } from '../core/owned-venues';
 import { OperatorHome } from './operator-home';
+
+/** Only what OperatorHome and its children read off the session. */
+function fakeOperator(signedIn = signal(true)) {
+  return { signedIn, pendingApproval: signal(false), sessionLost: (): void => undefined };
+}
 
 describe('OperatorHome (#277, create state #278)', () => {
   let fixture: ComponentFixture<OperatorHome>;
@@ -31,6 +39,7 @@ describe('OperatorHome (#277, create state #278)', () => {
         // The create card injects HTTP-backed services (OperatorAuth, VenueAdminService).
         provideHttpClient(),
         provideHttpClientTesting(),
+        { provide: OperatorAuth, useValue: fakeOperator() },
         {
           provide: OwnedVenues,
           useValue: {
@@ -225,5 +234,45 @@ describe('OperatorHome (#277, create state #278)', () => {
 
     expect(loads).toBe(2);
     expect(navigate).toHaveBeenCalledWith('/operator/12');
+  });
+
+  it('a read superseded by a sign-out renders neither the previous operator’s picker nor a failure (#1623)', async () => {
+    const signedIn = signal(true);
+    const paramMap = convertToParamMap({});
+    TestBed.resetTestingModule();
+    TestBed.configureTestingModule({
+      providers: [
+        provideRouter([]),
+        provideHttpClient(),
+        provideHttpClientTesting(),
+        { provide: OperatorAuth, useValue: fakeOperator(signedIn) },
+        {
+          provide: ActivatedRoute,
+          useValue: { snapshot: { queryParamMap: paramMap }, queryParamMap: params.asObservable() },
+        },
+      ],
+    });
+    navigate = vi.spyOn(TestBed.inject(Router), 'navigateByUrl').mockResolvedValue(true);
+    const http = TestBed.inject(HttpTestingController);
+    fixture = TestBed.createComponent(OperatorHome);
+    fixture.detectChanges();
+    const pending = http.expectOne(`${environment.apiBaseUrl}/api/venues/mine`);
+
+    // The sign-out path: the session ends, then OperatorAuth drops the cache.
+    signedIn.set(false);
+    TestBed.inject(OwnedVenues).reset();
+    pending.flush([
+      { id: 12, name: 'Miramar Beach Club', beach: 'DHERMI' },
+      { id: 15, name: 'Sereno', beach: 'JALE' },
+    ]);
+    // A macrotask hop: whenStable alone can return before the read's continuation in load() runs.
+    await new Promise((resolve) => setTimeout(resolve));
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    expect(el('operator-home-picker')).toBeNull();
+    expect(el('operator-home-error')).toBeNull();
+    expect(navigate).not.toHaveBeenCalled();
+    http.verify(); // and no fresh /mine after the sign-out
   });
 });

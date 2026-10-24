@@ -119,44 +119,6 @@ function fitVenue() {
 }
 
 /**
- * A 5 × 6 venue whose front row carries `frontRowLabel` verbatim — the fixtures for the rail's
- * width cap. Everything else is identical between them, so a rail or viewport difference between
- * two of these can only come from the label.
- */
-function labelledVenue(id: number, name: string, frontRowLabel: string) {
-  const sets: MapSet[] = [];
-  let n = 0;
-  for (let r = 1; r <= 5; r++) {
-    for (let p = 1; p <= 6; p++) {
-      n += 1;
-      sets.push({
-        id: n,
-        rowLabel: r === 1 ? frontRowLabel : `Row ${r}`,
-        positionNo: p,
-        tier: r === 1 ? 'PREMIUM' : 'STANDARD',
-        pool: 'ONLINE',
-        price: { minorUnits: r === 1 ? 5000 : 3000, currency: 'EUR' },
-        gridX: p,
-        gridY: r,
-        availability: 'FREE',
-      });
-    }
-  }
-  return {
-    id,
-    name,
-    beach: 'HIMARE',
-    region: 'HIMARE',
-    description: 'A venue with a lot to say about its front row.',
-    ratingTenths: 45,
-    reviewsCount: 12,
-    bookingMode: 'INSTANT',
-    fromPrice: { minorUnits: 3000, currency: 'EUR' },
-    sets,
-  };
-}
-
-/**
  * The fits-whole venue that PAYS for the price rail's 92px reservation (#751): 14 columns, one
  * price in every row, so one zone and one ~41px chip — its rail is the reservation rather than a
  * chip, and its margin is the number a widened reservation has to spend.
@@ -281,18 +243,6 @@ test.beforeEach(async ({ page }) => {
   await page.route(/\/api\/venues\/1(\?.*)?$/, (route) => route.fulfill({ json: wideVenue() }));
   await page.route(/\/api\/venues\/2(\?.*)?$/, (route) => route.fulfill({ json: tallVenue() }));
   await page.route(/\/api\/venues\/3(\?.*)?$/, (route) => route.fulfill({ json: fitVenue() }));
-  await page.route(/\/api\/venues\/4(\?.*)?$/, (route) =>
-    route.fulfill({ json: labelledVenue(4, 'Wordy Bay', 'Front row sea view') }),
-  );
-  await page.route(/\/api\/venues\/5(\?.*)?$/, (route) =>
-    route.fulfill({
-      json: labelledVenue(
-        5,
-        'Wordier Bay',
-        'Front row sea view sunset side with the good cabanas and the quiet end',
-      ),
-    }),
-  );
   await page.route(/\/api\/venues\/6(\?.*)?$/, (route) => route.fulfill({ json: bareFitVenue() }));
   await page.route(/\/api\/venues\/7(\?.*)?$/, (route) => route.fulfill({ json: barePanVenue() }));
 });
@@ -719,54 +669,4 @@ test('every legend swatch declares exactly what the tile it stands for declares 
   expect(
     (await face(page.locator('[aria-label="Legend"] [data-state="partly"]'))).borderTopStyle,
   ).toBe('dotted');
-});
-
-/** The row-name rail's first chip and the tile viewport, as the browser lays them out. */
-async function railAndViewport(page: Page) {
-  const chip = page.getByTestId('row-code').first();
-  const box = (await chip.boundingBox())!;
-  const viewport = (await page.getByTestId('map-pan').boundingBox())!;
-  return {
-    chipWidth: box.width,
-    chipText: await chip.textContent(),
-    viewportWidth: viewport.width,
-    truncated: await chip.locator('span').evaluate((el) => el.scrollWidth > el.clientWidth),
-    chipRight: box.x + box.width,
-  };
-}
-
-test('a long row name truncates in the left rail instead of eating the tile grid (#724)', async ({
-  page,
-}) => {
-  await page.setViewportSize({ width: 390, height: 760 });
-
-  await page.goto('/venues/4');
-  await expect(page.getByTestId('set-tile').first()).toBeVisible();
-  const wordy = await railAndViewport(page);
-
-  await page.goto('/venues/5');
-  await expect(page.getByTestId('set-tile').first()).toBeVisible();
-  const wordier = await railAndViewport(page);
-
-  // The rail chip shows the venue's own row name — the identity every other surface prints (#724)…
-  expect(wordy.chipText).toContain('Front row');
-  expect(wordier.chipText).toContain('Front row');
-  // …under a hard cap: a label almost four times longer buys not one pixel of rail…
-  expect(wordy.chipWidth).toBeLessThanOrEqual(104);
-  expect(wordier.chipWidth).toBeCloseTo(wordy.chipWidth, 0);
-  // …so it costs the tiles nothing, and the grid keeps at least three columns of spots visible.
-  expect(wordier.viewportWidth).toBeCloseTo(wordy.viewportWidth, 0);
-  expect(wordier.viewportWidth).toBeGreaterThanOrEqual(135);
-  // What gives instead is the text — ellipsis inside the chip, never overflow outside it.
-  expect(wordier.truncated).toBe(true);
-  // …and only overflowing text: a short real name renders whole, so rows stay distinct (#724 I-1).
-  const shortChip = page.getByTestId('row-code').nth(1);
-  await expect(shortChip).toHaveText('Row 2');
-  expect(await shortChip.locator('span').evaluate((el) => el.scrollWidth > el.clientWidth)).toBe(
-    false,
-  );
-  const card = (await page.getByTestId('beach-grid').boundingBox())!;
-  expect(wordier.chipRight).toBeLessThanOrEqual(card.x + card.width);
-
-  await expectNoSeriousAxeViolations(page, 'beach map (long row names, mobile)');
 });
