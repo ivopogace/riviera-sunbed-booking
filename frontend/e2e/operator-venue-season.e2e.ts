@@ -2,6 +2,7 @@ import { expect, test, type Page, type Request } from '@playwright/test';
 
 import { expectNoSeriousAxeViolations } from './support/axe';
 import { settle } from './support/booking-dialog';
+import type { MockVenueSummary } from './support/venue-views';
 
 /**
  * Real-render CI-safe e2e for closing a venue for the season: sign in → Venue tab → close
@@ -36,7 +37,7 @@ interface Closure {
   advanceSales: boolean;
 }
 
-function summary(id: number, name: string, closure: Closure) {
+function summary(id: number, name: string, closure: Closure): MockVenueSummary {
   return {
     id,
     name,
@@ -49,6 +50,7 @@ function summary(id: number, name: string, closure: Closure) {
     amenities: ['WIFI'],
     distanceToWaterM: 20,
     availability: { free: 10, total: 12 },
+    sellsOnline: true,
     salesOpen: !closure.closed,
     closedForSeason: closure.closed,
     reopensOn: closure.closed ? closure.reopenOn : null,

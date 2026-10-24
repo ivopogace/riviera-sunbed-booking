@@ -2,6 +2,7 @@ import { expect, test, type Page } from '@playwright/test';
 
 import { expectNoSeriousAxeViolations } from './support/axe';
 import { settle } from './support/booking-dialog';
+import type { MockSetView, MockVenueMapView } from './support/venue-views';
 
 /**
  * CI-safe mocked e2e for the Payouts tab. Drives sign-in → the console shell →
@@ -17,8 +18,13 @@ import { settle } from './support/booking-dialog';
 const PRINCIPAL = { username: 'operator', principalType: 'OPERATOR' };
 const VENUE = 1;
 
-function venueMap() {
-  const set = (id: number, rowLabel: string, positionNo: number, tier: 'PREMIUM' | 'STANDARD') => ({
+function venueMap(): MockVenueMapView {
+  const set = (
+    id: number,
+    rowLabel: string,
+    positionNo: number,
+    tier: 'PREMIUM' | 'STANDARD',
+  ): MockSetView => ({
     id,
     rowLabel,
     positionNo,
