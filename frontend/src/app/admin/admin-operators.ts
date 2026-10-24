@@ -10,6 +10,7 @@ import { AdminOperatorsService } from './admin-operators.service';
 import { OperatorAccountView, PendingOperatorView } from './admin.model';
 
 import { TouchTarget } from '../shared/touch-target';
+import { PrimaryCta } from '../shared/primary-cta';
 
 /**
  * The admin operator surface: the approval queue and the account list with suspend/reinstate.
@@ -20,7 +21,7 @@ import { TouchTarget } from '../shared/touch-target';
  */
 @Component({
   selector: 'app-admin-operators',
-  imports: [CardGlass, AdminConsoleStats, ConfirmWithReason, BusyAction, TouchTarget],
+  imports: [PrimaryCta, CardGlass, AdminConsoleStats, ConfirmWithReason, BusyAction, TouchTarget],
   template: `
     <output
       class="mt-4 block text-[15px] text-riv-ink-soft"
@@ -81,12 +82,13 @@ import { TouchTarget } from '../shared/touch-target';
               </div>
               <div class="flex gap-2">
                 <button
+                  appPrimaryCta
                   appTouchTarget
                   type="button"
                   [attr.data-testid]="'admin-approve-' + op.id"
                   [appBusy]="actingId() !== undefined"
                   (click)="approve(op.id)"
-                  class="rounded-[10px] bg-(image:--riv-cta-grad) px-4 py-2 text-[14px] font-semibold text-white aria-disabled:opacity-60"
+                  class="rounded-[10px] px-4 py-2 text-[14px] font-semibold aria-disabled:opacity-60"
                 >
                   Approve
                 </button>

@@ -121,12 +121,13 @@
           </label>
         </div>
         <button
+          appPrimaryCta
           appTouchTarget
           type="button"
           (click)="onGenerate()"
           [appBusy]="reading()"
           data-testid="layout-generate"
-          class="mt-3 w-full rounded-[14px] border border-riv-cta-border bg-(image:--riv-cta-grad) px-3 py-[11px] text-[14px] font-bold text-white shadow-[0_8px_22px_rgba(11,120,150,0.35)] [transition:filter_0.12s_ease] aria-disabled:opacity-50 hover:brightness-105"
+          class="mt-3 w-full rounded-[14px] px-3 py-[11px] text-[14px] font-bold shadow-[0_8px_22px_rgba(11,120,150,0.35)] [transition:filter_0.12s_ease] aria-disabled:opacity-50"
         >
           @if (reading()) {
             Loading the current layout…
@@ -311,13 +312,14 @@
                 Discard
               </button>
               <button
+                appPrimaryCta
                 appTouchTarget
                 type="button"
                 (click)="onSave()"
                 [disabled]="!hasLayout()"
                 [appBusy]="saving() || previewing() || committing() || remodelPreview() !== null"
                 data-testid="layout-save"
-                class="rounded-[14px] bg-(image:--riv-cta-grad) px-5 py-2.5 text-[14px] font-bold text-white shadow-[0_8px_22px_rgba(11,120,150,0.35)] disabled:opacity-50 aria-disabled:opacity-50"
+                class="rounded-[14px] px-5 py-2.5 text-[14px] font-bold shadow-[0_8px_22px_rgba(11,120,150,0.35)] disabled:opacity-50 aria-disabled:opacity-50"
               >
                 {{ saving() ? 'Saving…' : previewing() ? 'Checking…' : 'Save layout' }}
               </button>

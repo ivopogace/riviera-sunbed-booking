@@ -32,6 +32,7 @@ import { BookingService } from './booking.service';
 
 import { TouchTarget } from '../shared/touch-target';
 import { ArrowLeftIcon } from '../shared/arrow-left-icon';
+import { PrimaryCta } from '../shared/primary-cta';
 
 /**
  * What a row is built from: the account list's summary, or the per-code detail a device-local row
@@ -171,7 +172,7 @@ const EMPTY_CARD =
 /** The `[appBusy]` control's own aria-disabled skin (`shared/busy-action.ts`), shared by both retry buttons. */
 const BUSY_SKIN = 'aria-disabled:cursor-not-allowed aria-disabled:opacity-60';
 const CTA =
-  'inline-flex min-h-11 cursor-pointer items-center rounded-2xl border border-riv-cta-border bg-(image:--riv-cta-grad) px-[26px] py-[13px] text-[15px] font-bold text-white shadow-[0_10px_26px_rgba(11,120,150,0.5),inset_0_1px_0_rgba(255,255,255,0.5)] focus-visible:outline-[3px] focus-visible:outline-offset-2 focus-visible:outline-white';
+  'inline-flex min-h-11 cursor-pointer items-center rounded-2xl px-[26px] py-[13px] text-[15px] font-bold shadow-[0_10px_26px_rgba(11,120,150,0.5)] focus-visible:outline-[3px] focus-visible:outline-offset-2 focus-visible:outline-white';
 
 /** Template skins, hoisted so each recipe exists once (the booking-view.ts `cls` idiom). */
 const CLS = {
@@ -195,6 +196,7 @@ const CLS = {
 @Component({
   selector: 'app-my-bookings',
   imports: [
+    PrimaryCta,
     RouterLink,
     BusyAction,
     CardGlass,
@@ -257,7 +259,9 @@ const CLS = {
           <p [class]="cls.emptyLead">
             Pick a beach, choose your exact set on the map, and your booking code will live here.
           </p>
-          <a routerLink="/" [class]="cls.cta" data-testid="browse-beaches">Browse beaches</a>
+          <a appPrimaryCta routerLink="/" [class]="cls.cta" data-testid="browse-beaches"
+            >Browse beaches</a
+          >
         </section>
       } @else {
         @if (accountError()) {
@@ -267,6 +271,7 @@ const CLS = {
               missing.
             </p>
             <button
+              appPrimaryCta
               appTouchTarget
               type="button"
               [class]="cls.ctaBusy"

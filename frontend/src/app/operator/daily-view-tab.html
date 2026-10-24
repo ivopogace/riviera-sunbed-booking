@@ -274,10 +274,11 @@
         </p>
         @if (venueId(); as id) {
           <a
+            appPrimaryCta
             appTouchTarget
             [routerLink]="['/operator', id, 'beach-map']"
             data-testid="daily-map-empty-link"
-            class="inline-flex items-center justify-center rounded-[14px] bg-(image:--riv-cta-grad) px-4 py-2.5 text-[14px] font-bold text-white shadow-[0_8px_22px_rgba(11,120,150,0.35)]"
+            class="inline-flex items-center justify-center rounded-[14px] px-4 py-2.5 text-[14px] font-bold shadow-[0_8px_22px_rgba(11,120,150,0.35)]"
             >Go to the Beach map tab</a
           >
         }

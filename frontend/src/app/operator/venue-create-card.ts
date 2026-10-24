@@ -17,6 +17,7 @@ import { BeachCode } from '../shared/beaches';
 import { BookingMode } from '../shared/venue-views';
 import { VenueAdminErrorCode, VenueDefaults } from './venue-admin.model';
 import { VenueAdminService, venueAdminErrorOf } from './venue-admin.service';
+import { PrimaryCta } from '../shared/primary-cta';
 
 /** The new-venue fields bound to the Signal Form. Typed rather than inferred, so `bookingMode`
  *  is the union the server accepts instead of a bare string the submit path has to assert. */
@@ -39,6 +40,7 @@ interface VenueDraft {
 @Component({
   selector: 'app-venue-create-card',
   imports: [
+    PrimaryCta,
     BeachField,
     BookingCutoffField,
     BookingModeField,

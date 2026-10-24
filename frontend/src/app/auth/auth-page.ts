@@ -38,6 +38,7 @@ import { SegmentedControl, SegmentedOption } from '../shared/segmented-control';
 import { SsoButtons } from './sso-buttons';
 
 import { TouchTarget } from '../shared/touch-target';
+import { PrimaryCta } from '../shared/primary-cta';
 
 /** Who is signing in. Picks the client service, never a shared endpoint. */
 type Audience = 'tourist' | 'operator';
@@ -86,6 +87,7 @@ const LABEL_CLASS = 'text-[11px] font-bold tracking-[0.1em] uppercase text-riv-c
 @Component({
   selector: 'app-auth-page',
   imports: [
+    PrimaryCta,
     FormField,
     RouterLink,
     CardGlass,
@@ -104,10 +106,11 @@ const LABEL_CLASS = 'text-[11px] font-bold tracking-[0.1em] uppercase text-riv-c
           <app-outcome-card tone="success" [heading]="landedHeading()" testId="auth-signed-in">
             {{ landedBody() }}
             <a
+              appPrimaryCta
               outcomeCta
               [routerLink]="landedCtaLink()"
               data-testid="auth-signed-in-cta"
-              class="block rounded-[16px] border border-riv-cta-border bg-(image:--riv-cta-grad) px-4 py-3.5 text-[15px] font-bold text-white no-underline shadow-[0_10px_26px_rgba(11,120,150,0.5),inset_0_1px_0_rgba(255,255,255,0.5)]"
+              class="block rounded-[16px] px-4 py-3.5 text-[15px] font-bold no-underline shadow-[0_10px_26px_rgba(11,120,150,0.5)]"
               >{{ landedCtaLabel() }}</a
             >
           </app-outcome-card>
@@ -259,11 +262,12 @@ const LABEL_CLASS = 'text-[11px] font-bold tracking-[0.1em] uppercase text-riv-c
               }
 
               <button
+                appPrimaryCta
                 appTouchTarget
                 type="submit"
                 data-testid="auth-submit"
                 [appBusy]="submitting()"
-                class="mt-0.5 cursor-pointer rounded-[16px] border border-riv-cta-border bg-(image:--riv-cta-grad) px-4 py-3.5 text-[15px] font-bold text-white shadow-[0_10px_26px_rgba(11,120,150,0.5),inset_0_1px_0_rgba(255,255,255,0.5)] transition aria-disabled:opacity-60 motion-reduce:transition-none"
+                class="mt-0.5 cursor-pointer rounded-[16px] px-4 py-3.5 text-[15px] font-bold shadow-[0_10px_26px_rgba(11,120,150,0.5)] transition aria-disabled:opacity-60 motion-reduce:transition-none"
               >
                 {{ submitLabel() }}
               </button>

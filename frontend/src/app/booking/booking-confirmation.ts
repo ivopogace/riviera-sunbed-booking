@@ -9,6 +9,7 @@ import { formatStay } from '../shared/booking-date-label';
 import { formatMoney } from '../shared/money';
 import { BookingService } from './booking.service';
 import { CheckIcon } from '../shared/check-icon';
+import { PrimaryCta } from '../shared/primary-cta';
 
 /** Template skins, hoisted so each recipe exists once (the booking-view.ts `cls` idiom). */
 const CLS = {
@@ -27,7 +28,15 @@ const CLS = {
  */
 @Component({
   selector: 'app-booking-confirmation',
-  imports: [ManageBookingLink, RouterLink, CardGlass, BookingQr, WithheldEmailNotice, CheckIcon],
+  imports: [
+    PrimaryCta,
+    ManageBookingLink,
+    RouterLink,
+    CardGlass,
+    BookingQr,
+    WithheldEmailNotice,
+    CheckIcon,
+  ],
   template: `
     @if (confirmation(); as c) {
       <section [class]="cls.card" appCardGlass aria-labelledby="confirmation-title">
@@ -109,8 +118,9 @@ const CLS = {
         </div>
 
         <a
+          appPrimaryCta
           routerLink="/"
-          class="block w-full rounded-2xl border border-riv-cta-border bg-(image:--riv-cta-grad) p-3.5 text-[15px] font-bold text-white shadow-[0_10px_26px_rgba(11,120,150,0.5),inset_0_1px_0_rgba(255,255,255,0.5)] focus-visible:outline-[3px] focus-visible:outline-offset-2 focus-visible:outline-riv-accent-ink"
+          class="block w-full rounded-2xl p-3.5 text-[15px] font-bold shadow-[0_10px_26px_rgba(11,120,150,0.5)] focus-visible:outline-[3px] focus-visible:outline-offset-2 focus-visible:outline-riv-accent-ink"
           >Back to the beach</a
         >
         <app-manage-booking-link [code]="c.code" variant="link" />
