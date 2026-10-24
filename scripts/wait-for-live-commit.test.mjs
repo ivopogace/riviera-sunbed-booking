@@ -233,15 +233,13 @@ test('a response body never writes its own line into the Actions log', async () 
       null,
       'a commit field that is not a bare commit id is not read as one',
     );
-    assert.equal(lines.length, TICKED_ATTEMPTS, 'both shapes, alternating, were logged');
-    for (const line of lines) {
-      assert.ok(!line.includes('\n'), line);
-      assert.match(
-        line,
-        /^attempt \d+: live commit unknown, waiting for 2{40} \(info: (no commit id|not JSON)\)$/,
-      );
-      assert.ok(!line.includes('forged'), line);
-    }
+    assert.deepEqual(
+      lines,
+      Array.from({ length: TICKED_ATTEMPTS }, (_, i) => {
+        const word = i % 2 === 0 ? 'malformed commit id' : 'not JSON';
+        return `attempt ${i + 1}: live commit unknown, waiting for ${NEW} (info: ${word})`;
+      }),
+    );
   } finally {
     await backend.close();
   }
@@ -297,13 +295,71 @@ test('a forged health body never writes its own line once the commit is live', a
     assert.ok(backend.hits.get('/actuator/health') >= 1, 'health was asked');
     assert.ok(lines.length > 0, 'the attempts were logged');
     for (const line of lines) {
-      assert.ok(!line.includes('\n'), line);
-      assert.match(
-        line,
-        /^attempt \d+: live commit 2{40}, waiting for 2{40} \(info: ok; health: not JSON\)$/,
+      assert.equal(
+        line.replace(/^attempt \d+: /, ''),
+        `live commit ${NEW}, waiting for ${NEW} (info: ok; health: not JSON)`,
       );
     }
   } finally {
     await backend.close();
+  }
+});
+
+/** The note one attempt logs against a backend whose info names `commit` and whose health is `health`. */
+async function noteFor(info, health = { body: { status: 'UP' } }) {
+  const backend = await stubBackend((path) => (path === '/actuator/info' ? info : health));
+  const lines = [];
+  try {
+    await waitForLiveCommit({
+      baseUrl: backend.baseUrl,
+      expected: NEW,
+      deadlineMs: 1,
+      intervalMs: POLL_INTERVAL_MS,
+      log: (line) => lines.push(line),
+    });
+  } finally {
+    await backend.close();
+  }
+  return lines[0].replace(/^attempt 1: live commit \S+, waiting for 2{40} /, '');
+}
+
+test('each failure logs its own fixed note', async () => {
+  assert.equal(await noteFor({ status: 503, body: 'down\n::error::x' }), '(info: HTTP 503)');
+  assert.equal(await noteFor({ body: 'null' }), '(info: no commit id)');
+  assert.equal(await noteFor({ body: {} }), '(info: no commit id)');
+  assert.equal(
+    await noteFor({ body: { commit: 'A'.repeat(40) } }),
+    '(info: malformed commit id)',
+  );
+  assert.equal(
+    await noteFor({ body: { commit: NEW } }, { body: { status: 'DOWN' } }),
+    '(info: ok; health: not UP)',
+  );
+  assert.equal(
+    await noteFor({ body: { commit: NEW } }, { body: 'null' }),
+    '(info: ok; health: not UP)',
+  );
+  assert.equal(
+    await noteFor({ body: { commit: NEW } }, { status: 503, body: { status: 'DOWN' } }),
+    '(info: ok; health: HTTP 503)',
+  );
+});
+
+test('a timeout and an unreachable backend log different fixed words, never the error text', async () => {
+  const failing = (error) => () => Promise.reject(error);
+  for (const [error, word] of [
+    [Object.assign(new Error('aborted\n::error::x'), { name: 'TimeoutError' }), 'timed out'],
+    [new TypeError('fetch failed\n::error::x'), 'unreachable'],
+  ]) {
+    const lines = [];
+    await waitForLiveCommit({
+      baseUrl: 'http://x',
+      expected: NEW,
+      deadlineMs: 1,
+      intervalMs: POLL_INTERVAL_MS,
+      fetchImpl: failing(error),
+      log: (line) => lines.push(line),
+    });
+    assert.deepEqual(lines, [`attempt 1: live commit unknown, waiting for ${NEW} (info: ${word})`]);
   }
 });

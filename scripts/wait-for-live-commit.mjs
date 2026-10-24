@@ -27,8 +27,8 @@ const COMMIT_ID = /^[0-9a-f]{7,64}$/;
 /**
  * One probe: the live commit (null when info is unreadable or has none) and, once it is `expected`,
  * whether health reads UP; an older commit's health cannot change the answer, so it is not asked.
- * The note is fixed words and a status number: no response text ever reaches the runner's log, where a
- * line could start an Actions `::command::`.
+ * The note is fixed words and a status number; the one piece of response text that reaches the log is
+ * a commit id that passed `COMMIT_ID`, so no answer can start an Actions `::command::` line.
  *
  * @param {string} baseUrl backend origin, no trailing slash
  * @param {string} expected the commit being waited for
@@ -37,30 +37,35 @@ const COMMIT_ID = /^[0-9a-f]{7,64}$/;
  */
 export async function probe(baseUrl, expected, fetchImpl = fetch) {
   const info = await readJson(`${baseUrl}/actuator/info`, fetchImpl);
-  const reported = info.body?.commit;
+  const reported = info.ok ? info.body?.commit : undefined;
   const commit = typeof reported === 'string' && COMMIT_ID.test(reported) ? reported : null;
-  const infoNote = `info: ${info.body === null ? info.note : commit ? 'ok' : 'no commit id'}`;
+  const infoNote = `info: ${infoWord(info, reported, commit)}`;
   if (commit !== expected) return { commit, up: false, note: infoNote };
   const health = await readJson(`${baseUrl}/actuator/health`, fetchImpl);
-  const up = health.body?.status === 'UP';
-  const healthNote = `health: ${health.body === null ? health.note : up ? 'UP' : 'not UP'}`;
-  return { commit, up, note: `${infoNote}; ${healthNote}` };
+  if (health.ok && health.body?.status === 'UP') return { commit, up: true, note: infoNote };
+  return { commit, up: false, note: `${infoNote}; health: ${health.ok ? 'not UP' : health.note}` };
 }
 
-/** The parsed body, or null with why: `HTTP <status>`, `unreachable` or `not JSON`. */
+function infoWord(info, reported, commit) {
+  if (!info.ok) return info.note;
+  if (commit) return 'ok';
+  return reported === undefined || reported === null ? 'no commit id' : 'malformed commit id';
+}
+
+/** The parsed body when `ok`; otherwise why not: `HTTP <status>`, `timed out`, `unreachable` or `not JSON`. */
 async function readJson(url, fetchImpl) {
   let text;
   try {
     const response = await fetchImpl(url, { signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS) });
     text = await response.text();
-    if (!response.ok) return { body: null, note: `HTTP ${Number(response.status)}` };
-  } catch {
-    return { body: null, note: 'unreachable' };
+    if (!response.ok) return { ok: false, note: `HTTP ${Number(response.status)}` };
+  } catch (error) {
+    return { ok: false, note: error?.name === 'TimeoutError' ? 'timed out' : 'unreachable' };
   }
   try {
-    return { body: JSON.parse(text), note: 'JSON' };
+    return { ok: true, body: JSON.parse(text) };
   } catch {
-    return { body: null, note: 'not JSON' };
+    return { ok: false, note: 'not JSON' };
   }
 }
 
