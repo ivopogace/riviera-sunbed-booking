@@ -3,6 +3,7 @@ import { expect, test } from '@playwright/test';
 import { mockChallengeFence } from './support/auth-mocks';
 import { expectNoSeriousAxeViolations } from './support/axe';
 import { completeDialog, settle } from './support/booking-dialog';
+import type { MockVenueMapView } from './support/venue-views';
 
 /**
  * Real-render a11y + behaviour audit of the Request-to-Book flow: REQUEST-mode beach map → 2-step
@@ -15,7 +16,7 @@ import { completeDialog, settle } from './support/booking-dialog';
 
 const CODE = 'RQST234567';
 
-const VENUE = {
+const VENUE: MockVenueMapView = {
   id: 1,
   name: 'Miramar Beach Club',
   beach: 'KSAMIL',

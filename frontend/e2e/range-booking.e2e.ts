@@ -3,6 +3,7 @@ import { expect, test, type Page } from '@playwright/test';
 import { ChallengeFence, mockChallengeFence } from './support/auth-mocks';
 import { expectNoSeriousAxeViolations } from './support/axe';
 import { completeDialog, mockFencedBookingCreate, settle } from './support/booking-dialog';
+import type { MockVenueMapView } from './support/venue-views';
 
 /**
  * Real-render journey of a stay of several days at an Instant venue: pick a first and a last day,
@@ -39,7 +40,7 @@ function set(
   };
 }
 
-const VENUE = {
+const VENUE: Omit<MockVenueMapView, 'sets'> = {
   id: 1,
   name: 'Miramar Beach Club',
   beach: 'KSAMIL',
