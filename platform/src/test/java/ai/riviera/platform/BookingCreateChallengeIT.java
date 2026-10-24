@@ -40,8 +40,9 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  *
  * <p>Each test books its own throwaway venue's set on its own far-future date, so no case can be
  * decided by a neighbour's claim, and every request presents a unique client IP except the one that
- * deliberately pins a budget. Its own context: a tiny cost keeps the Java solves instant and a known
- * secret lets the test mint an expired challenge.
+ * deliberately pins a budget. Its own context: a tiny cost keeps the Java solves instant, a known
+ * secret lets the test mint an expired challenge, and a day-long per-IP refill keeps the budget from
+ * topping up while the pinned loop runs, so the 121st create is refused however slow the runner is.
  */
 @EnabledIfDockerAvailable
 @Import(TestcontainersConfiguration.class)
@@ -50,6 +51,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @TestPropertySource(properties = {
 		"riviera.altcha.cost=10",
 		"riviera.altcha.hmac-secret=" + BookingCreateChallengeIT.SECRET,
+		"riviera.ratelimit.per-ip.refill-period=PT24H",
 })
 class BookingCreateChallengeIT {
 
