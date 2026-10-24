@@ -24,12 +24,11 @@ const REQUEST_TIMEOUT_MS = 10_000;
 const FULL_SHA = /^[0-9a-f]{40}$/;
 const COMMIT_ID = /^[0-9a-f]{7,64}$/;
 
-/** How much of a response body a log line quotes. */
-const NOTE_LIMIT = 200;
-
 /**
  * One probe: the live commit (null when info is unreadable or has none) and, once it is `expected`,
  * whether health reads UP; an older commit's health cannot change the answer, so it is not asked.
+ * The note is fixed words and a status number: no response text ever reaches the runner's log, where a
+ * line could start an Actions `::command::`.
  *
  * @param {string} baseUrl backend origin, no trailing slash
  * @param {string} expected the commit being waited for
@@ -38,37 +37,31 @@ const NOTE_LIMIT = 200;
  */
 export async function probe(baseUrl, expected, fetchImpl = fetch) {
   const info = await readJson(`${baseUrl}/actuator/info`, fetchImpl);
-  // The body is the backend's to write, and the log is the runner's: only a commit id reaches it unquoted.
   const reported = info.body?.commit;
   const commit = typeof reported === 'string' && COMMIT_ID.test(reported) ? reported : null;
-  if (commit !== expected) return { commit, up: false, note: `info: ${info.note}` };
+  const infoNote = `info: ${info.body === null ? info.note : commit ? 'ok' : 'no commit id'}`;
+  if (commit !== expected) return { commit, up: false, note: infoNote };
   const health = await readJson(`${baseUrl}/actuator/health`, fetchImpl);
-  return {
-    commit,
-    up: health.body?.status === 'UP',
-    note: `info: ${info.note}; health: ${health.note}`,
-  };
+  const up = health.body?.status === 'UP';
+  const healthNote = `health: ${health.body === null ? health.note : up ? 'UP' : 'not UP'}`;
+  return { commit, up, note: `${infoNote}; ${healthNote}` };
 }
 
+/** The parsed body, or null with why: `HTTP <status>`, `unreachable` or `not JSON`. */
 async function readJson(url, fetchImpl) {
   let text;
   try {
     const response = await fetchImpl(url, { signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS) });
     text = await response.text();
-    if (!response.ok) return { body: null, note: `HTTP ${response.status}` };
-  } catch (error) {
-    return { body: null, note: `unreachable (${quoted(error.message)})` };
+    if (!response.ok) return { body: null, note: `HTTP ${Number(response.status)}` };
+  } catch {
+    return { body: null, note: 'unreachable' };
   }
   try {
-    return { body: JSON.parse(text), note: quoted(text) };
+    return { body: JSON.parse(text), note: 'JSON' };
   } catch {
-    return { body: null, note: `not JSON (${quoted(text)})` };
+    return { body: null, note: 'not JSON' };
   }
-}
-
-/** A single-line, bounded, JSON-escaped quote, so no response text can start an Actions `::command::` line. */
-function quoted(text) {
-  return JSON.stringify(String(text).trim().slice(0, NOTE_LIMIT));
 }
 
 /**

@@ -236,7 +236,11 @@ test('a response body never writes its own line into the Actions log', async () 
     assert.equal(lines.length, TICKED_ATTEMPTS, 'both shapes, alternating, were logged');
     for (const line of lines) {
       assert.ok(!line.includes('\n'), line);
-      assert.match(line, /^attempt \d+: live commit unknown, /);
+      assert.match(
+        line,
+        /^attempt \d+: live commit unknown, waiting for 2{40} \(info: (no commit id|not JSON)\)$/,
+      );
+      assert.ok(!line.includes('forged'), line);
     }
   } finally {
     await backend.close();
@@ -268,7 +272,8 @@ test('a body that answered but is not JSON is logged as such, not as unreachable
       intervalMs: POLL_INTERVAL_MS,
       log: (line) => lines.push(line),
     });
-    assert.match(lines[0], /\(info: not JSON \("<html>waking up<\/html>"\)\)$/);
+    assert.match(lines[0], /\(info: not JSON\)$/);
+    assert.ok(!lines[0].includes('html'), 'no response text reaches the log');
   } finally {
     await backend.close();
   }
@@ -295,7 +300,7 @@ test('a forged health body never writes its own line once the commit is live', a
       assert.ok(!line.includes('\n'), line);
       assert.match(
         line,
-        /^attempt \d+: live commit 2{40}, waiting for 2{40} \(info: .*; health: not JSON \(".*"\)\)$/,
+        /^attempt \d+: live commit 2{40}, waiting for 2{40} \(info: ok; health: not JSON\)$/,
       );
     }
   } finally {
