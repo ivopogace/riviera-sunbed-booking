@@ -40,6 +40,7 @@ import {
   VenuesGlyph,
 } from './shared/console-glyphs';
 import { ConsolePalette, PaletteRow } from './shared/console-palette';
+import { CONSOLE_PAGE_ROW } from './shared/console-page-box';
 import { currentUrl } from './shared/current-url';
 import { focusMover } from './shared/focus-after-render';
 import { POP_BACKDROP, POP_NAV_HINT, POP_NAV_ROW, POP_SKIN } from './shared/popover-skin';
@@ -161,7 +162,7 @@ const CLS = {
   header:
     'oc-header sticky top-0 z-20 border-b border-riv-header-border bg-riv-header-glass backdrop-blur-[22px] backdrop-saturate-[1.7] [transition:translate_0.2s_ease] motion-reduce:transition-none',
   // min-h keeps the 44px controls' row at the spike's ~46px; the popovers anchor to the chip's own host and to the header.
-  row: 'oc-header-inner mx-auto flex min-h-[46px] max-w-[1120px] items-stretch justify-between gap-3 px-6 sm:gap-5',
+  row: `oc-header-inner ${CONSOLE_PAGE_ROW} flex min-h-[46px] items-stretch justify-between gap-3 px-6 sm:gap-5`,
   brand:
     'oc-wordmark inline-flex shrink-0 items-center text-[19px] leading-[1.15] font-bold tracking-[-0.01em] text-riv-ink no-underline',
   venueSlot: `min-w-0 ${SLOT}`,
@@ -174,7 +175,7 @@ const CLS = {
     'inline-flex shrink-0 cursor-pointer items-center justify-center gap-1.5 rounded-lg px-1.5 text-riv-ink-soft hover:text-riv-ink max-sm:hidden [&_svg]:size-[18px]',
   keycap:
     'rounded-md border border-riv-chip-border bg-riv-chip-bg px-1.5 py-0.5 font-[inherit] text-[11px] font-semibold leading-none',
-  railBox: 'mx-auto w-full max-w-[1120px] max-sm:hidden',
+  railBox: `${CONSOLE_PAGE_ROW} max-sm:hidden`,
   rail: 'oc-tabs px-6 pt-3.5 scroll-px-6',
   badge: TAB_RAIL_BADGE,
   // Four equal slots on the header's glass; the marker sits on its bottom border, as on the row.

@@ -24,6 +24,7 @@ import { OperatorConsoleService, payoutErrorOf } from './operator-console.servic
 import { TouchTarget } from '../shared/touch-target';
 import { PayoutStatement } from './payout-statement';
 import { RainIcon } from '../shared/rain-icon';
+import { ConsolePageColumn } from '../shared/console-page-box';
 
 /**
  * The Payouts tab: the venue's payout ledger (every non-accrual a negative row with a reason chip),
@@ -36,6 +37,7 @@ import { RainIcon } from '../shared/rain-icon';
 @Component({
   selector: 'app-payouts-tab',
   imports: [
+    ConsolePageColumn,
     CardGlass,
     LoadAnnouncer,
     SkeletonBlock,

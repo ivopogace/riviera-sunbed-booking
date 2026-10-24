@@ -64,6 +64,7 @@ import { codeFromScan } from './scan-input';
 import { StayDayGroup, stayDayGroupOf } from './stay-day-group';
 import { CheckIcon } from '../shared/check-icon';
 import { DotIcon } from '../shared/dot-icon';
+import { ConsolePageBox } from '../shared/console-page-box';
 
 /**
  * One guest row: set label, display-only arrival code (invariant #7), the guest's span when the
@@ -162,6 +163,7 @@ interface CheckInNotice {
 @Component({
   selector: 'app-daily-view-tab',
   imports: [
+    ConsolePageBox,
     CardGlass,
     LoadAnnouncer,
     BeachMapCanvas,

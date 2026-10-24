@@ -34,6 +34,7 @@ import { PendingRequestsStore } from './pending-requests-store';
 import { CheckIcon } from '../shared/check-icon';
 import { AlertIcon } from '../shared/alert-icon';
 import { ClockIcon } from '../shared/clock-icon';
+import { ConsolePageColumn } from '../shared/console-page-box';
 
 /**
  * One pending-request card's static display fields; the transient accept/decline/expired state is per
@@ -76,6 +77,7 @@ interface StopRow {
 @Component({
   selector: 'app-requests-tab',
   imports: [
+    ConsolePageColumn,
     CardGlass,
     LoadAnnouncer,
     SkeletonBlock,

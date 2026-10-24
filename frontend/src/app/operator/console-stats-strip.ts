@@ -9,6 +9,7 @@ import { todayBookingDate } from '../shared/booking-date';
 import { AvailabilityChanges } from './availability-changes';
 import { SetDayState, TakingsView } from './operator-console.model';
 import { OperatorConsoleService } from './operator-console.service';
+import { ConsolePageRow } from '../shared/console-page-box';
 
 /**
  * The operator console's stats strip, live for the venue today (Europe/Tirane, #6): Free today from
@@ -19,7 +20,7 @@ import { OperatorConsoleService } from './operator-console.service';
  */
 @Component({
   selector: 'app-console-stats-strip',
-  imports: [StatTile],
+  imports: [ConsolePageRow, StatTile],
   templateUrl: './console-stats-strip.html',
 })
 export class ConsoleStatsStrip {
