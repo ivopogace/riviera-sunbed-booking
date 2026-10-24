@@ -295,6 +295,8 @@ public class SecurityConfig {
 								"/api/payments/stripe/webhook"))
 				.authorizeHttpRequests(auth -> auth
 						.requestMatchers("/actuator/health/**").permitAll()
+						// The build's commit id only (BuildCommitInfoContributor); the CD poll reads it (#1632).
+						.requestMatchers(HttpMethod.GET, "/actuator/info").permitAll()
 						// Anonymous by definition — authentication happens INSIDE the endpoint.
 						.requestMatchers(HttpMethod.POST, LOGIN_PATH).permitAll()
 						.requestMatchers(HttpMethod.POST, OPERATOR_REGISTER_PATH).permitAll()

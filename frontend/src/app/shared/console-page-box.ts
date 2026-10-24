@@ -2,8 +2,8 @@ import { Directive } from '@angular/core';
 
 /**
  * The console's one 1120px page box (#1589), the header row's and tab rail's; every 1120px utility
- * is here (`operator-venue-switch.ts`'s popover `536px` derives from it by hand). Its content edge
- * is the box's plus the row's `px-6`: where the wordmark and the rail's first tab start.
+ * is here. Its content edge is the box's plus the row's `px-6`: where the wordmark and the rail's
+ * first tab start.
  */
 export const CONSOLE_PAGE_ROW = 'mx-auto w-full max-w-[1120px]';
 
@@ -13,6 +13,11 @@ export const CONSOLE_PAGE_ROW = 'mx-auto w-full max-w-[1120px]';
   host: { class: CONSOLE_PAGE_ROW },
 })
 export class ConsolePageRow {}
+
+/** The box's content edge as a `fixed` box's `left`, its containing block the full-bleed header
+ *  (the venue switch's popover): half the box in from the centre plus the `px-6`, or the `px-6`
+ *  alone once the header is narrower. One literal string, so Tailwind's scan sees it whole. */
+export const FIXED_CONTENT_EDGE = 'left-[max(1.5rem,calc(50%_-_560px_+_1.5rem))]';
 
 const CONTENT_EDGE = 'mr-auto ml-[max(0px,calc((100%_-_1120px)/2_+_1.5rem))]';
 

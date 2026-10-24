@@ -14,7 +14,7 @@ export interface OwnedVenue {
 /**
  * How an owned-venues read ended. `error` is deliberately distinct from an empty `loaded` list: a
  * transient failure must never be mistaken for "owns no venues", which would forward a real operator
- * to venue onboarding on a network blip.
+ * to venue onboarding on a network blip. A read a {@link OwnedVenues.reset} superseded is `error` too.
  */
 export type OwnedVenuesResult =
   | { readonly status: 'loaded'; readonly venues: readonly OwnedVenue[] }
@@ -34,7 +34,7 @@ export class OwnedVenues {
   private readonly http = inject(HttpClient);
   private readonly loaded = signal<readonly OwnedVenue[] | undefined>(undefined);
   private inFlight?: Promise<OwnedVenuesResult>;
-  /** Bumped by {@link reset}, so a read from the session it ended cannot write into the next one's cache. */
+  /** Bumped by {@link reset}: a read from the session it ended neither writes the cache nor returns its list. */
   private generation = 0;
 
   /** The last successfully loaded list, or undefined before the first load / after a failure. */
@@ -59,9 +59,11 @@ export class OwnedVenues {
       const venues = await firstValueFrom(
         this.http.get<OwnedVenue[]>(`${environment.apiBaseUrl}/api/venues/mine`),
       );
-      if (this.generation === generation) {
-        this.loaded.set(venues);
+      if (this.generation !== generation) {
+        // Not load(): that would fire a fresh /mine after a sign-out.
+        return { status: 'error' };
       }
+      this.loaded.set(venues);
       return { status: 'loaded', venues };
     } catch {
       if (this.generation === generation) {

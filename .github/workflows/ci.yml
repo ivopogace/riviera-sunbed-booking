@@ -154,10 +154,66 @@ jobs:
         if: steps.restore.outputs.cache-hit != 'true'
         run: npm ci
 
+      - name: List the system packages Chromium needs that the image lacks
+        # Not `--with-deps`: its `apt-get install` also upgrades libraries the image already ships, and a
+        # slow apt mirror timed that step out (#1629). Playwright's dry run (`apt-get install -s`, no
+        # download) lists what apt would touch; dpkg drops what is installed. On `ubuntu24` the rest is
+        # fonts, which the next step caches as .debs. No list from a failed dry run: full `install-deps`.
+        id: deps
+        if: steps.restore.outputs.cache-hit != 'true'
+        run: |
+          missing=
+          if ! report=$(npx playwright install-deps --dry-run chromium 2>&1); then
+            echo "$report"
+            listed=$(printf '%s\n' "$report" | sed -n 's/^  \([^ ]\+\)$/\1/p')
+            if [ -z "$listed" ]; then
+              echo "fallback=true" >> "$GITHUB_OUTPUT"
+            fi
+            missing=$(for pkg in $listed; do
+              dpkg-query -W -f='${Status}' "$pkg" 2>/dev/null | grep -q 'ok installed' || echo "$pkg"
+            done | sort | xargs)
+          fi
+          echo "missing=$missing" >> "$GITHUB_OUTPUT"
+          # The installed Playwright, not a literal, so a bump busts the cache; the package set, so an
+          # image that ships more or fewer of them does too.
+          echo "key=playwright-${ImageOS}-$(node -p "require('playwright-core/package.json').version")-$(echo "$missing" | sha256sum | cut -c1-16)" >> "$GITHUB_OUTPUT"
+
+      - name: Restore the Playwright browsers and system-package .debs (saved at job end on a miss)
+        id: browsers
+        if: steps.restore.outputs.cache-hit != 'true'
+        uses: actions/cache@v6
+        with:
+          path: |
+            ~/.cache/ms-playwright
+            ~/.cache/playwright-debs
+          key: ${{ steps.deps.outputs.key }}
+
       - name: Install Playwright Chromium
+        # A hit touches no network but the cache: the browsers are in place and the .debs install
+        # offline. A miss downloads the browsers from Playwright's CDN and the .debs from apt once. The
+        # fallback alone goes to apt on every run, hit or not.
         if: steps.restore.outputs.cache-hit != 'true'
         timeout-minutes: 6
-        run: npx playwright install --with-deps chromium
+        env:
+          MISSING: ${{ steps.deps.outputs.missing }}
+          FALLBACK: ${{ steps.deps.outputs.fallback }}
+          HIT: ${{ steps.browsers.outputs.cache-hit }}
+        run: |
+          npx playwright install chromium
+          if [ "$FALLBACK" = true ]; then
+            npx playwright install-deps chromium
+            exit 0
+          fi
+          [ -n "$MISSING" ] || exit 0
+          debs=~/.cache/playwright-debs
+          if [ "$HIT" != true ]; then
+            mkdir -p "$debs/partial"
+            sudo apt-get update
+            sudo apt-get install -y --no-install-recommends --download-only -o Dir::Cache::archives="$debs" $MISSING
+            sudo rm -rf "$debs/partial" "$debs/lock"
+            sudo chown -R "$(id -u):$(id -g)" "$debs"
+          fi
+          sudo dpkg -i "$debs"/*.deb
 
       - name: A11y e2e (real-render axe over the booking flow), this shard
         # The real-backend suite (`npm run test:e2e`) needs a JDK and Docker and is not run in CI.

@@ -9,9 +9,10 @@ import java.util.regex.Pattern;
 /**
  * The one rule for the deployed origin every emailed link is built on, bound under each consumer's own key: an
  * {@code http}/{@code https} URL with a host, no trailing dot (underscores between letters or digits allowed), a port
- * in 1..65535 if given (a bare {@code :} fails), an optional path, no user info, query, fragment or percent-escape;
- * stripped, trailing slashes trimmed. A rejection names the key and variable, never the value, which may carry
- * credentials into the boot log. Placement: RESPONSIBILITIES.md §notification.
+ * in 1..65535 if given (a bare {@code :} fails), an optional path (its escapes kept as encoded by {@link EmailedLink}),
+ * no user info, query, fragment or escape in the authority; stripped, trailing slashes trimmed. A rejection names the
+ * key and variable, never the value, which may carry credentials into the boot log. Placement: RESPONSIBILITIES.md
+ * §notification.
  */
 public final class EmailedLinkOrigin {
 
@@ -48,13 +49,13 @@ public final class EmailedLinkOrigin {
 
 	private static boolean isOrigin(String value) {
 		URI parsed = parse(value);
-		if (parsed == null || value.contains("%")) {
+		if (parsed == null) {
 			return false;
 		}
 		String authority = parsed.getRawAuthority();
 		if (parsed.getScheme() == null || !SCHEMES.contains(parsed.getScheme().toLowerCase(Locale.ROOT))
-				|| authority == null || authority.contains("@") || authority.endsWith(":")
-				|| parsed.getRawQuery() != null || parsed.getRawFragment() != null) {
+				|| authority == null || authority.contains("@") || authority.contains("%")
+				|| authority.endsWith(":") || parsed.getRawQuery() != null || parsed.getRawFragment() != null) {
 			return false;
 		}
 		URI server = parsed.getHost() != null ? parsed

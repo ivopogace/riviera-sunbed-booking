@@ -35,13 +35,15 @@ permissions:
   contents: read
 
 jobs:
-  # Single decision point. For the automatic path, CI must have SUCCEEDED on `main`.
-  # Manual dispatch is itself an explicit opt-in, so it passes the gate directly. If
-  # the gate fails, the deploy job is skipped and nothing turns red.
+  # Decides whether this run may deploy at all; the deploy job's trigger step then declines a commit
+  # `main` has moved past. For the automatic path, CI must have SUCCEEDED on `main`; if not, the deploy
+  # job is skipped and nothing turns red. Manual dispatch is itself an explicit opt-in, from `main` only:
+  # the hook's ref= would otherwise deploy another branch's untested commit, so a dispatch from elsewhere
+  # fails the run.
   guard:
     name: Gate on green CI on main
     runs-on: ubuntu-latest
-    # Two `echo`s. Capped anyway, so the whole workflow is covered by the ci.yml rule.
+    # A ref check and an `echo`. Capped anyway, so the whole workflow is covered by the ci.yml rule.
     timeout-minutes: 5
     if: >-
       ${{ (github.event_name == 'workflow_run'
@@ -51,54 +53,87 @@ jobs:
     steps:
       - name: Confirm gate
         run: |
-          echo "event: ${{ github.event_name }}"
-          echo "Proceeding to deploy."
+          if [ "$GITHUB_EVENT_NAME" = workflow_dispatch ] && [ "$GITHUB_REF" != refs/heads/main ]; then
+            echo "::error::CD deploys main only: run the workflow from main, not $GITHUB_REF_NAME."
+            exit 1
+          fi
+          echo "Gate passed ($GITHUB_EVENT_NAME)."
 
   backend-render:
     name: Deploy backend (serves SPA + /api) → Render
     needs: guard
-    # Never runs on the temporary branch push (no secrets there); opt-in via the repo
-    # variable on the automatic path, or any explicit manual dispatch.
+    # Opt-in via the repo variable on the automatic path, or any explicit manual dispatch.
     if: >-
       ${{ (github.event_name == 'workflow_run' && vars.DEPLOY_BACKEND_RENDER == 'true')
           || github.event_name == 'workflow_dispatch' }}
     runs-on: ubuntu-latest
-    # Deliberately the loosest cap here: the health poll below is allowed ~15 min on purpose (Render's
+    # Deliberately the loosest cap here: the live poll below is allowed ~15 min on purpose (Render's
     # free tier cold-starts), so this must clear that plus the trigger and Render's own build. It is
     # still a bound — before it, a deploy that never reported healthy could sit for six hours.
     timeout-minutes: 25
+    env:
+      # The commit this run deploys and then waits to see live: CI's head on the automatic path, `main`'s
+      # head at dispatch on the manual one.
+      DEPLOY_SHA: ${{ github.event.workflow_run.head_sha || github.sha }}
     steps:
-      - name: Trigger Render deploy (Render git-builds the Docker image — SPA + jar)
+      # Before the trigger, so no setup step can fail after the hook's POST; only the poll judges it.
+      - name: Checkout the live poll (scripts/ only)
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ env.DEPLOY_SHA }}
+          sparse-checkout: scripts
+          persist-credentials: false
+
+      - name: Set up Node (from .nvmrc, as CI tests the poll)
+        uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+
+      - name: Trigger Render deploy of exactly this commit (Render git-builds the Docker image — SPA + jar)
+        id: trigger
         env:
           RENDER_DEPLOY_HOOK_URL: ${{ secrets.RENDER_DEPLOY_HOOK_URL }}
+          GH_TOKEN: ${{ github.token }}
         run: |
+          # Read just before the POST, and inside this job so a re-run re-reads it: a commit main has moved
+          # past (an older CI run re-run, two quick merges) never rolls the service back.
+          head=$(gh api "repos/$GITHUB_REPOSITORY/commits/main" --jq .sha)
+          if [ "$head" != "$DEPLOY_SHA" ]; then
+            echo "::notice::Not deploying $DEPLOY_SHA: main is at $head, whose own CD run deploys it."
+            echo "superseded=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
           if [ -z "$RENDER_DEPLOY_HOOK_URL" ]; then
             echo "::error::Backend deploy requested but the RENDER_DEPLOY_HOOK_URL secret is not set."
             exit 1
           fi
+          # ref= pins the deploy to the commit CI judged green; without it Render builds the branch head,
+          # which may be a later commit, and the live poll would wait for a commit never deployed.
+          case "$RENDER_DEPLOY_HOOK_URL" in *\?*) sep='&' ;; *) sep='?' ;; esac
           # --max-time: the hook returns immediately, so anything slower is a hang, not a slow deploy.
-          curl -fsS --max-time 30 -X POST "$RENDER_DEPLOY_HOOK_URL" > /dev/null
-          echo "Render deploy triggered."
+          # No -f: the status case below judges the answer, so a 4xx or 5xx gets its hint; a network error still fails.
+          response=$(curl -sS --max-time 30 -w '\n%{http_code}' -X POST "${RENDER_DEPLOY_HOOK_URL}${sep}ref=${DEPLOY_SHA}")
+          status=${response##*$'\n'}
+          # Only the deploy id is echoed: the rest of the answer is Render's text, not vetted for the log.
+          deploy_id=$(printf '%s' "${response%$'\n'*}" | grep -o 'dep-[a-z0-9]\{1,\}' | head -n 1 || true)
+          # Statuses per https://render.com/docs/deploy-hooks: 202 is a deploy queued behind a running one.
+          case "$status" in
+            200 | 201) echo "Render deploy ${deploy_id:-(no deploy id in the answer)} triggered for $DEPLOY_SHA." ;;
+            202) echo "Render queued the deploy of $DEPLOY_SHA behind a running deploy (HTTP 202, no deploy id)." ;;
+            *)
+              echo "::error::The deploy hook answered HTTP $status, not a queued deploy (3xx: the hook URL moved; 4xx: check the RENDER_DEPLOY_HOOK_URL secret; 5xx: Render failed, retry later)."
+              exit 1
+              ;;
+          esac
 
-      - name: Wait for backend health (AC-1 / AC-2)
+      # The one gate: a misnamed output runs the poll, which waits for a commit never deployed and fails red,
+      # unless that commit is the one already live.
+      - name: Wait for the new build to be live (#1632)
+        if: steps.trigger.outputs.superseded != 'true'
         env:
-          # The backend's public URL — now also the app origin. Used only for the health poll.
+          # The backend's public URL — also the app origin. Unset fails the job: an unverified deploy is not green.
           BACKEND_API_URL: ${{ vars.BACKEND_API_URL }}
-        run: |
-          if [ -z "$BACKEND_API_URL" ]; then
-            echo "::warning::BACKEND_API_URL not set — skipping post-deploy health check."
-            exit 0
-          fi
-          url="$BACKEND_API_URL/actuator/health"
-          echo "Polling $url for {\"status\":\"UP\"} (Render free tier cold-starts; up to ~15 min)…"
-          for i in $(seq 1 90); do
-            body=$(curl -fsS --max-time 10 "$url" 2>/dev/null || true)
-            if echo "$body" | grep -q '"status":"UP"'; then
-              echo "attempt $i: $body — backend healthy."
-              exit 0
-            fi
-            echo "attempt $i: not ready yet ($body)"
-            sleep 10
-          done
-          echo "::error::Backend did not report UP within the timeout (check Render build/boot logs)."
-          exit 1
+          EXPECTED_SHA: ${{ env.DEPLOY_SHA }}
+        # Render keeps the old instance serving until the new one passes its health check, so health alone
+        # is answered by the old build: wait for /actuator/info to name this commit (docs/deploy/cd-pipeline.md).
+        run: node scripts/wait-for-live-commit.mjs

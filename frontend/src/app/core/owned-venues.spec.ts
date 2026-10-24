@@ -88,14 +88,15 @@ describe('OwnedVenues', () => {
     });
   });
 
-  it('a read that settles after reset never writes the list — the previous operator’s venues stay gone (#1573)', async () => {
+  it('a read that settles after reset never writes the list — the previous operator’s venues stay gone (#1573, #1623)', async () => {
     const superseded = service.load();
     const pending = http.expectOne(MINE);
 
     service.reset();
     pending.flush(VENUES);
-    await superseded;
 
+    // Its caller gets no list either: it would route or render the previous session's venues.
+    expect(await superseded).toEqual({ status: 'error' });
     expect(service.venues()).toBeUndefined();
     const reloaded = service.load();
     http.expectOne(MINE).flush([]);
