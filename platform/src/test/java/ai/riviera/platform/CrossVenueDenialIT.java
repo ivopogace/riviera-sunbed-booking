@@ -224,6 +224,9 @@ class CrossVenueDenialIT {
 		actingAs(operatorA);
 		mvc.perform(get("/api/venues/{v}/bookings", MIRAMAR).cookie(operatorSession))
 				.andExpect(status().isForbidden());
+		mvc.perform(get("/api/venues/{v}/bookings/count", MIRAMAR).cookie(operatorSession))
+				.andExpect(status().isForbidden())
+				.andExpect(jsonPath("$.code").value("NOT_VENUE_OWNER"));
 	}
 
 	/** A full, VALID widened profile body: valid — including the required
@@ -478,6 +481,8 @@ class CrossVenueDenialIT {
 	void ownerReadsAreNotForbidden() throws Exception {
 		actingAs(operatorB);
 		mvc.perform(get("/api/venues/{v}/bookings", venueOwnedByB).cookie(operatorSession))
+				.andExpect(status().isOk());
+		mvc.perform(get("/api/venues/{v}/bookings/count", venueOwnedByB).cookie(operatorSession))
 				.andExpect(status().isOk());
 		mvc.perform(get("/api/venues/{v}/payout-ledger", venueOwnedByB).cookie(operatorSession))
 				.andExpect(status().isOk());

@@ -106,11 +106,14 @@ async function mockConsole(
   await page.route(/\/api\/venues\/1\/booking-requests(\?.*)?$/, (route) =>
     route.fulfill({ json: Array.from({ length: pending }, (_, i) => ({ bookingId: i + 1 })) }),
   );
-  // The stats strip's three reads: confirmed bookings, takings, availability states.
+  // The Daily view's guest list, then the stats strip's three reads: the Booked online count, takings, states.
   await page.route(/\/api\/venues\/1\/bookings(\?.*)?$/, (route) =>
     route.fulfill({
       json: Array.from({ length: booked }, (_, i) => ({ setId: i + 1, code: 'X' })),
     }),
+  );
+  await page.route(/\/api\/venues\/1\/bookings\/count(\?.*)?$/, (route) =>
+    route.fulfill({ json: { date: '2026-07-08', count: booked } }),
   );
   await page.route(/\/api\/venues\/1\/takings(\?.*)?$/, (route) =>
     route.fulfill({ json: TAKINGS }),
@@ -130,6 +133,9 @@ async function mockSecondVenue(page: import('@playwright/test').Page): Promise<v
     route.fulfill({ json: [{ bookingId: 21 }] }),
   );
   await page.route(/\/api\/venues\/2\/bookings(\?.*)?$/, (route) => route.fulfill({ json: [] }));
+  await page.route(/\/api\/venues\/2\/bookings\/count(\?.*)?$/, (route) =>
+    route.fulfill({ json: { date: '2026-07-08', count: 0 } }),
+  );
   await page.route(/\/api\/venues\/2\/takings(\?.*)?$/, (route) =>
     route.fulfill({ json: TAKINGS }),
   );

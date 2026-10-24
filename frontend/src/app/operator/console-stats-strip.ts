@@ -2,6 +2,7 @@ import { Component, computed, effect, inject, input, signal, untracked } from '@
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 
 import { formatCommissionPercent } from '../shared/commission-rate';
+import { ConsolePageRow } from '../shared/console-page-box';
 import { formatMoney, MoneyView } from '../shared/money';
 import { StatTile } from '../shared/stat-tile';
 import { VenueMapView } from '../shared/venue-views';
@@ -9,12 +10,11 @@ import { todayBookingDate } from '../shared/booking-date';
 import { AvailabilityChanges } from './availability-changes';
 import { SetDayState, TakingsView } from './operator-console.model';
 import { OperatorConsoleService } from './operator-console.service';
-import { ConsolePageRow } from '../shared/console-page-box';
 
 /**
  * The operator console's stats strip, live for the venue today (Europe/Tirane, #6): Free today from
- * the page's shared map ({@link venue}), Booked online from the day's bookings holding a set (re-read
- * on a claim-releasing day refund), Walk-ins as the exact `STAFF_MARKED` count (re-read on a walk-in;
+ * the page's shared map ({@link venue}), Booked online as the server's count (re-read on a
+ * claim-releasing day refund), Walk-ins as the exact `STAFF_MARKED` count (re-read on a walk-in;
  * both via {@link AvailabilityChanges}), and Online takings today (net server-side, #9; formatted, #5).
  * Reads are best-effort: a failed read renders that tile's dash, never a count that may be stale.
  */
@@ -127,7 +127,7 @@ export class ConsoleStatsStrip {
     this.loadHeld(venueId, date);
   }
 
-  /** The bookings read behind Booked online, latest-wins like {@link loadHeld}. */
+  /** The count read behind Booked online, latest-wins like {@link loadHeld}. */
   private loadBooked(venueId: number, date: string): void {
     const read = ++this.bookedRead;
     this.console.dailyBookingCount(venueId, date).subscribe({

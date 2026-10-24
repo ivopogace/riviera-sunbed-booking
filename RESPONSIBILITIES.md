@@ -280,6 +280,9 @@ any is released on the old, never a swap of my own — so a racing reserve wins 
   whole span (a stitched stay's, not the stretch's) and the day's own `booking_day` attendance;
   takings count each covering booking's **day share** (`DayShare`: the amount split over its days,
   remainder on the first), so a fortnight's money lands on the days it serves (design D4).
+- **I serve the day's Booked online count** (`…/bookings/count?date=`, owner-asserted, #13): the
+  staff daily list's rows minus a released day (ADR-0027), a kept-claim refund still counted. A
+  number, not rows, so the console strip never downloads guests' codes to count them.
 - **The reserve commits before any payment call** (no row lock spans the gateway round-trip), and
   that does not weaken invariant #2: the guard is `UNIQUE (set_id, booking_date)` plus the atomic
   `INSERT … ON CONFLICT DO NOTHING` claim, which holds however long the lock is held.
@@ -862,7 +865,7 @@ tag names the person, invariant #7):
   same-module consumer. Each answers a `200` with counts and a typed token, never a publication:
   serialized events carry booking ids (invariant #7).
 - **The published surface is exactly `notification::api`, two role-split ports, and
-  `notification::vocabulary` (`EmailedLinkOrigin`), consumed by `auth` alone — no domain module
+  `notification::vocabulary` (`EmailedLinkOrigin`, `EmailedLink`), consumed by `auth` alone — no domain module
   depends on `notification`.** `MailSender` is fire-and-forget
   and moves **neither the triggering response's status nor its latency** (the anonymous
   `forgot-password` flow relies on it). The reset link arrives deferred and is resolved inside the
@@ -907,12 +910,13 @@ tag names the person, invariant #7):
 - **The link origin is `auth`'s variable under my own key**: `RIVIERA_RECOVERY_LINK_BASE_URL`
   binds `riviera.notification.booking-link.base-url` (one deployed origin; a second variable could
   only drift), never a `riviera.recovery.*` key, which is `auth`'s namespace.
-- **I own the emailed-link origin rule, `vocabulary.EmailedLinkOrigin`**, and `auth` takes it for its
-  recovery key, so the two keys cannot drift: http(s), a host (inner underscores allowed, no trailing
-  dot), a port in 1..65535 if given, an optional path, no user info, query, fragment or percent-escape,
-  trailing slashes trimmed, and a rejection never echoes the value. Stated whole for operators in
-  `docs/deploy/cd-pipeline.md`, which the rejection cites. Mine, not `shared`'s: an emailed link is mail, and `auth`
-  already depends on me, while I can never depend on `auth`.
+- **I own the emailed-link origin rule and builder, `vocabulary.EmailedLinkOrigin` and `EmailedLink`**, which
+  `auth` takes for its recovery links, so the two keys cannot drift: http(s), a host (inner underscores allowed,
+  no trailing dot), a port in 1..65535 if given, an optional path (escapes allowed), no user info, query,
+  fragment or escape in the authority, trailing slashes trimmed; a rejection never echoes the value. Each key is
+  validated where it binds; `EmailedLink` keeps the origin as encoded and encodes only what it appends. Stated
+  whole for operators in `docs/deploy/cd-pipeline.md`, which the rejection cites. Mine, not `shared`'s: an
+  emailed link is mail, and `auth` already depends on me, while I can never depend on `auth`.
 
 **Not My Job:**
 - Deciding **when** to send, minting/hashing recovery tokens, building **tokenized** links → the
@@ -1139,6 +1143,10 @@ admin action was justified; retention (a named non-goal — rows are kept indefi
   is lockless `@Scheduled`: each extra instance fires the outbox-backlog alert again. It is on
   `ScheduledWorkArchitectureTest`'s job list, so `docs/deploy/production-hardening.md`'s scale-out
   precondition (ShedLock on every job on that list) covers it.
+- **The running build's commit on the public `/actuator/info`** (`BuildCommitInfoContributor`, #1632):
+  Render's `RENDER_GIT_COMMIT`, published only when it is a hex SHA, with every auto-configured info
+  contributor off, so the body is `{"commit":"<sha>"}` alone. The CD live check waits for it; the route's
+  `permitAll` is `web`'s, the posture `docs/deploy/production-hardening.md`.
 - **The scheduled-query bound** (`ScheduledQueryTimeout`, 1–300 s), checked at boot. Module adapters
   read the raw property, so the check runs in full contexts only (production, every `@SpringBootTest`);
   the committed value is unit-tested by `ScheduledQueryTimeoutBoundsTest`.
@@ -1248,6 +1256,10 @@ own rate-limit buckets; mocked externals (SSO IdPs, mailer) profile-guarded out 
 revocation orchestrated by `auth` and synchronous, bracketing the state change; every request re-checks the
 session's credential stamp.
 
+**The anonymous actuator surface is `health` (status only) and `GET /actuator/info`, the build's commit id
+alone (#1632)**: the route policy admits nothing more anonymously, and `prometheus`, the one other exposed
+endpoint, needs a session (`ActuatorHardeningIT`; posture: `docs/deploy/production-hardening.md`).
+
 **Where the edge's types may appear (RV-BE-11):** no Spring Security, Spring Session or mail (Spring
 Mail, Jakarta Mail, Angus Mail) type in `availability`, `booking`, `payment`, `payout`, `review`,
 `itinerary`, `remodel`, `venue`, `notification`, `challenge`, `audit`, `monitoring` or `shared` outside
@@ -1273,10 +1285,11 @@ mutating `/api/admin/**` action, §`audit`) live in `web`; `challenge` and `audi
 - **Request bodies are capped before CSRF and the challenge claim (#1414):** `RequestBodyCapFilter`, right
   after `RateLimitFilter`, refuses a `POST`/`PUT`/`PATCH` body under `/api/**` past its cap with `413
   PAYLOAD_TOO_LARGE`: unread when the declared length is over, read to cap + 1 and replayed when chunked.
-  Each cap fits its routes' largest legitimate request (OWASP REST Security Cheat Sheet): 64 KiB; 256 KiB
-  for the beach-map layout save, remodel preview and commit (a full `MAX_SETS` layout is ~223 KB); 1 MiB
-  for the Stripe webhook. The photo upload keeps Spring's multipart limits. A login body is read once, by the
-  throttle's 8 KiB rule below (the 64 KiB cap when the limiter is off). A slow body under its cap: #1439.
+  Each cap fits its routes' largest legitimate request (OWASP REST Security Cheat Sheet): 64 KiB; 1 MiB for
+  the Stripe webhook; 256 KiB for the layout save, remodel preview and commit, kept at ~2x a label-less full
+  `MAX_SETS` layout (~123 KiB, #1626) so a new cell field needs no cap change (`RequestBodyCapFilterTest`).
+  The photo upload keeps Spring's multipart limits. A login body is read once, by the throttle's 8 KiB rule
+  below (the 64 KiB cap when the limiter is off). A slow body under its cap: #1439.
 - **Not fenced, deliberately:** login (the per-identity throttle covers it) and token redemption
   (a reset or verification token is already a bearer credential). The throttle reads every login
   body itself, to an 8 KiB cap whatever `Content-Length` says, and answers a larger one `413`
@@ -1361,11 +1374,16 @@ The SPA rules whose TSDoc points here; structure is `riviera-frontend`'s, stylin
   a load landing on the same entry keeps — so the reload path redirects with `skipLocationChange`
   and `core/page-navigation.ts`'s `reload` clears the entry's state before navigating. Any other
   navigation error stays loud: a guard or resolver that throws is a bug, not a page to retry.
-- **The Daily view's phone rail shows the stored row label at the tourist cap, two tiles per row**
-  (`shared/beach-map-canvas.ts`, the `labels` rail below `sm`): at 390px the gutters, the frame and the
-  price rail leave the rail 23px for a third tile. Two tiles and the cap match the tourist map's own
-  count (#1532); the tile accessible names carry the label on every width. Since #1586 the label is
-  always the row's grid letter (§ `venue`, rows by grid letter), so the cap never ellipsizes a real map.
+- **The Daily view's phone rail keeps two tiles per row** (`shared/beach-map-canvas.ts`, the `labels`
+  rail below `sm`), kept on purpose (#1626): since #1586 a row's label is its one grid letter (§ `venue`,
+  rows by grid letter), so the count no longer serves a long name; it stays because it is the tourist
+  map's own count (#1532), so the operator's phone shows a row as a guest's does. The tile accessible
+  names carry the label on every width.
+- **The rails' label ellipsis and `rowName()`'s non-letter branch stay, defensive only** (#1626): the
+  rails render active sets only (`active_set_position`, `JdbcVenueCatalog`), so no live map reaches a
+  long label; the unit specs keep the classes, `loading-skeletons.e2e.ts` the capped rail's width under
+  40-character mocked labels. A retired set or a receipt snapshot (`operator/remodel-receipt-panel.ts`)
+  may still carry a pre-V78 name, which `shared/set-label.ts` prints as is.
 - **The venue console lands on the Daily view** (`VENUE_CONSOLE_LANDING_TAB`), what a trading venue
   opens every day; set-up tabs are destinations. A freshly created venue is the exception:
   `operator/venue-create-card.ts` sends it to `beach-map`, as it has no map to run a day on yet.

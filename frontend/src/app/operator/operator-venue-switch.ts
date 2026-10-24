@@ -16,6 +16,7 @@ import { filter } from 'rxjs';
 import { OperatorAuth } from '../core/operator-auth';
 import { OwnedVenues } from '../core/owned-venues';
 import { beachLabel } from '../shared/beaches';
+import { FIXED_CONTENT_EDGE } from '../shared/console-page-box';
 import { POP_BACKDROP, POP_ITEM, POP_SKIN } from '../shared/popover-skin';
 import { TouchTarget } from '../shared/touch-target';
 
@@ -132,8 +133,7 @@ export class OperatorVenueSwitch {
     plain: `px-1 ${NAME}`,
     link: `inline-flex items-center rounded-lg px-1 no-underline hover:underline ${NAME}`,
     backdrop: POP_BACKDROP,
-    // left: the shell row's content edge — its centred 1120px box's left plus the row's px-6 (560 − 24), the px-6 alone once the header is narrower.
-    pop: `fixed top-full left-[max(1.5rem,50%_-_536px)] mt-1 w-[264px] max-w-[calc(100%-3rem)] p-[7px] ${POP_SKIN}`,
+    pop: `fixed top-full ${FIXED_CONTENT_EDGE} mt-1 w-[264px] max-w-[calc(100%-3rem)] p-[7px] ${POP_SKIN}`,
     item: POP_ITEM,
   } as const;
 

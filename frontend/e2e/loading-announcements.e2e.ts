@@ -226,6 +226,9 @@ async function mockConsoleForPricing(page: Page): Promise<void> {
     route.fulfill({ json: [] }),
   );
   await page.route(/\/api\/venues\/1\/bookings(\?.*)?$/, (route) => route.fulfill({ json: [] }));
+  await page.route(/\/api\/venues\/1\/bookings\/count(\?.*)?$/, (route) =>
+    route.fulfill({ json: { date: '2026-07-08', count: 0 } }),
+  );
   await page.route(/\/api\/venues\/1\/availability(\?.*)?$/, (route) =>
     route.fulfill({ json: [] }),
   );

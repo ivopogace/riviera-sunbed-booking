@@ -53,6 +53,9 @@ export async function mockWholeConsole(page: Page): Promise<void> {
       ],
     }),
   );
+  await page.route(/\/api\/venues\/1\/bookings\/count(\?.*)?$/, (route) =>
+    route.fulfill({ json: { date: '2026-07-08', count: 1 } }),
+  );
   await page.route(/\/api\/venues\/1\/profile$/, (route) => route.fulfill({ json: profile() }));
   await page.route(/\/api\/venues\/1\/photos\/[0-9a-f]+$/, (route) =>
     route.fulfill({ body: TINY_IMAGE, contentType: 'image/jpeg' }),

@@ -1,11 +1,13 @@
 import { expect, test, type Page } from '@playwright/test';
 
+import { mockOwnedVenues } from './support/auth-mocks';
 import { mockWholeConsole, signInAsOperator } from './support/operator-console.mocks';
 
 /**
- * The console's one page box (#1589): the stats strip spans the header's box, and every tab and
- * the pending-approval banner start at its content edge (the wordmark's left), so switching tabs
- * never moves it; the beach map alone stays wider. Rendered geometry, so jsdom can't pin it.
+ * The console's one page box (#1589): the stats strip spans the header's box, and every tab, the
+ * pending-approval banner, the venue switch's popover and the tab load-error cards start at its
+ * content edge (the wordmark's left), so switching tabs never moves it; the beach map alone stays
+ * wider. Rendered geometry, so jsdom can't pin it.
  */
 
 const PENDING = { username: 'operator', principalType: 'OPERATOR', operatorStatus: 'PENDING' };
@@ -79,6 +81,62 @@ test('at every desktop width the tabs, the strip and the banner share the header
     const editor = (await page.getByTestId('layout-editor').boundingBox())!;
     expect(editor.width).toBe(frame - 2 * GUTTER);
     expect(editor.x).toBe((width - frame) / 2 + GUTTER);
+  }
+});
+
+// 900: the popover's max() clamps to the 1.5rem gutter; 1200/1440: the 50% term wins.
+test('the venue switch popover opens on the wordmark edge at every desktop width', async ({
+  page,
+}) => {
+  await mockWholeConsole(page);
+  // Registered after the whole-console mock, so it answers first: two venues make the name a switch.
+  await mockOwnedVenues(page, [
+    { id: 1, name: 'Miramar Beach Club', beach: 'KSAMIL' },
+    { id: 2, name: 'Sunset Lido', beach: 'DHERMI' },
+  ]);
+  // The popover's pop-in scales it; reduced motion drops the animation so its box is the resting one.
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await page.goto('/operator/1/requests');
+  await signInAsOperator(page);
+  await expect(page.getByTestId('requests-tab')).toBeVisible();
+
+  for (const width of [900, 1200, 1440]) {
+    await page.setViewportSize({ width, height: 900 });
+    await page.getByTestId('oc-venue-title').click();
+    const menu = page.getByTestId('oc-venue-menu');
+    await expect(menu).toBeVisible();
+
+    const contentEdge = (width - Math.min(width, BOX)) / 2 + GUTTER;
+    expect(await left(page, 'oc-brand'), `${width}px`).toBe(contentEdge);
+    expect(await left(page, 'oc-venue-menu'), `${width}px`).toBe(contentEdge);
+
+    await page.keyboard.press('Escape');
+    await expect(menu).toHaveCount(0);
+  }
+});
+
+test('a tab load-error card starts at the content edge, not centred', async ({ page }) => {
+  await mockWholeConsole(page);
+  for (const read of [/\/beach-map$/, /\/booking-requests(\?.*)?$/, /\/payout-ledger$/]) {
+    await page.route(read, (route) => route.fulfill({ status: 503, body: '' }));
+  }
+  await page.goto('/operator/1/daily');
+  await signInAsOperator(page);
+  await expect(page.getByTestId('daily-load-error')).toBeVisible();
+
+  // 390: the tabs' 24 + 20px phone gutter (the rail is hidden there, so each tab loads by URL); 900: the clamp; 1440: wide.
+  for (const width of [390, 900, 1440]) {
+    await page.setViewportSize({ width, height: 900 });
+    const contentEdge = width < 640 ? GUTTER + 20 : (width - Math.min(width, BOX)) / 2 + GUTTER;
+    for (const [tab, testId] of [
+      ['daily', 'daily-load-error'],
+      ['requests', 'requests-load-error'],
+      ['payouts', 'payouts-load-error'],
+    ] as const) {
+      await page.goto(`/operator/1/${tab}`);
+      await expect(page.getByTestId(testId)).toBeVisible();
+      expect(await left(page, testId), `${tab} at ${width}px`).toBe(contentEdge);
+    }
   }
 });
 

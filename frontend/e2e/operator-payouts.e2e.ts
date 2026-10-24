@@ -197,6 +197,9 @@ async function mockPayouts(
   // The shell's own reads on mount (stats strip + requests badge + venue header).
   await page.route(/\/api\/venues\/1\/booking-requests$/, (route) => route.fulfill({ json: [] }));
   await page.route(/\/api\/venues\/1\/bookings(\?.*)?$/, (route) => route.fulfill({ json: [] }));
+  await page.route(/\/api\/venues\/1\/bookings\/count(\?.*)?$/, (route) =>
+    route.fulfill({ json: { date: '2026-07-08', count: 0 } }),
+  );
   await page.route(/\/api\/venues\/1\/takings(\?.*)?$/, (route) =>
     route.fulfill({
       json: {

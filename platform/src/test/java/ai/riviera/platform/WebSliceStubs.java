@@ -61,6 +61,7 @@ import ai.riviera.platform.booking.application.reserve.BookingOutcome;
 import ai.riviera.platform.booking.application.reserve.CreateBooking;
 import ai.riviera.platform.booking.application.checkin.CheckInBooking;
 import ai.riviera.platform.booking.application.checkin.CheckInResult;
+import ai.riviera.platform.booking.application.view.DailyBooking;
 import ai.riviera.platform.booking.application.view.ListDailyBookings;
 import ai.riviera.platform.booking.application.view.MyBookings;
 import ai.riviera.platform.booking.application.view.ViewBooking;
@@ -758,7 +759,17 @@ public class WebSliceStubs {
 
 	@Bean
 	ListDailyBookings listDailyBookings() {
-		return (_, _, _) -> List.of();
+		return new ListDailyBookings() {
+			@Override
+			public List<DailyBooking> forVenueOn(OperatorId operator, VenueId venueId, LocalDate date) {
+				return List.of();
+			}
+
+			@Override
+			public int bookedOnlineOn(OperatorId operator, VenueId venueId, LocalDate date) {
+				return 0;
+			}
+		};
 	}
 
 	@Bean
