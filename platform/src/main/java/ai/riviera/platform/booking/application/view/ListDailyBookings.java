@@ -21,4 +21,10 @@ public interface ListDailyBookings {
 	 * credentials (#7): first asserts {@code operator} owns {@code venueId}, else 403 (#13).
 	 */
 	List<DailyBooking> forVenueOn(OperatorId operator, VenueId venueId, LocalDate date);
+
+	/**
+	 * The venue's "Booked online" count on {@code date}: those bookings whose day is not released (ADR-0027). The
+	 * stats strip's read, so it never downloads codes to count them; asserts ownership first, else 403 (#13).
+	 */
+	int bookedOnlineOn(OperatorId operator, VenueId venueId, LocalDate date);
 }

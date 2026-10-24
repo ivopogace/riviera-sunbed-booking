@@ -1034,6 +1034,25 @@ class JdbcBookings implements Bookings {
 				.list();
 	}
 
+	@Override
+	public int countBookedOnlineOn(VenueId venueId, LocalDate date) {
+		return jdbc.sql("""
+				SELECT count(*)
+				FROM booking b
+				LEFT JOIN booking_day d ON d.booking_id = b.id AND d.service_date = :date
+				WHERE b.venue_id = :venue AND b.booking_date <= :date AND b.last_date >= :date
+				  AND b.status IN (:confirmed, :completed, :noShow)
+				  AND d.released_at IS NULL
+				""")
+				.param(PARAM_VENUE, venueId.value())
+				.param("date", date)
+				.param(PARAM_CONFIRMED, BookingStatus.CONFIRMED.name())
+				.param(PARAM_COMPLETED, BookingStatus.COMPLETED.name())
+				.param(PARAM_NO_SHOW, BookingStatus.NO_SHOW.name())
+				.query(Integer.class)
+				.single();
+	}
+
 	/** The bookings the weather refund may touch, one predicate for its lock and its read so they cannot drift. */
 	private static final String REFUNDABLE_WHERE = """
 			WHERE b.venue_id = :venue AND b.booking_date <= :date AND b.last_date >= :date
