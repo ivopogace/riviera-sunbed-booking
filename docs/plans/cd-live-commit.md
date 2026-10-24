@@ -38,10 +38,10 @@ needs neither `.git` nor a build arg.
 - **R-1:** a public endpoint leaks build metadata → contributor emits a hex SHA only; defaults off.
 - **R-2:** `main` moves between CI and the hook, so Render builds a later commit and the poll waits
   for one never deployed → hook `ref=<head_sha>`; CD runs are serialized by `concurrency`.
-- **R-4:** `ref=` turns any dispatched or re-run SHA into the deployed one → dispatch from `main` only;
-  a commit `main` has moved past skips green (no rollback).
 - **R-3:** only a `main` deploy exercises Render itself → stub-backed suite + a dry run of the
   workflow's own `run:` blocks; the first `main` deploy after merge is the real proof.
+- **R-4:** `ref=` turns any dispatched or re-run SHA into the deployed one → dispatch from `main` only;
+  a commit `main` has moved past skips green (no rollback).
 
 ## Execution status
 

@@ -1247,6 +1247,10 @@ own rate-limit buckets; mocked externals (SSO IdPs, mailer) profile-guarded out 
 revocation orchestrated by `auth` and synchronous, bracketing the state change; every request re-checks the
 session's credential stamp.
 
+**The anonymous actuator surface is `health` (status only) and `GET /actuator/info`, the build's commit id
+alone (#1632)**: the exposure allowlist and the route policy each admit nothing more (`ActuatorHardeningIT`;
+posture: `docs/deploy/production-hardening.md`).
+
 **Where the edge's types may appear (RV-BE-11):** no Spring Security, Spring Session or mail (Spring
 Mail, Jakarta Mail, Angus Mail) type in `availability`, `booking`, `payment`, `payout`, `review`,
 `itinerary`, `remodel`, `venue`, `notification`, `challenge`, `audit`, `monitoring` or `shared` outside

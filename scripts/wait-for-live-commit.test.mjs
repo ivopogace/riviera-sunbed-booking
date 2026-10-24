@@ -247,3 +247,25 @@ test('a body that answered but is not JSON is logged as such, not as unreachable
     await backend.close();
   }
 });
+
+test('a forged health body never writes its own line once the commit is live', async () => {
+  const backend = await stubBackend((path) =>
+    path === '/actuator/info'
+      ? { body: { commit: NEW } }
+      : { status: 200, body: '{"status":"DOWN"}\n::add-mask::x' },
+  );
+  const lines = [];
+  try {
+    await waitForLiveCommit({
+      baseUrl: backend.baseUrl,
+      expected: NEW,
+      deadlineMs: 10,
+      intervalMs: 5,
+      log: (line) => lines.push(line),
+    });
+    assert.ok(backend.hits.get('/actuator/health') >= 1, 'health was asked');
+    for (const line of lines) assert.ok(!line.includes('\n'), line);
+  } finally {
+    await backend.close();
+  }
+});

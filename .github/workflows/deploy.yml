@@ -35,25 +35,49 @@ permissions:
   contents: read
 
 jobs:
-  # Single decision point. For the automatic path, CI must have SUCCEEDED on `main`.
-  # Manual dispatch is itself an explicit opt-in, so it passes the gate directly — from `main`
-  # only, since the hook's ref= would otherwise deploy another branch's untested commit. If
-  # the gate fails, the deploy job is skipped and nothing turns red.
+  # Single decision point. For the automatic path, CI must have SUCCEEDED on `main`. Manual
+  # dispatch is itself an explicit opt-in, so it passes the gate directly, from `main` only: the
+  # hook's ref= would otherwise deploy another branch's untested commit. Either way only `main`'s
+  # current head deploys. If the gate fails, the deploy job is skipped and nothing turns red.
   guard:
     name: Gate on green CI on main
     runs-on: ubuntu-latest
-    # Two `echo`s. Capped anyway, so the whole workflow is covered by the ci.yml rule.
+    # One API read. Capped anyway, so the whole workflow is covered by the ci.yml rule.
     timeout-minutes: 5
     if: >-
       ${{ (github.event_name == 'workflow_run'
             && github.event.workflow_run.conclusion == 'success'
             && github.event.workflow_run.head_branch == 'main')
-          || (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main') }}
+          || github.event_name == 'workflow_dispatch' }}
+    outputs:
+      deploy: ${{ steps.current.outputs.deploy }}
+      sha: ${{ github.event.workflow_run.head_sha || github.sha }}
+    env:
+      # The commit this run deploys and then waits to see live: CI's head on the automatic path, `main`'s
+      # head at dispatch on the manual one.
+      DEPLOY_SHA: ${{ github.event.workflow_run.head_sha || github.sha }}
     steps:
-      - name: Confirm gate
+      - name: Refuse a dispatch from another branch
+        if: github.event_name == 'workflow_dispatch' && github.ref != 'refs/heads/main'
         run: |
-          echo "event: ${{ github.event_name }}"
-          echo "Proceeding to deploy."
+          echo "::error::CD deploys main only: run the workflow from main, not $GITHUB_REF_NAME."
+          exit 1
+
+      # A re-run of an older green CI run, or a run main has already moved past, must not roll the service
+      # back: the newer commit's own CD run deploys it.
+      - name: Skip a commit main has moved past
+        id: current
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          head=$(gh api "repos/$GITHUB_REPOSITORY/commits/main" --jq .sha)
+          if [ "$head" != "$DEPLOY_SHA" ]; then
+            echo "::notice::Not deploying $DEPLOY_SHA: main is at $head, whose own CD run deploys it."
+            echo "deploy=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "Proceeding to deploy $DEPLOY_SHA (${{ github.event_name }})."
+            echo "deploy=true" >> "$GITHUB_OUTPUT"
+          fi
 
   backend-render:
     name: Deploy backend (serves SPA + /api) → Render
@@ -61,17 +85,16 @@ jobs:
     # Never runs on the temporary branch push (no secrets there); opt-in via the repo
     # variable on the automatic path, or any explicit manual dispatch.
     if: >-
-      ${{ (github.event_name == 'workflow_run' && vars.DEPLOY_BACKEND_RENDER == 'true')
-          || github.event_name == 'workflow_dispatch' }}
+      ${{ needs.guard.outputs.deploy == 'true'
+          && ((github.event_name == 'workflow_run' && vars.DEPLOY_BACKEND_RENDER == 'true')
+              || github.event_name == 'workflow_dispatch') }}
     runs-on: ubuntu-latest
     # Deliberately the loosest cap here: the live poll below is allowed ~15 min on purpose (Render's
     # free tier cold-starts), so this must clear that plus the trigger and Render's own build. It is
     # still a bound — before it, a deploy that never reported healthy could sit for six hours.
     timeout-minutes: 25
     env:
-      # The commit this run deploys and then waits to see live: CI's head on the automatic path, `main`'s
-      # head at dispatch on the manual one.
-      DEPLOY_SHA: ${{ github.event.workflow_run.head_sha || github.sha }}
+      DEPLOY_SHA: ${{ needs.guard.outputs.sha }}
     steps:
       - name: Checkout the live poll (scripts/ only)
         uses: actions/checkout@v7
@@ -85,21 +108,7 @@ jobs:
         with:
           node-version-file: .nvmrc
 
-      # A re-run of an older green CI run, or a run main has already moved past, must not roll the service
-      # back: only main's current head deploys, and the newer commit's own CD run deploys it.
-      - name: Skip a commit main has moved past
-        id: current
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          head=$(gh api "repos/$GITHUB_REPOSITORY/commits/main" --jq .sha)
-          if [ "$head" != "$DEPLOY_SHA" ]; then
-            echo "::notice::Not deploying $DEPLOY_SHA: main is at $head, whose own CD run deploys it."
-            echo "superseded=true" >> "$GITHUB_OUTPUT"
-          fi
-
       - name: Trigger Render deploy of exactly this commit (Render git-builds the Docker image — SPA + jar)
-        if: steps.current.outputs.superseded != 'true'
         env:
           RENDER_DEPLOY_HOOK_URL: ${{ secrets.RENDER_DEPLOY_HOOK_URL }}
         run: |
@@ -113,11 +122,11 @@ jobs:
           # --max-time: the hook returns immediately, so anything slower is a hang, not a slow deploy.
           response=$(curl -fsS --max-time 30 -X POST "${RENDER_DEPLOY_HOOK_URL}${sep}ref=${DEPLOY_SHA}")
           # Only the deploy id is echoed: the rest of the answer is Render's text, not vetted for the log.
-          deploy_id=$(printf '%s' "$response" | grep -o 'dep-[a-z0-9]*' | head -n 1 || true)
-          echo "Render deploy ${deploy_id:-(no deploy id in the answer)} triggered for $DEPLOY_SHA."
+          deploy_id=$(printf '%s' "$response" | grep -o 'dep-[a-z0-9]\{1,\}' | head -n 1 || true)
+          # No id: Render queued the deploy behind a running one (overlap policy Wait) or answered without one.
+          echo "Render deploy ${deploy_id:-(no deploy id: queued behind a running deploy?)} triggered for $DEPLOY_SHA."
 
       - name: Wait for the new build to be live (#1632)
-        if: steps.current.outputs.superseded != 'true'
         env:
           # The backend's public URL — also the app origin. Unset fails the job: an unverified deploy is not green.
           BACKEND_API_URL: ${{ vars.BACKEND_API_URL }}
