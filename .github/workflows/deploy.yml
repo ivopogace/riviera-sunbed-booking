@@ -42,7 +42,7 @@ jobs:
   guard:
     name: Gate on green CI on main
     runs-on: ubuntu-latest
-    # Two `echo`s. Capped anyway, so the whole workflow is covered by the ci.yml rule.
+    # A ref check and an `echo`. Capped anyway, so the whole workflow is covered by the ci.yml rule.
     timeout-minutes: 5
     if: >-
       ${{ (github.event_name == 'workflow_run'
@@ -56,8 +56,7 @@ jobs:
             echo "::error::CD deploys main only: run the workflow from main, not $GITHUB_REF_NAME."
             exit 1
           fi
-          echo "event: $GITHUB_EVENT_NAME"
-          echo "Proceeding to deploy."
+          echo "Gate passed ($GITHUB_EVENT_NAME); the deploy job decides whether this commit deploys."
 
   backend-render:
     name: Deploy backend (serves SPA + /api) → Render
@@ -76,21 +75,7 @@ jobs:
       # head at dispatch on the manual one.
       DEPLOY_SHA: ${{ github.event.workflow_run.head_sha || github.sha }}
     steps:
-      # A re-run of an older green CI run, of this job, or a run main has already moved past must not roll
-      # the service back: the newer commit's own CD run deploys it. First, so it re-checks on every re-run.
-      - name: Skip a commit main has moved past
-        id: current
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          head=$(gh api "repos/$GITHUB_REPOSITORY/commits/main" --jq .sha)
-          if [ "$head" != "$DEPLOY_SHA" ]; then
-            echo "::notice::Not deploying $DEPLOY_SHA: main is at $head, whose own CD run deploys it."
-            echo "superseded=true" >> "$GITHUB_OUTPUT"
-          fi
-
       - name: Checkout the live poll (scripts/ only)
-        if: steps.current.outputs.superseded != 'true'
         uses: actions/checkout@v7
         with:
           ref: ${{ env.DEPLOY_SHA }}
@@ -98,31 +83,46 @@ jobs:
           persist-credentials: false
 
       - name: Set up Node (from .nvmrc, as CI tests the poll)
-        if: steps.current.outputs.superseded != 'true'
         uses: actions/setup-node@v7
         with:
           node-version-file: .nvmrc
 
       - name: Trigger Render deploy of exactly this commit (Render git-builds the Docker image — SPA + jar)
-        if: steps.current.outputs.superseded != 'true'
+        id: trigger
         env:
           RENDER_DEPLOY_HOOK_URL: ${{ secrets.RENDER_DEPLOY_HOOK_URL }}
+          GH_TOKEN: ${{ github.token }}
         run: |
           if [ -z "$RENDER_DEPLOY_HOOK_URL" ]; then
             echo "::error::Backend deploy requested but the RENDER_DEPLOY_HOOK_URL secret is not set."
             exit 1
           fi
+          # Read just before the POST, and inside this job so a re-run re-reads it: a commit main has moved
+          # past (an older CI run re-run, two quick merges) never rolls the service back.
+          head=$(gh api "repos/$GITHUB_REPOSITORY/commits/main" --jq .sha)
+          if [ "$head" != "$DEPLOY_SHA" ]; then
+            echo "::notice::Not deploying $DEPLOY_SHA: main is at $head, whose own CD run deploys it."
+            echo "superseded=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
           # ref= pins the deploy to the commit CI judged green; without it Render builds the branch head,
           # which may be a later commit, and the live poll would wait for a commit never deployed.
           case "$RENDER_DEPLOY_HOOK_URL" in *\?*) sep='&' ;; *) sep='?' ;; esac
           # --max-time: the hook returns immediately, so anything slower is a hang, not a slow deploy.
-          response=$(curl -fsS --max-time 30 -X POST "${RENDER_DEPLOY_HOOK_URL}${sep}ref=${DEPLOY_SHA}")
+          response=$(curl -fsS --max-time 30 -w '\n%{http_code}' -X POST "${RENDER_DEPLOY_HOOK_URL}${sep}ref=${DEPLOY_SHA}")
+          status=${response##*$'\n'}
           # Only the deploy id is echoed: the rest of the answer is Render's text, not vetted for the log.
-          deploy_id=$(printf '%s' "$response" | grep -o 'dep-[a-z0-9]\{1,\}' | head -n 1 || true)
-          echo "Render deploy ${deploy_id:-(no deploy id in the answer)} triggered for $DEPLOY_SHA."
+          deploy_id=$(printf '%s' "${response%$'\n'*}" | grep -o 'dep-[a-z0-9]\{1,\}' | head -n 1 || true)
+          if [ "$status" = 202 ]; then
+            # Render's documented answer when the deploy is queued behind a running one (overlap policy Wait).
+            echo "Render queued the deploy of $DEPLOY_SHA behind a running deploy (HTTP 202, no deploy id)."
+          else
+            echo "Render deploy ${deploy_id:-(no deploy id in the answer)} triggered for $DEPLOY_SHA (HTTP $status)."
+          fi
 
+      # The one gate: a wrong output name runs the poll, which fails red waiting for an undeployed commit.
       - name: Wait for the new build to be live (#1632)
-        if: steps.current.outputs.superseded != 'true'
+        if: steps.trigger.outputs.superseded != 'true'
         env:
           # The backend's public URL — also the app origin. Unset fails the job: an unverified deploy is not green.
           BACKEND_API_URL: ${{ vars.BACKEND_API_URL }}

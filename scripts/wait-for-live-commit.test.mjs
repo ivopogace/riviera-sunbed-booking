@@ -189,10 +189,13 @@ for (const [name, env, message] of [
 }
 
 test('a response body never writes its own line into the Actions log', async () => {
-  const backend = await stubBackend((path) =>
-    path === '/actuator/info'
-      ? { body: { commit: `${OLD}\n::error::forged`, note: '\n::warning::forged' } }
-      : { body: { status: 'UP' } },
+  // Odd attempts: a commit field with a newline in it; even attempts: a raw body with one on the wire.
+  const backend = await stubBackend((path, hit) =>
+    path !== '/actuator/info'
+      ? { body: { status: 'UP' } }
+      : hit % 2
+        ? { body: { commit: `${OLD}\n::error::forged` } }
+        : { body: `{"commit":"${OLD}"}\n::warning::forged` },
   );
   const lines = [];
   try {
@@ -208,6 +211,7 @@ test('a response body never writes its own line into the Actions log', async () 
       null,
       'a commit field that is not a bare commit id is not read as one',
     );
+    assert.ok(lines.length >= 2, 'both shapes were logged');
     for (const line of lines) {
       assert.ok(!line.includes('\n'), line);
       assert.match(line, /^attempt \d+: live commit unknown, /);

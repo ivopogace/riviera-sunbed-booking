@@ -35,8 +35,9 @@ passing one logs `live commit <sha>, health UP`. A failed run's error names the 
   the guard allows from `main` only); the hook's `ref=` makes Render build exactly that one.
 - **Only `main`'s current head deploys.** A run whose commit `main` has moved past (a re-run of an
   older green CI run, or two merges in quick succession) skips with a notice, green, so it never
-  rolls the service back; the newer commit's own CD run deploys it. The check is the deploy job's
-  first step, so a re-run of that job re-checks too. On the automatic path a red head, or one CI
+  rolls the service back; the newer commit's own CD run deploys it. The trigger step reads `main`'s
+  head just before its POST, so a re-run of the deploy job re-checks too; keep that read inside the
+  deploy job (a separate job's output is reused by "Re-run failed jobs"). On the automatic path a red head, or one CI
   never ran on (`[skip ci]`, a cancelled run), therefore deploys nothing until a green one follows it.
 - A dispatch from any branch but `main` fails the run, naming the branch.
 - **Rollback** is not a CD path: use Render's dashboard (service → Events → *Rollback*) or merge a
