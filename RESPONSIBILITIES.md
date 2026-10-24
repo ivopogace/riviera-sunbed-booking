@@ -1134,6 +1134,10 @@ admin action was justified; retention (a named non-goal — rows are kept indefi
   is lockless `@Scheduled`: each extra instance fires the outbox-backlog alert again. It is on
   `ScheduledWorkArchitectureTest`'s job list, so `docs/deploy/production-hardening.md`'s scale-out
   precondition (ShedLock on every job on that list) covers it.
+- **The running build's commit on the public `/actuator/info`** (`BuildCommitInfoContributor`, #1632):
+  Render's `RENDER_GIT_COMMIT`, published only when it is a hex SHA, with every auto-configured info
+  contributor off, so the body is `{"commit":"<sha>"}` alone. The CD live check waits for it; the route's
+  `permitAll` is `web`'s, the posture `docs/deploy/production-hardening.md`.
 - **The scheduled-query bound** (`ScheduledQueryTimeout`, 1–300 s), checked at boot. Module adapters
   read the raw property, so the check runs in full contexts only (production, every `@SpringBootTest`);
   the committed value is unit-tested by `ScheduledQueryTimeoutBoundsTest`.
