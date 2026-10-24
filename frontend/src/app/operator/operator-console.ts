@@ -45,10 +45,9 @@ export class OperatorConsole {
   /** Bumped per venue context: an identity guard — a venueId value check passes again
    *  after an A→B→A switch, so continuations compare this instead. */
   private epoch = 0;
-  /** Bumped per map read. */
   private mapRead = 0;
-  /** The newest read whose map is shown: a read lands only if newer, so a slower, older answer
-   *  never overwrites a newer map, yet still lands when every newer read failed (#1654). */
+  /** The newest map read shown: a read lands only if newer, so a slower, older answer never
+   *  overwrites a newer map, yet still lands when every newer read failed (#1654). */
   private landedRead = 0;
 
   constructor() {
@@ -78,7 +77,7 @@ export class OperatorConsole {
     // one leaked from a previously-managed venue (the store is a root singleton). The Requests tab, once
     // visited, takes authority over this store via `set`; this page only ever seeds it.
     this.requests.reset();
-    // Continuations re-check the venue so a superseded venue's reads never land here.
+    // A superseded venue's reads never land here: the map's by read number, the badge's by epoch.
     this.landedRead = this.mapRead;
     this.loadMap(venueId);
     this.bestEffort(this.console.pendingRequestCount(venueId), (count) => {
