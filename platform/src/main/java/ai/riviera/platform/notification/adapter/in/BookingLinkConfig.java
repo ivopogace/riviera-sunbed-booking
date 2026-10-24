@@ -7,6 +7,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
 import ai.riviera.platform.notification.application.BookingLinks;
+import ai.riviera.platform.notification.vocabulary.EmailedLinkOrigin;
 
 /**
  * Binds the origin every booking mail's link is built on and hands it to the application layer as
@@ -26,12 +27,17 @@ class BookingLinkConfig {
 	}
 
 	/**
-	 * @param baseUrl absolute origin the booking links point at (the SPA's, which is the
-	 *        backend's own); validated by {@link BookingLinks} through {@code EmailedLinkOrigin},
-	 *        so a value that is not an http(s) origin aborts at boot rather than mailing an
-	 *        unusable link from an async send whose caller is long gone
+	 * @param baseUrl absolute origin the booking links point at (the SPA's, which is the backend's own); validated
+	 *        by {@link EmailedLinkOrigin} under the key this record's prefix declares, so a value that is no http(s)
+	 *        origin aborts at boot rather than mailing an unusable link from an async send whose caller is long gone
 	 */
-	@ConfigurationProperties("riviera.notification.booking-link")
+	@ConfigurationProperties(BookingLinkProperties.PREFIX)
 	record BookingLinkProperties(@DefaultValue("http://localhost:4200") String baseUrl) {
+
+		static final String PREFIX = "riviera.notification.booking-link";
+
+		BookingLinkProperties {
+			baseUrl = EmailedLinkOrigin.require(PREFIX + ".base-url", "RIVIERA_RECOVERY_LINK_BASE_URL", baseUrl);
+		}
 	}
 }

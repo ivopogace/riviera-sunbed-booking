@@ -86,7 +86,7 @@ class RecoveryPropertiesBindingTest {
 
 	@ParameterizedTest
 	@ValueSource(strings = { "/app", "example.com", "https:///app", "http://bad host", "ftp://app.example",
-			"https://app.example/?a=b", "https://app.example#top", "https://app.example/my%20app" })
+			"https://app.example/?a=b", "https://app.example#top", "https://app.example/my%zzapp" })
 	void aNonOriginLinkBaseUrlFailsTheBindNamingTheKeyAndTheVariable(String value) {
 		recoveryRunner().withSystemProperties("RIVIERA_RECOVERY_LINK_BASE_URL=" + value)
 				.run(context -> assertThat(context).hasFailed().getFailure().rootCause()
