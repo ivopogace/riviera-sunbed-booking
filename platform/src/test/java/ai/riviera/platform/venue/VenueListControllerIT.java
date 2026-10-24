@@ -190,6 +190,22 @@ class VenueListControllerIT {
 	}
 
 	@Test
+	void sellsOnlineIsTrueOnlyForAVenueWithAnOnlinePoolSet() throws Exception {
+		// #1550: the home head's "selling today" counts online sales (#3); total stays both pools.
+		jdbc.sql("UPDATE set_position SET pool = 'WALK_IN' WHERE venue_id = :v").param("v", zephyr).update();
+		jdbc.sql("UPDATE set_position SET pool = 'WALK_IN' WHERE id = :id").param("id", firstSetOf(aurora)).update();
+		long empty = insertVenue("Empty Strand", BEACH_PALASE, 10);
+
+		mvc.perform(get("/api/venues").param("region", IT_REGION).param("date", "2026-11-20"))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$[?(@.id == " + aurora + ")].sellsOnline").value(contains(true)))
+				.andExpect(jsonPath("$[?(@.id == " + aurora + ")].availability.total").value(contains(3)))
+				.andExpect(jsonPath("$[?(@.id == " + zephyr + ")].sellsOnline").value(contains(false)))
+				.andExpect(jsonPath("$[?(@.id == " + zephyr + ")].availability.total").value(contains(1)))
+				.andExpect(jsonPath("$[?(@.id == " + empty + ")].sellsOnline").value(contains(false)));
+	}
+
+	@Test
 	void bookedSetLowersFreeCountForThatDateOnly() throws Exception {
 		// AC-4: book one of Aurora's 3 sets for D → free 2 on D, still 3 on another date (invariant #2).
 		LocalDate date = LocalDate.of(2026, 11, 21);

@@ -38,6 +38,8 @@ export interface VenueCard {
   readonly fromPrice: MoneyView | null;
   readonly free: number;
   readonly total: number;
+  /** True when the venue has an online-pool set (invariant #3): the home head's selling test. */
+  readonly sellsOnline: boolean;
   /** True when the server's verdict says online sales for the selected date have closed. */
   readonly salesClosed: boolean;
   /** True when the venue is closed for the season — the badge outranks the sales-closed chip. */

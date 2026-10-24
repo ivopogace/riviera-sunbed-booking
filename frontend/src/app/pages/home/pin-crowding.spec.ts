@@ -35,6 +35,7 @@ function card(overrides: Partial<VenueCard> & Pick<VenueCard, 'id' | 'name'>): V
     fromPrice: { minorUnits: 2500, currency: 'EUR' },
     free: 18,
     total: 24,
+    sellsOnline: true,
     salesClosed: false,
     closedForSeason: false,
     reopensOn: null,
