@@ -3,9 +3,9 @@ package ai.riviera.platform.auth.application;
 import java.net.URI;
 
 import org.springframework.stereotype.Component;
-import org.springframework.web.util.UriComponentsBuilder;
 
 import ai.riviera.platform.notification.api.MailSender;
+import ai.riviera.platform.notification.vocabulary.EmailedLink;
 import ai.riviera.platform.operator.vocabulary.ApprovalOutcome;
 
 /**
@@ -19,8 +19,9 @@ import ai.riviera.platform.operator.vocabulary.ApprovalOutcome;
 @Component
 public class OperatorApprovalMail {
 
-	/** The audience-aware sign-in page; post-sign-in landing is driven by {@code /api/venues/mine}. */
-	private static final String SIGN_IN_PATH = "/account/sign-in";
+	/** The audience-aware sign-in page, {@code /account/sign-in}; landing is driven by {@code /api/venues/mine}. */
+	private static final String ACCOUNT_SEGMENT = "account";
+	private static final String SIGN_IN_SEGMENT = "sign-in";
 
 	private final MailSender mails;
 	private final URI signInLink;
@@ -32,11 +33,7 @@ public class OperatorApprovalMail {
 	 */
 	public OperatorApprovalMail(MailSender mails, RecoveryProperties properties) {
 		this.mails = mails;
-		this.signInLink = UriComponentsBuilder.fromUriString(properties.linkBaseUrl())
-				.path(SIGN_IN_PATH)
-				.build()
-				.encode()
-				.toUri();
+		this.signInLink = EmailedLink.on(properties.linkBaseUrl()).path(ACCOUNT_SEGMENT, SIGN_IN_SEGMENT).toUri();
 	}
 
 	/**

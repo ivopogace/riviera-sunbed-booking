@@ -857,7 +857,7 @@ tag names the person, invariant #7):
   same-module consumer. Each answers a `200` with counts and a typed token, never a publication:
   serialized events carry booking ids (invariant #7).
 - **The published surface is exactly `notification::api`, two role-split ports, and
-  `notification::vocabulary` (`EmailedLinkOrigin`), consumed by `auth` alone — no domain module
+  `notification::vocabulary` (`EmailedLinkOrigin`, `EmailedLink`), consumed by `auth` alone — no domain module
   depends on `notification`.** `MailSender` is fire-and-forget
   and moves **neither the triggering response's status nor its latency** (the anonymous
   `forgot-password` flow relies on it). The reset link arrives deferred and is resolved inside the
@@ -902,12 +902,13 @@ tag names the person, invariant #7):
 - **The link origin is `auth`'s variable under my own key**: `RIVIERA_RECOVERY_LINK_BASE_URL`
   binds `riviera.notification.booking-link.base-url` (one deployed origin; a second variable could
   only drift), never a `riviera.recovery.*` key, which is `auth`'s namespace.
-- **I own the emailed-link origin rule, `vocabulary.EmailedLinkOrigin`**, and `auth` takes it for its
-  recovery key, so the two keys cannot drift: http(s), a host (inner underscores allowed, no trailing
-  dot), a port in 1..65535 if given, an optional path, no user info, query, fragment or percent-escape,
-  trailing slashes trimmed, and a rejection never echoes the value. Stated whole for operators in
-  `docs/deploy/cd-pipeline.md`, which the rejection cites. Mine, not `shared`'s: an emailed link is mail, and `auth`
-  already depends on me, while I can never depend on `auth`.
+- **I own the emailed-link origin rule and builder, `vocabulary.EmailedLinkOrigin` and `EmailedLink`**, which
+  `auth` takes for its recovery links, so the two keys cannot drift: http(s), a host (inner underscores allowed,
+  no trailing dot), a port in 1..65535 if given, an optional path (escapes allowed), no user info, query,
+  fragment or escape in the authority, trailing slashes trimmed; a rejection never echoes the value. Each key is
+  validated where it binds; `EmailedLink` keeps the origin as encoded and encodes only what it appends. Stated
+  whole for operators in `docs/deploy/cd-pipeline.md`, which the rejection cites. Mine, not `shared`'s: an
+  emailed link is mail, and `auth` already depends on me, while I can never depend on `auth`.
 
 **Not My Job:**
 - Deciding **when** to send, minting/hashing recovery tokens, building **tokenized** links → the
