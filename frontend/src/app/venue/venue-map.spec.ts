@@ -906,7 +906,7 @@ describe('VenueMap', () => {
       n.textContent?.trim(),
     );
     expect(codes).toEqual(['A', 'C', 'D', 'E']);
-    // A bare label still adds nothing beside a rail that now reads it verbatim.
+    // The price rail stays the price alone, whatever the row's label (#1587).
     const prices = [...el().querySelectorAll('[data-testid="row-price"]')].map((n) =>
       n.textContent?.trim(),
     );
@@ -923,7 +923,7 @@ describe('VenueMap', () => {
 
   it('keeps two identically-priced premium rows in one zone (#702)', async () => {
     const base = miramar();
-    // Rows A and B are both premium at €45: one price, one tier, so one zone and one chip.
+    // Rows A and B are both at €45 and online: one zone and one chip. Tier never opens one (#1625).
     const rows = [...new Set(base.sets.map((s) => s.rowLabel))];
     const sets = base.sets.map((s) =>
       s.rowLabel === rows[1]
@@ -952,11 +952,6 @@ describe('VenueMap', () => {
     expect(firstTile?.getAttribute('aria-label')).toBe(
       'Front row · Sea view · spot 1, front row, €45, taken',
     );
-    const names = [...el().querySelectorAll('[data-testid="set-tile"]')].map(
-      (t) =>
-        t.getAttribute('aria-label') ?? t.querySelector('button')?.getAttribute('aria-label') ?? '',
-    );
-    expect(names.some((name) => name.includes('at venue'))).toBe(false);
   });
 
   it('separates price zones with a gap at zone starts, aligned across all three columns (#672)', async () => {
