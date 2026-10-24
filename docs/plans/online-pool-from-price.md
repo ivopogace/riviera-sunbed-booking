@@ -74,14 +74,14 @@ delegation; rationale on the issue). Follow-up for the map read: #1647.
 
 ## Execution status
 
-**Stage pointer:** implement (phase 2 waits on #1617)
+**Stage pointer:** review (round 1, high)
 
-**Next action:** PR #1648 open (draft); on #1617's merge, merge `origin/main` and do phase 2, then ready for review.
+**Next action:** mark PR #1648 ready and run round 1 (`code-review:code-review`, high) + overlay.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — backend | ✅ | b09f1c4 |
 | 1 — frontend | ✅ | e293e0c |
-| 2 — e2e type | | |
+| 2 — e2e type | ✅ | (this commit) |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.

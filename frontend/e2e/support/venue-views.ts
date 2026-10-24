@@ -88,7 +88,7 @@ export interface MockVenueSummary {
   readonly distanceToWaterM?: number | null;
   readonly location?: { readonly latitude: number; readonly longitude: number } | null;
   readonly availability: { readonly free: number; readonly total: number };
-  readonly sellsOnline?: boolean;
+  readonly sellsOnline: boolean;
   readonly coverPhoto?: { readonly card: MockPhotoView; readonly banner: MockPhotoView } | null;
   readonly photos?: readonly MockPhotoView[];
   readonly salesOpen?: boolean;

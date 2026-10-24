@@ -40,6 +40,7 @@ const VENUES: readonly MockVenueSummary[] = [
     bookingMode: 'INSTANT',
     fromPrice: { minorUnits: 2500, currency: 'EUR' },
     availability: { free: 18, total: 24 },
+    sellsOnline: true,
     salesOpen: true,
     location: { latitude: 39.7712, longitude: 20.0021 },
     coverPhoto: {
@@ -58,6 +59,7 @@ const VENUES: readonly MockVenueSummary[] = [
     bookingMode: 'REQUEST',
     fromPrice: { minorUnits: 3000, currency: 'EUR' },
     availability: { free: 5, total: 10 },
+    sellsOnline: true,
     salesOpen: true,
     location: { latitude: 40.1573, longitude: 19.6401 },
   },
@@ -71,6 +73,7 @@ const VENUES: readonly MockVenueSummary[] = [
     bookingMode: 'INSTANT',
     fromPrice: { minorUnits: 2000, currency: 'EUR' },
     availability: { free: 4, total: 8 },
+    sellsOnline: true,
     salesOpen: true,
   },
 ];
@@ -92,6 +95,7 @@ const CROWDED_VENUES: readonly MockVenueSummary[] = [
     bookingMode: 'INSTANT',
     fromPrice: { minorUnits: 2100, currency: 'EUR' },
     availability: { free: 15, total: 25 },
+    sellsOnline: true,
     salesOpen: true,
     location: { latitude: 39.77227, longitude: 20.00317 },
   },
@@ -105,6 +109,7 @@ const CROWDED_VENUES: readonly MockVenueSummary[] = [
     bookingMode: 'INSTANT',
     fromPrice: { minorUnits: 3900, currency: 'EUR' },
     availability: { free: 2, total: 34 },
+    sellsOnline: true,
     salesOpen: true,
     location: { latitude: 40.15747, longitude: 19.64026 },
   },
@@ -118,6 +123,7 @@ const CROWDED_VENUES: readonly MockVenueSummary[] = [
     bookingMode: 'REQUEST',
     fromPrice: { minorUnits: 2400, currency: 'EUR' },
     availability: { free: 19, total: 22 },
+    sellsOnline: true,
     salesOpen: true,
     location: { latitude: 40.15718, longitude: 19.64038 },
   },
@@ -819,6 +825,7 @@ function mapVenue(
     amenities: ['BEACH_BAR', 'SNORKELLING'],
     fromPrice: { minorUnits, currency: 'EUR' },
     availability: { free: 11, total: 26 },
+    sellsOnline: true,
     salesOpen,
     location: { latitude, longitude },
   };
@@ -1105,7 +1112,11 @@ test.describe('Discover map — the desktop panel', () => {
   });
 
   test('a pin with no price draws its dot, centred at 14 px, open or closed', async ({ page }) => {
-    const unpriced = (venue: MockVenueSummary): MockVenueSummary => ({ ...venue, fromPrice: null });
+    const unpriced = (venue: MockVenueSummary): MockVenueSummary => ({
+      ...venue,
+      fromPrice: null,
+      sellsOnline: false,
+    });
     await mockVenues(page, 0, [
       unpriced(mapVenue(42, 'Unpriced Venue', 'DHERMI', 'HIMARE', 40.176, 19.586, 0)),
       unpriced(mapVenue(43, 'Closed Unpriced', 'BORSH', 'HIMARE', 40.06, 19.86, 0, false)),

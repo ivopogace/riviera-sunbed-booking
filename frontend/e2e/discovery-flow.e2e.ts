@@ -256,6 +256,7 @@ test('an unrated venue shows a "New" state (no ★ 0.0) on the card and map, acc
     bookingMode: 'INSTANT',
     fromPrice: { minorUnits: 2000, currency: 'EUR' },
     availability: { free: 10, total: 10 },
+    sellsOnline: true,
   };
   await page.route(/\/api\/venues\/2(\?.*)?$/, (route) =>
     route.fulfill({
