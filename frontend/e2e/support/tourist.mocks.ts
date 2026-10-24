@@ -1,6 +1,7 @@
 import type { Page } from '@playwright/test';
 
 import { photoViews } from './photo-views';
+import type { MockVenueMapView, MockVenueSummary } from './venue-views';
 
 /**
  * The tourist-facing API fixture the whole-surface sweeps share — the tourist twin of
@@ -15,7 +16,7 @@ import { photoViews } from './photo-views';
 
 /** Deliberately multi-photo and multi-set: the slideshow's step controls and the map's set tiles
  *  only exist on a venue that has more than one of each. */
-export const TOURIST_VENUE = {
+export const TOURIST_VENUE: MockVenueMapView & MockVenueSummary = {
   id: 1,
   name: 'Miramar Beach Club',
   beach: 'KSAMIL',
@@ -28,6 +29,7 @@ export const TOURIST_VENUE = {
   amenities: ['SHOWERS', 'BEACH_BAR', 'FREE_PARKING', 'WIFI'],
   distanceToWaterM: 15,
   availability: { free: 4, total: 6 },
+  sellsOnline: true,
   coverPhoto: null,
   photos: photoViews([
     '/api/venues/1/photos/aa01',
