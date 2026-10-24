@@ -38,8 +38,19 @@ async function stubBackend(answer) {
 const healthy = (commit) => (path) =>
   path === '/actuator/info' ? { body: commit ? { commit } : {} } : { body: { status: 'UP' } };
 
-const poll = (baseUrl, deadlineMs = 2_000) =>
-  waitForLiveCommit({ baseUrl, expected: NEW, deadlineMs, intervalMs: 5, log: () => {} });
+/**
+ * A clock that advances 10 ms per read, so a poll over `TICKED_DEADLINE_MS` makes exactly
+ * `TICKED_ATTEMPTS` attempts whatever the runner's speed (one read sets the deadline, one follows each attempt).
+ */
+const ticking = () => {
+  let t = 0;
+  return () => (t += 10);
+};
+const TICKED_DEADLINE_MS = 35;
+const TICKED_ATTEMPTS = 4;
+
+const poll = (baseUrl, deadlineMs = 2_000, now = Date.now) =>
+  waitForLiveCommit({ baseUrl, expected: NEW, deadlineMs, intervalMs: 5, now, log: () => {} });
 
 test('a deploy already live passes on the first attempt', async () => {
   const backend = await stubBackend(healthy(NEW));
@@ -66,10 +77,10 @@ test('the old instance answering healthy is waited out until the new commit serv
 test('a new instance that never boots fails at the deadline, naming the commit still served', async () => {
   const backend = await stubBackend(healthy(OLD));
   try {
-    const result = await poll(backend.baseUrl, 60);
+    const result = await poll(backend.baseUrl, TICKED_DEADLINE_MS, ticking());
     assert.equal(result.live, false);
     assert.equal(result.commit, OLD);
-    assert.ok(result.attempts > 1, `polled ${result.attempts} times`);
+    assert.equal(result.attempts, TICKED_ATTEMPTS);
   } finally {
     await backend.close();
   }
@@ -202,7 +213,8 @@ test('a response body never writes its own line into the Actions log', async () 
     const result = await waitForLiveCommit({
       baseUrl: backend.baseUrl,
       expected: NEW,
-      deadlineMs: 400,
+      deadlineMs: TICKED_DEADLINE_MS,
+      now: ticking(),
       intervalMs: 5,
       log: (line) => lines.push(line),
     });
@@ -224,9 +236,9 @@ test('a response body never writes its own line into the Actions log', async () 
 test('health is not asked while an older commit is served', async () => {
   const backend = await stubBackend(healthy(OLD));
   try {
-    const result = await poll(backend.baseUrl, 400);
+    const result = await poll(backend.baseUrl, TICKED_DEADLINE_MS, ticking());
     assert.equal(result.live, false);
-    assert.ok(backend.hits.get('/actuator/info') > 1);
+    assert.equal(backend.hits.get('/actuator/info'), TICKED_ATTEMPTS);
     assert.equal(backend.hits.get('/actuator/health'), undefined);
   } finally {
     await backend.close();

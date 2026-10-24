@@ -35,10 +35,11 @@ permissions:
   contents: read
 
 jobs:
-  # Single decision point for whether this run may deploy at all. For the automatic path, CI must have
-  # SUCCEEDED on `main`; if not, the deploy job is skipped and nothing turns red. Manual dispatch is
-  # itself an explicit opt-in, from `main` only: the hook's ref= would otherwise deploy another
-  # branch's untested commit, so a dispatch from elsewhere fails the run.
+  # Single decision point for whether this run may deploy at all; the deploy job then still skips a commit
+  # `main` has moved past. For the automatic path, CI must have SUCCEEDED on `main`; if not, the deploy
+  # job is skipped and nothing turns red. Manual dispatch is itself an explicit opt-in, from `main` only:
+  # the hook's ref= would otherwise deploy another branch's untested commit, so a dispatch from elsewhere
+  # fails the run.
   guard:
     name: Gate on green CI on main
     runs-on: ubuntu-latest
@@ -75,7 +76,19 @@ jobs:
       # head at dispatch on the manual one.
       DEPLOY_SHA: ${{ github.event.workflow_run.head_sha || github.sha }}
     steps:
-      # First: it needs neither the checkout nor Node, so a superseded run does no other work.
+      # Before the trigger, so nothing that can fail runs after the hook's POST.
+      - name: Checkout the live poll (scripts/ only)
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ env.DEPLOY_SHA }}
+          sparse-checkout: scripts
+          persist-credentials: false
+
+      - name: Set up Node (from .nvmrc, as CI tests the poll)
+        uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+
       - name: Trigger Render deploy of exactly this commit (Render git-builds the Docker image — SPA + jar)
         id: trigger
         env:
@@ -98,7 +111,8 @@ jobs:
           # which may be a later commit, and the live poll would wait for a commit never deployed.
           case "$RENDER_DEPLOY_HOOK_URL" in *\?*) sep='&' ;; *) sep='?' ;; esac
           # --max-time: the hook returns immediately, so anything slower is a hang, not a slow deploy.
-          response=$(curl -fsS --max-time 30 -w '\n%{http_code}' -X POST "${RENDER_DEPLOY_HOOK_URL}${sep}ref=${DEPLOY_SHA}")
+          # No -f: the status case below judges the answer, so a 4xx or 5xx gets its hint; a network error still fails.
+          response=$(curl -sS --max-time 30 -w '\n%{http_code}' -X POST "${RENDER_DEPLOY_HOOK_URL}${sep}ref=${DEPLOY_SHA}")
           status=${response##*$'\n'}
           # Only the deploy id is echoed: the rest of the answer is Render's text, not vetted for the log.
           deploy_id=$(printf '%s' "${response%$'\n'*}" | grep -o 'dep-[a-z0-9]\{1,\}' | head -n 1 || true)
@@ -107,27 +121,13 @@ jobs:
             200 | 201) echo "Render deploy ${deploy_id:-(no deploy id in the answer)} triggered for $DEPLOY_SHA." ;;
             202) echo "Render queued the deploy of $DEPLOY_SHA behind a running deploy (HTTP 202, no deploy id)." ;;
             *)
-              echo "::error::The deploy hook answered HTTP $status, not a queued deploy; check the RENDER_DEPLOY_HOOK_URL secret."
+              echo "::error::The deploy hook answered HTTP $status, not a queued deploy (4xx: check the RENDER_DEPLOY_HOOK_URL secret; 5xx: Render's status)."
               exit 1
               ;;
           esac
 
-      - name: Checkout the live poll (scripts/ only)
-        if: steps.trigger.outputs.superseded != 'true'
-        uses: actions/checkout@v7
-        with:
-          ref: ${{ env.DEPLOY_SHA }}
-          sparse-checkout: scripts
-          persist-credentials: false
-
-      - name: Set up Node (from .nvmrc, as CI tests the poll)
-        if: steps.trigger.outputs.superseded != 'true'
-        uses: actions/setup-node@v7
-        with:
-          node-version-file: .nvmrc
-
-      # Each step after the trigger is gated on its output; a misnamed one runs them, so the poll waits for a
-      # commit never deployed and fails red, unless that commit is the one already live.
+      # The one gate: a misnamed output runs the poll, which waits for a commit never deployed and fails red,
+      # unless that commit is the one already live.
       - name: Wait for the new build to be live (#1632)
         if: steps.trigger.outputs.superseded != 'true'
         env:
