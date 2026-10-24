@@ -297,6 +297,10 @@ public class SecurityConfig {
 						.requestMatchers("/actuator/health/**").permitAll()
 						// The build's commit id only (BuildCommitInfoContributor); the CD poll reads it (#1632).
 						.requestMatchers(HttpMethod.GET, "/actuator/info").permitAll()
+						// Platform-wide money-path and traffic figures: not venue-scoped, so ADMIN like the payout batches.
+						.requestMatchers(HttpMethod.GET, "/actuator/prometheus").hasRole(ADMIN_ROLE)
+						// Fail closed: an endpoint later added to the exposure allowlist needs its own rule above.
+						.requestMatchers("/actuator/**").denyAll()
 						// Anonymous by definition — authentication happens INSIDE the endpoint.
 						.requestMatchers(HttpMethod.POST, LOGIN_PATH).permitAll()
 						.requestMatchers(HttpMethod.POST, OPERATOR_REGISTER_PATH).permitAll()
