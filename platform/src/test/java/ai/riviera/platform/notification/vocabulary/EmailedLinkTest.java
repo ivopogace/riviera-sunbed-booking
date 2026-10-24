@@ -85,4 +85,16 @@ class EmailedLinkTest {
 					EmailedLink.on(accepted).path("account", "sign-in").toUri(), origin);
 		}
 	}
+
+	@Test
+	void eachStepLeavesTheLinkItCameFromUnchanged() {
+		EmailedLink account = EmailedLink.on("https://app.example").path("account");
+
+		URI reset = account.path("reset").query("token", "t1").toUri();
+		URI verify = account.path("verify").toUri();
+
+		assertEquals(URI.create("https://app.example/account"), account.toUri());
+		assertEquals(URI.create("https://app.example/account/reset?token=t1"), reset);
+		assertEquals(URI.create("https://app.example/account/verify"), verify);
+	}
 }
