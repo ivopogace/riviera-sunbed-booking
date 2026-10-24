@@ -14,11 +14,13 @@ import ai.riviera.platform.notification.vocabulary.EmailedLinkOrigin;
  * demo/prod. Both TTLs are bounded at bind time ({@link CustomerRecovery} stamps {@code now + ttl}, so zero is born
  * expired), in the compact constructor: no JSR-303 implementation is on the classpath, so {@code @Min} validates nothing.
  */
-@ConfigurationProperties("riviera.recovery")
+@ConfigurationProperties(RecoveryProperties.PREFIX)
 public record RecoveryProperties(
 		@DefaultValue("PT24H") Duration verificationTokenTtl,
 		@DefaultValue("PT1H") Duration resetTokenTtl,
 		@DefaultValue("http://localhost:4200") String linkBaseUrl) {
+
+	static final String PREFIX = "riviera.recovery";
 
 	/**
 	 * Shared floor, above zero because the mail is the slow part: recovery sends leave the request thread
@@ -41,10 +43,9 @@ public record RecoveryProperties(
 	static final Duration MAX_RESET_TOKEN_TTL = Duration.ofHours(24);
 
 	public RecoveryProperties {
-		requireInRange("riviera.recovery.verification-token-ttl", verificationTokenTtl,
-				MAX_VERIFICATION_TOKEN_TTL);
-		requireInRange("riviera.recovery.reset-token-ttl", resetTokenTtl, MAX_RESET_TOKEN_TTL);
-		linkBaseUrl = EmailedLinkOrigin.require("riviera.recovery.link-base-url", "RIVIERA_RECOVERY_LINK_BASE_URL",
+		requireInRange(PREFIX + ".verification-token-ttl", verificationTokenTtl, MAX_VERIFICATION_TOKEN_TTL);
+		requireInRange(PREFIX + ".reset-token-ttl", resetTokenTtl, MAX_RESET_TOKEN_TTL);
+		linkBaseUrl = EmailedLinkOrigin.require(PREFIX + ".link-base-url", "RIVIERA_RECOVERY_LINK_BASE_URL",
 				linkBaseUrl);
 	}
 
