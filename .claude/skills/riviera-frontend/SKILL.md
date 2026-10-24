@@ -24,6 +24,9 @@ Owns the *where*. Technique: `angular-developer` + the angular-cli MCP (`get_bes
 | `environments/` (sibling of `app/`) | `apiBaseUrl` + public config; any stratum may read it | — |
 
 Two features needing the same thing → promote it: pure → `shared/`, stateful/HTTP → `core/`.
+A new browser seam (a `window`/device API behind an abstract class) lands by who owns it: app-wide and
+wired in `app.config.ts` → `core/` (`page-navigation.ts`); stateless and presentational →
+`shared/` (`geolocation.ts`, `map-engine.ts`); one feature's → that feature (`operator/qr-scanner.ts`).
 An adapter that does its own I/O (`shared/maplibre-map-engine.ts` fetching MapLibre tiles) is still
 `shared/`-admissible; "no HTTP" means no `HttpClient`/API state.
 
