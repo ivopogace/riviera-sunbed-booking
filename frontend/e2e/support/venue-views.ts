@@ -64,6 +64,8 @@ export type MockBookingMode = 'INSTANT' | 'REQUEST';
 export type MockSeatAvailability = 'FREE' | 'PARTLY_FREE' | 'TAKEN';
 export type MockTier = 'PREMIUM' | 'STANDARD';
 export type MockPool = 'ONLINE' | 'WALK_IN';
+export type MockSalesCloseTime = '00:01' | '16:00' | '23:59';
+export type MockStayFit = 'SAME_SET' | 'FITS_WITH_MOVES' | 'CANNOT_HOST';
 
 export interface MockMoney {
   readonly minorUnits: number;
@@ -73,7 +75,7 @@ export interface MockMoney {
 /**
  * One `GET /api/venues` row: a hand copy of `src/app/shared/venue-views.ts`' `VenueSummary`, so a
  * fixture missing, misnaming or mis-coding a field fails `npm run typecheck:e2e`. The optional
- * members are the ones a fixture may leave out; the stay read's `stay` verdict is not mirrored yet.
+ * members are the ones a fixture may leave out.
  */
 export interface MockVenueSummary {
   readonly id: number;
@@ -94,6 +96,16 @@ export interface MockVenueSummary {
   readonly salesOpen?: boolean;
   readonly closedForSeason?: boolean;
   readonly reopensOn?: string | null;
+  readonly stay?: MockStayVerdictView | null;
+}
+
+/** A venue's verdict for the chosen stay: a hand copy of `src/app/shared/venue-views.ts`' `StayVerdictView`. */
+export interface MockStayVerdictView {
+  readonly verdict: MockStayFit;
+  readonly sameSetCount: number;
+  readonly longestRunDays: number;
+  readonly maxStayDays: number | null;
+  readonly moves: number;
 }
 
 /** One beach-map set: a hand copy of `src/app/shared/venue-views.ts`' `SetView`. */
@@ -109,4 +121,29 @@ export interface MockSetView {
   readonly availability: MockSeatAvailability;
   readonly freeDays?: number;
   readonly takenDates?: readonly string[];
+}
+
+/** One `GET /api/venues/{id}` body: a hand copy of `src/app/shared/venue-views.ts`' `VenueMapView`. */
+export interface MockVenueMapView {
+  readonly id: number;
+  readonly name: string;
+  readonly beach: MockBeachCode;
+  readonly region: MockRegionCode;
+  readonly description: string;
+  readonly ratingTenths: number;
+  readonly reviewsCount: number;
+  readonly bookingMode: MockBookingMode;
+  readonly fromPrice: MockMoney | null;
+  readonly amenities?: readonly MockAmenity[];
+  readonly distanceToWaterM?: number | null;
+  readonly sets: readonly MockSetView[];
+  readonly setVersion?: number;
+  readonly coverPhoto?: { readonly card: MockPhotoView; readonly banner: MockPhotoView } | null;
+  readonly photos?: readonly MockPhotoView[];
+  readonly lightboxPhotos?: readonly MockPhotoView[];
+  readonly salesOpen?: boolean;
+  readonly salesClose?: MockSalesCloseTime;
+  readonly closedForSeason?: boolean;
+  readonly reopensOn?: string | null;
+  readonly maxStayDays?: number | null;
 }
