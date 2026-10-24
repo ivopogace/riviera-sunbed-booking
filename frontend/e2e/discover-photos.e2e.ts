@@ -4,6 +4,7 @@ import { expectNoSeriousAxeViolations } from './support/axe';
 import { openThemePicker } from './support/shell';
 import { settle } from './support/booking-dialog';
 import { lightboxPhotoView, photoView, photoViews } from './support/photo-views';
+import type { MockVenueMapView, MockVenueSummary } from './support/venue-views';
 
 /**
  * Real-render CI-safe e2e for the tourist cover-photo display: the Discover card
@@ -47,7 +48,7 @@ const LIGHTBOX_SLIDESHOW = [
   lightboxPhotoView('/api/venues/1/photos/dd04'),
 ];
 
-const VENUES = [
+const VENUES: readonly MockVenueSummary[] = [
   {
     id: 1,
     name: 'Miramar Beach Club',
@@ -60,6 +61,7 @@ const VENUES = [
     amenities: [],
     distanceToWaterM: 15,
     availability: { free: 18, total: 24 },
+    sellsOnline: true,
     coverPhoto: COVER,
     photos: CARD_SLIDESHOW,
   },
@@ -73,12 +75,13 @@ const VENUES = [
     bookingMode: 'REQUEST',
     fromPrice: { minorUnits: 3000, currency: 'EUR' },
     availability: { free: 5, total: 10 },
+    sellsOnline: true,
     coverPhoto: null,
     photos: [],
   },
 ];
 
-const VENUE_MAP = {
+const VENUE_MAP: MockVenueMapView = {
   id: 1,
   name: 'Miramar Beach Club',
   beach: 'PALASE',
