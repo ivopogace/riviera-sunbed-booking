@@ -31,7 +31,9 @@ permissions:
 # hash to a key an earlier green run saved (#955). The hash, not a path list, is the change detector,
 # so every file a job's build or tests read is in its key, including the ones outside its folder. A
 # push to `main` always builds and seeds the cache. The key is computed right after checkout, before
-# any build output exists to hash.
+# any build output exists to hash. Every key also hashes this file, so any edit here re-runs all three
+# on its own PR rather than certifying steps that never ran (#1649); no prefix bump is needed to force
+# a run.
 jobs:
   backend:
     name: Backend (build + test) # Required context (header above): do not rename.
@@ -47,7 +49,7 @@ jobs:
       - name: Compute the build-input hash (the cache key)
         id: key
         # `hashFiles` resolves from the repo root, not `working-directory`.
-        run: echo "key=v2-backend-sonar-${{ hashFiles('platform/**', '!platform/build/**') }}" >> "$GITHUB_OUTPUT"
+        run: echo "key=backend-sonar-${{ hashFiles('platform/**', '.github/workflows/ci.yml', '!platform/build/**') }}" >> "$GITHUB_OUTPUT"
 
       - name: Restore the Sonar inputs of an identical, already-green tree (pull requests only)
         id: restore
@@ -129,7 +131,7 @@ jobs:
         id: key
         # The same `hashFiles` arguments as `frontend`'s key step, whose comment lists what is read
         # outside `frontend/`; a file joins or leaves both lists together.
-        run: echo "key=v1-a11y-e2e-${{ hashFiles('frontend/**', '.nvmrc', 'docs/design/non-text-contrast.md', 'platform/map/**', '!frontend/node_modules/**', '!frontend/coverage/**', '!frontend/dist/**', '!frontend/.angular/**') }}" >> "$GITHUB_OUTPUT"
+        run: echo "key=a11y-e2e-${{ hashFiles('frontend/**', '.nvmrc', '.github/workflows/ci.yml', 'docs/design/non-text-contrast.md', 'platform/map/**', '!frontend/node_modules/**', '!frontend/coverage/**', '!frontend/dist/**', '!frontend/.angular/**') }}" >> "$GITHUB_OUTPUT"
 
       - name: Look up whether an identical tree already passed every shard (pull requests only)
         id: restore
@@ -267,12 +269,12 @@ jobs:
 
       - name: Compute the build-input hash (the cache key)
         id: key
-        # What this job and the `a11y-e2e` shards read outside `frontend/`: `setup-node` reads the root
-        # `.nvmrc`, `focus-ring-baseline.spec.ts` the design doc, `map-water.spec.ts` and the e2e
-        # `support/map-resources.ts` the map style, sprites and glyphs. A spec that starts reading
+        # What this job and the `a11y-e2e` shards read outside `frontend/`, besides this file (header):
+        # `setup-node` reads the root `.nvmrc`, `focus-ring-baseline.spec.ts` the design doc,
+        # `map-water.spec.ts` and the e2e `support/map-resources.ts` the map style, sprites and glyphs. A spec that starts reading
         # elsewhere joins this list, or a hit is a wrong green. The shards hash the same arguments
         # under their own prefix; a file joins or leaves both lists together.
-        run: echo "key=v1-frontend-sonar-${{ hashFiles('frontend/**', '.nvmrc', 'docs/design/non-text-contrast.md', 'platform/map/**', '!frontend/node_modules/**', '!frontend/coverage/**', '!frontend/dist/**', '!frontend/.angular/**') }}" >> "$GITHUB_OUTPUT"
+        run: echo "key=frontend-sonar-${{ hashFiles('frontend/**', '.nvmrc', '.github/workflows/ci.yml', 'docs/design/non-text-contrast.md', 'platform/map/**', '!frontend/node_modules/**', '!frontend/coverage/**', '!frontend/dist/**', '!frontend/.angular/**') }}" >> "$GITHUB_OUTPUT"
 
       - name: Restore the Sonar inputs of an identical, already-green tree (pull requests only)
         id: restore
