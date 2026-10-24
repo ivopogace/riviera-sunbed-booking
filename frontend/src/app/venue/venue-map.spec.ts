@@ -95,7 +95,7 @@ function miramar(): VenueMapView {
     ratingTenths: 48,
     reviewsCount: 326,
     bookingMode: 'INSTANT',
-    fromPrice: { minorUnits: 2500, currency: 'EUR' },
+    fromPrice: { minorUnits: 3500, currency: 'EUR' }, // the cheapest ONLINE row; Row 4's walk-in €25 never prices it
     // Amenities out of catalogue order → the header renders the FULL row catalogue-ordered (Beach bar, Free parking, WiFi); plus a to-water distance.
     amenities: ['WIFI', 'BEACH_BAR', 'FREE_PARKING'],
     distanceToWaterM: 8,
@@ -807,6 +807,35 @@ describe('VenueMap', () => {
 
     const reviews = fixture.debugElement.query(By.directive(VenueReviews));
     expect((reviews.componentInstance as VenueReviews).reviewsCount()).toBe(0);
+  });
+
+  it('prices the header from the fromPrice the read names, "from €35 / set" (#1647)', async () => {
+    venueRequest().flush(miramar());
+    await settle();
+
+    const header = el().querySelector('header')!;
+    expect(header.textContent?.replace(/\s+/g, ' ')).toContain('from €35 / set');
+    expect(header.querySelector('[data-testid="unpriced-label"]')).toBeNull();
+  });
+
+  it('reads "Walk-in only" in the price\'s place when no set sells online, as the Discover card does (#1647)', async () => {
+    venueRequest().flush({ ...miramar(), fromPrice: null });
+    await settle();
+
+    const header = el().querySelector('header')!;
+    expect(header.querySelector('[data-testid="unpriced-label"]')?.textContent?.trim()).toBe(
+      'Walk-in only',
+    );
+    expect(header.textContent).not.toContain('/ set');
+  });
+
+  it('keeps the no-price header for a venue with no sets — neither a price nor "Walk-in only"', async () => {
+    venueRequest().flush(mapless());
+    await settle();
+
+    const header = el().querySelector('header')!;
+    expect(header.querySelector('[data-testid="unpriced-label"]')).toBeNull();
+    expect(header.textContent).not.toContain('/ set');
   });
 
   it('agrees the review noun with the count — a venue\'s first rating reads "1 review"', async () => {

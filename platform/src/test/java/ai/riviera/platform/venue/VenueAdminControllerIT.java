@@ -451,7 +451,7 @@ class VenueAdminControllerIT {
 		addSet(venue, setBody("Front row", 1, "PREMIUM", "ONLINE", 4500, "EUR", 1, 1));
 		addSet(venue, setBody("Front row", 2, "STANDARD", "WALK_IN", 2500, "EUR", 2, 1));
 
-		// AC-2: read back in (grid_y, grid_x) order, row label the grid letter (#1586), cheapest from-price.
+		// AC-2: (grid_y, grid_x) order, grid-letter rows (#1586); from-price = cheapest ONLINE set (#1647).
 		mvc.perform(get("/api/venues/{id}", venue))
 				.andExpect(status().isOk())
 				.andExpect(jsonPath("$.sets.length()").value(2))
@@ -460,7 +460,7 @@ class VenueAdminControllerIT {
 				.andExpect(jsonPath("$.sets[0].pool").value("ONLINE"))
 				.andExpect(jsonPath("$.sets[0].price.minorUnits").value(4500))
 				.andExpect(jsonPath("$.sets[1].pool").value("WALK_IN"))
-				.andExpect(jsonPath("$.fromPrice.minorUnits").value(2500))
+				.andExpect(jsonPath("$.fromPrice.minorUnits").value(4500))
 				.andExpect(jsonPath("$.fromPrice.currency").value("EUR"));
 	}
 

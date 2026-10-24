@@ -105,6 +105,9 @@
               @if (v.priceLabel; as price) {
                 <span class="text-riv-ink-faint" aria-hidden="true">·</span> from
                 <strong class="font-bold text-riv-ink">{{ price }}</strong> / set
+              } @else if (v.unpricedLabel; as unpriced) {
+                <span class="text-riv-ink-faint" aria-hidden="true">·</span>
+                <span data-testid="unpriced-label">{{ unpriced }}</span>
               }
             </p>
 
