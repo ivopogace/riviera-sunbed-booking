@@ -20,7 +20,12 @@ issue needs from a sibling, and what to do until that sibling merges>
   loop): the review plugin skips a draft (pr-gates §1).
 - Run the review gate at pr-gates §1's effort: <high for anything touching availability, the
   booking lifecycle, money or authorization; medium for a pure move or no-behaviour-change slice
-  with the structural net green, a doc-only slice included; unsure → high>. The PR body's
+  with the structural net green, a doc-only slice included; unsure → high>. Round 1 runs
+  `code-review:code-review` step by step, each step as the plugin defines it (Haiku eligibility,
+  CLAUDE.md-paths and summary agents; five Sonnet reviewers; one Haiku scorer per finding; the
+  80 cutoff; the Haiku recheck). Never run steps inline, never self-judge the cutoff, and post
+  no `### Code review` comment before the plugin round: a hand-written comment makes the plugin
+  decline (pr-gates §1). The PR body's
   review-gate line names the effort, the skill that ran each round and the overlay items checked,
   so the orchestrator can verify them; each round's `### Code review` comment proves it ran.
 - A behaviour fix after the review gate re-enters Implement and gets its own re-review posted on
