@@ -11,6 +11,7 @@ import {
   expectInsetFill,
   tintPaint,
 } from './support/console-theme';
+import type { MockSetView } from './support/venue-views';
 
 /**
  * Real-render CI-safe e2e for the layout editor. Drives the actual generate → confirm →
@@ -72,7 +73,7 @@ interface MockLock {
 async function mockEditor(
   page: Page,
   refusing: (MockLock & { rowLabel: string; positionNo: number })[] = [],
-  seededSets: typeof SEEDED_SETS = [],
+  seededSets: readonly MockSetView[] = [],
   locks: MockLock[] = [],
   preview: object = EMPTY_PREVIEW,
 ): Promise<{
@@ -303,7 +304,7 @@ test('sends no row label and offers no row names (#1586)', async ({ page }) => {
 });
 
 /** Two saved rows on a trading venue — the shape the bulk save can no longer touch. */
-const SEEDED_SETS = [
+const SEEDED_SETS: readonly MockSetView[] = [
   {
     id: 1,
     rowLabel: 'A',
@@ -313,7 +314,7 @@ const SEEDED_SETS = [
     price: { minorUnits: 3500, currency: 'EUR' },
     gridX: 1,
     gridY: 1,
-    available: true,
+    availability: 'FREE',
   },
   {
     id: 2,
@@ -324,7 +325,7 @@ const SEEDED_SETS = [
     price: { minorUnits: 2000, currency: 'EUR' },
     gridX: 1,
     gridY: 2,
-    available: true,
+    availability: 'FREE',
   },
 ];
 
@@ -1302,7 +1303,7 @@ test('the paint grid, which cannot be drag-panned, still offers a pointer route 
  * paint grid's — is no longer drag-pannable and shows the same slim scrollbar affordance instead.
  */
 /** Two rows of twelve — the widest layout the console's `.oc-main` (capped at 1300px) must show whole at 1280px. */
-const TWELVE_COLUMNS = Array.from({ length: 24 }, (_, i) => ({
+const TWELVE_COLUMNS: readonly MockSetView[] = Array.from({ length: 24 }, (_, i) => ({
   id: i + 1,
   rowLabel: i < 12 ? 'A' : 'B',
   positionNo: (i % 12) + 1,
@@ -1311,7 +1312,7 @@ const TWELVE_COLUMNS = Array.from({ length: 24 }, (_, i) => ({
   price: { minorUnits: 3000, currency: 'EUR' },
   gridX: (i % 12) + 1,
   gridY: i < 12 ? 1 : 2,
-  available: true,
+  availability: 'FREE',
 }));
 
 test('fits a twelve-column layout to width at 1280px under the shell (#1011)', async ({ page }) => {
