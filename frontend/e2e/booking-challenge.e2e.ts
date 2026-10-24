@@ -3,6 +3,7 @@ import { expect, test } from '@playwright/test';
 import { ChallengeCode, ChallengeFence, mockChallengeFence } from './support/auth-mocks';
 import { expectNoSeriousAxeViolations } from './support/axe';
 import { mockFencedBookingCreate, settle } from './support/booking-dialog';
+import type { MockVenueMapView } from './support/venue-views';
 
 /**
  * The proof-of-work fence on booking create, real-rendered against the mocked API
@@ -16,7 +17,7 @@ import { mockFencedBookingCreate, settle } from './support/booking-dialog';
  * verifier is `e2e/real-backend/booking-challenge.e2e.ts`'s job.
  */
 
-const VENUE = {
+const VENUE: MockVenueMapView = {
   id: 1,
   name: 'Miramar Beach Club',
   beach: 'KSAMIL',
