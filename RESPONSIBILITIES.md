@@ -1135,6 +1135,10 @@ admin action was justified; retention (a named non-goal — rows are kept indefi
   is lockless `@Scheduled`: each extra instance fires the outbox-backlog alert again. It is on
   `ScheduledWorkArchitectureTest`'s job list, so `docs/deploy/production-hardening.md`'s scale-out
   precondition (ShedLock on every job on that list) covers it.
+- **The running build's commit on the public `/actuator/info`** (`BuildCommitInfoContributor`, #1632):
+  Render's `RENDER_GIT_COMMIT`, published only when it is a hex SHA, with every auto-configured info
+  contributor off, so the body is `{"commit":"<sha>"}` alone. The CD live check waits for it; the route's
+  `permitAll` is `web`'s, the posture `docs/deploy/production-hardening.md`.
 - **The scheduled-query bound** (`ScheduledQueryTimeout`, 1–300 s), checked at boot. Module adapters
   read the raw property, so the check runs in full contexts only (production, every `@SpringBootTest`);
   the committed value is unit-tested by `ScheduledQueryTimeoutBoundsTest`.
@@ -1243,6 +1247,10 @@ back-linking of past guest bookings, ever; auth endpoints non-enumerating + cons
 own rate-limit buckets; mocked externals (SSO IdPs, mailer) profile-guarded out of prod; session
 revocation orchestrated by `auth` and synchronous, bracketing the state change; every request re-checks the
 session's credential stamp.
+
+**The anonymous actuator surface is `health` (status only) and `GET /actuator/info`, the build's commit id
+alone (#1632)**: the route policy admits nothing more anonymously, and `prometheus`, the one other exposed
+endpoint, needs a session (`ActuatorHardeningIT`; posture: `docs/deploy/production-hardening.md`).
 
 **Where the edge's types may appear (RV-BE-11):** no Spring Security, Spring Session or mail (Spring
 Mail, Jakarta Mail, Angus Mail) type in `availability`, `booking`, `payment`, `payout`, `review`,

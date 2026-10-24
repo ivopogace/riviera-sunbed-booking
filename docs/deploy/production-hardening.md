@@ -11,14 +11,16 @@ Related: [ADR-0004](../adr/0004-non-prod-hosting-render-neon-pages.md) (hosting)
 
 ## Actuator endpoints
 
-Only **`/actuator/health`** (public) and **`/actuator/prometheus`** (authenticated) are
-web-exposed. The exposure allowlist is **explicit** — we do not rely on the framework default —
+Only **`/actuator/health`** and **`/actuator/info`** (public) and **`/actuator/prometheus`**
+(authenticated) are web-exposed. The exposure allowlist is **explicit** — we do not rely on the framework default —
 so a dependency that ships its own endpoint cannot silently widen the surface:
 
 ```properties
-management.endpoints.web.exposure.include=health,prometheus
+management.endpoints.web.exposure.include=health,info,prometheus
 management.endpoint.health.show-details=when-authorized
 management.endpoint.health.roles=OPERATOR
+management.info.defaults.enabled=false
+riviera.observability.build-commit=${RENDER_GIT_COMMIT:}
 ```
 
 Consequences, enforced by **two independent layers**:
@@ -26,16 +28,23 @@ Consequences, enforced by **two independent layers**:
 | Endpoint | Anonymous | Authenticated operator | Why |
 |---|---|---|---|
 | `GET /actuator/health` | `200 {"status":"UP"}` (no component details) | `200` **with** `components` (db/diskSpace/…) | Render health check + CD poll need it public; details `when-authorized` only |
+| `GET /actuator/info` | `200 {"commit":"<sha>"}`, nothing else | the same body | The CD poll tells the new build from the old (#1632); see below |
 | `GET /actuator/prometheus` | `401` (security) | `200` scrape body | Metrics scrape (`docs/runbooks/observability.md`); never public |
 | `env`, `beans`, `mappings`, `configprops`, `heapdump`, `threaddump`, `loggers`, `metrics` | `401` (security) | `404` (not exposed) | Leak config / resolved secrets / bean wiring / internals — never reachable |
 
-- **Layer 1 — exposure allowlist:** an endpoint other than `health`/`prometheus` has no HTTP
-  handler → `404` even for an authenticated operator. This is the primary control.
-- **Layer 2 — `SecurityConfig`:** everything but `/actuator/health/**` requires authentication,
-  so an anonymous call to any other actuator path is `401` (never a `200` body).
+- **Layer 1 — exposure allowlist:** an endpoint other than `health`/`info`/`prometheus` has no
+  HTTP handler → `404` even for an authenticated operator. This is the primary control.
+- **Layer 2 — `SecurityConfig`:** everything but `/actuator/health/**` and `GET /actuator/info`
+  requires authentication, so an anonymous call to any other actuator path is `401` (never a
+  `200` body).
 
-The public health body is intentionally unchanged (`{"status":"UP"}`), so the CD post-deploy
-poll in `deploy.yml` (which greps `"status":"UP"`) keeps working.
+**Why a public commit id is acceptable.** `management.info.defaults.enabled=false` turns off every
+auto-configured info contributor (build, git, env, java, os, process, ssl), so the body is
+`BuildCommitInfoContributor`'s alone: the commit id of the running deploy, published only when it
+is a lowercase hex SHA. No branch, author, time, host, dirty flag, version or `info.*` property can
+reach it. The repository is public on GitHub, so a commit id discloses nothing an attacker could
+not already read; it names *which* public commit is live. The CD job needs it without a credential
+([cd-pipeline.md](./cd-pipeline.md#the-live-check)).
 
 Pinned by `platform/src/test/java/ai/riviera/platform/ActuatorHardeningIT.java`.
 

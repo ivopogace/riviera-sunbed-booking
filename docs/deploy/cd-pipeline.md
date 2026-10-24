@@ -17,14 +17,46 @@ There is now **one deploy job**.
 `deploy.yml` triggers on **`workflow_run` of the `CI` workflow** and only proceeds when CI
 concluded **`success` on `main`** — a red build never deploys.
 
-- **`backend-render`** → POSTs the Render deploy hook (Render git-builds `platform/Dockerfile`:
-  the Node stage compiles the SPA, the JDK stage bundles it into the jar), then polls
-  `<BACKEND_API_URL>/actuator/health` until `{"status":"UP"}`.
+- **`backend-render`** → POSTs the Render deploy hook with `ref=<the commit CI judged green>`
+  (Render git-builds `platform/Dockerfile` at that commit: the Node stage compiles the SPA, the
+  JDK stage bundles it into the jar), then waits until that commit is live (below).
+
+### The live check
+
+Render keeps the previous instance serving until the new one passes its health check, so
+`/actuator/health` alone is answered by the **old** build: a deploy whose new instance never boots
+(a Flyway failure, a config guard aborting startup) used to go green on attempt 1 (#1632). So
+`scripts/wait-for-live-commit.mjs` polls every 10 s until **`/actuator/info` names the deployed
+commit and `/actuator/health` is `UP`**, and fails the job after 15 min (the cold-start bound; a
+measured Render deploy takes ~4–5 min). Each attempt logs the commit live at that moment; the
+passing one logs `live commit <sha>, health UP`. A failed run's error names the commit still serving.
+
+- The commit is `head_sha` of the CI run (automatic path) or `main`'s head at dispatch (manual, which
+  the guard allows from `main` only); the hook's `ref=` makes Render build exactly that one.
+- **Only `main`'s current head deploys.** A run whose commit `main` has moved past (a re-run of an
+  older green CI run, or two merges in quick succession) skips with a notice, green, so it never
+  rolls the service back; the newer commit's own CD run deploys it. The trigger step reads `main`'s
+  head just before its POST, so a re-run of the deploy job re-checks too; keep that read inside the
+  deploy job (a separate job's output is reused by "Re-run failed jobs"). On the automatic path a red head, or one CI
+  never ran on (`[skip ci]`, a cancelled run), therefore deploys nothing until a green one follows it.
+- A dispatch from any branch but `main` fails the run, naming the branch.
+- **Rollback** is not a CD path: use Render's dashboard (service → Events → *Rollback*) or merge a
+  revert, whose green CI deploys it.
+- The app publishes Render's runtime `RENDER_GIT_COMMIT` (the deploy's commit SHA) as
+  `{"commit":"<sha>"}` on the public `/actuator/info`, and nothing else
+  ([production-hardening.md](./production-hardening.md#actuator-endpoints)). No secret is needed. A
+  human can read the same URL to see which build is live.
+- **Limit:** re-deploying the commit already live (a manual dispatch, or a CI re-run of `main`'s
+  head) passes on attempt 1, since the old instance names the same SHA; there the check proves only
+  that the commit is still served, not that the re-deploy booted. Check Render's deploy status then.
+- `BACKEND_API_URL` unset now **fails** the job: an unverified deploy is not a green one.
+- Proving it locally: `node --test scripts/wait-for-live-commit.test.mjs` runs the poll against a
+  stub backend (the old commit outlasting the deadline is the red case).
 
 The job is **opt-in via a repository variable** (`DEPLOY_BACKEND_RENDER=true`), so until you
 wire the account below the workflow runs green as a no-op (no red `main`). A **manual**
-`workflow_dispatch` (Actions → CD → *Run workflow*) does an on-demand re-deploy; dispatching
-is itself the opt-in.
+`workflow_dispatch` (Actions → CD → *Run workflow*, on `main`) does an on-demand re-deploy;
+dispatching is itself the opt-in.
 
 ## Required GitHub configuration
 
@@ -35,7 +67,7 @@ Set under **Settings → Secrets and variables → Actions**.
 | Variable | Value | Enables |
 |---|---|---|
 | `DEPLOY_BACKEND_RENDER` | `true` | the Render deploy job |
-| `BACKEND_API_URL` | e.g. `https://riviera-sunbed-booking.onrender.com` | the post-deploy health-check URL (also the app origin) |
+| `BACKEND_API_URL` | e.g. `https://riviera-sunbed-booking.onrender.com` | the post-deploy live check's URL (also the app origin); **required**, unset fails the job |
 
 > The frontend's config is no longer set via GitHub variables — it is baked into the image at
 > build time (see **Render service configuration**). `DEPLOY_FRONTEND_PAGES`, and the
@@ -134,6 +166,9 @@ must include `frontend/`, so:
     on its own, which is why the range is enforced rather than documented. Watch
     `riviera_mail_registry_shed_total` to know whether they need raising:
     [`docs/runbooks/observability.md`](../runbooks/observability.md).
+- **`RENDER_GIT_COMMIT`** is Render's own (the deploy's commit SHA, at runtime): never set or
+  override it on the service, or `/actuator/info` stops naming the real build and the live check
+  fails every deploy.
 - **Health Check Path:** `/actuator/health`.
 - **Instances / scaling: keep at exactly ONE.** Do **not** raise the instance count (Render
   *Scaling*). The in-memory rate-limit buckets and the lockless scheduler sweeps assume a single
@@ -163,6 +198,7 @@ must include `frontend/`, so:
 After wiring, the next green CI on `main` deploys the one service. Verify:
 - `https://<name>.onrender.com/` loads the app, and a deep link (`/operator/1`) doesn't 404;
 - `https://<name>.onrender.com/actuator/health` returns `{"status":"UP"}` (proves Neon + Flyway);
+- `https://<name>.onrender.com/actuator/info` returns `{"commit":"<the deployed sha>"}`;
 - operator sign-in reaches the credential check (the same-origin session cookie works — #110's fix).
 
 ## Post-deploy steps by release
@@ -186,9 +222,10 @@ A release listed here owes one extra step after the old instance has drained.
 
 - **Cold starts:** Render free instances sleep after idle; the first request — now including the
   first SPA load, since the JVM serves it — waits out the wake, and the first Docker build is
-  slower (it now also runs `npm ci` + `ng build`). The health poll waits up to ~15 min.
+  slower (it now also runs `npm ci` + `ng build`). The live check waits up to ~15 min.
 - **Flyway:** versioned migrations under `platform/src/main/resources/db/migration` apply on
-  boot; the health check passing transitively proves Neon connectivity + a clean migration run.
+  boot; the new commit answering with health `UP` transitively proves Neon connectivity + a clean
+  migration run.
 - **DSGVO:** Render/Neon are US-incorporated — fine for dummy data only. EU-sovereign PROD
   hosting is a separate, deferred issue, and per the ADR-0004 amendment it **must** be
   same-origin (a reverse proxy) or same-registrable-domain subdomains or the session cookie
