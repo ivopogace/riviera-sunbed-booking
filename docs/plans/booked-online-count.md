@@ -83,14 +83,14 @@ attendance just to count them.
 
 ## Execution status
 
-**Stage pointer:** implement (phase 1)
+**Stage pointer:** implement (phase 2)
 
-**Next action:** red `console-stats-strip.spec.ts` on the count route.
+**Next action:** CONTEXT.md term, RESPONSIBILITIES.md § booking, daily-view-tab.spec.ts tidy.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — backend count read | ✅ | (this commit) |
-| 1 — strip reads the count | ⏳ | |
-| 2 — docs + spec tidy | | |
+| 0 — backend count read | ✅ | 5ab20774 |
+| 1 — strip reads the count | ✅ | (this commit) |
+| 2 — docs + spec tidy | ⏳ | |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.

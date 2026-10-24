@@ -17,6 +17,15 @@ export interface TakingsView {
 }
 
 /**
+ * The day's "Booked online" count (`GET /api/venues/{id}/bookings/count`): online bookings holding a set,
+ * the rule server-side (CONTEXT.md), so the strip never filters the guest list to count it.
+ */
+export interface BookedOnlineView {
+  readonly date: string;
+  readonly count: number;
+}
+
+/**
  * One set of a beach-map layout write: tier + pool tokens, integer minor-unit price (invariant #5), and
  * 1-based grid coordinates; no row label, as the server labels each row by its grid letter. Reuses the shared {@link Tier}/{@link Pool}/{@link MoneyView} read-contract
  * types so a written layout round-trips unchanged through the public map read.
