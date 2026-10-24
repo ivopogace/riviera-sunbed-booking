@@ -76,12 +76,12 @@ delegation; rationale on the issue). Follow-up for the map read: #1647.
 
 **Stage pointer:** implement (phase 2 waits on #1617)
 
-**Next action:** open the draft PR; on #1617's merge, merge `origin/main` and do phase 2.
+**Next action:** PR #1648 open (draft); on #1617's merge, merge `origin/main` and do phase 2, then ready for review.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — backend | ✅ | |
-| 1 — frontend | ✅ | |
+| 0 — backend | ✅ | b09f1c4 |
+| 1 — frontend | ✅ | e293e0c |
 | 2 — e2e type | | |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
