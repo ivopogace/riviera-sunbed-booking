@@ -115,9 +115,9 @@ export class BeachMapCanvas {
    *  below it (#1532); `capped-labels` (tourist) is capped on both tiers, so its phone rail cannot move. */
   readonly railCodes = input<'letters' | 'labels' | 'capped-labels'>('letters');
   /** Price-rail chip vocabulary, fixing its reserved width in both states: `amounts` (operator)
-   *  reserves nothing beyond the 52px floor — a min–max span may still widen it, by choice;
-   *  `capped-phrases` (tourist) reserves the 92px phone cap. Independent of {@link railCodes}. */
-  readonly priceChips = input<'amounts' | 'capped-phrases'>('amounts');
+   *  keeps the 52px floor, a span may widen it; `capped-spans` (tourist) reserves the 92px phone
+   *  cap, as wide spans exist (€125,000–€999,995 fills 128px). Independent of {@link railCodes}. */
+  readonly priceChips = input<'amounts' | 'capped-spans'>('amounts');
   /** Draw a placeholder grid: rails reserve their columns but state nothing, and every gesture cue
    *  is withheld. Surfaces render skeletons THROUGH the canvas to inherit `--riv-tile` and frame
    *  geometry, so the canvas, not the surface, owns the difference. */

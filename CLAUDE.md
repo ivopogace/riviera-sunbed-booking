@@ -98,8 +98,8 @@ Plus `shared` (closed kernel of edge types like `ApiProblem`, registered in
 `@Modulithic(sharedModules)` so every module may use it, depending on no module; admission by
 ownership, never reuse) and the closed non-context modules with `allowedDependencies = {}`:
 `challenge` (proof of work; writes `challenge_registry`), `audit` (admin audit trail; writes
-`admin_audit_record`) and `monitoring` (correlation id, metric names, money-path alert check; writes
-nothing). Also closed and non-context, but adapter layers depending on the surfaces they need: `auth`
+`admin_audit_record`) and `monitoring` (correlation id, metric names, money-path alert check, the
+build's commit on `/actuator/info`; writes nothing). Also closed and non-context, but adapter layers depending on the surfaces they need: `auth`
 (sign-in and sessions: the `UserDetailsService`s, session establishment, credential stamp and revocation,
 SSO, password policy, recovery, the login, self-service, admin-lifecycle and erasure controllers; writes nothing) and `web` (the
 HTTP boundary: `SecurityConfig`'s chains and route policy, the chain's filters, CORS, `ApiErrorHandler`
@@ -126,8 +126,9 @@ operator or a customer principal; login and session machinery in `auth`, never i
 customer account and guest row never linked; auth endpoints non-enumerating and constant-time; mocks
 profile-guarded out of prod; revocation orchestrated by `auth`, synchronous; account creation, password recovery
 and booking/stay create fenced by `challenge`'s proof-of-work against a single-use registry; every
-mutating `/api/admin/**` action audited by `web`'s fence; map tiles self-hosted under `/map/**`, no
-third-party map host.
+mutating `/api/admin/**` action audited by `web`'s fence; the anonymous actuator surface is `health`
+and `GET /actuator/info`'s commit id alone; map tiles self-hosted under `/map/**`, no third-party map
+host.
 
 ## Cross-cutting invariants
 
