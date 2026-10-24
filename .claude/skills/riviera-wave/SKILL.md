@@ -80,10 +80,14 @@ Never route around a refusal: ask the owner in the reply text.
 - the review gate (pr-gates §1) ran at the right effort, its findings resolved, and a behaviour
   fix made after it re-reviewed, with no exception: `riviera-sdlc` draws the line (a fix that
   changes behaviour re-enters at Implement; a comment, naming or test-only fix needs only green
-  CI), and the wave does not redraw it. Each round's `### Code review` comment proves it ran; the
-  effort, the skill per round and the overlay items checked are read from the PR body's
-  review-gate line and the child's `READY TO MERGE`, and a child whose body omits them is sent
-  back to fill them in;
+  CI), and the wave does not redraw it. Each round's `### Code review` comment (a trivial
+  decline's quoted verdict) proves it ran; the effort, the skill per round and the overlay items
+  checked are read from the PR body's review-gate line and the child's `READY TO MERGE`, and a
+  child whose body omits them is sent back to fill them in;
+- optionally, when the review-gate line says the plugin got past step 4 in round 1, that it ran
+  step 5 (pr-gates §1): `list_events` on the child session with `kinds: ["assistant"]` over the
+  review turn shows one Haiku scorer `Agent` call per step-4 finding; a missing one sends the
+  child back;
 - the plan doc is gone from the head (pr-gates §3 item 4): a squash merge would land it on `main`;
 - the PR template is whole. A child that skipped Gates or Contribution terms gets them filled
   from what was verified; tick Contribution terms only on the owner's instruction. Ask once per

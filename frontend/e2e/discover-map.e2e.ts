@@ -5,7 +5,7 @@ import { settle } from './support/booking-dialog';
 import { hitTestId } from './support/hit-test';
 import { mockMapResources, recordOffOriginRequests } from './support/map-resources';
 import { expectTouchManipulation } from './support/mobile-zoom';
-import { MockPhotoView } from './support/photo-views';
+import type { MockBeachCode, MockRegionCode, MockVenueSummary } from './support/venue-views';
 import { expectTouchTargets } from './support/touch-targets';
 
 /**
@@ -29,7 +29,7 @@ const COVER_URL = '/api/venues/1/photos/aa01';
  * it stays in the list and draws no pin, so "one pin per PINNED venue" is asserted against a list
  * that actually contains a counter-example.
  */
-const VENUES = [
+const VENUES: readonly MockVenueSummary[] = [
   {
     id: 1,
     name: 'Miramar Beach Club',
@@ -80,7 +80,7 @@ const VENUES = [
  * view Ksamil is a crowd of two and Dhërmi a crowd of three; the pair separates around zoom 15,
  * the trio never does inside the map's own fence — the maintainer's report.
  */
-const CROWDED_VENUES = [
+const CROWDED_VENUES: readonly MockVenueSummary[] = [
   ...VENUES,
   {
     id: 4,
@@ -155,29 +155,6 @@ function countVenueRequests(page: Page): () => number {
   return () => seen;
 }
 
-/**
- * The wire shape of one `GET /api/venues` row (`VenueSummary`), so a fixture missing or misnaming a
- * field fails the e2e typecheck. Codes are plain strings, so a wrong code value is not caught; the
- * optional members are the ones a fixture may leave out.
- */
-interface MockVenueSummary {
-  readonly id: number;
-  readonly name: string;
-  readonly beach: string;
-  readonly region: string;
-  readonly ratingTenths: number;
-  readonly reviewsCount: number;
-  readonly bookingMode: string;
-  readonly fromPrice: { readonly minorUnits: number; readonly currency: string } | null;
-  readonly amenities?: readonly string[];
-  readonly availability: { readonly free: number; readonly total: number };
-  readonly sellsOnline?: boolean;
-  readonly salesOpen?: boolean;
-  readonly location?: { readonly latitude: number; readonly longitude: number } | null;
-  readonly coverPhoto?: { readonly card: MockPhotoView; readonly banner: MockPhotoView } | null;
-  readonly photos?: readonly MockPhotoView[];
-}
-
 async function mockVenues(
   page: Page,
   delayMs = 0,
@@ -205,7 +182,7 @@ async function mockVenues(
  * The unpinned one is the point of the third row — it stays in the list and draws no pin, so "one
  * pin per PINNED venue" is asserted against a list that actually contains a counter-example.
  */
-const SHEET_VENUES = [
+const SHEET_VENUES: readonly MockVenueSummary[] = [
   {
     ...VENUES[0],
     beach: 'PALASE',
@@ -491,7 +468,7 @@ function disjoint(
  * the camera is on it, and a Dhërmi trio ~20 m apart that never separates inside the map's own
  * fence. Same two behaviours as the retired whole-coast fixture, moved into one region.
  */
-const CROWDED_REGION = [
+const CROWDED_REGION: readonly MockVenueSummary[] = [
   CROWDED_VENUES[1],
   CROWDED_VENUES[4],
   CROWDED_VENUES[5],
@@ -823,8 +800,8 @@ const MAP_VENUES = [
 function mapVenue(
   id: number,
   name: string,
-  beach: string,
-  region: string,
+  beach: MockBeachCode,
+  region: MockRegionCode,
   latitude: number,
   longitude: number,
   minorUnits: number,
