@@ -63,9 +63,9 @@
           >{{ price }}</span
         >
       } @else {
-        <span data-testid="row-price" class="row-price shrink-0 text-[13px] text-riv-ink-soft"
-          >No sets yet</span
-        >
+        <span data-testid="row-price" class="row-price shrink-0 text-[13px] text-riv-ink-soft">{{
+          card().unpricedLabel
+        }}</span>
       }
     </span>
 

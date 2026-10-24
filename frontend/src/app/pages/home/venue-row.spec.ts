@@ -104,6 +104,18 @@ describe('VenueRow', () => {
     expect(byTestId(host, 'row-closed')).toBeNull();
   });
 
+  it('says walk-in only, never a price, for a venue that sells nothing online (#1628)', () => {
+    const walkIn = venueCard({
+      ...PALASA,
+      priceLabel: null,
+      fromPrice: null,
+      sellsOnline: false,
+      unpricedLabel: 'Walk-in only',
+    });
+
+    expect(text(byTestId(render(walkIn), 'row-price'))).toBe('Walk-in only');
+  });
+
   it('leaves the water off the facts line when the venue has no distance', () => {
     expect(parts(byTestId(render(venueCard({ id: 1, name: 'Aurora' })), 'row-facts'))).toBe(
       '4.8 · 326 reviews',

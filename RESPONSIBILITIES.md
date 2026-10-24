@@ -86,6 +86,11 @@ close, the maximum stay, the season closure, and the commission rate over time. 
 - **The pool is a sales-channel attribute, not a physical one**, and invariant #3 is reserve-time:
   a set switched to walk-in stops new online reserves for every date, its booked dates stay claimed
   (a staff mark on one is still refused), and the staff daily view still lists the online booking.
+- **The discovery list's `fromPrice` is the cheapest ONLINE-pool set, `null` without one** (#1628):
+  a "from" price is an offer, so it must be bookable through the channel showing it (invariant #3).
+  A walk-in-only venue stays listed, priced nowhere on Discover ("Walk-in only"). Its
+  `availability` free/total stays both pools (a coarse busy-ness signal); the map read's
+  `fromPrice` is still pool-agnostic (#1647).
 - **"Live" is one predicate, `LiveClaims`, for every write guard and the owner's read.** A set is
   pinned by a hold dated today or later (`Europe/Tirane`) or a booking `booking` says can still be
   honoured (`BookingPresence#hasLiveBookings`); `venue` never enumerates booking statuses. A past

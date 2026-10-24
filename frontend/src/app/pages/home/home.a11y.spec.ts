@@ -31,6 +31,7 @@ function venues(): VenueSummary[] {
       reviewsCount: 326,
       bookingMode: 'INSTANT',
       fromPrice: { minorUnits: 2500, currency: 'EUR' },
+      sellsOnline: true,
       availability: { free: 18, total: 24 },
     },
     {
@@ -42,6 +43,7 @@ function venues(): VenueSummary[] {
       reviewsCount: 88,
       bookingMode: 'REQUEST',
       fromPrice: { minorUnits: 3000, currency: 'EUR' },
+      sellsOnline: true,
       availability: { free: 5, total: 10 },
     },
   ];

@@ -32,8 +32,10 @@ export interface VenueCard {
   readonly water: string | null;
   readonly amenities: readonly { readonly code: Amenity; readonly label: string }[];
   readonly freePercent: number;
-  /** The "from €X / set" price string, or `null` when the venue has no sets ("No sets yet"). */
+  /** The "from €X / set" price string, or `null` when no online-pool set prices it (invariant #3). */
   readonly priceLabel: string | null;
+  /** What stands in the price's place when `priceLabel` is `null`: "No sets yet" or "Walk-in only". */
+  readonly unpricedLabel: string;
   /** The same from-price in integer minor units, for anything that compares prices (invariant #5). */
   readonly fromPrice: MoneyView | null;
   readonly free: number;
