@@ -22,6 +22,10 @@ export const DEFAULT_INTERVAL_SECONDS = 10;
 const REQUEST_TIMEOUT_MS = 10_000;
 
 const FULL_SHA = /^[0-9a-f]{40}$/;
+const COMMIT_ID = /^[0-9a-f]{7,64}$/;
+
+/** How much of a response body a log line quotes. */
+const NOTE_LIMIT = 200;
 
 /**
  * One probe: the live commit (null when info is unreadable or has none) and whether health reads UP.
@@ -33,7 +37,9 @@ const FULL_SHA = /^[0-9a-f]{40}$/;
 export async function probe(baseUrl, fetchImpl = fetch) {
   const info = await readJson(`${baseUrl}/actuator/info`, fetchImpl);
   const health = await readJson(`${baseUrl}/actuator/health`, fetchImpl);
-  const commit = typeof info.body?.commit === 'string' ? info.body.commit : null;
+  // The body is the backend's to write, and the log is the runner's: only a commit id reaches it unquoted.
+  const reported = info.body?.commit;
+  const commit = typeof reported === 'string' && COMMIT_ID.test(reported) ? reported : null;
   const up = health.body?.status === 'UP';
   return { commit, up, note: `info: ${info.note}; health: ${health.note}` };
 }
@@ -43,10 +49,15 @@ async function readJson(url, fetchImpl) {
     const response = await fetchImpl(url, { signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS) });
     const text = await response.text();
     if (!response.ok) return { body: null, note: `HTTP ${response.status}` };
-    return { body: JSON.parse(text), note: text.trim() };
+    return { body: JSON.parse(text), note: quoted(text) };
   } catch (error) {
-    return { body: null, note: `unreachable (${error.message})` };
+    return { body: null, note: `unreachable (${quoted(error.message)})` };
   }
+}
+
+/** A single-line, bounded, JSON-escaped quote, so no response text can start an Actions `::command::` line. */
+function quoted(text) {
+  return JSON.stringify(String(text).trim().slice(0, NOTE_LIMIT));
 }
 
 /**
@@ -92,7 +103,8 @@ export async function waitForLiveCommit({
  * @returns {Promise<number>}
  */
 export async function main(env, { fetchImpl = fetch, log = console.log } = {}) {
-  const baseUrl = (env.BACKEND_API_URL ?? '').trim().replace(/\/+$/, '');
+  let baseUrl = (env.BACKEND_API_URL ?? '').trim();
+  while (baseUrl.endsWith('/')) baseUrl = baseUrl.slice(0, -1);
   const expected = (env.EXPECTED_SHA ?? '').trim();
   if (!baseUrl) {
     log('::error::BACKEND_API_URL is not set, so the deploy cannot be verified live.');

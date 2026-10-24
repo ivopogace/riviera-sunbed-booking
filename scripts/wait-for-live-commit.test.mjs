@@ -187,3 +187,32 @@ for (const [name, env, message] of [
     assert.match(lines.join('\n'), message);
   });
 }
+
+test('a response body never writes its own line into the Actions log', async () => {
+  const backend = await stubBackend((path) =>
+    path === '/actuator/info'
+      ? { body: { commit: `${OLD}\n::error::forged`, note: '\n::warning::forged' } }
+      : { body: '{"status":"DOWN"}\n::add-mask::x' },
+  );
+  const lines = [];
+  try {
+    const result = await waitForLiveCommit({
+      baseUrl: backend.baseUrl,
+      expected: NEW,
+      deadlineMs: 20,
+      intervalMs: 5,
+      log: (line) => lines.push(line),
+    });
+    assert.equal(
+      result.commit,
+      null,
+      'a commit field that is not a bare commit id is not read as one',
+    );
+    for (const line of lines) {
+      assert.ok(!line.includes('\n'), line);
+      assert.match(line, /^attempt \d+: live commit unknown, /);
+    }
+  } finally {
+    await backend.close();
+  }
+});
