@@ -190,7 +190,8 @@ jobs:
 
       - name: Install Playwright Chromium
         # A hit touches no network but the cache: the browsers are in place and the .debs install
-        # offline. A miss downloads the browsers from Playwright's CDN and the .debs from apt once.
+        # offline. A miss downloads the browsers from Playwright's CDN and the .debs from apt once. The
+        # fallback alone goes to apt on every run, hit or not.
         if: steps.restore.outputs.cache-hit != 'true'
         timeout-minutes: 6
         env:
