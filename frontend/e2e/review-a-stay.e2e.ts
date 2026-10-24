@@ -2,6 +2,7 @@ import { expect, test } from '@playwright/test';
 
 import { expectNoSeriousAxeViolations } from './support/axe';
 import { settle } from './support/booking-dialog';
+import type { MockVenueMapView, MockVenueSummary } from './support/venue-views';
 
 /**
  * Real-render a11y + behaviour audit of the rate-a-stay journey: a checked-in guest opens their
@@ -18,7 +19,7 @@ import { settle } from './support/booking-dialog';
 const CODE = 'RVWE234567';
 
 /** The venue before any review lands — 0/0, which the shared rating helper renders as "New". */
-const UNRATED_VENUE = {
+const UNRATED_VENUE: MockVenueMapView & MockVenueSummary = {
   id: 1,
   name: 'Miramar Beach Club',
   beach: 'KSAMIL',
@@ -28,6 +29,8 @@ const UNRATED_VENUE = {
   reviewsCount: 0,
   bookingMode: 'INSTANT',
   fromPrice: { minorUnits: 2500, currency: 'EUR' },
+  availability: { free: 1, total: 1 },
+  sellsOnline: true,
   sets: [
     {
       id: 2,

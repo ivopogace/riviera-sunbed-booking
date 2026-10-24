@@ -4,6 +4,7 @@ import { mockChallengeFence } from './support/auth-mocks';
 import { completeDialog } from './support/booking-dialog';
 import { hitTestId } from './support/hit-test';
 import { awaitRoutedPage, openShellOverlay, openThemePicker } from './support/shell';
+import type { MockVenueMapView, MockVenueSummary } from './support/venue-views';
 
 /**
  * The phone bottom tab bar's rendered-only rules: below `sm` the top bar scrolls away and
@@ -16,7 +17,7 @@ import { awaitRoutedPage, openShellOverlay, openThemePicker } from './support/sh
  * the spec is CI-safe like its siblings.
  */
 
-const VENUE = {
+const VENUE: MockVenueMapView & MockVenueSummary = {
   id: 1,
   name: 'Miramar Beach Club',
   beach: 'KSAMIL',
@@ -29,6 +30,7 @@ const VENUE = {
   amenities: ['SHOWERS'],
   distanceToWaterM: 15,
   availability: { free: 4, total: 6 },
+  sellsOnline: true,
   coverPhoto: null,
   photos: [],
   sets: Array.from({ length: 6 }, (_, i) => ({

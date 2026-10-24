@@ -2,6 +2,7 @@ import { expect, type Page, test } from '@playwright/test';
 
 import { expectNoSeriousAxeViolations } from './support/axe';
 import { settle } from './support/booking-dialog';
+import type { MockSetView, MockVenueMapView } from './support/venue-views';
 
 /**
  * Real-render audit of the availability calendar (#761) — the custom date picker that replaced the
@@ -17,8 +18,8 @@ import { settle } from './support/booking-dialog';
 
 const VENUE_ID = 4;
 
-function venue(setCount = 12) {
-  const sets = Array.from({ length: setCount }, (_unused, index) => ({
+function venue(setCount = 12): MockVenueMapView {
+  const sets = Array.from({ length: setCount }, (_unused, index): MockSetView => ({
     id: index + 1,
     rowLabel: 'Row 1',
     positionNo: index + 1,
