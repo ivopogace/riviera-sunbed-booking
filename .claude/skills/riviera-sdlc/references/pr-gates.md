@@ -17,10 +17,12 @@ fan-out is pre-authorized for this gate.
 
 **Which skill runs which round.** The plugin's step 1 stops without reviewing when the PR is a
 draft, looks trivial or already carries a code review from this account, and a run that stops
-there is not a round. So the plugin runs once, for round 1, after the PR leaves draft; every later
-round (the re-review after a fix), and a round 1 it declines or cannot complete, runs the built-in
-`Skill("code-review")` without `--comment` on the PR number, with the overlay, at the slice's
-**Effort** (below).
+there is not a round, with one exception: when step 1 declines a small diff as trivial, that
+decline is the round. Quote its verdict in the review-gate line; it needs no fallback and no
+`### Code review` comment. So the plugin runs once, for round 1, after the PR leaves draft; every
+later round (the re-review after a fix), and a round 1 it declines on any other ground (draft, an
+earlier review) or cannot complete, runs the built-in `Skill("code-review")` without `--comment`
+on the PR number, with the overlay, at the slice's **Effort** (below).
 
 **Round 1 runs every plugin step, each as the plugin defines it** (its
 `commands/code-review.md`): step 1 a Haiku eligibility agent, step 2 a Haiku agent for the

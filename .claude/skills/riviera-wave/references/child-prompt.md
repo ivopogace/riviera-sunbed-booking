@@ -25,9 +25,11 @@ issue needs from a sibling, and what to do until that sibling merges>
   CLAUDE.md-paths and summary agents; five Sonnet reviewers; one Haiku scorer per finding; the
   80 cutoff; the Haiku recheck). Never run steps inline, never self-judge the cutoff, and post
   no `### Code review` comment before the plugin round: a hand-written comment makes the plugin
-  decline; a round 1 it declines runs the built-in fallback (pr-gates §1). The PR body's
-  review-gate line names the effort, the skill that ran each round and the overlay items checked,
-  so the orchestrator can verify them; each round's `### Code review` comment proves it ran.
+  decline. A step-1 decline of a small diff as trivial is the round (quote its verdict in the
+  review-gate line); a decline on any other ground runs the built-in fallback (pr-gates §1). The
+  PR body's review-gate line names the effort, the skill that ran each round and the overlay
+  items checked, so the orchestrator can verify them; each round's `### Code review` comment (a
+  trivial decline's quoted verdict) proves it ran.
 - A behaviour fix after the review gate re-enters Implement and gets its own re-review posted on
   the PR before `READY TO MERGE`, scoped to what the fix changed, at the same effort. The line is
   `riviera-sdlc`'s: a comment, naming or test-only fix needs only green CI; anything else that
