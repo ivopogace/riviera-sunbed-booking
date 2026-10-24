@@ -30,6 +30,7 @@ function card(
     fromPrice: null,
     free: 0,
     total: 0,
+    sellsOnline: false,
     salesClosed: false,
     closedForSeason: false,
     reopensOn: null,
