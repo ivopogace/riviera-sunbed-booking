@@ -1,10 +1,12 @@
 import { provideHttpClient } from '@angular/common/http';
 import { provideHttpClientTesting } from '@angular/common/http/testing';
+import { signal } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { ActivatedRoute, convertToParamMap, provideRouter } from '@angular/router';
 import { of } from 'rxjs';
 
 import { expectNoAxeViolations } from '../../testing/axe';
+import { OperatorAuth } from '../core/operator-auth';
 import { OwnedVenues, OwnedVenuesResult } from '../core/owned-venues';
 import { OperatorHome } from './operator-home';
 
@@ -26,6 +28,14 @@ describe('OperatorHome a11y (#277/#278)', () => {
         // The create card (zero state) injects HTTP-backed services.
         provideHttpClient(),
         provideHttpClientTesting(),
+        {
+          provide: OperatorAuth,
+          useValue: {
+            signedIn: signal(true),
+            pendingApproval: signal(false),
+            sessionLost: () => undefined,
+          },
+        },
         { provide: OwnedVenues, useValue: { load: () => Promise.resolve(owned) } },
         {
           provide: ActivatedRoute,
