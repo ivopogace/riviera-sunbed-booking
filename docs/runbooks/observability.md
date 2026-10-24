@@ -31,9 +31,10 @@ metric-native alerting later.
 ## Prometheus metrics
 
 - Exposed at **`/actuator/prometheus`**, **authenticated** (an operator session; anonymous → 401). The
-  #75 actuator lockdown is preserved — `/actuator/health` remains the only anonymous actuator surface,
-  and `/actuator/metrics` stays off the exposure allowlist.
-- Enabled by `management.endpoints.web.exposure.include=health,prometheus` +
+  #75 actuator lockdown is preserved — the anonymous actuator surfaces are `/actuator/health` and
+  `GET /actuator/info` (the build's commit id alone, #1632), and `/actuator/metrics` stays off the
+  exposure allowlist.
+- Enabled by `management.endpoints.web.exposure.include=health,info,prometheus` +
   `management.prometheus.metrics.export.enabled=true` (Boot 4 gates a named registry's export behind an
   explicit enable).
 

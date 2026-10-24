@@ -37,6 +37,9 @@ passing one logs `live commit <sha>, health UP`. A failed run's error names the 
   `{"commit":"<sha>"}` on the public `/actuator/info`, and nothing else
   ([production-hardening.md](./production-hardening.md#actuator-endpoints)). No secret is needed. A
   human can read the same URL to see which build is live.
+- **Limit:** a manual dispatch of the commit already live passes on attempt 1, since the old instance
+  names the same SHA; there the check proves only that the commit is still served, not that the
+  re-deploy booted. Check Render's deploy status for that run.
 - `BACKEND_API_URL` unset now **fails** the job: an unverified deploy is not a green one.
 - Proving it locally: `node --test scripts/wait-for-live-commit.test.mjs` runs the poll against a
   stub backend (the old commit outlasting the deadline is the red case).

@@ -14,6 +14,7 @@ import jakarta.servlet.http.Cookie;
 
 import static org.hamcrest.Matchers.aMapWithSize;
 import static org.hamcrest.Matchers.containsString;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
@@ -118,8 +119,8 @@ class ActuatorHardeningIT {
 
 	@Test
 	void infoOpensOnlyItsGet() throws Exception {
-		// The permitAll is GET-only: an anonymous write never reaches an endpoint.
-		mvc.perform(post("/actuator/info")).andExpect(status().is4xxClientError());
+		// With a valid CSRF token, an all-methods permitAll would reach the read-only endpoint (405), not the gate.
+		mvc.perform(post("/actuator/info").with(csrf())).andExpect(status().isUnauthorized());
 		mvc.perform(get("/actuator/info/anything")).andExpect(status().isUnauthorized());
 	}
 
