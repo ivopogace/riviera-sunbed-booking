@@ -2,7 +2,6 @@ import { expect, test, type Page } from '@playwright/test';
 
 import { mockChallengeFence } from './support/auth-mocks';
 import { completeDialog } from './support/booking-dialog';
-import type { MockVenueMapView } from './support/venue-views';
 
 /**
  * The three fixed-fill state skins paint from the token registry, asserted against a real render
@@ -92,7 +91,7 @@ const RGB = {
   stepIdleFill: 'rgb(44, 119, 137)',
 } as const;
 
-const VENUE: MockVenueMapView = {
+const VENUE = {
   id: 1,
   name: 'Miramar Beach Club',
   beach: 'KSAMIL',
@@ -120,7 +119,7 @@ const VENUE: MockVenueMapView = {
 };
 
 /** The REQUEST-mode twin — its `202 PENDING_REQUEST` lands on the waiting medallion. */
-const REQUEST_VENUE: MockVenueMapView = { ...VENUE, bookingMode: 'REQUEST' };
+const REQUEST_VENUE = { ...VENUE, bookingMode: 'REQUEST' };
 
 const PENDING_REQUEST = {
   code: 'WXYZ345678',

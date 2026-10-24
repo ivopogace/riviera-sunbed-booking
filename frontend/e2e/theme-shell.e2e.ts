@@ -13,7 +13,6 @@ import {
   openShellOverlay,
   openThemePicker,
 } from './support/shell';
-import type { MockVenueSummary } from './support/venue-views';
 
 /**
  * Real-render e2e for the Liquid Glass shell: theme switching + persistence,
@@ -22,7 +21,7 @@ import type { MockVenueSummary } from './support/venue-views';
  * audit). The discovery API is mocked (`page.route`), so the spec is CI-safe like its siblings.
  */
 
-const VENUES: readonly MockVenueSummary[] = [
+const VENUES = [
   {
     id: 1,
     name: 'Miramar Beach Club',
@@ -33,7 +32,6 @@ const VENUES: readonly MockVenueSummary[] = [
     bookingMode: 'INSTANT',
     fromPrice: { minorUnits: 2500, currency: 'EUR' },
     availability: { free: 18, total: 24 },
-    sellsOnline: true,
   },
 ];
 

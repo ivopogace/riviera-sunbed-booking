@@ -1,5 +1,4 @@
 import { expect, test, type Page } from '@playwright/test';
-import type { MockVenueMapView, MockVenueSummary } from './support/venue-views';
 
 /**
  * The three suns paint from one `--riv-sun-grad`, proved where the cascade decides rather than
@@ -13,7 +12,7 @@ import type { MockVenueMapView, MockVenueSummary } from './support/venue-views';
 /** Both venues photo-less, so the card empty state renders; the map read is photo-less too. */
 const NO_PHOTOS = { coverPhoto: null, photos: [] };
 
-const VENUES: readonly MockVenueSummary[] = [
+const VENUES = [
   {
     id: 1,
     name: 'Miramar Beach Club',
@@ -26,12 +25,11 @@ const VENUES: readonly MockVenueSummary[] = [
     amenities: [],
     distanceToWaterM: 15,
     availability: { free: 18, total: 24 },
-    sellsOnline: true,
     ...NO_PHOTOS,
   },
 ];
 
-const VENUE_MAP: MockVenueMapView = {
+const VENUE_MAP = {
   id: 1,
   name: 'Miramar Beach Club',
   beach: 'KSAMIL',

@@ -1,5 +1,4 @@
 import { expect, Page, test } from '@playwright/test';
-import type { MockBeachCode, MockVenueSummary } from './support/venue-views';
 
 /**
  * The panel-surface token pair, asserted against a real render in the theme that is the
@@ -32,7 +31,7 @@ const ON_DHERMI = { latitude: 40.15, longitude: 19.64 };
 const PHONE = { width: 390, height: 844 };
 const WIDE = { width: 1280, height: 900 };
 
-const VENUES: readonly MockVenueSummary[] = [
+const VENUES = [
   venue(1, 'Aurora Bay', 'DHERMI', 40.1573, 19.6401, 3000),
   venue(2, 'Jalë Loungers', 'JALE', 40.117, 19.7, 2200),
 ];
@@ -40,11 +39,11 @@ const VENUES: readonly MockVenueSummary[] = [
 function venue(
   id: number,
   name: string,
-  beach: MockBeachCode,
+  beach: string,
   latitude: number,
   longitude: number,
   minorUnits: number,
-): MockVenueSummary {
+): Record<string, unknown> {
   return {
     id,
     name,
@@ -56,7 +55,6 @@ function venue(
     amenities: ['BEACH_BAR'],
     fromPrice: { minorUnits, currency: 'EUR' },
     availability: { free: 11, total: 26 },
-    sellsOnline: true,
     salesOpen: true,
     location: { latitude, longitude },
   };

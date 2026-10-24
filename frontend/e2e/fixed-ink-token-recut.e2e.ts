@@ -2,7 +2,6 @@ import { expect, test, type Page } from '@playwright/test';
 
 import { settle } from './support/booking-dialog';
 import { mockWholeConsole, signInAsOperator } from './support/operator-console.mocks';
-import type { MockSetView, MockVenueMapView } from './support/venue-views';
 
 /**
  * Real-render proof for the fixed-ink families, and for the availability calendar that left them.
@@ -135,8 +134,8 @@ async function forceTheme(page: Page, theme: (typeof THEMES)[number]): Promise<v
   await page.addInitScript((value) => localStorage.setItem('riviera-theme', value), theme);
 }
 
-function venue(): MockVenueMapView {
-  const sets = Array.from({ length: 6 }, (_unused, index): MockSetView => ({
+function venue() {
+  const sets = Array.from({ length: 6 }, (_unused, index) => ({
     id: index + 1,
     rowLabel: 'Row 1',
     positionNo: index + 1,
