@@ -128,6 +128,7 @@ class RangeBookingIT {
 		LocalDate first = firstDay();
 		BookingOutcome.Confirmed booked = assertInstanceOf(BookingOutcome.Confirmed.class,
 				createBooking.create(stay(set, first, 3)));
+		StayFixtures.awaitAccruals(jdbc, venues.getLast(), 1L);
 
 		CancelOutcome cancelled = cancelBooking.cancel(booked.confirmation().code());
 
