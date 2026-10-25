@@ -1,10 +1,12 @@
 package ai.riviera.platform.notification;
 
+import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
 
+import org.awaitility.Awaitility;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.transaction.PlatformTransactionManager;
@@ -122,6 +124,26 @@ public final class BookingMailFixtures {
 				.param("cust", customerId).param("date", date).param("amount", amountMinor)
 				.param("status", status)
 				.query(Long.class).single();
+	}
+
+	/** The accrual the booking's confirm would have posted, which a refund's payout reversal mirrors (#9). */
+	public void accrue(long venueId, long bookingId, long amountMinor) {
+		jdbc.sql("""
+				INSERT INTO payout_ledger_entry (venue_id, booking_id, entry_type, gross_minor, commission_minor,
+				                                 net_minor, currency)
+				VALUES (:venue, :booking, 'ACCRUAL', :gross, 0, :gross, 'EUR')
+				""").param("venue", venueId).param("booking", bookingId).param("gross", amountMinor).update();
+	}
+
+	/**
+	 * Waits for the accrual the real confirm path posts before a test refunds the booking: a reversal that overtakes
+	 * it defers, leaving its publication {@code FAILED} for the rest of the JVM ({@code booking}'s
+	 * {@code StayFixtures.awaitAccrual} is the twin).
+	 */
+	public void awaitAccrual(BookingId bookingId) {
+		Awaitility.await().atMost(Duration.ofSeconds(10)).until(() -> jdbc.sql(
+				"SELECT count(*) FROM payout_ledger_entry WHERE entry_type = 'ACCRUAL' AND booking_id = :b")
+				.param("b", bookingId.value()).query(Long.class).single() == 1L);
 	}
 
 	/** Publish inside a transaction so the AFTER_COMMIT registry-backed listeners are triggered. */

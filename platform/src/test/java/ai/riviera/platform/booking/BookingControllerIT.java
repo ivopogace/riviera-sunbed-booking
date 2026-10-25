@@ -397,9 +397,16 @@ class BookingControllerIT {
 		return JsonPath.read(response, "$.code");
 	}
 
+	/** {@link StayFixtures#awaitAccrual} for a booking the HTTP create confirmed, before a refunded cancel. */
+	private void awaitAccrualOf(String code) {
+		StayFixtures.awaitAccrual(jdbc, jdbc.sql("SELECT id FROM booking WHERE code = :code").param("code", code)
+				.query(Long.class).single());
+	}
+
 	@Test
 	void cancelConfirmedReturns200WithRefund() throws Exception {
 		String code = createAndGetCode(onlineSet(), bookable().plusDays(5));
+		awaitAccrualOf(code);
 
 		mvc.perform(post("/api/bookings/{code}/cancel", code))
 				.andExpect(status().isOk())
@@ -422,6 +429,7 @@ class BookingControllerIT {
 	@Test
 	void cancelAlreadyCancelledReturns409() throws Exception {
 		String code = createAndGetCode(onlineSet(), bookable().plusDays(6));
+		awaitAccrualOf(code);
 		mvc.perform(post("/api/bookings/{code}/cancel", code)).andExpect(status().isOk());
 
 		mvc.perform(post("/api/bookings/{code}/cancel", code))
