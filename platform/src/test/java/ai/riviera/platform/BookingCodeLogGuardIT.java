@@ -190,6 +190,10 @@ class BookingCodeLogGuardIT {
 		return id;
 	}
 
+	/**
+	 * A booking in {@code status}; one a confirm reached carries the accrual its confirm posted, which a refund's
+	 * payout reversal mirrors (#9).
+	 */
 	private String booking(String status, LocalDate date, Instant completedAt) {
 		String code = newCode();
 		long set = jdbc.sql("""
@@ -200,17 +204,25 @@ class BookingCodeLogGuardIT {
 		long customer = jdbc.sql("INSERT INTO customer (email, full_name, phone) "
 						+ "VALUES (:e, 'Guest', '+355600') RETURNING id")
 				.param("e", code.toLowerCase() + "@example.test").query(Long.class).single();
-		jdbc.sql("""
+		long id = jdbc.sql("""
 				INSERT INTO booking (code, venue_id, set_id, customer_id, booking_date, amount_minor,
 				                     amount_currency, status, confirmed_at, completed_at, request_expires_at)
 				VALUES (:code, :v, :s, :c, :date, 4500, 'EUR', :status,
 				        CASE WHEN :status = 'PENDING_REQUEST' THEN NULL ELSE now() END, :completed,
 				        CASE WHEN :status = 'PENDING_REQUEST' THEN now() + interval '1 hour' END)
+				RETURNING id
 				""")
 				.param("code", code).param("v", venue).param("s", set).param("c", customer)
 				.param("date", date).param("status", status)
 				.param("completed", completedAt == null ? null : Timestamp.from(completedAt))
-				.update();
+				.query(Long.class).single();
+		if (!"PENDING_REQUEST".equals(status)) {
+			jdbc.sql("""
+					INSERT INTO payout_ledger_entry (venue_id, booking_id, entry_type, gross_minor, commission_minor,
+					                                 net_minor, currency)
+					VALUES (:v, :b, 'ACCRUAL', 4500, 0, 4500, 'EUR')
+					""").param("v", venue).param("b", id).update();
+		}
 		return code;
 	}
 
