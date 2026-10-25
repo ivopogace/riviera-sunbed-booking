@@ -191,6 +191,16 @@ final class StayFixtures {
 	}
 
 	/**
+	 * {@link #awaitAccruals} for one booking on a shared seeded venue, whose venue-wide accrual count other classes'
+	 * bookings also feed.
+	 */
+	static void awaitAccrual(JdbcClient jdbc, long bookingId) {
+		org.awaitility.Awaitility.await().atMost(java.time.Duration.ofSeconds(10))
+				.until(() -> jdbc.sql("SELECT count(*) FROM payout_ledger_entry WHERE entry_type = 'ACCRUAL' "
+						+ "AND booking_id = :b").param("b", bookingId).query(Long.class).single() == 1L);
+	}
+
+	/**
 	 * Waits until {@link #pendingPublicationsOf} this venue is zero, so the async listeners (payout, mail) have
 	 * written, then deletes in dependency order.
 	 */
