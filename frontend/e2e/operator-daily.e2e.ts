@@ -8,7 +8,11 @@ import {
   expectConsoleTheme,
   expectInsetFill,
 } from './support/console-theme';
-import type { MockVenueMapView } from './support/venue-views';
+import type {
+  MockSalesCloseTime,
+  MockVenueMapView,
+  MockVenueProfileView,
+} from './support/venue-views';
 
 /**
  * Real-render CI-safe e2e for the Daily view tab. Drives sign-in → open the Daily view tab
@@ -85,7 +89,7 @@ async function mockDaily(page: Page): Promise<{ patches: import('@playwright/tes
   let sessionLive = false;
   let guestArrived = false;
   // The standing sales close (#794): the kill switch's PATCH flips it; the map's salesOpen follows.
-  let salesClose = '23:59';
+  let salesClose: MockSalesCloseTime = '23:59';
   await page.route(/\/api\/auth\/me$/, (route) =>
     sessionLive
       ? route.fulfill({ json: PRINCIPAL })
@@ -150,7 +154,6 @@ async function mockDaily(page: Page): Promise<{ patches: import('@playwright/tes
       json: {
         name: 'Miramar Beach Club',
         beach: 'KSAMIL',
-        region: 'SARANDE',
         description: 'Loungers on the shore.',
         bookingMode: 'INSTANT',
         bookingCutoff: '18:00',
@@ -165,7 +168,7 @@ async function mockDaily(page: Page): Promise<{ patches: import('@playwright/tes
           sunbeds: { previewUrl: null },
           bar: { previewUrl: null },
         },
-      },
+      } satisfies MockVenueProfileView,
     }),
   );
   // The kill switch's write (a profile PATCH on the venue path) → 204.
@@ -174,7 +177,7 @@ async function mockDaily(page: Page): Promise<{ patches: import('@playwright/tes
       return route.fallback();
     }
     patches.push(route.request());
-    salesClose = (route.request().postDataJSON() as { salesClose: string }).salesClose;
+    salesClose = (route.request().postDataJSON() as { salesClose: MockSalesCloseTime }).salesClose;
     return route.fulfill({ status: 204, body: '' });
   });
   // The owner's map read (sets 2 + 4 online-held).
