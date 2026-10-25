@@ -80,7 +80,7 @@ jobs:
       - name: Upload the test-report XML (each test's captured stdout, for reading a registry row's cause)
         # Runs after a red test step too (`!cancelled()`), never after a cache hit, which ran no tests. The
         # job log keeps only output printed outside a test; a listener that fails inside one is here, under
-        # its test case (`reports.junitXml.outputPerTestCase` in build.gradle).
+        # the test case running at that moment (`reports.junitXml.outputPerTestCase` in build.gradle).
         if: ${{ !cancelled() && steps.restore.outputs.cache-hit != 'true' }}
         uses: actions/upload-artifact@v7
         with:
