@@ -77,6 +77,18 @@ jobs:
         if: steps.restore.outputs.cache-hit != 'true'
         run: ./gradlew build jacocoTestReport --no-daemon
 
+      - name: Upload the test-report XML (each test's captured stdout, for reading a registry row's cause)
+        # Runs after a red test step too (`!cancelled()`), never after a cache hit, which ran no tests. The
+        # job log keeps only output printed outside a test; a listener that fails inside one is here, under
+        # the test case running at that moment (`reports.junitXml.outputPerTestCase` in build.gradle).
+        if: ${{ !cancelled() && steps.restore.outputs.cache-hit != 'true' }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: backend-test-results
+          path: platform/build/test-results/test/*.xml
+          if-no-files-found: warn
+          retention-days: 7
+
       - name: Save the Sonar inputs for the next push of this tree
         # Reached only through a green build, so a hit can only restore what once passed.
         if: steps.restore.outputs.cache-hit != 'true'
