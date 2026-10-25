@@ -1,11 +1,11 @@
 import type { MockPhotoView } from './photo-views';
 
 /**
- * The wire's venue vocabulary as the mocked suite types its fixtures: hand copies of the codes and
- * views of `src/app/shared/beaches.ts`, `amenities.ts` and `venue-views.ts`, and of the owner
- * profile in `src/app/operator/operator-console.model.ts`; each type's TSDoc names its source. This
- * suite takes nothing from app source, so a code, field or view added or renamed there must be
- * added or renamed here too.
+ * The wire's venue vocabulary as the mocked suite types its fixtures: hand copies of the codes of
+ * `src/app/shared/beaches.ts` and `amenities.ts`, of the codes and views of `shared/venue-views.ts`
+ * and of the owner profile in `src/app/operator/operator-console.model.ts`; each interface's TSDoc
+ * names its source type. This suite takes nothing from app source, so a code, field or view added
+ * or renamed there must be added or renamed here too.
  */
 export type MockRegionCode =
   'SHKODER' | 'LEZHE' | 'DURRES' | 'FIER' | 'VLORE' | 'HIMARE' | 'SARANDE';
@@ -169,7 +169,7 @@ export interface MockSeasonClosureView {
 /**
  * One `GET /api/venues/{id}/profile` body, the owner's read: a hand copy of
  * `src/app/operator/operator-console.model.ts`' `VenueProfileView`. It carries no `region` (the app
- * derives it from `beach`), so a fixture adding one fails `npm run typecheck:e2e`.
+ * derives it from `beach`), so a literal typed on this adding one fails `npm run typecheck:e2e`.
  */
 export interface MockVenueProfileView {
   readonly name: string;
