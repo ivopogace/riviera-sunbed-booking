@@ -176,6 +176,21 @@ final class StayFixtures {
 	}
 
 	/**
+	 * Waits for the confirm's {@code ACCRUAL} rows before a test cancels: a cancel that overtakes the accrual leaves
+	 * {@code payout}'s reversal deferred (RESPONSIBILITIES.md §payout), which nothing re-drives inside a test.
+	 */
+	static void awaitAccruals(JdbcClient jdbc, long venue, long expected) {
+		org.awaitility.Awaitility.await().atMost(java.time.Duration.ofSeconds(10))
+				.until(() -> accruals(jdbc, venue) == expected);
+	}
+
+	private static long accruals(JdbcClient jdbc, long venue) {
+		return jdbc.sql("SELECT count(*) FROM payout_ledger_entry WHERE entry_type = 'ACCRUAL' "
+						+ "AND booking_id IN (SELECT id FROM booking WHERE venue_id = :v)").param("v", venue)
+				.query(Long.class).single();
+	}
+
+	/**
 	 * Waits until {@link #pendingPublicationsOf} this venue is zero, so the async listeners (payout, mail) have
 	 * written, then deletes in dependency order.
 	 */

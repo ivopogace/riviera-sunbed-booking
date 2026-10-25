@@ -118,7 +118,7 @@ class CancelStayIT {
 		LocalDate first = firstDay();
 		String code = assertInstanceOf(StayOutcome.Confirmed.class, createStay.create(plan(a, 3, b, 4, first)))
 				.confirmation().code();
-		Awaitility.await().atMost(Duration.ofSeconds(10)).until(() -> accruals(venue.id()) == 2L);
+		StayFixtures.awaitAccruals(jdbc, venue.id(), 2L);
 
 		CancelOutcome outcome = cancelBooking.cancel(code);
 
@@ -158,17 +158,11 @@ class CancelStayIT {
 		LocalDate first = firstDay();
 		String code = assertInstanceOf(StayOutcome.Confirmed.class,
 				createStay.create(plan(venue.online().get(0), 2, venue.online().get(1), 2, first))).confirmation().code();
-		Awaitility.await().atMost(Duration.ofSeconds(10)).until(() -> accruals(venue.id()) == 2L);
+		StayFixtures.awaitAccruals(jdbc, venue.id(), 2L);
 
 		assertInstanceOf(CancelOutcome.NotFound.class, cancelBooking.cancel("NOSUCHSTAY"));
 		assertInstanceOf(CancelOutcome.Cancelled.class, cancelBooking.cancel(code));
 		assertEquals(new CancelOutcome.NotCancellable(BookingStatus.CANCELLED), cancelBooking.cancel(code));
-	}
-
-	private long accruals(long venue) {
-		return jdbc.sql("SELECT count(*) FROM payout_ledger_entry WHERE entry_type = 'ACCRUAL' "
-						+ "AND booking_id IN (SELECT id FROM booking WHERE venue_id = :v)").param("v", venue)
-				.query(Long.class).single();
 	}
 
 	private long reversals(long venue) {
@@ -184,7 +178,7 @@ class CancelStayIT {
 		LocalDate first = firstDay();
 		String code = assertInstanceOf(StayOutcome.Confirmed.class,
 				createStay.create(plan(venue.online().get(0), 2, venue.online().get(1), 2, first))).confirmation().code();
-		Awaitility.await().atMost(Duration.ofSeconds(10)).until(() -> accruals(venue.id()) == 2L);
+		StayFixtures.awaitAccruals(jdbc, venue.id(), 2L);
 
 		assertInstanceOf(CancelOutcome.NotFound.class, cancelBooking.cancel(code + "-2"),
 				"a stretch's derived row code cancels nothing, least of all one stretch on its own day's window");
@@ -200,7 +194,7 @@ class CancelStayIT {
 		LocalDate first = firstDay();
 		String code = assertInstanceOf(StayOutcome.Confirmed.class,
 				createStay.create(plan(a, 3, venue.online().get(1), 4, first))).confirmation().code();
-		Awaitility.await().atMost(Duration.ofSeconds(10)).until(() -> accruals(venue.id()) == 2L);
+		StayFixtures.awaitAccruals(jdbc, venue.id(), 2L);
 		long secondStretch = jdbc.sql("SELECT id FROM booking WHERE venue_id = :v ORDER BY booking_date DESC LIMIT 1")
 				.param("v", venue.id()).query(Long.class).single();
 		long secondAmount = jdbc.sql("SELECT amount_minor FROM booking WHERE id = :id").param("id", secondStretch)
@@ -255,7 +249,7 @@ class CancelStayIT {
 		LocalDate first = firstDay();
 		String code = assertInstanceOf(StayOutcome.Confirmed.class, createStay.create(plan(a, 3, b, 4, first)))
 				.confirmation().code();
-		Awaitility.await().atMost(Duration.ofSeconds(10)).until(() -> accruals(venue.id()) == 2L);
+		StayFixtures.awaitAccruals(jdbc, venue.id(), 2L);
 		StayFixtures.take(jdbc, a, first.plusDays(3));
 		StayFixtures.take(jdbc, venue.online().get(2), first.plusDays(3));
 		OperatorId owner = StayFixtures.ownerOf(jdbc, venue);
@@ -305,7 +299,7 @@ class CancelStayIT {
 		LocalDate tomorrow = LocalDate.now(StayFixtures.TIRANE).plusDays(1);
 		String code = assertInstanceOf(StayOutcome.Confirmed.class, createStay.create(plan(a, 2, b, 2, tomorrow)))
 				.confirmation().code();
-		Awaitility.await().atMost(Duration.ofSeconds(10)).until(() -> accruals(venue.id()) == 2L);
+		StayFixtures.awaitAccruals(jdbc, venue.id(), 2L);
 		long firstStretch = jdbc.sql("SELECT id FROM booking WHERE venue_id = :v ORDER BY booking_date LIMIT 1")
 				.param("v", venue.id()).query(Long.class).single();
 		endAsARemodelRefund(venue, firstStretch, a, tomorrow);
@@ -488,7 +482,7 @@ class CancelStayIT {
 		LocalDate tomorrow = LocalDate.now(StayFixtures.TIRANE).plusDays(1);
 		String code = assertInstanceOf(StayOutcome.Confirmed.class,
 				createStay.create(plan(venue.online().get(0), 2, venue.online().get(1), 2, tomorrow))).confirmation().code();
-		Awaitility.await().atMost(Duration.ofSeconds(10)).until(() -> accruals(venue.id()) == 2L);
+		StayFixtures.awaitAccruals(jdbc, venue.id(), 2L);
 
 		CancelOutcome outcome = cancelBooking.cancel(code);
 
