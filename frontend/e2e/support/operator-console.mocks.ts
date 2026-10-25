@@ -1,6 +1,6 @@
 import { type Page } from '@playwright/test';
 
-import type { MockSetView, MockVenueMapView } from './venue-views';
+import type { MockSetView, MockVenueMapView, MockVenueProfileView } from './venue-views';
 
 const PRINCIPAL = { username: 'operator', principalType: 'OPERATOR' };
 const NO_MONEY = { minorUnits: 0, currency: 'EUR' };
@@ -153,11 +153,10 @@ function accrual(bookingId: number, netMinor: number) {
   };
 }
 
-function profile() {
+function profile(): MockVenueProfileView {
   return {
     name: 'Miramar Beach Club',
     beach: 'KSAMIL',
-    region: 'SARANDE',
     description: 'A quiet cove.',
     bookingMode: 'INSTANT',
     bookingCutoff: '18:00',

@@ -2,7 +2,7 @@ import { expect, test, type Page, type Request } from '@playwright/test';
 
 import { expectNoSeriousAxeViolations } from './support/axe';
 import { settle } from './support/booking-dialog';
-import type { MockVenueSummary } from './support/venue-views';
+import type { MockVenueProfileView, MockVenueSummary } from './support/venue-views';
 
 /**
  * Real-render CI-safe e2e for closing a venue for the season: sign in → Venue tab → close
@@ -15,10 +15,9 @@ import type { MockVenueSummary } from './support/venue-views';
 
 const PRINCIPAL = { username: 'operator', principalType: 'OPERATOR' };
 
-const PROFILE = {
+const PROFILE: MockVenueProfileView = {
   name: 'Miramar Beach Club',
   beach: 'KSAMIL',
-  region: 'SARANDE',
   description: 'Loungers on the shore.',
   bookingMode: 'INSTANT',
   bookingCutoff: '18:00',

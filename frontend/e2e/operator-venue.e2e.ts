@@ -2,7 +2,11 @@ import { expect, test, type Page, type Request } from '@playwright/test';
 
 import { expectNoSeriousAxeViolations } from './support/axe';
 import { settle } from './support/booking-dialog';
-import type { MockBookingMode, MockVenueMapView } from './support/venue-views';
+import type {
+  MockBookingMode,
+  MockVenueMapView,
+  MockVenueProfileView,
+} from './support/venue-views';
 
 /**
  * Real-render CI-safe e2e for the Venue & commodities tab. Drives sign-in → open the tab →
@@ -15,12 +19,11 @@ import type { MockBookingMode, MockVenueMapView } from './support/venue-views';
 
 const PRINCIPAL = { username: 'operator', principalType: 'OPERATOR' };
 
-const INITIAL_PROFILE = {
+const INITIAL_PROFILE: MockVenueProfileView = {
   name: 'Miramar Beach Club',
   beach: 'KSAMIL',
-  region: 'SARANDE',
   description: 'Loungers on the shore.',
-  bookingMode: 'INSTANT' as MockBookingMode,
+  bookingMode: 'INSTANT',
   bookingCutoff: '18:00',
   salesClose: '16:00',
   commissionBps: 1500,
