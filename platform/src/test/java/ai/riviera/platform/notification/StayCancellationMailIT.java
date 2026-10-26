@@ -98,6 +98,7 @@ class StayCancellationMailIT {
 		stay.stretches().forEach(stretch -> fixtures.publishInTransaction(
 				new PaymentConfirmed(new BookingRef(stretch), "pi_stay_cancel_" + stretch)));
 		Awaitility.await().atMost(WAIT).until(() -> count(email, SentEmail.Kind.STAY_CONFIRMATION) == 1L);
+		stay.stretches().forEach(stretch -> fixtures.awaitAccrual(new BookingId(stretch)));
 
 		CancelOutcome.Cancelled cancelled = assertInstanceOf(CancelOutcome.Cancelled.class,
 				cancelBooking.cancel(stay.code()));
@@ -124,6 +125,7 @@ class StayCancellationMailIT {
 		stay.stretches().forEach(stretch -> fixtures.publishInTransaction(
 				new PaymentConfirmed(new BookingRef(stretch), "pi_stay_remainder_" + stretch)));
 		Awaitility.await().atMost(WAIT).until(() -> count(email, SentEmail.Kind.STAY_CONFIRMATION) == 1L);
+		stay.stretches().forEach(stretch -> fixtures.awaitAccrual(new BookingId(stretch)));
 		long ended = stay.stretches().get(0);
 		long live = stay.stretches().get(1);
 		LocalDate liveFirst = stay.first().plusDays(2);
@@ -176,6 +178,7 @@ class StayCancellationMailIT {
 		long ended = stay.stretches().get(1);
 		LocalDate endedFirst = stay.first().plusDays(2);
 		endedByRemodel(sets.get(1), ended, endedFirst, ReceiptOutcomeKind.REFUND);
+		fixtures.accrue(sets.get(1).venueId(), ended, STRETCH_AMOUNT);
 
 		fixtures.publishInTransaction(new BookingCancelled(new BookingId(ended), new VenueId(sets.get(1).venueId()),
 				new SetId(sets.get(1).setId()), endedFirst, STRETCH_AMOUNT, "EUR", RefundReason.VENUE_CHANGE,

@@ -169,7 +169,7 @@ class RefundOutboxScopeIT {
 				.as("the deferred payout reversal stays deferred — no ledger entry (invariants #9/#428)")
 				.isZero();
 
-		seedAccrual(cancelledBooking, set.venueId());
+		seedAccrual(cancelledBooking, set.venueId(), SCOPE_REFUND_MINOR);
 		resubmitUnscoped(cancelledBooking, confirmedBooking);
 
 		Awaitility.await("the control proves all three skipped rows were live").atMost(WAIT)
@@ -189,6 +189,7 @@ class RefundOutboxScopeIT {
 		LocalDate date = LocalDate.of(2033, 7, 6);
 		long bookingId = seedBooking(set, "RFOSDONE", date, "scope-settled@example.com",
 				SETTLED_REFUND_MINOR, "CANCELLED");
+		seedAccrual(bookingId, set.venueId(), SETTLED_REFUND_MINOR);
 
 		publishInTransaction(cancellationOf(set, bookingId, date, SETTLED_REFUND_MINOR));
 		Awaitility.await("the refund settled and its publication completed").atMost(WAIT)
@@ -238,14 +239,17 @@ class RefundOutboxScopeIT {
 				new SetId(set.setId()), date, refundMinor, "EUR", RefundReason.POLICY);
 	}
 
-	/** The accrual the deferred reversal has been waiting to mirror — seeded for the control. */
-	private void seedAccrual(long bookingId, long venueId) {
+	/**
+	 * The accrual a reversal mirrors (#9): seeded for the control once the scope test has shown the reversal
+	 * deferred, and up front where the reversal is not under test.
+	 */
+	private void seedAccrual(long bookingId, long venueId, long grossMinor) {
 		jdbc.sql("""
 				INSERT INTO payout_ledger_entry (booking_id, venue_id, entry_type,
 				                                 gross_minor, commission_minor, net_minor, currency)
 				VALUES (:booking, :venue, 'ACCRUAL', :gross, 0, :gross, 'EUR')
 				""")
-				.param("booking", bookingId).param("venue", venueId).param("gross", SCOPE_REFUND_MINOR)
+				.param("booking", bookingId).param("venue", venueId).param("gross", grossMinor)
 				.update();
 	}
 

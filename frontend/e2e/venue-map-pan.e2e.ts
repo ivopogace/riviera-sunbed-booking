@@ -1,6 +1,7 @@
 import { expect, type Locator, type Page, test } from '@playwright/test';
 
 import { expectNoSeriousAxeViolations } from './support/axe';
+import type { MockPool, MockSetView, MockTier, MockVenueMapView } from './support/venue-views';
 
 /**
  * Real-render audit of the beach map's pan-vs-select distinction. A big
@@ -15,8 +16,8 @@ import { expectNoSeriousAxeViolations } from './support/axe';
 
 const ROWS: {
   label: string;
-  tier: string;
-  pool: string;
+  tier: MockTier;
+  pool: MockPool;
   price: number;
   lastSetPrice?: number;
 }[] = [
@@ -28,19 +29,9 @@ const ROWS: {
   { label: 'Row 5 · Walk-in', tier: 'STANDARD', pool: 'WALK_IN', price: 3000 },
 ];
 
-interface MapSet {
-  id: number;
-  rowLabel: string;
-  positionNo: number;
-  tier: string;
-  pool: string;
-  price: { minorUnits: number; currency: string };
-  gridX: number;
-  gridY: number;
-  availability: string;
-}
+type MapSet = MockSetView;
 
-function wideVenue() {
+function wideVenue(): MockVenueMapView {
   const sets: MapSet[] = [];
   let id = 0;
   ROWS.forEach((row, r) => {
@@ -85,7 +76,7 @@ function wideVenue() {
  * <p>Its chips are bare amounts (`€50`, `€30`; #1587), far under the reservation, so its rail is
  * the reservation — the same boundary {@link bareFitVenue} pins with one price everywhere.
  */
-function fitVenue() {
+function fitVenue(): MockVenueMapView {
   const sets: MapSet[] = [];
   let id = 0;
   for (let r = 1; r <= 5; r++) {
@@ -123,7 +114,7 @@ function fitVenue() {
  * price in every row, so one zone and one ~41px chip — its rail is the reservation rather than a
  * chip, and its margin is the number a widened reservation has to spend.
  */
-function bareFitVenue() {
+function bareFitVenue(): MockVenueMapView {
   const sets: MapSet[] = [];
   let id = 0;
   for (let r = 1; r <= 5; r++) {
@@ -160,7 +151,7 @@ function bareFitVenue() {
  * One column past {@link bareFitVenue}: the width at which a bare-amount rail stops fitting since
  * #751. Same shape otherwise, so the only variable between the two tests is the column count.
  */
-function barePanVenue() {
+function barePanVenue(): MockVenueMapView {
   const sets: MapSet[] = [];
   let id = 0;
   for (let r = 1; r <= 5; r++) {
@@ -206,7 +197,7 @@ async function panState(page: Page) {
 }
 
 /** A venue tall enough (12 rows) that the wash scroller overflows its 532px cap. */
-function tallVenue() {
+function tallVenue(): MockVenueMapView {
   const sets: MapSet[] = [];
   let id = 0;
   for (let r = 1; r <= 12; r++) {

@@ -162,6 +162,15 @@ class RefundBulkheadIT {
 				.query(Long.class).single();
 	}
 
+	/** The accrual the booking's confirm would have posted, which the refund's payout reversal mirrors (#9). */
+	private void accrue(SetRef set, long bookingId, long amountMinor) {
+		jdbc.sql("""
+				INSERT INTO payout_ledger_entry (venue_id, booking_id, entry_type, gross_minor, commission_minor,
+				                                 net_minor, currency)
+				VALUES (:venue, :booking, 'ACCRUAL', :gross, 0, :gross, 'EUR')
+				""").param("venue", set.venueId()).param("booking", bookingId).param("gross", amountMinor).update();
+	}
+
 	/** Publish inside a transaction so the AFTER_COMMIT registry-backed listeners are triggered. */
 	private void publishInTransaction(Object event) {
 		transactions.executeWithoutResult(status -> publisher.publishEvent(event));
@@ -236,6 +245,7 @@ class RefundBulkheadIT {
 		for (int i = 0; i < WEDGED_REFUNDS; i++) {
 			long id = seedBooking(set, "RFWEDG%02d".formatted(i), wedgeDate.plusDays(i),
 					"refund-wedge-%d@example.com".formatted(i), 1500L, "CANCELLED");
+			accrue(set, id, 1500L);
 			wedged.add(id);
 			publishInTransaction(cancellationOf(set, id, wedgeDate.plusDays(i), 1500L));
 		}
@@ -271,6 +281,7 @@ class RefundBulkheadIT {
 		SetRef set = onlineSet();
 		LocalDate date = LocalDate.of(2032, 7, 5);
 		long bookingId = seedBooking(set, "RFNOTXH1", date, "refund-no-tx@example.com", 2800L, "CANCELLED");
+		accrue(set, bookingId, 2800L);
 
 		publishInTransaction(cancellationOf(set, bookingId, date, 2800L));
 
@@ -301,6 +312,7 @@ class RefundBulkheadIT {
 		LocalDate date = LocalDate.of(2032, 5, 3);
 		long bookingId = seedBooking(set, "RFRETRY1", date, "refund-retry-me@example.com",
 				RETRY_REFUND_MINOR, "CANCELLED");
+		accrue(set, bookingId, RETRY_REFUND_MINOR);
 
 		gateway.failEveryRefund(true);
 		publishInTransaction(cancellationOf(set, bookingId, date, RETRY_REFUND_MINOR));
@@ -331,6 +343,7 @@ class RefundBulkheadIT {
 		LocalDate date = LocalDate.of(2032, 6, 4);
 		long bookingId = seedBooking(set, "RFLSTNR1", date, "refund-listener-id@example.com",
 				LISTENER_ID_REFUND_MINOR, "CANCELLED");
+		accrue(set, bookingId, LISTENER_ID_REFUND_MINOR);
 
 		gateway.failEveryRefund(true);
 		publishInTransaction(cancellationOf(set, bookingId, date, LISTENER_ID_REFUND_MINOR));

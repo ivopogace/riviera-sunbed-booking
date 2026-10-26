@@ -100,7 +100,10 @@ class SpanReleaseIT {
 	private record Stay(long id, String code, long setId) {
 	}
 
-	/** A {@code DAYS}-day stay in {@code status}, every day of it held as an online claim. */
+	/**
+	 * A {@code DAYS}-day stay in {@code status}, every day of it held as an online claim; a {@code CONFIRMED} one
+	 * carries the accrual its confirm posted, which a refund's payout reversal mirrors (#9).
+	 */
 	private Stay insertStay(long setId, String status, Instant requestExpiresAt) {
 		String code = "SPAN" + System.nanoTime() % 1_000_000_000L;
 		long customer = jdbc.sql("INSERT INTO customer (email, full_name, phone) "
@@ -119,6 +122,13 @@ class SpanReleaseIT {
 				.param("expires", requestExpiresAt == null ? null : java.sql.Timestamp.from(requestExpiresAt),
 						java.sql.Types.TIMESTAMP)
 				.query(Long.class).single();
+		if ("CONFIRMED".equals(status)) {
+			jdbc.sql("""
+					INSERT INTO payout_ledger_entry (venue_id, booking_id, entry_type, gross_minor, commission_minor,
+					                                 net_minor, currency)
+					VALUES (:v, :b, 'ACCRUAL', 4500, 0, 4500, 'EUR')
+					""").param("v", venueId).param("b", id).update();
+		}
 		for (LocalDate day : days()) {
 			assertEquals(ClaimOutcome.CLAIMED, availability.claim(new SetId(setId), day), "seeding holds " + day);
 		}

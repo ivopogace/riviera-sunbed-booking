@@ -78,7 +78,6 @@ class FreeExitCancelIT {
 				.param("id", moved).update();
 		receipts.store(new NewReceipt(new VenueId(venue), bootstrapOperator(), movedAt, List.of(new ReceiptMove(
 				new BookingId(moved), tomorrow, new SpotRef(new SetId(a1), "A", 1), new SpotRef(new SetId(a2), "A", 2), 0, 1)), List.of(), "", List.of()));
-		accrue(venue, moved);
 
 		mvc.perform(get("/api/bookings/{code}", movedCode))
 				.andExpect(status().isOk())
@@ -142,25 +141,24 @@ class FreeExitCancelIT {
 				""").param("v", venue).param("pos", position).query(Long.class).single();
 	}
 
+	/** A confirmed booking with the accrual its confirm posted, which a refund's payout reversal mirrors (#9). */
 	private long seedConfirmed(long venue, long set, String code, LocalDate date) {
 		long customer = jdbc.sql("INSERT INTO customer (email, full_name, phone) VALUES (:e, 'Exit Guest', '+355600') RETURNING id")
 				.param("e", code + "@example.test").query(Long.class).single();
 		Instant createdAt = date.atStartOfDay(TIRANE).toInstant().minus(Duration.ofDays(3));
 		jdbc.sql("INSERT INTO set_availability (set_id, booking_date, state) VALUES (:s, :d, 'BOOKED_ONLINE')")
 				.param("s", set).param("d", date).update();
-		return jdbc.sql("""
+		long booking = jdbc.sql("""
 				INSERT INTO booking (code, venue_id, set_id, customer_id, booking_date, amount_minor, amount_currency,
 				                     status, confirmed_at, created_at)
 				VALUES (:code, :v, :s, :c, :d, 4500, 'EUR', 'CONFIRMED', NOW(), :createdAt) RETURNING id
 				""").param("code", code).param("v", venue).param("s", set).param("c", customer).param("d", date)
 				.param("createdAt", java.sql.Timestamp.from(createdAt)).query(Long.class).single();
-	}
-
-	private void accrue(long venue, long booking) {
 		jdbc.sql("""
 				INSERT INTO payout_ledger_entry (venue_id, booking_id, entry_type, gross_minor, commission_minor, net_minor, currency)
 				VALUES (:v, :b, 'ACCRUAL', 4500, 675, 3825, 'EUR')
 				""").param("v", venue).param("b", booking).update();
+		return booking;
 	}
 
 	private OperatorId bootstrapOperator() {

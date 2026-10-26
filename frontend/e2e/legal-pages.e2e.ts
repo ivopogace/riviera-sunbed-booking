@@ -5,6 +5,7 @@ import { expectNoSeriousAxeViolations } from './support/axe';
 import { hitTestId } from './support/hit-test';
 import { openHeaderMenu, openShellOverlay, openThemePicker } from './support/shell';
 import { settle } from './support/booking-dialog';
+import type { MockVenueMapView, MockVenueSummary } from './support/venue-views';
 
 /**
  * Real-render e2e for the legal surfaces: the two draft documents at
@@ -14,7 +15,7 @@ import { settle } from './support/booking-dialog';
  * links — every legal link opens a new tab so checkout/console state survives the read. The API is mocked (`page.route`), so the spec is CI-safe.
  */
 
-const VENUE = {
+const VENUE: MockVenueMapView = {
   id: 1,
   name: 'Miramar Beach Club',
   beach: 'KSAMIL',
@@ -39,7 +40,7 @@ const VENUE = {
   ],
 };
 
-const VENUES = [
+const VENUES: readonly MockVenueSummary[] = [
   {
     id: 1,
     name: 'Miramar Beach Club',
@@ -50,6 +51,7 @@ const VENUES = [
     bookingMode: 'INSTANT',
     fromPrice: { minorUnits: 2500, currency: 'EUR' },
     availability: { free: 18, total: 24 },
+    sellsOnline: true,
   },
 ];
 

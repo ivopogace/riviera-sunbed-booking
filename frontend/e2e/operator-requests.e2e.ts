@@ -8,6 +8,7 @@ import {
   expectConsoleTheme,
   expectInsetFill,
 } from './support/console-theme';
+import type { MockSetView, MockVenueMapView } from './support/venue-views';
 
 /**
  * CI-safe mocked e2e for the Requests tab. Drives sign-in → the console shell →
@@ -27,8 +28,13 @@ function inHours(hours: number): string {
   return new Date(Date.now() + hours * 3_600_000).toISOString();
 }
 
-function venueMap() {
-  const set = (id: number, rowLabel: string, positionNo: number, tier: 'PREMIUM' | 'STANDARD') => ({
+function venueMap(): MockVenueMapView {
+  const set = (
+    id: number,
+    rowLabel: string,
+    positionNo: number,
+    tier: 'PREMIUM' | 'STANDARD',
+  ): MockSetView => ({
     id,
     rowLabel,
     positionNo,

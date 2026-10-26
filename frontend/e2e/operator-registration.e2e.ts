@@ -4,6 +4,7 @@ import { mockOperatorLifecycleApi } from './support/auth-mocks';
 import { expectNoSeriousAxeViolations } from './support/axe';
 import { OperatorSignInPage } from './support/pages/operator-sign-in.page';
 import { openOperatorAccountMenu } from './support/shell';
+import type { MockVenueMapView } from './support/venue-views';
 
 /**
  * Real-render behaviour + a11y audit of the operator lifecycle: a prospective
@@ -36,13 +37,14 @@ async function mockPendingVenueConsole(page: import('@playwright/test').Page): P
           name: 'Sunset Club',
           beach: 'KSAMIL',
           region: 'SARANDE',
+          description: 'Loungers on the shore.',
           ratingTenths: 0,
           reviewsCount: 0,
           bookingMode: 'INSTANT',
           fromPrice: null,
           sets: [],
           setVersion: 0,
-        },
+        } satisfies MockVenueMapView,
         locks: [],
       },
     }),
