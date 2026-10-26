@@ -1,6 +1,7 @@
 import { type Page } from '@playwright/test';
 
 import { mockOperatorLifecycleApi } from './auth-mocks';
+import type { MockBeachCode, MockVenueSummary } from './venue-views';
 
 export const ADMIN = { username: 'operator', password: 'admin-pw' };
 
@@ -9,7 +10,15 @@ const TINY_IMAGE = Buffer.from(
   'base64',
 );
 
-const VENUES = [
+interface AdminVenue {
+  readonly venueId: number;
+  readonly name: string;
+  readonly beach: MockBeachCode;
+  readonly commissionBps: number;
+  readonly payoutCurrency: string;
+}
+
+const VENUES: readonly AdminVenue[] = [
   { venueId: 7, name: 'Miramar', beach: 'DHERMI', commissionBps: 1500, payoutCurrency: 'EUR' },
   { venueId: 11, name: 'Kalypso', beach: 'JALE', commissionBps: 1000, payoutCurrency: 'EUR' },
 ];
@@ -43,7 +52,7 @@ export async function mockWholeAdminConsole(page: Page): Promise<void> {
   await page.route(/\/api\/admin\/venues$/, (route) => route.fulfill({ json: { venues: VENUES } }));
   await page.route(/\/api\/venues(\?.*)?$/, (route) =>
     route.fulfill({
-      json: VENUES.map((venue) => ({
+      json: VENUES.map((venue): MockVenueSummary => ({
         ...venue,
         id: venue.venueId,
         region: 'HIMARE',
@@ -54,6 +63,7 @@ export async function mockWholeAdminConsole(page: Page): Promise<void> {
         amenities: [],
         distanceToWaterM: null,
         availability: { free: 4, total: 10 },
+        sellsOnline: true,
         coverPhoto: null,
       })),
     }),

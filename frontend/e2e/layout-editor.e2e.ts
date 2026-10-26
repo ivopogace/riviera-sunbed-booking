@@ -11,7 +11,7 @@ import {
   expectInsetFill,
   tintPaint,
 } from './support/console-theme';
-import type { MockSetView } from './support/venue-views';
+import type { MockSetView, MockVenueMapView } from './support/venue-views';
 
 /**
  * Real-render CI-safe e2e for the layout editor. Drives the actual generate → confirm →
@@ -29,7 +29,7 @@ const PRINCIPAL = { username: 'operator', principalType: 'OPERATOR' };
 
 // An empty venue so the editor starts from the empty state — the operator generates the grid (no
 // seed→fill race), then regenerates over it to reach the confirm.
-const VENUE_MAP = {
+const VENUE_MAP: MockVenueMapView = {
   id: 1,
   name: 'Miramar Beach Club',
   beach: 'KSAMIL',

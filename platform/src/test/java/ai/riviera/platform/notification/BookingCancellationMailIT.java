@@ -138,6 +138,8 @@ class BookingCancellationMailIT {
 				.andExpect(status().isCreated())
 				.andReturn().getResponse().getContentAsString();
 		String code = JsonPath.read(created, "$.code");
+		fixtures.awaitAccrual(new BookingId(jdbc.sql("SELECT id FROM booking WHERE code = :code").param("code", code)
+				.query(Long.class).single()));
 		mailer.clear();
 
 		String cancelled = mvc.perform(post("/api/bookings/%s/cancel".formatted(code)))
@@ -169,6 +171,7 @@ class BookingCancellationMailIT {
 
 		long bookingId = fixtures.seedBooking(new BookingMailFixtures.SetRef(set.setId(), set.venueId()),
 				"WEATHER1", date, guest, 7331L, "CANCELLED");
+		fixtures.accrue(set.venueId(), bookingId, 7331L);
 		fixtures.publishInTransaction(fixtures.cancellationOf(
 				new BookingMailFixtures.SetRef(set.setId(), set.venueId()), bookingId, date, 7331L,
 				RefundReason.WEATHER));
@@ -193,6 +196,7 @@ class BookingCancellationMailIT {
 
 		long bookingId = fixtures.seedBooking(new BookingMailFixtures.SetRef(set.setId(), set.venueId()),
 				"REPLAYC1", date, guest, 7332L, "CANCELLED");
+		fixtures.accrue(set.venueId(), bookingId, 7332L);
 		fixtures.publishInTransaction(fixtures.cancellationOf(
 				new BookingMailFixtures.SetRef(set.setId(), set.venueId()), bookingId, date, 7332L,
 				RefundReason.POLICY));
@@ -217,6 +221,7 @@ class BookingCancellationMailIT {
 
 		long bookingId = fixtures.seedBooking(new BookingMailFixtures.SetRef(set.setId(), set.venueId()),
 				"SUPPCAN1", date, suppressed, 7333L, "CANCELLED");
+		fixtures.accrue(set.venueId(), bookingId, 7333L);
 		fixtures.publishInTransaction(fixtures.cancellationOf(
 				new BookingMailFixtures.SetRef(set.setId(), set.venueId()), bookingId, date, 7333L,
 				RefundReason.POLICY));
@@ -248,6 +253,7 @@ class BookingCancellationMailIT {
 
 		long bookingId = fixtures.seedBooking(new BookingMailFixtures.SetRef(set.setId(), set.venueId()),
 				"LISTENID", date, guest, 7334L, "CANCELLED");
+		fixtures.accrue(set.venueId(), bookingId, 7334L);
 		fixtures.publishInTransaction(fixtures.cancellationOf(
 				new BookingMailFixtures.SetRef(set.setId(), set.venueId()), bookingId, date, 7334L,
 				RefundReason.POLICY));
@@ -281,6 +287,7 @@ class BookingCancellationMailIT {
 		BookingMailFixtures.SetRef ref = new BookingMailFixtures.SetRef(set.setId(), set.venueId());
 
 		long sellableBooking = fixtures.seedBooking(ref, "REBOOK01", sellable, onOpenDay, 7335L, "CANCELLED");
+		fixtures.accrue(set.venueId(), sellableBooking, 7335L);
 		endedByRemodel(set, sellableBooking, sellable);
 		fixtures.publishInTransaction(fixtures.cancellationOf(ref, sellableBooking, sellable, 7335L,
 				RefundReason.VENUE_CHANGE));
@@ -289,6 +296,7 @@ class BookingCancellationMailIT {
 				.hasToString("http://localhost:4200/venues/" + set.venueId() + "?date=" + sellable);
 
 		long pastBooking = fixtures.seedBooking(ref, "REBOOK02", unsellable, onClosedDay, 7336L, "CANCELLED");
+		fixtures.accrue(set.venueId(), pastBooking, 7336L);
 		endedByRemodel(set, pastBooking, unsellable);
 		fixtures.publishInTransaction(fixtures.cancellationOf(ref, pastBooking, unsellable, 7336L,
 				RefundReason.VENUE_CHANGE));
@@ -307,6 +315,7 @@ class BookingCancellationMailIT {
 		BookingMailFixtures.SetRef ref = new BookingMailFixtures.SetRef(set.setId(), set.venueId());
 
 		long bookingId = fixtures.seedBooking(ref, "SUPPREM1", date, suppressed, 7337L, "CANCELLED");
+		fixtures.accrue(set.venueId(), bookingId, 7337L);
 		endedByRemodel(set, bookingId, date);
 		fixtures.publishInTransaction(fixtures.cancellationOf(ref, bookingId, date, 7337L,
 				RefundReason.VENUE_CHANGE));

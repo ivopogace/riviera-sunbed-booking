@@ -3,6 +3,7 @@ import { expect, test } from '@playwright/test';
 import { ChallengeFence, mockChallengeFence } from './support/auth-mocks';
 import { expectNoSeriousAxeViolations } from './support/axe';
 import { completeDialog, mockFencedBookingCreate, settle } from './support/booking-dialog';
+import type { MockVenueMapView, MockVenueSummary } from './support/venue-views';
 
 /**
  * Real-render a11y audit of the same-day booking journey: the homepage's date picker now
@@ -25,7 +26,7 @@ const BEFORE_CLOSE = new Date(`${TODAY}T10:00:00Z`);
 const AFTER_CLOSE = new Date(`${TODAY}T15:00:00Z`);
 const TOMORROW = '2026-08-31';
 
-const VENUES = [
+const VENUES: readonly MockVenueSummary[] = [
   {
     id: 1,
     name: 'Miramar Beach Club',
@@ -36,10 +37,11 @@ const VENUES = [
     bookingMode: 'INSTANT',
     fromPrice: { minorUnits: 4500, currency: 'EUR' },
     availability: { free: 1, total: 1 },
+    sellsOnline: true,
   },
 ];
 
-const VENUE_MAP = {
+const VENUE_MAP: MockVenueMapView = {
   id: 1,
   name: 'Miramar Beach Club',
   beach: 'KSAMIL',

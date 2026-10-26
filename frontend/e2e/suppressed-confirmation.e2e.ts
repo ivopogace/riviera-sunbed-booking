@@ -3,6 +3,7 @@ import { expect, test } from '@playwright/test';
 import { mockChallengeFence } from './support/auth-mocks';
 import { expectNoSeriousAxeViolations } from './support/axe';
 import { completeDialog, settle } from './support/booking-dialog';
+import type { MockVenueMapView } from './support/venue-views';
 
 /**
  * The withheld-confirmation-email notice, on both post-payment surfaces — real browser, API
@@ -15,7 +16,7 @@ import { completeDialog, settle } from './support/booking-dialog';
  * carrying real text, that it clears axe in a real browser rather than only in the jsdom maths.
  */
 
-const VENUE = {
+const VENUE: MockVenueMapView = {
   id: 1,
   name: 'Miramar Beach Club',
   beach: 'KSAMIL',

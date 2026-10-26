@@ -86,11 +86,12 @@ close, the maximum stay, the season closure, and the commission rate over time. 
 - **The pool is a sales-channel attribute, not a physical one**, and invariant #3 is reserve-time:
   a set switched to walk-in stops new online reserves for every date, its booked dates stay claimed
   (a staff mark on one is still refused), and the staff daily view still lists the online booking.
-- **The discovery list's `fromPrice` is the cheapest ONLINE-pool set, `null` without one** (#1628):
-  a "from" price is an offer, so it must be bookable through the channel showing it (invariant #3).
-  A walk-in-only venue stays listed, priced nowhere on Discover ("Walk-in only"). Its
-  `availability` free/total stays both pools (a coarse busy-ness signal); the map read's
-  `fromPrice` is still pool-agnostic (#1647).
+- **`fromPrice` is the cheapest ONLINE-pool set, `null` without one, on the discovery list and the
+  map read alike** (#1628, #1647): a "from" price is an offer, so it must be bookable through the
+  channel showing it (invariant #3), and the card and the page never quote one venue differently. A
+  walk-in-only venue stays listed and keeps its page, reading "Walk-in only" in the price's place on
+  both; a venue with no sets shows no price. The list's `availability` free/total stays both pools (a
+  coarse busy-ness signal). The operator console reads no `fromPrice`.
 - **"Live" is one predicate, `LiveClaims`, for every write guard and the owner's read.** A set is
   pinned by a hold dated today or later (`Europe/Tirane`) or a booking `booking` says can still be
   honoured (`BookingPresence#hasLiveBookings`); `venue` never enumerates booking statuses. A past
@@ -1257,8 +1258,10 @@ revocation orchestrated by `auth` and synchronous, bracketing the state change; 
 session's credential stamp.
 
 **The anonymous actuator surface is `health` (status only) and `GET /actuator/info`, the build's commit id
-alone (#1632)**: the route policy admits nothing more anonymously, and `prometheus`, the one other exposed
-endpoint, needs a session (`ActuatorHardeningIT`; posture: `docs/deploy/production-hardening.md`).
+alone (#1632)**: the route policy admits nothing more anonymously; `prometheus`, the one other exposed
+endpoint, and health's details are ADMIN-only, since a plain operator may be a PENDING self-registrant
+(#1652); every other `/actuator/**` path is `denyAll()`, so a newly exposed endpoint fails closed
+(`ActuatorHardeningIT`; posture: `docs/deploy/production-hardening.md`).
 
 **Where the edge's types may appear (RV-BE-11):** no Spring Security, Spring Session or mail (Spring
 Mail, Jakarta Mail, Angus Mail) type in `availability`, `booking`, `payment`, `payout`, `review`,

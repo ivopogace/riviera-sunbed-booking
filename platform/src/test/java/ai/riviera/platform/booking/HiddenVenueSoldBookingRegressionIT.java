@@ -103,6 +103,7 @@ class HiddenVenueSoldBookingRegressionIT {
 		BookingOutcome.Confirmed confirmed =
 				assertInstanceOf(BookingOutcome.Confirmed.class, outcome, "booked while visible");
 		String code = confirmed.confirmation().code();
+		StayFixtures.awaitAccruals(jdbc, venueId, 1L);
 
 		suspendOwner();
 		assertTrue(catalog.findVenueMap(new VenueId(venueId), StaySpan.oneDay(future)).isEmpty(),

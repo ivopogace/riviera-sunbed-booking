@@ -3,6 +3,7 @@ import { expect, Page, test } from '@playwright/test';
 import { expectNoSeriousAxeViolations } from './support/axe';
 import { expectTouchTargets } from './support/touch-targets';
 import { settle } from './support/booking-dialog';
+import type { MockStayVerdictView, MockVenueSummary } from './support/venue-views';
 
 /**
  * Real-render journey of a stay on the discovery page: the day rail's last chip opens the range
@@ -22,7 +23,12 @@ const PHONE = { width: 390, height: 844 };
 const DHERMI = { latitude: 40.1573, longitude: 19.6401 };
 const BORSH = { latitude: 40.0619, longitude: 19.8611 };
 
-function venue(id: number, name: string, ratingTenths: number, location: typeof DHERMI) {
+function venue(
+  id: number,
+  name: string,
+  ratingTenths: number,
+  location: typeof DHERMI,
+): MockVenueSummary {
   return {
     id,
     name,
@@ -33,6 +39,7 @@ function venue(id: number, name: string, ratingTenths: number, location: typeof 
     bookingMode: 'INSTANT',
     fromPrice: { minorUnits: 2500, currency: 'EUR' },
     availability: { free: 5, total: 10 },
+    sellsOnline: true,
     salesOpen: true,
     location,
   };
@@ -46,7 +53,7 @@ const VENUES = [
   venue(13, 'Capped Sands', 40, { latitude: 40.15747, longitude: 19.64026 }),
 ];
 
-const STAY = {
+const STAY: Readonly<Record<number, MockStayVerdictView>> = {
   12: { verdict: 'CANNOT_HOST', sameSetCount: 0, longestRunDays: 3, maxStayDays: null, moves: 0 },
   14: {
     verdict: 'FITS_WITH_MOVES',
@@ -57,7 +64,7 @@ const STAY = {
   },
   11: { verdict: 'SAME_SET', sameSetCount: 2, longestRunDays: 4, maxStayDays: null, moves: 0 },
   13: { verdict: 'CANNOT_HOST', sameSetCount: 1, longestRunDays: 4, maxStayDays: 2, moves: 0 },
-} as const;
+};
 
 async function mockCoast(page: Page): Promise<void> {
   await page.route(/\/api\/auth\/me$/, (route) =>
@@ -66,7 +73,7 @@ async function mockCoast(page: Page): Promise<void> {
   await page.route(/\/api\/venues(\?.*)?$/, (route) => {
     const stay = new URL(route.request().url()).searchParams.has('lastDate');
     return route.fulfill({
-      json: VENUES.map((v) => (stay ? { ...v, stay: STAY[v.id as keyof typeof STAY] } : v)),
+      json: VENUES.map((v) => (stay ? { ...v, stay: STAY[v.id] } : v)),
     });
   });
 }

@@ -4,6 +4,7 @@ import { mockChallengeFence } from './support/auth-mocks';
 import { completeDialog } from './support/booking-dialog';
 import { awaitRoutedPage, openHeaderMenu, openThemePicker } from './support/shell';
 import { expectTouchTargets } from './support/touch-targets';
+import type { MockVenueMapView, MockVenueSummary } from './support/venue-views';
 
 /**
  * The tourist header's rendered-only rules: nothing in the bar wears the page's primary-button
@@ -15,7 +16,7 @@ import { expectTouchTargets } from './support/touch-targets';
  * `app.contrast.spec.ts`. The API is mocked (`page.route`), so the spec is CI-safe like its siblings.
  */
 
-const VENUE = {
+const VENUE: MockVenueMapView & MockVenueSummary = {
   id: 1,
   name: 'Miramar Beach Club',
   beach: 'KSAMIL',
@@ -28,6 +29,7 @@ const VENUE = {
   amenities: ['SHOWERS'],
   distanceToWaterM: 15,
   availability: { free: 4, total: 6 },
+  sellsOnline: true,
   coverPhoto: null,
   photos: [],
   sets: Array.from({ length: 6 }, (_, i) => ({

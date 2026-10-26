@@ -57,8 +57,10 @@ npm run build
 **CI** (`.github/workflows/ci.yml`): backend build/test, frontend lint/format/e2e-typecheck/test/build +
 eslint-rules suite, the mocked e2e on sharded runners, the `scripts/check-*.mjs` guards (`check-inline-comments`,
 `check-focus-posture` and `check-touch-target` also run as a local `PostToolUse` hook;
-`check-comment-only.mjs` is by-hand only), SonarCloud per PR. Sonar bar: **no new bug,
-vulnerability or unreviewed hotspot, ≥80% new-code coverage**; smells and duplication judged.
+`check-comment-only.mjs` is by-hand only), SonarCloud per PR. The backend job keeps its test-report XML
+for 7 days (`backend-test-results`): each test's captured stdout, the only trace of a listener that
+failed inside one. Sonar bar: **no new bug, vulnerability or unreviewed hotspot, ≥80% new-code
+coverage**; smells and duplication judged.
 `deploy.yml` deploys the backend image (serves the SPA) to Render from `main`. Line endings
 pinned LF by `.gitattributes`.
 

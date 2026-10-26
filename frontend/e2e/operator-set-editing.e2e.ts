@@ -2,6 +2,7 @@ import { expect, test, type Page } from '@playwright/test';
 
 import { expectNoSeriousAxeViolations } from './support/axe';
 import { settle } from './support/booking-dialog';
+import type { MockVenueMapView } from './support/venue-views';
 
 /**
  * Real-render CI-safe e2e for per-set beach-map editing (#600) — the surface that makes a **trading**
@@ -203,7 +204,7 @@ async function mockConsole(
     gridY: number;
   }
 
-  const venueMap = () => ({
+  const venueMap = (): MockVenueMapView => ({
     id: 1,
     name: 'Miramar Beach Club',
     beach: 'KSAMIL',

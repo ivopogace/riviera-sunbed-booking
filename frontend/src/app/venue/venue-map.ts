@@ -109,8 +109,10 @@ interface VenueHeader {
   readonly rating: string;
   /** The count with its noun already agreed — "1 review", "2 reviews" (shared/rating.ts). */
   readonly reviewsLabel: string;
-  /** The "from €X / set" price string, or `null` when the venue has no sets. */
+  /** The "from €X / set" price string: the cheapest online set (#1647), `null` with none. */
   readonly priceLabel: string | null;
+  /** "Walk-in only" in the price's place when the venue has sets but none online; else `null`. */
+  readonly unpricedLabel: string | null;
   readonly water: string | null;
   readonly amenities: readonly { readonly code: Amenity; readonly label: string }[];
   /** The venue's sales-close value — the note's copy key only; `salesOpen` stays the verdict. */
@@ -377,6 +379,7 @@ export class VenueMap {
       rating: ratingScore(v.ratingTenths),
       reviewsLabel: reviewsLabel(v.reviewsCount),
       priceLabel: v.fromPrice ? formatMoney(v.fromPrice) : null,
+      unpricedLabel: !v.fromPrice && v.sets.length > 0 ? 'Walk-in only' : null,
       water: distanceToWaterLabel(v.distanceToWaterM ?? null),
       amenities: orderedAmenities(v.amenities ?? []).map((code) => ({
         code,

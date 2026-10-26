@@ -93,6 +93,7 @@ class CancelBookingIT {
 		LocalDate date = LocalDate.of(2035, 3, 20); // far future → before cutoff → full refund
 		Created booking = confirmBookingOn(date);
 		assertEquals(1, availabilityRows(booking.setId(), date), "the set is held before cancel");
+		StayFixtures.awaitAccrual(jdbc, booking.id());
 
 		CancelOutcome outcome = cancelBooking.cancel(booking.code());
 
@@ -123,6 +124,7 @@ class CancelBookingIT {
 	@Test
 	void cancellationReasonRoundTripsOntoTheBookingDetail() {
 		Created booking = confirmBookingOn(LocalDate.of(2035, 5, 14));
+		StayFixtures.awaitAccrual(jdbc, booking.id());
 		cancelBooking.cancel(booking.code());
 
 		BookingDetail detail = viewBooking.byCode(booking.code()).orElseThrow();
@@ -151,6 +153,7 @@ class CancelBookingIT {
 	@Test
 	void cancellingTwiceIsNotCancellableTheSecondTime() {
 		Created booking = confirmBookingOn(LocalDate.of(2035, 4, 10));
+		StayFixtures.awaitAccrual(jdbc, booking.id());
 
 		assertInstanceOf(CancelOutcome.Cancelled.class, cancelBooking.cancel(booking.code()));
 		CancelOutcome second = cancelBooking.cancel(booking.code());
