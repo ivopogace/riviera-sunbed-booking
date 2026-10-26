@@ -55,7 +55,7 @@ dependencies {
 	// Proof-of-work challenge (ADR-0016): the official ALTCHA v2 library issues and verifies the
 	// challenges the bundled widget solves; self-hosted, no ALTCHA service is ever called. Its pom
 	// declares org.json as `provided`, so the runtime classpath has to carry it explicitly.
-	implementation 'org.altcha:altcha:2.0.3'
+	implementation 'org.altcha:altcha:2.1.1'
 	implementation 'org.json:json:20260814'
 	// Javadoc into the Documenter's module canvases (DocumentationTests); starter-core ships it, but Gradle runs
 	// a processor only from this configuration.
