@@ -2,6 +2,7 @@ import { expect, test, type Page } from '@playwright/test';
 
 import { expectNoSeriousAxeViolations } from './support/axe';
 import { mockCustomerRecoveryApi } from './support/auth-mocks';
+import type { MockSetView, MockVenueMapView, MockVenueSummary } from './support/venue-views';
 
 /**
  * The loading-announcement contract in a real browser: a loading surface announces through a live
@@ -16,7 +17,7 @@ import { mockCustomerRecoveryApi } from './support/auth-mocks';
  * mechanism, and that is deliberately all this claims.
  */
 
-const VENUES = [
+const VENUES: readonly MockVenueSummary[] = [
   {
     id: 1,
     name: 'Miramar Beach Club',
@@ -28,6 +29,7 @@ const VENUES = [
     fromPrice: { minorUnits: 2500, currency: 'EUR' },
     amenities: ['SHOWERS'],
     availability: { free: 18, total: 24 },
+    sellsOnline: true,
   },
 ];
 
@@ -167,7 +169,7 @@ test('the forgot and reset confirmations take focus when their form is replaced 
 
 const CONSOLE_PRINCIPAL = { username: 'operator', principalType: 'OPERATOR' };
 
-const CONSOLE_MAP = {
+const CONSOLE_MAP: MockVenueMapView = {
   id: 1,
   name: 'Miramar Beach Club',
   beach: 'KSAMIL',
@@ -187,7 +189,7 @@ function seat(
   minorUnits: number,
   gridX: number,
   gridY: number,
-) {
+): MockSetView {
   return {
     id,
     rowLabel,
@@ -226,6 +228,9 @@ async function mockConsoleForPricing(page: Page): Promise<void> {
     route.fulfill({ json: [] }),
   );
   await page.route(/\/api\/venues\/1\/bookings(\?.*)?$/, (route) => route.fulfill({ json: [] }));
+  await page.route(/\/api\/venues\/1\/bookings\/count(\?.*)?$/, (route) =>
+    route.fulfill({ json: { date: '2026-07-08', count: 0 } }),
+  );
   await page.route(/\/api\/venues\/1\/availability(\?.*)?$/, (route) =>
     route.fulfill({ json: [] }),
   );

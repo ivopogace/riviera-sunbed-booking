@@ -36,8 +36,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * updated in place under its own id, a new cell inserted, an absent cell's set retired (with booking
  * history) or deleted (without). Pins: the whole grid round-trips through the U1 read with row A
  * priced front-row premium and the {@code WALK_IN} pool preserved; a regenerate keeps the ids of the
- * cells it keeps; adding a row, and repainting, renaming and repricing a booked set, all save on a
- * trading venue; and — the highest-stakes case — a save that would remove a set with a live booking
+ * cells it keeps; every set takes its grid row's letter whatever label the body sends; adding a row,
+ * and repainting and repricing a booked set, all save on a trading venue; and — the highest-stakes case — a save that would remove a set with a live booking
  * or a hold dated today or later is refused {@code 409 SETS_IN_USE} naming those sets, leaving the
  * layout <em>and</em> the hold untouched (invariant #2: the {@code set_availability} CASCADE must
  * never silently fire). A hold whose day has gone does not freeze its set — it goes with it.
@@ -174,16 +174,21 @@ class BeachMapReplaceIT {
 	}
 
 	@Test
-	void descriptiveRowLabelRoundTrips() throws Exception {
-		// #723 AC-2: a row name at the 40-character bound round-trips to the tourist map read.
-		long venue = createVenue("Named Rows Club");
-		String atBound = "Under the pines · far from the beach bar";
+	void storesEachSetsGridLetterWhateverTheBodySays() throws Exception {
+		// #1586: rows are labelled by grid position; an authored or wrong label in the body is ignored.
+		long venue = createVenue("Lettered Rows Club");
 
-		putLayout(venue, layout(0, cell(atBound, 1, "STANDARD", "ONLINE", 3000, 1, 1)), 204);
+		putLayout(venue, layout(0,
+				cell("Front row", 1, "PREMIUM", "ONLINE", 3500, 1, 1),
+				cell("Pines", 1, "STANDARD", "ONLINE", 3000, 1, 2),
+				cell("B", 1, "STANDARD", "ONLINE", 3000, 1, 3)), 204);
 
+		assertEquals(List.of("A", "B", "C"), jdbc.sql(
+						"SELECT row_label FROM active_set_position WHERE venue_id = :v ORDER BY grid_y")
+				.param("v", venue).query(String.class).list());
 		mvc.perform(get("/api/venues/{id}", venue))
-				.andExpect(status().isOk())
-				.andExpect(jsonPath("$.sets[0].rowLabel").value(atBound));
+				.andExpect(jsonPath("$.sets[0].rowLabel").value("A"))
+				.andExpect(jsonPath("$.sets[2].rowLabel").value("C"));
 	}
 
 	@Test
@@ -202,15 +207,16 @@ class BeachMapReplaceIT {
 	}
 
 	@Test
-	void overlongRowLabelIs400() throws Exception {
-		// #723 AC-1: a 41-character row name is refused at the command edge (§6b), before the V43 CHECK.
-		long venue = createVenue("Overlong Row Club");
+	void aRowPastTheAlphabetIs400() throws Exception {
+		// The 26 letters are the row cap (the editor's MAX_ROWS): row 27 has no label, so it is refused at the edge.
+		long venue = createVenue("Row Twenty-Seven Club");
 
 		mvc.perform(put("/api/venues/{v}/beach-map", venue).cookie(operatorSession).with(csrf())
 						.contentType(MediaType.APPLICATION_JSON)
-						.content(layout(0, cell("x".repeat(41), 1, "STANDARD", "ONLINE", 3000, 1, 1))))
+						.content(layout(0, cell("A", 1, "STANDARD", "ONLINE", 3000, 1, 27))))
 				.andExpect(status().isBadRequest())
 				.andExpect(jsonPath("$.code").value("INVALID_REQUEST"));
+		assertEquals(List.of(), setIds(venue));
 	}
 
 	@Test
@@ -298,7 +304,7 @@ class BeachMapReplaceIT {
 	}
 
 	@Test
-	void repaintsRenamesAndRepricesABookedSetInPlace() throws Exception {
+	void repaintsAndRepricesABookedSetInPlace() throws Exception {
 		long venue = createVenue("Repaint Club");
 		putLayout(venue, layout(0,
 				cell("A", 1, "PREMIUM", "ONLINE", 3500, 1, 1),
@@ -307,14 +313,14 @@ class BeachMapReplaceIT {
 		seedBooking(venue, a1);
 		seedHold(a1, LocalDate.of(2035, 7, 1), "BOOKED_ONLINE"); // the booked date's own availability row
 
-		// Price, tier, pool and row label are always editable — on a booked set too (RESPONSIBILITIES.md §venue).
+		// Price, tier and pool are always editable — on a booked set too (RESPONSIBILITIES.md §venue).
 		putLayout(venue, layout(currentSetVersion(venue),
 				cell("Front", 1, "STANDARD", "WALK_IN", 1500, 1, 1),
 				cell("Front", 2, "PREMIUM", "ONLINE", 3500, 2, 1)), 204);
 
 		mvc.perform(get("/api/venues/{id}", venue))
 				.andExpect(jsonPath("$.sets[0].id").value(a1))
-				.andExpect(jsonPath("$.sets[0].rowLabel").value("Front"))
+				.andExpect(jsonPath("$.sets[0].rowLabel").value("A"))
 				.andExpect(jsonPath("$.sets[0].tier").value("STANDARD"))
 				.andExpect(jsonPath("$.sets[0].pool").value("WALK_IN"))
 				.andExpect(jsonPath("$.sets[0].price.minorUnits").value(1500));
@@ -363,27 +369,6 @@ class BeachMapReplaceIT {
 	}
 
 	@Test
-	void swapsTwoRowNamesInOneSaveOnATradingVenue() throws Exception {
-		long venue = createVenue("Swap Club");
-		putLayout(venue, layout(0,
-				cell("A", 1, "PREMIUM", "ONLINE", 3500, 1, 1),
-				cell("B", 1, "STANDARD", "ONLINE", 2000, 1, 2)), 204);
-		List<Long> ids = setIds(venue);
-		seedBooking(venue, ids.get(0));
-
-		// Each kept set takes the other's slot: the save parks the labels first, so one save, ids kept.
-		putLayout(venue, layout(currentSetVersion(venue),
-				cell("B", 1, "PREMIUM", "ONLINE", 3500, 1, 1),
-				cell("A", 1, "STANDARD", "ONLINE", 2000, 1, 2)), 204);
-
-		mvc.perform(get("/api/venues/{id}", venue))
-				.andExpect(jsonPath("$.sets[0].id").value(ids.get(0)))
-				.andExpect(jsonPath("$.sets[0].rowLabel").value("B"))
-				.andExpect(jsonPath("$.sets[1].id").value(ids.get(1)))
-				.andExpect(jsonPath("$.sets[1].rowLabel").value("A"));
-	}
-
-	@Test
 	void shiftsARowDownByOneToAddASetInFront() throws Exception {
 		long venue = createVenue("Shift Club");
 		putLayout(venue, layout(0,
@@ -404,27 +389,6 @@ class BeachMapReplaceIT {
 				.andExpect(jsonPath("$.sets[1].positionNo").value(2))
 				.andExpect(jsonPath("$.sets[2].id").value(ids.get(1)))
 				.andExpect(jsonPath("$.sets[2].positionNo").value(3));
-	}
-
-	@Test
-	void relabelsAChainOfRowsInOneSave() throws Exception {
-		long venue = createVenue("Relabel Club");
-		putLayout(venue, layout(0,
-				cell("A", 1, "PREMIUM", "ONLINE", 3500, 1, 1),
-				cell("B", 1, "STANDARD", "ONLINE", 2000, 1, 2)), 204);
-		List<Long> ids = setIds(venue);
-		seedBooking(venue, ids.get(0));
-
-		// A becomes B while B still holds it, and B moves on to the free C: a rename, so a booked set takes it.
-		putLayout(venue, layout(currentSetVersion(venue),
-				cell("B", 1, "PREMIUM", "ONLINE", 3500, 1, 1),
-				cell("C", 1, "STANDARD", "ONLINE", 2000, 1, 2)), 204);
-
-		mvc.perform(get("/api/venues/{id}", venue))
-				.andExpect(jsonPath("$.sets[0].id").value(ids.get(0)))
-				.andExpect(jsonPath("$.sets[0].rowLabel").value("B"))
-				.andExpect(jsonPath("$.sets[1].id").value(ids.get(1)))
-				.andExpect(jsonPath("$.sets[1].rowLabel").value("C"));
 	}
 
 	@Test
@@ -515,18 +479,17 @@ class BeachMapReplaceIT {
 	}
 
 	@Test
-	void rejectsRowLabelSharedByTwoGridRows() throws Exception {
+	void theSplitLabelReproducerSavesWithOneLetterPerGridRow() throws Exception {
 		long venue = createVenue("Split Club");
-		// The #728 reproducer: gap-cell numbering keeps every (row_label, position_no) pair unique.
-		mvc.perform(put("/api/venues/{v}/beach-map", venue).cookie(operatorSession).with(csrf())
-						.contentType(MediaType.APPLICATION_JSON)
-						.content(layout(0,
-								cell("A", 2, "PREMIUM", "ONLINE", 3500, 2, 1),
-								cell("A", 3, "PREMIUM", "ONLINE", 3500, 3, 1),
-								cell("A", 1, "STANDARD", "ONLINE", 2000, 1, 2))))
-				.andExpect(status().isConflict())
-				.andExpect(jsonPath("$.code").value("ROW_NAME_TAKEN"));
-		assertEquals(List.of(), setIds(venue), "a refused replace must write nothing");
+		// The #728 body sends one label for two grid rows; each row still takes its own letter.
+		putLayout(venue, layout(0,
+				cell("A", 2, "PREMIUM", "ONLINE", 3500, 2, 1),
+				cell("A", 3, "PREMIUM", "ONLINE", 3500, 3, 1),
+				cell("A", 1, "STANDARD", "ONLINE", 2000, 1, 2)), 204);
+
+		assertEquals(List.of("B", "A", "A"), jdbc.sql(
+						"SELECT row_label FROM active_set_position WHERE venue_id = :v ORDER BY grid_y DESC, grid_x")
+				.param("v", venue).query(String.class).list());
 	}
 
 	private void seedBooking(long venueId, long setId) {

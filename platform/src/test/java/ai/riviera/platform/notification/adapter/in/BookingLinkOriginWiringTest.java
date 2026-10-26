@@ -39,6 +39,22 @@ class BookingLinkOriginWiringTest {
 	}
 
 	@Test
+	void anInvalidLinkOriginFailsAtBootNamingTheBoundKey() {
+		runner.withSystemProperties("RIVIERA_RECOVERY_LINK_BASE_URL=https://riviera.example/?a=b")
+				.withPropertyValues("spring.profiles.active=mailer")
+				.run(context -> assertThat(context).hasFailed().getFailure().rootCause()
+						.hasMessageStartingWith(BookingLinkConfig.BookingLinkProperties.PREFIX + ".base-url ")
+						.hasMessageContaining("set RIVIERA_RECOVERY_LINK_BASE_URL"));
+	}
+
+	@Test
+	void theBoundOriginIsTrimmed() {
+		runner.withPropertyValues("riviera.notification.booking-link.base-url= https://riviera.example/ ")
+				.run(context -> assertThat(context.getBean(BookingLinks.class).baseUrl())
+						.isEqualTo("https://riviera.example"));
+	}
+
+	@Test
 	void otherProfilesKeepTheLocalDefault() {
 		runner.run(context -> assertThat(context.getBean(BookingLinks.class).baseUrl())
 				.isEqualTo("http://localhost:4200"));

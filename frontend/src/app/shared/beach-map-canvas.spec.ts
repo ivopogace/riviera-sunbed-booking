@@ -68,7 +68,7 @@ class CanvasHost {
   readonly rows = signal<readonly TestRow[]>(ROWS);
   readonly dragPan = signal(true);
   readonly railCodes = signal<'letters' | 'labels' | 'capped-labels'>('letters');
-  readonly priceChips = signal<'amounts' | 'capped-phrases'>('amounts');
+  readonly priceChips = signal<'amounts' | 'capped-spans'>('amounts');
   readonly loading = signal(false);
   readonly fitWidth = signal(false);
   readonly taps: string[] = [];
@@ -312,7 +312,7 @@ describe('BeachMapCanvas (#672)', () => {
 
   it('reserves the same price-rail width loading and loaded (#751)', () => {
     const { component, host, detect } = render();
-    component.priceChips.set('capped-phrases');
+    component.priceChips.set('capped-spans');
     detect();
     // The 92px phone cap as a MINIMUM: a desktop chip still widens past it, a bare price does not.
     const loaded = priceColumn(host).className;

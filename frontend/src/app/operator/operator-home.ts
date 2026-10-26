@@ -12,6 +12,7 @@ import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { skip } from 'rxjs';
 
+import { OperatorAuth } from '../core/operator-auth';
 import { OwnedVenue, OwnedVenues } from '../core/owned-venues';
 import { beachLabel } from '../shared/beaches';
 import { landingRouteFor, safeReturnUrl } from '../shared/auth-landing';
@@ -141,6 +142,7 @@ export class OperatorHome implements OnInit {
   /** The beach as the operator or admin reads it, off the catalogue mirror. */
   protected readonly beachLabel = beachLabel;
   private readonly ownedVenues = inject(OwnedVenues);
+  private readonly operator = inject(OperatorAuth);
   private readonly router = inject(Router);
   private readonly route = inject(ActivatedRoute);
   private readonly document = inject(DOCUMENT);
@@ -200,7 +202,8 @@ export class OperatorHome implements OnInit {
     this.failed.set(false);
     const owned = await this.ownedVenues.load();
     if (owned.status === 'error') {
-      this.failed.set(true);
+      // Signed out mid-read (a reset superseded it): "your session is fine" would be false.
+      this.failed.set(this.operator.signedIn());
       return;
     }
     this.venues.set(owned.venues);

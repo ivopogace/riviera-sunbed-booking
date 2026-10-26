@@ -1,5 +1,7 @@
 import { type Page } from '@playwright/test';
 
+import type { MockSetView, MockVenueMapView, MockVenueProfileView } from './venue-views';
+
 const PRINCIPAL = { username: 'operator', principalType: 'OPERATOR' };
 const NO_MONEY = { minorUnits: 0, currency: 'EUR' };
 const TINY_IMAGE = Buffer.from(
@@ -53,6 +55,9 @@ export async function mockWholeConsole(page: Page): Promise<void> {
       ],
     }),
   );
+  await page.route(/\/api\/venues\/1\/bookings\/count(\?.*)?$/, (route) =>
+    route.fulfill({ json: { date: '2026-07-08', count: 1 } }),
+  );
   await page.route(/\/api\/venues\/1\/profile$/, (route) => route.fulfill({ json: profile() }));
   await page.route(/\/api\/venues\/1\/photos\/[0-9a-f]+$/, (route) =>
     route.fulfill({ body: TINY_IMAGE, contentType: 'image/jpeg' }),
@@ -70,7 +75,7 @@ export async function mockWholeConsole(page: Page): Promise<void> {
       json: { venueId: 1, currency: 'EUR', netOwedMinor: 3825, entries: [accrual(11, 3825)] },
     }),
   );
-  const venueMap = {
+  const venueMap: MockVenueMapView = {
     id: 1,
     name: 'Miramar Beach Club',
     beach: 'KSAMIL',
@@ -82,7 +87,6 @@ export async function mockWholeConsole(page: Page): Promise<void> {
     fromPrice: { minorUnits: 2000, currency: 'EUR' },
     amenities: ['WIFI'],
     distanceToWaterM: 20,
-    cutoffTime: '18:00',
     sets: seedSets(),
     setVersion: 0,
     coverPhoto: null,
@@ -107,7 +111,7 @@ export async function signInAsOperator(page: Page): Promise<void> {
 }
 
 /** Two rows of twelve: wide enough that a 390px viewport cannot fit a 44px tile per column. */
-function seedSets() {
+function seedSets(): readonly MockSetView[] {
   return Array.from({ length: 24 }, (_, i) => ({
     id: 10 + i,
     rowLabel: i < 12 ? 'A' : 'B',
@@ -117,6 +121,7 @@ function seedSets() {
     price: { minorUnits: 2000, currency: 'EUR' },
     gridX: (i % 12) + 1,
     gridY: i < 12 ? 1 : 2,
+    availability: 'FREE',
   }));
 }
 
@@ -148,11 +153,10 @@ function accrual(bookingId: number, netMinor: number) {
   };
 }
 
-function profile() {
+function profile(): MockVenueProfileView {
   return {
     name: 'Miramar Beach Club',
     beach: 'KSAMIL',
-    region: 'SARANDE',
     description: 'A quiet cove.',
     bookingMode: 'INSTANT',
     bookingCutoff: '18:00',

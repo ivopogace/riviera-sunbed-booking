@@ -3,6 +3,7 @@ import { expect, test } from '@playwright/test';
 import { ChallengeFence, mockChallengeFence } from './support/auth-mocks';
 import { expectNoSeriousAxeViolations } from './support/axe';
 import { fillDetailsAndContinue, settle } from './support/booking-dialog';
+import type { MockSetView, MockVenueMapView } from './support/venue-views';
 
 /**
  * Real-render journey of a stitched stay at a Request-to-Book venue (#1267): no single set covers the
@@ -20,7 +21,7 @@ function set(
   availability: 'PARTLY_FREE' | 'TAKEN',
   freeDays: number,
   takenDates: readonly string[],
-) {
+): MockSetView {
   return {
     id,
     rowLabel: 'Front row · Sea view',
@@ -36,7 +37,7 @@ function set(
   };
 }
 
-const VENUE = {
+const VENUE: MockVenueMapView = {
   id: 1,
   name: 'Miramar Beach Club',
   beach: 'KSAMIL',

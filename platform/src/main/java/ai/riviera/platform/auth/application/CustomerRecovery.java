@@ -5,7 +5,6 @@ import java.time.Clock;
 import java.util.Optional;
 
 import org.springframework.stereotype.Component;
-import org.springframework.web.util.UriComponentsBuilder;
 
 import ai.riviera.platform.customer.api.CustomerAccountRecovery;
 import ai.riviera.platform.customer.vocabulary.CustomerAccountId;
@@ -13,6 +12,7 @@ import ai.riviera.platform.customer.vocabulary.ResetPasswordOutcome;
 import ai.riviera.platform.customer.vocabulary.VerifyEmailOutcome;
 import ai.riviera.platform.notification.api.MailDeliverability;
 import ai.riviera.platform.notification.api.MailSender;
+import ai.riviera.platform.notification.vocabulary.EmailedLink;
 
 /**
  * Edge orchestrator for account recovery, keeping tokens, mail and crypto out of {@code customer} (RV-BE-11):
@@ -25,8 +25,9 @@ import ai.riviera.platform.notification.api.MailSender;
 @Component
 public class CustomerRecovery {
 
-	static final String VERIFY_PATH = "/account/verify";
-	static final String RESET_PATH = "/account/reset";
+	private static final String ACCOUNT_SEGMENT = "account";
+	private static final String VERIFY_SEGMENT = "verify";
+	private static final String RESET_SEGMENT = "reset";
 	private static final String TOKEN_PARAM = "token";
 
 	private final CustomerAccountRecovery recovery;
@@ -52,7 +53,7 @@ public class CustomerRecovery {
 		// The token store is NOT best-effort and stays on this thread; only the send is.
 		if (recovery.issueEmailVerificationToken(accountId, tokens.hash(rawToken),
 				clock.instant().plus(properties.verificationTokenTtl()))) {
-			mails.sendEmailVerification(email, link(VERIFY_PATH, rawToken));
+			mails.sendEmailVerification(email, link(VERIFY_SEGMENT, rawToken));
 		}
 	}
 
@@ -77,7 +78,7 @@ public class CustomerRecovery {
 		String rawToken = tokens.generate();
 		boolean issued = recovery.issuePasswordResetToken(accountId, tokens.hash(rawToken),
 				clock.instant().plus(properties.resetTokenTtl()));
-		return issued ? Optional.of(link(RESET_PATH, rawToken)) : Optional.empty();
+		return issued ? Optional.of(link(RESET_SEGMENT, rawToken)) : Optional.empty();
 	}
 
 	/** Redeem a presented raw verification token (hashes it, then claims it single-use in the module). */
@@ -112,11 +113,10 @@ public class CustomerRecovery {
 		return recovery.emailVerifiedFor(email);
 	}
 
-	private URI link(String path, String rawToken) {
-		return UriComponentsBuilder.fromUriString(properties.linkBaseUrl())
-				.path(path)
-				.queryParam(TOKEN_PARAM, rawToken)
-				.build()
+	private URI link(String accountPage, String rawToken) {
+		return EmailedLink.on(properties.linkBaseUrl())
+				.path(ACCOUNT_SEGMENT, accountPage)
+				.query(TOKEN_PARAM, rawToken)
 				.toUri();
 	}
 }

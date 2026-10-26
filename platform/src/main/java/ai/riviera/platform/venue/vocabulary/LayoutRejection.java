@@ -22,12 +22,6 @@ public enum LayoutRejection {
 	DUPLICATE_POSITION(Fault.CONFLICT, "Two sets share the same row and position."),
 	/** Two submitted cells share the same {@code (grid_x, grid_y)} cell. */
 	CELL_TAKEN(Fault.CONFLICT, "Two sets occupy the same grid cell."),
-	/**
-	 * One {@code rowLabel} under two {@code gridY} values: the DB accepts it (gap-cell numbering
-	 * keeps the pairs unique) but the map, price rail and pricing tab group by label, so the rows
-	 * would merge. Replace-path twin of {@code SetRejection.ROW_NAME_TAKEN}; maps to 409.
-	 */
-	ROW_NAME_TAKEN(Fault.CONFLICT, "Two rows in this layout share the same name."),
 	/** The submitted layout has no sets — an empty save would silently wipe the map, so it is refused. */
 	EMPTY_LAYOUT(Fault.INVALID, "A layout must have at least one set."),
 	/** The submitted layout exceeds the maximum grid size ({@code LayoutCommand.MAX_SETS} sets). */

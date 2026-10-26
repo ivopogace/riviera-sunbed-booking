@@ -27,12 +27,12 @@ import ai.riviera.platform.venue.vocabulary.SetId;
 import ai.riviera.platform.venue.vocabulary.VenueId;
 
 /**
- * Operator endpoints for the staff daily view: a venue's settled bookings covering one day —
- * each with set, code, stay outcome, the guest's span and the day's attendance — plus the check-in
+ * Operator endpoints for the staff daily view: a venue's settled bookings covering one day (set, code,
+ * stay outcome, the guest's span, the day's attendance), their "Booked online" count, and the check-in
  * POST. Depends only on the {@link ListDailyBookings} and {@link CheckInBooking} ports (#11).
  *
  * <p><strong>Operator-gated</strong>, never public: codes are bearer credentials (invariant #7).
- * {@code SecurityConfig} must match this GET to {@code OPERATOR} <em>before</em> the public venue
+ * {@code SecurityConfig} must match both GETs to {@code OPERATOR} <em>before</em> the public venue
  * GET rule (unauthenticated: {@code 401}). {@code date} defaults to today in Tirane (invariant #6).
  */
 @RestController
@@ -58,10 +58,25 @@ class StaffBookingController {
 	List<DailyBookingView> bookings(Authentication authentication, @PathVariable long venueId,
 			@RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
 		OperatorId operator = operatorDirectory.requireOperator(authentication.getName());
-		LocalDate effectiveDate = date != null ? date : LocalDate.ofInstant(clock.instant(), TIRANE);
-		return dailyBookings.forVenueOn(operator, new VenueId(venueId), effectiveDate).stream()
+		return dailyBookings.forVenueOn(operator, new VenueId(venueId), dayOrToday(date)).stream()
 				.map(DailyBookingView::of)
 				.toList();
+	}
+
+	/**
+	 * The venue's "Booked online" count on the day (CONTEXT.md): settled bookings whose day is not released
+	 * (ADR-0027), a refund that kept the claim included. A count, never rows: the stats strip reads no codes.
+	 */
+	@GetMapping("/{venueId}/bookings/count")
+	BookedOnlineView bookedOnline(Authentication authentication, @PathVariable long venueId,
+			@RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
+		OperatorId operator = operatorDirectory.requireOperator(authentication.getName());
+		LocalDate day = dayOrToday(date);
+		return new BookedOnlineView(day, dailyBookings.bookedOnlineOn(operator, new VenueId(venueId), day));
+	}
+
+	private LocalDate dayOrToday(LocalDate date) {
+		return date != null ? date : LocalDate.ofInstant(clock.instant(), TIRANE);
 	}
 
 	/**

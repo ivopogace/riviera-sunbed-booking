@@ -29,7 +29,7 @@ final class RequestBodyCapFilter extends OncePerRequestFilter {
 	private static final Logger log = LoggerFactory.getLogger(RequestBodyCapFilter.class);
 
 	static final int MAX_BODY_BYTES = 64 * 1024;
-	/** A whole layout: {@code LayoutCommand.MAX_SETS} sets on 40-character two-byte row labels is ~223 KB. */
+	/** A full {@code LayoutCommand.MAX_SETS} layout is ~123 KiB, so the cap keeps ~2x headroom (RESPONSIBILITIES.md §Platform edge). */
 	static final int MAX_LAYOUT_BODY_BYTES = 256 * 1024;
 	static final int MAX_WEBHOOK_BODY_BYTES = 1024 * 1024;
 

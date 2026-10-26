@@ -5,6 +5,7 @@ import { settle } from './support/booking-dialog';
 import { hitTestId } from './support/hit-test';
 import { mockMapResources, recordOffOriginRequests } from './support/map-resources';
 import { expectTouchManipulation } from './support/mobile-zoom';
+import type { MockBeachCode, MockRegionCode, MockVenueSummary } from './support/venue-views';
 import { expectTouchTargets } from './support/touch-targets';
 
 /**
@@ -28,7 +29,7 @@ const COVER_URL = '/api/venues/1/photos/aa01';
  * it stays in the list and draws no pin, so "one pin per PINNED venue" is asserted against a list
  * that actually contains a counter-example.
  */
-const VENUES = [
+const VENUES: readonly MockVenueSummary[] = [
   {
     id: 1,
     name: 'Miramar Beach Club',
@@ -39,6 +40,7 @@ const VENUES = [
     bookingMode: 'INSTANT',
     fromPrice: { minorUnits: 2500, currency: 'EUR' },
     availability: { free: 18, total: 24 },
+    sellsOnline: true,
     salesOpen: true,
     location: { latitude: 39.7712, longitude: 20.0021 },
     coverPhoto: {
@@ -57,6 +59,7 @@ const VENUES = [
     bookingMode: 'REQUEST',
     fromPrice: { minorUnits: 3000, currency: 'EUR' },
     availability: { free: 5, total: 10 },
+    sellsOnline: true,
     salesOpen: true,
     location: { latitude: 40.1573, longitude: 19.6401 },
   },
@@ -70,6 +73,7 @@ const VENUES = [
     bookingMode: 'INSTANT',
     fromPrice: { minorUnits: 2000, currency: 'EUR' },
     availability: { free: 4, total: 8 },
+    sellsOnline: true,
     salesOpen: true,
   },
 ];
@@ -79,7 +83,7 @@ const VENUES = [
  * view Ksamil is a crowd of two and Dhërmi a crowd of three; the pair separates around zoom 15,
  * the trio never does inside the map's own fence — the maintainer's report.
  */
-const CROWDED_VENUES = [
+const CROWDED_VENUES: readonly MockVenueSummary[] = [
   ...VENUES,
   {
     id: 4,
@@ -91,6 +95,7 @@ const CROWDED_VENUES = [
     bookingMode: 'INSTANT',
     fromPrice: { minorUnits: 2100, currency: 'EUR' },
     availability: { free: 15, total: 25 },
+    sellsOnline: true,
     salesOpen: true,
     location: { latitude: 39.77227, longitude: 20.00317 },
   },
@@ -104,6 +109,7 @@ const CROWDED_VENUES = [
     bookingMode: 'INSTANT',
     fromPrice: { minorUnits: 3900, currency: 'EUR' },
     availability: { free: 2, total: 34 },
+    sellsOnline: true,
     salesOpen: true,
     location: { latitude: 40.15747, longitude: 19.64026 },
   },
@@ -117,6 +123,7 @@ const CROWDED_VENUES = [
     bookingMode: 'REQUEST',
     fromPrice: { minorUnits: 2400, currency: 'EUR' },
     availability: { free: 19, total: 22 },
+    sellsOnline: true,
     salesOpen: true,
     location: { latitude: 40.15718, longitude: 19.64038 },
   },
@@ -154,7 +161,11 @@ function countVenueRequests(page: Page): () => number {
   return () => seen;
 }
 
-async function mockVenues(page: Page, delayMs = 0, list = VENUES): Promise<void> {
+async function mockVenues(
+  page: Page,
+  delayMs = 0,
+  list: readonly MockVenueSummary[] = VENUES,
+): Promise<void> {
   await page.route(/\/api\/auth\/me$/, (route) =>
     route.fulfill({ status: 401, json: { code: 'UNAUTHENTICATED' } }),
   );
@@ -177,7 +188,7 @@ async function mockVenues(page: Page, delayMs = 0, list = VENUES): Promise<void>
  * The unpinned one is the point of the third row — it stays in the list and draws no pin, so "one
  * pin per PINNED venue" is asserted against a list that actually contains a counter-example.
  */
-const SHEET_VENUES = [
+const SHEET_VENUES: readonly MockVenueSummary[] = [
   {
     ...VENUES[0],
     beach: 'PALASE',
@@ -463,7 +474,7 @@ function disjoint(
  * the camera is on it, and a Dhërmi trio ~20 m apart that never separates inside the map's own
  * fence. Same two behaviours as the retired whole-coast fixture, moved into one region.
  */
-const CROWDED_REGION = [
+const CROWDED_REGION: readonly MockVenueSummary[] = [
   CROWDED_VENUES[1],
   CROWDED_VENUES[4],
   CROWDED_VENUES[5],
@@ -795,14 +806,14 @@ const MAP_VENUES = [
 function mapVenue(
   id: number,
   name: string,
-  beach: string,
-  region: string,
+  beach: MockBeachCode,
+  region: MockRegionCode,
   latitude: number,
   longitude: number,
   minorUnits: number,
   salesOpen = true,
   reviewsCount = 143,
-): Record<string, unknown> {
+): MockVenueSummary {
   return {
     id,
     name,
@@ -814,6 +825,7 @@ function mapVenue(
     amenities: ['BEACH_BAR', 'SNORKELLING'],
     fromPrice: { minorUnits, currency: 'EUR' },
     availability: { free: 11, total: 26 },
+    sellsOnline: true,
     salesOpen,
     location: { latitude, longitude },
   };
@@ -1100,7 +1112,11 @@ test.describe('Discover map — the desktop panel', () => {
   });
 
   test('a pin with no price draws its dot, centred at 14 px, open or closed', async ({ page }) => {
-    const unpriced = (venue: Record<string, unknown>) => ({ ...venue, fromPrice: null });
+    const unpriced = (venue: MockVenueSummary): MockVenueSummary => ({
+      ...venue,
+      fromPrice: null,
+      sellsOnline: false,
+    });
     await mockVenues(page, 0, [
       unpriced(mapVenue(42, 'Unpriced Venue', 'DHERMI', 'HIMARE', 40.176, 19.586, 0)),
       unpriced(mapVenue(43, 'Closed Unpriced', 'BORSH', 'HIMARE', 40.06, 19.86, 0, false)),
@@ -1179,7 +1195,7 @@ test.describe('Discover map — the desktop panel', () => {
   }) => {
     await openMap(page, { width: 1440, height: 900 });
     await settleAnimations(page.getByTestId('desk-panel'));
-    await expectNoSeriousAxeViolations(page);
+    await expectNoSeriousAxeViolations(page, 'the desktop panel');
     await expectTouchTargets(page, 'the desktop panel');
 
     await expectTouchManipulation(page, '[data-testid="desk-near-me"]', 'the panel’s Near me');
@@ -1187,7 +1203,7 @@ test.describe('Discover map — the desktop panel', () => {
     await page.getByTestId('head-place').click();
     await expect(page.getByTestId('coast-picker')).toBeVisible();
     await settleAnimations(page.getByTestId('coast-picker'));
-    await expectNoSeriousAxeViolations(page);
+    await expectNoSeriousAxeViolations(page, 'the desktop panel with its coast picker');
     await expectTouchTargets(page, 'the desktop panel with its coast picker');
   });
 });

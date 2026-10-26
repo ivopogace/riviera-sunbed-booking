@@ -1,6 +1,7 @@
 import { expect, test } from '@playwright/test';
 
 import { settle } from './support/booking-dialog';
+import type { MockVenueMapView } from './support/venue-views';
 
 /**
  * The booking dialog's Back button paints its hover-only border from the token registry,
@@ -14,7 +15,7 @@ import { settle } from './support/booking-dialog';
 const HOVER_BORDER = 'rgba(10, 79, 94, 0.6)';
 const DARK_HOVER_BORDER = 'rgba(183, 223, 233, 0.55)';
 
-const VENUE = {
+const VENUE: MockVenueMapView = {
   id: 1,
   name: 'Miramar Beach Club',
   beach: 'KSAMIL',

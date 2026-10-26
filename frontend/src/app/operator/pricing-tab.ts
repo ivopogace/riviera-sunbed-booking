@@ -14,6 +14,7 @@ import { firstValueFrom } from 'rxjs';
 import { OperatorAuth } from '../core/operator-auth';
 import { groupSetsByRow } from '../shared/availability-grid';
 import { CardGlass } from '../shared/card-glass';
+import { ConsolePageColumn } from '../shared/console-page-box';
 import { FieldErrorFor } from '../shared/field-error-for';
 import {
   eurosToMinorUnits,
@@ -55,7 +56,7 @@ interface PriceRow {
  */
 @Component({
   selector: 'app-pricing-tab',
-  imports: [CardGlass, FieldErrorFor, StaleWriteBanner, TouchTarget],
+  imports: [ConsolePageColumn, CardGlass, FieldErrorFor, StaleWriteBanner, TouchTarget],
   templateUrl: './pricing-tab.html',
 })
 export class PricingTab {

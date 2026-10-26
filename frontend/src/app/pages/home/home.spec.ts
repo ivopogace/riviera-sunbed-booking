@@ -49,6 +49,7 @@ function venues(): VenueSummary[] {
       reviewsCount: 326,
       bookingMode: 'INSTANT',
       fromPrice: { minorUnits: 2500, currency: 'EUR' },
+      sellsOnline: true,
       // Four amenities out of catalogue order → the card shows the first 3 in catalogue
       // order (Beach bar, Free parking, Showers); WiFi is dropped. Plus a to-water distance.
       amenities: ['SHOWERS', 'BEACH_BAR', 'FREE_PARKING', 'WIFI'],
@@ -64,6 +65,7 @@ function venues(): VenueSummary[] {
       reviewsCount: 88,
       bookingMode: 'REQUEST',
       fromPrice: { minorUnits: 3000, currency: 'EUR' },
+      sellsOnline: true,
       availability: { free: 5, total: 10 },
     },
   ];
@@ -467,6 +469,7 @@ describe('Home (venue discovery)', () => {
       name: 'Empty Cove',
       fromPrice: null,
       availability: { free: 0, total: 0 },
+      sellsOnline: false,
     };
     listRequest().flush([zeroSets]);
     await fixture.whenStable();
@@ -681,6 +684,7 @@ describe('Home (the riviera map sheet — what `/` renders)', () => {
         reviewsCount: 12,
         bookingMode: 'INSTANT',
         fromPrice: { minorUnits: 2000, currency: 'EUR' },
+        sellsOnline: true,
         availability: { free: 4, total: 8 },
         salesOpen: false,
         location: { latitude: 40.175, longitude: 19.607 },
@@ -694,6 +698,7 @@ describe('Home (the riviera map sheet — what `/` renders)', () => {
         reviewsCount: 5,
         bookingMode: 'INSTANT',
         fromPrice: { minorUnits: 1500, currency: 'EUR' },
+        sellsOnline: true,
         availability: { free: 9, total: 12 },
         location: { latitude: 41.24, longitude: 19.51 },
       },
@@ -706,6 +711,7 @@ describe('Home (the riviera map sheet — what `/` renders)', () => {
         reviewsCount: 3,
         bookingMode: 'REQUEST',
         fromPrice: { minorUnits: 1800, currency: 'EUR' },
+        sellsOnline: true,
         availability: { free: 6, total: 10 },
         location: { latitude: 41.21, longitude: 19.51 },
       },
@@ -1143,8 +1149,9 @@ describe('Home (the riviera map sheet — what `/` renders)', () => {
   });
 
   /**
-   * A venue with no beach map yet is listed (#717) and counted as a venue, but it has nothing to
-   * sell: it leaves N and stays in M (#1530). Only Sarandë venues, so the sheet opens on them.
+   * A venue with no beach map yet (#717), or only walk-in sets (#1550), is listed and counted as a
+   * venue, but sells nothing online: it leaves N and stays in M (#1530). Only Sarandë venues, so the
+   * sheet opens on them.
    */
   describe('the selling line (#1530)', () => {
     function sarande(emptyCove: Partial<VenueSummary>): VenueSummary[] {
@@ -1157,6 +1164,7 @@ describe('Home (the riviera map sheet — what `/` renders)', () => {
           name: 'Empty Cove',
           fromPrice: null,
           availability: { free: 0, total: 0 },
+          sellsOnline: false,
           salesOpen: true,
           ...emptyCove,
         },
@@ -1183,6 +1191,41 @@ describe('Home (the riviera map sheet — what `/` renders)', () => {
       await settle(fixture);
       const rows = [...el(fixture).querySelectorAll<HTMLElement>('[data-testid="picker-row"]')];
       expect(rows.map(text)).toEqual(['Sarandë 2 venues from €25', 'Ksamil 2 venues from €25']);
+    });
+
+    it('counts a walk-in-only venue as listed, not selling: its sets sell at the beach, not online (#1550)', async () => {
+      const fixture = await landed(
+        sarande({ name: 'Walk-in Cove', availability: { free: 4, total: 4 }, sellsOnline: false }),
+      );
+
+      expect(cardNames(fixture)).toEqual(['Miramar Beach Club', 'Walk-in Cove']);
+      expect(text(byTestId(fixture, 'head-subtitle'))).toBe('1 of 2 selling today');
+      expect(text(byTestId(fixture, 'sheet-outcome'))).toBe('Sarandë: 1 of 2 selling today');
+    });
+
+    it('prices a walk-in-only venue nowhere: its card says walk-in only, and the picker’s from is the online seller’s (#1628)', async () => {
+      const fixture = await landed(
+        sarande({ name: 'Walk-in Cove', availability: { free: 4, total: 4 }, sellsOnline: false }),
+      );
+
+      const walkIn = el(fixture).querySelectorAll<HTMLElement>('[data-testid="venue-card"]')[1];
+      expect(text(walkIn.querySelector('.price'))).toBe('Walk-in only');
+      const label = walkIn.getAttribute('aria-label') ?? '';
+      expect(label).toContain('out of 5, walk-in only, 4 of 4 sets free');
+      expect(label).not.toContain('from');
+
+      byTestId(fixture, 'head-place')!.click();
+      await settle(fixture);
+      const rows = [...el(fixture).querySelectorAll<HTMLElement>('[data-testid="picker-row"]')];
+      expect(rows.map(text)).toEqual(['Sarandë 2 venues from €25', 'Ksamil 2 venues from €25']);
+    });
+
+    it('keeps the no-sets wording, unpriced and unannounced, for a venue with no beach map yet', async () => {
+      const fixture = await landed(sarande({}));
+
+      const empty = el(fixture).querySelectorAll<HTMLElement>('[data-testid="venue-card"]')[1];
+      expect(text(empty.querySelector('.price'))).toBe('No sets yet');
+      expect(empty.getAttribute('aria-label')).not.toMatch(/walk-in|from/);
     });
 
     it('counts a no-set venue whose sales have also closed as one non-seller, never subtracted twice', async () => {

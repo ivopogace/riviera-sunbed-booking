@@ -30,6 +30,7 @@ import { CrossIcon } from '../shared/cross-icon';
 import { CheckIcon } from '../shared/check-icon';
 import { HourglassIcon } from '../shared/hourglass-icon';
 import { LockIcon } from '../shared/lock-icon';
+import { PrimaryCta } from '../shared/primary-cta';
 
 /** Poll cadence and budget for awaiting the webhook-driven CONFIRMED transition. */
 const POLL_MS = 1500;
@@ -73,6 +74,7 @@ const CLS = {
 @Component({
   selector: 'app-booking-pay',
   imports: [
+    PrimaryCta,
     LegalConsent,
     ManageBookingLink,
     RouterLink,
@@ -350,9 +352,10 @@ const CLS = {
                 class="mt-[10px] text-[12px] leading-[1.5] text-riv-card-ink-soft"
               ></p>
               <button
+                appPrimaryCta
                 appTouchTarget
                 type="button"
-                class="mt-4 block w-full cursor-pointer rounded-2xl border border-riv-cta-border bg-(image:--riv-cta-grad) p-[15px] text-center text-[15px] font-bold text-white shadow-[0_12px_28px_rgba(11,120,150,0.5),inset_0_1px_0_rgba(255,255,255,0.5)] [transition:filter_0.15s_ease] hover:enabled:brightness-[1.06] focus-visible:outline-[3px] focus-visible:outline-offset-2 focus-visible:outline-riv-accent-ink disabled:cursor-default disabled:opacity-70 motion-reduce:transition-none"
+                class="mt-4 block w-full cursor-pointer rounded-2xl p-[15px] text-center text-[15px] font-bold shadow-[0_12px_28px_rgba(11,120,150,0.5)] [transition:filter_0.15s_ease] focus-visible:outline-[3px] focus-visible:outline-offset-2 focus-visible:outline-riv-accent-ink disabled:cursor-default disabled:opacity-70 motion-reduce:transition-none"
                 (click)="pay()"
                 [appBusy]="paying() || remounting()"
                 data-testid="pay-button"

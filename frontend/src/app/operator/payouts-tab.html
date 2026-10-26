@@ -1,4 +1,8 @@
-<section class="mx-auto w-full max-w-[920px] px-5 py-4" data-testid="payouts-tab">
+<section
+  appConsolePageColumn
+  class="w-full max-w-[920px] py-4 max-sm:px-5"
+  data-testid="payouts-tab"
+>
   <header class="mb-1.5">
     <h1 class="text-[19px] font-bold tracking-[-0.01em] text-riv-card-ink">Payouts</h1>
     <p class="mt-1 max-w-[560px] text-[13px] leading-[1.5] text-riv-card-ink-soft">
@@ -82,7 +86,7 @@
     </div>
   } @else if (loadErrorMsg(); as msg) {
     <p
-      class="mx-auto mt-6 max-w-md rounded-[16px] border border-riv-alert-tint/30 bg-riv-console-inset/70 px-5 py-4 text-center text-[13px] font-semibold text-riv-error-ink"
+      class="mr-auto mt-6 max-w-md rounded-[16px] border border-riv-alert-tint/30 bg-riv-console-inset/70 px-5 py-4 text-center text-[13px] font-semibold text-riv-error-ink"
       role="alert"
       data-testid="payouts-load-error"
     >

@@ -78,6 +78,7 @@ class DayRefundMailIT {
 		LocalDate day = LocalDate.of(2029, 8, 8);
 		String guest = "washed-out-day@example.com";
 		long bookingId = fixtures.seedBooking(set, "DAYWX0001", day.minusDays(2), guest, 42000L, "CONFIRMED");
+		fixtures.accrue(set.venueId(), bookingId, 42000L);
 
 		fixtures.publishInTransaction(new BookingDayRefunded(new BookingId(bookingId), new VenueId(set.venueId()),
 				new SetId(set.setId()), day, 3000L, "EUR", null, RefundReason.WEATHER, false));
@@ -100,6 +101,7 @@ class DayRefundMailIT {
 		String guest = "suppressed-day@example.com";
 		suppressions.suppress(guest, SuppressionReason.HARD_BOUNCE, java.time.Instant.now());
 		long bookingId = fixtures.seedBooking(set, "DAYWX0002", day.minusDays(1), guest, 9000L, "CONFIRMED");
+		fixtures.accrue(set.venueId(), bookingId, 9000L);
 
 		fixtures.publishInTransaction(new BookingDayRefunded(new BookingId(bookingId), new VenueId(set.venueId()),
 				new SetId(set.setId()), day, 3001L, "EUR", null, RefundReason.WEATHER, false));

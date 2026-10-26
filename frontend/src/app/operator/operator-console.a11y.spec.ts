@@ -84,8 +84,10 @@ describe('OperatorConsole accessibility (axe, #170)', () => {
       .flush(Array.from({ length: pending }, (_, i) => ({ bookingId: i + 1 })));
     // The stats strip mounts in the shell and fires its three reads — audit WITH it.
     httpMock
-      .expectOne((r) => r.url === `${BASE}/api/venues/${VENUE}/bookings` && r.method === 'GET')
-      .flush([]);
+      .expectOne(
+        (r) => r.url === `${BASE}/api/venues/${VENUE}/bookings/count` && r.method === 'GET',
+      )
+      .flush({ date: '2026-06-15', count: 0 });
     httpMock
       .expectOne((r) => r.url === `${BASE}/api/venues/${VENUE}/takings` && r.method === 'GET')
       .flush({

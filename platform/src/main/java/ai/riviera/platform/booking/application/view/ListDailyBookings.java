@@ -8,8 +8,8 @@ import ai.riviera.platform.venue.vocabulary.VenueId;
 
 /**
  * The staff daily-bookings read — the inbound port the booking module's operator REST adapter calls
- * to list a venue's settled bookings for one day, each with its set and booking code. Internal to
- * {@code booking}, not cross-module {@code api/} (invariant #11): keeping the read here avoids an
+ * to list a venue's settled bookings for one day, each with its set and booking code, or to count
+ * them. Internal to {@code booking}, not cross-module {@code api/} (invariant #11): keeping it avoids an
  * {@code availability → booking} cycle (the staff daily view is composed on the frontend from each
  * module's own endpoint).
  */
@@ -21,4 +21,10 @@ public interface ListDailyBookings {
 	 * credentials (#7): first asserts {@code operator} owns {@code venueId}, else 403 (#13).
 	 */
 	List<DailyBooking> forVenueOn(OperatorId operator, VenueId venueId, LocalDate date);
+
+	/**
+	 * The venue's "Booked online" count on {@code date}: those bookings whose day is not released (ADR-0027). The
+	 * stats strip's read, so it never downloads codes to count them; asserts ownership first, else 403 (#13).
+	 */
+	int bookedOnlineOn(OperatorId operator, VenueId venueId, LocalDate date);
 }

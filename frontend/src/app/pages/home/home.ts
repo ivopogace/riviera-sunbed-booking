@@ -552,8 +552,8 @@ export class Home {
   private readonly isToday = computed(() => this.selectedDate() === this.minDate);
   /**
    * The selling line: `8 of 11 selling today` (invariant #4 as the head's light, from the
-   * server's per-date verdict), or the count on another day. A venue with no sets yet is listed
-   * (#717) and counted among the M, but sells nothing, so it is never among the N (#1530).
+   * server's per-date verdict), or the count on another day. A venue with no sets yet (#717) or only
+   * walk-in sets is counted among the M, but sells nothing online, so never among the N (#1530, #1550).
    */
   protected readonly subtitle = computed(() => {
     const cards = this.focus().cards;
@@ -561,7 +561,7 @@ export class Home {
     if (!this.isToday()) {
       return `${n} ${n === 1 ? 'venue' : 'venues'}`;
     }
-    const selling = cards.filter((card) => !card.salesClosed && card.total > 0).length;
+    const selling = cards.filter((card) => !card.salesClosed && card.sellsOnline).length;
     return `${selling} of ${n} selling today`;
   });
   /** The region's beaches with a venue, in coast order, each with its count. */
@@ -1149,7 +1149,14 @@ export class Home {
     const closedForSeason = venue.closedForSeason === true;
     const reopensOn = closedForSeason ? (venue.reopensOn ?? null) : null;
 
-    const price = priceLabel ? `, from ${priceLabel} per set` : '';
+    // A priceless venue with sets holds them for walk-ins alone: the server prices online sets only.
+    const unpricedLabel = total === 0 ? 'No sets yet' : 'Walk-in only';
+    let price = '';
+    if (priceLabel) {
+      price = `, from ${priceLabel} per set`;
+    } else if (total > 0) {
+      price = ', walk-in only';
+    }
     const waterText = water ? `${water}. ` : '';
     const amenitiesText = amenities.length
       ? `Amenities: ${amenities.map((a) => a.label).join(', ')}. `
@@ -1188,9 +1195,11 @@ export class Home {
       amenities,
       freePercent,
       priceLabel,
+      unpricedLabel,
       fromPrice: venue.fromPrice ?? null,
       free,
       total,
+      sellsOnline: venue.sellsOnline,
       salesClosed,
       closedForSeason,
       reopensOn,

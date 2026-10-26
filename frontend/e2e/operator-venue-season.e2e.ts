@@ -2,6 +2,7 @@ import { expect, test, type Page, type Request } from '@playwright/test';
 
 import { expectNoSeriousAxeViolations } from './support/axe';
 import { settle } from './support/booking-dialog';
+import type { MockVenueProfileView, MockVenueSummary } from './support/venue-views';
 
 /**
  * Real-render CI-safe e2e for closing a venue for the season: sign in → Venue tab → close
@@ -14,10 +15,9 @@ import { settle } from './support/booking-dialog';
 
 const PRINCIPAL = { username: 'operator', principalType: 'OPERATOR' };
 
-const PROFILE = {
+const PROFILE: MockVenueProfileView = {
   name: 'Miramar Beach Club',
   beach: 'KSAMIL',
-  region: 'SARANDE',
   description: 'Loungers on the shore.',
   bookingMode: 'INSTANT',
   bookingCutoff: '18:00',
@@ -36,7 +36,7 @@ interface Closure {
   advanceSales: boolean;
 }
 
-function summary(id: number, name: string, closure: Closure) {
+function summary(id: number, name: string, closure: Closure): MockVenueSummary {
   return {
     id,
     name,
@@ -49,6 +49,7 @@ function summary(id: number, name: string, closure: Closure) {
     amenities: ['WIFI'],
     distanceToWaterM: 20,
     availability: { free: 10, total: 12 },
+    sellsOnline: true,
     salesOpen: !closure.closed,
     closedForSeason: closure.closed,
     reopensOn: closure.closed ? closure.reopenOn : null,
@@ -160,6 +161,9 @@ async function mockSeason(page: Page, refuseDate = false): Promise<{ writes: Req
     route.fulfill({ json: [] }),
   );
   await page.route(/\/api\/venues\/1\/bookings(\?.*)?$/, (route) => route.fulfill({ json: [] }));
+  await page.route(/\/api\/venues\/1\/bookings\/count(\?.*)?$/, (route) =>
+    route.fulfill({ json: { date: '2026-07-08', count: 0 } }),
+  );
   await page.route(/\/api\/venues\/1\/takings(\?.*)?$/, (route) =>
     route.fulfill({
       json: {

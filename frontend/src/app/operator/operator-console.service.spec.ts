@@ -30,7 +30,6 @@ import {
   layoutErrorOf,
   remodelPreviewOf,
   setBatchErrorOf,
-  rowNameErrorOf,
   seasonClosureErrorOf,
 } from './operator-console.service';
 
@@ -306,6 +305,34 @@ describe('OperatorConsoleService — payout ledger + weather refund (#173)', () 
   });
 });
 
+describe('OperatorConsoleService — Booked online count (#1624)', () => {
+  let service: OperatorConsoleService;
+  let httpMock: HttpTestingController;
+
+  beforeEach(() => {
+    TestBed.configureTestingModule({
+      providers: [provideHttpClient(), provideHttpClientTesting(), OperatorConsoleService],
+    });
+    service = TestBed.inject(OperatorConsoleService);
+    httpMock = TestBed.inject(HttpTestingController);
+  });
+
+  afterEach(() => httpMock.verify());
+
+  it('GETs the server’s count for the date and passes it through, never counting rows', () => {
+    let actual: number | undefined;
+    service.dailyBookingCount(1, '2026-07-05').subscribe((n) => (actual = n));
+
+    const req = httpMock.expectOne(
+      (r) => r.url === `${BASE}/api/venues/1/bookings/count` && r.method === 'GET',
+    );
+    expect(req.request.params.get('date')).toBe('2026-07-05');
+    req.flush({ date: '2026-07-05', count: 4 });
+
+    expect(actual).toBe(4);
+  });
+});
+
 describe('OperatorConsoleService — venue day refund (ADR-0027)', () => {
   let service: OperatorConsoleService;
   let httpMock: HttpTestingController;
@@ -412,7 +439,6 @@ describe('OperatorConsoleService — per-set beach-map writes (#600)', () => {
   afterEach(() => httpMock.verify());
 
   const SET: SetWriteRequest = {
-    rowLabel: 'B',
     positionNo: 3,
     tier: 'STANDARD',
     pool: 'ONLINE',
@@ -553,39 +579,6 @@ describe('setBatchErrorOf', () => {
     expect(setBatchErrorOf(problem(409, 'SOMETHING_ELSE'))).toBe('UNKNOWN');
     expect(setBatchErrorOf(problem(500))).toBe('UNKNOWN');
     expect(setBatchErrorOf(new Error('offline'))).toBe('UNKNOWN');
-  });
-});
-
-/**
- * The per-row rename error mapper. `ROW_NAME_TAKEN` is the one code the Row names panel
- * explains in its own words: it is the ordinary outcome of picking a name another row already has.
- */
-describe('rowNameErrorOf (#726)', () => {
-  function problem(status: number, code?: string): HttpErrorResponse {
-    return new HttpErrorResponse({ status, error: code ? { code } : null });
-  }
-
-  it('maps 401 to UNAUTHORIZED before reading the body', () => {
-    expect(rowNameErrorOf(problem(401, 'ROW_NAME_TAKEN'))).toBe('UNAUTHORIZED');
-  });
-
-  it('passes through every code the Row names panel explains', () => {
-    for (const code of [
-      'ROW_NAME_TAKEN',
-      'STALE_WRITE',
-      'NO_SUCH_ROW',
-      'NO_SUCH_VENUE',
-      'NOT_VENUE_OWNER',
-      'INVALID_REQUEST',
-    ]) {
-      expect(rowNameErrorOf(problem(409, code))).toBe(code);
-    }
-  });
-
-  it('maps an unknown code and a non-HTTP failure to UNKNOWN', () => {
-    expect(rowNameErrorOf(problem(500, 'SOMETHING_ELSE'))).toBe('UNKNOWN');
-    expect(rowNameErrorOf(problem(500))).toBe('UNKNOWN');
-    expect(rowNameErrorOf(new Error('offline'))).toBe('UNKNOWN');
   });
 });
 
@@ -845,7 +838,6 @@ describe('OperatorConsoleService — remodel commit + receipts (#1034)', () => {
     const request: RemodelCommitRequest = {
       sets: [
         {
-          rowLabel: 'A',
           positionNo: 1,
           tier: 'PREMIUM',
           pool: 'ONLINE',

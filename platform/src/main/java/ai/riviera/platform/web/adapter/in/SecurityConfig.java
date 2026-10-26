@@ -59,7 +59,7 @@ public class SecurityConfig {
 	/** A single venue item (PATCH profile edit — amenities + distance-to-water); session + CSRF. */
 	private static final String VENUE_ITEM_PATH = "/api/venues/*";
 	/**
-	 * The operator-only venue-write {@code PUT}s (layout replace, row reprice/rename), gated per-verb
+	 * The operator-only venue-write {@code PUT}s (layout replace, row reprice), gated per-verb
 	 * because {@code /api/venues/**} also serves the public {@code GET};
 	 * {@code EndpointRoleGateCoverageTest} catches a newly mapped verb falling through.
 	 */
@@ -72,7 +72,6 @@ public class SecurityConfig {
 	private static final String REMODEL_RECEIPTS_PATH = "/api/venues/*/remodels";
 	private static final String REMODEL_RECEIPT_PATH = "/api/venues/*/remodels/*";
 	private static final String ROW_PRICE_PATH = "/api/venues/*/rows/*/price";
-	private static final String ROW_NAME_PATH = "/api/venues/*/rows/*/name";
 	/**
 	 * A single venue photo slot: POST upload / DELETE remove, operator-only. The public GET serving path
 	 * falls under {@code GET /api/venues/**} below.
@@ -82,6 +81,8 @@ public class SecurityConfig {
 	private static final String SET_AVAILABILITY_PATH = "/api/venues/*/sets/*/availability";
 	/** The operator-only staff daily-bookings read. Order-sensitive — see the ordering rule below. */
 	private static final String STAFF_BOOKINGS_PATH = "/api/venues/*/bookings";
+	/** The day's "Booked online" count beside it, operator-only like the list. Order-sensitive the same way. */
+	private static final String STAFF_BOOKINGS_COUNT_PATH = "/api/venues/*/bookings/count";
 
 	/** Staff check-in: flips lifecycle state off a bearer code — operator-gated (invariant #7). */
 	private static final String BOOKING_CHECK_IN_PATH = "/api/venues/*/bookings/*/check-in";
@@ -294,6 +295,12 @@ public class SecurityConfig {
 								"/api/payments/stripe/webhook"))
 				.authorizeHttpRequests(auth -> auth
 						.requestMatchers("/actuator/health/**").permitAll()
+						// The build's commit id only (BuildCommitInfoContributor); the CD poll reads it (#1632).
+						.requestMatchers(HttpMethod.GET, "/actuator/info").permitAll()
+						// Platform-wide money-path and traffic figures: not venue-scoped, so ADMIN like the payout batches.
+						.requestMatchers(HttpMethod.GET, "/actuator/prometheus").hasRole(ADMIN_ROLE)
+						// Fail closed: an endpoint later added to the exposure allowlist needs its own rule above.
+						.requestMatchers("/actuator/**").denyAll()
 						// Anonymous by definition — authentication happens INSIDE the endpoint.
 						.requestMatchers(HttpMethod.POST, LOGIN_PATH).permitAll()
 						.requestMatchers(HttpMethod.POST, OPERATOR_REGISTER_PATH).permitAll()
@@ -305,7 +312,7 @@ public class SecurityConfig {
 								VERIFY_EMAIL_PATH).permitAll()
 						.requestMatchers(HttpMethod.GET, SSO_PATHS).permitAll()
 						// Order-sensitive: booking codes are bearer credentials (invariant #7).
-						.requestMatchers(HttpMethod.GET, STAFF_BOOKINGS_PATH).hasRole(OPERATOR_ROLE)
+						.requestMatchers(HttpMethod.GET, STAFF_BOOKINGS_PATH, STAFF_BOOKINGS_COUNT_PATH).hasRole(OPERATOR_ROLE)
 						.requestMatchers(HttpMethod.POST, BOOKING_CHECK_IN_PATH).hasRole(OPERATOR_ROLE)
 						.requestMatchers(HttpMethod.POST, BOOKING_DAY_REFUND_PATH).hasRole(OPERATOR_ROLE)
 						// Order-sensitive: venue financial data.
@@ -371,7 +378,7 @@ public class SecurityConfig {
 						.requestMatchers(HttpMethod.POST, SETS_PATH).hasRole(OPERATOR_ROLE)
 						.requestMatchers(HttpMethod.PATCH, SETS_PATH, SET_ITEM_PATH).hasRole(OPERATOR_ROLE)
 						.requestMatchers(HttpMethod.DELETE, SET_ITEM_PATH).hasRole(OPERATOR_ROLE)
-						.requestMatchers(HttpMethod.PUT, BEACH_MAP_PATH, ROW_PRICE_PATH, ROW_NAME_PATH)
+						.requestMatchers(HttpMethod.PUT, BEACH_MAP_PATH, ROW_PRICE_PATH)
 						.hasRole(OPERATOR_ROLE)
 						// The remodel dry run reads which sets guests hold (ADR-0020); owner-asserted in the modules.
 						.requestMatchers(HttpMethod.POST, BEACH_MAP_PREVIEW_PATH).hasRole(OPERATOR_ROLE)

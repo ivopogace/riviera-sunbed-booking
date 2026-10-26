@@ -105,6 +105,7 @@ class WeatherRefundLockOrderIT {
 		assertThat(List.of(setOf(later), setOf(earlier))).containsExactlyInAnyOrder(sets.get(2), sets.get(3));
 	}
 
+	/** A confirmed booking with the accrual its confirm posted, which a refund's payout reversal mirrors (#9). */
 	private long confirmed(long setId, LocalDate first, LocalDate last) {
 		long customer = jdbc.sql("INSERT INTO customer (email, full_name, phone) VALUES (:e, 'Guest', '+355600') RETURNING id")
 				.param("e", "storm-lock-" + System.nanoTime() + "@example.com").query(Long.class).single();
@@ -112,7 +113,7 @@ class WeatherRefundLockOrderIT {
 			jdbc.sql("INSERT INTO set_availability (set_id, booking_date, state) VALUES (:s, :d, 'BOOKED_ONLINE')")
 					.param("s", setId).param("d", day).update();
 		}
-		return jdbc.sql("""
+		long id = jdbc.sql("""
 				INSERT INTO booking (code, venue_id, set_id, customer_id, booking_date, last_date,
 				                     amount_minor, amount_currency, status, confirmed_at)
 				VALUES (:code, :v, :s, :c, :first, :last, 4000, 'EUR', 'CONFIRMED', NOW())
@@ -121,6 +122,12 @@ class WeatherRefundLockOrderIT {
 				.param("code", "SL" + System.nanoTime() % 100_000_000L).param("v", venue.value()).param("s", setId)
 				.param("c", customer).param("first", first).param("last", last)
 				.query(Long.class).single();
+		jdbc.sql("""
+				INSERT INTO payout_ledger_entry (venue_id, booking_id, entry_type, gross_minor, commission_minor,
+				                                 net_minor, currency)
+				VALUES (:v, :b, 'ACCRUAL', 4000, 0, 4000, 'EUR')
+				""").param("v", venue.value()).param("b", id).update();
+		return id;
 	}
 
 	private long insertSet(int position) {
@@ -133,7 +140,7 @@ class WeatherRefundLockOrderIT {
 	}
 
 	private static LayoutCell cell(int position) {
-		return new LayoutCell("A", position, "STANDARD", Pool.ONLINE, 2000, "EUR", position, 1);
+		return new LayoutCell(position, "STANDARD", Pool.ONLINE, 2000, "EUR", position, 1);
 	}
 
 	private String status(long bookingId) {

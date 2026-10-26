@@ -71,12 +71,13 @@ class CheckInFlowIT {
 				.param("v", venueId).query(Long.class).single();
 	}
 
+	/** A confirmed booking with the accrual its confirm posted, which a refund's payout reversal mirrors (#9). */
 	private long insertConfirmed(String code, long venueId, LocalDate date) {
 		long customer = jdbc.sql("INSERT INTO customer (email, full_name, phone) "
 						+ "VALUES (:e, 'Guest', '+355600') RETURNING id")
 				.param("e", code + "@example.com").query(Long.class).single();
 		long set = firstSetOf(venueId);
-		return jdbc.sql("""
+		long id = jdbc.sql("""
 				INSERT INTO booking (code, venue_id, set_id, customer_id, booking_date,
 				                     amount_minor, amount_currency, status, confirmed_at)
 				VALUES (:code, :venue, :set, :cust, :date, 4500, 'EUR', 'CONFIRMED', now())
@@ -85,6 +86,12 @@ class CheckInFlowIT {
 				.param("code", code).param("venue", venueId).param("set", set)
 				.param("cust", customer).param("date", date)
 				.query(Long.class).single();
+		jdbc.sql("""
+				INSERT INTO payout_ledger_entry (venue_id, booking_id, entry_type, gross_minor, commission_minor,
+				                                 net_minor, currency)
+				VALUES (:v, :b, 'ACCRUAL', 4500, 0, 4500, 'EUR')
+				""").param("v", venueId).param("b", id).update();
+		return id;
 	}
 
 	private long setOf(long bookingId) {

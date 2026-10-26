@@ -69,7 +69,6 @@ class RequestBodyCapFilterTest {
 	private static final int LAYOUT_CAP = 256 * 1024;
 	private static final int MAX_ROWS = 26;
 	private static final int MAX_POSITIONS = 40;
-	private static final int MAX_ROW_LABEL_LENGTH = 40;
 	private static final String WEBHOOK_PATH = "/api/payments/stripe/webhook";
 	private static final String CHALLENGE_HEADER = "X-Altcha-Payload";
 
@@ -219,10 +218,10 @@ class RequestBodyCapFilterTest {
 
 	@ParameterizedTest
 	@MethodSource("layoutWrites")
-	void aFullSizeLayoutWithTheLongestRowLabelsIsNotRefused(MockHttpServletRequestBuilder layoutWrite)
-			throws Exception {
+	void aFullSizeLayoutIsNotRefused(MockHttpServletRequestBuilder layoutWrite) throws Exception {
 		byte[] body = largestLayout().getBytes(StandardCharsets.UTF_8);
-		assertTrue(body.length > CAP * 3, "a full layout must be well past the general cap");
+		assertTrue(body.length > CAP, "a full layout must be past the general cap");
+		assertTrue(body.length * 2 < LAYOUT_CAP, "the layout cap keeps 2x headroom over a full layout");
 		int status = mvc.perform(asOperator(layoutWrite).content(body)).andReturn().getResponse().getStatus();
 		assertNotEquals(413, status);
 	}
@@ -243,16 +242,15 @@ class RequestBodyCapFilterTest {
 				.with(fromIp(SessionLoginSupport.uniqueClientIp())).contentType(MediaType.APPLICATION_JSON);
 	}
 
-	/** {@code LayoutCommand.MAX_SETS} cells on 40-character, two-byte (Albanian) row labels: the largest real layout. */
+	/** {@code LayoutCommand.MAX_SETS} cells in the shape the console sends (no row label, #1586), widest values. */
 	private static String largestLayout() {
 		StringJoiner cells = new StringJoiner(",", "{\"expectedVersion\":1,\"previewToken\":\"" + "t".repeat(64)
 				+ "\",\"refundCount\":0,\"sets\":[", "]}");
-		for (int row = 0; row < MAX_ROWS; row++) {
-			String label = "\u00c7".repeat(MAX_ROW_LABEL_LENGTH - 1) + (char) ('A' + row);
+		for (int row = 1; row <= MAX_ROWS; row++) {
 			for (int position = 1; position <= MAX_POSITIONS; position++) {
-				cells.add(("{\"rowLabel\":\"%s\",\"positionNo\":%d,\"tier\":\"STANDARD\",\"pool\":\"WALK_IN\","
+				cells.add(("{\"positionNo\":%d,\"tier\":\"STANDARD\",\"pool\":\"WALK_IN\","
 						+ "\"price\":{\"minorUnits\":250000,\"currency\":\"EUR\"},\"gridX\":%d,\"gridY\":%d}")
-						.formatted(label, position, position, row));
+						.formatted(position, position, row));
 			}
 		}
 		return cells.toString();

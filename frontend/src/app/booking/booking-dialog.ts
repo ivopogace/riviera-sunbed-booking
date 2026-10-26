@@ -41,6 +41,7 @@ import { CancellationTermsNote } from './cancellation-terms-note';
 
 import { TouchTarget } from '../shared/touch-target';
 import { CrossIcon } from '../shared/cross-icon';
+import { PrimaryCta } from '../shared/primary-cta';
 
 /** What a set includes — the product's fixed unit (CLAUDE.md: 2 loungers + umbrella, full day). */
 const SET_INCLUDES = '2 loungers + umbrella · full day';
@@ -56,6 +57,7 @@ const SET_INCLUDES = '2 loungers + umbrella · full day';
 @Component({
   selector: 'app-booking-dialog',
   imports: [
+    PrimaryCta,
     LegalConsent,
     FormField,
     BusyAction,
@@ -394,9 +396,10 @@ const SET_INCLUDES = '2 loungers + umbrella · full day';
             </button>
           }
           <button
+            appPrimaryCta
             appTouchTarget
             type="submit"
-            class="btn-primary flex-1 cursor-pointer rounded-2xl border border-riv-cta-border bg-(image:--riv-cta-grad) p-[14px] text-[15px] font-bold text-white shadow-[0_10px_26px_rgba(11,120,150,0.5),inset_0_1px_0_rgba(255,255,255,0.5)] motion-safe:[transition:filter_0.15s_ease] hover:enabled:brightness-[1.06] focus-visible:outline-[3px] focus-visible:outline-offset-2 focus-visible:outline-white disabled:cursor-default disabled:opacity-70"
+            class="btn-primary flex-1 cursor-pointer rounded-2xl p-[14px] text-[15px] font-bold shadow-[0_10px_26px_rgba(11,120,150,0.5)] motion-safe:[transition:filter_0.15s_ease] focus-visible:outline-[3px] focus-visible:outline-offset-2 focus-visible:outline-white disabled:cursor-default disabled:opacity-70"
             data-testid="dialog-primary"
             [appBusy]="submitting()"
           >

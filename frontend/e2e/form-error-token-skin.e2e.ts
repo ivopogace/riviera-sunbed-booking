@@ -2,6 +2,7 @@ import { expect, test, type Page } from '@playwright/test';
 
 import { mockChallengeFence } from './support/auth-mocks';
 import { completeDialog } from './support/booking-dialog';
+import type { MockVenueMapView } from './support/venue-views';
 
 /**
  * The form-error skin paints from the token registry, asserted against a real render (#850) — the
@@ -31,7 +32,7 @@ const REGISTRY = {
 /** The utility each token is consumed through, which only exists if its `@theme inline` row does. */
 const UTILITIES = ['bg-riv-form-error-fill', 'text-riv-form-error-ink'];
 
-const VENUE = {
+const VENUE: MockVenueMapView = {
   id: 1,
   name: 'Miramar Beach Club',
   beach: 'KSAMIL',

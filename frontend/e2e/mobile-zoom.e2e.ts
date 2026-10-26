@@ -105,7 +105,7 @@ test.describe('operator console — mobile zoom', () => {
   test('beach map, bulk paint mode — no field zooms the page in on focus', async ({ page }) => {
     await openConsoleTab(page, 'beach-map', 'set-grid');
     await page.getByTestId('layout-tool-premium').click();
-    await expect(page.getByTestId('layout-row-name').first()).toBeVisible();
+    await expect(page.getByTestId('layout-gen-rows')).toBeVisible();
 
     await expectNoFocusZoom(page, 'operator beach map (bulk paint)');
   });

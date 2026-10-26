@@ -1,6 +1,7 @@
 import { expect, test, type Locator, type Page } from '@playwright/test';
 
 import { bannerPhotoView } from './support/photo-views';
+import type { MockVenueMapView } from './support/venue-views';
 
 /**
  * Real-render CI-safe e2e for WHICH stored candidate the browser fetches on the venue page. The
@@ -40,7 +41,7 @@ const BANNER = bannerPhotoView('/api/venues/1/photos/bb02');
 const WIDE_BANNER = bannerPhotoView('/api/venues/1/photos/ee05', 16 / 9);
 const SECOND = bannerPhotoView('/api/venues/1/photos/cc03');
 const THIRD = bannerPhotoView('/api/venues/1/photos/dd04');
-const VENUE_MAP = {
+const VENUE_MAP: MockVenueMapView = {
   id: 1,
   name: 'Miramar Beach Club',
   beach: 'KSAMIL',

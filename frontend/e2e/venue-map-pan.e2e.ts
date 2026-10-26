@@ -1,6 +1,7 @@
 import { expect, type Locator, type Page, test } from '@playwright/test';
 
 import { expectNoSeriousAxeViolations } from './support/axe';
+import type { MockPool, MockSetView, MockTier, MockVenueMapView } from './support/venue-views';
 
 /**
  * Real-render audit of the beach map's pan-vs-select distinction. A big
@@ -15,8 +16,8 @@ import { expectNoSeriousAxeViolations } from './support/axe';
 
 const ROWS: {
   label: string;
-  tier: string;
-  pool: string;
+  tier: MockTier;
+  pool: MockPool;
   price: number;
   lastSetPrice?: number;
 }[] = [
@@ -28,19 +29,9 @@ const ROWS: {
   { label: 'Row 5 · Walk-in', tier: 'STANDARD', pool: 'WALK_IN', price: 3000 },
 ];
 
-interface MapSet {
-  id: number;
-  rowLabel: string;
-  positionNo: number;
-  tier: string;
-  pool: string;
-  price: { minorUnits: number; currency: string };
-  gridX: number;
-  gridY: number;
-  availability: string;
-}
+type MapSet = MockSetView;
 
-function wideVenue() {
+function wideVenue(): MockVenueMapView {
   const sets: MapSet[] = [];
   let id = 0;
   ROWS.forEach((row, r) => {
@@ -79,15 +70,13 @@ function wideVenue() {
 /**
  * A venue that FITS the #700 desktop breakout: 14 columns is the width the issue names, and the
  * 1100px card renders it whole — 15 is the first width that pans, measured at 1280 (14 clears by
- * 13px, 15 misses by 49px). Five rows keeps it under the wash scroller's 532px cap, so "no hint"
- * means no hint on either axis.
+ * 34px, 15 misses by 28px, both on the 92px reservation). Five rows keeps it under the wash
+ * scroller's 532px cap, so "no hint" means no hint on either axis.
  *
- * <p>That boundary is now the SAME for every price vocabulary, which is what {@link bareFitVenue}
- * pins. It did not use to be: before #751 a bare-amount rail measured 52px rather than this
- * fixture's 112.66px chip, so such a venue fit at 15 and panned only at 16 while this one already
- * panned at 15. The reservation costs the bare venue that extra column and buys one boundary.
+ * <p>Its chips are bare amounts (`€50`, `€30`; #1587), far under the reservation, so its rail is
+ * the reservation — the same boundary {@link bareFitVenue} pins with one price everywhere.
  */
-function fitVenue() {
+function fitVenue(): MockVenueMapView {
   const sets: MapSet[] = [];
   let id = 0;
   for (let r = 1; r <= 5; r++) {
@@ -121,51 +110,11 @@ function fitVenue() {
 }
 
 /**
- * A 5 × 6 venue whose front row carries `frontRowLabel` verbatim — the fixtures for the rail's
- * width cap. Everything else is identical between them, so a rail or viewport difference between
- * two of these can only come from the label.
+ * The fits-whole venue that PAYS for the price rail's 92px reservation (#751): 14 columns, one
+ * price in every row, so one zone and one ~41px chip — its rail is the reservation rather than a
+ * chip, and its margin is the number a widened reservation has to spend.
  */
-function labelledVenue(id: number, name: string, frontRowLabel: string) {
-  const sets: MapSet[] = [];
-  let n = 0;
-  for (let r = 1; r <= 5; r++) {
-    for (let p = 1; p <= 6; p++) {
-      n += 1;
-      sets.push({
-        id: n,
-        rowLabel: r === 1 ? frontRowLabel : `Row ${r}`,
-        positionNo: p,
-        tier: r === 1 ? 'PREMIUM' : 'STANDARD',
-        pool: 'ONLINE',
-        price: { minorUnits: r === 1 ? 5000 : 3000, currency: 'EUR' },
-        gridX: p,
-        gridY: r,
-        availability: 'FREE',
-      });
-    }
-  }
-  return {
-    id,
-    name,
-    beach: 'HIMARE',
-    region: 'HIMARE',
-    description: 'A venue with a lot to say about its front row.',
-    ratingTenths: 45,
-    reviewsCount: 12,
-    bookingMode: 'INSTANT',
-    fromPrice: { minorUnits: 3000, currency: 'EUR' },
-    sets,
-  };
-}
-
-/**
- * The fits-whole venue that actually PAYS for the price rail's 92px reservation (#751): 14
- * columns, and every zone a bare amount, so its rail is the reservation rather than a chip. The
- * premium front row of {@link fitVenue} rails at 112.66px and is therefore already wider than the
- * floor — it would pass this test without the reservation ever being spent, which is exactly the
- * fixture-shaped blind spot that lets a widened rail land unnoticed.
- */
-function bareFitVenue() {
+function bareFitVenue(): MockVenueMapView {
   const sets: MapSet[] = [];
   let id = 0;
   for (let r = 1; r <= 5; r++) {
@@ -202,7 +151,7 @@ function bareFitVenue() {
  * One column past {@link bareFitVenue}: the width at which a bare-amount rail stops fitting since
  * #751. Same shape otherwise, so the only variable between the two tests is the column count.
  */
-function barePanVenue() {
+function barePanVenue(): MockVenueMapView {
   const sets: MapSet[] = [];
   let id = 0;
   for (let r = 1; r <= 5; r++) {
@@ -248,7 +197,7 @@ async function panState(page: Page) {
 }
 
 /** A venue tall enough (12 rows) that the wash scroller overflows its 532px cap. */
-function tallVenue() {
+function tallVenue(): MockVenueMapView {
   const sets: MapSet[] = [];
   let id = 0;
   for (let r = 1; r <= 12; r++) {
@@ -285,18 +234,6 @@ test.beforeEach(async ({ page }) => {
   await page.route(/\/api\/venues\/1(\?.*)?$/, (route) => route.fulfill({ json: wideVenue() }));
   await page.route(/\/api\/venues\/2(\?.*)?$/, (route) => route.fulfill({ json: tallVenue() }));
   await page.route(/\/api\/venues\/3(\?.*)?$/, (route) => route.fulfill({ json: fitVenue() }));
-  await page.route(/\/api\/venues\/4(\?.*)?$/, (route) =>
-    route.fulfill({ json: labelledVenue(4, 'Wordy Bay', 'Front row sea view') }),
-  );
-  await page.route(/\/api\/venues\/5(\?.*)?$/, (route) =>
-    route.fulfill({
-      json: labelledVenue(
-        5,
-        'Wordier Bay',
-        'Front row sea view sunset side with the good cabanas and the quiet end',
-      ),
-    }),
-  );
   await page.route(/\/api\/venues\/6(\?.*)?$/, (route) => route.fulfill({ json: bareFitVenue() }));
   await page.route(/\/api\/venues\/7(\?.*)?$/, (route) => route.fulfill({ json: barePanVenue() }));
 });
@@ -349,14 +286,8 @@ test('a plain click on a free tile opens the booking dialog (and the map is acce
     .evaluate((el) => getComputedStyle(el).boxShadow);
   expect(frameShadow).toContain('rgba(7, 42, 58, 0.28)');
 
-  // One chip per zone (#672), Row 3's span (#689); a chip adds only tier/channel words (#724).
-  await expect(page.getByTestId('row-price')).toHaveText([
-    '€50 · Front row',
-    '€40',
-    '€35–€45',
-    '€30',
-    '€30 · at venue',
-  ]);
+  // One chip per zone, price only (#672, #689, #1587); the walk-in €30 row is its own zone (#702).
+  await expect(page.getByTestId('row-price')).toHaveText(['€50', '€40', '€35–€45', '€30', '€30']);
 
   // Taken sets are ghosts (#672): translucent FILL + dashed outline — group opacity broke AA.
   const ghost = await page
@@ -729,54 +660,4 @@ test('every legend swatch declares exactly what the tile it stands for declares 
   expect(
     (await face(page.locator('[aria-label="Legend"] [data-state="partly"]'))).borderTopStyle,
   ).toBe('dotted');
-});
-
-/** The row-name rail's first chip and the tile viewport, as the browser lays them out. */
-async function railAndViewport(page: Page) {
-  const chip = page.getByTestId('row-code').first();
-  const box = (await chip.boundingBox())!;
-  const viewport = (await page.getByTestId('map-pan').boundingBox())!;
-  return {
-    chipWidth: box.width,
-    chipText: await chip.textContent(),
-    viewportWidth: viewport.width,
-    truncated: await chip.locator('span').evaluate((el) => el.scrollWidth > el.clientWidth),
-    chipRight: box.x + box.width,
-  };
-}
-
-test('a long row name truncates in the left rail instead of eating the tile grid (#724)', async ({
-  page,
-}) => {
-  await page.setViewportSize({ width: 390, height: 760 });
-
-  await page.goto('/venues/4');
-  await expect(page.getByTestId('set-tile').first()).toBeVisible();
-  const wordy = await railAndViewport(page);
-
-  await page.goto('/venues/5');
-  await expect(page.getByTestId('set-tile').first()).toBeVisible();
-  const wordier = await railAndViewport(page);
-
-  // The rail chip shows the venue's own row name — the identity every other surface prints (#724)…
-  expect(wordy.chipText).toContain('Front row');
-  expect(wordier.chipText).toContain('Front row');
-  // …under a hard cap: a label almost four times longer buys not one pixel of rail…
-  expect(wordy.chipWidth).toBeLessThanOrEqual(104);
-  expect(wordier.chipWidth).toBeCloseTo(wordy.chipWidth, 0);
-  // …so it costs the tiles nothing, and the grid keeps at least three columns of spots visible.
-  expect(wordier.viewportWidth).toBeCloseTo(wordy.viewportWidth, 0);
-  expect(wordier.viewportWidth).toBeGreaterThanOrEqual(135);
-  // What gives instead is the text — ellipsis inside the chip, never overflow outside it.
-  expect(wordier.truncated).toBe(true);
-  // …and only overflowing text: a short real name renders whole, so rows stay distinct (#724 I-1).
-  const shortChip = page.getByTestId('row-code').nth(1);
-  await expect(shortChip).toHaveText('Row 2');
-  expect(await shortChip.locator('span').evaluate((el) => el.scrollWidth > el.clientWidth)).toBe(
-    false,
-  );
-  const card = (await page.getByTestId('beach-grid').boundingBox())!;
-  expect(wordier.chipRight).toBeLessThanOrEqual(card.x + card.width);
-
-  await expectNoSeriousAxeViolations(page, 'beach map (long row names, mobile)');
 });

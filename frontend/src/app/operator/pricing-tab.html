@@ -1,4 +1,8 @@
-<section class="mx-auto w-full max-w-[560px] px-5 py-4" data-testid="pricing-tab">
+<section
+  appConsolePageColumn
+  class="w-full max-w-[560px] py-4 max-sm:px-5"
+  data-testid="pricing-tab"
+>
   <!-- One region for the table, above every branch: RV-FE-10 rules a live region per list row out, and a region born holding its text announces nothing. -->
   <output aria-live="polite" class="sr-only" data-testid="pricing-saved-announce">{{
     savedRowMessage()

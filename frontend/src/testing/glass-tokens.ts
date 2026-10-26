@@ -447,9 +447,9 @@ export const WARN_EDGE: Rgb = hexToRgb('e0a03a');
 export const WARN_FILL: Rgb = hexToRgb('fff4e0');
 export const WARN_INK: Rgb = hexToRgb('7a4a08');
 
-/** `--riv-cta-border` (class R): the white hairline bevel on the primary CTA button — 16
- *  positions across `auth/`, `booking/` and `shared/`, grouped by FORM: one bevel, one kind of
- *  fixed teal action surface (the `--riv-cta-grad` stops and `booking-dialog`'s close-button fill).
+/** `--riv-cta-border` (class R): the white hairline bevel on the primary CTA button —
+ *  worn through `shared/primary-cta.ts`'s `[appPrimaryCta]` skin, grouped by FORM: one bevel,
+ *  one kind of fixed teal action surface (the `--riv-cta-grad` stops and `booking-dialog`'s close-button fill).
  *  Theme-invariant, so the mirror is one value rather than a per-theme pair; the alternatives it
  *  rejects, and the ratios behind them, sit at the declaration in `tailwind.css`. Guarded by
  *  `shared/cta-border-token.contrast.spec.ts`. */

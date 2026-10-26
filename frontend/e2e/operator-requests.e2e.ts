@@ -8,6 +8,7 @@ import {
   expectConsoleTheme,
   expectInsetFill,
 } from './support/console-theme';
+import type { MockSetView, MockVenueMapView } from './support/venue-views';
 
 /**
  * CI-safe mocked e2e for the Requests tab. Drives sign-in → the console shell →
@@ -27,8 +28,13 @@ function inHours(hours: number): string {
   return new Date(Date.now() + hours * 3_600_000).toISOString();
 }
 
-function venueMap() {
-  const set = (id: number, rowLabel: string, positionNo: number, tier: 'PREMIUM' | 'STANDARD') => ({
+function venueMap(): MockVenueMapView {
+  const set = (
+    id: number,
+    rowLabel: string,
+    positionNo: number,
+    tier: 'PREMIUM' | 'STANDARD',
+  ): MockSetView => ({
     id,
     rowLabel,
     positionNo,
@@ -186,6 +192,9 @@ async function mockRequests(
 
   // The stats strip's reads + the tab's venue-map read for set labels.
   await page.route(/\/api\/venues\/1\/bookings(\?.*)?$/, (route) => route.fulfill({ json: [] }));
+  await page.route(/\/api\/venues\/1\/bookings\/count(\?.*)?$/, (route) =>
+    route.fulfill({ json: { date: '2026-07-08', count: 0 } }),
+  );
   await page.route(/\/api\/venues\/1\/takings(\?.*)?$/, (route) =>
     route.fulfill({
       json: {

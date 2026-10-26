@@ -1,41 +1,40 @@
 package ai.riviera.platform;
 
 import java.util.List;
+import java.util.Set;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.actuate.endpoint.web.PathMappedEndpoints;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.context.annotation.Import;
+import org.springframework.http.MediaType;
+import org.springframework.jdbc.core.simple.JdbcClient;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.MvcResult;
+
+import ai.riviera.platform.customer.api.CustomerAccountProvisioning;
 
 import jakarta.servlet.http.Cookie;
 
+import static org.hamcrest.Matchers.aMapWithSize;
 import static org.hamcrest.Matchers.containsString;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
- * Operational-exposure hardening of the Spring Boot Actuator.
- *
- * <p>Only {@code /actuator/health} is web-exposed <em>publicly</em>; every other operational
- * endpoint — {@code env}, {@code beans}, {@code mappings}, {@code configprops}, {@code heapdump},
- * {@code threaddump}, {@code loggers}, {@code metrics}, and the Spring-Modulith {@code modulith}
- * endpoint — must be **unreachable**. Two independent layers back that: the exposure allowlist (a
- * non-exposed endpoint returns {@code 404}) and the security filter chain ({@code SecurityConfig}
- * gates everything but {@code health} behind authentication, so an anonymous call is {@code 401}).
- * Health itself stays public for Render's health check + the CD poll, but its component details are
- * shown only {@code when-authorized} (invariant: a public status probe must not leak internal
- * component state).
- *
- * <p>Observability instrumentation adds {@code /actuator/prometheus} to the exposure allowlist —
- * a <em>deliberate</em> extension, not an oversight. It is <strong>not</strong> public: it
- * falls through the same {@code anyRequest().authenticated()} rule, so an anonymous scrape is
- * {@code 401} and only an authenticated operator can read it. The lockdown therefore holds —
- * the sole public actuator surface is still {@code /actuator/health}.
+ * The actuator posture ({@code docs/deploy/production-hardening.md}): the exposure allowlist is {@code health},
+ * {@code info} and {@code prometheus}; anonymously only health's status and info's commit id answer; prometheus
+ * and health's details are ADMIN-only, since a plain operator may be a PENDING self-registrant (#1652); every
+ * other actuator path is denied to every session, so a newly exposed endpoint fails closed.
  */
 @EnabledIfDockerAvailable
 @Import(TestcontainersConfiguration.class)
@@ -43,72 +42,160 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @AutoConfigureMockMvc
 class ActuatorHardeningIT {
 
-	private static final String OPERATOR = "operator";
-	private static final String PASSWORD = "test-operator-pw";
+	private static final String ADMIN = "operator";
+	private static final String ADMIN_PASSWORD = SharedTestProperties.OPERATOR_PASSWORD;
+	private static final String PLAIN_OPERATOR = "actuator-plain-op";
+	private static final String PLAIN_OPERATOR_PASSWORD = "quiet-harbour-lantern-7";
+	private static final String CUSTOMER_EMAIL = "actuator-customer@example.com";
+	private static final String CUSTOMER_PASSWORD = "amber-pebble-tideline-4";
+	private static final String PROMETHEUS = "/actuator/prometheus";
+	private static final String HEALTH = "/actuator/health";
 
 	/** Actuator endpoints that expose internals; none may be reachable in production. */
 	private static final List<String> SENSITIVE_ENDPOINTS = List.of(
 			"/actuator/env", "/actuator/beans", "/actuator/mappings", "/actuator/configprops",
 			"/actuator/heapdump", "/actuator/threaddump", "/actuator/loggers", "/actuator/metrics",
-			"/actuator/modulith");
+			"/actuator/modulith", "/actuator");
 
 	@Autowired
 	MockMvc mvc;
+	@Autowired
+	JdbcClient jdbc;
+	@Autowired
+	CustomerAccountProvisioning customerProvisioning;
+	@Autowired
+	PasswordEncoder encoder;
+	@Autowired
+	PathMappedEndpoints exposedEndpoints;
 
-	private Cookie operatorSession;
+	private Cookie adminSession;
 
 	@BeforeEach
 	void logIn() throws Exception {
-		operatorSession = SessionLoginSupport.operatorSession(mvc, OPERATOR, PASSWORD);
+		adminSession = SessionLoginSupport.operatorSession(mvc, ADMIN, ADMIN_PASSWORD);
 	}
 
 	@Test
-	void sensitiveEndpointsAreNotPubliclyReachable() throws Exception {
-		// AC-1: an anonymous caller is rejected by the security filter chain (401) — never a 200 body.
+	void theExposureAllowlistIsHealthInfoAndPrometheus() {
+		// The primary control, proven apart from the route policy, which now denies the rest to every session.
+		assertEquals(Set.of("health", "info", "prometheus"), Set.copyOf(exposedEndpoints.getAllRootPaths()));
+	}
+
+	@Test
+	void sensitiveEndpointsAreUnauthorizedForAnonymous() throws Exception {
 		for (String path : SENSITIVE_ENDPOINTS) {
 			mvc.perform(get(path)).andExpect(status().isUnauthorized());
 		}
 	}
 
 	@Test
-	void sensitiveEndpointsAreNotExposedEvenToOperator() throws Exception {
-		// AC-2: even an authenticated operator cannot reach them — they are not on the exposure
-		// allowlist, so the endpoint handler does not exist (404). Proves the lockdown is exposure,
-		// not merely authorization.
-		for (String path : SENSITIVE_ENDPOINTS) {
-			mvc.perform(get(path).cookie(operatorSession)).andExpect(status().isNotFound());
+	void sensitiveEndpointsAreForbiddenToEverySession() throws Exception {
+		for (Cookie session : List.of(adminSession, plainOperatorSession(), customerSession())) {
+			for (String path : SENSITIVE_ENDPOINTS) {
+				mvc.perform(get(path).cookie(session)).andExpect(status().isForbidden());
+			}
 		}
 	}
 
 	@Test
 	void healthIsPublicButHidesDetailsFromAnonymous() throws Exception {
-		// AC-3: the public health probe (Render / CD poll) sees status only — no component details.
-		mvc.perform(get("/actuator/health"))
+		mvc.perform(get(HEALTH))
 				.andExpect(status().isOk())
 				.andExpect(jsonPath("$.status").value("UP"))
 				.andExpect(jsonPath("$.components").doesNotExist());
 	}
 
 	@Test
-	void healthShowsDetailsToOperator() throws Exception {
-		// AC-4: an authenticated operator sees component details (show-details=when-authorized).
-		mvc.perform(get("/actuator/health").cookie(operatorSession))
+	void healthHidesDetailsFromAPlainOperator() throws Exception {
+		mvc.perform(get(HEALTH).cookie(plainOperatorSession()))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.status").value("UP"))
+				.andExpect(jsonPath("$.components").doesNotExist());
+	}
+
+	@Test
+	void healthShowsDetailsToAnAdmin() throws Exception {
+		mvc.perform(get(HEALTH).cookie(adminSession))
 				.andExpect(status().isOk())
 				.andExpect(jsonPath("$.status").value("UP"))
 				.andExpect(jsonPath("$.components.db.status").value("UP"));
 	}
 
 	@Test
-	void prometheusIsNotPubliclyReachable() throws Exception {
-		// AC-3: the metrics scrape endpoint is exposed but NOT public — an anonymous scrape is rejected (401), never a 200 body.
-		mvc.perform(get("/actuator/prometheus")).andExpect(status().isUnauthorized());
+	void infoIsPublicAndCarriesTheCommitIdAlone() throws Exception {
+		mvc.perform(get("/actuator/info"))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$", aMapWithSize(1)))
+				.andExpect(jsonPath("$.commit").value(SharedTestProperties.BUILD_COMMIT));
 	}
 
 	@Test
-	void prometheusIsReadableByOperator() throws Exception {
-		// AC-3: an authenticated operator can scrape metrics in Prometheus text format.
-		mvc.perform(get("/actuator/prometheus").cookie(operatorSession))
+	void infoShowsAnAdminNothingMore() throws Exception {
+		mvc.perform(get("/actuator/info").cookie(adminSession))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$", aMapWithSize(1)))
+				.andExpect(jsonPath("$.commit").value(SharedTestProperties.BUILD_COMMIT));
+	}
+
+	@Test
+	void infoOpensOnlyItsGet() throws Exception {
+		// With a valid CSRF token, an all-methods permitAll would reach the read-only endpoint (405), not the gate.
+		mvc.perform(post("/actuator/info").with(csrf())).andExpect(status().isUnauthorized());
+		mvc.perform(get("/actuator/info/anything")).andExpect(status().isUnauthorized());
+		mvc.perform(post("/actuator/info").cookie(adminSession).with(csrf())).andExpect(status().isForbidden());
+	}
+
+	@Test
+	void prometheusIsUnauthorizedForAnonymous() throws Exception {
+		mvc.perform(get(PROMETHEUS)).andExpect(status().isUnauthorized());
+	}
+
+	@Test
+	void prometheusIsForbiddenToACustomer() throws Exception {
+		mvc.perform(get(PROMETHEUS).cookie(customerSession())).andExpect(status().isForbidden());
+	}
+
+	@Test
+	void prometheusIsForbiddenToAPlainOperator() throws Exception {
+		mvc.perform(get(PROMETHEUS).cookie(plainOperatorSession())).andExpect(status().isForbidden());
+	}
+
+	@Test
+	void prometheusIsReadableByAnAdmin() throws Exception {
+		mvc.perform(get(PROMETHEUS).cookie(adminSession))
 				.andExpect(status().isOk())
 				.andExpect(content().string(containsString("# HELP")));
+	}
+
+	/** A PENDING self-registrant: the operator any stranger can become. Registration is idempotent on the name. */
+	private Cookie plainOperatorSession() throws Exception {
+		boolean registered = jdbc.sql("SELECT EXISTS (SELECT 1 FROM operator WHERE username = :u)")
+				.param("u", PLAIN_OPERATOR).query(Boolean.class).single();
+		if (!registered) {
+			mvc.perform(post("/api/auth/operator/register").with(csrf())
+							.header(SessionLoginSupport.CHALLENGE_HEADER, SessionLoginSupport.solvedChallenge(mvc))
+							.header("X-Forwarded-For", SessionLoginSupport.uniqueClientIp())
+							.contentType(MediaType.APPLICATION_JSON)
+							.content("""
+									{"username": "%s", "password": "%s", "contactEmail": "actuator-op@venue.example"}"""
+									.formatted(PLAIN_OPERATOR, PLAIN_OPERATOR_PASSWORD)))
+					.andExpect(status().isAccepted());
+		}
+		return SessionLoginSupport.operatorSession(mvc, PLAIN_OPERATOR, PLAIN_OPERATOR_PASSWORD);
+	}
+
+	private Cookie customerSession() throws Exception {
+		customerProvisioning.register(CUSTOMER_EMAIL, encoder.encode(CUSTOMER_PASSWORD));
+		MvcResult result = mvc.perform(SessionLoginSupport.loginRequest("/api/auth/customer/login",
+						"""
+								{"email": "%s", "password": "%s"}""".formatted(CUSTOMER_EMAIL, CUSTOMER_PASSWORD))
+				.with(csrf()))
+				.andExpect(status().isOk())
+				.andReturn();
+		Cookie session = result.getResponse().getCookie("SESSION");
+		if (session == null) {
+			throw new IllegalStateException("customer login must establish a session cookie");
+		}
+		return session;
 	}
 }

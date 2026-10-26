@@ -2,6 +2,7 @@ import { expect, test, type Page, type Request } from '@playwright/test';
 
 import { expectNoSeriousAxeViolations } from './support/axe';
 import { settle } from './support/booking-dialog';
+import type { MockSetView, MockVenueMapView } from './support/venue-views';
 
 /**
  * Real-render CI-safe e2e for the Pricing tab. Drives sign-in → open the Pricing tab → see one row
@@ -25,7 +26,7 @@ function seat(
   minorUnits: number,
   gridX: number,
   gridY: number,
-) {
+): MockSetView {
   return {
     id,
     rowLabel,
@@ -41,7 +42,7 @@ function seat(
 
 // Row A: two ONLINE premium (3500) + one WALK_IN (3500); Row B: one ONLINE standard (2000).
 // Projected (online only) = 3500 + 3500 + 2000 = 9000 → €90.
-const VENUE_MAP = {
+const VENUE_MAP: MockVenueMapView = {
   id: 1,
   name: 'Miramar Beach Club',
   beach: 'KSAMIL',
@@ -128,6 +129,9 @@ async function mockPricing(
     route.fulfill({ json: [] }),
   );
   await page.route(/\/api\/venues\/1\/bookings(\?.*)?$/, (route) => route.fulfill({ json: [] }));
+  await page.route(/\/api\/venues\/1\/bookings\/count(\?.*)?$/, (route) =>
+    route.fulfill({ json: { date: '2026-07-08', count: 0 } }),
+  );
   await page.route(/\/api\/venues\/1\/takings(\?.*)?$/, (route) =>
     route.fulfill({
       json: {

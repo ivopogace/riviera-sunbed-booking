@@ -14,7 +14,7 @@ export interface OwnedVenue {
 /**
  * How an owned-venues read ended. `error` is deliberately distinct from an empty `loaded` list: a
  * transient failure must never be mistaken for "owns no venues", which would forward a real operator
- * to venue onboarding on a network blip.
+ * to venue onboarding on a network blip. A read a {@link OwnedVenues.reset} superseded is `error` too.
  */
 export type OwnedVenuesResult =
   | { readonly status: 'loaded'; readonly venues: readonly OwnedVenue[] }
@@ -26,14 +26,16 @@ export type OwnedVenuesResult =
  * has no parameters and nothing to authorize client-side.
  *
  * Cached for the session: the sign-in page's landing decision, the `/operator` picker and the
- * console's venue switcher all ask for the same list. `OperatorAuth` {@link reset}s it on sign-out and session
- * loss, or the next operator to sign in on this device would be shown the previous one's venues.
+ * console's venue switcher all ask for the same list. `OperatorAuth` {@link reset}s it on sign-in, sign-out and
+ * session loss, or the next operator to sign in on this device would be shown the previous one's venues.
  */
 @Service()
 export class OwnedVenues {
   private readonly http = inject(HttpClient);
   private readonly loaded = signal<readonly OwnedVenue[] | undefined>(undefined);
   private inFlight?: Promise<OwnedVenuesResult>;
+  /** Bumped by {@link reset}: a read from the session it ended neither writes the cache nor returns its list. */
+  private generation = 0;
 
   /** The last successfully loaded list, or undefined before the first load / after a failure. */
   readonly venues = this.loaded.asReadonly();
@@ -44,22 +46,30 @@ export class OwnedVenues {
     return this.inFlight;
   }
 
-  /** Drop the cache so the next {@link load} refetches (the session ending, or after creating a venue). */
+  /** Drop the cache so the next {@link load} refetches (a session boundary, or after creating a venue). */
   reset(): void {
+    this.generation++;
     this.inFlight = undefined;
     this.loaded.set(undefined);
   }
 
   private async fetch(): Promise<OwnedVenuesResult> {
+    const generation = this.generation;
     try {
       const venues = await firstValueFrom(
         this.http.get<OwnedVenue[]>(`${environment.apiBaseUrl}/api/venues/mine`),
       );
+      if (this.generation !== generation) {
+        // Not load(): that would fire a fresh /mine after a sign-out.
+        return { status: 'error' };
+      }
       this.loaded.set(venues);
       return { status: 'loaded', venues };
     } catch {
-      this.inFlight = undefined; // a failure is not cached, so the caller can retry
-      this.loaded.set(undefined);
+      if (this.generation === generation) {
+        this.inFlight = undefined; // a failure is not cached, so the caller can retry
+        this.loaded.set(undefined);
+      }
       return { status: 'error' };
     }
   }

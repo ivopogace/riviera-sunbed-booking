@@ -77,6 +77,7 @@ export interface VenueMapView {
   readonly ratingTenths: number;
   readonly reviewsCount: number;
   readonly bookingMode: BookingMode;
+  /** The cheapest online-pool set (invariant #3); `null` when walk-in-only or set-less (#1647). */
   readonly fromPrice: MoneyView | null;
   /**
    * The venue's amenities in canonical catalogue order, or absent/empty when none. The
@@ -247,7 +248,8 @@ export interface VenueLocation {
 /**
  * Typed view of the discovery list API (`GET /api/venues`). Mirrors the backend
  * `VenueSummaryView` exactly — money as integer minor units + currency (invariant #5), rating as
- * tenths (no float on the wire). `fromPrice` is `null` for a venue with no sets.
+ * tenths (no float on the wire). `fromPrice` is the cheapest online-pool set (invariant #3), `null`
+ * for a venue with none — a walk-in set's price is never a Discover "from".
  */
 export interface VenueSummary {
   readonly id: number;
@@ -272,7 +274,10 @@ export interface VenueSummary {
    * the list and is simply not drawn. Optional because test doubles and older payloads may omit it.
    */
   readonly location?: VenueLocation | null;
+  /** Free of total sets on the day, both pools: a coarse "how busy" signal, not what sells online. */
   readonly availability: AvailabilitySummary;
+  /** Whether the venue has an online-pool set at all (invariant #3) — the home head's "selling" test. */
+  readonly sellsOnline: boolean;
   /** The cover photo's serving URLs, or `null`/absent — the card then keeps its gradient. */
   readonly coverPhoto?: CoverPhotoView | null;
   /**
