@@ -2,6 +2,7 @@ import { expect, test, type Page, type Request } from '@playwright/test';
 
 import { expectNoSeriousAxeViolations } from './support/axe';
 import { settle } from './support/booking-dialog';
+import type { MockVenueMapView, MockVenueProfileView } from './support/venue-views';
 
 /**
  * Real-render CI-safe e2e for the venue photo slots. Drives sign-in → the Venue &
@@ -19,10 +20,9 @@ const TINY_IMAGE = Buffer.from(
   'base64',
 );
 
-const PROFILE = {
+const PROFILE: MockVenueProfileView = {
   name: 'Miramar Beach Club',
   beach: 'KSAMIL',
-  region: 'SARANDE',
   description: 'Loungers on the shore.',
   bookingMode: 'INSTANT',
   bookingCutoff: '18:00',
@@ -118,7 +118,7 @@ async function mockVenuePhotos(
           id: 1,
           name: PROFILE.name,
           beach: PROFILE.beach,
-          region: PROFILE.region,
+          region: 'SARANDE',
           description: PROFILE.description,
           ratingTenths: 48,
           reviewsCount: 12,
@@ -128,7 +128,7 @@ async function mockVenuePhotos(
           distanceToWaterM: 20,
           sets: [],
           coverPhoto: null,
-        },
+        } satisfies MockVenueMapView,
         locks: [],
       },
     }),

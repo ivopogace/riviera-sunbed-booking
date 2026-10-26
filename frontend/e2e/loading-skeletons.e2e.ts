@@ -3,6 +3,7 @@ import { expect, test, type Locator, type Page } from '@playwright/test';
 import { expectNoSeriousAxeViolations } from './support/axe';
 import { mockWholeConsole, signInAsOperator } from './support/operator-console.mocks';
 import { photoViews } from './support/photo-views';
+import type { MockSetView, MockVenueMapView } from './support/venue-views';
 
 /**
  * The anti-jump half of the skeleton contract (#744), in a real browser: on the two surfaces whose
@@ -64,7 +65,7 @@ const MAX_SETTLE_PX = 280;
 const DESKTOP = { width: 1280, height: 720 };
 const PHONE = { width: 390, height: 844 };
 
-function sets() {
+function sets(): MockSetView[] {
   return Array.from({ length: 24 }, (_, i) => ({
     id: i + 1,
     rowLabel: i < 12 ? 'Front row' : 'Row 2',
@@ -79,7 +80,7 @@ function sets() {
 }
 
 /** Everything the header can optionally carry: a description AND an amenity row. */
-const RICH_VENUE = {
+const RICH_VENUE: MockVenueMapView = {
   id: 1,
   name: 'Miramar Beach Club',
   beach: 'KSAMIL',

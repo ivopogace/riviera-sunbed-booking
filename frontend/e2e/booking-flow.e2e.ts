@@ -8,6 +8,7 @@ import {
   mockFencedBookingCreate,
   settle,
 } from './support/booking-dialog';
+import type { MockVenueMapView } from './support/venue-views';
 
 /**
  * Real-render a11y audit of the Instant-Book flow: beach map →
@@ -21,7 +22,7 @@ import {
  * `booking-challenge.e2e.ts`'s.
  */
 
-const VENUE = {
+const VENUE: MockVenueMapView = {
   id: 1,
   name: 'Miramar Beach Club',
   beach: 'KSAMIL',

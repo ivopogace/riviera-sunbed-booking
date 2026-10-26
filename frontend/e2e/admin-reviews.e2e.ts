@@ -3,6 +3,7 @@ import { expect, Page, test } from '@playwright/test';
 import { mockOperatorLifecycleApi } from './support/auth-mocks';
 import { expectNoSeriousAxeViolations } from './support/axe';
 import { OperatorSignInPage } from './support/pages/operator-sign-in.page';
+import type { MockVenueMapView } from './support/venue-views';
 
 /**
  * Real-render behaviour + a11y audit of the admin console's Reviews tab, and the one journey the
@@ -73,7 +74,7 @@ function aggregateOf(reviews: MockReview[]): { ratingTenths: number; reviewsCoun
   };
 }
 
-function venueDetail(reviews: MockReview[]) {
+function venueDetail(reviews: MockReview[]): MockVenueMapView {
   return {
     id: 7,
     name: 'Bora Bora Beach',

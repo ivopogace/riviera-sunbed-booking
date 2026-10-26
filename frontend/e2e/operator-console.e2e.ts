@@ -4,6 +4,7 @@ import { mockOwnedVenues } from './support/auth-mocks';
 import { expectNoSeriousAxeViolations } from './support/axe';
 import { settle } from './support/booking-dialog';
 import { expectPhoneRailFits, openMoreSheet, openOperatorAccountMenu } from './support/shell';
+import type { MockSetView, MockVenueMapView } from './support/venue-views';
 
 /**
  * Real-render CI-safe e2e for the operator console shell. Drives
@@ -15,7 +16,11 @@ import { expectPhoneRailFits, openMoreSheet, openOperatorAccountMenu } from './s
 
 const PRINCIPAL = { username: 'operator', principalType: 'OPERATOR' };
 
-function seat(id: number, availability: 'FREE' | 'TAKEN', pool: 'ONLINE' | 'WALK_IN' = 'ONLINE') {
+function seat(
+  id: number,
+  availability: 'FREE' | 'TAKEN',
+  pool: 'ONLINE' | 'WALK_IN' = 'ONLINE',
+): MockSetView {
   return {
     id,
     rowLabel: 'A',
@@ -29,7 +34,7 @@ function seat(id: number, availability: 'FREE' | 'TAKEN', pool: 'ONLINE' | 'WALK
   };
 }
 
-const VENUE_MAP = {
+const VENUE_MAP: MockVenueMapView = {
   id: 1,
   name: 'Miramar Beach Club',
   beach: 'KSAMIL',

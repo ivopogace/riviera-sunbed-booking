@@ -3,6 +3,7 @@ import { expect, test } from '@playwright/test';
 import { expectNoSeriousAxeViolations } from './support/axe';
 import { openFindBooking, openShellOverlay, openThemePicker } from './support/shell';
 import { settle } from './support/booking-dialog';
+import type { MockVenueSummary } from './support/venue-views';
 
 /**
  * Real-render e2e for the "Find a booking" flow: a guest opens the glass modal from
@@ -13,7 +14,7 @@ import { settle } from './support/booking-dialog';
 
 const CODE = 'ABCD234567';
 
-const VENUES = [
+const VENUES: readonly MockVenueSummary[] = [
   {
     id: 1,
     name: 'Miramar Beach Club',
@@ -24,6 +25,7 @@ const VENUES = [
     bookingMode: 'INSTANT',
     fromPrice: { minorUnits: 2500, currency: 'EUR' },
     availability: { free: 18, total: 24 },
+    sellsOnline: true,
   },
 ];
 

@@ -73,6 +73,7 @@ class VenueDayRefundControllerIT {
 		return venue;
 	}
 
+	/** A confirmed span with the accrual its confirm posted, which a refund's payout reversal mirrors (#9). */
 	private long insertConfirmedSpan(String code, long venueId, LocalDate first, int days, long amountMinor) {
 		long customer = jdbc.sql("INSERT INTO customer (email, full_name, phone) VALUES (:e, 'Guest', '+355600') RETURNING id")
 				.param("e", code + "@example.com").query(Long.class).single();
@@ -91,6 +92,11 @@ class VenueDayRefundControllerIT {
 			jdbc.sql("INSERT INTO set_availability (set_id, booking_date, state) VALUES (:set, :date, 'BOOKED_ONLINE')")
 					.param("set", set).param("date", first.plusDays(i)).update();
 		}
+		jdbc.sql("""
+				INSERT INTO payout_ledger_entry (venue_id, booking_id, entry_type, gross_minor, commission_minor,
+				                                 net_minor, currency)
+				VALUES (:v, :b, 'ACCRUAL', :gross, 0, :gross, 'EUR')
+				""").param("v", venueId).param("b", id).param("gross", amountMinor).update();
 		return id;
 	}
 
