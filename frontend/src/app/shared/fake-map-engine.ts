@@ -1,4 +1,5 @@
 import {
+  FenceInsets,
   LngLat,
   MapEngine,
   MapEngineOptions,
@@ -9,6 +10,7 @@ import {
   MapView,
   ScreenPoint,
 } from './map-engine';
+import { NO_FENCE_INSETS } from './map-fence';
 import { WATER_FILL } from './map-water';
 import { projectAround, unprojectAround } from './web-mercator';
 
@@ -39,6 +41,7 @@ export class FakeMapHandle implements MapHandle {
   private readonly dragEndHandlers = new Set<(id: string, at: LngLat) => void>();
   private readonly moveHandlers = new Set<() => void>();
   private isDestroyed = false;
+  private insets: FenceInsets = NO_FENCE_INSETS;
 
   constructor(
     private readonly options: MapEngineOptions,
@@ -76,6 +79,15 @@ export class FakeMapHandle implements MapHandle {
 
   zoomOut(): void {
     this.moveCamera({ ...this.current, zoom: this.current.zoom - 1 });
+  }
+
+  /** Recorded, not applied: the fake's camera goes wherever it is told. */
+  setFenceInsets(insets: FenceInsets): void {
+    this.insets = insets;
+  }
+
+  fenceInsets(): FenceInsets {
+    return this.insets;
   }
 
   addMarker(marker: MapMarker): void {
