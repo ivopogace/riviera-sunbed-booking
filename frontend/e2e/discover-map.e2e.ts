@@ -637,6 +637,55 @@ test.describe('Discover map — real engine', () => {
     expect(heights).toEqual({ host: heights.host, container: heights.host, canvas: heights.host });
   });
 
+  /**
+   * MapLibre's own fence keeps the whole box inside the extract, so zoomed out on a phone the
+   * coast's south end stayed under the sheet. A venue at Ksamil's latitude stands in for it.
+   */
+  test('on a phone, zoomed out, the coast’s south end pans clear of the sheet', async ({
+    page,
+  }) => {
+    await mockVenues(page, 0, [
+      { ...VENUES[0], beach: 'PALASE', region: 'HIMARE' },
+      { ...VENUES[1], beach: 'BORSH', region: 'HIMARE' },
+    ]);
+    await page.setViewportSize(PHONE);
+    await page.goto('/');
+    await expect(rows(page, PHONE)).toHaveCount(2);
+    await settle(page);
+
+    const ground = (await page.getByTestId('sheet-ground').boundingBox())!;
+    const x = ground.x + ground.width / 2;
+    await page.mouse.move(x, ground.y + 200);
+    await page.mouse.down();
+    await page.mouse.move(x - 20, ground.y + 180, { steps: 5 });
+    await page.mouse.up();
+    await expect(page.locator('app-riviera-map')).toHaveAttribute('data-status', 'ready', {
+      timeout: 20_000,
+    });
+
+    // All the way out, then drag the map up by far more than the coast is tall: as south as it goes.
+    for (let step = 0; step < 12; step += 1) {
+      await page.mouse.move(x, ground.y + 150);
+      await page.mouse.wheel(0, 400);
+    }
+    for (let drag = 0; drag < 3; drag += 1) {
+      await page.mouse.move(x, ground.y + 260);
+      await page.mouse.down();
+      await page.mouse.move(x, ground.y + 60, { steps: 8 });
+      await page.mouse.up();
+    }
+    await settle(page);
+
+    const sheetTop = (await page.getByTestId('sheet').boundingBox())!.y;
+    const south = page.locator('[data-pin]', { hasText: '€25' });
+    await expect
+      .poll(async () => {
+        const box = await south.boundingBox();
+        return box === null ? Number.POSITIVE_INFINITY : box.y + box.height;
+      })
+      .toBeLessThanOrEqual(sheetTop);
+  });
+
   test('the list renders and works before the map asks for anything', async ({ page }) => {
     await mockVenues(page, 1200, SHEET_VENUES);
     let venuesAnsweredAt: number | undefined;

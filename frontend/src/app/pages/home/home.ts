@@ -38,7 +38,8 @@ import {
   FOOT_CREDIT_PLACEMENT_SWAPPED,
   MapCredit,
 } from '../../shared/map-credit';
-import { LngLat, MapEngineOptions, MapHandle, MapView } from '../../shared/map-engine';
+import { FenceInsets, LngLat, MapEngineOptions, MapHandle, MapView } from '../../shared/map-engine';
+import { NO_FENCE_INSETS } from '../../shared/map-fence';
 import { formatMoney } from '../../shared/money';
 import { formatStay } from '../../shared/booking-date-label';
 import { PanelGlass } from '../../shared/panel-glass';
@@ -507,6 +508,23 @@ export class Home {
       bottom: Math.min(viewportH, sheet.tops()[this.detent()]),
     };
   });
+
+  /**
+   * The phone's map under the glass header and the resting sheet, so the fence's ends can be pulled
+   * clear of both; at full the map is hidden, so half's, and a tap back to half never jumps it.
+   */
+  protected readonly fenceInsets = computed<FenceInsets>(
+    () => {
+      const sheet = this.sheet();
+      if (!this.sheetMode() || sheet === undefined) {
+        return NO_FENCE_INSETS;
+      }
+      const { viewportH, header } = sheet.chrome();
+      const resting = this.detent() === 'full' ? 'half' : this.detent();
+      return { top: header, bottom: Math.max(0, viewportH - sheet.tops()[resting]) };
+    },
+    { equal: (a, b) => a.top === b.top && a.bottom === b.bottom },
+  );
 
   /** A region, never the coast: the chosen beach or region, else the tourist's, else Himarë. */
   protected readonly focus = computed<Focus>(() => {
