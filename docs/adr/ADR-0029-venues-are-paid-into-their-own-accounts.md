@@ -40,27 +40,40 @@ revenue.
 2. **No cut during launch.** No commission and no guest fee. The venue terms say the platform is
    free **during launch until a stated date**, and that pricing after it will be announced with
    notice. Any later revenue must be the platform's own invoiced income: a seasonal venue
-   subscription is the preferred shape, and a Paysera partner share is a possible extra. It must
-   never be a cut taken from, or invoiced against, a venue's takings, because that would bring back
+   subscription is the preferred shape. (Paysera has no paid partner programme: its affiliate
+   programme has been closed to new clients since 2020.) It must never be a cut taken from, or invoiced against, a venue's takings, because that would bring back
    the receivable this decision removes. Choosing the price is a later decision.
 3. **Online prepayment from day one.** A venue can sell online only once its payment account is
    connected and verified. Until then its sets are not bookable online.
-4. **The webhook stays the source of truth** (#8). A booking is confirmed only by a
-   signature-verified Paysera callback. The callback names the project, the project names the venue,
-   and the venue's own key verifies the signature. Callback idempotency on the provider's event id
-   stays.
+4. **The webhook stays the source of truth** (#8). A booking is confirmed only by a verified
+   Paysera callback. Albanian merchants get **Checkout Classic** only, and Classic signs callbacks
+   (ss3, or ss2) with **Paysera's** RSA key, the same for every venue. So the venue is bound as
+   follows:
+   1. each checkout carries a **per-venue callback URL**;
+   2. the callback is routed by that URL to the venue's credentials;
+   3. the signature is verified with Paysera's public key;
+   4. the decoded `projectid` must equal that venue's project id;
+   5. `orderid`, amount and currency must match the payment row.
+
+   Classic callbacks carry **no event id**, so deduplication keys on `(projectid, orderid, status)`.
+   Every checkout sets `time_limit` (12 minutes to 3 days, given in `Europe/Vilnius` and converted
+   from the stored UTC instant, #6), so an unpaid checkout cannot be started late.
 5. **The refund policy stays server-side** (#10), and the amounts are calculated as they are today
-   (ADR-0005, ADR-0026, ADR-0027). The refund is made **from the venue's account**, through the API
-   if Paysera allows it on the venue's behalf (open question 2). If it does not, the platform records
-   the refund decision and amount, tells the venue to refund it, and the operator marks it done. The
-   guest still sees the policy's amount.
+   (ADR-0005, ADR-0026, ADR-0027). The refund is made **from the venue's account**. Checkout Classic
+   has **no refund API** and no refund callback, so the refund is always **left to the venue**: the
+   platform records the decision and amount and tells the venue, the venue refunds it by hand in
+   Paysera, and the operator marks it done. That mark is the only completion signal the platform
+   gets. The guest still sees the policy's amount. If Checkout Modern opens to Albanian merchants, a
+   Modern adapter can execute refunds through its API instead.
 6. **A venue's payment secret is a credential.** It is encrypted at rest, never logged, never
    returned by any API, and can be replaced. It is treated like a booking code (#7). Only the venue's
    owner connects or replaces it (#13).
 7. **A payment collects for one venue only.** This already holds: a stay belongs to one venue
    (`stay.venue_id`, V65), so one payment's bookings never span venues. It must keep holding.
-8. **One provider at launch: Paysera.** POK stays out on ADR-0009's reading of its published docs
-   (no refund API, no webhooks) unless that has changed.
+8. **One provider at launch, Paysera unless its answers rule it out.** POK now documents a refund
+   API, including partial refunds, which corrects ADR-0009. Its webhook payload, signature and
+   retries are still undocumented. That keeps POK as the challenger, asked the same questions as
+   Paysera.
 9. **Disputes and chargebacks belong to the venue.** The venue terms say so.
 10. **Build order keeps the app working.** The venue-account path is built next to the current one,
     and `payout` is retired only after a real Paysera payment has confirmed a booking from start to
@@ -80,7 +93,7 @@ revenue.
     - the browser gets a **checkout instruction** (embedded, carrying a client secret; or a redirect
       URL) instead of `PaymentCredentials`' Stripe client secret, and the frontend's
       `StripePaymentGateway` becomes a neutral checkout seam with one implementation per provider;
-    - a refund may come back as **left to the venue** (decision 5's fallback);
+    - a refund may come back as **left to the venue** (always so for Paysera Classic, decision 5);
     - webhook deduplication (`StripeWebhookEvents`, `stripe_webhook_event`) gets a neutral name;
     - jobs bound to the `stripe` profile today (the abandoned-payment sweep, the money-path alert)
       are bound to "a gateway that really collects" (`CollectionGuarantee`) instead.
@@ -90,25 +103,23 @@ revenue.
 
 ## Preconditions (Proposed → Accepted)
 
-- **Paysera confirms in writing** that a platform may create Checkout payments on many merchants'
-  projects from its own domain with each merchant's credentials, or names the product that allows
-  it (open question 1). A "no" reopens this ADR. It does not fall back to collecting.
-- An answer on whether sole traders can open a business account with Checkout (open question 4),
-  because it decides how many venues can sell online.
-- A test setup with at least two projects, so that the separation of venue A from venue B can be
-  tested (open question 3).
+- **Albanian-registered venues can accept cards, and with them Apple Pay and Google Pay.** Both card
+  rules published on paysera.al apply only to business clients registered in an EU member state.
+  If Paysera confirms that, Paysera cannot be the provider, because foreign tourists pay by card.
+- **Paysera confirms in writing** that each venue may add our domain to its own project's confirmed
+  URLs, and that our platform may hold the venue's project password (its business agreement forbids
+  disclosing "Passwords" to third persons). A "no" reopens this ADR. It does not fall back to
+  collecting.
+- An answer on whether sole traders can open a business account with Checkout, because it decides
+  how many venues can sell online.
+- A test setup: there is no sandbox, and test payments work on an unverified project, but whether
+  one account may hold two test projects (to test venue A against venue B) is still open.
 
-## Open questions for Paysera
+## Open questions
 
-1. May one platform, on its own domain, create Checkout payments for many merchants' projects using
-   each merchant's project ID and signing password? If not, which product or agreement fits?
-2. Can refunds, including partial ones, be made through an API for these payments, started by the
-   platform on the merchant's behalf? How is that authenticated?
-3. Is there a test or sandbox environment, and can several test projects be set up?
-4. Can sole traders and small individual businesses in Albania, not only sh.p.k., open a business
-   account with Checkout?
-5. Is there an integrator or partner programme for platforms that bring merchants, and on what
-   terms?
+The published documentation was read on 2026-11-01. What it settles, and the email with the
+remaining questions for Paysera, are in `docs/research/2026-11-01-paysera-venue-owned-checkout.md`.
+The same questions go to POK.
 
 ## Consequences
 
@@ -125,8 +136,14 @@ revenue.
 - **Checkout looks different per provider even though the result is the same.** Stripe is embedded
   in the page. Paysera sends the guest to its own page and back. Both leave the booking waiting until
   the verified callback confirms it.
-- **Each venue carries Paysera's sign-up and identity checks.** Expect to help the first venues
-  through it in person. That is the slowest step to launch, and it is people work, not code.
+- **Each venue carries Paysera's sign-up and identity checks**, plus the project's own review and
+  verification of our domain in its project. Expect to help the first venues through it in person.
+  That is the slowest step to launch, and it is people work, not code.
+- **The venue bears Paysera's costs:** card commission (from 1.45% for EU consumer cards to 2.90% for
+  non-EU cards), a **reserve of 100% of each card payment for 3 days and 5% for 3 months**, €30 per
+  chargeback, and €0.50 per refund made after the day of payment.
+- **The payment page and the booking page name the venue as the seller.** Paysera's card rules
+  require the merchant's name to be shown prominently.
 - **No-shows are covered by prepayment**, as they are today, so pay-at-venue rules are not needed.
 - **Doc follow-ups on acceptance:**
   - mark ADR-0002 and ADR-0009 *Superseded by ADR-0029*;
