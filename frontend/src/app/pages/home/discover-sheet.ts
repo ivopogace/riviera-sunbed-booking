@@ -51,8 +51,8 @@ const SETTLE_QUIET_MS = 160;
  * moving the sheet this long means the gesture is over. Generous: a reader is not a stale finger.
  */
 const STALE_TOUCH_MS = 6_000;
-/** How long a `go` glide that has not moved yet holds the sheet unsettled, waiting for its first frame. */
-const GLIDE_START_MS = 1_000;
+/** How long a `go` glide that has not landed holds the sheet unsettled, through a stall before or between its frames. */
+const GLIDE_MS = 1_500;
 
 /**
  * The Discover sheet over the map, resting at half (opens here), peek or full. Two scroll-snap
@@ -197,8 +197,8 @@ export class DiscoverSheet {
         samples: { readonly y: number; readonly t: number }[];
       }
     | undefined;
-  /** Where the last `go` glide set out from, and when, until the sheet settles. */
-  private glide: { readonly from: number; readonly at: number } | undefined;
+  /** Where the last `go` glide is headed, and when it set out, until the sheet settles. */
+  private glide: { readonly to: number; readonly at: number } | undefined;
   private quietTimer: number | undefined;
   private staleTouchTimer: number | undefined;
   private readonly moveFocus = focusMover({ preventScroll: true });
@@ -320,7 +320,7 @@ export class DiscoverSheet {
     }, STALE_TOUCH_MS);
   }
 
-  /** The scroll is moving until `SETTLE_QUIET_MS` passes with nothing moving it and no {@link glideNotStarted}. */
+  /** The scroll is moving until `SETTLE_QUIET_MS` passes with nothing moving it and no {@link glideInFlight}. */
   private keepRolling(): void {
     const window = this.document.defaultView;
     this.rolling.set(true);
@@ -332,7 +332,7 @@ export class DiscoverSheet {
     }
     this.quietTimer = window?.setTimeout(() => {
       this.quietTimer = undefined;
-      if (this.glideNotStarted()) {
+      if (this.glideInFlight()) {
         this.keepRolling();
         return;
       }
@@ -345,16 +345,18 @@ export class DiscoverSheet {
   }
 
   /**
-   * A `go` glide the browser has not begun: the quiet window can lapse before its first frame when
-   * the main thread stalls, and settling then re-rests at the old detent and cancels the glide.
-   * Bounded by {@link GLIDE_START_MS}, so a scroller that cannot move still settles.
+   * A `go` glide not yet within a pixel of its target: a main-thread stall before or between its
+   * frames lapses the quiet window, and settling then re-rests at the detent it is leaving, losing the
+   * press. Bounded by {@link GLIDE_MS}, so a scroller that cannot get there still settles.
    */
-  private glideNotStarted(): boolean {
+  private glideInFlight(): boolean {
     const glide = this.glide;
+    const top = this.scroller()?.nativeElement.scrollTop;
     return (
       glide !== undefined &&
-      this.scroller()?.nativeElement.scrollTop === glide.from &&
-      performance.now() - glide.at < GLIDE_START_MS
+      top !== undefined &&
+      Math.abs(top - glide.to) >= 1 &&
+      performance.now() - glide.at < GLIDE_MS
     );
   }
 
@@ -490,8 +492,7 @@ export class DiscoverSheet {
     if (this.opened()) {
       this.restTarget = want;
     }
-    const from = scroller.scrollTop;
-    this.glide = from === want ? undefined : { from, at: performance.now() };
+    this.glide = scroller.scrollTop === want ? undefined : { to: want, at: performance.now() };
     scrollScroller(scroller, want);
     this.onScroll();
   }
