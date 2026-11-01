@@ -32,6 +32,12 @@ export interface MapEngineOptions {
   readonly readableImagery?: boolean;
 }
 
+/** How many CSS px of the map's top and bottom edges sit under the consumer's chrome. */
+export interface FenceInsets {
+  readonly top: number;
+  readonly bottom: number;
+}
+
 /** A DOM element pinned to a position; the caller owns the element and its accessibility. */
 export interface MapMarker {
   readonly id: string;
@@ -76,6 +82,11 @@ export interface MapHandle {
   setView(view: MapView): void;
   zoomIn(): void;
   zoomOut(): void;
+  /**
+   * How much of the box's top and bottom the consumer's chrome covers: `maxBounds` then fences the
+   * map still visible, not the whole box, so neither end of the fence can hide under the chrome.
+   */
+  setFenceInsets(insets: FenceInsets): void;
   addMarker(marker: MapMarker): void;
   /**
    * Move a marker in place. Re-adding it detaches and re-attaches the caller's element instead,
