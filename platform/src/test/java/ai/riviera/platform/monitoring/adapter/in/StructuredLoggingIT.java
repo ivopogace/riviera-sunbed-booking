@@ -1,8 +1,5 @@
 package ai.riviera.platform.monitoring.adapter.in;
 
-import ai.riviera.platform.EnabledIfDockerAvailable;
-import ai.riviera.platform.TestcontainersConfiguration;
-
 import java.util.Arrays;
 import java.util.Optional;
 
@@ -15,7 +12,7 @@ import org.slf4j.MDC;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.system.CapturedOutput;
 import org.springframework.boot.test.system.OutputCaptureExtension;
-import org.springframework.context.annotation.Import;
+import org.springframework.context.annotation.Configuration;
 
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -23,20 +20,23 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * D4, AC-2: when the native Boot 4 structured console format is enabled
  * ({@code logging.structured.format.console=ecs} — the ONE env var production flips), a log line is
  * emitted as JSON and carries the {@link CorrelationIdFilter#MDC_KEY} MDC field, so a correlation id
- * surfaces on every line. Boots the real application under the {@code ecs} property (Testcontainers,
- * like {@code ActuatorHardeningIT}) so the format is exercised exactly as production configures it.
- * Logback is configured once per JVM, by the first context, so this class runs alone in the
+ * surfaces on every line. Logging is configured from {@code application.properties} plus the {@code ecs}
+ * property, exactly as production configures it; no bean takes part, so the context is empty and needs no
+ * container. Logback is configured once per JVM, by the first context, so this class runs alone in the
  * {@code structuredLoggingTest} task's own JVM, never in {@code test}.
  */
-@EnabledIfDockerAvailable
-@Import(TestcontainersConfiguration.class)
-@SpringBootTest(properties = "logging.structured.format.console=ecs")
+@SpringBootTest(classes = StructuredLoggingIT.NoBeans.class, webEnvironment = SpringBootTest.WebEnvironment.NONE,
+		properties = "logging.structured.format.console=ecs")
 @ExtendWith(OutputCaptureExtension.class)
 class StructuredLoggingIT {
 
 	private static final Logger log = LoggerFactory.getLogger(StructuredLoggingIT.class);
 	private static final String PROBE_MESSAGE = "structured-logging-probe-line";
 	private static final String PROBE_ID = "corr-probe-1234";
+
+	@Configuration(proxyBeanMethods = false)
+	static class NoBeans {
+	}
 
 	@AfterEach
 	void clearMdc() {
