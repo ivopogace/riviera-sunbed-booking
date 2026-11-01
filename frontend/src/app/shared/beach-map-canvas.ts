@@ -55,9 +55,7 @@ export class BeachMapRowDef<R extends BeachMapCanvasRow = BeachMapCanvasRow> {
   readonly template = inject<TemplateRef<BeachMapRowContext<R>>>(TemplateRef);
 
   static ngTemplateContextGuard<R extends BeachMapCanvasRow>(
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars -- types the guard's directive
     _dir: BeachMapRowDef<R>,
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars -- used in the type predicate only
     _ctx: unknown,
   ): _ctx is BeachMapRowContext<R> {
     return true;
