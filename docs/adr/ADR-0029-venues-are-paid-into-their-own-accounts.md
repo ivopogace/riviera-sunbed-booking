@@ -63,8 +63,30 @@ revenue.
    (no refund API, no webhooks) unless that has changed.
 9. **Disputes and chargebacks belong to the venue.** The venue terms say so.
 10. **Build order keeps the app working.** The venue-account path is built next to the current one,
-    and `payout` and the Stripe adapter are retired only after a real Paysera payment has confirmed a
-    booking from start to finish.
+    and `payout` is retired only after a real Paysera payment has confirmed a booking from start to
+    finish.
+11. **Providers are interchangeable adapters behind one provider-neutral port.** The application
+    layer gives the same result whichever provider is wired: a booking waits for payment, a verified
+    callback confirms it, and a refund is executed or handed to the venue. Exactly one gateway is
+    wired per deployment, chosen by profile, as today:
+    - **stub** (default profile): in-process, collects nothing, for local development and tests;
+    - **`stripe`, sandbox only**: kept as the **demo** of the platform's capabilities. It collects
+      into the platform's own Stripe *test* account and ignores the venue's payment account. The boot
+      **refuses a live key**, so a demo can never take real money, which would break decision 1;
+    - **`paysera`**: production, paying each venue's own project.
+
+    To keep the port neutral, the Stripe shapes that leak through it today become provider-neutral:
+    - the port is told **which venue is paid**;
+    - the browser gets a **checkout instruction** (embedded, carrying a client secret; or a redirect
+      URL) instead of `PaymentCredentials`' Stripe client secret, and the frontend's
+      `StripePaymentGateway` becomes a neutral checkout seam with one implementation per provider;
+    - a refund may come back as **left to the venue** (decision 5's fallback);
+    - webhook deduplication (`StripeWebhookEvents`, `stripe_webhook_event`) gets a neutral name;
+    - jobs bound to the `stripe` profile today (the abandoned-payment sweep, the money-path alert)
+      are bound to "a gateway that really collects" (`CollectionGuarantee`) instead.
+
+    Whether a venue can sell online is a per-venue check of its payment account. The demo answers
+    yes for every venue.
 
 ## Preconditions (Proposed → Accepted)
 
@@ -98,7 +120,11 @@ revenue.
   gap: a venue whose remodel strands a guest no longer pays for it. If that gap matters, a later
   decision can make it part of the subscription terms.
 - **`payment` gains a venue payment account**, which `payment` alone writes. The gateway port takes
-  the venue, and the callback controller looks up the key by project. The Stripe adapter and SDK go.
+  the venue, and the Paysera callback controller looks up the key by project. The Stripe adapter
+  stays as the sandbox-only demo (decision 11), so the platform can be shown with no venue connected.
+- **Checkout looks different per provider even though the result is the same.** Stripe is embedded
+  in the page. Paysera sends the guest to its own page and back. Both leave the booking waiting until
+  the verified callback confirms it.
 - **Each venue carries Paysera's sign-up and identity checks.** Expect to help the first venues
   through it in person. That is the slowest step to launch, and it is people work, not code.
 - **No-shows are covered by prepayment**, as they are today, so pay-at-venue rules are not needed.
