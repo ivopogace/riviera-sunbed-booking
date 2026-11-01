@@ -18,7 +18,8 @@ import { BusyAction } from './busy-action';
 import { focusMover } from './focus-after-render';
 import { GeolocationFailure, GeolocationGateway, GeolocationOutcome } from './geolocation';
 import { FOOT_CREDIT_PLACEMENT, FOOT_CREDIT_PLACEMENT_SWAPPED, MapCredit } from './map-credit';
-import { LngLat, MapEngine, MapEngineOptions, MapHandle } from './map-engine';
+import { FenceInsets, LngLat, MapEngine, MapEngineOptions, MapHandle } from './map-engine';
+import { NO_FENCE_INSETS } from './map-fence';
 import { RIVIERA_MAP_OPTIONS } from './riviera-map-options';
 import { TouchTarget } from './touch-target';
 import { CrossIcon } from './cross-icon';
@@ -132,6 +133,8 @@ export class RivieraMap {
   readonly foot = input<number | null>(null);
   /** The foot row has changed sides for a lone pin under it: the credit goes right (`footSwap`). */
   readonly footSwapped = input(false);
+  /** How much of the map's top and bottom the consumer's chrome covers; the fence keeps the rest in bounds. */
+  readonly fenceInsets = input<FenceInsets>(NO_FENCE_INSETS);
   /**
    * A bare ribbon: the map as a picture its consumer marks up and hides from assistive technology.
    * No skip control, control column or unavailable notice; the credit at the foot at 10 px, links
@@ -195,6 +198,7 @@ export class RivieraMap {
       void this.pendingTasks.run(() => this.boot());
     });
     effect(() => this.syncPin());
+    effect(() => this.live()?.setFenceInsets(this.fenceInsets()));
     inject(DestroyRef).onDestroy(() => {
       this.disposed = true;
       this.unsubscribes.forEach((off) => off());

@@ -1381,6 +1381,27 @@ describe('Home (the riviera map sheet — what `/` renders)', () => {
       }
     });
 
+    it('fences the live map’s visible strip, under the header and above the resting sheet, so neither end of the coast hides', async () => {
+      const fixture = await sheetPage();
+      byTestId(fixture, 'sheet-poster')!.dispatchEvent(new Event('pointerdown', { bubbles: true }));
+      const handle = await loaded(fixture);
+      const { viewportH, header } = sheet(fixture).chrome();
+      const tops = sheet(fixture).tops();
+      expect(viewportH - tops.half).toBeGreaterThan(0);
+
+      expect(handle.fenceInsets()).toEqual({ top: header, bottom: viewportH - tops.half });
+
+      sheet(fixture).go('peek');
+      await settle(fixture);
+      expect(handle.fenceInsets()).toEqual({ top: header, bottom: viewportH - tops.peek });
+
+      // At full the map is hidden: the fence keeps half's, so the way back to half never jumps it.
+      sheet(fixture).go('full');
+      await settle(fixture);
+      expect(sheet(fixture).detent()).toBe('full');
+      expect(handle.fenceInsets()).toEqual({ top: header, bottom: viewportH - tops.half });
+    });
+
     it('the poster retired before the map renders hands focus to the grabber without scrolling the sheet', async () => {
       const fixture = await sheetPage();
       const poster = byTestId(fixture, 'sheet-poster')!;

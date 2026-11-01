@@ -85,7 +85,7 @@ jobs:
         uses: actions/upload-artifact@v7
         with:
           name: backend-test-results
-          path: platform/build/test-results/test/*.xml
+          path: platform/build/test-results/*/*.xml
           if-no-files-found: warn
           retention-days: 7
 
