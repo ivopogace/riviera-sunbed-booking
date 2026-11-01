@@ -61,8 +61,10 @@ eslint-rules suite, the mocked e2e on sharded runners, the `scripts/check-*.mjs`
 for 7 days (`backend-test-results`): each test's captured stdout, the only trace of a listener that
 failed inside one. Sonar bar: **no new bug, vulnerability or unreviewed hotspot, ≥80% new-code
 coverage**; smells and duplication judged.
-`deploy.yml` deploys the backend image (serves the SPA) to Render from `main`. Line endings
-pinned LF by `.gitattributes`.
+`deploy.yml` deploys the backend image (serves the SPA) to Render from `main`. `claude.yml`: an
+`@claude` PR comment gets Claude to review, answer or push a commit to the PR's branch; an outside
+contributor's PR gets a read-only review on its own.
+Line endings pinned LF by `.gitattributes`.
 
 ## Repo map
 
