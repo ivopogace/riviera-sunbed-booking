@@ -2,6 +2,7 @@ import type { StyleSpecification } from 'maplibre-gl';
 
 import { environment } from '../../environments/environment';
 import {
+  FenceInsets,
   LngLat,
   MapEngine,
   MapEngineOptions,
@@ -12,6 +13,7 @@ import {
   MapView,
   ScreenPoint,
 } from './map-engine';
+import { CameraFence, fencedCamera, NO_FENCE_INSETS } from './map-fence';
 
 /** MapLibre's own stylesheet, copied into the build by `angular.json` (`assets`) — never a CDN. */
 export const MAPLIBRE_STYLESHEET = '/vendor/maplibre-gl.css';
@@ -105,13 +107,15 @@ async function registerPmtiles(maplibre: MapLibre): Promise<void> {
   await protocolReady;
 }
 
-class MapLibreHandle implements MapHandle {
+export class MapLibreHandle implements MapHandle {
   private readonly markers = new Map<string, import('maplibre-gl').Marker>();
   private readonly dragEndHandlers = new Set<(id: string, at: LngLat) => void>();
+  private insets: FenceInsets = NO_FENCE_INSETS;
 
   constructor(
     private readonly maplibre: MapLibre,
     private readonly map: import('maplibre-gl').Map,
+    private readonly fence: CameraFence,
     private readonly readable = false,
   ) {}
 
@@ -139,6 +143,46 @@ class MapLibreHandle implements MapHandle {
 
   zoomOut(): void {
     this.map.zoomOut();
+  }
+
+  /**
+   * MapLibre re-fences the camera only when handed a new function, and reports no move for it, so
+   * a camera the new fence shifted is jumped to where it already is to tell the subscribers.
+   */
+  setFenceInsets(insets: FenceInsets): void {
+    if (insets.top === this.insets.top && insets.bottom === this.insets.bottom) {
+      return;
+    }
+    this.insets = insets;
+    const before = this.view();
+    this.map.setTransformConstrain(
+      insets.top === 0 && insets.bottom === 0 ? null : this.insetConstrain(insets),
+    );
+    const after = this.view();
+    if (
+      after.zoom !== before.zoom ||
+      after.center.lng !== before.center.lng ||
+      after.center.lat !== before.center.lat
+    ) {
+      this.map.jumpTo({});
+    }
+  }
+
+  private insetConstrain(insets: FenceInsets): import('maplibre-gl').TransformConstrainFunction {
+    const container = this.map.getContainer();
+    return (lngLat, zoom) => {
+      const fenced = fencedCamera(
+        { center: { lng: lngLat.lng, lat: lngLat.lat }, zoom },
+        container.clientWidth,
+        container.clientHeight,
+        insets,
+        this.fence,
+      );
+      return {
+        center: new this.maplibre.LngLat(fenced.center.lng, fenced.center.lat),
+        zoom: fenced.zoom,
+      };
+    };
   }
 
   addMarker(marker: MapMarker): void {
@@ -282,6 +326,6 @@ export class MapLibreMapEngine extends MapEngine {
     map.setStyle(absoluteMapUrl(options.styleUrl, origin), {
       transformStyle: (_previous, next) => absoluteMapStyle(next, origin),
     });
-    return new MapLibreHandle(maplibre, map, options.readableImagery === true);
+    return new MapLibreHandle(maplibre, map, options, options.readableImagery === true);
   }
 }
