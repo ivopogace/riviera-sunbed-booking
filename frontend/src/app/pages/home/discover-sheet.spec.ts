@@ -156,17 +156,52 @@ describe('DiscoverSheet', () => {
       expect(sheet().detent()).toBe('full');
     });
 
-    it('settles anyway once the glide has had its second to start', async () => {
+    it('settles anyway once the glide has had its time to land', async () => {
       vi.useFakeTimers();
       try {
         byTestId('sheet-grabber')!.click();
-        vi.advanceTimersByTime(1_200);
+        vi.advanceTimersByTime(1_700);
       } finally {
         freezeClock();
       }
       await settle();
       expect(sheet().settled()).toBe(true);
       expect(scroller().style.scrollSnapType).toBe('');
+    });
+  });
+
+  describe('a glide a stalled main thread has begun but not landed', () => {
+    beforeEach(() => {
+      // The first frame moves the scroller a little toward the target; then the main thread stalls.
+      scrollable.scrollTo = function begun(this: HTMLElement, options: ScrollToOptions) {
+        const top = options.top ?? 0;
+        asked.push(top);
+        this.scrollTop += Math.sign(top - this.scrollTop) * 2;
+        this.dispatchEvent(new Event('scroll'));
+      };
+    });
+
+    it('stays unsettled past the quiet window instead of re-resting at the detent it left', async () => {
+      const tops = sheet().tops();
+      const full = tops.peek - tops.full;
+      vi.useFakeTimers();
+      try {
+        byTestId('sheet-grabber')!.click();
+        vi.advanceTimersByTime(400);
+        fixture.detectChanges();
+        expect(sheet().settled()).toBe(false);
+        expect(asked.at(-1)).toBe(full);
+
+        scroller().scrollTop = full;
+        scroller().dispatchEvent(new Event('scroll'));
+        vi.advanceTimersByTime(400);
+      } finally {
+        freezeClock();
+      }
+      await settle();
+      expect(sheet().settled()).toBe(true);
+      expect(sheet().detent()).toBe('full');
+      expect(asked.at(-1)).toBe(full);
     });
   });
 
