@@ -377,7 +377,7 @@ describe('BookingPay', () => {
     }
   });
 
-  it('omits the withheld-email notice when the confirmation mail was sent', async () => {
+  it('omits the withheld-email notice when the mail was sent, and shows the QR', async () => {
     const gateway = new FakeGateway();
     const { comp, fixture, httpMock } = await setup(gateway);
     vi.useFakeTimers();
@@ -392,6 +392,13 @@ describe('BookingPay', () => {
       expect(host.querySelector('[data-testid="pay-status"]')?.textContent).toContain(
         'Your booking is confirmed.',
       );
+
+      await vi.advanceTimersByTimeAsync(0);
+      fixture.detectChanges();
+      const qr = host.querySelector<HTMLImageElement>(
+        '[data-testid="booking-code"] [data-testid="booking-qr"]',
+      );
+      expect(qr?.alt).toContain('WXYZ345678');
 
       httpMock.verify();
     } finally {
@@ -499,9 +506,9 @@ describe('BookingPay', () => {
     }
   });
 
-  it('webhook lag past the poll window → awaiting state, never confirmed', async () => {
+  it('webhook lag past the poll window → awaiting state, never confirmed, no QR', async () => {
     const gateway = new FakeGateway();
-    const { comp, httpMock } = await setup(gateway); // reach 'ready' on real timers
+    const { comp, fixture, httpMock } = await setup(gateway); // reach 'ready' on real timers
     vi.useFakeTimers();
     try {
       await comp.pay();
@@ -517,6 +524,12 @@ describe('BookingPay', () => {
 
       expect(comp.state()).toBe('awaiting');
       expect(comp.state()).not.toBe('confirmed');
+      fixture.detectChanges();
+      const host = fixture.nativeElement as HTMLElement;
+      expect(host.querySelector('[data-testid="booking-code"]')?.textContent).toContain(
+        'WXYZ345678',
+      );
+      expect(host.querySelector('app-booking-qr')).toBeNull();
       httpMock.verify();
     } finally {
       freezeClock();

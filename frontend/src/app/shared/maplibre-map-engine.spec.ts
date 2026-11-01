@@ -1,12 +1,14 @@
 import type { StyleSpecification } from 'maplibre-gl';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 import {
   absoluteMapStyle,
   absoluteMapUrl,
   ensureStylesheet,
+  MapLibreHandle,
   mapConstructorOptions,
 } from './maplibre-map-engine';
+import { RIVIERA_MAP_OPTIONS } from './riviera-map-options';
 
 /**
  * The real adapter's jsdom-testable parts: the style rewrite that keeps every map resource on our
@@ -136,5 +138,71 @@ describe('mapConstructorOptions', () => {
       [20.5, 40.8],
     ]);
     expect(built.attributionControl).toBe(false);
+  });
+});
+
+describe('MapLibreHandle.setFenceInsets', () => {
+  type Constrain = (at: LngLatStub, zoom: number) => { center: LngLatStub; zoom: number };
+
+  class LngLatStub {
+    constructor(
+      readonly lng: number,
+      readonly lat: number,
+    ) {}
+  }
+
+  /** MapLibre's part, as far as the fence goes: re-fencing the camera when handed a new function. */
+  function stubMap(center: LngLatStub, zoom: number) {
+    const container = document.createElement('div');
+    Object.defineProperty(container, 'clientWidth', { value: 390 });
+    Object.defineProperty(container, 'clientHeight', { value: 844 });
+    const camera = { center, zoom };
+    const map = {
+      getCenter: () => camera.center,
+      getZoom: () => camera.zoom,
+      getContainer: () => container,
+      setTransformConstrain: vi.fn((constrain: Constrain | null) => {
+        if (constrain !== null) {
+          Object.assign(camera, constrain(camera.center, camera.zoom));
+        }
+      }),
+      jumpTo: vi.fn(),
+    };
+    const handle = new MapLibreHandle(
+      { LngLat: LngLatStub } as unknown as typeof import('maplibre-gl'),
+      map as unknown as import('maplibre-gl').Map,
+      RIVIERA_MAP_OPTIONS,
+    );
+    return { map, handle, camera };
+  }
+
+  it('fences the visible strip, reporting the move when the camera had to shift', () => {
+    const { map, handle, camera } = stubMap(new LngLatStub(20, 30), 7);
+
+    handle.setFenceInsets({ top: 96, bottom: 418 });
+
+    expect(map.setTransformConstrain).toHaveBeenCalledOnce();
+    expect(camera.center).toBeInstanceOf(LngLatStub);
+    expect(camera.center.lat).toBeGreaterThan(RIVIERA_MAP_OPTIONS.maxBounds[0].lat);
+    expect(map.jumpTo).toHaveBeenCalledExactlyOnceWith({});
+  });
+
+  it('leaves a camera the fence does not move alone, and the same insets twice cost nothing', () => {
+    const { map, handle } = stubMap(new LngLatStub(19.9, 40.5), 11);
+
+    handle.setFenceInsets({ top: 96, bottom: 418 });
+    handle.setFenceInsets({ top: 96, bottom: 418 });
+
+    expect(map.setTransformConstrain).toHaveBeenCalledOnce();
+    expect(map.jumpTo).not.toHaveBeenCalled();
+  });
+
+  it('hands the fence back to the engine when nothing covers the map', () => {
+    const { map, handle } = stubMap(new LngLatStub(19.9, 40.5), 11);
+
+    handle.setFenceInsets({ top: 96, bottom: 418 });
+    handle.setFenceInsets({ top: 0, bottom: 0 });
+
+    expect(map.setTransformConstrain).toHaveBeenLastCalledWith(null);
   });
 });
