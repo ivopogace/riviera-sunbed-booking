@@ -2,6 +2,8 @@
 
 **Status / provenance.** Findings only, no decision. The decision is ADR-0029 (proposed in draft PR
 #1686, branch `claude/adr-0029-venue-owned-payments`), tracked by epic #284. Gathered 2026-11-01.
+POK, the challenger, is covered in `2026-11-01-pok-venue-owned-checkout.md`, which also has the
+side-by-side table of the two providers.
 Every page below was read on **2026-11-01**. The labels:
 
 - **[dev]**: `developers.paysera.com`, the current Docusaurus site. It is split into
@@ -171,9 +173,13 @@ published, so it must be asked in writing.
     https://www.paysera.al/v2/sq-AL/ligjore/rregullat-per-mbledhjen-e-pagesave-me-karta
   - The Classic card rules (07/2020), cl. 9, say the same *(re-checked)*:
     https://www.paysera.al/v2/en-AL/legal/collection-of-payments-via-internet-with-credit-cards-2020
-  - Paysera Albania advertises card checkout to Albanian businesses
-    (https://www.paysera.al/v2/en-AL/payment-gateway-checkout), so this is likely a template that
-    was not localised. That is a guess, not a finding.
+  - Paysera Albania's own gateway page says the same in its "Cards" section: "Payments with Visa and
+    Mastercard are available for natural and legal persons registered within the EU" *(re-checked)*.
+    https://www.paysera.al/v2/en-AL/payment-gateway-checkout
+- **Apple Pay and Google Pay depend on card payments.** Paysera's blog enables them for merchants who
+  "have card payments activated". It names no Checkout version or country. Classic lists both wallets
+  under Albania, but as the *payer's* country. So an Albanian-registered venue has no published route
+  to either wallet. Details are in `2026-11-01-pok-venue-owned-checkout.md` § Q10.
 
 **Not in the docs:**
 - whether many unrelated accounts may list or verify one platform domain, or whether a per-venue
@@ -487,7 +493,13 @@ and domain verification. Ask for the answers in writing.
 >    paysera.al (Checkout Modern, valid from 2026-09-01, and Classic, 07/2020) say they apply only to
 >    business clients "registered in the centre of registers of a member country of the European
 >    Union". Does this apply to clients of Paysera Albania? Can an Albanian-registered sh.p.k.
->    accept card payments through Checkout? Can a sole trader (person fizik with a NIPT)?
+>    accept card payments through Checkout? Can a sole trader (person fizik with a NIPT)? Your
+>    gateway page on paysera.al also says Visa and Mastercard payments "are available for natural and
+>    legal persons registered within the EU".
+>    - Can an Albanian-registered merchant on Checkout **Classic** accept **Apple Pay and Google
+>      Pay**? Your blog enables them for merchants with card payments activated, and the Classic
+>      payment-types page lists both under Albania. Does that list refer to the payer's country or
+>      the merchant's?
 > 2. **Sole traders.** Can a sole trader open a Paysera business account with a Checkout project?
 >    Which documents are needed for Albanian businesses (for example the QKB extract), and how long
 >    do the account and the project review usually take?
