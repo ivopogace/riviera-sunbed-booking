@@ -64,7 +64,9 @@ and paysera.al's own gateway page, limit card payments to merchants registered i
    - **Paysera** (Checkout Classic, the only Checkout open to Albanian merchants): verify the ss3 (or
      ss2) RSA signature with **Paysera's** public key, the same for every venue; check that the
      decoded `projectid` is the venue's project; match `orderid`, amount and currency against the
-     payment row.
+     payment row; and require a **successful status** (1; status 3 only if Paysera confirms it means
+     paid). Any other status confirms nothing. A callback with `test=1` never confirms a booking in
+     production, because test payments run on the same production projects.
    - **POK**: the callback is **unsigned** (POK's own plugin treats it as a trigger only), so it is
      never trusted. The adapter logs in with the venue's key and reads the order through the
      authenticated `GET /merchants/{merchantId}/sdk-orders/{id}`, which also proves the order belongs
@@ -72,12 +74,22 @@ and paysera.al's own gateway page, limit card payments to merchants registered i
      The unauthenticated order read is never used.
 
    Neither provider sends an event id, so deduplication keys on **the provider plus a
-   provider-scoped payment reference** (Paysera: `(projectid, orderid, status)`; POK: `(merchantId,
-   sdkOrderId)`), with the guarded state transition as the final guard.
+   provider-scoped reference that includes the verified state**: Paysera `(projectid, orderid,
+   status)`; POK `(merchantId, sdkOrderId, state read back)`. A POK callback is never recorded on
+   arrival: it triggers the authenticated read, and only the state that read returns is recorded, so
+   an early or forged callback cannot use up the key of the real completion. The guarded state
+   transition stays the final guard.
 
    Every payment is created with an **expiry** so it cannot be paid late: Paysera `time_limit` (12
    minutes to 3 days, given in `Europe/Vilnius` and converted from the stored UTC instant, #6), POK
-   `expiresAfterMinutes` (an expired order returns 410 Gone).
+   `expiresAfterMinutes` (an expired order returns 410 Gone). The expiry **never outlasts the
+   platform's hold** on the set: it ends no later than the awaiting-payment TTL or the request
+   pay-window, so the hold's floor is raised to the provider's minimum (12 minutes for Paysera).
+   Today a set is released only after the provider payment is voided; a provider with no void call
+   (Paysera Classic) has its set released only once the expiry has passed, plus a margin for a
+   payment already in progress (Paysera's "applies to payment initiation only"). A verified payment
+   that still arrives for a booking that was already released confirms nothing and does not reclaim
+   the set: it is refunded under decision 5.
 5. **The refund policy stays server-side** (#10), and the amounts are calculated as they are today
    (ADR-0005, ADR-0026, ADR-0027). The refund is made **from the venue's account**, by one of two
    routes:
@@ -86,9 +98,15 @@ and paysera.al's own gateway page, limit card payments to merchants registered i
      after a timeout it re-reads the order instead of retrying blindly. A second partial refund is
      never retried without a read that shows the amount;
    - **left to the venue** where there is no API (Paysera Checkout Classic), or when the API refuses
-     (POK answers 402 when the venue's balance is too low) or the outcome stays unknown. The platform
-     records the decision and amount and tells the venue; the venue refunds it by hand; the operator
-     marks it done, which is the only completion signal for that route.
+     (POK answers 402 when the venue's balance is too low). The platform records the decision and
+     amount and tells the venue; the venue refunds it by hand; the operator marks it done, which is
+     the only completion signal for that route.
+
+   An **unknown outcome** (a timeout the re-read could not settle) is never handed to the venue as a
+   refund to make, because the API refund may already have gone through. The platform keeps
+   re-reading the order until it shows the refund or shows none, and only an outcome read back as not
+   refunded is handed over. The venue is told to check the order's refunded amount in its provider
+   dashboard before refunding by hand.
 
    Either way the guest sees the policy's amount.
 6. **A venue's payment credential is a secret.** It is encrypted at rest, never logged, never
@@ -162,8 +180,8 @@ Paysera note and the POK note. Both emails go out together.
 ## Consequences
 
 - **The money that moves through the app shrinks to a payment status and a refund instruction.**
-  The `payout` module loses its purpose: the ledger, batches, commission schedule
-  (`venue_commission_rate`) and payout currency. ADR-0009's negative-period problem disappears with
+  The `payout` module loses its purpose: the ledger, batches and payout currency, and with them
+  `venue`'s commission schedule (`venue_commission_rate`), whose rates only `payout` applies. ADR-0009's negative-period problem disappears with
   it. #9 has nothing left to protect and retires when `payout` does. #5 stays: POK amounts are decimal
   major units, so its adapter converts to and from integer minor units.
 - **The venue-change fee (ADR-0021) has nothing to deduct from** and retires. That leaves a product
@@ -205,8 +223,8 @@ Paysera note and the POK note. Both emails go out together.
   performed by a third party", which works against the collection-agent model.
 - **Pay at the venue, with an online booking fee as the platform's only income.** It is clean on
   tax, but the guest has paid the venue nothing, so no-shows land on venues. That pushes them to take
-  sets out of the online pool, and a fee at launch puts guests off. Kept as a fallback for venues
-  without a provider account, not as the default.
+  sets out of the online pool, and a fee at launch puts guests off. Rejected for launch: a venue
+  without a connected account does not sell online at all (decision 3).
 - **Commission invoiced to venues** (the booking.com shape). Rejected: the platform chases payment
   from seasonal businesses that close in October.
 - **A split-payment provider** (Stripe Connect, Adyen for Platforms, Mangopay, Lemonway). Rejected
