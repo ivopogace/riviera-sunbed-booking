@@ -2,7 +2,7 @@
 
 - **Status:** Proposed (flips to Accepted when the preconditions below are met). *Amended
   2026-11-01:* ADR-0029 proposes replacing this ADR before its acceptance: venues are paid into
-  their own Paysera accounts and the platform collects nothing.
+  their own payment-provider accounts and the platform collects nothing.
 - **Date:** 2026-07-22
 - **Supersedes:** would supersede ADR-0002 on acceptance (the gateway and the payout leg; the
   collect-only model itself is **reaffirmed**, not reversed). *(Amended 2026-10-01, #1342: this
