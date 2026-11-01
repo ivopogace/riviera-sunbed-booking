@@ -2,9 +2,10 @@ name: Claude review
 
 # A first review of a pull request by Claude Code, on the owner's Claude subscription (the
 # CLAUDE_CODE_OAUTH_TOKEN secret, from `claude setup-token`). On its own when an outside contributor
-# opens a pull request, marks it ready or pushes to it, and whenever the owner or a collaborator
-# comments `@claude` on one. Neither runs the pull request's code: they read the diff and CI's results.
-# Not a required context: the ruleset never waits on it (ci.yml's header).
+# opens a pull request, marks it ready or pushes to it (read-only). And whenever the owner or a
+# collaborator comments `@claude` on one: it does what the comment asks, a review, an answer or a
+# change it commits and pushes to the pull request's branch. Neither runs the pull request's code;
+# CI tests what it pushes. Not a required context: the ruleset never waits on it (ci.yml's header).
 on:
   pull_request_target:
     types: [opened, reopened, ready_for_review, synchronize]
@@ -61,7 +62,9 @@ jobs:
             --append-system-prompt "You review pull requests to riviera-sunbed-booking, a Spring Modulith backend in platform/ and an Angular frontend in frontend/. Check the change against CLAUDE.md's numbered invariants (JDBC only, one availability row per (set, date), integer minor-unit money, UTC storage reasoned in Europe/Tirane, booking codes never logged, Stripe webhooks as the source of truth, cross-module access only via api/ ports or events, forward-only Flyway migrations, venue ownership checked in the application service) and the pull request template: every acceptance criterion pinned by a test, and the contribution terms accepted. Lead with real defects, each with the file and line; say plainly when you found none. Be welcoming to a new contributor and keep it short."
 
   on-demand:
-    name: Claude review
+    # Pushes with the Claude GitHub App's token (contents: write, from the OIDC exchange), whose
+    # pushes start CI; `contents: read` below binds only GITHUB_TOKEN. A fork's branch is not pushed.
+    name: Claude
     if: |
       github.event_name != 'pull_request_target' &&
       contains(github.event.comment.body, '@claude') &&
@@ -87,5 +90,5 @@ jobs:
           use_sticky_comment: true
           claude_args: |
             --max-turns 40
-            --allowedTools "Read,Glob,Grep,mcp__github_inline_comment__create_inline_comment,Bash(gh pr diff:*),Bash(gh pr view:*),Bash(gh pr checks:*),Bash(gh run view:*),Bash(git diff:*),Bash(git log:*)"
-            --append-system-prompt "You review pull requests to riviera-sunbed-booking. Before reviewing, read CLAUDE.md, the RESPONSIBILITIES.md section of every module the diff touches, and .claude/skills/riviera-review-overlay/SKILL.md with the reference files it names for the diff's scope; apply its bank items with their severities, the Blockers first. Read CI's and SonarCloud's results with gh pr checks and gh run view instead of running anything. Lead with real defects, each with the file and line; say plainly when you found none. Keep it short."
+            --allowedTools "Read,Glob,Grep,mcp__github_inline_comment__create_inline_comment,Bash(gh pr diff:*),Bash(gh pr view:*),Bash(gh pr checks:*),Bash(gh run view:*),Bash(git diff:*),Bash(git log:*),Bash(git show:*),Bash(git status:*)"
+            --append-system-prompt "You work on pull requests to riviera-sunbed-booking when the owner or a collaborator tags you. Do what the comment asks: review, answer, or change code. Always read CLAUDE.md first, and the RESPONSIBILITIES.md section of every module the change touches. To review, read .claude/skills/riviera-review-overlay/SKILL.md with the reference files it names for the diff's scope and apply its bank items with their severities, the Blockers first; lead with real defects, each with the file and line, and say plainly when you found none. To change code, first read the skills CLAUDE.md names for that area (riviera-java-conventions and riviera-modulith for platform/, riviera-frontend and riviera-tailwind for frontend/, postgres for a migration, riviera-stripe-payments for payment code), keep the change to what was asked, add or update the tests that pin it, and commit on the checked-out pull-request branch with a conventional-commit subject, then push. If that branch is pr-<number>, the pull request comes from a fork: do not push, describe the change instead. You cannot build or run tests here; CI runs on your push, so say which checks will prove the change, and read CI's and SonarCloud's results with gh pr checks and gh run view. Never force-push, rebase or merge. Keep your reply short."
