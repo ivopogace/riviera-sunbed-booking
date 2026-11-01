@@ -28,8 +28,8 @@ public interface VenueCatalog {
 	Optional<VenueMapView> findVenueMap(VenueId id, StaySpan stay);
 
 	/**
-	 * Summaries matching {@code filter} (both-null lists all; never {@code null}), each with its from-price
-	 * (#5) and free/total count for {@code date} (Tirane, #6) off the same overlay as the map (#2).
+	 * Summaries matching {@code filter} (both-null lists all; never {@code null}), each with its ONLINE-pool
+	 * from-price (#3, #5) and both-pool free/total count for {@code date} (Tirane, #6) off the map's overlay (#2).
 	 * Ordered open venues first, then rating descending, then name ascending.
 	 */
 	List<VenueSummaryView> listVenues(VenueFilter filter, LocalDate date);

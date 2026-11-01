@@ -1,4 +1,4 @@
-<section class="mx-auto w-full max-w-[920px] px-5 py-4" data-testid="venue-tab">
+<section appConsolePageColumn class="w-full max-w-[920px] py-4 max-sm:px-5" data-testid="venue-tab">
   <!-- Above every branch on purpose: a live region must outlive the branch it describes, and the visible copy below sits in a gapped flex column where an empty element would still spend its gap. -->
   <output aria-live="polite" class="sr-only" data-testid="venue-saved-announce">{{
     savedMessage()
@@ -413,10 +413,11 @@
         class="flex flex-col items-start gap-2 rounded-[16px] px-4 py-3 shadow-[0_10px_30px_rgba(12,42,51,0.25)]"
       >
         <button
+          appPrimaryCta
           type="submit"
           [attr.form]="'venue-details-form'"
           appTouchTarget
-          class="self-start rounded-[14px] bg-(image:--riv-cta-grad) px-5 py-2.5 text-[14px] font-bold text-white shadow-[0_8px_22px_rgba(11,120,150,0.35)] disabled:opacity-50 aria-disabled:opacity-50"
+          class="self-start rounded-[14px] px-5 py-2.5 text-[14px] font-bold shadow-[0_8px_22px_rgba(11,120,150,0.35)] disabled:opacity-50 aria-disabled:opacity-50"
           data-testid="venue-save"
           [disabled]="detailsForm().invalid()"
           [appBusy]="saving()"

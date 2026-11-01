@@ -3,6 +3,7 @@ import { expect, test, type Page } from '@playwright/test';
 import { ChallengeFence, mockChallengeFence } from './support/auth-mocks';
 import { expectNoSeriousAxeViolations } from './support/axe';
 import { completeDialog, settle } from './support/booking-dialog';
+import type { MockVenueMapView } from './support/venue-views';
 
 /**
  * Real-render journey of a stitched stay (design D6/D7/D13): no single set covers the stay, the
@@ -38,7 +39,7 @@ function set(
   };
 }
 
-const VENUE = {
+const VENUE: Omit<MockVenueMapView, 'sets'> = {
   id: 1,
   name: 'Miramar Beach Club',
   beach: 'KSAMIL',

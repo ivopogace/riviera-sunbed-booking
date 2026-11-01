@@ -5,7 +5,8 @@ import { VenueCard } from '../app/pages/home/venue-card';
  * map's pin layer, its geometry and the pin preview — with every field filled and the venue's own
  * facts overridable.
  * Priced at €25 with 18 of 24 sets free on Ksamil; a spec passes `priceLabel: null, fromPrice:
- * null` together for an unpriced venue, since the two are one fact in two forms.
+ * null` together for an unpriced venue (one fact in two forms), plus `sellsOnline: false,
+ * unpricedLabel: 'Walk-in only'` when it still has sets.
  */
 export function venueCard(
   overrides: Partial<VenueCard> & Pick<VenueCard, 'id' | 'name'>,
@@ -24,9 +25,11 @@ export function venueCard(
     amenities: [],
     freePercent: 75,
     priceLabel: '€25',
+    unpricedLabel: 'No sets yet',
     fromPrice: { minorUnits: 2500, currency: 'EUR' },
     free: 18,
     total: 24,
+    sellsOnline: true,
     salesClosed: false,
     closedForSeason: false,
     reopensOn: null,

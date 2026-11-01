@@ -3,6 +3,7 @@ import { expect, test } from '@playwright/test';
 import { mockAuthApi } from './support/auth-mocks';
 import { expectNoSeriousAxeViolations } from './support/axe';
 import { OperatorSignInPage } from './support/pages/operator-sign-in.page';
+import type { MockVenueMapView } from './support/venue-views';
 
 /**
  * Venue onboarding inside the operator console surface — the mocked, CI-safe successor to the
@@ -43,7 +44,7 @@ async function mockNewVenueConsole(page: import('@playwright/test').Page): Promi
           fromPrice: null,
           sets: [],
           setVersion: 0,
-        },
+        } satisfies MockVenueMapView,
         locks: [],
       },
     }),
@@ -53,6 +54,9 @@ async function mockNewVenueConsole(page: import('@playwright/test').Page): Promi
   );
   await page.route(new RegExp(`/api/venues/${NEW_VENUE_ID}/bookings(\\?.*)?$`), (route) =>
     route.fulfill({ json: [] }),
+  );
+  await page.route(new RegExp(`/api/venues/${NEW_VENUE_ID}/bookings/count(\\?.*)?$`), (route) =>
+    route.fulfill({ json: { date: '2026-07-08', count: 0 } }),
   );
   await page.route(new RegExp(`/api/venues/${NEW_VENUE_ID}/takings(\\?.*)?$`), (route) =>
     route.fulfill({

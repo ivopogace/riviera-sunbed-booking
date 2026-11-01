@@ -10,14 +10,13 @@ import ai.riviera.platform.venue.vocabulary.SetPrice;
 import ai.riviera.platform.venue.vocabulary.Tier;
 
 /**
- * The validated intent to place or re-place one set position on a venue's beach map, for
- * both {@link EditBeachMap#addSet} and {@link EditBeachMap#editSet}. Its compact constructor
- * enforces the V12/V43/V76/V77 CHECKs at the boundary: {@code tier} is the exact token the DB stores,
- * {@code pool} the typed {@link Pool} (a set is in exactly one pool — invariant #3),
- * the price EUR minor units of at least €0.50 ({@link SetPrice}, invariant #5), and grid
- * coordinates / position number 1-based (the V12 CHECKs).
+ * The validated intent to place one set on a venue's beach map ({@link EditBeachMap#addSet},
+ * {@link EditBeachMap#editSet}, the bulk save). Its row label is the letter of {@code gridY}
+ * ({@link SetPlacement#rowLabelOf}). The compact constructor enforces the V12/V76/V77 CHECKs:
+ * {@code tier} the exact DB token, {@code pool} typed (invariant #3), the price EUR minor units of at
+ * least €0.50 ({@link SetPrice}, invariant #5), grid coordinates and position number 1-based.
  */
-public record SetCommand(String rowLabel, int positionNo, String tier, Pool pool,
+public record SetCommand(int positionNo, String tier, Pool pool,
 		long priceMinor, String priceCurrency, int gridX, int gridY) {
 
 	private static final Set<String> TIERS =
@@ -32,8 +31,6 @@ public record SetCommand(String rowLabel, int positionNo, String tier, Pool pool
 	}
 
 	public SetCommand {
-		rowLabel = VenueFieldValidation.strip(rowLabel);
-		VenueFieldValidation.requireText(rowLabel, "rowLabel", VenueFieldValidation.MAX_ROW_LABEL_LENGTH);
 		if (positionNo < 1) {
 			throw new IllegalArgumentException("positionNo must be >= 1");
 		}
@@ -42,14 +39,20 @@ public record SetCommand(String rowLabel, int positionNo, String tier, Pool pool
 			throw new IllegalArgumentException("pool is required");
 		}
 		SetPrice.require(priceMinor, priceCurrency);
-		if (gridX < 1 || gridY < 1) {
-			throw new IllegalArgumentException("gridX and gridY must be >= 1");
+		if (gridX < 1) {
+			throw new IllegalArgumentException("gridX must be >= 1");
 		}
+		SetPlacement.rowLabelOf(gridY);
+	}
+
+	/** The set's row label: always its grid row's letter, whatever a client sent. */
+	public String rowLabel() {
+		return SetPlacement.rowLabelOf(gridY);
 	}
 
 	/** Where this command places the set — the cell key, the row label and the position number. */
 	public SetPlacement placement() {
-		return new SetPlacement(rowLabel, positionNo, gridX, gridY);
+		return new SetPlacement(rowLabel(), positionNo, gridX, gridY);
 	}
 
 	/**
@@ -58,7 +61,7 @@ public record SetCommand(String rowLabel, int positionNo, String tier, Pool pool
 	 * is snapshotted at reserve, #3 is a reserve-time rule. Rationale: RESPONSIBILITIES.md §venue.
 	 */
 	public boolean disturbs(SetPlacement stored) {
-		return !stored.rowLabel().equals(rowLabel)
+		return !stored.rowLabel().equals(rowLabel())
 				|| stored.positionNo() != positionNo
 				|| stored.gridX() != gridX
 				|| stored.gridY() != gridY;

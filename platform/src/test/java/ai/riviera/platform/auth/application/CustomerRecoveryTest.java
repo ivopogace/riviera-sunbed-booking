@@ -87,7 +87,7 @@ class CustomerRecoveryTest {
 		verify(accounts).issuePasswordResetToken(eq(ACCOUNT), storedHash.capture(),
 				eq(Instant.parse("2026-07-27T11:00:00Z")));
 		assertThat(storedHash.getValue()).isEqualTo(new RecoveryTokens().hash(rawToken)).isNotEqualTo(rawToken);
-		assertThat(link).asString().startsWith(BASE_URL + CustomerRecovery.RESET_PATH + "?token=");
+		assertThat(link).asString().startsWith(BASE_URL + "/account/reset?token=");
 	}
 
 	@Test
@@ -112,7 +112,20 @@ class CustomerRecoveryTest {
 		verify(accounts).issueEmailVerificationToken(eq(ACCOUNT), any(), any());
 		ArgumentCaptor<URI> link = ArgumentCaptor.forClass(URI.class);
 		verify(mails).sendEmailVerification(eq(EMAIL), link.capture());
-		assertThat(link.getValue()).asString().startsWith(BASE_URL + CustomerRecovery.VERIFY_PATH + "?token=");
+		assertThat(link.getValue()).asString().startsWith(BASE_URL + "/account/verify?token=");
+	}
+
+	@Test
+	void buildsTheVerificationLinkOnAnUnderscoredOrigin() {
+		new CustomerRecovery(accounts, mails, deliverability, new RecoveryTokens(),
+				new RecoveryProperties(Duration.ofHours(24), Duration.ofHours(1), "http://riviera_backend:8080/"),
+				Clock.fixed(Instant.parse("2026-07-27T10:00:00Z"), ZoneOffset.UTC))
+				.sendVerificationEmail(ACCOUNT, EMAIL);
+
+		ArgumentCaptor<URI> link = ArgumentCaptor.forClass(URI.class);
+		verify(mails).sendEmailVerification(eq(EMAIL), link.capture());
+		assertThat(link.getValue()).asString()
+				.startsWith("http://riviera_backend:8080/account/verify?token=");
 	}
 
 	/**

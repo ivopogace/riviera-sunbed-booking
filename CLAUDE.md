@@ -57,10 +57,14 @@ npm run build
 **CI** (`.github/workflows/ci.yml`): backend build/test, frontend lint/format/e2e-typecheck/test/build +
 eslint-rules suite, the mocked e2e on sharded runners, the `scripts/check-*.mjs` guards (`check-inline-comments`,
 `check-focus-posture` and `check-touch-target` also run as a local `PostToolUse` hook;
-`check-comment-only.mjs` is by-hand only), SonarCloud per PR. Sonar bar: **no new bug,
-vulnerability or unreviewed hotspot, ≥80% new-code coverage**; smells and duplication judged.
-`deploy.yml` deploys the backend image (serves the SPA) to Render from `main`. Line endings
-pinned LF by `.gitattributes`.
+`check-comment-only.mjs` is by-hand only), SonarCloud per PR. The backend job keeps its test-report XML
+for 7 days (`backend-test-results`): each test's captured stdout, the only trace of a listener that
+failed inside one. Sonar bar: **no new bug, vulnerability or unreviewed hotspot, ≥80% new-code
+coverage**; smells and duplication judged.
+`deploy.yml` deploys the backend image (serves the SPA) to Render from `main`. `claude.yml`: an
+`@claude` PR comment gets Claude to review, answer or push a commit to the PR's branch; an outside
+contributor's PR gets a read-only review on its own.
+Line endings pinned LF by `.gitattributes`.
 
 ## Repo map
 
@@ -90,7 +94,7 @@ aggregate-root classes: `domain/` holds rules, state is in tables, lifecycles ar
 | `customer` | guest contact, customer account (sign-in, SSO, verification, password), GDPR erasure + retention sweep, canonical email form | `customer`, `customer_account`, `customer_sso_identity`, `customer_account_token` |
 | `operator` | operator accounts, operator↔venue ownership (#13), admin lifecycle + `is_admin`, tourist-visibility answer | `operator`, `operator_venue` |
 | `review` | one review per booking, eligibility + window, aggregate rating, admin takedown, erasure tombstone; a leaf (ADR-0015) | `review` |
-| `notification` | transactional mail, hashed suppression list, delivery log + admin resend | `email_suppression`, `booking_confirmation_mail_attempt` |
+| `notification` | transactional mail, hashed suppression list, delivery log + admin resend, the emailed-link origin rule | `email_suppression`, `booking_confirmation_mail_attempt` |
 | `itinerary` | the stay read model (D7/D11): the whole-coast verdict per venue for a span (same set · fits with N moves · can't host), served on `GET /api/venues`; the per-venue stitched plan on `GET /api/venues/{id}/itinerary`; the move budget `riviera.itinerary.max-switches` | nothing — a read model over `venue::api` + `availability::api` |
 | `remodel` | the beach-map remodel preview + commit (ADR-0020/ADR-0028): composes `venue`'s layout diff and write with `booking`'s claim classification and settlement, supplying `venue.spi.RemodelGate`; assembles, never decides | nothing — a composition over `venue::api` + `booking::api` |
 
@@ -98,8 +102,8 @@ Plus `shared` (closed kernel of edge types like `ApiProblem`, registered in
 `@Modulithic(sharedModules)` so every module may use it, depending on no module; admission by
 ownership, never reuse) and the closed non-context modules with `allowedDependencies = {}`:
 `challenge` (proof of work; writes `challenge_registry`), `audit` (admin audit trail; writes
-`admin_audit_record`) and `monitoring` (correlation id, metric names, money-path alert check; writes
-nothing). Also closed and non-context, but adapter layers depending on the surfaces they need: `auth`
+`admin_audit_record`) and `monitoring` (correlation id, metric names, money-path alert check, the
+build's commit on `/actuator/info`; writes nothing). Also closed and non-context, but adapter layers depending on the surfaces they need: `auth`
 (sign-in and sessions: the `UserDetailsService`s, session establishment, credential stamp and revocation,
 SSO, password policy, recovery, the login, self-service, admin-lifecycle and erasure controllers; writes nothing) and `web` (the
 HTTP boundary: `SecurityConfig`'s chains and route policy, the chain's filters, CORS, `ApiErrorHandler`
@@ -126,8 +130,9 @@ operator or a customer principal; login and session machinery in `auth`, never i
 customer account and guest row never linked; auth endpoints non-enumerating and constant-time; mocks
 profile-guarded out of prod; revocation orchestrated by `auth`, synchronous; account creation, password recovery
 and booking/stay create fenced by `challenge`'s proof-of-work against a single-use registry; every
-mutating `/api/admin/**` action audited by `web`'s fence; map tiles self-hosted under `/map/**`, no
-third-party map host.
+mutating `/api/admin/**` action audited by `web`'s fence; the anonymous actuator surface is `health`
+and `GET /actuator/info`'s commit id alone; map tiles self-hosted under `/map/**`, no third-party map
+host.
 
 ## Cross-cutting invariants
 

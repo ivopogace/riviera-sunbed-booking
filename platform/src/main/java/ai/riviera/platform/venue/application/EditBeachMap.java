@@ -49,14 +49,6 @@ public interface EditBeachMap {
 			RowPriceCommand command);
 
 	/**
-	 * Rename a row (display-only, no claim question); {@link SetRejection#ROW_NAME_TAKEN} (→ 409) if
-	 * another row has the label. Token as {@link #repriceRow}, but a same-label rename is a no-op that
-	 * does NOT advance it — a caller advancing its own copy of the token must not send one.
-	 */
-	ChangeOutcome renameRow(OperatorId operator, VenueId venueId, long expectedVersion,
-			RowNameCommand command);
-
-	/**
 	 * Save the whole layout as a diff keyed by grid cell (RESPONSIBILITIES.md §venue); a removed or
 	 * repositioned set with a live claim refuses it all as {@link ReplaceLayoutOutcome.SetsInUse},
 	 * writing nothing (invariant #2). Token as {@link #repriceRow}: {@link LayoutRejection#STALE_WRITE}.

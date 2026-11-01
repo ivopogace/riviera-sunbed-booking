@@ -114,6 +114,9 @@ describe('Operator console — in-place venue switch over the real routes (#180)
       .match((r) => r.url === `${BASE}/api/venues/${id}/bookings`)
       .forEach((req) => req.flush([]));
     http
+      .match((r) => r.url === `${BASE}/api/venues/${id}/bookings/count`)
+      .forEach((req) => req.flush({ date: '2026-06-15', count: 0 }));
+    http
       .match((r) => r.url === `${BASE}/api/venues/${id}/availability`)
       .forEach((req) => req.flush([]));
     http

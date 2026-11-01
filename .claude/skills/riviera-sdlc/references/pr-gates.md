@@ -17,14 +17,25 @@ fan-out is pre-authorized for this gate.
 
 **Which skill runs which round.** The plugin's step 1 stops without reviewing when the PR is a
 draft, looks trivial or already carries a code review from this account, and a run that stops
-there is not a round. So the plugin runs once, for round 1, after the PR leaves draft; every later
-round (the re-review after a fix), and a round 1 it declines or cannot complete, runs the built-in
-`Skill("code-review")` without `--comment` on the PR number, with the overlay, at the slice's
-**Effort** (below). Each round leaves one `### Code review` PR comment with its findings. When the
-skill posted none (the built-in never does; the plugin doesn't when nothing reaches its threshold
-or its `gh pr comment` gets a 403), post it yourself via the comment route below, naming the
-round, head sha, skill, its findings and the overlay items checked. The PR body's review-gate line
-names the skill that ran each round.
+there is not a round, with one exception: when step 1 declines a small diff as trivial, that
+decline is the round. Quote its verdict in the review-gate line; it needs no fallback and no
+`### Code review` comment. So the plugin runs once, for round 1, after the PR leaves draft; every
+later round (the re-review after a fix), and a round 1 it declines on any other ground (draft, an
+earlier review) or cannot complete, runs the built-in `Skill("code-review")` without `--comment`
+on the PR number, with the overlay, at the slice's **Effort** (below).
+
+**Round 1 runs every plugin step, each as the plugin defines it** (its
+`commands/code-review.md`): step 1 a Haiku eligibility agent, step 2 a Haiku agent for the
+CLAUDE.md paths, step 3 a Haiku summary agent, step 4 five parallel Sonnet reviewers, step 5 one
+Haiku scorer agent per finding, step 6 the cutoff at score 80, step 7 the Haiku eligibility
+recheck. Never run a step inline, never judge the cutoff yourself, and post no `### Code review`
+comment before the plugin round: step 1 reads one as an earlier review and declines.
+
+Each round leaves one `### Code review` PR comment with its findings. When the skill posted none
+(the built-in never does; the plugin doesn't when nothing reaches its threshold or its `gh pr
+comment` gets a 403), post it yourself via the comment route below, naming the round, head sha,
+skill, its findings and the overlay items checked. The PR body's review-gate line names the skill
+that ran each round.
 
 **`gh` in cloud sessions** (`GH_TOKEN` in env; the proxy serves repo-scoped REST only, no GraphQL):
 `gh pr diff N` and `gh api repos/{owner}/{repo}/...` work. `gh pr list`/`gh pr checks`/`gh search`

@@ -21,6 +21,7 @@ import { PanelGlass } from '../shared/panel-glass';
 import { BusyAction } from '../shared/busy-action';
 import { focusMover } from '../shared/focus-after-render';
 import { WithheldEmailNotice } from './withheld-email-notice';
+import { BookingQr } from './booking-qr';
 import { BookingService } from './booking.service';
 import { CancellationTermsNote } from './cancellation-terms-note';
 import { StripeCheckout, StripePaymentGateway } from './stripe-payment.gateway';
@@ -30,6 +31,7 @@ import { CrossIcon } from '../shared/cross-icon';
 import { CheckIcon } from '../shared/check-icon';
 import { HourglassIcon } from '../shared/hourglass-icon';
 import { LockIcon } from '../shared/lock-icon';
+import { PrimaryCta } from '../shared/primary-cta';
 
 /** Poll cadence and budget for awaiting the webhook-driven CONFIRMED transition. */
 const POLL_MS = 1500;
@@ -73,12 +75,14 @@ const CLS = {
 @Component({
   selector: 'app-booking-pay',
   imports: [
+    PrimaryCta,
     LegalConsent,
     ManageBookingLink,
     RouterLink,
     CardGlass,
     PanelGlass,
     WithheldEmailNotice,
+    BookingQr,
     BusyAction,
     TouchTarget,
     CancellationTermsNote,
@@ -167,7 +171,7 @@ const CLS = {
           </div>
         </dl>
 
-        <p
+        <div
           class="my-[18px] rounded-[18px] border border-dashed border-riv-field-border bg-riv-inset-fill p-[15px]"
           data-testid="booking-code"
         >
@@ -178,7 +182,13 @@ const CLS = {
             class="mt-[5px] block text-[26px] font-bold tracking-[0.12em] text-riv-accent-ink"
             >{{ code }}</strong
           >
-        </p>
+          <!-- CONFIRMED only, as on the booking page: awaiting has nothing staff can check in yet. -->
+          @if (state() === 'confirmed') {
+            <div class="mt-3 flex justify-center">
+              <app-booking-qr [code]="code" />
+            </div>
+          }
+        </div>
 
         @if (emailWithheld()) {
           <app-withheld-email-notice />
@@ -350,9 +360,10 @@ const CLS = {
                 class="mt-[10px] text-[12px] leading-[1.5] text-riv-card-ink-soft"
               ></p>
               <button
+                appPrimaryCta
                 appTouchTarget
                 type="button"
-                class="mt-4 block w-full cursor-pointer rounded-2xl border border-riv-cta-border bg-(image:--riv-cta-grad) p-[15px] text-center text-[15px] font-bold text-white shadow-[0_12px_28px_rgba(11,120,150,0.5),inset_0_1px_0_rgba(255,255,255,0.5)] [transition:filter_0.15s_ease] hover:enabled:brightness-[1.06] focus-visible:outline-[3px] focus-visible:outline-offset-2 focus-visible:outline-riv-accent-ink disabled:cursor-default disabled:opacity-70 motion-reduce:transition-none"
+                class="mt-4 block w-full cursor-pointer rounded-2xl p-[15px] text-center text-[15px] font-bold shadow-[0_12px_28px_rgba(11,120,150,0.5)] [transition:filter_0.15s_ease] focus-visible:outline-[3px] focus-visible:outline-offset-2 focus-visible:outline-riv-accent-ink disabled:cursor-default disabled:opacity-70 motion-reduce:transition-none"
                 (click)="pay()"
                 [appBusy]="paying() || remounting()"
                 data-testid="pay-button"

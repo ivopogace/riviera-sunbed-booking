@@ -420,6 +420,7 @@ describe('DailyViewTab (#175)', () => {
 
   it('refunds a guest’s day behind a two-step confirm: POST, announce, reconcile to the released chip (ADR-0027)', () => {
     render();
+    const seen = announced();
     expect(byId('daily-refund-confirm-panel')).toBeNull();
     byId('refund-day-ABC12345').click();
     fixture.detectChanges();
@@ -446,13 +447,17 @@ describe('DailyViewTab (#175)', () => {
     expect(notice).toContain('€45');
     expect(notice).toContain('free again');
     expect(byId('daily-refund-confirm-panel')).toBeNull();
+    // The released claim frees the set and drops a CONFIRMED booking: the strip follows (#1551).
+    expect(seen).toEqual([{ venueId: 1, date: TODAY, cause: 'DAY_REFUND' }]);
 
     flushLoad(SEED, [booking({ attendance: 'REFUNDED', released: true })]);
     expect(byId('arrival-day-released')).toBeTruthy();
+    expect(seen).toHaveLength(1); // the reconcile read announces nothing of its own
   });
 
   it('announces a lone booking cancelled whole', () => {
     render();
+    const seen = announced();
     byId('refund-day-ABC12345').click();
     fixture.detectChanges();
     byId('daily-refund-confirm').click();
@@ -467,6 +472,7 @@ describe('DailyViewTab (#175)', () => {
       });
     fixture.detectChanges();
     expect(byId('daily-refund-result').textContent).toContain('cancelled and €45 refunded in full');
+    expect(seen).toEqual([{ venueId: 1, date: TODAY, cause: 'DAY_REFUND' }]);
     flushLoad(SEED, []);
   });
 
@@ -479,6 +485,7 @@ describe('DailyViewTab (#175)', () => {
       lastDate: past,
     });
     render(SEED, [missed]);
+    const seen = announced();
     const date = byId('daily-date') as HTMLInputElement;
     date.value = past;
     date.dispatchEvent(new Event('change'));
@@ -501,6 +508,7 @@ describe('DailyViewTab (#175)', () => {
       });
     fixture.detectChanges();
     const notice = byId('daily-refund-result').textContent;
+    expect(seen).toEqual([]); // the claim is kept: nothing the console counts moved
     expect(notice).toContain('€30');
     expect(notice).toContain(formatCivilDate(past));
     expect(notice).not.toContain('free again');
@@ -926,7 +934,7 @@ describe('DailyViewTab (#175)', () => {
     );
     expect(seen).toEqual([]); // optimistic flip only — the server has not said yes yet
     post.flush(null);
-    expect(seen).toEqual([{ venueId: 1, date: TODAY }]);
+    expect(seen).toEqual([{ venueId: 1, date: TODAY, cause: 'WALK_IN' }]);
     flushLoad([seat(1, 'A', 1, 'PREMIUM', 'ONLINE', 'TAKEN'), ...SEED.slice(1)], BOOKINGS, [
       { setId: 1, state: 'STAFF_MARKED' },
       ...STATES,
@@ -941,8 +949,8 @@ describe('DailyViewTab (#175)', () => {
       )
       .flush(null);
     expect(seen).toEqual([
-      { venueId: 1, date: TODAY },
-      { venueId: 1, date: TODAY },
+      { venueId: 1, date: TODAY, cause: 'WALK_IN' },
+      { venueId: 1, date: TODAY, cause: 'WALK_IN' },
     ]);
     flushLoad(SEED, BOOKINGS, [{ setId: 2, state: 'BOOKED_ONLINE' }]);
   });
@@ -967,7 +975,7 @@ describe('DailyViewTab (#175)', () => {
       ...STATES,
     ]);
 
-    expect(seen).toEqual([{ venueId: 1, date: tomorrow }]);
+    expect(seen).toEqual([{ venueId: 1, date: tomorrow, cause: 'WALK_IN' }]);
   });
 
   it('announces nothing when the server refuses the mark or release (#1525 AC-2)', () => {
@@ -1442,6 +1450,29 @@ describe('DailyViewTab (#175)', () => {
     switchToVenue2();
     post.flush({ code: 'NOT_VENUE_OWNER' }, { status: 403, statusText: 'Forbidden' });
 
+    expectVenue2Untouched();
+  });
+
+  it('still announces a venue-1 day refund that settles after a switch, and lands nothing on venue 2 (#1551)', () => {
+    render();
+    const seen = announced();
+    byId('refund-day-ABC12345').click();
+    fixture.detectChanges();
+    byId('daily-refund-confirm').click();
+    const post = http.expectOne((r) => r.method === 'POST' && r.url.includes('/day-refund'));
+
+    switchToVenue2();
+    post.flush({
+      kind: 'DAY_REFUNDED',
+      serviceDate: TODAY,
+      refundMinor: 4500,
+      currency: 'EUR',
+      released: true,
+    });
+
+    // The claim was released server-side whatever this tab shows now: the console follows venue 1.
+    expect(seen).toEqual([{ venueId: 1, date: TODAY, cause: 'DAY_REFUND' }]);
+    expect(host.querySelector('[data-testid="daily-refund-result"]')?.textContent?.trim()).toBe('');
     expectVenue2Untouched();
   });
 

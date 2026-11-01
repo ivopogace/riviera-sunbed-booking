@@ -5,7 +5,7 @@ import { settle } from './support/booking-dialog';
 import { hitTestId } from './support/hit-test';
 import { mockMapResources, recordOffOriginRequests } from './support/map-resources';
 import { expectTouchManipulation } from './support/mobile-zoom';
-import { MockPhotoView } from './support/photo-views';
+import type { MockBeachCode, MockRegionCode, MockVenueSummary } from './support/venue-views';
 import { expectTouchTargets } from './support/touch-targets';
 
 /**
@@ -29,7 +29,7 @@ const COVER_URL = '/api/venues/1/photos/aa01';
  * it stays in the list and draws no pin, so "one pin per PINNED venue" is asserted against a list
  * that actually contains a counter-example.
  */
-const VENUES = [
+const VENUES: readonly MockVenueSummary[] = [
   {
     id: 1,
     name: 'Miramar Beach Club',
@@ -40,6 +40,7 @@ const VENUES = [
     bookingMode: 'INSTANT',
     fromPrice: { minorUnits: 2500, currency: 'EUR' },
     availability: { free: 18, total: 24 },
+    sellsOnline: true,
     salesOpen: true,
     location: { latitude: 39.7712, longitude: 20.0021 },
     coverPhoto: {
@@ -58,6 +59,7 @@ const VENUES = [
     bookingMode: 'REQUEST',
     fromPrice: { minorUnits: 3000, currency: 'EUR' },
     availability: { free: 5, total: 10 },
+    sellsOnline: true,
     salesOpen: true,
     location: { latitude: 40.1573, longitude: 19.6401 },
   },
@@ -71,6 +73,7 @@ const VENUES = [
     bookingMode: 'INSTANT',
     fromPrice: { minorUnits: 2000, currency: 'EUR' },
     availability: { free: 4, total: 8 },
+    sellsOnline: true,
     salesOpen: true,
   },
 ];
@@ -80,7 +83,7 @@ const VENUES = [
  * view Ksamil is a crowd of two and Dhërmi a crowd of three; the pair separates around zoom 15,
  * the trio never does inside the map's own fence — the maintainer's report.
  */
-const CROWDED_VENUES = [
+const CROWDED_VENUES: readonly MockVenueSummary[] = [
   ...VENUES,
   {
     id: 4,
@@ -92,6 +95,7 @@ const CROWDED_VENUES = [
     bookingMode: 'INSTANT',
     fromPrice: { minorUnits: 2100, currency: 'EUR' },
     availability: { free: 15, total: 25 },
+    sellsOnline: true,
     salesOpen: true,
     location: { latitude: 39.77227, longitude: 20.00317 },
   },
@@ -105,6 +109,7 @@ const CROWDED_VENUES = [
     bookingMode: 'INSTANT',
     fromPrice: { minorUnits: 3900, currency: 'EUR' },
     availability: { free: 2, total: 34 },
+    sellsOnline: true,
     salesOpen: true,
     location: { latitude: 40.15747, longitude: 19.64026 },
   },
@@ -118,6 +123,7 @@ const CROWDED_VENUES = [
     bookingMode: 'REQUEST',
     fromPrice: { minorUnits: 2400, currency: 'EUR' },
     availability: { free: 19, total: 22 },
+    sellsOnline: true,
     salesOpen: true,
     location: { latitude: 40.15718, longitude: 19.64038 },
   },
@@ -155,28 +161,6 @@ function countVenueRequests(page: Page): () => number {
   return () => seen;
 }
 
-/**
- * The wire shape of one `GET /api/venues` row (`VenueSummary`), so a fixture missing or misnaming a
- * field fails the e2e typecheck. Codes are plain strings, so a wrong code value is not caught; the
- * optional members are the ones a fixture may leave out.
- */
-interface MockVenueSummary {
-  readonly id: number;
-  readonly name: string;
-  readonly beach: string;
-  readonly region: string;
-  readonly ratingTenths: number;
-  readonly reviewsCount: number;
-  readonly bookingMode: string;
-  readonly fromPrice: { readonly minorUnits: number; readonly currency: string } | null;
-  readonly amenities?: readonly string[];
-  readonly availability: { readonly free: number; readonly total: number };
-  readonly salesOpen?: boolean;
-  readonly location?: { readonly latitude: number; readonly longitude: number } | null;
-  readonly coverPhoto?: { readonly card: MockPhotoView; readonly banner: MockPhotoView } | null;
-  readonly photos?: readonly MockPhotoView[];
-}
-
 async function mockVenues(
   page: Page,
   delayMs = 0,
@@ -204,7 +188,7 @@ async function mockVenues(
  * The unpinned one is the point of the third row — it stays in the list and draws no pin, so "one
  * pin per PINNED venue" is asserted against a list that actually contains a counter-example.
  */
-const SHEET_VENUES = [
+const SHEET_VENUES: readonly MockVenueSummary[] = [
   {
     ...VENUES[0],
     beach: 'PALASE',
@@ -490,7 +474,7 @@ function disjoint(
  * the camera is on it, and a Dhërmi trio ~20 m apart that never separates inside the map's own
  * fence. Same two behaviours as the retired whole-coast fixture, moved into one region.
  */
-const CROWDED_REGION = [
+const CROWDED_REGION: readonly MockVenueSummary[] = [
   CROWDED_VENUES[1],
   CROWDED_VENUES[4],
   CROWDED_VENUES[5],
@@ -651,6 +635,55 @@ test.describe('Discover map — real engine', () => {
     }));
     expect(heights.host).toBeGreaterThan(0);
     expect(heights).toEqual({ host: heights.host, container: heights.host, canvas: heights.host });
+  });
+
+  /**
+   * MapLibre's own fence keeps the whole box inside the extract, so zoomed out on a phone the
+   * coast's south end stayed under the sheet. A venue at Ksamil's latitude stands in for it.
+   */
+  test('on a phone, zoomed out, the coast’s south end pans clear of the sheet', async ({
+    page,
+  }) => {
+    await mockVenues(page, 0, [
+      { ...VENUES[0], beach: 'PALASE', region: 'HIMARE' },
+      { ...VENUES[1], beach: 'BORSH', region: 'HIMARE' },
+    ]);
+    await page.setViewportSize(PHONE);
+    await page.goto('/');
+    await expect(rows(page, PHONE)).toHaveCount(2);
+    await settle(page);
+
+    const ground = (await page.getByTestId('sheet-ground').boundingBox())!;
+    const x = ground.x + ground.width / 2;
+    await page.mouse.move(x, ground.y + 200);
+    await page.mouse.down();
+    await page.mouse.move(x - 20, ground.y + 180, { steps: 5 });
+    await page.mouse.up();
+    await expect(page.locator('app-riviera-map')).toHaveAttribute('data-status', 'ready', {
+      timeout: 20_000,
+    });
+
+    // All the way out, then drag the map up by far more than the coast is tall: as south as it goes.
+    for (let step = 0; step < 12; step += 1) {
+      await page.mouse.move(x, ground.y + 150);
+      await page.mouse.wheel(0, 400);
+    }
+    for (let drag = 0; drag < 3; drag += 1) {
+      await page.mouse.move(x, ground.y + 260);
+      await page.mouse.down();
+      await page.mouse.move(x, ground.y + 60, { steps: 8 });
+      await page.mouse.up();
+    }
+    await settle(page);
+
+    const sheetTop = (await page.getByTestId('sheet').boundingBox())!.y;
+    const south = page.locator('[data-pin]', { hasText: '€25' });
+    await expect
+      .poll(async () => {
+        const box = await south.boundingBox();
+        return box === null ? Number.POSITIVE_INFINITY : box.y + box.height;
+      })
+      .toBeLessThanOrEqual(sheetTop);
   });
 
   test('the list renders and works before the map asks for anything', async ({ page }) => {
@@ -822,8 +855,8 @@ const MAP_VENUES = [
 function mapVenue(
   id: number,
   name: string,
-  beach: string,
-  region: string,
+  beach: MockBeachCode,
+  region: MockRegionCode,
   latitude: number,
   longitude: number,
   minorUnits: number,
@@ -841,6 +874,7 @@ function mapVenue(
     amenities: ['BEACH_BAR', 'SNORKELLING'],
     fromPrice: { minorUnits, currency: 'EUR' },
     availability: { free: 11, total: 26 },
+    sellsOnline: true,
     salesOpen,
     location: { latitude, longitude },
   };
@@ -1127,7 +1161,11 @@ test.describe('Discover map — the desktop panel', () => {
   });
 
   test('a pin with no price draws its dot, centred at 14 px, open or closed', async ({ page }) => {
-    const unpriced = (venue: MockVenueSummary): MockVenueSummary => ({ ...venue, fromPrice: null });
+    const unpriced = (venue: MockVenueSummary): MockVenueSummary => ({
+      ...venue,
+      fromPrice: null,
+      sellsOnline: false,
+    });
     await mockVenues(page, 0, [
       unpriced(mapVenue(42, 'Unpriced Venue', 'DHERMI', 'HIMARE', 40.176, 19.586, 0)),
       unpriced(mapVenue(43, 'Closed Unpriced', 'BORSH', 'HIMARE', 40.06, 19.86, 0, false)),

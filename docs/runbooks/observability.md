@@ -1,7 +1,7 @@
 # Observability runbook (D4, issue #100)
 
 Production observability for the single-instance soft launch: structured logs with a correlation id,
-an authenticated Prometheus scrape endpoint, and three money-path failure signals wired to an in-app
+an ADMIN-only Prometheus scrape endpoint, and three money-path failure signals wired to an in-app
 alert route. This runbook says what each signal means, how it is alerted today, and how to upgrade to
 metric-native alerting later.
 
@@ -30,10 +30,12 @@ metric-native alerting later.
 
 ## Prometheus metrics
 
-- Exposed at **`/actuator/prometheus`**, **authenticated** (an operator session; anonymous → 401). The
-  #75 actuator lockdown is preserved — `/actuator/health` remains the only anonymous actuator surface,
-  and `/actuator/metrics` stays off the exposure allowlist.
-- Enabled by `management.endpoints.web.exposure.include=health,prometheus` +
+- Exposed at **`/actuator/prometheus`**, **ADMIN-only** (an admin session; anonymous → 401, a customer or
+  plain operator session → 403, #1652; why: `docs/deploy/production-hardening.md` § Actuator endpoints). The
+  #75 actuator lockdown is preserved — the anonymous actuator surfaces are `/actuator/health` and
+  `GET /actuator/info` (the build's commit id alone, #1632), and `/actuator/metrics` stays off the
+  exposure allowlist.
+- Enabled by `management.endpoints.web.exposure.include=health,info,prometheus` +
   `management.prometheus.metrics.export.enabled=true` (Boot 4 gates a named registry's export behind an
   explicit enable).
 
@@ -638,7 +640,7 @@ Alert lines carry only counts + thresholds — never a booking code or PII.
 When metric-native alerting is wanted (dashboards, rate windows, silences):
 
 1. Point a Grafana Cloud (free tier) / Prometheus agent at `https://<host>/actuator/prometheus`,
-   authenticating with an operator credential (the endpoint is not anonymous — do **not** widen it).
+   authenticating with an **admin** credential (a plain operator gets 403 — do **not** widen it).
 2. Add alert rules on the three signals:
 
 ```promql

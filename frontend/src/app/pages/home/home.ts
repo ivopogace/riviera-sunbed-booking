@@ -38,7 +38,8 @@ import {
   FOOT_CREDIT_PLACEMENT_SWAPPED,
   MapCredit,
 } from '../../shared/map-credit';
-import { LngLat, MapEngineOptions, MapHandle, MapView } from '../../shared/map-engine';
+import { FenceInsets, LngLat, MapEngineOptions, MapHandle, MapView } from '../../shared/map-engine';
+import { NO_FENCE_INSETS } from '../../shared/map-fence';
 import { formatMoney } from '../../shared/money';
 import { formatStay } from '../../shared/booking-date-label';
 import { PanelGlass } from '../../shared/panel-glass';
@@ -508,6 +509,23 @@ export class Home {
     };
   });
 
+  /**
+   * The phone's map under the glass header and the resting sheet, so the fence's ends can be pulled
+   * clear of both; at full the map is hidden, so half's, and a tap back to half never jumps it.
+   */
+  protected readonly fenceInsets = computed<FenceInsets>(
+    () => {
+      const sheet = this.sheet();
+      if (!this.sheetMode() || sheet === undefined) {
+        return NO_FENCE_INSETS;
+      }
+      const { viewportH, header } = sheet.chrome();
+      const resting = this.detent() === 'full' ? 'half' : this.detent();
+      return { top: header, bottom: Math.max(0, viewportH - sheet.tops()[resting]) };
+    },
+    { equal: (a, b) => a.top === b.top && a.bottom === b.bottom },
+  );
+
   /** A region, never the coast: the chosen beach or region, else the tourist's, else Himarë. */
   protected readonly focus = computed<Focus>(() => {
     const cards = this.shownCards();
@@ -552,8 +570,8 @@ export class Home {
   private readonly isToday = computed(() => this.selectedDate() === this.minDate);
   /**
    * The selling line: `8 of 11 selling today` (invariant #4 as the head's light, from the
-   * server's per-date verdict), or the count on another day. A venue with no sets yet is listed
-   * (#717) and counted among the M, but sells nothing, so it is never among the N (#1530).
+   * server's per-date verdict), or the count on another day. A venue with no sets yet (#717) or only
+   * walk-in sets is counted among the M, but sells nothing online, so never among the N (#1530, #1550).
    */
   protected readonly subtitle = computed(() => {
     const cards = this.focus().cards;
@@ -561,7 +579,7 @@ export class Home {
     if (!this.isToday()) {
       return `${n} ${n === 1 ? 'venue' : 'venues'}`;
     }
-    const selling = cards.filter((card) => !card.salesClosed && card.total > 0).length;
+    const selling = cards.filter((card) => !card.salesClosed && card.sellsOnline).length;
     return `${selling} of ${n} selling today`;
   });
   /** The region's beaches with a venue, in coast order, each with its count. */
@@ -1149,7 +1167,14 @@ export class Home {
     const closedForSeason = venue.closedForSeason === true;
     const reopensOn = closedForSeason ? (venue.reopensOn ?? null) : null;
 
-    const price = priceLabel ? `, from ${priceLabel} per set` : '';
+    // A priceless venue with sets holds them for walk-ins alone: the server prices online sets only.
+    const unpricedLabel = total === 0 ? 'No sets yet' : 'Walk-in only';
+    let price = '';
+    if (priceLabel) {
+      price = `, from ${priceLabel} per set`;
+    } else if (total > 0) {
+      price = ', walk-in only';
+    }
     const waterText = water ? `${water}. ` : '';
     const amenitiesText = amenities.length
       ? `Amenities: ${amenities.map((a) => a.label).join(', ')}. `
@@ -1188,9 +1213,11 @@ export class Home {
       amenities,
       freePercent,
       priceLabel,
+      unpricedLabel,
       fromPrice: venue.fromPrice ?? null,
       free,
       total,
+      sellsOnline: venue.sellsOnline,
       salesClosed,
       closedForSeason,
       reopensOn,

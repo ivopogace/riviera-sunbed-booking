@@ -451,17 +451,16 @@ class VenueAdminControllerIT {
 		addSet(venue, setBody("Front row", 1, "PREMIUM", "ONLINE", 4500, "EUR", 1, 1));
 		addSet(venue, setBody("Front row", 2, "STANDARD", "WALK_IN", 2500, "EUR", 2, 1));
 
-		// AC-2: both sets appear in the read API with the exact field values entered, ordered for
-		// rendering (grid_y, grid_x), and from-price is the cheapest.
+		// AC-2: (grid_y, grid_x) order, grid-letter rows (#1586); from-price = cheapest ONLINE set (#1647).
 		mvc.perform(get("/api/venues/{id}", venue))
 				.andExpect(status().isOk())
 				.andExpect(jsonPath("$.sets.length()").value(2))
-				.andExpect(jsonPath("$.sets[0].rowLabel").value("Front row"))
+				.andExpect(jsonPath("$.sets[0].rowLabel").value("A"))
 				.andExpect(jsonPath("$.sets[0].tier").value("PREMIUM"))
 				.andExpect(jsonPath("$.sets[0].pool").value("ONLINE"))
 				.andExpect(jsonPath("$.sets[0].price.minorUnits").value(4500))
 				.andExpect(jsonPath("$.sets[1].pool").value("WALK_IN"))
-				.andExpect(jsonPath("$.fromPrice.minorUnits").value(2500))
+				.andExpect(jsonPath("$.fromPrice.minorUnits").value(4500))
 				.andExpect(jsonPath("$.fromPrice.currency").value("EUR"));
 	}
 
@@ -687,6 +686,23 @@ class VenueAdminControllerIT {
 	}
 
 	@Test
+	void rejectsARowPastTheAlphabetAsInvalidNotAConstraintFailure() throws Exception {
+		// Row 27 has no letter (#1586): refused at the edge, never left to V78's CHECK as a 500.
+		long venue = createVenue("Row Twenty-Seven Set Club");
+		mvc.perform(post("/api/venues/{v}/sets", venue).cookie(operatorSession).with(csrf())
+						.contentType(MediaType.APPLICATION_JSON)
+						.content(setBody("A", 1, "STANDARD", "ONLINE", 3000, "EUR", 1, 27)))
+				.andExpect(status().isBadRequest())
+				.andExpect(jsonPath("$.code").value("INVALID_REQUEST"));
+		long setId = addSet(venue, setBody("A", 1, "STANDARD", "ONLINE", 3000, "EUR", 1, 1));
+		mvc.perform(patch("/api/venues/{v}/sets/{s}", venue, setId).cookie(operatorSession).with(csrf())
+						.contentType(MediaType.APPLICATION_JSON)
+						.content(setBody("A", 1, "STANDARD", "ONLINE", 3000, "EUR", 1, 27)))
+				.andExpect(status().isBadRequest())
+				.andExpect(jsonPath("$.code").value("INVALID_REQUEST"));
+	}
+
+	@Test
 	void rejectsDuplicateGridCell() throws Exception {
 		long venue = createVenue("Grid Club");
 		addSet(venue, setBody("Row A", 1, "STANDARD", "ONLINE", 3000, "EUR", 2, 1));
@@ -706,10 +722,10 @@ class VenueAdminControllerIT {
 		long venue = createVenue("Position Club");
 		addSet(venue, setBody("Row A", 1, "STANDARD", "ONLINE", 3000, "EUR", 1, 1));
 
-		// Same (row_label, position_no), different cell → 409 DUPLICATE_POSITION.
+		// Same row (grid row 1, so row A) and position number, different cell → 409 DUPLICATE_POSITION.
 		mvc.perform(post("/api/venues/{v}/sets", venue).cookie(operatorSession).with(csrf())
 						.contentType(MediaType.APPLICATION_JSON)
-						.content(setBody("Row A", 1, "STANDARD", "ONLINE", 3000, "EUR", 5, 5)))
+						.content(setBody("Row A", 1, "STANDARD", "ONLINE", 3000, "EUR", 5, 1)))
 				.andExpect(status().isConflict())
 				.andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
 				.andExpect(jsonPath("$.code").value("DUPLICATE_POSITION"));

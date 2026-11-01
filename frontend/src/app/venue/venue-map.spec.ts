@@ -95,7 +95,7 @@ function miramar(): VenueMapView {
     ratingTenths: 48,
     reviewsCount: 326,
     bookingMode: 'INSTANT',
-    fromPrice: { minorUnits: 2500, currency: 'EUR' },
+    fromPrice: { minorUnits: 3500, currency: 'EUR' }, // the cheapest ONLINE row; Row 4's walk-in €25 never prices it
     // Amenities out of catalogue order → the header renders the FULL row catalogue-ordered (Beach bar, Free parking, WiFi); plus a to-water distance.
     amenities: ['WIFI', 'BEACH_BAR', 'FREE_PARKING'],
     distanceToWaterM: 8,
@@ -809,6 +809,35 @@ describe('VenueMap', () => {
     expect((reviews.componentInstance as VenueReviews).reviewsCount()).toBe(0);
   });
 
+  it('prices the header from the fromPrice the read names, "from €35 / set" (#1647)', async () => {
+    venueRequest().flush(miramar());
+    await settle();
+
+    const header = el().querySelector('header')!;
+    expect(header.textContent?.replace(/\s+/g, ' ')).toContain('from €35 / set');
+    expect(header.querySelector('[data-testid="unpriced-label"]')).toBeNull();
+  });
+
+  it('reads "Walk-in only" in the price\'s place when no set sells online, as the Discover card does (#1647)', async () => {
+    venueRequest().flush({ ...miramar(), fromPrice: null });
+    await settle();
+
+    const header = el().querySelector('header')!;
+    expect(header.querySelector('[data-testid="unpriced-label"]')?.textContent?.trim()).toBe(
+      'Walk-in only',
+    );
+    expect(header.textContent).not.toContain('/ set');
+  });
+
+  it('keeps the no-price header for a venue with no sets — neither a price nor "Walk-in only"', async () => {
+    venueRequest().flush(mapless());
+    await settle();
+
+    const header = el().querySelector('header')!;
+    expect(header.querySelector('[data-testid="unpriced-label"]')).toBeNull();
+    expect(header.textContent).not.toContain('/ set');
+  });
+
   it('agrees the review noun with the count — a venue\'s first rating reads "1 review"', async () => {
     // V45 zeroed every seeded count, so one review is the first rated state any venue reaches.
     venueRequest().flush({ ...miramar(), ratingTenths: 50, reviewsCount: 1 });
@@ -856,20 +885,20 @@ describe('VenueMap', () => {
     expect(column.classList.contains('min-w-[54px]')).toBe(true);
   });
 
-  it("renders the price once per zone, carrying the row's meaning (#672, #702)", async () => {
+  it('renders the price once per zone, and only the price (#672, #1587)', async () => {
     flushVenue();
     await settle();
     const prices = [...el().querySelectorAll('[data-testid="row-price"]')].map((n) =>
       n.textContent?.trim(),
     );
     // Rows B and C share €35 — one zone, one chip: 4 rows render 3 chips, from minor units.
-    // Each chip now says what the price buys: the named front row, the back row's channel.
-    expect(prices).toEqual(['€45 · Front row', '€35', '€25 · at venue']);
+    // The chip is the amount alone: the tiles and the legend carry front row and walk-in.
+    expect(prices).toEqual(['€45', '€35', '€25']);
   });
 
-  it('splits an equally-priced walk-in row into its own zone (#702)', async () => {
+  it('splits an equally-priced walk-in row into its own zone (#702, #1587)', async () => {
     const base = miramar();
-    // At row B/C's €35, price alone would fold row D into their zone and render no chip.
+    // At row B/C's €35, the walk-in flag in the zone key alone keeps row D its own zone.
     const sets = base.sets.map((s) =>
       s.pool === 'WALK_IN' ? { ...s, price: { minorUnits: 3500, currency: 'EUR' } } : s,
     );
@@ -879,7 +908,7 @@ describe('VenueMap', () => {
     const prices = [...el().querySelectorAll('[data-testid="row-price"]')].map((n) =>
       n.textContent?.trim(),
     );
-    expect(prices).toEqual(['€45 · Front row', '€35', '€35 · at venue']);
+    expect(prices).toEqual(['€45', '€35', '€35']);
     // …and the split is spatial too: D opens a zone, so the gap lands on all three columns.
     const zoneGaps = [false, true, false, true];
     expect(
@@ -906,11 +935,11 @@ describe('VenueMap', () => {
       n.textContent?.trim(),
     );
     expect(codes).toEqual(['A', 'C', 'D', 'E']);
-    // A bare label still adds nothing beside a rail that now reads it verbatim.
+    // The price rail stays the price alone, whatever the row's label (#1587).
     const prices = [...el().querySelectorAll('[data-testid="row-price"]')].map((n) =>
       n.textContent?.trim(),
     );
-    expect(prices).toEqual(['€45 · Front row', '€35', '€25 · at venue']);
+    expect(prices).toEqual(['€45', '€35', '€25']);
     // Tiles announce only the stored label — "Set B1, C, …" can no longer be spoken.
     const names = [...el().querySelectorAll('[data-testid="set-tile"]')].map(
       (t) =>
@@ -923,7 +952,7 @@ describe('VenueMap', () => {
 
   it('keeps two identically-priced premium rows in one zone (#702)', async () => {
     const base = miramar();
-    // Rows A and B are both premium at €45: one price, one tier, so one zone and one chip.
+    // Rows A and B are both at €45 and online: one zone and one chip. Tier never opens one (#1625).
     const rows = [...new Set(base.sets.map((s) => s.rowLabel))];
     const sets = base.sets.map((s) =>
       s.rowLabel === rows[1]
@@ -936,7 +965,7 @@ describe('VenueMap', () => {
     const prices = [...el().querySelectorAll('[data-testid="row-price"]')].map((n) =>
       n.textContent?.trim(),
     );
-    expect(prices).toEqual(['€45 · Front row', '€35', '€25 · at venue']);
+    expect(prices).toEqual(['€45', '€35', '€25']);
     expect(
       [...el().querySelectorAll('[data-map-row]')].map((r) => r.classList.contains('mt-3')),
     ).toEqual([false, false, true, true]);
@@ -952,11 +981,6 @@ describe('VenueMap', () => {
     expect(firstTile?.getAttribute('aria-label')).toBe(
       'Front row · Sea view · spot 1, front row, €45, taken',
     );
-    const names = [...el().querySelectorAll('[data-testid="set-tile"]')].map(
-      (t) =>
-        t.getAttribute('aria-label') ?? t.querySelector('button')?.getAttribute('aria-label') ?? '',
-    );
-    expect(names.some((name) => name.includes('at venue'))).toBe(false);
   });
 
   it('separates price zones with a gap at zone starts, aligned across all three columns (#672)', async () => {
@@ -990,7 +1014,7 @@ describe('VenueMap', () => {
       n.textContent?.trim(),
     );
     // Row 2 mixes €35 + €45: its chip is the span, so it no longer shares Row 3's €35 zone.
-    expect(prices).toEqual(['€45 · Front row', '€35–€45', '€35', '€25 · at venue']);
+    expect(prices).toEqual(['€45', '€35–€45', '€35', '€25']);
   });
 
   it('renders the venue description in the header', async () => {

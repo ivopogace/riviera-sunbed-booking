@@ -11,6 +11,7 @@ import {
   expectInsetFill,
   tintPaint,
 } from './support/console-theme';
+import type { MockSetView, MockVenueMapView } from './support/venue-views';
 
 /**
  * Real-render CI-safe e2e for the layout editor. Drives the actual generate → confirm →
@@ -28,7 +29,7 @@ const PRINCIPAL = { username: 'operator', principalType: 'OPERATOR' };
 
 // An empty venue so the editor starts from the empty state — the operator generates the grid (no
 // seed→fill race), then regenerates over it to reach the confirm.
-const VENUE_MAP = {
+const VENUE_MAP: MockVenueMapView = {
   id: 1,
   name: 'Miramar Beach Club',
   beach: 'KSAMIL',
@@ -72,20 +73,18 @@ interface MockLock {
 async function mockEditor(
   page: Page,
   refusing: (MockLock & { rowLabel: string; positionNo: number })[] = [],
-  seededSets: typeof SEEDED_SETS = [],
+  seededSets: readonly MockSetView[] = [],
   locks: MockLock[] = [],
   preview: object = EMPTY_PREVIEW,
 ): Promise<{
   previews: Request[];
   puts: Request[];
-  renames: Request[];
   bump: () => void;
   holdMap: () => void;
   releaseMap: () => void;
 }> {
   const puts: Request[] = [];
   const previews: Request[] = [];
-  const renames: Request[] = [];
   let sessionLive = false;
   let serverSetVersion = 0;
   const bump = () => {
@@ -148,24 +147,13 @@ async function mockEditor(
     serverSetVersion += 1;
     return route.fulfill({ status: 204, body: '' });
   });
-  // The per-row rename: enforces the same setVersion token the bulk PUT does, and bumps it on success.
-  await page.route(/\/api\/venues\/1\/rows\/[^/]+\/name$/, (route) => {
-    renames.push(route.request());
-    const body = route.request().postDataJSON() as { expectedVersion?: number };
-    if (body.expectedVersion !== serverSetVersion) {
-      return route.fulfill({
-        status: 409,
-        contentType: 'application/problem+json',
-        json: { code: 'STALE_WRITE', detail: '' },
-      });
-    }
-    serverSetVersion += 1;
-    return route.fulfill({ status: 204, body: '' });
-  });
   await page.route(/\/api\/venues\/1\/booking-requests(\?.*)?$/, (route) =>
     route.fulfill({ json: [] }),
   );
   await page.route(/\/api\/venues\/1\/bookings(\?.*)?$/, (route) => route.fulfill({ json: [] }));
+  await page.route(/\/api\/venues\/1\/bookings\/count(\?.*)?$/, (route) =>
+    route.fulfill({ json: { date: '2026-07-08', count: 0 } }),
+  );
   await page.route(/\/api\/venues\/1\/takings(\?.*)?$/, (route) =>
     route.fulfill({
       json: {
@@ -179,7 +167,7 @@ async function mockEditor(
   await page.route(/\/api\/venues\/1\/availability(\?.*)?$/, (route) =>
     route.fulfill({ json: [] }),
   );
-  return { previews, puts, renames, bump, holdMap, releaseMap };
+  return { previews, puts, bump, holdMap, releaseMap };
 }
 
 async function signIn(page: Page): Promise<void> {
@@ -291,9 +279,7 @@ test('paints the console theme: the tool rail and the tiles under porcelain and 
   await expectNoSeriousAxeViolations(page, `layout editor in the ${theme} console`);
 });
 
-test('names a row, saves the venue’s words, and blocks duplicate names before any PUT (#723)', async ({
-  page,
-}) => {
+test('sends no row label and offers no row names (#1586)', async ({ page }) => {
   const { puts } = await mockEditor(page);
   await page.goto('/operator/1/beach-map');
   await signIn(page);
@@ -302,39 +288,26 @@ test('names a row, saves the venue’s words, and blocks duplicate names before 
   await page.getByTestId('layout-gen-cols').fill('2');
   await page.getByTestId('layout-generate').click();
   await expect(page.getByTestId('layout-cell')).toHaveCount(4);
+  await expect(page.getByRole('heading', { name: 'Row names' })).toHaveCount(0);
 
-  // One input per row, defaulting to the derived grid letter.
-  const names = page.getByTestId('layout-row-name');
-  await expect(names).toHaveCount(2);
-  await expect(names.first()).toHaveValue('A');
-
-  // Two rows sharing a (trimmed) name surface the clash and hold the save — no PUT leaves the tab.
-  await names.first().fill('Under the pines');
-  await names.nth(1).fill(' Under the pines ');
-  await expect(page.getByTestId('layout-row-name-error')).toBeVisible();
-  await page.getByTestId('layout-save').click();
-  expect(puts).toHaveLength(0);
-
-  await settle(page);
-  await expectNoSeriousAxeViolations(page, 'layout editor row names');
-
-  // Blanking the second row clears the clash (it falls back to its letter) and the save goes through.
-  await names.nth(1).fill('');
-  await expect(page.getByTestId('layout-row-name-error')).toHaveCount(0);
   await page.getByTestId('layout-save').click();
   await expect(page.getByTestId('layout-saved')).toBeVisible();
   expect(puts).toHaveLength(1);
-  const body = puts[0].postDataJSON() as { sets: { rowLabel: string }[] };
-  expect(body.sets.map((s) => s.rowLabel)).toEqual([
-    'Under the pines',
-    'Under the pines',
-    'B',
-    'B',
+  const body = puts[0].postDataJSON() as { sets: { rowLabel?: string; gridY: number }[] };
+  // The server labels each row by its grid letter; the editor sends none.
+  expect(body.sets.map((s) => [s.gridY, s.rowLabel])).toEqual([
+    [1, undefined],
+    [1, undefined],
+    [2, undefined],
+    [2, undefined],
   ]);
+
+  await settle(page);
+  await expectNoSeriousAxeViolations(page, 'layout editor after a lettered save');
 });
 
 /** Two saved rows on a trading venue — the shape the bulk save can no longer touch. */
-const SEEDED_SETS = [
+const SEEDED_SETS: readonly MockSetView[] = [
   {
     id: 1,
     rowLabel: 'A',
@@ -344,7 +317,7 @@ const SEEDED_SETS = [
     price: { minorUnits: 3500, currency: 'EUR' },
     gridX: 1,
     gridY: 1,
-    available: true,
+    availability: 'FREE',
   },
   {
     id: 2,
@@ -355,7 +328,7 @@ const SEEDED_SETS = [
     price: { minorUnits: 2000, currency: 'EUR' },
     gridX: 1,
     gridY: 2,
-    available: true,
+    availability: 'FREE',
   },
 ];
 
@@ -598,34 +571,6 @@ test('holds both surfaces until the map read settles (#721)', async ({ page }) =
   await expect(page.getByTestId('layout-confirm-regen')).toBeVisible();
 });
 
-test('renames a row on its own PUT while the bulk save is refused (#726)', async ({ page }) => {
-  const { puts, renames } = await mockEditor(page, [REFUSED_B1], SEEDED_SETS);
-  await page.goto('/operator/1/beach-map');
-  await signIn(page);
-
-  // A saved venue opens armed on Select; reaching the bulk surface is free, only its SAVE is refused.
-  await page.getByTestId('layout-tool-premium').click();
-  await expect(page.getByTestId('layout-row-name')).toHaveCount(2);
-
-  // The whole-layout save really is refused, which is the situation #726 exists for.
-  await page.getByTestId('layout-save').click();
-  await expect(page.getByTestId('layout-error')).toBeVisible();
-  expect(puts).toHaveLength(1);
-
-  // The per-row rename still goes through, on its own PUT.
-  await page.getByTestId('layout-row-name').nth(1).fill('Back row');
-  await page.getByTestId('layout-row-name-save').nth(1).click();
-  await expect(page.getByTestId('layout-row-name-saved')).toBeVisible();
-
-  expect(renames).toHaveLength(1);
-  expect(new URL(renames[0].url()).pathname).toBe('/api/venues/1/rows/B/name');
-  expect(renames[0].postDataJSON()).toEqual({ newLabel: 'Back row', expectedVersion: 0 });
-  expect(puts).toHaveLength(1); // the bulk layout PUT was not re-sent
-
-  await settle(page);
-  await expectNoSeriousAxeViolations(page, 'layout editor row rename');
-});
-
 test('drag-painting across cells paints them and never pans the overflowing grid (#672 slice 2)', async ({
   page,
 }) => {
@@ -833,14 +778,14 @@ test('adds a row on a trading venue in one PUT that keeps every seeded cell (#10
 
   expect(puts).toHaveLength(1);
   const body = puts[0].postDataJSON() as {
-    sets: { gridX: number; gridY: number; rowLabel: string }[];
+    sets: { gridX: number; gridY: number }[];
     expectedVersion: number;
   };
   expect(body.expectedVersion).toBe(0);
-  expect(body.sets.map((set) => [set.rowLabel, set.gridX, set.gridY])).toEqual([
-    ['A', 1, 1],
-    ['B', 1, 2],
-    ['C', 1, 3],
+  expect(body.sets.map((set) => [set.gridX, set.gridY])).toEqual([
+    [1, 1],
+    [1, 2],
+    [1, 3],
   ]);
   await settle(page);
   await expectNoSeriousAxeViolations(page, 'layout editor, row added on a trading venue');
@@ -1360,8 +1305,8 @@ test('the paint grid, which cannot be drag-panned, still offers a pointer route 
  * drag gesture is now the batch-select rectangle sweep (#714), so its canvas — like the bulk
  * paint grid's — is no longer drag-pannable and shows the same slim scrollbar affordance instead.
  */
-/** Two rows of twelve — the widest layout the console's 1300px page box must show whole at 1280px. */
-const TWELVE_COLUMNS = Array.from({ length: 24 }, (_, i) => ({
+/** Two rows of twelve — the widest layout the console's `.oc-main` (capped at 1300px) must show whole at 1280px. */
+const TWELVE_COLUMNS: readonly MockSetView[] = Array.from({ length: 24 }, (_, i) => ({
   id: i + 1,
   rowLabel: i < 12 ? 'A' : 'B',
   positionNo: (i % 12) + 1,
@@ -1370,7 +1315,7 @@ const TWELVE_COLUMNS = Array.from({ length: 24 }, (_, i) => ({
   price: { minorUnits: 3000, currency: 'EUR' },
   gridX: (i % 12) + 1,
   gridY: i < 12 ? 1 : 2,
-  available: true,
+  availability: 'FREE',
 }));
 
 test('fits a twelve-column layout to width at 1280px under the shell (#1011)', async ({ page }) => {

@@ -25,6 +25,7 @@ import {
 import { BusyAction } from '../shared/busy-action';
 import { CardGlass } from '../shared/card-glass';
 import { ConfirmPanel } from '../shared/confirm-panel';
+import { ConsolePageBox } from '../shared/console-page-box';
 import { focusMover } from '../shared/focus-after-render';
 import { LoadAnnouncer } from '../shared/load-announcer';
 import { MapSkeletonGrid } from '../shared/map-skeleton-grid';
@@ -64,6 +65,7 @@ import { codeFromScan } from './scan-input';
 import { StayDayGroup, stayDayGroupOf } from './stay-day-group';
 import { CheckIcon } from '../shared/check-icon';
 import { DotIcon } from '../shared/dot-icon';
+import { PrimaryCta } from '../shared/primary-cta';
 
 /**
  * One guest row: set label, display-only arrival code (invariant #7), the guest's span when the
@@ -162,6 +164,8 @@ interface CheckInNotice {
 @Component({
   selector: 'app-daily-view-tab',
   imports: [
+    PrimaryCta,
+    ConsolePageBox,
     CardGlass,
     LoadAnnouncer,
     BeachMapCanvas,
@@ -420,6 +424,10 @@ export class DailyViewTab {
     this.refundBusy.set(true);
     this.console.dayRefund(venueId, code, date).subscribe({
       next: (result) => {
+        if (releasesClaim(result)) {
+          // The set is free and a CONFIRMED booking gone whatever this tab shows now (#1551).
+          this.changes.announce({ venueId, date: result.serviceDate, cause: 'DAY_REFUND' });
+        }
         if (this.epoch !== epoch) {
           return; // a venue switch superseded this write's UI state
         }
@@ -517,7 +525,7 @@ export class DailyViewTab {
     write.subscribe({
       next: () => {
         // The row changed server-side whatever this tab shows now: the strip and the shared map follow.
-        this.changes.announce({ venueId, date });
+        this.changes.announce({ venueId, date, cause: 'WALK_IN' });
         if (this.epoch === epoch) {
           this.reconcile(set.id); // skip if a venue switch superseded this write
         }
@@ -862,6 +870,11 @@ function checkInMessage(error: unknown, sets: ReadonlyMap<number, SetView>): str
     default:
       return 'Couldn’t check in. Try again.';
   }
+}
+
+/** A refund that freed its day's claim: a released day, or a lone booking cancelled whole (ADR-0027). */
+function releasesClaim(result: VenueDayRefundResult): boolean {
+  return result.released || result.kind === 'BOOKING_CANCELLED';
 }
 
 /** The operator-facing notice for a venue day refund the server carried out (money in minor units, #5). */

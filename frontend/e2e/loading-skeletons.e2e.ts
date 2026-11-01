@@ -3,6 +3,7 @@ import { expect, test, type Locator, type Page } from '@playwright/test';
 import { expectNoSeriousAxeViolations } from './support/axe';
 import { mockWholeConsole, signInAsOperator } from './support/operator-console.mocks';
 import { photoViews } from './support/photo-views';
+import type { MockSetView, MockVenueMapView } from './support/venue-views';
 
 /**
  * The anti-jump half of the skeleton contract (#744), in a real browser: on the two surfaces whose
@@ -64,7 +65,7 @@ const MAX_SETTLE_PX = 280;
 const DESKTOP = { width: 1280, height: 720 };
 const PHONE = { width: 390, height: 844 };
 
-function sets() {
+function sets(): MockSetView[] {
   return Array.from({ length: 24 }, (_, i) => ({
     id: i + 1,
     rowLabel: i < 12 ? 'Front row' : 'Row 2',
@@ -79,7 +80,7 @@ function sets() {
 }
 
 /** Everything the header can optionally carry: a description AND an amenity row. */
-const RICH_VENUE = {
+const RICH_VENUE: MockVenueMapView = {
   id: 1,
   name: 'Miramar Beach Club',
   beach: 'KSAMIL',
@@ -582,26 +583,27 @@ const BARE_PRICE_VENUE = {
 };
 
 /**
- * The other extreme: a four-digit min–max span plus a qualifier, which ellipsizes at either cap.
+ * The other extreme: a six-digit min–max span, which ellipsizes at either cap — the chip
+ * is the price alone (#1587), so only the amounts can carry it past 128px.
  *
  * <p>The prices alternate WITHIN each row on purpose. Priced uniformly per row — which is what
  * this fixture used to do — `rowPriceLabel` renders one amount and the span never appears, so the
  * widest chip the rail can carry went unexercised while the docstring claimed it. Alternating
  * makes the row's sets differ, which is `formatMoneyRange`'s own condition for a span: the chip
- * renders `€125–€9,995 · Front row` and measures the full 128px desktop cap.
+ * renders `€125,000–€999,995` and measures the full 128px desktop cap.
  */
 const WIDE_PRICE_VENUE = {
   ...RICH_VENUE,
   sets: sets().map((s, i) => ({
     ...s,
     tier: 'PREMIUM',
-    price: { minorUnits: i % 2 === 0 ? 12500 : 999500, currency: 'EUR' },
+    price: { minorUnits: i % 2 === 0 ? 12500000 : 99999500, currency: 'EUR' },
   })),
 };
 
 for (const [prices, venue, chip] of [
   ['bare amounts, under the reservation', BARE_PRICE_VENUE, /^€30$/],
-  ['price phrases past the cap', WIDE_PRICE_VENUE, /^€125–€9,995 · Front row$/],
+  ['price spans past the cap', WIDE_PRICE_VENUE, /^€125,000–€999,995$/],
 ] as const) {
   for (const [size, viewport] of [
     ['desktop', DESKTOP],

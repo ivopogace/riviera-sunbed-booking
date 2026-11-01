@@ -26,6 +26,7 @@ import { formatCivilDate } from '../shared/booking-date';
 import { BusyAction } from '../shared/busy-action';
 import { CardGlass } from '../shared/card-glass';
 import { formatCommissionPercent } from '../shared/commission-rate';
+import { ConsolePageColumn } from '../shared/console-page-box';
 import { parentVenueId } from '../shared/parent-venue-id';
 import { plural } from '../shared/plural';
 import { SegmentedControl, SegmentedOption } from '../shared/segmented-control';
@@ -53,6 +54,7 @@ import {
   photoErrorOf,
   previewUrlOf,
 } from './venue-photo.service';
+import { PrimaryCta } from '../shared/primary-cta';
 
 /** The editable venue-details fields, bound to the Signal Form (the read-only commission + payout
  *  currency are display-only signals, never part of the form/write). */
@@ -165,6 +167,8 @@ const EMPTY_SLOTS: Readonly<Record<PhotoSlotKey, SlotUi>> = {
 @Component({
   selector: 'app-venue-tab',
   imports: [
+    PrimaryCta,
+    ConsolePageColumn,
     BeachField,
     BookingCutoffField,
     BookingModeField,

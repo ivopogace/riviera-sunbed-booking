@@ -187,13 +187,13 @@ describe('Availability calendar contrast (WCAG AA) — venue/day-availability.ts
     });
 
     /**
-     * The stay's Apply wears the primary CTA skin (`retry-button.ts`), proved there against the card
-     * glass; here against the popover it sits on, by the adjacency rule of
+     * The stay's Apply wears the primary CTA skin (`[appPrimaryCta]`), proved against the card glass
+     * in `cta-border-token.contrast.spec.ts`; here against the popover it sits on, by the adjacency rule of
      * `docs/design/non-text-contrast.md` rule 1: the fill or the white hairline, whichever abuts.
      */
     it('the Apply button reads against the popover surface over every stop', () => {
-      expect(read('shared/availability-calendar.html')).toContain(
-        'border border-riv-cta-border bg-(image:--riv-cta-grad)',
+      expect(read('shared/availability-calendar.html')).toMatch(
+        /<button\b(?=[^>]*\bappPrimaryCta\b)[^>]*data-testid="calendar-apply"/,
       );
       for (const stop of palette.stops) {
         const behind = rgbToHex(surfaceOver(palette.surface, stop));

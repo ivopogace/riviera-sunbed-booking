@@ -28,9 +28,9 @@ export interface BeachMapCanvasRow {
    *  its own: the tourist map and the Daily view pass the stored `rowLabel` (uniqueness
    *  from grouping rows by it), the layout editor its grid letters (a grid being painted). */
   readonly code: string;
-  /** The zone chip's text; `null` renders no chip even on a zone start. The rail caps the chip's
-   *  width and ellipsizes what does not fit (92px below `sm`, 128px above), so this may be a
-   *  phrase — a price plus what it buys — and not only an amount. */
+  /** The zone chip's text — an amount or a min–max span; `null` renders no chip even on a zone
+   *  start. The rail caps the chip's width and ellipsizes what does not fit (92px below `sm`,
+   *  128px above), so a wide span still holds the column. */
   readonly priceLabel: string | null;
   /** True where this row starts a new price zone — draws the zone gap + the price chip. */
   readonly zoneStart: boolean;
@@ -56,7 +56,6 @@ export class BeachMapRowDef<R extends BeachMapCanvasRow = BeachMapCanvasRow> {
 
   static ngTemplateContextGuard<R extends BeachMapCanvasRow>(
     _dir: BeachMapRowDef<R>,
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars -- used in the type predicate only
     _ctx: unknown,
   ): _ctx is BeachMapRowContext<R> {
     return true;
@@ -115,9 +114,9 @@ export class BeachMapCanvas {
    *  below it (#1532); `capped-labels` (tourist) is capped on both tiers, so its phone rail cannot move. */
   readonly railCodes = input<'letters' | 'labels' | 'capped-labels'>('letters');
   /** Price-rail chip vocabulary, fixing its reserved width in both states: `amounts` (operator)
-   *  reserves nothing beyond the 52px floor — a min–max span may still widen it, by choice;
-   *  `capped-phrases` (tourist) reserves the 92px phone cap. Independent of {@link railCodes}. */
-  readonly priceChips = input<'amounts' | 'capped-phrases'>('amounts');
+   *  keeps the 52px floor, a span may widen it; `capped-spans` (tourist) reserves the 92px phone
+   *  cap, as wide spans exist (€125,000–€999,995 fills 128px). Independent of {@link railCodes}. */
+  readonly priceChips = input<'amounts' | 'capped-spans'>('amounts');
   /** Draw a placeholder grid: rails reserve their columns but state nothing, and every gesture cue
    *  is withheld. Surfaces render skeletons THROUGH the canvas to inherit `--riv-tile` and frame
    *  geometry, so the canvas, not the surface, owns the difference. */

@@ -104,7 +104,7 @@ class AltchaProofOfWorkChallenges implements ProofOfWorkChallenges {
 			return ChallengeVerdict.INVALID;
 		}
 		Altcha.ChallengeParameters parameters = parsed.challenge().parameters();
-		Instant expiresAt = Instant.ofEpochSecond(parameters.expiresAt());
+		Instant expiresAt = Instant.ofEpochSecond(parameters.expiresAt().longValue());
 		return registry.claim(parameters.nonce(), expiresAt) ? ChallengeVerdict.VERIFIED : ChallengeVerdict.REPLAYED;
 	}
 }

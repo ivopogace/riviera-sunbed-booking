@@ -11,7 +11,7 @@ import ai.riviera.platform.venue.application.SetCommand;
  * <strong>The full body is required on {@code PATCH} too</strong> (it replaces the whole set), so a
  * pool change can't land without re-stating its cell — the layout-uniqueness checks depend on it.
  */
-record SetPositionRequest(String rowLabel, Integer positionNo, String tier, String pool,
+record SetPositionRequest(Integer positionNo, String tier, String pool,
 		MoneyView price, Integer gridX, Integer gridY) {
 
 	SetCommand toCommand() {
@@ -24,7 +24,7 @@ record SetPositionRequest(String rowLabel, Integer positionNo, String tier, Stri
 		if (gridX == null || gridY == null) {
 			throw new IllegalArgumentException("gridX and gridY are required");
 		}
-		return new SetCommand(rowLabel, positionNo, tier, PoolToken.parse(pool),
+		return new SetCommand(positionNo, tier, PoolToken.parse(pool),
 				price.minorUnits(), price.currency(), gridX, gridY);
 	}
 }

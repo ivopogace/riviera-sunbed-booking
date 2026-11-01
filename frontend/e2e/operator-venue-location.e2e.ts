@@ -9,6 +9,7 @@ import {
   expectInsetFill,
 } from './support/console-theme';
 import { mockMapResources, recordOffOriginRequests } from './support/map-resources';
+import type { MockVenueProfileView } from './support/venue-views';
 
 /**
  * Real-render CI-safe e2e for the venue-location pin placer. Drives sign-in → open the Venue tab →
@@ -26,10 +27,9 @@ const DHERMI = { latitude: 40.1468, longitude: 19.6482 };
 /** Where the operator is standing, for the near-me leg — on the coast, inside the map's fence. */
 const AT_THE_VENUE = { latitude: 39.874231, longitude: 20.007412 };
 
-const INITIAL_PROFILE = {
+const INITIAL_PROFILE: MockVenueProfileView = {
   name: 'Miramar Beach Club',
   beach: 'KSAMIL',
-  region: 'SARANDE',
   description: 'Loungers on the shore.',
   bookingMode: 'INSTANT',
   bookingCutoff: '18:00',
@@ -131,6 +131,9 @@ async function mockVenue(
     route.fulfill({ json: [] }),
   );
   await page.route(/\/api\/venues\/1\/bookings(\?.*)?$/, (route) => route.fulfill({ json: [] }));
+  await page.route(/\/api\/venues\/1\/bookings\/count(\?.*)?$/, (route) =>
+    route.fulfill({ json: { date: '2026-07-08', count: 0 } }),
+  );
   await page.route(/\/api\/venues\/1\/takings(\?.*)?$/, (route) =>
     route.fulfill({
       json: {

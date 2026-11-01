@@ -8,6 +8,7 @@ import { formatMoney } from '../shared/money';
 import { BookingService } from './booking.service';
 import { MailIcon } from '../shared/mail-icon';
 import { HourglassIcon } from '../shared/hourglass-icon';
+import { PrimaryCta } from '../shared/primary-cta';
 
 /** Template skins, hoisted so each recipe exists once (the booking-view.ts `cls` idiom). */
 const CLS = {
@@ -29,7 +30,7 @@ const CLS = {
   code: 'mt-1.25 text-[26px] font-bold tracking-[0.12em] text-riv-accent-ink',
   status: 'm-0 mb-4.5 text-[13px] font-semibold text-riv-card-ink-soft',
   primary:
-    'block w-full rounded-2xl border border-riv-cta-border bg-(image:--riv-cta-grad) p-3.5 text-[15px] font-bold text-white no-underline shadow-[0_10px_26px_rgba(11,120,150,0.5),inset_0_1px_0_rgba(255,255,255,0.5)] focus-visible:outline-[3px] focus-visible:outline-offset-2 focus-visible:outline-riv-accent-ink',
+    'block w-full rounded-2xl p-3.5 text-[15px] font-bold no-underline shadow-[0_10px_26px_rgba(11,120,150,0.5)] focus-visible:outline-[3px] focus-visible:outline-offset-2 focus-visible:outline-riv-accent-ink',
   link: 'mt-3 inline-block text-[14.5px] font-semibold text-riv-accent-ink focus-visible:outline-[3px] focus-visible:outline-offset-2 focus-visible:outline-riv-accent-ink',
 } as const;
 
@@ -43,7 +44,7 @@ const CLS = {
  */
 @Component({
   selector: 'app-request-confirmation',
-  imports: [RouterLink, CardGlass, MailIcon, HourglassIcon],
+  imports: [PrimaryCta, RouterLink, CardGlass, MailIcon, HourglassIcon],
   template: `
     @if (requested(); as r) {
       <section [class]="cls.card" appCardGlass aria-labelledby="request-title">
@@ -98,7 +99,12 @@ const CLS = {
           Pending — waiting for the venue to respond
         </p>
 
-        <a [routerLink]="['/booking', r.code]" [class]="cls.primary" data-testid="status-link">
+        <a
+          appPrimaryCta
+          [routerLink]="['/booking', r.code]"
+          [class]="cls.primary"
+          data-testid="status-link"
+        >
           Track this request
         </a>
         <a routerLink="/" [class]="cls.link">Back to the beach</a>

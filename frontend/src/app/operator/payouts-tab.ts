@@ -6,6 +6,7 @@ import { OperatorAuth, SESSION_EXPIRED_MESSAGE } from '../core/operator-auth';
 import { plural } from '../shared/plural';
 import { CardGlass } from '../shared/card-glass';
 import { ConfirmPanel } from '../shared/confirm-panel';
+import { ConsolePageColumn } from '../shared/console-page-box';
 import { SkeletonBlock } from '../shared/skeleton-block';
 import { LoadAnnouncer } from '../shared/load-announcer';
 import { focusMover } from '../shared/focus-after-render';
@@ -36,6 +37,7 @@ import { RainIcon } from '../shared/rain-icon';
 @Component({
   selector: 'app-payouts-tab',
   imports: [
+    ConsolePageColumn,
     CardGlass,
     LoadAnnouncer,
     SkeletonBlock,

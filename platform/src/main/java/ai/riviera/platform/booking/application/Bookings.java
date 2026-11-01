@@ -255,6 +255,12 @@ public interface Bookings {
 	List<DailyBooking> findSettledForVenueOn(VenueId venueId, LocalDate date);
 
 	/**
+	 * How many of {@link #findSettledForVenueOn}'s bookings hold their set on {@code date}: the day is not released
+	 * (ADR-0027), a refund that kept the claim still counts — "Booked online" (CONTEXT.md).
+	 */
+	int countBookedOnlineOn(VenueId venueId, LocalDate date);
+
+	/**
 	 * The venue's bookings that happened ({@code BookingStatus#stormDayRefundable}) covering {@code date},
 	 * by id, each with the date's own service-day stamps — the weather refund's candidates. The caller
 	 * cancels a lone one-day booking and refunds any other's day.

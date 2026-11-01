@@ -17,6 +17,7 @@ import { TouchTarget } from '../shared/touch-target';
 import { OperatorAuth, SESSION_EXPIRED_MESSAGE } from '../core/operator-auth';
 import { BusyAction } from '../shared/busy-action';
 import { CardGlass } from '../shared/card-glass';
+import { ConsolePageColumn } from '../shared/console-page-box';
 import { LoadAnnouncer } from '../shared/load-announcer';
 import { SkeletonBlock } from '../shared/skeleton-block';
 import { formatDeadline, isUrgent, timeLeftLabel } from '../shared/deadline';
@@ -76,6 +77,7 @@ interface StopRow {
 @Component({
   selector: 'app-requests-tab',
   imports: [
+    ConsolePageColumn,
     CardGlass,
     LoadAnnouncer,
     SkeletonBlock,

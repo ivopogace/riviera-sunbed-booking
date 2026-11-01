@@ -16,6 +16,7 @@ import {
 } from '../shared/password-policy';
 
 import { TouchTarget } from '../shared/touch-target';
+import { PrimaryCta } from '../shared/primary-cta';
 
 /** Template skins, hoisted so each recipe exists once (the booking-view.ts `cls` idiom). */
 const CLS = {
@@ -31,7 +32,7 @@ const CLS = {
   notice: 'm-0 mb-5 block text-[13.5px] leading-[1.5] text-riv-card-ink-soft',
   submitError: 'mt-3 text-[13px] font-semibold text-riv-error-ink',
   submit:
-    'mt-4.5 w-full p-[13px] rounded-2xl border border-riv-cta-border bg-(image:--riv-cta-grad) text-white font-[inherit] font-bold text-[15px] cursor-pointer shadow-[0_10px_26px_rgba(11,120,150,0.5),inset_0_1px_0_rgba(255,255,255,0.5)] motion-safe:[transition:filter_0.15s_ease] motion-reduce:transition-none aria-disabled:cursor-default aria-disabled:opacity-70 hover:enabled:brightness-[1.06] focus-visible:outline-[3px] focus-visible:outline-offset-2 focus-visible:outline-white',
+    'mt-4.5 w-full p-[13px] rounded-2xl font-[inherit] font-bold text-[15px] cursor-pointer shadow-[0_10px_26px_rgba(11,120,150,0.5)] motion-safe:[transition:filter_0.15s_ease] motion-reduce:transition-none aria-disabled:cursor-default aria-disabled:opacity-70 focus-visible:outline-[3px] focus-visible:outline-offset-2 focus-visible:outline-white',
   alt: 'mt-4.5 text-center text-[13.5px] text-riv-card-ink-soft',
   altLink: 'inline-flex items-center font-bold text-riv-accent-ink',
 } as const;
@@ -46,7 +47,7 @@ const CLS = {
  */
 @Component({
   selector: 'app-operator-password',
-  imports: [FormField, RouterLink, CardGlass, BusyAction, TouchTarget],
+  imports: [PrimaryCta, FormField, RouterLink, CardGlass, BusyAction, TouchTarget],
   template: `
     <section
       class="flex min-h-[60vh] items-center justify-center px-5 py-8"
@@ -97,6 +98,7 @@ const CLS = {
           }
 
           <button
+            appPrimaryCta
             appTouchTarget
             type="submit"
             [class]="cls.submit"

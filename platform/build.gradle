@@ -1,7 +1,7 @@
 plugins {
 	id 'java'
 	id 'jacoco'
-	id 'org.springframework.boot' version '4.1.1'
+	id 'org.springframework.boot' version '4.1.2'
 	id 'io.spring.dependency-management' version '1.1.7'
 }
 
@@ -55,7 +55,7 @@ dependencies {
 	// Proof-of-work challenge (ADR-0016): the official ALTCHA v2 library issues and verifies the
 	// challenges the bundled widget solves; self-hosted, no ALTCHA service is ever called. Its pom
 	// declares org.json as `provided`, so the runtime classpath has to carry it explicitly.
-	implementation 'org.altcha:altcha:2.0.3'
+	implementation 'org.altcha:altcha:2.1.1'
 	implementation 'org.json:json:20260814'
 	// Javadoc into the Documenter's module canvases (DocumentationTests); starter-core ships it, but Gradle runs
 	// a processor only from this configuration.
@@ -76,7 +76,7 @@ dependencies {
 	testImplementation 'org.testcontainers:testcontainers-junit-jupiter'
 	testImplementation 'org.testcontainers:testcontainers-postgresql'
 	// In-JVM SMTP sink for SmtpMailerIT (#368) — jakarta-mail 2.x line; no Docker needed.
-	testImplementation 'com.icegreen:greenmail-junit5:2.1.14'
+	testImplementation 'com.icegreen:greenmail-junit5:2.1.15'
 	testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 }
 
@@ -94,6 +94,11 @@ tasks.named('test') {
 	systemProperty 'spring.test.context.cache.maxSize', '96'
 	// Two forks each hold their own context cache and containers; the runner has the cores and memory.
 	maxParallelForks = 2
+	// Attributes captured stdout to the test case running when it was written (an async listener's failure
+	// line among it), so the CI job's test-results artifact can name the test behind a registry row.
+	reports.junitXml.outputPerTestCase = true
+	// Logback is JVM-global and configured once, by the first context: the ECS-format IT gets its own JVM.
+	exclude '**/StructuredLoggingIT*'
 	finalizedBy tasks.named('jacocoTestReport')
 	// spring-modulith#1762 (fixed in 2.2): the Documenter's BasicJsonParser rejects an escaped quote in the apt's
 	// javadoc.json, failing DocumentationTests; make each one a ' first. Drop this block with the 2.2 upgrade.
@@ -104,6 +109,20 @@ tasks.named('test') {
 			file.text = file.text.replaceAll(/(?<!\\)((?:\\\\)*)\\"/, '$1\'')
 		}
 	}
+}
+
+def structuredLoggingTest = tasks.register('structuredLoggingTest', Test) {
+	description = 'Runs StructuredLoggingIT alone in a fresh JVM, so its context is the one that configures logging.'
+	group = 'verification'
+	testClassesDirs = sourceSets.test.output.classesDirs
+	classpath = sourceSets.test.runtimeClasspath
+	useJUnitPlatform()
+	include '**/StructuredLoggingIT*'
+	reports.junitXml.outputPerTestCase = true
+}
+
+tasks.named('check') {
+	dependsOn structuredLoggingTest
 }
 
 tasks.named('jacocoTestReport') {

@@ -2,6 +2,7 @@ import { expect, test } from '@playwright/test';
 
 import { expectNoSeriousAxeViolations } from './support/axe';
 import { settle } from './support/booking-dialog';
+import type { MockVenueMapView } from './support/venue-views';
 
 /**
  * Real-render a11y + behaviour audit of what happens to a review after it exists (#812): the guest
@@ -18,7 +19,7 @@ import { settle } from './support/booking-dialog';
 const CODE = 'RVWL234567';
 const CLOSES_AT = '2026-07-31T16:00:00Z';
 
-const VENUE = {
+const VENUE: MockVenueMapView = {
   id: 1,
   name: 'Miramar Beach Club',
   beach: 'KSAMIL',

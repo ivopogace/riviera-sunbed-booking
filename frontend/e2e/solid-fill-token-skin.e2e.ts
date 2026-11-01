@@ -1,6 +1,7 @@
 import { expect, test, type Page } from '@playwright/test';
 
 import { mockWholeConsole, signInAsOperator } from './support/operator-console.mocks';
+import type { MockVenueSummary } from './support/venue-views';
 
 /**
  * The solid button/badge fills paint from the token registry, asserted against a real render
@@ -52,7 +53,7 @@ const REGISTRY = {
 const UTILITIES = ['bg-riv-solid-fill-brand', 'bg-riv-solid-fill-danger', 'bg-riv-solid-fill-warn'];
 
 /** One venue card, enough for the discovery grid to render its semantic mode chip. */
-const VENUES = [
+const VENUES: readonly MockVenueSummary[] = [
   {
     id: 1,
     name: 'Miramar Beach Club',
@@ -65,6 +66,7 @@ const VENUES = [
     amenities: ['WIFI'],
     distanceToWaterM: 15,
     availability: { free: 18, total: 24 },
+    sellsOnline: true,
     salesOpen: true,
   },
 ];

@@ -72,6 +72,8 @@ module.exports = defineConfig([
     },
     processor: angular.processInlineTemplates,
     rules: {
+      // A leading `_` marks a parameter a signature needs but the body never reads.
+      '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_' }],
       '@angular-eslint/directive-selector': [
         'error',
         {

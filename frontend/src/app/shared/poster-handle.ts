@@ -69,6 +69,11 @@ export class PosterHandle implements MapHandle {
     this.onWanted({ ...this.camera, zoom: this.camera.zoom - 1 });
   }
 
+  /** A picture does not pan, so it has no fence to move. */
+  setFenceInsets(): void {
+    // Nothing to fence.
+  }
+
   addMarker(marker: MapMarker): void {
     this.markerSet.set(marker.id, marker);
   }

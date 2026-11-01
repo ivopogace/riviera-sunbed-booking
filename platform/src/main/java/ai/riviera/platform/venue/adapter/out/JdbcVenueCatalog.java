@@ -187,6 +187,7 @@ class JdbcVenueCatalog implements VenueCatalog, VenueRates, OwnerVenueMap {
 				.toList();
 
 		MoneyView fromPrice = sets.stream()
+				.filter(s -> s.pool() == Pool.ONLINE)
 				.map(SetView::price)
 				.min(Comparator.comparingLong(MoneyView::minorUnits))
 				.orElse(null);
@@ -258,13 +259,13 @@ class JdbcVenueCatalog implements VenueCatalog, VenueRates, OwnerVenueMap {
 		// no per-venue N+1. A LEFT-join shape in Java: a venue with no sets simply gets an empty list.
 		List<Long> venueIds = venues.stream().map(SummaryRow::id).toList();
 		List<SetPriceRow> sets = jdbc.sql("""
-				SELECT id, venue_id, price_minor, price_currency
+				SELECT id, venue_id, pool, price_minor, price_currency
 				FROM active_set_position
 				WHERE venue_id IN (:venueIds)
 				""")
 				.param(P_VENUE_IDS, venueIds)
 				.query((rs, rowNum) -> new SetPriceRow(
-						rs.getLong("id"), rs.getLong(COL_VENUE_ID),
+						rs.getLong("id"), rs.getLong(COL_VENUE_ID), Pool.valueOf(rs.getString("pool")),
 						rs.getLong(COL_PRICE_MINOR), rs.getString(COL_PRICE_CURRENCY)))
 				.list();
 
@@ -415,14 +416,16 @@ class JdbcVenueCatalog implements VenueCatalog, VenueRates, OwnerVenueMap {
 		int total = sets.size();
 		int free = (int) sets.stream().filter(s -> !taken.contains(new SetId(s.id()))).count();
 		MoneyView fromPrice = sets.stream()
+				.filter(s -> s.pool() == Pool.ONLINE)
 				.min(Comparator.comparingLong(SetPriceRow::priceMinor))
 				.map(s -> new MoneyView(s.priceMinor(), s.priceCurrency()))
 				.orElse(null);
+		boolean sellsOnline = sets.stream().anyMatch(s -> s.pool() == Pool.ONLINE);
 		List<Amenity> ordered = amenities.stream().sorted().toList(); // canonical catalogue order
 		return new VenueSummaryView(v.id(), v.name(), v.beach(), regionOf(v.beach()),
 				v.ratingTenths(), v.reviewsCount(), v.bookingMode(),
 				fromPrice, ordered, v.distanceToWaterM(), new AvailabilitySummary(free, total),
-				coverPhoto, photos, salesOpen, closedForSeason,
+				sellsOnline, coverPhoto, photos, salesOpen, closedForSeason,
 				closedForSeason ? v.seasonClosure().reopenOn() : null, v.location());
 	}
 
@@ -504,8 +507,8 @@ class JdbcVenueCatalog implements VenueCatalog, VenueRates, OwnerVenueMap {
 			LocalTime salesClose, SeasonClosure seasonClosure, VenueLocation location) {
 	}
 
-	/** A set's id, owning venue, and price — all the list view needs to count and price a venue. */
-	private record SetPriceRow(long id, long venueId, long priceMinor, String priceCurrency) {
+	/** A set's id, owning venue, pool and price — all the list view needs to count, price and pool-check a venue. */
+	private record SetPriceRow(long id, long venueId, Pool pool, long priceMinor, String priceCurrency) {
 	}
 
 	/** One (venue, amenity) pair from the join table, bucketed by venue for the list read. */

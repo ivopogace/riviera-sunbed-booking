@@ -3,6 +3,7 @@ import { expect, test } from '@playwright/test';
 import { expectNoSeriousAxeViolations } from './support/axe';
 import { settle } from './support/booking-dialog';
 import { openThemePicker } from './support/shell';
+import type { MockVenueSummary } from './support/venue-views';
 
 /**
  * Real-render a11y audit of the venue-discovery landing page (design §4.1 steps 1–2):
@@ -24,7 +25,7 @@ const PHONE = { width: 390, height: 844 };
 const SEMANTIC_FILL = 'rgb(10, 110, 133)';
 const SEMANTIC_INK = 'rgb(255, 255, 255)';
 
-const VENUES = [
+const VENUES: readonly MockVenueSummary[] = [
   {
     id: 1,
     name: 'Miramar Beach Club',
@@ -39,6 +40,7 @@ const VENUES = [
     amenities: ['SHOWERS', 'BEACH_BAR', 'FREE_PARKING', 'WIFI'],
     distanceToWaterM: 15,
     availability: { free: 18, total: 24 },
+    sellsOnline: true,
     salesOpen: true,
   },
   {
@@ -51,6 +53,7 @@ const VENUES = [
     bookingMode: 'REQUEST',
     fromPrice: { minorUnits: 3000, currency: 'EUR' },
     availability: { free: 5, total: 10 },
+    sellsOnline: true,
     salesOpen: true,
   },
 ];
@@ -243,7 +246,7 @@ test('an unrated venue shows a "New" state (no ★ 0.0) on the card and map, acc
   page,
 }) => {
   // A brand-new venue: ratingTenths/reviewsCount both 0. It must read as "New", never "rated 0.0".
-  const unrated = {
+  const unrated: MockVenueSummary = {
     id: 2,
     name: 'Miramare',
     beach: 'BORSH',
@@ -253,6 +256,7 @@ test('an unrated venue shows a "New" state (no ★ 0.0) on the card and map, acc
     bookingMode: 'INSTANT',
     fromPrice: { minorUnits: 2000, currency: 'EUR' },
     availability: { free: 10, total: 10 },
+    sellsOnline: true,
   };
   await page.route(/\/api\/venues\/2(\?.*)?$/, (route) =>
     route.fulfill({
@@ -321,12 +325,13 @@ test('a venue with no sets is listed but not counted as selling today (#1530)', 
   page,
 }) => {
   // An approved operator's venue with no beach map yet: listed as #717 decided, but it sells nothing.
-  const emptyCove = {
+  const emptyCove: MockVenueSummary = {
     ...VENUES[1],
     id: 3,
     name: 'Empty Cove',
     fromPrice: null,
     availability: { free: 0, total: 0 },
+    sellsOnline: false,
     salesOpen: true,
   };
   await page.route(/\/api\/venues(\?.*)?$/, (route) =>
@@ -341,6 +346,37 @@ test('a venue with no sets is listed but not counted as selling today (#1530)', 
   await expect(page.getByTestId('head-subtitle')).toHaveText('2 of 3 selling today');
   await expect(page.getByTestId('sheet-outcome')).toContainText('2 of 3 selling today');
   await expectNoSeriousAxeViolations(page, 'discovery sheet (a venue with no sets)');
+});
+
+test('a walk-in-only venue is listed but not counted as selling today (#1550)', async ({
+  page,
+}) => {
+  // Every set on its map is held for guests at the beach (invariant #3): nothing sells online.
+  const walkInCove: MockVenueSummary = {
+    ...VENUES[1],
+    id: 4,
+    name: 'Walk-in Cove',
+    fromPrice: null,
+    availability: { free: 6, total: 6 },
+    sellsOnline: false,
+    salesOpen: true,
+  };
+  await page.route(/\/api\/venues(\?.*)?$/, (route) =>
+    route.fulfill({ json: [...VENUES, walkInCove] }),
+  );
+  await page.setViewportSize(PHONE);
+  await page.goto('/');
+
+  const cards = page.getByTestId('venue-card');
+  await expect(cards).toHaveCount(3);
+  // No online set prices it (#1628): the card says so, never a "from" price.
+  const walkIn = cards.filter({ hasText: 'Walk-in Cove' });
+  await expect(walkIn.locator('.price')).toHaveText('Walk-in only');
+  await expect(walkIn).toHaveAccessibleName(/, walk-in only, 6 of 6 sets free/);
+  await expect(walkIn).not.toHaveAccessibleName(/from/);
+  await expect(page.getByTestId('head-subtitle')).toHaveText('2 of 3 selling today');
+  await expect(page.getByTestId('sheet-outcome')).toContainText('2 of 3 selling today');
+  await expectNoSeriousAxeViolations(page, 'discovery sheet (a walk-in-only venue)');
 });
 
 test('a hidden venue answers a not-available state with a way back, not a retry loop (#693)', async ({

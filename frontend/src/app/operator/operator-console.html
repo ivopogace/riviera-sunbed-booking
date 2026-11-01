@@ -2,8 +2,8 @@
 <!-- No invalid-venue arm either: venueIdGuard redirects a malformed :venueId away, so venueId() is always a real one. -->
 <app-console-stats-strip [venueId]="venueId()" [venue]="venue()" />
 
-<!-- Wider than the 1120px shell rows so the beach-map tab's grid can fit-to-width; every other tab's own narrower section max-width keeps it visually unchanged. -->
+<!-- Wider than the page box so the beach-map tab's grid can fit to width; every other child takes the box's edge (shared/console-page-box.ts). -->
 <div class="oc-main mx-auto w-full max-w-[1300px] px-6 pt-5 pb-10">
-  <app-pending-approval-banner />
+  <app-pending-approval-banner appConsolePageBox />
   <router-outlet />
 </div>

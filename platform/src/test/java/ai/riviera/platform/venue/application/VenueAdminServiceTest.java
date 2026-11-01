@@ -68,7 +68,7 @@ class VenueAdminServiceTest {
 	private static final OperatorId OWNER = new OperatorId(100);
 	private static final OperatorId STRANGER = new OperatorId(200);
 	private static final SetCommand SET_CMD =
-			new SetCommand("Row A", 1, "PREMIUM", Pool.ONLINE, 4500, "EUR", 2, 1);
+			new SetCommand(1, "PREMIUM", Pool.ONLINE, 4500, "EUR", 2, 1);
 
 	/** Ordered across BOTH fakes, so a test can pin that the row lock precedes the claim probe. */
 	private final List<String> callLog = new ArrayList<>();
@@ -103,7 +103,7 @@ class VenueAdminServiceTest {
 		for (int y = 1; y <= rows; y++) {
 			for (int x = 1; x <= cols; x++) {
 				String tier = y == 1 ? "PREMIUM" : "STANDARD";
-				cells.add(new SetCommand(String.valueOf((char) ('A' + y - 1)), x, tier, Pool.ONLINE,
+				cells.add(new SetCommand(x, tier, Pool.ONLINE,
 						2000, "EUR", x, y));
 			}
 		}
@@ -201,10 +201,10 @@ class VenueAdminServiceTest {
 	void editSetIsRefusedWhenAClaimedSetWouldBeRepositioned() {
 		venues.venues.add(VENUE.value());
 		venues.sets.put(SET.value(), VENUE.value());
-		venues.storedPlacement = new SetPlacement("Row A", 1, 2, 1);
+		venues.storedPlacement = new SetPlacement("A", 1, 2, 1);
 		availability.holdOn.put(SET, TODAY_IN_TIRANE); // the inclusive edge: a hold dated today still blocks
 
-		SetCommand moved = new SetCommand("Row A", 2, "PREMIUM", Pool.ONLINE, 4500, "EUR", 3, 1);
+		SetCommand moved = new SetCommand(2, "PREMIUM", Pool.ONLINE, 4500, "EUR", 3, 1);
 		ChangeOutcome outcome = mapEditor.editSet(OWNER, VENUE, SET, moved);
 
 		assertEquals(SetRejection.SET_IN_USE, ((ChangeOutcome.Rejected) outcome).reason());
@@ -215,11 +215,11 @@ class VenueAdminServiceTest {
 	void editSetAppliesAPoolOnlyChangeToAClaimedSet() {
 		venues.venues.add(VENUE.value());
 		venues.sets.put(SET.value(), VENUE.value());
-		venues.storedPlacement = new SetPlacement("Row A", 1, 2, 1);
+		venues.storedPlacement = new SetPlacement("A", 1, 2, 1);
 		availability.holdOn.put(SET, TODAY_IN_TIRANE); // live, yet inert: the pool governs new reserves only
 		bookings.setHasLiveBookings = true;
 
-		SetCommand repooled = new SetCommand("Row A", 1, "PREMIUM", Pool.WALK_IN, 4500, "EUR", 2, 1);
+		SetCommand repooled = new SetCommand(1, "PREMIUM", Pool.WALK_IN, 4500, "EUR", 2, 1);
 		ChangeOutcome outcome = mapEditor.editSet(OWNER, VENUE, SET, repooled);
 
 		assertSame(ChangeOutcome.Applied.APPLIED, outcome,
@@ -231,10 +231,10 @@ class VenueAdminServiceTest {
 	void editSetIsRefusedWhenABookedSetWouldBeMovedToAnotherCell() {
 		venues.venues.add(VENUE.value());
 		venues.sets.put(SET.value(), VENUE.value());
-		venues.storedPlacement = new SetPlacement("Row A", 1, 2, 1);
+		venues.storedPlacement = new SetPlacement("A", 1, 2, 1);
 		bookings.setHasLiveBookings = true;
 
-		SetCommand moved = new SetCommand("Row B", 4, "PREMIUM", Pool.ONLINE, 4500, "EUR", 9, 3);
+		SetCommand moved = new SetCommand(4, "PREMIUM", Pool.ONLINE, 4500, "EUR", 9, 3);
 		ChangeOutcome outcome = mapEditor.editSet(OWNER, VENUE, SET, moved);
 
 		assertEquals(SetRejection.SET_IN_USE, ((ChangeOutcome.Rejected) outcome).reason());
@@ -245,12 +245,12 @@ class VenueAdminServiceTest {
 	void editSetAppliesAPriceOnlyChangeToAClaimedSet() {
 		venues.venues.add(VENUE.value());
 		venues.sets.put(SET.value(), VENUE.value());
-		venues.storedPlacement = new SetPlacement("Row A", 1, 2, 1);
+		venues.storedPlacement = new SetPlacement("A", 1, 2, 1);
 		availability.holdOn.put(SET, TODAY_IN_TIRANE); // live, yet inert: a price-only edit never probes
 		bookings.setHasLiveBookings = true;
 
 		// Same pool, same row, same position, same cell — only tier and price move.
-		SetCommand repriced = new SetCommand("Row A", 1, "STANDARD", Pool.ONLINE, 9900, "EUR", 2, 1);
+		SetCommand repriced = new SetCommand(1, "STANDARD", Pool.ONLINE, 9900, "EUR", 2, 1);
 		ChangeOutcome outcome = mapEditor.editSet(OWNER, VENUE, SET, repriced);
 
 		assertSame(ChangeOutcome.Applied.APPLIED, outcome,
@@ -262,9 +262,9 @@ class VenueAdminServiceTest {
 	void editSetAppliesEveryChangeToAnUnclaimedSet() {
 		venues.venues.add(VENUE.value());
 		venues.sets.put(SET.value(), VENUE.value());
-		venues.storedPlacement = new SetPlacement("Row A", 1, 2, 1);
+		venues.storedPlacement = new SetPlacement("A", 1, 2, 1);
 
-		SetCommand moved = new SetCommand("Row C", 7, "STANDARD", Pool.WALK_IN, 100, "EUR", 5, 5);
+		SetCommand moved = new SetCommand(7, "STANDARD", Pool.WALK_IN, 100, "EUR", 5, 5);
 		ChangeOutcome outcome = mapEditor.editSet(OWNER, VENUE, SET, moved);
 
 		assertSame(ChangeOutcome.Applied.APPLIED, outcome);
@@ -275,12 +275,12 @@ class VenueAdminServiceTest {
 	void editSetIsAllowedWhenTheOnlyBookingIsTerminalAndTheOnlyHoldIsPast() {
 		venues.venues.add(VENUE.value());
 		venues.sets.put(SET.value(), VENUE.value());
-		venues.storedPlacement = new SetPlacement("Row A", 1, 2, 1);
+		venues.storedPlacement = new SetPlacement("A", 1, 2, 1);
 		// History only: the set is un-deletable (setHasBookings/claimed) but strands nobody.
 		availability.holdOn.put(SET, TODAY_IN_TIRANE.minusDays(400)); // last season, nothing still owed
 		bookings.setHasBookings = true;
 
-		SetCommand moved = new SetCommand("Row B", 4, "PREMIUM", Pool.WALK_IN, 4500, "EUR", 9, 3);
+		SetCommand moved = new SetCommand(4, "PREMIUM", Pool.WALK_IN, 4500, "EUR", 9, 3);
 		ChangeOutcome outcome = mapEditor.editSet(OWNER, VENUE, SET, moved);
 
 		assertSame(ChangeOutcome.Applied.APPLIED, outcome,
@@ -292,9 +292,9 @@ class VenueAdminServiceTest {
 	void editSetAsksAboutFutureHoldsOnlyForTheSetBeingEdited() {
 		venues.venues.add(VENUE.value());
 		venues.sets.put(SET.value(), VENUE.value());
-		venues.storedPlacement = new SetPlacement("Row A", 1, 2, 1);
+		venues.storedPlacement = new SetPlacement("A", 1, 2, 1);
 
-		mapEditor.editSet(OWNER, VENUE, SET, new SetCommand("Row Z", 9, "PREMIUM", Pool.ONLINE, 4500, "EUR", 9, 9));
+		mapEditor.editSet(OWNER, VENUE, SET, new SetCommand(9, "PREMIUM", Pool.ONLINE, 4500, "EUR", 9, 9));
 
 		assertEquals(List.of(SET), availability.anyClaimsFromAskedAbout,
 				"the edit guard must ask about this set alone, never the whole venue");
@@ -321,13 +321,12 @@ class VenueAdminServiceTest {
 
 	@Test
 	void everyPositionFieldOnItsOwnDisturbsAClaimedSet() {
-		SetPlacement stored = new SetPlacement("Row A", 1, 2, 1);
+		SetPlacement stored = new SetPlacement("A", 1, 2, 1);
 
-		assertTrue(new SetCommand("Row B", 1, "PREMIUM", Pool.ONLINE, 4500, "EUR", 2, 1).disturbs(stored), "rowLabel");
-		assertTrue(new SetCommand("Row A", 7, "PREMIUM", Pool.ONLINE, 4500, "EUR", 2, 1).disturbs(stored), "positionNo");
-		assertTrue(new SetCommand("Row A", 1, "PREMIUM", Pool.ONLINE, 4500, "EUR", 8, 1).disturbs(stored), "gridX");
-		assertTrue(new SetCommand("Row A", 1, "PREMIUM", Pool.ONLINE, 4500, "EUR", 2, 8).disturbs(stored), "gridY");
-		assertFalse(new SetCommand("Row A", 1, "STANDARD", Pool.WALK_IN, 9999, "EUR", 2, 1).disturbs(stored),
+		assertTrue(new SetCommand(7, "PREMIUM", Pool.ONLINE, 4500, "EUR", 2, 1).disturbs(stored), "positionNo");
+		assertTrue(new SetCommand(1, "PREMIUM", Pool.ONLINE, 4500, "EUR", 8, 1).disturbs(stored), "gridX");
+		assertTrue(new SetCommand(1, "PREMIUM", Pool.ONLINE, 4500, "EUR", 2, 8).disturbs(stored), "gridY");
+		assertFalse(new SetCommand(1, "STANDARD", Pool.WALK_IN, 9999, "EUR", 2, 1).disturbs(stored),
 				"tier, price and pool never disturb a claim — the charge was snapshotted, the pool governs new reserves");
 	}
 
@@ -610,23 +609,19 @@ class VenueAdminServiceTest {
 		ReplaceLayoutOutcome outcome = mapEditor.replaceLayout(OWNER, VENUE, 0L, grid(2, 3));
 
 		assertSame(ReplaceLayoutOutcome.Replaced.REPLACED, outcome,
-				"an in-place update disturbs no guest: price, tier, pool and row label are always editable");
+				"an in-place update disturbs no guest: price, tier and pool are always editable");
 		assertEquals(List.of(SET), venues.updatedSetIds);
 		assertEquals(List.of(), availability.nearestClaimsFromAskedAbout, "a kept set is never probed");
 	}
 
 	@Test
-	void refusesRepositioningAKeptClaimedSetButNotRenamingIt() {
+	void refusesRepositioningAKeptClaimedSet() {
 		venues.venues.add(VENUE.value());
 		venues.place(SET, A1);
 		bookings.liveOn.put(SET, TODAY_IN_TIRANE.plusDays(3));
-		LayoutCommand renamed = new LayoutCommand(List.of(
-				new SetCommand("Front", 1, "PREMIUM", Pool.ONLINE, 2000, "EUR", 1, 1)));
 		LayoutCommand renumbered = new LayoutCommand(List.of(
-				new SetCommand("A", 7, "PREMIUM", Pool.ONLINE, 2000, "EUR", 1, 1)));
+				new SetCommand(7, "PREMIUM", Pool.ONLINE, 2000, "EUR", 1, 1)));
 
-		assertSame(ReplaceLayoutOutcome.Replaced.REPLACED, mapEditor.replaceLayout(OWNER, VENUE, 0L, renamed),
-				"a row label changes in place on a booked set, as a rename does");
 		assertEquals(new ReplaceLayoutOutcome.SetsInUse(List.of(new BlockedSet(
 				new PlacedSet(SET, A1), new SetLock(SET, BookedSpan.oneDay(TODAY_IN_TIRANE.plusDays(3)), null)))),
 				mapEditor.replaceLayout(OWNER, VENUE, 0L, renumbered),
@@ -634,19 +629,19 @@ class VenueAdminServiceTest {
 	}
 
 	@Test
-	void parksTheLabelsOfSwappedRowsBeforeUpdatingThem() {
+	void parksTheSlotsOfSwappedPositionsBeforeUpdatingThem() {
 		venues.venues.add(VENUE.value());
-		SetId b1 = new SetId(SET.value() + 1);
+		SetId a2 = new SetId(SET.value() + 1);
 		venues.place(SET, A1);
-		venues.place(b1, new SetPlacement("B", 1, 1, 2));
+		venues.place(a2, new SetPlacement("A", 2, 2, 1));
 		LayoutCommand swapped = new LayoutCommand(List.of(
-				new SetCommand("B", 1, "PREMIUM", Pool.ONLINE, 2000, "EUR", 1, 1),
-				new SetCommand("A", 1, "STANDARD", Pool.ONLINE, 2000, "EUR", 1, 2)));
+				new SetCommand(2, "PREMIUM", Pool.ONLINE, 2000, "EUR", 1, 1),
+				new SetCommand(1, "STANDARD", Pool.ONLINE, 2000, "EUR", 2, 1)));
 
 		ReplaceLayoutOutcome outcome = mapEditor.replaceLayout(OWNER, VENUE, 0L, swapped);
 
 		assertSame(ReplaceLayoutOutcome.Replaced.REPLACED, outcome);
-		assertEquals(List.of(SET, b1), venues.parkedSetIds, "both sets move into each other's slot");
+		assertEquals(List.of(SET, a2), venues.parkedSetIds, "both sets move into each other's slot");
 		assertEquals(List.of("lockSetsOfVenue", "nearestClaimsFrom", "parkRowLabels", "updateSet", "updateSet", "insertSets"),
 				callLog, "the parking precedes every in-place update");
 	}
@@ -727,8 +722,8 @@ class VenueAdminServiceTest {
 	void rejectsDuplicateCellWithinTheBatch() {
 		venues.venues.add(VENUE.value());
 		LayoutCommand clashing = new LayoutCommand(List.of(
-				new SetCommand("A", 1, "PREMIUM", Pool.ONLINE, 2000, "EUR", 1, 1),
-				new SetCommand("B", 2, "STANDARD", Pool.ONLINE, 2000, "EUR", 1, 1))); // same grid cell
+				new SetCommand(1, "PREMIUM", Pool.ONLINE, 2000, "EUR", 1, 1),
+				new SetCommand(2, "STANDARD", Pool.ONLINE, 2000, "EUR", 1, 1))); // same grid cell
 
 		ReplaceLayoutOutcome outcome = mapEditor.replaceLayout(OWNER, VENUE, 0L, clashing);
 
@@ -737,31 +732,16 @@ class VenueAdminServiceTest {
 	}
 
 	@Test
-	void rejectsALayoutSharingOneLabelAcrossTwoGridRows() {
+	void rejectsTwoCellsOnOneGridRowSharingAPositionNumber() {
 		venues.venues.add(VENUE.value());
-		// The #728 reproducer: gap-cell numbering keeps every (rowLabel, positionNo) pair unique.
-		LayoutCommand split = new LayoutCommand(List.of(
-				new SetCommand("A", 2, "PREMIUM", Pool.ONLINE, 2000, "EUR", 2, 1),
-				new SetCommand("A", 3, "PREMIUM", Pool.ONLINE, 2000, "EUR", 3, 1),
-				new SetCommand("A", 1, "STANDARD", Pool.ONLINE, 2000, "EUR", 1, 2)));
+		LayoutCommand doubled = new LayoutCommand(List.of(
+				new SetCommand(1, "PREMIUM", Pool.ONLINE, 2000, "EUR", 1, 1),
+				new SetCommand(1, "STANDARD", Pool.ONLINE, 2000, "EUR", 2, 1)));
 
-		ReplaceLayoutOutcome outcome = mapEditor.replaceLayout(OWNER, VENUE, 0L, split);
-
-		assertEquals(LayoutRejection.ROW_NAME_TAKEN, ((ReplaceLayoutOutcome.Rejected) outcome).reason());
-		assertEquals(0, venues.insertedInLayout);
-		assertEquals(0, venues.incrementedSetVersions);
-	}
-
-	@Test
-	void duplicatePositionOutranksTheSplitLabel() {
-		venues.venues.add(VENUE.value());
-		LayoutCommand doubleFault = new LayoutCommand(List.of(
-				new SetCommand("A", 1, "PREMIUM", Pool.ONLINE, 2000, "EUR", 1, 1),
-				new SetCommand("A", 1, "STANDARD", Pool.ONLINE, 2000, "EUR", 1, 2)));
-
-		ReplaceLayoutOutcome outcome = mapEditor.replaceLayout(OWNER, VENUE, 0L, doubleFault);
+		ReplaceLayoutOutcome outcome = mapEditor.replaceLayout(OWNER, VENUE, 0L, doubled);
 
 		assertEquals(LayoutRejection.DUPLICATE_POSITION, ((ReplaceLayoutOutcome.Rejected) outcome).reason());
+		assertEquals(0, venues.insertedInLayout);
 	}
 
 	@Test
@@ -769,8 +749,8 @@ class VenueAdminServiceTest {
 		venues.venues.add(VENUE.value());
 		// Gap-cell numbering on a single grid row — same label repeated is the normal shape, never a split.
 		LayoutCommand gapped = new LayoutCommand(List.of(
-				new SetCommand("A", 2, "PREMIUM", Pool.ONLINE, 2000, "EUR", 2, 1),
-				new SetCommand("A", 3, "PREMIUM", Pool.ONLINE, 2000, "EUR", 3, 1)));
+				new SetCommand(2, "PREMIUM", Pool.ONLINE, 2000, "EUR", 2, 1),
+				new SetCommand(3, "PREMIUM", Pool.ONLINE, 2000, "EUR", 3, 1)));
 
 		ReplaceLayoutOutcome outcome = mapEditor.replaceLayout(OWNER, VENUE, 0L, gapped);
 
@@ -953,139 +933,6 @@ class VenueAdminServiceTest {
 		assertEquals(0, venues.incrementedSetVersions); // fail closed before the version read/write too
 	}
 
-	// ---- Per-row rename ----
-
-	private static final RowNameCommand RENAME_CMD = new RowNameCommand("B", "Back row");
-
-	@Test
-	void renamesRowForOwnedVenue() {
-		venues.venues.add(VENUE.value());
-		venues.rowLabels.add("B");
-
-		ChangeOutcome outcome = mapEditor.renameRow(OWNER, VENUE, 0L, RENAME_CMD);
-
-		assertSame(ChangeOutcome.Applied.APPLIED, outcome);
-		assertEquals(1, venues.renamedRows);
-		assertEquals(1, venues.incrementedSetVersions); // token advanced once, on success
-	}
-
-	@Test
-	void renameNeverProbesClaims() {
-		// Unlike editSet/removeSet/replaceLayout, a rename asks neither availability nor booking.
-		venues.venues.add(VENUE.value());
-		venues.rowLabels.add("B");
-		availability.holdOn.put(SET, TODAY_IN_TIRANE);
-		bookings.setHasLiveBookings = true;
-
-		assertSame(ChangeOutcome.Applied.APPLIED, mapEditor.renameRow(OWNER, VENUE, 0L, RENAME_CMD));
-		assertFalse(callLog.contains("anyClaimsFrom"));
-	}
-
-	@Test
-	void rejectsARenameOntoAnotherRowsLabel() {
-		// A shared label merges two rows wherever sets are grouped by it; the UNIQUE index misses that.
-		venues.venues.add(VENUE.value());
-		venues.rowLabels.addAll(Set.of("A", "B"));
-
-		ChangeOutcome outcome = mapEditor.renameRow(OWNER, VENUE, 0L, new RowNameCommand("B", "A"));
-
-		assertEquals(SetRejection.ROW_NAME_TAKEN, ((ChangeOutcome.Rejected) outcome).reason());
-		assertEquals(0, venues.renamedRows);
-		assertEquals(0, venues.incrementedSetVersions);
-	}
-
-	@Test
-	void allowsARenameToTheSameLabel() {
-		// A no-op, not a self-collision — and it must not spend the token other tabs are holding.
-		venues.venues.add(VENUE.value());
-		venues.rowLabels.add("B");
-
-		ChangeOutcome outcome = mapEditor.renameRow(OWNER, VENUE, 0L, new RowNameCommand("B", "B"));
-
-		assertSame(ChangeOutcome.Applied.APPLIED, outcome);
-		assertEquals(0, venues.renamedRows);
-		assertEquals(0, venues.incrementedSetVersions);
-	}
-
-	@Test
-	void renameOnUnknownVenueIsRejectedBeforeAnyWrite() {
-		ChangeOutcome outcome = mapEditor.renameRow(OWNER, VENUE, 0L, RENAME_CMD);
-
-		assertEquals(SetRejection.NO_SUCH_VENUE, ((ChangeOutcome.Rejected) outcome).reason());
-		assertEquals(0, venues.renamedRows);
-	}
-
-	@Test
-	void renameOfARowWithNoSetsIsNotFound() {
-		venues.venues.add(VENUE.value()); // no row carries "B"
-
-		ChangeOutcome outcome = mapEditor.renameRow(OWNER, VENUE, 0L, RENAME_CMD);
-
-		assertEquals(SetRejection.NO_SUCH_ROW, ((ChangeOutcome.Rejected) outcome).reason());
-		assertEquals(0, venues.renamedRows); // refused before the UPDATE, not by its rows-affected
-		// A rejected rename leaves the token alone, so the acting tab's next write off it still works.
-		assertEquals(0, venues.incrementedSetVersions);
-	}
-
-	@Test
-	void renameLosesTheRowToAConcurrentRemoveAndIsNotFound() {
-		// A concurrent removeSet can empty the row after the label read — rows-affected is a real guard.
-		venues.venues.add(VENUE.value());
-		venues.rowLabels.add("B");
-		venues.forceRenameRows = 0;
-
-		ChangeOutcome outcome = mapEditor.renameRow(OWNER, VENUE, 0L, RENAME_CMD);
-
-		assertEquals(SetRejection.NO_SUCH_ROW, ((ChangeOutcome.Rejected) outcome).reason());
-		assertEquals(0, venues.incrementedSetVersions);
-	}
-
-	@Test
-	void renameOfAMissingRowOntoATakenLabelIsNotFoundNotTaken() {
-		// Both refusals apply; the honest one names what is actually wrong — the row is gone.
-		venues.venues.add(VENUE.value());
-		venues.rowLabels.add("A");
-
-		ChangeOutcome outcome = mapEditor.renameRow(OWNER, VENUE, 0L, new RowNameCommand("B", "A"));
-
-		assertEquals(SetRejection.NO_SUCH_ROW, ((ChangeOutcome.Rejected) outcome).reason());
-	}
-
-	@Test
-	void renameStripsSurroundingWhitespaceSoItCannotDodgeTheDuplicateRefusal() {
-		venues.venues.add(VENUE.value());
-		venues.rowLabels.addAll(Set.of("A", "B"));
-
-		ChangeOutcome outcome = mapEditor.renameRow(OWNER, VENUE, 0L, new RowNameCommand("B", " A "));
-
-		assertEquals(SetRejection.ROW_NAME_TAKEN, ((ChangeOutcome.Rejected) outcome).reason());
-		assertEquals(0, venues.renamedRows);
-	}
-
-	@Test
-	void renameWithStaleSetVersionIsStaleWrite() {
-		venues.venues.add(VENUE.value());
-		venues.rowLabels.add("B");
-		venues.setVersionOnLock = 1; // the row moved to 1; the tab loaded 0
-
-		ChangeOutcome outcome = mapEditor.renameRow(OWNER, VENUE, 0L, RENAME_CMD);
-
-		assertEquals(SetRejection.STALE_WRITE, ((ChangeOutcome.Rejected) outcome).reason());
-		assertEquals(0, venues.renamedRows);
-		assertEquals(0, venues.incrementedSetVersions);
-	}
-
-	@Test
-	void renameByANonOwnerIsDeniedBeforeAnyWrite() {
-		venues.venues.add(VENUE.value());
-		venues.rowLabels.add("B");
-
-		// Invariant #13: the ownership guard is the first act — a stranger never reaches the UPDATE.
-		assertThrows(NotVenueOwnerException.class,
-				() -> mapEditor.renameRow(STRANGER, VENUE, 0L, RENAME_CMD));
-		assertEquals(0, venues.renamedRows);
-		assertEquals(0, venues.incrementedSetVersions);
-	}
 
 	// ---- Owned-venues read ----
 
@@ -1288,7 +1135,7 @@ class VenueAdminServiceTest {
 
 		int lockedSets;
 		// The placement the locked row reports; the per-set guard compares the command against it.
-		SetPlacement storedPlacement = new SetPlacement("Row A", 1, 2, 1);
+		SetPlacement storedPlacement = new SetPlacement("A", 1, 2, 1);
 
 		@Override
 		public Optional<SetPlacement> lockSet(VenueId venueId, SetId setId) {
@@ -1455,22 +1302,6 @@ class VenueAdminServiceTest {
 			return forceRepriceRows != null ? forceRepriceRows : 1;
 		}
 
-		int renamedRows;
-		// null ⇒ a rename finds its sets (1 row updated); set to 0 to model a row emptied mid-write.
-		Integer forceRenameRows;
-		// The venue's labels, so the fake answers both questions a rename asks off one piece of state.
-		final Set<String> rowLabels = new HashSet<>();
-
-		@Override
-		public Set<String> distinctRowLabels(VenueId venueId) {
-			return Set.copyOf(rowLabels);
-		}
-
-		@Override
-		public int renameRow(VenueId venueId, RowNameCommand command) {
-			renamedRows++;
-			return forceRenameRows != null ? forceRenameRows : 1;
-		}
 	}
 
 	/**

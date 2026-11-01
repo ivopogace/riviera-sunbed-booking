@@ -2,6 +2,11 @@ import { expect, test, type Page, type Request } from '@playwright/test';
 
 import { expectNoSeriousAxeViolations } from './support/axe';
 import { settle } from './support/booking-dialog';
+import type {
+  MockBookingMode,
+  MockVenueMapView,
+  MockVenueProfileView,
+} from './support/venue-views';
 
 /**
  * Real-render CI-safe e2e for the Venue & commodities tab. Drives sign-in → open the tab →
@@ -14,10 +19,9 @@ import { settle } from './support/booking-dialog';
 
 const PRINCIPAL = { username: 'operator', principalType: 'OPERATOR' };
 
-const INITIAL_PROFILE = {
+const INITIAL_PROFILE: MockVenueProfileView = {
   name: 'Miramar Beach Club',
   beach: 'KSAMIL',
-  region: 'SARANDE',
   description: 'Loungers on the shore.',
   bookingMode: 'INSTANT',
   bookingCutoff: '18:00',
@@ -35,7 +39,7 @@ const INITIAL_PROFILE = {
   },
 };
 
-function venueMap(name: string, bookingMode: string) {
+function venueMap(name: string, bookingMode: MockBookingMode): MockVenueMapView {
   return {
     id: 1,
     name,
@@ -138,6 +142,9 @@ async function mockVenue(
     route.fulfill({ json: [] }),
   );
   await page.route(/\/api\/venues\/1\/bookings(\?.*)?$/, (route) => route.fulfill({ json: [] }));
+  await page.route(/\/api\/venues\/1\/bookings\/count(\?.*)?$/, (route) =>
+    route.fulfill({ json: { date: '2026-07-08', count: 0 } }),
+  );
   await page.route(/\/api\/venues\/1\/takings(\?.*)?$/, (route) =>
     route.fulfill({
       json: {

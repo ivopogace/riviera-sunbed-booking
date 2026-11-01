@@ -80,9 +80,9 @@ export const appConfig: ApplicationConfig = {
     { provide: StripePaymentGateway, useFactory: stripeGatewayFactory },
     { provide: QrScanner, useFactory: qrScannerFactory },
     { provide: MapEngine, useFactory: mapEngineFactory },
-    // No fake to swap in: the e2e drives the real prompt through Playwright's permissions.
+    // No e2e-flag fake: the e2e drives the real prompt through Playwright's permissions.
     { provide: GeolocationGateway, useClass: BrowserGeolocationGateway },
-    // No fake to swap in: the e2e drives the real page loads (SSO start via page.route, chunk reload).
+    // No e2e-flag fake: the e2e drives the real page loads (SSO start via page.route, chunk reload).
     { provide: PageNavigation, useFactory: () => new WindowPageNavigation(window) },
   ],
 };

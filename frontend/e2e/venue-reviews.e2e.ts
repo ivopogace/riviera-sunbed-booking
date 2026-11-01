@@ -2,6 +2,7 @@ import { expect, test } from '@playwright/test';
 
 import { expectNoSeriousAxeViolations } from './support/axe';
 import { settle } from './support/booking-dialog';
+import type { MockVenueMapView, MockVenueSummary } from './support/venue-views';
 
 /**
  * Real-render a11y + behaviour audit of reading a venue's reviews: the section below the beach map
@@ -14,7 +15,7 @@ import { settle } from './support/booking-dialog';
  */
 
 /** A venue whose aggregate already moved — 4.3 over 12 reviews — so the header has a score. */
-const RATED_VENUE = {
+const RATED_VENUE: MockVenueMapView & MockVenueSummary = {
   id: 1,
   name: 'Miramar Beach Club',
   beach: 'KSAMIL',
@@ -24,6 +25,8 @@ const RATED_VENUE = {
   reviewsCount: 12,
   bookingMode: 'INSTANT',
   fromPrice: { minorUnits: 2500, currency: 'EUR' },
+  availability: { free: 1, total: 1 },
+  sellsOnline: true,
   sets: [
     {
       id: 2,

@@ -74,6 +74,18 @@ describe('ConsoleStatsStrip (#171, O2)', () => {
     );
   }
 
+  function bookedOnline(count: number): { date: string; count: number } {
+    return { date: todayBookingDate(new Date()), count };
+  }
+
+  /** The flush for one of the strip's per-venue reads: the count, takings, or no held states. */
+  function stripRead(path: string, booked: number): object {
+    if (path === 'bookings/count') {
+      return bookedOnline(booked);
+    }
+    return path === 'takings' ? TAKINGS : [];
+  }
+
   async function render(
     venue: VenueMapView | undefined,
     booked: number | 'fail',
@@ -85,12 +97,12 @@ describe('ConsoleStatsStrip (#171, O2)', () => {
     fixture.componentRef.setInput('venue', venue);
     await fixture.whenStable();
     const bookingsReq = httpMock.expectOne(
-      (r) => r.url === `${BASE}/api/venues/${VENUE}/bookings` && r.method === 'GET',
+      (r) => r.url === `${BASE}/api/venues/${VENUE}/bookings/count` && r.method === 'GET',
     );
     if (booked === 'fail') {
       bookingsReq.flush({}, { status: 500, statusText: 'Server Error' });
     } else {
-      bookingsReq.flush(Array.from({ length: booked }, (_, i) => ({ setId: i + 1, code: 'X' })));
+      bookingsReq.flush(bookedOnline(booked));
     }
     const takingsReq = httpMock.expectOne(
       (r) => r.url === `${BASE}/api/venues/${VENUE}/takings` && r.method === 'GET',
@@ -194,6 +206,7 @@ describe('ConsoleStatsStrip (#171, O2)', () => {
     TestBed.inject(AvailabilityChanges).announce({
       venueId: VENUE,
       date: todayBookingDate(new Date()),
+      cause: 'WALK_IN',
     });
     await fixture.whenStable();
     // The old count stands until the fresh read lands — no dash flicker on every tap.
@@ -216,10 +229,12 @@ describe('ConsoleStatsStrip (#171, O2)', () => {
     TestBed.inject(AvailabilityChanges).announce({
       venueId: VENUE,
       date: addDays(todayBookingDate(new Date()), 1),
+      cause: 'WALK_IN',
     });
     TestBed.inject(AvailabilityChanges).announce({
       venueId: 2,
       date: todayBookingDate(new Date()),
+      cause: 'WALK_IN',
     });
     await fixture.whenStable();
 
@@ -233,6 +248,7 @@ describe('ConsoleStatsStrip (#171, O2)', () => {
     TestBed.inject(AvailabilityChanges).announce({
       venueId: VENUE,
       date: todayBookingDate(new Date()),
+      cause: 'WALK_IN',
     });
     await fixture.whenStable();
     httpMock
@@ -248,8 +264,8 @@ describe('ConsoleStatsStrip (#171, O2)', () => {
     const today = todayBookingDate(new Date());
 
     // Two quick taps: two announces, two reads in flight; the first answers last.
-    TestBed.inject(AvailabilityChanges).announce({ venueId: VENUE, date: today });
-    TestBed.inject(AvailabilityChanges).announce({ venueId: VENUE, date: today });
+    TestBed.inject(AvailabilityChanges).announce({ venueId: VENUE, date: today, cause: 'WALK_IN' });
+    TestBed.inject(AvailabilityChanges).announce({ venueId: VENUE, date: today, cause: 'WALK_IN' });
     await fixture.whenStable();
     const [first, second] = httpMock.match((r) => r.url === HELD_URL && r.method === 'GET');
     second.flush([
@@ -268,8 +284,8 @@ describe('ConsoleStatsStrip (#171, O2)', () => {
     await render(venueMap([set(1, 'FREE')]), 0, TAKINGS, []);
     const today = todayBookingDate(new Date());
 
-    TestBed.inject(AvailabilityChanges).announce({ venueId: VENUE, date: today });
-    TestBed.inject(AvailabilityChanges).announce({ venueId: VENUE, date: today });
+    TestBed.inject(AvailabilityChanges).announce({ venueId: VENUE, date: today, cause: 'WALK_IN' });
+    TestBed.inject(AvailabilityChanges).announce({ venueId: VENUE, date: today, cause: 'WALK_IN' });
     await fixture.whenStable();
     const [first, second] = httpMock.match((r) => r.url === HELD_URL && r.method === 'GET');
     second.flush([{ setId: 1, state: 'STAFF_MARKED' }]);
@@ -284,6 +300,7 @@ describe('ConsoleStatsStrip (#171, O2)', () => {
     TestBed.inject(AvailabilityChanges).announce({
       venueId: VENUE,
       date: todayBookingDate(new Date()),
+      cause: 'WALK_IN',
     });
     await fixture.whenStable();
     const stale = httpMock.expectOne((r) => r.url === HELD_URL && r.method === 'GET');
@@ -295,13 +312,98 @@ describe('ConsoleStatsStrip (#171, O2)', () => {
     await fixture.whenStable();
     expect(text('oc-stat-walkins')).toBe('—'); // venue 2's read is still out
 
-    for (const path of ['bookings', 'takings', 'availability']) {
+    for (const path of ['bookings/count', 'takings', 'availability']) {
       httpMock
         .expectOne((r) => r.url === `${BASE}/api/venues/2/${path}` && r.method === 'GET')
-        .flush(path === 'takings' ? TAKINGS : []);
+        .flush(stripRead(path, 0));
     }
     await fixture.whenStable();
     expect(text('oc-stat-walkins')).toBe('0');
+  });
+
+  const BOOKINGS_URL = `${BASE}/api/venues/${VENUE}/bookings/count`;
+
+  function refund(venueId = VENUE, date = todayBookingDate(new Date())): void {
+    TestBed.inject(AvailabilityChanges).announce({ venueId, date, cause: 'DAY_REFUND' });
+  }
+
+  it('re-reads today’s bookings on a day refund for its venue today — Booked online only (#1551)', async () => {
+    await render(venueMap([set(1, 'TAKEN'), set(2, 'TAKEN')]), 2, TAKINGS, [
+      { setId: 2, state: 'STAFF_MARKED' },
+    ]);
+
+    refund();
+    await fixture.whenStable();
+    // The old count stands until the fresh read lands — no dash flicker.
+    expect(text('oc-stat-booked')).toBe('2');
+    const req = httpMock.expectOne((r) => r.url === BOOKINGS_URL && r.method === 'GET');
+    expect(req.request.params.get('date')).toBe(todayBookingDate(new Date()));
+    // The server's count is the rule (a released day excluded): the strip shows it verbatim.
+    req.flush(bookedOnline(1));
+    await fixture.whenStable();
+
+    expect(text('oc-stat-booked')).toBe('1');
+    expect(text('oc-stat-walkins')).toBe('1'); // not re-read: httpMock.verify() fails on a stray GET
+  });
+
+  it('ignores a day refund for another day or another venue (#1551)', async () => {
+    await render(venueMap([set(1, 'TAKEN')]), 1, TAKINGS);
+
+    refund(VENUE, addDays(todayBookingDate(new Date()), -1));
+    refund(2);
+    await fixture.whenStable();
+
+    httpMock.expectNone((r) => r.url === BOOKINGS_URL);
+    expect(text('oc-stat-booked')).toBe('1');
+  });
+
+  it('degrades Booked online to a dash when the refund refresh fails — never the pre-refund count (#1551)', async () => {
+    await render(venueMap([set(1, 'TAKEN')]), 1, TAKINGS);
+
+    refund();
+    await fixture.whenStable();
+    httpMock
+      .expectOne((r) => r.url === BOOKINGS_URL && r.method === 'GET')
+      .flush({}, { status: 500, statusText: 'Server Error' });
+    await fixture.whenStable();
+
+    expect(text('oc-stat-booked')).toBe('—');
+  });
+
+  it('latest bookings read wins when two refund refreshes overlap (#1551)', async () => {
+    await render(venueMap([set(1, 'TAKEN'), set(2, 'TAKEN')]), 2, TAKINGS);
+
+    refund();
+    refund();
+    await fixture.whenStable();
+    const [first, second] = httpMock.match((r) => r.url === BOOKINGS_URL && r.method === 'GET');
+    second.flush(bookedOnline(0));
+    first.flush(bookedOnline(1)); // the pre-second-refund truth, late
+    await fixture.whenStable();
+
+    expect(text('oc-stat-booked')).toBe('0');
+  });
+
+  it('drops a refund refresh that lands after a venue switch (#1551, #180)', async () => {
+    await render(venueMap([set(1, 'TAKEN')]), 1, TAKINGS);
+    refund();
+    await fixture.whenStable();
+    const stale = httpMock.expectOne((r) => r.url === BOOKINGS_URL && r.method === 'GET');
+
+    fixture.componentRef.setInput('venueId', 2);
+    fixture.componentRef.setInput('venue', undefined);
+    await fixture.whenStable();
+    stale.flush(bookedOnline(0)); // venue 1's late answer
+    await fixture.whenStable();
+    expect(text('oc-stat-booked')).toBe('—'); // venue 2's read is still out
+
+    for (const path of ['bookings/count', 'takings', 'availability']) {
+      httpMock
+        .expectOne((r) => r.url === `${BASE}/api/venues/2/${path}` && r.method === 'GET')
+        .flush(stripRead(path, 3));
+    }
+    await fixture.whenStable();
+    expect(text('oc-stat-booked')).toBe('3');
   });
 
   it('resets the tiles when the venueId input changes, then loads the new venue (#180)', async () => {
@@ -316,8 +418,8 @@ describe('ConsoleStatsStrip (#171, O2)', () => {
     expect(text('oc-stat-takings')).toBe('—');
 
     httpMock
-      .expectOne((r) => r.url === `${BASE}/api/venues/2/bookings` && r.method === 'GET')
-      .flush([{ setId: 1, code: 'X' }]);
+      .expectOne((r) => r.url === `${BASE}/api/venues/2/bookings/count` && r.method === 'GET')
+      .flush(bookedOnline(1));
     httpMock
       .expectOne((r) => r.url === `${BASE}/api/venues/2/takings` && r.method === 'GET')
       .flush({ ...TAKINGS, gross: { minorUnits: 5000, currency: 'EUR' } });
@@ -345,12 +447,12 @@ describe('ConsoleStatsStrip (#171, O2)', () => {
       fixture.componentRef.setInput('venue', undefined);
       await fixture.whenStable();
 
-      for (const path of ['bookings', 'takings', 'availability']) {
+      for (const path of ['bookings/count', 'takings', 'availability']) {
         const req = httpMock.expectOne(
           (r) => r.url === `${BASE}/api/venues/2/${path}` && r.method === 'GET',
         );
         expect(req.request.params.get('date')).toBe(today);
-        req.flush(path === 'takings' ? TAKINGS : []);
+        req.flush(stripRead(path, 0));
       }
       await fixture.whenStable();
     } finally {

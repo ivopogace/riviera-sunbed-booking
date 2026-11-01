@@ -7,6 +7,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
+import org.springframework.boot.context.properties.bind.BindException;
 import org.springframework.boot.test.context.ConfigDataApplicationContextInitializer;
 import org.springframework.boot.test.context.runner.ApplicationContextRunner;
 import org.springframework.context.annotation.Configuration;
@@ -84,8 +85,9 @@ class RecoveryPropertiesBindingTest {
 	}
 
 	@ParameterizedTest
-	@ValueSource(strings = { "/app", "example.com", "https:///app", "http://bad host" })
-	void aNonAbsoluteLinkBaseUrlFailsTheBindNamingTheKeyAndTheVariable(String value) {
+	@ValueSource(strings = { "/app", "example.com", "https:///app", "http://bad host", "ftp://app.example",
+			"https://app.example/?a=b", "https://app.example#top", "https://app.example/my%zzapp" })
+	void aNonOriginLinkBaseUrlFailsTheBindNamingTheKeyAndTheVariable(String value) {
 		recoveryRunner().withSystemProperties("RIVIERA_RECOVERY_LINK_BASE_URL=" + value)
 				.run(context -> assertThat(context).hasFailed().getFailure().rootCause()
 						.isInstanceOf(IllegalArgumentException.class)
@@ -100,6 +102,32 @@ class RecoveryPropertiesBindingTest {
 						Map.of("RIVIERA_RECOVERY_LINK_BASE_URL", " https://app.example "))))
 				.run(context -> assertThat(context.getBean(RecoveryProperties.class).linkBaseUrl())
 						.isEqualTo("https://app.example"));
+	}
+
+	@Test
+	void aLinkBaseUrlCarryingUserInfoFailsTheBindWithoutEchoingIt() {
+		recoveryRunner().withSystemProperties("RIVIERA_RECOVERY_LINK_BASE_URL=https://admin:hunter2@app.example")
+				.run(context -> {
+					assertThat(context).hasFailed().getFailure().rootCause()
+							.isInstanceOf(IllegalArgumentException.class)
+							.hasMessageContaining("riviera.recovery.link-base-url");
+					BindException bind = null;
+					for (Throwable cause = context.getStartupFailure(); cause != null; cause = cause.getCause()) {
+						assertThat(String.valueOf(cause.getMessage())).doesNotContain("hunter2");
+						bind = bind == null && cause instanceof BindException found ? found : bind;
+					}
+					assertThat(bind).isNotNull();
+					assertThat(bind.getProperty())
+							.as("a null bound property is what keeps a 'Value:' line out of Boot's failure analysis")
+							.isNull();
+				});
+	}
+
+	@Test
+	void aTrailingSlashedUnderscoredLinkBaseUrlBindsTrimmed() {
+		recoveryRunner().withSystemProperties("RIVIERA_RECOVERY_LINK_BASE_URL=http://riviera_backend:8080/")
+				.run(context -> assertThat(context.getBean(RecoveryProperties.class).linkBaseUrl())
+						.isEqualTo("http://riviera_backend:8080"));
 	}
 
 	@Test

@@ -1,10 +1,11 @@
 import { Component, computed, input } from '@angular/core';
 import { RouterLink } from '@angular/router';
+import { PrimaryCta } from '../shared/primary-cta';
 
 /** The two skins the link's surfaces need: the pay page's block CTA, confirmation's quiet link. */
 const SKINS = {
   primary:
-    'mt-4 block w-full rounded-2xl border border-riv-cta-border bg-(image:--riv-cta-grad) p-[15px] text-center text-[15px] font-bold text-white shadow-[0_12px_28px_rgba(11,120,150,0.5),inset_0_1px_0_rgba(255,255,255,0.5)] [transition:filter_0.15s_ease] hover:brightness-[1.06] focus-visible:outline-[3px] focus-visible:outline-offset-2 focus-visible:outline-riv-accent-ink motion-reduce:transition-none',
+    'mt-4 block w-full rounded-2xl p-[15px] text-center text-[15px] font-bold shadow-[0_12px_28px_rgba(11,120,150,0.5)] [transition:filter_0.15s_ease] focus-visible:outline-[3px] focus-visible:outline-offset-2 focus-visible:outline-riv-accent-ink motion-reduce:transition-none',
   link: 'mt-3 inline-block text-[14.5px] font-semibold text-riv-accent-ink focus-visible:outline-[3px] focus-visible:outline-offset-2 focus-visible:outline-riv-accent-ink',
 } as const;
 
@@ -21,11 +22,21 @@ export type ManageBookingLinkVariant = keyof typeof SKINS;
  */
 @Component({
   selector: 'app-manage-booking-link',
-  imports: [RouterLink],
+  imports: [RouterLink, PrimaryCta],
   host: { class: 'contents' },
-  template: `<a [routerLink]="['/booking', code()]" [class]="skin()" data-testid="manage-link"
-    >View or manage this booking</a
-  >`,
+  template: `@if (variant() === 'primary') {
+      <a
+        appPrimaryCta
+        [routerLink]="['/booking', code()]"
+        [class]="skin()"
+        data-testid="manage-link"
+        >View or manage this booking</a
+      >
+    } @else {
+      <a [routerLink]="['/booking', code()]" [class]="skin()" data-testid="manage-link"
+        >View or manage this booking</a
+      >
+    }`,
 })
 export class ManageBookingLink {
   readonly code = input.required<string>();
