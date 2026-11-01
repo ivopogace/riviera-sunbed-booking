@@ -6,12 +6,15 @@ import ai.riviera.platform.TestcontainersConfiguration;
 import java.util.Arrays;
 import java.util.Optional;
 
+import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.slf4j.MDC;
+import org.springframework.boot.logging.LoggingSystem;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.system.CapturedOutput;
 import org.springframework.boot.test.system.OutputCaptureExtension;
@@ -35,6 +38,13 @@ class StructuredLoggingIT {
 	private static final Logger log = LoggerFactory.getLogger(StructuredLoggingIT.class);
 	private static final String PROBE_MESSAGE = "structured-logging-probe-line";
 	private static final String PROBE_ID = "corr-probe-1234";
+
+	// Logging is JVM-global: reset it so an earlier cached context cannot pin the plain console format.
+	@BeforeAll
+	@AfterAll
+	static void resetLoggingSystem() {
+		LoggingSystem.get(StructuredLoggingIT.class.getClassLoader()).cleanUp();
+	}
 
 	@AfterEach
 	void clearMdc() {
