@@ -21,6 +21,7 @@ import { PanelGlass } from '../shared/panel-glass';
 import { BusyAction } from '../shared/busy-action';
 import { focusMover } from '../shared/focus-after-render';
 import { WithheldEmailNotice } from './withheld-email-notice';
+import { BookingQr } from './booking-qr';
 import { BookingService } from './booking.service';
 import { CancellationTermsNote } from './cancellation-terms-note';
 import { StripeCheckout, StripePaymentGateway } from './stripe-payment.gateway';
@@ -81,6 +82,7 @@ const CLS = {
     CardGlass,
     PanelGlass,
     WithheldEmailNotice,
+    BookingQr,
     BusyAction,
     TouchTarget,
     CancellationTermsNote,
@@ -169,7 +171,7 @@ const CLS = {
           </div>
         </dl>
 
-        <p
+        <div
           class="my-[18px] rounded-[18px] border border-dashed border-riv-field-border bg-riv-inset-fill p-[15px]"
           data-testid="booking-code"
         >
@@ -180,7 +182,13 @@ const CLS = {
             class="mt-[5px] block text-[26px] font-bold tracking-[0.12em] text-riv-accent-ink"
             >{{ code }}</strong
           >
-        </p>
+          <!-- CONFIRMED only, as on the booking page: awaiting has nothing staff can check in yet. -->
+          @if (state() === 'confirmed') {
+            <div class="mt-3 flex justify-center">
+              <app-booking-qr [code]="code" />
+            </div>
+          }
+        </div>
 
         @if (emailWithheld()) {
           <app-withheld-email-notice />
