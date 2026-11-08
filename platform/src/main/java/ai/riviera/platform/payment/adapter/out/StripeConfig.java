@@ -1,5 +1,7 @@
 package ai.riviera.platform.payment.adapter.out;
 
+import java.util.List;
+
 import com.stripe.StripeClient;
 
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
@@ -20,14 +22,18 @@ import org.springframework.context.annotation.Profile;
 @EnableConfigurationProperties(StripeProperties.class)
 class StripeConfig {
 
+	private static final List<String> TEST_KEY_PREFIXES = List.of("sk_test_", "rk_test_");
+
 	/**
-	 * The Stripe API client, built from the secret key. Only active when collecting via Stripe, where a
-	 * blank key or webhook secret aborts the boot instead of failing the first PaymentIntent or webhook.
+	 * The Stripe API client, built from the secret key; only active when collecting via Stripe. A blank key or
+	 * webhook secret aborts the boot rather than failing the first PaymentIntent or webhook, and so does any
+	 * key but a test key: this profile is the sandbox demo ({@code RESPONSIBILITIES.md} §payment, ADR-0029).
 	 */
 	@Bean
 	@Profile("stripe")
 	StripeClient stripeClient(StripeProperties properties) {
 		requireConfigured("STRIPE_API_KEY", properties.apiKey());
+		requireTestKey(properties.apiKey());
 		requireConfigured("STRIPE_WEBHOOK_SECRET", properties.webhookSecret());
 		return clientBuilder(properties).build();
 	}
@@ -35,6 +41,13 @@ class StripeConfig {
 	private static void requireConfigured(String variable, String value) {
 		if (value.isBlank()) {
 			throw new IllegalStateException("The stripe profile requires " + variable + " to be set and non-blank");
+		}
+	}
+
+	private static void requireTestKey(String apiKey) {
+		if (TEST_KEY_PREFIXES.stream().noneMatch(apiKey::startsWith)) {
+			throw new IllegalStateException("The stripe profile is sandbox-only (ADR-0029): STRIPE_API_KEY must be "
+					+ "a test key starting with " + String.join(" or ", TEST_KEY_PREFIXES) + ", never a live key");
 		}
 	}
 

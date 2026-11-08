@@ -63,8 +63,8 @@ Pinned by `platform/src/test/java/ai/riviera/platform/ActuatorHardeningIT.java`.
 
 | Secret | Source | Where referenced | Default when unset |
 |---|---|---|---|
-| `STRIPE_API_KEY` | env (`stripe.api-key`) | Stripe collection (payment module) | empty → in-process stub gateway (no Stripe); required non-blank under `stripe` (boot aborts otherwise) |
-| `STRIPE_WEBHOOK_SECRET` | env (`stripe.webhook-secret`) | webhook signature verification (invariant #8) | empty; required non-blank under `stripe` (boot aborts otherwise) |
+| `STRIPE_API_KEY` | env (`stripe.api-key`) | Stripe collection (payment module) | empty → in-process stub gateway (no Stripe); under `stripe`, **test keys only** (`sk_test_…` / `rk_test_…`): the profile is the sandbox demo and must never collect real money (ADR-0029, decision 11), so a blank value or any other key aborts the boot |
+| `STRIPE_WEBHOOK_SECRET` | env (`stripe.webhook-secret`) | webhook signature verification (invariant #8) | empty; required non-blank under `stripe` (boot aborts otherwise); **test keys only**: the signing secret of the Stripe *test* endpoint (ADR-0029, decision 11), which the boot cannot tell from a live one, so check it when setting it |
 | `SPRING_DATASOURCE_URL` / `_USERNAME` / `_PASSWORD` | env | Spring datasource auto-config | supplied entirely by the deploy target (Neon over `sslmode=require`) |
 | `RIVIERA_OPERATOR_PASSWORD` | env (`riviera.operator.password`) | the seeded `operator` account's credential — **the platform admin** since #115 (was the owns-all bootstrap; unchanged variable, no new secret) | empty → admin login disabled, cannot approve registrations (logged at WARN, never the value); a value under 12 characters or over 72 bytes is refused the same way — held to the password floor (D-8) |
 | `RIVIERA_ALTCHA_HMAC_SECRET` | env (`riviera.altcha.hmac-secret`) | signs every proof-of-work challenge (ADR-0016); the verifier accepts only solutions to challenges signed with it | empty → a random boot-time key, valid for this process alone (logged at WARN): a restart invalidates challenges in flight and a second instance can verify none of them — set it on every instance before scaling out |
@@ -109,7 +109,9 @@ Notes:
   the production classpath or image. Not a shipped secret.
 - The frontend's `STRIPE_PUBLISHABLE_KEY` and `BACKEND_API_URL` are **not** secrets (a
   publishable `pk_` key and a public URL); they are GitHub *variables*, baked into the static
-  build (see cd-pipeline.md). The Stripe **secret** key never reaches the frontend.
+  build (see cd-pipeline.md). The Stripe **secret** key never reaches the frontend. The
+  publishable key is **test keys only** (`pk_test_…`, ADR-0029, decision 11): the checkout refuses
+  any other before Stripe.js loads.
 - Per-operator credentials (beyond the admin account) are stored **hashed** in the DB via the
   operator module's provisioning port (#74) or **self-registration → admin approval** (#115) —
   never in config. Since #115 no account owns all venues (owns-all retired, V29): each operator owns
