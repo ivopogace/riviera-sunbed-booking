@@ -458,12 +458,9 @@ export class BookingPay {
 
   /** The booking total, formatted once (the awaiting summary is fixed for the page's lifetime). */
   private readonly priceText = this.booking ? formatMoney(this.booking.amount) : '';
+  private readonly readyLabel = this.embedded ? `Pay ${this.priceText}` : 'Continue to payment';
   protected readonly payLabel = computed(() =>
-    this.state() === 'error'
-      ? 'Try again'
-      : this.embedded
-        ? `Pay ${this.priceText}`
-        : 'Continue to payment',
+    this.state() === 'error' ? 'Try again' : this.readyLabel,
   );
 
   /** Exposed for the template (currency formatting helper). */
