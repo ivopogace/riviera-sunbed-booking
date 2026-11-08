@@ -70,7 +70,7 @@ class StripeProfileWiringTest {
 	}
 
 	@ParameterizedTest
-	@ValueSource(strings = {"sk_live_abc123", "rk_live_abc123", "sk_org_abc123", " sk_live_abc123"})
+	@ValueSource(strings = {"sk_live_abc123", "rk_live_abc123", "sk_org_abc123"})
 	void stripeProfileRefusesAnyKeyButATestKeyWithoutPrintingIt(String key) {
 		runner.withPropertyValues("spring.profiles.active=stripe")
 				.withSystemProperties("STRIPE_API_KEY=" + key, "STRIPE_WEBHOOK_SECRET=whsec_test")
@@ -78,7 +78,7 @@ class StripeProfileWiringTest {
 					assertThat(context).getFailure().rootCause()
 							.hasMessageContaining("sandbox-only")
 							.hasMessageContaining("STRIPE_API_KEY");
-					assertThat(getStackTrace(context.getStartupFailure())).doesNotContain(key.strip());
+					assertThat(getStackTrace(context.getStartupFailure())).doesNotContain(key);
 				});
 	}
 

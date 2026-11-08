@@ -11,6 +11,7 @@ import org.springframework.mock.env.MockEnvironment;
 import com.stripe.StripeClient;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 /**
  * Verifies the Stripe credentials are sourced from configuration (AC-9) — never
@@ -48,6 +49,13 @@ class StripeConfigTest {
 
 		assertEquals("", props.apiKey(), "api key defaults empty (stub profile — Stripe dormant)");
 		assertEquals("", props.webhookSecret(), "webhook secret defaults empty when unset");
+	}
+
+	@Test
+	void aLeadingSpaceDoesNotCarryALiveKeyPastTheTestKeyCheck() {
+		StripeProperties properties = new StripeProperties(" sk_live_abc123", "whsec_abc", null, null);
+
+		assertThrows(IllegalStateException.class, () -> new StripeConfig().stripeClient(properties));
 	}
 
 	@Test
