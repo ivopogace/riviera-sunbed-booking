@@ -22,8 +22,8 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
  * ({@code payment_booking_uniq}) while one intent may collect for several, one refund per booking and
  * scope ({@code payment_refund_uniq}: the whole share once, each day once), a closed {@code status}
  * value set, non-negative money and a share never refunded past itself (invariant #5), and the
- * webhook-id dedup key ({@code stripe_webhook_event.event_id} PK — the idempotency guard, invariant
- * #8). Real Flyway on Testcontainers Postgres; skipped (not failed) where Docker is absent.
+ * webhook dedup key ({@code payment_webhook_event (provider, reference)} PK — the idempotency guard,
+ * invariant #8). Real Flyway on Testcontainers Postgres; skipped (not failed) where Docker is absent.
  */
 @EnabledIfDockerAvailable
 @Import(TestcontainersConfiguration.class)
@@ -58,10 +58,10 @@ class PaymentMigrationIT {
 				.update();
 	}
 
-	private void insertWebhookEvent(String eventId) {
-		jdbc.sql("INSERT INTO stripe_webhook_event (event_id, event_type) "
-						+ "VALUES (:id, 'payment_intent.succeeded')")
-				.param("id", eventId).update();
+	private void insertWebhookEvent(String provider, String reference) {
+		jdbc.sql("INSERT INTO payment_webhook_event (provider, reference, event_type) "
+						+ "VALUES (:provider, :reference, 'payment_intent.succeeded')")
+				.param("provider", provider).param("reference", reference).update();
 	}
 
 	@Test
@@ -117,11 +117,28 @@ class PaymentMigrationIT {
 	}
 
 	@Test
-	void duplicateWebhookEventIdRejected() {
-		insertWebhookEvent("evt_dup_1");
+	void duplicateWebhookReferenceRejectedPerProvider() {
+		insertWebhookEvent("STRIPE", "evt_mig_dup");
 		assertThrows(DataIntegrityViolationException.class,
-				() -> insertWebhookEvent("evt_dup_1"),
-				"stripe_webhook_event.event_id is the PK / dedup key (invariant #8).");
+				() -> insertWebhookEvent("STRIPE", "evt_mig_dup"),
+				"(provider, reference) is the PK / dedup key (invariant #8).");
+		assertDoesNotThrow(() -> insertWebhookEvent("POK", "evt_mig_dup"),
+				"the same reference under another provider is a different key.");
+	}
+
+	@Test
+	void aWebhookEventMustNameItsProvider() {
+		assertThrows(DataIntegrityViolationException.class,
+				() -> jdbc.sql("INSERT INTO payment_webhook_event (reference, event_type) VALUES ('evt_mig_x', 't')")
+						.update(),
+				"no default provider: a row filed as Stripe by omission would share Stripe's dedup namespace.");
+	}
+
+	@Test
+	void anUnknownWebhookProviderRejected() {
+		assertThrows(DataIntegrityViolationException.class,
+				() -> insertWebhookEvent("stripe", "evt_mig_y"),
+				"payment_webhook_event_provider_check admits only the closed provider set.");
 	}
 
 	@Test
@@ -129,8 +146,8 @@ class PaymentMigrationIT {
 		assertDoesNotThrow(() -> {
 			insertPayment(5001L, "pi_ok_a", "REQUIRES_PAYMENT");
 			insertPayment(5002L, "pi_ok_b", "SUCCEEDED");
-			insertWebhookEvent("evt_ok_1");
-			insertWebhookEvent("evt_ok_2");
+			insertWebhookEvent("STRIPE", "evt_ok_1");
+			insertWebhookEvent("STRIPE", "evt_ok_2");
 		}, "distinct payments and webhook events must insert cleanly.");
 	}
 

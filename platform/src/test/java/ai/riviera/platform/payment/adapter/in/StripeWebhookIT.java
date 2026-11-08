@@ -150,7 +150,7 @@ class StripeWebhookIT {
 	}
 
 	private long webhookEventRows(String eventId) {
-		return jdbc.sql("SELECT COUNT(*) FROM stripe_webhook_event WHERE event_id = :id")
+		return jdbc.sql("SELECT COUNT(*) FROM payment_webhook_event WHERE provider = 'STRIPE' AND reference = :id")
 				.param("id", eventId).query(Long.class).single();
 	}
 
@@ -239,8 +239,7 @@ class StripeWebhookIT {
 		assertEquals(1, events.stream(PaymentConfirmed.class)
 				.filter(e -> e.bookingRef().equals(new BookingRef(7003L))).count(),
 				"a re-delivered event id confirms only once (deduped, invariant #8)");
-		long rows = jdbc.sql("SELECT COUNT(*) FROM stripe_webhook_event WHERE event_id = 'evt_dup_1'")
-				.query(Long.class).single();
+		long rows = webhookEventRows("evt_dup_1");
 		assertEquals(1L, rows, "the event id is recorded exactly once");
 	}
 
