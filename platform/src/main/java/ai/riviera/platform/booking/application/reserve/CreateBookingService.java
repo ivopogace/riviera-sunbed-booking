@@ -120,14 +120,13 @@ class CreateBookingService implements CreateBooking {
 						command.lastDate(), amount, emailWithheld));
 			}
 			case PaymentOutcome.Pending pending -> {
-				// Real Stripe: a PaymentIntent exists; the booking stays AWAITING_PAYMENT and is
-				// confirmed only by the signature-verified webhook (invariant #8), never here.
+				// The booking stays AWAITING_PAYMENT, confirmed only by the verified webhook (invariant #8), never here.
 				log.info("awaiting payment for booking {} (set {} on {})", reserved.bookingId(),
 						set.setId().value(), command.bookingDate());
 				yield new BookingOutcome.AwaitingPayment(
 						new BookingConfirmation(reserved.code(), BookingStatus.AWAITING_PAYMENT, set,
 								command.bookingDate(), command.lastDate(), amount, false),
-						pending.clientSecret(), pending.paymentIntentId());
+						pending.instruction());
 			}
 			case PaymentOutcome.Failed failed -> {
 				// PI creation failed after the booking + claim committed — compensate so the set isn't

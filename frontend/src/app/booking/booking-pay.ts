@@ -24,7 +24,7 @@ import { WithheldEmailNotice } from './withheld-email-notice';
 import { BookingQr } from './booking-qr';
 import { BookingService } from './booking.service';
 import { CancellationTermsNote } from './cancellation-terms-note';
-import { StripeCheckout, StripePaymentGateway } from './stripe-payment.gateway';
+import { CheckoutGateway, CheckoutSession } from './checkout.gateway';
 
 import { TouchTarget } from '../shared/touch-target';
 import { CrossIcon } from '../shared/cross-icon';
@@ -65,12 +65,12 @@ const CLS = {
 } as const;
 
 /**
- * Stripe-profile payment page, reached on `202 AWAITING_PAYMENT`: mounts the Payment Element on
- * `clientSecret`, confirms the card, then polls `GET /api/bookings/{code}` for `CONFIRMED` — only
- * the webhook confirms (#8), never the Stripe.js result. States: `mounting` → `ready` → `error`
- * (retry in place, or back to `mounting` if it never mounted; {@link failCardStep}) or `processing`
- * → `confirmed`, or `awaiting` after ~30 s ("payment received", never "confirmed"); no hand-off →
- * `missing`; a terminal `CANCELLED` stays generic. Only the live region announces `emailWithheld`.
+ * Payment page, reached on `202 AWAITING_PAYMENT`: starts the instruction's checkout; an embedded form
+ * then polls `GET /api/bookings/{code}` for `CONFIRMED`, as only the webhook confirms (#8); a redirect
+ * leaves the page. States: `mounting` → `ready` → `error` (retry in place, or back to `mounting` if it
+ * never mounted; {@link failCardStep}) or `processing` → `confirmed`, or `awaiting` after ~30 s ("payment
+ * received", never "confirmed"); no hand-off → `missing`; a terminal `CANCELLED` stays generic. Only the
+ * live region announces `emailWithheld`.
  */
 @Component({
   selector: 'app-booking-pay',
@@ -260,8 +260,13 @@ const CLS = {
                   Complete your payment
                 </h1>
                 <p [class]="cls.lead">
-                  Enter your card to confirm the booking. Payments are processed securely by Stripe
-                  — Riviera never sees your card number.
+                  @if (embedded) {
+                    Enter your card to confirm the booking. Payments are processed securely by
+                    Stripe — Riviera never sees your card number.
+                  } @else {
+                    You’ll finish paying on our payment provider’s secure page. Your booking is
+                    confirmed once they tell us it’s paid.
+                  }
                 </p>
               }
             }
@@ -389,7 +394,7 @@ export class BookingPay {
   protected readonly cls = CLS;
 
   private readonly bookings = inject(BookingService);
-  private readonly gateway = inject(StripePaymentGateway);
+  private readonly gateway = inject(CheckoutGateway);
   private readonly destroyRef = inject(DestroyRef);
   private readonly peHost = viewChild<ElementRef<HTMLElement>>('peHost');
   /** Called before a swap off the card step or a poll's answer: if focus is already on `<body>` or
@@ -412,16 +417,19 @@ export class BookingPay {
 
   /** The awaiting-payment summary handed off by the 202 POST; absent on a cold load. */
   protected readonly booking = this.bookings.lastAwaitingPayment();
+  /** An embedded form lives on this page; a redirect has nothing to load or enter here. */
+  protected readonly embedded = this.booking?.payment.kind !== 'REDIRECT';
 
-  private checkout?: StripeCheckout;
+  private checkout?: CheckoutSession;
   private pollSub?: Subscription;
   private polls = 0;
 
   protected readonly showElement = computed(
     () =>
-      this.state() === 'mounting' ||
-      this.state() === 'ready' ||
-      (this.state() === 'error' && !this.terminalError()),
+      this.embedded &&
+      (this.state() === 'mounting' ||
+        this.state() === 'ready' ||
+        (this.state() === 'error' && !this.terminalError())),
   );
   protected readonly showPayButton = computed(
     () =>
@@ -450,8 +458,9 @@ export class BookingPay {
 
   /** The booking total, formatted once (the awaiting summary is fixed for the page's lifetime). */
   private readonly priceText = this.booking ? formatMoney(this.booking.amount) : '';
+  private readonly readyLabel = this.embedded ? `Pay ${this.priceText}` : 'Continue to payment';
   protected readonly payLabel = computed(() =>
-    this.state() === 'error' ? 'Try again' : `Pay ${this.priceText}`,
+    this.state() === 'error' ? 'Try again' : this.readyLabel,
   );
 
   /** Exposed for the template (currency formatting helper). */
@@ -470,17 +479,20 @@ export class BookingPay {
       this.state.set('missing');
       return;
     }
-    // Mount once the host element is in the DOM. The real gateway loads Stripe.js here.
-    afterNextRender({ write: () => this.mountPaymentElement() });
+    if (!this.embedded) {
+      this.state.set('ready');
+    }
+    // Start once the host element is in the DOM. The real embedded gateway loads Stripe.js here.
+    afterNextRender({ write: () => this.startCheckout() });
   }
 
-  /** Mounts the Payment Element; on failure the page offers Try again, which re-runs this. */
-  private async mountPaymentElement(): Promise<void> {
+  /** Starts the checkout; on failure the page offers Try again, which re-runs this. */
+  private async startCheckout(): Promise<void> {
     const host = this.peHost()!.nativeElement;
     // A retry must not stack onto anything an earlier, rejected mount attempt appended.
     host.replaceChildren();
     try {
-      this.checkout = await this.gateway.mountPaymentElement(host, this.booking!.clientSecret);
+      this.checkout = await this.gateway.start(host, this.booking!.payment);
       // A re-check answer may have moved the page on while the mount was in flight.
       if (this.state() === 'mounting') {
         this.state.set('ready');
@@ -500,7 +512,7 @@ export class BookingPay {
     this.errorMessage.set(undefined);
     this.remounting.set(true);
     this.state.set('mounting');
-    await this.mountPaymentElement();
+    await this.startCheckout();
   }
 
   /**
@@ -568,8 +580,9 @@ export class BookingPay {
     this.paying.set(true);
     let error: string | undefined;
     let threw = false;
+    let redirecting: boolean | undefined;
     try {
-      ({ error } = await this.checkout.confirm());
+      ({ error, redirecting } = await this.checkout.confirm());
     } catch {
       // Stripe.js threw instead of resolving `{ error }` (an integration error): still retryable.
       error = 'Your payment couldn’t be completed. Please try again.';
@@ -580,6 +593,10 @@ export class BookingPay {
     if (error) {
       // A client-side failure (decline / 3DS) is NOT a confirmation — show retry, do not poll.
       this.failCardStep(error, threw);
+      return;
+    }
+    // Nothing is known about the payment yet, and a Back to this page must find the button usable.
+    if (redirecting) {
       return;
     }
     // The failure re-check may have confirmed or ended the booking while confirm() was in flight.

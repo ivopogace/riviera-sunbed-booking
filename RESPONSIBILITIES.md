@@ -398,7 +398,7 @@ any is released on the old, never a swap of my own — so a racing reserve wins 
   the stay's first day); the pay deadline is `min(accepted_at + pay-window, end of service day)`, or
   the day's end if never accepted (the TTL, `AbandonedPaymentProperties`, is only the sweep's
   earlier backstop, never a view fence). The payment-due mail promises it, the abandoned sweep's SQL
-  mirrors it (`RequestWindows#payDeadline`, `RequestWindowsTest`); the view hides the `clientSecret`
+  mirrors it (`RequestWindows#payDeadline`, `RequestWindowsTest`); the view hides the checkout instruction
   past it.
 - **The confirm path is deliberately not fenced**
   (`JdbcBookingsTransitionIT.confirmSucceedsAfterThePayDeadlineHasPassed`): a payment landing past
@@ -574,6 +574,13 @@ shares name more than one, which `booking` releases as `SPANS_VENUES` (accept: `
 The gateway receives the payee; the stub and the Stripe demo ignore it and collect as always.
 `payment.payee_venue_id` is a logical id, empty on rows predating V80.
 
+**A pending collection hands the browser a `CheckoutInstruction`** (ADR-0029 decision 11): Embedded (a
+token for a form in our page, Stripe's) or Redirect (the provider's own https page), each with the
+reference the provider's webhook correlates on. The `payment` row keeps it (`client_secret` or
+`redirect_url`, never both), so the pay-on-accept read returns what the provider gave. It leaves the
+module only for the `202` and the code-gated view while payable (#7). `booking` flattens it to the
+`payment` field with an explicit `kind`.
+
 `CancelPaymentPort.cancel(booking)` voids the intent behind the booking, so an unpaid group is
 cancelled all-or-nothing, never one booking of it (`booking`'s remodel release ends every unpaid
 stretch of the stay with the one it disturbed, #1292).
@@ -586,7 +593,7 @@ secret has no mode marker either, so it stays a deploy check (`docs/deploy/produ
 
 - **The payment state machine is one guarded SQL statement**, because Stripe promises neither
   ordering nor single delivery. `markStatus` moves only the open states (`REQUIRES_PAYMENT`, the
-  retryable `FAILED` — what `findPendingCredentials` calls payable); the rest are terminal, so a
+  retryable `FAILED` — what `findOpenInstruction` calls payable); the rest are terminal, so a
   late `payment_failed` cannot overwrite collected money. Never read-then-write: two deliveries
   must not both see "open". `PaymentConfirmed`/`PaymentCanceled` publish **only when a row moved**
   — a late `canceled` must not release a paid booking's claim (invariant #2); `booking`'s guarded

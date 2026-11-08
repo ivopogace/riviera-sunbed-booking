@@ -6,7 +6,8 @@ import { expectNoAxeViolations } from '../../testing/axe';
 import { AwaitingPayment } from './booking.model';
 import { BookingService } from './booking.service';
 import { BookingPay } from './booking-pay';
-import { StripeCheckout, StripePaymentGateway } from './stripe-payment.gateway';
+import { PageNavigation } from '../core/page-navigation';
+import { CheckoutSession, EmbeddedCheckoutGateway } from './checkout.gateway';
 
 const AWAITING: AwaitingPayment = {
   code: 'WXYZ345678',
@@ -18,12 +19,11 @@ const AWAITING: AwaitingPayment = {
   positionNo: 2,
   bookingDate: '2026-12-01',
   amount: { minorUnits: 4500, currency: 'EUR' },
-  clientSecret: 'pi_123_secret_abc',
-  paymentIntentId: 'pi_123',
+  payment: { kind: 'EMBEDDED', clientToken: 'pi_123_secret_abc', reference: 'pi_123' },
 };
 
-class FakeGateway extends StripePaymentGateway {
-  override mountPaymentElement(host: HTMLElement): Promise<StripeCheckout> {
+class FakeGateway extends EmbeddedCheckoutGateway {
+  override mount(host: HTMLElement): Promise<CheckoutSession> {
     const input = document.createElement('input');
     input.setAttribute('aria-label', 'Card number (test)');
     host.appendChild(input);
@@ -59,7 +59,8 @@ async function renderInState(
     providers: [
       provideRouter([]),
       { provide: BookingService, useValue: stubService(booking) },
-      { provide: StripePaymentGateway, useValue: new FakeGateway() },
+      { provide: EmbeddedCheckoutGateway, useValue: new FakeGateway() },
+      { provide: PageNavigation, useValue: { leaveTo: () => undefined, reload: () => undefined } },
     ],
   }).compileComponents();
 

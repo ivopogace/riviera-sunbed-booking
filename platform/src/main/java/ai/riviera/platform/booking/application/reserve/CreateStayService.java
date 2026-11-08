@@ -99,7 +99,7 @@ class CreateStayService implements CreateStay {
 				log.info("awaiting payment for stay {} of {} stretches", reserved.stayId().value(),
 						reserved.stretches().size());
 				yield new StayOutcome.AwaitingPayment(confirmation(reserved, BookingStatus.AWAITING_PAYMENT, false),
-						pending.clientSecret(), pending.paymentIntentId());
+						pending.instruction());
 			}
 			case PaymentOutcome.Failed failed -> {
 				releaseEveryStretch(reserved);

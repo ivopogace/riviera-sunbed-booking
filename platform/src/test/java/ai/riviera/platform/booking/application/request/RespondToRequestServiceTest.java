@@ -10,6 +10,7 @@ import java.util.Optional;
 
 import ai.riviera.platform.customer.api.CustomerLookup;
 import ai.riviera.platform.customer.vocabulary.CustomerId;
+import ai.riviera.platform.payment.vocabulary.CheckoutInstruction;
 import ai.riviera.platform.payment.vocabulary.BookingRef;
 import ai.riviera.platform.booking.vocabulary.StayId;
 import ai.riviera.platform.payment.vocabulary.CollectionShare;
@@ -134,7 +135,7 @@ class RespondToRequestServiceTest {
 	void acceptTransitionsThenIssuesPaymentRequest() {
 		when(bookings.acceptPendingRequest(BOOKING.value(), VENUE, NOW))
 				.thenReturn(Optional.of(acceptedRequest()));
-		when(checkout.pay(any(), any(), any())).thenReturn(new PaymentOutcome.Pending("cs_x", "pi_x"));
+		when(checkout.pay(any(), any(), any())).thenReturn(new PaymentOutcome.Pending(new CheckoutInstruction.Embedded("cs_x", "pi_x")));
 
 		AcceptOutcome outcome = service().accept(OPERATOR, VENUE, BOOKING);
 
@@ -204,7 +205,7 @@ class RespondToRequestServiceTest {
 		// The one branch that owes anything: registered intent, webhook not yet spoken (invariant #8).
 		when(bookings.acceptPendingRequest(BOOKING.value(), VENUE, NOW))
 				.thenReturn(Optional.of(acceptedRequest()));
-		when(checkout.pay(any(), any(), any())).thenReturn(new PaymentOutcome.Pending("cs_x", "pi_x"));
+		when(checkout.pay(any(), any(), any())).thenReturn(new PaymentOutcome.Pending(new CheckoutInstruction.Embedded("cs_x", "pi_x")));
 
 		service().accept(OPERATOR, VENUE, BOOKING);
 
@@ -223,7 +224,7 @@ class RespondToRequestServiceTest {
 		when(bookings.acceptPendingRequest(BOOKING.value(), VENUE, onDayAccept)).thenReturn(
 				Optional.of(new AcceptedRequest(BOOKING.value(), VENUE, SET, today, today, onDayAccept,
 						CREATED_AT, 4500L, "EUR")));
-		when(checkout.pay(any(), any(), any())).thenReturn(new PaymentOutcome.Pending("cs_x", "pi_x"));
+		when(checkout.pay(any(), any(), any())).thenReturn(new PaymentOutcome.Pending(new CheckoutInstruction.Embedded("cs_x", "pi_x")));
 
 		serviceOn(atAccept).accept(OPERATOR, VENUE, BOOKING);
 
@@ -243,7 +244,7 @@ class RespondToRequestServiceTest {
 		when(bookings.acceptPendingRequest(BOOKING.value(), VENUE, onDayAccept)).thenReturn(
 				Optional.of(new AcceptedRequest(BOOKING.value(), VENUE, SET, today, today, onDayAccept,
 						CREATED_AT, 4500L, "EUR")));
-		when(checkout.pay(any(), any(), any())).thenReturn(new PaymentOutcome.Pending("cs_x", "pi_x"));
+		when(checkout.pay(any(), any(), any())).thenReturn(new PaymentOutcome.Pending(new CheckoutInstruction.Embedded("cs_x", "pi_x")));
 
 		serviceOn(atAccept).accept(OPERATOR, VENUE, BOOKING);
 
@@ -291,7 +292,7 @@ class RespondToRequestServiceTest {
 		// The accept is committed and the intent issued; failing now would lie and invite a retry.
 		when(bookings.acceptPendingRequest(BOOKING.value(), VENUE, NOW))
 				.thenReturn(Optional.of(acceptedRequest()));
-		when(checkout.pay(any(), any(), any())).thenReturn(new PaymentOutcome.Pending("cs_x", "pi_x"));
+		when(checkout.pay(any(), any(), any())).thenReturn(new PaymentOutcome.Pending(new CheckoutInstruction.Embedded("cs_x", "pi_x")));
 		doThrow(new QueryTimeoutException("event_publication insert timed out"))
 				.when(publisher).publishEvent(any(Object.class));
 
@@ -335,7 +336,7 @@ class RespondToRequestServiceTest {
 	void acceptClaimsTheDayBeforeTransitioning() {
 		when(bookings.acceptPendingRequest(BOOKING.value(), VENUE, NOW))
 				.thenReturn(Optional.of(acceptedRequest()));
-		when(checkout.pay(any(), any(), any())).thenReturn(new PaymentOutcome.Pending("cs_x", "pi_x"));
+		when(checkout.pay(any(), any(), any())).thenReturn(new PaymentOutcome.Pending(new CheckoutInstruction.Embedded("cs_x", "pi_x")));
 
 		service().accept(OPERATOR, VENUE, BOOKING);
 

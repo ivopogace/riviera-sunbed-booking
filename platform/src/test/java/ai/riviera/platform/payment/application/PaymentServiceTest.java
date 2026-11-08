@@ -7,6 +7,7 @@ import java.util.function.BiFunction;
 
 import org.junit.jupiter.api.Test;
 
+import ai.riviera.platform.payment.vocabulary.CheckoutInstruction;
 import ai.riviera.platform.payment.vocabulary.BookingRef;
 import ai.riviera.platform.payment.vocabulary.CollectionShare;
 import ai.riviera.platform.payment.vocabulary.Money;
@@ -91,7 +92,7 @@ class PaymentServiceTest {
 			}
 
 			@Override
-			public Optional<ai.riviera.platform.payment.vocabulary.PaymentCredentials> findPendingCredentials(
+			public Optional<ai.riviera.platform.payment.vocabulary.CheckoutInstruction> findOpenInstruction(
 					BookingRef booking) {
 				return Optional.empty();
 			}
@@ -159,11 +160,12 @@ class PaymentServiceTest {
 	@Test
 	void passesPendingOutcomeThrough() {
 		PaymentService service = new PaymentService(
-				initiating((_, _) -> new PaymentOutcome.Pending("cs_test", "pi_test")), noPayments());
+				initiating((_, _) -> new PaymentOutcome.Pending(new CheckoutInstruction.Embedded("cs_test", "pi_test"))), noPayments());
 
 		PaymentOutcome outcome = service.pay(new BookingRef(1L), PAYEE, new Money(4500L, "EUR"));
 
 		PaymentOutcome.Pending pending = assertInstanceOf(PaymentOutcome.Pending.class, outcome);
-		assertEquals("cs_test", pending.clientSecret(), "the Stripe pending outcome passes through unchanged");
+		assertEquals(new CheckoutInstruction.Embedded("cs_test", "pi_test"), pending.instruction(),
+				"the pending outcome passes through unchanged");
 	}
 }

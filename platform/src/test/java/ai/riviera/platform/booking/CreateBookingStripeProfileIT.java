@@ -81,7 +81,39 @@ class CreateBookingStripeProfileIT {
 	}
 
 	@Test
-	void createReturns202AwaitingPaymentWithClientSecret() throws Exception {
+	void stayCreateReturns202WithItsCheckoutInstruction() throws Exception {
+		String intentId = "pi_stay_wire_" + System.nanoTime();
+		PaymentIntent intent = mock(PaymentIntent.class);
+		when(intent.getId()).thenReturn(intentId);
+		when(intent.getClientSecret()).thenReturn(intentId + "_secret");
+		when(stripeClient.v1().paymentIntents().create(any(), any())).thenReturn(intent);
+		StayFixtures.Venue venue = StayFixtures.venue(jdbc, "INSTANT", null, true);
+		try {
+			LocalDate first = StayFixtures.firstDay();
+			mvc.perform(post("/api/stays")
+							.header(SessionLoginSupport.CHALLENGE_HEADER, SessionLoginSupport.solvedChallenge(mvc))
+							.contentType(MediaType.APPLICATION_JSON)
+							.content(stayBody(venue.online().get(0).value(), venue.online().get(1).value(), first)))
+					.andExpect(status().isAccepted())
+					.andExpect(jsonPath("$.status").value("AWAITING_PAYMENT"))
+					.andExpect(jsonPath("$.payment.kind").value("EMBEDDED"))
+					.andExpect(jsonPath("$.payment.clientToken").value(intentId + "_secret"))
+					.andExpect(jsonPath("$.payment.reference").value(intentId));
+		}
+		finally {
+			StayFixtures.cleanup(jdbc, venue.id());
+		}
+	}
+
+	private static String stayBody(long a, long b, LocalDate first) {
+		return """
+				{"stretches":[{"setId":%d,"firstDate":"%s","lastDate":"%s"},{"setId":%d,"firstDate":"%s","lastDate":"%s"}],
+				 "contact":{"email":"s@e.com","fullName":"Stripe Guest","phone":"+355699"}}
+				""".formatted(a, first, first.plusDays(1), b, first.plusDays(2), first.plusDays(3));
+	}
+
+	@Test
+	void createReturns202AwaitingPaymentWithItsCheckoutInstruction() throws Exception {
 		LocalDate date = LocalDate.now().plusYears(1).plusDays(7);
 
 		mvc.perform(post("/api/bookings")
@@ -90,8 +122,9 @@ class CreateBookingStripeProfileIT {
 						.content(body(onlineSet(), date)))
 				.andExpect(status().isAccepted())
 				.andExpect(jsonPath("$.status").value("AWAITING_PAYMENT"))
-				.andExpect(jsonPath("$.clientSecret").value("pi_profile_it_secret"))
-				.andExpect(jsonPath("$.paymentIntentId").value("pi_profile_it"))
+				.andExpect(jsonPath("$.payment.kind").value("EMBEDDED"))
+				.andExpect(jsonPath("$.payment.clientToken").value("pi_profile_it_secret"))
+				.andExpect(jsonPath("$.payment.reference").value("pi_profile_it"))
 				.andExpect(jsonPath("$.code").isNotEmpty())
 				.andExpect(jsonPath("$.amount.currency").value("EUR"));
 
