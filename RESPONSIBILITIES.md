@@ -564,6 +564,12 @@ is tagged `bookingRef` and, for a day, `serviceDate`, so adoption after a lost r
 cancelled all-or-nothing, never one booking of it (`booking`'s remodel release ends every unpaid
 stretch of the stay with the one it disturbed, #1292).
 
+**The `stripe` profile is the sandbox demo, so only a test key runs it** (ADR-0029, decision 11).
+`StripeConfig` aborts the boot on anything but `sk_test_`/`rk_test_`, and the SPA's
+`assertPublishableKey` refuses anything but `pk_test_`. Both are allowlists because Stripe's
+organization keys (`sk_org_…`) carry no mode marker; neither ever prints the key. A webhook signing
+secret has no mode marker either, so it stays a deploy check (`docs/deploy/production-hardening.md`).
+
 - **The payment state machine is one guarded SQL statement**, because Stripe promises neither
   ordering nor single delivery. `markStatus` moves only the open states (`REQUIRES_PAYMENT`, the
   retryable `FAILED` — what `findPendingCredentials` calls payable); the rest are terminal, so a
