@@ -716,7 +716,7 @@ class JdbcBookings implements Bookings {
 	public Optional<ConfirmedBooking> confirmFromPayment(long bookingId, Instant confirmedAt) {
 		// Idempotent webhook confirm: the guarded WHERE makes a re-delivery (already CONFIRMED) or a
 		// cancelled booking a 0-row no-op (empty) rather than an error. Two-layer idempotency with
-		// the stripe_webhook_event dedup (invariant #8). A present result == it actually transitioned,
+		// the payment_webhook_event dedup (invariant #8). A present result == it actually transitioned,
 		// so the caller publishes exactly one BookingConfirmed.
 		return confirmReturningFacts(bookingId, confirmedAt);
 	}
