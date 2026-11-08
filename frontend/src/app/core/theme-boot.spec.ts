@@ -4,6 +4,7 @@ import { createContext, runInContext } from 'node:vm';
 
 import { TestBed } from '@angular/core/testing';
 
+import { defineStorageGlobal } from '../../testing/fake-storage';
 import { ThemeService } from './theme';
 
 /**
@@ -143,7 +144,7 @@ describe('pre-paint theme seed vs ThemeService (drift pin, #675)', () => {
     it(`resolves identically on both sides: ${scenario.name}`, () => {
       expect(seededByInlineScript(scenario)).toBe(scenario.expected);
 
-      (globalThis as MutableGlobal).localStorage = fakeLocalStorage(scenario);
+      defineStorageGlobal('localStorage', fakeLocalStorage(scenario));
       (globalThis as MutableGlobal).matchMedia = fakeMatchMedia(scenario);
       expect(TestBed.inject(ThemeService).theme()).toBe(scenario.expected);
     });

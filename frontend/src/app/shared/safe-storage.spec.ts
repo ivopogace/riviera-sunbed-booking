@@ -1,4 +1,8 @@
-import { installFakeStorage, removeFakeStorage } from '../../testing/fake-storage';
+import {
+  defineStorageGlobal,
+  installFakeStorage,
+  removeFakeStorage,
+} from '../../testing/fake-storage';
 import {
   readJson,
   readSessionJson,
@@ -15,12 +19,12 @@ function installThrowingStorage(): void {
   const throwing = () => {
     throw new DOMException('blocked', 'SecurityError');
   };
-  (globalThis as unknown as { localStorage: unknown }).localStorage = {
+  defineStorageGlobal('localStorage', {
     getItem: throwing,
     setItem: throwing,
     removeItem: throwing,
     clear: throwing,
-  };
+  });
 }
 
 describe('safe-storage (guarded localStorage, issue #163)', () => {
