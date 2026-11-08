@@ -21,7 +21,7 @@ record BookingDetailView(String code, String status, long venueId, String venueN
 		boolean withdrawable,
 		boolean beforeCutoff, MoneyView refundIfCancelledNow, MoneyView refundedAmount,
 		boolean refundOutstanding,
-		Instant requestExpiresAt, PaymentCredentialsView payment, boolean emailWithheld,
+		Instant requestExpiresAt, CheckoutInstructionView payment, boolean emailWithheld,
 		boolean payWindowClosed, String cancelReason, String declineReason, String cancellationWindowAtBirth,
 		ReviewPanelView reviewPanel, MoveView move, List<StretchView> stretches,
 		List<RefundedDayView> refundedDays, boolean nothingLeft) {
@@ -55,9 +55,7 @@ record BookingDetailView(String code, String status, long venueId, String venueN
 				d.cancellable(),
 				d.withdrawable(), d.beforeCutoff(), d.refundIfCancelledNow(), d.refundedAmount(),
 				d.refundOutstanding(), d.requestExpiresAt(),
-				d.payment() == null ? null
-						: new PaymentCredentialsView(d.payment().clientSecret(),
-								d.payment().paymentIntentId()),
+				d.payment() == null ? null : CheckoutInstructionView.of(d.payment()),
 				d.emailWithheld(), d.payWindowClosed(),
 				d.cancelReason() == null ? null : d.cancelReason().name(),
 				d.declineReason() == null ? null : d.declineReason().name(),
@@ -116,9 +114,5 @@ record BookingDetailView(String code, String status, long venueId, String venueN
 		static OwnReviewView of(OwnReview review) {
 			return new OwnReviewView(review.stars(), review.comment(), review.displayName());
 		}
-	}
-
-	/** The open PaymentIntent's credentials — present only while {@code AWAITING_PAYMENT}. */
-	record PaymentCredentialsView(String clientSecret, String paymentIntentId) {
 	}
 }

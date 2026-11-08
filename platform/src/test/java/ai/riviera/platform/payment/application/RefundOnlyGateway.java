@@ -1,11 +1,13 @@
 package ai.riviera.platform.payment.application;
 
+import java.time.Instant;
 import java.util.List;
 
 import ai.riviera.platform.payment.domain.RefundScope;
 import ai.riviera.platform.payment.vocabulary.BookingRef;
 import ai.riviera.platform.payment.vocabulary.CollectionShare;
 import ai.riviera.platform.payment.vocabulary.Money;
+import ai.riviera.platform.payment.vocabulary.PayeeRef;
 import ai.riviera.platform.payment.vocabulary.PaymentCancellation;
 import ai.riviera.platform.payment.vocabulary.PaymentOutcome;
 import ai.riviera.platform.payment.vocabulary.RefundResult;
@@ -27,12 +29,22 @@ interface RefundOnlyGateway extends PaymentGateway {
 	}
 
 	@Override
-	default PaymentOutcome initiate(List<CollectionShare> shares) {
+	default PaymentOutcome initiate(PayeeRef payee, List<CollectionShare> shares) {
 		throw new UnsupportedOperationException("not exercised by the refund seam");
 	}
 
 	@Override
 	default PaymentCancellation cancel(BookingRef booking) {
+		throw new UnsupportedOperationException("not exercised by the refund seam");
+	}
+
+	@Override
+	default ProviderPaymentState lookup(PayeeRef payee, String reference) {
+		throw new UnsupportedOperationException("not exercised by the refund seam");
+	}
+
+	@Override
+	default UnpaidTransactions unpaidCreatedBetween(Instant from, Instant before) {
 		throw new UnsupportedOperationException("not exercised by the refund seam");
 	}
 }

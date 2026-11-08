@@ -228,7 +228,7 @@ test('same-day request: today is offered at a Request venue and the accepted boo
         status: 'AWAITING_PAYMENT',
         withdrawable: false,
         requestExpiresAt: salesClose,
-        payment: { clientSecret: 'pi_123_secret_abc', paymentIntentId: 'pi_123' },
+        payment: { kind: 'EMBEDDED', clientToken: 'pi_123_secret_abc', reference: 'pi_123' },
       },
     }),
   );
@@ -255,6 +255,38 @@ test('same-day request: today is offered at a Request venue and the accepted boo
   await expectNoSeriousAxeViolations(page, 'booking view (same-day accepted request)');
 });
 
+test('accepted request, redirect instruction: Pay now → the browser goes to the provider (ADR-0029)', async ({
+  page,
+}) => {
+  const PROVIDER_URL = 'https://pay.example.test/checkout/ord_1';
+  await page.route(PROVIDER_URL, (route) =>
+    route.fulfill({ contentType: 'text/html', body: '<title>Provider checkout</title>' }),
+  );
+  await page.route(new RegExp(`/api/bookings/${CODE}(\\?.*)?$`), (route) =>
+    route.fulfill({
+      json: {
+        ...DETAIL_BASE,
+        status: 'AWAITING_PAYMENT',
+        payment: { kind: 'REDIRECT', url: PROVIDER_URL, reference: 'ord_1' },
+      },
+    }),
+  );
+
+  await page.goto(`/booking/${CODE}`);
+  await page.getByTestId('pay-now').click();
+
+  await expect(page).toHaveURL(/\/booking\/pay/);
+  await expect(page.getByRole('heading', { name: 'Complete your payment' })).toBeVisible();
+  await expect(page.getByTestId('pe-host')).toBeHidden();
+  const continueToProvider = page.getByTestId('pay-button');
+  await expect(continueToProvider).toHaveText('Continue to payment');
+  await expectNoSeriousAxeViolations(page, 'payment page (redirect instruction)');
+
+  await continueToProvider.click();
+
+  await expect(page).toHaveURL(PROVIDER_URL);
+});
+
 test('accepted request: Pay now → fake Stripe → poll to CONFIRMED (invariant #8)', async ({
   page,
 }) => {
@@ -270,7 +302,7 @@ test('accepted request: Pay now → fake Stripe → poll to CONFIRMED (invariant
         json: {
           ...DETAIL_BASE,
           status: 'AWAITING_PAYMENT',
-          payment: { clientSecret: 'pi_123_secret_abc', paymentIntentId: 'pi_123' },
+          payment: { kind: 'EMBEDDED', clientToken: 'pi_123_secret_abc', reference: 'pi_123' },
         },
       });
     }
@@ -285,7 +317,7 @@ test('accepted request: Pay now → fake Stripe → poll to CONFIRMED (invariant
   await expectNoSeriousAxeViolations(page, 'booking view (request accepted)');
   await page.getByTestId('pay-now').click();
 
-  // The existing pay page takes over on the fetched clientSecret (fake Stripe).
+  // The existing pay page takes over on the fetched instruction (fake Stripe).
   await expect(page).toHaveURL(/\/booking\/pay/);
   await expect(page.getByRole('heading', { name: 'Complete your payment' })).toBeVisible();
   await expect(page.getByTestId('pay-button')).toBeVisible();
@@ -319,7 +351,7 @@ test('pay window closed mid-page: Pay now fails → honest terminal state + link
         json: {
           ...DETAIL_BASE,
           status: 'AWAITING_PAYMENT',
-          payment: { clientSecret: 'pi_123_secret_abc', paymentIntentId: 'pi_123' },
+          payment: { kind: 'EMBEDDED', clientToken: 'pi_123_secret_abc', reference: 'pi_123' },
         },
       });
     }
@@ -565,7 +597,7 @@ test('Stripe.js fails to load: Try again re-mounts the card form, then pays (#12
           ? {
               ...DETAIL_BASE,
               status: 'AWAITING_PAYMENT',
-              payment: { clientSecret: 'pi_123_secret_abc', paymentIntentId: 'pi_123' },
+              payment: { kind: 'EMBEDDED', clientToken: 'pi_123_secret_abc', reference: 'pi_123' },
             }
           : { ...DETAIL_BASE, status: 'CONFIRMED', requestExpiresAt: null },
     }),

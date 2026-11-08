@@ -77,6 +77,7 @@ class ScheduledWorkArchitectureTest {
 			"MoneyPathAlertCheck#check",
 			"MoveReminderScheduler#sweep",
 			"NoShowSweepScheduler#sweep",
+			"PaymentReconciliationScheduler#sweep",
 			"PayoutSpineRetry#sweep",
 			"RequestSweepScheduler#sweep",
 			"VenueSpineRetry#sweep");

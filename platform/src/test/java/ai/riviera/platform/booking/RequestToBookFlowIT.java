@@ -103,7 +103,7 @@ class RequestToBookFlowIT {
 				.andExpect(jsonPath("$.code").isNotEmpty())
 				.andExpect(jsonPath("$.requestExpiresAt").isNotEmpty())
 				.andExpect(jsonPath("$.amount.minorUnits").value(4500))
-				.andExpect(content().string(not(containsString("clientSecret"))));
+				.andExpect(content().string(not(containsString("clientToken"))));
 
 		assertEquals(0L, jdbc.sql("SELECT count(*) FROM payment").query(Long.class).single(),
 				"no PaymentIntent row for a pending request");

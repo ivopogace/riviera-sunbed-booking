@@ -1,7 +1,7 @@
 /**
  * The QR-scanning seam for the operator console's check-in — an external browser capability
  * (camera + frame decoding), so it sits behind a DI token with a real and a fake adapter, the
- * exact shape of `StripePaymentGateway`: {@link CameraQrScanner} in the browser,
+ * exact shape of `EmbeddedCheckoutGateway`: {@link CameraQrScanner} in the browser,
  * {@link FakeQrScanner} when the Playwright e2e arms `window.__RIVIERA_FAKE_QR__` (the factory
  * lives in `app.config.ts`); unit specs override the token directly.
  */

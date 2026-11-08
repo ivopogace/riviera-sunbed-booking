@@ -1500,7 +1500,7 @@ describe('BookingView', () => {
           status: 'AWAITING_PAYMENT',
           cancellable: false,
           requestExpiresAt: null,
-          payment: { clientSecret: 'pi_8_secret_y', paymentIntentId: 'pi_8' },
+          payment: { kind: 'EMBEDDED', clientToken: 'pi_8_secret_y', reference: 'pi_8' },
         },
       }),
     );
@@ -1523,7 +1523,7 @@ describe('BookingView', () => {
           // A real accepted request carries its (historical) response deadline — the view uses
           // it to tell "request accepted" apart from an instant checkout being resumed.
           requestExpiresAt: '2026-11-30T16:00:00Z',
-          payment: { clientSecret: 'pi_9_secret_x', paymentIntentId: 'pi_9' },
+          payment: { kind: 'EMBEDDED', clientToken: 'pi_9_secret_x', reference: 'pi_9' },
         },
         handoffs,
       }),
@@ -1545,8 +1545,7 @@ describe('BookingView', () => {
         positionNo: 2,
         bookingDate: '2026-12-01',
         amount: { minorUnits: 4500, currency: 'EUR' },
-        clientSecret: 'pi_9_secret_x',
-        paymentIntentId: 'pi_9',
+        payment: { kind: 'EMBEDDED', clientToken: 'pi_9_secret_x', reference: 'pi_9' },
       },
     ]);
     expect(navigate).toHaveBeenCalledWith(['/booking/pay']);
@@ -1771,7 +1770,7 @@ describe('BookingView', () => {
           status: 'AWAITING_PAYMENT',
           cancellable: false,
           requestExpiresAt: '2026-11-30T16:00:00Z',
-          payment: { clientSecret: 'pi_secret', paymentIntentId: 'pi_1' },
+          payment: { kind: 'EMBEDDED', clientToken: 'pi_secret', reference: 'pi_1' },
         },
       }),
     );

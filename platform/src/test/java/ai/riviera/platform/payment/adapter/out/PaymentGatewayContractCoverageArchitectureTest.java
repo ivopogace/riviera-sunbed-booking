@@ -19,9 +19,11 @@ import org.springframework.context.annotation.Profile;
 
 import ai.riviera.platform.ArchitectureTestSupport;
 import ai.riviera.platform.payment.api.CollectionGuarantee;
+import ai.riviera.platform.payment.application.CollectingGatewayLookupContract;
 import ai.riviera.platform.payment.application.PaymentGateway;
 import ai.riviera.platform.payment.application.PaymentGatewayRefundContract;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
 
@@ -58,7 +60,7 @@ class PaymentGatewayContractCoverageArchitectureTest {
 
 		List<String> unclassified = new ArrayList<>();
 		for (JavaClass gateway : gateways) {
-			if (!collects(gateway, collectionByProfile) || coveredByTheContract(gateway)) {
+			if (!collects(gateway, collectionByProfile) || coveredBy(PaymentGatewayRefundContract.class, gateway)) {
 				continue;
 			}
 			unclassified.add(gateway.getSimpleName());
@@ -71,16 +73,47 @@ class PaymentGatewayContractCoverageArchitectureTest {
 		}
 	}
 
+	/** Every gateway that really collects holds up the reconciliation sweep's reads and the expiry's check on them. */
+	@Test
+	void everyCollectingGatewayIsLookupContractCovered() {
+		Map<Set<String>, Boolean> collectionByProfile = collectionAnswersByProfile();
+		List<String> uncovered = productionImplementationsOf(PaymentGateway.class).stream()
+				.filter(gateway -> collects(gateway, collectionByProfile))
+				.filter(gateway -> !coveredBy(CollectingGatewayLookupContract.class, gateway))
+				.map(JavaClass::getSimpleName)
+				.toList();
+		assertTrue(uncovered.isEmpty(), uncovered + " collect money but honour no lookup contract. Subclass "
+				+ CollectingGatewayLookupContract.class.getSimpleName() + " for each.");
+	}
+
 	/**
-	 * Whether some concrete {@link PaymentGatewayRefundContract} subclass exercises this gateway.
+	 * Ties the shared switch to what each gateway says it does, in both directions: a collecting
+	 * gateway outside the group would leave its bookings unswept, and a non-collector inside would
+	 * start jobs that have nothing to do.
+	 */
+	@Test
+	void theSwitchIsJoinedByExactlyTheCollectingGateways() {
+		Set<String> collectingProfiles = collectionAnswersByProfile().entrySet().stream()
+				.filter(Map.Entry::getValue)
+				.flatMap(answer -> answer.getKey().stream())
+				.collect(Collectors.toUnmodifiableSet());
+		assertEquals(collectingProfiles,
+				ArchitectureTestSupport.profilesJoining(ArchitectureTestSupport.COLLECTING_GATEWAY_PROFILE),
+				"spring.profiles.group in application.properties must add "
+						+ ArchitectureTestSupport.COLLECTING_GATEWAY_PROFILE
+						+ " to exactly the profiles whose CollectionGuarantee answers true");
+	}
+
+	/**
+	 * Whether some concrete subclass of {@code contract} exercises this gateway.
 	 *
 	 * <p>Matched on the fully-qualified name: the gateway and the contract subclasses come from two
 	 * separate ArchUnit imports (production-only, and one including tests), whose {@link JavaClass}
 	 * handles for the same type are never equal to each other.
 	 */
-	private static boolean coveredByTheContract(JavaClass gateway) {
+	private static boolean coveredBy(Class<?> contract, JavaClass gateway) {
 		return PAYMENT_CLASSES.stream()
-				.filter(candidate -> candidate.isAssignableTo(PaymentGatewayRefundContract.class))
+				.filter(candidate -> candidate.isAssignableTo(contract))
 				.filter(candidate -> !isAbstract(candidate))
 				.anyMatch(candidate -> candidate.getDirectDependenciesFromSelf().stream()
 						.anyMatch(dependency ->

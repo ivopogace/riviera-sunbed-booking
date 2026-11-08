@@ -3,15 +3,19 @@ package ai.riviera.platform.payment.adapter.out;
 import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Component;
 
+import java.time.Instant;
 import java.util.List;
 
 import ai.riviera.platform.payment.vocabulary.BookingRef;
 import ai.riviera.platform.payment.vocabulary.CollectionShare;
 import ai.riviera.platform.payment.vocabulary.Money;
+import ai.riviera.platform.payment.vocabulary.PayeeRef;
 import ai.riviera.platform.payment.vocabulary.PaymentCancellation;
 import ai.riviera.platform.payment.vocabulary.PaymentOutcome;
 import ai.riviera.platform.payment.vocabulary.RefundResult;
 import ai.riviera.platform.payment.application.PaymentGateway;
+import ai.riviera.platform.payment.application.ProviderPaymentState;
+import ai.riviera.platform.payment.application.UnpaidTransactions;
 import ai.riviera.platform.payment.domain.RefundScope;
 
 /**
@@ -30,7 +34,7 @@ class StubPaymentGateway implements PaymentGateway {
 	private static final String REFUND_PREFIX = "stub-re-";
 
 	@Override
-	public PaymentOutcome initiate(List<CollectionShare> shares) {
+	public PaymentOutcome initiate(PayeeRef payee, List<CollectionShare> shares) {
 		return new PaymentOutcome.Succeeded(REFERENCE_PREFIX + shares.getFirst().booking().value());
 	}
 
@@ -43,8 +47,18 @@ class StubPaymentGateway implements PaymentGateway {
 	@Override
 	public PaymentCancellation cancel(BookingRef booking) {
 		// In-process void — the stub holds no real PaymentIntent. The abandoned-payment sweep runs
-		// only under the stripe profile (synchronous stub bookings never linger AWAITING_PAYMENT), so
+		// only under a collecting gateway (synchronous stub bookings never linger AWAITING_PAYMENT), so
 		// this is here only to satisfy the port.
 		return new PaymentCancellation.Canceled();
+	}
+
+	@Override
+	public ProviderPaymentState lookup(PayeeRef payee, String reference) {
+		return new ProviderPaymentState.Paid();
+	}
+
+	@Override
+	public UnpaidTransactions unpaidCreatedBetween(Instant from, Instant before) {
+		return new UnpaidTransactions.NotOffered();
 	}
 }

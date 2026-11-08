@@ -144,7 +144,8 @@ without a Spring context, fails on a violation. Every member but one follows fro
 `RetiredSetExclusionArchitectureTests` names its table and is admitted by decision (ADR-0019)
 because any new JDBC adapter can break it. Target-naming fitness functions
 (`CompositionRootDisciplineTests`, `ErrorContractArchitectureTests`,
-`ResponsibilitiesArchitectureTests`, `*AuthPlacementTests`, `VenueApiRoleSplitTests`) are not
+`ResponsibilitiesArchitectureTests`, `*AuthPlacementTests`, `VenueApiRoleSplitTests`,
+`ProviderProfileConfinementArchitectureTests`) are not
 members; work on what they name puts them due. ADR-0017's "structural nets" and the three-test
 command in `docs/agents/gradle-proxy-trust.md` are not this net.
 

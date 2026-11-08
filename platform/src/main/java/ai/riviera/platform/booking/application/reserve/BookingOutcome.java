@@ -1,5 +1,7 @@
 package ai.riviera.platform.booking.application.reserve;
 
+import ai.riviera.platform.payment.vocabulary.CheckoutInstruction;
+
 /**
  * The closed set of outcomes of {@link CreateBooking#create}. A sealed type so callers (the
  * REST adapter) {@code switch} exhaustively and map each case to an HTTP status — a lost
@@ -25,19 +27,18 @@ public sealed interface BookingOutcome
 	}
 
 	/**
-	 * The booking was created and a Stripe PaymentIntent initiated, but it stays
-	 * {@code AWAITING_PAYMENT} until a signature-verified webhook confirms it (invariant #8) —
-	 * the controller maps this to {@code 202} and returns the {@code clientSecret} so the browser
-	 * can complete the card payment with Stripe.js. {@code paymentIntentId} is the gateway handle.
+	 * The booking was created and a collection initiated, but it stays {@code AWAITING_PAYMENT} until a
+	 * verified webhook confirms it (invariant #8). The controller maps this to {@code 202} and returns
+	 * {@code instruction} so the browser can complete the payment.
 	 */
-	record AwaitingPayment(BookingConfirmation confirmation, String clientSecret,
-			String paymentIntentId) implements BookingOutcome {
+	record AwaitingPayment(BookingConfirmation confirmation, CheckoutInstruction instruction)
+			implements BookingOutcome {
 	}
 
 	/**
 	 * The booking was not created. Each reason maps to one HTTP status in the controller:
 	 * {@code SET_TAKEN}→409, {@code NOT_ONLINE_POOL}/{@code BOOKING_CLOSED}/{@code VENUE_CLOSED}/
-	 * {@code STAY_TOO_LONG}→422, {@code NO_SUCH_SET}→404.
+	 * {@code STAY_TOO_LONG}/{@code SPANS_VENUES}→422, {@code NO_SUCH_SET}→404.
 	 */
 	enum Rejected implements BookingOutcome {
 		/** The {@code (set, date)} is already held by another party (invariant #2). */
@@ -51,6 +52,8 @@ public sealed interface BookingOutcome
 		/** The venue is closed for the season and its closure does not admit every day asked; the venue stays visible. */
 		VENUE_CLOSED,
 		/** A stay longer than the venue's own maximum stay length. */
-		STAY_TOO_LONG
+		STAY_TOO_LONG,
+		/** The collection's stretches name more than one venue; its claims are released (ADR-0029 decision 7). */
+		SPANS_VENUES
 	}
 }
