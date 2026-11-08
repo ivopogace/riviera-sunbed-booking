@@ -70,7 +70,7 @@
     "eslint": "^10.11.0",
     "husky": "^9.1.7",
     "jsdom": "^30.0.1",
-    "lint-staged": "^17.5.1",
+    "lint-staged": "^17.6.0",
     "pbf": "^5.1.2",
     "postcss": "^8.5.30",
     "prettier": "^3.9.9",
