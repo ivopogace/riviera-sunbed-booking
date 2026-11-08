@@ -22,6 +22,7 @@ import ai.riviera.platform.payment.api.CollectionGuarantee;
 import ai.riviera.platform.payment.application.PaymentGateway;
 import ai.riviera.platform.payment.application.PaymentGatewayRefundContract;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
 
@@ -69,6 +70,24 @@ class PaymentGatewayContractCoverageArchitectureTest {
 					+ " for each, or — if it truly collects nothing — say so in "
 					+ "ProfiledCollectionGuarantee, which is what exempts the stub.");
 		}
+	}
+
+	/**
+	 * Ties the shared switch to what each gateway says it does, in both directions: a collecting
+	 * gateway outside the group would leave its bookings unswept, and a non-collector inside would
+	 * start jobs that have nothing to do.
+	 */
+	@Test
+	void theSwitchIsJoinedByExactlyTheCollectingGateways() {
+		Set<String> collectingProfiles = collectionAnswersByProfile().entrySet().stream()
+				.filter(Map.Entry::getValue)
+				.flatMap(answer -> answer.getKey().stream())
+				.collect(Collectors.toUnmodifiableSet());
+		assertEquals(collectingProfiles,
+				ArchitectureTestSupport.profilesJoining(ArchitectureTestSupport.COLLECTING_GATEWAY_PROFILE),
+				"spring.profiles.group in application.properties must add "
+						+ ArchitectureTestSupport.COLLECTING_GATEWAY_PROFILE
+						+ " to exactly the profiles whose CollectionGuarantee answers true");
 	}
 
 	/**
