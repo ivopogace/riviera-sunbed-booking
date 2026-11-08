@@ -1,9 +1,12 @@
 package ai.riviera.platform.payment.adapter.out;
 
+import java.time.Instant;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 
 import java.util.Optional;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 import com.stripe.StripeClient;
@@ -11,8 +14,10 @@ import com.stripe.exception.ApiConnectionException;
 import com.stripe.exception.StripeException;
 import com.stripe.model.PaymentIntent;
 import com.stripe.model.Refund;
+import com.stripe.model.StripeSearchResult;
 import com.stripe.net.RequestOptions;
 import com.stripe.param.PaymentIntentCreateParams;
+import com.stripe.param.PaymentIntentSearchParams;
 import com.stripe.param.RefundCreateParams;
 import com.stripe.param.RefundListParams;
 
@@ -35,6 +40,8 @@ import ai.riviera.platform.payment.vocabulary.RefundResult;
 import ai.riviera.platform.payment.application.NewPayment;
 import ai.riviera.platform.payment.application.Payments;
 import ai.riviera.platform.payment.application.PaymentGateway;
+import ai.riviera.platform.payment.application.ProviderPaymentState;
+import ai.riviera.platform.payment.application.UnpaidTransactions;
 import ai.riviera.platform.payment.domain.PaymentStatus;
 import ai.riviera.platform.payment.domain.RefundLifecycle;
 import ai.riviera.platform.payment.domain.RefundScope;
@@ -77,6 +84,15 @@ class StripePaymentGateway implements PaymentGateway {
 
 	/** The refund died — and its failure webhook landed — before this call could record it. */
 	private static final String REFUND_DIED_BEFORE_RECORD = "refund_died_before_record";
+
+	/** Stripe's documented ceiling for one page of a search. */
+	private static final long SEARCH_PAGE_LIMIT = 100L;
+
+	/** The search said there was more and named no next page, so the rest cannot be read. */
+	private static final String SEARCH_LOST_ITS_PLACE = "search_no_next_page";
+
+	/** A PaymentIntent status this adapter has no mapping for. */
+	private static final String UNKNOWN_STATUS = "unknown_status";
 
 	private final StripeClient stripe;
 	private final Payments payments;
@@ -322,6 +338,68 @@ class StripePaymentGateway implements PaymentGateway {
 					booking.value(), e.getCode());
 			return new PaymentCancellation.Failed(e.getCode() == null ? STRIPE_ERROR : e.getCode());
 		}
+	}
+
+	/** Stripe's record of the intent; the demo collects into one account, so {@code payee} changes nothing. */
+	@Override
+	public ProviderPaymentState lookup(PayeeRef payee, String reference) {
+		try {
+			return stateOf(stripe.v1().paymentIntents().retrieve(reference).getStatus());
+		}
+		catch (StripeException e) {
+			log.warn("Stripe PaymentIntent read failed for {}: code={}", reference, e.getCode());
+			return new ProviderPaymentState.Unavailable(e.getCode() == null ? STRIPE_ERROR : e.getCode());
+		}
+	}
+
+	/**
+	 * A search of the unpaid intents created in the window, to the last page. Stripe filters on a cached status and
+	 * may lag up to an hour in an outage, so each object's current status decides ({@code RESPONSIBILITIES.md} §{@code payment}).
+	 */
+	@Override
+	public UnpaidTransactions unpaidCreatedBetween(Instant from, Instant before) {
+		String query = "-status:'" + STATUS_SUCCEEDED + "' AND -status:'" + STATUS_CANCELED + "' AND created>="
+				+ from.getEpochSecond() + " AND created<" + before.getEpochSecond();
+		Set<String> unpaid = new LinkedHashSet<>();
+		String page = null;
+		try {
+			boolean more;
+			do {
+				PaymentIntentSearchParams.Builder params = PaymentIntentSearchParams.builder()
+						.setQuery(query)
+						.setLimit(SEARCH_PAGE_LIMIT);
+				if (page != null) {
+					params.setPage(page);
+				}
+				StripeSearchResult<PaymentIntent> result = stripe.v1().paymentIntents().search(params.build());
+				result.getData().stream()
+						.filter(intent -> stateOf(intent.getStatus()) instanceof ProviderPaymentState.Waiting)
+						.map(PaymentIntent::getId)
+						.forEach(unpaid::add);
+				more = Boolean.TRUE.equals(result.getHasMore());
+				page = result.getNextPage();
+				if (more && page == null) {
+					return new UnpaidTransactions.Unavailable(SEARCH_LOST_ITS_PLACE);
+				}
+			}
+			while (more);
+		}
+		catch (StripeException e) {
+			log.warn("Stripe PaymentIntent search failed: code={}", e.getCode());
+			return new UnpaidTransactions.Unavailable(e.getCode() == null ? STRIPE_ERROR : e.getCode());
+		}
+		return new UnpaidTransactions.Listed(List.copyOf(unpaid));
+	}
+
+	/** An unmapped status surfaces as unreadable rather than passing as agreement. */
+	private static ProviderPaymentState stateOf(String status) {
+		return switch (status) {
+			case STATUS_SUCCEEDED -> new ProviderPaymentState.Paid();
+			case STATUS_CANCELED -> new ProviderPaymentState.Canceled();
+			case "requires_payment_method", "requires_confirmation", "requires_action", "processing",
+					"requires_capture" -> new ProviderPaymentState.Waiting();
+			case null, default -> new ProviderPaymentState.Unavailable(UNKNOWN_STATUS);
+		};
 	}
 
 	/**

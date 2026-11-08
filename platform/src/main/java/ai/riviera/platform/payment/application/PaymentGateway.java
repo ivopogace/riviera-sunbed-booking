@@ -1,5 +1,6 @@
 package ai.riviera.platform.payment.application;
 
+import java.time.Instant;
 import java.util.List;
 
 import ai.riviera.platform.payment.domain.RefundScope;
@@ -51,4 +52,13 @@ public interface PaymentGateway {
 	 * nothing was collected (the caller must not cancel the booking); {@code Failed} if transient.
 	 */
 	PaymentCancellation cancel(BookingRef booking);
+
+	/**
+	 * The provider's current answer for the payment {@code reference} paying {@code payee}, read with that venue's
+	 * credentials where the provider has them; never throws on an expected failure ({@code PaymentGatewayLookupContract}).
+	 */
+	ProviderPaymentState lookup(PayeeRef payee, String reference);
+
+	/** Every unpaid transaction created in {@code [from, before)}, read to the last page; never throws on an expected failure. */
+	UnpaidTransactions unpaidCreatedBetween(Instant from, Instant before);
 }

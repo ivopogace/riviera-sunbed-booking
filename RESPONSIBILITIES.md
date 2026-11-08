@@ -574,6 +574,14 @@ shares name more than one, which `booking` releases as `SPANS_VENUES` (accept: `
 The gateway receives the payee; the stub and the Stripe demo ignore it and collect as always.
 `payment.payee_venue_id` is a logical id, empty on rows predating V80.
 
+**Reconciliation compares open payments with the provider and only reports** (#102, ADR-0029): a daily sweep
+under `collecting-gateway`, an ADMIN `GET` and the same computed report, no table. Only the ADMIN repair writes:
+it re-reads the provider and applies the answer through `VerifiedPaymentOutcomes`, the webhook's guarded step.
+The windows are constants, so no safety argument rests on a tunable: 30-minute grace, 30-day lookback, 24-hour
+orphan age. A paid payment is caught by `cancel` answering `NotCancellable` before the expiry can release it,
+held of every collector by `CollectingGatewayLookupContract`. A row with no payee is reported, never looked up.
+Stripe's search filters on a cached status, so the listing re-judges each object (`docs/runbooks/payment-reconciliation.md`).
+
 `CancelPaymentPort.cancel(booking)` voids the intent behind the booking, so an unpaid group is
 cancelled all-or-nothing, never one booking of it (`booking`'s remodel release ends every unpaid
 stretch of the stay with the one it disturbed, #1292).

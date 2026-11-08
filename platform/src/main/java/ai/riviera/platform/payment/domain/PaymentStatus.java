@@ -24,4 +24,9 @@ public enum PaymentStatus {
 	public boolean holdsCollectedMoney() {
 		return this == SUCCEEDED || this == REFUNDED || this == PARTIALLY_REFUNDED;
 	}
+
+	/** Whether this collection can still be paid or settled: the states a provider's answer may still move. */
+	public boolean isOpen() {
+		return this == REQUIRES_PAYMENT || this == FAILED;
+	}
 }

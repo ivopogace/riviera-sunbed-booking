@@ -53,6 +53,16 @@ class PaymentServiceTest {
 			public PaymentCancellation cancel(BookingRef booking) {
 				throw new UnsupportedOperationException("not exercised by the checkout seam");
 			}
+
+			@Override
+			public ProviderPaymentState lookup(PayeeRef payee, String reference) {
+				throw new UnsupportedOperationException("not exercised by the checkout seam");
+			}
+
+			@Override
+			public UnpaidTransactions unpaidCreatedBetween(java.time.Instant from, java.time.Instant before) {
+				throw new UnsupportedOperationException("not exercised by the checkout seam");
+			}
 		};
 	}
 

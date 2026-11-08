@@ -76,7 +76,7 @@ class AbandonedBookingSweepService implements ExpireAbandonedBookings {
 			case PaymentCancellation.NoCollection ignored ->
 				// No payment on record (a pay() that threw after the reserve commit). Past the TTL
 				// this is a stranded booking, not an in-flight one — release it so the set isn't held
-				// forever. Any orphan intent is inert (client secret never delivered) and auto-expires.
+				// forever. An orphan intent is inert (client secret never delivered); reconciliation reports it (#479).
 				release(id, "no PaymentIntent on record");
 			case PaymentCancellation.NotCancellable notCancellable -> {
 				// Payment succeeded — the confirm webhook wins (invariant #8). Leave it.

@@ -18,7 +18,6 @@ import io.micrometer.core.instrument.MeterRegistry;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
 import org.springframework.http.ResponseEntity;
@@ -32,12 +31,10 @@ import org.springframework.web.bind.annotation.RestController;
 import ai.riviera.platform.shared.ApiProblem;
 import ai.riviera.platform.monitoring.vocabulary.ObservabilityMetrics;
 import ai.riviera.platform.payment.vocabulary.BookingRef;
-import ai.riviera.platform.payment.events.PaymentCanceled;
-import ai.riviera.platform.payment.events.PaymentConfirmed;
 import ai.riviera.platform.payment.application.Payments;
+import ai.riviera.platform.payment.application.VerifiedPaymentOutcomes;
 import ai.riviera.platform.payment.application.WebhookEvents;
 import ai.riviera.platform.payment.domain.PaymentProvider;
-import ai.riviera.platform.payment.domain.PaymentStatus;
 import ai.riviera.platform.payment.domain.RefundLifecycle;
 import ai.riviera.platform.payment.adapter.out.StripeProperties;
 import ai.riviera.platform.payment.adapter.out.StripeRefundTag;
@@ -46,7 +43,7 @@ import ai.riviera.platform.payment.adapter.out.StripeRefundTag;
  * Stripe webhook endpoint, the <strong>source of truth</strong> for payment state (invariant #8), never the
  * client redirect. Verifies the signature on the <em>raw</em> body ({@link Webhook#constructEvent}; failure →
  * {@code 400}, no state change); dedupes on the event id ({@link WebhookEvents#firstSeen}); applies
- * guarded transitions that publish {@link PaymentConfirmed}/{@link PaymentCanceled} only when a row moved.
+ * guarded transitions through {@link VerifiedPaymentOutcomes}, which publishes only when a row moved.
  * One transaction, so an unreadable event throws and Stripe re-delivers (advisory refund types fail open).
  * Never log the raw body, signature or secret. Rationale: RESPONSIBILITIES.md §payment.
  */
@@ -69,15 +66,15 @@ class StripeWebhookController {
 	private final StripeProperties properties;
 	private final WebhookEvents webhookEvents;
 	private final Payments payments;
-	private final ApplicationEventPublisher publisher;
+	private final VerifiedPaymentOutcomes verifiedOutcomes;
 	private final Counter failedRefunds;
 
 	StripeWebhookController(StripeProperties properties, WebhookEvents webhookEvents,
-			Payments payments, ApplicationEventPublisher publisher, MeterRegistry meters) {
+			Payments payments, VerifiedPaymentOutcomes verifiedOutcomes, MeterRegistry meters) {
 		this.properties = properties;
 		this.webhookEvents = webhookEvents;
 		this.payments = payments;
-		this.publisher = publisher;
+		this.verifiedOutcomes = verifiedOutcomes;
 		this.failedRefunds = meters.counter(ObservabilityMetrics.REFUNDS_FAILED);
 	}
 
@@ -102,9 +99,9 @@ class StripeWebhookController {
 		}
 
 		switch (event.getType()) {
-			case EVENT_SUCCEEDED -> onSucceeded(requiredPaymentIntentId(event));
-			case EVENT_CANCELED -> onCanceled(requiredPaymentIntentId(event));
-			case EVENT_PAYMENT_FAILED -> applied(requiredPaymentIntentId(event), PaymentStatus.FAILED);
+			case EVENT_SUCCEEDED -> verifiedOutcomes.succeeded(requiredPaymentIntentId(event));
+			case EVENT_CANCELED -> verifiedOutcomes.canceled(requiredPaymentIntentId(event));
+			case EVENT_PAYMENT_FAILED -> verifiedOutcomes.failed(requiredPaymentIntentId(event));
 			case EVENT_REFUND_FAILED -> onRefundDied(requiredRefund(event));
 			case EVENT_REFUND_UPDATED, EVENT_CHARGE_REFUND_UPDATED ->
 					advisoryRefund(event).ifPresent(this::onRefundDied);
@@ -120,24 +117,6 @@ class StripeWebhookController {
 	private static ResponseEntity<ProblemDetail> unverifiedSignature() {
 		return ApiProblem.response(HttpStatus.BAD_REQUEST, CODE_INVALID_SIGNATURE,
 				"The Stripe webhook signature is missing or could not be verified.");
-	}
-
-	private void onSucceeded(String paymentIntentId) {
-		if (!applied(paymentIntentId, PaymentStatus.SUCCEEDED)) {
-			return;
-		}
-		for (BookingRef ref : bookingRefs(paymentIntentId)) {
-			publisher.publishEvent(new PaymentConfirmed(ref, paymentIntentId));
-		}
-	}
-
-	private void onCanceled(String paymentIntentId) {
-		if (!applied(paymentIntentId, PaymentStatus.CANCELED)) {
-			return;
-		}
-		for (BookingRef ref : bookingRefs(paymentIntentId)) {
-			publisher.publishEvent(new PaymentCanceled(ref));
-		}
 	}
 
 	/**
@@ -187,29 +166,6 @@ class StripeWebhookController {
 			return Optional.empty();
 		}
 		return onIntent.stream().findFirst();
-	}
-
-	/**
-	 * Whether the outcome moved the payment record. A terminal record does not, and then no event is published:
-	 * a late {@code canceled} must not release a paid booking's claim (invariant #2), nor a late
-	 * {@code succeeded} confirm a refunded collection.
-	 */
-	private boolean applied(String paymentIntentId, PaymentStatus status) {
-		boolean applied = payments.markStatus(paymentIntentId, status);
-		if (!applied) {
-			log.warn("no open payment record for PaymentIntent {} — {} not applied",
-					paymentIntentId, status);
-		}
-		return applied;
-	}
-
-	private List<BookingRef> bookingRefs(String paymentIntentId) {
-		List<BookingRef> refs = payments.findBookingRefsByIntent(paymentIntentId);
-		if (refs.isEmpty()) {
-			// An event for a PaymentIntent this app didn't record — ignore (don't act on it).
-			log.warn("no booking for PaymentIntent {} — ignoring webhook", paymentIntentId);
-		}
-		return refs;
 	}
 
 	/**

@@ -164,6 +164,9 @@ public class SecurityConfig {
 	 */
 	private static final String ADMIN_REFUND_OUTBOX_PATH = "/api/admin/refund-outbox";
 	private static final String ADMIN_REFUND_OUTBOX_RESUBMIT_PATH = "/api/admin/refund-outbox/resubmit";
+	/** The payment reconciliation report, and the repair that settles one payment from the provider's answer (#102). */
+	private static final String ADMIN_PAYMENT_RECONCILIATION_PATH = "/api/admin/payment-reconciliation";
+	private static final String ADMIN_PAYMENT_REPAIR_PATH = "/api/admin/payment-reconciliation/*/repair";
 	/** The per-venue venue-caused refund report: aggregates only, no booking id or code. */
 	private static final String ADMIN_VENUE_CHANGE_REFUNDS_PATH = "/api/admin/venue-change-refunds";
 	/** The venue-change fee an admin reads and writes: one platform-wide amount, no venue scope. */
@@ -355,6 +358,8 @@ public class SecurityConfig {
 						.requestMatchers(HttpMethod.PUT, ADMIN_VENUE_CHANGE_FEE_PATH).hasRole(ADMIN_ROLE)
 						.requestMatchers(HttpMethod.GET, ADMIN_REFUND_OUTBOX_PATH).hasRole(ADMIN_ROLE)
 						.requestMatchers(HttpMethod.POST, ADMIN_REFUND_OUTBOX_RESUBMIT_PATH).hasRole(ADMIN_ROLE)
+						.requestMatchers(HttpMethod.GET, ADMIN_PAYMENT_RECONCILIATION_PATH).hasRole(ADMIN_ROLE)
+						.requestMatchers(HttpMethod.POST, ADMIN_PAYMENT_REPAIR_PATH).hasRole(ADMIN_ROLE)
 						.requestMatchers(HttpMethod.POST, ADMIN_MAIL_DELIVERY_LOOKUP_PATH).hasRole(ADMIN_ROLE)
 						.requestMatchers(HttpMethod.POST, ADMIN_MAIL_DELIVERY_RESEND_PATH).hasRole(ADMIN_ROLE)
 						.requestMatchers(HttpMethod.POST, ADMIN_BOOKING_LOOKUP_PATH).hasRole(ADMIN_ROLE)
