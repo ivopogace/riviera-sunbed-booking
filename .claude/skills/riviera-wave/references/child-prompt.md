@@ -21,9 +21,9 @@ issue needs from a sibling, and what to do until that sibling merges>
 - Run the review gate at pr-gates §1's effort: <high for anything touching availability, the
   booking lifecycle, money or authorization; medium for a pure move or no-behaviour-change slice
   with the structural net green, a doc-only slice included; unsure → high>. Round 1 runs
-  `code-review:code-review` step by step, each step as the plugin defines it (Haiku eligibility,
-  CLAUDE.md-paths and summary agents; five Sonnet reviewers; one Haiku scorer per finding; the
-  80 cutoff; the Haiku recheck). Never run steps inline, never self-judge the cutoff, and post
+  `code-review:code-review` without `--comment`, each step as the installed plugin's
+  `commands/code-review.md` defines it. Never run steps inline, never self-judge the plugin's
+  validation filter, and post
   no `### Code review` comment before the plugin round: a hand-written comment makes the plugin
   decline. A step-1 decline of a small diff as trivial is the round (quote its verdict in the
   review-gate line); a decline on any other ground runs the built-in fallback (pr-gates §1). The
