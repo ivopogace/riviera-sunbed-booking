@@ -1,6 +1,6 @@
 package ai.riviera.platform.payment.application;
 
-import ai.riviera.platform.payment.api.PaymentCredentialsLookup;
+import ai.riviera.platform.payment.api.CheckoutInstructionLookup;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -12,7 +12,7 @@ import ai.riviera.platform.payment.vocabulary.BookingRef;
 import ai.riviera.platform.payment.vocabulary.CollectionShare;
 import ai.riviera.platform.payment.vocabulary.PayeeRef;
 import ai.riviera.platform.payment.api.CheckoutPort;
-import ai.riviera.platform.payment.vocabulary.PaymentCredentials;
+import ai.riviera.platform.payment.vocabulary.CheckoutInstruction;
 import ai.riviera.platform.payment.vocabulary.PaymentOutcome;
 
 /**
@@ -23,7 +23,7 @@ import ai.riviera.platform.payment.vocabulary.PaymentOutcome;
  * field (no Lombok, no field {@code @Autowired}).
  */
 @Service
-class PaymentService implements CheckoutPort, PaymentCredentialsLookup {
+class PaymentService implements CheckoutPort, CheckoutInstructionLookup {
 
 	private static final Logger log = LoggerFactory.getLogger(PaymentService.class);
 
@@ -47,7 +47,7 @@ class PaymentService implements CheckoutPort, PaymentCredentialsLookup {
 	}
 
 	@Override
-	public Optional<PaymentCredentials> pendingCredentials(BookingRef booking) {
-		return payments.findPendingCredentials(booking);
+	public Optional<CheckoutInstruction> openInstruction(BookingRef booking) {
+		return payments.findOpenInstruction(booking);
 	}
 }

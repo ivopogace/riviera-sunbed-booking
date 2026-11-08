@@ -23,6 +23,7 @@ import org.springframework.test.web.servlet.ResultActions;
 import ai.riviera.platform.EnabledIfDockerAvailable;
 import ai.riviera.platform.TestcontainersConfiguration;
 import ai.riviera.platform.monitoring.vocabulary.ObservabilityMetrics;
+import ai.riviera.platform.payment.vocabulary.CheckoutInstruction;
 import ai.riviera.platform.payment.vocabulary.BookingRef;
 import ai.riviera.platform.payment.vocabulary.PayeeRef;
 import ai.riviera.platform.payment.events.PaymentCanceled;
@@ -99,7 +100,7 @@ class StripeWebhookIT {
 
 	/** One intent collecting for two bookings (shares 4500 and 3000), collected. */
 	private void sharedCollection(String intentId, long bookingA, long bookingB) {
-		payments.register(new NewPayment(PAYEE, intentId, "EUR", "cs_test_secret", List.of(
+		payments.register(new NewPayment(PAYEE, new CheckoutInstruction.Embedded("cs_test_secret", intentId), "EUR", List.of(
 				new NewPayment.Share(new BookingRef(bookingA), 4500L),
 				new NewPayment.Share(new BookingRef(bookingB), 3000L))));
 		payments.markStatus(intentId, PaymentStatus.SUCCEEDED);
@@ -560,7 +561,7 @@ class StripeWebhookIT {
 
 	@Test
 	void succeededOnASharedIntentConfirmsEveryBooking() throws Exception {
-		payments.register(new NewPayment(PAYEE, "pi_hook_shared_ok", "EUR", "cs_test_secret", List.of(
+		payments.register(new NewPayment(PAYEE, new CheckoutInstruction.Embedded("cs_test_secret", "pi_hook_shared_ok"), "EUR", List.of(
 				new NewPayment.Share(new BookingRef(7401L), 4500L),
 				new NewPayment.Share(new BookingRef(7402L), 3000L))));
 		String payload = eventJson("evt_shared_ok_1", "payment_intent.succeeded", "pi_hook_shared_ok");
@@ -576,7 +577,7 @@ class StripeWebhookIT {
 
 	@Test
 	void canceledOnASharedIntentReleasesEveryBooking() throws Exception {
-		payments.register(new NewPayment(PAYEE, "pi_hook_shared_cancel", "EUR", "cs_test_secret", List.of(
+		payments.register(new NewPayment(PAYEE, new CheckoutInstruction.Embedded("cs_test_secret", "pi_hook_shared_cancel"), "EUR", List.of(
 				new NewPayment.Share(new BookingRef(7403L), 4500L),
 				new NewPayment.Share(new BookingRef(7404L), 3000L))));
 		String payload = eventJson("evt_shared_cancel_1", "payment_intent.canceled", "pi_hook_shared_cancel");

@@ -24,7 +24,8 @@ and ignore the Connect sections of its `stripe-best-practices`.
   one venue (`CollectionShare.payee`; a mix is `MixedPayees`, ADR-0029); `pay(BookingRef, PayeeRef, Money)`
   is the one-share convenience);
   the Stripe SDK sits behind the internal `PaymentGateway` port (`payment.application`,
-  implemented by `adapter/out/StripePaymentGateway`). The domain never touches Stripe types.
+  implemented by `adapter/out/StripePaymentGateway`). The domain never touches Stripe types; a
+  `Pending` outcome carries a `CheckoutInstruction`, Embedded for a PaymentIntent's client secret.
 - Confirm only on the signature-verified `payment_intent.succeeded` webhook (#8); the redirect
   is never a confirmation.
 - Idempotency key from `BookingId` + operation on charge/refund, plus the service day for a

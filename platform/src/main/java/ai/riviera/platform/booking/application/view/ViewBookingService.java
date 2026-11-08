@@ -38,7 +38,7 @@ class ViewBookingService implements ViewBooking {
 	private final Bookings bookings;
 	private final CancellationPolicy cancellationPolicy;
 	private final BookingCutoff cutoff;
-	private final ai.riviera.platform.payment.api.PaymentCredentialsLookup checkout;
+	private final ai.riviera.platform.payment.api.CheckoutInstructionLookup checkout;
 	private final ai.riviera.platform.booking.spi.ConfirmationMailDelivery confirmationMail;
 	private final ai.riviera.platform.payment.api.CollectionGuarantee collection;
 	private final ai.riviera.platform.payment.api.RefundStatusLookup refundStatus;
@@ -50,7 +50,7 @@ class ViewBookingService implements ViewBooking {
 	private final Clock clock;
 
 	ViewBookingService(Bookings bookings, CancellationPolicy cancellationPolicy, BookingCutoff cutoff,
-			ai.riviera.platform.payment.api.PaymentCredentialsLookup checkout,
+			ai.riviera.platform.payment.api.CheckoutInstructionLookup checkout,
 			ai.riviera.platform.booking.spi.ConfirmationMailDelivery confirmationMail,
 			ai.riviera.platform.payment.api.CollectionGuarantee collection,
 			ai.riviera.platform.payment.api.RefundStatusLookup refundStatus,
@@ -103,8 +103,8 @@ class ViewBookingService implements ViewBooking {
 		boolean awaitingPayment = status == BookingStatus.AWAITING_PAYMENT;
 		boolean payWindowClosed = awaitingPayment && windows.payWindowClosed(first.acceptedAt(),
 				cutoff.serviceDayEndsAt(first.bookingDate()), clock.instant());
-		ai.riviera.platform.payment.vocabulary.PaymentCredentials payment = awaitingPayment && !payWindowClosed
-				? checkout.pendingCredentials(new ai.riviera.platform.payment.vocabulary.BookingRef(first.id())).orElse(null)
+		ai.riviera.platform.payment.vocabulary.CheckoutInstruction payment = awaitingPayment && !payWindowClosed
+				? checkout.openInstruction(new ai.riviera.platform.payment.vocabulary.BookingRef(first.id())).orElse(null)
 				: null;
 		boolean emailWithheld = status == BookingStatus.CONFIRMED && collection.provenBeforeConfirmation()
 				&& confirmationMail.isWithheld(first.customerId());
@@ -160,9 +160,9 @@ class ViewBookingService implements ViewBooking {
 		boolean awaitingPayment = b.status() == BookingStatus.AWAITING_PAYMENT;
 		boolean payWindowClosed = awaitingPayment && windows.payWindowClosed(b.acceptedAt(),
 				cutoff.serviceDayEndsAt(b.bookingDate()), clock.instant());
-		ai.riviera.platform.payment.vocabulary.PaymentCredentials payment =
+		ai.riviera.platform.payment.vocabulary.CheckoutInstruction payment =
 				awaitingPayment && !payWindowClosed
-						? checkout.pendingCredentials(
+						? checkout.openInstruction(
 								new ai.riviera.platform.payment.vocabulary.BookingRef(b.id())).orElse(null)
 						: null;
 		return new BookingDetail(b.code(), b.status(), b.venueId(), set.venueName(), set.rowLabel(),

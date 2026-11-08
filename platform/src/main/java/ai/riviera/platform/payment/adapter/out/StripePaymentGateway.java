@@ -26,6 +26,7 @@ import org.springframework.stereotype.Component;
 
 import ai.riviera.platform.monitoring.vocabulary.ObservabilityMetrics;
 import ai.riviera.platform.payment.vocabulary.BookingRef;
+import ai.riviera.platform.payment.vocabulary.CheckoutInstruction;
 import ai.riviera.platform.payment.vocabulary.CollectionShare;
 import ai.riviera.platform.payment.vocabulary.Money;
 import ai.riviera.platform.payment.vocabulary.PayeeRef;
@@ -44,7 +45,7 @@ import ai.riviera.platform.payment.domain.RefundScope;
  * collection only, no Connect (ADR-0002) — under an idempotency key from the booking id, amount in integer
  * minor units + lowercase ISO currency (invariant #5), booking id in metadata. Collects into the platform's
  * test account whatever the payee, which it only records (ADR-0029 decision 11). Returns
- * {@link PaymentOutcome.Pending}; only a signature-verified webhook confirms the booking, never the client
+ * {@link PaymentOutcome.Pending} with an Embedded instruction; only a signature-verified webhook confirms the booking, never the client
  * (invariant #8). A Stripe error is returned as a typed {@code Failed}, never thrown, and only its code is logged.
  */
 @Component
@@ -110,9 +111,10 @@ class StripePaymentGateway implements PaymentGateway {
 		try {
 			PaymentIntent intent = withLostResponseReplay(booking, "PaymentIntent",
 					() -> stripe.v1().paymentIntents().create(params.build(), options));
-			payments.register(new NewPayment(payee, intent.getId(), currency, intent.getClientSecret(), shares.stream()
+			CheckoutInstruction instruction = new CheckoutInstruction.Embedded(intent.getClientSecret(), intent.getId());
+			payments.register(new NewPayment(payee, instruction, currency, shares.stream()
 					.map(share -> new NewPayment.Share(share.booking(), share.amount().minor())).toList()));
-			return new PaymentOutcome.Pending(intent.getClientSecret(), intent.getId());
+			return new PaymentOutcome.Pending(instruction);
 		}
 		catch (StripeException e) {
 			// Code only — never the message, the key, or any PII (log discipline).

@@ -5,7 +5,7 @@ import ai.riviera.platform.payment.vocabulary.RefundProgress;
 
 /**
  * The read side of the refund conversation, split from {@link RefundPort} by consumer role (like
- * {@code PaymentCredentialsLookup} vs {@code CheckoutPort}): the booking view asks "has the
+ * {@code CheckoutInstructionLookup} vs {@code CheckoutPort}): the booking view asks "has the
  * gateway accepted this booking's refund?" so a cancelled booking can say a refund is still being
  * processed instead of claiming it is on its way to the card.
  */

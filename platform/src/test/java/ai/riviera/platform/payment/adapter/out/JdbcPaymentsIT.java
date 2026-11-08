@@ -24,6 +24,7 @@ import org.springframework.transaction.support.TransactionTemplate;
 
 import ai.riviera.platform.EnabledIfDockerAvailable;
 import ai.riviera.platform.TestcontainersConfiguration;
+import ai.riviera.platform.payment.vocabulary.CheckoutInstruction;
 import ai.riviera.platform.payment.vocabulary.BookingRef;
 import ai.riviera.platform.payment.vocabulary.PayeeRef;
 import ai.riviera.platform.payment.application.NewPayment;
@@ -68,6 +69,23 @@ class JdbcPaymentsIT {
 
 		assertEquals(77L, jdbc.sql("SELECT payee_venue_id FROM payment WHERE payment_intent_id = 'pi_payee'")
 				.query(Long.class).single(), "the payment row names the venue it pays");
+	}
+
+	@Test
+	void anEmbeddedCollectionReadsBackAsEmbedded() {
+		payments.register(new NewPayment(PAYEE, new BookingRef(9852L), "pi_embedded", 4500L, "EUR", "cs_embedded"));
+
+		assertEquals(Optional.of(new CheckoutInstruction.Embedded("cs_embedded", "pi_embedded")),
+				payments.findOpenInstruction(new BookingRef(9852L)));
+	}
+
+	@Test
+	void aRedirectCollectionReadsBackAsARedirect() {
+		CheckoutInstruction.Redirect redirect = new CheckoutInstruction.Redirect("https://pay.example.test/o/1", "ord_1");
+		payments.register(new NewPayment(PAYEE, redirect, "EUR", List.of(new NewPayment.Share(new BookingRef(9853L), 4500L))));
+
+		assertEquals(Optional.of(redirect), payments.findOpenInstruction(new BookingRef(9853L)),
+				"pay-on-accept hands the guest the same instruction the provider gave");
 	}
 
 	@Test
@@ -443,7 +461,7 @@ class JdbcPaymentsIT {
 
 	/** One intent collecting for two bookings: A's share 4500, B's share 3000. */
 	private void sharedCollection(String intentId, long bookingA, long bookingB) {
-		payments.register(new NewPayment(PAYEE, intentId, "EUR", "cs_test_secret", List.of(
+		payments.register(new NewPayment(PAYEE, new CheckoutInstruction.Embedded("cs_test_secret", intentId), "EUR", List.of(
 				new NewPayment.Share(new BookingRef(bookingA), 4500L),
 				new NewPayment.Share(new BookingRef(bookingB), 3000L))));
 		payments.markStatus(intentId, PaymentStatus.SUCCEEDED);

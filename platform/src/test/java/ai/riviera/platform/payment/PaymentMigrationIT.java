@@ -65,6 +65,14 @@ class PaymentMigrationIT {
 	}
 
 	@Test
+	void aCollectionCarriesAtMostOneCheckoutInstruction() {
+		assertThrows(DataIntegrityViolationException.class, () -> jdbc.sql("""
+				INSERT INTO payment (payment_intent_id, amount_minor, currency, status, client_secret, redirect_url)
+				VALUES ('pi_both_instructions', 4500, 'EUR', 'REQUIRES_PAYMENT', 'cs_x', 'https://pay.example.test/o/1')
+				""").update(), "an instruction is one kind or the other");
+	}
+
+	@Test
 	void aRowPredatingThePayeeColumnNamesNoVenue() {
 		insertPayment(8051L, "pi_no_payee", "REQUIRES_PAYMENT");
 

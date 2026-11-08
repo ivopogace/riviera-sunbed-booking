@@ -52,8 +52,7 @@ const AWAITING: AwaitingPayment = {
   positionNo: 2,
   bookingDate: '2026-12-01',
   amount: { minorUnits: 4500, currency: 'EUR' },
-  clientSecret: 'pi_123_secret_abc',
-  paymentIntentId: 'pi_123',
+  payment: { kind: 'EMBEDDED', clientToken: 'pi_123_secret_abc', reference: 'pi_123' },
 };
 
 const PLAN: PlanView = {

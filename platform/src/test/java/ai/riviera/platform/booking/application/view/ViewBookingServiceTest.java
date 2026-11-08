@@ -28,9 +28,9 @@ import ai.riviera.platform.booking.vocabulary.StayId;
 import ai.riviera.platform.customer.vocabulary.CustomerId;
 import ai.riviera.platform.customer.vocabulary.GuestContact;
 import ai.riviera.platform.payment.api.CollectionGuarantee;
-import ai.riviera.platform.payment.api.PaymentCredentialsLookup;
+import ai.riviera.platform.payment.api.CheckoutInstructionLookup;
 import ai.riviera.platform.payment.api.RefundStatusLookup;
-import ai.riviera.platform.payment.vocabulary.PaymentCredentials;
+import ai.riviera.platform.payment.vocabulary.CheckoutInstruction;
 import ai.riviera.platform.payment.vocabulary.RefundProgress;
 import ai.riviera.platform.review.vocabulary.OwnReview;
 import ai.riviera.platform.review.vocabulary.ReviewPanel;
@@ -77,7 +77,7 @@ class ViewBookingServiceTest {
 	private final Bookings bookings = mock(Bookings.class);
 	private final CancellationPolicy cancellationPolicy = mock(CancellationPolicy.class);
 	private final BookingCutoff cutoff = new BookingCutoff(NOW);
-	private final PaymentCredentialsLookup checkout = mock(PaymentCredentialsLookup.class);
+	private final CheckoutInstructionLookup checkout = mock(CheckoutInstructionLookup.class);
 	private final ConfirmationMailDelivery mailDelivery = mock(ConfirmationMailDelivery.class);
 	private final CollectionGuarantee collection = mock(CollectionGuarantee.class);
 	private final RefundStatusLookup refundStatus = mock(RefundStatusLookup.class);
@@ -167,7 +167,7 @@ class ViewBookingServiceTest {
 	@Test
 	void neverConsultsMailDeliveryBeforeConfirmation() {
 		givenBooking(BookingStatus.AWAITING_PAYMENT);
-		when(checkout.pendingCredentials(any())).thenReturn(Optional.empty());
+		when(checkout.openInstruction(any())).thenReturn(Optional.empty());
 
 		BookingDetail detail = service.byCode(CODE).orElseThrow();
 
@@ -490,8 +490,8 @@ class ViewBookingServiceTest {
 	void issuesCredentialsUntilThePayDeadline() {
 		// Accepted 10:00 Tirane on D itself: the deadline is 22:00, eleven hours away (#792).
 		givenAwaitingPayment(DATE, Instant.EPOCH, Instant.parse("2026-08-01T08:00:00Z"));
-		when(checkout.pendingCredentials(any()))
-				.thenReturn(Optional.of(new PaymentCredentials("cs_x", "pi_x")));
+		when(checkout.openInstruction(any()))
+				.thenReturn(Optional.of(new CheckoutInstruction.Embedded("cs_x", "pi_x")));
 
 		BookingDetail detail = service.byCode(CODE).orElseThrow();
 
@@ -515,8 +515,8 @@ class ViewBookingServiceTest {
 	void stillIssuesCredentialsAtTheExactDeadlineInstant() {
 		// The mailed deadline itself is still payable (mail ≡ sweep identity); closed strictly after.
 		givenAwaitingPayment(DATE, Instant.EPOCH, Instant.parse("2026-07-31T21:00:00Z"));
-		when(checkout.pendingCredentials(any()))
-				.thenReturn(Optional.of(new PaymentCredentials("cs_x", "pi_x")));
+		when(checkout.openInstruction(any()))
+				.thenReturn(Optional.of(new CheckoutInstruction.Embedded("cs_x", "pi_x")));
 
 		BookingDetail detail = service.byCode(CODE).orElseThrow();
 
@@ -528,8 +528,8 @@ class ViewBookingServiceTest {
 	void acceptedAdvanceBookingKeepsCredentialsIntoItsServiceDay() {
 		// Accepted 23:30 the evening before, window to 11:30: the old day-open withhold is wrong now.
 		givenAwaitingPayment(DATE, Instant.EPOCH, Instant.parse("2026-07-31T21:30:00Z"));
-		when(checkout.pendingCredentials(any()))
-				.thenReturn(Optional.of(new PaymentCredentials("cs_x", "pi_x")));
+		when(checkout.openInstruction(any()))
+				.thenReturn(Optional.of(new CheckoutInstruction.Embedded("cs_x", "pi_x")));
 
 		BookingDetail detail = service.byCode(CODE).orElseThrow();
 
@@ -541,8 +541,8 @@ class ViewBookingServiceTest {
 	void neverAcceptedBookingKeepsCredentialsUntilDayEnd() {
 		// Advance-born, never accepted, day underway: the TTL stays a sweep-only backstop.
 		givenAwaitingPayment(DATE, Instant.EPOCH, null);
-		when(checkout.pendingCredentials(any()))
-				.thenReturn(Optional.of(new PaymentCredentials("cs_x", "pi_x")));
+		when(checkout.openInstruction(any()))
+				.thenReturn(Optional.of(new CheckoutInstruction.Embedded("cs_x", "pi_x")));
 
 		BookingDetail detail = service.byCode(CODE).orElseThrow();
 
@@ -581,8 +581,8 @@ class ViewBookingServiceTest {
 		// Same-day-born, never accepted: same day-end deadline as any other unaccepted row.
 		Instant sameDayBirth = Instant.parse("2026-08-01T10:00:00Z");
 		givenBooking(BookingStatus.AWAITING_PAYMENT, CancellationWindow.CLOSED, 0L, sameDayBirth);
-		when(checkout.pendingCredentials(any()))
-				.thenReturn(Optional.of(new PaymentCredentials("cs_x", "pi_x")));
+		when(checkout.openInstruction(any()))
+				.thenReturn(Optional.of(new CheckoutInstruction.Embedded("cs_x", "pi_x")));
 
 		BookingDetail detail = service.byCode(CODE).orElseThrow();
 
@@ -598,8 +598,8 @@ class ViewBookingServiceTest {
 	@Test
 	void stillIssuesCredentialsAfterTheCutoffWhileThePayDeadlineHolds() {
 		givenBooking(BookingStatus.AWAITING_PAYMENT, CancellationWindow.LATE, 2250L);
-		when(checkout.pendingCredentials(any()))
-				.thenReturn(Optional.of(new PaymentCredentials("cs_x", "pi_x")));
+		when(checkout.openInstruction(any()))
+				.thenReturn(Optional.of(new CheckoutInstruction.Embedded("cs_x", "pi_x")));
 
 		BookingDetail detail = service.byCode(CODE).orElseThrow();
 

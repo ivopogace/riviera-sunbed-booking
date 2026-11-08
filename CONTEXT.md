@@ -373,6 +373,9 @@ model in `docs/architecture/domain-model.md`.
   rate new accruals apply while a day already past never re-prices, and the payout ledger it must
   agree with is never rewritten (invariant #9). A venue whose rate has never changed has no
   schedule at all — its live rate is what applied throughout.
+- **Checkout instruction** — how the guest's browser completes a pending payment: **Embedded** (a
+  form in our page) or **Redirect** (the provider's own page). Whichever it is, the booking waits for
+  a verified payment state; the browser's return proves nothing.
 - **Payout ledger** — the per-venue record of what is owed (booking amounts minus commission, minus
   fees): one accrual per booking, backed out on refund by a reversal (the whole) or a day reversal
   (one service day at a time). Direction lives in the entry type: only an accrual adds, every other

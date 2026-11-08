@@ -96,7 +96,7 @@ class StayControllerIT {
 				.andExpect(jsonPath("$.code").isString())
 				.andExpect(jsonPath("$.status").value("PENDING_REQUEST"))
 				.andExpect(jsonPath("$.requestExpiresAt").isString())
-				.andExpect(jsonPath("$.clientSecret").doesNotExist())
+				.andExpect(jsonPath("$.payment").doesNotExist())
 				.andExpect(jsonPath("$.total.minorUnits").value(7 * PRICE))
 				.andExpect(jsonPath("$.stretches.length()").value(2));
 	}

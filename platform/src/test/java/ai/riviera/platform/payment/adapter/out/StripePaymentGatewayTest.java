@@ -24,6 +24,7 @@ import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.ArgumentCaptor;
 
 import ai.riviera.platform.monitoring.vocabulary.ObservabilityMetrics;
+import ai.riviera.platform.payment.vocabulary.CheckoutInstruction;
 import ai.riviera.platform.payment.vocabulary.BookingRef;
 import ai.riviera.platform.payment.vocabulary.CollectionShare;
 import ai.riviera.platform.payment.vocabulary.Money;
@@ -129,8 +130,8 @@ class StripePaymentGatewayTest {
 
 		PaymentOutcome.Pending pending = assertInstanceOf(PaymentOutcome.Pending.class, outcome,
 				"a created PaymentIntent yields Pending — the booking confirms only on the webhook");
-		assertEquals("pi_abc_secret_xyz", pending.clientSecret());
-		assertEquals("pi_abc", pending.paymentIntentId());
+		assertEquals(new CheckoutInstruction.Embedded("pi_abc_secret_xyz", "pi_abc"), pending.instruction(),
+				"Stripe's PaymentIntent maps to an Embedded instruction");
 
 		ArgumentCaptor<PaymentIntentCreateParams> params =
 				ArgumentCaptor.forClass(PaymentIntentCreateParams.class);
@@ -173,7 +174,7 @@ class StripePaymentGatewayTest {
 		assertEquals("42,43", params.getValue().getMetadata().get("bookingRefs"));
 		assertEquals("booking-42-pi", options.getValue().getIdempotencyKey(),
 				"one key per collection, derived from its first booking (ADR-0002)");
-		verify(payments).register(new NewPayment(PAYEE, "pi_stay", "EUR", "pi_stay_secret", List.of(
+		verify(payments).register(new NewPayment(PAYEE, new CheckoutInstruction.Embedded("pi_stay_secret", "pi_stay"), "EUR", List.of(
 				new NewPayment.Share(new BookingRef(42L), 7500L), new NewPayment.Share(new BookingRef(43L), 12000L))));
 	}
 
@@ -234,8 +235,7 @@ class StripePaymentGatewayTest {
 
 		PaymentOutcome.Pending pending = assertInstanceOf(PaymentOutcome.Pending.class, outcome,
 				"a recovered PaymentIntent yields Pending — the booking still confirms only on the webhook");
-		assertEquals("pi_recovered_secret", pending.clientSecret());
-		assertEquals("pi_recovered", pending.paymentIntentId());
+		assertEquals(new CheckoutInstruction.Embedded("pi_recovered_secret", "pi_recovered"), pending.instruction());
 
 		// Replayed exactly once, with the SAME idempotency key so Stripe returns the original PI
 		// (one PaymentIntent per booking — never a second, no double-charge).

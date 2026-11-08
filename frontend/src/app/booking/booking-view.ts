@@ -1112,8 +1112,7 @@ export class BookingView {
       bookingDate: b.bookingDate,
       lastDate: b.lastDate,
       amount: b.amount,
-      clientSecret: payment.clientSecret,
-      paymentIntentId: payment.paymentIntentId,
+      payment,
     });
     await this.router.navigate(['/booking/pay']);
   }

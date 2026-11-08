@@ -6,7 +6,7 @@ import java.util.Optional;
 import ai.riviera.platform.payment.vocabulary.BookingRef;
 import ai.riviera.platform.payment.domain.PaymentStatus;
 import ai.riviera.platform.payment.domain.RefundScope;
-import ai.riviera.platform.payment.vocabulary.PaymentCredentials;
+import ai.riviera.platform.payment.vocabulary.CheckoutInstruction;
 
 /**
  * The {@code payment} module's persistence port for the collection record: correlates verified
@@ -23,12 +23,10 @@ public interface Payments {
 	void register(NewPayment payment);
 
 	/**
-	 * The pay-on-accept read: the booking's PaymentIntent credentials while it is still
-	 * {@code REQUIRES_PAYMENT} with a {@code client_secret} on record; empty otherwise (stub profile,
-	 * pre-V19 rows included).
+	 * The pay-on-accept read: the instruction of the booking's collection while it is still open with
+	 * one on record; empty otherwise (stub profile, pre-V19 rows included).
 	 */
-	Optional<PaymentCredentials> findPendingCredentials(
-			BookingRef booking);
+	Optional<CheckoutInstruction> findOpenInstruction(BookingRef booking);
 
 	/**
 	 * Every booking a PaymentIntent collects for, in registration order; empty if no such
