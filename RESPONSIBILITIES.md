@@ -544,7 +544,8 @@ any is released on the old, never a swap of my own — so a racing reserve wins 
 
 ## `payment`
 **Job:** Own Stripe collection — PaymentIntents, refunds, and webhook handling — reconciling
-payment state only from **signature-verified Stripe webhooks** (never the client). Collection
+payment state only from **signature-verified Stripe webhooks**, or the ADMIN repair's authenticated read of the
+provider (never the client). Collection
 only. Publish `payment.api.RefundStatusLookup` (`NO_COLLECTION` / `OUTSTANDING` / `ACCEPTED`) from
 my own row; "no row" means the wired gateway never collected, never that a refund failed.
 
@@ -580,6 +581,14 @@ reference the provider's webhook correlates on. The `payment` row keeps it (`cli
 `redirect_url`, never both), so the pay-on-accept read returns what the provider gave. It leaves the
 module only for the `202` and the code-gated view while payable (#7). `booking` flattens it to the
 `payment` field with an explicit `kind`.
+
+**Reconciliation compares open payments with the provider and only reports** (#102, ADR-0029): a daily sweep
+under `collecting-gateway`, an ADMIN `GET` and the same computed report, no table. Only the ADMIN repair writes:
+it re-reads the provider and applies the answer through `VerifiedPaymentOutcomes`, the webhook's guarded step.
+The windows are constants, so no safety argument rests on a tunable: 30-minute grace, 30-day lookback, 24-hour
+orphan age. A paid payment is caught by `cancel` answering `NotCancellable` before the expiry can release it,
+held of every collector by `CollectingGatewayLookupContract`. A row with no payee is reported, never looked up.
+Stripe's search filters on a cached status, so the listing re-judges each object (`docs/runbooks/payment-reconciliation.md`).
 
 `CancelPaymentPort.cancel(booking)` voids the intent behind the booking, so an unpaid group is
 cancelled all-or-nothing, never one booking of it (`booking`'s remodel release ends every unpaid
@@ -1475,7 +1484,7 @@ The mechanism and edge cases behind `CLAUDE.md`'s one-line invariants; its numbe
 7. **Booking codes are unguessable bearer credentials.** ≥ 8 random base32 chars, never
    sequential, treated like a secret in logs.
 8. **Stripe webhooks are the source of truth for payment state — not the client.** Never confirm a
-   booking from a client redirect; reconcile only from signature-verified webhooks (§`payment`).
+   booking from a client redirect; reconcile only from signature-verified webhooks or the ADMIN repair's authenticated provider read (§`payment`).
 9. **The payout ledger is auditable and idempotent.** Every entry is order-independent and
    idempotent on `UNIQUE NULLS NOT DISTINCT (booking_id, entry_type, service_date)`: a booking accrues
    once, a refund reverses it, a stay's washed-out day reverses that day once (`DAY_REVERSAL`,

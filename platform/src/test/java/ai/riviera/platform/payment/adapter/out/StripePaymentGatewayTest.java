@@ -267,7 +267,7 @@ class StripePaymentGatewayTest {
 		PaymentOutcome outcome = gateway.initiate(PAYEE, new BookingRef(7L), new Money(3000L, "EUR"));
 
 		assertInstanceOf(PaymentOutcome.Failed.class, outcome,
-				"a double timeout falls through to Failed — Stripe auto-expires the unconfirmed PI (no charge)");
+				"a double timeout falls through to Failed — any PI it left behind is unconfirmed, so no charge");
 		// Exactly one replay (two attempts total), and nothing registered on the double failure.
 		verify(intents, times(2)).create(any(PaymentIntentCreateParams.class), any(RequestOptions.class));
 		verify(payments, never()).register(any());

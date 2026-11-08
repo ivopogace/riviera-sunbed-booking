@@ -127,6 +127,12 @@ public final class ObservabilityMetrics {
 	 */
 	public static final String MAIL_REQUEST_EXPIRED_ABANDONED = "riviera.mail.request-expired.abandoned";
 
+	/**
+	 * Gauge: what the last daily payment reconciliation found, by {@code kind} (paid_waiting / canceled_waiting / orphan /
+	 * unchecked). A live count that falls to zero as findings are repaired; read each kind on its own, never summed.
+	 */
+	public static final String PAYMENT_RECONCILIATION_FINDINGS = "riviera.payment.reconciliation.findings";
+
 	private ObservabilityMetrics() {
 	}
 }

@@ -3,6 +3,7 @@ package ai.riviera.platform.payment.adapter.out;
 import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Component;
 
+import java.time.Instant;
 import java.util.List;
 
 import ai.riviera.platform.payment.vocabulary.BookingRef;
@@ -13,6 +14,8 @@ import ai.riviera.platform.payment.vocabulary.PaymentCancellation;
 import ai.riviera.platform.payment.vocabulary.PaymentOutcome;
 import ai.riviera.platform.payment.vocabulary.RefundResult;
 import ai.riviera.platform.payment.application.PaymentGateway;
+import ai.riviera.platform.payment.application.ProviderPaymentState;
+import ai.riviera.platform.payment.application.UnpaidTransactions;
 import ai.riviera.platform.payment.domain.RefundScope;
 
 /**
@@ -47,5 +50,15 @@ class StubPaymentGateway implements PaymentGateway {
 		// only under a collecting gateway (synchronous stub bookings never linger AWAITING_PAYMENT), so
 		// this is here only to satisfy the port.
 		return new PaymentCancellation.Canceled();
+	}
+
+	@Override
+	public ProviderPaymentState lookup(PayeeRef payee, String reference) {
+		return new ProviderPaymentState.Paid();
+	}
+
+	@Override
+	public UnpaidTransactions unpaidCreatedBetween(Instant from, Instant before) {
+		return new UnpaidTransactions.NotOffered();
 	}
 }

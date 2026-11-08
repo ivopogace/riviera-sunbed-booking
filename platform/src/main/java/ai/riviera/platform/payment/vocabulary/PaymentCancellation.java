@@ -31,7 +31,7 @@ public sealed interface PaymentCancellation
 	/**
 	 * No PaymentIntent on record to cancel: a {@code pay()} that threw after the reserve commit never
 	 * registered one. Unlike {@link NotCancellable} nothing succeeded, so the sweep may release a stale
-	 * booking, else stranded for good; an orphan intent at the gateway auto-expires unpaid.
+	 * booking, else stranded for good; an intent left at the gateway is the reconciliation's orphan case (#479).
 	 */
 	record NoCollection() implements PaymentCancellation {
 	}

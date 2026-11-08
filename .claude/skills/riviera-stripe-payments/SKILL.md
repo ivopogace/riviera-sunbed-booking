@@ -26,7 +26,8 @@ and ignore the Connect sections of its `stripe-best-practices`.
   the Stripe SDK sits behind the internal `PaymentGateway` port (`payment.application`,
   implemented by `adapter/out/StripePaymentGateway`). The domain never touches Stripe types; a
   `Pending` outcome carries a `CheckoutInstruction`, Embedded for a PaymentIntent's client secret.
-- Confirm only on the signature-verified `payment_intent.succeeded` webhook (#8); the redirect
+- Confirm only on the signature-verified `payment_intent.succeeded` webhook or the ADMIN repair's
+  authenticated read of the provider, through the same guarded step (#8, #102); the redirect
   is never a confirmation.
 - Idempotency key from `BookingId` + operation on charge/refund, plus the service day for a
   one-day refund (`RefundScope`; one `payment_refund` row per scope; `PaymentGatewayRefundContract`
@@ -88,5 +89,5 @@ duplicate delivery, and out-of-order events.
 | Thought | Reality |
 |---|---|
 | Connect / pay the venue from Stripe | No Connect (ADR-0002). Ledger + manual BKT. |
-| Frontend got `payment success` → confirm | Only a verified webhook confirms (#8). |
+| Frontend got `payment success` → confirm | Only a verified provider state confirms: the webhook, or the ADMIN repair's read (#8). |
 | Stripe delivered, just apply it | Stripe re-delivers. Dedupe on event id or you double-accrue. |

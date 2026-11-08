@@ -40,8 +40,10 @@ class JdbcPayments implements Payments {
 	private static final String PARAM_DAY = "day";
 
 	/** The non-terminal statuses: an intent here can still be paid, so it is also still transitionable. */
-	private static final List<String> OPEN_STATUSES =
-			List.of(PaymentStatus.REQUIRES_PAYMENT.name(), PaymentStatus.FAILED.name());
+	private static final List<String> OPEN_STATUSES = Arrays.stream(PaymentStatus.values())
+			.filter(PaymentStatus::isOpen)
+			.map(PaymentStatus::name)
+			.toList();
 
 	/** The statuses that mean a refund is on record, and so is there to be un-recorded. */
 	private static final List<String> REFUND_RECORDED_STATUSES =
