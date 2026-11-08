@@ -27,7 +27,7 @@ spend review attention on what no test can see.
 
 - **RV-BE-1** availability single source of truth (#2) — first on any
   `booking`/`availability`/beach-map diff. **Blocker**.
-- **RV-CT-3 / RV-BE-7** confirmation only on a signature-verified webhook (#8). **Blocker**.
+- **RV-CT-3 / RV-BE-7** confirmation only on a signature-verified webhook or the ADMIN repair's authenticated provider read (#8). **Blocker**.
 - **RV-BE-9** per-venue authorization in the application service (`assertOwns`, pinned by
   `CrossVenueDenialIT`) (#13). **Blocker**.
 

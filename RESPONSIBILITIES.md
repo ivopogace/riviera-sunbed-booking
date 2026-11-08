@@ -544,7 +544,8 @@ any is released on the old, never a swap of my own — so a racing reserve wins 
 
 ## `payment`
 **Job:** Own Stripe collection — PaymentIntents, refunds, and webhook handling — reconciling
-payment state only from **signature-verified Stripe webhooks** (never the client). Collection
+payment state only from **signature-verified Stripe webhooks**, or the ADMIN repair's authenticated read of the
+provider (never the client). Collection
 only. Publish `payment.api.RefundStatusLookup` (`NO_COLLECTION` / `OUTSTANDING` / `ACCEPTED`) from
 my own row; "no row" means the wired gateway never collected, never that a refund failed.
 
@@ -1476,7 +1477,7 @@ The mechanism and edge cases behind `CLAUDE.md`'s one-line invariants; its numbe
 7. **Booking codes are unguessable bearer credentials.** ≥ 8 random base32 chars, never
    sequential, treated like a secret in logs.
 8. **Stripe webhooks are the source of truth for payment state — not the client.** Never confirm a
-   booking from a client redirect; reconcile only from signature-verified webhooks (§`payment`).
+   booking from a client redirect; reconcile only from signature-verified webhooks or the ADMIN repair's authenticated provider read (§`payment`).
 9. **The payout ledger is auditable and idempotent.** Every entry is order-independent and
    idempotent on `UNIQUE NULLS NOT DISTINCT (booking_id, entry_type, service_date)`: a booking accrues
    once, a refund reverses it, a stay's washed-out day reverses that day once (`DAY_REVERSAL`,
