@@ -32,7 +32,7 @@ import ai.riviera.platform.venue.vocabulary.SetId;
 /**
  * Public tourist booking endpoint, over {@link CreateBooking} (invariant #11). Maps the sealed
  * {@link BookingOutcome} exhaustively: {@code Confirmed}→201, {@code SET_TAKEN}→409,
- * {@code NOT_ONLINE_POOL}/{@code BOOKING_CLOSED}/{@code VENUE_CLOSED}/{@code STAY_TOO_LONG}→422,
+ * {@code NOT_ONLINE_POOL}/{@code BOOKING_CLOSED}/{@code VENUE_CLOSED}/{@code STAY_TOO_LONG}/{@code SPANS_VENUES}→422,
  * {@code NO_SUCH_SET}→404; malformed input→400 via {@code ApiErrorHandler}. Errors are RFC-7807
  * {@link ProblemDetail} built by {@link ApiProblem}.
  */

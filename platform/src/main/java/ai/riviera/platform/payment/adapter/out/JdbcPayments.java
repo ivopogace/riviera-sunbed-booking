@@ -90,11 +90,12 @@ class JdbcPayments implements Payments {
 	@Transactional
 	public void register(NewPayment payment) {
 		long paymentId = jdbc.sql("""
-				INSERT INTO payment (payment_intent_id, amount_minor, currency, status, client_secret)
-				VALUES (:intent, :amount, :currency, :status, :clientSecret)
+				INSERT INTO payment (payment_intent_id, amount_minor, currency, status, client_secret, payee_venue_id)
+				VALUES (:intent, :amount, :currency, :status, :clientSecret, :payee)
 				RETURNING id
 				""")
 				.param(PARAM_INTENT, payment.paymentIntentId())
+				.param("payee", payment.payee().value())
 				.param("amount", payment.amountMinor())
 				.param("currency", payment.currency())
 				.param(PARAM_STATUS, PaymentStatus.REQUIRES_PAYMENT.name())

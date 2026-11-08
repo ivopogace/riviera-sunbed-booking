@@ -6,6 +6,7 @@ import ai.riviera.platform.payment.domain.RefundScope;
 import ai.riviera.platform.payment.vocabulary.BookingRef;
 import ai.riviera.platform.payment.vocabulary.CollectionShare;
 import ai.riviera.platform.payment.vocabulary.Money;
+import ai.riviera.platform.payment.vocabulary.PayeeRef;
 import ai.riviera.platform.payment.vocabulary.PaymentCancellation;
 import ai.riviera.platform.payment.vocabulary.PaymentOutcome;
 import ai.riviera.platform.payment.vocabulary.RefundResult;
@@ -21,15 +22,15 @@ import ai.riviera.platform.payment.vocabulary.RefundResult;
 public interface PaymentGateway {
 
 	/**
-	 * Initiate one collection for every share (one currency); never throws on a decline or expected
-	 * failure. Returns {@code Succeeded} (stub, in-process), {@code Pending} (a PaymentIntent exists and
+	 * Initiate one collection for every share (one currency), paying {@code payee}; never throws on a decline or
+	 * expected failure. Returns {@code Succeeded} (stub, in-process), {@code Pending} (a PaymentIntent exists and
 	 * only the signature-verified webhook completes it, invariant #8) or {@code Failed}.
 	 */
-	PaymentOutcome initiate(List<CollectionShare> shares);
+	PaymentOutcome initiate(PayeeRef payee, List<CollectionShare> shares);
 
-	/** Initiate collection of {@code amount} for one booking: a collection of one share. */
-	default PaymentOutcome initiate(BookingRef booking, Money amount) {
-		return initiate(List.of(new CollectionShare(booking, amount)));
+	/** Initiate collection of {@code amount} for one booking, paying {@code payee}: a collection of one share. */
+	default PaymentOutcome initiate(PayeeRef payee, BookingRef booking, Money amount) {
+		return initiate(payee, List.of(new CollectionShare(booking, payee, amount)));
 	}
 
 	/**

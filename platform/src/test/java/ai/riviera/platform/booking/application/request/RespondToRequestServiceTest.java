@@ -11,8 +11,12 @@ import java.util.Optional;
 import ai.riviera.platform.customer.api.CustomerLookup;
 import ai.riviera.platform.customer.vocabulary.CustomerId;
 import ai.riviera.platform.payment.vocabulary.BookingRef;
+import ai.riviera.platform.booking.vocabulary.StayId;
+import ai.riviera.platform.payment.vocabulary.CollectionShare;
 import ai.riviera.platform.payment.vocabulary.Money;
+import ai.riviera.platform.payment.vocabulary.PayeeRef;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.dao.QueryTimeoutException;
 
@@ -47,6 +51,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
@@ -129,7 +134,7 @@ class RespondToRequestServiceTest {
 	void acceptTransitionsThenIssuesPaymentRequest() {
 		when(bookings.acceptPendingRequest(BOOKING.value(), VENUE, NOW))
 				.thenReturn(Optional.of(acceptedRequest()));
-		when(checkout.pay(any(), any())).thenReturn(new PaymentOutcome.Pending("cs_x", "pi_x"));
+		when(checkout.pay(any(), any(), any())).thenReturn(new PaymentOutcome.Pending("cs_x", "pi_x"));
 
 		AcceptOutcome outcome = service().accept(OPERATOR, VENUE, BOOKING);
 
@@ -138,8 +143,60 @@ class RespondToRequestServiceTest {
 				"real Stripe: the webhook confirms, never the accept response (invariant #8)");
 		verify(checkout).pay(
 				eq(new BookingRef(BOOKING.value())),
+				eq(new PayeeRef(VENUE.value())),
 				eq(new Money(4500L, "EUR")));
 		verify(confirmBooking, never()).confirm(anyLong(), any());
+	}
+
+	@Test
+	void acceptStayPaysEveryStretchsVenue() {
+		StayId stay = new StayId(900L);
+		VenueId other = new VenueId(2L);
+		when(bookings.findPendingStayStretches(stay, VENUE)).thenReturn(List.of(
+				new StayStretchRef(BOOKING.value(), SET, BOOKING_DATE, BOOKING_DATE),
+				new StayStretchRef(43L, SET, BOOKING_DATE.plusDays(1), BOOKING_DATE.plusDays(1))));
+		when(bookings.acceptPendingStay(stay, VENUE, NOW)).thenReturn(List.of(acceptedRequest(),
+				new AcceptedRequest(43L, other, SET, BOOKING_DATE.plusDays(1), BOOKING_DATE.plusDays(1), NOW, CREATED_AT, 3000L, "EUR")));
+		@SuppressWarnings("unchecked")
+		ArgumentCaptor<List<CollectionShare>> shares = ArgumentCaptor.forClass(List.class);
+		when(checkout.pay(shares.capture())).thenReturn(new PaymentOutcome.Succeeded("ok"));
+
+		service().acceptStay(OPERATOR, VENUE, stay);
+
+		assertEquals(List.of(new PayeeRef(VENUE.value()), new PayeeRef(other.value())),
+				shares.getValue().stream().map(CollectionShare::payee).toList(),
+				"every share names its own stretch's venue");
+	}
+
+	@Test
+	void aMixedCollectionRevertsTheAcceptAsAFailedPaymentSetUp() {
+		when(bookings.acceptPendingRequest(BOOKING.value(), VENUE, NOW))
+				.thenReturn(Optional.of(acceptedRequest()));
+		when(bookings.revertAcceptToPending(BOOKING.value()))
+				.thenReturn(Optional.of(new ClaimRef(SET, BOOKING_DATE, BOOKING_DATE)));
+		when(checkout.pay(any(), any(), any())).thenReturn(new PaymentOutcome.MixedPayees());
+
+		AcceptOutcome outcome = service().accept(OPERATOR, VENUE, BOOKING);
+
+		assertSame(AcceptOutcome.Rejected.PAYMENT_INIT_FAILED, outcome, "a typed refusal, never an exception");
+		verify(availability).release(SET, BOOKING_DATE);
+	}
+
+	@Test
+	void aMixedStayCollectionRevertsEveryStretch() {
+		StayId stay = new StayId(901L);
+		when(bookings.findPendingStayStretches(stay, VENUE)).thenReturn(List.of(
+				new StayStretchRef(BOOKING.value(), SET, BOOKING_DATE, BOOKING_DATE)));
+		when(bookings.acceptPendingStay(stay, VENUE, NOW)).thenReturn(List.of(acceptedRequest()));
+		when(bookings.revertAcceptToPending(BOOKING.value()))
+				.thenReturn(Optional.of(new ClaimRef(SET, BOOKING_DATE, BOOKING_DATE)));
+		when(checkout.pay(anyList())).thenReturn(new PaymentOutcome.MixedPayees());
+
+		AcceptOutcome outcome = service().acceptStay(OPERATOR, VENUE, stay);
+
+		assertSame(AcceptOutcome.Rejected.PAYMENT_INIT_FAILED, outcome);
+		verify(bookings).revertAcceptToPending(BOOKING.value());
+		verify(availability).release(SET, BOOKING_DATE);
 	}
 
 	@Test
@@ -147,7 +204,7 @@ class RespondToRequestServiceTest {
 		// The one branch that owes anything: registered intent, webhook not yet spoken (invariant #8).
 		when(bookings.acceptPendingRequest(BOOKING.value(), VENUE, NOW))
 				.thenReturn(Optional.of(acceptedRequest()));
-		when(checkout.pay(any(), any())).thenReturn(new PaymentOutcome.Pending("cs_x", "pi_x"));
+		when(checkout.pay(any(), any(), any())).thenReturn(new PaymentOutcome.Pending("cs_x", "pi_x"));
 
 		service().accept(OPERATOR, VENUE, BOOKING);
 
@@ -166,7 +223,7 @@ class RespondToRequestServiceTest {
 		when(bookings.acceptPendingRequest(BOOKING.value(), VENUE, onDayAccept)).thenReturn(
 				Optional.of(new AcceptedRequest(BOOKING.value(), VENUE, SET, today, today, onDayAccept,
 						CREATED_AT, 4500L, "EUR")));
-		when(checkout.pay(any(), any())).thenReturn(new PaymentOutcome.Pending("cs_x", "pi_x"));
+		when(checkout.pay(any(), any(), any())).thenReturn(new PaymentOutcome.Pending("cs_x", "pi_x"));
 
 		serviceOn(atAccept).accept(OPERATOR, VENUE, BOOKING);
 
@@ -186,7 +243,7 @@ class RespondToRequestServiceTest {
 		when(bookings.acceptPendingRequest(BOOKING.value(), VENUE, onDayAccept)).thenReturn(
 				Optional.of(new AcceptedRequest(BOOKING.value(), VENUE, SET, today, today, onDayAccept,
 						CREATED_AT, 4500L, "EUR")));
-		when(checkout.pay(any(), any())).thenReturn(new PaymentOutcome.Pending("cs_x", "pi_x"));
+		when(checkout.pay(any(), any(), any())).thenReturn(new PaymentOutcome.Pending("cs_x", "pi_x"));
 
 		serviceOn(atAccept).accept(OPERATOR, VENUE, BOOKING);
 
@@ -199,7 +256,7 @@ class RespondToRequestServiceTest {
 		// The stub confirms before this returns, so a "pay by" mail would contradict the confirmation.
 		when(bookings.acceptPendingRequest(BOOKING.value(), VENUE, NOW))
 				.thenReturn(Optional.of(acceptedRequest()));
-		when(checkout.pay(any(), any())).thenReturn(new PaymentOutcome.Succeeded("ok"));
+		when(checkout.pay(any(), any(), any())).thenReturn(new PaymentOutcome.Succeeded("ok"));
 
 		service().accept(OPERATOR, VENUE, BOOKING);
 
@@ -211,7 +268,7 @@ class RespondToRequestServiceTest {
 		// The booking is reverted to PENDING_REQUEST, so there is nothing to pay and no way to pay it.
 		when(bookings.acceptPendingRequest(BOOKING.value(), VENUE, NOW))
 				.thenReturn(Optional.of(acceptedRequest()));
-		when(checkout.pay(any(), any())).thenReturn(new PaymentOutcome.Failed("stripe_error"));
+		when(checkout.pay(any(), any(), any())).thenReturn(new PaymentOutcome.Failed("stripe_error"));
 
 		service().accept(OPERATOR, VENUE, BOOKING);
 
@@ -222,7 +279,7 @@ class RespondToRequestServiceTest {
 	void publishesNoPaymentDueWhenPaymentIssuanceThrows() {
 		when(bookings.acceptPendingRequest(BOOKING.value(), VENUE, NOW))
 				.thenReturn(Optional.of(acceptedRequest()));
-		when(checkout.pay(any(), any())).thenThrow(new IllegalStateException("payment row insert failed"));
+		when(checkout.pay(any(), any(), any())).thenThrow(new IllegalStateException("payment row insert failed"));
 
 		assertThrows(IllegalStateException.class, () -> service().accept(OPERATOR, VENUE, BOOKING));
 
@@ -234,7 +291,7 @@ class RespondToRequestServiceTest {
 		// The accept is committed and the intent issued; failing now would lie and invite a retry.
 		when(bookings.acceptPendingRequest(BOOKING.value(), VENUE, NOW))
 				.thenReturn(Optional.of(acceptedRequest()));
-		when(checkout.pay(any(), any())).thenReturn(new PaymentOutcome.Pending("cs_x", "pi_x"));
+		when(checkout.pay(any(), any(), any())).thenReturn(new PaymentOutcome.Pending("cs_x", "pi_x"));
 		doThrow(new QueryTimeoutException("event_publication insert timed out"))
 				.when(publisher).publishEvent(any(Object.class));
 
@@ -248,7 +305,7 @@ class RespondToRequestServiceTest {
 	void acceptOnStubProfileConfirmsSynchronously() {
 		when(bookings.acceptPendingRequest(BOOKING.value(), VENUE, NOW))
 				.thenReturn(Optional.of(acceptedRequest()));
-		when(checkout.pay(any(), any())).thenReturn(new PaymentOutcome.Succeeded("ok"));
+		when(checkout.pay(any(), any(), any())).thenReturn(new PaymentOutcome.Succeeded("ok"));
 
 		AcceptOutcome outcome = service().accept(OPERATOR, VENUE, BOOKING);
 
@@ -262,7 +319,7 @@ class RespondToRequestServiceTest {
 		// The accept claimed the day; the revert gives it back, since a pending request holds nothing (ADR-0025).
 		when(bookings.acceptPendingRequest(BOOKING.value(), VENUE, NOW))
 				.thenReturn(Optional.of(acceptedRequest()));
-		when(checkout.pay(any(), any())).thenReturn(new PaymentOutcome.Failed("stripe_error"));
+		when(checkout.pay(any(), any(), any())).thenReturn(new PaymentOutcome.Failed("stripe_error"));
 		when(bookings.revertAcceptToPending(BOOKING.value()))
 				.thenReturn(Optional.of(new ClaimRef(SET, BOOKING_DATE, BOOKING_DATE)));
 
@@ -278,7 +335,7 @@ class RespondToRequestServiceTest {
 	void acceptClaimsTheDayBeforeTransitioning() {
 		when(bookings.acceptPendingRequest(BOOKING.value(), VENUE, NOW))
 				.thenReturn(Optional.of(acceptedRequest()));
-		when(checkout.pay(any(), any())).thenReturn(new PaymentOutcome.Pending("cs_x", "pi_x"));
+		when(checkout.pay(any(), any(), any())).thenReturn(new PaymentOutcome.Pending("cs_x", "pi_x"));
 
 		service().accept(OPERATOR, VENUE, BOOKING);
 
@@ -310,7 +367,7 @@ class RespondToRequestServiceTest {
 		when(bookings.declineRivals(SET, BOOKING_DATE, BOOKING_DATE, DeclineReason.ANOTHER_GUEST))
 				.thenReturn(List.of(new DeclinedRival(77, SET, BOOKING_DATE, BOOKING_DATE, null),
 						new DeclinedRival(78, SET, BOOKING_DATE, BOOKING_DATE, null)));
-		when(checkout.pay(any(), any())).thenReturn(new PaymentOutcome.Succeeded("ok"));
+		when(checkout.pay(any(), any(), any())).thenReturn(new PaymentOutcome.Succeeded("ok"));
 
 		service().accept(OPERATOR, VENUE, BOOKING);
 

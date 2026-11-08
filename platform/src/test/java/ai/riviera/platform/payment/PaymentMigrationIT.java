@@ -65,6 +65,14 @@ class PaymentMigrationIT {
 	}
 
 	@Test
+	void aRowPredatingThePayeeColumnNamesNoVenue() {
+		insertPayment(8051L, "pi_no_payee", "REQUIRES_PAYMENT");
+
+		assertEquals(0, jdbc.sql("SELECT COUNT(*) FROM payment WHERE payment_intent_id = 'pi_no_payee' AND payee_venue_id IS NOT NULL")
+				.query(Integer.class).single(), "V80 leaves earlier rows empty rather than guessing a venue");
+	}
+
+	@Test
 	void duplicatePaymentIntentRejected() {
 		insertPayment(1001L, "pi_dup_intent", "REQUIRES_PAYMENT");
 		assertThrows(DataIntegrityViolationException.class,

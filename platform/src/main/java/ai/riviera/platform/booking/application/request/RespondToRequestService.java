@@ -26,6 +26,7 @@ import ai.riviera.platform.payment.api.CheckoutPort;
 import ai.riviera.platform.payment.vocabulary.BookingRef;
 import ai.riviera.platform.payment.vocabulary.CollectionShare;
 import ai.riviera.platform.payment.vocabulary.Money;
+import ai.riviera.platform.payment.vocabulary.PayeeRef;
 import ai.riviera.platform.payment.vocabulary.PaymentOutcome;
 import ai.riviera.platform.venue.vocabulary.VenueId;
 
@@ -118,7 +119,7 @@ class RespondToRequestService implements RespondToRequest {
 	private AcceptOutcome collect(AcceptedRequest accepted) {
 		PaymentOutcome payment;
 		try {
-			payment = checkout.pay(new BookingRef(accepted.bookingId()),
+			payment = checkout.pay(new BookingRef(accepted.bookingId()), new PayeeRef(accepted.venueId().value()),
 					new Money(accepted.amountMinor(), accepted.currency()));
 		}
 		catch (RuntimeException paymentBlewUp) {
@@ -154,6 +155,12 @@ class RespondToRequestService implements RespondToRequest {
 						accepted.bookingId(), failed.reason(), reverted);
 				yield AcceptOutcome.Rejected.PAYMENT_INIT_FAILED;
 			}
+			case PaymentOutcome.MixedPayees ignored -> {
+				boolean reverted = claims.revert(accepted);
+				log.warn("payment request for accepted booking {} pays more than one venue; reverted={}",
+						accepted.bookingId(), reverted);
+				yield AcceptOutcome.Rejected.PAYMENT_INIT_FAILED;
+			}
 		};
 	}
 
@@ -163,7 +170,7 @@ class RespondToRequestService implements RespondToRequest {
 		PaymentOutcome payment;
 		try {
 			payment = checkout.pay(stretches.stream()
-					.map(stretch -> new CollectionShare(new BookingRef(stretch.bookingId()),
+					.map(stretch -> new CollectionShare(new BookingRef(stretch.bookingId()), new PayeeRef(stretch.venueId().value()),
 							new Money(stretch.amountMinor(), currency)))
 					.toList());
 		}
@@ -193,6 +200,12 @@ class RespondToRequestService implements RespondToRequest {
 				boolean reverted = claims.revertStay(stayId, stretches);
 				log.warn("payment request for accepted stay {} failed ({}); reverted={}", stayId.value(),
 						failed.reason(), reverted);
+				yield AcceptOutcome.Rejected.PAYMENT_INIT_FAILED;
+			}
+			case PaymentOutcome.MixedPayees ignored -> {
+				boolean reverted = claims.revertStay(stayId, stretches);
+				log.warn("payment request for accepted stay {} pays more than one venue; reverted={}", stayId.value(),
+						reverted);
 				yield AcceptOutcome.Rejected.PAYMENT_INIT_FAILED;
 			}
 		};

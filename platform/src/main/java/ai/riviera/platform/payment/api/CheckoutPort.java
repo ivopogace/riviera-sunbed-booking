@@ -5,6 +5,7 @@ import java.util.List;
 import ai.riviera.platform.payment.vocabulary.BookingRef;
 import ai.riviera.platform.payment.vocabulary.CollectionShare;
 import ai.riviera.platform.payment.vocabulary.Money;
+import ai.riviera.platform.payment.vocabulary.PayeeRef;
 import ai.riviera.platform.payment.vocabulary.PaymentOutcome;
 
 /**
@@ -18,13 +19,14 @@ import ai.riviera.platform.payment.vocabulary.PaymentOutcome;
 public interface CheckoutPort {
 
 	/**
-	 * Collect every share in one PaymentIntent, all in one currency. Returns a typed {@link PaymentOutcome};
+	 * Collect every share in one PaymentIntent, all in one currency and paying one venue (else
+	 * {@link PaymentOutcome.MixedPayees}, with no gateway call). Returns a typed {@link PaymentOutcome};
 	 * the caller confirms the bookings only on {@link PaymentOutcome.Succeeded}.
 	 */
 	PaymentOutcome pay(List<CollectionShare> shares);
 
-	/** Collect {@code amount} for the given booking: a collection of one share. */
-	default PaymentOutcome pay(BookingRef booking, Money amount) {
-		return pay(List.of(new CollectionShare(booking, amount)));
+	/** Collect {@code amount} for the given booking, paying {@code payee}: a collection of one share. */
+	default PaymentOutcome pay(BookingRef booking, PayeeRef payee, Money amount) {
+		return pay(List.of(new CollectionShare(booking, payee, amount)));
 	}
 }

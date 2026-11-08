@@ -24,6 +24,7 @@ import ai.riviera.platform.EnabledIfDockerAvailable;
 import ai.riviera.platform.TestcontainersConfiguration;
 import ai.riviera.platform.monitoring.vocabulary.ObservabilityMetrics;
 import ai.riviera.platform.payment.vocabulary.BookingRef;
+import ai.riviera.platform.payment.vocabulary.PayeeRef;
 import ai.riviera.platform.payment.events.PaymentCanceled;
 import ai.riviera.platform.payment.events.PaymentConfirmed;
 import ai.riviera.platform.payment.application.NewPayment;
@@ -57,6 +58,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @RecordApplicationEvents
 @TestPropertySource(properties = "stripe.webhook-secret=whsec_test_u4_secret")
 class StripeWebhookIT {
+
+	private static final PayeeRef PAYEE = new PayeeRef(11L);
 
 	private static final String SECRET = "whsec_test_u4_secret";
 
@@ -96,7 +99,7 @@ class StripeWebhookIT {
 
 	/** One intent collecting for two bookings (shares 4500 and 3000), collected. */
 	private void sharedCollection(String intentId, long bookingA, long bookingB) {
-		payments.register(new NewPayment(intentId, "EUR", "cs_test_secret", List.of(
+		payments.register(new NewPayment(PAYEE, intentId, "EUR", "cs_test_secret", List.of(
 				new NewPayment.Share(new BookingRef(bookingA), 4500L),
 				new NewPayment.Share(new BookingRef(bookingB), 3000L))));
 		payments.markStatus(intentId, PaymentStatus.SUCCEEDED);
@@ -134,7 +137,7 @@ class StripeWebhookIT {
 
 	/** A collected payment carrying a recorded refund — the state a refund failure has to undo. */
 	private void collectionRefundedWith(long bookingRef, String intentId, String refundId) {
-		payments.register(new NewPayment(new BookingRef(bookingRef), intentId, 4500L, "EUR", "cs_test_secret"));
+		payments.register(new NewPayment(PAYEE, new BookingRef(bookingRef), intentId, 4500L, "EUR", "cs_test_secret"));
 		payments.markStatus(intentId, PaymentStatus.SUCCEEDED);
 		payments.markRefunded(new BookingRef(bookingRef), 4500L, refundId);
 	}
@@ -184,7 +187,7 @@ class StripeWebhookIT {
 
 	@Test
 	void verifiedSucceededConfirmsBooking() throws Exception {
-		payments.register(new NewPayment(new BookingRef(7001L), "pi_hook_ok", 4500L, "EUR", "cs_test_secret"));
+		payments.register(new NewPayment(PAYEE, new BookingRef(7001L), "pi_hook_ok", 4500L, "EUR", "cs_test_secret"));
 		String payload = eventJson("evt_ok_1", "payment_intent.succeeded", "pi_hook_ok");
 
 		postSigned(payload, sign(payload), 200);
@@ -197,7 +200,7 @@ class StripeWebhookIT {
 
 	@Test
 	void badSignatureRejectedNoConfirm() throws Exception {
-		payments.register(new NewPayment(new BookingRef(7002L), "pi_hook_badsig", 4500L, "EUR", "cs_test_secret"));
+		payments.register(new NewPayment(PAYEE, new BookingRef(7002L), "pi_hook_badsig", 4500L, "EUR", "cs_test_secret"));
 		String payload = eventJson("evt_badsig_1", "payment_intent.succeeded", "pi_hook_badsig");
 
 		postSigned(payload, "t=1,v1=deadbeef", 400)
@@ -213,7 +216,7 @@ class StripeWebhookIT {
 
 	@Test
 	void missingSignatureHeaderRejectedNoConfirm() throws Exception {
-		payments.register(new NewPayment(new BookingRef(7006L), "pi_hook_nosig", 4500L, "EUR", "cs_test_secret"));
+		payments.register(new NewPayment(PAYEE, new BookingRef(7006L), "pi_hook_nosig", 4500L, "EUR", "cs_test_secret"));
 		String payload = eventJson("evt_nosig_1", "payment_intent.succeeded", "pi_hook_nosig");
 
 		// No Stripe-Signature header at all — the same trust failure as a bad one: 400 problem body, not 500.
@@ -230,7 +233,7 @@ class StripeWebhookIT {
 
 	@Test
 	void duplicateDeliveryIsIdempotent() throws Exception {
-		payments.register(new NewPayment(new BookingRef(7003L), "pi_hook_dup", 4500L, "EUR", "cs_test_secret"));
+		payments.register(new NewPayment(PAYEE, new BookingRef(7003L), "pi_hook_dup", 4500L, "EUR", "cs_test_secret"));
 		String payload = eventJson("evt_dup_1", "payment_intent.succeeded", "pi_hook_dup");
 
 		postSigned(payload, sign(payload), 200);
@@ -247,7 +250,7 @@ class StripeWebhookIT {
 	@Test
 	void outOfOrderIsSafe() throws Exception {
 		// An unknown/unrelated event type must be accepted (200) and ignored — no state change.
-		payments.register(new NewPayment(new BookingRef(7004L), "pi_hook_other", 4500L, "EUR", "cs_test_secret"));
+		payments.register(new NewPayment(PAYEE, new BookingRef(7004L), "pi_hook_other", 4500L, "EUR", "cs_test_secret"));
 		String payload = eventJson("evt_other_1", "payment_intent.created", "pi_hook_other");
 
 		postSigned(payload, sign(payload), 200);
@@ -261,7 +264,7 @@ class StripeWebhookIT {
 
 	@Test
 	void lateFailureAfterSuccessLeavesThePaymentSucceeded() throws Exception {
-		payments.register(new NewPayment(new BookingRef(7101L), "pi_late_fail", 4500L, "EUR", "cs_test_secret"));
+		payments.register(new NewPayment(PAYEE, new BookingRef(7101L), "pi_late_fail", 4500L, "EUR", "cs_test_secret"));
 		String succeeded = eventJson("evt_late_ok_1", "payment_intent.succeeded", "pi_late_fail");
 		postSigned(succeeded, sign(succeeded), 200);
 
@@ -275,7 +278,7 @@ class StripeWebhookIT {
 
 	@Test
 	void lateCancelAfterSuccessPublishesNoRelease() throws Exception {
-		payments.register(new NewPayment(new BookingRef(7102L), "pi_late_cancel", 4500L, "EUR", "cs_test_secret"));
+		payments.register(new NewPayment(PAYEE, new BookingRef(7102L), "pi_late_cancel", 4500L, "EUR", "cs_test_secret"));
 		String succeeded = eventJson("evt_late_ok_2", "payment_intent.succeeded", "pi_late_cancel");
 		postSigned(succeeded, sign(succeeded), 200);
 
@@ -291,7 +294,7 @@ class StripeWebhookIT {
 
 	@Test
 	void unreadableHandledEventIsRetryableAndNotConsumed() throws Exception {
-		payments.register(new NewPayment(new BookingRef(7201L), "pi_unreadable", 4500L, "EUR", "cs_test_secret"));
+		payments.register(new NewPayment(PAYEE, new BookingRef(7201L), "pi_unreadable", 4500L, "EUR", "cs_test_secret"));
 		String payload = eventJson("evt_unreadable_1", "payment_intent.succeeded",
 				Stripe.API_VERSION, NOT_AN_INTENT_OBJECT);
 
@@ -328,7 +331,7 @@ class StripeWebhookIT {
 
 	@Test
 	void apiVersionSkewStillReadsTheIntentId() throws Exception {
-		payments.register(new NewPayment(new BookingRef(7202L), "pi_skew", 4500L, "EUR", "cs_test_secret"));
+		payments.register(new NewPayment(PAYEE, new BookingRef(7202L), "pi_skew", 4500L, "EUR", "cs_test_secret"));
 		String payload = eventJson("evt_skew_1", "payment_intent.succeeded", "2017-01-27",
 				INTENT_OBJECT.formatted("pi_skew"));
 
@@ -340,7 +343,7 @@ class StripeWebhookIT {
 
 	@Test
 	void canceledPublishesPaymentCanceled() throws Exception {
-		payments.register(new NewPayment(new BookingRef(7005L), "pi_hook_cancel", 4500L, "EUR", "cs_test_secret"));
+		payments.register(new NewPayment(PAYEE, new BookingRef(7005L), "pi_hook_cancel", 4500L, "EUR", "cs_test_secret"));
 		String payload = eventJson("evt_cancel_1", "payment_intent.canceled", "pi_hook_cancel");
 
 		postSigned(payload, sign(payload), 200);
@@ -485,7 +488,7 @@ class StripeWebhookIT {
 
 	/** A collected payment with no refund on record; {@code attempted} is whether we began one. */
 	private void collectionWithoutARecordedRefund(long bookingRef, String intentId, boolean attempted) {
-		payments.register(new NewPayment(new BookingRef(bookingRef), intentId, 4500L, "EUR", "cs_test_secret"));
+		payments.register(new NewPayment(PAYEE, new BookingRef(bookingRef), intentId, 4500L, "EUR", "cs_test_secret"));
 		payments.markStatus(intentId, PaymentStatus.SUCCEEDED);
 		if (attempted) {
 			payments.markRefundAttempted(new BookingRef(bookingRef));
@@ -558,7 +561,7 @@ class StripeWebhookIT {
 
 	@Test
 	void succeededOnASharedIntentConfirmsEveryBooking() throws Exception {
-		payments.register(new NewPayment("pi_hook_shared_ok", "EUR", "cs_test_secret", List.of(
+		payments.register(new NewPayment(PAYEE, "pi_hook_shared_ok", "EUR", "cs_test_secret", List.of(
 				new NewPayment.Share(new BookingRef(7401L), 4500L),
 				new NewPayment.Share(new BookingRef(7402L), 3000L))));
 		String payload = eventJson("evt_shared_ok_1", "payment_intent.succeeded", "pi_hook_shared_ok");
@@ -574,7 +577,7 @@ class StripeWebhookIT {
 
 	@Test
 	void canceledOnASharedIntentReleasesEveryBooking() throws Exception {
-		payments.register(new NewPayment("pi_hook_shared_cancel", "EUR", "cs_test_secret", List.of(
+		payments.register(new NewPayment(PAYEE, "pi_hook_shared_cancel", "EUR", "cs_test_secret", List.of(
 				new NewPayment.Share(new BookingRef(7403L), 4500L),
 				new NewPayment.Share(new BookingRef(7404L), 3000L))));
 		String payload = eventJson("evt_shared_cancel_1", "payment_intent.canceled", "pi_hook_shared_cancel");
