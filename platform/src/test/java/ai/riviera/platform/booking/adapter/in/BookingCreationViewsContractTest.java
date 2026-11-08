@@ -13,6 +13,7 @@ import tools.jackson.databind.json.JsonMapper;
 
 import ai.riviera.platform.booking.application.reserve.BookingConfirmation;
 import ai.riviera.platform.booking.domain.BookingStatus;
+import ai.riviera.platform.payment.vocabulary.CheckoutInstruction;
 import ai.riviera.platform.venue.vocabulary.BookingMode;
 import ai.riviera.platform.venue.vocabulary.MoneyView;
 import ai.riviera.platform.venue.vocabulary.Pool;
@@ -26,7 +27,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 /**
  * Freezes the three creation bodies' wire shape before the dedup: the exact top-level key
  * sets, the nested {@code amount} keys, and the deliberate asymmetries — the requested body has
- * <strong>no</strong> {@code clientSecret}/{@code paymentIntentId} (no payment exists until the
+ * <strong>no</strong> {@code payment} (no payment exists until the
  * venue accepts), the awaiting-payment body no {@code requestExpiresAt}, and only the confirmed
  * body carries {@code emailWithheld} (D-8). Value formats stay pinned by the MockMvc ITs
  * ({@code CreateBookingStripeProfileIT}, {@code RequestToBookFlowIT}); this test guards the key
@@ -66,11 +67,12 @@ class BookingCreationViewsContractTest {
 	@Test
 	void awaitingPaymentBodyKeysAreFrozen() {
 		AwaitingPaymentView view = AwaitingPaymentView.of(
-				confirmation(BookingStatus.AWAITING_PAYMENT), "cs_test_secret", "pi_test");
+				confirmation(BookingStatus.AWAITING_PAYMENT), new CheckoutInstruction.Embedded("cs_test_secret", "pi_test"));
 
 		JsonNode json = MAPPER.valueToTree(view);
 
-		assertEquals(withShared("clientSecret", "paymentIntentId"), fieldNames(json));
+		assertEquals(withShared("payment"), fieldNames(json));
+		assertEquals(Set.of("kind", "clientToken", "url", "reference"), fieldNames(json.get("payment")));
 		assertEquals(Set.of("minorUnits", "currency"), fieldNames(json.get("amount")));
 		assertEquals("AWAITING_PAYMENT", json.get("status").asText());
 	}

@@ -6,7 +6,7 @@ import java.util.Optional;
 import ai.riviera.platform.payment.domain.PaymentStatus;
 import ai.riviera.platform.payment.domain.RefundScope;
 import ai.riviera.platform.payment.vocabulary.BookingRef;
-import ai.riviera.platform.payment.vocabulary.PaymentCredentials;
+import ai.riviera.platform.payment.vocabulary.CheckoutInstruction;
 
 /**
  * A {@link Payments} test double where every method throws — instantiate as
@@ -21,7 +21,7 @@ interface ThrowingPayments extends Payments {
 	}
 
 	@Override
-	default Optional<PaymentCredentials> findPendingCredentials(BookingRef booking) {
+	default Optional<CheckoutInstruction> findOpenInstruction(BookingRef booking) {
 		throw new UnsupportedOperationException("not stubbed by this test");
 	}
 

@@ -27,6 +27,7 @@ import ai.riviera.platform.TestcontainersConfiguration;
 import ai.riviera.platform.booking.StayFixtures.Venue;
 import ai.riviera.platform.booking.application.reserve.CreateStay;
 import ai.riviera.platform.booking.application.reserve.StayOutcome;
+import ai.riviera.platform.payment.vocabulary.CheckoutInstruction;
 import ai.riviera.platform.venue.vocabulary.SetId;
 
 import static ai.riviera.platform.booking.StayFixtures.PRICE;
@@ -95,7 +96,7 @@ class CreateStayCheckoutIT {
 		StayOutcome outcome = createStay.create(plan(a, 3, b, 4, first));
 
 		StayOutcome.AwaitingPayment awaiting = assertInstanceOf(StayOutcome.AwaitingPayment.class, outcome);
-		assertEquals(intentId + "_secret", awaiting.clientSecret());
+		assertEquals(new CheckoutInstruction.Embedded(intentId + "_secret", intentId), awaiting.instruction());
 		ArgumentCaptor<PaymentIntentCreateParams> params = ArgumentCaptor.forClass(PaymentIntentCreateParams.class);
 		verify(intents).create(params.capture(), any(RequestOptions.class));
 		assertEquals(7 * PRICE, params.getValue().getAmount(), "one intent for the stay's total");

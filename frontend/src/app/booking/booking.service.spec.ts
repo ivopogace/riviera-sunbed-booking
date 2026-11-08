@@ -48,8 +48,7 @@ const AWAITING: AwaitingPayment = {
   positionNo: 2,
   bookingDate: '2026-12-01',
   amount: { minorUnits: 4500, currency: 'EUR' },
-  clientSecret: 'pi_123_secret_abc',
-  paymentIntentId: 'pi_123',
+  payment: { kind: 'EMBEDDED', clientToken: 'pi_123_secret_abc', reference: 'pi_123' },
 };
 
 const REQUESTED: RequestedBooking = {
@@ -166,8 +165,7 @@ describe('BookingService', () => {
           },
         ],
         emailWithheld: false,
-        clientSecret: 'pi_stay_secret',
-        paymentIntentId: 'pi_stay',
+        payment: { kind: 'EMBEDDED', clientToken: 'pi_stay_secret', reference: 'pi_stay' },
       },
       { status: 202, statusText: 'Accepted' },
     );
@@ -179,7 +177,11 @@ describe('BookingService', () => {
     expect(awaiting.bookingDate).toBe('2026-12-01');
     expect(awaiting.lastDate).toBe('2026-12-04');
     expect(awaiting.amount).toEqual({ minorUnits: 18000, currency: 'EUR' });
-    expect(awaiting.clientSecret).toBe('pi_stay_secret');
+    expect(awaiting.payment).toEqual({
+      kind: 'EMBEDDED',
+      clientToken: 'pi_stay_secret',
+      reference: 'pi_stay',
+    });
     expect(awaiting.stretches).toHaveLength(2);
     expect(TestBed.inject(DeviceLocalBookings).codes()).toContain('STAY123456');
   });
@@ -328,8 +330,7 @@ describe('BookingService', () => {
       positionNo: 2,
       bookingDate: '2026-12-01',
       amount: { minorUnits: 4500, currency: 'EUR' },
-      clientSecret: 'pi_9_secret_x',
-      paymentIntentId: 'pi_9',
+      payment: { kind: 'EMBEDDED', clientToken: 'pi_9_secret_x', reference: 'pi_9' },
     };
     service.beginPayment(handoff);
 

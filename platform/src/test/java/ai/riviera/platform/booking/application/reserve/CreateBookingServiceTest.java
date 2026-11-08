@@ -34,6 +34,7 @@ import ai.riviera.platform.customer.vocabulary.CustomerId;
 import ai.riviera.platform.customer.vocabulary.GuestContact;
 import ai.riviera.platform.operator.api.VenueVisibility;
 import ai.riviera.platform.operator.vocabulary.VenueRef;
+import ai.riviera.platform.payment.vocabulary.CheckoutInstruction;
 import ai.riviera.platform.payment.api.CheckoutPort;
 import ai.riviera.platform.payment.vocabulary.PayeeRef;
 import ai.riviera.platform.payment.vocabulary.PaymentOutcome;
@@ -202,7 +203,7 @@ class CreateBookingServiceTest {
 		confirmationMail.withheld = true;
 		CreateBookingService service = service(set(Pool.ONLINE),
 				claiming(ClaimOutcome.CLAIMED),
-				_ -> new PaymentOutcome.Pending("cs_test", "pi_test"),
+				_ -> new PaymentOutcome.Pending(new CheckoutInstruction.Embedded("cs_test", "pi_test")),
 				() -> "CODE123456");
 
 		BookingOutcome outcome = service.create(command());
@@ -266,15 +267,14 @@ class CreateBookingServiceTest {
 		// confirmed synchronously — confirmation comes via the verified webhook (invariant #8).
 		CreateBookingService service = service(set(Pool.ONLINE),
 				claiming(ClaimOutcome.CLAIMED),
-				_ -> new PaymentOutcome.Pending("cs_secret_xyz", "pi_42"),
+				_ -> new PaymentOutcome.Pending(new CheckoutInstruction.Embedded("cs_secret_xyz", "pi_42")),
 				() -> "CODE999999");
 
 		BookingOutcome outcome = service.create(command());
 
 		BookingOutcome.AwaitingPayment awaiting =
 				assertInstanceOf(BookingOutcome.AwaitingPayment.class, outcome);
-		assertEquals("cs_secret_xyz", awaiting.clientSecret());
-		assertEquals("pi_42", awaiting.paymentIntentId());
+		assertEquals(new CheckoutInstruction.Embedded("cs_secret_xyz", "pi_42"), awaiting.instruction());
 		assertEquals(BookingStatus.AWAITING_PAYMENT, awaiting.confirmation().status());
 		assertEquals(1, bookings.inserted.size(), "the booking row is created (AWAITING_PAYMENT)");
 		assertEquals(0, confirmer.confirmed.size(), "a pending payment confirms nothing synchronously");
@@ -288,7 +288,7 @@ class CreateBookingServiceTest {
 		int[] insertedAtPayTime = {-1};
 		CheckoutPort capturingCheckout = _ -> {
 			insertedAtPayTime[0] = bookings.inserted.size();
-			return new PaymentOutcome.Pending("cs_secret_xyz", "pi_42");
+			return new PaymentOutcome.Pending(new CheckoutInstruction.Embedded("cs_secret_xyz", "pi_42"));
 		};
 		CreateBookingService service = service(set(Pool.ONLINE), claiming(ClaimOutcome.CLAIMED),
 				capturingCheckout, () -> "CODE12345A");

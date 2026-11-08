@@ -1,15 +1,16 @@
 package ai.riviera.platform.payment.adapter.out;
 
+import java.sql.Types;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
 
-import ai.riviera.platform.payment.vocabulary.PaymentCredentials;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
 
 import ai.riviera.platform.payment.vocabulary.BookingRef;
+import ai.riviera.platform.payment.vocabulary.CheckoutInstruction;
 import ai.riviera.platform.payment.application.NewPayment;
 import ai.riviera.platform.payment.application.Payments;
 import ai.riviera.platform.payment.application.RefundState;
@@ -92,16 +93,19 @@ class JdbcPayments implements Payments {
 	@Transactional
 	public void register(NewPayment payment) {
 		long paymentId = jdbc.sql("""
-				INSERT INTO payment (payment_intent_id, amount_minor, currency, status, client_secret, payee_venue_id)
-				VALUES (:intent, :amount, :currency, :status, :clientSecret, :payee)
+				INSERT INTO payment (payment_intent_id, amount_minor, currency, status, client_secret, redirect_url, payee_venue_id)
+				VALUES (:intent, :amount, :currency, :status, :clientSecret, :redirectUrl, :payee)
 				RETURNING id
 				""")
-				.param(PARAM_INTENT, payment.paymentIntentId())
+				.param(PARAM_INTENT, payment.reference())
 				.param("payee", payment.payee().value())
 				.param("amount", payment.amountMinor())
 				.param("currency", payment.currency())
 				.param(PARAM_STATUS, PaymentStatus.REQUIRES_PAYMENT.name())
-				.param("clientSecret", payment.clientSecret())
+				.param("clientSecret", payment.instruction() instanceof CheckoutInstruction.Embedded embedded
+						? embedded.clientToken() : null, Types.VARCHAR)
+				.param("redirectUrl", payment.instruction() instanceof CheckoutInstruction.Redirect redirect
+						? redirect.url() : null, Types.VARCHAR)
 				.query(Long.class)
 				.single();
 		for (NewPayment.Share share : payment.shares()) {
@@ -117,22 +121,24 @@ class JdbcPayments implements Payments {
 	}
 
 	@Override
-	public Optional<PaymentCredentials> findPendingCredentials(
-			BookingRef booking) {
-		// Pay-on-accept read: an intent is payable while OPEN — including after a
-		// payment_intent.payment_failed, which is NOT terminal in Stripe (the guest can retry the
-		// same intent; hiding the credentials would strand an accepted guest whose card declined
-		// once). Succeeded/canceled rows (or secret-less stub/pre-V19 rows) yield empty.
+	public Optional<CheckoutInstruction> findOpenInstruction(BookingRef booking) {
+		// Open includes FAILED: a declined card can retry the same collection, so hiding it strands an accepted guest.
 		return jdbc.sql("""
-				SELECT p.payment_intent_id, p.client_secret
+				SELECT p.payment_intent_id, p.client_secret, p.redirect_url
 				FROM payment p JOIN payment_booking b ON b.payment_id = p.id
-				WHERE b.booking_ref = :ref AND p.status IN (:payable) AND p.client_secret IS NOT NULL
+				WHERE b.booking_ref = :ref AND p.status IN (:payable)
+				  AND (p.client_secret IS NOT NULL OR p.redirect_url IS NOT NULL)
 				""")
 				.param(PARAM_REF, booking.value())
 				.param("payable", OPEN_STATUSES)
-				.query((rs, rowNum) -> new ai.riviera.platform.payment.vocabulary.PaymentCredentials(
-						rs.getString("client_secret"), rs.getString("payment_intent_id")))
+				.query((rs, rowNum) -> instructionOf(rs.getString("client_secret"), rs.getString("redirect_url"),
+						rs.getString("payment_intent_id")))
 				.optional();
+	}
+
+	private static CheckoutInstruction instructionOf(String clientToken, String redirectUrl, String reference) {
+		return redirectUrl != null ? new CheckoutInstruction.Redirect(redirectUrl, reference)
+				: new CheckoutInstruction.Embedded(clientToken, reference);
 	}
 
 	@Override

@@ -106,8 +106,7 @@ export class BookingService {
           if (response.status === 202) {
             const awaiting: AwaitingPayment = {
               ...summary,
-              clientSecret: stay.clientSecret ?? '',
-              paymentIntentId: stay.paymentIntentId ?? '',
+              payment: stay.payment!,
               cancellationTerms: termsAtCheckout ?? null,
             };
             this.handoff.set({ kind: 'awaiting', awaiting });

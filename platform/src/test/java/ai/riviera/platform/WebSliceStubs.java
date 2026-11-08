@@ -114,7 +114,7 @@ import ai.riviera.platform.payment.application.RefundState;
 import ai.riviera.platform.payment.application.WebhookEvents;
 import ai.riviera.platform.payment.domain.PaymentStatus;
 import ai.riviera.platform.payment.vocabulary.BookingRef;
-import ai.riviera.platform.payment.vocabulary.PaymentCredentials;
+import ai.riviera.platform.payment.vocabulary.CheckoutInstruction;
 import ai.riviera.platform.payout.application.BatchStatusOutcome;
 import ai.riviera.platform.payout.application.DailyTakingsView;
 import ai.riviera.platform.payout.application.PayoutReport;
@@ -1114,7 +1114,7 @@ public class WebSliceStubs {
 			}
 
 			@Override
-			public Optional<PaymentCredentials> findPendingCredentials(
+			public Optional<CheckoutInstruction> findOpenInstruction(
 					BookingRef booking) {
 				return Optional.empty();
 			}

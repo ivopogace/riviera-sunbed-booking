@@ -16,6 +16,7 @@ import ai.riviera.platform.booking.spi.ConfirmationMailDelivery;
 import ai.riviera.platform.booking.vocabulary.BookingId;
 import ai.riviera.platform.booking.vocabulary.StayId;
 import ai.riviera.platform.customer.vocabulary.CustomerId;
+import ai.riviera.platform.payment.vocabulary.CheckoutInstruction;
 import ai.riviera.platform.payment.api.CheckoutPort;
 import ai.riviera.platform.payment.api.CollectionGuarantee;
 import ai.riviera.platform.payment.vocabulary.CollectionShare;
@@ -76,7 +77,7 @@ class CreateStayServiceTest {
 
 		service(shares -> {
 			paid.addAll(shares);
-			return new PaymentOutcome.Pending("cs", "pi");
+			return new PaymentOutcome.Pending(new CheckoutInstruction.Embedded("cs", "pi"));
 		}).create(command);
 
 		assertEquals(List.of(new PayeeRef(7L), new PayeeRef(8L)), paid.stream().map(CollectionShare::payee).toList(),

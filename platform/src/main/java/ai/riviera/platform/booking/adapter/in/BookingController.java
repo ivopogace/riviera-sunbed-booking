@@ -146,10 +146,9 @@ class BookingController {
 			case BookingOutcome.Confirmed confirmed -> ResponseEntity.status(HttpStatus.CREATED)
 					.body(BookingConfirmationView.of(confirmed.confirmation()));
 			// 202: created but awaiting the verified webhook (Stripe profile). The client uses the
-			// clientSecret to complete the card payment; confirmation arrives via the webhook (#8).
+			// instruction to complete the payment; confirmation arrives via the webhook (#8).
 			case BookingOutcome.AwaitingPayment awaiting -> ResponseEntity.status(HttpStatus.ACCEPTED)
-					.body(AwaitingPaymentView.of(awaiting.confirmation(), awaiting.clientSecret(),
-							awaiting.paymentIntentId()));
+					.body(AwaitingPaymentView.of(awaiting.confirmation(), awaiting.instruction()));
 			// 202: a Request-to-Book venue — created PENDING_REQUEST, no payment until the venue
 			// accepts. The guest tracks status (and later pays) via the code-gated view.
 			case BookingOutcome.Requested requested -> ResponseEntity.status(HttpStatus.ACCEPTED)

@@ -76,8 +76,7 @@ const AWAITING = {
   positionNo: 2,
   bookingDate: TODAY,
   amount: { minorUnits: 4500, currency: 'EUR' },
-  clientSecret: 'pi_123_secret_abc',
-  paymentIntentId: 'pi_123',
+  payment: { kind: 'EMBEDDED', clientToken: 'pi_123_secret_abc', reference: 'pi_123' },
 };
 
 /** The truthful CLOSED-born shape (#795): a same-day booking is past every boundary from birth. */

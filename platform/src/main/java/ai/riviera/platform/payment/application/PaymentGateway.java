@@ -24,8 +24,8 @@ public interface PaymentGateway {
 
 	/**
 	 * Initiate one collection for every share (one currency), paying {@code payee}; never throws on a decline or
-	 * expected failure. Returns {@code Succeeded} (stub, in-process), {@code Pending} (a PaymentIntent exists and
-	 * only the signature-verified webhook completes it, invariant #8) or {@code Failed}.
+	 * expected failure. Returns {@code Succeeded} (stub), {@code Pending} (only the verified webhook completes it,
+	 * invariant #8; its instruction tells the browser how to pay) or {@code Failed}.
 	 */
 	PaymentOutcome initiate(PayeeRef payee, List<CollectionShare> shares);
 

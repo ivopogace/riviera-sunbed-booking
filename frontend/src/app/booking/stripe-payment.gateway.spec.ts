@@ -23,9 +23,7 @@ describe('StripeJsPaymentGateway', () => {
     const gateway = new StripeJsPaymentGateway();
     const host = document.createElement('div');
 
-    await expect(gateway.mountPaymentElement(host, 'pi_1_secret_x')).rejects.toThrow(
-      /publishable key/i,
-    );
+    await expect(gateway.mount(host, 'pi_1_secret_x')).rejects.toThrow(/publishable key/i);
   });
 });
 
@@ -45,35 +43,31 @@ describe('FakeStripePaymentGateway', () => {
     const host = document.createElement('div');
 
     (window as FailFlagWindow).__RIVIERA_FAKE_STRIPE_MOUNT_FAIL__ = true;
-    await expect(gateway.mountPaymentElement(host)).rejects.toThrow(/failed to load/);
+    await expect(gateway.mount(host)).rejects.toThrow(/failed to load/);
     expect(host.childElementCount).toBe(0);
 
     delete (window as FailFlagWindow).__RIVIERA_FAKE_STRIPE_MOUNT_FAIL__;
-    await gateway.mountPaymentElement(host);
+    await gateway.mount(host);
     expect(host.querySelector('[data-testid="fake-card-input"]')).not.toBeNull();
   });
 
   it('mounts a labelled stand-in for the card field, so the page stays auditable', async () => {
     const host = document.createElement('div');
 
-    await new FakeStripePaymentGateway().mountPaymentElement(host);
+    await new FakeStripePaymentGateway().mount(host);
 
     const input = host.querySelector<HTMLInputElement>('[data-testid="fake-card-input"]')!;
     expect(input.getAttribute('aria-label')).toBe('Card number (test mode)');
   });
 
   it('confirms successfully while the failure flag is unset', async () => {
-    const checkout = await new FakeStripePaymentGateway().mountPaymentElement(
-      document.createElement('div'),
-    );
+    const checkout = await new FakeStripePaymentGateway().mount(document.createElement('div'));
 
     await expect(checkout.confirm()).resolves.toEqual({});
   });
 
   it('reads the failure flag at confirm time, not at mount time', async () => {
-    const checkout = await new FakeStripePaymentGateway().mountPaymentElement(
-      document.createElement('div'),
-    );
+    const checkout = await new FakeStripePaymentGateway().mount(document.createElement('div'));
 
     (window as FailFlagWindow).__RIVIERA_FAKE_STRIPE_FAIL__ = true;
 
