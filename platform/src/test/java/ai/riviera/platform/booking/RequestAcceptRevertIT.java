@@ -86,7 +86,7 @@ class RequestAcceptRevertIT {
 
 	@Test
 	void aFailedPaymentSetUpRevertsAndReleasesTheClaim() {
-		doReturn(new PaymentOutcome.Failed("stripe_error")).when(checkout).pay(any(), any());
+		doReturn(new PaymentOutcome.Failed("stripe_error")).when(checkout).pay(any(), any(), any());
 		long request = insertRequest();
 
 		AcceptOutcome outcome = respondToRequest.accept(operator, new VenueId(venueId), new BookingId(request));
@@ -110,7 +110,7 @@ class RequestAcceptRevertIT {
 			});
 			assertSame(ClaimOutcome.CLAIMED, availability.claim(new SetId(setId), day));
 			return new PaymentOutcome.Failed("stripe_error");
-		}).when(checkout).pay(any(), any());
+		}).when(checkout).pay(any(), any(), any());
 
 		AcceptOutcome outcome = respondToRequest.accept(operator, new VenueId(venueId), new BookingId(request));
 

@@ -1,5 +1,6 @@
 package ai.riviera.platform.payment.application;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.function.BiFunction;
@@ -9,6 +10,7 @@ import org.junit.jupiter.api.Test;
 import ai.riviera.platform.payment.vocabulary.BookingRef;
 import ai.riviera.platform.payment.vocabulary.CollectionShare;
 import ai.riviera.platform.payment.vocabulary.Money;
+import ai.riviera.platform.payment.vocabulary.PayeeRef;
 import ai.riviera.platform.payment.vocabulary.PaymentCancellation;
 import ai.riviera.platform.payment.vocabulary.PaymentOutcome;
 import ai.riviera.platform.payment.vocabulary.RefundResult;
@@ -25,11 +27,19 @@ import static org.junit.jupiter.api.Assertions.assertInstanceOf;
  */
 class PaymentServiceTest {
 
+	private static final PayeeRef PAYEE = new PayeeRef(7L);
+
 	/** A {@link PaymentGateway} whose {@code initiate} is the given function; {@code refund} is unused here. */
 	private static PaymentGateway initiating(BiFunction<BookingRef, Money, PaymentOutcome> initiate) {
+		return initiating(new ArrayList<>(), initiate);
+	}
+
+	/** {@link #initiating(BiFunction)}, recording the payee each initiate is handed. */
+	private static PaymentGateway initiating(List<PayeeRef> payees, BiFunction<BookingRef, Money, PaymentOutcome> initiate) {
 		return new PaymentGateway() {
 			@Override
-			public PaymentOutcome initiate(List<CollectionShare> shares) {
+			public PaymentOutcome initiate(PayeeRef payee, List<CollectionShare> shares) {
+				payees.add(payee);
 				return initiate.apply(shares.getFirst().booking(), shares.getFirst().amount());
 			}
 
@@ -114,10 +124,36 @@ class PaymentServiceTest {
 		PaymentService service = new PaymentService(initiating((booking, amount) ->
 				new PaymentOutcome.Succeeded("ref-" + booking.value() + "-" + amount.minor())), noPayments());
 
-		PaymentOutcome outcome = service.pay(new BookingRef(42L), new Money(4500L, "EUR"));
+		PaymentOutcome outcome = service.pay(new BookingRef(42L), PAYEE, new Money(4500L, "EUR"));
 
 		PaymentOutcome.Succeeded ok = assertInstanceOf(PaymentOutcome.Succeeded.class, outcome);
 		assertEquals("ref-42-4500", ok.reference(), "service must pass booking + amount through unchanged");
+	}
+
+	@Test
+	void handsTheOnePayeeToTheGateway() {
+		List<PayeeRef> payees = new ArrayList<>();
+		PaymentService service = new PaymentService(
+				initiating(payees, (_, _) -> new PaymentOutcome.Succeeded("ok")), noPayments());
+
+		service.pay(List.of(new CollectionShare(new BookingRef(1L), PAYEE, new Money(4500L, "EUR")),
+				new CollectionShare(new BookingRef(2L), PAYEE, new Money(3000L, "EUR"))));
+
+		assertEquals(List.of(PAYEE), payees, "the gateway is told the venue the collection pays, once");
+	}
+
+	@Test
+	void refusesACollectionForTwoVenuesWithoutCallingTheGateway() {
+		List<PayeeRef> payees = new ArrayList<>();
+		PaymentService service = new PaymentService(
+				initiating(payees, (_, _) -> new PaymentOutcome.Succeeded("ok")), noPayments());
+
+		PaymentOutcome outcome = service.pay(List.of(
+				new CollectionShare(new BookingRef(1L), PAYEE, new Money(4500L, "EUR")),
+				new CollectionShare(new BookingRef(2L), new PayeeRef(8L), new Money(3000L, "EUR"))));
+
+		assertInstanceOf(PaymentOutcome.MixedPayees.class, outcome, "a payment never spans venues (ADR-0029 decision 7)");
+		assertEquals(List.of(), payees, "the gateway is never reached, so no provider payment exists to clean up");
 	}
 
 	@Test
@@ -125,7 +161,7 @@ class PaymentServiceTest {
 		PaymentService service = new PaymentService(
 				initiating((_, _) -> new PaymentOutcome.Pending("cs_test", "pi_test")), noPayments());
 
-		PaymentOutcome outcome = service.pay(new BookingRef(1L), new Money(4500L, "EUR"));
+		PaymentOutcome outcome = service.pay(new BookingRef(1L), PAYEE, new Money(4500L, "EUR"));
 
 		PaymentOutcome.Pending pending = assertInstanceOf(PaymentOutcome.Pending.class, outcome);
 		assertEquals("cs_test", pending.clientSecret(), "the Stripe pending outcome passes through unchanged");

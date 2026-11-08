@@ -35,6 +35,7 @@ import ai.riviera.platform.customer.vocabulary.GuestContact;
 import ai.riviera.platform.operator.api.VenueVisibility;
 import ai.riviera.platform.operator.vocabulary.VenueRef;
 import ai.riviera.platform.payment.api.CheckoutPort;
+import ai.riviera.platform.payment.vocabulary.PayeeRef;
 import ai.riviera.platform.payment.vocabulary.PaymentOutcome;
 import ai.riviera.platform.venue.api.SetBookingFacts;
 
@@ -418,6 +419,32 @@ class CreateBookingServiceTest {
 
 		assertSame(BookingOutcome.Rejected.SET_TAKEN, service.create(command()));
         assertTrue(bookings.inserted.isEmpty(), "a lost claim must create no booking row");
+	}
+
+	@Test
+	void anInstantBookingPaysItsSetsVenue() {
+		List<ai.riviera.platform.payment.vocabulary.CollectionShare> paid = new ArrayList<>();
+		CheckoutPort capturing = shares -> {
+			paid.addAll(shares);
+			return new PaymentOutcome.Succeeded("ok");
+		};
+		CreateBookingService service = service(set(Pool.ONLINE), claiming(ClaimOutcome.CLAIMED), capturing, () -> "PAYEE12345");
+
+		service.create(command());
+
+		assertEquals(new PayeeRef(1L), paid.getFirst().payee(), "the one share names the venue of the set booked");
+	}
+
+	@Test
+	void aMixedCollectionReleasesTheBookingAndIsRejected() {
+		CreateBookingService service = service(set(Pool.ONLINE), claiming(ClaimOutcome.CLAIMED),
+				_ -> new PaymentOutcome.MixedPayees(), () -> "MIXED12345");
+
+		BookingOutcome outcome = service.create(command());
+
+		assertEquals(BookingOutcome.Rejected.SPANS_VENUES, outcome, "a typed refusal, never an exception");
+		assertEquals(1, release.released.size(), "the committed claim is given back");
+		assertTrue(confirmer.confirmed.isEmpty(), "nothing is confirmed");
 	}
 
 	@Test

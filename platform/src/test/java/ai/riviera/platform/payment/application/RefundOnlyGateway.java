@@ -6,6 +6,7 @@ import ai.riviera.platform.payment.domain.RefundScope;
 import ai.riviera.platform.payment.vocabulary.BookingRef;
 import ai.riviera.platform.payment.vocabulary.CollectionShare;
 import ai.riviera.platform.payment.vocabulary.Money;
+import ai.riviera.platform.payment.vocabulary.PayeeRef;
 import ai.riviera.platform.payment.vocabulary.PaymentCancellation;
 import ai.riviera.platform.payment.vocabulary.PaymentOutcome;
 import ai.riviera.platform.payment.vocabulary.RefundResult;
@@ -27,7 +28,7 @@ interface RefundOnlyGateway extends PaymentGateway {
 	}
 
 	@Override
-	default PaymentOutcome initiate(List<CollectionShare> shares) {
+	default PaymentOutcome initiate(PayeeRef payee, List<CollectionShare> shares) {
 		throw new UnsupportedOperationException("not exercised by the refund seam");
 	}
 
