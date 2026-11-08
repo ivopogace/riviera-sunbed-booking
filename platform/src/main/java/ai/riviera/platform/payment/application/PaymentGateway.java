@@ -59,6 +59,6 @@ public interface PaymentGateway {
 	 */
 	ProviderPaymentState lookup(PayeeRef payee, String reference);
 
-	/** Every unpaid transaction created in {@code [from, before)}, read to the last page; never throws on an expected failure. */
+	/** Every unpaid transaction created from {@code from} up to, not including, {@code before}, read to the last page; never throws on an expected failure. */
 	UnpaidTransactions unpaidCreatedBetween(Instant from, Instant before);
 }

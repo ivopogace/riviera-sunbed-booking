@@ -9,7 +9,7 @@ import java.util.Set;
 /** The reconciliation's reads of the {@code payment} table; it writes through {@link VerifiedPaymentOutcomes} alone. */
 public interface ReconcilablePayments {
 
-	/** One keyset page of the open rows created in {@code [from, before)} with an id above {@code afterId}, by id. */
+	/** One keyset page of the open rows created from {@code from} up to, not including, {@code before}, with an id above {@code afterId}, by id. */
 	List<ReconcilablePayment> findOpenCreatedBetween(Instant from, Instant before, long afterId, int limit);
 
 	/** The row with this id, whatever its status. */
