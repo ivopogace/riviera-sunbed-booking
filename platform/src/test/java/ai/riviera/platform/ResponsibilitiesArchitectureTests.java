@@ -148,7 +148,7 @@ class ResponsibilitiesArchitectureTests {
 			"availability", List.of("set_availability"),
 			"booking", List.of("booking", "stay", "booking_day", "remodel_receipt", "remodel_receipt_move",
 					"remodel_receipt_outcome", "remodel_receipt_kept"),
-			"payment", List.of("payment", "payment_booking", "payment_refund", "stripe_webhook_event"),
+			"payment", List.of("payment", "payment_booking", "payment_refund", "payment_webhook_event"),
 			"payout", List.of("payout_ledger_entry", "payout_batch", "platform_setting"),
 			"customer", List.of("customer", "customer_account", "customer_sso_identity", "customer_account_token"),
 			"operator", List.of("operator", "operator_venue"),
