@@ -28,9 +28,9 @@ export abstract class StripePaymentGateway {
 }
 
 /**
- * Validate the configured Stripe key before it reaches Stripe.js. An empty key fails loudly
- * instead of rendering a broken element; a secret key (`sk_…`) is refused outright — it must never
- * be shipped to the browser, and accepting one would only fail opaquely later.
+ * Validate the configured Stripe key before it reaches Stripe.js: empty fails loudly, a secret key
+ * (`sk_…`) must never ship to the browser, and anything but a test publishable key is refused, the
+ * Stripe path being sandbox-only (ADR-0029). The page shows these messages, so none echoes the key.
  */
 export function assertPublishableKey(key: string): void {
   if (!key) {
@@ -39,6 +39,11 @@ export function assertPublishableKey(key: string): void {
   if (key.startsWith('sk_')) {
     throw new Error(
       'Refusing a Stripe secret key (sk_…) in the browser — configure a publishable key (pk_…).',
+    );
+  }
+  if (!key.startsWith('pk_test_')) {
+    throw new Error(
+      'Refusing this Stripe key: payments here are sandbox-only (ADR-0029) — configure a test publishable key (pk_test_…).',
     );
   }
 }

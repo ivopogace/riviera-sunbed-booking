@@ -92,7 +92,15 @@ describe('assertPublishableKey', () => {
     expect(() => assertPublishableKey('sk_test_deadbeef')).toThrow(/secret key/i);
   });
 
-  it('accepts a publishable key (pk_…)', () => {
+  it.each(['pk_live_abc123', 'rk_live_abc123', 'rk_test_abc123', ' pk_live_abc123'])(
+    'refuses %s — the Stripe path is sandbox-only (ADR-0029), and never echoes the key',
+    (key) => {
+      expect(() => assertPublishableKey(key)).toThrow(/sandbox-only/i);
+      expect(() => assertPublishableKey(key)).not.toThrow(key.trim());
+    },
+  );
+
+  it('accepts a test publishable key (pk_test_…)', () => {
     expect(() => assertPublishableKey('pk_test_123')).not.toThrow();
   });
 });
