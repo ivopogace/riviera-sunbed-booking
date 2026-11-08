@@ -29,6 +29,8 @@ final class Rejections {
 			case NO_SUCH_SET -> ApiProblem.response(HttpStatus.NOT_FOUND, "NO_SUCH_SET", "No such set.");
 			case STAY_TOO_LONG -> ApiProblem.response(HttpStatus.UNPROCESSABLE_ENTITY, "STAY_TOO_LONG",
 					"The stay is longer than this venue's maximum stay length.");
+			case SPANS_VENUES -> ApiProblem.response(HttpStatus.UNPROCESSABLE_ENTITY, "SPANS_VENUES",
+					"A booking can only be paid to one venue.");
 		};
 	}
 }

@@ -27,6 +27,7 @@ import ai.riviera.platform.monitoring.vocabulary.ObservabilityMetrics;
 import ai.riviera.platform.payment.vocabulary.BookingRef;
 import ai.riviera.platform.payment.vocabulary.CollectionShare;
 import ai.riviera.platform.payment.vocabulary.Money;
+import ai.riviera.platform.payment.vocabulary.PayeeRef;
 import ai.riviera.platform.payment.vocabulary.PaymentCancellation;
 import ai.riviera.platform.payment.vocabulary.PaymentOutcome;
 import ai.riviera.platform.payment.vocabulary.RefundResult;
@@ -56,6 +57,8 @@ import static org.mockito.Mockito.when;
  * test surface.
  */
 class StripePaymentGatewayTest {
+
+	private static final PayeeRef PAYEE = new PayeeRef(11L);
 
 	private static final BookingRef BOOKING = new BookingRef(42L);
 	private static final BookingRef SIBLING = new BookingRef(43L);
@@ -122,7 +125,7 @@ class StripePaymentGatewayTest {
 
 		StripePaymentGateway gateway =
 				new StripePaymentGateway(stripe, payments, new SimpleMeterRegistry());
-		PaymentOutcome outcome = gateway.initiate(new BookingRef(42L), new Money(4500L, "EUR"));
+		PaymentOutcome outcome = gateway.initiate(PAYEE, new BookingRef(42L), new Money(4500L, "EUR"));
 
 		PaymentOutcome.Pending pending = assertInstanceOf(PaymentOutcome.Pending.class, outcome,
 				"a created PaymentIntent yields Pending — the booking confirms only on the webhook");
@@ -140,7 +143,7 @@ class StripePaymentGatewayTest {
 		assertEquals("booking-42-pi", options.getValue().getIdempotencyKey(),
 				"idempotency key is derived from the booking id (ADR-0002)");
 
-		verify(payments).register(new NewPayment(new BookingRef(42L), "pi_abc", 4500L, "EUR", "pi_abc_secret_xyz"));
+		verify(payments).register(new NewPayment(PAYEE, new BookingRef(42L), "pi_abc", 4500L, "EUR", "pi_abc_secret_xyz"));
 	}
 
 	@Test
@@ -157,9 +160,9 @@ class StripePaymentGatewayTest {
 		when(intents.create(any(PaymentIntentCreateParams.class), any(RequestOptions.class))).thenReturn(created);
 
 		StripePaymentGateway gateway = new StripePaymentGateway(stripe, payments, new SimpleMeterRegistry());
-		PaymentOutcome outcome = gateway.initiate(List.of(
-				new CollectionShare(new BookingRef(42L), new Money(7500L, "EUR")),
-				new CollectionShare(new BookingRef(43L), new Money(12000L, "EUR"))));
+		PaymentOutcome outcome = gateway.initiate(PAYEE, List.of(
+				new CollectionShare(new BookingRef(42L), PAYEE, new Money(7500L, "EUR")),
+				new CollectionShare(new BookingRef(43L), PAYEE, new Money(12000L, "EUR"))));
 
 		assertInstanceOf(PaymentOutcome.Pending.class, outcome);
 		ArgumentCaptor<PaymentIntentCreateParams> params = ArgumentCaptor.forClass(PaymentIntentCreateParams.class);
@@ -170,7 +173,7 @@ class StripePaymentGatewayTest {
 		assertEquals("42,43", params.getValue().getMetadata().get("bookingRefs"));
 		assertEquals("booking-42-pi", options.getValue().getIdempotencyKey(),
 				"one key per collection, derived from its first booking (ADR-0002)");
-		verify(payments).register(new NewPayment("pi_stay", "EUR", "pi_stay_secret", List.of(
+		verify(payments).register(new NewPayment(PAYEE, "pi_stay", "EUR", "pi_stay_secret", List.of(
 				new NewPayment.Share(new BookingRef(42L), 7500L), new NewPayment.Share(new BookingRef(43L), 12000L))));
 	}
 
@@ -178,9 +181,9 @@ class StripePaymentGatewayTest {
 	void sharesInTwoCurrenciesAreRefusedBeforeStripeIsAsked() {
 		StripePaymentGateway gateway = new StripePaymentGateway(mock(StripeClient.class), mock(Payments.class),
 				new SimpleMeterRegistry());
-		org.junit.jupiter.api.Assertions.assertThrows(IllegalArgumentException.class, () -> gateway.initiate(List.of(
-				new CollectionShare(new BookingRef(1L), new Money(100L, "EUR")),
-				new CollectionShare(new BookingRef(2L), new Money(100L, "ALL")))));
+		org.junit.jupiter.api.Assertions.assertThrows(IllegalArgumentException.class, () -> gateway.initiate(PAYEE, List.of(
+				new CollectionShare(new BookingRef(1L), PAYEE, new Money(100L, "EUR")),
+				new CollectionShare(new BookingRef(2L), PAYEE, new Money(100L, "ALL")))));
 	}
 
 	@Test
@@ -199,7 +202,7 @@ class StripePaymentGatewayTest {
 
 		StripePaymentGateway gateway =
 				new StripePaymentGateway(stripe, payments, new SimpleMeterRegistry());
-		PaymentOutcome outcome = gateway.initiate(new BookingRef(7L), new Money(3000L, "EUR"));
+		PaymentOutcome outcome = gateway.initiate(PAYEE, new BookingRef(7L), new Money(3000L, "EUR"));
 
 		PaymentOutcome.Failed failed = assertInstanceOf(PaymentOutcome.Failed.class, outcome,
 				"a Stripe error is a typed Failed outcome, never a thrown exception to the caller");
@@ -227,7 +230,7 @@ class StripePaymentGatewayTest {
 
 		StripePaymentGateway gateway =
 				new StripePaymentGateway(stripe, payments, new SimpleMeterRegistry());
-		PaymentOutcome outcome = gateway.initiate(new BookingRef(42L), new Money(4500L, "EUR"));
+		PaymentOutcome outcome = gateway.initiate(PAYEE, new BookingRef(42L), new Money(4500L, "EUR"));
 
 		PaymentOutcome.Pending pending = assertInstanceOf(PaymentOutcome.Pending.class, outcome,
 				"a recovered PaymentIntent yields Pending — the booking still confirms only on the webhook");
@@ -242,7 +245,7 @@ class StripePaymentGatewayTest {
 				"both attempts carry the booking-derived idempotency key (lost-response recovery, ADR-0002)"));
 
 		// The recovered intent is now recorded — never left orphaned-and-untracked at Stripe.
-		verify(payments).register(new NewPayment(new BookingRef(42L), "pi_recovered", 4500L, "EUR", "pi_recovered_secret"));
+		verify(payments).register(new NewPayment(PAYEE, new BookingRef(42L), "pi_recovered", 4500L, "EUR", "pi_recovered_secret"));
 	}
 
 	@Test
@@ -261,7 +264,7 @@ class StripePaymentGatewayTest {
 
 		StripePaymentGateway gateway =
 				new StripePaymentGateway(stripe, payments, new SimpleMeterRegistry());
-		PaymentOutcome outcome = gateway.initiate(new BookingRef(7L), new Money(3000L, "EUR"));
+		PaymentOutcome outcome = gateway.initiate(PAYEE, new BookingRef(7L), new Money(3000L, "EUR"));
 
 		assertInstanceOf(PaymentOutcome.Failed.class, outcome,
 				"a double timeout falls through to Failed — Stripe auto-expires the unconfirmed PI (no charge)");

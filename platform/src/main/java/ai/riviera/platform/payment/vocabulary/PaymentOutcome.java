@@ -10,7 +10,7 @@ package ai.riviera.platform.payment.vocabulary;
  * signature-verified webhook (invariant #8), never the client.
  */
 public sealed interface PaymentOutcome
-		permits PaymentOutcome.Succeeded, PaymentOutcome.Pending, PaymentOutcome.Failed {
+		permits PaymentOutcome.Succeeded, PaymentOutcome.Pending, PaymentOutcome.Failed, PaymentOutcome.MixedPayees {
 
 	/** Payment collected synchronously (the in-process stub). {@code reference} is the gateway's handle. */
 	record Succeeded(String reference) implements PaymentOutcome {
@@ -27,5 +27,9 @@ public sealed interface PaymentOutcome
 
 	/** Payment not collected (declined / error). {@code reason} is a short, non-PII code. */
 	record Failed(String reason) implements PaymentOutcome {
+	}
+
+	/** Refused before any gateway call: the shares name more than one venue, and a payment never spans venues. */
+	record MixedPayees() implements PaymentOutcome {
 	}
 }

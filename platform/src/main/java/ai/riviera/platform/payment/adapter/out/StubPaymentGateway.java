@@ -8,6 +8,7 @@ import java.util.List;
 import ai.riviera.platform.payment.vocabulary.BookingRef;
 import ai.riviera.platform.payment.vocabulary.CollectionShare;
 import ai.riviera.platform.payment.vocabulary.Money;
+import ai.riviera.platform.payment.vocabulary.PayeeRef;
 import ai.riviera.platform.payment.vocabulary.PaymentCancellation;
 import ai.riviera.platform.payment.vocabulary.PaymentOutcome;
 import ai.riviera.platform.payment.vocabulary.RefundResult;
@@ -30,7 +31,7 @@ class StubPaymentGateway implements PaymentGateway {
 	private static final String REFUND_PREFIX = "stub-re-";
 
 	@Override
-	public PaymentOutcome initiate(List<CollectionShare> shares) {
+	public PaymentOutcome initiate(PayeeRef payee, List<CollectionShare> shares) {
 		return new PaymentOutcome.Succeeded(REFERENCE_PREFIX + shares.getFirst().booking().value());
 	}
 

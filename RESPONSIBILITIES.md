@@ -568,6 +568,12 @@ re-sums the share and derives the intent's status in one statement; a verified `
 publishes **once per booking**. `RefundStatusLookup` reads the whole-share refund only. A Stripe refund
 is tagged `bookingRef` and, for a day, `serviceDate`, so adoption after a lost response is per scope.
 
+**A payment names the one venue it pays** (ADR-0029 decisions 1, 7, 11): every `CollectionShare` carries a
+`PayeeRef`, and `CheckoutPort.pay` returns `PaymentOutcome.MixedPayees` before any gateway call when the
+shares name more than one, which `booking` releases as `SPANS_VENUES` (accept: `PAYMENT_INIT_FAILED`).
+The gateway receives the payee; the stub and the Stripe demo ignore it and collect as always.
+`payment.payee_venue_id` is a logical id, empty on rows predating V80.
+
 `CancelPaymentPort.cancel(booking)` voids the intent behind the booking, so an unpaid group is
 cancelled all-or-nothing, never one booking of it (`booking`'s remodel release ends every unpaid
 stretch of the stay with the one it disturbed, #1292).

@@ -20,8 +20,9 @@ and ignore the Connect sections of its `stripe-best-practices`.
 ## Collection (`payment`)
 
 - `payment` exposes the `api/` port `CheckoutPort` (`PaymentOutcome pay(List<CollectionShare>)` —
-  one PaymentIntent may collect for several bookings, one `payment_booking` share each;
-  `pay(BookingRef, Money)` is the one-share convenience);
+  one PaymentIntent may collect for several bookings, one `payment_booking` share each, all paying
+  one venue (`CollectionShare.payee`; a mix is `MixedPayees`, ADR-0029); `pay(BookingRef, PayeeRef, Money)`
+  is the one-share convenience);
   the Stripe SDK sits behind the internal `PaymentGateway` port (`payment.application`,
   implemented by `adapter/out/StripePaymentGateway`). The domain never touches Stripe types.
 - Confirm only on the signature-verified `payment_intent.succeeded` webhook (#8); the redirect

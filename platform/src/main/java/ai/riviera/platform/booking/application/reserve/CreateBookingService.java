@@ -12,6 +12,7 @@ import ai.riviera.platform.booking.domain.BookingStatus;
 import ai.riviera.platform.payment.vocabulary.BookingRef;
 import ai.riviera.platform.payment.api.CheckoutPort;
 import ai.riviera.platform.payment.vocabulary.Money;
+import ai.riviera.platform.payment.vocabulary.PayeeRef;
 import ai.riviera.platform.payment.vocabulary.PaymentOutcome;
 import ai.riviera.platform.venue.vocabulary.SetBookingInfo;
 import ai.riviera.platform.venue.vocabulary.MoneyView;
@@ -81,7 +82,7 @@ class CreateBookingService implements CreateBooking {
 		MoneyView amount = new MoneyView(reserved.amountMinor(), set.price().currency());
 		PaymentOutcome payment;
 		try {
-			payment = checkout.pay(new BookingRef(reserved.bookingId()),
+			payment = checkout.pay(new BookingRef(reserved.bookingId()), new PayeeRef(set.venueId().value()),
 					new Money(reserved.amountMinor(), set.price().currency()));
 		}
 		catch (RuntimeException paymentBlewUp) {
@@ -136,6 +137,11 @@ class CreateBookingService implements CreateBooking {
 				log.info("released claim for booking {} after payment initiation failed (set {} on {})",
 						reserved.bookingId(), set.setId().value(), command.bookingDate());
 				throw new PaymentDeclinedException(failed.reason());
+			}
+			case PaymentOutcome.MixedPayees ignored -> {
+				releaseAbandoned.release(new BookingId(reserved.bookingId()));
+				log.warn("refused collection for booking {}: its shares pay more than one venue", reserved.bookingId());
+				yield BookingOutcome.Rejected.SPANS_VENUES;
 			}
 		};
 	}

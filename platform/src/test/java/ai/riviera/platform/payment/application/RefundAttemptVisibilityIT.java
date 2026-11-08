@@ -20,6 +20,7 @@ import ai.riviera.platform.payment.domain.PaymentStatus;
 import ai.riviera.platform.payment.vocabulary.BookingRef;
 import ai.riviera.platform.payment.vocabulary.Money;
 import ai.riviera.platform.payment.vocabulary.RefundResult;
+import ai.riviera.platform.payment.vocabulary.PayeeRef;
 
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -43,6 +44,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 @SpringBootTest
 class RefundAttemptVisibilityIT {
 
+	private static final PayeeRef PAYEE = new PayeeRef(11L);
+
 	private static final BookingRef BOOKING = new BookingRef(9901L);
 	private static final String INTENT = "pi_attempt_visibility";
 
@@ -54,7 +57,7 @@ class RefundAttemptVisibilityIT {
 
 	@Test
 	void theAttemptIsCommittedBeforeTheGatewayIsAsked() {
-		payments.register(new NewPayment(BOOKING, INTENT, 4500L, "EUR", "cs_test_secret"));
+		payments.register(new NewPayment(PAYEE, BOOKING, INTENT, 4500L, "EUR", "cs_test_secret"));
 		payments.markStatus(INTENT, PaymentStatus.SUCCEEDED);
 		boolean[] seenFromAnotherConnection = new boolean[1];
 		RefundOnlyGateway gateway = (booking, amount) -> {

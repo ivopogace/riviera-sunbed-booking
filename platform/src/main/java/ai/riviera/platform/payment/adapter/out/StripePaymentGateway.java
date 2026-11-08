@@ -28,6 +28,7 @@ import ai.riviera.platform.monitoring.vocabulary.ObservabilityMetrics;
 import ai.riviera.platform.payment.vocabulary.BookingRef;
 import ai.riviera.platform.payment.vocabulary.CollectionShare;
 import ai.riviera.platform.payment.vocabulary.Money;
+import ai.riviera.platform.payment.vocabulary.PayeeRef;
 import ai.riviera.platform.payment.vocabulary.PaymentCancellation;
 import ai.riviera.platform.payment.vocabulary.PaymentOutcome;
 import ai.riviera.platform.payment.vocabulary.RefundResult;
@@ -39,12 +40,12 @@ import ai.riviera.platform.payment.domain.RefundLifecycle;
 import ai.riviera.platform.payment.domain.RefundScope;
 
 /**
- * The real Stripe adapter ({@code stripe} profile) for {@link PaymentGateway}: creates a
- * PaymentIntent — collection only, no Connect (ADR-0002) — under an idempotency key derived from the
- * booking id, amount in integer minor units + lowercase ISO currency (invariant #5), booking id in
- * metadata. Returns {@link PaymentOutcome.Pending}; only a signature-verified webhook confirms the
- * booking, never the client (invariant #8). A Stripe error is returned as a typed {@code Failed},
- * never thrown, and only its code is logged.
+ * The real Stripe adapter ({@code stripe} profile) for {@link PaymentGateway}: creates a PaymentIntent —
+ * collection only, no Connect (ADR-0002) — under an idempotency key from the booking id, amount in integer
+ * minor units + lowercase ISO currency (invariant #5), booking id in metadata. Collects into the platform's
+ * test account whatever the payee, which it only records (ADR-0029 decision 11). Returns
+ * {@link PaymentOutcome.Pending}; only a signature-verified webhook confirms the booking, never the client
+ * (invariant #8). A Stripe error is returned as a typed {@code Failed}, never thrown, and only its code is logged.
  */
 @Component
 @Profile("stripe")
@@ -88,7 +89,7 @@ class StripePaymentGateway implements PaymentGateway {
 	}
 
 	@Override
-	public PaymentOutcome initiate(List<CollectionShare> shares) {
+	public PaymentOutcome initiate(PayeeRef payee, List<CollectionShare> shares) {
 		BookingRef booking = shares.getFirst().booking();
 		String currency = oneCurrencyOf(shares);
 		long amountMinor = shares.stream().mapToLong(share -> share.amount().minor()).reduce(0L, Math::addExact);
@@ -109,7 +110,7 @@ class StripePaymentGateway implements PaymentGateway {
 		try {
 			PaymentIntent intent = withLostResponseReplay(booking, "PaymentIntent",
 					() -> stripe.v1().paymentIntents().create(params.build(), options));
-			payments.register(new NewPayment(intent.getId(), currency, intent.getClientSecret(), shares.stream()
+			payments.register(new NewPayment(payee, intent.getId(), currency, intent.getClientSecret(), shares.stream()
 					.map(share -> new NewPayment.Share(share.booking(), share.amount().minor())).toList()));
 			return new PaymentOutcome.Pending(intent.getClientSecret(), intent.getId());
 		}
