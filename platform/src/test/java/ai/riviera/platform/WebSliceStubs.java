@@ -107,7 +107,7 @@ import ai.riviera.platform.payment.adapter.out.StripeProperties;
 import ai.riviera.platform.payment.application.NewPayment;
 import ai.riviera.platform.payment.application.Payments;
 import ai.riviera.platform.payment.application.RefundState;
-import ai.riviera.platform.payment.application.StripeWebhookEvents;
+import ai.riviera.platform.payment.application.WebhookEvents;
 import ai.riviera.platform.payment.domain.PaymentStatus;
 import ai.riviera.platform.payment.vocabulary.BookingRef;
 import ai.riviera.platform.payment.vocabulary.PaymentCredentials;
@@ -1118,8 +1118,8 @@ public class WebSliceStubs {
 	}
 
 	@Bean
-	StripeWebhookEvents stripeWebhookEvents() {
-		return (_, _) -> true;
+	WebhookEvents webhookEvents() {
+		return (_, _, _) -> true;
 	}
 
 	@Bean

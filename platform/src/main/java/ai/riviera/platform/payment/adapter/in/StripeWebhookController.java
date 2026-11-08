@@ -35,7 +35,8 @@ import ai.riviera.platform.payment.vocabulary.BookingRef;
 import ai.riviera.platform.payment.events.PaymentCanceled;
 import ai.riviera.platform.payment.events.PaymentConfirmed;
 import ai.riviera.platform.payment.application.Payments;
-import ai.riviera.platform.payment.application.StripeWebhookEvents;
+import ai.riviera.platform.payment.application.WebhookEvents;
+import ai.riviera.platform.payment.domain.PaymentProvider;
 import ai.riviera.platform.payment.domain.PaymentStatus;
 import ai.riviera.platform.payment.domain.RefundLifecycle;
 import ai.riviera.platform.payment.adapter.out.StripeProperties;
@@ -44,7 +45,7 @@ import ai.riviera.platform.payment.adapter.out.StripeRefundTag;
 /**
  * Stripe webhook endpoint, the <strong>source of truth</strong> for payment state (invariant #8), never the
  * client redirect. Verifies the signature on the <em>raw</em> body ({@link Webhook#constructEvent}; failure →
- * {@code 400}, no state change); dedupes on the event id ({@link StripeWebhookEvents#firstSeen}); applies
+ * {@code 400}, no state change); dedupes on the event id ({@link WebhookEvents#firstSeen}); applies
  * guarded transitions that publish {@link PaymentConfirmed}/{@link PaymentCanceled} only when a row moved.
  * One transaction, so an unreadable event throws and Stripe re-delivers (advisory refund types fail open).
  * Never log the raw body, signature or secret. Rationale: RESPONSIBILITIES.md §payment.
@@ -66,12 +67,12 @@ class StripeWebhookController {
 	private static final String EVENT_CHARGE_REFUND_UPDATED = "charge.refund.updated";
 
 	private final StripeProperties properties;
-	private final StripeWebhookEvents webhookEvents;
+	private final WebhookEvents webhookEvents;
 	private final Payments payments;
 	private final ApplicationEventPublisher publisher;
 	private final Counter failedRefunds;
 
-	StripeWebhookController(StripeProperties properties, StripeWebhookEvents webhookEvents,
+	StripeWebhookController(StripeProperties properties, WebhookEvents webhookEvents,
 			Payments payments, ApplicationEventPublisher publisher, MeterRegistry meters) {
 		this.properties = properties;
 		this.webhookEvents = webhookEvents;
@@ -96,7 +97,7 @@ class StripeWebhookController {
 			return unverifiedSignature();
 		}
 
-		if (!webhookEvents.firstSeen(event.getId(), event.getType())) {
+		if (!webhookEvents.firstSeen(PaymentProvider.STRIPE, event.getId(), event.getType())) {
 			return ResponseEntity.ok("duplicate"); // already processed — idempotent
 		}
 

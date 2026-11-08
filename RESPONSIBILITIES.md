@@ -402,7 +402,7 @@ any is released on the old, never a swap of my own — so a racing reserve wins 
   the deadline still confirms. Refusing without refunding strands the money on a booking no sweep
   releases; refunding cannot reuse `BookingCancelled` (no `ACCRUAL`: `payout` would defer forever).
   The residual is a sub-sweep-interval race the guest opts into and pays for in full.
-- **Payment events apply idempotently, as the second layer:** `payment`'s `stripe_webhook_event`
+- **Payment events apply idempotently, as the second layer:** `payment`'s `payment_webhook_event`
   dedup misses the registry's re-deliveries to `PaymentEventListener`, so my guarded
   `AWAITING_PAYMENT` transitions make a replay move no row, release nothing and publish nothing.
 - **Cancellation terms are stamped at birth.** `CancellationPolicy` is the single home of the window
@@ -570,6 +570,12 @@ The gateway receives the payee; the stub and the Stripe demo ignore it and colle
 cancelled all-or-nothing, never one booking of it (`booking`'s remodel release ends every unpaid
 stretch of the stay with the one it disturbed, #1292).
 
+**The `stripe` profile is the sandbox demo, so only a test key runs it** (ADR-0029, decision 11).
+`StripeConfig` aborts the boot on anything but `sk_test_`/`rk_test_`, and the SPA's
+`assertPublishableKey` refuses anything but `pk_test_`. Both are allowlists because Stripe's
+organization keys (`sk_org_…`) carry no mode marker; neither ever prints the key. A webhook signing
+secret has no mode marker either, so it stays a deploy check (`docs/deploy/production-hardening.md`).
+
 - **The payment state machine is one guarded SQL statement**, because Stripe promises neither
   ordering nor single delivery. `markStatus` moves only the open states (`REQUIRES_PAYMENT`, the
   retryable `FAILED` — what `findPendingCredentials` calls payable); the rest are terminal, so a
@@ -581,6 +587,11 @@ stretch of the stay with the one it disturbed, #1292).
   PaymentIntent or Refund throws `UnreadableWebhookEventException` (`503`); the rollback undoes the
   event-id dedup, so Stripe re-delivers — else a paid booking holds its claim in `AWAITING_PAYMENT`
   forever (the abandoned sweep skips it by design). Unhandled types, unknown intents: `200`.
+- **Webhook dedup is keyed by provider plus a provider-scoped reference** (`WebhookEvents`,
+  `payment_webhook_event`; ADR-0029 decision 4). The reference is the provider's event id or, for one
+  that sends none, what the adapter derives with the verified state inside it, so an earlier status
+  cannot use up the key of the paid one. `provider` has no default: a row filed as Stripe's by omission
+  would share Stripe's namespace. `PaymentProvider` mirrors its `CHECK`.
 - **The advisory refund types fail open.** `refund.failed` reports only failures, so an unreadable
   one is `503`; `refund.updated`/`charge.refund.updated` fire for every refund on the account, and
   a retry loop there would get Stripe to disable the endpoint that also carries the payment spine.
@@ -1503,7 +1514,7 @@ them form the *structural net* is `riviera-modulith` § *The structural net*'s c
 | `payout` is the only writer (and direct reader) of `platform_setting` — ADR-0021 | `ResponsibilitiesArchitectureTests` (sole-writer scan) |
 | `booking` is the only writer (and direct reader) of `booking_day` | `ResponsibilitiesArchitectureTests` (sole-writer scan) |
 | `booking` is the only writer (and direct reader) of `stay` — ADR-0024 | `ResponsibilitiesArchitectureTests` (SQL-shaped scan: the bare word is in prose and in `max_stay_days`) |
-| Every table in `CLAUDE.md`'s "Sole writer of" column, plus `challenge_registry` and `admin_audit_record`, is written only by its owner: `venue`, `set_position`, `venue_amenity`, `venue_photo`, `venue_photo_variant`, `venue_commission_rate`, `set_availability`, `booking`, `stay`, `booking_day`, `remodel_receipt`, `remodel_receipt_move`, `remodel_receipt_outcome`, `remodel_receipt_kept`, `payment`, `payment_booking`, `payment_refund`, `stripe_webhook_event`, `payout_ledger_entry`, `payout_batch`, `platform_setting`, `customer`, `customer_account`, `customer_sso_identity`, `customer_account_token`, `operator`, `operator_venue`, `review`, `email_suppression`, `booking_confirmation_mail_attempt` | `ResponsibilitiesArchitectureTests` (table-ownership map: a SQL-shaped `INSERT INTO`/`UPDATE … SET`/`DELETE FROM`/`MERGE INTO`/`TRUNCATE` per `CONSTANT_String`; the map must cover every table the migrations leave (create, drop and rename walked in Flyway version order) bar the framework tables, and every owner must write its tables) |
+| Every table in `CLAUDE.md`'s "Sole writer of" column, plus `challenge_registry` and `admin_audit_record`, is written only by its owner: `venue`, `set_position`, `venue_amenity`, `venue_photo`, `venue_photo_variant`, `venue_commission_rate`, `set_availability`, `booking`, `stay`, `booking_day`, `remodel_receipt`, `remodel_receipt_move`, `remodel_receipt_outcome`, `remodel_receipt_kept`, `payment`, `payment_booking`, `payment_refund`, `payment_webhook_event`, `payout_ledger_entry`, `payout_batch`, `platform_setting`, `customer`, `customer_account`, `customer_sso_identity`, `customer_account_token`, `operator`, `operator_venue`, `review`, `email_suppression`, `booking_confirmation_mail_attempt` | `ResponsibilitiesArchitectureTests` (table-ownership map: a SQL-shaped `INSERT INTO`/`UPDATE … SET`/`DELETE FROM`/`MERGE INTO`/`TRUNCATE` per `CONSTANT_String`; the map must cover every table the migrations leave (create, drop and rename walked in Flyway version order) bar the framework tables, and every owner must write its tables) |
 | No class inside a module depends on a type directly in `ai.riviera.platform` — ADR-0017 | `CompositionRootDisciplineTests` (module→root rule; `allowedDependencies` cannot see it) |
 | The root reaches no module: it holds only the application and its configuration (ADR-0028 Decision 1) | `CompositionRootDisciplineTests` (root→module rule) |
 | `payment` uses no Stripe **Connect** API (collect-only, ADR-0002) | `NoStripeConnectArchitectureTest` |
