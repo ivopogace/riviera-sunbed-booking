@@ -32,8 +32,8 @@ inline, never judge the plugin's validation filter yourself, and post no `### Co
 before the plugin round: step 1 reads one as an earlier review and declines.
 
 Each round leaves one `### Code review` PR comment with its findings. When the skill posted none
-(the built-in never does; the plugin doesn't without `--comment`, or when its `gh pr comment`
-gets a 403), post it yourself via the comment route below, naming the round, head sha,
+(the built-in never does; the plugin doesn't without `--comment`, which round 1 runs
+without), post it yourself via the comment route below, naming the round, head sha,
 skill, its findings and the overlay items checked. The PR body's review-gate line names the skill
 that ran each round.
 
