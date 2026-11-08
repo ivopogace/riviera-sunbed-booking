@@ -44,7 +44,8 @@ Booking date `LocalDate` in `Europe/Tirane`, cutoff computed there; no `LocalDat
 / JVM-default-zone arithmetic; timestamps stored as UTC `Instant` (Minor if cosmetic).
 
 ### RV-BE-7. Webhook is truth + idempotent (#8) — **Blocker**
-Confirm only on a signature-verified webhook; dedupe on Stripe event id (no-op when already
+Confirm only on a signature-verified webhook, or the ADMIN repair's authenticated provider read through the same
+guarded step (`VerifiedPaymentOutcomes`); dedupe on Stripe event id (no-op when already
 applied); idempotency key on charge/refund from `BookingId` + operation, plus the service day for
 a one-day refund (`RefundScope`; `payment_refund` holds one row per scope); a test replays the
 same event twice. Non-idempotent handler: Major.

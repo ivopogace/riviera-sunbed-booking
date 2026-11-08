@@ -57,7 +57,7 @@ graph TB
         RCPT["remodel_receipt<br/>+ _move, _outcome, _kept"]
     end
     subgraph payment["payment"]
-        PAY["payment<br/>+ payment_booking, payment_refund, stripe_webhook_event"]
+        PAY["payment<br/>+ payment_booking, payment_refund, payment_webhook_event"]
     end
     subgraph payout["payout"]
         LEDG["payout_ledger_entry"]
@@ -466,9 +466,9 @@ classDiagram
         attempted_at, failed_at, failed_refund_id
         UNIQUE (payment_booking_id, scope, service_date), UNIQUE (refund_id)
     }
-    class stripe_webhook_event {
+    class payment_webhook_event {
         <<table>>
-        event_id (PK)
+        provider, reference (PK)
         event_type, received_at
     }
     class PaymentStatus {
@@ -499,7 +499,7 @@ classDiagram
     payment "1" *-- "1..*" payment_booking : the bookings it collects for
     payment_booking "1" *-- "0..*" payment_refund : its refunds, one per scope
     payment_booking ..> BookingRef : booking_ref
-    stripe_webhook_event ..> payment : event-id dedup guards the write
+    payment_webhook_event ..> payment : provider + reference dedup guards the write
 ```
 
 > **One intent, one row per booking, one row per refund of a share, and no `Refund` entity.**
@@ -513,7 +513,7 @@ classDiagram
 > `booking`'s word, not the gateway's.
 >
 > State is reconciled from **signature-verified Stripe webhooks**, never the client redirect
-> (invariant #8), with `stripe_webhook_event`'s event-id primary key as the replay guard.
+> (invariant #8), with `payment_webhook_event`'s `(provider, reference)` primary key as the replay guard.
 > Collection-only — no Stripe Connect (see `riviera-stripe-payments`).
 
 ### 3.5 `payout`

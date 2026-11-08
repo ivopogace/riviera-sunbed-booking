@@ -9,8 +9,8 @@ import ai.riviera.platform.venue.vocabulary.MoneyView;
 
 /**
  * The stay summary every creation outcome shares: the group's one {@code code}, its status, venue,
- * span, total (invariant #5) and stretches. {@link Awaiting} adds the one {@code clientSecret} for the
- * {@code 202} under Stripe (confirmation arrives per stretch by the verified webhook, invariant #8).
+ * span, total (invariant #5) and stretches. {@link Awaiting} adds the one checkout instruction for the
+ * {@code 202} of a collecting gateway (confirmation arrives per stretch by the verified webhook, invariant #8).
  */
 record StayView(String code, String status, long venueId, String venueName, String firstDate, String lastDate,
 		MoneyView total, List<StretchView> stretches, boolean emailWithheld) {
@@ -19,7 +19,7 @@ record StayView(String code, String status, long venueId, String venueName, Stri
 			MoneyView amount) {
 	}
 
-	record Awaiting(@JsonUnwrapped StayView stay, String clientSecret, String paymentIntentId) {
+	record Awaiting(@JsonUnwrapped StayView stay, CheckoutInstructionView payment) {
 	}
 
 	/** A stay request's {@code 202}: status {@code PENDING_REQUEST} and the venue's deadline, no payment credential. */

@@ -14,7 +14,8 @@ import {
 import { BookingService } from './booking.service';
 import { freezeClock } from '../../testing/freeze-clock';
 import { BookingPay } from './booking-pay';
-import { StripeCheckout, StripePaymentGateway } from './stripe-payment.gateway';
+import { PageNavigation } from '../core/page-navigation';
+import { CheckoutSession, EmbeddedCheckoutGateway } from './checkout.gateway';
 
 const REQUEST: CreateBookingRequest = {
   setId: 2,
@@ -32,8 +33,7 @@ const AWAITING: AwaitingPayment = {
   positionNo: 2,
   bookingDate: '2026-12-01',
   amount: { minorUnits: 4500, currency: 'EUR' },
-  clientSecret: 'pi_123_secret_abc',
-  paymentIntentId: 'pi_123',
+  payment: { kind: 'EMBEDDED', clientToken: 'pi_123_secret_abc', reference: 'pi_123' },
 };
 
 const DETAIL: BookingDetail = {
@@ -66,14 +66,14 @@ const STATUS_URL = `${environment.apiBaseUrl}/api/bookings/WXYZ345678`;
 
 /** A fake gateway: no real Stripe.js. `confirmResult` drives success vs decline, `confirmRejects`
  *  a thrown confirm; `failMount` simulates a mount/config failure. `mountCalls` counts attempts. */
-class FakeGateway extends StripePaymentGateway {
+class FakeGateway extends EmbeddedCheckoutGateway {
   confirmResult: { error?: string } = {};
   confirmRejects?: Error;
   failMount?: string;
   mounted = false;
   mountCalls = 0;
 
-  override mountPaymentElement(host: HTMLElement): Promise<StripeCheckout> {
+  override mount(host: HTMLElement): Promise<CheckoutSession> {
     this.mountCalls++;
     if (this.failMount) {
       return Promise.reject(new Error(this.failMount));
@@ -90,10 +90,10 @@ class FakeGateway extends StripePaymentGateway {
 }
 
 /** A gateway whose confirm promises resolve only when the test says so — for racing interleaves. */
-class DeferredConfirmGateway extends StripePaymentGateway {
+class DeferredConfirmGateway extends EmbeddedCheckoutGateway {
   private readonly resolvers: ((r: { error?: string }) => void)[] = [];
 
-  override mountPaymentElement(host: HTMLElement): Promise<StripeCheckout> {
+  override mount(host: HTMLElement): Promise<CheckoutSession> {
     host.appendChild(document.createElement('div'));
     return Promise.resolve({
       confirm: () => new Promise<{ error?: string }>((resolve) => this.resolvers.push(resolve)),
@@ -106,15 +106,15 @@ class DeferredConfirmGateway extends StripePaymentGateway {
 }
 
 /** A gateway whose first mount fails and whose later mounts resolve only when the test says so. */
-class DeferredRemountGateway extends StripePaymentGateway {
+class DeferredRemountGateway extends EmbeddedCheckoutGateway {
   private resolveMount?: () => void;
 
-  override mountPaymentElement(host: HTMLElement): Promise<StripeCheckout> {
+  override mount(host: HTMLElement): Promise<CheckoutSession> {
     if (!this.resolveMount) {
       this.resolveMount = () => undefined;
       return Promise.reject(new Error('Stripe.js failed to load.'));
     }
-    return new Promise<StripeCheckout>((resolve) => {
+    return new Promise<CheckoutSession>((resolve) => {
       this.resolveMount = () => {
         host.appendChild(document.createElement('div'));
         resolve({ confirm: () => Promise.resolve({}) });
@@ -129,8 +129,8 @@ class DeferredRemountGateway extends StripePaymentGateway {
 
 /** Its confirm blurs the page as Stripe's 3DS modal does: mounted on `<body>`, focus gone on close. */
 class ThreeDsOverlayGateway extends FakeGateway {
-  override async mountPaymentElement(host: HTMLElement): Promise<StripeCheckout> {
-    const checkout = await super.mountPaymentElement(host);
+  override async mount(host: HTMLElement): Promise<CheckoutSession> {
+    const checkout = await super.mount(host);
     return {
       confirm: () => {
         (document.activeElement as HTMLElement | null)?.blur();
@@ -144,12 +144,19 @@ interface PayProbe {
   state(): string;
   errorMessage(): string | undefined;
   terminalError(): boolean;
+  paying(): boolean;
   pay(): Promise<void>;
 }
 
+const pageNavigation = { leaveTo: vi.fn(), reload: vi.fn() };
+
 async function setup(
-  gateway: StripePaymentGateway,
-  { prime = true, terms }: { prime?: boolean; terms?: CancellationTerms } = {},
+  gateway: EmbeddedCheckoutGateway,
+  {
+    prime = true,
+    terms,
+    awaiting = AWAITING,
+  }: { prime?: boolean; terms?: CancellationTerms; awaiting?: AwaitingPayment } = {},
 ): Promise<{
   fixture: ComponentFixture<BookingPay>;
   httpMock: HttpTestingController;
@@ -160,19 +167,55 @@ async function setup(
       provideHttpClient(),
       provideHttpClientTesting(),
       provideRouter([]),
-      { provide: StripePaymentGateway, useValue: gateway },
+      { provide: EmbeddedCheckoutGateway, useValue: gateway },
+      { provide: PageNavigation, useValue: pageNavigation },
     ],
   });
   const httpMock = TestBed.inject(HttpTestingController);
   if (prime) {
     // Prime the awaiting-payment hand-off exactly as a 202 booking-create would.
     TestBed.inject(BookingService).createBooking(REQUEST, terms).subscribe();
-    httpMock.expectOne(CREATE_URL).flush(AWAITING, { status: 202, statusText: 'Accepted' });
+    httpMock.expectOne(CREATE_URL).flush(awaiting, { status: 202, statusText: 'Accepted' });
   }
   const fixture = TestBed.createComponent(BookingPay);
   await fixture.whenStable(); // run afterNextRender → mount the Payment Element
   return { fixture, httpMock, comp: fixture.componentInstance as unknown as PayProbe };
 }
+
+describe('BookingPay with a redirect instruction', () => {
+  const PROVIDER_URL = 'https://pay.example.test/o/1';
+  const REDIRECT: AwaitingPayment = {
+    ...AWAITING,
+    payment: { kind: 'REDIRECT', url: PROVIDER_URL, reference: 'ord_1' },
+  };
+
+  beforeEach(() => pageNavigation.leaveTo.mockClear());
+
+  it('offers the provider page instead of a card form, loading nothing', async () => {
+    const gateway = new FakeGateway();
+    const { fixture, comp } = await setup(gateway, { awaiting: REDIRECT });
+    const page = fixture.nativeElement as HTMLElement;
+
+    expect(comp.state()).toBe('ready');
+    expect(gateway.mountCalls).toBe(0);
+    expect(page.querySelector<HTMLElement>('[data-testid="pe-host"]')?.hidden).toBe(true);
+    expect(page.querySelector('[data-testid="pay-button"]')?.textContent).toContain(
+      'Continue to payment',
+    );
+    expect(page.textContent).not.toContain('Stripe');
+  });
+
+  it('sends the browser to the provider, claims nothing and leaves the button usable', async () => {
+    const { comp, httpMock } = await setup(new FakeGateway(), { awaiting: REDIRECT });
+
+    await comp.pay();
+
+    expect(pageNavigation.leaveTo).toHaveBeenCalledWith(PROVIDER_URL);
+    expect(comp.state()).toBe('ready');
+    expect(comp.paying()).toBe(false);
+    httpMock.verify();
+  });
+});
 
 describe('BookingPay', () => {
   it('shows the start-over state on a cold load with no hand-off (hard refresh)', async () => {

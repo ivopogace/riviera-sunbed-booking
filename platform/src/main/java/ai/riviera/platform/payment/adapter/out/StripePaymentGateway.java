@@ -1,9 +1,12 @@
 package ai.riviera.platform.payment.adapter.out;
 
+import java.time.Instant;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 
 import java.util.Optional;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 import com.stripe.StripeClient;
@@ -11,8 +14,10 @@ import com.stripe.exception.ApiConnectionException;
 import com.stripe.exception.StripeException;
 import com.stripe.model.PaymentIntent;
 import com.stripe.model.Refund;
+import com.stripe.model.StripeSearchResult;
 import com.stripe.net.RequestOptions;
 import com.stripe.param.PaymentIntentCreateParams;
+import com.stripe.param.PaymentIntentSearchParams;
 import com.stripe.param.RefundCreateParams;
 import com.stripe.param.RefundListParams;
 
@@ -26,25 +31,29 @@ import org.springframework.stereotype.Component;
 
 import ai.riviera.platform.monitoring.vocabulary.ObservabilityMetrics;
 import ai.riviera.platform.payment.vocabulary.BookingRef;
+import ai.riviera.platform.payment.vocabulary.CheckoutInstruction;
 import ai.riviera.platform.payment.vocabulary.CollectionShare;
 import ai.riviera.platform.payment.vocabulary.Money;
+import ai.riviera.platform.payment.vocabulary.PayeeRef;
 import ai.riviera.platform.payment.vocabulary.PaymentCancellation;
 import ai.riviera.platform.payment.vocabulary.PaymentOutcome;
 import ai.riviera.platform.payment.vocabulary.RefundResult;
 import ai.riviera.platform.payment.application.NewPayment;
 import ai.riviera.platform.payment.application.Payments;
 import ai.riviera.platform.payment.application.PaymentGateway;
+import ai.riviera.platform.payment.application.ProviderPaymentState;
+import ai.riviera.platform.payment.application.UnpaidTransactions;
 import ai.riviera.platform.payment.domain.PaymentStatus;
 import ai.riviera.platform.payment.domain.RefundLifecycle;
 import ai.riviera.platform.payment.domain.RefundScope;
 
 /**
- * The real Stripe adapter ({@code stripe} profile) for {@link PaymentGateway}: creates a
- * PaymentIntent — collection only, no Connect (ADR-0002) — under an idempotency key derived from the
- * booking id, amount in integer minor units + lowercase ISO currency (invariant #5), booking id in
- * metadata. Returns {@link PaymentOutcome.Pending}; only a signature-verified webhook confirms the
- * booking, never the client (invariant #8). A Stripe error is returned as a typed {@code Failed},
- * never thrown, and only its code is logged.
+ * The real Stripe adapter ({@code stripe} profile) for {@link PaymentGateway}: creates a PaymentIntent —
+ * collection only, no Connect (ADR-0002) — under an idempotency key from the booking id, amount in integer
+ * minor units + lowercase ISO currency (invariant #5), booking id in metadata. Collects into the platform's
+ * test account whatever the payee, which it only records (ADR-0029 decision 11). Returns
+ * {@link PaymentOutcome.Pending} with an Embedded instruction; only a signature-verified webhook confirms the booking, never the client
+ * (invariant #8). A Stripe error is returned as a typed {@code Failed}, never thrown, and only its code is logged.
  */
 @Component
 @Profile("stripe")
@@ -77,6 +86,15 @@ class StripePaymentGateway implements PaymentGateway {
 	/** The refund died — and its failure webhook landed — before this call could record it. */
 	private static final String REFUND_DIED_BEFORE_RECORD = "refund_died_before_record";
 
+	/** Stripe's documented ceiling for one page of a search. */
+	private static final long SEARCH_PAGE_LIMIT = 100L;
+
+	/** The search said there was more and named no next page, so the rest cannot be read. */
+	private static final String SEARCH_LOST_ITS_PLACE = "search_no_next_page";
+
+	/** A PaymentIntent status this adapter has no mapping for. */
+	private static final String UNKNOWN_STATUS = "unknown_status";
+
 	private final StripeClient stripe;
 	private final Payments payments;
 	private final Counter adoptedRefunds;
@@ -88,7 +106,7 @@ class StripePaymentGateway implements PaymentGateway {
 	}
 
 	@Override
-	public PaymentOutcome initiate(List<CollectionShare> shares) {
+	public PaymentOutcome initiate(PayeeRef payee, List<CollectionShare> shares) {
 		BookingRef booking = shares.getFirst().booking();
 		String currency = oneCurrencyOf(shares);
 		long amountMinor = shares.stream().mapToLong(share -> share.amount().minor()).reduce(0L, Math::addExact);
@@ -109,9 +127,10 @@ class StripePaymentGateway implements PaymentGateway {
 		try {
 			PaymentIntent intent = withLostResponseReplay(booking, "PaymentIntent",
 					() -> stripe.v1().paymentIntents().create(params.build(), options));
-			payments.register(new NewPayment(intent.getId(), currency, intent.getClientSecret(), shares.stream()
+			CheckoutInstruction instruction = new CheckoutInstruction.Embedded(intent.getClientSecret(), intent.getId());
+			payments.register(new NewPayment(payee, instruction, currency, shares.stream()
 					.map(share -> new NewPayment.Share(share.booking(), share.amount().minor())).toList()));
-			return new PaymentOutcome.Pending(intent.getClientSecret(), intent.getId());
+			return new PaymentOutcome.Pending(instruction);
 		}
 		catch (StripeException e) {
 			// Code only — never the message, the key, or any PII (log discipline).
@@ -321,6 +340,68 @@ class StripePaymentGateway implements PaymentGateway {
 					booking.value(), e.getCode());
 			return new PaymentCancellation.Failed(e.getCode() == null ? STRIPE_ERROR : e.getCode());
 		}
+	}
+
+	/** Stripe's record of the intent; the demo collects into one account, so {@code payee} changes nothing. */
+	@Override
+	public ProviderPaymentState lookup(PayeeRef payee, String reference) {
+		try {
+			return stateOf(stripe.v1().paymentIntents().retrieve(reference).getStatus());
+		}
+		catch (StripeException e) {
+			log.warn("Stripe PaymentIntent read failed for {}: code={}", reference, e.getCode());
+			return new ProviderPaymentState.Unavailable(e.getCode() == null ? STRIPE_ERROR : e.getCode());
+		}
+	}
+
+	/**
+	 * A search of the unpaid intents created in the window, to the last page. Stripe filters on a cached status and
+	 * may lag up to an hour in an outage, so each object's current status decides ({@code RESPONSIBILITIES.md} §{@code payment}).
+	 */
+	@Override
+	public UnpaidTransactions unpaidCreatedBetween(Instant from, Instant before) {
+		String query = "-status:'" + STATUS_SUCCEEDED + "' AND -status:'" + STATUS_CANCELED + "' AND created>="
+				+ from.getEpochSecond() + " AND created<" + before.getEpochSecond();
+		Set<String> unpaid = new LinkedHashSet<>();
+		String page = null;
+		try {
+			boolean more;
+			do {
+				PaymentIntentSearchParams.Builder params = PaymentIntentSearchParams.builder()
+						.setQuery(query)
+						.setLimit(SEARCH_PAGE_LIMIT);
+				if (page != null) {
+					params.setPage(page);
+				}
+				StripeSearchResult<PaymentIntent> result = stripe.v1().paymentIntents().search(params.build());
+				result.getData().stream()
+						.filter(intent -> stateOf(intent.getStatus()) instanceof ProviderPaymentState.Waiting)
+						.map(PaymentIntent::getId)
+						.forEach(unpaid::add);
+				more = Boolean.TRUE.equals(result.getHasMore());
+				page = result.getNextPage();
+				if (more && page == null) {
+					return new UnpaidTransactions.Unavailable(SEARCH_LOST_ITS_PLACE);
+				}
+			}
+			while (more);
+		}
+		catch (StripeException e) {
+			log.warn("Stripe PaymentIntent search failed: code={}", e.getCode());
+			return new UnpaidTransactions.Unavailable(e.getCode() == null ? STRIPE_ERROR : e.getCode());
+		}
+		return new UnpaidTransactions.Listed(List.copyOf(unpaid));
+	}
+
+	/** An unmapped status surfaces as unreadable rather than passing as agreement. */
+	private static ProviderPaymentState stateOf(String status) {
+		return switch (status) {
+			case STATUS_SUCCEEDED -> new ProviderPaymentState.Paid();
+			case STATUS_CANCELED -> new ProviderPaymentState.Canceled();
+			case "requires_payment_method", "requires_confirmation", "requires_action", "processing",
+					"requires_capture" -> new ProviderPaymentState.Waiting();
+			case null, default -> new ProviderPaymentState.Unavailable(UNKNOWN_STATUS);
+		};
 	}
 
 	/**

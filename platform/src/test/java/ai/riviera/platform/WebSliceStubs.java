@@ -52,6 +52,10 @@ import ai.riviera.platform.booking.application.refund.VenueDayRefundOutcome;
 import ai.riviera.platform.booking.application.refund.RefundOutboxStatus;
 import ai.riviera.platform.booking.application.refund.RefundResubmission;
 import ai.riviera.platform.booking.application.refund.WeatherRefundOutcome;
+import ai.riviera.platform.payment.application.PaymentReconciliation;
+import ai.riviera.platform.payment.application.ReconciliationReport;
+import ai.riviera.platform.payment.application.RepairOutcome;
+import ai.riviera.platform.payment.application.VerifiedPaymentOutcomes;
 import ai.riviera.platform.booking.application.request.AcceptOutcome;
 import ai.riviera.platform.booking.application.request.DeclineOutcome;
 import ai.riviera.platform.booking.application.request.ExpireRequests;
@@ -107,10 +111,10 @@ import ai.riviera.platform.payment.adapter.out.StripeProperties;
 import ai.riviera.platform.payment.application.NewPayment;
 import ai.riviera.platform.payment.application.Payments;
 import ai.riviera.platform.payment.application.RefundState;
-import ai.riviera.platform.payment.application.StripeWebhookEvents;
+import ai.riviera.platform.payment.application.WebhookEvents;
 import ai.riviera.platform.payment.domain.PaymentStatus;
 import ai.riviera.platform.payment.vocabulary.BookingRef;
-import ai.riviera.platform.payment.vocabulary.PaymentCredentials;
+import ai.riviera.platform.payment.vocabulary.CheckoutInstruction;
 import ai.riviera.platform.payout.application.BatchStatusOutcome;
 import ai.riviera.platform.payout.application.DailyTakingsView;
 import ai.riviera.platform.payout.application.PayoutReport;
@@ -658,6 +662,43 @@ public class WebSliceStubs {
 		};
 	}
 
+	/** {@code StripeWebhookController}'s transition port. Inert: nothing moves. */
+	@Bean
+	VerifiedPaymentOutcomes verifiedPaymentOutcomes() {
+		return new VerifiedPaymentOutcomes() {
+			@Override
+			public boolean succeeded(String reference) {
+				return false;
+			}
+
+			@Override
+			public boolean canceled(String reference) {
+				return false;
+			}
+
+			@Override
+			public boolean failed(String reference) {
+				return false;
+			}
+		};
+	}
+
+	/** {@code AdminPaymentReconciliationController}'s port. Inert: nothing differs and nothing is repaired. */
+	@Bean
+	PaymentReconciliation paymentReconciliation() {
+		return new PaymentReconciliation() {
+			@Override
+			public ReconciliationReport report() {
+				return new ReconciliationReport(List.of(), List.of(), List.of(), ReconciliationReport.OrphanListing.NOT_OFFERED);
+			}
+
+			@Override
+			public RepairOutcome repair(long paymentId) {
+				return RepairOutcome.UNKNOWN_PAYMENT;
+			}
+		};
+	}
+
 	@Bean
 	CustomerAccountRecovery customerAccountRecovery() {
 		return new CustomerAccountRecovery() {
@@ -1073,7 +1114,7 @@ public class WebSliceStubs {
 			}
 
 			@Override
-			public Optional<PaymentCredentials> findPendingCredentials(
+			public Optional<CheckoutInstruction> findOpenInstruction(
 					BookingRef booking) {
 				return Optional.empty();
 			}
@@ -1118,8 +1159,8 @@ public class WebSliceStubs {
 	}
 
 	@Bean
-	StripeWebhookEvents stripeWebhookEvents() {
-		return (_, _) -> true;
+	WebhookEvents webhookEvents() {
+		return (_, _, _) -> true;
 	}
 
 	@Bean

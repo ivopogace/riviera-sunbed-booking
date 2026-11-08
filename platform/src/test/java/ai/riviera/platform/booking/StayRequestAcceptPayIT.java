@@ -136,6 +136,8 @@ class StayRequestAcceptPayIT {
 				SELECT pb.amount_minor FROM payment_booking pb JOIN booking b ON b.id = pb.booking_ref
 				WHERE b.stay_id = :s ORDER BY b.booking_date
 				""").param("s", stay.id()).query(Long.class).list(), "one share per stretch");
+		assertEquals(venue.id(), jdbc.sql("SELECT payee_venue_id FROM payment WHERE payment_intent_id = :i")
+				.param("i", intentId).query(Long.class).single(), "the payment row names the stay's venue");
 		for (long id : stay.stretches()) {
 			assertEquals("AWAITING_PAYMENT", statusOf(jdbc, id));
 		}

@@ -3,34 +3,12 @@ import type { Stripe, StripeElements } from '@stripe/stripe-js';
 import { loadStripe } from '@stripe/stripe-js/pure';
 
 import { environment } from '../../environments/environment';
+import { CheckoutSession, EmbeddedCheckoutGateway } from './checkout.gateway';
 
 /**
- * A mounted Stripe Payment Element the caller can confirm.
- *
- * <p>{@link confirm} returns a **UX-level** result only: on `{ error }` (a rejection reads as one)
- * the caller shows it and re-checks the booking's server status once (retry while payable,
- * terminal when not); otherwise it begins polling. **Never** proof of confirmation: that comes
- * only from the signature-verified webhook, seen via `GET /api/bookings/{code}` (invariant #8).
- * Cards use `redirect: 'if_required'`, so the user stays on the payment page.
- */
-export interface StripeCheckout {
-  confirm(): Promise<{ readonly error?: string }>;
-}
-
-/**
- * Injectable seam over Stripe.js. The abstract class is the DI token: the real
- * {@link StripeJsPaymentGateway} is provided in the browser, while jsdom/vitest specs and the
- * Playwright e2e provide a fake — so Stripe.js (which must load from js.stripe.com and cannot run
- * under jsdom) is only ever touched by the real adapter.
- */
-export abstract class StripePaymentGateway {
-  abstract mountPaymentElement(host: HTMLElement, clientSecret: string): Promise<StripeCheckout>;
-}
-
-/**
- * Validate the configured Stripe key before it reaches Stripe.js. An empty key fails loudly
- * instead of rendering a broken element; a secret key (`sk_…`) is refused outright — it must never
- * be shipped to the browser, and accepting one would only fail opaquely later.
+ * Validate the configured Stripe key before it reaches Stripe.js: empty fails loudly, a secret key
+ * (`sk_…`) must never ship to the browser, and anything but a test publishable key is refused, the
+ * Stripe path being sandbox-only (ADR-0029). The page shows these messages, so none echoes the key.
  */
 export function assertPublishableKey(key: string): void {
   if (!key) {
@@ -41,22 +19,24 @@ export function assertPublishableKey(key: string): void {
       'Refusing a Stripe secret key (sk_…) in the browser — configure a publishable key (pk_…).',
     );
   }
+  if (!key.startsWith('pk_test_')) {
+    throw new Error(
+      'Refusing this Stripe key: payments here are sandbox-only (ADR-0029) — configure a test publishable key (pk_test_…).',
+    );
+  }
 }
 
 /**
  * Real adapter: loads Stripe.js from js.stripe.com (PCI — never bundled or self-hosted) — through
  * the package's `pure` entry, so the script is fetched only when a Payment Element is mounted and
  * never as a side effect of the app booting (the tourist surfaces make no third-party request,
- * ADR-0022) — mounts a Payment Element bound to the booking's PaymentIntent `clientSecret`, and
- * confirms the card with `redirect: 'if_required'`. Uses the **publishable** key from {@link environment} (a `pk_…`,
- * which is safe in the client bundle — the secret key never reaches the browser).
+ * ADR-0022) — mounts a Payment Element bound to the PaymentIntent's client secret, and confirms
+ * with `redirect: 'if_required'`, so a card stays on the payment page. Uses the **publishable** key
+ * from {@link environment} (a `pk_…`, safe in the client bundle; the secret key never reaches the browser).
  */
 @Injectable()
-export class StripeJsPaymentGateway extends StripePaymentGateway {
-  override async mountPaymentElement(
-    host: HTMLElement,
-    clientSecret: string,
-  ): Promise<StripeCheckout> {
+export class StripeJsPaymentGateway extends EmbeddedCheckoutGateway {
+  override async mount(host: HTMLElement, clientSecret: string): Promise<CheckoutSession> {
     const key = environment.stripePublishableKey;
     assertPublishableKey(key);
     const stripe: Stripe | null = await loadStripe(key);
@@ -86,8 +66,8 @@ export class StripeJsPaymentGateway extends StripePaymentGateway {
  * when called, so a test can flip it mid-page.
  */
 @Injectable()
-export class FakeStripePaymentGateway extends StripePaymentGateway {
-  override mountPaymentElement(host: HTMLElement): Promise<StripeCheckout> {
+export class FakeStripePaymentGateway extends EmbeddedCheckoutGateway {
+  override mount(host: HTMLElement): Promise<CheckoutSession> {
     if (
       (window as unknown as { __RIVIERA_FAKE_STRIPE_MOUNT_FAIL__?: boolean })
         .__RIVIERA_FAKE_STRIPE_MOUNT_FAIL__

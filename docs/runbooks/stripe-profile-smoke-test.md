@@ -45,7 +45,7 @@ SPRING_PROFILES_ACTIVE=stripe \
 ## 3. Create a booking (returns 202 + a PaymentIntent)
 
 Under the `stripe` profile the gateway returns `Pending`, so create yields **202 AwaitingPayment**
-with a `clientSecret` + `paymentIntentId` (the booking stays `AWAITING_PAYMENT` until the webhook).
+with a `payment` of kind `EMBEDDED`, carrying `clientToken` + `reference` (the booking stays `AWAITING_PAYMENT` until the webhook).
 
 ```bash
 SET_ID=$(curl -s localhost:8080/api/venues/1 | jq '[.sets[]|select(.pool=="ONLINE")][0].id')
@@ -53,7 +53,7 @@ curl -s -X POST localhost:8080/api/bookings -H 'content-type: application/json' 
   \"setId\": $SET_ID, \"bookingDate\": \"2035-08-01\",
   \"contact\": {\"email\":\"smoke@test.com\",\"fullName\":\"Smoke Test\",\"phone\":\"+355600\"}
 }" | tee /tmp/created.json | jq
-CODE=$(jq -r .code /tmp/created.json); PI=$(jq -r .paymentIntentId /tmp/created.json)
+CODE=$(jq -r .code /tmp/created.json); PI=$(jq -r .payment.reference /tmp/created.json)
 ```
 
 ## 4. Confirm the PaymentIntent with a test card → webhook confirms the booking

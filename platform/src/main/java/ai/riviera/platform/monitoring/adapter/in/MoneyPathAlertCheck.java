@@ -16,11 +16,11 @@ import org.springframework.stereotype.Component;
  * threshold ({@code docs/runbooks/observability.md}); single-instance and lockless, like the sweeps
  * ({@code RESPONSIBILITIES.md} §Platform edge). {@link #outboxBacklog()}'s gauge runs
  * {@link ObservabilityConfig}'s bounded query on this thread ({@code NaN} on timeout), so the job
- * keeps a thread of its own ({@code docs/deploy/production-hardening.md}); {@code stripe} only, where
- * the money path is live. Lines carry counts and thresholds, never a booking code or PII (#7).
+ * keeps a thread of its own ({@code docs/deploy/production-hardening.md}); collecting gateway only,
+ * where the money path is live. Lines carry counts and thresholds, never a booking code or PII (#7).
  */
 @Component
-@Profile("stripe")
+@Profile("collecting-gateway")
 class MoneyPathAlertCheck {
 
 	private static final Logger log = LoggerFactory.getLogger(MoneyPathAlertCheck.class);
@@ -56,7 +56,7 @@ class MoneyPathAlertCheck {
 		long newWebhookServerErrors = webhookServerErrorsSinceLastCheck();
 		if (newWebhookServerErrors > props.webhookServerErrorThreshold()) {
 			log.error("money-path alert: {} webhook 5xx response(s) since the last check (threshold {}) — "
-					+ "Stripe may be retrying and payment state may lag", newWebhookServerErrors,
+					+ "the gateway may be retrying and payment state may lag", newWebhookServerErrors,
 					props.webhookServerErrorThreshold());
 		}
 	}

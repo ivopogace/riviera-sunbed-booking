@@ -20,6 +20,7 @@ import ai.riviera.platform.EnabledIfDockerAvailable;
 import ai.riviera.platform.TestcontainersConfiguration;
 import ai.riviera.platform.booking.application.Bookings;
 import ai.riviera.platform.payment.vocabulary.BookingRef;
+import ai.riviera.platform.payment.vocabulary.PayeeRef;
 import ai.riviera.platform.payment.application.NewPayment;
 import ai.riviera.platform.payment.application.Payments;
 
@@ -49,6 +50,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @AutoConfigureMockMvc
 @TestPropertySource(properties = "stripe.webhook-secret=whsec_test_u4_secret")
 class StripeWebhookListenerFailureIT {
+
+	private static final PayeeRef PAYEE = new PayeeRef(11L);
 
 	private static final String SECRET = "whsec_test_u4_secret";
 
@@ -88,7 +91,7 @@ class StripeWebhookListenerFailureIT {
 	void failedListenerLeavesIncompletePublicationForResubmission() throws Exception {
 		when(bookings.confirmFromPayment(anyLong(), any()))
 				.thenThrow(new IllegalStateException("simulated failure on the async confirm"));
-		payments.register(new NewPayment(new BookingRef(8001L), "pi_listener_fail", 4500L, "EUR", "cs_test_secret"));
+		payments.register(new NewPayment(PAYEE, new BookingRef(8001L), "pi_listener_fail", 4500L, "EUR", "cs_test_secret"));
 		String payload = eventJson("evt_listener_fail", "payment_intent.succeeded", "pi_listener_fail");
 
 		// The webhook itself succeeds and acks Stripe — confirmation is now decoupled.

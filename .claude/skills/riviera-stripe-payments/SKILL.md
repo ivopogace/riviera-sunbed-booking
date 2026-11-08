@@ -20,11 +20,14 @@ and ignore the Connect sections of its `stripe-best-practices`.
 ## Collection (`payment`)
 
 - `payment` exposes the `api/` port `CheckoutPort` (`PaymentOutcome pay(List<CollectionShare>)` —
-  one PaymentIntent may collect for several bookings, one `payment_booking` share each;
-  `pay(BookingRef, Money)` is the one-share convenience);
+  one PaymentIntent may collect for several bookings, one `payment_booking` share each, all paying
+  one venue (`CollectionShare.payee`; a mix is `MixedPayees`, ADR-0029); `pay(BookingRef, PayeeRef, Money)`
+  is the one-share convenience);
   the Stripe SDK sits behind the internal `PaymentGateway` port (`payment.application`,
-  implemented by `adapter/out/StripePaymentGateway`). The domain never touches Stripe types.
-- Confirm only on the signature-verified `payment_intent.succeeded` webhook (#8); the redirect
+  implemented by `adapter/out/StripePaymentGateway`). The domain never touches Stripe types; a
+  `Pending` outcome carries a `CheckoutInstruction`, Embedded for a PaymentIntent's client secret.
+- Confirm only on the signature-verified `payment_intent.succeeded` webhook or the ADMIN repair's
+  authenticated read of the provider, through the same guarded step (#8, #102); the redirect
   is never a confirmation.
 - Idempotency key from `BookingId` + operation on charge/refund, plus the service day for a
   one-day refund (`RefundScope`; one `payment_refund` row per scope; `PaymentGatewayRefundContract`
@@ -86,5 +89,5 @@ duplicate delivery, and out-of-order events.
 | Thought | Reality |
 |---|---|
 | Connect / pay the venue from Stripe | No Connect (ADR-0002). Ledger + manual BKT. |
-| Frontend got `payment success` → confirm | Only a verified webhook confirms (#8). |
+| Frontend got `payment success` → confirm | Only a verified provider state confirms: the webhook, or the ADMIN repair's read (#8). |
 | Stripe delivered, just apply it | Stripe re-delivers. Dedupe on event id or you double-accrue. |
