@@ -64,8 +64,8 @@ wired under the stub.
 ## Modulith
 
 No new port, event or grant: the switch is deployment configuration, so `booking` and `monitoring`
-gain no edge to `payment`. `ProviderProfileConfinementArchitectureTests` joins the structural net:
-it holds the whole tree to one standard keyed on package and annotation, without Spring.
+gain no edge to `payment`. `ProviderProfileConfinementArchitectureTests` names its providers, so it is a target-naming fitness
+function, not a structural-net member (`riviera-modulith` § *The structural net*).
 
 ## Payment & payout
 
@@ -76,7 +76,7 @@ release (#2) are untouched; `stripe` runs exactly what it ran.
 
 - **Phase 0 — red:** all pinning tests · red on `main`'s tree.
 - **Phase 1 — the switch:** the group line, the three `@Profile`s, Javadoc and properties comments.
-- **Phase 2 — docs:** runbooks, `RESPONSIBILITIES.md`, the net's listings.
+- **Phase 2 — docs:** runbooks, `RESPONSIBILITIES.md`, `riviera-modulith`'s fitness-function list.
 
 ## Execution status
 
