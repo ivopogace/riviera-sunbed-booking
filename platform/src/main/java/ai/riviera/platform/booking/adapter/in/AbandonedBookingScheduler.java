@@ -11,14 +11,14 @@ import ai.riviera.platform.booking.application.refund.ExpireAbandonedBookings;
 
 /**
  * Driving adapter that periodically runs the abandoned-payment TTL sweep via
- * {@link ExpireAbandonedBookings}. {@code @Profile("stripe")}: under the stub profile bookings
- * confirm synchronously, so there is nothing to sweep. {@code fixedDelay}, so a slow run never
+ * {@link ExpireAbandonedBookings}. Collecting gateway only: under the stub, bookings confirm
+ * synchronously, so there is nothing to sweep. {@code fixedDelay}, so a slow run never
  * overlaps itself; multi-instance needs no lock, as the guarded {@code UPDATE … WHERE
  * status='AWAITING_PAYMENT' … RETURNING} lets one runner transition a booking (ADR-0018).
  * Interval and TTL from {@code booking.awaiting-payment.*}; the TTL is passed into the use case.
  */
 @Component
-@Profile("stripe")
+@Profile("collecting-gateway")
 class AbandonedBookingScheduler {
 
 	private static final Logger log = LoggerFactory.getLogger(AbandonedBookingScheduler.class);

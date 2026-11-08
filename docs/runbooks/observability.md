@@ -613,14 +613,14 @@ booking id, the set id and the deadline — never the arrival code, never the pa
 
 ## Alert route (today): in-app self-check → ERROR log
 
-`MoneyPathAlertCheck` (`@Profile("stripe")`, scheduled every
+`MoneyPathAlertCheck` (collecting gateway only, `@Profile("collecting-gateway")`, scheduled every
 `riviera.observability.alert.interval` — default 5m, after a 1m initial delay) reads the three signals
 from the meter registry and logs one **structured `ERROR`** line per crossed threshold, e.g.:
 
 ```
 money-path alert: outbox backlog is 42 (threshold 10) — event publications are not draining
 money-path alert: 1 refund(s) failed since the last check — a tourist may be owed money
-money-path alert: 3 webhook 5xx response(s) since the last check (threshold 0) — Stripe may be retrying …
+money-path alert: 3 webhook 5xx response(s) since the last check (threshold 0) — the gateway may be retrying …
 ```
 
 Alert lines carry only counts + thresholds — never a booking code or PII.
