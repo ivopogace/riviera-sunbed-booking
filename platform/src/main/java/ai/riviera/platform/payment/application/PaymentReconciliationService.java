@@ -90,7 +90,9 @@ class PaymentReconciliationService implements PaymentReconciliation {
 					payment.id(), payment.reference(), payee.get(), payment.bookings()));
 			case ProviderPaymentState.Canceled ignored -> divergences.add(new Divergence(Kind.CANCELED_LOCALLY_WAITING,
 					payment.id(), payment.reference(), payee.get(), payment.bookings()));
-			case ProviderPaymentState.Waiting ignored -> { }
+			case ProviderPaymentState.Waiting ignored -> {
+				// Both sides still wait for the guest, so there is nothing to report.
+			}
 			case ProviderPaymentState.Unavailable unavailable ->
 				unchecked.add(new Unchecked(payment.id(), payment.reference(), unavailable.reason()));
 		}
