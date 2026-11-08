@@ -330,7 +330,7 @@ export interface CancellationTerms {
 
 /**
  * One row of `GET /api/me/bookings` (the signed-in list), mirroring the backend `MyBookingView`: a
- * **subset** of {@link BookingDetail} — refund *terms* and payment credentials load only on the
+ * **subset** of {@link BookingDetail} — refund *terms* and the checkout instruction load only on the
  * code-gated detail; `refundedAmount` is the one refund fact carried, so a row can tell a
  * cancellation that took money from one that never did. Money in integer minor units (invariant
  * #5); date an ISO `LocalDate`; `requestExpiresAt` null for instant bookings. `movedAt` is flat

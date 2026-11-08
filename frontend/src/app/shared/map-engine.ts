@@ -130,7 +130,7 @@ export interface MapHandle {
 
 /**
  * The map-engine seam — an external browser capability (WebGL rendering, tile fetching), so it
- * sits behind a DI token with a real and a fake adapter, the exact shape of `StripePaymentGateway`
+ * sits behind a DI token with a real and a fake adapter, the exact shape of `EmbeddedCheckoutGateway`
  * and `QrScanner`: `MapLibreMapEngine` in the browser, `FakeMapEngine` when the Playwright e2e
  * arms `window.__RIVIERA_FAKE_MAP__` (the factory lives in `app.config.ts`); unit specs override
  * the token directly.

@@ -1096,7 +1096,7 @@ export class BookingView {
 
   /**
    * Resume payment on an accepted request: rebuild the payment hand-off from the
-   * fetched detail's open-intent credentials and route to `/booking/pay`. The pay page then polls
+   * fetched detail's checkout instruction and route to `/booking/pay`. The pay page then polls
    * for the webhook-driven CONFIRMED exactly as after a 202 create (invariant #8).
    */
   protected async payNow(b: BookingDetail): Promise<void> {
