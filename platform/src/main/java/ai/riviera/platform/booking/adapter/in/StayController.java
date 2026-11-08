@@ -16,7 +16,7 @@ import ai.riviera.platform.shared.InvalidApiRequestException;
 
 /**
  * Public tourist endpoint booking a stitched stay over {@link CreateStay} (invariant #11):
- * {@code Confirmed}→201, {@code AwaitingPayment}→202 with the group's one {@code clientSecret}, a
+ * {@code Confirmed}→201, {@code AwaitingPayment}→202 with the group's one checkout instruction, a
  * refusal as {@link Rejections} maps it, a malformed plan→400. Same gates as {@code POST /api/bookings}:
  * session-free, proof of work, per-IP rate limit.
  */
@@ -43,8 +43,8 @@ class StayController {
 			case StayOutcome.Confirmed confirmed -> ResponseEntity.status(HttpStatus.CREATED)
 					.body(StayView.of(confirmed.confirmation()));
 			case StayOutcome.AwaitingPayment awaiting -> ResponseEntity.status(HttpStatus.ACCEPTED)
-					.body(new StayView.Awaiting(StayView.of(awaiting.confirmation()), awaiting.clientSecret(),
-							awaiting.paymentIntentId()));
+					.body(new StayView.Awaiting(StayView.of(awaiting.confirmation()),
+							CheckoutInstructionView.of(awaiting.instruction())));
 			case StayOutcome.Requested requested -> ResponseEntity.status(HttpStatus.ACCEPTED)
 					.body(new StayView.Requested(StayView.of(requested.confirmation()), requested.requestExpiresAt()));
 			case StayOutcome.Rejected rejected -> Rejections.respond(rejected.reason());

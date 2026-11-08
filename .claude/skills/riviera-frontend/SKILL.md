@@ -85,7 +85,7 @@ user-facing surfaces, `<domain>.model.ts`, `<domain>.service.ts` (`@Service()`, 
 ## `app.config.ts` (composition root)
 
 Interceptors via `provideHttpClient(withInterceptors([...]))`. External services behind a DI
-token: `StripePaymentGateway` (abstract class) with `StripeJsPaymentGateway` vs
+token: `EmbeddedCheckoutGateway` (abstract class) with `StripeJsPaymentGateway` vs
 `FakeStripePaymentGateway`, swapped by a factory reading a `window.__RIVIERA_FAKE_*__` flag
 only the e2e sets — reuse for any dependency **the e2e cannot drive for real**
 (`booking/stripe-payment.gateway.ts`, `operator/qr-scanner.ts`, `shared/map-engine.ts`). When

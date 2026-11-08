@@ -41,7 +41,7 @@
     "@angular/forms": "^22.2.3",
     "@angular/platform-browser": "^22.2.3",
     "@angular/router": "^22.2.3",
-    "@stripe/stripe-js": "^10.1.0",
+    "@stripe/stripe-js": "^10.2.1",
     "altcha": "3.2.2",
     "jsqr": "^1.4.0",
     "maplibre-gl": "6.11.2",

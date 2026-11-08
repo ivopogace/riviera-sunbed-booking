@@ -19,19 +19,16 @@ import { MapEngine } from './shared/map-engine';
 import { MapLibreMapEngine } from './shared/maplibre-map-engine';
 import { ThemeService } from './core/theme';
 
-import {
-  FakeStripePaymentGateway,
-  StripeJsPaymentGateway,
-  StripePaymentGateway,
-} from './booking/stripe-payment.gateway';
+import { FakeStripePaymentGateway, StripeJsPaymentGateway } from './booking/stripe-payment.gateway';
+import { EmbeddedCheckoutGateway } from './booking/checkout.gateway';
 import { routes } from './app.routes';
 
 /**
  * Real Stripe.js in the browser. The Playwright a11y e2e sets `window.__RIVIERA_FAKE_STRIPE__`
  * to swap in a deterministic fake (no js.stripe.com) — never set in production. Component unit
- * specs override the {@link StripePaymentGateway} token directly.
+ * specs override the {@link EmbeddedCheckoutGateway} token directly.
  */
-function stripeGatewayFactory(): StripePaymentGateway {
+function embeddedCheckoutFactory(): EmbeddedCheckoutGateway {
   // `globalThis` is `window` in a browser and always defined, so the Playwright flag reads uniformly.
   const useFake =
     (globalThis as unknown as { __RIVIERA_FAKE_STRIPE__?: boolean }).__RIVIERA_FAKE_STRIPE__ ===
@@ -77,7 +74,7 @@ export const appConfig: ApplicationConfig = {
     provideAppInitializer(() => {
       inject(ThemeService);
     }),
-    { provide: StripePaymentGateway, useFactory: stripeGatewayFactory },
+    { provide: EmbeddedCheckoutGateway, useFactory: embeddedCheckoutFactory },
     { provide: QrScanner, useFactory: qrScannerFactory },
     { provide: MapEngine, useFactory: mapEngineFactory },
     // No e2e-flag fake: the e2e drives the real prompt through Playwright's permissions.

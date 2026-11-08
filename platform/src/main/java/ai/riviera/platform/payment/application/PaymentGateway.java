@@ -1,11 +1,13 @@
 package ai.riviera.platform.payment.application;
 
+import java.time.Instant;
 import java.util.List;
 
 import ai.riviera.platform.payment.domain.RefundScope;
 import ai.riviera.platform.payment.vocabulary.BookingRef;
 import ai.riviera.platform.payment.vocabulary.CollectionShare;
 import ai.riviera.platform.payment.vocabulary.Money;
+import ai.riviera.platform.payment.vocabulary.PayeeRef;
 import ai.riviera.platform.payment.vocabulary.PaymentCancellation;
 import ai.riviera.platform.payment.vocabulary.PaymentOutcome;
 import ai.riviera.platform.payment.vocabulary.RefundResult;
@@ -21,15 +23,15 @@ import ai.riviera.platform.payment.vocabulary.RefundResult;
 public interface PaymentGateway {
 
 	/**
-	 * Initiate one collection for every share (one currency); never throws on a decline or expected
-	 * failure. Returns {@code Succeeded} (stub, in-process), {@code Pending} (a PaymentIntent exists and
-	 * only the signature-verified webhook completes it, invariant #8) or {@code Failed}.
+	 * Initiate one collection for every share (one currency), paying {@code payee}; never throws on a decline or
+	 * expected failure. Returns {@code Succeeded} (stub), {@code Pending} (only the verified webhook completes it,
+	 * invariant #8; its instruction tells the browser how to pay) or {@code Failed}.
 	 */
-	PaymentOutcome initiate(List<CollectionShare> shares);
+	PaymentOutcome initiate(PayeeRef payee, List<CollectionShare> shares);
 
-	/** Initiate collection of {@code amount} for one booking: a collection of one share. */
-	default PaymentOutcome initiate(BookingRef booking, Money amount) {
-		return initiate(List.of(new CollectionShare(booking, amount)));
+	/** Initiate collection of {@code amount} for one booking, paying {@code payee}: a collection of one share. */
+	default PaymentOutcome initiate(PayeeRef payee, BookingRef booking, Money amount) {
+		return initiate(payee, List.of(new CollectionShare(booking, payee, amount)));
 	}
 
 	/**
@@ -50,4 +52,13 @@ public interface PaymentGateway {
 	 * nothing was collected (the caller must not cancel the booking); {@code Failed} if transient.
 	 */
 	PaymentCancellation cancel(BookingRef booking);
+
+	/**
+	 * The provider's current answer for the payment {@code reference} paying {@code payee}, read with that venue's
+	 * credentials where the provider has them; never throws on an expected failure ({@code PaymentGatewayLookupContract}).
+	 */
+	ProviderPaymentState lookup(PayeeRef payee, String reference);
+
+	/** Every unpaid transaction created from {@code from} up to, not including, {@code before}, read to the last page; never throws on an expected failure. */
+	UnpaidTransactions unpaidCreatedBetween(Instant from, Instant before);
 }

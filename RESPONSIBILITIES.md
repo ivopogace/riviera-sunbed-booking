@@ -391,18 +391,21 @@ any is released on the old, never a swap of my own — so a racing reserve wins 
   also answers the tourist browse, display-only — the reserve enforces independently, asking the
   season-closure and sales-close arms one at a time to name the refusal (`VENUE_CLOSED`, then
   `BOOKING_CLOSED`). `freeCancellationEndsAt` is cancellation-only.
+- **The abandoned-payment sweep runs under a collecting gateway only** (`@Profile("collecting-gateway")`):
+  the stub confirms synchronously, so nothing lingers `AWAITING_PAYMENT` under it. Every collecting
+  provider's profile joins that group in `application.properties`, so a new provider edits no job.
 - **Windows:** a request must be answered by `min(created + expiry-window, D's sales close)` (D =
   the stay's first day); the pay deadline is `min(accepted_at + pay-window, end of service day)`, or
   the day's end if never accepted (the TTL, `AbandonedPaymentProperties`, is only the sweep's
   earlier backstop, never a view fence). The payment-due mail promises it, the abandoned sweep's SQL
-  mirrors it (`RequestWindows#payDeadline`, `RequestWindowsTest`); the view hides the `clientSecret`
+  mirrors it (`RequestWindows#payDeadline`, `RequestWindowsTest`); the view hides the checkout instruction
   past it.
 - **The confirm path is deliberately not fenced**
   (`JdbcBookingsTransitionIT.confirmSucceedsAfterThePayDeadlineHasPassed`): a payment landing past
   the deadline still confirms. Refusing without refunding strands the money on a booking no sweep
   releases; refunding cannot reuse `BookingCancelled` (no `ACCRUAL`: `payout` would defer forever).
   The residual is a sub-sweep-interval race the guest opts into and pays for in full.
-- **Payment events apply idempotently, as the second layer:** `payment`'s `stripe_webhook_event`
+- **Payment events apply idempotently, as the second layer:** `payment`'s `payment_webhook_event`
   dedup misses the registry's re-deliveries to `PaymentEventListener`, so my guarded
   `AWAITING_PAYMENT` transitions make a replay move no row, release nothing and publish nothing.
 - **Cancellation terms are stamped at birth.** `CancellationPolicy` is the single home of the window
@@ -541,7 +544,8 @@ any is released on the old, never a swap of my own — so a racing reserve wins 
 
 ## `payment`
 **Job:** Own Stripe collection — PaymentIntents, refunds, and webhook handling — reconciling
-payment state only from **signature-verified Stripe webhooks** (never the client). Collection
+payment state only from **signature-verified Stripe webhooks**, or the ADMIN repair's authenticated read of the
+provider (never the client). Collection
 only. Publish `payment.api.RefundStatusLookup` (`NO_COLLECTION` / `OUTSTANDING` / `ACCEPTED`) from
 my own row; "no row" means the wired gateway never collected, never that a refund failed.
 
@@ -550,6 +554,11 @@ It answers what `CONFIRMED` attests to here, a property of the wired gateway tha
 or `initiate`/`refund` caller needs; on `PaymentGateway`, which test fakes implement (one as a
 `@FunctionalInterface`), it would be the wide-port smell. The answers sit beside their gateways
 under the same profiles (`ProfiledCollectionGuarantee`); the coverage test below fails a gap.
+
+**`collecting-gateway` is the switch for beans that exist only under a gateway that really collects.**
+Each profile answering `true` joins that group (`spring.profiles.group`, `application.properties`), and
+payment-path jobs bind to it, never to a provider's name; the coverage test holds the group to exactly
+those profiles. Code that runs under every gateway asks `CollectionGuarantee` instead.
 
 **One PaymentIntent may collect for several bookings** (a stay, design D6/D8): `CheckoutPort.pay`
 takes the shares, one intent for their sum keyed on the first booking; `payment` holds the intent,
@@ -560,13 +569,40 @@ re-sums the share and derives the intent's status in one statement; a verified `
 publishes **once per booking**. `RefundStatusLookup` reads the whole-share refund only. A Stripe refund
 is tagged `bookingRef` and, for a day, `serviceDate`, so adoption after a lost response is per scope.
 
+**A payment names the one venue it pays** (ADR-0029 decisions 1, 7, 11): every `CollectionShare` carries a
+`PayeeRef`, and `CheckoutPort.pay` returns `PaymentOutcome.MixedPayees` before any gateway call when the
+shares name more than one, which `booking` releases as `SPANS_VENUES` (accept: `PAYMENT_INIT_FAILED`).
+The gateway receives the payee; the stub and the Stripe demo ignore it and collect as always.
+`payment.payee_venue_id` is a logical id, empty on rows predating V80.
+
+**A pending collection hands the browser a `CheckoutInstruction`** (ADR-0029 decision 11): Embedded (a
+token for a form in our page, Stripe's) or Redirect (the provider's own https page), each with the
+reference the provider's webhook correlates on. The `payment` row keeps it (`client_secret` or
+`redirect_url`, never both), so the pay-on-accept read returns what the provider gave. It leaves the
+module only for the `202` and the code-gated view while payable (#7). `booking` flattens it to the
+`payment` field with an explicit `kind`.
+
+**Reconciliation compares open payments with the provider and only reports** (#102, ADR-0029): a daily sweep
+under `collecting-gateway`, an ADMIN `GET` and the same computed report, no table. Only the ADMIN repair writes:
+it re-reads the provider and applies the answer through `VerifiedPaymentOutcomes`, the webhook's guarded step.
+The windows are constants, so no safety argument rests on a tunable: 30-minute grace, 30-day lookback, 24-hour
+orphan age. A paid payment is caught by `cancel` answering `NotCancellable` before the expiry can release it,
+held of every collector by `CollectingGatewayLookupContract`. A row with no payee is reported, never looked up.
+Stripe's search filters on a cached status, so the listing re-judges each object (`docs/runbooks/payment-reconciliation.md`).
+
 `CancelPaymentPort.cancel(booking)` voids the intent behind the booking, so an unpaid group is
 cancelled all-or-nothing, never one booking of it (`booking`'s remodel release ends every unpaid
 stretch of the stay with the one it disturbed, #1292).
 
+**The `stripe` profile is the sandbox demo, so only a test key runs it** (ADR-0029, decision 11).
+`StripeConfig` aborts the boot on anything but `sk_test_`/`rk_test_`, and the SPA's
+`assertPublishableKey` refuses anything but `pk_test_`. Both are allowlists because Stripe's
+organization keys (`sk_org_…`) carry no mode marker; neither ever prints the key. A webhook signing
+secret has no mode marker either, so it stays a deploy check (`docs/deploy/production-hardening.md`).
+
 - **The payment state machine is one guarded SQL statement**, because Stripe promises neither
   ordering nor single delivery. `markStatus` moves only the open states (`REQUIRES_PAYMENT`, the
-  retryable `FAILED` — what `findPendingCredentials` calls payable); the rest are terminal, so a
+  retryable `FAILED` — what `findOpenInstruction` calls payable); the rest are terminal, so a
   late `payment_failed` cannot overwrite collected money. Never read-then-write: two deliveries
   must not both see "open". `PaymentConfirmed`/`PaymentCanceled` publish **only when a row moved**
   — a late `canceled` must not release a paid booking's claim (invariant #2); `booking`'s guarded
@@ -575,6 +611,11 @@ stretch of the stay with the one it disturbed, #1292).
   PaymentIntent or Refund throws `UnreadableWebhookEventException` (`503`); the rollback undoes the
   event-id dedup, so Stripe re-delivers — else a paid booking holds its claim in `AWAITING_PAYMENT`
   forever (the abandoned sweep skips it by design). Unhandled types, unknown intents: `200`.
+- **Webhook dedup is keyed by provider plus a provider-scoped reference** (`WebhookEvents`,
+  `payment_webhook_event`; ADR-0029 decision 4). The reference is the provider's event id or, for one
+  that sends none, what the adapter derives with the verified state inside it, so an earlier status
+  cannot use up the key of the paid one. `provider` has no default: a row filed as Stripe's by omission
+  would share Stripe's namespace. `PaymentProvider` mirrors its `CHECK`.
 - **The advisory refund types fail open.** `refund.failed` reports only failures, so an unreadable
   one is `503`; `refund.updated`/`charge.refund.updated` fire for every refund on the account, and
   a retry loop there would get Stripe to disable the endpoint that also carries the payment spine.
@@ -1141,7 +1182,8 @@ admin action was justified; retention (a named non-goal — rows are kept indefi
 - **The metric names** (`ObservabilityMetrics`). Emission and tags stay with the module that owns the
   thing measured; this module owns the names, the outbox-backlog gauge and the alerts on them.
 - **The money-path alert check shares the sweeps' single-instance posture.** `MoneyPathAlertCheck`
-  is lockless `@Scheduled`: each extra instance fires the outbox-backlog alert again. It is on
+  is lockless `@Scheduled`: each extra instance fires the outbox-backlog alert again. It runs under a
+  collecting gateway only (`@Profile("collecting-gateway")`, as `booking`'s abandoned sweep). It is on
   `ScheduledWorkArchitectureTest`'s job list, so `docs/deploy/production-hardening.md`'s scale-out
   precondition (ShedLock on every job on that list) covers it.
 - **The running build's commit on the public `/actuator/info`** (`BuildCommitInfoContributor`, #1632):
@@ -1442,7 +1484,7 @@ The mechanism and edge cases behind `CLAUDE.md`'s one-line invariants; its numbe
 7. **Booking codes are unguessable bearer credentials.** ≥ 8 random base32 chars, never
    sequential, treated like a secret in logs.
 8. **Stripe webhooks are the source of truth for payment state — not the client.** Never confirm a
-   booking from a client redirect; reconcile only from signature-verified webhooks (§`payment`).
+   booking from a client redirect; reconcile only from signature-verified webhooks or the ADMIN repair's authenticated provider read (§`payment`).
 9. **The payout ledger is auditable and idempotent.** Every entry is order-independent and
    idempotent on `UNIQUE NULLS NOT DISTINCT (booking_id, entry_type, service_date)`: a booking accrues
    once, a refund reverses it, a stay's washed-out day reverses that day once (`DAY_REVERSAL`,
@@ -1497,10 +1539,12 @@ them form the *structural net* is `riviera-modulith` § *The structural net*'s c
 | `payout` is the only writer (and direct reader) of `platform_setting` — ADR-0021 | `ResponsibilitiesArchitectureTests` (sole-writer scan) |
 | `booking` is the only writer (and direct reader) of `booking_day` | `ResponsibilitiesArchitectureTests` (sole-writer scan) |
 | `booking` is the only writer (and direct reader) of `stay` — ADR-0024 | `ResponsibilitiesArchitectureTests` (SQL-shaped scan: the bare word is in prose and in `max_stay_days`) |
-| Every table in `CLAUDE.md`'s "Sole writer of" column, plus `challenge_registry` and `admin_audit_record`, is written only by its owner: `venue`, `set_position`, `venue_amenity`, `venue_photo`, `venue_photo_variant`, `venue_commission_rate`, `set_availability`, `booking`, `stay`, `booking_day`, `remodel_receipt`, `remodel_receipt_move`, `remodel_receipt_outcome`, `remodel_receipt_kept`, `payment`, `payment_booking`, `payment_refund`, `stripe_webhook_event`, `payout_ledger_entry`, `payout_batch`, `platform_setting`, `customer`, `customer_account`, `customer_sso_identity`, `customer_account_token`, `operator`, `operator_venue`, `review`, `email_suppression`, `booking_confirmation_mail_attempt` | `ResponsibilitiesArchitectureTests` (table-ownership map: a SQL-shaped `INSERT INTO`/`UPDATE … SET`/`DELETE FROM`/`MERGE INTO`/`TRUNCATE` per `CONSTANT_String`; the map must cover every table the migrations leave (create, drop and rename walked in Flyway version order) bar the framework tables, and every owner must write its tables) |
+| Every table in `CLAUDE.md`'s "Sole writer of" column, plus `challenge_registry` and `admin_audit_record`, is written only by its owner: `venue`, `set_position`, `venue_amenity`, `venue_photo`, `venue_photo_variant`, `venue_commission_rate`, `set_availability`, `booking`, `stay`, `booking_day`, `remodel_receipt`, `remodel_receipt_move`, `remodel_receipt_outcome`, `remodel_receipt_kept`, `payment`, `payment_booking`, `payment_refund`, `payment_webhook_event`, `payout_ledger_entry`, `payout_batch`, `platform_setting`, `customer`, `customer_account`, `customer_sso_identity`, `customer_account_token`, `operator`, `operator_venue`, `review`, `email_suppression`, `booking_confirmation_mail_attempt` | `ResponsibilitiesArchitectureTests` (table-ownership map: a SQL-shaped `INSERT INTO`/`UPDATE … SET`/`DELETE FROM`/`MERGE INTO`/`TRUNCATE` per `CONSTANT_String`; the map must cover every table the migrations leave (create, drop and rename walked in Flyway version order) bar the framework tables, and every owner must write its tables) |
 | No class inside a module depends on a type directly in `ai.riviera.platform` — ADR-0017 | `CompositionRootDisciplineTests` (module→root rule; `allowedDependencies` cannot see it) |
 | The root reaches no module: it holds only the application and its configuration (ADR-0028 Decision 1) | `CompositionRootDisciplineTests` (root→module rule) |
 | `payment` uses no Stripe **Connect** API (collect-only, ADR-0002) | `NoStripeConnectArchitectureTest` |
+| Only `payment.adapter.out` names a provider profile in a `@Profile`; anything else binds to `collecting-gateway` (ADR-0029 decision 11) | `ProviderProfileConfinementArchitectureTests` |
+| `collecting-gateway` is joined by exactly the profiles whose `CollectionGuarantee` answers `true` | `PaymentGatewayContractCoverageArchitectureTest` |
 | No module reaches another's `application`/`domain`/`adapter`; `allowedDependencies` hold | `ModularityTests` (`ApplicationModules.verify()`) |
 | Every declared `allowedDependencies` grant is used: some class of the module depends on that module or named interface in bytecode (Modulith's dependency model plus the functional-interface type each `LambdaMetafactory` `invokedynamic` produces, so `remodel`'s lambda passed as `venue.spi.RemodelGate` counts while a type met only in a called member's descriptor, such as a `null` argument, does not; `web`'s `switch` over a returned `ChallengeVerdict` Modulith sees itself) | `UnusedAllowedDependencyTests` (fixture `ai.riviera.grantfixture`) |
 | The ADR-0007 package shape; published-surface kinds; the `VenueCatalog` role split | `PackageShapeArchitectureTests`, `PublishedSurfacePlacementArchitectureTests`, `VenueApiRoleSplitTests` |

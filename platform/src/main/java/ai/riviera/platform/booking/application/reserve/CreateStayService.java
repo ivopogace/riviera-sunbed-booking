@@ -17,6 +17,7 @@ import ai.riviera.platform.payment.api.CollectionGuarantee;
 import ai.riviera.platform.payment.vocabulary.BookingRef;
 import ai.riviera.platform.payment.vocabulary.CollectionShare;
 import ai.riviera.platform.payment.vocabulary.Money;
+import ai.riviera.platform.payment.vocabulary.PayeeRef;
 import ai.riviera.platform.payment.vocabulary.PaymentOutcome;
 import ai.riviera.platform.venue.vocabulary.MoneyView;
 import ai.riviera.platform.venue.vocabulary.SetBookingInfo;
@@ -71,7 +72,7 @@ class CreateStayService implements CreateStay {
 		PaymentOutcome payment;
 		try {
 			payment = checkout.pay(reserved.stretches().stream()
-					.map(stretch -> new CollectionShare(new BookingRef(stretch.bookingId()),
+					.map(stretch -> new CollectionShare(new BookingRef(stretch.bookingId()), new PayeeRef(stretch.set().venueId().value()),
 							new Money(stretch.amountMinor(), currency)))
 					.toList());
 		}
@@ -98,12 +99,17 @@ class CreateStayService implements CreateStay {
 				log.info("awaiting payment for stay {} of {} stretches", reserved.stayId().value(),
 						reserved.stretches().size());
 				yield new StayOutcome.AwaitingPayment(confirmation(reserved, BookingStatus.AWAITING_PAYMENT, false),
-						pending.clientSecret(), pending.paymentIntentId());
+						pending.instruction());
 			}
 			case PaymentOutcome.Failed failed -> {
 				releaseEveryStretch(reserved);
 				log.info("released stay {} after payment initiation failed", reserved.stayId().value());
 				throw new PaymentDeclinedException(failed.reason());
+			}
+			case PaymentOutcome.MixedPayees ignored -> {
+				releaseEveryStretch(reserved);
+				log.warn("refused collection for stay {}: its stretches pay more than one venue", reserved.stayId().value());
+				yield new StayOutcome.Rejected(BookingOutcome.Rejected.SPANS_VENUES);
 			}
 		};
 	}

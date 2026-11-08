@@ -24,7 +24,9 @@ import org.springframework.transaction.support.TransactionTemplate;
 
 import ai.riviera.platform.EnabledIfDockerAvailable;
 import ai.riviera.platform.TestcontainersConfiguration;
+import ai.riviera.platform.payment.vocabulary.CheckoutInstruction;
 import ai.riviera.platform.payment.vocabulary.BookingRef;
+import ai.riviera.platform.payment.vocabulary.PayeeRef;
 import ai.riviera.platform.payment.application.NewPayment;
 import ai.riviera.platform.payment.application.Payments;
 import ai.riviera.platform.payment.domain.PaymentStatus;
@@ -45,6 +47,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 @SpringBootTest
 class JdbcPaymentsIT {
 
+	private static final PayeeRef PAYEE = new PayeeRef(11L);
+
 	@Autowired
 	Payments payments;
 
@@ -60,8 +64,33 @@ class JdbcPaymentsIT {
 	}
 
 	@Test
+	void registerRecordsThePayeeVenue() {
+		payments.register(new NewPayment(new PayeeRef(77L), new BookingRef(9851L), "pi_payee", 4500L, "EUR", "cs_test_secret"));
+
+		assertEquals(77L, jdbc.sql("SELECT payee_venue_id FROM payment WHERE payment_intent_id = 'pi_payee'")
+				.query(Long.class).single(), "the payment row names the venue it pays");
+	}
+
+	@Test
+	void anEmbeddedCollectionReadsBackAsEmbedded() {
+		payments.register(new NewPayment(PAYEE, new BookingRef(9852L), "pi_embedded", 4500L, "EUR", "cs_embedded"));
+
+		assertEquals(Optional.of(new CheckoutInstruction.Embedded("cs_embedded", "pi_embedded")),
+				payments.findOpenInstruction(new BookingRef(9852L)));
+	}
+
+	@Test
+	void aRedirectCollectionReadsBackAsARedirect() {
+		CheckoutInstruction.Redirect redirect = new CheckoutInstruction.Redirect("https://pay.example.test/o/1", "ord_1");
+		payments.register(new NewPayment(PAYEE, redirect, "EUR", List.of(new NewPayment.Share(new BookingRef(9853L), 4500L))));
+
+		assertEquals(Optional.of(redirect), payments.findOpenInstruction(new BookingRef(9853L)),
+				"pay-on-accept hands the guest the same instruction the provider gave");
+	}
+
+	@Test
 	void recordStartsRequiresPaymentAndIsFoundByIntent() {
-		payments.register(new NewPayment(new BookingRef(9001L), "pi_record_a", 4500L, "EUR", "cs_test_secret"));
+		payments.register(new NewPayment(PAYEE, new BookingRef(9001L), "pi_record_a", 4500L, "EUR", "cs_test_secret"));
 
 		assertEquals("REQUIRES_PAYMENT", statusOf("pi_record_a"),
 				"a freshly recorded PaymentIntent awaits payment");
@@ -71,7 +100,7 @@ class JdbcPaymentsIT {
 
 	@Test
 	void markStatusTransitionsThePayment() {
-		payments.register(new NewPayment(new BookingRef(9002L), "pi_mark_b", 4500L, "EUR", "cs_test_secret"));
+		payments.register(new NewPayment(PAYEE, new BookingRef(9002L), "pi_mark_b", 4500L, "EUR", "cs_test_secret"));
 
 		payments.markStatus("pi_mark_b", PaymentStatus.SUCCEEDED);
 
@@ -80,7 +109,7 @@ class JdbcPaymentsIT {
 
 	@Test
 	void lateFailureCannotOverwriteASucceededCollection() {
-		payments.register(new NewPayment(new BookingRef(9401L), "pi_late_fail", 4500L, "EUR", "cs_test_secret"));
+		payments.register(new NewPayment(PAYEE, new BookingRef(9401L), "pi_late_fail", 4500L, "EUR", "cs_test_secret"));
 		payments.markStatus("pi_late_fail", PaymentStatus.SUCCEEDED);
 
 		boolean applied = payments.markStatus("pi_late_fail", PaymentStatus.FAILED);
@@ -92,7 +121,7 @@ class JdbcPaymentsIT {
 
 	@Test
 	void lateFailureCannotOverwriteARefundedCollection() {
-		payments.register(new NewPayment(new BookingRef(9402L), "pi_late_refunded", 4500L, "EUR", "cs_test_secret"));
+		payments.register(new NewPayment(PAYEE, new BookingRef(9402L), "pi_late_refunded", 4500L, "EUR", "cs_test_secret"));
 		payments.markStatus("pi_late_refunded", PaymentStatus.SUCCEEDED);
 		payments.markRefunded(new BookingRef(9402L), 4500L, "re_late");
 
@@ -107,7 +136,7 @@ class JdbcPaymentsIT {
 
 	@Test
 	void anOpenCollectionStillTransitions() {
-		payments.register(new NewPayment(new BookingRef(9403L), "pi_retry", 4500L, "EUR", "cs_test_secret"));
+		payments.register(new NewPayment(PAYEE, new BookingRef(9403L), "pi_retry", 4500L, "EUR", "cs_test_secret"));
 
 		assertTrue(payments.markStatus("pi_retry", PaymentStatus.FAILED),
 				"a freshly recorded intent is open to a webhook outcome");
@@ -130,7 +159,7 @@ class JdbcPaymentsIT {
 
 	@Test
 	void findIntentByBookingRefCorrelates() {
-		payments.register(new NewPayment(new BookingRef(9101L), "pi_by_booking", 4500L, "EUR", "cs_test_secret"));
+		payments.register(new NewPayment(PAYEE, new BookingRef(9101L), "pi_by_booking", 4500L, "EUR", "cs_test_secret"));
 
 		Optional<String> intent = payments.findIntentByBookingRef(new BookingRef(9101L));
 
@@ -140,7 +169,7 @@ class JdbcPaymentsIT {
 
 	@Test
 	void markRefundedFullMovesToRefunded() {
-		payments.register(new NewPayment(new BookingRef(9201L), "pi_refund_full", 4500L, "EUR", "cs_test_secret"));
+		payments.register(new NewPayment(PAYEE, new BookingRef(9201L), "pi_refund_full", 4500L, "EUR", "cs_test_secret"));
 		payments.markStatus("pi_refund_full", PaymentStatus.SUCCEEDED);
 
 		assertTrue(payments.markRefunded(new BookingRef(9201L), 4500L, "re_full"));
@@ -152,7 +181,7 @@ class JdbcPaymentsIT {
 
 	@Test
 	void markRefundedRefusesAnUncollectedPayment() {
-		payments.register(new NewPayment(new BookingRef(9601L), "pi_never_paid", 4500L, "EUR", "cs_test_secret"));
+		payments.register(new NewPayment(PAYEE, new BookingRef(9601L), "pi_never_paid", 4500L, "EUR", "cs_test_secret"));
 
 		assertFalse(payments.markRefunded(new BookingRef(9601L), 4500L, "re_phantom"),
 				"a refund cannot be recorded against money the gateway never collected");
@@ -163,7 +192,7 @@ class JdbcPaymentsIT {
 
 	@Test
 	void markRefundedRefusesACanceledCollection() {
-		payments.register(new NewPayment(new BookingRef(9602L), "pi_canceled", 4500L, "EUR", "cs_test_secret"));
+		payments.register(new NewPayment(PAYEE, new BookingRef(9602L), "pi_canceled", 4500L, "EUR", "cs_test_secret"));
 		payments.markStatus("pi_canceled", PaymentStatus.CANCELED);
 
 		assertFalse(payments.markRefunded(new BookingRef(9602L), 4500L, "re_on_canceled"),
@@ -179,7 +208,7 @@ class JdbcPaymentsIT {
 
 	@Test
 	void readsRefundStateBackAfterMarkRefunded() {
-		payments.register(new NewPayment(new BookingRef(9301L), "pi_refund_state", 4500L, "EUR", "cs_test_secret"));
+		payments.register(new NewPayment(PAYEE, new BookingRef(9301L), "pi_refund_state", 4500L, "EUR", "cs_test_secret"));
 		payments.markStatus("pi_refund_state", PaymentStatus.SUCCEEDED);
 
 		var beforeRefund = payments.findRefundState(new BookingRef(9301L));
@@ -203,7 +232,7 @@ class JdbcPaymentsIT {
 
 	@Test
 	void markRefundedPartialMovesToPartiallyRefunded() {
-		payments.register(new NewPayment(new BookingRef(9202L), "pi_refund_part", 4500L, "EUR", "cs_test_secret"));
+		payments.register(new NewPayment(PAYEE, new BookingRef(9202L), "pi_refund_part", 4500L, "EUR", "cs_test_secret"));
 		payments.markStatus("pi_refund_part", PaymentStatus.SUCCEEDED);
 
 		payments.markRefunded(new BookingRef(9202L), 2250L, "re_part");
@@ -214,7 +243,7 @@ class JdbcPaymentsIT {
 
 	@Test
 	void markRefundFailedUnrecordsARecordedRefund() {
-		payments.register(new NewPayment(new BookingRef(9501L), "pi_refund_died", 4500L, "EUR", "cs_test_secret"));
+		payments.register(new NewPayment(PAYEE, new BookingRef(9501L), "pi_refund_died", 4500L, "EUR", "cs_test_secret"));
 		payments.markStatus("pi_refund_died", PaymentStatus.SUCCEEDED);
 		payments.markRefunded(new BookingRef(9501L), 4500L, "re_died");
 
@@ -228,7 +257,7 @@ class JdbcPaymentsIT {
 
 	@Test
 	void markRefundFailedUnrecordsAPartialRefundToo() {
-		payments.register(new NewPayment(new BookingRef(9502L), "pi_part_died", 4500L, "EUR", "cs_test_secret"));
+		payments.register(new NewPayment(PAYEE, new BookingRef(9502L), "pi_part_died", 4500L, "EUR", "cs_test_secret"));
 		payments.markStatus("pi_part_died", PaymentStatus.SUCCEEDED);
 		payments.markRefunded(new BookingRef(9502L), 2250L, "re_part_died");
 
@@ -238,7 +267,7 @@ class JdbcPaymentsIT {
 
 	@Test
 	void aSecondFailureForTheSameRefundMovesNothing() {
-		payments.register(new NewPayment(new BookingRef(9503L), "pi_twice_died", 4500L, "EUR", "cs_test_secret"));
+		payments.register(new NewPayment(PAYEE, new BookingRef(9503L), "pi_twice_died", 4500L, "EUR", "cs_test_secret"));
 		payments.markStatus("pi_twice_died", PaymentStatus.SUCCEEDED);
 		payments.markRefunded(new BookingRef(9503L), 4500L, "re_twice_died");
 		payments.markRefundFailed("re_twice_died");
@@ -250,7 +279,7 @@ class JdbcPaymentsIT {
 
 	@Test
 	void aStaleFailureCannotUnrecordAFreshRefund() {
-		payments.register(new NewPayment(new BookingRef(9504L), "pi_stale_fail", 4500L, "EUR", "cs_test_secret"));
+		payments.register(new NewPayment(PAYEE, new BookingRef(9504L), "pi_stale_fail", 4500L, "EUR", "cs_test_secret"));
 		payments.markStatus("pi_stale_fail", PaymentStatus.SUCCEEDED);
 		payments.markRefunded(new BookingRef(9504L), 4500L, "re_first_attempt");
 		payments.markRefundFailed("re_first_attempt");
@@ -270,7 +299,7 @@ class JdbcPaymentsIT {
 
 	@Test
 	void markRefundFailedLeavesAQueryableTrace() {
-		payments.register(new NewPayment(new BookingRef(9701L), "pi_traced", 4500L, "EUR", "cs_test_secret"));
+		payments.register(new NewPayment(PAYEE, new BookingRef(9701L), "pi_traced", 4500L, "EUR", "cs_test_secret"));
 		payments.markStatus("pi_traced", PaymentStatus.SUCCEEDED);
 		payments.markRefunded(new BookingRef(9701L), 4500L, "re_traced");
 
@@ -303,7 +332,7 @@ class JdbcPaymentsIT {
 
 	/** A collected payment whose recorded refund the gateway then reported dead. */
 	private void owedRefundOn(long bookingRef, String intentId, String refundId) {
-		payments.register(new NewPayment(new BookingRef(bookingRef), intentId, 4500L, "EUR", "cs_test_secret"));
+		payments.register(new NewPayment(PAYEE, new BookingRef(bookingRef), intentId, 4500L, "EUR", "cs_test_secret"));
 		payments.markStatus(intentId, PaymentStatus.SUCCEEDED);
 		payments.markRefundAttempted(new BookingRef(bookingRef));
 		payments.markRefunded(new BookingRef(bookingRef), 4500L, refundId);
@@ -312,7 +341,7 @@ class JdbcPaymentsIT {
 
 	@Test
 	void aFailureBeforeItsRecordMarksTheRacingAttempt() {
-		payments.register(new NewPayment(new BookingRef(9801L), "pi_racing", 4500L, "EUR", "cs_test_secret"));
+		payments.register(new NewPayment(PAYEE, new BookingRef(9801L), "pi_racing", 4500L, "EUR", "cs_test_secret"));
 		payments.markStatus("pi_racing", PaymentStatus.SUCCEEDED);
 		payments.markRefundAttempted(new BookingRef(9801L));
 
@@ -332,7 +361,7 @@ class JdbcPaymentsIT {
 
 	@Test
 	void markRefundedRefusesARefundAlreadyReportedDead() {
-		payments.register(new NewPayment(new BookingRef(9802L), "pi_lost_race", 4500L, "EUR", "cs_test_secret"));
+		payments.register(new NewPayment(PAYEE, new BookingRef(9802L), "pi_lost_race", 4500L, "EUR", "cs_test_secret"));
 		payments.markStatus("pi_lost_race", PaymentStatus.SUCCEEDED);
 		payments.markRefundAttempted(new BookingRef(9802L));
 		payments.markRefundFailed("re_lost_race", new BookingRef(9802L), RefundScope.WHOLE);
@@ -348,7 +377,7 @@ class JdbcPaymentsIT {
 
 	@Test
 	void aRedeliveredUnrecordedFailureMovesNothing() {
-		payments.register(new NewPayment(new BookingRef(9803L), "pi_twice_raced", 4500L, "EUR", "cs_test_secret"));
+		payments.register(new NewPayment(PAYEE, new BookingRef(9803L), "pi_twice_raced", 4500L, "EUR", "cs_test_secret"));
 		payments.markStatus("pi_twice_raced", PaymentStatus.SUCCEEDED);
 		payments.markRefundAttempted(new BookingRef(9803L));
 		payments.markRefundFailed("re_twice_raced", new BookingRef(9803L), RefundScope.WHOLE);
@@ -359,7 +388,7 @@ class JdbcPaymentsIT {
 
 	@Test
 	void aResolvedAttemptStopsDiscriminatingForALaterManualRefund() {
-		payments.register(new NewPayment(new BookingRef(9808L), "pi_stale_attempt", 4500L, "EUR", "cs_test_secret"));
+		payments.register(new NewPayment(PAYEE, new BookingRef(9808L), "pi_stale_attempt", 4500L, "EUR", "cs_test_secret"));
 		payments.markStatus("pi_stale_attempt", PaymentStatus.SUCCEEDED);
 		payments.markRefundAttempted(new BookingRef(9808L));
 		payments.markRefunded(new BookingRef(9808L), 4500L, "re_ours");
@@ -374,7 +403,7 @@ class JdbcPaymentsIT {
 
 	@Test
 	void aFreshAttemptAfterAFailureDiscriminatesAgain() {
-		payments.register(new NewPayment(new BookingRef(9809L), "pi_reattempt", 4500L, "EUR", "cs_test_secret"));
+		payments.register(new NewPayment(PAYEE, new BookingRef(9809L), "pi_reattempt", 4500L, "EUR", "cs_test_secret"));
 		payments.markStatus("pi_reattempt", PaymentStatus.SUCCEEDED);
 		payments.markRefundAttempted(new BookingRef(9809L));
 		payments.markRefundFailed("re_first_race", new BookingRef(9809L), RefundScope.WHOLE);
@@ -390,7 +419,7 @@ class JdbcPaymentsIT {
 
 	@Test
 	void aManualGatewayRefundFailureMovesNothing() {
-		payments.register(new NewPayment(new BookingRef(9804L), "pi_manual", 4500L, "EUR", "cs_test_secret"));
+		payments.register(new NewPayment(PAYEE, new BookingRef(9804L), "pi_manual", 4500L, "EUR", "cs_test_secret"));
 		payments.markStatus("pi_manual", PaymentStatus.SUCCEEDED);
 
 		assertFalse(payments.markRefundFailed("re_by_hand", new BookingRef(9804L), RefundScope.WHOLE),
@@ -402,7 +431,7 @@ class JdbcPaymentsIT {
 
 	@Test
 	void aLateFailureCannotUnrecordARefundAlreadyWrittenDown() {
-		payments.register(new NewPayment(new BookingRef(9805L), "pi_written", 4500L, "EUR", "cs_test_secret"));
+		payments.register(new NewPayment(PAYEE, new BookingRef(9805L), "pi_written", 4500L, "EUR", "cs_test_secret"));
 		payments.markStatus("pi_written", PaymentStatus.SUCCEEDED);
 		payments.markRefundAttempted(new BookingRef(9805L));
 		payments.markRefunded(new BookingRef(9805L), 4500L, "re_written");
@@ -414,7 +443,7 @@ class JdbcPaymentsIT {
 
 	@Test
 	void aSucceedingRetryClearsTheOwedFlag() {
-		payments.register(new NewPayment(new BookingRef(9702L), "pi_retried", 4500L, "EUR", "cs_test_secret"));
+		payments.register(new NewPayment(PAYEE, new BookingRef(9702L), "pi_retried", 4500L, "EUR", "cs_test_secret"));
 		payments.markStatus("pi_retried", PaymentStatus.SUCCEEDED);
 		payments.markRefunded(new BookingRef(9702L), 4500L, "re_died_once");
 		payments.markRefundFailed("re_died_once");
@@ -432,7 +461,7 @@ class JdbcPaymentsIT {
 
 	/** One intent collecting for two bookings: A's share 4500, B's share 3000. */
 	private void sharedCollection(String intentId, long bookingA, long bookingB) {
-		payments.register(new NewPayment(intentId, "EUR", "cs_test_secret", List.of(
+		payments.register(new NewPayment(PAYEE, new CheckoutInstruction.Embedded("cs_test_secret", intentId), "EUR", List.of(
 				new NewPayment.Share(new BookingRef(bookingA), 4500L),
 				new NewPayment.Share(new BookingRef(bookingB), 3000L))));
 		payments.markStatus(intentId, PaymentStatus.SUCCEEDED);
@@ -529,7 +558,7 @@ class JdbcPaymentsIT {
 	@Test
 	void aDayRefundAndTheWholeShareAccumulateOnTheShare() {
 		// A 3-day share of 900: day 2 refunds 300, then the cancellation refunds the remaining 600 (#1210).
-		payments.register(new NewPayment(new BookingRef(9621L), "pi_day_then_rest", 900L, "EUR", "cs_test_secret"));
+		payments.register(new NewPayment(PAYEE, new BookingRef(9621L), "pi_day_then_rest", 900L, "EUR", "cs_test_secret"));
 		payments.markStatus("pi_day_then_rest", PaymentStatus.SUCCEEDED);
 		RefundScope day2 = RefundScope.day(LocalDate.of(2026, 7, 2));
 
@@ -553,7 +582,7 @@ class JdbcPaymentsIT {
 	@Test
 	void twoRefundsOnOneShareSerializeOnItsRow() throws Exception {
 		// Day 3's refund arrives while day 2's is uncommitted (#1210): it must wait on the intent's row, then sum both.
-		payments.register(new NewPayment(new BookingRef(9624L), "pi_day_pair", 900L, "EUR", "cs_test_secret"));
+		payments.register(new NewPayment(PAYEE, new BookingRef(9624L), "pi_day_pair", 900L, "EUR", "cs_test_secret"));
 		payments.markStatus("pi_day_pair", PaymentStatus.SUCCEEDED);
 
 		assertTrue(racingAHeldWrite(
@@ -593,7 +622,7 @@ class JdbcPaymentsIT {
 	@Test
 	void aFailureRacingItsOwnRecordUnrecordsItOnceCommitted() throws Exception {
 		// The refund's failure lands while its id is written but uncommitted (#1298): it must wait, then un-record it.
-		payments.register(new NewPayment(new BookingRef(9811L), "pi_record_race", 4500L, "EUR", "cs_test_secret"));
+		payments.register(new NewPayment(PAYEE, new BookingRef(9811L), "pi_record_race", 4500L, "EUR", "cs_test_secret"));
 		payments.markStatus("pi_record_race", PaymentStatus.SUCCEEDED);
 		payments.markRefundAttempted(new BookingRef(9811L));
 
@@ -647,7 +676,7 @@ class JdbcPaymentsIT {
 
 	@Test
 	void aDeadDayRefundIsUnrecordedAlone() {
-		payments.register(new NewPayment(new BookingRef(9622L), "pi_day_died", 900L, "EUR", "cs_test_secret"));
+		payments.register(new NewPayment(PAYEE, new BookingRef(9622L), "pi_day_died", 900L, "EUR", "cs_test_secret"));
 		payments.markStatus("pi_day_died", PaymentStatus.SUCCEEDED);
 		RefundScope day2 = RefundScope.day(LocalDate.of(2026, 7, 2));
 		payments.markRefunded(new BookingRef(9622L), day2, 300L, "re_day_died");
@@ -666,7 +695,7 @@ class JdbcPaymentsIT {
 
 	@Test
 	void aRacingDayRefundFailureIsKeyedToItsDay() {
-		payments.register(new NewPayment(new BookingRef(9623L), "pi_day_race", 900L, "EUR", "cs_test_secret"));
+		payments.register(new NewPayment(PAYEE, new BookingRef(9623L), "pi_day_race", 900L, "EUR", "cs_test_secret"));
 		payments.markStatus("pi_day_race", PaymentStatus.SUCCEEDED);
 		RefundScope day2 = RefundScope.day(LocalDate.of(2026, 7, 2));
 		payments.markRefundAttempted(new BookingRef(9623L), day2);

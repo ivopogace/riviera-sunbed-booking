@@ -45,7 +45,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  *       released (the set is re-bookable), and the declined request can never be paid or confirmed
  *       — a later accept is {@code REQUEST_NOT_PENDING};</li>
  *   <li><strong>pay-on-accept credentials (AC-10):</strong> an {@code AWAITING_PAYMENT} booking
- *       with an open intent on record exposes {@code payment.clientSecret} on the code-gated view;
+ *       with an open intent on record exposes {@code payment.clientToken} on the code-gated view;
  *       a {@code PENDING_REQUEST} one exposes none.</li>
  * </ul>
  */
@@ -206,15 +206,16 @@ class RequestAcceptPayIT {
 		mvc.perform(get("/api/bookings/{code}", code))
 				.andExpect(status().isOk())
 				.andExpect(jsonPath("$.status").value("AWAITING_PAYMENT"))
-				.andExpect(jsonPath("$.payment.clientSecret").value("cs_accept_it_secret"))
-				.andExpect(jsonPath("$.payment.paymentIntentId").value("pi_accept_it"));
+				.andExpect(jsonPath("$.payment.kind").value("EMBEDDED"))
+				.andExpect(jsonPath("$.payment.clientToken").value("cs_accept_it_secret"))
+				.andExpect(jsonPath("$.payment.reference").value("pi_accept_it"));
 
 		// A once-declined card (payment_failed) is NOT terminal — the intent stays payable, so
 		// the credentials must survive a FAILED status (review finding: don't strand the guest).
 		jdbc.sql("UPDATE payment SET status = 'FAILED' WHERE id = :payment")
 				.param("payment", payment).update();
 		mvc.perform(get("/api/bookings/{code}", code))
-				.andExpect(jsonPath("$.payment.clientSecret").value("cs_accept_it_secret"));
+				.andExpect(jsonPath("$.payment.clientToken").value("cs_accept_it_secret"));
 
 		// Once no longer payable (succeeded), the credentials disappear from the view.
 		jdbc.sql("UPDATE payment SET status = 'SUCCEEDED' WHERE id = :payment")

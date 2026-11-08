@@ -15,7 +15,7 @@ ISO `LocalDate` (`YYYY-MM-DD`), never an `Instant` that can shift the calendar d
 ### RV-CT-3. Payment confirmation (#8) — **Blocker**
 Booking confirmed server-side on a verified webhook; the FE shows finalizing→confirmed
 reconciled from the server (polling/loading server state is fine). Follow the confirm path
-across FE and BE: nothing but the verified webhook sets CONFIRMED. Pair with RV-BE-7, RV-FE-4.
+across FE and BE: nothing but a verified provider state (the webhook, or the ADMIN repair's read) sets CONFIRMED. Pair with RV-BE-7, RV-FE-4.
 
 ### RV-CT-4. Double-submit / idempotency — Major
 Booking creation guarded against double submit: FE locks the submit in flight; backend dedupes

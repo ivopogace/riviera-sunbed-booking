@@ -4,6 +4,7 @@ import org.junit.jupiter.api.Test;
 
 import ai.riviera.platform.payment.vocabulary.BookingRef;
 import ai.riviera.platform.payment.vocabulary.Money;
+import ai.riviera.platform.payment.vocabulary.PayeeRef;
 import ai.riviera.platform.payment.vocabulary.PaymentCancellation;
 import ai.riviera.platform.payment.vocabulary.PaymentOutcome;
 import ai.riviera.platform.payment.vocabulary.RefundResult;
@@ -22,7 +23,7 @@ class StubPaymentGatewayTest {
 	void initiateAlwaysSucceeds() {
 		StubPaymentGateway gateway = new StubPaymentGateway();
 
-		PaymentOutcome outcome = gateway.initiate(new BookingRef(7L), new Money(3000L, "EUR"));
+		PaymentOutcome outcome = gateway.initiate(new PayeeRef(1L), new BookingRef(7L), new Money(3000L, "EUR"));
 
 		PaymentOutcome.Succeeded ok = assertInstanceOf(PaymentOutcome.Succeeded.class, outcome);
 		assertTrue(ok.reference().contains("7"), "reference correlates to the booking ref");
@@ -45,6 +46,6 @@ class StubPaymentGatewayTest {
 		PaymentCancellation outcome = gateway.cancel(new BookingRef(7L));
 
 		assertInstanceOf(PaymentCancellation.Canceled.class, outcome,
-				"the stub voids in-process — the sweep runs only under the stripe profile");
+				"the stub voids in-process — the sweep runs only under a collecting gateway");
 	}
 }

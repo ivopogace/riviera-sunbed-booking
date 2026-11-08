@@ -57,7 +57,7 @@ export interface StayStretchView {
 
 /**
  * The `POST /api/stays` body as the backend answers it (`StayView`): the group's one code and status,
- * its venue, span, total and stretches; `clientSecret`/`paymentIntentId` ride the `202`.
+ * its venue, span, total and stretches; `payment` rides the `202` of a collecting gateway.
  */
 export interface StayView {
   readonly code: string;
@@ -69,8 +69,7 @@ export interface StayView {
   readonly total: MoneyView;
   readonly stretches: readonly StayStretchView[];
   readonly emailWithheld: boolean;
-  readonly clientSecret?: string;
-  readonly paymentIntentId?: string;
+  readonly payment?: CheckoutInstruction;
   /** The venue's response deadline on a stay request's `202 PENDING_REQUEST` (ISO-8601 UTC). */
   readonly requestExpiresAt?: string;
 }
@@ -94,12 +93,18 @@ export interface BookingConfirmation {
 }
 
 /**
- * Typed view of the `202 AWAITING_PAYMENT` response (`POST /api/bookings` under the `stripe`
- * profile). Mirrors the backend `AwaitingPaymentView`: the same summary as
- * {@link BookingConfirmation} plus the Stripe `clientSecret` the browser uses to complete the
- * card with Stripe.js and the `paymentIntentId` for reference. Confirmation itself arrives via
- * the signature-verified webhook (invariant #8) — never this response — so the client must poll
- * `GET /api/bookings/{code}` for `CONFIRMED` rather than trust the Stripe.js result.
+ * How the browser completes a pending collection (mirrors the backend `CheckoutInstructionView`):
+ * in a form embedded in our page, or on the provider's own. `reference` is the provider's handle.
+ */
+export type CheckoutInstruction =
+  | { readonly kind: 'EMBEDDED'; readonly clientToken: string; readonly reference: string }
+  | { readonly kind: 'REDIRECT'; readonly url: string; readonly reference: string };
+
+/**
+ * Typed view of the `202 AWAITING_PAYMENT` response of `POST /api/bookings`. Mirrors the backend
+ * `AwaitingPaymentView`: the same summary as {@link BookingConfirmation} plus how to pay.
+ * Confirmation arrives via the verified webhook (invariant #8), never this response, so the client
+ * polls `GET /api/bookings/{code}` for `CONFIRMED` rather than trust the checkout's result.
  */
 export interface AwaitingPayment extends PaymentHandoff {
   readonly status: string; // 'AWAITING_PAYMENT'
@@ -108,8 +113,7 @@ export interface AwaitingPayment extends PaymentHandoff {
 }
 
 /**
- * The minimum the payment page needs to mount the Stripe Payment Element and render the booking
- * summary. Primed by the 202 `AWAITING_PAYMENT` booking-create ({@link AwaitingPayment} is a
+ * The minimum the payment page needs to start the checkout and render the booking summary. Primed by the 202 `AWAITING_PAYMENT` booking-create ({@link AwaitingPayment} is a
  * superset) or rebuilt from a fetched {@link BookingDetail} when an accepted request's guest
  * clicks "Pay now".
  */
@@ -122,8 +126,7 @@ export interface PaymentHandoff {
   /** The stay's last day, ISO; absent on a payload from before stays, which is one day. */
   readonly lastDate?: string;
   readonly amount: MoneyView;
-  readonly clientSecret: string;
-  readonly paymentIntentId: string;
+  readonly payment: CheckoutInstruction;
   /** A stitched stay's stretches; absent for one set. */
   readonly stretches?: readonly StayStretchView[];
   /**
@@ -136,7 +139,7 @@ export interface PaymentHandoff {
 
 /**
  * Typed view of the `202 PENDING_REQUEST` response (`POST /api/bookings` on a REQUEST-mode
- * venue). No `clientSecret` — nothing is charged until the venue accepts; the guest
+ * venue). No `payment` — nothing is charged until the venue accepts; the guest
  * keeps the code and checks `GET /api/bookings/{code}` for the venue's decision before
  * `requestExpiresAt` (an ISO-8601 UTC instant).
  */
@@ -202,8 +205,8 @@ export interface BookingDetail {
   readonly requestExpiresAt: string | null;
   /** Why a `DECLINED` request ended; null otherwise, and absent on a payload from before reasons. */
   readonly declineReason?: DeclineReason | null;
-  /** Open-intent credentials, present only while `AWAITING_PAYMENT` with an open PaymentIntent. */
-  readonly payment: BookingPayment | null;
+  /** How to pay, present only while `AWAITING_PAYMENT` with an open collection. */
+  readonly payment: CheckoutInstruction | null;
   /**
    * The pay deadline (`min(accepted_at + pay-window, end of service day)`) has passed, so no
    * payment may be taken any more and `payment` is null. Server-computed: the deadline arithmetic
@@ -325,15 +328,9 @@ export interface CancellationTerms {
   readonly lateCancelRefundBps: number;
 }
 
-/** The open PaymentIntent of an `AWAITING_PAYMENT` booking (the "Pay now" resume path). */
-export interface BookingPayment {
-  readonly clientSecret: string;
-  readonly paymentIntentId: string;
-}
-
 /**
  * One row of `GET /api/me/bookings` (the signed-in list), mirroring the backend `MyBookingView`: a
- * **subset** of {@link BookingDetail} — refund *terms* and payment credentials load only on the
+ * **subset** of {@link BookingDetail} — refund *terms* and the checkout instruction load only on the
  * code-gated detail; `refundedAmount` is the one refund fact carried, so a row can tell a
  * cancellation that took money from one that never did. Money in integer minor units (invariant
  * #5); date an ISO `LocalDate`; `requestExpiresAt` null for instant bookings. `movedAt` is flat

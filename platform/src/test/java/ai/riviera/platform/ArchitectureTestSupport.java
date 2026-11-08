@@ -1,6 +1,7 @@
 package ai.riviera.platform;
 
 import java.io.IOException;
+import java.io.InputStream;
 import java.lang.classfile.Attributes;
 import java.lang.classfile.ClassFile;
 import java.lang.classfile.FieldModel;
@@ -11,10 +12,14 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Properties;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 import com.tngtech.archunit.core.domain.JavaClass;
 import com.tngtech.archunit.core.domain.JavaClasses;
@@ -50,6 +55,12 @@ public final class ArchitectureTestSupport {
 
 	/** The Modulith base package — every module is a direct sub-package of this. */
 	static final String PRODUCTION_BASE = "ai.riviera.platform";
+
+	/** The profile group each really-collecting gateway's profile joins, and jobs bind to. */
+	public static final String COLLECTING_GATEWAY_PROFILE = "collecting-gateway";
+
+	private static final Path APPLICATION_PROPERTIES = Path.of("src/main/resources/application.properties");
+	private static final String PROFILE_GROUP_PREFIX = "spring.profiles.group.";
 
 	/**
 	 * The one production-code import shared by all architecture tests. ArchUnit's
@@ -192,6 +203,27 @@ public final class ArchitectureTestSupport {
 		}
 		catch (IOException e) {
 			throw new IllegalStateException("could not read " + classFile, e);
+		}
+	}
+
+	/**
+	 * Every profile that the committed {@code application.properties} adds {@code group} to, read as
+	 * text like {@code ScheduledWorkArchitectureTest}: the configuration under review, nothing a
+	 * deployment overrides.
+	 */
+	public static Set<String> profilesJoining(String group) {
+		try (InputStream properties = Files.newInputStream(APPLICATION_PROPERTIES)) {
+			Properties loaded = new Properties();
+			loaded.load(properties);
+			return loaded.stringPropertyNames().stream()
+					.filter(key -> key.startsWith(PROFILE_GROUP_PREFIX))
+					.filter(key -> Arrays.stream(loaded.getProperty(key).split(",")).map(String::trim)
+							.anyMatch(group::equals))
+					.map(key -> key.substring(PROFILE_GROUP_PREFIX.length()))
+					.collect(Collectors.toUnmodifiableSet());
+		}
+		catch (IOException e) {
+			throw new IllegalStateException("could not read " + APPLICATION_PROPERTIES, e);
 		}
 	}
 

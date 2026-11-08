@@ -68,8 +68,7 @@ const AWAITING = {
   positionNo: 2,
   bookingDate: '2026-12-01',
   amount: { minorUnits: 4500, currency: 'EUR' },
-  clientSecret: 'pi_123_secret_abc',
-  paymentIntentId: 'pi_123',
+  payment: { kind: 'EMBEDDED', clientToken: 'pi_123_secret_abc', reference: 'pi_123' },
 };
 
 const AWAITING_DETAIL = {
@@ -89,7 +88,7 @@ const AWAITING_DETAIL = {
   refundIfCancelledNow: { minorUnits: 4500, currency: 'EUR' },
   refundedAmount: null,
   requestExpiresAt: null,
-  payment: { clientSecret: 'pi_123_secret_abc', paymentIntentId: 'pi_123' },
+  payment: { kind: 'EMBEDDED', clientToken: 'pi_123_secret_abc', reference: 'pi_123' },
   // Present but false before payment: BookingDetailView always carries the field, and the backend
   // never even consults the port unless the booking is CONFIRMED.
   emailWithheld: false,

@@ -33,7 +33,8 @@ public final class SharedTestProperties implements ContextCustomizerFactory {
 			"riviera.observability.build-commit", BUILD_COMMIT,
 			"booking.no-show.enabled", "false",
 			"booking.request.initial-delay", "PT2H",
-			"booking.awaiting-payment.initial-delay", "PT2H");
+			"booking.awaiting-payment.initial-delay", "PT2H",
+			"riviera.payment.reconciliation.initial-delay", "PT2H");
 
 	static final String SOURCE_NAME = "sharedTestProperties";
 
