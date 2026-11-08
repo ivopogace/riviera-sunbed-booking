@@ -7,7 +7,7 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 /**
  * The abandoned-payment sweep's TTL, bound from {@code booking.awaiting-payment.ttl} (e.g. {@code PT15M}
  * or {@code 15m}) and validated in the compact constructor: no Bean Validation is on the classpath, so
- * {@code @Min} would check nothing. The sweep runs under the {@code stripe} profile only.
+ * {@code @Min} would check nothing. The sweep runs under a collecting gateway only.
  *
  * @param ttl how long a booking may stay {@code AWAITING_PAYMENT}; default {@code PT15M} (longer than a
  *        real checkout, short enough to free the set the same day), {@link #MIN_TTL} to {@link #MAX_TTL}

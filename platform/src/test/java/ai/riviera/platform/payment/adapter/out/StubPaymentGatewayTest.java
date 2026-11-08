@@ -45,6 +45,6 @@ class StubPaymentGatewayTest {
 		PaymentCancellation outcome = gateway.cancel(new BookingRef(7L));
 
 		assertInstanceOf(PaymentCancellation.Canceled.class, outcome,
-				"the stub voids in-process — the sweep runs only under the stripe profile");
+				"the stub voids in-process — the sweep runs only under a collecting gateway");
 	}
 }

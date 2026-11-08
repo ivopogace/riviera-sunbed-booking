@@ -10,9 +10,9 @@ import ai.riviera.platform.payment.api.CollectionGuarantee;
  * the gateways they describe ({@code StubPaymentGateway}, {@code StripePaymentGateway}). A separate
  * role port, not a {@code PaymentGateway} method, so the gateway seam stays about moving money.
  *
- * <p>A new gateway must add its answer here: {@code PaymentGatewayContractCoverageArchitectureTest}
- * matches each gateway to the guarantee sharing its profile and fails the build on a gap.
- * Rationale: RESPONSIBILITIES.md §payment.
+ * <p>A new gateway adds its answer here and, if it collects, joins {@code collecting-gateway} in
+ * {@code application.properties}: {@code PaymentGatewayContractCoverageArchitectureTest} fails a gap
+ * in either. Rationale: RESPONSIBILITIES.md §payment.
  */
 final class ProfiledCollectionGuarantee {
 

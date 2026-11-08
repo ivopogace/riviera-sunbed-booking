@@ -391,6 +391,9 @@ any is released on the old, never a swap of my own — so a racing reserve wins 
   also answers the tourist browse, display-only — the reserve enforces independently, asking the
   season-closure and sales-close arms one at a time to name the refusal (`VENUE_CLOSED`, then
   `BOOKING_CLOSED`). `freeCancellationEndsAt` is cancellation-only.
+- **The abandoned-payment sweep runs under a collecting gateway only** (`@Profile("collecting-gateway")`):
+  the stub confirms synchronously, so nothing lingers `AWAITING_PAYMENT` under it. Every collecting
+  provider's profile joins that group in `application.properties`, so a new provider edits no job.
 - **Windows:** a request must be answered by `min(created + expiry-window, D's sales close)` (D =
   the stay's first day); the pay deadline is `min(accepted_at + pay-window, end of service day)`, or
   the day's end if never accepted (the TTL, `AbandonedPaymentProperties`, is only the sweep's
@@ -550,6 +553,11 @@ It answers what `CONFIRMED` attests to here, a property of the wired gateway tha
 or `initiate`/`refund` caller needs; on `PaymentGateway`, which test fakes implement (one as a
 `@FunctionalInterface`), it would be the wide-port smell. The answers sit beside their gateways
 under the same profiles (`ProfiledCollectionGuarantee`); the coverage test below fails a gap.
+
+**`collecting-gateway` is the switch for beans that exist only under a gateway that really collects.**
+Each profile answering `true` joins that group (`spring.profiles.group`, `application.properties`), and
+payment-path jobs bind to it, never to a provider's name; the coverage test holds the group to exactly
+those profiles. Code that runs under every gateway asks `CollectionGuarantee` instead.
 
 **One PaymentIntent may collect for several bookings** (a stay, design D6/D8): `CheckoutPort.pay`
 takes the shares, one intent for their sum keyed on the first booking; `payment` holds the intent,
@@ -1141,7 +1149,8 @@ admin action was justified; retention (a named non-goal — rows are kept indefi
 - **The metric names** (`ObservabilityMetrics`). Emission and tags stay with the module that owns the
   thing measured; this module owns the names, the outbox-backlog gauge and the alerts on them.
 - **The money-path alert check shares the sweeps' single-instance posture.** `MoneyPathAlertCheck`
-  is lockless `@Scheduled`: each extra instance fires the outbox-backlog alert again. It is on
+  is lockless `@Scheduled`: each extra instance fires the outbox-backlog alert again. It runs under a
+  collecting gateway only (`@Profile("collecting-gateway")`, as `booking`'s abandoned sweep). It is on
   `ScheduledWorkArchitectureTest`'s job list, so `docs/deploy/production-hardening.md`'s scale-out
   precondition (ShedLock on every job on that list) covers it.
 - **The running build's commit on the public `/actuator/info`** (`BuildCommitInfoContributor`, #1632):
@@ -1501,6 +1510,8 @@ them form the *structural net* is `riviera-modulith` § *The structural net*'s c
 | No class inside a module depends on a type directly in `ai.riviera.platform` — ADR-0017 | `CompositionRootDisciplineTests` (module→root rule; `allowedDependencies` cannot see it) |
 | The root reaches no module: it holds only the application and its configuration (ADR-0028 Decision 1) | `CompositionRootDisciplineTests` (root→module rule) |
 | `payment` uses no Stripe **Connect** API (collect-only, ADR-0002) | `NoStripeConnectArchitectureTest` |
+| Only `payment.adapter.out` names a provider profile in a `@Profile`; anything else binds to `collecting-gateway` (ADR-0029 decision 11) | `ProviderProfileConfinementArchitectureTests` |
+| `collecting-gateway` is joined by exactly the profiles whose `CollectionGuarantee` answers `true` | `PaymentGatewayContractCoverageArchitectureTest` |
 | No module reaches another's `application`/`domain`/`adapter`; `allowedDependencies` hold | `ModularityTests` (`ApplicationModules.verify()`) |
 | Every declared `allowedDependencies` grant is used: some class of the module depends on that module or named interface in bytecode (Modulith's dependency model plus the functional-interface type each `LambdaMetafactory` `invokedynamic` produces, so `remodel`'s lambda passed as `venue.spi.RemodelGate` counts while a type met only in a called member's descriptor, such as a `null` argument, does not; `web`'s `switch` over a returned `ChallengeVerdict` Modulith sees itself) | `UnusedAllowedDependencyTests` (fixture `ai.riviera.grantfixture`) |
 | The ADR-0007 package shape; published-surface kinds; the `VenueCatalog` role split | `PackageShapeArchitectureTests`, `PublishedSurfacePlacementArchitectureTests`, `VenueApiRoleSplitTests` |

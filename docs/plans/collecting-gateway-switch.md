@@ -80,12 +80,12 @@ release (#2) are untouched; `stripe` runs exactly what it ran.
 
 ## Execution status
 
-**Stage pointer:** implement (phase 0)
+**Stage pointer:** CI gate (phases 0-2 built)
 
-**Next action:** write the red tests.
+**Next action:** open the PR, then the review gate.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 | in progress | |
-| 1 | pending | |
-| 2 | pending | |
+| 0 | done | c0c85897 |
+| 1 | done | this push |
+| 2 | done | this push |

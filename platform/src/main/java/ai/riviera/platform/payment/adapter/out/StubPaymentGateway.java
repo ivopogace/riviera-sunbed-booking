@@ -43,7 +43,7 @@ class StubPaymentGateway implements PaymentGateway {
 	@Override
 	public PaymentCancellation cancel(BookingRef booking) {
 		// In-process void — the stub holds no real PaymentIntent. The abandoned-payment sweep runs
-		// only under the stripe profile (synchronous stub bookings never linger AWAITING_PAYMENT), so
+		// only under a collecting gateway (synchronous stub bookings never linger AWAITING_PAYMENT), so
 		// this is here only to satisfy the port.
 		return new PaymentCancellation.Canceled();
 	}

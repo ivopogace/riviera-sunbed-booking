@@ -58,7 +58,7 @@ OOM exit 137):
   --tests "*ModularityTests*" --tests "*JdbcOnlyArchitectureTests*" \
   --tests "*PackageShapeArchitectureTests*" --tests "*DomainPurityArchitectureTests*" \
   --tests "*PublishedSurfacePlacementArchitectureTests*" \
-  --tests "*RetiredSetExclusionArchitectureTests*" --tests "*UnusedAllowedDependencyTests*"
+  --tests "*RetiredSetExclusionArchitectureTests*" --tests "*UnusedAllowedDependencyTests*"   --tests "*ProviderProfileConfinementArchitectureTests*"
 
 ./gradlew --console=plain test --tests "*<ClassName>*"     # the tests your change touched
 ```
