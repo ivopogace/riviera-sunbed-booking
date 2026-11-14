@@ -303,6 +303,12 @@ export const routes: Routes = [
     title: 'Terms of service — Riviera',
   },
   {
+    // Help + the support channels — menu and footer link target (#1735).
+    path: 'help',
+    loadComponent: () => import('./pages/help/help-page').then((m) => m.HelpPage),
+    title: 'Help — Riviera',
+  },
+  {
     // Retired onboarding → the operator home's create state; kept one release for old links.
     path: 'venue-admin',
     redirectTo: () => inject(Router).parseUrl('/operator?create=1'),

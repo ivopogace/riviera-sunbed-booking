@@ -18,14 +18,15 @@ describe('LegalFooter', () => {
 
   it('states the notice in one voice, for both chromes', () => {
     expect(footer().textContent?.replace(/\s+/g, ' ').trim()).toBe(
-      '© Riviera Sunbed Booking · Privacy · Terms',
+      '© Riviera Sunbed Booking · Help · Privacy · Terms',
     );
   });
 
-  it('opens both documents in a new tab, so a mounted checkout survives', () => {
+  it('opens Help and both documents in a new tab, so a mounted checkout survives', () => {
     const links = footer().querySelectorAll<HTMLAnchorElement>('a');
 
     expect([...links].map((a) => a.getAttribute('href'))).toEqual([
+      '/help',
       '/legal/privacy',
       '/legal/terms',
     ]);

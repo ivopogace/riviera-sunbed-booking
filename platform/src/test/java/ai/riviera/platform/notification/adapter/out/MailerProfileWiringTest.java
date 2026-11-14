@@ -10,6 +10,7 @@ import org.springframework.boot.test.context.runner.ApplicationContextRunner;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.mail.javamail.JavaMailSenderImpl;
 
+import ai.riviera.platform.notification.application.SupportContact;
 import ai.riviera.platform.notification.application.Mailer;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -35,7 +36,8 @@ class MailerProfileWiringTest {
 	private final ApplicationContextRunner runner = new ApplicationContextRunner()
 			.withInitializer(new ConfigDataApplicationContextInitializer())
 			.withConfiguration(AutoConfigurations.of(MailSenderAutoConfiguration.class))
-			.withUserConfiguration(SmtpMailer.class, MockMailer.class);
+			.withUserConfiguration(SmtpMailer.class, MockMailer.class)
+			.withBean(SupportContact.class, () -> SupportContact.NONE);
 
 	@Test
 	void mailerProfileWithoutSmtpConfigFailsAtBoot() {

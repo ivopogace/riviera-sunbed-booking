@@ -1,3 +1,4 @@
+import { signal } from '@angular/core';
 import { HttpErrorResponse } from '@angular/common/http';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { ActivatedRoute, convertToParamMap, provideRouter, Router } from '@angular/router';
@@ -16,6 +17,8 @@ import {
 } from './booking.model';
 import { BookingView } from './booking-view';
 import { BookingService } from './booking.service';
+import { SupportContact } from '../core/support-contact';
+import { SupportContactView } from '../shared/support-contact-view';
 
 const DETAIL: BookingDetail = {
   code: 'ABCD234567',
@@ -279,6 +282,17 @@ function stubService(opts: {
   };
 }
 
+/** The support source the "Need help?" block reads; none configured unless a test sets {@link supportContact}. */
+let supportContact: SupportContactView | undefined;
+
+function supportStub(): Pick<SupportContact, 'contact' | 'load'> {
+  return { contact: signal(supportContact).asReadonly(), load: () => Promise.resolve() };
+}
+
+afterEach(() => {
+  supportContact = undefined;
+});
+
 async function render(
   service: Partial<BookingService>,
   code = 'ABCD234567',
@@ -288,6 +302,7 @@ async function render(
     providers: [
       provideRouter([]),
       { provide: BookingService, useValue: service },
+      { provide: SupportContact, useValue: supportStub() },
       {
         provide: ActivatedRoute,
         useValue: {
@@ -305,6 +320,36 @@ async function render(
 }
 
 describe('BookingView', () => {
+  it('names the configured support channels under "Need help?" (#1735)', async () => {
+    supportContact = {
+      email: 'help@example.com',
+      whatsapp: { number: '+355691234567', url: 'https://wa.me/355691234567' },
+      sameDayReply: false,
+    };
+    const fixture = await render(stubService({ detail: DETAIL }));
+    const block = (fixture.nativeElement as HTMLElement).querySelector(
+      '[data-testid="bv-support"]',
+    );
+
+    expect(block?.querySelector('h2')?.textContent).toContain('Need help?');
+    expect(block?.querySelector('[data-testid="support-email"]')?.getAttribute('href')).toBe(
+      'mailto:help@example.com',
+    );
+    expect(block?.querySelector('[data-testid="support-whatsapp"]')?.getAttribute('href')).toBe(
+      'https://wa.me/355691234567',
+    );
+    await expectNoAxeViolations(fixture.nativeElement as HTMLElement);
+  });
+
+  it('renders no support block while no channel is configured', async () => {
+    supportContact = { email: null, whatsapp: null, sameDayReply: true };
+    const fixture = await render(stubService({ detail: DETAIL }));
+
+    expect(
+      (fixture.nativeElement as HTMLElement).querySelector('[data-testid="bv-support"]'),
+    ).toBeNull();
+  });
+
   it('shows details and the full-refund terms, and has no axe violations', async () => {
     const fixture = await render(stubService({ detail: DETAIL }));
     const host = fixture.nativeElement as HTMLElement;
@@ -1839,6 +1884,7 @@ describe('BookingView', () => {
       providers: [
         provideRouter([]),
         { provide: BookingService, useValue: service },
+        { provide: SupportContact, useValue: supportStub() },
         {
           provide: ActivatedRoute,
           useValue: { snapshot: { paramMap: paramMap$.value }, paramMap: paramMap$ },
@@ -1881,6 +1927,7 @@ describe('BookingView', () => {
       providers: [
         provideRouter([]),
         { provide: BookingService, useValue: service },
+        { provide: SupportContact, useValue: supportStub() },
         {
           provide: ActivatedRoute,
           useValue: { snapshot: { paramMap: paramMap$.value }, paramMap: paramMap$ },
@@ -1913,6 +1960,7 @@ describe('BookingView', () => {
       providers: [
         provideRouter([]),
         { provide: BookingService, useValue: service },
+        { provide: SupportContact, useValue: supportStub() },
         {
           provide: ActivatedRoute,
           useValue: { snapshot: { paramMap: paramMap$.value }, paramMap: paramMap$ },
@@ -1980,6 +2028,7 @@ describe('BookingView', () => {
         providers: [
           provideRouter([]),
           { provide: BookingService, useValue: service },
+          { provide: SupportContact, useValue: supportStub() },
           {
             provide: ActivatedRoute,
             useValue: { snapshot: { paramMap: paramMap$.value }, paramMap: paramMap$ },

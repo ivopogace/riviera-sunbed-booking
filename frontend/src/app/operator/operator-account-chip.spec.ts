@@ -4,6 +4,8 @@ import { provideRouter, Router } from '@angular/router';
 
 import { ConsoleTheme } from '../core/console-theme';
 import { OperatorAuth } from '../core/operator-auth';
+import { SupportContact } from '../core/support-contact';
+import { SupportContactView } from '../shared/support-contact-view';
 import { OperatorAccountChip } from './operator-account-chip';
 
 @Component({ template: '' })
@@ -23,6 +25,16 @@ const operatorAuth = {
   username: signal<string | undefined>('maria@example.com'),
 };
 
+/** No channel configured by default, as shipped; a test sets one to see the Contact Riviera group. */
+const support = {
+  contact: signal<SupportContactView | undefined>(undefined),
+  loads: 0,
+  load(): Promise<void> {
+    support.loads++;
+    return Promise.resolve();
+  },
+};
+
 @Component({
   imports: [OperatorAccountChip],
   template: `<header>
@@ -40,6 +52,8 @@ describe('OperatorAccountChip', () => {
   beforeEach(async () => {
     operatorAuth.isAdmin.set(false);
     operatorAuth.username.set('maria@example.com');
+    support.contact.set(undefined);
+    support.loads = 0;
     await TestBed.configureTestingModule({
       providers: [
         provideRouter([
@@ -50,6 +64,7 @@ describe('OperatorAccountChip', () => {
           { path: 'account/operator-password', component: BlankPage },
         ]),
         { provide: OperatorAuth, useValue: operatorAuth },
+        { provide: SupportContact, useValue: support },
       ],
     }).compileComponents();
     fixture = TestBed.createComponent(Host);
@@ -119,6 +134,47 @@ describe('OperatorAccountChip', () => {
     expect(rows()).toEqual(['Change password', 'Porcelain', 'Dark', 'Sign out']);
     expect(el.querySelector('[data-testid="oc-admin-link"]')).toBeNull();
     expect(el.querySelector('a[href="/admin"]')).toBeNull();
+  });
+
+  it('reads the support source only once the menu opens (#1735)', () => {
+    expect(support.loads).toBe(0);
+    open();
+    expect(support.loads).toBe(1);
+  });
+
+  it('lists the configured channels under Contact Riviera, between the theme rows and Sign out (#1735)', () => {
+    support.contact.set({
+      email: 'help@example.com',
+      whatsapp: { number: '+355691234567', url: 'https://wa.me/355691234567' },
+      sameDayReply: true,
+    });
+    open();
+
+    expect(rows()).toEqual([
+      'Change password',
+      'Porcelain',
+      'Dark',
+      'Email help@example.com',
+      'WhatsApp +355691234567',
+      'Sign out',
+    ]);
+    const group = menu()!.querySelector('[aria-labelledby="oc-contact-label"]');
+    expect(group?.getAttribute('role')).toBe('group');
+    expect(el.querySelector('#oc-contact-label')?.textContent).toContain('Contact Riviera');
+    expect(el.querySelector('[data-testid="oc-contact-email"]')?.getAttribute('href')).toBe(
+      'mailto:help@example.com',
+    );
+    const whatsapp = el.querySelector('[data-testid="oc-contact-whatsapp"]');
+    expect(whatsapp?.getAttribute('href')).toBe('https://wa.me/355691234567');
+    expect(whatsapp?.getAttribute('target')).toBe('_blank');
+  });
+
+  it('renders no Contact Riviera group while no channel is configured', () => {
+    support.contact.set({ email: null, whatsapp: null, sameDayReply: true });
+    open();
+
+    expect(el.textContent).not.toContain('Contact Riviera');
+    expect(rows()).toEqual(['Change password', 'Porcelain', 'Dark', 'Sign out']);
   });
 
   it('prefixes every test id from the call site', () => {
