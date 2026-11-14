@@ -64,8 +64,8 @@ compiled per locale), or a runtime translation library with an in-page switch.
 - A link that opens a new tab, and a full page load of a router URL (`core/chunk-load-recovery.ts`'s
   reload), names its path with `localePath()`: the router prefixes only its own links with the base href.
 - Translated so far: the tourist shell (menus, footer), Discover, the venue map, the booking dialog,
-  payment, the confirmations, the booking view, `/for-venues` and `/help`. Still English: the operator
-  console, transactional mails, `ApiProblem` messages and the legal pages (later slices; legal text
-  is #101's).
+  payment, the confirmations, the booking view, `/for-venues`, `/help`, and the operator and admin
+  consoles (#1769). Still English: transactional mails, `ApiProblem` messages and the legal pages
+  (later slices; legal text is #101's).
 - Adding a locale is a row in `angular.json`, in `SpaLocale`, in `core/locale.ts`'s options, in
   `shared/display-locale.ts` and in the inline seed's list, plus its translation file.
