@@ -135,6 +135,13 @@ own IP warm-up, blocklists, DKIM rotation; operationally wrong for a small team.
    #2's serialization point (machine-locked by
    `ScheduledWorkArchitectureTest.noGlobalQueryTimeoutIsIntroduced`). **Revisit when the bounce
    feed lands** and the list stops being empty.
+   *Amended 2026-11-14 (#372):* the endpoint exists: `POST /api/notifications/tem/webhook`. TEM has
+   no direct webhook or shared secret. It publishes to a Scaleway Topics & Events (SNS-compatible)
+   topic, so "signature-verified" means: the SNS v1 signature verifies, the signing cert chains to
+   Scaleway's configured CA, and the `TopicArn` is ours. `email_dropped` / `email_mailbox_not_found`
+   suppress as hard bounces and `email_spam` as a complaint. Per-event idempotency is the upsert's
+   out-of-order guard, not a stored event id. The list stays empty until live registration, which waits
+   on the withheld-flag (G-3) decision, so the carve-out above stands unrevisited until then.
 
 ## Preconditions (Proposed → Accepted)
 
@@ -183,3 +190,5 @@ own IP warm-up, blocklists, DKIM rotation; operationally wrong for a small team.
 - 2026-10-02, #1369 (PR #1358, #1336) — decision 5: the password-reset token is minted inside the
   dispatched send, not committed before the port is called, and the known-email-branch write
   residual is closed. The decision (in-memory vehicle for bearer payloads) stands.
+- 2026-11-14, #372 — decision 7's feed: Topics & Events delivery, SNS signature + CA chain + pinned
+  topic, replay-inert upsert.

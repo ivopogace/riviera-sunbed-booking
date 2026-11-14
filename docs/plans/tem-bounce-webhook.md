@@ -134,13 +134,13 @@ the live site is bot-shielded):**
 
 ## Execution status
 
-**Stage pointer:** implement (phase 3, docs)
+**Stage pointer:** PR, merge main + ready for review
 
-**Next action:** runbook, properties, RESPONSIBILITIES, ADR amendments.
+**Next action:** CI green on the docs push, then mark ready and run the high-effort review gate.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0, out-of-order guard | ✅ | |
 | 1, SNS verification | ✅ | |
 | 2, endpoint | ✅ | |
-| 3, docs | ⏳ | |
+| 3, docs | ✅ | |

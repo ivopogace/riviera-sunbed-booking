@@ -74,7 +74,9 @@ plus the cleartext `domain` part; entries still survive erasure, deliberately.**
 - Every caller takes raw addresses and hashes at the chokepoint: the reinstate endpoint today, and
   the `MANUAL` suppression path and the bounce-feed webhook when they land; writing pre-hashed
   values from anywhere else is a defect. Ops never needs the pepper to *act*, only to
-  investigate. *(Amended 2026-10-01, #1342: only the reinstate endpoint exists so far.)*
+  investigate. *(Amended 2026-10-01, #1342: only the reinstate endpoint exists so far. Amended
+  2026-11-14, #372: the bounce-feed webhook writes through the same `suppress` chokepoint, and no
+  provider event id or recipient is stored beyond the row.)*
 - The reinstate endpoint answers with the row's technical facts (`reason`, `first_suppressed_at`,
   `last_event_at`, and on a repeat call the original `reinstatedAt`), so the check-then-lift
   workflow is one call and no separate lookup endpoint exists.
@@ -104,3 +106,4 @@ plus the cleartext `domain` part; entries still survive erasure, deliberately.**
   "never lifted".
 - #815 — erasure now also reaches `review`'s rows (ADR-0010's amendment); this table is still
   untouched.
+- 2026-11-14, #372 — the bounce feed is the list's first production writer, through the hashed chokepoint.

@@ -6,6 +6,19 @@ Since V33 (#388, [ADR-0012](../adr/ADR-0012-email-suppression-hashed-key.md)) th
 `domain` part. Listing "who is suppressed" as addresses is gone **by design**; the recipes
 below cover what ops still needs.
 
+## Where rows come from
+
+- **The TEM bounce/complaint feed (#372)**, once its webhook is registered live
+  ([mailer runbook](mailer-profile-smoke-test.md#bounce--complaint-feed-tem-webhook)):
+  `email_dropped` and `email_mailbox_not_found` suppress as `HARD_BOUNCE`, `email_spam` as
+  `COMPLAINT`. `email_deferred` (a soft bounce) and every other type suppress nothing.
+- `email_spam` is TEM's only complaint-like signal and may be a spam **filter's** verdict on the
+  mail, not the recipient's click. A tourist who says they never complained is a reinstatement case
+  (below).
+- **Events carry their own time.** A row moves only on an event newer than its `last_event_at`, and
+  an event no newer than `reinstated_at` never re-suppresses. So a delayed or re-delivered bounce
+  cannot undo a reinstatement; only a genuinely new bounce does.
+
 ## The pepper
 
 - Supplied as `RIVIERA_SUPPRESSION_PEPPER` (→ `riviera.notification.suppression-pepper`).
