@@ -12,8 +12,14 @@ import { displayDecimal } from './display-format';
 
 /** The stored basis points as the percentage a human reads: 1500 → "15%", 1550 → "15.5%". */
 export function formatCommissionPercent(bps: number): string {
-  const fractionDigits = bps % 100 === 0 ? 0 : bps % 10 === 0 ? 1 : 2;
-  return `${displayDecimal(bps / 100, fractionDigits)}%`;
+  return `${displayDecimal(bps / 100, percentFractionDigits(bps))}%`;
+}
+
+function percentFractionDigits(bps: number): number {
+  if (bps % 100 === 0) {
+    return 0;
+  }
+  return bps % 10 === 0 ? 1 : 2;
 }
 
 /** Basis points as the plain percent string a number input starts from (1500 → "15", 1550 → "15.5"). */
