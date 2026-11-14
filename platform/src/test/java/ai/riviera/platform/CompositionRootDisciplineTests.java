@@ -18,8 +18,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 /**
  * Locks the root-package discipline (ADR-0028 Decision 1): the root holds the application class and
  * app-wide configuration that reaches no module ({@code PlatformApplication}, {@code TimeConfig},
- * {@code SpaWebConfig}, {@code MapResourcesConfig}). A root class that needs any module surface, even a
- * published {@code api}, belongs in a module: the security chain is {@code web}'s, login {@code auth}'s, the
+ * {@code MapResourcesConfig}). A root class that needs any module surface, even a published {@code api},
+ * belongs in a module: the security chain and the SPA shell are {@code web}'s, login {@code auth}'s, the
  * remodel composition {@code remodel}'s, observability {@code monitoring}'s.
  *
  * <p><strong>Stated as a blanket rule, not a grant map.</strong> No module surface is granted, so a new

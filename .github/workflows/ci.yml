@@ -49,7 +49,7 @@ jobs:
       - name: Compute the build-input hash (the cache key)
         id: key
         # `hashFiles` resolves from the repo root, not `working-directory`. Backend tests read
-        # `frontend/angular.json` (`SpaLocaleTest`), `src/index.html` (`SpaShellTemplateTest`) and
+        # `frontend/angular.json` (`SpaLocaleTest`), `src/index.html` (`ShellHeadTest`) and
         # `shared/beaches.ts` (`BeachLabelMirrorTest`).
         run: echo "key=backend-sonar-${{ hashFiles('platform/**', 'frontend/angular.json', 'frontend/src/index.html', 'frontend/src/app/shared/beaches.ts', '.github/workflows/ci.yml', '!platform/build/**') }}" >> "$GITHUB_OUTPUT"
 

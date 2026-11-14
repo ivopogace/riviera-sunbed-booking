@@ -99,6 +99,11 @@ must include `frontend/`, so:
   - `CORS_ALLOWED_ORIGINS` — **leave unset/empty.** The app is same-origin, so there is no
     cross-origin browser caller. (The env var name is `CORS_ALLOWED_ORIGINS`, **not**
     `APP_WEB_CORS_ALLOWED_ORIGINS`; overriding it is only for a cross-origin setup.)
+  - `RIVIERA_PUBLIC_ORIGIN` (#1760) — the public origin, e.g. `https://riviera-sunbed-booking.onrender.com`
+    (scheme + host, no path or trailing path). Every absolute URL the server writes into a served
+    page is built on it, never on the request's `Host`: the link-preview canonical, `og:url`,
+    `og:image` and `hreflang` alternates. Unset ⇒ those tags are left out (a startup warning says
+    so) and previews show text only; a malformed value fails startup. Set it per host when the app moves.
   - `RIVIERA_RATELIMIT_TRUSTED_PROXIES` (#129) — **currently SET, and #286 makes it
     retirable.** It was set on 2026-07-22 as a stopgap: the 8 shipped defaults **plus
     Cloudflare's 15 IPv4 + 7 IPv6 published ranges** (30 CIDRs), taken from

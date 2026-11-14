@@ -1,5 +1,8 @@
 package ai.riviera.platform.web.adapter.in;
 
+import java.util.Arrays;
+import java.util.Optional;
+
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.core.io.Resource;
 
@@ -38,15 +41,19 @@ enum SpaLocale {
 		return index;
 	}
 
+	/** {@code appPath} (an app route with a leading {@code /}) as served in this locale, under its subpath. */
+	String path(String appPath) {
+		return subPath.isEmpty() ? appPath : "/" + subPath + appPath;
+	}
+
+	/** The translated locale served under {@code segment}, empty for any other segment (the source locale included). */
+	static Optional<SpaLocale> ofSubPath(String segment) {
+		return Arrays.stream(values()).filter(l -> !l.subPath.isEmpty() && l.subPath.equals(segment)).findFirst();
+	}
+
 	/** The locale a static resource path (relative, no leading slash) belongs to, by its first segment. */
 	static SpaLocale ofResourcePath(String resourcePath) {
 		int slash = resourcePath.indexOf('/');
-		String first = slash < 0 ? resourcePath : resourcePath.substring(0, slash);
-		for (SpaLocale locale : values()) {
-			if (!locale.subPath.isEmpty() && locale.subPath.equals(first)) {
-				return locale;
-			}
-		}
-		return EN;
+		return ofSubPath(slash < 0 ? resourcePath : resourcePath.substring(0, slash)).orElse(EN);
 	}
 }

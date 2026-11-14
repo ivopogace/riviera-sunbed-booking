@@ -12,7 +12,6 @@ import org.springframework.test.web.servlet.MockMvc;
 import static org.hamcrest.Matchers.containsString;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.forwardedUrl;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
@@ -36,13 +35,10 @@ class SpaShellTest {
 
 	@Test
 	void rootServesTheSpaShell() throws Exception {
-		// GET / is handled by Spring Boot's welcome-page mapping, which forwards to index.html
-		// (the SPA shell). MockMvc records the forward rather than following it; the real
-		// DispatcherServlet re-dispatches it to the bundled static index.html. The deep-link
-		// test below proves the actual shell content is served for non-root client routes.
+		// GET / is SpaShellController's, ahead of Boot's welcome-page forward: the shell with its home head.
 		mvc.perform(get("/"))
 				.andExpect(status().isOk())
-				.andExpect(forwardedUrl("index.html"));
+				.andExpect(content().string(containsString("app-root")));
 	}
 
 	@Test

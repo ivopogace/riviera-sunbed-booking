@@ -105,15 +105,15 @@ beach display label), ADR-0030 (locale subpaths), ADR-0004 (same-origin).
 
 ## Execution status
 
-**Stage pointer:** `implement (phase 0)`
+**Stage pointer:** `implement (phase 3) — full suite`
 
-**Next action:** move `SpaLocale`/`SpaWebConfig` and their tests into `web/adapter/in`.
+**Next action:** full `./gradlew build` green → push, mark ready, review gate.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — move SPA serving into `web` | ⏳ | |
-| 1 — `Beach.label()` + `findLinkPreview` | | |
-| 2 — origin, tags, copy | | |
-| 3 — controller, grant, docs | | |
+| 0 — move SPA serving into `web` | ✅ | 8bbe21c1 |
+| 1 — `Beach.label()` + `findLinkPreview` | ✅ | ae46970a |
+| 2 — origin, tags, copy | ✅ | (with phase 3) |
+| 3 — controller, grant, docs | ⏳ | |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.

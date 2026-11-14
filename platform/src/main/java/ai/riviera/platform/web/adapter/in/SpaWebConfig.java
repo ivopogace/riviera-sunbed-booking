@@ -10,12 +10,11 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 import org.springframework.web.servlet.resource.PathResourceResolver;
 
 /**
- * Serves the Angular SPA baked into {@code classpath:/static/} by the image's Node stage: hashed
- * assets directly, and its locale's {@code index.html} ({@link SpaLocale}) for a client-side route so
- * a deep-link refresh boots the app instead of 404ing. Unmapped {@code /api/**} and {@code /actuator/**}
- * stay a 404/401, never the shell. Same-origin hosting keeps the session and CSRF cookies first-party
- * (ADR-0004); the public-shell authorization is {@code SecurityConfig}'s SPA filter chain, and this
- * class only maps request paths to static resources.
+ * Serves the Angular SPA baked into {@code classpath:/static/}: hashed assets directly, and a client route's
+ * locale shell ({@link SpaLocale}) so a deep-link refresh boots the app; {@link SpaShellController} serves the
+ * routes whose shell carries link-preview tags. Unmapped {@code /api/**} and {@code /actuator/**} never get the
+ * shell. Same-origin hosting keeps the session and CSRF cookies first-party (ADR-0004); authorization is
+ * {@code SecurityConfig}'s SPA chain.
  */
 @Component
 public class SpaWebConfig implements WebMvcConfigurer {
@@ -32,6 +31,11 @@ public class SpaWebConfig implements WebMvcConfigurer {
 				.addResolver(new SpaFallbackResolver());
 	}
 
+	/** True for a backend path (relative, no leading slash), which is never served the shell. */
+	static boolean isBackendPath(String resourcePath) {
+		return resourcePath.startsWith(API_PREFIX) || resourcePath.startsWith(ACTUATOR_PREFIX);
+	}
+
 	/**
 	 * Serves the requested static asset when it exists; for an extensionless CLIENT ROUTE (a deep
 	 * link like {@code /sq/venues/1}) with no matching file, falls back to its locale's {@code index.html}
@@ -43,7 +47,7 @@ public class SpaWebConfig implements WebMvcConfigurer {
 	static final class SpaFallbackResolver extends PathResourceResolver {
 		@Override
 		protected Resource getResource(String resourcePath, @NonNull Resource location) throws IOException {
-			if (resourcePath.startsWith(API_PREFIX) || resourcePath.startsWith(ACTUATOR_PREFIX)) {
+			if (isBackendPath(resourcePath)) {
 				return null;
 			}
 			if (!resourcePath.isEmpty()) {
