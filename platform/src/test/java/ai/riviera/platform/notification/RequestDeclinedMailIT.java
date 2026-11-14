@@ -29,6 +29,7 @@ import ai.riviera.platform.notification.application.BookingLinks;
 import ai.riviera.platform.notification.application.EmailSuppressions;
 import ai.riviera.platform.notification.application.SuppressionReason;
 import ai.riviera.platform.monitoring.vocabulary.ObservabilityMetrics;
+import ai.riviera.platform.shared.SiteLocale;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -105,10 +106,28 @@ class RequestDeclinedMailIT {
 		assertThat(sent.kind()).isEqualTo(SentEmail.Kind.REQUEST_DECLINED);
 		assertThat(sent.requestDeclined().bookingCode()).isEqualTo("DECMAIL1");
 		assertThat(sent.requestDeclined().bookingDate()).isEqualTo(date);
-		assertThat(sent.requestDeclined().statusLink()).isEqualTo(links.forBooking("DECMAIL1"));
+		assertThat(sent.requestDeclined().statusLink()).isEqualTo(links.forBooking("DECMAIL1", SiteLocale.EN));
 		assertThat(sent.requestDeclined().statusLink().toString())
 				.as("the code-gated view, which renders the DECLINED state")
 				.endsWith("/booking/DECMAIL1");
+	}
+
+	/** #1770: the booking's stored language picks the mail's, and its link sits under that locale's subpath. */
+	@Test
+	void mailsABookingInTheLanguageItWasBookedIn() {
+		BookingMailFixtures.SetRef set = fixtures.onlineSet();
+		LocalDate date = LocalDate.of(2029, 9, 21);
+		String guest = "declined-albanian@example.com";
+
+		long bookingId = fixtures.seedBooking(set, "DECMAILS", date, guest, 9921L, "DECLINED");
+		jdbc.sql("UPDATE booking SET locale = 'sq' WHERE id = :id").param("id", bookingId).update();
+		fixtures.publishInTransaction(fixtures.requestDeclinedOf(set, bookingId, date));
+
+		Awaitility.await().atMost(WAIT).until(() -> mailer.lastTo(guest).isPresent());
+
+		SentEmail sent = mailer.lastTo(guest).orElseThrow();
+		assertThat(sent.locale()).isEqualTo(SiteLocale.SQ);
+		assertThat(sent.requestDeclined().statusLink().getPath()).isEqualTo("/sq/booking/DECMAILS");
 	}
 
 	@Test

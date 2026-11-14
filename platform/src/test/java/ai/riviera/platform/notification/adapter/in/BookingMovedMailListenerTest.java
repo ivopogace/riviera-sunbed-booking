@@ -23,6 +23,7 @@ import ai.riviera.platform.notification.application.BookingMovedMail;
 import ai.riviera.platform.notification.application.MissingBookingFact;
 import ai.riviera.platform.notification.application.TransactionalMailService;
 import ai.riviera.platform.monitoring.vocabulary.ObservabilityMetrics;
+import ai.riviera.platform.shared.SiteLocale;
 import ai.riviera.platform.venue.vocabulary.SetId;
 import ai.riviera.platform.venue.vocabulary.VenueId;
 
@@ -50,7 +51,7 @@ class BookingMovedMailListenerTest {
 	private static final Instant DEADLINE = Instant.parse("2026-09-11T13:00:00Z");
 
 	private static final BookingMoved EVENT = new BookingMoved(BOOKING_ID, new VenueId(4L), FROM, TO, BOOKING_DATE);
-	private static final BookingMailFacts.Resolved FACTS = new BookingMailFacts.Resolved(EMAIL, CODE, "Vala Beach", "A", 7);
+	private static final BookingMailFacts.Resolved FACTS = new BookingMailFacts.Resolved(EMAIL, CODE, "Vala Beach", "A", 7, SiteLocale.EN);
 	private static final BookingMoveFacts MOVE = new BookingMoveFacts(BOOKING_DATE, "A", 3, "A", 7, 0, 4, MOVED_AT, DEADLINE, false);
 
 	private final BookingMailFactsService facts = mock(BookingMailFactsService.class);
@@ -68,7 +69,7 @@ class BookingMovedMailListenerTest {
 
 		listener.on(EVENT);
 
-		verify(mails).sendBookingMoved(EMAIL, new BookingMovedMail(CODE, "Vala Beach", BOOKING_DATE, "A", 3, "A", 7,
+		verify(mails).sendBookingMoved(EMAIL, SiteLocale.EN, new BookingMovedMail(CODE, "Vala Beach", BOOKING_DATE, "A", 3, "A", 7,
 				0, 4, DEADLINE, URI.create("https://riviera.example/booking/" + CODE)));
 	}
 
@@ -79,7 +80,7 @@ class BookingMovedMailListenerTest {
 
 		listener.on(new BookingMoved(BOOKING_ID, new VenueId(4L), FROM, TO, BOOKING_DATE, BOOKING_DATE.plusDays(2)));
 
-		verify(mails).sendBookingMoved(EMAIL, new BookingMovedMail(CODE, "Vala Beach", BOOKING_DATE,
+		verify(mails).sendBookingMoved(EMAIL, SiteLocale.EN, new BookingMovedMail(CODE, "Vala Beach", BOOKING_DATE,
 				BOOKING_DATE.plusDays(2), "A", 3, "A", 7, 0, 4, DEADLINE, false,
 				URI.create("https://riviera.example/booking/" + CODE)));
 	}
@@ -92,7 +93,7 @@ class BookingMovedMailListenerTest {
 
 		listener.on(new BookingMoved(BOOKING_ID, new VenueId(4L), FROM, TO, BOOKING_DATE, BOOKING_DATE.plusDays(2)));
 
-		verify(mails).sendBookingMoved(EMAIL, new BookingMovedMail(CODE, "Vala Beach", BOOKING_DATE,
+		verify(mails).sendBookingMoved(EMAIL, SiteLocale.EN, new BookingMovedMail(CODE, "Vala Beach", BOOKING_DATE,
 				BOOKING_DATE.plusDays(2), "A", 3, "A", 7, 0, 4, null, true,
 				URI.create("https://riviera.example/booking/" + CODE)));
 	}
@@ -104,7 +105,7 @@ class BookingMovedMailListenerTest {
 
 		listener.on(new BookingMoved(BOOKING_ID, new VenueId(4L), FROM, TO, BOOKING_DATE, null));
 
-		verify(mails).sendBookingMoved(EMAIL, new BookingMovedMail(CODE, "Vala Beach", BOOKING_DATE, BOOKING_DATE,
+		verify(mails).sendBookingMoved(EMAIL, SiteLocale.EN, new BookingMovedMail(CODE, "Vala Beach", BOOKING_DATE, BOOKING_DATE,
 				"A", 3, "A", 7, 0, 4, DEADLINE, false, URI.create("https://riviera.example/booking/" + CODE)));
 	}
 

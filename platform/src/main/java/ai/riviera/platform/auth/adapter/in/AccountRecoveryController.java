@@ -17,6 +17,7 @@ import ai.riviera.platform.customer.api.CustomerAccountDirectory;
 import ai.riviera.platform.customer.vocabulary.Emails;
 import ai.riviera.platform.customer.vocabulary.ResetPasswordOutcome;
 import ai.riviera.platform.customer.vocabulary.VerifyEmailOutcome;
+import ai.riviera.platform.shared.SiteLocale;
 
 /**
  * Public customer account-recovery endpoints (design D-6/D-8): request a reset, redeem a reset
@@ -49,8 +50,8 @@ class AccountRecoveryController {
 		this.sessionRevoker = sessionRevoker;
 	}
 
-	/** Wire DTO for a forgot-password request. */
-	record ForgotPasswordRequest(String email) {
+	/** Wire DTO for a forgot-password request; {@code locale} is the SPA's build locale, any other value English. */
+	record ForgotPasswordRequest(String email, String locale) {
 		ForgotPasswordRequest {
 			if (email == null || email.isBlank()) {
 				throw new IllegalArgumentException("email is required");
@@ -83,7 +84,8 @@ class AccountRecoveryController {
 	@PostMapping(FORGOT_PASSWORD_PATH)
 	ResponseEntity<Void> forgotPassword(@RequestBody ForgotPasswordRequest request) {
 		String email = Emails.normalize(request.email());
-		directory.accountFor(email).ifPresent(accountId -> recovery.sendPasswordResetEmail(accountId, email));
+		SiteLocale locale = SiteLocale.fromCode(request.locale());
+		directory.accountFor(email).ifPresent(accountId -> recovery.sendPasswordResetEmail(accountId, email, locale));
 		return ResponseEntity.noContent().build();
 	}
 

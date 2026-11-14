@@ -9,6 +9,7 @@ import java.util.stream.Stream;
 
 import org.springframework.web.util.UriComponentsBuilder;
 import org.springframework.web.util.UriUtils;
+import ai.riviera.platform.shared.SiteLocale;
 
 /**
  * Builds an emailed link on an origin {@link EmailedLinkOrigin} accepted, taken as already encoded: only the appended
@@ -39,6 +40,11 @@ public final class EmailedLink {
 				.map(segment -> UriUtils.encodePathSegment(segment, StandardCharsets.UTF_8))
 				.collect(Collectors.joining("/", "/", ""));
 		return new EmailedLink(origin, plus(paths, encoded), query);
+	}
+
+	/** Appends the locale's subpath ({@code /sq}); nothing for the source locale, served at the root. */
+	public EmailedLink under(SiteLocale locale) {
+		return locale.subPath().isEmpty() ? this : path(locale.subPath());
 	}
 
 	/** Appends {@code name=value}, both encoded as a query parameter ({@code &} and {@code =} included). */

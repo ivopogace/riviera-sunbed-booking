@@ -17,6 +17,7 @@ import ai.riviera.platform.customer.api.CustomerAccountRecovery;
 import ai.riviera.platform.customer.vocabulary.CustomerAccountId;
 import ai.riviera.platform.notification.api.MailDeliverability;
 import ai.riviera.platform.notification.api.MailSender;
+import ai.riviera.platform.shared.SiteLocale;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
@@ -58,7 +59,7 @@ class CustomerRecoveryTest {
 	void mailsNoVerificationLinkWhenTheAccountWasErased() {
 		when(accounts.issueEmailVerificationToken(any(), any(), any())).thenReturn(false);
 
-		recovery.sendVerificationEmail(ACCOUNT, EMAIL);
+		recovery.sendVerificationEmail(ACCOUNT, EMAIL, SiteLocale.EN);
 
 		verifyNoInteractions(mails);
 	}
@@ -72,9 +73,9 @@ class CustomerRecoveryTest {
 
 	@Test
 	void issuesNoResetTokenOnTheCallersThread() {
-		recovery.sendPasswordResetEmail(ACCOUNT, EMAIL);
+		recovery.sendPasswordResetEmail(ACCOUNT, EMAIL, SiteLocale.EN);
 
-		verify(mails).sendPasswordReset(eq(EMAIL), any());
+		verify(mails).sendPasswordReset(eq(EMAIL), eq(SiteLocale.EN), any());
 		verifyNoInteractions(accounts);
 	}
 
@@ -91,6 +92,25 @@ class CustomerRecoveryTest {
 	}
 
 	@Test
+	void theResetLinkAndMailFollowTheRequestsLocale() {
+		recovery.sendPasswordResetEmail(ACCOUNT, EMAIL, SiteLocale.IT);
+		@SuppressWarnings("unchecked")
+		ArgumentCaptor<Supplier<Optional<URI>>> deferred = ArgumentCaptor.forClass(Supplier.class);
+		verify(mails).sendPasswordReset(eq(EMAIL), eq(SiteLocale.IT), deferred.capture());
+
+		assertThat(deferred.getValue().get().orElseThrow()).asString().startsWith(BASE_URL + "/it/account/reset?token=");
+	}
+
+	@Test
+	void theVerificationLinkAndMailFollowTheRequestsLocale() {
+		recovery.sendVerificationEmail(ACCOUNT, EMAIL, SiteLocale.SQ);
+
+		ArgumentCaptor<URI> link = ArgumentCaptor.forClass(URI.class);
+		verify(mails).sendEmailVerification(eq(EMAIL), eq(SiteLocale.SQ), link.capture());
+		assertThat(link.getValue()).asString().startsWith(BASE_URL + "/sq/account/verify?token=");
+	}
+
+	@Test
 	void eachResolutionMintsAFreshToken() {
 		Supplier<Optional<URI>> deferred = deferredResetLink();
 
@@ -99,19 +119,19 @@ class CustomerRecoveryTest {
 
 	@SuppressWarnings("unchecked")
 	private Supplier<Optional<URI>> deferredResetLink() {
-		recovery.sendPasswordResetEmail(ACCOUNT, EMAIL);
+		recovery.sendPasswordResetEmail(ACCOUNT, EMAIL, SiteLocale.EN);
 		ArgumentCaptor<Supplier<Optional<URI>>> deferred = ArgumentCaptor.forClass(Supplier.class);
-		verify(mails).sendPasswordReset(eq(EMAIL), deferred.capture());
+		verify(mails).sendPasswordReset(eq(EMAIL), eq(SiteLocale.EN), deferred.capture());
 		return deferred.getValue();
 	}
 
 	@Test
 	void handsTheTokenizedVerificationLinkToTheSendPort() {
-		recovery.sendVerificationEmail(ACCOUNT, EMAIL);
+		recovery.sendVerificationEmail(ACCOUNT, EMAIL, SiteLocale.EN);
 
 		verify(accounts).issueEmailVerificationToken(eq(ACCOUNT), any(), any());
 		ArgumentCaptor<URI> link = ArgumentCaptor.forClass(URI.class);
-		verify(mails).sendEmailVerification(eq(EMAIL), link.capture());
+		verify(mails).sendEmailVerification(eq(EMAIL), eq(SiteLocale.EN), link.capture());
 		assertThat(link.getValue()).asString().startsWith(BASE_URL + "/account/verify?token=");
 	}
 
@@ -120,10 +140,10 @@ class CustomerRecoveryTest {
 		new CustomerRecovery(accounts, mails, deliverability, new RecoveryTokens(),
 				new RecoveryProperties(Duration.ofHours(24), Duration.ofHours(1), "http://riviera_backend:8080/"),
 				Clock.fixed(Instant.parse("2026-07-27T10:00:00Z"), ZoneOffset.UTC))
-				.sendVerificationEmail(ACCOUNT, EMAIL);
+				.sendVerificationEmail(ACCOUNT, EMAIL, SiteLocale.EN);
 
 		ArgumentCaptor<URI> link = ArgumentCaptor.forClass(URI.class);
-		verify(mails).sendEmailVerification(eq(EMAIL), link.capture());
+		verify(mails).sendEmailVerification(eq(EMAIL), eq(SiteLocale.EN), link.capture());
 		assertThat(link.getValue()).asString()
 				.startsWith("http://riviera_backend:8080/account/verify?token=");
 	}
@@ -136,10 +156,10 @@ class CustomerRecoveryTest {
 	 */
 	@Test
 	void sendingNeverConsultsTheDoNotMailList() {
-		recovery.sendVerificationEmail(ACCOUNT, EMAIL);
+		recovery.sendVerificationEmail(ACCOUNT, EMAIL, SiteLocale.EN);
 
 		verify(accounts).issueEmailVerificationToken(eq(ACCOUNT), any(), any());
-		verify(mails).sendEmailVerification(eq(EMAIL), any());
+		verify(mails).sendEmailVerification(eq(EMAIL), eq(SiteLocale.EN), any());
 		verifyNoInteractions(deliverability);
 	}
 

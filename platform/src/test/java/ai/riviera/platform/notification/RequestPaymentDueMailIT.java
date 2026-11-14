@@ -31,6 +31,7 @@ import ai.riviera.platform.notification.application.BookingLinks;
 import ai.riviera.platform.notification.application.EmailSuppressions;
 import ai.riviera.platform.notification.application.SuppressionReason;
 import ai.riviera.platform.monitoring.vocabulary.ObservabilityMetrics;
+import ai.riviera.platform.shared.SiteLocale;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -130,7 +131,7 @@ class RequestPaymentDueMailIT {
 		assertThat(sent.paymentDue().bookingDate()).isEqualTo(date);
 		assertThat(sent.paymentDue().amountMinor()).isEqualTo(8311L);
 		assertThat(sent.paymentDue().currency()).isEqualTo("EUR");
-		assertThat(sent.paymentDue().payLink()).isEqualTo(links.forBooking("PAYDUE01"));
+		assertThat(sent.paymentDue().payLink()).isEqualTo(links.forBooking("PAYDUE01", SiteLocale.EN));
 		assertThat(sent.paymentDue().payLink().toString())
 				.as("the code-gated view, which is where an AWAITING_PAYMENT booking offers Pay now")
 				.endsWith("/booking/PAYDUE01");

@@ -136,7 +136,7 @@ class ReserveSetService {
 			String code = codeGenerator.next();
 			OptionalLong id = insert.apply(new NewBooking(code, set.venueId(),
 					set.setId(), customerId, command.accountId(), command.bookingDate(), command.lastDate(),
-					amountMinor, set.price().currency()));
+					amountMinor, set.price().currency(), command.locale()));
 			if (id.isPresent()) {
 				return new Inserted(id.getAsLong(), code);
 			}

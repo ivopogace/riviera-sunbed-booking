@@ -28,6 +28,7 @@ import ai.riviera.platform.booking.vocabulary.SpotRef;
 import ai.riviera.platform.booking.vocabulary.StayConfirmationFacts;
 import ai.riviera.platform.booking.vocabulary.StayId;
 import ai.riviera.platform.customer.vocabulary.CustomerId;
+import ai.riviera.platform.shared.SiteLocale;
 import ai.riviera.platform.venue.vocabulary.SetId;
 import ai.riviera.platform.venue.vocabulary.VenueId;
 
@@ -90,7 +91,7 @@ class StayConfirmationFactsIT {
 				List.of(new StayConfirmationFacts.Stop(new BookingId(stretches.get(0)), a, first, first.plusDays(2)),
 						new StayConfirmationFacts.Stop(new BookingId(stretches.get(1)), b, first.plusDays(3),
 								first.plusDays(6))),
-				7 * PRICE, "EUR", true, CancellationWindow.FREE, 0), byStay);
+				7 * PRICE, "EUR", true, CancellationWindow.FREE, 0, SiteLocale.EN), byStay);
 		assertEquals(first, byStay.firstDate());
 		assertEquals(first.plusDays(6), byStay.lastDate());
 		assertEquals(byStay, facts.stayConfirmationFactsOf(new BookingId(stretches.get(1))).orElseThrow(),

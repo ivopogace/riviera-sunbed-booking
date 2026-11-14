@@ -27,6 +27,7 @@ import ai.riviera.platform.notification.application.StayConfirmationMail;
 import ai.riviera.platform.notification.application.StayMailFacts;
 import ai.riviera.platform.notification.application.TransactionalMailService;
 import ai.riviera.platform.monitoring.vocabulary.ObservabilityMetrics;
+import ai.riviera.platform.shared.SiteLocale;
 import ai.riviera.platform.venue.vocabulary.SetId;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -52,7 +53,7 @@ class StayConfirmationMailListenerTest {
 							LocalDate.of(2026, 8, 2)),
 					new StayConfirmationFacts.Stop(STRETCHES.get(1), new SetId(2L), LocalDate.of(2026, 8, 3),
 							LocalDate.of(2026, 8, 4))),
-			18000, "EUR", true, CancellationWindow.FREE, 0);
+			18000, "EUR", true, CancellationWindow.FREE, 0, SiteLocale.EN);
 	private static final StayConfirmationMail MAIL = new StayConfirmationMail("STAYCODE", "Vala Beach",
 			LocalDate.of(2026, 8, 1), LocalDate.of(2026, 8, 4), List.of(), 18000, "EUR", CancellationWindow.LATE, 2500);
 
@@ -73,8 +74,8 @@ class StayConfirmationMailListenerTest {
 	@Test
 	void sendsWithTheEventsBirthTermsAndLogsEveryStretch() {
 		when(facts.resolveStay(FACTS, CancellationWindow.LATE, 2500))
-				.thenReturn(new StayMailFacts.Resolved("guest@example.com", MAIL));
-		when(mails.sendStayConfirmation("guest@example.com", MAIL)).thenReturn(ConfirmationSendOutcome.SENT);
+				.thenReturn(new StayMailFacts.Resolved("guest@example.com", MAIL, SiteLocale.EN));
+		when(mails.sendStayConfirmation("guest@example.com", SiteLocale.EN, MAIL)).thenReturn(ConfirmationSendOutcome.SENT);
 
 		listener.on(EVENT);
 
@@ -85,8 +86,8 @@ class StayConfirmationMailListenerTest {
 	@Test
 	void aTransportFailureIsRecordedThenPropagated() {
 		when(facts.resolveStay(FACTS, CancellationWindow.LATE, 2500))
-				.thenReturn(new StayMailFacts.Resolved("guest@example.com", MAIL));
-		when(mails.sendStayConfirmation("guest@example.com", MAIL)).thenThrow(new IllegalStateException("smtp down"));
+				.thenReturn(new StayMailFacts.Resolved("guest@example.com", MAIL, SiteLocale.EN));
+		when(mails.sendStayConfirmation("guest@example.com", SiteLocale.EN, MAIL)).thenThrow(new IllegalStateException("smtp down"));
 
 		assertThatThrownBy(() -> listener.on(EVENT)).isInstanceOf(IllegalStateException.class);
 

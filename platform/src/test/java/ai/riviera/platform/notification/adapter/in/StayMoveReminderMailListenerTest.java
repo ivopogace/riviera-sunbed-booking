@@ -24,6 +24,7 @@ import ai.riviera.platform.notification.application.MoveReminderMail;
 import ai.riviera.platform.notification.application.MoveReminderMailFacts;
 import ai.riviera.platform.notification.application.TransactionalMailService;
 import ai.riviera.platform.monitoring.vocabulary.ObservabilityMetrics;
+import ai.riviera.platform.shared.SiteLocale;
 import ai.riviera.platform.venue.vocabulary.SetId;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -48,7 +49,7 @@ class StayMoveReminderMailListenerTest {
 	private static final LocalDate MOVE_DAY = LocalDate.of(2026, 8, 13);
 	private static final StayMoveDue EVENT = new StayMoveDue(STAY, ARRIVING, MOVE_DAY);
 	private static final StayMoveFacts MOVE = new StayMoveFacts(STAY, "STAYCODE", new CustomerId(5L), MOVE_DAY,
-			MOVE_DAY.plusDays(2), new SetId(1L), new SetId(2L), 1, 3, true);
+			MOVE_DAY.plusDays(2), new SetId(1L), new SetId(2L), 1, 3, true, SiteLocale.EN);
 	private static final URI LINK = URI.create("https://riviera.example/booking/STAYCODE");
 	private static final MoveReminderMail MAIL = new MoveReminderMail("STAYCODE", "Vala Beach", MOVE_DAY,
 			MOVE_DAY.plusDays(2), "A", 3, "B", 6, 1, 3, LINK, true);
@@ -64,20 +65,20 @@ class StayMoveReminderMailListenerTest {
 	@Test
 	void mailsTheResolvedContactTomorrowsSpotWithTheLink() {
 		when(bookings.moveReminderFacts(ARRIVING)).thenReturn(Optional.of(MOVE));
-		when(facts.resolveMoveReminder(MOVE, LINK)).thenReturn(new MoveReminderMailFacts.Resolved("guest@example.com", MAIL));
+		when(facts.resolveMoveReminder(MOVE, LINK)).thenReturn(new MoveReminderMailFacts.Resolved("guest@example.com", MAIL, SiteLocale.EN));
 
 		listener.on(EVENT);
 
-		verify(mails).sendMoveReminder("guest@example.com", MAIL);
+		verify(mails).sendMoveReminder("guest@example.com", SiteLocale.EN, MAIL);
 		assertThat(meters.find(ObservabilityMetrics.MAIL_MOVE_REMINDER_ABANDONED).counters()).isEmpty();
 	}
 
 	@Test
 	void aTransportFailurePropagatesSoTheRegistryRetries() {
 		when(bookings.moveReminderFacts(ARRIVING)).thenReturn(Optional.of(MOVE));
-		when(facts.resolveMoveReminder(MOVE, LINK)).thenReturn(new MoveReminderMailFacts.Resolved("guest@example.com", MAIL));
+		when(facts.resolveMoveReminder(MOVE, LINK)).thenReturn(new MoveReminderMailFacts.Resolved("guest@example.com", MAIL, SiteLocale.EN));
 		org.mockito.Mockito.doThrow(new IllegalStateException("smtp down")).when(mails)
-				.sendMoveReminder("guest@example.com", MAIL);
+				.sendMoveReminder("guest@example.com", SiteLocale.EN, MAIL);
 
 		assertThatThrownBy(() -> listener.on(EVENT)).isInstanceOf(IllegalStateException.class);
 	}

@@ -6,23 +6,25 @@ import java.util.Optional;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.core.io.Resource;
 
+import ai.riviera.platform.shared.SiteLocale;
+
 /**
- * A locale the SPA is built in and served under (ADR-0030): the source locale from the root, each
- * other one under its own subpath, each with its own {@code index.html}. The one locale-to-shell
- * mapping on the server; {@code SpaLocaleTest} pins it to {@code frontend/angular.json}'s locales.
+ * A {@link SiteLocale} as {@code web} serves it (ADR-0030): its subpath and its own {@code index.html}.
+ * The one locale-to-shell mapping on the server; {@code SpaLocaleTest} pins it to
+ * {@code frontend/angular.json}'s locales and to {@link SiteLocale}, one row each.
  */
 enum SpaLocale {
-	EN("en", ""),
-	SQ("sq", "sq"),
-	IT("it", "it");
+	EN(SiteLocale.EN),
+	SQ(SiteLocale.SQ),
+	IT(SiteLocale.IT);
 
 	private final String code;
 	private final String subPath;
 	private final Resource index;
 
-	SpaLocale(String code, String subPath) {
-		this.code = code;
-		this.subPath = subPath;
+	SpaLocale(SiteLocale site) {
+		this.code = site.code();
+		this.subPath = site.subPath();
 		this.index = new ClassPathResource("static/" + (subPath.isEmpty() ? "" : subPath + "/") + "index.html");
 	}
 

@@ -70,7 +70,7 @@ class StayConfirmationMailListener {
 	private void send(StayMailFacts.Resolved stay, List<BookingId> stretches) {
 		ConfirmationSendOutcome outcome;
 		try {
-			outcome = mails.sendStayConfirmation(stay.toEmail(), stay.mail());
+			outcome = mails.sendStayConfirmation(stay.toEmail(), stay.locale(), stay.mail());
 		}
 		catch (RuntimeException e) {
 			attempts.recordAttempts(stretches, MailAttemptSource.AUTOMATIC, MailAttemptOutcome.TRANSPORT_FAILED);

@@ -32,6 +32,7 @@ import ai.riviera.platform.venue.vocabulary.SetId;
 import ai.riviera.platform.venue.vocabulary.SetPlacement;
 import ai.riviera.platform.venue.vocabulary.SetSpot;
 import ai.riviera.platform.venue.vocabulary.VenueId;
+import ai.riviera.platform.shared.SiteLocale;
 
 /**
  * JDBC adapter for {@link BookingNotificationFacts} over {@link JdbcClient} (invariant #1): by primary
@@ -45,6 +46,7 @@ class JdbcBookingNotificationFacts implements BookingNotificationFacts {
 
 	private static final String COL_CUSTOMER_ID = "customer_id";
 	private static final String COL_BOOKING_DATE = "booking_date";
+	private static final String COL_LOCALE = "locale";
 	private static final String MOVED_ROW_SQL = """
 			SELECT b.moved_at, s.code AS stay_code
 			FROM booking b
@@ -58,7 +60,7 @@ class JdbcBookingNotificationFacts implements BookingNotificationFacts {
 	 */
 	private static final String MOVE_ROW_SQL = """
 			SELECT s.id AS stay_id, s.code, s.last_date AS stay_last_date, t.customer_id, t.venue_id,
-			       t.booking_date, p.set_id AS from_set, t.set_id AS to_set,
+			       t.booking_date, p.set_id AS from_set, t.set_id AS to_set, t.locale,
 			       """ + JdbcBookings.HOLDS_DAY_SQL.formatted("p", "p.last_date") + """
 			 AS from_day_held
 			FROM booking t
@@ -97,7 +99,8 @@ class JdbcBookingNotificationFacts implements BookingNotificationFacts {
 				.query((rs, rowNum) -> new MoveRow(new StayId(rs.getLong("stay_id")), rs.getString("code"),
 						new CustomerId(rs.getLong(COL_CUSTOMER_ID)), new VenueId(rs.getLong("venue_id")),
 						rs.getObject(COL_BOOKING_DATE, LocalDate.class), rs.getObject("stay_last_date", LocalDate.class),
-						new SetId(rs.getLong("from_set")), new SetId(rs.getLong("to_set")), rs.getBoolean("from_day_held")))
+						new SetId(rs.getLong("from_set")), new SetId(rs.getLong("to_set")), rs.getBoolean("from_day_held"),
+						SiteLocale.fromCode(rs.getString(COL_LOCALE))))
 				.optional()
 				.flatMap(this::placed);
 	}
@@ -112,11 +115,12 @@ class JdbcBookingNotificationFacts implements BookingNotificationFacts {
 			return Optional.empty();
 		}
 		return Optional.of(new StayMoveFacts(row.stayId(), row.code(), row.customerId(), row.moveDate(),
-				row.stayLastDate(), row.fromSet(), row.toSet(), to.rowsAway(from), to.positionsAway(from), row.fromDayHeld()));
+				row.stayLastDate(), row.fromSet(), row.toSet(), to.rowsAway(from), to.positionsAway(from), row.fromDayHeld(),
+				row.locale()));
 	}
 
 	private record MoveRow(StayId stayId, String code, CustomerId customerId, VenueId venueId, LocalDate moveDate,
-			LocalDate stayLastDate, SetId fromSet, SetId toSet, boolean fromDayHeld) {
+			LocalDate stayLastDate, SetId fromSet, SetId toSet, boolean fromDayHeld, SiteLocale locale) {
 	}
 
 	@Override
@@ -156,11 +160,12 @@ class JdbcBookingNotificationFacts implements BookingNotificationFacts {
 	public Optional<BookingNotificationInfo> notificationInfo(BookingId bookingId) {
 		// No status predicate on purpose — the caller reacts to a published confirmation fact, and a
 		// booking cancelled in the interim must still resolve (the port's contract).
-		return jdbc.sql("SELECT COALESCE(s.code, b.code) AS code, b.customer_id FROM booking b "
+		return jdbc.sql("SELECT COALESCE(s.code, b.code) AS code, b.customer_id, b.locale FROM booking b "
 						+ "LEFT JOIN stay s ON s.id = b.stay_id WHERE b.id = :id")
 				.param("id", bookingId.value())
 				.query((rs, rowNum) -> new BookingNotificationInfo(
-						rs.getString("code"), new CustomerId(rs.getLong(COL_CUSTOMER_ID))))
+						rs.getString("code"), new CustomerId(rs.getLong(COL_CUSTOMER_ID)),
+						SiteLocale.fromCode(rs.getString(COL_LOCALE))))
 				.optional();
 	}
 
@@ -184,7 +189,7 @@ class JdbcBookingNotificationFacts implements BookingNotificationFacts {
 	public Optional<StayConfirmationFacts> stayConfirmationFacts(StayId stayId) {
 		List<StayRow> rows = jdbc.sql("""
 				SELECT s.code, b.id, b.set_id, b.booking_date, b.last_date, b.amount_minor, b.amount_currency,
-				       b.customer_id, b.confirmed_at IS NOT NULL AS confirmed, b.created_at
+				       b.customer_id, b.confirmed_at IS NOT NULL AS confirmed, b.created_at, b.locale
 				FROM stay s
 				JOIN booking b ON b.stay_id = s.id
 				WHERE s.id = :stay
@@ -196,7 +201,7 @@ class JdbcBookingNotificationFacts implements BookingNotificationFacts {
 								rs.getObject(COL_BOOKING_DATE, LocalDate.class), rs.getObject("last_date", LocalDate.class)),
 						rs.getLong("amount_minor"), rs.getString("amount_currency"),
 						new CustomerId(rs.getLong(COL_CUSTOMER_ID)), rs.getBoolean("confirmed"),
-						rs.getTimestamp("created_at").toInstant()))
+						rs.getTimestamp("created_at").toInstant(), SiteLocale.fromCode(rs.getString(COL_LOCALE))))
 				.list();
 		if (rows.isEmpty()) {
 			return Optional.empty();
@@ -208,7 +213,7 @@ class JdbcBookingNotificationFacts implements BookingNotificationFacts {
 				rows.stream().map(StayRow::stop).toList(), rows.stream().mapToLong(StayRow::amountMinor).sum(),
 				first.currency(), rows.stream().allMatch(StayRow::confirmed),
 				birth.map(CancellationPolicy.BirthTerms::window).orElse(null),
-				birth.map(CancellationPolicy.BirthTerms::lateCancelRefundBps).orElse(0)));
+				birth.map(CancellationPolicy.BirthTerms::lateCancelRefundBps).orElse(0), first.locale()));
 	}
 
 	@Override
@@ -236,11 +241,11 @@ class JdbcBookingNotificationFacts implements BookingNotificationFacts {
 		return new StayConfirmationFacts(stay.stayId(), stay.code(), stay.customerId(),
 				stay.stops().stream().filter(stop -> liveIds.contains(stop.bookingId())).toList(),
 				live.stream().mapToLong(BookingRecord::amountMinor).reduce(0L, Math::addExact), stay.currency(),
-				stay.everConfirmed(), stay.cancellationWindowAtBirth(), stay.lateCancelRefundBps());
+				stay.everConfirmed(), stay.cancellationWindowAtBirth(), stay.lateCancelRefundBps(), stay.locale());
 	}
 
 	private record StayRow(String code, StayConfirmationFacts.Stop stop, long amountMinor, String currency,
-			CustomerId customerId, boolean confirmed, Instant createdAt) {
+			CustomerId customerId, boolean confirmed, Instant createdAt, SiteLocale locale) {
 	}
 
 	/**

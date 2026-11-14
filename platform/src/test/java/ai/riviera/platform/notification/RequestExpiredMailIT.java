@@ -29,6 +29,7 @@ import ai.riviera.platform.notification.application.BookingLinks;
 import ai.riviera.platform.notification.application.EmailSuppressions;
 import ai.riviera.platform.notification.application.SuppressionReason;
 import ai.riviera.platform.monitoring.vocabulary.ObservabilityMetrics;
+import ai.riviera.platform.shared.SiteLocale;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -98,7 +99,7 @@ class RequestExpiredMailIT {
 		assertThat(sent.kind()).isEqualTo(SentEmail.Kind.REQUEST_EXPIRED);
 		assertThat(sent.requestExpired().bookingCode()).isEqualTo("EXPMAIL1");
 		assertThat(sent.requestExpired().bookingDate()).isEqualTo(date);
-		assertThat(sent.requestExpired().statusLink()).isEqualTo(links.forBooking("EXPMAIL1"));
+		assertThat(sent.requestExpired().statusLink()).isEqualTo(links.forBooking("EXPMAIL1", SiteLocale.EN));
 		assertThat(sent.requestExpired().statusLink().toString())
 				.as("the code-gated view, which renders the EXPIRED state")
 				.endsWith("/booking/EXPMAIL1");

@@ -27,6 +27,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import ai.riviera.platform.shared.SiteLocale;
 
 /**
  * Email-verification journey end-to-end against real Postgres + the mock mailer (AC-7, AC-9):
@@ -82,6 +83,44 @@ class EmailVerificationIT {
 	}
 
 	@Test
+	void eachAccountMailFollowsTheLocaleItsRequestNamed() throws Exception {
+		String email = "verify-it-locale@example.com";
+
+		Cookie session = register(email, "sq").getResponse().getCookie(SESSION_COOKIE);
+		SentEmail verification = mailer.lastTo(email).orElseThrow();
+		assertEquals(SiteLocale.SQ, verification.locale());
+		assertEquals("/sq/account/verify", verification.link().getPath());
+
+		requestVerification(session, "{\"locale\": \"it\"}").andExpect(status().isOk());
+		assertEquals(SiteLocale.IT, mailer.lastTo(email).orElseThrow().locale());
+		assertEquals("/it/account/verify", mailer.lastTo(email).orElseThrow().link().getPath());
+
+		mvc.perform(post("/api/auth/customer/forgot-password").with(csrf())
+				.header(SessionLoginSupport.CHALLENGE_HEADER, SessionLoginSupport.solvedChallenge(mvc))
+				.header("X-Forwarded-For", SessionLoginSupport.uniqueClientIp())
+				.contentType(MediaType.APPLICATION_JSON)
+				.content("""
+						{"email": "%s", "locale": "it"}""".formatted(email)))
+				.andExpect(status().isNoContent());
+		SentEmail reset = mailer.lastTo(email).orElseThrow();
+		assertEquals(SentEmail.Kind.PASSWORD_RESET, reset.kind());
+		assertEquals(SiteLocale.IT, reset.locale());
+		assertEquals("/it/account/reset", reset.link().getPath());
+	}
+
+	@Test
+	void anAbsentOrUnknownLocaleMailsInEnglishAtTheRoot() throws Exception {
+		String email = "verify-it-unknown@example.com";
+
+		Cookie session = register(email, "../evil").getResponse().getCookie(SESSION_COOKIE);
+		assertEquals(SiteLocale.EN, mailer.lastTo(email).orElseThrow().locale());
+		assertEquals("/account/verify", mailer.lastTo(email).orElseThrow().link().getPath());
+
+		requestVerification(session).andExpect(status().isOk());
+		assertEquals(SiteLocale.EN, mailer.lastTo(email).orElseThrow().locale());
+	}
+
+	@Test
 	void secondUseAndBogusTokenAreRejectedNeutrally() throws Exception {
 		String email = "verify-it-bob@example.com";
 		register(email);
@@ -132,6 +171,14 @@ class EmailVerificationIT {
 				.header("X-Forwarded-For", SessionLoginSupport.uniqueClientIp()));
 	}
 
+	private org.springframework.test.web.servlet.ResultActions requestVerification(Cookie session, String body)
+			throws Exception {
+		return mvc.perform(post("/api/me/verify-email/request").with(csrf()).cookie(session)
+				.header("X-Forwarded-For", SessionLoginSupport.uniqueClientIp())
+				.contentType(MediaType.APPLICATION_JSON)
+				.content(body));
+	}
+
 	private org.springframework.test.web.servlet.MvcResult register(String email) throws Exception {
 		return mvc.perform(post(REGISTER_PATH).with(csrf())
 				.header(SessionLoginSupport.CHALLENGE_HEADER, SessionLoginSupport.solvedChallenge(mvc))
@@ -139,6 +186,17 @@ class EmailVerificationIT {
 				.contentType(MediaType.APPLICATION_JSON)
 				.content("""
 						{"email": "%s", "password": "passphrase-123"}""".formatted(email)))
+				.andExpect(status().isCreated())
+				.andReturn();
+	}
+
+	private org.springframework.test.web.servlet.MvcResult register(String email, String locale) throws Exception {
+		return mvc.perform(post(REGISTER_PATH).with(csrf())
+				.header(SessionLoginSupport.CHALLENGE_HEADER, SessionLoginSupport.solvedChallenge(mvc))
+				.header("X-Forwarded-For", SessionLoginSupport.uniqueClientIp())
+				.contentType(MediaType.APPLICATION_JSON)
+				.content("""
+						{"email": "%s", "password": "passphrase-123", "locale": "%s"}""".formatted(email, locale)))
 				.andExpect(status().isCreated())
 				.andReturn();
 	}

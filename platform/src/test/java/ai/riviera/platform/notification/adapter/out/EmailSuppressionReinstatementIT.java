@@ -29,6 +29,7 @@ import ai.riviera.platform.notification.application.EmailSuppressions;
 import ai.riviera.platform.notification.application.ReinstateOutcome;
 import ai.riviera.platform.notification.application.SuppressionReason;
 import ai.riviera.platform.notification.application.TransactionalMailService;
+import ai.riviera.platform.shared.SiteLocale;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -138,11 +139,11 @@ class EmailSuppressionReinstatementIT {
 	void aReinstatedAddressReceivesMailAgain() {
 		String email = "recovered@delivers-again.example.com";
 		suppressions.suppress(email, SuppressionReason.HARD_BOUNCE, FIRST_EVENT);
-		mailService.sendBookingConfirmation(email, confirmation());
+		mailService.sendBookingConfirmation(email, SiteLocale.EN, confirmation());
 		assertThat(mailer.lastTo(email)).as("the precondition: suppressed mail is withheld").isEmpty();
 
 		suppressions.reinstate(email, LIFTED_AT);
-		mailService.sendBookingConfirmation(email, confirmation());
+		mailService.sendBookingConfirmation(email, SiteLocale.EN, confirmation());
 
 		assertThat(mailer.lastTo(email))
 				.as("the whole point of the slice: a reinstated address is mailable again, proven "

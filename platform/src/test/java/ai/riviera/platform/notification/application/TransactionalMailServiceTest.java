@@ -12,6 +12,7 @@ import java.util.function.Supplier;
 import ai.riviera.platform.booking.vocabulary.RefundReason;
 import ai.riviera.platform.booking.vocabulary.CancellationWindow;
 import ai.riviera.platform.monitoring.vocabulary.ObservabilityMetrics;
+import ai.riviera.platform.shared.SiteLocale;
 
 import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.core.read.ListAppender;
@@ -123,25 +124,25 @@ class TransactionalMailServiceTest {
 
 	@Test
 	void doesNoMailWorkOnTheCallersThread() {
-		service.sendPasswordReset(EMAIL, RESET_LINK);
+		service.sendPasswordReset(EMAIL, SiteLocale.EN, RESET_LINK);
 
-		verify(mailer, never()).sendPasswordReset(any(), any());
+		verify(mailer, never()).sendPasswordReset(any(), any(), any());
 		assertThat(dispatched.get()).as("the send must have been handed to the dispatcher").isNotNull();
 	}
 
 	@Test
 	void sendsThroughTheTransportWhenTheDispatchedTaskRuns() {
-		service.sendPasswordReset(EMAIL, RESET_LINK);
+		service.sendPasswordReset(EMAIL, SiteLocale.EN, RESET_LINK);
 		dispatched.get().run();
 
-		verify(mailer).sendPasswordReset(EMAIL, LINK);
+		verify(mailer).sendPasswordReset(EMAIL, SiteLocale.EN, LINK);
 	}
 
 	/** #1336: issuing the reset link writes a token, so it runs inside the task, never on the caller's thread. */
 	@Test
 	void resolvesTheResetLinkOnlyInsideTheDispatchedTask() {
 		AtomicInteger issued = new AtomicInteger();
-		service.sendPasswordReset(EMAIL, () -> {
+		service.sendPasswordReset(EMAIL, SiteLocale.EN, () -> {
 			issued.incrementAndGet();
 			return Optional.of(LINK);
 		});
@@ -149,7 +150,7 @@ class TransactionalMailServiceTest {
 		assertThat(issued).as("no token may be issued on the caller's thread").hasValue(0);
 		dispatched.get().run();
 		assertThat(issued).hasValue(1);
-		verify(mailer).sendPasswordReset(EMAIL, LINK);
+		verify(mailer).sendPasswordReset(EMAIL, SiteLocale.EN, LINK);
 	}
 
 	/** A suppressed address gets no mail, so it must not get a live token either. */
@@ -157,23 +158,23 @@ class TransactionalMailServiceTest {
 	void aSuppressedAddressIsIssuedNoResetToken() {
 		when(suppressions.isSuppressed(EMAIL)).thenReturn(true);
 		AtomicInteger issued = new AtomicInteger();
-		service.sendPasswordReset(EMAIL, () -> {
+		service.sendPasswordReset(EMAIL, SiteLocale.EN, () -> {
 			issued.incrementAndGet();
 			return Optional.of(LINK);
 		});
 		dispatched.get().run();
 
 		assertThat(issued).hasValue(0);
-		verify(mailer, never()).sendPasswordReset(any(), any());
+		verify(mailer, never()).sendPasswordReset(any(), any(), any());
 	}
 
 	/** An empty link (the account was erased meanwhile) sends nothing and is no loss. */
 	@Test
 	void anEmptyResetLinkSendsNothing() {
-		service.sendPasswordReset(EMAIL, Optional::empty);
+		service.sendPasswordReset(EMAIL, SiteLocale.EN, Optional::empty);
 		assertThatCode(() -> dispatched.get().run()).doesNotThrowAnyException();
 
-		verify(mailer, never()).sendPasswordReset(any(), any());
+		verify(mailer, never()).sendPasswordReset(any(), any(), any());
 		assertThat(failedTotal()).isZero();
 	}
 
@@ -184,7 +185,7 @@ class TransactionalMailServiceTest {
 	@Test
 	void aFailedIssuanceIsCountedAsItsOwnCauseAndLogsNoCredential() {
 		String secretInMessage = "token=" + LINK.getQuery();
-		service.sendPasswordReset(EMAIL, () -> {
+		service.sendPasswordReset(EMAIL, SiteLocale.EN, () -> {
 			throw new IllegalStateException(secretInMessage + " for " + EMAIL);
 		});
 
@@ -193,7 +194,7 @@ class TransactionalMailServiceTest {
 		assertThat(failedFor(MailKind.PASSWORD_RESET.tagValue(),
 				TransactionalMailService.REASON_TOKEN_ISSUANCE)).isEqualTo(1);
 		assertThat(failedTotal()).isEqualTo(1);
-		verify(mailer, never()).sendPasswordReset(any(), any());
+		verify(mailer, never()).sendPasswordReset(any(), any(), any());
 		assertThat(logs.list).isNotEmpty().allSatisfy(event -> assertThat(event.getFormattedMessage())
 				.doesNotContain(EMAIL)
 				.doesNotContain(LINK.getQuery()));
@@ -201,11 +202,11 @@ class TransactionalMailServiceTest {
 
 	@Test
 	void dispatchesTheVerificationSendToo() {
-		service.sendEmailVerification(EMAIL, LINK);
+		service.sendEmailVerification(EMAIL, SiteLocale.EN, LINK);
 
-		verify(mailer, never()).sendEmailVerification(any(), any());
+		verify(mailer, never()).sendEmailVerification(any(), any(), any());
 		dispatched.get().run();
-		verify(mailer).sendEmailVerification(EMAIL, LINK);
+		verify(mailer).sendEmailVerification(EMAIL, SiteLocale.EN, LINK);
 	}
 
 	/**
@@ -216,10 +217,10 @@ class TransactionalMailServiceTest {
 	 */
 	@Test
 	void everyDispatchedSendCarriesItsKind() {
-		service.sendEmailVerification(EMAIL, LINK);
+		service.sendEmailVerification(EMAIL, SiteLocale.EN, LINK);
 		assertThat(dispatchedKind.get()).isEqualTo(MailKind.VERIFICATION);
 
-		service.sendPasswordReset(EMAIL, RESET_LINK);
+		service.sendPasswordReset(EMAIL, SiteLocale.EN, RESET_LINK);
 		assertThat(dispatchedKind.get()).isEqualTo(MailKind.PASSWORD_RESET);
 
 		service.sendOperatorApproved(OPERATOR_EMAIL, SIGN_IN_LINK);
@@ -237,8 +238,8 @@ class TransactionalMailServiceTest {
 	 */
 	@Test
 	void aTransportFailureIsCountedAndStillSwallowed() {
-		doThrow(new IllegalStateException("relay down")).when(mailer).sendPasswordReset(any(), any());
-		service.sendPasswordReset(EMAIL, RESET_LINK);
+		doThrow(new IllegalStateException("relay down")).when(mailer).sendPasswordReset(any(), any(), any());
+		service.sendPasswordReset(EMAIL, SiteLocale.EN, RESET_LINK);
 
 		assertThatCode(() -> dispatched.get().run()).doesNotThrowAnyException();
 
@@ -249,8 +250,8 @@ class TransactionalMailServiceTest {
 
 	@Test
 	void theFailureCounterCarriesTheMailKind() {
-		doThrow(new IllegalStateException("relay down")).when(mailer).sendEmailVerification(any(), any());
-		service.sendEmailVerification(EMAIL, LINK);
+		doThrow(new IllegalStateException("relay down")).when(mailer).sendEmailVerification(any(), any(), any());
+		service.sendEmailVerification(EMAIL, SiteLocale.EN, LINK);
 		dispatched.get().run();
 
 		assertThat(failedFor(MailKind.VERIFICATION.tagValue(),
@@ -271,7 +272,7 @@ class TransactionalMailServiceTest {
 		when(suppressions.isSuppressed(EMAIL))
 				.thenThrow(new InvalidDataAccessResourceUsageException("relation does not exist"));
 
-		service.sendPasswordReset(EMAIL, RESET_LINK);
+		service.sendPasswordReset(EMAIL, SiteLocale.EN, RESET_LINK);
 		assertThatCode(() -> dispatched.get().run()).doesNotThrowAnyException();
 
 		assertThat(failedFor(MailKind.PASSWORD_RESET.tagValue(),
@@ -289,13 +290,13 @@ class TransactionalMailServiceTest {
 	 */
 	@Test
 	void neitherFailureLineCarriesTheAddressOrTheLink() {
-		doThrow(new IllegalStateException("relay down")).when(mailer).sendPasswordReset(any(), any());
-		service.sendPasswordReset(EMAIL, RESET_LINK);
+		doThrow(new IllegalStateException("relay down")).when(mailer).sendPasswordReset(any(), any(), any());
+		service.sendPasswordReset(EMAIL, SiteLocale.EN, RESET_LINK);
 		dispatched.get().run();
 
 		when(suppressions.isSuppressed(EMAIL))
 				.thenThrow(new InvalidDataAccessResourceUsageException("relation does not exist"));
-		service.sendEmailVerification(EMAIL, LINK);
+		service.sendEmailVerification(EMAIL, SiteLocale.EN, LINK);
 		dispatched.get().run();
 
 		assertThat(logs.list).isNotEmpty().allSatisfy(event -> assertThat(event.getFormattedMessage())
@@ -356,12 +357,12 @@ class TransactionalMailServiceTest {
 
 	@Test
 	void theBookingConfirmationIsSynchronousAndPropagatesTransportFailures() {
-		service.sendBookingConfirmation(EMAIL, CONFIRMATION);
-		verify(mailer).sendBookingConfirmation(EMAIL, CONFIRMATION);
+		service.sendBookingConfirmation(EMAIL, SiteLocale.EN, CONFIRMATION);
+		verify(mailer).sendBookingConfirmation(EMAIL, SiteLocale.EN, CONFIRMATION);
 
 		// The registry vehicle relies on the throw to keep the publication outstanding.
-		doThrow(new IllegalStateException("relay down")).when(mailer).sendBookingConfirmation(any(), any());
-		assertThatThrownBy(() -> service.sendBookingConfirmation(EMAIL, CONFIRMATION))
+		doThrow(new IllegalStateException("relay down")).when(mailer).sendBookingConfirmation(any(), any(), any());
+		assertThatThrownBy(() -> service.sendBookingConfirmation(EMAIL, SiteLocale.EN, CONFIRMATION))
 				.isInstanceOf(IllegalStateException.class);
 	}
 
@@ -374,13 +375,13 @@ class TransactionalMailServiceTest {
 	 */
 	@Test
 	void theBookingCancellationIsSynchronousAndPropagatesTransportFailures() {
-		service.sendBookingCancellation(EMAIL, CANCELLATION);
+		service.sendBookingCancellation(EMAIL, SiteLocale.EN, CANCELLATION);
 
-		verify(mailer).sendBookingCancellation(EMAIL, CANCELLATION);
+		verify(mailer).sendBookingCancellation(EMAIL, SiteLocale.EN, CANCELLATION);
 		assertThat(dispatched.get()).as("the registry vehicle does not use the in-memory dispatcher").isNull();
 
-		doThrow(new IllegalStateException("relay down")).when(mailer).sendBookingCancellation(any(), any());
-		assertThatThrownBy(() -> service.sendBookingCancellation(EMAIL, CANCELLATION))
+		doThrow(new IllegalStateException("relay down")).when(mailer).sendBookingCancellation(any(), any(), any());
+		assertThatThrownBy(() -> service.sendBookingCancellation(EMAIL, SiteLocale.EN, CANCELLATION))
 				.isInstanceOf(IllegalStateException.class);
 	}
 
@@ -393,9 +394,9 @@ class TransactionalMailServiceTest {
 	void aSuppressedAddressSkipsTheCancellation() {
 		when(suppressions.isSuppressed(EMAIL)).thenReturn(true);
 
-		assertThatCode(() -> service.sendBookingCancellation(EMAIL, CANCELLATION)).doesNotThrowAnyException();
+		assertThatCode(() -> service.sendBookingCancellation(EMAIL, SiteLocale.EN, CANCELLATION)).doesNotThrowAnyException();
 
-		verify(mailer, never()).sendBookingCancellation(any(), any());
+		verify(mailer, never()).sendBookingCancellation(any(), any(), any());
 		assertThat(failedTotal()).as("a withheld mail is the policy working, not a loss").isZero();
 	}
 
@@ -409,10 +410,10 @@ class TransactionalMailServiceTest {
 		when(suppressions.isSuppressed(EMAIL))
 				.thenThrow(new TransientDataAccessResourceException("read timed out"));
 
-		assertThatThrownBy(() -> service.sendBookingCancellation(EMAIL, CANCELLATION))
+		assertThatThrownBy(() -> service.sendBookingCancellation(EMAIL, SiteLocale.EN, CANCELLATION))
 				.isInstanceOf(TransientDataAccessResourceException.class);
 
-		verify(mailer, never()).sendBookingCancellation(any(), any());
+		verify(mailer, never()).sendBookingCancellation(any(), any(), any());
 	}
 
 	/**
@@ -425,13 +426,13 @@ class TransactionalMailServiceTest {
 	 */
 	@Test
 	void thePaymentDueIsSynchronousAndPropagatesTransportFailures() {
-		service.sendPaymentDue(EMAIL, PAYMENT_DUE);
+		service.sendPaymentDue(EMAIL, SiteLocale.EN, PAYMENT_DUE);
 
-		verify(mailer).sendPaymentDue(EMAIL, PAYMENT_DUE);
+		verify(mailer).sendPaymentDue(EMAIL, SiteLocale.EN, PAYMENT_DUE);
 		assertThat(dispatched.get()).as("the registry vehicle does not use the in-memory dispatcher").isNull();
 
-		doThrow(new IllegalStateException("relay down")).when(mailer).sendPaymentDue(any(), any());
-		assertThatThrownBy(() -> service.sendPaymentDue(EMAIL, PAYMENT_DUE))
+		doThrow(new IllegalStateException("relay down")).when(mailer).sendPaymentDue(any(), any(), any());
+		assertThatThrownBy(() -> service.sendPaymentDue(EMAIL, SiteLocale.EN, PAYMENT_DUE))
 				.isInstanceOf(IllegalStateException.class);
 	}
 
@@ -444,9 +445,9 @@ class TransactionalMailServiceTest {
 	void aSuppressedAddressSkipsThePaymentDue() {
 		when(suppressions.isSuppressed(EMAIL)).thenReturn(true);
 
-		assertThatCode(() -> service.sendPaymentDue(EMAIL, PAYMENT_DUE)).doesNotThrowAnyException();
+		assertThatCode(() -> service.sendPaymentDue(EMAIL, SiteLocale.EN, PAYMENT_DUE)).doesNotThrowAnyException();
 
-		verify(mailer, never()).sendPaymentDue(any(), any());
+		verify(mailer, never()).sendPaymentDue(any(), any(), any());
 		assertThat(failedTotal()).as("a withheld mail is the policy working, not a loss").isZero();
 	}
 
@@ -459,10 +460,10 @@ class TransactionalMailServiceTest {
 		when(suppressions.isSuppressed(EMAIL))
 				.thenThrow(new TransientDataAccessResourceException("read timed out"));
 
-		assertThatThrownBy(() -> service.sendPaymentDue(EMAIL, PAYMENT_DUE))
+		assertThatThrownBy(() -> service.sendPaymentDue(EMAIL, SiteLocale.EN, PAYMENT_DUE))
 				.isInstanceOf(TransientDataAccessResourceException.class);
 
-		verify(mailer, never()).sendPaymentDue(any(), any());
+		verify(mailer, never()).sendPaymentDue(any(), any(), any());
 	}
 
 	/**
@@ -474,13 +475,13 @@ class TransactionalMailServiceTest {
 	 */
 	@Test
 	void theRequestDeclinedIsSynchronousAndPropagatesTransportFailures() {
-		service.sendRequestDeclined(EMAIL, DECLINED);
+		service.sendRequestDeclined(EMAIL, SiteLocale.EN, DECLINED);
 
-		verify(mailer).sendRequestDeclined(EMAIL, DECLINED);
+		verify(mailer).sendRequestDeclined(EMAIL, SiteLocale.EN, DECLINED);
 		assertThat(dispatched.get()).as("the registry vehicle does not use the in-memory dispatcher").isNull();
 
-		doThrow(new IllegalStateException("relay down")).when(mailer).sendRequestDeclined(any(), any());
-		assertThatThrownBy(() -> service.sendRequestDeclined(EMAIL, DECLINED))
+		doThrow(new IllegalStateException("relay down")).when(mailer).sendRequestDeclined(any(), any(), any());
+		assertThatThrownBy(() -> service.sendRequestDeclined(EMAIL, SiteLocale.EN, DECLINED))
 				.isInstanceOf(IllegalStateException.class);
 	}
 
@@ -488,9 +489,9 @@ class TransactionalMailServiceTest {
 	void aSuppressedAddressSkipsTheRequestDeclined() {
 		when(suppressions.isSuppressed(EMAIL)).thenReturn(true);
 
-		assertThatCode(() -> service.sendRequestDeclined(EMAIL, DECLINED)).doesNotThrowAnyException();
+		assertThatCode(() -> service.sendRequestDeclined(EMAIL, SiteLocale.EN, DECLINED)).doesNotThrowAnyException();
 
-		verify(mailer, never()).sendRequestDeclined(any(), any());
+		verify(mailer, never()).sendRequestDeclined(any(), any(), any());
 		assertThat(failedTotal()).as("a withheld mail is the policy working, not a loss").isZero();
 	}
 
@@ -499,21 +500,21 @@ class TransactionalMailServiceTest {
 		when(suppressions.isSuppressed(EMAIL))
 				.thenThrow(new TransientDataAccessResourceException("read timed out"));
 
-		assertThatThrownBy(() -> service.sendRequestDeclined(EMAIL, DECLINED))
+		assertThatThrownBy(() -> service.sendRequestDeclined(EMAIL, SiteLocale.EN, DECLINED))
 				.isInstanceOf(TransientDataAccessResourceException.class);
 
-		verify(mailer, never()).sendRequestDeclined(any(), any());
+		verify(mailer, never()).sendRequestDeclined(any(), any(), any());
 	}
 
 	@Test
 	void theRequestExpiredIsSynchronousAndPropagatesTransportFailures() {
-		service.sendRequestExpired(EMAIL, EXPIRED);
+		service.sendRequestExpired(EMAIL, SiteLocale.EN, EXPIRED);
 
-		verify(mailer).sendRequestExpired(EMAIL, EXPIRED);
+		verify(mailer).sendRequestExpired(EMAIL, SiteLocale.EN, EXPIRED);
 		assertThat(dispatched.get()).as("the registry vehicle does not use the in-memory dispatcher").isNull();
 
-		doThrow(new IllegalStateException("relay down")).when(mailer).sendRequestExpired(any(), any());
-		assertThatThrownBy(() -> service.sendRequestExpired(EMAIL, EXPIRED))
+		doThrow(new IllegalStateException("relay down")).when(mailer).sendRequestExpired(any(), any(), any());
+		assertThatThrownBy(() -> service.sendRequestExpired(EMAIL, SiteLocale.EN, EXPIRED))
 				.isInstanceOf(IllegalStateException.class);
 	}
 
@@ -521,9 +522,9 @@ class TransactionalMailServiceTest {
 	void aSuppressedAddressSkipsTheRequestExpired() {
 		when(suppressions.isSuppressed(EMAIL)).thenReturn(true);
 
-		assertThatCode(() -> service.sendRequestExpired(EMAIL, EXPIRED)).doesNotThrowAnyException();
+		assertThatCode(() -> service.sendRequestExpired(EMAIL, SiteLocale.EN, EXPIRED)).doesNotThrowAnyException();
 
-		verify(mailer, never()).sendRequestExpired(any(), any());
+		verify(mailer, never()).sendRequestExpired(any(), any(), any());
 		assertThat(failedTotal()).as("a withheld mail is the policy working, not a loss").isZero();
 	}
 
@@ -532,24 +533,24 @@ class TransactionalMailServiceTest {
 		when(suppressions.isSuppressed(EMAIL))
 				.thenThrow(new TransientDataAccessResourceException("read timed out"));
 
-		assertThatThrownBy(() -> service.sendRequestExpired(EMAIL, EXPIRED))
+		assertThatThrownBy(() -> service.sendRequestExpired(EMAIL, SiteLocale.EN, EXPIRED))
 				.isInstanceOf(TransientDataAccessResourceException.class);
 
-		verify(mailer, never()).sendRequestExpired(any(), any());
+		verify(mailer, never()).sendRequestExpired(any(), any(), any());
 	}
 
 	@Test
 	void suppressedAddressIsNeverDispatchedToTheTransport() {
 		when(suppressions.isSuppressed(EMAIL)).thenReturn(true);
 
-		service.sendPasswordReset(EMAIL, RESET_LINK);
+		service.sendPasswordReset(EMAIL, SiteLocale.EN, RESET_LINK);
 		// The skip branch lives inside a catch too — nothing may escape onto the single drainer thread.
 		assertThatCode(() -> dispatched.get().run()).doesNotThrowAnyException();
-		service.sendEmailVerification(EMAIL, LINK);
+		service.sendEmailVerification(EMAIL, SiteLocale.EN, LINK);
 		assertThatCode(() -> dispatched.get().run()).doesNotThrowAnyException();
 
-		verify(mailer, never()).sendPasswordReset(any(), any());
-		verify(mailer, never()).sendEmailVerification(any(), any());
+		verify(mailer, never()).sendPasswordReset(any(), any(), any());
+		verify(mailer, never()).sendEmailVerification(any(), any(), any());
 		// A withheld mail is the policy working, not a loss — counting it would fake a broken relay.
 		assertThat(failedTotal()).isZero();
 	}
@@ -557,7 +558,7 @@ class TransactionalMailServiceTest {
 	@Test
 	void theSuppressionReadRunsOffTheCallersThread() {
 		// R-2: a suppression SELECT on the request thread would widen the timing oracle.
-		service.sendPasswordReset(EMAIL, RESET_LINK);
+		service.sendPasswordReset(EMAIL, SiteLocale.EN, RESET_LINK);
 
 		verify(suppressions, never()).isSuppressed(any());
 		dispatched.get().run();
@@ -578,10 +579,10 @@ class TransactionalMailServiceTest {
 	void aSuppressionReadFailureStillSendsTheRecoveryMail() {
 		when(suppressions.isSuppressed(EMAIL)).thenThrow(new TransientDataAccessResourceException("pool exhausted"));
 
-		service.sendPasswordReset(EMAIL, RESET_LINK);
+		service.sendPasswordReset(EMAIL, SiteLocale.EN, RESET_LINK);
 		assertThatCode(() -> dispatched.get().run()).doesNotThrowAnyException();
 
-		verify(mailer).sendPasswordReset(EMAIL, LINK);
+		verify(mailer).sendPasswordReset(EMAIL, SiteLocale.EN, LINK);
 		// The mail went, so nothing was lost — the carve-out must not raise the failure series.
 		assertThat(failedTotal()).isZero();
 	}
@@ -598,10 +599,10 @@ class TransactionalMailServiceTest {
 		when(suppressions.isSuppressed(EMAIL))
 				.thenThrow(new InvalidDataAccessResourceUsageException("relation does not exist"));
 
-		service.sendPasswordReset(EMAIL, RESET_LINK);
+		service.sendPasswordReset(EMAIL, SiteLocale.EN, RESET_LINK);
 		assertThatCode(() -> dispatched.get().run()).doesNotThrowAnyException();
 
-		verify(mailer, never()).sendPasswordReset(any(), any());
+		verify(mailer, never()).sendPasswordReset(any(), any(), any());
 	}
 
 	/**
@@ -614,9 +615,9 @@ class TransactionalMailServiceTest {
 	void aSuppressionReadFailureStillPropagatesOnTheRegistryVehicle() {
 		when(suppressions.isSuppressed(EMAIL)).thenThrow(new TransientDataAccessResourceException("pool exhausted"));
 
-		assertThatThrownBy(() -> service.sendBookingConfirmation(EMAIL, CONFIRMATION))
+		assertThatThrownBy(() -> service.sendBookingConfirmation(EMAIL, SiteLocale.EN, CONFIRMATION))
 				.isInstanceOf(TransientDataAccessResourceException.class);
-		verify(mailer, never()).sendBookingConfirmation(any(), any());
+		verify(mailer, never()).sendBookingConfirmation(any(), any(), any());
 	}
 
 	@Test
@@ -624,9 +625,9 @@ class TransactionalMailServiceTest {
 		when(suppressions.isSuppressed(EMAIL)).thenReturn(true);
 
 		// Must complete normally: a throw would park the publication in a permanent retry loop (R-6).
-		assertThatCode(() -> service.sendBookingConfirmation(EMAIL, CONFIRMATION))
+		assertThatCode(() -> service.sendBookingConfirmation(EMAIL, SiteLocale.EN, CONFIRMATION))
 				.doesNotThrowAnyException();
-		verify(mailer, never()).sendBookingConfirmation(any(), any());
+		verify(mailer, never()).sendBookingConfirmation(any(), any(), any());
 	}
 
 	/**
@@ -639,7 +640,7 @@ class TransactionalMailServiceTest {
 	void reportsTheConfirmationWithheldWhenTheAddressIsSuppressed() {
 		when(suppressions.isSuppressed(EMAIL)).thenReturn(true);
 
-		assertThat(service.sendBookingConfirmation(EMAIL, CONFIRMATION))
+		assertThat(service.sendBookingConfirmation(EMAIL, SiteLocale.EN, CONFIRMATION))
 				.isEqualTo(ConfirmationSendOutcome.WITHHELD_SUPPRESSED);
 	}
 
@@ -647,7 +648,7 @@ class TransactionalMailServiceTest {
 	void reportsTheConfirmationSentWhenTheAddressIsDeliverable() {
 		when(suppressions.isSuppressed(EMAIL)).thenReturn(false);
 
-		assertThat(service.sendBookingConfirmation(EMAIL, CONFIRMATION))
+		assertThat(service.sendBookingConfirmation(EMAIL, SiteLocale.EN, CONFIRMATION))
 				.isEqualTo(ConfirmationSendOutcome.SENT);
 	}
 
@@ -661,9 +662,9 @@ class TransactionalMailServiceTest {
 	 */
 	@Test
 	void theRegistryVehicleIsAccountedForByTheOutboxNotThisCounter() {
-		doThrow(new IllegalStateException("relay down")).when(mailer).sendBookingConfirmation(any(), any());
+		doThrow(new IllegalStateException("relay down")).when(mailer).sendBookingConfirmation(any(), any(), any());
 
-		assertThatThrownBy(() -> service.sendBookingConfirmation(EMAIL, CONFIRMATION))
+		assertThatThrownBy(() -> service.sendBookingConfirmation(EMAIL, SiteLocale.EN, CONFIRMATION))
 				.isInstanceOf(IllegalStateException.class);
 
 		assertThat(meters.find(ObservabilityMetrics.MAIL_RECOVERY_FAILED).counters())

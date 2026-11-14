@@ -6,6 +6,8 @@ import ai.riviera.platform.customer.vocabulary.GuestContact;
 import ai.riviera.platform.customer.vocabulary.CustomerAccountId;
 import ai.riviera.platform.venue.vocabulary.SetId;
 import ai.riviera.platform.venue.vocabulary.StaySpan;
+import ai.riviera.platform.shared.SiteLocale;
+import java.util.Objects;
 
 /**
  * The transport-agnostic intent to create an Instant booking: which set, for which days
@@ -14,12 +16,20 @@ import ai.riviera.platform.venue.vocabulary.StaySpan;
  * span is validated as a {@link StaySpan}: a last day before the first or a stay over
  * {@link StaySpan#MAX_DAYS} days is unrepresentable. {@code accountId} is <strong>nullable</strong>
  * (guest checkout); the contact is always present, so the {@link CustomerAccountId} is additive.
+ * {@code locale} is the language every mail for the booking is written in.
  */
 public record CreateBookingCommand(SetId setId, LocalDate bookingDate, LocalDate lastDate,
-		GuestContact contact, CustomerAccountId accountId) {
+		GuestContact contact, CustomerAccountId accountId, SiteLocale locale) {
 
 	public CreateBookingCommand {
 		new StaySpan(bookingDate, lastDate);
+		Objects.requireNonNull(locale, "locale");
+	}
+
+	/** In English, the source locale. */
+	public CreateBookingCommand(SetId setId, LocalDate bookingDate, LocalDate lastDate, GuestContact contact,
+			CustomerAccountId accountId) {
+		this(setId, bookingDate, lastDate, contact, accountId, SiteLocale.EN);
 	}
 
 	/** Guest / signed-out checkout of one day: no account link. */

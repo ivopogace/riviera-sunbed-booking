@@ -7,16 +7,18 @@ import ai.riviera.platform.booking.application.reserve.CreateBookingCommand;
 import ai.riviera.platform.customer.vocabulary.CustomerAccountId;
 import ai.riviera.platform.customer.vocabulary.GuestContact;
 import ai.riviera.platform.venue.vocabulary.SetId;
+import ai.riviera.platform.shared.SiteLocale;
 
 /**
  * The {@code POST /api/bookings} request body: primitives/strings on the wire (dates are ISO
  * {@code LocalDate} strings; {@code lastDate} is optional and defaults to {@code bookingDate}, a
- * one-day booking). {@link #toCommand} maps it onto the typed {@link CreateBookingCommand},
+ * one-day booking; {@code locale} is the SPA's build locale, any other value or none read as English).
+ * {@link #toCommand} maps it onto the typed {@link CreateBookingCommand},
  * validating presence, shape and the span's bounds. Bad input throws
  * {@link IllegalArgumentException}, which the controller's conversion wrap makes the typed 400
  * (no {@code spring-boot-starter-validation}, so validation is explicit here).
  */
-record CreateBookingRequest(Long setId, String bookingDate, String lastDate, Contact contact) {
+record CreateBookingRequest(Long setId, String bookingDate, String lastDate, Contact contact, String locale) {
 
 	record Contact(String email, String fullName, String phone) {
 	}
@@ -36,7 +38,7 @@ record CreateBookingRequest(Long setId, String bookingDate, String lastDate, Con
 		// GuestContact's canonical constructor validates email/name/phone are present.
 		GuestContact guest = new GuestContact(contact.email(), contact.fullName(), contact.phone());
 		// accountId is the signed-in tourist's account link — null for a guest.
-		return new CreateBookingCommand(new SetId(setId), first, last, guest, accountId);
+		return new CreateBookingCommand(new SetId(setId), first, last, guest, accountId, SiteLocale.fromCode(locale));
 	}
 
 	private static LocalDate parseDate(String value, String field) {

@@ -20,6 +20,7 @@ import ai.riviera.platform.notification.application.PaymentDueMail;
 import ai.riviera.platform.notification.application.RequestDeclinedMail;
 import ai.riviera.platform.notification.application.RequestExpiredMail;
 import ai.riviera.platform.notification.application.StayConfirmationMail;
+import ai.riviera.platform.shared.SiteLocale;
 
 /**
  * Recording {@link Mailer}: keeps each {@link SentEmail} in memory instead of sending, so every kind
@@ -41,22 +42,22 @@ public class MockMailer implements Mailer {
 	private final List<SentEmail> sent = new CopyOnWriteArrayList<>();
 
 	@Override
-	public void sendEmailVerification(String toEmail, URI verificationLink) {
-		SentEmail email = SentEmail.recovery(toEmail, SentEmail.Kind.EMAIL_VERIFICATION, verificationLink);
+	public void sendEmailVerification(String toEmail, SiteLocale locale, URI verificationLink) {
+		SentEmail email = SentEmail.recovery(toEmail, SentEmail.Kind.EMAIL_VERIFICATION, verificationLink, locale);
 		sent.add(email);
 		logRecovery(email);
 	}
 
 	@Override
-	public void sendPasswordReset(String toEmail, URI resetLink) {
-		SentEmail email = SentEmail.recovery(toEmail, SentEmail.Kind.PASSWORD_RESET, resetLink);
+	public void sendPasswordReset(String toEmail, SiteLocale locale, URI resetLink) {
+		SentEmail email = SentEmail.recovery(toEmail, SentEmail.Kind.PASSWORD_RESET, resetLink, locale);
 		sent.add(email);
 		logRecovery(email);
 	}
 
 	@Override
-	public void sendBookingConfirmation(String toEmail, BookingConfirmationMail confirmation) {
-		sent.add(SentEmail.bookingConfirmation(toEmail, confirmation));
+	public void sendBookingConfirmation(String toEmail, SiteLocale locale, BookingConfirmationMail confirmation) {
+		sent.add(SentEmail.bookingConfirmation(toEmail, locale, confirmation));
 		// No code in the line: unlike a recovery link, the arrival code needs no dev affordance — the
 		// tourist already has it in the app — so invariant #7 costs nothing here.
 		log.info(BOOKING_RECORD_LOG, SentEmail.Kind.BOOKING_CONFIRMATION,
@@ -64,15 +65,15 @@ public class MockMailer implements Mailer {
 	}
 
 	@Override
-	public void sendStayConfirmation(String toEmail, StayConfirmationMail confirmation) {
-		sent.add(SentEmail.stayConfirmation(toEmail, confirmation));
+	public void sendStayConfirmation(String toEmail, SiteLocale locale, StayConfirmationMail confirmation) {
+		sent.add(SentEmail.stayConfirmation(toEmail, locale, confirmation));
 		log.info(BOOKING_RECORD_LOG, SentEmail.Kind.STAY_CONFIRMATION,
 				sanitize(toEmail), sanitize(confirmation.venueName()), confirmation.firstDate());
 	}
 
 	@Override
-	public void sendBookingCancellation(String toEmail, BookingCancellationMail cancellation) {
-		sent.add(SentEmail.bookingCancellation(toEmail, cancellation));
+	public void sendBookingCancellation(String toEmail, SiteLocale locale, BookingCancellationMail cancellation) {
+		sent.add(SentEmail.bookingCancellation(toEmail, locale, cancellation));
 		// No code in the line, for the confirmation's reason: mailing it is the point, logging it is not.
 		log.info("[mock-mailer] {} (to {}) for {} on {} — refund {} {} ({})",
 				SentEmail.Kind.BOOKING_CANCELLATION, sanitize(toEmail), sanitize(cancellation.venueName()),
@@ -81,8 +82,8 @@ public class MockMailer implements Mailer {
 	}
 
 	@Override
-	public void sendPaymentDue(String toEmail, PaymentDueMail paymentDue) {
-		sent.add(SentEmail.paymentDue(toEmail, paymentDue));
+	public void sendPaymentDue(String toEmail, SiteLocale locale, PaymentDueMail paymentDue) {
+		sent.add(SentEmail.paymentDue(toEmail, locale, paymentDue));
 		// Neither the code nor the pay link that embeds it: the link reaches an unpaid booking.
 		log.info("[mock-mailer] {} (to {}) for {} on {} — {} {} due by {}", SentEmail.Kind.PAYMENT_DUE,
 				sanitize(toEmail), sanitize(paymentDue.venueName()), paymentDue.bookingDate(),
@@ -90,23 +91,23 @@ public class MockMailer implements Mailer {
 	}
 
 	@Override
-	public void sendRequestDeclined(String toEmail, RequestDeclinedMail declined) {
-		sent.add(SentEmail.requestDeclined(toEmail, declined));
+	public void sendRequestDeclined(String toEmail, SiteLocale locale, RequestDeclinedMail declined) {
+		sent.add(SentEmail.requestDeclined(toEmail, locale, declined));
 		// Neither the code nor the status link that embeds it (invariant #7) — the confirmation's rule.
 		log.info(BOOKING_RECORD_LOG, SentEmail.Kind.REQUEST_DECLINED,
 				sanitize(toEmail), sanitize(declined.venueName()), declined.bookingDate());
 	}
 
 	@Override
-	public void sendRequestExpired(String toEmail, RequestExpiredMail expired) {
-		sent.add(SentEmail.requestExpired(toEmail, expired));
+	public void sendRequestExpired(String toEmail, SiteLocale locale, RequestExpiredMail expired) {
+		sent.add(SentEmail.requestExpired(toEmail, locale, expired));
 		log.info(BOOKING_RECORD_LOG, SentEmail.Kind.REQUEST_EXPIRED,
 				sanitize(toEmail), sanitize(expired.venueName()), expired.bookingDate());
 	}
 
 	@Override
-	public void sendBookingMoved(String toEmail, BookingMovedMail moved) {
-		sent.add(SentEmail.bookingMoved(toEmail, moved));
+	public void sendBookingMoved(String toEmail, SiteLocale locale, BookingMovedMail moved) {
+		sent.add(SentEmail.bookingMoved(toEmail, locale, moved));
 		// Neither the code nor the booking link that embeds it (invariant #7) — the confirmation's rule.
 		log.info("[mock-mailer] {} (to {}) for {} on {} — {}{} to {}{}", SentEmail.Kind.BOOKING_MOVED,
 				sanitize(toEmail), sanitize(moved.venueName()), moved.bookingDate(), moved.fromRowLabel(),
@@ -114,16 +115,16 @@ public class MockMailer implements Mailer {
 	}
 
 	@Override
-	public void sendMoveReminder(String toEmail, MoveReminderMail reminder) {
-		sent.add(SentEmail.moveReminder(toEmail, reminder));
+	public void sendMoveReminder(String toEmail, SiteLocale locale, MoveReminderMail reminder) {
+		sent.add(SentEmail.moveReminder(toEmail, locale, reminder));
 		log.info("[mock-mailer] {} (to {}) for {} on {} — {}{} to {}{}", SentEmail.Kind.MOVE_REMINDER,
 				sanitize(toEmail), sanitize(reminder.venueName()), reminder.moveDate(), reminder.fromRowLabel(),
 				reminder.fromPositionNo(), reminder.toRowLabel(), reminder.toPositionNo());
 	}
 
 	@Override
-	public void sendDayRefund(String toEmail, DayRefundMail refund) {
-		sent.add(SentEmail.dayRefund(toEmail, refund));
+	public void sendDayRefund(String toEmail, SiteLocale locale, DayRefundMail refund) {
+		sent.add(SentEmail.dayRefund(toEmail, locale, refund));
 		// No code in the line, for the cancellation's reason: mailing it is the point, logging it is not.
 		log.info("[mock-mailer] {} (to {}) for {} on {} — refund {} {}", SentEmail.Kind.DAY_REFUND,
 				sanitize(toEmail), sanitize(refund.venueName()), refund.serviceDate(), refund.refundMinor(),

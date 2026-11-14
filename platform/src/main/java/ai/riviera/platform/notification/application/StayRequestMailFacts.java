@@ -1,6 +1,7 @@
 package ai.riviera.platform.notification.application;
 
 import java.time.LocalDate;
+import ai.riviera.platform.shared.SiteLocale;
 
 /**
  * What {@link BookingMailFactsService#resolveStayRequest} could, or could not, assemble for a stay
@@ -9,7 +10,8 @@ import java.time.LocalDate;
  */
 public sealed interface StayRequestMailFacts {
 
-	record Resolved(String toEmail, String stayCode, String venueName, LocalDate firstDate, LocalDate lastDate)
+	record Resolved(String toEmail, String stayCode, String venueName, LocalDate firstDate, LocalDate lastDate,
+			SiteLocale locale)
 			implements StayRequestMailFacts {
 	}
 

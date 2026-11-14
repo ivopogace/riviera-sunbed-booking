@@ -24,6 +24,7 @@ import ai.riviera.platform.operator.api.OperatorAccounts;
 import ai.riviera.platform.operator.api.OperatorRegistration;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import ai.riviera.platform.shared.SiteLocale;
 
 /**
  * Session login, registration and {@code /me}: edge login machinery; the {@code operator}/{@code customer} modules
@@ -121,6 +122,15 @@ class AuthController {
 		}
 	}
 
+	/** Wire DTO for a customer register: the credentials, and the SPA's build locale for the verification mail. */
+	record CustomerRegistration(String email, String password, String locale) {
+		CustomerRegistration {
+			if (email == null || email.isBlank() || password == null || password.isEmpty()) {
+				throw new IllegalArgumentException("email and password are required");
+			}
+		}
+	}
+
 	/**
 	 * The signed-in principal as the FE sees it (login, register and {@code /me}). {@code emailVerified}: the customer's
 	 * soft verification state, {@code null} for an operator; register always reports {@code false}, fresh or taken, so the
@@ -181,7 +191,7 @@ class AuthController {
 	 * runs before any write.
 	 */
 	@PostMapping("/api/auth/customer/register")
-	ResponseEntity<PrincipalResponse> register(@RequestBody CustomerCredentials registration,
+	ResponseEntity<PrincipalResponse> register(@RequestBody CustomerRegistration registration,
 			HttpServletRequest request, HttpServletResponse response) {
 		// Normalize at the edge so the response echoes the SAME canonical email that /me + login return
 		// (stored lower-cased/trimmed) — otherwise the displayed email would change after a reload. The
@@ -197,7 +207,7 @@ class AuthController {
 			establishSession(customerManager, email, registration.password(), request, response);
 			// A fresh account gets a verification email (soft/non-blocking). Only on the
 			// Registered branch — the neutral already-registered branch sends nothing, so no enumeration leak.
-			recovery.sendVerificationEmail(accountId, email);
+			recovery.sendVerificationEmail(accountId, email, SiteLocale.fromCode(registration.locale()));
 		}
 		else {
 			// Constant-time (D-8): the fresh branch spends a bcrypt verify inside establishSession's
