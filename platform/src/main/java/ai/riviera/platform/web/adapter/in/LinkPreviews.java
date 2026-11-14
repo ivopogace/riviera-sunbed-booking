@@ -12,8 +12,8 @@ import ai.riviera.platform.venue.vocabulary.VenueLinkPreview;
 /**
  * The {@link ShellHead} each previewed route gets: home's generic copy per locale, and a venue's name, beach
  * label, description and cover from {@link VenueCatalog} (tourist-visible only). Absolute URLs come from
- * {@link PublicWebProperties#origin()} alone. A hidden, unknown or malformed venue id previews generically, unindexed, the
- * same in every case so the page is no oracle. Rationale: RESPONSIBILITIES.md §web.
+ * {@link PublicWebProperties#absolute} alone. A hidden, unknown or malformed venue id previews generically,
+ * unindexed, the same in every case so the page is no oracle. Rationale: RESPONSIBILITIES.md §web.
  */
 final class LinkPreviews {
 
@@ -50,27 +50,22 @@ final class LinkPreviews {
 		}
 		VenueLinkPreview venue = found.get();
 		String path = VENUE_PATH + rawId;
-		String image = venue.coverUrl() == null ? null : absolute(venue.coverUrl()).orElse(null);
+		String image = venue.coverUrl() == null ? null : properties.absolute(venue.coverUrl()).orElse(null);
 		return ShellHead.page(venue.name() + ", " + venue.beach().label() + TITLE_SUFFIX,
 				oneLine(venue.description()).orElse(copy.description()), url(locale, path), image, alternates(path));
 	}
 
-	/** {@code path} on the configured public origin, or empty without one. */
-	private Optional<String> absolute(String path) {
-		return properties.origin().map(origin -> origin + path);
-	}
-
 	private String url(SpaLocale locale, String path) {
-		return absolute(locale.path(path)).orElse(null);
+		return properties.absolute(locale.path(path)).orElse(null);
 	}
 
 	/** Every locale's version of {@code path}, then {@code x-default} at the source locale's; none without an origin. */
 	private List<ShellHead.Alternate> alternates(String path) {
 		List<ShellHead.Alternate> alternates = new ArrayList<>();
 		for (SpaLocale locale : SpaLocale.values()) {
-			absolute(locale.path(path)).ifPresent(url -> alternates.add(new ShellHead.Alternate(locale.code(), url)));
+			properties.absolute(locale.path(path)).ifPresent(url -> alternates.add(new ShellHead.Alternate(locale.code(), url)));
 		}
-		absolute(path).ifPresent(url -> alternates.add(new ShellHead.Alternate("x-default", url)));
+		properties.absolute(path).ifPresent(url -> alternates.add(new ShellHead.Alternate("x-default", url)));
 		return alternates;
 	}
 

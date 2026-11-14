@@ -8,6 +8,7 @@ import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Function;
 
+import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.core.io.Resource;
 import org.springframework.http.CacheControl;
 import org.springframework.http.HttpStatus;
@@ -27,6 +28,7 @@ import ai.riviera.platform.venue.api.VenueCatalog;
  * segment answers the source locale. Rendered per request and never cached, so a hidden venue previews as hidden.
  */
 @Controller
+@EnableConfigurationProperties(PublicWebProperties.class)
 class SpaShellController {
 
 	/** A translated locale's subpath: two lowercase letters, as every {@link SpaLocale} has ({@code SpaLocaleTest}). */

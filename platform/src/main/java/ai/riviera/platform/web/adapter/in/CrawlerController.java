@@ -41,7 +41,7 @@ class CrawlerController {
 
 	@GetMapping(ROBOTS_PATH)
 	ResponseEntity<String> robots() {
-		String sitemapUrl = properties.origin().map(origin -> origin + SITEMAP_PATH).orElse(null);
+		String sitemapUrl = properties.absolute(SITEMAP_PATH).orElse(null);
 		return ResponseEntity.ok().cacheControl(CACHE).contentType(TEXT_UTF8)
 				.body(RobotsTxt.render(sitemapUrl, properties.robots().disallowAll()));
 	}
