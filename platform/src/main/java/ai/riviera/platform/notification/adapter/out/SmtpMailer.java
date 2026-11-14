@@ -43,6 +43,7 @@ class SmtpMailer implements Mailer {
 	private static final String ROW_DATE = "row.date";
 	private static final String ROW_DAYS = "row.days";
 	private static final String ROW_REFUND = "row.refund";
+	private static final String ROW_PAID = "row.paid";
 	private static final String SPOT = "value.spot";
 	private static final String ROW_SPOT = "value.rowSpot";
 	private static final String PARAGRAPH = "\n\n";
@@ -79,12 +80,12 @@ class SmtpMailer implements Mailer {
 	@Override
 	public void sendBookingConfirmation(String toEmail, SiteLocale locale, BookingConfirmationMail confirmation) {
 		MailCopy copy = MailCopy.in(locale);
-		String block = copy.block(widthOf(BOOKING_ROWS, "row.spot", "row.paid"), List.of(
+		String block = copy.block(widthOf(BOOKING_ROWS, "row.spot", ROW_PAID), List.of(
 				new Row(ROW_BOOKING_CODE, confirmation.bookingCode()),
 				new Row(ROW_VENUE, confirmation.venueName()),
 				copy.daysRow(confirmation.bookingDate(), confirmation.lastDate()),
 				new Row("row.spot", copy.text(SPOT, confirmation.rowLabel(), String.valueOf(confirmation.positionNo()))),
-				new Row("row.paid", copy.amount(confirmation.amountMinor(), confirmation.currency()))));
+				new Row(ROW_PAID, copy.amount(confirmation.amountMinor(), confirmation.currency()))));
 		send(toEmail, copy.text("confirmation.subject", headerSafe(confirmation.venueName())),
 				copy.text("confirmation.opening") + PARAGRAPH + block + PARAGRAPH + copy.text("confirmation.closing")
 						+ disclosureLine(copy, confirmation.cancellationWindowAtBirth(),
@@ -95,11 +96,11 @@ class SmtpMailer implements Mailer {
 	@Override
 	public void sendStayConfirmation(String toEmail, SiteLocale locale, StayConfirmationMail confirmation) {
 		MailCopy copy = MailCopy.in(locale);
-		String block = copy.block(widthOf(BOOKING_ROWS, "row.paid"), List.of(
+		String block = copy.block(widthOf(BOOKING_ROWS, ROW_PAID), List.of(
 				new Row(ROW_BOOKING_CODE, confirmation.bookingCode()),
 				new Row(ROW_VENUE, confirmation.venueName()),
 				copy.daysRow(confirmation.firstDate(), confirmation.lastDate()),
-				new Row("row.paid", copy.amount(confirmation.amountMinor(), confirmation.currency()))));
+				new Row(ROW_PAID, copy.amount(confirmation.amountMinor(), confirmation.currency()))));
 		String stops = confirmation.stops().stream()
 				.map(stop -> "  %s:  %s".formatted(copy.span(stop.firstDate(), stop.lastDate()),
 						copy.text(SPOT, stop.rowLabel(), String.valueOf(stop.positionNo()))))
