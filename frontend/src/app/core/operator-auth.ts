@@ -82,11 +82,11 @@ export function signInFailureMessage(result: SignInResult): string | undefined {
     case 'signed-in':
       return undefined;
     case 'invalid-credentials':
-      return 'Sign-in failed. Check your username and password.';
+      return $localize`Sign-in failed. Check your username and password.`;
     case 'rate-limited':
-      return 'Too many sign-in attempts. Please wait a minute and try again.';
+      return $localize`Too many sign-in attempts. Please wait a minute and try again.`;
     case 'error':
-      return 'Something went wrong signing in. Please try again.';
+      return $localize`Something went wrong signing in. Please try again.`;
   }
 }
 
@@ -309,8 +309,8 @@ export function operatorRegisterMessage(result: OperatorRegisterResult): string 
     case 'blocked-password':
       return PASSWORD_BLOCKED_MESSAGE;
     case 'rate-limited':
-      return 'Too many attempts. Please wait a minute and try again.';
+      return $localize`Too many attempts. Please wait a minute and try again.`;
     case 'error':
-      return 'Something went wrong submitting your registration. Please try again.';
+      return $localize`Something went wrong submitting your registration. Please try again.`;
   }
 }

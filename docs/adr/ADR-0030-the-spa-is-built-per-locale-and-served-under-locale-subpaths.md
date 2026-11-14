@@ -37,7 +37,11 @@ compiled per locale), or a runtime translation library with an in-page switch.
    link is served in the locale its URL names. `navigator.languages` is the list the browser sends as
    `Accept-Language`. The server cannot do it: it cannot read `localStorage`, and a language cookie
    would make the privacy policy's list of cookies ("a session cookie and a request-forgery-protection
-   cookie") untrue, and the legal text is a human task (#101).
+   cookie") untrue, and the legal text is a human task (#101). An SSO sign-in is the one load of `/`
+   that outranks the stored choice: the callback redirects to `/` alone, so `CustomerAuth.startSso`
+   leaves a per-tab `sessionStorage` note of the build it left (`riviera-sso-locale`) and the seed
+   consumes it first (#1772). The server never reads a locale, and the seed builds its target only from
+   an allow-listed id, so a tampered note cannot leave the origin.
 6. **A marked message without a translation fails the build** (`i18nMissingTranslation: error`).
    Translations live in XLIFF 1.2 files (`frontend/src/locale/messages.<locale>.xlf`), each unit with
    its English `<source>` beside the `<target>`, so a native speaker reviews one file per language.
@@ -64,7 +68,9 @@ compiled per locale), or a runtime translation library with an in-page switch.
 - A link that opens a new tab, and a full page load of a router URL (`core/chunk-load-recovery.ts`'s
   reload), names its path with `localePath()`: the router prefixes only its own links with the base href.
 - Translated so far: the tourist shell (menus, footer), Discover, the venue map, the booking dialog,
-  payment, the confirmations, the booking view, `/for-venues` and `/help`. Still English: the operator
+  payment, the confirmations, the booking view, `/for-venues`, `/help`, the not-found and
+  page-load-failed pages, the sign-in card, the password and verification pages, Your account and My
+  bookings. Still English: the operator
   console, transactional mails, `ApiProblem` messages and the legal pages (later slices; legal text
   is #101's).
 - Adding a locale is a row in `angular.json`, in `SpaLocale`, in `core/locale.ts`'s options, in

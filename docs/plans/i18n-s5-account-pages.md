@@ -70,6 +70,6 @@ allow-listed id.
 ## Execution status
 
 - [x] Phase 0 — SSO return note + seed, red on the old seed then green
-- [ ] Phase 1
-- [ ] Phase 2
-- [ ] Phase 3
+- [x] Phase 1 — pages, route titles and shared messages marked
+- [x] Phase 2 — 138 sq + it targets; locales e2e 12/12 (not-found, sign-in, SSO round trip)
+- [x] Phase 3 — ADR-0030 §5 + translated-so-far, riviera-frontend § Translation

@@ -19,11 +19,16 @@ import { TouchTarget } from '../shared/touch-target';
     @if (audience() === 'tourist') {
       <div class="mt-5 mb-3.5 flex items-center gap-3 text-[12px] text-riv-card-ink-soft">
         <span class="h-px flex-1 bg-riv-field-border"></span>
-        <span>or</span>
+        <span i18n="Divider between the sign-in form and the provider buttons">or</span>
         <span class="h-px flex-1 bg-riv-field-border"></span>
       </div>
 
-      <div class="flex flex-col gap-2.5" role="group" aria-label="Continue with a provider">
+      <div
+        class="flex flex-col gap-2.5"
+        role="group"
+        aria-label="Continue with a provider"
+        i18n-aria-label
+      >
         @for (provider of providers; track provider.id) {
           <button
             appTouchTarget
@@ -50,8 +55,8 @@ export class SsoButtons {
   private readonly auth = inject(CustomerAuth);
 
   protected readonly providers: readonly { id: SsoProviderId; label: string; testId: string }[] = [
-    { id: 'google', label: 'Continue with Google', testId: 'sso-google' },
-    { id: 'apple', label: 'Continue with Apple', testId: 'sso-apple' },
+    { id: 'google', label: $localize`Continue with Google`, testId: 'sso-google' },
+    { id: 'apple', label: $localize`Continue with Apple`, testId: 'sso-apple' },
   ];
 
   protected continueWith(provider: SsoProviderId): void {
