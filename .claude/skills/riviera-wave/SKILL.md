@@ -35,11 +35,33 @@ issue (`#N: <the owner's prompt>`), plus any precondition ("after wave K merges"
 and `wave-K`, prompt from `references/child-prompt.md`. Put in the prompt what the owner already
 decided for that issue ("the owner chose option 1"), so the intake gate does not ask again.
 
-`create_session` takes a model override but no reasoning effort: a child inherits the calling
-session's model and the environment's default effort. Keep the children on the orchestrator's model
-for anything under `platform/`; a doc-only or pure-move slice may run a tier lower. The effort the
-review gate needs (pr-gates §1: high for availability, the booking lifecycle, money or
-authorization) travels in the child prompt, since nothing else sets it.
+**Model and effort, per issue.** Before spawning, put each issue in a tier from what its diff will
+touch, not from its title, and record the tier and a one-line reason in the roster. The spawn
+reply lists them, so the owner can override one before the child gets far.
+
+| Tier | What the slice touches | Child model | Session effort | Review gate (pr-gates §1) |
+|---|---|---|---|---|
+| Risk | availability, the booking lifecycle, money, authorization; a Flyway migration; a new module, port, event or grant | the orchestrator's | high | high |
+| Behaviour | any other production change under `platform/src/main` or `frontend/src` | the orchestrator's | medium | high (§1 keeps medium for no-behaviour slices) |
+| Mechanical | docs or skills alone, a pure move with the structural net green, a CI workflow that ships nothing | one family cheaper (Sonnet) | low | medium |
+
+A dependency bump or build-config change goes by what it changes at runtime, not by the files in
+its diff. If it reaches Stripe, Spring Security or Boot, the JDBC driver or Flyway, it is Risk.
+Anything else that ships is Behaviour. Unsure picks the higher tier. The Risk row includes every area pr-gates §1 reviews at high, so the
+tier never asks for a lower review than §1 does. A child that finds its slice belongs in a higher tier says so in its
+next block, and the orchestrator raises it before the next turn.
+
+How the tier is applied depends on the tool:
+
+- **Local** (`start_session`): pass `model` and `effort` when spawning. Both can only stay at or
+  below the orchestrator's. To raise a running child, use `set_session_model` /
+  `set_session_effort`. The app asks the owner when the change goes above the orchestrator's.
+- **Cloud** (`create_session`): it takes a model override but no effort, so the child runs at the
+  environment's default effort. Set the model by tier and let the review-gate effort travel in the
+  child prompt.
+
+The review-gate effort always goes in the child prompt whichever tool spawned it: the session
+effort doesn't set it.
 
 ## 3. Check-ins
 
