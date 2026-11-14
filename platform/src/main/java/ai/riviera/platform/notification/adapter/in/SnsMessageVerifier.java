@@ -78,10 +78,6 @@ final class SnsMessageVerifier {
 			X509Certificate cert = (X509Certificate) CertificateFactory.getInstance("X.509")
 					.generateCertificate(new ByteArrayInputStream(source.fetch(url)));
 			validateChain(cert);
-			if (!currentlyValid(cert)) {
-				log.warn("the SNS signing certificate is outside its validity window");
-				return Optional.empty();
-			}
 			if (validatedCerts.size() >= MAX_CACHED_CERTS) {
 				validatedCerts.clear();
 			}
@@ -99,10 +95,11 @@ final class SnsMessageVerifier {
 		}
 	}
 
-	/** Issuer and signature against the anchors; the leaf's validity window is {@link #currentlyValid}'s, on the clock. */
+	/** The chain at the injected clock's instant, never the JVM's wall time: one time source (invariant #6). */
 	private void validateChain(X509Certificate cert) throws GeneralSecurityException {
 		PKIXParameters parameters = new PKIXParameters(trustAnchors.anchors());
 		parameters.setRevocationEnabled(false);
+		parameters.setDate(java.util.Date.from(clock.instant()));
 		CertPathValidator.getInstance("PKIX")
 				.validate(CertificateFactory.getInstance("X.509").generateCertPath(List.of(cert)), parameters);
 	}

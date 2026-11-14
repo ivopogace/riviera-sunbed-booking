@@ -27,6 +27,8 @@ final class SnsTestPki {
 	static final String TOPIC_ARN = "arn:scw:sns:fr-par:project-test:riviera-tem-events";
 	static final String CERT_URL = "https://messaging.s3.fr-par.scw.cloud/fr-par/sns/sns_certificate_1.crt";
 	static final String ROGUE_CERT_URL = "https://messaging.s3.fr-par.scw.cloud/fr-par/sns/sns_certificate_9.crt";
+	/** The CA-issued signer's key under a cert valid only from three days ago to two days ago. */
+	static final String LAPSED_CERT_URL = "https://messaging.s3.fr-par.scw.cloud/fr-par/sns/sns_certificate_5.crt";
 
 	private static final String STORE_PASSWORD = "test-only";
 	private static final SnsTestPki INSTANCE = new SnsTestPki();
@@ -35,6 +37,7 @@ final class SnsTestPki {
 	private final byte[] caPem;
 	private final byte[] signerCert;
 	private final byte[] rogueCert;
+	private final byte[] lapsedCert;
 	private final PrivateKey signerKey;
 	private final PrivateKey rogueKey;
 
@@ -48,6 +51,8 @@ final class SnsTestPki {
 			keytool("-certreq", "-alias", "signer", "-keystore", store("signer"), "-file", file("signer.csr"));
 			keytool("-gencert", "-alias", "ca", "-keystore", store("ca"), "-infile", file("signer.csr"), "-outfile",
 					file("signer.crt"), "-validity", "3650", "-rfc");
+			keytool("-gencert", "-alias", "ca", "-keystore", store("ca"), "-infile", file("signer.csr"), "-outfile",
+					file("lapsed.crt"), "-startdate", "-3d", "-validity", "1", "-rfc");
 			keytool("-exportcert", "-alias", "ca", "-keystore", store("ca"), "-rfc", "-file", file("ca.pem"));
 			keytool("-genkeypair", "-alias", "rogue", "-keyalg", "RSA", "-keysize", "2048", "-dname",
 					"CN=test-sns-rogue", "-validity", "3650", "-keystore", store("rogue"));
@@ -55,6 +60,7 @@ final class SnsTestPki {
 			caPem = Files.readAllBytes(dir.resolve("ca.pem"));
 			signerCert = Files.readAllBytes(dir.resolve("signer.crt"));
 			rogueCert = Files.readAllBytes(dir.resolve("rogue.crt"));
+			lapsedCert = Files.readAllBytes(dir.resolve("lapsed.crt"));
 			signerKey = privateKey("signer");
 			rogueKey = privateKey("rogue");
 		}
@@ -81,7 +87,8 @@ final class SnsTestPki {
 
 	/** The certificate each URL serves: the CA-issued signer and the self-signed rogue. */
 	Map<String, byte[]> servedCertificates() {
-		return Map.of(CERT_URL, signerCert.clone(), ROGUE_CERT_URL, rogueCert.clone());
+		return Map.of(CERT_URL, signerCert.clone(), ROGUE_CERT_URL, rogueCert.clone(), LAPSED_CERT_URL,
+				lapsedCert.clone());
 	}
 
 	/** A {@code Notification} carrying {@code message}, signed by the CA-issued signer. */
@@ -117,6 +124,13 @@ final class SnsTestPki {
 
 	/** {@code fields} as a JSON body with a v1 signature by the CA-issued signer. */
 	String signed(Map<String, String> fields) {
+		return signedBody(fields, signerKey);
+	}
+
+	/** A {@code Notification} signed by the CA-issued signer's key, naming the lapsed cert. */
+	String notificationUnderLapsedCert(String message) {
+		Map<String, String> fields = notificationFields(message);
+		fields.put("SigningCertURL", LAPSED_CERT_URL);
 		return signedBody(fields, signerKey);
 	}
 

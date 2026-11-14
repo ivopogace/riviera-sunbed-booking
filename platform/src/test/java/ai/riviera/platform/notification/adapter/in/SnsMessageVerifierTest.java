@@ -4,12 +4,14 @@ import java.io.IOException;
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.time.Clock;
+import java.time.Duration;
 import java.time.Instant;
 import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.concurrent.atomic.AtomicReference;
 
 import org.junit.jupiter.api.Test;
 
@@ -142,6 +144,51 @@ class SnsMessageVerifierTest {
 				SnsTestPki.TOPIC_ARN, SnsEndpointPolicy.defaults(), servedByScaleway, in2040);
 
 		assertFalse(verifier.verify(parsed(PKI.notification(BOUNCE))));
+	}
+
+	/**
+	 * One time source: the injected clock decides validity for the whole chain, never the JVM's wall time.
+	 * The cert lapsed two days ago in real time but is inside its window on this clock, so only a verifier
+	 * that judges the chain by the clock accepts it.
+	 */
+	@Test
+	void theInjectedClockAloneJudgesCertValidity() {
+		Clock insideTheLapsedWindow = Clock.fixed(Instant.now().minus(Duration.ofHours(60)), ZoneOffset.UTC);
+		SnsMessageVerifier onThatClock = new SnsMessageVerifier(SnsTrustAnchors.parse(PKI.caPem()),
+				SnsTestPki.TOPIC_ARN, SnsEndpointPolicy.defaults(), servedByScaleway, insideTheLapsedWindow);
+		String body = PKI.notificationUnderLapsedCert(BOUNCE);
+
+		assertTrue(onThatClock.verify(parsed(body)), "valid at the injected clock's instant");
+		assertFalse(verifier(servedByScaleway).verify(parsed(body)), "lapsed at the real clock's instant");
+	}
+
+	@Test
+	void aCachedCertIsRefusedOnceTheClockPassesItsExpiry() {
+		AtomicReference<Instant> now = new AtomicReference<>(Instant.now());
+		Clock movable = new Clock() {
+			@Override
+			public ZoneOffset getZone() {
+				return ZoneOffset.UTC;
+			}
+
+			@Override
+			public Clock withZone(java.time.ZoneId zone) {
+				return this;
+			}
+
+			@Override
+			public Instant instant() {
+				return now.get();
+			}
+		};
+		SnsMessageVerifier verifier = new SnsMessageVerifier(SnsTrustAnchors.parse(PKI.caPem()),
+				SnsTestPki.TOPIC_ARN, SnsEndpointPolicy.defaults(), servedByScaleway, movable);
+		assertTrue(verifier.verify(parsed(PKI.notification(BOUNCE))));
+
+		now.set(Instant.parse("2040-01-01T00:00:00Z"));
+
+		assertFalse(verifier.verify(parsed(PKI.notification(BOUNCE))), "the cache never outlives the cert");
+		assertEquals(1, fetched.size());
 	}
 
 	@Test
