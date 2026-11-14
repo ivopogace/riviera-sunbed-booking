@@ -1,4 +1,4 @@
-import { plural } from './plural';
+import { pluralOf } from './plural';
 
 /**
  * Rating helpers shared by the home venue card and the venue-map header. A venue with
@@ -28,10 +28,14 @@ export function ratingScore(ratingTenths: number): string {
  * the moment it stops being "New".
  */
 export function reviewsLabel(reviewsCount: number): string {
-  return plural(reviewsCount, 'review');
+  return pluralOf(
+    reviewsCount,
+    $localize`${reviewsCount}:count: review`,
+    $localize`${reviewsCount}:count: reviews`,
+  );
 }
 
 /** The accessible name of a read-only star row ("4 out of 5 stars"), shared by every one. */
 export function starsOutOfFive(stars: number): string {
-  return `${stars} out of 5 stars`;
+  return $localize`${stars}:count: out of 5 stars`;
 }

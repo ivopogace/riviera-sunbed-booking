@@ -6,13 +6,14 @@
       class="flex flex-wrap items-center justify-center gap-3 border-b border-[#b3261e] bg-white px-4 py-2 text-[14px] text-[#b3261e]"
       data-testid="sign-out-warning"
     >
-      <span>Sign-out didn't reach the server. You may still be signed in on this device.</span>
+      <span i18n>Sign-out didn't reach the server. You may still be signed in on this device.</span>
       <button
         appTouchTarget
         type="button"
         class="font-semibold underline focus-visible:outline-current"
         data-testid="sign-out-retry"
         (click)="retrySignOut()"
+        i18n
       >
         Try again
       </button>
@@ -22,6 +23,7 @@
         class="font-semibold underline focus-visible:outline-current"
         data-testid="sign-out-dismiss"
         (click)="dismissSignOutNotice()"
+        i18n
       >
         Dismiss
       </button>
@@ -51,7 +53,7 @@
   @if (shellChrome() === 'tourist') {
     <!-- The phone tab bar, BEFORE the header: an earlier z-20 sibling paints under the header's stacking context, so the account popover's backdrop covers it (a later one would let a tab tap navigate under an open popover). Below sm the bar is therefore first in tab order. -->
     @if (tabBar()) {
-      <nav [class]="cls.tabBar" aria-label="Primary (phone)" data-testid="tab-bar">
+      <nav [class]="cls.tabBar" aria-label="Primary (phone)" i18n-aria-label data-testid="tab-bar">
         <a
           appTouchTarget
           routerLink="/"
@@ -74,7 +76,7 @@
               <path d="M12 12v6a2.5 2.5 0 0 0 5 0" />
             </svg>
           </span>
-          Beaches
+          <ng-container i18n>Beaches</ng-container>
         </a>
         <a
           appTouchTarget
@@ -99,7 +101,7 @@
               <path d="M14 5v14" />
             </svg>
           </span>
-          My bookings
+          <ng-container i18n>My bookings</ng-container>
         </a>
         <!-- Opens the sheet — never a `Sign in`: a control so labelled must navigate. Label and glyph wait for the restore so the tab does not flip from Menu to Account. -->
         <button
@@ -134,7 +136,11 @@
                 </svg>
               }
             </span>
-            {{ customerAuth.signedIn() ? 'Account' : 'Menu' }}
+            @if (customerAuth.signedIn()) {
+              <ng-container i18n>Account</ng-container>
+            } @else {
+              <ng-container i18n>Menu</ng-container>
+            }
           }
         </button>
       </nav>
@@ -162,7 +168,7 @@
           <span class="flex flex-col leading-none">
             <span class="text-[21px] font-bold tracking-[-0.01em]">Riviera</span>
             <!-- Own case at `tracking-wide`: a tracked-out all-caps eyebrow is the templated tell. -->
-            <span class="riv-eyebrow mt-1 text-[12.5px] tracking-wide text-riv-ink-faint"
+            <span class="riv-eyebrow mt-1 text-[12.5px] tracking-wide text-riv-ink-faint" i18n
               >Albanian Coast</span
             >
           </span>
@@ -172,6 +178,7 @@
         <nav
           class="riv-nav-desktop ml-auto hidden items-center gap-[22px] text-[13.5px] text-riv-ink-soft sm:flex"
           aria-label="Primary"
+          i18n-aria-label
         >
           <a
             appTouchTarget
@@ -180,6 +187,7 @@
             ariaCurrentWhenActive="page"
             [routerLinkActiveOptions]="exactPath"
             [class]="cls.navLink"
+            i18n
             >Beaches</a
           >
           <a
@@ -189,6 +197,7 @@
             ariaCurrentWhenActive="page"
             [routerLinkActiveOptions]="exactPath"
             [class]="cls.navLink"
+            i18n
             >My bookings</a
           >
         </nav>
@@ -204,7 +213,7 @@
                 type="button"
                 [class]="cls.accountChip"
                 data-testid="nav-user"
-                [attr.aria-label]="'Account: ' + customerAuth.email()"
+                [attr.aria-label]="accountLabel()"
                 [attr.aria-expanded]="accountOpen()"
                 (click)="toggleAccountMenu()"
               >
@@ -250,6 +259,7 @@
                     [class]="cls.popItem"
                     data-testid="nav-account-link"
                     (click)="closeMenus()"
+                    i18n
                     >Your account</a
                   >
                   <button
@@ -258,6 +268,7 @@
                     [class]="cls.popBtn"
                     data-testid="find-open"
                     (click)="openFind(accountButton)"
+                    i18n
                   >
                     Find a booking
                   </button>
@@ -270,6 +281,7 @@
                     [class]="cls.popItem"
                     data-testid="nav-for-venues"
                     (click)="closeMenus()"
+                    i18n
                     >For venues</a
                   >
                   <button
@@ -278,6 +290,7 @@
                     [class]="cls.popBtn"
                     data-testid="nav-signout"
                     (click)="signOut()"
+                    i18n
                   >
                     Sign out
                   </button>
@@ -299,6 +312,7 @@
                   [class]="cls.navLink"
                   [attr.aria-current]="authLinkCurrent() === 'signin' ? 'page' : null"
                   data-testid="nav-signin"
+                  i18n
                   >Sign in</a
                 >
               }
@@ -309,6 +323,7 @@
                 [class]="cls.menuBtn"
                 data-testid="nav-menu"
                 aria-label="Menu"
+                i18n-aria-label
                 [attr.aria-expanded]="accountOpen()"
                 (click)="toggleAccountMenu()"
               >
@@ -335,6 +350,7 @@
                       [attr.aria-current]="authLinkCurrent() === 'register' ? 'page' : null"
                       data-testid="nav-register"
                       (click)="closeMenus()"
+                      i18n
                       >Create an account</a
                     >
                   }
@@ -344,6 +360,7 @@
                     [class]="cls.popBtn"
                     data-testid="find-open"
                     (click)="openFind(menuTrigger)"
+                    i18n
                   >
                     Find a booking
                   </button>
@@ -356,6 +373,7 @@
                     [class]="cls.popItem"
                     data-testid="nav-for-venues"
                     (click)="closeMenus()"
+                    i18n
                     >For venues</a
                   >
                   <div class="mt-1">
@@ -380,7 +398,7 @@
         (keydown.escape)="closeMenus()"
         aria-hidden="true"
       ></div>
-      <nav [class]="cls.mobileMenu" aria-label="Menu" data-testid="mobile-menu">
+      <nav [class]="cls.mobileMenu" aria-label="Menu" i18n-aria-label data-testid="mobile-menu">
         <!-- Customer session, the sheet twin of the desktop popover; Find a booking sits in the group and renders through the restore. -->
         @if (!customerAuth.restoring()) {
           @if (customerAuth.signedIn()) {
@@ -406,6 +424,7 @@
               [class]="cls.mobileItem"
               data-testid="nav-account-link-mobile"
               (click)="closeMenus()"
+              i18n
               >Your account</a
             >
           } @else {
@@ -416,6 +435,7 @@
               [attr.aria-current]="authLinkCurrent() === 'signin' ? 'page' : null"
               data-testid="nav-signin-mobile"
               (click)="closeMenus()"
+              i18n
               >Sign in</a
             >
             <a
@@ -426,6 +446,7 @@
               [attr.aria-current]="authLinkCurrent() === 'register' ? 'page' : null"
               data-testid="nav-register-mobile"
               (click)="closeMenus()"
+              i18n
               >Create an account</a
             >
           }
@@ -436,6 +457,7 @@
           [class]="cls.mobileBtn"
           data-testid="find-open-mobile"
           (click)="openFindFromSheet()"
+          i18n
         >
           Find a booking
         </button>
@@ -448,6 +470,7 @@
           [class]="cls.mobileItem"
           data-testid="nav-for-venues-mobile"
           (click)="closeMenus()"
+          i18n
           >For venues</a
         >
         @if (customerAuth.signedIn()) {
@@ -457,6 +480,7 @@
             [class]="cls.mobileBtn"
             data-testid="nav-signout-mobile"
             (click)="signOut()"
+            i18n
           >
             Sign out
           </button>

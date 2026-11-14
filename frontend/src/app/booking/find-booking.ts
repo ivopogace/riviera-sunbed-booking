@@ -37,6 +37,8 @@ const CLS = {
     'mt-4 w-full p-[13px] rounded-2xl font-[inherit] font-bold text-[15px] cursor-pointer shadow-[0_10px_26px_rgba(11,120,150,0.5)] motion-safe:[transition:filter_0.15s_ease] motion-reduce:transition-none aria-disabled:cursor-default aria-disabled:opacity-70 focus-visible:outline-[3px] focus-visible:outline-offset-2 focus-visible:outline-white',
 } as const;
 
+const ENTER_CODE = $localize`Enter your booking code.`;
+
 /**
  * "Find a booking" glass modal: a guest whose device holds no booking types its **code** (bearer
  * credential, invariant #7) and lands on the `/booking/:code` view, the only URL it ever rides.
@@ -72,13 +74,14 @@ const CLS = {
         [class]="cls.close"
         data-testid="find-close"
         aria-label="Close"
+        i18n-aria-label
         (click)="requestClose()"
       >
         <app-cross-icon />
       </button>
 
-      <h2 id="find-title" [class]="cls.title">Find your booking</h2>
-      <p id="find-intro" [class]="cls.intro">
+      <h2 id="find-title" [class]="cls.title" i18n>Find your booking</h2>
+      <p id="find-intro" [class]="cls.intro" i18n>
         Booked on another device or by a friend? Enter your booking code to open it here. It looks
         like <strong class="text-riv-card-ink">K4TQ7M9PX2</strong> and is on your confirmation
         email.
@@ -86,7 +89,7 @@ const CLS = {
 
       <form (submit)="onSubmit(); $event.preventDefault()" novalidate>
         <label [class]="cls.field">
-          <span [class]="cls.label">Booking code</span>
+          <span [class]="cls.label" i18n>Booking code</span>
           <input
             appTouchTarget
             [class]="cls.input"
@@ -114,7 +117,11 @@ const CLS = {
           data-testid="find-submit"
           [appBusy]="submitting()"
         >
-          {{ submitting() ? 'Opening…' : 'Open booking' }}
+          @if (submitting()) {
+            <ng-container i18n>Opening…</ng-container>
+          } @else {
+            <ng-container i18n>Open booking</ng-container>
+          }
         </button>
       </form>
     </div>
@@ -137,7 +144,7 @@ export class FindBooking {
 
   protected readonly model = signal({ code: '' });
   protected readonly codeForm = form(this.model, (path) => {
-    required(path.code, { message: 'Enter your booking code.' });
+    required(path.code, { message: ENTER_CODE });
   });
 
   /** The code that will actually be looked up (what {@link normalizeCode} yields). Empty for a blank
@@ -150,9 +157,7 @@ export class FindBooking {
     if (this.lookupError()) {
       return this.lookupError();
     }
-    return this.submitAttempted() && !this.normalizedCode()
-      ? 'Enter your booking code.'
-      : undefined;
+    return this.submitAttempted() && !this.normalizedCode() ? ENTER_CODE : undefined;
   });
 
   constructor() {
@@ -218,10 +223,10 @@ function messageFor(error: unknown, code: string): string {
   const status =
     typeof error === 'object' && error !== null ? (error as { status?: number }).status : undefined;
   if (status === 404) {
-    return `No booking found for ${code}. Check the code and try again.`;
+    return $localize`No booking found for ${code}:code:. Check the code and try again.`;
   }
   if (status === 429) {
-    return 'Too many attempts. Please wait a moment and try again.';
+    return $localize`Too many attempts. Please wait a moment and try again.`;
   }
-  return 'Something went wrong. Please try again.';
+  return $localize`Something went wrong. Please try again.`;
 }

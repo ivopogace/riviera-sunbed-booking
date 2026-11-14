@@ -23,7 +23,7 @@ import { PrimaryCta } from './primary-cta';
   `,
 })
 export class RetryButton {
-  readonly label = input('Try again');
+  readonly label = input($localize`Try again`);
   readonly testId = input.required<string>();
   readonly retry = output<void>();
 }

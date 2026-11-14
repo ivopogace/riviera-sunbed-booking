@@ -11,7 +11,16 @@ import { Component, input } from '@angular/core';
 @Component({
   selector: 'app-sets-free',
   host: { class: 'contents' },
-  template: `<strong class="text-riv-card-ink">{{ free() }}</strong> of {{ total() }} free`,
+  template: `<ng-container i18n
+    ><strong class="text-riv-card-ink">{{
+      free() // i18n(ph="free")
+    }}</strong>
+    of
+    {{
+      total() // i18n(ph="total")
+    }}
+    free</ng-container
+  >`,
 })
 export class SetsFree {
   readonly free = input.required<number>();

@@ -22,7 +22,7 @@ export interface ThemeOption {
 export const THEME_OPTIONS: readonly ThemeOption[] = [
   {
     id: 'porcelain',
-    name: 'Porcelain',
+    name: $localize`Porcelain`,
     swatch: 'linear-gradient(135deg, #ffffff, #2bb8d4)',
     light: true,
   },
@@ -34,7 +34,7 @@ export const THEME_OPTIONS: readonly ThemeOption[] = [
   },
   {
     id: 'dark',
-    name: 'Dark',
+    name: $localize`:Colour theme name:Dark`,
     swatch: 'linear-gradient(135deg, #3b4a5f, #0f172a)',
     light: false,
   },

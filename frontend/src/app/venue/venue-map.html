@@ -6,7 +6,8 @@
     appPanelGlass
     (click)="onBack()"
   >
-    <app-arrow-left-icon class="[&_svg]:size-[14px]" /> All beaches
+    <app-arrow-left-icon class="[&_svg]:size-[14px]" />
+    <ng-container i18n>All beaches</ng-container>
   </button>
 
   @if (venueView(); as v) {
@@ -54,9 +55,7 @@
                 appTouchTarget
                 class="absolute inset-0 cursor-zoom-in focus-visible:outline-[3px] focus-visible:-outline-offset-[3px] focus-visible:outline-white"
                 data-testid="photo-band-view"
-                [attr.aria-label]="
-                  'View larger photo' + (v.photos.length > 1 ? 's' : '') + ' of ' + v.name
-                "
+                [attr.aria-label]="v.viewPhotosLabel"
                 (click)="openLightbox(0, 'photo-band-view')"
               ></button>
             }
@@ -88,9 +87,12 @@
             <p class="flex items-center flex-wrap gap-[7px] text-[14px] text-riv-ink-soft">
               @if (v.isRated) {
                 <app-star-icon class="text-[#ffd16b] [&_svg]:fill-current" />
-                <span class="font-bold text-riv-ink" aria-label="Rated {{ v.rating }} out of 5">{{
-                  v.rating
-                }}</span>
+                <span
+                  class="font-bold text-riv-ink"
+                  aria-label="Rated {{ v.rating }} out of 5"
+                  i18n-aria-label
+                  >{{ v.rating }}</span
+                >
                 <span class="text-riv-ink-faint" aria-hidden="true">·</span>
                 {{ v.reviewsLabel }}
               } @else {
@@ -98,13 +100,18 @@
                   appSemanticChip
                   class="inline-block text-[0.78rem] px-3 py-[3px]"
                   aria-label="No reviews yet"
+                  i18n-aria-label
                   data-testid="new-chip"
+                  i18n="Chip on a venue that has no reviews yet"
                   >New</span
                 >
               }
               @if (v.priceLabel; as price) {
-                <span class="text-riv-ink-faint" aria-hidden="true">·</span> from
-                <strong class="font-bold text-riv-ink">{{ price }}</strong> / set
+                <span class="text-riv-ink-faint" aria-hidden="true">·</span>
+                <ng-container i18n
+                  >from <strong class="font-bold text-riv-ink">{{ price }}</strong> /
+                  set</ng-container
+                >
               } @else if (v.unpricedLabel; as unpriced) {
                 <span class="text-riv-ink-faint" aria-hidden="true">·</span>
                 <span data-testid="unpriced-label">{{ unpriced }}</span>
@@ -137,7 +144,7 @@
               <span
                 class="text-[11px] font-bold tracking-[0.1em] text-riv-ink-faint uppercase"
                 id="map-date-label"
-                >{{ isStay() ? 'Stay' : 'Date' }}</span
+                >{{ dateFieldLabel() }}</span
               >
               <button
                 appTouchTarget
@@ -164,19 +171,19 @@
                 <app-clock-icon />
                 @switch (v.salesClose) {
                   @case ('23:59') {
-                    <span
+                    <span i18n
                       >Book any day, today included — this venue takes online bookings all
                       day.</span
                     >
                   }
                   @case ('16:00') {
-                    <span
+                    <span i18n
                       >Book any day, today included — online sales for today close at 4&nbsp;PM at
                       this venue.</span
                     >
                   }
                   @case ('00:01') {
-                    <span>This venue sells in advance only — book for tomorrow onward.</span>
+                    <span i18n>This venue sells in advance only — book for tomorrow onward.</span>
                   }
                 }
               </p>
@@ -199,17 +206,43 @@
             aria-live="polite"
           >
             @if (totalCount() && isStay()) {
-              <strong class="text-[19px] font-bold text-riv-accent-ink">{{ freeCount() }}</strong>
-              of {{ totalCount() }} sets free for all {{ dayCount() }} days, {{ stayLabel() }}
+              <ng-container i18n
+                ><strong class="text-[19px] font-bold text-riv-accent-ink">{{
+                  freeCount() // i18n(ph="free")
+                }}</strong>
+                of
+                {{
+                  totalCount() // i18n(ph="total")
+                }}
+                sets free for all
+                {{
+                  dayCount() // i18n(ph="days")
+                }}
+                days,
+                {{
+                  stayLabel() // i18n(ph="stay")
+                }}</ng-container
+              >
               @if (partlyCount()) {
-                · {{ partlyCount() }} partly free
+                &ngsp;<ng-container i18n>· {{ partlyCount() }} partly free</ng-container>
               }
             } @else if (totalCount()) {
-              <strong class="text-[19px] font-bold text-riv-accent-ink">{{ freeCount() }}</strong>
-              of {{ totalCount() }} sets free on {{ dateLabel() }}
+              <ng-container i18n
+                ><strong class="text-[19px] font-bold text-riv-accent-ink">{{
+                  freeCount() // i18n(ph="free")
+                }}</strong>
+                of
+                {{
+                  totalCount() // i18n(ph="total")
+                }}
+                sets free on
+                {{
+                  dateLabel() // i18n(ph="date")
+                }}</ng-container
+              >
             } @else {
               <!-- No date: a set count comes from the venue's layout, so no other day reads differently. -->
-              No sets to book yet
+              <ng-container i18n>No sets to book yet</ng-container>
             }
           </p>
           @if (totalCount()) {
@@ -232,13 +265,14 @@
               data-testid="stay-too-long"
             >
               <p class="font-bold">{{ stayRuleLabel() }}</p>
-              <p class="mt-1 text-riv-card-ink-soft">
+              <p class="mt-1 text-riv-card-ink-soft" i18n>
                 Your {{ dayCount() }} days are more than this venue takes in one stay.
               </p>
               <div class="mt-3 flex flex-wrap items-center gap-3">
                 <app-retry-button
                   testId="stay-too-long-change"
                   label="Change dates"
+                  i18n-label
                   (retry)="openPicker()"
                 />
                 <a
@@ -247,6 +281,7 @@
                   data-testid="stay-too-long-others"
                   [routerLink]="['/']"
                   [queryParams]="otherBeachesLink()"
+                  i18n
                   >See other beaches</a
                 >
               </div>
@@ -260,37 +295,50 @@
             >
               @if (plan(); as offered) {
                 <!-- A stitched plan fits the move budget: the banner leads with it (D13); the longest single run stays as the way not to move. -->
-                <p class="font-bold" data-testid="no-cover-plan-line">
-                  No single spot is free for all {{ dayCount() }} days — see a
-                  {{ offered.moves }}-move plan.
+                <p class="font-bold" data-testid="no-cover-plan-line" i18n>
+                  No single spot is free for all
+                  {{
+                    dayCount() // i18n(ph="days")
+                  }}
+                  days — see a
+                  {offered.moves, plural, =1 {1-move plan} other {{{ offered.moves }}-move plan}}.
                 </p>
               } @else {
-                <p class="font-bold">No single spot is free for all {{ dayCount() }} days.</p>
+                <p class="font-bold" i18n>No single spot is free for all {{ dayCount() }} days.</p>
               }
               @if (v.bookingMode === 'REQUEST' && plan()) {
-                <p class="mt-1 text-riv-card-ink-soft" data-testid="no-cover-request">
+                <p class="mt-1 text-riv-card-ink-soft" data-testid="no-cover-request" i18n>
                   The plan goes to the venue as one request — it accepts or declines your whole
                   stay.
                 </p>
               }
               @if (longestRun(); as best) {
-                <p class="mt-1 text-riv-card-ink-soft" data-testid="no-cover-run">
-                  The longest one spot can host is {{ best.set.rowLabel }} · spot
-                  {{ best.set.positionNo }}, {{ runLabel(best) }}.
+                <p class="mt-1 text-riv-card-ink-soft" data-testid="no-cover-run" i18n>
+                  The longest one spot can host is
+                  {{
+                    best.set.rowLabel // i18n(ph="row")
+                  }}
+                  · spot
+                  {{
+                    best.set.positionNo  // i18n(ph="position")
+                  }},
+                  {{
+                    runLabel(best)  // i18n(ph="days")
+                  }}.
                 </p>
                 <div class="mt-3 flex flex-wrap items-center gap-3">
                   @if (plan(); as offered) {
                     @if (!planOpen()) {
                       <app-retry-button
                         testId="no-cover-plan"
-                        [label]="'See a ' + offered.moves + '-move plan'"
+                        [label]="planOfferLabel(offered.moves)"
                         (retry)="openPlan()"
                       />
                     }
                   }
                   <app-retry-button
                     testId="no-cover-shorten"
-                    [label]="'Shorten to ' + runLabel(best)"
+                    [label]="shortenLabel(best)"
                     (retry)="shortenTo(best.set, { first: best.run.first, last: best.run.last })"
                   />
                   <a
@@ -299,6 +347,7 @@
                     data-testid="no-cover-others"
                     [routerLink]="['/']"
                     [queryParams]="otherBeachesLink()"
+                    i18n
                     >See other beaches</a
                   >
                 </div>
@@ -308,7 +357,7 @@
                     @if (!planOpen()) {
                       <app-retry-button
                         testId="no-cover-plan"
-                        [label]="'See a ' + offered.moves + '-move plan'"
+                        [label]="planOfferLabel(offered.moves)"
                         (retry)="openPlan()"
                       />
                     }
@@ -319,6 +368,7 @@
                     data-testid="no-cover-others"
                     [routerLink]="['/']"
                     [queryParams]="otherBeachesLink()"
+                    i18n
                     >See other beaches</a
                   >
                 </div>
@@ -354,6 +404,7 @@
               class="mt-3 rounded-[16px] border border-riv-field-border bg-riv-field-solid px-4 py-3 text-[14px] text-riv-card-ink"
               role="alert"
               data-testid="stay-plan-failed"
+              i18n
             >
               The plan could not be loaded. Please try again.
             </p>
@@ -365,6 +416,7 @@
               class="mt-2 inline-flex cursor-pointer items-center rounded-[14px] px-3 py-2 font-bold text-riv-accent-ink underline-offset-2 hover:underline"
               data-testid="stay-plan-none-close"
               (click)="closePlan()"
+              i18n
             >
               Back to the map
             </button>
@@ -381,11 +433,20 @@
           appCardGlass
           class="mt-[18px] rounded-[26px] px-5 py-4 text-[14.5px] leading-normal text-riv-card-ink min-[1280px]:[margin-inline:calc((100%_-_1100px)/2)]"
         >
-          This venue is closed for the season
           @if (v.reopensOn; as reopensOn) {
-            and reopens on {{ reopenLabel(reopensOn) }}
+            <ng-container i18n
+              >This venue is closed for the season and reopens on
+              {{
+                reopenLabel(reopensOn)  // i18n(ph="date")
+              }}. Its dates show as unavailable until then — the page, photos and reviews stay
+              open.</ng-container
+            >
+          } @else {
+            <ng-container i18n
+              >This venue is closed for the season. Its dates show as unavailable until then — the
+              page, photos and reviews stay open.</ng-container
+            >
           }
-          . Its dates show as unavailable until then — the page, photos and reviews stay open.
         </p>
       } @else if (salesClosed()) {
         <p
@@ -395,10 +456,14 @@
           class="mt-[18px] rounded-[26px] px-5 py-4 text-[14.5px] leading-normal text-riv-card-ink min-[1280px]:[margin-inline:calc((100%_-_1100px)/2)]"
         >
           @if (closedForToday()) {
-            Online sales for today have closed at this venue. Pick another day — every venue is open
-            for future dates.
+            <ng-container i18n
+              >Online sales for today have closed at this venue. Pick another day — every venue is
+              open for future dates.</ng-container
+            >
           } @else {
-            Online sales for that date have closed at this venue. Pick a later day.
+            <ng-container i18n
+              >Online sales for that date have closed at this venue. Pick a later day.</ng-container
+            >
           }
         </p>
       }
@@ -407,6 +472,7 @@
       <app-beach-map-canvas
         class="mt-[18px] min-[1280px]:[margin-inline:calc((100%_-_1100px)/2)]"
         label="Beach map — {{ v.name }}"
+        i18n-label
         railCodes="capped-labels"
         priceChips="capped-spans"
       >
@@ -415,6 +481,7 @@
           canvasLegend
           class="flex list-none flex-wrap items-center justify-center gap-x-[22px] gap-y-2 bg-riv-map-sea px-4 py-[9px] text-[12px] text-riv-card-ink-soft"
           aria-label="Legend"
+          i18n-aria-label
         >
           @for (entry of legend; track entry.state) {
             <li class="flex items-center gap-[7px]">
@@ -501,23 +568,38 @@
           class="text-center text-[12px] text-riv-card-ink-faint mt-2.5 tracking-[0.02em]"
         >
           @if (v.bookingMode === 'REQUEST') {
-            Pick a set to request it — you pay only once {{ v.name }} accepts, and nothing is held
-            until then.<br />
-            Prices are per set, full day; a stay is one request, answered whole.
+            <ng-container i18n
+              >Pick a set to request it — you pay only once
+              {{
+                v.name // i18n(ph="venue")
+              }}
+              accepts, and nothing is held until then.<br />
+              Prices are per set, full day; a stay is one request, answered whole.</ng-container
+            >
           } @else {
-            Pick any free set to book it · prices are per set, full day.
+            <ng-container i18n
+              >Pick any free set to book it · prices are per set, full day.</ng-container
+            >
           }
         </p>
         <!-- Zero sets (#717): the canvas drops the legend, grid and footer together, so this slot IS the card. The state is date-independent — sets come from the venue's layout — so the copy sends the tourist onward, not back to the picker. -->
         <div canvasEmpty class="px-3 py-9 text-center" data-testid="map-empty">
-          <h2 class="mb-[7px] text-[19px] font-bold tracking-[-0.01em] text-riv-card-ink">
+          <h2 class="mb-[7px] text-[19px] font-bold tracking-[-0.01em] text-riv-card-ink" i18n>
             No sunbeds mapped yet
           </h2>
-          <p class="mx-auto mb-5 max-w-[380px] text-[14.5px] leading-normal text-riv-card-ink-soft">
+          <p
+            class="mx-auto mb-5 max-w-[380px] text-[14.5px] leading-normal text-riv-card-ink-soft"
+            i18n
+          >
             This beach is listed on Riviera, but its owner hasn’t drawn the sunbed layout yet — so
             there’s nothing to book here on any date. The map appears as soon as it’s published.
           </p>
-          <app-retry-button testId="map-empty-back" label="Back to Discover" (retry)="onBack()" />
+          <app-retry-button
+            testId="map-empty-back"
+            label="Back to Discover"
+            i18n-label
+            (retry)="onBack()"
+          />
         </div>
       </app-beach-map-canvas>
 
@@ -587,18 +669,23 @@
   } @else if (notFound()) {
     <div appFailurePanel role="alert" data-testid="map-not-found">
       <span appFailureIcon aria-hidden="true"><app-umbrella-icon /></span>
-      <h2 appFailureTitle>This venue isn’t available</h2>
-      <p appFailureText>
+      <h2 appFailureTitle i18n>This venue isn’t available</h2>
+      <p appFailureText i18n>
         It may have been removed or paused by its owner. A booking you already hold is unaffected —
         your booking code still finds it.
       </p>
-      <app-retry-button testId="map-back-home" label="Back to Discover" (retry)="onBack()" />
+      <app-retry-button
+        testId="map-back-home"
+        label="Back to Discover"
+        i18n-label
+        (retry)="onBack()"
+      />
     </div>
   } @else if (failed()) {
     <div appFailurePanel role="alert" data-testid="map-error">
       <span appFailureIcon aria-hidden="true"><app-alert-icon /></span>
-      <h2 appFailureTitle>We couldn’t load this beach map</h2>
-      <p appFailureText>
+      <h2 appFailureTitle i18n>We couldn’t load this beach map</h2>
+      <p appFailureText i18n>
         The live availability didn’t come through. Give it another go — no set is booked until you
         pay.
       </p>
@@ -693,6 +780,8 @@
     [loading]="loading()"
     [ready]="!!venueView()"
     loadingLabel="Loading the beach map…"
+    i18n-loadingLabel
     readyLabel="Beach map loaded."
+    i18n-readyLabel
   />
 </div>

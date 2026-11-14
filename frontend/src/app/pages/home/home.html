@@ -78,7 +78,13 @@
             {{ card.reviewsLabel }}
           } @else {
             <!-- "New" / unrated state — a SEMANTIC chip: like the mode chip it is a platform claim, not a venue self-description, so it takes the same inverted accent pill. Padding stays here; the row's 13.5px is inherited. -->
-            <span appSemanticChip class="new-chip px-[9px] py-px" data-testid="new-chip">New</span>
+            <span
+              appSemanticChip
+              class="new-chip px-[9px] py-px"
+              data-testid="new-chip"
+              i18n="Badge on a venue with no reviews yet"
+              >New</span
+            >
           }
           @if (km) {
             <!-- How far the venue is from the located tourist; the group head says it for AT. -->
@@ -107,9 +113,11 @@
 
         <span class="card-footer mt-[3px] flex flex-wrap items-baseline justify-between gap-2">
           @if (card.priceLabel; as price) {
-            <span class="price text-[14px] text-riv-card-ink-soft"
+            <span class="price text-[14px] text-riv-card-ink-soft" i18n
               >from
-              <strong class="text-[16px] font-extrabold text-riv-accent-ink">{{ price }}</strong>
+              <strong class="text-[16px] font-extrabold text-riv-accent-ink">{{
+                price // i18n(ph="price")
+              }}</strong>
               / set</span
             >
           } @else {
@@ -138,13 +146,13 @@
         <app-photo-step-button
           direction="prev"
           testId="card-photo-prev"
-          [label]="'Previous photo, ' + card.name"
+          [label]="previousPhotoLabel(card.name)"
           (stepped)="show.prev()"
         />
         <app-photo-step-button
           direction="next"
           testId="card-photo-next"
-          [label]="'Next photo, ' + card.name"
+          [label]="nextPhotoLabel(card.name)"
           (stepped)="show.next()"
         />
       </span>
@@ -188,8 +196,8 @@
   <!-- Designed load-failure panel: the alert role and error test id preserve accessible semantics so assistive tech announces it; the warning glyph is decorative — the heading carries the meaning. -->
   <div appFailurePanel role="alert" data-testid="error">
     <span appFailureIcon aria-hidden="true"><app-alert-icon /></span>
-    <h2 appFailureTitle>We couldn’t load the beaches</h2>
-    <p appFailureText>
+    <h2 appFailureTitle i18n>We couldn’t load the beaches</h2>
+    <p appFailureText i18n>
       Something went wrong reaching Riviera. Check your connection and try again — your bookings are
       safe.
     </p>
@@ -214,6 +222,7 @@
           class="absolute inset-0 z-[2] block cursor-grab touch-none select-none motion-safe:transition-opacity motion-safe:duration-300"
           animate.leave="opacity-0"
           aria-label="Move the map"
+          i18n-aria-label
           (pointerdown)="onGroundPointerDown()"
           (click)="closePreview()"
         >
@@ -279,10 +288,11 @@
         viewBox="0 0 20 20"
         role="img"
         aria-label="You are here"
+        i18n-aria-label
         [style.left.px]="dot.x"
         [style.top.px]="dot.y"
       >
-        <title>You are here</title>
+        <title i18n>You are here</title>
         <circle
           cx="10"
           cy="10"
@@ -311,13 +321,13 @@
         [appBusy]="locating()"
         (click)="locate()"
       >
-        <app-locate-icon />{{ here() !== null ? 'You are here' : 'Near me' }}
+        <app-locate-icon />{{ nearMeText() }}
       </button>
     }
   </div>
 
   <!-- Above the sheet on purpose: a live region must outlive the branch it describes. -->
-  <app-load-announcer [loading]="loading()" loadingLabel="Loading venues…" />
+  <app-load-announcer [loading]="loading()" loadingLabel="Loading venues…" i18n-loadingLabel />
   <!-- The sheet's persistent count region, the shipped count block's twin: only its text changes, so every landed list and every narrowing is spoken. -->
   <output class="sr-only" aria-live="polite" data-testid="sheet-outcome">
     @if (venuesView()) {
@@ -359,6 +369,7 @@
           class="state mt-4 rounded-[26px] px-5 py-12 text-center text-[15px] text-riv-ink-soft"
           appPanelGlass
           data-testid="empty"
+          i18n
         >
           No venues here for this day. Pick another place on the coast.
         </p>
@@ -388,8 +399,10 @@
                 }}</span>
               }
               <span class="ml-auto shrink-0"
-                >&ngsp;{{ group.cards.length }}
-                {{ group.cards.length === 1 ? 'venue' : 'venues' }}</span
+                >&ngsp;<ng-container i18n>{group.cards.length, plural,
+                  =1 {1 venue}
+                  other {{{ group.cards.length }} venues}
+                }</ng-container></span
               >
             </h2>
             <ul class="contents">
@@ -435,6 +448,7 @@
       class="pointer-events-auto flex min-h-0 shrink-0 flex-col rounded-[22px]"
       [style.width.px]="panelWidth()"
       aria-label="Venues"
+      i18n-aria-label
     >
       <!-- The sheet's own 78 px head, its grabber's 22 px kept as the head's top air so the first row lands where the phone's does. -->
       <app-discover-head
@@ -482,6 +496,7 @@
             <p
               class="state mt-4 rounded-[18px] px-5 py-12 text-center text-[15px] text-riv-ink-soft"
               data-testid="empty"
+              i18n
             >
               No venues here for this day. Pick another place on the coast.
             </p>
@@ -504,8 +519,10 @@
                 @if (stickyHeads()) {
                   <!-- Only where the group cannot be seen whole is its count worth the second thing to read. -->
                   <span class="ml-auto shrink-0 font-normal"
-                    >&ngsp;{{ group.cards.length }}
-                    {{ group.cards.length === 1 ? 'venue' : 'venues' }}</span
+                    >&ngsp;<ng-container i18n>{group.cards.length, plural,
+                      =1 {1 venue}
+                      other {{{ group.cards.length }} venues}
+                    }</ng-container></span
                   >
                 }
               </h2>
@@ -569,10 +586,11 @@
           viewBox="0 0 20 20"
           role="img"
           aria-label="You are here"
+          i18n-aria-label
           [style.left.px]="dot.x"
           [style.top.px]="dot.y"
         >
-          <title>You are here</title>
+          <title i18n>You are here</title>
           <circle
             cx="10"
             cy="10"
@@ -598,13 +616,13 @@
           [appBusy]="locating()"
           (click)="locate()"
         >
-          <app-locate-icon />{{ here() !== null ? 'You are here' : 'Near me' }}
+          <app-locate-icon />{{ nearMeText() }}
         </button>
       }
     </div>
   </div>
 
-  <app-load-announcer [loading]="loading()" loadingLabel="Loading venues…" />
+  <app-load-announcer [loading]="loading()" loadingLabel="Loading venues…" i18n-loadingLabel />
   <output class="sr-only" aria-live="polite" data-testid="desk-outcome">
     @if (venuesView()) {
       {{ title() }}: {{ subtitle() }}

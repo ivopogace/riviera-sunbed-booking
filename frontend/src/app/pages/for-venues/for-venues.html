@@ -2,58 +2,68 @@
   appCardGlass
   class="mx-auto my-[28px] w-[min(720px,calc(100%-32px))] rounded-[22px] px-[22px] py-[26px] sm:px-[30px]"
 >
-  <h1 class="text-[24px] font-bold leading-tight">Riviera for beach venues</h1>
-  <p class="mt-[10px] text-[15px] leading-[1.6] text-riv-card-ink-soft">
+  <h1 class="text-[24px] font-bold leading-tight" i18n>Riviera for beach venues</h1>
+  <p class="mt-[10px] text-[15px] leading-[1.6] text-riv-card-ink-soft" i18n>
     Let tourists pre-book your sunbeds online, on a map of your own beach.
   </p>
 
   <section data-testid="for-venues-gets">
-    <h2 class="mt-[22px] text-[16px] font-bold">What your venue gets</h2>
+    <h2 class="mt-[22px] text-[16px] font-bold" i18n>What your venue gets</h2>
     <ul class="mt-[8px] list-disc pl-[20px] text-[14px] leading-[1.6] text-riv-card-ink-soft">
-      <li>Online pre-booking on your own beach map, drawn the way your beach is laid out.</li>
-      <li>
+      <li i18n>Online pre-booking on your own beach map, drawn the way your beach is laid out.</li>
+      <li i18n>
         A daily view of your beach: mark walk-in guests, and check guests in by scanning the QR code
         on their booking.
       </li>
-      <li>Request-to-book, if you want to approve each booking before the guest pays.</li>
+      <li i18n>Request-to-book, if you want to approve each booking before the guest pays.</li>
     </ul>
   </section>
 
   <section data-testid="for-venues-price">
-    <h2 class="mt-[22px] text-[16px] font-bold">What it costs</h2>
-    <p class="mt-[8px] text-[14px] leading-[1.6] text-riv-card-ink-soft">
+    <h2 class="mt-[22px] text-[16px] font-bold" i18n>What it costs</h2>
+    <p
+      class="mt-[8px] text-[14px] leading-[1.6] text-riv-card-ink-soft"
+      i18n="Owner's commitment|Translate exactly; never paraphrase, soften or round"
+    >
       Free until 31 October 2028. No commission, no setup fee, no fee on walk-ins.
     </p>
-    <p class="mt-[8px] text-[14px] leading-[1.6] text-riv-card-ink-soft">
+    <p
+      class="mt-[8px] text-[14px] leading-[1.6] text-riv-card-ink-soft"
+      i18n="Owner's commitment|Translate exactly; never paraphrase, soften or round"
+    >
       After that, a flat seasonal subscription. We will announce the price at least 3 months ahead,
       and we will never take a cut of your bookings.
     </p>
   </section>
 
   <section data-testid="for-venues-money">
-    <h2 class="mt-[22px] text-[16px] font-bold">How guests pay you</h2>
+    <h2 class="mt-[22px] text-[16px] font-bold" i18n>How guests pay you</h2>
     <p
       data-testid="for-venues-at-launch"
       class="mt-[6px] text-[12px] font-bold uppercase tracking-[0.06em] text-riv-card-ink-soft"
+      i18n="Label: what follows holds when the service launches, and may change later"
     >
       At launch
     </p>
-    <p class="mt-[6px] text-[14px] leading-[1.6] text-riv-card-ink-soft">
+    <p
+      class="mt-[6px] text-[14px] leading-[1.6] text-riv-card-ink-soft"
+      i18n="Owner's commitment|Translate exactly; never paraphrase, soften or round"
+    >
       Guests pay you directly, by card, into your own payment account. Riviera never holds your
       money, and there is nothing to pay out.
     </p>
   </section>
 
   <section>
-    <h2 class="mt-[22px] text-[16px] font-bold">How to start</h2>
+    <h2 class="mt-[22px] text-[16px] font-bold" i18n>How to start</h2>
     <ol
       data-testid="for-venues-steps"
       class="mt-[8px] list-decimal pl-[20px] text-[14px] leading-[1.6] text-riv-card-ink-soft"
     >
-      <li>Register a venue account.</li>
-      <li>Wait for us to approve it.</li>
-      <li>Draw your beach map.</li>
-      <li>Set your prices.</li>
+      <li i18n>Register a venue account.</li>
+      <li i18n>Wait for us to approve it.</li>
+      <li i18n>Draw your beach map.</li>
+      <li i18n>Set your prices.</li>
     </ol>
   </section>
 
@@ -64,6 +74,7 @@
     [queryParams]="{ audience: 'operator', mode: 'register' }"
     class="mt-[26px] inline-flex items-center justify-center rounded-2xl px-[22px] py-3 text-[15px] font-bold focus-visible:outline-[3px] focus-visible:outline-offset-2 focus-visible:outline-riv-accent-ink"
     data-testid="for-venues-register"
+    i18n
     >Register your venue</a
   >
 </article>

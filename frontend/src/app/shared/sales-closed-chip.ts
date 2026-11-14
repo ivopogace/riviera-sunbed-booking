@@ -16,6 +16,7 @@ import { SemanticChip } from './semantic-chip';
   template: `<span
     appSemanticChip
     class="sales-closed-chip inline-flex items-center px-[11px] py-[5px] text-[11px] tracking-[0.03em]"
+    i18n
     >Sales closed for today</span
   >`,
 })

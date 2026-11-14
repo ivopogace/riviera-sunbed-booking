@@ -29,10 +29,10 @@ const STATUS: Readonly<Record<WidgetState, string>> = {
   idle: '',
   unverified: '',
   code: '',
-  verifying: 'Running the security check…',
-  verified: 'Security check passed.',
-  expired: 'The security check expired — starting a new one.',
-  error: 'The security check failed. Tick the box to try again.',
+  verifying: $localize`Running the security check…`,
+  verified: $localize`Security check passed.`,
+  expired: $localize`The security check expired — starting a new one.`,
+  error: $localize`The security check failed. Tick the box to try again.`,
 };
 
 interface StateChangeDetail {

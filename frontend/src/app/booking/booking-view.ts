@@ -8,7 +8,7 @@ import { Observable, Observer } from 'rxjs';
 import { problemCodeOf } from '../shared/api-error';
 import { addDays, todayBookingDate } from '../shared/booking-date';
 import { formatBookingDate, formatStay, formatStayChip } from '../shared/booking-date-label';
-import { amountLabelFor, metaFor } from '../shared/booking-status';
+import { amountLabelFor, amountLabelText, metaFor } from '../shared/booking-status';
 import { CardGlass } from '../shared/card-glass';
 import { formatDeadline } from '../shared/deadline';
 import { focusMover } from '../shared/focus-after-render';
@@ -84,15 +84,15 @@ const EYEBROW_NEUTRAL = 'text-[#4f5f67]';
  * follows it can never name different codes.
  */
 const REVIEW_REFUSALS = new Map<string, string>([
-  ['REVIEW_ALREADY_SUBMITTED', 'This stay has already been rated.'],
-  ['REVIEW_WINDOW_CLOSED', 'The window for rating this stay has closed.'],
-  ['BOOKING_NOT_COMPLETED', 'You can rate a stay once you’ve been checked in.'],
-  ['NO_SUCH_REVIEW', 'This stay no longer carries a review.'],
-  ['REVIEW_HIDDEN', 'This review was removed from public view and can’t be changed.'],
-  ['NO_SUCH_BOOKING', 'We couldn’t find a booking for that code.'],
+  ['REVIEW_ALREADY_SUBMITTED', $localize`This stay has already been rated.`],
+  ['REVIEW_WINDOW_CLOSED', $localize`The window for rating this stay has closed.`],
+  ['BOOKING_NOT_COMPLETED', $localize`You can rate a stay once you’ve been checked in.`],
+  ['NO_SUCH_REVIEW', $localize`This stay no longer carries a review.`],
+  ['REVIEW_HIDDEN', $localize`This review was removed from public view and can’t be changed.`],
+  ['NO_SUCH_BOOKING', $localize`We couldn’t find a booking for that code.`],
 ]);
 
-const REVIEW_RETRY = 'We couldn’t save your review. Please try again.';
+const REVIEW_RETRY = $localize`We couldn’t save your review. Please try again.`;
 
 /** The settled refusal this error carries, or `undefined` for anything worth retrying. */
 function reviewRefusal(error: unknown): string | undefined {
@@ -183,27 +183,29 @@ const CLS = {
   template: `
     @if (notFound()) {
       <section [class]="cls.stateCard" appCardGlass aria-labelledby="bv-title">
-        <h1 id="bv-title" data-testid="bv-title" [class]="cls.stateTitle">Booking not found</h1>
-        <p [class]="cls.lead">
+        <h1 id="bv-title" data-testid="bv-title" [class]="cls.stateTitle" i18n>
+          Booking not found
+        </h1>
+        <p [class]="cls.lead" i18n>
           We couldn’t find a booking for that code. Check the code and try again.
         </p>
-        <a appTouchTarget routerLink="/" [class]="cls.link">Back to home</a>
+        <a appTouchTarget routerLink="/" [class]="cls.link" i18n>Back to home</a>
       </section>
     } @else if (failed()) {
       <section [class]="cls.stateCard" appCardGlass aria-labelledby="bv-title">
-        <h1 id="bv-title" data-testid="bv-title" [class]="cls.stateTitle">
+        <h1 id="bv-title" data-testid="bv-title" [class]="cls.stateTitle" i18n>
           Couldn’t load your booking
         </h1>
-        <p [class]="cls.lead">Something went wrong. Please try again in a moment.</p>
-        <a appTouchTarget routerLink="/" [class]="cls.link">Back to home</a>
+        <p [class]="cls.lead" i18n>Something went wrong. Please try again in a moment.</p>
+        <a appTouchTarget routerLink="/" [class]="cls.link" i18n>Back to home</a>
       </section>
     } @else if (booking(); as b) {
       <section [class]="cls.card" appCardGlass aria-labelledby="bv-title">
         <div class="flex items-center justify-between gap-3">
-          <h1 id="bv-title" data-testid="bv-title" [class]="cls.title">Your booking</h1>
+          <h1 id="bv-title" data-testid="bv-title" [class]="cls.title" i18n>Your booking</h1>
           <span>
             <!-- Restores the "Status: X" context the removed dl row gave assistive tech. -->
-            <span class="sr-only">Booking status:</span>
+            <span class="sr-only" i18n>Booking status:</span>
             <span [appStatusChip]="chipClass(b)" data-testid="booking-status">{{
               statusLabel(b)
             }}</span>
@@ -220,20 +222,27 @@ const CLS = {
               >
                 @if (b.requestExpiresAt) {
                   <h2 id="request-state-title" class="{{ cls.eyebrow }} {{ cls.eyebrowAwaiting }}">
-                    Request accepted&ngsp;<app-party-icon
+                    <ng-container i18n>Request accepted</ng-container>&ngsp;<app-party-icon
                       class="[&_svg]:inline [&_svg]:size-[13px] [&_svg]:align-[-2px]"
                     />
                   </h2>
-                  <p [class]="cls.bannerBody">
-                    {{ b.venueName }} accepted your booking request. Pay now to confirm your spot.
+                  <p [class]="cls.bannerBody" i18n>
+                    {{
+                      b.venueName // i18n(ph="venue")
+                    }}
+                    accepted your booking request. Pay now to confirm your spot.
                   </p>
                 } @else {
                   <!-- An instant booking with an open payment (e.g. an interrupted checkout) was
                        never a request — don't claim the venue "accepted" anything. -->
-                  <h2 id="request-state-title" class="{{ cls.eyebrow }} {{ cls.eyebrowAwaiting }}">
+                  <h2
+                    id="request-state-title"
+                    class="{{ cls.eyebrow }} {{ cls.eyebrowAwaiting }}"
+                    i18n
+                  >
                     Complete your payment
                   </h2>
-                  <p [class]="cls.bannerBody">
+                  <p [class]="cls.bannerBody" i18n>
                     This booking is reserved but unpaid. Pay now to confirm your spot.
                   </p>
                 }
@@ -244,6 +253,7 @@ const CLS = {
                   [class]="cls.btnCta"
                   (click)="payNow(b)"
                   data-testid="pay-now"
+                  i18n
                 >
                   Pay now
                 </button>
@@ -254,10 +264,14 @@ const CLS = {
                 data-testid="pay-window-closed"
                 aria-labelledby="request-state-title"
               >
-                <h2 id="request-state-title" class="{{ cls.eyebrow }} {{ cls.eyebrowExpired }}">
+                <h2
+                  id="request-state-title"
+                  class="{{ cls.eyebrow }} {{ cls.eyebrowExpired }}"
+                  i18n
+                >
                   Payment window closed
                 </h2>
-                <p [class]="cls.bannerBody">
+                <p [class]="cls.bannerBody" i18n>
                   The payment deadline for this booking has passed, so it
                   <strong>can no longer be paid</strong> and stays unconfirmed. If you completed a
                   payment in the last few minutes, reload this page — it may still be confirming.
@@ -271,30 +285,47 @@ const CLS = {
               data-testid="request-pending"
               aria-labelledby="request-state-title"
             >
-              <h2 id="request-state-title" class="{{ cls.eyebrow }} {{ cls.eyebrowPending }}">
+              <h2 id="request-state-title" class="{{ cls.eyebrow }} {{ cls.eyebrowPending }}" i18n>
                 Waiting for the venue
               </h2>
               <p [class]="cls.bannerBody">
-                {{ b.venueName }} hasn’t responded to your booking request yet. You won’t be charged
-                unless they accept.
+                <ng-container i18n
+                  >{{
+                    b.venueName // i18n(ph="venue")
+                  }}
+                  hasn’t responded to your booking request yet. You won’t be charged unless they
+                  accept.</ng-container
+                >&ngsp;
                 @if (b.stretches?.length) {
-                  The spots aren’t held for you until then — other guests can request them too.
+                  <ng-container i18n
+                    >The spots aren’t held for you until then — other guests can request them
+                    too.</ng-container
+                  >&ngsp;
                 } @else {
-                  The set isn’t held for you until then — other guests can request it too.
+                  <ng-container i18n
+                    >The set isn’t held for you until then — other guests can request it
+                    too.</ng-container
+                  >&ngsp;
                 }
                 @if (isStay(b)) {
-                  They accept or decline your whole stay, never part of it.
+                  <ng-container i18n
+                    >They accept or decline your whole stay, never part of it.</ng-container
+                  >
                 }
               </p>
               @if (b.requestExpiresAt; as deadline) {
-                <p [class]="cls.bannerBody">
-                  They have until <strong>{{ deadlineLabel(deadline) }}</strong> to respond.
+                <p [class]="cls.bannerBody" i18n>
+                  They have until
+                  <strong>{{
+                    deadlineLabel(deadline) // i18n(ph="deadline")
+                  }}</strong>
+                  to respond.
                 </p>
               }
               @if (b.withdrawable && !withdrawn()) {
                 <div class="mt-3.5">
                   @if (confirmingWithdraw()) {
-                    <p [class]="cls.confirmQOnBanner">
+                    <p [class]="cls.confirmQOnBanner" i18n>
                       Withdraw this request? This can’t be undone.
                     </p>
                     <div [class]="cls.actions">
@@ -306,7 +337,11 @@ const CLS = {
                         (click)="confirmWithdraw()"
                         data-testid="confirm-withdraw"
                       >
-                        {{ withdrawing() ? 'Withdrawing…' : 'Confirm withdrawal' }}
+                        @if (withdrawing()) {
+                          <ng-container i18n>Withdrawing…</ng-container>
+                        } @else {
+                          <ng-container i18n>Confirm withdrawal</ng-container>
+                        }
                       </button>
                       <button
                         appTouchTarget
@@ -315,6 +350,7 @@ const CLS = {
                         [appBusy]="withdrawing()"
                         (click)="keepRequest()"
                         data-testid="keep-request"
+                        i18n
                       >
                         Keep request
                       </button>
@@ -326,6 +362,7 @@ const CLS = {
                       [class]="cls.btnOutlineDanger"
                       (click)="startWithdraw()"
                       data-testid="withdraw-request"
+                      i18n
                     >
                       Withdraw request
                     </button>
@@ -340,10 +377,14 @@ const CLS = {
               data-testid="request-withdrawn"
               aria-labelledby="request-state-title"
             >
-              <h2 id="request-state-title" class="{{ cls.eyebrow }} {{ cls.eyebrowWithdrawn }}">
+              <h2
+                id="request-state-title"
+                class="{{ cls.eyebrow }} {{ cls.eyebrowWithdrawn }}"
+                i18n
+              >
                 Request withdrawn
               </h2>
-              <p [class]="cls.bannerBody">
+              <p [class]="cls.bannerBody" i18n>
                 You withdrew this request, so the spot is free for other guests again. You haven’t
                 been charged — pick another set or date to book again.
               </p>
@@ -357,11 +398,11 @@ const CLS = {
             >
               @if (b.refundedAmount; as refunded) {
                 <h2 id="request-state-title" class="{{ cls.eyebrow }} {{ cls.eyebrowCancelled }}">
-                  {{
-                    b.cancelReason === 'WEATHER' || b.cancelReason === 'VENUE'
-                      ? 'Cancelled by the venue'
-                      : 'Booking cancelled'
-                  }}
+                  @if (b.cancelReason === 'WEATHER' || b.cancelReason === 'VENUE') {
+                    <ng-container i18n>Cancelled by the venue</ng-container>
+                  } @else {
+                    <ng-container i18n>Booking cancelled</ng-container>
+                  }
                 </h2>
                 <p [class]="cls.bannerBody">
                   {{ cancelledOpener(b) }}&ngsp;
@@ -372,10 +413,14 @@ const CLS = {
                   }
                 </p>
               } @else {
-                <h2 id="request-state-title" class="{{ cls.eyebrow }} {{ cls.eyebrowCancelled }}">
+                <h2
+                  id="request-state-title"
+                  class="{{ cls.eyebrow }} {{ cls.eyebrowCancelled }}"
+                  i18n
+                >
                   Booking cancelled
                 </h2>
-                <p [class]="cls.bannerBody">
+                <p [class]="cls.bannerBody" i18n>
                   This booking was cancelled because the payment wasn’t completed in time, so the
                   spot was released. <strong>You haven’t been charged.</strong> Pick another set or
                   date to book again.
@@ -389,12 +434,14 @@ const CLS = {
               data-testid="request-declined"
               aria-labelledby="request-state-title"
             >
-              <h2 id="request-state-title" class="{{ cls.eyebrow }} {{ cls.eyebrowDeclined }}">
+              <h2 id="request-state-title" class="{{ cls.eyebrow }} {{ cls.eyebrowDeclined }}" i18n>
                 Request declined
               </h2>
-              <p [class]="cls.bannerBody" data-testid="declined-reason">
-                {{ declinedCopy(b) }} You haven’t been charged — pick another set or date to book
-                again.
+              <p [class]="cls.bannerBody" data-testid="declined-reason" i18n>
+                {{
+                  declinedCopy(b) // i18n(ph="declinedReason")
+                }}
+                You haven’t been charged — pick another set or date to book again.
               </p>
             </section>
           }
@@ -404,12 +451,15 @@ const CLS = {
               data-testid="request-expired"
               aria-labelledby="request-state-title"
             >
-              <h2 id="request-state-title" class="{{ cls.eyebrow }} {{ cls.eyebrowExpired }}">
+              <h2 id="request-state-title" class="{{ cls.eyebrow }} {{ cls.eyebrowExpired }}" i18n>
                 Request expired
               </h2>
-              <p [class]="cls.bannerBody">
-                {{ b.venueName }} didn’t respond in time, so this request expired. You haven’t been
-                charged — pick another set or date to book again.
+              <p [class]="cls.bannerBody" i18n>
+                {{
+                  b.venueName // i18n(ph="venue")
+                }}
+                didn’t respond in time, so this request expired. You haven’t been charged — pick
+                another set or date to book again.
               </p>
             </section>
           }
@@ -422,14 +472,20 @@ const CLS = {
             aria-labelledby="booking-moved-title"
           >
             <h2 id="booking-moved-title" class="{{ cls.eyebrow }} {{ cls.eyebrowMoved }}">
-              {{ movedStops(b).length > 1 ? 'Your spots changed' : 'Your spot changed' }}
+              @if (movedStops(b).length > 1) {
+                <ng-container i18n>Your spots changed</ng-container>
+              } @else {
+                <ng-container i18n>Your spot changed</ng-container>
+              }
             </h2>
             @if (b.move) {
               <p [class]="cls.bannerBody">{{ movedSentence(b) }}</p>
               @if (freeExitOpen(b); as until) {
-                <p [class]="cls.bannerBody" data-testid="booking-free-exit">
+                <p [class]="cls.bannerBody" data-testid="booking-free-exit" i18n>
                   If the new spot doesn’t suit you, cancel below for a full refund until
-                  <strong>{{ deadlineLabel(until) }}</strong
+                  <strong>{{
+                    deadlineLabel(until) // i18n(ph="deadline")
+                  }}</strong
                   >.
                 </p>
               }
@@ -437,14 +493,20 @@ const CLS = {
               @for (moved of movedStops(b); track moved.stop) {
                 <p [class]="cls.bannerBody">{{ stopMovedSentence(b, moved) }}</p>
                 @if (freeExitOpen(b, moved.move); as until) {
-                  <p [class]="cls.bannerBody" data-testid="booking-free-exit">
+                  <p [class]="cls.bannerBody" data-testid="booking-free-exit" i18n>
                     If the new spot doesn’t suit you, you can cancel the stay below until
-                    <strong>{{ deadlineLabel(until) }}</strong> and stop {{ moved.stop }} is
-                    refunded in full.
+                    <strong>{{
+                      deadlineLabel(until) // i18n(ph="deadline")
+                    }}</strong>
+                    and stop
+                    {{
+                      moved.stop // i18n(ph="stop")
+                    }}
+                    is refunded in full.
                   </p>
                 }
               }
-              <p [class]="cls.bannerBody">Your booking code, price and dates are unchanged.</p>
+              <p [class]="cls.bannerBody" i18n>Your booking code, price and dates are unchanged.</p>
             }
           </section>
         }
@@ -456,10 +518,20 @@ const CLS = {
             aria-labelledby="booking-today-title"
           >
             <h2 id="booking-today-title" [class]="cls.todayEyebrow">
-              {{ today.kind === 'today' ? 'Your spot today' : 'Your first spot' }}
+              @if (today.kind === 'today') {
+                <ng-container i18n>Your spot today</ng-container>
+              } @else {
+                <ng-container i18n>Your first spot</ng-container>
+              }
             </h2>
-            <p [class]="cls.todaySpot" data-testid="booking-today-spot">
-              {{ today.stretch.rowLabel }} · spot {{ today.stretch.positionNo }}
+            <p [class]="cls.todaySpot" data-testid="booking-today-spot" i18n>
+              {{
+                today.stretch.rowLabel // i18n(ph="row")
+              }}
+              · spot
+              {{
+                today.stretch.positionNo // i18n(ph="spot")
+              }}
             </p>
             <p [class]="cls.todayNote" data-testid="booking-today-note">{{ todayNote(today) }}</p>
           </section>
@@ -469,7 +541,7 @@ const CLS = {
           class="mx-0 mt-[18px] mb-4 rounded-[18px] border border-dashed border-riv-field-border bg-riv-inset-fill p-[15px]"
           data-testid="booking-code"
         >
-          <span class="block text-[11px] tracking-[0.16em] text-riv-card-ink-soft uppercase">
+          <span class="block text-[11px] tracking-[0.16em] text-riv-card-ink-soft uppercase" i18n>
             Booking code
           </span>
           <div class="mt-[5px] text-[27px] font-bold tracking-[0.12em] text-riv-accent-ink">
@@ -480,18 +552,26 @@ const CLS = {
               <app-booking-qr [code]="b.code" />
             </div>
           }
-          <p class="mx-0 mt-2 mb-0 text-[12px] leading-[1.4] text-riv-card-ink-soft">
+          <p class="mx-0 mt-2 mb-0 text-[12px] leading-[1.4] text-riv-card-ink-soft" i18n>
             Show this code to staff when you arrive to claim your set.
           </p>
         </div>
 
         <dl class="m-0">
           <div [class]="cls.row">
-            <dt [class]="cls.rowLabel">Venue</dt>
+            <dt [class]="cls.rowLabel" i18n>Venue</dt>
             <dd [class]="cls.rowValue">{{ b.venueName }}</dd>
           </div>
           <div [class]="cls.row">
-            <dt [class]="cls.rowLabel">{{ b.stretches?.length ? 'Spots' : 'Set' }}</dt>
+            <dt [class]="cls.rowLabel">
+              @if (b.stretches?.length) {
+                <ng-container i18n="Row label: the spots of a stay">Spots</ng-container>
+              } @else {
+                <ng-container i18n="Row label: the sunbed set (2 loungers + umbrella) booked"
+                  >Set</ng-container
+                >
+              }
+            </dt>
             <dd [class]="cls.rowValue">
               @if (b.stretches?.length) {
                 <ol class="list-none" data-testid="view-stops">
@@ -502,38 +582,76 @@ const CLS = {
                       [attr.data-stop-state]="state"
                       [attr.aria-current]="state === 'today' ? 'true' : null"
                     >
-                      {{ $index + 1 }}. {{ stretch.rowLabel }} · spot {{ stretch.positionNo }} ·
-                      {{ dateLabel(stretch.firstDate, stretch.lastDate) }}
+                      <ng-container i18n
+                        >{{
+                          $index + 1  // i18n(ph="stop")
+                        }}.
+                        {{
+                          stretch.rowLabel // i18n(ph="row")
+                        }}
+                        · spot
+                        {{
+                          stretch.positionNo // i18n(ph="spot")
+                        }}
+                        ·
+                        {{
+                          dateLabel(stretch.firstDate, stretch.lastDate) // i18n(ph="dates")
+                        }}</ng-container
+                      >
                       @if (stretch.move; as move) {
                         ·
-                        <span data-testid="view-stop-moved"
-                          >moved from {{ move.fromRowLabel }} · spot {{ move.fromPositionNo }}</span
+                        <span data-testid="view-stop-moved" i18n
+                          >moved from
+                          {{
+                            move.fromRowLabel // i18n(ph="row")
+                          }}
+                          · spot
+                          {{
+                            move.fromPositionNo // i18n(ph="spot")
+                          }}</span
                         >
                       }
                       @if (stretch.nothingLeft) {
                         ·
-                        <span [class]="cls.stopMark" data-testid="view-stop-refunded"
+                        <span [class]="cls.stopMark" data-testid="view-stop-refunded" i18n
                           >refunded</span
                         >
                       }
                       @if (state === 'today') {
-                        · <span [class]="cls.stopMark" data-testid="view-stop-today">today</span>
+                        ·
+                        <span [class]="cls.stopMark" data-testid="view-stop-today" i18n>today</span>
                       } @else if (state === 'next') {
                         ·
-                        <span [class]="cls.stopMark" data-testid="view-stop-next">{{
-                          stayToday(b)?.movesTomorrow ? 'tomorrow' : 'next'
-                        }}</span>
+                        <span [class]="cls.stopMark" data-testid="view-stop-next">
+                          @if (stayToday(b)?.movesTomorrow) {
+                            <ng-container i18n="Marks the stop the guest moves to tomorrow"
+                              >tomorrow</ng-container
+                            >
+                          } @else {
+                            <ng-container i18n="Marks the stop the guest moves to next"
+                              >next</ng-container
+                            >
+                          }
+                        </span>
                       }
                     </li>
                   }
                 </ol>
               } @else {
-                {{ b.rowLabel }} · spot {{ b.positionNo }}
+                <ng-container i18n
+                  >{{
+                    b.rowLabel // i18n(ph="row")
+                  }}
+                  · spot
+                  {{
+                    b.positionNo // i18n(ph="spot")
+                  }}</ng-container
+                >
               }
             </dd>
           </div>
           <div [class]="cls.row">
-            <dt [class]="cls.rowLabel">Date</dt>
+            <dt [class]="cls.rowLabel" i18n>Date</dt>
             <dd [class]="cls.rowValue">{{ dateLabel(b.bookingDate, b.lastDate) }}</dd>
           </div>
           <div [class]="cls.row">
@@ -542,7 +660,17 @@ const CLS = {
           </div>
           @if (b.refundedAmount && b.refundedAmount.minorUnits > 0) {
             <div [class]="cls.row">
-              <dt [class]="cls.rowLabel">{{ b.refundOutstanding ? 'Refund' : 'Refunded' }}</dt>
+              <dt [class]="cls.rowLabel">
+                @if (b.refundOutstanding) {
+                  <ng-container i18n="Row label: a refund still being processed"
+                    >Refund</ng-container
+                  >
+                } @else {
+                  <ng-container i18n="Row label: the amount already refunded"
+                    >Refunded</ng-container
+                  >
+                }
+              </dt>
               <dd [class]="cls.rowValue" data-testid="refunded-amount">
                 {{ formatMoney(b.refundedAmount) }}
               </dd>
@@ -550,7 +678,7 @@ const CLS = {
           }
           @if (weatherDays(b).length) {
             <div [class]="cls.row">
-              <dt [class]="cls.rowLabel">Refunded for weather</dt>
+              <dt [class]="cls.rowLabel" i18n>Refunded for weather</dt>
               <dd [class]="cls.rowValue">
                 <ul class="list-none" data-testid="view-refunded-days">
                   @for (day of weatherDays(b); track day.day) {
@@ -562,7 +690,7 @@ const CLS = {
           }
           @if (venueDays(b).length) {
             <div [class]="cls.row">
-              <dt [class]="cls.rowLabel">Refunded by the venue</dt>
+              <dt [class]="cls.rowLabel" i18n>Refunded by the venue</dt>
               <dd [class]="cls.rowValue">
                 <ul class="list-none" data-testid="view-venue-refunded-days">
                   @for (day of venueDays(b); track day.day) {
@@ -577,11 +705,12 @@ const CLS = {
           <p
             class="mx-0 mt-2 mb-0 text-[12px] leading-[1.4] text-riv-card-ink-soft"
             data-testid="view-refunded-days-note"
+            i18n
           >
             The venue closed for the weather on
-            {{ weatherDays(b).length === 1 ? 'that day' : 'those days' }}, so
-            {{ weatherDays(b).length === 1 ? 'its' : 'their' }} share came back to you. Your spot
-            stays yours.
+            {weatherDays(b).length, plural, =1 {that day} other {those days}}, so
+            {weatherDays(b).length, plural, =1 {its} other {their}} share came back to you. Your
+            spot stays yours.
           </p>
         }
         @if (venueDays(b).length && b.status === 'CONFIRMED') {
@@ -589,8 +718,14 @@ const CLS = {
             class="mx-0 mt-2 mb-0 text-[12px] leading-[1.4] text-riv-card-ink-soft"
             data-testid="view-venue-refunded-days-note"
           >
-            {{ b.venueName }} refunded {{ venueDays(b).length === 1 ? 'that day' : 'those days' }},
-            so {{ venueDays(b).length === 1 ? 'its' : 'their' }} share came back to you.
+            <ng-container i18n
+              >{{
+                b.venueName // i18n(ph="venue")
+              }}
+              refunded {venueDays(b).length, plural, =1 {that day} other {those days}}, so
+              {venueDays(b).length, plural, =1 {its} other {their}} share came back to
+              you.</ng-container
+            >
             {{ venueReleasedNote(b) }}
           </p>
         }
@@ -598,27 +733,37 @@ const CLS = {
         <!-- Outside the status switch on purpose: scoped to PENDING_REQUEST it would unmount on success. -->
         <output [class]="cls.result" aria-live="polite" tabindex="-1" data-testid="withdraw-result">
           @if (withdrawn()) {
-            Request withdrawn. The spot is free for other guests again.
+            <ng-container i18n
+              >Request withdrawn. The spot is free for other guests again.</ng-container
+            >
           } @else if (withdrawNotPending()) {
-            This request is no longer waiting for the venue, so it can’t be withdrawn.
+            <ng-container i18n
+              >This request is no longer waiting for the venue, so it can’t be
+              withdrawn.</ng-container
+            >
           } @else if (withdrawFailed()) {
-            We couldn’t withdraw the request. Please try again.
+            <ng-container i18n>We couldn’t withdraw the request. Please try again.</ng-container>
           }
         </output>
 
         <!-- Live result of a cancellation, announced to assistive tech. -->
         <output [class]="cls.result" aria-live="polite" tabindex="-1" data-testid="cancel-result">
           @if (cancellation(); as c) {
-            Booking cancelled.
+            <ng-container i18n>Booking cancelled.</ng-container>
             {{
               b.refundOutstanding ? processingSentence(c.refund) : refundSentence(c.tier, c.refund)
             }}
           } @else if (cancelWindowClosed()) {
-            This booking can no longer be cancelled — its date has already begun.
+            <ng-container i18n
+              >This booking can no longer be cancelled — its date has already begun.</ng-container
+            >
           } @else if (cancelNothingLeft()) {
-            This booking can’t be cancelled — every day of it has already been refunded.
+            <ng-container i18n
+              >This booking can’t be cancelled — every day of it has already been
+              refunded.</ng-container
+            >
           } @else if (cancelFailed()) {
-            We couldn’t cancel the booking. Please try again.
+            <ng-container i18n>We couldn’t cancel the booking. Please try again.</ng-container>
           }
         </output>
 
@@ -627,7 +772,11 @@ const CLS = {
             class="mt-5 border-t border-riv-card-track pt-[18px]"
             aria-labelledby="cancel-title"
           >
-            <h2 id="cancel-title" class="mx-0 mt-0 mb-1.5 text-[16px] font-bold text-riv-card-ink">
+            <h2
+              id="cancel-title"
+              class="mx-0 mt-0 mb-1.5 text-[16px] font-bold text-riv-card-ink"
+              i18n
+            >
               Cancel this booking
             </h2>
             <p
@@ -638,7 +787,7 @@ const CLS = {
             </p>
 
             @if (confirming()) {
-              <p [class]="cls.confirmQ">Cancel this booking? This can’t be undone.</p>
+              <p [class]="cls.confirmQ" i18n>Cancel this booking? This can’t be undone.</p>
               <div [class]="cls.actions">
                 <button
                   appTouchTarget
@@ -648,7 +797,11 @@ const CLS = {
                   (click)="confirmCancel()"
                   data-testid="confirm-cancel"
                 >
-                  {{ cancelling() ? 'Cancelling…' : 'Confirm cancellation' }}
+                  @if (cancelling()) {
+                    <ng-container i18n>Cancelling…</ng-container>
+                  } @else {
+                    <ng-container i18n>Confirm cancellation</ng-container>
+                  }
                 </button>
                 <button
                   appTouchTarget
@@ -657,6 +810,7 @@ const CLS = {
                   [appBusy]="cancelling()"
                   (click)="keepBooking()"
                   data-testid="keep-booking"
+                  i18n
                 >
                   Keep booking
                 </button>
@@ -668,13 +822,18 @@ const CLS = {
                 [class]="cls.btnOutlineDanger"
                 (click)="startCancel()"
                 data-testid="start-cancel"
+                i18n
               >
                 Cancel booking
               </button>
             }
           </section>
         } @else if (showLastMinuteNote(b)) {
-          <section class="mt-5 border-t border-riv-card-track pt-[18px]" aria-label="Cancellation">
+          <section
+            class="mt-5 border-t border-riv-card-track pt-[18px]"
+            aria-label="Cancellation"
+            i18n-aria-label
+          >
             <p
               class="mx-0 my-0 text-[13.5px] leading-[1.5] text-riv-card-ink-soft"
               data-testid="last-minute-note"
@@ -714,10 +873,11 @@ const CLS = {
               <h2
                 id="bv-support-title"
                 class="mx-0 mt-0 mb-1.5 text-[16px] font-bold text-riv-card-ink"
+                i18n
               >
                 Need help?
               </h2>
-              <p class="mx-0 mt-0 mb-2 text-[13.5px] leading-[1.5] text-riv-card-ink-soft">
+              <p class="mx-0 mt-0 mb-2 text-[13.5px] leading-[1.5] text-riv-card-ink-soft" i18n>
                 At the beach, ask the venue staff first. For anything else, contact Riviera with
                 your booking code.
               </p>
@@ -726,11 +886,13 @@ const CLS = {
           }
         }
 
-        <a appTouchTarget routerLink="/" [class]="cls.linkBack">Back to home</a>
+        <a appTouchTarget routerLink="/" [class]="cls.linkBack" i18n>Back to home</a>
       </section>
     } @else {
       <section [class]="cls.stateCard" appCardGlass aria-labelledby="bv-title" aria-busy="true">
-        <h1 id="bv-title" data-testid="bv-title" [class]="cls.stateTitle">Loading your booking…</h1>
+        <h1 id="bv-title" data-testid="bv-title" [class]="cls.stateTitle" i18n>
+          Loading your booking…
+        </h1>
       </section>
     }
   `,
@@ -903,18 +1065,24 @@ export class BookingView {
   }
 
   protected sendReview(review: SubmitReviewRequest): void {
-    this.writeReview(this.bookings.review(this.code, review), 'Thanks for reviewing your stay.');
+    this.writeReview(
+      this.bookings.review(this.code, review),
+      $localize`Thanks for reviewing your stay.`,
+    );
   }
 
   protected sendReviewUpdate(review: SubmitReviewRequest): void {
     this.writeReview(
       this.bookings.updateReview(this.code, review),
-      'Your review has been updated.',
+      $localize`Your review has been updated.`,
     );
   }
 
   protected sendReviewDelete(): void {
-    this.writeReview(this.bookings.deleteReview(this.code), 'Your review has been removed.');
+    this.writeReview(
+      this.bookings.deleteReview(this.code),
+      $localize`Your review has been removed.`,
+    );
   }
 
   /**
@@ -1049,7 +1217,7 @@ export class BookingView {
 
   /** "Paid" once money has actually moved; "Amount" while open, or when nothing was ever charged. */
   protected amountLabel(b: BookingDetail): string {
-    return amountLabelFor(b.status, b.refundedAmount, b.nothingLeft ?? false);
+    return amountLabelText(amountLabelFor(b.status, b.refundedAmount, b.nothingLeft ?? false));
   }
 
   /** The days the weather refund gave back; a day naming no reason (an older payload) is weather's. */
@@ -1069,8 +1237,8 @@ export class BookingView {
       return '';
     }
     return released === 1
-      ? 'Your spot is no longer held for that day.'
-      : 'Your spot is no longer held for those days.';
+      ? $localize`Your spot is no longer held for that day.`
+      : $localize`Your spot is no longer held for those days.`;
   }
 
   /**
@@ -1080,15 +1248,15 @@ export class BookingView {
   protected cancelledOpener(b: BookingDetail): string {
     switch (b.cancelReason) {
       case 'POLICY':
-        return 'You cancelled this booking.';
+        return $localize`You cancelled this booking.`;
       case 'WEATHER':
-        return `${b.venueName} cancelled this booking because of the weather.`;
+        return $localize`${b.venueName}:venue: cancelled this booking because of the weather.`;
       case 'VENUE':
-        return `${b.venueName} refunded this booking.`;
+        return $localize`${b.venueName}:venue: refunded this booking.`;
       case 'VENUE_CHANGE':
-        return 'You cancelled this booking after the venue moved your spot.';
+        return $localize`You cancelled this booking after the venue moved your spot.`;
       default:
-        return 'This booking was cancelled.';
+        return $localize`This booking was cancelled.`;
     }
   }
 
@@ -1116,11 +1284,13 @@ export class BookingView {
   protected declinedCopy(b: BookingDetail): string {
     switch (b.declineReason ?? 'VENUE') {
       case 'ANOTHER_GUEST':
-        return `${b.venueName} gave this set to another guest who had also requested it, so your request was declined.`;
+        return $localize`${b.venueName}:venue: gave this set to another guest who had also requested it, so your request was declined.`;
       case 'SET_UNAVAILABLE':
-        return `The set you requested at ${b.venueName} is no longer available for ${this.isStay(b) ? 'those days' : 'that day'}, so your request was declined.`;
+        return this.isStay(b)
+          ? $localize`The set you requested at ${b.venueName}:venue: is no longer available for those days, so your request was declined.`
+          : $localize`The set you requested at ${b.venueName}:venue: is no longer available for that day, so your request was declined.`;
       default:
-        return `${b.venueName} couldn’t take this booking, so it was declined.`;
+        return $localize`${b.venueName}:venue: couldn’t take this booking, so it was declined.`;
     }
   }
 
@@ -1159,8 +1329,8 @@ export class BookingView {
   /** The note keeps the checkout's "once paid" qualifier while the booking is still unpaid. */
   protected lastMinuteNote(b: BookingDetail): string {
     return b.status === 'AWAITING_PAYMENT'
-      ? 'Non-refundable last-minute booking — it can’t be cancelled once paid.'
-      : 'Non-refundable last-minute booking — it can’t be cancelled.';
+      ? $localize`Non-refundable last-minute booking — it can’t be cancelled once paid.`
+      : $localize`Non-refundable last-minute booking — it can’t be cancelled.`;
   }
 
   /**
@@ -1203,16 +1373,17 @@ export class BookingView {
   /** The lead's second line: the day, then what tomorrow brings — a move, the last day, or nothing new. */
   protected todayNote(today: StayToday): string {
     if (today.kind === 'upcoming') {
-      return `From ${formatBookingDate(today.stretch.firstDate)} — stop 1 of your stay.`;
+      return $localize`From ${formatBookingDate(today.stretch.firstDate)}:date: — stop 1 of your stay.`;
     }
-    const day = `${formatBookingDate(this.today)} · stop ${today.stop}`;
+    const date = formatBookingDate(this.today);
+    const stop = today.stop;
     if (today.movesTomorrow && today.next) {
-      return `${day}. Tomorrow you move to ${today.next.rowLabel} · spot ${today.next.positionNo}.`;
+      return $localize`${date}:date: · stop ${stop}:stop:. Tomorrow you move to ${today.next.rowLabel}:row: · spot ${today.next.positionNo}:spot:.`;
     }
     if (today.lastDay) {
-      return `${day}. Last day of your stay.`;
+      return $localize`${date}:date: · stop ${stop}:stop:. Last day of your stay.`;
     }
-    return `${day}, until ${formatBookingDate(today.stretch.lastDate)}.`;
+    return $localize`${date}:date: · stop ${stop}:stop:, until ${formatBookingDate(today.stretch.lastDate)}:lastDate:.`;
   }
 
   /** A stop against today: dimmed once its last day has passed, marked while held, marked as the move to come. */
@@ -1250,13 +1421,13 @@ export class BookingView {
   /** "Miramar rearranged its beach map, so your set for stop 2 (4 – 7 Dec · 4 days) moved from Row A · spot 4 to Row A · spot 7 (3 positions along the row)." */
   protected stopMovedSentence(b: BookingDetail, moved: MovedStop): string {
     const { stop, stretch, move } = moved;
-    return `${b.venueName} rearranged its beach map, so your set for stop ${stop} (${formatStayChip(stretch.firstDate, stretch.lastDate)}) moved from ${move.fromRowLabel} · spot ${move.fromPositionNo} to ${stretch.rowLabel} · spot ${stretch.positionNo} (${setDistanceText(move.rowsAway, move.positionsAway)}).`;
+    return $localize`${b.venueName}:venue: rearranged its beach map, so your set for stop ${stop}:stop: (${formatStayChip(stretch.firstDate, stretch.lastDate)}:dates:) moved from ${move.fromRowLabel}:fromRow: · spot ${move.fromPositionNo}:fromSpot: to ${stretch.rowLabel}:toRow: · spot ${stretch.positionNo}:toSpot: (${setDistanceText(move.rowsAway, move.positionsAway)}:distance:).`;
   }
 
   /** "Miramar rearranged its beach map, so your set moved from Row A · spot 3 to Row A · spot 7 (4 positions along the row). …" */
   protected movedSentence(b: BookingDetail): string {
     const move = b.move!;
-    return `${b.venueName} rearranged its beach map, so your set moved from ${move.fromRowLabel} · spot ${move.fromPositionNo} to ${b.rowLabel} · spot ${b.positionNo} (${setDistanceText(move.rowsAway, move.positionsAway)}). Your booking code, price and date are unchanged.`;
+    return $localize`${b.venueName}:venue: rearranged its beach map, so your set moved from ${move.fromRowLabel}:fromRow: · spot ${move.fromPositionNo}:fromSpot: to ${b.rowLabel}:toRow: · spot ${b.positionNo}:toSpot: (${setDistanceText(move.rowsAway, move.positionsAway)}:distance:). Your booking code, price and date are unchanged.`;
   }
 
   /** A move's free-exit deadline while it is still open and the booking can still be cancelled; else null. */
@@ -1268,15 +1439,15 @@ export class BookingView {
   protected refundTerms(b: BookingDetail): string {
     const freeExit = b.move?.freeExitUntil;
     if (freeExit) {
-      return `Because the venue moved your spot, you can cancel for a full refund until ${formatDeadline(freeExit)} — you’ll be refunded ${formatMoney(b.refundIfCancelledNow)} in full.`;
+      return $localize`Because the venue moved your spot, you can cancel for a full refund until ${formatDeadline(freeExit)}:deadline: — you’ll be refunded ${formatMoney(b.refundIfCancelledNow)}:amount: in full.`;
     }
     if (b.beforeCutoff) {
-      return `Free cancellation until the evening before — you’ll be refunded ${formatMoney(b.refundIfCancelledNow)} in full.`;
+      return $localize`Free cancellation until the evening before — you’ll be refunded ${formatMoney(b.refundIfCancelledNow)}:amount: in full.`;
     }
     if (b.refundIfCancelledNow.minorUnits > 0) {
-      return `The free-cancellation cutoff has passed — you’ll be refunded ${formatMoney(b.refundIfCancelledNow)}.`;
+      return $localize`The free-cancellation cutoff has passed — you’ll be refunded ${formatMoney(b.refundIfCancelledNow)}:amount:.`;
     }
-    return 'The free-cancellation cutoff has passed — this cancellation is non-refundable.';
+    return $localize`The free-cancellation cutoff has passed — this cancellation is non-refundable.`;
   }
 
   /**
@@ -1284,14 +1455,14 @@ export class BookingView {
    * "on its way to your card" would be a claim the money's state does not support.
    */
   protected processingSentence(refund: MoneyView): string {
-    return `Your refund of ${formatMoney(refund)} is being processed.`;
+    return $localize`Your refund of ${formatMoney(refund)}:amount: is being processed.`;
   }
 
   /** Sentence describing the refund that was issued. */
   protected refundSentence(tier: Cancellation['tier'], refund: MoneyView): string {
     if (tier === 'NONE' || refund.minorUnits === 0) {
-      return 'No refund applies under the cancellation policy.';
+      return $localize`No refund applies under the cancellation policy.`;
     }
-    return `${formatMoney(refund)} will be refunded to your card.`;
+    return $localize`${formatMoney(refund)}:amount: will be refunded to your card.`;
   }
 }

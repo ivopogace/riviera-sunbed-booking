@@ -42,12 +42,9 @@ export function challengeHeaders(payload: string | undefined): Record<string, st
   return payload ? { [CHALLENGE_HEADER]: payload } : {};
 }
 
-export const CHALLENGE_REQUIRED_MESSAGE =
-  'The security check hasn’t finished yet. Give it a moment and try again.';
-export const CHALLENGE_INVALID_MESSAGE =
-  'The security check didn’t verify, so it has been restarted. Please try again.';
-export const CHALLENGE_EXPIRED_MESSAGE =
-  'The security check expired, so it has been restarted. Please try again.';
+export const CHALLENGE_REQUIRED_MESSAGE = $localize`The security check hasn’t finished yet. Give it a moment and try again.`;
+export const CHALLENGE_INVALID_MESSAGE = $localize`The security check didn’t verify, so it has been restarted. Please try again.`;
+export const CHALLENGE_EXPIRED_MESSAGE = $localize`The security check expired, so it has been restarted. Please try again.`;
 
 /** The one wording per rejection, so no page phrases the same server answer differently. */
 export function challengeRejectionMessage(rejection: ChallengeRejection): string {

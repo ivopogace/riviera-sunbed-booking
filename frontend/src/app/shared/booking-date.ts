@@ -3,7 +3,11 @@
  * (invariant #6), from the injected `now`; a display default only, sales-close is server-side (#4).
  * Via `Intl` with an explicit zone, never `toISOString()` (UTC, rolls the day late in the evening).
  */
-import { DISPLAY_LOCALE } from './display-locale';
+import { displayDateFormat } from './display-format';
+
+const CIVIL_DATE = displayDateFormat('weekday-day-month-year', 'UTC');
+const DAY_MONTH = displayDateFormat('day-month', 'UTC');
+const MONTH_LABEL = displayDateFormat('month-year', 'UTC');
 const TIRANE = 'Europe/Tirane';
 
 export function defaultBookingDate(now: Date): string {
@@ -58,16 +62,10 @@ export function isIsoDate(value: string): boolean {
 /**
  * Render an ISO civil day (a Europe/Tirane booking date, invariant #6) as `"Tue 30 Jun 2026"`,
  * in **UTC** because {@link parseIsoDate} anchors it at midnight UTC — free of the viewer's zone.
- * Locale pinned like `shared/money.ts` for deterministic output; the one shared civil-date format.
+ * Shown in the display locale (`shared/display-format.ts`); the one shared civil-date format.
  */
 export function formatCivilDate(isoDate: string): string {
-  return new Intl.DateTimeFormat(DISPLAY_LOCALE, {
-    timeZone: 'UTC',
-    weekday: 'short',
-    day: 'numeric',
-    month: 'short',
-    year: 'numeric',
-  }).format(parseIsoDate(isoDate));
+  return CIVIL_DATE(parseIsoDate(isoDate));
 }
 
 /**
@@ -76,11 +74,7 @@ export function formatCivilDate(isoDate: string): string {
  * as {@link formatCivilDate}.
  */
 export function formatDayMonth(isoDate: string): string {
-  return new Intl.DateTimeFormat(DISPLAY_LOCALE, {
-    timeZone: 'UTC',
-    day: 'numeric',
-    month: 'short',
-  }).format(parseIsoDate(isoDate));
+  return DAY_MONTH(parseIsoDate(isoDate));
 }
 
 /** A stay's days, first to last inclusive, as ISO civil days; one day when `first === last`. */
@@ -186,11 +180,7 @@ export function monthWeeks(isoDate: string): readonly (string | undefined)[][] {
  * label is the civil month itself rather than the viewer's reading of it.
  */
 export function formatMonthLabel(isoDate: string): string {
-  return new Intl.DateTimeFormat(DISPLAY_LOCALE, {
-    timeZone: 'UTC',
-    month: 'long',
-    year: 'numeric',
-  }).format(parseIsoDate(isoDate));
+  return MONTH_LABEL(parseIsoDate(isoDate));
 }
 
 /** How many days `isoDate` sits past the Monday of its week (Monday 0 … Sunday 6). */

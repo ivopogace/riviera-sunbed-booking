@@ -30,10 +30,11 @@ export type ManageBookingLinkVariant = keyof typeof SKINS;
         [routerLink]="['/booking', code()]"
         [class]="skin()"
         data-testid="manage-link"
+        i18n
         >View or manage this booking</a
       >
     } @else {
-      <a [routerLink]="['/booking', code()]" [class]="skin()" data-testid="manage-link"
+      <a [routerLink]="['/booking', code()]" [class]="skin()" data-testid="manage-link" i18n
         >View or manage this booking</a
       >
     }`,

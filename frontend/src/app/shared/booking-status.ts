@@ -31,16 +31,52 @@ export interface StatusMeta {
 }
 
 export const STATUS_META: Record<BookingStatus, StatusMeta> = {
-  CONFIRMED: { label: 'Confirmed', chip: 'chip--confirmed', amount: 'Paid' },
-  PENDING_REQUEST: { label: 'Pending request', chip: 'chip--pending', amount: 'Amount' },
-  AWAITING_PAYMENT: { label: 'Awaiting payment', chip: 'chip--awaiting', amount: 'Amount' },
-  DECLINED: { label: 'Declined', chip: 'chip--declined', amount: 'Amount' },
-  EXPIRED: { label: 'Expired', chip: 'chip--expired', amount: 'Amount' },
-  CANCELLED: { label: 'Cancelled', chip: 'chip--cancelled', amount: 'Paid' },
-  COMPLETED: { label: 'Completed', chip: 'chip--completed', amount: 'Paid' },
-  NO_SHOW: { label: 'No-show', chip: 'chip--no-show', amount: 'Paid' },
+  CONFIRMED: {
+    label: $localize`:Booking status chip:Confirmed`,
+    chip: 'chip--confirmed',
+    amount: 'Paid',
+  },
+  PENDING_REQUEST: {
+    label: $localize`:Booking status chip:Pending request`,
+    chip: 'chip--pending',
+    amount: 'Amount',
+  },
+  AWAITING_PAYMENT: {
+    label: $localize`:Booking status chip:Awaiting payment`,
+    chip: 'chip--awaiting',
+    amount: 'Amount',
+  },
+  DECLINED: {
+    label: $localize`:Booking status chip:Declined`,
+    chip: 'chip--declined',
+    amount: 'Amount',
+  },
+  EXPIRED: {
+    label: $localize`:Booking status chip:Expired`,
+    chip: 'chip--expired',
+    amount: 'Amount',
+  },
+  CANCELLED: {
+    label: $localize`:Booking status chip:Cancelled`,
+    chip: 'chip--cancelled',
+    amount: 'Paid',
+  },
+  COMPLETED: {
+    label: $localize`:Booking status chip:Completed`,
+    chip: 'chip--completed',
+    amount: 'Paid',
+  },
+  NO_SHOW: {
+    label: $localize`:Booking status chip:No-show`,
+    chip: 'chip--no-show',
+    amount: 'Paid',
+  },
   // Never 'Paid': a withdrawn request was never charged.
-  WITHDRAWN: { label: 'Withdrawn', chip: 'chip--withdrawn', amount: 'Amount' },
+  WITHDRAWN: {
+    label: $localize`:Booking status chip:Withdrawn`,
+    chip: 'chip--withdrawn',
+    amount: 'Amount',
+  },
 };
 
 /**
@@ -48,7 +84,7 @@ export const STATUS_META: Record<BookingStatus, StatusMeta> = {
  * money came back, so it wears the cancelled chip's proven fill under its own label.
  */
 export const REFUNDED_META: StatusMeta = {
-  label: 'Refunded',
+  label: $localize`:Booking status chip:Refunded`,
   chip: 'chip--cancelled',
   amount: 'Paid',
 };
@@ -71,6 +107,13 @@ export function amountLabelFor(
     return 'Amount';
   }
   return metaFor(status, nothingLeft).amount;
+}
+
+/** The money row's label in the build's language, for the {@link StatusMeta} `amount` key. */
+export function amountLabelText(amount: StatusMeta['amount']): string {
+  return amount === 'Paid'
+    ? $localize`:Label of the booking's price once money has moved:Paid`
+    : $localize`:Label of the booking's price while unpaid or never charged:Amount`;
 }
 
 /** Humanize a raw status token ("NO_SHOW" → "No show") — the graceful fallback for FE/BE skew. */

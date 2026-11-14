@@ -30,7 +30,6 @@ import {
   startOfWeek,
 } from './booking-date';
 import { formatStay } from './booking-date-label';
-import { plural } from './plural';
 import { DailyAvailability } from './venue-views';
 import { LoadAnnouncer } from './load-announcer';
 import { SegmentedControl, SegmentedOption } from './segmented-control';
@@ -78,19 +77,28 @@ export type CountsLoader = (from: string, to: string) => Observable<DailyAvailab
 export const MAX_STAY_DAYS = 62;
 
 const MODE_OPTIONS: readonly SegmentedOption<StayMode>[] = [
-  { value: 'day', label: 'One day', testId: 'calendar-mode-day' },
-  { value: 'stay', label: 'Several days', testId: 'calendar-mode-stay' },
+  { value: 'day', label: $localize`One day`, testId: 'calendar-mode-day' },
+  { value: 'stay', label: $localize`Several days`, testId: 'calendar-mode-stay' },
 ];
 
 /** Monday-first column headers: the abbreviation shown, and the day it stands for. */
 const WEEKDAYS: readonly { readonly short: string; readonly long: string }[] = [
-  { short: 'Mo', long: 'Monday' },
-  { short: 'Tu', long: 'Tuesday' },
-  { short: 'We', long: 'Wednesday' },
-  { short: 'Th', long: 'Thursday' },
-  { short: 'Fr', long: 'Friday' },
-  { short: 'Sa', long: 'Saturday' },
-  { short: 'Su', long: 'Sunday' },
+  { short: $localize`:Two-letter calendar column header for Monday:Mo`, long: $localize`Monday` },
+  { short: $localize`:Two-letter calendar column header for Tuesday:Tu`, long: $localize`Tuesday` },
+  {
+    short: $localize`:Two-letter calendar column header for Wednesday:We`,
+    long: $localize`Wednesday`,
+  },
+  {
+    short: $localize`:Two-letter calendar column header for Thursday:Th`,
+    long: $localize`Thursday`,
+  },
+  { short: $localize`:Two-letter calendar column header for Friday:Fr`, long: $localize`Friday` },
+  {
+    short: $localize`:Two-letter calendar column header for Saturday:Sa`,
+    long: $localize`Saturday`,
+  },
+  { short: $localize`:Two-letter calendar column header for Sunday:Su`, long: $localize`Sunday` },
 ];
 
 /**
@@ -189,13 +197,17 @@ export class AvailabilityCalendar {
     if (range !== undefined) {
       const label = formatStay(range.first, range.last, { withYear: true });
       // formatStay names one day without a length; the picker always states it.
-      return range.first === range.last ? `${label} · ${plural(1, 'day')}` : label;
+      return range.first === range.last ? $localize`${label}:day: · 1 day` : label;
     }
     const first = this.pendingFirst();
     return first === undefined
-      ? 'Tap your first day, then your last.'
-      : `${formatCivilDate(first)} → tap your last day`;
+      ? $localize`Tap your first day, then your last.`
+      : $localize`${formatCivilDate(first)}:date: → tap your last day`;
   });
+
+  protected readonly dialogLabel = computed(() =>
+    this.mode() === 'stay' ? $localize`Choose your days` : $localize`Choose a booking date`,
+  );
 
   private showsStay(): boolean {
     const last = this.selectedLastDate();
@@ -231,6 +243,9 @@ export class AvailabilityCalendar {
 
   protected readonly visibleMonth = computed(() => startOfMonth(this.focusedDate()));
   protected readonly monthLabel = computed(() => formatMonthLabel(this.visibleMonth()));
+  protected readonly readyLabel = computed(
+    () => $localize`${this.monthLabel()}:month: availability loaded.`,
+  );
 
   /** Whether a step back would land before the month holding the earliest bookable day. */
   protected readonly atEarliestMonth = computed(

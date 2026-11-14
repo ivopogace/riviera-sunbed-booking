@@ -121,7 +121,8 @@ export class PhotoGalleryGrid {
   }
 
   protected tileLabel(index: number): string {
-    const subject = this.name() ? ` of ${this.name()}` : '';
-    return `View photo ${index + 1} of ${this.photos().length}${subject}`;
+    return this.name()
+      ? $localize`View photo ${index + 1}:position: of ${this.photos().length}:count: of ${this.name()}:venue:`
+      : $localize`View photo ${index + 1}:position: of ${this.photos().length}:count:`;
   }
 }

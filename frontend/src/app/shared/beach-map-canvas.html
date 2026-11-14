@@ -20,6 +20,7 @@
                 ? 'bg-riv-map-zoom-selected-fill border-[1.5px] border-riv-map-zoom-selected-border text-riv-map-zoom-selected-ink'
                 : 'bg-riv-map-zoom-idle-fill border border-riv-map-zoom-idle-border text-riv-map-zoom-idle-ink'
             "
+            i18n="Zoom button that fits the whole beach map in view"
           >
             Fit
           </button>
@@ -179,11 +180,11 @@
         class="text-center text-[12px] font-semibold text-riv-accent-ink mt-3"
         data-testid="scroll-hint"
       >
-        {{
-          dragPan()
-            ? 'Drag or swipe to see the whole beach.'
-            : 'Scroll, or drag the scrollbar, to see the whole beach.'
-        }}
+        @if (dragPan()) {
+          <ng-container i18n>Drag or swipe to see the whole beach.</ng-container>
+        } @else {
+          <ng-container i18n>Scroll, or drag the scrollbar, to see the whole beach.</ng-container>
+        }
       </p>
     }
     <ng-content select="[canvasFooter]" />

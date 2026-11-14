@@ -160,17 +160,19 @@ export function coastIndex(cards: readonly VenueCard[]): readonly PickerRegion[]
       data-testid="coast-picker"
       role="dialog"
       aria-label="Choose a place on the coast"
+      i18n-aria-label
       tabindex="-1"
       class="fixed inset-x-0 bottom-0 z-[31] flex max-h-[86dvh] flex-col rounded-t-[26px] shadow-[0_-16px_50px_rgba(7,42,58,0.35)] lg:absolute lg:inset-x-auto lg:top-[calc(100%+8px)] lg:bottom-auto lg:left-0 lg:h-[min(760px,calc(100dvh-140px))] lg:w-[420px] lg:rounded-[22px]"
     >
       <div class="flex shrink-0 items-center gap-2 px-4 pt-3 pb-1">
-        <h2 class="text-[17px] font-bold text-riv-ink">The coast, north to south</h2>
+        <h2 class="text-[17px] font-bold text-riv-ink" i18n>The coast, north to south</h2>
         <button
           type="button"
           appTouchTarget
           data-testid="picker-close"
           class="ml-auto -mr-2 inline-flex touch-manipulation items-center justify-center rounded-full text-riv-ink-soft [&_svg]:size-[14px] hover:text-riv-ink"
           aria-label="Close"
+          i18n-aria-label
           (click)="closed.emit()"
         >
           <app-cross-icon />
@@ -185,7 +187,7 @@ export function coastIndex(cards: readonly VenueCard[]): readonly PickerRegion[]
           [attr.aria-pressed]="located()"
           (click)="nearMe.emit()"
         >
-          <app-locate-icon />Near me
+          <app-locate-icon /><ng-container i18n>Near me</ng-container>
         </button>
       </div>
       <!-- The body asks for the coast's height (150 × 4.51); the sheet's cap shrinks it, never the ribbon's width. -->
@@ -283,11 +285,17 @@ export function coastIndex(cards: readonly VenueCard[]): readonly PickerRegion[]
 
     <ng-template #row let-place>
       <span class="min-w-0 flex-1 truncate">{{ place.label }}</span
-      >&ngsp;<span class="shrink-0 text-[13px] opacity-80"
-        >{{ place.venues }} {{ place.venues === 1 ? 'venue' : 'venues' }}</span
-      >
+      >&ngsp;<span class="shrink-0 text-[13px] opacity-80" i18n>{place.venues, plural,
+        =1 {1 venue}
+        other {{{ place.venues }} venues}
+      }</span>
       @if (place.from; as from) {
-        &ngsp;<span class="shrink-0 text-[13px] font-semibold">from {{ from }}</span>
+        &ngsp;<span class="shrink-0 text-[13px] font-semibold" i18n
+          >from
+          {{
+            from // i18n(ph="price")
+          }}</span
+        >
       }
     </ng-template>
   `,

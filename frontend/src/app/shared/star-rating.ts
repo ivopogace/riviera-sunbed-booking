@@ -89,7 +89,7 @@ export class StarRating implements FormValueControl<number | null> {
       chosen: stars === selected,
       // No selection yet ⇒ the first star is the group's single tab stop (APG radiogroup).
       tabStop: selected === null ? stars === STARS[0] : stars === selected,
-      label: stars === 1 ? '1 star' : `${stars} stars`,
+      label: stars === 1 ? $localize`1 star` : $localize`${stars}:count: stars`,
     }));
   });
 

@@ -1,4 +1,4 @@
-import { DISPLAY_LOCALE } from './display-locale';
+import { displayMoney } from './display-format';
 
 /**
  * An amount of money as it travels the wire: integer minor units + ISO currency code
@@ -12,15 +12,11 @@ export interface MoneyView {
 
 /**
  * Render integer minor units as a currency string (display only, invariant #5) in the build's
- * {@link DISPLAY_LOCALE}, never the runtime default, so output is deterministic across environments.
+ * display locale (`shared/display-format.ts`), never the runtime default, so output is deterministic across environments.
  * Whole amounts drop the cents; fractional amounts show two decimals.
  */
 export function formatMoney(amount: MoneyView): string {
-  return new Intl.NumberFormat(DISPLAY_LOCALE, {
-    style: 'currency',
-    currency: amount.currency,
-    minimumFractionDigits: amount.minorUnits % 100 === 0 ? 0 : 2,
-  }).format(amount.minorUnits / 100);
+  return displayMoney(amount.minorUnits, amount.currency);
 }
 
 /**
