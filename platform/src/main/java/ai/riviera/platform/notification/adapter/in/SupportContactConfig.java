@@ -38,9 +38,10 @@ class SupportContactConfig {
 
 		/**
 		 * One {@code @}, no whitespace, a domain of two or more non-empty dot-separated labels: a shape check, not
-		 * deliverability. Each label excludes the dot, so the match never backtracks.
+		 * deliverability. Each label excludes the dot, so possessive quantifiers lose no match and keep the
+		 * engine from backtracking or recursing per repetition.
 		 */
-		private static final Pattern MAILBOX_SHAPE = Pattern.compile("[^@\\s]+@[^@\\s.]+(?:\\.[^@\\s.]+)+");
+		private static final Pattern MAILBOX_SHAPE = Pattern.compile("[^@\\s]++@[^@\\s.]++(?:\\.[^@\\s.]++)++");
 
 		/** E.164: a country code never starts with 0, and the whole number is at most 15 digits. */
 		private static final Pattern E164_DIGITS = Pattern.compile("[1-9]\\d{7,14}");

@@ -65,6 +65,13 @@ class SupportContactPropertiesTest {
 	}
 
 	@Test
+	void aVeryLongDomainIsCheckedWithoutOverflowingTheStack() {
+		String longDomain = "help@" + "a.".repeat(200_000) + "al";
+
+		assertThat(new SupportContactProperties(longDomain, null).email()).isEqualTo(longDomain);
+	}
+
+	@Test
 	void aNumberWithoutACountryCodeIsRejected() {
 		assertThatIllegalArgumentException()
 				.isThrownBy(() -> new SupportContactProperties(null, "069 123 4567"))
