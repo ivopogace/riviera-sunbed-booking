@@ -19,19 +19,19 @@ record SnsMessage(String type, String messageId, String topicArn, String subject
 	static final String NOTIFICATION = "Notification";
 	static final String SUBSCRIPTION_CONFIRMATION = "SubscriptionConfirmation";
 
-	private static final String TYPE = "Type";
-	private static final String MESSAGE_ID = "MessageId";
-	private static final String TOPIC_ARN = "TopicArn";
-	private static final String SUBJECT = "Subject";
-	private static final String MESSAGE = "Message";
-	private static final String TIMESTAMP = "Timestamp";
-	private static final String TOKEN = "Token";
-	private static final String SUBSCRIBE_URL = "SubscribeURL";
+	private static final String FIELD_TYPE = "Type";
+	private static final String FIELD_MESSAGE_ID = "MessageId";
+	private static final String FIELD_TOPIC_ARN = "TopicArn";
+	private static final String FIELD_SUBJECT = "Subject";
+	private static final String FIELD_MESSAGE = "Message";
+	private static final String FIELD_TIMESTAMP = "Timestamp";
+	private static final String FIELD_TOKEN = "Token";
+	private static final String FIELD_SUBSCRIBE_URL = "SubscribeURL";
 
-	private static final List<String> NOTIFICATION_KEYS =
-			List.of(MESSAGE, MESSAGE_ID, SUBJECT, TIMESTAMP, TOPIC_ARN, TYPE);
-	private static final List<String> SUBSCRIPTION_KEYS =
-			List.of(MESSAGE, MESSAGE_ID, SUBSCRIBE_URL, TIMESTAMP, TOKEN, TOPIC_ARN, TYPE);
+	private static final List<String> NOTIFICATION_KEYS = List.of(FIELD_MESSAGE, FIELD_MESSAGE_ID, FIELD_SUBJECT,
+			FIELD_TIMESTAMP, FIELD_TOPIC_ARN, FIELD_TYPE);
+	private static final List<String> SUBSCRIPTION_KEYS = List.of(FIELD_MESSAGE, FIELD_MESSAGE_ID,
+			FIELD_SUBSCRIBE_URL, FIELD_TIMESTAMP, FIELD_TOKEN, FIELD_TOPIC_ARN, FIELD_TYPE);
 
 	/** The envelope, or empty when the body is not a JSON object carrying every field a signature covers. */
 	static Optional<SnsMessage> parse(byte[] body, ObjectMapper json) {
@@ -45,10 +45,10 @@ record SnsMessage(String type, String messageId, String topicArn, String subject
 		if (root == null || !root.isObject()) {
 			return Optional.empty();
 		}
-		SnsMessage parsed = new SnsMessage(text(root, TYPE), text(root, MESSAGE_ID), text(root, TOPIC_ARN),
-				text(root, SUBJECT), text(root, MESSAGE), text(root, TIMESTAMP), text(root, TOKEN),
-				text(root, SUBSCRIBE_URL), text(root, "SignatureVersion"), text(root, "Signature"),
-				text(root, "SigningCertURL"));
+		SnsMessage parsed = new SnsMessage(text(root, FIELD_TYPE), text(root, FIELD_MESSAGE_ID),
+				text(root, FIELD_TOPIC_ARN), text(root, FIELD_SUBJECT), text(root, FIELD_MESSAGE),
+				text(root, FIELD_TIMESTAMP), text(root, FIELD_TOKEN), text(root, FIELD_SUBSCRIBE_URL),
+				text(root, "SignatureVersion"), text(root, "Signature"), text(root, "SigningCertURL"));
 		return parsed.complete() ? Optional.of(parsed) : Optional.empty();
 	}
 
@@ -79,14 +79,14 @@ record SnsMessage(String type, String messageId, String topicArn, String subject
 
 	private String valueOf(String key) {
 		return switch (key) {
-			case MESSAGE -> message;
-			case MESSAGE_ID -> messageId;
-			case SUBJECT -> subject;
-			case TIMESTAMP -> timestamp;
-			case TOPIC_ARN -> topicArn;
-			case TYPE -> type;
-			case TOKEN -> token;
-			case SUBSCRIBE_URL -> subscribeUrl;
+			case FIELD_MESSAGE -> message;
+			case FIELD_MESSAGE_ID -> messageId;
+			case FIELD_SUBJECT -> subject;
+			case FIELD_TIMESTAMP -> timestamp;
+			case FIELD_TOPIC_ARN -> topicArn;
+			case FIELD_TYPE -> type;
+			case FIELD_TOKEN -> token;
+			case FIELD_SUBSCRIBE_URL -> subscribeUrl;
 			default -> throw new IllegalArgumentException("not a signed SNS field: " + key);
 		};
 	}
