@@ -19,10 +19,19 @@ record SnsMessage(String type, String messageId, String topicArn, String subject
 	static final String NOTIFICATION = "Notification";
 	static final String SUBSCRIPTION_CONFIRMATION = "SubscriptionConfirmation";
 
+	private static final String TYPE = "Type";
+	private static final String MESSAGE_ID = "MessageId";
+	private static final String TOPIC_ARN = "TopicArn";
+	private static final String SUBJECT = "Subject";
+	private static final String MESSAGE = "Message";
+	private static final String TIMESTAMP = "Timestamp";
+	private static final String TOKEN = "Token";
+	private static final String SUBSCRIBE_URL = "SubscribeURL";
+
 	private static final List<String> NOTIFICATION_KEYS =
-			List.of("Message", "MessageId", "Subject", "Timestamp", "TopicArn", "Type");
+			List.of(MESSAGE, MESSAGE_ID, SUBJECT, TIMESTAMP, TOPIC_ARN, TYPE);
 	private static final List<String> SUBSCRIPTION_KEYS =
-			List.of("Message", "MessageId", "SubscribeURL", "Timestamp", "Token", "TopicArn", "Type");
+			List.of(MESSAGE, MESSAGE_ID, SUBSCRIBE_URL, TIMESTAMP, TOKEN, TOPIC_ARN, TYPE);
 
 	/** The envelope, or empty when the body is not a JSON object carrying every field a signature covers. */
 	static Optional<SnsMessage> parse(byte[] body, ObjectMapper json) {
@@ -36,9 +45,9 @@ record SnsMessage(String type, String messageId, String topicArn, String subject
 		if (root == null || !root.isObject()) {
 			return Optional.empty();
 		}
-		SnsMessage parsed = new SnsMessage(text(root, "Type"), text(root, "MessageId"), text(root, "TopicArn"),
-				text(root, "Subject"), text(root, "Message"), text(root, "Timestamp"), text(root, "Token"),
-				text(root, "SubscribeURL"), text(root, "SignatureVersion"), text(root, "Signature"),
+		SnsMessage parsed = new SnsMessage(text(root, TYPE), text(root, MESSAGE_ID), text(root, TOPIC_ARN),
+				text(root, SUBJECT), text(root, MESSAGE), text(root, TIMESTAMP), text(root, TOKEN),
+				text(root, SUBSCRIBE_URL), text(root, "SignatureVersion"), text(root, "Signature"),
 				text(root, "SigningCertURL"));
 		return parsed.complete() ? Optional.of(parsed) : Optional.empty();
 	}
@@ -70,14 +79,14 @@ record SnsMessage(String type, String messageId, String topicArn, String subject
 
 	private String valueOf(String key) {
 		return switch (key) {
-			case "Message" -> message;
-			case "MessageId" -> messageId;
-			case "Subject" -> subject;
-			case "Timestamp" -> timestamp;
-			case "TopicArn" -> topicArn;
-			case "Type" -> type;
-			case "Token" -> token;
-			case "SubscribeURL" -> subscribeUrl;
+			case MESSAGE -> message;
+			case MESSAGE_ID -> messageId;
+			case SUBJECT -> subject;
+			case TIMESTAMP -> timestamp;
+			case TOPIC_ARN -> topicArn;
+			case TYPE -> type;
+			case TOKEN -> token;
+			case SUBSCRIBE_URL -> subscribeUrl;
 			default -> throw new IllegalArgumentException("not a signed SNS field: " + key);
 		};
 	}
