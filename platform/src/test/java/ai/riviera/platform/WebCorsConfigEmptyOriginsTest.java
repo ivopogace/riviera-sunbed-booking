@@ -2,6 +2,7 @@ package ai.riviera.platform;
 
 import ai.riviera.platform.web.adapter.in.WebCorsConfig;
 import ai.riviera.platform.web.adapter.in.SecurityConfig;
+import ai.riviera.platform.web.adapter.in.SpaWebConfig;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;

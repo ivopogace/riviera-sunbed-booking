@@ -1,4 +1,4 @@
-package ai.riviera.platform;
+package ai.riviera.platform.web.adapter.in;
 
 import java.nio.file.Path;
 import java.util.Arrays;

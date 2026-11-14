@@ -1,4 +1,4 @@
-package ai.riviera.platform;
+package ai.riviera.platform.web.adapter.in;
 
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.core.io.Resource;

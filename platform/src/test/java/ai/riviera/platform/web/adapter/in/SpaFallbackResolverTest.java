@@ -1,4 +1,4 @@
-package ai.riviera.platform;
+package ai.riviera.platform.web.adapter.in;
 
 import java.io.IOException;
 
@@ -6,7 +6,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.core.io.Resource;
 
-import ai.riviera.platform.SpaWebConfig.SpaFallbackResolver;
+import ai.riviera.platform.web.adapter.in.SpaWebConfig.SpaFallbackResolver;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;

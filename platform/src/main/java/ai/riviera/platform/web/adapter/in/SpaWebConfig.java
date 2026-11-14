@@ -1,4 +1,4 @@
-package ai.riviera.platform;
+package ai.riviera.platform.web.adapter.in;
 
 import java.io.IOException;
 
@@ -18,7 +18,7 @@ import org.springframework.web.servlet.resource.PathResourceResolver;
  * class only maps request paths to static resources.
  */
 @Component
-class SpaWebConfig implements WebMvcConfigurer {
+public class SpaWebConfig implements WebMvcConfigurer {
 
 	/** Backend path prefixes (relative, no leading slash) that must never be served the shell. */
 	private static final String API_PREFIX = "api/";

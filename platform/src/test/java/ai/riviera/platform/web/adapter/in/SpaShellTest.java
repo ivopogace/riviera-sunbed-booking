@@ -1,7 +1,6 @@
-package ai.riviera.platform;
+package ai.riviera.platform.web.adapter.in;
 
-import ai.riviera.platform.web.adapter.in.WebCorsConfig;
-import ai.riviera.platform.web.adapter.in.SecurityConfig;
+import ai.riviera.platform.WebSliceStubs;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
