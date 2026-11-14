@@ -24,6 +24,10 @@ const SQ: Readonly<Record<string, string>> = {
     'Diçka shkoi keq gjatë ndryshimit të fjalëkalimit. Ju lutemi provoni përsëri.',
   'Something went wrong submitting your registration. Please try again.':
     'Diçka shkoi keq gjatë dërgimit të regjistrimit. Ju lutemi provoni përsëri.',
+  'Too many attempts. Please wait a minute and try again.':
+    'Shumë përpjekje. Ju lutemi prisni një minutë dhe provoni përsëri.',
+  'This account is not active. Contact a platform admin.':
+    'Kjo llogari nuk është aktive. Kontaktoni një administrator të platformës.',
 };
 
 /** A 500 from an endpoint that answers a code the SPA has never seen, with English server text. */
@@ -63,6 +67,22 @@ describe('auth error copy', () => {
     );
     expect(operatorRegisterMessage('error')).toBe(
       SQ['Something went wrong submitting your registration. Please try again.'],
+    );
+  });
+
+  it('translates a 429 on every rate-limited surface', () => {
+    const tooMany = SQ['Too many attempts. Please wait a minute and try again.'];
+    expect(customerSignInMessage(signInResultFor(new HttpErrorResponse({ status: 429 })))).toBe(
+      tooMany,
+    );
+    expect(customerRegisterMessage('rate-limited')).toBe(tooMany);
+    expect(operatorPasswordChangeMessage('rate-limited')).toBe(tooMany);
+    expect(operatorRegisterMessage('rate-limited')).toBe(tooMany);
+  });
+
+  it('translates ACCOUNT_NOT_ACTIVE on the operator password change', () => {
+    expect(operatorPasswordChangeMessage('not-active')).toBe(
+      SQ['This account is not active. Contact a platform admin.'],
     );
   });
 });
