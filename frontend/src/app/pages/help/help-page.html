@@ -1,0 +1,64 @@
+<article
+  appCardGlass
+  class="mx-auto my-[28px] w-[min(720px,calc(100%-32px))] rounded-[22px] px-[22px] py-[26px] sm:px-[30px]"
+>
+  <h1 class="text-[24px] font-bold leading-tight">Help</h1>
+
+  <section data-testid="help-booking">
+    <h2 class="mt-[22px] text-[16px] font-bold">How booking works</h2>
+    <ul class="mt-[8px] list-disc pl-[20px] text-[14px] leading-[1.6] text-riv-card-ink-soft">
+      <li>
+        Pick a beach venue on the map, choose your day or days and a sunbed set (2 loungers +
+        umbrella, for the full day), then pay in the app.
+      </li>
+      <li>
+        Some venues confirm instantly; others review your request first and then ask you to pay.
+        Your booking is confirmed once payment is confirmed.
+      </li>
+      <li>
+        You get a booking code on screen and by email. Keep it private: whoever has the code can
+        open the booking.
+      </li>
+    </ul>
+  </section>
+
+  <section data-testid="help-cancellation">
+    <h2 class="mt-[22px] text-[16px] font-bold">Cancelling</h2>
+    <p class="mt-[8px] text-[14px] leading-[1.6] text-riv-card-ink-soft">
+      Open your booking with its code (Find a booking in the menu, or the link in your email). It
+      shows whether you can still cancel and the refund you would get; the terms you saw before
+      paying apply.
+    </p>
+  </section>
+
+  <section data-testid="help-beach">
+    <h2 class="mt-[22px] text-[16px] font-bold">At the beach</h2>
+    <ul class="mt-[8px] list-disc pl-[20px] text-[14px] leading-[1.6] text-riv-card-ink-soft">
+      <li>Show your booking code, or its QR code, to the venue staff when you arrive.</li>
+      <li>
+        If your set is taken or the venue is closed, ask the staff first. If that doesn't sort it
+        out, contact us with your booking code.
+      </li>
+    </ul>
+  </section>
+
+  @if (contact(); as c) {
+    @if (hasChannel()) {
+      <section data-testid="help-contact" aria-labelledby="help-contact-title">
+        <h2 id="help-contact-title" class="mt-[22px] text-[16px] font-bold">Contact us</h2>
+        <p class="mt-[8px] text-[14px] leading-[1.6] text-riv-card-ink-soft">
+          Tourists and venue operators alike, including if you can't sign in or want to list your
+          venue.
+          @if (c.sameDayReply) {
+            <span data-testid="help-promise"
+              >We answer the same day, 08:00–20:00, May to October.</span
+            >
+          }
+        </p>
+        <div class="mt-[8px]">
+          <app-support-channels [contact]="c" />
+        </div>
+      </section>
+    }
+  }
+</article>

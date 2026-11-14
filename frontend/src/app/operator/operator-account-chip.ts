@@ -14,6 +14,7 @@ import { filter } from 'rxjs';
 
 import { ConsoleTheme, ConsoleThemeId } from '../core/console-theme';
 import { OperatorAuth } from '../core/operator-auth';
+import { SupportContact } from '../core/support-contact';
 import {
   AVATAR,
   CHIP,
@@ -29,8 +30,8 @@ import { TouchTarget } from '../shared/touch-target';
 
 /**
  * The signed-in operator's account chip (the host gates on the session): a disclosure revealing
- * identity, Change password, console theme and Sign out — account actions only, never venue ones.
- * Sign-out is an output: each header runs its own teardown (parks focus, resets its stores).
+ * identity, Change password, console theme, the configured Contact Riviera channels and Sign out —
+ * account actions only. Sign-out is an output: each header runs its own teardown.
  * Escape, the backdrop and a row return focus to the chip (WCAG 2.4.3); a navigation or an outside
  * click closes without moving it. Outside clicks need the document listener: the header's
  * `backdrop-filter` contains the `fixed` backdrop, so that backdrop covers only the header.
@@ -123,6 +124,35 @@ import { TouchTarget } from '../shared/touch-target';
             </button>
           }
         </div>
+        @if (support.contact(); as contact) {
+          @if (contact.email || contact.whatsapp) {
+            <p [class]="cls.groupLabel" [attr.id]="ids().contactLabel">Contact Riviera</p>
+            <div role="group" [attr.aria-labelledby]="ids().contactLabel">
+              @if (contact.email; as email) {
+                <a
+                  appTouchTarget
+                  [class]="cls.item"
+                  [href]="'mailto:' + email"
+                  [attr.data-testid]="ids().contactEmail"
+                  (click)="activate()"
+                  >Email {{ email }}</a
+                >
+              }
+              @if (contact.whatsapp; as whatsapp) {
+                <a
+                  appTouchTarget
+                  [class]="cls.item"
+                  [href]="whatsapp.url"
+                  target="_blank"
+                  rel="noopener"
+                  [attr.data-testid]="ids().contactWhatsapp"
+                  (click)="activate()"
+                  >WhatsApp {{ whatsapp.number }}</a
+                >
+              }
+            </div>
+          }
+        }
         <button
           appTouchTarget
           type="button"
@@ -143,6 +173,8 @@ export class OperatorAccountChip {
   protected readonly operator = inject(OperatorAuth);
   /** The console's porcelain-or-dark choice the two rows switch; never the tourist theme. */
   protected readonly consoleTheme = inject(ConsoleTheme);
+  /** The platform's support channels, read when the menu first opens; an unconfigured one renders no row. */
+  protected readonly support = inject(SupportContact);
   private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
   private readonly chipButton = viewChild.required<ElementRef<HTMLButtonElement>>('chip');
 
@@ -164,7 +196,7 @@ export class OperatorAccountChip {
   protected readonly initial = computed(() => initialOf(this.username()));
 
   /** Computed, not a method: these bind in a sticky header that re-runs change detection on
-   *  every navigation, and a method would re-allocate all eight strings each pass. */
+   *  every navigation, and a method would re-allocate all the strings each pass. */
   protected readonly ids = computed(() => {
     const prefix = this.testIdPrefix();
     return {
@@ -176,6 +208,9 @@ export class OperatorAccountChip {
       themeLabel: `${prefix}-theme-label`,
       theme: `${prefix}-theme`,
       signout: `${prefix}-signout`,
+      contactLabel: `${prefix}-contact-label`,
+      contactEmail: `${prefix}-contact-email`,
+      contactWhatsapp: `${prefix}-contact-whatsapp`,
     };
   });
 
@@ -190,6 +225,9 @@ export class OperatorAccountChip {
 
   protected toggle(): void {
     this.open.update((open) => !open);
+    if (this.open()) {
+      void this.support.load();
+    }
   }
 
   /** A theme row: the choice, then the row's own close — the popover's rows all hand focus back. */

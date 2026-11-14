@@ -585,6 +585,7 @@ describe('App (Liquid Glass shell, issue #134)', () => {
               'nav-for-venues-mobile',
               'nav-signout-mobile',
               'theme-row',
+              'help-row',
               'legal-privacy-row',
               'legal-terms-row',
             ]
@@ -594,6 +595,7 @@ describe('App (Liquid Glass shell, issue #134)', () => {
               'find-open-mobile',
               'nav-for-venues-mobile',
               'theme-row',
+              'help-row',
               'legal-privacy-row',
               'legal-terms-row',
             ],

@@ -25,14 +25,15 @@ describe('LegalFooter', () => {
 
   it('states the notice in one voice, for both chromes', () => {
     expect(footer().textContent?.replace(/\s+/g, ' ').trim()).toBe(
-      '© Riviera Sunbed Booking · Privacy · Terms',
+      '© Riviera Sunbed Booking · Help · Privacy · Terms',
     );
   });
 
-  it('opens both documents in a new tab, so a mounted checkout survives', () => {
+  it('opens Help and both documents in a new tab, so a mounted checkout survives', () => {
     const links = footer().querySelectorAll<HTMLAnchorElement>('a');
 
     expect([...links].map((a) => a.getAttribute('href'))).toEqual([
+      '/help',
       '/legal/privacy',
       '/legal/terms',
     ]);
@@ -54,7 +55,7 @@ describe('LegalFooter', () => {
     const el = (fixture.nativeElement as HTMLElement).querySelector('div')!;
 
     expect(el.textContent?.replace(/\s+/g, ' ').trim()).toBe(
-      '© Riviera Sunbed Booking · Privacy · Terms · For venues',
+      '© Riviera Sunbed Booking · Help · Privacy · Terms · For venues',
     );
     const link = el.querySelector<HTMLAnchorElement>('[data-testid="footer-for-venues"]')!;
     expect(link.getAttribute('href')).toBe('/for-venues');

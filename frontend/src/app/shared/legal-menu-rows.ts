@@ -12,7 +12,7 @@ const SKINS: Record<LegalMenuVariant, string> = {
 };
 
 /**
- * Privacy and Terms as menu rows, for tourist routes like Discover whose edge-to-edge map withholds
+ * Help, Privacy and Terms as menu rows, for tourist routes like Discover whose edge-to-edge map withholds
  * the footer; every route keeps one of the two (`app.ts`'s `TouristRouteData`), and the sheet and
  * popovers must stay above every Discover layer. They open a new tab, never route, so they neither
  * close their menu nor take `routerLinkActive` (`RESPONSIBILITIES.md` §Frontend). Call sites put
@@ -24,6 +24,15 @@ const SKINS: Record<LegalMenuVariant, string> = {
   imports: [TouchTarget],
   host: { class: 'contents' },
   template: `<a
+      appTouchTarget
+      [class]="skin()"
+      href="/help"
+      target="_blank"
+      rel="noopener"
+      data-testid="help-row"
+      >Help</a
+    >
+    <a
       appTouchTarget
       [class]="skin()"
       href="/legal/privacy"

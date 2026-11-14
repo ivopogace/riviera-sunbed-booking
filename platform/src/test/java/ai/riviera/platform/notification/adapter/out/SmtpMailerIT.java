@@ -32,6 +32,7 @@ import ai.riviera.platform.booking.vocabulary.DeclineReason;
 import ai.riviera.platform.notification.application.RequestDeclinedMail;
 import ai.riviera.platform.notification.application.RequestExpiredMail;
 import ai.riviera.platform.notification.application.StayConfirmationMail;
+import ai.riviera.platform.notification.application.SupportContact;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -110,6 +111,45 @@ class SmtpMailerIT {
 		assertThat(body)
 				.as("a FREE-born booking gets no disclosure line (#795 AC-5 absent case)")
 				.doesNotContain("non-refundable", "past free cancellation");
+	}
+
+	@Test
+	void aConfirmationNamesEveryConfiguredSupportChannel() throws Exception {
+		mailer(new SupportContact("help@example.com", "355691234567")).sendBookingConfirmation(TO, CONFIRMATION);
+
+		assertThat(normalized(theOnlyReceivedMessage())).endsWith("""
+				Show the booking code at the venue on arrival.
+
+				Need help? Contact Riviera:
+				  Email:     help@example.com
+				  WhatsApp:  +355691234567 (https://wa.me/355691234567)""");
+	}
+
+	@Test
+	void aConfirmationNamesOnlyTheChannelsConfigured() throws Exception {
+		mailer(new SupportContact(null, "355691234567")).sendBookingConfirmation(TO, CONFIRMATION);
+
+		String body = theOnlyReceivedMessage().getContent().toString();
+		assertThat(body).contains("WhatsApp:  +355691234567").doesNotContain("Email:");
+	}
+
+	@Test
+	void aConfirmationWithNoChannelConfiguredCarriesNoContactLine() throws Exception {
+		mailer().sendBookingConfirmation(TO, CONFIRMATION);
+
+		assertThat(theOnlyReceivedMessage().getContent().toString()).doesNotContain("Need help", "wa.me");
+	}
+
+	@Test
+	void aStayConfirmationNamesTheSupportChannel() throws Exception {
+		mailer(new SupportContact("help@example.com", null)).sendStayConfirmation(TO, new StayConfirmationMail(
+				BOOKING_CODE, "Miramar Beach", LocalDate.of(2026, 8, 15), LocalDate.of(2026, 8, 16),
+				List.of(new StayConfirmationMail.Stop(LocalDate.of(2026, 8, 15), LocalDate.of(2026, 8, 16), "A", 1)),
+				5000, "EUR", CancellationWindow.FREE, 0));
+
+		assertThat(normalized(theOnlyReceivedMessage())).endsWith("""
+				Need help? Contact Riviera:
+				  Email:     help@example.com""");
 	}
 
 	@Test
@@ -629,7 +669,7 @@ class SmtpMailerIT {
 		// The failure must propagate: BookingConfirmationMailListener relies on it to leave the
 		// publication outstanding so a restart retries. Swallowing here would silently turn the
 		// registry's at-least-once contract into fire-and-forget.
-		assertThatThrownBy(() -> new SmtpMailer(sender, FROM).sendBookingConfirmation(TO, CONFIRMATION))
+		assertThatThrownBy(() -> new SmtpMailer(sender, FROM, SupportContact.NONE).sendBookingConfirmation(TO, CONFIRMATION))
 				.isInstanceOf(MailException.class);
 		assertThat(output).doesNotContain(BOOKING_CODE);
 	}
@@ -652,7 +692,7 @@ class SmtpMailerIT {
 		sender.setHost("127.0.0.1");
 		sender.setPort(closedPort);
 		sender.getJavaMailProperties().setProperty("mail.smtp.connectiontimeout", "2000");
-		SmtpMailer mailer = new SmtpMailer(sender, FROM);
+		SmtpMailer mailer = new SmtpMailer(sender, FROM, SupportContact.NONE);
 
 		// The exception propagates to the caller (TransactionalMailService.dispatchQuietly logs only its class name).
 		assertThatThrownBy(() -> mailer.sendEmailVerification(TO, LINK)).isInstanceOf(MailException.class);
@@ -660,10 +700,19 @@ class SmtpMailerIT {
 	}
 
 	private static SmtpMailer mailer() {
+		return mailer(SupportContact.NONE);
+	}
+
+	private static SmtpMailer mailer(SupportContact support) {
 		JavaMailSenderImpl sender = new JavaMailSenderImpl();
 		sender.setHost("127.0.0.1");
 		sender.setPort(greenMail.getSmtp().getPort());
-		return new SmtpMailer(sender, FROM);
+		return new SmtpMailer(sender, FROM, support);
+	}
+
+	/** The body with SMTP's CRLF line ends folded to the text blocks' LF. */
+	private static String normalized(MimeMessage message) throws Exception {
+		return message.getContent().toString().replace("\r\n", "\n");
 	}
 
 	private static MimeMessage theOnlyReceivedMessage() {

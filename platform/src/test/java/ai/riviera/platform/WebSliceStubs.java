@@ -94,6 +94,7 @@ import ai.riviera.platform.notification.application.MailResubmission;
 import ai.riviera.platform.notification.application.ReinstateOutcome;
 import ai.riviera.platform.notification.application.ReinstateSuppression;
 import ai.riviera.platform.notification.application.ResendOutcome;
+import ai.riviera.platform.notification.application.SupportContact;
 import ai.riviera.platform.notification.api.MailDeliverability;
 import ai.riviera.platform.notification.api.MailSender;
 import ai.riviera.platform.operator.api.OperatorAccounts;
@@ -620,6 +621,12 @@ public class WebSliceStubs {
 	@Bean
 	BookingConfirmationResend bookingConfirmationResend() {
 		return _ -> ResendOutcome.NO_SUCH_BOOKING;
+	}
+
+	/** {@code SupportContactController}'s source: no channel configured, the shipped default. */
+	@Bean
+	SupportContact supportContact() {
+		return SupportContact.NONE;
 	}
 
 	/**
