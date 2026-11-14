@@ -4,7 +4,8 @@ import { HttpErrorResponse } from '@angular/common/http';
  * The API's RFC-7807 error body: every backend error is
  * `application/problem+json` whose stable machine-readable identity is the `code`
  * extension — `type` stays `about:blank` in v1. Only the fields the client reads are
- * typed here.
+ * typed here: `detail` and `title` are English server text, so a screen renders its own
+ * translated copy keyed on `code`, and an unknown `code` falls back to its generic message.
  */
 interface ProblemBody {
   readonly code?: string;
