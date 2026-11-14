@@ -557,9 +557,31 @@ describe('ConsoleShell', () => {
       await settle();
     }
 
+    it('the keycap and the name carry Ctrl K off Apple platforms (#1731)', () => {
+      expect(navigator.platform).not.toMatch(/mac/i);
+      expect(search()!.getAttribute('aria-label')).toBe('Jump to a section or venue (Ctrl K)');
+      expect(search()!.querySelector('kbd')!.textContent.trim()).toBe('Ctrl K');
+      expect(search()!.querySelector('kbd')!.getAttribute('aria-hidden')).toBe('true');
+    });
+
+    it('the keycap and the name carry ⌘K on macOS (#1731)', () => {
+      const platform = vi.spyOn(navigator, 'platform', 'get').mockReturnValue('MacIntel');
+      try {
+        const mac = TestBed.createComponent(Host);
+        mac.detectChanges();
+        const button = (mac.nativeElement as HTMLElement).querySelector(
+          '[data-testid="oc-search"]',
+        )!;
+        expect(button.getAttribute('aria-label')).toBe('Jump to a section or venue (⌘K)');
+        expect(button.querySelector('kbd')!.textContent.trim()).toBe('⌘K');
+        expect(button.classList).toContain('max-sm:hidden');
+      } finally {
+        platform.mockRestore();
+      }
+    });
+
     it('the search button opens the palette onto its field; ⌘K and Ctrl-K toggle it (#1013)', async () => {
       expect(search()!.tagName).toBe('BUTTON');
-      expect(search()!.getAttribute('aria-label')).toBe('Jump to a section or venue (⌘K)');
       expect(search()!.getAttribute('aria-expanded')).toBe('false');
       expect(search()!.classList).toContain('max-sm:hidden');
       expect(header().contains(search())).toBe(true);
