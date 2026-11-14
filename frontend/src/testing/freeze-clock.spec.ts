@@ -43,6 +43,8 @@ describe('the frozen suite clock', () => {
     document.body.append(button);
     vi.useFakeTimers();
     try {
+      // Off the fake clock's 16 ms frame grid, which jsdom's interval does not follow.
+      vi.advanceTimersByTime(5);
       button.focus();
     } finally {
       freezeClock();
