@@ -9,7 +9,11 @@ export type DateShape =
   | 'weekday-day-month'
   | 'weekday-day-month-year'
   | 'month-year'
-  | 'weekday-day-month-time';
+  | 'weekday-day-month-time'
+  | 'day-month-year'
+  | 'day-month-time'
+  | 'day-month-year-time'
+  | 'time';
 
 /** The zones a display reasons in: a civil day is anchored at UTC midnight, an instant in Tirane (#6). */
 export type DisplayZone = 'UTC' | 'Europe/Tirane';
@@ -27,6 +31,16 @@ const INTL_SHAPES: Record<DateShape, Intl.DateTimeFormatOptions> = {
     hour: '2-digit',
     minute: '2-digit',
   },
+  'day-month-year': { day: 'numeric', month: 'short', year: 'numeric' },
+  'day-month-time': { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' },
+  'day-month-year-time': {
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  },
+  time: { hour: '2-digit', minute: '2-digit' },
 };
 
 const CLDR_SHAPES: Record<DateShape, string> = {
@@ -36,6 +50,10 @@ const CLDR_SHAPES: Record<DateShape, string> = {
   'weekday-day-month-year': 'EEE d MMM y',
   'month-year': 'LLLL y',
   'weekday-day-month-time': 'EEE d MMM, HH:mm',
+  'day-month-year': 'd MMM y',
+  'day-month-time': 'd MMM, HH:mm',
+  'day-month-year-time': 'd MMM y, HH:mm',
+  time: 'HH:mm',
 };
 
 /**
