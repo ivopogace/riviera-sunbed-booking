@@ -59,6 +59,12 @@ describe('app.routes — retired auth surfaces', () => {
     expect(help?.title).toBe('Help — Riviera');
   });
 
+  it('registers the lazy venue-owner page with a title (#1736)', () => {
+    const forVenues = routes.find((route) => route.path === 'for-venues');
+    expect(forVenues?.loadComponent).toBeDefined();
+    expect(forVenues?.title).toBe('For venues — Riviera');
+  });
+
   it('keeps forwarding the retired staff-daily deep link to the console tab', async () => {
     // Pre-existing staff-daily redirect — re-asserted so later route edits cannot silently drop it.
     TestBed.resetTestingModule();
@@ -132,9 +138,9 @@ describe('app.routes — every lazy route target resolves its module', () => {
     return names;
   }
 
-  it('resolves all 37 loadComponent targets, including the nested tab-route trees (#999)', async () => {
+  it('resolves all 38 loadComponent targets, including the nested tab-route trees (#999)', async () => {
     const names = await loadedComponentNames(routes);
-    expect(names).toHaveLength(37);
+    expect(names).toHaveLength(38);
     expect(names.every((name) => name.length > 0)).toBe(true);
   });
 });
@@ -157,6 +163,7 @@ describe('app.routes — the phone tab bar reads its section and checkout flag o
     'legal/privacy': undefined,
     'legal/terms': undefined,
     help: undefined,
+    'for-venues': undefined,
     'page-load-failed': undefined,
     '**': undefined,
     'account/operator-password': undefined,
