@@ -261,6 +261,27 @@ test('the account chip opens a popover on /admin — axe clean, one header row o
   await expect(chip).toBeFocused();
 });
 
+test.describe('on a Mac user agent', () => {
+  test.use({
+    userAgent:
+      'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Safari/537.36',
+  });
+
+  test('the search glyph names ⌘K in its keycap and accessible name (#1731)', async ({ page }) => {
+    await mockWholeConsole(page);
+    await mockWholeAdminConsole(page);
+    await mockOwnedVenues(page, TWO_VENUES);
+    await page.setViewportSize({ width: 1280, height: 900 });
+    await new OperatorSignInPage(page).goto('/operator/1/daily');
+    await new OperatorSignInPage(page).signIn(ADMIN.username, ADMIN.password);
+    await expect(page.getByTestId('daily-view-tab')).toBeVisible();
+
+    const search = page.getByTestId('oc-search');
+    await expect(search).toHaveAccessibleName('Jump to a section or venue (⌘K)');
+    await expect(search.locator('kbd')).toHaveText('⌘K');
+  });
+});
+
 test('the search glyph and ⌘K open the Go to dialog: focus legs, the field on the 3px ring, every control at the floor, axe clean, inside the viewport (#1013)', async ({
   page,
 }) => {
@@ -274,10 +295,9 @@ test('the search glyph and ⌘K open the Go to dialog: focus legs, the field on 
 
   const search = page.getByTestId('oc-search');
   await expect(search).toBeVisible();
-  // Playwright's Chromium reports the host's platform: CI's Linux runners and Windows say Ctrl K (#1731).
-  const chord = process.platform === 'darwin' ? '⌘K' : 'Ctrl K';
-  await expect(search).toHaveAccessibleName(`Jump to a section or venue (${chord})`);
-  await expect(search.locator('kbd')).toHaveText(chord);
+  // `Desktop Chrome`'s Windows user agent pins the client-hint platform on every host (#1731).
+  await expect(search).toHaveAccessibleName('Jump to a section or venue (Ctrl K)');
+  await expect(search.locator('kbd')).toHaveText('Ctrl K');
   await expect(search).toHaveAttribute('aria-expanded', 'false');
   const header = (await page.getByTestId('oc-header').boundingBox())!;
   const searchBox = (await search.boundingBox())!;
