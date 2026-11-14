@@ -73,7 +73,7 @@
     "lint-staged": "^17.6.0",
     "pbf": "^5.1.2",
     "postcss": "^8.5.32",
-    "prettier": "^3.9.10",
+    "prettier": "^3.10.0",
     "tailwindcss": "^4.3.2",
     "typescript": "~6.0.2",
     "typescript-eslint": "8.72.0",
