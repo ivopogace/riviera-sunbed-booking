@@ -63,7 +63,8 @@ final class LinkPreviews {
 	private List<ShellHead.Alternate> alternates(String path) {
 		List<ShellHead.Alternate> alternates = new ArrayList<>();
 		for (SpaLocale locale : SpaLocale.values()) {
-			properties.absolute(locale.path(path)).ifPresent(url -> alternates.add(new ShellHead.Alternate(locale.code(), url)));
+			properties.absolute(locale.path(path))
+					.ifPresent(url -> alternates.add(new ShellHead.Alternate(locale.code(), url)));
 		}
 		properties.absolute(path).ifPresent(url -> alternates.add(new ShellHead.Alternate("x-default", url)));
 		return alternates;
