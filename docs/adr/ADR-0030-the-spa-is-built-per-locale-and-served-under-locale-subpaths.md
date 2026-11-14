@@ -26,8 +26,8 @@ compiled per locale), or a runtime translation library with an in-page switch.
    one build per locale; the inlining runs on the one compilation, so the build takes little longer.
 2. **English is served from the root, the others under `/sq/` and `/it/`** (`angular.json`'s
    `sourceLocale` with `subPath: ""`). Each build carries its own `lang` and `<base href>`.
-3. **Spring maps each subpath's client routes to that build's `index.html`.** `SpaLocale` (root
-   package) is the one locale-to-shell mapping on the server; `SpaWebConfig`'s fallback resolver asks
+3. **Spring maps each subpath's client routes to that build's `index.html`.** `SpaLocale` (`web`,
+   moved from the root package by #1760) is the one locale-to-shell mapping on the server; `SpaWebConfig`'s fallback resolver asks
    it which shell a path falls back to. A missing asset is still a `404` under every subpath, and
    `/api/**` never falls back. `SpaLocaleTest` pins `SpaLocale` to `angular.json`'s locales.
 4. **The choice lives on the device, in `localStorage` (`riviera-locale`), like the theme.** The

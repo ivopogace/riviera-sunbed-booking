@@ -11,7 +11,7 @@ import ai.riviera.platform.operator.vocabulary.VenueRef;
  * Approval shows a venue, suspension hides it, reinstatement shows it again.
  *
  * <p>Fences tourist-facing reads and new bookings only: {@code venue}'s discovery list, beach map,
- * calendar, public reviews and photo serving, and {@code booking}'s reserve. Sold-booking paths
+ * calendar, public reviews, photo serving and public venue index, and {@code booking}'s reserve. Sold-booking paths
  * (code-gated view, cancel, check-in, mails) never consult it. Rationale: RESPONSIBILITIES.md §operator.
  */
 public interface VenueVisibility {

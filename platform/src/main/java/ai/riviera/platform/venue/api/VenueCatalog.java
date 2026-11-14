@@ -8,6 +8,7 @@ import ai.riviera.platform.venue.vocabulary.DailyAvailability;
 import ai.riviera.platform.venue.vocabulary.StaySpan;
 import ai.riviera.platform.venue.vocabulary.VenueFilter;
 import ai.riviera.platform.venue.vocabulary.VenueId;
+import ai.riviera.platform.venue.vocabulary.VenueLinkPreview;
 import ai.riviera.platform.venue.vocabulary.VenueMapView;
 import ai.riviera.platform.venue.vocabulary.VenueSummaryView;
 
@@ -15,7 +16,7 @@ import ai.riviera.platform.venue.vocabulary.VenueSummaryView;
  * The {@code venue} module's published tourist-read port (invariant #11): browsing venues and
  * rendering a venue's beach map. Tourist reads only — set facts live on {@link SetBookingFacts},
  * rates on {@link VenueRates}; add no sibling-facing method here ({@code VenueApiRoleSplitTests}).
- * All three reads fence tourist visibility: a venue whose owner is not {@code ACTIVE} is absent or
+ * Every read fences tourist visibility: a venue whose owner is not {@code ACTIVE} is absent or
  * empty, indistinguishable from nonexistent. Rationale: RESPONSIBILITIES.md §venue.
  */
 public interface VenueCatalog {
@@ -40,4 +41,7 @@ public interface VenueCatalog {
 	 * hold (#2). The caller bounds the window; an inverted one throws {@link IllegalArgumentException}.
 	 */
 	Optional<List<DailyAvailability>> availabilityBetween(VenueId id, LocalDate from, LocalDate to);
+
+	/** What a shared link to the venue previews (name, beach, description, cover), or empty if absent or hidden. */
+	Optional<VenueLinkPreview> findLinkPreview(VenueId id);
 }

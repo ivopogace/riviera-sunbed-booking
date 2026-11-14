@@ -72,8 +72,9 @@ architecturally impossible").
 
 1. **The root holds the application class and app-wide configuration that reaches no module.**
    After the moves: `PlatformApplication` (now carrying `@Modulithic(sharedModules = "shared")`),
-   `TimeConfig`, `SpaWebConfig`, `MapResourcesConfig`. A root class that needs a module surface
-   belongs in a module. `CompositionRootDisciplineTests`' second rule, nothing in a module reaches
+   `TimeConfig`, `MapResourcesConfig`. A root class that needs a module surface belongs in a
+   module: `SpaWebConfig` and `SpaLocale` moved to `web` when the served shell began reading
+   `venue::api` for link previews (#1760). `CompositionRootDisciplineTests`' second rule, nothing in a module reaches
    the root, stands unchanged.
 
 2. **`auth`: a closed module for sign-in and sessions.** It holds:
