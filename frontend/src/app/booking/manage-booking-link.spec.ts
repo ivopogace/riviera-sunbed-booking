@@ -49,7 +49,9 @@ describe('ManageBookingLink', () => {
     expect(primary.classList.contains('w-full')).toBe(true);
 
     const quiet = link('link');
-    expect(quiet.classList.contains('inline-block')).toBe(true);
+    expect(quiet.classList.contains('inline-flex')).toBe(true);
+    expect(quiet.classList.contains('items-center')).toBe(true);
+    expect(quiet.classList.contains('min-h-11')).toBe(true);
     expect(quiet.classList.contains('block')).toBe(false);
   });
 });

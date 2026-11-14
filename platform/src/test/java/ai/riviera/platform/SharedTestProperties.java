@@ -14,8 +14,8 @@ import org.springframework.test.context.MergedContextConfiguration;
 
 /**
  * The properties every Spring test context starts from, so the common case is one cached context (#1599):
- * the bootstrap admin's password, a build commit id, the no-show sweep off, the request and abandoned-payment
- * sweeps held outside the test window. Registered in {@code META-INF/spring.factories}, so it reaches every test
+ * the bootstrap admin's password, a build commit id, a public origin, the no-show sweep off, the request and
+ * abandoned-payment sweeps held outside the test window. Registered in {@code META-INF/spring.factories}, so it reaches every test
  * class under any profile; placed above the application's configuration and below a class's own
  * {@code @SpringBootTest(properties)} / {@code @TestPropertySource}, so a class declares one of these
  * keys only to opt out ({@code TestContextDriftArchitectureTests} fails a restated shared value).
@@ -28,9 +28,13 @@ public final class SharedTestProperties implements ContextCustomizerFactory {
 	/** The commit id every context publishes on {@code /actuator/info}, so one context pins the public body. */
 	public static final String BUILD_COMMIT = "0123456789abcdef0123456789abcdef01234567";
 
+	/** The public origin every context builds crawler-facing URLs on. */
+	public static final String PUBLIC_ORIGIN = "https://riviera.test";
+
 	static final Map<String, Object> VALUES = Map.of(
 			"riviera.operator.password", OPERATOR_PASSWORD,
 			"riviera.observability.build-commit", BUILD_COMMIT,
+			"riviera.web.public-origin", PUBLIC_ORIGIN,
 			"booking.no-show.enabled", "false",
 			"booking.request.initial-delay", "PT2H",
 			"booking.awaiting-payment.initial-delay", "PT2H",

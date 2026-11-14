@@ -1,4 +1,4 @@
-package ai.riviera.platform;
+package ai.riviera.platform.web.adapter.in;
 
 import java.io.IOException;
 
@@ -10,15 +10,14 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 import org.springframework.web.servlet.resource.PathResourceResolver;
 
 /**
- * Serves the Angular SPA baked into {@code classpath:/static/} by the image's Node stage: hashed
- * assets directly, and its locale's {@code index.html} ({@link SpaLocale}) for a client-side route so
- * a deep-link refresh boots the app instead of 404ing. Unmapped {@code /api/**} and {@code /actuator/**}
- * stay a 404/401, never the shell. Same-origin hosting keeps the session and CSRF cookies first-party
- * (ADR-0004); the public-shell authorization is {@code SecurityConfig}'s SPA filter chain, and this
- * class only maps request paths to static resources.
+ * Serves the Angular SPA baked into {@code classpath:/static/}: hashed assets directly, and a client route's
+ * locale shell ({@link SpaLocale}) so a deep-link refresh boots the app; {@link SpaShellController} serves the
+ * routes whose shell carries link-preview tags. Unmapped {@code /api/**} and {@code /actuator/**} never get the
+ * shell. Same-origin hosting keeps the session and CSRF cookies first-party (ADR-0004); authorization is
+ * {@code SecurityConfig}'s SPA chain.
  */
 @Component
-class SpaWebConfig implements WebMvcConfigurer {
+public class SpaWebConfig implements WebMvcConfigurer {
 
 	/** Backend path prefixes (relative, no leading slash) that must never be served the shell. */
 	private static final String API_PREFIX = "api/";

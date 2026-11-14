@@ -15,9 +15,9 @@ Module census and collaboration inventory: `CLAUDE.md`.
 
 **The root package is the composition root; it reaches no module and nothing depends on it**
 (ADR-0028 Decision 1, both directions pinned by `CompositionRootDisciplineTests`). It holds
-`PlatformApplication` and app-wide config that names no module (`TimeConfig`, `SpaWebConfig`,
-`MapResourcesConfig`). A class that needs a module surface belongs in a module: the security chain,
-its filters and the one advice are `web`'s; login and sessions `auth`'s. A type modules need goes in
+`PlatformApplication` and app-wide config that names no module (`TimeConfig`, `MapResourcesConfig`).
+A class that needs a module surface belongs in a module: the security chain, its filters, the one
+advice and the SPA shell are `web`'s; login and sessions `auth`'s. A type modules need goes in
 `shared`, never at the root.
 Keep `shared` tiny: no business logic, no module-owned state. Moving a bean between the root
 and a module can break every `@ApplicationModuleTest` (`riviera-local-debug` § *Blast radius*).

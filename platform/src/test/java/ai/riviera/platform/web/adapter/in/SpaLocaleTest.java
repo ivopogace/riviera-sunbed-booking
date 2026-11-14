@@ -1,4 +1,4 @@
-package ai.riviera.platform;
+package ai.riviera.platform.web.adapter.in;
 
 import java.nio.file.Path;
 import java.util.Arrays;
@@ -11,6 +11,7 @@ import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.json.JsonMapper;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * Pins {@link SpaLocale} to the locales the Angular build emits ({@code frontend/angular.json}'s
@@ -34,5 +35,19 @@ class SpaLocaleTest {
 		Map<String, String> served = Arrays.stream(SpaLocale.values()).collect(Collectors.toMap(
 				SpaLocale::code, SpaLocale::subPath, (a, b) -> a, LinkedHashMap::new));
 		assertEquals(built, served);
+	}
+
+	@Test
+	void eachTranslatedSubpathFitsTheShellControllersLocaleSegment() {
+		for (SpaLocale locale : SpaLocale.values()) {
+			assertTrue(locale.subPath().isEmpty() || locale.subPath().matches("[a-z][a-z]"), locale.subPath());
+		}
+	}
+
+	@Test
+	void theSourceLocaleSitsAtTheRootAndTheOthersUnderTheirSubpath() {
+		assertEquals("/", SpaLocale.EN.path("/"));
+		assertEquals("/sq/", SpaLocale.SQ.path("/"));
+		assertEquals("/it/help", SpaLocale.IT.path("/help"));
 	}
 }
