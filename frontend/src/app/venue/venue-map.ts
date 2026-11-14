@@ -1,6 +1,7 @@
 import { HttpErrorResponse } from '@angular/common/http';
 import { Component, computed, effect, inject, signal, untracked } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
+import { Title } from '@angular/platform-browser';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 
 import { BookingDialog } from '../booking/booking-dialog';
@@ -182,6 +183,7 @@ export class VenueMap {
   private readonly route = inject(ActivatedRoute);
   private readonly venues = inject(VenueService);
   private readonly router = inject(Router);
+  private readonly title = inject(Title);
   /** WCAG 2.4.3: a re-fetch failure tears down the map (which may hold focus) — move it (RV-FE-9). */
   private readonly moveFocus = focusMover();
 
@@ -414,6 +416,13 @@ export class VenueMap {
   });
 
   constructor() {
+    // The route's static title stands while the read loads or fails; a loaded venue names the page.
+    effect(() => {
+      const view = this.venueView();
+      if (view !== undefined) {
+        this.title.setTitle(`${view.name}, ${view.beach} — Riviera`);
+      }
+    });
     // In-place route changes only: skip runs matching the last route key (fresh mount loads below).
     let current = this.routeKey();
     effect(() => {

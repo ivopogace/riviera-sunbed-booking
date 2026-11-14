@@ -243,6 +243,8 @@ test('a plain click on a free tile opens the booking dialog (and the map is acce
 }) => {
   await page.goto('/venues/1');
   await expect(page.getByRole('heading', { name: 'Panorama Bay' })).toBeVisible();
+  // The loaded venue names the document (#1733).
+  await expect(page).toHaveTitle('Panorama Bay, Ksamil — Riviera');
   // A venue wider than the viewport shows the drag-to-pan hint.
   await expect(page.getByTestId('scroll-hint')).toBeVisible();
 
