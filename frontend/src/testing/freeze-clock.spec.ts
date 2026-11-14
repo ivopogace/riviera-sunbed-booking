@@ -37,4 +37,22 @@ describe('the frozen suite clock', () => {
     expect(Date.now()).toBe(Date.parse(FROZEN_INSTANT));
     expect(vi.getTimerCount()).toBe(0);
   });
+
+  it('leaves animation frames running after a spec focused an element under full fake timers', async () => {
+    const button = document.createElement('button');
+    document.body.append(button);
+    vi.useFakeTimers();
+    try {
+      // Off the fake clock's 16 ms frame grid, which jsdom's interval does not follow.
+      vi.advanceTimersByTime(5);
+      button.focus();
+    } finally {
+      freezeClock();
+      button.remove();
+    }
+
+    const frame = new Promise<'frame'>((resolve) => requestAnimationFrame(() => resolve('frame')));
+    const stalled = new Promise<'stalled'>((resolve) => setTimeout(() => resolve('stalled'), 500));
+    expect(await Promise.race([frame, stalled])).toBe('frame');
+  });
 });

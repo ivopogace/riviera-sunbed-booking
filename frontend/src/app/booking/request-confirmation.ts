@@ -96,8 +96,7 @@ const CLS = {
               >We’ll notify you by email as soon as the venue responds — expected by
               <strong [class]="cls.strong" data-testid="request-deadline">{{
                 deadline(r.requestExpiresAt) // i18n(ph="deadline")
-              }}</strong
-              >.</ng-container
+              }}</strong>.</ng-container
             >
             @if (stops().length > 0) {
               <ng-container i18n

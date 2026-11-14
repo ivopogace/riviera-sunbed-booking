@@ -35,7 +35,7 @@ export type SsoProviderId = 'google' | 'apple';
  * Shown when a current password is required but none was supplied (`MISSING_CURRENT_PASSWORD`),
  * distinct from "incorrect". One constant so the tourist and operator pages word it the same.
  */
-export const CURRENT_PASSWORD_REQUIRED_MESSAGE = 'Enter your current password.';
+export const CURRENT_PASSWORD_REQUIRED_MESSAGE = $localize`Enter your current password.`;
 
 /** How a "forgot password" request ended (always neutral to the user — non-enumeration, D-8). */
 export type ForgotPasswordResult = 'sent' | ChallengeRejection | 'rate-limited' | 'error';
@@ -312,11 +312,11 @@ export function customerSignInMessage(result: CustomerSignInResult): string | un
     case 'signed-in':
       return undefined;
     case 'invalid-credentials':
-      return 'Sign-in failed. Check your email and password.';
+      return $localize`Sign-in failed. Check your email and password.`;
     case 'rate-limited':
-      return 'Too many attempts. Please wait a minute and try again.';
+      return $localize`Too many attempts. Please wait a minute and try again.`;
     case 'error':
-      return 'Something went wrong signing in. Please try again.';
+      return $localize`Something went wrong signing in. Please try again.`;
   }
 }
 
@@ -333,14 +333,14 @@ export function customerRegisterMessage(result: CustomerRegisterResult): string 
     case 'registered':
       return undefined;
     case 'exists':
-      return 'That email may already have an account. Try signing in instead.';
+      return $localize`That email may already have an account. Try signing in instead.`;
     case 'invalid-password':
       return PASSWORD_LENGTH_MESSAGE;
     case 'blocked-password':
       return PASSWORD_BLOCKED_MESSAGE;
     case 'rate-limited':
-      return 'Too many attempts. Please wait a minute and try again.';
+      return $localize`Too many attempts. Please wait a minute and try again.`;
     case 'error':
-      return 'Something went wrong creating your account. Please try again.';
+      return $localize`Something went wrong creating your account. Please try again.`;
   }
 }

@@ -164,8 +164,10 @@ describe('VenuePinLayer', () => {
       const { x, y } = handle.project(AURORA.at);
 
       const [pin] = buttons('map-venue-pin');
-      expect(pin.style.left).toBe(`${x}px`);
-      expect(pin.style.top).toBe(`${y}px`);
+      // CSSOM serializes a length to six significant digits, as browsers do: compare the number.
+      expect(pin.style.left).toMatch(/px$/);
+      expect(Number.parseFloat(pin.style.left)).toBeCloseTo(x, 3);
+      expect(Number.parseFloat(pin.style.top)).toBeCloseTo(y, 3);
     });
 
     it('draws nothing before the map has booted', async () => {

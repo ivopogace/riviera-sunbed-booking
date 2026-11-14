@@ -167,6 +167,33 @@ for (const locale of LOCALES) {
       );
       await expectNoSeriousAxeViolations(page, `${locale} help`);
     });
+
+    test('a server error on sign-in renders translated copy keyed on its code, never the detail', async ({
+      page,
+    }) => {
+      await page.route(/\/api\/auth\/me$/, (route) =>
+        route.fulfill({ status: 401, json: { code: 'UNAUTHENTICATED' } }),
+      );
+      const detail = 'An English server sentence.';
+      await page.route(/\/api\/auth\/customer\/login$/, (route) =>
+        route.fulfill({
+          status: 500,
+          contentType: 'application/problem+json',
+          body: JSON.stringify({ code: 'SOME_FUTURE_CODE', detail }),
+        }),
+      );
+      await page.goto(`/${locale}/account/sign-in`);
+      await expect(page.locator('html')).toHaveAttribute('lang', locale);
+      await page.getByTestId('auth-identifier').fill('ana@example.com');
+      await page.getByTestId('auth-password').fill('passphrase-123');
+      await page.getByTestId('auth-submit').click();
+
+      const error = page.getByTestId('auth-error');
+      await expect(error).toHaveText(
+        t(locale, 'Something went wrong signing in. Please try again.'),
+      );
+      await expect(error).not.toContainText(detail);
+    });
   });
 }
 

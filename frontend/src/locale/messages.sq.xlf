@@ -1471,8 +1471,7 @@
       <trans-unit id="5016141727546780846" datatype="html">
         <source> If the new spot doesn’t suit you, cancel below for a full refund until <x id="START_TAG_STRONG" ctype="x-strong" equiv-text="&lt;strong&gt;"/><x id="DEADLINE" equiv-text="{{
                     deadlineLabel(until) // i18n(ph=&quot;deadline&quot;)
-                  }}"/><x id="CLOSE_TAG_STRONG" ctype="x-strong" equiv-text="&lt;/strong
-                  &gt;"/>. </source>
+                  }}"/><x id="CLOSE_TAG_STRONG" ctype="x-strong" equiv-text="&lt;/strong&gt;"/>. </source>
         <target state="translated"> Nëse vendi i ri nuk ju përshtatet, anulojeni më poshtë për rimbursim të plotë deri më <x id="START_TAG_STRONG" ctype="x-strong" equiv-text="&lt;strong&gt;"/><x id="DEADLINE" equiv-text="{{
                     deadlineLabel(until) // i18n(ph=&quot;deadline&quot;)
                   }}"/><x id="CLOSE_TAG_STRONG" ctype="x-strong" equiv-text="&lt;/strong
@@ -2218,8 +2217,7 @@
       <trans-unit id="7944873255471191867" datatype="html">
         <source>We’ll notify you by email as soon as the venue responds — expected by <x id="START_TAG_STRONG" ctype="x-strong" equiv-text="&lt;strong [class]=&quot;cls.strong&quot; data-testid=&quot;request-deadline&quot;&gt;"/><x id="DEADLINE" equiv-text="{{
                 deadline(r.requestExpiresAt) // i18n(ph=&quot;deadline&quot;)
-              }}"/><x id="CLOSE_TAG_STRONG" ctype="x-strong" equiv-text="&lt;/strong
-              &gt;"/>.</source>
+              }}"/><x id="CLOSE_TAG_STRONG" ctype="x-strong" equiv-text="&lt;/strong&gt;"/>.</source>
         <target state="translated">Do t’ju njoftojmë me email sapo lokali të përgjigjet — pritet deri më <x id="START_TAG_STRONG" ctype="x-strong" equiv-text="&lt;strong [class]=&quot;cls.strong&quot; data-testid=&quot;request-deadline&quot;&gt;"/><x id="DEADLINE" equiv-text="{{
                 deadline(r.requestExpiresAt) // i18n(ph=&quot;deadline&quot;)
               }}"/><x id="CLOSE_TAG_STRONG" ctype="x-strong" equiv-text="&lt;/strong
@@ -2561,6 +2559,123 @@
         <target state="translated"><x id="START_TAG_STRONG" ctype="x-strong" equiv-text="&lt;strong class=&quot;font-bold&quot;&gt;"/>Nuk mundëm t’ju dërgonim email.<x id="CLOSE_TAG_STRONG" ctype="x-strong" equiv-text="&lt;/strong&gt;"/> Nuk arritëm të dërgonim konfirmimin në atë adresë, prandaj ky kod është e vetmja dëshmi që keni — ruajeni ose bëni një pamje ekrani para se të largoheni nga kjo faqe. </target>
         <context-group purpose="location">
           <context context-type="sourcefile">src/app/booking/withheld-email-notice.ts</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="9121424381282805046" datatype="html">
+        <source>Enter your current password.</source>
+        <target state="translated">Shkruani fjalëkalimin tuaj aktual.</target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/core/customer-auth.ts</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="4670419021486064593" datatype="html">
+        <source>Sign-in failed. Check your email and password.</source>
+        <target state="translated">Hyrja dështoi. Kontrolloni email-in dhe fjalëkalimin.</target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/core/customer-auth.ts</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="1336529394751708762" datatype="html">
+        <source>Too many attempts. Please wait a minute and try again.</source>
+        <target state="translated">Shumë përpjekje. Ju lutemi prisni një minutë dhe provoni përsëri.</target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/core/customer-auth.ts</context>
+        </context-group>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/core/customer-auth.ts</context>
+        </context-group>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/core/operator-auth.ts</context>
+        </context-group>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/core/operator-auth.ts</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="2215155058125314434" datatype="html">
+        <source>Something went wrong signing in. Please try again.</source>
+        <target state="translated">Diçka shkoi keq gjatë hyrjes. Ju lutemi provoni përsëri.</target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/core/customer-auth.ts</context>
+        </context-group>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/core/operator-auth.ts</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="1171538870085994397" datatype="html">
+        <source>That email may already have an account. Try signing in instead.</source>
+        <target state="translated">Ky email mund të ketë tashmë një llogari. Provoni të hyni në vend të kësaj.</target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/core/customer-auth.ts</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="8379529983216484894" datatype="html">
+        <source>Something went wrong creating your account. Please try again.</source>
+        <target state="translated">Diçka shkoi keq gjatë krijimit të llogarisë suaj. Ju lutemi provoni përsëri.</target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/core/customer-auth.ts</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="8496293973091704836" datatype="html">
+        <source>Sign-in failed. Check your username and password.</source>
+        <target state="translated">Hyrja dështoi. Kontrolloni emrin e përdoruesit dhe fjalëkalimin.</target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/core/operator-auth.ts</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="1611064856239509842" datatype="html">
+        <source>Too many sign-in attempts. Please wait a minute and try again.</source>
+        <target state="translated">Shumë përpjekje për hyrje. Ju lutemi prisni një minutë dhe provoni përsëri.</target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/core/operator-auth.ts</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="8319069617818186469" datatype="html">
+        <source>Your operator session has expired. Please sign in again.</source>
+        <target state="translated">Seanca juaj si operator ka skaduar. Ju lutemi hyni përsëri.</target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/core/operator-auth.ts</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="2179485637949354334" datatype="html">
+        <source>Your password has been changed. Any other devices signed in as you have been signed out.</source>
+        <target state="translated">Fjalëkalimi juaj u ndryshua. Çdo pajisje tjetër ku ishit të identifikuar është shkëputur.</target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/core/operator-auth.ts</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="5824197465046299846" datatype="html">
+        <source>That current password is incorrect.</source>
+        <target state="translated">Fjalëkalimi aktual është i pasaktë.</target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/core/operator-auth.ts</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="7452922548911750795" datatype="html">
+        <source>This account&apos;s password is managed by the deployment environment and can&apos;t be changed here.</source>
+        <target state="translated">Fjalëkalimi i kësaj llogarie menaxhohet nga mjedisi i vendosjes dhe nuk mund të ndryshohet këtu.</target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/core/operator-auth.ts</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="5922413046842549795" datatype="html">
+        <source>This account is not active. Contact a platform admin.</source>
+        <target state="translated">Kjo llogari nuk është aktive. Kontaktoni një administrator të platformës.</target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/core/operator-auth.ts</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="540011916904356197" datatype="html">
+        <source>Something went wrong changing your password. Please try again.</source>
+        <target state="translated">Diçka shkoi keq gjatë ndryshimit të fjalëkalimit. Ju lutemi provoni përsëri.</target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/core/operator-auth.ts</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="7921766106646929927" datatype="html">
+        <source>Something went wrong submitting your registration. Please try again.</source>
+        <target state="translated">Diçka shkoi keq gjatë dërgimit të regjistrimit. Ju lutemi provoni përsëri.</target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/core/operator-auth.ts</context>
         </context-group>
       </trans-unit>
       <trans-unit id="3092414782199713466" datatype="html">
@@ -3993,6 +4108,34 @@
         </context-group>
         <note priority="1" from="description">Map tile licence credit</note>
       </trans-unit>
+      <trans-unit id="4716244492410232454" datatype="html">
+        <source>At least 12 characters. It can’t contain the name you sign in with or the word “riviera”.</source>
+        <target state="translated">Të paktën 12 karaktere. Nuk mund të përmbajë emrin me të cilin hyni ose fjalën “riviera”.</target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/shared/password-policy.ts</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="4510456269705807483" datatype="html">
+        <source>Choose a password of 12–72 characters.</source>
+        <target state="translated">Zgjidhni një fjalëkalim me 12–72 karaktere.</target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/shared/password-policy.ts</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="4368999237449808647" datatype="html">
+        <source>That password is too long. Accented letters and emoji each take several of the 72 available characters, so try a shorter one.</source>
+        <target state="translated">Ky fjalëkalim është shumë i gjatë. Shkronjat me theks dhe emoji zënë secila disa nga 72 karakteret e lejuara, ndaj provoni një më të shkurtër.</target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/shared/password-policy.ts</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="3352672788139154167" datatype="html">
+        <source>That password contains the name you sign in with or the word “riviera”. Choose a different one.</source>
+        <target state="translated">Ky fjalëkalim përmban emrin me të cilin hyni ose fjalën “riviera”. Zgjidhni një tjetër.</target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/shared/password-policy.ts</context>
+        </context-group>
+      </trans-unit>
       <trans-unit id="768946083814801341" datatype="html">
         <source>View photo <x id="position" equiv-text="index + 1"/> of <x id="count" equiv-text="this.photos().length"/> of <x id="venue" equiv-text="this.name()"/></source>
         <target state="translated">Shiko foton <x id="position" equiv-text="index + 1"/> nga <x id="count" equiv-text="this.photos().length"/> të <x id="venue" equiv-text="this.name()"/></target>
@@ -4489,8 +4632,7 @@
       <trans-unit id="4395544738741966748" datatype="html">
         <source> Move on <x id="START_TAG_STRONG" ctype="x-strong" equiv-text="&lt;strong class=&quot;text-riv-card-ink&quot;&gt;"/><x id="DAY" equiv-text="{{
                   move.day // i18n(ph=&quot;day&quot;)
-                }}"/><x id="CLOSE_TAG_STRONG" ctype="x-strong" equiv-text="&lt;/strong
-                &gt;"/>: <x id="DISTANCE" equiv-text="{{
+                }}"/><x id="CLOSE_TAG_STRONG" ctype="x-strong" equiv-text="&lt;/strong&gt;"/>: <x id="DISTANCE" equiv-text="{{
                   move.text // i18n(ph=&quot;distance&quot;)
                 }}"/> </source>
         <target state="translated"> Zhvendosje më <x id="START_TAG_STRONG" ctype="x-strong" equiv-text="&lt;strong class=&quot;text-riv-card-ink&quot;&gt;"/><x id="DAY" equiv-text="{{
