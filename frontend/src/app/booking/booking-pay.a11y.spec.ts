@@ -5,6 +5,8 @@ import { EMPTY } from 'rxjs';
 import { expectNoAxeViolations } from '../../testing/axe';
 import { AwaitingPayment } from './booking.model';
 import { BookingService } from './booking.service';
+import { VenuePin } from './venue-pin';
+import { venuePinStub } from '../../testing/venue-pin-stub';
 import { BookingPay } from './booking-pay';
 import { PageNavigation } from '../core/page-navigation';
 import { CheckoutSession, EmbeddedCheckoutGateway } from './checkout.gateway';
@@ -21,6 +23,9 @@ const AWAITING: AwaitingPayment = {
   amount: { minorUnits: 4500, currency: 'EUR' },
   payment: { kind: 'EMBEDDED', clientToken: 'pi_123_secret_abc', reference: 'pi_123' },
 };
+
+/** A pinned venue, so the settled states' audits cover the Directions row too. */
+const PIN = { latitude: 39.774531, longitude: 19.998412 };
 
 class FakeGateway extends EmbeddedCheckoutGateway {
   override mount(host: HTMLElement): Promise<CheckoutSession> {
@@ -61,6 +66,7 @@ async function renderInState(
       { provide: BookingService, useValue: stubService(booking) },
       { provide: EmbeddedCheckoutGateway, useValue: new FakeGateway() },
       { provide: PageNavigation, useValue: { leaveTo: () => undefined, reload: () => undefined } },
+      { provide: VenuePin, useValue: venuePinStub(PIN) },
     ],
   }).compileComponents();
 
