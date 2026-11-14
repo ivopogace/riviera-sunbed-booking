@@ -733,7 +733,7 @@ describe('DailyViewTab (#175)', () => {
       );
     fixture.detectChanges();
     const notice = byId('checkin-result').textContent;
-    expect(notice).toContain('2026-08-15');
+    expect(notice).toContain('Sat 15 Aug 2026');
     expect(notice).not.toContain('ABC12345');
   });
 

@@ -25,7 +25,7 @@ import { HourglassIcon } from '../shared/hourglass-icon';
         <span aria-hidden="true" class="mt-px shrink-0 [&_svg]:size-[18px]"
           ><app-hourglass-icon
         /></span>
-        <p class="m-0 text-[13.5px] leading-[1.5] text-riv-card-ink">
+        <p class="m-0 text-[13.5px] leading-[1.5] text-riv-card-ink" i18n>
           <strong class="font-semibold">Your account is awaiting approval.</strong>
           You can set everything up now — your venues stay hidden from tourists until a platform
           admin approves your account.

@@ -23,6 +23,7 @@ import { SkeletonBlock } from '../shared/skeleton-block';
 import { formatDeadline, isUrgent, timeLeftLabel } from '../shared/deadline';
 import { focusMover } from '../shared/focus-after-render';
 import { formatMoney } from '../shared/money';
+import { pluralOf } from '../shared/plural';
 import { parentVenueId } from '../shared/parent-venue-id';
 import { formatCivilDate } from '../shared/booking-date';
 import { formatStay } from '../shared/booking-date-label';
@@ -193,7 +194,11 @@ export class RequestsTab {
           kind: r.kind,
           id: r.stayId,
           guest: r.guestName,
-          setLabel: `${stops.length} spots`,
+          setLabel: pluralOf(
+            stops.length,
+            $localize`${stops.length}:count: spot`,
+            $localize`${stops.length}:count: spots`,
+          ),
           tierName: '',
           dateLabel: formatStay(r.firstDate, r.lastDate, { withYear: true }),
           isStay: true,
@@ -326,11 +331,11 @@ export class RequestsTab {
       case 'REQUEST_NOT_PENDING':
       case 'NO_SUCH_REQUEST': {
         this.closeDeclineConfirm(key);
-        const days = this.rows().find((row) => row.key === key)?.isStay ? 'those days' : 'that day';
+        const isStay = this.rows().find((row) => row.key === key)?.isStay === true;
         this.notice.set(
           reason === 'SET_UNAVAILABLE'
-            ? `That set is no longer free for ${days} — the request was declined and the guest has been told.`
-            : 'That request was already handled — the queue has moved on.',
+            ? setUnavailableNotice(isStay)
+            : $localize`That request was already handled — the queue has moved on.`,
         );
         const landing = this.landingAfterRemoving(key, NOTICE);
         this.removeCard(key);
@@ -490,13 +495,17 @@ export class RequestsTab {
   // The accessible names lead with the button's visible text (WCAG 2.5.3 Label in Name) and add the
   // guest + set to disambiguate the repeated per-card buttons for a screen-reader.
   protected acceptLabel(row: RequestRow): string {
-    return `Accept — send to payment: request from ${row.guest} ${forDays(row)}`;
+    return row.isStay
+      ? $localize`Accept — send to payment: request from ${row.guest}:guest: for ${row.setLabel}:set:, ${row.dateLabel}:dates:`
+      : $localize`Accept — send to payment: request from ${row.guest}:guest: for ${row.setLabel}:set: on ${row.dateLabel}:date:`;
   }
   protected declineLabel(row: RequestRow): string {
-    return `Decline: request from ${row.guest} ${forDays(row)}`;
+    return row.isStay
+      ? $localize`Decline: request from ${row.guest}:guest: for ${row.setLabel}:set:, ${row.dateLabel}:dates:`
+      : $localize`Decline: request from ${row.guest}:guest: for ${row.setLabel}:set: on ${row.dateLabel}:date:`;
   }
   protected confirmDeclineLabel(row: RequestRow): string {
-    return `Confirm decline: request from ${row.guest} for ${row.setLabel}`;
+    return $localize`Confirm decline: request from ${row.guest}:guest: for ${row.setLabel}:set:`;
   }
 }
 
@@ -540,33 +549,34 @@ function without(set: ReadonlySet<string>, key: string): ReadonlySet<string> {
   return next;
 }
 
-/** The set and days a card's accessible names name: `for A · 1 on Fri 3 Jul 2026`, or the stay's range. */
-function forDays(row: RequestRow): string {
-  return row.isStay
-    ? `for ${row.setLabel}, ${row.dateLabel}`
-    : `for ${row.setLabel} on ${row.dateLabel}`;
+function setUnavailableNotice(isStay: boolean): string {
+  return isStay
+    ? $localize`That set is no longer free for those days — the request was declined and the guest has been told.`
+    : $localize`That set is no longer free for that day — the request was declined and the guest has been told.`;
 }
 
 /** The operator-facing notice for a successful accept/decline. */
 function decisionNotice(action: 'accept' | 'decline', status: string): string {
   if (action === 'decline') {
-    return 'Request declined — the guest was notified. No charge was made.';
+    return $localize`Request declined — the guest was notified. No charge was made.`;
   }
   // Accept never confirms the booking here (invariant #8) — it moves the guest into the pay window;
   // a CONFIRMED status only appears with the stub payment profile.
   return status === 'CONFIRMED'
-    ? 'Request accepted — the booking is confirmed.'
-    : 'Request accepted — the guest has been asked to pay.';
+    ? $localize`Request accepted — the booking is confirmed.`
+    : $localize`Request accepted — the guest has been asked to pay.`;
 }
 
 /** Map an accept/decline failure (excluding the race / stale / 401 cases handled inline) to operator copy. */
 function decisionFailureNotice(action: 'accept' | 'decline', reason: RequestErrorCode): string {
   switch (reason) {
     case 'PAYMENT_INIT_FAILED':
-      return 'Could not set up the guest’s payment — please try accepting again.';
+      return $localize`Could not set up the guest’s payment — please try accepting again.`;
     case 'NOT_VENUE_OWNER':
-      return 'You don’t manage this venue, so you can’t handle its requests.';
+      return $localize`You don’t manage this venue, so you can’t handle its requests.`;
     default:
-      return `Could not ${action} that request. Please try again.`;
+      return action === 'accept'
+        ? $localize`Could not accept that request. Please try again.`
+        : $localize`Could not decline that request. Please try again.`;
   }
 }

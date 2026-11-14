@@ -46,7 +46,9 @@ interface ShoreOffer {
   imports: [RivieraMap, TouchTarget],
   host: { class: 'flex flex-col gap-2' },
   template: `<div class="flex flex-wrap items-baseline justify-between gap-2">
-      <span class="text-[12.5px] font-semibold text-riv-card-ink">Location on the riviera map</span>
+      <span class="text-[12.5px] font-semibold text-riv-card-ink" i18n
+        >Location on the riviera map</span
+      >
       <span class="flex flex-wrap gap-2">
         <button
           type="button"
@@ -54,6 +56,7 @@ interface ShoreOffer {
           data-testid="venue-location-place"
           class="inline-flex touch-manipulation items-center rounded-full border border-riv-field-border px-[14px] text-[13px] font-semibold text-riv-card-ink hover:bg-riv-console-inset/60"
           (click)="placeAtCentre()"
+          i18n
         >
           Place pin at map centre
         </button>
@@ -64,6 +67,7 @@ interface ShoreOffer {
           class="inline-flex touch-manipulation items-center rounded-full border border-riv-field-border px-[14px] text-[13px] font-semibold text-riv-card-ink hover:bg-riv-console-inset/60 aria-disabled:opacity-60"
           [attr.aria-disabled]="location() ? null : true"
           (click)="clear()"
+          i18n
         >
           Clear pin
         </button>
@@ -78,6 +82,7 @@ interface ShoreOffer {
       [pinDraggable]="true"
       [nearMe]="true"
       pinLabel="Venue location"
+      i18n-pinLabel
       (mapClick)="place($event)"
       (pinMoved)="place($event)"
     />
@@ -110,6 +115,7 @@ interface ShoreOffer {
           data-testid="venue-location-snap-accept"
           [class]="offerButton"
           (click)="acceptShore()"
+          i18n
         >
           Move to shoreline
         </button>
@@ -119,6 +125,7 @@ interface ShoreOffer {
           data-testid="venue-location-snap-keep"
           [class]="offerButton"
           (click)="keepOwnPoint()"
+          i18n
         >
           Keep my point
         </button>
@@ -148,8 +155,10 @@ export class VenueLocationField {
     if (shore === null) {
       return '';
     }
-    const where = shore.atSea ? 'out to sea' : 'inland';
-    return `This pin is ${shoreMoveLabel(shore.km)} ${where}. Move it to the shoreline?`;
+    const distance = shoreMoveLabel(shore.km);
+    return shore.atSea
+      ? $localize`This pin is ${distance}:distance: out to sea. Move it to the shoreline?`
+      : $localize`This pin is ${distance}:distance: inland. Move it to the shoreline?`;
   });
 
   protected readonly pin = computed<LngLat | null>(() => {
@@ -159,9 +168,12 @@ export class VenueLocationField {
 
   protected readonly readout = computed(() => {
     const at = this.location();
-    return at === null
-      ? 'No pin yet — tap the map, or centre it and use Place pin at map centre.'
-      : `Latitude ${at.latitude.toFixed(STORED_DECIMALS)}, longitude ${at.longitude.toFixed(STORED_DECIMALS)}`;
+    if (at === null) {
+      return $localize`No pin yet — tap the map, or centre it and use Place pin at map centre.`;
+    }
+    const latitude = at.latitude.toFixed(STORED_DECIMALS);
+    const longitude = at.longitude.toFixed(STORED_DECIMALS);
+    return $localize`Latitude ${latitude}:latitude:, longitude ${longitude}:longitude:`;
   });
 
   protected place(at: LngLat): void {

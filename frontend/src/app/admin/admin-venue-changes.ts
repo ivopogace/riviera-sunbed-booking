@@ -40,7 +40,7 @@ const MAX_FEE_MINOR = 100_000;
   imports: [CardGlass, TouchTarget, BusyAction, FieldErrorFor, FormField],
   template: `
     @if (loading()) {
-      <p class="mt-4 text-[15px] text-riv-ink-soft" data-testid="admin-venue-changes-loading">
+      <p class="mt-4 text-[15px] text-riv-ink-soft" data-testid="admin-venue-changes-loading" i18n>
         Loading…
       </p>
     } @else if (loadError()) {
@@ -48,6 +48,7 @@ const MAX_FEE_MINOR = 100_000;
         class="mt-4 text-[15px] text-riv-error-ink"
         role="alert"
         data-testid="admin-venue-changes-error"
+        i18n
       >
         Something went wrong loading venue-caused refunds.
         <button
@@ -71,10 +72,11 @@ const MAX_FEE_MINOR = 100_000;
             <h2
               id="admin-venue-change-fee-heading"
               class="text-[16px] font-semibold text-riv-card-ink"
+              i18n
             >
               Venue-change fee
             </h2>
-            <p class="mt-2 max-w-[62ch] text-[13px] leading-[1.5] text-riv-card-ink-soft">
+            <p class="mt-2 max-w-[62ch] text-[13px] leading-[1.5] text-riv-card-ink-soft" i18n>
               What a venue pays when its own layout change refunds a guest. One flat amount for
               every venue, deducted from the venue's payout — never from the guest's refund.
             </p>
@@ -85,7 +87,11 @@ const MAX_FEE_MINOR = 100_000;
               data-testid="admin-venue-change-fee-amount"
               >{{ feeStr() }}</span
             >
-            <span class="block text-[12px] text-riv-card-ink-soft">per refund</span>
+            <span
+              class="block text-[12px] text-riv-card-ink-soft"
+              i18n="Unit under the venue-change fee amount"
+              >per refund</span
+            >
           </p>
         </div>
 
@@ -98,6 +104,7 @@ const MAX_FEE_MINOR = 100_000;
             <label
               for="admin-venue-change-fee-input"
               class="block text-[13.5px] font-semibold text-riv-card-ink"
+              i18n
               >New fee (€)</label
             >
             <input
@@ -117,10 +124,18 @@ const MAX_FEE_MINOR = 100_000;
               data-testid="admin-venue-change-fee-preview"
             >
               @if (draftMinor() === null) {
-                Enter the fee in euros, for example 5.
+                <ng-container i18n>Enter the fee in euros, for example 5.</ng-container>
               } @else {
-                Stores <strong class="text-riv-card-ink">{{ draftMinor() }}</strong> minor units —
-                was {{ feeStr() }}.
+                <ng-container i18n
+                  >Stores
+                  <strong class="text-riv-card-ink">{{
+                    draftMinor() // i18n(ph="minorUnits")
+                  }}</strong>
+                  minor units — was
+                  {{
+                    feeStr()  // i18n(ph="currentFee")
+                  }}.</ng-container
+                >
               }
             </p>
 
@@ -138,6 +153,7 @@ const MAX_FEE_MINOR = 100_000;
             <label
               for="admin-venue-change-fee-reason"
               class="mt-3 block text-[13.5px] font-semibold text-riv-card-ink"
+              i18n
               >Reason (optional)</label
             >
             <input
@@ -147,6 +163,7 @@ const MAX_FEE_MINOR = 100_000;
               data-testid="admin-venue-change-fee-reason"
               [formField]="feeForm.reason"
               placeholder="e.g. raised for the 2027 season"
+              i18n-placeholder="Example audit reason for changing the venue-change fee"
               class="mt-1 w-full rounded-[10px] border border-riv-field-border bg-riv-console-inset/70 px-3 py-2 text-[16px] text-riv-card-ink"
               #reasonControl
             />
@@ -162,7 +179,7 @@ const MAX_FEE_MINOR = 100_000;
               </p>
             }
 
-            <p class="mt-3 text-[13px] leading-[1.5] text-riv-card-ink-soft">
+            <p class="mt-3 text-[13px] leading-[1.5] text-riv-card-ink-soft" i18n>
               The new amount applies to every refund charged after it. Fees already charged keep the
               amount they were charged at — there is no way to reprice them, by design.
             </p>
@@ -175,6 +192,7 @@ const MAX_FEE_MINOR = 100_000;
                 [appBusy]="busy()"
                 (click)="saveFee()"
                 class="rounded-[10px] border border-riv-field-border bg-riv-console-inset/70 px-4 py-2 text-[14px] font-semibold text-riv-card-ink aria-disabled:cursor-not-allowed aria-disabled:opacity-60"
+                i18n
               >
                 Save fee
               </button>
@@ -185,6 +203,7 @@ const MAX_FEE_MINOR = 100_000;
                 [appBusy]="busy()"
                 (click)="cancelEdit()"
                 class="rounded-[10px] px-3 py-2 text-[14px] font-semibold text-riv-card-ink-soft aria-disabled:cursor-not-allowed aria-disabled:opacity-60"
+                i18n="Button that discards the venue-change fee edit"
               >
                 Cancel
               </button>
@@ -208,8 +227,10 @@ const MAX_FEE_MINOR = 100_000;
             type="button"
             data-testid="admin-venue-change-fee-edit"
             aria-label="Change the venue-change fee"
+            i18n-aria-label
             class="mt-4 rounded-[10px] border border-riv-field-border px-4 py-2 text-[14px] font-semibold text-riv-card-ink"
             (click)="startEdit()"
+            i18n
           >
             Change fee
           </button>
@@ -226,8 +247,8 @@ const MAX_FEE_MINOR = 100_000;
 
       @if (rows().length === 0) {
         <div appCardGlass class="mt-3 rounded-[14px] p-5" data-testid="admin-venue-changes-empty">
-          <h2 class="text-[16px] font-semibold text-riv-card-ink">No venue-caused refunds</h2>
-          <p class="mt-2 text-[15px] leading-[1.5] text-riv-card-ink-soft">
+          <h2 class="text-[16px] font-semibold text-riv-card-ink" i18n>No venue-caused refunds</h2>
+          <p class="mt-2 text-[15px] leading-[1.5] text-riv-card-ink-soft" i18n>
             No remodel has refunded a guest yet. A venue appears here the moment one does.
           </p>
         </div>
@@ -238,10 +259,14 @@ const MAX_FEE_MINOR = 100_000;
           data-testid="admin-venue-changes-card"
           aria-labelledby="admin-venue-changes-heading"
         >
-          <h2 id="admin-venue-changes-heading" class="text-[16px] font-semibold text-riv-card-ink">
+          <h2
+            id="admin-venue-changes-heading"
+            class="text-[16px] font-semibold text-riv-card-ink"
+            i18n
+          >
             Venue-caused refunds
           </h2>
-          <p class="mt-2 text-[13px] leading-[1.5] text-riv-card-ink-soft">
+          <p class="mt-2 text-[13px] leading-[1.5] text-riv-card-ink-soft" i18n>
             What each venue's own layout changes returned to guests, and the fee it paid for them.
             The two are separate: the fee is deducted from the venue's payout, not from the refund.
           </p>
@@ -249,20 +274,29 @@ const MAX_FEE_MINOR = 100_000;
           <section
             class="mt-4 overflow-x-auto rounded-[14px] border border-riv-card-border"
             aria-label="Venue-caused refunds by venue"
+            i18n-aria-label
             tabindex="0"
           >
             <table class="w-full border-collapse text-[13px]">
-              <caption class="sr-only">
+              <caption class="sr-only" i18n>
                 Venue-caused refunds and fees, by venue
               </caption>
               <thead>
                 <tr
                   class="bg-riv-console-tint/5 text-[10.5px] uppercase tracking-[0.06em] text-riv-card-ink-soft"
                 >
-                  <th scope="col" class="px-3.5 py-2.5 text-left font-bold">Venue</th>
-                  <th scope="col" class="px-3.5 py-2.5 text-right font-bold">Refunds</th>
-                  <th scope="col" class="px-3.5 py-2.5 text-right font-bold">Returned to guests</th>
-                  <th scope="col" class="px-3.5 py-2.5 text-right font-bold">Fees paid</th>
+                  <th scope="col" class="px-3.5 py-2.5 text-left font-bold" i18n>Venue</th>
+                  <th
+                    scope="col"
+                    class="px-3.5 py-2.5 text-right font-bold"
+                    i18n="Column header: count of venue-caused refunds"
+                  >
+                    Refunds
+                  </th>
+                  <th scope="col" class="px-3.5 py-2.5 text-right font-bold" i18n>
+                    Returned to guests
+                  </th>
+                  <th scope="col" class="px-3.5 py-2.5 text-right font-bold" i18n>Fees paid</th>
                 </tr>
               </thead>
               <tbody>
@@ -293,6 +327,7 @@ const MAX_FEE_MINOR = 100_000;
             class="mt-4 rounded-full border border-riv-console-tint/15 bg-riv-console-tint/5 px-3.5 py-1.5 text-[13px] font-semibold text-riv-accent-ink"
             data-testid="admin-venue-changes-refresh"
             (click)="load()"
+            i18n
           >
             Refresh
           </button>
@@ -328,7 +363,7 @@ export class AdminVenueChanges {
   protected readonly feeForm = form(this.model, (path) => {
     disabled(path.amountEur, { when: () => this.busy() });
     disabled(path.reason, { when: () => this.busy() });
-    maxLength(path.reason, 500, { message: 'Keep the reason under 500 characters.' });
+    maxLength(path.reason, 500, { message: $localize`Keep the reason under 500 characters.` });
   });
 
   /**
@@ -353,7 +388,7 @@ export class AdminVenueChanges {
     const names = this.venueNames();
     return this.totals().map((total) => ({
       venueId: total.venueId,
-      venueName: names.get(total.venueId) ?? `Venue #${total.venueId}`,
+      venueName: names.get(total.venueId) ?? $localize`Venue #${total.venueId}:venueId:`,
       refundCount: total.refundCount,
       refundedStr: formatMoney({ minorUnits: total.refundedMinor, currency: total.currency }),
       feeStr: formatMoney({ minorUnits: total.feeMinor, currency: total.currency }),
@@ -419,7 +454,7 @@ export class AdminVenueChanges {
       return;
     }
     if (minorUnits === this.fee().amountMinor) {
-      this.amountError.set(`That is already the fee (${this.feeStr()}).`);
+      this.amountError.set($localize`That is already the fee (${this.feeStr()}:fee:).`);
       return;
     }
     this.busy.set(true);
@@ -427,10 +462,12 @@ export class AdminVenueChanges {
       const stored = await this.report.setFee(minorUnits, this.model().reason.trim());
       this.fee.set(stored);
       this.editing.set(false);
-      this.notice.set(`The venue-change fee is now ${formatMoney(this.feeMoney())} per refund.`);
+      this.notice.set(
+        $localize`The venue-change fee is now ${formatMoney(this.feeMoney())}:fee: per refund.`,
+      );
       this.focusAfterRender('admin-venue-change-fee-notice');
     } catch {
-      this.saveError.set('Something went wrong saving the fee. Nothing was changed.');
+      this.saveError.set($localize`Something went wrong saving the fee. Nothing was changed.`);
       this.focusAfterRender('admin-venue-change-fee-save');
     } finally {
       this.busy.set(false);
@@ -464,15 +501,15 @@ type AmountCheck = { readonly minorUnits: number } | { readonly error: string };
 function checkAmount(raw: string, currency: string): AmountCheck {
   const typed = raw.trim();
   if (typed.startsWith('-')) {
-    return { error: 'A fee cannot be negative.' };
+    return { error: $localize`A fee cannot be negative.` };
   }
   const minorUnits = eurosToMinorUnits(typed);
   if (minorUnits === null) {
-    return { error: 'Enter the fee in euros, for example 5.' };
+    return { error: $localize`Enter the fee in euros, for example 5.` };
   }
   if (minorUnits > MAX_FEE_MINOR) {
     return {
-      error: `The fee cannot exceed ${formatMoney({ minorUnits: MAX_FEE_MINOR, currency })}.`,
+      error: $localize`The fee cannot exceed ${formatMoney({ minorUnits: MAX_FEE_MINOR, currency })}:maxFee:.`,
     };
   }
   return { minorUnits };

@@ -28,6 +28,7 @@ import { LedgerRow } from './operator-console.model';
       role="dialog"
       aria-modal="true"
       aria-label="Payout statement"
+      i18n-aria-label
       data-testid="payout-statement"
       (click)="$event.stopPropagation()"
       (keydown.tab)="trapFocus($event, false)"
@@ -36,13 +37,14 @@ import { LedgerRow } from './operator-console.model';
       <div
         class="flex items-center justify-between gap-3 border-b border-riv-console-tint/10 px-6 py-4"
       >
-        <span class="text-[13px] font-semibold text-riv-card-ink-soft">Payout statement</span>
+        <span class="text-[13px] font-semibold text-riv-card-ink-soft" i18n>Payout statement</span>
         <button
           type="button"
           appTouchTarget
           class="rounded-full border border-riv-console-tint/15 bg-riv-console-tint/5 px-3.5 py-1.5 text-[13px] font-semibold text-riv-accent-ink"
           data-testid="statement-close"
           (click)="dismissed.emit()"
+          i18n="close the dialog|Button that closes the payout statement"
         >
           Close
         </button>
@@ -51,14 +53,19 @@ import { LedgerRow } from './operator-console.model';
         <div class="flex flex-wrap items-start justify-between gap-4">
           <div>
             <span class="text-[17px] font-bold text-riv-card-ink">Riviera</span>
-            <p class="mt-2 text-[12.5px] leading-[1.5] text-riv-card-ink-soft">
+            <p class="mt-2 text-[12.5px] leading-[1.5] text-riv-card-ink-soft" i18n>
               Bank-transfer payout statement
             </p>
           </div>
           <div class="text-right text-[12.5px] leading-[1.6] text-riv-card-ink-soft">
-            <div class="text-[14px] font-bold text-riv-card-ink">Your venue</div>
-            <div>Current period</div>
-            <div>Currency {{ currency() }}</div>
+            <div class="text-[14px] font-bold text-riv-card-ink" i18n>Your venue</div>
+            <div i18n>Current period</div>
+            <div i18n>
+              Currency
+              {{
+                currency() // i18n(ph="currency")
+              }}
+            </div>
           </div>
         </div>
 
@@ -66,20 +73,45 @@ import { LedgerRow } from './operator-console.model';
         <section
           class="mt-5 overflow-x-auto rounded-[14px] border border-riv-console-tint/15"
           aria-label="Statement"
+          i18n-aria-label
           tabindex="0"
         >
           <table class="w-full border-collapse text-[12.5px]">
-            <caption class="sr-only">
+            <caption class="sr-only" i18n>
               Statement entries
             </caption>
             <thead>
               <tr
                 class="bg-riv-console-tint/5 text-[10.5px] uppercase tracking-[0.06em] text-riv-card-ink-soft"
               >
-                <th scope="col" class="px-3.5 py-2.5 text-left font-bold">Date</th>
-                <th scope="col" class="px-3.5 py-2.5 text-left font-bold">Booking</th>
-                <th scope="col" class="px-3.5 py-2.5 text-right font-bold">Commission</th>
-                <th scope="col" class="px-3.5 py-2.5 text-right font-bold">Net</th>
+                <th
+                  scope="col"
+                  class="px-3.5 py-2.5 text-left font-bold"
+                  i18n="the ledger entry date|Statement column header"
+                >
+                  Date
+                </th>
+                <th
+                  scope="col"
+                  class="px-3.5 py-2.5 text-left font-bold"
+                  i18n="a booking|Statement column header for the booking reference"
+                >
+                  Booking
+                </th>
+                <th
+                  scope="col"
+                  class="px-3.5 py-2.5 text-right font-bold"
+                  i18n="platform commission|Statement column header"
+                >
+                  Commission
+                </th>
+                <th
+                  scope="col"
+                  class="px-3.5 py-2.5 text-right font-bold"
+                  i18n="net amount|Statement column header"
+                >
+                  Net
+                </th>
               </tr>
             </thead>
             <tbody>
@@ -107,7 +139,7 @@ import { LedgerRow } from './operator-console.model';
               }
               <tr class="border-t-2 border-riv-console-tint/15 bg-riv-select-tint/5">
                 <td class="px-3.5 py-3"></td>
-                <td class="px-3.5 py-3 font-bold text-riv-card-ink">Total due</td>
+                <td class="px-3.5 py-3 font-bold text-riv-card-ink" i18n>Total due</td>
                 <td class="px-3.5 py-3"></td>
                 <td
                   class="whitespace-nowrap px-3.5 py-3 text-right text-[15px] font-bold text-riv-console-accent-ink"
@@ -123,25 +155,33 @@ import { LedgerRow } from './operator-console.model';
         <div
           class="mt-4 rounded-[14px] border border-dashed border-riv-console-tint/20 bg-riv-console-tint/5 px-4 py-3.5"
         >
-          <span class="text-[10.5px] font-bold uppercase tracking-[0.08em] text-riv-card-ink-faint"
+          <span
+            class="text-[10.5px] font-bold uppercase tracking-[0.08em] text-riv-card-ink-faint"
+            i18n
             >Transfer to</span
           >
           <div class="mt-1.5 flex justify-between gap-3 text-[13px]">
-            <span class="text-riv-card-ink-soft">Beneficiary</span
-            ><strong class="text-riv-card-ink">Your venue</strong>
+            <span class="text-riv-card-ink-soft" i18n>Beneficiary</span
+            ><strong class="text-riv-card-ink" i18n>Your venue</strong>
           </div>
           <div class="mt-1 flex justify-between gap-3 text-[13px]">
             <span class="text-riv-card-ink-soft">IBAN</span
-            ><strong class="text-riv-card-ink">Assigned at settlement</strong>
+            ><strong class="text-riv-card-ink" i18n>Assigned at settlement</strong>
           </div>
           <div class="mt-1 flex justify-between gap-3 text-[13px]">
-            <span class="text-riv-card-ink-soft">Reference</span
-            ><strong class="text-riv-card-ink">Assigned at settlement</strong>
+            <span
+              class="text-riv-card-ink-soft"
+              i18n="payment reference|Bank-transfer reference field label"
+              >Reference</span
+            ><strong class="text-riv-card-ink" i18n>Assigned at settlement</strong>
           </div>
         </div>
-        <p class="mt-3.5 text-[11.5px] leading-[1.5] text-riv-card-ink-faint">
+        <p class="mt-3.5 text-[11.5px] leading-[1.5] text-riv-card-ink-faint" i18n>
           Payouts are batched and settled manually by bank transfer at period end. Refund reversals
-          are netted into the total above. Amounts in {{ currency() }}.
+          are netted into the total above. Amounts in
+          {{
+            currency()  // i18n(ph="currency")
+          }}.
         </p>
       </div>
     </div>

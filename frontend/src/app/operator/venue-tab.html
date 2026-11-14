@@ -9,6 +9,7 @@
       class="rounded-[24px] px-[22px] py-10 text-center text-[13px] text-riv-error-ink"
       role="alert"
       data-testid="venue-load-error"
+      i18n
     >
       We couldn’t load this venue’s details. Refresh the page to try again.
     </p>
@@ -16,8 +17,8 @@
     <div class="grid gap-4 lg:grid-cols-[minmax(0,560px)_minmax(0,1fr)]">
       <!-- Left: the venue-details form -->
       <section appCardGlass class="rounded-[24px] px-[22px] py-5">
-        <h2 class="text-[16px] font-bold text-riv-card-ink">Venue details</h2>
-        <p class="mt-1 mb-3.5 text-[12.5px] leading-[1.5] text-riv-card-ink-soft">
+        <h2 class="text-[16px] font-bold text-riv-card-ink" i18n>Venue details</h2>
+        <p class="mt-1 mb-3.5 text-[12.5px] leading-[1.5] text-riv-card-ink-soft" i18n>
           What tourists see on your venue card and beach-map page.
         </p>
 
@@ -28,7 +29,11 @@
           novalidate
         >
           <label class="flex flex-col gap-1">
-            <span class="text-[12.5px] font-semibold text-riv-card-ink">Name</span>
+            <span
+              class="text-[12.5px] font-semibold text-riv-card-ink"
+              i18n="Venue name field label"
+              >Name</span
+            >
             <input
               type="text"
               [formField]="detailsForm.name"
@@ -50,7 +55,11 @@
           <app-beach-field [field]="detailsForm.beach" testId="venue-beach" />
 
           <label class="flex flex-col gap-1">
-            <span class="text-[12.5px] font-semibold text-riv-card-ink">Description</span>
+            <span
+              class="text-[12.5px] font-semibold text-riv-card-ink"
+              i18n="Venue description field label"
+              >Description</span
+            >
             <input
               type="text"
               [formField]="detailsForm.description"
@@ -66,23 +75,26 @@
           </div>
 
           <div class="flex flex-col gap-1">
-            <span class="text-[12.5px] font-semibold text-riv-card-ink"
+            <span class="text-[12.5px] font-semibold text-riv-card-ink" i18n
               >Same-day sales close (Europe/Tirane)</span
             >
             <app-segmented-control
               variant="card"
               label="Same-day sales close (Europe/Tirane)"
+              i18n-label
               [options]="salesCloseOptions"
               [formField]="detailsForm.salesClose"
               data-testid="venue-sales-close"
             />
-            <span class="text-[11px] text-riv-card-ink-soft"
+            <span class="text-[11px] text-riv-card-ink-soft" i18n
               >When today’s online sales stop. Booking ahead is always open.</span
             >
           </div>
 
           <label class="flex flex-col gap-1">
-            <span class="text-[12.5px] font-semibold text-riv-card-ink">Maximum stay (days)</span>
+            <span class="text-[12.5px] font-semibold text-riv-card-ink" i18n
+              >Maximum stay (days)</span
+            >
             <input
               type="text"
               inputmode="numeric"
@@ -101,7 +113,7 @@
                 >{{ detailsForm.maxStayDays().errors()[0].message }}</span
               >
             }
-            <span class="text-[11px] text-riv-card-ink-soft"
+            <span class="text-[11px] text-riv-card-ink-soft" i18n
               >The longest stay a tourist can book here. Leave blank for stays of any length this
               season.</span
             >
@@ -110,22 +122,32 @@
           <!-- Read-only display fields: commission (the platform's cut) + payout currency. -->
           <div class="grid grid-cols-2 gap-3">
             <div class="flex flex-col gap-1">
-              <span class="text-[12.5px] font-semibold text-riv-card-ink">Commission</span>
+              <span
+                class="text-[12.5px] font-semibold text-riv-card-ink"
+                i18n="platform commission|Read-only venue field label"
+                >Commission</span
+              >
               <output
                 data-testid="venue-commission"
                 class="rounded-[11px] border border-dashed border-riv-card-border bg-riv-chip-bg px-3 py-2 text-[14px] font-semibold text-riv-console-accent-ink"
                 >{{ commissionPct() }}</output
               >
-              <span class="text-[11px] text-riv-card-ink-soft">Set by Riviera.</span>
+              <span
+                class="text-[11px] text-riv-card-ink-soft"
+                i18n="Note that the platform sets the commission"
+                >Set by Riviera.</span
+              >
             </div>
             <div class="flex flex-col gap-1">
-              <span class="text-[12.5px] font-semibold text-riv-card-ink">Payout currency</span>
+              <span class="text-[12.5px] font-semibold text-riv-card-ink" i18n
+                >Payout currency</span
+              >
               <output
                 data-testid="venue-payout-currency"
                 class="rounded-[11px] border border-dashed border-riv-card-border bg-riv-chip-bg px-3 py-2 text-[14px] font-semibold text-riv-card-ink"
                 >{{ payoutCurrency() }}</output
               >
-              <span class="text-[11px] text-riv-card-ink-soft">Settled at payout time.</span>
+              <span class="text-[11px] text-riv-card-ink-soft" i18n>Settled at payout time.</span>
             </div>
           </div>
         </form>
@@ -134,9 +156,14 @@
       <!-- Right rail: the season, photo placeholders + commodities -->
       <div class="flex flex-col gap-4">
         <section appCardGlass class="rounded-[24px] px-[22px] py-5" data-testid="venue-season">
-          <h2 class="text-[16px] font-bold text-riv-card-ink">Season</h2>
+          <h2
+            class="text-[16px] font-bold text-riv-card-ink"
+            i18n="beach season|Venue season card heading"
+          >
+            Season
+          </h2>
           @if (season().closed) {
-            <p class="mt-1 mb-3.5 text-[12.5px] leading-[1.5] text-riv-card-ink-soft">
+            <p class="mt-1 mb-3.5 text-[12.5px] leading-[1.5] text-riv-card-ink-soft" i18n>
               Tourists still see your venue, badged “Closed for season”; the staff view and walk-in
               marks keep working.
             </p>
@@ -161,10 +188,14 @@
               [appBusy]="seasonBusy()"
               (click)="onReopen()"
             >
-              {{ seasonBusy() ? 'Reopening…' : 'Reopen now' }}
+              @if (seasonBusy()) {
+                <ng-container i18n>Reopening…</ng-container>
+              } @else {
+                <ng-container i18n>Reopen now</ng-container>
+              }
             </button>
           } @else {
-            <p class="mt-1 mb-3.5 text-[12.5px] leading-[1.5] text-riv-card-ink-soft">
+            <p class="mt-1 mb-3.5 text-[12.5px] leading-[1.5] text-riv-card-ink-soft" i18n>
               Closing keeps your venue listed with a “Closed for season” badge and makes every date
               unbookable. Existing bookings, holds and requests are untouched.
             </p>
@@ -176,6 +207,7 @@
                 data-testid="venue-season-close"
                 [appBusy]="seasonBusy()"
                 (click)="onArmSeasonClose()"
+                i18n
               >
                 Close for season
               </button>
@@ -187,7 +219,7 @@
                 novalidate
               >
                 <label class="flex flex-col gap-1">
-                  <span class="text-[12.5px] font-semibold text-riv-card-ink"
+                  <span class="text-[12.5px] font-semibold text-riv-card-ink" i18n
                     >Reopen date (optional, Europe/Tirane)</span
                   >
                   <input
@@ -204,10 +236,11 @@
                       class="text-[11.5px] font-semibold text-riv-error-ink"
                       role="alert"
                       data-testid="venue-season-date-error"
+                      i18n
                       >Pick a reopen date after today.</span
                     >
                   }
-                  <span class="text-[11px] text-riv-card-ink-soft"
+                  <span class="text-[11px] text-riv-card-ink-soft" i18n
                     >Leave it blank to stay closed until you reopen by hand.</span
                   >
                 </label>
@@ -221,10 +254,10 @@
                       class="mt-0.5 size-[18px] accent-riv-accent-strong"
                     />
                     <span class="flex flex-col gap-0.5">
-                      <span class="text-[12.5px] font-semibold text-riv-card-ink"
+                      <span class="text-[12.5px] font-semibold text-riv-card-ink" i18n
                         >Let tourists book dates from the reopen date now</span
                       >
-                      <span class="text-[11px] text-riv-card-ink-soft"
+                      <span class="text-[11px] text-riv-card-ink-soft" i18n
                         >Off by default — a beach you will re-lay in spring should not collect
                         winter bookings.</span
                       >
@@ -239,7 +272,11 @@
                     data-testid="venue-season-confirm"
                     [appBusy]="seasonBusy()"
                   >
-                    {{ seasonBusy() ? 'Closing…' : 'Close for season' }}
+                    @if (seasonBusy()) {
+                      <ng-container i18n>Closing…</ng-container>
+                    } @else {
+                      <ng-container i18n>Close for season</ng-container>
+                    }
                   </button>
                   <button
                     type="button"
@@ -247,6 +284,7 @@
                     class="rounded-[12px] border border-riv-card-border bg-riv-console-inset/60 px-4 py-2 text-[12.5px] font-bold text-riv-card-ink"
                     data-testid="venue-season-cancel"
                     (click)="onCancelSeasonClose()"
+                    i18n="Button that abandons closing the season"
                   >
                     Cancel
                   </button>
@@ -265,8 +303,8 @@
         </section>
 
         <section appCardGlass class="rounded-[24px] px-[22px] py-5">
-          <h2 class="text-[16px] font-bold text-riv-card-ink">Photos</h2>
-          <p class="mt-1 mb-3.5 text-[12.5px] leading-[1.5] text-riv-card-ink-soft">
+          <h2 class="text-[16px] font-bold text-riv-card-ink" i18n>Photos</h2>
+          <p class="mt-1 mb-3.5 text-[12.5px] leading-[1.5] text-riv-card-ink-soft" i18n>
             Shown to tourists on your venue card and beach-map page.
           </p>
           <div class="flex flex-col gap-2.5">
@@ -280,11 +318,9 @@
                 <span class="text-[12.5px] font-semibold text-riv-card-ink">{{ slot.label }}</span>
 
                 @if (slotUi()[slot.key].previewUrl; as previewUrl) {
-                  <!-- alt avoids the words image/photo (Web:S6851 — screen readers announce the
-                       role); the slot label itself names it for AT. -->
                   <img
                     [ngSrc]="previewUrl"
-                    [alt]="'Current upload in the ' + slot.key + ' slot'"
+                    [alt]="slot.previewAlt"
                     width="240"
                     height="180"
                     class="h-[90px] w-[120px] rounded-[10px] object-cover"
@@ -299,7 +335,7 @@
                     type="file"
                     class="hidden"
                     accept="image/jpeg,image/png,image/webp"
-                    [attr.aria-label]="slot.label + ' — choose an image file'"
+                    [attr.aria-label]="photoInputLabel(slot.label)"
                     [attr.data-testid]="'photo-input-' + slot.key"
                     (change)="onPhotoPicked(slot.key, photoInput)"
                     #photoInput
@@ -312,13 +348,15 @@
                     [appBusy]="slotUi()[slot.key].busy"
                     (click)="photoInput.click()"
                   >
-                    {{
-                      slotUi()[slot.key].busy
-                        ? 'Working…'
-                        : slotUi()[slot.key].previewUrl
-                          ? 'Replace'
-                          : 'Add photo'
-                    }}
+                    @if (slotUi()[slot.key].busy) {
+                      <ng-container i18n>Working…</ng-container>
+                    } @else if (slotUi()[slot.key].previewUrl) {
+                      <ng-container i18n="Button that replaces the slot photo"
+                        >Replace</ng-container
+                      >
+                    } @else {
+                      <ng-container i18n>Add photo</ng-container>
+                    }
                   </button>
                   @if (slotUi()[slot.key].previewUrl) {
                     <button
@@ -328,6 +366,7 @@
                       [attr.data-testid]="'photo-remove-' + slot.key"
                       [appBusy]="slotUi()[slot.key].busy"
                       (click)="onPhotoRemove(slot.key)"
+                      i18n="Button that removes the slot photo"
                     >
                       Remove
                     </button>
@@ -345,20 +384,22 @@
               </div>
             }
           </div>
-          <p class="mt-3 text-[11.5px] text-riv-card-ink-soft">
+          <p class="mt-3 text-[11.5px] text-riv-card-ink-soft" i18n>
             Tourists see every uploaded photo in the slideshows on your venue card and beach-map
             page — the cover always comes first.
           </p>
         </section>
 
         <section appCardGlass class="rounded-[24px] px-[22px] py-5">
-          <h2 class="text-[16px] font-bold text-riv-card-ink">Commodities</h2>
-          <p class="mt-1 mb-3.5 text-[12.5px] leading-[1.5] text-riv-card-ink-soft">
+          <h2 class="text-[16px] font-bold text-riv-card-ink" i18n>Commodities</h2>
+          <p class="mt-1 mb-3.5 text-[12.5px] leading-[1.5] text-riv-card-ink-soft" i18n>
             Shown as tags on your venue card and beach-map page.
           </p>
 
           <fieldset class="border-0 p-0">
-            <legend class="mb-2 text-[12.5px] font-semibold text-riv-card-ink">Amenities</legend>
+            <legend class="mb-2 text-[12.5px] font-semibold text-riv-card-ink" i18n>
+              Amenities
+            </legend>
             <div class="flex flex-wrap gap-2">
               @for (code of amenityCatalogue; track code) {
                 <button
@@ -377,7 +418,7 @@
           </fieldset>
 
           <label class="mt-4 flex flex-col gap-1">
-            <span class="text-[12.5px] font-semibold text-riv-card-ink"
+            <span class="text-[12.5px] font-semibold text-riv-card-ink" i18n
               >Distance to water (metres)</span
             >
             <input
@@ -396,6 +437,7 @@
                 class="text-[11.5px] font-semibold text-riv-error-ink"
                 role="alert"
                 data-testid="venue-distance-error"
+                i18n
                 >Enter a whole number of metres, or leave it blank.</span
               >
             }
@@ -422,7 +464,11 @@
           [disabled]="detailsForm().invalid()"
           [appBusy]="saving()"
         >
-          {{ saving() ? 'Saving…' : 'Save changes' }}
+          @if (saving()) {
+            <ng-container i18n>Saving…</ng-container>
+          } @else {
+            <ng-container i18n>Save changes</ng-container>
+          }
         </button>
 
         @if (savedMessage(); as msg) {
@@ -449,8 +495,10 @@
             reloadTestId="venue-stale-reload"
             (reload)="reloadAfterStale()"
           >
-            This venue was changed somewhere else since you opened it. Your edits are kept — reload
-            the latest details, re-apply your changes, then Save again.
+            <ng-container i18n
+              >This venue was changed somewhere else since you opened it. Your edits are kept —
+              reload the latest details, re-apply your changes, then Save again.</ng-container
+            >
           </app-stale-write-banner>
         }
       </div>

@@ -19,7 +19,11 @@ import { TouchTarget } from '../shared/touch-target';
   imports: [FieldErrorFor, FormField, TouchTarget],
   host: { class: 'contents' },
   template: `<label class="flex flex-col gap-1">
-    <span class="text-[12.5px] font-semibold text-riv-card-ink">Beach</span>
+    <span
+      class="text-[12.5px] font-semibold text-riv-card-ink"
+      i18n="Label for the venue's beach picker"
+      >Beach</span
+    >
     <select
       [formField]="field()"
       [attr.data-testid]="testId()"
@@ -27,7 +31,7 @@ import { TouchTarget } from '../shared/touch-target';
       class="rounded-[11px] border border-riv-card-border bg-riv-console-inset/60 px-3 py-2 text-[16px] text-riv-card-ink"
       #control
     >
-      <option value="" disabled>Choose a beach…</option>
+      <option value="" disabled i18n>Choose a beach…</option>
       @for (region of regions; track region.code) {
         <optgroup [label]="region.label">
           @for (beach of beachesOf(region.code); track beach.code) {

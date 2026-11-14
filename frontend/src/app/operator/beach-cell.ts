@@ -11,10 +11,10 @@ export const MAX_COLS = 40;
 
 /** Human, AT-readable description of a cell's state (paired with its row/position by the caller). */
 export const CELL_STATE_DESC: Record<CellState, string> = {
-  premium: 'front row, premium, online',
-  standard: 'standard, online',
-  walkin: 'walk-in pool, not bookable online',
-  gap: 'gap or aisle',
+  premium: $localize`:Beach-map cell state, read after the cell's row and position:front row, premium, online`,
+  standard: $localize`:Beach-map cell state, read after the cell's row and position:standard, online`,
+  walkin: $localize`:Beach-map cell state, read after the cell's row and position:walk-in pool, not bookable online`,
+  gap: $localize`:Beach-map cell state; an empty cell in the grid:gap or aisle`,
 };
 
 /** Per-state background, border and ink classes; geometry stays with the consumer. Ink rides with

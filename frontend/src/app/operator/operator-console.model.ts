@@ -405,8 +405,8 @@ export function remodelPreviewIsCommittable(preview: RemodelPreview): boolean {
 /** Why a blocked claim stays put, as the preview and the receipt both word it. */
 export function remodelBlockReasonText(reason: RemodelBlockReason): string {
   return reason === 'FROZEN'
-    ? 'arrives within the freeze window'
-    : 'no free set of the same or better tier that day';
+    ? $localize`:Why a blocked booking stays on its set during a beach-map remodel:arrives within the freeze window`
+    : $localize`:Why a blocked booking stays on its set during a beach-map remodel:no free set of the same or better tier that day`;
 }
 
 /** True when the preview names no claim at all — the save can proceed without a confirmation. */

@@ -53,7 +53,9 @@ import { VenueCreateCard } from './venue-create-card';
         [loading]="showingOpening()"
         [ready]="showingPicker()"
         loadingLabel="Opening your console…"
+        i18n-loadingLabel
         readyLabel="Choose a venue."
+        i18n-readyLabel
       />
       @if (failed()) {
         <div
@@ -61,10 +63,10 @@ import { VenueCreateCard } from './venue-create-card';
           class="rounded-[20px] p-6 shadow-[0_12px_44px_rgba(12,42,51,0.14)]"
           data-testid="operator-home-error"
         >
-          <h1 id="operator-home-title" class="m-0 text-[22px] font-semibold text-riv-card-ink">
+          <h1 id="operator-home-title" class="m-0 text-[22px] font-semibold text-riv-card-ink" i18n>
             We couldn’t load your venues
           </h1>
-          <p class="mt-2 mb-4 text-[15px] text-riv-card-ink-soft">
+          <p class="mt-2 mb-4 text-[15px] text-riv-card-ink-soft" i18n>
             Your session is fine — the venue list just didn’t load. Try again.
           </p>
           <app-retry-button testId="operator-home-retry" (retry)="load()" />
@@ -75,14 +77,10 @@ import { VenueCreateCard } from './venue-create-card';
           tabindex="-1"
           class="m-0 mb-1 text-[22px] font-semibold text-riv-ink outline-none"
         >
-          {{ zeroState() ? 'Create your venue' : 'Add another venue' }}
+          {{ zeroState() ? createTitle : addTitle }}
         </h1>
         <p class="mt-0 mb-4 text-[15px] text-riv-ink-soft">
-          {{
-            zeroState()
-              ? 'Welcome to Riviera — set up your venue to start taking bookings.'
-              : 'It will appear beside your other venues once created.'
-          }}
+          {{ zeroState() ? createLead : addLead }}
         </p>
         <app-venue-create-card />
       } @else if (showingPicker()) {
@@ -95,11 +93,16 @@ import { VenueCreateCard } from './venue-create-card';
             id="operator-home-title"
             tabindex="-1"
             class="m-0 text-[22px] font-semibold text-riv-card-ink outline-none"
+            i18n
           >
             Choose a venue
           </h1>
-          <p class="mt-2 mb-4 text-[15px] text-riv-card-ink-soft">
-            You manage {{ venues().length }} venues. Pick the one to open.
+          <p class="mt-2 mb-4 text-[15px] text-riv-card-ink-soft" i18n>
+            You manage
+            {{
+              venues().length // i18n(ph="count")
+            }}
+            venues. Pick the one to open.
           </p>
           <ul class="m-0 flex list-none flex-col gap-2 p-0">
             @for (venue of venues(); track venue.id) {
@@ -122,6 +125,7 @@ import { VenueCreateCard } from './venue-create-card';
             [queryParams]="{ create: '1' }"
             class="mt-1 inline-flex items-center text-[13.5px] font-semibold text-riv-card-ink underline"
             data-testid="operator-home-add-venue"
+            i18n
             >Add another venue</a
           >
         </div>
@@ -131,6 +135,7 @@ import { VenueCreateCard } from './venue-create-card';
           class="text-center text-[15px] text-riv-card-ink-soft"
           aria-hidden="true"
           data-testid="operator-home-loading"
+          i18n
         >
           Opening your console…
         </p>
@@ -141,6 +146,10 @@ import { VenueCreateCard } from './venue-create-card';
 export class OperatorHome implements OnInit {
   /** The beach as the operator or admin reads it, off the catalogue mirror. */
   protected readonly beachLabel = beachLabel;
+  protected readonly createTitle = $localize`Create your venue`;
+  protected readonly addTitle = $localize`Add another venue`;
+  protected readonly createLead = $localize`Welcome to Riviera — set up your venue to start taking bookings.`;
+  protected readonly addLead = $localize`It will appear beside your other venues once created.`;
   private readonly ownedVenues = inject(OwnedVenues);
   private readonly operator = inject(OperatorAuth);
   private readonly router = inject(Router);

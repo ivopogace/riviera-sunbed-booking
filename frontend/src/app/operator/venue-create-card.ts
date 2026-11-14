@@ -59,6 +59,8 @@ export class VenueCreateCard {
   protected readonly operator = inject(OperatorAuth);
 
   protected readonly saving = signal(false);
+  protected readonly creatingLabel = $localize`Creating…`;
+  protected readonly createLabel = $localize`Create venue`;
   private readonly errorCode = signal<VenueAdminErrorCode | undefined>(undefined);
 
   /**
@@ -85,10 +87,10 @@ export class VenueCreateCard {
     bookingCutoff: '18:00',
   });
   protected readonly venueForm = form(this.venueModel, (path) => {
-    required(path.name, { message: 'Venue name is required' });
-    required(path.beach, { message: 'Beach is required' });
-    required(path.payoutCurrency, { message: 'Payout currency is required' });
-    required(path.bookingCutoff, { message: 'Free-cancellation deadline is required' });
+    required(path.name, { message: $localize`Venue name is required` });
+    required(path.beach, { message: $localize`Beach is required` });
+    required(path.payoutCurrency, { message: $localize`Payout currency is required` });
+    required(path.bookingCutoff, { message: $localize`Free-cancellation deadline is required` });
   });
 
   protected onCreateVenue(): void {
@@ -140,13 +142,13 @@ export class VenueCreateCard {
     }
     switch (code) {
       case 'UNAUTHORIZED':
-        return 'Your operator session has expired. Please sign in again.';
+        return $localize`Your operator session has expired. Please sign in again.`;
       case 'NO_SUCH_VENUE':
-        return 'That venue no longer exists.';
+        return $localize`That venue no longer exists.`;
       case 'INVALID_REQUEST':
-        return 'Please check the form values and try again.';
+        return $localize`Please check the form values and try again.`;
       default:
-        return 'Something went wrong. Please try again.';
+        return $localize`Something went wrong. Please try again.`;
     }
   }
 }

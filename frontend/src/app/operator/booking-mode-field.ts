@@ -17,15 +17,19 @@ import { TouchTarget } from '../shared/touch-target';
   imports: [FormField, TouchTarget],
   host: { class: 'contents' },
   template: `<label class="flex flex-col gap-1">
-    <span class="text-[12.5px] font-semibold text-riv-card-ink">Booking mode</span>
+    <span class="text-[12.5px] font-semibold text-riv-card-ink" i18n>Booking mode</span>
     <select
       [formField]="field()"
       [attr.data-testid]="testId()"
       appTouchTarget
       class="rounded-[11px] border border-riv-card-border bg-riv-console-inset/60 px-3 py-2 text-[16px] text-riv-card-ink"
     >
-      <option value="INSTANT">Instant Book</option>
-      <option value="REQUEST">Request to Book</option>
+      <option value="INSTANT" i18n="Booking mode where guests book without venue approval">
+        Instant Book
+      </option>
+      <option value="REQUEST" i18n="Booking mode where the venue accepts or declines each booking">
+        Request to Book
+      </option>
     </select>
   </label>`,
 })

@@ -25,9 +25,9 @@ interface BatchRow {
 
 /** The status as the table reads it. */
 const STATUS_LABEL: Readonly<Record<PayoutBatchStatus, string>> = {
-  DRAFT: 'Draft',
-  REPORTED: 'Reported',
-  SETTLED: 'Settled',
+  DRAFT: $localize`:payout batch status|A batch still following the ledger:Draft`,
+  REPORTED: $localize`:payout batch status|A batch frozen at its reported total:Reported`,
+  SETTLED: $localize`:payout batch status|A batch paid out via BKT:Settled`,
 };
 
 /**
@@ -46,16 +46,21 @@ const STATUS_LABEL: Readonly<Record<PayoutBatchStatus, string>> = {
       data-testid="admin-payouts-period-card"
       aria-labelledby="admin-payouts-period-heading"
     >
-      <h2 id="admin-payouts-period-heading" class="text-[16px] font-semibold text-riv-card-ink">
+      <h2
+        id="admin-payouts-period-heading"
+        class="text-[16px] font-semibold text-riv-card-ink"
+        i18n
+      >
         Settlement week
       </h2>
-      <p class="mt-2 max-w-[62ch] text-[13px] leading-[1.5] text-riv-card-ink-soft">
+      <p class="mt-2 max-w-[62ch] text-[13px] leading-[1.5] text-riv-card-ink-soft" i18n>
         One batch per venue with ledger activity that week. Generating refreshes every draft from
         the ledger; a reported or settled batch keeps the total it was reported at.
       </p>
       <label
         for="admin-payouts-period"
         class="mt-4 block text-[13.5px] font-semibold text-riv-card-ink"
+        i18n
         >ISO week</label
       >
       <input
@@ -85,6 +90,7 @@ const STATUS_LABEL: Readonly<Record<PayoutBatchStatus, string>> = {
           [appBusy]="busy() || loading()"
           (click)="show()"
           class="rounded-[10px] border border-riv-field-border px-4 py-2 text-[14px] font-semibold text-riv-card-ink aria-disabled:cursor-not-allowed aria-disabled:opacity-60"
+          i18n
         >
           Show week
         </button>
@@ -95,6 +101,7 @@ const STATUS_LABEL: Readonly<Record<PayoutBatchStatus, string>> = {
           [appBusy]="busy() || loading()"
           (click)="generate()"
           class="rounded-[10px] border border-riv-field-border bg-riv-console-inset/70 px-4 py-2 text-[14px] font-semibold text-riv-card-ink aria-disabled:cursor-not-allowed aria-disabled:opacity-60"
+          i18n
         >
           Generate from ledger
         </button>
@@ -113,7 +120,9 @@ const STATUS_LABEL: Readonly<Record<PayoutBatchStatus, string>> = {
       [loading]="loading()"
       [ready]="!loading() && !loadError()"
       loadingLabel="Loading payout batches…"
+      i18n-loadingLabel
       readyLabel="Payout batches loaded."
+      i18n-readyLabel
     />
 
     @if (loading()) {
@@ -121,26 +130,33 @@ const STATUS_LABEL: Readonly<Record<PayoutBatchStatus, string>> = {
         class="mt-3 text-[15px] text-riv-ink-soft"
         aria-hidden="true"
         data-testid="admin-payouts-loading"
+        i18n
       >
         Loading…
       </p>
     } @else if (loadError()) {
       <p class="mt-3 text-[15px] text-riv-error-ink" role="alert" data-testid="admin-payouts-error">
-        Something went wrong loading payout batches.
+        <ng-container i18n>Something went wrong loading payout batches.</ng-container>
         <button
           type="button"
           data-touch-exempt="control inside a sentence (WCAG 2.5.5 inline exception)"
           class="font-semibold underline"
           data-testid="admin-payouts-retry"
           (click)="retry()"
+          i18n
         >
           Retry
         </button>
       </p>
     } @else if (rows().length === 0) {
       <div appCardGlass class="mt-3 rounded-[14px] p-5" data-testid="admin-payouts-empty">
-        <h2 class="text-[16px] font-semibold text-riv-card-ink">No batches for {{ shown() }}</h2>
-        <p class="mt-2 text-[15px] leading-[1.5] text-riv-card-ink-soft">
+        <h2 class="text-[16px] font-semibold text-riv-card-ink" i18n>
+          No batches for
+          {{
+            shown() // i18n(ph="week")
+          }}
+        </h2>
+        <p class="mt-2 text-[15px] leading-[1.5] text-riv-card-ink-soft" i18n>
           Generate the week to build one batch per venue from its ledger.
         </p>
       </div>
@@ -151,34 +167,40 @@ const STATUS_LABEL: Readonly<Record<PayoutBatchStatus, string>> = {
         data-testid="admin-payouts-card"
         aria-labelledby="admin-payouts-heading"
       >
-        <h2 id="admin-payouts-heading" class="text-[16px] font-semibold text-riv-card-ink">
-          Batches for {{ shown() }}
+        <h2 id="admin-payouts-heading" class="text-[16px] font-semibold text-riv-card-ink" i18n>
+          Batches for
+          {{
+            shown() // i18n(ph="week")
+          }}
         </h2>
-        <p class="mt-2 text-[13px] leading-[1.5] text-riv-card-ink-soft">
+        <p class="mt-2 text-[13px] leading-[1.5] text-riv-card-ink-soft" i18n>
           Reporting freezes the total shown. Pay it via BKT, then mark the batch settled.
         </p>
 
         <section
           class="relative mt-4 overflow-x-auto rounded-[14px] border border-riv-card-border"
+          i18n-aria-label
           aria-label="Payout batches by venue"
           tabindex="0"
         >
           <table class="w-full border-collapse text-[13px]">
-            <caption class="sr-only">
+            <caption class="sr-only" i18n>
               Payout batches for
               {{
-                shown()
+                shown()  // i18n(ph="week")
               }}, by venue
             </caption>
             <thead>
               <tr
                 class="bg-riv-console-tint/5 text-[10.5px] uppercase tracking-[0.06em] text-riv-card-ink-soft"
               >
-                <th scope="col" class="px-3.5 py-2.5 text-left font-bold">Venue</th>
-                <th scope="col" class="px-3.5 py-2.5 text-right font-bold">Net owed</th>
-                <th scope="col" class="px-3.5 py-2.5 text-left font-bold">Status</th>
+                <th scope="col" class="px-3.5 py-2.5 text-left font-bold" i18n>Venue</th>
+                <th scope="col" class="px-3.5 py-2.5 text-right font-bold" i18n>Net owed</th>
+                <th scope="col" class="px-3.5 py-2.5 text-left font-bold" i18n>Status</th>
                 <th scope="col" class="px-3.5 py-2.5 text-right font-bold">
-                  <span class="sr-only">Action</span>
+                  <span class="sr-only" i18n="table column|Header of the per-row action column"
+                    >Action</span
+                  >
                 </th>
               </tr>
             </thead>
@@ -205,9 +227,18 @@ const STATUS_LABEL: Readonly<Record<PayoutBatchStatus, string>> = {
                           [appBusy]="busy()"
                           (click)="report(row)"
                           class="rounded-[10px] border border-riv-field-border px-3 py-1.5 text-[13px] font-semibold text-riv-card-ink aria-disabled:cursor-not-allowed aria-disabled:opacity-60"
+                          i18n
                         >
-                          Report at {{ row.totalStr }}
-                          <span class="sr-only">for {{ row.venueName }}</span>
+                          Report at
+                          {{
+                            row.totalStr // i18n(ph="total")
+                          }}
+                          <span class="sr-only"
+                            >for
+                            {{
+                              row.venueName // i18n(ph="venue")
+                            }}</span
+                          >
                         </button>
                       }
                       @case ('REPORTED') {
@@ -218,9 +249,15 @@ const STATUS_LABEL: Readonly<Record<PayoutBatchStatus, string>> = {
                           [appBusy]="busy()"
                           (click)="settle(row)"
                           class="rounded-[10px] border border-riv-field-border px-3 py-1.5 text-[13px] font-semibold text-riv-card-ink aria-disabled:cursor-not-allowed aria-disabled:opacity-60"
+                          i18n
                         >
                           Mark settled
-                          <span class="sr-only">for {{ row.venueName }}</span>
+                          <span class="sr-only"
+                            >for
+                            {{
+                              row.venueName // i18n(ph="venue")
+                            }}</span
+                          >
                         </button>
                       }
                     }
@@ -312,11 +349,16 @@ export class AdminPayouts {
       this.batches.set(generated);
       this.shown.set(period);
       this.loadError.set(false);
+      const count = generated.length;
       this.notice.set(
-        `Generated ${generated.length} ${generated.length === 1 ? 'batch' : 'batches'} for ${period}.`,
+        count === 1
+          ? $localize`Generated 1 batch for ${period}:week:.`
+          : $localize`Generated ${count}:count: batches for ${period}:week:.`,
       );
     } catch {
-      this.notice.set(`Something went wrong generating ${period}. Nothing was changed.`);
+      this.notice.set(
+        $localize`Something went wrong generating ${period}:week:. Nothing was changed.`,
+      );
     } finally {
       this.busy.set(false);
     }
@@ -328,7 +370,8 @@ export class AdminPayouts {
     await this.mark(
       row,
       () => this.payouts.markReported(row.id, row.totalMinor),
-      (marked) => `${row.venueName} is reported at ${formatBatchTotal(marked)}.`,
+      (marked) =>
+        $localize`${row.venueName}:venue: is reported at ${formatBatchTotal(marked)}:total:.`,
     );
   }
 
@@ -336,7 +379,7 @@ export class AdminPayouts {
     await this.mark(
       row,
       () => this.payouts.markSettled(row.id),
-      () => `${row.venueName} is settled.`,
+      () => $localize`${row.venueName}:venue: is settled.`,
     );
   }
 
@@ -366,25 +409,23 @@ export class AdminPayouts {
   private async refusalOf(row: BatchRow, error: unknown): Promise<string> {
     const reason = payoutMarkErrorOf(error);
     if (reason === 'UNKNOWN') {
-      return `Something went wrong updating ${row.venueName}. Nothing was changed.`;
+      return $localize`Something went wrong updating ${row.venueName}:venue:. Nothing was changed.`;
     }
     try {
       this.batches.set(await this.payouts.forPeriod(this.shown()));
     } catch {
       this.loadError.set(true);
-      return `${row.venueName} was not updated, and the week could not be re-read.`;
+      return $localize`${row.venueName}:venue: was not updated, and the week could not be re-read.`;
     }
     const current = this.batches().find((batch) => batch.id === row.id);
     if (reason === 'TOTAL_CHANGED' && current?.status === 'DRAFT') {
-      return (
-        `${row.venueName} now nets ${formatBatchTotal(current)}, not ${row.totalStr}: the ledger ` +
-        `moved since this week was loaded. Nothing was reported; review the new total.`
-      );
+      const now = formatBatchTotal(current);
+      return $localize`${row.venueName}:venue: now nets ${now}:total:, not ${row.totalStr}:shownTotal:: the ledger moved since this week was loaded. Nothing was reported; review the new total.`;
     }
     if (!current) {
-      return `${row.venueName}'s batch is gone. Nothing was changed.`;
+      return $localize`${row.venueName}:venue:'s batch is gone. Nothing was changed.`;
     }
-    return `${row.venueName} is already ${STATUS_LABEL[current.status].toLowerCase()}. Nothing was changed.`;
+    return alreadyMarked(row.venueName, current.status);
   }
 
   /** The names are best-effort: without them a batch still renders, by venue id. */
@@ -411,7 +452,7 @@ export class AdminPayouts {
   /** The week to send, or `null` with the field error set. */
   private validatedPeriod(): string | null {
     if (this.periodForm.period().invalid()) {
-      this.periodError.set('Choose a week, for example 2026-W25.');
+      this.periodError.set($localize`Choose a week, for example 2026-W25.`);
       return null;
     }
     this.periodError.set('');
@@ -422,11 +463,22 @@ export class AdminPayouts {
 function toRow(batch: PayoutBatchView, names: ReadonlyMap<number, string>): BatchRow {
   return {
     id: batch.id,
-    venueName: names.get(batch.venueId) ?? `Venue #${batch.venueId}`,
+    venueName: names.get(batch.venueId) ?? $localize`Venue #${batch.venueId}:id:`,
     totalMinor: batch.totalNetMinor,
     totalStr: formatBatchTotal(batch),
     status: batch.status,
   };
+}
+
+function alreadyMarked(venue: string, status: PayoutBatchStatus): string {
+  switch (status) {
+    case 'DRAFT':
+      return $localize`${venue}:venue: is already draft. Nothing was changed.`;
+    case 'REPORTED':
+      return $localize`${venue}:venue: is already reported. Nothing was changed.`;
+    case 'SETTLED':
+      return $localize`${venue}:venue: is already settled. Nothing was changed.`;
+  }
 }
 
 function formatBatchTotal(batch: PayoutBatchView): string {

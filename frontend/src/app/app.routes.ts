@@ -22,37 +22,37 @@ const consoleTabRoutes: Routes = [
     // The generate-grid + paint layout editor.
     path: 'beach-map',
     loadComponent: () => import('./operator/layout-editor').then((m) => m.LayoutEditor),
-    title: 'Beach map — Operator console',
+    title: $localize`Beach map — Operator console`,
   },
   {
     // The per-row pricing tab.
     path: 'pricing',
     loadComponent: () => import('./operator/pricing-tab').then((m) => m.PricingTab),
-    title: 'Pricing — Operator console',
+    title: $localize`Pricing — Operator console`,
   },
   {
     // The daily view (availability grid + date + arrivals).
     path: 'daily',
     loadComponent: () => import('./operator/daily-view-tab').then((m) => m.DailyViewTab),
-    title: 'Daily view — Operator console',
+    title: $localize`Daily view — Operator console`,
   },
   {
     // The Request-to-Book queue (accept/decline/expired-race).
     path: 'requests',
     loadComponent: () => import('./operator/requests-tab').then((m) => m.RequestsTab),
-    title: 'Requests — Operator console',
+    title: $localize`Requests — Operator console`,
   },
   {
     // The payout ledger + statement + weather refund.
     path: 'payouts',
     loadComponent: () => import('./operator/payouts-tab').then((m) => m.PayoutsTab),
-    title: 'Payouts — Operator console',
+    title: $localize`Payouts — Operator console`,
   },
   {
     // The Venue & commodities tab — details form + amenity toggle-chips + photo placeholders.
     path: 'venue',
     loadComponent: () => import('./operator/venue-tab').then((m) => m.VenueTab),
-    title: 'Venue & commodities — Operator console',
+    title: $localize`Venue & commodities — Operator console`,
   },
 ];
 
@@ -66,13 +66,13 @@ const adminTabRoutes: Routes = [
     path: '',
     pathMatch: 'full',
     loadComponent: () => import('./admin/admin-operators').then((m) => m.AdminOperators),
-    title: 'Operators — Riviera',
+    title: $localize`Operators — Riviera`,
     data: {
       adminTab: {
-        title: 'Operators',
+        title: $localize`Operators`,
         titleId: 'admin-ops-title',
         maxWidthClass: 'max-w-[720px]',
-        signInCopy: 'Sign in as an admin to review pending registrations.',
+        signInCopy: $localize`Sign in as an admin to review pending registrations.`,
         restoringTestId: 'admin-ops-restoring',
         signedOutTestId: 'admin-ops-signed-out',
         forbiddenTestId: 'admin-ops-forbidden',
@@ -82,13 +82,13 @@ const adminTabRoutes: Routes = [
   {
     path: 'commissions',
     loadComponent: () => import('./admin/admin-commissions').then((m) => m.AdminCommissions),
-    title: 'Commissions — Riviera',
+    title: $localize`Commissions — Riviera`,
     data: {
       adminTab: {
-        title: 'Commissions',
+        title: $localize`Commissions`,
         titleId: 'admin-commissions-title',
         maxWidthClass: 'max-w-[860px]',
-        signInCopy: 'Sign in as an admin to review and change venue commission rates.',
+        signInCopy: $localize`Sign in as an admin to review and change venue commission rates.`,
         restoringTestId: 'admin-commissions-restoring',
         signedOutTestId: 'admin-commissions-signed-out',
         forbiddenTestId: 'admin-commissions-forbidden',
@@ -98,13 +98,13 @@ const adminTabRoutes: Routes = [
   {
     path: 'email',
     loadComponent: () => import('./admin/admin-mail-outbox').then((m) => m.AdminMailOutbox),
-    title: 'Email — Riviera',
+    title: $localize`:admin email tab|Browser title of the admin undelivered-mail outbox:Email — Riviera`,
     data: {
       adminTab: {
-        title: 'Email',
+        title: $localize`:admin email tab|Admin tab heading for the undelivered-mail outbox:Email`,
         titleId: 'admin-outbox-title',
         maxWidthClass: 'max-w-[720px]',
-        signInCopy: 'Sign in as an admin to review undelivered mail.',
+        signInCopy: $localize`Sign in as an admin to review undelivered mail.`,
         restoringTestId: 'admin-outbox-restoring',
         signedOutTestId: 'admin-outbox-signed-out',
         forbiddenTestId: 'admin-outbox-forbidden',
@@ -114,13 +114,13 @@ const adminTabRoutes: Routes = [
   {
     path: 'refunds',
     loadComponent: () => import('./admin/admin-refund-outbox').then((m) => m.AdminRefundOutbox),
-    title: 'Refunds — Riviera',
+    title: $localize`Refunds — Riviera`,
     data: {
       adminTab: {
-        title: 'Refunds',
+        title: $localize`Refunds`,
         titleId: 'admin-refunds-title',
         maxWidthClass: 'max-w-[720px]',
-        signInCopy: 'Sign in as an admin to review outstanding refunds.',
+        signInCopy: $localize`Sign in as an admin to review outstanding refunds.`,
         restoringTestId: 'admin-refunds-restoring',
         signedOutTestId: 'admin-refunds-signed-out',
         forbiddenTestId: 'admin-refunds-forbidden',
@@ -130,13 +130,13 @@ const adminTabRoutes: Routes = [
   {
     path: 'photos',
     loadComponent: () => import('./admin/admin-venue-photos').then((m) => m.AdminVenuePhotos),
-    title: 'Photos — Riviera',
+    title: $localize`Photos — Riviera`,
     data: {
       adminTab: {
-        title: 'Photos',
+        title: $localize`Photos`,
         titleId: 'admin-photos-title',
         maxWidthClass: 'max-w-[860px]',
-        signInCopy: 'Sign in as an admin to moderate venue photos.',
+        signInCopy: $localize`Sign in as an admin to moderate venue photos.`,
         restoringTestId: 'admin-photos-restoring',
         signedOutTestId: 'admin-photos-signed-out',
         forbiddenTestId: 'admin-photos-forbidden',
@@ -146,13 +146,13 @@ const adminTabRoutes: Routes = [
   {
     path: 'reviews',
     loadComponent: () => import('./admin/admin-reviews').then((m) => m.AdminReviews),
-    title: 'Reviews — Riviera',
+    title: $localize`Reviews — Riviera`,
     data: {
       adminTab: {
-        title: 'Reviews',
+        title: $localize`Reviews`,
         titleId: 'admin-reviews-title',
         maxWidthClass: 'max-w-[860px]',
-        signInCopy: 'Sign in as an admin to moderate reviews.',
+        signInCopy: $localize`Sign in as an admin to moderate reviews.`,
         restoringTestId: 'admin-reviews-restoring',
         signedOutTestId: 'admin-reviews-signed-out',
         forbiddenTestId: 'admin-reviews-forbidden',
@@ -162,14 +162,13 @@ const adminTabRoutes: Routes = [
   {
     path: 'venue-changes',
     loadComponent: () => import('./admin/admin-venue-changes').then((m) => m.AdminVenueChanges),
-    title: 'Venue changes — Riviera',
+    title: $localize`Venue changes — Riviera`,
     data: {
       adminTab: {
-        title: 'Venue changes',
+        title: $localize`Venue changes`,
         titleId: 'admin-venue-changes-title',
         maxWidthClass: 'max-w-[900px]',
-        signInCopy:
-          'Sign in as an admin to set the venue-change fee and review what it has charged.',
+        signInCopy: $localize`Sign in as an admin to set the venue-change fee and review what it has charged.`,
         restoringTestId: 'admin-venue-changes-restoring',
         signedOutTestId: 'admin-venue-changes-signed-out',
         forbiddenTestId: 'admin-venue-changes-forbidden',
@@ -179,13 +178,13 @@ const adminTabRoutes: Routes = [
   {
     path: 'payouts',
     loadComponent: () => import('./admin/admin-payouts').then((m) => m.AdminPayouts),
-    title: 'Payouts — Riviera',
+    title: $localize`Payouts — Riviera`,
     data: {
       adminTab: {
-        title: 'Payouts',
+        title: $localize`Payouts`,
         titleId: 'admin-payouts-title',
         maxWidthClass: 'max-w-[900px]',
-        signInCopy: 'Sign in as an admin to generate and report the weekly payout batches.',
+        signInCopy: $localize`Sign in as an admin to generate and report the weekly payout batches.`,
         restoringTestId: 'admin-payouts-restoring',
         signedOutTestId: 'admin-payouts-signed-out',
         forbiddenTestId: 'admin-payouts-forbidden',
@@ -195,13 +194,13 @@ const adminTabRoutes: Routes = [
   {
     path: 'privacy',
     loadComponent: () => import('./admin/admin-privacy').then((m) => m.AdminPrivacy),
-    title: 'Privacy — Riviera',
+    title: $localize`Privacy — Riviera`,
     data: {
       adminTab: {
-        title: 'Privacy',
+        title: $localize`Privacy`,
         titleId: 'admin-privacy-title',
         maxWidthClass: 'max-w-[880px]',
-        signInCopy: 'Sign in as an admin to action a data-subject erasure request.',
+        signInCopy: $localize`Sign in as an admin to action a data-subject erasure request.`,
         restoringTestId: 'admin-privacy-restoring',
         signedOutTestId: 'admin-privacy-signed-out',
         forbiddenTestId: 'admin-privacy-forbidden',
@@ -211,13 +210,13 @@ const adminTabRoutes: Routes = [
   {
     path: 'audit',
     loadComponent: () => import('./admin/admin-audit').then((m) => m.AdminAudit),
-    title: 'Audit — Riviera',
+    title: $localize`Audit — Riviera`,
     data: {
       adminTab: {
-        title: 'Audit',
+        title: $localize`Audit`,
         titleId: 'admin-audit-title',
         maxWidthClass: 'max-w-[860px]',
-        signInCopy: 'Sign in as an admin to review recorded admin actions.',
+        signInCopy: $localize`Sign in as an admin to review recorded admin actions.`,
         restoringTestId: 'admin-audit-restoring',
         signedOutTestId: 'admin-audit-signed-out',
         forbiddenTestId: 'admin-audit-forbidden',
@@ -296,7 +295,7 @@ export const routes: Routes = [
     // Operator credential rotation — a separate page from the customer account page above.
     path: 'account/operator-password',
     loadComponent: () => import('./auth/operator-password').then((m) => m.OperatorPassword),
-    title: 'Change your password — Riviera',
+    title: $localize`Change your password — Riviera`,
     canActivate: [operatorSessionGuard],
     // Operator surface: the shared operator header/footer, never the tourist ones.
     data: { console: 'plain' } satisfies ConsoleRouteData,
@@ -348,7 +347,7 @@ export const routes: Routes = [
     // The operator landing (0 venues → inline create, 1 → console, 2+ → picker). Above ':venueId'.
     path: 'operator',
     loadComponent: () => import('./operator/operator-home').then((m) => m.OperatorHome),
-    title: 'Your venues — Riviera',
+    title: $localize`Your venues — Riviera`,
     canActivate: [operatorSessionGuard],
     // Operator surface: the shared operator header/footer, never the tourist ones.
     data: { console: 'plain' } satisfies ConsoleRouteData,
@@ -357,7 +356,7 @@ export const routes: Routes = [
     // MUST stay above 'operator/:venueId': matched by it, the guard would redirect this forever.
     path: VENUE_NOT_FOUND_PATH,
     loadComponent: () => import('./operator/venue-not-found').then((m) => m.VenueNotFound),
-    title: 'Venue not found — Riviera',
+    title: $localize`Venue not found — Riviera`,
     canActivate: [operatorSessionGuard],
     data: { console: 'plain' } satisfies ConsoleRouteData,
   },
@@ -365,7 +364,7 @@ export const routes: Routes = [
     // The AdminConsole shell owns the tab strip + auth gate; tabs are children.
     path: 'admin',
     loadComponent: () => import('./admin/admin-console').then((m) => m.AdminConsole),
-    title: 'Admin — Riviera',
+    title: $localize`Admin — Riviera`,
     // Admin surface: the shared operator header/footer, never the tourist ones.
     data: { console: 'admin' } satisfies ConsoleRouteData,
     children: adminTabRoutes,
@@ -374,7 +373,7 @@ export const routes: Routes = [
     // The venue console: the app shell wears the console shell for it; tabs are children.
     path: 'operator/:venueId',
     loadComponent: () => import('./operator/operator-console').then((m) => m.OperatorConsole),
-    title: 'Operator console — Riviera',
+    title: $localize`Operator console — Riviera`,
     data: { console: 'venue' } satisfies ConsoleRouteData,
     // Priority order (the array runs concurrently): malformed id, then no session, then not this operator's venue.
     canActivate: [venueIdGuard, operatorSessionGuard, venueAccessGuard],

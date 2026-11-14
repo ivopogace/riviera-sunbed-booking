@@ -30,14 +30,17 @@ const BTN =
   selector: 'app-admin-reviews',
   imports: [CardGlass, ConfirmWithReason, BusyAction, TouchTarget, StarRow],
   template: `
-    <p class="mt-5 max-w-[62ch] text-[15px] text-riv-ink-soft">
+    <p class="mt-5 max-w-[62ch] text-[15px] text-riv-ink-soft" i18n>
       Hiding a review takes it off the venue page and out of the venue's score until you un-hide it.
       The guest can still read their own review on their booking page, marked as removed from public
       view, but can no longer change it.
     </p>
 
     <div class="mt-5">
-      <label for="admin-reviews-venue-select" class="block text-[13.5px] font-semibold text-riv-ink"
+      <label
+        for="admin-reviews-venue-select"
+        class="block text-[13.5px] font-semibold text-riv-ink"
+        i18n
         >Venue</label
       >
       <select
@@ -48,7 +51,7 @@ const BTN =
         (change)="onVenuePicked($event)"
         class="mt-1 w-full max-w-[420px] rounded-[10px] border border-riv-field-border bg-riv-console-inset/70 px-3 py-2 text-[16px] text-riv-ink"
       >
-        <option value="">Choose a venue…</option>
+        <option value="" i18n>Choose a venue…</option>
         @for (venue of picker.venues(); track venue.id) {
           <option [value]="venue.id">{{ venue.name }} — {{ beachLabel(venue.beach) }}</option>
         }
@@ -56,9 +59,16 @@ const BTN =
     </div>
 
     @if (picker.loading() && entries().length === 0) {
-      <p class="mt-6 text-[15px] text-riv-ink-soft" data-testid="admin-reviews-loading">Loading…</p>
+      <p class="mt-6 text-[15px] text-riv-ink-soft" data-testid="admin-reviews-loading" i18n>
+        Loading…
+      </p>
     } @else if (picker.loadError()) {
-      <p class="mt-6 text-[15px] text-riv-error-ink" role="alert" data-testid="admin-reviews-error">
+      <p
+        class="mt-6 text-[15px] text-riv-error-ink"
+        role="alert"
+        data-testid="admin-reviews-error"
+        i18n
+      >
         Something went wrong loading this venue's reviews.
         <button
           type="button"
@@ -72,8 +82,11 @@ const BTN =
       </p>
     } @else if (picker.selectedVenue(); as venue) {
       @if (entries().length === 0) {
-        <p class="mt-6 text-[15px] text-riv-ink-soft" data-testid="admin-reviews-empty">
-          No reviews yet for {{ venue.name }}.
+        <p class="mt-6 text-[15px] text-riv-ink-soft" data-testid="admin-reviews-empty" i18n>
+          No reviews yet for
+          {{
+            venue.name  // i18n(ph="venue")
+          }}.
         </p>
       } @else {
         <ul role="list" class="mt-6 flex flex-col gap-3" data-testid="admin-reviews-list">
@@ -97,15 +110,26 @@ const BTN =
                   [attr.data-testid]="'admin-review-name-' + entry.id"
                   >{{ nameOf(entry) }}</span
                 >
-                <span class="text-[12.5px] text-riv-card-ink-soft">
-                  Stayed {{ stayMonth(entry) }} · written {{ moment(entry.createdAt) }}
+                <span class="text-[12.5px] text-riv-card-ink-soft" i18n>
+                  Stayed
+                  {{
+                    stayMonth(entry) // i18n(ph="stayMonth")
+                  }}
+                  · written
+                  {{
+                    moment(entry.createdAt) // i18n(ph="writtenAt")
+                  }}
                 </span>
                 @if (entry.hiddenAt; as hiddenAt) {
                   <span
                     class="rounded-full border border-riv-danger-border bg-riv-danger-fill px-2.5 py-0.5 text-[12px] font-semibold text-riv-danger-ink"
                     [attr.data-testid]="'admin-review-hidden-' + entry.id"
+                    i18n
                   >
-                    Hidden since {{ moment(hiddenAt) }}
+                    Hidden since
+                    {{
+                      moment(hiddenAt) // i18n(ph="hiddenAt")
+                    }}
                   </span>
                 }
               </div>
@@ -121,6 +145,7 @@ const BTN =
                 <p
                   class="mt-2 text-[14px] text-riv-card-ink-soft italic"
                   [attr.data-testid]="'admin-review-no-comment-' + entry.id"
+                  i18n
                 >
                   No comment — a star-only review.
                 </p>
@@ -130,12 +155,16 @@ const BTN =
                 <app-confirm-with-reason
                   class="mt-3"
                   label="Confirm hiding this review"
+                  i18n-label
                   [prompt]="hidePrompt(entry, venue.name)"
                   [promptTestId]="'admin-review-confirm-prompt-' + entry.id"
                   [reasonId]="'admin-review-reason-' + entry.id"
                   reasonPlaceholder="e.g. reported by the venue — abusive"
+                  i18n-reasonPlaceholder="Example audit reason for hiding a review"
                   confirmLabel="Hide"
+                  i18n-confirmLabel="hide review|Confirms hiding a review from public view"
                   cancelLabel="Keep it"
+                  i18n-cancelLabel="Backs out of hiding a review"
                   [panelTestId]="'admin-review-confirm-panel-' + entry.id"
                   [confirmTestId]="'admin-review-confirm-' + entry.id"
                   [cancelTestId]="'admin-review-cancel-' + entry.id"
@@ -152,6 +181,7 @@ const BTN =
                   [appBusy]="busy()"
                   (click)="unhide(venue, entry)"
                   class="mt-3 ${BTN}"
+                  i18n="Button that returns a hidden review to public view"
                 >
                   Un-hide
                 </button>
@@ -163,6 +193,7 @@ const BTN =
                   [appBusy]="busy()"
                   (click)="askToHide(entry)"
                   class="mt-3 ${BTN}"
+                  i18n="hide review|Button that takes a review out of public view"
                 >
                   Hide
                 </button>
@@ -179,7 +210,11 @@ const BTN =
             (click)="loadMore()"
             class="mt-4 ${BTN}"
           >
-            {{ picker.loading() ? 'Loading…' : 'Show more reviews' }}
+            @if (picker.loading()) {
+              <ng-container i18n>Loading…</ng-container>
+            } @else {
+              <ng-container i18n>Show more reviews</ng-container>
+            }
           </button>
         }
       }
@@ -214,7 +249,7 @@ export class AdminReviews {
   }
 
   protected nameOf(entry: AdminReviewEntryView): string {
-    return entry.displayName ?? 'A guest';
+    return entry.displayName ?? $localize`A guest`;
   }
 
   protected stayMonth(entry: AdminReviewEntryView): string {
@@ -226,7 +261,9 @@ export class AdminReviews {
   }
 
   protected hidePrompt(entry: AdminReviewEntryView, venueName: string): string {
-    return `Hide ${possessive(entry)} review of ${venueName}? It leaves the venue page and the score until you un-hide it.`;
+    return entry.displayName === null
+      ? $localize`Hide this guest’s review of ${venueName}:venue:? It leaves the venue page and the score until you un-hide it.`
+      : $localize`Hide ${entry.displayName}:guestName:’s review of ${venueName}:venue:? It leaves the venue page and the score until you un-hide it.`;
   }
 
   /**
@@ -307,12 +344,16 @@ export class AdminReviews {
       await (grounds === '' ? this.service.hide(entry.id) : this.service.hide(entry.id, grounds));
       this.ifStillViewing(venue, () => {
         this.flip(entry.id, new Date().toISOString());
-        this.notice.set(`Hid ${possessive(entry)} review of ${venue.name}.`);
+        this.notice.set(
+          entry.displayName === null
+            ? $localize`Hid this guest’s review of ${venue.name}:venue:.`
+            : $localize`Hid ${entry.displayName}:guestName:’s review of ${venue.name}:venue:.`,
+        );
         this.focusAfterRender(`admin-review-${entry.id}`);
       });
     } catch {
       this.ifStillViewing(venue, () => {
-        this.notice.set('Could not hide the review. Nothing was changed.');
+        this.notice.set($localize`Could not hide the review. Nothing was changed.`);
         this.focusAfterRender('admin-reviews-notice');
       });
     } finally {
@@ -328,13 +369,17 @@ export class AdminReviews {
       await this.service.unhide(entry.id);
       this.ifStillViewing(venue, () => {
         this.flip(entry.id, null);
-        this.notice.set(`${capitalised(possessive(entry))} review is back in public view.`);
+        this.notice.set(
+          entry.displayName === null
+            ? $localize`This guest’s review is back in public view.`
+            : $localize`${entry.displayName}:guestName:’s review is back in public view.`,
+        );
         this.focusAfterRender(`admin-review-${entry.id}`);
       });
     } catch {
       // Nothing was destroyed: the pressed button survives, so focus stays and the status announces.
       this.ifStillViewing(venue, () =>
-        this.notice.set('Could not un-hide the review. Nothing was changed.'),
+        this.notice.set($localize`Could not un-hide the review. Nothing was changed.`),
       );
     } finally {
       this.busy.set(false);
@@ -352,13 +397,4 @@ export class AdminReviews {
       apply();
     }
   }
-}
-
-/** "Ana’s" for a named review, "this guest’s" for one written before names were collected. */
-function possessive(entry: AdminReviewEntryView): string {
-  return entry.displayName === null ? 'this guest’s' : `${entry.displayName}’s`;
-}
-
-function capitalised(text: string): string {
-  return text.charAt(0).toUpperCase() + text.slice(1);
 }

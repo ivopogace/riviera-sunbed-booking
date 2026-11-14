@@ -42,26 +42,29 @@ import { PrimaryCta } from '../shared/primary-cta';
     />
 
     @if (loading()) {
-      <p class="mt-4 text-[15px] text-riv-ink-soft" data-testid="admin-ops-loading">Loading…</p>
+      <p class="mt-4 text-[15px] text-riv-ink-soft" data-testid="admin-ops-loading" i18n>
+        Loading…
+      </p>
     } @else if (loadError()) {
       <p class="mt-4 text-[15px] text-riv-error-ink" role="alert" data-testid="admin-ops-error">
-        Something went wrong loading operators.
+        <ng-container i18n>Something went wrong loading operators.</ng-container>
         <button
           type="button"
           data-touch-exempt="control inside a sentence (WCAG 2.5.5 inline exception)"
           class="font-semibold underline"
           (click)="reload()"
+          i18n
         >
           Retry
         </button>
       </p>
     } @else {
-      <h2 class="mt-8 text-[18px] font-semibold text-riv-ink" id="admin-pending-title">
+      <h2 class="mt-8 text-[18px] font-semibold text-riv-ink" id="admin-pending-title" i18n>
         Awaiting approval
       </h2>
 
       @if (pending().length === 0) {
-        <p class="mt-4 text-[15px] text-riv-ink-soft" data-testid="admin-ops-empty">
+        <p class="mt-4 text-[15px] text-riv-ink-soft" data-testid="admin-ops-empty" i18n>
           No operators are awaiting approval.
         </p>
       } @else {
@@ -93,6 +96,7 @@ import { PrimaryCta } from '../shared/primary-cta';
                   [appBusy]="actingId() !== undefined"
                   (click)="approve(op.id)"
                   class="rounded-[10px] px-4 py-2 text-[14px] font-semibold aria-disabled:opacity-60"
+                  i18n
                 >
                   Approve
                 </button>
@@ -103,6 +107,7 @@ import { PrimaryCta } from '../shared/primary-cta';
                   [appBusy]="actingId() !== undefined"
                   (click)="reject(op.id)"
                   class="rounded-[10px] border border-riv-field-border px-4 py-2 text-[14px] font-semibold text-riv-card-ink aria-disabled:opacity-60"
+                  i18n
                 >
                   Reject
                 </button>
@@ -112,16 +117,16 @@ import { PrimaryCta } from '../shared/primary-cta';
         </ul>
       }
 
-      <h2 class="mt-10 text-[18px] font-semibold text-riv-ink" id="admin-accounts-title">
+      <h2 class="mt-10 text-[18px] font-semibold text-riv-ink" id="admin-accounts-title" i18n>
         Operator accounts
       </h2>
-      <p class="mt-1 text-[14px] text-riv-ink-soft">
+      <p class="mt-1 text-[14px] text-riv-ink-soft" i18n>
         Suspending an operator signs it out on every device and blocks it from signing in again.
         Reinstating restores access, but not the old sessions.
       </p>
 
       @if (accounts().length === 0) {
-        <p class="mt-4 text-[15px] text-riv-ink-soft" data-testid="admin-accounts-empty">
+        <p class="mt-4 text-[15px] text-riv-ink-soft" data-testid="admin-accounts-empty" i18n>
           No operator accounts yet.
         </p>
       } @else {
@@ -142,6 +147,7 @@ import { PrimaryCta } from '../shared/primary-cta';
                   @if (op.admin) {
                     <span
                       class="ml-2 rounded-[6px] border border-riv-field-border px-1.5 py-0.5 text-[12px] font-medium text-riv-card-ink-soft"
+                      i18n="operator role|Badge marking an operator account as a platform admin"
                       >Admin</span
                     >
                   }
@@ -149,6 +155,7 @@ import { PrimaryCta } from '../shared/primary-cta';
                     <span
                       class="ml-2 rounded-[6px] border border-riv-error-ink px-1.5 py-0.5 text-[12px] font-medium text-riv-error-ink"
                       [attr.data-testid]="'admin-suspended-badge-' + op.id"
+                      i18n="operator status|Badge on a suspended operator account"
                       >Suspended</span
                     >
                   }
@@ -162,6 +169,7 @@ import { PrimaryCta } from '../shared/primary-cta';
                 <p
                   class="text-[14px] text-riv-card-ink-soft"
                   [attr.data-testid]="'admin-self-' + op.id"
+                  i18n
                 >
                   This is you
                 </p>
@@ -173,18 +181,23 @@ import { PrimaryCta } from '../shared/primary-cta';
                   [appBusy]="actingId() !== undefined"
                   (click)="reinstate(op.id)"
                   class="rounded-[10px] border border-riv-field-border px-4 py-2 text-[14px] font-semibold text-riv-card-ink aria-disabled:opacity-60"
+                  i18n
                 >
                   Reinstate
                 </button>
               } @else if (confirmingId() === op.id) {
                 <app-confirm-with-reason
                   label="Confirm suspension"
-                  [prompt]="'Suspend ' + op.username + '?'"
+                  i18n-label
+                  [prompt]="suspendPrompt(op.username)"
                   [promptTestId]="'admin-suspend-prompt-' + op.id"
                   [reasonId]="'admin-suspend-reason-' + op.id"
                   reasonPlaceholder="e.g. repeated guest reports — sets not honored"
+                  i18n-reasonPlaceholder
                   confirmLabel="Suspend"
+                  i18n-confirmLabel="suspend operator|Confirms suspending an operator account"
                   cancelLabel="Cancel"
+                  i18n-cancelLabel
                   [panelTestId]="'admin-suspend-panel-' + op.id"
                   [confirmTestId]="'admin-suspend-confirm-' + op.id"
                   [cancelTestId]="'admin-suspend-cancel-' + op.id"
@@ -202,6 +215,7 @@ import { PrimaryCta } from '../shared/primary-cta';
                     [appBusy]="actingId() !== undefined"
                     (click)="issueResetLink(op.id)"
                     class="rounded-[10px] border border-riv-field-border px-4 py-2 text-[14px] font-semibold text-riv-card-ink aria-disabled:opacity-60"
+                    i18n
                   >
                     Reset link
                   </button>
@@ -212,6 +226,7 @@ import { PrimaryCta } from '../shared/primary-cta';
                     [appBusy]="actingId() !== undefined"
                     (click)="askToSuspend(op.id)"
                     class="rounded-[10px] border border-riv-field-border px-4 py-2 text-[14px] font-semibold text-riv-card-ink aria-disabled:opacity-60"
+                    i18n="suspend operator|Opens the confirmation to suspend an operator account"
                   >
                     Suspend
                   </button>
@@ -224,8 +239,11 @@ import { PrimaryCta } from '../shared/primary-cta';
                     [attr.data-testid]="'admin-reset-panel-' + op.id"
                   >
                     <label class="flex flex-col gap-1.5">
-                      <span class="text-[14px] font-semibold text-riv-card-ink"
-                        >One-time reset link for {{ op.username }}</span
+                      <span class="text-[14px] font-semibold text-riv-card-ink" i18n
+                        >One-time reset link for
+                        {{
+                          op.username // i18n(ph="username")
+                        }}</span
                       >
                       <input
                         appTouchTarget
@@ -240,9 +258,14 @@ import { PrimaryCta } from '../shared/primary-cta';
                     <p
                       class="mt-1.5 text-[14px] text-riv-card-ink-soft"
                       [attr.data-testid]="'admin-reset-expiry-' + op.id"
+                      i18n
                     >
-                      It works once, until {{ link.expires }} (Tirana time). Nothing is emailed:
-                      hand it over yourself. Issuing another link cancels this one.
+                      It works once, until
+                      {{
+                        link.expires // i18n(ph="expires")
+                      }}
+                      (Tirana time). Nothing is emailed: hand it over yourself. Issuing another link
+                      cancels this one.
                     </p>
                     <div class="mt-2 flex gap-2">
                       <button
@@ -251,6 +274,7 @@ import { PrimaryCta } from '../shared/primary-cta';
                         [attr.data-testid]="'admin-reset-copy-' + op.id"
                         (click)="copyResetLink()"
                         class="rounded-[10px] border border-riv-field-border px-4 py-2 text-[14px] font-semibold text-riv-card-ink"
+                        i18n
                       >
                         Copy link
                       </button>
@@ -260,6 +284,7 @@ import { PrimaryCta } from '../shared/primary-cta';
                         [attr.data-testid]="'admin-reset-done-' + op.id"
                         (click)="dismissResetLink(op.id)"
                         class="rounded-[10px] border border-riv-field-border px-4 py-2 text-[14px] font-semibold text-riv-card-ink"
+                        i18n
                       >
                         Done
                       </button>
@@ -355,11 +380,19 @@ export class AdminOperators {
   }
 
   protected async approve(id: number): Promise<void> {
-    await this.act(id, () => this.service.approve(id), 'Approved');
+    await this.act(
+      id,
+      () => this.service.approve(id),
+      (who) => $localize`Approved ${who}:operator:.`,
+    );
   }
 
   protected async reject(id: number): Promise<void> {
-    await this.act(id, () => this.service.reject(id), 'Rejected');
+    await this.act(
+      id,
+      () => this.service.reject(id),
+      (who) => $localize`Rejected ${who}:operator:.`,
+    );
   }
 
   /**
@@ -385,7 +418,7 @@ export class AdminOperators {
     await this.act(
       id,
       () => (grounds === '' ? this.service.suspend(id) : this.service.suspend(id, grounds)),
-      'Suspended',
+      (who) => $localize`Suspended ${who}:operator:.`,
     );
   }
 
@@ -407,14 +440,16 @@ export class AdminOperators {
       const origin = this.document.location.origin;
       const url = `${origin}/account/operator-reset?token=${encodeURIComponent(token)}`;
       this.issuedLink.set({ id, url, expires: formatDeadline(expiresAt) });
-      this.notice.set(`Reset link ready for ${who}.`);
+      this.notice.set($localize`Reset link ready for ${who}:operator:.`);
       this.focusAfterRender(`admin-reset-url-${id}`);
     } catch (error) {
       if (problemCode(error) === 'BOOTSTRAP_CREDENTIAL_MANAGED') {
-        this.notice.set(`The password of ${who} is set by the deployment environment, not here.`);
+        this.notice.set(
+          $localize`The password of ${who}:operator: is set by the deployment environment, not here.`,
+        );
       } else {
         await this.load();
-        this.notice.set(`That didn't go through. The list below is up to date.`);
+        this.notice.set(NOT_THROUGH);
       }
       this.focusAfterRender('admin-ops-notice');
     } finally {
@@ -433,9 +468,9 @@ export class AdminOperators {
     }
     try {
       await this.document.defaultView?.navigator.clipboard.writeText(link.url);
-      this.notice.set('Link copied.');
+      this.notice.set($localize`Link copied.`);
     } catch {
-      this.notice.set('Could not copy. Select the link and copy it yourself.');
+      this.notice.set($localize`Could not copy. Select the link and copy it yourself.`);
     }
   }
 
@@ -446,7 +481,11 @@ export class AdminOperators {
   }
 
   protected async reinstate(id: number): Promise<void> {
-    await this.act(id, () => this.service.reinstate(id), 'Reinstated');
+    await this.act(
+      id,
+      () => this.service.reinstate(id),
+      (who) => $localize`Reinstated ${who}:operator:.`,
+    );
   }
 
   /**
@@ -454,7 +493,11 @@ export class AdminOperators {
    * the reconcile destroys whatever held focus (why the notice: RV-FE-9, `riviera-review-overlay`).
    * The name is read **before** the action, because the reconcile removes its row.
    */
-  private async act(id: number, action: () => Promise<void>, outcome: string): Promise<void> {
+  private async act(
+    id: number,
+    action: () => Promise<void>,
+    outcome: (who: string) => string,
+  ): Promise<void> {
     if (this.actingId() !== undefined) {
       return;
     }
@@ -474,19 +517,23 @@ export class AdminOperators {
       this.actingId.set(undefined);
       await this.load();
       // Never "nothing changed": a 409 means it was already decided, so the reconciled list may move.
-      this.notice.set(
-        settled ? `${outcome} ${who}.` : `That didn't go through. The list below is up to date.`,
-      );
+      this.notice.set(settled ? outcome(who) : NOT_THROUGH);
       this.focusAfterRender('admin-ops-notice');
     }
+  }
+
+  protected suspendPrompt(username: string): string {
+    return $localize`Suspend ${username}:operator:?`;
   }
 
   private nameOf(id: number): string {
     const row =
       this.pending().find((op) => op.id === id) ?? this.accounts().find((op) => op.id === id);
-    return row?.username ?? 'the operator';
+    return row?.username ?? $localize`the operator`;
   }
 }
+
+const NOT_THROUGH = $localize`That didn't go through. The list below is up to date.`;
 
 /** The stable `code` on an RFC-7807 error body. */
 function problemCode(error: unknown): string | undefined {

@@ -22,10 +22,10 @@ export interface AdminTabRouteData {
 
 /** Used only if a route somehow activates this shell with no matching `data.adminTab` child. */
 const FALLBACK_TAB: AdminTabRouteData = {
-  title: 'Admin',
+  title: $localize`:admin console heading|Fallback heading of the admin console:Admin`,
   titleId: 'admin-console-title',
   maxWidthClass: 'max-w-[860px]',
-  signInCopy: 'Sign in as an admin to continue.',
+  signInCopy: $localize`Sign in as an admin to continue.`,
   restoringTestId: 'admin-console-restoring',
   signedOutTestId: 'admin-console-signed-out',
   forbiddenTestId: 'admin-console-forbidden',
@@ -50,7 +50,11 @@ const FALLBACK_TAB: AdminTabRouteData = {
       <h1 [id]="tab().titleId" class="text-[24px] font-semibold text-riv-ink">{{ tab().title }}</h1>
 
       @if (auth.restoring()) {
-        <p class="mt-4 text-[15px] text-riv-ink-soft" [attr.data-testid]="tab().restoringTestId">
+        <p
+          class="mt-4 text-[15px] text-riv-ink-soft"
+          [attr.data-testid]="tab().restoringTestId"
+          i18n
+        >
           Loading…
         </p>
       } @else if (!auth.signedIn()) {
@@ -60,6 +64,7 @@ const FALLBACK_TAB: AdminTabRouteData = {
             routerLink="/account/sign-in"
             [queryParams]="{ audience: 'operator', returnUrl: currentUrl() }"
             class="font-semibold underline"
+            i18n
             >Sign in</a
           >
         </p>

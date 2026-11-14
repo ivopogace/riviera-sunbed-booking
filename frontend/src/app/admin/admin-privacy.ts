@@ -31,12 +31,17 @@ type ErasureStage = 'form' | 'confirm' | 'done';
         class="rounded-[14px] p-5"
         aria-labelledby="admin-privacy-erase-heading"
       >
-        <h2 id="admin-privacy-erase-heading" class="text-[16px] font-semibold text-riv-card-ink">
+        <h2
+          id="admin-privacy-erase-heading"
+          class="text-[16px] font-semibold text-riv-card-ink"
+          i18n
+        >
           Erase a data subject
         </h2>
         <p
           id="admin-privacy-erase-intro"
           class="mt-1 text-[13.5px] leading-relaxed text-riv-card-ink-soft"
+          i18n
         >
           For a guest with no account, or an account holder who cannot do it themselves. Contact
           details are scrubbed in place; the financial records that must be retained stay, without
@@ -53,6 +58,7 @@ type ErasureStage = 'form' | 'confirm' | 'done';
             <label
               for="admin-privacy-email"
               class="block text-[11px] font-bold tracking-[0.1em] text-riv-card-ink-soft uppercase"
+              i18n
               >Email address</label
             >
             <input
@@ -86,6 +92,7 @@ type ErasureStage = 'form' | 'confirm' | 'done';
               type="submit"
               data-testid="admin-privacy-review"
               class="mt-4 w-full rounded-[12px] border border-riv-field-border bg-riv-console-inset/70 px-4 py-3 text-[14.5px] font-bold text-riv-card-ink"
+              i18n
             >
               Review erasure request
             </button>
@@ -101,18 +108,22 @@ type ErasureStage = 'form' | 'confirm' | 'done';
             <h3
               id="admin-privacy-confirm-heading"
               class="text-[14px] font-bold text-riv-danger-ink"
+              i18n
             >
               Erase everything linked to this email?
             </h3>
-            <p class="mt-2 text-[13px] leading-relaxed text-riv-card-ink-soft">
+            <p class="mt-2 text-[13px] leading-relaxed text-riv-card-ink-soft" i18n>
               Name, email and phone become unrecoverable for
-              <strong class="text-riv-card-ink">{{ submittedEmail() }}</strong
+              <strong class="text-riv-card-ink">{{
+                submittedEmail() // i18n(ph="email")
+              }}</strong
               >. Bookings and ledger entries remain as anonymous records. This cannot be undone.
             </p>
 
             <label
               for="admin-privacy-reason"
               class="mt-3 block text-[13.5px] font-semibold text-riv-card-ink"
+              i18n
               >Reason (optional)</label
             >
             <input
@@ -125,6 +136,7 @@ type ErasureStage = 'form' | 'confirm' | 'done';
               [disabled]="busy()"
               (input)="onReasonTyped($event)"
               placeholder="e.g. DSAR-2026-08-04"
+              i18n-placeholder="Example audit reason (a data-subject request reference)"
               class="mt-1 w-full rounded-[10px] border border-riv-field-border bg-riv-console-inset/70 px-3 py-2 text-[16px] text-riv-card-ink"
             />
 
@@ -137,7 +149,11 @@ type ErasureStage = 'form' | 'confirm' | 'done';
                 (click)="erase()"
                 class="rounded-[12px] border border-riv-danger-action-border bg-riv-danger-action-fill px-5 py-3 text-[13.5px] font-bold text-riv-danger-ink aria-disabled:cursor-not-allowed aria-disabled:opacity-60"
               >
-                {{ busy() ? 'Erasing…' : 'Erase permanently' }}
+                @if (busy()) {
+                  <ng-container i18n>Erasing…</ng-container>
+                } @else {
+                  <ng-container i18n>Erase permanently</ng-container>
+                }
               </button>
               <button
                 appTouchTarget
@@ -146,6 +162,7 @@ type ErasureStage = 'form' | 'confirm' | 'done';
                 [appBusy]="busy()"
                 (click)="cancel()"
                 class="rounded-[12px] border border-riv-field-border bg-riv-console-inset/70 px-5 py-3 text-[13.5px] font-semibold text-riv-card-ink aria-disabled:cursor-not-allowed aria-disabled:opacity-60"
+                i18n="Button that backs out of the erasure confirmation"
               >
                 Cancel
               </button>
@@ -171,14 +188,20 @@ type ErasureStage = 'form' | 'confirm' | 'done';
             aria-labelledby="admin-privacy-done-heading"
             class="mt-4 rounded-[14px] border border-riv-accent-border bg-riv-accent-fill p-4 [animation:riv-pop_0.22s_ease] motion-reduce:[animation:none]"
           >
-            <h3 id="admin-privacy-done-heading" class="text-[14px] font-bold text-riv-accent-ink">
+            <h3
+              id="admin-privacy-done-heading"
+              class="text-[14px] font-bold text-riv-accent-ink"
+              i18n
+            >
               Request actioned
             </h3>
-            <p class="mt-2 text-[13px] leading-relaxed text-riv-card-ink-soft">
+            <p class="mt-2 text-[13px] leading-relaxed text-riv-card-ink-soft" i18n>
               Anything held for
-              <strong class="text-riv-card-ink">{{ submittedEmail() }}</strong> has been erased. The
-              result is deliberately the same whether or not that email was known to us — this
-              screen will never tell you which.
+              <strong class="text-riv-card-ink">{{
+                submittedEmail() // i18n(ph="email")
+              }}</strong>
+              has been erased. The result is deliberately the same whether or not that email was
+              known to us — this screen will never tell you which.
             </p>
             <button
               appTouchTarget
@@ -186,6 +209,7 @@ type ErasureStage = 'form' | 'confirm' | 'done';
               data-testid="admin-privacy-another"
               (click)="another()"
               class="mt-3 rounded-[12px] border border-riv-field-border bg-riv-console-inset/70 px-5 py-3 text-[13.5px] font-semibold text-riv-card-ink"
+              i18n
             >
               Erase another
             </button>
@@ -202,6 +226,7 @@ type ErasureStage = 'form' | 'confirm' | 'done';
         <h2
           id="admin-privacy-survives-heading"
           class="text-[14.5px] font-semibold text-riv-card-ink"
+          i18n
         >
           What survives an erasure
         </h2>
@@ -209,10 +234,14 @@ type ErasureStage = 'form' | 'confirm' | 'done';
         <dl
           class="mt-3 grid grid-cols-[auto_1fr] gap-x-2 gap-y-2.5 text-[12.5px] leading-relaxed text-riv-card-ink-soft"
         >
-          <dt class="font-bold text-riv-error-ink">Erased</dt>
-          <dd>Name, email, phone — overwritten in place, not deleted rows.</dd>
-          <dt class="font-bold text-riv-accent-ink">Kept</dt>
-          <dd>
+          <dt class="font-bold text-riv-error-ink" i18n="Label for what an erasure overwrites">
+            Erased
+          </dt>
+          <dd i18n>Name, email, phone — overwritten in place, not deleted rows.</dd>
+          <dt class="font-bold text-riv-accent-ink" i18n="Label for what an erasure retains">
+            Kept
+          </dt>
+          <dd i18n>
             Bookings, payments, payout ledger entries — the records we are legally required to
             retain, now anonymous.
           </dd>
@@ -220,6 +249,7 @@ type ErasureStage = 'form' | 'confirm' | 'done';
 
         <p
           class="mt-3 border-t border-riv-card-border pt-3 text-[12.5px] leading-relaxed text-riv-card-ink-soft"
+          i18n
         >
           Account holders can erase themselves from their own account page. This screen exists for
           the people who can't.
@@ -242,8 +272,8 @@ export class AdminPrivacy {
 
   protected readonly model = signal({ email: '' });
   protected readonly erasureForm = form(this.model, (path) => {
-    required(path.email, { message: 'Enter a valid email address.' });
-    email(path.email, { message: 'Enter a valid email address.' });
+    required(path.email, { message: $localize`Enter a valid email address.` });
+    email(path.email, { message: $localize`Enter a valid email address.` });
   });
 
   /**
@@ -312,6 +342,6 @@ export class AdminPrivacy {
 /** What the admin is told when an erasure request is refused. Never whether the subject existed. */
 function messageFor(failure: ReturnType<typeof erasureErrorOf>): string {
   return failure === 'INVALID_REQUEST'
-    ? 'The platform rejected that email address. Nothing was erased.'
-    : 'Could not action that request. Nothing was erased.';
+    ? $localize`The platform rejected that email address. Nothing was erased.`
+    : $localize`Could not action that request. Nothing was erased.`;
 }

@@ -72,6 +72,7 @@ const NAME = 'min-w-0 max-w-full truncate text-[17px] font-bold tracking-[-0.01e
             <p
               id="oc-venue-menu-title"
               class="m-0 px-2.5 pt-1 pb-1.5 text-[11px] font-bold tracking-[0.14em] text-riv-pop-ink-soft uppercase"
+              i18n
             >
               Your venues
             </p>
@@ -97,6 +98,7 @@ const NAME = 'min-w-0 max-w-full truncate text-[17px] font-bold tracking-[-0.01e
               [class]="cls.item"
               data-testid="oc-venue-add"
               (click)="activate()"
+              i18n
               >Add another venue</a
             >
           </div>
@@ -139,7 +141,10 @@ export class OperatorVenueSwitch {
 
   protected readonly venues = computed(() => this.owned.venues() ?? []);
   protected readonly label = computed(() =>
-    this.venueId() === undefined ? 'Your venues' : (this.venueName() ?? 'Your venue'),
+    this.venueId() === undefined
+      ? $localize`Your venues`
+      : (this.venueName() ??
+        $localize`:venue switch|Placeholder while the venue name loads:Your venue`),
   );
 
   constructor() {

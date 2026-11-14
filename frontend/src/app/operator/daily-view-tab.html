@@ -2,7 +2,9 @@
 <app-load-announcer
   [loading]="!loaded()"
   [ready]="loaded() && !loadError()"
+  i18n-loadingLabel
   loadingLabel="Loading the daily view…"
+  i18n-readyLabel
   readyLabel="Daily view loaded."
 />
 
@@ -78,6 +80,7 @@
       class="mr-auto mt-6 max-w-md rounded-[16px] border border-riv-alert-tint/30 bg-riv-console-inset/70 px-5 py-4 text-center text-[13px] font-semibold text-riv-error-ink"
       role="alert"
       data-testid="daily-load-error"
+      i18n
     >
       Sorry — we couldn’t load this venue’s day. Please try again.
     </p>
@@ -88,7 +91,9 @@
     <section appCardGlass class="mb-3.5 rounded-[20px] px-[18px] py-4">
       <div class="flex flex-wrap items-end justify-between gap-3">
         <label class="flex flex-col gap-1.5">
-          <span class="text-[10.5px] font-bold uppercase tracking-[0.08em] text-riv-card-ink-faint"
+          <span
+            class="text-[10.5px] font-bold uppercase tracking-[0.08em] text-riv-card-ink-faint"
+            i18n="the selected day|Label of the daily view's date picker:Date"
             >Date</span
           >
           <input
@@ -107,12 +112,30 @@
           aria-live="polite"
         >
           @if (totalCount()) {
-            <strong class="text-riv-card-ink">{{ markedCount() }}</strong> walk-in marked ·
-            <strong class="text-riv-card-ink">{{ freeCount() }}</strong> of {{ totalCount() }} sets
-            free on {{ dateLabel() }}
+            <ng-container
+              i18n="
+                Daily availability summary, e.g. 2 walk-in marked · 10 of 20 sets free on Mon 15 Jun
+                2026
+              "
+              ><strong class="text-riv-card-ink">{{
+                markedCount() // i18n(ph="marked")
+              }}</strong>
+              walk-in marked ·
+              <strong class="text-riv-card-ink">{{
+                freeCount() // i18n(ph="free")
+              }}</strong>
+              of
+              {{
+                totalCount() // i18n(ph="total")
+              }}
+              sets free on
+              {{
+                dateLabel() // i18n(ph="date")
+              }}</ng-container
+            >
           } @else {
             <!-- No date: the set count comes from the venue's layout, so no other day reads differently. -->
-            No sets on the map yet
+            <ng-container i18n>No sets on the map yet</ng-container>
           }
         </p>
       </div>
@@ -123,6 +146,7 @@
             role="alert"
             class="mt-3 text-[13px] font-semibold text-riv-card-ink"
             data-testid="daily-sales-closed"
+            i18n
           >
             Online sales for today are closed.
           </p>
@@ -135,6 +159,7 @@
             data-testid="daily-close-sales"
             [appBusy]="closeSalesBusy()"
             (click)="onCloseSales()"
+            i18n
           >
             Close today’s online sales now
           </button>
@@ -142,9 +167,13 @@
       }
       @if (closeSalesConfirm()) {
         <app-confirm-panel
+          i18n-label
           label="Close today’s online sales?"
+          i18n-headline
           headline="Close today’s online sales?"
+          i18n-message
           message="Tourists can no longer book any set for today, effective immediately. This sets your standing sales close to 00:01, so it stays closed for future days until you change it back in Venue &amp; commodities."
+          i18n-confirmLabel
           confirmLabel="Close today’s sales"
           tone="warn"
           [busy]="closeSalesBusy()"
@@ -172,6 +201,7 @@
       viewportTestid="daily-grid"
       railCodes="labels"
       [viewportTabindex]="0"
+      i18n-viewportLabel
       viewportLabel="Beach map"
     >
       <ng-template [appBeachMapRow]="rows()" let-row>
@@ -241,6 +271,7 @@
         <ul
           canvasFooter
           class="mt-3.5 flex list-none flex-wrap gap-4 p-0 text-[12.5px] text-riv-card-ink"
+          i18n-aria-label="Accessible name of the map legend"
           aria-label="Legend"
         >
           <li class="flex items-center gap-[7px]">
@@ -248,29 +279,34 @@
               class="h-[13px] w-[13px] rounded-[4px] border border-riv-console-tint/15 bg-riv-console-inset/85"
               aria-hidden="true"
             ></span>
-            Free (tap to mark)
+            <ng-container i18n>Free (tap to mark)</ng-container>
           </li>
           <li class="flex items-center gap-[7px]">
             <span
               class="h-[13px] w-[13px] rounded-[4px] bg-riv-solid-fill-brand"
               aria-hidden="true"
             ></span>
-            Walk-in marked
+            <ng-container i18n="Map legend entry for a staff-marked walk-in set"
+              >Walk-in marked</ng-container
+            >
           </li>
           <li class="flex items-center gap-[7px]">
             <span
               class="h-[13px] w-[13px] rounded-[4px] bg-(image:--riv-walkin-hatch)"
               aria-hidden="true"
             ></span>
-            Booked online (locked)
+            <ng-container i18n>Booked online (locked)</ng-container>
           </li>
         </ul>
       }
       <div canvasEmpty class="px-3 py-9 text-center" data-testid="daily-map-empty">
-        <h2 class="mb-[7px] text-[19px] font-bold tracking-[-0.01em] text-riv-card-ink">
+        <h2 class="mb-[7px] text-[19px] font-bold tracking-[-0.01em] text-riv-card-ink" i18n>
           No beach map for this venue yet
         </h2>
-        <p class="mx-auto mb-5 max-w-[380px] text-[14.5px] leading-normal text-riv-card-ink-soft">
+        <p
+          class="mx-auto mb-5 max-w-[380px] text-[14.5px] leading-normal text-riv-card-ink-soft"
+          i18n
+        >
           There is no set to mark, book or check in — on this date or any other. Generate the layout
           in the Beach map tab and every day's grid follows from it.
         </p>
@@ -280,6 +316,7 @@
             appTouchTarget
             [routerLink]="['/operator', id, 'beach-map']"
             data-testid="daily-map-empty-link"
+            i18n
             class="inline-flex items-center justify-center rounded-[14px] px-4 py-2.5 text-[14px] font-bold shadow-[0_8px_22px_rgba(11,120,150,0.35)]"
             >Go to the Beach map tab</a
           >
@@ -293,8 +330,8 @@
       class="mt-4 rounded-[20px] px-[18px] py-4"
       aria-labelledby="arrivals-title"
     >
-      <h2 id="arrivals-title" class="text-[15px] font-bold text-riv-card-ink">Guests</h2>
-      <p class="mt-1 mb-3 text-[12.5px] leading-[1.45] text-riv-card-ink-soft">
+      <h2 id="arrivals-title" class="text-[15px] font-bold text-riv-card-ink" i18n>Guests</h2>
+      <p class="mt-1 mb-3 text-[12.5px] leading-[1.45] text-riv-card-ink-soft" i18n>
         Scan the guest's QR code — or type their booking code — to check them in.
       </p>
 
@@ -309,15 +346,16 @@
             (click)="toggleScan()"
             data-testid="checkin-scan-toggle"
           >
-            {{ scanOpen() ? 'Stop scanning' : 'Scan QR' }}
+            {{ scanToggleLabel() }}
           </button>
-          <label class="sr-only" for="checkin-code">Booking code</label>
+          <label class="sr-only" for="checkin-code" i18n>Booking code</label>
           <input
             id="checkin-code"
             #checkinCode
             type="text"
             autocomplete="off"
             spellcheck="false"
+            i18n-placeholder
             placeholder="Booking code"
             appTouchTarget
             class="w-[170px] rounded-[12px] border border-riv-card-border bg-riv-console-inset/60 px-[11px] py-[9px] font-mono text-[16px] tracking-[0.06em] text-riv-card-ink uppercase placeholder:font-sans placeholder:normal-case"
@@ -331,6 +369,7 @@
             [appBusy]="checkInBusy()"
             (click)="submitCode(checkinCode)"
             data-testid="checkin-submit"
+            i18n
           >
             Check in
           </button>
@@ -341,6 +380,7 @@
             class="w-full max-w-[320px] rounded-[14px] border border-riv-card-border bg-black/80"
             muted
             playsinline
+            i18n-aria-label
             aria-label="Camera preview — point at the guest's booking QR"
             data-testid="checkin-video"
           ></video>
@@ -409,9 +449,10 @@
                       appTouchTarget
                       class="cursor-pointer rounded-[10px] border border-riv-warn-edge/50 bg-riv-console-inset/60 px-3 py-1.5 text-[12.5px] font-bold text-riv-card-ink [transition:background_0.15s_ease] hover:bg-riv-console-inset/85 focus-visible:outline-[3px] focus-visible:outline-offset-2 focus-visible:outline-riv-accent-ink aria-disabled:cursor-not-allowed aria-disabled:opacity-65"
                       [attr.data-testid]="'refund-day-' + a.code"
-                      [attr.aria-label]="'Refund day — ' + a.label"
+                      [attr.aria-label]="refundDayLabel(a)"
                       [appBusy]="refundBusy()"
                       (click)="onRefundDay(a)"
+                      i18n
                     >
                       Refund day
                     </button>
@@ -424,9 +465,10 @@
                 </div>
                 @if (refundConfirmCode() === a.code) {
                   <app-confirm-panel
-                    [label]="'Refund ' + dateLabel() + ' for ' + a.label + '?'"
-                    [headline]="'Refund ' + dateLabel() + ' for ' + a.label + '?'"
+                    [label]="refundPrompt(a)"
+                    [headline]="refundPrompt(a)"
                     [message]="refundConfirmMessage()"
+                    i18n-confirmLabel
                     confirmLabel="Refund the day"
                     tone="warn"
                     [busy]="refundBusy()"
@@ -442,8 +484,11 @@
           </ul>
         }
       } @else {
-        <p class="text-[13px] text-riv-card-ink-soft" data-testid="daily-arrivals-empty">
-          No online bookings for {{ dateLabel() }}.
+        <p class="text-[13px] text-riv-card-ink-soft" data-testid="daily-arrivals-empty" i18n>
+          No online bookings for
+          {{
+            dateLabel()  // i18n(ph="date")
+          }}.
         </p>
       }
     </section>

@@ -3,7 +3,9 @@
   <app-load-announcer
     [loading]="!loaded()"
     [ready]="loaded()"
+    i18n-loadingLabel
     loadingLabel="Loading this venue’s sets…"
+    i18n-readyLabel
     readyLabel="Sets loaded."
   />
 
@@ -87,6 +89,7 @@
             [disabled]="!canAddRow()"
             data-testid="set-add-row"
             class="flex-1 rounded-[13px] border border-riv-card-border bg-riv-console-inset/45 px-4 py-2.5 text-[13px] font-semibold text-riv-card-ink disabled:opacity-50 sm:flex-none"
+            i18n="Adds a row to the beach-map grid"
           >
             + Add a row
           </button>
@@ -97,6 +100,7 @@
             [disabled]="!canAddCol()"
             data-testid="set-add-col"
             class="flex-1 rounded-[13px] border border-riv-card-border bg-riv-console-inset/45 px-4 py-2.5 text-[13px] font-semibold text-riv-card-ink disabled:opacity-50 sm:flex-none"
+            i18n="Adds a position (column) to the beach-map grid"
           >
             + Add a position
           </button>
@@ -107,6 +111,7 @@
             <p
               class="text-[12.5px] leading-[1.45] text-riv-card-ink-soft"
               data-testid="set-panel-empty"
+              i18n
             >
               Pick a set on the map to change its tier, pool or price. Editing one set at a time
               works even when the venue has bookings.
@@ -116,6 +121,7 @@
             <p
               class="text-[12.5px] leading-[1.45] text-riv-card-ink-soft"
               data-testid="set-panel-no-sets"
+              i18n
             >
               This venue has no sets yet. Tap the empty spot on the map to add the first one — or
               arm a brush on the tool rail to generate the whole grid at once.
@@ -153,13 +159,14 @@
             (pointercancel)="onSheetDragEnd($event)"
           ></div>
           <div class="flex items-start justify-between gap-2">
-            <h2 class="text-[15px] font-bold text-riv-card-ink" data-testid="batch-count">
-              {{ ids.size }} set{{ ids.size === 1 ? '' : 's' }} selected
+            <h2 class="text-[15px] font-bold text-riv-card-ink" data-testid="batch-count" i18n>
+              {ids.size, plural, =1 {1 set selected} other {{{ ids.size }} sets selected}}
             </h2>
             <button
               appTouchTarget
               type="button"
               (click)="clearSweep()"
+              i18n-aria-label
               aria-label="Clear selection"
               data-testid="batch-clear"
               class="inline-flex shrink-0 items-center justify-center rounded-[10px] text-riv-card-ink-soft hover:text-riv-card-ink"
@@ -171,7 +178,7 @@
           <p class="mt-1 text-[12.5px] font-semibold text-riv-card-ink" data-testid="batch-range">
             {{ sweepRangeLabel() }}
           </p>
-          <p class="mt-0.5 mb-3 text-[11.5px] leading-[1.45] text-riv-card-ink-soft">
+          <p class="mt-0.5 mb-3 text-[11.5px] leading-[1.45] text-riv-card-ink-soft" i18n>
             Only the fields you change below apply to every selected set — leave the rest alone to
             keep each set’s own tier, pool or price.
           </p>
@@ -179,6 +186,7 @@
           <fieldset class="mt-3 border-0 p-0">
             <legend
               class="text-[10.5px] font-bold uppercase tracking-[0.08em] text-riv-card-ink-faint"
+              i18n="Sunbed set tier (front row or standard)"
             >
               Tier
             </legend>
@@ -207,6 +215,7 @@
           <fieldset class="mt-3 border-0 p-0">
             <legend
               class="text-[10.5px] font-bold uppercase tracking-[0.08em] text-riv-card-ink-faint"
+              i18n="Sunbed set pool (online or walk-in)"
             >
               Pool
             </legend>
@@ -235,6 +244,7 @@
           <label class="mt-3 flex flex-col gap-1.5">
             <span
               class="text-[10.5px] font-bold uppercase tracking-[0.08em] text-riv-card-ink-faint"
+              i18n
             >
               Full-day price (EUR) — leave blank to keep each set’s own price
             </span>
@@ -263,16 +273,29 @@
               data-testid="batch-apply"
               class="flex-1 rounded-[14px] px-4 py-2.5 text-[14px] font-bold shadow-[0_8px_22px_rgba(11,120,150,0.35)] disabled:opacity-50 aria-disabled:opacity-50"
             >
-              {{ batchBusy() ? 'Applying…' : 'Apply to ' + ids.size + ' sets' }}
+              @if (batchBusy()) {
+                <ng-container i18n>Applying…</ng-container>
+              } @else {
+                <ng-container i18n
+                  >Apply to
+                  {{
+                    ids.size // i18n(ph="count")
+                  }}
+                  sets</ng-container
+                >
+              }
             </button>
           </div>
 
           <!-- Above the @if on purpose: a live region must outlive the branch it describes; the box is the inner span, so an empty region paints nothing. -->
           <output data-testid="batch-saved">
             @if (batchUpdated(); as updated) {
-              <span class="mt-2.5 block text-[12.5px] font-semibold text-riv-console-accent-ink">
-                {{ updated }} set{{ updated === 1 ? '' : 's' }} updated. The public beach map
-                reflects your change.
+              <span
+                class="mt-2.5 block text-[12.5px] font-semibold text-riv-console-accent-ink"
+                i18n
+              >
+                {updated, plural, =1 {1 set updated.} other {{{ updated }} sets updated.}} The
+                public beach map reflects your change.
               </span>
             }
           </output>
@@ -315,12 +338,17 @@
           ></div>
           <div class="flex items-start justify-between gap-2">
             <h2 class="text-[15px] font-bold text-riv-card-ink">
-              {{ selectedCell() ? 'Add a set' : 'Edit one set' }}
+              @if (selectedCell()) {
+                <ng-container i18n>Add a set</ng-container>
+              } @else {
+                <ng-container i18n>Edit one set</ng-container>
+              }
             </h2>
             <button
               appTouchTarget
               type="button"
               (click)="closeInspector()"
+              i18n-aria-label="Closes the set editor panel"
               aria-label="Close"
               data-testid="set-panel-close"
               class="inline-flex shrink-0 items-center justify-center rounded-[10px] text-riv-card-ink-soft hover:text-riv-card-ink"
@@ -332,13 +360,14 @@
           <p class="mt-1 text-[12.5px] font-semibold text-riv-card-ink" data-testid="set-selected">
             {{ selectedLabel() }}
           </p>
-          <p class="mt-0.5 mb-3 text-[11.5px] leading-[1.45] text-riv-card-ink-soft">
+          <p class="mt-0.5 mb-3 text-[11.5px] leading-[1.45] text-riv-card-ink-soft" i18n>
             Row and position are what the guest is told, so they follow the spot on the map.
           </p>
 
           <fieldset class="mt-3 border-0 p-0">
             <legend
               class="text-[10.5px] font-bold uppercase tracking-[0.08em] text-riv-card-ink-faint"
+              i18n="Sunbed set tier (front row or standard)"
             >
               Tier
             </legend>
@@ -367,6 +396,7 @@
           <fieldset class="mt-3 border-0 p-0">
             <legend
               class="text-[10.5px] font-bold uppercase tracking-[0.08em] text-riv-card-ink-faint"
+              i18n="Sunbed set pool (online or walk-in)"
             >
               Pool
             </legend>
@@ -395,8 +425,11 @@
           <label class="mt-3 flex flex-col gap-1.5">
             <span
               class="text-[10.5px] font-bold uppercase tracking-[0.08em] text-riv-card-ink-faint"
+              i18n
             >
-              Full-day price ({{ draft().currency }})
+              Full-day price ({{
+                draft().currency  // i18n(ph="currency")
+              }})
             </span>
             <input
               appTouchTarget
@@ -409,7 +442,7 @@
               class="w-full rounded-[12px] border border-riv-card-border bg-riv-console-inset/60 px-[11px] py-[9px] text-[16px] text-riv-card-ink"
             />
           </label>
-          <p class="mt-1 text-[11px] leading-[1.4] text-riv-card-ink-soft">
+          <p class="mt-1 text-[11px] leading-[1.4] text-riv-card-ink-soft" i18n>
             Repricing this row in the Pricing tab overrides this set’s own price.
           </p>
 
@@ -424,7 +457,11 @@
                 data-testid="set-add"
                 class="flex-1 rounded-[14px] px-4 py-2.5 text-[14px] font-bold shadow-[0_8px_22px_rgba(11,120,150,0.35)] aria-disabled:opacity-50"
               >
-                {{ busy() ? 'Adding…' : 'Add set here' }}
+                @if (busy()) {
+                  <ng-container i18n>Adding…</ng-container>
+                } @else {
+                  <ng-container i18n>Add set here</ng-container>
+                }
               </button>
             </div>
           } @else {
@@ -438,7 +475,11 @@
                 data-testid="set-save"
                 class="flex-1 rounded-[14px] px-4 py-2.5 text-[14px] font-bold shadow-[0_8px_22px_rgba(11,120,150,0.35)] aria-disabled:opacity-50"
               >
-                {{ busy() ? 'Saving…' : 'Save set' }}
+                @if (busy()) {
+                  <ng-container i18n>Saving…</ng-container>
+                } @else {
+                  <ng-container i18n>Save set</ng-container>
+                }
               </button>
               <button
                 appTouchTarget
@@ -448,6 +489,7 @@
                 [appBusy]="busy()"
                 data-testid="set-move"
                 class="rounded-[14px] border border-riv-card-border bg-riv-console-inset/45 px-4 py-2.5 text-[13.5px] font-semibold text-riv-card-ink disabled:opacity-50 aria-disabled:opacity-50"
+                i18n="Moves the selected sunbed set to another spot"
               >
                 Move
               </button>
@@ -459,6 +501,7 @@
                 [appBusy]="busy()"
                 data-testid="set-remove"
                 class="rounded-[14px] border border-riv-alert-tint/40 px-4 py-2.5 text-[13.5px] font-bold text-riv-error-ink disabled:opacity-50 aria-disabled:opacity-50"
+                i18n="Removes the selected sunbed set from the map"
               >
                 Remove
               </button>
@@ -478,6 +521,7 @@
               <p
                 class="mt-2 text-[11.5px] leading-[1.4] text-riv-card-ink-soft"
                 data-testid="set-move-blocked"
+                i18n
               >
                 Save your changes before moving this set — a move sends the set as saved, so it
                 would drop them.
@@ -502,6 +546,7 @@
                   type="button"
                   (click)="cancelMove()"
                   data-testid="set-move-cancel"
+                  i18n
                   class="mt-2 rounded-[10px] border border-riv-card-border px-4 py-1.5 text-[12.5px] font-semibold text-riv-card-ink"
                 >
                   Cancel move
@@ -511,8 +556,10 @@
 
             @if (confirmRemove()) {
               <app-confirm-panel
+                i18n-label="Accessible name of the remove-set confirmation"
                 label="Confirm remove set"
                 [message]="removeMessage()"
+                i18n-confirmLabel
                 confirmLabel="Remove set"
                 panelTestId="set-remove-confirm"
                 confirmTestId="set-remove-yes"
@@ -526,7 +573,10 @@
           <!-- Above the @if on purpose: a live region must outlive the branch it describes; the box is the inner span, so an empty region paints nothing. -->
           <output data-testid="set-saved">
             @if (saved()) {
-              <span class="mt-2.5 block text-[12.5px] font-semibold text-riv-console-accent-ink">
+              <span
+                class="mt-2.5 block text-[12.5px] font-semibold text-riv-console-accent-ink"
+                i18n
+              >
                 Saved. The public beach map reflects your change.
               </span>
             }

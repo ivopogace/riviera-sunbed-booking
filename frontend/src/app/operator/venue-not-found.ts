@@ -22,10 +22,11 @@ import { RouterLink } from '@angular/router';
         <h1
           class="oc-signin-title text-[24px] font-bold tracking-[-0.02em] text-riv-ink"
           data-testid="oc-invalid-venue"
+          i18n
         >
           Venue not found
         </h1>
-        <p class="oc-signin-intro mb-1 text-[14px] leading-[1.55] text-riv-ink-soft">
+        <p class="oc-signin-intro mb-1 text-[14px] leading-[1.55] text-riv-ink-soft" i18n>
           This operator console link isn’t valid. Open a venue from
           <a
             class="oc-venue-list inline-flex min-h-11 items-center text-[13px] font-semibold text-riv-ink no-underline hover:underline"

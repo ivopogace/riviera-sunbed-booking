@@ -4,29 +4,38 @@
   data-testid="layout-remodel-stale"
 >
   @if (stale()) {
-    The bookings changed since you previewed — this is the fresh picture. Check it again before
-    saving.
+    <ng-container i18n
+      >The bookings changed since you previewed — this is the fresh picture. Check it again before
+      saving.</ng-container
+    >
   } @else if (displaced()) {
-    The layout gives the row and position of a set this remodel keeps to another set, so it can’t be
-    saved as painted.
+    <ng-container i18n
+      >The layout gives the row and position of a set this remodel keeps to another set, so it can’t
+      be saved as painted.</ng-container
+    >
   }
 </output>
 @if (committable()) {
   <p class="text-[12.5px] leading-[1.45] font-semibold">
-    <strong>Guests hold sets this save disturbs.</strong>
-    Saving moves each booking it can to the nearest free set of the same or better tier on its day;
-    every moved guest is emailed the new spot and can cancel for a full refund until the deadline
-    the mail names.
+    <ng-container i18n
+      ><strong>Guests hold sets this save disturbs.</strong> Saving moves each booking it can to the
+      nearest free set of the same or better tier on its day; every moved guest is emailed the new
+      spot and can cancel for a full refund until the deadline the mail names.</ng-container
+    >
     @if (preview().refunds.length > 0 || preview().releases.length > 0) {
-      A booking with nowhere same-or-better to go is ended: a paid one is cancelled and refunded in
-      full, an unpaid one released, a pending request declined. Every guest is emailed; a cancelled
-      or released booking carries a link to book again.
+      <ng-container i18n
+        >A booking with nowhere same-or-better to go is ended: a paid one is cancelled and refunded
+        in full, an unpaid one released, a pending request declined. Every guest is emailed; a
+        cancelled or released booking carries a link to book again.</ng-container
+      >
     }
     @if (preview().ended.length > 0) {
-      A booking whose every day was already refunded is ended with nothing left to refund: no
-      refund, no fee and no email.
+      <ng-container i18n
+        >A booking whose every day was already refunded is ended with nothing left to refund: no
+        refund, no fee and no email.</ng-container
+      >
     }
-    There is no undo.
+    <ng-container i18n>There is no undo.</ng-container>
   </p>
   @if (preview().blocks.length > 0) {
     <p class="mt-1 text-[12.5px] leading-[1.45] font-bold" data-testid="layout-remodel-keep">
@@ -36,11 +45,11 @@
 } @else {
   <p class="text-[12.5px] leading-[1.45] font-semibold">
     @if (displaced()) {
-      <strong>A kept set must stay at its row and position; the paint gives them away.</strong>
+      <strong i18n>A kept set must stay at its row and position; the paint gives them away.</strong>
     } @else {
-      <strong>Staff hold sets this save removes, so it can’t be saved as painted.</strong>
+      <strong i18n>Staff hold sets this save removes, so it can’t be saved as painted.</strong>
     }
-    A remodel of these sets would do the following.
+    <ng-container i18n>A remodel of these sets would do the following.</ng-container>
   </p>
   <p class="mt-1 text-[12.5px] leading-[1.45] font-bold" data-testid="layout-remodel-keep">
     {{ keepSentence() }}
@@ -50,7 +59,11 @@
 <div class="mt-2 grid gap-2 text-[12px] leading-[1.45]">
   @if (preview().moves.length > 0) {
     <section data-testid="layout-remodel-moves">
-      <h3 class="font-bold">Will move ({{ preview().moves.length }})</h3>
+      <h3 class="font-bold" i18n>
+        Will move ({{
+          preview().moves.length  // i18n(ph="count")
+        }})
+      </h3>
       <ul class="list-disc pl-4">
         @for (move of preview().moves; track move.bookingId) {
           <li>{{ moveText(move) }}</li>
@@ -60,7 +73,11 @@
   }
   @if (preview().refunds.length > 0) {
     <section data-testid="layout-remodel-refunds">
-      <h3 class="font-bold">Will be refunded ({{ preview().refunds.length }})</h3>
+      <h3 class="font-bold" i18n>
+        Will be refunded ({{
+          preview().refunds.length  // i18n(ph="count")
+        }})
+      </h3>
       <ul class="list-disc pl-4">
         @for (claim of preview().refunds; track claim.bookingId) {
           <li>{{ refundText(claim) }}</li>
@@ -73,7 +90,11 @@
   }
   @if (preview().releases.length > 0) {
     <section data-testid="layout-remodel-releases">
-      <h3 class="font-bold">Will be released or declined ({{ preview().releases.length }})</h3>
+      <h3 class="font-bold" i18n>
+        Will be released or declined ({{
+          preview().releases.length  // i18n(ph="count")
+        }})
+      </h3>
       <ul class="list-disc pl-4">
         @for (release of preview().releases; track release.bookingId) {
           <li>{{ releaseText(release) }}</li>
@@ -83,7 +104,11 @@
   }
   @if (preview().ended.length > 0) {
     <section data-testid="layout-remodel-ended">
-      <h3 class="font-bold">Ended — nothing left to refund ({{ preview().ended.length }})</h3>
+      <h3 class="font-bold" i18n>
+        Ended — nothing left to refund ({{
+          preview().ended.length  // i18n(ph="count")
+        }})
+      </h3>
       <ul class="list-disc pl-4">
         @for (claim of preview().ended; track claim.bookingId) {
           <li>{{ endedText(claim) }}</li>
@@ -93,7 +118,11 @@
   }
   @if (preview().staffHolds.length > 0) {
     <section data-testid="layout-remodel-holds">
-      <h3 class="font-bold">Held by staff for a walk-in ({{ preview().staffHolds.length }})</h3>
+      <h3 class="font-bold" i18n>
+        Held by staff for a walk-in ({{
+          preview().staffHolds.length  // i18n(ph="count")
+        }})
+      </h3>
       <ul class="list-disc pl-4">
         @for (hold of preview().staffHolds; track hold.set.setId) {
           <li>{{ holdText(hold) }}</li>
@@ -103,7 +132,11 @@
   }
   @if (preview().blocks.length > 0) {
     <section data-testid="layout-remodel-blocks">
-      <h3 class="font-bold">Will stay put ({{ preview().blocks.length }})</h3>
+      <h3 class="font-bold" i18n>
+        Will stay put ({{
+          preview().blocks.length  // i18n(ph="count")
+        }})
+      </h3>
       <ul class="list-disc pl-4">
         @for (block of preview().blocks; track block.bookingId) {
           <li>{{ blockText(block) }}</li>
@@ -118,6 +151,7 @@
   class="mt-2 inline-flex items-center text-[12.5px] font-semibold underline underline-offset-2"
   [routerLink]="['/operator', venueId(), 'daily']"
   data-testid="layout-remodel-bookings"
+  i18n="Link to the venue's daily bookings view"
 >
   Open the bookings
 </a>
@@ -125,7 +159,13 @@
 @if (committable() && refundCount() > 0) {
   <div class="mt-2 grid gap-2" data-testid="layout-remodel-confirm">
     <label class="grid gap-1 text-[12.5px] leading-[1.45] font-bold">
-      <span>Type {{ refundCount() }} to confirm the refunds</span>
+      <span i18n
+        >Type
+        {{
+          refundCount() // i18n(ph="count")
+        }}
+        to confirm the refunds</span
+      >
       <input
         appTouchTarget
         #refundCountField
@@ -147,7 +187,7 @@
       </p>
     }
     <label class="grid gap-1 text-[12.5px] leading-[1.45] font-bold">
-      <span>Why are you remodelling?</span>
+      <span i18n>Why are you remodelling?</span>
       <input
         appTouchTarget
         #reasonField
@@ -191,6 +231,7 @@
       data-testid="layout-remodel-back"
       [appBusy]="committing()"
       (click)="cancelled.emit()"
+      i18n
     >
       Back to the editor
     </button>
@@ -202,6 +243,7 @@
       class="rounded-[10px] border border-riv-warn-edge px-4 py-1.5 text-[12.5px] font-semibold aria-disabled:opacity-60"
       data-testid="layout-remodel-back"
       (click)="cancelled.emit()"
+      i18n
     >
       Back to the editor
     </button>

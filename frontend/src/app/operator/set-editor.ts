@@ -311,11 +311,16 @@ export class SetEditor {
     const maxY = Math.max(...swept.map((s) => s.gridY));
     const minX = Math.min(...swept.map((s) => s.gridX));
     const maxX = Math.max(...swept.map((s) => s.gridX));
+    const firstRow = gridRowLabel(minY - 1);
+    const lastRow = gridRowLabel(maxY - 1);
     const rows =
       minY === maxY
-        ? `Row ${gridRowLabel(minY - 1)}`
-        : `Rows ${gridRowLabel(minY - 1)}–${gridRowLabel(maxY - 1)}`;
-    const positions = minX === maxX ? `position ${minX}` : `positions ${minX}–${maxX}`;
+        ? $localize`:Swept beach-map range:Row ${firstRow}:row:`
+        : $localize`:Swept beach-map range:Rows ${firstRow}:first:–${lastRow}:last:`;
+    const positions =
+      minX === maxX
+        ? $localize`:Swept beach-map range:position ${minX}:position:`
+        : $localize`:Swept beach-map range:positions ${minX}:first:–${maxX}:last:`;
     return `${rows} · ${positions}`;
   });
 
@@ -325,8 +330,7 @@ export class SetEditor {
     if (count === 0) {
       return '';
     }
-    const noun = count === 1 ? 'set' : 'sets';
-    return `${count} ${noun} selected`;
+    return count === 1 ? $localize`1 set selected` : $localize`${count}:count: sets selected`;
   });
 
   /** The batch draft, re-seeded blank whenever the sweep changes (a new sweep, a clear, or a
@@ -393,7 +397,7 @@ export class SetEditor {
     const lock = this.selectedLock();
     return lock === undefined
       ? undefined
-      : `This set is ${lockReason(lock)}, so it can’t be moved or removed. Its price, tier and pool can still change.`;
+      : $localize`This set is ${lockReason(lock)}:reason:, so it can’t be moved or removed. Its price, tier and pool can still change.`;
   });
 
   /** The selected set's server state, or undefined when nothing or an empty cell is selected. */
@@ -498,9 +502,11 @@ export class SetEditor {
           selected,
           // While a move is armed only empty cells are targets, so an occupied one offers nothing.
           disabled: moving && !empty,
-          label: `Row ${gridRowLabel(y)} position ${gridX}, ${
-            empty && moving ? 'empty — move here' : CELL_STATE_DESC[state]
-          }`,
+          label: cellLabel(
+            gridRowLabel(y),
+            gridX,
+            empty && moving ? MOVE_TARGET_DESC : CELL_STATE_DESC[state],
+          ),
           lock: set === undefined ? undefined : lockById.get(set.id),
         };
       });
@@ -525,7 +531,7 @@ export class SetEditor {
   /** The armed-move instruction as one sentence, or '' — bound by both the announcer and the panel. */
   protected readonly moveArmedMessage = computed(() =>
     this.armed()
-      ? `Pick an empty spot on the map for ${this.selectedLabel()}. Its row and position follow the new spot.`
+      ? $localize`Pick an empty spot on the map for ${this.selectedLabel()}:set:. Its row and position follow the new spot.`
       : '',
   );
 
@@ -542,27 +548,32 @@ export class SetEditor {
   /** The remove confirmation's warning, naming the set the operator picked. */
   protected readonly removeMessage = computed(
     () =>
-      `Remove ${this.selectedLabel()} from the map? A set that is booked, or held from today on, can’t be removed.`,
+      $localize`Remove ${this.selectedLabel()}:set: from the map? A set that is booked, or held from today on, can’t be removed.`,
   );
 
   /** The selection's identity line — what the guest is told, so it is never silently rewritten. */
   protected readonly selectedLabel = computed(() => {
     const selected = this.selectedSet();
     if (selected !== undefined) {
-      return `${rowName(selected.rowLabel)} · position ${selected.positionNo}`;
+      const row = rowName(selected.rowLabel);
+      return $localize`:Beach-map set location; row is like "Row A":${row}:row: · position ${selected.positionNo}:position:`;
     }
     const cell = this.selectedCell();
-    return cell === undefined ? '' : `Row ${gridRowLabel(cell.gridY - 1)} · position ${cell.gridX}`;
+    if (cell === undefined) {
+      return '';
+    }
+    const row = gridRowLabel(cell.gridY - 1);
+    return $localize`:Beach-map cell location; row is a letter:Row ${row}:row: · position ${cell.gridX}:position:`;
   });
 
   protected readonly tiers: readonly { key: Tier; label: string }[] = [
-    { key: 'PREMIUM', label: 'Front row · premium' },
-    { key: 'STANDARD', label: 'Standard' },
+    { key: 'PREMIUM', label: $localize`:Sunbed set tier option:Front row · premium` },
+    { key: 'STANDARD', label: $localize`:Sunbed set tier option:Standard` },
   ];
 
   protected readonly pools: readonly { key: Pool; label: string }[] = [
-    { key: 'ONLINE', label: 'Online' },
-    { key: 'WALK_IN', label: 'Walk-in' },
+    { key: 'ONLINE', label: $localize`:Sunbed set pool option; bookable online:Online` },
+    { key: 'WALK_IN', label: $localize`:Sunbed set pool option; kept for walk-in guests:Walk-in` },
   ];
 
   /**
@@ -766,19 +777,19 @@ export class SetEditor {
       case 'STALE_WRITE':
         return undefined; // rendered by the parent's stale-write banner instead
       case 'NO_SUCH_SET':
-        return 'One of the selected sets no longer exists, so nothing was changed. Reload the tab to see the current map.';
+        return $localize`One of the selected sets no longer exists, so nothing was changed. Reload the tab to see the current map.`;
       case 'INVALID_PRICE':
-        return 'That price is not valid. Enter an amount of at least €0.50, or leave it blank to leave prices unchanged.';
+        return $localize`That price is not valid. Enter an amount of at least €0.50, or leave it blank to leave prices unchanged.`;
       case 'INVALID_REQUEST':
-        return 'The change could not be applied as entered. Reload the tab and try again.';
+        return $localize`The change could not be applied as entered. Reload the tab and try again.`;
       case 'NO_SUCH_VENUE':
-        return 'This venue could not be found.';
+        return $localize`This venue could not be found.`;
       case 'NOT_VENUE_OWNER':
-        return 'You do not manage this venue, so its map can’t be changed.';
+        return $localize`You do not manage this venue, so its map can’t be changed.`;
       case 'UNAUTHORIZED':
-        return 'Your session has expired. Please sign in again.';
+        return $localize`Your session has expired. Please sign in again.`;
       default:
-        return 'Something went wrong applying the change. Please try again.';
+        return $localize`Something went wrong applying the change. Please try again.`;
     }
   }
 
@@ -1090,21 +1101,21 @@ export class SetEditor {
         return this.inUseMessage();
       case 'CELL_TAKEN':
       case 'DUPLICATE_POSITION':
-        return 'Another set already occupies that spot. Reload the tab and pick a free one.';
+        return $localize`Another set already occupies that spot. Reload the tab and pick a free one.`;
       case 'NO_SUCH_SET':
-        return 'This set no longer exists. Reload the tab to see the current map.';
+        return $localize`This set no longer exists. Reload the tab to see the current map.`;
       case 'NO_SUCH_VENUE':
-        return 'This venue could not be found.';
+        return $localize`This venue could not be found.`;
       case 'NOT_VENUE_OWNER':
-        return 'You do not manage this venue, so its map can’t be changed.';
+        return $localize`You do not manage this venue, so its map can’t be changed.`;
       case 'INVALID_PRICE':
-        return 'That price is not valid. Enter an amount of at least €0.50.';
+        return $localize`That price is not valid. Enter an amount of at least €0.50.`;
       case 'INVALID_REQUEST':
-        return 'This set could not be saved as entered. Reload the tab and try again.';
+        return $localize`This set could not be saved as entered. Reload the tab and try again.`;
       case 'UNAUTHORIZED':
-        return 'Your session has expired. Please sign in again.';
+        return $localize`Your session has expired. Please sign in again.`;
       default:
-        return 'Something went wrong saving this set. Please try again.';
+        return $localize`Something went wrong saving this set. Please try again.`;
     }
   }
 
@@ -1115,13 +1126,13 @@ export class SetEditor {
   private inUseMessage(): string {
     switch (this.attempted()) {
       case 'move':
-        return 'This set is booked, or still held, so it can’t be moved. Its price, tier and pool can still change.';
+        return $localize`This set is booked, or still held, so it can’t be moved. Its price, tier and pool can still change.`;
       case 'save':
-        return 'This set is booked, or still held, so its position can’t change. Its price, tier and pool can still change.';
+        return $localize`This set is booked, or still held, so its position can’t change. Its price, tier and pool can still change.`;
       case 'remove':
-        return 'This set can’t be removed while it is still held, or a guest is still booked on it. Once those have passed it can go; its past bookings stay on record.';
+        return $localize`This set can’t be removed while it is still held, or a guest is still booked on it. Once those have passed it can go; its past bookings stay on record.`;
       default:
-        return 'This set is booked, or still held, so that change was refused.';
+        return $localize`This set is booked, or still held, so that change was refused.`;
     }
   }
 
@@ -1200,4 +1211,11 @@ function placementAt(
     gridX,
     gridY,
   };
+}
+
+const MOVE_TARGET_DESC = $localize`:Beach-map empty cell while a move is armed:empty — move here`;
+
+/** A grid cell's accessible name: its row, position and state. */
+function cellLabel(row: string, position: number, state: string): string {
+  return $localize`:Beach-map cell accessible name; state is like "standard, online":Row ${row}:row: position ${position}:position:, ${state}:state:`;
 }

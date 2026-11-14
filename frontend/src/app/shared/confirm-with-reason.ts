@@ -34,7 +34,10 @@ import { TouchTarget } from './touch-target';
     <p class="text-[14px] text-riv-card-ink" [attr.data-testid]="promptTestId()">
       {{ prompt() }}
     </p>
-    <label [attr.for]="reasonId()" class="mt-2 block text-[13.5px] font-semibold text-riv-card-ink"
+    <label
+      [attr.for]="reasonId()"
+      class="mt-2 block text-[13.5px] font-semibold text-riv-card-ink"
+      i18n
       >Reason (optional)</label
     >
     <input

@@ -3,10 +3,14 @@ import { FormField, form } from '@angular/forms/signals';
 
 import { BusyAction } from '../shared/busy-action';
 import { CardGlass } from '../shared/card-glass';
+import { displayDateFormat } from '../shared/display-format';
 import { AdminMailDeliveryService } from './admin-mail-delivery.service';
 import { MailAttemptView, MailDeliveryBookingView, MailResendResultView } from './admin.model';
 
 import { TouchTarget } from '../shared/touch-target';
+
+const BOOKING_DATE = displayDateFormat('day-month-year', 'UTC');
+const ATTEMPT_MOMENT = displayDateFormat('day-month-time', 'Europe/Tirane');
 
 /**
  * The Email tab's per-booking card: what happened to a tourist's booking-confirmation mail, and a
@@ -26,10 +30,10 @@ import { TouchTarget } from '../shared/touch-target';
       data-testid="admin-delivery-card"
       aria-labelledby="admin-delivery-heading"
     >
-      <h2 id="admin-delivery-heading" class="text-[16px] font-semibold text-riv-card-ink">
+      <h2 id="admin-delivery-heading" class="text-[16px] font-semibold text-riv-card-ink" i18n>
         Booking confirmation delivery
       </h2>
-      <p id="admin-delivery-intro" class="mt-2 text-[15px] text-riv-card-ink">
+      <p id="admin-delivery-intro" class="mt-2 text-[15px] text-riv-card-ink" i18n>
         Look up a tourist's bookings by the email address they booked with, and resend a
         confirmation that never arrived.
       </p>
@@ -40,7 +44,7 @@ import { TouchTarget } from '../shared/touch-target';
         novalidate
       >
         <label class="flex flex-col gap-1">
-          <span class="text-[13.5px] font-semibold text-riv-card-ink">Email address</span>
+          <span class="text-[13.5px] font-semibold text-riv-card-ink" i18n>Email address</span>
           <input
             appTouchTarget
             type="email"
@@ -60,7 +64,7 @@ import { TouchTarget } from '../shared/touch-target';
           [appBusy]="searching()"
           data-testid="admin-delivery-lookup"
         >
-          {{ searching() ? 'Looking up…' : 'Look up' }}
+          {{ searching() ? lookingUpLabel : lookUpLabel }}
         </button>
       </form>
 
@@ -69,13 +73,14 @@ import { TouchTarget } from '../shared/touch-target';
           class="mt-3 text-[15px] text-riv-error-ink"
           role="alert"
           data-testid="admin-delivery-error"
+          i18n
         >
           Something went wrong looking that up.
         </p>
       }
 
       @if (searched() && bookings().length === 0) {
-        <p class="mt-4 text-[15px] text-riv-card-ink" data-testid="admin-delivery-empty">
+        <p class="mt-4 text-[15px] text-riv-card-ink" data-testid="admin-delivery-empty" i18n>
           No bookings for that address.
         </p>
       }
@@ -104,11 +109,16 @@ import { TouchTarget } from '../shared/touch-target';
                 <p
                   class="mt-2 text-[14px] text-riv-card-ink"
                   data-testid="admin-delivery-no-record"
+                  i18n
                 >
                   No delivery recorded for this booking.
                 </p>
               } @else {
-                <p class="mt-2 text-[14px] text-riv-card-ink" data-testid="admin-delivery-not-due">
+                <p
+                  class="mt-2 text-[14px] text-riv-card-ink"
+                  data-testid="admin-delivery-not-due"
+                  i18n
+                >
                   Never confirmed, so no confirmation email was due.
                 </p>
               }
@@ -121,7 +131,7 @@ import { TouchTarget } from '../shared/touch-target';
                 (click)="onResend(booking.bookingId)"
                 [attr.data-testid]="'admin-delivery-resend-' + booking.bookingId"
               >
-                {{ resending() === booking.bookingId ? 'Resending…' : 'Resend confirmation' }}
+                {{ resending() === booking.bookingId ? resendingLabel : resendLabel }}
               </button>
             </li>
           }
@@ -154,6 +164,11 @@ export class AdminMailDelivery {
   protected readonly resending = signal<number | undefined>(undefined);
   protected readonly notice = signal('');
 
+  protected readonly lookUpLabel = $localize`Look up`;
+  protected readonly lookingUpLabel = $localize`Looking up…`;
+  protected readonly resendLabel = $localize`Resend confirmation`;
+  protected readonly resendingLabel = $localize`Resending…`;
+
   protected async onLookup(): Promise<void> {
     const email = this.model().email.trim();
     if (!email || this.searching()) {
@@ -182,7 +197,7 @@ export class AdminMailDelivery {
       this.notice.set(this.describeResend(await this.service.resend(bookingId)));
       await this.refresh();
     } catch {
-      this.notice.set('Something went wrong — nothing was resent.');
+      this.notice.set($localize`Something went wrong — nothing was resent.`);
     } finally {
       this.resending.set(undefined);
     }
@@ -192,17 +207,17 @@ export class AdminMailDelivery {
   private describeResend(result: MailResendResultView): string {
     switch (result.outcome) {
       case 'SENT':
-        return 'Confirmation sent again.';
+        return $localize`Confirmation sent again.`;
       case 'WITHHELD_SUPPRESSED':
-        return 'Withheld — the address is on the suppression list, which is likely why the first one never arrived.';
+        return $localize`Withheld — the address is on the suppression list, which is likely why the first one never arrived.`;
       case 'TRANSPORT_FAILED':
-        return 'The send failed. Nothing is retried automatically — try again.';
+        return $localize`The send failed. Nothing is retried automatically — try again.`;
       case 'NO_SUCH_BOOKING':
-        return 'That booking no longer exists.';
+        return $localize`That booking no longer exists.`;
       case 'NOT_CONFIRMED':
-        return 'This booking was never confirmed, so there is no confirmation to send.';
+        return $localize`This booking was never confirmed, so there is no confirmation to send.`;
       case 'MISSING_FACTS':
-        return 'The booking is missing details the email needs; this will not succeed on a retry.';
+        return $localize`The booking is missing details the email needs; this will not succeed on a retry.`;
     }
   }
 
@@ -221,38 +236,29 @@ export class AdminMailDelivery {
   }
 
   protected formatDate(isoDate: string): string {
-    return new Date(`${isoDate}T00:00:00Z`).toLocaleDateString('en-GB', {
-      day: 'numeric',
-      month: 'short',
-      year: 'numeric',
-      timeZone: 'Europe/Tirane',
-    });
+    return BOOKING_DATE(new Date(`${isoDate}T00:00:00Z`));
   }
 
   protected formatMoment(isoInstant: string): string {
-    return new Date(isoInstant).toLocaleString('en-GB', {
-      day: 'numeric',
-      month: 'short',
-      hour: '2-digit',
-      minute: '2-digit',
-      timeZone: 'Europe/Tirane',
-    });
+    return ATTEMPT_MOMENT(new Date(isoInstant));
   }
 
   protected describeSource(attempt: MailAttemptView): string {
-    return attempt.source === 'ADMIN_RESEND' ? 'Resent by admin' : 'Sent automatically';
+    return attempt.source === 'ADMIN_RESEND'
+      ? $localize`:mail delivery source|Who sent a confirmation email attempt:Resent by admin`
+      : $localize`:mail delivery source|Who sent a confirmation email attempt:Sent automatically`;
   }
 
   protected describeOutcome(attempt: MailAttemptView): string {
     switch (attempt.outcome) {
       case 'SENT':
-        return 'delivered to the mail server';
+        return $localize`:mail delivery outcome|Lower-case outcome of one confirmation email attempt:delivered to the mail server`;
       case 'WITHHELD_SUPPRESSED':
-        return 'withheld (address suppressed)';
+        return $localize`:mail delivery outcome|Lower-case outcome of one confirmation email attempt:withheld (address suppressed)`;
       case 'TRANSPORT_FAILED':
-        return 'failed to send';
+        return $localize`:mail delivery outcome|Lower-case outcome of one confirmation email attempt:failed to send`;
       case 'ABANDONED_MISSING_FACTS':
-        return 'abandoned (booking details missing)';
+        return $localize`:mail delivery outcome|Lower-case outcome of one confirmation email attempt:abandoned (booking details missing)`;
     }
   }
 }

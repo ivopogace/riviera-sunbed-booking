@@ -20,6 +20,7 @@ import { CardGlass } from '../shared/card-glass';
 import { ConfirmPanel } from '../shared/confirm-panel';
 import { formatDeadline } from '../shared/deadline';
 import { focusMover } from '../shared/focus-after-render';
+import { displayDateFormat } from '../shared/display-format';
 import { formatMoney, MoneyView } from '../shared/money';
 import { parentVenueId } from '../shared/parent-venue-id';
 import {
@@ -112,8 +113,13 @@ function freshPictureLandingSpot(fresh: RemodelPreview, displaced: boolean): str
 
 /** "2 moved, 1 refunded" — a remodel that refunded nobody says only what it moved. */
 function remodelTallyText(moveCount: number, refundCount: number): string {
-  const moved = `${moveCount} booking${moveCount === 1 ? '' : 's'} moved`;
-  return refundCount === 0 ? moved : `${moved}, ${refundCount} refunded`;
+  const moved =
+    moveCount === 1
+      ? $localize`:Past remodel tally:1 booking moved`
+      : $localize`:Past remodel tally:${moveCount}:count: bookings moved`;
+  return refundCount === 0
+    ? moved
+    : $localize`:Past remodel tally; moved is like "2 bookings moved":${moved}:moved:, ${refundCount}:refundCount: refunded`;
 }
 
 const PREMIUM_PRICE: MoneyView = { minorUnits: 3500, currency: 'EUR' };
@@ -123,10 +129,10 @@ const STANDARD_PRICE: MoneyView = { minorUnits: 2000, currency: 'EUR' };
 const TOOL_ORDER: readonly EditorTool[] = ['select', 'premium', 'standard', 'walkin', 'gap'];
 
 const TOOL_LABEL: Record<CellState, string> = {
-  premium: 'Front row · premium',
-  standard: 'Standard set',
-  walkin: 'Walk-in pool',
-  gap: 'Gap / aisle',
+  premium: $localize`:Beach-map paint brush:Front row · premium`,
+  standard: $localize`:Beach-map paint brush:Standard set`,
+  walkin: $localize`:Beach-map paint brush:Walk-in pool`,
+  gap: $localize`:Beach-map paint brush; paints an empty cell:Gap / aisle`,
 };
 
 /** Per-tool swatch background classes (mirrors the cell variants, sized by the swatch element).
@@ -240,7 +246,7 @@ export class LayoutEditor {
 
   /** The bulk-save outcome as one sentence, or '' — bound by both the announcer and the save bar. */
   protected readonly savedMessage = computed(() =>
-    this.savedNotice() ? 'Saved. The public beach map reflects your changes.' : '',
+    this.savedNotice() ? $localize`Saved. The public beach map reflects your changes.` : '',
   );
 
   /** The last write failure, mapped to operator-facing copy, or undefined. */
@@ -368,7 +374,11 @@ export class LayoutEditor {
   /** The save bar's last-saved line: the clock time in Tirane, or a not-yet-saved notice. */
   protected readonly lastSavedLabel = computed(() => {
     const at = this.lastSavedAt();
-    return at === null ? 'Not saved yet' : `Last saved ${formatClockTime(at)}`;
+    if (at === null) {
+      return $localize`:Beach-map save bar, before any save:Not saved yet`;
+    }
+    const time = CLOCK_TIME(at);
+    return $localize`:Beach-map save bar; time is a clock time in hours and minutes:Last saved ${time}:time:`;
   });
 
   /** Drag state — a plain field (not reactive; only the pointer handlers read it). */
@@ -396,7 +406,7 @@ export class LayoutEditor {
       tileCount: row.length,
       cells: row.map((state, x) => ({
         state,
-        label: `Row ${gridRowLabel(y)} position ${x + 1}, ${CELL_STATE_DESC[state]}`,
+        label: cellLabel(gridRowLabel(y), x + 1, CELL_STATE_DESC[state]),
         lock: this.lockByCoord().get(coordKey(x + 1, y + 1)),
       })),
     })),
@@ -408,7 +418,7 @@ export class LayoutEditor {
     const resolved = this.resolvedTool();
     const select: ToolRow = {
       key: 'select',
-      label: 'Select',
+      label: $localize`:Beach-map tool that selects sets instead of painting:Select`,
       count: null,
       active: resolved === 'select',
     };
@@ -580,7 +590,9 @@ export class LayoutEditor {
     this.blockedSets.set([]);
     // A regenerate replaces the whole grid, so every cell is unsaved surface against an empty baseline.
     this.baselineGrid.set([]);
-    this.lastChange.set(`Generated a ${rows}×${cols} grid`);
+    this.lastChange.set(
+      $localize`:Beach-map last change:Generated a ${rows}:rows:×${cols}:cols: grid`,
+    );
   }
 
   // ---- Paint (click + drag; keyboard via the button's native click) ----
@@ -599,20 +611,28 @@ export class LayoutEditor {
     const lock = this.lockAt(r, c);
     if (tool === 'gap' && lock !== undefined) {
       if (heldByStaff(lock)) {
+        const row = gridRowLabel(r);
+        const reason = lockReason(lock);
         this.lockNotice.set(
-          `Row ${gridRowLabel(r)} · position ${c + 1} is ${lockReason(lock)} — it can’t become a gap. Its tier and pool can still change.`,
+          $localize`Row ${row}:row: · position ${c + 1}:position: is ${reason}:reason: — it can’t become a gap. Its tier and pool can still change.`,
         );
         return;
       }
+      const row = gridRowLabel(r);
+      const reason = lockReason(lock);
       this.lockNotice.set(
-        `Row ${gridRowLabel(r)} · position ${c + 1} is ${lockReason(lock)} — saving will first show where its bookings would move.`,
+        $localize`Row ${row}:row: · position ${c + 1}:position: is ${reason}:reason: — saving will first show where its bookings would move.`,
       );
     }
     this.grid.update((g) =>
       g.map((row, ri) => (ri !== r ? row : row.map((cell, ci) => (ci !== c ? cell : tool)))),
     );
     this.savedNotice.set(false);
-    this.lastChange.set(`Row ${gridRowLabel(r)} · position ${c + 1} → ${TOOL_LABEL[tool]}`);
+    const row = gridRowLabel(r);
+    const brush = TOOL_LABEL[tool];
+    this.lastChange.set(
+      $localize`:Beach-map last change:Row ${row}:row: · position ${c + 1}:position: → ${brush}:brush:`,
+    );
   }
 
   /** The lock on the cell at 0-based row `r`, column `c`, if a live claim pins its set. */
@@ -632,8 +652,11 @@ export class LayoutEditor {
   /** The fills' notice: how many held cells the gap brush left as they were. */
   private noteKeptLocks(kept: number, scope: string): void {
     if (kept > 0) {
+      const gap = TOOL_LABEL.gap;
       this.lockNotice.set(
-        `${scope} → ${TOOL_LABEL.gap} kept ${kept} held ${kept === 1 ? 'set' : 'sets'} — sets held by staff can’t become gaps.`,
+        kept === 1
+          ? $localize`:Beach-map notice; scope is like "Row A" or "Column 3":${scope}:scope: → ${gap}:brush: kept 1 held set — sets held by staff can’t become gaps.`
+          : $localize`:Beach-map notice; scope is like "Row A" or "Column 3":${scope}:scope: → ${gap}:brush: kept ${kept}:count: held sets — sets held by staff can’t become gaps.`,
       );
     }
   }
@@ -657,8 +680,11 @@ export class LayoutEditor {
       ),
     );
     this.savedNotice.set(false);
-    this.lastChange.set(`Row ${gridRowLabel(r)} → ${TOOL_LABEL[tool]}`);
-    this.noteKeptLocks(kept, `Row ${gridRowLabel(r)}`);
+    const row = gridRowLabel(r);
+    const brush = TOOL_LABEL[tool];
+    const scope = $localize`:Beach-map grid row, like "Row A":Row ${row}:row:`;
+    this.lastChange.set($localize`:Beach-map last change:${scope}:scope: → ${brush}:brush:`);
+    this.noteKeptLocks(kept, scope);
   }
 
   /** {@link fillRow}'s column counterpart — the column-header's fill button. */
@@ -678,13 +704,18 @@ export class LayoutEditor {
       ),
     );
     this.savedNotice.set(false);
-    this.lastChange.set(`Column ${c + 1} → ${TOOL_LABEL[tool]}`);
-    this.noteKeptLocks(kept, `Column ${c + 1}`);
+    const brush = TOOL_LABEL[tool];
+    const scope = $localize`:Beach-map grid column, like "Column 3":Column ${c + 1}:column:`;
+    this.lastChange.set($localize`:Beach-map last change:${scope}:scope: → ${brush}:brush:`);
+    this.noteKeptLocks(kept, scope);
   }
 
   /** The row-rail fill button's accessible name — tracks whichever brush is currently armed. */
-  protected readonly rowFillLabel = (r: number): string =>
-    `Fill row ${gridRowLabel(r)} with ${TOOL_LABEL[this.activeBrush()]}`;
+  protected readonly rowFillLabel = (r: number): string => {
+    const row = gridRowLabel(r);
+    const brush = TOOL_LABEL[this.activeBrush()];
+    return $localize`Fill row ${row}:row: with ${brush}:brush:`;
+  };
 
   /** The sentence a locked cell's accessible description and title carry. */
   protected lockText(lock: SetLock): string {
@@ -692,8 +723,10 @@ export class LayoutEditor {
   }
 
   /** The column-header fill button's accessible name. */
-  protected readonly colFillLabel = (c: number): string =>
-    `Fill column ${c + 1} with ${TOOL_LABEL[this.activeBrush()]}`;
+  protected readonly colFillLabel = (c: number): string => {
+    const brush = TOOL_LABEL[this.activeBrush()];
+    return $localize`Fill column ${c + 1}:column: with ${brush}:brush:`;
+  };
 
   protected onCellDown(r: number, c: number, event: MouseEvent): void {
     // Paint is a primary-button gesture, arming and disarming alike.
@@ -1007,11 +1040,15 @@ export class LayoutEditor {
   private blockedMessage(): string {
     const blocked = this.blockedSets();
     const named = blocked
-      .map((set) => `${rowName(set.rowLabel)} · position ${set.positionNo} (${lockReason(set)})`)
+      .map((set) => {
+        const row = rowName(set.rowLabel);
+        const reason = lockReason(set);
+        return $localize`:A refused set; row is like "Row A":${row}:row: · position ${set.positionNo}:position: (${reason}:reason:)`;
+      })
       .join(', ');
-    const count = blocked.length === 1 ? 'a set that is' : `${blocked.length} sets that are`;
-    const them = blocked.length === 1 ? 'it' : 'them';
-    return `Saving would remove ${count} booked or held by staff: ${named}. Keep ${them} on the map — paint the marked cells back to a tier, or generate a grid that still includes ${them}.`;
+    return blocked.length === 1
+      ? $localize`Saving would remove a set that is booked or held by staff: ${named}:sets:. Keep it on the map — paint the marked cells back to a tier, or generate a grid that still includes it.`
+      : $localize`Saving would remove ${blocked.length}:count: sets that are booked or held by staff: ${named}:sets:. Keep them on the map — paint the marked cells back to a tier, or generate a grid that still includes them.`;
   }
 
   /** The operator-facing message for the current error code, or undefined. */
@@ -1022,15 +1059,15 @@ export class LayoutEditor {
       case 'SETS_IN_USE':
         return this.blockedMessage();
       case 'EMPTY_LAYOUT':
-        return 'Add at least one set before saving.';
+        return $localize`Add at least one set before saving.`;
       case 'LAYOUT_TOO_LARGE':
-        return 'The layout is too large. Reduce the number of rows or positions.';
+        return $localize`The layout is too large. Reduce the number of rows or positions.`;
       case 'CELL_TAKEN':
       case 'DUPLICATE_POSITION':
       case 'CONFLICT':
-        return 'Two sets overlap on the grid. Please adjust and try again.';
+        return $localize`Two sets overlap on the grid. Please adjust and try again.`;
       case 'NO_SUCH_VENUE':
-        return 'This venue could not be found.';
+        return $localize`This venue could not be found.`;
       case 'STALE_WRITE':
         // Rendered by the dedicated recover-and-reload banner in the template, not this inline message.
         return undefined;
@@ -1038,11 +1075,11 @@ export class LayoutEditor {
       case 'REMODEL_REFUSED':
       case 'REFUND_NOT_CONFIRMED':
         // Reached only when the answer carried no readable fresh picture; otherwise the dialog re-opens.
-        return 'The bookings changed since you previewed. Save again to see the fresh picture.';
+        return $localize`The bookings changed since you previewed. Save again to see the fresh picture.`;
       case 'UNAUTHORIZED':
-        return 'Your session has expired. Please sign in again.';
+        return $localize`Your session has expired. Please sign in again.`;
       default:
-        return 'Something went wrong saving the layout. Please try again.';
+        return $localize`Something went wrong saving the layout. Please try again.`;
     }
   }
 
@@ -1215,12 +1252,11 @@ function cloneGrid(grid: readonly CellState[][]): CellState[][] {
 }
 
 /** The save bar's last-saved clock time, in Europe/Tirane — a display convenience, not a booking date. */
-function formatClockTime(date: Date): string {
-  return new Intl.DateTimeFormat('en-GB', {
-    timeZone: 'Europe/Tirane',
-    hour: '2-digit',
-    minute: '2-digit',
-  }).format(date);
+const CLOCK_TIME = displayDateFormat('time', 'Europe/Tirane');
+
+/** A grid cell's accessible name: its row, position and state. */
+function cellLabel(row: string, position: number, state: string): string {
+  return $localize`:Beach-map cell accessible name; state is like "standard, online":Row ${row}:row: position ${position}:position:, ${state}:state:`;
 }
 
 /**

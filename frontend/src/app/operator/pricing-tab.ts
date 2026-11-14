@@ -25,6 +25,7 @@ import {
   MoneyView,
 } from '../shared/money';
 import { parentVenueId } from '../shared/parent-venue-id';
+import { pluralOf } from '../shared/plural';
 import { rowName, tierLabel } from '../shared/set-label';
 import { SetView } from '../shared/venue-views';
 import { TouchTarget } from '../shared/touch-target';
@@ -96,14 +97,15 @@ export class PricingTab {
     const label = this.savedRow();
     return label === null
       ? ''
-      : `${rowName(label)} saved. The public beach map reflects the new price.`;
+      : $localize`${rowName(label)}:row: saved. The public beach map reflects the new price.`;
   });
   protected readonly errorRow = signal<{ label: string; code: RepriceErrorCode } | null>(null);
   /** Rows whose typed price fell below the floor and was never sent, keyed by label to the typed
    *  euros string, which the input keeps showing (never silently undone) until the row is re-committed. */
   protected readonly refusedRows = signal<ReadonlyMap<string, string>>(new Map());
   protected readonly minPriceEur = MIN_SET_PRICE_EUR;
-  protected readonly rowName = rowName;
+  /** The placeholder of a row whose sets carry different prices. */
+  protected readonly mixedPlaceholder = $localize`:Placeholder asking the operator to give the whole row one price:Set one price`;
   /** The optimistic-concurrency token loaded with the map (`setVersion`), echoed back on each
    *  reprice and advanced on success; a `409 STALE_WRITE` sets {@link staleConflict}. */
   protected readonly loadedSetVersion = signal<number | null>(null);
@@ -121,7 +123,7 @@ export class PricingTab {
       const uniform = sets.every((s) => s.price.minorUnits === sets[0].price.minorUnits);
       return {
         label,
-        desc: `${tierLabel(sets.some((s) => s.tier === 'PREMIUM') ? 'PREMIUM' : 'STANDARD')} · ${sets.length} ${sets.length === 1 ? 'set' : 'sets'}`,
+        desc: `${tierLabel(sets.some((s) => s.tier === 'PREMIUM') ? 'PREMIUM' : 'STANDARD')} · ${setCount(sets.length)}`,
         // Blank the input for a heterogeneous row so it isn't shown as one price; editing unifies it.
         priceEur: uniform ? minorUnitsToEuros(sets[0].price.minorUnits) : '',
         currency: sets[0].price.currency,
@@ -271,21 +273,26 @@ export class PricingTab {
     return code === 'INVALID_REQUEST';
   }
 
+  /** The price input's accessible name, naming the row. */
+  protected priceAriaLabel(label: string): string {
+    return $localize`Full-day price for ${rowName(label)}:row:, in euros`;
+  }
+
   /** The operator-facing message for a reprice failure code. */
   protected errorMessage(code: RepriceErrorCode): string {
     switch (code) {
       case 'NOT_VENUE_OWNER':
-        return 'You do not manage this venue, so its prices can’t be changed.';
+        return $localize`You do not manage this venue, so its prices can’t be changed.`;
       case 'NO_SUCH_ROW':
-        return 'This row no longer exists. Reload the tab and try again.';
+        return $localize`This row no longer exists. Reload the tab and try again.`;
       case 'NO_SUCH_VENUE':
-        return 'This venue could not be found.';
+        return $localize`This venue could not be found.`;
       case 'INVALID_REQUEST':
-        return 'That price is not valid. Enter an amount of at least €0.50.';
+        return $localize`That price is not valid. Enter an amount of at least €0.50.`;
       case 'UNAUTHORIZED':
-        return 'Your session has expired. Please sign in again.';
+        return $localize`Your session has expired. Please sign in again.`;
       default:
-        return 'Something went wrong saving the price. Please try again.';
+        return $localize`Something went wrong saving the price. Please try again.`;
     }
   }
 
@@ -336,4 +343,13 @@ export class PricingTab {
   private rowPrice(label: string): MoneyView | undefined {
     return this.sets().find((s) => s.rowLabel === label)?.price;
   }
+}
+
+/** A row's set count, e.g. `3 sets` (a sunbed set: 2 loungers + umbrella). */
+function setCount(count: number): string {
+  return pluralOf(
+    count,
+    $localize`:sunbed set|A count of sunbed sets in a beach-map row:${count}:count: set`,
+    $localize`:sunbed set|A count of sunbed sets in a beach-map row:${count}:count: sets`,
+  );
 }

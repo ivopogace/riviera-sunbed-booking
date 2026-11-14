@@ -17,9 +17,9 @@ import { TouchTarget } from '../shared/touch-target';
 
 /** The slot labels, in the backend's `PhotoSlot` declaration order. */
 const SLOT_LABELS: Readonly<Record<PhotoSlotKey, string>> = {
-  cover: 'Cover',
-  sunbeds: 'Sunbeds',
-  bar: 'Bar',
+  cover: $localize`:photo slot|Label of the venue's cover photo slot:Cover`,
+  sunbeds: $localize`:photo slot|Label of the venue's sunbeds photo slot:Sunbeds`,
+  bar: $localize`:photo slot|Label of the venue's bar photo slot:Bar`,
 };
 
 /**
@@ -33,14 +33,17 @@ const SLOT_LABELS: Readonly<Record<PhotoSlotKey, string>> = {
   selector: 'app-admin-venue-photos',
   imports: [NgOptimizedImage, CardGlass, ConfirmWithReason, BusyAction, TouchTarget],
   template: `
-    <p class="mt-5 max-w-[62ch] text-[15px] text-riv-ink-soft">
+    <p class="mt-5 max-w-[62ch] text-[15px] text-riv-ink-soft" i18n>
       Removing a photo is immediate and permanent — that slot's image and every stored size are
       deleted. It removes one <strong>slot</strong>, not one picture: the same image published in
       another slot keeps serving from there, so each published slot is its own removal.
     </p>
 
     <div class="mt-5">
-      <label for="admin-photos-venue-select" class="block text-[13.5px] font-semibold text-riv-ink"
+      <label
+        for="admin-photos-venue-select"
+        class="block text-[13.5px] font-semibold text-riv-ink"
+        i18n
         >Venue</label
       >
       <select
@@ -51,7 +54,7 @@ const SLOT_LABELS: Readonly<Record<PhotoSlotKey, string>> = {
         (change)="onVenuePicked($event)"
         class="mt-1 w-full max-w-[420px] rounded-[10px] border border-riv-field-border bg-riv-console-inset/70 px-3 py-2 text-[16px] text-riv-ink"
       >
-        <option value="">Choose a venue…</option>
+        <option value="" i18n>Choose a venue…</option>
         @for (venue of picker.venues(); track venue.id) {
           <option [value]="venue.id">{{ venue.name }} — {{ beachLabel(venue.beach) }}</option>
         }
@@ -59,9 +62,16 @@ const SLOT_LABELS: Readonly<Record<PhotoSlotKey, string>> = {
     </div>
 
     @if (picker.loading()) {
-      <p class="mt-6 text-[15px] text-riv-ink-soft" data-testid="admin-photos-loading">Loading…</p>
+      <p class="mt-6 text-[15px] text-riv-ink-soft" data-testid="admin-photos-loading" i18n>
+        Loading…
+      </p>
     } @else if (picker.loadError()) {
-      <p class="mt-6 text-[15px] text-riv-error-ink" role="alert" data-testid="admin-photos-error">
+      <p
+        class="mt-6 text-[15px] text-riv-error-ink"
+        role="alert"
+        data-testid="admin-photos-error"
+        i18n
+      >
         Something went wrong loading this venue's photos.
         <button
           type="button"
@@ -90,7 +100,7 @@ const SLOT_LABELS: Readonly<Record<PhotoSlotKey, string>> = {
               <div class="relative mt-2 aspect-[3/2] w-full overflow-hidden rounded-[10px]">
                 <img
                   [ngSrc]="url"
-                  [alt]="'Current upload in the ' + slot.slot + ' slot of ' + venue.name"
+                  [alt]="previewAlt(slot.slot, venue.name)"
                   fill
                   disableOptimizedSrcset
                   class="object-cover"
@@ -102,12 +112,16 @@ const SLOT_LABELS: Readonly<Record<PhotoSlotKey, string>> = {
                 <app-confirm-with-reason
                   class="mt-3"
                   label="Confirm photo removal"
+                  i18n-label
                   [prompt]="removalPrompt(slot.slot, venue.name)"
                   [promptTestId]="'admin-photo-confirm-prompt-' + slot.slot"
                   [reasonId]="'admin-photo-reason-' + slot.slot"
                   reasonPlaceholder="e.g. reported by email — off-topic image"
+                  i18n-reasonPlaceholder="Example audit reason for removing a venue photo"
                   confirmLabel="Remove"
+                  i18n-confirmLabel="remove photo|Confirms permanently removing a venue photo"
                   cancelLabel="Keep it"
+                  i18n-cancelLabel="Backs out of removing a venue photo"
                   [panelTestId]="'admin-photo-confirm-panel-' + slot.slot"
                   [confirmTestId]="'admin-photo-confirm-' + slot.slot"
                   [cancelTestId]="'admin-photo-cancel-' + slot.slot"
@@ -124,14 +138,20 @@ const SLOT_LABELS: Readonly<Record<PhotoSlotKey, string>> = {
                   [appBusy]="busy()"
                   (click)="askToRemove(slot.slot)"
                   class="mt-3 rounded-[10px] border border-riv-field-border px-4 py-2 text-[14px] font-semibold text-riv-card-ink aria-disabled:cursor-not-allowed aria-disabled:opacity-60"
+                  i18n
                 >
-                  Remove {{ label(slot.slot) }} photo
+                  Remove
+                  {{
+                    label(slot.slot) // i18n(ph="slot")
+                  }}
+                  photo
                 </button>
               }
             } @else {
               <p
                 class="mt-2 flex aspect-[3/2] w-full items-center justify-center rounded-[10px] border border-dashed border-riv-field-border text-[14px] text-riv-card-ink-soft"
                 [attr.data-testid]="'admin-photo-empty-' + slot.slot"
+                i18n
               >
                 No photo
               </p>
@@ -169,7 +189,11 @@ export class AdminVenuePhotos {
   }
 
   protected removalPrompt(slot: PhotoSlotKey, venueName: string): string {
-    return `Remove the ${this.label(slot)} photo from ${venueName}? This cannot be undone.`;
+    return $localize`Remove the ${this.label(slot)}:slot: photo from ${venueName}:venue:? This cannot be undone.`;
+  }
+
+  protected previewAlt(slot: PhotoSlotKey, venueName: string): string {
+    return $localize`Current upload in the ${this.label(slot)}:slot: slot of ${venueName}:venue:`;
   }
 
   /**
@@ -236,12 +260,16 @@ export class AdminVenuePhotos {
         this.slots.update((slots) =>
           slots.map((each) => (each.slot === slot ? { ...each, previewUrl: null } : each)),
         );
-        this.notice.set(`Removed the ${this.label(slot)} photo from ${venue.name}.`);
+        this.notice.set(
+          $localize`Removed the ${this.label(slot)}:slot: photo from ${venue.name}:venue:.`,
+        );
         this.focusAfterRender(`admin-photo-slot-${slot}`);
       });
     } catch {
       this.ifStillViewing(venue, () => {
-        this.notice.set(`Could not remove the ${this.label(slot)} photo. Nothing was changed.`);
+        this.notice.set(
+          $localize`Could not remove the ${this.label(slot)}:slot: photo. Nothing was changed.`,
+        );
         // The `finally` destroys the confirmation whether or not the takedown worked.
         this.focusAfterRender('admin-photos-notice');
       });

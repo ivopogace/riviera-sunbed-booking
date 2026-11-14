@@ -4,8 +4,10 @@
   aria-labelledby="venue-create-title"
   data-testid="venue-create-card"
 >
-  <h2 id="venue-create-title" class="m-0 text-[16px] font-bold text-riv-card-ink">Venue details</h2>
-  <p class="mt-1 mb-3.5 text-[12.5px] leading-[1.5] text-riv-card-ink-soft">
+  <h2 id="venue-create-title" class="m-0 text-[16px] font-bold text-riv-card-ink" i18n>
+    Venue details
+  </h2>
+  <p class="mt-1 mb-3.5 text-[12.5px] leading-[1.5] text-riv-card-ink-soft" i18n>
     What tourists see on your venue card. You’ll lay out the beach map right after.
   </p>
 
@@ -26,7 +28,11 @@
       novalidate
     >
       <label class="field flex flex-col gap-1">
-        <span class="text-[12.5px] font-semibold text-riv-card-ink">Name</span>
+        <span
+          class="text-[12.5px] font-semibold text-riv-card-ink"
+          i18n="venue name|Field label for the venue name:Name"
+          >Name</span
+        >
         <input
           type="text"
           [formField]="venueForm.name"
@@ -48,7 +54,11 @@
       <app-beach-field [field]="venueForm.beach" testId="venue-create-beach" />
 
       <label class="field flex flex-col gap-1">
-        <span class="text-[12.5px] font-semibold text-riv-card-ink">Description</span>
+        <span
+          class="text-[12.5px] font-semibold text-riv-card-ink"
+          i18n="venue description|Field label for the venue description:Description"
+          >Description</span
+        >
         <input
           type="text"
           [formField]="venueForm.description"
@@ -64,7 +74,7 @@
           testId="venue-create-booking-mode"
         />
         <label class="field flex flex-col gap-1">
-          <span class="text-[12.5px] font-semibold text-riv-card-ink"
+          <span class="text-[12.5px] font-semibold text-riv-card-ink" i18n
             >Payout currency (ISO 4217)</span
           >
           <input
@@ -95,8 +105,13 @@
         <p
           class="m-0 text-[12.5px] leading-[1.5] text-riv-card-ink-soft"
           data-testid="venue-create-commission-note"
+          i18n
         >
-          The platform commission is {{ commissionPercent(defaults.commissionBps) }} per booking.
+          The platform commission is
+          {{
+            commissionPercent(defaults.commissionBps) // i18n(ph="percent")
+          }}
+          per booking.
         </p>
       }
 
@@ -109,7 +124,7 @@
         [disabled]="venueForm().invalid()"
         [appBusy]="saving()"
       >
-        {{ saving() ? 'Creating…' : 'Create venue' }}
+        {{ saving() ? creatingLabel : createLabel }}
       </button>
     </form>
   }

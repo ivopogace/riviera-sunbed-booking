@@ -1,3 +1,4 @@
+import { displayDecimal } from '../shared/display-format';
 import { ScreenPoint } from '../shared/map-engine';
 import { WaterSampler } from '../shared/map-water';
 
@@ -47,8 +48,8 @@ export function shoreMoveLabel(km: number): string {
   if (metres < 1000) {
     return `${metres} m`;
   }
-  const whole = km.toFixed(1);
-  return Number(whole) < 10 ? `${whole} km` : `${Math.round(km)} km`;
+  const tenths = Number(km.toFixed(1));
+  return tenths < 10 ? `${displayDecimal(tenths, 1)} km` : `${Math.round(km)} km`;
 }
 
 /**
