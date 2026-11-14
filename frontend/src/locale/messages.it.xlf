@@ -1471,8 +1471,7 @@
       <trans-unit id="5016141727546780846" datatype="html">
         <source> If the new spot doesn’t suit you, cancel below for a full refund until <x id="START_TAG_STRONG" ctype="x-strong" equiv-text="&lt;strong&gt;"/><x id="DEADLINE" equiv-text="{{
                     deadlineLabel(until) // i18n(ph=&quot;deadline&quot;)
-                  }}"/><x id="CLOSE_TAG_STRONG" ctype="x-strong" equiv-text="&lt;/strong
-                  &gt;"/>. </source>
+                  }}"/><x id="CLOSE_TAG_STRONG" ctype="x-strong" equiv-text="&lt;/strong&gt;"/>. </source>
         <target state="translated"> Se il nuovo posto non ti va bene, annulla qui sotto per un rimborso completo entro <x id="START_TAG_STRONG" ctype="x-strong" equiv-text="&lt;strong&gt;"/><x id="DEADLINE" equiv-text="{{
                     deadlineLabel(until) // i18n(ph=&quot;deadline&quot;)
                   }}"/><x id="CLOSE_TAG_STRONG" ctype="x-strong" equiv-text="&lt;/strong
@@ -2218,8 +2217,7 @@
       <trans-unit id="7944873255471191867" datatype="html">
         <source>We’ll notify you by email as soon as the venue responds — expected by <x id="START_TAG_STRONG" ctype="x-strong" equiv-text="&lt;strong [class]=&quot;cls.strong&quot; data-testid=&quot;request-deadline&quot;&gt;"/><x id="DEADLINE" equiv-text="{{
                 deadline(r.requestExpiresAt) // i18n(ph=&quot;deadline&quot;)
-              }}"/><x id="CLOSE_TAG_STRONG" ctype="x-strong" equiv-text="&lt;/strong
-              &gt;"/>.</source>
+              }}"/><x id="CLOSE_TAG_STRONG" ctype="x-strong" equiv-text="&lt;/strong&gt;"/>.</source>
         <target state="translated">Ti avviseremo via e-mail appena lo stabilimento risponde — la risposta è prevista entro <x id="START_TAG_STRONG" ctype="x-strong" equiv-text="&lt;strong [class]=&quot;cls.strong&quot; data-testid=&quot;request-deadline&quot;&gt;"/><x id="DEADLINE" equiv-text="{{
                 deadline(r.requestExpiresAt) // i18n(ph=&quot;deadline&quot;)
               }}"/><x id="CLOSE_TAG_STRONG" ctype="x-strong" equiv-text="&lt;/strong
@@ -4634,8 +4632,7 @@
       <trans-unit id="4395544738741966748" datatype="html">
         <source> Move on <x id="START_TAG_STRONG" ctype="x-strong" equiv-text="&lt;strong class=&quot;text-riv-card-ink&quot;&gt;"/><x id="DAY" equiv-text="{{
                   move.day // i18n(ph=&quot;day&quot;)
-                }}"/><x id="CLOSE_TAG_STRONG" ctype="x-strong" equiv-text="&lt;/strong
-                &gt;"/>: <x id="DISTANCE" equiv-text="{{
+                }}"/><x id="CLOSE_TAG_STRONG" ctype="x-strong" equiv-text="&lt;/strong&gt;"/>: <x id="DISTANCE" equiv-text="{{
                   move.text // i18n(ph=&quot;distance&quot;)
                 }}"/> </source>
         <target state="translated"> Spostamento il <x id="START_TAG_STRONG" ctype="x-strong" equiv-text="&lt;strong class=&quot;text-riv-card-ink&quot;&gt;"/><x id="DAY" equiv-text="{{
