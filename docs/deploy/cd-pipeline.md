@@ -160,8 +160,8 @@ must include `frontend/`, so:
     `RIVIERA_TEM_SNS_TRUST_CHAIN` (a Spring resource naming Scaleway's SNS CA PEM, e.g.
     `file:/etc/secrets/sns-trust-chain.pem` from a Render secret file). **Leave both unset until
     live registration**: blank refuses every delivery and the app boots unchanged; a set but
-    unreadable trust chain aborts boot. Neither is a secret. **Live registration waits on the
-    G-3 follow-up** (RESPONSIBILITIES.md §notification). Steps:
+    unreadable trust chain aborts boot. Neither is a secret. **Live registration waits on
+    #1748** (the G-3 follow-up, RESPONSIBILITIES.md §notification). Steps:
     [`docs/runbooks/mailer-profile-smoke-test.md`](../runbooks/mailer-profile-smoke-test.md).
   - `RIVIERA_REGISTRY_MAIL_POOL_SIZE` / `RIVIERA_REGISTRY_MAIL_QUEUE_CAPACITY` (#408) — **leave
     unset** until there is a reason. They size the bulkhead the booking-confirmation listener

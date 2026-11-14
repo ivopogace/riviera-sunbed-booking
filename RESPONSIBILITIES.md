@@ -982,8 +982,8 @@ tag names the person, invariant #7):
 **The withheld-flag probe** (read before wiring the suppression list's first writer). A populated
 list makes `emailWithheld` a paid suppression oracle: book with a victim's address, pay, read the
 flag, cancel before the evening-before cutoff for a full refund. Three facts bound it: the feed
-(#372) writes only once its webhook is registered live, which waits on the owner's G-3 decision
-(runbook precondition), so zero bits until then; no rate-limit budget binds, a probe's real limiter (a payment, a
+(#372) writes only once its webhook is registered live, which waits on #1748 (owner-verified
+disclosure, the runbook's precondition), so zero bits until then; no rate-limit budget binds, a probe's real limiter (a payment, a
 claimed `(set, date)`) being far below any capacity sparing the pay poll (ADR-0006); and the flag
 can't ride only the post-payment hand-off: the code-gated read *is* it, the prober the payer.
 `CONFIRMED` **and** `payment.api.CollectionGuarantee` keep it inert unless collected first.

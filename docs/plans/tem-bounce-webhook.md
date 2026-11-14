@@ -109,7 +109,9 @@ the live site is bot-shielded):**
 
 ## Open questions
 
-- G-3 disposition (owner): options and recommendation sent to the orchestrator at intake.
+### Resolved
+
+- G-3 disposition: owner chose option 1 (owner-verified disclosure, neutral copy for everyone else; OWASP WSTG OTG-IDENT-004) as follow-up #1748, a hard precondition of live registration.
 
 ## Modulith
 

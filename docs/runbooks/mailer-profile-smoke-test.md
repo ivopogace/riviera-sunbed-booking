@@ -124,7 +124,7 @@ It suppresses hard bounces and complaints (`docs/runbooks/suppression-list-ops.m
 Scaleway's *Create webhooks*, *Use webhooks with SNS topics*, *Verifying webhook signatures* and *TEM
 webhook event payloads* (TEM + Topics & Events docs; webhooks are a beta needing a quota request).
 
-**Precondition — do not register live before the G-3 follow-up has merged.** The first row this feed
+**Precondition — do not register live before #1748 (the G-3 follow-up) has merged.** The first row this feed
 writes turns `emailWithheld` on the code-gated booking view into a per-address suppression oracle
 under the `stripe` profile (RESPONSIBILITIES.md §notification, *the withheld-flag probe*).
 
