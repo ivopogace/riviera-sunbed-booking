@@ -596,7 +596,7 @@ describe('DiscoverSheet', () => {
 
     // 1180 − 380 − 8 = 792 wanted, inside the ceiling: the list's overflow at full, the real scroller's own clamp.
     expect(sheet().lift()).toBe(792);
-    expect(lifted.style.translate).toBe('0 -792px');
+    expect(lifted.style.translate).toBe('0px -792px');
 
     row.getBoundingClientRect = () => new DOMRect(0, 2000, 390, 120);
     sheet().reveal(row);
@@ -624,7 +624,7 @@ describe('DiscoverSheet', () => {
     sheet().go('half');
     await settle();
     expect(sheet().lift()).toBe(150);
-    expect(lifted.style.translate).toBe('0 -150px');
+    expect(lifted.style.translate).toBe('0px -150px');
   });
 
   it('reveals a row at full by scrolling the list itself', async () => {
