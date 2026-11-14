@@ -3,7 +3,7 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideRouter, Router } from '@angular/router';
 
 import { AuditGlyph, EmailGlyph, PrivacyGlyph, RequestsGlyph, VenuesGlyph } from './console-glyphs';
-import { ConsolePalette, PaletteRow } from './console-palette';
+import { ConsolePalette, PaletteRow, paletteChord } from './console-palette';
 
 @Component({ template: '' })
 class BlankPage {}
@@ -381,5 +381,23 @@ describe('ConsolePalette', () => {
       expect(row.classList).toContain('min-h-11');
       expect(row.classList).toContain('flex');
     }
+  });
+});
+
+describe('paletteChord (#1731)', () => {
+  it('names ⌘K on Apple platforms, from the client hint or the legacy platform string', () => {
+    expect(paletteChord({ platform: 'MacIntel' })).toBe('⌘K');
+    expect(paletteChord({ platform: 'iPad' })).toBe('⌘K');
+    expect(paletteChord({ platform: '', userAgentData: { platform: 'macOS' } })).toBe('⌘K');
+  });
+
+  it('names Ctrl K everywhere else, the client hint winning over the legacy string', () => {
+    expect(paletteChord({ platform: 'Win32' })).toBe('Ctrl K');
+    expect(paletteChord({ platform: 'Linux x86_64' })).toBe('Ctrl K');
+    expect(paletteChord({ platform: '' })).toBe('Ctrl K');
+    expect(paletteChord({ platform: 'MacIntel', userAgentData: { platform: 'Windows' } })).toBe(
+      'Ctrl K',
+    );
+    expect(paletteChord(undefined)).toBe('Ctrl K');
   });
 });

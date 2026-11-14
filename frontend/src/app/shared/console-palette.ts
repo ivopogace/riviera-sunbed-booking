@@ -44,6 +44,18 @@ export interface PaletteRow {
   readonly badge?: number;
 }
 
+/** What {@link paletteChord} reads; `userAgentData` is Chromium's client hint, absent from the DOM lib. */
+export interface ChordPlatform {
+  readonly platform: string;
+  readonly userAgentData?: { readonly platform: string };
+}
+
+/** The palette chord as the platform names it: `⌘K` on Apple's, `Ctrl K` elsewhere (both are bound). */
+export function paletteChord(nav: ChordPlatform | undefined): string {
+  const platform = nav?.userAgentData?.platform ?? nav?.platform ?? '';
+  return /mac|iphone|ipad|ipod/i.test(platform) ? '⌘K' : 'Ctrl K';
+}
+
 /** Template skins, hoisted so each recipe exists once (the `app.ts` `cls` idiom). */
 const CLS = {
   backdrop: POP_BACKDROP,
