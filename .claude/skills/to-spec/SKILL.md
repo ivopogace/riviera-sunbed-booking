@@ -6,7 +6,8 @@ description: "Turn the current conversation into a spec and publish it to the pr
 > **Riviera:** tracker = GitHub via the MCP tools; labels per `docs/agents/triage-labels.md`.
 > This is the **epic** spec (user stories + testing seams + out-of-scope), committed once as
 > the epic issue; slice detail is `riviera-plan-doc`'s (`riviera-sdlc` § *Epic front-end*).
-> Do **not** label the epic `ready-for-agent` — that goes on the slices `to-issues` cuts.
+> Do **not** label the epic `ready-for-agent` — that goes on the slices `to-issues` cuts; this
+> overrides step 3's label instruction below.
 > Use `CONTEXT.md` vocabulary; respect `docs/adr/`. Ignore the `/setup-matt-pocock-skills` line.
 
 This skill takes the current conversation context and codebase understanding and produces a spec. Do NOT interview the user; just synthesize what you already know.

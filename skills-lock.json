@@ -5,22 +5,22 @@
       "source": "angular/skills",
       "sourceType": "github",
       "skillPath": "angular-developer/SKILL.md",
-      "ref": "936dcd7763a9877a555d8fb41fa077c2dcc0e19b",
-      "vendored": "verbatim below a Riviera banner at the top of SKILL.md — the whole skill dir (SKILL.md + references/), refreshed 2026-08-31 from angular/skills@936dcd77, the last upstream commit touching angular-developer/. computedHash = sha256 of SKILL.md with the banner block and its trailing blank line removed, frontmatter kept, LF endings (the pre-refresh value came from the original installer and was not reproducible).",
-      "computedHash": "ec5e3a0b1ef218c0d7d40e35c40e5255e7319d7d595c5a6036d8bdac2532c782"
+      "ref": "4f3371954c4cbdf801172d086e7a5ba68c489cad",
+      "vendored": "verbatim below a Riviera banner at the top of SKILL.md — the whole skill dir (SKILL.md + references/), refreshed 2026-11-14 from angular/skills@4f337195, the last upstream commit touching angular-developer/. computedHash = sha256 of SKILL.md with the banner block and its trailing blank line removed, frontmatter kept, LF endings (the pre-refresh value came from the original installer and was not reproducible).",
+      "computedHash": "2554cb7d0ce31d6ce4c0cc7357ae22dc17f61798093862a3a6bd83d2c55cd701"
     },
     "grilling": {
       "source": "mattpocock/skills",
       "sourceType": "github",
       "skillPath": "skills/productivity/grilling/SKILL.md",
-      "ref": "6654f6b60cd9d5be8b54c6fafe44346dabeb3b76",
+      "ref": "5863806dd4e15c63174bee4e7515a4256792ecfa",
       "vendored": true
     },
     "grill-me": {
       "source": "mattpocock/skills",
       "sourceType": "github",
       "skillPath": "skills/productivity/grill-me/SKILL.md",
-      "ref": "6654f6b60cd9d5be8b54c6fafe44346dabeb3b76",
+      "ref": "5863806dd4e15c63174bee4e7515a4256792ecfa",
       "vendored": "verbatim, INCLUDING upstream's disable-model-invocation: true — keep it. It is the human's alias for `grilling` (its whole body is 'call the Skill tool with grilling'), so a model that wants it should call `grilling` directly."
     },
     "to-issues": {
@@ -28,84 +28,84 @@
       "sourceType": "github",
       "skillPath": "skills/engineering/to-issues/SKILL.md",
       "ref": "e84f5be0-era to-issues (upstream path since renamed to skills/engineering/to-tickets)",
-      "vendored": "verbatim + cherry-picked two improvements from the newer engineering/to-tickets: native blocking-link wiring (second pass) and expand→contract sequencing for wide refactors. DELIBERATELY NOT refreshed at the 2026-08-31 sweep: upstream renamed the skill to-tickets and swapped 'issue' for 'ticket' throughout, which fights this repo's GitHub-issue vocabulary; the only other upstream change was dropping the 'work the frontier one ticket at a time with implement' line, which we keep."
+      "vendored": "verbatim + cherry-picked two improvements from the newer engineering/to-tickets: native blocking-link wiring (second pass) and expand→contract sequencing for wide refactors. DELIBERATELY NOT refreshed at the 2026-08-31 sweep: upstream renamed the skill to-tickets and swapped 'issue' for 'ticket' throughout, which fights this repo's GitHub-issue vocabulary; the only other upstream change was dropping the 'work the frontier one ticket at a time with implement' line, which we keep. 2026-11-14: cherry-picked to-tickets' 'make each ticket a sub-issue of the source issue' (cffab50, 9e2abf8), reworded to 'issue'; its 'omit Blocked by when blockers are native edges' is not taken, since this repo keeps the body field and the native edge."
     },
     "to-spec": {
       "source": "mattpocock/skills",
       "sourceType": "github",
       "skillPath": "skills/engineering/to-spec/SKILL.md",
-      "ref": "6654f6b60cd9d5be8b54c6fafe44346dabeb3b76",
+      "ref": "5863806dd4e15c63174bee4e7515a4256792ecfa",
       "vendored": "verbatim body + a riviera localization note (epic-vs-slice altitude, GitHub-MCP tracker + triage-labels, feeds to-issues) + template tags flattened to headings; upstream disable-model-invocation dropped so the skill stays listable. Localization rebased onto the current upstream body 2026-08-31."
     },
     "wayfinder": {
       "source": "mattpocock/skills",
       "sourceType": "github",
       "skillPath": "skills/engineering/wayfinder/SKILL.md",
-      "ref": "6654f6b60cd9d5be8b54c6fafe44346dabeb3b76",
+      "ref": "5863806dd4e15c63174bee4e7515a4256792ecfa",
       "vendored": "verbatim body + a riviera localization note (foggy-epics-only, GitHub tracker + wayfinder:* labels, map-vs-plan-doc state-store boundary); upstream agents/openai.yaml dropped, as is disable-model-invocation. Localization rebased onto the current upstream body 2026-08-31, and the research/prototype substitution bullet retired now that both skills are vendored. The body's 'Wayfinding operations' pointer now resolves: docs/agents/issue-tracker.md gained that section (sub-issues + native blocked_by dependencies, both probed live on the repo 2026-08-31; blocking has no MCP tool and its body takes the numeric issue_id, not #NN)."
     },
     "implement": {
       "source": "mattpocock/skills",
       "sourceType": "github",
       "skillPath": "skills/engineering/implement/SKILL.md",
-      "ref": "6654f6b60cd9d5be8b54c6fafe44346dabeb3b76",
+      "ref": "5863806dd4e15c63174bee4e7515a4256792ecfa",
       "vendored": "verbatim, INCLUDING upstream's disable-model-invocation: true — keep it. The Skill tool refuses this skill (probed 2026-08-31) and forbids re-enacting it, which is correct here: riviera-sdlc's Implement row + the Skill-routing gate + riviera-local-debug already encode its five lines more precisely, and its unqualified 'run the full test suite once at the end' fights riviera-local-debug's scoped-run rule. It is the human's /implement entry command; the SDLC no longer routes to it. Do not drop the flag to 'fix' a refusal."
     },
     "tdd": {
       "source": "mattpocock/skills",
       "sourceType": "github",
       "skillPath": "skills/engineering/tdd/SKILL.md",
-      "ref": "6654f6b60cd9d5be8b54c6fafe44346dabeb3b76",
-      "vendored": "verbatim below a Riviera banner — SKILL.md + mocking.md + tests.md. refactoring.md was deleted upstream (refactoring moved out of the red-green loop into the review stage) and is deleted here too; CONTRIBUTING.md and riviera-plan-doc were reworded to match."
+      "ref": "5863806dd4e15c63174bee4e7515a4256792ecfa",
+      "vendored": "verbatim below a Riviera banner — SKILL.md + mocking.md + tests.md. refactoring.md was deleted upstream (refactoring moved out of the red-green loop into the review stage) and is deleted here too; CONTRIBUTING.md and riviera-plan-doc were reworded to match. Refreshed 2026-11-14. Upstream's CONTEXT.md→GLOSSARY.md rename (d80fa0f, e484a80) is DELIBERATELY NOT adopted: this repo's glossary is CONTEXT.md, so every upstream `GLOSSARY` reads `CONTEXT` here."
     },
     "diagnosing-bugs": {
       "source": "mattpocock/skills",
       "sourceType": "github",
       "skillPath": "skills/engineering/diagnosing-bugs/SKILL.md",
-      "ref": "6654f6b60cd9d5be8b54c6fafe44346dabeb3b76",
-      "vendored": "verbatim body; disable-model-invocation: true added here (2026-10-17) — a person's /diagnosing-bugs ritual, not a routed skill: 0 loads across 59 cloud sessions, 18 of them bug fixes, and the sessions diagnosed without the script."
+      "ref": "5863806dd4e15c63174bee4e7515a4256792ecfa",
+      "vendored": "verbatim body; disable-model-invocation: true added here (2026-10-17) — a person's /diagnosing-bugs ritual, not a routed skill: 0 loads across 59 cloud sessions, 18 of them bug fixes, and the sessions diagnosed without the script. Refreshed 2026-11-14. Upstream's CONTEXT.md→GLOSSARY.md rename (d80fa0f, e484a80) is DELIBERATELY NOT adopted: this repo's glossary is CONTEXT.md, so every upstream `GLOSSARY` reads `CONTEXT` here."
     },
     "codebase-design": {
       "source": "mattpocock/skills",
       "sourceType": "github",
       "skillPath": "skills/engineering/codebase-design/SKILL.md",
-      "ref": "6654f6b60cd9d5be8b54c6fafe44346dabeb3b76",
-      "vendored": true
+      "ref": "5863806dd4e15c63174bee4e7515a4256792ecfa",
+      "vendored": "verbatim at ref (SKILL.md + DEEPENING.md + DESIGN-IT-TWICE.md), with one substitution. Upstream's CONTEXT.md→GLOSSARY.md rename (d80fa0f, e484a80) is DELIBERATELY NOT adopted: this repo's glossary is CONTEXT.md, so every upstream `GLOSSARY` reads `CONTEXT` here."
     },
     "domain-modeling": {
       "source": "mattpocock/skills",
       "sourceType": "github",
       "skillPath": "skills/engineering/domain-modeling/SKILL.md",
-      "ref": "6654f6b60cd9d5be8b54c6fafe44346dabeb3b76",
-      "vendored": true
+      "ref": "5863806dd4e15c63174bee4e7515a4256792ecfa",
+      "vendored": "verbatim at ref (SKILL.md + ADR-FORMAT.md + CONTEXT-FORMAT.md), with one substitution. Upstream's CONTEXT.md→GLOSSARY.md rename (d80fa0f, e484a80) is DELIBERATELY NOT adopted: this repo's glossary is CONTEXT.md, so every upstream `GLOSSARY` reads `CONTEXT` here, and upstream's GLOSSARY-FORMAT.md stays CONTEXT-FORMAT.md. The rename was upstream's only change to this skill since 6654f6b6."
     },
     "research": {
       "source": "mattpocock/skills",
       "sourceType": "github",
       "skillPath": "skills/engineering/research/SKILL.md",
-      "ref": "6654f6b60cd9d5be8b54c6fafe44346dabeb3b76",
+      "ref": "5863806dd4e15c63174bee4e7515a4256792ecfa",
       "vendored": "verbatim body + a riviera localization note (findings land at docs/research/<slug>.md on the asking ticket's branch — the repo had no such convention and the skill asks for one; subagents expected; version-pinned primary sources incl. the angular-cli MCP); upstream agents/openai.yaml dropped. Vendored 2026-08-31 for wayfinder's research decision-ticket type, which previously had to be substituted with a bare Explore subagent."
     },
     "prototype": {
       "source": "mattpocock/skills",
       "sourceType": "github",
       "skillPath": "skills/engineering/prototype/SKILL.md",
-      "ref": "6654f6b60cd9d5be8b54c6fafe44346dabeb3b76",
+      "ref": "5863806dd4e15c63174bee4e7515a4256792ecfa",
       "vendored": "verbatim body (SKILL.md + LOGIC.md + UI.md) + a riviera localization note (spike/<slug> branch, no plan doc, never a PR, never merged; npm not pnpm/bun; the spine invariants still bound what a prototype may validate; capture on the decision ticket); upstream agents/openai.yaml dropped. Vendored 2026-08-31 for wayfinder's prototype decision-ticket type, which previously had to be substituted with a bare spike branch."
     },
     "triage": {
       "source": "mattpocock/skills",
       "sourceType": "github",
       "skillPath": "skills/engineering/triage/SKILL.md",
-      "ref": "6654f6b60cd9d5be8b54c6fafe44346dabeb3b76",
-      "vendored": "verbatim body (SKILL.md + AGENT-BRIEF.md + OUT-OF-SCOPE.md) + a riviera localization note (GitHub-MCP tracker + label mapping, issues-only — no PR triage surface); upstream disable-model-invocation dropped. The frontmatter description is also ours: upstream's advertises PR triage, which this repo does not do, and CLAUDE.md makes the description the authoritative 'when to load'. This entry read `true` before 2026-08-31; it was never verbatim."
+      "ref": "5863806dd4e15c63174bee4e7515a4256792ecfa",
+      "vendored": "verbatim body (SKILL.md + AGENT-BRIEF.md + OUT-OF-SCOPE.md) + a riviera localization note (GitHub-MCP tracker + label mapping, issues-only — no PR triage surface); upstream disable-model-invocation dropped. The frontmatter description is also ours: upstream's advertises PR triage, which this repo does not do, and CLAUDE.md makes the description the authoritative 'when to load'. This entry read `true` before 2026-08-31; it was never verbatim. Refreshed 2026-11-14. Upstream's CONTEXT.md→GLOSSARY.md rename (d80fa0f, e484a80) is DELIBERATELY NOT adopted: this repo's glossary is CONTEXT.md, so every upstream `GLOSSARY` reads `CONTEXT` here."
     },
     "improve-codebase-architecture": {
       "source": "mattpocock/skills",
       "sourceType": "github",
       "skillPath": "skills/engineering/improve-codebase-architecture/SKILL.md",
-      "ref": "6654f6b60cd9d5be8b54c6fafe44346dabeb3b76",
-      "vendored": "verbatim, INCLUDING upstream's disable-model-invocation: true — keep it. It is a human-initiated deepening pass over existing code, deliberately outside slice work, so riviera-sdlc routes nothing to it."
+      "ref": "5863806dd4e15c63174bee4e7515a4256792ecfa",
+      "vendored": "verbatim, INCLUDING upstream's disable-model-invocation: true — keep it. It is a human-initiated deepening pass over existing code, deliberately outside slice work, so riviera-sdlc routes nothing to it. Refreshed 2026-11-14. Upstream's CONTEXT.md→GLOSSARY.md rename (d80fa0f, e484a80) is DELIBERATELY NOT adopted: this repo's glossary is CONTEXT.md, so every upstream `GLOSSARY` reads `CONTEXT` here."
     },
     "postgres": {
       "source": "planetscale/database-skills",
