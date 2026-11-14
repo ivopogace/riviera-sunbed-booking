@@ -18,16 +18,13 @@ export const PASSWORD_MIN_ACCOUNT_NAME_LENGTH = 3;
 export const PASSWORD_BLOCKED_TERM_CODE = 'PASSWORD_CONTAINS_BLOCKED_TERM';
 
 /** Shown beside the field before submit, on every screen where a password is chosen. */
-export const PASSWORD_POLICY_HINT =
-  'At least 12 characters. It can’t contain the name you sign in with or the word “riviera”.';
+export const PASSWORD_POLICY_HINT = $localize`At least 12 characters. It can’t contain the name you sign in with or the word “riviera”.`;
 /** The length rule failed — the server's `INVALID_REQUEST`, or the client-side minimum. */
-export const PASSWORD_LENGTH_MESSAGE = 'Choose a password of 12–72 characters.';
+export const PASSWORD_LENGTH_MESSAGE = $localize`Choose a password of 12–72 characters.`;
 /** The byte cap failed client-side, where the character count on screen would contradict the length message. */
-export const PASSWORD_TOO_LONG_MESSAGE =
-  'That password is too long. Accented letters and emoji each take several of the 72 available characters, so try a shorter one.';
+export const PASSWORD_TOO_LONG_MESSAGE = $localize`That password is too long. Accented letters and emoji each take several of the 72 available characters, so try a shorter one.`;
 /** The blocklist failed — the server's {@link PASSWORD_BLOCKED_TERM_CODE}, or the client-side check. */
-export const PASSWORD_BLOCKED_MESSAGE =
-  'That password contains the name you sign in with or the word “riviera”. Choose a different one.';
+export const PASSWORD_BLOCKED_MESSAGE = $localize`That password contains the name you sign in with or the word “riviera”. Choose a different one.`;
 
 /** Which rule a candidate password fails, when it fails one. */
 export type PasswordPolicyViolation = 'too-short' | 'too-long' | 'blocked';
