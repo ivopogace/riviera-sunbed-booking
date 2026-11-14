@@ -17,6 +17,9 @@ record ShellHead(String title, String description, String canonical, String imag
 	private static final String TITLE_OPEN = "<title>";
 	private static final String TITLE_CLOSE = "</title>";
 	private static final String HEAD_CLOSE = "</head>";
+	/** The attribute an Open Graph {@code <meta>} names itself by; every other one uses {@link #NAME_KEY}. */
+	private static final String PROPERTY_KEY = "property";
+	private static final String NAME_KEY = "name";
 
 	/** One language version of the page: its {@code hreflang} code ({@code x-default} included) and URL. */
 	record Alternate(String hreflang, String url) {
@@ -48,7 +51,7 @@ record ShellHead(String title, String description, String canonical, String imag
 			tags.append("<meta name=\"robots\" content=\"noindex\">\n");
 		}
 		if (description != null) {
-			meta(tags, "name", "description", description);
+			meta(tags, NAME_KEY, "description", description);
 		}
 		if (canonical != null) {
 			link(tags, "rel=\"canonical\"", canonical);
@@ -56,19 +59,19 @@ record ShellHead(String title, String description, String canonical, String imag
 		alternates.forEach(alternate ->
 				link(tags, "rel=\"alternate\" hreflang=\"" + escape(alternate.hreflang()) + "\"", alternate.url()));
 		if (title != null) {
-			meta(tags, "property", "og:title", title);
+			meta(tags, PROPERTY_KEY, "og:title", title);
 			if (description != null) {
-				meta(tags, "property", "og:description", description);
+				meta(tags, PROPERTY_KEY, "og:description", description);
 			}
-			meta(tags, "property", "og:type", "website");
-			meta(tags, "property", "og:site_name", SITE_NAME);
+			meta(tags, PROPERTY_KEY, "og:type", "website");
+			meta(tags, PROPERTY_KEY, "og:site_name", SITE_NAME);
 			if (canonical != null) {
-				meta(tags, "property", "og:url", canonical);
+				meta(tags, PROPERTY_KEY, "og:url", canonical);
 			}
 			if (image != null) {
-				meta(tags, "property", "og:image", image);
+				meta(tags, PROPERTY_KEY, "og:image", image);
 			}
-			meta(tags, "name", "twitter:card", image != null ? "summary_large_image" : "summary");
+			meta(tags, NAME_KEY, "twitter:card", image != null ? "summary_large_image" : "summary");
 		}
 		return tags.toString();
 	}

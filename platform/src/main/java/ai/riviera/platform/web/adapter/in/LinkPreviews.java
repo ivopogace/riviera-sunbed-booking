@@ -21,7 +21,8 @@ final class LinkPreviews {
 	static final int DESCRIPTION_LIMIT = 160;
 
 	private static final String HOME_PATH = "/";
-	private static final String VENUE_PATH = "/venues/";
+	private static final String VENUES_SEGMENT = "venues";
+	private static final char SLASH = '/';
 	private static final String TITLE_SUFFIX = " — Riviera";
 	private static final String ELLIPSIS = "…";
 	private static final Pattern VENUE_ID = Pattern.compile("[1-9]\\d{0,17}");
@@ -49,7 +50,7 @@ final class LinkPreviews {
 			return ShellHead.unlisted(copy.title(), copy.description());
 		}
 		VenueLinkPreview venue = found.get();
-		String path = VENUE_PATH + rawId;
+		String path = SLASH + VENUES_SEGMENT + SLASH + rawId;
 		String image = venue.coverUrl() == null ? null : properties.absolute(venue.coverUrl()).orElse(null);
 		return ShellHead.page(venue.name() + ", " + venue.beach().label() + TITLE_SUFFIX,
 				oneLine(venue.description()).orElse(copy.description()), url(locale, path), image, alternates(path));
