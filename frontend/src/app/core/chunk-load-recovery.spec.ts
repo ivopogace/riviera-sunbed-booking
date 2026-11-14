@@ -87,6 +87,12 @@ describe('ChunkLoadRecovery (#1543)', () => {
       // The stamp stays on the router's own URL, which a later failure reports the same way.
       expect((JSON.parse(session.get(STAMP_KEY)!) as { path: string }).path).toBe('/venues/1');
     });
+
+    it('retries the build root, not the English one, from a card opened with no failed URL', () => {
+      recovery.retry();
+
+      expect(reload.reloaded).toEqual(['/sq/']);
+    });
   });
 
   it('never reloads automatically when the stamp cannot be written (no loop without a brake)', () => {

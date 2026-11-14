@@ -44,8 +44,8 @@ compiled per locale), or a runtime translation library with an in-page switch.
    IDs are Angular's content hashes: a changed English sentence is a new message, so its old
    translation can never silently stand in for it. `npm run i18n:sync` keeps the files in step with
    the source.
-7. **Dates and money display per locale; the data does not change.** Every display goes through
-   `shared/display-format.ts` in `DISPLAY_LOCALE` (`en-IE` for English, else the build's locale): by
+7. **Dates and money display per locale; the data does not change.** Every display on a translated
+   page goes through `shared/display-format.ts` in `DISPLAY_LOCALE` (`en-IE` for English, else the build's locale): by
    `Intl` where the browser carries the locale, else by the CLDR data the localized build bundles,
    since Chromium ships no Albanian data and would print `sq` in American English. Money stays integer
    minor units (#5) and days stay `Europe/Tirane` civil days (#6).
