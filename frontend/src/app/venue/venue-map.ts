@@ -754,6 +754,11 @@ export class VenueMap {
   }
 
   /** The no-cover banner's offer of the stitched plan ("See a 2-move plan"). */
+  /** The score's accessible name; bound as an attribute, since an interpolated `i18n-aria-label` renders none. */
+  protected ratedLabel(rating: string): string {
+    return $localize`Rated ${rating}:rating: out of 5`;
+  }
+
   protected planOfferLabel(moves: number): string {
     return pluralOf(
       moves,

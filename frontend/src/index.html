@@ -27,18 +27,18 @@
       // (drift pin: locale-boot.spec.ts). Only the root build can be at "/" (ADR-0030).
       (() => {
         if (location.pathname !== '/') return;
-        const supported = ['en', 'sq', 'it'];
+        const supported = new Set(['en', 'sq', 'it']);
         let locale = null;
         try {
           locale = localStorage.getItem('riviera-locale');
         } catch {
           // blocked storage (private mode): fall through to the browser's languages
         }
-        if (!supported.includes(locale)) {
+        if (!supported.has(locale)) {
           const primaries = (navigator.languages || []).map((tag) =>
             tag.split('-')[0].toLowerCase(),
           );
-          locale = primaries.find((primary) => supported.includes(primary)) || 'en';
+          locale = primaries.find((primary) => supported.has(primary)) || 'en';
         }
         if (locale !== 'en') location.replace('/' + locale + '/' + location.search + location.hash);
       })();

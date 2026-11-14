@@ -4647,13 +4647,6 @@
           <context context-type="sourcefile">src/app/venue/stay-plan.ts</context>
         </context-group>
       </trans-unit>
-      <trans-unit id="6320223200666338309" datatype="html">
-        <source>Rated <x id="INTERPOLATION" equiv-text="{{ v.rating }}"/> out of 5</source>
-        <target state="translated">Vlerësuar <x id="INTERPOLATION" equiv-text="{{ v.rating }}"/> nga 5</target>
-        <context-group purpose="location">
-          <context context-type="sourcefile">src/app/venue/venue-map.html</context>
-        </context-group>
-      </trans-unit>
       <trans-unit id="1785012351193519963" datatype="html">
         <source>No reviews yet</source>
         <target state="translated">Ende pa vlerësime</target>
@@ -5027,6 +5020,13 @@
       <trans-unit id="4142302519571079627" datatype="html">
         <source><x id="tile" equiv-text="name"/>. Select to see which days.</source>
         <target state="translated"><x id="tile" equiv-text="name"/>. Zgjidhni për të parë cilat ditë.</target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/venue/venue-map.ts</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="2127347581872002843" datatype="html">
+        <source>Rated <x id="rating" equiv-text="rating"/> out of 5</source>
+        <target state="translated">Vlerësuar <x id="rating" equiv-text="rating"/> nga 5</target>
         <context-group purpose="location">
           <context context-type="sourcefile">src/app/venue/venue-map.ts</context>
         </context-group>

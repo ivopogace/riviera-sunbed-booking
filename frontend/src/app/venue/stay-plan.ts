@@ -232,10 +232,14 @@ export class StayPlan {
     }
     const spot = spotLabel(set.rowLabel, set.positionNo);
     switch (this.anchor()) {
-      case 'START':
-        return `${base} ${$localize`Starts at ${spot}:spot:, the spot you picked.`}`;
-      case 'END':
-        return `${base} ${$localize`Ends at ${spot}:spot:, the spot you picked.`}`;
+      case 'START': {
+        const note = $localize`Starts at ${spot}:spot:, the spot you picked.`;
+        return `${base} ${note}`;
+      }
+      case 'END': {
+        const note = $localize`Ends at ${spot}:spot:, the spot you picked.`;
+        return `${base} ${note}`;
+      }
       case 'UNANCHORABLE':
         return `${base} ${this.unanchorableNote(spot)}`;
       default:
