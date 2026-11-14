@@ -49,6 +49,7 @@ import ai.riviera.platform.venue.vocabulary.StaySpan;
 import ai.riviera.platform.venue.api.VenueCatalog;
 import ai.riviera.platform.venue.vocabulary.VenueFilter;
 import ai.riviera.platform.venue.vocabulary.VenueId;
+import ai.riviera.platform.venue.vocabulary.VenueLinkPreview;
 import ai.riviera.platform.venue.vocabulary.VenueLocation;
 import ai.riviera.platform.venue.vocabulary.VenueMapView;
 import ai.riviera.platform.venue.api.VenueRates;
@@ -120,6 +121,27 @@ class JdbcVenueCatalog implements VenueCatalog, VenueRates, OwnerVenueMap {
 			return Optional.empty();
 		}
 		return composeVenueMap(id, stay);
+	}
+
+	/** The tourist fence first, like the map read; the cover is the map's own (both surfaces, or none). */
+	@Override
+	public Optional<VenueLinkPreview> findLinkPreview(VenueId id) {
+		if (!visibility.isVisible(new VenueRef(id.value()))) {
+			return Optional.empty();
+		}
+		record PreviewRow(String name, Beach beach, String description) {
+		}
+		return jdbc.sql("SELECT name, beach, description FROM venue WHERE id = :id")
+				.param("id", id.value())
+				.query((rs, rowNum) -> new PreviewRow(rs.getString("name"), Beach.valueOf(rs.getString(COL_BEACH)),
+						rs.getString("description")))
+				.optional()
+				.map(row -> {
+					CoverPhotoView cover = coverOf(
+							photoVariantsByVenue(List.of(id.value())).getOrDefault(id.value(), Map.of()));
+					return new VenueLinkPreview(row.name(), row.beach(), row.description(),
+							cover == null ? null : cover.banner().url());
+				});
 	}
 
 	/**
