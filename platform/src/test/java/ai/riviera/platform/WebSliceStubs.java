@@ -136,6 +136,7 @@ import ai.riviera.platform.payout.domain.PayoutBatch;
 import ai.riviera.platform.payout.domain.PeriodKey;
 import ai.riviera.platform.shared.ResubmissionOutcome;
 import ai.riviera.platform.venue.api.SetBookingFacts;
+import ai.riviera.platform.venue.api.PublicVenueIndex;
 import ai.riviera.platform.venue.api.VenueCatalog;
 import ai.riviera.platform.venue.api.VenueRates;
 import ai.riviera.platform.venue.application.AddSetOutcome;
@@ -953,6 +954,12 @@ public class WebSliceStubs {
 				return Optional.empty();
 			}
 		};
+	}
+
+	/** The crawl policy's venue index, empty: the sitemap lists only the fixed pages. */
+	@Bean
+	PublicVenueIndex publicVenueIndex() {
+		return List::of;
 	}
 
 	@Bean

@@ -114,6 +114,9 @@ class EndpointRoleGateCoverageTest {
 			"GET /api/venues/{venueId}/itinerary",
 			// permitAll — the configured support channels the help surfaces read (#1735).
 			"GET /api/support-contact",
+			// permitAll — the crawl policy, read-only and public by definition (#1761).
+			"GET /robots.txt",
+			"GET /sitemap.xml",
 			// permitAll — guest checkout is deliberately session-free; the booking code authorizes
 			// the read, the cancel and the request-withdraw (invariant #7).
 			"POST /api/bookings",
