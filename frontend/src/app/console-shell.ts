@@ -39,7 +39,7 @@ import {
   VenueGlyph,
   VenuesGlyph,
 } from './shared/console-glyphs';
-import { ConsolePalette, PaletteRow } from './shared/console-palette';
+import { ConsolePalette, PaletteRow, paletteChord } from './shared/console-palette';
 import { CONSOLE_PAGE_ROW } from './shared/console-page-box';
 import { currentUrl } from './shared/current-url';
 import { focusMover } from './shared/focus-after-render';
@@ -170,7 +170,7 @@ const CLS = {
   adminSlot: `shrink-0 px-0.5 text-[13.5px] font-semibold text-riv-ink-soft no-underline hover:text-riv-ink max-sm:hidden ${SLOT}`,
   signIn:
     'inline-flex items-center text-[13px] font-semibold text-riv-ink no-underline hover:underline',
-  // The palette's trigger, from sm up: the lens plus a keycap; below sm the row has no room and a phone no ⌘.
+  // The palette's trigger, from sm up: the lens plus a keycap; below sm the row has no room and a phone no keyboard.
   search:
     'inline-flex shrink-0 cursor-pointer items-center justify-center gap-1.5 rounded-lg px-1.5 text-riv-ink-soft hover:text-riv-ink max-sm:hidden [&_svg]:size-[18px]',
   keycap:
@@ -267,13 +267,13 @@ const CLS = {
               #searchButton
               type="button"
               [class]="cls.search"
-              aria-label="Jump to a section or venue (⌘K)"
+              [attr.aria-label]="'Jump to a section or venue (' + chord + ')'"
               [attr.aria-expanded]="palette()?.open() ?? false"
               data-testid="oc-search"
               (click)="palette()?.toggle(searchButton)"
             >
               <app-search-glyph />
-              <kbd [class]="cls.keycap" aria-hidden="true">⌘K</kbd>
+              <kbd [class]="cls.keycap" aria-hidden="true">{{ chord }}</kbd>
             </button>
           }
           @if (!operator.restoring()) {
@@ -420,6 +420,7 @@ export class ConsoleShell {
   private readonly router = inject(Router);
   private readonly document = inject(DOCUMENT);
   private readonly injector = inject(Injector);
+  protected readonly chord = paletteChord(this.document.defaultView?.navigator);
   private readonly url = currentUrl(this.router);
   private readonly moreButton = viewChild<ElementRef<HTMLButtonElement>>('more');
   protected readonly palette = viewChild(ConsolePalette);
