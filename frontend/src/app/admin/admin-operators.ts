@@ -1,3 +1,5 @@
+import { DOCUMENT } from '@angular/common';
+import { HttpErrorResponse } from '@angular/common/http';
 import { Component, computed, effect, inject, signal } from '@angular/core';
 
 import { OperatorAuth } from '../core/operator-auth';
@@ -5,6 +7,7 @@ import { BusyAction } from '../shared/busy-action';
 import { CardGlass } from '../shared/card-glass';
 import { ConfirmWithReason } from '../shared/confirm-with-reason';
 import { focusMover } from '../shared/focus-after-render';
+import { formatDeadline } from '../shared/deadline';
 import { AdminConsoleStats } from './admin-console-stats';
 import { AdminOperatorsService } from './admin-operators.service';
 import { OperatorAccountView, PendingOperatorView } from './admin.model';
@@ -17,7 +20,8 @@ import { PrimaryCta } from '../shared/primary-cta';
  * Every action re-fetches both lists (never a local-only row removal), so a concurrently decided
  * or vanished row settles to the server's truth. Suspend confirms inline, in place (no modal to
  * focus-trap), collecting optional `X-Audit-Reason` grounds; suspended accounts stay listed with
- * Reinstate. The admin's own row offers no Suspend; the server's `409 CANNOT_SUSPEND_SELF` rules.
+ * Reinstate. The admin's own row offers no Suspend; the server's `409 CANNOT_SUSPEND_SELF` rules. An
+ * active row's Reset link shows a one-time link in place, never stored, for the admin to hand over (#1737).
  */
 @Component({
   selector: 'app-admin-operators',
@@ -190,16 +194,78 @@ import { PrimaryCta } from '../shared/primary-cta';
                   (cancelled)="cancelSuspend(op.id)"
                 />
               } @else {
-                <button
-                  appTouchTarget
-                  type="button"
-                  [attr.data-testid]="'admin-suspend-' + op.id"
-                  [appBusy]="actingId() !== undefined"
-                  (click)="askToSuspend(op.id)"
-                  class="rounded-[10px] border border-riv-field-border px-4 py-2 text-[14px] font-semibold text-riv-card-ink aria-disabled:opacity-60"
-                >
-                  Suspend
-                </button>
+                <div class="flex gap-2">
+                  <button
+                    appTouchTarget
+                    type="button"
+                    [attr.data-testid]="'admin-reset-link-' + op.id"
+                    [appBusy]="actingId() !== undefined"
+                    (click)="issueResetLink(op.id)"
+                    class="rounded-[10px] border border-riv-field-border px-4 py-2 text-[14px] font-semibold text-riv-card-ink aria-disabled:opacity-60"
+                  >
+                    Reset link
+                  </button>
+                  <button
+                    appTouchTarget
+                    type="button"
+                    [attr.data-testid]="'admin-suspend-' + op.id"
+                    [appBusy]="actingId() !== undefined"
+                    (click)="askToSuspend(op.id)"
+                    class="rounded-[10px] border border-riv-field-border px-4 py-2 text-[14px] font-semibold text-riv-card-ink aria-disabled:opacity-60"
+                  >
+                    Suspend
+                  </button>
+                </div>
+              }
+              @if (issuedLink(); as link) {
+                @if (link.id === op.id) {
+                  <div
+                    class="basis-full rounded-[10px] border border-riv-field-border p-3"
+                    [attr.data-testid]="'admin-reset-panel-' + op.id"
+                  >
+                    <label class="flex flex-col gap-1.5">
+                      <span class="text-[14px] font-semibold text-riv-card-ink"
+                        >One-time reset link for {{ op.username }}</span
+                      >
+                      <input
+                        appTouchTarget
+                        readonly
+                        type="text"
+                        [value]="link.url"
+                        [attr.data-testid]="'admin-reset-url-' + op.id"
+                        (focus)="selectAll($event)"
+                        class="w-full rounded-[10px] border border-riv-field-border bg-riv-field-fill px-3 py-2 font-mono text-[14px] text-riv-card-ink"
+                      />
+                    </label>
+                    <p
+                      class="mt-1.5 text-[14px] text-riv-card-ink-soft"
+                      [attr.data-testid]="'admin-reset-expiry-' + op.id"
+                    >
+                      It works once, until {{ link.expires }} (Tirana time). Nothing is emailed:
+                      hand it over yourself. Issuing another link cancels this one.
+                    </p>
+                    <div class="mt-2 flex gap-2">
+                      <button
+                        appTouchTarget
+                        type="button"
+                        [attr.data-testid]="'admin-reset-copy-' + op.id"
+                        (click)="copyResetLink()"
+                        class="rounded-[10px] border border-riv-field-border px-4 py-2 text-[14px] font-semibold text-riv-card-ink"
+                      >
+                        Copy link
+                      </button>
+                      <button
+                        appTouchTarget
+                        type="button"
+                        [attr.data-testid]="'admin-reset-done-' + op.id"
+                        (click)="dismissResetLink(op.id)"
+                        class="rounded-[10px] border border-riv-field-border px-4 py-2 text-[14px] font-semibold text-riv-card-ink"
+                      >
+                        Done
+                      </button>
+                    </div>
+                  </div>
+                }
               }
             </li>
           }
@@ -211,6 +277,7 @@ import { PrimaryCta } from '../shared/primary-cta';
 export class AdminOperators {
   private readonly auth = inject(OperatorAuth);
   private readonly service = inject(AdminOperatorsService);
+  private readonly document = inject(DOCUMENT);
   private readonly focusAfterRender = focusMover();
 
   protected readonly pending = signal<PendingOperatorView[]>([]);
@@ -223,6 +290,10 @@ export class AdminOperators {
   protected readonly confirmingId = signal<number | undefined>(undefined);
   /** The armed confirmation's optional grounds; cleared on arm, dismiss, and confirm. */
   protected readonly suspendReason = signal('');
+  /** The one reset link on screen, built on this console's origin; held in memory only, never stored. */
+  protected readonly issuedLink = signal<{ id: number; url: string; expires: string } | undefined>(
+    undefined,
+  );
   /** What the last settled decision did — announced, and the spot focus lands on. */
   protected readonly notice = signal('');
   /**
@@ -318,6 +389,62 @@ export class AdminOperators {
     );
   }
 
+  /**
+   * Issue a reset link and show it in the row, focusing it for the copy. A refusal reconciles the lists like
+   * any action; the env-managed bootstrap admin gets its own answer, since retrying cannot help.
+   */
+  protected async issueResetLink(id: number): Promise<void> {
+    if (this.actingId() !== undefined) {
+      return;
+    }
+    const who = this.nameOf(id);
+    this.actingId.set(id);
+    this.confirmingId.set(undefined);
+    this.issuedLink.set(undefined);
+    this.notice.set('');
+    try {
+      const { token, expiresAt } = await this.service.issueResetLink(id);
+      const origin = this.document.location.origin;
+      const url = `${origin}/account/operator-reset?token=${encodeURIComponent(token)}`;
+      this.issuedLink.set({ id, url, expires: formatDeadline(expiresAt) });
+      this.notice.set(`Reset link ready for ${who}.`);
+      this.focusAfterRender(`admin-reset-url-${id}`);
+    } catch (error) {
+      if (problemCode(error) === 'BOOTSTRAP_CREDENTIAL_MANAGED') {
+        this.notice.set(`The password of ${who} is set by the deployment environment, not here.`);
+      } else {
+        await this.load();
+        this.notice.set(`That didn't go through. The list below is up to date.`);
+      }
+      this.focusAfterRender('admin-ops-notice');
+    } finally {
+      this.actingId.set(undefined);
+    }
+  }
+
+  protected selectAll(event: Event): void {
+    (event.target as HTMLInputElement).select();
+  }
+
+  protected async copyResetLink(): Promise<void> {
+    const link = this.issuedLink();
+    if (link === undefined) {
+      return;
+    }
+    try {
+      await this.document.defaultView?.navigator.clipboard.writeText(link.url);
+      this.notice.set('Link copied.');
+    } catch {
+      this.notice.set('Could not copy. Select the link and copy it yourself.');
+    }
+  }
+
+  /** Dismissing destroys the focused Done button, so focus returns to the row's Reset link. */
+  protected dismissResetLink(id: number): void {
+    this.issuedLink.set(undefined);
+    this.focusAfterRender(`admin-reset-link-${id}`);
+  }
+
   protected async reinstate(id: number): Promise<void> {
     await this.act(id, () => this.service.reinstate(id), 'Reinstated');
   }
@@ -334,6 +461,7 @@ export class AdminOperators {
     const who = this.nameOf(id);
     this.actingId.set(id);
     this.confirmingId.set(undefined);
+    this.issuedLink.set(undefined);
     this.notice.set('');
     let settled = false;
     try {
@@ -358,4 +486,11 @@ export class AdminOperators {
       this.pending().find((op) => op.id === id) ?? this.accounts().find((op) => op.id === id);
     return row?.username ?? 'the operator';
   }
+}
+
+/** The stable `code` on an RFC-7807 error body. */
+function problemCode(error: unknown): string | undefined {
+  return error instanceof HttpErrorResponse
+    ? (error.error as { code?: string } | null)?.code
+    : undefined;
 }

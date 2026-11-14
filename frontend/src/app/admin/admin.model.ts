@@ -27,6 +27,15 @@ export interface OperatorAccountView {
 }
 
 /**
+ * A freshly issued operator reset token; mirrors `AdminOperatorController.ResetLinkResponse`. Answered once:
+ * the console builds the link on its own origin and never stores it. `expiresAt` is an ISO instant.
+ */
+export interface ResetLinkView {
+  readonly token: string;
+  readonly expiresAt: string;
+}
+
+/**
  * What an outbox lever still owes (mail or refunds); mirrors the backend
  * `AdminMailOutboxController.MailOutboxStatusResponse` and
  * `AdminRefundOutboxController.RefundOutboxStatusResponse`, whose shapes are deliberately identical

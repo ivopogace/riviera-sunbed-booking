@@ -3,7 +3,7 @@ import { inject, Service } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
 
 import { environment } from '../../environments/environment';
-import { OperatorAccountView, PendingOperatorView } from './admin.model';
+import { OperatorAccountView, PendingOperatorView, ResetLinkView } from './admin.model';
 
 /** The platform-admin operator-approval surface; ADMIN-gated server-side. */
 const ADMIN_OPERATORS_API = `${environment.apiBaseUrl}/api/admin/operators`;
@@ -51,6 +51,13 @@ export class AdminOperatorsService {
       this.http.post<void>(`${ADMIN_OPERATORS_API}/${id}/suspend`, null, {
         headers: grounds ? { [AUDIT_REASON_HEADER]: grounds } : {},
       }),
+    );
+  }
+
+  /** Issue a single-use reset link for an active operator, retiring its earlier one (#1737). */
+  issueResetLink(id: number): Promise<ResetLinkView> {
+    return firstValueFrom(
+      this.http.post<ResetLinkView>(`${ADMIN_OPERATORS_API}/${id}/reset-link`, null),
     );
   }
 

@@ -100,15 +100,15 @@ is #1759 (blocked on #370), out of scope.
 
 ## Execution status
 
-**Stage pointer:** implement (phase 2)
+**Stage pointer:** PR — ready for review, review gate next
 
-**Next action:** admin row action + reset page (red specs first).
+**Next action:** fill PR body, mark ready, run `code-review:code-review` at high.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — storage + port | ✅ | phase 0–1 commit |
 | 1 — endpoints | ✅ | phase 0–1 commit |
-| 2 — SPA | ⏳ | |
+| 2 — SPA | ✅ | SPA commit |
 | 3 — docs | ✅ (runbook, RESPONSIBILITIES, CLAUDE.md row) | phase 0–1 commit |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.

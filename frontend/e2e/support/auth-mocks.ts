@@ -512,6 +512,10 @@ export async function mockOperatorLifecycleApi(
       : route.fulfill(problem(403, 'Forbidden', 'ACCESS_DENIED')),
   );
 
+  /** One live reset token per operator id; a second issue replaces it, a redemption spends it (#1737). */
+  const resetTokens = new Map<number, string>();
+  let nextResetToken = 1;
+
   /** Suspend/reinstate; suspending also REVOKES that operator's live session, as the server does. */
   const transition = (route: import('@playwright/test').Route, suspend: boolean) => {
     if (!session?.admin) {
@@ -534,8 +538,47 @@ export async function mockOperatorLifecycleApi(
     }
     return route.fulfill({ status: 204 });
   };
-  await page.route(/\/api\/admin\/operators\/\d+\/suspend$/, (route) => transition(route, true));
+  await page.route(/\/api\/admin\/operators\/\d+\/suspend$/, (route) => {
+    const id = Number(/\/operators\/(\d+)\/suspend/.exec(route.request().url())?.[1]);
+    resetTokens.delete(id); // a suspend retires the operator's live link (#1737)
+    return transition(route, true);
+  });
   await page.route(/\/api\/admin\/operators\/\d+\/reinstate$/, (route) => transition(route, false));
+
+  await page.route(/\/api\/admin\/operators\/\d+\/reset-link$/, (route) => {
+    if (!session?.admin) {
+      return route.fulfill(problem(403, 'Forbidden', 'ACCESS_DENIED'));
+    }
+    const id = Number(/\/operators\/(\d+)\/reset-link/.exec(route.request().url())?.[1]);
+    const target = accounts.find((a) => a.id === id);
+    if (!target) {
+      return route.fulfill(problem(404, 'Not Found', 'NO_SUCH_OPERATOR'));
+    }
+    if (target.username === admin.username) {
+      return route.fulfill(problem(409, 'Conflict', 'BOOTSTRAP_CREDENTIAL_MANAGED'));
+    }
+    if (target.suspended) {
+      return route.fulfill(problem(409, 'Conflict', 'WRONG_STATUS'));
+    }
+    const token = `reset-token-${nextResetToken++}`;
+    resetTokens.set(id, token);
+    return route.fulfill({ json: { token, expiresAt: '2026-07-18T11:00:00Z' } });
+  });
+
+  await page.route(/\/api\/auth\/operator\/reset-password$/, (route) => {
+    const body = route.request().postDataJSON() as { token?: string; newPassword?: string };
+    const entry = [...resetTokens.entries()].find(([, token]) => token === body.token);
+    const target = entry && accounts.find((a) => a.id === entry[0] && !a.suspended);
+    if (!entry || !target) {
+      return route.fulfill(problem(400, 'Bad Request', 'INVALID_OR_EXPIRED_TOKEN'));
+    }
+    resetTokens.delete(entry[0]);
+    target.password = body.newPassword ?? '';
+    if (session?.username === target.username) {
+      session = undefined; // the reset revokes every session of that operator, as the server does
+    }
+    return route.fulfill({ status: 204 });
+  });
 
   await page.route(/\/api\/venues$/, (route) =>
     route.request().method() === 'POST'
