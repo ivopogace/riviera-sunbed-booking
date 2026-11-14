@@ -10,11 +10,9 @@ import ai.riviera.platform.venue.vocabulary.SetId;
 import ai.riviera.platform.shared.SiteLocale;
 
 /**
- * The {@code POST /api/bookings} request body: primitives/strings on the wire (dates are ISO
- * {@code LocalDate} strings; {@code lastDate} is optional and defaults to {@code bookingDate}, a
- * one-day booking; {@code locale} is the SPA's build locale, any other value or none read as English).
- * {@link #toCommand} maps it onto the typed {@link CreateBookingCommand},
- * validating presence, shape and the span's bounds. Bad input throws
+ * The {@code POST /api/bookings} body: ISO date strings ({@code lastDate} optional, a one-day booking) and
+ * {@code locale}, the SPA's build locale (any other value or none reads as English). {@link #toCommand} maps it
+ * onto the typed {@link CreateBookingCommand}, validating presence, shape and the span's bounds. Bad input throws
  * {@link IllegalArgumentException}, which the controller's conversion wrap makes the typed 400
  * (no {@code spring-boot-starter-validation}, so validation is explicit here).
  */
