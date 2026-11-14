@@ -209,6 +209,36 @@ test.describe('44px touch targets on the tourist surfaces at a phone width', () 
     await expectTouchTargets(page, 'booking pay chrome');
   });
 
+  test('the confirmation page, reached through the booking dialog', async ({ page }) => {
+    await page.route('**/api/bookings', (route) =>
+      route.fulfill({
+        status: 201,
+        json: {
+          code: 'ABCD234567',
+          status: 'CONFIRMED',
+          venueId: 1,
+          venueName: 'Miramar Beach Club',
+          setId: 2,
+          rowLabel: 'Front row · Sea view',
+          positionNo: 2,
+          bookingDate: '2026-12-01',
+          amount: { minorUnits: 4500, currency: 'EUR' },
+          emailWithheld: false,
+        },
+      }),
+    );
+    await page.goto('/venues/1');
+    await page
+      .getByRole('button', { name: /Select to book/ })
+      .first()
+      .click();
+    await completeDialog(page.getByRole('dialog'), 'Continue to payment');
+    await expect(page).toHaveURL(/\/booking\/confirmation/);
+    await expect(page.getByTestId('manage-link')).toBeVisible();
+
+    await expectTouchTargets(page, 'booking confirmation');
+  });
+
   test('booking detail — a confirmed booking', async ({ page }) => {
     await page.goto('/booking/WXYZ345678');
     await expect(page.getByTestId('booking-code')).toBeVisible();
