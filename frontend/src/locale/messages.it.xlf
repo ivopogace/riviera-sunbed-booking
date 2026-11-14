@@ -4989,6 +4989,13 @@
           <context context-type="sourcefile">src/app/venue/venue-map.ts</context>
         </context-group>
       </trans-unit>
+      <trans-unit id="2127347581872002843" datatype="html">
+        <source>Rated <x id="rating" equiv-text="rating"/> out of 5</source>
+        <target state="translated">Valutato <x id="rating" equiv-text="rating"/> su 5</target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/venue/venue-map.ts</context>
+        </context-group>
+      </trans-unit>
       <trans-unit id="3825947165089033091" datatype="html">
         <source><x id="venue" equiv-text="view.name"/>, <x id="beach" equiv-text="view.beach"/> — Riviera</source>
         <target state="translated"><x id="venue" equiv-text="view.name"/>, <x id="beach" equiv-text="view.beach"/> — Riviera</target>
@@ -5020,13 +5027,6 @@
       <trans-unit id="4142302519571079627" datatype="html">
         <source><x id="tile" equiv-text="name"/>. Select to see which days.</source>
         <target state="translated"><x id="tile" equiv-text="name"/>. Seleziona per vedere quali giorni.</target>
-        <context-group purpose="location">
-          <context context-type="sourcefile">src/app/venue/venue-map.ts</context>
-        </context-group>
-      </trans-unit>
-      <trans-unit id="2127347581872002843" datatype="html">
-        <source>Rated <x id="rating" equiv-text="rating"/> out of 5</source>
-        <target state="translated">Valutato <x id="rating" equiv-text="rating"/> su 5</target>
         <context-group purpose="location">
           <context context-type="sourcefile">src/app/venue/venue-map.ts</context>
         </context-group>

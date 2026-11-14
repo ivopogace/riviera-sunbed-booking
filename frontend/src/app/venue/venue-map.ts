@@ -110,6 +110,8 @@ interface VenueHeader {
   readonly isRated: boolean;
   readonly reviewsCount: number;
   readonly rating: string;
+  /** The score's accessible name, bound with `[attr.aria-label]`: an interpolated `i18n-aria-label` renders none. */
+  readonly ratedLabel: string;
   /** The count with its noun already agreed — "1 review", "2 reviews" (shared/rating.ts). */
   readonly reviewsLabel: string;
   /** The "from €X / set" price string: the cheapest online set (#1647), `null` with none. */
@@ -373,6 +375,7 @@ export class VenueMap {
       return undefined;
     }
     const photos = slideshowPhotos(v, 'banner');
+    const rating = ratingScore(v.ratingTenths);
     return {
       id: v.id,
       name: v.name,
@@ -390,7 +393,8 @@ export class VenueMap {
       modeLabel: v.bookingMode === 'INSTANT' ? $localize`Instant Book` : $localize`Request to Book`,
       isRated: isRated(v),
       reviewsCount: v.reviewsCount,
-      rating: ratingScore(v.ratingTenths),
+      rating,
+      ratedLabel: $localize`Rated ${rating}:rating: out of 5`,
       reviewsLabel: reviewsLabel(v.reviewsCount),
       priceLabel: v.fromPrice ? formatMoney(v.fromPrice) : null,
       unpricedLabel: !v.fromPrice && v.sets.length > 0 ? $localize`Walk-in only` : null,
@@ -754,11 +758,6 @@ export class VenueMap {
   }
 
   /** The no-cover banner's offer of the stitched plan ("See a 2-move plan"). */
-  /** The score's accessible name; bound as an attribute, since an interpolated `i18n-aria-label` renders none. */
-  protected ratedLabel(rating: string): string {
-    return $localize`Rated ${rating}:rating: out of 5`;
-  }
-
   protected planOfferLabel(moves: number): string {
     return pluralOf(
       moves,
