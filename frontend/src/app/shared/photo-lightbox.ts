@@ -60,6 +60,7 @@ import { CrossIcon } from './cross-icon';
         class="group absolute top-2 right-2 z-20 inline-flex size-11 cursor-pointer touch-manipulation items-center justify-center rounded-full bg-black/55 backdrop-blur-[10px] [transition:background_0.15s_ease] hover:bg-black/70 focus-visible:outline-[3px] focus-visible:outline-offset-2 focus-visible:outline-white"
         data-testid="lightbox-close"
         aria-label="Close photo viewer"
+        i18n-aria-label
         (click)="dismissed.emit()"
       >
         <app-cross-icon class="text-white [&_svg]:size-[18px]" />
@@ -76,7 +77,7 @@ export class PhotoLightbox {
   readonly dismissed = output<void>();
 
   protected readonly ariaLabel = computed(() =>
-    this.name() ? `Photos of ${this.name()}` : 'Photos',
+    this.name() ? $localize`Photos of ${this.name()}:venue:` : $localize`Photos`,
   );
 
   private readonly slideshow = viewChild.required(PhotoSlideshow);

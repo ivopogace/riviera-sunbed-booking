@@ -11,7 +11,7 @@ import {
 import { DateRange } from '../shared/booking-date';
 import { formatBookingDate, formatStay } from '../shared/booking-date-label';
 import { trapFocusWithin } from '../shared/focus-trap';
-import { plural } from '../shared/plural';
+import { pluralOf } from '../shared/plural';
 import { RetryButton } from '../shared/retry-button';
 import { spotLabel } from '../shared/set-label';
 import { TouchTarget } from '../shared/touch-target';
@@ -58,7 +58,7 @@ import { freeDaysOf, longestFreeRun, stayDays } from './stay-runs';
           >
             <span>{{ day.label }}</span>
             <span class="font-bold" [class.text-riv-pop-ink-soft]="!day.free">{{
-              day.free ? 'free' : 'taken'
+              day.status
             }}</span>
           </li>
         }
@@ -66,7 +66,7 @@ import { freeDaysOf, longestFreeRun, stayDays } from './stay-runs';
       <div class="mt-3 flex justify-center">
         <app-retry-button
           testId="plan-around"
-          [label]="'Plan my stay around ' + spot()"
+          [label]="planAroundLabel()"
           (retry)="planAround.emit()"
         />
       </div>
@@ -74,6 +74,7 @@ import { freeDaysOf, longestFreeRun, stayDays } from './stay-runs';
         <p
           class="mt-3 text-[13px] leading-[1.4] text-riv-pop-ink-soft"
           data-testid="partly-free-run"
+          i18n
         >
           The longest this spot can host you is {{ runLabel() }}.
         </p>
@@ -84,6 +85,7 @@ import { freeDaysOf, longestFreeRun, stayDays } from './stay-runs';
             class="cursor-pointer rounded-[14px] px-4 py-2.5 text-[14px] font-bold text-riv-calendar-accent hover:bg-riv-pop-hover"
             data-testid="shorten-stay"
             (click)="shorten.emit({ first: run.first, last: run.last })"
+            i18n
           >
             Shorten my stay to {{ runLabel() }}
           </button>
@@ -95,6 +97,7 @@ import { freeDaysOf, longestFreeRun, stayDays } from './stay-runs';
         class="mt-2 w-full cursor-pointer rounded-[14px] px-4 py-2.5 text-[14px] font-bold text-riv-calendar-accent hover:bg-riv-pop-hover"
         data-testid="keep-dates"
         (click)="dismissed.emit()"
+        i18n
       >
         Keep my dates
       </button>
@@ -121,15 +124,27 @@ export class PartlyFreeSheet {
       iso,
       label: formatBookingDate(iso),
       free: !taken.has(iso),
+      status: taken.has(iso)
+        ? $localize`:A stay day this set is booked on:taken`
+        : $localize`:A stay day this set is free on:free`,
     }));
   });
 
   protected readonly spot = computed(() => spotLabel(this.set().rowLabel, this.set().positionNo));
+  protected readonly planAroundLabel = computed(
+    () => $localize`Plan my stay around ${this.spot()}:spot:`,
+  );
 
   protected readonly title = computed(() => {
     const set = this.set();
     const total = this.days().length;
-    return `${spotLabel(set.rowLabel, set.positionNo)} is free ${freeDaysOf(set, total)} of ${plural(total, 'day')}`;
+    const spot = spotLabel(set.rowLabel, set.positionNo);
+    const free = freeDaysOf(set, total);
+    return pluralOf(
+      total,
+      $localize`${spot}:spot: is free ${free}:free: of ${total}:total: day`,
+      $localize`${spot}:spot: is free ${free}:free: of ${total}:total: days`,
+    );
   });
 
   protected readonly run = computed(() =>

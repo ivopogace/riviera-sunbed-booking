@@ -44,7 +44,9 @@ export class CheckoutGateway {
   /** The browser leaves only on {@link CheckoutSession.confirm}, so the guest sees the summary first. */
   private redirectTo(url: string): Promise<CheckoutSession> {
     if (!URL.canParse(url) || new URL(url).protocol !== 'https:') {
-      return Promise.reject(new Error('Could not open the payment page. Please try again.'));
+      return Promise.reject(
+        new Error($localize`Could not open the payment page. Please try again.`),
+      );
     }
     return Promise.resolve({
       confirm: () => {

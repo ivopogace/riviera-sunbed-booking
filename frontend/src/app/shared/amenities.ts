@@ -36,17 +36,17 @@ export const AMENITY_CATALOGUE: readonly Amenity[] = [
 
 /** Human-readable display label per amenity code (the design chip text). */
 export const AMENITY_LABELS: Record<Amenity, string> = {
-  BEACH_BAR: 'Beach bar',
-  RESTAURANT: 'Restaurant',
-  CAFE: 'Cafe',
-  FREE_PARKING: 'Free parking',
-  SHOWERS: 'Showers',
-  WIFI: 'WiFi',
-  WATER_SPORTS: 'Water sports',
-  PET_FRIENDLY: 'Pet friendly',
-  SNACK_SHACK: 'Snack shack',
-  SNORKELLING: 'Snorkelling',
-  QUIET_BAY: 'Quiet bay',
+  BEACH_BAR: $localize`Beach bar`,
+  RESTAURANT: $localize`Restaurant`,
+  CAFE: $localize`Cafe`,
+  FREE_PARKING: $localize`Free parking`,
+  SHOWERS: $localize`Showers`,
+  WIFI: $localize`WiFi`,
+  WATER_SPORTS: $localize`Water sports`,
+  PET_FRIENDLY: $localize`Pet friendly`,
+  SNACK_SHACK: $localize`Snack shack`,
+  SNORKELLING: $localize`Snorkelling`,
+  QUIET_BAY: $localize`Quiet bay`,
 };
 
 /** Humanize an unknown code ("SUNSET_VIEW" → "Sunset view") — the graceful fallback for FE/BE skew. */
@@ -80,5 +80,5 @@ export function orderedAmenities(codes: readonly string[]): Amenity[] {
 
 /** The "Xm to water" chip label, or `null` when the distance is not stated. */
 export function distanceToWaterLabel(metres: number | null): string | null {
-  return metres == null ? null : `${metres}m to water`;
+  return metres == null ? null : $localize`${metres}:metres:m to water`;
 }

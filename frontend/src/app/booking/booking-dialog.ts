@@ -44,7 +44,7 @@ import { CrossIcon } from '../shared/cross-icon';
 import { PrimaryCta } from '../shared/primary-cta';
 
 /** What a set includes — the product's fixed unit (CLAUDE.md: 2 loungers + umbrella, full day). */
-const SET_INCLUDES = '2 loungers + umbrella · full day';
+const SET_INCLUDES = $localize`2 loungers + umbrella · full day`;
 
 /**
  * Two-step checkout modal for one set: Details (date read-only — the map owns it), then Review
@@ -96,6 +96,7 @@ const SET_INCLUDES = '2 loungers + umbrella · full day';
           class="dialog-close absolute top-[14px] right-[14px] flex size-[30px] cursor-pointer items-center justify-center rounded-full border border-riv-cta-border bg-[#31798a] text-white [&_svg]:size-[14px] motion-safe:[transition:filter_0.15s_ease] hover:brightness-[1.12] focus-visible:outline-[3px] focus-visible:outline-offset-2 focus-visible:outline-white"
           data-testid="dialog-close"
           aria-label="Close"
+          i18n-aria-label="Button that closes the booking dialog"
           (click)="requestClose()"
         >
           <app-cross-icon />
@@ -110,22 +111,40 @@ const SET_INCLUDES = '2 loungers + umbrella · full day';
           class="dialog-title mt-[5px] text-[23px] leading-[1.1] font-bold tracking-[-0.02em] text-white"
         >
           @if (plan(); as p) {
-            Your {{ dayCount() }} days, planned
+            <ng-container i18n>Your {{ dayCount() }} days, planned</ng-container>
           } @else {
             {{ primarySet().rowLabel }}
           }
         </h2>
         <p class="dialog-meta mt-[5px] text-[13px] text-white" data-testid="dialog-meta">
           @if (plan(); as p) {
-            {{ p.moves }} {{ p.moves === 1 ? 'move' : 'moves' }} · {{ p.stretches.length }} spots ·
-            one code, one payment
+            <ng-container i18n
+              >{p.moves, plural, =1 {1 move} other {{{ p.moves }} moves}} ·
+              {{
+                p.stretches.length // i18n(ph="spots")
+              }}
+              spots · one code, one payment</ng-container
+            >
           } @else {
-            Spot {{ primarySet().positionNo }} · {{ tierLabel() }}
+            <ng-container i18n
+              >Spot
+              {{
+                primarySet().positionNo // i18n(ph="spot")
+              }}
+              ·
+              {{
+                tierLabel() // i18n(ph="tier")
+              }}</ng-container
+            >
           }
         </p>
         <p class="dialog-includes mt-[7px] text-[12.5px] text-white">{{ includes }}</p>
 
-        <ol class="steps mt-[14px] flex items-center gap-2" aria-label="Booking steps">
+        <ol
+          class="steps mt-[14px] flex items-center gap-2"
+          aria-label="Booking steps"
+          i18n-aria-label
+        >
           @for (s of steps(); track s.n) {
             <!-- Solid white on the teal header — AA; the connector line is the ::after rule. -->
             <li
@@ -161,7 +180,7 @@ const SET_INCLUDES = '2 loungers + umbrella · full day';
             <div
               class="ro-row flex items-center justify-between border-b border-b-riv-card-track py-[9px] text-[14.5px] first:pt-0"
             >
-              <span class="ro-key text-riv-card-ink-soft">{{ isStay() ? 'Days' : 'Date' }}</span>
+              <span class="ro-key text-riv-card-ink-soft">{{ dateKey() }}</span>
               <strong class="ro-val text-riv-card-ink" data-testid="dialog-date">{{
                 dateLabel()
               }}</strong>
@@ -169,7 +188,7 @@ const SET_INCLUDES = '2 loungers + umbrella · full day';
             <div
               class="ro-row flex items-center justify-between border-b border-b-riv-card-track py-[9px] text-[14.5px] first:pt-0"
             >
-              <span class="ro-key text-riv-card-ink-soft">Price</span>
+              <span class="ro-key text-riv-card-ink-soft" i18n>Price</span>
               <strong
                 class="ro-val accent text-[16px] text-riv-accent-ink"
                 data-testid="dialog-price"
@@ -180,7 +199,7 @@ const SET_INCLUDES = '2 loungers + umbrella · full day';
               <div
                 class="ro-row flex items-center justify-between border-b border-b-riv-card-track py-[9px] text-[14.5px] first:pt-0"
               >
-                <span class="ro-key text-riv-card-ink-soft">Total</span>
+                <span class="ro-key text-riv-card-ink-soft" i18n>Total</span>
                 <strong
                   class="ro-val accent text-[16px] text-riv-accent-ink"
                   data-testid="dialog-total"
@@ -193,6 +212,7 @@ const SET_INCLUDES = '2 loungers + umbrella · full day';
               <label class="field flex flex-col gap-1.5">
                 <span
                   class="field-label text-[11px] font-bold tracking-[0.1em] uppercase text-riv-card-ink-soft"
+                  i18n
                   >Full name</span
                 >
                 <input
@@ -217,6 +237,7 @@ const SET_INCLUDES = '2 loungers + umbrella · full day';
               <label class="field flex flex-col gap-1.5">
                 <span
                   class="field-label text-[11px] font-bold tracking-[0.1em] uppercase text-riv-card-ink-soft"
+                  i18n
                   >Email</span
                 >
                 <input
@@ -240,6 +261,7 @@ const SET_INCLUDES = '2 loungers + umbrella · full day';
               <label class="field flex flex-col gap-1.5">
                 <span
                   class="field-label text-[11px] font-bold tracking-[0.1em] uppercase text-riv-card-ink-soft"
+                  i18n
                   >Phone</span
                 >
                 <input
@@ -261,7 +283,7 @@ const SET_INCLUDES = '2 loungers + umbrella · full day';
                 }
               </label>
             </div>
-            <p class="fine mt-2.5 mb-1 text-[12.5px] leading-[1.45] text-riv-card-ink-soft">
+            <p class="fine mt-2.5 mb-1 text-[12.5px] leading-[1.45] text-riv-card-ink-soft" i18n>
               We only use these to send your booking code and reach you about this booking.
             </p>
           }
@@ -271,13 +293,13 @@ const SET_INCLUDES = '2 loungers + umbrella · full day';
               <div
                 class="sum-row flex items-center justify-between gap-3 border-b border-b-riv-card-track py-[11px] text-[14.5px] first:pt-0"
               >
-                <dt class="text-riv-card-ink-soft">Venue</dt>
+                <dt class="text-riv-card-ink-soft" i18n>Venue</dt>
                 <dd class="text-right font-bold text-riv-card-ink">{{ venueName() }}</dd>
               </div>
               <div
                 class="sum-row flex items-center justify-between gap-3 border-b border-b-riv-card-track py-[11px] text-[14.5px] first:pt-0"
               >
-                <dt class="text-riv-card-ink-soft">{{ isPlan() ? 'Spots' : 'Set' }}</dt>
+                <dt class="text-riv-card-ink-soft">{{ setKey() }}</dt>
                 <dd class="text-right font-bold text-riv-card-ink">
                   @if (isPlan()) {
                     <ol class="list-none" data-testid="review-stops">
@@ -286,26 +308,34 @@ const SET_INCLUDES = '2 loungers + umbrella · full day';
                       }
                     </ol>
                   } @else {
-                    {{ primarySet().rowLabel }} · spot {{ primarySet().positionNo }}
+                    <ng-container i18n
+                      >{{
+                        primarySet().rowLabel // i18n(ph="row")
+                      }}
+                      · spot
+                      {{
+                        primarySet().positionNo // i18n(ph="spot")
+                      }}</ng-container
+                    >
                   }
                 </dd>
               </div>
               <div
                 class="sum-row flex items-center justify-between gap-3 border-b border-b-riv-card-track py-[11px] text-[14.5px] first:pt-0"
               >
-                <dt class="text-riv-card-ink-soft">{{ isStay() ? 'Days' : 'Date' }}</dt>
+                <dt class="text-riv-card-ink-soft">{{ dateKey() }}</dt>
                 <dd class="text-right font-bold text-riv-card-ink">{{ dateLabel() }}</dd>
               </div>
               <div
                 class="sum-row flex items-center justify-between gap-3 border-b border-b-riv-card-track py-[11px] text-[14.5px] first:pt-0"
               >
-                <dt class="text-riv-card-ink-soft">Guest</dt>
+                <dt class="text-riv-card-ink-soft" i18n>Guest</dt>
                 <dd class="text-right font-bold text-riv-card-ink">{{ model().fullName }}</dd>
               </div>
               <div
                 class="sum-row total flex items-center justify-between gap-3 pt-[14px] pb-[11px] text-[14.5px]"
               >
-                <dt class="text-[15px] text-riv-card-ink-soft">Total</dt>
+                <dt class="text-[15px] text-riv-card-ink-soft" i18n>Total</dt>
                 <dd
                   class="text-right text-[26px] font-bold tracking-[-0.02em] text-riv-accent-ink"
                   data-testid="review-total"
@@ -319,23 +349,37 @@ const SET_INCLUDES = '2 loungers + umbrella · full day';
               <p
                 class="mode-note request mt-[14px] mb-1 block rounded-2xl border border-[rgba(240,170,46,0.38)] bg-[rgba(240,170,46,0.12)] px-[15px] py-[13px] text-[12.8px] leading-[1.5] text-riv-card-ink-soft"
               >
-                <strong class="text-riv-card-ink">Request to Book.</strong> This venue reviews each
-                request before payment. We’ll send your request now —
-                <strong class="text-riv-card-ink">you won’t be charged yet</strong>.
+                <ng-container i18n
+                  ><strong class="text-riv-card-ink">Request to Book.</strong> This venue reviews
+                  each request before payment. We’ll send your request now —
+                  <strong class="text-riv-card-ink">you won’t be charged yet</strong>.</ng-container
+                >
                 @if (isPlan()) {
-                  The spots aren’t held until the venue accepts — other guests can request them too.
+                  <ng-container i18n
+                    >The spots aren’t held until the venue accepts — other guests can request them
+                    too.</ng-container
+                  >
                 } @else {
-                  The set isn’t held until the venue accepts — other guests can request it too.
+                  <ng-container i18n
+                    >The set isn’t held until the venue accepts — other guests can request it
+                    too.</ng-container
+                  >
                 }
                 @if (isStay()) {
-                  The venue accepts or declines your whole stay of {{ dayCount() }} days, never part
-                  of it.
+                  <ng-container i18n
+                    >The venue accepts or declines your whole stay of {{ dayCount() }} days, never
+                    part of it.</ng-container
+                  >
                 }
-                If the venue accepts, you’ll get a link to pay {{ total() }} and lock in the set.
+                <ng-container i18n
+                  >If the venue accepts, you’ll get a link to pay {{ total() }} and lock in the
+                  set.</ng-container
+                >
               </p>
             } @else {
               <p
                 class="mode-note instant mt-[14px] mb-1 block rounded-2xl border border-riv-accent-border bg-riv-accent-fill px-[15px] py-[13px] text-[12.8px] leading-[1.5] text-riv-card-ink-soft"
+                i18n
               >
                 <strong class="text-riv-card-ink">Instant Book.</strong> Next you’ll pay securely to
                 confirm this set right away — your booking code arrives on-screen and by email.
@@ -391,6 +435,7 @@ const SET_INCLUDES = '2 loungers + umbrella · full day';
               class="btn-back shrink-0 cursor-pointer rounded-2xl border-[1.5px] border-riv-card-border bg-riv-wash-fill px-5 py-[14px] text-[15px] font-semibold text-riv-back-ink backdrop-blur-[8px] motion-safe:[transition:background_0.15s_ease,border-color_0.15s_ease,box-shadow_0.15s_ease] hover:border-riv-wash-hover-border hover:bg-riv-wash-hover hover:shadow-[0_6px_16px_rgba(6,30,40,0.14)] focus-visible:outline-[3px] focus-visible:outline-offset-2 focus-visible:outline-white"
               data-testid="dialog-back"
               (click)="back()"
+              i18n="Button that returns from the review step to the details step"
             >
               Back
             </button>
@@ -518,18 +563,38 @@ export class BookingDialog implements OnInit {
       },
     );
   });
+  /** The date row's key: the stay's days, or the one date. */
+  protected readonly dateKey = computed(() =>
+    this.isStay()
+      ? $localize`Days`
+      : $localize`:the booked day|Row label for the booking date:Date`,
+  );
+  /** The set row's key: a plan's spots, or the one set. */
+  protected readonly setKey = computed(() =>
+    this.isPlan()
+      ? $localize`Spots`
+      : $localize`:sunbed set|Row label for the booked sunbed set (2 loungers + umbrella):Set`,
+  );
   protected readonly primaryLabel = computed(() => {
     if (this.step() === 1) {
-      return 'Continue';
+      return $localize`Continue`;
     }
-    return this.isRequest() ? 'Send request' : 'Continue to payment';
+    return this.isRequest() ? $localize`Send request` : $localize`Continue to payment`;
   });
   protected readonly busyLabel = computed(() =>
-    this.isRequest() ? 'Sending request…' : 'Processing…',
+    this.isRequest() ? $localize`Sending request…` : $localize`Processing…`,
   );
   protected readonly steps = computed(() => [
-    { n: 1, label: 'Details', active: this.step() === 1 },
-    { n: 2, label: 'Review', active: this.step() === 2 },
+    {
+      n: 1,
+      label: $localize`:checkout step|First checkout step:Details`,
+      active: this.step() === 1,
+    },
+    {
+      n: 2,
+      label: $localize`:checkout step|Second checkout step:Review`,
+      active: this.step() === 2,
+    },
   ]);
 
   protected readonly model = signal({
@@ -540,10 +605,10 @@ export class BookingDialog implements OnInit {
   });
 
   protected readonly bookingForm = form(this.model, (path) => {
-    required(path.fullName, { message: 'Your name is required' });
-    required(path.email, { message: 'Email is required' });
-    email(path.email, { message: 'Enter a valid email address' });
-    required(path.phone, { message: 'Phone is required' });
+    required(path.fullName, { message: $localize`Your name is required` });
+    required(path.email, { message: $localize`Email is required` });
+    email(path.email, { message: $localize`Enter a valid email address` });
+    required(path.phone, { message: $localize`Phone is required` });
   });
 
   constructor() {
@@ -561,7 +626,9 @@ export class BookingDialog implements OnInit {
 
   /** The Price row: the per-day rate, spelled out as such for a stay. */
   protected price(): string {
-    return this.isStay() ? `${this.perDay()} per day · ${this.dayCount()} days` : this.perDay();
+    return this.isStay()
+      ? $localize`${this.perDay()}:price: per day · ${this.dayCount()}:count: days`
+      : this.perDay();
   }
 
   protected requestClose(): void {
@@ -664,24 +731,24 @@ export class BookingDialog implements OnInit {
     switch (code) {
       case 'SET_TAKEN':
         return this.isPlan()
-          ? 'Sorry — someone just booked one of these spots. Close this and we’ll look for another plan.'
-          : 'Sorry — someone just booked this set. Please pick another.';
+          ? $localize`Sorry — someone just booked one of these spots. Close this and we’ll look for another plan.`
+          : $localize`Sorry — someone just booked this set. Please pick another.`;
       case 'SET_NOT_BOOKABLE_ONLINE':
-        return 'This set is not available to book online.';
+        return $localize`This set is not available to book online.`;
       case 'BOOKING_CLOSED':
         return this.date() === todayBookingDate(new Date())
-          ? 'Online sales for today have closed at this venue. Try another venue or tomorrow.'
-          : 'Booking has closed for that date. Try a later day.';
+          ? $localize`Online sales for today have closed at this venue. Try another venue or tomorrow.`
+          : $localize`Booking has closed for that date. Try a later day.`;
       case 'STAY_TOO_LONG':
-        return 'These days are more than this venue takes in one stay. Pick fewer days to book here.';
+        return $localize`These days are more than this venue takes in one stay. Pick fewer days to book here.`;
       case 'VENUE_CLOSED':
-        return 'This venue is closed for the season, so this date can’t be booked. Try another venue.';
+        return $localize`This venue is closed for the season, so this date can’t be booked. Try another venue.`;
       case 'NO_SUCH_SET':
-        return 'That set could not be found.';
+        return $localize`That set could not be found.`;
       case 'INVALID_REQUEST':
-        return 'Please check the form and try again.';
+        return $localize`Please check the form and try again.`;
       case 'UNKNOWN':
-        return 'Something went wrong. Please try again.';
+        return $localize`Something went wrong. Please try again.`;
       default:
         return undefined;
     }

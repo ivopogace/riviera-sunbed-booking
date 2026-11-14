@@ -5,6 +5,7 @@ import {
   RegionCode,
   regionLabel,
 } from '../../shared/beaches';
+import { displayDecimal } from '../../shared/display-format';
 import { distanceKm } from '../../shared/geo-distance';
 import { LngLat } from '../../shared/map-engine';
 import { VenueCard } from './venue-card';
@@ -27,9 +28,10 @@ export interface BeachGroup {
   readonly km: number | null;
 }
 
-/** `0.6 km`, `1.8 km`, `28 km` — one decimal under ten, none above. */
+/** `0.6 km`, `1.8 km`, `28 km` — one decimal under ten, none above, in the display locale. */
 export function distanceLabel(km: number): string {
-  return km < 10 ? `${km.toFixed(1)} km` : `${Math.round(km)} km`;
+  const distance = km < 10 ? displayDecimal(km, 1) : Math.round(km).toString();
+  return $localize`${distance}:distance: km`;
 }
 
 function locationOf(card: VenueCard): LngLat | null {
@@ -133,5 +135,5 @@ export function placeTitle(focus: {
   ) {
     return nearest.label;
   }
-  return focus.region === '' ? 'The coast' : regionLabel(focus.region);
+  return focus.region === '' ? $localize`The coast` : regionLabel(focus.region);
 }

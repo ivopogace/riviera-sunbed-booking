@@ -230,7 +230,9 @@ export function placeName(beaches: readonly string[]): string {
   if (beaches.length === 1) {
     return beaches[0];
   }
-  return beaches.length === 2 ? `${beaches[0]} & ${beaches[1]}` : `${beaches.length} beaches`;
+  return beaches.length === 2
+    ? $localize`${beaches[0]}:first: & ${beaches[1]}:second:`
+    : $localize`${beaches.length}:count: beaches`;
 }
 
 /**

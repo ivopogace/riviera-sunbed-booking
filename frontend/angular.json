@@ -20,6 +20,20 @@
       "root": "",
       "sourceRoot": "src",
       "prefix": "app",
+      "i18n": {
+        "sourceLocale": {
+          "code": "en",
+          "subPath": ""
+        },
+        "locales": {
+          "sq": {
+            "translation": "src/locale/messages.sq.xlf"
+          },
+          "it": {
+            "translation": "src/locale/messages.it.xlf"
+          }
+        }
+      },
       "architect": {
         "build": {
           "builder": "@angular/build:application",
@@ -39,7 +53,11 @@
             ],
             "styles": [
               "src/tailwind.css"
-            ]
+            ],
+            "polyfills": [
+              "@angular/localize/init"
+            ],
+            "i18nMissingTranslation": "error"
           },
           "configurations": {
             "production": {
@@ -66,7 +84,8 @@
                 "styles": {
                   "inlineCritical": false
                 }
-              }
+              },
+              "localize": true
             },
             "development": {
               "optimization": false,

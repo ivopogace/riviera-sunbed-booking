@@ -6,6 +6,7 @@
     data-testid="map-skip"
     class="sr-only m-0 focus:not-sr-only focus:absolute focus:top-3 focus:left-3 focus:z-20 focus:inline-flex focus:items-center focus:rounded-full focus:border focus:border-riv-solid-btn-border focus:bg-riv-solid-btn-fill focus:px-[16px] focus:text-[14px] focus:font-semibold focus:text-riv-solid-btn-ink"
     (click)="skipMap()"
+    i18n
   >
     Skip map
   </button>
@@ -42,12 +43,13 @@
     }
     @if (!footChrome()) {
       <fieldset class="flex flex-col gap-2">
-        <legend class="sr-only">Zoom</legend>
+        <legend class="sr-only" i18n>Zoom</legend>
         <button
           type="button"
           appTouchTarget
           data-testid="map-zoom-in"
           aria-label="Zoom in"
+          i18n-aria-label
           class="inline-flex size-11 touch-manipulation items-center justify-center rounded-full border border-riv-solid-btn-border bg-riv-solid-btn-fill text-[22px] leading-none font-semibold text-riv-solid-btn-ink shadow-[0_6px_18px_rgba(7,42,58,0.22)] hover:bg-riv-solid-btn-hover"
           (click)="zoomIn()"
         >
@@ -58,6 +60,7 @@
           appTouchTarget
           data-testid="map-zoom-out"
           aria-label="Zoom out"
+          i18n-aria-label
           class="inline-flex size-11 touch-manipulation items-center justify-center rounded-full border border-riv-solid-btn-border bg-riv-solid-btn-fill text-[22px] leading-none font-semibold text-riv-solid-btn-ink shadow-[0_6px_18px_rgba(7,42,58,0.22)] hover:bg-riv-solid-btn-hover"
           (click)="zoomOut()"
         >
@@ -82,6 +85,7 @@
           appTouchTarget
           data-testid="map-near-me-dismiss"
           aria-label="Dismiss message"
+          i18n-aria-label
           class="-my-[9px] inline-flex shrink-0 touch-manipulation items-center justify-center rounded-full text-riv-solid-btn-ink hover:bg-riv-solid-btn-hover"
           (click)="dismissNearMeMessage()"
         >
@@ -94,4 +98,4 @@
 
 <app-map-credit [placement]="creditPlacement()" [bottom]="foot()" [linksFocusable]="!ribbon()" />
 
-<span #mapEnd tabindex="-1" data-testid="map-end" class="sr-only">End of map</span>
+<span #mapEnd tabindex="-1" data-testid="map-end" class="sr-only" i18n>End of map</span>

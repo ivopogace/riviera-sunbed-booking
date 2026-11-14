@@ -32,6 +32,7 @@ export const FOOT_CREDIT_PLACEMENT_SWAPPED = `right-3 ${FOOT_CREDIT_BOX}`;
       class="absolute z-10 rounded-[13px] border border-riv-solid-btn-border bg-riv-solid-btn-fill text-riv-solid-btn-ink"
       [class]="placement()"
       [style.bottom.px]="bottom()"
+      i18n="Map tile licence credit"
     >
       ©
       <a

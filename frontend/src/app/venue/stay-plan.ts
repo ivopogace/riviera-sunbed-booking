@@ -3,7 +3,7 @@ import { Component, computed, input, output } from '@angular/core';
 import { DateRange, daysBetween, parseIsoDate } from '../shared/booking-date';
 import { formatBookingDate, formatStay } from '../shared/booking-date-label';
 import { formatMoney } from '../shared/money';
-import { plural } from '../shared/plural';
+import { pluralOf } from '../shared/plural';
 import { RetryButton } from '../shared/retry-button';
 import { moveText } from '../shared/set-distance';
 import { spotLabel } from '../shared/set-label';
@@ -66,6 +66,7 @@ interface Stop {
         id="stay-plan-title"
         class="mt-1 text-[17px] font-bold tracking-[-0.01em]"
         data-testid="stay-plan-title"
+        i18n
       >
         Your {{ days() }} days, planned
       </h3>
@@ -74,6 +75,7 @@ interface Stop {
         class="mt-3 grid list-none gap-[3px]"
         [style.grid-template-columns]="'repeat(' + days() + ', minmax(0, 1fr))'"
         aria-label="Days of the stay"
+        i18n-aria-label
         data-testid="stay-plan-strip"
       >
         @for (cell of strip(); track cell.iso) {
@@ -94,9 +96,19 @@ interface Stop {
         @for (stop of stops(); track stop.index) {
           <li data-testid="stay-plan-stop">
             @if (stop.move; as move) {
-              <p class="mb-1 pl-9 text-[13px] text-riv-card-ink-soft" data-testid="stay-plan-move">
-                Move on <strong class="text-riv-card-ink">{{ move.day }}</strong
-                >: {{ move.text }}
+              <p
+                class="mb-1 pl-9 text-[13px] text-riv-card-ink-soft"
+                data-testid="stay-plan-move"
+                i18n
+              >
+                Move on
+                <strong class="text-riv-card-ink">{{
+                  move.day // i18n(ph="day")
+                }}</strong
+                >:
+                {{
+                  move.text // i18n(ph="distance")
+                }}
               </p>
             }
             <div class="flex items-center gap-3">
@@ -110,36 +122,50 @@ interface Stop {
                 <strong>{{ stop.spot }}</strong>
                 <span class="text-riv-card-ink-soft"> · {{ stop.range }}</span>
               </span>
-              <span class="shrink-0 text-[13px] text-riv-card-ink-soft">{{ stop.rate }}/day</span>
+              <span class="shrink-0 text-[13px] text-riv-card-ink-soft" i18n
+                >{{ stop.rate }}/day</span
+              >
             </div>
           </li>
         }
       </ul>
       <p class="mt-3 flex items-baseline justify-between gap-3" data-testid="stay-plan-price">
-        <span class="text-riv-card-ink-soft">{{ perDay() }}/day avg · {{ days() }} days</span>
+        <span class="text-riv-card-ink-soft" i18n
+          >{{
+            perDay()  // i18n(ph="price")
+          }}/day avg ·
+          {{
+            days() // i18n(ph="days")
+          }}
+          days</span
+        >
         <strong class="text-[17px]">{{ total() }}</strong>
       </p>
       <div class="mt-3 flex flex-wrap items-center gap-3">
-        <app-retry-button
-          testId="stay-plan-book"
-          [label]="request() ? 'Review & request' : 'Review & pay'"
-          (retry)="book.emit()"
-        />
+        <app-retry-button testId="stay-plan-book" [label]="bookLabel()" (retry)="book.emit()" />
         <button
           appTouchTarget
           type="button"
           class="inline-flex cursor-pointer items-center rounded-[14px] px-3 py-2 font-bold text-riv-accent-ink underline-offset-2 hover:underline"
           data-testid="stay-plan-close"
           (click)="dismissed.emit()"
+          i18n
         >
           Back to the map
         </button>
       </div>
       @if (longestRun(); as best) {
         <div class="mt-4 border-t border-riv-field-border pt-3" data-testid="stay-plan-shorten">
-          <p class="font-bold">Prefer not to move?</p>
-          <p class="mt-1 text-riv-card-ink-soft">
-            {{ runSpot(best) }} for {{ runLabel(best) }} · the longest stay one spot can host.
+          <p class="font-bold" i18n>Prefer not to move?</p>
+          <p class="mt-1 text-riv-card-ink-soft" i18n>
+            {{
+              runSpot(best) // i18n(ph="spot")
+            }}
+            for
+            {{
+              runLabel(best) // i18n(ph="days")
+            }}
+            · the longest stay one spot can host.
           </p>
           <button
             appTouchTarget
@@ -147,6 +173,7 @@ interface Stop {
             class="mt-2 inline-flex cursor-pointer items-center rounded-[14px] px-3 py-2 font-bold text-riv-accent-ink underline-offset-2 hover:underline"
             data-testid="stay-plan-shorten-cta"
             (click)="shorten.emit({ first: best.run.first, last: best.run.last })"
+            i18n
           >
             Shorten my stay to {{ runLabel(best) }}
           </button>
@@ -178,24 +205,43 @@ export class StayPlan {
 
   protected readonly kicker = computed(() => {
     const plan = this.plan();
-    return `${plural(plan.moves, 'move')} · ${plural(plan.stretches.length, 'spot')}`;
+    const moves = plan.moves;
+    const spots = plan.stretches.length;
+    const moveCount = pluralOf(
+      moves,
+      $localize`${moves}:count: move`,
+      $localize`${moves}:count: moves`,
+    );
+    const spotCount = pluralOf(
+      spots,
+      $localize`${spots}:count: spot`,
+      $localize`${spots}:count: spots`,
+    );
+    return `${moveCount} · ${spotCount}`;
   });
 
+  protected readonly bookLabel = computed(() =>
+    this.request() ? $localize`Review & request` : $localize`Review & pay`,
+  );
+
   protected readonly intro = computed(() => {
-    const base =
-      'No single spot is free every day, so we chose the fewest moves, then the shortest ones.';
+    const base = $localize`No single spot is free every day, so we chose the fewest moves, then the shortest ones.`;
     const set = this.anchorSet();
     if (set === undefined) {
       return base;
     }
     const spot = spotLabel(set.rowLabel, set.positionNo);
     switch (this.anchor()) {
-      case 'START':
-        return `${base} Starts at ${spot}, the spot you picked.`;
-      case 'END':
-        return `${base} Ends at ${spot}, the spot you picked.`;
+      case 'START': {
+        const note = $localize`Starts at ${spot}:spot:, the spot you picked.`;
+        return `${base} ${note}`;
+      }
+      case 'END': {
+        const note = $localize`Ends at ${spot}:spot:, the spot you picked.`;
+        return `${base} ${note}`;
+      }
       case 'UNANCHORABLE':
-        return `${base} ${spot} couldn’t fit in a plan with ${this.maxMoves()} moves, so this plan uses other spots.`;
+        return `${base} ${this.unanchorableNote(spot)}`;
       default:
         return base;
     }
@@ -209,7 +255,7 @@ export class StayPlan {
         day: parseIsoDate(iso).getUTCDate(),
         stretch: index,
         move: index > 0 && dayIndex === 0,
-        label: `${formatBookingDate(iso)}: ${spotLabel(stretch.rowLabel, stretch.positionNo)}`,
+        label: $localize`${formatBookingDate(iso)}:date:: ${spotLabel(stretch.rowLabel, stretch.positionNo)}:spot:`,
       })),
     );
   });
@@ -251,6 +297,15 @@ export class StayPlan {
 
   protected runSpot(best: SetRun): string {
     return spotLabel(best.set.rowLabel, best.set.positionNo);
+  }
+
+  private unanchorableNote(spot: string): string {
+    const moves = this.maxMoves();
+    return pluralOf(
+      moves,
+      $localize`${spot}:spot: couldn’t fit in a plan with 1 move, so this plan uses other spots.`,
+      $localize`${spot}:spot: couldn’t fit in a plan with ${moves}:moves: moves, so this plan uses other spots.`,
+    );
   }
 
   protected runLabel(best: SetRun): string {

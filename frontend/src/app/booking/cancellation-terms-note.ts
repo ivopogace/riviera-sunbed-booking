@@ -27,13 +27,13 @@ export class CancellationTermsNote {
     const t = this.terms();
     switch (t.window) {
       case 'FREE':
-        return `Free cancellation until ${formatDeadline(t.freeCancellationEndsAt)}.`;
+        return $localize`Free cancellation until ${formatDeadline(t.freeCancellationEndsAt)}:deadline:.`;
       case 'LATE':
         return t.lateCancelRefundBps > 0
-          ? `Past free cancellation — cancelling refunds only ${t.lateCancelRefundBps / 100}% of the price.`
-          : 'Past free cancellation — no refund if cancelled.';
+          ? $localize`Past free cancellation — cancelling refunds only ${t.lateCancelRefundBps / 100}:percent:% of the price.`
+          : $localize`Past free cancellation — no refund if cancelled.`;
       case 'CLOSED':
-        return 'Non-refundable last-minute booking — it can’t be cancelled once paid.';
+        return $localize`Non-refundable last-minute booking — it can’t be cancelled once paid.`;
     }
   });
 }

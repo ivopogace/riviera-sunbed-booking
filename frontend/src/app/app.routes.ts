@@ -3,6 +3,7 @@ import { Router, Routes } from '@angular/router';
 
 import type { AdminTabRouteData } from './admin/admin-console';
 import type { TouristRouteData } from './app';
+import type { ResetAudience } from './auth/reset-password';
 import type { ConsoleRouteData } from './console-shell';
 import { PAGE_LOAD_FAILED_PATH } from './core/chunk-load-recovery';
 import { operatorSessionGuard } from './core/operator-session.guard';
@@ -229,7 +230,7 @@ export const routes: Routes = [
   {
     path: '',
     loadComponent: () => import('./pages/home/home').then((m) => m.Home),
-    title: 'Riviera — Sunbed Booking',
+    title: $localize`Riviera — Sunbed Booking`,
     // The riviera map fills the window, footer included; the legal links are menu rows instead.
     data: { section: 'beaches', footer: false, wide: true } satisfies TouristRouteData,
   },
@@ -266,6 +267,16 @@ export const routes: Routes = [
     loadComponent: () => import('./auth/reset-password').then((m) => m.ResetPassword),
     title: 'Set a new password — Riviera',
     data: { section: 'account' } satisfies TouristRouteData,
+  },
+  {
+    // Admin-issued operator reset link (#1737), handed over out of band; anonymous like the tourist one.
+    path: 'account/operator-reset',
+    loadComponent: () => import('./auth/reset-password').then((m) => m.ResetPassword),
+    title: 'Set a new password — Riviera',
+    data: {
+      section: 'account',
+      resetAudience: 'operator',
+    } satisfies TouristRouteData & { resetAudience: ResetAudience },
   },
   {
     // Email-verification landing (emailed link carries ?token=…) — POST-verify on load.
@@ -306,13 +317,13 @@ export const routes: Routes = [
     // Help + the support channels — menu and footer link target (#1735).
     path: 'help',
     loadComponent: () => import('./pages/help/help-page').then((m) => m.HelpPage),
-    title: 'Help — Riviera',
+    title: $localize`Help — Riviera`,
   },
   {
     // The public page for venue owners; the tourist menus and footer link here.
     path: 'for-venues',
     loadComponent: () => import('./pages/for-venues/for-venues').then((m) => m.ForVenues),
-    title: 'For venues — Riviera',
+    title: $localize`For venues — Riviera`,
   },
   {
     // Retired onboarding → the operator home's create state; kept one release for old links.
@@ -375,20 +386,20 @@ export const routes: Routes = [
   {
     path: 'venues/:id',
     loadComponent: () => import('./venue/venue-map').then((m) => m.VenueMap),
-    title: 'Beach map — Riviera',
+    title: $localize`Beach map — Riviera`,
     data: { section: 'beaches' } satisfies TouristRouteData,
   },
   {
     path: 'booking/confirmation',
     loadComponent: () =>
       import('./booking/booking-confirmation').then((m) => m.BookingConfirmation),
-    title: 'Booking confirmed — Riviera',
+    title: $localize`Booking confirmed — Riviera`,
     data: { section: 'bookings' } satisfies TouristRouteData,
   },
   {
     path: 'booking/pay',
     loadComponent: () => import('./booking/booking-pay').then((m) => m.BookingPay),
-    title: 'Complete payment — Riviera',
+    title: $localize`Complete payment — Riviera`,
     data: { section: 'bookings', tabBar: false } satisfies TouristRouteData,
   },
   {
@@ -396,13 +407,13 @@ export const routes: Routes = [
     path: 'booking/requested',
     loadComponent: () =>
       import('./booking/request-confirmation').then((m) => m.RequestConfirmation),
-    title: 'Request sent — Riviera',
+    title: $localize`Request sent — Riviera`,
     data: { section: 'bookings' } satisfies TouristRouteData,
   },
   {
     path: 'booking/:code',
     loadComponent: () => import('./booking/booking-view').then((m) => m.BookingView),
-    title: 'Your booking — Riviera',
+    title: $localize`Your booking — Riviera`,
     data: { section: 'bookings' } satisfies TouristRouteData,
   },
   {

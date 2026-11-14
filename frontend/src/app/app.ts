@@ -14,6 +14,7 @@ import { filter } from 'rxjs';
 
 import { FindBooking } from './booking/find-booking';
 import { ConsoleSection, ConsoleShell } from './console-shell';
+import { LanguageMenuRows } from './language-menu-rows';
 import { ThemeMenuRows } from './theme-menu-rows';
 import { CustomerAuth } from './core/customer-auth';
 import { SignOutNotice } from './core/sign-out-notice';
@@ -150,6 +151,7 @@ function consoleOf(data: unknown): ConsoleSection | null {
     FindBooking,
     ConsoleShell,
     ThemeMenuRows,
+    LanguageMenuRows,
     TouchTarget,
   ],
   templateUrl: './app.html',
@@ -277,9 +279,13 @@ export class App {
   protected readonly accountTabCurrent = computed(
     () => this.tabSection() === 'account' && this.customerAuth.signedIn(),
   );
+  /** The account chip's accessible name, which the signed-in third tab shares. */
+  protected readonly accountLabel = computed(
+    () => $localize`Account: ${this.customerAuth.email()}:email:`,
+  );
   /** The third tab's accessible name: auth-neutral `Menu` until the restore settles or signed out. */
   protected readonly menuTabLabel = computed(() =>
-    this.customerAuth.signedIn() ? `Account: ${this.customerAuth.email()}` : 'Menu',
+    this.customerAuth.signedIn() ? this.accountLabel() : $localize`Menu`,
   );
   /** The shell root's classes: the tab bar's clearance only while the bar renders (AC 4 / AC 6). */
   protected readonly shellClass = computed(() => (this.tabBar() ? SHELL_WITH_TAB_BAR : SHELL));

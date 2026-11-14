@@ -1,5 +1,6 @@
 import { Component, computed, input } from '@angular/core';
 
+import { localePath } from './display-locale';
 import { MOBILE_ITEM, POP_ITEM } from './popover-skin';
 import { TouchTarget } from './touch-target';
 
@@ -26,28 +27,31 @@ const SKINS: Record<LegalMenuVariant, string> = {
   template: `<a
       appTouchTarget
       [class]="skin()"
-      href="/help"
+      [href]="helpHref"
       target="_blank"
       rel="noopener"
       data-testid="help-row"
+      i18n
       >Help</a
     >
     <a
       appTouchTarget
       [class]="skin()"
-      href="/legal/privacy"
+      [href]="privacyHref"
       target="_blank"
       rel="noopener"
       data-testid="legal-privacy-row"
+      i18n
       >Privacy policy</a
     >
     <a
       appTouchTarget
       [class]="skin()"
-      href="/legal/terms"
+      [href]="termsHref"
       target="_blank"
       rel="noopener"
       data-testid="legal-terms-row"
+      i18n
       >Terms of service</a
     >`,
 })
@@ -55,4 +59,7 @@ export class LegalMenuRows {
   readonly variant = input.required<LegalMenuVariant>();
 
   protected readonly skin = computed(() => SKINS[this.variant()]);
+  protected readonly helpHref = localePath('/help');
+  protected readonly privacyHref = localePath('/legal/privacy');
+  protected readonly termsHref = localePath('/legal/terms');
 }

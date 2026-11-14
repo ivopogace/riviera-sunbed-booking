@@ -1,4 +1,4 @@
-package ai.riviera.platform;
+package ai.riviera.platform.web.adapter.in;
 
 import java.io.IOException;
 
@@ -6,8 +6,9 @@ import org.junit.jupiter.api.Test;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.core.io.Resource;
 
-import ai.riviera.platform.SpaWebConfig.SpaFallbackResolver;
+import ai.riviera.platform.web.adapter.in.SpaWebConfig.SpaFallbackResolver;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -37,5 +38,17 @@ class SpaFallbackResolverTest {
 		assertNull(resolver.getResource("chunk-STALE.js", location));       // missing asset → 404
 		assertTrue(resolver.getResource("operator/1", location).exists());  // deep-link route → shell
 		assertTrue(resolver.getResource("", location).exists());            // "/" → shell
+	}
+
+	@Test
+	void aLocaleSubpathResolvesToThatLocalesShell() throws IOException {
+		assertEquals("static/sq/index.html", pathOf(resolver.getResource("sq/venues/1", location)));
+		assertEquals("static/it/index.html", pathOf(resolver.getResource("it", location)));
+		assertEquals("static/index.html", pathOf(resolver.getResource("italy/venues", location)));
+		assertNull(resolver.getResource("sq/chunk-STALE.js", location));
+	}
+
+	private static String pathOf(Resource resource) {
+		return ((ClassPathResource) resource).getPath();
 	}
 }

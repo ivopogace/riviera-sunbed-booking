@@ -43,7 +43,7 @@ const ROW_TRIGGER = 'touch-manipulation';
           [style.background]="active().swatch"
           aria-hidden="true"
         ></span>
-        <span class="flex-1 text-left whitespace-nowrap">Colour theme</span>
+        <span class="flex-1 text-left whitespace-nowrap" i18n>Colour theme</span>
         <span class="shrink-0 text-[13px] font-normal text-riv-pop-ink-soft">{{
           active().name
         }}</span>

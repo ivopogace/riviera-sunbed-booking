@@ -147,6 +147,8 @@ public class SecurityConfig {
 	private static final String ADMIN_OPERATOR_ACCOUNTS_PATH = "/api/admin/operators/accounts";
 	private static final String ADMIN_OPERATOR_SUSPEND_PATH = "/api/admin/operators/*/suspend";
 	private static final String ADMIN_OPERATOR_REINSTATE_PATH = "/api/admin/operators/*/reinstate";
+	/** Issue an operator's single-use reset link (#1737); the answer carries the token, so ADMIN only. */
+	private static final String ADMIN_OPERATOR_RESET_LINK_PATH = "/api/admin/operators/*/reset-link";
 	/** Platform-admin data-subject erasure. */
 	private static final String ADMIN_ERASURE_PATH = "/api/admin/erasure";
 	/**
@@ -234,6 +236,8 @@ public class SecurityConfig {
 	 * change flood can never starve operator login.
 	 */
 	private static final String OPERATOR_PASSWORD_PATH = "/api/auth/operator/password";
+	/** Redeem an admin-issued operator reset link: anonymous, the token is the credential (#7); CSRF-protected. */
+	private static final String OPERATOR_RESET_PASSWORD_PATH = "/api/auth/operator/reset-password";
 	/** Customer session login + registration; anonymous by definition, like the operator login. */
 	private static final String CUSTOMER_LOGIN_PATH = "/api/auth/customer/login";
 	private static final String CUSTOMER_REGISTER_PATH = "/api/auth/customer/register";
@@ -314,7 +318,7 @@ public class SecurityConfig {
 						.requestMatchers(HttpMethod.GET, CHALLENGE_PATH).permitAll()
 						// The emailed token is the credential (invariant #7); rate-limited per-IP.
 						.requestMatchers(HttpMethod.POST, FORGOT_PASSWORD_PATH, RESET_PASSWORD_PATH,
-								VERIFY_EMAIL_PATH).permitAll()
+								VERIFY_EMAIL_PATH, OPERATOR_RESET_PASSWORD_PATH).permitAll()
 						.requestMatchers(HttpMethod.GET, SSO_PATHS).permitAll()
 						// Order-sensitive: booking codes are bearer credentials (invariant #7).
 						.requestMatchers(HttpMethod.GET, STAFF_BOOKINGS_PATH, STAFF_BOOKINGS_COUNT_PATH).hasRole(OPERATOR_ROLE)
@@ -350,7 +354,7 @@ public class SecurityConfig {
 								.hasRole(ADMIN_ROLE)
 						.requestMatchers(HttpMethod.POST, ADMIN_OPERATOR_APPROVE_PATH,
 								ADMIN_OPERATOR_REJECT_PATH, ADMIN_OPERATOR_SUSPEND_PATH,
-								ADMIN_OPERATOR_REINSTATE_PATH).hasRole(ADMIN_ROLE)
+								ADMIN_OPERATOR_REINSTATE_PATH, ADMIN_OPERATOR_RESET_LINK_PATH).hasRole(ADMIN_ROLE)
 						.requestMatchers(HttpMethod.POST, ADMIN_ERASURE_PATH).hasRole(ADMIN_ROLE)
 						.requestMatchers(HttpMethod.POST, ADMIN_SUPPRESSION_REINSTATE_PATH).hasRole(ADMIN_ROLE)
 						.requestMatchers(HttpMethod.GET, ADMIN_MAIL_OUTBOX_PATH).hasRole(ADMIN_ROLE)
@@ -432,14 +436,16 @@ public class SecurityConfig {
 	}
 
 	/**
-	 * The public SPA shell: every non-API, non-actuator path is anonymous; ordered last. CSRF stays at
-	 * its default (enabled): only safe static GETs pass here, and disabling it would trip CodeQL's
+	 * The public SPA shell and the crawl policy: every non-API, non-actuator path is anonymous; ordered last. CSRF
+	 * stays at its default (enabled): only safe static GETs pass here, and disabling it would trip CodeQL's
 	 * {@code java/spring-disabled-csrf-protection} for nothing.
 	 */
 	@Bean
 	@Order(2)
 	SecurityFilterChain spaSecurityFilterChain(HttpSecurity http) {
-		http.authorizeHttpRequests(auth -> auth.anyRequest().permitAll());
+		http.authorizeHttpRequests(auth -> auth
+				.requestMatchers(HttpMethod.GET, CrawlerController.ROBOTS_PATH, CrawlerController.SITEMAP_PATH).permitAll()
+				.anyRequest().permitAll());
 		return http.build();
 	}
 

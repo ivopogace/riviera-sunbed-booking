@@ -1,3 +1,5 @@
+import { displayMoney } from './display-format';
+
 /**
  * An amount of money as it travels the wire: integer minor units + ISO currency code
  * (invariant #5 — never floating point). The platform's money vocabulary lives here, in the
@@ -9,16 +11,12 @@ export interface MoneyView {
 }
 
 /**
- * Render integer minor units as a currency string (display only, invariant #5). Pinned to `en-IE`
- * so output is deterministic across environments (a runtime-default locale renders "45 €" under
- * de/fr). Whole amounts drop the cents; fractional amounts show two decimals.
+ * Render integer minor units as a currency string (display only, invariant #5) in the build's
+ * display locale (`shared/display-format.ts`), never the runtime default, so output is deterministic across environments.
+ * Whole amounts drop the cents; fractional amounts show two decimals.
  */
 export function formatMoney(amount: MoneyView): string {
-  return new Intl.NumberFormat('en-IE', {
-    style: 'currency',
-    currency: amount.currency,
-    minimumFractionDigits: amount.minorUnits % 100 === 0 ? 0 : 2,
-  }).format(amount.minorUnits / 100);
+  return displayMoney(amount.minorUnits, amount.currency);
 }
 
 /**

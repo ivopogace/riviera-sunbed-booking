@@ -24,7 +24,7 @@ import { TriangleIcon } from './triangle-icon';
       <p
         class="sea-banner -mx-[18px] mb-3.5 flex items-center justify-center gap-2 bg-(image:--riv-sea-grad) px-3 py-3 text-center text-[12px] font-bold uppercase tracking-[0.16em] text-white"
       >
-        <app-triangle-icon class="[&_svg]:size-[9px]" />Facing the sea
+        <app-triangle-icon class="[&_svg]:size-[9px]" /><span i18n>Facing the sea</span>
       </p>
 
       <ng-content />
@@ -32,7 +32,9 @@ import { TriangleIcon } from './triangle-icon';
       <p
         class="promenade -mx-[18px] mt-3 flex items-center justify-center gap-2 border-t border-dashed border-riv-map-frame-border px-3 py-3 text-center text-[12px] font-bold uppercase tracking-[0.16em] text-riv-card-ink"
       >
-        <app-triangle-icon class="[&_svg]:size-[9px] [&_svg]:rotate-180" />Promenade · Entrance
+        <app-triangle-icon class="[&_svg]:size-[9px] [&_svg]:rotate-180" /><span i18n
+          >Promenade · Entrance</span
+        >
       </p>
     </section>
   `,

@@ -1,5 +1,5 @@
 import { DOCUMENT } from '@angular/common';
-import { Component, effect, inject, input, signal } from '@angular/core';
+import { Component, computed, effect, inject, input, signal } from '@angular/core';
 import { toString as qrSvg } from 'qrcode';
 
 /**
@@ -21,7 +21,7 @@ export const QR_OPTIONS = { type: 'svg', errorCorrectionLevel: 'M', margin: 1 } 
         [width]="size()"
         [height]="size()"
         class="block rounded-[12px] border border-[rgba(10,42,51,0.12)] bg-white p-1.5"
-        [alt]="'QR code for booking ' + code() + ' — staff scan it on arrival to check you in'"
+        [alt]="alt()"
         data-testid="booking-qr"
       />
     }
@@ -30,6 +30,11 @@ export const QR_OPTIONS = { type: 'svg', errorCorrectionLevel: 'M', margin: 1 } 
 export class BookingQr {
   readonly code = input.required<string>();
   readonly size = input(176);
+
+  protected readonly alt = computed(
+    () =>
+      $localize`QR code for booking ${this.code()}:code: — staff scan it on arrival to check you in`,
+  );
 
   private readonly document = inject(DOCUMENT);
   protected readonly dataUrl = signal<string | null>(null);

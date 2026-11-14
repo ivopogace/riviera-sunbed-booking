@@ -50,8 +50,10 @@ npm run test:eslint-rules # the local ESLint rules' own suite
 npm run test:a11y        # axe + contrast unit specs
 npm run test:e2e         # Playwright, local-only REAL-backend suite (frontend/e2e/real-backend/)
 npm run test:e2e:a11y    # Playwright, CI-safe mocked suite (frontend/e2e/) — what CI runs
+npm run test:e2e:locales # Playwright, the translated builds' smoke (needs `npm run build`; CI's first a11y shard)
 npm run typecheck:e2e    # tsc over frontend/e2e/ (Playwright transpiles without checking)
-npm run build
+npm run i18n:sync        # bring src/locale/messages.<locale>.xlf in line with the marked copy (ADR-0030)
+npm run build            # every locale: en at the root, sq and it under /sq/ and /it/
 ```
 
 **CI** (`.github/workflows/ci.yml`): backend build/test, frontend lint/format/e2e-typecheck/test/build +
@@ -92,7 +94,7 @@ aggregate-root classes: `domain/` holds rules, state is in tables, lifecycles ar
 | `payment` | Stripe collection, PaymentIntents (one may collect for several bookings), per-booking refunds by scope (the whole share, or one day), webhooks | `payment`, `payment_booking`, `payment_refund`, `payment_webhook_event` |
 | `payout` | venue payout ledger, manual BKT batches, platform settings (venue-change fee) | `payout_ledger_entry`, `payout_batch`, `platform_setting` |
 | `customer` | guest contact, customer account (sign-in, SSO, verification, password), GDPR erasure + retention sweep, canonical email form | `customer`, `customer_account`, `customer_sso_identity`, `customer_account_token` |
-| `operator` | operator accounts, operator↔venue ownership (#13), admin lifecycle + `is_admin`, tourist-visibility answer | `operator`, `operator_venue` |
+| `operator` | operator accounts, operator↔venue ownership (#13), admin lifecycle + `is_admin`, admin-issued reset tokens, tourist-visibility answer | `operator`, `operator_venue`, `operator_password_reset_token` |
 | `review` | one review per booking, eligibility + window, aggregate rating, admin takedown, erasure tombstone; a leaf (ADR-0015) | `review` |
 | `notification` | transactional mail, hashed suppression list + its TEM bounce/complaint feed, delivery log + admin resend, the emailed-link origin rule, the support-contact channels | `email_suppression`, `booking_confirmation_mail_attempt` |
 | `itinerary` | the stay read model (D7/D11): the whole-coast verdict per venue for a span (same set · fits with N moves · can't host), served on `GET /api/venues`; the per-venue stitched plan on `GET /api/venues/{id}/itinerary`; the move budget `riviera.itinerary.max-switches` | nothing — a read model over `venue::api` + `availability::api` |
@@ -107,7 +109,8 @@ build's commit on `/actuator/info`; writes nothing). Also closed and non-context
 (sign-in and sessions: the `UserDetailsService`s, session establishment, credential stamp and revocation,
 SSO, password policy, recovery, the login, self-service, admin-lifecycle and erasure controllers; writes nothing) and `web` (the
 HTTP boundary: `SecurityConfig`'s chains and route policy, the chain's filters, CORS, `ApiErrorHandler`
-as the one advice, `/error`'s problem body; publishes nothing, writes nothing). No module writes
+as the one advice, `/error`'s problem body, the crawl policy (`/robots.txt`, `/sitemap.xml`), the SPA shell
+and its link-preview head; publishes nothing, writes nothing). No module writes
 the framework tables: `SPRING_SESSION*` (Spring Session, from `auth` and `web`) and `event_publication*` (Modulith's registry; re-driven by the outbox levers and the spine retries).
 Every module may depend on `shared`, which depends on no module. The root holds only
 `PlatformApplication` and configuration that reaches no module; nothing depends on it.
@@ -132,7 +135,7 @@ profile-guarded out of prod; revocation orchestrated by `auth`, synchronous; acc
 and booking/stay create fenced by `challenge`'s proof-of-work against a single-use registry; every
 mutating `/api/admin/**` action audited by `web`'s fence; the anonymous actuator surface is `health`
 and `GET /actuator/info`'s commit id alone; map tiles self-hosted under `/map/**`, no third-party map
-host.
+host; absolute URLs in a served page from `riviera.web.public-origin`, never the request's `Host`.
 
 ## Cross-cutting invariants
 

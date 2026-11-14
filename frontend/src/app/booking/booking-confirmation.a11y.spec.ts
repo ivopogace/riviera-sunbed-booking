@@ -5,6 +5,11 @@ import { expectNoAxeViolations } from '../../testing/axe';
 import { BookingConfirmation as Confirmation } from './booking.model';
 import { BookingConfirmation } from './booking-confirmation';
 import { BookingService } from './booking.service';
+import { VenuePin } from './venue-pin';
+import { venuePinStub } from '../../testing/venue-pin-stub';
+
+/** A pinned venue, so the audit covers the Directions row too. */
+const PIN = { latitude: 39.774531, longitude: 19.998412 };
 
 const CONFIRMATION: Confirmation = {
   code: 'ABCD234567',
@@ -33,6 +38,7 @@ describe('BookingConfirmation accessibility (axe)', () => {
       providers: [
         provideRouter([]),
         { provide: BookingService, useValue: stubService(confirmation) },
+        { provide: VenuePin, useValue: venuePinStub(PIN) },
       ],
     }).compileComponents();
     const fixture = TestBed.createComponent(BookingConfirmation);
@@ -44,6 +50,7 @@ describe('BookingConfirmation accessibility (axe)', () => {
     const fixture = await render(CONFIRMATION);
     const host = fixture.nativeElement as HTMLElement;
     expect(host.querySelector('[data-testid="booking-code"]')?.textContent).toContain('ABCD234567');
+    expect(host.querySelector('[data-testid="venue-directions"]')).not.toBeNull();
     await expectNoAxeViolations(host);
   });
 

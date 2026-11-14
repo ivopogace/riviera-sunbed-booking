@@ -38,9 +38,9 @@ export const DAY_SELECTED_CLASS =
  * Phrases for a day with no integers to speak; a day with readable counts speaks the exact numbers.
  * No per-state legend: the tint only reinforces the capacity bar and the accessible name.
  */
-const NO_SETS_FREE = 'no sets free';
-const AVAILABILITY_UNKNOWN = 'availability unknown';
-const NOT_BOOKABLE = 'not bookable';
+const NO_SETS_FREE = $localize`:A calendar day's availability, in its accessible name:no sets free`;
+const AVAILABILITY_UNKNOWN = $localize`:A calendar day's availability, in its accessible name:availability unknown`;
+const NOT_BOOKABLE = $localize`:A calendar day's availability, in its accessible name:not bookable`;
 
 /**
  * How busy `day` is. Fails closed to `unknown` (no sets, a negative count, `free` above `total`):
@@ -77,15 +77,18 @@ export function dayAccessibleName(
   selected = false,
 ): string {
   const civilDate = formatCivilDate(isoDate);
-  const mark = selected ? ', selected' : '';
+  let availability: string;
   if (!selectable) {
-    return `${civilDate}, ${NOT_BOOKABLE}${mark}`;
+    availability = NOT_BOOKABLE;
+  } else if (!isReadable(day)) {
+    availability = AVAILABILITY_UNKNOWN;
+  } else {
+    availability =
+      day.free === 0 ? NO_SETS_FREE : $localize`${day.free}:free: of ${day.total}:total: sets free`;
   }
-  if (!isReadable(day)) {
-    return `${civilDate}, ${AVAILABILITY_UNKNOWN}${mark}`;
-  }
-  const availability = day.free === 0 ? NO_SETS_FREE : `${day.free} of ${day.total} sets free`;
-  return `${civilDate}, ${availability}${mark}`;
+  return selected
+    ? $localize`${civilDate}:date:, ${availability}:availability:, selected`
+    : $localize`${civilDate}:date:, ${availability}:availability:`;
 }
 
 /**

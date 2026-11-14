@@ -56,6 +56,9 @@ close, the maximum stay, the season closure, and the commission rate over time. 
   venue's sets and a spot that left the map. The reserve path fences visibility itself in `booking`;
   the retired-set fences are `poolForClaim` for both claim paths and the `ForReserve` reads for both
   booking modes (a request claims nothing, ADR-0025). Photo serving is visibility-fenced too.
+- **`PublicVenueIndex` names the venues an outsider may be pointed at** (the ids `web`'s sitemap lists,
+  #1761), fenced on `VenueVisibility` like the catalogue reads. Its own port, not a `VenueCatalog`
+  method, so `VenueApiRoleSplitTests` keeps `VenueCatalog` to `venue` and `itinerary`.
 - **Venue photos** (ADR-0008): per-slot upload/replace/delete, processing, `bytea` storage behind
   the module-internal `PhotoStorage` port, the content-hash serving read — `404` (bytes and `304`)
   for a hidden venue except to its owner or an admin, served `private` (ADR-0013). **Each tourist
@@ -810,7 +813,7 @@ I answer *which operator is this principal name?* (`OperatorDirectory`; `NoOpera
 set (`AuthRoles.OPERATOR_MAY_AUTHENTICATE`) and `OperatorDirectory`'s may-operate set are `ACTIVE`+`PENDING` (approval gates tourist
 visibility, not console access); the tourist-visible set is `ACTIVE` only, deliberately, and
 `VenueVisibility` is its one home: no ownership row answers no (fail-closed); it fences `venue`'s
-catalogue reads and photo serving, and `booking`'s reserve, never a sold-booking path. A suspension **keeps** the
+catalogue reads, photo serving and `PublicVenueIndex`, and `booking`'s reserve, never a sold-booking path. A suspension **keeps** the
 `operator_venue` rows (reversible) but hides the venues until reinstatement.
 
 **Each transition is a status-guarded `UPDATE … RETURNING`, so only the winner gets the facts:**
@@ -823,6 +826,11 @@ admin (`LastActiveAdmin`, 409 `LAST_ACTIVE_ADMIN`) and one by an actor no longer
 (`ActorNotActiveAdmin`, 403): two admins suspending each other leave one. `auth` asks `suspendRefusal` before it
 revokes, so only a race signs out a target whose suspend is refused. A later path that removes an admin (a demote, a
 delete) takes the same lock and keeps the rule.
+
+**An admin-issued password-reset token is honoured only while its operator is `ACTIVE`** (#1737). I store its
+SHA-256 digest, never the token, one live per operator: an issue retires the earlier one, a suspend retires it, and
+a reinstatement revives nothing. Issue and redemption lock the operator row first, the order a suspend takes, so a
+redemption never writes over a suspended account. Unknown, expired, used and retired tokens are one answer.
 
 **Not My Job:**
 - Tourist identity → **`customer`**; venue data → **`venue`**; bookings, payment, payout → theirs
@@ -1234,6 +1242,10 @@ opaque hash through their `api`; no Spring Security, Spring Session or mail type
   first (`CustomerAccountRecovery#emailForResetToken`, consuming nothing) and revokes; the second
   revoke ends sessions saved in between, and a login saved later fails its stamp check (next bullet).
   Encode above the first revoke, or bcrypt widens the gap.
+- **An admin-issued operator reset is the customer reset's twin** (#1737): `auth` mints the token
+  (`RecoveryTokens`, the reset TTL) and answers it once on `POST /api/admin/operators/{id}/reset-link`, the bootstrap
+  admin refused (its hash is env-managed); the anonymous `POST /api/auth/operator/reset-password` revokes before and
+  after `operator`'s write. The same-origin SPA builds the link: the mail origin defaults to `localhost` off `mailer`.
 - **Both erasure paths revoke before and after `customer`'s scrub** (ADR-0010; not atomic, as above).
   Self-service names the principal from its session. The admin path names it by the canonical form of
   the submitted email (`customer.vocabulary.Emails`), which every customer principal carries, so no
@@ -1261,8 +1273,9 @@ opaque hash through their `api`; no Spring Security, Spring Session or mail type
 a mechanism, owning no table and publishing nothing. Not a shared module: no module calls it, and a
 module test is better without the chain than with every collaborator mocked. Everything sits in
 `adapter/in`. Depends on the surfaces its imports prove: `auth` (`api` + `vocabulary`), `challenge`
-(`api` + `vocabulary`), `audit::api`, `customer::vocabulary`, `operator::vocabulary` and `shared`;
-Spring Security beans arrive by framework type, which is no module dependency.
+(`api` + `vocabulary`), `audit::api`, `customer::vocabulary`, `operator::vocabulary`, `venue` (`api` +
+`vocabulary`, the sitemap's venue ids and the shell's previews) and `shared`; Spring Security beans
+arrive by framework type.
 
 **Job:** the fence every request crosses before a controller (§ *Platform edge*):
 - `SecurityConfig`: both chains, the route policy (role gates), CSRF, the session cookie and the
@@ -1272,6 +1285,12 @@ Spring Security beans arrive by framework type, which is no module dependency.
   `SessionCredentialFilter` (calls `auth::api`), `AdminAuditFilter` + `AdminAuditReasons` (calls
   `audit::api`); `CachedBodyRequest` replays a body an edge filter read within its cap.
 - The chain's problem bodies (`SecurityProblemResponses`), `RequestPaths`, CORS (`WebCorsConfig`).
+- **The crawl policy** (`CrawlerController`, #1761): anonymous `GET /robots.txt` disallows every signed-in and
+  booking SPA route in every served locale and `/api`, and names the sitemap; `GET /sitemap.xml` lists `/`,
+  `/for-venues`, `/help` and each `PublicVenueIndex` venue's page in every locale with `hreflang` alternates.
+  Absolute URLs come from `riviera.web.public-origin` alone, never the request's `Host` (host-header
+  poisoning); unset, the sitemap is the `NOT_FOUND` problem. `riviera.web.robots.disallow-all` shuts a
+  non-production host out (`docs/deploy/cd-pipeline.md`). The locales are `SpaLocale`'s. One file holds 50 000 URLs (~16 600 venues at three locales).
 - **No problem body carries `instance`** (`ProblemInstanceConfig`): Spring fills a null one with the
   request URI, on `/api/bookings/{code}` the bearer credential (#7), so the interceptor clears it after
   that fill; the hand-built bodies omit it. RFC 9457 makes every member optional.
@@ -1291,6 +1310,13 @@ Spring Security beans arrive by framework type, which is no module dependency.
   `timestamp` or exception message, and no whitelabel HTML (`ErrorDispatchProblemIT`). A non-standard
   `4xx`/`5xx` is kept too, its code `ERROR` (`ProblemErrorControllerTest`). It is the one `ErrorController`
   the role-gate probe skips (`EndpointRoleGateCoverageTest`).
+- **The SPA shell** (`SpaWebConfig`, `SpaLocale`, ADR-0030): assets, and each locale's `index.html` for a
+  client route. `SpaShellController` serves home, `/venues/{id}` and the private routes with a `ShellHead`
+  spliced in, rendered per request, never cached: a visible venue's title (the SPA's own shape, `Beach.label()`),
+  first description line, cover and canonical from `VenueCatalog.findLinkPreview`; home's generic copy per
+  locale. A hidden, unknown or malformed id previews generically and `noindex`, identical in each case.
+  `RobotsTxt.PRIVATE_SPA_PATHS` get `noindex` alone, echoing nothing from the URL (#7). The locale segment is
+  two letters, so `/api` and `/actuator` never reach the shell. Other routes keep the bare shell (#1760).
 - **Tomcat's own pre-servlet rejections keep Tomcat's minimal HTML** (a raw `{` in the request target): they
   never reach `/error`, and the problem shape there would take a custom `ErrorReportValve`, a container-level
   customization one contract on every response does not buy (#1464). Boot hides the report, so the page
@@ -1298,8 +1324,8 @@ Spring Security beans arrive by framework type, which is no module dependency.
 
 **Not my job:** sessions, credentials and login → **`auth`**; what a fence's mechanism does (a
 challenge's single use, an audit row's storage) → **`challenge`**, **`audit`**; per-venue
-authorization (#13) → the application services; the correlation-id filter → **`monitoring`**; the SPA
-and `/map/**` resources → the root's configuration.
+authorization (#13) → the application services; the correlation-id filter → **`monitoring`**; the
+`/map/**` resources → the root's configuration.
 
 ## Platform edge (settled)
 
@@ -1376,6 +1402,10 @@ mutating `/api/admin/**` action, §`audit`) live in `web`; `challenge` and `audi
   files sit in `riviera.map.dir`, never on the classpath: the archive is read by HTTP `Range`, and a
   deflated jar entry cannot seek. **Map posters** ship under `/posters/**`, so a phone's first paint
   makes no `/map/**` request. Size budgets: `MapArchiveBudgetTest`, `map-poster-set.spec.ts`.
+- **Absolute URLs a crawler or link preview sees come from `riviera.web.public-origin` alone, never the
+  request's `Host`** (#1761, #1760): a client sets `Host`, and a cached preview or sitemap would carry its
+  origin. Unset, no absolute URL is written; not a bare `https` origin, boot aborts (`PublicWebProperties`).
+  One origin per deployment, so a host move is a config change (`docs/deploy/cd-pipeline.md`).
 ## Frontend (the SPA, not a module)
 
 The SPA rules whose TSDoc points here; structure is `riviera-frontend`'s, styling `riviera-tailwind`'s.
@@ -1432,10 +1462,11 @@ The SPA rules whose TSDoc points here; structure is `riviera-frontend`'s, stylin
   and `core/page-navigation.ts`'s `reload` clears the entry's state before navigating. Any other
   navigation error stays loud: a guard or resolver that throws is a bug, not a page to retry.
 - **The Daily view's phone rail keeps two tiles per row** (`shared/beach-map-canvas.ts`, the `labels`
-  rail below `sm`), kept on purpose (#1626): since #1586 a row's label is its one grid letter (§ `venue`,
-  rows by grid letter), so the count no longer serves a long name; it stays because it is the tourist
-  map's own count (#1532), so the operator's phone shows a row as a guest's does. The tile accessible
-  names carry the label on every width.
+  rail below `sm`, and its right-hand price column), kept on purpose (#1626): since #1586 a row's label
+  is its one grid letter (§ `venue`, rows by grid letter), so the count no longer serves a long name. The
+  tourist map no longer shares it: its rail is the letter and its zone price a header band (`capped-labels`
+  / `capped-spans`), four whole tiles of a 7-wide row at 390px (#1732). The tile accessible names carry
+  the label and the price on every width.
 - **The rails' label ellipsis and `rowName()`'s non-letter branch stay, defensive only** (#1626): the
   rails render active sets only (`active_set_position`, `JdbcVenueCatalog`), so no live map reaches a
   long label; the unit specs keep the classes, `loading-skeletons.e2e.ts` the capped rail's width under
@@ -1551,7 +1582,7 @@ them form the *structural net* is `riviera-modulith` § *The structural net*'s c
 | `payout` is the only writer (and direct reader) of `platform_setting` — ADR-0021 | `ResponsibilitiesArchitectureTests` (sole-writer scan) |
 | `booking` is the only writer (and direct reader) of `booking_day` | `ResponsibilitiesArchitectureTests` (sole-writer scan) |
 | `booking` is the only writer (and direct reader) of `stay` — ADR-0024 | `ResponsibilitiesArchitectureTests` (SQL-shaped scan: the bare word is in prose and in `max_stay_days`) |
-| Every table in `CLAUDE.md`'s "Sole writer of" column, plus `challenge_registry` and `admin_audit_record`, is written only by its owner: `venue`, `set_position`, `venue_amenity`, `venue_photo`, `venue_photo_variant`, `venue_commission_rate`, `set_availability`, `booking`, `stay`, `booking_day`, `remodel_receipt`, `remodel_receipt_move`, `remodel_receipt_outcome`, `remodel_receipt_kept`, `payment`, `payment_booking`, `payment_refund`, `payment_webhook_event`, `payout_ledger_entry`, `payout_batch`, `platform_setting`, `customer`, `customer_account`, `customer_sso_identity`, `customer_account_token`, `operator`, `operator_venue`, `review`, `email_suppression`, `booking_confirmation_mail_attempt` | `ResponsibilitiesArchitectureTests` (table-ownership map: a SQL-shaped `INSERT INTO`/`UPDATE … SET`/`DELETE FROM`/`MERGE INTO`/`TRUNCATE` per `CONSTANT_String`; the map must cover every table the migrations leave (create, drop and rename walked in Flyway version order) bar the framework tables, and every owner must write its tables) |
+| Every table in `CLAUDE.md`'s "Sole writer of" column, plus `challenge_registry` and `admin_audit_record`, is written only by its owner: `venue`, `set_position`, `venue_amenity`, `venue_photo`, `venue_photo_variant`, `venue_commission_rate`, `set_availability`, `booking`, `stay`, `booking_day`, `remodel_receipt`, `remodel_receipt_move`, `remodel_receipt_outcome`, `remodel_receipt_kept`, `payment`, `payment_booking`, `payment_refund`, `payment_webhook_event`, `payout_ledger_entry`, `payout_batch`, `platform_setting`, `customer`, `customer_account`, `customer_sso_identity`, `customer_account_token`, `operator`, `operator_venue`, `operator_password_reset_token`, `review`, `email_suppression`, `booking_confirmation_mail_attempt` | `ResponsibilitiesArchitectureTests` (table-ownership map: a SQL-shaped `INSERT INTO`/`UPDATE … SET`/`DELETE FROM`/`MERGE INTO`/`TRUNCATE` per `CONSTANT_String`; the map must cover every table the migrations leave (create, drop and rename walked in Flyway version order) bar the framework tables, and every owner must write its tables) |
 | No class inside a module depends on a type directly in `ai.riviera.platform` — ADR-0017 | `CompositionRootDisciplineTests` (module→root rule; `allowedDependencies` cannot see it) |
 | The root reaches no module: it holds only the application and its configuration (ADR-0028 Decision 1) | `CompositionRootDisciplineTests` (root→module rule) |
 | `payment` uses no Stripe **Connect** API (collect-only, ADR-0002) | `NoStripeConnectArchitectureTest` |

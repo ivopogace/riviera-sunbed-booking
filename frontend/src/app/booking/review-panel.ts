@@ -21,11 +21,11 @@ import {
 import { StarRow } from '../shared/star-row';
 
 /** The required rule's message, stated on the schema and rendered by `app-star-rating`'s own inline error. */
-const REVIEW_REQUIRED = 'Pick a star rating.';
+const REVIEW_REQUIRED = $localize`Pick a star rating.`;
 
-const COMMENT_TOO_LONG = `Keep your comment to ${REVIEW_COMMENT_MAX} characters or fewer.`;
-const NAME_REQUIRED = 'Add the name to show with your review.';
-const NAME_TOO_LONG = `Keep the name to ${REVIEW_DISPLAY_NAME_MAX} characters or fewer.`;
+const COMMENT_TOO_LONG = $localize`Keep your comment to ${REVIEW_COMMENT_MAX}:max: characters or fewer.`;
+const NAME_REQUIRED = $localize`Add the name to show with your review.`;
+const NAME_TOO_LONG = $localize`Keep the name to ${REVIEW_DISPLAY_NAME_MAX}:max: characters or fewer.`;
 
 const BTN =
   'cursor-pointer rounded-[14px] px-[18px] py-[11px] text-[14px] motion-reduce:transition-none focus-visible:outline-[3px] focus-visible:outline-offset-2 focus-visible:outline-riv-accent-ink aria-disabled:cursor-not-allowed aria-disabled:opacity-65';
@@ -109,30 +109,53 @@ function seedFor(panel: ReviewPanelState): ReviewFormModel {
     @switch (panel().kind) {
       @case ('ELIGIBLE') {
         <section [class]="cls.section" aria-labelledby="review-title" data-testid="review-panel">
-          <h2 id="review-title" [class]="cls.title">How was your stay?</h2>
-          <p [class]="cls.note">
-            Rate {{ venueName() }} from one to five stars, and add a few words if you like. You can
-            change or remove your review until {{ deadline() }}.
+          <h2 id="review-title" [class]="cls.title" i18n>How was your stay?</h2>
+          <p [class]="cls.note" i18n>
+            Rate
+            {{
+              venueName() // i18n(ph="venue")
+            }}
+            from one to five stars, and add a few words if you like. You can change or remove your
+            review until
+            {{
+              deadline()  // i18n(ph="deadline")
+            }}.
           </p>
           <ng-container [ngTemplateOutlet]="reviewFormTemplate" />
         </section>
       }
       @case ('ALREADY_REVIEWED') {
         <section [class]="cls.section" aria-labelledby="review-title" data-testid="review-panel">
-          <h2 id="review-title" [class]="cls.title">Your review</h2>
+          <h2 id="review-title" [class]="cls.title" i18n>Your review</h2>
           @if (editing()) {
-            <p [class]="cls.note">Change your review of {{ venueName() }}, then save it.</p>
+            <p [class]="cls.note" i18n>
+              Change your review of
+              {{
+                venueName()  // i18n(ph="venue")
+              }}, then save it.
+            </p>
             <ng-container [ngTemplateOutlet]="reviewFormTemplate" />
           } @else {
-            <p [class]="cls.note">
-              You can change or remove it until {{ deadline() }}, after which it stays as written.
+            <p [class]="cls.note" i18n>
+              You can change or remove it until
+              {{
+                deadline()  // i18n(ph="deadline")
+              }}, after which it stays as written.
             </p>
             <ng-container [ngTemplateOutlet]="ownReviewTemplate" />
             @if (confirmingDelete()) {
-              <p [class]="cls.confirmQ" data-testid="confirm-delete-question">
-                Remove your review of {{ venueName() }}? This cannot be undone.
+              <p [class]="cls.confirmQ" data-testid="confirm-delete-question" i18n>
+                Remove your review of
+                {{
+                  venueName()  // i18n(ph="venue")
+                }}? This cannot be undone.
               </p>
-              <div [class]="cls.actions" role="group" aria-label="Confirm removing your review">
+              <div
+                [class]="cls.actions"
+                role="group"
+                aria-label="Confirm removing your review"
+                i18n-aria-label
+              >
                 <button
                   appTouchTarget
                   type="button"
@@ -141,7 +164,11 @@ function seedFor(panel: ReviewPanelState): ReviewFormModel {
                   data-testid="confirm-delete-review"
                   (click)="deleted.emit()"
                 >
-                  {{ busy() ? 'Removing…' : 'Yes, remove it' }}
+                  @if (busy()) {
+                    <ng-container i18n>Removing…</ng-container>
+                  } @else {
+                    <ng-container i18n>Yes, remove it</ng-container>
+                  }
                 </button>
                 <button
                   appTouchTarget
@@ -150,6 +177,7 @@ function seedFor(panel: ReviewPanelState): ReviewFormModel {
                   [appBusy]="busy()"
                   data-testid="keep-review"
                   (click)="keepReview()"
+                  i18n
                 >
                   Keep my review
                 </button>
@@ -162,6 +190,7 @@ function seedFor(panel: ReviewPanelState): ReviewFormModel {
                   [class]="cls.btnOutline"
                   data-testid="edit-review"
                   (click)="startEdit()"
+                  i18n
                 >
                   Change my review
                 </button>
@@ -171,6 +200,7 @@ function seedFor(panel: ReviewPanelState): ReviewFormModel {
                   [class]="cls.btnOutlineDanger"
                   data-testid="start-delete-review"
                   (click)="startDelete()"
+                  i18n
                 >
                   Remove my review
                 </button>
@@ -181,8 +211,8 @@ function seedFor(panel: ReviewPanelState): ReviewFormModel {
       }
       @case ('FROZEN') {
         <section [class]="cls.section" aria-labelledby="review-title" data-testid="review-panel">
-          <h2 id="review-title" [class]="cls.title">Your review</h2>
-          <p [class]="cls.note" data-testid="review-frozen-note">
+          <h2 id="review-title" [class]="cls.title" i18n>Your review</h2>
+          <p [class]="cls.note" data-testid="review-frozen-note" i18n>
             Reviews can be changed for 60 days after your stay. That window has closed, so this one
             stays as you wrote it.
           </p>
@@ -191,8 +221,8 @@ function seedFor(panel: ReviewPanelState): ReviewFormModel {
       }
       @case ('HIDDEN') {
         <section [class]="cls.section" aria-labelledby="review-title" data-testid="review-panel">
-          <h2 id="review-title" [class]="cls.title">Your review</h2>
-          <p [class]="cls.note" data-testid="review-hidden-note">
+          <h2 id="review-title" [class]="cls.title" i18n>Your review</h2>
+          <p [class]="cls.note" data-testid="review-hidden-note" i18n>
             This review was removed from public view by the platform. It no longer counts toward the
             venue’s rating and can’t be changed.
           </p>
@@ -201,8 +231,8 @@ function seedFor(panel: ReviewPanelState): ReviewFormModel {
       }
       @case ('WINDOW_CLOSED') {
         <section [class]="cls.section" aria-labelledby="review-title" data-testid="review-panel">
-          <h2 id="review-title" [class]="cls.title">Rating this stay</h2>
-          <p [class]="cls.note" data-testid="review-window-closed-note">
+          <h2 id="review-title" [class]="cls.title" i18n>Rating this stay</h2>
+          <p [class]="cls.note" data-testid="review-window-closed-note" i18n>
             Stays can be rated for 60 days afterwards. That window has closed for this one.
           </p>
         </section>
@@ -210,16 +240,20 @@ function seedFor(panel: ReviewPanelState): ReviewFormModel {
       @case ('NOT_COMPLETED') {
         @if (readsAsRefunded(bookingStatus(), nothingLeft())) {
           <section [class]="cls.section" aria-labelledby="review-title" data-testid="review-panel">
-            <h2 id="review-title" [class]="cls.title">Rating this stay</h2>
-            <p [class]="cls.note" data-testid="review-nothing-left-note">
+            <h2 id="review-title" [class]="cls.title" i18n>Rating this stay</h2>
+            <p [class]="cls.note" data-testid="review-nothing-left-note" i18n>
               There’s nothing to review: every day of this booking was refunded.
             </p>
           </section>
         } @else if (bookingStatus() === 'CONFIRMED') {
           <section [class]="cls.section" aria-labelledby="review-title" data-testid="review-panel">
-            <h2 id="review-title" [class]="cls.title">Rating this stay</h2>
-            <p [class]="cls.note" data-testid="review-not-completed-note">
-              You can rate {{ venueName() }} once the staff have checked you in.
+            <h2 id="review-title" [class]="cls.title" i18n>Rating this stay</h2>
+            <p [class]="cls.note" data-testid="review-not-completed-note" i18n>
+              You can rate
+              {{
+                venueName() // i18n(ph="venue")
+              }}
+              once the staff have checked you in.
             </p>
           </section>
         }
@@ -249,12 +283,13 @@ function seedFor(panel: ReviewPanelState): ReviewFormModel {
       <form (submit)="send(); $event.preventDefault()" novalidate>
         <app-star-rating
           label="Your rating"
+          i18n-label
           [formField]="reviewForm.stars"
           [submitAttempted]="submitAttempted()"
         />
 
         <label [class]="cls.field">
-          <span [class]="cls.fieldLabel">Your comment (optional)</span>
+          <span [class]="cls.fieldLabel" i18n>Your comment (optional)</span>
           <textarea
             appTouchTarget
             appFieldGlass
@@ -276,7 +311,7 @@ function seedFor(panel: ReviewPanelState): ReviewFormModel {
         </label>
 
         <label [class]="cls.field">
-          <span [class]="cls.fieldLabel">Show my name as</span>
+          <span [class]="cls.fieldLabel" i18n>Show my name as</span>
           <input
             appTouchTarget
             appFieldGlass
@@ -316,6 +351,7 @@ function seedFor(panel: ReviewPanelState): ReviewFormModel {
               [appBusy]="busy()"
               data-testid="cancel-edit-review"
               (click)="cancelEdit()"
+              i18n="Button that abandons editing the review"
             >
               Cancel
             </button>
@@ -385,9 +421,9 @@ export class ReviewPanel {
 
   protected readonly submitLabel = computed(() => {
     if (this.busy()) {
-      return 'Sending…';
+      return $localize`Sending…`;
     }
-    return this.editing() ? 'Save changes' : 'Submit review';
+    return this.editing() ? $localize`Save changes` : $localize`Submit review`;
   });
 
   protected startEdit(): void {

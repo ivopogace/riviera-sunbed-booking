@@ -58,6 +58,8 @@ const DARK_CONSOLE_STORAGE = {
 
 // The real-backend U7 suite has its own config/servers — never run it under the mocked, backend-less one.
 const REAL_BACKEND = '**/real-backend/**';
+// The translated builds' smoke runs against the production build (`playwright.locales.config.ts`).
+const LOCALES = '**/locales/**';
 
 /**
  * Headless Chromium can show no permission prompt, so an ungranted ask does not fail — it hangs
@@ -81,7 +83,7 @@ const chromium = {
 export default defineConfig({
   testDir: './e2e',
   testMatch: '**/*.e2e.ts',
-  testIgnore: REAL_BACKEND,
+  testIgnore: [REAL_BACKEND, LOCALES],
   timeout: 60_000,
   fullyParallel: false,
   forbidOnly: !!process.env.CI,
@@ -94,7 +96,7 @@ export default defineConfig({
     trace: 'on-first-retry',
   },
   projects: [
-    { name: 'chromium', use: chromium, testIgnore: [REAL_BACKEND, ...PHONE_SWEEPS] },
+    { name: 'chromium', use: chromium, testIgnore: [REAL_BACKEND, LOCALES, ...PHONE_SWEEPS] },
     {
       name: 'phone',
       use: { ...chromium, viewport: { width: 390, height: 780 } },

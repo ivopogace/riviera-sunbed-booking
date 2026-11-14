@@ -19,6 +19,9 @@ import { BookingView } from './booking-view';
 import { BookingService } from './booking.service';
 import { SupportContact } from '../core/support-contact';
 import { SupportContactView } from '../shared/support-contact-view';
+import { VenueLocation } from '../shared/venue-views';
+import { venuePinStub } from '../../testing/venue-pin-stub';
+import { VenuePin } from './venue-pin';
 
 const DETAIL: BookingDetail = {
   code: 'ABCD234567',
@@ -289,8 +292,12 @@ function supportStub(): Pick<SupportContact, 'contact' | 'load'> {
   return { contact: signal(supportContact).asReadonly(), load: () => Promise.resolve() };
 }
 
+/** The booked venue's pin the Directions row reads; none unless a test sets it. */
+let venuePin: VenueLocation | null = null;
+
 afterEach(() => {
   supportContact = undefined;
+  venuePin = null;
 });
 
 async function render(
@@ -303,6 +310,7 @@ async function render(
       provideRouter([]),
       { provide: BookingService, useValue: service },
       { provide: SupportContact, useValue: supportStub() },
+      { provide: VenuePin, useValue: venuePinStub(venuePin) },
       {
         provide: ActivatedRoute,
         useValue: {
@@ -320,6 +328,66 @@ async function render(
 }
 
 describe('BookingView', () => {
+  describe('venue link and directions (#1738)', () => {
+    const PIN = { latitude: 39.774531, longitude: 19.998412 };
+
+    function link(
+      fixture: ComponentFixture<BookingView>,
+      testId: string,
+    ): HTMLAnchorElement | null {
+      return (fixture.nativeElement as HTMLElement).querySelector(`[data-testid="${testId}"]`);
+    }
+
+    it('links the venue name to its beach map on the booked date', async () => {
+      const fixture = await render(stubService({ detail: DETAIL }));
+      const venue = link(fixture, 'venue-link');
+      expect(venue?.textContent?.trim()).toBe('Miramar Beach Club');
+      expect(venue?.getAttribute('href')).toBe('/venues/1?date=2026-12-01');
+    });
+
+    it('opens a stay on its first day', async () => {
+      const fixture = await render(stubService({ detail: { ...DETAIL, lastDate: '2026-12-04' } }));
+      expect(link(fixture, 'venue-link')?.getAttribute('href')).toBe('/venues/1?date=2026-12-01');
+    });
+
+    it('offers Directions to the pin in a new tab when the venue has one', async () => {
+      venuePin = PIN;
+      const fixture = await render(stubService({ detail: DETAIL }));
+      const directions = link(fixture, 'venue-directions');
+      expect(directions?.getAttribute('href')).toBe(
+        'https://www.google.com/maps/dir/?api=1&destination=39.774531,19.998412',
+      );
+      expect(directions?.getAttribute('target')).toBe('_blank');
+      expect(directions?.getAttribute('rel')).toBe('noopener noreferrer');
+    });
+
+    it('renders no Directions row for a venue with no pin', async () => {
+      const fixture = await render(stubService({ detail: DETAIL }));
+      expect(link(fixture, 'directions-row')).toBeNull();
+    });
+
+    it('still links the venue, and its directions, on a cancelled booking', async () => {
+      venuePin = PIN;
+      const fixture = await render(stubService({ detail: cancelled('POLICY', 4500) }));
+      expect(link(fixture, 'venue-link')?.getAttribute('href')).toBe('/venues/1?date=2026-12-01');
+      expect(link(fixture, 'venue-directions')).not.toBeNull();
+    });
+
+    it('passes axe with both links on the card', async () => {
+      venuePin = PIN;
+      const fixture = await render(stubService({ detail: DETAIL }));
+      await expectNoAxeViolations(fixture.nativeElement as HTMLElement);
+    });
+
+    it('never puts the booking code in either link (invariant #7)', async () => {
+      venuePin = PIN;
+      const fixture = await render(stubService({ detail: DETAIL }));
+      for (const id of ['venue-link', 'venue-directions']) {
+        expect(link(fixture, id)?.getAttribute('href')).not.toContain(DETAIL.code);
+      }
+    });
+  });
+
   it('names the configured support channels under "Need help?" (#1735)', async () => {
     supportContact = {
       email: 'help@example.com',
@@ -1585,6 +1653,7 @@ describe('BookingView', () => {
     expect(handoffs).toEqual([
       {
         code: 'ABCD234567',
+        venueId: 1,
         venueName: 'Miramar Beach Club',
         rowLabel: 'Front row · Sea view',
         positionNo: 2,
@@ -1885,6 +1954,7 @@ describe('BookingView', () => {
         provideRouter([]),
         { provide: BookingService, useValue: service },
         { provide: SupportContact, useValue: supportStub() },
+        { provide: VenuePin, useValue: venuePinStub(venuePin) },
         {
           provide: ActivatedRoute,
           useValue: { snapshot: { paramMap: paramMap$.value }, paramMap: paramMap$ },
@@ -1928,6 +1998,7 @@ describe('BookingView', () => {
         provideRouter([]),
         { provide: BookingService, useValue: service },
         { provide: SupportContact, useValue: supportStub() },
+        { provide: VenuePin, useValue: venuePinStub(venuePin) },
         {
           provide: ActivatedRoute,
           useValue: { snapshot: { paramMap: paramMap$.value }, paramMap: paramMap$ },
@@ -1961,6 +2032,7 @@ describe('BookingView', () => {
         provideRouter([]),
         { provide: BookingService, useValue: service },
         { provide: SupportContact, useValue: supportStub() },
+        { provide: VenuePin, useValue: venuePinStub(venuePin) },
         {
           provide: ActivatedRoute,
           useValue: { snapshot: { paramMap: paramMap$.value }, paramMap: paramMap$ },
@@ -2029,6 +2101,7 @@ describe('BookingView', () => {
           provideRouter([]),
           { provide: BookingService, useValue: service },
           { provide: SupportContact, useValue: supportStub() },
+          { provide: VenuePin, useValue: venuePinStub(venuePin) },
           {
             provide: ActivatedRoute,
             useValue: { snapshot: { paramMap: paramMap$.value }, paramMap: paramMap$ },

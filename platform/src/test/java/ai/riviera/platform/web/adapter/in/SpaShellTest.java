@@ -1,7 +1,6 @@
-package ai.riviera.platform;
+package ai.riviera.platform.web.adapter.in;
 
-import ai.riviera.platform.web.adapter.in.WebCorsConfig;
-import ai.riviera.platform.web.adapter.in.SecurityConfig;
+import ai.riviera.platform.WebSliceStubs;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
@@ -13,7 +12,6 @@ import org.springframework.test.web.servlet.MockMvc;
 import static org.hamcrest.Matchers.containsString;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.forwardedUrl;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
@@ -37,13 +35,10 @@ class SpaShellTest {
 
 	@Test
 	void rootServesTheSpaShell() throws Exception {
-		// GET / is handled by Spring Boot's welcome-page mapping, which forwards to index.html
-		// (the SPA shell). MockMvc records the forward rather than following it; the real
-		// DispatcherServlet re-dispatches it to the bundled static index.html. The deep-link
-		// test below proves the actual shell content is served for non-root client routes.
+		// GET / is SpaShellController's, ahead of Boot's welcome-page forward: the shell with its home head.
 		mvc.perform(get("/"))
 				.andExpect(status().isOk())
-				.andExpect(forwardedUrl("index.html"));
+				.andExpect(content().string(containsString("app-root")));
 	}
 
 	@Test
@@ -54,6 +49,24 @@ class SpaShellTest {
 				.andExpect(status().isOk())
 				.andExpect(content().contentTypeCompatibleWith(MediaType.TEXT_HTML))
 				.andExpect(content().string(containsString("app-root")));
+	}
+
+	@Test
+	void eachLocaleDeepLinkServesThatLocalesShell() throws Exception {
+		// ADR-0030: /sq/** and /it/** fall back to their own build's index.html, the rest to the source locale's.
+		mvc.perform(get("/sq/venues/1")).andExpect(status().isOk())
+				.andExpect(content().string(containsString("lang=\"sq\"")));
+		mvc.perform(get("/it/booking/ABC")).andExpect(status().isOk())
+				.andExpect(content().string(containsString("lang=\"it\"")));
+		mvc.perform(get("/sq/")).andExpect(content().string(containsString("lang=\"sq\"")));
+		mvc.perform(get("/it")).andExpect(content().string(containsString("lang=\"it\"")));
+		mvc.perform(get("/venues/1")).andExpect(content().string(containsString("lang=\"en\"")));
+		mvc.perform(get("/sqx/venues/1")).andExpect(content().string(containsString("lang=\"en\"")));
+	}
+
+	@Test
+	void missingLocaleAssetReturns404NotTheShell() throws Exception {
+		mvc.perform(get("/sq/chunk-STALE123.js")).andExpect(status().isNotFound());
 	}
 
 	@Test

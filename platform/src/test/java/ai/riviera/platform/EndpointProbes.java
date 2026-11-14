@@ -50,7 +50,8 @@ final class EndpointProbes {
 			"date", "2026-07-01",
 			"rowLabel", "A",
 			"slot", "COVER",
-			"hash", "0123456789abcdef");
+			"hash", "0123456789abcdef",
+			"locale", "sq");
 	private static final String DEFAULT_SAMPLE = "1";
 	private static final Pattern PATH_VARIABLE = Pattern.compile("\\{([^/{}]+)}");
 	private static final char VERB_SEPARATOR = ' ';
@@ -87,13 +88,14 @@ final class EndpointProbes {
 		return endpoint.substring(endpoint.indexOf(VERB_SEPARATOR) + 1);
 	}
 
-	/** Substitute each {@code {var}} with a sample value, so the probe resolves to a real handler. */
+	/** Substitute each {@code {var}} or {@code {var:regex}} with a sample, so the probe resolves to a real handler. */
 	private static String concretePath(String pattern) {
 		Matcher variable = PATH_VARIABLE.matcher(pattern);
 		StringBuilder path = new StringBuilder();
 		while (variable.find()) {
+			String name = variable.group(1).split(":", 2)[0];
 			variable.appendReplacement(path, Matcher.quoteReplacement(
-					PATH_VARIABLE_SAMPLES.getOrDefault(variable.group(1), DEFAULT_SAMPLE)));
+					PATH_VARIABLE_SAMPLES.getOrDefault(name, DEFAULT_SAMPLE)));
 		}
 		variable.appendTail(path);
 		return path.toString();

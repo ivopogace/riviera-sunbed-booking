@@ -14,7 +14,7 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
  * same-origin under {@code /map/**}, from the directory {@code riviera.map.dir} ({@code map/} next
  * to the jar: {@code platform/map/} under {@code bootRun}, {@code /app/map/} on the image). The
  * archive is read by HTTP {@code Range} (a {@code 206} slice), so a file-system directory, not the
- * classpath: a jar entry cannot seek. App-wide like {@link SpaWebConfig}, so root package (#11).
+ * classpath: a jar entry cannot seek. App-wide and reaching no module, so root package (ADR-0028).
  * Rationale: RESPONSIBILITIES.md § <em>Platform edge</em>, ADR-0022.
  */
 @Component

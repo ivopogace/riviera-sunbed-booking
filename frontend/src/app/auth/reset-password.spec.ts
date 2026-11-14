@@ -3,7 +3,8 @@ import { ActivatedRoute, convertToParamMap, provideRouter } from '@angular/route
 import { vi } from 'vitest';
 
 import { CustomerAuth, ResetPasswordResult } from '../core/customer-auth';
-import { ResetPassword } from './reset-password';
+import { OperatorAuth } from '../core/operator-auth';
+import { ResetAudience, ResetPassword } from './reset-password';
 
 function authStub(result: ResetPasswordResult): Partial<CustomerAuth> & {
   resetPassword: ReturnType<typeof vi.fn>;
@@ -14,15 +15,23 @@ function authStub(result: ResetPasswordResult): Partial<CustomerAuth> & {
 async function render(
   auth: Partial<CustomerAuth>,
   token: string | null,
+  audience: ResetAudience = 'customer',
 ): Promise<ComponentFixture<ResetPassword>> {
   await TestBed.configureTestingModule({
     imports: [ResetPassword],
     providers: [
       provideRouter([]),
-      { provide: CustomerAuth, useValue: auth },
+      audience === 'operator'
+        ? { provide: OperatorAuth, useValue: auth }
+        : { provide: CustomerAuth, useValue: auth },
       {
         provide: ActivatedRoute,
-        useValue: { snapshot: { queryParamMap: convertToParamMap(token ? { token } : {}) } },
+        useValue: {
+          snapshot: {
+            queryParamMap: convertToParamMap(token ? { token } : {}),
+            data: audience === 'operator' ? { resetAudience: 'operator' } : {},
+          },
+        },
       },
     ],
   }).compileComponents();
@@ -143,5 +152,51 @@ describe('ResetPassword', () => {
     fixture.detectChanges();
 
     expect(text(fixture, 'reset-error')).toContain('invalid or has expired');
+  });
+
+  describe('the operator audience (#1737)', () => {
+    it('redeems through the operator auth service and lands on the operator sign-in tab', async () => {
+      const auth = authStub('reset');
+      const fixture = await render(auth, 'op-tok', 'operator');
+
+      setModel(fixture, 'passphrase-123', 'passphrase-123');
+      submit(fixture);
+      await fixture.whenStable();
+      fixture.detectChanges();
+
+      expect(auth.resetPassword).toHaveBeenCalledWith('op-tok', 'passphrase-123');
+      expect(byId(fixture, 'reset-to-signin')!.getAttribute('href')).toBe(
+        '/account/sign-in?audience=operator',
+      );
+    });
+
+    it('sends an operator with a dead link to the admin, never to the tourist forgot page', async () => {
+      const fixture = await render(authStub('reset'), null, 'operator');
+
+      expect(text(fixture, 'reset-no-token')).toContain('Ask your platform admin');
+      expect(byId(fixture, 'reset-to-forgot')).toBeNull();
+    });
+
+    it('names the admin on an expired operator link', async () => {
+      const fixture = await render(authStub('invalid-token'), 'op-tok', 'operator');
+
+      setModel(fixture, 'passphrase-123', 'passphrase-123');
+      submit(fixture);
+      await fixture.whenStable();
+      fixture.detectChanges();
+
+      expect(text(fixture, 'reset-error')).toContain('Ask your platform admin for a new one.');
+    });
+  });
+
+  it('keeps the tourist sign-in link free of an audience', async () => {
+    const fixture = await render(authStub('reset'), 'tok');
+
+    setModel(fixture, 'passphrase-123', 'passphrase-123');
+    submit(fixture);
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    expect(byId(fixture, 'reset-to-signin')!.getAttribute('href')).toBe('/account/sign-in');
   });
 });

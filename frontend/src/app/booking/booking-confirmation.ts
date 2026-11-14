@@ -10,12 +10,17 @@ import { formatMoney } from '../shared/money';
 import { BookingService } from './booking.service';
 import { CheckIcon } from '../shared/check-icon';
 import { PrimaryCta } from '../shared/primary-cta';
+import { TouchTarget } from '../shared/touch-target';
+import { directionsUrl } from '../shared/directions-url';
+import { VenuePin } from './venue-pin';
 
 /** Template skins, hoisted so each recipe exists once (the booking-view.ts `cls` idiom). */
 const CLS = {
   card: 'mx-auto my-8 max-w-[400px] rounded-[30px] px-[30px] pt-9 pb-[30px] text-center shadow-[0_18px_50px_rgba(7,42,58,0.28),inset_0_1px_0_rgba(255,255,255,0.85)] backdrop-blur-[30px] backdrop-saturate-[1.8]',
   h1: 'mb-2 text-[30px] font-bold tracking-[-0.02em]',
   lead: 'mb-[18px] text-[15px] leading-[1.45] text-riv-card-ink-soft',
+  row: 'flex items-center justify-between gap-3 py-[5px] text-[13.5px]',
+  link: 'inline-flex items-center text-right font-semibold text-riv-accent-ink underline focus-visible:outline-[3px] focus-visible:outline-offset-2 focus-visible:outline-riv-accent-ink',
 } as const;
 
 /**
@@ -36,6 +41,7 @@ const CLS = {
     BookingQr,
     WithheldEmailNotice,
     CheckIcon,
+    TouchTarget,
   ],
   template: `
     @if (confirmation(); as c) {
@@ -46,13 +52,35 @@ const CLS = {
         >
           <app-check-icon />
         </div>
-        <h1 [class]="cls.h1" id="confirmation-title">You’re booked.</h1>
+        <h1 [class]="cls.h1" id="confirmation-title" i18n>You’re booked.</h1>
         <p [class]="cls.lead">
           @if (c.stretches?.length) {
-            Your stay at {{ c.venueName }}<br />{{ dateLabel() }} · one code for every morning.
+            <ng-container i18n
+              >Your stay at
+              {{
+                c.venueName  // i18n(ph="venue")
+              }}<br />{{
+                dateLabel() // i18n(ph="dates")
+              }}
+              · one code for every morning.</ng-container
+            >
           } @else {
-            {{ c.rowLabel }} · spot {{ c.positionNo }} at {{ c.venueName }}<br />on
-            {{ dateLabel() }}.
+            <ng-container i18n
+              >{{
+                c.rowLabel // i18n(ph="row")
+              }}
+              · spot
+              {{
+                c.positionNo // i18n(ph="spot")
+              }}
+              at
+              {{
+                c.venueName  // i18n(ph="venue")
+              }}<br />on
+              {{
+                dateLabel()  // i18n(ph="date")
+              }}.</ng-container
+            >
           }
         </p>
         @if (c.stretches; as stretches) {
@@ -61,11 +89,21 @@ const CLS = {
               class="mb-3.5 list-none rounded-[18px] border border-[rgba(255,255,255,0.6)] bg-riv-inset-fill px-4 py-3 text-left text-[13.5px]"
               data-testid="confirmation-stops"
               aria-label="Your spots"
+              i18n-aria-label
             >
               @for (stretch of stretches; track $index) {
                 <li class="flex items-center justify-between gap-3 py-[3px]">
-                  <span class="font-semibold"
-                    >{{ $index + 1 }}. {{ stretch.rowLabel }} · spot {{ stretch.positionNo }}</span
+                  <span class="font-semibold" i18n
+                    >{{
+                      $index + 1  // i18n(ph="n")
+                    }}.
+                    {{
+                      stretch.rowLabel // i18n(ph="row")
+                    }}
+                    · spot
+                    {{
+                      stretch.positionNo // i18n(ph="spot")
+                    }}</span
                   >
                   <span class="text-riv-card-ink-soft">{{
                     stayLabel(stretch.firstDate, stretch.lastDate)
@@ -79,14 +117,44 @@ const CLS = {
         <dl
           class="mb-3.5 rounded-[18px] border border-[rgba(255,255,255,0.6)] bg-riv-inset-fill px-4 py-3.5 text-left"
         >
-          <div class="flex items-center justify-between gap-3 py-[5px] text-[13.5px]">
-            <dt class="text-riv-card-ink-soft">Includes</dt>
-            <dd class="font-semibold">2 loungers + umbrella · full day</dd>
+          <div [class]="cls.row">
+            <dt class="text-riv-card-ink-soft" i18n>Venue</dt>
+            <dd>
+              <a
+                appTouchTarget
+                [routerLink]="['/venues', c.venueId]"
+                [queryParams]="{ date: c.bookingDate }"
+                [class]="cls.link"
+                data-testid="venue-link"
+                >{{ c.venueName }}</a
+              >
+            </dd>
+          </div>
+          @if (directions(); as url) {
+            <div [class]="cls.row" data-testid="directions-row">
+              <dt class="text-riv-card-ink-soft" i18n>Directions</dt>
+              <dd>
+                <a
+                  appTouchTarget
+                  [href]="url"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  [class]="cls.link"
+                  data-testid="venue-directions"
+                  i18n
+                  >Open in maps<span class="sr-only"> (opens in a new tab)</span></a
+                >
+              </dd>
+            </div>
+          }
+          <div [class]="cls.row">
+            <dt class="text-riv-card-ink-soft" i18n>Includes</dt>
+            <dd class="font-semibold" i18n>2 loungers + umbrella · full day</dd>
           </div>
           <div
             class="mt-[5px] flex items-center justify-between gap-3 border-t border-riv-card-track pt-[7px] pb-[5px] text-[13.5px]"
           >
-            <dt class="text-riv-card-ink-soft">Paid</dt>
+            <dt class="text-riv-card-ink-soft" i18n>Paid</dt>
             <dd class="text-[16px] font-bold text-riv-accent-ink">
               {{ formatMoney(c.amount) }}
             </dd>
@@ -97,7 +165,7 @@ const CLS = {
           class="mb-5 rounded-[18px] border border-dashed border-riv-field-border bg-riv-inset-fill p-[15px]"
           data-testid="booking-code"
         >
-          <span class="block text-[11px] tracking-[0.16em] uppercase text-riv-card-ink-soft"
+          <span class="block text-[11px] tracking-[0.16em] uppercase text-riv-card-ink-soft" i18n
             >Booking code</span
           >
           <div class="mt-[5px] text-[27px] font-bold tracking-[0.12em] text-riv-accent-ink">
@@ -107,9 +175,9 @@ const CLS = {
             <app-booking-qr [code]="c.code" />
           </div>
           <p class="mt-2 text-[12px] leading-[1.4] text-riv-card-ink-soft">
-            Show this code to staff when you arrive.
+            <ng-container i18n>Show this code to staff when you arrive.</ng-container>
             @if (!c.emailWithheld) {
-              <span>We’ve also emailed it to you.</span>
+              <span i18n>We’ve also emailed it to you.</span>
             }
           </p>
           @if (c.emailWithheld) {
@@ -121,17 +189,19 @@ const CLS = {
           appPrimaryCta
           routerLink="/"
           class="block w-full rounded-2xl p-3.5 text-[15px] font-bold shadow-[0_10px_26px_rgba(11,120,150,0.5)] focus-visible:outline-[3px] focus-visible:outline-offset-2 focus-visible:outline-riv-accent-ink"
+          i18n
           >Back to the beach</a
         >
         <app-manage-booking-link [code]="c.code" variant="link" />
       </section>
     } @else {
       <section [class]="cls.card" appCardGlass aria-labelledby="confirmation-title">
-        <h1 [class]="cls.h1" id="confirmation-title">No booking to show</h1>
-        <p [class]="cls.lead">Your booking details aren’t available here anymore.</p>
+        <h1 [class]="cls.h1" id="confirmation-title" i18n>No booking to show</h1>
+        <p [class]="cls.lead" i18n>Your booking details aren’t available here anymore.</p>
         <a
           routerLink="/"
           class="mt-3 inline-block text-[14.5px] font-semibold text-riv-accent-ink focus-visible:outline-[3px] focus-visible:outline-offset-2 focus-visible:outline-riv-accent-ink"
+          i18n
           >Start a new booking</a
         >
       </section>
@@ -149,6 +219,13 @@ export class BookingConfirmation {
   protected readonly confirmation = computed(() => {
     const c = this.bookings.lastConfirmation();
     return c?.status === 'CONFIRMED' ? c : undefined;
+  });
+
+  private readonly pin = inject(VenuePin).locationOf(() => this.confirmation()?.venueId);
+  /** The maps link to the venue's pin, or `null` when it has none: then no Directions row renders. */
+  protected readonly directions = computed(() => {
+    const at = this.pin();
+    return at ? directionsUrl(at) : null;
   });
 
   protected readonly formatMoney = formatMoney;

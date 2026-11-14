@@ -41,6 +41,7 @@ import {
 import { FenceInsets, LngLat, MapEngineOptions, MapHandle, MapView } from '../../shared/map-engine';
 import { NO_FENCE_INSETS } from '../../shared/map-fence';
 import { formatMoney } from '../../shared/money';
+import { pluralOf } from '../../shared/plural';
 import { formatStay } from '../../shared/booking-date-label';
 import { PanelGlass } from '../../shared/panel-glass';
 import { PosterHandle } from '../../shared/poster-handle';
@@ -153,10 +154,11 @@ function closedStateText(
   salesClosed: boolean,
 ): string {
   if (closedForSeason) {
-    const reopens = reopensOn ? `, reopens ${formatDayMonth(reopensOn)}` : '';
-    return `, closed for season${reopens}`;
+    return reopensOn
+      ? $localize`, closed for season, reopens ${formatDayMonth(reopensOn)}:date:`
+      : $localize`, closed for season`;
   }
-  return salesClosed ? ', online sales for today have closed' : '';
+  return salesClosed ? $localize`, online sales for today have closed` : '';
 }
 
 /**
@@ -448,6 +450,9 @@ export class Home {
     return problem === null || this.noteDismissed() ? null : NEAR_ME_MESSAGES[problem];
   });
   protected readonly pickerOpen = signal(false);
+  protected readonly nearMeText = computed(() =>
+    this.here() !== null ? $localize`You are here` : $localize`Near me`,
+  );
   /** The venue whose row the pointer or the keyboard is on, for the map to light its pin. */
   protected readonly pointedVenue = signal<string | null>(null);
   /**
@@ -577,10 +582,10 @@ export class Home {
     const cards = this.focus().cards;
     const n = cards.length;
     if (!this.isToday()) {
-      return `${n} ${n === 1 ? 'venue' : 'venues'}`;
+      return pluralOf(n, $localize`${n}:count: venue`, $localize`${n}:count: venues`);
     }
     const selling = cards.filter((card) => !card.salesClosed && card.sellsOnline).length;
-    return `${selling} of ${n} selling today`;
+    return $localize`${selling}:selling: of ${n}:count: selling today`;
   });
   /** The region's beaches with a venue, in coast order, each with its count. */
   protected readonly beachOptions = computed<readonly BeachOption[]>(() =>
@@ -991,6 +996,14 @@ export class Home {
     this.closePicker();
   }
 
+  protected previousPhotoLabel(name: string): string {
+    return $localize`Previous photo, ${name}:venue:`;
+  }
+
+  protected nextPhotoLabel(name: string): string {
+    return $localize`Next photo, ${name}:venue:`;
+  }
+
   protected kmLabel(km: number): string {
     return distanceLabel(km);
   }
@@ -1168,18 +1181,20 @@ export class Home {
     const reopensOn = closedForSeason ? (venue.reopensOn ?? null) : null;
 
     // A priceless venue with sets holds them for walk-ins alone: the server prices online sets only.
-    const unpricedLabel = total === 0 ? 'No sets yet' : 'Walk-in only';
+    const unpricedLabel = total === 0 ? $localize`No sets yet` : $localize`Walk-in only`;
     let price = '';
     if (priceLabel) {
-      price = `, from ${priceLabel} per set`;
+      price = $localize`, from ${priceLabel}:price: per set`;
     } else if (total > 0) {
-      price = ', walk-in only';
+      price = $localize`, walk-in only`;
     }
     const waterText = water ? `${water}. ` : '';
     const amenitiesText = amenities.length
-      ? `Amenities: ${amenities.map((a) => a.label).join(', ')}. `
+      ? $localize`Amenities: ${amenities.map((a) => a.label).join(', ')}:amenities:. `
       : '';
-    const ratingText = rated ? `rated ${rating} out of 5` : 'no reviews yet';
+    const ratingText = rated
+      ? $localize`rated ${rating}:rating: out of 5`
+      : $localize`no reviews yet`;
     // The card body is aria-hidden, so the closed state must ride the accessible name too.
     const closedText = closedStateText(closedForSeason, reopensOn, salesClosed);
     const stay = this.stay() ? (venue.stay ?? null) : null;
@@ -1189,13 +1204,9 @@ export class Home {
         : stayLabel(stay, daysBetween(this.selectedDate(), this.selectedLastDate()));
     const daysText =
       stayText === null
-        ? `${free} of ${total} sets free on ${dateLabel}`
-        : `${stayText.replaceAll(' · ', ', ')} for ${dateLabel}`;
-    const ariaLabel =
-      `${venue.name}, ${beachLabel(venue.beach)} · ${regionLabel(venue.region)}, ${ratingText}${price}, ` +
-      `${daysText}${closedText}. ` +
-      `${waterText}${amenitiesText}` +
-      `View beach map.`;
+        ? $localize`${free}:free: of ${total}:total: sets free on ${dateLabel}:date:`
+        : $localize`${stayText.replaceAll(' · ', ', ')}:stay: for ${dateLabel}:date:`;
+    const ariaLabel = $localize`${venue.name}:venue:, ${beachLabel(venue.beach)}:beach: · ${regionLabel(venue.region)}:region:, ${ratingText}:rating:${price}:price:, ${daysText}:availability:${closedText}:closed:. ${waterText}:water:${amenitiesText}:amenities:View beach map.`;
 
     return {
       id: venue.id,
@@ -1204,7 +1215,8 @@ export class Home {
       beachLabel: beachLabel(venue.beach),
       regionLabel: regionLabel(venue.region),
       photos,
-      modeLabel: venue.bookingMode === 'INSTANT' ? 'Instant Book' : 'Request to Book',
+      modeLabel:
+        venue.bookingMode === 'INSTANT' ? $localize`Instant Book` : $localize`Request to Book`,
       instantBook: venue.bookingMode === 'INSTANT',
       isRated: rated,
       rating,

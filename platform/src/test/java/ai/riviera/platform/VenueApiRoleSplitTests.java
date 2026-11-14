@@ -11,8 +11,8 @@ import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noClasses;
  * A fast, context-free ArchUnit test (sibling to {@link PackageShapeArchitectureTests}).
  *
  * <p>Since the split (B1), {@code venue.api.VenueCatalog} is the <strong>tourist-read</strong> port,
- * consumed by the {@code venue} module's own REST adapter and by the {@code itinerary} read model
- * that composes the discovery list over it (improvement plan B4). Sibling modules use the
+ * consumed by the {@code venue} module's own REST adapter, the {@code itinerary} read model that composes
+ * the discovery list over it (improvement plan B4) and {@code web}'s link-preview shell. Sibling modules use the
  * role-named surfaces instead: {@code SetBookingFacts} (booking, availability) and
  * {@code VenueRates} (payout, booking-cancel). This rule is deliberately a
  * <strong>dependency-direction</strong> assertion, not a method-list freeze: adding a
@@ -22,13 +22,14 @@ import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noClasses;
 class VenueApiRoleSplitTests {
 
 	@Test
-	void venueCatalogIsConsumedOnlyByVenueAndTheItineraryReadModel() {
+	void venueCatalogIsConsumedOnlyByTheTouristReadSurfaces() {
 		noClasses()
-				.that().resideOutsideOfPackages("ai.riviera.platform.venue..", "ai.riviera.platform.itinerary..")
+				.that().resideOutsideOfPackages("ai.riviera.platform.venue..", "ai.riviera.platform.itinerary..",
+						"ai.riviera.platform.web..")
 				.should().dependOnClassesThat()
 				.haveFullyQualifiedName("ai.riviera.platform.venue.api.VenueCatalog")
-				.because("VenueCatalog is the tourist-read port, read by venue's own adapter and the "
-						+ "itinerary read model; siblings use the role-named surfaces "
+				.because("VenueCatalog is the tourist-read port, read by venue's own adapter, the itinerary "
+						+ "read model and web's link-preview shell; siblings use the role-named surfaces "
 						+ "(SetBookingFacts, VenueRates) — do not regrow the god-port")
 				.check(PRODUCTION_CLASSES);
 	}

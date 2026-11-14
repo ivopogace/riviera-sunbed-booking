@@ -96,6 +96,8 @@ class EndpointRoleGateCoverageTest {
 			"POST /api/auth/customer/forgot-password",
 			"POST /api/auth/customer/reset-password",
 			"POST /api/auth/customer/verify-email",
+			// permitAll — the admin-issued reset link's token is the bearer credential (#1737, invariant #7).
+			"POST /api/auth/operator/reset-password",
 			// permitAll — the OIDC redirect flow completes the exchange internally (D-3).
 			"GET /api/auth/sso/{provider}/authorize",
 			"GET /api/auth/sso/{provider}/callback",
@@ -112,6 +114,9 @@ class EndpointRoleGateCoverageTest {
 			"GET /api/venues/{venueId}/itinerary",
 			// permitAll — the configured support channels the help surfaces read (#1735).
 			"GET /api/support-contact",
+			// permitAll — the crawl policy, read-only and public by definition (#1761).
+			"GET /robots.txt",
+			"GET /sitemap.xml",
 			// permitAll — guest checkout is deliberately session-free; the booking code authorizes
 			// the read, the cancel and the request-withdraw (invariant #7).
 			"POST /api/bookings",
@@ -129,6 +134,23 @@ class EndpointRoleGateCoverageTest {
 			"POST /api/payments/stripe/webhook",
 			// permitAll — server-to-server from Scaleway Topics & Events, authenticated by its SNS signature.
 			"POST /api/notifications/tem/webhook",
+			// permitAll via the SPA chain — the shell with its link-preview head; private routes noindex (#1760, #7).
+			"GET /",
+			"GET /{locale:[a-z][a-z]}/",
+			"GET /venues/{id}",
+			"GET /{locale:[a-z][a-z]}/venues/{id}",
+			"GET /account/**",
+			"GET /admin/**",
+			"GET /booking/**",
+			"GET /my-bookings/**",
+			"GET /operator/**",
+			"GET /venue-admin/**",
+			"GET /{locale:[a-z][a-z]}/account/**",
+			"GET /{locale:[a-z][a-z]}/admin/**",
+			"GET /{locale:[a-z][a-z]}/booking/**",
+			"GET /{locale:[a-z][a-z]}/my-bookings/**",
+			"GET /{locale:[a-z][a-z]}/operator/**",
+			"GET /{locale:[a-z][a-z]}/venue-admin/**",
 			// The ONE deliberate fall-through to anyRequest().authenticated(): the reload-restore read
 			// serves BOTH principal types by design, so no single role gate fits (SecurityConfig ~L217).
 			"GET /api/auth/me");
