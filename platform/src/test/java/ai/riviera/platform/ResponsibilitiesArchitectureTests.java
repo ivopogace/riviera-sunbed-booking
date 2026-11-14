@@ -151,7 +151,7 @@ class ResponsibilitiesArchitectureTests {
 			"payment", List.of("payment", "payment_booking", "payment_refund", "payment_webhook_event"),
 			"payout", List.of("payout_ledger_entry", "payout_batch", "platform_setting"),
 			"customer", List.of("customer", "customer_account", "customer_sso_identity", "customer_account_token"),
-			"operator", List.of("operator", "operator_venue"),
+			"operator", List.of("operator", "operator_venue", "operator_password_reset_token"),
 			"review", List.of("review"),
 			"notification", List.of("email_suppression", "booking_confirmation_mail_attempt"),
 			"challenge", List.of("challenge_registry"),

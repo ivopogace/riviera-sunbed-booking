@@ -18,21 +18,24 @@ import org.springframework.security.core.Authentication;
 
 import ai.riviera.platform.auth.api.SessionRevocation;
 import ai.riviera.platform.auth.application.OperatorApprovalMail;
+import ai.riviera.platform.auth.application.OperatorResetLinks;
 import ai.riviera.platform.operator.api.OperatorLifecycle;
+import ai.riviera.platform.operator.api.OperatorPasswordReset;
 import ai.riviera.platform.operator.vocabulary.OperatorAccount;
 import ai.riviera.platform.operator.vocabulary.ApprovalOutcome;
 import ai.riviera.platform.operator.vocabulary.OperatorId;
 import ai.riviera.platform.operator.vocabulary.OperatorLifecycleOutcome;
 import ai.riviera.platform.operator.vocabulary.OperatorStatus;
 import ai.riviera.platform.operator.vocabulary.PendingOperator;
+import ai.riviera.platform.operator.vocabulary.ResetLinkOutcome;
 
 /**
- * Platform-admin operator lifecycle through the {@link OperatorLifecycle} port only (invariant #11); {@code ADMIN}-gated
- * in {@code SecurityConfig}, exempt from #13; errors are {@link ApiProblem} bodies, success {@code 204}. Suspend and
- * reject revoke sessions before the transition ({@link OperatorLifecycle#usernameInStatus}), so a failed revoke cannot
- * commit a suspension with live sessions, and after it, for sign-ins in the window. A suspend the active-admin rule
- * refuses is answered before any revoke; one refused only under its lock (a race) signed its target out, the accepted
- * cost. Rationale: RESPONSIBILITIES.md §Platform edge (settled).
+ * Platform-admin operator lifecycle and reset links through {@code operator::api} only (invariant #11); {@code ADMIN}-gated
+ * in {@code SecurityConfig}, exempt from #13; errors are {@link ApiProblem} bodies. Suspend and reject revoke sessions
+ * before the transition ({@link OperatorLifecycle#usernameInStatus}), so a failed revoke cannot commit a suspension with
+ * live sessions, and after it, for sign-ins in the window. A suspend the active-admin rule refuses is answered before
+ * any revoke; one refused only under its lock (a race) signed its target out, the accepted cost. Rationale:
+ * RESPONSIBILITIES.md §Platform edge (settled).
  */
 @RestController
 @RequestMapping("/api/admin/operators")
@@ -42,13 +45,20 @@ class AdminOperatorController {
 	private final OperatorDirectory operatorDirectory;
 	private final SessionRevocation sessionRevoker;
 	private final OperatorApprovalMail approvalMail;
+	private final OperatorPasswordReset passwordReset;
+	private final OperatorResetLinks resetLinks;
+	private final RivieraOperatorProperties bootstrapOperator;
 
 	AdminOperatorController(OperatorLifecycle lifecycle, OperatorDirectory operatorDirectory,
-			SessionRevocation sessionRevoker, OperatorApprovalMail approvalMail) {
+			SessionRevocation sessionRevoker, OperatorApprovalMail approvalMail, OperatorPasswordReset passwordReset,
+			OperatorResetLinks resetLinks, RivieraOperatorProperties bootstrapOperator) {
 		this.lifecycle = lifecycle;
 		this.operatorDirectory = operatorDirectory;
 		this.sessionRevoker = sessionRevoker;
 		this.approvalMail = approvalMail;
+		this.passwordReset = passwordReset;
+		this.resetLinks = resetLinks;
+		this.bootstrapOperator = bootstrapOperator;
 	}
 
 	/** The admin's view of a pending operator: the technical id (to act on), username, contact email, and when. */
@@ -131,6 +141,38 @@ class AdminOperatorController {
 	@PostMapping("/{operatorId}/reinstate")
 	ResponseEntity<?> reinstate(@PathVariable long operatorId) {
 		return toResponse(lifecycle.reinstate(new OperatorId(operatorId)), false);
+	}
+
+	/** The one answer carrying a reset token: the admin hands the link over out of band. */
+	record ResetLinkResponse(String token, Instant expiresAt) {
+
+		@Override
+		public String toString() {
+			return "ResetLinkResponse[expiresAt=" + expiresAt + "]";
+		}
+	}
+
+	/**
+	 * Issue a single-use reset link for an {@code ACTIVE} operator, retiring its earlier one. The bootstrap admin is
+	 * refused: its hash is rewritten from {@code RIVIERA_OPERATOR_PASSWORD} at boot. The audit row holds the path only.
+	 */
+	@PostMapping("/{operatorId}/reset-link")
+	ResponseEntity<?> issueResetLink(@PathVariable long operatorId) {
+		OperatorId target = new OperatorId(operatorId);
+		if (lifecycle.usernameInStatus(target, OperatorStatus.ACTIVE).filter(bootstrapOperator.username()::equals)
+				.isPresent()) {
+			return ApiProblem.response(HttpStatus.CONFLICT, "BOOTSTRAP_CREDENTIAL_MANAGED",
+					"This account's password is managed by the deployment environment and cannot be reset here.");
+		}
+		OperatorResetLinks.MintedToken minted = resetLinks.mint();
+		return switch (passwordReset.issue(target, minted.tokenHash(), minted.expiresAt())) {
+			case ResetLinkOutcome.Issued ignored ->
+				ResponseEntity.ok(new ResetLinkResponse(minted.rawToken(), minted.expiresAt()));
+			case ResetLinkOutcome.NotActive ignored -> ApiProblem.response(HttpStatus.CONFLICT, "WRONG_STATUS",
+					"This operator is not in a status that allows this change.");
+			case ResetLinkOutcome.NoSuchOperator ignored -> ApiProblem.response(HttpStatus.NOT_FOUND,
+					"NO_SUCH_OPERATOR", "No such operator.");
+		};
 	}
 
 	/**

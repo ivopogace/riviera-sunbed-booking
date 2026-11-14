@@ -77,6 +77,7 @@ final class RateLimitFilter extends OncePerRequestFilter {
 	private static final String LOGIN_PATH = "/api/auth/operator/login";
 	private static final String OPERATOR_REGISTER_PATH = "/api/auth/operator/register";
 	private static final String OPERATOR_PASSWORD_PATH = "/api/auth/operator/password";
+	private static final String OPERATOR_RESET_PASSWORD_PATH = "/api/auth/operator/reset-password";
 	private static final String CUSTOMER_PASSWORD_PATH = "/api/me/password";
 	private static final String CUSTOMER_LOGIN_PATH = "/api/auth/customer/login";
 	private static final String CUSTOMER_REGISTER_PATH = "/api/auth/customer/register";
@@ -154,6 +155,7 @@ final class RateLimitFilter extends OncePerRequestFilter {
 	private final Map<String, TokenBucket> customerAuthBuckets = new ConcurrentHashMap<>();
 	private final Map<String, TokenBucket> operatorRegisterBuckets = new ConcurrentHashMap<>();
 	private final Map<String, TokenBucket> operatorPasswordBuckets = new ConcurrentHashMap<>();
+	private final Map<String, TokenBucket> operatorResetBuckets = new ConcurrentHashMap<>();
 	private final Map<String, TokenBucket> customerPasswordBuckets = new ConcurrentHashMap<>();
 	private final Map<String, TokenBucket> ssoBuckets = new ConcurrentHashMap<>();
 	private final Map<String, TokenBucket> recoveryBuckets = new ConcurrentHashMap<>();
@@ -316,6 +318,9 @@ final class RateLimitFilter extends OncePerRequestFilter {
 		}
 		if (OPERATOR_PASSWORD_PATH.equals(path)) {
 			return Optional.of(AuthBudget.guardsAuthenticatedWork(operatorPasswordBuckets, limit));
+		}
+		if (OPERATOR_RESET_PASSWORD_PATH.equals(path)) {
+			return Optional.of(AuthBudget.spendsEveryRequest(operatorResetBuckets, limit));
 		}
 		if (CUSTOMER_PASSWORD_PATH.equals(path)) {
 			return Optional.of(AuthBudget.guardsAuthenticatedWork(customerPasswordBuckets, limit));

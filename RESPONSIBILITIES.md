@@ -824,6 +824,11 @@ admin (`LastActiveAdmin`, 409 `LAST_ACTIVE_ADMIN`) and one by an actor no longer
 revokes, so only a race signs out a target whose suspend is refused. A later path that removes an admin (a demote, a
 delete) takes the same lock and keeps the rule.
 
+**An admin-issued password-reset token is honoured only while its operator is `ACTIVE`** (#1737). I store its
+SHA-256 digest, never the token, one live per operator: an issue retires the earlier one, a suspend retires it, and
+a reinstatement revives nothing. Issue and redemption lock the operator row first, the order a suspend takes, so a
+redemption never writes over a suspended account. Unknown, expired, used and retired tokens are one answer.
+
 **Not My Job:**
 - Tourist identity → **`customer`**; venue data → **`venue`**; bookings, payment, payout → theirs
 - *Performing* the ownership check → each venue-scoped **application service**, by asking me
@@ -1234,6 +1239,10 @@ opaque hash through their `api`; no Spring Security, Spring Session or mail type
   first (`CustomerAccountRecovery#emailForResetToken`, consuming nothing) and revokes; the second
   revoke ends sessions saved in between, and a login saved later fails its stamp check (next bullet).
   Encode above the first revoke, or bcrypt widens the gap.
+- **An admin-issued operator reset is the customer reset's twin** (#1737): `auth` mints the token
+  (`RecoveryTokens`, the reset TTL) and answers it once on `POST /api/admin/operators/{id}/reset-link`, the bootstrap
+  admin refused (its hash is env-managed); the anonymous `POST /api/auth/operator/reset-password` revokes before and
+  after `operator`'s write. The same-origin SPA builds the link: the mail origin defaults to `localhost` off `mailer`.
 - **Both erasure paths revoke before and after `customer`'s scrub** (ADR-0010; not atomic, as above).
   Self-service names the principal from its session. The admin path names it by the canonical form of
   the submitted email (`customer.vocabulary.Emails`), which every customer principal carries, so no
@@ -1551,7 +1560,7 @@ them form the *structural net* is `riviera-modulith` § *The structural net*'s c
 | `payout` is the only writer (and direct reader) of `platform_setting` — ADR-0021 | `ResponsibilitiesArchitectureTests` (sole-writer scan) |
 | `booking` is the only writer (and direct reader) of `booking_day` | `ResponsibilitiesArchitectureTests` (sole-writer scan) |
 | `booking` is the only writer (and direct reader) of `stay` — ADR-0024 | `ResponsibilitiesArchitectureTests` (SQL-shaped scan: the bare word is in prose and in `max_stay_days`) |
-| Every table in `CLAUDE.md`'s "Sole writer of" column, plus `challenge_registry` and `admin_audit_record`, is written only by its owner: `venue`, `set_position`, `venue_amenity`, `venue_photo`, `venue_photo_variant`, `venue_commission_rate`, `set_availability`, `booking`, `stay`, `booking_day`, `remodel_receipt`, `remodel_receipt_move`, `remodel_receipt_outcome`, `remodel_receipt_kept`, `payment`, `payment_booking`, `payment_refund`, `payment_webhook_event`, `payout_ledger_entry`, `payout_batch`, `platform_setting`, `customer`, `customer_account`, `customer_sso_identity`, `customer_account_token`, `operator`, `operator_venue`, `review`, `email_suppression`, `booking_confirmation_mail_attempt` | `ResponsibilitiesArchitectureTests` (table-ownership map: a SQL-shaped `INSERT INTO`/`UPDATE … SET`/`DELETE FROM`/`MERGE INTO`/`TRUNCATE` per `CONSTANT_String`; the map must cover every table the migrations leave (create, drop and rename walked in Flyway version order) bar the framework tables, and every owner must write its tables) |
+| Every table in `CLAUDE.md`'s "Sole writer of" column, plus `challenge_registry` and `admin_audit_record`, is written only by its owner: `venue`, `set_position`, `venue_amenity`, `venue_photo`, `venue_photo_variant`, `venue_commission_rate`, `set_availability`, `booking`, `stay`, `booking_day`, `remodel_receipt`, `remodel_receipt_move`, `remodel_receipt_outcome`, `remodel_receipt_kept`, `payment`, `payment_booking`, `payment_refund`, `payment_webhook_event`, `payout_ledger_entry`, `payout_batch`, `platform_setting`, `customer`, `customer_account`, `customer_sso_identity`, `customer_account_token`, `operator`, `operator_venue`, `operator_password_reset_token`, `review`, `email_suppression`, `booking_confirmation_mail_attempt` | `ResponsibilitiesArchitectureTests` (table-ownership map: a SQL-shaped `INSERT INTO`/`UPDATE … SET`/`DELETE FROM`/`MERGE INTO`/`TRUNCATE` per `CONSTANT_String`; the map must cover every table the migrations leave (create, drop and rename walked in Flyway version order) bar the framework tables, and every owner must write its tables) |
 | No class inside a module depends on a type directly in `ai.riviera.platform` — ADR-0017 | `CompositionRootDisciplineTests` (module→root rule; `allowedDependencies` cannot see it) |
 | The root reaches no module: it holds only the application and its configuration (ADR-0028 Decision 1) | `CompositionRootDisciplineTests` (root→module rule) |
 | `payment` uses no Stripe **Connect** API (collect-only, ADR-0002) | `NoStripeConnectArchitectureTest` |
