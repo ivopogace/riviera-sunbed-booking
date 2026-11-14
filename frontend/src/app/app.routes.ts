@@ -303,6 +303,12 @@ export const routes: Routes = [
     title: 'Terms of service — Riviera',
   },
   {
+    // The public page for venue owners; the tourist menus and footer link here.
+    path: 'for-venues',
+    loadComponent: () => import('./pages/for-venues/for-venues').then((m) => m.ForVenues),
+    title: 'For venues — Riviera',
+  },
+  {
     // Retired onboarding → the operator home's create state; kept one release for old links.
     path: 'venue-admin',
     redirectTo: () => inject(Router).parseUrl('/operator?create=1'),

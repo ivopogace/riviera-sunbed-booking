@@ -562,7 +562,7 @@ describe('App (Liquid Glass shell, issue #134)', () => {
   });
 
   it.each([false, true])(
-    'the third tab opens the sheet with the auth rows, Find a booking, Sign out and the legal rows in order (signed in: %s) (#1003)',
+    'the third tab opens the sheet with the auth rows, Find a booking, For venues, Sign out and the legal rows in order (signed in: %s) (#1003)',
     (signedIn) => {
       customerAuth.signedIn.set(signedIn);
       customerAuth.email.set(signedIn ? 'ana@example.com' : undefined);
@@ -582,6 +582,7 @@ describe('App (Liquid Glass shell, issue #134)', () => {
           ? [
               'nav-account-link-mobile',
               'find-open-mobile',
+              'nav-for-venues-mobile',
               'nav-signout-mobile',
               'theme-row',
               'legal-privacy-row',
@@ -591,6 +592,7 @@ describe('App (Liquid Glass shell, issue #134)', () => {
               'nav-signin-mobile',
               'nav-register-mobile',
               'find-open-mobile',
+              'nav-for-venues-mobile',
               'theme-row',
               'legal-privacy-row',
               'legal-terms-row',
@@ -1206,6 +1208,44 @@ describe('App (Liquid Glass shell, issue #134)', () => {
       }
     },
   );
+
+  it.each([false, true])(
+    'carries the For venues row in the phone sheet and in both desktop popover branches (signed in: %s) (#1736)',
+    (signedIn) => {
+      customerAuth.signedIn.set(signedIn);
+      customerAuth.email.set(signedIn ? 'ana@example.com' : undefined);
+      const { fixture, el } = shell();
+
+      for (const [opener, row] of [
+        ['menu-toggle', 'nav-for-venues-mobile'],
+        [signedIn ? 'nav-user' : 'nav-menu', 'nav-for-venues'],
+      ]) {
+        el.querySelector<HTMLButtonElement>(`[data-testid="${opener}"]`)!.click();
+        fixture.detectChanges();
+
+        const link = el.querySelector<HTMLAnchorElement>(`[data-testid="${row}"]`);
+        expect(link?.textContent?.trim(), opener).toBe('For venues');
+        expect(link?.getAttribute('href'), opener).toBe('/for-venues');
+        expect(link?.getAttribute('target'), opener).toBeNull();
+      }
+    },
+  );
+
+  it('links the venue-owner page from the tourist footer only, never the console footer (#1736)', async () => {
+    const { fixture, el } = shell();
+    const router = TestBed.inject(Router);
+
+    await router.navigate(['/glass']);
+    fixture.detectChanges();
+    expect(
+      el.querySelector('.riv-footer [data-testid="footer-for-venues"]')?.getAttribute('href'),
+    ).toBe('/for-venues');
+
+    await router.navigate(['/operator/7/daily']);
+    fixture.detectChanges();
+    expect(el.querySelector('.riv-footer')).not.toBeNull();
+    expect(el.querySelector('[data-testid="footer-for-venues"]')).toBeNull();
+  });
 
   it('renders the console shell instead of the tourist header on the venue console route (#1011)', async () => {
     const { fixture, el } = shell();

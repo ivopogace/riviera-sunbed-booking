@@ -261,6 +261,17 @@
                   >
                     Find a booking
                   </button>
+                  <a
+                    appTouchTarget
+                    routerLink="/for-venues"
+                    routerLinkActive
+                    ariaCurrentWhenActive="page"
+                    [routerLinkActiveOptions]="exactPath"
+                    [class]="cls.popItem"
+                    data-testid="nav-for-venues"
+                    (click)="closeMenus()"
+                    >For venues</a
+                  >
                   <button
                     appTouchTarget
                     type="button"
@@ -335,6 +346,17 @@
                   >
                     Find a booking
                   </button>
+                  <a
+                    appTouchTarget
+                    routerLink="/for-venues"
+                    routerLinkActive
+                    ariaCurrentWhenActive="page"
+                    [routerLinkActiveOptions]="exactPath"
+                    [class]="cls.popItem"
+                    data-testid="nav-for-venues"
+                    (click)="closeMenus()"
+                    >For venues</a
+                  >
                   <div class="mt-1">
                     <app-theme-menu-rows variant="popover" (selected)="closeMenus()" />
                     <app-legal-menu-rows variant="popover" />
@@ -415,6 +437,17 @@
         >
           Find a booking
         </button>
+        <a
+          appTouchTarget
+          routerLink="/for-venues"
+          routerLinkActive
+          ariaCurrentWhenActive="page"
+          [routerLinkActiveOptions]="exactPath"
+          [class]="cls.mobileItem"
+          data-testid="nav-for-venues-mobile"
+          (click)="closeMenus()"
+          >For venues</a
+        >
         @if (customerAuth.signedIn()) {
           <button
             appTouchTarget
@@ -448,6 +481,7 @@
     >
       <div
         appLegalFooter
+        [venuesLink]="shellChrome() === 'tourist'"
         class="riv-footer-inner mx-auto max-w-[1080px] px-6 py-4 text-[13px] text-riv-ink-soft data-wide:max-w-none"
         [attr.data-wide]="wide() ? '' : null"
       ></div>
