@@ -28,6 +28,7 @@ import ai.riviera.platform.notification.application.PaymentDueMail;
 import ai.riviera.platform.notification.application.RequestDeclinedMail;
 import ai.riviera.platform.notification.application.RequestExpiredMail;
 import ai.riviera.platform.notification.application.StayConfirmationMail;
+import ai.riviera.platform.notification.application.SupportContact;
 
 /**
  * Real SMTP {@link Mailer} over {@link JavaMailSender} (ADR-0011): Scaleway TEM in deployment, any relay
@@ -83,14 +84,16 @@ class SmtpMailer implements Mailer {
 
 	private final JavaMailSender sender;
 	private final String from;
+	private final SupportContact support;
 
-	SmtpMailer(JavaMailSender sender, @Value("${riviera.mail.from}") String from) {
+	SmtpMailer(JavaMailSender sender, @Value("${riviera.mail.from}") String from, SupportContact support) {
 		if (from.isBlank()) {
 			throw new IllegalStateException(
 					"riviera.mail.from must be set (RIVIERA_MAIL_FROM) when the 'mailer' profile is active");
 		}
 		this.sender = sender;
 		this.from = from;
+		this.support = support;
 	}
 
 	@Override
@@ -125,14 +128,15 @@ class SmtpMailer implements Mailer {
 				  Spot:          %s, position %d
 				  Paid:          %s
 
-				Show the booking code at the venue on arrival.%s"""
+				Show the booking code at the venue on arrival.%s%s"""
 				.formatted(confirmation.bookingCode(), confirmation.venueName(),
 						daysLine(confirmation.bookingDate(), confirmation.lastDate(), CONFIRMATION_LABEL_WIDTH),
 						confirmation.rowLabel(),
 						confirmation.positionNo(),
 						formatAmount(confirmation.amountMinor(), confirmation.currency()),
 						disclosureLine(confirmation.cancellationWindowAtBirth(),
-								confirmation.lateCancelRefundBps())));
+								confirmation.lateCancelRefundBps()),
+						supportLines()));
 	}
 
 	@Override
@@ -149,7 +153,7 @@ class SmtpMailer implements Mailer {
 
 				%s
 
-				Show the same booking code at the venue every morning.%s"""
+				Show the same booking code at the venue every morning.%s%s"""
 				.formatted(confirmation.bookingCode(), confirmation.venueName(),
 						daysLine(confirmation.firstDate(), confirmation.lastDate(), CONFIRMATION_LABEL_WIDTH),
 						formatAmount(confirmation.amountMinor(), confirmation.currency()),
@@ -158,7 +162,23 @@ class SmtpMailer implements Mailer {
 										stop.rowLabel(), stop.positionNo()))
 								.collect(Collectors.joining("\n")),
 						disclosureLine(confirmation.cancellationWindowAtBirth(),
-								confirmation.lateCancelRefundBps())));
+								confirmation.lateCancelRefundBps()),
+						supportLines()));
+	}
+
+	/**
+	 * The configured support channels under a blank line, one per line; empty when none is configured,
+	 * so no placeholder is ever mailed.
+	 */
+	private String supportLines() {
+		if (!support.hasChannel()) {
+			return "";
+		}
+		StringBuilder lines = new StringBuilder("\n\nNeed help? Contact Riviera:");
+		support.email().ifPresent(email -> lines.append("\n  Email:     ").append(email));
+		support.whatsappNumber().ifPresent(number -> lines.append("\n  WhatsApp:  ").append(number)
+				.append(" (").append(support.whatsappLink().orElseThrow()).append(')'));
+		return lines.toString();
 	}
 
 	@Override

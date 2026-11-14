@@ -148,6 +148,12 @@ must include `frontend/`, so:
     the host or port. Otherwise boot aborts naming the key
     (`riviera.recovery.link-base-url` or `riviera.notification.booking-link.base-url`) and this
     variable, never the value. Surrounding whitespace is stripped and a trailing slash trimmed (#1592).
+  - `RIVIERA_SUPPORT_EMAIL` / `RIVIERA_SUPPORT_WHATSAPP` (#1735) — the support channels the help
+    page, the booking view, the console account menu and both confirmation mails name. **Unset or
+    blank shows that channel nowhere**, never a placeholder, so leave each unset until its value
+    exists (the mailbox waits on the platform domain, #370). The WhatsApp value is the
+    international number with its country code (`+355…`; spaces, dashes and dots are dropped),
+    linked as `https://wa.me/<digits>`. A malformed value aborts boot naming the key, never the value.
   - **SMTP relay (#368, ADR-0011) — only with the `mailer` profile** (production runs
     `prod,mailer`; without these the profile aborts at boot, by design):
     `RIVIERA_SMTP_HOST` (Scaleway TEM: `smtp.tem.scw.cloud`), `RIVIERA_SMTP_PORT` (default

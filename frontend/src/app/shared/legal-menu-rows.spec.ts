@@ -26,16 +26,18 @@ describe('LegalMenuRows', () => {
     return [...menu(host).querySelectorAll<HTMLAnchorElement>('a')];
   }
 
-  it('renders the two documents in order, under the names their routes carry', () => {
-    const [privacy, terms] = rowsOf(SheetHost);
+  it('renders Help then the two documents in order, under the names their routes carry', () => {
+    const [help, privacy, terms] = rowsOf(SheetHost);
 
+    expect(help.getAttribute('href')).toBe('/help');
+    expect(help.textContent?.trim()).toBe('Help');
     expect(privacy.getAttribute('href')).toBe('/legal/privacy');
     expect(privacy.textContent?.trim()).toBe('Privacy policy');
     expect(terms.getAttribute('href')).toBe('/legal/terms');
     expect(terms.textContent?.trim()).toBe('Terms of service');
   });
 
-  it('opens both in a new tab, so a mounted Payment Element survives the read', () => {
+  it('opens every row in a new tab, so a mounted Payment Element survives the read', () => {
     for (const row of rowsOf(PopoverHost)) {
       expect(row.getAttribute('target'), row.textContent ?? '').toBe('_blank');
       expect(row.getAttribute('rel'), row.textContent ?? '').toBe('noopener');

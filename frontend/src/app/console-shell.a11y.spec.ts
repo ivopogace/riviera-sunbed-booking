@@ -7,6 +7,7 @@ import { vi } from 'vitest';
 import { expectNoAxeViolations } from '../testing/axe';
 import { ConsoleSection, ConsoleShell } from './console-shell';
 import { OperatorAuth } from './core/operator-auth';
+import { SupportContact } from './core/support-contact';
 import { OwnedVenue, OwnedVenues, OwnedVenuesResult } from './core/owned-venues';
 import { ConsoleVenueMap } from './core/console-venue-map';
 
@@ -55,6 +56,10 @@ describe('ConsoleShell a11y', () => {
       providers: [
         provideRouter([]),
         { provide: OperatorAuth, useValue: operatorAuth },
+        {
+          provide: SupportContact,
+          useValue: { contact: signal(undefined), load: () => Promise.resolve() },
+        },
         { provide: OwnedVenues, useValue: owned },
         { provide: ConsoleVenueMap, useValue: venueMap },
       ],

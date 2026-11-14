@@ -1,4 +1,4 @@
-import { Component, inject, signal, viewChild } from '@angular/core';
+import { Component, computed, inject, signal, viewChild } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 
@@ -31,6 +31,9 @@ import { ReviewPanel } from './review-panel';
 import { TouchTarget } from '../shared/touch-target';
 import { PartyIcon } from '../shared/party-icon';
 import { PrimaryCta } from '../shared/primary-cta';
+import { SupportContact } from '../core/support-contact';
+import { SupportChannels } from '../shared/support-channels';
+import { hasSupportChannel } from '../shared/support-contact-view';
 
 /** A stay's stop a remodel moved, numbered as the stop list numbers it. */
 interface MovedStop {
@@ -175,6 +178,7 @@ const CLS = {
     TouchTarget,
     ReviewPanel,
     PartyIcon,
+    SupportChannels,
   ],
   template: `
     @if (notFound()) {
@@ -700,6 +704,28 @@ const CLS = {
           (deleted)="sendReviewDelete()"
         />
 
+        @if (support.contact(); as contact) {
+          @if (hasSupport()) {
+            <section
+              class="mt-5 border-t border-riv-card-track pt-[18px]"
+              aria-labelledby="bv-support-title"
+              data-testid="bv-support"
+            >
+              <h2
+                id="bv-support-title"
+                class="mx-0 mt-0 mb-1.5 text-[16px] font-bold text-riv-card-ink"
+              >
+                Need help?
+              </h2>
+              <p class="mx-0 mt-0 mb-2 text-[13.5px] leading-[1.5] text-riv-card-ink-soft">
+                At the beach, ask the venue staff first. For anything else, contact Riviera with
+                your booking code.
+              </p>
+              <app-support-channels [contact]="contact" />
+            </section>
+          }
+        }
+
         <a appTouchTarget routerLink="/" [class]="cls.linkBack">Back to home</a>
       </section>
     } @else {
@@ -717,6 +743,9 @@ export class BookingView {
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly bookings = inject(BookingService);
+  /** The platform's support channels, read for the "Need help?" block; it renders only once one is configured. */
+  protected readonly support = inject(SupportContact);
+  protected readonly hasSupport = computed(() => hasSupportChannel(this.support.contact()));
 
   protected readonly booking = signal<BookingDetail | undefined>(undefined);
   protected readonly failed = signal(false);
@@ -761,6 +790,7 @@ export class BookingView {
   protected readonly formatMoney = formatMoney;
 
   constructor() {
+    void this.support.load();
     // React to route `code`, not the snapshot — the find modal makes booking→booking nav real; the sync emit loads initially.
     let initialEmit = true;
     this.route.paramMap.pipe(takeUntilDestroyed()).subscribe((params) => {

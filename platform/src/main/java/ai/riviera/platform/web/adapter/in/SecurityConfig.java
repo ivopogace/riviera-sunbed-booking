@@ -376,6 +376,8 @@ public class SecurityConfig {
 						.requestMatchers(HttpMethod.GET, ADMIN_AUDIT_PATH).hasRole(ADMIN_ROLE)
 						// The public tourist read. Everything order-sensitive above precedes it.
 						.requestMatchers(HttpMethod.GET, "/api/venues/**").permitAll()
+						// The help surfaces' support channels: configuration only, no principal, no id (#1735).
+						.requestMatchers(HttpMethod.GET, "/api/support-contact").permitAll()
 						// Staff tap-to-mark walk-in — operator-only mark/release of (set, date).
 						.requestMatchers(HttpMethod.POST, SET_AVAILABILITY_PATH).hasRole(OPERATOR_ROLE)
 						.requestMatchers(HttpMethod.DELETE, SET_AVAILABILITY_PATH).hasRole(OPERATOR_ROLE)

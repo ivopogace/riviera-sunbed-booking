@@ -303,6 +303,12 @@ export const routes: Routes = [
     title: 'Terms of service — Riviera',
   },
   {
+    // Help + the support channels — menu and footer link target (#1735).
+    path: 'help',
+    loadComponent: () => import('./pages/help/help-page').then((m) => m.HelpPage),
+    title: 'Help — Riviera',
+  },
+  {
     // The public page for venue owners; the tourist menus and footer link here.
     path: 'for-venues',
     loadComponent: () => import('./pages/for-venues/for-venues').then((m) => m.ForVenues),
