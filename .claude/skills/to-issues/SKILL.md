@@ -57,7 +57,7 @@ Iterate until the user approves the breakdown.
 
 For each approved slice, publish a new issue to the issue tracker. Use the issue body template below. These issues are considered ready for AFK agents, so publish them with the correct triage label unless instructed otherwise.
 
-Publish issues in dependency order (blockers first) so you can reference real issue identifiers in the "Blocked by" field. Where the tracker has a **native** dependency relationship (GitHub sub-issues / a "blocked by" link), wire it in a **second pass** once the ids exist — in addition to the body field — so the frontier (open, unblocked tickets) renders visually in the tracker's own UI, not only in prose.
+Publish issues in dependency order (blockers first) so you can reference real issue identifiers in the "Blocked by" field. Where the tracker has a **native** dependency relationship (GitHub sub-issues / a "blocked by" link), wire it in a **second pass** once the ids exist — in addition to the body field — so the frontier (open, unblocked tickets) renders visually in the tracker's own UI, not only in prose. If the source was an existing issue, make each new issue its sub-issue (the tracker doc's operation).
 
 <issue-template>
 ## Parent

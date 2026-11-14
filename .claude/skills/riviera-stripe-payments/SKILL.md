@@ -13,8 +13,9 @@ description: >-
 venues manually in weekly BKT batches minus commission. **No Stripe Connect** — `Account`,
 `Transfer`, `Payout`, `application_fee`, `on_behalf_of`, the `Stripe-Account` header, destination
 charges cannot reach Albanian venues. If a task wants them, stop and surface it as an open
-question. ADR-0009 (Proposed) would re-decide the gateway; this model stays authoritative until
-that work starts. If a `stripe` plugin is enabled, do NOT load its `connect-recommend` skill
+question. ADR-0029 (Proposed) would replace this model and ADR-0009 with venue-owned checkout;
+this model stays authoritative until it is accepted. If a `stripe` plugin is enabled, do NOT load
+its `connect-recommend` skill
 and ignore the Connect sections of its `stripe-best-practices`.
 
 ## Collection (`payment`)
