@@ -274,7 +274,10 @@ test('the search glyph and ⌘K open the Go to dialog: focus legs, the field on 
 
   const search = page.getByTestId('oc-search');
   await expect(search).toBeVisible();
-  await expect(search).toHaveAccessibleName('Jump to a section or venue (⌘K)');
+  // Playwright's Chromium reports the host's platform: CI's Linux runners and Windows say Ctrl K (#1731).
+  const chord = process.platform === 'darwin' ? '⌘K' : 'Ctrl K';
+  await expect(search).toHaveAccessibleName(`Jump to a section or venue (${chord})`);
+  await expect(search.locator('kbd')).toHaveText(chord);
   await expect(search).toHaveAttribute('aria-expanded', 'false');
   const header = (await page.getByTestId('oc-header').boundingBox())!;
   const searchBox = (await search.boundingBox())!;
