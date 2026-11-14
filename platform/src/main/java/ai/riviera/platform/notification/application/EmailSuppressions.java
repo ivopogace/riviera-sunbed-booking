@@ -14,9 +14,9 @@ public interface EmailSuppressions {
 	boolean isSuppressed(String email);
 
 	/**
-	 * Upsert keeping {@code first_suppressed_at} and clearing any reinstatement; a value without a
-	 * {@code local@domain} shape throws {@link IllegalArgumentException}. The first production writer arms
-	 * the withheld-flag probe — read RESPONSIBILITIES.md §notification before wiring one.
+	 * Upsert of an event at {@code at}, keeping {@code first_suppressed_at}; an event no newer than the row's
+	 * last event or reinstatement moves nothing (feeds are unordered). A non-{@code local@domain} value throws
+	 * {@link IllegalArgumentException}. A writer arms the withheld-flag probe: RESPONSIBILITIES.md §notification.
 	 */
 	void suppress(String email, SuppressionReason reason, Instant at);
 

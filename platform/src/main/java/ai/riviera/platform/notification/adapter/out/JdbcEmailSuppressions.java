@@ -80,9 +80,9 @@ class JdbcEmailSuppressions implements EmailSuppressions {
 	}
 
 	/**
-	 * The upsert also clears {@code reinstated_at} (re-suppression). A future out-of-order guard on
-	 * {@code last_event_at} must keep that clear reachable, or a stale event leaves a bounced address
-	 * deliverable.
+	 * One {@code INSERT … ON CONFLICT DO UPDATE}, whose conflict arm reads the newest committed row, so
+	 * the out-of-order guard holds against a concurrent reinstate: only an event newer than the lift
+	 * clears {@code reinstated_at}, and only one newer than {@code last_event_at} moves the row.
 	 */
 	@Override
 	public void suppress(String email, SuppressionReason reason, Instant at) {
@@ -100,10 +100,11 @@ class JdbcEmailSuppressions implements EmailSuppressions {
 				INSERT INTO email_suppression (email_key, domain, reason, first_suppressed_at, last_event_at)
 				VALUES (:key, :domain, :reason, :at, :at)
 				ON CONFLICT (email_key) DO UPDATE
-				SET reason = EXCLUDED.reason,
-				    last_event_at = EXCLUDED.last_event_at,
-				    -- Must survive any future out-of-order guard (#367); see this method's javadoc.
-				    reinstated_at = NULL
+				SET reason = CASE WHEN EXCLUDED.last_event_at > email_suppression.last_event_at
+				                  THEN EXCLUDED.reason ELSE email_suppression.reason END,
+				    last_event_at = GREATEST(email_suppression.last_event_at, EXCLUDED.last_event_at),
+				    reinstated_at = CASE WHEN EXCLUDED.last_event_at <= email_suppression.reinstated_at
+				                         THEN email_suppression.reinstated_at END
 				""")
 				.param("key", keyOf(normalized))
 				.param("domain", domain)
