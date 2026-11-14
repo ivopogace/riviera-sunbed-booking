@@ -56,6 +56,9 @@ close, the maximum stay, the season closure, and the commission rate over time. 
   venue's sets and a spot that left the map. The reserve path fences visibility itself in `booking`;
   the retired-set fences are `poolForClaim` for both claim paths and the `ForReserve` reads for both
   booking modes (a request claims nothing, ADR-0025). Photo serving is visibility-fenced too.
+- **`PublicVenueIndex` names the venues an outsider may be pointed at** (the ids `web`'s sitemap lists,
+  #1761), fenced on `VenueVisibility` like the catalogue reads. Its own port, not a `VenueCatalog`
+  method, so `VenueApiRoleSplitTests` keeps `VenueCatalog` to `venue` and `itinerary`.
 - **Venue photos** (ADR-0008): per-slot upload/replace/delete, processing, `bytea` storage behind
   the module-internal `PhotoStorage` port, the content-hash serving read — `404` (bytes and `304`)
   for a hidden venue except to its owner or an admin, served `private` (ADR-0013). **Each tourist
@@ -1270,8 +1273,8 @@ opaque hash through their `api`; no Spring Security, Spring Session or mail type
 a mechanism, owning no table and publishing nothing. Not a shared module: no module calls it, and a
 module test is better without the chain than with every collaborator mocked. Everything sits in
 `adapter/in`. Depends on the surfaces its imports prove: `auth` (`api` + `vocabulary`), `challenge`
-(`api` + `vocabulary`), `audit::api`, `customer::vocabulary`, `operator::vocabulary` and `shared`;
-Spring Security beans arrive by framework type, which is no module dependency.
+(`api` + `vocabulary`), `audit::api`, `customer::vocabulary`, `operator::vocabulary`, `venue` (`api` +
+`vocabulary`, the sitemap's venue ids) and `shared`; Spring Security beans arrive by framework type.
 
 **Job:** the fence every request crosses before a controller (§ *Platform edge*):
 - `SecurityConfig`: both chains, the route policy (role gates), CSRF, the session cookie and the
@@ -1281,6 +1284,13 @@ Spring Security beans arrive by framework type, which is no module dependency.
   `SessionCredentialFilter` (calls `auth::api`), `AdminAuditFilter` + `AdminAuditReasons` (calls
   `audit::api`); `CachedBodyRequest` replays a body an edge filter read within its cap.
 - The chain's problem bodies (`SecurityProblemResponses`), `RequestPaths`, CORS (`WebCorsConfig`).
+- **The crawl policy** (`CrawlerController`, #1761): anonymous `GET /robots.txt` disallows every signed-in and
+  booking SPA route in every served locale and `/api`, and names the sitemap; `GET /sitemap.xml` lists `/`,
+  `/for-venues`, `/help` and each `PublicVenueIndex` venue's page in every locale with `hreflang` alternates.
+  Absolute URLs come from `riviera.web.public-origin` alone, never the request's `Host` (host-header
+  poisoning); unset, the sitemap is `404`. `riviera.web.robots.disallow-all` shuts a non-production host
+  out (`docs/deploy/cd-pipeline.md`). `ServedLocale` re-lists the root's `SpaLocale`, both pinned to
+  `frontend/angular.json`. One file holds 50 000 URLs (~16 600 venues at three locales).
 - **No problem body carries `instance`** (`ProblemInstanceConfig`): Spring fills a null one with the
   request URI, on `/api/bookings/{code}` the bearer credential (#7), so the interceptor clears it after
   that fill; the hand-built bodies omit it. RFC 9457 makes every member optional.
