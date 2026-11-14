@@ -52,13 +52,35 @@ const CLS = {
         >
           <app-check-icon />
         </div>
-        <h1 [class]="cls.h1" id="confirmation-title">You’re booked.</h1>
+        <h1 [class]="cls.h1" id="confirmation-title" i18n>You’re booked.</h1>
         <p [class]="cls.lead">
           @if (c.stretches?.length) {
-            Your stay at {{ c.venueName }}<br />{{ dateLabel() }} · one code for every morning.
+            <ng-container i18n
+              >Your stay at
+              {{
+                c.venueName  // i18n(ph="venue")
+              }}<br />{{
+                dateLabel() // i18n(ph="dates")
+              }}
+              · one code for every morning.</ng-container
+            >
           } @else {
-            {{ c.rowLabel }} · spot {{ c.positionNo }} at {{ c.venueName }}<br />on
-            {{ dateLabel() }}.
+            <ng-container i18n
+              >{{
+                c.rowLabel // i18n(ph="row")
+              }}
+              · spot
+              {{
+                c.positionNo // i18n(ph="spot")
+              }}
+              at
+              {{
+                c.venueName  // i18n(ph="venue")
+              }}<br />on
+              {{
+                dateLabel()  // i18n(ph="date")
+              }}.</ng-container
+            >
           }
         </p>
         @if (c.stretches; as stretches) {
@@ -67,11 +89,21 @@ const CLS = {
               class="mb-3.5 list-none rounded-[18px] border border-[rgba(255,255,255,0.6)] bg-riv-inset-fill px-4 py-3 text-left text-[13.5px]"
               data-testid="confirmation-stops"
               aria-label="Your spots"
+              i18n-aria-label
             >
               @for (stretch of stretches; track $index) {
                 <li class="flex items-center justify-between gap-3 py-[3px]">
-                  <span class="font-semibold"
-                    >{{ $index + 1 }}. {{ stretch.rowLabel }} · spot {{ stretch.positionNo }}</span
+                  <span class="font-semibold" i18n
+                    >{{
+                      $index + 1  // i18n(ph="n")
+                    }}.
+                    {{
+                      stretch.rowLabel // i18n(ph="row")
+                    }}
+                    · spot
+                    {{
+                      stretch.positionNo // i18n(ph="spot")
+                    }}</span
                   >
                   <span class="text-riv-card-ink-soft">{{
                     stayLabel(stretch.firstDate, stretch.lastDate)
@@ -86,7 +118,7 @@ const CLS = {
           class="mb-3.5 rounded-[18px] border border-[rgba(255,255,255,0.6)] bg-riv-inset-fill px-4 py-3.5 text-left"
         >
           <div [class]="cls.row">
-            <dt class="text-riv-card-ink-soft">Venue</dt>
+            <dt class="text-riv-card-ink-soft" i18n>Venue</dt>
             <dd>
               <a
                 appTouchTarget
@@ -100,7 +132,7 @@ const CLS = {
           </div>
           @if (directions(); as url) {
             <div [class]="cls.row" data-testid="directions-row">
-              <dt class="text-riv-card-ink-soft">Directions</dt>
+              <dt class="text-riv-card-ink-soft" i18n>Directions</dt>
               <dd>
                 <a
                   appTouchTarget
@@ -109,19 +141,20 @@ const CLS = {
                   rel="noopener noreferrer"
                   [class]="cls.link"
                   data-testid="venue-directions"
+                  i18n
                   >Open in maps<span class="sr-only"> (opens in a new tab)</span></a
                 >
               </dd>
             </div>
           }
           <div [class]="cls.row">
-            <dt class="text-riv-card-ink-soft">Includes</dt>
-            <dd class="font-semibold">2 loungers + umbrella · full day</dd>
+            <dt class="text-riv-card-ink-soft" i18n>Includes</dt>
+            <dd class="font-semibold" i18n>2 loungers + umbrella · full day</dd>
           </div>
           <div
             class="mt-[5px] flex items-center justify-between gap-3 border-t border-riv-card-track pt-[7px] pb-[5px] text-[13.5px]"
           >
-            <dt class="text-riv-card-ink-soft">Paid</dt>
+            <dt class="text-riv-card-ink-soft" i18n>Paid</dt>
             <dd class="text-[16px] font-bold text-riv-accent-ink">
               {{ formatMoney(c.amount) }}
             </dd>
@@ -132,7 +165,7 @@ const CLS = {
           class="mb-5 rounded-[18px] border border-dashed border-riv-field-border bg-riv-inset-fill p-[15px]"
           data-testid="booking-code"
         >
-          <span class="block text-[11px] tracking-[0.16em] uppercase text-riv-card-ink-soft"
+          <span class="block text-[11px] tracking-[0.16em] uppercase text-riv-card-ink-soft" i18n
             >Booking code</span
           >
           <div class="mt-[5px] text-[27px] font-bold tracking-[0.12em] text-riv-accent-ink">
@@ -142,9 +175,9 @@ const CLS = {
             <app-booking-qr [code]="c.code" />
           </div>
           <p class="mt-2 text-[12px] leading-[1.4] text-riv-card-ink-soft">
-            Show this code to staff when you arrive.
+            <ng-container i18n>Show this code to staff when you arrive.</ng-container>
             @if (!c.emailWithheld) {
-              <span>We’ve also emailed it to you.</span>
+              <span i18n>We’ve also emailed it to you.</span>
             }
           </p>
           @if (c.emailWithheld) {
@@ -156,17 +189,19 @@ const CLS = {
           appPrimaryCta
           routerLink="/"
           class="block w-full rounded-2xl p-3.5 text-[15px] font-bold shadow-[0_10px_26px_rgba(11,120,150,0.5)] focus-visible:outline-[3px] focus-visible:outline-offset-2 focus-visible:outline-riv-accent-ink"
+          i18n
           >Back to the beach</a
         >
         <app-manage-booking-link [code]="c.code" variant="link" />
       </section>
     } @else {
       <section [class]="cls.card" appCardGlass aria-labelledby="confirmation-title">
-        <h1 [class]="cls.h1" id="confirmation-title">No booking to show</h1>
-        <p [class]="cls.lead">Your booking details aren’t available here anymore.</p>
+        <h1 [class]="cls.h1" id="confirmation-title" i18n>No booking to show</h1>
+        <p [class]="cls.lead" i18n>Your booking details aren’t available here anymore.</p>
         <a
           routerLink="/"
           class="mt-3 inline-block text-[14.5px] font-semibold text-riv-accent-ink focus-visible:outline-[3px] focus-visible:outline-offset-2 focus-visible:outline-riv-accent-ink"
+          i18n
           >Start a new booking</a
         >
       </section>

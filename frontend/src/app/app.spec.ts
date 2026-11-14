@@ -576,7 +576,7 @@ describe('App (Liquid Glass shell, issue #134)', () => {
         row.getAttribute('data-testid'),
       );
       // Legal rows last: toggleMenu hard-codes the first row it focuses when the sheet opens.
-      // The theme row heads the same foot group — a setting, not a destination.
+      // The theme and language rows head the same foot group — settings, not destinations.
       expect(rows).toEqual(
         signedIn
           ? [
@@ -585,6 +585,7 @@ describe('App (Liquid Glass shell, issue #134)', () => {
               'nav-for-venues-mobile',
               'nav-signout-mobile',
               'theme-row',
+              'language-row',
               'help-row',
               'legal-privacy-row',
               'legal-terms-row',
@@ -595,6 +596,7 @@ describe('App (Liquid Glass shell, issue #134)', () => {
               'find-open-mobile',
               'nav-for-venues-mobile',
               'theme-row',
+              'language-row',
               'help-row',
               'legal-privacy-row',
               'legal-terms-row',

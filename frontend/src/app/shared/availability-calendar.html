@@ -7,7 +7,7 @@
   tabindex="-1"
   class="static m-0 w-full max-w-[352px] animate-[riv-pop_0.2s_ease] rounded-[22px] border border-riv-pop-border bg-riv-pop-surface p-4 text-riv-pop-ink shadow-riv-pop backdrop-blur-[28px] backdrop-saturate-[1.8] motion-reduce:animate-none"
   aria-modal="true"
-  [attr.aria-label]="mode() === 'stay' ? 'Choose your days' : 'Choose a booking date'"
+  [attr.aria-label]="dialogLabel()"
   data-testid="availability-calendar"
   (click)="$event.stopPropagation()"
   (keydown.tab)="trapFocus($event, false)"
@@ -20,6 +20,7 @@
       class="flex cursor-pointer touch-manipulation items-center justify-center rounded-[12px] text-[19px] leading-none text-riv-calendar-accent hover:bg-riv-pop-hover aria-disabled:cursor-default aria-disabled:text-riv-pop-ink-disabled aria-disabled:hover:bg-transparent"
       data-testid="calendar-prev"
       aria-label="Previous month"
+      i18n-aria-label
       [attr.aria-disabled]="atEarliestMonth() ? 'true' : null"
       (click)="stepMonth(-1)"
     >
@@ -40,6 +41,7 @@
       class="flex cursor-pointer touch-manipulation items-center justify-center rounded-[12px] text-[19px] leading-none text-riv-calendar-accent hover:bg-riv-pop-hover"
       data-testid="calendar-next"
       aria-label="Next month"
+      i18n-aria-label
       (click)="stepMonth(1)"
     >
       &#8250;
@@ -50,6 +52,7 @@
     <app-segmented-control
       variant="pill"
       label="How long"
+      i18n-label
       [options]="modeOptions"
       [value]="mode()"
       (valueChange)="onModeChange($event)"
@@ -142,6 +145,7 @@
           class="shrink-0 cursor-pointer rounded-[12px] px-4 text-[13px] font-bold focus-visible:outline-offset-2"
           data-testid="calendar-apply"
           (click)="apply()"
+          i18n="Button that commits the picked stay"
         >
           Apply
         </button>
@@ -152,6 +156,7 @@
           class="shrink-0 cursor-pointer rounded-[12px] px-3 text-[13px] font-bold text-riv-calendar-accent hover:bg-riv-pop-hover"
           data-testid="calendar-just-this-day"
           (click)="justThisDay()"
+          i18n
         >
           Just this day
         </button>
@@ -165,11 +170,12 @@
         class="mt-2 text-[11.5px] leading-[1.4] text-riv-pop-ink-soft"
         data-testid="calendar-counts-failed"
         role="alert"
+        i18n
       >
         How busy each day is could not be loaded — you can still pick any day.
       </p>
     } @else {
-      <p class="mt-2 text-[11.5px] leading-[1.4] text-riv-pop-ink-soft">
+      <p class="mt-2 text-[11.5px] leading-[1.4] text-riv-pop-ink-soft" i18n>
         The bar under each day is how many sets were free when this was read — a picture of the day,
         not a hold. A set is yours only once you book it.
       </p>
@@ -180,7 +186,8 @@
       [loading]="countsLoading()"
       [ready]="!countsFailed()"
       loadingLabel="Loading how busy each day is…"
-      [readyLabel]="monthLabel() + ' availability loaded.'"
+      i18n-loadingLabel
+      [readyLabel]="readyLabel()"
     />
   }
 </dialog>

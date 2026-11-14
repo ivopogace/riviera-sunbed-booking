@@ -22,7 +22,7 @@ interface ReviewEntryView {
 }
 
 /** The name a review is shown under when its row carries none (a star-only-era row). */
-const ANONYMOUS = 'A guest';
+const ANONYMOUS = $localize`:Name a review is shown under when its guest gave none:A guest`;
 
 const BTN =
   'cursor-pointer rounded-[14px] px-[18px] py-[11px] text-[14px] motion-reduce:transition-none focus-visible:outline-[3px] focus-visible:outline-offset-2 focus-visible:outline-riv-accent-ink aria-disabled:cursor-not-allowed aria-disabled:opacity-65';
@@ -66,12 +66,12 @@ const CLS = {
       aria-labelledby="venue-reviews-heading"
       data-testid="venue-reviews"
     >
-      <h2 id="venue-reviews-heading" [class]="cls.title" data-testid="venue-reviews-heading">
+      <h2 id="venue-reviews-heading" [class]="cls.title" data-testid="venue-reviews-heading" i18n>
         Guest reviews
       </h2>
 
       @if (loading() && !loadedOnce()) {
-        <p [class]="cls.note" aria-hidden="true" data-testid="venue-reviews-loading">
+        <p [class]="cls.note" aria-hidden="true" data-testid="venue-reviews-loading" i18n>
           Loading reviews…
         </p>
       }
@@ -91,7 +91,7 @@ const CLS = {
               <p [class]="cls.meta">
                 <span [class]="cls.name" data-testid="review-name">{{ entry.name }}</span>
                 <span aria-hidden="true"> · </span>
-                <span data-testid="review-stay">Stayed {{ entry.stayed }}</span>
+                <span data-testid="review-stay" i18n>Stayed {{ entry.stayed }}</span>
               </p>
               <p [class]="cls.comment" data-testid="review-comment">{{ entry.comment }}</p>
             </li>
@@ -100,16 +100,18 @@ const CLS = {
       } @else if (loadedOnce() && !failed()) {
         <p [class]="cls.note" data-testid="venue-reviews-empty">
           @if (rated()) {
-            No written reviews yet — ratings so far came without a comment.
+            <ng-container i18n
+              >No written reviews yet — ratings so far came without a comment.</ng-container
+            >
           } @else {
-            No reviews yet.
+            <ng-container i18n>No reviews yet.</ng-container>
           }
         </p>
       }
 
       @if (failed()) {
         <div [class]="cls.actions">
-          <p [class]="cls.note" role="alert" data-testid="venue-reviews-error">
+          <p [class]="cls.note" role="alert" data-testid="venue-reviews-error" i18n>
             Reviews couldn’t be loaded.
           </p>
           <app-retry-button testId="venue-reviews-retry" (retry)="retry()" />
@@ -123,6 +125,7 @@ const CLS = {
             [class]="cls.more"
             data-testid="venue-reviews-more"
             (click)="more()"
+            i18n
           >
             Show more reviews
           </button>
@@ -158,16 +161,16 @@ export class VenueReviews {
   /** What the live region says: the load in flight, else what has landed; silent on a failure. */
   protected readonly status = computed(() => {
     if (this.loading()) {
-      return 'Loading reviews…';
+      return $localize`Loading reviews…`;
     }
     if (!this.loadedOnce() || this.failed()) {
       return '';
     }
     const listed = this.entries().length;
     if (listed > 0) {
-      return `Showing ${reviewsLabel(listed)}.`;
+      return $localize`Showing ${reviewsLabel(listed)}:reviews:.`;
     }
-    return this.rated() ? 'No written reviews yet.' : 'No reviews yet.';
+    return this.rated() ? $localize`No written reviews yet.` : $localize`No reviews yet.`;
   });
 
   /** The per-dispatch generation: any later dispatch or venue change supersedes this response. */

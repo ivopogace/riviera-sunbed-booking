@@ -20,7 +20,8 @@ import { TouchTarget } from './touch-target';
           class="support-channel inline-flex items-center gap-1.5 text-[14.5px] font-semibold underline underline-offset-[3px]"
           [href]="'mailto:' + email"
           data-testid="support-email"
-          ><span class="font-normal">Email</span> {{ email }}</a
+          ><span class="font-normal" i18n="Label before the support e-mail address">Email</span>
+          {{ email }}</a
         >
       </li>
     }

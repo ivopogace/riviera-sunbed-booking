@@ -32,6 +32,8 @@ export class ClosedForSeasonChip {
   protected readonly box = computed(() => BOX[this.variant()]);
   protected readonly label = computed(() => {
     const day = this.reopensOn();
-    return day ? `Closed for season · reopens ${formatDayMonth(day)}` : 'Closed for season';
+    return day
+      ? $localize`Closed for season · reopens ${formatDayMonth(day)}:date:`
+      : $localize`Closed for season`;
   });
 }

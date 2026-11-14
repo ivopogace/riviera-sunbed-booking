@@ -49,12 +49,17 @@ const CLS = {
     @if (requested(); as r) {
       <section [class]="cls.card" appCardGlass aria-labelledby="request-title">
         <div [class]="cls.badge" aria-hidden="true"><app-mail-icon /></div>
-        <h1 id="request-title" [class]="cls.h1">Request sent</h1>
+        <h1 id="request-title" [class]="cls.h1" i18n>Request sent</h1>
         @if (stops().length > 0) {
-          <p [class]="cls.lead">
-            Your stay at {{ r.venueName }}, {{ dateLabel() }}, is a
-            <strong [class]="cls.strong">Request to Book</strong>. The host accepts or declines your
-            whole stay before you pay —
+          <p [class]="cls.lead" i18n>
+            Your stay at
+            {{
+              r.venueName  // i18n(ph="venue")
+            }},
+            {{
+              dateLabel()  // i18n(ph="dates")
+            }}, is a <strong [class]="cls.strong">Request to Book</strong>. The host accepts or
+            declines your whole stay before you pay —
             <strong [class]="cls.strong">you haven’t been charged</strong>.
           </p>
           <ol [class]="cls.stops" data-testid="request-stops">
@@ -63,39 +68,65 @@ const CLS = {
             }
           </ol>
         } @else {
-          <p [class]="cls.lead">
-            {{ r.rowLabel }} · spot {{ r.positionNo }} at {{ r.venueName }} on {{ dateLabel() }} is
-            a <strong [class]="cls.strong">Request to Book</strong> venue. The host needs to accept
-            before you pay — <strong [class]="cls.strong">you haven’t been charged</strong>.
+          <p [class]="cls.lead" i18n>
+            {{
+              r.rowLabel // i18n(ph="row")
+            }}
+            · spot
+            {{
+              r.positionNo // i18n(ph="spot")
+            }}
+            at
+            {{
+              r.venueName // i18n(ph="venue")
+            }}
+            on
+            {{
+              dateLabel() // i18n(ph="date")
+            }}
+            is a <strong [class]="cls.strong">Request to Book</strong> venue. The host needs to
+            accept before you pay — <strong [class]="cls.strong">you haven’t been charged</strong>.
           </p>
         }
 
         <div [class]="cls.infoBox">
           <span [class]="cls.infoIcon" aria-hidden="true"><app-hourglass-icon /></span>
           <p [class]="cls.infoText">
-            We’ll notify you by email as soon as the venue responds — expected by
-            <strong [class]="cls.strong" data-testid="request-deadline">{{
-              deadline(r.requestExpiresAt)
-            }}</strong
-            >.
+            <ng-container i18n
+              >We’ll notify you by email as soon as the venue responds — expected by
+              <strong [class]="cls.strong" data-testid="request-deadline">{{
+                deadline(r.requestExpiresAt) // i18n(ph="deadline")
+              }}</strong
+              >.</ng-container
+            >
             @if (stops().length > 0) {
-              The spots aren’t held for you until the venue accepts — other guests can request them
-              too. If accepted, you’ll get a link to pay
-              <strong [class]="cls.strong">{{ formatMoney(r.amount) }}</strong> for the whole stay.
+              <ng-container i18n
+                >The spots aren’t held for you until the venue accepts — other guests can request
+                them too. If accepted, you’ll get a link to pay
+                <strong [class]="cls.strong">{{
+                  formatMoney(r.amount) // i18n(ph="amount")
+                }}</strong>
+                for the whole stay.</ng-container
+              >
             } @else {
-              The set isn’t held for you until the venue accepts — other guests can request it too.
-              If accepted, you’ll get a link to pay
-              <strong [class]="cls.strong">{{ formatMoney(r.amount) }}</strong> and lock in the set.
+              <ng-container i18n
+                >The set isn’t held for you until the venue accepts — other guests can request it
+                too. If accepted, you’ll get a link to pay
+                <strong [class]="cls.strong">{{
+                  formatMoney(r.amount) // i18n(ph="amount")
+                }}</strong>
+                and lock in the set.</ng-container
+              >
             }
           </p>
         </div>
 
         <div [class]="cls.codeCard" data-testid="booking-code">
-          <span [class]="cls.codeLabel">Request reference</span>
+          <span [class]="cls.codeLabel" i18n>Request reference</span>
           <div [class]="cls.code">{{ r.code }}</div>
         </div>
 
-        <p [class]="cls.status" data-testid="request-status">
+        <p [class]="cls.status" data-testid="request-status" i18n>
           Pending — waiting for the venue to respond
         </p>
 
@@ -104,16 +135,17 @@ const CLS = {
           [routerLink]="['/booking', r.code]"
           [class]="cls.primary"
           data-testid="status-link"
+          i18n
         >
           Track this request
         </a>
-        <a routerLink="/" [class]="cls.link">Back to the beach</a>
+        <a routerLink="/" [class]="cls.link" i18n>Back to the beach</a>
       </section>
     } @else {
       <section [class]="cls.card" appCardGlass aria-labelledby="request-title">
-        <h1 id="request-title" [class]="cls.h1">No request to show</h1>
-        <p [class]="cls.lead">Your booking request isn’t available here anymore.</p>
-        <a routerLink="/" [class]="cls.link">Start a new booking</a>
+        <h1 id="request-title" [class]="cls.h1" i18n>No request to show</h1>
+        <p [class]="cls.lead" i18n>Your booking request isn’t available here anymore.</p>
+        <a routerLink="/" [class]="cls.link" i18n>Start a new booking</a>
       </section>
     }
   `,
@@ -134,7 +166,7 @@ export class RequestConfirmation {
   /** A stay request's stops in day order (#1267), each its spot and days; empty for one set. */
   protected readonly stops = computed(() =>
     (this.requested()?.stretches ?? []).map((stretch) => ({
-      spot: `${stretch.rowLabel} · spot ${stretch.positionNo}`,
+      spot: $localize`${stretch.rowLabel}:row: · spot ${stretch.positionNo}:spot:`,
       range: formatStay(stretch.firstDate, stretch.lastDate),
     })),
   );

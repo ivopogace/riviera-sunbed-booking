@@ -1,6 +1,7 @@
 import { DestroyRef, Service, inject, signal } from '@angular/core';
 import { NavigationError, RedirectCommand, Router } from '@angular/router';
 
+import { localePath } from '../shared/display-locale';
 import { readSessionJson, writeSessionJson } from '../shared/safe-storage';
 import { PageNavigation } from './page-navigation';
 
@@ -97,9 +98,10 @@ export class ChunkLoadRecovery {
     this.reloadTo(url);
   }
 
+  /** `url` is the router's, without the build's base href: `localePath` keeps a translated build's reload in it. */
   private reloadTo(url: string): void {
     this.reloading.set(true);
-    this.navigation.reload(url);
+    this.navigation.reload(localePath(url));
   }
 
   private reloadedRecently(url: string): boolean {

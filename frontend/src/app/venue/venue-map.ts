@@ -38,7 +38,7 @@ import {
   isIsoDate,
 } from '../shared/booking-date';
 import { routeIdParam } from '../shared/parent-venue-id';
-import { plural } from '../shared/plural';
+import { pluralOf } from '../shared/plural';
 import { spotLabel, tierSentenceLabel } from '../shared/set-label';
 import { ItineraryView, PhotoView, PlanView, SetView, VenueMapView } from '../shared/venue-views';
 import { AvailabilityCalendar, CountsLoader, MAX_STAY_DAYS } from '../shared/availability-calendar';
@@ -101,6 +101,8 @@ interface VenueHeader {
   readonly description: string;
   /** The banner slideshow's photo URLs in slot order; empty → the gradient placeholder. */
   readonly photos: readonly PhotoView[];
+  /** The photo band's accessible name, "View larger photo(s) of <venue>". */
+  readonly viewPhotosLabel: string;
   /** The same slots sized for the lightbox's own box; falls back to {@link photos} when absent. */
   readonly lightboxPhotos: readonly PhotoView[];
   readonly bookingMode: VenueMapView['bookingMode'];
@@ -108,6 +110,8 @@ interface VenueHeader {
   readonly isRated: boolean;
   readonly reviewsCount: number;
   readonly rating: string;
+  /** The score's accessible name, bound with `[attr.aria-label]`: an interpolated `i18n-aria-label` renders none. */
+  readonly ratedLabel: string;
   /** The count with its noun already agreed — "1 review", "2 reviews" (shared/rating.ts). */
   readonly reviewsLabel: string;
   /** The "from €X / set" price string: the cheapest online set (#1647), `null` with none. */
@@ -232,6 +236,11 @@ export class VenueMap {
     daysBetween(this.selectedDate(), this.selectedLastDate()),
   );
   protected readonly isStay = computed(() => this.dayCount() > 1);
+  protected readonly dateFieldLabel = computed(() =>
+    this.isStay()
+      ? $localize`:Label of the venue page's date field when several days are picked:Stay`
+      : $localize`:Label of the venue page's date field for one day:Date`,
+  );
 
   /** The venue id from the `:id` param (undefined if invalid) — reactive to in-place changes,
    *  which reuse this instance. */
@@ -282,10 +291,11 @@ export class VenueMap {
       return undefined;
     }
     const anchor = this.planAnchorSet();
-    const budget = plural(answered.maxMoves, 'move');
+    const max = answered.maxMoves;
+    const budget = pluralOf(max, $localize`${max}:count: move`, $localize`${max}:count: moves`);
     return anchor === undefined
-      ? `No plan fits within ${budget}.`
-      : `No plan starting or ending on ${spotLabel(anchor.rowLabel, anchor.positionNo)} fits within ${budget}.`;
+      ? $localize`No plan fits within ${budget}:moves:.`
+      : $localize`No plan starting or ending on ${spotLabel(anchor.rowLabel, anchor.positionNo)}:spot: fits within ${budget}:moves:.`;
   });
   /** A set to open the dialog on once the map is re-read for a shortened stay. */
   private pendingSelectSetId: number | undefined;
@@ -365,6 +375,7 @@ export class VenueMap {
       return undefined;
     }
     const photos = slideshowPhotos(v, 'banner');
+    const rating = ratingScore(v.ratingTenths);
     return {
       id: v.id,
       name: v.name,
@@ -372,16 +383,21 @@ export class VenueMap {
       region: regionLabel(v.region),
       description: v.description,
       photos,
+      viewPhotosLabel:
+        photos.length > 1
+          ? $localize`View larger photos of ${v.name}:venue:`
+          : $localize`View larger photo of ${v.name}:venue:`,
       // Absent only on an older payload or a double; the server resolves its own fallback.
       lightboxPhotos: v.lightboxPhotos?.length ? v.lightboxPhotos : photos,
       bookingMode: v.bookingMode,
-      modeLabel: v.bookingMode === 'INSTANT' ? 'Instant Book' : 'Request to Book',
+      modeLabel: v.bookingMode === 'INSTANT' ? $localize`Instant Book` : $localize`Request to Book`,
       isRated: isRated(v),
       reviewsCount: v.reviewsCount,
-      rating: ratingScore(v.ratingTenths),
+      rating,
+      ratedLabel: $localize`Rated ${rating}:rating: out of 5`,
       reviewsLabel: reviewsLabel(v.reviewsCount),
       priceLabel: v.fromPrice ? formatMoney(v.fromPrice) : null,
-      unpricedLabel: !v.fromPrice && v.sets.length > 0 ? 'Walk-in only' : null,
+      unpricedLabel: !v.fromPrice && v.sets.length > 0 ? $localize`Walk-in only` : null,
       water: distanceToWaterLabel(v.distanceToWaterM ?? null),
       amenities: orderedAmenities(v.amenities ?? []).map((code) => ({
         code,
@@ -420,7 +436,7 @@ export class VenueMap {
     effect(() => {
       const view = this.venueView();
       if (view !== undefined) {
-        this.title.setTitle(`${view.name}, ${view.beach} — Riviera`);
+        this.title.setTitle($localize`${view.name}:venue:, ${view.beach}:beach: — Riviera`);
       }
     });
     // In-place route changes only: skip runs matching the last route key (fresh mount loads below).
@@ -502,18 +518,18 @@ export class VenueMap {
     const place = this.planPlaces().get(set.id);
     const announced =
       state === 'partly'
-        ? `${MAP_TILE_MEANING.partly.announced}, free ${freeDays} of ${this.dayCount()} days`
+        ? $localize`${MAP_TILE_MEANING.partly.announced}:state:, free ${freeDays}:free: of ${this.dayCount()}:days: days`
         : MAP_TILE_MEANING[state].announced;
-    const name = `${spotLabel(set.rowLabel, set.positionNo)}, ${tier}, ${this.money(set.price)}, ${announced}`;
+    const name = $localize`${spotLabel(set.rowLabel, set.positionNo)}:spot:, ${tier}:tier:, ${this.money(set.price)}:price:, ${announced}:state:`;
     return {
       set,
       bookable,
       state,
       name,
-      bookName: `${name}. Select to book.`,
+      bookName: $localize`${name}:tile:. Select to book.`,
       partly,
       freeDays,
-      partlyName: `${name}. Select to see which days.`,
+      partlyName: $localize`${name}:tile:. Select to see which days.`,
       planIndex: place === undefined ? undefined : place + 1,
       planFill: place === undefined ? null : stretchFillVar(place),
     };
@@ -739,6 +755,20 @@ export class VenueMap {
   /** A run's days rendered for the no-cover offer ("Tue 30 Jun – Thu 2 Jul · 3 days"). */
   protected runLabel(best: SetRun): string {
     return formatStay(best.run.first, best.run.last);
+  }
+
+  /** The no-cover banner's offer of the stitched plan ("See a 2-move plan"). */
+  protected planOfferLabel(moves: number): string {
+    return pluralOf(
+      moves,
+      $localize`See a 1-move plan`,
+      $localize`See a ${moves}:moves:-move plan`,
+    );
+  }
+
+  /** The no-cover banner's offer of the longest one-spot run. */
+  protected shortenLabel(best: SetRun): string {
+    return $localize`Shorten to ${this.runLabel(best)}:days:`;
   }
 
   /** The stay's days rendered for display ("Tue 30 Jun – Sat 4 Jul 2026 · 5 days"). */

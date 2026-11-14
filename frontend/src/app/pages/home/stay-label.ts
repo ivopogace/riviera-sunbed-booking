@@ -1,4 +1,4 @@
-import { plural } from '../../shared/plural';
+import { pluralOf } from '../../shared/plural';
 import { StayVerdictView } from '../../shared/venue-views';
 
 /**
@@ -8,15 +8,35 @@ import { StayVerdictView } from '../../shared/venue-views';
  */
 export function stayLabel(stay: StayVerdictView, days: number): string {
   if (stay.verdict === 'SAME_SET') {
-    return `Same set all ${days} days · ${plural(stay.sameSetCount, 'set')}`;
+    const sets = stay.sameSetCount;
+    return pluralOf(
+      sets,
+      $localize`Same set all ${days}:days: days · ${sets}:count: set`,
+      $localize`Same set all ${days}:days: days · ${sets}:count: sets`,
+    );
   }
   if (stay.verdict === 'FITS_WITH_MOVES') {
-    return `Fits with ${plural(stay.moves, 'move')} · all ${days} days`;
+    return pluralOf(
+      stay.moves,
+      $localize`Fits with ${stay.moves}:count: move · all ${days}:days: days`,
+      $localize`Fits with ${stay.moves}:count: moves · all ${days}:days: days`,
+    );
   }
   if (stay.maxStayDays !== null && stay.maxStayDays < days) {
-    return `Stays of up to ${plural(stay.maxStayDays, 'day')} here`;
+    const max = stay.maxStayDays;
+    return pluralOf(
+      max,
+      $localize`Stays of up to ${max}:count: day here`,
+      $localize`Stays of up to ${max}:count: days here`,
+    );
   }
-  return stay.longestRunDays === 0
-    ? `Can’t host ${days} days · fully booked`
-    : `Can’t host ${days} days · up to ${plural(stay.longestRunDays, 'day')} in a row`;
+  const run = stay.longestRunDays;
+  if (run === 0) {
+    return $localize`Can’t host ${days}:days: days · fully booked`;
+  }
+  return pluralOf(
+    run,
+    $localize`Can’t host ${days}:days: days · up to ${run}:count: day in a row`,
+    $localize`Can’t host ${days}:days: days · up to ${run}:count: days in a row`,
+  );
 }

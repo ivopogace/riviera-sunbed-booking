@@ -41,7 +41,7 @@ export class StripeJsPaymentGateway extends EmbeddedCheckoutGateway {
     assertPublishableKey(key);
     const stripe: Stripe | null = await loadStripe(key);
     if (!stripe) {
-      throw new Error('Stripe.js failed to load.');
+      throw new Error($localize`Stripe.js failed to load.`);
     }
     const elements: StripeElements = stripe.elements({ clientSecret });
     elements.create('payment').mount(host);
@@ -50,7 +50,10 @@ export class StripeJsPaymentGateway extends EmbeddedCheckoutGateway {
       confirm: async () => {
         const { error } = await stripe.confirmPayment({ elements, redirect: 'if_required' });
         return error
-          ? { error: error.message ?? 'Your payment could not be completed. Please try again.' }
+          ? {
+              error:
+                error.message ?? $localize`Your payment could not be completed. Please try again.`,
+            }
           : {};
       },
     };
@@ -72,7 +75,7 @@ export class FakeStripePaymentGateway extends EmbeddedCheckoutGateway {
       (window as unknown as { __RIVIERA_FAKE_STRIPE_MOUNT_FAIL__?: boolean })
         .__RIVIERA_FAKE_STRIPE_MOUNT_FAIL__
     ) {
-      return Promise.reject(new Error('Stripe.js failed to load.'));
+      return Promise.reject(new Error($localize`Stripe.js failed to load.`));
     }
     const input = document.createElement('input');
     input.type = 'text';
@@ -86,7 +89,7 @@ export class FakeStripePaymentGateway extends EmbeddedCheckoutGateway {
         Promise.resolve(
           (window as unknown as { __RIVIERA_FAKE_STRIPE_FAIL__?: boolean })
             .__RIVIERA_FAKE_STRIPE_FAIL__
-            ? { error: 'This PaymentIntent has been canceled.' }
+            ? { error: $localize`This PaymentIntent has been canceled.` }
             : {},
         ),
     });

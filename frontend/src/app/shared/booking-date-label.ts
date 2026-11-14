@@ -2,28 +2,22 @@
  * Render an ISO `LocalDate` (a booking date: civil, no instant, no zone) as a weekday/day/month
  * label; the app's ONE civil-date formatter. Parsed as **explicit UTC midnight** and formatted with
  * `timeZone: 'UTC'`: rendered in the viewer's zone it can roll back a day in negative-offset zones
- * (invariant #6). Locale pinned like `shared/money.ts`; `Intl.DateTimeFormat`s are module-level.
+ * (invariant #6). Shown in the display locale (`shared/display-format.ts`); the formatters are module-level.
  *
  * @param opts.withYear include the year ("Tue 30 Jun 2026"), for map/Discover; checkout omits it.
  */
+import { displayDateFormat } from './display-format';
 import { daysBetween, formatDayMonth } from './booking-date';
-import { plural } from './plural';
+import { pluralOf } from './plural';
 
-const DAY_ONLY = new Intl.DateTimeFormat('en-IE', { timeZone: 'UTC', day: 'numeric' });
+const DAY_ONLY = displayDateFormat('day', 'UTC');
+const FMT = displayDateFormat('weekday-day-month', 'UTC');
+const FMT_WITH_YEAR = displayDateFormat('weekday-day-month-year', 'UTC');
 
-const FMT = new Intl.DateTimeFormat('en-IE', {
-  timeZone: 'UTC',
-  weekday: 'short',
-  day: 'numeric',
-  month: 'short',
-});
-const FMT_WITH_YEAR = new Intl.DateTimeFormat('en-IE', {
-  timeZone: 'UTC',
-  weekday: 'short',
-  day: 'numeric',
-  month: 'short',
-  year: 'numeric',
-});
+/** A stay's length, `1 day` / `5 days`. */
+function dayCountLabel(days: number): string {
+  return pluralOf(days, $localize`${days}:count: day`, $localize`${days}:count: days`);
+}
 
 export function formatBookingDate(iso: string, opts: { withYear?: boolean } = {}): string {
   // Parse via the ISO string form (strict — an out-of-range month/day yields Invalid Date), not
@@ -35,7 +29,7 @@ export function formatBookingDate(iso: string, opts: { withYear?: boolean } = {}
   if (Number.isNaN(date.getTime())) {
     return '';
   }
-  return (opts.withYear ? FMT_WITH_YEAR : FMT).format(date);
+  return (opts.withYear ? FMT_WITH_YEAR : FMT)(date);
 }
 
 /**
@@ -48,9 +42,9 @@ export function formatStayChip(first: string, last: string): string {
   }
   const from =
     first.slice(0, 7) === last.slice(0, 7)
-      ? DAY_ONLY.format(new Date(`${first}T00:00:00Z`))
+      ? DAY_ONLY(new Date(`${first}T00:00:00Z`))
       : formatDayMonth(first);
-  return `${from} – ${formatDayMonth(last)} · ${plural(daysBetween(first, last), 'day')}`;
+  return `${from} – ${formatDayMonth(last)} · ${dayCountLabel(daysBetween(first, last))}`;
 }
 
 /**
@@ -62,5 +56,5 @@ export function formatStay(first: string, last: string, opts: { withYear?: boole
   if (first === last) {
     return formatBookingDate(first, opts);
   }
-  return `${formatBookingDate(first)} – ${formatBookingDate(last, opts)} · ${plural(daysBetween(first, last), 'day')}`;
+  return `${formatBookingDate(first)} – ${formatBookingDate(last, opts)} · ${dayCountLabel(daysBetween(first, last))}`;
 }

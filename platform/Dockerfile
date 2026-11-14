@@ -46,7 +46,8 @@ RUN chmod +x gradlew && ./gradlew --no-daemon --version
 RUN ./gradlew --no-daemon dependencies > /dev/null 2>&1 || true
 
 # Backend sources, then drop the built SPA into static/ so bootJar bundles it at
-# classpath:/static/ (SpaWebConfig serves it, with an index.html deep-link fallback).
+# classpath:/static/: English at the root, each other locale under its subpath (ADR-0030).
+# SpaWebConfig serves it, falling a deep link back to its locale's index.html.
 COPY platform/src src
 COPY --from=web /web/dist/frontend/browser/ src/main/resources/static/
 RUN ./gradlew --no-daemon clean bootJar -x test \

@@ -97,6 +97,7 @@ const GLIDE_MS = 1_500;
           [class.touch-pan-x]="!atFull()"
           [style.height.px]="tops().sheetHeight"
           aria-label="Venues"
+          i18n-aria-label
           (touchstart)="onTouch(true); onDragStart($event)"
           (touchmove)="onDragMove($event)"
           (touchend)="onTouch($event.touches.length > 0); onDragEnd()"
@@ -112,6 +113,7 @@ const GLIDE_MS = 1_500;
               data-touch-exempt="the whole head is the drag surface; the bar is its cue"
               class="flex h-[22px] w-full touch-manipulation items-center justify-center"
               aria-label="Resize the list"
+              i18n-aria-label
               (click)="cycle()"
             >
               <span
@@ -150,7 +152,7 @@ const GLIDE_MS = 1_500;
           class="pointer-events-auto inline-flex h-11 touch-manipulation items-center gap-2 rounded-full bg-riv-accent-ink px-5 text-[15px] font-bold text-riv-on-accent-ink shadow-[0_10px_28px_rgba(7,42,58,0.35)]"
           (click)="showMap()"
         >
-          <app-map-icon /> Show map
+          <app-map-icon /> <ng-container i18n>Show map</ng-container>
         </button>
       </div>
     }

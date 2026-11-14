@@ -39,14 +39,26 @@ const MAP_TILE_CLASS: Record<MapTileState, string> = {
  * accessible name. Colour is never the only carrier, so the two must agree (`map-tile.spec.ts`).
  */
 export const MAP_TILE_MEANING: Record<MapTileState, { legend: string; announced: string }> = {
-  available: { legend: 'Available', announced: 'available' },
-  premium: { legend: 'Front row', announced: 'available' },
-  partly: { legend: 'Partly free', announced: 'partly free' },
-  walkin: {
-    legend: 'Walk-in only — book at the venue',
-    announced: 'walk-in only — book at the venue',
+  available: {
+    legend: $localize`:Map legend swatch:Available`,
+    announced: $localize`:Tile state inside a beach-map spot's accessible name:available`,
   },
-  taken: { legend: 'Taken', announced: 'taken' },
+  premium: {
+    legend: $localize`:Map legend swatch for the premium tier:Front row`,
+    announced: $localize`:Tile state inside a beach-map spot's accessible name:available`,
+  },
+  partly: {
+    legend: $localize`:Map legend swatch:Partly free`,
+    announced: $localize`:Tile state inside a beach-map spot's accessible name:partly free`,
+  },
+  walkin: {
+    legend: $localize`:Map legend swatch:Walk-in only — book at the venue`,
+    announced: $localize`:Tile state inside a beach-map spot's accessible name:walk-in only — book at the venue`,
+  },
+  taken: {
+    legend: $localize`:Map legend swatch:Taken`,
+    announced: $localize`:Tile state inside a beach-map spot's accessible name:taken`,
+  },
 };
 
 /** The legend's rows, in tile-state order — what `venue-map.html` iterates. */

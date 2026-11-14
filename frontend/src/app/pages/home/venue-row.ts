@@ -56,9 +56,9 @@ export class VenueRow {
   protected readonly closedLabel = computed(() => {
     const card = this.card();
     if (card.closedForSeason) {
-      return 'Closed for season';
+      return $localize`Closed for season`;
     }
-    return card.salesClosed ? 'Closed today' : null;
+    return card.salesClosed ? $localize`Closed today` : null;
   });
   /** What the expanded row adds; absent for a default-mode venue with no amenities to show. */
   protected readonly hasChips = computed(

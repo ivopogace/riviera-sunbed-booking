@@ -405,7 +405,7 @@ export class VenuePinLayer {
       case 'place':
         return placeLabel(slot.place);
       default:
-        return `${slot.member.pin.card.name}, ${slot.position} of ${slot.place.crowd.members.length} venues at ${slot.place.name}`;
+        return $localize`${slot.member.pin.card.name}:venue:, ${slot.position}:position: of ${slot.place.crowd.members.length}:count: venues at ${slot.place.name}:place:`;
     }
   }
 
@@ -475,21 +475,21 @@ function faceKind(place: Place, member: PlacedPin): 'place' | 'member' {
 
 function loneLabel(member: PlacedPin): string {
   const { name, priceLabel, canHost, stayLabel } = member.pin.card;
-  const base = priceLabel ? `${name}, from ${priceLabel}` : name;
+  const base = priceLabel ? $localize`${name}:venue:, from ${priceLabel}:price:` : name;
   return canHost || stayLabel === null ? base : `${base}; ${stayLabel}`;
 }
 
 function placeLabel(place: Place): string {
-  const count = `${place.crowd.members.length} venues at ${place.name}`;
-  const from = place.from ? `, from ${place.from}` : '';
-  const stay = place.cantHost ? '; none can host your stay' : '';
+  const count = $localize`${place.crowd.members.length}:count: venues at ${place.name}:place:`;
+  const from = place.from ? $localize`, from ${place.from}:price:` : '';
+  const stay = place.cantHost ? $localize`; none can host your stay` : '';
   if (!place.here) {
-    return `${count}${from}${stay}; press to zoom to them`;
+    return $localize`${count}:venues:${from}:price:${stay}:stay:; press to zoom to them`;
   }
   if (place.current) {
-    return `${place.current.pin.card.name}, ${place.index + 1} of ${count}; press again for ${place.next.pin.card.name}`;
+    return $localize`${place.current.pin.card.name}:venue:, ${place.index + 1}:position: of ${count}:venues:; press again for ${place.next.pin.card.name}:next:`;
   }
-  return `${count}${from}; press to open ${place.next.pin.card.name}`;
+  return $localize`${count}:venues:${from}:price:; press to open ${place.next.pin.card.name}:next:`;
 }
 
 function titleOf(place: Pick<Place, 'name' | 'current'>): string {
@@ -500,9 +500,11 @@ function titleOf(place: Pick<Place, 'name' | 'current'>): string {
 function subtitleOf(place: Pick<Place, 'from' | 'here' | 'current'>): string | null {
   if (place.current) {
     const price = place.current.pin.card.priceLabel;
-    return price ? `from ${price}` : null;
+    return price ? $localize`from ${price}:price:` : null;
   }
-  return place.here ? 'See each venue' : place.from && `from ${place.from}`;
+  return place.here
+    ? $localize`See each venue`
+    : place.from && $localize`from ${place.from}:price:`;
 }
 
 /** The pill at full width: its longer line plus its chrome; a lone pin is as wide as its face. */

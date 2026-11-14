@@ -14,6 +14,7 @@ import { Component } from '@angular/core';
     <p
       class="mt-[10px] rounded-[12px] bg-riv-warn-fill px-[12px] py-[10px] text-left text-[12px] leading-[1.45] text-riv-warn-ink"
       data-testid="email-withheld"
+      i18n
     >
       <strong class="font-bold">We couldn’t email you.</strong> We weren’t able to send a
       confirmation to that address, so this code is your only record — save it or take a screenshot

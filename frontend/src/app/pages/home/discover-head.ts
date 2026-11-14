@@ -38,6 +38,9 @@ const RAIL =
   'flex gap-1.5 overflow-x-auto px-3 pt-1 pb-2 scrollbar-none starting:-translate-y-1 starting:opacity-0 ' +
   'motion-safe:[transition:opacity_0.18s_ease,translate_0.18s_ease]';
 const RAIL_LEAVE = 'opacity-0 -translate-y-1';
+/** The rails' accessible names, which {@link DiscoverHead.rail} also finds them by. */
+const DAY_RAIL = $localize`:Group of day chips:Day`;
+const BEACH_RAIL = $localize`:Group of beach chips:Beach`;
 /**
  * A chip rail wraps from `sm`, where a mouse has no swipe and the hidden scrollbar leaves the last
  * chips, the stay chip or a region's southern beaches, out of reach; a phone keeps the one
@@ -146,7 +149,12 @@ const COUNT =
     </div>
     @if (railsShown()) {
       @if (dayOpen()) {
-        <div [class]="CHIP_RAIL" [animate.leave]="RAIL_LEAVE" role="group" aria-label="Day">
+        <div
+          [class]="CHIP_RAIL"
+          [animate.leave]="RAIL_LEAVE"
+          role="group"
+          [attr.aria-label]="DAY_RAIL"
+        >
           @for (day of days(); track day.date) {
             <button
               type="button"
@@ -165,12 +173,18 @@ const COUNT =
             [class]="CHIP"
             [attr.aria-current]="stay() ? 'true' : null"
             (click)="pickStay()"
+            i18n
           >
             Several days…
           </button>
         </div>
       } @else if (beachesOpen()) {
-        <div [class]="CHIP_RAIL" [animate.leave]="RAIL_LEAVE" role="group" aria-label="Beach">
+        <div
+          [class]="CHIP_RAIL"
+          [animate.leave]="RAIL_LEAVE"
+          role="group"
+          [attr.aria-label]="BEACH_RAIL"
+        >
           <button
             type="button"
             appTouchTarget
@@ -178,7 +192,10 @@ const COUNT =
             [attr.aria-current]="beach() === '' ? 'true' : null"
             (click)="pickBeach('')"
           >
-            All&ngsp;<span [class]="COUNT">{{ regionCount() }}</span>
+            <ng-container i18n="Chip that shows every beach">All</ng-container>&ngsp;<span
+              [class]="COUNT"
+              >{{ regionCount() }}</span
+            >
           </button>
           @for (option of beaches(); track option.code) {
             <button
@@ -207,6 +224,7 @@ const COUNT =
             appTouchTarget
             data-testid="head-note-dismiss"
             aria-label="Dismiss message"
+            i18n-aria-label
             class="inline-flex shrink-0 touch-manipulation items-center justify-center rounded-full text-riv-ink-soft"
             (click)="noteDismissed.emit()"
           >
@@ -227,6 +245,8 @@ export class DiscoverHead {
   protected readonly RAIL = RAIL;
   protected readonly CHIP_RAIL = CHIP_RAIL;
   protected readonly RAIL_LEAVE = RAIL_LEAVE;
+  protected readonly DAY_RAIL = DAY_RAIL;
+  protected readonly BEACH_RAIL = BEACH_RAIL;
 
   /** The place as the tourist reads it: the beach, the region, or where they stand. */
   readonly title = input.required<string>();
@@ -274,12 +294,12 @@ export class DiscoverHead {
   );
   /** The region's beaches, or the chosen beach's own venues once one is lit. */
   protected readonly chipCount = computed(() => this.chosen()?.count ?? this.beaches().length);
-  protected readonly chipWord = computed(() => this.chosen()?.label ?? 'All beaches');
+  protected readonly chipWord = computed(() => this.chosen()?.label ?? $localize`All beaches`);
   protected readonly beachChipLabel = computed(() => {
     const chosen = this.chosen();
     return chosen === undefined
-      ? `All ${this.beaches().length} beaches: choose one`
-      : `${chosen.label}: change the beach`;
+      ? $localize`All ${this.beaches().length}:count: beaches: choose one`
+      : $localize`${chosen.label}:beach:: change the beach`;
   });
 
   protected readonly days = computed(() =>
@@ -300,10 +320,10 @@ export class DiscoverHead {
   /** Today, Tomorrow, then the weekday and day — the way a tourist says it. */
   private dayLabel(date: string): string {
     if (date === this.today()) {
-      return 'Today';
+      return $localize`Today`;
     }
     if (date === addDays(this.today(), 1)) {
-      return 'Tomorrow';
+      return $localize`Tomorrow`;
     }
     return formatBookingDate(date);
   }
@@ -346,10 +366,10 @@ export class DiscoverHead {
   /** Which open rail holds focus, if any — the pressed chip is about to be destroyed with it. */
   private railHoldsFocus(): 'day' | 'beach' | null {
     const active = this.host.nativeElement.ownerDocument.activeElement;
-    if (this.dayOpen() && this.rail('Day')?.contains(active)) {
+    if (this.dayOpen() && this.rail(DAY_RAIL)?.contains(active)) {
       return 'day';
     }
-    return this.beachesOpen() && this.rail('Beach')?.contains(active) ? 'beach' : null;
+    return this.beachesOpen() && this.rail(BEACH_RAIL)?.contains(active) ? 'beach' : null;
   }
 
   private rail(name: string): HTMLElement | null {

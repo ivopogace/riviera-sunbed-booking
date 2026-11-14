@@ -17,7 +17,12 @@ import { EMPTY, Observable, catchError, defer, finalize, from, mergeMap, tap } f
 import { CustomerAuth } from '../core/customer-auth';
 import { DeviceLocalBookings } from '../core/device-local-bookings';
 import { formatStay } from '../shared/booking-date-label';
-import { amountLabelFor, metaFor, readsAsRefunded } from '../shared/booking-status';
+import {
+  amountLabelFor,
+  amountLabelText,
+  metaFor,
+  readsAsRefunded,
+} from '../shared/booking-status';
 import { BusyAction } from '../shared/busy-action';
 import { CardGlass } from '../shared/card-glass';
 import { focusMover } from '../shared/focus-after-render';
@@ -103,7 +108,7 @@ function buildView(b: RowSource): RowView {
     subLine: subLineOf(b),
     statusLabel: meta.label,
     chipClass: meta.chip,
-    amountLabel: amountLabelFor(b.status, b.refundedAmount, nothingLeft),
+    amountLabel: amountLabelText(amountLabelFor(b.status, b.refundedAmount, nothingLeft)),
     amountStr: formatMoney(b.amount),
     showQr: b.status === 'CONFIRMED' && !nothingLeft,
   };

@@ -3,7 +3,6 @@ package ai.riviera.platform;
 import java.io.IOException;
 
 import org.jspecify.annotations.NonNull;
-import org.springframework.core.io.ClassPathResource;
 import org.springframework.core.io.Resource;
 import org.springframework.stereotype.Component;
 import org.springframework.web.servlet.config.annotation.ResourceHandlerRegistry;
@@ -12,17 +11,15 @@ import org.springframework.web.servlet.resource.PathResourceResolver;
 
 /**
  * Serves the Angular SPA baked into {@code classpath:/static/} by the image's Node stage: hashed
- * assets directly, and {@code index.html} for client-side routes so a deep-link refresh boots the
- * app instead of 404ing. An unmapped {@code /api/**} or {@code /actuator/**} request stays a
- * 404/401, never the shell. Same-origin hosting keeps the session and CSRF cookies first-party
+ * assets directly, and its locale's {@code index.html} ({@link SpaLocale}) for a client-side route so
+ * a deep-link refresh boots the app instead of 404ing. Unmapped {@code /api/**} and {@code /actuator/**}
+ * stay a 404/401, never the shell. Same-origin hosting keeps the session and CSRF cookies first-party
  * (ADR-0004); the public-shell authorization is {@code SecurityConfig}'s SPA filter chain, and this
  * class only maps request paths to static resources.
  */
 @Component
 class SpaWebConfig implements WebMvcConfigurer {
 
-	/** The SPA entry document, resolved once; every extensionless client route falls back here. */
-	private static final Resource INDEX = new ClassPathResource("static/index.html");
 	/** Backend path prefixes (relative, no leading slash) that must never be served the shell. */
 	private static final String API_PREFIX = "api/";
 	private static final String ACTUATOR_PREFIX = "actuator/";
@@ -37,8 +34,8 @@ class SpaWebConfig implements WebMvcConfigurer {
 
 	/**
 	 * Serves the requested static asset when it exists; for an extensionless CLIENT ROUTE (a deep
-	 * link like {@code /operator/1}) with no matching file, falls back to {@code index.html} so the
-	 * Angular router owns it. A missing path that looks like an ASSET (has a file extension — e.g.
+	 * link like {@code /sq/venues/1}) with no matching file, falls back to its locale's {@code index.html}
+	 * so the Angular router owns it. A missing path that looks like an ASSET (has a file extension — e.g.
 	 * a stale hashed {@code .js} chunk after a redeploy) returns {@code null} (→ 404), NOT the
 	 * shell: serving HTML for a {@code .js} makes the browser refuse it as a module and the page
 	 * breaks instead of recovering with a reload. Backend paths never fall back either.
@@ -62,8 +59,9 @@ class SpaWebConfig implements WebMvcConfigurer {
 					return null;
 				}
 			}
-			// An empty path (a request for "/") or an extensionless client route → the SPA shell.
-			return INDEX.exists() ? INDEX : null;
+			// An empty path (a request for "/") or an extensionless client route → its locale's shell.
+			Resource index = SpaLocale.ofResourcePath(resourcePath).index();
+			return index.exists() ? index : null;
 		}
 
 		/** True when the last path segment carries a file extension (a static asset, not a route). */

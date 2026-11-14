@@ -57,6 +57,24 @@ class SpaShellTest {
 	}
 
 	@Test
+	void eachLocaleDeepLinkServesThatLocalesShell() throws Exception {
+		// ADR-0030: /sq/** and /it/** fall back to their own build's index.html, the rest to the source locale's.
+		mvc.perform(get("/sq/venues/1")).andExpect(status().isOk())
+				.andExpect(content().string(containsString("lang=\"sq\"")));
+		mvc.perform(get("/it/booking/ABC")).andExpect(status().isOk())
+				.andExpect(content().string(containsString("lang=\"it\"")));
+		mvc.perform(get("/sq/")).andExpect(content().string(containsString("lang=\"sq\"")));
+		mvc.perform(get("/it")).andExpect(content().string(containsString("lang=\"it\"")));
+		mvc.perform(get("/venues/1")).andExpect(content().string(containsString("lang=\"en\"")));
+		mvc.perform(get("/sqx/venues/1")).andExpect(content().string(containsString("lang=\"en\"")));
+	}
+
+	@Test
+	void missingLocaleAssetReturns404NotTheShell() throws Exception {
+		mvc.perform(get("/sq/chunk-STALE123.js")).andExpect(status().isNotFound());
+	}
+
+	@Test
 	void shellIsPublicToAnonymous() throws Exception {
 		// AC-5: the shell must never 401 — it did before the carve-out, under
 		// anyRequest().authenticated(), which is exactly what broke sign-in in the sandbox.

@@ -62,13 +62,13 @@ const SWIPE_THRESHOLD_PX = 40;
         <app-photo-step-button
           direction="prev"
           [testId]="testId() + '-prev'"
-          [label]="'Previous photo, ' + name()"
+          [label]="previousLabel()"
           (stepped)="prev()"
         />
         <app-photo-step-button
           direction="next"
           [testId]="testId() + '-next'"
-          [label]="'Next photo, ' + name()"
+          [label]="nextLabel()"
           (stepped)="next()"
         />
         <!-- The APG carousel's slide picker; its geometry is in the class doc. -->
@@ -185,7 +185,9 @@ export class PhotoSlideshow {
 
   /** "Photo 2 of 3" — the live-region sentence, also read by the external-controls host. */
   readonly positionLabel = computed(() =>
-    this.photos().length > 1 ? `Photo ${this.index() + 1} of ${this.photos().length}` : '',
+    this.photos().length > 1
+      ? $localize`Photo ${this.index() + 1}:position: of ${this.photos().length}:count:`
+      : '',
   );
 
   /** Origin and pointer of the gesture in flight, or `undefined` when none is. */
@@ -219,8 +221,17 @@ export class PhotoSlideshow {
   }
 
   protected slideLabel(i: number): string {
-    const subject = this.name() ? `, ${this.name()}` : '';
-    return `Photo ${i + 1} of ${this.photos().length}${subject}`;
+    return this.name()
+      ? $localize`Photo ${i + 1}:position: of ${this.photos().length}:count:, ${this.name()}:venue:`
+      : $localize`Photo ${i + 1}:position: of ${this.photos().length}:count:`;
+  }
+
+  protected previousLabel(): string {
+    return $localize`Previous photo, ${this.name()}:venue:`;
+  }
+
+  protected nextLabel(): string {
+    return $localize`Next photo, ${this.name()}:venue:`;
   }
 
   /**

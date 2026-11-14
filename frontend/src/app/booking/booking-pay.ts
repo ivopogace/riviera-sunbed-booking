@@ -103,11 +103,11 @@ const CLS = {
     </output>
     @if (state() === 'missing') {
       <section [class]="cls.standalone" appCardGlass aria-labelledby="pay-title">
-        <h1 [class]="cls.h1" id="pay-title" data-testid="pay-title">No payment in progress</h1>
-        <p [class]="cls.lead">
+        <h1 [class]="cls.h1" id="pay-title" data-testid="pay-title" i18n>No payment in progress</h1>
+        <p [class]="cls.lead" i18n>
           Your payment session isn’t available here anymore. Please start a new booking.
         </p>
-        <a routerLink="/" [class]="cls.cardLink">Back to home</a>
+        <a routerLink="/" [class]="cls.cardLink" i18n>Back to home</a>
       </section>
     } @else if (state() === 'confirmed' || state() === 'awaiting') {
       <section class="pay-done" [class]="cls.standalone" appCardGlass aria-labelledby="pay-title">
@@ -127,13 +127,13 @@ const CLS = {
           }
         </div>
         @if (state() === 'confirmed') {
-          <h1 [class]="cls.h1" id="pay-title" data-testid="pay-title">You’re booked.</h1>
-          <p [class]="cls.lead">
+          <h1 [class]="cls.h1" id="pay-title" data-testid="pay-title" i18n>You’re booked.</h1>
+          <p [class]="cls.lead" i18n>
             Your payment is complete. Show this code to staff when you arrive.
           </p>
         } @else {
-          <h1 [class]="cls.h1" id="pay-title" data-testid="pay-title">Payment received</h1>
-          <p [class]="cls.lead">
+          <h1 [class]="cls.h1" id="pay-title" data-testid="pay-title" i18n>Payment received</h1>
+          <p [class]="cls.lead" i18n>
             We’ve received your payment and are waiting for final confirmation. This can take a
             moment — your booking is saved under the code below, and you can check it any time.
           </p>
@@ -141,7 +141,7 @@ const CLS = {
 
         <dl class="mt-3">
           <div [class]="cls.sumRow">
-            <dt [class]="cls.sumDt">Venue</dt>
+            <dt [class]="cls.sumDt" i18n>Venue</dt>
             <dd [class]="cls.sumDd">
               <a
                 appTouchTarget
@@ -155,7 +155,7 @@ const CLS = {
           </div>
           @if (directions(); as url) {
             <div [class]="cls.sumRow" data-testid="directions-row">
-              <dt [class]="cls.sumDt">Directions</dt>
+              <dt [class]="cls.sumDt" i18n>Directions</dt>
               <dd [class]="cls.sumDd">
                 <a
                   appTouchTarget
@@ -164,34 +164,52 @@ const CLS = {
                   rel="noopener noreferrer"
                   [class]="cls.rowLink"
                   data-testid="venue-directions"
+                  i18n
                   >Open in maps<span class="sr-only"> (opens in a new tab)</span></a
                 >
               </dd>
             </div>
           }
           <div [class]="cls.sumRow">
-            <dt [class]="cls.sumDt">{{ booking!.stretches?.length ? 'Spots' : 'Set' }}</dt>
+            <dt [class]="cls.sumDt">{{ setKey }}</dt>
             <dd [class]="cls.sumDd">
               @if (booking!.stretches?.length) {
                 <ol class="list-none" data-testid="pay-stops">
                   @for (stretch of booking!.stretches; track $index) {
-                    <li>
-                      {{ $index + 1 }}. {{ stretch.rowLabel }} · spot {{ stretch.positionNo }}
+                    <li i18n>
+                      {{
+                        $index + 1  // i18n(ph="n")
+                      }}.
+                      {{
+                        stretch.rowLabel // i18n(ph="row")
+                      }}
+                      · spot
+                      {{
+                        stretch.positionNo // i18n(ph="spot")
+                      }}
                     </li>
                   }
                 </ol>
               } @else {
-                {{ booking!.rowLabel }} · spot {{ booking!.positionNo }}
+                <ng-container i18n
+                  >{{
+                    booking!.rowLabel // i18n(ph="row")
+                  }}
+                  · spot
+                  {{
+                    booking!.positionNo // i18n(ph="spot")
+                  }}</ng-container
+                >
               }
             </dd>
           </div>
           <div [class]="cls.sumRow">
-            <dt [class]="cls.sumDt">Date</dt>
+            <dt [class]="cls.sumDt" i18n="the booked day|Row label for the booking date">Date</dt>
             <dd [class]="cls.sumDd">{{ dateLabel }}</dd>
           </div>
           <div [class]="cls.sumRowTotal">
             <dt [class]="cls.sumDt">
-              {{ state() === 'confirmed' ? 'Paid' : 'Total' }}
+              {{ totalKey() }}
             </dt>
             <dd [class]="cls.sumTotalDd">
               {{ formatMoney(booking!.amount) }}
@@ -203,7 +221,7 @@ const CLS = {
           class="my-[18px] rounded-[18px] border border-dashed border-riv-field-border bg-riv-inset-fill p-[15px]"
           data-testid="booking-code"
         >
-          <span class="block text-[11px] tracking-[0.16em] uppercase text-riv-card-ink-soft"
+          <span class="block text-[11px] tracking-[0.16em] uppercase text-riv-card-ink-soft" i18n
             >Booking code</span
           >
           <strong
@@ -223,7 +241,7 @@ const CLS = {
         }
 
         <app-manage-booking-link [code]="code" variant="primary" />
-        <a routerLink="/" [class]="cls.cardLink">Back to the beach</a>
+        <a routerLink="/" [class]="cls.cardLink" i18n>Back to the beach</a>
       </section>
     } @else {
       <!-- riv-holds-progress: an inert marker, read by tailwind.css's root rule. Only the checkout wears it — a reload here drops a half-entered card or the confirming poll; once the booking is settled there is nothing left in flight to lose. -->
@@ -238,6 +256,7 @@ const CLS = {
             class="mb-3.5 inline-flex min-h-11 items-center rounded-full px-4 py-2 text-[13px] font-semibold text-riv-ink focus-visible:outline-[3px] focus-visible:outline-offset-2 focus-visible:outline-white"
             appPanelGlass
             data-testid="pay-cancel"
+            i18n="Link that abandons the checkout and returns home"
             >Cancel</a
           >
         }
@@ -250,10 +269,10 @@ const CLS = {
                     class="mb-[18px] inline-block h-13 w-13 animate-[pay-spin_0.8s_linear_infinite] rounded-full border-4 border-riv-accent-track border-t-riv-accent-strong motion-reduce:animate-none"
                     aria-hidden="true"
                   ></span>
-                  <h1 [class]="cls.h1" id="pay-title" data-testid="pay-title">
+                  <h1 [class]="cls.h1" id="pay-title" data-testid="pay-title" i18n>
                     Confirming your booking…
                   </h1>
-                  <p [class]="cls.lead">
+                  <p [class]="cls.lead" i18n>
                     Your payment went through. We’re waiting for the confirmation from our payment
                     provider — this takes just a moment. Please don’t close this page.
                   </p>
@@ -267,33 +286,43 @@ const CLS = {
                   >
                     <app-cross-icon />
                   </div>
-                  <h1 [class]="cls.h1" id="pay-title" data-testid="pay-title">
+                  <h1 [class]="cls.h1" id="pay-title" data-testid="pay-title" i18n>
                     Payment couldn’t be completed
                   </h1>
                 } @else {
-                  <h1 [class]="cls.h1" id="pay-title" data-testid="pay-title">
+                  <h1 [class]="cls.h1" id="pay-title" data-testid="pay-title" i18n>
                     Complete your payment
                   </h1>
                   <p [class]="cls.lead">
                     @if (outcomeUnknown()) {
-                      We couldn’t finish the payment. Check the details and try again below.
+                      <ng-container i18n
+                        >We couldn’t finish the payment. Check the details and try again
+                        below.</ng-container
+                      >
                     } @else {
-                      Your card wasn’t charged. Check the details and try again below.
+                      <ng-container i18n
+                        >Your card wasn’t charged. Check the details and try again
+                        below.</ng-container
+                      >
                     }
                   </p>
                 }
               }
               @default {
-                <h1 [class]="cls.h1" id="pay-title" data-testid="pay-title">
+                <h1 [class]="cls.h1" id="pay-title" data-testid="pay-title" i18n>
                   Complete your payment
                 </h1>
                 <p [class]="cls.lead">
                   @if (embedded) {
-                    Enter your card to confirm the booking. Payments are processed securely by
-                    Stripe — Riviera never sees your card number.
+                    <ng-container i18n
+                      >Enter your card to confirm the booking. Payments are processed securely by
+                      Stripe — Riviera never sees your card number.</ng-container
+                    >
                   } @else {
-                    You’ll finish paying on our payment provider’s secure page. Your booking is
-                    confirmed once they tell us it’s paid.
+                    <ng-container i18n
+                      >You’ll finish paying on our payment provider’s secure page. Your booking is
+                      confirmed once they tell us it’s paid.</ng-container
+                    >
                   }
                 </p>
               }
@@ -310,13 +339,13 @@ const CLS = {
 
             @if (showElement()) {
               <p class="mt-3 flex items-center gap-1.5 text-[11.5px] text-riv-card-ink-faint">
-                <app-lock-icon class="[&_svg]:size-[12px]" /> Encrypted &amp; PCI-compliant ·
-                powered by Stripe
+                <app-lock-icon class="[&_svg]:size-[12px]" />
+                <ng-container i18n>Encrypted &amp; PCI-compliant · powered by Stripe</ng-container>
               </p>
             }
 
             @if (state() === 'mounting') {
-              <p class="mt-3 text-[13.5px] text-riv-card-ink-soft">
+              <p class="mt-3 text-[13.5px] text-riv-card-ink-soft" i18n>
                 Loading the secure payment form…
               </p>
             }
@@ -336,10 +365,11 @@ const CLS = {
                 [routerLink]="['/booking', code]"
                 [class]="cls.inlineLink"
                 data-testid="booking-status-link"
+                i18n
               >
                 View booking status
               </a>
-              <a routerLink="/" [class]="cls.inlineLink" data-testid="startover-link"
+              <a routerLink="/" [class]="cls.inlineLink" data-testid="startover-link" i18n
                 >Start a new booking</a
               >
             }
@@ -348,29 +378,43 @@ const CLS = {
           <aside [class]="cls.aside" appCardGlass>
             <span
               class="mb-3 block text-[11px] font-bold tracking-[0.12em] uppercase text-riv-card-ink-soft"
+              i18n
               >Order summary</span
             >
             <dl>
               <div [class]="cls.sumRowFirst">
-                <dt [class]="cls.sumDt">Venue</dt>
+                <dt [class]="cls.sumDt" i18n>Venue</dt>
                 <dd [class]="cls.sumDd">{{ booking!.venueName }}</dd>
               </div>
               <div [class]="cls.sumRow">
-                <dt [class]="cls.sumDt">Set</dt>
-                <dd [class]="cls.sumDd">
-                  {{ booking!.rowLabel }} · spot {{ booking!.positionNo }}
+                <dt
+                  [class]="cls.sumDt"
+                  i18n="sunbed set|Row label for the booked sunbed set (2 loungers + umbrella)"
+                >
+                  Set
+                </dt>
+                <dd [class]="cls.sumDd" i18n>
+                  {{
+                    booking!.rowLabel // i18n(ph="row")
+                  }}
+                  · spot
+                  {{
+                    booking!.positionNo // i18n(ph="spot")
+                  }}
                 </dd>
               </div>
               <div [class]="cls.sumRow">
-                <dt [class]="cls.sumDt">Date</dt>
+                <dt [class]="cls.sumDt" i18n="the booked day|Row label for the booking date">
+                  Date
+                </dt>
                 <dd [class]="cls.sumDd">{{ dateLabel }}</dd>
               </div>
               <div [class]="cls.sumRow">
-                <dt [class]="cls.sumDt">Includes</dt>
-                <dd [class]="cls.sumDd">2 loungers + umbrella</dd>
+                <dt [class]="cls.sumDt" i18n>Includes</dt>
+                <dd [class]="cls.sumDd" i18n>2 loungers + umbrella</dd>
               </div>
               <div [class]="cls.sumRowTotal">
-                <dt [class]="cls.sumDt">Total</dt>
+                <dt [class]="cls.sumDt" i18n>Total</dt>
                 <dd [class]="cls.sumTotalDd">
                   {{ formatMoney(booking!.amount) }}
                 </dd>
@@ -401,12 +445,13 @@ const CLS = {
                 [appBusy]="paying() || remounting()"
                 data-testid="pay-button"
               >
-                {{ paying() ? 'Processing…' : remounting() ? 'Loading…' : payLabel() }}
+                {{ paying() ? processingLabel : remounting() ? loadingLabel : payLabel() }}
               </button>
             }
             @if (state() === 'processing') {
               <output
                 class="mt-3.5 block text-center text-[13px] font-semibold text-riv-accent-ink"
+                i18n
               >
                 Finalising… hang tight.
               </output>
@@ -478,15 +523,15 @@ export class BookingPay {
   protected readonly liveStatus = computed(() => {
     switch (this.state()) {
       case 'mounting':
-        return 'Loading the secure payment form…';
+        return $localize`Loading the secure payment form…`;
       case 'processing':
-        return 'Confirming your booking — please don’t close this page…';
+        return $localize`Confirming your booking — please don’t close this page…`;
       case 'confirmed':
         return this.emailWithheld()
-          ? 'Your booking is confirmed. We could not email you — save your booking code.'
-          : 'Your booking is confirmed.';
+          ? $localize`Your booking is confirmed. We could not email you — save your booking code.`
+          : $localize`Your booking is confirmed.`;
       case 'awaiting':
-        return 'Payment received — awaiting confirmation.';
+        return $localize`Payment received — awaiting confirmation.`;
       default:
         return '';
     }
@@ -494,9 +539,20 @@ export class BookingPay {
 
   /** The booking total, formatted once (the awaiting summary is fixed for the page's lifetime). */
   private readonly priceText = this.booking ? formatMoney(this.booking.amount) : '';
-  private readonly readyLabel = this.embedded ? `Pay ${this.priceText}` : 'Continue to payment';
+  private readonly readyLabel = this.embedded
+    ? $localize`Pay ${this.priceText}:price:`
+    : $localize`Continue to payment`;
   protected readonly payLabel = computed(() =>
-    this.state() === 'error' ? 'Try again' : this.readyLabel,
+    this.state() === 'error' ? $localize`Try again` : this.readyLabel,
+  );
+  protected readonly processingLabel = $localize`Processing…`;
+  protected readonly loadingLabel = $localize`Loading…`;
+  /** The summary's set row key: a stay's spots, or the one set (fixed for the page lifetime). */
+  protected readonly setKey = this.booking?.stretches?.length
+    ? $localize`Spots`
+    : $localize`:sunbed set|Row label for the booked sunbed set (2 loungers + umbrella):Set`;
+  protected readonly totalKey = computed(() =>
+    this.state() === 'confirmed' ? $localize`Paid` : $localize`Total`,
   );
 
   /** Exposed for the template (currency formatting helper). */
@@ -537,7 +593,7 @@ export class BookingPay {
       this.failCardStep(
         error instanceof Error
           ? error.message
-          : 'Could not load the payment form. Please try again.',
+          : $localize`Could not load the payment form. Please try again.`,
       );
     } finally {
       this.remounting.set(false);
@@ -587,7 +643,7 @@ export class BookingPay {
           return;
         }
         this.errorMessage.set(
-          'This booking can no longer be paid — its status changed while this page was open.',
+          $localize`This booking can no longer be paid — its status changed while this page was open.`,
         );
         this.focusTitleIfLost('pay-title');
         this.terminalError.set(true);
@@ -621,7 +677,7 @@ export class BookingPay {
       ({ error, redirecting } = await this.checkout.confirm());
     } catch {
       // Stripe.js threw instead of resolving `{ error }` (an integration error): still retryable.
-      error = 'Your payment couldn’t be completed. Please try again.';
+      error = $localize`Your payment couldn’t be completed. Please try again.`;
       threw = true;
     } finally {
       this.paying.set(false);
@@ -664,7 +720,7 @@ export class BookingPay {
           // The payment failed server-side (verified PaymentCanceled webhook → booking CANCELLED).
           // Surface it honestly — do NOT let it fall through to the "payment received" message.
           this.errorMessage.set(
-            'Your payment didn’t go through, so the booking was cancelled. Please try booking again.',
+            $localize`Your payment didn’t go through, so the booking was cancelled. Please try booking again.`,
           );
           this.focusTitleIfLost('pay-title');
           this.terminalError.set(true);

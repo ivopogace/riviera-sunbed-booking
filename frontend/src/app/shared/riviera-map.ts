@@ -67,10 +67,10 @@ export type NearMeProblem = GeolocationFailure | 'off-map';
 
 /** One short sentence each, all of them saying the map stayed where the visitor left it. */
 export const NEAR_ME_MESSAGES: Record<NearMeProblem, string> = {
-  denied: 'Location permission was declined. The map hasn’t moved.',
-  unavailable: 'Your location isn’t available right now.',
-  timeout: 'Finding your location took too long. Try again.',
-  'off-map': 'You don’t seem to be on the Albanian riviera — the map hasn’t moved.',
+  denied: $localize`Location permission was declined. The map hasn’t moved.`,
+  unavailable: $localize`Your location isn’t available right now.`,
+  timeout: $localize`Finding your location took too long. Try again.`,
+  'off-map': $localize`You don’t seem to be on the Albanian riviera — the map hasn’t moved.`,
 };
 
 /**
@@ -98,12 +98,13 @@ const HERE_CLASSES =
     // A ribbon's corners are its consumer's: the map's own would round the imagery inside them.
     '[class]': 'ribbon() ? "" : "rounded-[26px]"',
     role: 'region',
-    'aria-label': 'Map of the riviera',
+    '[attr.aria-label]': 'regionLabel',
     '[attr.data-status]': 'status()',
   },
   templateUrl: './riviera-map.html',
 })
 export class RivieraMap {
+  protected readonly regionLabel = $localize`Map of the riviera`;
   private readonly engine = inject(MapEngine);
   private readonly geolocation = inject(GeolocationGateway);
   private readonly pendingTasks = inject(PendingTasks);
@@ -119,7 +120,7 @@ export class RivieraMap {
   readonly pin = input<LngLat | null>(null);
   readonly pinDraggable = input(false);
   /** The pin marker's accessible name — the seam leaves the element's a11y to its caller. */
-  readonly pinLabel = input('Venue location');
+  readonly pinLabel = input($localize`Venue location`);
   /**
    * Offer the near-me control. Off by default: a map embedded for a purpose of its own says so,
    * and a browser without the Geolocation API gets no control either way.
@@ -329,7 +330,7 @@ export class RivieraMap {
   private buildHereElement(): HTMLElement {
     const element = this.document.createElement('div');
     element.setAttribute('role', 'img');
-    element.setAttribute('aria-label', 'You are here');
+    element.setAttribute('aria-label', $localize`You are here`);
     element.className = HERE_CLASSES;
     element.dataset['testid'] = 'map-here';
     // Both engines mount the marker inside the surface they read clicks from.

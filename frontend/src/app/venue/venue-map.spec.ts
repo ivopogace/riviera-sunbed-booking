@@ -793,6 +793,10 @@ describe('VenueMap', () => {
     expect(header.textContent).toContain('4.8');
     expect(header.textContent).toContain('326 reviews');
     expect(header.querySelector('[data-testid="new-chip"]')).toBeNull();
+    // An accessible name a screen reader (and `getByLabel`) actually finds: an attribute, not a property.
+    expect(header.querySelector('[aria-label="Rated 4.8 out of 5"]')?.textContent?.trim()).toBe(
+      '4.8',
+    );
   });
 
   it('renders a "New" pill (aria "No reviews yet", no ★ 0.0) for an unrated venue (#154)', async () => {

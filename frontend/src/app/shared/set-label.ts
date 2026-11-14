@@ -27,7 +27,7 @@ export function setLabel(byId: ReadonlyMap<number, SetView>, setId: number): str
  * it, so a screen reader hears what the dialog, pay page, bookings and mail print, byte for byte.
  */
 export function spotLabel(rowLabel: string, positionNo: number): string {
-  return `${rowLabel} · spot ${positionNo}`;
+  return $localize`${rowLabel}:row: · spot ${positionNo}:position:`;
 }
 
 /**
@@ -41,7 +41,9 @@ export function rowName(rowLabel: string): string {
 
 /** The operator-surface tier label — request cards, pricing-row descriptions. */
 export function tierLabel(tier: Tier): string {
-  return tier === 'PREMIUM' ? 'Front row' : 'Standard';
+  return tier === 'PREMIUM'
+    ? $localize`:The premium set tier:Front row`
+    : $localize`:The standard set tier:Standard`;
 }
 
 /** {@link tierLabel} lower-cased for mid-sentence use in tile accessible names. */
@@ -51,5 +53,7 @@ export function tierSentenceLabel(tier: Tier): string {
 
 /** The tourist-facing tier name — the booking dialog's "Spot N · Premium" meta line. */
 export function touristTierLabel(tier: Tier): string {
-  return tier === 'PREMIUM' ? 'Premium' : 'Standard';
+  return tier === 'PREMIUM'
+    ? $localize`:The premium set tier, as the tourist reads it:Premium`
+    : $localize`:The standard set tier:Standard`;
 }

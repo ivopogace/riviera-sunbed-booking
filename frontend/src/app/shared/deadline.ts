@@ -1,17 +1,14 @@
+import { displayDateFormat } from './display-format';
+
+const FMT = displayDateFormat('weekday-day-month-time', 'Europe/Tirane');
+
 /**
  * Render an ISO-8601 UTC instant (e.g. a request-response deadline) as wall-clock time in
- * `Europe/Tirane` (invariant #6), never the viewer's or runtime's default zone; the locale is
- * pinned like `shared/money.ts` so output is deterministic across environments.
+ * `Europe/Tirane` (invariant #6), never the viewer's or runtime's default zone; shown in the
+ * display locale (`shared/display-format.ts`) so output is deterministic across environments.
  */
 export function formatDeadline(iso: string): string {
-  return new Intl.DateTimeFormat('en-IE', {
-    timeZone: 'Europe/Tirane',
-    weekday: 'short',
-    day: 'numeric',
-    month: 'short',
-    hour: '2-digit',
-    minute: '2-digit',
-  }).format(new Date(iso));
+  return FMT(new Date(iso));
 }
 
 /** A request is "urgent" — the amber clock chip shows — when its response deadline is under 8h away. */
