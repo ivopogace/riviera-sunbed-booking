@@ -113,14 +113,9 @@ test('the confirmation page links the venue and its directions', async ({ page }
   await expect(page.getByTestId('venue-link')).toHaveAttribute('href', '/venues/1?date=2026-12-01');
   await expect(page.getByTestId('venue-directions')).toHaveAttribute('href', DIRECTIONS);
 
-  // Measured link by link: the page-wide sweep also trips the manage link, a gap older than these.
   await page.setViewportSize({ width: 390, height: 780 });
   await settle(page);
-  for (const id of ['venue-link', 'venue-directions']) {
-    const box = await page.getByTestId(id).boundingBox();
-    expect(box?.width, id).toBeGreaterThanOrEqual(44);
-    expect(box?.height, id).toBeGreaterThanOrEqual(44);
-  }
+  await expectTouchTargets(page, 'booking confirmation');
   await settle(page);
   expect(offHost).toEqual([]);
 
