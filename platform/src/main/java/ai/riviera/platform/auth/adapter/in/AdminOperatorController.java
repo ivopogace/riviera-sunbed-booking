@@ -41,6 +41,11 @@ import ai.riviera.platform.operator.vocabulary.ResetLinkOutcome;
 @RequestMapping("/api/admin/operators")
 class AdminOperatorController {
 
+	private static final String NO_SUCH_OPERATOR_CODE = "NO_SUCH_OPERATOR";
+	private static final String NO_SUCH_OPERATOR_DETAIL = "No such operator.";
+	private static final String WRONG_STATUS_CODE = "WRONG_STATUS";
+	private static final String WRONG_STATUS_DETAIL = "This operator is not in a status that allows this change.";
+
 	private final OperatorLifecycle lifecycle;
 	private final OperatorDirectory operatorDirectory;
 	private final SessionRevocation sessionRevoker;
@@ -168,10 +173,10 @@ class AdminOperatorController {
 		return switch (passwordReset.issue(target, minted.tokenHash(), minted.expiresAt())) {
 			case ResetLinkOutcome.Issued ignored ->
 				ResponseEntity.ok(new ResetLinkResponse(minted.rawToken(), minted.expiresAt()));
-			case ResetLinkOutcome.NotActive ignored -> ApiProblem.response(HttpStatus.CONFLICT, "WRONG_STATUS",
-					"This operator is not in a status that allows this change.");
+			case ResetLinkOutcome.NotActive ignored -> ApiProblem.response(HttpStatus.CONFLICT,
+					WRONG_STATUS_CODE, WRONG_STATUS_DETAIL);
 			case ResetLinkOutcome.NoSuchOperator ignored -> ApiProblem.response(HttpStatus.NOT_FOUND,
-					"NO_SUCH_OPERATOR", "No such operator.");
+					NO_SUCH_OPERATOR_CODE, NO_SUCH_OPERATOR_DETAIL);
 		};
 	}
 
@@ -189,9 +194,9 @@ class AdminOperatorController {
 				yield ResponseEntity.noContent().build();
 			}
 			case OperatorLifecycleOutcome.WrongStatus ignored -> ApiProblem.response(HttpStatus.CONFLICT,
-					"WRONG_STATUS", "This operator is not in a status that allows this change.");
+					WRONG_STATUS_CODE, WRONG_STATUS_DETAIL);
 			case OperatorLifecycleOutcome.NoSuchOperator ignored -> ApiProblem.response(HttpStatus.NOT_FOUND,
-					"NO_SUCH_OPERATOR", "No such operator.");
+					NO_SUCH_OPERATOR_CODE, NO_SUCH_OPERATOR_DETAIL);
 			case OperatorLifecycleOutcome.LastActiveAdmin ignored -> ApiProblem.response(HttpStatus.CONFLICT,
 					"LAST_ACTIVE_ADMIN", "This suspension would leave the platform without an active admin.");
 			case OperatorLifecycleOutcome.ActorNotActiveAdmin ignored -> ApiProblem.response(HttpStatus.FORBIDDEN,
@@ -211,7 +216,7 @@ class AdminOperatorController {
 			case ApprovalOutcome.NotPending ignored -> ApiProblem.response(HttpStatus.CONFLICT, "NOT_PENDING",
 					"This operator is not awaiting approval.");
 			case ApprovalOutcome.NoSuchOperator ignored -> ApiProblem.response(HttpStatus.NOT_FOUND,
-					"NO_SUCH_OPERATOR", "No such operator.");
+					NO_SUCH_OPERATOR_CODE, NO_SUCH_OPERATOR_DETAIL);
 		};
 	}
 }
