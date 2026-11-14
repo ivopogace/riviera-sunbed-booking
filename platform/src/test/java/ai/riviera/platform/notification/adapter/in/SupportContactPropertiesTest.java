@@ -55,6 +55,16 @@ class SupportContactPropertiesTest {
 	}
 
 	@Test
+	void aMailboxNeedsADottedDomainOfNonEmptyLabels() {
+		assertThat(new SupportContactProperties("help@mail.example.al", null).email()).isEqualTo("help@mail.example.al");
+		for (String malformed : new String[] {"help@example", "help@example.", "help@.example.al", "help@example..al",
+				"help me@example.al", "help@exa@mple.al"}) {
+			assertThatIllegalArgumentException().as(malformed)
+					.isThrownBy(() -> new SupportContactProperties(malformed, null));
+		}
+	}
+
+	@Test
 	void aNumberWithoutACountryCodeIsRejected() {
 		assertThatIllegalArgumentException()
 				.isThrownBy(() -> new SupportContactProperties(null, "069 123 4567"))

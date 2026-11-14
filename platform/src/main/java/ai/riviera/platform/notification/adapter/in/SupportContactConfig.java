@@ -36,8 +36,11 @@ class SupportContactConfig {
 
 		static final String PREFIX = "riviera.notification.support";
 
-		/** One {@code @}, no whitespace, a dot in the domain: a shape check, not deliverability. */
-		private static final Pattern EMAIL = Pattern.compile("[^@\\s]+@[^@\\s]+\\.[^@\\s]+");
+		/**
+		 * One {@code @}, no whitespace, a domain of two or more non-empty dot-separated labels: a shape check, not
+		 * deliverability. Each label excludes the dot, so the match never backtracks.
+		 */
+		private static final Pattern MAILBOX_SHAPE = Pattern.compile("[^@\\s]+@[^@\\s.]+(?:\\.[^@\\s.]+)+");
 
 		/** E.164: a country code never starts with 0, and the whole number is at most 15 digits. */
 		private static final Pattern E164_DIGITS = Pattern.compile("[1-9]\\d{7,14}");
@@ -47,7 +50,7 @@ class SupportContactConfig {
 
 		SupportContactProperties {
 			email = blankToNull(email);
-			if (email != null && !EMAIL.matcher(email).matches()) {
+			if (email != null && !MAILBOX_SHAPE.matcher(email).matches()) {
 				throw new IllegalArgumentException(
 						PREFIX + ".email (RIVIERA_SUPPORT_EMAIL) is not an email address; leave it unset to show no mailbox");
 			}
