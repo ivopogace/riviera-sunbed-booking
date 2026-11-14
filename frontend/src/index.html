@@ -30,7 +30,13 @@
         const supported = new Set(['en', 'sq', 'it']);
         let locale = null;
         try {
-          locale = localStorage.getItem('riviera-locale');
+          locale = sessionStorage.getItem('riviera-sso-locale');
+          sessionStorage.removeItem('riviera-sso-locale');
+        } catch {
+          // blocked storage: no SSO return note
+        }
+        try {
+          if (!supported.has(locale)) locale = localStorage.getItem('riviera-locale');
         } catch {
           // blocked storage (private mode): fall through to the browser's languages
         }

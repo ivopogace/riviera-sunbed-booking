@@ -22,6 +22,7 @@ import {
   SignInResult,
   signInResultFor,
 } from './session-auth';
+import { rememberSsoReturn } from './locale';
 import { PageNavigation } from './page-navigation';
 
 /** The `/api/me` surface for the signed-in customer's own account writes. */
@@ -132,6 +133,7 @@ export class CustomerAuth extends SessionAuth {
    * with the form-login session cookie, which `restore()` picks up on the return load.
    */
   startSso(provider: SsoProviderId): void {
+    rememberSsoReturn();
     this.navigation.leaveTo(`${AUTH_API}/sso/${provider}/authorize`);
   }
 

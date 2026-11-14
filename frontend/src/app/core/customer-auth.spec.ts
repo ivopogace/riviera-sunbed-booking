@@ -4,6 +4,7 @@ import { TestBed } from '@angular/core/testing';
 
 import { environment } from '../../environments/environment';
 import { CustomerAuth } from './customer-auth';
+import { installFakeStorage, removeFakeStorage } from '../../testing/fake-storage';
 import { RecordingPageNavigation } from '../../testing/recording-page-navigation';
 import { PageNavigation } from './page-navigation';
 
@@ -227,6 +228,20 @@ describe('CustomerAuth', () => {
       `${AUTH_API}/sso/google/authorize`,
       `${AUTH_API}/sso/apple/authorize`,
     ]);
+  });
+
+  it('notes the running locale before leaving, so the return lands in it (ADR-0030)', async () => {
+    const session = installFakeStorage('sessionStorage');
+    try {
+      const auth = await create('signed-out');
+
+      auth.startSso('google');
+
+      expect(session.get('riviera-sso-locale')).toBe('en');
+      expect(navigation.left).toEqual([`${AUTH_API}/sso/google/authorize`]);
+    } finally {
+      removeFakeStorage('sessionStorage');
+    }
   });
 
   it('signs out and clears the principal', async () => {

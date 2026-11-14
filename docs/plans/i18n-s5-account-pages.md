@@ -69,7 +69,7 @@ allow-listed id.
 
 ## Execution status
 
-- [ ] Phase 0
+- [x] Phase 0 — SSO return note + seed, red on the old seed then green
 - [ ] Phase 1
 - [ ] Phase 2
 - [ ] Phase 3
