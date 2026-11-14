@@ -165,7 +165,7 @@ for (const locale of LOCALES) {
       await expectNoSeriousAxeViolations(page, `${locale} help`);
     });
 
-    test('the operator console: the pricing tab and the account menu', async ({ page }) => {
+    test('the operator console: pricing, payouts and the account menu', async ({ page }) => {
       await mockWholeConsole(page);
       await page.goto('/operator/1/pricing');
       await signInAsOperator(page);
@@ -178,6 +178,12 @@ for (const locale of LOCALES) {
       ).toBeVisible();
       await settle(page);
       await expectNoSeriousAxeViolations(page, `${locale} operator pricing`);
+
+      await page.getByTestId('oc-account').click();
+      await expect(page.locator('#oc-contact-label')).toHaveText(t(locale, 'Contact Riviera'));
+      await expect(page.getByTestId('oc-change-password')).toHaveText(t(locale, 'Change password'));
+      await expectNoSeriousAxeViolations(page, `${locale} operator account menu`);
+      await page.keyboard.press('Escape');
 
       await page.goto(`/${locale}/operator/1/payouts`);
       await expectLocalePage(page, locale, 'Payouts — Operator console');

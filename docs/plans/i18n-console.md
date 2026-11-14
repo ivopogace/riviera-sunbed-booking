@@ -58,14 +58,14 @@ for these shapes).
 
 ## Execution status
 
-**Stage pointer:** implement (phase 0)
+**Stage pointer:** CI gate, then review
 
-**Next action:** mark operator and admin sources.
+**Next action:** CI green on the head, then mark ready and run the review gate (high).
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 | done | — |
-| 1 | pending | — |
-| 2 | pending | — |
-| 3 | pending | — |
-| 4 | pending | — |
+| 0 | done | 2a5eb88d |
+| 1 | done | 45721c92 |
+| 2 | done | 45721c92 |
+| 3 | done | next commit |
+| 4 | done | 45721c92 + next commit |
