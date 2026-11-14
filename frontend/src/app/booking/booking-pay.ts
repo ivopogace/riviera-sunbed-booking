@@ -32,6 +32,8 @@ import { CheckIcon } from '../shared/check-icon';
 import { HourglassIcon } from '../shared/hourglass-icon';
 import { LockIcon } from '../shared/lock-icon';
 import { PrimaryCta } from '../shared/primary-cta';
+import { directionsUrl } from '../shared/directions-url';
+import { VenuePin } from './venue-pin';
 
 /** Poll cadence and budget for awaiting the webhook-driven CONFIRMED transition. */
 const POLL_MS = 1500;
@@ -62,6 +64,7 @@ const CLS = {
   sumTotalDd: 'text-right text-[22px] font-bold tracking-[-0.02em] text-riv-accent-ink',
   cardLink: `${LINK} mt-3 block min-h-11`,
   inlineLink: `${LINK} mt-3 inline-flex min-h-11 items-center`,
+  rowLink: `${LINK} inline-flex items-center underline`,
 } as const;
 
 /**
@@ -139,8 +142,33 @@ const CLS = {
         <dl class="mt-3">
           <div [class]="cls.sumRow">
             <dt [class]="cls.sumDt">Venue</dt>
-            <dd [class]="cls.sumDd">{{ booking!.venueName }}</dd>
+            <dd [class]="cls.sumDd">
+              <a
+                appTouchTarget
+                [routerLink]="['/venues', booking!.venueId]"
+                [queryParams]="{ date: booking!.bookingDate }"
+                [class]="cls.rowLink"
+                data-testid="venue-link"
+                >{{ booking!.venueName }}</a
+              >
+            </dd>
           </div>
+          @if (directions(); as url) {
+            <div [class]="cls.sumRow" data-testid="directions-row">
+              <dt [class]="cls.sumDt">Directions</dt>
+              <dd [class]="cls.sumDd">
+                <a
+                  appTouchTarget
+                  [href]="url"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  [class]="cls.rowLink"
+                  data-testid="venue-directions"
+                  >Open in maps<span class="sr-only"> (opens in a new tab)</span></a
+                >
+              </dd>
+            </div>
+          }
           <div [class]="cls.sumRow">
             <dt [class]="cls.sumDt">{{ booking!.stretches?.length ? 'Spots' : 'Set' }}</dt>
             <dd [class]="cls.sumDd">
@@ -417,6 +445,14 @@ export class BookingPay {
 
   /** The awaiting-payment summary handed off by the 202 POST; absent on a cold load. */
   protected readonly booking = this.bookings.lastAwaitingPayment();
+  private readonly pin = inject(VenuePin).locationOf(() =>
+    this.state() === 'confirmed' || this.state() === 'awaiting' ? this.booking?.venueId : undefined,
+  );
+  /** The maps link to the venue's pin once the payment settles; `null` renders no Directions row. */
+  protected readonly directions = computed(() => {
+    const at = this.pin();
+    return at ? directionsUrl(at) : null;
+  });
   /** An embedded form lives on this page; a redirect has nothing to load or enter here. */
   protected readonly embedded = this.booking?.payment.kind !== 'REDIRECT';
 

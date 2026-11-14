@@ -325,6 +325,7 @@ describe('BookingService', () => {
 
     const handoff: PaymentHandoff = {
       code: 'RQST234567',
+      venueId: 1,
       venueName: 'Miramar Beach Club',
       rowLabel: 'Front row · Sea view',
       positionNo: 2,

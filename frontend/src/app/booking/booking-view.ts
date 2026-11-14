@@ -13,6 +13,7 @@ import { CardGlass } from '../shared/card-glass';
 import { formatDeadline } from '../shared/deadline';
 import { focusMover } from '../shared/focus-after-render';
 import { formatMoney, MoneyView } from '../shared/money';
+import { directionsUrl } from '../shared/directions-url';
 import { setDistanceText } from '../shared/set-distance';
 import { StatusChip } from '../shared/status-chip';
 import { BusyAction } from '../shared/busy-action';
@@ -27,6 +28,7 @@ import {
 } from './booking.model';
 import { BookingService } from './booking.service';
 import { ReviewPanel } from './review-panel';
+import { VenuePin } from './venue-pin';
 
 import { TouchTarget } from '../shared/touch-target';
 import { PartyIcon } from '../shared/party-icon';
@@ -488,8 +490,33 @@ const CLS = {
         <dl class="m-0">
           <div [class]="cls.row">
             <dt [class]="cls.rowLabel">Venue</dt>
-            <dd [class]="cls.rowValue">{{ b.venueName }}</dd>
+            <dd [class]="cls.rowValue">
+              <a
+                appTouchTarget
+                [routerLink]="['/venues', b.venueId]"
+                [queryParams]="{ date: b.bookingDate }"
+                [class]="cls.link"
+                data-testid="venue-link"
+                >{{ b.venueName }}</a
+              >
+            </dd>
           </div>
+          @if (directions(); as url) {
+            <div [class]="cls.row" data-testid="directions-row">
+              <dt [class]="cls.rowLabel">Directions</dt>
+              <dd [class]="cls.rowValue">
+                <a
+                  appTouchTarget
+                  [href]="url"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  [class]="cls.link"
+                  data-testid="venue-directions"
+                  >Open in maps<span class="sr-only"> (opens in a new tab)</span></a
+                >
+              </dd>
+            </div>
+          }
           <div [class]="cls.row">
             <dt [class]="cls.rowLabel">{{ b.stretches?.length ? 'Spots' : 'Set' }}</dt>
             <dd [class]="cls.rowValue">
@@ -748,6 +775,12 @@ export class BookingView {
   protected readonly hasSupport = computed(() => hasSupportChannel(this.support.contact()));
 
   protected readonly booking = signal<BookingDetail | undefined>(undefined);
+  private readonly pin = inject(VenuePin).locationOf(() => this.booking()?.venueId);
+  /** The maps link to the venue's pin, or `null` when it has none: then no Directions row renders. */
+  protected readonly directions = computed(() => {
+    const at = this.pin();
+    return at ? directionsUrl(at) : null;
+  });
   protected readonly failed = signal(false);
   protected readonly notFound = signal(false);
   protected readonly confirming = signal(false);
@@ -1136,6 +1169,7 @@ export class BookingView {
     }
     this.bookings.beginPayment({
       code: b.code,
+      venueId: b.venueId,
       venueName: b.venueName,
       rowLabel: b.rowLabel,
       positionNo: b.positionNo,

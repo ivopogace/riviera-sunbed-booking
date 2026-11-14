@@ -108,7 +108,6 @@ export type CheckoutInstruction =
  */
 export interface AwaitingPayment extends PaymentHandoff {
   readonly status: string; // 'AWAITING_PAYMENT'
-  readonly venueId: number;
   readonly setId: number;
 }
 
@@ -119,6 +118,7 @@ export interface AwaitingPayment extends PaymentHandoff {
  */
 export interface PaymentHandoff {
   readonly code: string;
+  readonly venueId: number;
   readonly venueName: string;
   readonly rowLabel: string;
   readonly positionNo: number;
