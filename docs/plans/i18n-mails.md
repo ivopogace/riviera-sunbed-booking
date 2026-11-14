@@ -123,18 +123,18 @@ translation" guarantee the SPA build gives.
 
 ## Execution status
 
-**Stage pointer:** plan
+**Stage pointer:** PR — CI, then review gate
 
-**Next action:** phase 0
+**Next action:** open the PR, watch CI, mark ready, run the high-effort review.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — SiteLocale | | |
-| 1 — store | | |
-| 2 — rendering | | |
-| 3 — notification path | | |
-| 4 — account mails | | |
-| 5 — SPA | | |
-| 6 — docs | | |
+| 0 — SiteLocale | ✅ | d56f7823 |
+| 1 — store | ✅ | d56f7823 |
+| 2 — rendering | ✅ | d56f7823 |
+| 3 — notification path | ✅ | d56f7823 |
+| 4 — account mails | ✅ | d56f7823 |
+| 5 — SPA | ✅ | 71cc1b40 |
+| 6 — docs | ✅ | docs commits |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
