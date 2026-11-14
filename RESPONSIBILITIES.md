@@ -813,7 +813,7 @@ I answer *which operator is this principal name?* (`OperatorDirectory`; `NoOpera
 set (`AuthRoles.OPERATOR_MAY_AUTHENTICATE`) and `OperatorDirectory`'s may-operate set are `ACTIVE`+`PENDING` (approval gates tourist
 visibility, not console access); the tourist-visible set is `ACTIVE` only, deliberately, and
 `VenueVisibility` is its one home: no ownership row answers no (fail-closed); it fences `venue`'s
-catalogue reads and photo serving, and `booking`'s reserve, never a sold-booking path. A suspension **keeps** the
+catalogue reads, photo serving and `PublicVenueIndex`, and `booking`'s reserve, never a sold-booking path. A suspension **keeps** the
 `operator_venue` rows (reversible) but hides the venues until reinstatement.
 
 **Each transition is a status-guarded `UPDATE … RETURNING`, so only the winner gets the facts:**
@@ -1288,9 +1288,9 @@ module test is better without the chain than with every collaborator mocked. Eve
   booking SPA route in every served locale and `/api`, and names the sitemap; `GET /sitemap.xml` lists `/`,
   `/for-venues`, `/help` and each `PublicVenueIndex` venue's page in every locale with `hreflang` alternates.
   Absolute URLs come from `riviera.web.public-origin` alone, never the request's `Host` (host-header
-  poisoning); unset, the sitemap is `404`. `riviera.web.robots.disallow-all` shuts a non-production host
-  out (`docs/deploy/cd-pipeline.md`). `ServedLocale` re-lists the root's `SpaLocale`, both pinned to
-  `frontend/angular.json`. One file holds 50 000 URLs (~16 600 venues at three locales).
+  poisoning); unset, the sitemap is the `NOT_FOUND` problem. `riviera.web.robots.disallow-all` shuts a
+  non-production host out (`docs/deploy/cd-pipeline.md`). `ServedLocale` re-lists the root's `SpaLocale`,
+  both pinned to `frontend/angular.json`. One file holds 50 000 URLs (~16 600 venues at three locales).
 - **No problem body carries `instance`** (`ProblemInstanceConfig`): Spring fills a null one with the
   request URI, on `/api/bookings/{code}` the bearer credential (#7), so the interceptor clears it after
   that fill; the hand-built bodies omit it. RFC 9457 makes every member optional.

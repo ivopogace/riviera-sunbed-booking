@@ -157,10 +157,10 @@ must include `frontend/`, so:
   - `RIVIERA_PUBLIC_ORIGIN` (#1761) — the public origin crawlers are pointed at:
     `/robots.txt` names `<origin>/sitemap.xml` and every `/sitemap.xml` URL is built on it, never
     on the request's `Host`. Set it to the origin tourists use (`https://<domain>`). **Unset or
-    blank: `/sitemap.xml` answers `404` and robots.txt names no sitemap**; the private surfaces stay
-    disallowed either way. A set value must be a bare `https` origin (a host and an optional port;
-    no path, query, fragment or user info; one trailing slash is trimmed), else boot aborts naming
-    `riviera.web.public-origin`, never the value.
+    blank: `/sitemap.xml` answers `404` (the `NOT_FOUND` problem body) and robots.txt names no
+    sitemap**; the private surfaces stay disallowed either way. A set value must be a bare `https`
+    origin (a host and an optional port; no path, query, fragment or user info; one trailing slash
+    is trimmed), else boot aborts naming `riviera.web.public-origin`, never the value.
   - `RIVIERA_ROBOTS_DISALLOW_ALL` (#1761) — default `false`. **Set `true` on every non-production
     deployment** (a demo or staging host): robots.txt then answers `Disallow: /` to every agent and
     names no sitemap, so a crawler indexes nothing there. Leave it unset in production.

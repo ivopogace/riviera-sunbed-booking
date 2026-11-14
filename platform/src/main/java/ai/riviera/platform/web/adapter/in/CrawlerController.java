@@ -5,17 +5,19 @@ import java.time.Duration;
 
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.http.CacheControl;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.server.ResponseStatusException;
 
 import ai.riviera.platform.venue.api.PublicVenueIndex;
 
 /**
  * The crawl policy: {@code /robots.txt} and {@code /sitemap.xml}, anonymous and read-only (the SPA chain in
  * {@code SecurityConfig}). Absolute URLs come from {@link PublicWebProperties}, never the request's {@code Host};
- * without a configured origin the sitemap is {@code 404} and robots.txt names none. Rationale:
+ * without a configured origin the sitemap is the {@code NOT_FOUND} problem and robots.txt names none. Rationale:
  * {@code RESPONSIBILITIES.md} §{@code web}.
  */
 @RestController
@@ -49,6 +51,6 @@ class CrawlerController {
 		return properties.origin()
 				.map(origin -> ResponseEntity.ok().cacheControl(CACHE).contentType(XML_UTF8)
 						.body(SitemapXml.render(origin, venues.visibleVenueIds())))
-				.orElseGet(() -> ResponseEntity.notFound().build());
+				.orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
 	}
 }

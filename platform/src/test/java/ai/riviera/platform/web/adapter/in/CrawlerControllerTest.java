@@ -6,12 +6,14 @@ import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.server.ResponseStatusException;
 
 import ai.riviera.platform.venue.vocabulary.VenueId;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /** {@link CrawlerController}'s two documents across the origin and disallow-all configurations. */
@@ -59,7 +61,8 @@ class CrawlerControllerTest {
 		assertNotNull(robots);
 		assertFalse(robots.contains("Sitemap:"));
 		assertTrue(robots.contains("Disallow: /booking\n"));
-		assertEquals(HttpStatus.NOT_FOUND, controller.sitemap().getStatusCode());
+		ResponseStatusException notFound = assertThrows(ResponseStatusException.class, controller::sitemap);
+		assertEquals(HttpStatus.NOT_FOUND, notFound.getStatusCode());
 	}
 
 	@Test
