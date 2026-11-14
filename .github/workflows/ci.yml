@@ -125,7 +125,7 @@ jobs:
     # required context: it blocks merge through `a11y-e2e-gate`, which fails unless every shard passed.
     name: A11y e2e (shard ${{ matrix.shard }} of ${{ strategy.job-total }})
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 20
     strategy:
       fail-fast: false
       matrix:
@@ -234,6 +234,16 @@ jobs:
         # The real-backend suite (`npm run test:e2e`) needs a JDK and Docker and is not run in CI.
         if: steps.restore.outputs.cache-hit != 'true'
         run: npm run test:e2e:a11y -- --shard=${{ matrix.shard }}/${{ strategy.job-total }}
+
+      - name: Build every locale for the locale smoke, first shard only
+        # `ng serve` builds the source locale alone, so the translated builds are smoke-checked against
+        # the production build, served with the server's per-locale fallback (ADR-0030).
+        if: steps.restore.outputs.cache-hit != 'true' && matrix.shard == 1
+        run: npm run build
+
+      - name: Locale smoke (every translated page in sq and it, axe-clean), first shard only
+        if: steps.restore.outputs.cache-hit != 'true' && matrix.shard == 1
+        run: npm run test:e2e:locales
 
   a11y-e2e-gate:
     name: A11y e2e (all shards) # Required context (header above): do not rename.

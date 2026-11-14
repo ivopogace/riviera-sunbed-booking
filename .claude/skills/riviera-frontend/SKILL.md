@@ -125,5 +125,17 @@ values only (`pk_…`), never a secret; deploy-time values are rewritten by CD
 `getAnimations().finished` before an axe run on an animated surface). Every user-facing slice
 ships coverage here. `frontend/e2e/real-backend/` — local-only, never in CI.
 
+`frontend/e2e/locales/` — the translated builds' smoke, run against the production build
+(`playwright.locales.config.ts`, CI's first a11y shard): `ng serve` builds English only.
+
+## Translation (ADR-0030)
+
+User-facing copy on a translated page (the tourist shell, Discover, the venue map, the booking
+flow and view, `/for-venues`, `/help`) is marked: `i18n` in templates, `$localize` in TypeScript,
+then `npm run i18n:sync` and an `sq` + `it` `<target>` per new unit. The build fails on a marked
+message without a translation, never on an unmarked one, so review catches a new literal left
+unmarked. A link opening a new tab takes `localePath()` (`shared/display-locale.ts`); every `Intl`
+format takes `DISPLAY_LOCALE`.
+
 Adopt a `features/` wrapper only past ~8–10 feature folders; never a JWT-auth pattern
 (`docs/architecture/auth-signin-register.md` D-1).

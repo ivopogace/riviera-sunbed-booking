@@ -13,6 +13,7 @@
     "test:eslint-rules": "node --test \"eslint-rules/*.test.mjs\"",
     "test:e2e": "playwright test",
     "test:e2e:a11y": "playwright test --config playwright.a11y.config.ts",
+    "test:e2e:locales": "playwright test --config playwright.locales.config.ts",
     "typecheck:e2e": "tsc --noEmit -p e2e/tsconfig.json",
     "posters": "node scripts/render-map-posters.mjs",
     "lint": "ng lint",
