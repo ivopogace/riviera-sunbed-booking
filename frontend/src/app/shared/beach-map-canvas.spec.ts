@@ -263,22 +263,34 @@ describe('BeachMapCanvas (#672)', () => {
     expect(inner.textContent).toBe('A');
   });
 
-  it('reserves the same rail width loading and loaded, for either label vocabulary (#749)', () => {
+  it('reserves the same 54px rail loading and loaded on the Daily view’s labels rail (#749, #1532)', () => {
     const { component, host, detect } = render();
-    for (const codes of ['labels', 'capped-labels'] as const) {
-      component.railCodes.set(codes);
-      component.loading.set(false);
-      detect();
-      // A minimum, not the full cap: the cap-sized rail costs the desktop map its fits-whole margin.
-      const loaded = railColumn(host).className;
-      expect(loaded, codes).toContain('min-w-[54px]');
+    component.railCodes.set('labels');
+    detect();
+    // A minimum, not the full cap: the cap-sized rail costs the desktop map its fits-whole margin.
+    const loaded = railColumn(host).className;
+    expect(loaded).toContain('min-w-[54px]');
 
-      component.loading.set(true);
-      detect();
-      expect(railColumn(host).className, codes).toBe(loaded);
-      const chip = host.querySelector('[data-testid="row-code-placeholder"]')!;
-      expect(chip.classList.contains('w-[54px]'), codes).toBe(true);
-    }
+    component.loading.set(true);
+    detect();
+    expect(railColumn(host).className).toBe(loaded);
+    const chip = host.querySelector('[data-testid="row-code-placeholder"]')!;
+    expect(chip.classList.contains('w-[54px]')).toBe(true);
+  });
+
+  it('sizes the tourist rail to its letter chip, loading and loaded alike (#749, #1732)', () => {
+    const { component, host, detect } = render();
+    component.railCodes.set('capped-labels');
+    detect();
+    const loaded = railColumn(host).className;
+    expect(loaded).not.toContain('w-[');
+
+    component.loading.set(true);
+    detect();
+    expect(railColumn(host).className).toBe(loaded);
+    const chip = host.querySelector('[data-testid="row-code-placeholder"]')!;
+    expect(chip.classList.contains('min-w-6')).toBe(true);
+    expect(chip.className).not.toContain('w-[');
   });
 
   it('caps an operator label below sm only, so it stays whole from sm up (#724, #1532)', () => {
@@ -310,17 +322,33 @@ describe('BeachMapCanvas (#672)', () => {
     expect(chip.className).not.toContain('w-[');
   });
 
-  it('reserves the same price-rail width loading and loaded (#751)', () => {
+  it('puts capped-span prices in zone header bands, not a right-hand column (#1732)', () => {
     const { component, host, detect } = render();
     component.priceChips.set('capped-spans');
     detect();
-    // The 92px phone cap as a MINIMUM: a desktop chip still widens past it, a bare price does not.
-    const loaded = priceColumn(host).className;
-    expect(loaded).toContain('min-w-[92px]');
+    expect(host.querySelector('[data-testid="price-col"]')).toBeNull();
 
+    // One band per priced zone start, in the rail and as the grid's spacer, at one height.
+    const railBands = [...railColumn(host).querySelectorAll(':scope > [data-zone-band]')];
+    const gridBands = [...viewport(host).querySelectorAll('[data-zone-band]')];
+    expect(railBands.map((b) => b.textContent?.trim())).toEqual(['€35.00', '€20.00']);
+    expect(gridBands.length).toBe(2);
+    for (const band of [...railBands, ...gridBands]) {
+      expect(band.classList.contains('h-[18px]')).toBe(true);
+    }
+    // The first band opens the map; later ones carry the zone gap the band replaces.
+    expect(railBands.map((b) => b.classList.contains('mt-1.5'))).toEqual([false, true]);
+    expect(gridBands.map((b) => b.classList.contains('mt-1.5'))).toEqual([false, true]);
+    expect(gridBands.every((b) => b.getAttribute('aria-hidden') === 'true')).toBe(true);
+    // A zone start with no price draws no band, so it keeps the plain gap.
+    const rows = [...viewport(host).querySelectorAll('[data-map-row]')];
+    expect(rows.map((r) => r.classList.contains('mt-3'))).toEqual([false, false, false, true]);
+
+    // A skeleton draws no band and no column, so the tile viewport keeps both edges on load.
     component.loading.set(true);
     detect();
-    expect(priceColumn(host).className).toBe(loaded);
+    expect(host.querySelector('[data-zone-band]')).toBeNull();
+    expect(host.querySelector('[data-testid="price-col-placeholder"]')).toBeNull();
   });
 
   it('an amounts price rail reserves nothing, so the operator surfaces are unchanged (#751)', () => {

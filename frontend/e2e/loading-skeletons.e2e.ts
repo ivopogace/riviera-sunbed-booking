@@ -349,8 +349,8 @@ test('the operator Daily view’s loading state is axe-clean (#744)', async ({ p
  * states rather than only sizing the placeholder. Sizing only the placeholder is strictly worse: a
  * venue whose rows are named `A` would then slide the grid the other way.
  *
- * <p><strong>These assert the mechanism, not a fixture.</strong> The reservation is a 54px
- * MINIMUM, so the residual slide is exactly `max(0, loadedRailWidth − 54)` — computed here from
+ * <p><strong>These assert the mechanism, not a fixture.</strong> The Daily view's reservation is a
+ * 54px MINIMUM, so the residual slide is exactly `max(0, loadedRailWidth − 54)` — computed here from
  * the rail actually rendered rather than compared against a bound tuned to one venue, which is the
  * trap this file's own #744 header warns about. Before the fix the same quantity was
  * `loadedRailWidth − 24`, so the reservation removes 30px of slide from every venue on every
@@ -365,10 +365,14 @@ test('the operator Daily view’s loading state is axe-clean (#744)', async ({ p
  * Daily one), 9.14px on the `Front row` fixture, and as much as the label is wide on an operator
  * rail from `sm` up, which renders labels whole by that same #724 decision.
  *
+ * <p><strong>The tourist rail reserves only the letter chip</strong> (#1732): rows are grid letters
+ * (#1619), so a 24px rail is what every live map loads, and the phone gives the rest to the tiles.
+ * A non-letter label (a pre-V78 name; the fixtures below) slides the grid by what it adds past 24px.
+ *
  * <p>What the rail SAYS while loading is the unit specs' claim; what it MEASURES is only knowable
  * here.
  */
-const RAIL_RESERVE_PX = 54;
+const RAIL_RESERVE_PX = { tourist: 24, daily: 54 } as const;
 
 /** The rail column the tile viewport sits beside — the element whose width moves the grid. */
 function railWidthBeside(page: Page, viewportTestid: string): Promise<number> {
@@ -382,13 +386,6 @@ async function leftEdgeOf(page: Page, testid: string): Promise<number> {
   const box = await page.getByTestId(testid).boundingBox();
   expect(box, `${testid} has a rendered box`).not.toBeNull();
   return box!.x;
-}
-
-/** The price rail beside the viewport — the trailing column, the one that pulls the right edge in. */
-function priceRailBeside(page: Page, viewportTestid: string): Promise<number> {
-  return page
-    .getByTestId(viewportTestid)
-    .evaluate((el) => el.parentElement!.lastElementChild!.getBoundingClientRect().width);
 }
 
 /** The tile viewport's right edge — the pixel a widening price rail pulls in. */
@@ -412,14 +409,15 @@ async function expectSlideIsWhatTheReservationAllows(
   before: number,
   loadedViewportTestid: string,
   at: string,
+  reserve: number,
 ): Promise<void> {
   const rail = await railWidthBeside(page, loadedViewportTestid);
   const after = await leftEdgeOf(page, loadedViewportTestid);
-  const allowed = Math.max(0, rail - RAIL_RESERVE_PX);
+  const allowed = Math.max(0, rail - reserve);
   expect(
     Math.abs(after - before) - allowed,
-    `at ${at} the grid slid only what a ${rail}px rail leaves over the reservation ` +
-      `(${before} → ${after}; ${allowed}px allowed, ${rail - 24}px before the fix)`,
+    `at ${at} the grid slid only what a ${rail}px rail leaves over the ${reserve}px reservation ` +
+      `(${before} → ${after}; ${allowed}px allowed)`,
   ).toBeLessThan(1);
 }
 
@@ -461,7 +459,13 @@ for (const [labels, venue] of [
       release();
       await expect(page.getByTestId('set-tile').first()).toBeVisible();
 
-      await expectSlideIsWhatTheReservationAllows(page, before, 'map-pan', `${labels}, ${size}`);
+      await expectSlideIsWhatTheReservationAllows(
+        page,
+        before,
+        'map-pan',
+        `${labels}, ${size}`,
+        RAIL_RESERVE_PX.tourist,
+      );
     });
 
     test(`the Daily view’s rail holds its width across the load — ${labels}, ${size} (#749)`, async ({
@@ -479,29 +483,48 @@ for (const [labels, venue] of [
       release();
       await expect(page.getByTestId('daily-tile').first()).toBeVisible();
 
-      await expectSlideIsWhatTheReservationAllows(page, before, 'daily-grid', `${labels}, ${size}`);
+      await expectSlideIsWhatTheReservationAllows(
+        page,
+        before,
+        'daily-grid',
+        `${labels}, ${size}`,
+        RAIL_RESERVE_PX.daily,
+      );
     });
   }
 }
 
-/** The one case the #724 cap closes outright: a phone, where no label can exceed the reservation. */
-test('the tourist beach map’s phone rail does not move at all (#749)', async ({ page }) => {
-  await page.setViewportSize(PHONE);
-  const release = await holdVenueRead(page, LONG_LABEL_VENUE);
+/** What every live tourist map loads since #1619: grid letters, which the 24px rail holds whole. */
+const LETTER_VENUE = {
+  ...RICH_VENUE,
+  sets: sets().map((s) => ({ ...s, rowLabel: s.rowLabel === 'Front row' ? 'A' : 'B' })),
+};
 
-  await page.goto('/venues/1');
-  await expect(page.getByTestId('map-skeleton-tile').first()).toBeVisible();
-  const before = await leftEdgeOf(page, 'map-skeleton-grid');
+for (const [size, viewport] of [
+  ['desktop', DESKTOP],
+  ['a phone', PHONE],
+] as const) {
+  test(`the tourist beach map’s letter rail does not move at all — ${size} (#749, #1732)`, async ({
+    page,
+  }) => {
+    await page.setViewportSize(viewport);
+    const release = await holdVenueRead(page, LETTER_VENUE);
 
-  release();
-  await expect(page.getByTestId('set-tile').first()).toBeVisible();
+    await page.goto('/venues/1');
+    await expect(page.getByTestId('map-skeleton-tile').first()).toBeVisible();
+    const before = await leftEdgeOf(page, 'map-skeleton-grid');
 
-  const after = await leftEdgeOf(page, 'map-pan');
-  expect(
-    Math.abs(after - before),
-    `a 40-character label truncates to the reservation, so nothing moved (${before} → ${after})`,
-  ).toBeLessThan(1);
-});
+    release();
+    await expect(page.getByTestId('set-tile').first()).toBeVisible();
+
+    expect(await railWidthBeside(page, 'map-pan')).toBeLessThan(RAIL_RESERVE_PX.tourist + 1);
+    const after = await leftEdgeOf(page, 'map-pan');
+    expect(
+      Math.abs(after - before),
+      `a letter fills the letter-wide rail, so nothing moved (${before} → ${after})`,
+    ).toBeLessThan(1);
+  });
+}
 
 for (const [surface, tileTestid, gridTestid, open] of [
   ['the tourist beach map', 'map-skeleton-tile', 'map-skeleton-grid', 'tourist'],
@@ -550,29 +573,14 @@ for (const [surface, tileTestid, gridTestid, open] of [
  * The trailing-edge half of the same contract (#751): the tile viewport must not narrow from the
  * right when the read lands, either.
  *
- * <p>The price rail carried a `min-w-[52px]` cell floor and nothing else, so a skeleton — which
- * renders no chip at all — measured 52px while the loaded rail measured whatever its widest zone
- * chip did, up to the #724 cap. Nothing slid: the rail is at the **trailing** edge, so tile
- * positions never moved. What moved was how much of the map you could see, by as much as 76px.
- *
- * <p><strong>The right edge, not the width.</strong> The viewport's width answers to both rails at
- * once, and the left one has its own reservation and its own residual (#749). Its right edge
- * answers to this rail alone, which is what makes the expectation below arithmetic rather than a
- * tolerance.
- *
- * <p><strong>These assert the mechanism, not a fixture.</strong> The reservation is a 92px
- * MINIMUM, so the residual is exactly `max(0, loadedPriceRail − 92)`, computed here from the rail
- * that actually rendered. Before the fix the same quantity was `loadedPriceRail − 52`, so the
- * reservation removes 40px of narrowing from every venue that reaches its cap. At 390 the
- * reservation and the #724 phone cap are the same number, so the allowance is 0 for **every**
- * venue — the one viewport where this closes outright.
- *
- * <p>Why 92 and not the desktop cap: a 14-column venue at 1280 has ~125.6px for this rail before
- * that map has to pan, and `venue-map-pan.e2e.ts` holds the far side of that line.
+ * <p>The price rail once sat at the trailing edge, so a skeleton (no chip) and a loaded map (a chip
+ * up to the #724 cap) measured differently, and #751 reserved it. Since #1732 the tourist map has no
+ * price rail: each zone's chip is a header band above the zone, so the viewport's right edge answers
+ * to nothing that loads and must not move whatever the chip says. The operator surfaces keep their
+ * rail (`amounts`, unit specs).
  */
-const PRICE_RAIL_RESERVE_PX = 92;
 
-/** One zone, one bare amount: the chip is 40.97px, so this venue's rail IS the reservation. */
+/** One zone, one bare amount: the narrowest chip. */
 const BARE_PRICE_VENUE = {
   ...RICH_VENUE,
   sets: sets().map((s) => ({
@@ -586,11 +594,10 @@ const BARE_PRICE_VENUE = {
  * The other extreme: a six-digit min–max span, which ellipsizes at either cap — the chip
  * is the price alone (#1587), so only the amounts can carry it past 128px.
  *
- * <p>The prices alternate WITHIN each row on purpose. Priced uniformly per row — which is what
- * this fixture used to do — `rowPriceLabel` renders one amount and the span never appears, so the
- * widest chip the rail can carry went unexercised while the docstring claimed it. Alternating
- * makes the row's sets differ, which is `formatMoneyRange`'s own condition for a span: the chip
- * renders `€125,000–€999,995` and measures the full 128px desktop cap.
+ * <p>The prices alternate WITHIN each row on purpose. Priced uniformly per row, `rowPriceLabel`
+ * renders one amount and the span never appears. Alternating makes the row's sets differ, which is
+ * `formatMoneyRange`'s own condition for a span: the chip renders `€125,000–€999,995`, the widest a
+ * zone band carries.
  */
 const WIDE_PRICE_VENUE = {
   ...RICH_VENUE,
@@ -609,7 +616,7 @@ for (const [prices, venue, chip] of [
     ['desktop', DESKTOP],
     ['a phone', PHONE],
   ] as const) {
-    test(`the tourist beach map’s price rail holds its width across the load — ${prices}, ${size} (#751)`, async ({
+    test(`the tourist beach map’s right edge holds across the load — ${prices}, ${size} (#751, #1732)`, async ({
       page,
     }) => {
       await page.setViewportSize(viewport);
@@ -624,22 +631,12 @@ for (const [prices, venue, chip] of [
 
       // The fixture renders the vocabulary it claims; a docstring cannot notice when it stops.
       await expect(page.getByTestId('row-price').first()).toHaveText(chip);
+      await expect(page.getByTestId('price-col')).toHaveCount(0);
 
-      const rail = await priceRailBeside(page, 'map-pan');
       const after = await rightEdgeOf(page, 'map-pan');
-      // The reservation itself: on a narrow-chip venue the arithmetic below reads only 0 == 0.
       expect(
-        rail,
-        `at ${prices}, ${size} the loaded rail is at least the reservation`,
-      ).toBeGreaterThan(PRICE_RAIL_RESERVE_PX - 1);
-
-      // Signed, and an equality: an unsigned ceiling passes a zero reading and a widening alike.
-      const narrowed = before - after;
-      const allowed = Math.max(0, rail - PRICE_RAIL_RESERVE_PX);
-      expect(
-        Math.abs(narrowed - allowed),
-        `at ${prices}, ${size} the viewport narrowed by exactly what a ${rail}px rail leaves ` +
-          `over the reservation (${before} → ${after}; ${allowed}px expected, ${narrowed} seen)`,
+        Math.abs(before - after),
+        `at ${prices}, ${size} the viewport kept its right edge (${before} → ${after})`,
       ).toBeLessThan(1);
     });
   }

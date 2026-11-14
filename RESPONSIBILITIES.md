@@ -1432,10 +1432,11 @@ The SPA rules whose TSDoc points here; structure is `riviera-frontend`'s, stylin
   and `core/page-navigation.ts`'s `reload` clears the entry's state before navigating. Any other
   navigation error stays loud: a guard or resolver that throws is a bug, not a page to retry.
 - **The Daily view's phone rail keeps two tiles per row** (`shared/beach-map-canvas.ts`, the `labels`
-  rail below `sm`), kept on purpose (#1626): since #1586 a row's label is its one grid letter (§ `venue`,
-  rows by grid letter), so the count no longer serves a long name; it stays because it is the tourist
-  map's own count (#1532), so the operator's phone shows a row as a guest's does. The tile accessible
-  names carry the label on every width.
+  rail below `sm`, and its right-hand price column), kept on purpose (#1626): since #1586 a row's label
+  is its one grid letter (§ `venue`, rows by grid letter), so the count no longer serves a long name. The
+  tourist map no longer shares it: its rail is the letter and its zone price a header band (`capped-labels`
+  / `capped-spans`), four whole tiles of a 7-wide row at 390px (#1732). The tile accessible names carry
+  the label and the price on every width.
 - **The rails' label ellipsis and `rowName()`'s non-letter branch stay, defensive only** (#1626): the
   rails render active sets only (`active_set_position`, `JdbcVenueCatalog`), so no live map reaches a
   long label; the unit specs keep the classes, `loading-skeletons.e2e.ts` the capped rail's width under

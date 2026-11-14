@@ -29,8 +29,8 @@ export interface BeachMapCanvasRow {
    *  from grouping rows by it), the layout editor its grid letters (a grid being painted). */
   readonly code: string;
   /** The zone chip's text — an amount or a min–max span; `null` renders no chip even on a zone
-   *  start. The rail caps the chip's width and ellipsizes what does not fit (92px below `sm`,
-   *  128px above), so a wide span still holds the column. */
+   *  start. The chip ellipsizes past its cap: 92px below `sm` and 128px above in the operator
+   *  rail, 128px in the tourist zone band. */
   readonly priceLabel: string | null;
   /** True where this row starts a new price zone — draws the zone gap + the price chip. */
   readonly zoneStart: boolean;
@@ -110,12 +110,12 @@ export class BeachMapCanvas {
   /** Mouse drag-to-pan; a surface whose drag gesture is its own (paint) switches it off. */
   readonly dragPan = input<boolean>(true);
   /** Rail chip vocabulary, fixing the rail's reserved width loading AND loaded: `letters` (editors)
-   *  reserves nothing; `labels` (Daily view) a minimum a longer name widens from `sm` up, capped
-   *  below it (#1532); `capped-labels` (tourist) is capped on both tiers, so its phone rail cannot move. */
+   *  and `capped-labels` (tourist, #1732) reserve nothing past the letter chip, the tourist's text
+   *  capped on both tiers; `labels` (Daily view) a 54px minimum a longer name widens from `sm` up (#1532). */
   readonly railCodes = input<'letters' | 'labels' | 'capped-labels'>('letters');
-  /** Price-rail chip vocabulary, fixing its reserved width in both states: `amounts` (operator)
-   *  keeps the 52px floor, a span may widen it; `capped-spans` (tourist) reserves the 92px phone
-   *  cap, as wide spans exist (€125,000–€999,995 fills 128px). Independent of {@link railCodes}. */
+  /** Where the zone price goes: `amounts` (operator) is a right-hand column on a 52px floor a span
+   *  may widen; `capped-spans` (tourist) is a header band above the zone, chip overflowing the left
+   *  rail, so the phone's tile viewport loses no column to it (#1732). Independent of {@link railCodes}. */
   readonly priceChips = input<'amounts' | 'capped-spans'>('amounts');
   /** Draw a placeholder grid: rails reserve their columns but state nothing, and every gesture cue
    *  is withheld. Surfaces render skeletons THROUGH the canvas to inherit `--riv-tile` and frame
@@ -191,27 +191,26 @@ export class BeachMapCanvas {
     this.spaceHeld.set(false);
   }
 
-  /** Rail width reserved by vocabulary in BOTH states — content-derived, the grid slides on load.
-   *  A 54px minimum (the mobile cap), not the full cap: that would push a 14-column desktop venue
-   *  into a pan. Only a label wider than 54px still shifts the grid, and only from `sm` up (#1532). */
+  /** Rail width reserved by vocabulary in BOTH states, else the grid slides on load. The Daily
+   *  view's 54px minimum keeps its two-per-row phone count (#1532); the tourist rail is the letter
+   *  chip, as wide loading as loaded, giving its width to the tiles (#1732). */
   protected readonly railColumnClass = computed(() => {
     // A fill button needs the 44px floor in both axes, not just the chip's min-w-6.
     if (this.rowRailInteractive()) {
       return 'min-w-11';
     }
-    return this.railCodes() === 'letters' ? '' : 'min-w-[54px]';
+    return this.railCodes() === 'labels' ? 'min-w-[54px]' : '';
   });
 
-  /** The price rail's reservation, on {@link railColumnClass}'s terms: without it the viewport
-   *  narrows from the right on load. A 92px minimum = the phone cap, so the phone rail cannot move,
-   *  while a 14-column venue at 1280px still fits whole. */
-  protected readonly priceColumnClass = computed(() =>
-    this.priceChips() === 'amounts' ? '' : 'min-w-[92px]',
+  /** True where zone prices render as header bands rather than a column: the loaded tourist map.
+   *  A skeleton draws no band, so the card can only grow on load, never shrink (#749). */
+  protected readonly zoneBands = computed(
+    () => this.priceChips() === 'capped-spans' && !this.loading(),
   );
 
-  /** The rail-code ellipsis: 48px of text below `sm` on both label rails — a phone has no rail to
-   *  spare, and 54px of rail is the reservation (#749) — and 96px from `sm` on the tourist rail
-   *  only; the operator rail renders the name whole there (#724). */
+  /** The rail-code ellipsis, defensive since rows are letters (#1626): 48px of text below `sm` on
+   *  both label rails and 96px from `sm` on the tourist rail only; the operator rail renders the
+   *  name whole there (#724). */
   protected readonly railCodeTextClass = computed(() => {
     switch (this.railCodes()) {
       case 'letters':
@@ -225,7 +224,7 @@ export class BeachMapCanvas {
 
   /** The loading chip fills whatever the rail reserves, so the placeholder is the rail, not a pill in it. */
   protected readonly railPlaceholderClass = computed(() =>
-    this.railCodes() === 'letters' ? 'min-w-6' : 'w-[54px]',
+    this.railCodes() === 'labels' ? 'w-[54px]' : 'min-w-6',
   );
 
   protected readonly rowDef = contentChild.required<BeachMapRowDef>(BeachMapRowDef);
