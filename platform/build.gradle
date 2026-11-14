@@ -86,6 +86,15 @@ dependencyManagement {
 	}
 }
 
+// spring-modulith-apt writes javadoc.json to a relative path without creating its parent, so the first compile of a
+// tree with no build/ (a fresh checkout or worktree on Windows) dies with FileNotFoundException (#1730).
+tasks.named('compileJava') {
+	def modulithOutputDir = layout.buildDirectory.dir('generated-spring-modulith')
+	doFirst {
+		modulithOutputDir.get().asFile.mkdirs()
+	}
+}
+
 tasks.named('test') {
 	useJUnitPlatform()
 	// Every distinct test configuration is a cached Spring context (SharedTestProperties keeps the
