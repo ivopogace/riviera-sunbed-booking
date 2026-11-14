@@ -411,6 +411,7 @@ describe('BookingDialog (2-step Liquid Glass modal)', () => {
       setId: 2,
       bookingDate: '2026-12-01',
       contact: { email: 'guest@example.com', fullName: 'Holiday Guest', phone: '+355699000' },
+      locale: 'en',
     });
     req.flush(CONFIRMATION);
     await fixture.whenStable();
@@ -442,6 +443,7 @@ describe('BookingDialog (2-step Liquid Glass modal)', () => {
       bookingDate: '2026-12-01',
       lastDate: '2026-12-03',
       contact: { email: 'guest@example.com', fullName: 'Holiday Guest', phone: '+355699000' },
+      locale: 'en',
     });
     req.flush({
       ...CONFIRMATION,
@@ -487,6 +489,7 @@ describe('BookingDialog (2-step Liquid Glass modal)', () => {
         { setId: 5, firstDate: '2026-12-03', lastDate: '2026-12-04' },
       ],
       contact: { email: 'guest@example.com', fullName: 'Holiday Guest', phone: '+355699000' },
+      locale: 'en',
     });
     const booked = vi.fn();
     dialog.booked.subscribe(booked);

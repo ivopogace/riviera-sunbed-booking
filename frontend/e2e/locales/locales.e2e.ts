@@ -113,9 +113,13 @@ for (const locale of LOCALES) {
       await expectNoSeriousAxeViolations(page, `${locale} payment`);
     });
 
-    test('the confirmation after a confirmed booking', async ({ page }) => {
-      await page.route('**/api/bookings', (route) =>
-        route.fulfill({
+    test('the confirmation after a confirmed booking, booked in the build locale', async ({
+      page,
+    }) => {
+      let postedLocale: unknown;
+      await page.route('**/api/bookings', (route) => {
+        postedLocale = (route.request().postDataJSON() as { locale?: unknown }).locale;
+        return route.fulfill({
           json: {
             code: 'ABCD234567',
             status: 'CONFIRMED',
@@ -127,8 +131,8 @@ for (const locale of LOCALES) {
             bookingDate: '2026-12-01',
             amount: { minorUnits: 4500, currency: 'EUR' },
           },
-        }),
-      );
+        });
+      });
       await page.goto(`/${locale}/venues/1`);
       await page.locator('button.set-button[data-set-id]').first().click();
       const dialog = page.getByRole('dialog');
@@ -139,6 +143,8 @@ for (const locale of LOCALES) {
       await dialog.getByTestId('dialog-primary').click();
 
       await expect(page).toHaveURL(new RegExp(`/${locale}/booking/confirmation`));
+      // The booking stores the guest's language, so every later mail for it is written in it (#1770).
+      expect(postedLocale).toBe(locale);
       await expect(page.getByTestId('booking-code')).toContainText('ABCD234567');
       await expectLocalePage(page, locale, 'Booking confirmed — Riviera');
       await expectNoSeriousAxeViolations(page, `${locale} confirmation`);

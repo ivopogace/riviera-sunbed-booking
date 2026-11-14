@@ -114,12 +114,28 @@ describe('BookingService', () => {
 
     const req = httpMock.expectOne(`${environment.apiBaseUrl}/api/bookings`);
     expect(req.request.method).toBe('POST');
-    expect(req.request.body).toEqual(REQUEST);
+    expect(req.request.body).toEqual({ ...REQUEST, locale: 'en' });
     req.flush(CONFIRMATION, { status: 201, statusText: 'Created' });
 
     expect(received).toEqual({ kind: 'confirmed', confirmation: CONFIRMATION });
     expect(service.lastConfirmation()).toEqual(CONFIRMATION);
     expect(service.lastAwaitingPayment()).toBeUndefined();
+  });
+
+  describe('in a translated build (ADR-0030)', () => {
+    const localize = () => (globalThis as unknown as { $localize: { locale?: string } }).$localize;
+
+    beforeEach(() => (localize().locale = 'sq'));
+    afterEach(() => (localize().locale = undefined));
+
+    it('sends the build locale with a booking and a stay, so their mails are written in it', () => {
+      service.createBooking(REQUEST).subscribe();
+      service.createStay({ stretches: [], contact: REQUEST.contact }).subscribe();
+
+      const posted = (url: string) => httpMock.expectOne(url).request.body as { locale?: string };
+      expect(posted(`${environment.apiBaseUrl}/api/bookings`).locale).toBe('sq');
+      expect(posted(`${environment.apiBaseUrl}/api/stays`).locale).toBe('sq');
+    });
   });
 
   it('books a plan as one stay and answers it in the booking’s shape (design D6)', () => {
@@ -135,7 +151,7 @@ describe('BookingService', () => {
 
     const req = httpMock.expectOne(`${environment.apiBaseUrl}/api/stays`);
     expect(req.request.method).toBe('POST');
-    expect(req.request.body).toEqual(stayRequest);
+    expect(req.request.body).toEqual({ ...stayRequest, locale: 'en' });
     expect(req.request.headers.get('X-Altcha-Payload')).toBe('solved');
     req.flush(
       {
