@@ -57,8 +57,9 @@ class SmtpMailerLocaleIT {
 	private static final List<String> ENGLISH = List.of("Booking code:", "Venue:", "Paid:", "Refund:", "position ",
 			"Your booking", "your booking", "nothing was charged", "Need help", " day", "August");
 
+	/** A free port, not {@code SmtpMailerIT}'s fixed 3025: CI's forked test JVMs run the two classes at once. */
 	@RegisterExtension
-	static GreenMailExtension greenMail = new GreenMailExtension(ServerSetupTest.SMTP);
+	static GreenMailExtension greenMail = new GreenMailExtension(ServerSetupTest.SMTP.dynamicPort());
 
 	static Stream<Arguments> kinds() {
 		return Stream.of(
