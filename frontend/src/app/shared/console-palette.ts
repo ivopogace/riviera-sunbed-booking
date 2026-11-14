@@ -28,6 +28,12 @@ import { POP_BACKDROP, POP_NAV_HINT, POP_NAV_ROW, POP_SKIN } from './popover-ski
 import { TAB_RAIL_BADGE } from './tab-rail';
 import { TouchTarget } from './touch-target';
 
+/** The palette's chord on `platform` (the browser's `navigator.platform`): `⌘K` on macOS, where
+ *  the key exists, and `Ctrl K` elsewhere — Windows and Linux have no ⌘ key (#1731). */
+export function paletteChord(platform: string | undefined): string {
+  return platform?.startsWith('Mac') ? '⌘K' : 'Ctrl K';
+}
+
 /** One palette row: a section of this console, an owned venue, the other console or the account page. */
 export interface PaletteRow {
   readonly key: string;

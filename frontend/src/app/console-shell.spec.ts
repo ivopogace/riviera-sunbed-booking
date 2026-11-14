@@ -554,7 +554,7 @@ describe('ConsoleShell', () => {
 
     it('the search button opens the palette onto its field; ⌘K and Ctrl-K toggle it (#1013)', async () => {
       expect(search()!.tagName).toBe('BUTTON');
-      expect(search()!.getAttribute('aria-label')).toBe('Jump to a section or venue (⌘K)');
+      expect(search()!.getAttribute('aria-label')).toBe('Jump to a section or venue (Ctrl K)');
       expect(search()!.getAttribute('aria-expanded')).toBe('false');
       expect(search()!.classList).toContain('max-sm:hidden');
       expect(header().contains(search())).toBe(true);
@@ -718,6 +718,39 @@ describe('ConsoleShell', () => {
       operatorAuth.restoring.set(false);
       await settle();
       expect(search()).not.toBeNull();
+    });
+  });
+
+  describe('the palette chord names the platform (#1731)', () => {
+    const nativePlatform = navigator.platform;
+
+    function mountOn(platform: string): void {
+      Object.defineProperty(navigator, 'platform', { configurable: true, value: platform });
+      fixture = TestBed.createComponent(Host);
+      fixture.detectChanges();
+      el = fixture.nativeElement as HTMLElement;
+    }
+
+    afterEach(() => {
+      Object.defineProperty(navigator, 'platform', { configurable: true, value: nativePlatform });
+    });
+
+    it('macOS: the keycap and the button name ⌘K', () => {
+      mountOn('MacIntel');
+      const search = byId('oc-search')!;
+      expect(search.getAttribute('aria-label')).toBe('Jump to a section or venue (⌘K)');
+      expect(search.querySelector('kbd')!.textContent.trim()).toBe('⌘K');
+      expect(search.classList).toContain('max-sm:hidden');
+    });
+
+    it('Windows and Linux: the keycap and the button name Ctrl K', () => {
+      for (const platform of ['Win32', 'Linux x86_64']) {
+        mountOn(platform);
+        const search = byId('oc-search')!;
+        expect(search.getAttribute('aria-label')).toBe('Jump to a section or venue (Ctrl K)');
+        expect(search.querySelector('kbd')!.textContent.trim()).toBe('Ctrl K');
+        expect(search.classList).toContain('max-sm:hidden');
+      }
     });
   });
 

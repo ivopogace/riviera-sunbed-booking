@@ -274,7 +274,9 @@ test('the search glyph and ⌘K open the Go to dialog: focus legs, the field on 
 
   const search = page.getByTestId('oc-search');
   await expect(search).toBeVisible();
-  await expect(search).toHaveAccessibleName('Jump to a section or venue (⌘K)');
+  // The trigger names the chord of the platform the browser reports: ⌘K on macOS, Ctrl K elsewhere.
+  const chord = (await page.evaluate(() => navigator.platform)).startsWith('Mac') ? '⌘K' : 'Ctrl K';
+  await expect(search).toHaveAccessibleName(`Jump to a section or venue (${chord})`);
   await expect(search).toHaveAttribute('aria-expanded', 'false');
   const header = (await page.getByTestId('oc-header').boundingBox())!;
   const searchBox = (await search.boundingBox())!;

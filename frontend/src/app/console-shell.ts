@@ -39,7 +39,7 @@ import {
   VenueGlyph,
   VenuesGlyph,
 } from './shared/console-glyphs';
-import { ConsolePalette, PaletteRow } from './shared/console-palette';
+import { ConsolePalette, PaletteRow, paletteChord } from './shared/console-palette';
 import { CONSOLE_PAGE_ROW } from './shared/console-page-box';
 import { currentUrl } from './shared/current-url';
 import { focusMover } from './shared/focus-after-render';
@@ -267,13 +267,13 @@ const CLS = {
               #searchButton
               type="button"
               [class]="cls.search"
-              aria-label="Jump to a section or venue (⌘K)"
+              aria-label="Jump to a section or venue ({{ chord }})"
               [attr.aria-expanded]="palette()?.open() ?? false"
               data-testid="oc-search"
               (click)="palette()?.toggle(searchButton)"
             >
               <app-search-glyph />
-              <kbd [class]="cls.keycap" aria-hidden="true">⌘K</kbd>
+              <kbd [class]="cls.keycap" aria-hidden="true">{{ chord }}</kbd>
             </button>
           }
           @if (!operator.restoring()) {
@@ -420,6 +420,8 @@ export class ConsoleShell {
   private readonly router = inject(Router);
   private readonly document = inject(DOCUMENT);
   private readonly injector = inject(Injector);
+  /** The palette trigger's chord — `⌘K` on macOS, `Ctrl K` where there is no ⌘ key (#1731). */
+  protected readonly chord = paletteChord(this.document.defaultView?.navigator.platform);
   private readonly url = currentUrl(this.router);
   private readonly moreButton = viewChild<ElementRef<HTMLButtonElement>>('more');
   protected readonly palette = viewChild(ConsolePalette);
