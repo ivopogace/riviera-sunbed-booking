@@ -44,7 +44,7 @@
     "@stripe/stripe-js": "^10.2.1",
     "altcha": "3.2.2",
     "jsqr": "^1.4.0",
-    "maplibre-gl": "6.16.0",
+    "maplibre-gl": "6.17.0",
     "pmtiles": "4.5.0",
     "qrcode": "^1.5.4",
     "rxjs": "~7.8.0",
