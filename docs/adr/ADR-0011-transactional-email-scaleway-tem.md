@@ -117,9 +117,8 @@ own IP warm-up, blocklists, DKIM rotation; operationally wrong for a small team.
    demands it; a per-tenant `Reply-To` can cover the near need if one arises. *(Amended
    2026-10-01, #1342: no `Reply-To` is set in code.)*
 7. **Bounces/complaints are consumed and suppressed.** A signature-verified webhook endpoint
-   records hard bounces + complaints *(pending #372, itself blocked on #370; noted 2026-10-01, #1342: no such endpoint
-   exists and `EmailSuppressions#suppress` has no production caller, so the list is written only
-   by tests)*; suppressed addresses are not sent to again — on every path but one, deliberately:
+   records hard bounces + complaints *(the endpoint is #372's, amended below; the list stays empty until
+   its webhook is registered live, which waits on #370 and #1748)*; suppressed addresses are not sent to again — on every path but one, deliberately:
    on the **recovery vehicle**, a **transient** failure of the suppression *lookup itself* sends
    the mail rather than dropping it. The list is empty in production until
    the bounce feed lands; a user-requested reset sent to a suppressed address is the most harmless
@@ -135,6 +134,13 @@ own IP warm-up, blocklists, DKIM rotation; operationally wrong for a small team.
    #2's serialization point (machine-locked by
    `ScheduledWorkArchitectureTest.noGlobalQueryTimeoutIsIntroduced`). **Revisit when the bounce
    feed lands** and the list stops being empty.
+   *Amended 2026-11-14 (#372):* the endpoint exists: `POST /api/notifications/tem/webhook`. TEM has
+   no direct webhook or shared secret. It publishes to a Scaleway Topics & Events (SNS-compatible)
+   topic, so "signature-verified" means: the SNS v1 signature verifies, the signing cert chains to
+   Scaleway's configured CA, and the `TopicArn` is ours. `email_dropped` / `email_mailbox_not_found`
+   suppress as hard bounces and `email_spam` as a complaint. Per-event idempotency is the upsert's
+   out-of-order guard, not a stored event id. The list stays empty until live registration, which waits
+   on #1748 (the withheld-flag fix), so the carve-out above stands unrevisited until then.
 
 ## Preconditions (Proposed → Accepted)
 
@@ -183,3 +189,5 @@ own IP warm-up, blocklists, DKIM rotation; operationally wrong for a small team.
 - 2026-10-02, #1369 (PR #1358, #1336) — decision 5: the password-reset token is minted inside the
   dispatched send, not committed before the port is called, and the known-email-branch write
   residual is closed. The decision (in-memory vehicle for bearer payloads) stands.
+- 2026-11-14, #372 — decision 7's feed: Topics & Events delivery, SNS signature + CA chain + pinned
+  topic, replay-inert upsert.

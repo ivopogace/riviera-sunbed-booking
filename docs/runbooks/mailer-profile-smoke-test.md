@@ -110,6 +110,48 @@ SPRING_PROFILES_ACTIVE=mailer ./gradlew bootRun
    against the deployed origin.
 4. Roll the TEM SMTP password afterward if it was ever pasted anywhere but the env config.
 
+## Bounce / complaint feed (TEM webhook)
+
+TEM reports deliveries through **Scaleway Topics & Events** (SNS-compatible), never by posting to us
+directly, and there is no shared secret. The platform's endpoint `POST /api/notifications/tem/webhook`
+trusts a message only if all of these hold:
+
+- its SNS signature (version 1) verifies;
+- the signing certificate chains to Scaleway's CA;
+- it comes from **our** topic.
+
+It suppresses hard bounces and complaints (`docs/runbooks/suppression-list-ops.md`). Source docs:
+Scaleway's *Create webhooks*, *Use webhooks with SNS topics*, *Verifying webhook signatures* and *TEM
+webhook event payloads* (TEM + Topics & Events docs; webhooks are a beta needing a quota request).
+
+**Precondition — do not register live before #1748 (the G-3 follow-up) has merged.** The first row this feed
+writes turns `emailWithheld` on the code-gated booking view into a per-address suppression oracle
+under the `stripe` profile (RESPONSIBILITIES.md §notification, *the withheld-flag probe*).
+
+1. **Trust chain.** Download Scaleway's long-term SNS CA for the region (fr-par:
+   `https://messaging.s3.fr-par.scw.cloud/fr-par/sns/sns-trust-chain.pem`, valid to 2032). Mount it
+   as a Render **secret file** (e.g. `/etc/secrets/sns-trust-chain.pem`) and set
+   `RIVIERA_TEM_SNS_TRUST_CHAIN=file:/etc/secrets/sns-trust-chain.pem`. A set but unreadable value
+   aborts boot, so a typo cannot silently close the feed.
+2. **Topic.** In the Scaleway console, create a Topics & Events topic in the TEM project. Set
+   `RIVIERA_TEM_TOPIC_ARN` to its ARN (`arn:scw:sns:fr-par:<project>:<topic>`) and redeploy.
+   Until both variables are set, every delivery is refused `400` and nothing is stored.
+3. **Subscription.** Subscribe the topic over HTTPS to `https://<origin>/api/notifications/tem/webhook`.
+   The app confirms the subscription itself: it verifies the `SubscriptionConfirmation` message, then
+   sends one GET to its `SubscribeURL`, allowed only on `sns.mnq.fr-par.scaleway.com`. The log shows
+   "confirmed the Topics & Events subscription". Another region needs
+   `riviera.notification.tem-webhook.subscribe-hosts` and `…signing-cert-hosts` set too.
+4. **Webhook.** Create the TEM webhook on the sending domain, with that topic's ARN and the event
+   types `email_dropped`, `email_mailbox_not_found` and `email_spam`. Others are accepted and ignored.
+   Scaleway allows one webhook per domain.
+5. **Smoke.** Send to a non-existent mailbox on a domain you control. Expect a `suppressed a
+   recipient (HARD_BOUNCE)` log line, and the address then gets no mail. Check it with
+   `suppression-list-ops.md`'s recipe. Lift it with the reinstate endpoint.
+
+Neither variable is a secret: authenticity comes from Scaleway's signature, not from anything we
+hold. When the signing certificate rotates (at least yearly) nothing needs doing. When the CA itself
+changes, replace the secret file.
+
 ## Known interim limits (this slice)
 
 - ~~Sends are **synchronous on the request thread** until #369~~ — **resolved by #369**: recovery
@@ -135,5 +177,6 @@ SPRING_PROFILES_ACTIVE=mailer ./gradlew bootRun
   `notification/adapter/in`; that folder is the list. Verification, reset and operator-approval
   mails are not events: the edge sends them through `MailSender` (`CustomerRecovery`,
   `OperatorApprovalMail`).
-- Suppression is **enforced** on both vehicles (V32–V35), but nothing populates the list until the
-  bounce/complaint webhook feed lands (#372) — so watch the TEM console during early use.
+- Suppression is **enforced** on both vehicles (V32–V35). The bounce/complaint feed (#372) populates
+  the list only once its webhook is registered live (section above). Until then, watch the TEM
+  console during early use.

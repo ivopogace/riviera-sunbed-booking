@@ -68,6 +68,8 @@ public class SecurityConfig {
 	private static final String BEACH_MAP_COMMIT_PATH = "/api/venues/*/beach-map/commit";
 	/** The mock transport's recorded booking mails; the controller exists only where the mock does. */
 	private static final String MOCK_MAIL_PATH = "/api/mock-mail/**";
+	/** {@code notification}'s TEM delivery-event feed: signed, server-to-server, no session or CSRF token. */
+	private static final String TEM_WEBHOOK_PATH = "/api/notifications/tem/webhook";
 	/** The owner's remodel receipts: who was moved where. Order-sensitive against the public venue GET. */
 	private static final String REMODEL_RECEIPTS_PATH = "/api/venues/*/remodels";
 	private static final String REMODEL_RECEIPT_PATH = "/api/venues/*/remodels/*";
@@ -266,7 +268,7 @@ public class SecurityConfig {
 	/**
 	 * The {@code /api/**} + {@code /actuator/**} chain, ordered first. <strong>First match wins</strong>:
 	 * each operator-only {@code GET /api/venues/*&#47;…} MUST precede the public one, or its data leaks.
-	 * CSRF is {@code .spa()}, exempting only booking-code writes and the signed webhook (invariants #7, #8).
+	 * CSRF is {@code .spa()}, exempting only booking-code writes and the two signed webhooks (invariants #7, #8).
 	 */
 	@Bean
 	@Order(1)
@@ -295,7 +297,7 @@ public class SecurityConfig {
 						.csrfTokenRepository(csrfTokenRepository)
 						.ignoringRequestMatchers("/api/bookings", "/api/stays", "/api/bookings/*/cancel",
 								"/api/bookings/*/withdraw", BOOKING_REVIEW_PATH,
-								"/api/payments/stripe/webhook"))
+								"/api/payments/stripe/webhook", TEM_WEBHOOK_PATH))
 				.authorizeHttpRequests(auth -> auth
 						.requestMatchers("/actuator/health/**").permitAll()
 						// The build's commit id only (BuildCommitInfoContributor); the CD poll reads it (#1632).
@@ -410,6 +412,8 @@ public class SecurityConfig {
 						.requestMatchers(HttpMethod.PUT, BOOKING_REVIEW_PATH).permitAll()
 						.requestMatchers(HttpMethod.DELETE, BOOKING_REVIEW_PATH).permitAll()
 						.requestMatchers(HttpMethod.POST, "/api/payments/stripe/webhook").permitAll()
+						// Server-to-server from Scaleway Topics & Events, authenticated by its SNS signature.
+						.requestMatchers(HttpMethod.POST, TEM_WEBHOOK_PATH).permitAll()
 						.requestMatchers(HttpMethod.POST, OPERATOR_PASSWORD_PATH).hasRole(OPERATOR_ROLE)
 						// Every verb, not just GET — anonymous → 401, operator session → 403.
 						.requestMatchers(ME_PATHS).hasRole(CUSTOMER_ROLE)

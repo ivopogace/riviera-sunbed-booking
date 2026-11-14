@@ -92,7 +92,12 @@ import ai.riviera.platform.notification.application.MailDeliveryLookup;
 import ai.riviera.platform.notification.application.MailOutboxStatus;
 import ai.riviera.platform.notification.application.MailResubmission;
 import ai.riviera.platform.notification.application.ReinstateOutcome;
+import ai.riviera.platform.notification.adapter.in.SigningCertificateSource;
+import ai.riviera.platform.notification.adapter.in.SubscriptionConfirmer;
+import ai.riviera.platform.notification.adapter.in.TemWebhookProperties;
+import ai.riviera.platform.notification.application.EmailSuppressions;
 import ai.riviera.platform.notification.application.ReinstateSuppression;
+import ai.riviera.platform.notification.application.SuppressionReason;
 import ai.riviera.platform.notification.application.ResendOutcome;
 import ai.riviera.platform.notification.application.SupportContact;
 import ai.riviera.platform.notification.api.MailDeliverability;
@@ -1173,6 +1178,48 @@ public class WebSliceStubs {
 	@Bean
 	StripeProperties stripeProperties() {
 		return new StripeProperties("", "whsec_test", null, null);
+	}
+
+	/** {@code TemWebhookController}'s config, blank: an unconfigured feed refuses every delivery. */
+	@Bean
+	TemWebhookProperties temWebhookProperties() {
+		return new TemWebhookProperties("", "", null, null);
+	}
+
+	/** {@code TemWebhookController}'s outbound seams. Inert: the slices never reach Scaleway. */
+	@Bean
+	SigningCertificateSource signingCertificateSource() {
+		return _ -> {
+			throw new java.io.IOException("web slices fetch no certificate");
+		};
+	}
+
+	@Bean
+	SubscriptionConfirmer subscriptionConfirmer() {
+		return _ -> {
+			throw new java.io.IOException("web slices confirm no subscription");
+		};
+	}
+
+	/** {@code TemWebhookController}'s port. Inert: nothing is ever suppressed in a slice. */
+	@Bean
+	EmailSuppressions emailSuppressions() {
+		return new EmailSuppressions() {
+			@Override
+			public boolean isSuppressed(String email) {
+				return false;
+			}
+
+			@Override
+			public void suppress(String email, SuppressionReason reason, Instant at) {
+				throw new UnsupportedOperationException("web slices suppress nothing");
+			}
+
+			@Override
+			public ReinstateOutcome reinstate(String email, Instant at) {
+				return new ReinstateOutcome.NotSuppressed();
+			}
+		};
 	}
 
 	@Bean

@@ -893,6 +893,12 @@ tag names the person, invariant #7):
   (ADR-0011 decision 7): on the recovery vehicle a *transient* lookup failure sends (a dropped reset
   reads as success); the registry vehicle propagates and retries. The lookup's `queryTimeout` is
   adapter-scoped, never global, which would bound `availability`'s claim too (invariant #2).
+- **The bounce/complaint feed is TEM through Scaleway Topics & Events (#372)**, never a shared secret:
+  SNS signature v1, the cert chained to the configured CA, **our** `TopicArn` pinned (Scaleway signs every
+  account's topics), cert and subscribe URLs held to an https host allowlist before any fetch (the cert URL
+  arrives unverified: SSRF). Hard bounces and `email_spam` suppress at the event's time; replays are inert
+  because the upsert moves a row only on a newer event and never re-suppresses past a newer `reinstated_at`
+  (one `ON CONFLICT` statement, whose conflict arm reads the newest committed row). Blank config refuses all.
 - **Reinstatement is a flag (`reinstated_at`), never a deletion** (ADR-0012); a hard `DELETE` on
   this table is a defect. The reinstate `POST` answers what the row was (`ReinstateOutcome`: reason
   and timestamps, never the address or `domain`); nothing answers "is this address suppressed?" — a
@@ -979,13 +985,12 @@ tag names the person, invariant #7):
 - The booking/venue/customer **facts** a mail renders → their owners, via `api/` ports at send time
 - Persisting a bearer-credential payload → nobody, ever: recovery mails ride the in-memory
   dispatcher so a raw token never lands in `event_publication`
-- The bounce/complaint **feed** into the suppression list → unbuilt; nothing writes the list yet
 
 **The withheld-flag probe** (read before wiring the suppression list's first writer). A populated
 list makes `emailWithheld` a paid suppression oracle: book with a victim's address, pay, read the
-flag, cancel before the evening-before cutoff for a full refund. Three facts bound it: nothing
-writes the table yet (reinstatement only lifts a row), so zero bits until the bounce or complaint
-feed, the residual's trigger; no rate-limit budget binds, a probe's real limiter (a payment, a
+flag, cancel before the evening-before cutoff for a full refund. Three facts bound it: the feed
+(#372) writes only once its webhook is registered live, which waits on #1748 (owner-verified
+disclosure, the runbook's precondition), so zero bits until then; no rate-limit budget binds, a probe's real limiter (a payment, a
 claimed `(set, date)`) being far below any capacity sparing the pay poll (ADR-0006); and the flag
 can't ride only the post-payment hand-off: the code-gated read *is* it, the prober the payer.
 `CONFIRMED` **and** `payment.api.CollectionGuarantee` keep it inert unless collected first.
