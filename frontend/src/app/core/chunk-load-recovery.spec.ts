@@ -70,6 +70,25 @@ describe('ChunkLoadRecovery (#1543)', () => {
     expect(reload.reloaded).toEqual([TARGET, TARGET]);
   });
 
+  describe('in a translated build (ADR-0030)', () => {
+    const localize = () => (globalThis as unknown as { $localize: { locale?: string } }).$localize;
+
+    beforeEach(() => (localize().locale = 'sq'));
+    afterEach(() => (localize().locale = undefined));
+
+    it('reloads the failed route under the build subpath, never into the English build', () => {
+      recovery.recover(chunkFailure('/venues/1?date=2026-06-20'));
+      recovery.retry();
+
+      expect(reload.reloaded).toEqual([
+        '/sq/venues/1?date=2026-06-20',
+        '/sq/venues/1?date=2026-06-20',
+      ]);
+      // The stamp stays on the router's own URL, which a later failure reports the same way.
+      expect((JSON.parse(session.get(STAMP_KEY)!) as { path: string }).path).toBe('/venues/1');
+    });
+  });
+
   it('never reloads automatically when the stamp cannot be written (no loop without a brake)', () => {
     removeFakeStorage('sessionStorage');
 

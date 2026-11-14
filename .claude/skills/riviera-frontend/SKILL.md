@@ -134,8 +134,9 @@ User-facing copy on a translated page (the tourist shell, Discover, the venue ma
 flow and view, `/for-venues`, `/help`) is marked: `i18n` in templates, `$localize` in TypeScript,
 then `npm run i18n:sync` and an `sq` + `it` `<target>` per new unit. The build fails on a marked
 message without a translation, never on an unmarked one, so review catches a new literal left
-unmarked. A link opening a new tab takes `localePath()` (`shared/display-locale.ts`); every `Intl`
-format takes `DISPLAY_LOCALE`.
+unmarked. A link opening a new tab, or any full page load of a router URL, takes `localePath()`
+(`shared/display-locale.ts`); every date, money or number display goes through
+`shared/display-format.ts` (Chromium has no Albanian `Intl` data).
 
 Adopt a `features/` wrapper only past ~8–10 feature folders; never a JWT-auth pattern
 (`docs/architecture/auth-signin-register.md` D-1).

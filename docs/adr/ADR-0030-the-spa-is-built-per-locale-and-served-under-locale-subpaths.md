@@ -44,9 +44,11 @@ compiled per locale), or a runtime translation library with an in-page switch.
    IDs are Angular's content hashes: a changed English sentence is a new message, so its old
    translation can never silently stand in for it. `npm run i18n:sync` keeps the files in step with
    the source.
-7. **Dates and money display per locale; the data does not change.** Every `Intl` format reads
-   `shared/display-locale.ts`'s `DISPLAY_LOCALE` (`en-IE` for English, else the build's locale). Money
-   stays integer minor units (#5) and days stay `Europe/Tirane` civil days (#6).
+7. **Dates and money display per locale; the data does not change.** Every display goes through
+   `shared/display-format.ts` in `DISPLAY_LOCALE` (`en-IE` for English, else the build's locale): by
+   `Intl` where the browser carries the locale, else by the CLDR data the localized build bundles,
+   since Chromium ships no Albanian data and would print `sq` in American English. Money stays integer
+   minor units (#5) and days stay `Europe/Tirane` civil days (#6).
 8. **The locale builds share the source locale's copies of `public/posters` and `vendor/`.** The app
    names both by absolute path, so `scripts/prune-locale-copies.mjs` deletes the other locales' copies
    after `ng build`, keeping the jar one set of posters heavy.
@@ -59,8 +61,8 @@ compiled per locale), or a runtime translation library with an in-page switch.
   `ng serve`, which has no such build; picking English in the language row stores the choice and
   ends it.
 - Unit specs run the source locale, so they keep asserting English.
-- A link that opens a new tab names its path with `localePath()`, since the router prefixes only its
-  own links with the base href.
+- A link that opens a new tab, and a full page load of a router URL (`core/chunk-load-recovery.ts`'s
+  reload), names its path with `localePath()`: the router prefixes only its own links with the base href.
 - Translated so far: the tourist shell (menus, footer), Discover, the venue map, the booking dialog,
   payment, the confirmations, the booking view, `/for-venues` and `/help`. Still English: the operator
   console, transactional mails, `ApiProblem` messages and the legal pages (later slices; legal text
