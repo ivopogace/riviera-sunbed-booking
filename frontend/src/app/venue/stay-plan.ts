@@ -104,8 +104,7 @@ interface Stop {
                 Move on
                 <strong class="text-riv-card-ink">{{
                   move.day // i18n(ph="day")
-                }}</strong
-                >:
+                }}</strong>:
                 {{
                   move.text // i18n(ph="distance")
                 }}
