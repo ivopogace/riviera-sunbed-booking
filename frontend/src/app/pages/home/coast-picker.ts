@@ -284,11 +284,11 @@ export function coastIndex(cards: readonly VenueCard[]): readonly PickerRegion[]
     </div>
 
     <ng-template #row let-place>
-      <span class="min-w-0 flex-1 truncate">{{ place.label }}</span
-      >&ngsp;<span class="shrink-0 text-[13px] opacity-80" i18n>{place.venues, plural,
-        =1 {1 venue}
-        other {{{ place.venues }} venues}
-      }</span>
+      <span class="min-w-0 flex-1 truncate">{{ place.label }}</span>&ngsp;<span
+        class="shrink-0 text-[13px] opacity-80"
+        i18n
+        >{place.venues, plural, =1 {1 venue} other {{{ place.venues }} venues}}</span
+      >
       @if (place.from; as from) {
         &ngsp;<span class="shrink-0 text-[13px] font-semibold" i18n
           >from
