@@ -5668,7 +5668,7 @@
         <context-group purpose="location">
           <context context-type="sourcefile">src/app/console-shell.ts</context>
         </context-group>
-        <note priority="1" from="description">Header link to the admin console:Admin</note>
+        <note priority="1" from="description">Header link to the admin console</note>
         <note priority="1" from="meaning">console header</note>
       </trans-unit>
       <trans-unit id="1450238949116562457" datatype="html">
@@ -5950,7 +5950,7 @@
         <context-group purpose="location">
           <context context-type="sourcefile">src/app/operator/daily-view-tab.html</context>
         </context-group>
-        <note priority="1" from="description">Label of the daily view&apos;s date picker:Date</note>
+        <note priority="1" from="description">Label of the daily view&apos;s date picker</note>
         <note priority="1" from="meaning">the selected day</note>
       </trans-unit>
       <trans-unit id="1387679597986118327" datatype="html">
@@ -9204,7 +9204,7 @@
         <context-group purpose="location">
           <context context-type="sourcefile">src/app/operator/venue-create-card.html</context>
         </context-group>
-        <note priority="1" from="description">Field label for the venue name:Name</note>
+        <note priority="1" from="description">Field label for the venue name</note>
         <note priority="1" from="meaning">venue name</note>
       </trans-unit>
       <trans-unit id="1910509148991233381" datatype="html">
@@ -9213,7 +9213,7 @@
         <context-group purpose="location">
           <context context-type="sourcefile">src/app/operator/venue-create-card.html</context>
         </context-group>
-        <note priority="1" from="description">Field label for the venue description:Description</note>
+        <note priority="1" from="description">Field label for the venue description</note>
         <note priority="1" from="meaning">venue description</note>
       </trans-unit>
       <trans-unit id="5972612305734405990" datatype="html">

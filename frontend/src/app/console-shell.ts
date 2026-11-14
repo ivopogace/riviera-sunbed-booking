@@ -266,7 +266,7 @@ const CLS = {
                 [class]="cls.adminSlot"
                 [attr.aria-current]="section() === 'admin' ? 'page' : null"
                 data-testid="oc-section-admin"
-                i18n="console header|Header link to the admin console:Admin"
+                i18n="console header|Header link to the admin console"
                 >Admin</a
               >
             }
