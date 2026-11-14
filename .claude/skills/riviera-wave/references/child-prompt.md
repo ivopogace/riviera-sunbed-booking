@@ -8,6 +8,8 @@ Fill the angle brackets; keep the owner's line verbatim as the first paragraph.
 ## Context (from the wave orchestrator, <orchestrator session id>)
 <what is merged on main, with its sha; what the owner already decided for this issue; what this
 issue needs from a sibling, and what to do until that sibling merges>
+Tier: <Risk | Behaviour | Mechanical> (`riviera-wave` §2), because <the one-line reason>. If the slice
+turns out to touch a higher tier's area, say so at the top of your next block.
 
 ## How to work
 - Load `riviera-sdlc` first and follow its loop end to end. Load `riviera-local-debug` before
