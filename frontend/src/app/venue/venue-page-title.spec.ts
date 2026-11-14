@@ -28,9 +28,9 @@ describe('Tourist venue page title (#1733)', () => {
   });
 
   afterEach(() => {
+    document.title = titleBefore;
     http.match((req) => req.url.endsWith('/reviews'));
     http.verify();
-    document.title = titleBefore;
   });
 
   function venueRequest(id: number) {
