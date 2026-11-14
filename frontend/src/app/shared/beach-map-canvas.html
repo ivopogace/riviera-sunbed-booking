@@ -60,9 +60,20 @@
             <div class="pb-1.5" aria-hidden="true"><div class="h-11"></div></div>
           }
           @for (row of rows(); track row.code; let i = $index) {
+            @let banded = zoneBands() && row.zoneStart && !!row.priceLabel;
+            @if (banded) {
+              <!-- The tourist zone header (#1732): the chip overflows the letter-wide rail to the right, over the grid's empty band spacer, so the price costs the tile viewport no column. -->
+              <span class="relative h-[18px]" [class.mt-1.5]="i > 0" data-zone-band>
+                <span
+                  class="absolute top-0 left-0 z-10 w-max max-w-32 truncate rounded-full bg-riv-map-chip-fill border border-riv-map-chip-border px-2 text-[11px] leading-4 font-bold text-riv-map-rail-ink shadow-[0_1px_4px_rgba(7,42,58,0.10)]"
+                  data-testid="row-price"
+                  >{{ row.priceLabel }}</span
+                >
+              </span>
+            }
             <span
               class="h-[var(--riv-tile)] flex items-center justify-start"
-              [class.mt-3]="row.zoneStart && i > 0"
+              [class.mt-3]="row.zoneStart && i > 0 && !banded"
             >
               @if (loading()) {
                 <span
@@ -136,7 +147,20 @@
               </div>
             }
             @for (row of rows(); track row.code; let i = $index) {
-              <div data-map-row class="h-[var(--riv-tile)]" [class.mt-3]="row.zoneStart && i > 0">
+              @let banded = zoneBands() && row.zoneStart && !!row.priceLabel;
+              @if (banded) {
+                <div
+                  class="h-[18px]"
+                  [class.mt-1.5]="i > 0"
+                  data-zone-band
+                  aria-hidden="true"
+                ></div>
+              }
+              <div
+                data-map-row
+                class="h-[var(--riv-tile)]"
+                [class.mt-3]="row.zoneStart && i > 0 && !banded"
+              >
                 <ng-container
                   *ngTemplateOutlet="rowDef().template; context: { $implicit: row, index: i }"
                 />
@@ -145,31 +169,32 @@
           </div>
         </div>
 
-        <!-- Right rail: the chip, once per zone (aria-hidden; surfaces carry price in tile names where it matters). The chip is the price alone — an amount or a min–max span (#1587) — so the cell is capped and the chip ellipsizes: past the cap a wider span costs the tile viewport (flex-1 min-w-0 — it is what gives, not the shrink-0 rail) nothing. The cap is 128px, narrowed below sm where 390px has none to spare. The tourist rail (capped-spans) also RESERVES the 92px phone cap in both states, because wide spans exist (€125,000–€999,995 fills the 128px cap) and a column sized from whatever the read returned narrows the tile viewport from the right on every load; operator rails reserve only the 52px floor. -->
-        <div
-          class="flex flex-col gap-1.5 shrink-0"
-          [class]="priceColumnClass()"
-          [attr.data-testid]="loading() ? 'price-col-placeholder' : 'price-col'"
-          aria-hidden="true"
-        >
-          @if (colHeaderInteractive()) {
-            <div class="pb-1.5" aria-hidden="true"><div class="h-11"></div></div>
-          }
-          @for (row of rows(); track row.code; let i = $index) {
-            <span
-              class="h-[var(--riv-tile)] flex items-center justify-end min-w-[52px] max-w-[92px] sm:max-w-[128px]"
-              [class.mt-3]="row.zoneStart && i > 0"
-            >
-              @if (!loading() && row.zoneStart && row.priceLabel; as price) {
-                <span
-                  class="rounded-full bg-riv-map-chip-fill border border-riv-map-chip-border px-2 py-[3px] text-[11px] font-bold text-riv-map-rail-ink shadow-[0_1px_4px_rgba(7,42,58,0.10)] min-w-0 max-w-full truncate"
-                  data-testid="row-price"
-                  >{{ price }}</span
-                >
-              }
-            </span>
-          }
-        </div>
+        <!-- Right rail (operator surfaces): the chip, once per zone (aria-hidden; tile names carry the price). The chip is the price alone — an amount or a min–max span (#1587) — so the cell is capped and the chip ellipsizes: past the cap a wider span costs the tile viewport (flex-1 min-w-0 — it is what gives, not the shrink-0 rail) nothing. The cap is 128px, narrowed below sm where 390px has none to spare. The tourist map has no right rail: its chip is the zone header band in the left rail (#1732). -->
+        @if (priceChips() === 'amounts') {
+          <div
+            class="flex flex-col gap-1.5 shrink-0"
+            [attr.data-testid]="loading() ? 'price-col-placeholder' : 'price-col'"
+            aria-hidden="true"
+          >
+            @if (colHeaderInteractive()) {
+              <div class="pb-1.5" aria-hidden="true"><div class="h-11"></div></div>
+            }
+            @for (row of rows(); track row.code; let i = $index) {
+              <span
+                class="h-[var(--riv-tile)] flex items-center justify-end min-w-[52px] max-w-[92px] sm:max-w-[128px]"
+                [class.mt-3]="row.zoneStart && i > 0"
+              >
+                @if (!loading() && row.zoneStart && row.priceLabel; as price) {
+                  <span
+                    class="rounded-full bg-riv-map-chip-fill border border-riv-map-chip-border px-2 py-[3px] text-[11px] font-bold text-riv-map-rail-ink shadow-[0_1px_4px_rgba(7,42,58,0.10)] min-w-0 max-w-full truncate"
+                    data-testid="row-price"
+                    >{{ price }}</span
+                  >
+                }
+              </span>
+            }
+          </div>
+        }
       </div>
     </div>
 

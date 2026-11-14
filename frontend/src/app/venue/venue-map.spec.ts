@@ -233,6 +233,13 @@ describe('VenueMap', () => {
     return fixture.nativeElement as HTMLElement;
   }
 
+  /** Per tile row, whether a zone header band (#1732) opens it — the grid's spacer before it. */
+  function bandedRows(): boolean[] {
+    return [...el().querySelectorAll('[data-map-row]')].map(
+      (row) => row.previousElementSibling?.hasAttribute('data-zone-band') ?? false,
+    );
+  }
+
   /** Sentence text with template/NBSP whitespace collapsed — NBSP presence is pinned separately. */
   function noteText(note: Element): string {
     return note.textContent.replace(/\s+/g, ' ').trim();
@@ -327,19 +334,18 @@ describe('VenueMap', () => {
     expect(el().querySelector('[data-testid="map-skeleton-tile"]')).toBeNull();
   });
 
-  it('reserves the price rail on both canvases, so the tile viewport holds its width (#751)', async () => {
+  it('draws no price column on either canvas, so the tile viewport never narrows on load (#751, #1732)', async () => {
     fixture.detectChanges();
 
-    const placeholder = el().querySelector('[data-testid="price-col-placeholder"]')!;
-    expect(placeholder.classList.contains('min-w-[92px]')).toBe(true);
+    expect(el().querySelector('[data-testid="price-col-placeholder"]')).toBeNull();
+    // The skeleton draws no zone band either: the card may grow on load, never shrink (#749).
+    expect(el().querySelector('[data-zone-band]')).toBeNull();
 
     flushVenue();
     await settle();
 
-    // Both canvases carry the vocabulary: a reservation on one alone would just reverse the slide.
-    expect(
-      el().querySelector('[data-testid="price-col"]')!.classList.contains('min-w-[92px]'),
-    ).toBe(true);
+    expect(el().querySelector('[data-testid="price-col"]')).toBeNull();
+    expect(el().querySelectorAll('[data-testid="row-price"]').length).toBe(3);
   });
 
   it('the map skeleton is decorative and motion-reduce safe (#744)', () => {
@@ -880,9 +886,9 @@ describe('VenueMap', () => {
     expect(inner.classList.contains('max-w-12')).toBe(true);
     expect(inner.classList.contains('sm:max-w-[96px]')).toBe(true);
     expect(inner.textContent?.trim()).toBe('Front row · Sea view');
-    // Below the cap the rail still reserves what the skeleton drew, so a short-labelled venue does not slide either.
+    // The rail reserves nothing past the letter chip: its width is the tiles' on a phone (#1732).
     const column = inner.closest('[data-testid="row-code"]')!.parentElement!.parentElement!;
-    expect(column.classList.contains('min-w-[54px]')).toBe(true);
+    expect(column.className).not.toContain('min-w-[');
   });
 
   it('renders the price once per zone, and only the price (#672, #1587)', async () => {
@@ -909,13 +915,8 @@ describe('VenueMap', () => {
       n.textContent?.trim(),
     );
     expect(prices).toEqual(['€45', '€35', '€35']);
-    // …and the split is spatial too: D opens a zone, so the gap lands on all three columns.
-    const zoneGaps = [false, true, false, true];
-    expect(
-      [...el().querySelectorAll('[data-map-row]')].map((r) => r.classList.contains('mt-3')),
-    ).toEqual(zoneGaps);
-    const priceCells = [...el().querySelector('[data-testid="price-col"]')!.children];
-    expect(priceCells.map((c) => c.classList.contains('mt-3'))).toEqual(zoneGaps);
+    // …and the split is spatial too: D opens a zone, so it gets its own header band.
+    expect(bandedRows()).toEqual([true, true, false, true]);
   });
 
   it('announces the stored row label — a walkway cannot shift identities (#724)', async () => {
@@ -966,9 +967,7 @@ describe('VenueMap', () => {
       n.textContent?.trim(),
     );
     expect(prices).toEqual(['€45', '€35', '€25']);
-    expect(
-      [...el().querySelectorAll('[data-map-row]')].map((r) => r.classList.contains('mt-3')),
-    ).toEqual([false, false, true, true]);
+    expect(bandedRows()).toEqual([true, false, true, true]);
   });
 
   it('keeps the rail decorative — tile names carry the one stored identity (#702, #724)', async () => {
@@ -983,22 +982,21 @@ describe('VenueMap', () => {
     );
   });
 
-  it('separates price zones with a gap at zone starts, aligned across all three columns (#672)', async () => {
+  it('opens each price zone with a header band, aligned across the rail and the grid (#672, #1732)', async () => {
     flushVenue();
     await settle();
-    // A opens the map (no gap), B opens the €35 zone, C continues it, D opens the €25 zone.
-    const zoneGaps = [false, true, false, true];
-    // The gap sits on the canvas-owned row wrapper around each projected ul.set-row.
-    const tileRows = [...el().querySelectorAll('[data-map-row]')];
-    expect(tileRows.length).toBe(4);
-    expect(tileRows.map((r) => r.classList.contains('mt-3'))).toEqual(zoneGaps);
+    // A opens the €45 zone, B the €35 one, C continues it, D opens the €25 zone.
+    const zoneBands = [true, true, false, true];
+    expect(bandedRows()).toEqual(zoneBands);
     const codeCells = [...el().querySelectorAll('[data-testid="row-code"]')].map(
       (n) => n.parentElement!,
     );
-    expect(codeCells.map((c) => c.classList.contains('mt-3'))).toEqual(zoneGaps);
-    const priceColumn = el().querySelector('[data-testid="price-col"]')!;
-    const priceCells = [...priceColumn.children];
-    expect(priceCells.map((c) => c.classList.contains('mt-3'))).toEqual(zoneGaps);
+    expect(codeCells.map((c) => c.previousElementSibling?.hasAttribute('data-zone-band'))).toEqual(
+      zoneBands,
+    );
+    // The band replaces the zone gap; none of the three wrappers keeps the old mt-3.
+    expect(el().querySelectorAll('[data-map-row].mt-3').length).toBe(0);
+    expect(codeCells.some((c) => c.classList.contains('mt-3'))).toBe(false);
   });
 
   it('renders a mixed-price row as its min–max span, in a zone of its own (#689)', async () => {

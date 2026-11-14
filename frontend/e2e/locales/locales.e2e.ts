@@ -86,7 +86,9 @@ for (const locale of LOCALES) {
       await expectNoSeriousAxeViolations(page, `${locale} Discover`);
 
       await page.goto(`/${locale}/venues/1`);
-      await expectLocalePage(page, locale, 'Beach map — Riviera');
+      await expect(page.locator('html')).toHaveAttribute('lang', locale);
+      // A loaded venue names the page (#1733): the venue and its beach, then the brand.
+      await expect(page).toHaveTitle(/^Miramar Beach Club, .+ — Riviera$/);
       const free = page.locator('button.set-button[data-set-id]').first();
       await expect(free).toBeVisible();
       await expectNoSeriousAxeViolations(page, `${locale} venue map`);
