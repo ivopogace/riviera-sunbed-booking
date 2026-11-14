@@ -31,11 +31,6 @@ public class SpaWebConfig implements WebMvcConfigurer {
 				.addResolver(new SpaFallbackResolver());
 	}
 
-	/** True for a backend path (relative, no leading slash), which is never served the shell. */
-	static boolean isBackendPath(String resourcePath) {
-		return resourcePath.startsWith(API_PREFIX) || resourcePath.startsWith(ACTUATOR_PREFIX);
-	}
-
 	/**
 	 * Serves the requested static asset when it exists; for an extensionless CLIENT ROUTE (a deep
 	 * link like {@code /sq/venues/1}) with no matching file, falls back to its locale's {@code index.html}
@@ -47,7 +42,7 @@ public class SpaWebConfig implements WebMvcConfigurer {
 	static final class SpaFallbackResolver extends PathResourceResolver {
 		@Override
 		protected Resource getResource(String resourcePath, @NonNull Resource location) throws IOException {
-			if (isBackendPath(resourcePath)) {
+			if (resourcePath.startsWith(API_PREFIX) || resourcePath.startsWith(ACTUATOR_PREFIX)) {
 				return null;
 			}
 			if (!resourcePath.isEmpty()) {

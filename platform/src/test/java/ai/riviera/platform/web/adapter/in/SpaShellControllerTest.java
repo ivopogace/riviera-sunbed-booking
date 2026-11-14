@@ -26,6 +26,7 @@ import static org.springframework.security.test.web.servlet.request.SecurityMock
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
@@ -105,11 +106,36 @@ class SpaShellControllerTest {
 	}
 
 	@Test
-	void unknownLocaleSegmentAnswersTheSourceLocaleAndBackendSegmentsNeverGetTheShell() throws Exception {
+	void unknownLocaleSegmentAnswersTheSourceLocale() throws Exception {
 		mvc.perform(get("/xx/venues/1")).andExpect(status().isOk())
 				.andExpect(content().string(containsString("lang=\"en\"")));
-		// Past the API chain (an admin may GET /api/admin/**), an unmapped API path stays a 404, never the shell.
+	}
+
+	@Test
+	void apiPathsKeepTheirOwnAnswersPastTheApiChain() throws Exception {
+		// An admin passes the API chain; an unmapped GET stays the NOT_FOUND problem, a POST-only path a 405.
 		mvc.perform(get("/api/admin/no-such-thing").with(user("admin").roles("ADMIN")))
-				.andExpect(status().isNotFound());
+				.andExpect(status().isNotFound())
+				.andExpect(jsonPath("$.code").value("NOT_FOUND"));
+		mvc.perform(get("/api/admin/erasure").with(user("admin").roles("ADMIN")))
+				.andExpect(status().isMethodNotAllowed());
+	}
+
+	@Test
+	void aPrivateRouteNamingVenuesStaysPrivate() throws Exception {
+		given(catalog.findLinkPreview(new VenueId(1))).willReturn(Optional.of(
+				new VenueLinkPreview("Miramar", Beach.KSAMIL, "Calm bay.", null)));
+
+		mvc.perform(get("/admin/venues/1"))
+				.andExpect(content().string(allOf(containsString(NOINDEX), not(containsString("Miramar")))));
+	}
+
+	@Test
+	void everyRobotsDisallowedSpaRouteIsNoindex() throws Exception {
+		for (String path : RobotsTxt.PRIVATE_SPA_PATHS) {
+			for (String served : new String[] {path, path + "/x", "/sq" + path + "/x"}) {
+				mvc.perform(get(served)).andExpect(content().string(containsString(NOINDEX)));
+			}
+		}
 	}
 }

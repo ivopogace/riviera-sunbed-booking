@@ -99,11 +99,6 @@ must include `frontend/`, so:
   - `CORS_ALLOWED_ORIGINS` — **leave unset/empty.** The app is same-origin, so there is no
     cross-origin browser caller. (The env var name is `CORS_ALLOWED_ORIGINS`, **not**
     `APP_WEB_CORS_ALLOWED_ORIGINS`; overriding it is only for a cross-origin setup.)
-  - `RIVIERA_PUBLIC_ORIGIN` (#1760) — the public origin, e.g. `https://riviera-sunbed-booking.onrender.com`
-    (scheme + host, no path or trailing path). Every absolute URL the server writes into a served
-    page is built on it, never on the request's `Host`: the link-preview canonical, `og:url`,
-    `og:image` and `hreflang` alternates. Unset ⇒ those tags are left out (a startup warning says
-    so) and previews show text only; a malformed value fails startup. Set it per host when the app moves.
   - `RIVIERA_RATELIMIT_TRUSTED_PROXIES` (#129) — **currently SET, and #286 makes it
     retirable.** It was set on 2026-07-22 as a stopgap: the 8 shipped defaults **plus
     Cloudflare's 15 IPv4 + 7 IPv6 published ranges** (30 CIDRs), taken from
@@ -159,6 +154,17 @@ must include `frontend/`, so:
     exists (the mailbox waits on the platform domain, #370). The WhatsApp value is the
     international number with its country code (`+355…`; spaces, dashes and dots are dropped),
     linked as `https://wa.me/<digits>`. A malformed value aborts boot naming the key, never the value.
+  - `RIVIERA_PUBLIC_ORIGIN` (#1761, #1760) — the public origin crawlers and link previews are pointed at:
+    `/robots.txt` names `<origin>/sitemap.xml`, every `/sitemap.xml` URL is built on it, and so are the
+    served shell's canonical, `og:url`, `og:image` and `hreflang` links, never the request's `Host`.
+    Set it to the origin tourists use (`https://<domain>`). **Unset or blank: `/sitemap.xml` answers
+    `404` (the `NOT_FOUND` problem body), robots.txt names no sitemap, and link previews carry text
+    only (no image, canonical or alternates)**; the private surfaces stay disallowed either way. A set value must be a bare `https`
+    origin (a host and an optional port; no path, query, fragment or user info; one trailing slash
+    is trimmed), else boot aborts naming `riviera.web.public-origin`, never the value.
+  - `RIVIERA_ROBOTS_DISALLOW_ALL` (#1761) — default `false`. **Set `true` on every non-production
+    deployment** (a demo or staging host): robots.txt then answers `Disallow: /` to every agent and
+    names no sitemap, so a crawler indexes nothing there. Leave it unset in production.
   - **SMTP relay (#368, ADR-0011) — only with the `mailer` profile** (production runs
     `prod,mailer`; without these the profile aborts at boot, by design):
     `RIVIERA_SMTP_HOST` (Scaleway TEM: `smtp.tem.scw.cloud`), `RIVIERA_SMTP_PORT` (default

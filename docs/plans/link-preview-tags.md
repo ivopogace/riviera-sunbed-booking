@@ -105,15 +105,16 @@ beach display label), ADR-0030 (locale subpaths), ADR-0004 (same-origin).
 
 ## Execution status
 
-**Stage pointer:** `implement (phase 3) — full suite`
+**Stage pointer:** `review — round 2 (scoped)`
 
-**Next action:** full `./gradlew build` green → push, mark ready, review gate.
+**Next action:** push the merge (fold onto #1761's `PublicWebProperties` + `SpaLocale`, RV-BE-10 fix), CI, scoped round 2.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — move SPA serving into `web` | ✅ | 8bbe21c1 |
 | 1 — `Beach.label()` + `findLinkPreview` | ✅ | ae46970a |
-| 2 — origin, tags, copy | ✅ | (with phase 3) |
-| 3 — controller, grant, docs | ⏳ | |
+| 2 — origin, tags, copy | ✅ | fa839e5a |
+| 3 — controller, grant, docs | ✅ | fa839e5a |
+| review round 1 (plugin) + RV-BE-10 fix, merge of #1761 | ⏳ | |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.

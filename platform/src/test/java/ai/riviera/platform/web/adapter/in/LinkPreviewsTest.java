@@ -51,7 +51,7 @@ class LinkPreviewsTest {
 	};
 
 	private LinkPreviews previews(String origin) {
-		return new LinkPreviews(catalog, new PublicOrigin(origin));
+		return new LinkPreviews(catalog, new PublicWebProperties(origin, new PublicWebProperties.Robots(false)));
 	}
 
 	private static List<ShellHead.Alternate> alternates(String path, String xDefault) {

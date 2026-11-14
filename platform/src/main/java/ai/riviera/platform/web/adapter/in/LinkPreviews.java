@@ -12,7 +12,7 @@ import ai.riviera.platform.venue.vocabulary.VenueLinkPreview;
 /**
  * The {@link ShellHead} each previewed route gets: home's generic copy per locale, and a venue's name, beach
  * label, description and cover from {@link VenueCatalog} (tourist-visible only). Absolute URLs come from
- * {@link PublicOrigin} alone. A hidden, unknown or malformed venue id previews generically, unindexed, the
+ * {@link PublicWebProperties#origin()} alone. A hidden, unknown or malformed venue id previews generically, unindexed, the
  * same in every case so the page is no oracle. Rationale: RESPONSIBILITIES.md §web.
  */
 final class LinkPreviews {
@@ -28,11 +28,11 @@ final class LinkPreviews {
 	private static final Pattern WHITESPACE = Pattern.compile("\\s+");
 
 	private final VenueCatalog catalog;
-	private final PublicOrigin origin;
+	private final PublicWebProperties properties;
 
-	LinkPreviews(VenueCatalog catalog, PublicOrigin origin) {
+	LinkPreviews(VenueCatalog catalog, PublicWebProperties properties) {
 		this.catalog = catalog;
-		this.origin = origin;
+		this.properties = properties;
 	}
 
 	ShellHead home(SpaLocale locale) {
@@ -50,22 +50,27 @@ final class LinkPreviews {
 		}
 		VenueLinkPreview venue = found.get();
 		String path = VENUE_PATH + rawId;
-		String image = venue.coverUrl() == null ? null : origin.absolute(venue.coverUrl()).orElse(null);
+		String image = venue.coverUrl() == null ? null : absolute(venue.coverUrl()).orElse(null);
 		return ShellHead.page(venue.name() + ", " + venue.beach().label() + TITLE_SUFFIX,
 				oneLine(venue.description()).orElse(copy.description()), url(locale, path), image, alternates(path));
 	}
 
+	/** {@code path} on the configured public origin, or empty without one. */
+	private Optional<String> absolute(String path) {
+		return properties.origin().map(origin -> origin + path);
+	}
+
 	private String url(SpaLocale locale, String path) {
-		return origin.absolute(locale.path(path)).orElse(null);
+		return absolute(locale.path(path)).orElse(null);
 	}
 
 	/** Every locale's version of {@code path}, then {@code x-default} at the source locale's; none without an origin. */
 	private List<ShellHead.Alternate> alternates(String path) {
 		List<ShellHead.Alternate> alternates = new ArrayList<>();
 		for (SpaLocale locale : SpaLocale.values()) {
-			origin.absolute(locale.path(path)).ifPresent(url -> alternates.add(new ShellHead.Alternate(locale.code(), url)));
+			absolute(locale.path(path)).ifPresent(url -> alternates.add(new ShellHead.Alternate(locale.code(), url)));
 		}
-		origin.absolute(path).ifPresent(url -> alternates.add(new ShellHead.Alternate("x-default", url)));
+		absolute(path).ifPresent(url -> alternates.add(new ShellHead.Alternate("x-default", url)));
 		return alternates;
 	}
 

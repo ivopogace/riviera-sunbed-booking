@@ -56,6 +56,9 @@ close, the maximum stay, the season closure, and the commission rate over time. 
   venue's sets and a spot that left the map. The reserve path fences visibility itself in `booking`;
   the retired-set fences are `poolForClaim` for both claim paths and the `ForReserve` reads for both
   booking modes (a request claims nothing, ADR-0025). Photo serving is visibility-fenced too.
+- **`PublicVenueIndex` names the venues an outsider may be pointed at** (the ids `web`'s sitemap lists,
+  #1761), fenced on `VenueVisibility` like the catalogue reads. Its own port, not a `VenueCatalog`
+  method, so `VenueApiRoleSplitTests` keeps `VenueCatalog` to `venue` and `itinerary`.
 - **Venue photos** (ADR-0008): per-slot upload/replace/delete, processing, `bytea` storage behind
   the module-internal `PhotoStorage` port, the content-hash serving read — `404` (bytes and `304`)
   for a hidden venue except to its owner or an admin, served `private` (ADR-0013). **Each tourist
@@ -810,7 +813,7 @@ I answer *which operator is this principal name?* (`OperatorDirectory`; `NoOpera
 set (`AuthRoles.OPERATOR_MAY_AUTHENTICATE`) and `OperatorDirectory`'s may-operate set are `ACTIVE`+`PENDING` (approval gates tourist
 visibility, not console access); the tourist-visible set is `ACTIVE` only, deliberately, and
 `VenueVisibility` is its one home: no ownership row answers no (fail-closed); it fences `venue`'s
-catalogue reads and photo serving, and `booking`'s reserve, never a sold-booking path. A suspension **keeps** the
+catalogue reads, photo serving and `PublicVenueIndex`, and `booking`'s reserve, never a sold-booking path. A suspension **keeps** the
 `operator_venue` rows (reversible) but hides the venues until reinstatement.
 
 **Each transition is a status-guarded `UPDATE … RETURNING`, so only the winner gets the facts:**
@@ -1271,8 +1274,8 @@ a mechanism, owning no table and publishing nothing. Not a shared module: no mod
 module test is better without the chain than with every collaborator mocked. Everything sits in
 `adapter/in`. Depends on the surfaces its imports prove: `auth` (`api` + `vocabulary`), `challenge`
 (`api` + `vocabulary`), `audit::api`, `customer::vocabulary`, `operator::vocabulary`, `venue` (`api` +
-`vocabulary`, the shell's previews) and `shared`;
-Spring Security beans arrive by framework type, which is no module dependency.
+`vocabulary`, the sitemap's venue ids and the shell's previews) and `shared`; Spring Security beans
+arrive by framework type.
 
 **Job:** the fence every request crosses before a controller (§ *Platform edge*):
 - `SecurityConfig`: both chains, the route policy (role gates), CSRF, the session cookie and the
@@ -1282,6 +1285,12 @@ Spring Security beans arrive by framework type, which is no module dependency.
   `SessionCredentialFilter` (calls `auth::api`), `AdminAuditFilter` + `AdminAuditReasons` (calls
   `audit::api`); `CachedBodyRequest` replays a body an edge filter read within its cap.
 - The chain's problem bodies (`SecurityProblemResponses`), `RequestPaths`, CORS (`WebCorsConfig`).
+- **The crawl policy** (`CrawlerController`, #1761): anonymous `GET /robots.txt` disallows every signed-in and
+  booking SPA route in every served locale and `/api`, and names the sitemap; `GET /sitemap.xml` lists `/`,
+  `/for-venues`, `/help` and each `PublicVenueIndex` venue's page in every locale with `hreflang` alternates.
+  Absolute URLs come from `riviera.web.public-origin` alone, never the request's `Host` (host-header
+  poisoning); unset, the sitemap is the `NOT_FOUND` problem. `riviera.web.robots.disallow-all` shuts a
+  non-production host out (`docs/deploy/cd-pipeline.md`). The locales are `SpaLocale`'s. One file holds 50 000 URLs (~16 600 venues at three locales).
 - **No problem body carries `instance`** (`ProblemInstanceConfig`): Spring fills a null one with the
   request URI, on `/api/bookings/{code}` the bearer credential (#7), so the interceptor clears it after
   that fill; the hand-built bodies omit it. RFC 9457 makes every member optional.
@@ -1306,8 +1315,8 @@ Spring Security beans arrive by framework type, which is no module dependency.
   spliced in, rendered per request, never cached: a visible venue's title (the SPA's own shape, `Beach.label()`),
   first description line, cover and canonical from `VenueCatalog.findLinkPreview`; home's generic copy per
   locale. A hidden, unknown or malformed id previews generically and `noindex`, identical in each case.
-  `/booking/**`, `/account/**`, `/operator/**`, `/admin/**`, `/my-bookings` get `noindex` alone, echoing
-  nothing from the URL (#7). Other routes keep the bare shell (#1760).
+  `RobotsTxt.PRIVATE_SPA_PATHS` get `noindex` alone, echoing nothing from the URL (#7). The locale segment is
+  two letters, so `/api` and `/actuator` never reach the shell. Other routes keep the bare shell (#1760).
 - **Tomcat's own pre-servlet rejections keep Tomcat's minimal HTML** (a raw `{` in the request target): they
   never reach `/error`, and the problem shape there would take a custom `ErrorReportValve`, a container-level
   customization one contract on every response does not buy (#1464). Boot hides the report, so the page
@@ -1393,10 +1402,10 @@ mutating `/api/admin/**` action, §`audit`) live in `web`; `challenge` and `audi
   files sit in `riviera.map.dir`, never on the classpath: the archive is read by HTTP `Range`, and a
   deflated jar entry cannot seek. **Map posters** ship under `/posters/**`, so a phone's first paint
   makes no `/map/**` request. Size budgets: `MapArchiveBudgetTest`, `map-poster-set.spec.ts`.
-- **Absolute URLs in a served page come from `riviera.web.public-origin` alone, never the request's
-  `Host`** (#1760): a client sets `Host`, and a cached preview would carry its origin. Unset, no absolute
-  URL is written (the tags are left out); malformed, startup fails (`PublicOrigin`). One origin per
-  deployment, so a host move is a config change (`docs/deploy/cd-pipeline.md`).
+- **Absolute URLs a crawler or link preview sees come from `riviera.web.public-origin` alone, never the
+  request's `Host`** (#1761, #1760): a client sets `Host`, and a cached preview or sitemap would carry its
+  origin. Unset, no absolute URL is written; not a bare `https` origin, boot aborts (`PublicWebProperties`).
+  One origin per deployment, so a host move is a config change (`docs/deploy/cd-pipeline.md`).
 ## Frontend (the SPA, not a module)
 
 The SPA rules whose TSDoc points here; structure is `riviera-frontend`'s, styling `riviera-tailwind`'s.

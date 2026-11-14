@@ -436,14 +436,16 @@ public class SecurityConfig {
 	}
 
 	/**
-	 * The public SPA shell: every non-API, non-actuator path is anonymous; ordered last. CSRF stays at
-	 * its default (enabled): only safe static GETs pass here, and disabling it would trip CodeQL's
+	 * The public SPA shell and the crawl policy: every non-API, non-actuator path is anonymous; ordered last. CSRF
+	 * stays at its default (enabled): only safe static GETs pass here, and disabling it would trip CodeQL's
 	 * {@code java/spring-disabled-csrf-protection} for nothing.
 	 */
 	@Bean
 	@Order(2)
 	SecurityFilterChain spaSecurityFilterChain(HttpSecurity http) {
-		http.authorizeHttpRequests(auth -> auth.anyRequest().permitAll());
+		http.authorizeHttpRequests(auth -> auth
+				.requestMatchers(HttpMethod.GET, CrawlerController.ROBOTS_PATH, CrawlerController.SITEMAP_PATH).permitAll()
+				.anyRequest().permitAll());
 		return http.build();
 	}
 
