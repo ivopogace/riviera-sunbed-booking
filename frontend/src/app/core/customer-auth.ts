@@ -72,6 +72,19 @@ function problemCode(error: unknown): string | undefined {
     : undefined;
 }
 
+/** How a failed reset-token redemption reads, on either audience's reset endpoint. */
+export function resetPasswordFailure(error: unknown): ResetPasswordResult {
+  if (error instanceof HttpErrorResponse && error.status === 429) {
+    return 'rate-limited';
+  }
+  if (error instanceof HttpErrorResponse && error.status === 400) {
+    return problemCode(error) === 'INVALID_OR_EXPIRED_TOKEN'
+      ? 'invalid-token'
+      : passwordPolicyResult(error);
+  }
+  return 'error';
+}
+
 /** A 400 from a password-accepting endpoint: the blocklist has its own code, everything else is the length rule. */
 function passwordPolicyResult(error: unknown): 'invalid-password' | 'blocked-password' {
   return problemCode(error) === PASSWORD_BLOCKED_TERM_CODE
@@ -202,15 +215,7 @@ export class CustomerAuth extends SessionAuth {
       );
       return 'reset';
     } catch (error) {
-      if (error instanceof HttpErrorResponse && error.status === 429) {
-        return 'rate-limited';
-      }
-      if (error instanceof HttpErrorResponse && error.status === 400) {
-        return problemCode(error) === 'INVALID_OR_EXPIRED_TOKEN'
-          ? 'invalid-token'
-          : passwordPolicyResult(error);
-      }
-      return 'error';
+      return resetPasswordFailure(error);
     }
   }
 

@@ -14,7 +14,11 @@ import {
   PASSWORD_BLOCKED_TERM_CODE,
   PASSWORD_LENGTH_MESSAGE,
 } from '../shared/password-policy';
-import { CURRENT_PASSWORD_REQUIRED_MESSAGE } from './customer-auth';
+import {
+  CURRENT_PASSWORD_REQUIRED_MESSAGE,
+  ResetPasswordResult,
+  resetPasswordFailure,
+} from './customer-auth';
 import { ConsoleVenueMap } from './console-venue-map';
 import { OwnedVenues } from './owned-venues';
 import {
@@ -210,6 +214,21 @@ export class OperatorAuth extends SessionAuth {
       return 'changed';
     } catch (error) {
       return passwordChangeFailure(error);
+    }
+  }
+
+  /**
+   * Redeem an admin-issued reset link (`/account/operator-reset?token=…`). Anonymous: success ends every
+   * session of that operator server-side, so the page sends them to sign in fresh.
+   */
+  async resetPassword(token: string, newPassword: string): Promise<ResetPasswordResult> {
+    try {
+      await firstValueFrom(
+        this.http.post<void>(`${AUTH_API}/operator/reset-password`, { token, newPassword }),
+      );
+      return 'reset';
+    } catch (error) {
+      return resetPasswordFailure(error);
     }
   }
 }

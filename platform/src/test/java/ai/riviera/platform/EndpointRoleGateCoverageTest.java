@@ -96,6 +96,8 @@ class EndpointRoleGateCoverageTest {
 			"POST /api/auth/customer/forgot-password",
 			"POST /api/auth/customer/reset-password",
 			"POST /api/auth/customer/verify-email",
+			// permitAll — the admin-issued reset link's token is the bearer credential (#1737, invariant #7).
+			"POST /api/auth/operator/reset-password",
 			// permitAll — the OIDC redirect flow completes the exchange internally (D-3).
 			"GET /api/auth/sso/{provider}/authorize",
 			"GET /api/auth/sso/{provider}/callback",

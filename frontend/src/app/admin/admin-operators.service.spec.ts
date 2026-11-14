@@ -86,4 +86,13 @@ describe('AdminOperatorsService', () => {
     req.flush(null);
     await promise;
   });
+
+  it('POSTs a reset-link issue and answers the one-time token', async () => {
+    const promise = service.issueResetLink(9);
+    const req = http.expectOne(`${base}/9/reset-link`);
+    expect(req.request.method).toBe('POST');
+    req.flush({ token: 'raw-token', expiresAt: '2026-06-15T11:00:00Z' });
+
+    expect(await promise).toEqual({ token: 'raw-token', expiresAt: '2026-06-15T11:00:00Z' });
+  });
 });

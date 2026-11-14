@@ -21,15 +21,17 @@ import ai.riviera.platform.operator.vocabulary.PendingOperator;
  * reject, suspend, reinstate), package-private behind {@link OperatorRegistration} /
  * {@link OperatorLifecycle} (invariant #11). It owns the state transitions only; the login
  * machinery and the {@code ROLE_ADMIN} mapping stay in {@code auth}, the role gate at the edge
- * (RV-BE-11, {@code OperatorAuthPlacementTests}).
+ * (RV-BE-11, {@code OperatorAuthPlacementTests}). A suspend retires the operator's reset links (#1737).
  */
 @Service
 class OperatorRegistrationService implements OperatorRegistration, OperatorLifecycle {
 
 	private final Operators operators;
+	private final OperatorResetTokens resetTokens;
 
-	OperatorRegistrationService(Operators operators) {
+	OperatorRegistrationService(Operators operators, OperatorResetTokens resetTokens) {
 		this.operators = operators;
+		this.resetTokens = resetTokens;
 	}
 
 	@Override
@@ -72,7 +74,12 @@ class OperatorRegistrationService implements OperatorRegistration, OperatorLifec
 	@Transactional
 	public OperatorLifecycleOutcome suspend(OperatorId actor, OperatorId target) {
 		operators.lockForSuspend(actor, target);
-		return refusal(operators.suspendFacts(actor, target)).orElseGet(() -> operators.suspend(target));
+		OperatorLifecycleOutcome outcome =
+				refusal(operators.suspendFacts(actor, target)).orElseGet(() -> operators.suspend(target));
+		if (outcome instanceof OperatorLifecycleOutcome.Changed) {
+			resetTokens.retireAll(target);
+		}
+		return outcome;
 	}
 
 	@Override
