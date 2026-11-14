@@ -3,6 +3,7 @@
  * (invariant #6), from the injected `now`; a display default only, sales-close is server-side (#4).
  * Via `Intl` with an explicit zone, never `toISOString()` (UTC, rolls the day late in the evening).
  */
+import { DISPLAY_LOCALE } from './display-locale';
 const TIRANE = 'Europe/Tirane';
 
 export function defaultBookingDate(now: Date): string {
@@ -60,7 +61,7 @@ export function isIsoDate(value: string): boolean {
  * Locale pinned like `shared/money.ts` for deterministic output; the one shared civil-date format.
  */
 export function formatCivilDate(isoDate: string): string {
-  return new Intl.DateTimeFormat('en-IE', {
+  return new Intl.DateTimeFormat(DISPLAY_LOCALE, {
     timeZone: 'UTC',
     weekday: 'short',
     day: 'numeric',
@@ -75,7 +76,7 @@ export function formatCivilDate(isoDate: string): string {
  * as {@link formatCivilDate}.
  */
 export function formatDayMonth(isoDate: string): string {
-  return new Intl.DateTimeFormat('en-IE', {
+  return new Intl.DateTimeFormat(DISPLAY_LOCALE, {
     timeZone: 'UTC',
     day: 'numeric',
     month: 'short',
@@ -136,7 +137,7 @@ export function endOfMonth(isoDate: string): string {
 
 /**
  * The **Monday** that opens the week containing `isoDate`. Monday-first because the app's civil
- * dates are pinned to `en-IE` and the venues are Albanian — both Monday-first conventions.
+ * dates display in `en-IE`, `sq` or `it` and the venues are Albanian — all Monday-first conventions.
  */
 export function startOfWeek(isoDate: string): string {
   return addDays(isoDate, -mondayIndex(isoDate));
@@ -185,7 +186,7 @@ export function monthWeeks(isoDate: string): readonly (string | undefined)[][] {
  * label is the civil month itself rather than the viewer's reading of it.
  */
 export function formatMonthLabel(isoDate: string): string {
-  return new Intl.DateTimeFormat('en-IE', {
+  return new Intl.DateTimeFormat(DISPLAY_LOCALE, {
     timeZone: 'UTC',
     month: 'long',
     year: 'numeric',

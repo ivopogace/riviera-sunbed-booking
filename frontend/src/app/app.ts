@@ -14,6 +14,7 @@ import { filter } from 'rxjs';
 
 import { FindBooking } from './booking/find-booking';
 import { ConsoleSection, ConsoleShell } from './console-shell';
+import { LanguageMenuRows } from './language-menu-rows';
 import { ThemeMenuRows } from './theme-menu-rows';
 import { CustomerAuth } from './core/customer-auth';
 import { SignOutNotice } from './core/sign-out-notice';
@@ -150,6 +151,7 @@ function consoleOf(data: unknown): ConsoleSection | null {
     FindBooking,
     ConsoleShell,
     ThemeMenuRows,
+    LanguageMenuRows,
     TouchTarget,
   ],
   templateUrl: './app.html',

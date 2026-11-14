@@ -22,6 +22,27 @@
         document.documentElement.dataset.rivTheme = theme;
       })();
     </script>
+    <script>
+      // First-visit locale redirect, before boot: same order as core/locale.ts's firstVisitLocale
+      // (drift pin: locale-boot.spec.ts). Only the root build can be at "/" (ADR-0030).
+      (() => {
+        if (location.pathname !== '/') return;
+        const supported = ['en', 'sq', 'it'];
+        let locale = null;
+        try {
+          locale = localStorage.getItem('riviera-locale');
+        } catch {
+          // blocked storage (private mode): fall through to the browser's languages
+        }
+        if (!supported.includes(locale)) {
+          const primaries = (navigator.languages || []).map((tag) =>
+            tag.split('-')[0].toLowerCase(),
+          );
+          locale = primaries.find((primary) => supported.includes(primary)) || 'en';
+        }
+        if (locale !== 'en') location.replace('/' + locale + '/' + location.search + location.hash);
+      })();
+    </script>
   </head>
   <body>
     <app-root></app-root>

@@ -6,18 +6,19 @@
  *
  * @param opts.withYear include the year ("Tue 30 Jun 2026"), for map/Discover; checkout omits it.
  */
+import { DISPLAY_LOCALE } from './display-locale';
 import { daysBetween, formatDayMonth } from './booking-date';
 import { plural } from './plural';
 
-const DAY_ONLY = new Intl.DateTimeFormat('en-IE', { timeZone: 'UTC', day: 'numeric' });
+const DAY_ONLY = new Intl.DateTimeFormat(DISPLAY_LOCALE, { timeZone: 'UTC', day: 'numeric' });
 
-const FMT = new Intl.DateTimeFormat('en-IE', {
+const FMT = new Intl.DateTimeFormat(DISPLAY_LOCALE, {
   timeZone: 'UTC',
   weekday: 'short',
   day: 'numeric',
   month: 'short',
 });
-const FMT_WITH_YEAR = new Intl.DateTimeFormat('en-IE', {
+const FMT_WITH_YEAR = new Intl.DateTimeFormat(DISPLAY_LOCALE, {
   timeZone: 'UTC',
   weekday: 'short',
   day: 'numeric',

@@ -283,6 +283,7 @@
                   </button>
                   <div class="mt-1">
                     <app-theme-menu-rows variant="popover" (selected)="closeMenus()" />
+                    <app-language-menu-rows variant="popover" (selected)="closeMenus()" />
                     <app-legal-menu-rows variant="popover" />
                   </div>
                 </div>
@@ -359,6 +360,7 @@
                   >
                   <div class="mt-1">
                     <app-theme-menu-rows variant="popover" (selected)="closeMenus()" />
+                    <app-language-menu-rows variant="popover" (selected)="closeMenus()" />
                     <app-legal-menu-rows variant="popover" />
                   </div>
                 </div>
@@ -462,6 +464,7 @@
         <!-- Last, and grouped by space rather than a rule: see legal-menu-rows.ts for both. -->
         <div class="mt-1">
           <app-theme-menu-rows variant="sheet" (selected)="closeMenus()" />
+          <app-language-menu-rows variant="sheet" (selected)="closeMenus()" />
           <app-legal-menu-rows variant="sheet" />
         </div>
       </nav>

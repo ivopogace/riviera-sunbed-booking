@@ -1,10 +1,12 @@
+import { DISPLAY_LOCALE } from './display-locale';
+
 /**
  * Render an ISO-8601 UTC instant (e.g. a request-response deadline) as wall-clock time in
  * `Europe/Tirane` (invariant #6), never the viewer's or runtime's default zone; the locale is
  * pinned like `shared/money.ts` so output is deterministic across environments.
  */
 export function formatDeadline(iso: string): string {
-  return new Intl.DateTimeFormat('en-IE', {
+  return new Intl.DateTimeFormat(DISPLAY_LOCALE, {
     timeZone: 'Europe/Tirane',
     weekday: 'short',
     day: 'numeric',
