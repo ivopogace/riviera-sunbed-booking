@@ -28,6 +28,11 @@ record PublicWebProperties(@DefaultValue("") String publicOrigin, @DefaultValue 
 		return publicOrigin.isEmpty() ? Optional.empty() : Optional.of(publicOrigin);
 	}
 
+	/** {@code path} (leading {@code /}) on the configured origin, or empty when none is configured. */
+	Optional<String> absolute(String path) {
+		return origin().map(origin -> origin + path);
+	}
+
 	private static String normalized(String value) {
 		if (value.isEmpty()) {
 			return value;

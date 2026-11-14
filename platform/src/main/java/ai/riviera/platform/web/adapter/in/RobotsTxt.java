@@ -29,8 +29,8 @@ final class RobotsTxt {
 			return EVERY_AGENT + "Disallow: /\n";
 		}
 		StringBuilder body = new StringBuilder(EVERY_AGENT);
-		for (ServedLocale locale : ServedLocale.values()) {
-			PRIVATE_SPA_PATHS.forEach(path -> body.append("Disallow: ").append(locale.pathOf(path)).append('\n'));
+		for (SpaLocale locale : SpaLocale.values()) {
+			PRIVATE_SPA_PATHS.forEach(path -> body.append("Disallow: ").append(locale.path(path)).append('\n'));
 		}
 		PRIVATE_BACKEND_PATHS.forEach(path -> body.append("Disallow: ").append(path).append('\n'));
 		if (sitemapUrl != null) {

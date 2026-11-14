@@ -953,6 +953,11 @@ public class WebSliceStubs {
 					VenueId id, LocalDate from, LocalDate to) {
 				return Optional.empty();
 			}
+
+			@Override
+			public Optional<ai.riviera.platform.venue.vocabulary.VenueLinkPreview> findLinkPreview(VenueId id) {
+				return Optional.empty();
+			}
 		};
 	}
 

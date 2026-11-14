@@ -42,7 +42,7 @@ final class SitemapXml {
 			xml.writeDefaultNamespace(SITEMAP_NS);
 			xml.writeNamespace("xhtml", XHTML_NS);
 			for (String page : pages) {
-				for (ServedLocale locale : ServedLocale.values()) {
+				for (SpaLocale locale : SpaLocale.values()) {
 					writeUrl(xml, origin, page, locale);
 				}
 			}
@@ -55,16 +55,16 @@ final class SitemapXml {
 		return body.toString();
 	}
 
-	private static void writeUrl(XMLStreamWriter xml, String origin, String page, ServedLocale locale)
+	private static void writeUrl(XMLStreamWriter xml, String origin, String page, SpaLocale locale)
 			throws XMLStreamException {
 		xml.writeStartElement(SITEMAP_NS, "url");
 		xml.writeStartElement(SITEMAP_NS, "loc");
-		xml.writeCharacters(origin + locale.pathOf(page));
+		xml.writeCharacters(origin + locale.path(page));
 		xml.writeEndElement();
-		for (ServedLocale alternate : ServedLocale.values()) {
-			writeAlternate(xml, alternate.code(), origin + alternate.pathOf(page));
+		for (SpaLocale alternate : SpaLocale.values()) {
+			writeAlternate(xml, alternate.code(), origin + alternate.path(page));
 		}
-		writeAlternate(xml, X_DEFAULT, origin + ServedLocale.EN.pathOf(page));
+		writeAlternate(xml, X_DEFAULT, origin + SpaLocale.EN.path(page));
 		xml.writeEndElement();
 	}
 

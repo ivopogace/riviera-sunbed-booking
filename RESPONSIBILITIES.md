@@ -1274,7 +1274,8 @@ a mechanism, owning no table and publishing nothing. Not a shared module: no mod
 module test is better without the chain than with every collaborator mocked. Everything sits in
 `adapter/in`. Depends on the surfaces its imports prove: `auth` (`api` + `vocabulary`), `challenge`
 (`api` + `vocabulary`), `audit::api`, `customer::vocabulary`, `operator::vocabulary`, `venue` (`api` +
-`vocabulary`, the sitemap's venue ids) and `shared`; Spring Security beans arrive by framework type.
+`vocabulary`, the sitemap's venue ids and the shell's previews) and `shared`; Spring Security beans
+arrive by framework type.
 
 **Job:** the fence every request crosses before a controller (§ *Platform edge*):
 - `SecurityConfig`: both chains, the route policy (role gates), CSRF, the session cookie and the
@@ -1289,8 +1290,7 @@ module test is better without the chain than with every collaborator mocked. Eve
   `/for-venues`, `/help` and each `PublicVenueIndex` venue's page in every locale with `hreflang` alternates.
   Absolute URLs come from `riviera.web.public-origin` alone, never the request's `Host` (host-header
   poisoning); unset, the sitemap is the `NOT_FOUND` problem. `riviera.web.robots.disallow-all` shuts a
-  non-production host out (`docs/deploy/cd-pipeline.md`). `ServedLocale` re-lists the root's `SpaLocale`,
-  both pinned to `frontend/angular.json`. One file holds 50 000 URLs (~16 600 venues at three locales).
+  non-production host out (`docs/deploy/cd-pipeline.md`). The locales are `SpaLocale`'s. One file holds 50 000 URLs (~16 600 venues at three locales).
 - **No problem body carries `instance`** (`ProblemInstanceConfig`): Spring fills a null one with the
   request URI, on `/api/bookings/{code}` the bearer credential (#7), so the interceptor clears it after
   that fill; the hand-built bodies omit it. RFC 9457 makes every member optional.
@@ -1310,6 +1310,13 @@ module test is better without the chain than with every collaborator mocked. Eve
   `timestamp` or exception message, and no whitelabel HTML (`ErrorDispatchProblemIT`). A non-standard
   `4xx`/`5xx` is kept too, its code `ERROR` (`ProblemErrorControllerTest`). It is the one `ErrorController`
   the role-gate probe skips (`EndpointRoleGateCoverageTest`).
+- **The SPA shell** (`SpaWebConfig`, `SpaLocale`, ADR-0030): assets, and each locale's `index.html` for a
+  client route. `SpaShellController` serves home, `/venues/{id}` and the private routes with a `ShellHead`
+  spliced in, rendered per request, never cached: a visible venue's title (the SPA's own shape, `Beach.label()`),
+  first description line, cover and canonical from `VenueCatalog.findLinkPreview`; home's generic copy per
+  locale. A hidden, unknown or malformed id previews generically and `noindex`, identical in each case.
+  `RobotsTxt.PRIVATE_SPA_PATHS` get `noindex` alone, echoing nothing from the URL (#7). The locale segment is
+  two letters, so `/api` and `/actuator` never reach the shell. Other routes keep the bare shell (#1760).
 - **Tomcat's own pre-servlet rejections keep Tomcat's minimal HTML** (a raw `{` in the request target): they
   never reach `/error`, and the problem shape there would take a custom `ErrorReportValve`, a container-level
   customization one contract on every response does not buy (#1464). Boot hides the report, so the page
@@ -1317,8 +1324,8 @@ module test is better without the chain than with every collaborator mocked. Eve
 
 **Not my job:** sessions, credentials and login → **`auth`**; what a fence's mechanism does (a
 challenge's single use, an audit row's storage) → **`challenge`**, **`audit`**; per-venue
-authorization (#13) → the application services; the correlation-id filter → **`monitoring`**; the SPA
-and `/map/**` resources → the root's configuration.
+authorization (#13) → the application services; the correlation-id filter → **`monitoring`**; the
+`/map/**` resources → the root's configuration.
 
 ## Platform edge (settled)
 
@@ -1395,6 +1402,10 @@ mutating `/api/admin/**` action, §`audit`) live in `web`; `challenge` and `audi
   files sit in `riviera.map.dir`, never on the classpath: the archive is read by HTTP `Range`, and a
   deflated jar entry cannot seek. **Map posters** ship under `/posters/**`, so a phone's first paint
   makes no `/map/**` request. Size budgets: `MapArchiveBudgetTest`, `map-poster-set.spec.ts`.
+- **Absolute URLs a crawler or link preview sees come from `riviera.web.public-origin` alone, never the
+  request's `Host`** (#1761, #1760): a client sets `Host`, and a cached preview or sitemap would carry its
+  origin. Unset, no absolute URL is written; not a bare `https` origin, boot aborts (`PublicWebProperties`).
+  One origin per deployment, so a host move is a config change (`docs/deploy/cd-pipeline.md`).
 ## Frontend (the SPA, not a module)
 
 The SPA rules whose TSDoc points here; structure is `riviera-frontend`'s, styling `riviera-tailwind`'s.

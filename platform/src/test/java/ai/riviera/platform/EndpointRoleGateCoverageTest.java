@@ -134,6 +134,23 @@ class EndpointRoleGateCoverageTest {
 			"POST /api/payments/stripe/webhook",
 			// permitAll — server-to-server from Scaleway Topics & Events, authenticated by its SNS signature.
 			"POST /api/notifications/tem/webhook",
+			// permitAll via the SPA chain — the shell with its link-preview head; private routes noindex (#1760, #7).
+			"GET /",
+			"GET /{locale:[a-z][a-z]}/",
+			"GET /venues/{id}",
+			"GET /{locale:[a-z][a-z]}/venues/{id}",
+			"GET /account/**",
+			"GET /admin/**",
+			"GET /booking/**",
+			"GET /my-bookings/**",
+			"GET /operator/**",
+			"GET /venue-admin/**",
+			"GET /{locale:[a-z][a-z]}/account/**",
+			"GET /{locale:[a-z][a-z]}/admin/**",
+			"GET /{locale:[a-z][a-z]}/booking/**",
+			"GET /{locale:[a-z][a-z]}/my-bookings/**",
+			"GET /{locale:[a-z][a-z]}/operator/**",
+			"GET /{locale:[a-z][a-z]}/venue-admin/**",
 			// The ONE deliberate fall-through to anyRequest().authenticated(): the reload-restore read
 			// serves BOTH principal types by design, so no single role gate fits (SecurityConfig ~L217).
 			"GET /api/auth/me");

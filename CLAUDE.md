@@ -109,8 +109,8 @@ build's commit on `/actuator/info`; writes nothing). Also closed and non-context
 (sign-in and sessions: the `UserDetailsService`s, session establishment, credential stamp and revocation,
 SSO, password policy, recovery, the login, self-service, admin-lifecycle and erasure controllers; writes nothing) and `web` (the
 HTTP boundary: `SecurityConfig`'s chains and route policy, the chain's filters, CORS, `ApiErrorHandler`
-as the one advice, `/error`'s problem body, the crawl policy (`/robots.txt`, `/sitemap.xml`); publishes nothing,
-writes nothing). No module writes
+as the one advice, `/error`'s problem body, the crawl policy (`/robots.txt`, `/sitemap.xml`), the SPA shell
+and its link-preview head; publishes nothing, writes nothing). No module writes
 the framework tables: `SPRING_SESSION*` (Spring Session, from `auth` and `web`) and `event_publication*` (Modulith's registry; re-driven by the outbox levers and the spine retries).
 Every module may depend on `shared`, which depends on no module. The root holds only
 `PlatformApplication` and configuration that reaches no module; nothing depends on it.
@@ -135,7 +135,7 @@ profile-guarded out of prod; revocation orchestrated by `auth`, synchronous; acc
 and booking/stay create fenced by `challenge`'s proof-of-work against a single-use registry; every
 mutating `/api/admin/**` action audited by `web`'s fence; the anonymous actuator surface is `health`
 and `GET /actuator/info`'s commit id alone; map tiles self-hosted under `/map/**`, no third-party map
-host.
+host; absolute URLs in a served page from `riviera.web.public-origin`, never the request's `Host`.
 
 ## Cross-cutting invariants
 
