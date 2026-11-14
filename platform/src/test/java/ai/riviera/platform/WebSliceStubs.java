@@ -34,6 +34,7 @@ import ai.riviera.platform.auth.application.CustomerRecovery;
 import ai.riviera.platform.auth.application.ExternalIdentity;
 import ai.riviera.platform.auth.application.OperatorApprovalMail;
 import ai.riviera.platform.auth.application.RecoveryProperties;
+import ai.riviera.platform.auth.application.OperatorResetLinks;
 import ai.riviera.platform.auth.application.RecoveryTokens;
 import ai.riviera.platform.auth.application.SsoAuthorizationChallenge;
 import ai.riviera.platform.auth.application.SsoGateway;
@@ -105,6 +106,7 @@ import ai.riviera.platform.notification.api.MailSender;
 import ai.riviera.platform.operator.api.OperatorAccounts;
 import ai.riviera.platform.operator.api.OperatorDirectory;
 import ai.riviera.platform.operator.api.OperatorLifecycle;
+import ai.riviera.platform.operator.api.OperatorPasswordReset;
 import ai.riviera.platform.operator.api.OperatorProvisioning;
 import ai.riviera.platform.operator.api.OperatorRegistration;
 import ai.riviera.platform.operator.vocabulary.ApprovalOutcome;
@@ -755,6 +757,35 @@ public class WebSliceStubs {
 	@Bean
 	RecoveryTokens recoveryTokens() {
 		return new RecoveryTokens();
+	}
+
+	@Bean
+	OperatorResetLinks operatorResetLinks(RecoveryTokens recoveryTokens, RecoveryProperties recoveryProperties,
+			Clock clock) {
+		return new OperatorResetLinks(recoveryTokens, recoveryProperties, clock);
+	}
+
+	/** Inert: no operator exists and no token redeems; {@code AdminOperatorControllerTest} drives the real answers. */
+	@Bean
+	OperatorPasswordReset operatorPasswordReset() {
+		return new OperatorPasswordReset() {
+			@Override
+			public ai.riviera.platform.operator.vocabulary.ResetLinkOutcome issue(OperatorId operatorId,
+					String tokenHash, Instant expiresAt) {
+				return new ai.riviera.platform.operator.vocabulary.ResetLinkOutcome.NoSuchOperator();
+			}
+
+			@Override
+			public Optional<String> usernameForResetToken(String tokenHash) {
+				return Optional.empty();
+			}
+
+			@Override
+			public ai.riviera.platform.operator.vocabulary.OperatorResetOutcome resetPassword(String tokenHash,
+					String passwordHash) {
+				return new ai.riviera.platform.operator.vocabulary.OperatorResetOutcome.InvalidOrExpired();
+			}
+		};
 	}
 
 	@Bean

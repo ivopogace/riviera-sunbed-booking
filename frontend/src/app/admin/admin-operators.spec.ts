@@ -1,3 +1,4 @@
+import { HttpErrorResponse } from '@angular/common/http';
 import { signal } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
@@ -35,6 +36,7 @@ function serviceStub(
   reject: ReturnType<typeof vi.fn>;
   suspend: ReturnType<typeof vi.fn>;
   reinstate: ReturnType<typeof vi.fn>;
+  issueResetLink: ReturnType<typeof vi.fn>;
 } {
   return {
     pending: vi.fn(() => Promise.resolve(pending)),
@@ -43,6 +45,9 @@ function serviceStub(
     reject: vi.fn(() => Promise.resolve(undefined)),
     suspend: vi.fn(() => Promise.resolve(undefined)),
     reinstate: vi.fn(() => Promise.resolve(undefined)),
+    issueResetLink: vi.fn(() =>
+      Promise.resolve({ token: 'raw-token', expiresAt: '2026-06-15T11:00:00Z' }),
+    ),
   };
 }
 
@@ -409,5 +414,155 @@ describe('AdminOperators stat strip (A9, #348)', () => {
       'admin-stats',
       'H2',
     ]);
+  });
+
+  describe('reset link (#1737)', () => {
+    const resetAccounts: OperatorAccountView[] = [
+      { id: 7, username: 'alice', contactEmail: 'a@v.example', admin: false, suspended: false },
+      { id: 8, username: 'bob', contactEmail: null, admin: false, suspended: true },
+      { id: 9, username: 'admin-self', contactEmail: null, admin: true, suspended: false },
+    ];
+
+    function byTestId(fixture: ComponentFixture<AdminOperators>, id: string): HTMLElement | null {
+      return (fixture.nativeElement as HTMLElement).querySelector<HTMLElement>(
+        `[data-testid="${id}"]`,
+      );
+    }
+
+    async function issueFor(fixture: ComponentFixture<AdminOperators>, id: number): Promise<void> {
+      byTestId(fixture, `admin-reset-link-${id}`)!.click();
+      await fixture.whenStable();
+      fixture.detectChanges();
+    }
+
+    it('offers a reset link only on an active row that is not the admin', async () => {
+      const fixture = await render(authStub({ isAdmin: true }), serviceStub([], resetAccounts));
+
+      expect(byTestId(fixture, 'admin-reset-link-7')).not.toBeNull();
+      expect(byTestId(fixture, 'admin-reset-link-8')).toBeNull();
+      expect(byTestId(fixture, 'admin-reset-link-9')).toBeNull();
+    });
+
+    it('shows the one-time link on this origin with its Tirana expiry, and focuses it', async () => {
+      const service = serviceStub([], resetAccounts);
+      const fixture = await render(authStub({ isAdmin: true }), service);
+
+      await issueFor(fixture, 7);
+      await fixture.whenStable();
+
+      expect(service.issueResetLink).toHaveBeenCalledWith(7);
+      const input = byTestId(fixture, 'admin-reset-url-7') as HTMLInputElement;
+      expect(input.value).toBe(`${location.origin}/account/operator-reset?token=raw-token`);
+      expect(input.readOnly).toBe(true);
+      expect(byTestId(fixture, 'admin-reset-expiry-7')!.textContent).toContain('13:00');
+      expect(byTestId(fixture, 'admin-ops-notice')!.textContent).toContain(
+        'Reset link ready for alice.',
+      );
+      expect(document.activeElement).toBe(input);
+      expect(service.accounts).toHaveBeenCalledTimes(1);
+    });
+
+    it('copies the link to the clipboard', async () => {
+      const writeText = vi.fn(() => Promise.resolve());
+      const original = Object.getOwnPropertyDescriptor(navigator, 'clipboard');
+      Object.defineProperty(navigator, 'clipboard', { value: { writeText }, configurable: true });
+      try {
+        const fixture = await render(authStub({ isAdmin: true }), serviceStub([], resetAccounts));
+        await issueFor(fixture, 7);
+
+        byTestId(fixture, 'admin-reset-copy-7')!.click();
+        await fixture.whenStable();
+        fixture.detectChanges();
+
+        expect(writeText).toHaveBeenCalledWith(
+          `${location.origin}/account/operator-reset?token=raw-token`,
+        );
+        expect(byTestId(fixture, 'admin-ops-notice')!.textContent).toContain('Link copied.');
+      } finally {
+        if (original) {
+          Object.defineProperty(navigator, 'clipboard', original);
+        } else {
+          delete (navigator as { clipboard?: unknown }).clipboard;
+        }
+      }
+    });
+
+    it('says so when the clipboard refuses', async () => {
+      const original = Object.getOwnPropertyDescriptor(navigator, 'clipboard');
+      Object.defineProperty(navigator, 'clipboard', {
+        value: { writeText: () => Promise.reject(new Error('denied')) },
+        configurable: true,
+      });
+      try {
+        const fixture = await render(authStub({ isAdmin: true }), serviceStub([], resetAccounts));
+        await issueFor(fixture, 7);
+
+        byTestId(fixture, 'admin-reset-copy-7')!.click();
+        await fixture.whenStable();
+        fixture.detectChanges();
+
+        expect(byTestId(fixture, 'admin-ops-notice')!.textContent).toContain('Could not copy');
+      } finally {
+        if (original) {
+          Object.defineProperty(navigator, 'clipboard', original);
+        } else {
+          delete (navigator as { clipboard?: unknown }).clipboard;
+        }
+      }
+    });
+
+    it('Done hides the link and returns focus to the row action', async () => {
+      const fixture = await render(authStub({ isAdmin: true }), serviceStub([], resetAccounts));
+      await issueFor(fixture, 7);
+
+      byTestId(fixture, 'admin-reset-done-7')!.click();
+      fixture.detectChanges();
+      await fixture.whenStable();
+
+      expect(byTestId(fixture, 'admin-reset-panel-7')).toBeNull();
+      expect(document.activeElement).toBe(byTestId(fixture, 'admin-reset-link-7'));
+    });
+
+    it('another row action clears the link from the screen', async () => {
+      const fixture = await render(authStub({ isAdmin: true }), serviceStub([], resetAccounts));
+      await issueFor(fixture, 7);
+
+      byTestId(fixture, 'admin-reinstate-8')!.click();
+      await fixture.whenStable();
+      fixture.detectChanges();
+
+      expect(byTestId(fixture, 'admin-reset-panel-7')).toBeNull();
+    });
+
+    it('names the env-managed bootstrap refusal without reloading', async () => {
+      const service = serviceStub([], resetAccounts);
+      service.issueResetLink.mockRejectedValueOnce(
+        new HttpErrorResponse({ status: 409, error: { code: 'BOOTSTRAP_CREDENTIAL_MANAGED' } }),
+      );
+      const fixture = await render(authStub({ isAdmin: true }), service);
+
+      await issueFor(fixture, 7);
+
+      expect(byTestId(fixture, 'admin-reset-panel-7')).toBeNull();
+      expect(byTestId(fixture, 'admin-ops-notice')!.textContent).toContain(
+        'set by the deployment environment',
+      );
+      expect(service.accounts).toHaveBeenCalledTimes(1);
+    });
+
+    it('reconciles the lists when the operator was suspended meanwhile', async () => {
+      const service = serviceStub([], resetAccounts);
+      service.issueResetLink.mockRejectedValueOnce(
+        new HttpErrorResponse({ status: 409, error: { code: 'WRONG_STATUS' } }),
+      );
+      const fixture = await render(authStub({ isAdmin: true }), service);
+
+      await issueFor(fixture, 7);
+      await fixture.whenStable();
+      fixture.detectChanges();
+
+      expect(service.accounts).toHaveBeenCalledTimes(2);
+      expect(byTestId(fixture, 'admin-ops-notice')!.textContent).toContain("didn't go through");
+    });
   });
 });

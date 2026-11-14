@@ -111,9 +111,31 @@ compromised had to find a platform admin.
 - **A non-`ACTIVE` account is refused**: `409 ACCOUNT_NOT_ACTIVE` (defence-in-depth; suspension
   already revokes the sessions such a caller would need).
 
-**Still not available:** an admin resetting *another* operator's password, and operator "forgot
-password" by email — operators have no verified email channel until the real mailer lands (#255).
-A compromised operator is **suspended**, not silently re-credentialed.
+**Still not available:** operator "forgot password" by email (#1759) — operators have no verified
+email channel until the production mailer lands (#370). An operator who forgot its password asks an
+admin for a reset link (below). A compromised operator is **suspended** first.
+
+## Admin-issued reset link (#1737)
+
+An admin re-credentials another operator by handing it a **single-use reset link**; the operator
+always chooses the new password itself. From `/admin` → Operators, an `ACTIVE` row's **Reset link**
+action calls `POST /api/admin/operators/{id}/reset-link` and shows the link **once**, with its expiry.
+Nothing is mailed: copy it and hand it over out of band (a channel you trust to reach that person).
+
+- **Lifetime and posture** are the customer reset's: 256-bit token, stored only as its SHA-256 digest,
+  valid for `riviera.recovery.reset-token-ttl` (default 1 hour). The link points at the SPA's
+  `/account/operator-reset?token=…`, built from the console's own origin.
+- **One live link per operator.** Issuing again retires the previous link. Suspending the operator
+  retires it too, and reinstating does not revive it: issue a fresh one.
+- **Only `ACTIVE` operators** → `409 WRONG_STATUS` otherwise; unknown id → `404 NO_SUCH_OPERATOR`.
+- **The bootstrap admin is refused**: `409 BOOTSTRAP_CREDENTIAL_MANAGED`; rotate it through
+  `RIVIERA_OPERATOR_PASSWORD` (above).
+- **Redeeming** (`POST /api/auth/operator/reset-password`, anonymous, CSRF-protected, its own per-IP
+  bucket) enforces the shared password policy, revokes every session of that operator before and
+  after the write, and leaves it signed out. A used, expired, retired or unknown link is one
+  `400 INVALID_OR_EXPIRED_TOKEN`.
+- **Audit.** The issue is a mutating `/api/admin/**` action, so `web`'s fence records the actor and
+  the path (which names the operator id) — never the token. The token is in no log.
 
 ## Additional operators (programmatic)
 
@@ -129,10 +151,9 @@ stores an opaque blob — RV-BE-11). Grant a per-venue operator its venues with 
 a per-venue operator owns **only** the venues explicitly mapped to it (invariant #13).
 
 Since #326, `setPassword` also backs the operator's **own** password change over HTTP (above) — but
-only for the caller's own account, after proving the current password. Provisioning or
-re-credentialing *another* operator remains a programmatic/operational step (e.g. a one-off runner),
-not an HTTP call: the admin surface deliberately offers approve/reject/suspend/reinstate and no
-credential write.
+only for the caller's own account, after proving the current password. Provisioning another operator
+remains a programmatic/operational step (e.g. a one-off runner); re-credentialing one goes through the
+admin-issued reset link (above), where the operator, not the admin, chooses the password.
 
 ## Suspending an operator
 

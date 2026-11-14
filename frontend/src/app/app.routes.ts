@@ -3,6 +3,7 @@ import { Router, Routes } from '@angular/router';
 
 import type { AdminTabRouteData } from './admin/admin-console';
 import type { TouristRouteData } from './app';
+import type { ResetAudience } from './auth/reset-password';
 import type { ConsoleRouteData } from './console-shell';
 import { PAGE_LOAD_FAILED_PATH } from './core/chunk-load-recovery';
 import { operatorSessionGuard } from './core/operator-session.guard';
@@ -266,6 +267,16 @@ export const routes: Routes = [
     loadComponent: () => import('./auth/reset-password').then((m) => m.ResetPassword),
     title: 'Set a new password — Riviera',
     data: { section: 'account' } satisfies TouristRouteData,
+  },
+  {
+    // Admin-issued operator reset link (#1737), handed over out of band; anonymous like the tourist one.
+    path: 'account/operator-reset',
+    loadComponent: () => import('./auth/reset-password').then((m) => m.ResetPassword),
+    title: 'Set a new password — Riviera',
+    data: {
+      section: 'account',
+      resetAudience: 'operator',
+    } satisfies TouristRouteData & { resetAudience: ResetAudience },
   },
   {
     // Email-verification landing (emailed link carries ?token=…) — POST-verify on load.

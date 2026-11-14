@@ -452,4 +452,36 @@ describe('OperatorAuth (session-aware, issue #109)', () => {
       expect(auth.signedIn()).toBe(false);
     });
   });
+
+  describe('resetPassword (admin-issued link, #1737)', () => {
+    it('posts the token and password anonymously and resolves reset on 204', async () => {
+      const auth = serviceWithRestore('signed-out');
+
+      const result = auth.resetPassword('raw-token', 'passphrase-123');
+      const req = httpMock.expectOne(`${AUTH_API}/operator/reset-password`);
+      expect(req.request.method).toBe('POST');
+      expect(req.request.body).toEqual({ token: 'raw-token', newPassword: 'passphrase-123' });
+      req.flush(null, { status: 204, statusText: 'No Content' });
+
+      expect(await result).toBe('reset');
+    });
+
+    it('maps a refused token, the blocklist and a 429 like the tourist reset', async () => {
+      const auth = serviceWithRestore('signed-out');
+      const cases: [object, number, string][] = [
+        [{ code: 'INVALID_OR_EXPIRED_TOKEN' }, 400, 'invalid-token'],
+        [{ code: 'PASSWORD_CONTAINS_BLOCKED_TERM' }, 400, 'blocked-password'],
+        [{ code: 'INVALID_REQUEST' }, 400, 'invalid-password'],
+        [{ code: 'RATE_LIMITED' }, 429, 'rate-limited'],
+        [{}, 500, 'error'],
+      ];
+      for (const [body, status, expected] of cases) {
+        const result = auth.resetPassword('raw-token', 'passphrase-123');
+        httpMock
+          .expectOne(`${AUTH_API}/operator/reset-password`)
+          .flush(body, { status, statusText: 'x' });
+        expect(await result).toBe(expected);
+      }
+    });
+  });
 });

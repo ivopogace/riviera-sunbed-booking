@@ -2,7 +2,8 @@ import { afterNextRender, Component, ElementRef, inject, signal } from '@angular
 import { FormField, form } from '@angular/forms/signals';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 
-import { CustomerAuth } from '../core/customer-auth';
+import { CustomerAuth, ResetPasswordResult } from '../core/customer-auth';
+import { OperatorAuth } from '../core/operator-auth';
 import { BusyAction } from '../shared/busy-action';
 import { CardGlass } from '../shared/card-glass';
 import { focusMover } from '../shared/focus-after-render';
@@ -34,11 +35,26 @@ const CLS = {
   altLink: 'inline-flex items-center font-bold text-riv-accent-ink',
 } as const;
 
+/** Whose reset this page redeems: route `data.resetAudience`, `customer` unless the route says otherwise. */
+export type ResetAudience = 'customer' | 'operator';
+
+/** What differs per audience: where a new link comes from, and which sign-in tab to land on. */
+const AUDIENCE_COPY = {
+  customer: {
+    newLinkHint: 'Request a new one.',
+    signInQuery: {},
+  },
+  operator: {
+    newLinkHint: 'Ask your platform admin for a new one.',
+    signInQuery: { audience: 'operator' },
+  },
+} as const satisfies Record<ResetAudience, { newLinkHint: string; signInQuery: object }>;
+
 /**
- * Password-reset page. Reached from the emailed link `/account/reset?token=…`; the token is
- * the bearer credential (invariant #7). The tourist sets a new password (confirmed) and, on success, the
- * backend rotates it and invalidates any existing sessions, so they sign in fresh. A bad/expired
- * token or missing token is a clear dead-end that points back at requesting a new link.
+ * Password-reset page for both audiences: the tourist's emailed `/account/reset?token=…` and the operator's
+ * admin-issued `/account/operator-reset?token=…`; the token is the bearer credential (invariant #7). On
+ * success the backend invalidates every session, so they sign in fresh. A bad, expired or missing token is
+ * a dead-end that says where a new link comes from.
  */
 @Component({
   selector: 'app-reset-password',
@@ -60,23 +76,26 @@ const CLS = {
               appTouchTarget
               [class]="cls.altLink"
               routerLink="/account/sign-in"
+              [queryParams]="copy.signInQuery"
               data-testid="reset-to-signin"
               >Sign in</a
             >
           </p>
         } @else if (!token) {
           <p [class]="cls.error" role="alert" data-testid="reset-no-token">
-            This reset link is invalid or incomplete. Request a new one.
+            This reset link is invalid or incomplete. {{ copy.newLinkHint }}
           </p>
-          <p [class]="cls.alt">
-            <a
-              appTouchTarget
-              [class]="cls.altLink"
-              routerLink="/account/forgot"
-              data-testid="reset-to-forgot"
-              >Request a reset link</a
-            >
-          </p>
+          @if (audience === 'customer') {
+            <p [class]="cls.alt">
+              <a
+                appTouchTarget
+                [class]="cls.altLink"
+                routerLink="/account/forgot"
+                data-testid="reset-to-forgot"
+                >Request a reset link</a
+              >
+            </p>
+          }
         } @else {
           <form (submit)="onSubmit(); $event.preventDefault()" novalidate>
             <label [class]="cls.field">
@@ -126,8 +145,14 @@ const CLS = {
   `,
 })
 export class ResetPassword {
-  private readonly auth = inject(CustomerAuth);
   private readonly route = inject(ActivatedRoute);
+  protected readonly audience: ResetAudience =
+    this.route.snapshot.data['resetAudience'] === 'operator' ? 'operator' : 'customer';
+  protected readonly copy = AUDIENCE_COPY[this.audience];
+  /** Only the audience's own auth service is injected: the two principals never share a flow. */
+  private readonly auth: {
+    resetPassword(token: string, newPassword: string): Promise<ResetPasswordResult>;
+  } = this.audience === 'operator' ? inject(OperatorAuth) : inject(CustomerAuth);
   private readonly hostRef = inject<ElementRef<HTMLElement>>(ElementRef);
   private readonly focusAfterRender = focusMover();
 
@@ -175,7 +200,7 @@ export class ResetPassword {
         this.focusAfterRender('reset-done');
         break;
       case 'invalid-token':
-        this.error.set('This reset link is invalid or has expired. Request a new one.');
+        this.error.set(`This reset link is invalid or has expired. ${this.copy.newLinkHint}`);
         break;
       case 'invalid-password':
         this.error.set(PASSWORD_LENGTH_MESSAGE);
