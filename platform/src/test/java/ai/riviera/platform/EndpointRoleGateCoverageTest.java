@@ -125,6 +125,8 @@ class EndpointRoleGateCoverageTest {
 			"GET /api/bookings/cancellation-terms",
 			// permitAll — server-to-server, authenticated by its Stripe signature header (invariant #8).
 			"POST /api/payments/stripe/webhook",
+			// permitAll — server-to-server from Scaleway Topics & Events, authenticated by its SNS signature.
+			"POST /api/notifications/tem/webhook",
 			// The ONE deliberate fall-through to anyRequest().authenticated(): the reload-restore read
 			// serves BOTH principal types by design, so no single role gate fits (SecurityConfig ~L217).
 			"GET /api/auth/me");

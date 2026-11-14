@@ -134,13 +134,13 @@ the live site is bot-shielded):**
 
 ## Execution status
 
-**Stage pointer:** implement (phase 1)
+**Stage pointer:** implement (phase 3, docs)
 
-**Next action:** SNS verifier, test-first.
+**Next action:** runbook, properties, RESPONSIBILITIES, ADR amendments.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0, out-of-order guard | ✅ | |
-| 1, SNS verification | ⏳ | |
-| 2, endpoint | | |
-| 3, docs | | |
+| 1, SNS verification | ✅ | |
+| 2, endpoint | ✅ | |
+| 3, docs | ⏳ | |
