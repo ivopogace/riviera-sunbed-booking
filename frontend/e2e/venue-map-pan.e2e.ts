@@ -7,7 +7,7 @@ import type { MockPool, MockSetView, MockTier, MockVenueMapView } from './suppor
  * Real-render audit of the beach map's pan-vs-select distinction. A big
  * venue overflows the map viewport, so the tile grid pans horizontally by mouse drag. The pin:
  * a plain click on a free tile opens the booking dialog, but a drag-pan release does NOT — and
- * the row-code/price side columns stay fixed while the tiles pan. Also pins the #672 restyle as
+ * the row codes and zone price bands stay fixed while the tiles pan. Also pins the #672 restyle as
  * rendered (computed styles, not class lists): the sea→sand wash, the edge fade mask + scroll
  * snap on the pan viewport, per-zone price chips, ghost-taken tiles, and the walk-in treatment.
  * The API is mocked (`page.route`), so the suite is CI-safe with no backend (like
@@ -69,12 +69,8 @@ function wideVenue(): MockVenueMapView {
 
 /**
  * A venue that FITS the #700 desktop breakout: 14 columns is the width the issue names, and the
- * 1100px card renders it whole — 15 is the first width that pans, measured at 1280 (14 clears by
- * 34px, 15 misses by 28px, both on the 92px reservation). Five rows keeps it under the wash
- * scroller's 532px cap, so "no hint" means no hint on either axis.
- *
- * <p>Its chips are bare amounts (`€50`, `€30`; #1587), far under the reservation, so its rail is
- * the reservation — the same boundary {@link bareFitVenue} pins with one price everywhere.
+ * 1100px card renders it whole. Five rows keeps it under the wash scroller's 532px cap, so "no
+ * hint" means no hint on either axis.
  */
 function fitVenue(): MockVenueMapView {
   const sets: MapSet[] = [];
@@ -110,9 +106,8 @@ function fitVenue(): MockVenueMapView {
 }
 
 /**
- * The fits-whole venue that PAYS for the price rail's 92px reservation (#751): 14 columns, one
- * price in every row, so one zone and one ~41px chip — its rail is the reservation rather than a
- * chip, and its margin is the number a widened reservation has to spend.
+ * The fits-whole venue with one price in every row, so one zone and one bare chip (#751): its
+ * margin is the number a future widening of the rails has to spend.
  */
 function bareFitVenue(): MockVenueMapView {
   const sets: MapSet[] = [];
@@ -148,8 +143,8 @@ function bareFitVenue(): MockVenueMapView {
 }
 
 /**
- * One column past {@link bareFitVenue}: the width at which a bare-amount rail stops fitting since
- * #751. Same shape otherwise, so the only variable between the two tests is the column count.
+ * One column past {@link bareFitVenue}: the width that panned while the price chips held a
+ * column of their own (#751), and fits since they moved to zone header bands (#1732).
  */
 function barePanVenue(): MockVenueMapView {
   const sets: MapSet[] = [];
@@ -326,6 +321,8 @@ test('a drag-pan release over a tile pans the map but does NOT open the dialog; 
   const pan = page.getByTestId('map-pan');
   const rowCode = page.getByTestId('row-code').first();
   const codeXBefore = (await rowCode.boundingBox())!.x;
+  const zonePrice = page.getByTestId('row-price').first();
+  const priceXBefore = (await zonePrice.boundingBox())!.x;
   const scrollBefore = await pan.evaluate((el) => el.scrollLeft);
 
   // The #672 edge fade + scroll snap are applied — the drag below proves they don't break panning.
@@ -363,6 +360,8 @@ test('a drag-pan release over a tile pans the map but does NOT open the dialog; 
   // ...and the row-code column tracked its rows (it sits outside the horizontal scroller).
   const codeXAfter = (await rowCode.boundingBox())!.x;
   expect(Math.abs(codeXAfter - codeXBefore)).toBeLessThan(2);
+  // The zone price band rides the rail, not the scroller (#1732).
+  expect(Math.abs((await zonePrice.boundingBox())!.x - priceXBefore)).toBeLessThan(2);
 
   // A genuine click afterwards still opens the dialog (the pan suppression is one-shot).
   await page
@@ -459,15 +458,12 @@ test('a 14-column map fits whole at a desktop viewport — no pan, no hint (#700
   await expect(page.getByRole('dialog')).toBeVisible();
 });
 
-test('a 14-column map fits whole even when its price rail is the reservation, not a chip (#751)', async ({
-  page,
-}) => {
+test('a 14-column map with one bare price fits whole, by a margin (#751)', async ({ page }) => {
   await page.setViewportSize({ width: 1280, height: 720 });
   await page.goto('/venues/6');
   await expect(page.getByRole('heading', { name: 'Plain Cove' })).toBeVisible();
   await expect(page.getByTestId('set-tile').first()).toBeVisible();
 
-  // The #700 guarantee, on the venue whose rail the reservation actually widens (52 → 92px).
   expect((await panState(page)).overflows).toBe(false);
   await expect(page.getByTestId('scroll-hint')).toHaveCount(0);
 
@@ -481,30 +477,22 @@ test('a 14-column map fits whole even when its price rail is the reservation, no
       (Number.parseFloat(style.paddingRight) || 0);
     return el.clientWidth - content;
   });
-  expect(
-    slack,
-    `the fits-whole margin left after the 92px reservation (${slack}px)`,
-  ).toBeGreaterThan(24);
+  expect(slack, `the fits-whole margin left beside the rail (${slack}px)`).toBeGreaterThan(24);
 });
 
-test('15 columns is the fits-whole boundary, for a bare price rail as much as a chip (#751)', async ({
+test('15 columns fit whole at 1280 since the price chips left their column (#751, #1732)', async ({
   page,
 }) => {
-  // The column the reservation costs: AC-5 measures 14, the side of the boundary that passes.
   await page.setViewportSize({ width: 1280, height: 720 });
   await page.goto('/venues/7');
   await expect(page.getByRole('heading', { name: 'Wide Plain' })).toBeVisible();
   await expect(page.getByTestId('set-tile').first()).toBeVisible();
 
-  expect((await panState(page)).overflows).toBe(true);
-  await expect(page.getByTestId('scroll-hint')).toBeVisible();
-
-  // The point of the reservation: the bare rail and the chip rail now agree on where that is.
-  const railWidth = (await page.getByTestId('price-col').boundingBox())!.width;
-  expect(railWidth, 'the bare rail renders at the reservation, not its 52px floor').toBeCloseTo(
-    92,
-    0,
-  );
+  // The column the 92px price rail used to cost: it panned here until the chips moved to bands.
+  expect((await panState(page)).overflows).toBe(false);
+  await expect(page.getByTestId('scroll-hint')).toHaveCount(0);
+  await expect(page.getByTestId('price-col')).toHaveCount(0);
+  await expect(page.getByTestId('row-price')).toHaveText(['€30']);
 });
 
 test('a venue too wide for the breakout still pans at a desktop viewport (#700)', async ({
