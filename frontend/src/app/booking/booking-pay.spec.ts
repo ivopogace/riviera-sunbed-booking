@@ -1,3 +1,4 @@
+import { signal } from '@angular/core';
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
@@ -12,6 +13,8 @@ import {
   CreateBookingRequest,
 } from './booking.model';
 import { BookingService } from './booking.service';
+import { VenuePin } from './venue-pin';
+import { VenueLocation } from '../shared/venue-views';
 import { freezeClock } from '../../testing/freeze-clock';
 import { BookingPay } from './booking-pay';
 import { PageNavigation } from '../core/page-navigation';
@@ -148,6 +151,10 @@ interface PayProbe {
   pay(): Promise<void>;
 }
 
+/** The booked venue's pin the settled Directions row reads; none unless a test sets it. */
+const venuePin = signal<VenueLocation | null>(null);
+afterEach(() => venuePin.set(null));
+
 const pageNavigation = { leaveTo: vi.fn(), reload: vi.fn() };
 
 async function setup(
@@ -169,6 +176,7 @@ async function setup(
       provideRouter([]),
       { provide: EmbeddedCheckoutGateway, useValue: gateway },
       { provide: PageNavigation, useValue: pageNavigation },
+      { provide: VenuePin, useValue: { locationOf: () => venuePin.asReadonly() } },
     ],
   });
   const httpMock = TestBed.inject(HttpTestingController);
@@ -414,6 +422,53 @@ describe('BookingPay', () => {
         'save your booking code',
       );
 
+      httpMock.verify();
+    } finally {
+      freezeClock();
+    }
+  });
+
+  it('links the venue on its booked date and offers Directions once confirmed (#1738)', async () => {
+    venuePin.set({ latitude: 39.774531, longitude: 19.998412 });
+    const gateway = new FakeGateway();
+    const { comp, fixture, httpMock } = await setup(gateway);
+    const host = fixture.nativeElement as HTMLElement;
+    expect(host.querySelector('[data-testid="venue-link"]')).toBeNull();
+    vi.useFakeTimers();
+    try {
+      await comp.pay();
+      await vi.advanceTimersByTimeAsync(0);
+      httpMock.expectOne(STATUS_URL).flush({ ...DETAIL, status: 'CONFIRMED' });
+      fixture.detectChanges();
+
+      const venue = host.querySelector('[data-testid="venue-link"]');
+      expect(venue?.getAttribute('href')).toBe('/venues/1?date=2026-12-01');
+      const directions = host.querySelector('[data-testid="venue-directions"]');
+      expect(directions?.getAttribute('href')).toBe(
+        'https://www.google.com/maps/dir/?api=1&destination=39.774531,19.998412',
+      );
+      for (const a of [venue, directions]) {
+        expect(a?.getAttribute('href')).not.toContain('WXYZ345678');
+      }
+      httpMock.verify();
+    } finally {
+      freezeClock();
+    }
+  });
+
+  it('renders no Directions row once confirmed when the venue has no pin', async () => {
+    const gateway = new FakeGateway();
+    const { comp, fixture, httpMock } = await setup(gateway);
+    vi.useFakeTimers();
+    try {
+      await comp.pay();
+      await vi.advanceTimersByTimeAsync(0);
+      httpMock.expectOne(STATUS_URL).flush({ ...DETAIL, status: 'CONFIRMED' });
+      fixture.detectChanges();
+
+      const host = fixture.nativeElement as HTMLElement;
+      expect(host.querySelector('[data-testid="venue-link"]')).not.toBeNull();
+      expect(host.querySelector('[data-testid="directions-row"]')).toBeNull();
       httpMock.verify();
     } finally {
       freezeClock();

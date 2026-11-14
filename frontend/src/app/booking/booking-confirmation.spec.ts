@@ -1,5 +1,6 @@
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
+import { signal } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 
@@ -7,6 +8,8 @@ import { environment } from '../../environments/environment';
 import { CreateBookingRequest } from './booking.model';
 import { BookingConfirmation } from './booking-confirmation';
 import { BookingService } from './booking.service';
+import { VenuePin } from './venue-pin';
+import { VenueLocation } from '../shared/venue-views';
 
 const REQUEST: CreateBookingRequest = {
   setId: 2,
@@ -26,6 +29,9 @@ const SUMMARY = {
   emailWithheld: false,
 };
 
+/** The booked venue's pin the Directions row reads; none unless a test sets it. */
+const venuePin = signal<VenueLocation | null>(null);
+
 const CREATE_URL = `${environment.apiBaseUrl}/api/bookings`;
 
 function render(): { fixture: ComponentFixture<BookingConfirmation>; host: HTMLElement } {
@@ -39,12 +45,61 @@ describe('BookingConfirmation', () => {
 
   beforeEach(() => {
     TestBed.configureTestingModule({
-      providers: [provideHttpClient(), provideHttpClientTesting(), provideRouter([])],
+      providers: [
+        provideHttpClient(),
+        provideHttpClientTesting(),
+        provideRouter([]),
+        { provide: VenuePin, useValue: { locationOf: () => venuePin.asReadonly() } },
+      ],
     });
     httpMock = TestBed.inject(HttpTestingController);
   });
 
-  afterEach(() => httpMock.verify());
+  afterEach(() => {
+    httpMock.verify();
+    venuePin.set(null);
+  });
+
+  describe('venue link and directions (#1738)', () => {
+    function confirm(body: object = {}): HTMLElement {
+      TestBed.inject(BookingService).createBooking(REQUEST).subscribe();
+      httpMock
+        .expectOne(CREATE_URL)
+        .flush(
+          { ...SUMMARY, status: 'CONFIRMED', ...body },
+          { status: 201, statusText: 'Created' },
+        );
+      return render().host;
+    }
+
+    it('links the venue name to its beach map on the booked date, never carrying the code', () => {
+      const venue = confirm().querySelector('[data-testid="venue-link"]');
+      expect(venue?.textContent?.trim()).toBe('Miramar Beach Club');
+      expect(venue?.getAttribute('href')).toBe('/venues/1?date=2026-12-01');
+      expect(venue?.getAttribute('href')).not.toContain(SUMMARY.code);
+    });
+
+    it('opens a stay on its first day', () => {
+      const host = confirm({ lastDate: '2026-12-03' });
+      expect(host.querySelector('[data-testid="venue-link"]')?.getAttribute('href')).toBe(
+        '/venues/1?date=2026-12-01',
+      );
+    });
+
+    it('offers Directions to the pin in a new tab when the venue has one', () => {
+      venuePin.set({ latitude: 39.774531, longitude: 19.998412 });
+      const directions = confirm().querySelector('[data-testid="venue-directions"]');
+      expect(directions?.getAttribute('href')).toBe(
+        'https://www.google.com/maps/dir/?api=1&destination=39.774531,19.998412',
+      );
+      expect(directions?.getAttribute('target')).toBe('_blank');
+      expect(directions?.getAttribute('href')).not.toContain(SUMMARY.code);
+    });
+
+    it('renders no Directions row for a venue with no pin', () => {
+      expect(confirm().querySelector('[data-testid="directions-row"]')).toBeNull();
+    });
+  });
 
   it('renders the confirmed booking when the booking is CONFIRMED', () => {
     TestBed.inject(BookingService).createBooking(REQUEST).subscribe();

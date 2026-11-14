@@ -10,12 +10,17 @@ import { formatMoney } from '../shared/money';
 import { BookingService } from './booking.service';
 import { CheckIcon } from '../shared/check-icon';
 import { PrimaryCta } from '../shared/primary-cta';
+import { TouchTarget } from '../shared/touch-target';
+import { directionsUrl } from '../shared/directions-url';
+import { VenuePin } from './venue-pin';
 
 /** Template skins, hoisted so each recipe exists once (the booking-view.ts `cls` idiom). */
 const CLS = {
   card: 'mx-auto my-8 max-w-[400px] rounded-[30px] px-[30px] pt-9 pb-[30px] text-center shadow-[0_18px_50px_rgba(7,42,58,0.28),inset_0_1px_0_rgba(255,255,255,0.85)] backdrop-blur-[30px] backdrop-saturate-[1.8]',
   h1: 'mb-2 text-[30px] font-bold tracking-[-0.02em]',
   lead: 'mb-[18px] text-[15px] leading-[1.45] text-riv-card-ink-soft',
+  row: 'flex items-center justify-between gap-3 py-[5px] text-[13.5px]',
+  link: 'inline-flex items-center text-right font-semibold text-riv-accent-ink underline focus-visible:outline-[3px] focus-visible:outline-offset-2 focus-visible:outline-riv-accent-ink',
 } as const;
 
 /**
@@ -36,6 +41,7 @@ const CLS = {
     BookingQr,
     WithheldEmailNotice,
     CheckIcon,
+    TouchTarget,
   ],
   template: `
     @if (confirmation(); as c) {
@@ -79,7 +85,36 @@ const CLS = {
         <dl
           class="mb-3.5 rounded-[18px] border border-[rgba(255,255,255,0.6)] bg-riv-inset-fill px-4 py-3.5 text-left"
         >
-          <div class="flex items-center justify-between gap-3 py-[5px] text-[13.5px]">
+          <div [class]="cls.row">
+            <dt class="text-riv-card-ink-soft">Venue</dt>
+            <dd>
+              <a
+                appTouchTarget
+                [routerLink]="['/venues', c.venueId]"
+                [queryParams]="{ date: c.bookingDate }"
+                [class]="cls.link"
+                data-testid="venue-link"
+                >{{ c.venueName }}</a
+              >
+            </dd>
+          </div>
+          @if (directions(); as url) {
+            <div [class]="cls.row" data-testid="directions-row">
+              <dt class="text-riv-card-ink-soft">Directions</dt>
+              <dd>
+                <a
+                  appTouchTarget
+                  [href]="url"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  [class]="cls.link"
+                  data-testid="venue-directions"
+                  >Open in maps<span class="sr-only"> (opens in a new tab)</span></a
+                >
+              </dd>
+            </div>
+          }
+          <div [class]="cls.row">
             <dt class="text-riv-card-ink-soft">Includes</dt>
             <dd class="font-semibold">2 loungers + umbrella · full day</dd>
           </div>
@@ -149,6 +184,13 @@ export class BookingConfirmation {
   protected readonly confirmation = computed(() => {
     const c = this.bookings.lastConfirmation();
     return c?.status === 'CONFIRMED' ? c : undefined;
+  });
+
+  private readonly pin = inject(VenuePin).locationOf(() => this.confirmation()?.venueId);
+  /** The maps link to the venue's pin, or `null` when it has none: then no Directions row renders. */
+  protected readonly directions = computed(() => {
+    const at = this.pin();
+    return at ? directionsUrl(at) : null;
   });
 
   protected readonly formatMoney = formatMoney;

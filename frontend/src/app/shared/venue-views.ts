@@ -87,6 +87,8 @@ export interface VenueMapView {
   readonly amenities?: readonly Amenity[];
   /** Distance to the water in metres, or `null`/absent when not stated. */
   readonly distanceToWaterM?: number | null;
+  /** The venue's map pin, or `null`/absent when it has none. Optional for test doubles and older payloads. */
+  readonly location?: VenueLocation | null;
   readonly sets: readonly SetView[];
   /**
    * The layout's optimistic-concurrency stamp (`set_version`), echoed by the operator layout and
