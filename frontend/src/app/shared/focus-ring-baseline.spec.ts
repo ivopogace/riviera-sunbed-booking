@@ -1,4 +1,5 @@
-import { readFileSync, readdirSync } from 'node:fs';
+import { readFileSync } from 'node:fs';
+import { recursivePaths } from '../../testing/source-paths';
 import { join } from 'node:path';
 
 import { AA_LARGE, contrastRatio } from '../../testing/contrast';
@@ -49,9 +50,7 @@ const SUPPRESSION = /outline-none|outline-hidden|outline-0\b|outline:\s*none/g;
 
 /** Every `.ts`/`.html` under `src/app` except this one — inline templates make both extensions markup. */
 function allSources(): readonly string[] {
-  return readdirSync(APP_ROOT, { recursive: true, encoding: 'utf8' })
-    .map((path) => path.replaceAll('\\', '/'))
-    .filter((path) => /\.(ts|html)$/.test(path) && path !== SELF);
+  return recursivePaths(APP_ROOT).filter((path) => /\.(ts|html)$/.test(path) && path !== SELF);
 }
 
 function read(path: string): string {

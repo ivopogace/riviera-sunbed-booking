@@ -1,4 +1,5 @@
-import { readFileSync, readdirSync } from 'node:fs';
+import { readFileSync } from 'node:fs';
+import { recursivePaths } from '../../testing/source-paths';
 import { join } from 'node:path';
 
 import { AA_LARGE, composite, contrastRatio, rgbToHex } from '../../testing/contrast';
@@ -128,9 +129,7 @@ const SELF = 'shared/cta-border-token.contrast.spec.ts';
  * that a `*.spec.ts`-excluding sweep could not see.
  */
 function allSources(): readonly string[] {
-  return readdirSync(APP_ROOT, { recursive: true, encoding: 'utf8' }).filter(
-    (path) => /\.(ts|html)$/.test(path) && path.replaceAll('\\', '/') !== SELF,
-  );
+  return recursivePaths(APP_ROOT).filter((path) => /\.(ts|html)$/.test(path) && path !== SELF);
 }
 
 function read(path: string): string {
