@@ -35,7 +35,7 @@ public record VenuePhone(String e164) {
 		return new VenuePhone(compact);
 	}
 
-	/** {@link #parse}, but {@code null} for no phone: absent, or only the spaces the console trims as blank. */
+	/** {@link #parse}, but {@code null} for no phone: absent, or nothing left once spaces and punctuation go (as the console). */
 	public static VenuePhone parseOrNone(String typed) {
 		return compact(typed).isEmpty() ? null : parse(typed);
 	}
