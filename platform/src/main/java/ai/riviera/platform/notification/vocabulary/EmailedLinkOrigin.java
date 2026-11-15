@@ -42,7 +42,7 @@ public final class EmailedLinkOrigin {
 		String stripped = value.strip();
 		if (!isOrigin(stripped)) {
 			throw new IllegalArgumentException(key + " is not a valid emailed-link origin, e.g. https://app.example "
-					+ "(the rule: RIVIERA_RECOVERY_LINK_BASE_URL in docs/deploy/cd-pipeline.md): set " + variable);
+					+ "(the rule: RIVIERA_PUBLIC_ORIGIN in docs/deploy/cd-pipeline.md): set " + variable);
 		}
 		return trimTrailingSlashes(stripped);
 	}
