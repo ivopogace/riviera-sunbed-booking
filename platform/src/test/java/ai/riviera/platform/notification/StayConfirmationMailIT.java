@@ -106,7 +106,7 @@ class StayConfirmationMailIT {
 								sets.get(0).positionNo()),
 						new StayConfirmationMail.Stop(first.plusDays(2), first.plusDays(3), sets.get(1).rowLabel(),
 								sets.get(1).positionNo())),
-				2 * STRETCH_AMOUNT, "EUR", CancellationWindow.FREE, 0),
+				2 * STRETCH_AMOUNT, "EUR", CancellationWindow.FREE, 0, null),
 				mailer.lastTo(email).orElseThrow().stayConfirmation());
 		Awaitility.await().atMost(WAIT).until(() -> automaticSentAttempts(stay.stretches()) == 2L);
 	}

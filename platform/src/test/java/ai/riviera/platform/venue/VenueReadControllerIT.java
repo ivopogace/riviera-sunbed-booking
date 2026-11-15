@@ -17,9 +17,12 @@ import ai.riviera.platform.TestcontainersConfiguration;
 import ai.riviera.platform.TiraneDaytimeClock;
 
 import static org.hamcrest.Matchers.contains;
+import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.empty;
+import static org.hamcrest.Matchers.not;
 import static org.hamcrest.Matchers.nullValue;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -58,6 +61,22 @@ class VenueReadControllerIT {
 		jdbc.sql("INSERT INTO set_availability (set_id, booking_date, state) "
 				+ "VALUES (:id, :date, 'BOOKED_ONLINE')")
 				.param("id", setId).param("date", date).update();
+	}
+
+	@Test
+	void publicReadsCarryNoPhone() throws Exception {
+		jdbc.sql("UPDATE venue SET phone = '+355691234567' WHERE id = :v").param("v", MIRAMAR).update();
+		try {
+			for (String path : new String[] { "/api/venues", "/api/venues/" + MIRAMAR }) {
+				mvc.perform(get(path))
+						.andExpect(status().isOk())
+						.andExpect(content().string(not(containsString("355691234567"))))
+						.andExpect(content().string(not(containsString("\"phone\""))));
+			}
+		}
+		finally {
+			jdbc.sql("UPDATE venue SET phone = NULL WHERE id = :v").param("v", MIRAMAR).update();
+		}
 	}
 
 	@Test

@@ -890,27 +890,43 @@ const CLS = {
           (deleted)="sendReviewDelete()"
         />
 
-        @if (support.contact(); as contact) {
-          @if (hasSupport()) {
-            <section
-              class="mt-5 border-t border-riv-card-track pt-[18px]"
-              aria-labelledby="bv-support-title"
-              data-testid="bv-support"
+        @if (b.venuePhone || hasSupport()) {
+          <section
+            class="mt-5 border-t border-riv-card-track pt-[18px]"
+            aria-labelledby="bv-support-title"
+            data-testid="bv-support"
+          >
+            <h2
+              id="bv-support-title"
+              class="mx-0 mt-0 mb-1.5 text-[16px] font-bold text-riv-card-ink"
+              i18n
             >
-              <h2
-                id="bv-support-title"
-                class="mx-0 mt-0 mb-1.5 text-[16px] font-bold text-riv-card-ink"
-                i18n
-              >
-                Need help?
-              </h2>
-              <p class="mx-0 mt-0 mb-2 text-[13.5px] leading-[1.5] text-riv-card-ink-soft" i18n>
-                At the beach, ask the venue staff first. For anything else, contact Riviera with
-                your booking code.
+              Need help?
+            </h2>
+            @if (b.venuePhone; as phone) {
+              <p class="mx-0 mt-0 mb-2">
+                <a
+                  appTouchTarget
+                  class="inline-flex items-center gap-1.5 text-[14.5px] font-semibold underline underline-offset-[3px]"
+                  [href]="'tel:' + phone"
+                  data-testid="bv-venue-phone"
+                  ><span class="font-normal" i18n="Label before the venue's own phone number"
+                    >Call {{ b.venueName }}</span
+                  >
+                  {{ phone }}</a
+                >
               </p>
-              <app-support-channels [contact]="contact" />
-            </section>
-          }
+            }
+            @if (support.contact(); as contact) {
+              @if (hasSupport()) {
+                <p class="mx-0 mt-0 mb-2 text-[13.5px] leading-[1.5] text-riv-card-ink-soft" i18n>
+                  At the beach, ask the venue staff first. For anything else, contact Riviera with
+                  your booking code.
+                </p>
+                <app-support-channels [contact]="contact" />
+              }
+            }
+          </section>
         }
 
         <a appTouchTarget routerLink="/" [class]="cls.linkBack" i18n>Back to home</a>

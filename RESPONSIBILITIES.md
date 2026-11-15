@@ -206,6 +206,11 @@ close, the maximum stay, the season closure, and the commission rate over time. 
   geo-fence — a wrong pin is the operator's to move. **A null location means "not on the riviera
   map, still in the list"**, never an error or a hidden venue. It has no resource of its own: the
   owner's profile `PATCH` is a full replace, so a body with no location unpins the venue.
+- **The venue's phone reaches a guest only after booking** (#1746, the owner's call). `phone` is optional
+  ITU-T E.164 (`vocabulary.VenuePhone`, twinned by `venue_phone_check`; typed with `+` or `00`, stored as
+  `+` and digits), written on the profile's full replace, so a body without it clears it. It leaves the
+  module only on `SetBookingInfo#phone` — the code-gated booking view's help block and the guest mails —
+  never on a `VenueCatalog` or `PublicVenueIndex` read.
 - **The signed-in operator's own-venues read** (`GET /api/venues/mine`): I ask `operator::api` for
   the ownership set and name the venues — naming is my job, and `operator → venue` would cycle. It
   is `MyVenuesController`, not a `VenueAdminController` mapping: every mapping there asserts
@@ -998,7 +1003,8 @@ tag names the person, invariant #7):
   `GET /api/support-contact` in my own `adapter/in`, so no port is published. Mine because the mails are
   the only backend consumer and no domain module may depend on me. An unset channel renders nowhere,
   never a placeholder; WhatsApp is a plain `wa.me` link. The read also answers whether today, in
-  `Europe/Tirane` (#6), is in the same-day-answer season (May–October).
+  `Europe/Tirane` (#6), is in the same-day-answer season (May–October). The block opens with the venue's own
+  phone when it gave one (`SetBookingInfo#phone`, read at send time).
 
 **Not My Job:**
 - Deciding **when** to send, minting/hashing recovery tokens, building **tokenized** links → the

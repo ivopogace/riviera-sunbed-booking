@@ -30,17 +30,17 @@ class MockMailerTest {
 
 	private static final BookingConfirmationMail CONFIRMATION = new BookingConfirmationMail(
 			BOOKING_CODE, "Miramar Beach", LocalDate.of(2026, 8, 15), "A", 3, 2500, "EUR",
-			CancellationWindow.CLOSED, 0);
+			CancellationWindow.CLOSED, 0, null);
 
 	private static final BookingCancellationMail CANCELLATION = new BookingCancellationMail(
-			BOOKING_CODE, "Miramar Beach", LocalDate.of(2026, 8, 15), 2500, "EUR", RefundReason.POLICY, null);
+			BOOKING_CODE, "Miramar Beach", LocalDate.of(2026, 8, 15), 2500, "EUR", RefundReason.POLICY, null, null);
 
 	private final MockMailer mailer = new MockMailer();
 
 	private static final PaymentDueMail PAYMENT_DUE = new PaymentDueMail("CODE1234", "Vala Beach",
 			java.time.LocalDate.of(2026, 8, 1), java.time.LocalDate.of(2026, 8, 1), java.time.Instant.parse("2026-07-31T18:00:00Z"),
 			4500, "EUR", URI.create("https://riviera.example/booking/CODE1234"),
-			CancellationWindow.CLOSED, 0);
+			CancellationWindow.CLOSED, 0, null);
 
 	@Test
 	void recordsEachEmailAndReturnsTheLatestPerAddress() {

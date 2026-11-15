@@ -118,6 +118,15 @@ class VenueAdminControllerIT {
 				""".formatted(maxStayDays, expectedVersion);
 	}
 
+	/** The full-replace body with only the phone varied: a JSON string literal, or {@code null} to clear. */
+	private static String phoneBody(String phoneJson, long expectedVersion) {
+		return """
+				{"name":"Phone Club","beach":"KSAMIL","description":"edited",
+				 "bookingMode":"INSTANT","bookingCutoff":"18:00","salesClose":"16:00","amenities":[],
+				 "distanceToWaterM":null,"location":null,"phone":%s,"expectedVersion":%d}
+				""".formatted(phoneJson, expectedVersion);
+	}
+
 	/** A whole, in-range pin off Dhërmi, as the PATCH body carries it. */
 	private static final String DHERMI_JSON = "{\"latitude\":40.1468,\"longitude\":19.6482}";
 
@@ -193,6 +202,39 @@ class VenueAdminControllerIT {
 				.andExpect(status().isNoContent());
 		mvc.perform(get("/api/venues/{v}/profile", venue).cookie(operatorSession))
 				.andExpect(jsonPath("$.maxStayDays").value(Matchers.nullValue()));
+	}
+
+	@Test
+	void profilePhoneRoundTripsInE164AndClears() throws Exception {
+		long venue = createVenue("Phone Club");
+
+		mvc.perform(patch("/api/venues/{v}", venue).cookie(operatorSession).with(csrf())
+						.contentType(MediaType.APPLICATION_JSON)
+						.content(phoneBody("\"+355 69 123 4567\"", 0)))
+				.andExpect(status().isNoContent());
+		mvc.perform(get("/api/venues/{v}/profile", venue).cookie(operatorSession))
+				.andExpect(jsonPath("$.phone").value("+355691234567"));
+
+		mvc.perform(patch("/api/venues/{v}", venue).cookie(operatorSession).with(csrf())
+						.contentType(MediaType.APPLICATION_JSON)
+						.content(phoneBody("null", currentVersion(venue))))
+				.andExpect(status().isNoContent());
+		mvc.perform(get("/api/venues/{v}/profile", venue).cookie(operatorSession))
+				.andExpect(jsonPath("$.phone").value(Matchers.nullValue()));
+	}
+
+	@Test
+	void profileRejectsANationalPhone() throws Exception {
+		long venue = createVenue("National Phone Club");
+
+		mvc.perform(patch("/api/venues/{v}", venue).cookie(operatorSession).with(csrf())
+						.contentType(MediaType.APPLICATION_JSON)
+						.content(phoneBody("\"069 123 4567\"", 0)))
+				.andExpect(status().isBadRequest())
+				.andExpect(jsonPath("$.code").value("INVALID_REQUEST"));
+		mvc.perform(get("/api/venues/{v}/profile", venue).cookie(operatorSession))
+				.andExpect(jsonPath("$.phone").value(Matchers.nullValue()))
+				.andExpect(jsonPath("$.version").value(0));
 	}
 
 	@Test

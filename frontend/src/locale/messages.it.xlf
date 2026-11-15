@@ -5518,6 +5518,14 @@
           <context context-type="sourcefile">src/app/booking/booking-view.ts</context>
         </context-group>
       </trans-unit>
+      <trans-unit id="2631797875628365024" datatype="html">
+        <source>Call <x id="INTERPOLATION" equiv-text="{{ b.venueName }}"/></source>
+        <target state="translated">Chiama <x id="INTERPOLATION" equiv-text="{{ b.venueName }}"/></target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/booking/booking-view.ts</context>
+        </context-group>
+        <note priority="1" from="description">Label before the venue&apos;s own phone number</note>
+      </trans-unit>
       <trans-unit id="4120700116342506520" datatype="html">
         <source> At the beach, ask the venue staff first. For anything else, contact Riviera with your booking code. </source>
         <target state="translated"> In spiaggia, chiedi prima al personale dello stabilimento. Per tutto il resto, contatta Riviera con il tuo codice di prenotazione. </target>
@@ -10580,6 +10588,20 @@
           <context context-type="sourcefile">src/app/operator/venue-tab.html</context>
         </context-group>
       </trans-unit>
+      <trans-unit id="7332420866745966084" datatype="html">
+        <source>Venue phone</source>
+        <target state="translated">Telefono dello stabilimento</target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/operator/venue-tab.html</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="4487966890819432521" datatype="html">
+        <source>Guests see it only after booking, on their booking page and in their emails. Leave blank to show none.</source>
+        <target state="translated">Gli ospiti lo vedono solo dopo aver prenotato, nella pagina della prenotazione e nelle loro e-mail. Lascia vuoto per non mostrarne nessuno.</target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/operator/venue-tab.html</context>
+        </context-group>
+      </trans-unit>
       <trans-unit id="7814884250680147528" datatype="html">
         <source>Commission</source>
         <target state="translated">Commissione</target>
@@ -10926,6 +10948,13 @@
       <trans-unit id="2739208498133993168" datatype="html">
         <source>Enter a whole number of days from 1, or leave it blank.</source>
         <target state="translated">Inserisci un numero intero di giorni da 1 in su, oppure lascia vuoto.</target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/operator/venue-tab.ts</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="2783488230526323595" datatype="html">
+        <source>Enter the number with its country code, e.g. +355 69 123 4567, or leave it blank.</source>
+        <target state="translated">Inserisci il numero con il prefisso internazionale, ad es. +355 69 123 4567, oppure lascia vuoto.</target>
         <context-group purpose="location">
           <context context-type="sourcefile">src/app/operator/venue-tab.ts</context>
         </context-group>

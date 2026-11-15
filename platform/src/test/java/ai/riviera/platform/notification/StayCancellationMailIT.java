@@ -108,7 +108,7 @@ class StayCancellationMailIT {
 				.until(() -> count(email, SentEmail.Kind.BOOKING_CANCELLATION) == 1L);
 		assertEquals(2 * STRETCH_AMOUNT, cancelled.refundMinor(), "ten years out is the free window");
 		assertEquals(new BookingCancellationMail(stay.code(), sets.get(0).venueName(), stay.first(),
-						stay.first().plusDays(3), 2 * STRETCH_AMOUNT, "EUR", RefundReason.POLICY, null),
+						stay.first().plusDays(3), 2 * STRETCH_AMOUNT, "EUR", RefundReason.POLICY, null, null),
 				mailer.lastTo(email).orElseThrow().cancellation(),
 				"the stay's code, never a stretch's row code, with the span and the summed refund");
 	}
@@ -141,7 +141,7 @@ class StayCancellationMailIT {
 				.until(() -> count(email, SentEmail.Kind.BOOKING_CANCELLATION) == 1L);
 		assertEquals(STRETCH_AMOUNT, cancelled.refundMinor(), "the free exit refunds the live stretch in full");
 		assertEquals(new BookingCancellationMail(stay.code(), sets.get(1).venueName(), liveFirst, liveFirst.plusDays(1),
-						STRETCH_AMOUNT, "EUR", RefundReason.VENUE_CHANGE, null),
+						STRETCH_AMOUNT, "EUR", RefundReason.VENUE_CHANGE, null, null),
 				mailer.lastTo(email).orElseThrow().cancellation(),
 				"the remainder's span and first stop, never the ended stretch's, and no rebook link for a free exit");
 	}

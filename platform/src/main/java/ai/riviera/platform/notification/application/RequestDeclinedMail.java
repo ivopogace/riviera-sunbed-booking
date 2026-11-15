@@ -14,5 +14,5 @@ import ai.riviera.platform.booking.vocabulary.DeclineReason;
  * picks the one line that says why (ADR-0025); {@code bookingDate..lastDate} is the whole stay asked for.
  */
 public record RequestDeclinedMail(String bookingCode, String venueName, LocalDate bookingDate,
-		LocalDate lastDate, URI statusLink, DeclineReason reason) {
+		LocalDate lastDate, URI statusLink, DeclineReason reason, String venuePhone) {
 }

@@ -88,7 +88,7 @@ class SmtpMailer implements Mailer {
 				copy.text("confirmation.opening") + PARAGRAPH + block + PARAGRAPH + copy.text("confirmation.closing")
 						+ disclosureLine(copy, confirmation.cancellationWindowAtBirth(),
 								confirmation.lateCancelRefundBps())
-						+ supportLines(copy));
+						+ supportLines(copy, confirmation.venueName(), confirmation.venuePhone()));
 	}
 
 	@Override
@@ -109,20 +109,27 @@ class SmtpMailer implements Mailer {
 						+ copy.text("stayConfirmation.closing")
 						+ disclosureLine(copy, confirmation.cancellationWindowAtBirth(),
 								confirmation.lateCancelRefundBps())
-						+ supportLines(copy));
+						+ supportLines(copy, confirmation.venueName(), confirmation.venuePhone()));
 	}
 
-	/** The closing block of every guest booking mail: configured channels under a blank line, empty when none is. */
-	private String supportLines(MailCopy copy) {
-		if (!support.hasChannel()) {
-			return "";
+	/**
+	 * The closing block of every guest booking mail: the venue's own phone when it gave one ({@code venuePhone},
+	 * E.164 or {@code null}), then the configured channels one per line, each under a blank line; empty when neither.
+	 */
+	private String supportLines(MailCopy copy, String venueName, String venuePhone) {
+		List<String> parts = new ArrayList<>();
+		if (venuePhone != null) {
+			parts.add(copy.text("support.venuePhone", venueName, venuePhone));
 		}
-		List<Row> channels = new ArrayList<>();
-		support.email().ifPresent(email -> channels.add(new Row("support.email", email)));
-		support.whatsappNumber().ifPresent(number -> channels.add(new Row("support.whatsapp",
-				number + " (" + support.whatsappLink().orElseThrow() + ")")));
-		return PARAGRAPH + copy.text("support.heading") + "\n"
-				+ copy.block(List.of("support.email", "support.whatsapp"), channels);
+		if (support.hasChannel()) {
+			List<Row> channels = new ArrayList<>();
+			support.email().ifPresent(email -> channels.add(new Row("support.email", email)));
+			support.whatsappNumber().ifPresent(number -> channels.add(new Row("support.whatsapp",
+					number + " (" + support.whatsappLink().orElseThrow() + ")")));
+			parts.add(copy.text("support.heading") + "\n"
+					+ copy.block(List.of("support.email", "support.whatsapp"), channels));
+		}
+		return parts.stream().map(part -> PARAGRAPH + part).collect(Collectors.joining());
 	}
 
 	@Override
@@ -143,7 +150,7 @@ class SmtpMailer implements Mailer {
 		String block = copy.block(List.of("row.booking", ROW_VENUE, ROW_DATE, ROW_DAYS, ROW_REFUND), rows);
 		send(toEmail, copy.text("cancellation.subject", headerSafe(cancellation.venueName())),
 				opening(copy, cancellation) + PARAGRAPH + block + PARAGRAPH + after + rebookLine(copy, cancellation)
-						+ supportLines(copy));
+						+ supportLines(copy, cancellation.venueName(), cancellation.venuePhone()));
 	}
 
 	/**
@@ -193,7 +200,7 @@ class SmtpMailer implements Mailer {
 						+ copy.text("paymentDue.payHere") + PARAGRAPH + paymentDue.payLink() + PARAGRAPH
 						+ copy.text("paymentDue.closing")
 						+ disclosureLine(copy, paymentDue.cancellationWindowAtBirth(), paymentDue.lateCancelRefundBps())
-						+ supportLines(copy));
+						+ supportLines(copy, paymentDue.venueName(), paymentDue.venuePhone()));
 	}
 
 	/**
@@ -227,7 +234,7 @@ class SmtpMailer implements Mailer {
 						distance(copy, moved.rowsAway(), moved.positionsAway()))
 						+ "\n" + copy.text(oneDay ? "moved.unchangedDate" : "moved.unchangedDays") + PARAGRAPH
 						+ block + PARAGRAPH + freeExitLine(copy, moved) + PARAGRAPH + moved.bookingLink()
-						+ supportLines(copy));
+						+ supportLines(copy, moved.venueName(), moved.venuePhone()));
 	}
 
 	@Override
@@ -248,7 +255,7 @@ class SmtpMailer implements Mailer {
 		send(toEmail, copy.text("moveReminder.subject", headerSafe(reminder.venueName())),
 				opening + "\n" + copy.text("moveReminder.staff") + PARAGRAPH + block + PARAGRAPH
 						+ copy.text("moveReminder.yourStay") + PARAGRAPH + reminder.bookingLink()
-						+ supportLines(copy));
+						+ supportLines(copy, reminder.venueName(), reminder.venuePhone()));
 	}
 
 	@Override
@@ -261,7 +268,8 @@ class SmtpMailer implements Mailer {
 				new Row(ROW_REFUND, copy.amount(refund.refundMinor(), refund.currency()))));
 		send(toEmail, copy.text("dayRefund.subject", headerSafe(refund.venueName())),
 				dayRefundOpening(copy, refund) + PARAGRAPH + block + PARAGRAPH + copy.text("refund.onItsWay")
-						+ PARAGRAPH + refund.bookingLink() + supportLines(copy));
+						+ PARAGRAPH + refund.bookingLink()
+						+ supportLines(copy, refund.venueName(), refund.venuePhone()));
 	}
 
 	/**
@@ -307,7 +315,8 @@ class SmtpMailer implements Mailer {
 		send(toEmail, copy.text("declined.subject", headerSafe(declined.venueName())),
 				declineLine(copy, declined) + PARAGRAPH + bookingBlock(copy, declined.bookingCode(), declined.venueName(),
 						copy.daysRow(declined.bookingDate(), declined.lastDate()))
-						+ PARAGRAPH + copy.text("request.seeHere") + PARAGRAPH + declined.statusLink() + supportLines(copy));
+						+ PARAGRAPH + copy.text("request.seeHere") + PARAGRAPH + declined.statusLink()
+						+ supportLines(copy, declined.venueName(), declined.venuePhone()));
 	}
 
 	/** The one line that says why the request ended (ADR-0025). */
@@ -326,7 +335,8 @@ class SmtpMailer implements Mailer {
 		send(toEmail, copy.text("expired.subject", headerSafe(expired.venueName())),
 				copy.text("expired.opening") + PARAGRAPH + bookingBlock(copy, expired.bookingCode(), expired.venueName(),
 						copy.daysRow(expired.bookingDate(), expired.lastDate()))
-						+ PARAGRAPH + copy.text("request.seeHere") + PARAGRAPH + expired.statusLink() + supportLines(copy));
+						+ PARAGRAPH + copy.text("request.seeHere") + PARAGRAPH + expired.statusLink()
+						+ supportLines(copy, expired.venueName(), expired.venuePhone()));
 	}
 
 	private static String bookingBlock(MailCopy copy, String bookingCode, String venueName, Row days) {

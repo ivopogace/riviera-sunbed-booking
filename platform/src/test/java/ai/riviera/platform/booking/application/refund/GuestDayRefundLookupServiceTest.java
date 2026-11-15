@@ -54,7 +54,7 @@ class GuestDayRefundLookupServiceTest {
 	private static SetBookingInfo info(long setId, String venueName) {
 		return new SetBookingInfo(new SetId(setId), new VenueId(1L), venueName, "A", 1, Pool.ONLINE,
 				new MoneyView(4500L, "EUR"), LocalTime.of(10, 0), LocalTime.of(18, 0), BookingMode.INSTANT,
-				SeasonClosure.open(), null);
+				SeasonClosure.open(), null, null);
 	}
 
 	@Test

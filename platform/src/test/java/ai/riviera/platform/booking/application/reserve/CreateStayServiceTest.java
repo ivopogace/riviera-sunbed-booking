@@ -56,7 +56,7 @@ class CreateStayServiceTest {
 	private static SetBookingInfo set(long setId, long venueId) {
 		return new SetBookingInfo(new SetId(setId), new VenueId(venueId), "Miramar", "Front row", 2, Pool.ONLINE,
 				new MoneyView(4500L, "EUR"), LocalTime.of(18, 0), LocalTime.of(16, 0), BookingMode.INSTANT,
-				SeasonClosure.open(), null);
+				SeasonClosure.open(), null, null);
 	}
 
 	private CreateStayService service(CheckoutPort checkout) {

@@ -56,12 +56,12 @@ class BookingDayRefundMailListenerTest {
 	@Test
 	void mailsTheResolvedContactTheDayAndTheRefundWithTheLink() {
 		when(facts.resolve(BOOKING, SET)).thenReturn(new BookingMailFacts.Resolved("guest@example.com", "STAYCODE",
-				"Vala Beach", "A", 3, SiteLocale.EN));
+				"Vala Beach", "A", 3, SiteLocale.EN, null));
 
 		listener.on(EVENT);
 
 		verify(mails).sendDayRefund("guest@example.com", SiteLocale.EN,
-				new DayRefundMail("STAYCODE", "Vala Beach", DAY, 3000L, "EUR", RefundReason.WEATHER, false, LINK));
+				new DayRefundMail("STAYCODE", "Vala Beach", DAY, 3000L, "EUR", RefundReason.WEATHER, false, LINK, null));
 		assertThat(meters.find(ObservabilityMetrics.MAIL_DAY_REFUND_ABANDONED).counters()).isEmpty();
 	}
 
@@ -69,16 +69,16 @@ class BookingDayRefundMailListenerTest {
 	@Test
 	void carriesTheReasonAndTheReleasedMarkIntoTheMail() {
 		when(facts.resolve(BOOKING, SET)).thenReturn(new BookingMailFacts.Resolved("guest@example.com", "STAYCODE",
-				"Vala Beach", "A", 3, SiteLocale.EN));
+				"Vala Beach", "A", 3, SiteLocale.EN, null));
 
 		listener.on(new BookingDayRefunded(BOOKING, new VenueId(3L), SET, DAY, 3000L, "EUR", null, RefundReason.VENUE,
 				true));
 		listener.on(new BookingDayRefunded(BOOKING, new VenueId(3L), SET, DAY, 3000L, "EUR", null, null, false));
 
 		verify(mails).sendDayRefund("guest@example.com", SiteLocale.EN,
-				new DayRefundMail("STAYCODE", "Vala Beach", DAY, 3000L, "EUR", RefundReason.VENUE, true, LINK));
+				new DayRefundMail("STAYCODE", "Vala Beach", DAY, 3000L, "EUR", RefundReason.VENUE, true, LINK, null));
 		verify(mails).sendDayRefund("guest@example.com", SiteLocale.EN,
-				new DayRefundMail("STAYCODE", "Vala Beach", DAY, 3000L, "EUR", RefundReason.WEATHER, false, LINK));
+				new DayRefundMail("STAYCODE", "Vala Beach", DAY, 3000L, "EUR", RefundReason.WEATHER, false, LINK, null));
 	}
 
 	@Test
@@ -95,7 +95,7 @@ class BookingDayRefundMailListenerTest {
 	@Test
 	void aTransportFailurePropagatesSoTheRegistryRetries() {
 		when(facts.resolve(BOOKING, SET)).thenReturn(new BookingMailFacts.Resolved("guest@example.com", "STAYCODE",
-				"Vala Beach", "A", 3, SiteLocale.EN));
+				"Vala Beach", "A", 3, SiteLocale.EN, null));
 		doThrow(new IllegalStateException("smtp down")).when(mails).sendDayRefund(org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.any(),
 				org.mockito.ArgumentMatchers.any());
 

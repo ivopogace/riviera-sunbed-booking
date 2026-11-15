@@ -52,7 +52,7 @@ class JdbcSetBookingFacts implements SetBookingFacts {
 			SELECT sp.id AS set_id, sp.venue_id, v.name AS venue_name, sp.row_label,
 			       sp.position_no, sp.pool, sp.price_minor, sp.price_currency, v.booking_cutoff,
 			       v.sales_close, v.booking_mode, v.closed_at, v.reopen_on, v.advance_sales,
-			       v.max_stay_days
+			       v.max_stay_days, v.phone
 			""";
 
 	/** Exempt by name: the booking-info read still answers for a retired set with the spot its guests were told. */
@@ -203,7 +203,7 @@ class JdbcSetBookingFacts implements SetBookingFacts {
 						? SeasonClosure.open()
 						: SeasonClosure.closed(rs.getObject("reopen_on", LocalDate.class),
 								rs.getBoolean("advance_sales")),
-				rs.getObject("max_stay_days", Integer.class));
+				rs.getObject("max_stay_days", Integer.class), JdbcVenues.phoneOf(rs.getString("phone")));
 	}
 
 	@Override

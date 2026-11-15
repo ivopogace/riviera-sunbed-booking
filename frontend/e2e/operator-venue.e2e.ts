@@ -264,6 +264,29 @@ test('sets and clears the maximum stay through the full-replace PATCH', async ({
   await expectNoSeriousAxeViolations(page, 'venue tab with a maximum-stay error');
 });
 
+test('sets and clears the venue phone through the full-replace PATCH (#1746)', async ({ page }) => {
+  const { patches } = await mockVenue(page);
+  await page.goto('/operator/1');
+  await signInAndOpenVenue(page);
+
+  await expect(page.getByTestId('venue-phone')).toHaveValue('');
+  await page.getByTestId('venue-phone').fill('069 123 4567');
+  await page.getByTestId('venue-phone').blur();
+  await expect(page.getByTestId('venue-phone-error')).toBeVisible();
+  await expect(page.getByTestId('venue-save')).toBeDisabled();
+  await expectNoSeriousAxeViolations(page, 'venue tab with a phone error');
+
+  await page.getByTestId('venue-phone').fill('+355 69 123 4567');
+  await page.getByTestId('venue-save').click();
+  await expect(page.getByTestId('venue-saved')).toBeVisible();
+  expect((patches[0].postDataJSON() as { phone?: string | null }).phone).toBe('+355 69 123 4567');
+
+  await page.getByTestId('venue-phone').fill('');
+  await page.getByTestId('venue-save').click();
+  await expect(page.getByTestId('venue-saved')).toBeVisible();
+  expect((patches[1].postDataJSON() as { phone?: string | null }).phone).toBeNull();
+});
+
 test('shows the not-owner message when the save is 403', async ({ page }) => {
   await mockVenue(page, true);
   await page.goto('/operator/1');

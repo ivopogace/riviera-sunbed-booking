@@ -13,13 +13,13 @@ import java.time.LocalDate;
  */
 public record BookingMovedMail(String bookingCode, String venueName, LocalDate bookingDate, LocalDate lastDate,
 		String fromRowLabel, int fromPositionNo, String toRowLabel, int toPositionNo, int rowsAway,
-		int positionsAway, Instant freeExitUntil, boolean stretch, URI bookingLink) {
+		int positionsAway, Instant freeExitUntil, boolean stretch, URI bookingLink, String venuePhone) {
 
 	/** A one-day lone booking: its last day is its first. */
 	public BookingMovedMail(String bookingCode, String venueName, LocalDate bookingDate, String fromRowLabel,
 			int fromPositionNo, String toRowLabel, int toPositionNo, int rowsAway, int positionsAway,
-			Instant freeExitUntil, URI bookingLink) {
+			Instant freeExitUntil, URI bookingLink, String venuePhone) {
 		this(bookingCode, venueName, bookingDate, bookingDate, fromRowLabel, fromPositionNo, toRowLabel,
-				toPositionNo, rowsAway, positionsAway, freeExitUntil, false, bookingLink);
+				toPositionNo, rowsAway, positionsAway, freeExitUntil, false, bookingLink, venuePhone);
 	}
 }
