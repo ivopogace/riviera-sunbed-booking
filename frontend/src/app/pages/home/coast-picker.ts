@@ -62,7 +62,7 @@ const COAST_ASPECT = 4.51;
 const RIBBON_PAD_PX = 28;
 /**
  * The ribbon zooms out past the map's floor of 7, where the coast is 500 px tall: a sheet that
- * fits a 760 px window leaves the ribbon less than that, and the south end (Sarandë) fell off it.
+ * fits a 760 px window leaves the ribbon less than that, and the coast must still fit end to end.
  */
 const RIBBON_OPTIONS: MapEngineOptions = { ...RIVIERA_MAP_OPTIONS, minZoom: 6 };
 /** What the desktop sheet keeps clear below it, and the least it shrinks to under a low anchor. */
@@ -410,7 +410,7 @@ export class CoastPicker {
 
   /**
    * The sheet opens under its anchor, wherever the header and filters put it, so its height is the
-   * room left below; a fixed allowance under-counted it and the coast's south end hung off-screen.
+   * room measured below it: a fixed allowance cannot know where the anchor sits.
    */
   protected measureRoom(): void {
     const panel = this.panel().nativeElement;
