@@ -1,4 +1,5 @@
-import { readFileSync, readdirSync } from 'node:fs';
+import { readFileSync } from 'node:fs';
+import { recursivePaths } from '../../testing/source-paths';
 import { join } from 'node:path';
 
 import { baseBlock, declarationsOf } from '../../testing/stylesheet-tokens';
@@ -43,7 +44,7 @@ function unwrapped(value: string): string {
 
 /** App sources that could paint one. Templates are inline `.ts` for much of the console. */
 function appSources(): readonly string[] {
-  return readdirSync(APP, { recursive: true, encoding: 'utf8' }).filter(
+  return recursivePaths(APP).filter(
     (path) => /\.(ts|html)$/.test(path) && !path.endsWith('.spec.ts'),
   );
 }

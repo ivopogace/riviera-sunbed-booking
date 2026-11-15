@@ -1,4 +1,5 @@
-import { readFileSync, readdirSync } from 'node:fs';
+import { readFileSync } from 'node:fs';
+import { recursivePaths } from '../../testing/source-paths';
 import { join } from 'node:path';
 
 import { AA_NORMAL, contrastRatio, rgbToHex } from '../../testing/contrast';
@@ -56,7 +57,7 @@ const FAMILY = {
 const APP = join(process.cwd(), 'src/app');
 
 function componentSources(): readonly string[] {
-  return readdirSync(APP, { recursive: true, encoding: 'utf8' }).filter(
+  return recursivePaths(APP).filter(
     (path) => /\.(ts|html)$/.test(path) && !path.endsWith('.spec.ts'),
   );
 }

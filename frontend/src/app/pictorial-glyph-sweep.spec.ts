@@ -1,4 +1,5 @@
-import { readFileSync, readdirSync } from 'node:fs';
+import { readFileSync } from 'node:fs';
+import { recursivePaths } from '../testing/source-paths';
 import { join } from 'node:path';
 
 /**
@@ -45,7 +46,7 @@ const RESIDUE: readonly { file: string; line: RegExp }[] = [
 ];
 
 function sources(): readonly string[] {
-  return readdirSync(APP, { recursive: true, encoding: 'utf8' })
+  return recursivePaths(APP)
     .filter((path) => /\.(ts|html)$/.test(path) && !path.endsWith('.spec.ts'))
     .map((path) => path.split('\\').join('/'));
 }

@@ -1,4 +1,5 @@
-import { readFileSync, readdirSync } from 'node:fs';
+import { readFileSync } from 'node:fs';
+import { recursivePaths } from '../../testing/source-paths';
 import { join } from 'node:path';
 
 import { AA_NORMAL, contrastRatio, rgbToHex } from '../../testing/contrast';
@@ -89,7 +90,7 @@ const CHIP_TINTS = [/border-riv-console-negative-ink\/30/i, /bg-riv-console-nega
  */
 function consoleFilesPaintingTheLiteral(): readonly string[] {
   const root = join(process.cwd(), 'src/app/operator');
-  return readdirSync(root, { recursive: true, encoding: 'utf8' })
+  return recursivePaths(root)
     .filter((path) => /\.(ts|html)$/.test(path) && !path.endsWith('.spec.ts'))
     .filter((path) => LITERAL_ROLE.test(readFileSync(join(root, path), 'utf8')));
 }
