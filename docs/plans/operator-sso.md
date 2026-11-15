@@ -117,9 +117,9 @@ D-2/D-3/D-4/D-5/D-8.
 
 ## Execution status
 
-**Stage pointer:** implement (phase 3)
+**Stage pointer:** PR — CI on the docs push, then merge origin/main, ready for review
 
-**Next action:** frontend: `SsoButtons` operator side, sign-in-methods section, failure notice, e2e.
+**Next action:** check CI, merge `origin/main`, mark ready, run the review gate at high effort.
 
 Decisions taken while implementing: the mock IdP asserts one Google identity for every audience (one account may
 be a tourist and an operator, so the cross-audience ACs run on the same identity); a link callback on a session the
@@ -129,9 +129,9 @@ redirect; `SsoFlow`/`OperatorSsoCallback` are built by the controllers, not bean
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — V87 + operator port | ✅ | e02d0395 |
-| 1 — state record + nonce + issuer | ✅ | (this push) |
-| 2 — operator endpoints | ✅ | (this push) |
-| 3 — frontend | | |
-| 4 — docs | | |
+| 1 — state record + nonce + issuer | ✅ | 7e16e7d0 |
+| 2 — operator endpoints | ✅ | 7e16e7d0 |
+| 3 — frontend | ✅ | f56de44e |
+| 4 — docs | ✅ | (this push) |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
