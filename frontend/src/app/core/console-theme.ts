@@ -18,8 +18,16 @@ export interface ConsoleThemeOption {
 }
 
 export const CONSOLE_THEME_OPTIONS: readonly ConsoleThemeOption[] = [
-  { id: 'porcelain', name: 'Porcelain', swatch: 'linear-gradient(135deg, #ffffff, #2bb8d4)' },
-  { id: 'dark', name: 'Dark', swatch: 'linear-gradient(135deg, #3b4a5f, #0f172a)' },
+  {
+    id: 'porcelain',
+    name: $localize`Porcelain`,
+    swatch: 'linear-gradient(135deg, #ffffff, #2bb8d4)',
+  },
+  {
+    id: 'dark',
+    name: $localize`:Colour theme name:Dark`,
+    swatch: 'linear-gradient(135deg, #3b4a5f, #0f172a)',
+  },
 ];
 
 const STORAGE_KEY = 'riviera-console-theme';

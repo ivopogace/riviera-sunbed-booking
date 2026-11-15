@@ -41,4 +41,16 @@ describe('display formats', () => {
     expect(deadline('2026-07-14T18:00:00Z')).toBe('mar 14 lug, 20:00');
     expect(deadline('2026-11-14T18:00:00Z')).toBe('sab 14 nov, 19:00');
   });
+
+  it('formats the console shapes alike through Intl and the CLDR fallback', () => {
+    const at = new Date('2026-07-01T12:05:00Z');
+    const both = (shape: Parameters<typeof displayDateFormat>[0]) => [
+      displayDateFormat(shape, 'Europe/Tirane', 'en-IE')(at),
+      displayDateFormat(shape, 'Europe/Tirane', 'it', false)(at),
+    ];
+    expect(both('day-month-year')).toEqual(['1 Jul 2026', '1 lug 2026']);
+    expect(both('day-month-time')).toEqual(['1 Jul, 14:05', '1 lug, 14:05']);
+    expect(both('day-month-year-time')).toEqual(['1 Jul 2026, 14:05', '1 lug 2026, 14:05']);
+    expect(both('time')).toEqual(['14:05', '14:05']);
+  });
 });

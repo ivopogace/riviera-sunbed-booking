@@ -71,8 +71,8 @@ compiled per locale), or a runtime translation library with an in-page switch.
 - Translated so far: the tourist shell (menus, footer), Discover, the venue map, the booking dialog,
   payment, the confirmations, the booking view, `/for-venues`, `/help`, the not-found and
   page-load-failed pages, the sign-in card, the password and verification pages, Your account and My
-  bookings. Still English: the operator console, `ApiProblem` messages and the legal pages (later
-  slices; legal text is #101's).
+  bookings, the operator and admin consoles (#1769) and the `ApiProblem` copy (#1771). Still English:
+  the legal pages (legal text is #101's).
 - Transactional mails follow the guest's language (#1770): the SPA sends its build locale with a booking
   or stay create, which `booking` stores, and with the account requests; the server renders
   `notification`'s per-locale message bundles and links under the locale's subpath. Still no cookie.

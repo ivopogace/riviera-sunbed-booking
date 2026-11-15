@@ -43,10 +43,10 @@ interface DayChoice {
       data-testid="admin-day-refund-card"
       aria-labelledby="admin-day-refund-heading"
     >
-      <h2 id="admin-day-refund-heading" class="text-[16px] font-semibold text-riv-card-ink">
+      <h2 id="admin-day-refund-heading" class="text-[16px] font-semibold text-riv-card-ink" i18n>
         Refund a guest's day
       </h2>
-      <p id="admin-day-refund-intro" class="mt-2 text-[15px] text-riv-card-ink">
+      <p id="admin-day-refund-intro" class="mt-2 text-[15px] text-riv-card-ink" i18n>
         Look up a tourist's bookings by the email address they booked with, and refund one day of a
         stay for the venue's own reason. The day's own rate is refunded; a day not yet past is freed
         for the venue to sell again.
@@ -58,7 +58,7 @@ interface DayChoice {
         novalidate
       >
         <label class="flex flex-col gap-1">
-          <span class="text-[13.5px] font-semibold text-riv-card-ink">Email address</span>
+          <span class="text-[13.5px] font-semibold text-riv-card-ink" i18n>Email address</span>
           <input
             appTouchTarget
             type="email"
@@ -78,7 +78,7 @@ interface DayChoice {
           [appBusy]="searching()"
           data-testid="admin-day-refund-lookup"
         >
-          {{ searching() ? 'Looking up…' : 'Look up' }}
+          {{ searching() ? lookingUpLabel : lookUpLabel }}
         </button>
       </form>
 
@@ -93,7 +93,7 @@ interface DayChoice {
       }
 
       @if (searched() && bookings().length === 0) {
-        <p class="mt-4 text-[15px] text-riv-card-ink" data-testid="admin-day-refund-empty">
+        <p class="mt-4 text-[15px] text-riv-card-ink" data-testid="admin-day-refund-empty" i18n>
           No bookings for that address.
         </p>
       }
@@ -132,10 +132,11 @@ interface DayChoice {
                           class="inline-flex items-center rounded-full border border-riv-card-border bg-riv-console-inset/85 px-[14px] py-[7px] text-[13px] font-semibold text-riv-accent-ink [transition:background_0.15s_ease] hover:bg-riv-console-inset aria-disabled:cursor-not-allowed aria-disabled:opacity-60"
                           [appBusy]="refunding()"
                           (click)="askToRefund(booking, day)"
-                          [attr.aria-label]="'Refund this day — ' + formatDate(day.date)"
+                          [attr.aria-label]="refundDayLabel(day.date)"
                           [attr.data-testid]="
                             'admin-day-refund-open-' + booking.bookingId + '-' + day.date
                           "
+                          i18n
                         >
                           Refund this day
                         </button>
@@ -152,12 +153,16 @@ interface DayChoice {
                         <app-confirm-with-reason
                           class="mt-1"
                           label="Confirm refunding this day"
+                          i18n-label
                           [prompt]="refundPrompt(booking, day.date)"
                           [promptTestId]="'admin-day-refund-confirm-prompt-' + booking.bookingId"
                           [reasonId]="'admin-day-refund-reason-' + booking.bookingId"
                           reasonPlaceholder="e.g. pool closed for repair — guest complained"
+                          i18n-reasonPlaceholder
                           confirmLabel="Refund the day"
+                          i18n-confirmLabel
                           cancelLabel="Keep it"
+                          i18n-cancelLabel
                           [panelTestId]="'admin-day-refund-confirm-panel-' + booking.bookingId"
                           [confirmTestId]="'admin-day-refund-confirm-' + booking.bookingId"
                           [cancelTestId]="'admin-day-refund-cancel-' + booking.bookingId"
@@ -208,6 +213,9 @@ export class AdminDayRefund {
   protected readonly reason = signal('');
   protected readonly refunding = signal(false);
   protected readonly notice = signal('');
+
+  protected readonly lookUpLabel = $localize`Look up`;
+  protected readonly lookingUpLabel = $localize`Looking up…`;
 
   protected async onLookup(): Promise<void> {
     const email = this.model().email.trim();
@@ -308,20 +316,25 @@ export class AdminDayRefund {
   }
 
   protected refundPrompt(booking: GuestBookingView, date: string): string {
-    return `Refund ${formatCivilDate(date)} of the booking at ${booking.venueName}? The day's own rate goes back to the guest, a day not yet past is freed for the venue to sell again, and a one-day booking is cancelled whole. This cannot be undone.`;
+    const day = formatCivilDate(date);
+    return $localize`Refund ${day}:date: of the booking at ${booking.venueName}:venue:? The day's own rate goes back to the guest, a day not yet past is freed for the venue to sell again, and a one-day booking is cancelled whole. This cannot be undone.`;
+  }
+
+  protected refundDayLabel(date: string): string {
+    return $localize`Refund this day — ${formatCivilDate(date)}:date:`;
   }
 
   /** Why a booking offers no day: a cancelled one did happen and has nothing left; any other never happened. */
   protected notRefundableLabel(booking: GuestBookingView): string {
     return booking.status === 'CANCELLED'
-      ? 'Cancelled, so there is no day left to refund.'
-      : 'This booking never happened, so there is no day to refund.';
+      ? $localize`Cancelled, so there is no day left to refund.`
+      : $localize`This booking never happened, so there is no day to refund.`;
   }
 
   protected spanLabel(booking: GuestBookingView): string {
     return booking.firstDate === booking.lastDate
       ? formatCivilDate(booking.firstDate)
-      : `${formatCivilDate(booking.firstDate)} – ${formatCivilDate(booking.lastDate)}`;
+      : $localize`:date range|First to last day of a booking:${formatCivilDate(booking.firstDate)}:first: – ${formatCivilDate(booking.lastDate)}:last:`;
   }
 
   protected statusLabel(booking: GuestBookingView): string {
@@ -339,13 +352,13 @@ export class AdminDayRefund {
   protected dayStateLabel(day: GuestBookingDayView): string {
     switch (day.state) {
       case 'ATTENDED':
-        return 'Checked in';
+        return $localize`:booking day state|An attended day:Checked in`;
       case 'REFUNDED':
-        return 'Refunded, set still held';
+        return $localize`:booking day state|A refunded day whose set stays held:Refunded, set still held`;
       case 'RELEASED':
-        return 'Refunded and released';
+        return $localize`:booking day state|A refunded day whose set is free to sell again:Refunded and released`;
       case 'OPEN':
-        return 'Open';
+        return $localize`:booking day state|A day still open to refund:Open`;
     }
   }
 }
@@ -354,32 +367,32 @@ export class AdminDayRefund {
 function successNotice(result: AdminDayRefundResultView, dateLabel: string): string {
   const amount = formatMoney({ minorUnits: result.refundMinor, currency: result.currency });
   if (result.kind === 'BOOKING_CANCELLED') {
-    return `Booking cancelled and ${amount} refunded in full — the set is free again on ${dateLabel}.`;
+    return $localize`Booking cancelled and ${amount}:amount: refunded in full — the set is free again on ${dateLabel}:date:.`;
   }
   return result.released
-    ? `${dateLabel} refunded (${amount}) — the set is free again that day; the stay goes on.`
-    : `${dateLabel} refunded (${amount}); the stay goes on.`;
+    ? $localize`${dateLabel}:date: refunded (${amount}:amount:) — the set is free again that day; the stay goes on.`
+    : $localize`${dateLabel}:date: refunded (${amount}:amount:); the stay goes on.`;
 }
 
 /** A rejected lookup: a malformed address is named, anything else is generic. */
 function lookupFailureNotice(error: unknown): string {
   return error instanceof HttpErrorResponse && problemCodeOf(error) === 'INVALID_REQUEST'
-    ? 'Enter a full email address.'
-    : 'Something went wrong looking that up.';
+    ? $localize`Enter a full email address.`
+    : $localize`Something went wrong looking that up.`;
 }
 
 /** Map a day-refund failure to its admin-facing notice. */
 function failureNotice(reason: AdminDayRefundErrorCode): string {
   switch (reason) {
     case 'DAY_ATTENDED':
-      return 'The guest checked in that day — an attended day is not refunded.';
+      return $localize`The guest checked in that day — an attended day is not refunded.`;
     case 'DAY_ALREADY_REFUNDED':
-      return 'That day was already refunded.';
+      return $localize`That day was already refunded.`;
     case 'BOOKING_NOT_FOUND':
-      return 'That booking did not happen, or no longer covers this day.';
+      return $localize`That booking did not happen, or no longer covers this day.`;
     case 'UNAUTHORIZED':
-      return 'Your session expired — sign in again.';
+      return $localize`Your session expired — sign in again.`;
     case 'UNKNOWN':
-      return 'Could not refund the day. Nothing was refunded — try again.';
+      return $localize`Could not refund the day. Nothing was refunded — try again.`;
   }
 }

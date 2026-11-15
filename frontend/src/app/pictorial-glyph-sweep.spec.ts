@@ -41,7 +41,7 @@ const RETIRED: Readonly<Record<string, string>> = {
 /** A retired codepoint allowed where it stands, matched on its trimmed source line. */
 const RESIDUE: readonly { file: string; line: RegExp }[] = [
   // The grid-size sign in a sentence ("Generated a 2×3 grid") — the multiplication sign, not a cross.
-  { file: 'operator/layout-editor.ts', line: /Generated a \$\{rows\}×\$\{cols\} grid/ },
+  { file: 'operator/layout-editor.ts', line: /Generated a \$\{rows\}:rows:×\$\{cols\}:cols: grid/ },
 ];
 
 function sources(): readonly string[] {

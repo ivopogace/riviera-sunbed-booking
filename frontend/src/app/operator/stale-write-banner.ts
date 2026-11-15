@@ -31,7 +31,11 @@ import { TouchTarget } from '../shared/touch-target';
       [appBusy]="reloading()"
       (click)="reload.emit()"
     >
-      {{ reloading() ? 'Reloading…' : 'Reload latest' }}
+      @if (reloading()) {
+        <ng-container i18n>Reloading…</ng-container>
+      } @else {
+        <ng-container i18n>Reload latest</ng-container>
+      }
     </button>
     <ng-content select="[bannerFooter]" />
   `,

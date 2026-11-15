@@ -4,8 +4,10 @@
   data-testid="requests-tab"
 >
   <header class="mb-1.5">
-    <h1 class="text-[19px] font-bold tracking-[-0.01em] text-riv-card-ink">Booking requests</h1>
-    <p class="mt-1 max-w-[520px] text-[13px] leading-[1.5] text-riv-card-ink-soft">
+    <h1 class="text-[19px] font-bold tracking-[-0.01em] text-riv-card-ink" i18n>
+      Booking requests
+    </h1>
+    <p class="mt-1 max-w-[520px] text-[13px] leading-[1.5] text-riv-card-ink-soft" i18n>
       Guests requested these sets on your Request-to-Book venue — a stay is one request, accepted or
       declined whole. Accept to send them to payment, or decline. Several guests may request the
       same set; accepting one declines the others. Requests expire if not answered in time.
@@ -27,7 +29,9 @@
   <app-load-announcer
     [loading]="!loaded()"
     [ready]="loaded() && !loadError()"
+    i18n-loadingLabel
     loadingLabel="Loading requests…"
+    i18n-readyLabel
     readyLabel="Requests loaded."
   />
 
@@ -86,6 +90,7 @@
       class="mr-auto mt-6 max-w-md rounded-[16px] border border-riv-alert-tint/30 bg-riv-console-inset/70 px-5 py-4 text-center text-[13px] font-semibold text-riv-error-ink"
       role="alert"
       data-testid="requests-load-error"
+      i18n
     >
       Sorry — we couldn’t load this venue’s requests. Please try again.
     </p>
@@ -99,8 +104,8 @@
         aria-hidden="true"
         ><app-check-icon
       /></span>
-      <h2 class="text-[18px] font-bold text-riv-card-ink">All caught up</h2>
-      <p class="mt-1.5 text-[13.5px] text-riv-card-ink-soft">
+      <h2 class="text-[18px] font-bold text-riv-card-ink" i18n>All caught up</h2>
+      <p class="mt-1.5 text-[13.5px] text-riv-card-ink-soft" i18n>
         No pending requests right now. New ones land here with a badge on the tab.
       </p>
     </div>
@@ -115,15 +120,23 @@
                 <span class="text-[16.5px] font-bold text-riv-card-ink">{{ row.guest }}</span>
                 <div class="mt-2.5 flex flex-wrap gap-3.5 text-[13px] text-riv-card-ink-soft">
                   @if (row.stops.length === 0) {
-                    <span
-                      >Set <strong class="text-riv-card-ink">{{ row.setLabel }}</strong> ·
-                      {{ row.tierName }}</span
+                    <span i18n="sunbed set|A request card's set and tier, e.g. Set A · 3 · Standard"
+                      >Set
+                      <strong class="text-riv-card-ink">{{
+                        row.setLabel // i18n(ph="set")
+                      }}</strong>
+                      ·
+                      {{
+                        row.tierName // i18n(ph="tier")
+                      }}</span
                     >
                   }
                   <span>{{ row.dateLabel }}</span>
-                  <span
+                  <span i18n
                     >Price
-                    <strong class="text-riv-console-accent-ink">{{ row.priceStr }}</strong></span
+                    <strong class="text-riv-console-accent-ink">{{
+                      row.priceStr // i18n(ph="price")
+                    }}</strong></span
                   >
                 </div>
                 @if (row.stops.length > 0) {
@@ -133,14 +146,30 @@
                     data-testid="request-stops"
                   >
                     @for (stop of row.stops; track $index) {
-                      <li>
-                        {{ $index + 1 }}. Set
-                        <strong class="text-riv-card-ink">{{ stop.setLabel }}</strong> ·
-                        {{ stop.tierName }} · {{ stop.dateLabel }}
+                      <li
+                        i18n="
+                          sunbed set|One numbered stop of a stay request, e.g. 1. Set A · 3 ·
+                          Standard · 15–17 Jun 2026
+                        "
+                      >
+                        {{
+                          $index + 1  // i18n(ph="number")
+                        }}. Set
+                        <strong class="text-riv-card-ink">{{
+                          stop.setLabel // i18n(ph="set")
+                        }}</strong>
+                        ·
+                        {{
+                          stop.tierName // i18n(ph="tier")
+                        }}
+                        ·
+                        {{
+                          stop.dateLabel // i18n(ph="dates")
+                        }}
                       </li>
                     }
                   </ol>
-                  <p class="mt-1 text-[12.5px] text-riv-card-ink-soft">
+                  <p class="mt-1 text-[12.5px] text-riv-card-ink-soft" i18n>
                     One request for the whole stay — accept or decline it whole.
                   </p>
                 }
@@ -149,9 +178,25 @@
                     class="competing-hint mt-2 text-[12.5px] font-semibold text-riv-error-ink"
                     data-testid="competing-hint"
                   >
-                    Also requested by {{ row.competing }} other
-                    {{ row.competing === 1 ? 'guest' : 'guests' }}
-                    {{ row.isStay ? 'for these days' : 'for this day' }} — accepting declines them.
+                    @if (row.isStay) {
+                      <ng-container i18n
+                        >Also requested by
+                        {row.competing, plural,
+                          =1 {1 other guest}
+                          other {{{ row.competing }} other guests}
+                        }
+                        for these days — accepting declines them.</ng-container
+                      >
+                    } @else {
+                      <ng-container i18n
+                        >Also requested by
+                        {row.competing, plural,
+                          =1 {1 other guest}
+                          other {{{ row.competing }} other guests}
+                        }
+                        for this day — accepting declines them.</ng-container
+                      >
+                    }
                   </p>
                 }
               </div>
@@ -165,8 +210,11 @@
                   </span>
                 }
                 @if (!isExpired(row.key)) {
-                  <span class="mt-1.5 block text-[11.5px] text-riv-card-ink-faint"
-                    >Respond by {{ row.respondByStr }}</span
+                  <span class="mt-1.5 block text-[11.5px] text-riv-card-ink-faint" i18n
+                    >Respond by
+                    {{
+                      row.respondByStr // i18n(ph="deadline")
+                    }}</span
                   >
                 }
               </div>
@@ -182,8 +230,10 @@
                   [attr.data-testid]="'expired-race-' + row.key"
                 >
                   <app-alert-icon class="[&_svg]:inline [&_svg]:size-[14px] [&_svg]:align-[-2px]" />
-                  This request just expired — our system swept it before you responded. The guest
-                  has been told to book again.
+                  <ng-container i18n
+                    >This request just expired — our system swept it before you responded. The guest
+                    has been told to book again.</ng-container
+                  >
                 </output>
                 <button
                   type="button"
@@ -191,6 +241,7 @@
                   class="rounded-[12px] border border-riv-card-border bg-riv-console-inset/70 px-4 py-2.5 text-[13px] font-semibold text-riv-card-ink [transition:background_0.15s_ease] hover:bg-riv-console-inset motion-reduce:transition-none"
                   data-testid="dismiss-expired"
                   (click)="onDismissExpired(row)"
+                  i18n
                 >
                   Dismiss
                 </button>
@@ -200,8 +251,12 @@
                 class="mt-3.5 border-t border-riv-card-border pt-3.5"
                 data-testid="decline-confirm"
               >
-                <p class="mb-2.5 text-[13.5px] font-semibold text-riv-card-ink">
-                  Decline this request? {{ row.guest }} will be notified and won’t be charged.
+                <p class="mb-2.5 text-[13.5px] font-semibold text-riv-card-ink" i18n>
+                  Decline this request?
+                  {{
+                    row.guest // i18n(ph="guest")
+                  }}
+                  will be notified and won’t be charged.
                 </p>
                 <div class="flex flex-wrap gap-2.5">
                   <button
@@ -212,6 +267,7 @@
                     [attr.aria-label]="confirmDeclineLabel(row)"
                     [attr.data-testid]="'request-confirm-decline-' + row.key"
                     (click)="onConfirmDecline(row)"
+                    i18n
                   >
                     Confirm decline
                   </button>
@@ -221,6 +277,7 @@
                     class="rounded-[13px] border border-riv-card-border bg-riv-console-inset/60 px-5 py-[11px] text-[14px] font-semibold text-riv-card-ink aria-disabled:opacity-60"
                     [appBusy]="isDeciding(row.key)"
                     (click)="onCancelDecline(row)"
+                    i18n="Button that backs out of declining a booking request"
                   >
                     Keep it
                   </button>
@@ -235,6 +292,7 @@
                   [appBusy]="isDeciding(row.key)"
                   [attr.aria-label]="acceptLabel(row)"
                   (click)="onAccept(row)"
+                  i18n
                 >
                   Accept — send to payment
                 </button>
@@ -246,6 +304,7 @@
                   [attr.aria-label]="declineLabel(row)"
                   [attr.data-testid]="'request-decline-' + row.key"
                   (click)="onDecline(row)"
+                  i18n="Button that declines a booking request"
                 >
                   Decline
                 </button>

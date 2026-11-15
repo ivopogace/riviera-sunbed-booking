@@ -70,54 +70,57 @@ export interface ConsoleRouteData {
   readonly console: ConsoleSection;
 }
 
+const GROUP_TODAY = $localize`:console group|Heading of the everyday tabs in the operator console:Today`;
+const GROUP_SET_UP = $localize`:console group|Heading of the set-up tabs in the operator console:Set-up`;
+
 /** The six venue-console sections, Today first and grouped — what a running venue opens every
  *  day, then set-up, then money (the console-nav spike's grill, answer 7); only Requests carries
  *  the live badge. The child path under `/operator/:venueId`. */
 const VENUE_TABS: readonly ConsoleDestination[] = [
   {
     path: 'daily',
-    label: 'Daily view',
-    short: 'Daily',
+    label: $localize`Daily view`,
+    short: $localize`:phone rail|Short phone-rail label for the Daily view tab:Daily`,
     glyph: DailyGlyph,
-    hint: 'Arrivals, walk-ins, sales close',
-    group: 'Today',
+    hint: $localize`Arrivals, walk-ins, sales close`,
+    group: GROUP_TODAY,
   },
   {
     path: 'requests',
-    label: 'Requests',
+    label: $localize`:console tab|Operator console tab for booking requests:Requests`,
     glyph: RequestsGlyph,
-    hint: 'Accept or decline booking requests',
-    group: 'Today',
+    hint: $localize`Accept or decline booking requests`,
+    group: GROUP_TODAY,
     badge: true,
   },
   {
     path: 'beach-map',
-    label: 'Beach map',
+    label: $localize`Beach map`,
     glyph: BeachMapGlyph,
-    hint: 'Lay out sets, pools and aisles',
-    group: 'Set-up',
+    hint: $localize`Lay out sets, pools and aisles`,
+    group: GROUP_SET_UP,
   },
   {
     path: 'pricing',
-    label: 'Pricing',
+    label: $localize`Pricing`,
     glyph: PricingGlyph,
-    hint: 'Per-row prices',
-    group: 'Set-up',
+    hint: $localize`Per-row prices`,
+    group: GROUP_SET_UP,
   },
   {
     path: 'venue',
-    label: 'Venue & commodities',
-    short: 'Venue',
+    label: $localize`Venue & commodities`,
+    short: $localize`:phone rail|Short phone-rail label for the Venue & commodities tab:Venue`,
     glyph: VenueGlyph,
-    hint: 'Details, amenities, photos',
-    group: 'Set-up',
+    hint: $localize`Details, amenities, photos`,
+    group: GROUP_SET_UP,
   },
   {
     path: 'payouts',
-    label: 'Payouts',
+    label: $localize`:console tab|Operator console tab for the payout ledger:Payouts`,
     glyph: PayoutsGlyph,
-    hint: 'Ledger and statements',
-    group: 'Money',
+    hint: $localize`Ledger and statements`,
+    group: $localize`:console group|Heading of the money tabs in the operator console:Money`,
   },
 ];
 
@@ -126,7 +129,11 @@ const VENUE_TABS: readonly ConsoleDestination[] = [
 const PHONE_PRIMARIES = 3;
 
 /** The cross-console row's hint, in the More sheet and the palette alike. */
-const ADMIN_CONSOLE_HINT = 'Operators, outboxes, moderation, records';
+const ADMIN_CONSOLE_HINT = $localize`Operators, outboxes, moderation, records`;
+
+const GROUP_OPERATOR = $localize`:console group|Heading of the cross-console operator row:Operator`;
+const GROUP_PLATFORM = $localize`:console group|Heading of the cross-console admin row:Platform`;
+const ADMIN_CONSOLE_LABEL = $localize`Admin console`;
 
 /** The account page every console route can jump to. */
 const PASSWORD_PATH = '/account/operator-password';
@@ -234,7 +241,11 @@ const CLS = {
           <a appTouchTarget routerLink="/operator" [class]="cls.brand" data-testid="oc-brand"
             >Riviera</a
           >
-          <nav class="flex min-w-0 items-stretch gap-3 sm:gap-5" aria-label="Sections">
+          <nav
+            class="flex min-w-0 items-stretch gap-3 sm:gap-5"
+            i18n-aria-label
+            aria-label="Sections"
+          >
             @if (operator.signedIn()) {
               <div
                 [class]="cls.venueSlot"
@@ -255,6 +266,7 @@ const CLS = {
                 [class]="cls.adminSlot"
                 [attr.aria-current]="section() === 'admin' ? 'page' : null"
                 data-testid="oc-section-admin"
+                i18n="console header|Header link to the admin console"
                 >Admin</a
               >
             }
@@ -267,7 +279,7 @@ const CLS = {
               #searchButton
               type="button"
               [class]="cls.search"
-              [attr.aria-label]="'Jump to a section or venue (' + chord + ')'"
+              [attr.aria-label]="searchLabel"
               [attr.aria-expanded]="palette()?.open() ?? false"
               data-testid="oc-search"
               (click)="palette()?.toggle(searchButton)"
@@ -286,6 +298,7 @@ const CLS = {
                 routerLink="/account/sign-in"
                 [queryParams]="signInParams()"
                 data-testid="oc-signin"
+                i18n
                 >Sign in</a
               >
             }
@@ -300,6 +313,7 @@ const CLS = {
           appTabRail
           [class]="cls.rail"
           data-testid="oc-tabs"
+          i18n-aria-label
           aria-label="Operator console sections"
         >
           @for (tab of tabs; track tab.path; let index = $index) {
@@ -326,7 +340,7 @@ const CLS = {
       </div>
     } @else if (section() === 'admin' && adminGate()) {
       <div [class]="cls.railBox">
-        <app-admin-console-tabs label="Admin console sections" />
+        <app-admin-console-tabs [label]="adminTabsLabel" />
       </div>
     }
 
@@ -364,7 +378,7 @@ const CLS = {
         >
           <ng-container *ngComponentOutlet="nav.moreCurrent?.glyph ?? moreGlyph" />
           <span>{{
-            nav.moreCurrent ? (nav.moreCurrent.short ?? nav.moreCurrent.label) : 'More'
+            nav.moreCurrent ? (nav.moreCurrent.short ?? nav.moreCurrent.label) : moreLabel
           }}</span>
         </button>
       </nav>
@@ -375,7 +389,12 @@ const CLS = {
           (click)="dismissSheet()"
           aria-hidden="true"
         ></div>
-        <nav [class]="cls.sheet" aria-label="More (phone)" data-testid="oc-more-sheet">
+        <nav
+          [class]="cls.sheet"
+          i18n-aria-label
+          aria-label="More (phone)"
+          data-testid="oc-more-sheet"
+        >
           @for (group of nav.groups; track group.name) {
             <p [class]="cls.groupLabel">{{ group.name }}</p>
             @for (item of group.items; track item.path) {
@@ -430,6 +449,9 @@ export class ConsoleShell {
   protected readonly tabs = VENUE_TABS;
   protected readonly match = TAB_RAIL_MATCH;
   protected readonly moreGlyph = MoreGlyph;
+  protected readonly moreLabel = $localize`:phone rail|Phone-rail button opening the overflow sheet:More`;
+  protected readonly adminTabsLabel = $localize`Admin console sections`;
+  protected readonly searchLabel = $localize`Jump to a section or venue (${this.chord}:chord:)`;
   protected readonly requestsCount = this.requests.count;
   /** The section row is translated away below `sm`. */
   protected readonly hidden = signal(false);
@@ -469,7 +491,7 @@ export class ConsoleShell {
       const id = this.venueId();
       const tab = this.tabPath();
       return this.phoneNavOf(
-        'Operator console sections (phone)',
+        $localize`Operator console sections (phone)`,
         VENUE_TABS.map((t) => ({
           ...t,
           link: ['/operator', id!, t.path],
@@ -477,14 +499,14 @@ export class ConsoleShell {
         })),
         this.operator.isAdmin()
           ? {
-              name: 'Platform',
+              name: GROUP_PLATFORM,
               items: [
                 {
                   path: '/admin',
-                  label: 'Admin console',
+                  label: ADMIN_CONSOLE_LABEL,
                   glyph: AdminGlyph,
                   hint: ADMIN_CONSOLE_HINT,
-                  group: 'Platform',
+                  group: GROUP_PLATFORM,
                   link: ['/admin'],
                   current: false,
                 },
@@ -496,17 +518,17 @@ export class ConsoleShell {
     if (this.section() === 'admin' && this.adminGate()) {
       const path = this.urlPath();
       return this.phoneNavOf(
-        'Admin console sections (phone)',
+        $localize`Admin console sections (phone)`,
         ADMIN_CONSOLE_TABS.map((t) => ({ ...t, link: [t.path], current: t.path === path })),
         {
-          name: 'Operator',
+          name: GROUP_OPERATOR,
           items: [
             {
               path: '/operator',
-              label: 'Your venues',
+              label: $localize`Your venues`,
               glyph: VenuesGlyph,
-              hint: 'Back to the venue console',
-              group: 'Operator',
+              hint: $localize`Back to the venue console`,
+              group: GROUP_OPERATOR,
               link: ['/operator'],
               current: false,
             },
@@ -536,8 +558,8 @@ export class ConsoleShell {
         key: `v:${venue.id}`,
         glyph: VenuesGlyph,
         label: venue.name,
-        hint: `Open ${beachLabel(venue.beach)}`,
-        group: 'Venue',
+        hint: $localize`:palette hint|Palette hint to open a venue on its beach:Open ${beachLabel(venue.beach)}:beach:`,
+        group: $localize`:palette group|Palette group heading for the operator's venues:Venue`,
         link: ['/operator', venue.id, keep],
         current: this.venueCurrent() && venue.id === this.venueId(),
       })),
@@ -546,9 +568,9 @@ export class ConsoleShell {
       rows.push({
         key: 'x:admin',
         glyph: AdminGlyph,
-        label: 'Admin console',
+        label: ADMIN_CONSOLE_LABEL,
         hint: ADMIN_CONSOLE_HINT,
-        group: 'Platform',
+        group: GROUP_PLATFORM,
         link: ['/admin'],
         current: false,
       });
@@ -556,9 +578,9 @@ export class ConsoleShell {
     rows.push({
       key: 'x:password',
       glyph: PrivacyGlyph,
-      label: 'Change password',
-      hint: 'Your operator account',
-      group: 'Account',
+      label: $localize`Change password`,
+      hint: $localize`Your operator account`,
+      group: $localize`:palette group|Palette group heading for account pages:Account`,
       link: [PASSWORD_PATH],
       current: this.urlPath() === PASSWORD_PATH,
     });

@@ -27,16 +27,19 @@ import { AdminAuditEntryView } from './admin.model';
   imports: [CardGlass],
   template: `
     @if (loading()) {
-      <p class="mt-4 text-[15px] text-riv-ink-soft" data-testid="admin-audit-loading">Loading…</p>
+      <p class="mt-4 text-[15px] text-riv-ink-soft" data-testid="admin-audit-loading" i18n>
+        Loading…
+      </p>
     } @else if (loadError()) {
       <p class="mt-4 text-[15px] text-riv-error-ink" role="alert" data-testid="admin-audit-error">
-        Something went wrong loading the audit trail.
+        <ng-container i18n>Something went wrong loading the audit trail.</ng-container>
         <button
           type="button"
           data-touch-exempt="control inside a sentence (WCAG 2.5.5 inline exception)"
           class="font-semibold underline"
           data-testid="admin-audit-retry"
           (click)="retry()"
+          i18n
         >
           Retry
         </button>
@@ -49,12 +52,12 @@ import { AdminAuditEntryView } from './admin.model';
         aria-labelledby="admin-audit-heading"
         tabindex="-1"
       >
-        <h2 id="admin-audit-heading" class="text-[16px] font-semibold text-riv-card-ink">
+        <h2 id="admin-audit-heading" class="text-[16px] font-semibold text-riv-card-ink" i18n>
           Latest admin actions
         </h2>
 
         @if (entries().length === 0) {
-          <p class="mt-2 text-[15px] text-riv-card-ink" data-testid="admin-audit-empty">
+          <p class="mt-2 text-[15px] text-riv-card-ink" data-testid="admin-audit-empty" i18n>
             No admin actions have been recorded yet.
           </p>
         } @else {
@@ -67,11 +70,29 @@ import { AdminAuditEntryView } from './admin.model';
             >
               <thead>
                 <tr class="text-[13px] text-riv-card-ink-soft">
-                  <th scope="col" class="py-1.5 pr-4 font-semibold">When</th>
-                  <th scope="col" class="py-1.5 pr-4 font-semibold">Who</th>
-                  <th scope="col" class="py-1.5 pr-4 font-semibold">Action</th>
-                  <th scope="col" class="py-1.5 pr-4 font-semibold">Result</th>
-                  <th scope="col" class="py-1.5 font-semibold">Reason</th>
+                  <th scope="col" class="py-1.5 pr-4 font-semibold" i18n>When</th>
+                  <th scope="col" class="py-1.5 pr-4 font-semibold" i18n>Who</th>
+                  <th
+                    scope="col"
+                    class="py-1.5 pr-4 font-semibold"
+                    i18n="audit column|Header of the column naming the admin request made"
+                  >
+                    Action
+                  </th>
+                  <th
+                    scope="col"
+                    class="py-1.5 pr-4 font-semibold"
+                    i18n="audit column|Header of the column with the HTTP status of the action"
+                  >
+                    Result
+                  </th>
+                  <th
+                    scope="col"
+                    class="py-1.5 font-semibold"
+                    i18n="audit column|Header of the column with the admin's stated grounds"
+                  >
+                    Reason
+                  </th>
                 </tr>
               </thead>
               <tbody>

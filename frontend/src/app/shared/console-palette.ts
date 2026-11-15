@@ -102,6 +102,7 @@ const CLS = {
         [class]="cls.dialog"
         role="dialog"
         aria-modal="true"
+        i18n-aria-label="palette|Accessible name of the jump-to dialog"
         aria-label="Go to"
         data-testid="oc-palette"
         (keydown.tab)="trapFocus($event, false)"
@@ -113,7 +114,9 @@ const CLS = {
           type="search"
           [class]="cls.field"
           placeholder="Jump to a section or venue…"
+          i18n-placeholder
           aria-label="Jump to"
+          i18n-aria-label="palette|Accessible name of the jump-to search field"
           autocomplete="off"
           data-testid="oc-palette-search"
           [value]="query()"
@@ -121,7 +124,7 @@ const CLS = {
           (keydown.enter)="go()"
         />
         <output [class]="hits().length > 0 ? 'sr-only' : cls.empty" data-testid="oc-palette-empty">
-          {{ hits().length > 0 ? '' : 'Nothing matches.' }}
+          {{ hits().length > 0 ? '' : nothingMatches }}
         </output>
         @if (hits().length > 0) {
           <ul [class]="cls.list" role="list">
@@ -173,6 +176,7 @@ export class ConsolePalette {
   /** Whether the dialog is up — the host's trigger binds `aria-expanded` to it. */
   readonly open = this.openState.asReadonly();
   protected readonly cls = CLS;
+  protected readonly nothingMatches = $localize`Nothing matches.`;
   protected readonly query = signal('');
 
   protected readonly hits = computed(() => {

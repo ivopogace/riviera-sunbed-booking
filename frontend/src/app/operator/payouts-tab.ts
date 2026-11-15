@@ -3,7 +3,8 @@ import { Component, computed, effect, inject, signal, untracked } from '@angular
 import { ActivatedRoute } from '@angular/router';
 
 import { OperatorAuth, SESSION_EXPIRED_MESSAGE } from '../core/operator-auth';
-import { plural } from '../shared/plural';
+import { pluralOf } from '../shared/plural';
+import { displayDateFormat } from '../shared/display-format';
 import { CardGlass } from '../shared/card-glass';
 import { ConfirmPanel } from '../shared/confirm-panel';
 import { ConsolePageColumn } from '../shared/console-page-box';
@@ -156,10 +157,8 @@ export class PayoutsTab {
   );
 
   /** "N bookings, M refunds · paid by bank transfer" — the hero's sub-line. */
-  protected readonly countsLabel = computed(
-    () =>
-      `${plural(this.accrualCount(), 'booking')}, ${plural(this.reversalCount(), 'refund')}` +
-      ` · paid by bank transfer`,
+  protected readonly countsLabel = computed(() =>
+    countsLine(this.accrualCount(), this.reversalCount()),
   );
 
   /** Display-only period sums (signed: only an accrual adds, everything else deducts) — presentation,
@@ -179,6 +178,11 @@ export class PayoutsTab {
 
   /** The selected weather-refund date as a human label (e.g. `Sat 5 Jul 2026`) — for the confirm copy. */
   protected readonly selectedDateLabel = computed(() => formatCivilDate(this.selectedDate()));
+
+  /** The weather-refund confirm's title and accessible name, naming the day. */
+  protected readonly weatherConfirmTitle = computed(
+    () => $localize`Weather refund for ${this.selectedDateLabel()}:date:?`,
+  );
 
   /** Change the washed-out date; reset any open confirm + notice so they never apply to the wrong day. */
   protected onDateChange(event: Event): void {
@@ -324,13 +328,13 @@ function signedSum(
 /** A deduction's short human label — the fee names itself, a day's reversal its day, a reversal its reason. */
 function reasonLabel(entry: PayoutLedgerEntryView): string {
   if (entry.type === 'FEE') {
-    return 'Venue change fee';
+    return $localize`Venue change fee`;
   }
   if (entry.type === 'DAY_REVERSAL') {
     const reason = refundReasonLabel(entry.reason ?? 'WEATHER');
     return entry.serviceDate
       ? `${reason} · ${formatCivilDate(entry.serviceDate)}`
-      : `${reason} · one day`;
+      : $localize`:Ledger chip for a one-day refund with no named day:${reason}:reason: · one day`;
   }
   return refundReasonLabel(entry.reason);
 }
@@ -339,17 +343,17 @@ function reasonLabel(entry: PayoutLedgerEntryView): string {
 function refundReasonLabel(reason: RefundReasonCode | null): string {
   switch (reason) {
     case 'WEATHER':
-      return 'Weather';
+      return $localize`:refund reason|Ledger chip for a weather refund:Weather`;
     case 'VENUE':
-      return 'Venue refund';
+      return $localize`Venue refund`;
     case 'POLICY':
-      return 'Policy';
+      return $localize`:refund reason|Ledger chip for a cancellation-policy refund:Policy`;
     case 'CONFLICT':
-      return 'Conflict';
+      return $localize`:refund reason|Ledger chip for a booking-conflict refund:Conflict`;
     case 'VENUE_CHANGE':
-      return 'Venue change';
+      return $localize`:refund reason|Ledger chip for a venue-change refund:Venue change`;
     default:
-      return 'Refund';
+      return $localize`:refund reason|Ledger chip for a refund with no stated reason:Refund`;
   }
 }
 
@@ -360,38 +364,68 @@ function refundReasonLabel(reason: RefundReasonCode | null): string {
 function weatherSuccessNotice(result: WeatherRefundResult, dateLabel: string): string {
   const parts: string[] = [];
   if (result.refundedCount > 0) {
+    const n = result.refundedCount;
+    const amount = money(result.totalRefundedMinor, result.currency);
     parts.push(
-      `${plural(result.refundedCount, 'one-day booking')} cancelled,` +
-        ` ${money(result.totalRefundedMinor, result.currency)} returned`,
+      pluralOf(
+        n,
+        $localize`${n}:count: one-day booking cancelled, ${amount}:amount: returned`,
+        $localize`${n}:count: one-day bookings cancelled, ${amount}:amount: returned`,
+      ),
     );
   }
   if (result.dayRefundCount > 0) {
+    const n = result.dayRefundCount;
+    const amount = money(result.dayRefundedMinor, result.currency);
     parts.push(
-      `the day refunded on ${plural(result.dayRefundCount, 'stay')},` +
-        ` ${money(result.dayRefundedMinor, result.currency)} returned`,
+      pluralOf(
+        n,
+        $localize`the day refunded on ${n}:count: stay, ${amount}:amount: returned`,
+        $localize`the day refunded on ${n}:count: stays, ${amount}:amount: returned`,
+      ),
     );
   }
+  const details = parts.join('; ');
   const refunded =
     parts.length === 0
-      ? `No bookings to refund for ${dateLabel} — nothing refunded.`
-      : `Weather refund issued for ${dateLabel} — ${parts.join('; ')}.`;
-  if (result.notRefundedCount === 0) {
+      ? $localize`No bookings to refund for ${dateLabel}:date: — nothing refunded.`
+      : $localize`Weather refund issued for ${dateLabel}:date: — ${details}:details:.`;
+  const kept = result.notRefundedCount;
+  if (kept === 0) {
     return refunded;
   }
   const ids = result.notRefundedBookingIds.map((id) => `#${id}`).join(', ');
-  const verb = result.notRefundedCount === 1 ? 'had checked in and was' : 'had checked in and were';
-  return `${refunded} ${plural(result.notRefundedCount, 'booking')} ${verb} not refunded (${ids}).`;
+  return pluralOf(
+    kept,
+    $localize`${refunded}:refunded: ${kept}:count: booking had checked in and was not refunded (${ids}:ids:).`,
+    $localize`${refunded}:refunded: ${kept}:count: bookings had checked in and were not refunded (${ids}:ids:).`,
+  );
+}
+
+/** The hero's sub-line: "N bookings, M refunds · paid by bank transfer". */
+function countsLine(bookings: number, refunds: number): string {
+  const bookingsPhrase = pluralOf(
+    bookings,
+    $localize`${bookings}:count: booking`,
+    $localize`${bookings}:count: bookings`,
+  );
+  const refundsPhrase = pluralOf(
+    refunds,
+    $localize`${refunds}:count: refund`,
+    $localize`${refunds}:count: refunds`,
+  );
+  return $localize`${bookingsPhrase}:bookings:, ${refundsPhrase}:refunds: · paid by bank transfer`;
 }
 
 /** Map a weather-refund failure to its operator-facing notice (no nested ternaries). */
 function weatherFailureNotice(reason: PayoutErrorCode): string {
   switch (reason) {
     case 'NOT_VENUE_OWNER':
-      return 'You don’t manage this venue, so you can’t issue its refunds.';
+      return $localize`You don’t manage this venue, so you can’t issue its refunds.`;
     case 'UNAUTHORIZED':
       return SESSION_EXPIRED_MESSAGE;
     default:
-      return 'Could not issue the weather refund. Please try again.';
+      return $localize`Could not issue the weather refund. Please try again.`;
   }
 }
 
@@ -399,21 +433,18 @@ function weatherFailureNotice(reason: PayoutErrorCode): string {
 function loadFailureNotice(reason: PayoutErrorCode): string {
   switch (reason) {
     case 'NOT_VENUE_OWNER':
-      return 'You don’t manage this venue, so you can’t see its payouts.';
+      return $localize`You don’t manage this venue, so you can’t see its payouts.`;
     case 'UNAUTHORIZED':
       return SESSION_EXPIRED_MESSAGE;
     default:
-      return 'Sorry — we couldn’t load this venue’s payouts. Please try again.';
+      return $localize`Sorry — we couldn’t load this venue’s payouts. Please try again.`;
   }
 }
+
+const LEDGER_DATE = displayDateFormat('day-month-year', 'Europe/Tirane');
 
 /** Render a UTC instant (a ledger entry's `createdAt`) as a Europe/Tirane date, e.g. `1 Jul 2026`
  *  (invariant #6). Pure given the ISO string; single consumer, kept local (rule of three not met). */
 function ledgerDateLabel(iso: string): string {
-  return new Intl.DateTimeFormat('en-IE', {
-    timeZone: 'Europe/Tirane',
-    day: 'numeric',
-    month: 'short',
-    year: 'numeric',
-  }).format(new Date(iso));
+  return LEDGER_DATE(new Date(iso));
 }

@@ -52,7 +52,7 @@ export class OutboxLever {
       this.notice.set(this.describe(result));
       await this.reconcile();
     } catch {
-      this.notice.set('Something went wrong — nothing was resubmitted.');
+      this.notice.set($localize`Something went wrong — nothing was resubmitted.`);
     } finally {
       this.busy.set(false);
     }
@@ -60,16 +60,16 @@ export class OutboxLever {
 
   /** Both refusals are ordinary answers; only a rejected request is an error. */
   private describe(result: ResubmissionResultView): string {
-    const wait = `Try again in ${result.cooldownRemainingSeconds}s.`;
+    const seconds = result.cooldownRemainingSeconds;
     switch (result.outcome) {
       case 'RESUBMITTED':
         return result.resubmitted === 0
-          ? 'Nothing was outstanding, so nothing was resubmitted.'
+          ? $localize`Nothing was outstanding, so nothing was resubmitted.`
           : this.describeSuccess(result.resubmitted);
       case 'ALREADY_RUNNING':
-        return `Another resubmission is already running. ${wait}`;
+        return $localize`Another resubmission is already running. Try again in ${seconds}:seconds:s.`;
       case 'COOLING_DOWN':
-        return `A resubmission ran recently, so this one was skipped. ${wait}`;
+        return $localize`A resubmission ran recently, so this one was skipped. Try again in ${seconds}:seconds:s.`;
     }
   }
 

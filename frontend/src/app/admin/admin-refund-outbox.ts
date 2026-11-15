@@ -22,9 +22,16 @@ import { TouchTarget } from '../shared/touch-target';
   imports: [CardGlass, BusyAction, TouchTarget, AdminDayRefund],
   template: `
     @if (lever.loading()) {
-      <p class="mt-4 text-[15px] text-riv-ink-soft" data-testid="admin-refunds-loading">Loading…</p>
+      <p class="mt-4 text-[15px] text-riv-ink-soft" data-testid="admin-refunds-loading" i18n>
+        Loading…
+      </p>
     } @else if (lever.loadError()) {
-      <p class="mt-4 text-[15px] text-riv-error-ink" role="alert" data-testid="admin-refunds-error">
+      <p
+        class="mt-4 text-[15px] text-riv-error-ink"
+        role="alert"
+        data-testid="admin-refunds-error"
+        i18n
+      >
         Something went wrong loading the refund outbox.
         <button
           type="button"
@@ -42,20 +49,26 @@ import { TouchTarget } from '../shared/touch-target';
         data-testid="admin-refunds-card"
         aria-labelledby="admin-refunds-heading"
       >
-        <h2 id="admin-refunds-heading" class="text-[16px] font-semibold text-riv-card-ink">
+        <h2 id="admin-refunds-heading" class="text-[16px] font-semibold text-riv-card-ink" i18n>
           Refunds still owed
         </h2>
 
         @if (lever.status(); as outbox) {
           @if (outbox.outstanding === 0) {
-            <p class="mt-2 text-[15px] text-riv-card-ink" data-testid="admin-refunds-empty">
+            <p class="mt-2 text-[15px] text-riv-card-ink" data-testid="admin-refunds-empty" i18n>
               Nothing outstanding — no refund is waiting to be retried.
             </p>
           } @else {
-            <p class="mt-2 text-[15px] text-riv-card-ink" data-testid="admin-refunds-outstanding">
-              <strong>{{ outbox.outstanding }}</strong>
-              {{ outbox.outstanding === 1 ? 'refund is' : 'refunds are' }} still owed. Resubmitting
-              hands them back to be retried; it never touches confirmations or payouts.
+            <p
+              class="mt-2 text-[15px] text-riv-card-ink"
+              data-testid="admin-refunds-outstanding"
+              i18n
+            >
+              {outbox.outstanding, plural,
+                =1 {<strong>1</strong> refund is still owed.}
+                other {<strong>{{ outbox.outstanding }}</strong> refunds are still owed.}
+              }
+              Resubmitting hands them back to be retried; it never touches confirmations or payouts.
             </p>
           }
         }
@@ -68,7 +81,11 @@ import { TouchTarget } from '../shared/touch-target';
           (click)="lever.resubmit()"
           data-testid="admin-refunds-resubmit"
         >
-          {{ lever.busy() ? 'Resubmitting…' : 'Resubmit' }}
+          @if (lever.busy()) {
+            <ng-container i18n>Resubmitting…</ng-container>
+          } @else {
+            <ng-container i18n>Resubmit</ng-container>
+          }
         </button>
       </div>
 
@@ -89,7 +106,7 @@ export class AdminRefundOutbox {
 
   protected readonly lever = new OutboxLever(
     inject(AdminRefundOutboxService),
-    (resubmitted) => `Handed ${resubmitted} back to be retried.`,
+    (resubmitted) => $localize`Handed ${resubmitted}:count: back to be retried.`,
   );
 
   private loaded = false;

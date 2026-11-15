@@ -8,8 +8,8 @@
     savedRowMessage()
   }}</output>
   <section appCardGlass class="rounded-[24px] px-[22px] py-5" data-testid="pricing-card">
-    <h2 class="text-[16px] font-bold text-riv-card-ink">Row pricing</h2>
-    <p class="mt-1 mb-3.5 text-[12.5px] leading-[1.5] text-riv-card-ink-soft">
+    <h2 class="text-[16px] font-bold text-riv-card-ink" i18n>Row pricing</h2>
+    <p class="mt-1 mb-3.5 text-[12.5px] leading-[1.5] text-riv-card-ink-soft" i18n>
       Full-day price per set (2 loungers + umbrella), charged in EUR. Applies to every set in the
       row.
     </p>
@@ -30,7 +30,7 @@
             <span class="flex-auto text-[13px] text-riv-card-ink-soft"
               >{{ row.desc }}
               @if (row.mixed) {
-                <strong class="text-riv-card-ink"> · mixed prices</strong>
+                <strong class="text-riv-card-ink" i18n> · mixed prices</strong>
               }
             </span>
           </div>
@@ -42,10 +42,10 @@
               step="0.5"
               [value]="refusedRows().get(row.label) ?? row.priceEur"
               [readonly]="saving()"
-              [attr.placeholder]="row.mixed ? 'Set one price' : null"
+              [attr.placeholder]="row.mixed ? mixedPlaceholder : null"
               (change)="onPriceChange(row, $any($event.target))"
               [attr.data-testid]="'pricing-input-' + row.label"
-              [attr.aria-label]="'Full-day price for ' + rowName(row.label) + ', in euros'"
+              [attr.aria-label]="priceAriaLabel(row.label)"
               appTouchTarget
               class="w-[88px] rounded-[11px] border border-riv-card-border bg-riv-console-inset/60 px-2.5 py-2 text-right text-[16px] font-semibold text-riv-card-ink read-only:opacity-60"
               #priceControl
@@ -58,6 +58,7 @@
             class="py-1 text-right text-[11.5px] font-semibold text-riv-console-accent-ink"
             aria-hidden="true"
             [attr.data-testid]="'pricing-saved-' + row.label"
+            i18n
           >
             Saved. The public beach map reflects the new price.
           </p>
@@ -82,15 +83,17 @@
           reloadTestId="pricing-stale-reload"
           (reload)="reloadAfterStale()"
         >
-          These prices were changed somewhere else since you opened this tab. Your edit was not
-          applied — reload the latest prices and try again.
+          <ng-container i18n>
+            These prices were changed somewhere else since you opened this tab. Your edit was not
+            applied — reload the latest prices and try again.</ng-container
+          >
         </app-stale-write-banner>
       }
 
-      <p class="mt-3 text-[12px] text-riv-card-ink-soft">
+      <p class="mt-3 text-[12px] text-riv-card-ink-soft" i18n>
         Projected full-day take if every online set sells:
         <strong class="text-riv-console-accent-ink" data-testid="pricing-projected">{{
-          projected()
+          projected() // i18n(ph="amount")
         }}</strong>
       </p>
     } @else if (loadError()) {
@@ -98,6 +101,7 @@
         class="px-3 py-10 text-center text-[13px] text-riv-error-ink"
         role="alert"
         data-testid="pricing-load-error"
+        i18n
       >
         We couldn’t load this venue’s pricing. Refresh the page to try again.
       </p>
@@ -105,6 +109,7 @@
       <p
         class="px-3 py-10 text-center text-[13px] text-riv-card-ink-soft"
         data-testid="pricing-empty"
+        i18n
       >
         No sets yet. Generate a layout in the Beach map tab, then set row prices here.
       </p>

@@ -54,8 +54,13 @@ const CLS = {
       aria-labelledby="oppw-title"
     >
       <div [class]="cls.card" appCardGlass>
-        <h1 id="oppw-title" [class]="cls.title">Change your password</h1>
-        <p [class]="cls.intro" data-testid="oppw-username">Signed in as {{ auth.username() }}.</p>
+        <h1 id="oppw-title" [class]="cls.title" i18n>Change your password</h1>
+        <p [class]="cls.intro" data-testid="oppw-username" i18n>
+          Signed in as
+          {{
+            auth.username()  // i18n(ph="username")
+          }}.
+        </p>
 
         <!-- Present but empty: a live region inserted together with its text is often not announced. -->
         <output [class]="cls.notice" tabindex="-1" data-testid="oppw-notice">
@@ -64,7 +69,7 @@ const CLS = {
 
         <form (submit)="onSubmit(); $event.preventDefault()" novalidate>
           <label [class]="cls.field">
-            <span [class]="cls.label">Current password</span>
+            <span [class]="cls.label" i18n>Current password</span>
             <input
               appTouchTarget
               [class]="cls.input"
@@ -76,7 +81,7 @@ const CLS = {
           </label>
 
           <label [class]="cls.field">
-            <span [class]="cls.label">New password</span>
+            <span [class]="cls.label" i18n>New password</span>
             <input
               appTouchTarget
               [class]="cls.input"
@@ -87,8 +92,11 @@ const CLS = {
               aria-describedby="oppw-new-hint"
             />
           </label>
-          <p id="oppw-new-hint" [class]="cls.hint" data-testid="oppw-new-hint">
-            {{ policyHint }} Changing it signs you out on every other device.
+          <p id="oppw-new-hint" [class]="cls.hint" data-testid="oppw-new-hint" i18n>
+            {{
+              policyHint // i18n(ph="policy")
+            }}
+            Changing it signs you out on every other device.
           </p>
 
           @if (error()) {
@@ -105,7 +113,7 @@ const CLS = {
             data-testid="oppw-submit"
             [appBusy]="submitting()"
           >
-            {{ submitting() ? 'Saving…' : 'Change password' }}
+            {{ submitting() ? savingLabel : submitLabel }}
           </button>
         </form>
 
@@ -115,6 +123,7 @@ const CLS = {
             [class]="cls.altLink"
             routerLink="/operator"
             data-testid="oppw-to-console"
+            i18n
             >Back to your console</a
           >
         </p>
@@ -132,6 +141,8 @@ export class OperatorPassword {
   protected readonly cls = CLS;
 
   protected readonly policyHint = PASSWORD_POLICY_HINT;
+  protected readonly savingLabel = $localize`Saving…`;
+  protected readonly submitLabel = $localize`Change password`;
   protected readonly submitting = signal(false);
   protected readonly error = signal<string | undefined>(undefined);
   protected readonly notice = signal<string | undefined>(undefined);

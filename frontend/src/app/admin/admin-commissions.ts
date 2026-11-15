@@ -28,13 +28,13 @@ import { TouchTarget } from '../shared/touch-target';
   selector: 'app-admin-commissions',
   imports: [CardGlass, BusyAction, TouchTarget, FieldErrorFor],
   template: `
-    <p class="mt-5 max-w-[62ch] text-[15px] text-riv-ink-soft">
+    <p class="mt-5 max-w-[62ch] text-[15px] text-riv-ink-soft" i18n>
       The platform sets each venue's rate — the operator sees it, and cannot change it. A rate is
       stored as whole basis points, so 1500 bps is 15%.
     </p>
 
     @if (loading()) {
-      <p class="mt-6 text-[15px] text-riv-ink-soft" data-testid="admin-commissions-loading">
+      <p class="mt-6 text-[15px] text-riv-ink-soft" data-testid="admin-commissions-loading" i18n>
         Loading…
       </p>
     } @else if (loadError()) {
@@ -43,13 +43,14 @@ import { TouchTarget } from '../shared/touch-target';
         role="alert"
         data-testid="admin-commissions-error"
       >
-        Something went wrong loading the venue list.
+        <ng-container i18n>Something went wrong loading the venue list.</ng-container>
         <button
           type="button"
           data-touch-exempt="control inside a sentence (WCAG 2.5.5 inline exception)"
           class="font-semibold underline"
           data-testid="admin-commissions-retry"
           (click)="retry()"
+          i18n
         >
           Retry
         </button>
@@ -59,6 +60,7 @@ import { TouchTarget } from '../shared/touch-target';
         class="mt-6 text-[15px] text-riv-ink-soft"
         data-testid="admin-commissions-empty"
         tabindex="-1"
+        i18n
       >
         No venues have been created yet.
       </p>
@@ -76,7 +78,13 @@ import { TouchTarget } from '../shared/touch-target';
                   {{ venue.name }}
                 </h2>
                 <p class="mt-0.5 text-[13.5px] text-riv-card-ink-soft">
-                  {{ beachLabel(venue.beach) }} · paid out in {{ venue.payoutCurrency }}
+                  {{ beachLabel(venue.beach) }} ·
+                  <ng-container i18n
+                    >paid out in
+                    {{
+                      venue.payoutCurrency // i18n(ph="currency")
+                    }}</ng-container
+                  >
                 </p>
               </div>
               <p class="text-right">
@@ -88,7 +96,11 @@ import { TouchTarget } from '../shared/touch-target';
                 <span
                   class="block text-[12px] text-riv-card-ink-soft"
                   [attr.data-testid]="'admin-commission-bps-' + venue.venueId"
-                  >{{ venue.commissionBps }} bps</span
+                  i18n="basis points|A commission rate in basis points"
+                  >{{
+                    venue.commissionBps // i18n(ph="bps")
+                  }}
+                  bps</span
                 >
               </p>
             </div>
@@ -101,7 +113,12 @@ import { TouchTarget } from '../shared/touch-target';
                 <label
                   [attr.for]="'admin-commission-percent-' + venue.venueId"
                   class="block text-[13.5px] font-semibold text-riv-card-ink"
-                  >New rate for {{ venue.name }} (%)</label
+                  i18n
+                  >New rate for
+                  {{
+                    venue.name // i18n(ph="venue")
+                  }}
+                  (%)</label
                 >
                 <input
                   appTouchTarget
@@ -123,10 +140,24 @@ import { TouchTarget } from '../shared/touch-target';
                   [attr.data-testid]="'admin-commission-preview-' + venue.venueId"
                 >
                   @if (draftBps() === null) {
-                    Enter a percentage between 0 and 100.
+                    <ng-container i18n>Enter a percentage between 0 and 100.</ng-container>
                   } @else {
-                    Stores <strong class="text-riv-card-ink">{{ draftBps() }} bps</strong> — was
-                    {{ venue.commissionBps }} bps ({{ percent(venue.commissionBps) }}).
+                    <ng-container i18n
+                      >Stores
+                      <strong class="text-riv-card-ink"
+                        >{{
+                          draftBps() // i18n(ph="newBps")
+                        }}
+                        bps</strong
+                      >
+                      — was
+                      {{
+                        venue.commissionBps // i18n(ph="oldBps")
+                      }}
+                      bps ({{
+                        percent(venue.commissionBps)  // i18n(ph="oldPercent")
+                      }}).</ng-container
+                    >
                   }
                 </p>
 
@@ -144,6 +175,7 @@ import { TouchTarget } from '../shared/touch-target';
                 <label
                   [attr.for]="'admin-commission-reason-' + venue.venueId"
                   class="mt-3 block text-[13.5px] font-semibold text-riv-card-ink"
+                  i18n
                   >Reason (optional)</label
                 >
                 <input
@@ -156,10 +188,11 @@ import { TouchTarget } from '../shared/touch-target';
                   [disabled]="busy()"
                   (input)="onReasonTyped($event)"
                   placeholder="e.g. renegotiated for the 2026 season"
+                  i18n-placeholder
                   class="mt-1 w-full rounded-[10px] border border-riv-field-border bg-riv-console-inset/70 px-3 py-2 text-[16px] text-riv-card-ink"
                 />
 
-                <p class="mt-3 text-[13px] text-riv-card-ink-soft">
+                <p class="mt-3 text-[13px] text-riv-card-ink-soft" i18n>
                   Saving moves the live rate straight away, so this list shows the new number at
                   once. Reporting follows from today: each service date already past keeps the rate
                   it was sold under.
@@ -170,10 +203,11 @@ import { TouchTarget } from '../shared/touch-target';
                     appTouchTarget
                     type="button"
                     [attr.data-testid]="'admin-commission-save-' + venue.venueId"
-                    [attr.aria-label]="'Save rate for ' + venue.name"
+                    [attr.aria-label]="saveLabel(venue.name)"
                     [appBusy]="busy()"
                     (click)="saveRate(venue)"
                     class="rounded-[10px] border border-riv-field-border bg-riv-console-inset/70 px-4 py-2 text-[14px] font-semibold text-riv-card-ink aria-disabled:cursor-not-allowed aria-disabled:opacity-60"
+                    i18n
                   >
                     Save rate
                   </button>
@@ -181,10 +215,11 @@ import { TouchTarget } from '../shared/touch-target';
                     appTouchTarget
                     type="button"
                     [attr.data-testid]="'admin-commission-cancel-' + venue.venueId"
-                    [attr.aria-label]="'Cancel the rate change for ' + venue.name"
+                    [attr.aria-label]="cancelLabel(venue.name)"
                     [appBusy]="busy()"
                     (click)="cancelEdit(venue)"
                     class="rounded-[10px] px-3 py-2 text-[14px] font-semibold text-riv-card-ink-soft aria-disabled:cursor-not-allowed aria-disabled:opacity-60"
+                    i18n
                   >
                     Cancel
                   </button>
@@ -207,10 +242,11 @@ import { TouchTarget } from '../shared/touch-target';
                 appTouchTarget
                 type="button"
                 [attr.data-testid]="'admin-commission-edit-' + venue.venueId"
-                [attr.aria-label]="'Edit rate for ' + venue.name"
+                [attr.aria-label]="editLabel(venue.name)"
                 [appBusy]="busy()"
                 (click)="startEdit(venue)"
                 class="mt-3 rounded-[10px] border border-riv-field-border px-4 py-2 text-[14px] font-semibold text-riv-card-ink aria-disabled:cursor-not-allowed aria-disabled:opacity-60"
+                i18n
               >
                 Edit rate
               </button>
@@ -237,13 +273,14 @@ import { TouchTarget } from '../shared/touch-target';
       <h2
         id="admin-commissions-explainer-heading"
         class="text-[16px] font-semibold text-riv-card-ink sm:col-span-2"
+        i18n
       >
         What a rate change does
       </h2>
 
       <section>
-        <h3 class="text-[14px] font-semibold text-riv-card-ink">A change is forward-only</h3>
-        <p class="mt-1 text-[13px] leading-relaxed text-riv-card-ink-soft">
+        <h3 class="text-[14px] font-semibold text-riv-card-ink" i18n>A change is forward-only</h3>
+        <p class="mt-1 text-[13px] leading-relaxed text-riv-card-ink-soft" i18n>
           A past service date never re-prices. Every payout-ledger entry keeps the commission it was
           accrued at, so statements already sent stay exactly as they were sent — there is no way to
           reprice history, by design.
@@ -251,8 +288,10 @@ import { TouchTarget } from '../shared/touch-target';
       </section>
 
       <section>
-        <h3 class="text-[14px] font-semibold text-riv-card-ink">Reporting follows from today</h3>
-        <p class="mt-1 text-[13px] leading-relaxed text-riv-card-ink-soft">
+        <h3 class="text-[14px] font-semibold text-riv-card-ink" i18n>
+          Reporting follows from today
+        </h3>
+        <p class="mt-1 text-[13px] leading-relaxed text-riv-card-ink-soft" i18n>
           Today (Europe/Tirane) is the first service date the operator's takings report at the new
           rate — the same rate any booking confirmed after the change is charged commission at.
           Dates already past keep the rate that was in force when they were sold.
@@ -260,10 +299,10 @@ import { TouchTarget } from '../shared/touch-target';
       </section>
 
       <section>
-        <h3 class="text-[14px] font-semibold text-riv-card-ink">
+        <h3 class="text-[14px] font-semibold text-riv-card-ink" i18n>
           The list updates immediately too
         </h3>
-        <p class="mt-1 text-[13px] leading-relaxed text-riv-card-ink-soft">
+        <p class="mt-1 text-[13px] leading-relaxed text-riv-card-ink-soft" i18n>
           The number here is the live rate — what the next booking's commission uses. Reporting
           follows it from today, so the list and today's takings move together; only days already
           past keep their own rate.
@@ -271,8 +310,8 @@ import { TouchTarget } from '../shared/touch-target';
       </section>
 
       <section>
-        <h3 class="text-[14px] font-semibold text-riv-card-ink">What this does not promise</h3>
-        <p class="mt-1 text-[13px] leading-relaxed text-riv-card-ink-soft">
+        <h3 class="text-[14px] font-semibold text-riv-card-ink" i18n>What this does not promise</h3>
+        <p class="mt-1 text-[13px] leading-relaxed text-riv-card-ink-soft" i18n>
           An operator's takings figures are not a copy of the ledger. The ledger prices each booking
           when it accrues; the takings apply one rate to a whole service date. So a booking whose
           commission accrued before a change, for a service date from the change onward, sits in the
@@ -282,8 +321,8 @@ import { TouchTarget } from '../shared/touch-target';
       </section>
 
       <section>
-        <h3 class="text-[14px] font-semibold text-riv-card-ink">Percent in, bps out</h3>
-        <p class="mt-1 text-[13px] leading-relaxed text-riv-card-ink-soft">
+        <h3 class="text-[14px] font-semibold text-riv-card-ink" i18n>Percent in, bps out</h3>
+        <p class="mt-1 text-[13px] leading-relaxed text-riv-card-ink-soft" i18n>
           The rate is stored as whole basis points so every split stays exact-integer arithmetic.
           The field takes a percent because that is how the deal is described; the exact integer
           that will be stored is shown beside it as you type.
@@ -291,8 +330,10 @@ import { TouchTarget } from '../shared/touch-target';
       </section>
 
       <section>
-        <h3 class="text-[14px] font-semibold text-riv-card-ink">Why the operator can't set it</h3>
-        <p class="mt-1 text-[13px] leading-relaxed text-riv-card-ink-soft">
+        <h3 class="text-[14px] font-semibold text-riv-card-ink" i18n>
+          Why the operator can't set it
+        </h3>
+        <p class="mt-1 text-[13px] leading-relaxed text-riv-card-ink-soft" i18n>
           Commission is the commercial agreement between the platform and the venue, not a venue
           setting. The operator console shows the rate so there is no mystery about the split — it
           just doesn't offer a way to move it.
@@ -341,6 +382,18 @@ export class AdminCommissions {
     return formatCommissionPercent(bps);
   }
 
+  protected saveLabel(venue: string): string {
+    return $localize`Save rate for ${venue}:venue:`;
+  }
+
+  protected cancelLabel(venue: string): string {
+    return $localize`Cancel the rate change for ${venue}:venue:`;
+  }
+
+  protected editLabel(venue: string): string {
+    return $localize`Edit rate for ${venue}:venue:`;
+  }
+
   /** Open the editor seeded with the current rate and focus its field: opening, dismissing and
    *  saving each destroy the activated control, so focus must be moved (WCAG 2.4.3). */
   protected startEdit(venue: VenueCommissionView): void {
@@ -374,11 +427,13 @@ export class AdminCommissions {
   protected async saveRate(venue: VenueCommissionView): Promise<void> {
     const commissionBps = this.draftBps();
     if (commissionBps === null) {
-      this.percentError.set('Commission must be a percentage between 0% and 100%.');
+      this.percentError.set($localize`Commission must be a percentage between 0% and 100%.`);
       return;
     }
     if (commissionBps === venue.commissionBps) {
-      this.percentError.set(`That is already this venue's rate (${venue.commissionBps} bps).`);
+      this.percentError.set(
+        $localize`That is already this venue's rate (${venue.commissionBps}:bps: bps).`,
+      );
       return;
     }
     const grounds = this.reason().trim();
@@ -393,9 +448,10 @@ export class AdminCommissions {
         venues.map((each) => (each.venueId === updated.venueId ? updated : each)),
       );
       this.closeEditor();
+      const was = this.percent(venue.commissionBps);
+      const now = this.percent(updated.commissionBps);
       this.notice.set(
-        `${updated.name}: commission ${this.percent(venue.commissionBps)} → ${this.percent(updated.commissionBps)}. ` +
-          'The live rate has moved; reporting follows from today.',
+        $localize`${updated.name}:venue:: commission ${was}:was: → ${now}:now:. The live rate has moved; reporting follows from today.`,
       );
       this.focusAfterRender(`admin-commission-edit-${venue.venueId}`);
     } catch (error) {
@@ -446,10 +502,10 @@ export class AdminCommissions {
 function messageFor(error: ReturnType<typeof commissionWriteErrorOf>): string {
   switch (error) {
     case 'NO_SUCH_VENUE':
-      return 'That venue no longer exists. Nothing was changed — reload the list.';
+      return $localize`That venue no longer exists. Nothing was changed — reload the list.`;
     case 'INVALID_REQUEST':
-      return 'The platform rejected that rate. Nothing was changed.';
+      return $localize`The platform rejected that rate. Nothing was changed.`;
     default:
-      return 'Could not change the rate. Nothing was changed.';
+      return $localize`Could not change the rate. Nothing was changed.`;
   }
 }

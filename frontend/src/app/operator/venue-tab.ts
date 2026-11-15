@@ -28,7 +28,7 @@ import { CardGlass } from '../shared/card-glass';
 import { formatCommissionPercent } from '../shared/commission-rate';
 import { ConsolePageColumn } from '../shared/console-page-box';
 import { parentVenueId } from '../shared/parent-venue-id';
-import { plural } from '../shared/plural';
+import { pluralOf } from '../shared/plural';
 import { SegmentedControl, SegmentedOption } from '../shared/segmented-control';
 import { parseWholeNumber } from '../shared/whole-number';
 import { BookingMode, PhotoSlotKey, VenueLocation } from '../shared/venue-views';
@@ -93,30 +93,47 @@ function isMaxStayInput(raw: string): boolean {
 const SALES_CLOSE_OPTIONS: readonly SegmentedOption<SalesCloseTime>[] = [
   {
     value: '00:01',
-    label: '00:01 — no same-day sales',
-    description: 'Tourists can book ahead, never for today.',
+    label: $localize`00:01 — no same-day sales`,
+    description: $localize`Tourists can book ahead, never for today.`,
     testId: 'venue-sales-close-00:01',
   },
   {
     value: '16:00',
-    label: '16:00 — mid-afternoon',
-    description: 'Today stays bookable until 16:00. The default.',
+    label: $localize`16:00 — mid-afternoon`,
+    description: $localize`Today stays bookable until 16:00. The default.`,
     testId: 'venue-sales-close-16:00',
   },
   {
     value: '23:59',
-    label: '23:59 — all day',
-    description: 'Today stays bookable until midnight.',
+    label: $localize`23:59 — all day`,
+    description: $localize`Today stays bookable until midnight.`,
     testId: 'venue-sales-close-23:59',
   },
 ];
 
 /** The three designed photo slots. All are tourist-surfaced in the Discover-card and beach-map
  *  slideshows; the cover leads both. */
-const PHOTO_SLOTS: readonly { readonly key: PhotoSlotKey; readonly label: string }[] = [
-  { key: 'cover', label: 'Cover photo — the beach' },
-  { key: 'sunbeds', label: 'Sunbeds' },
-  { key: 'bar', label: 'Bar / restaurant' },
+const PHOTO_SLOTS: readonly {
+  readonly key: PhotoSlotKey;
+  readonly label: string;
+  /** The preview's alt text; it avoids the words image/photo (Web:S6851). */
+  readonly previewAlt: string;
+}[] = [
+  {
+    key: 'cover',
+    label: $localize`Cover photo — the beach`,
+    previewAlt: $localize`Current upload in the cover slot`,
+  },
+  {
+    key: 'sunbeds',
+    label: $localize`:Photo slot showing the venue's sunbeds:Sunbeds`,
+    previewAlt: $localize`Current upload in the sunbeds slot`,
+  },
+  {
+    key: 'bar',
+    label: $localize`Bar / restaurant`,
+    previewAlt: $localize`Current upload in the bar slot`,
+  },
 ];
 
 /** Per-slot upload UI state: the current preview, an in-flight upload/delete, and the last failure. */
@@ -138,9 +155,28 @@ const OPEN_SEASON: SeasonClosureView = { closed: false, reopenOn: null, advanceS
 /** Which dates a closed venue still sells, as the status sentence's second half. */
 function sellingSentence(season: SeasonClosureView): string {
   if (season.advanceSales) {
-    return ' Dates from the reopen date can be booked now.';
+    return $localize`Dates from the reopen date can be booked now.`;
   }
-  return season.reopenOn ? ' No date can be booked until then.' : ' No date can be booked.';
+  return season.reopenOn
+    ? $localize`No date can be booked until then.`
+    : $localize`No date can be booked.`;
+}
+
+/** "3 future bookings and 1 pending request still stand." */
+function seasonCountsSentence(counts: SeasonCounts): string {
+  const bookings = counts.futureBookings;
+  const requests = counts.pendingRequests;
+  const bookingsPhrase = pluralOf(
+    bookings,
+    $localize`${bookings}:count: future booking`,
+    $localize`${bookings}:count: future bookings`,
+  );
+  const requestsPhrase = pluralOf(
+    requests,
+    $localize`${requests}:count: pending request`,
+    $localize`${requests}:count: pending requests`,
+  );
+  return $localize`${bookingsPhrase}:bookings: and ${requestsPhrase}:requests: still stand.`;
 }
 
 /** What the close answered: the counts of bookings and requests that still stand. */
@@ -222,15 +258,15 @@ export class VenueTab {
   /** The editable details, bound to the Signal Form; seeded from the loaded profile. */
   protected readonly details = signal<VenueDetailsModel>(EMPTY_DETAILS);
   protected readonly detailsForm = form(this.details, (path) => {
-    required(path.name, { message: 'Venue name is required' });
-    required(path.beach, { message: 'Beach is required' });
-    required(path.bookingCutoff, { message: 'Free-cancellation deadline is required' });
+    required(path.name, { message: $localize`Venue name is required` });
+    required(path.beach, { message: $localize`Beach is required` });
+    required(path.bookingCutoff, { message: $localize`Free-cancellation deadline is required` });
     validate(path.maxStayDays, ({ value }) =>
       isMaxStayInput(value())
         ? null
         : {
             kind: 'maxStayDays',
-            message: 'Enter a whole number of days from 1, or leave it blank.',
+            message: $localize`Enter a whole number of days from 1, or leave it blank.`,
           },
     );
   });
@@ -261,7 +297,9 @@ export class VenueTab {
 
   /** The save outcome as one sentence, or '' — bound by both the announcer and the visible copy. */
   protected readonly savedMessage = computed(() =>
-    this.saved() ? 'Saved. Your venue card and beach-map page now show these details.' : '',
+    this.saved()
+      ? $localize`Saved. Your venue card and beach-map page now show these details.`
+      : '',
   );
 
   /** Every season transition destroys the control that was just activated (WCAG 2.4.3). */
@@ -281,20 +319,25 @@ export class VenueTab {
   /** The closed state in words: the reopen day (if any) and whether dates from it sell already. */
   protected readonly seasonStatusText = computed(() => {
     const season = this.season();
-    const reopens = season.reopenOn
-      ? ` — reopens ${formatCivilDate(season.reopenOn)}.`
-      : ' until you reopen it.';
-    return `Closed for season${reopens}${sellingSentence(season)}`;
+    const reopenDate = season.reopenOn ? formatCivilDate(season.reopenOn) : null;
+    const status =
+      reopenDate === null
+        ? $localize`Closed for season until you reopen it.`
+        : $localize`Closed for season — reopens ${reopenDate}:date:.`;
+    return `${status} ${sellingSentence(season)}`;
   });
   /** "3 future bookings and 1 pending request still stand." */
   protected readonly seasonCountsText = computed(() => {
     const counts = this.seasonCounts();
-    return counts === null
-      ? ''
-      : `${plural(counts.futureBookings, 'future booking')} and ${plural(counts.pendingRequests, 'pending request')} still stand.`;
+    return counts === null ? '' : seasonCountsSentence(counts);
   });
 
   protected readonly photoSlots = PHOTO_SLOTS;
+
+  /** The hidden file input's accessible name, naming the slot. */
+  protected photoInputLabel(slotLabel: string): string {
+    return $localize`${slotLabel}:slot: — choose an image file`;
+  }
   /** Per-slot photo UI state, seeded from the profile's `photos` map on load/reload. */
   protected readonly slotUi = signal<Readonly<Record<PhotoSlotKey, SlotUi>>>(EMPTY_SLOTS);
 
@@ -438,15 +481,15 @@ export class VenueTab {
   protected errorMessage(): string | undefined {
     switch (this.errorCode()) {
       case 'NOT_VENUE_OWNER':
-        return 'You do not manage this venue, so its details can’t be changed.';
+        return $localize`You do not manage this venue, so its details can’t be changed.`;
       case 'NO_SUCH_VENUE':
-        return 'This venue could not be found.';
+        return $localize`This venue could not be found.`;
       case 'INVALID_REQUEST':
-        return 'Please check the details and try again.';
+        return $localize`Please check the details and try again.`;
       case 'UNAUTHORIZED':
-        return 'Your session has expired. Please sign in again.';
+        return $localize`Your session has expired. Please sign in again.`;
       case 'UNKNOWN':
-        return 'Something went wrong saving your venue details. Please try again.';
+        return $localize`Something went wrong saving your venue details. Please try again.`;
       default:
         return undefined;
     }
@@ -600,16 +643,16 @@ export class VenueTab {
   protected seasonErrorMessage(): string | undefined {
     switch (this.seasonError()) {
       case 'NOT_VENUE_OWNER':
-        return 'You do not manage this venue, so its season can’t be changed.';
+        return $localize`You do not manage this venue, so its season can’t be changed.`;
       case 'NO_SUCH_VENUE':
-        return 'This venue could not be found.';
+        return $localize`This venue could not be found.`;
       case 'INVALID_REQUEST':
-        return 'Please check the reopen date and try again.';
+        return $localize`Please check the reopen date and try again.`;
       case 'UNAUTHORIZED':
-        return 'Your session has expired. Please sign in again.';
+        return $localize`Your session has expired. Please sign in again.`;
       case 'STALE_WRITE':
       case 'UNKNOWN':
-        return 'Something went wrong changing the season. Please try again.';
+        return $localize`Something went wrong changing the season. Please try again.`;
       default:
         return undefined;
     }
@@ -690,21 +733,21 @@ export class VenueTab {
     switch (this.slotUi()[slot].error) {
       case 'TOO_LARGE':
       case 'PAYLOAD_TOO_LARGE':
-        return 'This image is too large — please use a photo under 25 MB.';
+        return $localize`This image is too large — please use a photo under 25 MB.`;
       case 'UNSUPPORTED_FORMAT':
-        return 'Only JPEG, PNG, or WebP images are accepted.';
+        return $localize`Only JPEG, PNG, or WebP images are accepted.`;
       case 'DIMENSIONS_EXCEEDED':
-        return 'This image’s dimensions are too large — please use a smaller photo.';
+        return $localize`This image’s dimensions are too large — please use a smaller photo.`;
       case 'UNREADABLE':
-        return 'This image could not be read — please try a different file.';
+        return $localize`This image could not be read — please try a different file.`;
       case 'NOT_VENUE_OWNER':
-        return 'You do not manage this venue, so its photos can’t be changed.';
+        return $localize`You do not manage this venue, so its photos can’t be changed.`;
       case 'NO_SUCH_PHOTO':
-        return 'This slot is already empty.';
+        return $localize`This slot is already empty.`;
       case 'UNAUTHORIZED':
-        return 'Your session has expired. Please sign in again.';
+        return $localize`Your session has expired. Please sign in again.`;
       case 'UNKNOWN':
-        return 'Something went wrong with this photo. Please try again.';
+        return $localize`Something went wrong with this photo. Please try again.`;
       default:
         return undefined;
     }

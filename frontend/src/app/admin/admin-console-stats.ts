@@ -17,22 +17,36 @@ import { VenueCommissionView } from './admin.model';
   selector: 'app-admin-console-stats',
   imports: [StatTile],
   template: `
-    <section class="mt-5" aria-label="Platform at a glance" data-testid="admin-stats">
+    <section
+      class="mt-5"
+      i18n-aria-label
+      aria-label="Platform at a glance"
+      data-testid="admin-stats"
+    >
       <div class="grid grid-cols-2 gap-2.5 sm:grid-cols-4">
-        <app-stat-tile label="To approve" valueTestId="admin-stat-pending">
+        <app-stat-tile label="To approve" i18n-label valueTestId="admin-stat-pending">
           {{ pendingCount() ?? '—' }}
         </app-stat-tile>
 
-        <app-stat-tile label="Active" valueTestId="admin-stat-active">
+        <app-stat-tile
+          label="Active"
+          i18n-label="operator status|Stat tile: operators that can sign in"
+          valueTestId="admin-stat-active"
+        >
           {{ activeCount() ?? '—' }}
         </app-stat-tile>
 
-        <app-stat-tile label="Suspended" valueTestId="admin-stat-suspended">
+        <app-stat-tile
+          label="Suspended"
+          i18n-label="operator status|Stat tile: operators blocked from signing in"
+          valueTestId="admin-stat-suspended"
+        >
           {{ suspendedCount() ?? '—' }}
         </app-stat-tile>
 
         <app-stat-tile
           label="Venues"
+          i18n-label
           valueTestId="admin-stat-venues"
           [sub]="meanRateCaption()"
           subTestId="admin-stat-mean-rate"
@@ -45,6 +59,7 @@ import { VenueCommissionView } from './admin.model';
         <p
           class="mt-2 text-[11.5px] leading-[1.45] text-riv-ink-soft"
           data-testid="admin-stats-mean-note"
+          i18n
         >
           The mean averages venue rates equally — what the platform takes depends on where bookings
           land.
@@ -79,7 +94,8 @@ export class AdminConsoleStats implements OnInit {
       return undefined;
     }
     const totalBps = venues.reduce((sum, venue) => sum + venue.commissionBps, 0);
-    return `mean rate ${formatCommissionPercent(Math.round(totalBps / venues.length))}`;
+    const rate = formatCommissionPercent(Math.round(totalBps / venues.length));
+    return $localize`:stat tile caption|Unweighted mean commission rate across venues:mean rate ${rate}:rate:`;
   });
 
   // Not the constructor: an async call there is a testability/ordering smell (typescript:S7059).

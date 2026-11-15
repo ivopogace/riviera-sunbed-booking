@@ -17,7 +17,7 @@ import { TouchTarget } from '../shared/touch-target';
   imports: [FieldErrorFor, FormField, TouchTarget],
   host: { class: 'contents' },
   template: `<label class="flex flex-col gap-1">
-    <span class="text-[12.5px] font-semibold text-riv-card-ink"
+    <span class="text-[12.5px] font-semibold text-riv-card-ink" i18n
       >Free-cancellation deadline (Europe/Tirane)</span
     >
     <input

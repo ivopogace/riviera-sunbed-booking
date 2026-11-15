@@ -4,8 +4,13 @@
   data-testid="payouts-tab"
 >
   <header class="mb-1.5">
-    <h1 class="text-[19px] font-bold tracking-[-0.01em] text-riv-card-ink">Payouts</h1>
-    <p class="mt-1 max-w-[560px] text-[13px] leading-[1.5] text-riv-card-ink-soft">
+    <h1
+      class="text-[19px] font-bold tracking-[-0.01em] text-riv-card-ink"
+      i18n="Payouts page heading"
+    >
+      Payouts
+    </h1>
+    <p class="mt-1 max-w-[560px] text-[13px] leading-[1.5] text-riv-card-ink-soft" i18n>
       What the platform owes your venue — each confirmed booking accrues its net after commission;
       refunds reverse it. Settled manually by bank transfer at the end of each period.
     </p>
@@ -16,7 +21,9 @@
     [loading]="!loaded()"
     [ready]="loaded() && loadErrorMsg() === undefined"
     loadingLabel="Loading payouts…"
+    i18n-loadingLabel
     readyLabel="Payouts loaded."
+    i18n-readyLabel
   />
 
   @if (!loaded()) {
@@ -97,7 +104,9 @@
     <section appCardGlass class="rounded-[24px] px-6 py-5" data-testid="payout-hero">
       <div class="flex flex-wrap items-center justify-between gap-4">
         <div>
-          <span class="text-[11px] font-bold uppercase tracking-[0.12em] text-riv-card-ink-faint"
+          <span
+            class="text-[11px] font-bold uppercase tracking-[0.12em] text-riv-card-ink-faint"
+            i18n
             >Owed to you</span
           >
           <div
@@ -109,7 +118,11 @@
           <span
             class="mt-1.5 block text-[12.5px] text-riv-card-ink-soft"
             data-testid="payout-counts"
-            >Net after commission · {{ countsLabel() }}</span
+            i18n
+            >Net after commission ·
+            {{
+              countsLabel() // i18n(ph="counts")
+            }}</span
           >
         </div>
         <button
@@ -118,6 +131,7 @@
           class="rounded-[13px] bg-riv-solid-fill-brand px-5 py-3 text-[14px] font-bold text-white [transition:background_0.15s_ease] hover:bg-riv-solid-fill-brand-hover motion-reduce:transition-none"
           data-testid="statement-open"
           (click)="openStatement()"
+          i18n
         >
           View statement
         </button>
@@ -138,7 +152,9 @@
     <section appCardGlass class="mt-3.5 rounded-[20px] px-[18px] py-4" data-testid="weather-panel">
       <div class="flex flex-wrap items-end justify-between gap-3">
         <label class="flex flex-col gap-1.5">
-          <span class="text-[10.5px] font-bold uppercase tracking-[0.08em] text-riv-card-ink-faint"
+          <span
+            class="text-[10.5px] font-bold uppercase tracking-[0.08em] text-riv-card-ink-faint"
+            i18n
             >Weather refund — washed-out day</span
           >
           <input
@@ -158,17 +174,19 @@
             data-testid="weather-trigger"
             (click)="onWeatherRefund()"
           >
-            <app-rain-icon /> Weather refund
+            <app-rain-icon /> <span i18n>Weather refund</span>
           </button>
         }
       </div>
 
       @if (weatherConfirm()) {
         <app-confirm-panel
-          [label]="'Weather refund for ' + selectedDateLabel() + '?'"
-          [headline]="'Weather refund for ' + selectedDateLabel() + '?'"
+          [label]="weatherConfirmTitle()"
+          [headline]="weatherConfirmTitle()"
+          i18n-message
           message="This is an exception — it cancels and fully refunds every one-day online booking for that day, refunds that day of every stay that goes on, and posts the reversals against your payout. A day a guest checked into is kept. Use it only when weather stopped guests visiting."
           confirmLabel="Issue full weather refund"
+          i18n-confirmLabel
           tone="warn"
           [busy]="refunding()"
           panelTestId="weather-confirm"
@@ -185,8 +203,8 @@
         class="mt-3.5 rounded-[24px] border border-riv-card-border bg-riv-console-inset/50 px-[26px] py-[52px] text-center"
         data-testid="payouts-empty"
       >
-        <h2 class="text-[18px] font-bold text-riv-card-ink">Nothing owed yet</h2>
-        <p class="mt-1.5 text-[13.5px] text-riv-card-ink-soft">
+        <h2 class="text-[18px] font-bold text-riv-card-ink" i18n>Nothing owed yet</h2>
+        <p class="mt-1.5 text-[13.5px] text-riv-card-ink-soft" i18n>
           Confirmed bookings will accrue here. You’re paid by bank transfer at the end of the
           period.
         </p>
@@ -195,7 +213,7 @@
       <section appCardGlass class="mt-3.5 overflow-hidden rounded-[24px] px-1.5 py-1.5">
         <!-- Below sm each line stacks as a card (#1533); display:none keeps the inactive layout out of the accessibility tree. -->
         <div class="sm:hidden" data-testid="ledger-cards">
-          <ul aria-label="Payout ledger — accruals and refund reversals">
+          <ul aria-label="Payout ledger — accruals and refund reversals" i18n-aria-label>
             @for (row of rows(); track $index) {
               <li
                 class="border-t border-riv-card-border px-3.5 py-3 first:border-t-0"
@@ -238,7 +256,7 @@
             class="border-t-2 border-riv-card-border px-3.5 py-3"
             data-testid="period-total-card"
           >
-            <p class="text-[13px] font-bold text-riv-card-ink">Period total (owed to you)</p>
+            <p class="text-[13px] font-bold text-riv-card-ink" i18n>Period total (owed to you)</p>
             <ng-container
               *ngTemplateOutlet="
                 figures;
@@ -255,18 +273,53 @@
         </div>
 
         <!-- A narrow window scrolls the ledger sideways: a named section is a focusable region, so the keyboard can reach it too (WCAG 2.1.1). -->
-        <section class="hidden overflow-x-auto sm:block" aria-label="Payout ledger" tabindex="0">
+        <section
+          class="hidden overflow-x-auto sm:block"
+          aria-label="Payout ledger"
+          i18n-aria-label
+          tabindex="0"
+        >
           <table class="w-full border-collapse text-[13px]" data-testid="ledger-table">
-            <caption class="sr-only">
+            <caption class="sr-only" i18n>
               Payout ledger — accruals and refund reversals
             </caption>
             <thead>
               <tr class="text-[10.5px] uppercase tracking-[0.08em] text-riv-card-ink-faint">
-                <th scope="col" class="px-3.5 py-2.5 text-left font-bold">Date</th>
-                <th scope="col" class="px-3.5 py-2.5 text-left font-bold">Booking</th>
-                <th scope="col" class="px-3.5 py-2.5 text-right font-bold">Gross</th>
-                <th scope="col" class="px-3.5 py-2.5 text-right font-bold">Commission</th>
-                <th scope="col" class="px-3.5 py-2.5 text-right font-bold">Net</th>
+                <th
+                  scope="col"
+                  class="px-3.5 py-2.5 text-left font-bold"
+                  i18n="the ledger entry date|Ledger column header"
+                >
+                  Date
+                </th>
+                <th
+                  scope="col"
+                  class="px-3.5 py-2.5 text-left font-bold"
+                  i18n="a booking|Ledger column header for the booking reference"
+                >
+                  Booking
+                </th>
+                <th
+                  scope="col"
+                  class="px-3.5 py-2.5 text-right font-bold"
+                  i18n="gross amount|Ledger column header"
+                >
+                  Gross
+                </th>
+                <th
+                  scope="col"
+                  class="px-3.5 py-2.5 text-right font-bold"
+                  i18n="platform commission|Ledger column header"
+                >
+                  Commission
+                </th>
+                <th
+                  scope="col"
+                  class="px-3.5 py-2.5 text-right font-bold"
+                  i18n="net amount|Ledger column header"
+                >
+                  Net
+                </th>
               </tr>
             </thead>
             <tbody>
@@ -307,7 +360,9 @@
             <tfoot>
               <tr class="border-t-2 border-riv-card-border" data-testid="period-total">
                 <td class="px-3.5 py-3"></td>
-                <td class="px-3.5 py-3 font-bold text-riv-card-ink">Period total (owed to you)</td>
+                <td class="px-3.5 py-3 font-bold text-riv-card-ink" i18n>
+                  Period total (owed to you)
+                </td>
                 <td class="whitespace-nowrap px-3.5 py-3 text-right text-riv-card-ink-soft">
                   {{ grossTotalStr() }}
                 </td>
@@ -325,7 +380,7 @@
           </table>
         </section>
         <!-- Inside the ledger card: on the page this footnote would sit on the background axe cannot composite. -->
-        <p class="mx-1 mt-3 text-[12px] leading-[1.45] text-riv-card-ink-faint">
+        <p class="mx-1 mt-3 text-[12px] leading-[1.45] text-riv-card-ink-faint" i18n>
           Refund reversals are shown as negative lines. Payouts are settled manually via bank
           transfer at the end of each period.
         </p>
@@ -350,19 +405,28 @@
     >
       <dl class="mt-2 grid grid-cols-3 gap-2 text-[13px]">
         <div>
-          <dt class="text-[10.5px] font-bold uppercase tracking-[0.08em] text-riv-card-ink-faint">
+          <dt
+            class="text-[10.5px] font-bold uppercase tracking-[0.08em] text-riv-card-ink-faint"
+            i18n="gross amount|Ledger figure label"
+          >
             Gross
           </dt>
           <dd class="mt-0.5 whitespace-nowrap text-riv-card-ink">{{ gross }}</dd>
         </div>
         <div>
-          <dt class="text-[10.5px] font-bold uppercase tracking-[0.08em] text-riv-card-ink-faint">
+          <dt
+            class="text-[10.5px] font-bold uppercase tracking-[0.08em] text-riv-card-ink-faint"
+            i18n="platform commission|Ledger figure label"
+          >
             Commission
           </dt>
           <dd class="mt-0.5 whitespace-nowrap text-riv-card-ink-soft">{{ commission }}</dd>
         </div>
         <div class="text-right">
-          <dt class="text-[10.5px] font-bold uppercase tracking-[0.08em] text-riv-card-ink-faint">
+          <dt
+            class="text-[10.5px] font-bold uppercase tracking-[0.08em] text-riv-card-ink-faint"
+            i18n="net amount|Ledger figure label"
+          >
             Net
           </dt>
           <dd

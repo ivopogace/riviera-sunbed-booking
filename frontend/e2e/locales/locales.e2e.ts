@@ -3,10 +3,13 @@ import path from 'node:path';
 
 import { expect, test, type Page } from '@playwright/test';
 
-import { mockChallengeFence } from '../support/auth-mocks';
+import { ADMIN, mockWholeAdminConsole } from '../support/admin-console.mocks';
+import { mockChallengeFence, mockOwnedVenues } from '../support/auth-mocks';
 import { expectNoSeriousAxeViolations } from '../support/axe';
 import { settle } from '../support/booking-dialog';
 import { awaitRoutedPage } from '../support/shell';
+import { mockWholeConsole, signInAsOperator } from '../support/operator-console.mocks';
+import { OperatorSignInPage } from '../support/pages/operator-sign-in.page';
 import { mockTourist } from '../support/tourist.mocks';
 
 /**
@@ -166,6 +169,48 @@ for (const locale of LOCALES) {
         t(locale, 'We answer the same day, 08:00–20:00, May to October.'),
       );
       await expectNoSeriousAxeViolations(page, `${locale} help`);
+    });
+
+    test('the operator console: pricing, payouts and the account menu', async ({ page }) => {
+      await mockWholeConsole(page);
+      await page.goto('/operator/1/pricing');
+      await signInAsOperator(page);
+      await expect(page.getByTestId('oc-header')).toBeVisible();
+
+      await page.goto(`/${locale}/operator/1/pricing`);
+      await expectLocalePage(page, locale, 'Pricing — Operator console');
+      await expect(
+        page.getByRole('navigation', { name: t(locale, 'Operator console sections') }),
+      ).toBeVisible();
+      await settle(page);
+      await expectNoSeriousAxeViolations(page, `${locale} operator pricing`);
+
+      await page.getByTestId('oc-account').click();
+      await expect(page.locator('#oc-contact-label')).toHaveText(t(locale, 'Contact Riviera'));
+      await expect(page.getByTestId('oc-change-password')).toHaveText(t(locale, 'Change password'));
+      await expectNoSeriousAxeViolations(page, `${locale} operator account menu`);
+      await page.keyboard.press('Escape');
+
+      await page.goto(`/${locale}/operator/1/payouts`);
+      await expectLocalePage(page, locale, 'Payouts — Operator console');
+      await settle(page);
+      await expectNoSeriousAxeViolations(page, `${locale} operator payouts`);
+    });
+
+    test('the admin console: the operators tab', async ({ page }) => {
+      await mockWholeAdminConsole(page);
+      await mockOwnedVenues(page, [{ id: 1, name: 'Miramar Beach Club', beach: 'KSAMIL' }]);
+      await page.goto('/operator');
+      await new OperatorSignInPage(page).signIn(ADMIN.username, ADMIN.password);
+
+      await page.goto(`/${locale}/admin`);
+      await expectLocalePage(page, locale, 'Operators — Riviera');
+      await expect(
+        page.getByRole('navigation', { name: t(locale, 'Admin console sections') }),
+      ).toBeVisible();
+      await expect(page.getByTestId('admin-tab-operators')).toBeVisible();
+      await settle(page);
+      await expectNoSeriousAxeViolations(page, `${locale} admin operators`);
     });
 
     test('the not-found page and the sign-in card, each by deep link', async ({ page }) => {

@@ -41,8 +41,11 @@ import {
       class="text-[13px] font-bold"
       tabindex="-1"
       data-testid="layout-remodel-receipt-title"
+      i18n
     >
-      Remodel saved · receipt #{{ receipt().receiptId }}
+      Remodel saved · receipt #{{
+        receipt().receiptId // i18n(ph="receiptId")
+      }}
     </h3>
     <p class="mt-0.5 text-[12px] leading-[1.45] text-riv-card-ink-soft">
       {{ committedText() }}
@@ -57,13 +60,18 @@ import {
         }
       </ul>
     } @else {
-      <p class="mt-1.5 text-[12px] leading-[1.45]" data-testid="layout-remodel-receipt-moves">
+      <p class="mt-1.5 text-[12px] leading-[1.45]" data-testid="layout-remodel-receipt-moves" i18n>
         No booking was moved.
       </p>
     }
     @if (receipt().refunds.length > 0) {
-      <h4 class="mt-2 text-[12.5px] font-bold">
-        Refunded ({{ receipt().refunds.length }}) · {{ refundedTotalText() }}
+      <h4 class="mt-2 text-[12.5px] font-bold" i18n>
+        Refunded ({{
+          receipt().refunds.length  // i18n(ph="count")
+        }}) ·
+        {{
+          refundedTotalText() // i18n(ph="returned")
+        }}
       </h4>
       <ul
         class="mt-1 list-disc pl-4 text-[12px] leading-[1.45]"
@@ -82,13 +90,19 @@ import {
       <p
         class="mt-1 text-[12px] leading-[1.45] text-riv-card-ink-soft"
         data-testid="layout-remodel-receipt-reason"
+        i18n="Label before the operator's typed remodel reason"
       >
-        Reason: {{ receipt().refundReason }}
+        Reason:
+        {{
+          receipt().refundReason // i18n(ph="reason")
+        }}
       </p>
     }
     @if (receipt().releases.length > 0) {
-      <h4 class="mt-2 text-[12.5px] font-bold">
-        Released or declined ({{ receipt().releases.length }})
+      <h4 class="mt-2 text-[12.5px] font-bold" i18n>
+        Released or declined ({{
+          receipt().releases.length  // i18n(ph="count")
+        }})
       </h4>
       <ul
         class="mt-1 list-disc pl-4 text-[12px] leading-[1.45]"
@@ -100,8 +114,10 @@ import {
       </ul>
     }
     @if (receipt().ended.length > 0) {
-      <h4 class="mt-2 text-[12.5px] font-bold">
-        Ended — nothing left to refund ({{ receipt().ended.length }})
+      <h4 class="mt-2 text-[12.5px] font-bold" i18n>
+        Ended — nothing left to refund ({{
+          receipt().ended.length  // i18n(ph="count")
+        }})
       </h4>
       <ul
         class="mt-1 list-disc pl-4 text-[12px] leading-[1.45]"
@@ -113,7 +129,11 @@ import {
       </ul>
     }
     @if (receipt().kept.length > 0) {
-      <h4 class="mt-2 text-[12.5px] font-bold">Kept in place ({{ receipt().kept.length }})</h4>
+      <h4 class="mt-2 text-[12.5px] font-bold" i18n>
+        Kept in place ({{
+          receipt().kept.length  // i18n(ph="count")
+        }})
+      </h4>
       <ul
         class="mt-1 list-disc pl-4 text-[12px] leading-[1.45]"
         data-testid="layout-remodel-receipt-kept"
@@ -129,6 +149,7 @@ import {
       class="mt-2 rounded-[10px] border border-riv-card-border bg-riv-console-inset/45 px-4 py-1.5 text-[12.5px] font-semibold text-riv-card-ink"
       data-testid="layout-remodel-receipt-close"
       (click)="closed.emit()"
+      i18n="Closes the remodel receipt"
     >
       Done
     </button>
@@ -142,26 +163,44 @@ export class RemodelReceiptPanel {
   protected committedText(): string {
     const receipt = this.receipt();
     const moved = receipt.moves.length;
-    const parts = [`${moved} booking${moved === 1 ? '' : 's'} moved`];
+    const parts = [
+      moved === 1
+        ? $localize`:Remodel receipt summary list item:1 booking moved`
+        : $localize`:Remodel receipt summary list item:${moved}:count: bookings moved`,
+    ];
     if (receipt.refunds.length > 0) {
-      parts.push(`${receipt.refunds.length} refunded`);
+      parts.push(
+        $localize`:Remodel receipt summary list item:${receipt.refunds.length}:count: refunded`,
+      );
     }
     if (receipt.releases.length > 0) {
-      parts.push(`${receipt.releases.length} ended`);
+      parts.push(
+        $localize`:Remodel receipt summary list item:${receipt.releases.length}:count: ended`,
+      );
     }
     if (receipt.ended.length > 0) {
-      parts.push(`${receipt.ended.length} ended with nothing left`);
+      parts.push(
+        $localize`:Remodel receipt summary list item:${receipt.ended.length}:count: ended with nothing left`,
+      );
     }
     if (receipt.kept.length > 0) {
-      parts.push(`${receipt.kept.length} kept in place`);
+      parts.push(
+        $localize`:Remodel receipt summary list item:${receipt.kept.length}:count: kept in place`,
+      );
     }
-    return `Saved ${formatDeadline(receipt.committedAt)} · ${parts.join(', ')}`;
+    const at = formatDeadline(receipt.committedAt);
+    const summary = parts.join(', ');
+    return $localize`:Remodel receipt line; summary lists what the save did:Saved ${at}:at: · ${summary}:summary:`;
   }
 
   /** What the commit returned to guests; only rendered when it refunded at least one. */
   protected refundedTotalText(): string {
     const total = this.receipt().refundedTotal;
-    return total === null ? '' : `${formatMoney(total)} returned`;
+    if (total === null) {
+      return '';
+    }
+    const amount = formatMoney(total);
+    return $localize`:Money returned to guests by a remodel:${amount}:amount: returned`;
   }
 
   /** "Venue-change fee: €5 per refunded booking, €5 in total" — the rate charged then, not today's. */
@@ -172,8 +211,12 @@ export class RemodelReceiptPanel {
       return '';
     }
     const perBooking = receipt.refunds[0]?.fee;
-    const perBookingText = perBooking ? `${formatMoney(perBooking)} per refunded booking, ` : '';
-    return `Venue-change fee: ${perBookingText}${formatMoney(total)} in total`;
+    const totalText = formatMoney(total);
+    if (!perBooking) {
+      return $localize`Venue-change fee: ${totalText}:total: in total`;
+    }
+    const fee = formatMoney(perBooking);
+    return $localize`Venue-change fee: ${fee}:fee: per refunded booking, ${totalText}:total: in total`;
   }
 
   protected claimText(claim: RemodelReceiptClaim): string {
@@ -181,13 +224,11 @@ export class RemodelReceiptPanel {
   }
 
   protected releaseText(release: RemodelReceiptRelease): string {
-    const kind =
-      release.kind === 'RELEASE' ? 'unpaid booking released' : 'pending request declined';
-    return `${this.claimText(release)} · ${kind}`;
+    return `${this.claimText(release)} · ${releaseKindText(release.kind)}`;
   }
 
   protected endedText(ended: RemodelReceiptEnded): string {
-    return `${spotLabel(ended.from)} · ${formatCivilDate(ended.bookingDate)} · every day already refunded`;
+    return `${spotLabel(ended.from)} · ${formatCivilDate(ended.bookingDate)} · ${EVERY_DAY_REFUNDED}`;
   }
 
   protected keptText(kept: RemodelReceiptKept): string {
@@ -199,6 +240,15 @@ export class RemodelReceiptPanel {
   }
 }
 
+const EVERY_DAY_REFUNDED = $localize`:A remodel claim with nothing left to refund:every day already refunded`;
+
+function releaseKindText(kind: RemodelReceiptRelease['kind']): string {
+  return kind === 'RELEASE'
+    ? $localize`unpaid booking released`
+    : $localize`pending request declined`;
+}
+
 function spotLabel(spot: RemodelSpot): string {
-  return `${rowName(spot.rowLabel)} · position ${spot.positionNo}`;
+  const row = rowName(spot.rowLabel);
+  return $localize`:Beach-map set location; row is like "Row A":${row}:row: · position ${spot.positionNo}:position:`;
 }

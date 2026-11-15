@@ -79,7 +79,7 @@ export class ConsoleStatsStrip {
     const takings = this.takings();
     return takings === undefined
       ? undefined
-      : `${formatMoney(takings.net)} after ${formatCommissionPercent(takings.commissionBps)} commission`;
+      : $localize`${formatMoney(takings.net)}:net: after ${formatCommissionPercent(takings.commissionBps)}:rate: commission`;
   });
 
   constructor() {

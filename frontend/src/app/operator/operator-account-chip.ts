@@ -51,7 +51,7 @@ import { TouchTarget } from '../shared/touch-target';
       type="button"
       [class]="cls.chip"
       [attr.data-testid]="ids().account"
-      [attr.aria-label]="'Account: ' + username()"
+      [attr.aria-label]="accountLabel()"
       [attr.aria-expanded]="open()"
       (click)="toggle()"
     >
@@ -81,8 +81,11 @@ import { TouchTarget } from '../shared/touch-target';
             <span class="block truncate text-[14px] font-bold text-riv-pop-ink">{{
               handle()
             }}</span>
-            <span class="block truncate text-[12px] text-riv-pop-ink-soft"
-              >Signed in as {{ username() }}</span
+            <span class="block truncate text-[12px] text-riv-pop-ink-soft" i18n
+              >Signed in as
+              {{
+                username() // i18n(ph="username")
+              }}</span
             >
           </span>
         </div>
@@ -95,9 +98,10 @@ import { TouchTarget } from '../shared/touch-target';
           [class]="cls.item"
           [attr.data-testid]="ids().changePassword"
           (click)="activate()"
+          i18n
           >Change password</a
         >
-        <p [class]="cls.groupLabel" [attr.id]="ids().themeLabel">Console theme</p>
+        <p [class]="cls.groupLabel" [attr.id]="ids().themeLabel" i18n>Console theme</p>
         <div role="group" [attr.aria-labelledby]="ids().themeLabel">
           @for (option of consoleTheme.options; track option.id) {
             <button
@@ -126,7 +130,7 @@ import { TouchTarget } from '../shared/touch-target';
         </div>
         @if (support.contact(); as contact) {
           @if (contact.email || contact.whatsapp) {
-            <p [class]="cls.groupLabel" [attr.id]="ids().contactLabel">Contact Riviera</p>
+            <p [class]="cls.groupLabel" [attr.id]="ids().contactLabel" i18n>Contact Riviera</p>
             <div role="group" [attr.aria-labelledby]="ids().contactLabel">
               @if (contact.email; as email) {
                 <a
@@ -135,7 +139,11 @@ import { TouchTarget } from '../shared/touch-target';
                   [href]="'mailto:' + email"
                   [attr.data-testid]="ids().contactEmail"
                   (click)="activate()"
-                  >Email {{ email }}</a
+                  i18n="support contact|Menu row that opens a mail to the support address"
+                  >Email
+                  {{
+                    email // i18n(ph="email")
+                  }}</a
                 >
               }
               @if (contact.whatsapp; as whatsapp) {
@@ -147,7 +155,11 @@ import { TouchTarget } from '../shared/touch-target';
                   rel="noopener"
                   [attr.data-testid]="ids().contactWhatsapp"
                   (click)="activate()"
-                  >WhatsApp {{ whatsapp.number }}</a
+                  i18n="support contact|Menu row that opens a WhatsApp chat with support"
+                  >WhatsApp
+                  {{
+                    whatsapp.number // i18n(ph="number")
+                  }}</a
                 >
               }
             </div>
@@ -159,6 +171,7 @@ import { TouchTarget } from '../shared/touch-target';
           [class]="cls.button"
           [attr.data-testid]="ids().signout"
           (click)="activate(); signOut.emit()"
+          i18n
         >
           Sign out
         </button>
@@ -194,6 +207,10 @@ export class OperatorAccountChip {
   protected readonly username = computed(() => this.operator.username() ?? '');
   protected readonly handle = computed(() => handleOf(this.username()));
   protected readonly initial = computed(() => initialOf(this.username()));
+  protected readonly accountLabel = computed(
+    () =>
+      $localize`:account menu|Accessible name of the account chip:Account: ${this.username()}:username:`,
+  );
 
   /** Computed, not a method: these bind in a sticky header that re-runs change detection on
    *  every navigation, and a method would re-allocate all the strings each pass. */

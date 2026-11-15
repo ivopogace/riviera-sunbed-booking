@@ -36,7 +36,7 @@ import { parentVenueId } from '../shared/parent-venue-id';
 import { formatCivilDate, todayBookingDate } from '../shared/booking-date';
 import { formatStay } from '../shared/booking-date-label';
 import { metaFor } from '../shared/booking-status';
-import { plural } from '../shared/plural';
+import { pluralOf } from '../shared/plural';
 import { setLabel, setsById, tierSentenceLabel } from '../shared/set-label';
 import { SetView, VenueMapView } from '../shared/venue-views';
 import { BeachMapCanvas, BeachMapCanvasRow, BeachMapRowDef } from '../shared/beach-map-canvas';
@@ -93,9 +93,12 @@ interface GuestGroup {
 }
 
 const GUEST_GROUPS: readonly { key: StayDayGroup; title: string }[] = [
-  { key: 'ARRIVING', title: 'Arriving' },
-  { key: 'STAYING', title: 'Staying' },
-  { key: 'LEAVING', title: 'Leaving' },
+  {
+    key: 'ARRIVING',
+    title: $localize`:guest list group|Guests whose stay starts on the day:Arriving`,
+  },
+  { key: 'STAYING', title: $localize`:guest list group|Guests mid-stay on the day:Staying` },
+  { key: 'LEAVING', title: $localize`:guest list group|Guests whose stay ends on the day:Leaving` },
 ];
 
 /** The settled-status badge: shared-directive modifier, operator wording, and its test hook. */
@@ -113,20 +116,24 @@ interface ArrivalChip {
 const ARRIVAL_CHIPS: Partial<Record<DayAttendance, ArrivalChip>> = {
   ATTENDED: {
     modifier: metaFor('COMPLETED').chip,
-    label: 'Checked in',
+    label: $localize`:attendance badge|The guest checked in that day:Checked in`,
     testId: 'arrival-checked-in',
   },
-  MISSED: { modifier: metaFor('NO_SHOW').chip, label: 'No-show', testId: 'arrival-no-show' },
+  MISSED: {
+    modifier: metaFor('NO_SHOW').chip,
+    label: $localize`:attendance badge|The guest did not come that day:No-show`,
+    testId: 'arrival-no-show',
+  },
   REFUNDED: {
     modifier: metaFor('CANCELLED').chip,
-    label: 'Day refunded',
+    label: $localize`:attendance badge|The venue refunded that day:Day refunded`,
     testId: 'arrival-day-refunded',
   },
 };
 
 const RELEASED_CHIP: ArrivalChip = {
   modifier: metaFor('CANCELLED').chip,
-  label: 'Day released',
+  label: $localize`:attendance badge|The venue refunded the day and freed the set:Day released`,
   testId: 'arrival-day-released',
 };
 
@@ -225,8 +232,8 @@ export class DailyViewTab {
   /** The day-refund confirm's warning: a day still ahead is freed to sell; a past day keeps its claim (ADR-0027 §4). */
   protected readonly refundConfirmMessage = computed(() =>
     this.selectedDate() < todayBookingDate(new Date())
-      ? 'The guest gets that day’s share back; the day has passed, so the set is not put back on sale. A one-day booking is cancelled and refunded in full. The amount is decided by the booking, and the guest is not told why.'
-      : 'The guest gets that day’s share back and the set is free to sell again for the day; a one-day booking is cancelled and refunded in full. The amount is decided by the booking, and the guest is not told why.',
+      ? $localize`The guest gets that day’s share back; the day has passed, so the set is not put back on sale. A one-day booking is cancelled and refunded in full. The amount is decided by the booking, and the guest is not told why.`
+      : $localize`The guest gets that day’s share back and the set is free to sell again for the day; a one-day booking is cancelled and refunded in full. The amount is decided by the booking, and the guest is not told why.`,
   );
 
   private readonly scanner = inject(QrScanner);
@@ -237,6 +244,9 @@ export class DailyViewTab {
   /** The last check-in outcome, announced via the panel's status region. */
   protected readonly checkInNotice = signal<CheckInNotice | undefined>(undefined);
   protected readonly scanVideo = viewChild<ElementRef<HTMLVideoElement>>('scanVideo');
+  protected readonly scanToggleLabel = computed(() =>
+    this.scanOpen() ? $localize`Stop scanning` : $localize`Scan QR`,
+  );
 
   /** The row whose venue day refund confirm is open (its code), one at a time; `undefined` when none. */
   protected readonly refundConfirmCode = signal<string | undefined>(undefined);
@@ -296,7 +306,10 @@ export class DailyViewTab {
   protected submitCode(input: HTMLInputElement): void {
     const code = codeFromScan(input.value);
     if (code === null) {
-      this.checkInNotice.set({ tone: 'error', text: 'That doesn’t look like a booking code.' });
+      this.checkInNotice.set({
+        tone: 'error',
+        text: $localize`That doesn’t look like a booking code.`,
+      });
       return;
     }
     input.value = '';
@@ -307,7 +320,7 @@ export class DailyViewTab {
     this.closeScan();
     const code = codeFromScan(payload);
     if (code === null) {
-      this.checkInNotice.set({ tone: 'error', text: 'That QR code isn’t a booking.' });
+      this.checkInNotice.set({ tone: 'error', text: $localize`That QR code isn’t a booking.` });
       return;
     }
     this.checkIn(code);
@@ -323,7 +336,7 @@ export class DailyViewTab {
       next: (result) => {
         this.checkInBusy.set(false);
         const label = setLabel(setsById(this.venue()?.sets), result.setId);
-        this.checkInNotice.set({ tone: 'ok', text: `Checked in — ${label}.` });
+        this.checkInNotice.set({ tone: 'ok', text: $localize`Checked in — ${label}:set:.` });
         this.load();
       },
       error: (error: unknown) => {
@@ -401,6 +414,14 @@ export class DailyViewTab {
     this.refundConfirmCode.set(row.code);
   }
 
+  protected refundDayLabel(row: ArrivalRow): string {
+    return $localize`Refund day — ${row.label}:set:`;
+  }
+
+  protected refundPrompt(row: ArrivalRow): string {
+    return $localize`Refund ${this.dateLabel()}:date: for ${row.label}:set:?`;
+  }
+
   protected onCancelRefund(): void {
     const code = this.refundConfirmCode();
     this.refundConfirmCode.set(undefined);
@@ -476,7 +497,14 @@ export class DailyViewTab {
       return null;
     }
     const pending = this.bookings().filter((b) => b.attendance === 'EXPECTED').length;
-    return pending > 0 ? `${plural(pending, 'guest')} not yet checked in today.` : null;
+    if (pending === 0) {
+      return null;
+    }
+    return pluralOf(
+      pending,
+      $localize`${pending}:count: guest not yet checked in today.`,
+      $localize`${pending}:count: guests not yet checked in today.`,
+    );
   });
 
   protected readonly markedCount = computed(
@@ -609,7 +637,7 @@ export class DailyViewTab {
         this.closeSalesBusy.set(false);
         this.closeSalesConfirm.set(false);
         this.notice.set(
-          'Online sales for today are closed. This stays in place for future days until you change it back in Venue & commodities.',
+          $localize`Online sales for today are closed. This stays in place for future days until you change it back in Venue & commodities.`,
         );
         this.focusAfterRender('daily-notice');
         this.load();
@@ -749,7 +777,7 @@ export class DailyViewTab {
   /** Accessible name so tile state is not conveyed by colour alone (WCAG AA). */
   protected tileLabel(set: SetView): string {
     const tier = tierSentenceLabel(set.tier);
-    return `Set ${set.rowLabel} ${set.positionNo}, ${tier}, ${this.money(set.price)}, ${tileAction(this.stateOf(set))}`;
+    return $localize`:sunbed set tile|Accessible name of a beach-map tile, e.g. Set A 3, standard, €25, free:Set ${set.rowLabel}:row: ${set.positionNo}:position:, ${tier}:tier:, ${this.money(set.price)}:price:, ${tileAction(this.stateOf(set))}:state:`;
   }
 }
 
@@ -757,13 +785,13 @@ export class DailyViewTab {
 function closeSalesFailureNotice(reason: VenueProfileErrorCode): string {
   switch (reason) {
     case 'STALE_WRITE':
-      return 'Couldn’t close today’s sales — the venue was changed at the same time. Check the refreshed state and try again.';
+      return $localize`Couldn’t close today’s sales — the venue was changed at the same time. Check the refreshed state and try again.`;
     case 'NOT_VENUE_OWNER':
-      return 'You don’t manage this venue, so you can’t close its sales.';
+      return $localize`You don’t manage this venue, so you can’t close its sales.`;
     case 'UNAUTHORIZED':
       return SESSION_EXPIRED_MESSAGE;
     default:
-      return 'Couldn’t close today’s sales. Please try again.';
+      return $localize`Couldn’t close today’s sales. Please try again.`;
   }
 }
 
@@ -771,15 +799,15 @@ function closeSalesFailureNotice(reason: VenueProfileErrorCode): string {
 function markFailureNotice(reason: MarkErrorCode): string {
   switch (reason) {
     case 'ALREADY_TAKEN':
-      return 'That set was just taken — the map has been refreshed.';
+      return $localize`That set was just taken — the map has been refreshed.`;
     case 'DATE_IN_PAST':
-      return 'That day is past the booking cutoff — walk-ins can’t be marked for it.';
+      return $localize`That day is past the booking cutoff — walk-ins can’t be marked for it.`;
     case 'NOT_VENUE_OWNER':
-      return 'You don’t manage this venue, so you can’t mark its walk-ins.';
+      return $localize`You don’t manage this venue, so you can’t mark its walk-ins.`;
     case 'UNAUTHORIZED':
       return SESSION_EXPIRED_MESSAGE;
     default:
-      return 'Could not mark that set. The map has been refreshed.';
+      return $localize`Could not mark that set. The map has been refreshed.`;
   }
 }
 
@@ -787,13 +815,13 @@ function markFailureNotice(reason: MarkErrorCode): string {
 function releaseFailureNotice(reason: ReleaseErrorCode): string {
   switch (reason) {
     case 'NOT_MARKED':
-      return 'That set was not a walk-in mark — the map has been refreshed.';
+      return $localize`That set was not a walk-in mark — the map has been refreshed.`;
     case 'NOT_VENUE_OWNER':
-      return 'You don’t manage this venue, so you can’t release its walk-ins.';
+      return $localize`You don’t manage this venue, so you can’t release its walk-ins.`;
     case 'UNAUTHORIZED':
       return SESSION_EXPIRED_MESSAGE;
     default:
-      return 'Could not release that set. The map has been refreshed.';
+      return $localize`Could not release that set. The map has been refreshed.`;
   }
 }
 
@@ -815,18 +843,18 @@ function cameraUnavailableMessage(error: unknown): string {
   switch (name) {
     case 'NotAllowedError':
     case 'SecurityError':
-      return 'Camera access is blocked for this site — allow it in the browser settings, or type the code.';
+      return $localize`Camera access is blocked for this site — allow it in the browser settings, or type the code.`;
     case 'NotFoundError':
     case 'OverconstrainedError':
-      return 'No usable camera was found — type the code instead.';
+      return $localize`No usable camera was found — type the code instead.`;
     case 'NotReadableError':
-      return 'The camera is in use by another app — close it, or type the code.';
+      return $localize`The camera is in use by another app — close it, or type the code.`;
     case 'NotSupportedError':
-      return 'This browser can’t open the camera here — type the code instead.';
-    default: {
-      const suffix = name === undefined ? '' : ` (${name})`;
-      return `Camera unavailable${suffix} — type the code instead.`;
-    }
+      return $localize`This browser can’t open the camera here — type the code instead.`;
+    default:
+      return name === undefined
+        ? $localize`Camera unavailable — type the code instead.`
+        : $localize`Camera unavailable (${name}:error:) — type the code instead.`;
   }
 }
 
@@ -840,35 +868,35 @@ function checkInMessage(error: unknown, sets: ReadonlyMap<number, SetView>): str
     case 'ALREADY_CHECKED_IN': {
       const setId = checkInSetIdOf(error);
       return setId === undefined
-        ? 'Already checked in today.'
-        : `Already checked in today — ${setLabel(sets, setId)}.`;
+        ? $localize`Already checked in today.`
+        : $localize`Already checked in today — ${setLabel(sets, setId)}:set:.`;
     }
     case 'WRONG_SERVICE_DATE': {
       const date = checkInWrongDateOf(error);
       return date === undefined
-        ? 'This booking is for a different day.'
-        : `This booking is for ${date}.`;
+        ? $localize`This booking is for a different day.`
+        : $localize`This booking is for ${formatCivilDate(date)}:date:.`;
     }
     case 'DAY_REFUNDED': {
       const setId = checkInSetIdOf(error);
       return setId === undefined
-        ? 'Today was refunded for weather — the spot is still the guest’s, no check-in.'
-        : `Today was refunded for weather — ${setLabel(sets, setId)} is still the guest’s, no check-in.`;
+        ? $localize`Today was refunded for weather — the spot is still the guest’s, no check-in.`
+        : $localize`Today was refunded for weather — ${setLabel(sets, setId)}:set: is still the guest’s, no check-in.`;
     }
     case 'DAY_RELEASED': {
       const setId = checkInSetIdOf(error);
       return setId === undefined
-        ? 'Today was refunded by the venue and the spot released — no check-in.'
-        : `Today was refunded by the venue and ${setLabel(sets, setId)} was released — no check-in.`;
+        ? $localize`Today was refunded by the venue and the spot released — no check-in.`
+        : $localize`Today was refunded by the venue and ${setLabel(sets, setId)}:set: was released — no check-in.`;
     }
     case 'BOOKING_NOT_FOUND':
-      return 'No booking with that code at this venue.';
+      return $localize`No booking with that code at this venue.`;
     case 'NOT_VENUE_OWNER':
-      return 'You don’t manage this venue.';
+      return $localize`You don’t manage this venue.`;
     case 'UNAUTHORIZED':
-      return 'Your session expired — sign in again.';
+      return $localize`Your session expired — sign in again.`;
     default:
-      return 'Couldn’t check in. Try again.';
+      return $localize`Couldn’t check in. Try again.`;
   }
 }
 
@@ -881,27 +909,27 @@ function releasesClaim(result: VenueDayRefundResult): boolean {
 function dayRefundSuccessNotice(result: VenueDayRefundResult, dateLabel: string): string {
   const amount = formatMoney({ minorUnits: result.refundMinor, currency: result.currency });
   if (result.kind === 'BOOKING_CANCELLED') {
-    return `Booking cancelled and ${amount} refunded in full — the set is free again on ${dateLabel}.`;
+    return $localize`Booking cancelled and ${amount}:amount: refunded in full — the set is free again on ${dateLabel}:date:.`;
   }
   return result.released
-    ? `${dateLabel} refunded (${amount}) — the set is free again that day; the stay goes on.`
-    : `${dateLabel} refunded (${amount}); the stay goes on.`;
+    ? $localize`${dateLabel}:date: refunded (${amount}:amount:) — the set is free again that day; the stay goes on.`
+    : $localize`${dateLabel}:date: refunded (${amount}:amount:); the stay goes on.`;
 }
 
 /** Map a day-refund failure to its operator-facing notice (no nested ternaries). */
 function dayRefundFailureNotice(reason: DayRefundErrorCode): string {
   switch (reason) {
     case 'DAY_ATTENDED':
-      return 'The guest checked in that day — an attended day is not refunded.';
+      return $localize`The guest checked in that day — an attended day is not refunded.`;
     case 'DAY_ALREADY_REFUNDED':
-      return 'That day was already refunded.';
+      return $localize`That day was already refunded.`;
     case 'BOOKING_NOT_FOUND':
-      return 'No booking with that code covers this day at this venue.';
+      return $localize`No booking with that code covers this day at this venue.`;
     case 'NOT_VENUE_OWNER':
-      return 'You don’t manage this venue.';
+      return $localize`You don’t manage this venue.`;
     case 'UNAUTHORIZED':
-      return 'Your session expired — sign in again.';
+      return $localize`Your session expired — sign in again.`;
     default:
-      return 'Could not refund the day. Please try again.';
+      return $localize`Could not refund the day. Please try again.`;
   }
 }

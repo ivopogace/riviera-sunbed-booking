@@ -8,12 +8,14 @@ import { SetLock } from './operator-console.model';
  */
 export function lockReason(lock: SetLock): string {
   if (lock.bookedOn !== null) {
-    return `booked ${bookedSpan(lock.bookedOn, lock.bookedUntil ?? lock.bookedOn)}`;
+    const span = bookedSpan(lock.bookedOn, lock.bookedUntil ?? lock.bookedOn);
+    return $localize`:Why a beach-map set is locked; span is a date or a date range:booked ${span}:span:`;
   }
   if (lock.heldOn !== null) {
-    return `held by staff ${formatCivilDate(lock.heldOn)}`;
+    const date = formatCivilDate(lock.heldOn);
+    return $localize`:Why a beach-map set is locked; staff hold it on that date:held by staff ${date}:date:`;
   }
-  return 'held';
+  return $localize`:Why a beach-map set is locked, no date known:held`;
 }
 
 function bookedSpan(first: string, last: string): string {
@@ -24,5 +26,6 @@ function bookedSpan(first: string, last: string): string {
 
 /** The sentence the cell's accessible description and title carry beside its name. */
 export function lockDescription(lock: SetLock): string {
-  return `Locked — ${lockReason(lock)}. Can’t be moved or removed; tier and pool can still change.`;
+  const reason = lockReason(lock);
+  return $localize`:Accessible description of a locked beach-map set:Locked — ${reason}:reason:. Can’t be moved or removed; tier and pool can still change.`;
 }

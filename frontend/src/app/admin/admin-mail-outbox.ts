@@ -22,9 +22,16 @@ import { TouchTarget } from '../shared/touch-target';
   imports: [CardGlass, AdminMailDelivery, BusyAction, TouchTarget],
   template: `
     @if (lever.loading()) {
-      <p class="mt-4 text-[15px] text-riv-ink-soft" data-testid="admin-outbox-loading">Loading…</p>
+      <p class="mt-4 text-[15px] text-riv-ink-soft" data-testid="admin-outbox-loading" i18n>
+        Loading…
+      </p>
     } @else if (lever.loadError()) {
-      <p class="mt-4 text-[15px] text-riv-error-ink" role="alert" data-testid="admin-outbox-error">
+      <p
+        class="mt-4 text-[15px] text-riv-error-ink"
+        role="alert"
+        data-testid="admin-outbox-error"
+        i18n
+      >
         Something went wrong loading the email outbox.
         <button
           type="button"
@@ -42,20 +49,26 @@ import { TouchTarget } from '../shared/touch-target';
         data-testid="admin-outbox-card"
         aria-labelledby="admin-outbox-heading"
       >
-        <h2 id="admin-outbox-heading" class="text-[16px] font-semibold text-riv-card-ink">
+        <h2 id="admin-outbox-heading" class="text-[16px] font-semibold text-riv-card-ink" i18n>
           Undelivered confirmation mail
         </h2>
 
         @if (lever.status(); as outbox) {
           @if (outbox.outstanding === 0) {
-            <p class="mt-2 text-[15px] text-riv-card-ink" data-testid="admin-outbox-empty">
+            <p class="mt-2 text-[15px] text-riv-card-ink" data-testid="admin-outbox-empty" i18n>
               Nothing outstanding — every confirmation mail has been handed over.
             </p>
           } @else {
-            <p class="mt-2 text-[15px] text-riv-card-ink" data-testid="admin-outbox-outstanding">
-              <strong>{{ outbox.outstanding }}</strong>
-              {{ outbox.outstanding === 1 ? 'mail is' : 'mails are' }} still owed. Resubmitting
-              hands them back for delivery; it never touches payouts or refunds.
+            <p
+              class="mt-2 text-[15px] text-riv-card-ink"
+              data-testid="admin-outbox-outstanding"
+              i18n
+            >
+              {outbox.outstanding, plural,
+                =1 {<strong>1</strong> mail is still owed.}
+                other {<strong>{{ outbox.outstanding }}</strong> mails are still owed.}
+              }
+              Resubmitting hands them back for delivery; it never touches payouts or refunds.
             </p>
           }
         }
@@ -68,7 +81,11 @@ import { TouchTarget } from '../shared/touch-target';
           (click)="lever.resubmit()"
           data-testid="admin-outbox-resubmit"
         >
-          {{ lever.busy() ? 'Resubmitting…' : 'Resubmit' }}
+          @if (lever.busy()) {
+            <ng-container i18n>Resubmitting…</ng-container>
+          } @else {
+            <ng-container i18n>Resubmit</ng-container>
+          }
         </button>
       </div>
 
@@ -89,7 +106,7 @@ export class AdminMailOutbox {
 
   protected readonly lever = new OutboxLever(
     inject(AdminMailOutboxService),
-    (resubmitted) => `Handed ${resubmitted} back for delivery.`,
+    (resubmitted) => $localize`Handed ${resubmitted}:count: back for delivery.`,
   );
 
   private loaded = false;

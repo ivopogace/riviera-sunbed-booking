@@ -1,3 +1,5 @@
+import { displayDecimal } from './display-format';
+
 /**
  * The commission rate's percent↔basis-points boundary — the platform's cut of a booking, stored as
  * whole basis points so the split stays exact-integer arithmetic (invariant #5). A rate is not money,
@@ -10,7 +12,14 @@
 
 /** The stored basis points as the percentage a human reads: 1500 → "15%", 1550 → "15.5%". */
 export function formatCommissionPercent(bps: number): string {
-  return `${bps / 100}%`;
+  return `${displayDecimal(bps / 100, percentFractionDigits(bps))}%`;
+}
+
+function percentFractionDigits(bps: number): number {
+  if (bps % 100 === 0) {
+    return 0;
+  }
+  return bps % 10 === 0 ? 1 : 2;
 }
 
 /** Basis points as the plain percent string a number input starts from (1500 → "15", 1550 → "15.5"). */

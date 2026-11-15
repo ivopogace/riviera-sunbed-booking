@@ -44,7 +44,7 @@ import {
   imports: [RouterLink, TouchTarget, BusyAction, FormField, FieldErrorFor],
   host: {
     role: 'alertdialog',
-    'aria-label': 'Confirm remodel',
+    '[attr.aria-label]': 'dialogLabel',
     'data-testid': 'layout-remodel-preview',
     class:
       'mt-3 block rounded-[12px] border border-riv-warn-edge/60 bg-riv-warn-fill px-3 py-2.5 text-riv-warn-ink',
@@ -52,6 +52,7 @@ import {
   templateUrl: './remodel-preview-panel.html',
 })
 export class RemodelPreviewPanel {
+  protected readonly dialogLabel = $localize`:Accessible name of the beach-map remodel confirmation dialog:Confirm remodel`;
   readonly preview = input.required<RemodelPreview>();
   /** The venue the bookings link opens the daily view of. */
   readonly venueId = input.required<number>();
@@ -78,21 +79,23 @@ export class RemodelPreviewPanel {
   });
 
   protected readonly confirmForm = form(this.confirmModel, (path) => {
-    required(path.typedCount, { message: 'Type the number of refunds to confirm them.' });
+    required(path.typedCount, {
+      message: $localize`Type the number of refunds to confirm them.`,
+    });
     validate(path.typedCount, ({ value }) =>
       value() === this.refundCount()
         ? null
         : {
             kind: 'refundCount',
-            message: `Type ${this.refundCount()} to confirm the refunds.`,
+            message: $localize`Type ${this.refundCount()}:count: to confirm the refunds.`,
           },
     );
-    required(path.reason, { message: 'Give a reason — it goes on the receipt.' });
-    maxLength(path.reason, 500, { message: 'Keep the reason under 500 characters.' });
+    required(path.reason, { message: REASON_REQUIRED });
+    maxLength(path.reason, 500, {
+      message: $localize`Keep the reason under 500 characters.`,
+    });
     validate(path.reason, ({ value }) =>
-      value().trim().length > 0
-        ? null
-        : { kind: 'blank', message: 'Give a reason — it goes on the receipt.' },
+      value().trim().length > 0 ? null : { kind: 'blank', message: REASON_REQUIRED },
     );
   });
 
@@ -121,24 +124,34 @@ export class RemodelPreviewPanel {
   /** "Save and move 1, refund 1, release 2, end 1, keep 1 bookings" */
   protected saveLabel(): string {
     if (this.committing()) {
-      return 'Saving…';
+      return $localize`Saving…`;
     }
     const preview = this.preview();
     const parts: string[] = [];
     if (preview.moves.length > 0) {
-      parts.push(`move ${preview.moves.length}`);
+      parts.push(
+        $localize`:Remodel save button list item; count of bookings moved:move ${preview.moves.length}:count:`,
+      );
     }
     if (preview.refunds.length > 0) {
-      parts.push(`refund ${preview.refunds.length}`);
+      parts.push(
+        $localize`:Remodel save button list item; count of bookings refunded:refund ${preview.refunds.length}:count:`,
+      );
     }
     if (preview.releases.length > 0) {
-      parts.push(`release ${preview.releases.length}`);
+      parts.push(
+        $localize`:Remodel save button list item; count of bookings released:release ${preview.releases.length}:count:`,
+      );
     }
     if (preview.ended.length > 0) {
-      parts.push(`end ${preview.ended.length}`);
+      parts.push(
+        $localize`:Remodel save button list item; count of bookings ended:end ${preview.ended.length}:count:`,
+      );
     }
     if (preview.blocks.length > 0) {
-      parts.push(`keep ${preview.blocks.length}`);
+      parts.push(
+        $localize`:Remodel save button list item; count of bookings kept:keep ${preview.blocks.length}:count:`,
+      );
     }
     const total =
       preview.moves.length +
@@ -146,15 +159,18 @@ export class RemodelPreviewPanel {
       preview.releases.length +
       preview.ended.length +
       preview.blocks.length;
-    return `Save and ${parts.join(', ')} ${total === 1 ? 'booking' : 'bookings'}`;
+    const actions = parts.join(', ');
+    return total === 1
+      ? $localize`:Remodel save button; actions is a list like "move 1, refund 2":Save and ${actions}:actions: booking`
+      : $localize`:Remodel save button; actions is a list like "move 1, refund 2":Save and ${actions}:actions: bookings`;
   }
 
   /** "2 bookings can’t be moved or ended yet, so their sets stay on the map exactly as they are." */
   protected keptSentence(): string {
     const blocked = this.preview().blocks.length;
     return blocked === 1
-      ? '1 booking can’t be moved or ended yet, so its set stays on the map exactly as it is.'
-      : `${blocked} bookings can’t be moved or ended yet, so their sets stay on the map exactly as they are.`;
+      ? $localize`1 booking can’t be moved or ended yet, so its set stays on the map exactly as it is.`
+      : $localize`${blocked}:count: bookings can’t be moved or ended yet, so their sets stay on the map exactly as they are.`;
   }
 
   /**
@@ -165,14 +181,21 @@ export class RemodelPreviewPanel {
   protected keepSentence(): string {
     if (this.committable()) {
       const kept = this.preview().keep.map(spotLabel);
-      return `${nameSpots(kept)} ${kept.length === 1 ? 'stays' : 'stay'} on the map; the rest of the layout is saved as painted.`;
+      const spots = nameSpots(kept);
+      return kept.length === 1
+        ? $localize`${spots}:spot: stays on the map; the rest of the layout is saved as painted.`
+        : $localize`${spots}:spots: stay on the map; the rest of the layout is saved as painted.`;
     }
     if (this.displaced()) {
       const kept = this.preview().keep.map(spotLabel);
-      return `Keep ${nameSpots(kept)} at ${kept.length === 1 ? 'its' : 'their'} row and position to save.`;
+      const spots = nameSpots(kept);
+      return kept.length === 1
+        ? $localize`Keep ${spots}:spot: at its row and position to save.`
+        : $localize`Keep ${spots}:spots: at their row and position to save.`;
     }
     const held = this.preview().staffHolds.map((hold) => spotLabel(hold.set));
-    return `Keep ${nameSpots(held)} on the map to save.`;
+    const spots = nameSpots(held);
+    return $localize`Keep ${spots}:spots: on the map to save.`;
   }
 
   protected moveText(move: RemodelMove): string {
@@ -183,27 +206,33 @@ export class RemodelPreviewPanel {
   protected feeSentence(): string {
     const preview = this.preview();
     const perBooking = preview.refunds[0]?.fee;
-    const perBookingText = perBooking ? `${formatMoney(perBooking)} per refunded booking` : 'a fee';
-    return `You pay ${perBookingText} — ${formatMoney(preview.feeTotal)} in total, deducted from your payout.`;
+    const total = formatMoney(preview.feeTotal);
+    if (!perBooking) {
+      return $localize`You pay a fee — ${total}:total: in total, deducted from your payout.`;
+    }
+    const fee = formatMoney(perBooking);
+    return $localize`You pay ${fee}:fee: per refunded booking — ${total}:total: in total, deducted from your payout.`;
   }
 
   protected refundText(claim: RemodelClaim): string {
-    return `${spotLabel(claim.from)} · ${when(claim)} refunded in full`;
+    const spot = spotLabel(claim.from);
+    const detail = when(claim);
+    return $localize`:Remodel refund line; detail is the date and amount:${spot}:spot: · ${detail}:detail: refunded in full`;
   }
 
   protected releaseText(release: RemodelRelease): string {
-    const kind =
-      release.kind === 'RELEASE' ? 'unpaid booking released' : 'pending request declined';
-    return `${spotLabel(release.from)} · ${when(release)} · ${kind}`;
+    return `${spotLabel(release.from)} · ${when(release)} · ${releaseKindText(release.kind)}`;
   }
 
   /** "Row A · position 3 · Thu 24 Sept · every day already refunded" — no amount: nothing is left. */
   protected endedText(claim: RemodelClaim): string {
-    return `${spotLabel(claim.from)} · ${formatCivilDate(claim.bookingDate)} · every day already refunded`;
+    return `${spotLabel(claim.from)} · ${formatCivilDate(claim.bookingDate)} · ${EVERY_DAY_REFUNDED}`;
   }
 
   protected holdText(hold: RemodelStaffHold): string {
-    return `${spotLabel(hold.set)} · held by staff ${hold.dates.map(formatCivilDate).join(', ')}`;
+    const dates = hold.dates.map(formatCivilDate).join(', ');
+    const held = $localize`:A set staff hold on the listed dates:held by staff ${dates}:dates:`;
+    return `${spotLabel(hold.set)} · ${held}`;
   }
 
   protected blockText(block: RemodelBlock): string {
@@ -211,15 +240,26 @@ export class RemodelPreviewPanel {
   }
 }
 
+const REASON_REQUIRED = $localize`Give a reason — it goes on the receipt.`;
+
+const EVERY_DAY_REFUNDED = $localize`:A remodel claim with nothing left to refund:every day already refunded`;
+
+function releaseKindText(kind: RemodelRelease['kind']): string {
+  return kind === 'RELEASE'
+    ? $localize`unpaid booking released`
+    : $localize`pending request declined`;
+}
+
 function spotLabel(spot: RemodelSpot): string {
-  return `${rowName(spot.rowLabel)} · position ${spot.positionNo}`;
+  const row = rowName(spot.rowLabel);
+  return $localize`:Beach-map set location; row is like "Row A":${row}:row: · position ${spot.positionNo}:position:`;
 }
 
 /** "A, B and C" */
 function nameSpots(spots: readonly string[]): string {
   return spots.length <= 1
     ? spots.join('')
-    : `${spots.slice(0, -1).join(', ')} and ${spots.at(-1)}`;
+    : $localize`:A list of set locations, "A, B and C":${spots.slice(0, -1).join(', ')}:head: and ${spots.at(-1)}:last:`;
 }
 
 function when(claim: RemodelClaim): string {

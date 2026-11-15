@@ -1,19 +1,20 @@
-<section class="oc-stats" aria-label="Today at your venue" data-testid="oc-stats">
+<section class="oc-stats" i18n-aria-label aria-label="Today at your venue" data-testid="oc-stats">
   <div appConsolePageRow class="grid grid-cols-2 gap-2.5 px-5 py-3.5 sm:grid-cols-4 sm:px-6">
-    <app-stat-tile label="Free today" valueTestId="oc-stat-free">
+    <app-stat-tile i18n-label label="Free today" valueTestId="oc-stat-free">
       {{ free()
       }}<span class="text-[14px] font-semibold text-riv-card-ink-faint"> / {{ total() }}</span>
     </app-stat-tile>
 
-    <app-stat-tile label="Booked online" valueTestId="oc-stat-booked">
+    <app-stat-tile i18n-label label="Booked online" valueTestId="oc-stat-booked">
       {{ bookedOnline() ?? '—' }}
     </app-stat-tile>
 
-    <app-stat-tile label="Walk-ins marked" valueTestId="oc-stat-walkins">
+    <app-stat-tile i18n-label label="Walk-ins marked" valueTestId="oc-stat-walkins">
       {{ walkIns() ?? '—' }}
     </app-stat-tile>
 
     <app-stat-tile
+      i18n-label
       label="Online takings · today"
       valueTestId="oc-stat-takings"
       [sub]="netCaption()"
