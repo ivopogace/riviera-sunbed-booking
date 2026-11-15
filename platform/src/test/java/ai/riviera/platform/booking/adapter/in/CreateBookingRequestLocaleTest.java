@@ -16,7 +16,7 @@ class CreateBookingRequestLocaleTest {
 			new CreateBookingRequest.Contact("guest@example.com", "Guest", "+355690000000");
 
 	@ParameterizedTest
-	@CsvSource(nullValues = "NULL", value = { "sq,SQ", "it,IT", "en,EN", "NULL,EN", "de,EN", "'../sq',EN", "SQ,EN" })
+	@CsvSource(nullValues = "NULL", value = { "sq,SQ", "it,IT", "de,DE", "en,EN", "NULL,EN", "fr,EN", "'../sq',EN", "SQ,EN" })
 	void aBookingTakesTheServedLocaleItNames(String wire, SiteLocale expected) {
 		CreateBookingRequest request = new CreateBookingRequest(7L, "2027-07-03", null, CONTACT, wire);
 

@@ -19,6 +19,7 @@ export const LOCALE_OPTIONS: readonly LocaleOption[] = [
   { id: 'en', name: 'English', subPath: '' },
   { id: 'sq', name: 'Shqip', subPath: 'sq' },
   { id: 'it', name: 'Italiano', subPath: 'it' },
+  { id: 'de', name: 'Deutsch', subPath: 'de' },
 ];
 
 const STORAGE_KEY = 'riviera-locale';

@@ -133,7 +133,7 @@ ships coverage here. `frontend/e2e/real-backend/` — local-only, never in CI.
 User-facing copy on a translated page (the tourist shell, Discover, the venue map, the booking
 flow and view, `/for-venues`, `/help`, the not-found and page-load-failed pages, the account pages,
 My bookings, the operator and admin consoles) is marked: `i18n` in templates, `$localize` in TypeScript,
-then `npm run i18n:sync` and an `sq` + `it` `<target>` per new unit. The build fails on a marked
+then `npm run i18n:sync` and an `sq`, `it` and `de` `<target>` per new unit. The build fails on a marked
 message without a translation, never on an unmarked one, so review catches a new literal left
 unmarked. A link opening a new tab, or any full page load of a router URL, takes `localePath()`
 (`shared/display-locale.ts`); every date, money or number display on a translated page goes through

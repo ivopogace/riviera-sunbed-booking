@@ -1,7 +1,7 @@
 /** A locale the SPA is built in (ADR-0030); `angular.json`'s `i18n` block and `SpaLocale` list the same. */
-export type LocaleId = 'en' | 'sq' | 'it';
+export type LocaleId = 'en' | 'sq' | 'it' | 'de';
 
-const LOCALE_IDS: ReadonlySet<string> = new Set<LocaleId>(['en', 'sq', 'it']);
+const LOCALE_IDS: ReadonlySet<string> = new Set<LocaleId>(['en', 'sq', 'it', 'de']);
 const SOURCE_LOCALE: LocaleId = 'en';
 
 export function isLocaleId(value: string | null | undefined): value is LocaleId {

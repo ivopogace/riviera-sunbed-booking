@@ -13,7 +13,8 @@ import java.util.Optional;
 public enum SiteLocale {
 	EN("en", ""),
 	SQ("sq", "sq"),
-	IT("it", "it");
+	IT("it", "it"),
+	DE("de", "de");
 
 	private final String code;
 	private final String subPath;

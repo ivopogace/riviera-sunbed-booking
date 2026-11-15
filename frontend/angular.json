@@ -31,6 +31,9 @@
           },
           "it": {
             "translation": "src/locale/messages.it.xlf"
+          },
+          "de": {
+            "translation": "src/locale/messages.de.xlf"
           }
         }
       },

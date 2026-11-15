@@ -28,7 +28,7 @@ const operatorAuth = {
 };
 
 /** The language rows, each named in itself. */
-const LANGUAGES = ['English', 'Shqip', 'Italiano'];
+const LANGUAGES = ['English', 'Shqip', 'Italiano', 'Deutsch'];
 
 /** No channel configured by default, as shipped; a test sets one to see the Contact Riviera group. */
 const support = {
@@ -198,6 +198,7 @@ describe('OperatorAccountChip', () => {
       'language-en',
       'language-sq',
       'language-it',
+      'language-de',
       'signout',
     ]) {
       expect(el.querySelector(`[data-testid="oc-${suffix}"]`), suffix).not.toBeNull();

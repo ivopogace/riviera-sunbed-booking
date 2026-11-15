@@ -24,7 +24,7 @@ compiled per locale), or a runtime translation library with an in-page switch.
    each locale's translations at build time, so there is no runtime library and no runtime cost, and
    each language has its own URL, which link previews (#1760) and `hreflang` (#1761) need. The cost is
    one build per locale; the inlining runs on the one compilation, so the build takes little longer.
-2. **English is served from the root, the others under `/sq/` and `/it/`** (`angular.json`'s
+2. **English is served from the root, the others under their code: `/sq/`, `/it/` and `/de/`** (`angular.json`'s
    `sourceLocale` with `subPath: ""`). Each build carries its own `lang` and `<base href>`.
 3. **Spring maps each subpath's client routes to that build's `index.html`.** `SpaLocale` (`web`,
    moved from the root package by #1760, keyed off `shared.SiteLocale` by #1770) is the one
@@ -81,5 +81,6 @@ compiled per locale), or a runtime translation library with an in-page switch.
   register's build locale and each console language pick; English for an operator with none.
 - Adding a locale is a row in `angular.json`, in `shared.SiteLocale` (which `SpaLocale` keys off), in
   `core/locale.ts`'s options, in `shared/display-locale.ts` and in the inline seed's list, plus its
-  translation file, its mail bundle (`mail/messages_<code>.properties`) and a migration widening
-  `booking_locale_check` and `operator_locale_check`.
+  translation file, its mail bundle (`mail/messages_<code>.properties`, its date patterns included), a
+  migration widening `booking_locale_check` and `operator_locale_check`, and its home title and
+  description in `web`'s `LinkPreviews`. German (`de`) was added that way (#1773).

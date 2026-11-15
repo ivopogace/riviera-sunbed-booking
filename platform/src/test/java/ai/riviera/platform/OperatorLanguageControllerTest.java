@@ -55,7 +55,7 @@ class OperatorLanguageControllerTest {
 	}
 
 	@ParameterizedTest
-	@ValueSource(strings = { "{\"locale\":\"de\"}", "{\"locale\":\"SQ\"}", "{\"locale\":\"\"}", "{}" })
+	@ValueSource(strings = { "{\"locale\":\"fr\"}", "{\"locale\":\"SQ\"}", "{\"locale\":\"\"}", "{}" })
 	void refusesAnythingButAServedLocalesCode(String body) throws Exception {
 		mvc.perform(request(body).with(user(OPERATOR_USERNAME).roles("OPERATOR")))
 				.andExpect(status().isBadRequest())

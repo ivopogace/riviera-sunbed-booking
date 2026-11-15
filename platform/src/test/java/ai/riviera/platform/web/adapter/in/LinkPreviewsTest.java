@@ -58,6 +58,7 @@ class LinkPreviewsTest {
 		return List.of(new ShellHead.Alternate("en", ORIGIN + path),
 				new ShellHead.Alternate("sq", ORIGIN + "/sq" + path),
 				new ShellHead.Alternate("it", ORIGIN + "/it" + path),
+				new ShellHead.Alternate("de", ORIGIN + "/de" + path),
 				new ShellHead.Alternate("x-default", ORIGIN + xDefault));
 	}
 
@@ -114,6 +115,7 @@ class LinkPreviewsTest {
 		assertEquals("Riviera — Sunbed Booking", en.title());
 		assertEquals("Riviera — Rezervim shezlongësh", sq.title());
 		assertEquals("Riviera — Prenotazione lettini", previews(ORIGIN).home(SpaLocale.IT).title());
+		assertEquals("Riviera — Liegen buchen", previews(ORIGIN).home(SpaLocale.DE).title());
 		assertEquals(ORIGIN + "/sq/", sq.canonical());
 		assertEquals(alternates("/", "/"), sq.alternates());
 		assertTrue(!en.noindex() && en.image() == null);

@@ -127,7 +127,7 @@ class OperatorLocaleIT {
 		Cookie session = SessionLoginSupport.operatorSession(mvc, "op-locale-refused", PENDING_PW);
 
 		mvc.perform(put(LOCALE_PATH).cookie(session).with(csrf())
-				.contentType(MediaType.APPLICATION_JSON).content("{\"locale\":\"de\"}"))
+				.contentType(MediaType.APPLICATION_JSON).content("{\"locale\":\"fr\"}"))
 				.andExpect(status().isBadRequest())
 				.andExpect(jsonPath("$.code").value("INVALID_REQUEST"));
 
