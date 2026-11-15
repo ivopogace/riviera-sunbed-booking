@@ -93,15 +93,15 @@ the view and both create services, returning a three-state `MailDisclosure` (`UN
 
 ## Execution status
 
-**Stage pointer:** implement (phase 2)
+**Stage pointer:** PR — merge main, CI, then ready for review
 
-**Next action:** SPA: one `ConfirmationMailNote` component on both surfaces
+**Next action:** green CI on the merged head, then mark ready and run the review gate
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — customer owner check | ✅ | phase-0+1 commit |
 | 1 — disclosure rule + wire | ✅ | phase-0+1 commit |
-| 2 — SPA | ⏳ | |
-| 3 — docs | | |
+| 2 — SPA | ✅ | phase-2+3 commit |
+| 3 — docs | ✅ | phase-2+3 commit |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.

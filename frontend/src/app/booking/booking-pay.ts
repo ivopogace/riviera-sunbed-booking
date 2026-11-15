@@ -20,7 +20,8 @@ import { formatMoney } from '../shared/money';
 import { PanelGlass } from '../shared/panel-glass';
 import { BusyAction } from '../shared/busy-action';
 import { focusMover } from '../shared/focus-after-render';
-import { WithheldEmailNotice } from './withheld-email-notice';
+import { ConfirmationMailNote } from './confirmation-mail-note';
+import type { ConfirmationMail } from './booking.model';
 import { BookingQr } from './booking-qr';
 import { BookingService } from './booking.service';
 import { CancellationTermsNote } from './cancellation-terms-note';
@@ -73,7 +74,7 @@ const CLS = {
  * leaves the page. States: `mounting` → `ready` → `error` (retry in place, or back to `mounting` if it
  * never mounted; {@link failCardStep}) or `processing` → `confirmed`, or `awaiting` after ~30 s ("payment
  * received", never "confirmed"); no hand-off → `missing`; a terminal `CANCELLED` stays generic. Only the
- * live region announces `emailWithheld`.
+ * live region announces a withheld mail.
  */
 @Component({
   selector: 'app-booking-pay',
@@ -84,7 +85,7 @@ const CLS = {
     RouterLink,
     CardGlass,
     PanelGlass,
-    WithheldEmailNotice,
+    ConfirmationMailNote,
     BookingQr,
     BusyAction,
     TouchTarget,
@@ -236,8 +237,8 @@ const CLS = {
           }
         </div>
 
-        @if (emailWithheld()) {
-          <app-withheld-email-notice />
+        @if (state() === 'confirmed') {
+          <app-confirmation-mail-note [mail]="mail()" />
         }
 
         <app-manage-booking-link [code]="code" variant="primary" />
@@ -485,8 +486,8 @@ export class BookingPay {
    *  found the booking unpayable: retrying the same PaymentIntent is futile, so the page
    *  offers the booking-status link and "start over" instead of "Pay". */
   protected readonly terminalError = signal(false);
-  /** The confirmed booking's mail was suppressed — read from the poll, never assumed. */
-  protected readonly emailWithheld = signal(false);
+  /** The confirmed booking's mail disclosure — read from the poll, never assumed. */
+  protected readonly mail = signal<ConfirmationMail>('UNDISCLOSED');
 
   /** The awaiting-payment summary handed off by the 202 POST; absent on a cold load. */
   protected readonly booking = this.bookings.lastAwaitingPayment();
@@ -527,7 +528,7 @@ export class BookingPay {
       case 'processing':
         return $localize`Confirming your booking — please don’t close this page…`;
       case 'confirmed':
-        return this.emailWithheld()
+        return this.mail() === 'WITHHELD'
           ? $localize`Your booking is confirmed. We could not email you — save your booking code.`
           : $localize`Your booking is confirmed.`;
       case 'awaiting':
@@ -637,7 +638,7 @@ export class BookingPay {
         if (detail.status === 'CONFIRMED') {
           // The webhook beat the client's error report — the booking is genuinely paid.
           this.errorMessage.set(undefined);
-          this.emailWithheld.set(detail.emailWithheld);
+          this.mail.set(detail.confirmationMail);
           this.focusTitleIfLost('pay-title');
           this.state.set('confirmed');
           return;
@@ -712,7 +713,7 @@ export class BookingPay {
       )
       .subscribe((detail) => {
         if (detail?.status === 'CONFIRMED') {
-          this.emailWithheld.set(detail.emailWithheld);
+          this.mail.set(detail.confirmationMail);
           this.focusTitleIfLost('pay-title');
           this.state.set('confirmed');
           this.pollSub?.unsubscribe();

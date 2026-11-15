@@ -40,7 +40,7 @@ const DETAIL: BookingDetail = {
   refundOutstanding: false,
   requestExpiresAt: null,
   payment: null,
-  emailWithheld: false,
+  confirmationMail: 'UNDISCLOSED',
   payWindowClosed: false,
   cancelReason: null,
   cancellationWindowAtBirth: 'FREE',

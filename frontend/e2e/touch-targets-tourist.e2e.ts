@@ -223,7 +223,7 @@ test.describe('44px touch targets on the tourist surfaces at a phone width', () 
           positionNo: 2,
           bookingDate: '2026-12-01',
           amount: { minorUnits: 4500, currency: 'EUR' },
-          emailWithheld: false,
+          confirmationMail: 'UNDISCLOSED',
         },
       }),
     );

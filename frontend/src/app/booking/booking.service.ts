@@ -310,7 +310,7 @@ function stayAsBooking(stay: StayView): BookingConfirmation {
     bookingDate: stay.firstDate,
     lastDate: stay.lastDate,
     amount: stay.total,
-    emailWithheld: stay.emailWithheld,
+    confirmationMail: stay.confirmationMail,
     stretches: stay.stretches,
   };
 }

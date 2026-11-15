@@ -4,7 +4,7 @@ import { RouterLink } from '@angular/router';
 
 import { CardGlass } from '../shared/card-glass';
 import { BookingQr } from './booking-qr';
-import { WithheldEmailNotice } from './withheld-email-notice';
+import { ConfirmationMailNote } from './confirmation-mail-note';
 import { formatStay } from '../shared/booking-date-label';
 import { formatMoney } from '../shared/money';
 import { BookingService } from './booking.service';
@@ -27,9 +27,8 @@ const CLS = {
  * The "You're booked." screen: the booking code (a bearer credential, invariant #7, confined to
  * this surface and the `/booking/:code` link) and a summary of {@link BookingService}'s last
  * confirmation; a cold load with none in memory shows "start over". No Guest row — the confirmation
- * carries no guest name. On `emailWithheld` (address suppressed) the "We've also emailed it" half
- * gives way to a save-your-code notice, from the same backend fact as the send decision. No live
- * region: the notice is present at first render, and a live region announces only later mutations.
+ * carries no guest name. The mail line is {@link ConfirmationMailNote}'s, by the backend's disclosure.
+ * No live region: the note is present at first render, and a live region announces only later mutations.
  */
 @Component({
   selector: 'app-booking-confirmation',
@@ -39,7 +38,7 @@ const CLS = {
     RouterLink,
     CardGlass,
     BookingQr,
-    WithheldEmailNotice,
+    ConfirmationMailNote,
     CheckIcon,
     TouchTarget,
   ],
@@ -176,13 +175,8 @@ const CLS = {
           </div>
           <p class="mt-2 text-[12px] leading-[1.4] text-riv-card-ink-soft">
             <ng-container i18n>Show this code to staff when you arrive.</ng-container>
-            @if (!c.emailWithheld) {
-              <span i18n>We’ve also emailed it to you.</span>
-            }
           </p>
-          @if (c.emailWithheld) {
-            <app-withheld-email-notice />
-          }
+          <app-confirmation-mail-note [mail]="c.confirmationMail" />
         </div>
 
         <a

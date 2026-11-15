@@ -26,7 +26,7 @@ const SUMMARY = {
   positionNo: 2,
   bookingDate: '2026-12-01',
   amount: { minorUnits: 4500, currency: 'EUR' },
-  emailWithheld: false,
+  confirmationMail: 'UNDISCLOSED',
 };
 
 /** The booked venue's pin the Directions row reads; none unless a test sets it. */
@@ -130,11 +130,27 @@ describe('BookingConfirmation', () => {
     expect(host.textContent).toContain('€135');
   });
 
-  it('keeps the emailed-it copy when the confirmation mail was sent', () => {
+  it('tells a reader who is not the verified owner only that a mail is on its way (#1748)', () => {
     TestBed.inject(BookingService).createBooking(REQUEST).subscribe();
     httpMock
       .expectOne(CREATE_URL)
       .flush({ ...SUMMARY, status: 'CONFIRMED' }, { status: 201, statusText: 'Created' });
+
+    const { host } = render();
+    const code = host.querySelector('[data-testid="booking-code"]');
+    expect(code?.textContent).toContain('Keep this code in case it doesn’t arrive.');
+    expect(code?.textContent).not.toContain('emailed it to you');
+    expect(host.querySelector('[data-testid="email-withheld"]')).toBeNull();
+  });
+
+  it('keeps the emailed-it copy for the verified owner of a deliverable address', () => {
+    TestBed.inject(BookingService).createBooking(REQUEST).subscribe();
+    httpMock
+      .expectOne(CREATE_URL)
+      .flush(
+        { ...SUMMARY, status: 'CONFIRMED', confirmationMail: 'EMAILED' },
+        { status: 201, statusText: 'Created' },
+      );
 
     const { host } = render();
     expect(host.querySelector('[data-testid="booking-code"]')?.textContent).toContain(
@@ -148,7 +164,7 @@ describe('BookingConfirmation', () => {
     httpMock
       .expectOne(CREATE_URL)
       .flush(
-        { ...SUMMARY, status: 'CONFIRMED', emailWithheld: true },
+        { ...SUMMARY, status: 'CONFIRMED', confirmationMail: 'WITHHELD' },
         { status: 201, statusText: 'Created' },
       );
 

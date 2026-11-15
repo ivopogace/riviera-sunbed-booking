@@ -4153,13 +4153,6 @@
           <context context-type="sourcefile">src/app/booking/booking-confirmation.ts</context>
         </context-group>
       </trans-unit>
-      <trans-unit id="2765240628391986728" datatype="html">
-        <source>We’ve also emailed it to you.</source>
-        <target state="translated">Te l’abbiamo anche inviato via e-mail.</target>
-        <context-group purpose="location">
-          <context context-type="sourcefile">src/app/booking/booking-confirmation.ts</context>
-        </context-group>
-      </trans-unit>
       <trans-unit id="7044627359319757904" datatype="html">
         <source>Back to the beach</source>
         <target state="translated">Torna alla spiaggia</target>
@@ -5764,6 +5757,20 @@
         <target state="translated">Impossibile aprire la pagina di pagamento. Riprova.</target>
         <context-group purpose="location">
           <context context-type="sourcefile">src/app/booking/checkout.gateway.ts</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="2765240628391986728" datatype="html">
+        <source>We’ve also emailed it to you.</source>
+        <target state="translated">Te l’abbiamo anche inviato via e-mail.</target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/booking/confirmation-mail-note.ts</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="8989304240570381051" datatype="html">
+        <source>We’re emailing it to you. Keep this code in case it doesn’t arrive.</source>
+        <target state="translated">Te lo stiamo inviando via e-mail. Conserva questo codice nel caso non arrivi.</target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/booking/confirmation-mail-note.ts</context>
         </context-group>
       </trans-unit>
       <trans-unit id="5451612399976561178" datatype="html">

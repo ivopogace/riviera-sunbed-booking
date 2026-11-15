@@ -467,11 +467,12 @@ any is released on the old, never a swap of my own — so a racing reserve wins 
   `PaymentEventListener`'s payment→confirm spine. It refuses for a cooldown window
   (`RefundResubmissionWindow`), not just during a press: money is safe either way, but in an outage
   every press would re-ask the gateway for every refund.
-- **The withheld-mail flag is a suppression oracle unless gated** (the `202` create hands out the
-  code before the card is collected): `ViewBookingService#mayDiscloseMailStatus` asks
-  `booking.spi.ConfirmationMailDelivery` (by `CustomerId`; I never see an address) only for a
-  `CONFIRMED` booking when `payment.api.CollectionGuarantee` says the gateway collects before
-  confirming — never a profile string.
+- **Only the address's verified owner hears whether the confirmation mail was withheld** (G-3, #1748;
+  OWASP WSTG-IDNT-04). `ConfirmationMailDisclosure`, the one rule behind the view and both creates, asks
+  `booking.spi.ConfirmationMailDelivery` (by `CustomerId`; I never see an address) only when the booking is
+  `CONFIRMED`, `payment.api.CollectionGuarantee` says the gateway collects first (never a profile string),
+  the session's customer made it (`booking.account_id`) and `customer::api` says its contact is that
+  account's verified address. Any other reader gets `UNDISCLOSED`, with nothing per-address read to time.
 - **Remodel classification** (`RemodelClaims#classify`, ADR-0020) decides each live booking on the
   disturbed sets in `(service date, id)` order: zone (`RemodelZones`), nothing left, then a move
   candidate (`MoveRanking`; a taken one leaves the pool on every day of the span), then status —
@@ -760,7 +761,8 @@ suppression key's HMAC). It stays here: a module's published value is its own, n
 I answer *which account is this signed-in customer?* (`CustomerAccountDirectory`;
 `NotSignedInCustomerException` → `403`). The caller reads the session and says whether the principal
 holds the customer role, so an operator session named like a customer's email never resolves; I see
-no Spring Security type.
+no Spring Security type. The same port answers *is this guest contact the account's verified address?*
+(`holdsVerifiedAddress`, in `Emails` form): a comparison, never a link, deciding who hears a per-address fact.
 
 Email verification is **soft**: it gates no sign-in or booking. `CustomerAccountRecovery` names a
 reset token's account **without consuming** it, so `auth` revokes that principal's sessions first.
@@ -919,7 +921,7 @@ tag names the person, invariant #7):
 - **Reinstatement is a flag (`reinstated_at`), never a deletion** (ADR-0012); a hard `DELETE` on
   this table is a defect. The reinstate `POST` answers what the row was (`ReinstateOutcome`: reason
   and timestamps, never the address or `domain`); nothing answers "is this address suppressed?" — a
-  standing lookup would be a new oracle for what `emailWithheld` is gated never to answer.
+  standing lookup would be a new oracle for what `confirmationMail` tells only the address's verified owner.
 - The **mail-outbox re-drive** (`AdminMailOutboxController`) is **scoped by listener-id prefix to
   this module's listeners, never by event type**: `BookingConfirmed` also feeds `payout`'s accrual,
   so an event-type predicate would replay invariant-#9 ledger work from a "mail" button
@@ -1013,14 +1015,13 @@ tag names the person, invariant #7):
 - Persisting a bearer-credential payload → nobody, ever: recovery mails ride the in-memory
   dispatcher so a raw token never lands in `event_publication`
 
-**The withheld-flag probe** (read before wiring the suppression list's first writer). A populated
-list makes `emailWithheld` a paid suppression oracle: book with a victim's address, pay, read the
-flag, cancel before the evening-before cutoff for a full refund. Three facts bound it: the feed
-(#372) writes only once its webhook is registered live, which waits on #1748 (owner-verified
-disclosure, the runbook's precondition), so zero bits until then; no rate-limit budget binds, a probe's real limiter (a payment, a
-claimed `(set, date)`) being far below any capacity sparing the pay poll (ADR-0006); and the flag
-can't ride only the post-payment hand-off: the code-gated read *is* it, the prober the payer.
-`CONFIRMED` **and** `payment.api.CollectionGuarantee` keep it inert unless collected first.
+**The withheld-flag probe is closed** (#1748). A populated list once made the booking reads a paid
+oracle: book with a victim's address, pay, read the flag, cancel for a full refund. Neither a rate
+limit nor the post-payment hand-off could bind it (a probe's limiter is a payment, far below any budget
+sparing the pay poll, ADR-0006; the code-gated read *is* the hand-off). What closes it is who may hear:
+`booking`'s `ConfirmationMailDisclosure` answers only the signed-in owner whose verified address is the
+contact (§booking); everyone else gets `UNDISCLOSED` and the list is not consulted. A new surface showing
+a per-address mail fact goes through that rule, or it reopens the probe.
 
 ## `review`
 **Job:** Own a tourist's verdict on a delivered stay — the review (stars, comment, display name; one
@@ -1465,9 +1466,10 @@ The SPA rules whose TSDoc points here; structure is `riviera-frontend`'s, stylin
   it owns lists (moves, refunds, releases, nothing left, staff holds, blocked claims, and the sets that stay) and
   refund fields; the confirm panel is a
   warning, a toned button and Cancel with no projected content. Both wear the amber warn skin.
-- **The withheld-email notice is one component, in `booking/`** (both its surfaces are booking's;
-  `shared/` takes what two features need). Never the same markup twice: the copy is the product
-  decision, and two copies drift — one quietly promising a mail never sent — while both tests pass.
+- **The confirmation-mail copy is one component, in `booking/`** (`confirmation-mail-note.ts`, wrapping the
+  withheld notice; both surfaces are booking's, `shared/` takes what two features need). Never the same
+  markup twice: the copy is the product decision, and two copies drift — one quietly promising a mail never
+  sent — while both tests pass. Its neutral line is what every reader but the verified owner sees (#1748).
 - **The coast picker's ribbon is a picture** (`pages/home/coast-picker.ts`): `aria-hidden`, no
   pointer; the coast index beside it is the accessible structure.
 - **A geolocated position never leaves the device** (`shared/geolocation.ts`). The operator's pin

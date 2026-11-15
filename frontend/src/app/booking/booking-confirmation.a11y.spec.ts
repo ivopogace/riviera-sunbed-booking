@@ -21,7 +21,7 @@ const CONFIRMATION: Confirmation = {
   positionNo: 2,
   bookingDate: '2026-12-01',
   amount: { minorUnits: 4500, currency: 'EUR' },
-  emailWithheld: false,
+  confirmationMail: 'UNDISCLOSED',
 };
 
 /** A BookingService stub exposing a fixed last-confirmation (the component only reads that). */

@@ -112,7 +112,7 @@ const STAY = {
     lastDate: s.lastDate,
     amount: s.amount,
   })),
-  emailWithheld: false,
+  confirmationMail: 'UNDISCLOSED',
 };
 
 /** The map for the stay, and the itinerary read answering the plan (anchored when asked). */

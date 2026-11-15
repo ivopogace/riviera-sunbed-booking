@@ -107,7 +107,7 @@ const REQUESTED = {
     lastDate: s.lastDate,
     amount: s.amount,
   })),
-  emailWithheld: false,
+  confirmationMail: 'UNDISCLOSED',
   requestExpiresAt: '2026-08-11T16:00:00Z',
 };
 

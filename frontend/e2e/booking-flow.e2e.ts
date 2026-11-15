@@ -124,7 +124,7 @@ function cancelledDetail(over: {
     withdrawable: false,
     requestExpiresAt: null,
     payment: null,
-    emailWithheld: false,
+    confirmationMail: 'UNDISCLOSED',
     payWindowClosed: false,
     refundOutstanding: false,
     ...over,

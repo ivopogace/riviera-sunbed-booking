@@ -26,7 +26,7 @@ const CONFIRMATION = {
   positionNo: 2,
   bookingDate: '2026-12-01',
   amount: { minorUnits: 4500, currency: 'EUR' },
-  emailWithheld: false,
+  confirmationMail: 'UNDISCLOSED',
 };
 
 async function mockVenuePin(page: Page, location: typeof PIN | null): Promise<void> {

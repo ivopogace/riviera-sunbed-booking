@@ -64,6 +64,12 @@ export interface StayStretchView {
  * The `POST /api/stays` body as the backend answers it (`StayView`): the group's one code and status,
  * its venue, span, total and stretches; `payment` rides the `202` of a collecting gateway.
  */
+/**
+ * What a confirmed booking's reader may be told about its confirmation mail (`MailDisclosure`):
+ * `UNDISCLOSED` for every reader but the address's verified owner, whatever the suppression list holds.
+ */
+export type ConfirmationMail = 'UNDISCLOSED' | 'EMAILED' | 'WITHHELD';
+
 export interface StayView {
   readonly code: string;
   readonly status: string;
@@ -73,7 +79,7 @@ export interface StayView {
   readonly lastDate: string;
   readonly total: MoneyView;
   readonly stretches: readonly StayStretchView[];
-  readonly emailWithheld: boolean;
+  readonly confirmationMail: ConfirmationMail;
   readonly payment?: CheckoutInstruction;
   /** The venue's response deadline on a stay request's `202 PENDING_REQUEST` (ISO-8601 UTC). */
   readonly requestExpiresAt?: string;
@@ -91,8 +97,8 @@ export interface BookingConfirmation {
   /** The stay's last day, ISO; absent on a payload from before stays, which is one day. */
   readonly lastDate?: string;
   readonly amount: MoneyView;
-  /** The confirmation email was suppressed, so this code is the guest's only record. */
-  readonly emailWithheld: boolean;
+  /** Which mail copy the confirmation screen shows; see {@link ConfirmationMail}. */
+  readonly confirmationMail: ConfirmationMail;
   /** A stitched stay's stretches; absent for one set. `setId`/`rowLabel`/`positionNo` are the first stretch's. */
   readonly stretches?: readonly StayStretchView[];
 }
@@ -218,11 +224,8 @@ export interface BookingDetail {
    * is the server's, in Europe/Tirane.
    */
   readonly payWindowClosed: boolean;
-  /**
-   * The confirmation email was suppressed. Only ever `true` for a `CONFIRMED` booking — the
-   * backend does not even ask the question before payment, so this can't be read as an oracle.
-   */
-  readonly emailWithheld: boolean;
+  /** Which mail copy the pay page's done panel shows; see {@link ConfirmationMail}. */
+  readonly confirmationMail: ConfirmationMail;
   /**
    * Which cancellation this booking went through; null while live, and null for a cancellation
    * that never charged. Server-owned: `refundedAmount` alone cannot tell a venue's weather refund

@@ -14,9 +14,9 @@ public interface EmailSuppressions {
 	boolean isSuppressed(String email);
 
 	/**
-	 * Upsert of an event at {@code at}, keeping {@code first_suppressed_at}; an event no newer than the row's
-	 * last event or reinstatement moves nothing (feeds are unordered). A non-{@code local@domain} value throws
-	 * {@link IllegalArgumentException}. A writer arms the withheld-flag probe: RESPONSIBILITIES.md §notification.
+	 * Upsert of an event at {@code at}, keeping {@code first_suppressed_at}; an event no newer than the row's last event or
+	 * reinstatement moves nothing (feeds are unordered); a non-{@code local@domain} value throws. A row is a per-address
+	 * fact only {@code booking}'s owner-verified disclosure may surface (RESPONSIBILITIES.md §notification).
 	 */
 	void suppress(String email, SuppressionReason reason, Instant at);
 
