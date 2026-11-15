@@ -17,23 +17,23 @@ guard's gap and aborts once, listing them all.
 
 ## Acceptance criteria
 
-- [ ] **AC-1:** Given no profile and no env, when the jar boots, then it aborts before any other
+- [x] **AC-1:** Given no profile and no env, when the jar boots, then it aborts before any other
   bean. The one message names the pepper, the mailer, SSO and the payment provider. *Seam:* the
   bean-factory phase (`BootPostureCheck`). *Pinned by:* `BootPostureCheckTest`, the four guard
   tests, and a manual `java -jar` run recorded in the PR.
-- [ ] **AC-2:** Given `demo` and a real pepper, the context starts on the mocks. *Pinned by:* the
+- [x] **AC-2:** Given `demo` and a real pepper, the context starts on the mocks. *Pinned by:* the
   guard tests' `demo` cases and `SecureBootPostureProfilesTest`.
-- [ ] **AC-3:** Given `local` (or `dev`/`smtp4dev`, which group it in), the context starts with
+- [x] **AC-3:** Given `local` (or `dev`/`smtp4dev`, which group it in), the context starts with
   zero env on the committed dev pepper. *Pinned by:* `SecureBootPostureProfilesTest`, and the whole
   suite, which boots under the test-only `local` include.
-- [ ] **AC-4:** Given `SPRING_PROFILES_ACTIVE` unset or `stripe|mailer|smtp4dev`, when
+- [x] **AC-4:** Given `SPRING_PROFILES_ACTIVE` unset or `stripe|mailer|smtp4dev`, when
   `./gradlew bootRun` runs, then `local` is included. *Pinned by:* `build.gradle`, plus a manual
   bootRun.
-- [ ] **AC-5:** Given no marker, when the stub payment gateway would be live (no
+- [x] **AC-5:** Given no marker, when the stub payment gateway would be live (no
   `collecting-gateway`), then `StubPaymentGatewayProdGuard` reports it.
   *Pinned by:* `StubPaymentGatewayProdGuardTest`; `ProviderProfileConfinementArchitectureTests`
   stays green.
-- [ ] **AC-6:** The `prod` profile is retired: no code, properties file, test or deploy doc names
+- [x] **AC-6:** The `prod` profile is retired: no code, properties file, test or deploy doc names
   it as a marker. *Pinned by:* grep in the PR.
 
 ## Non-goals
@@ -81,7 +81,11 @@ guard's gap and aborts once, listing them all.
 
 ## Execution status
 
-- [ ] Phase 1
-- [ ] Phase 2
-- [ ] Phase 3
-- [ ] Phase 4
+- [x] Phase 1 — shared check + guards (746a1560)
+- [x] Phase 2 — profiles, test include, bootRun (746a1560)
+- [x] Phase 3 — ADR-0031 + docs (746a1560)
+- [x] Phase 4 — `./gradlew build` green with no env (4291 tests, 0 skipped); bare `java -jar` aborts
+  naming all four gaps before the datasource; `demo` + pepper starts; zero-env `bootRun` runs
+  `local, demo`; `SPRING_PROFILES_ACTIVE=stripe ./gradlew bootRun` runs `local, demo, stripe,
+  collecting-gateway`.
+- [ ] PR ready → review gate (high) → Sonar → plan removed
