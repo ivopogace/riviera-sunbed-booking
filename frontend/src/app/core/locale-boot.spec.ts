@@ -49,8 +49,15 @@ const SCENARIOS: readonly Scenario[] = [
     name: 'unsupported browser languages stay English',
     path: '/',
     stored: null,
-    languages: ['de', 'pl'],
+    languages: ['fr', 'pl'],
     redirect: null,
+  },
+  {
+    name: 'German browser, nothing stored',
+    path: '/',
+    stored: null,
+    languages: ['de-AT', 'en'],
+    redirect: '/de/',
   },
   {
     name: 'blocked storage falls to the browser',
@@ -89,7 +96,7 @@ const SCENARIOS: readonly Scenario[] = [
     path: '/',
     stored: null,
     ssoReturn: 'https://evil.example/',
-    languages: ['de'],
+    languages: ['fr'],
     redirect: null,
   },
   {

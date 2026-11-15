@@ -53,7 +53,7 @@ npm run test:e2e:a11y    # Playwright, CI-safe mocked suite (frontend/e2e/) — 
 npm run test:e2e:locales # Playwright, the translated builds' smoke (needs `npm run build`; CI's first a11y shard)
 npm run typecheck:e2e    # tsc over frontend/e2e/ (Playwright transpiles without checking)
 npm run i18n:sync        # bring src/locale/messages.<locale>.xlf in line with the marked copy (ADR-0030)
-npm run build            # every locale: en at the root, sq and it under /sq/ and /it/
+npm run build            # every locale: en at the root, sq, it and de under /sq/, /it/ and /de/
 ```
 
 **CI** (`.github/workflows/ci.yml`): backend build/test, frontend lint/format/e2e-typecheck/test/build +

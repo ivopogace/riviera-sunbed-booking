@@ -14,13 +14,13 @@ import { mockTourist } from '../support/tourist.mocks';
 
 /**
  * The translated builds (ADR-0030), against the production build with the server's per-locale
- * fallback (`scripts/serve-locales.mjs`): every first-batch page renders in Albanian and Italian,
+ * fallback (`scripts/serve-locales.mjs`): every first-batch page renders in each translated locale,
  * axe-clean, its copy read from the translation files rather than restated here; the language row
  * switches and keeps the route; a first visit to `/` follows the stored choice, then the browser.
  */
 
-type Locale = 'sq' | 'it';
-const LOCALES: readonly Locale[] = ['sq', 'it'];
+type Locale = 'sq' | 'it' | 'de';
+const LOCALES: readonly Locale[] = ['sq', 'it', 'de'];
 
 /** `<source>` → `<target>` of a locale's plain-text messages, straight from its XLIFF file. */
 function translationsOf(locale: Locale): Map<string, string> {
@@ -319,6 +319,16 @@ test.describe('choosing a language', () => {
 
       await page.goto('/venues/1');
       await expect(page.locator('html')).toHaveAttribute('lang', 'en');
+    });
+  });
+
+  test.describe('with a German browser and nothing stored', () => {
+    test.use({ locale: 'de-DE' });
+
+    test('a first visit to / goes to /de/', async ({ page }) => {
+      await page.goto('/');
+      await expect(page).toHaveURL(/\/de\/$/);
+      await expect(page.locator('html')).toHaveAttribute('lang', 'de');
     });
   });
 });

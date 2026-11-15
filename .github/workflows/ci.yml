@@ -242,7 +242,7 @@ jobs:
         if: steps.restore.outputs.cache-hit != 'true' && matrix.shard == 1
         run: npm run build
 
-      - name: Locale smoke (every translated page in sq and it, axe-clean), first shard only
+      - name: Locale smoke (every translated page in each translated locale, axe-clean), first shard only
         if: steps.restore.outputs.cache-hit != 'true' && matrix.shard == 1
         run: npm run test:e2e:locales
 

@@ -48,6 +48,8 @@ describe('LocaleService', () => {
     compileAs('sq');
     expect(buildLocale()).toBe('sq');
     compileAs('de');
+    expect(buildLocale()).toBe('de');
+    compileAs('fr');
     expect(buildLocale()).toBe('en');
   });
 
@@ -105,12 +107,13 @@ describe('firstVisitLocale', () => {
   });
 
   it('takes the first supported browser language, by its primary subtag', () => {
-    expect(firstVisitLocale(null, ['de-DE', 'it-IT', 'sq'])).toBe('it');
+    expect(firstVisitLocale(null, ['fr-FR', 'it-IT', 'sq'])).toBe('it');
+    expect(firstVisitLocale(null, ['de-DE', 'it-IT'])).toBe('de');
     expect(firstVisitLocale('klingon', ['SQ-al'])).toBe('sq');
   });
 
   it('falls back to English', () => {
-    expect(firstVisitLocale(null, ['de', 'pl'])).toBe('en');
+    expect(firstVisitLocale(null, ['fr', 'pl'])).toBe('en');
     expect(firstVisitLocale(null, [])).toBe('en');
   });
 
