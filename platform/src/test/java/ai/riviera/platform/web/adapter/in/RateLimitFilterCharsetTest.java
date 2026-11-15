@@ -27,9 +27,11 @@ class RateLimitFilterCharsetTest {
 
 	private static final RateLimitProperties.Limit LIMIT = new RateLimitProperties.Limit(60, Duration.ofMinutes(1));
 
-	private final RateLimitFilter filter = new RateLimitFilter(
-			new RateLimitProperties(true, LIMIT, LIMIT, LIMIT, LIMIT, LIMIT, 100_000, List.of(), ""),
-			Clock.systemUTC(), JsonMapper.builder().build());
+	private static final RateLimitProperties PROPS =
+			new RateLimitProperties(true, LIMIT, LIMIT, LIMIT, LIMIT, LIMIT, 100_000, List.of(), "");
+
+	private final RateLimitFilter filter = new RateLimitFilter(PROPS, Clock.systemUTC(), JsonMapper.builder().build(),
+			new IdentityBuckets(PROPS));
 
 	@ParameterizedTest
 	@ValueSource(strings = { "no-such-charset", "not a charset name" })

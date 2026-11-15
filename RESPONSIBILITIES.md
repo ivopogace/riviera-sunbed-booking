@@ -1331,10 +1331,11 @@ arrive by framework type.
 - `SecurityConfig`: the chains (actuator, API, SPA shell, matched in that order), the route policy (role gates),
   CSRF, the session cookie and the `SecurityContextRepository`. Credentials and the authentication managers are
   `auth`'s.
-- The chain's filters, in order: `RateLimitFilter` (+ `RateLimitProperties`, `TokenBucket`,
+- The chain's filters, in order: `RateLimitFilter` (+ `RateLimitProperties`, `TokenBucket`, `BucketMap`,
   `ClientIpResolver`), `RequestBodyCapFilter`, `ChallengeVerificationFilter` (calls `challenge::api`),
-  `SessionCredentialFilter` (calls `auth::api`), `AdminAuditFilter` + `AdminAuditReasons` (calls
-  `audit::api`); `CachedBodyRequest` replays a body an edge filter read within its cap. The actuator chain runs
+  `SessionCredentialFilter` (calls `auth::api`), then after `AuthorizationFilter` `AdminAuditFilter` +
+  `AdminAuditReasons` (calls `audit::api`) and `PrincipalRateLimitFilter`, which shares `IdentityBuckets` with
+  `RateLimitFilter`; `CachedBodyRequest` replays a body an edge filter read within its cap. The actuator chain runs
   `RateLimitFilter` and `ScrapeTokenFilter` (calls `auth::api`) alone.
 - The chain's problem bodies (`SecurityProblemResponses`), `RequestPaths`, CORS (`WebCorsConfig`).
 - **The crawl policy** (`CrawlerController`, #1761): anonymous `GET /robots.txt` disallows every signed-in and
@@ -1432,6 +1433,13 @@ mutating `/api/admin/**` action, §`audit`) live in `web`; `challenge` and `audi
   before the controller; it decodes the identity in the charset the controller binds with, so
   neither size, framing nor encoding lets a login skip the per-identity budget (#1288). Forgot-password stays
   non-enumerating (D-8): a refusal precedes the account lookup, identical for every address.
+- **One throttle budget per account, across login and password change (#364):** the per-IP budgets are volume
+  control; the account's (`riviera.ratelimit.username`, `IdentityBuckets`) is keyed on the submitted identity at login
+  and on the session's principal at `POST /api/auth/operator/password`, `/api/me/password` and the operator SSO link
+  start (#276), by `PrincipalRateLimitFilter` after `AuthorizationFilter`, so a CSRF-less, anonymous or wrong-role
+  request never spends it. A change spends first and is refunded on a 2xx; `/api/me/verify-email/request` charges every resend on a map of
+  its own (mail volume). Accepted cost: a session thief can lock the owner's sign-in for one refill period, as a
+  username-holder already can through the login (NIST SP 800-63B-4 §3.2.2; OWASP Authentication Cheat Sheet).
 - **Forgot-password is constant-time by doing the same work on both branches (#1336):** the request
   thread makes the one account read and answers `204`; a known address only enqueues the send, whose
   task mints and stores the reset token (under a transaction timeout, as one drainer serves every

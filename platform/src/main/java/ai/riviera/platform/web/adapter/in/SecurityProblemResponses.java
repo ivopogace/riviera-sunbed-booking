@@ -3,6 +3,7 @@ package ai.riviera.platform.web.adapter.in;
 import ai.riviera.platform.shared.ApiProblem;
 import java.io.IOException;
 
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.security.access.AccessDeniedException;
@@ -12,11 +13,10 @@ import jakarta.servlet.http.HttpServletResponse;
 
 /**
  * Hand-mirrored RFC-7807 bodies for rejections <em>inside the security filter chain</em>, before
- * MVC dispatch, where {@link ApiErrorHandler}/{@link ApiProblem} never run (as with
- * {@code RateLimitFilter}'s {@code RATE_LIMITED}): {@link SecurityConfig}'s entry point
+ * MVC dispatch, where {@link ApiErrorHandler}/{@link ApiProblem} never run: {@link SecurityConfig}'s entry point
  * ({@code 401 UNAUTHENTICATED}, {@code AuthSessionIT}), {@link ChallengeVerificationFilter}'s refusals
- * ({@code ChallengeVerificationFilterTest}) and the edge's {@code 413} ({@code RequestBodyCapFilterTest}).
- * No {@code instance}: no URI is ever written (invariant #7).
+ * ({@code ChallengeVerificationFilterTest}), the edge's {@code 413} ({@code RequestBodyCapFilterTest}) and both rate
+ * limiters' {@code 429 RATE_LIMITED} ({@code RateLimitFilterTest}). No {@code instance}: no URI is ever written (#7).
  */
 final class SecurityProblemResponses {
 
@@ -47,6 +47,11 @@ final class SecurityProblemResponses {
 	private static final String BODY_TOO_LARGE_BODY = """
 			{"type":"about:blank","title":"Content Too Large","status":413,\
 			"detail":"The request body is too large.","code":"PAYLOAD_TOO_LARGE"}""";
+
+	/** The wait travels in {@code Retry-After}, never the body. */
+	private static final String RATE_LIMITED_BODY = """
+			{"type":"about:blank","title":"Too Many Requests","status":429,\
+			"detail":"Too many requests.","code":"RATE_LIMITED"}""";
 
 	/** 413 by value, as in {@code ApiErrorHandler}: the {@code HttpStatus} constant is mid-rename. */
 	private static final int BODY_TOO_LARGE_STATUS = 413;
@@ -88,6 +93,12 @@ final class SecurityProblemResponses {
 	/** A body past its edge cap: {@code RateLimitFilter}'s login cap or {@code RequestBodyCapFilter}'s. */
 	static void writeBodyTooLarge(HttpServletResponse response) throws IOException {
 		write(response, BODY_TOO_LARGE_STATUS, BODY_TOO_LARGE_BODY);
+	}
+
+	/** A drawn-on budget is empty; {@code retryAfterSeconds} is when its next token lands. */
+	static void writeRateLimited(HttpServletResponse response, long retryAfterSeconds) throws IOException {
+		response.setHeader(HttpHeaders.RETRY_AFTER, Long.toString(retryAfterSeconds));
+		write(response, HttpStatus.TOO_MANY_REQUESTS, RATE_LIMITED_BODY);
 	}
 
 	private static void write(HttpServletResponse response, HttpStatus status, String body)
