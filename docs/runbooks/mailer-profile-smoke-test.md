@@ -6,8 +6,9 @@ relay — **Scaleway TEM** in deployment, any RFC-compliant 587/STARTTLS relay b
 a verification / reset email actually arrives with a working link. Mirrors
 `stripe-profile-smoke-test.md` (the same env-secret posture, invariant: no secret in repo/image/logs).
 
-> The default (no-profile) run uses the recording `MockMailer` and needs none of this. `prod` alone
-> still aborts at boot (`MockMailerProdGuard`); production activation is `prod,mailer`.
+> A local run (`./gradlew bootRun`, which includes `local`) uses the recording `MockMailer` and needs
+> none of this. A deployment without `mailer` or the `demo` marker refuses to boot (`MockMailerProdGuard`,
+> ADR-0031); production activation adds `mailer`.
 
 ## Prerequisites (the #370 human setup — one-time)
 
@@ -79,8 +80,8 @@ all. Start the sink (`platform/tools/smtp4dev/start smtp4dev.bat` — SMTP on `:
 SPRING_PROFILES_ACTIVE=smtp4dev ./gradlew bootRun    # (in platform/)
 ```
 
-Real sends land in the smtp4dev inbox UI. `prod,smtp4dev` still aborts at boot (the mock-mailer
-guard fires on `prod & !mailer`) — this profile is local-only by construction; pinned by
+Real sends land in the smtp4dev inbox UI. The profile groups in `local` (the committed dev
+secrets, ADR-0031), so it is never deployed; pinned by
 `MailerProfileWiringTest.smtp4devProfileBootsTheRealMailerOnLocalDefaultsWithoutEnv`.
 
 **Env-driven path — any sink under the `mailer` profile** (proves the deployment posture's
@@ -103,9 +104,11 @@ SPRING_PROFILES_ACTIVE=mailer ./gradlew bootRun
 ## Production activation (when #370 closes)
 
 1. Set `RIVIERA_SMTP_*`, `RIVIERA_MAIL_FROM`, `RIVIERA_PUBLIC_ORIGIN`, and
-   `RIVIERA_SUPPRESSION_PEPPER` (#388 — the `prod` profile aborts at boot without a real pepper)
+   `RIVIERA_SUPPRESSION_PEPPER` (#388 — every deployment aborts at boot without a real pepper)
    on the Render service (env section: `docs/deploy/cd-pipeline.md`).
-2. Change `SPRING_PROFILES_ACTIVE` to `prod,mailer`.
+2. Add `mailer` to `SPRING_PROFILES_ACTIVE`: `demo,stripe,mailer` on the Render demo, which keeps
+   the mock SSO IdP; `mailer` beside its other real profiles on a production deployment, which has
+   no `demo` (ADR-0031).
 3. Redeploy; confirm boot (a missing var aborts, by design), then run step 2's smoke send
    against the deployed origin.
 4. Roll the TEM SMTP password afterward if it was ever pasted anywhere but the env config.

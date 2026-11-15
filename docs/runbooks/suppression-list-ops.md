@@ -22,8 +22,8 @@ below cover what ops still needs.
 ## The pepper
 
 - Supplied as `RIVIERA_SUPPRESSION_PEPPER` (→ `riviera.notification.suppression-pepper`).
-  Under the `prod` profile boot **aborts** when it is unset or left at the committed dev
-  default (`SuppressionPepperProdGuard`); dev/tests run on the committed default.
+  Outside the `local` profile boot **aborts** when it is unset or set to the committed dev
+  pepper (`SuppressionPepperProdGuard`, ADR-0031); local runs and tests use that dev pepper.
 - It is a **long-lived secret — treat it like a KMS root key**. Rotating it orphans every
   stored row (their keys become unmatchable; ADR-0012 accepted consequence). There is no
   rotation machinery in v1; the `v1:` tag in the stored value is the hook a future

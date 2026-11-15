@@ -863,8 +863,8 @@ redemption never writes over a suspended account. Unknown, expired, used and ret
 
 ## `notification`
 **Job:** Own transactional-mail **delivery**: the `Mailer` transports (recording mock vs real
-SMTP, profile-swapped; the mock and its e2e outbox read, `MockMailOutboxController`, never under
-`prod`) and ADR-0011's two delivery vehicles — the Event Publication Registry listener for
+SMTP, profile-swapped; the mock and its e2e outbox read, `MockMailOutboxController`, never in a
+boot without `demo`) and ADR-0011's two delivery vehicles — the Event Publication Registry listener for
 **ids-only** payloads, the bounded in-memory dispatcher for **bearer-credential** ones. Owned
 state: the suppression list and the delivery log.
 
@@ -1166,6 +1166,9 @@ is the trigger for asking the question, and the answer is always ownership.
   shared task executor, which no single module owns. It filters per row, never by `ResubmissionOptions`, which reads a batch of
   all failed rows before filtering and would starve one module behind another's backlog. Refund and
   mail listeners are never on it: they re-ask the gateway or re-send a mail (admin levers).
+- `BootPostureGuard` + `BootPostureCheck`, the secure-by-default boot (ADR-0031): each module fences
+  the mock or dev default it ships with a guard beside it, but only the platform owns the verdict
+  that a boot is deployable and its one report, every gap named before any other bean is built.
 - `SiteLocale`, the locales the SPA is built and served in (ADR-0030): `web` serves their shells
   (`SpaLocale` keys off it), `booking` stores a guest's, `operator` an operator's, `notification` writes mail in one, `auth` names
   one for account mail. In `web`, `booking → web` would close `web → auth → notification → booking →
@@ -1373,7 +1376,8 @@ The edge rules no domain module owns (per-module consequences: §`auth`, §`cust
 server-side sessions (Spring Session JDBC) with **two principal types**; all login/session machinery
 in `auth`, never in a domain module; customer-account identity separate from the guest row — no FK, no
 back-linking of past guest bookings, ever; auth endpoints non-enumerating + constant-time, on their
-own rate-limit buckets; mocked externals (SSO IdPs, mailer) profile-guarded out of prod; session
+own rate-limit buckets; mocked externals (SSO IdPs, mailer, the stub payment gateway) fenced out of every
+boot without `demo`, and the committed dev secrets out of every boot without `local` (ADR-0031); session
 revocation orchestrated by `auth` and synchronous, bracketing the state change; every request re-checks the
 session's credential stamp.
 

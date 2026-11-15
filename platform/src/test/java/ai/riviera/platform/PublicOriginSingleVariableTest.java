@@ -14,8 +14,9 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 
 /**
  * The shipped properties files bind every key built on the deployed origin from {@code RIVIERA_PUBLIC_ORIGIN} alone:
- * {@code web}'s crawl origin and both emailed-link keys, under every profile; a blank value reaches the mail keys
- * blank (their records then abort the boot), never their local default. Rationale: RESPONSIBILITIES.md §notification.
+ * {@code web}'s crawl origin and both emailed-link keys, unmarked and under {@code mailer}; a blank value reaches the
+ * mail keys blank (their records then abort the boot), never their local default. Rationale: RESPONSIBILITIES.md
+ * §notification.
  */
 class PublicOriginSingleVariableTest {
 
@@ -30,6 +31,7 @@ class PublicOriginSingleVariableTest {
 	private final ApplicationContextRunner runner = new ApplicationContextRunner()
 			.withInitializer(context -> context.getEnvironment().getPropertySources()
 					.remove(StandardEnvironment.SYSTEM_ENVIRONMENT_PROPERTY_SOURCE_NAME))
+			.withPropertyValues("spring.config.location=classpath:/application.properties")
 			.withInitializer(new ConfigDataApplicationContextInitializer());
 
 	@Test
@@ -40,7 +42,7 @@ class PublicOriginSingleVariableTest {
 	@Test
 	void theOneVariableReachesEveryOriginKeyUnderTheMailerProfile() {
 		runner.withSystemProperties("RIVIERA_PUBLIC_ORIGIN=" + ORIGIN)
-				.withPropertyValues("spring.profiles.active=prod,mailer")
+				.withPropertyValues("spring.profiles.active=mailer")
 				.run(context -> allEqual(context.getEnvironment()));
 	}
 

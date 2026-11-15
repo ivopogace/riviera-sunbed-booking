@@ -93,6 +93,12 @@ must include `frontend/`, so:
 - **Environment variables:**
   - `SPRING_DATASOURCE_URL` / `_USERNAME` / `_PASSWORD` (Neon; see checklist). Render injects
     `PORT` — the app binds it via `server.port=${PORT:8080}`.
+  - `SPRING_PROFILES_ACTIVE` = **`demo,stripe`** (ADR-0031). Boot is secure by default: with no
+    marker profile it refuses to start, naming every gap in one abort (a real pepper, `mailer`,
+    `sso`, a collecting gateway). `demo` marks this host as a demo, so the mock SSO IdP and the
+    mail outbox run on purpose. `stripe` collects in the Stripe sandbox. Never set `local` or
+    `dev` on a deployment: they commit public dev secrets. A production deployment drops `demo`
+    and runs its real profiles (`mailer`, `sso`, its payment provider).
   - `STRIPE_PUBLISHABLE_KEY` = `pk_test_…` — the frontend's Stripe **publishable** key. It is
     passed to the Dockerfile's Node build stage (`ARG STRIPE_PUBLISHABLE_KEY`) and baked into
     the SPA. Public, not a secret. Unset ⇒ the payment page shows a clear config-error state.
@@ -130,9 +136,9 @@ must include `frontend/`, so:
     when moving to a CDN that publishes the originating client under a different name (e.g.
     `True-Client-IP`); an empty value disables the preferred path and falls back to the #129
     `X-Forwarded-For` walk.
-  - `RIVIERA_SUPPRESSION_PEPPER` (#388, ADR-0012) — **required under the `prod` profile;
-    boot aborts without it** (`SuppressionPepperProdGuard` also rejects the committed dev
-    default). The HMAC pepper for the hashed email-suppression key — a **secret, env-only**
+  - `RIVIERA_SUPPRESSION_PEPPER` (#388, ADR-0012) — **required on every deployment, the demo
+    included; boot aborts without it** (ADR-0031). `SuppressionPepperProdGuard` rejects blank
+    and the committed dev pepper everywhere but `local`. The HMAC pepper for the hashed email-suppression key — a **secret, env-only**
     (the Stripe-key posture) and **long-lived**: rotating it orphans every stored suppression
     row (accepted ADR-0012 consequence), so treat it like a KMS root key. Generate once, e.g.
     `openssl rand -base64 48`. Ops recipes: [`docs/runbooks/suppression-list-ops.md`](../runbooks/suppression-list-ops.md).
@@ -170,8 +176,8 @@ must include `frontend/`, so:
   - `RIVIERA_ROBOTS_DISALLOW_ALL` (#1761) — default `false`. **Set `true` on every non-production
     deployment** (a demo or staging host): robots.txt then answers `Disallow: /` to every agent and
     names no sitemap, so a crawler indexes nothing there. Leave it unset in production.
-  - **SMTP relay (#368, ADR-0011) — only with the `mailer` profile** (production runs
-    `prod,mailer`; without these the profile aborts at boot, by design):
+  - **SMTP relay (#368, ADR-0011) — only with the `mailer` profile** (a production deployment runs
+    it, ADR-0031; without these the profile aborts at boot, by design):
     `RIVIERA_SMTP_HOST` (Scaleway TEM: `smtp.tem.scw.cloud`), `RIVIERA_SMTP_PORT` (default
     `587`, STARTTLS), `RIVIERA_SMTP_USERNAME` / `RIVIERA_SMTP_PASSWORD` (the TEM SMTP
     credentials — **secrets, env-only**, the Stripe-key posture), `RIVIERA_MAIL_FROM`

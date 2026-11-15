@@ -98,8 +98,8 @@ Same shape as `StubPaymentGateway` vs `StripePaymentGateway`:
   `UnsupportedOperationException`** ("not implemented — awaiting client
   credentials"; Java's equivalent of a NotImplementedException) until the Google
   Cloud / Apple Developer credentials are provisioned.
-- **Startup guard:** the mock adapter active together with the prod profile fails
-  the boot — a fake IdP must never be reachable in production.
+- **Startup guard:** the mock adapter active without the `demo` marker fails the
+  boot — a fake IdP must never be reachable in production (ADR-0031).
 
 ### D-5: Operator registration — self-register + admin approval
 

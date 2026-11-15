@@ -107,3 +107,5 @@ plus the cleartext `domain` part; entries still survive erasure, deliberately.**
 - #815 — erasure now also reaches `review`'s rows (ADR-0010's amendment); this table is still
   untouched.
 - 2026-11-14, #372 — the bounce feed is the list's first production writer, through the hashed chokepoint.
+- 2026-11-15, #394 — "fail-at-boot in prod" is every boot without `local`; the dev pepper lives in
+  `application-local.properties` alone (ADR-0031).

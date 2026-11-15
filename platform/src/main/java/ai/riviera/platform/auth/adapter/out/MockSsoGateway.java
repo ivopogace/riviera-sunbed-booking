@@ -14,7 +14,7 @@ import ai.riviera.platform.customer.vocabulary.SsoProvider;
 
 /**
  * Mock {@link SsoGateway} under {@code @Profile("!sso")}, so exactly one gateway bean exists: this,
- * or {@code RealSsoGateway} under {@code sso}; {@code MockSsoProdGuard} bars it from {@code prod}.
+ * or {@code RealSsoGateway} under {@code sso}; {@code MockSsoProdGuard} refuses it without {@code demo}.
  * A cooperative IdP with canned, verified identities (design D-4), like {@code StubPaymentGateway},
  * so "Continue with Google/Apple" demos with no external credentials: {@link #authorizationRequest}
  * sends the browser to {@code MockSsoIdpController}, which redirects to the real callback.

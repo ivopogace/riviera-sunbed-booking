@@ -3,14 +3,13 @@ package ai.riviera.platform.notification.adapter.out;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.runner.ApplicationContextRunner;
 
+import ai.riviera.platform.shared.BootPostureGuard;
+
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * Verifies the fail-fast prod guard (AC-10): the mock mailer must never run in production. Under
- * {@code prod} without {@code mailer} the guard bean is created and aborts startup; under {@code prod,mailer}
- * (the intended production activation) and under the default profile the guard is absent and startup
- * succeeds. Uses {@link ApplicationContextRunner} — no Spring Boot context, fast, no Docker (sibling to
- * {@code MockSsoProdGuardTest}).
+ * The mock mailer's fence (ADR-0031): with neither {@code demo} nor {@code mailer} the guard reports the mock;
+ * either marker removes it. {@link ApplicationContextRunner}, no Boot context.
  */
 class MockMailerProdGuardTest {
 
@@ -18,22 +17,20 @@ class MockMailerProdGuardTest {
 			.withUserConfiguration(MockMailerProdGuard.class);
 
 	@Test
-	void prodWithoutMailerAbortsStartup() {
-		runner.withInitializer(context -> context.getEnvironment().setActiveProfiles("prod"))
-				.run(context -> {
-					assertThat(context).hasFailed();
-					assertThat(context).getFailure().rootCause().isInstanceOf(IllegalStateException.class);
-				});
+	void anUnmarkedBootReportsTheMockMailer() {
+		runner.run(context -> assertThat(context.getBean(BootPostureGuard.class).gap(context.getEnvironment()))
+				.hasValueSatisfying(gap -> assertThat(gap).contains("Mail").contains("'mailer'").contains("'demo'")));
 	}
 
 	@Test
-	void prodWithMailerBootsWithoutTheGuard() {
-		runner.withInitializer(context -> context.getEnvironment().setActiveProfiles("prod", "mailer"))
-				.run(context -> assertThat(context).hasNotFailed());
+	void demoRunsTheMockOnPurpose() {
+		runner.withInitializer(context -> context.getEnvironment().setActiveProfiles("demo"))
+				.run(context -> assertThat(context).doesNotHaveBean(BootPostureGuard.class));
 	}
 
 	@Test
-	void defaultProfileBootsWithoutTheGuard() {
-		runner.run(context -> assertThat(context).hasNotFailed());
+	void mailerReplacesTheMock() {
+		runner.withInitializer(context -> context.getEnvironment().setActiveProfiles("mailer"))
+				.run(context -> assertThat(context).doesNotHaveBean(BootPostureGuard.class));
 	}
 }

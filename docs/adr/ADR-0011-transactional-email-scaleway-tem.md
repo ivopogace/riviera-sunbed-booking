@@ -191,3 +191,5 @@ own IP warm-up, blocklists, DKIM rotation; operationally wrong for a small team.
   residual is closed. The decision (in-memory vehicle for bearer payloads) stands.
 - 2026-11-14, #372 — decision 7's feed: Topics & Events delivery, SNS signature + CA chain + pinned
   topic, replay-inert upsert.
+- 2026-11-15, #394 — the mock is fenced by the absence of the `demo` marker, not by a `prod`
+  profile, which is retired (ADR-0031). A deployment runs `mailer`.

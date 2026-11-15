@@ -1,4 +1,4 @@
-# Production hardening — actuator, secrets, TLS
+# Production hardening — boot posture, actuator, secrets, TLS
 
 Operational-exposure posture for the Spring Boot backend (`platform/`), closed for the
 multi-operator launch (issue **#75**, part of #72). This documents *what is locked down and
@@ -71,17 +71,42 @@ not already read; it names *which* public commit is live. The CD job needs it wi
 
 Pinned by `platform/src/test/java/ai/riviera/platform/ActuatorHardeningIT.java`.
 
+## Boot posture — secure by default (ADR-0031)
+
+A boot with no marker profile is a deployment, and it refuses to start until it is a real one.
+`BootPostureCheck` runs before any other bean, the datasource included, and aborts once, naming
+every gap:
+
+| Gap | Fenced by | Supplied by |
+|---|---|---|
+| The suppression pepper is blank or the committed dev value | `SuppressionPepperProdGuard` (`!local`) | `RIVIERA_SUPPRESSION_PEPPER`, a long-lived random secret |
+| The log-only mock mailer would be live | `MockMailerProdGuard` (`!demo & !mailer`) | the `mailer` profile + `RIVIERA_SMTP_*` |
+| The mock SSO identity provider would be live | `MockSsoProdGuard` (`!demo & !sso`) | the `sso` profile + provider credentials |
+| The stub payment gateway would confirm bookings without collecting | `StubPaymentGatewayProdGuard` (`!demo & !collecting-gateway`) | a payment provider's profile (`stripe`) + its keys |
+
+The markers opt out on purpose:
+
+- **`demo`** allows the mocks. The Render demo runs `SPRING_PROFILES_ACTIVE=demo,stripe` with a real
+  pepper (`cd-pipeline.md`).
+- **`local`** groups in `demo` and adds the committed dev secrets (`application-local.properties`).
+  `dev`, `smtp4dev`, `./gradlew bootRun` and the test suite include it. Never deploy it: its values
+  are public.
+
+There is no `prod` profile.
+
 ## Secrets
 
-**No secret is committed to source or config.** Every credential resolves from the environment
-(empty/placeholder default so the app still boots locally without it):
+**No secret is committed to source or config**, except the `local` profile's public dev pepper.
+Every credential resolves from the environment (empty/placeholder default so the app still boots
+locally without it):
 
 | Secret | Source | Where referenced | Default when unset |
 |---|---|---|---|
-| `STRIPE_API_KEY` | env (`stripe.api-key`) | Stripe collection (payment module) | empty → in-process stub gateway (no Stripe); under `stripe`, **test keys only** (`sk_test_…` / `rk_test_…`): the profile is the sandbox demo and must never collect real money (ADR-0029, decision 11), so a blank value or any other key aborts the boot |
+| `STRIPE_API_KEY` | env (`stripe.api-key`) | Stripe collection (payment module) | empty → in-process stub gateway (no Stripe), which only a `demo` boot accepts; under `stripe`, **test keys only** (`sk_test_…` / `rk_test_…`): the profile is the sandbox demo and must never collect real money (ADR-0029, decision 11), so a blank value or any other key aborts the boot |
 | `STRIPE_WEBHOOK_SECRET` | env (`stripe.webhook-secret`) | webhook signature verification (invariant #8) | empty; required non-blank under `stripe` (boot aborts otherwise); **test keys only**: the signing secret of the Stripe *test* endpoint (ADR-0029, decision 11), which the boot cannot tell from a live one, so check it when setting it |
 | `SPRING_DATASOURCE_URL` / `_USERNAME` / `_PASSWORD` | env | Spring datasource auto-config | supplied entirely by the deploy target (Neon over `sslmode=require`) |
 | `RIVIERA_OPERATOR_PASSWORD` | env (`riviera.operator.password`) | the seeded `operator` account's credential — **the platform admin** since #115 (was the owns-all bootstrap; unchanged variable, no new secret) | empty → admin login disabled, cannot approve registrations (logged at WARN, never the value); a value under 12 characters or over 72 bytes is refused the same way — held to the password floor (D-8) |
+| `RIVIERA_SUPPRESSION_PEPPER` | env (`riviera.notification.suppression-pepper`) | the email-suppression key HMAC (ADR-0012); long-lived, rotating it orphans every stored row | empty → boot refused outside `local` (`SuppressionPepperProdGuard`, which also refuses the committed dev pepper); `local` commits a dev one |
 | `RIVIERA_ALTCHA_HMAC_SECRET` | env (`riviera.altcha.hmac-secret`) | signs every proof-of-work challenge (ADR-0016); the verifier accepts only solutions to challenges signed with it | empty → a random boot-time key, valid for this process alone (logged at WARN): a restart invalidates challenges in flight and a second instance can verify none of them — set it on every instance before scaling out |
 
 > **The proof-of-work fence is configuration too.** `riviera.altcha.enabled` (default `true`) is the

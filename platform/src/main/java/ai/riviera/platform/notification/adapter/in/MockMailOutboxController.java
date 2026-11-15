@@ -18,7 +18,7 @@ import ai.riviera.platform.notification.adapter.out.SentEmail;
 
 /**
  * The recording {@link MockMailer}'s booking mails over HTTP, so a real-backend e2e run can prove
- * a mail left. Present only where the mock transport is (so never under {@code prod});
+ * a mail left. Present only where the mock transport is (so never without {@code demo});
  * operator-gated. Booking kinds only, as facts a guest reads on the page anyway: never a code or
  * the code-gated link that embeds one (invariant #7), never a recovery kind. The one link that
  * rides is a cancellation's rebook link, which embeds no credential.

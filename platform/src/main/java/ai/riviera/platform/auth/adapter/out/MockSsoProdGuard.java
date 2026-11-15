@@ -1,23 +1,27 @@
 package ai.riviera.platform.auth.adapter.out;
 
+import java.util.Optional;
+
 import org.springframework.context.annotation.Profile;
+import org.springframework.core.env.Environment;
 import org.springframework.stereotype.Component;
 
+import ai.riviera.platform.shared.BootPostureGuard;
+
 /**
- * Fail-fast guard (design D-4): a fake identity provider must never be reachable in production.
- * Exists only under {@code @Profile("prod & !sso")}, where the default {@code MockSsoGateway} and
- * {@code MockSsoIdpController} would be live, and its constructor throws, aborting startup.
- * Production runs {@code prod,sso} (real adapters, no mock); {@code prod} alone is the
- * misconfiguration caught here. The non-prod demo env may run the mock, like the payment stub.
- * Package-private (invariant #11); pinned by {@code MockSsoProdGuardTest}.
+ * Fences the mock identity provider (design D-4, ADR-0031): present only where {@code MockSsoGateway} and
+ * {@code MockSsoIdpController} would be live with no {@code demo} marker, so the boot is refused. A deployment
+ * runs {@code sso} (real adapters); a demo opts into the mock with {@code demo}. Package-private (invariant #11).
  */
 @Component
-@Profile("prod & !sso")
-class MockSsoProdGuard {
+@Profile("!demo & !sso")
+class MockSsoProdGuard implements BootPostureGuard {
 
-	MockSsoProdGuard() {
-		throw new IllegalStateException(
-				"Mock SSO gateway must not run under the 'prod' profile — activate the 'sso' profile with real "
-						+ "credentials, or run a non-prod profile for the demo mock.");
+	private static final String GAP = "SSO: the mock identity provider would be live. Activate 'sso' with real "
+			+ "provider credentials, or 'demo' to run the mock on purpose.";
+
+	@Override
+	public Optional<String> gap(Environment environment) {
+		return Optional.of(GAP);
 	}
 }
