@@ -24,6 +24,7 @@ import ai.riviera.platform.customer.api.CustomerAccountDirectory;
 import ai.riviera.platform.customer.api.CustomerAccounts;
 import ai.riviera.platform.customer.vocabulary.CustomerAccountCredential;
 import ai.riviera.platform.customer.vocabulary.CustomerAccountId;
+import ai.riviera.platform.shared.SiteLocale;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -188,7 +189,7 @@ class MyAccountControllerTest {
 		mvc.perform(requestVerification())
 				.andExpect(status().isOk())
 				.andExpect(jsonPath("$.emailWithheld").value(true));
-		verify(recovery).sendVerificationEmail(ACCOUNT_ID, EMAIL);
+		verify(recovery).sendVerificationEmail(ACCOUNT_ID, EMAIL, SiteLocale.EN);
 	}
 
 	@Test

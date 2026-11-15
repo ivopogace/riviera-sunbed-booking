@@ -1,5 +1,7 @@
 package ai.riviera.platform.notification.application;
 
+import ai.riviera.platform.shared.SiteLocale;
+
 /**
  * What {@link BookingMailFactsService#resolveStayCancellation} could, or could not, assemble for a stay's
  * one cancellation mail; sealed so each caller's {@code switch} is exhaustive. Module-internal: public only
@@ -8,7 +10,7 @@ package ai.riviera.platform.notification.application;
 public sealed interface StayCancellationMailFacts {
 
 	/** The recipient and the mail, ready to send; {@code mail} carries the stay's code (invariant #7). */
-	record Resolved(String toEmail, BookingCancellationMail mail) implements StayCancellationMailFacts {
+	record Resolved(String toEmail, BookingCancellationMail mail, SiteLocale locale) implements StayCancellationMailFacts {
 	}
 
 	/** The first fact that did not resolve. */

@@ -17,6 +17,7 @@ import ai.riviera.platform.notification.application.MailAttemptSource;
 import ai.riviera.platform.notification.application.MissingBookingFact;
 import ai.riviera.platform.notification.application.TransactionalMailService;
 import ai.riviera.platform.monitoring.vocabulary.ObservabilityMetrics;
+import ai.riviera.platform.shared.SiteLocale;
 import ai.riviera.platform.venue.vocabulary.SetId;
 import ai.riviera.platform.venue.vocabulary.VenueId;
 
@@ -78,7 +79,7 @@ class BookingConfirmationMailListenerTest {
 	private static final BookingConfirmed EVENT = new BookingConfirmed(BOOKING_ID, new VenueId(3L),
 			SET_ID, LocalDate.of(2026, 8, 1), 4500, "EUR", CancellationWindow.LATE, 2500);
 	private static final BookingMailFacts.Resolved FACTS =
-			new BookingMailFacts.Resolved(EMAIL, CODE, "Vala Beach", "A", 3);
+			new BookingMailFacts.Resolved(EMAIL, CODE, "Vala Beach", "A", 3, SiteLocale.EN);
 
 	private final BookingMailFactsService facts = mock(BookingMailFactsService.class);
 	private final TransactionalMailService mails = mock(TransactionalMailService.class);
@@ -94,7 +95,7 @@ class BookingConfirmationMailListenerTest {
 	/** The ordinary answer, so only the specs that care about a withheld or failed send restate it. */
 	@BeforeEach
 	void theSendReportsSentByDefault() {
-		when(mails.sendBookingConfirmation(any(), any())).thenReturn(ConfirmationSendOutcome.SENT);
+		when(mails.sendBookingConfirmation(any(), any(), any())).thenReturn(ConfirmationSendOutcome.SENT);
 	}
 
 	@BeforeEach
@@ -136,7 +137,7 @@ class BookingConfirmationMailListenerTest {
 
 		listener.on(EVENT);
 
-		verify(mails).sendBookingConfirmation(eq(EMAIL), any());
+		verify(mails).sendBookingConfirmation(eq(EMAIL), eq(SiteLocale.EN), any());
 		assertThat(meters.find(ObservabilityMetrics.MAIL_CONFIRMATION_ABANDONED).counters()).isEmpty();
 	}
 
@@ -151,7 +152,7 @@ class BookingConfirmationMailListenerTest {
 
 		listener.on(EVENT);
 
-		verify(mails).sendBookingConfirmation(EMAIL, new BookingConfirmationMail(
+		verify(mails).sendBookingConfirmation(EMAIL, SiteLocale.EN, new BookingConfirmationMail(
 				CODE, "Vala Beach", LocalDate.of(2026, 8, 1), "A", 3, 4500, "EUR",
 				CancellationWindow.LATE, 2500));
 	}
@@ -170,7 +171,7 @@ class BookingConfirmationMailListenerTest {
 
 		assertThatCode(() -> listener.on(legacy)).doesNotThrowAnyException();
 
-		verify(mails).sendBookingConfirmation(EMAIL, new BookingConfirmationMail(
+		verify(mails).sendBookingConfirmation(EMAIL, SiteLocale.EN, new BookingConfirmationMail(
 				CODE, "Vala Beach", LocalDate.of(2026, 8, 1), "A", 3, 4500, "EUR", null, 0));
 	}
 
@@ -200,7 +201,7 @@ class BookingConfirmationMailListenerTest {
 	@Test
 	void aTransportFailureStillPropagatesAndCountsNothing() {
 		givenTheFactsAre(FACTS);
-		doThrow(new IllegalStateException("relay down")).when(mails).sendBookingConfirmation(any(), any());
+		doThrow(new IllegalStateException("relay down")).when(mails).sendBookingConfirmation(any(), any(), any());
 
 		assertThatThrownBy(() -> listener.on(EVENT)).isInstanceOf(IllegalStateException.class);
 
@@ -240,7 +241,7 @@ class BookingConfirmationMailListenerTest {
 	@Test
 	void recordsTheFailedAttemptAndStillRethrows() {
 		givenTheFactsAre(FACTS);
-		doThrow(new IllegalStateException("relay down")).when(mails).sendBookingConfirmation(any(), any());
+		doThrow(new IllegalStateException("relay down")).when(mails).sendBookingConfirmation(any(), any(), any());
 
 		assertThatThrownBy(() -> listener.on(EVENT)).isInstanceOf(IllegalStateException.class);
 
@@ -263,7 +264,7 @@ class BookingConfirmationMailListenerTest {
 	}
 
 	private void givenTheSendReports(ConfirmationSendOutcome outcome) {
-		when(mails.sendBookingConfirmation(any(), any())).thenReturn(outcome);
+		when(mails.sendBookingConfirmation(any(), any(), any())).thenReturn(outcome);
 	}
 
 	private double abandoned(String reason) {

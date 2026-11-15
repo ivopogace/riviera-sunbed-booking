@@ -50,9 +50,9 @@ class RequestDeclinedMailListener {
 	void on(BookingRequestDeclined event) {
 		switch (facts.resolve(event.bookingId(), event.setId())) {
 			case BookingMailFacts.Missing(MissingBookingFact fact) -> abandon(fact, event);
-			case BookingMailFacts.Resolved booking -> mails.sendRequestDeclined(booking.toEmail(),
+			case BookingMailFacts.Resolved booking -> mails.sendRequestDeclined(booking.toEmail(), booking.locale(),
 					new RequestDeclinedMail(booking.bookingCode(), booking.venueName(),
-							event.bookingDate(), event.lastDay(), links.forBooking(booking.bookingCode()),
+							event.bookingDate(), event.lastDay(), links.forBooking(booking.bookingCode(), booking.locale()),
 							event.reasonOrVenue()));
 		}
 	}
@@ -69,9 +69,9 @@ class RequestDeclinedMailListener {
 						+ "nothing retries it: the guest has no notice the venue declined", fact.tagValue(),
 						event.stayId().value());
 			}
-			case StayRequestMailFacts.Resolved stay -> mails.sendRequestDeclined(stay.toEmail(),
+			case StayRequestMailFacts.Resolved stay -> mails.sendRequestDeclined(stay.toEmail(), stay.locale(),
 					new RequestDeclinedMail(stay.stayCode(), stay.venueName(), stay.firstDate(), stay.lastDate(),
-							links.forBooking(stay.stayCode()), event.reason()));
+							links.forBooking(stay.stayCode(), stay.locale()), event.reason()));
 		}
 	}
 

@@ -42,9 +42,9 @@ class RecoveryMailerFailureIT {
 	@BeforeEach
 	void mailerIsDown() {
 		doThrow(new UnsupportedOperationException("mail transport down")).when(mailer)
-				.sendEmailVerification(any(), any());
+				.sendEmailVerification(any(), any(), any());
 		doThrow(new UnsupportedOperationException("mail transport down")).when(mailer)
-				.sendPasswordReset(any(), any());
+				.sendPasswordReset(any(), any(), any());
 	}
 
 	@Test

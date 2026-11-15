@@ -6,6 +6,7 @@ import { environment } from '../../environments/environment';
 import { DeviceLocalBookings } from '../core/device-local-bookings';
 import { problemCodeOf } from '../shared/api-error';
 import { ChallengeRejection, challengeHeaders, challengeRejection } from '../shared/challenge';
+import { buildLocale } from '../shared/display-locale';
 import {
   AwaitingPayment,
   BookingConfirmation,
@@ -86,7 +87,7 @@ export class BookingService {
     challenge?: string,
   ): Observable<CreateBookingResult> {
     return this.http
-      .post<StayView>(`${environment.apiBaseUrl}/api/stays`, request, {
+      .post<StayView>(`${environment.apiBaseUrl}/api/stays`, withLocale(request), {
         observe: 'response',
         headers: challengeHeaders(challenge),
       })
@@ -131,7 +132,7 @@ export class BookingService {
     return this.http
       .post<BookingConfirmation | AwaitingPayment | RequestedBooking>(
         `${environment.apiBaseUrl}/api/bookings`,
-        request,
+        withLocale(request),
         { observe: 'response', headers: challengeHeaders(challenge) },
       )
       .pipe(
@@ -312,4 +313,9 @@ function stayAsBooking(stay: StayView): BookingConfirmation {
     emailWithheld: stay.emailWithheld,
     stretches: stay.stretches,
   };
+}
+
+/** A create body carrying the running build's locale, so the guest's mails are written in it (#1770). */
+function withLocale<T extends CreateBookingRequest | CreateStayRequest>(request: T): T {
+  return { ...request, locale: buildLocale() };
 }

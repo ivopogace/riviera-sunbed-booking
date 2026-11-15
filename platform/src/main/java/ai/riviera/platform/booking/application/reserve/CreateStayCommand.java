@@ -7,13 +7,22 @@ import ai.riviera.platform.customer.vocabulary.CustomerAccountId;
 import ai.riviera.platform.customer.vocabulary.GuestContact;
 import ai.riviera.platform.venue.vocabulary.SetId;
 import ai.riviera.platform.venue.vocabulary.StaySpan;
+import ai.riviera.platform.shared.SiteLocale;
+import java.util.Objects;
 
 /**
  * Book a stitched stay (design D6): at least two same-set stretches that together cover a contiguous
  * span, consecutive stretches on different sets. The shape is validated here; whether the sets
- * exist, sell online and are free is the reserve's answer. {@code accountId} is null for a guest.
+ * exist, sell online and are free is the reserve's answer. {@code accountId} is null for a guest;
+ * {@code locale} is the language every mail for the stay is written in.
  */
-public record CreateStayCommand(List<Stretch> stretches, GuestContact contact, CustomerAccountId accountId) {
+public record CreateStayCommand(List<Stretch> stretches, GuestContact contact, CustomerAccountId accountId,
+		SiteLocale locale) {
+
+	/** In English, the source locale. */
+	public CreateStayCommand(List<Stretch> stretches, GuestContact contact, CustomerAccountId accountId) {
+		this(stretches, contact, accountId, SiteLocale.EN);
+	}
 
 	/** One same-set run, first to last day inclusive. */
 	public record Stretch(SetId setId, LocalDate firstDay, LocalDate lastDay) {
@@ -29,6 +38,7 @@ public record CreateStayCommand(List<Stretch> stretches, GuestContact contact, C
 
 	public CreateStayCommand {
 		stretches = List.copyOf(stretches);
+		Objects.requireNonNull(locale, "locale");
 		if (stretches.size() < 2) {
 			throw new IllegalArgumentException("a stay is at least two stretches; one stretch is a booking");
 		}

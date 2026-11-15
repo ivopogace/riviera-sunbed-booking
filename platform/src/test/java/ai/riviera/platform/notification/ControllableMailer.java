@@ -20,6 +20,7 @@ import ai.riviera.platform.notification.application.PaymentDueMail;
 import ai.riviera.platform.notification.application.RequestDeclinedMail;
 import ai.riviera.platform.notification.application.RequestExpiredMail;
 import ai.riviera.platform.notification.application.StayConfirmationMail;
+import ai.riviera.platform.shared.SiteLocale;
 
 /**
  * A transport whose latency and failure are the test's to choose — the "deliberately blocking
@@ -76,12 +77,12 @@ public final class ControllableMailer implements Mailer {
 	}
 
 	@Override
-	public void sendEmailVerification(String toEmail, URI verificationLink) {
+	public void sendEmailVerification(String toEmail, SiteLocale locale, URI verificationLink) {
 		// Not exercised here; the recovery vehicle has its own pool and its own tests.
 	}
 
 	@Override
-	public void sendPasswordReset(String toEmail, URI resetLink) {
+	public void sendPasswordReset(String toEmail, SiteLocale locale, URI resetLink) {
 		// See above.
 	}
 
@@ -91,12 +92,12 @@ public final class ControllableMailer implements Mailer {
 	}
 
 	@Override
-	public void sendBookingConfirmation(String toEmail, BookingConfirmationMail confirmation) {
+	public void sendBookingConfirmation(String toEmail, SiteLocale locale, BookingConfirmationMail confirmation) {
 		observeRegistrySend(toEmail);
 	}
 
 	@Override
-	public void sendStayConfirmation(String toEmail, StayConfirmationMail confirmation) {
+	public void sendStayConfirmation(String toEmail, SiteLocale locale, StayConfirmationMail confirmation) {
 		observeRegistrySend(toEmail);
 	}
 
@@ -107,42 +108,42 @@ public final class ControllableMailer implements Mailer {
 	 * registry traffic the day someone pointed one of these ITs at a cancellation.
 	 */
 	@Override
-	public void sendBookingCancellation(String toEmail, BookingCancellationMail cancellation) {
+	public void sendBookingCancellation(String toEmail, SiteLocale locale, BookingCancellationMail cancellation) {
 		observeRegistrySend(toEmail);
 	}
 
 	/** The payment-due notice is the third kind on this vehicle — observed, for the reason above. */
 	@Override
-	public void sendPaymentDue(String toEmail, PaymentDueMail paymentDue) {
+	public void sendPaymentDue(String toEmail, SiteLocale locale, PaymentDueMail paymentDue) {
 		observeRegistrySend(toEmail);
 	}
 
 	/** The two request-outcome records are the fourth and fifth — observed, same reason. */
 	@Override
-	public void sendRequestDeclined(String toEmail, RequestDeclinedMail declined) {
+	public void sendRequestDeclined(String toEmail, SiteLocale locale, RequestDeclinedMail declined) {
 		observeRegistrySend(toEmail);
 	}
 
 	@Override
-	public void sendRequestExpired(String toEmail, RequestExpiredMail expired) {
+	public void sendRequestExpired(String toEmail, SiteLocale locale, RequestExpiredMail expired) {
 		observeRegistrySend(toEmail);
 	}
 
 	/** The changed-spot notice is the sixth kind on this vehicle — observed, same reason. */
 	@Override
-	public void sendBookingMoved(String toEmail, BookingMovedMail moved) {
+	public void sendBookingMoved(String toEmail, SiteLocale locale, BookingMovedMail moved) {
 		observeRegistrySend(toEmail);
 	}
 
 	/** A refunded day's mail rides the same vehicle — observed, same reason. */
 	@Override
-	public void sendDayRefund(String toEmail, ai.riviera.platform.notification.application.DayRefundMail refund) {
+	public void sendDayRefund(String toEmail, SiteLocale locale, ai.riviera.platform.notification.application.DayRefundMail refund) {
 		observeRegistrySend(toEmail);
 	}
 
 	/** The move reminder rides the same vehicle — observed, same reason. */
 	@Override
-	public void sendMoveReminder(String toEmail, ai.riviera.platform.notification.application.MoveReminderMail reminder) {
+	public void sendMoveReminder(String toEmail, SiteLocale locale, ai.riviera.platform.notification.application.MoveReminderMail reminder) {
 		observeRegistrySend(toEmail);
 	}
 

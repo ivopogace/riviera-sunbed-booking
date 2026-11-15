@@ -13,6 +13,7 @@ import org.springframework.stereotype.Service;
 
 import ai.riviera.platform.notification.api.MailSender;
 import ai.riviera.platform.monitoring.vocabulary.ObservabilityMetrics;
+import ai.riviera.platform.shared.SiteLocale;
 
 /**
  * The module's send chokepoint (ADR-0011): every mail leaves here, on one of two opposite vehicles.
@@ -56,12 +57,12 @@ public class TransactionalMailService implements MailSender {
 	}
 
 	@Override
-	public void sendEmailVerification(String toEmail, URI verificationLink) {
-		dispatchQuietly(MailKind.VERIFICATION, toEmail, () -> mailer.sendEmailVerification(toEmail, verificationLink));
+	public void sendEmailVerification(String toEmail, SiteLocale locale, URI verificationLink) {
+		dispatchQuietly(MailKind.VERIFICATION, toEmail, () -> mailer.sendEmailVerification(toEmail, locale, verificationLink));
 	}
 
 	@Override
-	public void sendPasswordReset(String toEmail, Supplier<Optional<URI>> resetLink) {
+	public void sendPasswordReset(String toEmail, SiteLocale locale, Supplier<Optional<URI>> resetLink) {
 		dispatchQuietly(MailKind.PASSWORD_RESET, toEmail, () -> {
 			Optional<URI> link;
 			try {
@@ -71,7 +72,7 @@ public class TransactionalMailService implements MailSender {
 				recordLoss(MailKind.PASSWORD_RESET, REASON_TOKEN_ISSUANCE, e);
 				return;
 			}
-			link.ifPresent(issued -> mailer.sendPasswordReset(toEmail, issued));
+			link.ifPresent(issued -> mailer.sendPasswordReset(toEmail, locale, issued));
 		});
 	}
 
@@ -85,23 +86,23 @@ public class TransactionalMailService implements MailSender {
 	 * Deliver the booking confirmation now, on the caller's thread; a transport failure propagates. Send and
 	 * suppressed skip both complete normally, so the outcome is the delivery log's only way to tell them apart.
 	 */
-	public ConfirmationSendOutcome sendBookingConfirmation(String toEmail, BookingConfirmationMail confirmation) {
+	public ConfirmationSendOutcome sendBookingConfirmation(String toEmail, SiteLocale locale, BookingConfirmationMail confirmation) {
 		if (suppressions.isSuppressed(toEmail)) {
 			// No address in the line (PII posture of this log); the correlation id rides the MDC.
 			log.info("Booking-confirmation mail skipped: the address is suppressed");
 			return ConfirmationSendOutcome.WITHHELD_SUPPRESSED;
 		}
-		mailer.sendBookingConfirmation(toEmail, confirmation);
+		mailer.sendBookingConfirmation(toEmail, locale, confirmation);
 		return ConfirmationSendOutcome.SENT;
 	}
 
 	/** {@link #sendBookingConfirmation}'s twin for a stitched stay's one confirmation, on the same terms. */
-	public ConfirmationSendOutcome sendStayConfirmation(String toEmail, StayConfirmationMail confirmation) {
+	public ConfirmationSendOutcome sendStayConfirmation(String toEmail, SiteLocale locale, StayConfirmationMail confirmation) {
 		if (suppressions.isSuppressed(toEmail)) {
 			log.info("Stay-confirmation mail skipped: the address is suppressed");
 			return ConfirmationSendOutcome.WITHHELD_SUPPRESSED;
 		}
-		mailer.sendStayConfirmation(toEmail, confirmation);
+		mailer.sendStayConfirmation(toEmail, locale, confirmation);
 		return ConfirmationSendOutcome.SENT;
 	}
 
@@ -110,12 +111,12 @@ public class TransactionalMailService implements MailSender {
 	 * The suppression check gets no {@link #isSuppressedOrFailOpen} carve-out on this vehicle, for the
 	 * same reason the throw stays: a blip should cost a retry, not the delivery.
 	 */
-	public void sendBookingCancellation(String toEmail, BookingCancellationMail cancellation) {
+	public void sendBookingCancellation(String toEmail, SiteLocale locale, BookingCancellationMail cancellation) {
 		if (suppressions.isSuppressed(toEmail)) {
 			log.info("Booking-cancellation mail skipped: the address is suppressed");
 			return;
 		}
-		mailer.sendBookingCancellation(toEmail, cancellation);
+		mailer.sendBookingCancellation(toEmail, locale, cancellation);
 	}
 
 	/**
@@ -123,57 +124,57 @@ public class TransactionalMailService implements MailSender {
 	 * propagates — and this is where the retry that throw buys is most obviously worth having, the mail
 	 * being the guest's only warning that an unnoticed acceptance will be swept away again.
 	 */
-	public void sendPaymentDue(String toEmail, PaymentDueMail paymentDue) {
+	public void sendPaymentDue(String toEmail, SiteLocale locale, PaymentDueMail paymentDue) {
 		if (suppressions.isSuppressed(toEmail)) {
 			log.info("Payment-due mail skipped: the address is suppressed");
 			return;
 		}
-		mailer.sendPaymentDue(toEmail, paymentDue);
+		mailer.sendPaymentDue(toEmail, locale, paymentDue);
 	}
 
 	/** Deliver the changed-spot notice now, on the caller's thread; a transport failure propagates. */
-	public void sendBookingMoved(String toEmail, BookingMovedMail moved) {
+	public void sendBookingMoved(String toEmail, SiteLocale locale, BookingMovedMail moved) {
 		if (suppressions.isSuppressed(toEmail)) {
 			log.info("Booking-moved mail skipped: the address is suppressed");
 			return;
 		}
-		mailer.sendBookingMoved(toEmail, moved);
+		mailer.sendBookingMoved(toEmail, locale, moved);
 	}
 
 	/** Deliver the evening-before move reminder now, on the caller's thread; a transport failure propagates. */
-	public void sendMoveReminder(String toEmail, MoveReminderMail reminder) {
+	public void sendMoveReminder(String toEmail, SiteLocale locale, MoveReminderMail reminder) {
 		if (suppressions.isSuppressed(toEmail)) {
 			log.info("Move-reminder mail skipped: the address is suppressed");
 			return;
 		}
-		mailer.sendMoveReminder(toEmail, reminder);
+		mailer.sendMoveReminder(toEmail, locale, reminder);
 	}
 
 	/** Deliver a refunded day's record now, on the caller's thread; a transport failure propagates. */
-	public void sendDayRefund(String toEmail, DayRefundMail refund) {
+	public void sendDayRefund(String toEmail, SiteLocale locale, DayRefundMail refund) {
 		if (suppressions.isSuppressed(toEmail)) {
 			log.info("Day-refund mail skipped: the address is suppressed");
 			return;
 		}
-		mailer.sendDayRefund(toEmail, refund);
+		mailer.sendDayRefund(toEmail, locale, refund);
 	}
 
 	/** Deliver the declined request's record now, on the caller's thread; a transport failure propagates. */
-	public void sendRequestDeclined(String toEmail, RequestDeclinedMail declined) {
+	public void sendRequestDeclined(String toEmail, SiteLocale locale, RequestDeclinedMail declined) {
 		if (suppressions.isSuppressed(toEmail)) {
 			log.info("Request-declined mail skipped: the address is suppressed");
 			return;
 		}
-		mailer.sendRequestDeclined(toEmail, declined);
+		mailer.sendRequestDeclined(toEmail, locale, declined);
 	}
 
 	/** Deliver the expired request's record now, on the caller's thread; {@link #sendRequestDeclined}'s mirror. */
-	public void sendRequestExpired(String toEmail, RequestExpiredMail expired) {
+	public void sendRequestExpired(String toEmail, SiteLocale locale, RequestExpiredMail expired) {
 		if (suppressions.isSuppressed(toEmail)) {
 			log.info("Request-expired mail skipped: the address is suppressed");
 			return;
 		}
-		mailer.sendRequestExpired(toEmail, expired);
+		mailer.sendRequestExpired(toEmail, locale, expired);
 	}
 
 	private void dispatchQuietly(MailKind kind, String toEmail, Runnable send) {

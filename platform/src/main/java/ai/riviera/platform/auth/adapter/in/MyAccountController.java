@@ -22,6 +22,7 @@ import ai.riviera.platform.customer.vocabulary.CustomerAccountCredential;
 import ai.riviera.platform.customer.vocabulary.CustomerAccountId;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import ai.riviera.platform.shared.SiteLocale;
 
 /**
  * Signed-in customer account management under {@code /api/me/**}: set/change password, re-request verification.
@@ -104,6 +105,10 @@ class MyAccountController {
 		return ResponseEntity.noContent().build();
 	}
 
+	/** Wire DTO for the resend's optional body: the SPA's build locale, any other value or none English. */
+	record VerificationRequest(String locale) {
+	}
+
 	/** Wire DTO for the resend: whether the do-not-mail list withheld the message that was just asked for. */
 	record VerificationRequestedView(boolean emailWithheld) {
 	}
@@ -114,11 +119,12 @@ class MyAccountController {
 	 * suppression (an enumeration oracle). The suppression read follows the send, so it can never gate it.
 	 */
 	@PostMapping(REQUEST_VERIFICATION_PATH)
-	ResponseEntity<VerificationRequestedView> requestVerification(Authentication authentication) {
+	ResponseEntity<VerificationRequestedView> requestVerification(
+			@RequestBody(required = false) VerificationRequest body, Authentication authentication) {
 		CustomerAccountId accountId = customerDirectory.requireSignedInAccount(CustomerPrincipal.name(authentication),
 				CustomerPrincipal.isCustomer(authentication));
 		String email = authentication.getName();
-		recovery.sendVerificationEmail(accountId, email);
+		recovery.sendVerificationEmail(accountId, email, SiteLocale.fromCode(body == null ? null : body.locale()));
 		return ResponseEntity.ok(new VerificationRequestedView(recovery.isVerificationMailWithheld(email)));
 	}
 

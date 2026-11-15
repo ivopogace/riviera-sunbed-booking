@@ -1,4 +1,5 @@
 import { BookingStatus, DeclineReason } from '../shared/booking-status';
+import { LocaleId } from '../shared/display-locale';
 import { MoneyView } from '../shared/money';
 
 // Re-exported from its canonical home in shared/ (which owns the exhaustive STATUS_META keyed by it).
@@ -21,6 +22,8 @@ export interface CreateBookingRequest {
   /** The stay's last day, ISO; absent for one day. */
   readonly lastDate?: string;
   readonly contact: BookingContact;
+  /** The build locale, which every mail for the booking is written in; `BookingService` sends it. */
+  readonly locale?: LocaleId;
 }
 
 /** One stretch of a stitched stay's plan as the guest booked it (mirrors the backend `StretchRequest`). */
@@ -34,6 +37,8 @@ export interface StayStretchRequest {
 export interface CreateStayRequest {
   readonly stretches: readonly StayStretchRequest[];
   readonly contact: BookingContact;
+  /** As on `CreateBookingRequest`. */
+  readonly locale?: LocaleId;
 }
 
 /** One stretch of a booked stay: its set, where it sits, its days and money (mirrors the backend `StretchView`). */

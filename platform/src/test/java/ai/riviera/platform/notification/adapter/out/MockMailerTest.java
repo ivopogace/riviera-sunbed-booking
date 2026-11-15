@@ -13,6 +13,7 @@ import ai.riviera.platform.booking.vocabulary.CancellationWindow;
 import ai.riviera.platform.notification.application.BookingCancellationMail;
 import ai.riviera.platform.notification.application.BookingConfirmationMail;
 import ai.riviera.platform.notification.application.PaymentDueMail;
+import ai.riviera.platform.shared.SiteLocale;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -43,8 +44,8 @@ class MockMailerTest {
 
 	@Test
 	void recordsEachEmailAndReturnsTheLatestPerAddress() {
-		mailer.sendEmailVerification("a@example.com", URI.create("https://x/account/verify?token=v1"));
-		mailer.sendPasswordReset("a@example.com", URI.create("https://x/account/reset?token=r1"));
+		mailer.sendEmailVerification("a@example.com", SiteLocale.EN, URI.create("https://x/account/verify?token=v1"));
+		mailer.sendPasswordReset("a@example.com", SiteLocale.EN, URI.create("https://x/account/reset?token=r1"));
 
 		assertThat(mailer.sent()).hasSize(2);
 		assertThat(mailer.lastTo("a@example.com")).get()
@@ -56,7 +57,7 @@ class MockMailerTest {
 
 	@Test
 	void recordsBookingConfirmation() {
-		mailer.sendBookingConfirmation("tourist@example.com", CONFIRMATION);
+		mailer.sendBookingConfirmation("tourist@example.com", SiteLocale.EN, CONFIRMATION);
 
 		SentEmail recorded = mailer.lastTo("tourist@example.com").orElseThrow();
 		assertThat(recorded.kind()).isEqualTo(SentEmail.Kind.BOOKING_CONFIRMATION);
@@ -66,7 +67,7 @@ class MockMailerTest {
 
 	@Test
 	void recordsTheCancellation() {
-		mailer.sendBookingCancellation("tourist@example.com", CANCELLATION);
+		mailer.sendBookingCancellation("tourist@example.com", SiteLocale.EN, CANCELLATION);
 
 		SentEmail recorded = mailer.lastTo("tourist@example.com").orElseThrow();
 		assertThat(recorded.kind()).isEqualTo(SentEmail.Kind.BOOKING_CANCELLATION);
@@ -77,7 +78,7 @@ class MockMailerTest {
 
 	@Test
 	void recordsThePaymentDue() {
-		mailer.sendPaymentDue("tourist@example.com", PAYMENT_DUE);
+		mailer.sendPaymentDue("tourist@example.com", SiteLocale.EN, PAYMENT_DUE);
 
 		SentEmail recorded = mailer.lastTo("tourist@example.com").orElseThrow();
 		assertThat(recorded.kind()).isEqualTo(SentEmail.Kind.PAYMENT_DUE);
@@ -94,7 +95,7 @@ class MockMailerTest {
 	 */
 	@Test
 	void neverLogsThePayLink(CapturedOutput output) {
-		mailer.sendPaymentDue("tourist@example.com", PAYMENT_DUE);
+		mailer.sendPaymentDue("tourist@example.com", SiteLocale.EN, PAYMENT_DUE);
 
 		assertThat(output).doesNotContain(PAYMENT_DUE.payLink().toString());
 		assertThat(output).doesNotContain(PAYMENT_DUE.bookingCode());
@@ -113,8 +114,8 @@ class MockMailerTest {
 
 	@Test
 	void neverLogsTheBookingCode(CapturedOutput output) {
-		mailer.sendBookingConfirmation("tourist@example.com", CONFIRMATION);
-		mailer.sendBookingCancellation("tourist@example.com", CANCELLATION);
+		mailer.sendBookingConfirmation("tourist@example.com", SiteLocale.EN, CONFIRMATION);
+		mailer.sendBookingCancellation("tourist@example.com", SiteLocale.EN, CANCELLATION);
 
 		// The mock deliberately logs recovery LINKS as a dev affordance, but the arrival code is a
 		// bearer credential (invariant #7) with no such need — the tourist has it in the app.

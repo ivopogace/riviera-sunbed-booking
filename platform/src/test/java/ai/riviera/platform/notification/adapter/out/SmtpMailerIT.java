@@ -33,6 +33,7 @@ import ai.riviera.platform.notification.application.RequestDeclinedMail;
 import ai.riviera.platform.notification.application.RequestExpiredMail;
 import ai.riviera.platform.notification.application.StayConfirmationMail;
 import ai.riviera.platform.notification.application.SupportContact;
+import ai.riviera.platform.shared.SiteLocale;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -68,7 +69,7 @@ class SmtpMailerIT {
 
 	@Test
 	void deliversVerificationEmailOverSmtp() throws Exception {
-		mailer().sendEmailVerification(TO, LINK);
+		mailer().sendEmailVerification(TO, SiteLocale.EN, LINK);
 
 		MimeMessage message = theOnlyReceivedMessage();
 		assertThat(GreenMailUtil.getAddressList(message.getAllRecipients())).isEqualTo(TO);
@@ -79,7 +80,7 @@ class SmtpMailerIT {
 
 	@Test
 	void deliversPasswordResetEmailOverSmtp() throws Exception {
-		mailer().sendPasswordReset(TO, LINK);
+		mailer().sendPasswordReset(TO, SiteLocale.EN, LINK);
 
 		MimeMessage message = theOnlyReceivedMessage();
 		assertThat(GreenMailUtil.getAddressList(message.getAllRecipients())).isEqualTo(TO);
@@ -89,7 +90,7 @@ class SmtpMailerIT {
 
 	@Test
 	void deliversBookingConfirmationOverSmtp() throws Exception {
-		mailer().sendBookingConfirmation(TO, CONFIRMATION);
+		mailer().sendBookingConfirmation(TO, SiteLocale.EN, CONFIRMATION);
 
 		MimeMessage message = theOnlyReceivedMessage();
 		assertThat(GreenMailUtil.getAddressList(message.getAllRecipients())).isEqualTo(TO);
@@ -115,7 +116,7 @@ class SmtpMailerIT {
 
 	@Test
 	void aConfirmationNamesEveryConfiguredSupportChannel() throws Exception {
-		mailer(new SupportContact("help@example.com", "355691234567")).sendBookingConfirmation(TO, CONFIRMATION);
+		mailer(new SupportContact("help@example.com", "355691234567")).sendBookingConfirmation(TO, SiteLocale.EN, CONFIRMATION);
 
 		assertThat(normalized(theOnlyReceivedMessage())).endsWith("""
 				Show the booking code at the venue on arrival.
@@ -127,7 +128,7 @@ class SmtpMailerIT {
 
 	@Test
 	void aConfirmationNamesOnlyTheChannelsConfigured() throws Exception {
-		mailer(new SupportContact(null, "355691234567")).sendBookingConfirmation(TO, CONFIRMATION);
+		mailer(new SupportContact(null, "355691234567")).sendBookingConfirmation(TO, SiteLocale.EN, CONFIRMATION);
 
 		String body = theOnlyReceivedMessage().getContent().toString();
 		assertThat(body).contains("WhatsApp:  +355691234567").doesNotContain("Email:");
@@ -135,14 +136,14 @@ class SmtpMailerIT {
 
 	@Test
 	void aConfirmationWithNoChannelConfiguredCarriesNoContactLine() throws Exception {
-		mailer().sendBookingConfirmation(TO, CONFIRMATION);
+		mailer().sendBookingConfirmation(TO, SiteLocale.EN, CONFIRMATION);
 
 		assertThat(theOnlyReceivedMessage().getContent().toString()).doesNotContain("Need help", "wa.me");
 	}
 
 	@Test
 	void aStayConfirmationNamesTheSupportChannel() throws Exception {
-		mailer(new SupportContact("help@example.com", null)).sendStayConfirmation(TO, new StayConfirmationMail(
+		mailer(new SupportContact("help@example.com", null)).sendStayConfirmation(TO, SiteLocale.EN, new StayConfirmationMail(
 				BOOKING_CODE, "Miramar Beach", LocalDate.of(2026, 8, 15), LocalDate.of(2026, 8, 16),
 				List.of(new StayConfirmationMail.Stop(LocalDate.of(2026, 8, 15), LocalDate.of(2026, 8, 16), "A", 1)),
 				5000, "EUR", CancellationWindow.FREE, 0));
@@ -154,7 +155,7 @@ class SmtpMailerIT {
 
 	@Test
 	void rangeRendersDaysLine() throws Exception {
-		mailer().sendBookingConfirmation(TO, new BookingConfirmationMail(BOOKING_CODE, "Miramar Beach",
+		mailer().sendBookingConfirmation(TO, SiteLocale.EN, new BookingConfirmationMail(BOOKING_CODE, "Miramar Beach",
 				LocalDate.of(2026, 8, 15), LocalDate.of(2026, 8, 19), "Front row · Sea view", 3, 12500, "EUR",
 				CancellationWindow.FREE, 0));
 
@@ -165,7 +166,7 @@ class SmtpMailerIT {
 
 	@Test
 	void aStitchedStayNamesEveryStopUnderOneCode() throws Exception {
-		mailer().sendStayConfirmation(TO, new StayConfirmationMail(BOOKING_CODE, "Miramar Beach",
+		mailer().sendStayConfirmation(TO, SiteLocale.EN, new StayConfirmationMail(BOOKING_CODE, "Miramar Beach",
 				LocalDate.of(2026, 8, 15), LocalDate.of(2026, 8, 20),
 				List.of(new StayConfirmationMail.Stop(LocalDate.of(2026, 8, 15), LocalDate.of(2026, 8, 17),
 								"Front row · Sea view", 3),
@@ -197,7 +198,7 @@ class SmtpMailerIT {
 
 	@Test
 	void aStaysCancellationRendersDaysLineToo() throws Exception {
-		mailer().sendBookingCancellation(TO, new BookingCancellationMail(BOOKING_CODE, "Miramar Beach",
+		mailer().sendBookingCancellation(TO, SiteLocale.EN, new BookingCancellationMail(BOOKING_CODE, "Miramar Beach",
 				LocalDate.of(2026, 8, 15), LocalDate.of(2026, 8, 16), 5000, "EUR", RefundReason.POLICY, null));
 
 		String body = theOnlyReceivedMessage().getContent().toString();
@@ -207,7 +208,7 @@ class SmtpMailerIT {
 
 	@Test
 	void aMovedStayNamesItsDays() throws Exception {
-		mailer().sendBookingMoved(TO, movedMail(LocalDate.of(2026, 8, 17)));
+		mailer().sendBookingMoved(TO, SiteLocale.EN, movedMail(LocalDate.of(2026, 8, 17)));
 
 		String body = theOnlyReceivedMessage().getContent().toString();
 		assertThat(body).contains("Days:          15 August – 17 August 2026 (3 days)",
@@ -217,7 +218,7 @@ class SmtpMailerIT {
 
 	@Test
 	void aMovedOneDayBookingKeepsItsDateLine() throws Exception {
-		mailer().sendBookingMoved(TO, movedMail(LocalDate.of(2026, 8, 15)));
+		mailer().sendBookingMoved(TO, SiteLocale.EN, movedMail(LocalDate.of(2026, 8, 15)));
 
 		String body = theOnlyReceivedMessage().getContent().toString();
 		assertThat(body).contains("Date:          15 August 2026", "Your booking code, price and date are unchanged.");
@@ -226,7 +227,7 @@ class SmtpMailerIT {
 
 	@Test
 	void aMovedBookingOffersAFullRefundUntilItsDeadline() throws Exception {
-		mailer().sendBookingMoved(TO, movedMail(LocalDate.of(2026, 8, 15)));
+		mailer().sendBookingMoved(TO, SiteLocale.EN, movedMail(LocalDate.of(2026, 8, 15)));
 
 		assertThat(theOnlyReceivedMessage().getContent().toString())
 				.contains("you can cancel for a full refund until 14 August 2026 at 20:30 (CEST) (Albania time):");
@@ -234,7 +235,7 @@ class SmtpMailerIT {
 
 	@Test
 	void aMovedStretchPromisesItsOwnDaysInFullNotTheWholeStay() throws Exception {
-		mailer().sendBookingMoved(TO, stretchMail(DEADLINE));
+		mailer().sendBookingMoved(TO, SiteLocale.EN, stretchMail(DEADLINE));
 
 		String body = theOnlyReceivedMessage().getContent().toString();
 		assertThat(body).contains("you can cancel your stay until 14 August 2026 at 20:30 (CEST) (Albania time), "
@@ -244,7 +245,7 @@ class SmtpMailerIT {
 
 	@Test
 	void aStretchMovedOnceItsStayBeganOffersNoExit() throws Exception {
-		mailer().sendBookingMoved(TO, stretchMail(null));
+		mailer().sendBookingMoved(TO, SiteLocale.EN, stretchMail(null));
 
 		String body = theOnlyReceivedMessage().getContent().toString();
 		assertThat(body).contains("Your stay has already begun, so it can no longer be cancelled. Your booking:",
@@ -256,7 +257,7 @@ class SmtpMailerIT {
 
 	@Test
 	void theMoveReminderNamesTomorrowsSpotTheDistanceAndTheLink() throws Exception {
-		mailer().sendMoveReminder(TO, moveReminder());
+		mailer().sendMoveReminder(TO, SiteLocale.EN, moveReminder());
 
 		MimeMessage message = theOnlyReceivedMessage();
 		assertThat(GreenMailUtil.getAddressList(message.getAllRecipients())).isEqualTo(TO);
@@ -277,7 +278,7 @@ class SmtpMailerIT {
 	@Test
 	void theMoveReminderDropsTodaysSpotWhenTheGuestDoesNotHoldIt() throws Exception {
 		MoveReminderMail held = moveReminder();
-		mailer().sendMoveReminder(TO, new MoveReminderMail(held.bookingCode(), held.venueName(), held.moveDate(),
+		mailer().sendMoveReminder(TO, SiteLocale.EN, new MoveReminderMail(held.bookingCode(), held.venueName(), held.moveDate(),
 				held.stayLastDate(), held.fromRowLabel(), held.fromPositionNo(), held.toRowLabel(), held.toPositionNo(),
 				held.rowsAway(), held.positionsAway(), held.bookingLink(), false));
 
@@ -291,12 +292,12 @@ class SmtpMailerIT {
 	/** ADR-0027 §9: the venue's own refund names who and what, never why; only a released day's copy frees the spot. */
 	@Test
 	void theVenuesDayRefundSaysWhoRefundedAndWhetherTheSpotIsHeld() throws Exception {
-		mailer().sendDayRefund(TO, new DayRefundMail(BOOKING_CODE, "Miramar Beach", LocalDate.of(2026, 8, 18), 3000L,
+		mailer().sendDayRefund(TO, SiteLocale.EN, new DayRefundMail(BOOKING_CODE, "Miramar Beach", LocalDate.of(2026, 8, 18), 3000L,
 				"EUR", RefundReason.VENUE, true, PAY_LINK));
 		String released = theOnlyReceivedMessage().getContent().toString();
 		greenMail.reset();
 
-		mailer().sendDayRefund(TO, new DayRefundMail(BOOKING_CODE, "Miramar Beach", LocalDate.of(2026, 8, 18), 3000L,
+		mailer().sendDayRefund(TO, SiteLocale.EN, new DayRefundMail(BOOKING_CODE, "Miramar Beach", LocalDate.of(2026, 8, 18), 3000L,
 				"EUR", RefundReason.VENUE, false, PAY_LINK));
 		String held = theOnlyReceivedMessage().getContent().toString();
 
@@ -311,7 +312,7 @@ class SmtpMailerIT {
 
 	@Test
 	void theDayRefundNamesTheDayTheAmountAndTheLink() throws Exception {
-		mailer().sendDayRefund(TO, new DayRefundMail(BOOKING_CODE, "Miramar Beach", LocalDate.of(2026, 8, 18), 3000L,
+		mailer().sendDayRefund(TO, SiteLocale.EN, new DayRefundMail(BOOKING_CODE, "Miramar Beach", LocalDate.of(2026, 8, 18), 3000L,
 				"EUR", RefundReason.WEATHER, false, PAY_LINK));
 
 		MimeMessage message = theOnlyReceivedMessage();
@@ -329,7 +330,7 @@ class SmtpMailerIT {
 	@Test
 	void theMoveReminderKeepsAVenueNameOutOfTheSubjectHeaders() throws Exception {
 		MoveReminderMail reminder = moveReminder();
-		mailer().sendMoveReminder(TO, new MoveReminderMail(reminder.bookingCode(), "Miramar\r\nBcc: x@evil.test",
+		mailer().sendMoveReminder(TO, SiteLocale.EN, new MoveReminderMail(reminder.bookingCode(), "Miramar\r\nBcc: x@evil.test",
 				reminder.moveDate(), reminder.stayLastDate(), reminder.fromRowLabel(), reminder.fromPositionNo(),
 				reminder.toRowLabel(), reminder.toPositionNo(), reminder.rowsAway(), reminder.positionsAway(),
 				reminder.bookingLink(), true));
@@ -341,7 +342,7 @@ class SmtpMailerIT {
 
 	@Test
 	void neverLogsTheBookingCodeOnAMoveReminder(CapturedOutput output) {
-		mailer().sendMoveReminder(TO, moveReminder());
+		mailer().sendMoveReminder(TO, SiteLocale.EN, moveReminder());
 
 		assertThat(output).doesNotContain(BOOKING_CODE);
 	}
@@ -349,32 +350,32 @@ class SmtpMailerIT {
 	/** The #795 disclosure branches, rendered — only CLOSED may claim the booking can't be cancelled. */
 	@Test
 	void rendersTheBornPastFreeCancellationDisclosure() throws Exception {
-		mailer().sendBookingConfirmation(TO, withBirthWindow(CancellationWindow.CLOSED, 0));
+		mailer().sendBookingConfirmation(TO, SiteLocale.EN, withBirthWindow(CancellationWindow.CLOSED, 0));
 		assertThat(theOnlyReceivedMessage().getContent().toString())
 				.contains("non-refundable last-minute booking");
 		greenMail.purgeEmailFromAllMailboxes();
 
 		// LATE at 0 bps is still cancellable (refund NONE), so the copy must not say otherwise.
-		mailer().sendBookingConfirmation(TO, withBirthWindow(CancellationWindow.LATE, 0));
+		mailer().sendBookingConfirmation(TO, SiteLocale.EN, withBirthWindow(CancellationWindow.LATE, 0));
 		String lateAtZero = theOnlyReceivedMessage().getContent().toString();
 		assertThat(lateAtZero).contains("past free cancellation — no refund if cancelled");
 		assertThat(lateAtZero).doesNotContain("can't be cancelled", "last-minute");
 		greenMail.purgeEmailFromAllMailboxes();
 
-		mailer().sendBookingConfirmation(TO, withBirthWindow(CancellationWindow.LATE, 2250));
+		mailer().sendBookingConfirmation(TO, SiteLocale.EN, withBirthWindow(CancellationWindow.LATE, 2250));
 		assertThat(theOnlyReceivedMessage().getContent().toString())
 				.contains("cancelling refunds only 22.5% of the price");
 		greenMail.purgeEmailFromAllMailboxes();
 
 		// Null = a pre-#795 registry payload: tolerated forever, renders nothing (AC-7).
-		mailer().sendBookingConfirmation(TO, withBirthWindow(null, 0));
+		mailer().sendBookingConfirmation(TO, SiteLocale.EN, withBirthWindow(null, 0));
 		assertThat(theOnlyReceivedMessage().getContent().toString())
 				.doesNotContain("non-refundable", "past free cancellation");
 	}
 
 	@Test
 	void rendersTheDisclosureOnThePaymentDueMailToo() throws Exception {
-		mailer().sendPaymentDue(TO, new PaymentDueMail(BOOKING_CODE, "Miramar Beach",
+		mailer().sendPaymentDue(TO, SiteLocale.EN, new PaymentDueMail(BOOKING_CODE, "Miramar Beach",
 				LocalDate.of(2026, 8, 15), LocalDate.of(2026, 8, 15), DEADLINE, 2500, "EUR", PAY_LINK,
 				CancellationWindow.CLOSED, 0));
 		assertThat(theOnlyReceivedMessage().getContent().toString())
@@ -388,7 +389,7 @@ class SmtpMailerIT {
 
 	@Test
 	void neverLogsTheBookingCode(CapturedOutput output) {
-		mailer().sendBookingConfirmation(TO, CONFIRMATION);
+		mailer().sendBookingConfirmation(TO, SiteLocale.EN, CONFIRMATION);
 
 		assertThat(output).doesNotContain(BOOKING_CODE);
 	}
@@ -402,7 +403,7 @@ class SmtpMailerIT {
 	 */
 	@Test
 	void rendersTheRefundFromMinorUnits() throws Exception {
-		mailer().sendBookingCancellation(TO, cancellation(2500, RefundReason.POLICY));
+		mailer().sendBookingCancellation(TO, SiteLocale.EN, cancellation(2500, RefundReason.POLICY));
 
 		MimeMessage message = theOnlyReceivedMessage();
 		assertThat(GreenMailUtil.getAddressList(message.getAllRecipients())).isEqualTo(TO);
@@ -421,7 +422,7 @@ class SmtpMailerIT {
 	 */
 	@Test
 	void rendersAnAmountWithNonZeroCents() throws Exception {
-		mailer().sendBookingCancellation(TO, cancellation(2505, RefundReason.POLICY));
+		mailer().sendBookingCancellation(TO, SiteLocale.EN, cancellation(2505, RefundReason.POLICY));
 
 		assertThat(theOnlyReceivedMessage().getContent().toString()).contains("EUR 25.05");
 	}
@@ -433,7 +434,7 @@ class SmtpMailerIT {
 	 */
 	@Test
 	void rendersNoRefundWhenNothingIsReturned() throws Exception {
-		mailer().sendBookingCancellation(TO, cancellation(0, RefundReason.POLICY));
+		mailer().sendBookingCancellation(TO, SiteLocale.EN, cancellation(0, RefundReason.POLICY));
 
 		String body = theOnlyReceivedMessage().getContent().toString();
 		assertThat(body).doesNotContain("EUR");
@@ -446,11 +447,11 @@ class SmtpMailerIT {
 	 */
 	@Test
 	void namesTheCancellationReason() throws Exception {
-		mailer().sendBookingCancellation(TO, cancellation(2500, RefundReason.POLICY));
+		mailer().sendBookingCancellation(TO, SiteLocale.EN, cancellation(2500, RefundReason.POLICY));
 		String policyBody = theOnlyReceivedMessage().getContent().toString();
 		greenMail.reset();
 
-		mailer().sendBookingCancellation(TO, cancellation(2500, RefundReason.WEATHER));
+		mailer().sendBookingCancellation(TO, SiteLocale.EN, cancellation(2500, RefundReason.WEATHER));
 		String weatherBody = theOnlyReceivedMessage().getContent().toString();
 
 		assertThat(policyBody).containsIgnoringCase("your cancellation").doesNotContainIgnoringCase("weather");
@@ -466,7 +467,7 @@ class SmtpMailerIT {
 	/** ADR-0027 §6/§9: a lone one-day booking the venue refunded is cancelled under VENUE — who and what, never why. */
 	@Test
 	void aVenueCancellationNamesTheVenueAndNoGrounds() throws Exception {
-		mailer().sendBookingCancellation(TO, cancellation(2500, RefundReason.VENUE));
+		mailer().sendBookingCancellation(TO, SiteLocale.EN, cancellation(2500, RefundReason.VENUE));
 
 		String body = theOnlyReceivedMessage().getContent().toString();
 		assertThat(body).contains("Miramar Beach refunded your booking for")
@@ -478,7 +479,7 @@ class SmtpMailerIT {
 	void everyRefundReasonRendersABody() throws Exception {
 		for (RefundReason reason : RefundReason.values()) {
 			greenMail.reset();
-			mailer().sendBookingCancellation(TO, cancellation(2500, reason));
+			mailer().sendBookingCancellation(TO, SiteLocale.EN, cancellation(2500, reason));
 
 			String body = theOnlyReceivedMessage().getContent().toString();
 			assertThat(body).as("body for %s", reason).isNotBlank().contains("Miramar Beach");
@@ -492,15 +493,15 @@ class SmtpMailerIT {
 	 */
 	@Test
 	void aVenueCausedCancellationReadsDifferentlyFromTheGuestsOwnFreeExit() throws Exception {
-		mailer().sendBookingCancellation(TO, cancellation(2500, RefundReason.VENUE_CHANGE));
+		mailer().sendBookingCancellation(TO, SiteLocale.EN, cancellation(2500, RefundReason.VENUE_CHANGE));
 		String freeExit = theOnlyReceivedMessage().getContent().toString();
 		greenMail.reset();
 
-		mailer().sendBookingCancellation(TO, venueCaused(2500));
+		mailer().sendBookingCancellation(TO, SiteLocale.EN, venueCaused(2500));
 		String refunded = theOnlyReceivedMessage().getContent().toString();
 		greenMail.reset();
 
-		mailer().sendBookingCancellation(TO, venueCaused(0));
+		mailer().sendBookingCancellation(TO, SiteLocale.EN, venueCaused(0));
 		String released = theOnlyReceivedMessage().getContent().toString();
 
 		assertThat(freeExit).containsIgnoringCase("you cancelled").doesNotContain(REBOOK_LINK.toString());
@@ -515,7 +516,7 @@ class SmtpMailerIT {
 
 	@Test
 	void carriesNoTrackingMarkup() throws Exception {
-		mailer().sendBookingCancellation(TO, cancellation(2500, RefundReason.WEATHER));
+		mailer().sendBookingCancellation(TO, SiteLocale.EN, cancellation(2500, RefundReason.WEATHER));
 
 		MimeMessage message = theOnlyReceivedMessage();
 		assertThat(message.isMimeType("text/plain")).as("plain text, no HTML/tracking (ADR-0011)").isTrue();
@@ -524,7 +525,7 @@ class SmtpMailerIT {
 
 	@Test
 	void neverLogsTheBookingCodeOnACancellation(CapturedOutput output) {
-		mailer().sendBookingCancellation(TO, cancellation(2500, RefundReason.POLICY));
+		mailer().sendBookingCancellation(TO, SiteLocale.EN, cancellation(2500, RefundReason.POLICY));
 
 		assertThat(output).doesNotContain(BOOKING_CODE);
 	}
@@ -541,7 +542,7 @@ class SmtpMailerIT {
 	 */
 	@Test
 	void statesThePayDeadlineInTiraneWithThePayLink() throws Exception {
-		mailer().sendPaymentDue(TO, paymentDue());
+		mailer().sendPaymentDue(TO, SiteLocale.EN, paymentDue());
 
 		MimeMessage message = theOnlyReceivedMessage();
 		assertThat(GreenMailUtil.getAddressList(message.getAllRecipients())).isEqualTo(TO);
@@ -558,7 +559,7 @@ class SmtpMailerIT {
 
 	@Test
 	void thePaymentDueMailCarriesNoTrackingMarkup() throws Exception {
-		mailer().sendPaymentDue(TO, paymentDue());
+		mailer().sendPaymentDue(TO, SiteLocale.EN, paymentDue());
 
 		MimeMessage message = theOnlyReceivedMessage();
 		assertThat(message.isMimeType("text/plain")).as("plain text, no HTML/tracking (ADR-0011)").isTrue();
@@ -571,7 +572,7 @@ class SmtpMailerIT {
 	 */
 	@Test
 	void neverLogsTheCodeOrThePayLink(CapturedOutput output) {
-		mailer().sendPaymentDue(TO, paymentDue());
+		mailer().sendPaymentDue(TO, SiteLocale.EN, paymentDue());
 
 		assertThat(output).doesNotContain(BOOKING_CODE);
 		assertThat(output).doesNotContain(PAY_LINK.toString());
@@ -586,11 +587,11 @@ class SmtpMailerIT {
 	void aStaysRequestMailsNameItsDays() throws Exception {
 		LocalDate first = LocalDate.of(2026, 8, 15);
 		LocalDate last = LocalDate.of(2026, 8, 17);
-		mailer().sendPaymentDue(TO, new PaymentDueMail(BOOKING_CODE, "Miramar Beach", first, last,
+		mailer().sendPaymentDue(TO, SiteLocale.EN, new PaymentDueMail(BOOKING_CODE, "Miramar Beach", first, last,
 				DEADLINE, 7500, "EUR", PAY_LINK, CancellationWindow.FREE, 0));
-		mailer().sendRequestDeclined(TO, new RequestDeclinedMail(BOOKING_CODE, "Miramar Beach", first, last,
+		mailer().sendRequestDeclined(TO, SiteLocale.EN, new RequestDeclinedMail(BOOKING_CODE, "Miramar Beach", first, last,
 				PAY_LINK, DeclineReason.SET_UNAVAILABLE));
-		mailer().sendRequestExpired(TO, new RequestExpiredMail(BOOKING_CODE, "Miramar Beach", first, last, PAY_LINK));
+		mailer().sendRequestExpired(TO, SiteLocale.EN, new RequestExpiredMail(BOOKING_CODE, "Miramar Beach", first, last, PAY_LINK));
 
 		greenMail.waitForIncomingEmail(3);
 		for (MimeMessage message : greenMail.getReceivedMessages()) {
@@ -642,7 +643,7 @@ class SmtpMailerIT {
 				"Evil\r\nBcc: attacker@example.com\r\nX-Injected: yes", LocalDate.of(2026, 8, 15),
 				"A", 3, 2500, "EUR", CancellationWindow.FREE, 0);
 
-		mailer().sendBookingConfirmation(TO, injected);
+		mailer().sendBookingConfirmation(TO, SiteLocale.EN, injected);
 
 		// Pins the property, not one layer's implementation of it: this passes with or without
 		// SmtpMailer.headerSafe, because Jakarta Mail already refuses to promote a newline in a subject
@@ -669,15 +670,15 @@ class SmtpMailerIT {
 		// The failure must propagate: BookingConfirmationMailListener relies on it to leave the
 		// publication outstanding so a restart retries. Swallowing here would silently turn the
 		// registry's at-least-once contract into fire-and-forget.
-		assertThatThrownBy(() -> new SmtpMailer(sender, FROM, SupportContact.NONE).sendBookingConfirmation(TO, CONFIRMATION))
+		assertThatThrownBy(() -> new SmtpMailer(sender, FROM, SupportContact.NONE).sendBookingConfirmation(TO, SiteLocale.EN, CONFIRMATION))
 				.isInstanceOf(MailException.class);
 		assertThat(output).doesNotContain(BOOKING_CODE);
 	}
 
 	@Test
 	void neverLogsTheTokenizedLink(CapturedOutput output) {
-		mailer().sendEmailVerification(TO, LINK);
-		mailer().sendPasswordReset(TO, LINK);
+		mailer().sendEmailVerification(TO, SiteLocale.EN, LINK);
+		mailer().sendPasswordReset(TO, SiteLocale.EN, LINK);
 
 		assertThat(output).doesNotContain("s3cret-t0ken");
 	}
@@ -695,7 +696,7 @@ class SmtpMailerIT {
 		SmtpMailer mailer = new SmtpMailer(sender, FROM, SupportContact.NONE);
 
 		// The exception propagates to the caller (TransactionalMailService.dispatchQuietly logs only its class name).
-		assertThatThrownBy(() -> mailer.sendEmailVerification(TO, LINK)).isInstanceOf(MailException.class);
+		assertThatThrownBy(() -> mailer.sendEmailVerification(TO, SiteLocale.EN, LINK)).isInstanceOf(MailException.class);
 		assertThat(output).doesNotContain("s3cret-t0ken");
 	}
 
