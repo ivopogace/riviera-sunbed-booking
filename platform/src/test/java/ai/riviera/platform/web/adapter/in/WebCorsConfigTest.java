@@ -31,7 +31,7 @@ class WebCorsConfigTest {
 
 	@Test
 	void preflightFromPagesOriginIsAllowed() throws Exception {
-		mockMvc.perform(options("/actuator/health")
+		mockMvc.perform(options("/api/venues")
 						.header("Origin", "https://ivopogace.github.io")
 						.header("Access-Control-Request-Method", "GET"))
 				.andExpect(status().isOk())
@@ -41,8 +41,17 @@ class WebCorsConfigTest {
 	}
 
 	@Test
-	void preflightFromUnknownOriginIsRejected() throws Exception {
+	void theActuatorAnswersNoCrossOriginRequest() throws Exception {
+		// The actuator chain has no browser client (ADR-0032), so it carries no CORS configuration.
 		mockMvc.perform(options("/actuator/health")
+						.header("Origin", "https://ivopogace.github.io")
+						.header("Access-Control-Request-Method", "GET"))
+				.andExpect(header().doesNotExist("Access-Control-Allow-Origin"));
+	}
+
+	@Test
+	void preflightFromUnknownOriginIsRejected() throws Exception {
+		mockMvc.perform(options("/api/venues")
 						.header("Origin", "https://evil.example.com")
 						.header("Access-Control-Request-Method", "GET"))
 				.andExpect(status().isForbidden());

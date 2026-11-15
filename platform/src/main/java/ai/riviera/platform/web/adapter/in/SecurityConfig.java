@@ -13,12 +13,14 @@ import org.springframework.http.HttpStatus;
 import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
+import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.access.intercept.AuthorizationFilter;
 import org.springframework.security.web.authentication.AnonymousAuthenticationFilter;
 import org.springframework.security.web.authentication.logout.HttpStatusReturningLogoutSuccessHandler;
 import org.springframework.security.web.authentication.logout.LogoutSuccessHandler;
 import org.springframework.security.web.context.HttpSessionSecurityContextRepository;
+import org.springframework.security.web.context.NullSecurityContextRepository;
 import org.springframework.security.web.context.SecurityContextRepository;
 import org.springframework.security.web.csrf.CookieCsrfTokenRepository;
 import org.springframework.security.web.csrf.CsrfFilter;
@@ -28,6 +30,7 @@ import org.springframework.session.web.http.DefaultCookieSerializer;
 import org.springframework.web.filter.CorsFilter;
 
 import ai.riviera.platform.audit.api.AdminAuditLog;
+import ai.riviera.platform.auth.api.ScrapeCredentials;
 import ai.riviera.platform.auth.api.SessionCredentials;
 import ai.riviera.platform.auth.vocabulary.AuthRoles;
 import ai.riviera.platform.challenge.api.ProofOfWorkChallenges;
@@ -52,6 +55,10 @@ public class SecurityConfig {
 	 * {@code AdminSurfaceRoleGateTest} discovers the mapped admin endpoints, so one with no matcher fails.
 	 */
 	private static final String ADMIN_ROLE = AuthRoles.ADMIN;
+	/** The metrics scraper's bearer token (ADR-0032); granted and meaningful on the actuator chain alone. */
+	private static final String METRICS_ROLE = AuthRoles.METRICS;
+	/** Every actuator path: its own chain, ahead of the API chain, which never sees one. */
+	private static final String ACTUATOR_PATHS = "/actuator/**";
 	/** A single laid-out set (PATCH/DELETE target); session + CSRF token required. */
 	private static final String SET_ITEM_PATH = "/api/venues/*/sets/*";
 	/** The set collection: add one (POST) or batch-apply price/tier/pool to many (PATCH); session + CSRF. */
@@ -281,7 +288,39 @@ public class SecurityConfig {
 	private static final String LOGOUT_PATH = "/api/auth/logout";
 
 	/**
-	 * The {@code /api/**} + {@code /actuator/**} chain, ordered first. <strong>First match wins</strong>:
+	 * The actuator chain, ordered first (ADR-0032): stateless, it reads and creates no session, so every session
+	 * is anonymous here and the scraper's bearer token is the one credential. CSRF guards ambient credentials,
+	 * and this chain honours none. Anonymous: health's status and info's commit id. Everything else denied.
+	 */
+	@Bean
+	@Order(0)
+	SecurityFilterChain actuatorSecurityFilterChain(HttpSecurity http, RateLimitProperties rateLimitProperties,
+			Clock clock, ObjectMapper objectMapper, ScrapeCredentials scrapeCredentials) {
+		http
+				.securityMatcher(ACTUATOR_PATHS)
+				.addFilterAfter(new RateLimitFilter(rateLimitProperties, clock, objectMapper), CorsFilter.class)
+				.addFilterBefore(new ScrapeTokenFilter(scrapeCredentials), AnonymousAuthenticationFilter.class)
+				.sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+				.securityContext(context -> context.securityContextRepository(new NullSecurityContextRepository()))
+				.csrf(csrf -> csrf.ignoringRequestMatchers(ACTUATOR_PATHS))
+				.authorizeHttpRequests(auth -> auth
+						// Render's health check and the CD poll; details need ROLE_METRICS (management.endpoint.health.roles).
+						.requestMatchers(HttpMethod.GET, "/actuator/health/**").permitAll()
+						.requestMatchers(HttpMethod.HEAD, "/actuator/health/**").permitAll()
+						// The build's commit id only (BuildCommitInfoContributor); the CD poll reads it (#1632).
+						.requestMatchers(HttpMethod.GET, "/actuator/info").permitAll()
+						.requestMatchers(HttpMethod.GET, "/actuator/prometheus").hasRole(METRICS_ROLE)
+						// Fail closed: an endpoint later added to the exposure allowlist needs its own rule above.
+						.anyRequest().denyAll())
+				.exceptionHandling(handling -> handling
+						.authenticationEntryPoint((_, response, _) -> ScrapeTokenFilter.challenge(response))
+						.accessDeniedHandler((_, response, exception) ->
+								SecurityProblemResponses.writeAccessDenied(response, exception)));
+		return http.build();
+	}
+
+	/**
+	 * The {@code /api/**} chain. <strong>First match wins</strong>:
 	 * each operator-only {@code GET /api/venues/*&#47;…} MUST precede the public one, or its data leaks.
 	 * CSRF is {@code .spa()}, exempting only booking-code writes and the two signed webhooks (invariants #7, #8).
 	 */
@@ -294,7 +333,7 @@ public class SecurityConfig {
 		CookieCsrfTokenRepository csrfTokenRepository = csrfCookieRepository();
 		RateLimitFilter rateLimitFilter = new RateLimitFilter(rateLimitProperties, clock, objectMapper);
 		http
-				.securityMatcher("/api/**", "/actuator/**")
+				.securityMatcher("/api/**")
 				.cors(Customizer.withDefaults())
 				// After CORS (preflight first), before authorization: the 200/404 code oracle needs throttling.
 				.addFilterAfter(rateLimitFilter, CorsFilter.class)
@@ -314,13 +353,6 @@ public class SecurityConfig {
 								"/api/bookings/*/withdraw", BOOKING_REVIEW_PATH,
 								"/api/payments/stripe/webhook", TEM_WEBHOOK_PATH))
 				.authorizeHttpRequests(auth -> auth
-						.requestMatchers("/actuator/health/**").permitAll()
-						// The build's commit id only (BuildCommitInfoContributor); the CD poll reads it (#1632).
-						.requestMatchers(HttpMethod.GET, "/actuator/info").permitAll()
-						// Platform-wide money-path and traffic figures: not venue-scoped, so ADMIN like the payout batches.
-						.requestMatchers(HttpMethod.GET, "/actuator/prometheus").hasRole(ADMIN_ROLE)
-						// Fail closed: an endpoint later added to the exposure allowlist needs its own rule above.
-						.requestMatchers("/actuator/**").denyAll()
 						// Anonymous by definition — authentication happens INSIDE the endpoint.
 						.requestMatchers(HttpMethod.POST, LOGIN_PATH).permitAll()
 						.requestMatchers(HttpMethod.POST, OPERATOR_REGISTER_PATH).permitAll()

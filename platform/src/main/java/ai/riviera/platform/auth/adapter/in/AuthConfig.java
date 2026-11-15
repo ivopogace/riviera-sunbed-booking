@@ -14,16 +14,17 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import ai.riviera.platform.auth.application.CustomerUserDetailsService;
 import ai.riviera.platform.auth.application.OperatorUserDetailsService;
 import ai.riviera.platform.auth.application.RecoveryProperties;
+import ai.riviera.platform.auth.application.ScrapeTokenProperties;
 import ai.riviera.platform.customer.api.CustomerAccounts;
 import ai.riviera.platform.operator.api.OperatorAccounts;
 
 /**
  * The authentication beans: one {@link AuthenticationManager} per principal type over DB-backed credentials
- * ({@link #operatorDetailsService} + {@link #passwordEncoder()}); no JWT, no custom token filter. Public only so a
- * web slice can import it.
+ * ({@link #operatorDetailsService} + {@link #passwordEncoder()}); no JWT. The one bearer token is the metrics
+ * scraper's (ADR-0032). Public only so a web slice can import it.
  */
 @Configuration
-@EnableConfigurationProperties({RivieraOperatorProperties.class, RecoveryProperties.class})
+@EnableConfigurationProperties({RivieraOperatorProperties.class, RecoveryProperties.class, ScrapeTokenProperties.class})
 public class AuthConfig {
 
 	/**

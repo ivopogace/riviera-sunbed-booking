@@ -38,6 +38,7 @@ import ai.riviera.platform.auth.application.OperatorResetLinks;
 import ai.riviera.platform.auth.application.RecoveryTokens;
 import ai.riviera.platform.auth.application.SsoAuthorizationChallenge;
 import ai.riviera.platform.auth.application.SsoGateway;
+import ai.riviera.platform.auth.application.ScrapeTokenVerifier;
 import ai.riviera.platform.auth.application.StampedSessionCredentials;
 import ai.riviera.platform.availability.application.MarkOutcome;
 import ai.riviera.platform.availability.application.ReleaseOutcome;
@@ -211,7 +212,7 @@ import ai.riviera.platform.venue.vocabulary.VenueSummaryView;
  * pinned purely by {@code TokenBucketTest}).
  */
 @TestConfiguration(proxyBeanMethods = false)
-@Import({AuthConfig.class, StampedSessionCredentials.class})
+@Import({AuthConfig.class, StampedSessionCredentials.class, ScrapeTokenVerifier.class})
 public class WebSliceStubs {
 
 	/**
