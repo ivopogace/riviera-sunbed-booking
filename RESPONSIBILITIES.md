@@ -977,7 +977,8 @@ tag names the person, invariant #7):
   binds `riviera.notification.booking-link.base-url`, as it binds `auth`'s `riviera.recovery.link-base-url` and
   `web`'s `riviera.web.public-origin` (a second variable could only drift; bound per key because neither
   `auth` nor I may depend on `web`), never a `riviera.recovery.*` key, which is `auth`'s namespace. Unset, the
-  mail keys fall back to the local `:4200` SPA (none under `mailer`) while `web`'s means no origin.
+  mail keys fall back to the local `:4200` SPA (none under `mailer`) while `web`'s means no origin; set but blank,
+  the mail keys abort the boot under every profile (a placeholder default covers only an unset variable).
 - **I own the emailed-link origin rule and builder, `vocabulary.EmailedLinkOrigin` and `EmailedLink`**, which
   `auth` takes for its recovery links, so the two keys cannot drift: http(s), a host (inner underscores allowed,
   no trailing dot), a port in 1..65535 if given, an optional path (escapes allowed), no user info, query,

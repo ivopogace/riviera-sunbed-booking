@@ -1,19 +1,21 @@
 package ai.riviera.platform;
 
+import java.util.Map;
 import java.util.function.Consumer;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.ConfigDataApplicationContextInitializer;
 import org.springframework.boot.test.context.runner.ApplicationContextRunner;
 import org.springframework.core.env.Environment;
+import org.springframework.core.env.MapPropertySource;
 import org.springframework.core.env.StandardEnvironment;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 /**
  * The shipped properties files bind every key built on the deployed origin from {@code RIVIERA_PUBLIC_ORIGIN} alone:
- * {@code web}'s crawl origin and both emailed-link keys, under every profile. Rationale: RESPONSIBILITIES.md
- * §notification.
+ * {@code web}'s crawl origin and both emailed-link keys, under every profile; a blank value reaches the mail keys
+ * blank (their records then abort the boot), never their local default. Rationale: RESPONSIBILITIES.md §notification.
  */
 class PublicOriginSingleVariableTest {
 
@@ -49,6 +51,16 @@ class PublicOriginSingleVariableTest {
 			assertEquals("", environment.getProperty(WEB_KEY));
 			assertEquals("http://localhost:4200", environment.getProperty(RECOVERY_KEY));
 			assertEquals("http://localhost:4200", environment.getProperty(BOOKING_KEY));
+		});
+	}
+
+	@Test
+	void aBlankVariableReachesTheMailKeysBlankRatherThanTheirDefault() {
+		runner.withInitializer(context -> context.getEnvironment().getPropertySources()
+				.addFirst(new MapPropertySource("blank-origin", Map.of("RIVIERA_PUBLIC_ORIGIN", "")))).run(context -> {
+			Environment environment = context.getEnvironment();
+			assertEquals("", environment.getProperty(RECOVERY_KEY));
+			assertEquals("", environment.getProperty(BOOKING_KEY));
 		});
 	}
 

@@ -1,8 +1,13 @@
 package ai.riviera.platform.notification.adapter.in;
 
+import java.util.Map;
+
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.boot.test.context.ConfigDataApplicationContextInitializer;
 import org.springframework.boot.test.context.runner.ApplicationContextRunner;
+import org.springframework.core.env.MapPropertySource;
 import org.springframework.core.env.StandardEnvironment;
 
 import ai.riviera.platform.notification.application.BookingLinks;
@@ -12,7 +17,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 /**
  * Pins the booking-mail link origin's boot posture against the SHIPPED properties files: the
  * {@code mailer} profile aborts when {@code RIVIERA_PUBLIC_ORIGIN} is unset, any explicit value
- * boots, and every other profile keeps the local default.
+ * boots, every other profile keeps the local default, and a set-but-blank variable aborts under every profile.
  */
 class BookingLinkOriginWiringTest {
 
@@ -44,6 +49,17 @@ class BookingLinkOriginWiringTest {
 				.withPropertyValues("spring.profiles.active=mailer")
 				.run(context -> assertThat(context).hasFailed().getFailure().rootCause()
 						.hasMessageStartingWith(BookingLinkConfig.BookingLinkProperties.PREFIX + ".base-url ")
+						.hasMessageContaining("set RIVIERA_PUBLIC_ORIGIN"));
+	}
+
+	@ParameterizedTest
+	@ValueSource(strings = { "default", "mailer" })
+	void aBlankVariableFailsAtBootUnderEveryProfileNamingIt(String profile) {
+		runner.withInitializer(context -> context.getEnvironment().getPropertySources()
+				.addFirst(new MapPropertySource("blank-origin", Map.of("RIVIERA_PUBLIC_ORIGIN", ""))))
+				.withPropertyValues("spring.profiles.active=" + profile)
+				.run(context -> assertThat(context).hasFailed().getFailure().rootCause()
+						.hasMessageStartingWith(BookingLinkConfig.BookingLinkProperties.PREFIX + ".base-url must be set")
 						.hasMessageContaining("set RIVIERA_PUBLIC_ORIGIN"));
 	}
 

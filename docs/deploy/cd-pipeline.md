@@ -140,7 +140,9 @@ must include `frontend/`, so:
     emailed link (verify, reset, booking, operator sign-in) and every absolute URL crawlers and link
     previews see is built on it, never the request's `Host`. **Deployed value: the backend's own origin**
     (the app serves the SPA same-origin), i.e. `https://<name>.onrender.com` on the demo and
-    `https://<domain>` in production, so a bare `https` origin (rules below).
+    `https://<domain>` in production, so a bare `https` origin (rules below). **Set but blank aborts the
+    boot in every profile**, naming the emailed-link key and this variable: an emailed link needs an origin, so
+    delete the variable rather than blank it (#1784).
     - **Emailed links** (`riviera.recovery.link-base-url`, `riviera.notification.booking-link.base-url`):
       **required under the `mailer` profile; boot aborts without it** (#1581). Without `mailer` an unset
       variable falls back to `http://localhost:4200`, which is only right for local dev. In every profile the value
@@ -153,7 +155,7 @@ must include `frontend/`, so:
       variable, never the value. Surrounding whitespace is stripped and a trailing slash trimmed (#1592).
     - **Crawlers and link previews** (`riviera.web.public-origin`): `/robots.txt` names `<origin>/sitemap.xml`,
       every `/sitemap.xml` URL is built on it, and so are the served shell's canonical, `og:url`, `og:image` and
-      `hreflang` links. **Unset or blank: `/sitemap.xml` answers `404` (the `NOT_FOUND` problem body), robots.txt
+      `hreflang` links. **Unset: `/sitemap.xml` answers `404` (the `NOT_FOUND` problem body), robots.txt
       names no sitemap, and link previews carry text only (no image, canonical or alternates)**; the private
       surfaces stay disallowed either way. A set value must be a bare `https` origin (a host and an optional
       port; no path, query, fragment or user info; one trailing slash is trimmed), or a bare `http` one on
