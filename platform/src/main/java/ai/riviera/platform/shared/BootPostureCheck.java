@@ -5,6 +5,7 @@ import java.util.Optional;
 
 import org.springframework.beans.factory.config.BeanFactoryPostProcessor;
 import org.springframework.beans.factory.config.ConfigurableListableBeanFactory;
+import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.core.env.Environment;
 import org.springframework.stereotype.Component;
 
@@ -18,7 +19,8 @@ final class BootPostureCheck implements BeanFactoryPostProcessor {
 
 	@Override
 	public void postProcessBeanFactory(ConfigurableListableBeanFactory beanFactory) {
-		Environment environment = beanFactory.getBean(Environment.class);
+		Environment environment =
+				beanFactory.getBean(ConfigurableApplicationContext.ENVIRONMENT_BEAN_NAME, Environment.class);
 		List<String> gaps = beanFactory.getBeansOfType(BootPostureGuard.class, false, false).values().stream()
 				.map(guard -> guard.gap(environment))
 				.flatMap(Optional::stream)
