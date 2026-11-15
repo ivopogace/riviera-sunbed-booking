@@ -122,6 +122,22 @@ describe('OperatorSignInMethods (#276)', () => {
     expect(el(fixture, 'osm-notice')?.textContent).toContain('signed out');
   });
 
+  it('moves focus onto the notice when the unlink removes the focused button (RV-FE-9)', async () => {
+    const auth = authStub({ methods: [{ provider: 'apple', linkedAt: '2026-06-15T10:00:00Z' }] });
+    auth.signInMethods.mockResolvedValueOnce([
+      { provider: 'apple', linkedAt: '2026-06-15T10:00:00Z' },
+    ]);
+    auth.signInMethods.mockResolvedValueOnce([]);
+    const fixture = await render(auth);
+    el(fixture, 'osm-unlink-apple')!.focus();
+
+    await clickAndSettle(fixture, 'osm-unlink-apple');
+    await fixture.whenStable();
+
+    expect(el(fixture, 'osm-unlink-apple')).toBeNull();
+    expect(document.activeElement).toBe(el(fixture, 'osm-notice'));
+  });
+
   it('keeps the last credential and says why', async () => {
     const fixture = await render(
       authStub({

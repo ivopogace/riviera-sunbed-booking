@@ -1,4 +1,4 @@
-import { Component, computed, inject, signal } from '@angular/core';
+import { Component, computed, inject, OnInit, signal } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { FormField, form } from '@angular/forms/signals';
 import { ActivatedRoute } from '@angular/router';
@@ -13,6 +13,7 @@ import {
 } from '../core/operator-auth';
 import { BusyAction } from '../shared/busy-action';
 import { CardGlass } from '../shared/card-glass';
+import { focusMover } from '../shared/focus-after-render';
 import { TouchTarget } from '../shared/touch-target';
 
 const CLS = {
@@ -101,8 +102,9 @@ const CLS = {
     </section>
   `,
 })
-export class OperatorSignInMethods {
+export class OperatorSignInMethods implements OnInit {
   private readonly auth = inject(OperatorAuth);
+  private readonly moveFocus = focusMover();
   private readonly queryParams = toSignal(inject(ActivatedRoute).queryParamMap, {
     requireSync: true,
   });
@@ -151,7 +153,7 @@ export class OperatorSignInMethods {
     }
   });
 
-  constructor() {
+  ngOnInit(): void {
     void this.refresh();
   }
 
@@ -195,17 +197,20 @@ export class OperatorSignInMethods {
           $localize`Unlinked. Any other devices signed in as you have been signed out.`,
         );
         await this.refresh();
+        // The refresh swaps the focused Unlink button for Link: land on the notice instead of <body>.
+        this.moveFocus('osm-notice');
         return;
       case 'last-credential':
         this.error.set($localize`This is the only way left to sign in, so it can't be unlinked.`);
-        return;
+        break;
       case 'session-lost':
         this.auth.sessionLost();
         this.error.set(SESSION_EXPIRED_MESSAGE);
-        return;
+        break;
       case 'error':
         this.error.set($localize`Something went wrong unlinking. Please try again.`);
     }
+    this.moveFocus('osm-error');
   }
 
   private async refresh(): Promise<void> {

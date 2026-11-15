@@ -29,7 +29,6 @@ import jakarta.servlet.http.HttpSession;
  */
 final class SsoFlow {
 
-	private static final String CALLBACK_PATH_TEMPLATE = "/api/auth/sso/%s/callback";
 	private static final String AUTHORIZATION_ATTR = "sso.authorization";
 	/** 256 bits of entropy for the state, the PKCE code_verifier and the nonce. */
 	private static final int TOKEN_BYTES = 32;
@@ -92,10 +91,11 @@ final class SsoFlow {
 		}
 	}
 
-	/** This app's own callback URL for the provider, derived from the current request (absolute). */
+	/** This app's own {@code /api/auth/sso/{provider}/callback} URL, derived from the current request (absolute). */
 	private static URI callbackUri(HttpServletRequest request, SsoProvider provider) {
 		return ServletUriComponentsBuilder.fromRequestUri(request)
-				.replacePath(CALLBACK_PATH_TEMPLATE.formatted(SsoProviders.slug(provider)))
+				.replacePath(null)
+				.pathSegment("api", "auth", "sso", SsoProviders.slug(provider), "callback")
 				.replaceQuery(null)
 				.build()
 				.toUri();
