@@ -6,6 +6,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.runner.ApplicationContextRunner;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.core.env.StandardEnvironment;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -35,6 +36,21 @@ class BootPostureCheckTest {
 	@Test
 	void noGuardLetsTheBootThrough() {
 		runner.run(context -> assertThat(context).hasNotFailed());
+	}
+
+	@Test
+	void aSecondEnvironmentBeanDoesNotConfuseTheCheck() {
+		runner.withUserConfiguration(SecondEnvironment.class, NoGap.class)
+				.run(context -> assertThat(context).hasNotFailed());
+	}
+
+	@Configuration(proxyBeanMethods = false)
+	static class SecondEnvironment {
+
+		@Bean
+		StandardEnvironment anotherEnvironment() {
+			return new StandardEnvironment();
+		}
 	}
 
 	@Configuration(proxyBeanMethods = false)
