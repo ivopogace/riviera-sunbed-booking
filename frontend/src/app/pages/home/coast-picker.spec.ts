@@ -104,6 +104,22 @@ describe('CoastPicker', () => {
     return allByTestId('picker-row');
   }
 
+  /** Runs `body` with the window `height` px tall, then puts jsdom's height back. */
+  function withFold(height: number, body: () => void): void {
+    const view = el().ownerDocument.defaultView!;
+    const innerHeight = view.innerHeight;
+    Object.defineProperty(view, 'innerHeight', { value: height, configurable: true });
+    try {
+      body();
+    } finally {
+      Object.defineProperty(view, 'innerHeight', {
+        value: innerHeight,
+        configurable: true,
+        writable: true,
+      });
+    }
+  }
+
   function ribbonHandle(): FakeMapHandle {
     const map = fixture.debugElement.query(By.directive(RivieraMap))
       .componentInstance as RivieraMap;
@@ -318,6 +334,34 @@ describe('CoastPicker', () => {
       expect(view.center.lat).toBeCloseTo((39.77 + 41.848) / 2, 6);
     });
 
+    it('fits the coast above the ribbon’s credit, past the map’s zoom floor, and fences the credit out', async () => {
+      const credit = vi
+        .spyOn(RivieraMap.prototype, 'chromeBoxes')
+        .mockReturnValue([new DOMRect(8, 346, 134, 46)]);
+      try {
+        render();
+        const ribbon = byTestId('picker-ribbon')!;
+        Object.defineProperty(ribbon, 'clientWidth', { value: 150 });
+        Object.defineProperty(ribbon, 'clientHeight', { value: 400 });
+        vi.spyOn(ribbon, 'getBoundingClientRect').mockReturnValue(new DOMRect(0, 0, 150, 400));
+        await fixture.whenStable();
+        fixture.detectChanges();
+
+        const handle = ribbonHandle();
+        expect(handle.fenceInsets()).toEqual({ top: 0, bottom: 54 });
+        // 318 usable px for the coast's 500 px at zoom 7: the latitude binds, below the map's floor.
+        expect(handle.view().zoom).toBeCloseTo(6.35, 2);
+        // The fake projects about the ribbon's middle; a lit dot is 13 px, the credit's top at 346.
+        const north = 200 + handle.project({ lng: 19.411, lat: 41.848 }).y;
+        const south = 200 + handle.project({ lng: 20.0, lat: 39.77 }).y;
+        expect(north).toBeGreaterThan(6.5);
+        expect(south).toBeGreaterThan(300);
+        expect(south).toBeLessThan(346 - 6.5);
+      } finally {
+        credit.mockRestore();
+      }
+    });
+
     it('lights a row’s dot and leader on hover, focus and press, and still picks', async () => {
       await renderBooted();
       const picked = vi.fn();
@@ -403,6 +447,45 @@ describe('CoastPicker', () => {
       }
     });
 
+    it('draws no leader to a row below the fold, though the body still reaches it', async () => {
+      await renderBooted();
+      expect(allByTestId('ribbon-leader').length).toBeGreaterThan(0);
+
+      const rects = vi
+        .spyOn(HTMLElement.prototype, 'getBoundingClientRect')
+        .mockReturnValue(new DOMRect(0, 700, 200, 400));
+      try {
+        withFold(760, () => {
+          el().ownerDocument.defaultView!.dispatchEvent(new Event('scroll'));
+          fixture.detectChanges();
+          expect(allByTestId('ribbon-leader')).toEqual([]);
+        });
+      } finally {
+        rects.mockRestore();
+      }
+    });
+
+    it('sizes the desktop sheet to the room between its top and the fold, down to a floor', () => {
+      render();
+      const panel = byTestId('coast-picker')!;
+      const view = el().ownerDocument.defaultView!;
+      const top = vi
+        .spyOn(panel, 'getBoundingClientRect')
+        .mockReturnValue(new DOMRect(0, 160, 420, 600));
+
+      withFold(760, () => {
+        view.dispatchEvent(new Event('resize'));
+        fixture.detectChanges();
+        expect(panel.style.getPropertyValue('--picker-room')).toBe('584px');
+
+        // An anchor low in the window still gets a usable sheet.
+        top.mockReturnValue(new DOMRect(0, 600, 420, 320));
+        view.dispatchEvent(new Event('scroll'));
+        fixture.detectChanges();
+        expect(panel.style.getPropertyValue('--picker-room')).toBe('320px');
+      });
+    });
+
     it('wears the popover skin from lg, the ribbon at the same 150 px', () => {
       render();
 
@@ -411,7 +494,7 @@ describe('CoastPicker', () => {
         'lg:absolute',
         'lg:top-[calc(100%+8px)]',
         'lg:w-[420px]',
-        'lg:h-[min(760px,calc(100dvh-140px))]',
+        'lg:h-[min(760px,var(--picker-room,calc(100dvh-140px)))]',
         'lg:rounded-[22px]',
       ]) {
         expect(panel.classList.contains(cls), cls).toBe(true);
