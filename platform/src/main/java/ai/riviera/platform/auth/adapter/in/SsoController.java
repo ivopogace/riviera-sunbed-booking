@@ -43,8 +43,11 @@ import jakarta.servlet.http.HttpServletResponse;
 class SsoController {
 
 	private static final String CUSTOMER_ROLE = AuthRoles.authority(AuthRoles.CUSTOMER);
-	/** Where a completed sign-in lands: the SPA root, which re-reads {@code /api/auth/me} and shows signed-in. */
-	private static final String POST_LOGIN_REDIRECT = "/";
+	/**
+	 * Where a completed sign-in lands: the SPA root, which re-reads {@code /api/auth/me}. The marker tells
+	 * {@code index.html}'s first-visit seed this load is a return, not a first visit (ADR-0030).
+	 */
+	private static final String POST_LOGIN_REDIRECT = "/?sso=signed-in";
 
 	private final SsoFlow flow;
 	private final OperatorSsoCallback operatorCallback;

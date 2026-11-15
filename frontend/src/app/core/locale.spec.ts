@@ -7,7 +7,7 @@ import {
   removeFakeStorage,
 } from '../../testing/fake-storage';
 import { buildLocale } from '../shared/display-locale';
-import { firstVisitLocale, LocaleService, rememberSsoReturn } from './locale';
+import { firstVisitLocale, LocaleService } from './locale';
 import { PageNavigation } from './page-navigation';
 
 interface LocalizeGlobal {
@@ -115,43 +115,5 @@ describe('firstVisitLocale', () => {
   it('falls back to English', () => {
     expect(firstVisitLocale(null, ['fr', 'pl'])).toBe('en');
     expect(firstVisitLocale(null, [])).toBe('en');
-  });
-
-  it('lets an SSO return note outrank the stored choice, and only a locale id counts', () => {
-    expect(firstVisitLocale('en', ['en'], 'it')).toBe('it');
-    expect(firstVisitLocale('sq', ['sq'], 'en')).toBe('en');
-    expect(firstVisitLocale('sq', [], '//evil.example')).toBe('sq');
-  });
-});
-
-describe('rememberSsoReturn', () => {
-  let session: Map<string, string>;
-
-  beforeEach(() => {
-    session = installFakeStorage('sessionStorage');
-  });
-
-  afterEach(() => {
-    compileAs(undefined);
-    removeFakeStorage('sessionStorage');
-  });
-
-  it('notes the running build so the round trip lands back in it', () => {
-    compileAs('it');
-    rememberSsoReturn();
-    expect(session.get('riviera-sso-locale')).toBe('it');
-
-    compileAs(undefined);
-    rememberSsoReturn();
-    expect(session.get('riviera-sso-locale')).toBe('en');
-  });
-
-  it('degrades to no note when storage is blocked', () => {
-    defineStorageGlobal('sessionStorage', {
-      setItem: () => {
-        throw new Error('blocked');
-      },
-    });
-    expect(() => rememberSsoReturn()).not.toThrow();
   });
 });

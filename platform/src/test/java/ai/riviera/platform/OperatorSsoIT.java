@@ -241,7 +241,7 @@ class OperatorSsoIT {
 		Cookie pending = authorize.getResponse().getCookie(SESSION_COOKIE);
 
 		MvcResult callback = mvc.perform(MockIdp.callback(mvc, authorize, ip).cookie(pending))
-				.andExpect(redirectedUrl("/")).andReturn();
+				.andExpect(redirectedUrl("/?sso=signed-in")).andReturn();
 
 		mvc.perform(get(ME_PATH).cookie(sessionAfter(callback, pending)))
 				.andExpect(status().isOk())

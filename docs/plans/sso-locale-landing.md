@@ -42,19 +42,19 @@ issue names as A's scope.
 
 ## Acceptance criteria
 
-- [ ] **AC-1:** Given an operator sign-in authorize with `locale=sq`, when the callback signs in, refuses, or a link
+- [x] **AC-1:** Given an operator sign-in authorize with `locale=sq`, when the callback signs in, refuses, or a link
   started with `"locale":"sq"` links or fails, then each redirect is the same path under `/sq/`
   (`/sq/operator`, `/sq/account/sign-in?audience=operator&sso=failed`, `/sq/account/operator-password?sso=linked|link-failed`).
   *Seam:* `GET /api/auth/sso/{provider}/callback` · *Pinned by:* `OperatorSsoIT` (locale cases)
-- [ ] **AC-2:** Given a customer authorize with `locale=it`, when the callback signs in, then it redirects to `/it/`.
+- [x] **AC-2:** Given a customer authorize with `locale=it`, when the callback signs in, then it redirects to `/it/?sso=signed-in`; an English one to `/?sso=signed-in`, which the seed never redirects.
   *Seam:* the callback · *Pinned by:* `SsoCallbackIT`
-- [ ] **AC-3:** Given no locale, an unknown code, a case variant or a hostile value (`//evil.example`, `../x`), when the
+- [x] **AC-3:** Given no locale, an unknown code, a case variant or a hostile value (`//evil.example`, `../x`), when the
   round trip lands, then it lands on the unprefixed English path. *Seam:* `SsoAuthorization.landing` · *Pinned by:*
   `SsoAuthorizationTest`
-- [ ] **AC-4:** Given the `sq` build, when an operator starts SSO sign-in or a link, then the request carries
+- [x] **AC-4:** Given the `sq` build, when an operator starts SSO sign-in or a link, then the request carries
   `locale=sq` and every outcome renders in the `sq` build. *Seam:* the translated production build · *Pinned by:*
   `e2e/locales/locales.e2e.ts` "an operator SSO round trip"
-- [ ] **AC-5:** The customer SSO starts carry the build locale and no longer write `riviera-sso-locale`; the seed no
+- [x] **AC-5:** The customer SSO starts carry the build locale and no longer write `riviera-sso-locale`; the seed no
   longer reads it. *Pinned by:* `customer-auth.spec.ts`, `locale.spec.ts`, `locale-boot.spec.ts`, the existing
   locale e2e "an SSO sign-in" cases.
 
@@ -90,5 +90,8 @@ issue names as A's scope.
 
 - [x] Phase 0
 - [x] Phase 1 — `OperatorSsoIT`, `SsoCallbackIT`, `SsoAuthorizationTest` green locally
-- [ ] Phase 2
-- [ ] Phase 3
+- [x] Phase 2 — unit specs green; `writeSessionStorage` lost its last caller and went with the note
+- [x] Phase 3 — locale e2e 28/28 against the production build; mocked `operator-sso`, `sso-sign-in` green
+- Finding in phase 3: an English customer return lands on `/`, where the seed would apply a stored choice (the case
+  #1772 fixed). Fixed with a server-constant marker, `/?sso=signed-in`, that the seed honours and strips in place
+  (no storage); `locale-boot.spec.ts` pins it.

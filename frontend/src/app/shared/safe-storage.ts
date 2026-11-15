@@ -69,11 +69,6 @@ export function writeJson(key: string, value: unknown): void {
   writeJsonTo('localStorage', key, value);
 }
 
-/** {@link writeStorage} against the per-tab `sessionStorage`, with the same degrade. */
-export function writeSessionStorage(key: string, value: string): void {
-  writeTo('sessionStorage', key, value);
-}
-
 /** {@link readJson} against the per-tab `sessionStorage`, with the same degrades. */
 export function readSessionJson(key: string): unknown {
   return readJsonFrom('sessionStorage', key);

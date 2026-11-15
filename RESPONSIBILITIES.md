@@ -1291,8 +1291,8 @@ opaque hash through their `api`; no Spring Security, Spring Session or mail type
   after `operator`'s write. The same-origin SPA builds the link: the mail origin defaults to `localhost` off `mailer`.
 - **Operator SSO is link-only, and the callback acts only on its session-held round trip** (#276;
   `auth-signin-register.md` D-9). Both audiences return to one callback per provider; `SsoFlow` finds the
-  `SsoAuthorization` (audience, intent, PKCE verifier, nonce, linking operator) by `state` and dispatches on it,
-  never on the URL. A sign-in resolves `operator::api` then applies the may-authenticate set before any session:
+  `SsoAuthorization` (audience, intent, PKCE verifier, nonce, linking operator, starting `SiteLocale`) by `state`
+  and dispatches on it, never on the URL; every landing is that locale's subpath plus a constant (#1804). A sign-in resolves `operator::api` then applies the may-authenticate set before any session:
   unknown, unlinked, `SUSPENDED` and `REJECTED` share one redirect. A link needs the current password and, at the
   callback, the same principal with a current stamp. Unlink revokes every other session before and after.
 - **On a mock-IdP boot (`demo`), a linked operator is reachable by anyone** (#276): `MockSsoGateway` signs every

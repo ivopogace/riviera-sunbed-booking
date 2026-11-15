@@ -134,6 +134,7 @@ export async function mockAuthApi(
   if (!base) {
     return;
   }
+  let linkLocale: string | undefined;
   await page.route(/\/api\/auth\/operator\/sso\/(google|apple)\/link$/, (route) => {
     if (!signedIn) {
       return route.fulfill(problem(401, 'Unauthorized', 'UNAUTHENTICATED'));
@@ -141,7 +142,7 @@ export async function mockAuthApi(
     if (options.envManaged) {
       return route.fulfill(problem(409, 'Conflict', 'BOOTSTRAP_CREDENTIAL_MANAGED'));
     }
-    const body = route.request().postDataJSON() as { currentPassword?: string };
+    const body = route.request().postDataJSON() as { currentPassword?: string; locale?: string };
     if (!body.currentPassword) {
       return route.fulfill(problem(400, 'Bad Request', 'MISSING_CURRENT_PASSWORD'));
     }
@@ -149,6 +150,7 @@ export async function mockAuthApi(
       return route.fulfill(problem(400, 'Bad Request', 'INVALID_CURRENT_PASSWORD'));
     }
     const provider = /sso\/(google|apple)\/link/.exec(route.request().url())![1];
+    linkLocale = body.locale;
     return route.fulfill({ json: { authorizeUrl: `${base}/mock-idp/${provider}/link` } });
   });
   // The provider's consent screen and the callback, collapsed: the backend links, then 302s to the page.
@@ -156,13 +158,17 @@ export async function mockAuthApi(
     linked.add(/mock-idp\/(google|apple)/.exec(route.request().url())![1]);
     return route.fulfill({
       status: 302,
-      headers: { location: `${base}/account/operator-password?sso=linked` },
+      headers: {
+        location: `${base}${ssoLanding(linkLocale, '/account/operator-password?sso=linked')}`,
+      },
     });
   });
-  await page.route(/\/api\/auth\/operator\/sso\/(google|apple)\/authorize$/, (route) => {
-    const provider = /sso\/(google|apple)\/authorize/.exec(route.request().url())![1];
+  await page.route(/\/api\/auth\/operator\/sso\/(google|apple)\/authorize(\?.*)?$/, (route) => {
+    const url = new URL(route.request().url());
+    const provider = /sso\/(google|apple)\/authorize/.exec(url.pathname)![1];
     signedIn = linked.has(provider);
-    const location = signedIn ? '/operator' : '/account/sign-in?audience=operator&sso=failed';
+    const path = signedIn ? '/operator' : '/account/sign-in?audience=operator&sso=failed';
+    const location = ssoLanding(url.searchParams.get('locale'), path);
     return route.fulfill({ status: 302, headers: { location: `${base}${location}` } });
   });
   await page.route(/\/api\/auth\/operator\/sso$/, (route) =>
@@ -652,6 +658,14 @@ export async function mockOperatorLifecycleApi(
 }
 
 /**
+ * The SSO callback's landing rule (`SsoAuthorization.landing`, #1804): the path under the subpath of
+ * the locale the round trip started from, English (unprefixed) for anything outside the served set.
+ */
+export function ssoLanding(locale: string | null | undefined, path: string): string {
+  return locale === 'sq' || locale === 'it' || locale === 'de' ? `/${locale}${path}` : path;
+}
+
+/**
  * Stateful mock of the CUSTOMER SSO flow for the CI-safe suite. The FE starts SSO with a
  * full-page navigation to `GET /api/auth/sso/{provider}/authorize`; here we intercept that navigation
  * and mimic the backend's completed OIDC dance — flip the in-memory session to the provider's canned
@@ -671,11 +685,13 @@ export async function mockCustomerSsoApi(
       : route.fulfill(problem(401, 'Unauthorized', 'UNAUTHENTICATED')),
   );
 
-  await page.route(/\/api\/auth\/sso\/(google|apple)\/authorize$/, (route) => {
-    const provider = /\/api\/auth\/sso\/(google|apple)\/authorize/.exec(route.request().url())?.[1];
+  await page.route(/\/api\/auth\/sso\/(google|apple)\/authorize(\?.*)?$/, (route) => {
+    const url = new URL(route.request().url());
+    const provider = /\/api\/auth\/sso\/(google|apple)\/authorize/.exec(url.pathname)?.[1];
     signedInEmail = provider ? emailByProvider[provider] : undefined;
     // The real backend completes the exchange server-side and returns to the SPA root with a session.
-    return route.fulfill({ status: 302, headers: { location: `${options.baseURL}/` } });
+    const location = ssoLanding(url.searchParams.get('locale'), '/?sso=signed-in');
+    return route.fulfill({ status: 302, headers: { location: `${options.baseURL}${location}` } });
   });
 
   await page.route(/\/api\/auth\/logout$/, (route) => {

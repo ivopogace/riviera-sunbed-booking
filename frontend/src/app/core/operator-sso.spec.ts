@@ -37,17 +37,17 @@ describe('OperatorAuth SSO (#276)', () => {
 
   afterEach(() => httpMock.verify());
 
-  it('signs in through the operator authorize endpoint, never the tourist one', () => {
+  it('signs in through the operator authorize endpoint, never the tourist one, naming the build', () => {
     auth.startSso('apple');
 
-    expect(navigation.left).toEqual([`${AUTH_API}/operator/sso/apple/authorize`]);
+    expect(navigation.left).toEqual([`${AUTH_API}/operator/sso/apple/authorize?locale=en`]);
   });
 
   it('proves the current password, then leaves for the authorize URL the server returned', async () => {
     const result = auth.startLink('google', ' pw with spaces ');
     const request = httpMock.expectOne(`${AUTH_API}/operator/sso/google/link`);
     expect(request.request.method).toBe('POST');
-    expect(request.request.body).toEqual({ currentPassword: ' pw with spaces ' });
+    expect(request.request.body).toEqual({ currentPassword: ' pw with spaces ', locale: 'en' });
     request.flush({ authorizeUrl: 'https://idp.example/authorize?state=s' });
 
     expect(await result).toBe('started');

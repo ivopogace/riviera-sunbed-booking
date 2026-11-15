@@ -277,10 +277,13 @@ export class OperatorAuth extends SessionAuth {
 
   /**
    * Sign in with a linked Google/Apple identity: a full-page navigation to the operator authorize endpoint.
-   * The backend lands on `/operator` with a session, or on the operator tab with `?sso=failed` (D-8).
+   * The backend lands on `/operator` with a session, or on the operator tab with `?sso=failed` (D-8),
+   * under the subpath of the build named here (#1804).
    */
   startSso(provider: SsoProviderId): void {
-    this.injector.get(PageNavigation).leaveTo(`${AUTH_API}/operator/sso/${provider}/authorize`);
+    this.injector
+      .get(PageNavigation)
+      .leaveTo(`${AUTH_API}/operator/sso/${provider}/authorize?locale=${buildLocale()}`);
   }
 
   /** This operator's linked sign-ins; empty on any failure, so the section still offers every provider. */
@@ -303,6 +306,7 @@ export class OperatorAuth extends SessionAuth {
       const start = await firstValueFrom(
         this.http.post<{ authorizeUrl: string }>(`${AUTH_API}/operator/sso/${provider}/link`, {
           currentPassword,
+          locale: buildLocale(),
         }),
       );
       this.injector.get(PageNavigation).leaveTo(start.authorizeUrl);

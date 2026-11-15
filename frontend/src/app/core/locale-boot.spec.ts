@@ -15,9 +15,8 @@ interface Scenario {
   readonly path: string;
   readonly stored: string | null;
   readonly storageBlocked?: boolean;
-  /** The one-shot note `CustomerAuth.startSso` leaves in `sessionStorage`. */
-  readonly ssoReturn?: string | null;
   readonly languages: readonly string[];
+  readonly search?: string;
   /** Where the seed sends the browser, or `null` when it stays. */
   readonly redirect: string | null;
 }
@@ -68,44 +67,12 @@ const SCENARIOS: readonly Scenario[] = [
     redirect: '/it/',
   },
   {
-    name: 'an SSO return to Italian beats a stored English',
+    name: 'an SSO return to / stays in English over a stored Albanian',
     path: '/',
-    stored: 'en',
-    ssoReturn: 'it',
-    languages: ['en'],
-    redirect: '/it/',
-  },
-  {
-    name: 'an SSO return to English beats a stored Albanian',
-    path: '/',
+    search: '?sso=signed-in',
     stored: 'sq',
-    ssoReturn: 'en',
     languages: ['sq'],
     redirect: null,
-  },
-  {
-    name: 'a protocol-relative SSO note falls back to the stored choice',
-    path: '/',
-    stored: 'sq',
-    ssoReturn: '//evil.example',
-    languages: [],
-    redirect: '/sq/',
-  },
-  {
-    name: 'an absolute-URL SSO note falls back to English',
-    path: '/',
-    stored: null,
-    ssoReturn: 'https://evil.example/',
-    languages: ['fr'],
-    redirect: null,
-  },
-  {
-    name: 'a path-shaped SSO note falls back to the browser',
-    path: '/',
-    stored: null,
-    ssoReturn: 'it/../../evil',
-    languages: ['it'],
-    redirect: '/it/',
   },
   {
     name: 'a deep link is never redirected',
@@ -118,7 +85,6 @@ const SCENARIOS: readonly Scenario[] = [
 
 /** The literal keys, so a key drift against `core/locale.ts` fails the pin. */
 const SEED_STORAGE_KEY = 'riviera-locale';
-const SEED_SSO_RETURN_KEY = 'riviera-sso-locale';
 
 function localeSeedScript(): string {
   // Index slicing, not an HTML-tag regex (CodeQL js/bad-tag-filter); cwd is frontend/ under Vitest.
@@ -142,7 +108,6 @@ interface SeedBrowser {
   readonly path: string;
   readonly stored: string | null;
   readonly storageBlocked?: boolean;
-  readonly ssoReturn?: string | null;
   readonly languages: readonly string[];
   readonly search?: string;
   readonly hash?: string;
@@ -150,8 +115,10 @@ interface SeedBrowser {
 
 interface SeedRun {
   readonly redirect: string | null;
-  /** The keys the seed removed from `sessionStorage`. */
-  readonly consumed: readonly string[];
+  /** The URL the seed rewrote in place (`history.replaceState`), or `null`. */
+  readonly replaced: string | null;
+  /** Every `sessionStorage` call the seed made: an SSO return lands under its subpath server-side (#1804). */
+  readonly sessionCalls: readonly string[];
 }
 
 function redirectedBySeed(browser: SeedBrowser): string | null {
@@ -160,28 +127,31 @@ function redirectedBySeed(browser: SeedBrowser): string | null {
 
 function runSeed(browser: SeedBrowser): SeedRun {
   let redirect: string | null = null;
-  const consumed: string[] = [];
+  let replaced: string | null = null;
+  const sessionCalls: string[] = [];
   const context = createContext({
-    sessionStorage: {
-      getItem: (key: string) => {
-        if (browser.storageBlocked) {
-          throw new Error('storage blocked (private mode)');
-        }
-        return key === SEED_SSO_RETURN_KEY ? (browser.ssoReturn ?? null) : null;
+    sessionStorage: new Proxy(
+      {},
+      {
+        get: (_target, name) => (key: string) => {
+          sessionCalls.push(`${String(name)}(${key})`);
+          return null;
+        },
       },
-      removeItem: (key: string) => {
-        if (browser.storageBlocked) {
-          throw new Error('storage blocked (private mode)');
-        }
-        consumed.push(key);
-      },
-    },
+    ),
     localStorage: {
       getItem: (key: string) => {
         if (browser.storageBlocked) {
           throw new Error('storage blocked (private mode)');
         }
         return key === SEED_STORAGE_KEY ? browser.stored : null;
+      },
+    },
+    URLSearchParams,
+    history: {
+      state: null,
+      replaceState: (_state: unknown, _title: string, url: string) => {
+        replaced = url;
       },
     },
     navigator: { languages: browser.languages },
@@ -195,7 +165,7 @@ function runSeed(browser: SeedBrowser): SeedRun {
     },
   });
   runInContext(localeSeedScript(), context);
-  return { redirect, consumed };
+  return { redirect, replaced, sessionCalls };
 }
 
 describe('first-visit locale seed vs firstVisitLocale (drift pin)', () => {
@@ -203,10 +173,9 @@ describe('first-visit locale seed vs firstVisitLocale (drift pin)', () => {
     it(`resolves identically on both sides: ${scenario.name}`, () => {
       expect(redirectedBySeed(scenario)).toBe(scenario.redirect);
 
-      if (scenario.path === '/') {
+      if (scenario.path === '/' && !scenario.search) {
         const stored = scenario.storageBlocked ? null : scenario.stored;
-        const ssoReturn = scenario.storageBlocked ? null : (scenario.ssoReturn ?? null);
-        const locale = firstVisitLocale(stored, scenario.languages, ssoReturn);
+        const locale = firstVisitLocale(stored, scenario.languages);
         expect(locale === 'en' ? null : `/${locale}/`).toBe(scenario.redirect);
       }
     });
@@ -223,18 +192,16 @@ describe('first-visit locale seed vs firstVisitLocale (drift pin)', () => {
     expect(redirect).toBe('/it/?venue=3#map');
   });
 
-  it('consumes the SSO note on a load of /, whatever it named', () => {
-    expect(runSeed({ path: '/', stored: null, ssoReturn: 'it', languages: [] }).consumed).toEqual([
-      SEED_SSO_RETURN_KEY,
-    ]);
-    expect(
-      runSeed({ path: '/', stored: null, ssoReturn: '//evil.example', languages: [] }).consumed,
-    ).toEqual([SEED_SSO_RETURN_KEY]);
+  it('strips the SSO return marker in place and keeps the rest of the URL', () => {
+    const run = (path: string, search: string) =>
+      runSeed({ path, search, hash: '#map', stored: 'sq', languages: [] });
+    expect(run('/', '?sso=signed-in')).toMatchObject({ redirect: null, replaced: '/#map' });
+    expect(run('/it/', '?venue=3&sso=signed-in').replaced).toBe('/it/?venue=3#map');
+    expect(run('/account/sign-in', '?audience=operator&sso=failed').replaced).toBeNull();
   });
 
-  it('leaves the SSO note alone on a deep link', () => {
-    expect(
-      runSeed({ path: '/venues/1', stored: null, ssoReturn: 'it', languages: [] }).consumed,
-    ).toEqual([]);
+  it('never reads or writes sessionStorage', () => {
+    expect(runSeed({ path: '/', stored: null, languages: ['it'] }).sessionCalls).toEqual([]);
+    expect(runSeed({ path: '/venues/1', stored: null, languages: [] }).sessionCalls).toEqual([]);
   });
 });

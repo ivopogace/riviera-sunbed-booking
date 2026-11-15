@@ -21,7 +21,7 @@ class SsoAuthorizationTest {
 	@Test
 	void aTranslatedRoundTripLandsUnderItsSubpath() {
 		assertEquals(URI.create("/sq/operator"), signIn(SiteLocale.SQ).landing("/operator"));
-		assertEquals(URI.create("/it/"), signIn(SiteLocale.IT).landing("/"));
+		assertEquals(URI.create("/it/?sso=signed-in"), signIn(SiteLocale.IT).landing("/?sso=signed-in"));
 		assertEquals(URI.create("/de/account/sign-in?audience=operator&sso=failed"),
 				signIn(SiteLocale.DE).landing("/account/sign-in?audience=operator&sso=failed"));
 	}

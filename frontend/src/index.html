@@ -26,17 +26,20 @@
       // First-visit locale redirect, before boot: same order as core/locale.ts's firstVisitLocale
       // (drift pin: locale-boot.spec.ts). Only the root build can be at "/" (ADR-0030).
       (() => {
+        const params = new URLSearchParams(location.search);
+        if (params.get('sso') === 'signed-in') {
+          // An SSO return: the server already landed it in the build it started from (#1804).
+          params.delete('sso');
+          const query = params.toString();
+          const rest = (query ? '?' + query : '') + location.hash;
+          history.replaceState(history.state, '', location.pathname + rest);
+          return;
+        }
         if (location.pathname !== '/') return;
         const supported = new Set(['en', 'sq', 'it', 'de']);
         let locale = null;
         try {
-          locale = sessionStorage.getItem('riviera-sso-locale');
-          sessionStorage.removeItem('riviera-sso-locale');
-        } catch {
-          // blocked storage: no SSO return note
-        }
-        try {
-          if (!supported.has(locale)) locale = localStorage.getItem('riviera-locale');
+          locale = localStorage.getItem('riviera-locale');
         } catch {
           // blocked storage (private mode): fall through to the browser's languages
         }

@@ -154,7 +154,7 @@ class SsoCallbackIT {
 				.header("X-Forwarded-For", ip)).andExpect(status().isFound()).andReturn();
 		Cookie session = authorize.getResponse().getCookie(SESSION_COOKIE);
 
-		mvc.perform(MockIdp.callback(mvc, authorize, ip).cookie(session)).andExpect(redirectedUrl("/it/"));
+		mvc.perform(MockIdp.callback(mvc, authorize, ip).cookie(session)).andExpect(redirectedUrl("/it/?sso=signed-in"));
 	}
 
 	@Test
@@ -220,7 +220,7 @@ class SsoCallbackIT {
 
 		MvcResult callback = mvc.perform(MockIdp.callback(mvc, authorize, ip).cookie(authorizeSession))
 				.andExpect(status().isFound())
-				.andExpect(redirectedUrl("/"))
+				.andExpect(redirectedUrl("/?sso=signed-in"))
 				.andReturn();
 		Cookie signedIn = callback.getResponse().getCookie(SESSION_COOKIE);
 		return new SignedIn(signedIn != null ? signedIn : authorizeSession, ip);
