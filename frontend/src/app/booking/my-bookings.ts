@@ -52,30 +52,32 @@ function movedAtOf(b: RowSource): string | null {
 /** The per-status sub-label (server-truth-adjacent); '' for CONFIRMED unless a remodel moved it or nothing is left. */
 function subLineOf(b: RowSource): string {
   if (readsAsRefunded(b.status, b.nothingLeft ?? false)) {
-    return 'Every day was refunded';
+    return $localize`:Status sub-line on a My bookings row:Every day was refunded`;
   }
   switch (b.status) {
     case 'CONFIRMED':
-      return movedAtOf(b) ? 'Spot changed by the venue · see details' : '';
+      return movedAtOf(b)
+        ? $localize`:Status sub-line on a My bookings row:Spot changed by the venue · see details`
+        : '';
     case 'AWAITING_PAYMENT':
       // The pay deadline (#4) never reaches the list row, so show no time rather than invent one.
-      return 'Payment needed';
+      return $localize`:Status sub-line on a My bookings row:Payment needed`;
     case 'PENDING_REQUEST':
       return b.requestExpiresAt
-        ? `Awaiting host · by ${formatDeadline(b.requestExpiresAt)}`
-        : 'Awaiting host reply';
+        ? $localize`:Status sub-line on a My bookings row:Awaiting host · by ${formatDeadline(b.requestExpiresAt)}:deadline:`
+        : $localize`:Status sub-line on a My bookings row:Awaiting host reply`;
     case 'DECLINED':
-      return 'Host could not accept';
+      return $localize`:Status sub-line on a My bookings row:Host could not accept`;
     case 'EXPIRED':
-      return 'Request expired unanswered';
+      return $localize`:Status sub-line on a My bookings row:Request expired unanswered`;
     case 'CANCELLED':
-      return 'Booking cancelled';
+      return $localize`:Status sub-line on a My bookings row:Booking cancelled`;
     case 'COMPLETED':
-      return 'Enjoyed · thanks for visiting';
+      return $localize`:Status sub-line on a My bookings row:Enjoyed · thanks for visiting`;
     case 'NO_SHOW':
-      return 'Marked as no-show';
+      return $localize`:Status sub-line on a My bookings row:Marked as no-show`;
     case 'WITHDRAWN':
-      return 'Request withdrawn';
+      return $localize`:Status sub-line on a My bookings row:Request withdrawn`;
     default:
       return '';
   }
@@ -103,7 +105,7 @@ function buildView(b: RowSource): RowView {
   return {
     code: b.code,
     venueName: b.venueName,
-    setLabel: `${b.rowLabel} · spot ${b.positionNo}`,
+    setLabel: $localize`${b.rowLabel}:row: · spot ${b.positionNo}:spot:`,
     dateLabel: formatStay(b.bookingDate, b.lastDate ?? b.bookingDate, { withYear: true }),
     subLine: subLineOf(b),
     statusLabel: meta.label,
@@ -217,12 +219,13 @@ const CLS = {
       <a
         routerLink="/"
         class="mb-3.5 inline-flex min-h-11 items-center gap-1.5 text-[14px] font-semibold text-riv-accent-ink hover:underline focus-visible:outline-[3px] focus-visible:outline-offset-2 focus-visible:outline-riv-accent-ink"
-        ><app-arrow-left-icon class="[&_svg]:size-[14px]" />All beaches</a
+        ><app-arrow-left-icon class="[&_svg]:size-[14px]" /><span i18n>All beaches</span></a
       >
       <h1
         class="mb-[18px] text-[clamp(28px,4vw,34px)] font-bold tracking-[-0.02em]"
         id="mb-title"
         data-testid="mb-title"
+        i18n
       >
         Your bookings
       </h1>
@@ -232,7 +235,9 @@ const CLS = {
         [loading]="showSkeleton()"
         [ready]="announceReady()"
         loadingLabel="Loading your bookings…"
+        i18n-loadingLabel
         readyLabel="Your bookings loaded."
+        i18n-readyLabel
       />
 
       @if (showSkeleton()) {
@@ -258,20 +263,20 @@ const CLS = {
           aria-labelledby="mb-empty-title"
           data-testid="my-bookings-empty"
         >
-          <h2 class="mb-2 text-[26px] font-bold tracking-[-0.02em]" id="mb-empty-title">
+          <h2 class="mb-2 text-[26px] font-bold tracking-[-0.02em]" id="mb-empty-title" i18n>
             No booking yet
           </h2>
-          <p [class]="cls.emptyLead">
+          <p [class]="cls.emptyLead" i18n>
             Pick a beach, choose your exact set on the map, and your booking code will live here.
           </p>
-          <a appPrimaryCta routerLink="/" [class]="cls.cta" data-testid="browse-beaches"
+          <a appPrimaryCta routerLink="/" [class]="cls.cta" data-testid="browse-beaches" i18n
             >Browse beaches</a
           >
         </section>
       } @else {
         @if (accountError()) {
           <section [class]="cls.emptyCard" appCardGlass role="alert" data-testid="account-error">
-            <p [class]="cls.emptyLead">
+            <p [class]="cls.emptyLead" i18n>
               We couldn’t load your account bookings just now — any made on other devices may be
               missing.
             </p>
@@ -284,7 +289,7 @@ const CLS = {
               (click)="retryAccount()"
               data-testid="account-retry"
             >
-              {{ accountPending() ? 'Retrying…' : 'Retry' }}
+              {{ accountPending() ? retryingLabel : retryLabel }}
             </button>
           </section>
         }
@@ -294,6 +299,7 @@ const CLS = {
             class="mb-3 rounded-xl bg-riv-form-error-fill px-3.5 py-[11px] text-[13px] font-semibold text-riv-form-error-ink"
             role="alert"
             data-testid="rows-failed-alert"
+            i18n
           >
             Some bookings couldn’t load. Retry the ones marked below.
           </p>
@@ -347,8 +353,8 @@ const CLS = {
                 @case ('failed') {
                   <div [class]="cls.rowPlaceholder" appCardGlass data-testid="booking-row-failed">
                     <span [class]="cls.rowMain">
-                      <span class="text-[16px] font-bold">Couldn’t load this booking</span>
-                      <span [class]="cls.meta">Check your connection and try again.</span>
+                      <span class="text-[16px] font-bold" i18n>Couldn’t load this booking</span>
+                      <span [class]="cls.meta" i18n>Check your connection and try again.</span>
                     </span>
                     <button
                       appTouchTarget
@@ -358,7 +364,7 @@ const CLS = {
                       (click)="retry(row.code)"
                       data-testid="row-retry"
                     >
-                      {{ retryingCodes().has(row.code) ? 'Retrying…' : 'Retry' }}
+                      {{ retryingCodes().has(row.code) ? retryingLabel : retryLabel }}
                     </button>
                   </div>
                 }
@@ -392,6 +398,8 @@ const CLS = {
 })
 export class MyBookings {
   protected readonly cls = CLS;
+  protected readonly retryLabel = $localize`:Button that retries a failed load:Retry`;
+  protected readonly retryingLabel = $localize`Retrying…`;
 
   private readonly store = inject(DeviceLocalBookings);
   private readonly bookings = inject(BookingService);

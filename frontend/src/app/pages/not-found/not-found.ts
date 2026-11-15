@@ -20,10 +20,11 @@ import { TouchTarget } from '../../shared/touch-target';
       <h1
         id="not-found-title"
         class="mx-0 mt-0 mb-2 text-[22px] font-bold tracking-[-0.02em] text-riv-card-ink"
+        i18n
       >
         Page not found
       </h1>
-      <p class="mx-0 mt-0 mb-[18px] text-[14.5px] leading-[1.5] text-riv-card-ink-soft">
+      <p class="mx-0 mt-0 mb-[18px] text-[14.5px] leading-[1.5] text-riv-card-ink-soft" i18n>
         There’s no page at this address. Check the link, or head back to the beaches.
       </p>
       <a
@@ -31,6 +32,7 @@ import { TouchTarget } from '../../shared/touch-target';
         routerLink="/"
         class="inline-flex items-center text-[14.5px] font-semibold text-riv-accent-ink underline focus-visible:outline-[3px] focus-visible:outline-offset-2 focus-visible:outline-riv-accent-ink"
         data-testid="not-found-home"
+        i18n
         >Back to the beaches</a
       >
     </section>

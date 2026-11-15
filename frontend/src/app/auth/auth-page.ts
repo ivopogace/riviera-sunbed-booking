@@ -54,21 +54,25 @@ interface AuthModel {
 const EMPTY_AUTH_MODEL: AuthModel = { identifier: '', contactEmail: '', password: '' };
 
 const AUDIENCE_TABS: readonly SegmentedOption<Audience>[] = [
-  { value: 'tourist', label: 'Tourist', testId: 'audience-tourist' },
-  { value: 'operator', label: 'Venue operator', testId: 'audience-operator' },
+  { value: 'tourist', label: $localize`:Sign-in audience tab:Tourist`, testId: 'audience-tourist' },
+  {
+    value: 'operator',
+    label: $localize`:Sign-in audience tab:Venue operator`,
+    testId: 'audience-operator',
+  },
 ];
 
 const ROLE_OPTIONS: readonly SegmentedOption<Audience>[] = [
   {
     value: 'tourist',
-    label: 'Book a sunbed',
-    description: 'Find beaches and reserve your spot.',
+    label: $localize`:Register role option:Book a sunbed`,
+    description: $localize`Find beaches and reserve your spot.`,
     testId: 'audience-tourist',
   },
   {
     value: 'operator',
-    label: 'Run a venue',
-    description: 'List your beach and manage bookings.',
+    label: $localize`:Register role option:Run a venue`,
+    description: $localize`List your beach and manage bookings.`,
     testId: 'audience-operator',
   },
 ];
@@ -119,11 +123,15 @@ const LABEL_CLASS = 'text-[11px] font-bold tracking-[0.1em] uppercase text-riv-c
           <app-outcome-card
             tone="pending"
             heading="Registration submitted for approval"
+            i18n-heading
             testId="auth-pending"
           >
-            Thanks — we’ve received your operator registration. Sign in with your new credentials to
-            set up your venue and beach map right away. A platform admin reviews each registration;
-            your venue is shown to tourists once your account is approved.
+            <ng-container i18n
+              >Thanks — we’ve received your operator registration. Sign in with your new credentials
+              to set up your venue and beach map right away. A platform admin reviews each
+              registration; your venue is shown to tourists once your account is
+              approved.</ng-container
+            >
             <button
               appTouchTarget
               outcomeCta
@@ -131,6 +139,7 @@ const LABEL_CLASS = 'text-[11px] font-bold tracking-[0.1em] uppercase text-riv-c
               data-testid="auth-pending-back"
               class="w-full cursor-pointer rounded-[16px] border-[1.5px] border-[rgba(255,255,255,0.7)] bg-[rgba(255,255,255,0.5)] px-4 py-3.5 text-[14.5px] font-semibold text-riv-accent-ink"
               (click)="backToSignIn()"
+              i18n
             >
               Back to sign-in
             </button>
@@ -155,11 +164,14 @@ const LABEL_CLASS = 'text-[11px] font-bold tracking-[0.1em] uppercase text-riv-c
             </p>
 
             @if (mode() === 'register') {
-              <span [class]="labelClass" id="auth-audience-label">I want to</span>
+              <span [class]="labelClass" id="auth-audience-label" i18n="Register role picker label"
+                >I want to</span
+              >
               <div class="mt-2.5 mb-4.5">
                 <app-segmented-control
                   variant="card"
                   label="I want to"
+                  i18n-label="Register role picker label"
                   [options]="roleOptions"
                   [value]="audience()"
                   (valueChange)="onAudienceChange($event)"
@@ -170,6 +182,7 @@ const LABEL_CLASS = 'text-[11px] font-bold tracking-[0.1em] uppercase text-riv-c
                 <app-segmented-control
                   variant="pill"
                   label="Sign in as"
+                  i18n-label
                   [options]="audienceTabs"
                   [value]="audience()"
                   (valueChange)="onAudienceChange($event)"
@@ -204,7 +217,7 @@ const LABEL_CLASS = 'text-[11px] font-bold tracking-[0.1em] uppercase text-riv-c
 
               @if (showContactEmail()) {
                 <label class="flex flex-col gap-1.5">
-                  <span [class]="labelClass">Contact email</span>
+                  <span [class]="labelClass" i18n>Contact email</span>
                   <input
                     appTouchTarget
                     appFieldGlass
@@ -220,7 +233,7 @@ const LABEL_CLASS = 'text-[11px] font-bold tracking-[0.1em] uppercase text-riv-c
               }
 
               <label class="flex flex-col gap-1.5">
-                <span [class]="labelClass">Password</span>
+                <span [class]="labelClass" i18n="Field label">Password</span>
                 <input
                   appTouchTarget
                   appFieldGlass
@@ -297,6 +310,7 @@ const LABEL_CLASS = 'text-[11px] font-bold tracking-[0.1em] uppercase text-riv-c
                   routerLink="/account/forgot"
                   data-testid="auth-to-forgot"
                   class="inline-flex items-center text-riv-accent-ink underline"
+                  i18n
                   >Forgot your password?</a
                 >
               </p>
@@ -387,18 +401,20 @@ export class AuthPage {
   );
 
   protected readonly title = computed(() =>
-    this.mode() === 'register' ? 'Create your account' : 'Welcome back',
+    this.mode() === 'register' ? $localize`Create your account` : $localize`Welcome back`,
   );
   protected readonly subtitle = computed(() => {
     if (this.mode() === 'register') {
-      return 'Join Riviera in a minute — pick what you’re here to do.';
+      return $localize`Join Riviera in a minute — pick what you’re here to do.`;
     }
     return this.audience() === 'operator'
-      ? 'Sign in to run your venue.'
-      : 'Sign in to manage your bookings and codes.';
+      ? $localize`Sign in to run your venue.`
+      : $localize`Sign in to manage your bookings and codes.`;
   });
   protected readonly identifierLabel = computed(() =>
-    this.audience() === 'operator' ? 'Username' : 'Email',
+    this.audience() === 'operator'
+      ? $localize`:Field label:Username`
+      : $localize`:Field label:Email`,
   );
   protected readonly identifierType = computed(() =>
     this.audience() === 'operator' ? 'text' : 'email',
@@ -413,33 +429,35 @@ export class AuthPage {
   protected readonly showChallenge = computed(() => this.mode() === 'register');
   protected readonly submitLabel = computed(() => {
     if (this.mode() === 'signin') {
-      return this.submitting() ? 'Signing in…' : 'Sign in';
+      return this.submitting() ? $localize`Signing in…` : $localize`:Submit button:Sign in`;
     }
     if (this.audience() === 'operator') {
-      return this.submitting() ? 'Submitting…' : 'Request account';
+      return this.submitting() ? $localize`Submitting…` : $localize`Request account`;
     }
-    return this.submitting() ? 'Creating…' : 'Create account';
+    return this.submitting() ? $localize`Creating…` : $localize`Create account`;
   });
   protected readonly togglePrompt = computed(() =>
-    this.mode() === 'register' ? 'Already have an account?' : 'New to Riviera?',
+    this.mode() === 'register' ? $localize`Already have an account?` : $localize`New to Riviera?`,
   );
   protected readonly toggleAction = computed(() =>
-    this.mode() === 'register' ? 'Sign in' : 'Create one',
+    this.mode() === 'register'
+      ? $localize`:Link to the sign-in mode:Sign in`
+      : $localize`:Link to the register mode:Create one`,
   );
 
   protected readonly landedHeading = computed(() =>
-    this.signedInAsOperator() ? 'Welcome back.' : 'You’re signed in.',
+    this.signedInAsOperator() ? $localize`Welcome back.` : $localize`You’re signed in.`,
   );
   protected readonly landedBody = computed(() =>
     this.signedInAsOperator()
-      ? 'You’re signed in to your operator account.'
-      : 'Your bookings and codes live in your account.',
+      ? $localize`You’re signed in to your operator account.`
+      : $localize`Your bookings and codes live in your account.`,
   );
   protected readonly landedCtaLink = computed(() =>
     this.signedInAsOperator() ? '/operator' : '/',
   );
   protected readonly landedCtaLabel = computed(() =>
-    this.signedInAsOperator() ? 'Open operator console' : 'Browse beaches',
+    this.signedInAsOperator() ? $localize`Open operator console` : $localize`Browse beaches`,
   );
 
   constructor() {
@@ -504,11 +522,11 @@ export class AuthPage {
 
   private emptyFieldsMessage(): string {
     if (this.showContactEmail()) {
-      return 'Enter a username, contact email, and password.';
+      return $localize`Enter a username, contact email, and password.`;
     }
     return this.audience() === 'operator'
-      ? 'Enter your username and password.'
-      : 'Enter your email and password.';
+      ? $localize`Enter your username and password.`
+      : $localize`Enter your email and password.`;
   }
 
   private async runSignIn(identifier: string, password: string): Promise<void> {

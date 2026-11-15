@@ -168,6 +168,18 @@ for (const locale of LOCALES) {
       await expectNoSeriousAxeViolations(page, `${locale} help`);
     });
 
+    test('the not-found page and the sign-in card, each by deep link', async ({ page }) => {
+      await page.goto(`/${locale}/no-such-page`);
+      await expectLocalePage(page, locale, 'Page not found — Riviera');
+      await expect(page.getByTestId('not-found-home')).toHaveText(t(locale, 'Back to the beaches'));
+      await expectNoSeriousAxeViolations(page, `${locale} not found`);
+
+      await page.goto(`/${locale}/account/sign-in`);
+      await expectLocalePage(page, locale, 'Sign in — Riviera');
+      await expect(page.getByTestId('sso-google')).toHaveText(t(locale, 'Continue with Google'));
+      await expectNoSeriousAxeViolations(page, `${locale} sign-in`);
+    });
+
     test('a server error on sign-in renders translated copy keyed on its code, never the detail', async ({
       page,
     }) => {
@@ -220,6 +232,36 @@ test.describe('choosing a language', () => {
     await page.getByTestId('language-option-en').click();
     await expect(page).toHaveURL(/:4300\/$/);
     await expect(page.locator('html')).toHaveAttribute('lang', 'en');
+  });
+
+  test.describe('an SSO sign-in', () => {
+    // The provider round trip, collapsed: authorize answers with the callback's own fixed 302 to `/`.
+    test.beforeEach(async ({ page }) => {
+      await page.route(/\/api\/auth\/sso\/google\/authorize$/, (route) =>
+        route.fulfill({ status: 302, headers: { location: '/' } }),
+      );
+    });
+
+    test('started on /it/ returns to /it/', async ({ page }) => {
+      await page.goto('/it/account/sign-in');
+      await awaitRoutedPage(page);
+      await page.getByTestId('sso-google').click();
+
+      await expect(page).toHaveURL(/\/it\/$/);
+      await expect(page.locator('html')).toHaveAttribute('lang', 'it');
+    });
+
+    test('started in English returns to English, over a stored Albanian choice', async ({
+      page,
+    }) => {
+      await page.goto('/account/sign-in');
+      await page.evaluate(() => localStorage.setItem('riviera-locale', 'sq'));
+      await awaitRoutedPage(page);
+      await page.getByTestId('sso-google').click();
+
+      await expect(page).toHaveURL(/:4300\/$/);
+      await expect(page.locator('html')).toHaveAttribute('lang', 'en');
+    });
   });
 
   test.describe('with an Italian browser and nothing stored', () => {

@@ -37,10 +37,9 @@ const CLS = {
 } as const;
 
 const RESEND_NOTICES = {
-  sent: 'Verification email sent. Check your inbox.',
-  withheld:
-    "We couldn't send it — we're not able to email this address at the moment. Your account still works as normal; your email just stays unverified.",
-  error: 'Could not send the email. Please try again.',
+  sent: $localize`Verification email sent. Check your inbox.`,
+  withheld: $localize`We couldn't send it — we're not able to email this address at the moment. Your account still works as normal; your email just stays unverified.`,
+  error: $localize`Could not send the email. Please try again.`,
 } as const;
 
 /**
@@ -60,47 +59,57 @@ const RESEND_NOTICES = {
       aria-labelledby="setpw-title"
     >
       <div [class]="cls.card" appCardGlass>
-        <h1 id="setpw-title" [class]="cls.title">Your account</h1>
+        <h1 id="setpw-title" [class]="cls.title" i18n>Your account</h1>
 
         <!-- Above the @if on purpose: a live region must outlive the branch it describes (#741). -->
         <app-load-announcer
           [loading]="auth.restoring()"
           [ready]="!erased() && !auth.restoring() && auth.signedIn()"
           loadingLabel="Loading…"
+          i18n-loadingLabel
           readyLabel="Account loaded."
+          i18n-readyLabel
         />
 
         @if (erased()) {
-          <output [class]="cls.intro" tabindex="-1" data-testid="erase-done">
+          <output [class]="cls.intro" tabindex="-1" data-testid="erase-done" i18n>
             Your account and personal data have been erased, and you have been signed out. Any
             booking records are kept only as long as the law requires, with your personal details
             removed.
           </output>
         } @else if (auth.restoring()) {
           <!-- Visible copy only; the announcer above owns the announcement (#741). -->
-          <p [class]="cls.intro" aria-hidden="true" data-testid="setpw-loading">Loading…</p>
+          <p [class]="cls.intro" aria-hidden="true" data-testid="setpw-loading" i18n>Loading…</p>
         } @else if (!auth.signedIn() && auth.restoreFailed()) {
           <!-- A failed restore is not "signed out" — needed its own branch, not an attribute (#745). -->
-          <p [class]="cls.error" role="alert" data-testid="setpw-restore-failed">
+          <p [class]="cls.error" role="alert" data-testid="setpw-restore-failed" i18n>
             We couldn't check whether you're signed in. Refresh the page and try again.
           </p>
         } @else if (!auth.signedIn()) {
-          <p [class]="cls.intro" data-testid="setpw-signed-out">Sign in to manage your account.</p>
+          <p [class]="cls.intro" data-testid="setpw-signed-out" i18n>
+            Sign in to manage your account.
+          </p>
           <p [class]="cls.alt">
             <a
               appTouchTarget
               [class]="cls.altLink"
               routerLink="/account/sign-in"
               data-testid="setpw-to-signin"
+              i18n="Link to the sign-in page"
               >Sign in</a
             >
           </p>
         } @else {
-          <p [class]="cls.intro" data-testid="setpw-email">Signed in as {{ auth.email() }}.</p>
+          <p [class]="cls.intro" data-testid="setpw-email" i18n>
+            Signed in as
+            {{
+              auth.email()  // i18n(ph="email")
+            }}.
+          </p>
 
           @if (auth.emailVerified() === false) {
             <p [class]="cls.hint" data-testid="setpw-unverified">
-              Your email isn't verified yet.
+              <ng-container i18n>Your email isn't verified yet.</ng-container>
               <button
                 appTouchTarget
                 type="button"
@@ -108,12 +117,13 @@ const RESEND_NOTICES = {
                 data-testid="setpw-resend"
                 (click)="resend()"
                 [appBusy]="resending()"
+                i18n
               >
                 Resend verification email
               </button>
             </p>
           } @else if (auth.emailVerified() === true) {
-            <p [class]="cls.hint" data-testid="setpw-verified">Your email is verified.</p>
+            <p [class]="cls.hint" data-testid="setpw-verified" i18n>Your email is verified.</p>
           }
 
           <!-- Present but empty: a region born holding its text is often not announced. -->
@@ -121,7 +131,7 @@ const RESEND_NOTICES = {
 
           <form (submit)="onSubmit(); $event.preventDefault()" novalidate>
             <label [class]="cls.field">
-              <span [class]="cls.label">Current password</span>
+              <span [class]="cls.label" i18n>Current password</span>
               <input
                 appTouchTarget
                 [class]="cls.input"
@@ -132,12 +142,12 @@ const RESEND_NOTICES = {
                 aria-describedby="setpw-current-hint"
               />
             </label>
-            <p id="setpw-current-hint" [class]="cls.hint">
+            <p id="setpw-current-hint" [class]="cls.hint" i18n>
               Leave blank if you signed in with Google or Apple and haven't set a password yet.
             </p>
 
             <label [class]="cls.field">
-              <span [class]="cls.label">New password</span>
+              <span [class]="cls.label" i18n>New password</span>
               <input
                 appTouchTarget
                 [class]="cls.input"
@@ -164,21 +174,21 @@ const RESEND_NOTICES = {
               data-testid="setpw-submit"
               [appBusy]="submitting()"
             >
-              {{ submitting() ? 'Saving…' : 'Save password' }}
+              {{ submitting() ? savingLabel : saveLabel }}
             </button>
           </form>
 
           <section class="mt-7 border-t border-riv-field-border pt-5" aria-labelledby="erase-title">
-            <h2 id="erase-title" class="m-0 mb-1 text-[15px] font-bold text-riv-card-ink">
+            <h2 id="erase-title" class="m-0 mb-1 text-[15px] font-bold text-riv-card-ink" i18n>
               Delete your account
             </h2>
-            <p [class]="cls.hint">
+            <p [class]="cls.hint" i18n>
               Permanently erase your account and personal details. Booking records are kept only as
               long as the law requires, with your personal data removed. This cannot be undone.
             </p>
 
             @if (confirming()) {
-              <p [class]="cls.error" role="alert" data-testid="erase-warning">
+              <p [class]="cls.error" role="alert" data-testid="erase-warning" i18n>
                 Erase your account and personal data? This cannot be undone.
               </p>
               <button
@@ -190,7 +200,7 @@ const RESEND_NOTICES = {
                 [appBusy]="erasing()"
                 (click)="erase()"
               >
-                {{ erasing() ? 'Erasing…' : 'Yes, erase everything' }}
+                {{ erasing() ? erasingLabel : eraseLabel }}
               </button>
               <button
                 appTouchTarget
@@ -199,6 +209,7 @@ const RESEND_NOTICES = {
                 data-testid="erase-cancel"
                 [appBusy]="erasing()"
                 (click)="keepAccount()"
+                i18n
               >
                 Cancel
               </button>
@@ -209,6 +220,7 @@ const RESEND_NOTICES = {
                 class="mt-2 w-full rounded-[16px] border border-riv-field-border bg-transparent px-[13px] py-[13px] text-[15px] font-bold text-riv-card-ink [cursor:pointer] [transition:background_0.15s_ease] hover:bg-riv-field-fill"
                 data-testid="erase-account"
                 (click)="askToErase()"
+                i18n
               >
                 Erase my account &amp; data
               </button>
@@ -231,6 +243,10 @@ export class SetPassword {
   protected readonly cls = CLS;
 
   protected readonly policyHint = PASSWORD_POLICY_HINT;
+  protected readonly saveLabel = $localize`Save password`;
+  protected readonly savingLabel = $localize`Saving…`;
+  protected readonly eraseLabel = $localize`Yes, erase everything`;
+  protected readonly erasingLabel = $localize`Erasing…`;
   protected readonly submitting = signal(false);
   protected readonly resending = signal(false);
   protected readonly error = signal<string | undefined>(undefined);
@@ -275,14 +291,14 @@ export class SetPassword {
     this.error.set(undefined);
     switch (result) {
       case 'set':
-        this.notice.set('Your password has been saved.');
+        this.notice.set($localize`Your password has been saved.`);
         this.model.set({ newPassword: '', currentPassword: '' });
         break;
       case 'missing-current':
         this.error.set(CURRENT_PASSWORD_REQUIRED_MESSAGE);
         break;
       case 'invalid-current':
-        this.error.set('The current password is incorrect.');
+        this.error.set($localize`The current password is incorrect.`);
         break;
       case 'invalid-password':
         this.error.set(PASSWORD_LENGTH_MESSAGE);
@@ -291,10 +307,10 @@ export class SetPassword {
         this.error.set(PASSWORD_BLOCKED_MESSAGE);
         break;
       case 'rate-limited':
-        this.error.set('Too many attempts. Please wait a minute and try again.');
+        this.error.set($localize`Too many attempts. Please wait a minute and try again.`);
         break;
       case 'error':
-        this.error.set('Something went wrong. Please try again.');
+        this.error.set($localize`Something went wrong. Please try again.`);
         break;
     }
     this.revealOutcome();
@@ -337,7 +353,7 @@ export class SetPassword {
       this.focusAfterRender('erase-done');
     } else {
       // The failure leaves the prompt armed and focus already on it, so nothing is moved here.
-      this.eraseError.set('Something went wrong. Please try again.');
+      this.eraseError.set($localize`Something went wrong. Please try again.`);
     }
   }
 

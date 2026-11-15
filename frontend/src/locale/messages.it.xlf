@@ -96,6 +96,9 @@
         <context-group purpose="location">
           <context context-type="sourcefile">src/app/app.html</context>
         </context-group>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/auth/set-password.ts</context>
+        </context-group>
       </trans-unit>
       <trans-unit id="95870375139787830" datatype="html">
         <source> Find a booking </source>
@@ -145,6 +148,27 @@
         <context-group purpose="location">
           <context context-type="sourcefile">src/app/app.html</context>
         </context-group>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/auth/auth-page.ts</context>
+        </context-group>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/auth/auth-page.ts</context>
+        </context-group>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/auth/forgot-password.ts</context>
+        </context-group>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/auth/reset-password.ts</context>
+        </context-group>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/auth/set-password.ts</context>
+        </context-group>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/auth/verify-email.ts</context>
+        </context-group>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/auth/verify-email.ts</context>
+        </context-group>
       </trans-unit>
       <trans-unit id="2308975396733519902" datatype="html">
         <source>Create an account</source>
@@ -159,6 +183,51 @@
       <trans-unit id="4659385334811177961" datatype="html">
         <source>Riviera — Sunbed Booking</source>
         <target state="translated">Riviera — Prenotazione lettini</target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/app.routes.ts</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="3080305945771414849" datatype="html">
+        <source>My bookings — Riviera</source>
+        <target state="translated">Le mie prenotazioni — Riviera</target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/app.routes.ts</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="8910470131743157828" datatype="html">
+        <source>Sign in — Riviera</source>
+        <target state="translated">Accedi — Riviera</target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/app.routes.ts</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="6582382784466748496" datatype="html">
+        <source>Reset your password — Riviera</source>
+        <target state="translated">Reimposta la password — Riviera</target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/app.routes.ts</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="6461654912465813579" datatype="html">
+        <source>Set a new password — Riviera</source>
+        <target state="translated">Imposta una nuova password — Riviera</target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/app.routes.ts</context>
+        </context-group>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/app.routes.ts</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="921349656632198944" datatype="html">
+        <source>Verify your email — Riviera</source>
+        <target state="translated">Verifica la tua e-mail — Riviera</target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/app.routes.ts</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="6445087211953346698" datatype="html">
+        <source>Your account — Riviera</source>
+        <target state="translated">Il tuo account — Riviera</target>
         <context-group purpose="location">
           <context context-type="sourcefile">src/app/app.routes.ts</context>
         </context-group>
@@ -212,11 +281,784 @@
           <context context-type="sourcefile">src/app/app.routes.ts</context>
         </context-group>
       </trans-unit>
+      <trans-unit id="6768256384808627936" datatype="html">
+        <source>Couldn’t load this page — Riviera</source>
+        <target state="translated">Impossibile caricare la pagina — Riviera</target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/app.routes.ts</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="5340930404446069814" datatype="html">
+        <source>Page not found — Riviera</source>
+        <target state="translated">Pagina non trovata — Riviera</target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/app.routes.ts</context>
+        </context-group>
+      </trans-unit>
       <trans-unit id="1648584146038529465" datatype="html">
         <source>Account: <x id="email" equiv-text="this.customerAuth.email()"/></source>
         <target state="translated">Account: <x id="email" equiv-text="this.customerAuth.email()"/></target>
         <context-group purpose="location">
           <context context-type="sourcefile">src/app/app.ts</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="6356023023684719668" datatype="html">
+        <source>Tourist</source>
+        <target state="translated">Turista</target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/auth/auth-page.ts</context>
+        </context-group>
+        <note priority="1" from="description">Sign-in audience tab</note>
+      </trans-unit>
+      <trans-unit id="7402011075719879702" datatype="html">
+        <source>Venue operator</source>
+        <target state="translated">Gestore di stabilimento</target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/auth/auth-page.ts</context>
+        </context-group>
+        <note priority="1" from="description">Sign-in audience tab</note>
+      </trans-unit>
+      <trans-unit id="3626222370385896242" datatype="html">
+        <source>Book a sunbed</source>
+        <target state="translated">Prenota un lettino</target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/auth/auth-page.ts</context>
+        </context-group>
+        <note priority="1" from="description">Register role option</note>
+      </trans-unit>
+      <trans-unit id="5956376828706729773" datatype="html">
+        <source>Find beaches and reserve your spot.</source>
+        <target state="translated">Trova le spiagge e prenota il tuo posto.</target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/auth/auth-page.ts</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="1942311070003116345" datatype="html">
+        <source>Run a venue</source>
+        <target state="translated">Gestisci uno stabilimento</target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/auth/auth-page.ts</context>
+        </context-group>
+        <note priority="1" from="description">Register role option</note>
+      </trans-unit>
+      <trans-unit id="7900178764250781402" datatype="html">
+        <source>List your beach and manage bookings.</source>
+        <target state="translated">Pubblica la tua spiaggia e gestisci le prenotazioni.</target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/auth/auth-page.ts</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="6239416727024542117" datatype="html">
+        <source>Registration submitted for approval</source>
+        <target state="translated">Registrazione inviata per l’approvazione</target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/auth/auth-page.ts</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="2382811042530241138" datatype="html">
+        <source>Thanks — we’ve received your operator registration. Sign in with your new credentials to set up your venue and beach map right away. A platform admin reviews each registration; your venue is shown to tourists once your account is approved.</source>
+        <target state="translated">Grazie — abbiamo ricevuto la tua registrazione come gestore. Accedi con le nuove credenziali per configurare subito lo stabilimento e la mappa della spiaggia. Un amministratore della piattaforma esamina ogni registrazione; il tuo stabilimento sarà visibile ai turisti appena il tuo account sarà approvato.</target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/auth/auth-page.ts</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="1590903908181344501" datatype="html">
+        <source> Back to sign-in </source>
+        <target state="translated"> Torna all’accesso </target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/auth/auth-page.ts</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="9060569730694423874" datatype="html">
+        <source>I want to</source>
+        <target state="translated">Voglio</target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/auth/auth-page.ts</context>
+        </context-group>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/auth/auth-page.ts</context>
+        </context-group>
+        <note priority="1" from="description">Register role picker label</note>
+      </trans-unit>
+      <trans-unit id="7868839472446380174" datatype="html">
+        <source>Sign in as</source>
+        <target state="translated">Accedi come</target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/auth/auth-page.ts</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="8757962954958495112" datatype="html">
+        <source>Contact email</source>
+        <target state="translated">E-mail di contatto</target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/auth/auth-page.ts</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="1431416938026210429" datatype="html">
+        <source>Password</source>
+        <target state="translated">Password</target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/auth/auth-page.ts</context>
+        </context-group>
+        <note priority="1" from="description">Field label</note>
+      </trans-unit>
+      <trans-unit id="2012659005494284050" datatype="html">
+        <source>Forgot your password?</source>
+        <target state="translated">Hai dimenticato la password?</target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/auth/auth-page.ts</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="2224947564116830026" datatype="html">
+        <source>Create your account</source>
+        <target state="translated">Crea il tuo account</target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/auth/auth-page.ts</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="4200317694838753109" datatype="html">
+        <source>Welcome back</source>
+        <target state="translated">Bentornato</target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/auth/auth-page.ts</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="450084039828243083" datatype="html">
+        <source>Join Riviera in a minute — pick what you’re here to do.</source>
+        <target state="translated">Unisciti a Riviera in un minuto — scegli cosa vuoi fare.</target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/auth/auth-page.ts</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="7875467187625745989" datatype="html">
+        <source>Sign in to run your venue.</source>
+        <target state="translated">Accedi per gestire il tuo stabilimento.</target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/auth/auth-page.ts</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="6366017180102382243" datatype="html">
+        <source>Sign in to manage your bookings and codes.</source>
+        <target state="translated">Accedi per gestire le tue prenotazioni e i tuoi codici.</target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/auth/auth-page.ts</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="5248717555542428023" datatype="html">
+        <source>Username</source>
+        <target state="translated">Nome utente</target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/auth/auth-page.ts</context>
+        </context-group>
+        <note priority="1" from="description">Field label</note>
+      </trans-unit>
+      <trans-unit id="4768749765465246664" datatype="html">
+        <source>Email</source>
+        <target state="translated">E-mail</target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/auth/auth-page.ts</context>
+        </context-group>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/auth/forgot-password.ts</context>
+        </context-group>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/booking/booking-dialog.ts</context>
+        </context-group>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/shared/support-channels.ts</context>
+        </context-group>
+        <note priority="1" from="description">Field label</note>
+      </trans-unit>
+      <trans-unit id="1041104936823929398" datatype="html">
+        <source>Signing in…</source>
+        <target state="translated">Accesso in corso…</target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/auth/auth-page.ts</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="1039469030033012125" datatype="html">
+        <source>Submitting…</source>
+        <target state="translated">Invio in corso…</target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/auth/auth-page.ts</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="5985217902579782163" datatype="html">
+        <source>Request account</source>
+        <target state="translated">Richiedi un account</target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/auth/auth-page.ts</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="5554949022015540852" datatype="html">
+        <source>Creating…</source>
+        <target state="translated">Creazione in corso…</target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/auth/auth-page.ts</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="5907476126990913307" datatype="html">
+        <source>Create account</source>
+        <target state="translated">Crea account</target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/auth/auth-page.ts</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="5277739594710154939" datatype="html">
+        <source>Already have an account?</source>
+        <target state="translated">Hai già un account?</target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/auth/auth-page.ts</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="6759207837766620522" datatype="html">
+        <source>New to Riviera?</source>
+        <target state="translated">Nuovo su Riviera?</target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/auth/auth-page.ts</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="5467277762952566541" datatype="html">
+        <source>Create one</source>
+        <target state="translated">Creane uno</target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/auth/auth-page.ts</context>
+        </context-group>
+        <note priority="1" from="description">Link to the register mode</note>
+      </trans-unit>
+      <trans-unit id="4620417385037141790" datatype="html">
+        <source>Welcome back.</source>
+        <target state="translated">Bentornato.</target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/auth/auth-page.ts</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="6246945225489602721" datatype="html">
+        <source>You’re signed in.</source>
+        <target state="translated">Hai effettuato l’accesso.</target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/auth/auth-page.ts</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="8355300713858708703" datatype="html">
+        <source>You’re signed in to your operator account.</source>
+        <target state="translated">Hai effettuato l’accesso al tuo account gestore.</target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/auth/auth-page.ts</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="6167115859214950853" datatype="html">
+        <source>Your bookings and codes live in your account.</source>
+        <target state="translated">Le tue prenotazioni e i tuoi codici sono nel tuo account.</target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/auth/auth-page.ts</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="2098914303819120968" datatype="html">
+        <source>Open operator console</source>
+        <target state="translated">Apri la console gestore</target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/auth/auth-page.ts</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="6930739552513547176" datatype="html">
+        <source>Browse beaches</source>
+        <target state="translated">Sfoglia le spiagge</target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/auth/auth-page.ts</context>
+        </context-group>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/booking/my-bookings.ts</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="7630549136849718332" datatype="html">
+        <source>Enter a username, contact email, and password.</source>
+        <target state="translated">Inserisci nome utente, e-mail di contatto e password.</target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/auth/auth-page.ts</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="8833763333781726920" datatype="html">
+        <source>Enter your username and password.</source>
+        <target state="translated">Inserisci nome utente e password.</target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/auth/auth-page.ts</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="187562900679258892" datatype="html">
+        <source>Enter your email and password.</source>
+        <target state="translated">Inserisci e-mail e password.</target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/auth/auth-page.ts</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="4371680625121499898" datatype="html">
+        <source>Reset your password</source>
+        <target state="translated">Reimposta la password</target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/auth/forgot-password.ts</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="3744292353732119996" datatype="html">
+        <source> If an account exists for that email, we&apos;ve sent a link to set a new password. Check your inbox. </source>
+        <target state="translated"> Se esiste un account con questa e-mail, ti abbiamo inviato un link per impostare una nuova password. Controlla la tua casella di posta. </target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/auth/forgot-password.ts</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="4939428286618017421" datatype="html">
+        <source>Back to sign in</source>
+        <target state="translated">Torna all’accesso</target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/auth/forgot-password.ts</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="7960174648162532086" datatype="html">
+        <source> Enter your email and we&apos;ll send you a link to set a new password. </source>
+        <target state="translated"> Inserisci la tua e-mail e ti invieremo un link per impostare una nuova password. </target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/auth/forgot-password.ts</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="327534766307158513" datatype="html">
+        <source>Remembered it?</source>
+        <target state="translated">Ti è tornata in mente?</target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/auth/forgot-password.ts</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="7606672167560356784" datatype="html">
+        <source>Sending…</source>
+        <target state="translated">Invio…</target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/auth/forgot-password.ts</context>
+        </context-group>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/booking/review-panel.ts</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="5111842031822965750" datatype="html">
+        <source>Send reset link</source>
+        <target state="translated">Invia il link di reimpostazione</target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/auth/forgot-password.ts</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="6084407256586922970" datatype="html">
+        <source>Enter your email.</source>
+        <target state="translated">Inserisci la tua e-mail.</target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/auth/forgot-password.ts</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="1336529394751708762" datatype="html">
+        <source>Too many attempts. Please wait a minute and try again.</source>
+        <target state="translated">Troppi tentativi. Attendi un minuto e riprova.</target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/auth/forgot-password.ts</context>
+        </context-group>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/auth/reset-password.ts</context>
+        </context-group>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/auth/set-password.ts</context>
+        </context-group>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/core/customer-auth.ts</context>
+        </context-group>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/core/customer-auth.ts</context>
+        </context-group>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/core/operator-auth.ts</context>
+        </context-group>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/core/operator-auth.ts</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="883225603593837541" datatype="html">
+        <source>Something went wrong. Please try again.</source>
+        <target state="translated">Qualcosa è andato storto. Riprova.</target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/auth/forgot-password.ts</context>
+        </context-group>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/auth/reset-password.ts</context>
+        </context-group>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/auth/set-password.ts</context>
+        </context-group>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/auth/set-password.ts</context>
+        </context-group>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/booking/booking-dialog.ts</context>
+        </context-group>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/booking/find-booking.ts</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="4129080604379805008" datatype="html">
+        <source>Request a new one.</source>
+        <target state="translated">Richiedine uno nuovo.</target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/auth/reset-password.ts</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="1643394790579019213" datatype="html">
+        <source>Ask your platform admin for a new one.</source>
+        <target state="translated">Chiedine uno nuovo all’amministratore della piattaforma.</target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/auth/reset-password.ts</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="8282309360961339523" datatype="html">
+        <source>Set a new password</source>
+        <target state="translated">Imposta una nuova password</target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/auth/reset-password.ts</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="5423267187486437121" datatype="html">
+        <source> Your password has been updated. You can sign in with it now. </source>
+        <target state="translated"> La tua password è stata aggiornata. Ora puoi accedere con la nuova password. </target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/auth/reset-password.ts</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="2650218570907526781" datatype="html">
+        <source> This reset link is invalid or incomplete. <x id="NEWLINKHINT" equiv-text="{{
+              copy.newLinkHint // i18n(ph=&quot;newLinkHint&quot;)
+            }}"/> </source>
+        <target state="translated"> Questo link di reimpostazione non è valido o è incompleto. <x id="NEWLINKHINT"/> </target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/auth/reset-password.ts</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="8138378942476041021" datatype="html">
+        <source>Request a reset link</source>
+        <target state="translated">Richiedi un link di reimpostazione</target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/auth/reset-password.ts</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="3588415639242079458" datatype="html">
+        <source>New password</source>
+        <target state="translated">Nuova password</target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/auth/reset-password.ts</context>
+        </context-group>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/auth/set-password.ts</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="8656126574213649581" datatype="html">
+        <source>Confirm new password</source>
+        <target state="translated">Conferma la nuova password</target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/auth/reset-password.ts</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="102408375548589662" datatype="html">
+        <source>Update password</source>
+        <target state="translated">Aggiorna la password</target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/auth/reset-password.ts</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="2706312198973609080" datatype="html">
+        <source>Updating…</source>
+        <target state="translated">Aggiornamento in corso…</target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/auth/reset-password.ts</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="6729136776649548048" datatype="html">
+        <source>The passwords do not match.</source>
+        <target state="translated">Le password non coincidono.</target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/auth/reset-password.ts</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="9182725533736659584" datatype="html">
+        <source>This reset link is invalid or has expired. <x id="newLinkHint" equiv-text="this.copy.newLinkHint"/></source>
+        <target state="translated">Questo link di reimpostazione non è valido o è scaduto. <x id="newLinkHint"/></target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/auth/reset-password.ts</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="8215465061565135181" datatype="html">
+        <source>Verification email sent. Check your inbox.</source>
+        <target state="translated">E-mail di verifica inviata. Controlla la tua casella di posta.</target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/auth/set-password.ts</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="820231706999696650" datatype="html">
+        <source>We couldn&apos;t send it — we&apos;re not able to email this address at the moment. Your account still works as normal; your email just stays unverified.</source>
+        <target state="translated">Non siamo riusciti a inviarla — al momento non possiamo inviare e-mail a questo indirizzo. Il tuo account funziona normalmente; la tua e-mail resta solo non verificata.</target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/auth/set-password.ts</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="1734182005386767754" datatype="html">
+        <source>Could not send the email. Please try again.</source>
+        <target state="translated">Impossibile inviare l’e-mail. Riprova.</target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/auth/set-password.ts</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="2369742814572661392" datatype="html">
+        <source>Loading…</source>
+        <target state="translated">Caricamento…</target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/auth/set-password.ts</context>
+        </context-group>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/auth/set-password.ts</context>
+        </context-group>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/booking/booking-pay.ts</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="154710540606160542" datatype="html">
+        <source>Account loaded.</source>
+        <target state="translated">Account caricato.</target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/auth/set-password.ts</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="6581158671118955284" datatype="html">
+        <source> Your account and personal data have been erased, and you have been signed out. Any booking records are kept only as long as the law requires, with your personal details removed. </source>
+        <target state="translated"> Il tuo account e i tuoi dati personali sono stati cancellati e sei uscito dall’account. Gli eventuali dati delle prenotazioni sono conservati solo per il tempo richiesto dalla legge, senza i tuoi dati personali. </target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/auth/set-password.ts</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="2619603419881560729" datatype="html">
+        <source> We couldn&apos;t check whether you&apos;re signed in. Refresh the page and try again. </source>
+        <target state="translated"> Non siamo riusciti a verificare se hai effettuato l’accesso. Ricarica la pagina e riprova. </target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/auth/set-password.ts</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="1007919324944490947" datatype="html">
+        <source> Sign in to manage your account. </source>
+        <target state="translated"> Accedi per gestire il tuo account. </target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/auth/set-password.ts</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="2413664827139119654" datatype="html">
+        <source> Signed in as <x id="EMAIL" equiv-text="{{
+              auth.email()  // i18n(ph=&quot;email&quot;)
+            }}"/>. </source>
+        <target state="translated"> Hai effettuato l’accesso come <x id="EMAIL"/>. </target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/auth/set-password.ts</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="7975392867292571008" datatype="html">
+        <source>Your email isn&apos;t verified yet.</source>
+        <target state="translated">La tua e-mail non è ancora verificata.</target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/auth/set-password.ts</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="9047299274453352420" datatype="html">
+        <source> Resend verification email </source>
+        <target state="translated"> Invia di nuovo l’e-mail di verifica </target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/auth/set-password.ts</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="8208235966740621366" datatype="html">
+        <source>Your email is verified.</source>
+        <target state="translated">La tua e-mail è verificata.</target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/auth/set-password.ts</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="5340498030552368470" datatype="html">
+        <source>Current password</source>
+        <target state="translated">Password attuale</target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/auth/set-password.ts</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="4885191252959094007" datatype="html">
+        <source> Leave blank if you signed in with Google or Apple and haven&apos;t set a password yet. </source>
+        <target state="translated"> Lascia vuoto se hai effettuato l’accesso con Google o Apple e non hai ancora impostato una password. </target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/auth/set-password.ts</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="5842499508597401307" datatype="html">
+        <source> Delete your account </source>
+        <target state="translated"> Elimina il tuo account </target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/auth/set-password.ts</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="6432268817541733969" datatype="html">
+        <source> Permanently erase your account and personal details. Booking records are kept only as long as the law requires, with your personal data removed. This cannot be undone. </source>
+        <target state="translated"> Cancella definitivamente il tuo account e i tuoi dati personali. I dati delle prenotazioni sono conservati solo per il tempo richiesto dalla legge, senza i tuoi dati personali. L’operazione non può essere annullata. </target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/auth/set-password.ts</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="5588258964294390397" datatype="html">
+        <source> Erase your account and personal data? This cannot be undone. </source>
+        <target state="translated"> Cancellare il tuo account e i tuoi dati personali? L’operazione non può essere annullata. </target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/auth/set-password.ts</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="2330577642930707695" datatype="html">
+        <source> Cancel </source>
+        <target state="translated"> Annulla </target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/auth/set-password.ts</context>
+        </context-group>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/booking/review-panel.ts</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="3687040460313071809" datatype="html">
+        <source> Erase my account &amp; data </source>
+        <target state="translated"> Cancella il mio account e i miei dati </target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/auth/set-password.ts</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="8052364348537655354" datatype="html">
+        <source>Save password</source>
+        <target state="translated">Salva la password</target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/auth/set-password.ts</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="1314562873676673298" datatype="html">
+        <source>Saving…</source>
+        <target state="translated">Salvataggio in corso…</target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/auth/set-password.ts</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="9071387005745190554" datatype="html">
+        <source>Yes, erase everything</source>
+        <target state="translated">Sì, cancella tutto</target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/auth/set-password.ts</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="8735299209583480290" datatype="html">
+        <source>Erasing…</source>
+        <target state="translated">Cancellazione in corso…</target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/auth/set-password.ts</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="5095679252506046542" datatype="html">
+        <source>Your password has been saved.</source>
+        <target state="translated">La tua password è stata salvata.</target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/auth/set-password.ts</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="8164049561976354920" datatype="html">
+        <source>The current password is incorrect.</source>
+        <target state="translated">La password attuale non è corretta.</target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/auth/set-password.ts</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="6627551976444260400" datatype="html">
+        <source>or</source>
+        <target state="translated">oppure</target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/auth/sso-buttons.ts</context>
+        </context-group>
+        <note priority="1" from="description">Divider between the sign-in form and the provider buttons</note>
+      </trans-unit>
+      <trans-unit id="9001843700533957667" datatype="html">
+        <source>Continue with a provider</source>
+        <target state="translated">Continua con un provider</target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/auth/sso-buttons.ts</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="3655082891939518750" datatype="html">
+        <source>Continue with Google</source>
+        <target state="translated">Continua con Google</target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/auth/sso-buttons.ts</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="7530287534197575240" datatype="html">
+        <source>Continue with Apple</source>
+        <target state="translated">Continua con Apple</target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/auth/sso-buttons.ts</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="7119731027798418259" datatype="html">
+        <source>Verify your email</source>
+        <target state="translated">Verifica la tua e-mail</target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/auth/verify-email.ts</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="4590096748591483411" datatype="html">
+        <source>Verifying your email…</source>
+        <target state="translated">Verifica della tua e-mail in corso…</target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/auth/verify-email.ts</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="2666584570391612249" datatype="html">
+        <source>Your email is verified. Thanks!</source>
+        <target state="translated">La tua e-mail è verificata. Grazie!</target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/auth/verify-email.ts</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="9210529147483611025" datatype="html">
+        <source> Verifying your email… </source>
+        <target state="translated"> Verifica della tua e-mail in corso… </target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/auth/verify-email.ts</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="3261892257945612718" datatype="html">
+        <source> Your email is verified. Thanks! </source>
+        <target state="translated"> La tua e-mail è verificata. Grazie! </target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/auth/verify-email.ts</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="6962699013778688473" datatype="html">
+        <source>Continue</source>
+        <target state="translated">Continua</target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/auth/verify-email.ts</context>
+        </context-group>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/booking/booking-dialog.ts</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="5499100944000324645" datatype="html">
+        <source> Something went wrong verifying your email. Please try again. </source>
+        <target state="translated"> Qualcosa è andato storto durante la verifica della tua e-mail. Riprova. </target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/auth/verify-email.ts</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="9190983555961303575" datatype="html">
+        <source> This verification link is invalid or has expired. Sign in and request a new one. </source>
+        <target state="translated"> Questo link di verifica non è valido o è scaduto. Accedi e richiedine uno nuovo. </target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/auth/verify-email.ts</context>
         </context-group>
       </trans-unit>
       <trans-unit id="6849903239507748150" datatype="html">
@@ -529,16 +1371,6 @@
           <context context-type="sourcefile">src/app/booking/booking-dialog.ts</context>
         </context-group>
       </trans-unit>
-      <trans-unit id="4768749765465246664" datatype="html">
-        <source>Email</source>
-        <target state="translated">E-mail</target>
-        <context-group purpose="location">
-          <context context-type="sourcefile">src/app/booking/booking-dialog.ts</context>
-        </context-group>
-        <context-group purpose="location">
-          <context context-type="sourcefile">src/app/shared/support-channels.ts</context>
-        </context-group>
-      </trans-unit>
       <trans-unit id="3262236020277300799" datatype="html">
         <source>Phone</source>
         <target state="translated">Telefono</target>
@@ -674,13 +1506,6 @@
         </context-group>
         <note priority="1" from="description">Row label for the booked sunbed set (2 loungers + umbrella)</note>
         <note priority="1" from="meaning">sunbed set</note>
-      </trans-unit>
-      <trans-unit id="6962699013778688473" datatype="html">
-        <source>Continue</source>
-        <target state="translated">Continua</target>
-        <context-group purpose="location">
-          <context context-type="sourcefile">src/app/booking/booking-dialog.ts</context>
-        </context-group>
       </trans-unit>
       <trans-unit id="736940570258467336" datatype="html">
         <source>Send request</source>
@@ -830,16 +1655,6 @@
         <target state="translated">Controlla il modulo e riprova.</target>
         <context-group purpose="location">
           <context context-type="sourcefile">src/app/booking/booking-dialog.ts</context>
-        </context-group>
-      </trans-unit>
-      <trans-unit id="883225603593837541" datatype="html">
-        <source>Something went wrong. Please try again.</source>
-        <target state="translated">Qualcosa è andato storto. Riprova.</target>
-        <context-group purpose="location">
-          <context context-type="sourcefile">src/app/booking/booking-dialog.ts</context>
-        </context-group>
-        <context-group purpose="location">
-          <context context-type="sourcefile">src/app/booking/find-booking.ts</context>
         </context-group>
       </trans-unit>
       <trans-unit id="3922998542509203292" datatype="html">
@@ -1110,13 +1925,6 @@
         </context-group>
         <context-group purpose="location">
           <context context-type="sourcefile">src/app/shared/retry-button.ts</context>
-        </context-group>
-      </trans-unit>
-      <trans-unit id="2369742814572661392" datatype="html">
-        <source>Loading…</source>
-        <target state="translated">Caricamento…</target>
-        <context-group purpose="location">
-          <context context-type="sourcefile">src/app/booking/booking-pay.ts</context>
         </context-group>
       </trans-unit>
       <trans-unit id="1982180466424223319" datatype="html">
@@ -1402,6 +2210,9 @@
         <target state="translated">Prenotazione annullata</target>
         <context-group purpose="location">
           <context context-type="sourcefile">src/app/booking/booking-view.ts</context>
+        </context-group>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/booking/my-bookings.ts</context>
         </context-group>
       </trans-unit>
       <trans-unit id="5353168171276468206" datatype="html">
@@ -2169,6 +2980,187 @@
           <context context-type="sourcefile">src/app/booking/manage-booking-link.ts</context>
         </context-group>
       </trans-unit>
+      <trans-unit id="7676935843923331785" datatype="html">
+        <source>Every day was refunded</source>
+        <target state="translated">Ogni giorno è stato rimborsato</target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/booking/my-bookings.ts</context>
+        </context-group>
+        <note priority="1" from="description">Status sub-line on a My bookings row</note>
+      </trans-unit>
+      <trans-unit id="1544130573043501964" datatype="html">
+        <source>Spot changed by the venue · see details</source>
+        <target state="translated">Posto cambiato dallo stabilimento · vedi i dettagli</target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/booking/my-bookings.ts</context>
+        </context-group>
+        <note priority="1" from="description">Status sub-line on a My bookings row</note>
+      </trans-unit>
+      <trans-unit id="2595241399195034666" datatype="html">
+        <source>Payment needed</source>
+        <target state="translated">Pagamento richiesto</target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/booking/my-bookings.ts</context>
+        </context-group>
+        <note priority="1" from="description">Status sub-line on a My bookings row</note>
+      </trans-unit>
+      <trans-unit id="5158594740344479794" datatype="html">
+        <source>Awaiting host · by <x id="deadline" equiv-text="formatDeadline(b.requestExpiresAt)"/></source>
+        <target state="translated">In attesa dello stabilimento · entro <x id="deadline"/></target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/booking/my-bookings.ts</context>
+        </context-group>
+        <note priority="1" from="description">Status sub-line on a My bookings row</note>
+      </trans-unit>
+      <trans-unit id="3562513278306578368" datatype="html">
+        <source>Awaiting host reply</source>
+        <target state="translated">In attesa della risposta dello stabilimento</target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/booking/my-bookings.ts</context>
+        </context-group>
+        <note priority="1" from="description">Status sub-line on a My bookings row</note>
+      </trans-unit>
+      <trans-unit id="5128676927711378913" datatype="html">
+        <source>Host could not accept</source>
+        <target state="translated">Lo stabilimento non ha potuto accettare</target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/booking/my-bookings.ts</context>
+        </context-group>
+        <note priority="1" from="description">Status sub-line on a My bookings row</note>
+      </trans-unit>
+      <trans-unit id="5746256269510908778" datatype="html">
+        <source>Request expired unanswered</source>
+        <target state="translated">Richiesta scaduta senza risposta</target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/booking/my-bookings.ts</context>
+        </context-group>
+        <note priority="1" from="description">Status sub-line on a My bookings row</note>
+      </trans-unit>
+      <trans-unit id="4074232633127003490" datatype="html">
+        <source>Enjoyed · thanks for visiting</source>
+        <target state="translated">Goduto · grazie della visita</target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/booking/my-bookings.ts</context>
+        </context-group>
+        <note priority="1" from="description">Status sub-line on a My bookings row</note>
+      </trans-unit>
+      <trans-unit id="2455891174313548096" datatype="html">
+        <source>Marked as no-show</source>
+        <target state="translated">Segnato come mancata presentazione</target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/booking/my-bookings.ts</context>
+        </context-group>
+        <note priority="1" from="description">Status sub-line on a My bookings row</note>
+      </trans-unit>
+      <trans-unit id="5818047773816819331" datatype="html">
+        <source>Request withdrawn</source>
+        <target state="translated">Richiesta ritirata</target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/booking/my-bookings.ts</context>
+        </context-group>
+        <note priority="1" from="description">Status sub-line on a My bookings row</note>
+      </trans-unit>
+      <trans-unit id="742513684453758724" datatype="html">
+        <source><x id="row" equiv-text="b.rowLabel"/> · spot <x id="spot" equiv-text="b.positionNo"/></source>
+        <target state="translated"><x id="row" equiv-text="stretch.rowLabel"/> · posto <x id="spot" equiv-text="stretch.positionNo"/></target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/booking/my-bookings.ts</context>
+        </context-group>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/booking/request-confirmation.ts</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="282864380650310363" datatype="html">
+        <source>All beaches</source>
+        <target state="translated">Tutte le spiagge</target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/booking/my-bookings.ts</context>
+        </context-group>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/pages/home/discover-head.ts</context>
+        </context-group>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/venue/venue-map.html</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="5557814931810880842" datatype="html">
+        <source> Your bookings </source>
+        <target state="translated"> Le tue prenotazioni </target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/booking/my-bookings.ts</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="4751438227741293257" datatype="html">
+        <source>Loading your bookings…</source>
+        <target state="translated">Caricamento delle tue prenotazioni…</target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/booking/my-bookings.ts</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="1443210841173625399" datatype="html">
+        <source>Your bookings loaded.</source>
+        <target state="translated">Le tue prenotazioni sono state caricate.</target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/booking/my-bookings.ts</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="3427876162827861424" datatype="html">
+        <source> No booking yet </source>
+        <target state="translated"> Ancora nessuna prenotazione </target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/booking/my-bookings.ts</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="3312875679634475630" datatype="html">
+        <source> Pick a beach, choose your exact set on the map, and your booking code will live here. </source>
+        <target state="translated"> Scegli una spiaggia, scegli il tuo set esatto sulla mappa e il tuo codice di prenotazione sarà qui. </target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/booking/my-bookings.ts</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="7468180915427823175" datatype="html">
+        <source> We couldn’t load your account bookings just now — any made on other devices may be missing. </source>
+        <target state="translated"> Non siamo riusciti a caricare ora le prenotazioni del tuo account — quelle fatte su altri dispositivi potrebbero mancare. </target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/booking/my-bookings.ts</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="6209192816478868012" datatype="html">
+        <source> Some bookings couldn’t load. Retry the ones marked below. </source>
+        <target state="translated"> Alcune prenotazioni non si sono caricate. Riprova quelle segnalate qui sotto. </target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/booking/my-bookings.ts</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="8989427859439549944" datatype="html">
+        <source>Couldn’t load this booking</source>
+        <target state="translated">Impossibile caricare questa prenotazione</target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/booking/my-bookings.ts</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="3660632916771561809" datatype="html">
+        <source>Check your connection and try again.</source>
+        <target state="translated">Controlla la connessione e riprova.</target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/booking/my-bookings.ts</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="7934833136974560675" datatype="html">
+        <source>Retry</source>
+        <target state="translated">Riprova</target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/booking/my-bookings.ts</context>
+        </context-group>
+        <note priority="1" from="description">Button that retries a failed load</note>
+      </trans-unit>
+      <trans-unit id="4541946503525125683" datatype="html">
+        <source>Retrying…</source>
+        <target state="translated">Nuovo tentativo…</target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/booking/my-bookings.ts</context>
+        </context-group>
+      </trans-unit>
       <trans-unit id="6457599036940487318" datatype="html">
         <source>Request sent</source>
         <target state="translated">Richiesta inviata</target>
@@ -2279,13 +3271,6 @@
       <trans-unit id="8644773828634289471" datatype="html">
         <source>Your booking request isn’t available here anymore.</source>
         <target state="translated">La tua richiesta di prenotazione non è più disponibile qui.</target>
-        <context-group purpose="location">
-          <context context-type="sourcefile">src/app/booking/request-confirmation.ts</context>
-        </context-group>
-      </trans-unit>
-      <trans-unit id="742513684453758724" datatype="html">
-        <source><x id="row" equiv-text="stretch.rowLabel"/> · spot <x id="spot" equiv-text="stretch.positionNo"/></source>
-        <target state="translated"><x id="row" equiv-text="stretch.rowLabel"/> · posto <x id="spot" equiv-text="stretch.positionNo"/></target>
         <context-group purpose="location">
           <context context-type="sourcefile">src/app/booking/request-confirmation.ts</context>
         </context-group>
@@ -2501,21 +3486,6 @@
           <context context-type="sourcefile">src/app/booking/review-panel.ts</context>
         </context-group>
       </trans-unit>
-      <trans-unit id="2330577642930707695" datatype="html">
-        <source> Cancel </source>
-        <target state="translated"> Annulla </target>
-        <context-group purpose="location">
-          <context context-type="sourcefile">src/app/booking/review-panel.ts</context>
-        </context-group>
-        <note priority="1" from="description">Button that abandons editing the review</note>
-      </trans-unit>
-      <trans-unit id="7606672167560356784" datatype="html">
-        <source>Sending…</source>
-        <target state="translated">Invio…</target>
-        <context-group purpose="location">
-          <context context-type="sourcefile">src/app/booking/review-panel.ts</context>
-        </context-group>
-      </trans-unit>
       <trans-unit id="7000649363168371045" datatype="html">
         <source>Save changes</source>
         <target state="translated">Salva le modifiche</target>
@@ -2573,22 +3543,6 @@
         <target state="translated">Accesso non riuscito. Controlla email e password.</target>
         <context-group purpose="location">
           <context context-type="sourcefile">src/app/core/customer-auth.ts</context>
-        </context-group>
-      </trans-unit>
-      <trans-unit id="1336529394751708762" datatype="html">
-        <source>Too many attempts. Please wait a minute and try again.</source>
-        <target state="translated">Troppi tentativi. Attendi un minuto e riprova.</target>
-        <context-group purpose="location">
-          <context context-type="sourcefile">src/app/core/customer-auth.ts</context>
-        </context-group>
-        <context-group purpose="location">
-          <context context-type="sourcefile">src/app/core/customer-auth.ts</context>
-        </context-group>
-        <context-group purpose="location">
-          <context context-type="sourcefile">src/app/core/operator-auth.ts</context>
-        </context-group>
-        <context-group purpose="location">
-          <context context-type="sourcefile">src/app/core/operator-auth.ts</context>
         </context-group>
       </trans-unit>
       <trans-unit id="2215155058125314434" datatype="html">
@@ -3019,16 +3973,6 @@
         </context-group>
         <context-group purpose="location">
           <context context-type="sourcefile">src/app/shared/riviera-map.html</context>
-        </context-group>
-      </trans-unit>
-      <trans-unit id="282864380650310363" datatype="html">
-        <source>All beaches</source>
-        <target state="translated">Tutte le spiagge</target>
-        <context-group purpose="location">
-          <context context-type="sourcefile">src/app/pages/home/discover-head.ts</context>
-        </context-group>
-        <context-group purpose="location">
-          <context context-type="sourcefile">src/app/venue/venue-map.html</context>
         </context-group>
       </trans-unit>
       <trans-unit id="4864465000624841559" datatype="html">
@@ -3505,6 +4449,51 @@
         <target state="translated">Chiuso oggi</target>
         <context-group purpose="location">
           <context context-type="sourcefile">src/app/pages/home/venue-row.ts</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="2505113049105568326" datatype="html">
+        <source> Page not found </source>
+        <target state="translated"> Pagina non trovata </target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/pages/not-found/not-found.ts</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="3006848529927908014" datatype="html">
+        <source> There’s no page at this address. Check the link, or head back to the beaches. </source>
+        <target state="translated"> Non c’è nessuna pagina a questo indirizzo. Controlla il link o torna alle spiagge. </target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/pages/not-found/not-found.ts</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="8009184610880159090" datatype="html">
+        <source>Back to the beaches</source>
+        <target state="translated">Torna alle spiagge</target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/pages/not-found/not-found.ts</context>
+        </context-group>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/pages/page-load-failed/page-load-failed.ts</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="5340825107444021459" datatype="html">
+        <source> Loading this page again… </source>
+        <target state="translated"> Ricaricamento della pagina… </target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/pages/page-load-failed/page-load-failed.ts</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="8859773686370006999" datatype="html">
+        <source>Couldn’t load this page</source>
+        <target state="translated">Impossibile caricare la pagina</target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/pages/page-load-failed/page-load-failed.ts</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="7077963143369352440" datatype="html">
+        <source> Part of Riviera didn’t arrive — the connection dropped, or the app was just updated. Try again, or head back to the beaches. </source>
+        <target state="translated"> Una parte di Riviera non è arrivata — la connessione si è interrotta o l’app è stata appena aggiornata. Riprova o torna alle spiagge. </target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/pages/page-load-failed/page-load-failed.ts</context>
         </context-group>
       </trans-unit>
       <trans-unit id="8048626978161905531" datatype="html">
