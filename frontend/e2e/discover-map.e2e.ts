@@ -1256,3 +1256,74 @@ test.describe('Discover map — the desktop panel', () => {
     await expectTouchTargets(page, 'the desktop panel with its coast picker');
   });
 });
+
+/** One venue at each end of the coast and two at its southern tip, where Sarandë's beaches are. */
+const COAST_END_VENUES = [
+  mapVenue(31, 'Velipoja Dunes', 'VELIPOJE', 'SHKODER', 41.848, 19.411, 1800),
+  mapVenue(32, 'Darëzezë Reeds', 'DAREZEZE', 'FIER', 40.66, 19.38, 1600),
+  mapVenue(33, 'Gull Point', 'PULEBARDHA', 'SARANDE', 39.79, 20.03, 2600),
+  mapVenue(34, 'Ksamil Isles', 'KSAMIL', 'SARANDE', 39.77, 20.0, 3200),
+];
+
+/**
+ * The desktop picker hangs under its anchor, so its height is the room below that anchor; the
+ * ribbon fits the whole coast above the credit, so Sarandë's leaders start on screen and clear.
+ */
+test.describe('Discover — the desktop coast picker fits the window', () => {
+  test.beforeEach(async ({ page }) => {
+    await page.addInitScript(() => {
+      (window as unknown as { __RIVIERA_FAKE_MAP__?: boolean }).__RIVIERA_FAKE_MAP__ = true;
+    });
+    await mockVenues(page, 0, COAST_END_VENUES);
+  });
+
+  async function box(locator: Locator): Promise<DOMRect> {
+    return locator.evaluate((el) => el.getBoundingClientRect().toJSON() as DOMRect);
+  }
+
+  for (const viewport of [
+    { width: 1280, height: 760 },
+    { width: 1280, height: 860 },
+  ]) {
+    test(`at ${viewport.width} × ${viewport.height} the sheet ends above the fold and every Sarandë leader is on screen, clear of the credit`, async ({
+      page,
+    }) => {
+      await openMap(page, viewport);
+      await page.getByTestId('head-place').click();
+      const panel = page.getByTestId('coast-picker');
+      await expect(panel).toBeVisible();
+      await settleAnimations(panel);
+
+      expect((await box(panel)).bottom).toBeLessThanOrEqual(viewport.height);
+
+      const region = page
+        .getByTestId('picker-row')
+        .filter({ hasText: 'Sarandë' })
+        .and(page.locator(':not([data-beach-row])'));
+      const credit = await box(page.getByTestId('picker-ribbon').getByTestId('map-attribution'));
+      for (const [row, beaches] of [
+        [region, ['PULEBARDHA', 'KSAMIL']],
+        [page.locator('[data-beach-row="PULEBARDHA"]'), ['PULEBARDHA']],
+        [page.locator('[data-beach-row="KSAMIL"]'), ['KSAMIL']],
+      ] as const) {
+        await row.hover();
+        for (const beach of beaches) {
+          const dot = page.locator(`[data-testid="ribbon-dot"][data-beach="${beach}"]`);
+          const leader = page.locator(`[data-testid="ribbon-leader"][data-beach="${beach}"]`);
+          await expect(dot).toHaveAttribute('data-lit', '');
+          await expect(leader).toHaveAttribute('data-lit', '');
+          for (const [what, target] of [
+            ['dot', await box(dot)],
+            ['leader', await box(leader)],
+          ] as const) {
+            expect(target.top, `${beach}'s ${what} top`).toBeGreaterThanOrEqual(0);
+            expect(target.bottom, `${beach}'s ${what} bottom`).toBeLessThanOrEqual(viewport.height);
+          }
+          expect((await box(dot)).bottom, `${beach}'s dot clears the credit`).toBeLessThanOrEqual(
+            credit.top,
+          );
+        }
+      }
+    });
+  }
+});

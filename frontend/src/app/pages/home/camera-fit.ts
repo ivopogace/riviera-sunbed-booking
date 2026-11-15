@@ -23,9 +23,9 @@ export interface PaneSize {
 }
 
 /**
- * The camera showing every one of `at` in a `width` × `height` box, clamped to the map's zoom
- * range and to where the box still fits `maxBounds` (the 2.2°-wide ADR-0022 fence); `null` when
- * nothing or no room to fit. `pad` keeps the marks at `at` in frame: pin boxes by default.
+ * The camera showing all of `at` in a `width` × `height` box, clamped to the zoom range (`floor`
+ * lowers it) and to where the box fits `maxBounds` (the ADR-0022 fence); `null` when there is no
+ * room. `pad` keeps the marks in frame: pin boxes by default.
  */
 export function fitPins(
   at: readonly LngLat[],
@@ -33,6 +33,7 @@ export function fitPins(
   height: number,
   ceiling = FIT_MAX_ZOOM,
   pad = PAD_PX,
+  floor = RIVIERA_MAP_OPTIONS.minZoom,
 ): MapView | null {
   if (at.length === 0 || width <= pad || height <= pad) {
     return null;
@@ -54,11 +55,7 @@ export function fitPins(
 
   const [southWest, northEast] = RIVIERA_MAP_OPTIONS.maxBounds;
   const fenceFloor = Math.log2((360 * width) / (TILE_PX * (northEast.lng - southWest.lng)));
-  const zoom = Math.min(
-    RIVIERA_MAP_OPTIONS.maxZoom,
-    ceiling,
-    Math.max(RIVIERA_MAP_OPTIONS.minZoom, fenceFloor, wanted),
-  );
+  const zoom = Math.min(RIVIERA_MAP_OPTIONS.maxZoom, ceiling, Math.max(floor, fenceFloor, wanted));
   return { center, zoom };
 }
 
@@ -73,9 +70,11 @@ export function fitInWindow(
   top: number,
   bottom: number,
   ceiling?: number,
+  pad?: number,
+  floor?: number,
 ): MapView | null {
   const visible = bottom - top;
-  const view = fitPins(at, pane.width, visible, ceiling);
+  const view = fitPins(at, pane.width, visible, ceiling, pad, floor);
   if (view === null) {
     return null;
   }

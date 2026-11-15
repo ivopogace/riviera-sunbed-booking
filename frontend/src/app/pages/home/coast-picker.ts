@@ -17,11 +17,13 @@ import {
 
 import { BEACH_CATALOGUE, beachEntry, REGION_CATALOGUE } from '../../shared/beaches';
 import { LocateIcon } from '../../shared/locate-icon';
-import { LngLat, MapHandle } from '../../shared/map-engine';
+import { FenceInsets, LngLat, MapEngineOptions, MapHandle } from '../../shared/map-engine';
+import { NO_FENCE_INSETS } from '../../shared/map-fence';
 import { PanelGlass } from '../../shared/panel-glass';
 import { RivieraMap } from '../../shared/riviera-map';
+import { RIVIERA_MAP_OPTIONS } from '../../shared/riviera-map-options';
 import { TouchTarget } from '../../shared/touch-target';
-import { fitPins } from './camera-fit';
+import { fitInWindow } from './camera-fit';
 import { lowestFromPrice } from './pin-crowding';
 import { VenueCard } from './venue-card';
 import { CrossIcon } from '../../shared/cross-icon';
@@ -46,8 +48,8 @@ export interface PickedPlace {
 }
 
 /**
- * The ribbon's width: the coast's 0.65° of longitude at the map's zoom floor is 118 px, so a
- * narrower ribbon would show inland Albania with the coast off its edge.
+ * The ribbon's width: the coast's 0.65° of longitude at zoom 7 is 118 px, so a narrower ribbon
+ * would show inland Albania with the coast off its edge.
  */
 export const RIBBON_PX = 150;
 /**
@@ -56,8 +58,16 @@ export const RIBBON_PX = 150;
  * screen allows and the coast stands in it end to end.
  */
 const COAST_ASPECT = 4.51;
-/** A bare ribbon has no chrome to keep clear of; the dots are 9 px, 13 lit. */
+/** The ribbon's one piece of chrome is its credit, which the fit keeps the coast above; dots are 9 px, 13 lit. */
 const RIBBON_PAD_PX = 28;
+/**
+ * The ribbon zooms out past the map's floor of 7, where the coast is 500 px tall: a sheet that
+ * fits a 760 px window leaves the ribbon less than that, and the coast must still fit end to end.
+ */
+const RIBBON_OPTIONS: MapEngineOptions = { ...RIVIERA_MAP_OPTIONS, minZoom: 6 };
+/** What the desktop sheet keeps clear below it, and the least it shrinks to under a low anchor. */
+const FOLD_GAP_PX = 16;
+const MIN_SHEET_PX = 320;
 /** The gutter between the ribbon and the rows, which the leaders cross and the rows' text never enters. */
 const GUTTER_PX = 20;
 /** The catalogue's every beach: the ribbon frames the whole coast whichever beaches have a venue. */
@@ -146,6 +156,8 @@ export function coastIndex(cards: readonly VenueCard[]): readonly PickerRegion[]
   host: {
     class: 'contents',
     '(keydown.escape)': 'closed.emit()',
+    '(window:resize)': 'measureRoom(); relayout()',
+    '(window:scroll)': 'measureRoom(); relayout()',
   },
   template: `
     <div
@@ -162,7 +174,8 @@ export function coastIndex(cards: readonly VenueCard[]): readonly PickerRegion[]
       aria-label="Choose a place on the coast"
       i18n-aria-label
       tabindex="-1"
-      class="fixed inset-x-0 bottom-0 z-[31] flex max-h-[86dvh] flex-col rounded-t-[26px] shadow-[0_-16px_50px_rgba(7,42,58,0.35)] lg:absolute lg:inset-x-auto lg:top-[calc(100%+8px)] lg:bottom-auto lg:left-0 lg:h-[min(760px,calc(100dvh-140px))] lg:w-[420px] lg:rounded-[22px]"
+      class="fixed inset-x-0 bottom-0 z-[31] flex max-h-[86dvh] flex-col rounded-t-[26px] shadow-[0_-16px_50px_rgba(7,42,58,0.35)] lg:absolute lg:inset-x-auto lg:top-[calc(100%+8px)] lg:bottom-auto lg:left-0 lg:h-[min(760px,var(--picker-room,calc(100dvh-140px)))] lg:w-[420px] lg:rounded-[22px]"
+      [style.--picker-room]="room()"
     >
       <div class="flex shrink-0 items-center gap-2 px-4 pt-3 pb-1">
         <h2 class="text-[17px] font-bold text-riv-ink" i18n>The coast, north to south</h2>
@@ -202,7 +215,12 @@ export function coastIndex(cards: readonly VenueCard[]): readonly PickerRegion[]
           aria-hidden="true"
           class="pointer-events-none relative w-[150px] shrink-0 self-stretch overflow-hidden rounded-r-[14px] bg-riv-solid-btn-fill"
         >
-          <app-riviera-map class="size-full" [ribbon]="true" />
+          <app-riviera-map
+            class="size-full"
+            [ribbon]="true"
+            [options]="RIBBON_OPTIONS"
+            [fenceInsets]="creditInset()"
+          />
           <!-- The dot is the you-are-here dot's fixed pair and lights by INVERTING it, as a selected pin does: it sits on imagery, which never themes, so the accent would drift (riviera-map.contrast.spec proves both faces). -->
           @for (dot of dots(); track dot.code) {
             <span
@@ -311,6 +329,7 @@ export class CoastPicker {
   protected readonly RIBBON_PX = RIBBON_PX;
   protected readonly COAST_ASPECT = COAST_ASPECT;
   protected readonly GUTTER_PX = GUTTER_PX;
+  protected readonly RIBBON_OPTIONS = RIBBON_OPTIONS;
 
   /** The coast index, from {@link coastIndex}. */
   readonly regions = input.required<readonly PickerRegion[]>();
@@ -332,6 +351,10 @@ export class CoastPicker {
    */
   private readonly hot = signal<string | null>(null);
   private readonly layout = signal<RibbonLayout>(NOTHING);
+  /** The desktop sheet's height: the room from its top to the fold, measured; `null` until then. */
+  protected readonly room = signal<string | null>(null);
+  /** The ribbon's foot the credit covers, which the fence keeps out of the in-bounds window. */
+  protected readonly creditInset = signal<FenceInsets>(NO_FENCE_INSETS);
 
   /** The index's beaches with the catalogue place each dot marks; one off the catalogue has none. */
   private readonly beaches = computed<readonly IndexBeach[]>(() =>
@@ -371,7 +394,10 @@ export class CoastPicker {
       this.map().handle();
       untracked(() => this.relayout());
     });
-    afterNextRender(() => this.watchSize());
+    afterNextRender(() => {
+      this.measureRoom();
+      this.watchSize();
+    });
   }
 
   protected warm(kind: 'region' | 'beach', code: string): void {
@@ -382,19 +408,54 @@ export class CoastPicker {
     this.hot.set(null);
   }
 
-  /** The whole coast, end to end, in whatever box the ribbon has; a box with no size waits. */
+  /**
+   * The sheet opens under its anchor, wherever the header and filters put it, so its height is the
+   * room measured below it: a fixed allowance cannot know where the anchor sits.
+   */
+  protected measureRoom(): void {
+    const panel = this.panel().nativeElement;
+    const fold = panel.ownerDocument.defaultView?.innerHeight ?? 0;
+    const room = fold - panel.getBoundingClientRect().top - FOLD_GAP_PX;
+    this.room.set(fold > 0 ? `${Math.max(MIN_SHEET_PX, room)}px` : null);
+  }
+
+  /**
+   * The whole coast, end to end, in the ribbon above its credit; a box with no size waits. The
+   * fence learns the credit first, or it would pull the camera back down under it.
+   */
   private fit(handle: MapHandle): void {
     const { clientWidth, clientHeight } = this.ribbon().nativeElement;
-    const view = fitPins(COAST, clientWidth, clientHeight, undefined, RIBBON_PAD_PX);
+    const foot = this.creditFoot();
+    const inset = { top: 0, bottom: foot };
+    this.creditInset.set(inset);
+    handle.setFenceInsets(inset);
+    const view = fitInWindow(
+      COAST,
+      { width: clientWidth, height: clientHeight },
+      0,
+      clientHeight - foot,
+      undefined,
+      RIBBON_PAD_PX,
+      RIBBON_OPTIONS.minZoom,
+    );
     if (view !== null) {
       handle.setView(view);
     }
   }
 
+  /** How far up from the ribbon's bottom its credit reaches; none laid out (jsdom) is 0. */
+  private creditFoot(): number {
+    const tops = this.map()
+      .chromeBoxes()
+      .map((box) => box.top);
+    const bottom = this.ribbon().nativeElement.getBoundingClientRect().bottom;
+    return tops.length === 0 ? 0 : Math.max(0, bottom - Math.min(...tops));
+  }
+
   /**
    * Every dot where its beach projects through the ribbon's camera, and a leader from each dot
-   * to its row's middle — skipped for a dot outside the ribbon and for a row scrolled out of the
-   * body, so no line reaches for something that is not on screen.
+   * to its row's middle — skipped for a dot or a row outside the body's part inside the window,
+   * so no line reaches for something that is not on screen.
    */
   protected relayout(): void {
     const handle = this.map().handle();
@@ -412,8 +473,11 @@ export class CoastPicker {
     for (const row of body.querySelectorAll<HTMLElement>('[data-beach-row]')) {
       rows.set(row.dataset['beachRow']!, row.getBoundingClientRect());
     }
+    const fold = body.ownerDocument.defaultView?.innerHeight ?? box.bottom;
+    const shownTop = Math.max(0, -box.top);
+    const shownBottom = Math.min(box.height, fold - box.top);
     // A body with no box yet (a document that lays nothing out) clips nothing.
-    const offBody = (y: number) => box.height > 0 && (y < 0 || y > box.height);
+    const offBody = (y: number) => box.height > 0 && (y < shownTop || y > shownBottom);
     const leaders = dots.flatMap((dot) => {
       const row = rows.get(dot.code);
       if (row === undefined || offBody(dot.y)) {
