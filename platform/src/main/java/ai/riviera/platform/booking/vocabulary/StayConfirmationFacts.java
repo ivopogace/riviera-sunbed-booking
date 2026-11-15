@@ -5,16 +5,18 @@ import java.util.List;
 
 import ai.riviera.platform.customer.vocabulary.CustomerId;
 import ai.riviera.platform.venue.vocabulary.SetId;
+import ai.riviera.platform.shared.SiteLocale;
 
 /**
  * What a stitched stay's confirmation mail renders: the stay's {@code code} (a bearer credential,
  * invariant #7; never a stretch's row code), the guest contact, each stop in day order and the summed
  * total in minor units + ISO currency (#5). {@code everConfirmed} holds iff every stretch was confirmed.
  * The window is re-derived from the first stretch's current cutoff, as {@link BookingConfirmationFacts}'.
+ * {@code locale} is the language the guest booked the stay in.
  */
 public record StayConfirmationFacts(StayId stayId, String code, CustomerId customerId, List<Stop> stops,
 		long amountMinor, String currency, boolean everConfirmed, CancellationWindow cancellationWindowAtBirth,
-		int lateCancelRefundBps) {
+		int lateCancelRefundBps, SiteLocale locale) {
 
 	public StayConfirmationFacts {
 		stops = List.copyOf(stops);

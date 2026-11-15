@@ -29,8 +29,9 @@
         @if (!slot.place.placement.compact) {
           <!-- &ngsp; keeps a real space between the two lines' text, as the count block does. -->
           <span class="flex flex-col whitespace-nowrap" aria-hidden="true">
-            <span class="text-[12.5px] leading-[14px] font-semibold">{{ title(slot.place) }}</span
-            >&ngsp;
+            <span class="text-[12.5px] leading-[14px] font-semibold">{{
+              title(slot.place)
+            }}</span>&ngsp;
             @if (subtitle(slot.place); as line) {
               <span class="pin-price text-[11px] leading-[13px] font-extrabold tabular-nums">{{
                 line

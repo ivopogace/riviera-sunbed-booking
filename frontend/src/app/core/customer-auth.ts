@@ -10,6 +10,7 @@ import {
   challengeRejectionMessage,
   isChallengeRejection,
 } from '../shared/challenge';
+import { buildLocale } from '../shared/display-locale';
 import {
   PASSWORD_BLOCKED_MESSAGE,
   PASSWORD_BLOCKED_TERM_CODE,
@@ -166,7 +167,7 @@ export class CustomerAuth extends SessionAuth {
       await firstValueFrom(
         this.http.post<AuthPrincipal>(
           `${AUTH_API}/customer/register`,
-          { email, password },
+          { email, password, locale: buildLocale() },
           { headers: challengeHeaders(challenge) },
         ),
       );
@@ -193,7 +194,7 @@ export class CustomerAuth extends SessionAuth {
       await firstValueFrom(
         this.http.post<void>(
           `${AUTH_API}/customer/forgot-password`,
-          { email },
+          { email, locale: buildLocale() },
           { headers: challengeHeaders(challenge) },
         ),
       );
@@ -293,7 +294,9 @@ export class CustomerAuth extends SessionAuth {
   async requestVerification(): Promise<'sent' | 'withheld' | 'error'> {
     try {
       const result = await firstValueFrom(
-        this.http.post<VerificationRequested>(`${ME_API}/verify-email/request`, null),
+        this.http.post<VerificationRequested>(`${ME_API}/verify-email/request`, {
+          locale: buildLocale(),
+        }),
       );
       return result?.emailWithheld ? 'withheld' : 'sent';
     } catch {

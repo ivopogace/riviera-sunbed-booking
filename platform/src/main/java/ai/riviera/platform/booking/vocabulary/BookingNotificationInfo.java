@@ -1,6 +1,7 @@
 package ai.riviera.platform.booking.vocabulary;
 
 import ai.riviera.platform.customer.vocabulary.CustomerId;
+import ai.riviera.platform.shared.SiteLocale;
 
 /**
  * The two facts a booking mail needs beyond the event payload and {@code venue.api.SetBookingFacts}.
@@ -8,7 +9,7 @@ import ai.riviera.platform.customer.vocabulary.CustomerId;
  * registry persists as text (ADR-0011), so the mail reads it here at send time. {@code customerId} is
  * {@code booking.customer_id}, set for signed-in bookings too ({@code account_id} is a separate
  * link); the consumer resolves the address through {@code customer.api.CustomerLookup}, so this
- * module never holds contact PII.
+ * module never holds contact PII. {@code locale} is the language the guest booked in, every mail's.
  */
-public record BookingNotificationInfo(String code, CustomerId customerId) {
+public record BookingNotificationInfo(String code, CustomerId customerId, SiteLocale locale) {
 }

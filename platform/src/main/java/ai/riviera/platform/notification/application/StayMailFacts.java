@@ -1,5 +1,7 @@
 package ai.riviera.platform.notification.application;
 
+import ai.riviera.platform.shared.SiteLocale;
+
 /**
  * What {@link BookingMailFactsService#resolveStay} could, or could not, assemble for a stay's one
  * confirmation mail; {@link BookingMailFacts}' twin, sealed so each caller's {@code switch} is
@@ -8,7 +10,7 @@ package ai.riviera.platform.notification.application;
 public sealed interface StayMailFacts {
 
 	/** The recipient and the mail, ready to send; {@code mail} carries the stay's code (invariant #7). */
-	record Resolved(String toEmail, StayConfirmationMail mail) implements StayMailFacts {
+	record Resolved(String toEmail, StayConfirmationMail mail, SiteLocale locale) implements StayMailFacts {
 	}
 
 	/** The first fact that did not resolve. */

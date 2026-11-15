@@ -54,9 +54,9 @@ class StayMoveReminderMailListener {
 	}
 
 	private void send(StayMoveDue event, StayMoveFacts move) {
-		switch (facts.resolveMoveReminder(move, links.forBooking(move.code()))) {
+		switch (facts.resolveMoveReminder(move, links.forBooking(move.code(), move.locale()))) {
 			case MoveReminderMailFacts.Missing(MissingBookingFact fact) -> abandon(fact, event);
-			case MoveReminderMailFacts.Resolved resolved -> mails.sendMoveReminder(resolved.toEmail(), resolved.mail());
+			case MoveReminderMailFacts.Resolved resolved -> mails.sendMoveReminder(resolved.toEmail(), resolved.locale(), resolved.mail());
 		}
 	}
 

@@ -7,6 +7,7 @@ import org.springframework.stereotype.Service;
 
 import ai.riviera.platform.venue.api.SetBookingFacts;
 import ai.riviera.platform.venue.vocabulary.VenueId;
+import ai.riviera.platform.shared.SiteLocale;
 
 /**
  * Where a guest whose booking the venue itself cancelled goes to book again: that venue's map for
@@ -26,9 +27,9 @@ public class RebookLinks {
 		this.links = links;
 	}
 
-	public URI forDate(VenueId venueId, LocalDate date) {
+	public URI forDate(VenueId venueId, LocalDate date, SiteLocale locale) {
 		return venues.sellsOnlineOn(venueId, date)
-				? links.forVenueMap(venueId, date)
-				: links.forDiscovery(date);
+				? links.forVenueMap(venueId, date, locale)
+				: links.forDiscovery(date, locale);
 	}
 }

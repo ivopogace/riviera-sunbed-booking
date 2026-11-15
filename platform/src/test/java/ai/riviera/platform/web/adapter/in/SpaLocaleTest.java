@@ -7,6 +7,8 @@ import java.util.Map;
 import java.util.stream.Collectors;
 
 import org.junit.jupiter.api.Test;
+
+import ai.riviera.platform.shared.SiteLocale;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.json.JsonMapper;
 
@@ -35,6 +37,16 @@ class SpaLocaleTest {
 		Map<String, String> served = Arrays.stream(SpaLocale.values()).collect(Collectors.toMap(
 				SpaLocale::code, SpaLocale::subPath, (a, b) -> a, LinkedHashMap::new));
 		assertEquals(built, served);
+	}
+
+	@Test
+	void eachSiteLocaleIsServedOnceUnderItsOwnCodeAndSubpath() {
+		assertEquals(SiteLocale.values().length, SpaLocale.values().length);
+		for (SiteLocale site : SiteLocale.values()) {
+			SpaLocale served = SpaLocale.valueOf(site.name());
+			assertEquals(site.code(), served.code());
+			assertEquals(site.subPath(), served.subPath());
+		}
 	}
 
 	@Test

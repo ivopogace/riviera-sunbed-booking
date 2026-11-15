@@ -13,14 +13,15 @@ import ai.riviera.platform.customer.vocabulary.VerifyEmailOutcome;
 import ai.riviera.platform.notification.api.MailDeliverability;
 import ai.riviera.platform.notification.api.MailSender;
 import ai.riviera.platform.notification.vocabulary.EmailedLink;
+import ai.riviera.platform.shared.SiteLocale;
 
 /**
  * Edge orchestrator for account recovery, keeping tokens, mail and crypto out of {@code customer} (RV-BE-11):
  * mints and hashes the raw token, hands {@link CustomerAccountRecovery} only the digest, and mails the link via
  * {@link MailSender}. A reset token is issued inside that off-thread send, so forgot-password's request thread
  * does only its account read (D-8 timing); a verification token is issued on the caller's thread.
- * Links target the SPA's {@code /account/verify} and {@code /account/reset}, which {@code POST}: a scanner's
- * prefetch (a GET) must never consume the single-use token.
+ * Links target the SPA's {@code /account/verify} and {@code /account/reset} under the request's locale subpath,
+ * which {@code POST}: a scanner's prefetch (a GET) must never consume the single-use token.
  */
 @Component
 public class CustomerRecovery {
@@ -47,13 +48,13 @@ public class CustomerRecovery {
 		this.clock = clock;
 	}
 
-	/** Issue a fresh verification token for the account and (best-effort, off-thread) email its link; no mail once erased. */
-	public void sendVerificationEmail(CustomerAccountId accountId, String email) {
+	/** Issue a fresh verification token and (best-effort, off-thread) email its link in {@code locale}; no mail once erased. */
+	public void sendVerificationEmail(CustomerAccountId accountId, String email, SiteLocale locale) {
 		String rawToken = tokens.generate();
 		// The token store is NOT best-effort and stays on this thread; only the send is.
 		if (recovery.issueEmailVerificationToken(accountId, tokens.hash(rawToken),
 				clock.instant().plus(properties.verificationTokenTtl()))) {
-			mails.sendEmailVerification(email, link(VERIFY_SEGMENT, rawToken));
+			mails.sendEmailVerification(email, locale, link(VERIFY_SEGMENT, rawToken, locale));
 		}
 	}
 
@@ -70,15 +71,15 @@ public class CustomerRecovery {
 	 * Hand the reset mail to {@link MailSender} with a deferred link that issues a fresh token when the
 	 * off-thread send resolves it: nothing touches the token store on this thread. No mail once erased.
 	 */
-	public void sendPasswordResetEmail(CustomerAccountId accountId, String email) {
-		mails.sendPasswordReset(email, () -> issuePasswordResetLink(accountId));
+	public void sendPasswordResetEmail(CustomerAccountId accountId, String email, SiteLocale locale) {
+		mails.sendPasswordReset(email, locale, () -> issuePasswordResetLink(accountId, locale));
 	}
 
-	private Optional<URI> issuePasswordResetLink(CustomerAccountId accountId) {
+	private Optional<URI> issuePasswordResetLink(CustomerAccountId accountId, SiteLocale locale) {
 		String rawToken = tokens.generate();
 		boolean issued = recovery.issuePasswordResetToken(accountId, tokens.hash(rawToken),
 				clock.instant().plus(properties.resetTokenTtl()));
-		return issued ? Optional.of(link(RESET_SEGMENT, rawToken)) : Optional.empty();
+		return issued ? Optional.of(link(RESET_SEGMENT, rawToken, locale)) : Optional.empty();
 	}
 
 	/** Redeem a presented raw verification token (hashes it, then claims it single-use in the module). */
@@ -113,8 +114,9 @@ public class CustomerRecovery {
 		return recovery.emailVerifiedFor(email);
 	}
 
-	private URI link(String accountPage, String rawToken) {
+	private URI link(String accountPage, String rawToken, SiteLocale locale) {
 		return EmailedLink.on(properties.linkBaseUrl())
+				.under(locale)
 				.path(ACCOUNT_SEGMENT, accountPage)
 				.query(TOKEN_PARAM, rawToken)
 				.toUri();

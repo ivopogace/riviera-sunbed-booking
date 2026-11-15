@@ -21,6 +21,7 @@ import ai.riviera.platform.booking.vocabulary.BookingId;
 import ai.riviera.platform.booking.vocabulary.StayId;
 import ai.riviera.platform.booking.vocabulary.StayMoveFacts;
 import ai.riviera.platform.customer.vocabulary.CustomerId;
+import ai.riviera.platform.shared.SiteLocale;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -73,7 +74,7 @@ class StayMoveFactsIT {
 		Optional<StayMoveFacts> move = facts.moveReminderFacts(new BookingId(arriving));
 
 		assertEquals(Optional.of(new StayMoveFacts(new StayId(stay.id()), stay.code(), new CustomerId(customerOf(arriving)),
-				FIRST.plusDays(2), FIRST.plusDays(4), venue.online().get(0), venue.online().get(2), 0, 2, true)), move,
+				FIRST.plusDays(2), FIRST.plusDays(4), venue.online().get(0), venue.online().get(2), 0, 2, true, SiteLocale.EN)), move,
 				"positions 1 → 3 in row A: two positions along the row");
 	}
 

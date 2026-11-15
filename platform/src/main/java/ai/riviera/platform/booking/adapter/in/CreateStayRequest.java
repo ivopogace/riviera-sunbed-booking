@@ -8,14 +8,15 @@ import ai.riviera.platform.booking.application.reserve.CreateStayCommand;
 import ai.riviera.platform.customer.vocabulary.CustomerAccountId;
 import ai.riviera.platform.customer.vocabulary.GuestContact;
 import ai.riviera.platform.venue.vocabulary.SetId;
+import ai.riviera.platform.shared.SiteLocale;
 
 /**
  * The {@code POST /api/stays} body: the plan's stretches (set + ISO first/last date each) and the
- * guest contact. {@link #toCommand} maps it onto the typed {@link CreateStayCommand}, whose
+ * guest contact, and the SPA's build locale ({@link CreateBookingRequest}'s rule). {@link #toCommand} maps it onto the typed {@link CreateStayCommand}, whose
  * constructor validates the shape; bad input throws {@link IllegalArgumentException}, the
  * controller's conversion wrap makes it the typed 400.
  */
-record CreateStayRequest(List<StretchRequest> stretches, CreateBookingRequest.Contact contact) {
+record CreateStayRequest(List<StretchRequest> stretches, CreateBookingRequest.Contact contact, String locale) {
 
 	record StretchRequest(Long setId, String firstDate, String lastDate) {
 	}
@@ -35,7 +36,7 @@ record CreateStayRequest(List<StretchRequest> stretches, CreateBookingRequest.Co
 					parseDate(stretch.lastDate(), "lastDate"));
 		}).toList();
 		return new CreateStayCommand(typed, new GuestContact(contact.email(), contact.fullName(), contact.phone()),
-				accountId);
+				accountId, SiteLocale.fromCode(locale));
 	}
 
 	private static LocalDate parseDate(String value, String field) {

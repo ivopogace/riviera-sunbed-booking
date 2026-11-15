@@ -525,6 +525,10 @@ any is released on the old, never a swap of my own — so a racing reserve wins 
   stretch is judged on the day its stay's cancel is (the first day, or the first live day once a remodel
   ended earlier stretches), so its exit ends by that day's opening: the view, the cancel and the move
   mail read one capped deadline, and a stretch moved once that day has opened has none.
+- **A booking stores the guest's language** (`booking.locale`, #1770): the create's `locale`, English when
+  absent or unknown (never a `400` over a display preference); a stretch carries its stay's.
+  `BookingNotificationFacts` hands it to `notification`, so every later mail follows it. The
+  `booking_locale_check` lists `shared.SiteLocale`'s codes, so a new locale widens it (`BookingLocaleIT`).
 
 **Not My Job:**
 - Owning the `(set, date)` availability state → **`availability`** (I *ask* it to claim)
@@ -963,6 +967,12 @@ tag names the person, invariant #7):
   the view works cold from an inbox ("Pay now" on an open intent; an expired booking, not a 404),
   while `/booking/pay` resumes in-memory hand-off state and dead-ends. `BookingLinks` builds it
   here because registry listeners have no request in hand.
+- **Every guest mail is written in the guest's `SiteLocale` (#1770)**: a booking mail in the booking's,
+  an account mail in the one its request named. Copy is `mail/messages*.properties` through a private
+  Spring `ResourceBundleMessageSource` (English the base file and fallback, never the JVM's locale;
+  `MailCopyBundleTest` holds the files to one key set), and every link sits under the locale's subpath
+  (`EmailedLink.under`). The operator-approved notice stays English: operators carry no locale. The
+  support block names channels only, never the same-day promise: its season is answered live.
 - **The link origin is `auth`'s variable under my own key**: `RIVIERA_RECOVERY_LINK_BASE_URL`
   binds `riviera.notification.booking-link.base-url` (one deployed origin; a second variable could
   only drift), never a `riviera.recovery.*` key, which is `auth`'s namespace.
@@ -1140,6 +1150,11 @@ is the trigger for asking the question, and the answer is always ownership.
   shared task executor, which no single module owns. It filters per row, never by `ResubmissionOptions`, which reads a batch of
   all failed rows before filtering and would starve one module behind another's backlog. Refund and
   mail listeners are never on it: they re-ask the gateway or re-send a mail (admin levers).
+- `SiteLocale`, the locales the SPA is built and served in (ADR-0030): `web` serves their shells
+  (`SpaLocale` keys off it), `booking` stores a guest's, `notification` writes mail in one, `auth` names
+  one for account mail. In `web`, `booking → web` would close `web → auth → notification → booking →
+  web`; in `notification`, `booking → notification` a cycle; `customer` would hold a type it neither
+  stores nor decides. A client value only selects a member (`fromCode`), never reaches a path raw.
 
 **Not my job:**
 - **Any business logic or module-owned state** → its owner: a change here ripples everywhere.

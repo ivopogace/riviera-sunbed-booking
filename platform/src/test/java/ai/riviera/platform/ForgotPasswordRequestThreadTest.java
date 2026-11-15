@@ -22,6 +22,7 @@ import ai.riviera.platform.customer.api.CustomerAccountDirectory;
 import ai.riviera.platform.customer.api.CustomerAccountRecovery;
 import ai.riviera.platform.customer.vocabulary.CustomerAccountId;
 import ai.riviera.platform.notification.api.MailSender;
+import ai.riviera.platform.shared.SiteLocale;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
@@ -71,7 +72,7 @@ class ForgotPasswordRequestThreadTest {
 		verify(directory).accountFor(KNOWN);
 		verifyNoMoreInteractions(directory);
 		verifyNoInteractions(tokenStore);
-		verify(mails).sendPasswordReset(eq(KNOWN), any());
+		verify(mails).sendPasswordReset(eq(KNOWN), eq(SiteLocale.EN), any());
 	}
 
 	@Test
@@ -107,7 +108,7 @@ class ForgotPasswordRequestThreadTest {
 		when(tokenStore.issuePasswordResetToken(eq(ACCOUNT), any(), any())).thenReturn(true);
 		forgot(KNOWN);
 		ArgumentCaptor<Supplier<Optional<URI>>> deferred = ArgumentCaptor.forClass(Supplier.class);
-		verify(mails).sendPasswordReset(eq(KNOWN), deferred.capture());
+		verify(mails).sendPasswordReset(eq(KNOWN), eq(SiteLocale.EN), deferred.capture());
 
 		assertThat(deferred.getValue().get()).isPresent();
 

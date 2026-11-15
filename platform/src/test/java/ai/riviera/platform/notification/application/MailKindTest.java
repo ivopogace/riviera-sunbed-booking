@@ -7,6 +7,7 @@ import java.util.List;
 import java.util.Optional;
 
 import ai.riviera.platform.monitoring.vocabulary.ObservabilityMetrics;
+import ai.riviera.platform.shared.SiteLocale;
 
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
@@ -82,14 +83,14 @@ class MailKindTest {
 		Mailer mailer = mock(Mailer.class);
 		EmailSuppressions suppressions = mock(EmailSuppressions.class);
 		when(suppressions.isSuppressed(any())).thenReturn(false);
-		doThrow(new IllegalStateException("relay down")).when(mailer).sendEmailVerification(any(), any());
-		doThrow(new IllegalStateException("relay down")).when(mailer).sendPasswordReset(any(), any());
+		doThrow(new IllegalStateException("relay down")).when(mailer).sendEmailVerification(any(), any(), any());
+		doThrow(new IllegalStateException("relay down")).when(mailer).sendPasswordReset(any(), any(), any());
 		doThrow(new IllegalStateException("relay down")).when(mailer).sendOperatorApproved(any(), any());
 
 		TransactionalMailService service =
 				new TransactionalMailService(mailer, (kind, send) -> send.run(), suppressions, meters);
-		service.sendEmailVerification(EMAIL, LINK);
-		service.sendPasswordReset(EMAIL, () -> Optional.of(LINK));
+		service.sendEmailVerification(EMAIL, SiteLocale.EN, LINK);
+		service.sendPasswordReset(EMAIL, SiteLocale.EN, () -> Optional.of(LINK));
 		service.sendOperatorApproved(EMAIL, LINK);
 	}
 

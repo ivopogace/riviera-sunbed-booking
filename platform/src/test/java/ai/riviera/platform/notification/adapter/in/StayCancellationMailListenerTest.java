@@ -29,6 +29,7 @@ import ai.riviera.platform.notification.application.MissingBookingFact;
 import ai.riviera.platform.notification.application.StayCancellationMailFacts;
 import ai.riviera.platform.notification.application.TransactionalMailService;
 import ai.riviera.platform.monitoring.vocabulary.ObservabilityMetrics;
+import ai.riviera.platform.shared.SiteLocale;
 import ai.riviera.platform.venue.vocabulary.SetId;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -54,7 +55,7 @@ class StayCancellationMailListenerTest {
 	private static final StayConfirmationFacts FACTS = new StayConfirmationFacts(STAY, CODE, new CustomerId(5L),
 			List.of(new StayConfirmationFacts.Stop(new BookingId(41L), new SetId(1L), LocalDate.of(2026, 8, 1),
 					LocalDate.of(2026, 8, 4))),
-			18000, "EUR", true, CancellationWindow.FREE, 0);
+			18000, "EUR", true, CancellationWindow.FREE, 0, SiteLocale.EN);
 	private static final BookingCancellationMail MAIL = new BookingCancellationMail(CODE, "Vala Beach",
 			LocalDate.of(2026, 8, 1), LocalDate.of(2026, 8, 4), 6750, "EUR", RefundReason.POLICY, null);
 
@@ -86,18 +87,18 @@ class StayCancellationMailListenerTest {
 	@Test
 	void mailsTheStayOnceWithTheEventsSummedRefund() {
 		when(facts.resolveStayCancellation(FACTS, 6750, "EUR", RefundReason.POLICY, false))
-				.thenReturn(new StayCancellationMailFacts.Resolved("guest@example.com", MAIL));
+				.thenReturn(new StayCancellationMailFacts.Resolved("guest@example.com", MAIL, SiteLocale.EN));
 
 		listener.on(EVENT);
 
-		verify(mails).sendBookingCancellation("guest@example.com", MAIL);
+		verify(mails).sendBookingCancellation("guest@example.com", SiteLocale.EN, MAIL);
 		assertThat(meters.find(ObservabilityMetrics.MAIL_CANCELLATION_ABANDONED).counters()).isEmpty();
 	}
 
 	@Test
 	void aGuestsOwnCancelNeverAsksWhetherARemodelEndedIt() {
 		when(facts.resolveStayCancellation(FACTS, 6750, "EUR", RefundReason.POLICY, false))
-				.thenReturn(new StayCancellationMailFacts.Resolved("guest@example.com", MAIL));
+				.thenReturn(new StayCancellationMailFacts.Resolved("guest@example.com", MAIL, SiteLocale.EN));
 
 		listener.on(EVENT);
 
@@ -110,11 +111,11 @@ class StayCancellationMailListenerTest {
 		StayCancelled released = new StayCancelled(STAY, 0, "EUR", RefundReason.VENUE_CHANGE);
 		when(bookings.endedByRemodel(new BookingId(41L))).thenReturn(true);
 		when(facts.resolveStayCancellation(FACTS, 0, "EUR", RefundReason.VENUE_CHANGE, true))
-				.thenReturn(new StayCancellationMailFacts.Resolved("guest@example.com", MAIL));
+				.thenReturn(new StayCancellationMailFacts.Resolved("guest@example.com", MAIL, SiteLocale.EN));
 
 		listener.on(released);
 
-		verify(mails).sendBookingCancellation("guest@example.com", MAIL);
+		verify(mails).sendBookingCancellation("guest@example.com", SiteLocale.EN, MAIL);
 	}
 
 	@Test
@@ -122,18 +123,18 @@ class StayCancellationMailListenerTest {
 		StayCancelled freeExit = new StayCancelled(STAY, 18000, "EUR", RefundReason.VENUE_CHANGE);
 		when(bookings.endedByRemodel(new BookingId(41L))).thenReturn(false);
 		when(facts.resolveStayCancellation(FACTS, 18000, "EUR", RefundReason.VENUE_CHANGE, false))
-				.thenReturn(new StayCancellationMailFacts.Resolved("guest@example.com", MAIL));
+				.thenReturn(new StayCancellationMailFacts.Resolved("guest@example.com", MAIL, SiteLocale.EN));
 
 		listener.on(freeExit);
 
-		verify(mails).sendBookingCancellation("guest@example.com", MAIL);
+		verify(mails).sendBookingCancellation("guest@example.com", SiteLocale.EN, MAIL);
 	}
 
 	@Test
 	void aTransportFailurePropagatesToKeepThePublicationOpen() {
 		when(facts.resolveStayCancellation(FACTS, 6750, "EUR", RefundReason.POLICY, false))
-				.thenReturn(new StayCancellationMailFacts.Resolved("guest@example.com", MAIL));
-		doThrow(new IllegalStateException("smtp down")).when(mails).sendBookingCancellation("guest@example.com", MAIL);
+				.thenReturn(new StayCancellationMailFacts.Resolved("guest@example.com", MAIL, SiteLocale.EN));
+		doThrow(new IllegalStateException("smtp down")).when(mails).sendBookingCancellation("guest@example.com", SiteLocale.EN, MAIL);
 
 		assertThatThrownBy(() -> listener.on(EVENT)).isInstanceOf(IllegalStateException.class);
 	}

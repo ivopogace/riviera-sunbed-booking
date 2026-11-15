@@ -135,7 +135,7 @@ class ReserveStayService {
 			String rowCode = inserted.code() + "-" + (++n);
 			OptionalLong bookingId = insert.apply(new NewBooking(rowCode, set.venueId(), set.setId(), customerId,
 					command.accountId(), stretch.firstDay(), stretch.lastDay(), amountMinor, set.price().currency(),
-					inserted.id()));
+					inserted.id(), command.locale()));
 			if (bookingId.isEmpty()) {
 				throw new IllegalStateException("a stretch's row code collided with an existing booking code");
 			}

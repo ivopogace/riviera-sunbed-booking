@@ -672,6 +672,9 @@
         <context-group purpose="location">
           <context context-type="sourcefile">src/app/core/operator-auth.ts</context>
         </context-group>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/core/operator-auth.ts</context>
+        </context-group>
       </trans-unit>
       <trans-unit id="883225603593837541" datatype="html">
         <source>Something went wrong. Please try again.</source>
@@ -2279,8 +2282,7 @@
       <trans-unit id="5016141727546780846" datatype="html">
         <source> If the new spot doesn’t suit you, cancel below for a full refund until <x id="START_TAG_STRONG" ctype="x-strong" equiv-text="&lt;strong&gt;"/><x id="DEADLINE" equiv-text="{{
                     deadlineLabel(until) // i18n(ph=&quot;deadline&quot;)
-                  }}"/><x id="CLOSE_TAG_STRONG" ctype="x-strong" equiv-text="&lt;/strong
-                  &gt;"/>. </source>
+                  }}"/><x id="CLOSE_TAG_STRONG" ctype="x-strong" equiv-text="&lt;/strong&gt;"/>. </source>
         <target state="translated"> Se il nuovo posto non ti va bene, annulla qui sotto per un rimborso completo entro <x id="START_TAG_STRONG" ctype="x-strong" equiv-text="&lt;strong&gt;"/><x id="DEADLINE" equiv-text="{{
                     deadlineLabel(until) // i18n(ph=&quot;deadline&quot;)
                   }}"/><x id="CLOSE_TAG_STRONG" ctype="x-strong" equiv-text="&lt;/strong
@@ -3207,8 +3209,7 @@
       <trans-unit id="7944873255471191867" datatype="html">
         <source>We’ll notify you by email as soon as the venue responds — expected by <x id="START_TAG_STRONG" ctype="x-strong" equiv-text="&lt;strong [class]=&quot;cls.strong&quot; data-testid=&quot;request-deadline&quot;&gt;"/><x id="DEADLINE" equiv-text="{{
                 deadline(r.requestExpiresAt) // i18n(ph=&quot;deadline&quot;)
-              }}"/><x id="CLOSE_TAG_STRONG" ctype="x-strong" equiv-text="&lt;/strong
-              &gt;"/>.</source>
+              }}"/><x id="CLOSE_TAG_STRONG" ctype="x-strong" equiv-text="&lt;/strong&gt;"/>.</source>
         <target state="translated">Ti avviseremo via e-mail appena lo stabilimento risponde — la risposta è prevista entro <x id="START_TAG_STRONG" ctype="x-strong" equiv-text="&lt;strong [class]=&quot;cls.strong&quot; data-testid=&quot;request-deadline&quot;&gt;"/><x id="DEADLINE" equiv-text="{{
                 deadline(r.requestExpiresAt) // i18n(ph=&quot;deadline&quot;)
               }}"/><x id="CLOSE_TAG_STRONG" ctype="x-strong" equiv-text="&lt;/strong
@@ -3539,7 +3540,7 @@
       </trans-unit>
       <trans-unit id="4670419021486064593" datatype="html">
         <source>Sign-in failed. Check your email and password.</source>
-        <target state="translated">Accesso non riuscito. Controlla e-mail e password.</target>
+        <target state="translated">Accesso non riuscito. Controlla email e password.</target>
         <context-group purpose="location">
           <context context-type="sourcefile">src/app/core/customer-auth.ts</context>
         </context-group>
@@ -3556,7 +3557,7 @@
       </trans-unit>
       <trans-unit id="1171538870085994397" datatype="html">
         <source>That email may already have an account. Try signing in instead.</source>
-        <target state="translated">Questa e-mail potrebbe avere già un account. Prova ad accedere.</target>
+        <target state="translated">Questa email potrebbe avere già un account. Prova invece ad accedere.</target>
         <context-group purpose="location">
           <context context-type="sourcefile">src/app/core/customer-auth.ts</context>
         </context-group>
@@ -3578,6 +3579,48 @@
       <trans-unit id="1611064856239509842" datatype="html">
         <source>Too many sign-in attempts. Please wait a minute and try again.</source>
         <target state="translated">Troppi tentativi di accesso. Attendi un minuto e riprova.</target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/core/operator-auth.ts</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="8319069617818186469" datatype="html">
+        <source>Your operator session has expired. Please sign in again.</source>
+        <target state="translated">La tua sessione da operatore è scaduta. Accedi di nuovo.</target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/core/operator-auth.ts</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="2179485637949354334" datatype="html">
+        <source>Your password has been changed. Any other devices signed in as you have been signed out.</source>
+        <target state="translated">La password è stata cambiata. Gli altri dispositivi collegati con il tuo account sono stati disconnessi.</target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/core/operator-auth.ts</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="5824197465046299846" datatype="html">
+        <source>That current password is incorrect.</source>
+        <target state="translated">La password attuale non è corretta.</target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/core/operator-auth.ts</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="7452922548911750795" datatype="html">
+        <source>This account&apos;s password is managed by the deployment environment and can&apos;t be changed here.</source>
+        <target state="translated">La password di questo account è gestita dall’ambiente di deployment e non può essere cambiata qui.</target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/core/operator-auth.ts</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="5922413046842549795" datatype="html">
+        <source>This account is not active. Contact a platform admin.</source>
+        <target state="translated">Questo account non è attivo. Contatta un amministratore della piattaforma.</target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/core/operator-auth.ts</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="540011916904356197" datatype="html">
+        <source>Something went wrong changing your password. Please try again.</source>
+        <target state="translated">Qualcosa è andato storto durante il cambio della password. Riprova.</target>
         <context-group purpose="location">
           <context context-type="sourcefile">src/app/core/operator-auth.ts</context>
         </context-group>
@@ -5578,8 +5621,7 @@
       <trans-unit id="4395544738741966748" datatype="html">
         <source> Move on <x id="START_TAG_STRONG" ctype="x-strong" equiv-text="&lt;strong class=&quot;text-riv-card-ink&quot;&gt;"/><x id="DAY" equiv-text="{{
                   move.day // i18n(ph=&quot;day&quot;)
-                }}"/><x id="CLOSE_TAG_STRONG" ctype="x-strong" equiv-text="&lt;/strong
-                &gt;"/>: <x id="DISTANCE" equiv-text="{{
+                }}"/><x id="CLOSE_TAG_STRONG" ctype="x-strong" equiv-text="&lt;/strong&gt;"/>: <x id="DISTANCE" equiv-text="{{
                   move.text // i18n(ph=&quot;distance&quot;)
                 }}"/> </source>
         <target state="translated"> Spostamento il <x id="START_TAG_STRONG" ctype="x-strong" equiv-text="&lt;strong class=&quot;text-riv-card-ink&quot;&gt;"/><x id="DAY" equiv-text="{{

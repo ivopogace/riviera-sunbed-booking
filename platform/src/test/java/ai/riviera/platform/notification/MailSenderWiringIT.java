@@ -24,6 +24,7 @@ import ai.riviera.platform.notification.application.Mailer;
 import ai.riviera.platform.notification.application.PaymentDueMail;
 import ai.riviera.platform.notification.application.RequestDeclinedMail;
 import ai.riviera.platform.notification.application.RequestExpiredMail;
+import ai.riviera.platform.shared.SiteLocale;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -65,7 +66,7 @@ class MailSenderWiringIT {
 	void theEdgeInjectedMailSenderDispatchesOffTheCallersThread() throws Exception {
 		String callerThread = Thread.currentThread().getName();
 
-		mailSender.sendPasswordReset("wiring-proof@example.com", () -> Optional.of(LINK));
+		mailSender.sendPasswordReset("wiring-proof@example.com", SiteLocale.EN, () -> Optional.of(LINK));
 
 		assertThat(transport.awaitSend(AWAIT_SECONDS))
 				.as("the send never reached the transport — the wiring is broken, not merely synchronous")
@@ -107,42 +108,42 @@ class MailSenderWiringIT {
 		}
 
 		@Override
-		public void sendPasswordReset(String toEmail, URI resetLink) {
+		public void sendPasswordReset(String toEmail, SiteLocale locale, URI resetLink) {
 			record();
 		}
 
 		@Override
-		public void sendEmailVerification(String toEmail, URI verificationLink) {
+		public void sendEmailVerification(String toEmail, SiteLocale locale, URI verificationLink) {
 			record();
 		}
 
 		@Override
-		public void sendBookingConfirmation(String toEmail, BookingConfirmationMail confirmation) {
+		public void sendBookingConfirmation(String toEmail, SiteLocale locale, BookingConfirmationMail confirmation) {
 			record();
 		}
 
 		@Override
-		public void sendStayConfirmation(String toEmail, StayConfirmationMail confirmation) {
+		public void sendStayConfirmation(String toEmail, SiteLocale locale, StayConfirmationMail confirmation) {
 			record();
 		}
 
 		@Override
-		public void sendBookingCancellation(String toEmail, BookingCancellationMail cancellation) {
+		public void sendBookingCancellation(String toEmail, SiteLocale locale, BookingCancellationMail cancellation) {
 			record();
 		}
 
 		@Override
-		public void sendPaymentDue(String toEmail, PaymentDueMail paymentDue) {
+		public void sendPaymentDue(String toEmail, SiteLocale locale, PaymentDueMail paymentDue) {
 			record();
 		}
 
 		@Override
-		public void sendRequestDeclined(String toEmail, RequestDeclinedMail declined) {
+		public void sendRequestDeclined(String toEmail, SiteLocale locale, RequestDeclinedMail declined) {
 			record();
 		}
 
 		@Override
-		public void sendRequestExpired(String toEmail, RequestExpiredMail expired) {
+		public void sendRequestExpired(String toEmail, SiteLocale locale, RequestExpiredMail expired) {
 			record();
 		}
 
@@ -152,18 +153,18 @@ class MailSenderWiringIT {
 		}
 
 		@Override
-		public void sendBookingMoved(String toEmail, ai.riviera.platform.notification.application.BookingMovedMail moved) {
+		public void sendBookingMoved(String toEmail, SiteLocale locale, ai.riviera.platform.notification.application.BookingMovedMail moved) {
 			record();
 		}
 
 		@Override
-		public void sendMoveReminder(String toEmail,
+		public void sendMoveReminder(String toEmail, SiteLocale locale,
 				ai.riviera.platform.notification.application.MoveReminderMail reminder) {
 			record();
 		}
 
 		@Override
-		public void sendDayRefund(String toEmail,
+		public void sendDayRefund(String toEmail, SiteLocale locale,
 				ai.riviera.platform.notification.application.DayRefundMail refund) {
 			record();
 		}

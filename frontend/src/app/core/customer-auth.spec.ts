@@ -453,4 +453,32 @@ describe('CustomerAuth', () => {
       .flush({}, { status: 500, statusText: 'Error' });
     expect(await errored).toBe('error');
   });
+
+  describe('in a translated build (ADR-0030)', () => {
+    const localize = () => (globalThis as unknown as { $localize: { locale?: string } }).$localize;
+
+    beforeEach(() => (localize().locale = 'it'));
+    afterEach(() => (localize().locale = undefined));
+
+    it('sends the build locale with register, forgot-password and the verification resend', async () => {
+      const auth = await create({ principalType: 'CUSTOMER' });
+
+      void auth.register('new@example.com', 'password123');
+      void auth.forgotPassword('new@example.com');
+      void auth.requestVerification();
+
+      expect(http.expectOne(`${AUTH_API}/customer/register`).request.body).toEqual({
+        email: 'new@example.com',
+        password: 'password123',
+        locale: 'it',
+      });
+      expect(http.expectOne(`${AUTH_API}/customer/forgot-password`).request.body).toEqual({
+        email: 'new@example.com',
+        locale: 'it',
+      });
+      expect(http.expectOne(`${ME_API}/verify-email/request`).request.body).toEqual({
+        locale: 'it',
+      });
+    });
+  });
 });
