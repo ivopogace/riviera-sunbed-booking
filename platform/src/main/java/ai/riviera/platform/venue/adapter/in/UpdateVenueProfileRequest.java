@@ -38,16 +38,11 @@ record UpdateVenueProfileRequest(String name, String beach, String description,
 				.collect(Collectors.toUnmodifiableSet());
 		return new VenueProfileCommand(name, BeachCode.parse(beach), description, bookingMode,
 				parseCutoff(bookingCutoff), parseSalesClose(salesClose), parsed, distanceToWaterM,
-				parseLocation(location), maxStayDays, parsePhone(phone));
+				parseLocation(location), maxStayDays, VenuePhone.parseOrNone(phone));
 	}
 
 	private static VenueLocation parseLocation(LocationBody body) {
 		return body == null ? null : new VenueLocation(body.latitude(), body.longitude());
-	}
-
-	/** Blank is no phone, as an emptied console field sends it. */
-	private static VenuePhone parsePhone(String raw) {
-		return raw == null || raw.isBlank() ? null : VenuePhone.parse(raw);
 	}
 
 	private static Amenity parseCode(String code) {

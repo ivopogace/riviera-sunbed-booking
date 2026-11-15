@@ -28,10 +28,19 @@ public record VenuePhone(String e164) {
 
 	/** The number as typed, in international form ({@code +} or {@code 00} first), normalised to E.164. */
 	public static VenuePhone parse(String typed) {
-		String compact = typed == null ? "" : NUMBER_PUNCTUATION.matcher(typed).replaceAll("");
+		String compact = compact(typed);
 		if (compact.startsWith(INTERNATIONAL_PREFIX)) {
 			compact = "+" + compact.substring(INTERNATIONAL_PREFIX.length());
 		}
 		return new VenuePhone(compact);
+	}
+
+	/** {@link #parse}, but {@code null} for no phone: absent, or only the spaces the console trims as blank. */
+	public static VenuePhone parseOrNone(String typed) {
+		return compact(typed).isEmpty() ? null : parse(typed);
+	}
+
+	private static String compact(String typed) {
+		return typed == null ? "" : NUMBER_PUNCTUATION.matcher(typed).replaceAll("");
 	}
 }

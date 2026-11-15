@@ -5,6 +5,7 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 /**
@@ -29,10 +30,23 @@ class VenuePhoneTest {
 
 	/** A number pasted from a web page carries Unicode spaces the console's JavaScript {@code \s} strips. */
 	@ParameterizedTest
-	@ValueSource(strings = { "+355 69 123 4567", "+355 69 123 4567", "+355 69 1234567",
-			"﻿+355691234567", "+355　69　1234567" })
+	@ValueSource(strings = { "+355\u00a069\u00a0123\u00a04567", "+355\u202f69\u202f123\u202f4567", "+355\u200969\u20091234567",
+			"\ufeff+355691234567", "+355\u300069\u30001234567" })
 	void unicodeSpacesAreStrippedAsTheConsoleStripsThem(String typed) {
 		assertEquals("+355691234567", VenuePhone.parse(typed).e164());
+	}
+
+	@ParameterizedTest
+	@ValueSource(strings = { "", "   ", "\u00a0\u00a0", "\u202f" })
+	void aValueOfSpacesAloneIsNoPhone(String typed) {
+		assertNull(VenuePhone.parseOrNone(typed));
+	}
+
+	@Test
+	void parseOrNoneParsesAnythingElse() {
+		assertNull(VenuePhone.parseOrNone(null));
+		assertEquals("+355691234567", VenuePhone.parseOrNone("00355 69 123 4567").e164());
+		assertThrows(IllegalArgumentException.class, () -> VenuePhone.parseOrNone("069 123 4567"));
 	}
 
 	@Test
