@@ -17,33 +17,33 @@ behalf from best-practice research).
 
 ## Acceptance criteria
 
-- [ ] **AC-1:** Given a configured hash, when a scraper presents the matching token, then prometheus
+- [x] **AC-1:** Given a configured hash, when a scraper presents the matching token, then prometheus
   answers 200 with the scrape body and health answers with `components`. *Seam:* `GET /actuator/prometheus`,
   `GET /actuator/health` · *Pinned by:* `ActuatorHardeningIT.aValidScrapeTokenReadsPrometheus`,
   `…aValidScrapeTokenSeesHealthDetails`
-- [ ] **AC-2:** Given overlap rotation (current and next hash both set), when either token is presented,
+- [x] **AC-2:** Given overlap rotation (current and next hash both set), when either token is presented,
   then both are accepted. *Seam:* `ScrapeCredentials.authenticate` + the route · *Pinned by:*
   `ScrapeTokenVerifierTest`, `ActuatorHardeningIT.bothRotationTokensAreAccepted`
-- [ ] **AC-3:** Given a wrong token, a malformed bearer header or no hash configured, when it is presented
+- [x] **AC-3:** Given a wrong token, a malformed bearer header or no hash configured, when it is presented
   on any actuator path, then 401 `UNAUTHENTICATED` and a WARN log line naming method and path, never the
   token. A missing header on prometheus is 401 (anonymous). *Seam:* the route; `ScrapeCredentials` ·
   *Pinned by:* `ActuatorHardeningIT.aWrongScrapeToken…`, `ScrapeTokenVerifierTest.noHashConfigured…`,
   `ScrapeTokenFilterTest`
-- [ ] **AC-4:** Given a valid token, when it is presented on `/api/admin/**`, on `/actuator/env` (or another
+- [x] **AC-4:** Given a valid token, when it is presented on `/api/admin/**`, on `/actuator/env` (or another
   denied actuator path), or with a `POST`, then 401 or 403: the token has no meaning outside the
   actuator chain, and `ROLE_METRICS` reaches no write. *Pinned by:*
   `ActuatorHardeningIT.theScrapeTokenReachesNothingElse`
-- [ ] **AC-5:** Given an admin session, when it requests prometheus or health, then prometheus is denied
+- [x] **AC-5:** Given an admin session, when it requests prometheus or health, then prometheus is denied
   and health shows no details: the actuator chain reads no session (least privilege). *Pinned by:*
   `ActuatorHardeningIT.anAdminSessionNoLongerScrapes`, `…healthHidesDetailsFromAnAdminSession`
-- [ ] **AC-6:** Anonymous `GET /actuator/health` (status only) and `GET /actuator/info` (commit id alone)
+- [x] **AC-6:** Anonymous `GET /actuator/health` (status only) and `GET /actuator/info` (commit id alone)
   are unchanged, and no actuator response sets a cookie. *Pinned by:* the existing IT cases +
   `…actuatorResponsesSetNoCookie`
-- [ ] **AC-7:** The token never appears in logs, on accept or reject. *Pinned by:*
+- [x] **AC-7:** The token never appears in logs, on accept or reject. *Pinned by:*
   `ActuatorHardeningIT.theScrapeTokenNeverReachesTheLog` (`OutputCaptureExtension`)
-- [ ] **AC-8:** A configured hash that is not 64 hex characters fails the boot naming the key, never
+- [x] **AC-8:** A configured hash that is not 64 hex characters fails the boot naming the key, never
   echoing the value. *Pinned by:* `ScrapeTokenPropertiesBindingTest`
-- [ ] **AC-9:** The structural net is green.
+- [x] **AC-9:** The structural net is green.
 
 ## Non-goals
 
@@ -101,14 +101,14 @@ behalf from best-practice research).
 
 ## Execution status
 
-**Stage pointer:** implement (phase 0)
+**Stage pointer:** PR #1800 — CI, then ready for review
 
-**Next action:** write `ScrapeTokenVerifierTest`.
+**Next action:** CI green on the docs push → merge origin/main → mark ready → review gate (high).
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — verifier | ⏳ | |
-| 1 — the chain | | |
-| 2 — docs | | |
+| 0 — verifier | ✅ | 083324fa |
+| 1 — the chain | ✅ | 1710ba5d |
+| 2 — docs | ✅ | (this push) |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.

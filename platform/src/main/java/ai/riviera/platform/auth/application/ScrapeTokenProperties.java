@@ -11,7 +11,7 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 /**
  * The SHA-256 (hex) of the metrics scraper's token, in two slots so a rotation can overlap (ADR-0032); the
  * token itself is never configured here. Unset, every scrape is refused. Minting and rotation:
- * {@code docs/runbooks/observability.md}.
+ * {@code docs/runbooks/metrics-scrape-token.md}.
  */
 @ConfigurationProperties(ScrapeTokenProperties.PREFIX)
 public record ScrapeTokenProperties(String scrapeTokenSha256, String scrapeTokenSha256Next) {
