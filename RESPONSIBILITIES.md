@@ -848,6 +848,13 @@ SHA-256 digest, never the token, one live per operator: an issue retires the ear
 a reinstatement revives nothing. Issue and redemption lock the operator row first, the order a suspend takes, so a
 redemption never writes over a suspended account. Unknown, expired, used and retired tokens are one answer.
 
+**I keep each operator's linked Google/Apple sign-ins, link-only** (#276, `OperatorSsoLinks`): a row is written
+only for a signed-in operator the edge has seen prove its password, never by a sign-in, so an unknown identity
+creates nothing. The key is the OIDC issuer and subject, never an email (OIDC Core §5.7). One identity, one
+operator; one link per issuer per operator; one `Conflict` for both, naming no other account. A link locks the
+operator row while it may operate, the row a suspend locks. A suspension keeps the links; a reset redemption
+deletes them all in its transaction; an unlink refuses the operator's last credential (`LastCredential`).
+
 **Not My Job:**
 - Tourist identity → **`customer`**; venue data → **`venue`**; bookings, payment, payout → theirs
 - *Performing* the ownership check → each venue-scoped **application service**, by asking me
@@ -1282,6 +1289,17 @@ opaque hash through their `api`; no Spring Security, Spring Session or mail type
   (`RecoveryTokens`, the reset TTL) and answers it once on `POST /api/admin/operators/{id}/reset-link`, the bootstrap
   admin refused (its hash is env-managed); the anonymous `POST /api/auth/operator/reset-password` revokes before and
   after `operator`'s write. The same-origin SPA builds the link: the mail origin defaults to `localhost` off `mailer`.
+- **Operator SSO is link-only, and the callback acts only on its session-held round trip** (#276;
+  `auth-signin-register.md` D-9). Both audiences return to one callback per provider; `SsoFlow` finds the
+  `SsoAuthorization` (audience, intent, PKCE verifier, nonce, linking operator) by `state` and dispatches on it,
+  never on the URL. A sign-in resolves `operator::api` then applies the may-authenticate set before any session:
+  unknown, unlinked, `SUSPENDED` and `REJECTED` share one redirect. A link needs the current password and, at the
+  callback, the same principal with a current stamp. Unlink revokes every other session before and after.
+- **On a mock-IdP boot (`demo`), a linked operator is reachable by anyone** (#276): `MockSsoGateway` signs every
+  visitor in as one canned identity per provider, so whoever presses "Continue with Google" on the operator tab gets
+  the operator that linked it. While `SsoGateway#cooperative` is true, an admin may neither link
+  (`409 ADMIN_LINK_REFUSED_ON_MOCK_IDP`) nor sign in by SSO (the unknown answer), so the approval surface stays
+  password-only; a non-admin's linked console is open to the internet, so a demo holds demo data only.
 - **Both erasure paths revoke before and after `customer`'s scrub** (ADR-0010; not atomic, as above).
   Self-service names the principal from its session. The admin path names it by the canonical form of
   the submitted email (`customer.vocabulary.Emails`), which every customer principal carries, so no
@@ -1424,11 +1442,11 @@ mutating `/api/admin/**` action, §`audit`) live in `web`; `challenge` and `audi
   before the controller; it decodes the identity in the charset the controller binds with, so
   neither size, framing nor encoding lets a login skip the per-identity budget (#1288). Forgot-password stays
   non-enumerating (D-8): a refusal precedes the account lookup, identical for every address.
-- **One throttle budget per account, across login and password change (#364):** the per-IP budgets are volume
+- **One throttle budget per account, across login, password change and SSO link start (#364, #276):** the per-IP budgets are volume
   control; the account's (`riviera.ratelimit.username`, `IdentityBuckets`) is keyed on the submitted identity at login
-  and on the session's principal at `POST /api/auth/operator/password` and `/api/me/password`, by
-  `PrincipalRateLimitFilter` after `AuthorizationFilter`, so a CSRF-less, anonymous or wrong-role request never spends
-  it. A change spends first and is refunded on a 2xx; `/api/me/verify-email/request` charges every resend on a map of
+  and on the session's principal at `POST /api/auth/operator/password`, `/api/me/password` and the operator SSO link
+  start (#276), by `PrincipalRateLimitFilter` after `AuthorizationFilter`, so a CSRF-less, anonymous or wrong-role
+  request never spends it. A change spends first and is refunded on a 2xx; `/api/me/verify-email/request` charges every resend on a map of
   its own (mail volume). Accepted cost: a session thief can lock the owner's sign-in for one refill period, as a
   username-holder already can through the login (NIST SP 800-63B-4 §3.2.2; OWASP Authentication Cheat Sheet).
 - **Forgot-password is constant-time by doing the same work on both branches (#1336):** the request
@@ -1636,7 +1654,7 @@ them form the *structural net* is `riviera-modulith` § *The structural net*'s c
 | `payout` is the only writer (and direct reader) of `platform_setting` — ADR-0021 | `ResponsibilitiesArchitectureTests` (sole-writer scan) |
 | `booking` is the only writer (and direct reader) of `booking_day` | `ResponsibilitiesArchitectureTests` (sole-writer scan) |
 | `booking` is the only writer (and direct reader) of `stay` — ADR-0024 | `ResponsibilitiesArchitectureTests` (SQL-shaped scan: the bare word is in prose and in `max_stay_days`) |
-| Every table in `CLAUDE.md`'s "Sole writer of" column, plus `challenge_registry` and `admin_audit_record`, is written only by its owner: `venue`, `set_position`, `venue_amenity`, `venue_photo`, `venue_photo_variant`, `venue_commission_rate`, `set_availability`, `booking`, `stay`, `booking_day`, `remodel_receipt`, `remodel_receipt_move`, `remodel_receipt_outcome`, `remodel_receipt_kept`, `payment`, `payment_booking`, `payment_refund`, `payment_webhook_event`, `payout_ledger_entry`, `payout_batch`, `platform_setting`, `customer`, `customer_account`, `customer_sso_identity`, `customer_account_token`, `operator`, `operator_venue`, `operator_password_reset_token`, `review`, `email_suppression`, `booking_confirmation_mail_attempt` | `ResponsibilitiesArchitectureTests` (table-ownership map: a SQL-shaped `INSERT INTO`/`UPDATE … SET`/`DELETE FROM`/`MERGE INTO`/`TRUNCATE` per `CONSTANT_String`; the map must cover every table the migrations leave (create, drop and rename walked in Flyway version order) bar the framework tables, and every owner must write its tables) |
+| Every table in `CLAUDE.md`'s "Sole writer of" column, plus `challenge_registry` and `admin_audit_record`, is written only by its owner: `venue`, `set_position`, `venue_amenity`, `venue_photo`, `venue_photo_variant`, `venue_commission_rate`, `set_availability`, `booking`, `stay`, `booking_day`, `remodel_receipt`, `remodel_receipt_move`, `remodel_receipt_outcome`, `remodel_receipt_kept`, `payment`, `payment_booking`, `payment_refund`, `payment_webhook_event`, `payout_ledger_entry`, `payout_batch`, `platform_setting`, `customer`, `customer_account`, `customer_sso_identity`, `customer_account_token`, `operator`, `operator_venue`, `operator_password_reset_token`, `operator_sso_identity`, `review`, `email_suppression`, `booking_confirmation_mail_attempt` | `ResponsibilitiesArchitectureTests` (table-ownership map: a SQL-shaped `INSERT INTO`/`UPDATE … SET`/`DELETE FROM`/`MERGE INTO`/`TRUNCATE` per `CONSTANT_String`; the map must cover every table the migrations leave (create, drop and rename walked in Flyway version order) bar the framework tables, and every owner must write its tables) |
 | No class inside a module depends on a type directly in `ai.riviera.platform` — ADR-0017 | `CompositionRootDisciplineTests` (module→root rule; `allowedDependencies` cannot see it) |
 | The root reaches no module: it holds only the application and its configuration (ADR-0028 Decision 1) | `CompositionRootDisciplineTests` (root→module rule) |
 | `payment` uses no Stripe **Connect** API (collect-only, ADR-0002) | `NoStripeConnectArchitectureTest` |

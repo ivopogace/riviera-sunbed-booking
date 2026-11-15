@@ -11,14 +11,14 @@ import ai.riviera.platform.auth.application.SsoAuthorizationChallenge;
 import ai.riviera.platform.auth.application.SsoGateway;
 import ai.riviera.platform.auth.application.SsoProviders;
 import ai.riviera.platform.customer.vocabulary.SsoProvider;
+import ai.riviera.platform.shared.InvalidApiRequestException;
 
 /**
- * Mock {@link SsoGateway} under {@code @Profile("!sso")}, so exactly one gateway bean exists: this,
- * or {@code RealSsoGateway} under {@code sso}; {@code MockSsoProdGuard} refuses it without {@code demo}.
- * A cooperative IdP with canned, verified identities (design D-4), like {@code StubPaymentGateway},
- * so "Continue with Google/Apple" demos with no external credentials: {@link #authorizationRequest}
- * sends the browser to {@code MockSsoIdpController}, which redirects to the real callback.
- * Identities are fixed per provider, so a repeat sign-in reuses its account. Package-private (#11).
+ * Mock {@link SsoGateway} under {@code @Profile("!sso")} ({@code RealSsoGateway} under {@code sso};
+ * {@code MockSsoProdGuard} refuses it without {@code demo}): a cooperative IdP with one canned, verified identity per
+ * provider (design D-4), the same whichever audience asks, as one Google account may be a tourist and an operator.
+ * {@code MockSsoIdpController} echoes the nonce inside its code ({@link #mockCode}), the stand-in for the ID token's
+ * {@code nonce} claim, which {@link #exchangeCode} checks. Package-private (#11).
  */
 @Component
 @Profile("!sso")
@@ -27,28 +27,41 @@ class MockSsoGateway implements SsoGateway {
 	/** Path the mock IdP serves; {@code MockSsoIdpController} handles it. */
 	static final String MOCK_IDP_PATH = "/api/auth/sso/mock/{provider}/authorize";
 	static final String STATE_PARAM = "state";
+	static final String NONCE_PARAM = "nonce";
 	static final String REDIRECT_URI_PARAM = "redirect_uri";
+
+	/** The code the mock IdP issues for {@code provider}, carrying the authorize request's {@code nonce}. */
+	static String mockCode(SsoProvider provider, String nonce) {
+		return "mock-" + SsoProviders.slug(provider) + "." + nonce;
+	}
 
 	@Override
 	public URI authorizationRequest(SsoProvider provider, SsoAuthorizationChallenge challenge, URI redirectUri) {
-		// Point at the in-app mock IdP on the same host as the callback (which the edge built from the
-		// request), carrying the state to echo and the callback to return to — the real redirect dance.
 		return UriComponentsBuilder.fromUri(redirectUri)
 				.replacePath(MOCK_IDP_PATH.replace("{provider}", SsoProviders.slug(provider)))
 				.replaceQuery(null)
 				.queryParam(STATE_PARAM, challenge.state())
+				.queryParam(NONCE_PARAM, challenge.nonce())
 				.queryParam(REDIRECT_URI_PARAM, redirectUri.toString())
 				.build()
 				.toUri();
 	}
 
 	@Override
-	public ExternalIdentity exchangeCode(SsoProvider provider, String code, String codeVerifier, URI redirectUri) {
-		// A cooperative mock: the code/verifier plumbing is exercised by the flow, but the mock returns the
-		// provider's canned verified identity rather than calling a real token endpoint.
+	public boolean cooperative() {
+		return true;
+	}
+
+	@Override
+	public ExternalIdentity exchangeCode(SsoProvider provider, String code, String codeVerifier, String expectedNonce,
+			URI redirectUri) {
+		if (!mockCode(provider, expectedNonce).equals(code)) {
+			throw new InvalidApiRequestException("SSO nonce mismatch");
+		}
+		String issuer = SsoProviders.issuer(provider);
 		return switch (provider) {
-			case GOOGLE -> new ExternalIdentity(SsoProvider.GOOGLE, "google-mock-subject-001", "google.tourist@example.com");
-			case APPLE -> new ExternalIdentity(SsoProvider.APPLE, "apple-mock-subject-001", "apple.tourist@example.com");
+			case GOOGLE -> new ExternalIdentity(provider, issuer, "google-mock-subject-001", "google.tourist@example.com");
+			case APPLE -> new ExternalIdentity(provider, issuer, "apple-mock-subject-001", "apple.tourist@example.com");
 		};
 	}
 }

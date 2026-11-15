@@ -10,8 +10,13 @@ import org.springframework.mock.web.MockFilterChain;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.mock.web.MockHttpServletResponse;
 import org.springframework.security.authentication.AnonymousAuthenticationToken;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.authority.AuthorityUtils;
 import org.springframework.security.core.context.SecurityContextHolder;
+
+import jakarta.servlet.http.HttpServlet;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -48,6 +53,40 @@ class PrincipalRateLimitFilterTest {
 
 			assertNotNull(chain.getRequest(), "the request reaches the chain");
 			assertEquals(200, response.getStatus());
+		}
+	}
+
+	/** The SSO link start verifies the operator's password, so a failed one spends the account's token (#276). */
+	@Test
+	void anOperatorSsoLinkStartSharesTheAccountBudgetWithThePasswordChange() throws Exception {
+		SecurityContextHolder.getContext().setAuthentication(UsernamePasswordAuthenticationToken.authenticated(
+				"sso-budget-op", null, AuthorityUtils.createAuthorityList("ROLE_OPERATOR")));
+		MockFilterChain refused = new MockFilterChain(new HttpServlet() {
+			@Override
+			protected void service(HttpServletRequest req, HttpServletResponse res) {
+				res.setStatus(400);
+			}
+		});
+		filter.doFilter(new MockHttpServletRequest("POST", "/api/auth/operator/sso/google/link"),
+				new MockHttpServletResponse(), refused);
+
+		MockHttpServletResponse change = new MockHttpServletResponse();
+		filter.doFilter(new MockHttpServletRequest("POST", "/api/auth/operator/password"), change,
+				new MockFilterChain());
+
+		assertEquals(429, change.getStatus(), "the failed link start spent the account's one token");
+	}
+
+	@Test
+	void aSuccessfulOperatorSsoLinkStartIsRefunded() throws Exception {
+		SecurityContextHolder.getContext().setAuthentication(UsernamePasswordAuthenticationToken.authenticated(
+				"sso-refund-op", null, AuthorityUtils.createAuthorityList("ROLE_OPERATOR")));
+		for (int i = 0; i < 3; i++) {
+			MockHttpServletResponse response = new MockHttpServletResponse();
+			filter.doFilter(new MockHttpServletRequest("POST", "/api/auth/operator/sso/apple/link"), response,
+					new MockFilterChain());
+
+			assertEquals(200, response.getStatus(), "a 2xx link start gives its token back");
 		}
 	}
 

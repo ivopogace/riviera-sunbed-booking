@@ -34,6 +34,7 @@ describe('OperatorPassword a11y (#326)', () => {
             restoring: signal(false),
             username: signal('adriatica'),
             changePassword: vi.fn(() => Promise.resolve(result)),
+            signInMethods: vi.fn(() => Promise.resolve([])),
           },
         },
       ],

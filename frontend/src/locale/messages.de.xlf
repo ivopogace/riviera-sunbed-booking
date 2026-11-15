@@ -3564,6 +3564,9 @@
         <context-group purpose="location">
           <context context-type="sourcefile">src/app/core/operator-auth.ts</context>
         </context-group>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/core/operator-auth.ts</context>
+        </context-group>
       </trans-unit>
       <trans-unit id="883225603593837541" datatype="html">
         <source>Something went wrong. Please try again.</source>
@@ -3613,6 +3616,9 @@
         <target state="translated">Aktuelles Passwort</target>
         <context-group purpose="location">
           <context context-type="sourcefile">src/app/auth/operator-password.ts</context>
+        </context-group>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/auth/operator-sign-in-methods.ts</context>
         </context-group>
         <context-group purpose="location">
           <context context-type="sourcefile">src/app/auth/set-password.ts</context>
@@ -3682,6 +3688,99 @@
         </context-group>
         <context-group purpose="location">
           <context context-type="sourcefile">src/app/operator/operator-account-chip.ts</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="7449000061608046498" datatype="html">
+        <source>Sign-in methods</source>
+        <target state="translated">Anmeldemethoden</target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/auth/operator-sign-in-methods.ts</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="2975224942647416785" datatype="html">
+        <source> Link Google or Apple to sign in without your password. Linking asks for your current password. </source>
+        <target state="translated">Verknüpfen Sie Google oder Apple, um sich ohne Passwort anzumelden. Für die Verknüpfung brauchen Sie Ihr aktuelles Passwort.</target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/auth/operator-sign-in-methods.ts</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="3099882906994173432" datatype="html">
+        <source>Linked</source>
+        <target state="translated">Verknüpft</target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/auth/operator-sign-in-methods.ts</context>
+        </context-group>
+        <note priority="1" from="description">Sign-in method status</note>
+      </trans-unit>
+      <trans-unit id="8977342037560990412" datatype="html">
+        <source>Not linked</source>
+        <target state="translated">Nicht verknüpft</target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/auth/operator-sign-in-methods.ts</context>
+        </context-group>
+        <note priority="1" from="description">Sign-in method status</note>
+      </trans-unit>
+      <trans-unit id="2168439131987654539" datatype="html">
+        <source>Link Google</source>
+        <target state="translated">Google verknüpfen</target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/auth/operator-sign-in-methods.ts</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="6587214556250748903" datatype="html">
+        <source>Unlink Google</source>
+        <target state="translated">Google trennen</target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/auth/operator-sign-in-methods.ts</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="8303001215070913909" datatype="html">
+        <source>Link Apple</source>
+        <target state="translated">Apple verknüpfen</target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/auth/operator-sign-in-methods.ts</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="7914864870907389461" datatype="html">
+        <source>Unlink Apple</source>
+        <target state="translated">Apple trennen</target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/auth/operator-sign-in-methods.ts</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="2888383122472655196" datatype="html">
+        <source>Linked. You can now sign in with it on the operator tab.</source>
+        <target state="translated">Verknüpft. Sie können sich jetzt im Betreiber-Tab damit anmelden.</target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/auth/operator-sign-in-methods.ts</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="7795110419238139636" datatype="html">
+        <source>That account couldn&apos;t be linked. It may already be linked to another operator account, or your session changed. Please try again.</source>
+        <target state="translated">Das Konto konnte nicht verknüpft werden. Es ist möglicherweise bereits mit einem anderen Betreiberkonto verknüpft, oder Ihre Sitzung hat sich geändert. Bitte versuchen Sie es erneut.</target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/auth/operator-sign-in-methods.ts</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="1813852118349246153" datatype="html">
+        <source>Unlinked. Any other devices signed in as you have been signed out.</source>
+        <target state="translated">Getrennt. Alle anderen Geräte, auf denen Sie angemeldet waren, wurden abgemeldet.</target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/auth/operator-sign-in-methods.ts</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="457937405678415606" datatype="html">
+        <source>This is the only way left to sign in, so it can&apos;t be unlinked.</source>
+        <target state="translated">Das ist die einzige verbliebene Anmeldemöglichkeit, daher kann sie nicht getrennt werden.</target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/auth/operator-sign-in-methods.ts</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="354904398574437110" datatype="html">
+        <source>Something went wrong unlinking. Please try again.</source>
+        <target state="translated">Beim Trennen ist etwas schiefgelaufen. Bitte versuchen Sie es erneut.</target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/auth/operator-sign-in-methods.ts</context>
         </context-group>
       </trans-unit>
       <trans-unit id="4129080604379805008" datatype="html">
@@ -6866,6 +6965,13 @@
           <context context-type="sourcefile">src/app/core/operator-auth.ts</context>
         </context-group>
       </trans-unit>
+      <trans-unit id="8192845211158518947" datatype="html">
+        <source>That Google or Apple account isn&apos;t linked to an operator account that can sign in. Sign in with your password, then link it under Change password.</source>
+        <target state="translated">Dieses Google- oder Apple-Konto ist mit keinem Betreiberkonto verknüpft, das sich anmelden darf. Melden Sie sich mit Ihrem Passwort an und verknüpfen Sie es dann unter Passwort ändern.</target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/core/operator-auth.ts</context>
+        </context-group>
+      </trans-unit>
       <trans-unit id="8319069617818186469" datatype="html">
         <source>Your operator session has expired. Please sign in again.</source>
         <target state="translated">Ihre Betreiber-Sitzung ist abgelaufen. Bitte melden Sie sich erneut an.</target>
@@ -6876,16 +6982,40 @@
           <context context-type="sourcefile">src/app/operator/venue-create-card.ts</context>
         </context-group>
       </trans-unit>
-      <trans-unit id="2179485637949354334" datatype="html">
-        <source>Your password has been changed. Any other devices signed in as you have been signed out.</source>
-        <target state="translated">Ihr Passwort wurde geändert. Alle anderen Geräte, auf denen Sie angemeldet waren, wurden abgemeldet.</target>
+      <trans-unit id="5824197465046299846" datatype="html">
+        <source>That current password is incorrect.</source>
+        <target state="translated">Das aktuelle Passwort ist falsch.</target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/core/operator-auth.ts</context>
+        </context-group>
         <context-group purpose="location">
           <context context-type="sourcefile">src/app/core/operator-auth.ts</context>
         </context-group>
       </trans-unit>
-      <trans-unit id="5824197465046299846" datatype="html">
-        <source>That current password is incorrect.</source>
-        <target state="translated">Das aktuelle Passwort ist falsch.</target>
+      <trans-unit id="8537625083514772201" datatype="html">
+        <source>This account&apos;s sign-in is managed by the deployment environment and can&apos;t be linked.</source>
+        <target state="translated">Die Anmeldung dieses Kontos wird von der Bereitstellungsumgebung verwaltet und kann nicht verknüpft werden.</target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/core/operator-auth.ts</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="1561735562994782290" datatype="html">
+        <source>Admin accounts can&apos;t link Google or Apple here: on this demo, anyone can use that sign-in.</source>
+        <target state="translated">Admin-Konten können Google oder Apple hier nicht verknüpfen: In dieser Demo kann jeder diese Anmeldung nutzen.</target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/core/operator-auth.ts</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="1866654339087324158" datatype="html">
+        <source>Something went wrong starting the link. Please try again.</source>
+        <target state="translated">Beim Starten der Verknüpfung ist etwas schiefgelaufen. Bitte versuchen Sie es erneut.</target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/core/operator-auth.ts</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="2179485637949354334" datatype="html">
+        <source>Your password has been changed. Any other devices signed in as you have been signed out.</source>
+        <target state="translated">Ihr Passwort wurde geändert. Alle anderen Geräte, auf denen Sie angemeldet waren, wurden abgemeldet.</target>
         <context-group purpose="location">
           <context context-type="sourcefile">src/app/core/operator-auth.ts</context>
         </context-group>

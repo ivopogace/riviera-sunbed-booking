@@ -20,9 +20,11 @@ import ai.riviera.platform.operator.vocabulary.ResetLinkOutcome;
 class OperatorPasswordResetService implements OperatorPasswordReset {
 
 	private final OperatorResetTokens tokens;
+	private final OperatorSsoIdentities ssoIdentities;
 
-	OperatorPasswordResetService(OperatorResetTokens tokens) {
+	OperatorPasswordResetService(OperatorResetTokens tokens, OperatorSsoIdentities ssoIdentities) {
 		this.tokens = tokens;
+		this.ssoIdentities = ssoIdentities;
 	}
 
 	@Override
@@ -52,6 +54,7 @@ class OperatorPasswordResetService implements OperatorPasswordReset {
 			return new OperatorResetOutcome.InvalidOrExpired();
 		}
 		tokens.storePassword(owner.get(), passwordHash);
+		ssoIdentities.deleteAll(owner.get());
 		return new OperatorResetOutcome.Reset(username.get());
 	}
 }

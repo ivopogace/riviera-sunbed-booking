@@ -1,5 +1,5 @@
 import { HttpErrorResponse } from '@angular/common/http';
-import { computed, inject, Service } from '@angular/core';
+import { computed, inject, Injector, Service } from '@angular/core';
 import { catchError, firstValueFrom, from, of, timeout } from 'rxjs';
 
 import {
@@ -19,9 +19,11 @@ import {
   CURRENT_PASSWORD_REQUIRED_MESSAGE,
   ResetPasswordResult,
   resetPasswordFailure,
+  SsoProviderId,
 } from './customer-auth';
 import { ConsoleVenueMap } from './console-venue-map';
 import { OwnedVenues } from './owned-venues';
+import { PageNavigation } from './page-navigation';
 import {
   AUTH_API,
   AuthPrincipal,
@@ -66,6 +68,29 @@ export type OperatorPasswordChangeResult =
   | 'session-lost'
   | 'error';
 
+/** One linked Google/Apple sign-in of the signed-in operator (`GET /api/auth/operator/sso`). */
+export interface OperatorSignInMethod {
+  readonly provider: SsoProviderId;
+  readonly linkedAt: string;
+}
+
+/**
+ * How starting a link ended. `started` = the browser is leaving for the provider; the round trip returns to
+ * the password page with `?sso=linked` or `?sso=link-failed`. The two password `400`s are told apart by code.
+ */
+export type OperatorLinkStartResult =
+  | 'started'
+  | 'missing-current'
+  | 'invalid-current'
+  | 'bootstrap-managed'
+  | 'admin-on-demo'
+  | 'rate-limited'
+  | 'session-lost'
+  | 'error';
+
+/** How an unlink ended; `last-credential` is the server keeping the one way left to sign in. */
+export type OperatorUnlinkResult = 'unlinked' | 'last-credential' | 'session-lost' | 'error';
+
 /**
  * Shown when the current password is left empty — client-side, or on the server's own
  * `MISSING_CURRENT_PASSWORD` code (never folded into a policy violation's message). Aliases the
@@ -90,6 +115,12 @@ export function signInFailureMessage(result: SignInResult): string | undefined {
       return $localize`Something went wrong signing in. Please try again.`;
   }
 }
+
+/**
+ * The operator tab's notice after a Google/Apple sign-in the backend refused (`?sso=failed`): one wording for an
+ * unlinked identity and an account that may not sign in (D-8), pointing at the console's link step.
+ */
+export const OPERATOR_SSO_FAILED_MESSAGE = $localize`That Google or Apple account isn't linked to an operator account that can sign in. Sign in with your password, then link it under Change password.`;
 
 /**
  * The operator-facing notice when the session has expired mid-action (a `401` on a console call).
@@ -126,6 +157,8 @@ export class OperatorAuth extends SessionAuth {
 
   private readonly ownedVenues = inject(OwnedVenues);
   private readonly venueMap = inject(ConsoleVenueMap);
+  /** Resolved on use: only the SSO starts leave the page, so a spec of anything else provides no seam. */
+  private readonly injector = inject(Injector);
 
   /**
    * Sign out, then drop the per-session caches: the next operator to sign in on this device would
@@ -243,6 +276,59 @@ export class OperatorAuth extends SessionAuth {
   }
 
   /**
+   * Sign in with a linked Google/Apple identity: a full-page navigation to the operator authorize endpoint.
+   * The backend lands on `/operator` with a session, or on the operator tab with `?sso=failed` (D-8).
+   */
+  startSso(provider: SsoProviderId): void {
+    this.injector.get(PageNavigation).leaveTo(`${AUTH_API}/operator/sso/${provider}/authorize`);
+  }
+
+  /** This operator's linked sign-ins; empty on any failure, so the section still offers every provider. */
+  async signInMethods(): Promise<readonly OperatorSignInMethod[]> {
+    try {
+      return await firstValueFrom(
+        this.http.get<OperatorSignInMethod[]>(`${AUTH_API}/operator/sso`),
+      );
+    } catch {
+      return [];
+    }
+  }
+
+  /** Prove the current password, then leave for the provider to complete the link (ASVS 7.5.1). */
+  async startLink(
+    provider: SsoProviderId,
+    currentPassword: string,
+  ): Promise<OperatorLinkStartResult> {
+    try {
+      const start = await firstValueFrom(
+        this.http.post<{ authorizeUrl: string }>(`${AUTH_API}/operator/sso/${provider}/link`, {
+          currentPassword,
+        }),
+      );
+      this.injector.get(PageNavigation).leaveTo(start.authorizeUrl);
+      return 'started';
+    } catch (error) {
+      return linkStartFailure(error);
+    }
+  }
+
+  /** Remove a linked sign-in; the server signs every other device out. */
+  async unlink(provider: SsoProviderId): Promise<OperatorUnlinkResult> {
+    try {
+      await firstValueFrom(this.http.delete<void>(`${AUTH_API}/operator/sso/${provider}`));
+      return 'unlinked';
+    } catch (error) {
+      if (error instanceof HttpErrorResponse && error.status === 401) {
+        return 'session-lost';
+      }
+      if (error instanceof HttpErrorResponse && error.status === 409) {
+        return 'last-credential';
+      }
+      return 'error';
+    }
+  }
+
+  /**
    * Redeem an admin-issued reset link (`/account/operator-reset?token=…`). Anonymous: success ends every
    * session of that operator server-side, so the page sends them to sign in fresh.
    */
@@ -255,6 +341,52 @@ export class OperatorAuth extends SessionAuth {
     } catch (error) {
       return resetPasswordFailure(error);
     }
+  }
+}
+
+function linkStartFailure(error: unknown): OperatorLinkStartResult {
+  if (!(error instanceof HttpErrorResponse)) {
+    return 'error';
+  }
+  if (error.status === 429) {
+    return 'rate-limited';
+  }
+  if (error.status === 401) {
+    return 'session-lost';
+  }
+  switch ((error.error as { code?: string } | null)?.code) {
+    case 'MISSING_CURRENT_PASSWORD':
+      return 'missing-current';
+    case 'INVALID_CURRENT_PASSWORD':
+      return 'invalid-current';
+    case 'BOOTSTRAP_CREDENTIAL_MANAGED':
+      return 'bootstrap-managed';
+    case 'ADMIN_LINK_REFUSED_ON_MOCK_IDP':
+      return 'admin-on-demo';
+    default:
+      return 'error';
+  }
+}
+
+/** The operator-facing message for a link start that did not leave for the provider. */
+export function operatorLinkStartMessage(result: OperatorLinkStartResult): string | undefined {
+  switch (result) {
+    case 'started':
+      return undefined;
+    case 'missing-current':
+      return OPERATOR_CURRENT_PASSWORD_REQUIRED_MESSAGE;
+    case 'invalid-current':
+      return $localize`That current password is incorrect.`;
+    case 'bootstrap-managed':
+      return $localize`This account's sign-in is managed by the deployment environment and can't be linked.`;
+    case 'admin-on-demo':
+      return $localize`Admin accounts can't link Google or Apple here: on this demo, anyone can use that sign-in.`;
+    case 'rate-limited':
+      return $localize`Too many attempts. Please wait a minute and try again.`;
+    case 'session-lost':
+      return SESSION_EXPIRED_MESSAGE;
+    case 'error':
+      return $localize`Something went wrong starting the link. Please try again.`;
   }
 }
 

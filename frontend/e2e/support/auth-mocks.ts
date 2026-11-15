@@ -58,11 +58,18 @@ export async function mockAuthApi(
      * `RIVIERA_OPERATOR_PASSWORD` — its change attempts answer `409 BOOTSTRAP_CREDENTIAL_MANAGED`.
      */
     readonly envManaged?: boolean;
+    /**
+     * Mocks operator SSO (#276) on this origin: a password-proven link start, the IdP round trip collapsed
+     * into one 302 back to the password page, the sign-in authorize (a linked provider signs in, any other
+     * lands on the operator tab's `?sso=failed`), the linked list and unlink.
+     */
+    readonly ssoBaseURL?: string;
   },
 ): Promise<void> {
   const username = options.username ?? 'operator';
   let password = options.validPassword;
   let signedIn = false;
+  const linked = new Set<string>();
 
   await page.route(/\/api\/auth\/me$/, (route) =>
     signedIn
@@ -120,6 +127,53 @@ export async function mockAuthApi(
 
   await page.route(/\/api\/auth\/logout$/, (route) => {
     signedIn = false;
+    return route.fulfill({ status: 204 });
+  });
+
+  const base = options.ssoBaseURL;
+  if (!base) {
+    return;
+  }
+  await page.route(/\/api\/auth\/operator\/sso\/(google|apple)\/link$/, (route) => {
+    if (!signedIn) {
+      return route.fulfill(problem(401, 'Unauthorized', 'UNAUTHENTICATED'));
+    }
+    if (options.envManaged) {
+      return route.fulfill(problem(409, 'Conflict', 'BOOTSTRAP_CREDENTIAL_MANAGED'));
+    }
+    const body = route.request().postDataJSON() as { currentPassword?: string };
+    if (!body.currentPassword) {
+      return route.fulfill(problem(400, 'Bad Request', 'MISSING_CURRENT_PASSWORD'));
+    }
+    if (body.currentPassword !== password) {
+      return route.fulfill(problem(400, 'Bad Request', 'INVALID_CURRENT_PASSWORD'));
+    }
+    const provider = /sso\/(google|apple)\/link/.exec(route.request().url())![1];
+    return route.fulfill({ json: { authorizeUrl: `${base}/mock-idp/${provider}/link` } });
+  });
+  // The provider's consent screen and the callback, collapsed: the backend links, then 302s to the page.
+  await page.route(/\/mock-idp\/(google|apple)\/link$/, (route) => {
+    linked.add(/mock-idp\/(google|apple)/.exec(route.request().url())![1]);
+    return route.fulfill({
+      status: 302,
+      headers: { location: `${base}/account/operator-password?sso=linked` },
+    });
+  });
+  await page.route(/\/api\/auth\/operator\/sso\/(google|apple)\/authorize$/, (route) => {
+    const provider = /sso\/(google|apple)\/authorize/.exec(route.request().url())![1];
+    signedIn = linked.has(provider);
+    const location = signedIn ? '/operator' : '/account/sign-in?audience=operator&sso=failed';
+    return route.fulfill({ status: 302, headers: { location: `${base}${location}` } });
+  });
+  await page.route(/\/api\/auth\/operator\/sso$/, (route) =>
+    signedIn
+      ? route.fulfill({
+          json: [...linked].map((provider) => ({ provider, linkedAt: '2026-06-15T10:00:00Z' })),
+        })
+      : route.fulfill(problem(401, 'Unauthorized', 'UNAUTHENTICATED')),
+  );
+  await page.route(/\/api\/auth\/operator\/sso\/(google|apple)$/, (route) => {
+    linked.delete(/sso\/(google|apple)$/.exec(route.request().url())![1]);
     return route.fulfill({ status: 204 });
   });
 }

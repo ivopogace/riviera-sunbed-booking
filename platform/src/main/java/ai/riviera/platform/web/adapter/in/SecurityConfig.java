@@ -278,6 +278,12 @@ public class SecurityConfig {
 	 * itself; GETs are never CSRF-challenged, so the {@code state} nonce is the callback's forgery defence.
 	 */
 	private static final String SSO_PATHS = "/api/auth/sso/**";
+	/** Operator SSO sign-in's authorize (#276): anonymous, like the customer's; one {@code provider} segment. */
+	private static final String OPERATOR_SSO_AUTHORIZE_PATH = "/api/auth/operator/sso/*/authorize";
+	/** The signed-in operator's sign-in methods: link (proves the password), list, unlink. Operator-only. */
+	private static final String OPERATOR_SSO_LINK_PATH = "/api/auth/operator/sso/*/link";
+	private static final String OPERATOR_SSO_PATH = "/api/auth/operator/sso";
+	private static final String OPERATOR_SSO_ITEM_PATH = "/api/auth/operator/sso/*";
 	/** The session logout; handled by the framework {@code LogoutFilter}, not a controller. */
 	private static final String LOGOUT_PATH = "/api/auth/logout";
 
@@ -364,6 +370,10 @@ public class SecurityConfig {
 						.requestMatchers(HttpMethod.POST, FORGOT_PASSWORD_PATH, RESET_PASSWORD_PATH,
 								VERIFY_EMAIL_PATH, OPERATOR_RESET_PASSWORD_PATH).permitAll()
 						.requestMatchers(HttpMethod.GET, SSO_PATHS).permitAll()
+						.requestMatchers(HttpMethod.GET, OPERATOR_SSO_AUTHORIZE_PATH).permitAll()
+						.requestMatchers(HttpMethod.POST, OPERATOR_SSO_LINK_PATH).hasRole(OPERATOR_ROLE)
+						.requestMatchers(HttpMethod.GET, OPERATOR_SSO_PATH).hasRole(OPERATOR_ROLE)
+						.requestMatchers(HttpMethod.DELETE, OPERATOR_SSO_ITEM_PATH).hasRole(OPERATOR_ROLE)
 						// Order-sensitive: booking codes are bearer credentials (invariant #7).
 						.requestMatchers(HttpMethod.GET, STAFF_BOOKINGS_PATH, STAFF_BOOKINGS_COUNT_PATH).hasRole(OPERATOR_ROLE)
 						.requestMatchers(HttpMethod.POST, BOOKING_CHECK_IN_PATH).hasRole(OPERATOR_ROLE)

@@ -8,6 +8,7 @@ import org.junit.jupiter.api.Test;
 import ai.riviera.platform.auth.application.SsoAuthorizationChallenge;
 import ai.riviera.platform.customer.vocabulary.SsoProvider;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
@@ -19,7 +20,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 class RealSsoGatewayTest {
 
 	private static final URI CALLBACK = URI.create("https://app.example/api/auth/sso/google/callback");
-	private static final SsoAuthorizationChallenge CHALLENGE = new SsoAuthorizationChallenge("state", "challenge");
+	private static final SsoAuthorizationChallenge CHALLENGE = new SsoAuthorizationChallenge("state", "challenge", "nonce");
 
 	@Test
 	void googleAndAppleAdaptersThrowUnsupportedUntilCredentialsShip() {
@@ -28,19 +29,24 @@ class RealSsoGatewayTest {
 
 		assertThatThrownBy(() -> google.authorizationRequest(CHALLENGE, CALLBACK))
 				.isInstanceOf(UnsupportedOperationException.class);
-		assertThatThrownBy(() -> google.exchangeCode("code", "verifier", CALLBACK))
+		assertThatThrownBy(() -> google.exchangeCode("code", "verifier", "nonce", CALLBACK))
 				.isInstanceOf(UnsupportedOperationException.class);
 		assertThatThrownBy(() -> apple.authorizationRequest(CHALLENGE, CALLBACK))
 				.isInstanceOf(UnsupportedOperationException.class);
-		assertThatThrownBy(() -> apple.exchangeCode("code", "verifier", CALLBACK))
+		assertThatThrownBy(() -> apple.exchangeCode("code", "verifier", "nonce", CALLBACK))
 				.isInstanceOf(UnsupportedOperationException.class);
+	}
+
+	@Test
+	void theRealGatewayIsNotCooperative() {
+		assertThat(new RealSsoGateway(List.of(new GoogleSsoGateway(), new AppleSsoGateway())).cooperative()).isFalse();
 	}
 
 	@Test
 	void realGatewayDispatchesToTheProviderAdapterWithNoMockFallback() {
 		RealSsoGateway gateway = new RealSsoGateway(List.of(new GoogleSsoGateway(), new AppleSsoGateway()));
 
-		assertThatThrownBy(() -> gateway.exchangeCode(SsoProvider.GOOGLE, "code", "verifier", CALLBACK))
+		assertThatThrownBy(() -> gateway.exchangeCode(SsoProvider.GOOGLE, "code", "verifier", "nonce", CALLBACK))
 				.isInstanceOf(UnsupportedOperationException.class);
 		assertThatThrownBy(() -> gateway.authorizationRequest(SsoProvider.APPLE, CHALLENGE, CALLBACK))
 				.isInstanceOf(UnsupportedOperationException.class);

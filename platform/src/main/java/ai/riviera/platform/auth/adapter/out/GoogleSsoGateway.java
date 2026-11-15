@@ -32,7 +32,7 @@ class GoogleSsoGateway implements SsoProviderClient {
 	}
 
 	@Override
-	public ExternalIdentity exchangeCode(String code, String codeVerifier, URI redirectUri) {
+	public ExternalIdentity exchangeCode(String code, String codeVerifier, String expectedNonce, URI redirectUri) {
 		throw new UnsupportedOperationException(NOT_IMPLEMENTED);
 	}
 }

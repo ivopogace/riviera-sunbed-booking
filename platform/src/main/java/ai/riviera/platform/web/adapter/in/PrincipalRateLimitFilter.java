@@ -11,6 +11,7 @@ import org.springframework.http.HttpStatusCode;
 import org.springframework.security.authentication.AnonymousAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.util.AntPathMatcher;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import jakarta.servlet.FilterChain;
@@ -21,8 +22,9 @@ import jakarta.servlet.http.HttpServletResponse;
 /**
  * The per-principal budget on the authenticated credential endpoints (#364), keyed on the session's principal, so
  * one account attacked from many addresses gets one budget. After {@code AuthorizationFilter}: a request denied
- * before it (CSRF, anonymous, wrong role) never arrives, so spends nothing. A password change spends
- * {@link IdentityBuckets}' account token, refunded on a 2xx; a verification resend spends one on its own map, always.
+ * before it (CSRF, anonymous, wrong role) never arrives, so spends nothing. A password change, or an operator's SSO
+ * link start (it verifies the password, #276), spends {@link IdentityBuckets}' account token, refunded on a 2xx; a
+ * verification resend spends one on its own map, always.
  * {@link RateLimitFilter}'s per-IP budgets stay as volume control. The name is a hashed key only, never logged (D-8).
  */
 final class PrincipalRateLimitFilter extends OncePerRequestFilter {
@@ -33,6 +35,10 @@ final class PrincipalRateLimitFilter extends OncePerRequestFilter {
 	private static final String OPERATOR_PASSWORD_PATH = RateLimitFilter.OPERATOR_PASSWORD_PATH;
 	private static final String CUSTOMER_PASSWORD_PATH = RateLimitFilter.CUSTOMER_PASSWORD_PATH;
 	private static final String VERIFICATION_RESEND_PATH = RateLimitFilter.VERIFICATION_RESEND_PATH;
+	private static final String OPERATOR_SSO_PATH_PREFIX = RateLimitFilter.OPERATOR_SSO_PATH_PREFIX;
+	private static final String OPERATOR_SSO_LINK_TEMPLATE = RateLimitFilter.OPERATOR_SSO_LINK_TEMPLATE;
+
+	private final AntPathMatcher paths = new AntPathMatcher();
 
 	private final RateLimitProperties props;
 	private final Clock clock;
@@ -53,7 +59,12 @@ final class PrincipalRateLimitFilter extends OncePerRequestFilter {
 		}
 		String path = RequestPaths.withinApplication(request);
 		return !(OPERATOR_PASSWORD_PATH.equals(path) || CUSTOMER_PASSWORD_PATH.equals(path)
-				|| VERIFICATION_RESEND_PATH.equals(path));
+				|| VERIFICATION_RESEND_PATH.equals(path) || isOperatorSsoLink(path));
+	}
+
+	/** The prefix check keeps the matcher off every other POST (booking create, the webhooks). */
+	private boolean isOperatorSsoLink(String path) {
+		return path.startsWith(OPERATOR_SSO_PATH_PREFIX) && paths.match(OPERATOR_SSO_LINK_TEMPLATE, path);
 	}
 
 	@Override
@@ -77,7 +88,8 @@ final class PrincipalRateLimitFilter extends OncePerRequestFilter {
 			}
 			return;
 		}
-		String key = OPERATOR_PASSWORD_PATH.equals(path) ? identities.operatorKey(name) : identities.customerKey(name);
+		String key = OPERATOR_PASSWORD_PATH.equals(path) || isOperatorSsoLink(path) ? identities.operatorKey(name)
+				: identities.customerKey(name);
 		TokenBucket bucket = identities.bucketFor(key, now);
 		if (!bucket.tryAcquire(now)) {
 			reject(response, bucket, now, path);

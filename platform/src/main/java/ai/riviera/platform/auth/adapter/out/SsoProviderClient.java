@@ -24,5 +24,5 @@ interface SsoProviderClient {
 	URI authorizationRequest(SsoAuthorizationChallenge challenge, URI redirectUri);
 
 	/** Exchange the code (+ PKCE verifier) for a verified identity (see {@link SsoGateway#exchangeCode}). */
-	ExternalIdentity exchangeCode(String code, String codeVerifier, URI redirectUri);
+	ExternalIdentity exchangeCode(String code, String codeVerifier, String expectedNonce, URI redirectUri);
 }

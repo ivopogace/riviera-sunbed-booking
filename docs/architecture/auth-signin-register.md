@@ -159,8 +159,8 @@ encoder (`{bcrypt}`).
 
 **One throttle budget per account** (#364): on top of the per-IP budgets, an account's failures
 share one bucket (`riviera.ratelimit.username`) whether they arrive as logins (keyed on the
-submitted username or normalised email) or as self-service password changes (keyed on the
-session's principal, by a second filter after authorization). So a stolen session dialling from
+submitted username or normalised email) or as self-service password changes and operator SSO link
+starts (keyed on the session's principal, by a second filter after authorization). So a stolen session dialling from
 many addresses gets the account's budget, not one per address. Bucket keys are salted SHA-256,
 and a rejection logs the `principal` dimension, never the name. The verification resend charges
 every request on its own map. Sources: NIST SP 800-63B-4 §3.2.2, the OWASP Authentication Cheat
@@ -192,6 +192,36 @@ no third party, no cookie — verified at the edge against a Postgres registry (
 `RESPONSIBILITIES.md` § *Platform edge*, § `challenge`). Login keeps the per-identity throttle and gets no challenge;
 an adaptive "challenge once the bucket runs low" is the recorded phase-two shape.
 
+### D-9: Operator SSO is link-only (#276)
+
+An operator signs in with Google or Apple only through an identity it linked while signed in. This lifts
+the epic's "OAuth for the operator side" non-goal on narrower terms than the customer side, because an
+operator account is a username principal approved by an admin, not an email-keyed identity:
+
+- **No SSO registration.** It would need an invented username (the revocation principal) and would take
+  Apple's private-relay address as `contact_email`. A new operator still registers with the form (D-5).
+- **The link key is the OIDC issuer and subject** (`operator_sso_identity`, V87; `sub` is unique only per
+  issuer, OIDC Core §5.7). There is no email column and no linking by email match, ever: an email match is
+  the pre-hijacking vector (Sudhodanan & Paverd, USENIX Security 2022; ASVS 5.0 6.8.1).
+- **Linking proves the current password** (ASVS 7.5.1), and the callback re-checks that the session still
+  holds the same operator with a current credential stamp. The env-managed bootstrap admin may not link.
+  An identity linked to another operator is one generic link failure. One Google account may be both a
+  customer and an operator: the two link tables are separate.
+- **Sign-in** resolves the link, then applies the may-authenticate set before any session; an unknown
+  identity, `SUSPENDED` and `REJECTED` all get one redirect and no session (D-8). The session carries the
+  username principal and credential stamp a password sign-in carries, so suspend and the stamp check end
+  it unchanged. A suspension keeps the links; redeeming an admin-issued reset deletes them; unlinking ends
+  every other session and is refused for the last credential.
+- **One callback per provider for both audiences**, dispatching only on a session-held round-trip record
+  found by `state` (provider, audience, intent, PKCE verifier, OIDC nonce, linking operator), never on URL
+  input, so a state minted for one audience can never complete as the other (ASVS 10.5).
+- **On a mock-IdP boot, linking is a demo property.** The mock signs every visitor in as one canned
+  identity, so a linked operator is reachable by anyone. While the gateway is cooperative (the mock), an
+  admin may neither link nor sign in by SSO; a non-admin's linked console is open, so such a boot holds demo
+  data only.
+- **Not yet:** a mail telling the operator a sign-in method was linked (`contact_email` is unverified and
+  the mailer is not live; ASVS 6.3.7 is level 3).
+
 ## Slices
 
 All eight slices of epic #108 shipped: session-auth foundation (S1), customer register + sign-in
@@ -214,5 +244,5 @@ prerequisite: the adapters throw until credentials are provisioned.
 ## Explicit non-goals (this epic)
 
 - Real Google/Apple credentials — external provisioning, a ready-for-human prerequisite.
-- MFA, account lockout policies, OAuth for the operator side, native-app auth.
+- MFA, account lockout policies, native-app auth. (OAuth for the operator side: link-only since #276, D-9.)
 - Any change to guest checkout or the booking-code flow.

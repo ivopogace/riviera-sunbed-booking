@@ -94,7 +94,7 @@ aggregate-root classes: `domain/` holds rules, state is in tables, lifecycles ar
 | `payment` | Stripe collection, PaymentIntents (one may collect for several bookings), per-booking refunds by scope (the whole share, or one day), webhooks | `payment`, `payment_booking`, `payment_refund`, `payment_webhook_event` |
 | `payout` | venue payout ledger, manual BKT batches, platform settings (venue-change fee) | `payout_ledger_entry`, `payout_batch`, `platform_setting` |
 | `customer` | guest contact, customer account (sign-in, SSO, verification, password), GDPR erasure + retention sweep, canonical email form | `customer`, `customer_account`, `customer_sso_identity`, `customer_account_token` |
-| `operator` | operator accounts, operator↔venue ownership (#13), admin lifecycle + `is_admin`, admin-issued reset tokens, tourist-visibility answer | `operator`, `operator_venue`, `operator_password_reset_token` |
+| `operator` | operator accounts, operator↔venue ownership (#13), admin lifecycle + `is_admin`, admin-issued reset tokens, linked SSO sign-ins, tourist-visibility answer | `operator`, `operator_venue`, `operator_password_reset_token`, `operator_sso_identity` |
 | `review` | one review per booking, eligibility + window, aggregate rating, admin takedown, erasure tombstone; a leaf (ADR-0015) | `review` |
 | `notification` | transactional mail, hashed suppression list + its TEM bounce/complaint feed, delivery log + admin resend, the emailed-link origin rule, the support-contact channels | `email_suppression`, `booking_confirmation_mail_attempt` |
 | `itinerary` | the stay read model (D7/D11): the whole-coast verdict per venue for a span (same set · fits with N moves · can't host), served on `GET /api/venues`; the per-venue stitched plan on `GET /api/venues/{id}/itinerary`; the move budget `riviera.itinerary.max-switches` | nothing — a read model over `venue::api` + `availability::api` |
@@ -118,8 +118,8 @@ Every module may depend on `shared`, which depends on no module. The root holds 
 **Collaboration:** events for state changes, `api/` ports for queries. Synchronous, state-changing
 ports: the availability claim (walked per day by `booking`'s `SpanClaim`), payment collection /
 refund / void (`payment::api`), erasure's reach into reviews, the remodel gate + claim settlement,
-the reserve's guest-row find-or-create (`customer::api`), onboarding's owner assignment
-(`operator::api`).
+the reserve's guest-row find-or-create (`customer::api`), onboarding's owner assignment and the SSO
+link (`operator::api`).
 Events:
 `PaymentConfirmed`/`PaymentCanceled` → `booking`; `BookingConfirmed` → `payout`, `notification`;
 `BookingCancelled` → those two plus `booking`'s own refund + intent-void listeners;

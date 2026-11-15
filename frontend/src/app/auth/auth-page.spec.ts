@@ -11,7 +11,7 @@ import { BehaviorSubject } from 'rxjs';
 import { vi } from 'vitest';
 
 import { CustomerAuth } from '../core/customer-auth';
-import { OperatorAuth } from '../core/operator-auth';
+import { OPERATOR_SSO_FAILED_MESSAGE, OperatorAuth } from '../core/operator-auth';
 import { OwnedVenues, OwnedVenuesResult } from '../core/owned-venues';
 import { ProofOfWork } from '../core/proof-of-work';
 import { defineFakeAltchaElement, FakeAltchaElement } from '../../testing/fake-altcha-element';
@@ -347,6 +347,15 @@ describe('AuthPage', () => {
       await submit();
 
       expect(el('auth-error').textContent).toContain('Too many sign-in attempts.');
+    });
+
+    it('says a refused operator Google/Apple sign-in on the operator tab only (#276)', async () => {
+      await render({ audience: 'operator', sso: 'failed' });
+
+      expect(el('auth-error').textContent?.trim()).toBe(OPERATOR_SSO_FAILED_MESSAGE);
+
+      await chooseAudience('audience-tourist');
+      expect(el('auth-error')).toBeNull();
     });
 
     it('gates on non-empty before calling the backend', async () => {
@@ -791,12 +800,12 @@ describe('AuthPage', () => {
   });
 
   describe('SSO', () => {
-    it('offers SSO to tourists and hides it from operators until #276', async () => {
+    it('offers SSO on both tabs: an operator signs in with an identity it linked (#276)', async () => {
       await render();
       expect(el('sso-google')).not.toBeNull();
 
       await chooseAudience('audience-operator');
-      expect(el('sso-google')).toBeNull();
+      expect(el('sso-google')).not.toBeNull();
     });
   });
 

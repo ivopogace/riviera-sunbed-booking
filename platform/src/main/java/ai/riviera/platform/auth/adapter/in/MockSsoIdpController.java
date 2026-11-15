@@ -21,23 +21,24 @@ import jakarta.servlet.http.HttpServletRequest;
 /**
  * The in-app mock identity provider, only under {@code @Profile("!sso")} and refused in a boot without
  * {@code demo} by {@code MockSsoProdGuard}. Plays the IdP's authorize step: the browser arrives from
- * {@code MockSsoGateway#authorizationRequest} and is 302-redirected straight back to the real
- * callback with a canned {@code code} and the echoed {@code state}, so the full dance is demoable.
+ * {@code MockSsoGateway#authorizationRequest} and is 302-redirected straight back to the real callback with a
+ * canned {@code code} carrying the {@code nonce}, and the echoed {@code state}, so the full dance is demoable.
  * The supplied {@code redirect_uri} must be our own callback on the same host, so this can never be
- * an open redirect (defence-in-depth even though non-prod). Package-private (invariant #11).
+ * an open redirect (defence-in-depth, though only a {@code demo} boot serves it). Package-private (invariant #11).
  */
 @RestController
 @Profile("!sso")
 class MockSsoIdpController {
 
 	private static final String CALLBACK_PATH_TEMPLATE = "/api/auth/sso/%s/callback";
-	private static final String MOCK_CODE_PREFIX = "mock-";
 	private static final String CODE_PARAM = "code";
 	private static final String STATE_PARAM = "state";
+	private static final String NONCE_PARAM = "nonce";
 
 	@GetMapping("/api/auth/sso/mock/{provider}/authorize")
 	ResponseEntity<Void> authorize(@PathVariable String provider,
 			@RequestParam(STATE_PARAM) String state,
+			@RequestParam(NONCE_PARAM) String nonce,
 			@RequestParam("redirect_uri") URI redirectUri,
 			HttpServletRequest request) {
 		SsoProvider parsed = SsoProviders.parse(provider);
@@ -53,7 +54,7 @@ class MockSsoIdpController {
 		requireMatchesOwnCallback(redirectUri, ownCallback);
 
 		URI location = UriComponentsBuilder.fromUri(ownCallback)
-				.queryParam(CODE_PARAM, MOCK_CODE_PREFIX + SsoProviders.slug(parsed))
+				.queryParam(CODE_PARAM, "mock-" + SsoProviders.slug(parsed) + "." + nonce)
 				.queryParam(STATE_PARAM, state)
 				.build()
 				.toUri();
