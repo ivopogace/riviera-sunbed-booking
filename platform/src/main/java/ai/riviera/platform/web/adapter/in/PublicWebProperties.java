@@ -11,10 +11,10 @@ import org.springframework.boot.context.properties.bind.DefaultValue;
 
 /**
  * The public face of the deployment from {@code riviera.web.*}: {@code publicOrigin} is the origin every absolute
- * URL a crawler sees is built on, never the request's {@code Host}; a blank key means none is configured (deployed,
- * {@code RIVIERA_PUBLIC_ORIGIN} is unset for that: blank, the emailed-link keys abort the boot). A set value must
- * be a bare {@code https} origin, or {@code http} on a loopback host (the mail links' local run), or the boot aborts.
- * {@code robots.disallowAll} shuts every crawler out of a non-production deployment. Operator guide:
+ * URL a crawler sees is built on, never the request's {@code Host}; a blank key means none is configured, which a
+ * deployment gets by leaving {@code RIVIERA_PUBLIC_ORIGIN} unset (blank aborts the boot via the mail keys). A set
+ * value must be a bare {@code https} origin, or {@code http} on a loopback host (the mail links' local run), or the
+ * boot aborts. {@code robots.disallowAll} shuts every crawler out of a non-production deployment. Operator guide:
  * {@code docs/deploy/cd-pipeline.md}.
  */
 @ConfigurationProperties("riviera.web")
