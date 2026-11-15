@@ -53,7 +53,7 @@ anonymous (`401` on a gated route).
   since layer 2 answers before a missing handler could `404`.
 - **Layer 2 — `SecurityConfig`'s actuator chain, fail closed:** an `@Order(0)` chain owns `/actuator/**`
   (only the first matching chain runs), stateless, with no session read or created and CSRF ignored because
-  it honours no ambient credential. `GET /actuator/health/**` and `GET /actuator/info` are public,
+  it honours no ambient credential. `GET`/`HEAD /actuator/health/**` and `GET /actuator/info` are public,
   `GET /actuator/prometheus` is `hasRole(METRICS)`, and everything else is `denyAll()`: anonymous `401`
   (the entry point, with `WWW-Authenticate: Bearer`), the scrape token `403`. An endpoint added to the
   allowlist stays unreachable until it gets its own rule above the `denyAll()`.

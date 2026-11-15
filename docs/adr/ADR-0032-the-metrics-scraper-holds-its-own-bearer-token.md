@@ -60,7 +60,7 @@ running a settlement are different clients, with different lifetimes and revocat
 ## Consequences
 
 - The anonymous actuator surface is unchanged: Render's health check and the CD commit poll keep working with no
-  credential. Health's anonymous rule is now `GET` only, like info's.
+  credential. Health's anonymous rule is now `GET` and `HEAD` only; a write to it is denied like any other.
 - An admin can no longer read prometheus or health's details from the console session. Nothing does today.
 - The token is a bearer credential. Anyone holding it can read platform-wide metrics (refund and outbox signals,
   per-URI traffic), but nothing else. It lives only in the scraper's secret store and never in the repo. It

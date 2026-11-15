@@ -300,6 +300,7 @@ public class SecurityConfig {
 				.authorizeHttpRequests(auth -> auth
 						// Render's health check and the CD poll; details need ROLE_METRICS (management.endpoint.health.roles).
 						.requestMatchers(HttpMethod.GET, "/actuator/health/**").permitAll()
+						.requestMatchers(HttpMethod.HEAD, "/actuator/health/**").permitAll()
 						// The build's commit id only (BuildCommitInfoContributor); the CD poll reads it (#1632).
 						.requestMatchers(HttpMethod.GET, "/actuator/info").permitAll()
 						.requestMatchers(HttpMethod.GET, "/actuator/prometheus").hasRole(METRICS_ROLE)
