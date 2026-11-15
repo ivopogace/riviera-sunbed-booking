@@ -10,7 +10,7 @@ import ai.riviera.platform.notification.vocabulary.EmailedLinkOrigin;
 /**
  * Account-recovery tunables from {@code riviera.recovery.*}. The reset TTL (default 1h) stays shorter than the
  * verification TTL (24h): a leaked reset link is account takeover. {@code linkBaseUrl} is the absolute origin emailed
- * links point at, validated by {@link EmailedLinkOrigin}. Set {@code RIVIERA_RECOVERY_LINK_BASE_URL} in
+ * links point at, validated by {@link EmailedLinkOrigin}. Set {@code RIVIERA_PUBLIC_ORIGIN} in
  * demo/prod. Both TTLs are bounded at bind time ({@link CustomerRecovery} stamps {@code now + ttl}, so zero is born
  * expired), in the compact constructor: no JSR-303 implementation is on the classpath, so {@code @Min} validates nothing.
  */
@@ -45,7 +45,7 @@ public record RecoveryProperties(
 	public RecoveryProperties {
 		requireInRange(PREFIX + ".verification-token-ttl", verificationTokenTtl, MAX_VERIFICATION_TOKEN_TTL);
 		requireInRange(PREFIX + ".reset-token-ttl", resetTokenTtl, MAX_RESET_TOKEN_TTL);
-		linkBaseUrl = EmailedLinkOrigin.require(PREFIX + ".link-base-url", "RIVIERA_RECOVERY_LINK_BASE_URL",
+		linkBaseUrl = EmailedLinkOrigin.require(PREFIX + ".link-base-url", "RIVIERA_PUBLIC_ORIGIN",
 				linkBaseUrl);
 	}
 

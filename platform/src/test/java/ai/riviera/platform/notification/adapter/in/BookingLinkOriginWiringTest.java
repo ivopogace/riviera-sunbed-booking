@@ -11,7 +11,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 /**
  * Pins the booking-mail link origin's boot posture against the SHIPPED properties files: the
- * {@code mailer} profile aborts when {@code RIVIERA_RECOVERY_LINK_BASE_URL} is unset, any explicit value
+ * {@code mailer} profile aborts when {@code RIVIERA_PUBLIC_ORIGIN} is unset, any explicit value
  * boots, and every other profile keeps the local default.
  */
 class BookingLinkOriginWiringTest {
@@ -27,24 +27,24 @@ class BookingLinkOriginWiringTest {
 		runner.withPropertyValues("spring.profiles.active=mailer")
 				.run(context -> assertThat(context).hasFailed().getFailure().rootCause()
 						.hasMessageContaining("is unresolved")
-						.hasMessageContaining("set RIVIERA_RECOVERY_LINK_BASE_URL"));
+						.hasMessageContaining("set RIVIERA_PUBLIC_ORIGIN"));
 	}
 
 	@Test
 	void mailerProfileAcceptsAnExplicitLoopbackLinkOrigin() {
 		runner.withPropertyValues("spring.profiles.active=mailer")
-				.withSystemProperties("RIVIERA_RECOVERY_LINK_BASE_URL=http://localhost:8080")
+				.withSystemProperties("RIVIERA_PUBLIC_ORIGIN=http://localhost:8080")
 				.run(context -> assertThat(context.getBean(BookingLinks.class).baseUrl())
 						.isEqualTo("http://localhost:8080"));
 	}
 
 	@Test
 	void anInvalidLinkOriginFailsAtBootNamingTheBoundKey() {
-		runner.withSystemProperties("RIVIERA_RECOVERY_LINK_BASE_URL=https://riviera.example/?a=b")
+		runner.withSystemProperties("RIVIERA_PUBLIC_ORIGIN=https://riviera.example/?a=b")
 				.withPropertyValues("spring.profiles.active=mailer")
 				.run(context -> assertThat(context).hasFailed().getFailure().rootCause()
 						.hasMessageStartingWith(BookingLinkConfig.BookingLinkProperties.PREFIX + ".base-url ")
-						.hasMessageContaining("set RIVIERA_RECOVERY_LINK_BASE_URL"));
+						.hasMessageContaining("set RIVIERA_PUBLIC_ORIGIN"));
 	}
 
 	@Test

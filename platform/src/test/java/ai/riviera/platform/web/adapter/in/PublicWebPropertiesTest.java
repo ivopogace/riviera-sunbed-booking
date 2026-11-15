@@ -9,7 +9,10 @@ import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
-/** {@link PublicWebProperties}: a blank origin is none, a bare https origin is kept, anything else aborts the boot. */
+/**
+ * {@link PublicWebProperties}: a blank origin is none, a bare https origin (or a bare http one on a loopback host) is
+ * kept, anything else aborts the boot.
+ */
 class PublicWebPropertiesTest {
 
 	private static PublicWebProperties withOrigin(String origin) {
@@ -35,7 +38,14 @@ class PublicWebPropertiesTest {
 	}
 
 	@ParameterizedTest
-	@ValueSource(strings = { "http://riviera.example", "riviera.example", "https://riviera.example/sq",
+	@ValueSource(strings = { "http://localhost:8080", "http://127.0.0.1:8080", "http://[::1]:8080" })
+	void aBareHttpOriginOnALoopbackHostIsKept(String origin) {
+		assertEquals(Optional.of(origin), withOrigin(origin + "/").origin());
+	}
+
+	@ParameterizedTest
+	@ValueSource(strings = { "http://riviera.example", "http://localhost.riviera.example", "http://127.0.0.2",
+			"http://localhost:8080/sq", "http://user@localhost", "riviera.example", "https://riviera.example/sq",
 			"https://riviera.example//", "https://riviera.example?x=1", "https://riviera.example#top",
 			"https://user@riviera.example", "https://riviera.example:", "https://", "https://riviera example", "ftp://riviera.example" })
 	void anythingButABareHttpsOriginAbortsTheBoot(String origin) {
