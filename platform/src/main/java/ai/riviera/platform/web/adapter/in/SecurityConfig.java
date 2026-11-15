@@ -292,7 +292,9 @@ public class SecurityConfig {
 			Clock clock, ObjectMapper objectMapper, ScrapeCredentials scrapeCredentials) {
 		http
 				.securityMatcher(ACTUATOR_PATHS)
-				.addFilterAfter(new RateLimitFilter(rateLimitProperties, clock, objectMapper), CorsFilter.class)
+				// No login or credential path under /actuator, so this chain's account budget is never drawn on.
+				.addFilterAfter(new RateLimitFilter(rateLimitProperties, clock, objectMapper,
+						new IdentityBuckets(rateLimitProperties)), CorsFilter.class)
 				.addFilterBefore(new ScrapeTokenFilter(scrapeCredentials), AnonymousAuthenticationFilter.class)
 				.sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
 				.securityContext(context -> context.securityContextRepository(new NullSecurityContextRepository()))
@@ -325,7 +327,9 @@ public class SecurityConfig {
 			ProofOfWorkChallenges challenges, SessionCredentials sessionCredentials) {
 		// One instance, so the chain and the logout success handler stay in lockstep.
 		CookieCsrfTokenRepository csrfTokenRepository = csrfCookieRepository();
-		RateLimitFilter rateLimitFilter = new RateLimitFilter(rateLimitProperties, clock, objectMapper);
+		// One account budget across both filters: a login's failures and a password change's count together.
+		IdentityBuckets identities = new IdentityBuckets(rateLimitProperties);
+		RateLimitFilter rateLimitFilter = new RateLimitFilter(rateLimitProperties, clock, objectMapper, identities);
 		http
 				.securityMatcher("/api/**")
 				.cors(Customizer.withDefaults())
@@ -339,6 +343,9 @@ public class SecurityConfig {
 				.addFilterBefore(new SessionCredentialFilter(sessionCredentials), AnonymousAuthenticationFilter.class)
 				// After AuthorizationFilter, so only actions past the gate leave an audit row.
 				.addFilterAfter(new AdminAuditFilter(adminAuditLog, ADMIN_AUDIT_NAMESPACE), AuthorizationFilter.class)
+				// After AuthorizationFilter, so it keys on an authorized principal and a denied request spends nothing.
+				.addFilterAfter(new PrincipalRateLimitFilter(rateLimitProperties, clock, identities),
+						AuthorizationFilter.class)
 				.csrf(csrf -> csrf
 						.spa()
 						// Hardened to mirror the session cookie's posture (keeps spa()'s handler).

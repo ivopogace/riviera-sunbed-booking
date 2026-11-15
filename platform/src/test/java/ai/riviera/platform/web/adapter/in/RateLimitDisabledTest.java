@@ -11,6 +11,7 @@ import org.springframework.test.web.servlet.MockMvc;
 
 import static ai.riviera.platform.WebSliceStubs.fromIp;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -28,6 +29,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 		"riviera.ratelimit.per-ip.refill-period=PT1H",
 		"riviera.ratelimit.per-code.capacity=1",
 		"riviera.ratelimit.per-code.refill-period=PT1H",
+		"riviera.ratelimit.username.capacity=1",
+		"riviera.ratelimit.username.refill-period=PT1H",
 })
 class RateLimitDisabledTest {
 
@@ -41,6 +44,19 @@ class RateLimitDisabledTest {
 		for (int i = 0; i < 5; i++) {
 			mvc.perform(get("/api/bookings/{code}", code).with(fromIp(ip)))
 					.andExpect(status().isNotFound()); // capacity 1 would 429 at the 2nd if enabled
+		}
+	}
+
+	/** The per-principal budget obeys the same switch: one account's failing changes are never refused. */
+	@Test
+	void disabledNeverLimitsOnePrincipal() throws Exception {
+		for (int i = 0; i < 20; i++) {
+			mvc.perform(post("/api/auth/operator/password").with(csrf()).with(fromIp("198.51.100.3"))
+							.with(user("disabled-op").roles("OPERATOR"))
+							.contentType(MediaType.APPLICATION_JSON)
+							.content("""
+									{"currentPassword": "irrelevant1", "newPassword": "irrelevant2"}"""))
+					.andExpect(status().isBadRequest()); // username capacity 1 would refuse the 2nd if enabled
 		}
 	}
 

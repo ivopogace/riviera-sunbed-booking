@@ -24,13 +24,13 @@ import static org.assertj.core.api.Assertions.assertThatIllegalArgumentException
  * Spring Boot context, no web layer and no Docker (sibling to {@code MockMailerProdGuardTest}).
  *
  * <p><strong>The key-cap half:</strong> {@code max-tracked-keys} is bounded on both
- * ends, because the map-bounding check in {@code RateLimitFilter#bucketFor} is {@code size() >= cap}.
+ * ends, because the map-bounding check in {@code BucketMap#bucketFor} is {@code size() >= cap}.
  * A non-positive cap therefore fires on <em>every</em> new key and, since {@code removeIf} cannot
  * bring the size below zero, falls through to {@code buckets.clear()} — so each new key wipes every
  * other key's spent tokens and the limiter throttles nobody, having booted
  * cleanly with only a {@code DEBUG} line as evidence. A small-but-positive cap degrades the same way,
  * just less completely, which is why the floor is not {@code 1}. The ceiling closes the hole from the
- * other end: the cap is the only thing bounding eleven independent dimension maps.
+ * other end: the cap is the only thing bounding every independent dimension map.
  *
  * <p><strong>Why a compact constructor and not {@code @Validated} + {@code @Min}.</strong> There is
  * no JSR-303 implementation on the runtime classpath — the project declined
@@ -153,7 +153,7 @@ class RateLimitPropertiesBindingTest {
 		runner.withPropertyValues("riviera.ratelimit.max-tracked-keys=1000000")
 				.run(context -> assertThat(context)
 						.as("the shipped value with one extra digit restores the unbounded growth the cap "
-								+ "exists to prevent, across eleven dimension maps")
+								+ "exists to prevent, in every dimension map")
 						.hasFailed()
 						.getFailure()
 						.rootCause()
