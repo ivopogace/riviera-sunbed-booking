@@ -5,6 +5,7 @@ import java.net.URI;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.function.Consumer;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -63,6 +64,21 @@ class SmtpMailerIT {
 	private static final BookingConfirmationMail CONFIRMATION = new BookingConfirmationMail(
 			BOOKING_CODE, "Miramar Beach", LocalDate.of(2026, 8, 15), "Front row · Sea view", 3, 2500, "EUR",
 			CancellationWindow.FREE, 0);
+
+	/** Each guest booking mail other than the two confirmations, one send apiece. */
+	private static final List<Consumer<SmtpMailer>> OTHER_GUEST_BOOKING_MAILS = List.of(
+			mailer -> mailer.sendBookingCancellation(TO, SiteLocale.EN, venueCaused(5000)),
+			mailer -> mailer.sendPaymentDue(TO, SiteLocale.EN, new PaymentDueMail(BOOKING_CODE, "Miramar Beach",
+					LocalDate.of(2026, 8, 15), LocalDate.of(2026, 8, 15), DEADLINE, 2500, "EUR", PAY_LINK,
+					CancellationWindow.LATE, 5000)),
+			mailer -> mailer.sendBookingMoved(TO, SiteLocale.EN, movedMail(LocalDate.of(2026, 8, 15))),
+			mailer -> mailer.sendMoveReminder(TO, SiteLocale.EN, moveReminder()),
+			mailer -> mailer.sendDayRefund(TO, SiteLocale.EN, new DayRefundMail(BOOKING_CODE, "Miramar Beach",
+					LocalDate.of(2026, 8, 18), 3000L, "EUR", RefundReason.WEATHER, false, PAY_LINK)),
+			mailer -> mailer.sendRequestDeclined(TO, SiteLocale.EN, new RequestDeclinedMail(BOOKING_CODE,
+					"Miramar Beach", LocalDate.of(2026, 8, 15), LocalDate.of(2026, 8, 15), PAY_LINK, DeclineReason.VENUE)),
+			mailer -> mailer.sendRequestExpired(TO, SiteLocale.EN, new RequestExpiredMail(BOOKING_CODE, "Miramar Beach",
+					LocalDate.of(2026, 8, 15), LocalDate.of(2026, 8, 15), PAY_LINK)));
 
 	@RegisterExtension
 	static GreenMailExtension greenMail = new GreenMailExtension(ServerSetupTest.SMTP);
@@ -151,6 +167,36 @@ class SmtpMailerIT {
 		assertThat(normalized(theOnlyReceivedMessage())).endsWith("""
 				Need help? Contact Riviera:
 				  Email:     help@example.com""");
+	}
+
+	/** #1750: every guest booking mail beyond the confirmations ends with the same block. */
+	@Test
+	void everyOtherGuestBookingMailEndsWithTheSupportBlock() throws Exception {
+		SmtpMailer mailer = mailer(new SupportContact("help@example.com", "355691234567"));
+		OTHER_GUEST_BOOKING_MAILS.forEach(send -> send.accept(mailer));
+
+		greenMail.waitForIncomingEmail(OTHER_GUEST_BOOKING_MAILS.size());
+		assertThat(greenMail.getReceivedMessages()).hasSize(OTHER_GUEST_BOOKING_MAILS.size());
+		for (MimeMessage message : greenMail.getReceivedMessages()) {
+			assertThat(normalized(message)).as(message.getSubject()).endsWith("""
+
+
+					Need help? Contact Riviera:
+					  Email:     help@example.com
+					  WhatsApp:  +355691234567 (https://wa.me/355691234567)""");
+		}
+	}
+
+	@Test
+	void everyOtherGuestBookingMailWithNoChannelConfiguredCarriesNoContactLine() throws Exception {
+		SmtpMailer mailer = mailer();
+		OTHER_GUEST_BOOKING_MAILS.forEach(send -> send.accept(mailer));
+
+		greenMail.waitForIncomingEmail(OTHER_GUEST_BOOKING_MAILS.size());
+		assertThat(greenMail.getReceivedMessages()).hasSize(OTHER_GUEST_BOOKING_MAILS.size());
+		for (MimeMessage message : greenMail.getReceivedMessages()) {
+			assertThat(message.getContent().toString()).as(message.getSubject()).doesNotContain("Need help", "wa.me");
+		}
 	}
 
 	@Test
