@@ -37,11 +37,11 @@ class SitemapXmlTest {
 		assertEquals("urlset", urlset.getLocalName());
 		List<String> locs = locs(document);
 		assertEquals(List.of(
-				ORIGIN + "/", ORIGIN + "/sq/", ORIGIN + "/it/",
-				ORIGIN + "/for-venues", ORIGIN + "/sq/for-venues", ORIGIN + "/it/for-venues",
-				ORIGIN + "/help", ORIGIN + "/sq/help", ORIGIN + "/it/help",
-				ORIGIN + "/venues/3", ORIGIN + "/sq/venues/3", ORIGIN + "/it/venues/3",
-				ORIGIN + "/venues/11", ORIGIN + "/sq/venues/11", ORIGIN + "/it/venues/11"), locs);
+				ORIGIN + "/", ORIGIN + "/sq/", ORIGIN + "/it/", ORIGIN + "/de/",
+				ORIGIN + "/for-venues", ORIGIN + "/sq/for-venues", ORIGIN + "/it/for-venues", ORIGIN + "/de/for-venues",
+				ORIGIN + "/help", ORIGIN + "/sq/help", ORIGIN + "/it/help", ORIGIN + "/de/help",
+				ORIGIN + "/venues/3", ORIGIN + "/sq/venues/3", ORIGIN + "/it/venues/3", ORIGIN + "/de/venues/3",
+				ORIGIN + "/venues/11", ORIGIN + "/sq/venues/11", ORIGIN + "/it/venues/11", ORIGIN + "/de/venues/11"), locs);
 		for (String loc : locs) {
 			URI uri = URI.create(loc);
 			assertEquals("https", uri.getScheme(), loc);
@@ -57,7 +57,7 @@ class SitemapXmlTest {
 		for (int i = 0; i < urls.getLength(); i++) {
 			Element url = (Element) urls.item(i);
 			String loc = url.getElementsByTagNameNS(SitemapXml.SITEMAP_NS, "loc").item(0).getTextContent();
-			String page = loc.replaceFirst("^" + ORIGIN + "(/sq|/it)?", "");
+			String page = loc.replaceFirst("^" + ORIGIN + "(/sq|/it|/de)?", "");
 			page = page.isEmpty() ? "/" : page;
 			List<String> alternates = new ArrayList<>();
 			NodeList links = url.getElementsByTagNameNS(SitemapXml.XHTML_NS, "link");
@@ -68,14 +68,14 @@ class SitemapXmlTest {
 			}
 			String en = ORIGIN + page;
 			assertEquals(List.of("en " + en, "sq " + ORIGIN + "/sq" + page, "it " + ORIGIN + "/it" + page,
-					"x-default " + en), alternates, loc);
+					"de " + ORIGIN + "/de" + page, "x-default " + en), alternates, loc);
 		}
-		assertEquals(4 * 3, urls.getLength(), "four pages in three locales");
+		assertEquals(4 * 4, urls.getLength(), "four pages in four locales");
 	}
 
 	@Test
 	void noVenuesStillListsTheFixedPages() throws Exception {
-		assertEquals(9, locs(parse(SitemapXml.render(ORIGIN, List.of()))).size());
+		assertEquals(12, locs(parse(SitemapXml.render(ORIGIN, List.of()))).size());
 	}
 
 	@Test

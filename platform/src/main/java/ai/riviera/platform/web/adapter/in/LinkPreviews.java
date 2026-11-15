@@ -102,6 +102,9 @@ final class LinkPreviews {
 				case IT -> new Copy("Riviera — Prenotazione lettini",
 						"Prenota in anticipo un set di lettini sulla Riviera albanese: due lettini e un ombrellone "
 								+ "per l’intera giornata, con pagamento nell’app.");
+				case DE -> new Copy("Riviera — Liegen buchen",
+						"Buchen Sie vorab ein Liegen-Set an der albanischen Riviera: zwei Liegen und ein Sonnenschirm "
+								+ "für den ganzen Tag, bezahlt in der App.");
 			};
 		}
 	}

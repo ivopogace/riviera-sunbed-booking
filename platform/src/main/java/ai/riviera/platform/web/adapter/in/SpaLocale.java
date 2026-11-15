@@ -16,7 +16,8 @@ import ai.riviera.platform.shared.SiteLocale;
 enum SpaLocale {
 	EN(SiteLocale.EN),
 	SQ(SiteLocale.SQ),
-	IT(SiteLocale.IT);
+	IT(SiteLocale.IT),
+	DE(SiteLocale.DE);
 
 	private final String code;
 	private final String subPath;

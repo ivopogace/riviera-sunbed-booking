@@ -44,8 +44,8 @@ final class MailCopy {
 
 	private MailCopy(SiteLocale site) {
 		this.locale = site.locale();
-		this.date = DateTimeFormatter.ofPattern("d MMMM yyyy", locale);
-		this.dayMonth = DateTimeFormatter.ofPattern("d MMMM", locale);
+		this.date = DateTimeFormatter.ofPattern(text("format.date"), locale);
+		this.dayMonth = DateTimeFormatter.ofPattern(text("format.dayMonth"), locale);
 		this.time = DateTimeFormatter.ofPattern("HH:mm", locale);
 		this.zone = DateTimeFormatter.ofPattern("zzz", locale);
 	}
