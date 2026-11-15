@@ -3565,6 +3565,9 @@
         <context-group purpose="location">
           <context context-type="sourcefile">src/app/core/operator-auth.ts</context>
         </context-group>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/core/operator-auth.ts</context>
+        </context-group>
       </trans-unit>
       <trans-unit id="883225603593837541" datatype="html">
         <source>Something went wrong. Please try again.</source>
@@ -3614,6 +3617,9 @@
         <target state="translated">Password attuale</target>
         <context-group purpose="location">
           <context context-type="sourcefile">src/app/auth/operator-password.ts</context>
+        </context-group>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/auth/operator-sign-in-methods.ts</context>
         </context-group>
         <context-group purpose="location">
           <context context-type="sourcefile">src/app/auth/set-password.ts</context>
@@ -3683,6 +3689,99 @@
         </context-group>
         <context-group purpose="location">
           <context context-type="sourcefile">src/app/operator/operator-account-chip.ts</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="7449000061608046498" datatype="html">
+        <source>Sign-in methods</source>
+        <target state="translated">Metodi di accesso</target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/auth/operator-sign-in-methods.ts</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="2975224942647416785" datatype="html">
+        <source> Link Google or Apple to sign in without your password. Linking asks for your current password. </source>
+        <target state="translated">Collega Google o Apple per accedere senza password. Il collegamento richiede la password attuale.</target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/auth/operator-sign-in-methods.ts</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="3099882906994173432" datatype="html">
+        <source>Linked</source>
+        <target state="translated">Collegato</target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/auth/operator-sign-in-methods.ts</context>
+        </context-group>
+        <note priority="1" from="description">Sign-in method status</note>
+      </trans-unit>
+      <trans-unit id="8977342037560990412" datatype="html">
+        <source>Not linked</source>
+        <target state="translated">Non collegato</target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/auth/operator-sign-in-methods.ts</context>
+        </context-group>
+        <note priority="1" from="description">Sign-in method status</note>
+      </trans-unit>
+      <trans-unit id="2168439131987654539" datatype="html">
+        <source>Link Google</source>
+        <target state="translated">Collega Google</target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/auth/operator-sign-in-methods.ts</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="6587214556250748903" datatype="html">
+        <source>Unlink Google</source>
+        <target state="translated">Scollega Google</target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/auth/operator-sign-in-methods.ts</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="8303001215070913909" datatype="html">
+        <source>Link Apple</source>
+        <target state="translated">Collega Apple</target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/auth/operator-sign-in-methods.ts</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="7914864870907389461" datatype="html">
+        <source>Unlink Apple</source>
+        <target state="translated">Scollega Apple</target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/auth/operator-sign-in-methods.ts</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="2888383122472655196" datatype="html">
+        <source>Linked. You can now sign in with it on the operator tab.</source>
+        <target state="translated">Collegato. Ora puoi accedere con questo account dalla scheda operatore.</target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/auth/operator-sign-in-methods.ts</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="7795110419238139636" datatype="html">
+        <source>That account couldn&apos;t be linked. It may already be linked to another operator account, or your session changed. Please try again.</source>
+        <target state="translated">Non è stato possibile collegare l'account. Potrebbe essere già collegato a un altro account operatore, oppure la tua sessione è cambiata. Riprova.</target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/auth/operator-sign-in-methods.ts</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="1813852118349246153" datatype="html">
+        <source>Unlinked. Any other devices signed in as you have been signed out.</source>
+        <target state="translated">Scollegato. Tutti gli altri dispositivi connessi con il tuo account sono stati disconnessi.</target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/auth/operator-sign-in-methods.ts</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="457937405678415606" datatype="html">
+        <source>This is the only way left to sign in, so it can&apos;t be unlinked.</source>
+        <target state="translated">È l'unico modo rimasto per accedere, quindi non può essere scollegato.</target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/auth/operator-sign-in-methods.ts</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="354904398574437110" datatype="html">
+        <source>Something went wrong unlinking. Please try again.</source>
+        <target state="translated">Si è verificato un errore durante lo scollegamento. Riprova.</target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/auth/operator-sign-in-methods.ts</context>
         </context-group>
       </trans-unit>
       <trans-unit id="4129080604379805008" datatype="html">
@@ -6865,6 +6964,13 @@
           <context context-type="sourcefile">src/app/core/operator-auth.ts</context>
         </context-group>
       </trans-unit>
+      <trans-unit id="8192845211158518947" datatype="html">
+        <source>That Google or Apple account isn&apos;t linked to an operator account that can sign in. Sign in with your password, then link it under Change password.</source>
+        <target state="translated">Questo account Google o Apple non è collegato a un account operatore che può accedere. Accedi con la tua password, poi collegalo in Cambia password.</target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/core/operator-auth.ts</context>
+        </context-group>
+      </trans-unit>
       <trans-unit id="8319069617818186469" datatype="html">
         <source>Your operator session has expired. Please sign in again.</source>
         <target state="translated">La tua sessione da operatore è scaduta. Accedi di nuovo.</target>
@@ -6875,16 +6981,33 @@
           <context context-type="sourcefile">src/app/operator/venue-create-card.ts</context>
         </context-group>
       </trans-unit>
-      <trans-unit id="2179485637949354334" datatype="html">
-        <source>Your password has been changed. Any other devices signed in as you have been signed out.</source>
-        <target state="translated">La password è stata cambiata. Gli altri dispositivi collegati con il tuo account sono stati disconnessi.</target>
+      <trans-unit id="5824197465046299846" datatype="html">
+        <source>That current password is incorrect.</source>
+        <target state="translated">La password attuale non è corretta.</target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/core/operator-auth.ts</context>
+        </context-group>
         <context-group purpose="location">
           <context context-type="sourcefile">src/app/core/operator-auth.ts</context>
         </context-group>
       </trans-unit>
-      <trans-unit id="5824197465046299846" datatype="html">
-        <source>That current password is incorrect.</source>
-        <target state="translated">La password attuale non è corretta.</target>
+      <trans-unit id="8537625083514772201" datatype="html">
+        <source>This account&apos;s sign-in is managed by the deployment environment and can&apos;t be linked.</source>
+        <target state="translated">L'accesso di questo account è gestito dall'ambiente di distribuzione e non può essere collegato.</target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/core/operator-auth.ts</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="1866654339087324158" datatype="html">
+        <source>Something went wrong starting the link. Please try again.</source>
+        <target state="translated">Si è verificato un errore durante l'avvio del collegamento. Riprova.</target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/core/operator-auth.ts</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="2179485637949354334" datatype="html">
+        <source>Your password has been changed. Any other devices signed in as you have been signed out.</source>
+        <target state="translated">La password è stata cambiata. Gli altri dispositivi collegati con il tuo account sono stati disconnessi.</target>
         <context-group purpose="location">
           <context context-type="sourcefile">src/app/core/operator-auth.ts</context>
         </context-group>

@@ -3565,6 +3565,9 @@
         <context-group purpose="location">
           <context context-type="sourcefile">src/app/core/operator-auth.ts</context>
         </context-group>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/core/operator-auth.ts</context>
+        </context-group>
       </trans-unit>
       <trans-unit id="883225603593837541" datatype="html">
         <source>Something went wrong. Please try again.</source>
@@ -3614,6 +3617,9 @@
         <target state="translated">Fjalëkalimi aktual</target>
         <context-group purpose="location">
           <context context-type="sourcefile">src/app/auth/operator-password.ts</context>
+        </context-group>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/auth/operator-sign-in-methods.ts</context>
         </context-group>
         <context-group purpose="location">
           <context context-type="sourcefile">src/app/auth/set-password.ts</context>
@@ -3683,6 +3689,99 @@
         </context-group>
         <context-group purpose="location">
           <context context-type="sourcefile">src/app/operator/operator-account-chip.ts</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="7449000061608046498" datatype="html">
+        <source>Sign-in methods</source>
+        <target state="translated">Mënyrat e hyrjes</target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/auth/operator-sign-in-methods.ts</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="2975224942647416785" datatype="html">
+        <source> Link Google or Apple to sign in without your password. Linking asks for your current password. </source>
+        <target state="translated">Lidhni Google ose Apple për të hyrë pa fjalëkalim. Lidhja kërkon fjalëkalimin tuaj aktual.</target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/auth/operator-sign-in-methods.ts</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="3099882906994173432" datatype="html">
+        <source>Linked</source>
+        <target state="translated">E lidhur</target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/auth/operator-sign-in-methods.ts</context>
+        </context-group>
+        <note priority="1" from="description">Sign-in method status</note>
+      </trans-unit>
+      <trans-unit id="8977342037560990412" datatype="html">
+        <source>Not linked</source>
+        <target state="translated">E palidhur</target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/auth/operator-sign-in-methods.ts</context>
+        </context-group>
+        <note priority="1" from="description">Sign-in method status</note>
+      </trans-unit>
+      <trans-unit id="2168439131987654539" datatype="html">
+        <source>Link Google</source>
+        <target state="translated">Lidh Google</target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/auth/operator-sign-in-methods.ts</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="6587214556250748903" datatype="html">
+        <source>Unlink Google</source>
+        <target state="translated">Shkëput Google</target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/auth/operator-sign-in-methods.ts</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="8303001215070913909" datatype="html">
+        <source>Link Apple</source>
+        <target state="translated">Lidh Apple</target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/auth/operator-sign-in-methods.ts</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="7914864870907389461" datatype="html">
+        <source>Unlink Apple</source>
+        <target state="translated">Shkëput Apple</target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/auth/operator-sign-in-methods.ts</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="2888383122472655196" datatype="html">
+        <source>Linked. You can now sign in with it on the operator tab.</source>
+        <target state="translated">U lidh. Tani mund të hyni me të te skeda e operatorit.</target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/auth/operator-sign-in-methods.ts</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="7795110419238139636" datatype="html">
+        <source>That account couldn&apos;t be linked. It may already be linked to another operator account, or your session changed. Please try again.</source>
+        <target state="translated">Llogaria nuk u lidh dot. Mund të jetë lidhur tashmë me një llogari tjetër operatori, ose seanca juaj ndryshoi. Ju lutemi provoni sërish.</target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/auth/operator-sign-in-methods.ts</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="1813852118349246153" datatype="html">
+        <source>Unlinked. Any other devices signed in as you have been signed out.</source>
+        <target state="translated">U shkëput. Çdo pajisje tjetër e hyrë si ju është nxjerrë jashtë.</target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/auth/operator-sign-in-methods.ts</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="457937405678415606" datatype="html">
+        <source>This is the only way left to sign in, so it can&apos;t be unlinked.</source>
+        <target state="translated">Kjo është mënyra e vetme që ju ka mbetur për të hyrë, prandaj nuk mund të shkëputet.</target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/auth/operator-sign-in-methods.ts</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="354904398574437110" datatype="html">
+        <source>Something went wrong unlinking. Please try again.</source>
+        <target state="translated">Diçka shkoi keq gjatë shkëputjes. Ju lutemi provoni sërish.</target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/auth/operator-sign-in-methods.ts</context>
         </context-group>
       </trans-unit>
       <trans-unit id="4129080604379805008" datatype="html">
@@ -6865,6 +6964,13 @@
           <context context-type="sourcefile">src/app/core/operator-auth.ts</context>
         </context-group>
       </trans-unit>
+      <trans-unit id="8192845211158518947" datatype="html">
+        <source>That Google or Apple account isn&apos;t linked to an operator account that can sign in. Sign in with your password, then link it under Change password.</source>
+        <target state="translated">Kjo llogari Google ose Apple nuk është e lidhur me një llogari operatori që mund të hyjë. Hyni me fjalëkalimin tuaj, pastaj lidheni te Ndrysho fjalëkalimin.</target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/core/operator-auth.ts</context>
+        </context-group>
+      </trans-unit>
       <trans-unit id="8319069617818186469" datatype="html">
         <source>Your operator session has expired. Please sign in again.</source>
         <target state="translated">Seanca juaj si operator ka skaduar. Ju lutemi hyni përsëri.</target>
@@ -6875,16 +6981,33 @@
           <context context-type="sourcefile">src/app/operator/venue-create-card.ts</context>
         </context-group>
       </trans-unit>
-      <trans-unit id="2179485637949354334" datatype="html">
-        <source>Your password has been changed. Any other devices signed in as you have been signed out.</source>
-        <target state="translated">Fjalëkalimi juaj u ndryshua. Çdo pajisje tjetër ku ishit të identifikuar është shkëputur.</target>
+      <trans-unit id="5824197465046299846" datatype="html">
+        <source>That current password is incorrect.</source>
+        <target state="translated">Fjalëkalimi aktual është i pasaktë.</target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/core/operator-auth.ts</context>
+        </context-group>
         <context-group purpose="location">
           <context context-type="sourcefile">src/app/core/operator-auth.ts</context>
         </context-group>
       </trans-unit>
-      <trans-unit id="5824197465046299846" datatype="html">
-        <source>That current password is incorrect.</source>
-        <target state="translated">Fjalëkalimi aktual është i pasaktë.</target>
+      <trans-unit id="8537625083514772201" datatype="html">
+        <source>This account&apos;s sign-in is managed by the deployment environment and can&apos;t be linked.</source>
+        <target state="translated">Hyrja e kësaj llogarie menaxhohet nga mjedisi i vendosjes dhe nuk mund të lidhet.</target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/core/operator-auth.ts</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="1866654339087324158" datatype="html">
+        <source>Something went wrong starting the link. Please try again.</source>
+        <target state="translated">Diçka shkoi keq gjatë nisjes së lidhjes. Ju lutemi provoni sërish.</target>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/core/operator-auth.ts</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="2179485637949354334" datatype="html">
+        <source>Your password has been changed. Any other devices signed in as you have been signed out.</source>
+        <target state="translated">Fjalëkalimi juaj u ndryshua. Çdo pajisje tjetër ku ishit të identifikuar është shkëputur.</target>
         <context-group purpose="location">
           <context context-type="sourcefile">src/app/core/operator-auth.ts</context>
         </context-group>

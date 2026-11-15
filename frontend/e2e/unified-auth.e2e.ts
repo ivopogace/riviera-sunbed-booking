@@ -44,6 +44,8 @@ test('the audience toggle is a keyboard-operable radiogroup', async ({ page }) =
   await expect(page.getByTestId('auth-identifier-label')).toHaveText('Username');
   // The subtitle follows the audience in sign-in mode.
   await expect(page.locator('#auth-intro')).toHaveText('Sign in to run your venue.');
+  // Operators sign in with Google/Apple too, once linked from the console (#276).
+  await expect(page.getByTestId('sso-google')).toBeVisible();
 
   await expectNoSeriousAxeViolations(page, 'unified auth card — operator tab');
 });

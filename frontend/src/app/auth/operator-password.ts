@@ -17,6 +17,7 @@ import {
 
 import { TouchTarget } from '../shared/touch-target';
 import { PrimaryCta } from '../shared/primary-cta';
+import { OperatorSignInMethods } from './operator-sign-in-methods';
 
 /** Template skins, hoisted so each recipe exists once (the booking-view.ts `cls` idiom). */
 const CLS = {
@@ -42,15 +43,23 @@ const CLS = {
  * customer's `set-password`: most of that account page (email verification, SSO, erasure) doesn't
  * apply to an operator, a business counterparty rather than a data subject. The shared parts
  * (`CardGlass`, the auth-card recipe, the password-policy constants) are reused. No signed-out
- * branch: `operatorSessionGuard` redirects first. Both fields are always required — operators have
- * no SSO, so no password-less account can set a first password here.
+ * branch: `operatorSessionGuard` redirects first. Both fields are always required: SSO is link-only for
+ * operators, so every account has a password. Its sign-in methods sit below ({@link OperatorSignInMethods}).
  */
 @Component({
   selector: 'app-operator-password',
-  imports: [PrimaryCta, FormField, RouterLink, CardGlass, BusyAction, TouchTarget],
+  imports: [
+    PrimaryCta,
+    FormField,
+    RouterLink,
+    CardGlass,
+    BusyAction,
+    TouchTarget,
+    OperatorSignInMethods,
+  ],
   template: `
     <section
-      class="flex min-h-[60vh] items-center justify-center px-5 py-8"
+      class="flex min-h-[60vh] flex-col items-center justify-center gap-5 px-5 py-8"
       aria-labelledby="oppw-title"
     >
       <div [class]="cls.card" appCardGlass>
@@ -128,6 +137,8 @@ const CLS = {
           >
         </p>
       </div>
+
+      <app-operator-sign-in-methods />
     </section>
   `,
   // The shell paints .riv-bg behind this page (operator chrome); no self-painted background needed.

@@ -2,33 +2,52 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { Mock, vi } from 'vitest';
 
 import { CustomerAuth, SsoProviderId } from '../core/customer-auth';
+import { OperatorAuth } from '../core/operator-auth';
 import { SsoButtons } from './sso-buttons';
 
-/** A CustomerAuth stub exposing only startSso — the rest of the service is inert. */
-function authStub(): Partial<CustomerAuth> & { startSso: Mock<(provider: SsoProviderId) => void> } {
-  return { startSso: vi.fn<(provider: SsoProviderId) => void>() };
-}
+type StartSso = Mock<(provider: SsoProviderId) => void>;
 
-async function render(auth: Partial<CustomerAuth>): Promise<ComponentFixture<SsoButtons>> {
+async function render(
+  audience: 'tourist' | 'operator',
+): Promise<{ fixture: ComponentFixture<SsoButtons>; customer: StartSso; operator: StartSso }> {
+  const customer: StartSso = vi.fn<(provider: SsoProviderId) => void>();
+  const operator: StartSso = vi.fn<(provider: SsoProviderId) => void>();
   await TestBed.configureTestingModule({
     imports: [SsoButtons],
-    providers: [{ provide: CustomerAuth, useValue: auth }],
+    providers: [
+      { provide: CustomerAuth, useValue: { startSso: customer } },
+      { provide: OperatorAuth, useValue: { startSso: operator } },
+    ],
   }).compileComponents();
   const fixture = TestBed.createComponent(SsoButtons);
+  fixture.componentRef.setInput('audience', audience);
   fixture.detectChanges();
-  return fixture;
+  return { fixture, customer, operator };
+}
+
+function click(fixture: ComponentFixture<SsoButtons>, testId: string): void {
+  (fixture.nativeElement as HTMLElement)
+    .querySelector<HTMLButtonElement>(`[data-testid="${testId}"]`)!
+    .click();
 }
 
 describe('SsoButtons', () => {
-  it('starts SSO for the clicked provider', async () => {
-    const auth = authStub();
-    const fixture = await render(auth);
-    const el = fixture.nativeElement as HTMLElement;
+  it('starts the tourist flow for the clicked provider', async () => {
+    const { fixture, customer, operator } = await render('tourist');
 
-    el.querySelector<HTMLButtonElement>('[data-testid="sso-google"]')!.click();
-    expect(auth.startSso).toHaveBeenCalledWith('google');
+    click(fixture, 'sso-google');
+    click(fixture, 'sso-apple');
 
-    el.querySelector<HTMLButtonElement>('[data-testid="sso-apple"]')!.click();
-    expect(auth.startSso).toHaveBeenCalledWith('apple');
+    expect(customer.mock.calls).toEqual([['google'], ['apple']]);
+    expect(operator).not.toHaveBeenCalled();
+  });
+
+  it('starts the operator flow on the operator tab, never the tourist one', async () => {
+    const { fixture, customer, operator } = await render('operator');
+
+    click(fixture, 'sso-google');
+
+    expect(operator).toHaveBeenCalledWith('google');
+    expect(customer).not.toHaveBeenCalled();
   });
 });

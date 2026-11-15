@@ -20,6 +20,7 @@ function authStub(result: OperatorPasswordChangeResult = 'changed'): AuthStub {
     username: signal('adriatica'),
     changePassword: vi.fn(() => Promise.resolve(result)),
     sessionLost: vi.fn(),
+    signInMethods: vi.fn(() => Promise.resolve([])),
   };
 }
 

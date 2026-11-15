@@ -18,7 +18,12 @@ import {
   customerRegisterMessage,
   customerSignInMessage,
 } from '../core/customer-auth';
-import { OperatorAuth, operatorRegisterMessage, signInFailureMessage } from '../core/operator-auth';
+import {
+  OPERATOR_SSO_FAILED_MESSAGE,
+  OperatorAuth,
+  operatorRegisterMessage,
+  signInFailureMessage,
+} from '../core/operator-auth';
 import { OwnedVenues } from '../core/owned-venues';
 import { ProofOfWork } from '../core/proof-of-work';
 import { landingRouteFor, safeReturnUrl, touristLandingRoute } from '../shared/auth-landing';
@@ -356,7 +361,10 @@ export class AuthPage {
    *  looking at is stale on both. */
   protected readonly error = linkedSignal({
     source: () => [this.mode(), this.audience()],
-    computation: (): string | undefined => undefined,
+    computation: ([mode, audience]): string | undefined =>
+      mode === 'signin' && audience === 'operator' && this.queryParams().get('sso') === 'failed'
+        ? OPERATOR_SSO_FAILED_MESSAGE
+        : undefined,
   });
   /** The widget's verified proof-of-work solution for whichever register card is showing. Cleared
    *  on the same pair as {@link error}, so no card is ever submitted with another card's solution. */
