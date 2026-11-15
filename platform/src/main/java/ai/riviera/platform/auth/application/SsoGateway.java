@@ -27,9 +27,7 @@ public interface SsoGateway {
 
 	/**
 	 * Whether this IdP signs anyone in as a canned identity (the mock): then a linked operator is reachable by any
-	 * visitor, so the edge refuses an admin's link and sign-in (#276). A real IdP authenticates a person: {@code false}.
+	 * visitor, so the edge refuses an admin's link and sign-in (#276). No default, so a new gateway must answer.
 	 */
-	default boolean cooperative() {
-		return false;
-	}
+	boolean cooperative();
 }

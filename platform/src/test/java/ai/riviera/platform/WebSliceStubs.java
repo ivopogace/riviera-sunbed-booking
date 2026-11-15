@@ -579,6 +579,11 @@ public class WebSliceStubs {
 			}
 
 			@Override
+			public boolean cooperative() {
+				return false;
+			}
+
+			@Override
 			public ExternalIdentity exchangeCode(SsoProvider provider, String code, String codeVerifier,
 					String expectedNonce, URI redirectUri) {
 				return new ExternalIdentity(provider, "https://web-slice.example", "web-slice-subject",

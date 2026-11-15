@@ -68,7 +68,7 @@ final class SsoFlow {
 		return authorization;
 	}
 
-	/** Whether the active IdP is the mock, signing any visitor in as its canned identity ({@link SsoGateway#cooperative}). */
+	/** Whether the active IdP signs any visitor in as a canned identity ({@link SsoGateway#cooperative}). */
 	boolean cooperative() {
 		return gateway.cooperative();
 	}

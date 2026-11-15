@@ -24,7 +24,7 @@ import jakarta.servlet.http.HttpServletRequest;
  * {@code MockSsoGateway#authorizationRequest} and is 302-redirected straight back to the real callback with a
  * canned {@code code} carrying the {@code nonce}, and the echoed {@code state}, so the full dance is demoable.
  * The supplied {@code redirect_uri} must be our own callback on the same host, so this can never be
- * an open redirect (defence-in-depth even though non-prod). Package-private (invariant #11).
+ * an open redirect (defence-in-depth, though only a {@code demo} boot serves it). Package-private (invariant #11).
  */
 @RestController
 @Profile("!sso")

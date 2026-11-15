@@ -38,6 +38,12 @@ class RealSsoGateway implements SsoGateway {
 		return clientFor(provider).authorizationRequest(challenge, redirectUri);
 	}
 
+	/** A real IdP authenticates a person. */
+	@Override
+	public boolean cooperative() {
+		return false;
+	}
+
 	@Override
 	public ExternalIdentity exchangeCode(SsoProvider provider, String code, String codeVerifier, String expectedNonce,
 			URI redirectUri) {
