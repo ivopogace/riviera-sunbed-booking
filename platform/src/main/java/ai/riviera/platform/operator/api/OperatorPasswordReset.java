@@ -21,6 +21,6 @@ public interface OperatorPasswordReset {
 	/** Whose password a token would reset now, consuming nothing, so the edge can revoke first. */
 	Optional<String> usernameForResetToken(String tokenHash);
 
-	/** Consume the token and store the already-encoded {@code passwordHash}, atomically. */
+	/** Consume the token, store the already-encoded {@code passwordHash} and delete every SSO link, atomically. */
 	OperatorResetOutcome resetPassword(String tokenHash, String passwordHash);
 }
