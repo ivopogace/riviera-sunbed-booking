@@ -59,7 +59,7 @@ unless noted. Each is red on `origin/main` except AC-7 (a guard).
 
 ## Execution status
 
-- [ ] Phase 1 — red tests (AC-1..AC-7)
-- [ ] Phase 2 — `BucketMap`, `IdentityBuckets`, `writeRateLimited`, `PrincipalRateLimitFilter`, wiring
-- [ ] Phase 3 — docs (RateLimitProperties, application.properties, RESPONSIBILITIES `web` + *Platform edge*, D-8)
+- [x] Phase 1 — red tests (AC-1..AC-7): 10 red on origin/main, each on the missing 429
+- [x] Phase 2 — `BucketMap`, `IdentityBuckets`, `writeRateLimited`, `PrincipalRateLimitFilter`, wiring
+- [x] Phase 3 — docs (RateLimitProperties, application.properties, RESPONSIBILITIES `web` + *Platform edge*, D-8)
 - [ ] PR, CI, review gate (high), Sonar
